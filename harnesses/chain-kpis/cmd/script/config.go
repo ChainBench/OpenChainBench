@@ -11,15 +11,16 @@ import (
 type Config struct {
 	// Mobula REST key. Required for /market/data and /market/blockchain/stats
 	// (both endpoints rate-limit free traffic to ~10 req/min, the key lifts
-	// that to a level that comfortably absorbs 32 chains × 2 endpoints
-	// every refresh tick.) Without a key, Mobula returns 429 immediately.
+	// that to a level that comfortably absorbs the 40 Mobula-mapped chains
+	// plus one call per native symbol every refresh tick.) Without a key,
+	// Mobula returns 429 immediately.
 	MobulaAPIKey string
 
 	// How often DefiLlama is polled per chain. 15 min is the conservative
 	// default: their public API is generous but the TVL value barely moves
 	// inside a 15-min window (intra-day deltas are noise vs the day-over-
-	// day signal we surface on the chain page). 4 ticks/h × the DefiLlama-mapped
-	// chains × 3 endpoints = 372 req/h, well under any sane rate-limit
+	// day signal we surface on the chain page). 4 ticks/h × 62 DefiLlama-mapped
+	// chains × 3 endpoints = 744 req/h, well under any sane rate-limit
 	// ceiling.
 	DefillamaRefreshInterval time.Duration
 

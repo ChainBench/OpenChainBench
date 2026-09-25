@@ -29,7 +29,8 @@ seo_intro: |
   defillama.com shows per chain. Next to the fees sits the revenue the
   chain and its protocols kept, the share of fees that represents, and,
   for chains with a token of their own (Ethereum ETH, Solana SOL, Arbitrum
-  ARB, Hyperliquid HYPE; Base, Robinhood Chain and Unichain have none), the
+  ARB, Hyperliquid HYPE; Base, Robinhood Chain, Unichain, Ink, Abstract and
+  Arc have none), the
   token's circulating market cap over annualized fees and over annualized
   revenue: the P/F and P/S multiples the protocol valuation benches
   publish, applied to chains. A chain whose fees grow while its multiple falls is priced lower per
@@ -56,7 +57,7 @@ methodology:
   - "Source: DefiLlama /overview/fees/<chain>, dataType dailyFees and dailyRevenue, the per-chain sum of every fees adapter DefiLlama runs for protocols on that chain plus the chain's own gas. Free endpoint, two requests per chain per hour, chart excluded."
   - "Windows: total24h, total7d and total30d as DefiLlama reports them, ending on its last complete UTC day. The headline is the 30-day figure because daily chain fees swing with one launch or one airdrop; 24h and 7d are companion columns."
   - "Revenue: the adapter-defined share the chain or its protocols keep, per DefiLlama's definition per protocol (sequencer margin for a rollup, burned base fee for Ethereum, protocol take for a DEX). Revenue share is revenue over fees on the 30-day window, in percent."
-  - "Price to fees and price to revenue: the chain token's circulating market cap over the 30-day fees or revenue annualized (x 365/30). The token is DefiLlama's chain to gecko_id mapping (Ethereum ETH, Arbitrum ARB, Hyperliquid HYPE) and the market cap CoinGecko's, published as chain_token_mcap_usd. Base, Robinhood Chain and Unichain map to no token and get no ratio."
+  - "Price to fees and price to revenue: the chain token's circulating market cap over the 30-day fees or revenue annualized (x 365/30). The token is DefiLlama's chain to gecko_id mapping (Ethereum ETH, Arbitrum ARB, Hyperliquid HYPE) and the market cap CoinGecko's, published as chain_token_mcap_usd. Base, Robinhood Chain, Unichain, Ink, Abstract and Arc map to no token and get no ratio."
   - "A ratio publishes only when the market cap and the denominator are both positive. A chain with no fees over the month publishes no row rather than a $0 one; a quiet day inside an active month publishes its real zero on the 24h column."
   - "Coverage: the 38 registry chains DefiLlama maps and reports fees for, with at least $100,000 of fees over the 30 days when the cohort was chosen (2026-09-25). Chains DefiLlama knows but has no fee adapter for (Moonbeam, Polkadot) are absent rather than shown at zero, and so are mapped chains under the floor that day (Manta, World Chain, Hemi among them)."
   - "Cadence: hourly reads; the source moves once a day. p50, p90, p99 and the mean read the same value and are equal by construction. Freshness is the chain-kpis health gauge for the fees source."
@@ -65,7 +66,7 @@ methodology:
 findings:
   - "{{best_name}} users paid the most fees of the {{ranked_count}} ranked chains, {{best_p50}} over the last 30 complete UTC days."
   - "Fees and revenue rank differently by construction: a chain whose protocols pass most fees to LPs and stakers keeps little of a large number, and the revenue share column says how much."
-  - "The price to fees multiple is only shown for chains with a token of their own, so Base, Robinhood Chain and Unichain appear in the fee columns and not in the valuation ones."
+  - "The price to fees multiple is only shown for chains with a token of their own, so Base, Robinhood Chain, Unichain, Ink, Abstract and Arc appear in the fee columns and not in the valuation ones."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/chain-kpis
 

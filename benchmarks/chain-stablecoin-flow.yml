@@ -53,7 +53,7 @@ methodology:
   - "Ranking is by net dollars, because that is the quantity that actually moved. The percentage column is the size-adjusted reading and the two disagree on purpose: the largest net inflow and the largest percentage gain are rarely the same chain."
   - "No cohort-relative column here, unlike bench 273. A flow already carries a sign, so the raw number separates a chain that gained from one that lost. Value secured is a level and moves with the market, which is why that board needs an excess column and this one does not."
   - "Cadence: every 15 minutes, matched to the rest of the DefiLlama reads in the harness. The underlying series is daily, so p50, p90, p99 and the mean read the same value and are equal by construction."
-  - "Coverage: the 27 registry chains DefiLlama tracks for stablecoins that sat above the floor when the cohort was chosen on 2026-09-25. A chain DefiLlama does not track for stablecoins answers 404 and is absent rather than shown at zero. A cohort chain whose history is shorter than the window (Arc, whose stablecoin history begins on 2026-09-17) keeps its row and shows its float until the 30-day point exists."
+  - "Coverage: the 26 registry chains DefiLlama tracks for stablecoins that sat above the floor when the cohort was chosen on 2026-09-25. A chain DefiLlama does not track for stablecoins answers 404 and is absent rather than shown at zero. Arc cleared the floor ($0.5B) but its history begins on 2026-09-17, too short for a 30-day difference; it joins at the next spec review once that point exists, around 2026-10-17."
 
 findings:
   - "{{best_name}} took in the most stablecoins of the {{ranked_count}} ranked chains, {{best_p50}} over 30 days."
@@ -71,7 +71,7 @@ panel_main_description: "Dollar change in the chain's stablecoin float over the 
 
 # Panel metrics carry no chain matcher: the site queries each panel once per
 # provider row (`<metric>{chain="<slug>"}`), so the cohort is the provider
-# list below and a 27-chain regex here would only repeat it past the
+# list below and a 26-chain regex here would only repeat it past the
 # 200-character cap on the field.
 metric_panels:
   - id: change_30d
@@ -403,17 +403,6 @@ providers:
       sample_size: count_over_time(chain_stables_net_30d_usd{chain="aptos"}[24h])
       series: chain_stables_net_30d_usd{chain="aptos"}
 
-  - slug: arc
-    name: Arc
-    formula: "last_over_time(chain_stables_net_30d_usd{chain=\"arc\"}[2h])"
-    queries:
-      p50: last_over_time(chain_stables_net_30d_usd{chain="arc"}[2h])
-      p90: last_over_time(chain_stables_net_30d_usd{chain="arc"}[2h])
-      p99: last_over_time(chain_stables_net_30d_usd{chain="arc"}[2h])
-      mean: last_over_time(chain_stables_net_30d_usd{chain="arc"}[2h])
-      success: avg_over_time(chain_kpis_health{chain="arc",source="defillama"}[24h])
-      sample_size: count_over_time(chain_stables_net_30d_usd{chain="arc"}[24h])
-      series: chain_stables_net_30d_usd{chain="arc"}
 
   - slug: ink
     name: Ink
