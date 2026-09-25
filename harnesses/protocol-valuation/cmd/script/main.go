@@ -46,6 +46,7 @@ func main() {
 	cfg := loadConfig()
 	fmt.Printf("Exposes /metrics on %s.\n", cfg.MetricsAddr)
 	supply := newSupplyCache()
+	basis := newFeeBasisMemory(cfg.BasisStatePath)
 
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
@@ -66,13 +67,13 @@ func main() {
 		defer wg.Done()
 		tick := time.NewTicker(cfg.RefreshInterval)
 		defer tick.Stop()
-		poll(cfg, supply)
+		poll(cfg, supply, basis)
 		for {
 			select {
 			case <-stop:
 				return
 			case <-tick.C:
-				poll(cfg, supply)
+				poll(cfg, supply, basis)
 			}
 		}
 	}()
@@ -83,7 +84,7 @@ func main() {
 	wg.Wait()
 }
 
-func poll(cfg *Config, supply *supplyCache) {
+func poll(cfg *Config, supply *supplyCache, basisMemory *feeBasisMemoryStore) {
 	start := time.Now()
 
 	cohort, st, err := buildCohort(cfg.MinFees30dUSD)
@@ -108,6 +109,10 @@ func poll(cfg *Config, supply *supplyCache) {
 			return
 		}
 	}
+
+	// A shift found on an earlier tick still withholds this row's trend:
+	// the seam outlives the reading that found it.
+	basisFlagged := basisMemory.apply(cohort, time.Now())
 
 	rows := buildRows(cohort, markets, cfg.MinFloatPct, cfg.MinMcapUSD)
 	medians := CategoryMedians(rows)
@@ -135,9 +140,9 @@ func poll(cfg *Config, supply *supplyCache) {
 			withTVL++
 		}
 	}
-	fmt.Printf("[poll] %d adapters -> %d tokens (%d via parent, %d merged, %d unmapped, %d below floor) -> %d rows, %d incomplete, %d peer groups, %d diverging, %d with P/S, %d with TVL, %v\n",
+	fmt.Printf("[poll] %d adapters -> %d tokens (%d via parent, %d merged, %d unmapped, %d below floor) -> %d rows, %d incomplete, %d basis shift, %d peer groups, %d diverging, %d with P/S, %d with TVL, %v\n",
 		st.Adapters, st.Mapped, st.ViaParent, st.Merged, st.Unmapped, st.BelowFloor,
-		len(rows), st.Incomplete, len(medians), diverging, withPS, withTVL, time.Since(start).Round(time.Millisecond))
+		len(rows), st.Incomplete, basisFlagged, len(medians), diverging, withPS, withTVL, time.Since(start).Round(time.Millisecond))
 
 	// The supply series is the slow read: on the first tick of a UTC day it
 	// is one paced CoinGecko call per row, from a few minutes to over an

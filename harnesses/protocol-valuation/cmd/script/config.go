@@ -35,6 +35,11 @@ type Config struct {
 	// Where /metrics listens. Overridable so a second copy can run next
 	// to a deployed one for a live check.
 	MetricsAddr string
+
+	// Where the fee-basis memory is kept between restarts. Empty, or a
+	// path the harness cannot write, means the memory lives in the process
+	// only.
+	BasisStatePath string
 }
 
 func loadConfig() *Config {
@@ -44,6 +49,10 @@ func loadConfig() *Config {
 		MinFloatPct:     10,
 		MinMcapUSD:      5_000_000,
 		MetricsAddr:     ":2112",
+		BasisStatePath:  "/state/fee-basis.json",
+	}
+	if v, ok := os.LookupEnv("BASIS_STATE_PATH"); ok {
+		c.BasisStatePath = v
 	}
 	if v := os.Getenv("METRICS_ADDR"); v != "" {
 		c.MetricsAddr = v

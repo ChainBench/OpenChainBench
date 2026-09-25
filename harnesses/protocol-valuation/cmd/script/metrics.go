@@ -79,7 +79,7 @@ var (
 		"1 when the trailing 30 day fee total cannot be annualized honestly: one of this token's fee adapters reports nothing over 30 days after real fees over the year (the total is short of the protocol), or the whole fee history sits inside the window (protocol_fees_window_short = 1, so x 365/30 overstates). Such a row keeps its gauges but leaves the ranking and the category median.",
 		"protocol")
 	pvFeeBasisShift = gaugeVec("protocol_fee_basis_shift",
-		"1 when the share of fees kept as revenue moved by more than 25 points against the prior month, which is an adapter rewrite rather than a change in the business. The month over month fee trend is withheld for that row, so a non-retroactive upstream methodology change does not read as growth.",
+		"1 when the fee line and the revenue line moved apart by more than half again over the same month, which is a change in what is counted rather than in the business, or when such a reading was seen in the past month. The month over month fee trend is withheld for that row, so a non-retroactive upstream methodology change does not read as growth.",
 		"protocol")
 	pvWindowShort = gaugeVec("protocol_fees_window_short",
 		"1 when every fee the token's adapters ever reported falls inside the trailing 30 days: the protocol or its adapter is younger than the window, and the annualized figure is built on fewer than 30 days.",

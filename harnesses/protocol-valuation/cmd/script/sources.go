@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"math"
 	"net/http"
 	"net/url"
 	"os"
@@ -40,11 +39,30 @@ const (
 	userAgent      = "OCB-protocol-valuation/1.0 (+https://openchainbench.com)"
 )
 
-// feeBasisShiftPoints: how far the revenue share can move in one month
-// before the two windows are treated as two different measurements. A
-// protocol's take rate is set in its contracts; 30 points of movement is
-// an adapter rewrite, not a fee switch.
-const feeBasisShiftPoints = 0.25
+// feeBasisDivergence: how far the fee line and the revenue line may move
+// apart over the same month before the two windows are read as two
+// different measurements. Fees and revenue are two views of one business,
+// so they grow together; when one moves half again as much as the other,
+// what changed is what is being counted.
+//
+// Measured as a ratio rather than in percentage points of the take rate,
+// because an absolute test can never fire on a protocol that keeps little
+// of its fees: a rewrite that doubles the fee line of a token keeping 10
+// percent moves its share by 5 points and would pass unseen (review of PR
+// 2695).
+const feeBasisDivergence = 1.5
+
+// feeBasisMinRevenue: below this, a revenue line is small enough that its
+// own rounding drives the ratio, so the test is not applied.
+const feeBasisMinRevenue = 10_000.0
+
+// feeBasisMemory: how long a detected shift keeps withholding the trend.
+// The seam does not leave with the tick that found it: it sits in the
+// prior window and inflates the comparison for up to another month, and
+// the detection itself fades as the prior window fills back up. Without
+// the memory the flag clears within days and the inflated trend returns
+// (review of PR 2695).
+const feeBasisMemory = 31 * 24 * time.Hour
 
 var httpClient = &http.Client{Timeout: 120 * time.Second}
 
@@ -224,19 +242,23 @@ func buildCohort(minFees30d float64) ([]Protocol, cohortStats, error) {
 	return joinCohort(feesResp.Protocols, revResp.Protocols, protocols, cfg.ParentProtocols, minFees30d)
 }
 
-// markFeeBasisShift sets the flag when the share of fees kept as revenue
-// moved further in one month than a protocol's own take rate can move.
-// What changed then is the adapter, not the business: DeFiLlama merged a
-// Convex change on 2026-08-18 that started booking the LP leg in
-// dailyFees and did not backfill it, which printed a 92 percent fee jump
-// on a business that grew 15. A month over month trend across that seam
-// compares two different measurements, so it is withheld.
+// markFeeBasisShift sets the flag when the fee line and the revenue line
+// moved apart over the same month. Both describe one business, so they
+// grow together; when they do not, what changed is the measurement.
+// DeFiLlama merged a Convex change on 2026-08-18 that started booking the
+// LP leg in dailyFees and did not backfill it, which printed a 92 percent
+// fee jump on a business that grew 15. A month over month trend across
+// that seam compares two different measurements, so it is withheld.
 func markFeeBasisShift(e *Protocol) {
 	if !e.RevKnown || e.Fees30d <= 0 || e.Prev30d <= 0 {
 		return
 	}
-	now, prev := e.Rev30d/e.Fees30d, e.RevPrev30d/e.Prev30d
-	if math.Abs(now-prev) > feeBasisShiftPoints {
+	if e.Rev30d < feeBasisMinRevenue || e.RevPrev30d < feeBasisMinRevenue {
+		return
+	}
+	feeFactor, revFactor := e.Fees30d/e.Prev30d, e.Rev30d/e.RevPrev30d
+	ratio := feeFactor / revFactor
+	if ratio > feeBasisDivergence || ratio < 1/feeBasisDivergence {
 		e.FeeBasisShift = true
 	}
 }
