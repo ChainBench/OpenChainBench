@@ -743,7 +743,9 @@ const buildProvidersCached = unstable_cache(
   // v10 (2026-09-23): bench 278 rwa-solana-depth added paxg and buidl, and
   // appearances gained window and valueKind; /products/paxg was 404 and
   // every RWA rank read "(24h avg)" while the v9 list outlived the deploy.
-  ["providers-v10"],
+  // v11 (2026-09-25): 273, 274 and 275 join prod; ~80 protocol tokens and
+  // 41 L2s become product appearances the v10 list does not carry.
+  ["providers-v11"],
   // 900 s: the provider index feeds products / compare / answers, whose
   // numbers move slowly, and this revalidate is also the effective ISR
   // period of those ~500 pages (Next takes the min across a route's caches).

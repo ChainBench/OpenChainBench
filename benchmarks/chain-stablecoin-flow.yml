@@ -3,8 +3,8 @@ slug: chain-stablecoin-flow
 number: "275"
 title: "Stablecoin flow by chain: where dollars actually moved over 30 days"
 seo_title: "Stablecoin flow by chain: {{best_name}} gained {{best_p50}}"
-seo_description: "{{best_name}} took in {{best_p50}} of stablecoins over 30 days, {{worst_name}} lost {{worst_p50}}. Net flow, the 7 and 30 day move and the float behind it for {{ranked_count}} chains."
-subtitle: "The dollar change in each chain's stablecoin float over the trailing 30 days. Unlike a TVL ranking this is a flow, not a level: it only moves when somebody mints or bridges dollars onto a chain, or takes them off. Chains below $100M of float are not ranked, because one mint moves them by a third."
+seo_description: "{{best_name}} took in {{best_p50}} of stablecoins over 30 days, the most of {{ranked_count}} chains; {{worst_name}} sits at the bottom with {{worst_p50}}. Net flow, 7 and 30 day moves, float."
+subtitle: "The dollar change in each chain's stablecoin float over the trailing 30 days. Unlike a TVL ranking this is a flow, not a level: it only moves when somebody mints or bridges dollars onto a chain, or takes them off. Chains below $100M of float when the cohort was set (2026-09-23) are not ranked, because one mint moves them by a third."
 category: Blockchains
 status: live
 metric: Net stablecoin flow (30d)
@@ -57,7 +57,7 @@ methodology:
 
 findings:
   - "{{best_name}} took in the most stablecoins of the {{ranked_count}} ranked chains, {{best_p50}} over 30 days."
-  - "{{worst_name}} lost the most at {{worst_p50}}, and a chain can shed float while its TVL holds: the two measure different things."
+  - "{{worst_name}} sits at the bottom at {{worst_p50}}, the largest outflow when the figure is negative, and a chain can shed float while its TVL holds: the two measure different things."
   - "Net dollars and percentage gain rank differently by construction, because the same inflow is a rounding error on the largest chain and a step change on a smaller one."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/chain-kpis
@@ -73,28 +73,28 @@ metric_panels:
   - id: change_30d
     label: 30d change
     label_key: chain
-    metric: chain_stables_change_30d_pct{}
+    metric: chain_stables_change_30d_pct{chain=~"ethereum|tron|bnb|solana|hyperliquid|base|arbitrum|polygon|avalanche|robinhood|stellar|gram|monad|mantle|optimism|sui|sei|cronos|sonic|celo"}
     unit: pct
     higher_is_better: true
     description: "The same 30-day move as a percentage of the float it started from. The size-adjusted reading: a chain can lead on dollars and trail here."
   - id: float_usd
     label: Stablecoin float
     label_key: chain
-    metric: chain_stables_mcap_usd{}
+    metric: chain_stables_mcap_usd{chain=~"ethereum|tron|bnb|solana|hyperliquid|base|arbitrum|polygon|avalanche|robinhood|stellar|gram|monad|mantle|optimism|sui|sei|cronos|sonic|celo"}
     unit: usd
     higher_is_better: true
     description: "Total pegged-USD circulating on the chain, every issuer combined. The base the other columns are measured against."
   - id: net_7d
     label: Net 7d
     label_key: chain
-    metric: chain_stables_net_7d_usd{}
+    metric: chain_stables_net_7d_usd{chain=~"ethereum|tron|bnb|solana|hyperliquid|base|arbitrum|polygon|avalanche|robinhood|stellar|gram|monad|mantle|optimism|sui|sei|cronos|sonic|celo"}
     unit: usd
     higher_is_better: true
     description: "Dollar change over the trailing week. Where the 30-day move is still running or has already turned."
   - id: change_7d
     label: 7d change
     label_key: chain
-    metric: chain_stables_change_7d_pct{}
+    metric: chain_stables_change_7d_pct{chain=~"ethereum|tron|bnb|solana|hyperliquid|base|arbitrum|polygon|avalanche|robinhood|stellar|gram|monad|mantle|optimism|sui|sei|cronos|sonic|celo"}
     unit: pct
     higher_is_better: true
     description: "The weekly move as a percentage of the float."
@@ -107,7 +107,7 @@ faq:
   - q: "Why rank on dollars instead of percentage?"
     a: "Because the dollar figure is the quantity that moved. The percentage is on the page beside it and the two rank differently on purpose: the same inflow is a rounding error on the largest chain and a step change on a smaller one."
   - q: "Why are small chains excluded?"
-    a: "Because a chain with a few tens of millions of float moves tens of percent on one mint or one redemption, so a board including them would rank issuance events. The floor is $100M of float, applied when the cohort was chosen; chains under it are not on this board."
+    a: "Because a chain with a few tens of millions of float moves tens of percent on one mint or one redemption, so a board including them would rank issuance events. The floor is $100M of float, applied when the cohort was chosen on 2026-09-23; chains under it then are not on this board, and the cohort is revisited by spec review, not recomputed each run."
   - q: "Does an inflow mean the chain is winning?"
     a: "Not on its own. Dollars can arrive and sit idle, and they can leave because one issuer redeemed rather than because users left. The float is where money is parked, not what it does; read it next to the chain's DEX volume and TVL."
 providers:
