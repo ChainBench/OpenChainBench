@@ -36,7 +36,7 @@ export type ChainKpis = {
   nativeMcap: number | null;
   /** Fees users paid on the chain over DefiLlama's trailing 30 complete
    *  UTC days (gas + tracked protocol fees), and the revenue the chain and
-   *  its protocols kept. Bench 279. Absent in snapshots written before
+   *  its protocols kept. Bench 280. Absent in snapshots written before
    *  the fees loop shipped (2026-09-25), hence optional. */
   fees30d?: number | null;
   revenue30d?: number | null;

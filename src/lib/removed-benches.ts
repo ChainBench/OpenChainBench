@@ -113,7 +113,7 @@ export const DEV_ONLY_BENCH_SLUGS = new Set([
   // 275 stablecoin flow: new gauges on the chain-kpis harness, no 24h
   // window yet and no audit round. Un-gate after both.
   "chain-stablecoin-flow",
-  // 279 chain fees and revenue: new gauges on the chain-kpis harness
+  // 280 chain fees and revenue: new gauges on the chain-kpis harness
   // (2026-09-25), no 24h window yet and no audit round. Un-gate after both.
   "chain-fees-revenue",
   // 276 perp fee disclosure: the maker gauge is one deploy old and three

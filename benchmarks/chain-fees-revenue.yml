@@ -1,6 +1,6 @@
-# OpenChainBench. Bench 279
+# OpenChainBench. Bench 280
 slug: chain-fees-revenue
-number: "279"
+number: "280"
 title: "Chain fees and revenue: what users paid on each chain over 30 days"
 seo_title: "Chain fees by blockchain: {{best_name}} collected {{best_p50}} in 30 days"
 seo_description: "{{best_name}} users paid {{best_p50}} in fees over 30 days, the most of {{ranked_count}} chains. Fees, revenue kept, revenue share and the chain token's price to fees, from DefiLlama's per-chain adapters."

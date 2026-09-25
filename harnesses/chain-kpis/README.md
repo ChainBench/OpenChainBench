@@ -77,7 +77,7 @@ own consensus and are tracked. Settled L1s with no host chain carry no id.
 | `DEFILLAMA_REFRESH_MINUTES` | 15 | DefiLlama cadence |
 | `MOBULA_REFRESH_MINUTES` | 5 | Mobula cadence |
 | `L2BEAT_REFRESH_MINUTES` | 15 | L2Beat cadence |
-| `CHAIN_FEES_REFRESH_MINUTES` | 60 | DefiLlama fees/revenue and CoinGecko market cap cadence (bench 279) |
+| `CHAIN_FEES_REFRESH_MINUTES` | 60 | DefiLlama fees/revenue and CoinGecko market cap cadence (bench 280) |
 | `L2BEAT_MEDIAN_FLOOR_USD` | 200000000 | size floor for the median cohort |
 | `MOBULA_API_KEY` | — | required for the Mobula gauges only |
 

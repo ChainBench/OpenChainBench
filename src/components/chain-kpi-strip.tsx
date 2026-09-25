@@ -81,17 +81,17 @@ export function ChainKpiStrip({
     {
       label: "Fees 30d",
       value: kpis.fees30d ?? null,
-      tip: "Fees users paid on this chain over the trailing 30 complete UTC days: gas plus the fees of every DefiLlama-tracked protocol on it. Source: DefiLlama per-chain fees adapters, read hourly; moves once a day. Bench 279.",
+      tip: "Fees users paid on this chain over the trailing 30 complete UTC days: gas plus the fees of every DefiLlama-tracked protocol on it. Source: DefiLlama per-chain fees adapters, read hourly; moves once a day. Bench 280.",
     },
     {
       label: "Revenue 30d",
       value: kpis.revenue30d ?? null,
-      tip: "Revenue the chain and its protocols kept over the same 30 days (fees minus what is passed to LPs, stakers and users), per each DefiLlama adapter's definition. Bench 279.",
+      tip: "Revenue the chain and its protocols kept over the same 30 days (fees minus what is passed to LPs, stakers and users), per each DefiLlama adapter's definition. Bench 280.",
     },
     {
       label: "Price to fees",
       value: kpis.tokenPf ?? null,
-      tip: "The chain's own token (DefiLlama's chain to CoinGecko mapping: ETH, SOL, ARB, HYPE) circulating market cap over annualized 30-day fees (x 365/30). Base, Robinhood Chain and Unichain have no token and are not rated. Lower means the market pays less per dollar of fees. Bench 279.",
+      tip: "The chain's own token (DefiLlama's chain to CoinGecko mapping: ETH, SOL, ARB, HYPE) circulating market cap over annualized 30-day fees (x 365/30). Base, Robinhood Chain and Unichain have no token and are not rated. Lower means the market pays less per dollar of fees. Bench 280.",
       fmt: fmtMultiple,
     },
   ];
@@ -148,7 +148,7 @@ export function ChainKpiStrip({
         Sources: TVL, DEX volume and stablecoin market cap from DefiLlama
         (refresh 15 min). Fees and revenue from DefiLlama&apos;s per-chain
         fees adapters, price to fees on CoinGecko&apos;s market cap (hourly,
-        bench 279). Native token price and market cap from Mobula (live
+        bench 280). Native token price and market cap from Mobula (live
         refresh every 2 s). Aggregated third-party metrics, not
         measurements produced by OpenChainBench; OCB-measured benchmarks
         for this chain are listed below.
