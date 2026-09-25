@@ -1,3 +1,5 @@
+import { fmtUnit } from "@/lib/format";
+
 /**
  * Client-safe part of the capital hub: bench slugs, row types and the
  * formatters the tables and the markdown view share. No server imports
@@ -19,6 +21,12 @@ export type ChainRow = {
   slug: string;
   name: string;
   tvl: number | null;
+  /** Member of bench 273's provider list (L2Beat cohort, unavailable and unranked rows included). False only when
+   *  the bench loaded and the chain is not in it (an L1), so the bridged columns show a dash; true when the bench
+   *  failed to load, so a transient outage reads n/a and never "not applicable". */
+  inBridgedCohort: boolean;
+  /** Same rule for bench 275's provider list (stablecoin cohort above $100M of float). */
+  inStablesCohort: boolean;
   bridgedTvl: number | null;
   bridgedSharePct: number | null;
   change7dPct: number | null;
@@ -35,8 +43,6 @@ export type ChainRow = {
   nativeMcap: number | null;
   fees30d: number | null;
   revenue30d: number | null;
-  /** Neutral one-liner built from the row's own numbers. */
-  note: string;
   hasChainPage: boolean;
 };
 
@@ -53,7 +59,6 @@ export type ProtocolRow = {
   categoryMedianPf: number | null;
   fees30d: number | null;
   signal: "fees-up-token-down" | "fees-down-token-up" | null;
-  note: string;
   hasProductPage: boolean;
 };
 
@@ -69,7 +74,6 @@ export type PerpRow = {
   oi: number | null;
   fees30d: number | null;
   rev30d: number | null;
-  note: string;
   hasProductPage: boolean;
 };
 
@@ -80,7 +84,8 @@ export type FlowShare = { slug: string; name: string; usd: number; pct: number }
 export type CapitalHub = {
   /** Newest lastRunAt across the benches that loaded, ISO. */
   asOf: string | null;
-  benches: { slug: string; title: string; live: boolean }[];
+  /** live: served and ranked on this deployment; failed: the load threw or the blob was unreadable (a transient state, not "unpublished"). */
+  benches: { slug: string; title: string; live: boolean; failed: boolean }[];
   chains: ChainRow[];
   stableFlowShares: FlowShare[];
   perpOi: OiRow[];
@@ -114,7 +119,8 @@ export function fmtPct(v: number | null, digits = 1): string {
   return `${v > 0 ? "+" : ""}${v.toFixed(digits)}%`;
 }
 
+/** Same digits as the bench pages, /api/stat and the answers (fmtUnit "x"), so one entity never prints two ratios. */
 export function fmtX(v: number | null): string {
   if (v == null || !Number.isFinite(v)) return "n/a";
-  return `${v >= 100 ? v.toFixed(0) : v.toFixed(v >= 10 ? 1 : 2)}x`;
+  return fmtUnit(v, "x");
 }

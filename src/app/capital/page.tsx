@@ -33,8 +33,19 @@ function describe(hub: CapitalHub | null): string {
   const p = hub.leaders.lowestPfProtocol;
   if (p && p.pf != null) parts.push(`${p.name} has the lowest price to fees at ${fmtX(p.pf)} of ${hub.protocols.length} tokens`);
   if (parts.length === 0) return FALLBACK_DESCRIPTION;
-  const out = `${parts.join("; ")}. TVL, bridged value, open interest and P/F per token.`;
-  return out.length <= 158 ? out : `${parts[0]}. TVL, bridged value, stablecoin flows and price to fees per token.`.slice(0, 158);
+  // Longest candidate that fits the 120 to 158 character SERP budget: both
+  // leaders with the long tail, then shorter tails, then one leader.
+  const tails = [
+    "TVL, bridged value, stablecoin flows, open interest and price to fees per token, from public data.",
+    "TVL, bridged value, stablecoin flows, open interest and price to fees per token.",
+    "TVL, bridged value, open interest, price to fees.",
+    "Bridged value and open interest per chain.",
+  ];
+  const candidates = [
+    ...tails.map((t) => `${parts.join("; ")}. ${t}`),
+    ...tails.map((t) => `${parts[0]}. ${t}`),
+  ];
+  return candidates.find((c) => c.length >= 120 && c.length <= 158) ?? candidates.find((c) => c.length <= 158) ?? FALLBACK_DESCRIPTION;
 }
 
 export async function generateMetadata(): Promise<import("next").Metadata> {
@@ -54,6 +65,7 @@ export const revalidate = 3600;
 
 export default async function CapitalHubPage() {
   const hub = await getCapitalHub();
+  const hasChainFees = hub.chains.some((c) => c.fees30d != null);
   const asOfLabel = hub.asOf ? `${hub.asOf.slice(0, 16).replace("T", " ")} UTC` : null;
 
   const lede = ledeSentence(hub);
@@ -139,19 +151,29 @@ export default async function CapitalHubPage() {
           </p>
         )}
         <div className="mt-4 flex flex-wrap items-center gap-2 text-[12px]">
-          {hub.benches.map((b) => (
-            <Link
-              key={b.slug}
-              href={`/benchmarks/${b.slug}`}
-              className="inline-flex items-center gap-1.5 rounded-full border border-ink/15 px-3 py-1 hover:bg-paper-soft/60"
-            >
-              <span className="label-mono text-ink-faint text-[10px]" style={{ fontFamily: "var(--font-mono, monospace)" }}>
-                Bench
+          {hub.benches.map((b) =>
+            b.live ? (
+              <Link
+                key={b.slug}
+                href={`/benchmarks/${b.slug}`}
+                className="inline-flex items-center gap-1.5 rounded-full border border-ink/15 px-3 py-1 hover:bg-paper-soft/60"
+              >
+                <span className="label-mono text-ink-faint text-[10px]" style={{ fontFamily: "var(--font-mono, monospace)" }}>
+                  Bench
+                </span>
+                <span className="text-ink">{b.slug}</span>
+              </Link>
+            ) : (
+              // Not served on this deployment yet, or its load failed this render: no link to a 404.
+              <span key={b.slug} className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-ink/15 px-3 py-1 text-ink-faint">
+                <span className="label-mono text-[10px]" style={{ fontFamily: "var(--font-mono, monospace)" }}>
+                  Bench
+                </span>
+                <span>{b.slug}</span>
+                <span className="text-[10px]">{b.failed ? "temporarily unavailable" : "not published yet"}</span>
               </span>
-              <span className="text-ink">{b.slug}</span>
-              {!b.live && <span className="text-[10px] text-ink-faint">staging</span>}
-            </Link>
-          ))}
+            ),
+          )}
           <Link href="/methodology" className="inline-flex items-center gap-1.5 rounded-full border border-ink/10 px-3 py-1 text-ink-soft hover:text-ink">
             How OpenChainBench measures
           </Link>
@@ -191,8 +213,10 @@ export default async function CapitalHubPage() {
         <div className="mt-3 space-y-3 text-sm text-ink-soft leading-relaxed">
           <p>
             <strong className="text-ink">DeFiLlama</strong> for protocol fees and revenue (dailyFees, dailyRevenue per adapter), chain TVL, DEX volume
-            and stablecoin circulating per chain, and per-chain fees (gas plus every protocol tracked on the chain) with the revenue the chain
-            and its protocols kept, through bench 280. Windows are 30 closed UTC days, annualized as 30-day sum times 365/30.
+            and stablecoin circulating per chain{hasChainFees
+              ? ", and per-chain fees (gas plus every protocol tracked on the chain) with the revenue the chain and its protocols kept, through bench 280."
+              : "."}{" "}
+            Windows are 30 closed UTC days, annualized as 30-day sum times 365/30.
           </p>
           <p>
             <strong className="text-ink">L2Beat</strong> for value secured per scaling chain, split into native, canonical and external, and its

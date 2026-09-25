@@ -146,9 +146,14 @@ export function ChainKpiStrip({
 
       <p className="mt-3 text-[11px] text-ink-faint italic">
         Sources: TVL, DEX volume and stablecoin market cap from DefiLlama
-        (refresh 15 min). Fees and revenue from DefiLlama&apos;s per-chain
-        fees adapters, price to fees on CoinGecko&apos;s market cap (hourly,
-        bench 280). Native token price and market cap from Mobula (live
+        (refresh 15 min).{" "}
+        {kpis.fees30d != null && (
+          <>
+            Fees and revenue from DefiLlama&apos;s per-chain fees adapters, price to fees on CoinGecko&apos;s market cap (hourly,
+            bench 280).{" "}
+          </>
+        )}
+        Native token price and market cap from Mobula (live
         refresh every 2 s). Aggregated third-party metrics, not
         measurements produced by OpenChainBench; OCB-measured benchmarks
         for this chain are listed below.
