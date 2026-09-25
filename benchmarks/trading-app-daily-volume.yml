@@ -4,7 +4,7 @@ slug: trading-app-daily-volume
 number: "267"
 title: "Trading app daily volume 2026: GMGN, Axiom, FOMO, Terminal, Photon, Trojan by UTC day, every chain"
 seo_title: "Trading app volume 2026: GMGN vs Axiom vs FOMO, per UTC day"
-seo_description: "{{best_name}} led trading apps on the last closed UTC day at {{best_p50}}. Cross-chain daily volume for {{count}} apps and bots, per-chain split, a year of history."
+seo_description: "{{best_name}} led trading apps on its latest closed UTC day at {{best_p50}}. Cross-chain daily volume for {{count}} apps and bots, per-chain split, a year of history."
 subtitle: Swap volume routed through each trading app or Telegram bot per closed UTC day, summed over every chain the app runs on (Solana, BSC, Base, Ethereum, Robinhood Chain, Monad and more), from the same DeFiLlama day buckets defillama.com shows. 14 apps, per-chain breakdown, 7 and 30 day totals, share of the cohort, daily history.
 
 category: Trading
@@ -55,7 +55,7 @@ methodology:
   - "Not covered: apps without a DeFiLlama dexs adapter (Maestro publishes fees only, BasedBot has none). They stay on the Dune-based bench 208 where they have data."
 
 findings:
-  - "{{best_name}} led trading apps on the last closed UTC day at {{best_p50}} of routed swap volume."
+  - "{{best_name}} led trading apps at {{best_p50}} of routed swap volume on its latest closed UTC day; rows land through the day as each DeFiLlama adapter publishes, so the lead can change until the Dune-based adapters catch up around 20:00 UTC."
   - "GMGN's volume is mostly outside Solana now: Robinhood Chain and BSC carry more than half of its daily figure."
   - "Axiom routes about a fifth of its volume through Robinhood Chain; Terminal spreads over Solana, BSC, Base and Ethereum."
   - "FOMO's figure is its total: DeFiLlama measures it on Solana, where balances are held, and includes the cross-chain trades routed through Relay. The Dune dataset behind bench 208 counts native Solana swaps only, about a fifth of it."

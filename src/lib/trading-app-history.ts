@@ -149,7 +149,11 @@ export function computeTradingAppStats(h: TradingAppHistory): TradingAppStats[] 
     // left five of eight apps at "n/a" with 0 % chain splits every morning
     // UTC (2026-09-25). `stale` says when the app's day trails the cohort's.
     const lastDay = app.days.length > 0 ? app.days[app.days.length - 1].day : null;
-    const anchor = lastDay ?? h.lastClosedDay;
+    // An adapter that stopped (or a fetch that keeps failing) must not keep
+    // its last figures ranked for weeks: past 3 days behind the cohort the
+    // anchor snaps back to the cohort day and the row reads n/a, the same
+    // floor splitDay and the harness health rule use.
+    const anchor = lastDay != null && lastDay >= fmtDayOffset(h.lastClosedDay, -3) ? lastDay : h.lastClosedDay;
     const w1 = windowSum(app, anchor, 1);
     const w7 = windowSum(app, anchor, 7);
     const w30 = windowSum(app, anchor, 30);
@@ -164,7 +168,7 @@ export function computeTradingAppStats(h: TradingAppHistory): TradingAppStats[] 
     // read as a drop.
     const d7prev = wPrev.days === 7 ? wPrev.sum : null;
     const trend7dPct = w7.days === 7 && d7prev != null && d7prev > 0 ? ((w7.sum - d7prev) / d7prev) * 100 : null;
-    const last = lastDay ? app.days.find((d) => d.day === lastDay) : undefined;
+    const last = app.days.find((d) => d.day === anchor);
     const total = last?.usd ?? 0;
     // DeFiLlama publishes the chain breakdown of the newest day hours
     // after the total (and partially at first); use the latest day whose
@@ -189,8 +193,8 @@ export function computeTradingAppStats(h: TradingAppHistory): TradingAppStats[] 
       d7prev,
       trend7dPct,
       share30d: null as number | null,
-      lastDay,
-      stale: lastDay != null && lastDay < h.lastClosedDay,
+      lastDay: anchor === lastDay ? lastDay : null,
+      stale: lastDay != null && anchor === lastDay && lastDay < h.lastClosedDay,
       chainSplit,
       last30,
     };
@@ -265,9 +269,10 @@ export function splitDay(app: TradingAppSeries, lastClosedDay: string): TradingA
 export function cohortChainSplit(h: TradingAppHistory): { chain: string; usd: number; pct: number }[] {
   const acc = new Map<string, number>();
   for (const a of h.apps) {
-    // Each app on its own latest closed day (see computeTradingAppStats).
+    // Each app on its own latest closed day (see computeTradingAppStats);
+    // splitDay's own 3-day floor drops an app that stopped publishing.
     const own = a.days.length > 0 ? a.days[a.days.length - 1].day : h.lastClosedDay;
-    const d = splitDay(a, own);
+    const d = splitDay(a, own < h.lastClosedDay ? own : h.lastClosedDay);
     for (const [c, v] of Object.entries(d?.chains ?? {})) acc.set(c, (acc.get(c) ?? 0) + v);
   }
   const total = [...acc.values()].reduce((s, v) => s + v, 0);

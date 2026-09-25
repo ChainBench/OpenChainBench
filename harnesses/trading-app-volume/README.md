@@ -41,9 +41,10 @@ Prometheus on `:2112/metrics`:
 
 | Gauge | Labels | Meaning |
 |---|---|---|
-| `trading_app_volume_usd` | app, window=1d/7d/30d | last closed day; 7d and 30d sums, published from 80 % day coverage |
+| `trading_app_volume_usd` | app, window=1d/7d/30d | the app's latest closed day (within 3 days of yesterday UTC); 7d and 30d sums ending on it, published from 80 % day coverage |
 | `trading_app_window_days` | app, window | days with a point inside the window (7 / 30 when complete) |
-| `trading_app_volume_chain_usd` | app, chain | last closed day per chain |
+| `trading_app_volume_chain_usd` | app, chain | the app's latest closed day per chain |
+| `trading_app_last_day_unix` | app | UTC midnight of the app's latest closed day on DeFiLlama |
 | `trading_app_volume_share_pct` | app, window | share of the cohort |
 | `trading_app_cohort_volume_usd` | window | cohort total |
 | `trading_app_chains` | app | chains with volume on the last day |

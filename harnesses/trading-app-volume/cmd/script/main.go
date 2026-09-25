@@ -133,11 +133,11 @@ var (
 	}, []string{"app"})
 	gChains = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "trading_app_chains",
-		Help: "Number of chains with volume on the last closed day per app.",
+		Help: "Number of chains with volume on the app's latest closed day.",
 	}, []string{"app"})
 	gHealth = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "trading_app_health",
-		Help: "1 when the app's last closed day landed within 3 days, else 0.",
+		Help: "1 when the app's latest closed day is within 3 days of yesterday UTC, else 0.",
 	}, []string{"app"})
 	gRefresh = prometheus.NewGauge(prometheus.GaugeOpts{
 		Name: "trading_app_last_refresh_unix",
@@ -408,6 +408,13 @@ func publish(h *History) {
 			continue
 		}
 		gLastDay.WithLabelValues(a.Slug).Set(float64(end.Unix()))
+		// An adapter that stopped publishing must not keep full windows and
+		// chain gauges alive on its last day: past 72 h behind the cohort the
+		// windows snap back to the cohort day (and go absent), while
+		// trading_app_last_day_unix keeps the real day and health reads 0.
+		if lastClosed.Sub(end) > 72*time.Hour {
+			end = lastClosed
+		}
 		for w, n := range windows {
 			var sum float64
 			present := 0
@@ -428,10 +435,10 @@ func publish(h *History) {
 			}
 		}
 		gDays.WithLabelValues(a.Slug).Set(float64(len(a.Days)))
-		// Per-chain gauges for the last closed day; stale chains are removed.
+		// Per-chain gauges for the app's latest closed day; stale chains are removed.
 		gChain.DeletePartialMatch(prometheus.Labels{"app": a.Slug})
 		nChains := 0
-		if p, ok := byDay[a.LastDay]; ok {
+		if p, ok := byDay[fmtDay(end)]; ok {
 			for c, v := range p.Chains {
 				gChain.WithLabelValues(a.Slug, c).Set(v)
 				nChains++
@@ -439,7 +446,7 @@ func publish(h *History) {
 		}
 		gChains.WithLabelValues(a.Slug).Set(float64(nChains))
 		healthy := 0.0
-		if lastClosed.Sub(end) <= 72*time.Hour {
+		if real, err := parseDay(a.LastDay); err == nil && lastClosed.Sub(real) <= 72*time.Hour {
 			healthy = 1
 		}
 		gHealth.WithLabelValues(a.Slug).Set(healthy)
