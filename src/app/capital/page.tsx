@@ -164,13 +164,13 @@ export default async function CapitalHubPage() {
                 <span className="text-ink">{b.slug}</span>
               </Link>
             ) : (
-              // Not served on this deployment yet: no link to a 404.
+              // Not served on this deployment yet, or its load failed this render: no link to a 404.
               <span key={b.slug} className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-ink/15 px-3 py-1 text-ink-faint">
                 <span className="label-mono text-[10px]" style={{ fontFamily: "var(--font-mono, monospace)" }}>
                   Bench
                 </span>
                 <span>{b.slug}</span>
-                <span className="text-[10px]">not published yet</span>
+                <span className="text-[10px]">{b.failed ? "temporarily unavailable" : "not published yet"}</span>
               </span>
             ),
           )}

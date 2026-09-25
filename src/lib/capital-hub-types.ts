@@ -21,9 +21,11 @@ export type ChainRow = {
   slug: string;
   name: string;
   tvl: number | null;
-  /** Ranked by bench 273 (L2Beat cohort); false for L1s, where bridged columns do not apply. */
+  /** Member of bench 273's provider list (L2Beat cohort, unavailable and unranked rows included). False only when
+   *  the bench loaded and the chain is not in it (an L1), so the bridged columns show a dash; true when the bench
+   *  failed to load, so a transient outage reads n/a and never "not applicable". */
   inBridgedCohort: boolean;
-  /** Ranked by bench 275 (stablecoin cohort above $100M of float). */
+  /** Same rule for bench 275's provider list (stablecoin cohort above $100M of float). */
   inStablesCohort: boolean;
   bridgedTvl: number | null;
   bridgedSharePct: number | null;
@@ -82,7 +84,8 @@ export type FlowShare = { slug: string; name: string; usd: number; pct: number }
 export type CapitalHub = {
   /** Newest lastRunAt across the benches that loaded, ISO. */
   asOf: string | null;
-  benches: { slug: string; title: string; live: boolean }[];
+  /** live: served and ranked on this deployment; failed: the load threw or the blob was unreadable (a transient state, not "unpublished"). */
+  benches: { slug: string; title: string; live: boolean; failed: boolean }[];
   chains: ChainRow[];
   stableFlowShares: FlowShare[];
   perpOi: OiRow[];

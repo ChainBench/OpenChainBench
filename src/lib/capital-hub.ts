@@ -61,13 +61,24 @@ function liveRows(b: Benchmark | undefined): ProviderResult[] {
   );
 }
 
-async function loadLive(slug: string): Promise<Benchmark | undefined> {
+type Loaded = { bench: Benchmark | undefined; failed: boolean };
+const NOT_SERVED: Loaded = { bench: undefined, failed: false };
+
+/** A live bench, or why there is none: `failed` (the load threw, a
+ *  transient state under a one hour ISR window) is not the same as
+ *  "not served or not live", and the page words the two differently. */
+async function loadLive(slug: string): Promise<Loaded> {
   try {
     const b = await getBenchmark(slug);
-    return b && b.status === "live" ? b : undefined;
+    return { bench: b && b.status === "live" ? b : undefined, failed: false };
   } catch {
-    return undefined;
+    return { bench: undefined, failed: true };
   }
+}
+
+/** Every provider the spec lists, unavailable and unranked rows included: cohort membership, as opposed to `liveRows`. */
+function members(b: Benchmark | undefined): Set<string> {
+  return new Set((b?.results ?? []).map((r) => r.slug));
 }
 
 /** The bench tag reads "Lending, lending P/F median 3.2": keep the
@@ -102,27 +113,37 @@ function field(pt: Record<string, unknown> | null, name: string): number | null 
 }
 
 async function buildHub(): Promise<CapitalHub> {
-  const [bridged, stables, protocolsB, perpsB, pmB, cctp, chainsHist, valHist] = await Promise.all([
+  const [bridgedL, stablesL, protocolsL, perpsL, pmL, cctpL, chainsHist, valHist] = await Promise.all([
     loadLive(CAPITAL_BENCHES.bridgedTvl),
     loadLive(CAPITAL_BENCHES.stableFlow),
     loadLive(CAPITAL_BENCHES.protocolPf),
     loadLive(CAPITAL_BENCHES.perpPf),
     loadLive(CAPITAL_BENCHES.pmOi),
     // A dev-only bench stays off the production hub entirely (no column, no chip to a 404).
-    isDevOnlyBench(CAPITAL_BENCHES.usdcCorridor) ? Promise.resolve(undefined) : loadLive(CAPITAL_BENCHES.usdcCorridor),
+    isDevOnlyBench(CAPITAL_BENCHES.usdcCorridor) ? Promise.resolve(NOT_SERVED) : loadLive(CAPITAL_BENCHES.usdcCorridor),
     getChainsHistory().catch(() => null),
     getValuationHistory().catch(() => null),
   ]);
 
+  const bridged = bridgedL.bench;
+  const stables = stablesL.bench;
+  const protocolsB = protocolsL.bench;
+  const perpsB = perpsL.bench;
+  const pmB = pmL.bench;
+  const cctp = cctpL.bench;
+  const entry = (slug: string, l: Loaded, fallbackTitle: string) => ({
+    slug,
+    title: l.bench?.title ?? fallbackTitle,
+    live: !!l.bench,
+    failed: l.failed,
+  });
   const benches = [
-    { slug: CAPITAL_BENCHES.bridgedTvl, title: bridged?.title ?? "Bridged TVL per chain", live: !!bridged },
-    { slug: CAPITAL_BENCHES.stableFlow, title: stables?.title ?? "Stablecoin flows per chain", live: !!stables },
-    { slug: CAPITAL_BENCHES.protocolPf, title: protocolsB?.title ?? "Protocol price to fees", live: !!protocolsB },
-    { slug: CAPITAL_BENCHES.perpPf, title: perpsB?.title ?? "Perp DEX price to fees", live: !!perpsB },
-    { slug: CAPITAL_BENCHES.pmOi, title: pmB?.title ?? "Prediction market open interest", live: !!pmB },
-    ...(isDevOnlyBench(CAPITAL_BENCHES.usdcCorridor)
-      ? []
-      : [{ slug: CAPITAL_BENCHES.usdcCorridor, title: cctp?.title ?? "USDC corridor flows over CCTP", live: !!cctp }]),
+    entry(CAPITAL_BENCHES.bridgedTvl, bridgedL, "Bridged TVL per chain"),
+    entry(CAPITAL_BENCHES.stableFlow, stablesL, "Stablecoin flows per chain"),
+    entry(CAPITAL_BENCHES.protocolPf, protocolsL, "Protocol price to fees"),
+    entry(CAPITAL_BENCHES.perpPf, perpsL, "Perp DEX price to fees"),
+    entry(CAPITAL_BENCHES.pmOi, pmL, "Prediction market open interest"),
+    ...(isDevOnlyBench(CAPITAL_BENCHES.usdcCorridor) ? [] : [entry(CAPITAL_BENCHES.usdcCorridor, cctpL, "USDC corridor flows over CCTP")]),
   ];
 
   const asOfMs = [bridged, stables, protocolsB, perpsB, pmB, cctp]
@@ -133,8 +154,11 @@ async function buildHub(): Promise<CapitalHub> {
   // ---- chains -----------------------------------------------------------
   const chainEntities = new Map((chainsHist?.chains ?? []).map((c) => [c.slug, c]));
   const chainSlugs = new Set<string>();
-  for (const r of liveRows(bridged)) chainSlugs.add(r.slug);
-  for (const r of liveRows(stables)) chainSlugs.add(r.slug);
+  // Every cohort member gets a row (rows with no value anywhere are dropped below).
+  for (const r of bridged?.results ?? []) chainSlugs.add(r.slug);
+  for (const r of stables?.results ?? []) chainSlugs.add(r.slug);
+  const bridgedMembers = members(bridged);
+  const stablesMembers = members(stables);
   for (const c of chainEntities.keys()) chainSlugs.add(c);
   const bridgedBy = new Map(liveRows(bridged).map((r) => [r.slug, r]));
   const stablesBy = new Map(liveRows(stables).map((r) => [r.slug, r]));
@@ -151,8 +175,9 @@ async function buildHub(): Promise<CapitalHub> {
       slug,
       name: CHAIN_NAME.get(slug) ?? br?.name ?? st?.name ?? slug,
       tvl: field(pt, "tvl"),
-      inBridgedCohort: !!br,
-      inStablesCohort: !!st,
+      // Membership is known only when the bench loaded; otherwise n/a, never a dash.
+      inBridgedCohort: bridged ? bridgedMembers.has(slug) : true,
+      inStablesCohort: stables ? stablesMembers.has(slug) : true,
       bridgedTvl: br ? num(br.ms.p50) : null,
       bridgedSharePct: panel(bridged, "bridged_share", slug),
       change7dPct: panel(bridged, "change_7d", slug),
