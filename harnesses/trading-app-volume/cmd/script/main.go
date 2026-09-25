@@ -84,6 +84,12 @@ type AppHistory struct {
 	App
 	Chains []string   `json:"chains"`
 	Days   []DayPoint `json:"days"`
+	// LastDay is the latest closed UTC day DeFiLlama has for this app. Most
+	// adapters are Dune queries that refuse to run until 10 h after the
+	// day closed, so early in the UTC day it trails the cohort's
+	// last_closed_day by one day (GMGN's adapter also skips days); every
+	// per-app figure is anchored here, not on the cohort day.
+	LastDay string `json:"last_day,omitempty"`
 	// Fetched is when this app's series was last read successfully.
 	Fetched string `json:"fetched_at"`
 	Error   string `json:"error,omitempty"`
@@ -121,6 +127,10 @@ var (
 		Name: "trading_app_history_days",
 		Help: "Closed UTC days stored per app (bench sample size).",
 	}, []string{"app"})
+	gLastDay = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "trading_app_last_day_unix",
+		Help: "UTC midnight (unix seconds) of the app's latest closed day on DeFiLlama; every window and chain gauge for the app ends on it.",
+	}, []string{"app"})
 	gChains = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "trading_app_chains",
 		Help: "Number of chains with volume on the last closed day per app.",
@@ -140,7 +150,7 @@ var (
 )
 
 func init() {
-	prometheus.MustRegister(gVolume, gChain, gShare, gCohort, gWindowDays, gDays, gChains, gHealth, gRefresh, gErrors)
+	prometheus.MustRegister(gVolume, gChain, gShare, gCohort, gWindowDays, gDays, gLastDay, gChains, gHealth, gRefresh, gErrors)
 }
 
 func envInt(k string, def int) int {
@@ -353,7 +363,11 @@ func fetchApp(client *http.Client, base string, app App, horizon, lastClosed tim
 		chains = append(chains, c)
 	}
 	sort.Strings(chains)
-	return AppHistory{App: app, Chains: chains, Days: days, Fetched: time.Now().UTC().Format(time.RFC3339)}, nil
+	lastDay := ""
+	if len(days) > 0 {
+		lastDay = days[len(days)-1].Day
+	}
+	return AppHistory{App: app, Chains: chains, Days: days, LastDay: lastDay, Fetched: time.Now().UTC().Format(time.RFC3339)}, nil
 }
 
 func lastDayUSD(a AppHistory) float64 {
@@ -378,11 +392,27 @@ func publish(h *History) {
 			byDay[d.Day] = d
 		}
 		perApp[a.Slug] = map[string]float64{}
+		// Windows end on the app's own latest closed day (see LastDay). An
+		// app with no day at all publishes nothing.
+		end, err := parseDay(a.LastDay)
+		if a.LastDay == "" || err != nil {
+			for w := range windows {
+				gVolume.DeleteLabelValues(a.Slug, w)
+				gWindowDays.WithLabelValues(a.Slug, w).Set(0)
+			}
+			gLastDay.DeleteLabelValues(a.Slug)
+			gChain.DeletePartialMatch(prometheus.Labels{"app": a.Slug})
+			gChains.WithLabelValues(a.Slug).Set(0)
+			gHealth.WithLabelValues(a.Slug).Set(0)
+			gDays.WithLabelValues(a.Slug).Set(float64(len(a.Days)))
+			continue
+		}
+		gLastDay.WithLabelValues(a.Slug).Set(float64(end.Unix()))
 		for w, n := range windows {
 			var sum float64
 			present := 0
 			for i := 0; i < n; i++ {
-				d := fmtDay(lastClosed.AddDate(0, 0, -i))
+				d := fmtDay(end.AddDate(0, 0, -i))
 				if p, ok := byDay[d]; ok {
 					sum += p.USD
 					present++
@@ -401,7 +431,7 @@ func publish(h *History) {
 		// Per-chain gauges for the last closed day; stale chains are removed.
 		gChain.DeletePartialMatch(prometheus.Labels{"app": a.Slug})
 		nChains := 0
-		if p, ok := byDay[h.LastClosedDay]; ok {
+		if p, ok := byDay[a.LastDay]; ok {
 			for c, v := range p.Chains {
 				gChain.WithLabelValues(a.Slug, c).Set(v)
 				nChains++
@@ -409,10 +439,8 @@ func publish(h *History) {
 		}
 		gChains.WithLabelValues(a.Slug).Set(float64(nChains))
 		healthy := 0.0
-		if len(a.Days) > 0 {
-			if last, err := parseDay(a.Days[len(a.Days)-1].Day); err == nil && lastClosed.Sub(last) <= 72*time.Hour {
-				healthy = 1
-			}
+		if lastClosed.Sub(end) <= 72*time.Hour {
+			healthy = 1
 		}
 		gHealth.WithLabelValues(a.Slug).Set(healthy)
 	}
