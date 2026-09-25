@@ -306,6 +306,16 @@ export const CHAINS: ChainEntry[] = [
     description:
       "Real-time Ethereum L2 (mainnet Feb 2026). 10 ms mini-blocks batched into 1 s EVM blocks, data availability on EigenDA, ZK fraud proofs via Kailua.",
   },
+  // ─── Stablecoin L1 added 2026-09-25 (benches 275 and 280) ───
+  {
+    slug: "plasma",
+    label: "Plasma",
+    category: "L1",
+    nativeSymbol: "XPL",
+    website: "https://www.plasma.to",
+    description:
+      "EVM Layer 1 built for stablecoin settlement (chain id 9745). PlasmaBFT consensus with sub-second finality, Reth execution, zero-fee USDT transfers through a protocol-level paymaster, XPL gas and staking token.",
+  },
   // ─── Long-tail chains added with the 055-066 RPC cluster (2026-07-03) ───
   {
     slug: "sonic",

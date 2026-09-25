@@ -39,7 +39,7 @@ type Config struct {
 
 	// Chain fees tick. Two requests per DefiLlama-mapped chain, and the
 	// figures move once a day on DefiLlama's day close, so hourly is
-	// plenty: 38 chains x 2 = 76 requests an hour.
+	// plenty: 62 chains x 2 = 124 requests an hour.
 	ChainFeesRefreshInterval time.Duration
 
 	// Size floor for the cohort the 7-day median is taken over. The median
