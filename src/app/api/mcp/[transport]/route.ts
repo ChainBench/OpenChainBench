@@ -102,7 +102,6 @@ const QUERY_PROM_ALLOWED_METRIC_PREFIXES = [
   "rpc_call_total",
   "rpc_health",
   "rpc_archive_depth_supported",
-  // Bridge revenue (Relay-style implied margin)
   // Hyperliquid frontends quality bench (bench № 030)
   "hl_frontend_",
   // Capital and valuation (benches 265, 273, 274, 275, chain-kpis): P/F,

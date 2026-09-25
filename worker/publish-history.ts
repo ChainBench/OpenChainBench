@@ -25,7 +25,7 @@
  * Readers: src/lib/capital-history.ts (site), and anyone with the URL.
  */
 
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { Prometheus } from "@/lib/prometheus";
 
@@ -48,8 +48,14 @@ async function atomicWrite(finalPath: string, body: string): Promise<void> {
   // Per-process temp name: two workers alive during a rebuild must not
   // rename each other's half-written file into place.
   const tmpPath = `${finalPath}.${process.pid}.${Date.now()}.tmp`;
-  await writeFile(tmpPath, body, "utf-8");
-  await rename(tmpPath, finalPath);
+  try {
+    await writeFile(tmpPath, body, "utf-8");
+    await rename(tmpPath, finalPath);
+  } catch (err) {
+    // Never leave a half file in a directory Caddy serves.
+    await unlink(tmpPath).catch(() => undefined);
+    throw err;
+  }
 }
 
 /**

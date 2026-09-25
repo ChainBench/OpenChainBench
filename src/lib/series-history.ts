@@ -53,9 +53,12 @@ const perpDailyVolume: HistoryProvider = async (range, providerSlugs) => {
 /**
  * Long-window providers backed by the daily capital blobs
  * (worker/publish-history.ts). Each maps a bench's p50 measure onto the
- * entity field the blob stores under the same name, so a 90d or 1y range on
- * these benches reads a year of daily points instead of Prometheus range
- * queries bounded by the bench's first scrape.
+ * entity field the blob stores under the same name. The blob answers a 90d
+ * or 1y range only once it covers the whole grid for every requested row;
+ * otherwise the provider returns null and the route runs its Prometheus
+ * range queries as before. All or nothing: a row that joined the board after
+ * the blob started would otherwise vanish from the chart until its own
+ * history is as old as the range (review 2026-09-25).
  */
 function capitalProvider(
   load: () => Promise<{ entities: CapitalEntity[] } | null>,
@@ -72,7 +75,8 @@ function capitalProvider(
     const out: Record<string, (number | null)[]> = {};
     for (const slug of providerSlugs) {
       const series = seriesForRange(history.entities.find((e) => e.slug === slug), field, range, grid);
-      if (series) out[slug] = series;
+      if (!series) return null;
+      out[slug] = series;
     }
     return Object.keys(out).length > 0 ? out : null;
   };

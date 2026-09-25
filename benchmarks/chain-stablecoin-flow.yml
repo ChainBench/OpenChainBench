@@ -57,7 +57,7 @@ methodology:
 
 findings:
   - "{{best_name}} took in the most stablecoins of the {{ranked_count}} ranked chains, {{best_p50}} over 30 days."
-  - "{{worst_name}} saw the smallest 30-day move at {{worst_p50}}, and a chain can shed float while its TVL holds: the two measure different things."
+  - "{{worst_name}} sits at the bottom at {{worst_p50}}, the largest outflow when the figure is negative, and a chain can shed float while its TVL holds: the two measure different things."
   - "Net dollars and percentage gain rank differently by construction, because the same inflow is a rounding error on the largest chain and a step change on a smaller one."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/chain-kpis
