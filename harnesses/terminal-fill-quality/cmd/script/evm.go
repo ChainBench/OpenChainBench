@@ -1454,7 +1454,15 @@ func prevSqrtPrice(ctx context.Context, httpc *http.Client, c originChain, pool,
 			from = 0
 		}
 		var part []evmLog
-		if err := evmCall(ctx, httpc, c.logsRPC(), "eth_getLogs", []any{map[string]any{"address": pool, "topics": topics, "fromBlock": "0x" + big.NewInt(from).Text(16), "toBlock": "0x" + big.NewInt(to).Text(16)}}, &part); err != nil && !strings.Contains(err.Error(), "empty result") {
+		// Any error is the chunk's error, "empty result" included. That
+		// string used to be exempt, on the theory that a null result meant
+		// a quiet range — and evmCall then handed the same string to any
+		// body it could not parse, so a plain-text 403 read as "no trade
+		// here" and the walk went 3,000 blocks further back: a sell priced
+		// 20 hours and 54 swaps stale, published at -952 bps against a true
+		// +388. A quiet range answers with an empty array, which is not an
+		// error; a read that failed leaves the row unpriced.
+		if err := evmCall(ctx, httpc, c.logsRPC(), "eth_getLogs", []any{map[string]any{"address": pool, "topics": topics, "fromBlock": "0x" + big.NewInt(from).Text(16), "toBlock": "0x" + big.NewInt(to).Text(16)}}, &part); err != nil {
 			return nil, err
 		}
 		logs = append(logs, part...)
