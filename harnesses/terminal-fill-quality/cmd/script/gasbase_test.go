@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/binary"
 	"math"
 	"math/big"
@@ -277,5 +278,48 @@ func TestQ64ReadsASquareRootPrice(t *testing.T) {
 	}
 	if v := q64(b[:8]); v != 0 {
 		t.Errorf("q64 of a short slice = %g, want 0", v)
+	}
+}
+
+func TestTheRouteOwnRateBeatsTheExchangePrintOnAGasCoinLeg(t *testing.T) {
+	const transfer = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
+	whype, usdc := "0x5555555555555555555555555555555555555555", "0xb88339cb7199b77e23db6e890353e22632ba630f"
+	c := originChain{id: 999, slug: "tfqtest", gas: "HYPE-USD"}
+	erc20Cache.Lock()
+	erc20Cache.m[c.slug+":"+whype] = erc20Meta{dec: 18, symbol: "WHYPE", ok: true}
+	erc20Cache.m[c.slug+":"+usdc] = erc20Meta{dec: 6, symbol: "USDC", ok: true}
+	erc20Cache.Unlock()
+	gas := map[string]float64{"HYPE-USD": 91.6465}
+	pad := func(a string) string { return "0x000000000000000000000000" + strings.TrimPrefix(a, "0x") }
+	hexw := func(v string) string {
+		n, _ := new(big.Int).SetString(v, 10)
+		h := n.Text(16)
+		return "0x" + strings.Repeat("0", 64-len(h)) + h
+	}
+	router, hop := "0x8f10b468b06c6fd214b65f87778827f7d113f996", "0x1c8ee7e99e2aecd1338e111716e4744e7d088098"
+	amount, _ := new(big.Int).SetString("40890574179911198", 10)
+	logs := []evmLog{
+		{Address: whype, Topics: []string{transfer, pad(router), pad(hop)}, Data: hexw("40890574179911198")},
+		{Address: usdc, Topics: []string{transfer, pad(hop), pad(router)}, Data: hexw("3755514")},
+	}
+	exchange := 91.6465 * math.Pow10(-18)
+	r, ok := routeGasRate(context.Background(), nil, c, logs, gas, whype, amount, exchange)
+	if !ok {
+		t.Fatalf("the route's own conversion was not read")
+	}
+	// 3.755514 USDC for 0.040890574179911198 WHYPE is 91.8425 a coin, 21 bps
+	// over the exchange print the row was valued at.
+	if got := r * math.Pow10(18); math.Abs(got-91.8425) > 0.001 {
+		t.Errorf("rate = %.4f USD a coin, want 91.8425", got)
+	}
+	// A stable coming back from somewhere else is not this leg's counterparty.
+	other := []evmLog{logs[0], {Address: usdc, Topics: []string{transfer, pad("0x00000000000000000000000000000000000000aa"), pad(router)}, Data: hexw("3755514")}}
+	if _, ok := routeGasRate(context.Background(), nil, c, other, gas, whype, amount, exchange); ok {
+		t.Errorf("a stable from an unrelated address was taken for the hop")
+	}
+	// Far from the exchange print: basis is corrected, a price is not invented.
+	far := []evmLog{logs[0], {Address: usdc, Topics: []string{transfer, pad(hop), pad(router)}, Data: hexw("9000000")}}
+	if _, ok := routeGasRate(context.Background(), nil, c, far, gas, whype, amount, exchange); ok {
+		t.Errorf("a rate twice the exchange's was accepted")
 	}
 }

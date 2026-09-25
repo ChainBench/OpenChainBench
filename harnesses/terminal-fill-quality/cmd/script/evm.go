@@ -472,6 +472,69 @@ func (c originChain) logsSpan() int64 {
 
 // quoteUSD prices a quote token: stables at $1, wrapped gas coins at the
 // Coinbase spot of the chain's gas token.
+// routeGasRate: USD per raw unit of the gas coin, read from the route's
+// own conversion of it in this transaction — the counterparty it sent
+// exactly this amount to, and the stable that came back from the same
+// address. The hop is not always a swap event we parse (HyperEVM's
+// WHYPE/USDC leg emits its own), so the transfers are what can be
+// relied on.
+//
+// Accepted only within a tenth of the exchange's price: this corrects
+// the basis between a print on another venue and the rate the user's own
+// route got, it does not invent a price. Off by 21 bps on a HyperEVM
+// sale, which is more than that row's whole loss and published a pool of
+// −12 bps.
+func routeGasRate(ctx context.Context, httpc *http.Client, c originChain, logs []evmLog, gas map[string]float64, erc string, amount *big.Int, exchange float64) (float64, bool) {
+	var a, b string
+	for i := range logs {
+		l := &logs[i]
+		if len(l.Topics) != 3 || l.Topics[0] != topicTransfer || strings.ToLower(l.Address) != erc {
+			continue
+		}
+		if word(l.Data, 0).Cmp(amount) == 0 {
+			a, b = topicAddr(l.Topics[1]), topicAddr(l.Topics[2])
+		}
+	}
+	if a == "" || b == "" || a == b {
+		return 0, false
+	}
+	for i := range logs {
+		l := &logs[i]
+		if len(l.Topics) != 3 || l.Topics[0] != topicTransfer {
+			continue
+		}
+		if topicAddr(l.Topics[1]) != b || topicAddr(l.Topics[2]) != a {
+			continue
+		}
+		m := erc20(ctx, httpc, c, strings.ToLower(l.Address))
+		u, ok := quoteUSD(m.symbol, c, gas)
+		if !m.ok || !ok || isGasCoin(m.symbol) {
+			continue
+		}
+		back := f(word(l.Data, 0)) * math.Pow10(-m.dec) * u
+		if back <= 0 || f(amount) <= 0 {
+			continue
+		}
+		r := back / f(amount)
+		if exchange > 0 && (r/exchange < 0.9 || r/exchange > 1.1) {
+			continue
+		}
+		return r, true
+	}
+	return 0, false
+}
+
+// isGasCoin: a symbol quoteUSD prices from the exchange rather than at a
+// dollar. Its price is a print from another venue; a stable's is the unit
+// the user was actually paid in.
+func isGasCoin(sym string) bool {
+	switch sym {
+	case "WETH", "ETH", "WBNB", "BNB", "WHYPE", "HYPE":
+		return true
+	}
+	return false
+}
+
 func quoteUSD(sym string, c originChain, gas map[string]float64) (float64, bool) {
 	switch sym {
 	case "USDC", "USDT", "USDG", "USD1", "DAI", "USDS", "USDE", "PYUSD", "USDC.E", "USDBC", "FDUSD", "USDH":
@@ -1104,6 +1167,15 @@ func priceEvmOriginSale(ctx context.Context, httpc *http.Client, c originChain, 
 	// in and paid a priced asset out).
 	var usdPerRaw func(ev *swapEv, quoteRaw *big.Int, depth int) (float64, int, bool)
 	usdPerRaw = func(ev *swapEv, quoteRaw *big.Int, depth int) (float64, int, bool) {
+		// A pool quoted in the wrapped gas coin, on a route that sells it
+		// on for a stable in the same transaction, is valued at that hop's
+		// own rate rather than at the exchange print: the user was paid in
+		// the stable, and the difference between the two prices is basis,
+		// not a cost the trade incurred. A HyperEVM sale through a WHYPE
+		// pool carried 21 bps of it — more than the whole loss on the row,
+		// which published a pool of −12 bps. Held here, used below if no
+		// hop prices the leg.
+		gasRate := 0.0
 		// The priced ERC20 whose outflow equals the quote first (Arc logs
 		// the same USDC move twice, 6-decimal token and 18-decimal native
 		// pseudo-token: only one matches the event).
@@ -1121,11 +1193,23 @@ func priceEvmOriginSale(ctx context.Context, httpc *http.Client, c originChain, 
 					continue
 				}
 				if amt.Cmp(quoteRaw) >= 0 || ev.kind != "v4" {
-					return q * math.Pow10(-qm.dec), 0, true
+					rate := q * math.Pow10(-qm.dec)
+					if !isGasCoin(qm.symbol) {
+						return rate, 0, true
+					}
+					if r, ok := routeGasRate(ctx, httpc, c, rc.Logs, gas, erc, amt, rate); ok {
+						return r, 1, true
+					}
+					if gasRate == 0 {
+						gasRate = rate
+					}
 				}
 			}
 		}
 		if depth >= 2 {
+			if gasRate > 0 {
+				return gasRate, 0, true
+			}
 			return 0, 0, false
 		}
 		for pass := 0; pass < 2; pass++ {
@@ -1142,6 +1226,9 @@ func priceEvmOriginSale(ctx context.Context, httpc *http.Client, c originChain, 
 					}
 				}
 			}
+		}
+		if gasRate > 0 {
+			return gasRate, 0, true // no hop sold it on: the exchange's price stands
 		}
 		if u, ok := nativeV4Quote(c, gas, ev, quoteRaw, outOfPool[ev.pool]); ok {
 			return u, 0, true
