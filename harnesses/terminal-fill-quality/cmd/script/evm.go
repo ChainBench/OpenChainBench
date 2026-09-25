@@ -166,7 +166,17 @@ func hookClaimUSD(ctx context.Context, httpc *http.Client, c originChain, logs [
 			if len(l.Topics) == 0 || l.Topics[0] != topicV4HookFee || len(l.Data) < 2+3*64 {
 				continue
 			}
-			total += f(word(l.Data, 1)) / 1e18 * p
+			// All three words, not the second alone. The event carries a
+			// zero, a fixed 1 % protocol cut and a variable 1–4 % creator
+			// cut, and reading one of them took a median of a third of
+			// what the hook charged. Traced against the pool's actual
+			// movements on the rows that carry this event, the three
+			// summed match on 21 of 21 and word 1 alone on none of them:
+			// the rest was left in the residual and published as the
+			// app's fee, which is how a 1 % router came to read 494 bps.
+			for w := 0; w < 3; w++ {
+				total += f(word(l.Data, w)) / 1e18 * p
+			}
 		}
 	}
 	return total

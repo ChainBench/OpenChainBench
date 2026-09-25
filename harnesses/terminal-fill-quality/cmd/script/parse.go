@@ -400,17 +400,33 @@ func parseSwap(t Terminal, sig string, tx *parsedTx, solUSD float64, forceUser s
 	rent := 0.0
 	rentPaid := map[string]bool{}
 	for i, e := range tok {
-		if e.owner != user {
-			continue
+		// A deposit is the user's cost when the user funded it, which is
+		// not the same as owning the account. This loop tested the owner
+		// while the PDA loop below has always tested the funder, and both
+		// halves of the difference reach the board: a relayer that creates
+		// the trader's token account pays the rent, and the trader was
+		// charged it anyway — on pump.fun's USDC rows that was the whole
+		// of the published network cost, 637 bps of a $2.78 trade, on a
+		// wallet whose lamport balance never moved. The other way round,
+		// rent the user pays for an account somebody else owns — a
+		// creator-fee vault, a recipient's ATA — fell out of network
+		// entirely and into the residual, which the split then takes off
+		// the pool: ten rows, a median of 53 bps and a worst of 523.
+		src, declared := rentAccts[pubkeyAt(i)]
+		paidByUser := e.owner == user
+		if declared {
+			paidByUser = src == user || (src == "" && pubkeyAt(0) == user)
 		}
 		wsolPre, wsolPost := 0.0, 0.0
 		if e.mint == wsolMint {
 			wsolPre, wsolPost = e.pre*math.Pow10(-e.dec), e.post*math.Pow10(-e.dec)
 		}
-		if !e.hadPre && tx.Meta.PostBalances[i] > tx.Meta.PreBalances[i] {
+		if paidByUser && !e.hadPre && tx.Meta.PostBalances[i] > tx.Meta.PreBalances[i] {
 			rent += float64(tx.Meta.PostBalances[i]-tx.Meta.PreBalances[i])/1e9 - wsolPost
 		}
-		if e.hadPre && tx.Meta.PostBalances[i] == 0 && tx.Meta.PreBalances[i] > 0 {
+		// A refund goes back to the account's owner, so only the user's
+		// own accounts credit one back.
+		if e.owner == user && e.hadPre && tx.Meta.PostBalances[i] == 0 && tx.Meta.PreBalances[i] > 0 {
 			rent -= float64(tx.Meta.PreBalances[i])/1e9 - wsolPre
 		}
 	}
