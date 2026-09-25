@@ -2973,7 +2973,20 @@ func repriceVenues(ctx context.Context, rpc *rpcClient, st *State, pools *poolCa
 			continue
 		}
 		s.RefPrice, s.RefSrc, s.RefAgeS, s.LossBps, s.PoolBps, s.Priced, s.Flag = nil, "", nil, nil, nil, false, ""
-		priceSwap(ctx, rpc, s, tx, pools, solUSD, now)
+		// The mid of a SOL-quoted pool is converted into the row's quote
+		// at SOL's price, and on a row quoted in a stable that price must
+		// be the one of the trade, not of this tick: repricing at today's
+		// rate moved a reference 3.3 % and turned a +198 bps pool into
+		// -116. The row carries the trade-time rate exactly — its pool
+		// leg in quote units over the same leg's SOL movement in the
+		// transaction being re-read.
+		solAt := solUSD
+		if s.Quote != "SOL" && len(s.PoolQuoteVaults) > 0 && s.PoolQ > 0 {
+			if q := vaultOf(tx, s.PoolQuoteVaults[0]); q.found && q.mint == wsolMint && q.delta != 0 {
+				solAt = s.PoolQ * s.QuoteUSD / (math.Abs(q.delta) / 1e9)
+			}
+		}
+		priceSwap(ctx, rpc, s, tx, pools, solAt, now)
 		done++
 	}
 	log.Printf("[state] REPRICE_VENUES=%q: %d rows priced again, %d unreadable", os.Getenv("REPRICE_VENUES"), done, failed)

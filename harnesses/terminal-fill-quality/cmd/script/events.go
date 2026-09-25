@@ -521,11 +521,23 @@ func pumpCurveTokenQuotedMid(sw *Swap, tx *parsedTx, raw []byte, isBuy bool, tok
 	if !qv.found || qv.delta == 0 {
 		return 0, false
 	}
-	vQuoteAfter := float64(binary.LittleEndian.Uint64(raw[len(raw)-16:]))
-	realAfter := float64(binary.LittleEndian.Uint64(raw[len(raw)-8:]))
-	if math.Abs(realAfter-qv.post) > 1 { // not this event's tail, or not this vault
-		return 0, false
+	// The quote-side pair is not the last two words: the event carries
+	// sixteen more bytes after real_quote_reserves_after (read off a LULU
+	// curve: …, 65246777, 23653600, 30, 236, with 23653600 the vault's
+	// post-balance). So find the vault's post-balance in the body and take
+	// the word before it as the virtual quote reserve after the trade.
+	post := uint64(qv.post)
+	at := -1
+	for i := len(raw) - 8; i >= 8+32+16; i -= 8 {
+		if binary.LittleEndian.Uint64(raw[i:]) == post {
+			at = i
+			break
+		}
 	}
+	if at < 0 {
+		return 0, false // not this event's tail, or not this vault
+	}
+	vQuoteAfter := float64(binary.LittleEndian.Uint64(raw[at-8:]))
 	moved := math.Abs(qv.delta)
 	vQuotePre := vQuoteAfter - moved
 	if !isBuy {
