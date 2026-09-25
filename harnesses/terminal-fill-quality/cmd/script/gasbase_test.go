@@ -70,3 +70,46 @@ func TestGasEntersTheBaseOnceOnly(t *testing.T) {
 		})
 	}
 }
+
+// loadState recomputes the v3 rows in place rather than dropping them,
+// which is only safe if finalize depends on nothing it destroys: it must
+// give the same answer run twice on the row it just wrote, from the
+// reference the row carries.
+func TestFinalizeIsIdempotentOnItsOwnOutput(t *testing.T) {
+	ref := 1.0
+	for _, sw := range []Swap{
+		{Side: "buy", Quote: "USDC", QuoteUSD: 1, Tokens: 2.944, UserQ: 3.00, NetworkQ: 0.2064, TerminalQ: 0.0255},
+		{Side: "sell", Quote: "SOL", QuoteUSD: 117, Tokens: 3.00, UserQ: 0.0244, NetworkQ: 0.0018, TerminalQ: 0.0002},
+		{Side: "buy", Chain: "bnb", Quote: "USDC", QuoteUSD: 1, Tokens: 2.9, UserQ: 3.2, NetworkQ: 0.2, TerminalQ: 0.03},
+	} {
+		sw.finalize(&ref, 3, "pool")
+		first := sw
+		// Replayed the way loadState replays it: the row's own stored
+		// reference, age and source, with nothing re-read from the chain.
+		sw.finalize(sw.RefPrice, *sw.RefAgeS, sw.RefSrc)
+		if sw.TradeUSD != first.TradeUSD || *sw.LossBps != *first.LossBps || *sw.PoolBps != *first.PoolBps {
+			t.Errorf("%s %s replayed differently: trade %.6f->%.6f, loss %.3f->%.3f, pool %.3f->%.3f",
+				sw.Side, sw.Quote, first.TradeUSD, sw.TradeUSD,
+				*first.LossBps, *sw.LossBps, *first.PoolBps, *sw.PoolBps)
+		}
+		if sw.Priced != first.Priced || sw.Flag != first.Flag {
+			t.Errorf("%s %s changed state on replay: priced %v->%v, flag %q->%q",
+				sw.Side, sw.Quote, first.Priced, sw.Priced, first.Flag, sw.Flag)
+		}
+	}
+}
+
+// An unpriced row has no reference to replay. It must survive the same
+// call without acquiring figures it never had.
+func TestFinalizeReplayLeavesAnUnpricedRowUnpriced(t *testing.T) {
+	sw := Swap{Side: "buy", Quote: "USDC", QuoteUSD: 1, Tokens: 2.9, UserQ: 3.0, NetworkQ: 0.2}
+	sw.finalize(nil, 0, "")
+	trade := sw.TradeUSD
+	sw.finalize(sw.RefPrice, 0, sw.RefSrc) // RefPrice is nil, as loadState would pass it
+	if sw.Priced || sw.LossBps != nil || sw.PoolBps != nil {
+		t.Errorf("an unpriced row acquired figures on replay: priced=%v loss=%v pool=%v", sw.Priced, sw.LossBps, sw.PoolBps)
+	}
+	if sw.TradeUSD != trade {
+		t.Errorf("trade size moved on replay: %.6f -> %.6f", trade, sw.TradeUSD)
+	}
+}

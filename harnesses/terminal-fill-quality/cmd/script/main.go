@@ -2732,6 +2732,31 @@ func loadState(path string) *State {
 	// PURGE_TERMINALS (comma-separated slugs) drops those rows once, after
 	// a feed change that made the row's sample unrepresentative.
 	purgeSlugs := set(strings.Split(os.Getenv("PURGE_TERMINALS"), ",")...)
+	// A method change that moved only the arithmetic — not the reference,
+	// not what was read from the chain — applies to the stored window in
+	// place, because every input finalize needs is already on the row.
+	// Method 4 rebased the loss on the Solana rows whose gas was paid
+	// outside the quote: recomputing and restamping them carries the
+	// correction to the whole window at once, where dropping them would
+	// have emptied the board until the window refilled. A change that
+	// alters what is read, or the reference it is read against, still
+	// needs the drop below.
+	refinal := 0
+	if methodVersion == 4 {
+		for i := range st.Swaps {
+			s := &st.Swaps[i]
+			if s.Method != 3 {
+				continue
+			}
+			age := int64(0)
+			if s.RefAgeS != nil {
+				age = *s.RefAgeS
+			}
+			s.finalize(s.RefPrice, age, s.RefSrc) // nil reference: the row stays unpriced, as it was
+			s.Method = methodVersion
+			refinal++
+		}
+	}
 	kept := st.Swaps[:0]
 	dropped, purged := 0, 0
 	if st.Resampling == nil {
@@ -2756,7 +2781,7 @@ func loadState(path string) *State {
 		}
 	}
 	st.Swaps = kept
-	log.Printf("[state] loaded %d swaps from %s (%d of another method version dropped, %d rows purged: PURGE_EVM_BEFORE=%d PURGE_TERMINALS=%q; a purge variable stays in the container's env until the next deploy resets it)", len(st.Swaps), path, dropped, purged, purgeBefore, os.Getenv("PURGE_TERMINALS"))
+	log.Printf("[state] loaded %d swaps from %s (%d recomputed into method v%d, %d of another method version dropped, %d rows purged: PURGE_EVM_BEFORE=%d PURGE_TERMINALS=%q; a purge variable stays in the container's env until the next deploy resets it)", len(st.Swaps), path, refinal, methodVersion, dropped, purged, purgeBefore, os.Getenv("PURGE_TERMINALS"))
 	return st
 }
 
