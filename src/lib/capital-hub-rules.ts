@@ -59,7 +59,9 @@ export function sevenDaySubline(change7dPct: number | null, medianPct: number | 
 /** "NN% bridged" only when it says something: a share at or above 90% is the normal case for an L2 and is left out. */
 export function bridgedShareSubline(sharePct: number | null): string | null {
   if (sharePct == null || !Number.isFinite(sharePct)) return null;
-  return sharePct < 90 ? `${sharePct.toFixed(0)}% bridged` : null;
+  // The threshold applies to the printed digits: 89.6 prints "90%" and stays out.
+  const shown = Math.round(sharePct);
+  return shown < 90 ? `${shown}% bridged` : null;
 }
 
 /* ------------------------------------------------ cohort-gated cells */
@@ -181,18 +183,24 @@ export function selectDivergences<T extends DivergenceCandidate>(rows: T[], limi
 
 /* ------------------------------------------------------- 7d change */
 
+/** A daily history counts as current while its newest day is today or yesterday by the clock (UTC), not by the blob's own stamp. */
+export const HISTORY_FRESH_MS = 2 * 86_400_000;
+
 /**
  * Percent change between the newest point and the point seven days before
  * it in a daily history (the valuation blob's `oi` per perp). Null until
- * the blob holds that older day: no shorter window is passed off as 7d.
+ * the blob holds that older day, and null when the newest day is older
+ * than `nowMs` minus two days: no shorter window is passed off as 7d and
+ * a stalled worker publishes no change.
  */
-export function change7dFromDays(days: { day: string; [k: string]: unknown }[], field: string): number | null {
+export function change7dFromDays(days: { day: string; [k: string]: unknown }[], field: string, nowMs: number = Date.now()): number | null {
   if (days.length === 0) return null;
   const last = days[days.length - 1];
   const lastV = last[field];
   if (typeof lastV !== "number" || !Number.isFinite(lastV)) return null;
   const t = Date.parse(`${last.day}T00:00:00Z`);
   if (!Number.isFinite(t)) return null;
+  if (nowMs - t > HISTORY_FRESH_MS) return null;
   const target = new Date(t - 7 * 86_400_000).toISOString().slice(0, 10);
   const before = days.find((d) => d.day === target);
   const beforeV = before?.[field];
@@ -200,16 +208,20 @@ export function change7dFromDays(days: { day: string; [k: string]: unknown }[], 
   return ((lastV - beforeV) / beforeV) * 100;
 }
 
+/** Largest bucket-to-bucket ratio a 7d series may carry and still read as one continuous window. */
+export const SERIES_STEP_MAX = 2;
+
 /**
  * Same change off a bench's 7d series (84 buckets over seven days): the
- * first and last finite buckets, and only when the series covers most of
- * the window (first finite bucket inside the first quarter), so a bench
- * that started yesterday does not publish a one-day move as 7d.
+ * first and last finite buckets, and only when the series covers the whole
+ * window (first finite bucket inside the first tenth, about the first 16
+ * hours), so a bench that started this week does not publish a shorter
+ * move as 7d.
  */
 export function change7dFromSeries(series: (number | null)[] | undefined): number | null {
-  if (!series || series.length < 4) return null;
+  if (!series || series.length < 10) return null;
   const firstIdx = series.findIndex((v) => typeof v === "number" && Number.isFinite(v) && v > 0);
-  if (firstIdx < 0 || firstIdx > Math.floor(series.length / 4)) return null;
+  if (firstIdx < 0 || firstIdx > Math.floor(series.length / 10)) return null;
   let lastIdx = -1;
   for (let i = series.length - 1; i >= 0; i--) {
     const v = series[i];
@@ -219,6 +231,16 @@ export function change7dFromSeries(series: (number | null)[] | undefined): numbe
     }
   }
   if (lastIdx <= firstIdx) return null;
+  // A step between two adjacent buckets (two hours apart) of more than 2x
+  // is a change in what the bench measures (a source or scope switch), not
+  // capital moving in a week: the cell stays empty rather than print it as 7d.
+  let prev: number | null = null;
+  for (let i = firstIdx; i <= lastIdx; i++) {
+    const v = series[i];
+    if (typeof v !== "number" || !Number.isFinite(v) || v <= 0) continue;
+    if (prev != null && (v > prev * SERIES_STEP_MAX || v < prev / SERIES_STEP_MAX)) return null;
+    prev = v;
+  }
   const a = series[firstIdx] as number;
   const b = series[lastIdx] as number;
   return ((b - a) / a) * 100;

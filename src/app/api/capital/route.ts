@@ -37,10 +37,13 @@ export async function GET(req: NextRequest) {
   if (!rl.ok) return tooManyRequests(rl.retryAfterSec);
 
   const hub = await getCapitalHub();
-  const servedSlugs = new Set(hub.benches.map((b) => b.slug));
+  // A bench that is not served here, or that did not load this time, has
+  // no column on the page either: its keys are absent, not null, so a
+  // `cctpScope` computed against an empty scanned set never reaches a consumer.
+  const liveSlugs = new Set(hub.benches.filter((b) => b.live).map((b) => b.slug));
   const drop: (keyof ChainRow)[] = [
-    ...(servedSlugs.has("usdc-corridor-flows") ? [] : CCTP_KEYS),
-    ...(servedSlugs.has("chain-fees-revenue") ? [] : FEES_KEYS),
+    ...(liveSlugs.has("usdc-corridor-flows") ? [] : CCTP_KEYS),
+    ...(liveSlugs.has("chain-fees-revenue") ? [] : FEES_KEYS),
   ];
 
   const body = {

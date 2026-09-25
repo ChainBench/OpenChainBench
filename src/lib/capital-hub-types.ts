@@ -54,10 +54,12 @@ export type ChainRow = {
   cctpOut7d: number | null;
   dexVolume24h: number | null;
   nativeMcap: number | null;
-  /** Chain fees over 30 closed days (history blob, bench 280's series), for a chain in bench 280's cohort. */
+  /** Chain fees over 30 closed days from bench 280's ranked rows only (headline p50); null for a listed but
+   *  unranked chain and whenever the bench did not load, so the cell reads n/a. */
   fees30d: number | null;
+  /** Revenue kept out of those fees, bench 280's revenue_30d panel, same gating. */
   revenue30d: number | null;
-  /** The same series for a chain outside bench 280's cohort: shown muted. */
+  /** The history blob's series for a chain outside bench 280's cohort: shown muted, never ranked. */
   fees30dOutside: number | null;
   revenue30dOutside: number | null;
   hasChainPage: boolean;

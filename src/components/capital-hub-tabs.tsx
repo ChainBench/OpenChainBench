@@ -145,12 +145,17 @@ function TabButton({
 
 /* ------------------------------------------------------------------ */
 
+/** Default sort key: the finite number, else null. Module-level so the memo below keeps its identity across renders. */
+function numericSortValue(_key: unknown, v: unknown): number | null {
+  return typeof v === "number" && Number.isFinite(v) ? v : null;
+}
+
 function useSorted<T>(
   rows: T[],
   initialKey: keyof T,
   initialDir: "desc" | "asc" = "desc",
   /** Sort key of one cell; lets a table sort a dust level as 0. */
-  sortValue: (key: keyof T, v: unknown) => number | null = (_k, v) => (typeof v === "number" && Number.isFinite(v) ? v : null),
+  sortValue: (key: keyof T, v: unknown) => number | null = numericSortValue,
 ) {
   const [key, setKey] = useState<keyof T>(initialKey);
   const [dir, setDir] = useState<"desc" | "asc">(initialDir);

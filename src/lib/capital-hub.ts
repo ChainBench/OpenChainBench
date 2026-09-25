@@ -24,7 +24,9 @@
  */
 
 import { cache } from "react";
+import { unstable_cache } from "next/cache";
 import { getBenchmark } from "@/data/benchmarks";
+import { loadSnapshotFromBlob } from "@/lib/bench-blob";
 import { CHAINS } from "@/lib/chains";
 import { isDevOnlyBench } from "@/lib/removed-benches";
 import { getProviderRegistry } from "@/data/provider-registry";
@@ -54,9 +56,15 @@ function panel(b: Benchmark | undefined, id: string, slug: string): number | nul
   return num(b?.metricPanels?.find((p) => p.id === id)?.values[slug]);
 }
 
-/** Name of the gauge behind a panel: `protocol_tvl_usd{}` and `protocol_tvl_usd` both read protocol_tvl_usd. */
-function gaugeOf(metric: string): string {
-  return metric.split("{")[0].trim();
+/**
+ * True when a panel reads one plain gauge: `protocol_tvl_usd{}` and
+ * `protocol_tvl_usd`, not a label-filtered or composed expression, so a
+ * `protocol_tvl_usd{scope="perps"}` panel listed first never feeds the
+ * TVL column.
+ */
+function readsPlainGauge(metric: string, gauge: string): boolean {
+  const m = metric.trim();
+  return m === gauge || m === `${gauge}{}`;
 }
 
 /**
@@ -66,13 +74,33 @@ function gaugeOf(metric: string): string {
  * the value once the panel exists, and null before.
  */
 function panelByGauge(b: Benchmark | undefined, gauge: string, slug: string): number | null {
-  return num(b?.metricPanels?.find((p) => gaugeOf(p.metric) === gauge)?.values[slug]);
+  return num(b?.metricPanels?.find((p) => readsPlainGauge(p.metric, gauge))?.values[slug]);
 }
 
-/** A panel's 7d series for one provider, by id. */
-function panelSeries7d(b: Benchmark | undefined, id: string, slug: string): (number | null)[] | undefined {
-  return b?.metricPanels?.find((p) => p.id === id)?.seriesByProvider7d?.[slug];
-}
+type Series7d = { headline: Record<string, (number | null)[]>; panels: Record<string, Record<string, (number | null)[]>> };
+
+/**
+ * The 7d series of a bench, from the worker-published blob: the bench the
+ * page renders comes through slimBenchmarkForCache, which strips
+ * extras.series7d and every panel's seriesByProvider7d (src/lib/spec.ts),
+ * so the open interest 7d change reads the full snapshot the way
+ * /api/series does. Only the series maps are kept in the cache entry.
+ */
+const series7dOf = unstable_cache(
+  async (slug: string): Promise<Series7d | null> => {
+    try {
+      const snap = await loadSnapshotFromBlob(slug, "");
+      if (!snap) return null;
+      const panels: Series7d["panels"] = {};
+      for (const p of snap.bench.metricPanels ?? []) if (p.seriesByProvider7d) panels[p.id] = p.seriesByProvider7d;
+      return { headline: snap.bench.extras?.series7d ?? {}, panels };
+    } catch {
+      return null;
+    }
+  },
+  ["capital-series7d-v1"],
+  { revalidate: 300, tags: ["capital-history"] },
+);
 
 /** Ranked, live rows with a finite headline value. */
 function liveRows(b: Benchmark | undefined): ProviderResult[] {
@@ -139,7 +167,7 @@ async function buildHub(): Promise<CapitalHub> {
   // Bench 280 (chain fees and revenue) is dev-only until its audit round:
   // its series stay off the hub on deployments that do not serve the bench.
   const feesServed = !isDevOnlyBench(CAPITAL_BENCHES.chainFees);
-  const [bridgedL, stablesL, protocolsL, perpsL, pmL, cctpL, feesL, chainsHist, valHist] = await Promise.all([
+  const [bridgedL, stablesL, protocolsL, perpsL, pmL, cctpL, feesL, chainsHist, valHist, pmSeries, perpSeries] = await Promise.all([
     loadLive(CAPITAL_BENCHES.bridgedTvl),
     loadLive(CAPITAL_BENCHES.stableFlow),
     loadLive(CAPITAL_BENCHES.protocolPf),
@@ -149,6 +177,8 @@ async function buildHub(): Promise<CapitalHub> {
     feesServed ? loadLive(CAPITAL_BENCHES.chainFees) : Promise.resolve(NOT_SERVED),
     getChainsHistory().catch(() => null),
     getValuationHistory().catch(() => null),
+    series7dOf(CAPITAL_BENCHES.pmOi).catch(() => null),
+    series7dOf(CAPITAL_BENCHES.perpPf).catch(() => null),
   ]);
 
   const bridged = bridgedL.bench;
@@ -194,6 +224,7 @@ async function buildHub(): Promise<CapitalHub> {
   const bridgedBy = new Map(liveRows(bridged).map((r) => [r.slug, r]));
   const stablesBy = new Map(liveRows(stables).map((r) => [r.slug, r]));
   const cctpBy = new Map(liveRows(cctp).map((r) => [r.slug, r]));
+  const feesBy = new Map(liveRows(feesB).map((r) => [r.slug, r]));
 
   const rawChains = [...chainSlugs].map((slug) => {
     const pt = freshPoint(chainEntities.get(slug), chainsHist?.generatedAt);
@@ -211,6 +242,10 @@ async function buildHub(): Promise<CapitalHub> {
     const blobNet30d = field(pt, "stables_net_30d");
     const blobFees30d = feesServed ? field(pt, "fees_30d") : null;
     const blobRevenue30d = feesServed ? field(pt, "revenue_30d") : null;
+    // Ranked fees only from bench 280's ranked rows, as net flow from bench
+    // 275's: a listed but unranked chain reads n/a, and a bench that did
+    // not load leaves every cell n/a instead of passing the blob off as ranked.
+    const fe = feesBy.get(slug);
     const row: Omit<ChainRow, "hasChainPage"> = {
       slug,
       name: CHAIN_NAME.get(slug) ?? br?.name ?? st?.name ?? slug,
@@ -239,8 +274,8 @@ async function buildHub(): Promise<CapitalHub> {
       cctpOut7d: panel(cctp, "outflow_7d", slug),
       dexVolume24h: field(pt, "dex_volume_24h"),
       nativeMcap: field(pt, "native_mcap"),
-      fees30d: inFeesCohort ? blobFees30d : null,
-      revenue30d: inFeesCohort ? blobRevenue30d : null,
+      fees30d: fe ? num(fe.ms.p50) : null,
+      revenue30d: fe ? panel(feesB, "revenue_30d", slug) : null,
       fees30dOutside: inFeesCohort ? null : blobFees30d,
       revenue30dOutside: inFeesCohort ? null : blobRevenue30d,
     };
@@ -268,7 +303,7 @@ async function buildHub(): Promise<CapitalHub> {
 
   // ---- open interest ----------------------------------------------------
   // Prediction markets carry no daily history blob: the 7d change reads the
-  // bench's own 7d series of the headline when it covers the window.
+  // bench's own 7d series of the headline (full snapshot) when it covers the window.
   const pmOi: OiRow[] = liveRows(pmB)
     .map((r) => ({
       slug: r.slug,
@@ -276,14 +311,17 @@ async function buildHub(): Promise<CapitalHub> {
       oi: r.ms.p50,
       volume24h: panel(pmB, "volume_24h", r.slug),
       turnover: panel(pmB, "turnover", r.slug),
-      change7dPct: change7dFromSeries(pmB?.extras?.series7d?.[r.slug]),
+      change7dPct: change7dFromSeries(pmSeries?.headline[r.slug]),
     }))
     .filter((r) => r.oi > 0)
     .sort((a, b) => b.oi - a.oi);
 
   // Perp DEX open interest: the valuation blob's daily `oi` gives the 7d
-  // change once it holds the older day; the panel's 7d series before that.
+  // change once it holds the older day (and its newest day is recent by
+  // the clock, so a stalled worker publishes nothing); the oi panel's 7d
+  // series from the full snapshot before that.
   const valPerps = new Map((valHist?.perps ?? []).map((p) => [p.slug, p]));
+  const now = Date.now();
   const perpOi: OiRow[] = (perpsB?.results ?? [])
     .map((r) => ({
       slug: r.slug,
@@ -291,7 +329,7 @@ async function buildHub(): Promise<CapitalHub> {
       oi: panel(perpsB, "oi", r.slug) ?? 0,
       volume24h: null,
       turnover: null,
-      change7dPct: change7dFromDays(valPerps.get(r.slug)?.days ?? [], "oi") ?? change7dFromSeries(panelSeries7d(perpsB, "oi", r.slug)),
+      change7dPct: change7dFromDays(valPerps.get(r.slug)?.days ?? [], "oi", now) ?? change7dFromSeries(perpSeries?.panels.oi?.[r.slug]),
     }))
     .filter((r) => r.oi > 0)
     .sort((a, b) => b.oi - a.oi);
