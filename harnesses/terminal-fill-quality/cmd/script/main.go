@@ -101,8 +101,8 @@ var (
 	gLostUSD = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "tfq_lost_usd", Help: "Median loss applied to the median trade: dollars the typical swap on the terminal loses (median trade × median loss)",
 	}, []string{"terminal", "chain", "bucket"})
-	gRefresh  = prometheus.NewGauge(prometheus.GaugeOpts{Name: "tfq_last_refresh_unix", Help: "Last successful tick"})
-	gFeed     = prometheus.NewGauge(prometheus.GaugeOpts{Name: "tfq_feed_up", Help: "1 when the WebSocket feed is connected and heard something in the last two minutes"})
+	gRefresh = prometheus.NewGauge(prometheus.GaugeOpts{Name: "tfq_last_refresh_unix", Help: "Last successful tick"})
+	gFeed    = prometheus.NewGauge(prometheus.GaugeOpts{Name: "tfq_feed_up", Help: "1 when the WebSocket feed is connected and heard something in the last two minutes"})
 	// Per-chain health of the EVM log feed. This existed only inside the
 	// feed struct, so BNB's read nothing for days behind a green
 	// tfq_feed_up, which covers the Solana WebSocket alone.
@@ -118,7 +118,7 @@ var (
 	// third of its blocks for half an hour with feed_up 1 and lag 0 on
 	// every dashboard. This is the gauge that shows it.
 	gNativeSkipped = prometheus.NewGaugeVec(prometheus.GaugeOpts{Name: "tfq_native_skipped_last_blocks", Help: "Blocks the chain's log feed skipped on its last poll: never read, never sampled. Non-zero poll after poll means the read budget is below what the chain produces"}, []string{"chain"})
-	gUnpriced = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+	gUnpriced      = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "tfq_unpriced_share", Help: "Share of the window's drawn swaps that could not be valued at the pool's state (routes without a quote leg, undecoded venues); the published figure rests on the rest",
 	}, []string{"terminal", "chain"})
 	gRelayFeed = prometheus.NewGauge(prometheus.GaugeOpts{Name: "tfq_relay_feed_up", Help: "1 when Relay's requests API answered the last polling round (the cross-chain rows' feed)"})
@@ -199,12 +199,12 @@ type failSample struct {
 }
 
 type State struct {
-	Swaps       []Swap                      `json:"swaps"`
-	Fails       []failSample                `json:"fails"`
-	Buckets     map[string][]minuteBucket   `json:"buckets"`                // terminal -> per-minute feed counts
-	Rejects     map[string]map[string]int   `json:"rejects"`                // terminal -> reason -> count (window not enforced; informative)
-	Cursors     map[string]*walletCursor    `json:"cursors"`                // wallet -> cursor (polling fallback)
-	EvmCursor   map[string]int64            `json:"evm_cursor,omitempty"`   // chain -> last block scanned for the native EVM terminals
+	Swaps     []Swap                    `json:"swaps"`
+	Fails     []failSample              `json:"fails"`
+	Buckets   map[string][]minuteBucket `json:"buckets"`              // terminal -> per-minute feed counts
+	Rejects   map[string]map[string]int `json:"rejects"`              // terminal -> reason -> count (window not enforced; informative)
+	Cursors   map[string]*walletCursor  `json:"cursors"`              // wallet -> cursor (polling fallback)
+	EvmCursor map[string]int64          `json:"evm_cursor,omitempty"` // chain -> last block scanned for the native EVM terminals
 	// chain -> unix time its log feed last failed, absent while it reads.
 	// Without it a chain the harness cannot read is indistinguishable from
 	// a chain nobody trades on, and its rows vanish from the board rather
@@ -269,10 +269,10 @@ type TerminalStats struct {
 	Priced          int        `json:"priced"`
 	Flagged         int        `json:"flagged"` // priced but out of bounds, excluded
 	/** Loss vs the pool's pre-trade state: median with its 95 % bootstrap interval, p90. */
-	Loss        *Quantiles         `json:"loss_bps,omitempty"`
+	Loss *Quantiles `json:"loss_bps,omitempty"`
 	/** The same, with the terminal's own fee removed per swap: execution
-	  * quality alone. Network, pool and protocol costs stay inside — how a
-	  * swap is routed is the app's doing, what it charges for it is not. */
+	 * quality alone. Network, pool and protocol costs stay inside — how a
+	 * swap is routed is the app's doing, what it charges for it is not. */
 	LossExFee   *Quantiles         `json:"loss_ex_fee_bps,omitempty"`
 	Components  map[string]float64 `json:"components_bps"` // medians
 	TradeUSD    *Quantiles         `json:"trade_usd,omitempty"`
@@ -1566,6 +1566,18 @@ func compute(st *State, minPriced, minRank int) []TerminalStats {
 		}
 		out = append(out, ts)
 	}
+	// A hold on the row is a hold on its buckets. sizeSplit judges each
+	// bucket by its own count inside statsFor, before the holds above are
+	// decided, so a product re-sampling its dominant chain read
+	// Unresponsive on All sizes and published, ranked, on $25 to $250.
+	for i := range out {
+		if out[i].Healthy {
+			continue
+		}
+		for _, st := range out[i].SizeSplit {
+			st.Healthy, st.Ranked = false, false
+		}
+	}
 	// Ranked terminals first by median, then published-but-not-ranked by
 	// median, then the rest by sample size.
 	tier := func(ts TerminalStats) int {
@@ -1922,7 +1934,7 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 			}
 			ts.BySize = map[string]*Quantiles{}
 			for b, v := range bySize {
-				if len(v) >= 5 {
+				if len(v) >= minPricedSize { // the spec's floor; five swaps published a median over seven
 					ts.BySize[b] = quantiles(v, false)
 				}
 			}
@@ -2288,7 +2300,7 @@ type PublicSwap struct {
 	// True when the Relay request carried no fee at all: the cut is
 	// unknown rather than nil, and pool_bps on this row absorbs it.
 	RelayUnknown bool     `json:"relay_unknown,omitempty"`
-	OtherBps    *float64 `json:"other_bps,omitempty"`
+	OtherBps     *float64 `json:"other_bps,omitempty"`
 
 	Sandwich *Sandwich `json:"sandwich,omitempty"`
 
@@ -2982,7 +2994,7 @@ func sizeSplit(acc map[string]*sizeAcc, minPriced, minRank int, pooled bool) map
 			continue
 		}
 		st := &SizeStats{
-			Loss:       wquantiles(a.loss, a.lossW, true, pooled),
+			Loss:       wquantiles(a.loss, a.lossW, true, false), // plain: see the doc comment, and the spec
 			Components: map[string]float64{},
 			Priced:     len(a.loss),
 			Parsed:     a.parsed,
@@ -2990,7 +3002,7 @@ func sizeSplit(acc map[string]*sizeAcc, minPriced, minRank int, pooled bool) map
 			Ranked:     len(a.loss) >= minRank,
 		}
 		if len(a.trade) > 0 {
-			st.TradeUSD = wquantiles(a.trade, a.tradeW, false, pooled)
+			st.TradeUSD = wquantiles(a.trade, a.tradeW, false, false)
 		}
 		// Single-row entry: the same weighted median the row itself uses.
 		// A pooled entry overwrites these with the chain-weighted rule right

@@ -75,30 +75,30 @@ type Swap struct {
 	XMint string  `json:"x_mint,omitempty"`
 	XRate float64 `json:"x_rate,omitempty"` // quote units per X
 
-	UserQ     float64  `json:"user_q"`
-	PoolQ     float64  `json:"pool_q"`
-	TerminalQ float64  `json:"terminal_q"`
-	NetworkQ  float64  `json:"network_q"`
+	UserQ     float64 `json:"user_q"`
+	PoolQ     float64 `json:"pool_q"`
+	TerminalQ float64 `json:"terminal_q"`
+	NetworkQ  float64 `json:"network_q"`
 	// The share of NetworkQ the user paid out of their own balance, as
 	// opposed to a relayer's. Zero on a sponsored transaction, where the
 	// gas is already inside what the user gave in the quote.
-	UserSolQ float64 `json:"user_sol_q,omitempty"`
-	OtherQ    *float64 `json:"other_q,omitempty"`
+	UserSolQ float64  `json:"user_sol_q,omitempty"`
+	OtherQ   *float64 `json:"other_q,omitempty"`
 	// Cross-chain settlements (see xchain.go): the origin chain, Relay's
 	// own fees the user paid (quote units), the Relay request id and the
 	// origin deposit hash. UserQ is then the origin deposit in quote units,
 	// NetworkQ the origin gas.
-	Chain    string  `json:"chain,omitempty"`
-	RelayQ   float64 `json:"relay_q,omitempty"`
-	FeeSig   string  `json:"fee_sig,omitempty"` // the separate fee transaction (BasedBot on Solana)
-	RentQ    float64 `json:"rent_q,omitempty"`  // SOL deposit of the token accounts the swap created: counted in network (a refund on close is not credited)
-	RelayID  string  `json:"relay_id,omitempty"`
+	Chain   string  `json:"chain,omitempty"`
+	RelayQ  float64 `json:"relay_q,omitempty"`
+	FeeSig  string  `json:"fee_sig,omitempty"` // the separate fee transaction (BasedBot on Solana)
+	RentQ   float64 `json:"rent_q,omitempty"`  // SOL deposit of the token accounts the swap created: counted in network (a refund on close is not credited)
+	RelayID string  `json:"relay_id,omitempty"`
 	// The Relay request carried no fee of any kind. RelayQ is then 0
 	// because we were not told, not because the solver took nothing, and a
 	// residual pool component would silently absorb the bridge's take.
-	RelayUnknown bool `json:"relay_unknown,omitempty"`
-	InTx     string  `json:"in_tx,omitempty"`
-	QuoteUSD float64 `json:"quote_usd"` // quote unit price used for sizing
+	RelayUnknown bool    `json:"relay_unknown,omitempty"`
+	InTx         string  `json:"in_tx,omitempty"`
+	QuoteUSD     float64 `json:"quote_usd"` // quote unit price used for sizing
 	// Quote received by accounts that are neither user, pool, terminal nor
 	// tip, by pubkey (token accounts keyed by owner): what "other" is made
 	// of, aggregated per terminal for audit.

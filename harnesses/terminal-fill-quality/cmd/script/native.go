@@ -499,8 +499,23 @@ func (f *nativeFeed) poll(ctx context.Context) {
 				// little throughput, an endpoint that allows less never
 				// stalls us again.
 				if span > 10 && rangeRefusal(err) {
+					// Ask once more before believing it. evmCall hands back
+					// the LAST endpoint's error, so a blip on the node that
+					// serves the range lets whichever fallback answered last
+					// name the cause — and on BNB every fallback phrases its
+					// cap as a range refusal, so any blip read as one. The
+					// serving node answered 20 of 20 when reasked at once; a
+					// refusal that survives the retry is the cap itself.
+					var again []evmLog
+					err2 := evmCall(ctx, f.http, c.logsRPC(), "eth_getLogs", []any{map[string]any{"fromBlock": "0x" + big.NewInt(from).Text(16), "toBlock": "0x" + big.NewInt(to).Text(16), "address": routers}}, &again)
+					if err2 == nil || strings.Contains(err2.Error(), "empty result") {
+						logs = append(logs, again...)
+						f.cursor[c.slug] = to
+						from = to + 1
+						continue
+					}
 					f.span[c.slug] = 10
-					log.Printf("[native] %s getLogs %d-%d refused the %d-block range, dropping to %d: %v", c.slug, from, to, span, f.span[c.slug], err)
+					log.Printf("[native] %s getLogs %d-%d refused the %d-block range twice, dropping to %d: %v", c.slug, from, to, span, f.span[c.slug], err2)
 				} else {
 					log.Printf("[native] %s getLogs %d-%d: %v", c.slug, from, to, err)
 				}
