@@ -176,7 +176,7 @@ type nativeFeed struct {
 	// every 400-block call ("up to a 10 block range"), the cursor only
 	// advances on success, and it sat 623,045 blocks behind head for days
 	// while six products published All chains rows without BNB.
-	span   map[string]int64
+	span map[string]int64
 	// Shared with State by reference, like the cursor: chain -> when its
 	// feed last failed, so compute() can tell a chain it cannot read from
 	// a chain nobody trades on.
@@ -185,6 +185,23 @@ type nativeFeed struct {
 	box    map[string]*xinboxTx
 	up     map[string]bool
 	funded map[string]map[string]int64 // State.Funded, set by sampleNative each tick (app -> wallet -> time)
+}
+
+// spanDefault: the eth_getLogs range a chain starts from, and the ceiling
+// a recovered span climbs back to. Ethereum's public nodes cap the call at
+// 50 blocks; everywhere else 400 is about ten minutes of chain.
+func (f *nativeFeed) spanDefault(chain string) int64 {
+	if chain == "ethereum" {
+		return 50
+	}
+	return 400
+}
+
+func min64(a, b int64) int64 {
+	if a < b {
+		return a
+	}
+	return b
 }
 
 // dropsLoops: whether the row leaves farming round trips out (DropLoops).
@@ -415,10 +432,7 @@ func (f *nativeFeed) poll(ctx context.Context) {
 		// per tick: a public RPC may refuse or redirect a heavier query.
 		span := f.span[c.slug]
 		if span <= 0 {
-			span = 400
-			if c.slug == "ethereum" {
-				span = 50
-			}
+			span = f.spanDefault(c.slug)
 		}
 		// What one tick can actually read. The resume window used to be a
 		// constant 200 blocks, which is far less than this and far less
@@ -507,8 +521,24 @@ func (f *nativeFeed) poll(ctx context.Context) {
 		}
 		gNativeUp.WithLabelValues(c.slug).Set(map[bool]float64{true: 1}[!failed])
 		gNativeLag.WithLabelValues(c.slug).Set(float64(head - f.cursor[c.slug]))
+		gNativeSkipped.WithLabelValues(c.slug).Set(float64(skipped))
 		if !failed && skipped > 0 {
 			cSkipped.WithLabelValues(c.slug).Add(float64(skipped))
+		}
+		// Give the span back when the poll went through. It is learned
+		// downward on a single refusal and was never learned back up, and
+		// evmCall keeps only the LAST endpoint's error, so one blip on the
+		// node that serves the range hands the decision to whichever
+		// endpoint answered last — on BNB the free Alchemy tier, whose
+		// 10-block refusal then stood for the life of the process. At a
+		// span of 10 the budget is 400 blocks a poll against the ~613 BNB
+		// produces, so the feed could never catch up: 3,535 blocks dropped
+		// in half an hour, with feed_up 1 and a lag of 0 the whole time.
+		// A refusal costs one tick; a collapse that cannot recover costs a
+		// third of the chain, so the retry is worth far more than it risks.
+		if !failed && span < f.spanDefault(c.slug) {
+			f.span[c.slug] = min64(span*4, f.spanDefault(c.slug))
+			log.Printf("[native] %s read %d-%d at a span of %d, trying %d again", c.slug, start, f.cursor[c.slug], span, f.span[c.slug])
 		}
 		if f.cursor[c.slug] >= start {
 			f.polled[c.slug] = [2]int64{start, f.cursor[c.slug]}

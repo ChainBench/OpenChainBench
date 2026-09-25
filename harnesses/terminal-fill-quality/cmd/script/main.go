@@ -112,6 +112,12 @@ var (
 	// every poll: BNB logged 250,834,117 skipped blocks in 24 h on a chain
 	// that makes about 115,000). A lag that stays flat at 630,000 can.
 	gNativeLag = prometheus.NewGaugeVec(prometheus.GaugeOpts{Name: "tfq_native_lag_blocks", Help: "Blocks between the chain's head and the log feed's cursor after the last poll"}, []string{"chain"})
+	// Blocks the last poll gave up on. The lag gauge is read after the
+	// cursor jumps to the head of what this poll can afford, so a chain
+	// that never catches up still reads a lag of zero: BNB dropped a
+	// third of its blocks for half an hour with feed_up 1 and lag 0 on
+	// every dashboard. This is the gauge that shows it.
+	gNativeSkipped = prometheus.NewGaugeVec(prometheus.GaugeOpts{Name: "tfq_native_skipped_last_blocks", Help: "Blocks the chain's log feed skipped on its last poll: never read, never sampled. Non-zero poll after poll means the read budget is below what the chain produces"}, []string{"chain"})
 	gUnpriced = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "tfq_unpriced_share", Help: "Share of the window's drawn swaps that could not be valued at the pool's state (routes without a quote leg, undecoded venues); the published figure rests on the rest",
 	}, []string{"terminal", "chain"})
@@ -123,7 +129,7 @@ var (
 )
 
 func init() {
-	prometheus.MustRegister(gNativeUp, gNativeLag, gLoss, gLossExFee, gComponent, gFail, gSamples, gTrade, gVenue, gBuy, gSandwich, gSandwichProfit, gLossSize, gLossChain, gHealth, gRanked, gFailCost, gFailOverhead, gLostUSD, gUnpriced, gRefresh, gFeed, gRelayFeed, gSol, cCalls, cErrors, cSkipped)
+	prometheus.MustRegister(gNativeUp, gNativeLag, gNativeSkipped, gLoss, gLossExFee, gComponent, gFail, gSamples, gTrade, gVenue, gBuy, gSandwich, gSandwichProfit, gLossSize, gLossChain, gHealth, gRanked, gFailCost, gFailOverhead, gLostUSD, gUnpriced, gRefresh, gFeed, gRelayFeed, gSol, cCalls, cErrors, cSkipped)
 }
 
 func envInt(k string, def int) int {
