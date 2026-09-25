@@ -2969,6 +2969,13 @@ func repriceVenues(ctx context.Context, rpc *rpcClient, st *State, pools *poolCa
 		}
 		tx, err := rpc.transaction(ctx, s.Sig)
 		if err != nil || tx == nil {
+			// Six hundred reads in a burst trip the endpoint's per-minute
+			// limit: 361 of 675 came back unreadable on one pass and kept
+			// their old figures. One pause and one more try recovers most.
+			time.Sleep(400 * time.Millisecond)
+			tx, err = rpc.transaction(ctx, s.Sig)
+		}
+		if err != nil || tx == nil {
 			failed++
 			continue
 		}
@@ -2981,9 +2988,27 @@ func repriceVenues(ctx context.Context, rpc *rpcClient, st *State, pools *poolCa
 		// leg in quote units over the same leg's SOL movement in the
 		// transaction being re-read.
 		solAt := solUSD
-		if s.Quote != "SOL" && len(s.PoolQuoteVaults) > 0 && s.PoolQ > 0 {
-			if q := vaultOf(tx, s.PoolQuoteVaults[0]); q.found && q.mint == wsolMint && q.delta != 0 {
-				solAt = s.PoolQ * s.QuoteUSD / (math.Abs(q.delta) / 1e9)
+		if s.Quote != "SOL" && s.PoolQ > 0 {
+			solMoved := 0.0
+			if len(s.PoolQuoteVaults) > 0 {
+				if q := vaultOf(tx, s.PoolQuoteVaults[0]); q.found && q.mint == wsolMint {
+					solMoved = math.Abs(q.delta) / 1e9 // a WSOL vault: PumpSwap, Raydium
+				}
+			}
+			if solMoved == 0 && s.PoolOwner != "" {
+				// A pump.fun curve holds its SOL as lamports on the curve
+				// account itself, not in a token vault: the first version
+				// of this looked for a vault, found none, and converted
+				// those rows at today's rate after all — five buys quoted
+				// in USDC went negative by 100 to 212 bps.
+				for i, k := range tx.Transaction.Message.AccountKeys {
+					if k.Pubkey == s.PoolOwner && i < len(tx.Meta.PreBalances) && i < len(tx.Meta.PostBalances) {
+						solMoved = math.Abs(float64(tx.Meta.PostBalances[i])-float64(tx.Meta.PreBalances[i])) / 1e9
+					}
+				}
+			}
+			if solMoved > 0 {
+				solAt = s.PoolQ * s.QuoteUSD / solMoved
 			}
 		}
 		priceSwap(ctx, rpc, s, tx, pools, solAt, now)
