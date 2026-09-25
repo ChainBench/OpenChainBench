@@ -42,7 +42,7 @@ export function CapitalHubTabs({ hub }: { hub: CapitalHub }) {
         <TabButton
           active={tab === "valuation"}
           onClick={() => setTab("valuation")}
-          count={hub.protocols.length + hub.perps.length}
+          count={hub.protocols.filter((p) => p.signal !== null).length}
           disabled={!hasValuation}
         >
           Valuation divergences

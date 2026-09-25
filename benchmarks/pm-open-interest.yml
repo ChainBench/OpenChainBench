@@ -25,11 +25,12 @@ seo_intro: |
   the easier number to move. Open interest is the money still at risk: it
   only counts positions nobody has closed, so it cannot be inflated by
   trading a market back and forth. The two disagree sharply across this
-  cohort. Polymarket holds the largest book of open positions and turns
-  over a fraction of it a day, while Kalshi trades many times its own open
-  interest in the same window, which is what a venue full of short-dated
-  contracts looks like. Neither pattern is better; they are different
-  products. This board publishes the open interest, the volume on both a
+  cohort, and rank it differently. {{best_name}} holds the largest book of
+  open positions at {{best_p50}}; the venue that trades the most in a day is
+  read from the 24h volume column, and the turnover column beside it says
+  how many times each book turns over. Below 1x is what long-dated markets
+  look like, well above 1x is what short-dated contracts look like, and
+  neither is better. This board publishes the open interest, the volume on both a
   24-hour and a 30-day window, and the ratio, so the two readings sit next
   to each other instead of one standing in for the other.
 
@@ -53,7 +54,7 @@ abstract: |
 
 methodology:
   - "Open interest here is collateral: cash held against positions still open, not their market value. On the on-chain venues that is DefiLlama protocol TVL, one dollar escrowed per complete set outstanding. On Kalshi it is one dollar per open contract, since each settles at a dollar or nothing and is fully collateralized across the two sides. Each row tag names its source."
-  - "Valuing Kalshi's open contracts at last price instead gives the market value of the YES leg. That is a different quantity, 14% of the collateral figure, and it is published as pm_venue_open_interest_mark_usd rather than dropped. Myriad's native figure is AMM liquidity, not positions."
+  - "Valuing Kalshi's open contracts at last price instead gives the market value of the YES leg. That is a different quantity (14% of the collateral figure on 2026-09-23), and it is published as pm_venue_open_interest_mark_usd rather than dropped. Myriad's native figure is AMM liquidity, not positions."
   - "Volume: each venue's own figure where its API gives one, otherwise DefiLlama /summary/dexs for that protocol. Both windows, 24 hours and 30 days, come from the same source for a given venue so the ratio between them is internally consistent."
   - "Turnover is 24h volume over open interest. Below 1x a venue holds more than it trades in a day, which is what long-dated markets look like; well above 1x the book turns over repeatedly, which is what short-dated contracts look like. It is a description, not a ranking."
   - "Kalshi's volume comes from DefiLlama rather than from the harness's own read. Unauthenticated, the fetcher sums the /events catalog and reaches $2.26M against DefiLlama's $424.8M for the same venue and window on 2026-09-23, because the catalog walk is capped well short of the full book. With an API key the native figure is the better source and the harness prefers it again."
@@ -75,7 +76,7 @@ prometheus:
   expected_freshness_seconds: 3600
   freshness_metric: pm_cohort_stats_last_tick_unix
 
-panel_main_description: "Value of positions still open on the venue, in USD. Money at risk, not money traded."
+panel_main_description: "Collateral held against positions still open on the venue, in USD. Money at risk, not money traded, and not the market value of the positions."
 
 metric_panels:
   - id: volume_24h
@@ -108,7 +109,7 @@ metric_panels:
     metric: pm_venue_active_markets{}
     unit: count
     higher_is_better: true
-    description: "Markets open for trading, where the venue publishes a count readable in full. Kalshi lists tens of thousands. Polymarket is blank on purpose: its offset API refuses past 2,100 and its real book is 193,732, so a cheap count would be a 1% sample."
+    description: "Markets open for trading, where the venue publishes a count readable in full. Kalshi lists tens of thousands. Polymarket is blank on purpose: its offset API refuses past 2,100 and its real book was 193,732 markets on 2026-09-23, so a cheap count would be a 1% sample."
 
 faq:
   - q: "Why rank on open interest rather than volume?"
@@ -116,9 +117,9 @@ faq:
   - q: "What does a turnover above 1x mean?"
     a: "That the venue traded more than its whole open book in a day, which is the signature of short-dated contracts: markets that open, fill and settle within hours. Below 1x means positions are held rather than traded. Neither is better; they are different products."
   - q: "Is the open interest measured the same way for every venue?"
-    a: "No, and each row says which source it uses. Polymarket, Kalshi, Limitless and Myriad publish it natively. The rest are read from DefiLlama's protocol TVL, which is the closest public proxy for a venue with no public API, and is not the same measurement."
+    a: "No, and each row says which source it uses. Kalshi publishes open interest natively. Polymarket and Limitless are read from DefiLlama protocol TVL because Polymarket's own field is deprecated, and Myriad's native figure is AMM liquidity, not positions. The rest are read from DefiLlama protocol TVL, a proxy for a venue with no public field, and not the same measurement."
   - q: "Why is Polymarket US missing?"
-    a: "It has no open interest to publish. A CFTC-regulated exchange holds no on-chain balance and its API does not report one, so it has no row on a board ranked by open interest, even though its volume is among the largest in the category."
+    a: "Its open interest is not read yet. Polymarket US is a CFTC-regulated exchange with no on-chain balance for DefiLlama to measure, and its own API publishes open interest one market at a time, which this harness does not walk. So it has no row on a board ranked by open interest, even though its volume is among the largest in the category and is published."
   - q: "Why are small venues excluded?"
     a: "Because a venue holding tens of thousands of dollars moves by tens of percent on a single position, so a board including them would rank position-opening events. The floor is $500,000 of open interest; venues under it still publish their gauges."
 providers:

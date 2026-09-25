@@ -25,6 +25,11 @@ import {
  *
  * No-op when the bench has no live data yet.
  */
+/** "Bridged TVL" reads "bridged TVL" mid-sentence: lowercase only a leading capitalised word, never an acronym. */
+function lcFirst(text: string): string {
+  return text.replace(/^[A-Z](?=[a-z])/, (c) => c.toLowerCase());
+}
+
 export function ChainHeadingsSummary({ benchmark }: { benchmark: Benchmark }) {
   const live = liveResults(benchmark.results);
   if (live.length === 0) return null;
@@ -53,7 +58,7 @@ export function ChainHeadingsSummary({ benchmark }: { benchmark: Benchmark }) {
 
   return (
     <section
-      aria-label={`Per-chain ${benchmark.metric.toLowerCase()}`}
+      aria-label={`Per-chain ${lcFirst(benchmark.metric)}`}
       className="mt-16 max-w-3xl"
     >
       <h2 className="display text-2xl tracking-tight text-ink">
@@ -83,7 +88,7 @@ export function ChainHeadingsSummary({ benchmark }: { benchmark: Benchmark }) {
           const displayName = chainLabelForSlug(r.slug) ?? r.name;
           const heading =
             explainer?.h2 ??
-            `${displayName} ${benchmark.metric.toLowerCase()}`;
+            `${displayName} ${lcFirst(benchmark.metric)}`;
           return (
             <article key={canonSlug} id={canonSlug} className="scroll-mt-20">
               <h2 className="display text-xl tracking-tight text-ink">

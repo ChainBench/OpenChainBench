@@ -1,3 +1,5 @@
+import { fmtUnit } from "@/lib/format";
+
 /**
  * Client-safe part of the capital hub: bench slugs, row types and the
  * formatters the tables and the markdown view share. No server imports
@@ -114,7 +116,8 @@ export function fmtPct(v: number | null, digits = 1): string {
   return `${v > 0 ? "+" : ""}${v.toFixed(digits)}%`;
 }
 
+/** Same digits as the bench pages, /api/stat and the answers (fmtUnit "x"), so one entity never prints two ratios. */
 export function fmtX(v: number | null): string {
   if (v == null || !Number.isFinite(v)) return "n/a";
-  return `${v >= 100 ? v.toFixed(0) : v.toFixed(v >= 10 ? 1 : 2)}x`;
+  return fmtUnit(v, "x");
 }

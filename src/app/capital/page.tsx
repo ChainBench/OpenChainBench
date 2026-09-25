@@ -39,6 +39,7 @@ function describe(hub: CapitalHub | null): string {
     "TVL, bridged value, stablecoin flows, open interest and price to fees per token, from public data.",
     "TVL, bridged value, stablecoin flows, open interest and price to fees per token.",
     "TVL, bridged value, open interest, price to fees.",
+    "Bridged value and open interest per chain.",
   ];
   const candidates = [
     ...tails.map((t) => `${parts.join("; ")}. ${t}`),
@@ -150,19 +151,29 @@ export default async function CapitalHubPage() {
           </p>
         )}
         <div className="mt-4 flex flex-wrap items-center gap-2 text-[12px]">
-          {hub.benches.map((b) => (
-            <Link
-              key={b.slug}
-              href={`/benchmarks/${b.slug}`}
-              className="inline-flex items-center gap-1.5 rounded-full border border-ink/15 px-3 py-1 hover:bg-paper-soft/60"
-            >
-              <span className="label-mono text-ink-faint text-[10px]" style={{ fontFamily: "var(--font-mono, monospace)" }}>
-                Bench
+          {hub.benches.map((b) =>
+            b.live ? (
+              <Link
+                key={b.slug}
+                href={`/benchmarks/${b.slug}`}
+                className="inline-flex items-center gap-1.5 rounded-full border border-ink/15 px-3 py-1 hover:bg-paper-soft/60"
+              >
+                <span className="label-mono text-ink-faint text-[10px]" style={{ fontFamily: "var(--font-mono, monospace)" }}>
+                  Bench
+                </span>
+                <span className="text-ink">{b.slug}</span>
+              </Link>
+            ) : (
+              // Not served on this deployment yet: no link to a 404.
+              <span key={b.slug} className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-ink/15 px-3 py-1 text-ink-faint">
+                <span className="label-mono text-[10px]" style={{ fontFamily: "var(--font-mono, monospace)" }}>
+                  Bench
+                </span>
+                <span>{b.slug}</span>
+                <span className="text-[10px]">not published yet</span>
               </span>
-              <span className="text-ink">{b.slug}</span>
-              {!b.live && <span className="text-[10px] text-ink-faint">staging</span>}
-            </Link>
-          ))}
+            ),
+          )}
           <Link href="/methodology" className="inline-flex items-center gap-1.5 rounded-full border border-ink/10 px-3 py-1 text-ink-soft hover:text-ink">
             How OpenChainBench measures
           </Link>
