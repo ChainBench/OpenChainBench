@@ -4,7 +4,7 @@ benchmark: chain-stablecoin-flow
 status: live
 
 short_answer: |
-  {{best_name}} added {{best_p50}} of stablecoins to its float over the last 30 days, the largest net inflow among the {{count}} chains OpenChainBench tracks above $100M of pegged-dollar float. Net flow is the dollar change in stablecoins circulating on the chain, every issuer combined, read from DeFiLlama's per-chain series and ranked on the same 30-day window for every chain.
+  {{best_name}} added {{best_p50}} of stablecoins to its float over the last 30 days, the largest net inflow among the {{ranked_count}} chains OpenChainBench tracks above $100M of pegged-dollar float. Net flow is the dollar change in stablecoins circulating on the chain, every issuer combined, read from DeFiLlama's per-chain series and ranked on the same 30-day window for every chain.
 
 intro: |
   TVL tells you where capital sits; stablecoin flow tells you where it is going. A dollar of USDC or
@@ -36,7 +36,7 @@ limitations:
 
 faq:
   - q: "Which chain gained the most stablecoins over the last 30 days?"
-    a: "{{best_name}}, with a net inflow of {{best_p50}}. The bench page ranks all {{count}} cohort chains on the same window and shows the 7-day move and the total float next to each, refreshed hourly."
+    a: "{{best_name}}, with a net inflow of {{best_p50}}. The bench page ranks all {{ranked_count}} cohort chains on the same window and shows the 7-day move and the total float next to each, refreshed hourly."
   - q: "Why rank on dollars rather than on percentage?"
     a: "Because the dollar figure is the quantity of capital that moved; the percentage is on the page beside it. The two rank differently: an inflow that barely registers on the largest chains can be a third of a smaller chain's float."
   - q: "How is this different from TVL?"
@@ -52,4 +52,4 @@ related:
   - which-l1-has-the-fastest-finality
 
 seo_title: "Which chain gained the most stablecoins this month?"
-seo_description: "{{best_name}} added {{best_p50}} of stablecoins in 30 days, the largest net inflow of {{count}} chains above $100M of float. Dollar and percent flows per chain."
+seo_description: "{{best_name}} added {{best_p50}} of stablecoins in 30 days, the largest net inflow of {{ranked_count}} chains above $100M of float. Dollar and percent flows per chain."

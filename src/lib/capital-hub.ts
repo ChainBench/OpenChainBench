@@ -34,6 +34,7 @@ import { getChainsHistory, getValuationHistory, type CapitalEntity } from "@/lib
 import type { Benchmark, ProviderResult } from "@/types/benchmark";
 import {
   CAPITAL_BENCHES,
+  fmtUsdShort,
   type CapitalHub,
   type ChainRow,
   type FlowShare,
@@ -293,7 +294,15 @@ async function buildHub(): Promise<CapitalHub> {
       hasChainPage: CHAIN_SLUGS.has(c.slug),
     }))
     // Largest capital base first: TVL, else stablecoin float, else bridged.
-    .sort((a, b) => (b.tvl ?? b.stablesFloat ?? b.bridgedTvl ?? 0) - (a.tvl ?? a.stablesFloat ?? a.bridgedTvl ?? 0));
+    // One declared measure, DeFi TVL, nulls last; ties and the few rows
+    // without a TVL fall back to bridged value so an L2Beat-only row still
+    // sits above dust rather than at a random place (audit 2026-09-25).
+    .sort((a, b) => {
+      if (a.tvl != null && b.tvl != null && a.tvl !== b.tvl) return b.tvl - a.tvl;
+      if (a.tvl != null && b.tvl == null) return -1;
+      if (a.tvl == null && b.tvl != null) return 1;
+      return (b.bridgedTvl ?? b.stablesFloat ?? 0) - (a.bridgedTvl ?? a.stablesFloat ?? 0);
+    });
 
   const inflows = chains.filter((c) => (c.stablesNet30d ?? 0) > 0);
   const inflowTotal = inflows.reduce((s, c) => s + (c.stablesNet30d ?? 0), 0);
@@ -358,6 +367,7 @@ async function buildHub(): Promise<CapitalHub> {
         fees30d: panel(protocolsB, "fees_30d", r.slug),
         tvl: panelByGauge(protocolsB, "protocol_tvl_usd", r.slug) ?? field(vpt, "tvl"),
         revenue30d: panelByGauge(protocolsB, "protocol_revenue_30d_usd", r.slug) ?? field(vpt, "rev_30d"),
+        revenueIncomplete: (panelByGauge(protocolsB, "protocol_revenue_incomplete", r.slug) ?? field(vpt, "revenue_incomplete") ?? 0) >= 1,
         ps: panelByGauge(protocolsB, "protocol_ps_ratio", r.slug) ?? field(vpt, "ps"),
         supplyChange30dPct: panelByGauge(protocolsB, "protocol_supply_change_30d_pct", r.slug) ?? field(vpt, "supply_change_30d_pct"),
       };
@@ -400,6 +410,9 @@ async function buildHub(): Promise<CapitalHub> {
     ...(valHist?.protocols ?? []).map((p) => p.days.length),
   );
 
+  // The bench calls two rows tied when they print the same value (citation.ts);
+  // the hub must not name one of them alone on a $6M gap (SEO audit 2026-09-25).
+  const bridgedRanked = [...chains].filter((c) => c.bridgedTvl != null).sort((a, b) => (b.bridgedTvl ?? 0) - (a.bridgedTvl ?? 0));
   return {
     asOf,
     benches,
@@ -411,7 +424,8 @@ async function buildHub(): Promise<CapitalHub> {
     divergences: selectDivergences(protocols),
     perps,
     leaders: {
-      bridgedTvl: [...chains].filter((c) => c.bridgedTvl != null).sort((a, b) => (b.bridgedTvl ?? 0) - (a.bridgedTvl ?? 0))[0] ?? null,
+      bridgedTvl: bridgedRanked[0] ?? null,
+      bridgedTvlTied: bridgedRanked.filter((c) => bridgedRanked[0] && fmtUsdShort(c.bridgedTvl) === fmtUsdShort(bridgedRanked[0].bridgedTvl)),
       stableInflow: chains.find((c) => c.slug === stableLeaderSlug) ?? null,
       lowestPfProtocol: protocols[0] ?? null,
       lowestPfPerp: perps[0] ?? null,

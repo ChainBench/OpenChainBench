@@ -35,5 +35,5 @@ related:
   - what-is-the-fastest-free-arbitrum-rpc
 
 seo_title: "Which Base RPC pushes new blocks the fastest over WebSocket? 2026"
-seo_description: "{{best_name}} leads Base WebSocket newHeads push at {{best_p50}} lag (p50, 24h) across {{count}} keyless providers. Live per-block race by OpenChainBench from eu-west."
+seo_description: "{{best_name}} leads Base WebSocket newHeads push at {{best_p50}} lag (p50, 24h) across {{ranked_count}} keyless providers. Live per-block race by OpenChainBench from eu-west."
 status: live

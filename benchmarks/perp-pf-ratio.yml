@@ -3,7 +3,7 @@
 slug: perp-pf-ratio
 number: "265"
 title: "Perp DEX price to fees: what the market pays per dollar of trading fees"
-seo_title: "Perp DEX token price to fees: {{best_name}} lowest at {{best_p50}}"
+seo_title: "Perp DEX token price to fees: {{best_names}} lowest at {{best_p50}}"
 seo_description: "{{best_name}} has the lowest price to fees of {{ranked_count}} perp DEX tokens at {{best_p50}}. P/F, FDV/F, P/S, float and open interest, live from DeFiLlama and CoinGecko."
 subtitle: Market cap divided by annualized trading fees (trailing 30 days) for every perp DEX with a listed token, alongside FDV, protocol revenue, float and open interest. Lower means the market pays less per dollar of fees. Same convention as the DeFiLlama P/F ranking, updated hourly.
 

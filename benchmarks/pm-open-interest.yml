@@ -2,7 +2,7 @@
 slug: pm-open-interest
 number: "277"
 title: "Prediction market open interest: where capital actually sits"
-seo_title: "Prediction market open interest: {{best_name}} holds {{best_p50}}"
+seo_title: "Prediction market open interest: {{best_names}} at {{best_p50}}"
 seo_description: "{{best_name}} holds {{best_p50}} of open interest, the most of {{ranked_count}} prediction markets. Open positions, 24h and 30d volume, and turnover per venue."
 subtitle: "Capital held in open positions on each prediction market, in USD. Unlike volume it only counts money still at risk, so a venue that trades a lot and settles fast reads small here and a venue holding long-dated markets reads large. The turnover column is the ratio of the two, and the two rank very differently."
 category: Trading

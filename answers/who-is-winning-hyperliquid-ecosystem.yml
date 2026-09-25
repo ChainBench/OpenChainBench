@@ -13,7 +13,7 @@ methodology: |
 
 limitations:
   - "Builder revenue only. Frontends also capture non-builder revenue (subscriptions, custody fees, off-platform monetization). This bench measures the onchain builder revenue slice because it is the only cross-frontend comparable public number. It is a lower bound on total frontend monetization."
-  - "{{count}} tracked frontends. New frontends launch continuously; a frontend is metered from the day its builder address is added to the public registry. A frontend not on the leaderboard has zero measurable builder revenue in the window."
+  - "{{ranked_count}} tracked frontends. New frontends launch continuously; a frontend is metered from the day its builder address is added to the public registry. A frontend not on the leaderboard has zero measurable builder revenue in the window."
   - "Concentration analysis is dominant. The top 5 frontends capture the overwhelming majority of ecosystem builder revenue. A long-tail frontend at rank 50 has revenue below what the median trader loses on funding in a bad week, so the ranking is honest but the tail is not comparable to the head on absolute terms."
   - "Sibling HIP-3 deployers bench measures the same population from a different angle. HIP-3 deployers are ranked separately because the deployer-fee mechanic is architecturally distinct from builder-fee attribution."
 
@@ -37,5 +37,5 @@ related:
   - which-perp-dex-has-the-lowest-fees
 
 seo_title: "Who is winning the Hyperliquid ecosystem 2026, live"
-seo_description: "{{best_name}} leads at {{best_p50}} (24h) on the OpenChainBench Hyperliquid builder revenue leaderboard. {{count}} frontends tracked from Hyperliquid's public per-builder fills feed."
+seo_description: "{{best_name}} leads at {{best_p50}} (24h) on the OpenChainBench Hyperliquid builder revenue leaderboard. {{ranked_count}} frontends tracked from Hyperliquid's public per-builder fills feed."
 status: live

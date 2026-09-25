@@ -34,7 +34,7 @@ result is fanned out over the registry rows that carry an L2Beat id.
 | `chain_fees_{24h,7d,30d}_usd{chain}` | DefiLlama `/overview/fees/<name>?dataType=dailyFees` | 60 min |
 | `chain_revenue_{24h,7d,30d}_usd{chain}` | DefiLlama `/overview/fees/<name>?dataType=dailyRevenue` | 60 min |
 | `chain_revenue_share_pct{chain}` | derived: 30d revenue over 30d fees, percent | 60 min |
-| `chain_token_mcap_usd{chain}` | CoinGecko `/coins/markets` for the chain's `gecko_id` on DefiLlama `/v2/chains` (one call per tick) | 60 min |
+| `chain_token_mcap_usd{chain}` | Mobula `/api/1/market/multi-data?ids=` by hand-verified asset id (`mobulaAssetBySlug`), else CoinGecko `/coins/markets` for the chain's `gecko_id` on DefiLlama `/v2/chains`; a mapped chain Mobula does not answer for falls back to CoinGecko on that tick (one call each per tick) | 60 min |
 | `chain_token_pf_ratio{chain}` / `chain_token_ps_ratio{chain}` | derived: token mcap over annualized 30d fees / revenue; absent for chains with no token of their own (Base, Robinhood Chain, Unichain) | 60 min |
 | `chain_fees_last_success_unix` | when the fees poll last published, no labels | 60 min |
 | `chain_kpis_health{chain, source}` | 1 if the last fetch for that source returned data (`source="fees"` for the fees loop) | per source |
@@ -77,9 +77,10 @@ own consensus and are tracked. Settled L1s with no host chain carry no id.
 | `DEFILLAMA_REFRESH_MINUTES` | 15 | DefiLlama cadence |
 | `MOBULA_REFRESH_MINUTES` | 5 | Mobula cadence |
 | `L2BEAT_REFRESH_MINUTES` | 15 | L2Beat cadence |
-| `CHAIN_FEES_REFRESH_MINUTES` | 60 | DefiLlama fees/revenue and CoinGecko market cap cadence (bench 280) |
+| `CHAIN_FEES_REFRESH_MINUTES` | 60 | DefiLlama fees/revenue and market cap cadence (bench 280) |
 | `L2BEAT_MEDIAN_FLOOR_USD` | 200000000 | size floor for the median cohort |
-| `MOBULA_API_KEY` | — | required for the Mobula gauges only |
+| `MOBULA_API_KEY` | — | required for the Mobula gauges and for bench 280's market caps on the 40 chains with a verified Mobula asset id; without it those chains fall back to keyless CoinGecko, which answers 429 from a shared address |
+| `COINGECKO_API_KEY` | — | optional free demo key; lifts the keyless rate limit on the fallback call |
 
 Plus observability:
 - `chain_kpis_last_refresh_timestamp_seconds{chain, source}`

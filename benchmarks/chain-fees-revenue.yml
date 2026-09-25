@@ -2,7 +2,7 @@
 slug: chain-fees-revenue
 number: "280"
 title: "Chain fees and revenue: what users paid on each chain over 30 days"
-seo_title: "Chain fees by blockchain: {{best_name}} collected {{best_p50}} in 30 days"
+seo_title: "Chain fees by blockchain: {{best_name}} users paid {{best_p50}} in 30 days"
 seo_description: "{{best_name}} users paid {{best_p50}} in fees over 30 days, the most of {{ranked_count}} chains. Fees, revenue kept, revenue share and the chain token's price to fees, from DefiLlama's per-chain adapters."
 subtitle: "Fees paid by users on each chain over the trailing 30 complete UTC days: gas plus the fees of every protocol DefiLlama tracks on it. Beside it, the revenue the chain and its protocols kept, the share that represents, and for chains with a token of their own, that token's market cap over annualized fees and revenue."
 category: Blockchains
@@ -57,11 +57,11 @@ methodology:
   - "Source: DefiLlama /overview/fees/<chain>, dataType dailyFees and dailyRevenue, the per-chain sum of every fees adapter DefiLlama runs for protocols on that chain plus the chain's own gas. Free endpoint, two requests per chain per hour, chart excluded."
   - "Windows: total24h, total7d and total30d as DefiLlama reports them, ending on its last complete UTC day. The headline is the 30-day figure because daily chain fees swing with one launch or one airdrop; 24h and 7d are companion columns."
   - "Revenue: the adapter-defined share the chain or its protocols keep, per DefiLlama's definition per protocol (sequencer margin for a rollup, burned base fee for Ethereum, protocol take for a DEX). Revenue share is revenue over fees on the 30-day window, in percent."
-  - "Price to fees and price to revenue: the chain token's circulating market cap over the 30-day fees or revenue annualized (x 365/30). The token is DefiLlama's chain to gecko_id mapping (Ethereum ETH, Arbitrum ARB, Hyperliquid HYPE) and the market cap CoinGecko's, published as chain_token_mcap_usd. Base, Robinhood Chain, Unichain, Ink, Abstract and Arc map to no token and get no ratio."
+  - "Price to fees and price to revenue: the chain token's circulating market cap over the 30-day fees or revenue annualized (x 365/30). The token is DefiLlama's chain to gecko_id mapping (Ethereum ETH, Arbitrum ARB) and the market cap is Mobula's by verified asset id, or CoinGecko's where there is none and whenever Mobula does not answer; published as chain_token_mcap_usd. Base, Robinhood Chain, Unichain, Ink, Abstract and Arc map to no token and get no ratio."
   - "A ratio publishes only when the market cap and the denominator are both positive. A chain with no fees over the month publishes no row rather than a $0 one; a quiet day inside an active month publishes its real zero on the 24h column."
-  - "Coverage: the 38 registry chains DefiLlama maps and reports fees for, with at least $100,000 of fees over the 30 days when the cohort was chosen (2026-09-25). Chains DefiLlama knows but has no fee adapter for (Moonbeam, Polkadot) are absent rather than shown at zero, and so are mapped chains under the floor that day (Manta, World Chain, Hemi among them)."
+  - "Coverage: the 38 registry chains DefiLlama maps and reports fees for, with at least $100,000 of fees over the 30 days when the cohort was chosen (2026-09-25). Chains DefiLlama knows but has no fee adapter for (Moonbeam, Polkadot) are absent rather than shown at zero, and so are mapped chains under the floor that day (Manta, World Chain, Hemi among them). Bitcoin is not an OCB registry chain, so it has no row here although DefiLlama reports its fees."
   - "Cadence: hourly reads; the source moves once a day. p50, p90, p99 and the mean read the same value and are equal by construction. Freshness is the chain-kpis health gauge for the fees source."
-  - "Not measured by OpenChainBench: this board relays DefiLlama's adapters and CoinGecko's market caps. OCB adds the per-chain join, the ratios, the history and the same-row comparison; it does not verify each adapter's attribution."
+  - "Not measured by OpenChainBench: this board relays DefiLlama's adapters and the market caps of Mobula and CoinGecko. OCB adds the per-chain join, the ratios, the history and the same-row comparison; it does not verify each adapter's attribution."
 
 findings:
   - "{{best_name}} users paid the most fees of the {{ranked_count}} ranked chains, {{best_p50}} over the last 30 complete UTC days."
@@ -73,7 +73,7 @@ source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/chain-k
 prometheus:
   window: 24h
   expected_freshness_seconds: 7200
-  freshness_metric: chain_kpis_health
+  freshness_timestamp_metric: chain_fees_last_success_unix
 
 panel_main_description: "Fees paid by users on the chain over the trailing 30 complete UTC days, gas plus protocol fees, from DefiLlama's per-chain adapters."
 
@@ -176,6 +176,7 @@ providers:
 
   - slug: robinhood
     name: Robinhood Chain
+    tag: "Gas sponsored by Robinhood until 2026-09-29: users pay no gas during the launch window, so the figure is sequencer cost plus protocol fees, not what users paid"
     formula: "last_over_time(chain_fees_30d_usd{chain=\"robinhood\"}[2h])"
     queries:
       p50: last_over_time(chain_fees_30d_usd{chain="robinhood"}[2h])

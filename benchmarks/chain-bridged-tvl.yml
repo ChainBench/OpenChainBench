@@ -2,8 +2,8 @@
 slug: chain-bridged-tvl
 number: "273"
 title: "Bridged TVL by chain: how much of a chain's capital came from somewhere else"
-seo_title: "Bridged TVL by chain: {{best_name}} holds {{best_p50}}"
-seo_description: "{{best_name}} holds {{best_p50}}, the most of {{ranked_count}} chains. Value secured that arrived from elsewhere, canonical plus external, from L2Beat, with the weekly move against peers."
+seo_title: "Bridged TVL by chain: {{best_names}} at {{best_p50}}"
+seo_description: "{{best_names}}: {{best_p50}} of bridged TVL, the most of {{ranked_count}} chains. Value secured that arrived from elsewhere, canonical plus external, from L2Beat, with the weekly move against peers."
 subtitle: "L2Beat's value secured per chain, restricted to what arrived from elsewhere: canonical (locked in the chain's own escrow on its host chain) plus external (a third-party bridge). The complement is native, minted here. The weekly columns move with the whole balance, and the one to read is the move against the cohort median."
 category: Blockchains
 status: live
@@ -63,13 +63,13 @@ methodology:
   - "Cohort composition: every live project above the floor votes, layer 3s and projects L2Beat currently has under review included. They are counted, not filtered, because dropping them would make the yardstick a judgement rather than a measurement; chain_tvs_cohort_size, _layer3 and _under_review publish the composition. Below five projects no median is published and the excess series is cleared rather than frozen."
   - "Rows: every chain in the OCB registry that carries an L2Beat project id, each verified against a live read of the endpoint. Several ids differ from the OCB slug (polygon-pos, zksync2, roninnetwork, worldchain, mantapacific, galxegravity, nova, polygonzkevm, bobanetwork, immutablezkevm)."
   - "Membership: a row is a chain in the OCB chain registry that L2Beat tracks in its scaling summary, whatever category L2Beat files it under (42 of L2Beat's roughly 100 projects on 2026-09-25, Plume mapped that day); L2Beat projects outside the registry are not rows. Settled L1s carry no id because a chain with no host chain has no bridged balance to report."
-  - "A project L2Beat has archived, one reporting a zero total, and one whose origins do not reconstruct that total all publish nothing, the previous value carries forward, and chain_kpis_health{source=\"l2beat\"} drops to 0 for that chain. That health series is the success rate each row reports."
+  - "A project L2Beat has archived, one reporting a zero total, and one whose origins do not reconstruct that total all publish nothing: the chain's gauges are deleted rather than carried forward, so the row reads unresponsive within the hour, and chain_kpis_health{source=\"l2beat\"} drops to 0 for that chain. That health series is the success column, so a row that stopped reporting also stops reading 100 percent."
   - "Freshness reads L2Beat's own chart.syncedUntil, not the Prometheus scrape and not the time of our fetch. The first is always seconds old because the harness re-exports carried-forward gauges; the second stays green when L2Beat answers 200 with stale numbers. A row whose weekly move is missing keeps its balance and loses only its two weekly columns, rather than publishing a flat week that never happened."
   - "Every aggregate column reads the latest value rather than a window statistic, so the board and the origin panels always describe the same instant. p50, p90, p99 and the mean are equal by construction; the sample count is the number of Prometheus scrapes in the 24h window (about 2,880 at a 30 second scrape), not a count of measurements, since the underlying value refreshes every 15 minutes."
   - "L2Beat's figures are a third-party measurement, credited as the source. OCB does not re-derive the escrow balances; this bench republishes the split and computes the cohort-relative move on top of it."
 
 findings:
-  - "{{best_name}} holds the most bridged capital of the {{ranked_count}} chains at {{best_p50}}."
+  - "The most bridged capital of the {{ranked_count}} chains sits on {{best_names}}, at {{best_p50}}."
   - "A chain at 100 percent bridged secures nothing it minted itself: every dollar was escrowed on its host chain or carried over by a bridge. Several rows sit there, and the Bridged share tab is where to read which."
   - "The opposite case is a chain whose balance is mostly its own issuance, where the bridged share falls into single digits and the Native column carries almost the whole total."
   - "A chain can be up on the week and still lose ground: the 7d vs peers column is the one that says which, because it subtracts the cohort median from the raw move."

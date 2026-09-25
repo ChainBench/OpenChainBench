@@ -76,7 +76,10 @@ var (
 		"1 when fees grew on the month, the token fell, and the P/F sits below the category median. A screen, not a verdict.", "protocol")
 
 	pvIncomplete = gaugeVec("protocol_fees_incomplete",
-		"1 when one of this token's fee adapters reports nothing over 30 days after real fees over the year, so the published total is short of the protocol's revenue. Such a row keeps its gauges but leaves the ranking and the category median.",
+		"1 when the trailing 30 day fee total cannot be annualized honestly: one of this token's fee adapters reports nothing over 30 days after real fees over the year (the total is short of the protocol), or the whole fee history sits inside the window (protocol_fees_window_short = 1, so x 365/30 overstates). Such a row keeps its gauges but leaves the ranking and the category median.",
+		"protocol")
+	pvWindowShort = gaugeVec("protocol_fees_window_short",
+		"1 when every fee the token's adapters ever reported falls inside the trailing 30 days: the protocol or its adapter is younger than the window, and the annualized figure is built on fewer than 30 days.",
 		"protocol")
 	pvSilentFees1y = gaugeVec("protocol_silent_adapter_fees_1y_usd",
 		"What this token's silent adapters earned over the past year, so the size of the gap is visible.", "protocol")
@@ -144,7 +147,7 @@ func init() {
 		pvPF, pvPFfdv,
 		pvRev30d, pvAnnualRev, pvPS, pvRevIncomplete, pvRevMissingAdapters, pvTVL, pvSupplyChg30d, pvSupplyChg90d,
 		pvCategoryMedianPF, pvCategorySize, pvPFvsCategory, pvDiverging,
-		pvIncomplete, pvSilentFees1y, pvInfo,
+		pvIncomplete, pvWindowShort, pvSilentFees1y, pvInfo,
 		pvHealth,
 		pvCohortSize, pvAdapters, pvUnmapped, pvViaParent, pvMerged,
 		pvPeerGroups, pvLastSuccessUnix, pvFetchErrors,
@@ -165,7 +168,7 @@ func publish(rows []Row, medians map[string]float64, sizes map[string]int, st co
 		pvFees30d, pvFeesPrev30d, pvAnnualFees, pvFeeGrowth, pvMcap, pvFDV,
 		pvFloat, pvPriceChg, pvPF, pvPFfdv, pvPFvsCategory, pvDiverging,
 		pvRev30d, pvAnnualRev, pvPS, pvRevIncomplete, pvRevMissingAdapters, pvTVL, pvSupplyChg30d, pvSupplyChg90d,
-		pvIncomplete, pvSilentFees1y, pvInfo,
+		pvIncomplete, pvWindowShort, pvSilentFees1y, pvInfo,
 		pvHealth, pvCategoryMedianPF, pvCategorySize,
 	} {
 		v.Reset()
@@ -179,6 +182,7 @@ func publish(rows []Row, medians map[string]float64, sizes map[string]int, st co
 		pvHealth.WithLabelValues(r.Slug).Set(1)
 		pvInfo.WithLabelValues(r.Slug, r.Name, r.Category).Set(1)
 		pvIncomplete.WithLabelValues(r.Slug).Set(boolGauge(r.Incomplete))
+		pvWindowShort.WithLabelValues(r.Slug).Set(boolGauge(r.WindowShort))
 		if r.SilentFees1y > 0 {
 			pvSilentFees1y.WithLabelValues(r.Slug).Set(r.SilentFees1y)
 		}

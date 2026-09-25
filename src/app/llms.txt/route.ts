@@ -74,6 +74,14 @@ export async function GET() {
     lines.push("");
   }
 
+  // The capital hub: five valuation and capital-flow benches on one page, with a JSON mirror.
+  if (!isDevOnlyRoute("/capital")) {
+    lines.push(`## Capital flows and token valuation`);
+    lines.push("");
+    lines.push(`Bridged TVL, stablecoin flows, open interest and price to fees per chain and per token, read against category medians. Hub: ${SITE.url}/capital, JSON: ${SITE.url}/api/capital, Markdown: ${SITE.url}/capital with Accept: text/markdown`);
+    lines.push("");
+  }
+
   // RPC latency benchmarks — one entry per chain, compressed for LLM consumption.
   // Full per-chain rankings, p50/p90/p99, provider list and region breakdowns
   // are available at /rpc (hub) or /api/stat/<slug> for each chain.
