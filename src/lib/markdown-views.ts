@@ -23,6 +23,16 @@ import type { PerpCohortSummary, PerpVenueRow } from "@/lib/perp-stats";
 import type { ProviderProfile } from "@/lib/providers";
 import { perpProductSlug } from "@/lib/perp-product-slug";
 import { fmtPct as capPct, fmtUsdShort as capUsd, fmtX as capX, type CapitalHub } from "@/lib/capital-hub-types";
+import {
+  CAPITAL_READING,
+  CCTP_SCOPE_LABEL,
+  OUTSIDE_COHORT_LABEL,
+  bridgedShareSubline,
+  cohortCell,
+  fmtUsdLevel,
+  sevenDaySubline,
+  type CohortCell,
+} from "@/lib/capital-hub-rules";
 
 export function rankingLines(b: Benchmark, ranked: ReturnType<typeof rankedCandidates>): string[] {
   // A bench that repurposes the p50/p90/p99/mean slots declares
@@ -254,12 +264,21 @@ export function rwaHubMarkdown(benches: Benchmark[]): string {
 
 
 
-/** Markdown view of /capital: both cohorts, the same rows as the HTML tables. */
+/** A bench-ranked cell in Markdown: the value, n/a, the blob value with a `*` (outside the ranked cohort), or a dash. */
+function cohortMd(cell: CohortCell, fmt: (v: number) => string): string {
+  if (cell.kind === "value") return fmt(cell.value);
+  if (cell.kind === "outside") return `${fmt(cell.value)}*`;
+  return cell.kind === "na" ? "n/a" : "-";
+}
+
+/** Markdown view of /capital: both cohorts, the same rows and rules as the HTML tables (src/lib/capital-hub-rules.ts). */
 export function capitalHubMarkdown(hub: CapitalHub): string {
+  type Chain = CapitalHub["chains"][number];
   const md: string[] = [];
   md.push(`# Capital flows and token valuation leaderboards`);
   md.push("");
   md.push(`- Page: ${SITE.url}/capital`);
+  md.push(`- JSON, one payload: ${SITE.url}/api/capital`);
   md.push(`- Daily history: https://kv.openchainbench.com/aggregate/valuation/history.json · https://kv.openchainbench.com/aggregate/chains/history.json`);
   // Only benches this deployment serves: a link to a 404 is worse than none.
   const served = hub.benches.filter((b) => b.live);
@@ -267,20 +286,46 @@ export function capitalHubMarkdown(hub: CapitalHub): string {
   md.push(`- License: CC-BY-4.0`);
   if (hub.asOf) md.push(`- Data as of: ${hub.asOf}`);
   md.push("");
+  const reading = (lines: readonly string[]) => {
+    md.push(`How to read:`);
+    md.push("");
+    for (const l of lines) md.push(`- ${l}`);
+    md.push("");
+  };
   if (hub.chains.length > 0) {
     md.push(`## Chains: TVL, bridged value, stablecoin flows`);
     md.push("");
-    // Same rule as the table: history-fed columns appear once they carry values.
-    const cols: { h: string; v: (c: CapitalHub["chains"][number]) => string }[] = [
-      ...(hub.chains.some((c) => c.tvl != null) ? [{ h: "TVL", v: (c: CapitalHub["chains"][number]) => capUsd(c.tvl) }] : []),
-      // "-" means the bench does not cover the row (an L1 on the L2Beat cohort); n/a means missing data.
-      { h: "Bridged value", v: (c) => (c.inBridgedCohort ? capUsd(c.bridgedTvl) : "-") },
-      { h: "7d vs L2 peers", v: (c) => (c.inBridgedCohort ? capPct(c.excess7dPct) : "-") },
-      { h: "Stablecoin float", v: (c) => capUsd(c.stablesFloat) },
-      { h: "Net stables 30d", v: (c) => (c.inStablesCohort ? capUsd(c.stablesNet30d) : "-") },
-      ...(hub.chains.some((c) => c.cctpNet7d != null) ? [{ h: "USDC over CCTP 7d", v: (c: CapitalHub["chains"][number]) => capUsd(c.cctpNet7d) }] : []),
-      ...(hub.chains.some((c) => c.dexVolume24h != null) ? [{ h: "DEX volume 24h", v: (c: CapitalHub["chains"][number]) => capUsd(c.dexVolume24h) }] : []),
-      ...(hub.chains.some((c) => c.fees30d != null) ? [{ h: "Fees 30d", v: (c: CapitalHub["chains"][number]) => capUsd(c.fees30d) }] : []),
+    const hasCctp = hub.chains.some((c) => c.cctpNet7d != null);
+    const hasFees = hub.chains.some((c) => c.fees30d != null || c.fees30dOutside != null);
+    // Same rules as the table: history-fed columns appear once they carry
+    // values; "-" means the bench does not cover the row (an L1 on the
+    // L2Beat cohort, a chain with no CCTP domain), n/a means missing data,
+    // "<$1K" a DeFiLlama zero for an untracked chain, "*" a value for a
+    // chain outside the ranked cohort.
+    const cols: { h: string; v: (c: Chain) => string }[] = [
+      ...(hub.chains.some((c) => c.tvl != null) ? [{ h: "TVL", v: (c: Chain) => fmtUsdLevel(c.tvl) }] : []),
+      {
+        h: "Bridged value",
+        v: (c) => {
+          if (!c.inBridgedCohort) return "-";
+          const sub = bridgedShareSubline(c.bridgedSharePct);
+          return sub ? `${capUsd(c.bridgedTvl)} (${sub})` : capUsd(c.bridgedTvl);
+        },
+      },
+      {
+        h: "7d vs L2 median",
+        v: (c) => {
+          if (!c.inBridgedCohort) return "-";
+          const sub = sevenDaySubline(c.change7dPct, c.median7dPct);
+          return sub ? `${capPct(c.excess7dPct)} (${sub})` : capPct(c.excess7dPct);
+        },
+      },
+      { h: "Stablecoin float", v: (c) => fmtUsdLevel(c.stablesFloat) },
+      { h: "Net stables 30d", v: (c) => cohortMd(cohortCell(c.inStablesCohort, c.stablesNet30d, c.stablesNet30dOutside), capUsd) },
+      ...(hasCctp ? [{ h: "USDC over CCTP 7d", v: (c: Chain) => (c.cctpScope === "scanned" ? capUsd(c.cctpNet7d) : "-") }] : []),
+      ...(hub.chains.some((c) => c.dexVolume24h != null) ? [{ h: "DEX volume 24h", v: (c: Chain) => fmtUsdLevel(c.dexVolume24h) }] : []),
+      ...(hasFees ? [{ h: "Fees 30d", v: (c: Chain) => cohortMd(cohortCell(c.inFeesCohort, c.fees30d, c.fees30dOutside), fmtUsdLevel) }] : []),
+      ...(hasFees ? [{ h: "Revenue 30d", v: (c: Chain) => cohortMd(cohortCell(c.inFeesCohort, c.revenue30d, c.revenue30dOutside), fmtUsdLevel) }] : []),
     ];
     md.push(`| # | Chain | ${cols.map((c) => c.h).join(" | ")} |`);
     md.push(`|---|---|${cols.map(() => "---").join("|")}|`);
@@ -288,26 +333,79 @@ export function capitalHubMarkdown(hub: CapitalHub): string {
       md.push(`| ${i + 1} | ${c.name} | ${cols.map((k) => k.v(c)).join(" | ")} |`);
     });
     md.push("");
+    const legend = [
+      `"-": the bench does not cover the row (an L1 on the L2Beat cohort${hasCctp ? `, ${CCTP_SCOPE_LABEL.none} or ${CCTP_SCOPE_LABEL.domain}` : ""})`,
+      `n/a: missing data`,
+      `"<$1K": a DeFiLlama zero for a chain it does not track, not a measurement`,
+      `"*": ${OUTSIDE_COHORT_LABEL} (a history value for a chain the bench does not rank; it takes no part in the leaders or counts)`,
+    ];
+    md.push(`Legend: ${legend.join("; ")}.`);
+    md.push("");
+    reading(CAPITAL_READING.chains);
   }
   if (hub.pmOi.length > 0 || hub.perpOi.length > 0) {
     md.push(`## Open interest`);
     md.push("");
-    if (hub.perpOi.length > 0) md.push(`Perp DEXes: ${hub.perpOi.slice(0, 8).map((r) => `${r.name} ${capUsd(r.oi)}`).join(", ")}.`);
-    if (hub.pmOi.length > 0) md.push(`Prediction markets: ${hub.pmOi.slice(0, 8).map((r) => `${r.name} ${capUsd(r.oi)}`).join(", ")}.`);
-    md.push("");
+    const oiTable = (title: string, rows: CapitalHub["perpOi"], bench: string, volume: boolean) => {
+      const has7d = rows.some((r) => r.change7dPct != null);
+      md.push(`${title} (${SITE.url}/benchmarks/${bench})`);
+      md.push("");
+      md.push(`| # | Venue | Open interest |${has7d ? " 7d |" : ""}${volume ? " Volume 24h |" : ""}`);
+      md.push(`|---|---|---|${has7d ? "---|" : ""}${volume ? "---|" : ""}`);
+      rows.slice(0, 10).forEach((r, i) => {
+        // An empty 7d cell: the window is not covered yet, nothing is missing from the bench.
+        md.push(`| ${i + 1} | ${r.name} | ${capUsd(r.oi)} |${has7d ? ` ${r.change7dPct != null ? capPct(r.change7dPct) : ""} |` : ""}${volume ? ` ${capUsd(r.volume24h)} |` : ""}`);
+      });
+      md.push("");
+    };
+    if (hub.perpOi.length > 0) oiTable("Perp DEXes", hub.perpOi, "perp-pf-ratio", false);
+    if (hub.pmOi.length > 0) oiTable("Prediction markets", hub.pmOi, "pm-open-interest", true);
+    reading(CAPITAL_READING.openInterest);
   }
   if (hub.protocols.length > 0) {
+    md.push(`## Divergences this month: fees up, token down, price to fees under the category median`);
+    md.push("");
+    if (hub.divergences.length === 0) {
+      md.push(`No token has its 30-day fees up against the prior 30 days, its price down over 30 days and its price to fees under the category median today.`);
+    } else {
+      md.push(`| Token | Category | Fees MoM | Token 30d | P/F vs median |`);
+      md.push(`|---|---|---|---|---|`);
+      for (const p of hub.divergences) {
+        md.push(`| ${p.name} | ${p.category || "n/a"} | ${capPct(p.feeGrowth30dPct, 0)} | ${capPct(p.priceChange30dPct, 0)} | ${capX(p.pf)} vs ${capX(p.categoryMedianPf)} (${capX(p.pfVsCategory)} of the median) |`);
+      }
+      md.push("");
+      md.push(`Three conditions at once, the five with the largest fee growth. A screen for further reading, not a signal to act on.`);
+    }
+    md.push("");
     md.push(`## Tokens by price to fees (market cap over annualized 30-day fees)`);
     md.push("");
-    md.push(`| # | Token | Category | P/F | FDV/F | Float | Fees MoM | Token 30d | vs category median |`);
-    md.push(`|---|---|---|---|---|---|---|---|---|`);
+    // Same rule as the table: the four columns the valuation harness adds appear once a row carries a value.
+    const hasPs = hub.protocols.some((p) => p.ps != null);
+    const hasSupply = hub.protocols.some((p) => p.supplyChange30dPct != null);
+    const hasTvl = hub.protocols.some((p) => p.tvl != null);
+    const hasRevenue = hub.protocols.some((p) => p.revenue30d != null);
+    const extra = [
+      ...(hasPs ? ["P/S"] : []),
+      ...(hasSupply ? ["Supply 30d"] : []),
+      ...(hasTvl ? ["TVL"] : []),
+      ...(hasRevenue ? ["Revenue 30d"] : []),
+    ];
+    md.push(`| # | Token | Category | P/F | FDV/F | Float | Fees MoM | Token 30d | vs category median |${extra.map((h) => ` ${h} |`).join("")}`);
+    md.push(`|---|---|---|---|---|---|---|---|---|${extra.map(() => "---|").join("")}`);
     hub.protocols.forEach((p, i) => {
       const flag = p.signal === "fees-up-token-down" ? " (fees up, token down)" : p.signal === "fees-down-token-up" ? " (fees down, token up)" : "";
+      const tail = [
+        ...(hasPs ? [capX(p.ps)] : []),
+        ...(hasSupply ? [capPct(p.supplyChange30dPct)] : []),
+        ...(hasTvl ? [capUsd(p.tvl)] : []),
+        ...(hasRevenue ? [capUsd(p.revenue30d)] : []),
+      ];
       md.push(
-        `| ${i + 1} | ${p.name} | ${p.category || "n/a"} | ${capX(p.pf)} | ${capX(p.pfFdv)} | ${p.floatPct != null ? p.floatPct.toFixed(0) + "%" : "n/a"} | ${capPct(p.feeGrowth30dPct, 0)} | ${capPct(p.priceChange30dPct, 0)} | ${capX(p.pfVsCategory)}${flag} |`,
+        `| ${i + 1} | ${p.name} | ${p.category || "n/a"} | ${capX(p.pf)} | ${capX(p.pfFdv)} | ${p.floatPct != null ? p.floatPct.toFixed(0) + "%" : "n/a"} | ${capPct(p.feeGrowth30dPct, 0)} | ${capPct(p.priceChange30dPct, 0)} | ${capX(p.pfVsCategory)}${flag} |${tail.map((t) => ` ${t} |`).join("")}`,
       );
     });
     md.push("");
+    reading(CAPITAL_READING.tokens);
   }
   if (hub.perps.length > 0) {
     md.push(`## Perp DEX tokens: P/F, P/S, FDV, float, open interest`);
@@ -320,6 +418,7 @@ export function capitalHubMarkdown(hub: CapitalHub): string {
       );
     });
     md.push("");
+    reading(CAPITAL_READING.perps);
   }
   md.push(`Sources: DeFiLlama (fees, revenue, TVL, DEX volume, stablecoins), L2Beat (value secured), CoinGecko (market data), Polymarket and Kalshi (open interest). Not measured: token unlock schedules, bridge volumes beyond what OpenChainBench reads itself.`);
   return md.join("\n");
