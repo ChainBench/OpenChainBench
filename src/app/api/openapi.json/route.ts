@@ -35,6 +35,19 @@ export async function GET() {
           },
         },
       },
+      "/api/capital": {
+        get: {
+          summary:
+            "The /capital hub in one payload: chains (TVL, bridged value, 7d vs the L2 median, stablecoin float and 30-day net flow, DEX volume), DeFi tokens by price to fees with the fees-up-token-down divergences, perp DEX tokens, and open interest per perp DEX and prediction market. Same rows as the page and its Markdown view; fields of a bench this deployment does not serve are absent. Cached 300 s.",
+          operationId: "get_capital_hub",
+          responses: {
+            "200": {
+              description: "OK",
+              content: { "application/json": { schema: { type: "object" } } },
+            },
+          },
+        },
+      },
       "/api/citable/{date}": {
         get: {
           summary:

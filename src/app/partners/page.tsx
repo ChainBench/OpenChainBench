@@ -167,6 +167,10 @@ export default function PartnersPage() {
           code={`GET https://kv.openchainbench.com/aggregate/chains/history.json`}
         />
         <Example
+          label="Capital hub, one payload (chains, tokens, perp DEXes, open interest, divergences; the rows /capital renders, cached 5 minutes)"
+          code={`GET https://openchainbench.com/api/capital`}
+        />
+        <Example
           label="LLM-ready context dump (~80 KB markdown)"
           code={`GET https://openchainbench.com/api/llm-context`}
         />

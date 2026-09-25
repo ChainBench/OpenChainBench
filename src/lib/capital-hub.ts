@@ -39,6 +39,7 @@ import {
   type PerpRow,
   type ProtocolRow,
 } from "@/lib/capital-hub-types";
+import { cctpScope, change7dFromDays, change7dFromSeries, median7dPct, selectDivergences } from "@/lib/capital-hub-rules";
 
 export * from "@/lib/capital-hub-types";
 
@@ -51,6 +52,26 @@ function num(v: unknown): number | null {
 
 function panel(b: Benchmark | undefined, id: string, slug: string): number | null {
   return num(b?.metricPanels?.find((p) => p.id === id)?.values[slug]);
+}
+
+/** Name of the gauge behind a panel: `protocol_tvl_usd{}` and `protocol_tvl_usd` both read protocol_tvl_usd. */
+function gaugeOf(metric: string): string {
+  return metric.split("{")[0].trim();
+}
+
+/**
+ * A panel found by the gauge it reads rather than by id, for the columns
+ * whose spec entry another harness round adds (bench 274's TVL, revenue,
+ * P/S and supply change): whichever id the spec chooses, the hub reads
+ * the value once the panel exists, and null before.
+ */
+function panelByGauge(b: Benchmark | undefined, gauge: string, slug: string): number | null {
+  return num(b?.metricPanels?.find((p) => gaugeOf(p.metric) === gauge)?.values[slug]);
+}
+
+/** A panel's 7d series for one provider, by id. */
+function panelSeries7d(b: Benchmark | undefined, id: string, slug: string): (number | null)[] | undefined {
+  return b?.metricPanels?.find((p) => p.id === id)?.seriesByProvider7d?.[slug];
 }
 
 /** Ranked, live rows with a finite headline value. */
@@ -113,14 +134,19 @@ function field(pt: Record<string, unknown> | null, name: string): number | null 
 }
 
 async function buildHub(): Promise<CapitalHub> {
-  const [bridgedL, stablesL, protocolsL, perpsL, pmL, cctpL, chainsHist, valHist] = await Promise.all([
+  // A dev-only bench stays off the production hub entirely (no column, no chip to a 404).
+  const cctpServed = !isDevOnlyBench(CAPITAL_BENCHES.usdcCorridor);
+  // Bench 280 (chain fees and revenue) is dev-only until its audit round:
+  // its series stay off the hub on deployments that do not serve the bench.
+  const feesServed = !isDevOnlyBench(CAPITAL_BENCHES.chainFees);
+  const [bridgedL, stablesL, protocolsL, perpsL, pmL, cctpL, feesL, chainsHist, valHist] = await Promise.all([
     loadLive(CAPITAL_BENCHES.bridgedTvl),
     loadLive(CAPITAL_BENCHES.stableFlow),
     loadLive(CAPITAL_BENCHES.protocolPf),
     loadLive(CAPITAL_BENCHES.perpPf),
     loadLive(CAPITAL_BENCHES.pmOi),
-    // A dev-only bench stays off the production hub entirely (no column, no chip to a 404).
-    isDevOnlyBench(CAPITAL_BENCHES.usdcCorridor) ? Promise.resolve(NOT_SERVED) : loadLive(CAPITAL_BENCHES.usdcCorridor),
+    cctpServed ? loadLive(CAPITAL_BENCHES.usdcCorridor) : Promise.resolve(NOT_SERVED),
+    feesServed ? loadLive(CAPITAL_BENCHES.chainFees) : Promise.resolve(NOT_SERVED),
     getChainsHistory().catch(() => null),
     getValuationHistory().catch(() => null),
   ]);
@@ -131,6 +157,7 @@ async function buildHub(): Promise<CapitalHub> {
   const perpsB = perpsL.bench;
   const pmB = pmL.bench;
   const cctp = cctpL.bench;
+  const feesB = feesL.bench;
   const entry = (slug: string, l: Loaded, fallbackTitle: string) => ({
     slug,
     title: l.bench?.title ?? fallbackTitle,
@@ -143,10 +170,11 @@ async function buildHub(): Promise<CapitalHub> {
     entry(CAPITAL_BENCHES.protocolPf, protocolsL, "Protocol price to fees"),
     entry(CAPITAL_BENCHES.perpPf, perpsL, "Perp DEX price to fees"),
     entry(CAPITAL_BENCHES.pmOi, pmL, "Prediction market open interest"),
-    ...(isDevOnlyBench(CAPITAL_BENCHES.usdcCorridor) ? [] : [entry(CAPITAL_BENCHES.usdcCorridor, cctpL, "USDC corridor flows over CCTP")]),
+    ...(cctpServed ? [entry(CAPITAL_BENCHES.usdcCorridor, cctpL, "USDC corridor flows over CCTP")] : []),
+    ...(feesServed ? [entry(CAPITAL_BENCHES.chainFees, feesL, "Chain fees and revenue")] : []),
   ];
 
-  const asOfMs = [bridged, stables, protocolsB, perpsB, pmB, cctp]
+  const asOfMs = [bridged, stables, protocolsB, perpsB, pmB, cctp, feesB]
     .map((b) => (b?.lastRunAt ? Date.parse(b.lastRunAt) : NaN))
     .filter((t) => Number.isFinite(t));
   const asOf = asOfMs.length > 0 ? new Date(Math.max(...asOfMs)).toISOString() : null;
@@ -159,43 +187,62 @@ async function buildHub(): Promise<CapitalHub> {
   for (const r of stables?.results ?? []) chainSlugs.add(r.slug);
   const bridgedMembers = members(bridged);
   const stablesMembers = members(stables);
+  const feesMembers = members(feesB);
+  // Bench 281's provider list is the set of chains scanned as CCTP sources.
+  const cctpScanned = members(cctp);
   for (const c of chainEntities.keys()) chainSlugs.add(c);
   const bridgedBy = new Map(liveRows(bridged).map((r) => [r.slug, r]));
   const stablesBy = new Map(liveRows(stables).map((r) => [r.slug, r]));
   const cctpBy = new Map(liveRows(cctp).map((r) => [r.slug, r]));
 
-  // Bench 280 (chain fees and revenue) is dev-only until its audit round:
-  // its series stay off the hub on deployments that do not serve the bench.
-  const feesServed = !isDevOnlyBench("chain-fees-revenue");
   const rawChains = [...chainSlugs].map((slug) => {
     const pt = freshPoint(chainEntities.get(slug), chainsHist?.generatedAt);
     const br = bridgedBy.get(slug);
     const st = stablesBy.get(slug);
+    // Membership is known only when the bench loaded; otherwise n/a, never a dash.
+    const inStablesCohort = stables ? stablesMembers.has(slug) : true;
+    const inFeesCohort = feesB ? feesMembers.has(slug) : true;
+    const change7dPct = panel(bridged, "change_7d", slug);
+    const excess7dPct = panel(bridged, "excess_7d", slug);
+    // The blob's series for the two bench-ranked columns, kept apart from
+    // the ranked value: shown muted for a chain outside the cohort, never
+    // ranked, counted or crowned (leaders, FAQ, inflow bar and badge read
+    // the ranked field only).
+    const blobNet30d = field(pt, "stables_net_30d");
+    const blobFees30d = feesServed ? field(pt, "fees_30d") : null;
+    const blobRevenue30d = feesServed ? field(pt, "revenue_30d") : null;
     const row: Omit<ChainRow, "hasChainPage"> = {
       slug,
       name: CHAIN_NAME.get(slug) ?? br?.name ?? st?.name ?? slug,
       tvl: field(pt, "tvl"),
-      // Membership is known only when the bench loaded; otherwise n/a, never a dash.
       inBridgedCohort: bridged ? bridgedMembers.has(slug) : true,
-      inStablesCohort: stables ? stablesMembers.has(slug) : true,
+      inStablesCohort,
+      inFeesCohort,
       bridgedTvl: br ? num(br.ms.p50) : null,
       bridgedSharePct: panel(bridged, "bridged_share", slug),
-      change7dPct: panel(bridged, "change_7d", slug),
-      excess7dPct: panel(bridged, "excess_7d", slug),
+      change7dPct,
+      excess7dPct,
+      median7dPct: median7dPct(change7dPct, excess7dPct),
       stablesFloat: panel(stables, "float_usd", slug) ?? field(pt, "stables_mcap"),
       // Net flow only from bench 275's ranked rows: the blob carries every
       // registry chain, and a chain outside the $100M cohort (or a cohort
       // row the bench withholds) must not be ranked, counted or crowned.
       stablesNet30d: st ? num(st.ms.p50) : null,
+      stablesNet30dOutside: inStablesCohort ? null : blobNet30d,
       stablesChange30dPct: panel(stables, "change_30d", slug),
       stablesNet7d: panel(stables, "net_7d", slug),
+      // Scope is meaningful only where the bench is served; off it the
+      // column is absent and the field is stripped from the JSON.
+      cctpScope: cctpScope(slug, cctpScanned),
       cctpNet7d: cctpBy.has(slug) ? num(cctpBy.get(slug)!.ms.p50) : null,
       cctpIn7d: panel(cctp, "inflow_7d", slug),
       cctpOut7d: panel(cctp, "outflow_7d", slug),
       dexVolume24h: field(pt, "dex_volume_24h"),
       nativeMcap: field(pt, "native_mcap"),
-      fees30d: feesServed ? field(pt, "fees_30d") : null,
-      revenue30d: feesServed ? field(pt, "revenue_30d") : null,
+      fees30d: inFeesCohort ? blobFees30d : null,
+      revenue30d: inFeesCohort ? blobRevenue30d : null,
+      fees30dOutside: inFeesCohort ? null : blobFees30d,
+      revenue30dOutside: inFeesCohort ? null : blobRevenue30d,
     };
     return row;
   });
@@ -220,6 +267,8 @@ async function buildHub(): Promise<CapitalHub> {
     .sort((a, b) => b.usd - a.usd);
 
   // ---- open interest ----------------------------------------------------
+  // Prediction markets carry no daily history blob: the 7d change reads the
+  // bench's own 7d series of the headline when it covers the window.
   const pmOi: OiRow[] = liveRows(pmB)
     .map((r) => ({
       slug: r.slug,
@@ -227,12 +276,23 @@ async function buildHub(): Promise<CapitalHub> {
       oi: r.ms.p50,
       volume24h: panel(pmB, "volume_24h", r.slug),
       turnover: panel(pmB, "turnover", r.slug),
+      change7dPct: change7dFromSeries(pmB?.extras?.series7d?.[r.slug]),
     }))
     .filter((r) => r.oi > 0)
     .sort((a, b) => b.oi - a.oi);
 
+  // Perp DEX open interest: the valuation blob's daily `oi` gives the 7d
+  // change once it holds the older day; the panel's 7d series before that.
+  const valPerps = new Map((valHist?.perps ?? []).map((p) => [p.slug, p]));
   const perpOi: OiRow[] = (perpsB?.results ?? [])
-    .map((r) => ({ slug: r.slug, name: r.name, oi: panel(perpsB, "oi", r.slug) ?? 0, volume24h: null, turnover: null }))
+    .map((r) => ({
+      slug: r.slug,
+      name: r.name,
+      oi: panel(perpsB, "oi", r.slug) ?? 0,
+      volume24h: null,
+      turnover: null,
+      change7dPct: change7dFromDays(valPerps.get(r.slug)?.days ?? [], "oi") ?? change7dFromSeries(panelSeries7d(perpsB, "oi", r.slug)),
+    }))
     .filter((r) => r.oi > 0)
     .sort((a, b) => b.oi - a.oi);
 
@@ -242,6 +302,10 @@ async function buildHub(): Promise<CapitalHub> {
     .map((r) => {
       const pf = num(r.ms.p50);
       const pfVsCategory = panel(protocolsB, "pf_vs_category", r.slug);
+      // The four columns the protocol-valuation harness adds next: the
+      // bench panel when the spec carries it, the blob field otherwise,
+      // null (and a hidden column) before either exists.
+      const vpt = freshPoint(valProtocols.get(r.slug), valHist?.generatedAt);
       const base: Omit<ProtocolRow, "hasProductPage" | "signal"> = {
         slug: r.slug,
         name: r.name,
@@ -254,6 +318,10 @@ async function buildHub(): Promise<CapitalHub> {
         pfVsCategory,
         categoryMedianPf: pf != null && pfVsCategory != null && pfVsCategory > 0 ? pf / pfVsCategory : null,
         fees30d: panel(protocolsB, "fees_30d", r.slug),
+        tvl: panelByGauge(protocolsB, "protocol_tvl_usd", r.slug) ?? field(vpt, "tvl"),
+        revenue30d: panelByGauge(protocolsB, "protocol_revenue_30d_usd", r.slug) ?? field(vpt, "rev_30d"),
+        ps: panelByGauge(protocolsB, "protocol_ps_ratio", r.slug) ?? field(vpt, "ps"),
+        supplyChange30dPct: panelByGauge(protocolsB, "protocol_supply_change_30d_pct", r.slug) ?? field(vpt, "supply_change_30d_pct"),
       };
       // Same three clauses as the harness's protocol_diverging, plus the
       // mirror image, so the screen is symmetric and never a one-way tip.
@@ -302,6 +370,7 @@ async function buildHub(): Promise<CapitalHub> {
     perpOi,
     pmOi,
     protocols,
+    divergences: selectDivergences(protocols),
     perps,
     leaders: {
       bridgedTvl: [...chains].filter((c) => c.bridgedTvl != null).sort((a, b) => (b.bridgedTvl ?? 0) - (a.bridgedTvl ?? 0))[0] ?? null,
