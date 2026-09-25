@@ -17,8 +17,18 @@ const PV = `event = '$pageview' AND ${HOST_FILTER}`;
 // The site's custom events (src/lib/analytics.ts): outbound_click, copy, search.
 const CUSTOM = `event IN ('outbound_click', 'copy', 'search') AND ${HOST_FILTER}`;
 const PL = `event = '$pageleave' AND ${HOST_FILTER}`;
+// Server-side reads the browser never renders (src/lib/analytics-server.ts,
+// 2026-09-24): the Markdown views, /api/stat and /api/citable. Markdown is
+// one event per read; stat and citable sit behind an edge cache and count
+// cache fills, which the dashboard says next to the figures.
+const SERVER_READS = `event IN ('markdown_read', 'stat_read', 'citable_read') AND ${HOST_FILTER}`;
+const SURFACES = `event IN ('$pageview', 'markdown_read', 'stat_read', 'citable_read') AND ${HOST_FILTER}`;
 
-export type DailyPoint = { day: string; pageviews: number; visitors: number; sessions: number };
+export type DailyPoint = { day: string; pageviews: number; visitors: number; sessions: number; ai: number; search: number };
+/** One cohort week, and how many of it came back n weeks later. */
+export type RetentionRow = { cohort: string; week: number; visitors: number };
+/** How many visitors were active on exactly `days` distinct days. */
+export type FrequencyRow = { days: number; visitors: number };
 export type WeeklyPoint = { week: string; visitors: number; ai: number; search: number; pageviews: number };
 export type PageRow = { path: string; section: Section; visitors: number; prevVisitors: number; pageviews: number };
 export type ReferrerRow = { domain: string; channel: Channel; visitors: number; prevVisitors: number; pageviews: number };
@@ -33,6 +43,12 @@ export type EngagedRow = { section: Section; leaves: number; medianSec: number; 
 export type EngagedPageRow = { path: string; section: Section; leaves: number; medianSec: number };
 export type NotFoundRow = { path: string; hits: number; visitors: number; topReferrer: string };
 export type NoResultRow = { query: string; count: number };
+/** One day of reads per surface: HTML pageviews and the three server-side read events. */
+export type SurfacePoint = { day: string; pageviews: number; markdown: number; stat: number; citable: number };
+export type EndpointRow = { event: string; path: string; reads: number; prevReads: number; agents: number; families: string[] };
+export type FamilyRow = { event: string; family: string; reads: number };
+export type AudienceDay = { day: string; visitors: number; newVisitors: number; returningVisitors: number; sessions: number; pageviews: number };
+export type BounceDay = { day: string; sessions: number; bounced: number };
 
 export type Traffic = {
   daily: DailyPoint[];
@@ -43,7 +59,20 @@ export type Traffic = {
   countries: NamedCount[];
   devices: NamedCount[];
   utm: { source: string; medium: string; visitors: number }[];
-  audience: { newVisitors: number; returningVisitors: number };
+  /** GA4 definitions over the 7-day window: active = any pageview in the
+   *  window; new = first pageview ever inside the window; returning = active
+   *  and seen on an earlier day than their last one (a visitor can be both
+   *  new and returning in the same week, as in GA4). Measurable from the
+   *  second day of history, unlike "first seen before the window". */
+  audience: { activeVisitors: number; newVisitors: number; returningVisitors: number };
+  /** Daily audience series over the trailing 90 days: uniques, new, returning, sessions, pageviews. */
+  audienceDaily: AudienceDay[];
+  /** Daily sessions and single-pageview sessions, for the bounce rate over time. */
+  bounceDaily: BounceDay[];
+  /** Daily reads per surface over the trailing 90 days (or since the first event). */
+  surfaces: SurfacePoint[];
+  endpoints: EndpointRow[];
+  families: FamilyRow[];
   totals: {
     visitors: number;
     prevVisitors: number;
@@ -67,11 +96,15 @@ export type Traffic = {
   engagedPages: EngagedPageRow[];
   notFound: NotFoundRow[];
   noResults: NoResultRow[];
+  retention: RetentionRow[];
+  frequency: FrequencyRow[];
 };
 
 export const QUERIES = {
   daily: () => `
-    SELECT toDate(timestamp) AS day, count() AS pageviews, uniq(distinct_id) AS visitors, uniq(properties.$session_id) AS sessions
+    SELECT toDate(timestamp) AS day, count() AS pageviews, uniq(distinct_id) AS visitors, uniq(properties.$session_id) AS sessions,
+           uniqIf(distinct_id, ${referrerPredicate("ai")}) AS ai,
+           uniqIf(distinct_id, ${referrerPredicate("search")}) AS search
     FROM events
     WHERE ${PV} AND timestamp >= toStartOfDay(now() - INTERVAL 27 DAY)
     GROUP BY day ORDER BY day`,
@@ -130,12 +163,50 @@ export const QUERIES = {
            uniqIf(distinct_id, timestamp < now() - INTERVAL 7 DAY AND ${referrerPredicate("search")}) AS prev_search_visitors
     FROM events WHERE ${PV} AND timestamp >= now() - INTERVAL 14 DAY`,
   audience: () => `
-    SELECT countIf(first_seen >= now() - INTERVAL 7 DAY) AS new_visitors,
-           countIf(first_seen < now() - INTERVAL 7 DAY) AS returning_visitors
+    SELECT count() AS active_visitors,
+           countIf(first_seen >= now() - INTERVAL 7 DAY) AS new_visitors,
+           countIf(toDate(first_seen) < toDate(last_seen)) AS returning_visitors
     FROM (
       SELECT distinct_id, min(timestamp) AS first_seen, max(timestamp) AS last_seen
       FROM events WHERE ${PV} GROUP BY distinct_id
     ) WHERE last_seen >= now() - INTERVAL 7 DAY`,
+  audienceDaily: () => `
+    SELECT day, uniq(distinct_id) AS visitors,
+           uniqIf(distinct_id, first_day = day) AS new_visitors,
+           uniqIf(distinct_id, first_day < day) AS returning_visitors,
+           uniq(s) AS sessions, count() AS pageviews
+    FROM (
+      SELECT toDate(e.timestamp) AS day, e.distinct_id AS distinct_id, e.properties.$session_id AS s, f.first_day AS first_day
+      FROM events e
+      INNER JOIN (SELECT distinct_id, min(toDate(timestamp)) AS first_day FROM events WHERE ${PV} GROUP BY distinct_id) f ON e.distinct_id = f.distinct_id
+      WHERE e.event = '$pageview' AND e.properties.$host = '${SITE_HOST}' AND e.timestamp >= toStartOfDay(now() - INTERVAL 89 DAY)
+    ) GROUP BY day ORDER BY day`,
+  bounceDaily: () => `
+    SELECT day, count() AS sessions, countIf(n = 1) AS bounced FROM (
+      SELECT toDate(min(timestamp)) AS day, properties.$session_id AS s, count() AS n
+      FROM events WHERE ${PV} AND timestamp >= toStartOfDay(now() - INTERVAL 89 DAY) AND s IS NOT NULL GROUP BY s
+    ) GROUP BY day ORDER BY day`,
+  surfaces: () => `
+    SELECT toDate(timestamp) AS day,
+           countIf(event = '$pageview') AS pageviews,
+           countIf(event = 'markdown_read') AS markdown,
+           countIf(event = 'stat_read') AS stat,
+           countIf(event = 'citable_read') AS citable
+    FROM events
+    WHERE ${SURFACES} AND timestamp >= toStartOfDay(now() - INTERVAL 89 DAY)
+    GROUP BY day ORDER BY day`,
+  endpoints: () => `
+    SELECT event, properties.path AS path,
+           countIf(timestamp >= now() - INTERVAL 7 DAY) AS reads,
+           countIf(timestamp < now() - INTERVAL 7 DAY) AS prev_reads,
+           uniqIf(distinct_id, timestamp >= now() - INTERVAL 7 DAY) AS agents,
+           topK(3)(properties.ua_family) AS families
+    FROM events WHERE ${SERVER_READS} AND timestamp >= now() - INTERVAL 14 DAY
+    GROUP BY event, path ORDER BY greatest(reads, prev_reads) DESC LIMIT 80`,
+  families: () => `
+    SELECT event, properties.ua_family AS family, count() AS reads
+    FROM events WHERE ${SERVER_READS} AND timestamp >= now() - INTERVAL 7 DAY
+    GROUP BY event, family ORDER BY reads DESC LIMIT 60`,
   engagement: () => `
     SELECT avg(n) AS pages_per_session, countIf(n = 1) / count() AS bounce_rate, count() AS sessions FROM (
       SELECT properties.$session_id AS s, count() AS n
@@ -182,6 +253,31 @@ export const QUERIES = {
     SELECT lower(properties.query) AS q, count() AS n
     FROM events WHERE event = 'search_no_result' AND ${HOST_FILTER} AND timestamp >= now() - INTERVAL 7 DAY AND q != ''
     GROUP BY q ORDER BY n DESC LIMIT 40`,
+  // Weekly cohorts. The inner query is deliberately unbounded in time so
+  // a visitor's cohort is the week they were first seen ever, not the
+  // first week of the window: bound it and everyone already active looks
+  // like a new arrival and week 0 is inflated. groupUniqArray collapses
+  // each visitor to the distinct weeks they appeared in before the
+  // arrayJoin fans them back out, so this stays one pass grouped by
+  // visitor rather than a self-join over events.
+  retention: () => `
+    SELECT cohort, dateDiff('week', cohort, wk) AS n, uniq(distinct_id) AS visitors
+    FROM (
+      SELECT distinct_id,
+             toStartOfWeek(min(timestamp), 1) AS cohort,
+             arrayJoin(groupUniqArray(toStartOfWeek(timestamp, 1))) AS wk
+      FROM events WHERE ${PV} GROUP BY distinct_id
+    )
+    WHERE cohort >= toStartOfWeek(now() - INTERVAL 76 DAY, 1) AND wk >= cohort
+    GROUP BY cohort, n ORDER BY cohort, n`,
+  // Retention says whether they came back; this says how often. Distinct
+  // active days per visitor over 28 days, as a distribution.
+  frequency: () => `
+    SELECT days, count() AS visitors FROM (
+      SELECT distinct_id, uniq(toDate(timestamp)) AS days
+      FROM events WHERE ${PV} AND timestamp >= now() - INTERVAL 28 DAY
+      GROUP BY distinct_id
+    ) GROUP BY days ORDER BY days LIMIT 40`,
 } as const;
 
 export type TrafficSection = keyof typeof QUERIES;
@@ -192,7 +288,16 @@ export async function loadTrafficSection(section: TrafficSection): Promise<Parti
   const rows = await queryHogQL(section, QUERIES[section]());
   switch (section) {
     case "daily":
-      return { daily: rows.map((r) => ({ day: str(r[0]).slice(0, 10), pageviews: num(r[1]), visitors: num(r[2]), sessions: num(r[3]) })) };
+      return {
+        daily: rows.map((r) => ({
+          day: str(r[0]).slice(0, 10),
+          pageviews: num(r[1]),
+          visitors: num(r[2]),
+          sessions: num(r[3]),
+          ai: num(r[4]),
+          search: num(r[5]),
+        })),
+      };
     case "weekly":
       return { weekly: rows.map((r) => ({ week: str(r[0]).slice(0, 10), visitors: num(r[1]), ai: num(r[2]), search: num(r[3]), pageviews: num(r[4]) })) };
     case "pages":
@@ -226,8 +331,33 @@ export async function loadTrafficSection(section: TrafficSection): Promise<Parti
           prevSearchVisitors: num(rows[0]?.[9]),
         },
       };
+    case "retention":
+      return { retention: rows.map((r) => ({ cohort: str(r[0]).slice(0, 10), week: num(r[1]), visitors: num(r[2]) })) };
+    case "frequency":
+      return { frequency: rows.map((r) => ({ days: num(r[0]), visitors: num(r[1]) })) };
     case "audience":
-      return { audience: { newVisitors: num(rows[0]?.[0]), returningVisitors: num(rows[0]?.[1]) } };
+      return { audience: { activeVisitors: num(rows[0]?.[0]), newVisitors: num(rows[0]?.[1]), returningVisitors: num(rows[0]?.[2]) } };
+    case "audienceDaily":
+      return {
+        audienceDaily: rows.map((r) => ({ day: str(r[0]).slice(0, 10), visitors: num(r[1]), newVisitors: num(r[2]), returningVisitors: num(r[3]), sessions: num(r[4]), pageviews: num(r[5]) })),
+      };
+    case "bounceDaily":
+      return { bounceDaily: rows.map((r) => ({ day: str(r[0]).slice(0, 10), sessions: num(r[1]), bounced: num(r[2]) })) };
+    case "surfaces":
+      return { surfaces: rows.map((r) => ({ day: str(r[0]).slice(0, 10), pageviews: num(r[1]), markdown: num(r[2]), stat: num(r[3]), citable: num(r[4]) })) };
+    case "endpoints":
+      return {
+        endpoints: rows.map((r) => ({
+          event: str(r[0]),
+          path: str(r[1]) || "/",
+          reads: num(r[2]),
+          prevReads: num(r[3]),
+          agents: num(r[4]),
+          families: (Array.isArray(r[5]) ? r[5] : [r[5]]).map((f) => str(f)).filter(Boolean),
+        })),
+      };
+    case "families":
+      return { families: rows.map((r) => ({ event: str(r[0]), family: str(r[1]) || "unknown", reads: num(r[2]) })) };
     case "actions":
       return { actions: rows.map((r) => ({ name: str(r[0]), count: num(r[1]), prevCount: num(r[2]), visitors: num(r[3]) })) };
     case "outbound":

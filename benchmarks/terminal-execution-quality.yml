@@ -1,0 +1,353 @@
+# OpenChainBench. Bench 279
+
+slug: terminal-execution-quality
+number: "279"
+title: "Trading terminal execution quality 2026: what a swap costs once the app's own fee is removed"
+seo_title: "Terminal execution quality 2026: Axiom vs GMGN vs FOMO, app fee removed"
+seo_description: "{{best_name}} executes best at a median {{best_p50}} lost per swap once its own fee is removed, from real swaps read on-chain across {{count}} trading apps. What is left is network, pool and protocol cost: how well the app routes, not what it charges."
+subtitle: Value lost per swap with the app's own fee removed, on every trading terminal, wallet app and Telegram bot we read on-chain. The fee is a published price. What is left, priority fee and tips, the pool's LP fee and price impact, launchpad and router cuts, is the app's routing. Subtracted on each swap before any median is taken. Rolling 24 hours.
+
+category: Trading
+status: live
+metric: Execution loss
+unit: bp
+higher_is_better: false
+
+disclaimer: |
+  Same sample, window and reference as bench 268; read that page for how a swap is priced. Here each swap's loss has the terminal's fee subtracted before the median is taken. Subtracting the two published medians gives a different number wherever an app's fee varies across its own swaps, which is why this is measured, not derived. A swap reads negative when a fee was rebated or the reference drifted the user's way; those stay in. Compare medians with their intervals, never single swaps.
+
+seo_intro: |
+  An app's fee is the one cost it publishes. Everything else about a swap is
+  its own doing and appears nowhere in the fee schedule: which pool the trade
+  is routed to, how much priority fee and inclusion tip the app attaches,
+  whether it goes through a launchpad curve that keeps 1 % or a pool that does
+  not, how much price impact the size causes. This benchmark takes
+  the swaps of bench 268, removes each app's fee from each swap, and ranks
+  what is left. It answers a different question from the headline bench: not
+  "what does this cost me", but "how well does this app actually execute".
+  The two rankings are not the same. An app charging the highest fee in the
+  cohort can route better than one charging nothing.
+
+abstract: |
+  Bench 268 reads real user swaps on Solana and five EVM chains for the
+  trading terminals, wallet apps and Telegram bots in the cohort, and values
+  what the user received against the pool's own state before the trade. Loss
+  is the shortfall in basis points of the trade, and it decomposes per swap
+  into the terminal's fee, the network cost (priority fee, inclusion tips,
+  token-account rent), the pool's LP fee and price impact, and the protocol
+  cuts (launchpad curves, routers). This bench publishes the same quantity
+  with the terminal component removed, subtracted on each individual swap
+  before the median is computed: median(loss) minus median(fee) is a
+  different statistic and differs materially where an app's fee is not
+  constant across its swaps. Network, pool and protocol costs stay inside,
+  because routing through a launchpad curve rather than a migrated pool, or
+  attaching a larger tip, is a choice the app makes on the user's behalf.
+  Same rolling 24 hour window, same publication floors, same flow weighting
+  across a product's chains, medians with a bootstrap interval and p90.
+
+methodology:
+  - "The measurement is bench 268's, with one subtraction. Every detail of sampling, user attribution, quote handling, pool identity, reference price and loss bounds is that bench's; see its methodology. Nothing is re-read from chain and no additional RPC is spent."
+  - "Execution loss = loss − terminal fee, computed on each swap, then the median over the window. The subtraction happens before the quantile, never after: median(loss) − median(terminal) is a different number: on 2026-09-25 it sat within a basis point on most rows and 58 bps away on FOMO, whose fee differs between its Solana and its Relay legs. The gap moves with the cohort, so read it from the two columns rather than from this figure."
+  - "What is removed is the terminal's own cut: what reached its fee wallets on Solana, the router's residual after the pool and the gas on the EVM rows, the app fee on Relay legs. Referral and cashback legs count as terminal fee where the terminal's list holds them."
+  - "What stays in: network (transaction fee the user paid, inclusion tips including the terminal's own relay, the deposit of token accounts the swap creates), pool (the final pool's LP fee and price impact) and protocol (launchpad and curve fees, router cuts, referral payouts). Each is a consequence of how the app routed the trade, not of what it charges for doing so."
+  - "A swap whose fee exceeded its loss reads negative: a rebated fee, or a reference that moved in the user's favour between the previous trade and this one. Those swaps are kept: removing them would trim the left tail and push every median up."
+  - "Publication and ranking follow bench 268 exactly: same floors, same health and ranked flags, same per-chain pooling weighted by flow. A product present on one board is present on the other, so the two can be read side by side without a row appearing in only one of them."
+  - "The two rankings differ: on the cohort measured at publication, 7 of 13 rows changed place once the fee came out, FOMO moving three places up. Read this board with the 95 % interval under each median. As on bench 268, most adjacent pairs are not separated by the measurement."
+
+findings:
+  - "Removing the app fee is not a constant shift. Nine of the cohort's products charge close to 1 % and two do not, so the subtraction reorders the board rather than translating it."
+  - "FOMO charges the highest fee in the cohort and routes among the best: fifth on total cost, second on execution alone."
+  - "pump.fun's own app charges nothing, so its two figures are identical. It is the only row where total cost and execution quality are the same number."
+
+faq:
+  - q: "Why is this a separate bench and not a column on bench 268?"
+    a: "They answer different questions and a reader usually wants one or the other. Bench 268 is what a swap costs you, which is what you pay and includes the fee. This one is how well the app executes, which is what you would compare if you were choosing between apps whose fees you already know. The underlying swaps are identical and both boards publish the same rows under the same rules."
+  - q: "Why not just subtract the fee column from the loss column yourself?"
+    a: "Because that gives the wrong number. The median of a difference is not the difference of the medians unless the fee is identical on every swap, which is false for any app running promotions, tiered fees or rebates. On 2026-09-25 the naive subtraction sat within a basis point on most rows and 58 bps out on FOMO, which charges 2 % on Solana and about 0.5 % through Relay. The size of the gap follows how much an app's fee varies across its own swaps, so it moves with the cohort."
+  - q: "Should the protocol fee count as execution quality?"
+    a: "It stays in, because routing a trade through a launchpad curve that keeps 1 % rather than a migrated pool that does not is a decision the app makes. It is not a fee the app collects, but it is a cost the app chose for the user. The terminal, network, pool and protocol components are each published separately on bench 268 if you want to draw the line elsewhere."
+  - q: "Is a negative figure a bug?"
+    a: "No. It means the fee taken was larger than the total shortfall on that swap: a rebated or sponsored fee, or a reference price that drifted in the user's favour between the previous trade and this one. These are real swaps and stay in the sample; excluding them would bias every median upward."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/terminal-fill-quality
+
+prometheus:
+  window: 24h
+  freshness_metric: tfq_health
+  expected_freshness_seconds: 900
+  probe_ok: time() - tfq_last_refresh_unix < 900
+
+panel_main_description: "Median value lost per swap with the terminal's own fee removed, subtracted on each swap before the median. Network, pool and protocol costs stay inside: this is how the app routes, not what it charges. Rolling 24 h of sampled user swaps."
+
+metric_panels:
+  - id: total_loss
+    label: Cost per swap, all in
+    label_key: terminal
+    metric: tfq_loss_bps{chain="all",stat="median",bucket="all"}
+    unit: bp
+    higher_is_better: false
+    description: "The same swaps with the app's fee still inside: bench 268's headline, for comparison."
+  - id: terminal_fee
+    label: App fee
+    label_key: terminal
+    metric: tfq_component_bps{component="terminal",chain="all",bucket="all"}
+    unit: bp
+    higher_is_better: false
+    description: "Median share of the trade the terminal took: this is the quantity removed to get the execution loss. Shown here as a median per row; the subtraction itself happens on each swap."
+  - id: network
+    label: Network
+    label_key: terminal
+    metric: tfq_component_bps{component="network",chain="all",bucket="all"}
+    unit: bp
+    higher_is_better: false
+    description: "Transaction fee paid by the user, inclusion tips (Jito and the terminal's own relay) and the deposit of the token accounts the swap creates. Stays inside execution quality: the tip is the app's choice."
+  - id: pool
+    label: Pool
+    label_key: terminal
+    metric: tfq_component_bps{component="pool",chain="all",bucket="all"}
+    unit: bp
+    higher_is_better: false
+    description: "The final pool's LP fee and price impact. The core of routing quality."
+  - id: other
+    label: Protocol fees
+    label_key: terminal
+    metric: tfq_component_bps{component="other",chain="all",bucket="all"}
+    unit: bp
+    higher_is_better: false
+    tab: false
+    description: "Launchpad and curve fees, router cuts and referral payouts. Stays inside: which venue a trade is routed to is the app's decision."
+  - id: trade_usd
+    label: Median swap
+    label_key: terminal
+    metric: tfq_trade_usd{chain="all",stat="median",bucket="all"}
+    unit: usd
+    higher_is_better: false
+    tab: false
+    description: "Median sampled trade size in USD."
+  - id: priced
+    label: Swaps sampled
+    label_key: terminal
+    metric: tfq_sample_size{chain="all",kind="priced",bucket="all"}
+    unit: count
+    higher_is_better: true
+    tab: false
+    description: "Priced swaps in the rolling window."
+
+ledger_reliability: false
+ledger_columns:
+  - { label: "Execution loss", slot: p50 }
+  - { label: "All in", panel: total_loss }
+  - { label: "App fee", panel: terminal_fee }
+  - { label: "Median swap", panel: trade_usd }
+  - { label: "Network", panel: network }
+  - { label: "Pool", panel: pool }
+  - { label: "Protocol fees", panel: other }
+
+dimensions:
+  chain:
+    - { value: all,       label: All chains }
+    - { value: solana,    label: Solana }
+    - { value: bnb,       label: BNB Chain }
+    - { value: robinhood, label: Robinhood Chain }
+    - { value: base,      label: Base }
+    - { value: ethereum,  label: Ethereum }
+    - { value: arc,       label: Arc }
+    - { value: hyperevm,  label: HyperEVM }
+
+providers:
+  - slug: axiom
+    name: Axiom
+    tag: "Terminal, Solana + BNB + Robinhood Chain"
+    formula: "Solana: random sample of the swaps paying Axiom's fee wallets. BNB, Robinhood Chain: swaps routed through its own contracts. All valued at the pool's state before the trade; loss in bps of the trade, median over 24 h."
+    queries:
+      p50: tfq_loss_ex_fee_bps{terminal="axiom",chain="all",stat="median",bucket="all"}
+      p90: tfq_loss_ex_fee_bps{terminal="axiom",chain="all",stat="p90",bucket="all"}
+      p99: tfq_loss_ex_fee_bps{terminal="axiom",chain="all",stat="p99",bucket="all"}
+      success: tfq_health{terminal="axiom",chain="all",bucket="all"}
+      ranked: tfq_ranked{terminal="axiom",chain="all",bucket="all"}
+      sample_size: tfq_sample_size{terminal="axiom",chain="all",kind="priced",bucket="all"}
+      series: tfq_loss_ex_fee_bps{terminal="axiom",chain="all",stat="median",bucket="all"}
+
+  - slug: gmgn
+    name: GMGN
+    tag: "Terminal, Solana + BNB + Robinhood Chain + Ethereum + Base + Arc + HyperEVM"
+    formula: "Solana: random sample of the swaps paying GMGN's fee wallets. EVM (BNB, Robinhood Chain, Ethereum, Base, Arc, HyperEVM): swaps routed through its own routers. All valued at the pool's state before the trade; loss in bps, median over 24 h."
+    queries:
+      p50: tfq_loss_ex_fee_bps{terminal="gmgn",chain="all",stat="median",bucket="all"}
+      p90: tfq_loss_ex_fee_bps{terminal="gmgn",chain="all",stat="p90",bucket="all"}
+      p99: tfq_loss_ex_fee_bps{terminal="gmgn",chain="all",stat="p99",bucket="all"}
+      success: tfq_health{terminal="gmgn",chain="all",bucket="all"}
+      ranked: tfq_ranked{terminal="gmgn",chain="all",bucket="all"}
+      sample_size: tfq_sample_size{terminal="gmgn",chain="all",kind="priced",bucket="all"}
+      series: tfq_loss_ex_fee_bps{terminal="gmgn",chain="all",stat="median",bucket="all"}
+
+  - slug: fomo
+    name: FOMO
+    tag: "Terminal, Solana + Robinhood Chain + BNB + Base + Ethereum + Arc, gas sponsored"
+    formula: "Solana: random sample of the swaps paying FOMO's USDC fee wallet. Other chains: its trades executed through Relay (SOL in, tokens delivered there). Valued at the pool's state before the trade; loss in bps, median over 24 h."
+    queries:
+      p50: tfq_loss_ex_fee_bps{terminal="fomo",chain="all",stat="median",bucket="all"}
+      p90: tfq_loss_ex_fee_bps{terminal="fomo",chain="all",stat="p90",bucket="all"}
+      p99: tfq_loss_ex_fee_bps{terminal="fomo",chain="all",stat="p99",bucket="all"}
+      success: tfq_health{terminal="fomo",chain="all",bucket="all"}
+      ranked: tfq_ranked{terminal="fomo",chain="all",bucket="all"}
+      sample_size: tfq_sample_size{terminal="fomo",chain="all",kind="priced",bucket="all"}
+      series: tfq_loss_ex_fee_bps{terminal="fomo",chain="all",stat="median",bucket="all"}
+
+  - slug: phantom
+    name: Phantom
+    tag: "Wallet, Solana + Robinhood Chain + Ethereum + Base + Arc"
+    formula: "Solana: random sample of the swaps paying Phantom's in-wallet fee (0.85 %). Other chains: its swaps through Relay (CASH, SOL or USDC in, tokens delivered there, 85 bps app fee). Valued at the pool's state before the trade; median over 24 h."
+    queries:
+      p50: tfq_loss_ex_fee_bps{terminal="phantom",chain="all",stat="median",bucket="all"}
+      p90: tfq_loss_ex_fee_bps{terminal="phantom",chain="all",stat="p90",bucket="all"}
+      p99: tfq_loss_ex_fee_bps{terminal="phantom",chain="all",stat="p99",bucket="all"}
+      success: tfq_health{terminal="phantom",chain="all",bucket="all"}
+      ranked: tfq_ranked{terminal="phantom",chain="all",bucket="all"}
+      sample_size: tfq_sample_size{terminal="phantom",chain="all",kind="priced",bucket="all"}
+      series: tfq_loss_ex_fee_bps{terminal="phantom",chain="all",stat="median",bucket="all"}
+
+  - slug: photon
+    name: Photon
+    tag: "Terminal, Solana"
+    formula: "Random sample of the swaps paying Photon's fee wallet, valued at the pool's state before the trade; loss in bps of the trade, median over the rolling 24 h."
+    queries:
+      p50: tfq_loss_ex_fee_bps{terminal="photon",chain="all",stat="median",bucket="all"}
+      p90: tfq_loss_ex_fee_bps{terminal="photon",chain="all",stat="p90",bucket="all"}
+      p99: tfq_loss_ex_fee_bps{terminal="photon",chain="all",stat="p99",bucket="all"}
+      success: tfq_health{terminal="photon",chain="all",bucket="all"}
+      ranked: tfq_ranked{terminal="photon",chain="all",bucket="all"}
+      sample_size: tfq_sample_size{terminal="photon",chain="all",kind="priced",bucket="all"}
+      series: tfq_loss_ex_fee_bps{terminal="photon",chain="all",stat="median",bucket="all"}
+
+  - slug: trojan
+    name: Trojan
+    tag: "Telegram bot, Solana"
+    formula: "Random sample of the swaps paying Trojan's 6 fee wallets, valued at the pool's state before the trade; loss in bps of the trade, median over the rolling 24 h."
+    queries:
+      p50: tfq_loss_ex_fee_bps{terminal="trojan",chain="all",stat="median",bucket="all"}
+      p90: tfq_loss_ex_fee_bps{terminal="trojan",chain="all",stat="p90",bucket="all"}
+      p99: tfq_loss_ex_fee_bps{terminal="trojan",chain="all",stat="p99",bucket="all"}
+      success: tfq_health{terminal="trojan",chain="all",bucket="all"}
+      ranked: tfq_ranked{terminal="trojan",chain="all",bucket="all"}
+      sample_size: tfq_sample_size{terminal="trojan",chain="all",kind="priced",bucket="all"}
+      series: tfq_loss_ex_fee_bps{terminal="trojan",chain="all",stat="median",bucket="all"}
+
+  - slug: bloom
+    name: Bloom
+    tag: "Telegram bot, Solana + Robinhood Chain + BNB + Arc"
+    formula: "Solana: random sample of the swaps paying Bloom's fee wallet. Robinhood Chain, BNB, Arc: swaps through its EVM router (one address on every chain), its 1 % kept inside. Valued at the pool's state before the trade; median over 24 h."
+    queries:
+      p50: tfq_loss_ex_fee_bps{terminal="bloom",chain="all",stat="median",bucket="all"}
+      p90: tfq_loss_ex_fee_bps{terminal="bloom",chain="all",stat="p90",bucket="all"}
+      p99: tfq_loss_ex_fee_bps{terminal="bloom",chain="all",stat="p99",bucket="all"}
+      success: tfq_health{terminal="bloom",chain="all",bucket="all"}
+      ranked: tfq_ranked{terminal="bloom",chain="all",bucket="all"}
+      sample_size: tfq_sample_size{terminal="bloom",chain="all",kind="priced",bucket="all"}
+      series: tfq_loss_ex_fee_bps{terminal="bloom",chain="all",stat="median",bucket="all"}
+
+  - slug: maestro
+    name: Maestro
+    tag: "Telegram bot, Solana + BNB + Ethereum + Base + Robinhood Chain + Arc + HyperEVM"
+    formula: "Solana: random sample of the swaps paying Maestro's fee wallet. EVM: swaps through its router (one address on every chain), its fee an internal transfer to its wallet. Valued at the pool's state before the trade; median over 24 h."
+    queries:
+      p50: tfq_loss_ex_fee_bps{terminal="maestro",chain="all",stat="median",bucket="all"}
+      p90: tfq_loss_ex_fee_bps{terminal="maestro",chain="all",stat="p90",bucket="all"}
+      p99: tfq_loss_ex_fee_bps{terminal="maestro",chain="all",stat="p99",bucket="all"}
+      success: tfq_health{terminal="maestro",chain="all",bucket="all"}
+      ranked: tfq_ranked{terminal="maestro",chain="all",bucket="all"}
+      sample_size: tfq_sample_size{terminal="maestro",chain="all",kind="priced",bucket="all"}
+      series: tfq_loss_ex_fee_bps{terminal="maestro",chain="all",stat="median",bucket="all"}
+
+  - slug: pepeboost
+    name: Pepeboost
+    tag: "Telegram bot, Solana"
+    formula: "Random sample of the swaps paying Pepeboost's fee wallet, valued at the pool's state before the trade; loss in bps of the trade, median over the rolling 24 h."
+    queries:
+      p50: tfq_loss_ex_fee_bps{terminal="pepeboost",chain="all",stat="median",bucket="all"}
+      p90: tfq_loss_ex_fee_bps{terminal="pepeboost",chain="all",stat="p90",bucket="all"}
+      p99: tfq_loss_ex_fee_bps{terminal="pepeboost",chain="all",stat="p99",bucket="all"}
+      success: tfq_health{terminal="pepeboost",chain="all",bucket="all"}
+      ranked: tfq_ranked{terminal="pepeboost",chain="all",bucket="all"}
+      sample_size: tfq_sample_size{terminal="pepeboost",chain="all",kind="priced",bucket="all"}
+      series: tfq_loss_ex_fee_bps{terminal="pepeboost",chain="all",stat="median",bucket="all"}
+
+  - slug: bonkbot
+    name: BONKbot
+    tag: "Telegram bot, Solana"
+    formula: "Random sample of the swaps paying BONKbot's fee wallet, valued at the pool's state before the trade; loss in bps of the trade, median over the rolling 24 h."
+    queries:
+      p50: tfq_loss_ex_fee_bps{terminal="bonkbot",chain="all",stat="median",bucket="all"}
+      p90: tfq_loss_ex_fee_bps{terminal="bonkbot",chain="all",stat="p90",bucket="all"}
+      p99: tfq_loss_ex_fee_bps{terminal="bonkbot",chain="all",stat="p99",bucket="all"}
+      success: tfq_health{terminal="bonkbot",chain="all",bucket="all"}
+      ranked: tfq_ranked{terminal="bonkbot",chain="all",bucket="all"}
+      sample_size: tfq_sample_size{terminal="bonkbot",chain="all",kind="priced",bucket="all"}
+      series: tfq_loss_ex_fee_bps{terminal="bonkbot",chain="all",stat="median",bucket="all"}
+
+  - slug: banana-gun
+    name: Banana Gun
+    tag: "Telegram bot, Solana + Ethereum"
+    formula: "Solana: swaps paying Banana Gun's fee wallet or its 1 % buy leg. Ethereum: swaps through its router (buys only, no fee: the row waits). Valued at the pool's state before the trade; loss in bps, median over 24 h."
+    queries:
+      p50: tfq_loss_ex_fee_bps{terminal="banana-gun",chain="all",stat="median",bucket="all"}
+      p90: tfq_loss_ex_fee_bps{terminal="banana-gun",chain="all",stat="p90",bucket="all"}
+      p99: tfq_loss_ex_fee_bps{terminal="banana-gun",chain="all",stat="p99",bucket="all"}
+      success: tfq_health{terminal="banana-gun",chain="all",bucket="all"}
+      ranked: tfq_ranked{terminal="banana-gun",chain="all",bucket="all"}
+      sample_size: tfq_sample_size{terminal="banana-gun",chain="all",kind="priced",bucket="all"}
+      series: tfq_loss_ex_fee_bps{terminal="banana-gun",chain="all",stat="median",bucket="all"}
+
+  # Product slug is "binance" (one product page for the exchange's RPC and
+  # its wallet); the harness label stays terminal="binance".
+  - slug: binance
+    name: Binance
+    tag: "Binance Wallet swap, BNB + Ethereum + Base"
+    formula: "Transactions sent to Binance Wallet's swap router (one address on BNB, Ethereum and Base) in a sample of blocks read in full, valued at the pool's state before the swap; loss in bps (gas inside), median over 24 h."
+    queries:
+      p50: tfq_loss_ex_fee_bps{terminal="binance",chain="all",stat="median",bucket="all"}
+      p90: tfq_loss_ex_fee_bps{terminal="binance",chain="all",stat="p90",bucket="all"}
+      p99: tfq_loss_ex_fee_bps{terminal="binance",chain="all",stat="p99",bucket="all"}
+      success: tfq_health{terminal="binance",chain="all",bucket="all"}
+      ranked: tfq_ranked{terminal="binance",chain="all",bucket="all"}
+      sample_size: tfq_sample_size{terminal="binance",chain="all",kind="priced",bucket="all"}
+      series: tfq_loss_ex_fee_bps{terminal="binance",chain="all",stat="median",bucket="all"}
+
+  - slug: basedbot
+    name: BasedBot
+    tag: "Telegram bot, Solana + Robinhood Chain + BNB + Base + Ethereum + Arc + HyperEVM"
+    formula: "Solana: swaps whose 1 % fee arrives in a separate transaction to BasedBot's wallet (the payer's previous transaction). EVM: the wallets on its Relay legs, on its router. Valued at the pool's state before the swap; median over 24 h."
+    queries:
+      p50: tfq_loss_ex_fee_bps{terminal="basedbot",chain="all",stat="median",bucket="all"}
+      p90: tfq_loss_ex_fee_bps{terminal="basedbot",chain="all",stat="p90",bucket="all"}
+      p99: tfq_loss_ex_fee_bps{terminal="basedbot",chain="all",stat="p99",bucket="all"}
+      success: tfq_health{terminal="basedbot",chain="all",bucket="all"}
+      ranked: tfq_ranked{terminal="basedbot",chain="all",bucket="all"}
+      sample_size: tfq_sample_size{terminal="basedbot",chain="all",kind="priced",bucket="all"}
+      series: tfq_loss_ex_fee_bps{terminal="basedbot",chain="all",stat="median",bucket="all"}
+
+  - slug: padre
+    name: Terminal
+    tag: "Terminal, Solana, formerly Padre"
+    formula: "Random sample of the swaps paying Terminal's protocol and cashback wallets (formerly Padre), valued at the pool's state before the trade; loss in bps of the trade, median over the rolling 24 h."
+    queries:
+      p50: tfq_loss_ex_fee_bps{terminal="padre",chain="all",stat="median",bucket="all"}
+      p90: tfq_loss_ex_fee_bps{terminal="padre",chain="all",stat="p90",bucket="all"}
+      p99: tfq_loss_ex_fee_bps{terminal="padre",chain="all",stat="p99",bucket="all"}
+      success: tfq_health{terminal="padre",chain="all",bucket="all"}
+      ranked: tfq_ranked{terminal="padre",chain="all",bucket="all"}
+      sample_size: tfq_sample_size{terminal="padre",chain="all",kind="priced",bucket="all"}
+      series: tfq_loss_ex_fee_bps{terminal="padre",chain="all",stat="median",bucket="all"}
+
+  - slug: pump-fun
+    name: pump.fun app
+    tag: "Terminal, Solana + Robinhood Chain + BNB + Arc (+ HyperEVM), gas sponsored on EVM"
+    formula: "Solana: random sample of the app's swaps (by its program; no app fee). Other chains: its trades through Relay (SOL in, tokens delivered there, 15 bps app fee). Valued at the pool's state before the trade; loss in bps, median over 24 h."
+    queries:
+      p50: tfq_loss_ex_fee_bps{terminal="pump-fun",chain="all",stat="median",bucket="all"}
+      p90: tfq_loss_ex_fee_bps{terminal="pump-fun",chain="all",stat="p90",bucket="all"}
+      p99: tfq_loss_ex_fee_bps{terminal="pump-fun",chain="all",stat="p99",bucket="all"}
+      success: tfq_health{terminal="pump-fun",chain="all",bucket="all"}
+      ranked: tfq_ranked{terminal="pump-fun",chain="all",bucket="all"}
+      sample_size: tfq_sample_size{terminal="pump-fun",chain="all",kind="priced",bucket="all"}
+      series: tfq_loss_ex_fee_bps{terminal="pump-fun",chain="all",stat="median",bucket="all"}

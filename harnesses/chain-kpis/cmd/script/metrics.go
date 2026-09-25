@@ -151,6 +151,87 @@ var (
 		},
 	)
 
+	// DefiLlama fees overview ───────────────────────────────────────
+	// What users paid on the chain and what the chain (or its protocols)
+	// kept, per DefiLlama's per-chain fees adapters, over windows ending
+	// on DefiLlama's last complete UTC day. Hourly.
+	chainFees24hUsd = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "chain_fees_24h_usd",
+			Help: "Fees paid on this chain over DefiLlama's last complete UTC day, in USD: gas plus the fees of every DefiLlama-tracked protocol on the chain. Source: DefiLlama /overview/fees/<chain> dailyFees.",
+		},
+		[]string{"chain"},
+	)
+	chainFees7dUsd = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "chain_fees_7d_usd",
+			Help: "Fees paid on this chain over the trailing 7 complete UTC days, in USD. Source: DefiLlama /overview/fees/<chain> dailyFees.",
+		},
+		[]string{"chain"},
+	)
+	chainFees30dUsd = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "chain_fees_30d_usd",
+			Help: "Fees paid on this chain over the trailing 30 complete UTC days, in USD. Source: DefiLlama /overview/fees/<chain> dailyFees.",
+		},
+		[]string{"chain"},
+	)
+	chainRevenue24hUsd = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "chain_revenue_24h_usd",
+			Help: "Revenue kept by the chain and its protocols over DefiLlama's last complete UTC day, in USD (fees minus what is passed to LPs, stakers and users). Source: DefiLlama /overview/fees/<chain> dailyRevenue.",
+		},
+		[]string{"chain"},
+	)
+	chainRevenue7dUsd = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "chain_revenue_7d_usd",
+			Help: "Revenue kept on this chain over the trailing 7 complete UTC days, in USD. Source: DefiLlama /overview/fees/<chain> dailyRevenue.",
+		},
+		[]string{"chain"},
+	)
+	chainRevenue30dUsd = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "chain_revenue_30d_usd",
+			Help: "Revenue kept on this chain over the trailing 30 complete UTC days, in USD. Source: DefiLlama /overview/fees/<chain> dailyRevenue.",
+		},
+		[]string{"chain"},
+	)
+	chainRevenueSharePct = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "chain_revenue_share_pct",
+			Help: "30-day revenue over 30-day fees, in percent: how much of what users paid the chain and its protocols kept.",
+		},
+		[]string{"chain"},
+	)
+	chainTokenMcapUsd = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "chain_token_mcap_usd",
+			Help: "Circulating market cap in USD of the chain's own token per DefiLlama's chain to gecko_id mapping (Ethereum ETH, Arbitrum ARB, Hyperliquid HYPE), from CoinGecko. Absent for chains with no token of their own (Base, Robinhood Chain, Unichain).",
+		},
+		[]string{"chain"},
+	)
+	chainTokenPfRatio = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "chain_token_pf_ratio",
+			Help: "chain_token_mcap_usd over annualized chain fees (30-day fees x 365/30). Published only when both exist; lower means the market pays less per dollar of fees.",
+		},
+		[]string{"chain"},
+	)
+	chainTokenPsRatio = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "chain_token_ps_ratio",
+			Help: "chain_token_mcap_usd over annualized chain revenue (30-day revenue x 365/30). Published only when both exist and revenue is positive.",
+		},
+		[]string{"chain"},
+	)
+	chainFeesLastSuccessUnix = prometheus.NewGauge(
+		prometheus.GaugeOpts{
+			Name: "chain_fees_last_success_unix",
+			Help: "Unix timestamp of the last fees poll that published at least one chain. The figures themselves move once a day, on DefiLlama's day close.",
+		},
+	)
+
 	// Mobula-sourced ────────────────────────────────────────────────
 	chainNativePriceUsd = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
@@ -227,6 +308,10 @@ func init() {
 		chainTvsCohortMedian7dPct, chainTvsCohortSize,
 		chainTvsCohortUnderReview, chainTvsCohortLayer3,
 		chainKpisL2BeatLastSuccessUnix, chainKpisL2BeatSyncedUntilUnix,
+		chainFees24hUsd, chainFees7dUsd, chainFees30dUsd,
+		chainRevenue24hUsd, chainRevenue7dUsd, chainRevenue30dUsd,
+		chainRevenueSharePct, chainTokenMcapUsd, chainTokenPfRatio, chainTokenPsRatio,
+		chainFeesLastSuccessUnix,
 		chainNativePriceUsd, chainNativeMcapUsd, chainMobulaTokensIndexed,
 		chainKpisHealth, chainKpisLastRefresh, chainKpisFetchLatencyMs, chainKpisFetchErrors,
 		chainKpisLastTickUnix,

@@ -42,3 +42,48 @@ func TestWeightedMedian(t *testing.T) {
 		t.Fatalf("empty input: got %v", got)
 	}
 }
+
+// Execution quality is loss minus the app's fee ON EACH SWAP, then the
+// median — not the median loss minus the median fee. The two agree only
+// when the fee is the same on every swap, which is what an app running
+// promos, rebates or tiered fees breaks. Measured live, the naive form
+// is off by 33 bps on FOMO, the row the subtraction moves furthest.
+func TestExecutionQualitySubtractsPerSwap(t *testing.T) {
+	// Three unequal groups, so the two forms cannot coincide: the middle
+	// group pays a fee, the cheap and the expensive ones do not, and the
+	// fee's own median (0) describes none of the swaps that pay it.
+	var loss, fee []float64
+	for i := 0; i < 7; i++ {
+		loss = append(loss, 200)
+		fee = append(fee, 0)
+	}
+	for i := 0; i < 7; i++ {
+		loss = append(loss, 400)
+		fee = append(fee, 350)
+	}
+	for i := 0; i < 7; i++ {
+		loss = append(loss, 1000)
+		fee = append(fee, 0)
+	}
+	var ex, w []float64
+	for i := range loss {
+		ex = append(ex, loss[i]-fee[i])
+		w = append(w, 1)
+	}
+
+	got := wquantiles(ex, w, false, false)
+	if got == nil {
+		t.Fatal("no quantiles for the ex-fee series")
+	}
+	naive := wquantiles(loss, w, false, false).Median - wquantiles(fee, w, false, false).Median
+
+	if math.Abs(got.Median-200) > 1 {
+		t.Fatalf("per-swap median should be 200, got %.0f", got.Median)
+	}
+	if math.Abs(naive-400) > 1 {
+		t.Fatalf("the naive form should be 400 here, got %.0f — the cohort no longer separates the two", naive)
+	}
+	if math.Abs(got.Median-naive) < 100 {
+		t.Fatalf("the two forms landed together (%.0f vs %.0f): the test proves nothing", got.Median, naive)
+	}
+}

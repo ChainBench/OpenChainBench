@@ -73,7 +73,19 @@ function valueSides(s: Record<string, unknown>): { valueInUsd?: number; valueOut
   const tokens = num(s.tokens);
   const ref = num(s.ref_price);
   const q = num(s.quote_usd);
-  if (userQ === undefined || q === undefined || q <= 0) return {};
+  if (userQ === undefined || q === undefined || q <= 0) {
+    // The per-leg amounts left the row when it was cut to halve the
+    // payload, so both columns rendered a dash. They are recoverable
+    // exactly: loss is 1 - received / given, and the trade base is the
+    // given side on either direction, which is what the header says.
+    // Deriving them keeps the two columns consistent with the published
+    // loss by construction.
+    const trade = num(s.trade_usd);
+    const loss = num(s.loss_bps);
+    if (trade === undefined || trade <= 0) return {};
+    if (loss === undefined) return { valueInUsd: trade };
+    return { valueInUsd: trade, valueOutUsd: trade * (1 - loss / 1e4) };
+  }
   const quoteUsd = Math.abs(userQ) * q;
   const tokenUsd = tokens !== undefined && ref !== undefined && ref > 0 ? tokens * ref * q : undefined;
   // A sale on an EVM chain pays its gas apart from the tokens: the base the harness uses is tokens at the reference plus that gas.
@@ -85,6 +97,16 @@ function valueSides(s: Record<string, unknown>): { valueInUsd?: number; valueOut
 export type FillSample = {
   sig: string;
   terminal: string;
+  /** The pooled row this swap rolls up to, when that is not the terminal
+   *  itself. Binance's row is the product; its swaps carry
+   *  binance-wallet-base / -ethereum, so without this the row's own audit
+   *  table matched none of its transactions. */
+  product?: string;
+  /** What this row stands for, in attempts. A terminal's rows split its
+   *  flow between them, so the summary can weight them the way the
+   *  published median does instead of counting each row once. Without
+   *  it the two medians on this page disagreed by 25% on pump.fun. */
+  w?: number;
   time: number;
   side: "buy" | "sell";
   quote: string;
@@ -228,6 +250,8 @@ function parse(raw: unknown): TerminalFills | null {
       recent.push({
         sig: s.sig,
         terminal: s.terminal,
+        ...(typeof s.product === "string" && s.product ? { product: s.product } : {}),
+        ...(num(s.w) !== undefined ? { w: num(s.w) } : {}),
         time: num(s.time) ?? 0,
         side: s.side === "sell" ? "sell" : "buy",
         quote: typeof s.quote === "string" ? s.quote : "SOL",

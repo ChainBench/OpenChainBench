@@ -47,6 +47,14 @@ const (
 	topicV3Swap   = "0xc42079f94a6350d7e6235f29174924f928cc2ac818eb64fed8004e115fbcca67"
 	topicPcsV3    = "0x19b47279256b2a23a1665c810c8d55a1758940ee09377d4f8d26497a3577dc83"
 	topicV4Swap   = "0x40e9cecb9f5f1f1c5b9c97dec2917b7ee92e57ba5563708daca94dd84ad7112f"
+	// PoolManager ERC-6909 Transfer(caller, from indexed, to indexed,
+	// id indexed, amount): how a v4 hook takes its cut without moving
+	// an ERC20. Four topics, two words of data.
+	topicV4Claim  = "0x1b3d7edb2e9c0b0e7c525b20aaaef0f5940d2ed71663c7d39266ecafac728859"
+	// A hook that logs its own fee rather than minting a claim. Read off
+	// chain on an Axiom sale where it took exactly 1.000 % of the swap:
+	// two topics, three data words, the amount in word 1 (word 0 is 0).
+	topicV4HookFee = "0xc532c43b3423e14ef72748f1c8291238829ca0af8ba9b67975ad1483485a4b4d"
 )
 
 type evmLog struct {
@@ -106,6 +114,62 @@ func evmCall(ctx context.Context, httpc *http.Client, urls []string, method stri
 		return json.Unmarshal(env.Result, out)
 	}
 	return last
+}
+
+// hookClaimUSD: what a v4 hook kept as ERC-6909 claim tokens inside the
+// PoolManager, in USD.
+//
+// A hook may settle its fee as a balance delta and mint itself a claim
+// instead of transferring an ERC20. Nothing leaves the manager, so
+// delivered() finds no second recipient to attribute and the cut falls
+// through to the residual, which on the EVM rows is the app's own fee.
+//
+// Diagnosed on Base against Binance, whose real rate is 50 bps: the claim
+// is present on 8 of the 9 rows that read 149 to 155 bps, absent on all
+// 11 that read 50, and worth exactly 1.00 % of the swap on six of them.
+//
+// Counted only when it is a mint (from the zero address, so a claim
+// changing hands is not a cost), in a recognised quote asset (a claim in
+// the traded token is the route's own), and not to the recipient we are
+// pricing for (a router holding a claim as an accounting step is not a
+// pool cost). The claim's id is the currency: v4 stores
+// uint256(uint160(currency)), so the low 160 bits are the token.
+func hookClaimUSD(ctx context.Context, httpc *http.Client, c originChain, logs []evmLog, gas map[string]float64, skip string) float64 {
+	const zero = "0x0000000000000000000000000000000000000000"
+	total := 0.0
+	skip = strings.ToLower(skip)
+	for i := range logs {
+		l := &logs[i]
+		if len(l.Topics) != 4 || l.Topics[0] != topicV4Claim {
+			continue
+		}
+		if topicAddr(l.Topics[1]) != zero {
+			continue
+		}
+		if to := topicAddr(l.Topics[2]); to == skip || to == zero {
+			continue
+		}
+		erc := topicAddr(l.Topics[3])
+		m := erc20(ctx, httpc, c, erc)
+		u, ok := quoteUSD(m.symbol, c, gas)
+		if !m.ok || !ok {
+			continue // a claim in the traded token, not in the quote
+		}
+		total += f(word(l.Data, 1)) * math.Pow10(-m.dec) * u
+	}
+	// The same hook, logging its fee instead of minting a claim. The
+	// amount is in the pool's own currency, the gas coin on the rows this
+	// was found on, so it values like any native leg.
+	if p, ok := gas[c.gas]; ok && p > 0 {
+		for i := range logs {
+			l := &logs[i]
+			if len(l.Topics) == 0 || l.Topics[0] != topicV4HookFee || len(l.Data) < 2+3*64 {
+				continue
+			}
+			total += f(word(l.Data, 1)) / 1e18 * p
+		}
+	}
+	return total
 }
 
 // redactURL replaces a full endpoint URL inside an error message (Go's
@@ -245,6 +309,22 @@ const (
 	arcUSDC   = "0x3600000000000000000000000000000000000000"
 	arcPseudo = "0xfffffffffffffffffffffffffffffffffffffffe"
 )
+
+// nativeMirrors: contracts that log a chain's NATIVE value as an ERC20
+// Transfer. Their logs describe money tx.value already accounts for, so
+// anything summing both counts it twice. Arc's gas coin is USDC, so every
+// native send there appears three times: the value, the 6-decimal token
+// and the 18-decimal pseudo-token.
+var nativeMirrors = map[string]map[string]bool{
+	"arc": set(arcUSDC, arcPseudo),
+}
+
+// isNativeMirror reports whether a log's emitter is that chain's mirror of
+// the native coin.
+func isNativeMirror(chain, erc string) bool {
+	m, ok := nativeMirrors[chain]
+	return ok && m[strings.ToLower(erc)]
+}
 
 // nativeV4Quote: a v4 pool holds the gas coin itself, so a swap against
 // ETH logs no ERC20 transfer for the quote leg. When no ERC20 flow of the
@@ -616,6 +696,13 @@ func priceEvmSettlement(ctx context.Context, httpc *http.Client, c originChain, 
 	var hopCost float64
 	out.NativeUSD, hopCost = nativeRateFor(ctx, httpc, c, rc.Logs, evs, gas, upr, out.BlockNum)
 	out.PoolInUSD += hopCost
+	// A v4 hook paid in claim tokens: money the pool kept that never
+	// reached the route, so a pool cost. Without this it lands in the
+	// residual and is published as the app's fee.
+	if hk := hookClaimUSD(ctx, httpc, c, rc.Logs, gas, recipient); hk > 0 {
+		out.PoolInUSD += hk
+		out.HookUSD += hk
+	}
 	// The main pool's price before our swap, raw quote per raw token.
 	var midRaw float64
 	switch main.ev.kind {
@@ -973,6 +1060,14 @@ func priceEvmOriginSale(ctx context.Context, httpc *http.Client, c originChain, 
 		}
 		out.PoolInUSD += f(q) * u // here: the quote the pools paid out to the route, USD
 		out.HookUSD += f(hook) * u
+	}
+	// The same hook, taking its cut as a claim rather than a transfer. On
+	// a sale PoolInUSD is what the pools paid OUT, so a cut the hook kept
+	// never left: subtracting it leaves the route with what it actually
+	// received and the fee residual stops carrying the pool's 1 %.
+	if hk := hookClaimUSD(ctx, httpc, c, rc.Logs, gas, user); hk > 0 && out.PoolInUSD > hk {
+		out.PoolInUSD -= hk
+		out.HookUSD += hk
 	}
 	// A sale paid out in the gas coin: the native leg at the hop pool's mid
 	// before the hop; the hop's own cost comes off what the pools paid.

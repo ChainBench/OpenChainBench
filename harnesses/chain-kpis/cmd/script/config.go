@@ -37,6 +37,11 @@ type Config struct {
 	// comparing two different instants.
 	L2BeatRefreshInterval time.Duration
 
+	// Chain fees tick. Two requests per DefiLlama-mapped chain, and the
+	// figures move once a day on DefiLlama's day close, so hourly is
+	// plenty: 38 chains x 2 = 76 requests an hour.
+	ChainFeesRefreshInterval time.Duration
+
 	// Size floor for the cohort the 7-day median is taken over. The median
 	// is a yardstick, and a yardstick that lets $2M chains vote moves on
 	// one airdrop. $200M keeps the cohort to chains whose weekly move is
@@ -50,7 +55,13 @@ func loadConfig() *Config {
 		DefillamaRefreshInterval: 15 * time.Minute,
 		MobulaRefreshInterval:    5 * time.Minute,
 		L2BeatRefreshInterval:    15 * time.Minute,
+		ChainFeesRefreshInterval: 60 * time.Minute,
 		L2BeatMedianFloorUSD:     200e6,
+	}
+	if v := os.Getenv("CHAIN_FEES_REFRESH_MINUTES"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			c.ChainFeesRefreshInterval = time.Duration(n) * time.Minute
+		}
 	}
 
 	if v := os.Getenv("DEFILLAMA_REFRESH_MINUTES"); v != "" {
@@ -82,8 +93,8 @@ func loadConfig() *Config {
 		}
 	}
 
-	fmt.Printf("Config: chains=%d (%d with an L2Beat id), defillama_every=%v, mobula_every=%v, l2beat_every=%v, l2beat_floor=$%.0fM, mobula_key=%v\n",
+	fmt.Printf("Config: chains=%d (%d with an L2Beat id), defillama_every=%v, mobula_every=%v, l2beat_every=%v, fees_every=%v, l2beat_floor=$%.0fM, mobula_key=%v\n",
 		len(Registry), rollups, c.DefillamaRefreshInterval, c.MobulaRefreshInterval,
-		c.L2BeatRefreshInterval, c.L2BeatMedianFloorUSD/1e6, c.MobulaAPIKey != "")
+		c.L2BeatRefreshInterval, c.ChainFeesRefreshInterval, c.L2BeatMedianFloorUSD/1e6, c.MobulaAPIKey != "")
 	return c
 }

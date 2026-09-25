@@ -7,7 +7,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
  * line overlay, with a 30d / 90d / 1y range picker.
  *
  * Data-source routing:
- *   - 30d: live on-node harness `/daily-series` (in-memory 30-day ring,
+ *   - 30d: feed harness `/daily-series` (30-day ledger,
  *     includes real per-day unique-users counts).
  *   - 90d / 1y: hl-archive DuckDB via `/daily-history?days=N` (≈11
  *     months backfilled at the time of writing). The archive doesn't

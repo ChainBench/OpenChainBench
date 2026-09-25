@@ -6,11 +6,21 @@ describe("queries", () => {
     for (const name of TRAFFIC_SECTIONS) {
       const q = QUERIES[name]();
       expect(q).toContain("properties.$host = 'openchainbench.com'");
-      expect(/event (= '\$pageview'|= '\$pageleave'|= '\$web_vitals'|= '(outbound_click|search|copy|not_found|search_no_result)'|IN \('outbound_click', 'copy', 'search'\))/.test(q)).toBe(true);
+      expect(
+        /event (= '\$pageview'|= '\$pageleave'|= '\$web_vitals'|= '(outbound_click|search|copy|not_found|search_no_result)'|IN \('outbound_click', 'copy', 'search'\)|IN \('markdown_read', 'stat_read', 'citable_read'\)|IN \('\$pageview', 'markdown_read', 'stat_read', 'citable_read'\))/.test(q),
+      ).toBe(true);
     }
   });
   test("the refresh spends a bounded number of queries", () => {
     expect(TRAFFIC_SECTIONS.length).toBeLessThanOrEqual(24);
+  });
+  test("the surfaces series counts the four read events per day over 90 days", () => {
+    const q = QUERIES.surfaces();
+    for (const e of ["$pageview", "markdown_read", "stat_read", "citable_read"]) expect(q).toContain(`countIf(event = '${e}')`);
+    expect(q).toContain("INTERVAL 89 DAY");
+    expect(QUERIES.audience()).toContain("countIf(toDate(first_seen) < toDate(last_seen)) AS returning_visitors");
+    expect(QUERIES.audienceDaily()).toContain("uniqIf(distinct_id, first_day < day) AS returning_visitors");
+    expect(QUERIES.bounceDaily()).toContain("countIf(n = 1) AS bounced");
   });
   test("the weekly series and the totals embed the AI domain list", () => {
     expect(QUERIES.weekly()).toContain("'chatgpt.com'");
@@ -54,7 +64,7 @@ describe("aggregations", () => {
     expect(rows[1].section).toBe("compare");
   });
   test("sumWindow takes the last N days, with an offset", () => {
-    const daily = [1, 2, 3, 4].map((i) => ({ day: `2026-09-0${i}`, pageviews: i, visitors: i, sessions: i }));
+    const daily = [1, 2, 3, 4].map((i) => ({ day: `2026-09-0${i}`, pageviews: i, visitors: i, sessions: i, ai: 0, search: 0 }));
     expect(sumWindow(daily, 2).pageviews).toBe(7);
     expect(sumWindow(daily, 2, 2).pageviews).toBe(3);
   });

@@ -101,6 +101,16 @@ export const COMPARE_PAIRS: ComparePair[] = [
     providerB: "phantom-perps",
     publishedAt: "2026-06-17",
   },
+  // 36 of the site's 289 clicks over the 2026-06/09 Search Console window
+  // ('invo vs fomo' at position 1.6). Both sit on one daily-cut bench and
+  // a quiet day for either flipped the ad hoc page to noindex for an hour
+  // (Hyperliquid audit 2026-09-24); curated pairs skip that gate.
+  {
+    slug: "fomo-vs-invo",
+    providerA: "fomo",
+    providerB: "invo",
+    publishedAt: "2026-09-24",
+  },
   {
     slug: "base-vs-optimism",
     providerA: "base",

@@ -1,4 +1,3 @@
-import { isDevOnlyRoute } from "@/lib/removed-benches";
 import Link from "next/link";
 import { SiteLogo } from "@/components/site-logo";
 import { SITE } from "@/data/site";
@@ -24,34 +23,16 @@ export function SiteFooter() {
             </p>
           </div>
 
-          <FooterCol
-            title="Read"
-            links={[
-              { label: "Benchmarks", href: "/benchmarks" },
-              { label: "Reports", href: "/reports" },
-              { label: "Products", href: "/products" },
-              { label: "Chains", href: "/chains" },
-              { label: "Prediction markets", href: "/prediction-markets" },
-              { label: "RPC", href: "/rpc" },
-              ...(isDevOnlyRoute("/speedtest-rpc") ? [] : [{ label: "RPC Speed Test", href: "/speedtest-rpc" }]),
-              { label: "Data APIs", href: "/data-api" },
-              { label: "Perpetuals", href: "/perps" },
-              { label: "Tokenized RWA", href: "/rwa" },
-              { label: "Bridge", href: "/bridge" },
-              { label: "Compare", href: "/compare" },
-              { label: "Alternatives", href: "/alternatives" },
-              { label: "Answers", href: "/answers" },
-              { label: "Methodology", href: "/methodology" },
-              { label: "Team", href: "/team" },
-              { label: "Press kit", href: "/press" },
-            ]}
-          />
+          {/* The left rail lists every section, so the footer stops
+              repeating them: 19 of the 30 links here were duplicates,
+              the whole Read column among them. What stays is what the
+              rail has no place for. The rail is server-rendered on every
+              page, so no internal link was lost by cutting these. */}
           <FooterCol
             title="Developers"
             links={[
               { label: "Partners + embeds", href: "/partners" },
               { label: "Badges catalog", href: "/badges" },
-              { label: "MCP server", href: "/mcp" },
               { label: "OpenAPI spec", href: "/api/openapi.json" },
               { label: "JSON citation", href: "/api/citable" },
               { label: "LLM context", href: "/api/llm-context" },
@@ -59,14 +40,12 @@ export function SiteFooter() {
             ]}
           />
           <FooterCol
-            title="Contribute"
+            title="Project"
             links={[
-              { label: "Tutorial", href: "/contribute" },
-              { label: "GitHub", href: "https://github.com/ChainBench/OpenChainBench" },
+              { label: "Team", href: "/team" },
+              { label: "Press kit", href: "/press" },
               { label: "Open an issue", href: "https://github.com/ChainBench/OpenChainBench/issues/new" },
-              { label: "@OpenChainBench", href: "https://x.com/OpenChainBench" },
               { label: "Email", href: `mailto:${SITE.email}` },
-              { label: "About", href: "/about" },
             ]}
           />
         </div>

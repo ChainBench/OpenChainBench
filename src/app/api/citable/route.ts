@@ -1,9 +1,11 @@
+import { captureServer } from "@/lib/analytics-server";
 import { NextResponse } from "next/server";
 import { getBenchmarks } from "@/data/benchmarks";
 import { SITE } from "@/data/site";
 import { AllBenchmarksDraftError } from "@/lib/spec";
 import { citableAsOf, citeBundle, cohortSummaries, fieldValue, leader, leaders, headlineSentence } from "@/lib/citation";
 import { valueInDeclaredUnit } from "@/lib/format";
+import { answerOneLine, loadRenderedAnswers } from "@/lib/answers-rendered";
 import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
 import { stripQueryRedirect } from "@/lib/canonical-query";
 
@@ -40,6 +42,11 @@ export async function GET(req: Request) {
   if (canonical) return canonical;
   const r = rateLimit(clientKey(req, "citable"), 60, 60, req);
   if (!r.ok) return tooManyRequests(r.retryAfterSec);
+  // After the canonical redirect and the limiter: a 308 is not a read, and
+  // a query-rotating client must meet the limiter before it can queue
+  // events. The document sits behind a one-hour edge cache, so this counts
+  // cache fills, not every read (review 2026-09-24).
+  captureServer(req, "citable_read", { path: "/api/citable" });
 
   let benches;
   try {
@@ -118,11 +125,30 @@ export async function GET(req: Request) {
     };
   });
 
+  // The question pages, joined to the benchmark rows above by `benchmark`. This endpoint
+  // is documented as the first one an agent crawls, and it published only the measurements:
+  // an agent looking for "which bridge is cheapest" had to infer the question from a metric
+  // name. `answer` is the same rendered sentence the page shows, pending-data guard included,
+  // so an answer whose bench has no leader says so rather than naming a fabricated winner.
+  const answerRows = (await loadRenderedAnswers()).map((a) => ({
+    slug: a.slug,
+    question: a.question,
+    answer: answerOneLine(a),
+    benchmark: a.benchmark,
+    ...(a.chain ? { chain: a.chain } : {}),
+    url: a.url,
+    benchmarkUrl: `${SITE.url}/benchmarks/${a.benchmark}`,
+    license: "CC-BY-4.0",
+  }));
+
   return NextResponse.json(
     {
       site: { name: SITE.name, url: SITE.url, license: "CC-BY-4.0" },
+      // `count` stays the benchmark count for consumers that predate the answers block.
       count: data.length,
       benchmarks: data,
+      answerCount: answerRows.length,
+      answers: answerRows,
     },
     {
       headers: {

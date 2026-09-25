@@ -12,6 +12,49 @@ import "strings"
 //	   WSOL / program-account rent, loss bounds, 60 s reference cap.
 const methodVersion = 3
 
+// Evidence published behind the board, per row rather than overall.
+//
+// 15 per row covers the 56 ranked rows with room to spare and keeps the
+// payload near 1.1 MB (the global 400-swap tail it replaces was 0.66 MB
+// and left 89% of rows with fewer than 20 transactions to show). The
+// total is a ceiling for the payload, not a target.
+const (
+	// Every row gets the floor, and what is left over is split in
+	// proportion to flow. Equal shares per row read fine on a
+	// single-chain row and wrong on a pooled one, whose median weights
+	// its members by flow: pump.fun's Solana leg carried 55% of the flow
+	// and 12% of the table, so the table sat above the figure it was
+	// meant to support.
+	//
+	// No per-row ceiling: one existed and it re-created the very bug,
+	// because a ceiling that binds on the dominant row flattens it back
+	// toward everyone else. The floor is the coverage guarantee and the
+	// total is the payload guard; a row that is most of the flow is
+	// supposed to be most of the sample.
+	// 6 could not represent a median of 38, let alone one of 112: a row
+	// cut to its floor read 1719 against a published 646 on nine rows.
+	// The total comes down to pay for it — fills.json sits at 1.53 MB
+	// against a 2 MB cache ceiling, so the floor is funded out of the
+	// budget rather than added on top of it.
+	// PublicSwap dropped the fields nothing renders — pool identity, the
+	// payer, the mint, the per-leg quote amounts, the reference price —
+	// which roughly halves the bytes a row costs. That is what buys this
+	// budget, and the budget is what stops the floor and the flow
+	// weighting competing: every row the floor gives a quiet chain used
+	// to come off the chain carrying 95% of the flow.
+	// 3000, not 2400: the remainder loop was capped at three passes and
+	// returned only ~204 of the seats its clipping freed, so the old
+	// total was never reached anyway (1621 rows shipped). With the loop
+	// fixed the budget binds again, and the ceiling is what sets it.
+	// Measured on the live payload: 511 B a row and 0.25 MB of non-row
+	// JSON, so 3000 rows is ~1.78 MB against the 2 MB cache ceiling, with
+	// room for the window to grow. Full coverage of the 4309 swaps priced
+	// in a 24 h window would be ~2.45 MB and does not fit; it would need
+	// the row to shrink again, and shortening every key buys only 17%.
+	recentMinPerTerminal = 12
+	recentTotal          = 3000
+)
+
 // Terminal is one cohort member: the trading app or Telegram bot whose
 // swaps we sample. Wallets are the Solana accounts that receive the
 // terminal's fee on every routed swap (DeFiLlama's adapter lists and

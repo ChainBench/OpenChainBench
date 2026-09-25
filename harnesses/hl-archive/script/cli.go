@@ -297,6 +297,15 @@ func signalCtx() (context.Context, context.CancelFunc) {
 }
 
 // DayResult summarises one ProcessDay call.
+// ErrDayNotPublished means the CDN had files for fewer than
+// minPublishedBuilders builders on that day: the daily batch has not landed
+// (or has only started landing). Nothing is committed.
+var ErrDayNotPublished = errors.New("feed: day not published yet")
+
+// minPublishedBuilders is the quorum of builders with a file before a day
+// counts as published; the same floor the feed harness uses.
+const minPublishedBuilders = 5
+
 type DayResult struct {
 	Rows     int64
 	Builders int
@@ -320,10 +329,10 @@ func ProcessDay(ctx context.Context, store *Store, builders []Builder, day time.
 	jobs := make(chan job, workers*2)
 
 	var (
-		mu          sync.Mutex
-		rowsByAddr  = map[string][]AggRow{}
-		wg          sync.WaitGroup
-		dbPath      = envDefault("HL_ARCHIVE_DB_PATH", "/data/history.duckdb")
+		mu         sync.Mutex
+		rowsByAddr = map[string][]AggRow{}
+		wg         sync.WaitGroup
+		dbPath     = envDefault("HL_ARCHIVE_DB_PATH", "/data/history.duckdb")
 	)
 
 	for i := 0; i < workers; i++ {
@@ -385,6 +394,27 @@ func ProcessDay(ctx context.Context, store *Store, builders []Builder, day time.
 
 	if err := ctx.Err(); err != nil {
 		return DayResult{}, err
+	}
+
+	// The CDN publishes day D during the early hours of D+1 (observed
+	// 02:45 to 03:30 UTC) and answers 403 for a file that does not exist
+	// yet, exactly like a builder with no fills. When not one builder has
+	// a file the day is not published: committing it would record a
+	// zero-row day that the processed_days skip rule never revisits (the
+	// 2026-08/09 holes in the archive came from a 02:00 cron doing that).
+	withFile := 0
+	for _, rows := range rowsByAddr {
+		if rows != nil {
+			withFile++
+		}
+	}
+	if len(rowsByAddr) == 0 {
+		// Every fetch failed at transport level: nothing is known about the
+		// day, so committing would record an empty day nobody revisits.
+		return DayResult{}, fmt.Errorf("feed: every fetch failed for %s", dayStr)
+	}
+	if withFile < minPublishedBuilders {
+		return DayResult{}, ErrDayNotPublished
 	}
 
 	if err := store.CommitDay(ctx, day, source, rowsByAddr, time.Since(start)); err != nil {

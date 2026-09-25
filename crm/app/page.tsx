@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Shell } from "@/components/shell";
+import { Metric } from "@/components/metric";
 import { Bars, Delta, Empty, fmtInt, fmtPct, Kpi, Spark } from "@/components/ui";
 import { SECTION_LABEL } from "@/lib/channels";
 import { readSnapshot } from "@/lib/snapshot";
@@ -45,6 +46,11 @@ export default async function Overview({ searchParams }: { searchParams: Promise
   const lastFull = fullWeeks.at(-1) ?? null;
   const prevFull = fullWeeks.at(-2) ?? null;
   const sections = sectionTotals(t.pages ?? []);
+  // One series per headline card, from the same daily rows the chart
+  // below uses, so a card and the chart can never disagree.
+  const days = t.daily ?? [];
+  const series = (pick: (d: (typeof days)[number]) => number) =>
+    days.map((d) => ({ day: d.day, value: pick(d) }));
   const aiDomains = (t.referrers ?? []).filter((r) => r.channel === "ai" && (r.visitors > 0 || r.prevVisitors > 0)).slice(0, 12);
   const b = snap.benches;
   const h = snap.harness;
@@ -52,24 +58,46 @@ export default async function Overview({ searchParams }: { searchParams: Promise
   return (
     <Shell current="/" snapshot={snap} refreshFlag={sp.refresh}>
       <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Kpi label="Visitors, 7 d" value={fmtInt(totals?.visitors)} delta={totals && { now: totals.visitors, prev: totals.prevVisitors }} />
-        <Kpi label="Pageviews, 7 d" value={fmtInt(totals?.pageviews)} delta={totals && { now: totals.pageviews, prev: totals.prevPageviews }} />
-        <Kpi
+        <Metric
+          label="Visitors, 7 d"
+          value={fmtInt(totals?.visitors)}
+          delta={totals && { now: totals.visitors, prev: totals.prevVisitors }}
+          series={series((d) => d.visitors)}
+          unit="visitors"
+        />
+        <Metric
+          label="Pageviews, 7 d"
+          value={fmtInt(totals?.pageviews)}
+          delta={totals && { now: totals.pageviews, prev: totals.prevPageviews }}
+          series={series((d) => d.pageviews)}
+          unit="pageviews"
+        />
+        <Metric
           label="AI-referred visitors, 7 d"
           value={fmtInt(ai?.visitors)}
           delta={ai && { now: ai.visitors, prev: ai.prevVisitors }}
           sub={ai && totals?.visitors ? `${fmtPct(ai.visitors / totals.visitors, 1)} of visitors` : undefined}
+          series={series((d) => d.ai)}
+          unit="visitors"
         />
-        <Kpi
+        <Metric
           label="Search-referred visitors, 7 d"
           value={fmtInt(search?.visitors)}
           delta={search && { now: search.visitors, prev: search.prevVisitors }}
           sub={search && totals?.visitors ? `${fmtPct(search.visitors / totals.visitors, 1)} of visitors` : undefined}
+          series={series((d) => d.search)}
+          unit="visitors"
         />
       </section>
 
       <section className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Kpi label="Sessions, 7 d" value={fmtInt(totals?.sessions)} delta={totals && { now: totals.sessions, prev: totals.prevSessions }} />
+        <Metric
+          label="Sessions, 7 d"
+          value={fmtInt(totals?.sessions)}
+          delta={totals && { now: totals.sessions, prev: totals.prevSessions }}
+          series={series((d) => d.sessions)}
+          unit="sessions"
+        />
         <Kpi label="Pages per session" value={t.engagement ? t.engagement.pagesPerSession.toFixed(2) : "–"} sub={t.engagement ? `bounce ${fmtPct(t.engagement.bounceRate)}` : undefined} />
         <Kpi
           label="Live benches"

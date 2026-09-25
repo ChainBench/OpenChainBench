@@ -53,6 +53,9 @@ var (
 	gLoss = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "tfq_loss_bps", Help: "Value lost per swap vs the pool's pre-trade state, basis points of the trade (priced samples, rolling window); stat=median|p90|p99|ci_lo|ci_hi; bucket=all|under25|25to250|over250 (trade size in USD)",
 	}, []string{"terminal", "chain", "stat", "bucket"})
+	gLossExFee = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "tfq_loss_ex_fee_bps", Help: "Value lost per swap with the app's own fee removed, basis points of the trade: execution quality alone, network, pool and protocol costs still inside. Subtracted per swap, then the median, because median(loss) - median(fee) is a different statistic wherever an app's fee varies across its own swaps. stat=median|p90|p99|ci_lo|ci_hi",
+	}, []string{"terminal", "chain", "stat", "bucket"})
 	gComponent = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "tfq_component_bps", Help: "Cost component per swap, basis points of the trade: the median on a chain row; on All chains of a multi-chain product, each chain's median weighted by its flow; bucket=all, or a trade-size bucket as a plain median over its swaps",
 	}, []string{"terminal", "chain", "component", "bucket"})
@@ -100,6 +103,15 @@ var (
 	}, []string{"terminal", "chain", "bucket"})
 	gRefresh  = prometheus.NewGauge(prometheus.GaugeOpts{Name: "tfq_last_refresh_unix", Help: "Last successful tick"})
 	gFeed     = prometheus.NewGauge(prometheus.GaugeOpts{Name: "tfq_feed_up", Help: "1 when the WebSocket feed is connected and heard something in the last two minutes"})
+	// Per-chain health of the EVM log feed. This existed only inside the
+	// feed struct, so BNB's read nothing for days behind a green
+	// tfq_feed_up, which covers the Solana WebSocket alone.
+	gNativeUp = prometheus.NewGaugeVec(prometheus.GaugeOpts{Name: "tfq_native_feed_up", Help: "1 when the chain's eth_getLogs feed answered its last poll"}, []string{"chain"})
+	// How far behind the head each chain's cursor sits. A counter of
+	// skipped blocks cannot show a stuck feed (it re-counts the same gap
+	// every poll: BNB logged 250,834,117 skipped blocks in 24 h on a chain
+	// that makes about 115,000). A lag that stays flat at 630,000 can.
+	gNativeLag = prometheus.NewGaugeVec(prometheus.GaugeOpts{Name: "tfq_native_lag_blocks", Help: "Blocks between the chain's head and the log feed's cursor after the last poll"}, []string{"chain"})
 	gUnpriced = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "tfq_unpriced_share", Help: "Share of the window's drawn swaps that could not be valued at the pool's state (routes without a quote leg, undecoded venues); the published figure rests on the rest",
 	}, []string{"terminal", "chain"})
@@ -111,7 +123,7 @@ var (
 )
 
 func init() {
-	prometheus.MustRegister(gLoss, gComponent, gFail, gSamples, gTrade, gVenue, gBuy, gSandwich, gSandwichProfit, gLossSize, gLossChain, gHealth, gRanked, gFailCost, gFailOverhead, gLostUSD, gUnpriced, gRefresh, gFeed, gRelayFeed, gSol, cCalls, cErrors, cSkipped)
+	prometheus.MustRegister(gNativeUp, gNativeLag, gLoss, gLossExFee, gComponent, gFail, gSamples, gTrade, gVenue, gBuy, gSandwich, gSandwichProfit, gLossSize, gLossChain, gHealth, gRanked, gFailCost, gFailOverhead, gLostUSD, gUnpriced, gRefresh, gFeed, gRelayFeed, gSol, cCalls, cErrors, cSkipped)
 }
 
 func envInt(k string, def int) int {
@@ -187,6 +199,11 @@ type State struct {
 	Rejects     map[string]map[string]int   `json:"rejects"`                // terminal -> reason -> count (window not enforced; informative)
 	Cursors     map[string]*walletCursor    `json:"cursors"`                // wallet -> cursor (polling fallback)
 	EvmCursor   map[string]int64            `json:"evm_cursor,omitempty"`   // chain -> last block scanned for the native EVM terminals
+	// chain -> unix time its log feed last failed, absent while it reads.
+	// Without it a chain the harness cannot read is indistinguishable from
+	// a chain nobody trades on, and its rows vanish from the board rather
+	// than saying they have no data.
+	FeedDown    map[string]int64            `json:"feed_down,omitempty"`
 	Learned     map[string]*Learned         `json:"learned,omitempty"`      // terminal -> fee wallets / routers learned from the chain (discover.go)
 	Funded      map[string]map[string]int64 `json:"funded,omitempty"`       // app -> EVM wallet it funded through Relay -> last seen (identifies its users on a shared router)
 	RelayNewest map[string]int64            `json:"relay_newest,omitempty"` // app:origin -> created of the newest Relay request counted (the walk after a restart stops there instead of re-counting a day)
@@ -247,6 +264,10 @@ type TerminalStats struct {
 	Flagged         int        `json:"flagged"` // priced but out of bounds, excluded
 	/** Loss vs the pool's pre-trade state: median with its 95 % bootstrap interval, p90. */
 	Loss        *Quantiles         `json:"loss_bps,omitempty"`
+	/** The same, with the terminal's own fee removed per swap: execution
+	  * quality alone. Network, pool and protocol costs stay inside — how a
+	  * swap is routed is the app's doing, what it charges for it is not. */
+	LossExFee   *Quantiles         `json:"loss_ex_fee_bps,omitempty"`
 	Components  map[string]float64 `json:"components_bps"` // medians
 	TradeUSD    *Quantiles         `json:"trade_usd,omitempty"`
 	BuySharePct float64            `json:"buy_share_pct"`
@@ -305,7 +326,7 @@ type Public struct {
 	SolUSD        float64         `json:"sol_usd"`
 	Method        string          `json:"method"`
 	Terminals     []TerminalStats `json:"terminals"`
-	Recent        []Swap          `json:"recent"`
+	Recent        []PublicSwap    `json:"recent"`
 	/** Cohort discovery: fee wallets and routers learned from the chain, evidence per platform, unattributed fee-like recipients. */
 	Discovery *Discovery `json:"discovery,omitempty"`
 }
@@ -402,7 +423,10 @@ func main() {
 	if st.EvmCursor == nil {
 		st.EvmCursor = map[string]int64{}
 	}
-	nf := newNativeFeed(httpc, st.EvmCursor)
+	if st.FeedDown == nil {
+		st.FeedDown = map[string]int64{}
+	}
+	nf := newNativeFeed(httpc, st.EvmCursor, st.FeedDown)
 	xf := newXfeed(httpc, st.RelayNewest)
 	go xf.run(context.Background(), tick)
 	var mu sync.RWMutex
@@ -483,7 +507,7 @@ func main() {
 		p := &Public{
 			GeneratedAt: time.Now().UTC().Format(time.RFC3339), WindowHours: windowHours, MethodVersion: methodVersion, MinPriced: minPriced, MinRank: minRank, SolUSD: sol,
 			Method:    "Random sample of the swaps each terminal routed (Solana: the fee-wallet and program feed; EVM: the terminals' routers and blocks read in full; cross-chain: Relay's public requests), read on-chain; loss = 1 − value received at the pool's pre-trade state / value given, basis points of the trade; the split (terminal, network, other, pool, relay) is exact from balance deltas; a pooled product weighs each chain by its flow.",
-			Terminals: stats, Recent: recent(st, 400), Discovery: disc,
+			Terminals: stats, Recent: publicSwaps(recent(st, recentMinPerTerminal, recentTotal, flowOf(stats)), flowOf(stats)), Discovery: disc,
 		}
 		mu.Lock()
 		pub = p
@@ -847,6 +871,8 @@ func sampleXchain(ctx context.Context, rpc *rpcClient, httpc *http.Client, st *S
 				sw.UserQ = (x.UsdIn + gasUSD) / q // what the user sent on the origin chain, plus its gas
 				sw.TerminalQ = x.AppFeeUsd / q
 				sw.RelayQ = (x.RelayFeeUsd + relayDeclaredFees(x)) / q
+				// Neither field present: unknown, not zero.
+				sw.RelayUnknown = x.RelayFeeUsd == 0 && relayDeclaredFees(x) == 0
 				sw.NetworkQ = (gasUSD + x.DestGasUsd) / q
 				sw.Others, sw.OtherQ = nil, nil
 				if sw.PoolQ > 0 && sw.Pools == 1 {
@@ -1341,9 +1367,27 @@ func evmRow(ctx context.Context, rpc *rpcClient, httpc *http.Client, t Terminal,
 
 // implausibleSplit keeps a row out of the statistics when its split
 // cannot be right (a hop or quote matched to the wrong leg): a pool
-// component below −10 % or a Relay component above 30 % of the trade.
+// component below −10 %, a Relay component above 30 %, or a terminal fee
+// above 10 % of the trade.
+//
+// The terminal bound is the one this cohort needed. On the EVM rows the
+// terminal component is a residual, so every error on the quote side
+// lands in it: Arc's native USDC, logged once as value and again as a
+// mirror Transfer, produced a 5,047 bps "app fee" that no desk would
+// believe and that dragged two pooled rows to 240. No app here charges
+// more than a few percent.
 func implausibleSplit(sw *Swap) {
-	if sw.Priced && sw.PoolBps != nil && (*sw.PoolBps < -1000 || sw.RelayBps > 3000 || (sw.Pools > 1 && *sw.PoolBps < -100)) {
+	if sw.Priced && sw.TerminalBps > 1000 {
+		sw.Flag, sw.Priced = "split_implausible", false
+		return
+	}
+	// -200, not -1000: pool is the residual of the split, so below zero
+	// the named costs add up to more than the trade lost. Measured on the
+	// live sample, 141 of the 189 negative rows sit between -1 and 0 and
+	// are rounding; 29 are worse than -50 and 19 of those are trades under
+	// $10, where a fixed fee is a thousand basis points and the arithmetic
+	// cannot stay consistent. -1000 let a -765 through.
+	if sw.Priced && sw.PoolBps != nil && (*sw.PoolBps < -200 || sw.RelayBps > 3000 || (sw.Pools > 1 && *sw.PoolBps < -100)) {
 		// A pool component under −100 bps on a route through several pools
 		// is a quote leg the matching missed, not a fill better than the
 		// mid (Binance's 7-pool route read terminal 1134 bps, pool −762).
@@ -1636,6 +1680,11 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 			ts.FailCostUSD = quantiles(failFees, false)
 		}
 		var loss, pool, term, net, relay, other, trade, sandProfit []float64
+		// Loss with the app's own fee taken out, subtracted on each swap
+		// before any median is taken: median(loss) - median(fee) is a
+		// different number, off by 33 bps on the row the subtraction
+		// moves most.
+		var exFee, exFeeW []float64
 		var lossW, poolW, termW, netW, relayW, otherW, tradeW []float64 // the rows' weights, same order
 		bySize := map[string][]float64{}
 		// The same swaps again, grouped by trade size, so a reader can ask
@@ -1709,23 +1758,40 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 				if s.Priced && s.LossBps != nil {
 					a.loss = append(a.loss, *s.LossBps)
 					a.lossW = append(a.lossW, w)
-					if s.PoolBps != nil {
+					if s.PoolBps != nil && !s.RelayUnknown {
+						// Pool is the residual, so an unknown relay cut sits
+						// inside it. Leaving the row in would charge the pool
+						// for the bridge.
 						a.pool = append(a.pool, *s.PoolBps)
 						a.poolW = append(a.poolW, w)
 					}
 				}
 			}
-			term = append(term, s.TerminalBps)
-			termW = append(termW, w)
-			net = append(net, s.NetworkBps)
-			netW = append(netW, w)
-			if s.RelayID != "" {
-				relay = append(relay, s.RelayBps)
-				relayW = append(relayW, w)
-			}
-			if s.OtherBps != nil {
-				other = append(other, *s.OtherBps)
-				otherW = append(otherW, w)
+			// The component medians take the same rows as the loss. They
+			// used to run over every parsed swap, so a row the bounds threw
+			// out still voted on the fee column: 51 of gmgn-arc's 85 swaps
+			// were flagged, and the fee they held (5,047 bps) stood beside a
+			// loss computed without them.
+			//
+			// This guards the appends and not the iteration: the counters
+			// below (buy share, venue and quote mix, flagged, and ts.Priced
+			// itself) must still see every parsed swap.
+			if s.Priced && s.LossBps != nil {
+				term = append(term, s.TerminalBps)
+				termW = append(termW, w)
+				net = append(net, s.NetworkBps)
+				netW = append(netW, w)
+				// A Relay row whose cut came back empty from the API is an
+				// unknown, not a zero: averaging it in would pull the
+				// column toward a number nobody was charged.
+				if s.RelayID != "" && !s.RelayUnknown {
+					relay = append(relay, s.RelayBps)
+					relayW = append(relayW, w)
+				}
+				if s.OtherBps != nil {
+					other = append(other, *s.OtherBps)
+					otherW = append(otherW, w)
+				}
 			}
 			if s.TradeUSD > 0 {
 				trade = append(trade, s.TradeUSD)
@@ -1747,6 +1813,11 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 				refSrc[s.RefSrc]++
 				loss = append(loss, *s.LossBps)
 				lossW = append(lossW, w)
+				// Negative is a real outcome here (a rebate, or a reference
+				// that drifted the user's way) and stays: clipping at zero
+				// would push the median up.
+				exFee = append(exFee, *s.LossBps-s.TerminalBps)
+				exFeeW = append(exFeeW, w)
 				bySize[sizeBucket(s.TradeUSD)] = append(bySize[sizeBucket(s.TradeUSD)], *s.LossBps)
 				if s.Chain != "" {
 					byChain[s.Chain] = append(byChain[s.Chain], *s.LossBps)
@@ -1807,6 +1878,7 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 		}
 		if ts.Priced > 0 {
 			ts.Loss = wquantiles(loss, lossW, true, pooled)
+			ts.LossExFee = wquantiles(exFee, exFeeW, true, pooled)
 			if pooled {
 				// Kish's effective sample size: (Σw)² / Σw². Ten swaps
 				// weighted two thirds of a pool read as a sample of 22.
@@ -1913,6 +1985,17 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 			ts.Ranked = false // one chain's few swaps carry most of the weight: the median is not stable enough to rank
 		}
 		if len(slugs) == 1 && strings.Contains(t.Slug, "-") && isXchainRow(t.Slug) && ts.Seen == 0 && ts.Parsed == 0 {
+			// Nobody used it, or we could not read the chain. Those are not
+			// the same thing, and dropping both is how six products
+			// published All chains rows with no BNB in them for days, under
+			// tags that name BNB, while the log feed sat 630,000 blocks
+			// behind. A row on a dead chain stays, unhealthy and saying so.
+			if since, dead := st.FeedDown[ts.Chain]; dead {
+				ts.Healthy, ts.Ranked = false, false
+				mins := (time.Now().Unix() - since) / 60
+				ts.Note = "no data: this chain's log feed has not read for " + strconv.FormatInt(mins, 10) + " minutes, so the row is empty because we could not look, not because nobody traded"
+				return ts, true
+			}
 			return ts, false // a cross-chain row nobody used in the window
 		}
 		return ts, true
@@ -1988,6 +2071,20 @@ func publishGauges(stats []TerminalStats) {
 			}
 		} else {
 			gLoss.DeletePartialMatch(prometheus.Labels{"terminal": ts.Product, "chain": ts.Chain})
+		}
+		// Execution quality: published under exactly the same conditions as
+		// the headline, so the two benches never disagree about who is
+		// present. A row that is not healthy here is not healthy there.
+		if ts.LossExFee != nil && ts.Healthy {
+			gLossExFee.WithLabelValues(ts.Product, ts.Chain, "median", "all").Set(ts.LossExFee.Median)
+			gLossExFee.WithLabelValues(ts.Product, ts.Chain, "p90", "all").Set(ts.LossExFee.P90)
+			gLossExFee.WithLabelValues(ts.Product, ts.Chain, "p99", "all").Set(ts.LossExFee.P99)
+			if ts.LossExFee.CILo != nil && ts.LossExFee.CIHi != nil {
+				gLossExFee.WithLabelValues(ts.Product, ts.Chain, "ci_lo", "all").Set(*ts.LossExFee.CILo)
+				gLossExFee.WithLabelValues(ts.Product, ts.Chain, "ci_hi", "all").Set(*ts.LossExFee.CIHi)
+			}
+		} else {
+			gLossExFee.DeletePartialMatch(prometheus.Labels{"terminal": ts.Product, "chain": ts.Chain})
 		}
 		gComponent.DeletePartialMatch(prometheus.Labels{"terminal": ts.Product, "chain": ts.Chain}) // a component that dropped out stays out
 		for c, v := range ts.Components {
@@ -2076,11 +2173,318 @@ func sizeBucket(usd float64) string {
 	return "over250"
 }
 
-func recent(st *State, n int) []Swap {
-	if len(st.Swaps) <= n {
-		return append([]Swap(nil), st.Swaps...)
+// recent returns the evidence behind the board: the last `perTerminal`
+// swaps of EACH row, not the last N swaps overall.
+//
+// The global tail it replaces spanned 114 minutes against a 24h window,
+// so 89% of ranked rows had fewer than 20 transactions to show and six
+// had none, while the table invited the reader to check the board
+// against it. Sampling per row costs about twice the payload and makes
+// every published figure auditable.
+//
+// Each swap also carries the product it rolls up to, so a pooled row
+// (Binance, whose swaps are stored under binance-wallet-*) can match its
+// own transactions. `total` is a ceiling for the payload, spent on the
+// rows with the least evidence first so a busy terminal cannot squeeze
+// out a quiet one.
+// flowOf: attempts per row, from the stats just computed. This is the
+// weight the pooled median uses, so it is the weight the evidence under
+// it has to use too.
+func flowOf(stats []TerminalStats) map[string]float64 {
+	out := make(map[string]float64, len(stats))
+	for _, t := range stats {
+		if t.Chain == "all" {
+			continue // the pooled entry is the sum of the rows below it
+		}
+		if t.Attempts > 0 {
+			out[t.Slug] = float64(t.Attempts)
+		}
 	}
-	return append([]Swap(nil), st.Swaps[len(st.Swaps)-n:]...)
+	return out
+}
+
+// spread picks n rows evenly across the whole list rather than taking
+// the head of it.
+//
+// byTerm is newest-first, so taking the head gave a row the last n swaps
+// — a slice of the past hour standing in for a 24h median. On a row with
+// fifteen rows that is survivable; on one cut to its floor it is not, and
+// pump-fun-ethereum read 1719 against a published 646 with one row of
+// nine below the median. Even spacing makes the rows shown cover the
+// window the figure covers.
+func spread(rows []Swap, n int) []Swap {
+	if n >= len(rows) {
+		return rows
+	}
+	if n <= 0 {
+		return nil
+	}
+	out := make([]Swap, 0, n)
+	// Sample at the midpoint of each of n equal buckets, so the first and
+	// last rows are not systematically favoured.
+	for i := 0; i < n; i++ {
+		idx := (2*i + 1) * len(rows) / (2 * n)
+		if idx >= len(rows) {
+			idx = len(rows) - 1
+		}
+		out = append(out, rows[idx])
+	}
+	return out
+}
+
+// PublicSwap is the audit table's row: what src/lib/terminal-fills.ts
+// actually reads, and nothing else.
+//
+// Swap carries about forty fields because the state file needs them to
+// recompute. Publishing all forty cost 1,150 bytes a row against a 2 MB
+// ceiling, which capped the sample at 1,250 rows — and that cap is what
+// made the floor for small chains and the flow weighting for pooled rows
+// compete: every row given to a quiet chain came off the chain carrying
+// 95% of the flow. Half those bytes were fields nothing renders.
+//
+// Add a field here when the table starts reading it, not before.
+type PublicSwap struct {
+	Sig      string  `json:"sig"`
+	Terminal string  `json:"terminal"`
+	Product  string  `json:"product,omitempty"`
+	Time     int64   `json:"time"`
+	Side     string  `json:"side"`
+	Quote    string  `json:"quote"`
+	Venue    string  `json:"venue"`
+	Chain    string  `json:"chain,omitempty"`
+	Hops     int     `json:"hops,omitempty"`
+	XMint    string  `json:"x_mint,omitempty"`
+	InTx     string  `json:"in_tx,omitempty"`
+	RentQ    float64 `json:"rent_q,omitempty"`
+	QuoteUSD float64 `json:"quote_usd"`
+	TradeUSD float64 `json:"trade_usd"`
+	Priced   bool    `json:"priced"`
+	Scanned  bool    `json:"scanned"`
+	Flag     string  `json:"flag,omitempty"`
+	RefSrc   string  `json:"ref_src,omitempty"`
+	RefAgeS  *int64  `json:"ref_age_s,omitempty"`
+
+	LossBps     *float64 `json:"loss_bps,omitempty"`
+	PoolBps     *float64 `json:"pool_bps,omitempty"`
+	TerminalBps float64  `json:"terminal_bps"`
+	NetworkBps  float64  `json:"network_bps"`
+	RelayBps    float64  `json:"relay_bps,omitempty"`
+	// True when the Relay request carried no fee at all: the cut is
+	// unknown rather than nil, and pool_bps on this row absorbs it.
+	RelayUnknown bool     `json:"relay_unknown,omitempty"`
+	OtherBps    *float64 `json:"other_bps,omitempty"`
+
+	Sandwich *Sandwich `json:"sandwich,omitempty"`
+
+	// What this row stands for, in attempts. A terminal's rows carry its
+	// flow divided between them, so summing the weights of the rows shown
+	// for a terminal gives back its flow.
+	//
+	// The board's pooled median weights each chain by flow; the table
+	// used to take a plain median of the rows it happened to have, and
+	// the two disagreed by 25% on pump.fun. They cannot be reconciled by
+	// sampling: Solana is 95% of that product's flow and we have priced
+	// 124 of its 664,575 attempts, all of which are already shown. So the
+	// weight travels with the row and the table computes the same
+	// statistic the headline does.
+	W float64 `json:"w,omitempty"`
+}
+
+func publicSwaps(in []Swap, flow map[string]float64) []PublicSwap {
+	// Rows shown per terminal, so each row can carry its share of that
+	// terminal's flow rather than counting as one observation.
+	shown := map[string]int{}
+	for _, s := range in {
+		shown[s.Terminal]++
+	}
+	out := make([]PublicSwap, 0, len(in))
+	for _, s := range in {
+		w := 1.0
+		if f := flow[s.Terminal]; f > 0 && shown[s.Terminal] > 0 {
+			w = f / float64(shown[s.Terminal])
+		}
+		out = append(out, PublicSwap{
+			Sig: s.Sig, Terminal: s.Terminal, Product: s.Product, Time: s.Time,
+			Side: s.Side, Quote: s.Quote, Venue: s.Venue, Chain: s.Chain,
+			Hops: s.Hops, XMint: s.XMint, InTx: s.InTx, RentQ: s.RentQ,
+			QuoteUSD: s.QuoteUSD, TradeUSD: s.TradeUSD,
+			Priced: s.Priced, Scanned: s.Scanned, Flag: s.Flag,
+			RefSrc: s.RefSrc, RefAgeS: s.RefAgeS,
+			LossBps: s.LossBps, PoolBps: s.PoolBps,
+			TerminalBps: s.TerminalBps, NetworkBps: s.NetworkBps,
+			RelayBps: s.RelayBps, RelayUnknown: s.RelayUnknown, OtherBps: s.OtherBps,
+			Sandwich: s.Sandwich, W: w,
+		})
+	}
+	return out
+}
+
+func recent(st *State, minPerTerminal, total int, flow map[string]float64) []Swap {
+	// Every swap each row has in the window, newest first. The caps are
+	// applied after the shares are known, not while collecting, because
+	// a row's share depends on how much flow it has relative to the rest.
+	byTerm := map[string][]Swap{}
+	for i := len(st.Swaps) - 1; i >= 0; i-- {
+		s := st.Swaps[i]
+		byTerm[s.Terminal] = append(byTerm[s.Terminal], s)
+	}
+	slugs := make([]string, 0, len(byTerm))
+	grand := 0
+	for k, v := range byTerm {
+		slugs = append(slugs, k)
+		grand += len(v)
+	}
+	sort.Strings(slugs)
+	if grand == 0 {
+		return nil
+	}
+
+	// Proportional to flow, between a floor and a cap.
+	//
+	// Equal shares per row was the bug: a pooled product row shows the
+	// union of its members, its median weights those members by flow, and
+	// with 15 apiece the union looked nothing like the median — Solana
+	// carried 55% of pump.fun's flow and 12% of its table.
+	//
+	// The floor keeps a quiet row auditable, which is the whole reason
+	// per-row sampling replaced the global tail; the cap stops one busy
+	// row eating the budget. Between them the share is proportional, so a
+	// pooled row's sample resembles its own statistic.
+	// Two parts, because the floor and the proportion answer different
+	// questions and must not be traded against each other.
+	//
+	// First the floor: every row keeps enough rows to be auditable, or
+	// everything it has if that is less. This is the coverage guarantee
+	// and it is not negotiable — it is why per-row sampling replaced the
+	// global tail.
+	quota := make(map[string]int, len(slugs))
+	base := 0
+	for _, slug := range slugs {
+		q := minPerTerminal
+		if n := len(byTerm[slug]); q > n {
+			q = n
+		}
+		quota[slug] = q
+		base += q
+	}
+
+	// Then the remainder, split in proportion to the flow each row has
+	// above its floor.
+	//
+	// There is deliberately no per-row ceiling. One existed, to stop a
+	// busy row spending the whole budget, and it quietly undid the
+	// proportion: whenever it bound on the dominant row, that row's share
+	// collapsed toward everyone else's and the pooled sample was
+	// equal-weighted again, which is the bug this function exists to fix.
+	// A dominant row taking a large share is the correct answer — it
+	// really is most of the flow, and the pooled median really does
+	// follow it. Coverage is the floor's job, and the total is the
+	// payload guard.
+	room := total - base
+	if room > 0 {
+		// Share of the remainder follows each row's FLOW, not how many of
+		// its swaps we managed to price. Those differ by a factor of sixty
+		// between chains — 0.02% of Solana attempts get priced against
+		// 1.2% of BNB's — and the pooled median weights by the first, so
+		// a sample drawn on the second cannot reproduce it however evenly
+		// it is spread. A row with no flow figure falls back to its swap
+		// count, which is the best proxy available.
+		weight := make(map[string]float64, len(slugs))
+		spare := make(map[string]int, len(slugs))
+		spareTotal := 0.0
+		for _, slug := range slugs {
+			headroom := len(byTerm[slug]) - quota[slug]
+			if headroom < 0 {
+				headroom = 0
+			}
+			spare[slug] = headroom
+			if headroom == 0 {
+				continue // nothing left to give this row
+			}
+			w := flow[slug]
+			if w <= 0 {
+				w = float64(len(byTerm[slug]))
+			}
+			weight[slug] = w
+			spareTotal += w
+		}
+		if spareTotal > 0 {
+			// Integer division loses seats; largest remainder hands them
+			// back, so the budget is spent instead of left over. A quota
+			// bigger than the swaps a row actually has is clipped here,
+			// and what that frees is handed out in the same pass.
+			type rem struct {
+				slug string
+				frac float64
+			}
+			rems := make([]rem, 0, len(slugs))
+			given := 0
+			for _, slug := range slugs {
+				exact := float64(room) * weight[slug] / spareTotal
+				q := int(exact)
+				if q > spare[slug] {
+					q = spare[slug]
+				}
+				quota[slug] += q
+				given += q
+				rems = append(rems, rem{slug, exact - float64(q)})
+			}
+			sort.Slice(rems, func(i, j int) bool {
+				if rems[i].frac != rems[j].frac {
+					return rems[i].frac > rems[j].frac
+				}
+				return rems[i].slug < rems[j].slug
+			})
+			// Several passes, because clipping a row to what it has frees
+			// seats that the rows still short of their share should get.
+			//
+			// No pass limit: each pass hands out at most one seat per row,
+			// so a fixed count silently caps how much can be redistributed.
+			// Three passes over 68 legs could return 204 seats where the
+			// clipping had freed 779, and the budget went unspent — 1621
+			// rows shipped against a configured 2400, with 39 of 68 legs
+			// left sitting on the floor. `moved` is the real termination
+			// condition: it goes false the moment no row can take another
+			// seat, which is also the only way this loop can end.
+			for given < room {
+				moved := false
+				for i := 0; given < room && i < len(rems); i++ {
+					slug := rems[i].slug
+					if quota[slug] < len(byTerm[slug]) {
+						quota[slug]++
+						given++
+						moved = true
+					}
+				}
+				if !moved {
+					break
+				}
+			}
+		}
+	}
+
+	out := make([]Swap, 0, total)
+	for _, slug := range slugs {
+		rows := spread(byTerm[slug], quota[slug])
+		for _, s := range rows {
+			p, chain := productOf(s.Terminal)
+			if a, ok := productAlias[p]; ok {
+				p = a
+			}
+			// A funding leg is a bridge, not a fill, and compute() leaves
+			// it out of the product's pooled entry. Stamping it would put
+			// rows in the pooled table that the pooled figure excludes:
+			// pump.fun's members summed to 483 against a pooled 448, and
+			// the 35 in between were exactly this. It keeps its own row in
+			// the dropdown, where its figure is published.
+			if p != s.Terminal && chain != "funding" {
+				s.Product = p
+			}
+			out = append(out, s)
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Time < out[j].Time })
+	return out
 }
 
 // quantiles: median and p90; with ci, the 95 % bootstrap interval of the

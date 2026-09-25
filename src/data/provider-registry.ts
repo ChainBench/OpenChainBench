@@ -1277,7 +1277,7 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   "phantom-perps": {
     url: "https://phantom.app",
     description:
-      "Phantom is the leading multi-chain crypto wallet on Solana, Ethereum, and Bitcoin; its Hyperliquid perps tab routes orders with a registered builder code so users trade Hyperliquid directly from the wallet UI.",
+      "Phantom is a multi-chain crypto wallet on Solana, Ethereum, and Bitcoin; its Hyperliquid perps tab routes orders with a registered builder code so users trade Hyperliquid directly from the wallet UI.",
     twitter: "@phantom",
   },
   axiom: {

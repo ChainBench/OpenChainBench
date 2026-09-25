@@ -35,17 +35,22 @@ import (
 //	buy : loss = 1 − Tokens × ref / UserQ
 //	sell: loss = 1 − UserQ / (Tokens × ref)
 type Swap struct {
-	Method   int     `json:"method"` // methodVersion that produced the row
-	Sig      string  `json:"sig"`
-	Terminal string  `json:"terminal"`
-	Slot     uint64  `json:"slot"`
-	Time     int64   `json:"time"`
-	User     string  `json:"user"`
-	Side     string  `json:"side"`  // buy | sell
-	Quote    string  `json:"quote"` // SOL | USDC | USDT | USD1
-	Venue    string  `json:"venue"`
-	Mint     string  `json:"mint"`
-	Tokens   float64 `json:"tokens"`
+	Method   int    `json:"method"` // methodVersion that produced the row
+	Sig      string `json:"sig"`
+	Terminal string `json:"terminal"`
+	// The pooled row this swap rolls up to, when that is not the terminal
+	// itself: Binance's swaps are stored under binance-wallet-base and
+	// binance-wallet-ethereum, so the Binance row could not find them.
+	// Set at publish time only, so the state file keeps its old shape.
+	Product string  `json:"product,omitempty"`
+	Slot    uint64  `json:"slot"`
+	Time    int64   `json:"time"`
+	User    string  `json:"user"`
+	Side    string  `json:"side"`  // buy | sell
+	Quote   string  `json:"quote"` // SOL | USDC | USDT | USD1
+	Venue   string  `json:"venue"`
+	Mint    string  `json:"mint"`
+	Tokens  float64 `json:"tokens"`
 
 	// Pool identity for the reference-price lookups and the sandwich
 	// screen: the pool's token vault for the traded mint, its owner (pool
@@ -84,6 +89,10 @@ type Swap struct {
 	FeeSig   string  `json:"fee_sig,omitempty"` // the separate fee transaction (BasedBot on Solana)
 	RentQ    float64 `json:"rent_q,omitempty"`  // SOL deposit of the token accounts the swap created: counted in network (a refund on close is not credited)
 	RelayID  string  `json:"relay_id,omitempty"`
+	// The Relay request carried no fee of any kind. RelayQ is then 0
+	// because we were not told, not because the solver took nothing, and a
+	// residual pool component would silently absorb the bridge's take.
+	RelayUnknown bool `json:"relay_unknown,omitempty"`
 	InTx     string  `json:"in_tx,omitempty"`
 	QuoteUSD float64 `json:"quote_usd"` // quote unit price used for sizing
 	// Quote received by accounts that are neither user, pool, terminal nor
