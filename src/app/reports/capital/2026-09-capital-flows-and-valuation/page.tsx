@@ -5,6 +5,7 @@ import { pageMetadata } from "@/lib/page-metadata";
 import { safeJsonLd, buildBreadcrumbJsonLd } from "@/lib/jsonld";
 import { buildCitationMeta, CREATOR_PUBLISHER, DATASET_LICENSE } from "@/lib/dataset-jsonld";
 import { capSnippet } from "@/lib/seo-text";
+import { isDevOnlyBench } from "@/lib/removed-benches";
 import {
   CAPITAL_BENCHES,
   fmtUsdShort,
@@ -184,7 +185,9 @@ export default async function CapitalReportPage() {
         license: DATASET_LICENSE,
         isAccessibleForFree: true,
         about: "Capital flows between blockchains and the valuation of protocol tokens against their fees, September 2026",
-        isBasedOn: Object.values(CAPITAL_BENCHES).map((s) => `${SITE.url}/benchmarks/${s}`),
+        isBasedOn: Object.values(CAPITAL_BENCHES)
+          .filter((s) => !isDevOnlyBench(s))
+          .map((s) => `${SITE.url}/benchmarks/${s}`),
       },
     ],
   };

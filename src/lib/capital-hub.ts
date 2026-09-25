@@ -81,13 +81,27 @@ function categoryLabel(raw: string): string {
   return fixes[head] ?? head;
 }
 
-function latest(entity: CapitalEntity | undefined, field: string): number | null {
-  if (!entity) return null;
-  for (let i = entity.days.length - 1; i >= 0; i--) {
-    const v = entity.days[i][field];
-    if (typeof v === "number" && Number.isFinite(v)) return v;
-  }
-  return null;
+/**
+ * The entity's newest daily point, and only when it is today's or
+ * yesterday's relative to the blob's own generated_at. The worker keeps
+ * 400 days and leaves a field out of a day when the harness deleted the
+ * gauge on purpose (DeFiLlama not tracking it, a month with no fees), so
+ * walking back to "the last day that had the field" would show deleted
+ * values forever and could pair today's fees with weeks-old revenue.
+ * Every field of a row is read from this one point.
+ */
+function freshPoint(entity: CapitalEntity | undefined, generatedAt: string | undefined): Record<string, unknown> | null {
+  if (!entity || entity.days.length === 0 || !generatedAt) return null;
+  const t = Date.parse(generatedAt);
+  if (!Number.isFinite(t)) return null;
+  const today = new Date(t).toISOString().slice(0, 10);
+  const yesterday = new Date(t - 86_400_000).toISOString().slice(0, 10);
+  const last = entity.days[entity.days.length - 1];
+  return last.day === today || last.day === yesterday ? last : null;
+}
+
+function field(pt: Record<string, unknown> | null, name: string): number | null {
+  return pt ? num(pt[name]) : null;
 }
 
 function chainNote(r: Omit<ChainRow, "note" | "hasChainPage">, stableLeader: boolean, excessLeader: boolean): string {
@@ -197,34 +211,42 @@ async function buildHub(): Promise<CapitalHub> {
   const stablesBy = new Map(liveRows(stables).map((r) => [r.slug, r]));
   const cctpBy = new Map(liveRows(cctp).map((r) => [r.slug, r]));
 
+  // Bench 280 (chain fees and revenue) is dev-only until its audit round:
+  // its series stay off the hub on deployments that do not serve the bench.
+  const feesServed = !isDevOnlyBench("chain-fees-revenue");
   const rawChains = [...chainSlugs].map((slug) => {
-    const ent = chainEntities.get(slug);
+    const pt = freshPoint(chainEntities.get(slug), chainsHist?.generatedAt);
     const br = bridgedBy.get(slug);
     const st = stablesBy.get(slug);
     const row: Omit<ChainRow, "note" | "hasChainPage"> = {
       slug,
       name: CHAIN_NAME.get(slug) ?? br?.name ?? st?.name ?? slug,
-      tvl: latest(ent, "tvl"),
+      tvl: field(pt, "tvl"),
       bridgedTvl: br ? num(br.ms.p50) : null,
       bridgedSharePct: panel(bridged, "bridged_share", slug),
       change7dPct: panel(bridged, "change_7d", slug),
       excess7dPct: panel(bridged, "excess_7d", slug),
-      stablesFloat: panel(stables, "float_usd", slug) ?? latest(ent, "stables_mcap"),
-      stablesNet30d: st ? num(st.ms.p50) : latest(ent, "stables_net_30d"),
+      stablesFloat: panel(stables, "float_usd", slug) ?? field(pt, "stables_mcap"),
+      // Net flow only from bench 275's ranked rows: the blob carries every
+      // registry chain, and a chain outside the $100M cohort (or a cohort
+      // row the bench withholds) must not be ranked, counted or crowned.
+      stablesNet30d: st ? num(st.ms.p50) : null,
       stablesChange30dPct: panel(stables, "change_30d", slug),
       stablesNet7d: panel(stables, "net_7d", slug),
       cctpNet7d: cctpBy.has(slug) ? num(cctpBy.get(slug)!.ms.p50) : null,
       cctpIn7d: panel(cctp, "inflow_7d", slug),
       cctpOut7d: panel(cctp, "outflow_7d", slug),
-      dexVolume24h: latest(ent, "dex_volume_24h"),
-      nativeMcap: latest(ent, "native_mcap"),
-      fees30d: latest(ent, "fees_30d"),
-      revenue30d: latest(ent, "revenue_30d"),
+      dexVolume24h: field(pt, "dex_volume_24h"),
+      nativeMcap: field(pt, "native_mcap"),
+      fees30d: feesServed ? field(pt, "fees_30d") : null,
+      revenue30d: feesServed ? field(pt, "revenue_30d") : null,
     };
     return row;
   });
+  // The inflow leader must have an inflow: a month where every cohort
+  // chain lost float has no leader rather than the smallest outflow.
   const stableLeaderSlug = [...rawChains]
-    .filter((c) => c.stablesNet30d != null)
+    .filter((c) => c.stablesNet30d != null && c.stablesNet30d > 0)
     .sort((a, b) => (b.stablesNet30d ?? 0) - (a.stablesNet30d ?? 0))[0]?.slug;
   const excessLeaderSlug = [...rawChains]
     .filter((c) => c.excess7dPct != null)

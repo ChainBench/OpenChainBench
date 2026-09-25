@@ -275,7 +275,7 @@ function buildFaq(hub: CapitalHub): { q: string; a: string }[] {
           : "The Follow the capital tab ranks every tracked chain by the 30-day change in its stablecoin float, from DeFiLlama's per-chain circulating series.",
     },
     {
-      q: "Which token is cheapest per dollar of fees?",
+      q: "Which token trades at the lowest price to fees?",
       a:
         p && p.pf != null
           ? `${p.name} has the lowest price to fees at ${fmtX(p.pf)}: its market cap is ${fmtX(p.pf)} the fees its protocol earned over the last 30 days annualized${p.categoryMedianPf != null ? `, against a ${p.category} median of ${fmtX(p.categoryMedianPf)}` : ""}. Low is not a verdict: a token can trade at a low multiple because the market expects the fees to fall, or because most of its supply is still locked.`
