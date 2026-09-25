@@ -4,9 +4,9 @@
  *
  *   valuation/history.json  one point per UTC day per protocol: market cap,
  *                           FDV, float, 30d fees, 30d revenue, P/F, P/S, OI,
- *                           30d price change. Two cohorts: `protocols` (bench
- *                           274, cross-DeFi, fees only) and `perps` (bench 265,
- *                           fees and revenue).
+ *                           TVL, 30d price change, 30d and 90d circulating
+ *                           supply change. Two cohorts: `protocols` (bench
+ *                           274, cross-DeFi) and `perps` (bench 265).
  *   chains/history.json     one point per UTC day per chain: TVL, bridged TVL,
  *                           value secured, stablecoin mcap and 30d net flow,
  *                           native token mcap, 24h DEX volume, and the chain
@@ -192,16 +192,23 @@ function pick(day: string, fields: Record<string, Map<string, number>>, slug: st
 }
 
 async function publishValuation(prom: Prometheus, dir: string, day: string): Promise<number> {
-  // Bench 274 cohort (cross-DeFi, fees only).
+  // Bench 274 cohort (cross-DeFi).
   const p = {
     mcap: await vector(prom, "protocol_mcap_usd", "protocol"),
     fdv: await vector(prom, "protocol_fdv_usd", "protocol"),
     float_pct: await vector(prom, "protocol_float_pct", "protocol"),
     fees_30d: await vector(prom, "protocol_fees_30d_usd", "protocol"),
+    rev_30d: await vector(prom, "protocol_revenue_30d_usd", "protocol"),
+    tvl: await vector(prom, "protocol_tvl_usd", "protocol"),
     pf: await vector(prom, "protocol_pf_ratio", "protocol"),
     pf_fdv: await vector(prom, "protocol_pf_fdv_ratio", "protocol"),
+    ps: await vector(prom, "protocol_ps_ratio", "protocol"),
     price_change_30d_pct: await vector(prom, "protocol_price_change_30d_pct", "protocol"),
     fee_growth_30d_pct: await vector(prom, "protocol_fee_growth_30d_pct", "protocol"),
+    // Realized dilution from CoinGecko's daily market cap / price, absent
+    // while the series is shorter than the window.
+    supply_change_30d_pct: await vector(prom, "protocol_supply_change_30d_pct", "protocol"),
+    supply_change_90d_pct: await vector(prom, "protocol_supply_change_90d_pct", "protocol"),
     // 1 when the fee adapter is knowably incomplete: the board holds the
     // token out and so should any reader of this file.
     fees_incomplete: await vector(prom, "protocol_fees_incomplete", "protocol"),

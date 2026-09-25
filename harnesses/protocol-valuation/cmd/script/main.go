@@ -19,10 +19,16 @@
 //	protocol_category_pf_median{category}    — the peer yardstick
 //	protocol_pf_vs_category_ratio{protocol}  — below 1 is cheap vs peers
 //	protocol_diverging{protocol}             — the screen, 1 or 0
+//	protocol_revenue_30d_usd{protocol,category}  — what the protocol keeps
+//	protocol_ps_ratio{protocol,category}     — mcap / annualized revenue
+//	protocol_tvl_usd{protocol,category}      — DeFiLlama TVL, parent scope
+//	protocol_supply_change_30d_pct / _90d_pct{protocol,category}
+//	                                         — realized dilution
 //
 // Cadence is hourly: DeFiLlama's fee series is daily and CoinGecko's free
 // tier is rate-limited, so a faster tick would spend requests to re-read
-// numbers that have not moved.
+// numbers that have not moved. The supply series costs one CoinGecko call
+// per token per UTC day, cached in memory (supply.go).
 package main
 
 import (
@@ -37,9 +43,9 @@ import (
 func main() {
 	fmt.Println("=== protocol-valuation harness ===")
 	fmt.Println("P/F, FDV/F, float and the peer comparison for every token whose protocol earns fees.")
-	fmt.Println("Exposes /metrics on :2112.")
-
 	cfg := loadConfig()
+	fmt.Printf("Exposes /metrics on %s.\n", cfg.MetricsAddr)
+	supply := newSupplyCache()
 
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
@@ -50,7 +56,7 @@ func main() {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		if err := StartMetricsServer(":2112"); err != nil {
+		if err := StartMetricsServer(cfg.MetricsAddr); err != nil {
 			fmt.Printf("metrics server error: %v\n", err)
 		}
 	}()
@@ -60,13 +66,13 @@ func main() {
 		defer wg.Done()
 		tick := time.NewTicker(cfg.RefreshInterval)
 		defer tick.Stop()
-		poll(cfg)
+		poll(cfg, supply)
 		for {
 			select {
 			case <-stop:
 				return
 			case <-tick.C:
-				poll(cfg)
+				poll(cfg, supply)
 			}
 		}
 	}()
@@ -77,7 +83,7 @@ func main() {
 	wg.Wait()
 }
 
-func poll(cfg *Config) {
+func poll(cfg *Config, supply *supplyCache) {
 	start := time.Now()
 
 	cohort, st, err := buildCohort(cfg.MinFees30dUSD)
@@ -113,13 +119,39 @@ func poll(cfg *Config) {
 	}
 	publish(rows, medians, sizes, st, float64(time.Now().Unix()))
 
-	diverging := 0
+	diverging, withPS, withTVL := 0, 0, 0
 	for _, r := range rows {
 		if r.Diverging() {
 			diverging++
 		}
+		if r.HasPS {
+			withPS++
+		}
+		if r.HasTVL {
+			withTVL++
+		}
 	}
-	fmt.Printf("[poll] %d adapters -> %d tokens (%d via parent, %d merged, %d unmapped, %d below floor) -> %d rows, %d incomplete, %d peer groups, %d diverging, %v\n",
+	fmt.Printf("[poll] %d adapters -> %d tokens (%d via parent, %d merged, %d unmapped, %d below floor) -> %d rows, %d incomplete, %d peer groups, %d diverging, %d with P/S, %d with TVL, %v\n",
 		st.Adapters, st.Mapped, st.ViaParent, st.Merged, st.Unmapped, st.BelowFloor,
-		len(rows), st.Incomplete, len(medians), diverging, time.Since(start).Round(time.Millisecond))
+		len(rows), st.Incomplete, len(medians), diverging, withPS, withTVL, time.Since(start).Round(time.Millisecond))
+
+	// The supply series is the slow read: on the first tick of a UTC day it
+	// is one paced CoinGecko call per row, some minutes for the cohort.
+	// The board above is already published, so a restart does not hold
+	// every gauge behind it; the rows are republished once it is attached.
+	now := time.Now()
+	fetched := attachSupplyChange(rows, supply, now)
+	pvSupplyCacheSize.Set(float64(supply.size()))
+	publish(rows, medians, sizes, st, float64(time.Now().Unix()))
+	withSupply30, withSupply90 := 0, 0
+	for _, r := range rows {
+		if r.HasSupply30d {
+			withSupply30++
+		}
+		if r.HasSupply90d {
+			withSupply90++
+		}
+	}
+	fmt.Printf("[supply] fetched %d series, %d cached for %s, %d/%d rows with supply 30d/90d, %v\n",
+		fetched, supply.size(), now.UTC().Format("2006-01-02"), withSupply30, withSupply90, time.Since(now).Round(time.Millisecond))
 }

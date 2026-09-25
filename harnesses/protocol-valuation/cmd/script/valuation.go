@@ -18,6 +18,21 @@ type Row struct {
 	PriceChgPct  float64
 	HasPriceChg  bool
 
+	// Price to sales: the same multiple on what the protocol keeps rather
+	// than on what its users paid. Absent when no adapter behind the token
+	// publishes a revenue series, which is "unknown", not "keeps nothing".
+	AnnualRev float64
+	PS        float64
+	HasPS     bool
+
+	// Realized dilution: circulating supply now against 30 and 90 days
+	// ago, from CoinGecko's daily market cap / price. Absent while the
+	// series is shorter than the window.
+	SupplyChg30d float64
+	HasSupply30d bool
+	SupplyChg90d float64
+	HasSupply90d bool
+
 	// Peer comparison. A P/F of 1.05 is cheap against Yield (median 16.66)
 	// and ordinary against Launchpad (median 1.05), so a single market-wide
 	// median would rank the categories rather than the protocols.
@@ -62,6 +77,10 @@ func buildRows(cohort []Protocol, markets map[string]cgMarket, minFloatPct float
 			if m.FDV > 0 {
 				r.PFfdv, r.HasFDV = m.FDV/r.AnnualFees, true
 			}
+		}
+		if p.Rev30d > 0 {
+			r.AnnualRev = annualize(p.Rev30d)
+			r.PS, r.HasPS = r.Mcap/r.AnnualRev, true
 		}
 		if p.Prev30d > 0 {
 			r.FeeGrowthPct, r.HasFeeGrowth = 100*(p.Fees30d/p.Prev30d-1), true
