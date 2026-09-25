@@ -2610,6 +2610,15 @@ func chainMeanOfMedians(st *State, member map[string]bool, slugs []string, attOf
 				if s.Terminal != slug || s.Method != methodVersion {
 					continue
 				}
+				// Priced rows only, as the per-chain split (the appends
+				// guarded at "term = append" above). A row the bounds threw
+				// out still carried its components here: gmgn-arc's 35
+				// doubled buys held a 5,033 bps fee median, weighted 2.5 %
+				// of the product's flow, and the pooled terminal read 224
+				// bps against ~100 on every chain.
+				if !s.Priced || s.LossBps == nil {
+					continue
+				}
 				rowsAll++
 				if keep != nil && !keep(s) {
 					continue

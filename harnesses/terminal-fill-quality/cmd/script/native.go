@@ -809,6 +809,16 @@ func nativeRow(ctx context.Context, httpc *http.Client, t evmTerminal, hash stri
 		if from != user && to != user {
 			continue
 		}
+		// A mirror log of the native value is the same money as tx.value,
+		// which the buy path adds separately. The rule below in the
+		// fallback pass was written for this and never reached here, the
+		// pass every router-attributed swap takes: 66 of 66 native Arc
+		// buys in a window carried `given` doubled, a loss over 5,000 bps
+		// and the out_of_bounds flag, so the Arc rows of GMGN, Maestro and
+		// Bloom were published on their sells alone.
+		if hexBig(tx.Value).Sign() > 0 && isNativeMirror(c.slug, erc) {
+			continue
+		}
 		m := erc20(ctx, httpc, *c, erc)
 		if q, ok := quoteUSD(m.symbol, *c, gas); ok && m.ok {
 			usd := f(amt) * math.Pow10(-m.dec) * q

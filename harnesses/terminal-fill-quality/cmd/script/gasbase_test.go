@@ -194,3 +194,24 @@ func TestLearnedDepthNeverGoesUnderTheDefaultSpanAndGrowsBack(t *testing.T) {
 		t.Errorf("a depth back at the budget is still remembered: %d", f.depth["bnb"])
 	}
 }
+
+func TestPooledSplitIgnoresRowsTheBoundsThrewOut(t *testing.T) {
+	loss := 300.0
+	priced := func(term string, fee float64) Swap {
+		return Swap{Terminal: term, Method: methodVersion, Priced: true, LossBps: &loss, TerminalBps: fee, NetworkBps: 5}
+	}
+	st := &State{Swaps: []Swap{
+		priced("gmgn", 98), priced("gmgn", 100), priced("gmgn", 99),
+		priced("gmgn-arc", 97), priced("gmgn-arc", 96),
+		// The doubled Arc buys: unpriced, out of bounds, fee residual 5,050 bps.
+		{Terminal: "gmgn-arc", Method: methodVersion, Flag: "out_of_bounds", TerminalBps: 5050, NetworkBps: 1},
+		{Terminal: "gmgn-arc", Method: methodVersion, Flag: "out_of_bounds", TerminalBps: 5047, NetworkBps: 1},
+		{Terminal: "gmgn-arc", Method: methodVersion, Flag: "out_of_bounds", TerminalBps: 5033, NetworkBps: 1},
+	}}
+	member := map[string]bool{"gmgn": true, "gmgn-arc": true}
+	att := map[string]float64{"gmgn": 400000, "gmgn-arc": 20000}
+	cm := chainMeanOfMedians(st, member, []string{"gmgn", "gmgn-arc"}, att, c2field, nil)
+	if v := cm["terminal"]; v < 96 || v > 100 {
+		t.Errorf("pooled terminal follows rows the bounds threw out: %.1f bps", v)
+	}
+}
