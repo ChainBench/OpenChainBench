@@ -124,13 +124,13 @@ func runChainFeesLoop(cfg *Config, stop <-chan struct{}) {
 	tick := time.NewTicker(cfg.ChainFeesRefreshInterval)
 	defer tick.Stop()
 
-	fetchAllChainFees()
+	fetchAllChainFees(cfg.MobulaAPIKey)
 	for {
 		select {
 		case <-stop:
 			return
 		case <-tick.C:
-			fetchAllChainFees()
+			fetchAllChainFees(cfg.MobulaAPIKey)
 		}
 	}
 }

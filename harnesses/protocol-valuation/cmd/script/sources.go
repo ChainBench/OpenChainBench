@@ -94,6 +94,9 @@ type Protocol struct {
 	// after real fees over the year. The published total is then knowably
 	// short of the protocol's revenue, so the ratio built on it is too.
 	Incomplete bool
+	// WindowShort: the fee history is shorter than the 30 day window (all
+	// fees ever earned fall inside it), so the annualized figure overstates.
+	WindowShort bool
 	// What the silent adapters earned over the past year, so the size of
 	// the gap is visible rather than asserted.
 	SilentFees1y float64
@@ -335,6 +338,16 @@ func joinCohort(fees []feeAdapter, revenue []revenueAdapter, protocols []llamaPr
 
 	out := make([]Protocol, 0, len(acc))
 	for gecko, e := range acc {
+		// A token whose whole fee history sits inside the trailing 30 days
+		// (nothing in the month before, and the year total is the month
+		// total) has a window shorter than the one being annualized:
+		// x 365/30 on twenty days of fees overstates P/F by half. Treat it
+		// as incomplete so it is metered but neither ranked nor in the
+		// category median until a full window exists (audit 2026-09-25).
+		if e.Fees30d > 0 && e.Prev30d == 0 && e.Fees1y > 0 && e.Fees1y <= e.Fees30d*1.01 {
+			e.Incomplete = true
+			e.WindowShort = true
+		}
 		// The token's category is the one its fees mostly come from, not
 		// the one /overview/fees happened to list first. Taking the first
 		// filed Drift under Liquid Staking and Sanctum under Dexs, which

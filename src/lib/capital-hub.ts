@@ -293,7 +293,15 @@ async function buildHub(): Promise<CapitalHub> {
       hasChainPage: CHAIN_SLUGS.has(c.slug),
     }))
     // Largest capital base first: TVL, else stablecoin float, else bridged.
-    .sort((a, b) => (b.tvl ?? b.stablesFloat ?? b.bridgedTvl ?? 0) - (a.tvl ?? a.stablesFloat ?? a.bridgedTvl ?? 0));
+    // One declared measure, DeFi TVL, nulls last; ties and the few rows
+    // without a TVL fall back to bridged value so an L2Beat-only row still
+    // sits above dust rather than at a random place (audit 2026-09-25).
+    .sort((a, b) => {
+      if (a.tvl != null && b.tvl != null && a.tvl !== b.tvl) return b.tvl - a.tvl;
+      if (a.tvl != null && b.tvl == null) return -1;
+      if (a.tvl == null && b.tvl != null) return 1;
+      return (b.bridgedTvl ?? b.stablesFloat ?? 0) - (a.bridgedTvl ?? a.stablesFloat ?? 0);
+    });
 
   const inflows = chains.filter((c) => (c.stablesNet30d ?? 0) > 0);
   const inflowTotal = inflows.reduce((s, c) => s + (c.stablesNet30d ?? 0), 0);
