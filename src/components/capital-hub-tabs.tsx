@@ -175,8 +175,8 @@ function ChainsTable({ rows }: { rows: ChainRow[] }) {
               {col("stablesNet30d", "Net stables 30d", "Dollar change of the stablecoin float over 30 days")}
               {hasCctp && col("cctpNet7d", "USDC over CCTP 7d", "Net USDC that entered the chain over Circle CCTP in 7 days, burn events on seven EVM chains (bench 281); blank off the scanned set")}
               {hasDex && col("dexVolume24h", "DEX volume 24h", "DEX volume on the chain over the trailing 24 hours (DeFiLlama)")}
-              {hasFees && col("fees30d", "Fees 30d", "Fees paid by users on the chain over 30 closed days (DeFiLlama)")}
-              {hasFees && col("revenue30d", "Revenue 30d", "The part of those fees the chain or its token keeps")}
+              {hasFees && col("fees30d", "Fees 30d", "Fees users paid on the chain over 30 closed days: gas plus every protocol DeFiLlama tracks on it (bench 280)")}
+              {hasFees && col("revenue30d", "Revenue 30d", "Revenue the chain and its protocols kept out of those fees, per each DeFiLlama adapter")}
               <Th>Reading</Th>
             </tr>
           </thead>

@@ -111,7 +111,9 @@ function chainNote(r: Omit<ChainRow, "note" | "hasChainPage">, stableLeader: boo
     parts.push(`${fmtUsdShort(Math.abs(r.cctpNet7d))} of USDC ${r.cctpNet7d >= 0 ? "arrived over" : "left over"} Circle CCTP in 7 days`);
   }
   if (r.fees30d != null && r.revenue30d != null && r.fees30d > 0) {
-    parts.push(`the chain kept ${((r.revenue30d / r.fees30d) * 100).toFixed(0)}% of ${fmtUsdShort(r.fees30d)} in 30-day fees`);
+    parts.push(
+      `users paid ${fmtUsdShort(r.fees30d)} in fees over 30 days (gas plus protocols), ${((r.revenue30d / r.fees30d) * 100).toFixed(0)}% kept as revenue`,
+    );
   }
   if (parts.length === 0) return r.tvl != null ? `TVL ${fmtUsdShort(r.tvl)}, no flow reading yet.` : "No reading yet.";
   const s = parts.join("; ");
