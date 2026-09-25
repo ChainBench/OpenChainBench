@@ -129,7 +129,11 @@ export type TradingAppStats = {
   /** 7d over previous 7d, in percent; null when either is missing or zero. */
   trend7dPct: number | null;
   share30d: number | null;
-  /** Chain split of the last closed day, largest first. */
+  /** The app's latest closed day on DeFiLlama; every figure above ends on it. */
+  lastDay: string | null;
+  /** True when lastDay trails the cohort's last closed day (adapter not run yet, or a skipped day). */
+  stale: boolean;
+  /** Chain split of the app's latest closed day, largest first. */
   chainSplit: { chain: string; usd: number; pct: number }[];
   /** Last 30 closed days, oldest first, for sparklines. */
   last30: (number | null)[];
@@ -138,13 +142,21 @@ export type TradingAppStats = {
 /** Per-app windows, trend, share and chain split, sorted by last-day volume. */
 export function computeTradingAppStats(h: TradingAppHistory): TradingAppStats[] {
   const stats = h.apps.map((app) => {
-    const w1 = windowSum(app, h.lastClosedDay, 1);
-    const w7 = windowSum(app, h.lastClosedDay, 7);
-    const w30 = windowSum(app, h.lastClosedDay, 30);
+    // Every per-app figure ends on the app's own latest closed day, not on
+    // the cohort's lastClosedDay (yesterday UTC). Most of these DeFiLlama
+    // adapters are Dune queries that refuse to run until 10 h after a day
+    // closes, and GMGN's skips days outright, so anchoring on yesterday
+    // left five of eight apps at "n/a" with 0 % chain splits every morning
+    // UTC (2026-09-25). `stale` says when the app's day trails the cohort's.
+    const lastDay = app.days.length > 0 ? app.days[app.days.length - 1].day : null;
+    const anchor = lastDay ?? h.lastClosedDay;
+    const w1 = windowSum(app, anchor, 1);
+    const w7 = windowSum(app, anchor, 7);
+    const w30 = windowSum(app, anchor, 30);
     const d1 = w1.days === 1 ? w1.sum : null;
     const d7 = w7.days > 0 ? w7.sum : null;
     const d30 = w30.days > 0 ? w30.sum : null;
-    const prevEnd = new Date(new Date(h.lastClosedDay + "T00:00:00Z").getTime() - 7 * 86400_000)
+    const prevEnd = new Date(new Date(anchor + "T00:00:00Z").getTime() - 7 * 86400_000)
       .toISOString()
       .slice(0, 10);
     const wPrev = windowSum(app, prevEnd, 7);
@@ -152,12 +164,12 @@ export function computeTradingAppStats(h: TradingAppHistory): TradingAppStats[] 
     // read as a drop.
     const d7prev = wPrev.days === 7 ? wPrev.sum : null;
     const trend7dPct = w7.days === 7 && d7prev != null && d7prev > 0 ? ((w7.sum - d7prev) / d7prev) * 100 : null;
-    const last = app.days.find((d) => d.day === h.lastClosedDay);
+    const last = lastDay ? app.days.find((d) => d.day === lastDay) : undefined;
     const total = last?.usd ?? 0;
     // DeFiLlama publishes the chain breakdown of the newest day hours
     // after the total (and partially at first); use the latest day whose
     // split covers the day's total.
-    const chainSplit = Object.entries(splitDay(app, h.lastClosedDay)?.chains ?? {})
+    const chainSplit = Object.entries(splitDay(app, anchor)?.chains ?? {})
       .map(([chain, usd]) => ({ chain, usd, pct: total > 0 ? (usd / total) * 100 : 0 }))
       .sort((a, b) => b.usd - a.usd);
     const byDay = new Map(app.days.map((d) => [d.day, d.usd]));
@@ -167,7 +179,21 @@ export function computeTradingAppStats(h: TradingAppHistory): TradingAppStats[] 
       const d = new Date(end.getTime() - i * 86400_000).toISOString().slice(0, 10);
       last30.push(byDay.get(d) ?? null);
     }
-    return { app, d1, d7, d30, d7days: w7.days, d30days: w30.days, d7prev, trend7dPct, share30d: null as number | null, chainSplit, last30 };
+    return {
+      app,
+      d1,
+      d7,
+      d30,
+      d7days: w7.days,
+      d30days: w30.days,
+      d7prev,
+      trend7dPct,
+      share30d: null as number | null,
+      lastDay,
+      stale: lastDay != null && lastDay < h.lastClosedDay,
+      chainSplit,
+      last30,
+    };
   });
   const total30 = stats.reduce((s, x) => s + (x.d30 ?? 0), 0);
   for (const s of stats) s.share30d = s.d30 != null && total30 > 0 ? (s.d30 / total30) * 100 : null;
@@ -239,7 +265,9 @@ export function splitDay(app: TradingAppSeries, lastClosedDay: string): TradingA
 export function cohortChainSplit(h: TradingAppHistory): { chain: string; usd: number; pct: number }[] {
   const acc = new Map<string, number>();
   for (const a of h.apps) {
-    const d = splitDay(a, h.lastClosedDay);
+    // Each app on its own latest closed day (see computeTradingAppStats).
+    const own = a.days.length > 0 ? a.days[a.days.length - 1].day : h.lastClosedDay;
+    const d = splitDay(a, own);
     for (const [c, v] of Object.entries(d?.chains ?? {})) acc.set(c, (acc.get(c) ?? 0) + v);
   }
   const total = [...acc.values()].reduce((s, v) => s + v, 0);

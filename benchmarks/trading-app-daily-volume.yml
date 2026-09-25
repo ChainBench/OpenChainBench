@@ -14,7 +14,7 @@ unit: usd
 higher_is_better: true
 
 disclaimer: |
-  Volume is what each app's DeFiLlama adapter attributes to the app (fee wallet, referral tag or router contract, adapter by adapter) and counted per UTC day. Scope is whatever chains the adapter covers: FOMO is Solana only on DeFiLlama, GMGN spans ten chains. The last closed day can be restated by DeFiLlama for about a day; the harness re-reads the full series every hour.
+  Volume is what each app's DeFiLlama adapter attributes to the app (fee wallet, referral tag or router contract) per UTC day, over every chain the adapter covers: FOMO is Solana only on DeFiLlama, GMGN spans ten chains. Each row ends on the app's latest closed day: most adapters are Dune queries that publish a day 10 to 20 hours after it closes, so before mid-day UTC some rows are dated one day behind, and GMGN's adapter skips some days. DeFiLlama can restate the last day for about a day; the series is re-read hourly.
 
 seo_intro: |
   A trading app is a router: it does not settle trades, it sends them to pump.fun,
@@ -36,8 +36,9 @@ abstract: |
   the daily USD volume and totalDataChartBreakdown the per-chain split, both on
   UTC day buckets. The current (open) UTC day is dropped, the last 400 closed days
   are kept, and the series is re-read in full so restated days are picked up. The
-  headline is the last closed day; 7 and 30 day sums are published only when every
-  day of the window is present. Share is the app's volume over the cohort total on
+  headline is the app's latest closed day (most adapters publish a day 10 to 20
+  hours after it closes); 7 and 30 day sums end on that day and are published from
+  80 percent day coverage, with the day count alongside. Share is the app's volume over the cohort total on
   the same window. The public JSON (kv.openchainbench.com/aggregate/trading-apps/history.json)
   carries the daily series and chain split per app and feeds the /trading-apps
   chart and each app's product page.
@@ -46,10 +47,11 @@ methodology:
   - "Source: DeFiLlama dexs summary, free endpoint, categories Trading App and Telegram Bot, plus pump.fun's mobile app. One request per app per hour."
   - "Scope: every chain the app's DeFiLlama adapter covers, summed. The per-chain split of the last closed day is published as trading_app_volume_chain_usd{app,chain}."
   - "Day bucket: UTC, closed days only; the open day is never published. DeFiLlama can restate the last closed day for about 24 hours; the full series is re-read every hour so restatements land."
-  - "Windows: 1d = last closed day (headline). 7d and 30d are sums over the last 7 / 30 closed days and are published only when all days are present."
+  - "Anchor: each app's latest closed day on DeFiLlama (trading_app_last_day_unix). Most adapters are Dune queries that refuse to run until 10 hours after the day closes, so a day typically lands between 10:00 and 20:00 UTC the next day; GMGN's adapter also skips some days. Before that, the app's row shows the previous day, dated, rather than nothing."
+  - "Windows: 1d = the app's latest closed day (headline). 7d and 30d are sums over the 7 / 30 closed days ending on it, published from 80 percent day coverage; the number of days behind a sum is shown next to it."
   - "Share: app volume over the cohort total on the same window, in percent."
   - "History: up to 400 closed days per app (adapter start dates differ: GMGN from 2023, FOMO and Axiom from May 2026)."
-  - "Health: 1 when the app's last closed day is within 3 days of the cohort's last closed day."
+  - "Health: 1 when the app's latest closed day is within 3 days of yesterday UTC."
   - "Not covered: apps without a DeFiLlama dexs adapter (Maestro publishes fees only, BasedBot has none). They stay on the Dune-based bench 208 where they have data."
 
 findings:
@@ -66,7 +68,7 @@ faq:
   - q: "Why closed UTC days and not the last 24 hours?"
     a: "A rolling window ends at a different second for every app, so two apps' 24h figures never cover the same period. Closed UTC days are the convention DeFiLlama, Dune dashboards and the apps' own reports use, and the unit flip claims are made in."
   - q: "How current is it?"
-    a: "The headline is yesterday (UTC). The harness re-reads every hour; DeFiLlama restates the last day for about a day, so the figure for yesterday can move slightly until tomorrow."
+    a: "The headline is the app's latest closed UTC day on DeFiLlama. FOMO and the pump.fun app land shortly after midnight; Axiom, GMGN, Terminal, Trojan and the Telegram bots are Dune queries that publish a day 10 to 20 hours after it closes, so until then their row shows the day before, dated. The harness re-reads every hour; DeFiLlama restates the last day for about a day."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/trading-app-volume
 
@@ -75,7 +77,7 @@ prometheus:
   freshness_metric: trading_app_health
   expected_freshness_seconds: 7200
 
-panel_main_description: "Swap volume routed through the app on the last closed UTC day, every chain summed. From DeFiLlama's per-app dexs adapter."
+panel_main_description: "Swap volume routed through the app on its latest closed UTC day, every chain summed. From DeFiLlama's per-app dexs adapter."
 
 metric_panels:
   - id: vol_7d
@@ -85,14 +87,14 @@ metric_panels:
     unit: usd
     higher_is_better: true
     tab: false
-    description: "Sum of the last 7 closed UTC days, every chain."
+    description: "Sum of the 7 closed UTC days ending on the app's latest day, every chain."
   - id: vol_30d
     label: Volume 30d
     label_key: app
     metric: trading_app_volume_usd{window="30d"}
     unit: usd
     higher_is_better: true
-    description: "Sum of the last 30 closed UTC days, every chain."
+    description: "Sum of the 30 closed UTC days ending on the app's latest day, every chain."
   - id: share_1d
     label: Share (day)
     label_key: app
@@ -100,7 +102,7 @@ metric_panels:
     unit: pct
     higher_is_better: true
     tab: false
-    description: "Share of the cohort's volume on the last closed day."
+    description: "Share of the cohort's volume, each app on its latest closed day."
   - id: share_7d
     label: Share 7d
     label_key: app
@@ -108,14 +110,14 @@ metric_panels:
     unit: pct
     higher_is_better: true
     tab: false
-    description: "Share of the cohort's volume over the last 7 closed days."
+    description: "Share of the cohort's 7-day volume, each app's window ending on its latest day."
   - id: share_30d
     label: Share 30d
     label_key: app
     metric: trading_app_volume_share_pct{window="30d"}
     unit: pct
     higher_is_better: true
-    description: "Share of the cohort's volume over the last 30 closed days."
+    description: "Share of the cohort's 30-day volume, each app's window ending on its latest day."
   - id: chains
     label: Chains
     label_key: app
@@ -123,7 +125,7 @@ metric_panels:
     unit: count
     higher_is_better: true
     tab: false
-    description: "Chains with volume on the last closed day."
+    description: "Chains with volume on the app's latest closed day."
   - id: history_days
     label: Days of history
     label_key: app
@@ -147,7 +149,7 @@ stacked_share: true
 chart:
   min_range: 7d
   default_range: 30d
-  window_label: last closed day
+  window_label: latest closed day
 
 providers:
   - slug: gmgn
