@@ -1,0 +1,55 @@
+slug: which-chain-gained-the-most-stablecoins-this-month
+question: "Which chain gained the most stablecoins this month?"
+benchmark: chain-stablecoin-flow
+status: live
+
+short_answer: |
+  {{best_name}} added {{best_p50}} of stablecoins to its float over the last 30 days, the largest net inflow among the {{count}} chains OpenChainBench tracks above $100M of pegged-dollar float. Net flow is the dollar change in stablecoins circulating on the chain, every issuer combined, read from DeFiLlama's per-chain series and ranked on the same 30-day window for every chain.
+
+intro: |
+  TVL tells you where capital sits; stablecoin flow tells you where it is going. A dollar of USDC or
+  USDT only appears on a chain when somebody mints or bridges it there on purpose, and it only leaves
+  when somebody redeems or bridges it out, so the monthly change in a chain's stablecoin float is the
+  closest public reading of capital actually moving between ecosystems. This page ranks every chain
+  in the OpenChainBench registry that DeFiLlama tracks above $100M of float by that 30-day change,
+  in dollars, with the percentage, the 7-day change and the total float next to it.
+
+  Dollars and percentages rank differently on purpose. The same $500M inflow is a rounding error on
+  Ethereum or Tron and a step change on a chain with $2B of float; the dollar column says how much
+  moved, the percentage column says how much it mattered to the chain.
+
+methodology: |
+  DeFiLlama's stablecoin endpoint returns the daily circulating amount of every pegged-USD stablecoin
+  per chain. The chain-kpis harness reads the full history for each registry chain once an hour,
+  sums the issuers, and differences it: the 30-day net flow is today's float minus the float 30 days
+  ago, the 7-day flow the same over a week, and the two percentages divide by the earlier float. The
+  cohort is the registry chains above $100M of float when the cohort was set (23 September 2026);
+  chains below it move by tens of percent on a single mint and would rank issuance events rather than
+  flows. The bench page carries the exact query behind every cell.
+
+limitations:
+  - "An inflow is not adoption on its own. Dollars can arrive and sit idle in a treasury or a bridge contract, and they can leave because one issuer redeemed a large position rather than because users left. Read the flow next to the chain's DEX volume and TVL."
+  - "Issuer events dominate short windows. A single large mint or burn by Tether or Circle moves the 7-day figure of a mid-sized chain by more than a month of organic activity; the 30-day window smooths this but does not remove it."
+  - "Coverage is the chains DeFiLlama tracks for stablecoins that sat above $100M when the cohort was set. A chain outside the OpenChainBench registry, or one that crossed the floor since, is not on the board until the next spec review."
+  - "Bridged stablecoins are counted where they circulate. A USDC bridged from Ethereum to an L2 leaves Ethereum's float and joins the L2's, which is the intended reading, but a wrapped representation not recognized by DeFiLlama is invisible."
+  - "OpenChainBench measures; it does not advise. A chain gaining float is a fact about capital, not a recommendation about its token."
+
+faq:
+  - q: "Which chain gained the most stablecoins over the last 30 days?"
+    a: "{{best_name}}, with a net inflow of {{best_p50}}. The bench page ranks all {{count}} cohort chains on the same window and shows the 7-day move and the total float next to each, refreshed hourly."
+  - q: "Why rank on dollars rather than on percentage?"
+    a: "Because the dollar figure is the quantity of capital that moved; the percentage is on the page beside it. The two rank differently: an inflow that barely registers on the largest chains can be a third of a smaller chain's float."
+  - q: "How is this different from TVL?"
+    a: "TVL is a level and this is a flow. An asset deposited a year ago still counts in TVL today; stablecoin float only changes when dollars are minted, redeemed or bridged, so its monthly change reads where capital is moving now rather than where it settled."
+  - q: "How is this different from bridged TVL?"
+    a: "Bridged TVL, from L2Beat, is the value a scaling chain's bridges secure; it covers L2s only and measures value at rest. Stablecoin flow covers every chain DeFiLlama tracks, Solana, Tron and BNB included, and measures dollars arriving or leaving over a window."
+  - q: "Can I get the series?"
+    a: "Yes. The bench's /api/stat endpoint returns the ranked table as JSON, the /api/series endpoint returns 7, 30, 90 day and 1 year ranges, and kv.openchainbench.com/aggregate/chains/history.json keeps one point per UTC day per chain (float, net flow, TVL, DEX volume). Everything is CC BY 4.0."
+
+related:
+  - which-defi-token-is-cheapest-per-dollar-of-fees
+  - which-perp-dex-token-has-the-lowest-price-to-fees
+  - which-l1-has-the-fastest-finality
+
+seo_title: "Which chain gained the most stablecoins this month?"
+seo_description: "{{best_name}} added {{best_p50}} of stablecoins in 30 days, the largest net inflow of {{count}} chains above $100M of float. Dollar and percent flows per chain."

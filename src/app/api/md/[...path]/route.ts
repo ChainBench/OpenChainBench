@@ -4,7 +4,8 @@ import { getProvider } from "@/lib/providers";
 import { fetchPerpCohort } from "@/lib/perp-stats";
 import { captureServer } from "@/lib/analytics-server";
 import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
-import { benchMarkdown, perpsHubMarkdown, productMarkdown, rwaHubMarkdown } from "@/lib/markdown-views";
+import { benchMarkdown, capitalHubMarkdown, perpsHubMarkdown, productMarkdown, rwaHubMarkdown } from "@/lib/markdown-views";
+import { getCapitalHub } from "@/lib/capital-hub";
 
 /**
  * Markdown views of a bench, the perps hub and a product page, at
@@ -67,6 +68,9 @@ async function handle(path: string[]): Promise<NextResponse> {
   if (head === "perps" && slug === undefined) {
     const cohort = await fetchPerpCohort();
     return markdown(perpsHubMarkdown(cohort), "/perps");
+  }
+  if (head === "capital" && slug === undefined) {
+    return markdown(capitalHubMarkdown(await getCapitalHub()), "/capital");
   }
   if (head === "rwa" && slug === undefined) {
     const slugs = ["rwa-yield-accuracy", "usdy-nav-basis", "tokenized-stock-peg", "xstocks-peg", "tokenized-stock-weekend-drift", "rwa-solana-depth"];

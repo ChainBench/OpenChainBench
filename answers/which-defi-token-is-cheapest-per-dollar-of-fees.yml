@@ -1,0 +1,59 @@
+slug: which-defi-token-is-cheapest-per-dollar-of-fees
+question: "Which DeFi token trades at the lowest price to fees?"
+benchmark: protocol-pf-ratio
+status: live
+
+short_answer: |
+  {{best_name}} has the lowest price to fees of the {{count}} DeFi tokens OpenChainBench tracks, at {{best_p50}}: its market cap is that many times the fees its protocol earned over the last 30 days, annualized. Every token on the board is read against the fee-weighted median of its own category, and the rows where fees grew while the token fell are flagged, so a low multiple is never read alone.
+
+intro: |
+  Price to fees is the one valuation ratio every fee-earning protocol can carry, whatever it does:
+  market cap over the fees its users paid over the last 30 days, annualized. It answers a plain
+  question, how many years of current fee income is the market paying for this token, and it makes
+  a DEX, a lending market, a launchpad and a liquid staking protocol comparable on one axis. This
+  page computes it for about eighty tokens from two public sources, DeFiLlama for fees and CoinGecko
+  for market data, on the same window.
+
+  Two companions keep the ratio honest. The category median says what a normal multiple looks like
+  for that kind of protocol (a launchpad with a month-long fee spike and a lending market with steady
+  fees should not share a yardstick), and the fee trend against the token move separates a token that
+  fell because its fees fell from one that fell while its fees grew. The second case is flagged on
+  the board; it is a screen for further reading, not a signal.
+
+methodology: |
+  Fees come from DeFiLlama's per-protocol adapters (dailyFees), summed over the last 30 closed UTC
+  days and annualized as the sum times 365 divided by 30; a protocol whose adapter reports a
+  knowably incomplete total (a version that stopped reporting after a year of fees) is metered but
+  not listed. Market cap, fully diluted valuation, circulating and total supply and the 30-day price
+  change come from CoinGecko. P/F is market cap over annualized fees; FDV/F uses fully diluted
+  valuation; float is circulating over total supply; fees MoM compares the last 30 days to the 30
+  before. The category median is fee-weighted across the tokens of the same DeFiLlama category. A
+  row is flagged when fees grew month over month, the token fell over 30 days and the P/F sits below
+  the category median, all three at once. The harness refreshes hourly.
+
+limitations:
+  - "A low ratio is a description. The market can price a token low because it expects fees to fall, because the token has no claim on the fees, or because most of the supply is still locked; the float and category columns cover part of that, the first case is invisible here."
+  - "Fees are what DeFiLlama's adapter attributes to the protocol, and adapters differ in what they count. Two protocols with the same economics can show different totals; the bench page links each adapter."
+  - "Thirty days is one month. A fee promotion, an airdrop farming wave or a single volatile week moves the ratio for the whole window; the month-over-month column shows whether the month was unusual."
+  - "Categories are DeFiLlama's. A protocol with several products is filed under the one that earned the most fees, so the peer median can shift when its mix does."
+  - "OpenChainBench measures; it does not advise. Nothing here is a recommendation to buy or sell any token."
+
+faq:
+  - q: "Which DeFi token has the lowest price to fees right now?"
+    a: "{{best_name}} at {{best_p50}}, of {{count}} tokens ranked. The bench page shows the 30-day fee total, the market cap and the category median behind the ratio, refreshed hourly."
+  - q: "What does the fees up, token down flag mean?"
+    a: "Three conditions at once: the protocol's fees grew against the prior 30 days, its token fell over the same 30 days, and its price to fees sits below its category median. It marks rows where the fee line and the price line moved apart; it says nothing about which one is right."
+  - q: "Why compare to a category median instead of the whole board?"
+    a: "Because a launchpad, a lending market and a liquid staking protocol earn fees with different volatility and different margins, and the market prices them differently on purpose. A DEX at 3x is ordinary; a liquid staking token at 3x would be unusual. The median is fee-weighted so a large protocol sets it more than a small one."
+  - q: "How does this relate to price to earnings?"
+    a: "Price to earnings divides by net income, which most protocols do not report. Price to fees divides by gross fees, which every adapter publishes daily; price to sales, shown on the perp DEX board, divides by the protocol's own share of those fees. P/F is the widest comparable ratio, and the least specific about what token holders receive."
+  - q: "Can I get the data?"
+    a: "Yes. The bench's /api/stat endpoint returns the ranked table, the MCP server answers PromQL over the protocol_ gauges for ranges up to 90 days, and kv.openchainbench.com/aggregate/valuation/history.json keeps one point per UTC day per token (market cap, FDV, float, fees, P/F, price change). CC BY 4.0."
+
+related:
+  - which-perp-dex-token-has-the-lowest-price-to-fees
+  - which-chain-gained-the-most-stablecoins-this-month
+  - which-perp-dex-has-the-lowest-fees
+
+seo_title: "Which DeFi token trades at the lowest price to fees?"
+seo_description: "{{best_name}} trades at {{best_p50}} price to fees, the lowest of {{count}} DeFi tokens. Market cap over annualized 30-day fees, read against each category's median."
