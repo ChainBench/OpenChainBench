@@ -1,0 +1,222 @@
+# OpenChainBench. Bench 279
+slug: usdc-corridor-flows
+number: "279"
+title: "USDC corridor flows: where dollars move between chains over Circle CCTP, 7 days"
+seo_title: "USDC flows between chains: {{best_name}} netted {{best_p50}} in 7 days"
+seo_description: "{{best_name}} took in {{best_p50}} of USDC over Circle CCTP in 7 days, {{worst_name}} sent out {{worst_p50}}. Corridor by corridor, from the burn events on {{ranked_count}} chains."
+subtitle: "Net USDC that entered each chain over Circle's CCTP bridge in the trailing 7 days, read from the burn events on seven chains, with the outflow per destination, Wormhole's outbound volume and the change in each L2's bridged value alongside."
+category: Blockchains
+status: live
+metric: Net USDC inflow (7d)
+row_noun: { one: chain, many: chains }
+unit: usd
+higher_is_better: true
+
+disclaimer: |
+  This is USDC over one bridge, Circle's CCTP, between seven scanned chains
+  (Ethereum, Base, Arbitrum, Optimism, Polygon, Avalanche, Unichain). It is
+  not total cross-chain flow: Across, Stargate, LayerZero, deBridge, Relay
+  and the native L2 bridges are outside the net figure, and USDC arriving
+  from Solana, Sui, Aptos or the smaller CCTP chains is not counted because
+  their burns are not scanned. Read it next to bench 275, the stablecoin
+  float change, which is bridge-agnostic.
+
+seo_intro: |
+  A USDC transfer over CCTP burns the dollars on the chain it leaves and
+  mints them on the chain it reaches, and the burn event names the
+  destination. That makes Circle's bridge the one corridor where the
+  question "where did the dollars go" has a public, per-transaction answer
+  that anyone can read off a node. The board sums those burns per source
+  and destination over the trailing 24 hours and 7 days, publishes the
+  outflow of each scanned chain by destination, the inflow each chain
+  received from the scanned sources, and the net. Two companions widen the
+  view: the volume that left each chain over Wormhole, from Wormholescan,
+  and the change in the bridged value each L2 secures, from L2Beat's TVS,
+  which moves with every bridge at once. What it is not is the whole
+  picture: it is one bridge's ledger, stated as such.
+
+abstract: |
+  The bridge-flows harness reads DepositForBurn events (CCTP v1 and v2) off
+  the TokenMessenger contracts of seven EVM chains over public RPCs, keeps
+  the USDC burns (EURC excluded by the burnToken filter) in hourly buckets
+  per destination domain, and republishes trailing 24 hour and 7 day
+  windows every 30 minutes: bridge_usdc_out_usd per corridor,
+  bridge_usdc_in_usd per destination from the scanned sources,
+  bridge_usdc_net_usd for the scanned chains. Wormholescan's per-day
+  outbound volume and L2Beat's TVS chart (canonical plus external) feed the
+  two companion panels. A chain whose scan fails keeps its previous values
+  and drops to health 0; inflow and net are published only when every
+  source scanned to the head, because a missing source would understate
+  everyone else's inflow.
+
+methodology:
+  - "Source: DepositForBurn events on Circle's TokenMessenger (v1) and TokenMessengerV2 contracts on Ethereum, Base, Arbitrum, Optimism, Polygon, Avalanche and Unichain, read with eth_getLogs over public RPCs (Tenderly public gateways and the chains' official endpoints). Amount and destination domain come from the event; only burns whose burnToken is the chain's native USDC count, so EURC over CCTP is excluded."
+  - "Windows: trailing 24 hours and 7 days over hourly buckets keyed by the burn's block time (interpolated inside each log chunk, exact enough at hourly resolution). Outflow per corridor = burns on the source for that destination. Inflow to a chain = the scanned sources' burns for it. Net = inflow minus outflow, for the seven scanned chains only."
+  - "Coverage: Solana, Sui, Aptos and the smaller CCTP domains appear as destinations of the scanned chains' burns but are not scanned as sources, so their own outflow, and the inflow it produces elsewhere, is missing. The net figure is USDC over CCTP among the seven chains, not a chain's total USDC balance change; bench 275 measures that from the stablecoin float."
+  - "Wormhole companion: the USD volume that left each chain over Wormhole, from Wormholescan's per-day activity feed (values scaled by 1e8). 24h is the last complete UTC day, 7d the last seven; a day count gauge says how many are behind the sum."
+  - "L2 bridged value companion: the change over 24h and 7d of the canonical plus external part of each L2's value secured on L2Beat (native excluded). It moves with every bridge at once and with prices, so it is a level change in dollars, not a flow count."
+  - "Failures: a chain whose scan did not reach the head keeps its previous gauges and reads health 0, never zero flow. Inflow and net publish only when all seven sources are healthy. Scans resume from a persisted cursor; a 3-block reorg margin is left off the head."
+  - "Cadence: every 30 minutes for CCTP, hourly for Wormholescan and L2Beat. The bench's success column reads the harness liveness gauge; freshness is the last completed tick."
+
+findings:
+  - "{{best_name}} netted the most USDC in over CCTP among the {{ranked_count}} scanned chains, {{best_p50}} in 7 days."
+  - "{{worst_name}} sent the most out net, {{worst_p50}}; on CCTP a chain's outflow is another scanned chain's inflow or a transfer to an unscanned domain such as Solana."
+  - "Net flow and the L2 bridged-value change disagree by design: the first counts one bridge's USDC, the second every bridge's value at current prices."
+
+faq:
+  - q: "Why only Circle CCTP?"
+    a: "Because it is the one bridge whose per-transaction ledger is public and readable without a paid API: every transfer emits a burn event naming the amount and the destination chain. Aggregated multi-bridge flow feeds are paid products now. The Wormhole and L2Beat companions widen the view; the disclaimer says what is left out."
+  - q: "Why does Solana show inflow but no outflow?"
+    a: "The harness scans the seven EVM chains' burns, and those burns name Solana as a destination. Solana's own burns live in a Solana program the harness does not read yet, so Solana's outflow is unknown and it has no net row. It appears in the corridor matrix as a destination only."
+  - q: "How current is it?"
+    a: "The CCTP windows are trailing 24 hours and 7 days, refreshed every 30 minutes from the chain head minus a small reorg margin. Wormhole is per complete UTC day, refreshed hourly. L2Beat's chart updates a few times a day."
+  - q: "Can I cite a value from this page?"
+    a: "Yes. Every number is a Prometheus gauge exposed through the OCB API endpoints, and the harness source is open at the link in the source field below. Cite the value with the timestamp at the top of the page and say it is USDC over CCTP among the scanned chains."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/bridge-flows
+
+prometheus:
+  window: 24h
+  expected_freshness_seconds: 5400
+  freshness_timestamp_metric: bridge_flows_last_tick_unix
+
+panel_main_description: "Net USDC that entered the chain over Circle CCTP from the six other scanned chains, minus what it sent out, trailing 7 days."
+
+metric_panels:
+  - id: net_24h
+    label: Net 24h
+    label_key: chain
+    metric: bridge_usdc_net_usd{window="24h"}
+    unit: usd
+    higher_is_better: true
+    tab: false
+    description: "The same net figure over the trailing 24 hours."
+  - id: inflow_7d
+    label: Inflow 7d
+    label_key: chain
+    metric: bridge_usdc_in_usd{window="7d"}
+    unit: usd
+    higher_is_better: true
+    description: "USDC sent to the chain over CCTP by the scanned sources in 7 days."
+  - id: outflow_7d
+    label: Outflow 7d
+    label_key: chain
+    metric: bridge_usdc_out_total_usd{window="7d"}
+    unit: usd
+    higher_is_better: false
+    description: "USDC the chain burned for every destination in 7 days, unscanned domains included."
+  - id: burns_7d
+    label: Burns 7d
+    label_key: source
+    metric: bridge_usdc_burns{window="7d"}
+    unit: count
+    higher_is_better: true
+    tab: false
+    description: "Number of CCTP USDC burns on the chain in 7 days, the sample behind the outflow."
+  - id: wormhole_7d
+    label: Wormhole out 7d
+    label_key: chain
+    metric: bridge_wormhole_volume_usd{window="7d"}
+    unit: usd
+    higher_is_better: false
+    description: "Volume that left the chain over Wormhole in the last 7 complete UTC days, from Wormholescan."
+  - id: l2_bridged_7d
+    label: L2 bridged value 7d
+    label_key: chain
+    metric: bridge_l2_tvs_change_usd{window="7d"}
+    unit: usd
+    higher_is_better: true
+    description: "Change over 7 days of the L2's bridged value on L2Beat (canonical plus external), every bridge at once, at current prices."
+
+ledger_columns:
+  - { label: "Net USDC 7d", slot: p50 }
+  - { label: "Net 24h", panel: net_24h }
+  - { label: "Inflow", panel: inflow_7d }
+  - { label: "Outflow", panel: outflow_7d }
+  - { label: "Burns", panel: burns_7d }
+  - { label: "Wormhole out", panel: wormhole_7d }
+  - { label: "L2 bridged 7d", panel: l2_bridged_7d }
+
+chart:
+  min_range: 24h
+  default_range: 7d
+  window_label: trailing 7 days
+
+providers:
+  - slug: ethereum
+    name: Ethereum
+    formula: "bridge_usdc_net_usd{chain=\"ethereum\",window=\"7d\"}"
+    queries:
+      p50: bridge_usdc_net_usd{chain="ethereum",window="7d"}
+      p90: bridge_usdc_in_usd{chain="ethereum",window="7d"}
+      p99: bridge_usdc_out_total_usd{chain="ethereum",window="7d"}
+      mean: avg_over_time(bridge_usdc_net_usd{chain="ethereum",window="7d"}[24h])
+      success: min_over_time(bridge_flows_source_health{chain="ethereum"}[2h])
+      sample_size: bridge_usdc_burns{source="ethereum",window="7d"}
+      series: bridge_usdc_net_usd{chain="ethereum",window="7d"}
+  - slug: base
+    name: Base
+    formula: "bridge_usdc_net_usd{chain=\"base\",window=\"7d\"}"
+    queries:
+      p50: bridge_usdc_net_usd{chain="base",window="7d"}
+      p90: bridge_usdc_in_usd{chain="base",window="7d"}
+      p99: bridge_usdc_out_total_usd{chain="base",window="7d"}
+      mean: avg_over_time(bridge_usdc_net_usd{chain="base",window="7d"}[24h])
+      success: min_over_time(bridge_flows_source_health{chain="base"}[2h])
+      sample_size: bridge_usdc_burns{source="base",window="7d"}
+      series: bridge_usdc_net_usd{chain="base",window="7d"}
+  - slug: arbitrum
+    name: Arbitrum
+    formula: "bridge_usdc_net_usd{chain=\"arbitrum\",window=\"7d\"}"
+    queries:
+      p50: bridge_usdc_net_usd{chain="arbitrum",window="7d"}
+      p90: bridge_usdc_in_usd{chain="arbitrum",window="7d"}
+      p99: bridge_usdc_out_total_usd{chain="arbitrum",window="7d"}
+      mean: avg_over_time(bridge_usdc_net_usd{chain="arbitrum",window="7d"}[24h])
+      success: min_over_time(bridge_flows_source_health{chain="arbitrum"}[2h])
+      sample_size: bridge_usdc_burns{source="arbitrum",window="7d"}
+      series: bridge_usdc_net_usd{chain="arbitrum",window="7d"}
+  - slug: optimism
+    name: Optimism
+    formula: "bridge_usdc_net_usd{chain=\"optimism\",window=\"7d\"}"
+    queries:
+      p50: bridge_usdc_net_usd{chain="optimism",window="7d"}
+      p90: bridge_usdc_in_usd{chain="optimism",window="7d"}
+      p99: bridge_usdc_out_total_usd{chain="optimism",window="7d"}
+      mean: avg_over_time(bridge_usdc_net_usd{chain="optimism",window="7d"}[24h])
+      success: min_over_time(bridge_flows_source_health{chain="optimism"}[2h])
+      sample_size: bridge_usdc_burns{source="optimism",window="7d"}
+      series: bridge_usdc_net_usd{chain="optimism",window="7d"}
+  - slug: polygon
+    name: Polygon
+    formula: "bridge_usdc_net_usd{chain=\"polygon\",window=\"7d\"}"
+    queries:
+      p50: bridge_usdc_net_usd{chain="polygon",window="7d"}
+      p90: bridge_usdc_in_usd{chain="polygon",window="7d"}
+      p99: bridge_usdc_out_total_usd{chain="polygon",window="7d"}
+      mean: avg_over_time(bridge_usdc_net_usd{chain="polygon",window="7d"}[24h])
+      success: min_over_time(bridge_flows_source_health{chain="polygon"}[2h])
+      sample_size: bridge_usdc_burns{source="polygon",window="7d"}
+      series: bridge_usdc_net_usd{chain="polygon",window="7d"}
+  - slug: avalanche
+    name: Avalanche
+    formula: "bridge_usdc_net_usd{chain=\"avalanche\",window=\"7d\"}"
+    queries:
+      p50: bridge_usdc_net_usd{chain="avalanche",window="7d"}
+      p90: bridge_usdc_in_usd{chain="avalanche",window="7d"}
+      p99: bridge_usdc_out_total_usd{chain="avalanche",window="7d"}
+      mean: avg_over_time(bridge_usdc_net_usd{chain="avalanche",window="7d"}[24h])
+      success: min_over_time(bridge_flows_source_health{chain="avalanche"}[2h])
+      sample_size: bridge_usdc_burns{source="avalanche",window="7d"}
+      series: bridge_usdc_net_usd{chain="avalanche",window="7d"}
+  - slug: unichain
+    name: Unichain
+    formula: "bridge_usdc_net_usd{chain=\"unichain\",window=\"7d\"}"
+    queries:
+      p50: bridge_usdc_net_usd{chain="unichain",window="7d"}
+      p90: bridge_usdc_in_usd{chain="unichain",window="7d"}
+      p99: bridge_usdc_out_total_usd{chain="unichain",window="7d"}
+      mean: avg_over_time(bridge_usdc_net_usd{chain="unichain",window="7d"}[24h])
+      success: min_over_time(bridge_flows_source_health{chain="unichain"}[2h])
+      sample_size: bridge_usdc_burns{source="unichain",window="7d"}
+      series: bridge_usdc_net_usd{chain="unichain",window="7d"}
