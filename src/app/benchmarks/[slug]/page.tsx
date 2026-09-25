@@ -983,10 +983,12 @@ export default async function BenchmarkPage({
           SOL is 0.8% off Binance" maps to a visible cell on the page. */}
       {!isDraft && benchmark.slug === "oracle-deviation" && <OraclePairMatrix />}
 
-      {/* Bench 268: the sampled swaps behind the ledger, one real
-          transaction per row with its Solscan link, so every figure can
-          be checked on-chain. */}
+      {/* Benches 268 and 279: the sampled swaps behind the ledger, one
+          real transaction per row with its explorer link, so every figure
+          can be checked on-chain. 279 reads the same swaps and adds the
+          column it ranks on, the loss with the app's own fee removed. */}
       {benchmark.slug === "terminal-fill-quality" && <TerminalFillAudit />}
+      {benchmark.slug === "terminal-execution-quality" && <TerminalFillAudit exec />}
 
       {/* SEO-friendly per-chain H2 block. Renders server-side so the
           long-tail "Ethereum finality time", "Solana finality time"

@@ -11,7 +11,7 @@ import { getTerminalFills } from "@/lib/terminal-fills";
  * Server component reading the harness JSON (5 min revalidate); renders
  * nothing when the JSON is unavailable.
  */
-export async function TerminalFillAudit() {
+export async function TerminalFillAudit({ exec }: { exec?: boolean } = {}) {
   const f = await getTerminalFills();
   if (!f || f.recent.length === 0) return null;
   const priced = f.recent.filter((s) => s.priced).length;
@@ -25,7 +25,8 @@ export async function TerminalFillAudit() {
             its own evidence here. These are a sample, not the statistic: the medians above are computed over the full rolling window,
             which is far more swaps than a row shows here, so a row&apos;s handful of transactions will not reproduce its median. Click a
             hash to open it on Solscan and check every figure against the transaction&apos;s balances: Loss = 1 − value received / value
-            given; Fee + Net + Protocol + Pool (+ Relay on the cross-chain rows) = Loss. Ref says what the tokens were valued at
+            given; Fee + Net + Protocol + Pool (+ Relay on the cross-chain rows) = Loss.{" "}
+            {exec ? "Exec is the figure this bench ranks on: the same loss with the app's own fee taken out, on each swap, before any median is taken. " : ""}Ref says what the tokens were valued at
             (reserves: the pool&apos;s exact mid before the swap; pool: the previous trade on the same pool, age in seconds). A{" "}
             <span className="font-mono">!</span> marks a row outside the plausible bounds, kept out of the statistics.
           </p>
@@ -35,7 +36,7 @@ export async function TerminalFillAudit() {
         </p>
       </div>
       <div className="mt-6">
-        <TerminalFillSwaps swaps={f.recent} terminals={f.terminals.map((t) => ({ slug: t.slug, name: t.name }))} />
+        <TerminalFillSwaps swaps={f.recent} terminals={f.terminals.map((t) => ({ slug: t.slug, name: t.name }))} exec={exec} />
       </div>
     </div>
   );
