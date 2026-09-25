@@ -275,3 +275,18 @@ export const CAPITAL_READING = {
     "The table does not say who holds the positions, how leveraged they are, or how much of the open interest is one market or one wallet.",
   ],
 } as const;
+
+/**
+ * Whether an optional column is worth a place in the table: at least half the
+ * rows carry a value. A column filled for two rows of seventy-nine paints the
+ * table with n/a and says nothing (the owner's note on the first hub draft),
+ * so a source still filling in, or one a rate limit keeps mostly empty, stays
+ * hidden until it covers the cohort.
+ */
+export const COLUMN_COVERAGE = 0.5;
+
+export function columnIsWorthShowing<T>(rows: readonly T[], pick: (r: T) => number | null | undefined): boolean {
+  if (rows.length === 0) return false;
+  const filled = rows.filter((r) => pick(r) != null).length;
+  return filled / rows.length >= COLUMN_COVERAGE;
+}
