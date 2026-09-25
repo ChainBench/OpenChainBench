@@ -256,6 +256,41 @@ type feeWindows struct {
 	Total24h *float64 `json:"total24h"`
 	Total7d  *float64 `json:"total7d"`
 	Total30d *float64 `json:"total30d"`
+	// The adapters DefiLlama attributes to this chain. Read only to check
+	// the chain total against them: see adaptersExceedTotal.
+	Protocols []struct {
+		Name     string   `json:"name"`
+		Total30d *float64 `json:"total30d"`
+	} `json:"protocols"`
+}
+
+// feeCoverageSlack: how far the sum of a chain's adapters may exceed its
+// chain total before the total is read as incomplete. Some overlap is
+// normal, because a parent and its products can both be listed: measured
+// on 2026-09-26 the sum ran 3 to 14 percent above the total on Ethereum,
+// Solana, Base and Arbitrum. On Tron it ran 3.96 times above, because the
+// chain aggregate leaves out Tron's own gas adapter ($24.2M of $32.3M),
+// which put TRX on the board at 334x price to fees instead of about 85x.
+const feeCoverageSlack = 1.5
+
+// adaptersExceedTotal reports whether the chain aggregate is knowably
+// short of the adapters DefiLlama itself attributes to the chain, and by
+// how much. A short total is published with a flag rather than replaced:
+// summing the adapters would double count a parent and its products, so
+// the honest move is to say the denominator cannot be trusted and
+// withhold the ratios built on it.
+func adaptersExceedTotal(w feeWindows) (bool, float64) {
+	if w.Total30d == nil || *w.Total30d <= 0 || len(w.Protocols) == 0 {
+		return false, 0
+	}
+	var sum float64
+	for _, p := range w.Protocols {
+		if p.Total30d != nil && *p.Total30d > 0 {
+			sum += *p.Total30d
+		}
+	}
+	ratio := sum / *w.Total30d
+	return ratio > feeCoverageSlack, ratio
 }
 
 // errNotTracked is DefiLlama's definitive "no adapter reports this":
@@ -447,9 +482,21 @@ type chainFeesOut struct {
 	rev24h, rev7d, rev30d    *float64
 	revShare                 *float64
 	pf, ps                   *float64
+	// The chain total is short of the adapters DefiLlama attributes to the
+	// chain, so the fee figure is published with a flag and no ratio is
+	// built on it. coverage is the sum over the total.
+	feesIncomplete bool
+	coverage       float64
 }
 
 func f64(v float64) *float64 { return &v }
+
+func boolValue(b bool) float64 {
+	if b {
+		return 1
+	}
+	return 0
+}
 
 // computeChainFees is the pure part of the poll, kept free of I/O so the
 // zero and null rules are testable: a chain with no fees over 30 days
@@ -470,7 +517,9 @@ func computeChainFees(fees, rev feeWindows, haveRev bool, mcap float64, hasMcap 
 		o.rev7d = rev.Total7d
 		o.revShare = f64(100 * *rev.Total30d / *fees.Total30d)
 	}
-	if hasMcap && mcap > 0 {
+	// A denominator the source itself contradicts cannot carry a multiple.
+	o.feesIncomplete, o.coverage = adaptersExceedTotal(fees)
+	if hasMcap && mcap > 0 && !o.feesIncomplete {
 		annualFees := *fees.Total30d * 365 / 30
 		o.pf = f64(mcap / annualFees)
 		if o.rev30d != nil && *o.rev30d > 0 {
@@ -497,6 +546,13 @@ func set(g *prometheus.GaugeVec, slug string, v *float64) {
 // revenue request keeps last hour's revenue gauges rather than deleting
 // them.
 func publishChainFees(slug string, o chainFeesOut, revKnown bool) {
+	if o.fees30d == nil {
+		chainFeesIncomplete.DeleteLabelValues(slug)
+		chainFeesAdapterCoverage.DeleteLabelValues(slug)
+	} else {
+		chainFeesIncomplete.WithLabelValues(slug).Set(boolValue(o.feesIncomplete))
+		chainFeesAdapterCoverage.WithLabelValues(slug).Set(o.coverage)
+	}
 	set(chainFees24hUsd, slug, o.fees24h)
 	set(chainFees7dUsd, slug, o.fees7d)
 	set(chainFees30dUsd, slug, o.fees30d)

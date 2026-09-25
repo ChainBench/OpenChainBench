@@ -211,10 +211,24 @@ var (
 		},
 		[]string{"chain"},
 	)
+	chainFeesIncomplete = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "chain_fees_incomplete",
+			Help: "1 when DefiLlama's chain fee total is short of the adapters it attributes to that chain by more than half. The fee figure is still published; the price to fees and price to sales ratios are not, because the denominator is one the source itself contradicts. chain_fees_adapter_coverage carries the size of the gap.",
+		},
+		[]string{"chain"},
+	)
+	chainFeesAdapterCoverage = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "chain_fees_adapter_coverage",
+			Help: "Sum of the 30-day fees of a chain's DefiLlama adapters divided by the chain total DefiLlama reports. Around 1.0 when the aggregate holds; well above 1.0 when the chain aggregate leaves adapters out.",
+		},
+		[]string{"chain"},
+	)
 	chainTokenPfRatio = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "chain_token_pf_ratio",
-			Help: "chain_token_mcap_usd over annualized chain fees (30-day fees x 365/30). Published only when both exist; lower means the market pays less per dollar of fees.",
+			Help: "chain_token_mcap_usd over annualized chain fees (30-day fees x 365/30). Published only when both exist and the fee total is not flagged incomplete; lower means the market pays less per dollar of fees.",
 		},
 		[]string{"chain"},
 	)
@@ -311,6 +325,7 @@ func init() {
 		chainFees24hUsd, chainFees7dUsd, chainFees30dUsd,
 		chainRevenue24hUsd, chainRevenue7dUsd, chainRevenue30dUsd,
 		chainRevenueSharePct, chainTokenMcapUsd, chainTokenPfRatio, chainTokenPsRatio,
+		chainFeesIncomplete, chainFeesAdapterCoverage,
 		chainFeesLastSuccessUnix,
 		chainNativePriceUsd, chainNativeMcapUsd, chainMobulaTokensIndexed,
 		chainKpisHealth, chainKpisLastRefresh, chainKpisFetchLatencyMs, chainKpisFetchErrors,
