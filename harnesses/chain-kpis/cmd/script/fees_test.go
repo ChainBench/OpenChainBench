@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"math"
 	"testing"
 
@@ -161,4 +162,63 @@ func deref(p *float64) float64 {
 		return math.NaN()
 	}
 	return *p
+}
+
+// DefiLlama's chain aggregate for Tron leaves out Tron's own gas adapter:
+// the chain total read $8.2M on 2026-09-26 while the adapters it lists for
+// the chain summed to $32.3M, the gas line alone being $24.2M. Published
+// as is, that put TRX on the board at 334x price to fees instead of about
+// 85x. The fee figure still publishes; the ratios built on it do not.
+func TestChainTotalShortOfItsAdaptersWithholdsTheRatios(t *testing.T) {
+	adapters := func(vals ...float64) []struct {
+		Name     string   `json:"name"`
+		Total30d *float64 `json:"total30d"`
+	} {
+		out := make([]struct {
+			Name     string   `json:"name"`
+			Total30d *float64 `json:"total30d"`
+		}, 0, len(vals))
+		for i, v := range vals {
+			v := v
+			out = append(out, struct {
+				Name     string   `json:"name"`
+				Total30d *float64 `json:"total30d"`
+			}{Name: fmt.Sprintf("a%d", i), Total30d: &v})
+		}
+		return out
+	}
+
+	tron := feeWindows{Total30d: f64(8_164_514), Protocols: adapters(24_160_000, 4_180_000, 1_630_000, 860_000, 570_000, 300_000, 270_000, 150_000)}
+	out := computeChainFees(tron, feeWindows{Total30d: f64(1_392_117)}, true, 33_161_709_305, true)
+	if !out.feesIncomplete {
+		t.Fatal("a chain total four times under its own adapters is incomplete")
+	}
+	if out.coverage < 3.9 || out.coverage > 4.0 {
+		t.Fatalf("coverage %v, want about 3.96", out.coverage)
+	}
+	if out.pf != nil || out.ps != nil {
+		t.Fatalf("no ratio on a denominator the source contradicts, got pf=%v ps=%v", out.pf, out.ps)
+	}
+	if out.fees30d == nil || *out.fees30d != 8_164_514 {
+		t.Fatal("the fee figure itself still publishes")
+	}
+
+	// Ethereum on the same day: the usual few points of overlap between a
+	// parent and its products, which is not a missing line.
+	eth := feeWindows{Total30d: f64(331_000_000), Protocols: adapters(200_000_000, 100_000_000, 53_200_000)}
+	out = computeChainFees(eth, feeWindows{Total30d: f64(59_500_000)}, true, 328_700_000_000, true)
+	if out.feesIncomplete {
+		t.Fatalf("1.07x coverage is normal overlap, got %v", out.coverage)
+	}
+	if out.pf == nil {
+		t.Fatal("a sound total keeps its ratio")
+	}
+
+	// No breakdown in the response: nothing to check against, so nothing
+	// is claimed and the ratios stand.
+	bare := feeWindows{Total30d: f64(1_000_000)}
+	out = computeChainFees(bare, feeWindows{}, false, 1e9, true)
+	if out.feesIncomplete || out.pf == nil {
+		t.Fatal("without a breakdown the total is taken as given")
+	}
 }
