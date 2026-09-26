@@ -225,6 +225,13 @@ var (
 		},
 		[]string{"chain"},
 	)
+	chainRevenueIncomplete = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "chain_revenue_incomplete",
+			Help: "1 when DefiLlama's chain revenue total is short of the revenue adapters it attributes to that chain by more than half. The revenue figure and the kept share still publish; the price to sales ratio does not. Checked separately from the fee side, because a missing adapter often keeps all of what it earns, so the gap is wider here.",
+		},
+		[]string{"chain"},
+	)
 	chainTokenPfRatio = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "chain_token_pf_ratio",
@@ -325,7 +332,7 @@ func init() {
 		chainFees24hUsd, chainFees7dUsd, chainFees30dUsd,
 		chainRevenue24hUsd, chainRevenue7dUsd, chainRevenue30dUsd,
 		chainRevenueSharePct, chainTokenMcapUsd, chainTokenPfRatio, chainTokenPsRatio,
-		chainFeesIncomplete, chainFeesAdapterCoverage,
+		chainFeesIncomplete, chainFeesAdapterCoverage, chainRevenueIncomplete,
 		chainFeesLastSuccessUnix,
 		chainNativePriceUsd, chainNativeMcapUsd, chainMobulaTokensIndexed,
 		chainKpisHealth, chainKpisLastRefresh, chainKpisFetchLatencyMs, chainKpisFetchErrors,

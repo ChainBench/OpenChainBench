@@ -268,6 +268,8 @@ async function publishChains(prom: Prometheus, dir: string, day: string): Promis
     // absent until then and simply not written.
     fees_30d: await vector(prom, "chain_fees_30d_usd", "chain"),
     revenue_30d: await vector(prom, "chain_revenue_30d_usd", "chain"),
+    fees_incomplete: await vector(prom, "chain_fees_incomplete", "chain"),
+    revenue_incomplete: await vector(prom, "chain_revenue_incomplete", "chain"),
   };
   const path = join(dir, "chains", "history.json");
   const prev = await readBlob(path);

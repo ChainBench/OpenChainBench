@@ -483,10 +483,12 @@ type chainFeesOut struct {
 	revShare                 *float64
 	pf, ps                   *float64
 	// The chain total is short of the adapters DefiLlama attributes to the
-	// chain, so the fee figure is published with a flag and no ratio is
-	// built on it. coverage is the sum over the total.
+	// chain, so the figure is published with a flag and no ratio is built
+	// on it. coverage is the sum over the total, per side.
 	feesIncomplete bool
 	coverage       float64
+	revIncomplete  bool
+	revCoverage    float64
 }
 
 func f64(v float64) *float64 { return &v }
@@ -517,12 +519,19 @@ func computeChainFees(fees, rev feeWindows, haveRev bool, mcap float64, hasMcap 
 		o.rev7d = rev.Total7d
 		o.revShare = f64(100 * *rev.Total30d / *fees.Total30d)
 	}
-	// A denominator the source itself contradicts cannot carry a multiple.
+	// A denominator the source itself contradicts cannot carry a multiple,
+	// and the two denominators are checked separately: a chain aggregate
+	// can hold on the fee side and leave a line out on the revenue side,
+	// where the gap is larger because the missing adapter often keeps all
+	// of what it earns (review of PR 2696).
 	o.feesIncomplete, o.coverage = adaptersExceedTotal(fees)
+	if haveRev {
+		o.revIncomplete, o.revCoverage = adaptersExceedTotal(rev)
+	}
 	if hasMcap && mcap > 0 && !o.feesIncomplete {
 		annualFees := *fees.Total30d * 365 / 30
 		o.pf = f64(mcap / annualFees)
-		if o.rev30d != nil && *o.rev30d > 0 {
+		if o.rev30d != nil && *o.rev30d > 0 && !o.revIncomplete {
 			annualRev := *o.rev30d * 365 / 30
 			o.ps = f64(mcap / annualRev)
 		}
@@ -565,4 +574,9 @@ func publishChainFees(slug string, o chainFeesOut, revKnown bool) {
 	set(chainRevenue30dUsd, slug, o.rev30d)
 	set(chainRevenueSharePct, slug, o.revShare)
 	set(chainTokenPsRatio, slug, o.ps)
+	if o.rev30d == nil {
+		chainRevenueIncomplete.DeleteLabelValues(slug)
+	} else {
+		chainRevenueIncomplete.WithLabelValues(slug).Set(boolValue(o.revIncomplete))
+	}
 }

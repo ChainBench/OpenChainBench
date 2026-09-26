@@ -116,13 +116,20 @@ metric_panels:
     unit: pct
     higher_is_better: true
     description: "30-day revenue over 30-day fees, in percent: how much of what users paid was kept rather than passed on."
+  - id: fee_coverage
+    label: Adapter coverage
+    label_key: chain
+    metric: chain_fees_adapter_coverage{}
+    unit: x
+    higher_is_better: false
+    description: "The chain's DefiLlama adapters summed over the chain total DefiLlama reports, on the 30-day window. Around 1.0 when the aggregate holds. Above 1.5 the total is read as incomplete and no ratio is built on it, the fee figure still publishing. Tron read 3.96 on 2026-09-26."
   - id: token_pf
     label: Price to fees
     label_key: chain
     metric: chain_token_pf_ratio{}
     unit: x
     higher_is_better: false
-    description: "Chain token circulating market cap (CoinGecko) over annualized 30-day fees. Only for chains with a token of their own. Lower means the market pays less per dollar of fees."
+    description: "Chain token circulating market cap over annualized 30-day fees. Blank for a chain with no token of its own, and blank for a chain whose fee total is flagged incomplete, because the denominator would be one the source contradicts. The Adapter coverage column says which case a blank is."
   - id: token_ps
     label: Price to revenue
     label_key: chain
@@ -153,6 +160,8 @@ faq:
     a: "Revenue is the part kept by the chain or its protocols rather than passed to LPs, stakers or users, as each DefiLlama adapter defines it: the sequencer margin for a rollup, the burned base fee for Ethereum, the protocol take for a DEX. The revenue share column is revenue over fees on the same 30 days."
   - q: "Why does Base show fees but no price to fees?"
     a: "Base has no token of its own: DefiLlama maps it to no CoinGecko id, and dividing Ethereum's market cap by Base's fees would not be Base's multiple. Arbitrum and Optimism do have one (ARB, OP) and are rated on it, as DefiLlama's own P/F page does."
+  - q: "A chain shows fees but no multiple. Why?"
+    a: "Two reasons, and the Adapter coverage column separates them. Either the chain has no token of its own, so there is no market cap to divide. Or its fee total is short of the adapters DefiLlama itself attributes to it, by more than half, in which case the figure publishes with chain_fees_incomplete = 1 and no ratio is built on a denominator the source contradicts. Tron is the second case: its aggregate leaves out Tron's own gas adapter."
   - q: "How do these multiples compare with the protocol P/F benches?"
     a: "Same construction and the same CoinGecko market caps: circulating market cap over the 30-day figure annualized (x 365/30), price to fees on fees and price to revenue on revenue. The difference is the denominator's scope: a chain's fees sum every protocol on it, a protocol's fees are its own."
   - q: "Why is the headline 30 days and not 24 hours?"
