@@ -249,9 +249,12 @@ export async function loadTradingAppMatrix(): Promise<TradingAppMatrix> {
       r.ranks[col.key] = i >= 0 ? { rank: i + 1, of: ranked.length } : null;
     });
   }
-  // A row with nothing in it is a hole, not a measurement: Maestro and
-  // BasedBot only ever had Dune figures, so on a deployment without those
-  // benches they leave the table rather than filling it with dashes.
+  // A row with nothing in it is a hole, not a measurement. Maestro and BasedBot
+  // are the two platforms here with no DeFiLlama adapter and no App Store entry,
+  // so on a deployment without the Dune benches they have nothing left to show
+  // and leave the table rather than filling it with dashes. Maestro's average
+  // trade came from Mobula rather than Dune, but that column goes with the same
+  // bench.
   const filled = rows.filter((r) => TRADING_APP_COLUMNS.some((c) => r.values[c.key] !== null));
   rows.length = 0;
   rows.push(...filled);
