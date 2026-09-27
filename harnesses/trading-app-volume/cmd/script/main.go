@@ -149,7 +149,7 @@ var (
 	}, []string{"app"})
 	gRevenue = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "trading_app_revenue_usd",
-		Help: "The app's own commission in USD over the window, ending on its latest closed day. DeFiLlama dailyRevenue, which is the app's cut and not the fees the venue underneath charges.",
+		Help: "The app's own commission in USD over the window. DeFiLlama dailyRevenue, the app's cut and not the fees the venue underneath charges. The window ends on the latest day with both a volume and a commission figure, which trading_app_revenue_day_unix carries and which can trail the volume day by up to 72 h when the fees adapter is behind.",
 	}, []string{"app", "window"})
 	gTakeRate = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "trading_app_take_rate_pct",
@@ -157,7 +157,7 @@ var (
 	}, []string{"app", "window"})
 	gRevDay = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "trading_app_revenue_day_unix",
-		Help: "UTC midnight (unix seconds) of the latest day with both a volume and a commission figure; the 1d commission and take rate are that day's. Absent when the app has no commission at all.",
+		Help: "UTC midnight (unix seconds) of the latest day with both a volume and a commission figure; the 1d commission and take rate are that day's. At most 72 h behind the cohort's last closed day. Absent when the app has no commission inside that window.",
 	}, []string{"app"})
 	gChains = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "trading_app_chains",
@@ -305,7 +305,7 @@ func sweep(client *http.Client, base string, historyDays int, prev map[string]Ap
 	return &History{
 		GeneratedAt:   now.Format(time.RFC3339),
 		LastClosedDay: fmtDay(lastClosed),
-		Source:        "defillama dexs summary (dailyVolume), free endpoint",
+		Source:        "defillama summary, free endpoints: dexs dailyVolume and fees dailyRevenue",
 		Apps:          out,
 	}
 }
@@ -416,11 +416,15 @@ func fetchApp(client *http.Client, base string, app App, horizon, lastClosed tim
 			p.Rev, p.HasRev = v, true
 		}
 	}
-	// Any day the read did not cover, whether it failed outright or the fees
-	// adapter is simply behind the dexs one, keeps what the last sweep had.
-	for day, old := range priorRev {
-		if p, ok := byDay[day]; ok && !p.HasRev {
-			p.Rev, p.HasRev = old.Rev, true
+	// Carry forward only when the read itself failed. A read that succeeded is
+	// the current truth: a day it now returns as negative, or no longer returns
+	// at all, has been restated, and putting the old positive value back would
+	// break the rule two lines up and the one the spec states.
+	if revErr != nil {
+		for day, old := range priorRev {
+			if p, ok := byDay[day]; ok && !p.HasRev {
+				p.Rev, p.HasRev = old.Rev, true
+			}
 		}
 	}
 	days := make([]DayPoint, 0, len(byDay))
@@ -453,6 +457,13 @@ func fetchDaily(client *http.Client, base, kind, slug, dataType string, horizon,
 		return nil, fmt.Errorf("request: %w", err)
 	}
 	defer resp.Body.Close()
+	// A 404 is an app with no adapter of this kind, not a failure: several bots in
+	// the cohort have a dexs adapter and no fees one. Counting it as an error
+	// every sweep would bury a real outage in noise, so it comes back as an empty
+	// series with no error.
+	if resp.StatusCode == 404 {
+		return map[string]float64{}, nil
+	}
 	if resp.StatusCode != 200 {
 		return nil, fmt.Errorf("status %d", resp.StatusCode)
 	}
@@ -524,13 +535,19 @@ func publish(h *History) {
 		// one, and anchoring on the volume day would delete the 1d gauges for as
 		// long as that lasts. Volume keeps its own anchor so it is never held back
 		// by the slower leg.
-		// The walk back is bounded by the same 72 hours the volume leg uses for a
-		// stale adapter. Bloom's fees adapter last published on 2026-09-15: without
-		// the bound its "latest day" commission would have been twelve days old and
-		// labelled as the latest, which is the failure this whole change is about.
+		// The walk back is bounded against the cohort's own last closed day, not
+		// against the volume anchor: the anchor can already sit 72 h back for a
+		// stale dexs adapter, and walking three more days from there would put a
+		// six-day-old cut on the board while health still read 1. Bloom's fees
+		// adapter last published on 2026-09-15, so it publishes no commission at
+		// all rather than a twelve-day-old one labelled as the latest, which is the
+		// failure this whole change is about.
 		revEnd, hasRevEnd := end, false
 		for i := 0; i <= 3; i++ {
 			d := end.AddDate(0, 0, -i)
+			if lastClosed.Sub(d) > 72*time.Hour {
+				break
+			}
 			if p, ok := byDay[fmtDay(d)]; ok && p.HasRev {
 				revEnd, hasRevEnd = d, true
 				break
