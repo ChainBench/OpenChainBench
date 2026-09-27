@@ -71,14 +71,14 @@ metric_panels:
     metric: trading_app_revenue_usd{window="1d"}
     unit: usd
     higher_is_better: true
-    description: "The app's own cut on its latest closed day, from DeFiLlama's fees adapter (dailyRevenue)."
+    description: "The app's own cut, from DeFiLlama's fees adapter (dailyRevenue), on the newest day with both a volume and a commission figure. That can trail the volume day by up to 3 days when the fees adapter is behind."
   - id: take_1d
     label: Take rate
     label_key: app
     metric: trading_app_take_rate_pct{window="1d"}
     unit: pct
     higher_is_better: false
-    description: "Commission as a percentage of the volume routed on the same day."
+    description: "Commission as a percentage of the volume routed on the same day, which is the newest day carrying both figures rather than always the volume day."
   - id: revenue_7d
     label: Commission 7d
     label_key: app
@@ -86,7 +86,7 @@ metric_panels:
     unit: usd
     higher_is_better: true
     tab: false
-    description: "The app's cut over the 7 closed days ending on its latest one."
+    description: "The app's cut over 7 closed days ending on the newest day with both figures, not necessarily the volume day."
   - id: take_7d
     label: Take rate 7d
     label_key: app
@@ -94,7 +94,7 @@ metric_panels:
     unit: pct
     higher_is_better: false
     tab: false
-    description: "Commission over the same 7 days divided by the volume of those days."
+    description: "Commission over those same 7 days divided by the volume of exactly those days."
   - id: vol_7d
     label: Volume 7d
     label_key: app
@@ -118,7 +118,7 @@ metric_panels:
     unit: usd
     higher_is_better: true
     tab: false
-    description: "The app's cut over the 30 closed days ending on its latest one."
+    description: "The app's cut over 30 closed days ending on the newest day with both figures, not necessarily the volume day."
   - id: take_30d
     label: Take rate 30d
     label_key: app
@@ -126,7 +126,7 @@ metric_panels:
     unit: pct
     higher_is_better: false
     tab: false
-    description: "Commission over the same 30 days divided by the volume of those days."
+    description: "Commission over those same 30 days divided by the volume of exactly those days."
 
 ledger_columns:
   - { label: "Volume", slot: p50, windows: { 7d: vol_7d, 30d: vol_30d } }

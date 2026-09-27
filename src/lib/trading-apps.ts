@@ -22,7 +22,7 @@ import type { ProviderResult } from "@/types/benchmark";
  */
 
 export const TRADING_APP_PLATFORMS = [
-  { slug: "pump-fun", name: "pump.fun" },
+  { slug: "pump-fun", name: "pump.fun app" },
   { slug: "padre", name: "Terminal" },
   { slug: "gmgn", name: "GMGN" },
   { slug: "axiom", name: "Axiom" },
@@ -72,37 +72,37 @@ export const ALL_TRADING_APP_COLUMNS: readonly TradingAppColumn[] = [
   {
     key: "traders",
     label: "Swap Tx",
-    scope: "app",
+    scope: "solana",
     bench: "solana-unique-traders",
     fmt: fmtCount,
-    tip: "Unique swap transactions in 24h via Dune. pump.fun uses dex_solana.trades (all swaps incl. 0-fee). Terminals use fee-wallet detection (fee-generating swaps only). Methods differ.",
+    tip: "Swap transactions on one complete UTC day, from our own SQL over Dune: the transactions in which the platform's fee wallet received value, on Solana. pump.fun and BasedBot are not measured, having no fee wallet to attribute from.",
     higherBetter: true,
   },
   {
     key: "tradeSize",
     label: "Avg Trade",
-    scope: "app",
+    scope: "solana",
     bench: "solana-avg-trade-size",
     fmt: fmtUSD,
-    tip: "24h volume ÷ trade count via Mobula. Includes bots and MEV — platforms with heavy bot sniping (notably pump.fun) show lower averages than human-only baselines.",
+    tip: "One complete UTC day of fee-paying volume divided by that day's fee-paying transactions, from our own SQL over Dune, on Solana. Includes bots and MEV, so a platform carrying heavy sniping reads lower than a human-only baseline would. Maestro, Phantom and Bloom in this column come from Mobula on a rolling window instead.",
     higherBetter: true,
   },
   {
     key: "wallets",
     label: "Active Wallets",
-    scope: "app",
+    scope: "solana",
     bench: "trading-platform-wallets",
     fmt: fmtCount,
-    tip: "Unique wallets that traded through the platform in the last complete day (Dune community datasets). Cross-chain for GMGN/Axiom/BasedBot/Terminal, Solana only for FOMO/Trojan/Photon (marked SOL). Better signal of real user base than raw tx count.",
+    tip: "Distinct trading accounts in the platform's fee-paying transactions on one complete UTC day, from our own SQL over Dune, on Solana. A better signal of a user base than raw transaction count. FOMO, pump.fun and BasedBot are not measured here.",
     higherBetter: true,
   },
   {
     key: "feeRate",
     label: "Fee Rate",
-    scope: "app",
+    scope: "solana",
     bench: "memecoin-platforms",
     fmt: fmtPct,
-    tip: "Observed take rate: fee revenue ÷ fee-paying volume (Dune tx join). Comparable across platforms. FOMO uses DeFiLlama (includes off-chain relay fees). pump.fun cut trading fees to 0% in Aug 2026.",
+    tip: "Observed take rate on Solana from our own SQL over Dune: the SOL, USDC and wSOL reaching the platform's fee wallets over the volume of the transactions that paid them, so both halves cover the same trades. pump.fun charges no bonding-curve fee since Aug 2026 and is not measured.",
     higherBetter: false,
   },
   {
@@ -112,7 +112,7 @@ export const ALL_TRADING_APP_COLUMNS: readonly TradingAppColumn[] = [
     bench: "solana-trading-platform-wars",
     panel: "revenue_1d",
     fmt: fmtUSD0,
-    tip: "What the app itself collected on its latest closed UTC day, every chain summed (DeFiLlama dailyRevenue). The app's own cut, not the total fees paid on the trade.",
+    tip: "What the app itself collected, every chain summed (DeFiLlama dailyRevenue). The app's own cut, not the total fees paid on the trade. It covers the newest UTC day carrying both a volume and a commission figure, which can trail the volume day by up to 3 days when the fees adapter is behind.",
     higherBetter: true,
   },
   {

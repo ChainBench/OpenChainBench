@@ -34,6 +34,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -60,6 +61,13 @@ type App struct {
 	// attribution is not where the trades happen (FOMO books every trade,
 	// cross-chain ones included, on Solana).
 	ChainLabel string `json:"chain_label,omitempty"`
+	// Fees is true when the app has a /summary/fees adapter. For those a 404 is
+	// a failure like any other, not an absence: without this a single 404 on a
+	// renamed or briefly broken slug deletes the commission, the take rate and
+	// the revenue day, and an app whose only other column is an App Store rating
+	// it does not have then drops off the page entirely. Bench 201's cohort is
+	// defined as the apps with both adapters, so every one of them is true here.
+	Fees bool `json:"fees,omitempty"`
 }
 
 // cohort: every DeFiLlama dexs protocol in the Trading App / Telegram Bot
@@ -67,13 +75,13 @@ type App struct {
 // app. Slugs follow the existing OCB product slugs where one exists
 // (fomo, padre = Terminal, pump-fun, bloom).
 var cohort = []App{
-	{Slug: "gmgn", Name: "GMGN", Llama: "gmgn", Kind: "app"},
-	{Slug: "axiom", Name: "Axiom", Llama: "axiom", Kind: "app"},
-	{Slug: "fomo", Name: "FOMO", Llama: "fomo-wallet", Kind: "app", Note: "Measured on Solana, where FOMO holds user balances; cross-chain buys and sells executed through Relay are included and counted once, so this is FOMO's total, not its Solana-native share.", ChainLabel: "Settled on Solana · cross-chain via Relay"},
-	{Slug: "padre", Name: "Terminal", Llama: "terminal", Kind: "bot", Note: "pump.fun's own trading app, formerly Padre."},
-	{Slug: "pump-fun", Name: "pump.fun app", Llama: "pump.fun-mobile-app", Kind: "app", Note: "The pump.fun mobile app only, not the launchpad's bonding-curve volume."},
-	{Slug: "photon", Name: "Photon", Llama: "photon", Kind: "app"},
-	{Slug: "trojan", Name: "Trojan", Llama: "trojan", Kind: "bot"},
+	{Slug: "gmgn", Name: "GMGN", Llama: "gmgn", Kind: "app", Fees: true},
+	{Slug: "axiom", Name: "Axiom", Llama: "axiom", Kind: "app", Fees: true},
+	{Slug: "fomo", Name: "FOMO", Llama: "fomo-wallet", Kind: "app", Note: "Measured on Solana, where FOMO holds user balances; cross-chain buys and sells executed through Relay are included and counted once, so this is FOMO's total, not its Solana-native share.", ChainLabel: "Settled on Solana · cross-chain via Relay", Fees: true},
+	{Slug: "padre", Name: "Terminal", Llama: "terminal", Kind: "bot", Note: "pump.fun's own trading app, formerly Padre.", Fees: true},
+	{Slug: "pump-fun", Name: "pump.fun app", Llama: "pump.fun-mobile-app", Kind: "app", Note: "The pump.fun mobile app only, not the launchpad's bonding-curve volume.", Fees: true},
+	{Slug: "photon", Name: "Photon", Llama: "photon", Kind: "app", Fees: true},
+	{Slug: "trojan", Name: "Trojan", Llama: "trojan", Kind: "bot", Fees: true},
 	{Slug: "bullx", Name: "BullX", Llama: "bullx", Kind: "bot"},
 	{Slug: "bonkbot", Name: "BONKbot", Llama: "bonkbot", Kind: "bot"},
 	{Slug: "banana-gun", Name: "Banana Gun", Llama: "banana-gun", Kind: "bot"},
@@ -400,6 +408,10 @@ func fetchApp(client *http.Client, base string, app App, horizon, lastClosed tim
 		}
 	}
 	rev, revErr := fetchDaily(client, base, "fees", app.Llama, "dailyRevenue", horizon, lastClosed)
+	if errors.Is(revErr, errNoAdapter) && !app.Fees {
+		// Expected: this app has a dexs adapter and no fees one.
+		revErr = nil
+	}
 	if revErr != nil {
 		gErrors.WithLabelValues(app.Slug).Inc()
 		log.Printf("[%s] revenue: %v (carrying %d day(s) forward)", app.Slug, revErr, len(priorRev))
@@ -444,6 +456,10 @@ func fetchApp(client *http.Client, base string, app App, horizon, lastClosed tim
 	return AppHistory{App: app, Chains: chains, Days: days, LastDay: lastDay, Fetched: time.Now().UTC().Format(time.RFC3339)}, nil
 }
 
+// errNoAdapter is a 404 from a summary endpoint: DeFiLlama has no adapter of
+// that kind for the slug.
+var errNoAdapter = errors.New("no adapter")
+
 // fetchDaily reads one DeFiLlama summary series as day string to USD, keeping
 // the days inside [horizon, lastClosed]. Used for the fees leg; the volume leg
 // needs the per-chain breakdown too and has its own decode above.
@@ -457,12 +473,12 @@ func fetchDaily(client *http.Client, base, kind, slug, dataType string, horizon,
 		return nil, fmt.Errorf("request: %w", err)
 	}
 	defer resp.Body.Close()
-	// A 404 is an app with no adapter of this kind, not a failure: several bots in
-	// the cohort have a dexs adapter and no fees one. Counting it as an error
-	// every sweep would bury a real outage in noise, so it comes back as an empty
-	// series with no error.
+	// A 404 is reported as errNoAdapter so the caller can decide. For an app the
+	// cohort says has no fees adapter it is the normal state and counting it every
+	// sweep would bury a real outage in noise; for one that should have it, it is
+	// an outage and has to carry forward like any other failure.
 	if resp.StatusCode == 404 {
-		return map[string]float64{}, nil
+		return nil, errNoAdapter
 	}
 	if resp.StatusCode != 200 {
 		return nil, fmt.Errorf("status %d", resp.StatusCode)
