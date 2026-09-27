@@ -56,7 +56,8 @@ abstract: |
   rather than with a denominator read at one instant.
 
   perp_liq_rate_24h_pct = sum(liquidated_notional_usd, 24h) /
-  mean(open_interest_usd, 24h) * 100.
+  mean(one_sided_open_interest_usd, 24h) * 100. The page's headline is the
+  latest reading of that gauge, not a further average of it.
 
   perp_liq_ranked is 1 when the row takes a rank. It reads 0 when the venue
   has no liquidation feed, when a fetch failed, for the first hour after a
@@ -70,8 +71,10 @@ methodology:
   - "Cadence: every 5 minutes, in parallel across all venue and asset pairs."
   - "Numerator: liquidation events are held in a 24-hour window keyed by event identity (trade id, or transaction hash plus log index on chain). Events older than 24 hours are dropped each tick. Every fetch re-asks for the previous two hours as well, so a row an indexer ingests late is still picked up; the key set makes the repeat free."
   - "Aggregator buckets are restated, not deduplicated. An hourly total read while its hour is still open is smaller than the hour's final figure, so each hour's key carries the newest reading. Freezing the first reading is what made Lighter publish 887 dollars against 185.6M of ETH volume until 2026-09-27."
+  - "Open interest is one-sided everywhere. An order book reports one side, since longs and shorts match. Pool venues (GMX v2, Gains, Ostium) report long and short separately, and those are halved, or the same liquidation flow would read half the rate on a pool venue that it reads on a book."
+  - "Headline: the latest trailing-24h reading. Averaging a trailing-24h gauge over a further 24h would weight two days and peak a day late, so p50 is last_over_time over the past hour; p90 and p99 keep the day's range."
   - "Denominator: mean open interest over the same 24 hours, one reading per tick. An instantaneous denominator made the rate move with open interest rather than with liquidations: Gains read 343% on 2026-09-24 because its open interest fell from 37M to 7.3M dollars while the numerator stood still."
-  - "Ranking: a row ranks only when its liquidated notional is between 0.01% and 3% of the venue's own 24h traded notional, read from the same endpoint as its open interest. The band is published per row as perp_liq_share_of_volume_pct, and perp_liq_ranked carries the verdict."
+  - "Ranking: a row ranks only when its liquidated notional is between 0.01% and 3% of the venue's own 24h traded notional, read from the venue's own API (GMX from the same squid as its liquidations). The band is published per row as perp_liq_share_of_volume_pct, and perp_liq_ranked carries the verdict."
   - "Rows outside the band keep every figure they measured and sit below the ranked field. Nothing is hidden and nothing is estimated to fill a gap."
   - "An exact zero never ranks. A zero reads the same whether the venue liquidated nothing or its feed returned nothing, so it is published as an observation and not as a best value."
   - "A venue with no 24h traded notional of its own cannot be tested and is not ranked. Gains is the case: its trading-variables payload carries open interest per pair and no volume, and DefiLlama's derivatives volume moved behind a paid plan."
@@ -185,7 +188,7 @@ metric_panels:
     metric: perp_liq_venue_volume_24h_usd{}
     unit: usd
     higher_is_better: true
-    description: "The venue's own 24h traded notional for this market, from the same endpoint that reports its open interest. Blank for a venue that publishes none, which is why such a row cannot be tested and does not rank."
+    description: "The venue's own 24h traded notional for this market, from its own API (GMX from the same squid as its liquidations). Blank for a venue that publishes none, which is why such a row cannot be tested and does not rank."
   - id: share_of_volume
     label: Share of volume
     label_key: venue
@@ -215,7 +218,7 @@ providers:
     tag: HyperBFT L1; 0xArchive feed covers every liquidation type
     formula: "24h sum of liquidated notional USD (0xArchive liquidations, all types) over mean 24h OI (openInterest x midPx from metaAndAssetCtxs), as a percentage. Window deduplicated by trade id."
     queries:
-      p50: avg_over_time(perp_liq_rate_24h_pct{venue="hyperliquid"}[24h])
+      p50: last_over_time(perp_liq_rate_24h_pct{venue="hyperliquid"}[1h])
       p90: quantile_over_time(0.90, perp_liq_rate_24h_pct{venue="hyperliquid"}[24h])
       p99: quantile_over_time(0.99, perp_liq_rate_24h_pct{venue="hyperliquid"}[24h])
       mean: avg_over_time(perp_liq_rate_24h_pct{venue="hyperliquid"}[24h])
@@ -229,7 +232,7 @@ providers:
     tag: zk-rollup; liquidations via Coinalyze hourly buckets, restated as they fill
     formula: "24h sum of (long + short) base units x that hour's close (Coinalyze liquidation-history, 1h resolution) over mean 24h OI (open_interest x mark_price from orderBookDetails), as a percentage."
     queries:
-      p50: avg_over_time(perp_liq_rate_24h_pct{venue="lighter"}[24h])
+      p50: last_over_time(perp_liq_rate_24h_pct{venue="lighter"}[1h])
       p90: quantile_over_time(0.90, perp_liq_rate_24h_pct{venue="lighter"}[24h])
       p99: quantile_over_time(0.99, perp_liq_rate_24h_pct{venue="lighter"}[24h])
       mean: avg_over_time(perp_liq_rate_24h_pct{venue="lighter"}[24h])
@@ -243,7 +246,7 @@ providers:
     tag: Cosmos appchain; tape labels a fill LIQUIDATED on the liquidation path only
     formula: "24h sum of size x price over trades whose type is LIQUIDATED (v4 indexer tape, paged backwards) over mean 24h OI (openInterest x oraclePrice), as a percentage."
     queries:
-      p50: avg_over_time(perp_liq_rate_24h_pct{venue="dydx"}[24h])
+      p50: last_over_time(perp_liq_rate_24h_pct{venue="dydx"}[1h])
       p90: quantile_over_time(0.90, perp_liq_rate_24h_pct{venue="dydx"}[24h])
       p99: quantile_over_time(0.99, perp_liq_rate_24h_pct{venue="dydx"}[24h])
       mean: avg_over_time(perp_liq_rate_24h_pct{venue="dydx"}[24h])
@@ -257,7 +260,7 @@ providers:
     tag: Starknet appchain; public tape carries a LIQUIDATION trade type
     formula: "24h sum of size x price over trades whose trade_type is LIQUIDATION (public tape, cursor paged) over mean 24h OI (open_interest x mark_price), as a percentage."
     queries:
-      p50: avg_over_time(perp_liq_rate_24h_pct{venue="paradex"}[24h])
+      p50: last_over_time(perp_liq_rate_24h_pct{venue="paradex"}[1h])
       p90: quantile_over_time(0.90, perp_liq_rate_24h_pct{venue="paradex"}[24h])
       p99: quantile_over_time(0.99, perp_liq_rate_24h_pct{venue="paradex"}[24h])
       mean: avg_over_time(perp_liq_rate_24h_pct{venue="paradex"}[24h])
@@ -271,7 +274,7 @@ providers:
     tag: gTrade on Arbitrum and Base; on-chain LIQ_CLOSE logs, up to 200x leverage
     formula: "24h sum of collateralAmount / 10^decimals x leverage / 1e3 x collateralPriceUsd / 1e8 over LimitExecuted logs with orderType LIQ_CLOSE, over mean 24h OI from trading-variables across every collateral."
     queries:
-      p50: avg_over_time(perp_liq_rate_24h_pct{venue="gains"}[24h])
+      p50: last_over_time(perp_liq_rate_24h_pct{venue="gains"}[1h])
       p90: quantile_over_time(0.90, perp_liq_rate_24h_pct{venue="gains"}[24h])
       p99: quantile_over_time(0.99, perp_liq_rate_24h_pct{venue="gains"}[24h])
       mean: avg_over_time(perp_liq_rate_24h_pct{venue="gains"}[24h])
@@ -285,7 +288,7 @@ providers:
     tag: Arbitrum synthetics; on-chain liquidation orders via the public squid
     formula: "24h sum of sizeDeltaUsd over executed tradeActions with orderType 7 (30-decimal USD, already priced at execution) over mean 24h OI from gmxinfra markets/info, as a percentage."
     queries:
-      p50: avg_over_time(perp_liq_rate_24h_pct{venue="gmx"}[24h])
+      p50: last_over_time(perp_liq_rate_24h_pct{venue="gmx"}[1h])
       p90: quantile_over_time(0.90, perp_liq_rate_24h_pct{venue="gmx"}[24h])
       p99: quantile_over_time(0.99, perp_liq_rate_24h_pct{venue="gmx"}[24h])
       mean: avg_over_time(perp_liq_rate_24h_pct{venue="gmx"}[24h])
@@ -299,7 +302,7 @@ providers:
     tag: BNB Chain; liquidations via Coinalyze hourly buckets, OI and notional native
     formula: "24h sum of (long + short) base units x that hour's close (Coinalyze liquidation-history for Aster) over mean 24h OI (openInterest x lastPrice from the futures gateway), as a percentage."
     queries:
-      p50: avg_over_time(perp_liq_rate_24h_pct{venue="aster"}[24h])
+      p50: last_over_time(perp_liq_rate_24h_pct{venue="aster"}[1h])
       p90: quantile_over_time(0.90, perp_liq_rate_24h_pct{venue="aster"}[24h])
       p99: quantile_over_time(0.99, perp_liq_rate_24h_pct{venue="aster"}[24h])
       mean: avg_over_time(perp_liq_rate_24h_pct{venue="aster"}[24h])
@@ -313,7 +316,7 @@ providers:
     tag: Omnichain orderbook; dedicated public liquidation endpoint with history
     formula: "24h sum of the matching leg's cost_position_transfer (USD) over /v1/public/liquidated_positions, over mean 24h OI (open_interest x mark_price from /v1/public/futures), as a percentage."
     queries:
-      p50: avg_over_time(perp_liq_rate_24h_pct{venue="orderly"}[24h])
+      p50: last_over_time(perp_liq_rate_24h_pct{venue="orderly"}[1h])
       p90: quantile_over_time(0.90, perp_liq_rate_24h_pct{venue="orderly"}[24h])
       p99: quantile_over_time(0.99, perp_liq_rate_24h_pct{venue="orderly"}[24h])
       mean: avg_over_time(perp_liq_rate_24h_pct{venue="orderly"}[24h])
@@ -327,7 +330,7 @@ providers:
     tag: Ink orderbook; 24h figure is a cumulative counter delta, no per-event detail
     formula: "Difference of cumulative_liquidation_amounts between the newest and oldest of 25 hourly archive snapshots (x18 USD), over mean 24h OI from the same snapshots, as a percentage."
     queries:
-      p50: avg_over_time(perp_liq_rate_24h_pct{venue="nado"}[24h])
+      p50: last_over_time(perp_liq_rate_24h_pct{venue="nado"}[1h])
       p90: quantile_over_time(0.90, perp_liq_rate_24h_pct{venue="nado"}[24h])
       p99: quantile_over_time(0.99, perp_liq_rate_24h_pct{venue="nado"}[24h])
       mean: avg_over_time(perp_liq_rate_24h_pct{venue="nado"}[24h])
@@ -341,7 +344,7 @@ providers:
     tag: Arbitrum synthetics; LiquidationExecuted events from the public subgraph
     formula: "24h sum of the liquidated trade's notional (6-decimal USD) over tradeEvents of type LiquidationExecuted, over mean 24h OI ((longOI + shortOI) x lastTradePrice), as a percentage."
     queries:
-      p50: avg_over_time(perp_liq_rate_24h_pct{venue="ostium"}[24h])
+      p50: last_over_time(perp_liq_rate_24h_pct{venue="ostium"}[1h])
       p90: quantile_over_time(0.90, perp_liq_rate_24h_pct{venue="ostium"}[24h])
       p99: quantile_over_time(0.99, perp_liq_rate_24h_pct{venue="ostium"}[24h])
       mean: avg_over_time(perp_liq_rate_24h_pct{venue="ostium"}[24h])
@@ -356,6 +359,6 @@ providers:
     unranked: "No liq feed"
     formula: "No rate. OI from GET /statistics?asset=X&instrument_type=PERPETUAL, open_interest.total x mark_price, with daily_volume as the 24h notional."
     queries:
-      p50: avg_over_time(perp_liq_rate_24h_pct{venue="aevo"}[24h])
+      p50: last_over_time(perp_liq_rate_24h_pct{venue="aevo"}[1h])
       success: avg_over_time(perp_liq_health{venue="aevo",chain=~".*"}[24h])
       series: perp_liq_rate_24h_pct{venue="aevo"}

@@ -43,8 +43,11 @@ func TestAster_FetchLiquidationsSince_ConvertsBaseUnits(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if len(events) != 1 {
-		t.Fatalf("got %d events, want 1 (the empty hour is skipped)", len(events))
+	if len(events) != 2 {
+		t.Fatalf("got %d events, want 2 (the empty hour comes back as a zero restatement)", len(events))
+	}
+	if events[1].NotionalUSD != 0 || !events[1].Bucket {
+		t.Errorf("empty hour = %+v, want a zero Bucket entry the runner removes", events[1])
 	}
 	if !events[0].Bucket {
 		t.Error("an hourly bucket must be marked for restatement, or it freezes at its first reading")

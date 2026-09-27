@@ -170,7 +170,9 @@ func runTick(va VenueAsset, st *pairState, sinceMs int64) bool {
 
 	in := rankInput{
 		hasSource: hasLiqSource,
-		fetchOK:   liqErr == nil && oiErr == nil && volErr == nil,
+		// An OI endpoint that answered zero is a failed read for the gate
+		// as it is for health, not a tick that passes on the trailing mean.
+		fetchOK:   liqErr == nil && oiErr == nil && oi > 0 && volErr == nil,
 		oiSamples: st.oi.Len(),
 		liqUSD24h: volume,
 		meanOIUSD: meanOI,

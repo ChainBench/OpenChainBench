@@ -252,9 +252,23 @@ func TestLighter_FetchLiquidationsSince_CoinalyzeHappyPath(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if len(events) != 1 {
-		t.Fatalf("expected 1 event (zero bucket skipped), got %d", len(events))
+	// Both hours come back: the empty one as a zero restatement the runner
+	// removes, the other with its figure.
+	if len(events) != 2 {
+		t.Fatalf("expected 2 events (the empty hour restated as zero), got %d", len(events))
 	}
+	var nonzero []LiqEvent
+	for _, e := range events {
+		if e.NotionalUSD > 0 {
+			nonzero = append(nonzero, e)
+		} else if !e.Bucket {
+			t.Errorf("zero hour %+v must be a Bucket entry", e)
+		}
+	}
+	if len(nonzero) != 1 {
+		t.Fatalf("expected 1 non-zero hour, got %d", len(nonzero))
+	}
+	events = nonzero
 	// (3 + 2) ETH * 2000 = 10000
 	if events[0].NotionalUSD < 9999 || events[0].NotionalUSD > 10001 {
 		t.Errorf("notional = %v, want ~10000", events[0].NotionalUSD)

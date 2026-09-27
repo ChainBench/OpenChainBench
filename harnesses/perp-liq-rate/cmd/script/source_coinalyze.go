@@ -145,9 +145,6 @@ func bucketsToEvents(keyPrefix, assetName string, buckets []czBucket, priceMap m
 		// expected coverage 24h, within half an hour either way.
 		tsMs := (b.T + 1800) * 1000
 		total := b.L + b.S
-		if total == 0 {
-			continue
-		}
 		px, ok := priceMap[b.T]
 		if !ok || px == 0 {
 			px = fallbackPx
@@ -155,6 +152,9 @@ func bucketsToEvents(keyPrefix, assetName string, buckets []czBucket, priceMap m
 		if px == 0 {
 			continue
 		}
+		// An empty hour is handed over as a zero restatement rather than
+		// skipped, so an hour the aggregator later corrects down to nothing
+		// clears the figure the window holds for it.
 		events = append(events, LiqEvent{
 			Key:         fmt.Sprintf("%s:%s:%d", keyPrefix, assetName, b.T),
 			NotionalUSD: total * px,

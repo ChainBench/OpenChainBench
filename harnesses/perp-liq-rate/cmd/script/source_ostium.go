@@ -116,10 +116,11 @@ func (o *Ostium) FetchLiquidationsSince(asset string, sinceMs int64) ([]LiqEvent
 			})
 		}
 		if len(out.TradeEvents) < ostiumPageLimit {
-			break
+			return events, nil
 		}
 	}
-	return events, nil
+	return nil, fmt.Errorf("ostium: more than %d liquidation events since %d; refusing a partial window",
+		ostiumMaxPages*ostiumPageLimit, sinceMs/1000)
 }
 
 type ostiumPair struct {
@@ -160,7 +161,9 @@ func (o *Ostium) FetchOI(asset string) (float64, error) {
 		if px <= 0 {
 			return 0, fmt.Errorf("ostium: lastTradePrice is zero for %s", asset)
 		}
-		return (long + short) * px, nil
+		// One-sided, like every order-book venue in the cohort: Ostium reports
+		// long and short separately and their sum would read double.
+		return (long + short) / 2 * px, nil
 	}
 	return 0, fmt.Errorf("ostium: pair %q not found", asset)
 }

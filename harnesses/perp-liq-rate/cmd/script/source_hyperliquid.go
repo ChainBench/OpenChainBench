@@ -141,11 +141,12 @@ func (h *Hyperliquid) fetchOxaLiquidations(coin string, sinceMs int64) ([]LiqEve
 		}
 
 		if resp.Meta.NextCursor == nil || *resp.Meta.NextCursor == "" {
-			break
+			return events, nil
 		}
 		cursor = *resp.Meta.NextCursor
 	}
-	return events, nil
+	return nil, fmt.Errorf("hyperliquid 0xarchive: more than %d rows since %s for %s; refusing a partial window",
+		oxaMaxPages*oxaPageLimit, startISO, coin)
 }
 
 // HasLiquidationSource reports true — 0xArchive with a key, else the HLP

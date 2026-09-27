@@ -7,11 +7,11 @@ gauges on `:2112/metrics`.
 
 ## Venues
 
-| Slug | Assets | Liquidation source | Ranks? |
+| Slug | Assets | Liquidation source | Ranks? (every measured row goes through the band in `plausibility.go`; shares below were measured 2026-09-27 and move) |
 |---|---|---|---|
-| `hyperliquid` | ETH BTC SOL | 0xArchive `/v1/hyperliquid/liquidations`, all liquidation types (HLP vault fallback without a key) | yes |
-| `lighter` | ETH BTC | Coinalyze hourly buckets, symbols `0.T` `1.T` | yes |
-| `aster` | ETH BTC SOL | Coinalyze hourly buckets, symbols `ETHUSDT.S` `BTCUSDT.S` `SOLUSDT.S` | yes |
+| `hyperliquid` | ETH BTC SOL | 0xArchive `/v1/hyperliquid/liquidations`, all liquidation types (HLP vault fallback without a key) | on the band |
+| `lighter` | ETH BTC | Coinalyze hourly buckets, symbols `0.T` `1.T` | on the band |
+| `aster` | ETH BTC SOL | Coinalyze hourly buckets, symbols `ETHUSDT.S` `BTCUSDT.S` `SOLUSDT.S` | on the band |
 | `gmx` | ETH BTC | Subsquid `tradeActions`, `orderType` 7 | on the band |
 | `dydx` | ETH BTC SOL | v4 indexer tape, `type == LIQUIDATED` | on the band |
 | `paradex` | ETH BTC | public tape, `trade_type == LIQUIDATION` | on the band |
@@ -86,6 +86,9 @@ perp_realized_vol_24h_pct{chain}
   had minutes after the hour began: Lighter published $887 against $185.6M
   of ETH volume until 2026-09-27 because of that. See the note at the top of
   `window.go`.
+- **Open interest is one-sided.** A book reports one side; the pool venues
+  (GMX v2, Gains, Ostium) report long and short and those are halved, so a
+  liquidation flow reads the same rate on either kind of venue.
 - **The denominator is a mean.** The numerator covers 24 hours, so dividing
   by an instantaneous open interest made the rate move with the denominator.
   Gains published 343% on 2026-09-24 because its open interest fell from

@@ -38,6 +38,7 @@ const (
 	// off the snapshot timestamps rather than assumed.
 	nadoGranuleCount = 25
 	nadoGranularity  = 3600
+	nadoMinSpanSecs  = 20 * 3600
 )
 
 var nadoTrackedAssets = map[string]bool{"ETH": true, "BTC": true, "SOL": true}
@@ -167,6 +168,12 @@ func (n *Nado) window(asset string) (nadoWindow, error) {
 	}
 	if span <= 0 {
 		return nadoWindow{}, fmt.Errorf("nado market_snapshots: zero span between snapshots")
+	}
+	// A short response would publish a delta over less than a day as the 24h
+	// figure. 25 hourly granules come out at about 23.9h; anything under 20h
+	// is not the window this bench states.
+	if span < nadoMinSpanSecs {
+		return nadoWindow{}, fmt.Errorf("nado market_snapshots: %d snapshots span %ds, need at least %ds", len(resp.Snapshots), span, nadoMinSpanSecs)
 	}
 
 	out := make(map[string]nadoWindow, len(ids))

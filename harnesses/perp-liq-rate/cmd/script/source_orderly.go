@@ -107,10 +107,11 @@ func (o *Orderly) FetchLiquidationsSince(asset string, sinceMs int64) ([]LiqEven
 			}
 		}
 		if len(rows) < orderlyPageSize {
-			break
+			return events, nil
 		}
 	}
-	return events, nil
+	return nil, fmt.Errorf("orderly liquidated_positions: more than %d rows since %d for %s; refusing a partial window",
+		orderlyMaxPages*orderlyPageSize, sinceMs, symbol)
 }
 
 // orderlyFutures is the part of /futures/{symbol} this harness needs.

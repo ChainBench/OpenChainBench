@@ -308,5 +308,8 @@ func (g *GMX) FetchOI(asset string) (float64, error) {
 	if !matched {
 		return 0, fmt.Errorf("gmx: no listed markets found for %q", asset)
 	}
-	return totalOI, nil
+	// One-sided, like every order-book venue in the cohort: GMX reports long
+	// and short separately, and their sum would read twice the exposure a
+	// book reports for the same positions.
+	return totalOI / 2, nil
 }
