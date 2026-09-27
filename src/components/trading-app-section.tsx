@@ -11,11 +11,12 @@ import { getTerminalFills } from "@/lib/terminal-fills";
 import { getTradingAppHistory } from "@/lib/trading-app-history";
 
 /**
- * "Trading app" view on /products/<slug>, behind the pill bar. Mirrors
- * one row of the /trading-apps matrix for this platform: the six KPIs
- * (swap tx, average trade, active wallets, fee rate, app
- * rating) with the platform's rank among the cohort on each, then the
- * cohort table so the reader sees where it sits.
+ * "Trading app" view on /products/<slug>, behind the pill bar. Mirrors one
+ * row of the /trading-apps matrix for this platform: whichever KPIs this
+ * deployment serves, with the platform's rank among the cohort on each, then
+ * the cohort table so the reader sees where it sits. The column set comes from
+ * TRADING_APP_COLUMNS, so a bench that is gated takes its column with it here
+ * and on the hub together.
  *
  * Server component reading the same bench blobs the hub reads. Returns
  * null for slugs outside the cohort or with no figure at all.
@@ -31,8 +32,8 @@ export async function TradingAppSection({
   const inVolumeCohort = !!history?.apps.some((a) => a.slug === slug);
   const inFillCohort = !!fills?.terminals.some((t) => t.slug === slug && t.priced > 0);
   const me = TRADING_APP_SLUGS.has(slug) ? matrix.rows.find((r) => r.slug === slug) : undefined;
-  const hasDune = !!me && TRADING_APP_COLUMNS.some((c) => me.values[c.key] !== null);
-  if (!inVolumeCohort && !hasDune && !inFillCohort) return null;
+  const hasKpis = !!me && TRADING_APP_COLUMNS.some((c) => me.values[c.key] !== null);
+  if (!inVolumeCohort && !hasKpis && !inFillCohort) return null;
 
   return (
     <section id="trading-app" className="scroll-mt-24 py-10 border-t border-ink/8 first:border-0">
@@ -75,7 +76,7 @@ export async function TradingAppSection({
         </div>
       )}
 
-      {hasDune && me && (
+      {hasKpis && me && (
       <>
       <p
         className="label-mono text-[10px] uppercase tracking-wide text-ink-faint mb-3"
@@ -128,7 +129,7 @@ export async function TradingAppSection({
         className="label-mono text-[10px] uppercase tracking-wide text-ink-faint mb-3"
         style={{ fontFamily: "var(--font-mono, monospace)" }}
       >
-        Cohort · sorted by swap transactions
+        Cohort · sorted by the first column where more is better
       </p>
       <div className="overflow-x-auto border-y border-rule">
         <table className="w-full text-[12.5px]">

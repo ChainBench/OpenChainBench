@@ -5,7 +5,7 @@ export const runtime = "nodejs";
 // and link unfurlers fetch them constantly. Without a revalidate the
 // image was regenerated (satori, ~1-2 s of CPU) on every request.
 export const revalidate = 86400;
-export const alt = "Best Solana trading apps 2026. Live leaderboard ranked by volume, wallets, fees and app store ratings.";
+export const alt = "Best Solana trading apps 2026. Live leaderboard ranked by volume, commission, fill quality and app store ratings.";
 export const size = OG_SIZE;
 export const contentType = "image/png";
 
@@ -14,6 +14,6 @@ export default function OG() {
     kicker: "Trading apps",
     headline: "Best Solana trading app, live.",
     subline:
-      "Volume, active wallets, fees and app store ratings across every major Solana trading venue. Benchmarks updated continuously.",
+      "Volume, what each app charges on it, fill quality and app store ratings across every major Solana trading venue. Benchmarks updated continuously.",
   });
 }

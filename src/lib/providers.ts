@@ -751,7 +751,11 @@ const buildProvidersCached = unstable_cache(
   // swap). Every trading-app formula is rewritten and the pump.fun and
   // BasedBot appearances lose their figures, so the v12 list would keep
   // showing retired dataset names on /products pages.
-  ["providers-v13"],
+  // v14 (2026-09-27): lockstep with bench-unfiltered-v87. Four benches leave
+  // production, so ~9 trading apps lose those appearances, and BasedBot leaves
+  // bench 201 entirely; the v13 list would keep showing appearances and
+  // formulas for benches production no longer serves.
+  ["providers-v14"],
   // 900 s: the provider index feeds products / compare / answers, whose
   // numbers move slowly, and this revalidate is also the effective ISR
   // period of those ~500 pages (Next takes the min across a route's caches).

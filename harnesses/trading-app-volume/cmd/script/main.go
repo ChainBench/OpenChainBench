@@ -17,6 +17,7 @@
 // endpoint:
 //
 //	GET https://api.llama.fi/summary/dexs/<slug>?dataType=dailyVolume
+//	GET https://api.llama.fi/summary/fees/<slug>?dataType=dailyRevenue
 //	  -> totalDataChart [[unix, usd]...], totalDataChartBreakdown
 //	     [[unix, {chain: {version: usd}}]...]
 //
@@ -82,6 +83,12 @@ type DayPoint struct {
 	Day    string             `json:"day"`
 	USD    float64            `json:"usd"`
 	Chains map[string]float64 `json:"chains,omitempty"`
+	// Rev is the app's own commission for the day, DeFiLlama's dailyRevenue.
+	// Not dailyFees: that adds what the venue underneath charges and, for
+	// Axiom on 2026-09-26, reads 2.27M against 1.38M of revenue. Absent as 0
+	// for an app with no fees adapter, which is why HasRev exists.
+	Rev    float64 `json:"rev,omitempty"`
+	HasRev bool    `json:"has_rev,omitempty"`
 }
 
 type AppHistory struct {
@@ -135,6 +142,14 @@ var (
 		Name: "trading_app_last_day_unix",
 		Help: "UTC midnight (unix seconds) of the app's latest closed day on DeFiLlama; every window and chain gauge for the app ends on it.",
 	}, []string{"app"})
+	gRevenue = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "trading_app_revenue_usd",
+		Help: "The app's own commission in USD over the window, ending on its latest closed day. DeFiLlama dailyRevenue, which is the app's cut and not the fees the venue underneath charges.",
+	}, []string{"app", "window"})
+	gTakeRate = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "trading_app_take_rate_pct",
+		Help: "The app's commission as a percentage of the volume it routed over the same window and the same days.",
+	}, []string{"app", "window"})
 	gChains = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "trading_app_chains",
 		Help: "Number of chains with volume on the app's latest closed day.",
@@ -154,7 +169,9 @@ var (
 )
 
 func init() {
-	prometheus.MustRegister(gVolume, gChain, gShare, gCohort, gWindowDays, gDays, gLastDay, gChains, gHealth, gRefresh, gErrors)
+	prometheus.MustRegister(gVolume, gChain, gShare, gCohort, gWindowDays, gDays, gLastDay, gRevenue,
+		gTakeRate,
+		gChains, gHealth, gRefresh, gErrors)
 }
 
 func envInt(k string, def int) int {
@@ -357,6 +374,25 @@ func fetchApp(client *http.Client, base string, app App, horizon, lastClosed tim
 			}
 		}
 	}
+	// The app's own commission, on the same days. A protocol with no fees
+	// adapter on DeFiLlama simply has no revenue, which the take rate then
+	// leaves absent rather than reading as zero.
+	if rev, err := fetchDaily(client, base, "fees", app.Llama, "dailyRevenue", horizon, lastClosed); err != nil {
+		log.Printf("[%s] revenue: %v", app.Slug, err)
+	} else {
+		for day, v := range rev {
+			// DeFiLlama reports a negative daily revenue now and then, from an
+			// adapter correcting itself: Pepeboost read -1,550 on 2026-09-26. A
+			// negative cut is not a measurement, so the day counts as having no
+			// revenue rather than dragging the window and the take rate below zero.
+			if v < 0 {
+				continue
+			}
+			if p, ok := byDay[day]; ok {
+				p.Rev, p.HasRev = v, true
+			}
+		}
+	}
 	days := make([]DayPoint, 0, len(byDay))
 	for _, p := range byDay {
 		days = append(days, *p)
@@ -372,6 +408,37 @@ func fetchApp(client *http.Client, base string, app App, horizon, lastClosed tim
 		lastDay = days[len(days)-1].Day
 	}
 	return AppHistory{App: app, Chains: chains, Days: days, LastDay: lastDay, Fetched: time.Now().UTC().Format(time.RFC3339)}, nil
+}
+
+// fetchDaily reads one DeFiLlama summary series as day string to USD, keeping
+// the days inside [horizon, lastClosed]. Used for the fees leg; the volume leg
+// needs the per-chain breakdown too and has its own decode above.
+func fetchDaily(client *http.Client, base, kind, slug, dataType string, horizon, lastClosed time.Time) (map[string]float64, error) {
+	url := fmt.Sprintf("%s/summary/%s/%s?dataType=%s", base, kind, slug, dataType)
+	req, _ := http.NewRequestWithContext(context.Background(), "GET", url, nil)
+	req.Header.Set("User-Agent", "OpenChainBench-TradingApps/1.0 (+https://openchainbench.com/benchmarks/trading-app-daily-volume)")
+	req.Header.Set("Accept", "application/json")
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("request: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		return nil, fmt.Errorf("status %d", resp.StatusCode)
+	}
+	var s llamaSummary
+	if err := json.NewDecoder(resp.Body).Decode(&s); err != nil {
+		return nil, fmt.Errorf("decode: %w", err)
+	}
+	out := map[string]float64{}
+	for _, row := range s.TotalDataChart {
+		d := utcDay(time.Unix(int64(row[0]), 0))
+		if d.Before(horizon) || d.After(lastClosed) {
+			continue
+		}
+		out[fmtDay(d)] = row[1]
+	}
+	return out, nil
 }
 
 func lastDayUSD(a AppHistory) float64 {
@@ -402,6 +469,8 @@ func publish(h *History) {
 		if a.LastDay == "" || err != nil {
 			for w := range windows {
 				gVolume.DeleteLabelValues(a.Slug, w)
+				gRevenue.DeleteLabelValues(a.Slug, w)
+				gTakeRate.DeleteLabelValues(a.Slug, w)
 				gWindowDays.WithLabelValues(a.Slug, w).Set(0)
 			}
 			gLastDay.DeleteLabelValues(a.Slug)
@@ -420,13 +489,23 @@ func publish(h *History) {
 			end = lastClosed
 		}
 		for w, n := range windows {
-			var sum float64
-			present := 0
+			var sum, rev, revVol float64
+			present, revDays := 0, 0
 			for i := 0; i < n; i++ {
 				d := fmtDay(end.AddDate(0, 0, -i))
-				if p, ok := byDay[d]; ok {
-					sum += p.USD
-					present++
+				p, ok := byDay[d]
+				if !ok {
+					continue
+				}
+				sum += p.USD
+				present++
+				if p.HasRev {
+					rev += p.Rev
+					// The take rate divides by the volume of the same days the
+					// revenue covers, so a fees adapter that is a day behind the
+					// volume one cannot read as a lower cut.
+					revVol += p.USD
+					revDays++
 				}
 			}
 			gWindowDays.WithLabelValues(a.Slug, w).Set(float64(present))
@@ -436,6 +515,17 @@ func publish(h *History) {
 				totals[w] += sum
 			} else {
 				gVolume.DeleteLabelValues(a.Slug, w)
+			}
+			if revDays > 0 && float64(revDays) >= 0.8*float64(n) {
+				gRevenue.WithLabelValues(a.Slug, w).Set(rev)
+				if revVol > 0 {
+					gTakeRate.WithLabelValues(a.Slug, w).Set(100 * rev / revVol)
+				} else {
+					gTakeRate.DeleteLabelValues(a.Slug, w)
+				}
+			} else {
+				gRevenue.DeleteLabelValues(a.Slug, w)
+				gTakeRate.DeleteLabelValues(a.Slug, w)
 			}
 		}
 		gDays.WithLabelValues(a.Slug).Set(float64(len(a.Days)))

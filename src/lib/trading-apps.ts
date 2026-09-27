@@ -1,18 +1,24 @@
 import { getBenchmark } from "@/data/benchmarks";
+import { isDevOnlyBench } from "@/lib/removed-benches";
 import type { ProviderResult } from "@/types/benchmark";
 
 /**
  * Trading-app cohort shared by the /trading-apps hub and the "Trading
- * app" view on /products/<slug>: the platforms, the six KPI columns and
- * the bench each column reads, plus one loader that returns every
- * platform's row with its rank per column so both surfaces show the
- * same numbers.
+ * app" view on /products/<slug>: the platforms, the KPI columns and the
+ * bench each column reads, plus one loader that returns every platform's
+ * row with its rank per column so both surfaces show the same numbers.
  *
- * Volume source: Dune community datasets (dataset_*_daily). Each
- * platform is a separate dataset with cross-chain breakdown. pump.fun =
- * pumpapp Solana + relay swaps. Terminal (slug: padre) = pump.fun's own
- * trading app (formerly Padre, acq. Apr 2025). BasedBot is a multi-chain
- * bot (Robinhood node, BNB, Base, Solana, ETH, HyperEVM).
+ * Which columns exist depends on the deployment. TRADING_APP_COLUMNS drops
+ * any column whose bench this deployment does not serve, so a gated bench
+ * takes its column with it instead of leaving a stripe of dashes. On
+ * production since 2026-09-27 that removes swap transactions, average
+ * trade, active wallets and the Dune fee rate, because the Dune trial
+ * ended and those four benches stood down; the commission and take rate
+ * from bench 201 arrive in their place, from DeFiLlama's free adapters.
+ *
+ * Volume itself is not a column here: it lives in bench 267's table above,
+ * so one app has one volume figure per page. Terminal (slug: padre) is
+ * pump.fun's own trading app, formerly Padre.
  */
 
 export const TRADING_APP_PLATFORMS = [
@@ -36,16 +42,23 @@ export type TradingAppColKey =
   | "tradeSize"
   | "wallets"
   | "feeRate"
+  | "commission"
+  | "takeRate"
   | "rating";
 
-export const TRADING_APP_COLUMNS: readonly {
+export type TradingAppColumn = {
   key: TradingAppColKey;
   label: string;
   bench: string;
+  /** Metric-panel id to read instead of the bench's headline value. */
+  panel?: string;
   fmt: (v: number | null) => string;
   tip: string;
   higherBetter: boolean;
-}[] = [
+};
+
+/** Every column, whatever this deployment serves. Staging shows all of them. */
+export const ALL_TRADING_APP_COLUMNS: readonly TradingAppColumn[] = [
   {
     key: "traders",
     label: "Swap Tx",
@@ -79,14 +92,36 @@ export const TRADING_APP_COLUMNS: readonly {
     higherBetter: false,
   },
   {
+    key: "commission",
+    label: "Commission",
+    bench: "solana-trading-platform-wars",
+    panel: "revenue_1d",
+    fmt: fmtUSD0,
+    tip: "What the app itself collected on its latest closed UTC day, every chain summed (DeFiLlama dailyRevenue). The app's own cut, not the total fees paid on the trade.",
+    higherBetter: true,
+  },
+  {
+    key: "takeRate",
+    label: "Take Rate",
+    bench: "solana-trading-platform-wars",
+    panel: "take_1d",
+    fmt: fmtPct,
+    tip: "The app's commission as a percentage of the volume it routed on the same day. Lower is cheaper for the trader; it is the app's cut, not the all-in cost of a swap.",
+    higherBetter: false,
+  },
+  {
     key: "rating",
     label: "App Rating",
     bench: "app-store-ratings",
     fmt: fmtRating,
-    tip: "Apple App Store all-time average rating. Axiom, Trojan, Photon and Maestro have no iOS app — they show —.",
+    tip: "Apple App Store all-time average rating. Axiom, Trojan, Photon and Maestro have no iOS app, so they show no figure.",
     higherBetter: true,
   },
 ];
+
+/** The columns this deployment can actually fill. */
+export const TRADING_APP_COLUMNS: readonly TradingAppColumn[] =
+  ALL_TRADING_APP_COLUMNS.filter((c) => !isDevOnlyBench(c.bench));
 
 export type TradingAppRow = {
   slug: string;
@@ -132,12 +167,19 @@ export function scopeFromFormula(formula: string | null): string | null {
   return null;
 }
 
-/** Every platform's five Dune figures with per-column ranks, sorted by swap
- *  transactions. Volume is not here: it lives in bench 267 (DeFiLlama,
+/** Every platform's figures for the columns this deployment serves, with
+ *  per-column ranks. Volume is not here: it lives in bench 267 (DeFiLlama,
  *  cross-chain), so one app has one volume figure per page. */
 export async function loadTradingAppMatrix(): Promise<TradingAppMatrix> {
   const benches = await Promise.all(TRADING_APP_COLUMNS.map((c) => getBenchmark(c.bench)));
-  const idx = TRADING_APP_COLUMNS.map((c, i) => [c.key, indexBySlug(benches[i]?.results)] as const);
+  // A column either reads its bench's headline value per provider, or a named
+  // metric panel of it: bench 201's commission and take rate are panels
+  // alongside its volume headline.
+  const idx = TRADING_APP_COLUMNS.map((c, i) => {
+    if (!c.panel) return [c.key, indexBySlug(benches[i]?.results)] as const;
+    const panel = benches[i]?.metricPanels?.find((p) => p.id === c.panel);
+    return [c.key, { ...(panel?.values ?? {}) } as Record<string, number>] as const;
+  });
   const fidx = TRADING_APP_COLUMNS.map((c, i) => [c.key, formulaBySlug(benches[i]?.results)] as const);
   const rows: TradingAppRow[] = TRADING_APP_PLATFORMS.map((p) => {
     const values = {} as Record<TradingAppColKey, number | null>;
@@ -163,7 +205,20 @@ export async function loadTradingAppMatrix(): Promise<TradingAppMatrix> {
       r.ranks[col.key] = i >= 0 ? { rank: i + 1, of: ranked.length } : null;
     });
   }
-  rows.sort((a, b) => (b.values.traders ?? -1) - (a.values.traders ?? -1));
+  // A row with nothing in it is a hole, not a measurement: Maestro and
+  // BasedBot only ever had Dune figures, so on a deployment without those
+  // benches they leave the table rather than filling it with dashes.
+  const filled = rows.filter((r) => TRADING_APP_COLUMNS.some((c) => r.values[c.key] !== null));
+  rows.length = 0;
+  rows.push(...filled);
+  // Sort by the first served column anything has a value for, so the order does
+  // not depend on a bench that may be gated.
+  const sortCol =
+    TRADING_APP_COLUMNS.find((c) => c.higherBetter && rows.some((r) => r.values[c.key] !== null)) ??
+    TRADING_APP_COLUMNS[0];
+  if (sortCol) {
+    rows.sort((a, b) => (b.values[sortCol.key] ?? -1) - (a.values[sortCol.key] ?? -1));
+  }
   const bests: TradingAppMatrix["bests"] = {};
   for (const col of TRADING_APP_COLUMNS) {
     const vals = rows.map((r) => r.values[col.key]).filter((v): v is number => v !== null);
@@ -200,4 +255,11 @@ export function fmtPct(v: number | null): string {
 export function fmtRating(v: number | null): string {
   if (v === null) return "—";
   return `${v.toFixed(1)} / 5`;
+}
+
+export function fmtUSD0(v: number | null): string {
+  if (v === null) return "—";
+  if (v >= 1_000_000) return `$${(v / 1_000_000).toFixed(2)}M`;
+  if (v >= 1_000) return `$${(v / 1_000).toFixed(0)}K`;
+  return `$${v.toFixed(0)}`;
 }

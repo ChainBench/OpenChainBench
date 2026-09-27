@@ -10,20 +10,18 @@ import { computeTradingAppStats, getTradingAppHistory } from "@/lib/trading-app-
 import {
   TRADING_APP_PLATFORMS as PLATFORMS,
   TRADING_APP_COLUMNS as COLUMNS,
-  fmtCount,
-  scopeFromFormula,
-  type TradingAppColKey as ColKey,
+  loadTradingAppMatrix,
 } from "@/lib/trading-apps";
 import { pageMetadata } from "@/lib/page-metadata";
 import { safeJsonLd, buildBreadcrumbJsonLd } from "@/lib/jsonld";
 import { SITE } from "@/data/site";
 
 const DESCRIPTION =
-  "Cross-chain daily volume, fill quality, active wallets and app ratings for trading apps and Telegram bots (GMGN, Axiom, FOMO, Photon, Trojan), measured on closed UTC days.";
+  "Cross-chain daily volume, what each app charges on it, fill quality and app ratings for trading apps and Telegram bots (GMGN, Axiom, FOMO, Photon, Trojan), measured on closed UTC days.";
 
 export const metadata: import("next").Metadata = pageMetadata({
   path: "/trading-apps",
-  title: "Trading app benchmarks 2026: volume, fill quality, wallets",
+  title: "Trading app benchmarks 2026: volume, commission, fill quality",
   description: DESCRIPTION,
 });
 
@@ -45,19 +43,12 @@ const ALL_BENCH_SLUGS = [
 // deployment serves (bench 268 is dev-only on production).
 const BENCH_SLUGS: string[] = ALL_BENCH_SLUGS.filter((slug) => !isDevOnlyBench(slug));
 
-function indexBySlug(results: ProviderResult[] | undefined): Record<string, number> {
-  const out: Record<string, number> = {};
-  for (const r of results ?? []) {
-    out[r.slug] = r.ms.p50;
-  }
-  return out;
-}
 
-const GROUPS = [
+const ALL_GROUPS = [
   {
     label: "Volume & activity",
     items: [
-      { slug: "solana-trading-platform-wars", title: "Trading platform volume" },
+      { slug: "solana-trading-platform-wars", title: "Volume and commission" },
       { slug: "solana-dex-volume", title: "DEX volume & protocol revenue" },
       { slug: "solana-unique-traders", title: "Swap transactions" },
       { slug: "solana-avg-trade-size", title: "Average trade size" },
@@ -77,17 +68,19 @@ const GROUPS = [
     items: [{ slug: "app-store-ratings", title: "iOS app store ratings" }],
   },
 ] as const;
+// A link into a bench this deployment does not serve is a link to a 404, so a
+// group loses its gated items and disappears when that empties it.
+const GROUPS = ALL_GROUPS.map((g) => ({
+  label: g.label,
+  items: g.items.filter((i) => !isDevOnlyBench(i.slug)),
+})).filter((g) => g.items.length > 0);
 
 export default async function TradingAppsHubPage() {
-  const [tradersBench, tradeSizeBench, walletsBench, feeBench, ratingsBench, history] =
-    await Promise.all([
-      getBenchmark("solana-unique-traders"),
-      getBenchmark("solana-avg-trade-size"),
-      getBenchmark("trading-platform-wallets"),
-      getBenchmark("memecoin-platforms"),
-      getBenchmark("app-store-ratings"),
-      getTradingAppHistory(),
-    ]);
+  const [appMatrix, ratingsBench, history] = await Promise.all([
+    loadTradingAppMatrix(),
+    getBenchmark("app-store-ratings"),
+    getTradingAppHistory(),
+  ]);
   // Last-day chain split per app from bench 267, for the chains column of
   // the Dune table (apps DeFiLlama does not track show a dash).
   const chainSplitOf = new Map<string, { chain: string; usd: number; pct: number }[]>();
@@ -98,55 +91,23 @@ export default async function TradingAppsHubPage() {
       if (s.app.chainLabel) chainLabelOf.set(s.app.slug, s.app.chainLabel);
     }
 
-  // Per-platform formula per column (spec provider.formula): the chain
-  // scope differs per platform, so each cell carries its own source.
-  const benchByKey: Record<ColKey, typeof tradersBench> = {
-    traders: tradersBench, tradeSize: tradeSizeBench,
-    wallets: walletsBench, feeRate: feeBench, rating: ratingsBench,
-  };
-  const formulaOf = (key: ColKey, slug: string): string | null =>
-    benchByKey[key]?.results.find((r) => r.slug === slug)?.formula ?? null;
-  const tradersIdx = indexBySlug(tradersBench?.results);
-  const tradeSizeIdx = indexBySlug(tradeSizeBench?.results);
-  const walletsIdx = indexBySlug(walletsBench?.results);
-  const feeIdx = indexBySlug(feeBench?.results);
-  const ratingIdx = indexBySlug(ratingsBench?.results);
+  // The table, its per-column bests and each cell's own formula and chain
+  // scope come from the shared loader, so this hub and the "Trading app" view
+  // on /products/<slug> cannot drift apart. Columns whose bench this
+  // deployment does not serve are already gone from COLUMNS.
+  const matrix = appMatrix.rows;
+  const bests = appMatrix.bests;
+  // The headline KPI names the leader of the first served column that ranks
+  // high-is-good, so it does not depend on one particular bench being live.
+  const kpiCol = COLUMNS.find((c) => c.higherBetter && matrix.some((r) => r.values[c.key] !== null));
+  const kpiRow = kpiCol
+    ? matrix.reduce(
+        (bestRow, row) =>
+          (row.values[kpiCol.key] ?? -1) > (bestRow.values[kpiCol.key] ?? -1) ? row : bestRow,
+        matrix[0],
+      )
+    : undefined;
 
-  type Row = {
-    slug: string;
-    name: string;
-    traders: number | null;
-    tradeSize: number | null;
-    wallets: number | null;
-    feeRate: number | null;
-    rating: number | null;
-  };
-
-  const matrix: Row[] = PLATFORMS.map((p) => ({
-    slug: p.slug,
-    name: p.name,
-    traders: tradersIdx[p.slug] ?? null,
-    tradeSize: tradeSizeIdx[p.slug] ?? null,
-    wallets: walletsIdx[p.slug] ?? null,
-    feeRate: feeIdx[p.slug] ?? null,
-    rating: ratingIdx[p.slug] ?? null,
-  })).sort((a, b) => (b.traders ?? -1) - (a.traders ?? -1));
-
-  function best(key: ColKey, higherBetter: boolean): number | null {
-    const vals = matrix.map((r) => r[key]).filter((v): v is number => v !== null);
-    if (!vals.length) return null;
-    return higherBetter ? Math.max(...vals) : Math.min(...vals);
-  }
-
-  const bests: Partial<Record<ColKey, number | null>> = {};
-  for (const col of COLUMNS) {
-    bests[col.key] = best(col.key, col.higherBetter);
-  }
-
-  const topTxRow = matrix.reduce(
-    (b, row) => ((row.traders ?? -1) > (b.traders ?? -1) ? row : b),
-    matrix[0],
-  );
   const topRating = ratingsBench?.results.find((r: ProviderResult) =>
     PLATFORMS.some((p) => p.slug === r.slug),
   );
@@ -205,8 +166,9 @@ export default async function TradingAppsHubPage() {
         <p className="mt-4 max-w-2xl text-base sm:text-lg text-ink-soft leading-snug">
           Swap volume routed through each trading app and Telegram bot, every
           chain summed, per closed UTC day, with the per-chain split and 7 / 30
-          day trends. Below it, on-chain activity, fee rates and app store
-          ratings. Live data, no marketing claims.
+          day trends. Below it, what each app charged on that volume, how its
+          fills came out and how its users rate it. Live data, no marketing
+          claims.
         </p>
       </header>
 
@@ -239,22 +201,23 @@ export default async function TradingAppsHubPage() {
           className="label-mono text-[10px] text-ink-faint mb-1 uppercase tracking-wide"
           style={{ fontFamily: "var(--font-mono, monospace)" }}
         >
-          On-chain activity · Dune datasets, per platform
+          What each app charges, per platform
         </h2>
         <p className="text-sm text-ink-soft max-w-2xl mb-6">
-          Swap transactions, average trade size, active wallets and fee rates
-          from each platform&apos;s Dune community dataset. Scope follows the
-          dataset: cross-chain for GMGN, Axiom, Terminal and BasedBot, Solana
-          only where marked SOL.
+          The commission each app collected on its latest closed UTC day and the
+          take rate that implies, next to how its users rate it. Commission is
+          the app&apos;s own cut from DeFiLlama&apos;s fees adapter, not the
+          total fees paid on the trade. A column marked SOL covers Solana only;
+          the rest sum every chain the app runs on.
         </p>
       </section>
 
       <section className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-10">
         <KpiCard
-          label="Most swaps, 24h (Dune)"
+          label={kpiCol ? `Highest ${kpiCol.label.toLowerCase()}, latest day` : "Latest day"}
           value={
-            topTxRow?.traders != null
-              ? `${topTxRow.name} · ${fmtCount(topTxRow.traders)}`
+            kpiCol && kpiRow && kpiRow.values[kpiCol.key] != null
+              ? `${kpiRow.name} · ${kpiCol.fmt(kpiRow.values[kpiCol.key])}`
               : "Awaiting data"
           }
           accent="#10b981"
@@ -268,7 +231,7 @@ export default async function TradingAppsHubPage() {
           }
           accent="#f59e0b"
         />
-        <KpiCard label="Platforms tracked" value={String(PLATFORMS.length)} accent="#6366f1" />
+        <KpiCard label="Platforms tracked" value={String(matrix.length)} accent="#6366f1" />
         <KpiCard label="Active benchmarks" value={String(BENCH_SLUGS.length)} />
       </section>
 
@@ -338,10 +301,10 @@ export default async function TradingAppsHubPage() {
                     <ChainBar split={chainSplitOf.get(row.slug) ?? []} width={56} label={chainLabelOf.get(row.slug)} />
                   </td>
                   {COLUMNS.map((col) => {
-                    const val = row[col.key];
+                    const val = row.values[col.key];
                     const isBest = val !== null && val === bests[col.key];
-                    const formula = formulaOf(col.key, row.slug);
-                    const solOnly = val !== null && scopeFromFormula(formula) === "Solana only";
+                    const formula = row.formulas[col.key];
+                    const solOnly = val !== null && row.scopes[col.key] === "Solana only";
                     return (
                       <td
                         key={col.key}
@@ -367,10 +330,12 @@ export default async function TradingAppsHubPage() {
           </table>
         </div>
         <p className="mt-2 text-[11px] text-ink-faint">
-          Best value per column highlighted in green. Sorted by swap transactions.
-          Volume is in the bench 267 table above (one figure per app, cross-chain).
-          Chains from bench 267 (each app&apos;s latest closed UTC day); SOL marks a Dune dataset that covers Solana only.
-          Hover column headers for methodology notes. Data refreshes every 60 s.
+          Best value per column highlighted in green. Sorted by the first column
+          where more is better. Volume is in the bench 267 table above (one figure
+          per app, cross-chain). Chains from bench 267 (each app&apos;s latest closed
+          UTC day); SOL marks a figure that covers Solana only. An app with no
+          figure in any column is not listed. Hover column headers for methodology
+          notes.
         </p>
       </section>
 
@@ -431,20 +396,20 @@ export default async function TradingAppsHubPage() {
           Methodology
         </p>
         <p className="max-w-3xl">
-          Volume from Dune community datasets, one per platform, with the
-          dataset&apos;s own scope: cross-chain totals for GMGN, Axiom, Terminal and
-          BasedBot (Solana + BNB + Base + Robinhood node + HyperEVM + Monad),
-          Solana-native swaps only for FOMO, Trojan and Photon (cells marked SOL; hover a
-          figure for the exact source). FOMO&apos;s cross-chain trades go through Relay and are
-          not in its Dune dataset; the bench above counts them. pump.fun = pumpapp frontend + relay swaps only, not all
-          bonding-curve activity. Terminal = pump.fun&apos;s own app (formerly Padre,
-          acq. Apr 2025). Swap transaction counts from Dune
-          Analytics (pump.fun: dex-level; terminals: fee-wallet detection).
-          Average trade size = volume ÷ trade count, includes bots and MEV.
-          Active wallets = unique wallet addresses per platform per day (Dune community datasets); cross-chain for GMGN/Axiom/BasedBot/Terminal.
-          Fee rate = on-chain fee revenue ÷ fee-paying volume (Dune tx join);
-          FOMO via DeFiLlama. App store ratings from the Apple iTunes lookup API.
-          All harnesses open source on{" "}
+          Volume and commission from DeFiLlama&apos;s open dexs and fees adapters,
+          per closed UTC day, summed over every chain the adapter covers: ten
+          chains for GMGN, three for Axiom, Solana for Trojan and Photon.
+          FOMO&apos;s cross-chain trades settle through Relay and are booked on
+          Solana, so its figure is its whole business. Commission is the
+          app&apos;s own cut (dailyRevenue), not the total fees paid on the trade,
+          which is roughly twice as much once the venue underneath takes its
+          share; the take rate divides the two over the same days. pump.fun here
+          is the launchpad&apos;s mobile app, not its bonding curve. Terminal is
+          pump.fun&apos;s own app, formerly Padre. Fill quality from our own
+          on-chain swaps, app store ratings from the Apple iTunes lookup API.
+          Benches measuring swap counts, average trade size and active wallets
+          need a paid Dune plan and are paused; they run on staging. All
+          harnesses open source on{" "}
           <Link
             href="https://github.com/ChainBench/OpenChainBench"
             className="underline hover:text-ink"
