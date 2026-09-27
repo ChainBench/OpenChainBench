@@ -180,7 +180,8 @@ func publishRows(rows []duneRow, maxDays int, now time.Time, known []string) (pu
 
 // publishedDay is the data day the last publish put on the board, or "" when
 // nothing is published. The refresh loop reads it to decide whether the day it
-// would measure is already in hand.
+// would measure is already in hand. Written only inside publishRows, whose
+// callers hold publishMu.
 var publishedDay string
 
 func startMetricsServer(addr string) error {

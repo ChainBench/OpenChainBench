@@ -28,6 +28,7 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"sync"
 	"sync/atomic"
 	"syscall"
 	"time"
@@ -138,7 +139,7 @@ func main() {
 		d := targetDay(now)
 		want := dayString(d)
 		// Already on the board.
-		if publishedDay == want {
+		if currentPublishedDay() == want {
 			return
 		}
 		if attemptDay != want {
@@ -187,24 +188,54 @@ func main() {
 	}
 }
 
-// lastRows is what the last successful fetch returned. Every tick re-runs the
+// lastRows is what the last successful read returned. Every tick re-runs the
 // freshness guard over it, so a fetch that starts failing, on a rotated key or a
 // Dune outage, does not leave the previous day's figures on the board reading as
 // healthy: the guard ages them out on its own clock and the benches go
-// unresponsive. Only the main loop and the polling goroutine touch it, and the
-// polling goroutine is the only one running while inFlight is set.
-var lastRows []duneRow
+// unresponsive.
+//
+// The main loop and the polling goroutine both reach this, and the loop keeps
+// ticking while an execution is in flight, so lastRows, publishedDay and the
+// publishRows call itself are all behind publishMu.
+var (
+	publishMu sync.Mutex
+	lastRows  []duneRow
+)
+
+// publish applies the guard and reports what landed. rows nil means "re-run the
+// guard over what is already held", which is what a failed read does.
+func publish(tag string, rows []duneRow) {
+	publishMu.Lock()
+	defer publishMu.Unlock()
+	if rows != nil {
+		lastRows = rows
+	}
+	if lastRows == nil {
+		return
+	}
+	published, dropped := publishRows(lastRows, maxDataAgeDays, time.Now(), publishedPlatforms)
+	fmt.Printf("[%s] published %d platform(s): %v\n", tag, len(published), published)
+	if len(dropped) > 0 {
+		fmt.Printf("[%s] dropped %d platform(s) past the %d-day freshness window or absent from the result: %v\n",
+			tag, len(dropped), maxDataAgeDays, dropped)
+	}
+}
+
+// currentPublishedDay is the data day on the board, or "" when nothing is.
+func currentPublishedDay() string {
+	publishMu.Lock()
+	defer publishMu.Unlock()
+	return publishedDay
+}
 
 func runFetch(c *duneClient, queryID string) {
 	rows, err := c.latestResult(queryID)
 	if err != nil {
 		fmt.Printf("[fetch] failed: %v\n", err)
-		republish("stale")
+		publish("stale", nil)
 		return
 	}
-	lastRows = rows
-	pub, drop := publishRows(rows, maxDataAgeDays, time.Now(), publishedPlatforms)
-	report("fetch", pub, drop)
+	publish("fetch", rows)
 }
 
 // publishFrom publishes the results of one execution, read back by its own id so
@@ -213,30 +244,10 @@ func publishFrom(c *duneClient, execID string) {
 	rows, err := c.executionResult(execID)
 	if err != nil {
 		fmt.Printf("[poll] reading execution %s results failed: %v\n", execID, err)
-		republish("stale")
+		publish("stale", nil)
 		return
 	}
-	lastRows = rows
-	pub, drop := publishRows(rows, maxDataAgeDays, time.Now(), publishedPlatforms)
-	report("poll", pub, drop)
-}
-
-// republish re-runs the guard over the last rows seen, which is how figures age
-// out when no new ones can be fetched.
-func republish(reason string) {
-	if lastRows == nil {
-		return
-	}
-	pub, drop := publishRows(lastRows, maxDataAgeDays, time.Now(), publishedPlatforms)
-	report(reason, pub, drop)
-}
-
-func report(tag string, published, dropped []string) {
-	fmt.Printf("[%s] published %d platform(s): %v\n", tag, len(published), published)
-	if len(dropped) > 0 {
-		fmt.Printf("[%s] dropped %d platform(s) past the %d-day freshness window or absent from the result: %v\n",
-			tag, len(dropped), maxDataAgeDays, dropped)
-	}
+	publish("poll", rows)
 }
 
 func pollUntilDone(c *duneClient, queryID, execID string) {
