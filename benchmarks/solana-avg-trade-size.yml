@@ -2,8 +2,8 @@
 
 slug: solana-avg-trade-size
 number: "206"
-title: "Average swap size on Solana: pump.fun vs GMGN vs Fomo vs Axiom, live"
-seo_title: "Average trade size by Solana trading platform 2026: pump.fun vs GMGN vs Axiom vs Fomo"
+title: "Average swap size on Solana: GMGN vs Axiom vs Trojan vs Terminal"
+seo_title: "Average trade size by Solana trading platform 2026: GMGN vs Axiom vs Trojan vs Terminal"
 seo_description: "{{best_name}} has the largest average swap size at {{best_p50}} per trade. GMGN vs Axiom vs Fomo vs Trojan vs Terminal ranked by average trade size, from our own Dune SQL over Solana fee-wallet attribution."
 subtitle: Average swap size in USD per attributed transaction for each Solana trading platform, for one complete day. Built from our own SQL over Dune's solana.account_activity and dex_solana.trades. Reveals the trader profile of each platform, from retail micro-trades to large-order flow.
 
@@ -18,14 +18,13 @@ disclaimer: |
 
 seo_intro: |
   The average swap size on Solana varies by several multiples across platforms,
-  revealing sharply different trader profiles. pump.fun consistently sits at the
-  bottom of the leaderboard, reflecting the micro-cap degen activity of its
-  bonding-curve launchpad and the heavy bot sniping that inflates trade count while
-  compressing average size. GMGN and Trojan serve more sophisticated traders running
-  larger positions and consistently rank at the top. Fomo sits in the middle,
-  positioning between retail and professional. This benchmark tracks average swap
-  size live across all major Solana trading frontends and launchpads, updated every
-  15 minutes from Mobula lighthouse attribution data.
+  which is the clearest read there is on who trades where. Trojan and Terminal sit
+  at the top, serving traders running larger positions, and the terminals that carry
+  heavy bot flow sit lower because sniping inflates the transaction count while
+  compressing the size of each trade. Every figure here is fee-paying volume over
+  fee-paying transactions, from our own SQL over Dune's solana.account_activity and
+  dex_solana.trades, one execution a day, so the average is the size of a trade the
+  platform actually earned on rather than of anything routed near it.
 
 abstract: |
   The harness runs one Dune execution a day against its own SQL over

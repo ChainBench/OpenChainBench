@@ -118,11 +118,20 @@ func main() {
 	// the day before that. The cached result's age is the clock, so a redeploy
 	// costs no credits and a restart does not double up.
 	var inFlight atomic.Bool
+	// lastAttempt bounds executions to one a cadence whatever the outcome. The
+	// cached result's age cannot do that alone: an execution that fails, is
+	// cancelled or outlives the polling budget leaves the old result in place, or
+	// leaves /results answering 404 after a SQL change, so resultAge stays large
+	// and every fetch tick would start another metered run.
+	var lastAttempt time.Time
 	maybeRefresh := func() {
 		if inFlight.Load() {
 			return
 		}
 		now := time.Now()
+		if !lastAttempt.IsZero() && now.Sub(lastAttempt) < refreshInterval {
+			return
+		}
 		if age := client.resultAge(); age < refreshInterval {
 			return
 		}
@@ -130,6 +139,7 @@ func main() {
 			return
 		}
 		d := targetDay(now)
+		lastAttempt = now
 		execID, err := client.execute(queryID, d)
 		if err != nil {
 			fmt.Printf("[refresh] execute failed: %v\n", err)

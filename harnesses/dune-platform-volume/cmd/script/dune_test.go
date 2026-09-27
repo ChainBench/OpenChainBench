@@ -51,6 +51,19 @@ func TestQuerySQLPinsEveryPartitionFilterToTheDayMacro(t *testing.T) {
 	}
 }
 
+// The take rate's numerator and denominator have to describe the same
+// transactions, or an inflow with no trade behind it reads as a fee.
+func TestQuerySQLSumsFeesOnlyOverTheVolumeTransactions(t *testing.T) {
+	if !strings.Contains(querySQL, "JOIN volume_txs v ON v.platform = f.platform AND v.tx_id = f.tx_id") {
+		t.Error("platform_fees must be joined to volume_txs, so a fee-wallet inflow with no trade behind it is not counted as a fee")
+	}
+	for _, col := range []string{"sol_price_usd", "day_last_trade_unix"} {
+		if !strings.Contains(querySQL, "AS "+col) {
+			t.Errorf("querySQL must return %s for the harness to gate on", col)
+		}
+	}
+}
+
 func TestQueryParametersDeclareTheDay(t *testing.T) {
 	ps := queryParameters(time.Date(2026, 9, 26, 0, 0, 0, 0, time.UTC))
 	if len(ps) != 1 {

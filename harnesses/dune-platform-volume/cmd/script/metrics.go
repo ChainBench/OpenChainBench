@@ -102,10 +102,24 @@ func daysBehind(dataDayUnix float64, now time.Time) int {
 	return int(today.Sub(day) / (24 * time.Hour))
 }
 
-// publishRows writes the platforms whose data day is inside the window and
-// drops everything else. maxDays is how many whole UTC days behind the data day
-// may be; known is every platform the query is expected to return, so one that
-// vanishes from the result is dropped too rather than keeping the figures from
+// dayCovered reports whether the query saw trades close enough to the end of the
+// data day for that day to be treated as loaded. The data day on its own cannot
+// show this, because the harness chose it rather than observing it: a Spellbook
+// incremental that is still half way through the day returns a fraction of its
+// volume, which would otherwise be published as a whole day. The last trade is
+// taken across the whole cohort, which does millions of transactions a day, so
+// the final minutes of a loaded day are always populated.
+func dayCovered(r duneRow) bool {
+	if r.DataDayUnix <= 0 || r.DayLastTradeUnix <= 0 {
+		return false
+	}
+	return r.DayLastTradeUnix >= r.DataDayUnix+23*3600
+}
+
+// publishRows writes the platforms whose data day is inside the window and fully
+// loaded, and drops everything else. maxDays is how many whole UTC days behind the
+// data day may be; known is every platform the query is expected to return, so one
+// that vanishes from the result is dropped too rather than keeping the figures from
 // the last poll that carried it.
 func publishRows(rows []duneRow, maxDays int, now time.Time, known []string) (published, dropped []string) {
 	seen := make(map[string]bool, len(rows))
@@ -119,15 +133,29 @@ func publishRows(rows []duneRow, maxDays int, now time.Time, known []string) (pu
 			dropped = append(dropped, r.Platform)
 			continue
 		}
+		if !dayCovered(r) {
+			dropPlatform(r.Platform)
+			dropped = append(dropped, r.Platform)
+			continue
+		}
 		platformVolume.WithLabelValues(r.Platform).Set(r.VolumeUSD)
 		platformTxns.WithLabelValues(r.Platform).Set(r.Txns)
-		platformFeesUSD.WithLabelValues(r.Platform).Set(r.FeesUSD)
+		// Most of these platforms take their cut in SOL, so without the day's SOL
+		// close the fee total is only the stablecoin part of it. Volume does not
+		// depend on the price, so it still publishes; the fee figures do not, rather
+		// than reading as a low take rate that looks measured.
+		if r.SolPriceUSD > 0 {
+			platformFeesUSD.WithLabelValues(r.Platform).Set(r.FeesUSD)
+			platformFeeRate.WithLabelValues(r.Platform).Set(r.FeeRatePct)
+		} else {
+			platformFeesUSD.DeleteLabelValues(r.Platform)
+			platformFeeRate.DeleteLabelValues(r.Platform)
+		}
 		if r.AvgTradeUSD > 0 {
 			platformAvgTrade.WithLabelValues(r.Platform).Set(r.AvgTradeUSD)
 		} else {
 			platformAvgTrade.DeleteLabelValues(r.Platform)
 		}
-		platformFeeRate.WithLabelValues(r.Platform).Set(r.FeeRatePct)
 		if r.Wallets > 0 {
 			platformWallets.WithLabelValues(r.Platform).Set(r.Wallets)
 		} else {

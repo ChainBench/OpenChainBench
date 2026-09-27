@@ -2,10 +2,10 @@
 
 slug: solana-unique-traders
 number: "207"
-title: "Unique daily swap transactions on Solana: pump.fun vs GMGN vs Fomo vs Axiom vs Trojan, live"
-seo_title: "Unique daily swap transactions by Solana platform 2026: pump.fun vs GMGN vs Fomo vs Axiom vs Trojan"
-seo_description: "{{best_name}} leads Solana platforms with {{best_p50}} unique swap transactions in 24h. pump.fun vs GMGN vs Fomo vs Axiom vs Trojan ranked by daily trading activity, live from Dune Analytics."
-subtitle: Live count of unique swap transactions executed through each Solana trading platform in the last 24 hours. Refreshed hourly via Dune Analytics. Reveals which platforms drive the most trading activity and which serve concentrated whales vs broad retail flow.
+title: "Daily swap transactions on Solana: Axiom vs Fomo vs GMGN vs Terminal vs Trojan"
+seo_title: "Daily swap transactions by Solana platform 2026: Axiom vs Fomo vs GMGN vs Terminal vs Trojan"
+seo_description: "{{best_name}} leads Solana platforms with {{best_p50}} swap transactions in a day. Axiom vs Fomo vs GMGN vs Terminal vs Trojan ranked by daily trading activity, from our own Dune SQL over fee-wallet attribution."
+subtitle: Count of swap transactions executed through each Solana trading platform in one complete day. Built from our own SQL over Dune's solana.account_activity and dex_solana.trades, one execution a day. Reveals which platforms drive the most activity and which serve concentrated whales against broad retail flow.
 
 category: Trading
 status: live
@@ -14,46 +14,47 @@ unit: count
 higher_is_better: true
 
 disclaimer: |
-  Counts unique tx_ids per platform, not unique wallets. Actual unique-wallet count is 3-10x lower since active traders execute multiple transactions per day. Includes bots, MEV searchers, and multi-wallet traders. Terminals (GMGN, Axiom, Fomo, Trojan, Photon, Maestro) use fee wallet inflow detection; pump.fun uses Dune Spellbook (dex_solana.trades, project IN pumpdotfun/pumpswap) to avoid noise from fee-wallet micro-inflows at 0% fee.
+  Counts distinct transaction ids per platform, not wallets, and the wallet count is several times lower because an active trader or bot sends many transactions a day. Bots, MEV searchers and multi-wallet traders are all included. A transaction counts for a platform when that platform's fee wallet received value in it, on Solana. pump.fun and BasedBot read unresponsive, for reasons the methodology gives.
 
 seo_intro: |
-  pump.fun leads Solana platforms by raw swap transaction count, driven by bonding-curve
-  launch activity and bot sniping on newly created tokens. Axiom ranks second among
-  trading terminals, reflecting its broad web-native user base. GMGN and Fomo each
-  attract hundreds of thousands of unique daily swap transactions, while Trojan and
-  Maestro serve a smaller but high-conviction Telegram-native segment.
-  pump.fun's count comes from Dune Spellbook (dex_solana.trades) covering both the
-  bonding-curve program (pumpdotfun) and the graduated PumpSwap AMM, making the
-  comparison directly comparable to terminal fee-wallet attribution. This benchmark
-  tracks unique daily swap transactions per platform live, updated hourly from
-  Dune Analytics on-chain data.
+  Axiom leads Solana platforms by raw swap transaction count, on the strength of a
+  broad web-native user base and high-frequency retail flow. Fomo follows, its count
+  swollen by the gas it sponsors on every trade it routes, and GMGN and Terminal each
+  attract hundreds of thousands of transactions a day while Trojan and Photon serve a
+  smaller and more concentrated segment. Every count here is fee-paying: a transaction
+  is attributed to the platform whose fee wallet received value in it, from our own
+  SQL over Dune's solana.account_activity and dex_solana.trades, one execution a day.
+  Transaction count and volume rankings diverge, which is the point of reading both.
 
 abstract: |
-  The harness wraps the Dune Analytics API. A single saved query counts distinct
-  tx_id values per platform using two sources. For trading terminals (GMGN, Axiom,
-  Fomo, Trojan, Photon, Maestro): solana.account_activity where the platform fee
-  wallet received a native SOL inflow (post_balance > pre_balance) or a USDC/WSOL
-  token inflow (token_balance_owner match, post > pre) in the rolling 24h window.
-  For pump.fun: dex_solana.trades where project IN ('pumpdotfun', 'pumpswap') in
-  the rolling 24h window. This avoids the ~60% noise introduced by micro-SOL
-  inflows (rent, account creation) to pump.fun fee wallets after the 0% fee cut
-  on 2026-08-07. The harness re-executes the query every hour, polls for completion,
-  then updates the Prometheus gauge solana_platform_unique_traders_24h per platform.
+  The dune-platform-volume harness runs one Dune execution a day against its own SQL
+  and counts the distinct transaction ids attributed to each platform for one
+  complete UTC day. A transaction is attributed when the platform's fee wallet
+  received value in it: a native SOL inflow on the wallet itself, or a USDC or wSOL
+  inflow into a token account it owns. The count is exposed as
+  dune_platform_txns_24h, alongside dune_platform_volume_data_day_unix and
+  dune_platform_volume_health per platform. Bench 210 measures the same activity on
+  a rolling 24h window from the solana-unique-traders harness and publishes
+  solana_platform_unique_traders_24h, which is a different window and a separate
+  series.
 
 methodology:
-  - "Source: Dune Analytics (dune.com). Query updated hourly, results fetched every 15 min."
-  - "Terminals (GMGN, Axiom, Fomo, Trojan, Photon, Maestro): COUNT(DISTINCT tx_id) from solana.account_activity WHERE fee wallet received SOL inflow (address match) or USDC/WSOL inflow (token_balance_owner match) in rolling 24h window."
-  - "pump.fun: COUNT(DISTINCT tx_id) from dex_solana.trades WHERE project IN ('pumpdotfun', 'pumpswap') in rolling 24h window. Covers bonding-curve swaps and graduated PumpSwap AMM trades."
-  - "pump.fun switched from fee wallet to dex_solana.trades on 2026-08-13. The fee wallet approach overcounted by ~60% after the 0% bonding-curve fee cut (2026-08-07), as micro-SOL inflows from rent and account creation triggered false positives on every swap tx."
+  - "Source: our own SQL over Dune's solana.account_activity, dex_solana.trades and prices.day, one execution a day. No uploaded third-party dataset: the eight this bench read until 2026-09-27 all froze on 2026-08-25 and were served as current for 32 days."
+  - "Count: COUNT(DISTINCT tx_id) over the transactions in which the platform's fee wallet received value on the data day, either a native SOL inflow on the wallet or a USDC or wSOL inflow into a token account it owns, joined to dex_solana.trades."
+  - "Day: the newest UTC day that closed at least 10 hours earlier, the rule DeFiLlama's own Solana adapters use. dune_platform_volume_data_day_unix carries the day each figure is for."
+  - "Stale source: a platform whose data day falls more than 3 days behind, or that the query stops returning, has its gauges deleted and reads unresponsive. An old figure is never republished as current."
+  - "Scope: Solana only. GMGN, Axiom and Terminal also trade on EVM chains, and those legs are not counted here."
+  - "pump.fun and BasedBot are not measured. pump.fun charges no bonding-curve fee since Aug 2026, so fee-wallet attribution cannot see it; no public fee wallet or router list for BasedBot exists."
   - "Metric represents unique swap transactions per platform. Actual unique-wallet count is 3-10x lower since active traders (and bots) execute multiple transactions per day."
   - "Bot inclusion: all transactions counted including automated traders, sniping bots, and copy-trade bots."
   - "Double-count across platforms: a tx touching two fee wallets is counted in both. Counts are not mutually exclusive."
 
 findings:
-  - "{{best_name}} leads Solana platforms with {{best_p50}} unique daily swap transactions."
-  - "pump.fun dominates by raw swap count driven by bonding-curve launch activity and bot sniping; its 6M daily txs come from dex_solana.trades (pumpdotfun + pumpswap), comparable to terminal fee-wallet attribution."
-  - "Axiom leads trading terminals on unique swap tx count, reflecting its broad web-native user base and high-frequency retail flow."
-  - "Trojan and Maestro serve a smaller but highly active Telegram-native segment, with fewer unique transactions but higher average trade size."
+  - "{{best_name}} leads Solana platforms with {{best_p50}} daily swap transactions."
+  - "Every count here is fee-paying, so a transaction appears only where a platform earned on it. A trade routed through one terminal into another's pool counts once, for the terminal that took the fee."
+  - "Axiom leads on transaction count, reflecting its broad web-native user base and high-frequency retail flow."
+  - "Trojan and Photon serve a smaller but highly active segment, with fewer transactions and a higher average trade size."
+  - "pump.fun and BasedBot read unresponsive. pump.fun charges no bonding-curve fee, so there is no fee wallet to attribute its transactions from, and BasedBot has no public wallet list."
   - "Unique swap tx and volume rankings diverge: Axiom leads terminals on tx count while Photon and Trojan serve more concentrated user bases with higher average position sizes."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/solana-unique-traders

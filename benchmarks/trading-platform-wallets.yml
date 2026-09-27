@@ -2,8 +2,8 @@
 
 slug: trading-platform-wallets
 number: "232"
-title: "Daily active wallets per trading platform: GMGN vs Axiom vs Fomo vs pump.fun, live"
-seo_title: "Daily active wallets by trading platform 2026: GMGN vs Axiom vs Fomo vs pump.fun"
+title: "Daily active wallets per trading platform: GMGN vs Axiom vs Terminal vs Trojan"
+seo_title: "Daily active wallets by trading platform 2026: GMGN vs Axiom vs Terminal vs Trojan"
 seo_description: "{{best_name}} leads trading platforms with {{best_p50}} unique active wallets in a day. GMGN vs Axiom vs Trojan vs Terminal vs Photon ranked by trading accounts, from our own Dune SQL over Solana fee-wallet attribution."
 subtitle: Count of distinct trading accounts that traded through each platform in one complete day. Built from our own SQL over Dune's solana.account_activity and dex_solana.trades, one execution a day. Reveals user base against bot-inflated transaction counts.
 
@@ -17,30 +17,31 @@ disclaimer: |
   Counts are distinct dex_solana.trades trader ids in the transactions that paid each platform's fee wallet, on Solana, for one complete day. A wallet using two platforms is counted in each, so the columns are not mutually exclusive, and bots, MEV searchers and multi-wallet traders are all included. A trading account is not a person. Fomo, pump.fun and BasedBot read unresponsive, for reasons the methodology gives.
 
 seo_intro: |
-  Daily active wallet count is the clearest signal of real platform usage, filtering out
-  the noise from bots that inflate transaction counts. GMGN consistently leads on wallet
-  count among trading terminals, reflecting its broad AI copy-trading user base across
-  multiple chains. Axiom and Fomo compete closely behind. pump.fun naturally dominates
-  in absolute numbers due to its launchpad mechanic attracting thousands of new wallets
-  daily across sniping bots and retail buyers. Trojan and Photon serve smaller but
-  more concentrated user bases with higher average positions. This benchmark tracks
-  unique active wallets per platform live from Dune community datasets, updated every
-  4 hours.
+  Daily active wallet count is a clearer signal of platform usage than transaction
+  count, which bots inflate. Axiom leads on trading accounts, with GMGN behind it on
+  the strength of a broad copy-trading user base, and Terminal, Trojan and Photon
+  serve smaller and more concentrated sets of wallets. The count here is the distinct
+  trading accounts appearing in the transactions that paid each platform's fee wallet
+  on Solana, from our own SQL over Dune's raw and Spellbook tables, one execution a
+  day. Fomo, pump.fun and BasedBot are not measured, each for a reason the
+  methodology gives, and their rows read unresponsive rather than carrying a number
+  that would mean something different from the others.
 
 abstract: |
   The dune-platform-volume harness runs one Dune execution a day against its own
-  SQL over solana.account_activity and dex_solana.trades. The wallet column
-  dataset provides the count of unique wallet addresses that executed at least one
-  swap through the platform on the given day. For multi-chain platforms (GMGN,
-  Axiom, BasedBot, Terminal) the count is summed across all blockchains. For Fomo
-  and Trojan, the count is Solana-only. pump.fun uses dataset_pumpapp_sol_daily
-  wallets only. The metric is exposed as dune_platform_wallets_24h per platform.
+  SQL over solana.account_activity and dex_solana.trades. The wallet column counts
+  the distinct dex_solana.trades trader ids inside the transactions that paid the
+  platform's fee wallet on the data day, so it is the set of trading accounts the
+  platform earned on. The count is Solana only for every platform, including the
+  ones that also trade on EVM chains. It is exposed as dune_platform_wallets_24h,
+  alongside dune_platform_volume_data_day_unix and dune_platform_volume_health per
+  platform.
 
 methodology:
   - "Source: our own SQL over Dune's solana.account_activity, dex_solana.trades and prices.day, one execution a day. No uploaded third-party dataset: the eight this bench read until 2026-09-27 all froze on 2026-08-25 and were served as current for 32 days."
   - "Wallets: distinct dex_solana.trades trader_id in the transactions that paid the platform's fee wallet on the data day. A trading account, not a person."
   - "Attribution: a transaction counts for a platform when that platform's fee wallet received value in it, and one dex_solana.trades leg per transaction and trader is taken so a multi-hop route counts once. Wallet lists come from the DeFiLlama adapter repo and our solana-unique-traders harness, read 2026-09-27."
-  - "Poll cadence: harness queries Dune every 4 hours; Prometheus scrapes :2112/metrics every 60 seconds."
+  - "Cadence: one Dune execution a day (DUNE_REFRESH_HOURS, default 24 h), about 25 credits a run. Prometheus scrapes :2112/metrics every 60 seconds, so the gauge is current while the underlying count changes daily."
   - "Scope: Solana only. GMGN, Axiom and Terminal also trade on EVM chains, and those legs are not counted here. pump.fun and BasedBot are not measured at all."
   - "Stale source: a platform whose data day falls more than 3 days behind, or that the query stops returning, has its gauges deleted and reads unresponsive. An old figure is never republished as current."
   - "Fomo is not measured here. It sponsors the gas on every trade it routes, so the trader ids on its transactions are its own routing accounts and a count off them reads orders of magnitude too low."

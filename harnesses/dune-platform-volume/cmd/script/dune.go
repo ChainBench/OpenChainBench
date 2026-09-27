@@ -34,7 +34,7 @@ var publishedPlatforms = []string{
 // macro textually before planning, so CAST('2026-09-26' AS date) folds to a
 // constant and Trino prunes to that one block_date partition. Computing the day
 // inside SQL from a scalar subquery over dex_solana.trades instead cost 583
-// credits against 10 for the pinned form, because the filter is then unknown at
+// credits against 25 for the pinned form, because the filter is then unknown at
 // planning time and every partition is read. Measured 2026-09-27; do not put the
 // day back inside the query.
 const dayParam = "data_day"
@@ -60,9 +60,13 @@ const dayParam = "data_day"
 //     The SOL leg is the trade's notional, so it wins the tie-break; otherwise
 //     the largest leg does. Dropping this dedup overstates volume by 8% to 18%
 //     across this cohort.
-//  3. Fees are what the wallets actually received that day: lamports on the fee
-//     wallet itself, plus USDC and wSOL landing in token accounts it owns,
-//     priced with the day's SOL close from prices.day.
+//  3. Fees are what the wallets received that day on those same transactions:
+//     lamports on the fee wallet itself, plus USDC and wSOL landing in token
+//     accounts it owns, priced with the day's SOL close from prices.day. Summing
+//     every inflow instead would count a sweep between two of a platform's own fee
+//     wallets, and would put a figure in the take rate's numerator that its
+//     denominator has no volume for: on 2026-09-25 that read padre 37% and fomo 26%
+//     higher than the transactions behind the volume support.
 //
 // Measured against DeFiLlama for 2026-09-25, Solana leg only: axiom +0.1%,
 // trojan +0.0%, gmgn -2.2%, padre -2.6%, photon +11.8%. Photon is the one
@@ -75,8 +79,10 @@ const dayParam = "data_day"
 // comparison against DeFiLlama is the meaningful one.
 //
 // Scope: Solana only. GMGN, Axiom and padre also trade on EVM chains, and those
-// legs are not in here; the specs say so. Cost: about 10 credits per execution,
-// one execution a day.
+// legs are not in here; the specs say so. Cost: 25 credits per execution measured
+// 2026-09-27, one execution a day. Restricting the fees to the volume transactions
+// and reading the day's last trade cost 18 of those 25; without them the query is 7,
+// which is not worth a take rate whose halves describe different transactions.
 const querySQL = `
 -- Fee wallets, per platform. gmgn, axiom, trojan and photon are the lists
 -- carried by the DeFiLlama adapter repo (dexs/gmgnai.ts, dexs/axiom.ts,
@@ -152,6 +158,10 @@ sol_fee_legs AS (
     AND a.token_mint_address IS NULL
     AND a.balance_change > 0
 ),
+-- pre_token_balance and post_token_balance are decimal-adjusted token amounts,
+-- not raw base units: fomo's fees here came to 368,584.19 against the retired
+-- dataset's 368,582.66 for 2026-08-25, and its fee is entirely USDC through this
+-- branch, so a raw-unit reading would have been off by a factor of a million.
 spl_fee_legs AS (
   SELECT fw.platform, a.tx_id, a.token_mint_address,
          CAST(a.post_token_balance - a.pre_token_balance AS double) AS token_amount
@@ -170,19 +180,8 @@ fee_txs AS (
   UNION
   SELECT platform, tx_id FROM spl_fee_legs
 ),
-platform_fees AS (
-  SELECT platform, SUM(usd) AS fees_usd FROM (
-    SELECT s.platform, s.sol_amount * (SELECT price FROM sol_price) AS usd FROM sol_fee_legs s
-    UNION ALL
-    SELECT p.platform,
-           CASE WHEN p.token_mint_address = 'So11111111111111111111111111111111111111112'
-                THEN p.token_amount * (SELECT price FROM sol_price)
-                ELSE p.token_amount END AS usd
-    FROM spl_fee_legs p
-  ) x GROUP BY 1
-),
 legs AS (
-  SELECT f.platform, tr.tx_id, tr.trader_id, tr.amount_usd,
+  SELECT f.platform, tr.tx_id, tr.trader_id, tr.amount_usd, tr.block_time,
          (tr.token_bought_mint_address = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'
           OR tr.token_sold_mint_address = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v') AS has_usdc,
          ROW_NUMBER() OVER (
@@ -211,6 +210,37 @@ fomo_legs AS (
   FROM legs
   WHERE platform = 'fomo' AND has_usdc
 ),
+-- The transactions that produced volume, per platform. Fees are summed over this
+-- set rather than over every inflow to the wallets, so the take rate's numerator
+-- and denominator describe the same transactions: an inflow with no trade behind
+-- it, a sweep between two of a platform's own fee wallets or a token account
+-- closing back into its owner, is not a fee and does not belong in either.
+volume_txs AS (
+  SELECT DISTINCT platform, tx_id FROM legs WHERE platform <> 'fomo'
+  UNION
+  SELECT 'fomo', tx_id FROM fomo_legs
+),
+platform_fees AS (
+  SELECT f.platform, SUM(f.usd) AS fees_usd
+  FROM (
+    SELECT s.platform, s.tx_id, s.sol_amount * (SELECT price FROM sol_price) AS usd
+    FROM sol_fee_legs s
+    UNION ALL
+    SELECT p.platform, p.tx_id,
+           CASE WHEN p.token_mint_address = 'So11111111111111111111111111111111111111112'
+                THEN p.token_amount * (SELECT price FROM sol_price)
+                ELSE p.token_amount END AS usd
+    FROM spl_fee_legs p
+  ) f
+  JOIN volume_txs v ON v.platform = f.platform AND v.tx_id = f.tx_id
+  GROUP BY 1
+),
+-- The last trade of the day the query actually saw. A day that is only partly
+-- loaded returns a fraction of its volume and would otherwise be published as a
+-- whole day, which the data day alone cannot catch because the harness chose it.
+-- Taken across the whole cohort, not per platform, so a genuinely quiet platform
+-- is not mistaken for a truncated load.
+day_last_trade AS (SELECT to_unixtime(MAX(block_time)) AS last_trade_unix FROM legs),
 per_platform AS (
   SELECT platform,
          SUM(CASE WHEN rn_trade = 1 THEN amount_usd END) AS volume_usd,
@@ -231,7 +261,9 @@ SELECT p.platform,
        COALESCE(f.fees_usd, 0) AS fees_usd,
        COALESCE(p.wallets, 0) AS wallets,
        CASE WHEN p.txns > 0 THEN p.volume_usd / p.txns END AS avg_trade_usd,
-       CASE WHEN p.volume_usd > 0 THEN COALESCE(f.fees_usd, 0) / p.volume_usd * 100 ELSE 0.0 END AS fee_rate_pct
+       CASE WHEN p.volume_usd > 0 THEN COALESCE(f.fees_usd, 0) / p.volume_usd * 100 ELSE 0.0 END AS fee_rate_pct,
+       (SELECT price FROM sol_price) AS sol_price_usd,
+       (SELECT last_trade_unix FROM day_last_trade) AS day_last_trade_unix
 FROM per_platform p
 LEFT JOIN platform_fees f ON f.platform = p.platform
 WHERE p.volume_usd > 0
@@ -273,6 +305,14 @@ type duneRow struct {
 	// DataDayUnix is 00:00 UTC of the day the figures are for. 0 when the
 	// source did not say, which the freshness guard treats as stale.
 	DataDayUnix float64 `json:"data_day_unix"`
+	// DayLastTradeUnix is the last trade the query saw on the data day, across
+	// every platform. A day that is only partly loaded stops short of its end,
+	// which the data day alone cannot show because the harness chose it.
+	DayLastTradeUnix float64 `json:"day_last_trade_unix"`
+	// SolPriceUSD is the day's SOL close. 0 when prices.day had no row, in which
+	// case the SOL and wSOL share of the fees is missing and the fee figures are
+	// not published.
+	SolPriceUSD float64 `json:"sol_price_usd"`
 	VolumeUSD   float64 `json:"volume_usd"`
 	Txns        float64 `json:"txns"`
 	FeesUSD     float64 `json:"fees_usd"`

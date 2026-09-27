@@ -13,6 +13,9 @@ func dayUnix(y int, m time.Month, d int) float64 {
 	return float64(time.Date(y, m, d, 0, 0, 0, 0, time.UTC).Unix())
 }
 
+// lastTradeAt is a data-day-end timestamp that dayCovered accepts.
+func lastTradeAt(day float64) float64 { return day + 23*3600 + 59*60 }
+
 func TestDaysBehind(t *testing.T) {
 	cases := []struct {
 		name string
@@ -42,8 +45,8 @@ func TestPublishRowsDropsStaleDay(t *testing.T) {
 	t.Cleanup(func() { dropPlatform("fresh"); dropPlatform("frozen") })
 
 	rows := []duneRow{
-		{Platform: "fresh", DataDayUnix: dayUnix(2026, 9, 26), VolumeUSD: 100, Txns: 4, FeesUSD: 1, Wallets: 2, AvgTradeUSD: 25, FeeRatePct: 1},
-		{Platform: "frozen", DataDayUnix: dayUnix(2026, 8, 25), VolumeUSD: 999, Txns: 9, FeesUSD: 9, Wallets: 9, AvgTradeUSD: 111, FeeRatePct: 1},
+		{Platform: "fresh", DataDayUnix: dayUnix(2026, 9, 26), DayLastTradeUnix: lastTradeAt(dayUnix(2026, 9, 26)), SolPriceUSD: 119, VolumeUSD: 100, Txns: 4, FeesUSD: 1, Wallets: 2, AvgTradeUSD: 25, FeeRatePct: 1},
+		{Platform: "frozen", DataDayUnix: dayUnix(2026, 8, 25), DayLastTradeUnix: lastTradeAt(dayUnix(2026, 8, 25)), SolPriceUSD: 119, VolumeUSD: 999, Txns: 9, FeesUSD: 9, Wallets: 9, AvgTradeUSD: 111, FeeRatePct: 1},
 	}
 	published, dropped := publishRows(rows, 3, now, []string{"fresh", "frozen"})
 
@@ -76,8 +79,8 @@ func TestPublishRowsDropsAbsentPlatform(t *testing.T) {
 	t.Cleanup(func() { dropPlatform("kept"); dropPlatform("gone") })
 
 	first := []duneRow{
-		{Platform: "kept", DataDayUnix: dayUnix(2026, 9, 26), VolumeUSD: 10, Txns: 1, AvgTradeUSD: 10},
-		{Platform: "gone", DataDayUnix: dayUnix(2026, 9, 26), VolumeUSD: 20, Txns: 2, AvgTradeUSD: 10},
+		{Platform: "kept", DataDayUnix: dayUnix(2026, 9, 26), DayLastTradeUnix: lastTradeAt(dayUnix(2026, 9, 26)), SolPriceUSD: 119, VolumeUSD: 10, Txns: 1, AvgTradeUSD: 10},
+		{Platform: "gone", DataDayUnix: dayUnix(2026, 9, 26), DayLastTradeUnix: lastTradeAt(dayUnix(2026, 9, 26)), SolPriceUSD: 119, VolumeUSD: 20, Txns: 2, AvgTradeUSD: 10},
 	}
 	publishRows(first, 3, now, []string{"kept", "gone"})
 	if got := testutil.CollectAndCount(platformVolume, "dune_platform_volume_24h_usd"); got != 2 {
@@ -93,5 +96,56 @@ func TestPublishRowsDropsAbsentPlatform(t *testing.T) {
 	}
 	if got := testutil.ToFloat64(platformHealth.WithLabelValues("gone")); got != 0 {
 		t.Errorf("gone health = %v, want 0", got)
+	}
+}
+
+// A day whose trades stop in the morning was only half loaded when the query ran.
+// The data day alone cannot show that, because the harness chose it.
+func TestPublishRowsDropsPartlyLoadedDay(t *testing.T) {
+	t.Cleanup(func() { dropPlatform("partial") })
+
+	day := dayUnix(2026, 9, 26)
+	rows := []duneRow{{
+		Platform: "partial", DataDayUnix: day, DayLastTradeUnix: day + 9*3600,
+		SolPriceUSD: 119, VolumeUSD: 100, Txns: 4, AvgTradeUSD: 25,
+	}}
+	published, dropped := publishRows(rows, 3, now, []string{"partial"})
+	if len(published) != 0 {
+		t.Errorf("published = %v, want none", published)
+	}
+	if len(dropped) != 1 || dropped[0] != "partial" {
+		t.Errorf("dropped = %v, want [partial]", dropped)
+	}
+	if got := testutil.ToFloat64(platformHealth.WithLabelValues("partial")); got != 0 {
+		t.Errorf("health = %v, want 0", got)
+	}
+	// A row with no last trade at all is treated the same way.
+	if dayCovered(duneRow{DataDayUnix: day}) {
+		t.Error("a row with no last trade must not count as a covered day")
+	}
+}
+
+// Without the day's SOL close the fee total is only its stablecoin part, so the
+// fee figures are withheld while volume, which does not depend on a price, stays.
+func TestPublishRowsWithholdsFeesWithoutASolPrice(t *testing.T) {
+	t.Cleanup(func() { dropPlatform("nopx") })
+
+	day := dayUnix(2026, 9, 26)
+	rows := []duneRow{{
+		Platform: "nopx", DataDayUnix: day, DayLastTradeUnix: lastTradeAt(day),
+		SolPriceUSD: 0, VolumeUSD: 100, Txns: 4, FeesUSD: 0, AvgTradeUSD: 25, FeeRatePct: 0,
+	}}
+	published, _ := publishRows(rows, 3, now, []string{"nopx"})
+	if len(published) != 1 {
+		t.Fatalf("published = %v, want [nopx]", published)
+	}
+	if got := testutil.ToFloat64(platformVolume.WithLabelValues("nopx")); got != 100 {
+		t.Errorf("volume = %v, want 100", got)
+	}
+	if got := testutil.CollectAndCount(platformFeesUSD, "dune_platform_fees_24h_usd"); got != 0 {
+		t.Errorf("fee series = %d, want 0", got)
+	}
+	if got := testutil.CollectAndCount(platformFeeRate, "dune_platform_fee_rate_pct"); got != 0 {
+		t.Errorf("fee rate series = %d, want 0", got)
 	}
 }

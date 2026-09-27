@@ -5,7 +5,7 @@ number: "203"
 title: "Solana memecoin platform fee rates: Axiom vs Fomo vs pump.fun vs GMGN vs Trojan, live 24h"
 seo_title: "Solana memecoin platform fees 2026: Axiom, Fomo, pump.fun, GMGN, Trojan, Photon, Maestro"
 seo_description: "{{best_name}} leads Solana memecoin platforms at {{best_p50}} take rate. Axiom vs Fomo vs pump.fun vs GMGN vs Trojan ranked by protocol revenue per dollar traded, live from Dune fee wallet monitoring."
-subtitle: Live 24-hour protocol fee revenue divided by trading volume for each Solana memecoin platform. Fees sourced from Dune Analytics (on-chain fee wallet inflows, refreshed every 6 hours). Volume from Mobula lighthouse (refreshed every 15 minutes).
+subtitle: Daily protocol fee revenue divided by trading volume for each Solana memecoin platform. The take rate column reads our own Dune SQL over the SOL, USDC and wSOL landing in each platform's fee wallets, against the volume of the transactions that paid them, one execution a day.
 
 category: Trading
 status: live
@@ -46,7 +46,10 @@ abstract: |
 methodology:
   - "Fee source (all except Fomo): Dune Analytics query 8316589 on solana.account_activity. Native SOL inflows matched by address = fee wallet; USDC/WSOL inflows matched by token_balance_owner = fee wallet. Summed over NOW() - 1 DAY. Executed every 6h; cached result read every 15min."
   - "Fee source (Fomo): DeFiLlama /summary/fees/fomo, chainBreakdown[Solana].total24h. DeFiLlama combines on-chain USDC inflows to R4rNJHaffSUotNmqSKNEfDcJE8A7zJUkaoM5Jkd7cYX and off-chain relay fees from dune.tryfomo.fomo_relay_fees (private Dune table)."
-  - "Volume source (Mobula): Mobula lighthouse byPlatform for trading terminals; byLaunchpad[name=PumpFun] for pump.fun (bonding curve + PumpSwap graduated AMM). Updated every 15 minutes. This is total attributed volume; includes trades that may not have generated a fee."
+  - "Take rate column: dune_platform_fee_rate_pct, from our own SQL over Dune's solana.account_activity, dex_solana.trades and prices.day. Fees and volume cover the same transactions, the ones that paid the platform's fee wallet, so the rate is the observed per-trade cut rather than fees over a broader attributed volume."
+  - "Stale source: a platform whose data day falls more than 3 days behind, or that the query stops returning, has its gauges deleted and reads unresponsive. The eight uploaded datasets this column read until 2026-09-27 all froze on 2026-08-25 and were served as current for 32 days."
+  - "pump.fun and BasedBot are not measured in the take rate column. pump.fun charges no bonding-curve fee since Aug 2026, so fee-wallet attribution cannot see it; no public fee wallet list for BasedBot exists. The companion memecoin_platform_* gauges below come from a separate harness and are unaffected."
+  - "Volume source (Mobula): Mobula lighthouse byPlatform for trading terminals; byLaunchpad[name=PumpFun] for pump.fun (bonding curve + PumpSwap graduated AMM). Updated every 15 minutes. This feeds the memecoin_platform_* gauges, not the take rate column."
   - "Volume source (fee-paying, Dune): For each transaction that generated a native SOL, USDC, or WSOL inflow to a fee wallet, the largest swap trade in dex_solana.trades with matching tx_id is taken (MAX amount_usd per tx, to avoid double-counting multi-hop routes). Sum across all such transactions = fee_paying_volume_usd_24h. This denominator is self-consistent with the fee numerator."
   - "Two take-rate metrics: memecoin_platform_fee_rate_pct = fees / Mobula total volume (lower bound, shows attribution breadth); memecoin_platform_fee_paying_rate_pct = fees / fee-paying volume (comparable across platforms, closer to the actual per-trade fee rate). memecoin_platform_coverage_pct = fee-paying volume / Mobula volume (shows what fraction of attributed volume generated a fee)."
   - "SOL price: CoinGecko simple/price, refreshed every 5 minutes. Used to convert native SOL and WSOL inflows to USD."
