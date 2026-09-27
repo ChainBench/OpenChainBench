@@ -4,7 +4,7 @@ slug: perp-liq-rate
 number: "208"
 title: "Perp DEX liquidation rate: 24h liquidated notional over 24h mean open interest, live"
 seo_title: "Perp DEX liquidation rate: {{best_name}} lowest at {{best_p50}}"
-seo_description: "Liquidated notional over 24 hours as a percentage of mean open interest, on ETH and BTC across Hyperliquid, Lighter, dYdX v4, Aster, GMX v2, Gains, Paradex, Ostium and Aevo. Rows whose liquidation figure is not comparable publish unranked."
+seo_description: "Liquidated notional over 24 hours as a percentage of mean open interest, on ETH and BTC across Hyperliquid, Lighter, dYdX v4, Aster, GMX v2, Orderly, Nado, Gains, Paradex, Ostium and Aevo. Rows whose liquidation figure is not comparable publish unranked."
 subtitle: "Liquidated notional over the trailing 24 hours divided by mean open interest over the same 24 hours, in percent. Measured every 5 minutes on ETH and BTC. A row ranks only when its liquidated notional sits between 0.01% and 3% of the venue's own 24h traded notional; outside that band the figures publish without a rank."
 category: Trading
 status: live
@@ -89,6 +89,10 @@ methodology:
   - "Aster: liquidations from Coinalyze hourly buckets for Aster's markets, in base units, converted at that hour's close. Aster's own allForceOrders history endpoint answers that it is out of maintenance, forceOrders is per-account, and the public forceOrder websocket carries no history and drops every few minutes, so a 5-minute poller cannot use it. OI and 24h notional from the futures gateway."
   - "Ostium: liquidations from tradeEvents of type LiquidationExecuted on the Ormi-hosted subgraph, which is the venue's only data surface. The size is read from the linked trade, whose notional is 6-decimal USD, because tradeEvents.notional is null on a liquidation row. Cancelled and failed orders are dropped in the harness: a where clause naming those booleans returns no rows at all."
   - "Ostium is small. It executed 418k dollars of notional in the 24h to 2026-09-27 and liquidated nothing on any pair in that window, the most recent liquidation being 40 hours old. Over 7 days the same query returns 99 events including 159,564 dollars on ETH, so the path is live and the 24h zero is the venue. A zero does not rank."
+  - "Orderly: liquidations from GET /v1/public/liquidated_positions, the only purpose-built public liquidation endpoint in the cohort that carries history; it takes a time range and pages. Filtering by symbol returns whole liquidated accounts, so only the leg on the requested market counts, at cost_position_transfer, which is already USD. OI, mark price and 24h_amount from /v1/public/futures. meta.total saturates at 500, so paging stops on a short page rather than on it."
+  - "Nado: the archive publishes a cumulative liquidated-USD counter per product in its hourly snapshots rather than a tape, so the 24h figure is the difference between two snapshots, one number for the whole window. It is published, and because no per-event detail exists the largest-event panel is left blank for it rather than reading 100%. Traded notional and OI come from the same snapshot pair."
+  - "Checked, feed present, not pollable. Pacifica flags liquidation trades with a cause field and Extended with tT; both were verified on the public tape, but neither tape reaches back more than minutes (40 and 50 rows, no time range) so a 5-minute poller would miss most of a day. Backpack publishes liquidations on a websocket stream with no REST form. All three need a persistent collector, a separate change."
+  - "Checked, no public signal. ApeX Omni, GRVT, Vest and StandX expose no liquidation flag on any public trade tape or endpoint; the flag exists only behind per-account authentication where it exists at all. Their whole public API surfaces were enumerated to confirm it."
   - "Venues checked and left out, with the reason. edgeX: the v2 deployment has no public trade tape at all (every trades and liquidation path 404s) and the only websocket gateway serves the dead v1 contract ids. Jupiter Perps: /v1/trades requires a wallet address and its action enum has no liquidation value, so there is no venue-level feed. Drift: the venue is now Velocity, a fresh program deployment carrying single-digit thousands of dollars of ETH and BTC open interest."
   - "Aevo: OI from GET /statistics?asset=X&instrument_type=PERPETUAL, open_interest.total x mark_price, with daily_volume as the 24h notional. No public liquidation feed was reachable, so no rate is published and the row is declared unranked."
   - "Not apples to apples across the whole field, and the bench says so rather than implying otherwise. Open interest and traded notional are comparable everywhere. The liquidation definition is not, which is why the ranked field is a subset and every row carries its source."
@@ -102,6 +106,7 @@ findings:
   - "{{name:paradex}} does not rank. Its public tape carried no LIQUIDATION row on ETH or BTC over a full 24 hours, and its ETH book traded 1.4M dollars against 14.9M of open interest. An exact zero off a working feed is published as an observation, not as the lowest rate."
   - "{{name:gmx}} joined the measured field on 2026-09-27. This spec had claimed no liquidation source existed for it; the public squid's tradeActions does carry the order type, and 103 executed liquidations totalling 900,656 dollars were found over the previous 24 hours."
   - "{{name:aster}} and {{name:ostium}} were added the same day. Aster reads {{p50:aster}} on ETH, at 0.18% of its own traded notional. Ostium's feed works and liquidated nothing on ETH or BTC in 24 hours, on a book of 78k and 158k dollars, so it publishes zero without a rank."
+  - "{{name:orderly}} and {{name:nado}} were added the same day. Orderly reads {{p50:orderly}} on ETH off a purpose-built public liquidation endpoint with history, at 0.028% of its own traded notional. Nado's archive reports the day as one cumulative figure, 26,033 dollars on BTC and nothing on ETH, so its BTC row ranks and its ETH row publishes a zero without one."
   - "{{name:aevo}} publishes open interest and traded notional with no rate, because every liquidation path on its API 404s, its trade history is per-account and no aggregator covers it. It is declared unranked in the spec rather than dropped, so the gap is visible. edgeX, Jupiter Perps and Drift were checked and left out, with reasons in the methodology."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/perp-liq-rate
@@ -123,7 +128,7 @@ faq:
   - q: "Why does Aevo show no rate, and what changed for GMX v2?"
     a: "Aevo has no public liquidation feed: every liquidation path on its API 404s, its trade history endpoint is per-account, and no aggregator covers it. It is declared unranked and publishes open interest and 24h traded notional so the gap is visible rather than rendered as a zero. GMX v2 did have a feed all along. This spec blamed Subsquid positionChanges for exposing no order type, which is true of that entity and false of tradeActions, whose orderType is 7 for a liquidation. GMX now publishes a measured rate."
   - q: "Which venues were checked and left out?"
-    a: "edgeX: the v2 deployment publishes no public trade tape at all, every trades and liquidation path returns 404, and its only reachable websocket gateway serves the dead v1 contract ids. Jupiter Perps: the trades endpoint needs a wallet address and its action enum has no liquidation value, so no venue-level figure exists without decoding the program on chain. Drift: the venue is now Velocity on a fresh program deployment whose ETH and BTC books hold single-digit thousands of dollars, where a rate would be noise."
+    a: "Pacifica, Extended and Backpack all flag liquidations publicly, but only on a tape or stream that reaches back minutes, so a 5-minute poller cannot see a day; they need a persistent collector. ApeX Omni, GRVT, Vest and StandX expose no liquidation signal on any public endpoint. edgeX: the v2 deployment publishes no public trade tape at all, every trades and liquidation path returns 404, and its only reachable websocket gateway serves the dead v1 contract ids. Jupiter Perps: the trades endpoint needs a wallet address and its action enum has no liquidation value, so no venue-level figure exists without decoding the program on chain. Drift: the venue is now Velocity on a fresh program deployment whose ETH and BTC books hold single-digit thousands of dollars, where a rate would be noise."
   - q: "Why is open interest averaged rather than read at the moment of measurement?"
     a: "Because the numerator covers 24 hours, so the denominator has to as well. With an instantaneous denominator the rate moved with open interest rather than with liquidations. Gains published 343% on 2026-09-24 because its open interest fell from 37M to 7.3M dollars while its numerator stood still, and 491% earlier in the same week. Both were denominator artifacts, not liquidation events."
   - q: "How is Lighter liquidation data obtained, and what was wrong with it?"
@@ -302,6 +307,34 @@ providers:
       sample_size: count_over_time(perp_liq_rate_24h_pct{venue="aster"}[24h])
       ranked: min_over_time(perp_liq_ranked{venue="aster"}[1h])
       series: perp_liq_rate_24h_pct{venue="aster"}
+
+  - slug: orderly
+    name: Orderly
+    tag: Omnichain orderbook; dedicated public liquidation endpoint with history
+    formula: "24h sum of the matching leg's cost_position_transfer (USD) over /v1/public/liquidated_positions, over mean 24h OI (open_interest x mark_price from /v1/public/futures), as a percentage."
+    queries:
+      p50: avg_over_time(perp_liq_rate_24h_pct{venue="orderly"}[24h])
+      p90: quantile_over_time(0.90, perp_liq_rate_24h_pct{venue="orderly"}[24h])
+      p99: quantile_over_time(0.99, perp_liq_rate_24h_pct{venue="orderly"}[24h])
+      mean: avg_over_time(perp_liq_rate_24h_pct{venue="orderly"}[24h])
+      success: avg_over_time(perp_liq_health{venue="orderly",chain=~".*"}[24h])
+      sample_size: count_over_time(perp_liq_rate_24h_pct{venue="orderly"}[24h])
+      ranked: min_over_time(perp_liq_ranked{venue="orderly"}[1h])
+      series: perp_liq_rate_24h_pct{venue="orderly"}
+
+  - slug: nado
+    name: Nado
+    tag: Ink orderbook; 24h figure is a cumulative counter delta, no per-event detail
+    formula: "Difference of cumulative_liquidation_amounts between the newest and oldest of 25 hourly archive snapshots (x18 USD), over mean 24h OI from the same snapshots, as a percentage."
+    queries:
+      p50: avg_over_time(perp_liq_rate_24h_pct{venue="nado"}[24h])
+      p90: quantile_over_time(0.90, perp_liq_rate_24h_pct{venue="nado"}[24h])
+      p99: quantile_over_time(0.99, perp_liq_rate_24h_pct{venue="nado"}[24h])
+      mean: avg_over_time(perp_liq_rate_24h_pct{venue="nado"}[24h])
+      success: avg_over_time(perp_liq_health{venue="nado",chain=~".*"}[24h])
+      sample_size: count_over_time(perp_liq_rate_24h_pct{venue="nado"}[24h])
+      ranked: min_over_time(perp_liq_ranked{venue="nado"}[1h])
+      series: perp_liq_rate_24h_pct{venue="nado"}
 
   - slug: ostium
     name: Ostium

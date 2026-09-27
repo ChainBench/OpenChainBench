@@ -80,6 +80,11 @@ func loadConfig() (*Config, error) {
 	// the site's perp venue registry so the product pages keep joining.
 	aster := NewAster()
 	ostium := NewOstium()
+	// Orderly has the only purpose-built public liquidation endpoint in the
+	// cohort with real history. Nado publishes a cumulative liquidated-USD
+	// counter instead of a tape, so its 24h figure is one aggregate number.
+	orderly := NewOrderly()
+	nado := NewNado()
 
 	pairs := []VenueAsset{
 		{Venue: "hyperliquid", Asset: "ETH", Source: hyperliquid},
@@ -111,6 +116,13 @@ func loadConfig() (*Config, error) {
 
 		{Venue: "ostium", Asset: "ETH", Source: ostium},
 		{Venue: "ostium", Asset: "BTC", Source: ostium},
+
+		{Venue: "orderly", Asset: "ETH", Source: orderly},
+		{Venue: "orderly", Asset: "BTC", Source: orderly},
+		{Venue: "orderly", Asset: "SOL", Source: orderly},
+
+		{Venue: "nado", Asset: "ETH", Source: nado},
+		{Venue: "nado", Asset: "BTC", Source: nado},
 	}
 
 	return &Config{

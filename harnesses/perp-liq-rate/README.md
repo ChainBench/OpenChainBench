@@ -15,6 +15,8 @@ gauges on `:2112/metrics`.
 | `gmx` | ETH BTC | Subsquid `tradeActions`, `orderType` 7 | on the band |
 | `dydx` | ETH BTC SOL | v4 indexer tape, `type == LIQUIDATED` | on the band |
 | `paradex` | ETH BTC | public tape, `trade_type == LIQUIDATION` | on the band |
+| `orderly` | ETH BTC SOL | `GET /v1/public/liquidated_positions`, matching leg only, `cost_position_transfer` USD | on the band |
+| `nado` | ETH BTC | archive `market_snapshots`, delta of `cumulative_liquidation_amounts` (x18 USD), one aggregate figure | on the band |
 | `gains` | ETH BTC | on-chain `LimitExecuted` logs, `orderType` LIQ_CLOSE (6), Arbitrum and Base | no: no per-asset volume denominator |
 | `ostium` | ETH BTC | Ormi subgraph, `tradeEvents` type `LiquidationExecuted` | on the band |
 | `aevo` | ETH BTC | none reachable | no |
@@ -115,6 +117,14 @@ perp_realized_vol_24h_pct{chain}
   real Arbitrum logs.
 
 ## Venues checked and not added
+
+- **Pacifica** (`cause` on the public tape) and **Extended** (`tT`): the flag
+  is real and verified, but the public tape reaches back only minutes (40
+  and 50 rows, no time range; Extended documents historical trades as
+  auth-only). **Backpack** publishes a `liquidation.<symbol>` websocket
+  stream with no REST form. All three need a persistent collector.
+- **ApeX Omni, GRVT, Vest, StandX**: no liquidation signal on any public
+  endpoint; where a flag exists it is per-account behind authentication.
 
 - **edgeX**: the live v2 deployment publishes no public trade tape. Every
   trades and liquidation path 404s, and the only reachable websocket gateway

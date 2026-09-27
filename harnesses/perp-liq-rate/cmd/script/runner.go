@@ -49,6 +49,7 @@ func runTick(va VenueAsset, st *pairState, sinceMs int64) bool {
 	setSourceAvailable(va.Venue, hasLiqSource)
 
 	var liqErr error
+	aggregated := false // the window holds a windowed total, not events
 	if hasLiqSource {
 		var events []LiqEvent
 		events, liqErr = va.Source.FetchLiquidationsSince(va.Asset, sinceMs)
@@ -58,6 +59,9 @@ func runTick(va VenueAsset, st *pairState, sinceMs int64) bool {
 		} else {
 			added, updated := 0, 0
 			for _, e := range events {
+				if e.Aggregate {
+					aggregated = true
+				}
 				if e.Key == "" || e.TimestampMs <= 0 || e.NotionalUSD <= 0 {
 					continue
 				}
@@ -129,12 +133,16 @@ func runTick(va VenueAsset, st *pairState, sinceMs int64) bool {
 		if meanOI > 0 {
 			liqRate.WithLabelValues(va.Venue, va.Asset).Set(volume / meanOI * 100)
 		}
-		largest := st.window.Max()
-		share := 0.0
-		if volume > 0 {
-			share = largest / volume * 100
+		// Meaningless for a source that reports the window as one number: it
+		// would read 100% and claim the day was a single position.
+		if !aggregated {
+			largest := st.window.Max()
+			share := 0.0
+			if volume > 0 {
+				share = largest / volume * 100
+			}
+			liqLargestShare.WithLabelValues(va.Venue, va.Asset).Set(share)
 		}
-		liqLargestShare.WithLabelValues(va.Venue, va.Asset).Set(share)
 	}
 
 	in := rankInput{

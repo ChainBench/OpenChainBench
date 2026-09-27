@@ -31,6 +31,13 @@ type LiqEvent struct {
 	// replaces the stored value for such a key instead of discarding the
 	// repeat as a duplicate. See the note at the top of window.go.
 	Bucket bool
+	// Aggregate marks a figure that is the whole 24h window in one number
+	// rather than one liquidation. Nado's archive publishes a cumulative
+	// liquidated-USD counter per product, so its 24h total is the difference
+	// between two snapshots and no per-event detail exists. Such a row must
+	// not publish perp_liq_largest_event_share_pct, which would read 100%
+	// and claim the day was a single position.
+	Aggregate bool
 }
 
 // Source is implemented by every venue in the source_*.go files.
