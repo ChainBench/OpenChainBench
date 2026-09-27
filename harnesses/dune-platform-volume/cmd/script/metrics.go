@@ -141,7 +141,12 @@ func dayCovered(r duneRow) bool {
 // the last poll that carried it.
 func publishRows(rows []duneRow, maxDays int, now time.Time, known []string) (published, dropped []string) {
 	seen := make(map[string]bool, len(rows))
+	// complete is false when any published row had to withhold its fee figures, so
+	// the day is not recorded and the refresh gate can retry it. It has to be
+	// decided over every row before the day is recorded, not while iterating: the
+	// row with no price may come after one that has it.
 	complete := true
+	day := ""
 	for _, r := range rows {
 		if r.Platform == "" {
 			continue
@@ -186,9 +191,7 @@ func publishRows(rows []duneRow, maxDays int, now time.Time, known []string) (pu
 		platformDataDay.WithLabelValues(r.Platform).Set(r.DataDayUnix)
 		platformHealth.WithLabelValues(r.Platform).Set(1)
 		published = append(published, r.Platform)
-		if complete {
-			publishedDay = rowDay(r)
-		}
+		day = rowDay(r)
 	}
 	for _, p := range known {
 		if !seen[p] {
@@ -196,8 +199,11 @@ func publishRows(rows []duneRow, maxDays int, now time.Time, known []string) (pu
 			dropped = append(dropped, p)
 		}
 	}
-	if len(published) == 0 {
+	switch {
+	case len(published) == 0:
 		publishedDay = ""
+	case complete:
+		publishedDay = day
 	}
 	return published, dropped
 }

@@ -235,3 +235,23 @@ func TestMarkAllUnresponsive(t *testing.T) {
 		t.Errorf("volume series = %d, want 0", got)
 	}
 }
+
+// The row with no SOL price can come after one that has it. The day must still
+// not be recorded, or the retry gate treats a half-priced day as finished.
+func TestPublishedDayIsNotRecordedWhateverTheRowOrder(t *testing.T) {
+	t.Cleanup(func() { dropPlatform("withpx"); dropPlatform("nopx3"); publishedDay = "" })
+
+	day := dayUnix(2026, 9, 26)
+	withPrice := duneRow{Platform: "withpx", DataDayUnix: day, DayLastTradeUnix: lastTradeAt(day), SolPriceUSD: 119, VolumeUSD: 10, Txns: 1, AvgTradeUSD: 10}
+	noPrice := duneRow{Platform: "nopx3", DataDayUnix: day, DayLastTradeUnix: lastTradeAt(day), SolPriceUSD: 0, VolumeUSD: 20, Txns: 2, AvgTradeUSD: 10}
+
+	for _, order := range [][]duneRow{{withPrice, noPrice}, {noPrice, withPrice}} {
+		publishedDay = ""
+		if published, _ := publishRows(order, 3, now, []string{"withpx", "nopx3"}); len(published) != 2 {
+			t.Fatalf("published = %v, want both", published)
+		}
+		if publishedDay != "" {
+			t.Errorf("order %s/%s: publishedDay = %q, want empty", order[0].Platform, order[1].Platform, publishedDay)
+		}
+	}
+}
