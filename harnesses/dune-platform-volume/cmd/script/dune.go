@@ -9,37 +9,51 @@ import (
 	"time"
 )
 
-// querySQL fetches the latest complete day's cross-chain metrics per platform
+// publishedPlatforms is every platform querySQL is expected to return. A
+// platform missing from a result has its gauges dropped rather than left on the
+// figures from the last poll that carried it, so the list has to stay in step
+// with the query.
+var publishedPlatforms = []string{
+	"gmgn", "axiom", "trojan", "padre", "photon", "basedbot", "fomo", "pump-fun",
+}
+
+// querySQL fetches the latest available day's cross-chain metrics per platform
 // from Dune community datasets.
 //
-// Returns per platform: volume_usd, txns, fees_usd, avg_trade_usd, fee_rate_pct.
+// Returns per platform: data_day_unix, volume_usd, txns, fees_usd, wallets,
+// avg_trade_usd, fee_rate_pct.
 // pump.fun = pumpapp Solana + relay swaps (req_class='swap'), fees=0 (fee cut Aug 2026).
 // fomo = Solana only (dataset_fomo_sol_daily, no blockchain col).
 // All others sum across all blockchains for latest available day.
+//
+// data_day_unix carries the day each figure is for. MAX(day) makes the query
+// return its newest row whatever its age, so the day has to travel with the
+// figures for the caller to be able to tell a current row from a frozen one.
 const querySQL = `
 WITH latest AS (
-  SELECT 'gmgn' AS platform, SUM(volume_usd) AS volume_usd, SUM(CAST(txns AS BIGINT)) AS txns, SUM(CAST(fees_usd AS DOUBLE)) AS fees_usd, SUM(CAST(wallets AS BIGINT)) AS wallets
+  SELECT 'gmgn' AS platform, MAX(day) AS day, SUM(volume_usd) AS volume_usd, SUM(CAST(txns AS BIGINT)) AS txns, SUM(CAST(fees_usd AS DOUBLE)) AS fees_usd, SUM(CAST(wallets AS BIGINT)) AS wallets
     FROM dune.adam_tehc_co.dataset_gmgn_daily WHERE day = (SELECT MAX(day) FROM dune.adam_tehc_co.dataset_gmgn_daily)
   UNION ALL
-  SELECT 'axiom', SUM(volume_usd), SUM(CAST(txns AS BIGINT)), SUM(CAST(fees_usd AS DOUBLE)), SUM(CAST(wallets AS BIGINT))
+  SELECT 'axiom', MAX(day), SUM(volume_usd), SUM(CAST(txns AS BIGINT)), SUM(CAST(fees_usd AS DOUBLE)), SUM(CAST(wallets AS BIGINT))
     FROM dune.adam_tehc_co.dataset_axiom_daily WHERE day = (SELECT MAX(day) FROM dune.adam_tehc_co.dataset_axiom_daily)
   UNION ALL
-  SELECT 'trojan', SUM(volume_usd), SUM(CAST(txns AS BIGINT)), SUM(CAST(fees_usd AS DOUBLE)), SUM(CAST(wallets AS BIGINT))
+  SELECT 'trojan', MAX(day), SUM(volume_usd), SUM(CAST(txns AS BIGINT)), SUM(CAST(fees_usd AS DOUBLE)), SUM(CAST(wallets AS BIGINT))
     FROM dune.adam_tehc_co.dataset_trojan_daily WHERE day = (SELECT MAX(day) FROM dune.adam_tehc_co.dataset_trojan_daily)
   UNION ALL
-  SELECT 'padre', SUM(volume_usd), SUM(CAST(txns AS BIGINT)), SUM(CAST(fees_usd AS DOUBLE)), SUM(CAST(wallets AS BIGINT))
+  SELECT 'padre', MAX(day), SUM(volume_usd), SUM(CAST(txns AS BIGINT)), SUM(CAST(fees_usd AS DOUBLE)), SUM(CAST(wallets AS BIGINT))
     FROM dune.adam_tehc_co.dataset_terminal_daily WHERE day = (SELECT MAX(day) FROM dune.adam_tehc_co.dataset_terminal_daily)
   UNION ALL
-  SELECT 'photon', SUM(volume_usd), SUM(CAST(txns AS BIGINT)), SUM(CAST(fees_usd AS DOUBLE)), SUM(CAST(wallets AS BIGINT))
+  SELECT 'photon', MAX(day), SUM(volume_usd), SUM(CAST(txns AS BIGINT)), SUM(CAST(fees_usd AS DOUBLE)), SUM(CAST(wallets AS BIGINT))
     FROM dune.adam_tehc_co.dataset_photon_daily WHERE day = (SELECT MAX(day) FROM dune.adam_tehc_co.dataset_photon_daily)
   UNION ALL
-  SELECT 'basedbot', SUM(volume_usd), SUM(CAST(txns AS BIGINT)), SUM(CAST(fees_usd AS DOUBLE)), SUM(CAST(wallets AS BIGINT))
+  SELECT 'basedbot', MAX(day), SUM(volume_usd), SUM(CAST(txns AS BIGINT)), SUM(CAST(fees_usd AS DOUBLE)), SUM(CAST(wallets AS BIGINT))
     FROM dune.adam_tehc_co.dataset_basedbot_daily WHERE day = (SELECT MAX(day) FROM dune.adam_tehc_co.dataset_basedbot_daily)
   UNION ALL
-  SELECT 'fomo', volume_usd, CAST(txns AS BIGINT), CAST(fees_usd AS DOUBLE), CAST(wallets AS BIGINT)
+  SELECT 'fomo', day, volume_usd, CAST(txns AS BIGINT), CAST(fees_usd AS DOUBLE), CAST(wallets AS BIGINT)
     FROM dune.adam_tehc_co.dataset_fomo_sol_daily WHERE day = (SELECT MAX(day) FROM dune.adam_tehc_co.dataset_fomo_sol_daily)
   UNION ALL
   SELECT 'pump-fun',
+    (SELECT MAX(day) FROM dune.adam_tehc_co.dataset_pumpapp_sol_daily),
     COALESCE((SELECT SUM(volume_usd) FROM dune.adam_tehc_co.dataset_pumpapp_sol_daily WHERE day=(SELECT MAX(day) FROM dune.adam_tehc_co.dataset_pumpapp_sol_daily)),0)
     + COALESCE((SELECT SUM(volume_usd) FROM dune.adam_tehc_co.dataset_pumpfun_relay_daily WHERE day=(SELECT MAX(day) FROM dune.adam_tehc_co.dataset_pumpfun_relay_daily) AND req_class='swap'),0),
     COALESCE((SELECT SUM(CAST(txns AS BIGINT)) FROM dune.adam_tehc_co.dataset_pumpapp_sol_daily WHERE day=(SELECT MAX(day) FROM dune.adam_tehc_co.dataset_pumpapp_sol_daily)),0)
@@ -47,7 +61,9 @@ WITH latest AS (
     CAST(0 AS DOUBLE),
     COALESCE((SELECT SUM(CAST(wallets AS BIGINT)) FROM dune.adam_tehc_co.dataset_pumpapp_sol_daily WHERE day=(SELECT MAX(day) FROM dune.adam_tehc_co.dataset_pumpapp_sol_daily)),0)
 )
-SELECT platform, volume_usd, txns, fees_usd, wallets,
+SELECT platform,
+  to_unixtime(CAST(CAST(substr(CAST(day AS varchar), 1, 10) AS date) AS timestamp)) AS data_day_unix,
+  volume_usd, txns, fees_usd, wallets,
   CASE WHEN txns > 0 THEN volume_usd / txns ELSE NULL END AS avg_trade_usd,
   CASE WHEN volume_usd > 0 THEN fees_usd / volume_usd * 100 ELSE 0.0 END AS fee_rate_pct
 FROM latest ORDER BY volume_usd DESC
@@ -62,7 +78,10 @@ type duneClient struct {
 }
 
 type duneRow struct {
-	Platform    string  `json:"platform"`
+	Platform string `json:"platform"`
+	// DataDayUnix is 00:00 UTC of the day the figures are for. 0 when the
+	// source did not say, which the freshness guard treats as stale.
+	DataDayUnix float64 `json:"data_day_unix"`
 	VolumeUSD   float64 `json:"volume_usd"`
 	Txns        float64 `json:"txns"`
 	FeesUSD     float64 `json:"fees_usd"`

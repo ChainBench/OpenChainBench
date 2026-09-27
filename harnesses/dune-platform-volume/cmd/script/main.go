@@ -10,9 +10,16 @@
 //
 //	DUNE_API_KEY  - Dune Analytics API key
 //
+// Optional env vars:
+//
+//	DUNE_QUERY_ID           - existing Dune query to execute; created on first run when unset
+//	DUNE_REFRESH_HOURS      - executions are metered per run, default 24
+//	DUNE_MAX_DATA_AGE_DAYS  - how many whole UTC days behind the data day may be, default 3
+//
 // Metrics on :2112/metrics:
 //
 //	dune_platform_volume_24h_usd{platform}
+//	dune_platform_volume_data_day_unix{platform}
 //	dune_platform_volume_health{platform}
 package main
 
@@ -39,6 +46,21 @@ var refreshInterval = func() time.Duration {
 		}
 	}
 	return 24 * time.Hour
+}()
+
+// maxDataAgeDays is how many whole UTC days behind a platform's data day may be
+// before the harness stops publishing it: 1 is yesterday, so the default of 3
+// leaves room for the Solana indexing lag and for one missed execution without
+// letting a frozen source through. A source that stops moving has to make the
+// bench read unresponsive, not keep serving its last day as if it were today.
+// DUNE_MAX_DATA_AGE_DAYS overrides it.
+var maxDataAgeDays = func() int {
+	if v := os.Getenv("DUNE_MAX_DATA_AGE_DAYS"); v != "" {
+		if d, err := strconv.Atoi(v); err == nil && d >= 0 {
+			return d
+		}
+	}
+	return 3
 }()
 
 func main() {
@@ -121,8 +143,12 @@ func runFetch(c *duneClient, queryID string) {
 		fmt.Printf("[fetch] failed: %v\n", err)
 		return
 	}
-	publishRows(rows)
-	fmt.Printf("[fetch] updated %d platform(s)\n", len(rows))
+	published, dropped := publishRows(rows, maxDataAgeDays, time.Now(), publishedPlatforms)
+	fmt.Printf("[fetch] published %d platform(s): %v\n", len(published), published)
+	if len(dropped) > 0 {
+		fmt.Printf("[fetch] dropped %d platform(s) past the %d-day freshness window or absent from the result: %v\n",
+			len(dropped), maxDataAgeDays, dropped)
+	}
 }
 
 func pollUntilDone(c *duneClient, queryID, execID string) {
