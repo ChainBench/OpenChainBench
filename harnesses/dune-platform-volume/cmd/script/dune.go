@@ -9,65 +9,256 @@ import (
 	"time"
 )
 
-// publishedPlatforms is every platform querySQL is expected to return. A
-// platform missing from a result has its gauges dropped rather than left on the
+// publishedPlatforms is every platform this harness has a series for. A platform
+// missing from a query result has its gauges dropped rather than left on the
 // figures from the last poll that carried it, so the list has to stay in step
-// with the query.
+// with the query. basedbot and pump-fun are listed and deliberately not
+// produced by querySQL, so their series are deleted on every poll:
+//
+//   - basedbot: no fee wallet or router list for it exists in the DeFiLlama
+//     adapter repo or anywhere else public, and it has no DeFiLlama listing to
+//     check a guess against. Nothing to attribute it from.
+//   - pump-fun: it charges no bonding-curve fee since 2026-08-07, so fee-wallet
+//     attribution cannot see it. The transactions invoking its app program
+//     (6Vo3245eszAb5wuqEMw8mGdbfRUdKbHhDHP5LcaGuTAB, the account DeFiLlama's
+//     dexs/pumpfun-app.ts keys on) read 33% above the retired pumpapp dataset
+//     for 2026-08-25 and 69% above DeFiLlama's own figure for 2026-09-25, so it
+//     is a different measurement from the series this row used to carry rather
+//     than a replacement for it.
 var publishedPlatforms = []string{
 	"gmgn", "axiom", "trojan", "padre", "photon", "basedbot", "fomo", "pump-fun",
 }
 
-// querySQL fetches the latest available day's cross-chain metrics per platform
-// from Dune community datasets.
+// dayParam is the Dune query parameter holding the UTC day to measure, as
+// YYYY-MM-DD. The day has to reach the query as a literal: Dune substitutes the
+// macro textually before planning, so CAST('2026-09-26' AS date) folds to a
+// constant and Trino prunes to that one block_date partition. Computing the day
+// inside SQL from a scalar subquery over dex_solana.trades instead cost 583
+// credits against 10 for the pinned form, because the filter is then unknown at
+// planning time and every partition is read. Measured 2026-09-27; do not put the
+// day back inside the query.
+const dayParam = "data_day"
+
+// querySQL measures one complete UTC day of Solana trading volume, transactions,
+// platform fees and unique wallets per trading platform, from Dune's own tables.
 //
-// Returns per platform: data_day_unix, volume_usd, txns, fees_usd, wallets,
-// avg_trade_usd, fee_rate_pct.
-// pump.fun = pumpapp Solana + relay swaps (req_class='swap'), fees=0 (fee cut Aug 2026).
-// fomo = Solana only (dataset_fomo_sol_daily, no blockchain col).
-// All others sum across all blockchains for latest available day.
+// Source tiers, learned the hard way on 2026-09-27. Raw solana.* and Spellbook
+// dex_solana.* / prices.* are maintained by Dune and do not rot. A
+// dune.<user>.<dataset> table is one person's upload and can freeze silently:
+// this harness read eight of them, they all stopped on 2026-08-25, the query
+// took MAX(day) so nothing errored, and four benches published a month-old day
+// as live for 32 days. Never depend on the third kind again.
 //
-// data_day_unix carries the day each figure is for. MAX(day) makes the query
-// return its newest row whatever its age, so the day has to travel with the
-// figures for the caller to be able to tell a current row from a frozen one.
+// Method, the one DeFiLlama's own Solana adapters use, so the figures are
+// checkable against a public number for the same day:
+//
+//  1. Find the transactions in which a platform's fee wallet received value, in
+//     solana.account_activity. Keying on the fee collector rather than on a
+//     router survives a platform rotating routers, which they do.
+//  2. Join those transactions to dex_solana.trades and take one leg per
+//     (transaction, trader) so a multi-hop route is not counted several times.
+//     The SOL leg is the trade's notional, so it wins the tie-break; otherwise
+//     the largest leg does. Dropping this dedup overstates volume by 8% to 18%
+//     across this cohort.
+//  3. Fees are what the wallets actually received that day: lamports on the fee
+//     wallet itself, plus USDC and wSOL landing in token accounts it owns,
+//     priced with the day's SOL close from prices.day.
+//
+// Measured against DeFiLlama for 2026-09-25, Solana leg only: axiom +0.1%,
+// trojan +0.0%, gmgn -2.2%, padre -2.6%, photon +11.8%. Photon is the one
+// outlier and the reason is known: DeFiLlama's dexs/photon.ts counts only the
+// SOL fee branch, while this query also counts Photon transactions whose fee was
+// paid in USDC or wSOL. fomo lands within 3.4% of the retired dataset for
+// 2026-08-25. Every platform reads above its own frozen 2026-08-25 row by 14% to
+// 54% because dex_solana.trades keeps decoding more venues, so a historical
+// re-run finds trades the adapter could not see when it first ran; the same-day
+// comparison against DeFiLlama is the meaningful one.
+//
+// Scope: Solana only. GMGN, Axiom and padre also trade on EVM chains, and those
+// legs are not in here; the specs say so. Cost: about 10 credits per execution,
+// one execution a day.
 const querySQL = `
-WITH latest AS (
-  SELECT 'gmgn' AS platform, MAX(day) AS day, SUM(volume_usd) AS volume_usd, SUM(CAST(txns AS BIGINT)) AS txns, SUM(CAST(fees_usd AS DOUBLE)) AS fees_usd, SUM(CAST(wallets AS BIGINT)) AS wallets
-    FROM dune.adam_tehc_co.dataset_gmgn_daily WHERE day = (SELECT MAX(day) FROM dune.adam_tehc_co.dataset_gmgn_daily)
+-- Fee wallets, per platform. gmgn, axiom, trojan and photon are the lists
+-- carried by the DeFiLlama adapter repo (dexs/gmgnai.ts, dexs/axiom.ts,
+-- dexs/trojan/index.ts, dexs/photon.ts) and by our own solana-unique-traders
+-- harness, which agree address for address; read 2026-09-27. padre is pump.fun's
+-- trading app, formerly Padre: the two wallets are from
+-- dexs/trading-terminal/index.ts, the adapter behind DeFiLlama's "Terminal"
+-- listing, and they reproduce that listing to within 2.6% for 2026-09-25. fomo
+-- takes its cut in USDC to this owner wallet, so it is matched through
+-- token_balance_owner rather than through address.
+WITH fee_wallets AS (
+  SELECT address, platform FROM (VALUES
+    ('BB5dnY55FXS1e1NXqZDwCzgdYJdMCj3B92PU6Q5Fb6DT','gmgn'),
+    ('7sHXjs1j7sDJGVSMSPjD1b4v3FD6uRSvRWfhRdfv5BiA','gmgn'),
+    ('HeZVpHj9jLwTVtMMbzQRf6mLtFPkWNSg11o68qrbUBa3','gmgn'),
+    ('ByRRgnZenY6W2sddo1VJzX9o4sMU4gPDUkcmgrpGBxRy','gmgn'),
+    ('DXfkEGoo6WFsdL7x6gLZ7r6Hw2S6HrtrAQVPWYx2A1s9','gmgn'),
+    ('3t9EKmRiAUcQUYzTZpNojzeGP1KBAVEEbDNmy6wECQpK','gmgn'),
+    ('DymeoWc5WLNiQBaoLuxrxDnDRvLgGZ1QGsEoCAM7Jsrx','gmgn'),
+    ('dBhdrmwBkRa66XxBuAK4WZeZnsZ6bHeHCCLXa3a8bTJ','gmgn'),
+    ('6TxjC5wJzuuZgTtnTMipwwULEbMPx5JPW3QwWkdTGnrn','gmgn'),
+    ('7LCZckF6XXGQ1hDY6HFXBKWAtiUgL9QY5vj1C4Bn1Qjj','axiom'),
+    ('4V65jvcDG9DSQioUVqVPiUcUY9v6sb6HKtMnsxSKEz5S','axiom'),
+    ('CeA3sPZfWWToFEBmw5n1Y93tnV66Vmp8LacLzsVprgxZ','axiom'),
+    ('AaG6of1gbj1pbDumvbSiTuJhRCRkkUNaWVxijSbWvTJW','axiom'),
+    ('7oi1L8U9MRu5zDz5syFahsiLUric47LzvJBQX6r827ws','axiom'),
+    ('9kPrgLggBJ69tx1czYAbp7fezuUmL337BsqQTKETUEhP','axiom'),
+    ('DKyUs1xXMDy8Z11zNsLnUg3dy9HZf6hYZidB6WodcaGy','axiom'),
+    ('4FobGn5ZWYquoJkxMzh2VUAWvV36xMgxQ3M7uG1pGGhd','axiom'),
+    ('76sxKrPtgoJHDJvxwFHqb3cAXWfRHFLe3VpKcLCAHSEf','axiom'),
+    ('H2cDR3EkJjtTKDQKk8SJS48du9mhsdzQhy8xJx5UMqQK','axiom'),
+    ('8m5GkL7nVy95G4YVUbs79z873oVKqg2afgKRmqxsiiRm','axiom'),
+    ('4kuG6NsAFJNwqEkac8GFDMMheCGKUPEbaRVHHyFHSwWz','axiom'),
+    ('8vFGAKdwpn4hk7kc1cBgfWZzpyW3MEMDATDzVZhddeQb','axiom'),
+    ('86Vh4XGLW2b6nvWbRyDs4ScgMXbuvRCHT7WbUT3RFxKG','axiom'),
+    ('DZfEurFKFtSbdWZsKSDTqpqsQgvXxmESpvRtXkAdgLwM','axiom'),
+    ('5L2QKqDn5ukJSWGyqR4RPvFvwnBabKWqAqMzH4heaQNB','axiom'),
+    ('DYVeNgXGLAhZdeLMMYnCw1nPnMxkBN7fJnNpHmizTrrF','axiom'),
+    ('Hbj6XdxX6eV4nfbYTseysibp4zZJtVRRPn2J3BhGRuK9','axiom'),
+    ('846ah7iBSu9ApuCyEhA5xpnjHHX7d4QJKetWLbwzmJZ8','axiom'),
+    ('5BqYhuD4q1YD3DMAYkc1FeTu9vqQVYYdfBAmkZjamyZg','axiom'),
+    ('9yMwSPk9mrXSN7yDHUuZurAh1sjbJsfpUqjZ7SvVtdco','trojan'),
+    ('92Med3qeK7duC5iiYsHX38H2f2twJfRsSx93oNrza2VH','trojan'),
+    ('2jwHNxavSoMZMEDbT1eV9PcPt5dDcayCqM6MkgaPpmWQ','trojan'),
+    ('65gDv7pZQCZELsNpNYSFEBtNFpWZAbxmRFB6BGMqFkHH','trojan'),
+    ('BWgb8wR1FEGiu1jCDSKuHKf752W27b4iN6SvoNCiK4qp','trojan'),
+    ('8jgg7moFJkHyTtAv9M6RBSPMp2oXeXhuiUMKW8YbYCWn','trojan'),
+    ('AVUCZyuT35YSuj4RH7fwiyPu82Djn2Hfg7y2ND2XcnZH','photon'),
+    ('J5XGHmzrRmnYWbmw45DbYkdZAU2bwERFZ11qCDXPvFB5','padre'),
+    ('DoAsxPQgiyAxyaJNvpAAUb2ups6rbJRdYrCPyWxwRxBb','padre'),
+    ('R4rNJHaffSUotNmqSKNEfDcJE8A7zJUkaoM5Jkd7cYX','fomo')
+  ) AS t(address, platform)
+),
+-- address_prefix is the partition key on solana.account_activity, so handing it
+-- the two leading characters of every fee wallet prunes the day's partitions
+-- instead of reading all of them. It cannot help the token_balance_owner branch,
+-- whose prefix belongs to the token account rather than to the owner.
+wallet_prefixes AS (SELECT DISTINCT substr(address, 1, 2) AS pfx FROM fee_wallets),
+sol_price AS (
+  SELECT MAX(p.price) AS price
+  FROM prices.day p
+  WHERE p.blockchain = 'solana'
+    AND p.contract_address_varchar = 'So11111111111111111111111111111111111111112'
+    AND CAST(p.timestamp AS date) = CAST('{{data_day}}' AS date)
+),
+sol_fee_legs AS (
+  SELECT fw.platform, a.tx_id, CAST(a.balance_change AS double) / 1e9 AS sol_amount
+  FROM solana.account_activity a
+  JOIN fee_wallets fw ON a.address = fw.address
+  WHERE a.block_date = CAST('{{data_day}}' AS date)
+    AND a.address_prefix IN (SELECT pfx FROM wallet_prefixes)
+    AND a.tx_success
+    AND a.token_mint_address IS NULL
+    AND a.balance_change > 0
+),
+spl_fee_legs AS (
+  SELECT fw.platform, a.tx_id, a.token_mint_address,
+         CAST(a.post_token_balance - a.pre_token_balance AS double) AS token_amount
+  FROM solana.account_activity a
+  JOIN fee_wallets fw ON a.token_balance_owner = fw.address
+  WHERE a.block_date = CAST('{{data_day}}' AS date)
+    AND a.tx_success
+    AND a.token_mint_address IN (
+      'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+      'So11111111111111111111111111111111111111112'
+    )
+    AND a.post_token_balance > a.pre_token_balance
+),
+fee_txs AS (
+  SELECT platform, tx_id FROM sol_fee_legs
+  UNION
+  SELECT platform, tx_id FROM spl_fee_legs
+),
+platform_fees AS (
+  SELECT platform, SUM(usd) AS fees_usd FROM (
+    SELECT s.platform, s.sol_amount * (SELECT price FROM sol_price) AS usd FROM sol_fee_legs s
+    UNION ALL
+    SELECT p.platform,
+           CASE WHEN p.token_mint_address = 'So11111111111111111111111111111111111111112'
+                THEN p.token_amount * (SELECT price FROM sol_price)
+                ELSE p.token_amount END AS usd
+    FROM spl_fee_legs p
+  ) x GROUP BY 1
+),
+legs AS (
+  SELECT f.platform, tr.tx_id, tr.trader_id, tr.amount_usd,
+         (tr.token_bought_mint_address = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'
+          OR tr.token_sold_mint_address = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v') AS has_usdc,
+         ROW_NUMBER() OVER (
+           PARTITION BY f.platform, tr.tx_id, tr.trader_id
+           ORDER BY CASE WHEN tr.token_bought_mint_address = 'So11111111111111111111111111111111111111112'
+                           OR tr.token_sold_mint_address = 'So11111111111111111111111111111111111111112'
+                         THEN 0 ELSE 1 END,
+                    tr.amount_usd DESC
+         ) AS rn_trade
+  FROM dex_solana.trades tr
+  JOIN fee_txs f ON f.tx_id = tr.tx_id
+  WHERE tr.block_date = CAST('{{data_day}}' AS date)
+    AND tr.trader_id NOT IN (SELECT address FROM fee_wallets)
+),
+-- fomo sponsors the gas on every trade it routes, so one transaction carries
+-- several trader ids and the per-(transaction, trader) rule counts one trade as
+-- many. Its own leg is the USDC one, because it charges a flat USDC fee: one
+-- USDC leg per transaction, which is what DeFiLlama's dexs/fomo does and what
+-- lands within 3.4% of the retired series for 2026-08-25. The trader ids on
+-- those legs are fomo's own routing accounts rather than its users, so the
+-- wallet count is left NULL and the harness drops that gauge instead of
+-- publishing a number that would read two orders of magnitude too low.
+fomo_legs AS (
+  SELECT tx_id, amount_usd,
+         ROW_NUMBER() OVER (PARTITION BY tx_id ORDER BY amount_usd DESC) AS rn
+  FROM legs
+  WHERE platform = 'fomo' AND has_usdc
+),
+per_platform AS (
+  SELECT platform,
+         SUM(CASE WHEN rn_trade = 1 THEN amount_usd END) AS volume_usd,
+         COUNT(DISTINCT tx_id) AS txns,
+         COUNT(DISTINCT trader_id) AS wallets
+  FROM legs WHERE platform <> 'fomo' GROUP BY 1
   UNION ALL
-  SELECT 'axiom', MAX(day), SUM(volume_usd), SUM(CAST(txns AS BIGINT)), SUM(CAST(fees_usd AS DOUBLE)), SUM(CAST(wallets AS BIGINT))
-    FROM dune.adam_tehc_co.dataset_axiom_daily WHERE day = (SELECT MAX(day) FROM dune.adam_tehc_co.dataset_axiom_daily)
-  UNION ALL
-  SELECT 'trojan', MAX(day), SUM(volume_usd), SUM(CAST(txns AS BIGINT)), SUM(CAST(fees_usd AS DOUBLE)), SUM(CAST(wallets AS BIGINT))
-    FROM dune.adam_tehc_co.dataset_trojan_daily WHERE day = (SELECT MAX(day) FROM dune.adam_tehc_co.dataset_trojan_daily)
-  UNION ALL
-  SELECT 'padre', MAX(day), SUM(volume_usd), SUM(CAST(txns AS BIGINT)), SUM(CAST(fees_usd AS DOUBLE)), SUM(CAST(wallets AS BIGINT))
-    FROM dune.adam_tehc_co.dataset_terminal_daily WHERE day = (SELECT MAX(day) FROM dune.adam_tehc_co.dataset_terminal_daily)
-  UNION ALL
-  SELECT 'photon', MAX(day), SUM(volume_usd), SUM(CAST(txns AS BIGINT)), SUM(CAST(fees_usd AS DOUBLE)), SUM(CAST(wallets AS BIGINT))
-    FROM dune.adam_tehc_co.dataset_photon_daily WHERE day = (SELECT MAX(day) FROM dune.adam_tehc_co.dataset_photon_daily)
-  UNION ALL
-  SELECT 'basedbot', MAX(day), SUM(volume_usd), SUM(CAST(txns AS BIGINT)), SUM(CAST(fees_usd AS DOUBLE)), SUM(CAST(wallets AS BIGINT))
-    FROM dune.adam_tehc_co.dataset_basedbot_daily WHERE day = (SELECT MAX(day) FROM dune.adam_tehc_co.dataset_basedbot_daily)
-  UNION ALL
-  SELECT 'fomo', day, volume_usd, CAST(txns AS BIGINT), CAST(fees_usd AS DOUBLE), CAST(wallets AS BIGINT)
-    FROM dune.adam_tehc_co.dataset_fomo_sol_daily WHERE day = (SELECT MAX(day) FROM dune.adam_tehc_co.dataset_fomo_sol_daily)
-  UNION ALL
-  SELECT 'pump-fun',
-    (SELECT MAX(day) FROM dune.adam_tehc_co.dataset_pumpapp_sol_daily),
-    COALESCE((SELECT SUM(volume_usd) FROM dune.adam_tehc_co.dataset_pumpapp_sol_daily WHERE day=(SELECT MAX(day) FROM dune.adam_tehc_co.dataset_pumpapp_sol_daily)),0)
-    + COALESCE((SELECT SUM(volume_usd) FROM dune.adam_tehc_co.dataset_pumpfun_relay_daily WHERE day=(SELECT MAX(day) FROM dune.adam_tehc_co.dataset_pumpfun_relay_daily) AND req_class='swap'),0),
-    COALESCE((SELECT SUM(CAST(txns AS BIGINT)) FROM dune.adam_tehc_co.dataset_pumpapp_sol_daily WHERE day=(SELECT MAX(day) FROM dune.adam_tehc_co.dataset_pumpapp_sol_daily)),0)
-    + COALESCE((SELECT SUM(CAST(txns AS BIGINT)) FROM dune.adam_tehc_co.dataset_pumpfun_relay_daily WHERE day=(SELECT MAX(day) FROM dune.adam_tehc_co.dataset_pumpfun_relay_daily) AND req_class='swap'),0),
-    CAST(0 AS DOUBLE),
-    COALESCE((SELECT SUM(CAST(wallets AS BIGINT)) FROM dune.adam_tehc_co.dataset_pumpapp_sol_daily WHERE day=(SELECT MAX(day) FROM dune.adam_tehc_co.dataset_pumpapp_sol_daily)),0)
+  SELECT 'fomo',
+         SUM(CASE WHEN rn = 1 THEN amount_usd END),
+         COUNT(DISTINCT tx_id),
+         CAST(NULL AS bigint)
+  FROM fomo_legs
 )
-SELECT platform,
-  to_unixtime(CAST(CAST(substr(CAST(day AS varchar), 1, 10) AS date) AS timestamp)) AS data_day_unix,
-  volume_usd, txns, fees_usd, wallets,
-  CASE WHEN txns > 0 THEN volume_usd / txns ELSE NULL END AS avg_trade_usd,
-  CASE WHEN volume_usd > 0 THEN fees_usd / volume_usd * 100 ELSE 0.0 END AS fee_rate_pct
-FROM latest ORDER BY volume_usd DESC
+SELECT p.platform,
+       to_unixtime(CAST(CAST('{{data_day}}' AS date) AS timestamp)) AS data_day_unix,
+       p.volume_usd,
+       p.txns,
+       COALESCE(f.fees_usd, 0) AS fees_usd,
+       COALESCE(p.wallets, 0) AS wallets,
+       CASE WHEN p.txns > 0 THEN p.volume_usd / p.txns END AS avg_trade_usd,
+       CASE WHEN p.volume_usd > 0 THEN COALESCE(f.fees_usd, 0) / p.volume_usd * 100 ELSE 0.0 END AS fee_rate_pct
+FROM per_platform p
+LEFT JOIN platform_fees f ON f.platform = p.platform
+WHERE p.volume_usd > 0
+ORDER BY p.volume_usd DESC
 `
+
+// indexLag is how long after a UTC day closes the harness will read it. Dune's
+// Solana tables are usually minutes behind, but DeFiLlama's own Solana adapters
+// refuse a day whose end is less than ten hours old, and matching that rule is
+// what makes the two sets of figures comparable. The cost is that the data day
+// sits one to two days behind, which is why the freshness window defaults to 3.
+const indexLag = 10 * time.Hour
+
+// targetDay is the newest UTC day that closed at least indexLag ago.
+func targetDay(now time.Time) time.Time {
+	return now.UTC().Add(-indexLag).Truncate(24*time.Hour).AddDate(0, 0, -1)
+}
+
+// dayIsYesterday reports whether targetDay has caught up to yesterday. The
+// refresh waits for this before spending an execution, so the one run a day
+// measures yesterday rather than the day before whatever hour the container
+// happens to have started at.
+func dayIsYesterday(now time.Time) bool {
+	return targetDay(now).Equal(now.UTC().Truncate(24*time.Hour).AddDate(0, 0, -1))
+}
+
+func dayString(day time.Time) string { return day.Format("2006-01-02") }
 
 const duneBase = "https://api.dune.com/api/v1"
 
@@ -117,12 +308,24 @@ func (d *duneClient) req(method, path string, body any) (*http.Response, error) 
 	return d.http.Do(req)
 }
 
-func (d *duneClient) createQuery() (string, error) {
+const queryName = "OCB: Solana trading platform daily metrics"
+
+// queryParameters declares the data-day macro. Dune needs a default so the query
+// can be opened and run in the editor; every execution from here overrides it.
+func queryParameters(day time.Time) []any {
+	return []any{map[string]any{
+		"key":   dayParam,
+		"type":  "text",
+		"value": dayString(day),
+	}}
+}
+
+func (d *duneClient) createQuery(day time.Time) (string, error) {
 	payload := map[string]any{
-		"name":       "OCB: Cross-chain trading platform metrics",
+		"name":       queryName,
 		"query_sql":  querySQL,
 		"is_private": false,
-		"parameters": []any{},
+		"parameters": queryParameters(day),
 	}
 	resp, err := d.req("POST", "/query", payload)
 	if err != nil {
@@ -142,8 +345,33 @@ func (d *duneClient) createQuery() (string, error) {
 	return fmt.Sprintf("%d", out.QueryID), nil
 }
 
-func (d *duneClient) execute(queryID string) (string, error) {
-	resp, err := d.req("POST", "/query/"+queryID+"/execute", map[string]any{})
+// updateQuery pushes querySQL onto an existing query id. The harness does this
+// once on start so the SQL in this repo is the SQL Dune runs, and so the query id
+// and its execution history survive a rewrite instead of a new query being
+// created next to the old one.
+func (d *duneClient) updateQuery(queryID string, day time.Time) error {
+	payload := map[string]any{
+		"name":       queryName,
+		"query_sql":  querySQL,
+		"parameters": queryParameters(day),
+	}
+	resp, err := d.req("PATCH", "/query/"+queryID, payload)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 400 {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("HTTP %d: %s", resp.StatusCode, body)
+	}
+	_, _ = io.Copy(io.Discard, resp.Body)
+	return nil
+}
+
+func (d *duneClient) execute(queryID string, day time.Time) (string, error) {
+	resp, err := d.req("POST", "/query/"+queryID+"/execute", map[string]any{
+		"query_parameters": map[string]string{dayParam: dayString(day)},
+	})
 	if err != nil {
 		return "", err
 	}

@@ -1,10 +1,10 @@
-// dune-platform-volume -- Bench 201 (replaces Mobula lighthouse source)
+// dune-platform-volume -- Bench 201
 //
-// Queries Dune community datasets (dataset_*_daily)
-// for cross-chain trading platform volume. Each dataset has columns:
-// day, blockchain, volume_usd, fees_usd, txns, wallets.
-// pump.fun uses dataset_pumpapp_sol_daily (Solana) + dataset_pumpfun_relay_daily (relay).
-// fomo uses dataset_fomo_sol_daily (no blockchain column).
+// Measures one complete UTC day of Solana trading volume, transactions, platform
+// fees and unique wallets per trading platform, with our own SQL over Dune's
+// solana.account_activity, dex_solana.trades and prices.day. See querySQL in
+// dune.go for the attribution method and for why the third-party daily datasets
+// this harness used to read were dropped.
 //
 // Required env vars:
 //
@@ -28,6 +28,7 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"sync/atomic"
 	"syscall"
 	"time"
 )
@@ -65,7 +66,7 @@ var maxDataAgeDays = func() int {
 
 func main() {
 	fmt.Println("=== dune-platform-volume harness ===")
-	fmt.Println("OpenChainBench Bench 201 -- Cross-chain trading platform volume via Dune community datasets.")
+	fmt.Println("OpenChainBench Bench 201 -- Solana trading platform daily metrics, our own SQL over Dune's tables.")
 
 	apiKey := os.Getenv("DUNE_API_KEY")
 	if apiKey == "" {
@@ -75,10 +76,11 @@ func main() {
 
 	queryID := os.Getenv("DUNE_QUERY_ID")
 	client := newDuneClient(apiKey)
+	day := targetDay(time.Now())
 
 	if queryID == "" {
 		fmt.Println("[init] DUNE_QUERY_ID not set, creating Dune query...")
-		id, err := client.createQuery()
+		id, err := client.createQuery(day)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "[fatal] failed to create Dune query: %v\n", err)
 			os.Exit(1)
@@ -86,6 +88,15 @@ func main() {
 		fmt.Printf("[init] Dune query created: %s\n", id)
 		fmt.Printf("[init] Set DUNE_QUERY_ID=%s and restart the harness.\n", id)
 		os.Exit(0)
+	}
+
+	// Push the SQL in this repo onto the query id on every start, so a deploy
+	// cannot leave Dune running an older query than the one under review.
+	// Writing the SQL costs nothing; only an execution is metered.
+	if err := client.updateQuery(queryID, day); err != nil {
+		fmt.Printf("[init] could not update query %s SQL: %v\n", queryID, err)
+	} else {
+		fmt.Printf("[init] query %s SQL set from this build\n", queryID)
 	}
 
 	go func() {
@@ -98,26 +109,42 @@ func main() {
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
 
-	// Fetch the cached result first; execute on start only when that
-	// result is older than the cadence (a redeploy must not cost credits).
-	runFetch(client, queryID)
-	if age := client.resultAge(); age < refreshInterval {
-		fmt.Printf("[init] cached Dune result is %s old (cadence %s), no execution on start\n", age.Round(time.Minute), refreshInterval)
-	} else {
+	// One execution a day, and only once the UTC clock is far enough past the
+	// indexing lag for the target day to be yesterday: a container that happens
+	// to start at 02:00 UTC would otherwise spend its one run a day measuring
+	// the day before that. The cached result's age is the clock, so a redeploy
+	// costs no credits and a restart does not double up.
+	var inFlight atomic.Bool
+	maybeRefresh := func() {
+		if inFlight.Load() {
+			return
+		}
+		now := time.Now()
+		if age := client.resultAge(); age < refreshInterval {
+			return
+		}
+		if !dayIsYesterday(now) {
+			return
+		}
+		d := targetDay(now)
+		execID, err := client.execute(queryID, d)
+		if err != nil {
+			fmt.Printf("[refresh] execute failed: %v\n", err)
+			return
+		}
+		fmt.Printf("[refresh] execution %s started for %s\n", execID, dayString(d))
+		inFlight.Store(true)
 		go func() {
-			execID, err := client.execute(queryID)
-			if err != nil {
-				fmt.Printf("[refresh] execute failed: %v\n", err)
-				return
-			}
+			defer inFlight.Store(false)
 			pollUntilDone(client, queryID, execID)
 		}()
 	}
 
+	runFetch(client, queryID)
+	maybeRefresh()
+
 	fetchTick := time.NewTicker(fetchInterval)
-	refreshTick := time.NewTicker(refreshInterval)
 	defer fetchTick.Stop()
-	defer refreshTick.Stop()
 
 	for {
 		select {
@@ -126,13 +153,7 @@ func main() {
 			return
 		case <-fetchTick.C:
 			runFetch(client, queryID)
-		case <-refreshTick.C:
-			execID, err := client.execute(queryID)
-			if err != nil {
-				fmt.Printf("[refresh] execute failed: %v\n", err)
-				continue
-			}
-			go pollUntilDone(client, queryID, execID)
+			maybeRefresh()
 		}
 	}
 }
