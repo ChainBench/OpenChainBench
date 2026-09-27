@@ -88,7 +88,7 @@ providers:
   - slug: axiom
     name: Axiom
     tag: "Trading terminal, 0.9% fee"
-    formula: "24h fee rate % (fees_usd / volume_usd * 100) from Dune community datasets (dataset_axiom_daily, cross-chain), latest complete day."
+    formula: "Daily fee rate % (fees_usd / volume_usd * 100) from our own Dune SQL: SOL, USDC and wSOL landing in Axiom's fee wallets over the volume of the transactions paying them, one leg per transaction and trader. Solana only."
     queries:
       p50: dune_platform_fee_rate_pct{platform="axiom"}
       p90: dune_platform_fee_rate_pct{platform="axiom"}
@@ -101,7 +101,7 @@ providers:
   - slug: fomo
     name: Fomo
     tag: "Solana trading platform"
-    formula: "24h fee rate % (fees_usd / volume_usd * 100) from Dune community datasets (dataset_fomo_sol_daily, Solana), latest complete day."
+    formula: "Daily fee rate % (fees_usd / volume_usd * 100) from our own Dune SQL: SOL, USDC and wSOL landing in Fomo's fee wallets over the volume of the transactions paying them, largest USDC leg per transaction. Solana only."
     queries:
       p50: dune_platform_fee_rate_pct{platform="fomo"}
       p90: dune_platform_fee_rate_pct{platform="fomo"}
@@ -114,7 +114,7 @@ providers:
   - slug: pump-fun
     name: pump.fun
     tag: "Solana meme launchpad + relay, 0% fee since Aug 2026"
-    formula: "24h fee rate % (fees_usd / volume_usd * 100) from Dune community datasets (dataset_pumpapp_sol_daily + dataset_pumpfun_relay_daily), latest complete day. fees=0 since fee cut Aug 2026."
+    formula: "Not measured. pump.fun charges no bonding-curve fee since Aug 2026, so no fee wallet receives anything on its trades and fee-wallet attribution cannot see them. The row reads unresponsive."
     queries:
       p50: dune_platform_fee_rate_pct{platform="pump-fun"}
       p90: dune_platform_fee_rate_pct{platform="pump-fun"}
@@ -127,7 +127,7 @@ providers:
   - slug: gmgn
     name: GMGN
     tag: "AI trading terminal, ~1% fee, multi-chain"
-    formula: "24h fee rate % (fees_usd / volume_usd * 100) from Dune community datasets (dataset_gmgn_daily, cross-chain), latest complete day."
+    formula: "Daily fee rate % (fees_usd / volume_usd * 100) from our own Dune SQL: SOL, USDC and wSOL landing in GMGN's fee wallets over the volume of the transactions paying them, one leg per transaction and trader. Solana only."
     queries:
       p50: dune_platform_fee_rate_pct{platform="gmgn"}
       p90: dune_platform_fee_rate_pct{platform="gmgn"}
@@ -140,7 +140,7 @@ providers:
   - slug: photon
     name: Photon
     tag: "Solana trading terminal, ~1% fee"
-    formula: "24h fee rate % (fees_usd / volume_usd * 100) from Dune community datasets (dataset_photon_daily), latest complete day."
+    formula: "Daily fee rate % (fees_usd / volume_usd * 100) from our own Dune SQL: SOL, USDC and wSOL landing in Photon's fee wallets over the volume of the transactions paying them, one leg per transaction and trader. Solana only."
     queries:
       p50: dune_platform_fee_rate_pct{platform="photon"}
       p90: dune_platform_fee_rate_pct{platform="photon"}
@@ -153,7 +153,7 @@ providers:
   - slug: trojan
     name: Trojan
     tag: "Solana Telegram bot, ~0.9% fee"
-    formula: "24h fee rate % (fees_usd / volume_usd * 100) from Dune community datasets (dataset_trojan_daily), latest complete day."
+    formula: "Daily fee rate % (fees_usd / volume_usd * 100) from our own Dune SQL: SOL, USDC and wSOL landing in Trojan's fee wallets over the volume of the transactions paying them, one leg per transaction and trader. Solana only."
     queries:
       p50: dune_platform_fee_rate_pct{platform="trojan"}
       p90: dune_platform_fee_rate_pct{platform="trojan"}
@@ -166,7 +166,7 @@ providers:
   - slug: padre
     name: Terminal
     tag: "pump.fun's own trading app (formerly Padre)"
-    formula: "24h fee rate % (fees_usd / volume_usd * 100) from Dune community datasets (dataset_terminal_daily, cross-chain), latest complete day."
+    formula: "Daily fee rate % (fees_usd / volume_usd * 100) from our own Dune SQL: SOL, USDC and wSOL landing in Terminal's fee wallets over the volume of the transactions paying them, one leg per transaction and trader. Solana only."
     queries:
       p50: dune_platform_fee_rate_pct{platform="padre"}
       p90: dune_platform_fee_rate_pct{platform="padre"}
@@ -179,7 +179,7 @@ providers:
   - slug: basedbot
     name: BasedBot
     tag: "Multi-chain trading bot"
-    formula: "24h fee rate % (fees_usd / volume_usd * 100) from Dune community datasets (dataset_basedbot_daily, cross-chain), latest complete day."
+    formula: "Not measured. No public fee wallet or router list for BasedBot exists to attribute its transactions from. The row reads unresponsive."
     queries:
       p50: dune_platform_fee_rate_pct{platform="basedbot"}
       p90: dune_platform_fee_rate_pct{platform="basedbot"}

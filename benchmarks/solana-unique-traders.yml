@@ -80,7 +80,7 @@ providers:
   - slug: pump-fun
     name: pump.fun
     tag: "Solana meme launchpad + relay"
-    formula: "Daily swap tx count from Dune community datasets (dataset_pumpapp_sol_daily + dataset_pumpfun_relay_daily, req_class=swap), latest complete day."
+    formula: "Not measured. pump.fun charges no bonding-curve fee since Aug 2026, so no fee wallet receives anything on its trades and fee-wallet attribution cannot see them. The row reads unresponsive."
     queries:
       p50: dune_platform_txns_24h{platform="pump-fun"}
       p90: dune_platform_txns_24h{platform="pump-fun"}
@@ -93,7 +93,7 @@ providers:
   - slug: gmgn
     name: GMGN
     tag: "AI trading terminal, multi-chain"
-    formula: "Daily swap tx count from Dune community datasets (dataset_gmgn_daily, cross-chain), latest complete day."
+    formula: "Daily Solana transaction count from our own Dune SQL: transactions paying a GMGN fee wallet, joined to dex_solana.trades, one leg per transaction and trader. Solana only."
     queries:
       p50: dune_platform_txns_24h{platform="gmgn"}
       p90: dune_platform_txns_24h{platform="gmgn"}
@@ -106,7 +106,7 @@ providers:
   - slug: axiom
     name: Axiom
     tag: "Web trading terminal, multi-chain"
-    formula: "Daily swap tx count from Dune community datasets (dataset_axiom_daily, cross-chain), latest complete day."
+    formula: "Daily Solana transaction count from our own Dune SQL: transactions paying a Axiom fee wallet, joined to dex_solana.trades, one leg per transaction and trader. Solana only."
     queries:
       p50: dune_platform_txns_24h{platform="axiom"}
       p90: dune_platform_txns_24h{platform="axiom"}
@@ -119,7 +119,7 @@ providers:
   - slug: fomo
     name: Fomo
     tag: "Solana trading platform"
-    formula: "Daily swap tx count from Dune community datasets (dataset_fomo_sol_daily, Solana), latest complete day."
+    formula: "Daily Solana transaction count from our own Dune SQL: transactions paying a Fomo fee wallet, joined to dex_solana.trades, largest USDC leg per transaction. Solana only."
     queries:
       p50: dune_platform_txns_24h{platform="fomo"}
       p90: dune_platform_txns_24h{platform="fomo"}
@@ -132,7 +132,7 @@ providers:
   - slug: trojan
     name: Trojan
     tag: "Telegram trading bot on Solana"
-    formula: "Daily swap tx count from Dune community datasets (dataset_trojan_daily, Solana), latest complete day."
+    formula: "Daily Solana transaction count from our own Dune SQL: transactions paying a Trojan fee wallet, joined to dex_solana.trades, one leg per transaction and trader. Solana only."
     queries:
       p50: dune_platform_txns_24h{platform="trojan"}
       p90: dune_platform_txns_24h{platform="trojan"}
@@ -145,7 +145,7 @@ providers:
   - slug: photon
     name: Photon
     tag: "Solana trading terminal"
-    formula: "Daily swap tx count from Dune community datasets (dataset_photon_daily, Solana), latest complete day."
+    formula: "Daily Solana transaction count from our own Dune SQL: transactions paying a Photon fee wallet, joined to dex_solana.trades, one leg per transaction and trader. Solana only."
     queries:
       p50: dune_platform_txns_24h{platform="photon"}
       p90: dune_platform_txns_24h{platform="photon"}
@@ -158,7 +158,7 @@ providers:
   - slug: padre
     name: Terminal
     tag: "pump.fun's own trading app (formerly Padre)"
-    formula: "Daily swap tx count from Dune community datasets (dataset_terminal_daily, cross-chain), latest complete day."
+    formula: "Daily Solana transaction count from our own Dune SQL: transactions paying a Terminal fee wallet, joined to dex_solana.trades, one leg per transaction and trader. Solana only."
     queries:
       p50: dune_platform_txns_24h{platform="padre"}
       p90: dune_platform_txns_24h{platform="padre"}
@@ -171,7 +171,7 @@ providers:
   - slug: basedbot
     name: BasedBot
     tag: "Multi-chain trading bot"
-    formula: "Daily swap tx count from Dune community datasets (dataset_basedbot_daily, cross-chain), latest complete day."
+    formula: "Not measured. No public fee wallet or router list for BasedBot exists to attribute its transactions from. The row reads unresponsive."
     queries:
       p50: dune_platform_txns_24h{platform="basedbot"}
       p90: dune_platform_txns_24h{platform="basedbot"}
