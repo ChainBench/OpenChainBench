@@ -247,11 +247,16 @@ func publish(tag string, rows []duneRow) {
 	if rows != nil {
 		// A run that lands before Dune has finished loading the day comes back
 		// partial or empty, and one that runs before prices.day has the day's SOL
-		// row comes back with no fee figures. Taking either would throw away a
-		// complete, priced day that is still inside the window, and no retry could
-		// bring it back because the worse rows would be what is held. Keep the held
-		// day instead. publishedDay stays behind the target, so the retries still
-		// run, and the guard still ages the held day out when it gets too old.
+		// row comes back with no fee figures. Taking either over a complete, priced
+		// day that is still inside the window would throw that day away, and no
+		// retry could bring it back because the worse rows would be what is held.
+		//
+		// The price guard applies only to a restatement of the day already held. A
+		// newer day with no price yet is still the newer day: its volume, txns and
+		// wallets publish, publishRows holds back the fee gauges and leaves the day
+		// unrecorded, and a retry then lands the price. Keeping the older day
+		// instead spent the retry budget on a day already on the board, and once
+		// the target moved on, the skipped day was never measured at all.
 		now := time.Now()
 		newUsable, newPriced := publishableRows(rows, maxDataAgeDays, now)
 		heldUsable, heldPriced := publishableRows(lastRows, maxDataAgeDays, now)
@@ -259,8 +264,8 @@ func publish(tag string, rows []duneRow) {
 		case newUsable == 0 && heldUsable > 0:
 			fmt.Printf("[%s] result publishes nothing, keeping the day already held\n", tag)
 			rows = nil
-		case newPriced == 0 && heldPriced > 0:
-			fmt.Printf("[%s] result has no SOL price, keeping the priced day already held\n", tag)
+		case newPriced == 0 && heldPriced > 0 && sameDataDay(rows, lastRows):
+			fmt.Printf("[%s] same day restated without a SOL price, keeping the priced rows\n", tag)
 			rows = nil
 		default:
 			lastRows = rows
@@ -275,6 +280,25 @@ func publish(tag string, rows []duneRow) {
 		fmt.Printf("[%s] dropped %d platform(s) past the %d-day freshness window or absent from the result: %v\n",
 			tag, len(dropped), maxDataAgeDays, dropped)
 	}
+}
+
+// sameDataDay reports whether two results describe the same data day. Used to
+// tell a restatement of the day on the board apart from a newer day arriving.
+func sameDataDay(a, b []duneRow) bool {
+	da, db := "", ""
+	for _, r := range a {
+		if d := rowDay(r); d != "" {
+			da = d
+			break
+		}
+	}
+	for _, r := range b {
+		if d := rowDay(r); d != "" {
+			db = d
+			break
+		}
+	}
+	return da != "" && da == db
 }
 
 // currentPublishedDay is the data day on the board, or "" when nothing is.
