@@ -558,14 +558,30 @@ func publish(h *History) {
 		// adapter last published on 2026-09-15, so it publishes no commission at
 		// all rather than a twelve-day-old one labelled as the latest, which is the
 		// failure this whole change is about.
+		// Prefer the newest day inside the window whose commission is positive. A
+		// day the fees series returns as 0 against real volume is the same kind of
+		// artifact as a negative one: it published a 0% take rate, which the hub
+		// ranks low-is-best and painted green as the cheapest app while showing $0
+		// of commission last. An app whose cut genuinely is zero has no positive day
+		// to find, so the second pass still publishes its real 0%.
 		revEnd, hasRevEnd := end, false
-		for i := 0; i <= 3; i++ {
-			d := end.AddDate(0, 0, -i)
-			if lastClosed.Sub(d) > 72*time.Hour {
+		for _, wantPositive := range []bool{true, false} {
+			for i := 0; i <= 3; i++ {
+				d := end.AddDate(0, 0, -i)
+				if lastClosed.Sub(d) > 72*time.Hour {
+					break
+				}
+				p, ok := byDay[fmtDay(d)]
+				if !ok || !p.HasRev {
+					continue
+				}
+				if wantPositive && p.Rev == 0 && p.USD > 0 {
+					continue
+				}
+				revEnd, hasRevEnd = d, true
 				break
 			}
-			if p, ok := byDay[fmtDay(d)]; ok && p.HasRev {
-				revEnd, hasRevEnd = d, true
+			if hasRevEnd {
 				break
 			}
 		}

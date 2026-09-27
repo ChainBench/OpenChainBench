@@ -50,6 +50,12 @@ export type TradingAppColumn = {
   key: TradingAppColKey;
   label: string;
   bench: string;
+  /** False for a column with no better end. The take rate is the app's own
+   *  margin net of referral paybacks, so neither direction is good news for a
+   *  reader: ranking it low-is-best called an app that rebates a third of its fee
+   *  "cheaper" when its traders pay the same. Such a column shows its figures and
+   *  no rank, no best and no highlight. Defaults to true. */
+  rankable?: boolean;
   /** How wide this column's figures are, stated by the column rather than read
    *  out of its spec prose. "app" means each row covers whatever its own
    *  adapter covers, which the Chains cell on the same row already shows, so no
@@ -122,8 +128,9 @@ export const ALL_TRADING_APP_COLUMNS: readonly TradingAppColumn[] = [
     bench: "solana-trading-platform-wars",
     panel: "take_1d",
     fmt: fmtPct,
-    tip: "The app's commission as a percentage of the volume it routed on the same day. Lower is cheaper for the trader; it is the app's cut, not the all-in cost of a swap.",
-    higherBetter: false,
+    tip: "What the app kept per dollar it routed, on the newest day carrying both figures. DeFiLlama's revenue is net of referral and cashback paybacks, so this is the app's own margin: an app that rebates a third of its fee reads a third lower while its traders pay the same. Not the price of a swap, and not ranked.",
+    higherBetter: true,
+    rankable: false,
   },
   {
     key: "rating",
@@ -236,6 +243,12 @@ export async function loadTradingAppMatrix(): Promise<TradingAppMatrix> {
     return { slug: p.slug, name: p.name, values, ranks: {} as TradingAppRow["ranks"], formulas };
   });
   for (const col of TRADING_APP_COLUMNS) {
+    if (col.rankable === false) {
+      rows.forEach((r) => {
+        r.ranks[col.key] = null;
+      });
+      continue;
+    }
     const higherBetter = higherBetterOf(col);
     const ranked = rows
       .filter((r) => r.values[col.key] !== null)
@@ -262,7 +275,7 @@ export async function loadTradingAppMatrix(): Promise<TradingAppMatrix> {
   // not depend on a bench that may be gated.
   const sortCol =
     TRADING_APP_COLUMNS.find(
-      (c) => higherBetterOf(c) && rows.some((r) => r.values[c.key] !== null),
+      (c) => c.rankable !== false && higherBetterOf(c) && rows.some((r) => r.values[c.key] !== null),
     ) ?? TRADING_APP_COLUMNS[0];
   if (sortCol) {
     rows.sort((a, b) => (b.values[sortCol.key] ?? -1) - (a.values[sortCol.key] ?? -1));
@@ -271,6 +284,10 @@ export async function loadTradingAppMatrix(): Promise<TradingAppMatrix> {
   for (const col of TRADING_APP_COLUMNS) dirs[col.key] = higherBetterOf(col);
   const bests: TradingAppMatrix["bests"] = {};
   for (const col of TRADING_APP_COLUMNS) {
+    if (col.rankable === false) {
+      bests[col.key] = null;
+      continue;
+    }
     const vals = rows.map((r) => r.values[col.key]).filter((v): v is number => v !== null);
     bests[col.key] = vals.length
       ? (higherBetterOf(col) ? Math.max(...vals) : Math.min(...vals))
