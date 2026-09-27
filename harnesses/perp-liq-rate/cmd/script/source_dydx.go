@@ -115,25 +115,49 @@ func (d *Dydx) FetchLiquidationsSince(asset string, sinceMs int64) ([]LiqEvent, 
 type dydxMarket struct {
 	OpenInterest string `json:"openInterest"`
 	OraclePrice  string `json:"oraclePrice"`
+	// volume24H is already quote-denominated (USD).
+	Volume24H string `json:"volume24H"`
+}
+
+// market resolves one ticker from /perpetualMarkets.
+func (d *Dydx) market(asset string) (dydxMarket, error) {
+	ticker, ok := dydxTickers[asset]
+	if !ok {
+		return dydxMarket{}, fmt.Errorf("dydx: unsupported asset %q", asset)
+	}
+	var resp struct {
+		// The v4 indexer returns an object keyed by ticker under "markets"
+		// (the written spec said "array"; the live API is a map).
+		Markets map[string]dydxMarket `json:"markets"`
+	}
+	if err := httpGetJSON(d.baseURL+"/perpetualMarkets", &resp); err != nil {
+		return dydxMarket{}, fmt.Errorf("dydx perpetualMarkets: %w", err)
+	}
+	m, ok := resp.Markets[ticker]
+	if !ok {
+		return dydxMarket{}, fmt.Errorf("dydx: market %q not found", ticker)
+	}
+	return m, nil
+}
+
+// FetchVolume24hUSD returns the market's 24h traded notional in USD.
+func (d *Dydx) FetchVolume24hUSD(asset string) (float64, error) {
+	m, err := d.market(asset)
+	if err != nil {
+		return 0, err
+	}
+	v, err := parseF(m.Volume24H)
+	if err != nil {
+		return 0, fmt.Errorf("dydx volume24H: %w", err)
+	}
+	return v, nil
 }
 
 // FetchOI returns openInterest * oraclePrice for the ticker.
 func (d *Dydx) FetchOI(asset string) (float64, error) {
-	ticker, ok := dydxTickers[asset]
-	if !ok {
-		return 0, fmt.Errorf("dydx: unsupported asset %q", asset)
-	}
-	var resp struct {
-		// VERIFY: the v4 indexer returns an object keyed by ticker under
-		// "markets" (the written spec said "array"; the live API is a map).
-		Markets map[string]dydxMarket `json:"markets"`
-	}
-	if err := httpGetJSON(d.baseURL+"/perpetualMarkets", &resp); err != nil {
-		return 0, fmt.Errorf("dydx perpetualMarkets: %w", err)
-	}
-	m, ok := resp.Markets[ticker]
-	if !ok {
-		return 0, fmt.Errorf("dydx: market %q not found", ticker)
+	m, err := d.market(asset)
+	if err != nil {
+		return 0, err
 	}
 	oi, err := parseF(m.OpenInterest)
 	if err != nil {

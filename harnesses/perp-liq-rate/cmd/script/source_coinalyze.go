@@ -123,13 +123,20 @@ func fetchHourlyCloses(coin string, fromMs, toMs int64, infoURL string) (map[int
 
 // bucketsToEvents converts Coinalyze buckets → LiqEvents using per-bucket close prices.
 // Falls back to fallbackPx when a bucket has no corresponding candle.
-func bucketsToEvents(keyPrefix, assetName string, buckets []czBucket, priceMap map[int64]float64, fallbackPx float64, sinceMs int64) []LiqEvent {
+//
+// Every bucket the caller fetched is returned, and each is marked Bucket so
+// the runner restates the value it already holds for that hour. There is
+// deliberately no sinceMs filter here. The old one dropped any bucket whose
+// hour began before the current tick, which is every bucket except the one
+// opened in the past few minutes, and the dedup key then froze that
+// near-empty reading for 24 hours: Lighter published $887 of liquidations
+// against $185.6M of ETH volume on 2026-09-27 while Coinalyze was reporting
+// 16.36 ETH, about $44k. The window's own cutoff, applied by the runner,
+// is what bounds the trail.
+func bucketsToEvents(keyPrefix, assetName string, buckets []czBucket, priceMap map[int64]float64, fallbackPx float64) []LiqEvent {
 	var events []LiqEvent
 	for _, b := range buckets {
 		tsMs := b.T * 1000
-		if tsMs < sinceMs {
-			continue
-		}
 		total := b.L + b.S
 		if total == 0 {
 			continue
@@ -145,6 +152,7 @@ func bucketsToEvents(keyPrefix, assetName string, buckets []czBucket, priceMap m
 			Key:         fmt.Sprintf("%s:%s:%d", keyPrefix, assetName, b.T),
 			NotionalUSD: total * px,
 			TimestampMs: tsMs,
+			Bucket:      true,
 		})
 	}
 	return events
@@ -165,7 +173,10 @@ func fetchRealizedVol24h(coin string) (float64, error) {
 		return 0, nil
 	}
 
-	type kv struct{ sec int64; px float64 }
+	type kv struct {
+		sec int64
+		px  float64
+	}
 	sorted := make([]kv, 0, len(prices))
 	for sec, px := range prices {
 		sorted = append(sorted, kv{sec, px})

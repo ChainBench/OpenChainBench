@@ -104,30 +104,51 @@ func (p *Paradex) FetchLiquidationsSince(asset string, sinceMs int64) ([]LiqEven
 	return events, nil
 }
 
-// FetchOI returns open interest in USD from the market summary.
-// open_interest is in base-asset units (ETH, BTC); multiply by mark_price.
-func (p *Paradex) FetchOI(asset string) (float64, error) {
+// paradexSummary is one row of /markets/summary.
+type paradexSummary struct {
+	OpenInterest flexFloat `json:"open_interest"` // base units
+	MarkPrice    flexFloat `json:"mark_price"`    // USD per base unit
+	Volume24h    flexFloat `json:"volume_24h"`    // already quote-denominated
+}
+
+// summary reads the market summary row for the asset.
+func (p *Paradex) summary(asset string) (paradexSummary, error) {
 	market, ok := paradexMarkets[asset]
 	if !ok {
-		return 0, fmt.Errorf("paradex: unsupported asset %q", asset)
+		return paradexSummary{}, fmt.Errorf("paradex: unsupported asset %q", asset)
 	}
 	var resp struct {
-		Results []struct {
-			OpenInterest flexFloat `json:"open_interest"` // base units
-			MarkPrice    flexFloat `json:"mark_price"`    // USD per base unit
-		} `json:"results"`
+		Results []paradexSummary `json:"results"`
 	}
 	u := fmt.Sprintf("%s/markets/summary?market=%s", p.baseURL, url.QueryEscape(market))
 	if err := httpGetJSON(u, &resp); err != nil {
-		return 0, fmt.Errorf("paradex markets/summary: %w", err)
+		return paradexSummary{}, fmt.Errorf("paradex markets/summary: %w", err)
 	}
 	if len(resp.Results) == 0 {
-		return 0, fmt.Errorf("paradex markets/summary: empty results for %s", market)
+		return paradexSummary{}, fmt.Errorf("paradex markets/summary: empty results for %s", market)
 	}
-	r := resp.Results[0]
+	return resp.Results[0], nil
+}
+
+// FetchOI returns open interest in USD from the market summary.
+// open_interest is in base-asset units (ETH, BTC); multiply by mark_price.
+func (p *Paradex) FetchOI(asset string) (float64, error) {
+	r, err := p.summary(asset)
+	if err != nil {
+		return 0, err
+	}
 	markPx := float64(r.MarkPrice)
 	if markPx == 0 {
-		return 0, fmt.Errorf("paradex markets/summary: mark_price is zero for %s", market)
+		return 0, fmt.Errorf("paradex markets/summary: mark_price is zero for %s", asset)
 	}
 	return float64(r.OpenInterest) * markPx, nil
+}
+
+// FetchVolume24hUSD returns the market's 24h traded notional in USD.
+func (p *Paradex) FetchVolume24hUSD(asset string) (float64, error) {
+	r, err := p.summary(asset)
+	if err != nil {
+		return 0, err
+	}
+	return float64(r.Volume24h), nil
 }

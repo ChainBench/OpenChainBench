@@ -92,9 +92,22 @@ const (
 	gainsWordLeverage          = 5  // t.leverage, 1e3 fixed point
 	gainsWordCollateralIndex   = 8  // t.collateralIndex
 	gainsWordCollateralAmount  = 10 // t.collateralAmount, collateral decimals
+	gainsWordOpenPrice         = 11 // t.openPrice, 1e10 fixed point
+	gainsWordPositionSizeToken = 15 // t.positionSizeToken, 1e18 fixed point
 	gainsWordOrderType         = 18
 	gainsWordCollateralPriceUS = 30 // 1e8 fixed point
 	gainsOrderTypeLiqClose     = 6
+
+	// The event encodes the position twice: collateralAmount x leverage in
+	// collateral units, and positionSizeToken x openPrice in index-token
+	// units. They are written by the contract independently, so requiring
+	// them to agree pins every scale factor in the decode at once. A word
+	// offset off by one, or a leverage read at 1e18 instead of 1e3, moves
+	// one side by orders of magnitude and the log is refused rather than
+	// published. The two agreed to 0.02% on the two 2026-09-26 ETH
+	// liquidations and to 0.01% on a 19x TAO close, so the tolerance is
+	// slack enough for the fee accrual that separates them.
+	gainsSizeCrossCheckTol = 0.05
 )
 
 // Gains implements Source via JSON-RPC log scanning of one deployment.
@@ -355,6 +368,21 @@ func decodeGainsLimitExecuted(lg ethLog, wantPair uint64, latest uint64, nowMs i
 	n, _ := notional.Float64()
 	if n <= 0 || n > gainsMaxSingleNotionalUSD {
 		return LiqEvent{}, false, fmt.Errorf("implausible notional %.2f", n)
+	}
+	// Second, independent reading of the same position size.
+	sizeToken := new(big.Float).Quo(new(big.Float).SetInt(word(gainsWordPositionSizeToken)), big.NewFloat(1e18))
+	openPrice := new(big.Float).Quo(new(big.Float).SetInt(word(gainsWordOpenPrice)), big.NewFloat(1e10))
+	alt, _ := new(big.Float).Mul(sizeToken, openPrice).Float64()
+	if alt > 0 {
+		diff := (n - alt) / alt
+		if diff < 0 {
+			diff = -diff
+		}
+		if diff > gainsSizeCrossCheckTol {
+			return LiqEvent{}, false, fmt.Errorf(
+				"position size disagrees: collateral x leverage = %.2f, positionSizeToken x openPrice = %.2f (%.1f%% apart)",
+				n, alt, diff*100)
+		}
 	}
 	blockNum, err := parseHexUint(lg.BlockNumber)
 	if err != nil {

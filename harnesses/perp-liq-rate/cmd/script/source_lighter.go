@@ -39,7 +39,10 @@ type lighterMarketDetail struct {
 	Symbol       string    `json:"symbol"`
 	MarketID     int64     `json:"market_id"`
 	OpenInterest float64   `json:"open_interest"` // base units (e.g. ETH)
-	MarkPrice    flexFloat `json:"mark_price"`     // USD per base unit
+	MarkPrice    flexFloat `json:"mark_price"`    // USD per base unit
+	// daily_quote_token_volume is the market's 24h notional in quote units
+	// (USDC), so it is already the USD figure the plausibility test wants.
+	DailyQuoteVolume flexFloat `json:"daily_quote_token_volume"`
 }
 
 // Lighter implements Source with dynamic market ID resolution and
@@ -140,11 +143,10 @@ func (l *Lighter) FetchLiquidationsSince(asset string, sinceMs int64) ([]LiqEven
 
 	markPx := float64(market.MarkPrice)
 
-	// Query from now-25h instead of sinceMs: Coinalyze publishes completed
-	// hourly buckets (~1h after the hour ends), so by the time a bucket is
-	// available the sinceMs high-water mark has already advanced past it.
-	// Using a fixed 25h lookback ensures every tick re-fetches the full
-	// window; the SeenSet dedup prevents double-counting.
+	// Query from now-25h on every tick rather than from sinceMs. An hourly
+	// bucket keeps growing until its hour closes, so each one has to be
+	// re-read and restated; the events carry Bucket, and the runner upserts
+	// them by key instead of discarding the repeat.
 	now := time.Now()
 	from := now.Add(-25 * time.Hour).Unix()
 	to := now.Unix()
@@ -157,8 +159,18 @@ func (l *Lighter) FetchLiquidationsSince(asset string, sinceMs int64) ([]LiqEven
 	// Per-bucket prices via HL candleSnapshot (same asset, free endpoint).
 	priceMap, _ := fetchHourlyCloses(asset, from*1000, to*1000, l.hlInfoURL)
 	// markPx is the fallback for buckets that have no candle.
-	events := bucketsToEvents("czlighter", asset, buckets, priceMap, markPx, sinceMs)
+	events := bucketsToEvents("czlighter", asset, buckets, priceMap, markPx)
 	return events, nil
+}
+
+// FetchVolume24hUSD returns the market's 24h traded notional in USD.
+// daily_quote_token_volume is already quote-denominated (USDC).
+func (l *Lighter) FetchVolume24hUSD(asset string) (float64, error) {
+	market, err := l.findMarket(asset)
+	if err != nil {
+		return 0, err
+	}
+	return float64(market.DailyQuoteVolume), nil
 }
 
 // markUnavailable tracks consecutive 404/501 responses; at the threshold it

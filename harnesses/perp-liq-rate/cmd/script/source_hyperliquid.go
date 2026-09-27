@@ -214,18 +214,61 @@ func (h *Hyperliquid) FetchLiquidationsSince(asset string, sinceMs int64) ([]Liq
 
 // FetchOI returns open interest in USD: openInterest (base units) * midPx.
 func (h *Hyperliquid) FetchOI(asset string) (float64, error) {
+	ctx, err := h.assetCtx(asset)
+	if err != nil {
+		return 0, err
+	}
+	oi, err := parseF(ctx.OpenInterest)
+	if err != nil {
+		return 0, fmt.Errorf("hyperliquid openInterest: %w", err)
+	}
+	pxStr := ctx.MidPx
+	if strings.TrimSpace(pxStr) == "" {
+		pxStr = ctx.MarkPx
+	}
+	px, err := parseF(pxStr)
+	if err != nil {
+		return 0, fmt.Errorf("hyperliquid midPx: %w", err)
+	}
+	return oi * px, nil
+}
+
+// FetchVolume24hUSD returns the coin's 24h traded notional in USD.
+// dayNtlVlm on the same assetCtx is already notional, not base units.
+func (h *Hyperliquid) FetchVolume24hUSD(asset string) (float64, error) {
+	ctx, err := h.assetCtx(asset)
+	if err != nil {
+		return 0, err
+	}
+	v, err := parseF(ctx.DayNtlVlm)
+	if err != nil {
+		return 0, fmt.Errorf("hyperliquid dayNtlVlm: %w", err)
+	}
+	return v, nil
+}
+
+// hlAssetCtx is the per-coin context block of metaAndAssetCtxs.
+type hlAssetCtx struct {
+	OpenInterest string `json:"openInterest"`
+	MidPx        string `json:"midPx"`
+	MarkPx       string `json:"markPx"`
+	DayNtlVlm    string `json:"dayNtlVlm"`
+}
+
+// assetCtx resolves the coin's context by its position in the universe.
+func (h *Hyperliquid) assetCtx(asset string) (hlAssetCtx, error) {
 	coin, ok := hyperliquidCoins[asset]
 	if !ok {
-		return 0, fmt.Errorf("hyperliquid: unsupported asset %q", asset)
+		return hlAssetCtx{}, fmt.Errorf("hyperliquid: unsupported asset %q", asset)
 	}
 
 	payload := map[string]any{"type": "metaAndAssetCtxs"}
 	var raw []json.RawMessage
 	if err := httpPostJSON(h.infoURL, payload, &raw); err != nil {
-		return 0, fmt.Errorf("hyperliquid metaAndAssetCtxs: %w", err)
+		return hlAssetCtx{}, fmt.Errorf("hyperliquid metaAndAssetCtxs: %w", err)
 	}
 	if len(raw) < 2 {
-		return 0, fmt.Errorf("hyperliquid metaAndAssetCtxs: expected 2-element array, got %d", len(raw))
+		return hlAssetCtx{}, fmt.Errorf("hyperliquid metaAndAssetCtxs: expected 2-element array, got %d", len(raw))
 	}
 
 	var meta struct {
@@ -234,15 +277,11 @@ func (h *Hyperliquid) FetchOI(asset string) (float64, error) {
 		} `json:"universe"`
 	}
 	if err := json.Unmarshal(raw[0], &meta); err != nil {
-		return 0, fmt.Errorf("hyperliquid universe decode: %w", err)
+		return hlAssetCtx{}, fmt.Errorf("hyperliquid universe decode: %w", err)
 	}
-	var ctxs []struct {
-		OpenInterest string `json:"openInterest"`
-		MidPx        string `json:"midPx"`
-		MarkPx       string `json:"markPx"`
-	}
+	var ctxs []hlAssetCtx
 	if err := json.Unmarshal(raw[1], &ctxs); err != nil {
-		return 0, fmt.Errorf("hyperliquid assetCtxs decode: %w", err)
+		return hlAssetCtx{}, fmt.Errorf("hyperliquid assetCtxs decode: %w", err)
 	}
 
 	for i, u := range meta.Universe {
@@ -250,23 +289,11 @@ func (h *Hyperliquid) FetchOI(asset string) (float64, error) {
 			continue
 		}
 		if i >= len(ctxs) {
-			return 0, fmt.Errorf("hyperliquid: assetCtxs index %d out of range (%d)", i, len(ctxs))
+			return hlAssetCtx{}, fmt.Errorf("hyperliquid: assetCtxs index %d out of range (%d)", i, len(ctxs))
 		}
-		oi, err := parseF(ctxs[i].OpenInterest)
-		if err != nil {
-			return 0, fmt.Errorf("hyperliquid openInterest: %w", err)
-		}
-		pxStr := ctxs[i].MidPx
-		if strings.TrimSpace(pxStr) == "" {
-			pxStr = ctxs[i].MarkPx
-		}
-		px, err := parseF(pxStr)
-		if err != nil {
-			return 0, fmt.Errorf("hyperliquid midPx: %w", err)
-		}
-		return oi * px, nil
+		return ctxs[i], nil
 	}
-	return 0, fmt.Errorf("hyperliquid: coin %q not found in universe", coin)
+	return hlAssetCtx{}, fmt.Errorf("hyperliquid: coin %q not found in universe", coin)
 }
 
 // jsonNonNull reports whether a raw JSON field was present and not null.
