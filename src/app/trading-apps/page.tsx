@@ -101,6 +101,12 @@ export default async function TradingAppsHubPage() {
   // high-is-good, so it does not depend on one particular bench being live.
   // The direction comes from the matrix, which resolved it from each panel's own
   // spec, so this never names a "highest" leader of a column where less is better.
+  // Only say the Dune benches are paused where they actually are. On staging they
+  // are live and the sentence would contradict the table above it. The pairing
+  // matters too: 203 is fee rates, 206 average trade size, 207 swap counts.
+  const pausedNote = isDevOnlyBench("solana-unique-traders")
+    ? "Benches 203 platform fee rates, 206 average trade size, 207 swap transactions and 232 active wallets need a paid Dune plan and are paused; they run on staging. "
+    : "";
   const kpiCol = COLUMNS.find(
     (c) => appMatrix.dirs[c.key] && matrix.some((r) => r.values[c.key] !== null),
   );
@@ -412,9 +418,7 @@ export default async function TradingAppsHubPage() {
           is the launchpad&apos;s mobile app, not its bonding curve. Terminal is
           pump.fun&apos;s own app, formerly Padre. Fill quality from our own
           on-chain swaps, app store ratings from the Apple iTunes lookup API.
-          Benches 203, 206, 207 and 232, which measure platform fee rates, swap
-          counts, average trade size and active wallets, need a paid Dune plan
-          and are paused; they run on staging. All harnesses open source on{" "}
+          {pausedNote}All harnesses open source on{" "}
           <Link
             href="https://github.com/ChainBench/OpenChainBench"
             className="underline hover:text-ink"
