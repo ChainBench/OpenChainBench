@@ -211,8 +211,8 @@ export default async function TradingAppsHubPage() {
           The commission each app collected on its latest closed UTC day and the
           take rate that implies, next to how its users rate it. Commission is
           the app&apos;s own cut from DeFiLlama&apos;s fees adapter, not the
-          total fees paid on the trade. A column marked SOL covers Solana only;
-          the rest sum every chain the app runs on.
+          total fees paid on the trade. Each row covers whatever chains its own
+          adapter covers, which the Chains cell shows.
         </p>
       </section>
 
@@ -308,7 +308,6 @@ export default async function TradingAppsHubPage() {
                     const val = row.values[col.key];
                     const isBest = val !== null && val === bests[col.key];
                     const formula = row.formulas[col.key];
-                    const solOnly = val !== null && row.scopes[col.key] === "Solana only";
                     return (
                       <td
                         key={col.key}
@@ -322,9 +321,6 @@ export default async function TradingAppsHubPage() {
                         title={formula ?? undefined}
                       >
                         {col.fmt(val)}
-                        {solOnly && (
-                          <span className="ml-1 text-[9px] uppercase tracking-[0.12em] text-ink-faint font-normal" title="Solana only">SOL</span>
-                        )}
                       </td>
                     );
                   })}

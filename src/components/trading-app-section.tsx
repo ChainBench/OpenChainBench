@@ -101,9 +101,6 @@ export async function TradingAppSection({
                 style={{ fontFamily: "var(--font-mono, monospace)" }}
               >
                 {col.label}
-                {me.scopes[col.key] && (
-                  <span className="ml-1.5 normal-case tracking-normal text-ink-muted">· {me.scopes[col.key]}</span>
-                )}
               </p>
               <p
                 className="mt-auto text-lg sm:text-xl font-semibold tabular-nums leading-tight"
@@ -164,7 +161,6 @@ export async function TradingAppSection({
                   {TRADING_APP_COLUMNS.map((c) => {
                     const v = row.values[c.key];
                     const best = v !== null && matrix.bests[c.key] === v;
-                    const scope = row.scopes[c.key];
                     return (
                       <td
                         key={c.key}
@@ -173,9 +169,6 @@ export async function TradingAppSection({
                         title={row.formulas[c.key] ?? undefined}
                       >
                         {c.fmt(v)}
-                        {v !== null && scope === "Solana only" && (
-                          <span className="ml-1 text-[9px] uppercase tracking-[0.12em] text-ink-faint" title="Solana only">SOL</span>
-                        )}
                       </td>
                     );
                   })}

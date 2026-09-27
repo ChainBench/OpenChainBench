@@ -50,6 +50,14 @@ export type TradingAppColumn = {
   key: TradingAppColKey;
   label: string;
   bench: string;
+  /** How wide this column's figures are, stated by the column rather than read
+   *  out of its spec prose. "app" means each row covers whatever its own
+   *  adapter covers, which the Chains cell on the same row already shows, so no
+   *  cell carries a badge. "solana" means every figure in the column is Solana
+   *  only and the column says so once, in its header. Guessing this from the
+   *  formula text badged GMGN's commission "Solana only" because its formula
+   *  happens to contain the word, while the harness sums ten chains. */
+  scope: "app" | "solana";
   /** Metric-panel id to read instead of the bench's headline value. When set,
    *  the ranking direction comes from the panel itself, so the spec and the
    *  hub cannot disagree about which end of the column is better. */
@@ -64,6 +72,7 @@ export const ALL_TRADING_APP_COLUMNS: readonly TradingAppColumn[] = [
   {
     key: "traders",
     label: "Swap Tx",
+    scope: "app",
     bench: "solana-unique-traders",
     fmt: fmtCount,
     tip: "Unique swap transactions in 24h via Dune. pump.fun uses dex_solana.trades (all swaps incl. 0-fee). Terminals use fee-wallet detection (fee-generating swaps only). Methods differ.",
@@ -72,6 +81,7 @@ export const ALL_TRADING_APP_COLUMNS: readonly TradingAppColumn[] = [
   {
     key: "tradeSize",
     label: "Avg Trade",
+    scope: "app",
     bench: "solana-avg-trade-size",
     fmt: fmtUSD,
     tip: "24h volume ÷ trade count via Mobula. Includes bots and MEV — platforms with heavy bot sniping (notably pump.fun) show lower averages than human-only baselines.",
@@ -80,6 +90,7 @@ export const ALL_TRADING_APP_COLUMNS: readonly TradingAppColumn[] = [
   {
     key: "wallets",
     label: "Active Wallets",
+    scope: "app",
     bench: "trading-platform-wallets",
     fmt: fmtCount,
     tip: "Unique wallets that traded through the platform in the last complete day (Dune community datasets). Cross-chain for GMGN/Axiom/BasedBot/Terminal, Solana only for FOMO/Trojan/Photon (marked SOL). Better signal of real user base than raw tx count.",
@@ -88,6 +99,7 @@ export const ALL_TRADING_APP_COLUMNS: readonly TradingAppColumn[] = [
   {
     key: "feeRate",
     label: "Fee Rate",
+    scope: "app",
     bench: "memecoin-platforms",
     fmt: fmtPct,
     tip: "Observed take rate: fee revenue ÷ fee-paying volume (Dune tx join). Comparable across platforms. FOMO uses DeFiLlama (includes off-chain relay fees). pump.fun cut trading fees to 0% in Aug 2026.",
@@ -96,6 +108,7 @@ export const ALL_TRADING_APP_COLUMNS: readonly TradingAppColumn[] = [
   {
     key: "commission",
     label: "Commission",
+    scope: "app",
     bench: "solana-trading-platform-wars",
     panel: "revenue_1d",
     fmt: fmtUSD0,
@@ -105,6 +118,7 @@ export const ALL_TRADING_APP_COLUMNS: readonly TradingAppColumn[] = [
   {
     key: "takeRate",
     label: "Take Rate",
+    scope: "app",
     bench: "solana-trading-platform-wars",
     panel: "take_1d",
     fmt: fmtPct,
@@ -114,6 +128,7 @@ export const ALL_TRADING_APP_COLUMNS: readonly TradingAppColumn[] = [
   {
     key: "rating",
     label: "App Rating",
+    scope: "app",
     bench: "app-store-ratings",
     fmt: fmtRating,
     tip: "Apple App Store all-time average rating. Axiom, Trojan, Photon and Maestro have no iOS app, so they show no figure.",
@@ -136,9 +151,6 @@ export type TradingAppRow = {
    *  covers. FOMO's volume is Solana-only while GMGN's is cross-chain;
    *  the column tip alone would misstate that. */
   formulas: Record<TradingAppColKey, string | null>;
-  /** Short chain scope per column derived from the formula: "Solana only",
-   *  "cross-chain", or null when the formula does not say. */
-  scopes: Record<TradingAppColKey, string | null>;
 };
 
 export type TradingAppMatrix = {
@@ -161,15 +173,6 @@ function formulaBySlug(results: ProviderResult[] | undefined): Record<string, st
   const out: Record<string, string> = {};
   for (const r of results ?? []) if (r.formula) out[r.slug] = r.formula;
   return out;
-}
-
-/** "Solana only" / "cross-chain" from a spec formula, else null. */
-export function scopeFromFormula(formula: string | null): string | null {
-  if (!formula) return null;
-  const f = formula.toLowerCase();
-  if (f.includes("cross-chain") || f.includes("multi-chain") || f.includes("all blockchains")) return "cross-chain";
-  if (/\bsolana\b/.test(f) && !f.includes("+")) return "Solana only";
-  return null;
 }
 
 /** Every platform's figures for the columns this deployment serves, with
@@ -201,12 +204,8 @@ export async function loadTradingAppMatrix(): Promise<TradingAppMatrix> {
     const values = {} as Record<TradingAppColKey, number | null>;
     for (const [key, map] of idx) values[key] = map[p.slug] ?? null;
     const formulas = {} as Record<TradingAppColKey, string | null>;
-    const scopes = {} as Record<TradingAppColKey, string | null>;
-    for (const [key, map] of fidx) {
-      formulas[key] = map[p.slug] ?? null;
-      scopes[key] = scopeFromFormula(formulas[key]);
-    }
-    return { slug: p.slug, name: p.name, values, ranks: {} as TradingAppRow["ranks"], formulas, scopes };
+    for (const [key, map] of fidx) formulas[key] = map[p.slug] ?? null;
+    return { slug: p.slug, name: p.name, values, ranks: {} as TradingAppRow["ranks"], formulas };
   });
   for (const col of TRADING_APP_COLUMNS) {
     const higherBetter = higherBetterOf(col);
