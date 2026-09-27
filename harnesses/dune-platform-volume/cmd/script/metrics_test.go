@@ -344,3 +344,23 @@ func TestAShortDayPublishesButIsNotRecorded(t *testing.T) {
 		t.Errorf("publishedDay = %q, want 2026-09-26", publishedDay)
 	}
 }
+
+// A newer day that has no SOL price yet must not be held back by the priced day
+// on the board. Holding it back spent the retry budget on a day already
+// published, and once the target moved on the newer day was never measured.
+func TestSameDataDayTellsRestatementFromNewDay(t *testing.T) {
+	d26, d27 := dayUnix(2026, 9, 26), dayUnix(2026, 9, 27)
+	held := []duneRow{{Platform: "a", DataDayUnix: d26, DayLastTradeUnix: lastTradeAt(d26), SolPriceUSD: 119}}
+	restated := []duneRow{{Platform: "a", DataDayUnix: d26, DayLastTradeUnix: lastTradeAt(d26), SolPriceUSD: 0}}
+	newer := []duneRow{{Platform: "a", DataDayUnix: d27, DayLastTradeUnix: lastTradeAt(d27), SolPriceUSD: 0}}
+
+	if !sameDataDay(restated, held) {
+		t.Error("a restatement of the held day must be recognised as the same day")
+	}
+	if sameDataDay(newer, held) {
+		t.Error("a newer day must not be treated as a restatement of the held one")
+	}
+	if sameDataDay(nil, held) || sameDataDay(held, nil) {
+		t.Error("an empty result shares no day with anything")
+	}
+}
