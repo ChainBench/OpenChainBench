@@ -76,7 +76,7 @@ metric_panels:
     label_key: app
     metric: trading_app_take_rate_pct{window="1d"}
     unit: pct
-    higher_is_better: true
+    higher_is_better: false
     description: "Commission as a percentage of the volume routed on the same day."
   - id: revenue_7d
     label: Commission 7d
@@ -91,7 +91,7 @@ metric_panels:
     label_key: app
     metric: trading_app_take_rate_pct{window="7d"}
     unit: pct
-    higher_is_better: true
+    higher_is_better: false
     tab: false
     description: "Commission over the same 7 days divided by the volume of those days."
   - id: vol_7d
@@ -123,7 +123,7 @@ metric_panels:
     label_key: app
     metric: trading_app_take_rate_pct{window="30d"}
     unit: pct
-    higher_is_better: true
+    higher_is_better: false
     tab: false
     description: "Commission over the same 30 days divided by the volume of those days."
 

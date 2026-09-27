@@ -50,7 +50,9 @@ export type TradingAppColumn = {
   key: TradingAppColKey;
   label: string;
   bench: string;
-  /** Metric-panel id to read instead of the bench's headline value. */
+  /** Metric-panel id to read instead of the bench's headline value. When set,
+   *  the ranking direction comes from the panel itself, so the spec and the
+   *  hub cannot disagree about which end of the column is better. */
   panel?: string;
   fmt: (v: number | null) => string;
   tip: string;
@@ -141,8 +143,11 @@ export type TradingAppRow = {
 
 export type TradingAppMatrix = {
   rows: TradingAppRow[];
-  /** Best value per column across the cohort (max, or min for fee rate). */
+  /** Best value per column across the cohort (max, or min where less is better). */
   bests: Partial<Record<TradingAppColKey, number | null>>;
+  /** Resolved ranking direction per column: the panel's own flag for a
+   *  panel-backed column, so no surface can rank against its spec. */
+  dirs: Partial<Record<TradingAppColKey, boolean>>;
   updatedAt: string | null;
 };
 
@@ -180,6 +185,17 @@ export async function loadTradingAppMatrix(): Promise<TradingAppMatrix> {
     const panel = benches[i]?.metricPanels?.find((p) => p.id === c.panel);
     return [c.key, { ...(panel?.values ?? {}) } as Record<string, number>] as const;
   });
+  // A panel-backed column takes its direction from the panel, so the bench page
+  // and this table can never rank the same numbers opposite ways. The literal in
+  // the column is only the fallback for a panel that is not published.
+  const dirOf = new Map<TradingAppColKey, boolean>(
+    TRADING_APP_COLUMNS.map((c, i) => {
+      if (!c.panel) return [c.key, c.higherBetter];
+      const panel = benches[i]?.metricPanels?.find((p) => p.id === c.panel);
+      return [c.key, panel ? panel.higherIsBetter : c.higherBetter];
+    }),
+  );
+  const higherBetterOf = (c: TradingAppColumn) => dirOf.get(c.key) ?? c.higherBetter;
   const fidx = TRADING_APP_COLUMNS.map((c, i) => [c.key, formulaBySlug(benches[i]?.results)] as const);
   const rows: TradingAppRow[] = TRADING_APP_PLATFORMS.map((p) => {
     const values = {} as Record<TradingAppColKey, number | null>;
@@ -193,10 +209,11 @@ export async function loadTradingAppMatrix(): Promise<TradingAppMatrix> {
     return { slug: p.slug, name: p.name, values, ranks: {} as TradingAppRow["ranks"], formulas, scopes };
   });
   for (const col of TRADING_APP_COLUMNS) {
+    const higherBetter = higherBetterOf(col);
     const ranked = rows
       .filter((r) => r.values[col.key] !== null)
       .sort((a, b) =>
-        col.higherBetter
+        higherBetter
           ? (b.values[col.key] as number) - (a.values[col.key] as number)
           : (a.values[col.key] as number) - (b.values[col.key] as number),
       );
@@ -214,22 +231,27 @@ export async function loadTradingAppMatrix(): Promise<TradingAppMatrix> {
   // Sort by the first served column anything has a value for, so the order does
   // not depend on a bench that may be gated.
   const sortCol =
-    TRADING_APP_COLUMNS.find((c) => c.higherBetter && rows.some((r) => r.values[c.key] !== null)) ??
-    TRADING_APP_COLUMNS[0];
+    TRADING_APP_COLUMNS.find(
+      (c) => higherBetterOf(c) && rows.some((r) => r.values[c.key] !== null),
+    ) ?? TRADING_APP_COLUMNS[0];
   if (sortCol) {
     rows.sort((a, b) => (b.values[sortCol.key] ?? -1) - (a.values[sortCol.key] ?? -1));
   }
+  const dirs: TradingAppMatrix["dirs"] = {};
+  for (const col of TRADING_APP_COLUMNS) dirs[col.key] = higherBetterOf(col);
   const bests: TradingAppMatrix["bests"] = {};
   for (const col of TRADING_APP_COLUMNS) {
     const vals = rows.map((r) => r.values[col.key]).filter((v): v is number => v !== null);
-    bests[col.key] = vals.length ? (col.higherBetter ? Math.max(...vals) : Math.min(...vals)) : null;
+    bests[col.key] = vals.length
+      ? (higherBetterOf(col) ? Math.max(...vals) : Math.min(...vals))
+      : null;
   }
   const updatedAt = benches.reduce<string | null>((acc, b) => {
     const t = b?.lastRunAt ?? null;
     if (!t) return acc;
     return !acc || new Date(t) > new Date(acc) ? t : acc;
   }, null);
-  return { rows, bests, updatedAt };
+  return { rows, bests, dirs, updatedAt };
 }
 
 export function fmtUSD(v: number | null): string {

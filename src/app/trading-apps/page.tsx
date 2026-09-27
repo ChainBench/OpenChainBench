@@ -99,7 +99,11 @@ export default async function TradingAppsHubPage() {
   const bests = appMatrix.bests;
   // The headline KPI names the leader of the first served column that ranks
   // high-is-good, so it does not depend on one particular bench being live.
-  const kpiCol = COLUMNS.find((c) => c.higherBetter && matrix.some((r) => r.values[c.key] !== null));
+  // The direction comes from the matrix, which resolved it from each panel's own
+  // spec, so this never names a "highest" leader of a column where less is better.
+  const kpiCol = COLUMNS.find(
+    (c) => appMatrix.dirs[c.key] && matrix.some((r) => r.values[c.key] !== null),
+  );
   const kpiRow = kpiCol
     ? matrix.reduce(
         (bestRow, row) =>
