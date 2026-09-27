@@ -49,7 +49,7 @@ methodology:
   - "Stale source: a platform whose data day falls more than 3 days behind, or that the query stops returning, has its gauges deleted and reads unresponsive. An old figure is never republished as current."
   - "Scope: Solana only. GMGN, Axiom and Terminal also trade on EVM chains, and those legs are not counted here."
   - "pump.fun and BasedBot are not measured. pump.fun charges no bonding-curve fee since Aug 2026, so fee-wallet attribution cannot see it; no public fee wallet or router list for BasedBot exists to attribute it from."
-  - "Cadence: one Dune execution a day (DUNE_REFRESH_HOURS, default 24 h), about 25 credits a run. Prometheus scrapes :2112/metrics every 60 s, so the gauge is current while the underlying figure changes daily."
+  - "Cadence: one Dune execution per data day, about 25 credits a run, retried up to three times an hour apart if it fails. Prometheus scrapes :2112/metrics every 60 s, so the gauge is current while the underlying figure changes daily."
 
 findings:
   - "{{best_name}} leads Solana trading platforms at {{best_p50}} 24h volume."

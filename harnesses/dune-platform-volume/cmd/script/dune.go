@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"sync"
+	"strings"
 	"time"
 )
 
@@ -298,10 +298,6 @@ const duneBase = "https://api.dune.com/api/v1"
 type duneClient struct {
 	apiKey string
 	http   *http.Client
-	// lastExecutionEnded is written from the polling goroutine and read from the
-	// main loop, so it is behind a mutex.
-	mu                 sync.Mutex
-	lastExecutionEnded time.Time
 }
 
 type duneRow struct {
@@ -420,7 +416,7 @@ func (d *duneClient) syncQuery(queryID string, day time.Time) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	if stored == querySQL {
+	if strings.TrimSpace(stored) == strings.TrimSpace(querySQL) {
 		return false, nil
 	}
 	return true, d.updateQuery(queryID, day)
@@ -513,29 +509,12 @@ func (d *duneClient) decodeRows(path string) ([]duneRow, error) {
 		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, body)
 	}
 	var out struct {
-		ExecutionEndedAt string `json:"execution_ended_at"`
-		Result           struct {
+		Result struct {
 			Rows []duneRow `json:"rows"`
 		} `json:"result"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
 		return nil, err
 	}
-	if t, err := time.Parse(time.RFC3339Nano, out.ExecutionEndedAt); err == nil {
-		d.mu.Lock()
-		d.lastExecutionEnded = t
-		d.mu.Unlock()
-	}
 	return out.Result.Rows, nil
-}
-
-// resultAge is the age of the newest cached result seen by latestResult,
-// or a very large duration before the first successful fetch.
-func (d *duneClient) resultAge() time.Duration {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-	if d.lastExecutionEnded.IsZero() {
-		return 365 * 24 * time.Hour
-	}
-	return time.Since(d.lastExecutionEnded)
 }

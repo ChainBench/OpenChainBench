@@ -255,3 +255,30 @@ func TestPublishedDayIsNotRecordedWhateverTheRowOrder(t *testing.T) {
 		}
 	}
 }
+
+// publishableRows and publishRows have to agree, since one decides whether a
+// result is worth taking and the other applies it.
+func TestPublishableRowsAgreesWithPublishRows(t *testing.T) {
+	day := dayUnix(2026, 9, 26)
+	rows := []duneRow{
+		{Platform: "ok1", DataDayUnix: day, DayLastTradeUnix: lastTradeAt(day), SolPriceUSD: 119, VolumeUSD: 1, Txns: 1, AvgTradeUSD: 1},
+		{Platform: "partial", DataDayUnix: day, DayLastTradeUnix: day + 3600, SolPriceUSD: 119, VolumeUSD: 1, Txns: 1},
+		{Platform: "old", DataDayUnix: dayUnix(2026, 8, 25), DayLastTradeUnix: lastTradeAt(dayUnix(2026, 8, 25)), SolPriceUSD: 119, VolumeUSD: 1, Txns: 1},
+		{Platform: "", DataDayUnix: day, DayLastTradeUnix: lastTradeAt(day)},
+	}
+	t.Cleanup(func() {
+		for _, r := range rows {
+			dropPlatform(r.Platform)
+		}
+		publishedDay = ""
+	})
+
+	want := publishableRows(rows, 3, now)
+	published, _ := publishRows(rows, 3, now, nil)
+	if want != len(published) {
+		t.Errorf("publishableRows = %d, publishRows published %d", want, len(published))
+	}
+	if want != 1 {
+		t.Errorf("publishableRows = %d, want 1 (only ok1)", want)
+	}
+}

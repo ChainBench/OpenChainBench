@@ -13,8 +13,11 @@
 // Optional env vars:
 //
 //	DUNE_QUERY_ID           - existing Dune query to execute; created on first run when unset
-//	DUNE_REFRESH_HOURS      - executions are metered per run, default 24
 //	DUNE_MAX_DATA_AGE_DAYS  - how many whole UTC days behind the data day may be, default 3
+//
+// The cadence is not a knob. One execution per data day, taken once the UTC clock
+// is far enough past the indexing lag, retried maxAttemptsPerDay times an hour
+// apart if it fails. Credits are metered per execution, so that is the budget.
 //
 // Metrics on :2112/metrics:
 //
@@ -40,19 +43,10 @@ const (
 	// credits and let the freshness guard make the benches unresponsive.
 	maxAttemptsPerDay = 3
 	retryBackoff      = time.Hour
+	// Consecutive status-call failures tolerated before a poll gives up on an
+	// execution that may still be running.
+	maxPollErrors = 5
 )
-
-// refreshInterval is how often a fresh Dune execution is requested (credits
-// are metered per execution; the plan is sized for one a day per query).
-// DUNE_REFRESH_HOURS overrides it.
-var refreshInterval = func() time.Duration {
-	if v := os.Getenv("DUNE_REFRESH_HOURS"); v != "" {
-		if h, err := strconv.Atoi(v); err == nil && h > 0 {
-			return time.Duration(h) * time.Hour
-		}
-	}
-	return 24 * time.Hour
-}()
 
 // maxDataAgeDays is how many whole UTC days behind a platform's data day may be
 // before the harness stops publishing it: 1 is yesterday, so the default of 3
@@ -218,7 +212,18 @@ func publish(tag string, rows []duneRow) {
 	publishMu.Lock()
 	defer publishMu.Unlock()
 	if rows != nil {
-		lastRows = rows
+		// A run that lands before Dune has finished loading the day comes back
+		// partial, or empty. Taking it would delete a complete day that is still
+		// inside the window, and no retry could bring that day back because the
+		// partial rows would be what is held. Keep the older complete day instead.
+		// publishedDay stays behind the target, so the retries still run and the
+		// guard still ages the held day out if it gets too old.
+		if publishableRows(rows, maxDataAgeDays, time.Now()) == 0 && lastRows != nil {
+			fmt.Printf("[%s] result publishes nothing, keeping the day already held\n", tag)
+			rows = nil
+		} else {
+			lastRows = rows
+		}
 	}
 	if lastRows == nil {
 		return
@@ -261,13 +266,23 @@ func publishFrom(c *duneClient, execID string) {
 }
 
 func pollUntilDone(c *duneClient, queryID, execID string) {
+	// A status call that fails is not an execution that failed: the run is still
+	// billing and its result is still coming. Giving up on the first error
+	// abandoned it and let the next attempt pay for the same day again, so a few
+	// consecutive errors are tolerated before the wait is.
+	errs := 0
 	for range 60 {
 		time.Sleep(30 * time.Second)
 		state, err := c.executionState(execID)
 		if err != nil {
-			fmt.Printf("[poll] state check failed: %v\n", err)
-			return
+			errs++
+			fmt.Printf("[poll] state check failed (%d/%d): %v\n", errs, maxPollErrors, err)
+			if errs >= maxPollErrors {
+				return
+			}
+			continue
 		}
+		errs = 0
 		switch state {
 		case "QUERY_STATE_COMPLETED":
 			fmt.Printf("[poll] execution %s complete\n", execID)

@@ -134,6 +134,25 @@ func dayCovered(r duneRow) bool {
 	return r.DayLastTradeUnix >= r.DataDayUnix+23*3600
 }
 
+// rowUsable is the guard's rule for one row: a data day inside the window, on a
+// day the query saw through to its end. publishRows and publishableRows both go
+// through it so the two can never disagree.
+func rowUsable(r duneRow, maxDays int, now time.Time) bool {
+	return r.Platform != "" && daysBehind(r.DataDayUnix, now) <= maxDays && dayCovered(r)
+}
+
+// publishableRows is how many of these rows publishRows would publish. Used to
+// decide whether a fresh result is worth taking, without touching any gauge.
+func publishableRows(rows []duneRow, maxDays int, now time.Time) int {
+	n := 0
+	for _, r := range rows {
+		if rowUsable(r, maxDays, now) {
+			n++
+		}
+	}
+	return n
+}
+
 // publishRows writes the platforms whose data day is inside the window and fully
 // loaded, and drops everything else. maxDays is how many whole UTC days behind the
 // data day may be; known is every platform the query is expected to return, so one
@@ -152,12 +171,7 @@ func publishRows(rows []duneRow, maxDays int, now time.Time, known []string) (pu
 			continue
 		}
 		seen[r.Platform] = true
-		if behind := daysBehind(r.DataDayUnix, now); behind > maxDays {
-			dropPlatform(r.Platform)
-			dropped = append(dropped, r.Platform)
-			continue
-		}
-		if !dayCovered(r) {
+		if !rowUsable(r, maxDays, now) {
 			dropPlatform(r.Platform)
 			dropped = append(dropped, r.Platform)
 			continue
