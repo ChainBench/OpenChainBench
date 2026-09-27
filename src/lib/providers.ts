@@ -747,7 +747,11 @@ const buildProvidersCached = unstable_cache(
   // 41 L2s become product appearances the v10 list does not carry.
   // v12 (2026-09-25): bench 274 market cap floor; 11 micro cap tokens stop
   // being product appearances.
-  ["providers-v12"],
+  // v13 (2026-09-27): lockstep with bench-unfiltered-v86 (bench 201 source
+  // swap). Every trading-app formula is rewritten and the pump.fun and
+  // BasedBot appearances lose their figures, so the v12 list would keep
+  // showing retired dataset names on /products pages.
+  ["providers-v13"],
   // 900 s: the provider index feeds products / compare / answers, whose
   // numbers move slowly, and this revalidate is also the effective ISR
   // period of those ~500 pages (Next takes the min across a route's caches).

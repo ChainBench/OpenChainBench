@@ -7,7 +7,11 @@
 // Why DeFiLlama here and not Dune: the Dune community datasets the
 // /trading-apps hub used for volume cover one chain for some platforms
 // (dataset_fomo_sol_daily is Solana only) and every chain for others, so
-// the column compared unlike things. DeFiLlama's dexs adapters for the
+// the column compared unlike things. They then stopped updating on
+// 2026-08-25 and were served as current for 32 days, which is the other
+// half of the answer: they were one person's uploads, not a maintained
+// table. Bench 201 now reads its own SQL over Dune's own tables instead,
+// see harnesses/dune-platform-volume. DeFiLlama's dexs adapters for the
 // "Trading App" and "Telegram Bot" categories are cross-chain by
 // construction and expose a per-chain breakdown per UTC day, on a free
 // endpoint:
