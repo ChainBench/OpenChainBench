@@ -2,10 +2,10 @@
 
 slug: trading-platform-wallets
 number: "232"
-title: "Daily active wallets per trading platform: GMGN vs Axiom vs Fomo vs pump.fun, live"
-seo_title: "Daily active wallets by trading platform 2026: GMGN vs Axiom vs Fomo vs pump.fun"
-seo_description: "{{best_name}} leads trading platforms with {{best_p50}} unique active wallets in 24h. GMGN vs Axiom vs Fomo vs Trojan vs BasedBot ranked by real user count, live from Dune community datasets."
-subtitle: Live count of unique wallets that traded through each platform in the last complete day. Sourced from Dune community datasets, refreshed every 4 hours. Reveals real user base vs bot-inflated transaction counts.
+title: "Daily active wallets per trading platform: GMGN vs Axiom vs Terminal vs Trojan"
+seo_title: "Daily active wallets by trading platform 2026: GMGN vs Axiom vs Terminal vs Trojan"
+seo_description: "{{best_name}} leads trading platforms with {{best_p50}} unique active wallets in a day. GMGN vs Axiom vs Trojan vs Terminal vs Photon ranked by trading accounts, from our own Dune SQL over Solana fee-wallet attribution."
+subtitle: Count of distinct trading accounts that traded through each platform in one complete day. Built from our own SQL over Dune's solana.account_activity and dex_solana.trades, one execution a day. Reveals user base against bot-inflated transaction counts.
 
 category: Trading
 status: live
@@ -14,40 +14,45 @@ unit: count
 higher_is_better: true
 
 disclaimer: |
-  Wallet counts are unique wallets per platform per day from Dune community datasets (cross-chain). A wallet using two platforms is counted in each; counts are not mutually exclusive. Includes bots, MEV searchers, and multi-wallet traders. pump.fun wallets come from dataset_pumpapp_sol_daily only (not relay); relay wallets would overlap with pumpapp and double-count. Data represents the most recent complete day, refreshed every 4 hours.
+  Counts are distinct dex_solana.trades trader ids in the transactions that paid each platform's fee wallet, on Solana, for one complete day. A wallet using two platforms is counted in each, so the columns are not mutually exclusive, and bots, MEV searchers and multi-wallet traders are all included. A trading account is not a person. pump.fun and BasedBot read unresponsive, and Fomo carries no wallet figure at all, for reasons the methodology gives.
 
 seo_intro: |
-  Daily active wallet count is the clearest signal of real platform usage, filtering out
-  the noise from bots that inflate transaction counts. GMGN consistently leads on wallet
-  count among trading terminals, reflecting its broad AI copy-trading user base across
-  multiple chains. Axiom and Fomo compete closely behind. pump.fun naturally dominates
-  in absolute numbers due to its launchpad mechanic attracting thousands of new wallets
-  daily across sniping bots and retail buyers. Trojan and Photon serve smaller but
-  more concentrated user bases with higher average positions. This benchmark tracks
-  unique active wallets per platform live from Dune community datasets, updated every
-  4 hours.
+  Daily active wallet count is a clearer signal of platform usage than transaction
+  count, which bots inflate. Axiom leads on trading accounts, with GMGN behind it on
+  the strength of a broad copy-trading user base, and Terminal, Trojan and Photon
+  serve smaller and more concentrated sets of wallets. The count here is the distinct
+  trading accounts appearing in the transactions that paid each platform's fee wallet
+  on Solana, from our own SQL over Dune's raw and Spellbook tables, one execution a
+  day. Fomo, pump.fun and BasedBot are not measured, each for a reason the
+  methodology gives: pump.fun and BasedBot read unresponsive and Fomo carries no
+  figure, rather than any of them showing a number that would mean something
+  different from the others.
 
 abstract: |
-  The dune-platform-volume harness queries Dune community datasets
-  (dune.adam_tehc_co.dataset_*_daily) every 4 hours. The wallets column in each
-  dataset provides the count of unique wallet addresses that executed at least one
-  swap through the platform on the given day. For multi-chain platforms (GMGN,
-  Axiom, BasedBot, Terminal) the count is summed across all blockchains. For Fomo
-  and Trojan, the count is Solana-only. pump.fun uses dataset_pumpapp_sol_daily
-  wallets only. The metric is exposed as dune_platform_wallets_24h per platform.
+  The dune-platform-volume harness runs one Dune execution a day against its own
+  SQL over solana.account_activity and dex_solana.trades. The wallet column counts
+  the distinct dex_solana.trades trader ids inside the transactions that paid the
+  platform's fee wallet on the data day, so it is the set of trading accounts the
+  platform earned on. The count is Solana only for every platform, including the
+  ones that also trade on EVM chains. It is exposed as dune_platform_wallets_24h,
+  alongside dune_platform_volume_data_day_unix and dune_platform_volume_health per
+  platform.
 
 methodology:
-  - "Source: Dune community datasets (dataset_*_daily). wallets column = unique wallet addresses per platform per day."
-  - "Poll cadence: harness queries Dune every 4 hours; Prometheus scrapes :2112/metrics every 60 seconds."
-  - "Cross-chain: GMGN, Axiom, BasedBot, Terminal sum wallets across all blockchains. Fomo and Trojan are Solana-only datasets."
-  - "pump.fun: dataset_pumpapp_sol_daily wallets only (pumpapp frontend). Relay dataset wallets not added to avoid double-counting wallets active on both."
+  - "Source: our own SQL over Dune's solana.account_activity, dex_solana.trades and prices.day, one execution a day. No uploaded third-party dataset: the eight this bench read until 2026-09-27 all froze on 2026-08-25 and were served as current for 32 days."
+  - "Wallets: distinct dex_solana.trades trader_id in the transactions that paid the platform's fee wallet on the data day. A trading account, not a person."
+  - "Attribution: a transaction counts for a platform when that platform's fee wallet received value in it, and one dex_solana.trades leg per transaction and trader is taken so a multi-hop route counts once. Wallet lists come from the DeFiLlama adapter repo and our solana-unique-traders harness, read 2026-09-27."
+  - "Cadence: one Dune execution per data day, about 25 credits a run, retried up to three times an hour apart if it fails. Prometheus scrapes :2112/metrics every 60 seconds, so the gauge is current while the underlying count changes daily."
+  - "Scope: Solana only. GMGN, Axiom and Terminal also trade on EVM chains, and those legs are not counted here. pump.fun and BasedBot are not measured at all."
+  - "Stale source: a platform whose data day falls more than 3 days behind, or that the query stops returning, has its gauges deleted and reads unresponsive. An old figure is never republished as current."
+  - "Fomo is not measured here. It sponsors the gas on every trade it routes, so the trader ids on its transactions are its own routing accounts and a count off them reads orders of magnitude too low. Its volume and fee figures are measured, so only this bench leaves it blank."
   - "Includes all wallets: bots, MEV searchers, and automated traders are counted. Not a human-only metric."
   - "Not mutually exclusive: a wallet using GMGN and Axiom on the same day is counted in both platforms."
 
 findings:
   - "{{best_name}} leads trading platforms with {{best_p50}} unique active wallets in 24h."
-  - "GMGN leads terminals by wallet count, driven by its broad AI copy-trading and multi-chain reach."
-  - "pump.fun's wallet count reflects daily launchpad activity; thousands of new wallets snipe each token launch."
+  - "Every count here is fee-paying, so a wallet appears only where a platform earned on its trades. A wallet that traded through two platforms is in both columns."
+  - "pump.fun, BasedBot and Fomo carry no count. pump.fun and BasedBot have no fee wallet to attribute from at all, and Fomo's transactions carry its own routing accounts rather than its users."
   - "Comparing wallet count to txns per platform reveals the bot ratio: platforms with 50x more txns than wallets have heavy automated activity."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/dune-platform-volume
@@ -61,16 +66,16 @@ faq:
     a: "Active wallets is the number of unique blockchain addresses that executed at least one swap through the platform during the day. It is a proxy for daily active users, though one human can control many wallets and bots count as wallets."
   - q: "How is this different from swap transaction count (bench 207)?"
     a: "Swap tx count (dune_platform_txns_24h) counts every individual swap. Active wallets counts unique addresses. A bot executing 500 swaps in one day contributes 500 to tx count but only 1 to wallet count. The ratio txns/wallets is a proxy for trading frequency per user and bot intensity."
-  - q: "Why is pump.fun's wallet count from pumpapp only and not relay?"
-    a: "The relay dataset (dataset_pumpfun_relay_daily) covers cross-chain relay swaps where pump.fun tokens are bought on EVM chains via relay. Wallets on relay likely overlap significantly with pumpapp wallets. Adding them would double-count users active on both. We use pumpapp as the primary dataset for pump.fun wallet counts."
+  - q: "Why are the Fomo, pump.fun and BasedBot rows empty?"
+    a: "Each for its own reason. Fomo sponsors the gas on every trade it routes, so the trader ids on its transactions are its own routing accounts rather than its users. Only its wallet count is affected, so its row here carries no figure while its rows on the other benches do. pump.fun charges no bonding-curve fee since Aug 2026, so no fee wallet receives anything to attribute from, and BasedBot has no public fee wallet list at all: both of those read unresponsive."
   - q: "Are wallet counts comparable across platforms?"
-    a: "Approximately. Each dataset counts unique addresses per day per platform independently. Cross-chain platforms (GMGN, Axiom) sum wallets across chains, so the same wallet on Solana and BNB would be counted twice. Single-chain platforms like Fomo and Trojan are Solana-only. The cross-chain sum slightly overstates unique humans for multi-chain platforms."
+    a: "Approximately, and only on Solana. Each column counts distinct trading accounts in that platform's own transactions, independently of the others, so a wallet trading on two platforms appears in both. GMGN, Axiom and Terminal also trade on EVM chains and those wallets are not counted here, so their figures are a Solana slice rather than a whole user base."
 
 providers:
   - slug: pump-fun
     name: pump.fun
     tag: "Solana meme launchpad"
-    formula: "Unique wallets on pump.fun's app (dataset_pumpapp_sol_daily), latest complete day."
+    formula: "Not measured. pump.fun charges no bonding-curve fee since Aug 2026, so no fee wallet receives anything on its trades and fee-wallet attribution cannot see them. The row reads unresponsive."
     queries:
       p50: dune_platform_wallets_24h{platform="pump-fun"}
       p90: dune_platform_wallets_24h{platform="pump-fun"}
@@ -83,7 +88,7 @@ providers:
   - slug: gmgn
     name: GMGN
     tag: "AI trading terminal, multi-chain"
-    formula: "Unique wallets across all chains (dataset_gmgn_daily, cross-chain sum), latest complete day."
+    formula: "Unique trading accounts in the day's GMGN-attributed transactions, from our own Dune SQL: distinct dex_solana.trades trader_id in the transactions paying a GMGN fee wallet. Solana only."
     queries:
       p50: dune_platform_wallets_24h{platform="gmgn"}
       p90: dune_platform_wallets_24h{platform="gmgn"}
@@ -96,7 +101,7 @@ providers:
   - slug: axiom
     name: Axiom
     tag: "Web trading terminal, multi-chain"
-    formula: "Unique wallets across all chains (dataset_axiom_daily, cross-chain sum), latest complete day."
+    formula: "Unique trading accounts in the day's Axiom-attributed transactions, from our own Dune SQL: distinct dex_solana.trades trader_id in the transactions paying a Axiom fee wallet. Solana only."
     queries:
       p50: dune_platform_wallets_24h{platform="axiom"}
       p90: dune_platform_wallets_24h{platform="axiom"}
@@ -109,7 +114,7 @@ providers:
   - slug: fomo
     name: Fomo
     tag: "Solana trading platform"
-    formula: "Unique wallets on Solana (dataset_fomo_sol_daily), latest complete day."
+    formula: "Not measured. Fomo sponsors the gas on every trade it routes, so the trader ids on its transactions are its own routing accounts, not its users, and a count off them reads orders of magnitude too low. No wallet figure is published."
     queries:
       p50: dune_platform_wallets_24h{platform="fomo"}
       p90: dune_platform_wallets_24h{platform="fomo"}
@@ -122,7 +127,7 @@ providers:
   - slug: trojan
     name: Trojan
     tag: "Telegram trading bot on Solana"
-    formula: "Unique wallets on Solana (dataset_trojan_daily), latest complete day."
+    formula: "Unique trading accounts in the day's Trojan-attributed transactions, from our own Dune SQL: distinct dex_solana.trades trader_id in the transactions paying a Trojan fee wallet. Solana only."
     queries:
       p50: dune_platform_wallets_24h{platform="trojan"}
       p90: dune_platform_wallets_24h{platform="trojan"}
@@ -135,7 +140,7 @@ providers:
   - slug: photon
     name: Photon
     tag: "Solana trading terminal"
-    formula: "Unique wallets on Solana (dataset_photon_daily), latest complete day."
+    formula: "Unique trading accounts in the day's Photon-attributed transactions, from our own Dune SQL: distinct dex_solana.trades trader_id in the transactions paying a Photon fee wallet. Solana only."
     queries:
       p50: dune_platform_wallets_24h{platform="photon"}
       p90: dune_platform_wallets_24h{platform="photon"}
@@ -148,7 +153,7 @@ providers:
   - slug: padre
     name: Terminal
     tag: "pump.fun's own trading app (formerly Padre)"
-    formula: "Unique wallets across all chains (dataset_terminal_daily, cross-chain sum), latest complete day."
+    formula: "Unique trading accounts in the day's Terminal-attributed transactions, from our own Dune SQL: distinct dex_solana.trades trader_id in the transactions paying a Terminal fee wallet. Solana only."
     queries:
       p50: dune_platform_wallets_24h{platform="padre"}
       p90: dune_platform_wallets_24h{platform="padre"}
@@ -161,7 +166,7 @@ providers:
   - slug: basedbot
     name: BasedBot
     tag: "Multi-chain trading bot"
-    formula: "Unique wallets across all chains (dataset_basedbot_daily, cross-chain sum), latest complete day."
+    formula: "Not measured. No public fee wallet or router list for BasedBot exists to attribute its transactions from. The row reads unresponsive."
     queries:
       p50: dune_platform_wallets_24h{platform="basedbot"}
       p90: dune_platform_wallets_24h{platform="basedbot"}
