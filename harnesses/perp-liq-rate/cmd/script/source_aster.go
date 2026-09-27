@@ -16,6 +16,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net/url"
 	"os"
 	"strings"
@@ -137,7 +138,10 @@ func (a *Aster) FetchLiquidationsSince(asset string, _ int64) ([]LiqEvent, error
 	// Coinalyze reports Aster's buckets in base-asset units
 	// (oi_lq_vol_denominated_in = BASE_ASSET), so each hour is converted at
 	// that hour's close, with the current last price as the fallback.
-	priceMap, _ := fetchHourlyCloses(asset, from*1000, to*1000, a.hlInfoURL)
+	priceMap, perr := fetchHourlyCloses(asset, from*1000, to*1000, a.hlInfoURL)
+	if perr != nil {
+		log.Printf("[aster/%s] hourly closes unavailable, pricing buckets at the current last price: %v", asset, perr)
+	}
 	return bucketsToEvents("czaster", asset, buckets, priceMap, fallbackPx), nil
 }
 

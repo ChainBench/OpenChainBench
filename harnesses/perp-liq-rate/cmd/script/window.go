@@ -13,7 +13,7 @@ package main
 // the same key carries a larger number that must replace the one already
 // stored. Treating a bucket like an event froze every hour at the value it
 // had a few minutes after the hour began: Lighter read $887 against a
-// billion dollars of daily volume until 2026-09-27 because of it.
+// $185.6M of daily ETH volume until 2026-09-27 because of it.
 
 import (
 	"sync"
@@ -64,6 +64,25 @@ func (w *SlidingWindow) Upsert(key string, tsMs int64, notionalUSD float64) bool
 		return true
 	}
 	w.appendLocked(windowEntry{key: key, tsMs: tsMs, notional: notionalUSD})
+	return true
+}
+
+// Remove drops the entry held under key, if any. A bucket source that
+// restates its figure as zero is saying the window no longer holds that
+// hour or that total, and the entry must go rather than linger at its last
+// non-zero value until it ages out. Returns true when something was removed.
+func (w *SlidingWindow) Remove(key string) bool {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	i, ok := w.byKey[key]
+	if !ok {
+		return false
+	}
+	w.entries = append(w.entries[:i], w.entries[i+1:]...)
+	w.byKey = make(map[string]int, len(w.entries))
+	for j, e := range w.entries {
+		w.byKey[e.key] = j
+	}
 	return true
 }
 

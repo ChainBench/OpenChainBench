@@ -6,8 +6,9 @@ package main
 // bulk (about $20M on ETH alone), so the Gains row was measured on a
 // deployment that is a rounding error of the venue.
 //
-// Liquidations: eth_getLogs on the diamond for TradeClosed events, keeping
-// only those whose cancelReason (last uint8 word of the event data) == 1.
+// Liquidations: eth_getLogs on the diamond for LimitExecuted events whose
+// orderType is LIQ_CLOSE (6), cross-checked against the event's own second
+// encoding of position size.
 // Notional = collateralAmount/1e6 * leverage/1e3.
 // OI: GET backend-base.gains.trade/trading-variables; find pairIndex from
 // pairs[i].from == asset, then sum oiLongCollateral+oiShortCollateral from
@@ -33,7 +34,7 @@ import (
 const (
 	// Base deployment. The Arbitrum diamond (0xFF162c…7f169) is the one the
 	// Gains front end reads its close-fee settings from; both run the same
-	// gTrade v8 diamond and emit the same TradeClosed event.
+	// gTrade v8 diamond and emit the same LimitExecuted event.
 	gainsDiamond         = "0x6cd5ac19a07518a8092eeffda4f1174c72704eeb"
 	gainsArbitrumDiamond = "0xFF162c694eAA571f685030649814282eA457f169"
 	gainsTradingVarsURL  = "https://backend-base.gains.trade/trading-variables"
@@ -248,7 +249,7 @@ type ethLog struct {
 	Removed     bool     `json:"removed"`
 }
 
-// FetchLiquidationsSince scans TradeClosed logs from lastBlock+1 (first tick:
+// FetchLiquidationsSince scans LimitExecuted logs from lastBlock+1 (first tick:
 // HasLiquidationSource reports true — TradeClosed on-chain logs give full coverage.
 func (g *Gains) HasLiquidationSource() bool { return true }
 

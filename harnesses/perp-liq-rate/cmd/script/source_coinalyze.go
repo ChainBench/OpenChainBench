@@ -34,8 +34,10 @@ type czClient struct {
 // fetchLiqBuckets returns hourly liquidation buckets for the given Coinalyze
 // symbol over [fromSec, toSec].
 func (c *czClient) fetchLiqBuckets(symbol string, fromSec, toSec int64) ([]czBucket, error) {
-	u := fmt.Sprintf("%s/liquidation-history?symbols=%s&interval=1hour&from=%d&to=%d&api_key=%s",
-		c.baseURL, url.QueryEscape(symbol), fromSec, toSec, c.apiKey)
+	// The key travels as a header, not a query parameter: a failed request's
+	// error carries its URL into the harness log.
+	u := fmt.Sprintf("%s/liquidation-history?symbols=%s&interval=1hour&from=%d&to=%d",
+		c.baseURL, url.QueryEscape(symbol), fromSec, toSec)
 	var resp []struct {
 		History []struct {
 			T int64   `json:"t"`
@@ -43,7 +45,7 @@ func (c *czClient) fetchLiqBuckets(symbol string, fromSec, toSec int64) ([]czBuc
 			S float64 `json:"s"`
 		} `json:"history"`
 	}
-	if err := httpGetJSON(u, &resp); err != nil {
+	if err := httpGetJSONKey(u, "api_key", c.apiKey, &resp); err != nil {
 		return nil, fmt.Errorf("coinalyze liquidation-history %s: %w", symbol, err)
 	}
 	var out []czBucket
@@ -59,13 +61,13 @@ func (c *czClient) fetchLiqBuckets(symbol string, fromSec, toSec int64) ([]czBuc
 // exchange (partial name match) and base asset. Used once at startup to
 // resolve Hyperliquid's symbol codes without hardcoding the exchange ID.
 func (c *czClient) czDiscoverSymbol(exchangeSlug, asset string) (string, error) {
-	u := fmt.Sprintf("%s/future-markets?api_key=%s", c.baseURL, c.apiKey)
+	u := c.baseURL + "/future-markets"
 	var markets []struct {
 		Symbol    string `json:"symbol"`
 		Exchange  string `json:"exchange"`
 		BaseAsset string `json:"base_asset"`
 	}
-	if err := httpGetJSON(u, &markets); err != nil {
+	if err := httpGetJSONKey(u, "api_key", c.apiKey, &markets); err != nil {
 		return "", fmt.Errorf("coinalyze future-markets: %w", err)
 	}
 	slug := strings.ToLower(exchangeSlug)
@@ -136,11 +138,12 @@ func fetchHourlyCloses(coin string, fromMs, toMs int64, infoURL string) (map[int
 func bucketsToEvents(keyPrefix, assetName string, buckets []czBucket, priceMap map[int64]float64, fallbackPx float64) []LiqEvent {
 	var events []LiqEvent
 	for _, b := range buckets {
-		// Stamped at the hour's end, not its start. The window cuts on the
-		// stamp, and a bucket stamped at its start would be dropped while
-		// most of its hour still sits inside the 24h, leaving these rows
-		// covering 23 to 24 hours against a true 24 for event sources.
-		tsMs := (b.T + 3600) * 1000
+		// Stamped at the hour's midpoint. The window cuts on the stamp: at
+		// the hour's start the boundary bucket is dropped with most of its
+		// hour inside the 24h (coverage 23 to 24h), at its end it is kept
+		// with most of its hour outside (24 to 25h). The midpoint makes the
+		// expected coverage 24h, within half an hour either way.
+		tsMs := (b.T + 1800) * 1000
 		total := b.L + b.S
 		if total == 0 {
 			continue

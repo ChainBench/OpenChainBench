@@ -75,22 +75,21 @@ type oxaResponse struct {
 	} `json:"meta"`
 }
 
-// httpGetJSONKey performs a GET with an X-API-Key header.
-func httpGetJSONKey(u, apiKey string, out any) error {
+// httpGetJSONKey performs a GET carrying an API key in the named header, on
+// the shared timed client. It used http.DefaultClient, which has no timeout:
+// one hung 0xArchive request would have held the tick's WaitGroup open and
+// stalled every venue on the harness.
+func httpGetJSONKey(u, header, apiKey string, out any) error {
 	req, err := http.NewRequest(http.MethodGet, u, nil)
 	if err != nil {
-		return err
+		return fmt.Errorf("build request: %w", err)
 	}
-	req.Header.Set("X-API-Key", apiKey)
-	resp, err := http.DefaultClient.Do(req)
+	req.Header.Set(header, apiKey)
+	body, err := doRaw(req)
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return &httpStatusError{Code: resp.StatusCode}
-	}
-	return json.NewDecoder(resp.Body).Decode(out)
+	return decodeJSON(body, u, out)
 }
 
 // fetchOxaLiquidations pages 0xArchive for all HL liquidation events.
@@ -114,7 +113,7 @@ func (h *Hyperliquid) fetchOxaLiquidations(coin string, sinceMs int64) ([]LiqEve
 		}
 
 		var resp oxaResponse
-		if err := httpGetJSONKey(u, h.archiveAPIKey, &resp); err != nil {
+		if err := httpGetJSONKey(u, "X-API-Key", h.archiveAPIKey, &resp); err != nil {
 			return nil, fmt.Errorf("hyperliquid 0xarchive: %w", err)
 		}
 
@@ -149,12 +148,15 @@ func (h *Hyperliquid) fetchOxaLiquidations(coin string, sinceMs int64) ([]LiqEve
 	return events, nil
 }
 
-// HasLiquidationSource reports true — Coinalyze (preferred), 0xArchive, or vault fallback.
+// HasLiquidationSource reports true — 0xArchive with a key, else the HLP
+// vault fallback, which sees backstop liquidations only.
 func (h *Hyperliquid) HasLiquidationSource() bool { return true }
 
 // FetchLiquidationsSince returns liquidation events newer than sinceMs.
-// Priority: (1) 0xArchive when OXARCHIVE_API_KEY is set, (2) HLP vault backstop fallback.
-// Coinalyze does not cover Hyperliquid.
+// Priority: (1) 0xArchive when OXARCHIVE_API_KEY is set, (2) HLP vault
+// backstop fallback. Coinalyze lists Hyperliquid (exchange code H) but its
+// liquidation-history returned nothing for ETH.H or BTC.H on 2026-09-27, so
+// it is not used here.
 func (h *Hyperliquid) FetchLiquidationsSince(asset string, sinceMs int64) ([]LiqEvent, error) {
 	coin, ok := hyperliquidCoins[asset]
 	if !ok {

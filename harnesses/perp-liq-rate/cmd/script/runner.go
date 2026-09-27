@@ -16,15 +16,20 @@ const windowSpan = 24 * time.Hour
 // indexer (the GMX squid, the Ostium subgraph, 0xArchive) can ingest a
 // liquidation after the tick that should have seen it has already queried,
 // and a strict since filter then never asks for that row again. Re-asking
-// for the last half hour costs a few pages; the SeenSet makes the repeat
-// free. Bucket sources ignore since altogether.
-const liqFetchOverlap = 30 * time.Minute
+// for the last two hours costs a handful of pages on the busiest tape; the
+// SeenSet makes the repeat free. Bucket sources ignore since altogether.
+const liqFetchOverlap = 2 * time.Hour
 
 // pairState is the cross-tick state runTick reads and writes for one pair.
 type pairState struct {
 	window *SlidingWindow
 	seen   *SeenSet
 	oi     *SampleWindow
+	// noEventDetail is set once the pair's source has handed over an hourly
+	// bucket or a windowed total, and stays set: "largest single event" has
+	// no meaning for such a row, including on a tick where the source hands
+	// over nothing new.
+	noEventDetail bool
 }
 
 // newPairState builds the windows for one venue+asset pair.
@@ -57,9 +62,6 @@ func runTick(va VenueAsset, st *pairState, sinceMs int64) bool {
 	setSourceAvailable(va.Venue, hasLiqSource)
 
 	var liqErr error
-	// noEventDetail: the window holds hourly totals or one windowed figure,
-	// so "largest single event" has no meaning for this row.
-	noEventDetail := false
 	if hasLiqSource {
 		var events []LiqEvent
 		events, liqErr = va.Source.FetchLiquidationsSince(va.Asset, sinceMs-liqFetchOverlap.Milliseconds())
@@ -70,21 +72,31 @@ func runTick(va VenueAsset, st *pairState, sinceMs int64) bool {
 			added, updated := 0, 0
 			for _, e := range events {
 				if e.Aggregate || e.Bucket {
-					noEventDetail = true
+					st.noEventDetail = true
 				}
-				if e.Key == "" || e.TimestampMs <= 0 || e.NotionalUSD <= 0 {
+				if e.Key == "" {
 					continue
 				}
-				if e.TimestampMs < cutoffMs {
-					continue // older than the window; irrelevant
-				}
 				if e.Bucket {
-					// A still-growing hourly total: the newest reading
-					// replaces the one held for that key.
+					// A restated figure. Zero means the source no longer
+					// holds anything for that key, so the entry goes;
+					// otherwise the newest reading replaces the one held.
+					if e.NotionalUSD <= 0 || e.TimestampMs < cutoffMs {
+						if st.window.Remove(e.Key) {
+							updated++
+						}
+						continue
+					}
 					if st.window.Upsert(e.Key, e.TimestampMs, e.NotionalUSD) {
 						updated++
 					}
 					continue
+				}
+				if e.TimestampMs <= 0 || e.NotionalUSD <= 0 {
+					continue
+				}
+				if e.TimestampMs < cutoffMs {
+					continue // older than the window; irrelevant
 				}
 				if st.seen.Add(e.Key, e.TimestampMs) {
 					st.window.Add(e.Key, e.TimestampMs, e.NotionalUSD)
@@ -146,7 +158,7 @@ func runTick(va VenueAsset, st *pairState, sinceMs int64) bool {
 		// Meaningless for a source that reports hours or the whole window as
 		// one number: it would show the busiest hour, or 100%, and claim the
 		// day was a single position.
-		if !noEventDetail {
+		if !st.noEventDetail {
 			largest := st.window.Max()
 			share := 0.0
 			if volume > 0 {

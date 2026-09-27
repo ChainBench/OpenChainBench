@@ -7,11 +7,15 @@ package main
 // still wrong, because the sources do not agree on what a liquidation is.
 // Measured that day against each venue's own 24h traded notional:
 //
-//	Hyperliquid ETH  0.40%   BTC 0.17%   (0xArchive, all liquidation types)
-//	Lighter     ETH  0.024%  BTC 0.022%  (Coinalyze hourly buckets)
+//	Hyperliquid BTC  0.17%   SOL 0.93%   ETH 0.005% (0xArchive; the ETH
+//	                                     feed returned 22 events against
+//	                                     693 on BTC, a short feed)
+//	Aster       ETH  0.18%   BTC 0.09%   (Coinalyze hourly buckets)
+//	Lighter     ETH  0.024%  BTC 0.018%  (Coinalyze hourly buckets)
 //	dYdX v4     ETH  0.00085% BTC 0.00023% (one LIQUIDATED fill in 24h)
 //	Paradex     ETH  0%      BTC 0%      (no LIQUIDATION row in 24h)
-//	Gains       ETH  14.9%   (two positions at 136x and 78x leverage)
+//	Gains       ETH  14.9% of venue-level volume (two positions at 136x and
+//	                                     78x leverage; no per-asset notional)
 //
 // Four orders of magnitude, every figure defensible on its own terms. A
 // venue that liquidates a ten-thousandth of a percent of its volume is not

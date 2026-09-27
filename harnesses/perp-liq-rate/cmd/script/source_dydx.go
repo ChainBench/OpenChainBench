@@ -16,7 +16,10 @@ import (
 const (
 	dydxBaseURL  = "https://indexer.dydx.trade/v4"
 	dydxPageSize = 100
-	dydxMaxPages = 30 // safety cap: 3000 trades per tick per market
+	// The first tick backfills a full 24h and dYdX ETH printed 7,754 trades
+	// in 24h on 2026-09-27; the old cap of 30 pages read less than half of
+	// that after every restart and said nothing.
+	dydxMaxPages = 150
 )
 
 var dydxTickers = map[string]string{
@@ -103,13 +106,16 @@ func (d *Dydx) FetchLiquidationsSince(asset string, sinceMs int64) ([]LiqEvent, 
 
 		// Stop once the page reaches past our since bound or is short.
 		if oldestMs < sinceMs || len(resp.Trades) < dydxPageSize {
-			break
+			return events, nil
 		}
 		// createdBeforeOrAt is inclusive, so the boundary trade repeats on
 		// the next page; the SeenSet dedup absorbs that.
 		createdBefore = oldestStr
 	}
-	return events, nil
+	// Reaching the cap means the oldest part of the window was never read;
+	// say so rather than hand back a short numerator as if it were whole.
+	return nil, fmt.Errorf("dydx trades: more than %d rows since %d for %s; refusing a partial window",
+		dydxMaxPages*dydxPageSize, sinceMs, ticker)
 }
 
 type dydxMarket struct {

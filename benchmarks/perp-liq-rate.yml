@@ -5,7 +5,7 @@ number: "208"
 title: "Perp DEX liquidation rate: 24h liquidated notional over 24h mean open interest, live"
 seo_title: "Perp DEX liquidation rate: {{best_name}} lowest at {{best_p50}}"
 seo_description: "Liquidated notional over 24 hours as a percentage of mean open interest, on ETH and BTC across Hyperliquid, Lighter, dYdX v4, Aster, GMX v2, Orderly, Nado, Gains, Paradex, Ostium and Aevo. Rows whose liquidation figure is not comparable publish unranked."
-subtitle: "Liquidated notional over the trailing 24 hours divided by mean open interest over the same 24 hours, in percent. Measured every 5 minutes on ETH and BTC. A row ranks only when its liquidated notional sits between 0.01% and 3% of the venue's own 24h traded notional; outside that band the figures publish without a rank."
+subtitle: "Liquidated notional over the trailing 24 hours divided by mean open interest over the same 24 hours, in percent. Measured every 5 minutes on ETH and BTC, and SOL where a venue lists it. A row ranks only when its liquidated notional sits between 0.01% and 3% of the venue's own 24h traded notional; outside that band the figures publish without a rank."
 category: Trading
 status: live
 metric: Liquidation rate
@@ -68,7 +68,7 @@ abstract: |
 
 methodology:
   - "Cadence: every 5 minutes, in parallel across all venue and asset pairs."
-  - "Numerator: liquidation events are held in a 24-hour window keyed by event identity (trade id, or transaction hash plus log index on chain). Events older than 24 hours are dropped each tick. Every fetch re-asks for the previous 30 minutes as well, so a row an indexer ingests late is still picked up; the key set makes the repeat free."
+  - "Numerator: liquidation events are held in a 24-hour window keyed by event identity (trade id, or transaction hash plus log index on chain). Events older than 24 hours are dropped each tick. Every fetch re-asks for the previous two hours as well, so a row an indexer ingests late is still picked up; the key set makes the repeat free."
   - "Aggregator buckets are restated, not deduplicated. An hourly total read while its hour is still open is smaller than the hour's final figure, so each hour's key carries the newest reading. Freezing the first reading is what made Lighter publish 887 dollars against 185.6M of ETH volume until 2026-09-27."
   - "Denominator: mean open interest over the same 24 hours, one reading per tick. An instantaneous denominator made the rate move with open interest rather than with liquidations: Gains read 343% on 2026-09-24 because its open interest fell from 37M to 7.3M dollars while the numerator stood still."
   - "Ranking: a row ranks only when its liquidated notional is between 0.01% and 3% of the venue's own 24h traded notional, read from the same endpoint as its open interest. The band is published per row as perp_liq_share_of_volume_pct, and perp_liq_ranked carries the verdict."

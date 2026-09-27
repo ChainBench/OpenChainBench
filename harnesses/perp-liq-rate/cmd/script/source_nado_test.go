@@ -62,10 +62,14 @@ func TestNado_WindowDeltasAreAggregates(t *testing.T) {
 		t.Errorf("key = %q", e.Key)
 	}
 
-	// No liquidation in the window on ETH: no event, not a zero event.
+	// No liquidation in the window on ETH: a zero restatement, so the runner
+	// clears whatever it held for the key rather than keeping a stale figure.
 	ethEvents, err := n.FetchLiquidationsSince("ETH", 0)
-	if err != nil || len(ethEvents) != 0 {
-		t.Fatalf("ETH: got %d events (%v), want none", len(ethEvents), err)
+	if err != nil || len(ethEvents) != 1 {
+		t.Fatalf("ETH: got %d events (%v), want one zero restatement", len(ethEvents), err)
+	}
+	if ethEvents[0].NotionalUSD != 0 || !ethEvents[0].Bucket || !ethEvents[0].Aggregate {
+		t.Fatalf("ETH restatement = %+v, want a zero Bucket+Aggregate entry", ethEvents[0])
 	}
 
 	// The product ids come from the catalog, only perps, only tracked assets.

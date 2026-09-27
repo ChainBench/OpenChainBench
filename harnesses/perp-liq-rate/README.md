@@ -96,8 +96,9 @@ perp_realized_vol_24h_pct{chain}
   liquidated notional is between 0.01% and 3% of that notional. Every other
   case publishes its figures with `perp_liq_ranked = 0`, and the harness logs
   the reason by name. The band exists because the venues do not agree on what
-  a liquidation is: measured on 2026-09-27, Hyperliquid read 0.40% of its own
-  ETH volume, Lighter 0.024%, dYdX 0.00085% and Gains 14.9%.
+  a liquidation is: measured on 2026-09-27, Hyperliquid read 0.17% of its own
+  BTC volume and 0.005% on ETH off a short feed, Aster 0.18%, Lighter 0.024%,
+  dYdX 0.00085% and Gains 14.9% of venue-level volume.
 - On a fetch error the previously published gauges are kept,
   `perp_liq_fetch_errors_total` is incremented and the error is logged;
   `perp_liq_health{venue}` drops to 0 for the tick.

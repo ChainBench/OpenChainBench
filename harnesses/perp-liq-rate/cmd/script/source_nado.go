@@ -231,9 +231,10 @@ func (n *Nado) FetchLiquidationsSince(asset string, _ int64) ([]LiqEvent, error)
 	if err != nil {
 		return nil, err
 	}
-	if w.liqUSD <= 0 {
-		return nil, nil
-	}
+	// A zero delta is handed over as a zero entry, not as nothing: the
+	// runner removes the key on a zero restatement, so the last non-zero
+	// figure cannot stay published for a day after the venue's own counter
+	// has moved past it.
 	return []LiqEvent{{
 		Key:         "nado:" + asset + ":window",
 		NotionalUSD: w.liqUSD,

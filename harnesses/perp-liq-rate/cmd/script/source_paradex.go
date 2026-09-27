@@ -18,7 +18,10 @@ import (
 const (
 	paradexBaseURL  = "https://api.prod.paradex.trade/v1"
 	paradexPageSize = 100
-	paradexMaxPages = 20
+	// The first tick backfills a full 24h. Paradex's BTC tape carried 3,677
+	// rows in 24h on 2026-09-27; a cap of 20 pages silently dropped the
+	// oldest eleven hours of it after every restart.
+	paradexMaxPages = 80
 )
 
 var paradexMarkets = map[string]string{
@@ -97,11 +100,14 @@ func (p *Paradex) FetchLiquidationsSince(asset string, sinceMs int64) ([]LiqEven
 			})
 		}
 		if resp.Next == nil || *resp.Next == "" || *resp.Next == "null" || len(resp.Results) == 0 {
-			break
+			return events, nil
 		}
 		cursor = *resp.Next
 	}
-	return events, nil
+	// Reaching the cap means the oldest part of the window was never read;
+	// say so rather than hand back a short numerator as if it were whole.
+	return nil, fmt.Errorf("paradex trades: more than %d rows since %d for %s; refusing a partial window",
+		paradexMaxPages*paradexPageSize, sinceMs, market)
 }
 
 // paradexSummary is one row of /markets/summary.

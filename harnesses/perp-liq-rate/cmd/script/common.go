@@ -175,7 +175,11 @@ func doRaw(req *http.Request) ([]byte, error) {
 		if len(snippet) > 200 {
 			snippet = snippet[:200]
 		}
-		return nil, &httpStatusError{Code: resp.StatusCode, URL: req.URL.String(), Body: snippet}
+		// The query string is dropped from the logged URL: it is where a
+		// key would sit if a caller ever put one there.
+		u := *req.URL
+		u.RawQuery = ""
+		return nil, &httpStatusError{Code: resp.StatusCode, URL: u.String(), Body: snippet}
 	}
 	return body, nil
 }

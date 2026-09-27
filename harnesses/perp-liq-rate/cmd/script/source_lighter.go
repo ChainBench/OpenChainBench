@@ -93,6 +93,9 @@ func (l *Lighter) fetchMarkets() ([]lighterMarketDetail, error) {
 	l.markets = resp.OrderBookDetails
 	l.marketsAt = time.Now()
 	l.mu.Unlock()
+	// A successful read ends any suppression streak, so the next outage is
+	// counted and logged again instead of being swallowed forever.
+	l.resetUnavailable()
 	return resp.OrderBookDetails, nil
 }
 
@@ -158,8 +161,13 @@ func (l *Lighter) FetchLiquidationsSince(asset string, sinceMs int64) ([]LiqEven
 	}
 
 	// Per-bucket prices via HL candleSnapshot (same asset, free endpoint).
-	priceMap, _ := fetchHourlyCloses(asset, from*1000, to*1000, l.hlInfoURL)
-	// markPx is the fallback for buckets that have no candle.
+	// markPx is the fallback for buckets that have no candle; when the whole
+	// candle read fails every hour is priced at the current mark, which is
+	// worth knowing about on a day the price moved.
+	priceMap, perr := fetchHourlyCloses(asset, from*1000, to*1000, l.hlInfoURL)
+	if perr != nil {
+		log.Printf("[lighter/%s] hourly closes unavailable, pricing buckets at the current mark: %v", asset, perr)
+	}
 	events := bucketsToEvents("czlighter", asset, buckets, priceMap, markPx)
 	return events, nil
 }
