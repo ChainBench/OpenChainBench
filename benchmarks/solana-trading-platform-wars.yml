@@ -2,181 +2,249 @@
 
 slug: solana-trading-platform-wars
 number: "201"
-title: "Trading platform leaderboard: GMGN vs Axiom vs Fomo vs pump.fun, live 24h volume"
-seo_title: "Dune trading app volume: GMGN vs Axiom vs Fomo vs pump.fun"
-seo_description: "{{best_name}} leads {{ranked_count}} trading apps at {{best_p50}} on Dune community datasets, refreshed daily. GMGN, Axiom, Fomo, pump.fun, Trojan, Padre, Photon, BasedBot."
-subtitle: 24-hour trading volume per app and Telegram bot, cross-chain (Solana + BNB + Base + Robinhood node + HyperEVM + Monad). Sourced from Dune community datasets, refreshed once a day.
+title: "Trading platform leaderboard: what GMGN, Axiom, FOMO and Terminal route and what they charge"
+seo_title: "Trading app volume and commission: GMGN vs Axiom vs FOMO vs Terminal"
+seo_description: "{{best_name}} leads {{ranked_count}} trading apps at {{best_p50}} of routed volume on its latest closed day, with the commission each one took on it. GMGN, Axiom, FOMO, Terminal, pump.fun, Trojan, Photon."
+subtitle: Routed swap volume per trading app and Telegram bot on its latest closed UTC day, every chain summed, next to the commission the app itself collected on that volume and the take rate the two imply. From DeFiLlama's open dexs and fees adapters.
 
 category: Trading
 status: live
-metric: 24h volume
+metric: Daily volume
 unit: usd
 higher_is_better: true
 
 disclaimer: |
-  Volume figures are sourced from Dune community datasets, which aggregate cross-chain trading activity per platform (Solana, BNB Chain, Base, Robinhood node, HyperEVM, Monad, and more). The Dune execution runs once a day, so a figure holds for the day rather than moving intraday. pump.fun volume = bonding-curve Solana swaps (dataset_pumpapp_sol_daily) + cross-chain relay swaps (dataset_pumpfun_relay_daily). Fomo = Solana only (dataset_fomo_sol_daily). All others sum across all blockchains.
+  Volume is what each app's DeFiLlama dexs adapter attributes to it per UTC day, over every chain that adapter covers. Commission is the app's own cut from its fees adapter (dailyRevenue), not the total fees paid on the trade: the venue underneath takes its own share, and counting that would roughly double the figure. The take rate divides the two over the same days, so it is a floor where an adapter covers fewer chains for fees than for volume. Rows end on each app's own latest closed day.
 
 seo_intro: |
-  Solana's trading frontend market is a contested race between GMGN, Axiom and
-  Fomo, with Trojan and Padre close behind as the dominant Telegram bots. This
-  benchmark reads the 24-hour trading volume attributed to each app in the Dune
-  community datasets, one per platform, covering every chain that platform
-  operates on. {{best_name}} leads at {{best_p50}} as of the last refresh, and
-  the order of the top three changes from one refresh to the next rather than
-  settling. Trojan serves the Telegram-native trader segment with bot-driven
-  flow, Padre is a web trading terminal, and pump.fun's figure covers its own
-  frontend rather than every bonding-curve trade on the protocol. The fee column
-  shows which apps capture the most protocol revenue per dollar traded; see the
-  methodology for what each dataset counts.
+  A trading app is a router. It does not settle a trade, it sends it to pump.fun,
+  Raydium, PancakeSwap or a Robinhood Chain pool and takes a cut on the way, so the
+  two numbers that describe it are the volume it routed and the commission it kept.
+  This benchmark puts them side by side for the majors, on closed UTC days, from
+  DeFiLlama's open adapters. {{best_name}} leads on routed volume at {{best_p50}},
+  and the take rate column is where the apps separate: a terminal charging around
+  1% of a smaller book can out-earn one routing several times the volume at half
+  that. FOMO settles cross-chain trades through Relay and books them on Solana, so
+  its volume is its whole business rather than a Solana slice. For the wider
+  fourteen-app cohort with the per-chain split and a year of daily history, read
+  bench 267.
 
 abstract: |
-  The harness runs one Dune execution a day over the community datasets
-  (dataset_*_daily), one per trading app, and exposes
-  dune_platform_volume_24h_usd, dune_platform_fees_24h_usd and
-  dune_platform_volume_health per platform. Each dataset sums the most recent
-  complete day across every chain that app operates on, so the figure is a daily
-  snapshot rather than a rolling window: it holds for the day and steps once when
-  the next execution lands. Prometheus scrapes the gauges every 60 s, which keeps
-  them current but does not make the underlying number move any faster.
+  The trading-app-volume harness reads DeFiLlama's free summary endpoints once an
+  hour: /summary/dexs/<slug>?dataType=dailyVolume for routed volume with its
+  per-chain split, and /summary/fees/<slug>?dataType=dailyRevenue for the app's own
+  commission, both on UTC day buckets. The open day is dropped. Each app's figures
+  end on its own latest closed day, because most adapters are Dune queries that
+  publish a day 10 to 20 hours after it closes. The harness exposes
+  trading_app_volume_usd, trading_app_revenue_usd, trading_app_take_rate_pct and
+  trading_app_health per app and window. The take rate is computed over the days
+  that have both legs, so a fees adapter running a day behind the volume one cannot
+  read as a lower cut.
 
 methodology:
-  - "Source: Dune community datasets (dataset_*_daily). Each dataset covers one trading platform across all blockchains it operates on."
-  - "Cadence: one Dune execution a day (DUNE_REFRESH_HOURS, default 24 h; executions are metered per run). Prometheus scrapes :2112/metrics every 60 s, so the gauge is current while the underlying figure changes daily."
-  - "Volume: sum of volume_usd across all blockchains for the most recent complete day in each platform's dataset. Higher = more total user activity."
-  - "pump.fun: dataset_pumpapp_sol_daily (Solana bonding-curve) + dataset_pumpfun_relay_daily filtered to req_class='swap'. pump.fun cut fees to 0% in Aug 2026; volume is for their own frontend only (pumpapp), not all bonding-curve activity."
-  - "fomo: dataset_fomo_sol_daily (Solana only)."
-  - "BasedBot: multi-chain bot (Robinhood node, BNB, Base, Solana, ETH, HyperEVM, Avalanche)."
+  - "Source: DeFiLlama's open dexs and fees adapters, read hourly from the free summary endpoints. Both legs are per UTC day and the current open day is dropped."
+  - "Volume: /summary/dexs/<slug>?dataType=dailyVolume, summed over every chain the adapter covers. This bench read third-party Dune datasets until 2026-09-27; they froze on 2026-08-25 and were served as current for 32 days, which is why the source is now one with a maintained adapter behind it."
+  - "Commission: /summary/fees/<slug>?dataType=dailyRevenue, the app's own cut. Not dailyFees, which adds what the venue underneath charges: for Axiom on 2026-09-26 that reads 2.27M against 1.38M of revenue."
+  - "Take rate: commission divided by the volume of the same days, so the two halves describe the same trades. A negative daily revenue, which DeFiLlama reports now and then when an adapter corrects itself, is dropped rather than pulling a window below zero, and a restatement always wins over what the last read held."
+  - "Day anchoring: every figure for an app ends on that app's own latest closed day, not on a shared cohort day. An adapter more than 3 days behind snaps back to the cohort day and reads unresponsive; a window it can no longer fill to 80% coverage goes absent with it."
+  - "The commission can trail the volume by up to 3 days, because a fees adapter sometimes runs behind its dexs one. It ends on the newest day that has both legs, so the take rate always divides figures from the same day; dune_platform is no longer involved and trading_app_revenue_day_unix carries the day."
+  - "Cohort: the seven apps with both a dexs and a fees adapter on DeFiLlama. BasedBot has neither and left the table on 2026-09-27; it was unmeasured before that too."
+  - "Cross-check against our own Solana SQL for 2026-09-26: Trojan +0.1%, Terminal +1.4%, Photon +4.9% on volume, and Axiom -2.3%, Photon -0.7% on commission. GMGN and FOMO read higher here because this counts every chain and every Relay leg."
 
 findings:
-  - "{{best_name}} leads Solana trading platforms at {{best_p50}} 24h volume."
-  - "{{best_name}} leads at {{best_p50}} as of the last refresh. GMGN and Axiom both serve power traders with web terminals, GMGN through AI copy-trading and Axiom through execution speed, and the two trade places between refreshes."
-  - "{{name:fomo}} reads {{p50:fomo}} and {{name:trojan}} {{p50:trojan}}, so the distance between a web terminal and the Telegram-native segment is visible in the table rather than asserted."
-  - "Trojan serves the Telegram-native segment and accounts for bot-driven swap flow. Padre is a web trading terminal, not a Telegram bot."
-  - "pump.fun reads {{p50:pump-fun}}, covering its own frontend (pumpapp) plus its cross-chain relay swaps, not every bonding-curve trade on the protocol."
+  - "{{best_name}} leads trading apps at {{best_p50}} of routed volume on its latest closed day."
+  - "Volume and commission do not rank the same way: the take rate column shows an app routing several times another's volume at half the cut, so the second-largest book can be the larger business."
+  - "{{name:fomo}} reads {{p50:fomo}} and {{name:trojan}} {{p50:trojan}}, the distance between a wallet with cross-chain settlement and a Telegram-native bot."
+  - "Terminal is pump.fun's own trading app, formerly Padre, and the pump.fun row here is its mobile app rather than the launchpad's bonding curve."
+  - "Commission is the app's cut alone. The venue underneath takes its own share on the same trade, which is why the fees series is about twice the revenue series for most of these apps."
 
-source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/dune-platform-volume
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/trading-app-volume
 
 prometheus:
   window: 24h
-  freshness_metric: dune_platform_volume_24h_usd
+  freshness_metric: trading_app_volume_usd
+
+metric_panels:
+  - id: revenue_1d
+    label: Commission
+    label_key: app
+    metric: trading_app_revenue_usd{window="1d"}
+    unit: usd
+    higher_is_better: true
+    description: "The app's own cut on its latest closed day, from DeFiLlama's fees adapter (dailyRevenue)."
+  - id: take_1d
+    label: Take rate
+    label_key: app
+    metric: trading_app_take_rate_pct{window="1d"}
+    unit: pct
+    higher_is_better: false
+    description: "Commission as a percentage of the volume routed on the same day."
+  - id: revenue_7d
+    label: Commission 7d
+    label_key: app
+    metric: trading_app_revenue_usd{window="7d"}
+    unit: usd
+    higher_is_better: true
+    tab: false
+    description: "The app's cut over the 7 closed days ending on its latest one."
+  - id: take_7d
+    label: Take rate 7d
+    label_key: app
+    metric: trading_app_take_rate_pct{window="7d"}
+    unit: pct
+    higher_is_better: false
+    tab: false
+    description: "Commission over the same 7 days divided by the volume of those days."
+  - id: vol_7d
+    label: Volume 7d
+    label_key: app
+    metric: trading_app_volume_usd{window="7d"}
+    unit: usd
+    higher_is_better: true
+    tab: false
+    description: "Routed volume over the 7 closed days ending on the app's latest one, every chain."
+  - id: vol_30d
+    label: Volume 30d
+    label_key: app
+    metric: trading_app_volume_usd{window="30d"}
+    unit: usd
+    higher_is_better: true
+    tab: false
+    description: "Routed volume over the 30 closed days ending on the app's latest one, every chain."
+  - id: revenue_30d
+    label: Commission 30d
+    label_key: app
+    metric: trading_app_revenue_usd{window="30d"}
+    unit: usd
+    higher_is_better: true
+    tab: false
+    description: "The app's cut over the 30 closed days ending on its latest one."
+  - id: take_30d
+    label: Take rate 30d
+    label_key: app
+    metric: trading_app_take_rate_pct{window="30d"}
+    unit: pct
+    higher_is_better: false
+    tab: false
+    description: "Commission over the same 30 days divided by the volume of those days."
+
+ledger_columns:
+  - { label: "Volume", slot: p50, windows: { 7d: vol_7d, 30d: vol_30d } }
+  - { label: "Commission", panel: revenue_1d, windows: { 7d: revenue_7d, 30d: revenue_30d } }
+  - { label: "Take rate", panel: take_1d, windows: { 7d: take_7d, 30d: take_30d } }
+
+# The gauges step once per UTC day, so a sub-day range would plot one point
+# at "now". The chart opens on 30 days and the ledger's base window is the
+# app's last closed day rather than "24h".
+chart:
+  min_range: 7d
+  default_range: 30d
+  window_label: latest closed day
 
 faq:
-  - q: "Which Solana trading platform has the most volume?"
-    a: "{{best_name}} leads at {{best_p50}} as of the last refresh, and GMGN, Axiom and Fomo trade places between refreshes. The table is rebuilt from one Dune execution a day, so a figure holds for the day and steps once when the next lands: read it as the last complete day, not as an intraday ticker. Headlines claiming one app has overtaken another are usually a single day or a single metric."
-  - q: "Does the pump.fun volume here include PumpSwap?"
-    a: "Partially. The pump.fun line sums dataset_pumpapp_sol_daily, the bonding-curve swaps through pump.fun's own frontend, with the swap rows of dataset_pumpfun_relay_daily. PumpSwap, the AMM for graduated tokens, is a separate program and its trades appear only where the dataset attributes them to the pump.fun frontend. A trade on a pump.fun token routed through GMGN or Axiom counts under those apps, not under pump.fun."
+  - q: "Which trading app routes the most volume?"
+    a: "{{best_name}} leads at {{best_p50}} on its latest closed UTC day. The order of the top three changes from one day to the next rather than settling, and each row ends on that app's own latest closed day because DeFiLlama's adapters publish at different hours. Read it as a day, not as an intraday ticker: claims that one app has overtaken another are usually a single day or a single metric."
+  - q: "Is the fee column what a trade costs me?"
+    a: "No. It is the app's own commission, DeFiLlama's dailyRevenue, which is the cut the app keeps. A trade also pays the venue underneath, so the total the trader pays is higher: for most of these apps the fees series is about twice the revenue series. The take rate here is what the app earns per dollar routed, not the all-in cost of a swap."
+  - q: "Why did the numbers change on 2026-09-27?"
+    a: "The source changed. This bench read eight uploaded Dune datasets that stopped updating on 2026-08-25 and were served as current for 32 days. It now reads DeFiLlama's open adapters. For the apps that trade mainly on Solana the two agree closely, Trojan within 0.1% and Terminal within 1.4% on 2026-09-26, but GMGN and FOMO read much higher here because this counts every chain and every cross-chain leg rather than the Solana slice."
+  - q: "How is this different from bench 267?"
+    a: "Bench 267 is the same volume series over a wider cohort of fourteen apps, with the per-chain breakdown, share of the cohort and a year of daily history. This bench is the seven majors with the commission and take rate alongside, which is the part that says which of them is the larger business rather than the larger router."
   - q: "What is the difference between GMGN and Axiom?"
-    a: "Both are web-based Solana trading terminals targeting power traders. GMGN emphasizes AI-powered wallet analysis and copy trading. Axiom is a terminal-style platform focused on chart speed and order execution. Both route through Jupiter and direct DEX pools."
-  - q: "Why does Fomo's fee column use a different source?"
-    a: "Fomo collects fees in SOL and USDC to a dedicated fee wallet (R4rNJHaffSUotNmqSKNEfDcJE8A7zJUkaoM5Jkd7cYX), plus an off-chain relay component stored in a private Dune table (dune.tryfomo.fomo_relay_fees). Its dataset covers Solana only (dataset_fomo_sol_daily), so a Fomo figure here is its Solana activity rather than its whole business. Every app in this table is read from its own Dune dataset, fees included."
-  - q: "Are Trojan and Padre Telegram bots?"
-    a: "Trojan is a Telegram-native trading bot. Padre is a web trading terminal with an AI assistant, not a Telegram bot. Each has its own Dune dataset, built from the tags their transactions carry."
-  - q: "How is trading platform volume different from launchpad volume?"
-    a: "Launchpad volume (bench 200) counts swaps through bonding-curve programs like pump.fun or Flap. Volume here counts swaps attributed to a trading app whatever DEX or launchpad sat underneath. The attribution is mutually exclusive: a trade on pump.fun tokens routed through GMGN counts under GMGN, not under pump.fun."
-  - q: "Why does BullX show zero or low volume?"
-    a: "BullX has no community dataset of its own in the set this bench reads, so there is nothing to attribute it from here rather than a measurement showing zero. Its cross-chain DEX volume is tracked in bench 205."
+    a: "Both are web trading terminals aimed at active traders. GMGN leans on wallet analysis and copy trading and runs on ten chains, with most of its volume outside Solana. Axiom is a terminal focused on chart speed and order execution across Solana, BSC and Robinhood Chain. Both route into the same underlying pools."
+  - q: "Why is BasedBot not in the table?"
+    a: "It has no dexs adapter and no fees adapter on DeFiLlama, and no published fee wallet list anywhere else, so there is nothing to attribute its volume from. It carried no figure under the previous source either, and it left the table when the source changed rather than staying as a permanently blank row."
+  - q: "Where does the pump.fun row come from?"
+    a: "DeFiLlama's pump.fun mobile app adapter, which attributes trades placed through the official app. The launchpad's own bonding-curve volume is a separate and much larger series, and a trade on a pump.fun token routed through GMGN or Axiom counts under those apps rather than here."
 
 providers:
-  - slug: gmgn
-    name: GMGN
-    tag: "AI trading terminal, multi-chain"
-    formula: "24h cross-chain volume in USD (Solana + BNB + Robinhood node + Base + ETH + more) from Dune community datasets (dataset_gmgn_daily), latest complete day."
+  - slug: fomo
+    name: FOMO
+    tag: "Trading wallet, Solana with cross-chain settlement"
+    formula: "DeFiLlama dexs adapter fomo-wallet: daily routed volume, booked on Solana including trades settled cross-chain through Relay. Commission from its fees adapter (dailyRevenue)."
     queries:
-      p50: dune_platform_volume_24h_usd{platform="gmgn"}
-      p90: dune_platform_volume_24h_usd{platform="gmgn"}
-      p99: dune_platform_volume_24h_usd{platform="gmgn"}
-      mean: dune_platform_volume_24h_usd{platform="gmgn"}
-      success: dune_platform_volume_health{platform="gmgn"}
-      sample_size: dune_platform_volume_24h_usd{platform="gmgn"}
-      series: dune_platform_volume_24h_usd{platform="gmgn"}
+      p50: trading_app_volume_usd{app="fomo",window="1d"}
+      p90: trading_app_volume_usd{app="fomo",window="1d"}
+      p99: trading_app_volume_usd{app="fomo",window="1d"}
+      mean: trading_app_volume_usd{app="fomo",window="1d"}
+      success: trading_app_health{app="fomo"}
+      sample_size: trading_app_history_days{app="fomo"}
+      series: trading_app_volume_usd{app="fomo",window="1d"}
 
   - slug: axiom
     name: Axiom
-    tag: "Web trading terminal, multi-chain"
-    formula: "24h cross-chain volume in USD (Solana + Robinhood node + BNB + ETH) from Dune community datasets (dataset_axiom_daily), latest complete day."
+    tag: "Web trading terminal, Solana + BSC + Robinhood Chain"
+    formula: "DeFiLlama dexs adapter axiom: sum of every chain's daily routed volume. Commission from its fees adapter (dailyRevenue)."
     queries:
-      p50: dune_platform_volume_24h_usd{platform="axiom"}
-      p90: dune_platform_volume_24h_usd{platform="axiom"}
-      p99: dune_platform_volume_24h_usd{platform="axiom"}
-      mean: dune_platform_volume_24h_usd{platform="axiom"}
-      success: dune_platform_volume_health{platform="axiom"}
-      sample_size: dune_platform_volume_24h_usd{platform="axiom"}
-      series: dune_platform_volume_24h_usd{platform="axiom"}
+      p50: trading_app_volume_usd{app="axiom",window="1d"}
+      p90: trading_app_volume_usd{app="axiom",window="1d"}
+      p99: trading_app_volume_usd{app="axiom",window="1d"}
+      mean: trading_app_volume_usd{app="axiom",window="1d"}
+      success: trading_app_health{app="axiom"}
+      sample_size: trading_app_history_days{app="axiom"}
+      series: trading_app_volume_usd{app="axiom",window="1d"}
 
-  - slug: fomo
-    name: Fomo
-    tag: "Solana trading platform"
-    formula: "24h Solana volume in USD from Dune community datasets (dataset_fomo_sol_daily), latest complete day."
+  - slug: gmgn
+    name: GMGN
+    tag: "AI trading terminal, ten chains"
+    formula: "DeFiLlama dexs adapter gmgn: sum of every chain's daily routed volume, most of it outside Solana. Commission from its fees adapter (dailyRevenue)."
     queries:
-      p50: dune_platform_volume_24h_usd{platform="fomo"}
-      p90: dune_platform_volume_24h_usd{platform="fomo"}
-      p99: dune_platform_volume_24h_usd{platform="fomo"}
-      mean: dune_platform_volume_24h_usd{platform="fomo"}
-      success: dune_platform_volume_health{platform="fomo"}
-      sample_size: dune_platform_volume_24h_usd{platform="fomo"}
-      series: dune_platform_volume_24h_usd{platform="fomo"}
-
-  - slug: basedbot
-    name: BasedBot
-    tag: "Multi-chain trading bot"
-    formula: "24h cross-chain volume in USD (Robinhood node + BNB + Base + Solana + ETH + HyperEVM) from Dune community datasets (dataset_basedbot_daily), latest complete day."
-    queries:
-      p50: dune_platform_volume_24h_usd{platform="basedbot"}
-      p90: dune_platform_volume_24h_usd{platform="basedbot"}
-      p99: dune_platform_volume_24h_usd{platform="basedbot"}
-      mean: dune_platform_volume_24h_usd{platform="basedbot"}
-      success: dune_platform_volume_health{platform="basedbot"}
-      sample_size: dune_platform_volume_24h_usd{platform="basedbot"}
-      series: dune_platform_volume_24h_usd{platform="basedbot"}
+      p50: trading_app_volume_usd{app="gmgn",window="1d"}
+      p90: trading_app_volume_usd{app="gmgn",window="1d"}
+      p99: trading_app_volume_usd{app="gmgn",window="1d"}
+      mean: trading_app_volume_usd{app="gmgn",window="1d"}
+      success: trading_app_health{app="gmgn"}
+      sample_size: trading_app_history_days{app="gmgn"}
+      series: trading_app_volume_usd{app="gmgn",window="1d"}
 
   - slug: pump-fun
-    name: pump.fun
-    tag: "Solana meme launchpad + cross-chain relay"
-    formula: "24h volume = pump.fun app Solana swaps (dataset_pumpapp_sol_daily) + cross-chain relay swaps (dataset_pumpfun_relay_daily, req_class=swap). pump.fun cut fees to 0% Aug 2026; volume is for pumpapp frontend only."
+    name: pump.fun app
+    tag: "The launchpad's own mobile app"
+    formula: "DeFiLlama dexs adapter pump.fun-mobile-app: trades placed through the official app, not the launchpad's bonding-curve volume. Commission from its fees adapter (dailyRevenue)."
     queries:
-      p50: dune_platform_volume_24h_usd{platform="pump-fun"}
-      p90: dune_platform_volume_24h_usd{platform="pump-fun"}
-      p99: dune_platform_volume_24h_usd{platform="pump-fun"}
-      mean: dune_platform_volume_24h_usd{platform="pump-fun"}
-      success: dune_platform_volume_health{platform="pump-fun"}
-      sample_size: dune_platform_volume_24h_usd{platform="pump-fun"}
-      series: dune_platform_volume_24h_usd{platform="pump-fun"}
+      p50: trading_app_volume_usd{app="pump-fun",window="1d"}
+      p90: trading_app_volume_usd{app="pump-fun",window="1d"}
+      p99: trading_app_volume_usd{app="pump-fun",window="1d"}
+      mean: trading_app_volume_usd{app="pump-fun",window="1d"}
+      success: trading_app_health{app="pump-fun"}
+      sample_size: trading_app_history_days{app="pump-fun"}
+      series: trading_app_volume_usd{app="pump-fun",window="1d"}
 
   - slug: padre
     name: Terminal
-    tag: "pump.fun's own trading app (formerly Padre, acquired Apr 2025)"
-    formula: "24h cross-chain volume in USD (Solana + Robinhood node + Base + BNB) from Dune community datasets (dataset_terminal_daily), latest complete day."
+    tag: "pump.fun's own trading app, formerly Padre"
+    formula: "DeFiLlama dexs adapter terminal: sum of every chain's daily routed volume. Commission from its fees adapter (dailyRevenue)."
     queries:
-      p50: dune_platform_volume_24h_usd{platform="padre"}
-      p90: dune_platform_volume_24h_usd{platform="padre"}
-      p99: dune_platform_volume_24h_usd{platform="padre"}
-      mean: dune_platform_volume_24h_usd{platform="padre"}
-      success: dune_platform_volume_health{platform="padre"}
-      sample_size: dune_platform_volume_24h_usd{platform="padre"}
-      series: dune_platform_volume_24h_usd{platform="padre"}
+      p50: trading_app_volume_usd{app="padre",window="1d"}
+      p90: trading_app_volume_usd{app="padre",window="1d"}
+      p99: trading_app_volume_usd{app="padre",window="1d"}
+      mean: trading_app_volume_usd{app="padre",window="1d"}
+      success: trading_app_health{app="padre"}
+      sample_size: trading_app_history_days{app="padre"}
+      series: trading_app_volume_usd{app="padre",window="1d"}
 
   - slug: trojan
     name: Trojan
     tag: "Telegram trading bot on Solana"
-    formula: "24h Solana volume in USD from Dune community datasets (dataset_trojan_daily), latest complete day."
+    formula: "DeFiLlama dexs adapter trojan: daily routed volume on Solana. Commission from its fees adapter (dailyRevenue)."
     queries:
-      p50: dune_platform_volume_24h_usd{platform="trojan"}
-      p90: dune_platform_volume_24h_usd{platform="trojan"}
-      p99: dune_platform_volume_24h_usd{platform="trojan"}
-      mean: dune_platform_volume_24h_usd{platform="trojan"}
-      success: dune_platform_volume_health{platform="trojan"}
-      sample_size: dune_platform_volume_24h_usd{platform="trojan"}
-      series: dune_platform_volume_24h_usd{platform="trojan"}
+      p50: trading_app_volume_usd{app="trojan",window="1d"}
+      p90: trading_app_volume_usd{app="trojan",window="1d"}
+      p99: trading_app_volume_usd{app="trojan",window="1d"}
+      mean: trading_app_volume_usd{app="trojan",window="1d"}
+      success: trading_app_health{app="trojan"}
+      sample_size: trading_app_history_days{app="trojan"}
+      series: trading_app_volume_usd{app="trojan",window="1d"}
 
   - slug: photon
     name: Photon
     tag: "Solana trading terminal"
-    formula: "24h Solana volume in USD from Dune community datasets (dataset_photon_daily), latest complete day."
+    formula: "DeFiLlama dexs adapter photon: daily routed volume on Solana. Commission from its fees adapter (dailyRevenue)."
     queries:
-      p50: dune_platform_volume_24h_usd{platform="photon"}
-      p90: dune_platform_volume_24h_usd{platform="photon"}
-      p99: dune_platform_volume_24h_usd{platform="photon"}
-      mean: dune_platform_volume_24h_usd{platform="photon"}
-      success: dune_platform_volume_health{platform="photon"}
-      sample_size: dune_platform_volume_24h_usd{platform="photon"}
-      series: dune_platform_volume_24h_usd{platform="photon"}
+      p50: trading_app_volume_usd{app="photon",window="1d"}
+      p90: trading_app_volume_usd{app="photon",window="1d"}
+      p99: trading_app_volume_usd{app="photon",window="1d"}
+      mean: trading_app_volume_usd{app="photon",window="1d"}
+      success: trading_app_health{app="photon"}
+      sample_size: trading_app_history_days{app="photon"}
+      series: trading_app_volume_usd{app="photon",window="1d"}

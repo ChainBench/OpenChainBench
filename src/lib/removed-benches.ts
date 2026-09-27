@@ -117,6 +117,27 @@ export const DEV_ONLY_BENCH_SLUGS = new Set([
   // of the eight rows have no maker rate at all. Un-gate after a 24h
   // window and an audit round.
   "perp-fee-disclosure",
+  // The Dune team trial ends 2026-10-02 and no paid plan is committed, so the
+  // four benches below stand down until one is. They are gated rather than
+  // removed because nothing about them is wrong: the harness, the SQL and its
+  // freshness guard all work, and the day the plan is paid for these four come
+  // back by deleting these lines. Bench 201 is not among them because it moved
+  // to DeFiLlama's free adapters (see benches 201 and 267); these four have no
+  // free equivalent for what they measure.
+  //
+  // 206 average trade size, 207 swap transactions, 232 active wallets: all
+  // three read dune-platform-volume, whose one execution a day is metered.
+  // Un-gate condition: a paid Dune plan.
+  "solana-avg-trade-size",
+  "solana-unique-traders",
+  "trading-platform-wallets",
+  // 203 memecoin platform fee rates: its headline take rate reads
+  // dune-platform-volume and its coverage and fee-paying-rate columns come
+  // from the memecoin-platforms harness, which is its own metered Dune query.
+  // Re-sourcing only the headline would leave the rest of the page dark, and
+  // bench 201 now carries a take rate from DeFiLlama, so the signal is not
+  // lost while this one waits. Un-gate condition: a paid Dune plan.
+  "memecoin-platforms",
 ]);
 
 /**

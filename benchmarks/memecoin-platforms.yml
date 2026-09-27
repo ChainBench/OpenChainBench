@@ -2,10 +2,10 @@
 
 slug: memecoin-platforms
 number: "203"
-title: "Solana memecoin platform fee rates: Axiom vs Fomo vs pump.fun vs GMGN vs Trojan, live 24h"
-seo_title: "Solana memecoin platform fees 2026: Axiom, Fomo, pump.fun, GMGN, Trojan, Photon, Maestro"
-seo_description: "{{best_name}} leads Solana memecoin platforms at {{best_p50}} take rate. Axiom vs Fomo vs pump.fun vs GMGN vs Trojan ranked by protocol revenue per dollar traded, live from Dune fee wallet monitoring."
-subtitle: Live 24-hour protocol fee revenue divided by trading volume for each Solana memecoin platform. Fees sourced from Dune Analytics (on-chain fee wallet inflows, refreshed every 6 hours). Volume from Mobula lighthouse (refreshed every 15 minutes).
+title: "Solana memecoin platform fee rates: Axiom vs Fomo vs GMGN vs Trojan vs Terminal"
+seo_title: "Solana memecoin platform fees 2026: Axiom, Fomo, GMGN, Trojan, Terminal, Photon, Maestro"
+seo_description: "{{best_name}} leads Solana memecoin platforms at {{best_p50}} take rate. Axiom vs Fomo vs GMGN vs Trojan vs Terminal ranked by protocol revenue per dollar traded, from on-chain fee wallet attribution."
+subtitle: Daily protocol fee revenue divided by trading volume for each Solana memecoin platform. The take rate column reads our own Dune SQL over the SOL, USDC and wSOL landing in each platform's fee wallets, against the volume of the transactions that paid them, one execution a day.
 
 category: Trading
 status: live
@@ -46,7 +46,10 @@ abstract: |
 methodology:
   - "Fee source (all except Fomo): Dune Analytics query 8316589 on solana.account_activity. Native SOL inflows matched by address = fee wallet; USDC/WSOL inflows matched by token_balance_owner = fee wallet. Summed over NOW() - 1 DAY. Executed every 6h; cached result read every 15min."
   - "Fee source (Fomo): DeFiLlama /summary/fees/fomo, chainBreakdown[Solana].total24h. DeFiLlama combines on-chain USDC inflows to R4rNJHaffSUotNmqSKNEfDcJE8A7zJUkaoM5Jkd7cYX and off-chain relay fees from dune.tryfomo.fomo_relay_fees (private Dune table)."
-  - "Volume source (Mobula): Mobula lighthouse byPlatform for trading terminals; byLaunchpad[name=PumpFun] for pump.fun (bonding curve + PumpSwap graduated AMM). Updated every 15 minutes. This is total attributed volume; includes trades that may not have generated a fee."
+  - "Take rate column: dune_platform_fee_rate_pct, from our own SQL over Dune's solana.account_activity, dex_solana.trades and prices.day. Fees and volume cover the same transactions, the ones that paid the platform's fee wallet, so the rate is the observed per-trade cut rather than fees over a broader attributed volume."
+  - "Stale source: a platform whose data day falls more than 3 days behind, or that the query stops returning, has its gauges deleted and reads unresponsive. The eight uploaded datasets this column read until 2026-09-27 all froze on 2026-08-25 and were served as current for 32 days."
+  - "pump.fun and BasedBot are not measured in the take rate column. pump.fun charges no bonding-curve fee since Aug 2026, so fee-wallet attribution cannot see it; no public fee wallet list for BasedBot exists. The companion memecoin_platform_* gauges below come from a separate harness and are unaffected."
+  - "Volume source (Mobula): Mobula lighthouse byPlatform for trading terminals; byLaunchpad[name=PumpFun] for pump.fun (bonding curve + PumpSwap graduated AMM). Updated every 15 minutes. This feeds the memecoin_platform_* gauges, not the take rate column."
   - "Volume source (fee-paying, Dune): For each transaction that generated a native SOL, USDC, or WSOL inflow to a fee wallet, the largest swap trade in dex_solana.trades with matching tx_id is taken (MAX amount_usd per tx, to avoid double-counting multi-hop routes). Sum across all such transactions = fee_paying_volume_usd_24h. This denominator is self-consistent with the fee numerator."
   - "Two take-rate metrics: memecoin_platform_fee_rate_pct = fees / Mobula total volume (lower bound, shows attribution breadth); memecoin_platform_fee_paying_rate_pct = fees / fee-paying volume (comparable across platforms, closer to the actual per-trade fee rate). memecoin_platform_coverage_pct = fee-paying volume / Mobula volume (shows what fraction of attributed volume generated a fee)."
   - "SOL price: CoinGecko simple/price, refreshed every 5 minutes. Used to convert native SOL and WSOL inflows to USD."
@@ -88,7 +91,7 @@ providers:
   - slug: axiom
     name: Axiom
     tag: "Trading terminal, 0.9% fee"
-    formula: "24h fee rate % (fees_usd / volume_usd * 100) from Dune community datasets (dataset_axiom_daily, cross-chain), latest complete day."
+    formula: "Daily fee rate % (fees_usd / volume_usd * 100) from our own Dune SQL: SOL, USDC and wSOL landing in Axiom's fee wallets over the volume of the transactions paying them, one leg per transaction and trader. Solana only."
     queries:
       p50: dune_platform_fee_rate_pct{platform="axiom"}
       p90: dune_platform_fee_rate_pct{platform="axiom"}
@@ -101,7 +104,7 @@ providers:
   - slug: fomo
     name: Fomo
     tag: "Solana trading platform"
-    formula: "24h fee rate % (fees_usd / volume_usd * 100) from Dune community datasets (dataset_fomo_sol_daily, Solana), latest complete day."
+    formula: "Daily fee rate % (fees_usd / volume_usd * 100) from our own Dune SQL: SOL, USDC and wSOL landing in Fomo's fee wallets over the volume of the transactions paying them, largest USDC leg per transaction. Solana only."
     queries:
       p50: dune_platform_fee_rate_pct{platform="fomo"}
       p90: dune_platform_fee_rate_pct{platform="fomo"}
@@ -114,7 +117,7 @@ providers:
   - slug: pump-fun
     name: pump.fun
     tag: "Solana meme launchpad + relay, 0% fee since Aug 2026"
-    formula: "24h fee rate % (fees_usd / volume_usd * 100) from Dune community datasets (dataset_pumpapp_sol_daily + dataset_pumpfun_relay_daily), latest complete day. fees=0 since fee cut Aug 2026."
+    formula: "Not measured. pump.fun charges no bonding-curve fee since Aug 2026, so no fee wallet receives anything on its trades and fee-wallet attribution cannot see them. The row reads unresponsive."
     queries:
       p50: dune_platform_fee_rate_pct{platform="pump-fun"}
       p90: dune_platform_fee_rate_pct{platform="pump-fun"}
@@ -127,7 +130,7 @@ providers:
   - slug: gmgn
     name: GMGN
     tag: "AI trading terminal, ~1% fee, multi-chain"
-    formula: "24h fee rate % (fees_usd / volume_usd * 100) from Dune community datasets (dataset_gmgn_daily, cross-chain), latest complete day."
+    formula: "Daily fee rate % (fees_usd / volume_usd * 100) from our own Dune SQL: SOL, USDC and wSOL landing in GMGN's fee wallets over the volume of the transactions paying them, one leg per transaction and trader. Solana only."
     queries:
       p50: dune_platform_fee_rate_pct{platform="gmgn"}
       p90: dune_platform_fee_rate_pct{platform="gmgn"}
@@ -140,7 +143,7 @@ providers:
   - slug: photon
     name: Photon
     tag: "Solana trading terminal, ~1% fee"
-    formula: "24h fee rate % (fees_usd / volume_usd * 100) from Dune community datasets (dataset_photon_daily), latest complete day."
+    formula: "Daily fee rate % (fees_usd / volume_usd * 100) from our own Dune SQL: SOL, USDC and wSOL landing in Photon's fee wallets over the volume of the transactions paying them, one leg per transaction and trader. Solana only."
     queries:
       p50: dune_platform_fee_rate_pct{platform="photon"}
       p90: dune_platform_fee_rate_pct{platform="photon"}
@@ -153,7 +156,7 @@ providers:
   - slug: trojan
     name: Trojan
     tag: "Solana Telegram bot, ~0.9% fee"
-    formula: "24h fee rate % (fees_usd / volume_usd * 100) from Dune community datasets (dataset_trojan_daily), latest complete day."
+    formula: "Daily fee rate % (fees_usd / volume_usd * 100) from our own Dune SQL: SOL, USDC and wSOL landing in Trojan's fee wallets over the volume of the transactions paying them, one leg per transaction and trader. Solana only."
     queries:
       p50: dune_platform_fee_rate_pct{platform="trojan"}
       p90: dune_platform_fee_rate_pct{platform="trojan"}
@@ -166,7 +169,7 @@ providers:
   - slug: padre
     name: Terminal
     tag: "pump.fun's own trading app (formerly Padre)"
-    formula: "24h fee rate % (fees_usd / volume_usd * 100) from Dune community datasets (dataset_terminal_daily, cross-chain), latest complete day."
+    formula: "Daily fee rate % (fees_usd / volume_usd * 100) from our own Dune SQL: SOL, USDC and wSOL landing in Terminal's fee wallets over the volume of the transactions paying them, one leg per transaction and trader. Solana only."
     queries:
       p50: dune_platform_fee_rate_pct{platform="padre"}
       p90: dune_platform_fee_rate_pct{platform="padre"}
@@ -179,7 +182,7 @@ providers:
   - slug: basedbot
     name: BasedBot
     tag: "Multi-chain trading bot"
-    formula: "24h fee rate % (fees_usd / volume_usd * 100) from Dune community datasets (dataset_basedbot_daily, cross-chain), latest complete day."
+    formula: "Not measured. No public fee wallet or router list for BasedBot exists to attribute its transactions from. The row reads unresponsive."
     queries:
       p50: dune_platform_fee_rate_pct{platform="basedbot"}
       p90: dune_platform_fee_rate_pct{platform="basedbot"}

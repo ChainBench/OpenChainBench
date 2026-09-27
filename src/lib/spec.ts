@@ -457,7 +457,13 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // added, ProviderResult.tier and Benchmark.tierResults. Bench SET changed.
   // v82: add bench 277 pm-open-interest. Bench SET changed.
   // v83: add bench 278 rwa-solana-depth. Bench SET changed.
-  ["bench-unfiltered-v83", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v84 (2026-09-27): the Dune trial ends 2026-10-02, so bench 201 moves onto
+  // DeFiLlama's free dexs and fees adapters (new gauges, a provider set without
+  // BasedBot, commission and take-rate panels) and benches 203, 206, 207 and 232
+  // are gated to staging. Bench SET changed and 201's providers, panels and copy
+  // all changed. This branch numbers its own keys: dev is several releases ahead
+  // and its numbering must not be copied here.
+  ["bench-unfiltered-v84", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -687,7 +693,9 @@ const loadAllBenchmarksCached = unstable_cache(
   // v74: lockstep with bench-unfiltered-v80 (bench 274 names).
   // v75: lockstep with bench-unfiltered-v81 (add bench 276).
   // v76: lockstep with bench-unfiltered-v82 (add bench 277).
-  ["all-benchmarks-v76", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v77: lockstep with bench-unfiltered-v84 (bench 201 to DeFiLlama, four Dune
+  // benches gated).
+  ["all-benchmarks-v77", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
