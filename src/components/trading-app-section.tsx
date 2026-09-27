@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { ProviderLogo } from "@/components/provider-logo";
 import {
+  columnSources,
+  joinList,
   loadTradingAppMatrix,
   TRADING_APP_COLUMNS,
   TRADING_APP_SLUGS,
@@ -11,11 +13,12 @@ import { getTerminalFills } from "@/lib/terminal-fills";
 import { getTradingAppHistory } from "@/lib/trading-app-history";
 
 /**
- * "Trading app" view on /products/<slug>, behind the pill bar. Mirrors
- * one row of the /trading-apps matrix for this platform: the six KPIs
- * (swap tx, average trade, active wallets, fee rate, app
- * rating) with the platform's rank among the cohort on each, then the
- * cohort table so the reader sees where it sits.
+ * "Trading app" view on /products/<slug>, behind the pill bar. Mirrors one
+ * row of the /trading-apps matrix for this platform: whichever KPIs this
+ * deployment serves, with the platform's rank among the cohort on each, then
+ * the cohort table so the reader sees where it sits. The column set comes from
+ * TRADING_APP_COLUMNS, so a bench that is gated takes its column with it here
+ * and on the hub together.
  *
  * Server component reading the same bench blobs the hub reads. Returns
  * null for slugs outside the cohort or with no figure at all.
@@ -31,8 +34,14 @@ export async function TradingAppSection({
   const inVolumeCohort = !!history?.apps.some((a) => a.slug === slug);
   const inFillCohort = !!fills?.terminals.some((t) => t.slug === slug && t.priced > 0);
   const me = TRADING_APP_SLUGS.has(slug) ? matrix.rows.find((r) => r.slug === slug) : undefined;
-  const hasDune = !!me && TRADING_APP_COLUMNS.some((c) => me.values[c.key] !== null);
-  if (!inVolumeCohort && !hasDune && !inFillCohort) return null;
+  const hasKpis = !!me && TRADING_APP_COLUMNS.some((c) => me.values[c.key] !== null);
+  // The heading and the footnote name the sources behind the columns this
+  // deployment serves. Hardcoding one left the page crediting Dune for figures
+  // that came from DeFiLlama after bench 201 moved.
+  const sources = columnSources(TRADING_APP_COLUMNS);
+  const sourceLabel = sources.length ? `Per platform · ${joinList(sources)}` : "Per platform";
+  const sourceSentence = sources.length ? `${joinList(sources)} figures` : "Figures";
+  if (!inVolumeCohort && !hasKpis && !inFillCohort) return null;
 
   return (
     <section id="trading-app" className="scroll-mt-24 py-10 border-t border-ink/8 first:border-0">
@@ -75,13 +84,13 @@ export async function TradingAppSection({
         </div>
       )}
 
-      {hasDune && me && (
+      {hasKpis && me && (
       <>
       <p
         className="label-mono text-[10px] uppercase tracking-wide text-ink-faint mb-3"
         style={{ fontFamily: "var(--font-mono, monospace)" }}
       >
-        On-chain activity · Dune dataset
+        {sourceLabel}
       </p>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-8">
         {TRADING_APP_COLUMNS.map((col) => {
@@ -100,9 +109,6 @@ export async function TradingAppSection({
                 style={{ fontFamily: "var(--font-mono, monospace)" }}
               >
                 {col.label}
-                {me.scopes[col.key] && (
-                  <span className="ml-1.5 normal-case tracking-normal text-ink-muted">· {me.scopes[col.key]}</span>
-                )}
               </p>
               <p
                 className="mt-auto text-lg sm:text-xl font-semibold tabular-nums leading-tight"
@@ -128,7 +134,7 @@ export async function TradingAppSection({
         className="label-mono text-[10px] uppercase tracking-wide text-ink-faint mb-3"
         style={{ fontFamily: "var(--font-mono, monospace)" }}
       >
-        Cohort · sorted by swap transactions
+        Cohort · sorted by the first column where more is better
       </p>
       <div className="overflow-x-auto border-y border-rule">
         <table className="w-full text-[12.5px]">
@@ -163,7 +169,6 @@ export async function TradingAppSection({
                   {TRADING_APP_COLUMNS.map((c) => {
                     const v = row.values[c.key];
                     const best = v !== null && matrix.bests[c.key] === v;
-                    const scope = row.scopes[c.key];
                     return (
                       <td
                         key={c.key}
@@ -172,9 +177,6 @@ export async function TradingAppSection({
                         title={row.formulas[c.key] ?? undefined}
                       >
                         {c.fmt(v)}
-                        {v !== null && scope === "Solana only" && (
-                          <span className="ml-1 text-[9px] uppercase tracking-[0.12em] text-ink-faint" title="Solana only">SOL</span>
-                        )}
                       </td>
                     );
                   })}
@@ -186,9 +188,9 @@ export async function TradingAppSection({
       </div>
       {matrix.updatedAt && (
         <p className="mt-3 text-[11px] text-ink-faint">
-          Dune figures as of {new Date(matrix.updatedAt).toUTCString().replace("GMT", "UTC")}. Scope differs per
-          platform: cross-chain where the Dune dataset covers every chain the platform runs on, <span className="uppercase tracking-[0.12em]">SOL</span> where it covers Solana only (hover a figure for the exact source). Each column links to its
-          benchmark on{" "}
+          {sourceSentence} as of {new Date(matrix.updatedAt).toUTCString().replace("GMT", "UTC")}. Each
+          row covers whatever chains its own adapter covers; hover a figure for
+          the exact source. Each column links to its benchmark on{" "}
           <Link href="/trading-apps" className="underline hover:no-underline">
             /trading-apps
           </Link>

@@ -1,4 +1,10 @@
-// dune-platform-volume -- Bench 201
+// dune-platform-volume -- benches 203, 206, 207 and 232
+//
+// Bench 201 read this until 2026-09-27 and now reads DeFiLlama through
+// harnesses/trading-app-volume, because its two figures are free there. The four
+// benches left need what only this can measure, they are gated to staging while
+// the Dune plan is unpaid, and this harness stays deployed and correct for the
+// day it is paid for.
 //
 // Measures one complete UTC day of Solana trading volume, transactions, platform
 // fees and unique wallets per trading platform, with our own SQL over Dune's
@@ -69,7 +75,7 @@ var maxDataAgeDays = func() int {
 
 func main() {
 	fmt.Println("=== dune-platform-volume harness ===")
-	fmt.Println("OpenChainBench Bench 201 -- Solana trading platform daily metrics, our own SQL over Dune's tables.")
+	fmt.Println("OpenChainBench benches 203, 206, 207, 232 -- Solana trading platform daily metrics, our own SQL over Dune's tables.")
 
 	apiKey := os.Getenv("DUNE_API_KEY")
 	if apiKey == "" {

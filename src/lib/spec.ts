@@ -467,7 +467,12 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // rewritten, and pump.fun and BasedBot become unresponsive rows, so cached
   // entries carry the retired dataset names into the Dataset blob and the
   // quotable sentence.
-  ["bench-unfiltered-v86", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v87 (2026-09-27): the Dune trial ends 2026-10-02, so bench 201 moves onto
+  // DeFiLlama's free dexs and fees adapters (new gauges, new provider set
+  // without BasedBot, a commission and take-rate panel) and benches 203, 206,
+  // 207 and 232 are gated to staging. Bench SET changed and 201's providers,
+  // panels and copy all changed.
+  ["bench-unfiltered-v87", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -700,7 +705,9 @@ const loadAllBenchmarksCached = unstable_cache(
   // v77: bumped with bench-unfiltered-v84 (273, 274, 275 join the set).
   // v78: lockstep with bench-unfiltered-v85 (bench 274 market cap floor).
   // v79: lockstep with bench-unfiltered-v86 (bench 201 source swap).
-  ["all-benchmarks-v79", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v80: lockstep with bench-unfiltered-v87 (bench 201 to DeFiLlama, four
+  // Dune benches gated).
+  ["all-benchmarks-v80", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
