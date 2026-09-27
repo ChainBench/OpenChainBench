@@ -90,13 +90,16 @@ func main() {
 		os.Exit(0)
 	}
 
-	// Push the SQL in this repo onto the query id on every start, so a deploy
-	// cannot leave Dune running an older query than the one under review.
-	// Writing the SQL costs nothing; only an execution is metered.
-	if err := client.updateQuery(queryID, day); err != nil {
-		fmt.Printf("[init] could not update query %s SQL: %v\n", queryID, err)
-	} else {
-		fmt.Printf("[init] query %s SQL set from this build\n", queryID)
+	// Make the SQL in this repo the SQL Dune runs, so a deploy cannot leave an
+	// older query behind. Writing it costs nothing, but it does bump the query
+	// version and drop the cached result, so it only happens when the SQL differs.
+	switch wrote, err := client.syncQuery(queryID, day); {
+	case err != nil:
+		fmt.Printf("[init] could not sync query %s SQL: %v\n", queryID, err)
+	case wrote:
+		fmt.Printf("[init] query %s SQL updated from this build\n", queryID)
+	default:
+		fmt.Printf("[init] query %s SQL already matches this build\n", queryID)
 	}
 
 	go func() {

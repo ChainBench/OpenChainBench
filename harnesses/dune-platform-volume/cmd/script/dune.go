@@ -345,10 +345,43 @@ func (d *duneClient) createQuery(day time.Time) (string, error) {
 	return fmt.Sprintf("%d", out.QueryID), nil
 }
 
-// updateQuery pushes querySQL onto an existing query id. The harness does this
-// once on start so the SQL in this repo is the SQL Dune runs, and so the query id
-// and its execution history survive a rewrite instead of a new query being
-// created next to the old one.
+// storedSQL is the SQL Dune currently holds for a query id.
+func (d *duneClient) storedSQL(queryID string) (string, error) {
+	resp, err := d.req("GET", "/query/"+queryID, nil)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 400 {
+		body, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("HTTP %d: %s", resp.StatusCode, body)
+	}
+	var out struct {
+		QuerySQL string `json:"query_sql"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		return "", err
+	}
+	return out.QuerySQL, nil
+}
+
+// syncQuery makes the SQL in this repo the SQL Dune runs, keeping the query id and
+// its history rather than creating a new query beside the old one. It writes only
+// when the SQL actually differs: a PATCH bumps the query version and Dune then
+// answers /results with 404 until something re-executes, so patching identical SQL
+// on every container start would turn each restart into a metered execution.
+// Reports whether it wrote.
+func (d *duneClient) syncQuery(queryID string, day time.Time) (bool, error) {
+	stored, err := d.storedSQL(queryID)
+	if err != nil {
+		return false, err
+	}
+	if stored == querySQL {
+		return false, nil
+	}
+	return true, d.updateQuery(queryID, day)
+}
+
 func (d *duneClient) updateQuery(queryID string, day time.Time) error {
 	payload := map[string]any{
 		"name":       queryName,
