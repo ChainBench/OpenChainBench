@@ -12,21 +12,37 @@ import (
 // windowSpan is the sliding-window length the whole harness is built around.
 const windowSpan = 24 * time.Hour
 
-// runTick performs one poll cycle for a single venue+asset pair:
-// fetch liquidations since the last tick, dedup into the window, prune the
-// window and seen-set, fetch OI, and publish gauges.
+// pairState is the cross-tick state runTick reads and writes for one pair.
+type pairState struct {
+	window *SlidingWindow
+	seen   *SeenSet
+	oi     *SampleWindow
+}
+
+// newPairState builds the windows for one venue+asset pair.
+func newPairState() *pairState {
+	return &pairState{
+		window: NewSlidingWindow(windowSpan),
+		seen:   NewSeenSet(),
+		oi:     NewSampleWindow(windowSpan),
+	}
+}
+
+// runTick performs one poll cycle for a single venue+asset pair: fetch
+// liquidations since the last tick, fold them into the window, fetch open
+// interest and the venue's 24h notional, then publish.
 //
 // sinceMs is the caller-managed high-water mark (unix ms) for liquidation
 // fetches; on the first tick it is now-24h so venues with historical
-// endpoints backfill the full window. runTick reports whether both fetches
+// endpoints backfill the full window. runTick reports whether every fetch
 // succeeded so the caller can advance sinceMs and aggregate venue health.
-// On any error the previously published gauges are intentionally left
+// On a fetch error the previously published gauges are intentionally left
 // untouched.
-func runTick(va VenueAsset, w *SlidingWindow, seen *SeenSet, sinceMs int64) bool {
+func runTick(va VenueAsset, st *pairState, sinceMs int64) bool {
 	now := time.Now()
 	nowMs := now.UnixMilli()
 	cutoffMs := nowMs - windowSpan.Milliseconds()
-	w.MarkTick(now)
+	st.window.MarkTick(now)
 
 	ok := true
 	hasLiqSource := va.Source.HasLiquidationSource()
@@ -40,7 +56,7 @@ func runTick(va VenueAsset, w *SlidingWindow, seen *SeenSet, sinceMs int64) bool
 			handleFetchError(va, "liquidations", liqErr)
 			ok = false
 		} else {
-			added := 0
+			added, updated := 0, 0
 			for _, e := range events {
 				if e.Key == "" || e.TimestampMs <= 0 || e.NotionalUSD <= 0 {
 					continue
@@ -48,20 +64,28 @@ func runTick(va VenueAsset, w *SlidingWindow, seen *SeenSet, sinceMs int64) bool
 				if e.TimestampMs < cutoffMs {
 					continue // older than the window; irrelevant
 				}
-				if seen.Add(e.Key, e.TimestampMs) {
-					w.Add(e.TimestampMs, e.NotionalUSD)
+				if e.Bucket {
+					// A still-growing hourly total: the newest reading
+					// replaces the one held for that key.
+					if st.window.Upsert(e.Key, e.TimestampMs, e.NotionalUSD) {
+						updated++
+					}
+					continue
+				}
+				if st.seen.Add(e.Key, e.TimestampMs) {
+					st.window.Add(e.Key, e.TimestampMs, e.NotionalUSD)
 					added++
 				}
 			}
-			if added > 0 {
-				log.Printf("[%s/%s] +%d liquidation event(s), window now %d event(s)",
-					va.Venue, va.Asset, added, w.Len())
+			if added > 0 || updated > 0 {
+				log.Printf("[%s/%s] +%d event(s), %d bucket(s) restated, window now %d entry(ies)",
+					va.Venue, va.Asset, added, updated, st.window.Len())
 			}
 		}
 	}
 
-	w.Prune(nowMs)
-	seen.Prune(cutoffMs)
+	st.window.Prune(nowMs)
+	st.seen.Prune(cutoffMs)
 
 	oi, oiErr := va.Source.FetchOI(va.Asset)
 	if oiErr != nil {
@@ -69,24 +93,65 @@ func runTick(va VenueAsset, w *SlidingWindow, seen *SeenSet, sinceMs int64) bool
 		ok = false
 	}
 
+	vol, hasVolSource, volErr := venueVolume24h(va.Source, va.Asset)
+	if volErr != nil {
+		handleFetchError(va, "volume", volErr)
+		ok = false
+	}
+
 	// Publish OI unconditionally (all venues have OI).
-	// Publish liq_volume and liq_rate only for venues with a liquidation source —
-	// absent series display as N/A in the frontend, not as 0%.
 	if oiErr == nil {
 		if oi > 0 {
 			liqOpenInterest.WithLabelValues(va.Venue, va.Asset).Set(oi)
+			st.oi.Add(nowMs, oi)
 		} else {
 			recordFetchError(va.Venue, va.Asset, "oi_zero")
 			log.Printf("[%s/%s] OI endpoint returned non-positive value %.4f; keeping previous OI gauge", va.Venue, va.Asset, oi)
 			ok = false
 		}
 	}
+	meanOI := st.oi.Mean()
+	if meanOI > 0 {
+		liqOpenInterestAvg.WithLabelValues(va.Venue, va.Asset).Set(meanOI)
+	}
+
+	if hasVolSource && volErr == nil && vol > 0 {
+		liqVenueVolume.WithLabelValues(va.Venue, va.Asset).Set(vol)
+	}
+
+	// liq_volume and liq_rate are published only for venues with a
+	// liquidation source; an absent series reads as N/A on the site rather
+	// than as a 0% that nobody can tell from a real one.
+	volume := 0.0
 	if hasLiqSource && liqErr == nil {
-		volume := w.Sum()
+		volume = st.window.Sum()
 		setLiqVolume(va.Venue, va.Asset, volume)
-		if oiErr == nil && oi > 0 {
-			liqRate.WithLabelValues(va.Venue, va.Asset).Set(volume / oi * 100)
+		if meanOI > 0 {
+			liqRate.WithLabelValues(va.Venue, va.Asset).Set(volume / meanOI * 100)
 		}
+		largest := st.window.Max()
+		share := 0.0
+		if volume > 0 {
+			share = largest / volume * 100
+		}
+		liqLargestShare.WithLabelValues(va.Venue, va.Asset).Set(share)
+	}
+
+	in := rankInput{
+		hasSource: hasLiqSource,
+		fetchOK:   liqErr == nil && oiErr == nil && volErr == nil,
+		oiSamples: st.oi.Len(),
+		liqUSD24h: volume,
+		meanOIUSD: meanOI,
+		volUSD24h: vol,
+		hasVolume: hasVolSource,
+	}
+	liqShareOfVolume.WithLabelValues(va.Venue, va.Asset).Set(in.shareOfVolumePct())
+	ranked, reason := evaluateRank(in)
+	setRanked(va.Venue, va.Asset, ranked)
+	if !ranked {
+		log.Printf("[%s/%s] not ranked: %s (liq24h=$%.2f meanOI=$%.2f vol24h=$%.2f share=%.5f%%)",
+			va.Venue, va.Asset, reason, volume, meanOI, vol, in.shareOfVolumePct())
 	}
 
 	return ok

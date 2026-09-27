@@ -17,8 +17,7 @@ import (
 // pairRuntime carries the cross-tick state of one venue+asset pair.
 type pairRuntime struct {
 	va      VenueAsset
-	window  *SlidingWindow
-	seen    *SeenSet
+	st      *pairState
 	sinceMs int64 // high-water mark for FetchLiquidationsSince
 }
 
@@ -64,8 +63,7 @@ func main() {
 	for _, va := range cfg.Pairs {
 		pairs = append(pairs, &pairRuntime{
 			va:      va,
-			window:  NewSlidingWindow(windowSpan),
-			seen:    NewSeenSet(),
+			st:      newPairState(),
 			sinceMs: startBackfillMs,
 		})
 		venues[va.Venue] = true
@@ -89,7 +87,7 @@ func main() {
 			wg.Add(1)
 			go func(p *pairRuntime) {
 				defer wg.Done()
-				ok := runTick(p.va, p.window, p.seen, p.sinceMs)
+				ok := runTick(p.va, p.st, p.sinceMs)
 				if ok {
 					// Next tick fetches from the start of this one; the
 					// overlap is harmless because of the SeenSet dedup.
@@ -115,7 +113,7 @@ func main() {
 			venueWarm[venue] = true
 		}
 		for _, p := range pairs {
-			if !p.window.IsWarm(now) {
+			if !p.st.window.IsWarm(now) {
 				venueWarm[p.va.Venue] = false
 			}
 		}

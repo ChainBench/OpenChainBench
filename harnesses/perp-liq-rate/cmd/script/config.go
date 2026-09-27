@@ -74,6 +74,12 @@ func loadConfig() (*Config, error) {
 	lighter := NewLighter()
 	aevo := NewAevo()
 	paradex := NewParadex()
+	// Added 2026-09-27: two venues whose liquidation feed was checked and
+	// found to exist. Aster via Coinalyze (exchange code S), Ostium via the
+	// Ormi subgraph the cohort harness reads. Slugs and display names match
+	// the site's perp venue registry so the product pages keep joining.
+	aster := NewAster()
+	ostium := NewOstium()
 
 	pairs := []VenueAsset{
 		{Venue: "hyperliquid", Asset: "ETH", Source: hyperliquid},
@@ -98,6 +104,13 @@ func loadConfig() (*Config, error) {
 
 		{Venue: "paradex", Asset: "ETH", Source: paradex},
 		{Venue: "paradex", Asset: "BTC", Source: paradex},
+
+		{Venue: "aster", Asset: "ETH", Source: aster},
+		{Venue: "aster", Asset: "BTC", Source: aster},
+		{Venue: "aster", Asset: "SOL", Source: aster},
+
+		{Venue: "ostium", Asset: "ETH", Source: ostium},
+		{Venue: "ostium", Asset: "BTC", Source: ostium},
 	}
 
 	return &Config{

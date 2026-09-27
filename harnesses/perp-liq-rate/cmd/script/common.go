@@ -26,6 +26,11 @@ type LiqEvent struct {
 	Key         string  // dedup key (trade hash or tx+index composite)
 	NotionalUSD float64 // liquidated notional in USD
 	TimestampMs int64   // event time, unix milliseconds
+	// Bucket marks a figure that is still growing: an aggregator's hourly
+	// total, re-read on every tick while its hour is open. The runner
+	// replaces the stored value for such a key instead of discarding the
+	// repeat as a duplicate. See the note at the top of window.go.
+	Bucket bool
 }
 
 // Source is implemented by every venue in the source_*.go files.
@@ -38,6 +43,32 @@ type Source interface {
 	// data source. When false, FetchLiquidationsSince always returns empty and
 	// the runner must not publish liq_rate or liq_volume (N/A, not 0%).
 	HasLiquidationSource() bool
+}
+
+// volumeSource is implemented by the venues whose OI endpoint also carries
+// the market's 24h traded notional in USD. That figure is the denominator of
+// the plausibility test in plausibility.go, so a venue that does not
+// implement this interface publishes its figures but never ranks. The
+// interface is separate from Source rather than a fourth method on it
+// because "this venue exposes no volume" is a fact about the venue, not a
+// stub every source has to carry.
+type volumeSource interface {
+	FetchVolume24hUSD(asset string) (float64, error)
+}
+
+// venueVolume24h reads the venue's own 24h traded notional when the source
+// exposes one. The second return says whether a denominator exists at all,
+// which the gate reports differently from a denominator that read zero.
+func venueVolume24h(s Source, asset string) (float64, bool, error) {
+	vs, ok := s.(volumeSource)
+	if !ok {
+		return 0, false, nil
+	}
+	v, err := vs.FetchVolume24hUSD(asset)
+	if err != nil {
+		return 0, true, err
+	}
+	return v, true, nil
 }
 
 // ErrVenueUnavailable marks a venue as temporarily unavailable for this tick

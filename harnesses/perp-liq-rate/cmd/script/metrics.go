@@ -24,7 +24,32 @@ var (
 
 	liqOpenInterest = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "perp_liq_open_interest_usd",
-		Help: "Current open interest (USD) per venue and asset (TVL proxy for venues without a native OI endpoint).",
+		Help: "Current open interest (USD) per venue and asset, read fresh on every tick.",
+	}, []string{"venue", "chain"})
+
+	liqOpenInterestAvg = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "perp_liq_open_interest_avg_24h_usd",
+		Help: "Mean open interest (USD) over the trailing 24h, one sample per tick. This is the denominator of perp_liq_rate_24h_pct: the numerator covers 24 hours, so the denominator does too. Dividing a 24h sum by an instantaneous reading made the rate move with the denominator, which is how Gains published 343% on 2026-09-24 while its numerator stood still.",
+	}, []string{"venue", "chain"})
+
+	liqVenueVolume = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "perp_liq_venue_volume_24h_usd",
+		Help: "The venue's own 24h traded notional (USD) for this market, from the same endpoint that reports its open interest. Published only for venues that expose one.",
+	}, []string{"venue", "chain"})
+
+	liqShareOfVolume = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "perp_liq_share_of_volume_pct",
+		Help: "Liquidated notional over the trailing 24h as a percentage of the venue's own 24h traded notional. The plausibility test this bench ranks on: inside [0.01, 3] the figure is a measurement, below it an absence, above it a figure that is not comparable to the rest of the field.",
+	}, []string{"venue", "chain"})
+
+	liqLargestShare = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "perp_liq_largest_event_share_pct",
+		Help: "The largest single liquidation in the 24h window as a percentage of the window total. Near 100 means the figure is one position rather than a flow.",
+	}, []string{"venue", "chain"})
+
+	liqRanked = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "perp_liq_ranked",
+		Help: "1 when the row's liquidation rate is comparable to the rest of the field and takes a rank, 0 when it is published but not ranked. Read perp_liq_share_of_volume_pct, perp_liq_largest_event_share_pct and perp_liq_source_available for which condition failed; the harness logs the reason by name on every tick.",
 	}, []string{"venue", "chain"})
 
 	liqWarmingUp = prometheus.NewGaugeVec(prometheus.GaugeOpts{
@@ -66,6 +91,11 @@ func registerMetrics() *prometheus.Registry {
 		liqRate,
 		liqVolume,
 		liqOpenInterest,
+		liqOpenInterestAvg,
+		liqVenueVolume,
+		liqShareOfVolume,
+		liqLargestShare,
+		liqRanked,
 		liqWarmingUp,
 		liqHealth,
 		liqLastRefresh,
@@ -86,11 +116,13 @@ func setLiqVolume(venue, asset string, volumeUSD float64) {
 	liqVolume.WithLabelValues(venue, asset).Set(volumeUSD)
 }
 
-// setOIAndRate publishes open interest and, given the current window sum,
-// the liquidation rate. Callers must only invoke this with oiUSD > 0.
-func setOIAndRate(venue, asset string, volumeUSD, oiUSD float64) {
-	liqOpenInterest.WithLabelValues(venue, asset).Set(oiUSD)
-	liqRate.WithLabelValues(venue, asset).Set(volumeUSD / oiUSD * 100)
+// setRanked publishes whether the row takes a rank on the board.
+func setRanked(venue, asset string, ranked bool) {
+	v := 0.0
+	if ranked {
+		v = 1.0
+	}
+	liqRanked.WithLabelValues(venue, asset).Set(v)
 }
 
 // recordFetchError increments the error counter with a classified type.

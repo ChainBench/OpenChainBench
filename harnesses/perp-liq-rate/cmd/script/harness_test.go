@@ -37,9 +37,9 @@ func TestGainsTopicNonEmpty(t *testing.T) {
 func TestSlidingWindowAndSeenSet(t *testing.T) {
 	w := NewSlidingWindow(24 * time.Hour)
 	now := time.Now().UnixMilli()
-	w.Add(now-25*3600*1000, 100) // stale
-	w.Add(now-3600*1000, 50)
-	w.Add(now, 25)
+	w.Add("stale", now-25*3600*1000, 100) // stale
+	w.Add("a", now-3600*1000, 50)
+	w.Add("b", now, 25)
 	w.Prune(now)
 	if got := w.Sum(); got != 75 {
 		t.Fatalf("Sum = %v, want 75", got)
