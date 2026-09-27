@@ -2,9 +2,9 @@
 
 slug: memecoin-platforms
 number: "203"
-title: "Solana memecoin platform fee rates: Axiom vs Fomo vs pump.fun vs GMGN vs Trojan, live 24h"
-seo_title: "Solana memecoin platform fees 2026: Axiom, Fomo, pump.fun, GMGN, Trojan, Photon, Maestro"
-seo_description: "{{best_name}} leads Solana memecoin platforms at {{best_p50}} take rate. Axiom vs Fomo vs pump.fun vs GMGN vs Trojan ranked by protocol revenue per dollar traded, live from Dune fee wallet monitoring."
+title: "Solana memecoin platform fee rates: Axiom vs Fomo vs GMGN vs Trojan vs Terminal"
+seo_title: "Solana memecoin platform fees 2026: Axiom, Fomo, GMGN, Trojan, Terminal, Photon, Maestro"
+seo_description: "{{best_name}} leads Solana memecoin platforms at {{best_p50}} take rate. Axiom vs Fomo vs GMGN vs Trojan vs Terminal ranked by protocol revenue per dollar traded, from on-chain fee wallet attribution."
 subtitle: Daily protocol fee revenue divided by trading volume for each Solana memecoin platform. The take rate column reads our own Dune SQL over the SOL, USDC and wSOL landing in each platform's fee wallets, against the volume of the transactions that paid them, one execution a day.
 
 category: Trading

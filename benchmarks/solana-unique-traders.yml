@@ -17,11 +17,11 @@ disclaimer: |
   Counts distinct transaction ids per platform, not wallets, and the wallet count is several times lower because an active trader or bot sends many transactions a day. Bots, MEV searchers and multi-wallet traders are all included. A transaction counts for a platform when that platform's fee wallet received value in it, on Solana. pump.fun and BasedBot read unresponsive, for reasons the methodology gives.
 
 seo_intro: |
-  Axiom leads Solana platforms by raw swap transaction count, on the strength of a
-  broad web-native user base and high-frequency retail flow. Fomo follows, its count
-  swollen by the gas it sponsors on every trade it routes, and GMGN and Terminal each
-  attract hundreds of thousands of transactions a day while Trojan and Photon serve a
-  smaller and more concentrated segment. Every count here is fee-paying: a transaction
+  {{best_name}} leads Solana platforms by raw swap transaction count. The terminals
+  with broad web-native user bases and high-frequency retail flow sit at the top,
+  and the Telegram-native segment below them sends fewer transactions of a larger
+  average size. Fomo is counted one transaction at a time like the rest, so the gas
+  it sponsors cannot multiply its count. Every count here is fee-paying: a transaction
   is attributed to the platform whose fee wallet received value in it, from our own
   SQL over Dune's solana.account_activity and dex_solana.trades, one execution a day.
   Transaction count and volume rankings diverge, which is the point of reading both.
@@ -52,10 +52,10 @@ methodology:
 findings:
   - "{{best_name}} leads Solana platforms with {{best_p50}} daily swap transactions."
   - "Every count here is fee-paying, so a transaction appears only where a platform earned on it. A trade routed through one terminal into another's pool counts once, for the terminal that took the fee."
-  - "Axiom leads on transaction count, reflecting its broad web-native user base and high-frequency retail flow."
+  - "{{best_name}} leads on transaction count, and the terminals with broad web-native user bases sit above the Telegram-native segment."
   - "Trojan and Photon serve a smaller but highly active segment, with fewer transactions and a higher average trade size."
   - "pump.fun and BasedBot read unresponsive. pump.fun charges no bonding-curve fee, so there is no fee wallet to attribute its transactions from, and BasedBot has no public wallet list."
-  - "Unique swap tx and volume rankings diverge: Axiom leads terminals on tx count while Photon and Trojan serve more concentrated user bases with higher average position sizes."
+  - "Transaction count and volume rankings diverge, which is why both are worth reading: a platform can send many small transactions or few large ones and land in a different place on each."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/dune-platform-volume
 

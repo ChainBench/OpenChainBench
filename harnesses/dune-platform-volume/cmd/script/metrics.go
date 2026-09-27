@@ -157,6 +157,14 @@ func publishableRows(rows []duneRow, maxDays int, now time.Time) (usable, priced
 	return usable, priced
 }
 
+// dayFinal is a stricter bar than dayCovered. 23:00 is enough to publish a day,
+// but recording it as measured stops it ever being re-run, so a day the query saw
+// only to 23:00 would be locked in an hour short. A retry can replace it, because
+// publish accepts a later usable and priced result for the same day.
+func dayFinal(r duneRow) bool {
+	return r.DataDayUnix > 0 && r.DayLastTradeUnix >= r.DataDayUnix+23*3600+55*60
+}
+
 // publishRows writes the platforms whose data day is inside the window and fully
 // loaded, and drops everything else. maxDays is how many whole UTC days behind the
 // data day may be; known is every platform the query is expected to return, so one
@@ -194,6 +202,9 @@ func publishRows(rows []duneRow, maxDays int, now time.Time, known []string) (pu
 			platformFeeRate.DeleteLabelValues(r.Platform)
 			// prices.day may not have the day's SOL row yet when the query runs.
 			// The day is not finished, so the refresh gate must let it be retried.
+			complete = false
+		}
+		if !dayFinal(r) {
 			complete = false
 		}
 		if r.AvgTradeUSD > 0 {

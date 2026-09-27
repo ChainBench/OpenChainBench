@@ -317,3 +317,30 @@ func TestMaxDataAgeDaysIsAtLeastTwo(t *testing.T) {
 		t.Error("a 2-day window must accept the pre-lag target day")
 	}
 }
+
+// A day the query saw only to 23:00 publishes but is not recorded as measured, so
+// a retry can still replace it with a fuller read of the same day.
+func TestAShortDayPublishesButIsNotRecorded(t *testing.T) {
+	t.Cleanup(func() { dropPlatform("short"); publishedDay = "" })
+	publishedDay = ""
+
+	day := dayUnix(2026, 9, 26)
+	rows := []duneRow{{
+		Platform: "short", DataDayUnix: day, DayLastTradeUnix: day + 23*3600 + 10*60,
+		SolPriceUSD: 119, VolumeUSD: 100, Txns: 4, AvgTradeUSD: 25,
+	}}
+	published, _ := publishRows(rows, 3, now, []string{"short"})
+	if len(published) != 1 {
+		t.Fatalf("published = %v, want [short] (23:00 is enough to publish)", published)
+	}
+	if publishedDay != "" {
+		t.Errorf("publishedDay = %q, want empty for a day seen only to 23:10", publishedDay)
+	}
+
+	// Seen to the end, it is recorded.
+	rows[0].DayLastTradeUnix = lastTradeAt(day)
+	publishRows(rows, 3, now, []string{"short"})
+	if publishedDay != "2026-09-26" {
+		t.Errorf("publishedDay = %q, want 2026-09-26", publishedDay)
+	}
+}
