@@ -44,11 +44,11 @@ abstract: |
 methodology:
   - "Source: DeFiLlama's open dexs and fees adapters, read hourly from the free summary endpoints. Both legs are per UTC day and the current open day is dropped."
   - "Volume: /summary/dexs/<slug>?dataType=dailyVolume, summed over every chain the adapter covers. This bench read third-party Dune datasets until 2026-09-27; they froze on 2026-08-25 and were served as current for 32 days, which is why the source is now one with a maintained adapter behind it."
-  - "Commission: /summary/fees/<slug>?dataType=dailyRevenue, the app's own cut. Not dailyFees, which adds what the venue underneath charges: for Axiom on 2026-09-26 that reads 2.27M against 1.38M of revenue."
-  - "Take rate: commission divided by the volume of the same days, so the two halves describe the same trades. A negative daily revenue, which DeFiLlama reports now and then when an adapter corrects itself, is dropped rather than pulling a window below zero, and a restatement always wins over what the last read held."
+  - "Commission: /summary/fees/<slug>?dataType=dailyRevenue, the app's own cut net of referral and cashback paybacks. Not dailyFees, which adds what the venue underneath charges: for Axiom on 2026-09-26 that reads 2.27M against 1.38M of revenue. A day returned as zero against real volume is treated as an artifact and the newest day with a positive cut is used instead."
+  - "Take rate: commission divided by the volume of the same days, so the two halves describe the same trades. It is the app's own margin, not the price of a swap: DeFiLlama's revenue is net of referral and cashback paybacks, so an app that rebates a third of its fee reads a third lower while its traders pay the same. Ranking it higher rewards the larger margin, which is what this bench is about."
   - "Day anchoring: every figure for an app ends on that app's own latest closed day, not on a shared cohort day. An adapter more than 3 days behind snaps back to the cohort day and reads unresponsive; a window it can no longer fill to 80% coverage goes absent with it."
   - "The commission can trail the volume by up to 3 days, because a fees adapter sometimes runs behind its dexs one. It ends on the newest day that has both legs, so the take rate always divides figures from the same day; dune_platform is no longer involved and trading_app_revenue_day_unix carries the day."
-  - "Cohort: the seven apps with both a dexs and a fees adapter on DeFiLlama. BasedBot has neither and left the table on 2026-09-27; it was unmeasured before that too."
+  - "Cohort: the seven apps this bench ranks, each with both a dexs and a fees adapter on DeFiLlama. Others have both too and sit in bench 267 instead, which is the whole cohort. BasedBot has neither and left the table on 2026-09-27; it was unmeasured before that too."
   - "Cross-check against our own Solana SQL for 2026-09-26: Trojan +0.1%, Terminal +1.4%, Photon +4.9% on volume, and Axiom -2.3%, Photon -0.7% on commission. GMGN and FOMO read higher here because this counts every chain and every Relay leg."
 
 findings:
@@ -71,14 +71,14 @@ metric_panels:
     metric: trading_app_revenue_usd{window="1d"}
     unit: usd
     higher_is_better: true
-    description: "The app's own cut on its latest closed day, from DeFiLlama's fees adapter (dailyRevenue)."
+    description: "The app's own cut, from DeFiLlama's fees adapter (dailyRevenue), on the newest day with both a volume and a commission figure. That can trail the volume day by up to 3 days when the fees adapter is behind."
   - id: take_1d
     label: Take rate
     label_key: app
     metric: trading_app_take_rate_pct{window="1d"}
     unit: pct
-    higher_is_better: false
-    description: "Commission as a percentage of the volume routed on the same day."
+    higher_is_better: true
+    description: "What the app kept per dollar it routed, on the newest day carrying both figures. DeFiLlama's revenue is net of referral and cashback paybacks, so this is the app's own margin and not what a trader pays."
   - id: revenue_7d
     label: Commission 7d
     label_key: app
@@ -86,15 +86,15 @@ metric_panels:
     unit: usd
     higher_is_better: true
     tab: false
-    description: "The app's cut over the 7 closed days ending on its latest one."
+    description: "The app's cut over 7 closed days ending on the newest day with both figures, not necessarily the volume day."
   - id: take_7d
     label: Take rate 7d
     label_key: app
     metric: trading_app_take_rate_pct{window="7d"}
     unit: pct
-    higher_is_better: false
+    higher_is_better: true
     tab: false
-    description: "Commission over the same 7 days divided by the volume of those days."
+    description: "Commission over those same 7 days divided by the volume of exactly those days."
   - id: vol_7d
     label: Volume 7d
     label_key: app
@@ -118,15 +118,15 @@ metric_panels:
     unit: usd
     higher_is_better: true
     tab: false
-    description: "The app's cut over the 30 closed days ending on its latest one."
+    description: "The app's cut over 30 closed days ending on the newest day with both figures, not necessarily the volume day."
   - id: take_30d
     label: Take rate 30d
     label_key: app
     metric: trading_app_take_rate_pct{window="30d"}
     unit: pct
-    higher_is_better: false
+    higher_is_better: true
     tab: false
-    description: "Commission over the same 30 days divided by the volume of those days."
+    description: "Commission over those same 30 days divided by the volume of exactly those days."
 
 ledger_columns:
   - { label: "Volume", slot: p50, windows: { 7d: vol_7d, 30d: vol_30d } }

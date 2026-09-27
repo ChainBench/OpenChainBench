@@ -22,7 +22,7 @@ import type { ProviderResult } from "@/types/benchmark";
  */
 
 export const TRADING_APP_PLATFORMS = [
-  { slug: "pump-fun", name: "pump.fun" },
+  { slug: "pump-fun", name: "pump.fun app" },
   { slug: "padre", name: "Terminal" },
   { slug: "gmgn", name: "GMGN" },
   { slug: "axiom", name: "Axiom" },
@@ -50,6 +50,12 @@ export type TradingAppColumn = {
   key: TradingAppColKey;
   label: string;
   bench: string;
+  /** False for a column with no better end. The take rate is the app's own
+   *  margin net of referral paybacks, so neither direction is good news for a
+   *  reader: ranking it low-is-best called an app that rebates a third of its fee
+   *  "cheaper" when its traders pay the same. Such a column shows its figures and
+   *  no rank, no best and no highlight. Defaults to true. */
+  rankable?: boolean;
   /** How wide this column's figures are, stated by the column rather than read
    *  out of its spec prose. "app" means each row covers whatever its own
    *  adapter covers, which the Chains cell on the same row already shows, so no
@@ -72,37 +78,37 @@ export const ALL_TRADING_APP_COLUMNS: readonly TradingAppColumn[] = [
   {
     key: "traders",
     label: "Swap Tx",
-    scope: "app",
+    scope: "solana",
     bench: "solana-unique-traders",
     fmt: fmtCount,
-    tip: "Unique swap transactions in 24h via Dune. pump.fun uses dex_solana.trades (all swaps incl. 0-fee). Terminals use fee-wallet detection (fee-generating swaps only). Methods differ.",
+    tip: "Swap transactions on one complete UTC day, from our own SQL over Dune: the transactions in which the platform's fee wallet received value, on Solana. pump.fun and BasedBot are not measured, having no fee wallet to attribute from.",
     higherBetter: true,
   },
   {
     key: "tradeSize",
     label: "Avg Trade",
-    scope: "app",
+    scope: "solana",
     bench: "solana-avg-trade-size",
     fmt: fmtUSD,
-    tip: "24h volume ÷ trade count via Mobula. Includes bots and MEV — platforms with heavy bot sniping (notably pump.fun) show lower averages than human-only baselines.",
+    tip: "One complete UTC day of fee-paying volume divided by that day's fee-paying transactions, from our own SQL over Dune, on Solana. Includes bots and MEV, so a platform carrying heavy sniping reads lower than a human-only baseline would. Maestro, Phantom and Bloom in this column come from Mobula on a rolling window instead.",
     higherBetter: true,
   },
   {
     key: "wallets",
     label: "Active Wallets",
-    scope: "app",
+    scope: "solana",
     bench: "trading-platform-wallets",
     fmt: fmtCount,
-    tip: "Unique wallets that traded through the platform in the last complete day (Dune community datasets). Cross-chain for GMGN/Axiom/BasedBot/Terminal, Solana only for FOMO/Trojan/Photon (marked SOL). Better signal of real user base than raw tx count.",
+    tip: "Distinct trading accounts in the platform's fee-paying transactions on one complete UTC day, from our own SQL over Dune, on Solana. A better signal of a user base than raw transaction count. FOMO, pump.fun and BasedBot are not measured here.",
     higherBetter: true,
   },
   {
     key: "feeRate",
     label: "Fee Rate",
-    scope: "app",
+    scope: "solana",
     bench: "memecoin-platforms",
     fmt: fmtPct,
-    tip: "Observed take rate: fee revenue ÷ fee-paying volume (Dune tx join). Comparable across platforms. FOMO uses DeFiLlama (includes off-chain relay fees). pump.fun cut trading fees to 0% in Aug 2026.",
+    tip: "Observed take rate on Solana from our own SQL over Dune: the SOL, USDC and wSOL reaching the platform's fee wallets over the volume of the transactions that paid them, so both halves cover the same trades. pump.fun charges no bonding-curve fee since Aug 2026 and is not measured.",
     higherBetter: false,
   },
   {
@@ -112,7 +118,7 @@ export const ALL_TRADING_APP_COLUMNS: readonly TradingAppColumn[] = [
     bench: "solana-trading-platform-wars",
     panel: "revenue_1d",
     fmt: fmtUSD0,
-    tip: "What the app itself collected on its latest closed UTC day, every chain summed (DeFiLlama dailyRevenue). The app's own cut, not the total fees paid on the trade.",
+    tip: "What the app itself collected, every chain summed (DeFiLlama dailyRevenue). The app's own cut, not the total fees paid on the trade. It covers the newest UTC day carrying both a volume and a commission figure, which can trail the volume day by up to 3 days when the fees adapter is behind.",
     higherBetter: true,
   },
   {
@@ -122,8 +128,9 @@ export const ALL_TRADING_APP_COLUMNS: readonly TradingAppColumn[] = [
     bench: "solana-trading-platform-wars",
     panel: "take_1d",
     fmt: fmtPct,
-    tip: "The app's commission as a percentage of the volume it routed on the same day. Lower is cheaper for the trader; it is the app's cut, not the all-in cost of a swap.",
-    higherBetter: false,
+    tip: "What the app kept per dollar it routed, on the newest day carrying both figures. DeFiLlama's revenue is net of referral and cashback paybacks, so this is the app's own margin: an app that rebates a third of its fee reads a third lower while its traders pay the same. Not the price of a swap, and not ranked.",
+    higherBetter: true,
+    rankable: false,
   },
   {
     key: "rating",
@@ -236,6 +243,12 @@ export async function loadTradingAppMatrix(): Promise<TradingAppMatrix> {
     return { slug: p.slug, name: p.name, values, ranks: {} as TradingAppRow["ranks"], formulas };
   });
   for (const col of TRADING_APP_COLUMNS) {
+    if (col.rankable === false) {
+      rows.forEach((r) => {
+        r.ranks[col.key] = null;
+      });
+      continue;
+    }
     const higherBetter = higherBetterOf(col);
     const ranked = rows
       .filter((r) => r.values[col.key] !== null)
@@ -249,9 +262,12 @@ export async function loadTradingAppMatrix(): Promise<TradingAppMatrix> {
       r.ranks[col.key] = i >= 0 ? { rank: i + 1, of: ranked.length } : null;
     });
   }
-  // A row with nothing in it is a hole, not a measurement: Maestro and
-  // BasedBot only ever had Dune figures, so on a deployment without those
-  // benches they leave the table rather than filling it with dashes.
+  // A row with nothing in it is a hole, not a measurement. Maestro and BasedBot
+  // are the two platforms here with no DeFiLlama adapter and no App Store entry,
+  // so on a deployment without the Dune benches they have nothing left to show
+  // and leave the table rather than filling it with dashes. Maestro's average
+  // trade came from Mobula rather than Dune, but that column goes with the same
+  // bench.
   const filled = rows.filter((r) => TRADING_APP_COLUMNS.some((c) => r.values[c.key] !== null));
   rows.length = 0;
   rows.push(...filled);
@@ -259,7 +275,7 @@ export async function loadTradingAppMatrix(): Promise<TradingAppMatrix> {
   // not depend on a bench that may be gated.
   const sortCol =
     TRADING_APP_COLUMNS.find(
-      (c) => higherBetterOf(c) && rows.some((r) => r.values[c.key] !== null),
+      (c) => c.rankable !== false && higherBetterOf(c) && rows.some((r) => r.values[c.key] !== null),
     ) ?? TRADING_APP_COLUMNS[0];
   if (sortCol) {
     rows.sort((a, b) => (b.values[sortCol.key] ?? -1) - (a.values[sortCol.key] ?? -1));
@@ -268,6 +284,10 @@ export async function loadTradingAppMatrix(): Promise<TradingAppMatrix> {
   for (const col of TRADING_APP_COLUMNS) dirs[col.key] = higherBetterOf(col);
   const bests: TradingAppMatrix["bests"] = {};
   for (const col of TRADING_APP_COLUMNS) {
+    if (col.rankable === false) {
+      bests[col.key] = null;
+      continue;
+    }
     const vals = rows.map((r) => r.values[col.key]).filter((v): v is number => v !== null);
     bests[col.key] = vals.length
       ? (higherBetterOf(col) ? Math.max(...vals) : Math.min(...vals))

@@ -109,6 +109,11 @@ export async function TradingAppSection({
                 style={{ fontFamily: "var(--font-mono, monospace)" }}
               >
                 {col.label}
+                {col.scope === "solana" && (
+                  <span className="ml-1.5 normal-case tracking-normal text-ink-muted" title="Solana only">
+                    Solana only
+                  </span>
+                )}
               </p>
               <p
                 className="mt-auto text-lg sm:text-xl font-semibold tabular-nums leading-tight"
@@ -121,6 +126,9 @@ export async function TradingAppSection({
                   <>
                     Rank {r.rank} of {r.of}
                   </>
+                ) : col.rankable === false ? (
+                  // Measured, deliberately not ranked: see the column's rankable flag.
+                  v === null ? "not measured" : "not ranked"
                 ) : (
                   "not measured"
                 )}
@@ -144,6 +152,11 @@ export async function TradingAppSection({
               {TRADING_APP_COLUMNS.map((c) => (
                 <th key={c.key} className="py-2 px-3 text-right text-[10px] uppercase tracking-[0.14em] text-ink-faint font-medium whitespace-nowrap" title={c.tip}>
                   {c.label}
+                  {c.scope === "solana" && (
+                    <span className="ml-1 text-[9px] tracking-[0.12em] text-ink-faint" title="Every figure in this column covers Solana only">
+                      SOL
+                    </span>
+                  )}
                 </th>
               ))}
             </tr>

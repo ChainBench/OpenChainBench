@@ -53,6 +53,7 @@ import { TradingAppSection } from "@/components/trading-app-section";
 import { DataApiProviderSection } from "@/components/data-api-provider-section";
 import { BridgeProviderSection } from "@/components/bridge-provider-section";
 import { loadTradingAppMatrix, TRADING_APP_SLUGS, TRADING_APP_COLUMNS } from "@/lib/trading-apps";
+import { getTerminalFills } from "@/lib/terminal-fills";
 import { fetchDataApiSnapshot } from "@/lib/data-api-stats";
 import { getTradingAppHistory } from "@/lib/trading-app-history";
 import { fetchBridgeHub } from "@/lib/bridge-hub-stats";
@@ -482,6 +483,12 @@ export default async function ProviderPage({
   // check reads the cached snapshot its section reads.
   const tradingAppHasData =
     (await getTradingAppHistory().then((h) => !!h?.apps.some((a) => a.slug === p.slug))) ||
+    // The section renders a fill-quality block of its own, so an app in that
+    // cohort has something to show even with no volume and no KPI. Without this,
+    // gating the Dune benches took Maestro's whole Trading app view with them:
+    // it is not in the volume cohort, not a bench 201 provider and has no App
+    // Store row, so its bench 268 fills had nowhere left to render.
+    (await getTerminalFills().then((f) => !!f?.terminals.some((t) => t.slug === p.slug && t.priced > 0))) ||
     (TRADING_APP_SLUGS.has(p.slug)
       ? await loadTradingAppMatrix().then((m) => {
           const me = m.rows.find((r) => r.slug === p.slug);
