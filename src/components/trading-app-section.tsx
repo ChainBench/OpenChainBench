@@ -126,6 +126,9 @@ export async function TradingAppSection({
                   <>
                     Rank {r.rank} of {r.of}
                   </>
+                ) : col.rankable === false ? (
+                  // Measured, deliberately not ranked: see the column's rankable flag.
+                  v === null ? "not measured" : "not ranked"
                 ) : (
                   "not measured"
                 )}

@@ -44,8 +44,8 @@ abstract: |
 methodology:
   - "Source: DeFiLlama's open dexs and fees adapters, read hourly from the free summary endpoints. Both legs are per UTC day and the current open day is dropped."
   - "Volume: /summary/dexs/<slug>?dataType=dailyVolume, summed over every chain the adapter covers. This bench read third-party Dune datasets until 2026-09-27; they froze on 2026-08-25 and were served as current for 32 days, which is why the source is now one with a maintained adapter behind it."
-  - "Commission: /summary/fees/<slug>?dataType=dailyRevenue, the app's own cut. Not dailyFees, which adds what the venue underneath charges: for Axiom on 2026-09-26 that reads 2.27M against 1.38M of revenue."
-  - "Take rate: commission divided by the volume of the same days, so the two halves describe the same trades. A negative daily revenue, which DeFiLlama reports now and then when an adapter corrects itself, is dropped rather than pulling a window below zero, and a restatement always wins over what the last read held."
+  - "Commission: /summary/fees/<slug>?dataType=dailyRevenue, the app's own cut net of referral and cashback paybacks. Not dailyFees, which adds what the venue underneath charges: for Axiom on 2026-09-26 that reads 2.27M against 1.38M of revenue. A day returned as zero against real volume is treated as an artifact and the newest day with a positive cut is used instead."
+  - "Take rate: commission divided by the volume of the same days, so the two halves describe the same trades. It is the app's own margin, not the price of a swap: DeFiLlama's revenue is net of referral and cashback paybacks, so an app that rebates a third of its fee reads a third lower while its traders pay the same. Ranking it higher rewards the larger margin, which is what this bench is about."
   - "Day anchoring: every figure for an app ends on that app's own latest closed day, not on a shared cohort day. An adapter more than 3 days behind snaps back to the cohort day and reads unresponsive; a window it can no longer fill to 80% coverage goes absent with it."
   - "The commission can trail the volume by up to 3 days, because a fees adapter sometimes runs behind its dexs one. It ends on the newest day that has both legs, so the take rate always divides figures from the same day; dune_platform is no longer involved and trading_app_revenue_day_unix carries the day."
   - "Cohort: the seven apps this bench ranks, each with both a dexs and a fees adapter on DeFiLlama. Others have both too and sit in bench 267 instead, which is the whole cohort. BasedBot has neither and left the table on 2026-09-27; it was unmeasured before that too."
@@ -77,8 +77,8 @@ metric_panels:
     label_key: app
     metric: trading_app_take_rate_pct{window="1d"}
     unit: pct
-    higher_is_better: false
-    description: "Commission as a percentage of the volume routed on the same day, which is the newest day carrying both figures rather than always the volume day."
+    higher_is_better: true
+    description: "What the app kept per dollar it routed, on the newest day carrying both figures. DeFiLlama's revenue is net of referral and cashback paybacks, so this is the app's own margin and not what a trader pays."
   - id: revenue_7d
     label: Commission 7d
     label_key: app
@@ -92,7 +92,7 @@ metric_panels:
     label_key: app
     metric: trading_app_take_rate_pct{window="7d"}
     unit: pct
-    higher_is_better: false
+    higher_is_better: true
     tab: false
     description: "Commission over those same 7 days divided by the volume of exactly those days."
   - id: vol_7d
@@ -124,7 +124,7 @@ metric_panels:
     label_key: app
     metric: trading_app_take_rate_pct{window="30d"}
     unit: pct
-    higher_is_better: false
+    higher_is_better: true
     tab: false
     description: "Commission over those same 30 days divided by the volume of exactly those days."
 

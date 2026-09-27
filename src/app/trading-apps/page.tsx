@@ -108,7 +108,10 @@ export default async function TradingAppsHubPage() {
     ? "Benches 203 platform fee rates, 206 average trade size, 207 swap transactions and 232 active wallets need a paid Dune plan and are paused; they run on staging. "
     : "";
   const kpiCol = COLUMNS.find(
-    (c) => appMatrix.dirs[c.key] && matrix.some((r) => r.values[c.key] !== null),
+    (c) =>
+      c.rankable !== false &&
+      appMatrix.dirs[c.key] &&
+      matrix.some((r) => r.values[c.key] !== null),
   );
   const kpiRow = kpiCol
     ? matrix.reduce(
