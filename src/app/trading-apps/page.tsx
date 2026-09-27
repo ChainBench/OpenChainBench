@@ -270,6 +270,11 @@ export default async function TradingAppsHubPage() {
                       title={col.tip}
                     >
                       {col.label}
+                      {col.scope === "solana" && (
+                        <span className="text-[9px] tracking-[0.12em] text-ink-faint font-normal" title="Every figure in this column covers Solana only">
+                          SOL
+                        </span>
+                      )}
                       <svg width="10" height="10" viewBox="0 0 12 12" fill="none" aria-hidden="true">
                         <path
                           d="M3.5 3H2a1 1 0 00-1 1v6a1 1 0 001 1h6a1 1 0 001-1V8.5M7 1h4m0 0v4m0-4L5.5 6.5"
