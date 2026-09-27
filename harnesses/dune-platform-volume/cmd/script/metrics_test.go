@@ -273,12 +273,47 @@ func TestPublishableRowsAgreesWithPublishRows(t *testing.T) {
 		publishedDay = ""
 	})
 
-	want := publishableRows(rows, 3, now)
+	want, priced := publishableRows(rows, 3, now)
 	published, _ := publishRows(rows, 3, now, nil)
 	if want != len(published) {
-		t.Errorf("publishableRows = %d, publishRows published %d", want, len(published))
+		t.Errorf("publishableRows usable = %d, publishRows published %d", want, len(published))
 	}
 	if want != 1 {
-		t.Errorf("publishableRows = %d, want 1 (only ok1)", want)
+		t.Errorf("publishableRows usable = %d, want 1 (only ok1)", want)
+	}
+	if priced != 1 {
+		t.Errorf("publishableRows priced = %d, want 1", priced)
+	}
+}
+
+// A result with no SOL price must not be counted as priced, so publish can tell
+// it apart from one that carries its fee figures.
+func TestPublishableRowsCountsPricedSeparately(t *testing.T) {
+	day := dayUnix(2026, 9, 26)
+	rows := []duneRow{
+		{Platform: "p1", DataDayUnix: day, DayLastTradeUnix: lastTradeAt(day), SolPriceUSD: 119},
+		{Platform: "p2", DataDayUnix: day, DayLastTradeUnix: lastTradeAt(day), SolPriceUSD: 0},
+	}
+	usable, priced := publishableRows(rows, 3, now)
+	if usable != 2 || priced != 1 {
+		t.Errorf("publishableRows = (%d, %d), want (2, 1)", usable, priced)
+	}
+	// Nothing held means nothing to compare against.
+	if u, p := publishableRows(nil, 3, now); u != 0 || p != 0 {
+		t.Errorf("publishableRows(nil) = (%d, %d), want (0, 0)", u, p)
+	}
+}
+
+// The window cannot be set below 2: the target day is yesterday at best and two
+// days back before the indexing lag clears, so a smaller window publishes nothing
+// while the retry budget keeps buying executions.
+func TestMaxDataAgeDaysIsAtLeastTwo(t *testing.T) {
+	day := targetDay(time.Date(2026, 9, 27, 2, 0, 0, 0, time.UTC))
+	r := duneRow{Platform: "x", DataDayUnix: float64(day.Unix()), DayLastTradeUnix: float64(day.Unix()) + 23*3600}
+	if rowUsable(r, 1, time.Date(2026, 9, 27, 2, 0, 0, 0, time.UTC)) {
+		t.Error("a 1-day window accepts the pre-lag target day, so the floor of 2 is not doing anything")
+	}
+	if !rowUsable(r, 2, time.Date(2026, 9, 27, 2, 0, 0, 0, time.UTC)) {
+		t.Error("a 2-day window must accept the pre-lag target day")
 	}
 }

@@ -141,16 +141,20 @@ func rowUsable(r duneRow, maxDays int, now time.Time) bool {
 	return r.Platform != "" && daysBehind(r.DataDayUnix, now) <= maxDays && dayCovered(r)
 }
 
-// publishableRows is how many of these rows publishRows would publish. Used to
-// decide whether a fresh result is worth taking, without touching any gauge.
-func publishableRows(rows []duneRow, maxDays int, now time.Time) int {
-	n := 0
+// publishableRows is how many of these rows publishRows would publish, and how
+// many of those would carry their fee figures. Used to decide whether a fresh
+// result is worth taking, without touching any gauge.
+func publishableRows(rows []duneRow, maxDays int, now time.Time) (usable, priced int) {
 	for _, r := range rows {
-		if rowUsable(r, maxDays, now) {
-			n++
+		if !rowUsable(r, maxDays, now) {
+			continue
+		}
+		usable++
+		if r.SolPriceUSD > 0 {
+			priced++
 		}
 	}
-	return n
+	return usable, priced
 }
 
 // publishRows writes the platforms whose data day is inside the window and fully

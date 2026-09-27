@@ -56,9 +56,13 @@ const (
 // DUNE_MAX_DATA_AGE_DAYS overrides it.
 var maxDataAgeDays = func() int {
 	if v := os.Getenv("DUNE_MAX_DATA_AGE_DAYS"); v != "" {
-		if d, err := strconv.Atoi(v); err == nil && d >= 0 {
+		// Below 2 nothing can ever publish: the target day is yesterday at best and
+		// two days back before the indexing lag clears, so every row would fail the
+		// window and the retry budget would buy executions that cannot land.
+		if d, err := strconv.Atoi(v); err == nil && d >= 2 {
 			return d
 		}
+		fmt.Fprintf(os.Stderr, "[init] ignoring DUNE_MAX_DATA_AGE_DAYS=%q, the window has to be 2 or more\n", v)
 	}
 	return 3
 }()
@@ -92,14 +96,10 @@ func main() {
 	// Make the SQL in this repo the SQL Dune runs, so a deploy cannot leave an
 	// older query behind. Writing it costs nothing, but it does bump the query
 	// version and drop the cached result, so it only happens when the SQL differs.
-	switch wrote, err := client.syncQuery(queryID, day); {
-	case err != nil:
-		fmt.Printf("[init] could not sync query %s SQL: %v\n", queryID, err)
-	case wrote:
-		fmt.Printf("[init] query %s SQL updated from this build\n", queryID)
-	default:
-		fmt.Printf("[init] query %s SQL already matches this build\n", queryID)
-	}
+	// A failure here is not survivable: the old SQL returns no data day, every row
+	// is dropped as stale and each retry pays for a query that cannot publish. So
+	// it is retried from the tick and no execution runs until it has succeeded.
+	synced := trySync(client, queryID, day)
 
 	go func() {
 		if err := startMetricsServer(":2112"); err != nil {
@@ -127,7 +127,18 @@ func main() {
 			return
 		}
 		now := time.Now()
-		if !dayIsYesterday(now) {
+		if !synced {
+			// Nothing is executed against SQL that may not be ours.
+			synced = trySync(client, queryID, targetDay(now))
+			if !synced {
+				return
+			}
+		}
+		// Before the indexing lag clears, the target day is two days back. That day
+		// is complete and inside the window, so it is worth running when the board
+		// is empty rather than leaving every bench dark until 10:00 UTC. Once a day
+		// is on the board, waiting for yesterday is what holds it to one run a day.
+		if !dayIsYesterday(now) && currentPublishedDay() != "" {
 			return
 		}
 		d := targetDay(now)
@@ -192,6 +203,22 @@ func main() {
 	}
 }
 
+// trySync makes the SQL in this repo the SQL Dune runs. Reports whether Dune is
+// now on it.
+func trySync(c *duneClient, queryID string, day time.Time) bool {
+	wrote, err := c.syncQuery(queryID, day)
+	switch {
+	case err != nil:
+		fmt.Printf("[sync] could not set query %s SQL, no execution until it works: %v\n", queryID, err)
+		return false
+	case wrote:
+		fmt.Printf("[sync] query %s SQL updated from this build\n", queryID)
+	default:
+		fmt.Printf("[sync] query %s SQL already matches this build\n", queryID)
+	}
+	return true
+}
+
 // lastRows is what the last successful read returned. Every tick re-runs the
 // freshness guard over it, so a fetch that starts failing, on a rotated key or a
 // Dune outage, does not leave the previous day's figures on the board reading as
@@ -213,15 +240,23 @@ func publish(tag string, rows []duneRow) {
 	defer publishMu.Unlock()
 	if rows != nil {
 		// A run that lands before Dune has finished loading the day comes back
-		// partial, or empty. Taking it would delete a complete day that is still
-		// inside the window, and no retry could bring that day back because the
-		// partial rows would be what is held. Keep the older complete day instead.
-		// publishedDay stays behind the target, so the retries still run and the
-		// guard still ages the held day out if it gets too old.
-		if publishableRows(rows, maxDataAgeDays, time.Now()) == 0 && lastRows != nil {
+		// partial or empty, and one that runs before prices.day has the day's SOL
+		// row comes back with no fee figures. Taking either would throw away a
+		// complete, priced day that is still inside the window, and no retry could
+		// bring it back because the worse rows would be what is held. Keep the held
+		// day instead. publishedDay stays behind the target, so the retries still
+		// run, and the guard still ages the held day out when it gets too old.
+		now := time.Now()
+		newUsable, newPriced := publishableRows(rows, maxDataAgeDays, now)
+		heldUsable, heldPriced := publishableRows(lastRows, maxDataAgeDays, now)
+		switch {
+		case newUsable == 0 && heldUsable > 0:
 			fmt.Printf("[%s] result publishes nothing, keeping the day already held\n", tag)
 			rows = nil
-		} else {
+		case newPriced == 0 && heldPriced > 0:
+			fmt.Printf("[%s] result has no SOL price, keeping the priced day already held\n", tag)
+			rows = nil
+		default:
 			lastRows = rows
 		}
 	}
@@ -278,6 +313,10 @@ func pollUntilDone(c *duneClient, queryID, execID string) {
 			errs++
 			fmt.Printf("[poll] state check failed (%d/%d): %v\n", errs, maxPollErrors, err)
 			if errs >= maxPollErrors {
+				// The run was paid for and may well have finished. Reading its
+				// results costs nothing, and without this the next attempt pays for
+				// the same day again.
+				publishFrom(c, execID)
 				return
 			}
 			continue
@@ -293,5 +332,6 @@ func pollUntilDone(c *duneClient, queryID, execID string) {
 			return
 		}
 	}
-	fmt.Printf("[poll] execution %s timed out waiting\n", execID)
+	fmt.Printf("[poll] execution %s timed out waiting, reading its results anyway\n", execID)
+	publishFrom(c, execID)
 }
