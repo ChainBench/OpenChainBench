@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"math"
 	"net/url"
-	"strings"
 	"time"
 )
 
@@ -55,32 +54,6 @@ func (c *czClient) fetchLiqBuckets(symbol string, fromSec, toSec int64) ([]czBuc
 		}
 	}
 	return out, nil
-}
-
-// czDiscoverSymbol queries /future-markets and finds the symbol for a given
-// exchange (partial name match) and base asset. Used once at startup to
-// resolve Hyperliquid's symbol codes without hardcoding the exchange ID.
-func (c *czClient) czDiscoverSymbol(exchangeSlug, asset string) (string, error) {
-	u := c.baseURL + "/future-markets"
-	var markets []struct {
-		Symbol    string `json:"symbol"`
-		Exchange  string `json:"exchange"`
-		BaseAsset string `json:"base_asset"`
-	}
-	if err := httpGetJSONKey(u, "api_key", c.apiKey, &markets); err != nil {
-		return "", fmt.Errorf("coinalyze future-markets: %w", err)
-	}
-	slug := strings.ToLower(exchangeSlug)
-	assetUpper := strings.ToUpper(asset)
-	for _, m := range markets {
-		if !strings.Contains(strings.ToLower(m.Exchange), slug) {
-			continue
-		}
-		if strings.ToUpper(m.BaseAsset) == assetUpper {
-			return m.Symbol, nil
-		}
-	}
-	return "", fmt.Errorf("coinalyze: no symbol found for exchange %q asset %q", exchangeSlug, asset)
 }
 
 // hlCandle is one candle from Hyperliquid candleSnapshot.

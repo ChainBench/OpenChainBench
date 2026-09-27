@@ -55,8 +55,12 @@ type GMX struct {
 	mu        sync.Mutex
 	markets   []gmxMarket
 	marketsAt time.Time
-	volume    map[string]float64
-	volumeAt  time.Time
+	// volMu is held across the whole volume refresh, so the ETH and BTC
+	// goroutines that miss the cache on the same tick page the squid once
+	// between them rather than once each.
+	volMu    sync.Mutex
+	volume   map[string]float64
+	volumeAt time.Time
 }
 
 // NewGMX returns the GMX source.
@@ -237,13 +241,11 @@ func (g *GMX) FetchVolume24hUSD(asset string) (float64, error) {
 	if !gmxTrackedAssets[asset] {
 		return 0, fmt.Errorf("gmx: unsupported asset %q", asset)
 	}
-	g.mu.Lock()
+	g.volMu.Lock()
+	defer g.volMu.Unlock()
 	if g.volume != nil && time.Since(g.volumeAt) < gmxVolumeTTL {
-		v := g.volume[strings.ToUpper(asset)]
-		g.mu.Unlock()
-		return v, nil
+		return g.volume[strings.ToUpper(asset)], nil
 	}
-	g.mu.Unlock()
 
 	byMarket, err := g.marketAsset()
 	if err != nil {
@@ -268,9 +270,7 @@ func (g *GMX) FetchVolume24hUSD(asset string) (float64, error) {
 		}
 		totals[a] += usd
 	}
-	g.mu.Lock()
 	g.volume, g.volumeAt = totals, time.Now()
-	g.mu.Unlock()
 	return totals[strings.ToUpper(asset)], nil
 }
 

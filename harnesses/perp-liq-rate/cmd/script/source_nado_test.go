@@ -51,9 +51,10 @@ func TestNado_WindowDeltasAreAggregates(t *testing.T) {
 		t.Fatalf("got %d events, want exactly one aggregate", len(events))
 	}
 	e := events[0]
-	// (78757933.19 - 78731900.00) x18 = 26,033.19 USD
-	if e.NotionalUSD < 26033.18 || e.NotionalUSD > 26033.20 {
-		t.Errorf("liquidated = %v, want 26033.19", e.NotionalUSD)
+	// (78757933.19 - 78731900.00) x18 = 26,033.19 USD over a span of
+	// 85,948s, scaled to a day: x 86400/85948 = 26,170.10.
+	if e.NotionalUSD < 26170.0 || e.NotionalUSD > 26170.2 {
+		t.Errorf("liquidated = %v, want 26170.10 (scaled to 24h)", e.NotionalUSD)
 	}
 	if !e.Bucket || !e.Aggregate {
 		t.Error("the Nado window figure must be both restatable and marked Aggregate")
@@ -96,8 +97,9 @@ func TestNado_OIAndVolumeFromTheSamePair(t *testing.T) {
 	if err != nil {
 		t.Fatalf("FetchVolume24hUSD: %v", err)
 	}
-	if vol < 54641069 || vol > 54641071 {
-		t.Errorf("volume = %v, want 54641070 (delta of cumulative_volumes)", vol)
+	// 54,641,070 over 85,948s, scaled to a day: 54,928,427.
+	if vol < 54928400 || vol > 54928460 {
+		t.Errorf("volume = %v, want about 54928427 (delta of cumulative_volumes, scaled to 24h)", vol)
 	}
 }
 

@@ -29,10 +29,9 @@ import (
 )
 
 const (
-	orderlyBaseURL    = "https://api-evm.orderly.org/v1/public"
-	orderlyPageSize   = 100
-	orderlyMaxPages   = 10
-	orderlyFuturesTTL = 2 * time.Minute
+	orderlyBaseURL  = "https://api-evm.orderly.org/v1/public"
+	orderlyPageSize = 100
+	orderlyMaxPages = 10
 )
 
 // orderlySymbols maps the asset to Orderly's perp symbol.

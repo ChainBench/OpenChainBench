@@ -163,7 +163,14 @@ func doRaw(req *http.Request) ([]byte, error) {
 	req.Header.Set("User-Agent", "perp-liq-rate/1.0")
 	resp, err := httpClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("http: %w", err)
+		// A transport error carries the full URL, path and query included,
+		// and one venue's subgraph address holds an access token in its
+		// path. Keep the host and the underlying cause; drop the rest.
+		var ue *url.Error
+		if errors.As(err, &ue) {
+			return nil, fmt.Errorf("http %s %s: %w", ue.Op, req.URL.Host, ue.Err)
+		}
+		return nil, fmt.Errorf("http %s: %w", req.URL.Host, err)
 	}
 	defer resp.Body.Close()
 	body, err := io.ReadAll(io.LimitReader(resp.Body, maxBodyBytes))
@@ -175,11 +182,10 @@ func doRaw(req *http.Request) ([]byte, error) {
 		if len(snippet) > 200 {
 			snippet = snippet[:200]
 		}
-		// The query string is dropped from the logged URL: it is where a
-		// key would sit if a caller ever put one there.
-		u := *req.URL
-		u.RawQuery = ""
-		return nil, &httpStatusError{Code: resp.StatusCode, URL: u.String(), Body: snippet}
+		// Only the host is kept for the log: a query string is where a key
+		// would sit, and one subgraph address carries a token in its path.
+		// The venue prefix on the wrapping error says which call it was.
+		return nil, &httpStatusError{Code: resp.StatusCode, URL: req.URL.Host, Body: snippet}
 	}
 	return body, nil
 }

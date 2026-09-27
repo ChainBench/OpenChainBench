@@ -87,7 +87,17 @@ func main() {
 			wg.Add(1)
 			go func(p *pairRuntime) {
 				defer wg.Done()
-				ok := runTick(p.va, p.st, p.sinceMs)
+				// The high-water mark only advances on success, so a pair
+				// that has been failing asks for an ever-longer range. Rows
+				// older than the window are dropped on arrival anyway, so
+				// the fetch never needs to reach further back than the
+				// window edge; without this floor a page-cap refusal on a
+				// long-failing pair repeats on every tick until a restart.
+				since := p.sinceMs
+				if floor := tickStartMs - windowSpan.Milliseconds(); since < floor {
+					since = floor
+				}
+				ok := runTick(p.va, p.st, since)
 				if ok {
 					// Next tick fetches from the start of this one; the
 					// overlap is harmless because of the SeenSet dedup.

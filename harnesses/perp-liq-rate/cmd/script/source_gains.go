@@ -1,10 +1,8 @@
 package main
 
-// source_gains.go — Gains (gTrade), one instance per deployment chain,
-// aggregated by GainsMulti. Until 2026-09-21 only Base was read, where
-// Gains holds about $60k of ETH/BTC open interest; Arbitrum holds the
-// bulk (about $20M on ETH alone), so the Gains row was measured on a
-// deployment that is a rounding error of the venue.
+// source_gains.go — Gains (gTrade), one instance per deployment chain
+// (Arbitrum, where the bulk of the open interest sits, and Base), summed by
+// GainsMulti into one venue row.
 //
 // Liquidations: eth_getLogs on the diamond for LimitExecuted events whose
 // orderType is LIQ_CLOSE (6), cross-checked against the event's own second

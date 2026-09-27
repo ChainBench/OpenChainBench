@@ -176,12 +176,26 @@ func (n *Nado) window(asset string) (nadoWindow, error) {
 		return nadoWindow{}, fmt.Errorf("nado market_snapshots: %d snapshots span %ds, need at least %ds", len(resp.Snapshots), span, nadoMinSpanSecs)
 	}
 
+	// The snapshots cover a little under 24h; the deltas are scaled to a
+	// day so the figure carries the label it is published under.
+	scale := 86400.0 / float64(span)
 	out := make(map[string]nadoWindow, len(ids))
 	for asset, id := range ids {
 		key := strconv.Itoa(id)
+		// A product missing from either snapshot is a source fault, not a
+		// day with no liquidations; it must fail the tick rather than read
+		// as an exact zero at full health.
+		for _, m := range []map[string]string{
+			newest.CumulativeLiquidationAmounts, oldest.CumulativeLiquidationAmounts,
+			newest.CumulativeVolumes, oldest.CumulativeVolumes, newest.OpenInterests,
+		} {
+			if _, ok := m[key]; !ok {
+				return nadoWindow{}, fmt.Errorf("nado market_snapshots: product %s (%s) missing from a snapshot", key, asset)
+			}
+		}
 		out[asset] = nadoWindow{
-			liqUSD:   x18Delta(newest.CumulativeLiquidationAmounts[key], oldest.CumulativeLiquidationAmounts[key]),
-			volUSD:   x18Delta(newest.CumulativeVolumes[key], oldest.CumulativeVolumes[key]),
+			liqUSD:   x18Delta(newest.CumulativeLiquidationAmounts[key], oldest.CumulativeLiquidationAmounts[key]) * scale,
+			volUSD:   x18Delta(newest.CumulativeVolumes[key], oldest.CumulativeVolumes[key]) * scale,
 			oiUSD:    x18Value(newest.OpenInterests[key]),
 			spanSecs: span,
 		}
