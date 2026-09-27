@@ -355,19 +355,31 @@ export function TerminalFillSwaps({ swaps, terminals, focus, exec }: { swaps: Fi
           </tbody>
         </table>
       </div>
-      <div className="mt-2 flex items-center justify-between text-[11px] text-ink-faint">
+      <div className="mt-2 flex items-center justify-between gap-3 text-[11px] text-ink-faint">
         <span>
           Showing {Math.min(limit, rows.length)} of {rows.length}
         </span>
-        {rows.length > limit ? (
+        <div className="flex items-center gap-2">
+          {/* Every row on screen, filters and sort included, not the fifty
+              that are rendered: someone who asks for the transaction list
+              wants it in a spreadsheet, not on a page. */}
           <button
             type="button"
-            onClick={() => setLimit((l) => l + 100)}
+            onClick={() => downloadCsv(rows)}
             className="text-[10px] uppercase tracking-[0.16em] px-3 py-1.5 border border-ink/20 rounded-md hover:border-ink/40 hover:bg-ink/5 transition-colors text-ink-soft"
           >
-            Show {Math.min(100, rows.length - limit)} more
+            Download {rows.length} rows (CSV)
           </button>
-        ) : null}
+          {rows.length > limit ? (
+            <button
+              type="button"
+              onClick={() => setLimit((l) => l + 100)}
+              className="text-[10px] uppercase tracking-[0.16em] px-3 py-1.5 border border-ink/20 rounded-md hover:border-ink/40 hover:bg-ink/5 transition-colors text-ink-soft"
+            >
+              Show {Math.min(100, rows.length - limit)} more
+            </button>
+          ) : null}
+        </div>
       </div>
     </div>
   );
@@ -474,6 +486,54 @@ function SideChip({ side }: { side: "buy" | "sell" }) {
       {side}
     </span>
   );
+}
+
+/** The columns the table shows, plus the transaction hashes, in the order
+ *  a reader reads them. bps figures stay unrounded here: the table rounds
+ *  for the eye, a spreadsheet should get what was measured. */
+const CSV_COLUMNS: [string, (s: FillSample) => string | number | undefined][] = [
+  ["time_utc", (s) => new Date(s.time * 1000).toISOString()],
+  ["terminal", (s) => s.terminal],
+  ["product", (s) => s.product],
+  ["chain", (s) => s.chain ?? "solana"],
+  ["side", (s) => s.side],
+  ["venue", (s) => s.venue],
+  ["hops", (s) => s.hops],
+  ["quote", (s) => s.quote],
+  ["trade_usd", (s) => s.tradeUsd],
+  ["value_in_usd", (s) => s.valueInUsd],
+  ["value_out_usd", (s) => s.valueOutUsd],
+  ["loss_bps", (s) => s.lossBps],
+  ["terminal_bps", (s) => s.terminalBps],
+  ["network_bps", (s) => s.networkBps],
+  ["other_bps", (s) => s.otherBps],
+  ["pool_bps", (s) => s.poolBps],
+  ["relay_bps", (s) => s.relayBps],
+  ["rent_usd", (s) => s.rentUsd],
+  ["ref_src", (s) => s.refSrc],
+  ["ref_age_s", (s) => s.refAgeS],
+  ["priced", (s) => (s.priced ? "true" : "false")],
+  ["flag", (s) => s.flag],
+  ["tx", (s) => s.sig],
+  ["origin_tx", (s) => s.inTx],
+];
+
+function downloadCsv(rows: FillSample[]) {
+  const cell = (v: string | number | undefined) => {
+    if (v === undefined || v === null) return "";
+    const t = String(v);
+    return /[",\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t;
+  };
+  const lines = [CSV_COLUMNS.map(([h]) => h).join(",")];
+  for (const r of rows) lines.push(CSV_COLUMNS.map(([, read]) => cell(read(r))).join(","));
+  const url = URL.createObjectURL(new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" }));
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `openchainbench-swaps-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
 }
 
 /** Loss figure with a small gauge (0 to 1,000 bps), coloured by size. */

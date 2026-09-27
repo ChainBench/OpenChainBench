@@ -19,8 +19,8 @@ export async function TerminalFillAudit({ exec }: { exec?: boolean } = {}) {
     <div id="swaps" className="mt-8 card-soft rounded-xl p-4 sm:p-6 lg:p-8 scroll-mt-24">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
-          <p className="label-mono text-ink-faint">Sampled swaps · audit table</p>
-          <p className="mt-1 text-sm text-ink-faint max-w-3xl">
+          <h2 className="display text-2xl tracking-tight text-ink">Every transaction behind these numbers</h2>
+          <p className="mt-2 text-sm text-ink-faint max-w-3xl">
             The most recent transactions of <em>each</em> row ({f.recent.length} in all, {priced} priced), so every published figure has
             its own evidence here. These are a sample, not the statistic: the medians above are computed over the full rolling window,
             which is far more swaps than a row shows here, so a row&apos;s handful of transactions will not reproduce its median. Click a
