@@ -136,6 +136,34 @@ export const ALL_TRADING_APP_COLUMNS: readonly TradingAppColumn[] = [
   },
 ];
 
+/** Where each column's figures come from, for the headings and footnotes that
+ *  have to name the source. Keyed by bench so a column set built from
+ *  TRADING_APP_COLUMNS can describe itself rather than hardcoding "Dune". */
+const SOURCE_BY_BENCH: Record<string, string> = {
+  "solana-unique-traders": "Dune",
+  "solana-avg-trade-size": "Dune",
+  "trading-platform-wallets": "Dune",
+  "memecoin-platforms": "Dune",
+  "solana-trading-platform-wars": "DeFiLlama",
+  "app-store-ratings": "the App Store",
+};
+
+/** The sources behind a set of columns, in order, without repeats. */
+export function columnSources(cols: readonly TradingAppColumn[]): string[] {
+  const out: string[] = [];
+  for (const c of cols) {
+    const s = SOURCE_BY_BENCH[c.bench];
+    if (s && !out.includes(s)) out.push(s);
+  }
+  return out;
+}
+
+/** "A", "A and B", "A, B and C". */
+export function joinList(items: string[]): string {
+  if (items.length <= 1) return items[0] ?? "";
+  return `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
+}
+
 /** The columns this deployment can actually fill. */
 export const TRADING_APP_COLUMNS: readonly TradingAppColumn[] =
   ALL_TRADING_APP_COLUMNS.filter((c) => !isDevOnlyBench(c.bench));

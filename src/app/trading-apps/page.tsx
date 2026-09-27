@@ -407,9 +407,9 @@ export default async function TradingAppsHubPage() {
           is the launchpad&apos;s mobile app, not its bonding curve. Terminal is
           pump.fun&apos;s own app, formerly Padre. Fill quality from our own
           on-chain swaps, app store ratings from the Apple iTunes lookup API.
-          Benches measuring swap counts, average trade size and active wallets
-          need a paid Dune plan and are paused; they run on staging. All
-          harnesses open source on{" "}
+          Benches 203, 206, 207 and 232, which measure platform fee rates, swap
+          counts, average trade size and active wallets, need a paid Dune plan
+          and are paused; they run on staging. All harnesses open source on{" "}
           <Link
             href="https://github.com/ChainBench/OpenChainBench"
             className="underline hover:text-ink"

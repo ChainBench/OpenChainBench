@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { ProviderLogo } from "@/components/provider-logo";
 import {
+  columnSources,
+  joinList,
   loadTradingAppMatrix,
   TRADING_APP_COLUMNS,
   TRADING_APP_SLUGS,
@@ -33,6 +35,12 @@ export async function TradingAppSection({
   const inFillCohort = !!fills?.terminals.some((t) => t.slug === slug && t.priced > 0);
   const me = TRADING_APP_SLUGS.has(slug) ? matrix.rows.find((r) => r.slug === slug) : undefined;
   const hasKpis = !!me && TRADING_APP_COLUMNS.some((c) => me.values[c.key] !== null);
+  // The heading and the footnote name the sources behind the columns this
+  // deployment serves. Hardcoding one left the page crediting Dune for figures
+  // that came from DeFiLlama after bench 201 moved.
+  const sources = columnSources(TRADING_APP_COLUMNS);
+  const sourceLabel = sources.length ? `Per platform · ${joinList(sources)}` : "Per platform";
+  const sourceSentence = sources.length ? `${joinList(sources)} figures` : "Figures";
   if (!inVolumeCohort && !hasKpis && !inFillCohort) return null;
 
   return (
@@ -82,7 +90,7 @@ export async function TradingAppSection({
         className="label-mono text-[10px] uppercase tracking-wide text-ink-faint mb-3"
         style={{ fontFamily: "var(--font-mono, monospace)" }}
       >
-        On-chain activity · Dune dataset
+        {sourceLabel}
       </p>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-8">
         {TRADING_APP_COLUMNS.map((col) => {
@@ -180,9 +188,9 @@ export async function TradingAppSection({
       </div>
       {matrix.updatedAt && (
         <p className="mt-3 text-[11px] text-ink-faint">
-          Dune figures as of {new Date(matrix.updatedAt).toUTCString().replace("GMT", "UTC")}. Scope differs per
-          platform: cross-chain where the Dune dataset covers every chain the platform runs on, <span className="uppercase tracking-[0.12em]">SOL</span> where it covers Solana only (hover a figure for the exact source). Each column links to its
-          benchmark on{" "}
+          {sourceSentence} as of {new Date(matrix.updatedAt).toUTCString().replace("GMT", "UTC")}. Each
+          row covers whatever chains its own adapter covers; hover a figure for
+          the exact source. Each column links to its benchmark on{" "}
           <Link href="/trading-apps" className="underline hover:no-underline">
             /trading-apps
           </Link>
