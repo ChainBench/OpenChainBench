@@ -18,8 +18,9 @@ const (
 	dydxPageSize = 100
 	// The first tick backfills a full 24h and dYdX ETH printed 7,754 trades
 	// in 24h on 2026-09-27; the old cap of 30 pages read less than half of
-	// that after every restart and said nothing.
-	dydxMaxPages = 150
+	// that after every restart and said nothing. Sized for a day several
+	// times busier than that one, since the range is floored at the window.
+	dydxMaxPages = 500
 )
 
 var dydxTickers = map[string]string{
@@ -71,7 +72,7 @@ func (d *Dydx) FetchLiquidationsSince(asset string, sinceMs int64) ([]LiqEvent, 
 			return nil, fmt.Errorf("dydx trades: %w", err)
 		}
 		if len(resp.Trades) == 0 {
-			break
+			return events, nil // the tape ran out before the cap did
 		}
 
 		oldestMs := int64(1<<62 - 1)

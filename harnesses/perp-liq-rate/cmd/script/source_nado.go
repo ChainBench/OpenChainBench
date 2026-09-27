@@ -41,7 +41,9 @@ const (
 	nadoMinSpanSecs  = 20 * 3600
 )
 
-var nadoTrackedAssets = map[string]bool{"ETH": true, "BTC": true, "SOL": true}
+// Only the assets config.go polls: a product required here but never
+// published would fail every asset's window if it went missing.
+var nadoTrackedAssets = map[string]bool{"ETH": true, "BTC": true}
 
 // Nado implements Source.
 type Nado struct {

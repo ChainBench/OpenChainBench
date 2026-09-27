@@ -21,7 +21,7 @@ const (
 	// The first tick backfills a full 24h. Paradex's BTC tape carried 3,677
 	// rows in 24h on 2026-09-27; a cap of 20 pages silently dropped the
 	// oldest eleven hours of it after every restart.
-	paradexMaxPages = 80
+	paradexMaxPages = 300
 )
 
 var paradexMarkets = map[string]string{

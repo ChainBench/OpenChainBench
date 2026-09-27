@@ -119,10 +119,14 @@ func runTick(va VenueAsset, st *pairState, sinceMs int64) bool {
 		ok = false
 	}
 
+	// The venue's notional feeds the rank gate and nothing else. A failed
+	// read is counted and logged, and the gate refuses the row for the
+	// tick, but it does not fail the tick: the liquidation and OI reads
+	// stand, health stays honest about them, and the high-water mark
+	// keeps advancing.
 	vol, hasVolSource, volErr := venueVolume24h(va.Source, va.Asset)
 	if volErr != nil {
 		handleFetchError(va, "volume", volErr)
-		ok = false
 	}
 
 	// Publish OI unconditionally (all venues have OI).
@@ -154,6 +158,9 @@ func runTick(va VenueAsset, st *pairState, sinceMs int64) bool {
 		setLiqVolume(va.Venue, va.Asset, volume)
 		if meanOI > 0 {
 			liqRate.WithLabelValues(va.Venue, va.Asset).Set(volume / meanOI * 100)
+		}
+		if newest := st.window.NewestMs(); newest > 0 {
+			liqNewestAge.WithLabelValues(va.Venue, va.Asset).Set(float64(nowMs-newest) / 1000)
 		}
 		// Meaningless for a source that reports hours or the whole window as
 		// one number: it would show the busiest hour, or 100%, and claim the

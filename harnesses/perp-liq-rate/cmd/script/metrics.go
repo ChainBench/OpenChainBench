@@ -47,6 +47,11 @@ var (
 		Help: "The largest single liquidation in the 24h window as a percentage of the window total. Near 100 means the figure is one position rather than a flow.",
 	}, []string{"venue", "chain"})
 
+	liqNewestAge = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "perp_liq_newest_event_age_seconds",
+		Help: "Seconds since the most recent liquidation the feed reported for this row. A large age against a busy book is a feed that has stopped, not a quiet venue: 0xArchive's ETH feed sat nine hours stale on 2026-09-27 while BTC and SOL were current.",
+	}, []string{"venue", "chain"})
+
 	liqRanked = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "perp_liq_ranked",
 		Help: "1 when the row's liquidation rate is comparable to the rest of the field and takes a rank, 0 when it is published but not ranked. Read perp_liq_share_of_volume_pct, perp_liq_largest_event_share_pct and perp_liq_source_available for which condition failed; the harness logs the reason by name on every tick.",
@@ -95,6 +100,7 @@ func registerMetrics() *prometheus.Registry {
 		liqVenueVolume,
 		liqShareOfVolume,
 		liqLargestShare,
+		liqNewestAge,
 		liqRanked,
 		liqWarmingUp,
 		liqHealth,

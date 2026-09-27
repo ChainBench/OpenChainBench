@@ -149,6 +149,21 @@ func (w *SlidingWindow) Max() float64 {
 	return max
 }
 
+// NewestMs returns the timestamp of the most recent entry, or 0 when empty.
+// Published as an age so a feed that has stopped reporting is visible next
+// to the rate it still produces.
+func (w *SlidingWindow) NewestMs() int64 {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	var newest int64
+	for _, e := range w.entries {
+		if e.tsMs > newest {
+			newest = e.tsMs
+		}
+	}
+	return newest
+}
+
 // Len returns the number of entries currently inside the window.
 func (w *SlidingWindow) Len() int {
 	w.mu.Lock()

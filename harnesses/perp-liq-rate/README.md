@@ -9,7 +9,7 @@ gauges on `:2112/metrics`.
 
 | Slug | Assets | Liquidation source | Ranks? (every measured row goes through the band in `plausibility.go`; shares below were measured 2026-09-27 and move) |
 |---|---|---|---|
-| `hyperliquid` | ETH BTC SOL | 0xArchive `/v1/hyperliquid/liquidations`, all liquidation types (HLP vault fallback without a key) | on the band |
+| `hyperliquid` | ETH BTC SOL | 0xArchive `/v1/hyperliquid/liquidations`, all liquidation types; no rate without the key | on the band |
 | `lighter` | ETH BTC | Coinalyze hourly buckets, symbols `0.T` `1.T` | on the band |
 | `aster` | ETH BTC SOL | Coinalyze hourly buckets, symbols `ETHUSDT.S` `BTCUSDT.S` `SOLUSDT.S` | on the band |
 | `gmx` | ETH BTC | Subsquid `tradeActions`, `orderType` 7 | on the band |
@@ -49,7 +49,7 @@ docker run -p 2112:2112 perp-liq-rate
 | `RPC_ARBITRUM` | `https://arb1.arbitrum.io/rpc` | Arbitrum One JSON-RPC (gains) |
 | `LISTEN_ADDR` | `:2112` | metrics listen address |
 | `COINALYZE_API_KEY` | unset | required for the lighter and aster numerators |
-| `OXARCHIVE_API_KEY` | unset | full Hyperliquid coverage; without it the HLP vault fallback sees backstop liquidations only |
+| `OXARCHIVE_API_KEY` | unset | required for the Hyperliquid numerator; without it the row reads N/A, since the HLP vault fallback sees backstop liquidations only |
 
 ## Metrics
 
@@ -61,6 +61,7 @@ perp_liq_open_interest_avg_24h_usd{venue,chain}
 perp_liq_venue_volume_24h_usd{venue,chain}
 perp_liq_share_of_volume_pct{venue,chain}
 perp_liq_largest_event_share_pct{venue,chain}
+perp_liq_newest_event_age_seconds{venue,chain}
 perp_liq_ranked{venue,chain}
 perp_liq_warming_up{venue}
 perp_liq_health{venue}

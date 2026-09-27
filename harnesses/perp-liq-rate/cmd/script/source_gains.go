@@ -247,12 +247,14 @@ type ethLog struct {
 	Removed     bool     `json:"removed"`
 }
 
-// FetchLiquidationsSince scans LimitExecuted logs from lastBlock+1 (first tick:
-// HasLiquidationSource reports true — TradeClosed on-chain logs give full coverage.
+// HasLiquidationSource reports true: the diamond's LimitExecuted logs carry
+// every liquidation the venue executes.
 func (g *Gains) HasLiquidationSource() bool { return true }
 
-// latest-43200) to latest and returns those decoded as liquidations of the
-// requested asset. sinceMs is unused: block cursoring replaces it here.
+// FetchLiquidationsSince scans LimitExecuted logs from lastBlock+1 (first
+// tick: latest minus the lookback) to latest and returns those decoded as
+// liquidations of the requested asset. sinceMs is unused: block cursoring
+// replaces it here.
 func (g *Gains) FetchLiquidationsSince(asset string, _ int64) ([]LiqEvent, error) {
 	pairIdx, ok := gainsPairIndex[asset]
 	if !ok {

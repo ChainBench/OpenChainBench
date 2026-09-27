@@ -149,9 +149,11 @@ func (h *Hyperliquid) fetchOxaLiquidations(coin string, sinceMs int64) ([]LiqEve
 		oxaMaxPages*oxaPageLimit, startISO, coin)
 }
 
-// HasLiquidationSource reports true — 0xArchive with a key, else the HLP
-// vault fallback, which sees backstop liquidations only.
-func (h *Hyperliquid) HasLiquidationSource() bool { return true }
+// HasLiquidationSource reports whether the 0xArchive key is present. The HLP
+// vault fallback sees backstop liquidations only, a knowably partial
+// numerator that must not publish under the same gauge as the full feed; the
+// row reads N/A without the key, the rule Lighter and Aster already follow.
+func (h *Hyperliquid) HasLiquidationSource() bool { return h.archiveAPIKey != "" }
 
 // FetchLiquidationsSince returns liquidation events newer than sinceMs.
 // Priority: (1) 0xArchive when OXARCHIVE_API_KEY is set, (2) HLP vault

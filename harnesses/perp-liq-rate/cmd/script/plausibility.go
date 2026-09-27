@@ -25,8 +25,8 @@ package main
 // liquidation flow actually occupies.
 //
 // The band is stated as a share of the venue's own 24h traded notional,
-// because that is the one denominator every venue reports on the same
-// endpoint as its open interest, and it cancels venue size.
+// because that is a denominator nearly every venue publishes itself (GMX's
+// comes from the same squid as its liquidations) and it cancels venue size.
 
 const (
 	// liqShareFloorPct: below this the figure is an absence, not a
