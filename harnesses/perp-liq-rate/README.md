@@ -1,10 +1,28 @@
 # perp-liq-rate
 
-Prometheus exporter measuring `liquidated_notional_usd_24h / open_interest_usd * 100` per perpetual DEX venue per asset (ETH, BTC, SOL where available). Polls every 5 minutes, serves gauges on `:2112/metrics`.
+Prometheus exporter for bench 208. Publishes, per perp venue and per asset,
+liquidated notional over the trailing 24 hours divided by **mean** open
+interest over the same 24 hours, times 100. Polls every 5 minutes, serves
+gauges on `:2112/metrics`.
 
 ## Venues
 
-hyperliquid (ETH/BTC/SOL) · gains (ETH/BTC, Base RPC) · dydx (ETH/BTC/SOL) · gmx (ETH/BTC) · lighter (ETH/BTC) · vertex (ETH/BTC) · aevo (ETH/BTC) · paradex (ETH/BTC)
+| Slug | Assets | Liquidation source | Ranks? |
+|---|---|---|---|
+| `hyperliquid` | ETH BTC SOL | 0xArchive `/v1/hyperliquid/liquidations`, all liquidation types (HLP vault fallback without a key) | yes |
+| `lighter` | ETH BTC | Coinalyze hourly buckets, symbols `0.T` `1.T` | yes |
+| `aster` | ETH BTC SOL | Coinalyze hourly buckets, symbols `ETHUSDT.S` `BTCUSDT.S` `SOLUSDT.S` | yes |
+| `gmx` | ETH BTC | Subsquid `tradeActions`, `orderType` 7 | on the band |
+| `dydx` | ETH BTC SOL | v4 indexer tape, `type == LIQUIDATED` | on the band |
+| `paradex` | ETH BTC | public tape, `trade_type == LIQUIDATION` | on the band |
+| `gains` | ETH BTC | on-chain `LimitExecuted` logs, `orderType` LIQ_CLOSE (6), Arbitrum and Base | no: no per-asset volume denominator |
+| `ostium` | ETH BTC | Ormi subgraph, `tradeEvents` type `LiquidationExecuted` | on the band |
+| `aevo` | ETH BTC | none reachable | no |
+
+Slugs match the site's perp venue registry (`src/lib/perp-stats.ts`), except
+`gmx`, which every perp bench's harness publishes as `gmx` while the cohort
+registry calls it `gmx-v2`; `PRODUCT_ALIASES` in `src/lib/providers.ts`
+collapses both onto one product page.
 
 ## Run
 
@@ -26,37 +44,86 @@ docker run -p 2112:2112 perp-liq-rate
 |---|---|---|
 | `TICK_INTERVAL_SECONDS` | `300` | poll interval |
 | `RPC_BASE` | `https://mainnet.base.org` | Base mainnet JSON-RPC (gains) |
+| `RPC_ARBITRUM` | `https://arb1.arbitrum.io/rpc` | Arbitrum One JSON-RPC (gains) |
 | `LISTEN_ADDR` | `:2112` | metrics listen address |
+| `COINALYZE_API_KEY` | unset | required for the lighter and aster numerators |
+| `OXARCHIVE_API_KEY` | unset | full Hyperliquid coverage; without it the HLP vault fallback sees backstop liquidations only |
 
 ## Metrics
 
 ```
-perp_liq_rate_24h_pct{venue,asset}
-perp_liq_volume_24h_usd{venue,asset}
-perp_liq_open_interest_usd{venue,asset}
+perp_liq_rate_24h_pct{venue,chain}
+perp_liq_volume_24h_usd{venue,chain}
+perp_liq_open_interest_usd{venue,chain}
+perp_liq_open_interest_avg_24h_usd{venue,chain}
+perp_liq_venue_volume_24h_usd{venue,chain}
+perp_liq_share_of_volume_pct{venue,chain}
+perp_liq_largest_event_share_pct{venue,chain}
+perp_liq_ranked{venue,chain}
 perp_liq_warming_up{venue}
 perp_liq_health{venue}
+perp_liq_source_available{venue}
 perp_liq_last_refresh_timestamp_seconds{venue}
-perp_liq_fetch_errors_total{venue,asset,error_type}
+perp_liq_fetch_errors_total{venue,chain,error_type}
+perp_realized_vol_24h_pct{chain}
 ```
 
-`error_type` values: `http_4xx`, `http_5xx`, `http_status`, `timeout`, `decode`, `parse`, `unavailable`, `oi_zero`, `other`.
+`error_type` values: `http_4xx`, `http_5xx`, `http_status`, `timeout`,
+`decode`, `parse`, `unavailable`, `oi_zero`, `other`.
 
 ## Semantics
 
-- Each (venue, asset) pair keeps a thread-safe in-memory sliding window of `(unix_ms, notional_usd)` events plus a dedup key set; both are pruned to 24h every tick.
-- All pairs are polled in parallel goroutines per tick behind a `sync.WaitGroup`.
-- On fetch error the previously published gauges are kept, `perp_liq_fetch_errors_total` is incremented and the error is logged to stdout; `perp_liq_health{venue}` drops to 0 for the tick.
-- `perp_liq_warming_up{venue}` stays 1 until 24h have elapsed since the venue's first tick. Venues with historical endpoints (gains, dydx, gmx, vertex, paradex, and partially lighter) backfill up to 24h on the first tick; hyperliquid/aevo start from their recent-trade depth.
-- lighter: HTTP 404/501 marks the venue unavailable (health 0). After 3 consecutive unavailable ticks it logs once and suppresses further error increments/logs until recovery.
-- gains: liquidations are decoded from `TradeClosed` logs on the Base diamond (`cancelReason == 1`); a Keccak-256 implementation is embedded (only external dependency allowed is the Prometheus client) and is covered by known-vector tests in `cmd/script/harness_test.go`. Event timestamps are approximated from block distance at ~2 s/block. OI uses DefiLlama Base TVL as a venue-level proxy shared by both assets.
+- Each (venue, asset) pair holds a 24h window of liquidation notionals keyed
+  by event identity, plus a 24h trail of open-interest readings. Both are
+  pruned every tick. All pairs are polled in parallel per tick.
+- **Events versus buckets.** An event source reports an immutable fact once,
+  and `SeenSet` stops it being counted twice. A bucket source (Coinalyze)
+  reports an hourly total that keeps growing while its hour is open, so its
+  events carry `Bucket: true` and the runner *replaces* the value held for
+  that key. Treating a bucket as an event froze every hour at the reading it
+  had minutes after the hour began: Lighter published $887 against $185.6M
+  of ETH volume until 2026-09-27 because of that. See the note at the top of
+  `window.go`.
+- **The denominator is a mean.** The numerator covers 24 hours, so dividing
+  by an instantaneous open interest made the rate move with the denominator.
+  Gains published 343% on 2026-09-24 because its open interest fell from
+  $37M to $7.3M while its numerator stood still.
+- **The rank gate** lives in `plausibility.go`. A row ranks only when it has
+  a feed, the tick succeeded, the denominator has at least 12 readings, some
+  liquidation was observed, the venue publishes a 24h notional, and
+  liquidated notional is between 0.01% and 3% of that notional. Every other
+  case publishes its figures with `perp_liq_ranked = 0`, and the harness logs
+  the reason by name. The band exists because the venues do not agree on what
+  a liquidation is: measured on 2026-09-27, Hyperliquid read 0.40% of its own
+  ETH volume, Lighter 0.024%, dYdX 0.00085% and Gains 14.9%.
+- On a fetch error the previously published gauges are kept,
+  `perp_liq_fetch_errors_total` is incremented and the error is logged;
+  `perp_liq_health{venue}` drops to 0 for the tick.
+- `perp_liq_warming_up{venue}` stays 1 until 24h after the venue's first
+  tick. Every liquidation source backfills its full 24h window on that first
+  tick, so the numerator is complete from the start; the flag marks the
+  window having seen a full span of its own.
+- `lighter`: HTTP 404/501 marks the venue unavailable (health 0). After 3
+  consecutive unavailable ticks it logs once and suppresses further error
+  increments until recovery.
+- `gains`: a minimal Keccak-256 is embedded (the only external dependency
+  allowed is the Prometheus client) and covered by known-vector tests. The
+  decode is self-checking: the event encodes position size twice, as
+  `collateralAmount x leverage` and as `positionSizeToken x openPrice`, and a
+  log whose two encodings differ by more than 5% is refused rather than
+  published. `source_gains_golden_test.go` pins the word offsets against two
+  real Arbitrum logs.
 
-## VERIFY inventory
+## Venues checked and not added
 
-The upstream API shapes were implemented from the written spec plus the most likely live shapes; every assumption is marked `// VERIFY:` at the exact line. Grep for them before trusting production numbers:
-
-```bash
-grep -rn "VERIFY" cmd/script
-```
-
-Highlights: the gains `TradeClosed` tuple word offsets (pairIndex / leverage / collateralAmount) and pair indices; hyperliquid's `liquidation` marker field on `recentTrades`; the dydx `perpetualMarkets` map-vs-array shape; gmx subgraph `market` field and gmxinfra `/markets` field names; lighter `/liquidations` params, envelope and market ids; vertex query path, product ids, row/timestamp fields and `max_time` cursor semantics; aevo `/liquidations` existence and timestamp encoding; paradex fills pagination cursor, auth and `open_interest` units.
+- **edgeX**: the live v2 deployment publishes no public trade tape. Every
+  trades and liquidation path 404s, and the only reachable websocket gateway
+  serves the retired v1 contract ids.
+- **Jupiter Perps**: `/v1/trades` requires a wallet address and its `action`
+  enum has no liquidation value, so no venue-level feed exists short of
+  decoding the program on Solana.
+- **Drift**: now Velocity, on a fresh program deployment. `/stats/liquidations`
+  works and needs no key, but its ETH and BTC books held single-digit
+  thousands of dollars on 2026-09-27 with zero liquidations ever recorded on
+  ETH, so a per-asset rate would be noise. The cohort registry parks Drift
+  for the same reason.
