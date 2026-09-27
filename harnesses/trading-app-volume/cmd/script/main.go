@@ -4,26 +4,25 @@
 // Feeds bench 267 (trading-app-daily-volume), the /trading-apps hub chart
 // and the "Trading app" view on /products/<slug>.
 //
+// Since 2026-09-27 it also feeds bench 201 (solana-trading-platform-wars):
+// its volume, its commission and its take rate all come from here.
+//
 // Why DeFiLlama here and not Dune: the Dune community datasets the
 // /trading-apps hub used for volume cover one chain for some platforms
 // (dataset_fomo_sol_daily is Solana only) and every chain for others, so
 // the column compared unlike things. They then stopped updating on
 // 2026-08-25 and were served as current for 32 days, which is the other
 // half of the answer: they were one person's uploads, not a maintained
-// table. Bench 201 now reads its own SQL over Dune's own tables instead,
-// see harnesses/dune-platform-volume. DeFiLlama's dexs adapters for the
-// "Trading App" and "Telegram Bot" categories are cross-chain by
-// construction and expose a per-chain breakdown per UTC day, on a free
-// endpoint:
+// table. Bench 201 replaced them with our own SQL over Dune's own tables
+// (harnesses/dune-platform-volume, still there for the day the plan is
+// paid for), then moved here when the Dune trial ran out. DeFiLlama's dexs
+// adapters for the "Trading App" and "Telegram Bot" categories are
+// cross-chain by construction and expose a per-chain breakdown per UTC
+// day, and its fees adapters expose the app's own cut, both on free
+// endpoints:
 //
 //	GET https://api.llama.fi/summary/dexs/<slug>?dataType=dailyVolume
 //	GET https://api.llama.fi/summary/fees/<slug>?dataType=dailyRevenue
-//
-// Since 2026-09-27 this also feeds bench 201 (solana-trading-platform-wars),
-// which read third-party Dune datasets until they froze, then our own Dune SQL
-// until the trial ran out. Its volume, commission and take rate all come from
-// here now.
-//
 //	-> totalDataChart [[unix, usd]...], totalDataChartBreakdown
 //	   [[unix, {chain: {version: usd}}]...]
 //
