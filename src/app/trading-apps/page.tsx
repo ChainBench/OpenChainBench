@@ -333,9 +333,9 @@ export default async function TradingAppsHubPage() {
           Best value per column highlighted in green. Sorted by the first column
           where more is better. Volume is in the bench 267 table above (one figure
           per app, cross-chain). Chains from bench 267 (each app&apos;s latest closed
-          UTC day); SOL marks a figure that covers Solana only. An app with no
-          figure in any column is not listed. Hover column headers for methodology
-          notes.
+          UTC day), which is also where each row&apos;s breadth is shown. An app with
+          no figure in any column is not listed. Hover column headers for
+          methodology notes.
         </p>
       </section>
 
