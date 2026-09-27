@@ -602,9 +602,24 @@ func publish(h *History) {
 				sum += p.USD
 				present++
 			}
+			// The window applies the same rule as the anchor: a day returned as zero
+			// revenue against real volume is an artifact and is left out, unless the
+			// window has no positive day at all, in which case the app's cut really
+			// is zero and the zeros are its figures. Without this the artifact was
+			// kept out of the 1d figure and still diluted the 7d and 30d ones.
+			windowHasPositive := false
+			for i := 0; i < n && hasRevEnd; i++ {
+				if p, ok := byDay[fmtDay(revEnd.AddDate(0, 0, -i))]; ok && p.HasRev && p.Rev > 0 {
+					windowHasPositive = true
+					break
+				}
+			}
 			for i := 0; i < n && hasRevEnd; i++ {
 				p, ok := byDay[fmtDay(revEnd.AddDate(0, 0, -i))]
 				if !ok || !p.HasRev {
+					continue
+				}
+				if windowHasPositive && p.Rev == 0 && p.USD > 0 {
 					continue
 				}
 				rev += p.Rev
