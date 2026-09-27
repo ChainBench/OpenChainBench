@@ -57,7 +57,7 @@ findings:
   - "pump.fun and BasedBot read unresponsive. pump.fun charges no bonding-curve fee, so there is no fee wallet to attribute its transactions from, and BasedBot has no public wallet list."
   - "Unique swap tx and volume rankings diverge: Axiom leads terminals on tx count while Photon and Trojan serve more concentrated user bases with higher average position sizes."
 
-source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/solana-unique-traders
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/dune-platform-volume
 
 prometheus:
   window: 24h

@@ -69,6 +69,16 @@ func init() {
 	)
 }
 
+// markAllUnresponsive puts health 0 on every platform and no figures, which is
+// the honest state before anything has been fetched. Without it a deploy that
+// lands before the indexing lag has cleared leaves the series absent rather than
+// unresponsive for hours, and an alert on health == 0 has nothing to fire on.
+func markAllUnresponsive(known []string) {
+	for _, p := range known {
+		dropPlatform(p)
+	}
+}
+
 // platformGauges are the gauge children keyed on platform alone.
 func platformGauges() []*prometheus.GaugeVec {
 	return []*prometheus.GaugeVec{
@@ -87,6 +97,14 @@ func dropPlatform(platform string) {
 		g.DeleteLabelValues(platform)
 	}
 	platformHealth.WithLabelValues(platform).Set(0)
+}
+
+// rowDay is the row's data day as YYYY-MM-DD.
+func rowDay(r duneRow) string {
+	if r.DataDayUnix <= 0 {
+		return ""
+	}
+	return time.Unix(int64(r.DataDayUnix), 0).UTC().Format("2006-01-02")
 }
 
 // daysBehind is how many whole UTC days separate the data day from now: 0 is
@@ -123,6 +141,7 @@ func dayCovered(r duneRow) bool {
 // the last poll that carried it.
 func publishRows(rows []duneRow, maxDays int, now time.Time, known []string) (published, dropped []string) {
 	seen := make(map[string]bool, len(rows))
+	complete := true
 	for _, r := range rows {
 		if r.Platform == "" {
 			continue
@@ -150,6 +169,9 @@ func publishRows(rows []duneRow, maxDays int, now time.Time, known []string) (pu
 		} else {
 			platformFeesUSD.DeleteLabelValues(r.Platform)
 			platformFeeRate.DeleteLabelValues(r.Platform)
+			// prices.day may not have the day's SOL row yet when the query runs.
+			// The day is not finished, so the refresh gate must let it be retried.
+			complete = false
 		}
 		if r.AvgTradeUSD > 0 {
 			platformAvgTrade.WithLabelValues(r.Platform).Set(r.AvgTradeUSD)
@@ -164,7 +186,9 @@ func publishRows(rows []duneRow, maxDays int, now time.Time, known []string) (pu
 		platformDataDay.WithLabelValues(r.Platform).Set(r.DataDayUnix)
 		platformHealth.WithLabelValues(r.Platform).Set(1)
 		published = append(published, r.Platform)
-		publishedDay = time.Unix(int64(r.DataDayUnix), 0).UTC().Format("2006-01-02")
+		if complete {
+			publishedDay = rowDay(r)
+		}
 	}
 	for _, p := range known {
 		if !seen[p] {

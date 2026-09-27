@@ -170,19 +170,29 @@ func main() {
 		}()
 	}
 
+	// Unresponsive until something is fetched, rather than absent.
+	markAllUnresponsive(publishedPlatforms)
+	// One read of whatever ran last, so a restart picks the board back up without
+	// spending an execution. After this, figures only arrive from an execution this
+	// harness ran and read back by its own id: re-reading the unparameterized
+	// /query/{id}/results on a timer could only overwrite them with an older day.
 	runFetch(client, queryID)
-	maybeRefresh()
-
-	fetchTick := time.NewTicker(fetchInterval)
-	defer fetchTick.Stop()
+	// No execution on start. A deploy waits one tick, which keeps a restart loop
+	// during a failing day from spending the per-day retry budget again each time
+	// the process comes up: that budget lives in memory and does not survive a
+	// restart, so the 15 minutes is the only thing bounding it.
+	tick := time.NewTicker(fetchInterval)
+	defer tick.Stop()
 
 	for {
 		select {
 		case <-sig:
 			fmt.Println("[shutdown] received signal")
 			return
-		case <-fetchTick.C:
-			runFetch(client, queryID)
+		case <-tick.C:
+			// Re-run the guard over what is held, so figures age out on their own
+			// clock even when no execution succeeds.
+			publish("guard", nil)
 			maybeRefresh()
 		}
 	}

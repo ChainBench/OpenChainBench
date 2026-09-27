@@ -188,3 +188,50 @@ func TestPublishRowsAgesOutTheSameRowsAsTimePasses(t *testing.T) {
 		t.Errorf("volume series = %d, want 0", got)
 	}
 }
+
+// A publish that had to withhold the fee figures is not a finished day: the
+// refresh gate has to be able to retry it, so the published day is not recorded.
+func TestPublishedDayWaitsForTheFeeFigures(t *testing.T) {
+	t.Cleanup(func() { dropPlatform("nopx2"); publishedDay = "" })
+	publishedDay = ""
+
+	day := dayUnix(2026, 9, 26)
+	rows := []duneRow{{
+		Platform: "nopx2", DataDayUnix: day, DayLastTradeUnix: lastTradeAt(day),
+		SolPriceUSD: 0, VolumeUSD: 100, Txns: 4, AvgTradeUSD: 25,
+	}}
+	if published, _ := publishRows(rows, 3, now, []string{"nopx2"}); len(published) != 1 {
+		t.Fatalf("published = %v, want [nopx2]", published)
+	}
+	if publishedDay != "" {
+		t.Errorf("publishedDay = %q, want empty while the fee figures are missing", publishedDay)
+	}
+
+	// With a price, the day counts as done.
+	rows[0].SolPriceUSD = 119
+	publishRows(rows, 3, now, []string{"nopx2"})
+	if publishedDay != "2026-09-26" {
+		t.Errorf("publishedDay = %q, want 2026-09-26", publishedDay)
+	}
+}
+
+// Before anything is fetched every platform reads unresponsive rather than
+// absent, so a deploy that lands before the indexing lag clears still says so and
+// an alert on health == 0 has something to fire on.
+func TestMarkAllUnresponsive(t *testing.T) {
+	known := []string{"a1", "b2"}
+	t.Cleanup(func() {
+		for _, p := range known {
+			dropPlatform(p)
+		}
+	})
+	markAllUnresponsive(known)
+	for _, p := range known {
+		if got := testutil.ToFloat64(platformHealth.WithLabelValues(p)); got != 0 {
+			t.Errorf("%s health = %v, want 0", p, got)
+		}
+	}
+	if got := testutil.CollectAndCount(platformVolume, "dune_platform_volume_24h_usd"); got != 0 {
+		t.Errorf("volume series = %d, want 0", got)
+	}
+}
