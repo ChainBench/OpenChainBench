@@ -117,10 +117,16 @@ type gmxTradeAction struct {
 	OrderKey        string `json:"orderKey"`
 }
 
-// squidTradeActions pages tradeActions under one where clause.
+// squidTradeActions pages tradeActions under one where clause. Rows are
+// deduplicated by orderKey: the squid is live and ordered newest first, so a
+// row inserted between two pages shifts the next page down and repeats the
+// tail of the previous one. Hitting the page cap is an error, not a partial
+// sum, because the caller feeds the rank gate's denominator with it.
 func (g *GMX) squidTradeActions(where string) ([]gmxTradeAction, error) {
 	var all []gmxTradeAction
-	for page := 0; page < gmxSquidMaxPages; page++ {
+	seen := make(map[string]bool, 1024)
+	page := 0
+	for ; page < gmxSquidMaxPages; page++ {
 		q := fmt.Sprintf(
 			`{ tradeActions(where:{%s}, orderBy:timestamp_DESC, limit:%d, offset:%d) `+
 				`{ marketAddress sizeDeltaUsd timestamp transactionHash orderKey } }`,
@@ -139,12 +145,22 @@ func (g *GMX) squidTradeActions(where string) ([]gmxTradeAction, error) {
 		if len(resp.Errors) > 0 {
 			return nil, fmt.Errorf("gmx squid: %s", resp.Errors[0].Message)
 		}
-		all = append(all, resp.Data.TradeActions...)
+		for _, r := range resp.Data.TradeActions {
+			id := r.OrderKey
+			if id == "" {
+				id = r.TransactionHash + ":" + r.MarketAddress + ":" + fmt.Sprint(r.Timestamp)
+			}
+			if seen[id] {
+				continue
+			}
+			seen[id] = true
+			all = append(all, r)
+		}
 		if len(resp.Data.TradeActions) < gmxSquidPageLimit {
-			break
+			return all, nil
 		}
 	}
-	return all, nil
+	return nil, fmt.Errorf("gmx squid: more than %d rows match %q; refusing a partial sum", gmxSquidMaxPages*gmxSquidPageLimit, where)
 }
 
 // marketAsset maps a market token address to the asset it trades. The index
@@ -157,13 +173,20 @@ func (g *GMX) marketAsset() (map[string]string, error) {
 	}
 	out := make(map[string]string, len(markets))
 	for _, m := range markets {
-		name := strings.ToUpper(strings.TrimSpace(m.Name))
-		if i := strings.IndexAny(name, "/ "); i > 0 {
-			name = name[:i]
-		}
-		out[strings.ToLower(m.MarketToken)] = name
+		out[strings.ToLower(m.MarketToken)] = gmxIndexToken(m.Name)
 	}
 	return out, nil
+}
+
+// gmxIndexToken is the index token of a market name: the part before the
+// first separator, under the same rule gmxAssetMatches applies for OI, so the
+// numerator, the denominator and the open interest cover one market set.
+func gmxIndexToken(marketName string) string {
+	name := strings.ToUpper(strings.TrimSpace(marketName))
+	if i := strings.IndexAny(name, "/ -"); i > 0 {
+		name = name[:i]
+	}
+	return name
 }
 
 // FetchLiquidationsSince returns executed liquidations of the asset since

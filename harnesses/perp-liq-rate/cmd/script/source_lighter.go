@@ -117,9 +117,10 @@ func (l *Lighter) findMarket(asset string) (lighterMarketDetail, error) {
 	return lighterMarketDetail{}, fmt.Errorf("lighter: no market found for asset %q", asset)
 }
 
-// FetchLiquidationsSince returns hourly liquidation buckets from Coinalyze,
-// HasLiquidationSource reports true — Coinalyze provides hourly liq buckets.
-func (l *Lighter) HasLiquidationSource() bool { return true }
+// HasLiquidationSource reports whether the Coinalyze key is present. Without
+// it there is no numerator, and the row must read N/A rather than a 0% rate
+// at full health.
+func (l *Lighter) HasLiquidationSource() bool { return l.czAPIKey != "" }
 
 // converted to USD using the current mark_price from orderBookDetails.
 // Returns empty if COINALYZE_API_KEY is not set.

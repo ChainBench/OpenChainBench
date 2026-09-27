@@ -108,6 +108,10 @@ const (
 	// liquidations and to 0.01% on a 19x TAO close, so the tolerance is
 	// slack enough for the fee accrual that separates them.
 	gainsSizeCrossCheckTol = 0.05
+	// For collateral that is not a stablecoin the two encodings legitimately
+	// differ by the collateral's move since open; a scale error is still
+	// orders of magnitude, so this catches it without refusing a real close.
+	gainsSizeCrossCheckTolVolatile = 0.50
 )
 
 // Gains implements Source via JSON-RPC log scanning of one deployment.
@@ -369,20 +373,34 @@ func decodeGainsLimitExecuted(lg ethLog, wantPair uint64, latest uint64, nowMs i
 	if n <= 0 || n > gainsMaxSingleNotionalUSD {
 		return LiqEvent{}, false, fmt.Errorf("implausible notional %.2f", n)
 	}
-	// Second, independent reading of the same position size.
+	// Second, independent reading of the same position size. A zero here is
+	// itself a refusal: it means the size or price word is not where the
+	// layout says, which is exactly the drift the check exists to catch.
 	sizeToken := new(big.Float).Quo(new(big.Float).SetInt(word(gainsWordPositionSizeToken)), big.NewFloat(1e18))
 	openPrice := new(big.Float).Quo(new(big.Float).SetInt(word(gainsWordOpenPrice)), big.NewFloat(1e10))
 	alt, _ := new(big.Float).Mul(sizeToken, openPrice).Float64()
-	if alt > 0 {
-		diff := (n - alt) / alt
-		if diff < 0 {
-			diff = -diff
-		}
-		if diff > gainsSizeCrossCheckTol {
-			return LiqEvent{}, false, fmt.Errorf(
-				"position size disagrees: collateral x leverage = %.2f, positionSizeToken x openPrice = %.2f (%.1f%% apart)",
-				n, alt, diff*100)
-		}
+	if alt <= 0 {
+		return LiqEvent{}, false, fmt.Errorf("position size cross-check unavailable: positionSizeToken x openPrice = %.2f", alt)
+	}
+	// n carries the collateral's USD price at execution (w30); alt carries
+	// the index price at open. For a stablecoin those agree, so the two
+	// encodings do too, to a fraction of a percent. For WETH or GNS
+	// collateral the gap is the collateral's own move since open, which on a
+	// liquidation can be tens of percent. A scale or offset error moves one
+	// side by orders of magnitude, so a loose bound still catches it there.
+	tol := gainsSizeCrossCheckTol
+	colPx, _ := new(big.Float).Quo(price, big.NewFloat(1e8)).Float64()
+	if colPx < 0.98 || colPx > 1.02 {
+		tol = gainsSizeCrossCheckTolVolatile
+	}
+	diff := (n - alt) / alt
+	if diff < 0 {
+		diff = -diff
+	}
+	if diff > tol {
+		return LiqEvent{}, false, fmt.Errorf(
+			"position size disagrees: collateral x leverage = %.2f, positionSizeToken x openPrice = %.2f (%.1f%% apart, tolerance %.0f%%)",
+			n, alt, diff*100, tol*100)
 	}
 	blockNum, err := parseHexUint(lg.BlockNumber)
 	if err != nil {

@@ -84,6 +84,9 @@ func TestAster_NoCoinalyzeKeyYieldsNoEvents(t *testing.T) {
 	a, done := asterStubs(t, []map[string]any{{"t": int64(1790496000), "l": 1.0, "s": 1.0}})
 	defer done()
 	a.czAPIKey = ""
+	if a.HasLiquidationSource() {
+		t.Fatal("HasLiquidationSource must be false without COINALYZE_API_KEY, or the row reads 0% at full health")
+	}
 	events, err := a.FetchLiquidationsSince("ETH", 0)
 	if err != nil || len(events) != 0 {
 		t.Fatalf("got %d events (%v), want none without a key", len(events), err)

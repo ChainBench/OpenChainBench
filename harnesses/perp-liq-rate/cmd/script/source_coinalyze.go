@@ -136,7 +136,11 @@ func fetchHourlyCloses(coin string, fromMs, toMs int64, infoURL string) (map[int
 func bucketsToEvents(keyPrefix, assetName string, buckets []czBucket, priceMap map[int64]float64, fallbackPx float64) []LiqEvent {
 	var events []LiqEvent
 	for _, b := range buckets {
-		tsMs := b.T * 1000
+		// Stamped at the hour's end, not its start. The window cuts on the
+		// stamp, and a bucket stamped at its start would be dropped while
+		// most of its hour still sits inside the 24h, leaving these rows
+		// covering 23 to 24 hours against a true 24 for event sources.
+		tsMs := (b.T + 3600) * 1000
 		total := b.L + b.S
 		if total == 0 {
 			continue

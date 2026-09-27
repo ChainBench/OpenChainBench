@@ -197,6 +197,17 @@ func TestLighter_FetchOI_MarketNotFound(t *testing.T) {
 	}
 }
 
+// Without the key there is no numerator: the row must be N/A, not a 0% rate
+// at full health, so the source declares it has no liquidation feed.
+func TestLighter_NoKeyMeansNoLiquidationSource(t *testing.T) {
+	if (&Lighter{}).HasLiquidationSource() {
+		t.Fatal("HasLiquidationSource must be false without COINALYZE_API_KEY")
+	}
+	if !(&Lighter{czAPIKey: "k"}).HasLiquidationSource() {
+		t.Fatal("HasLiquidationSource must be true with a key")
+	}
+}
+
 func TestLighter_FetchLiquidationsSince_CoinalyzeNoKey(t *testing.T) {
 	markets := []map[string]any{lighterTestMarket("ETH-USD", 0, 42.0, "1878.0")}
 	srv := buildLighterOBServer(t, markets)

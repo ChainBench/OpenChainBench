@@ -66,9 +66,10 @@ func NewAster() *Aster {
 	}
 }
 
-// HasLiquidationSource reports true — Coinalyze publishes hourly buckets for
-// Aster's markets.
-func (a *Aster) HasLiquidationSource() bool { return true }
+// HasLiquidationSource reports whether the Coinalyze key is present. Without
+// it there is no numerator, and the row must read N/A rather than a 0% rate
+// at full health.
+func (a *Aster) HasLiquidationSource() bool { return a.czAPIKey != "" }
 
 // ticker reads (and caches) the bulk /ticker/24hr snapshot.
 func (a *Aster) ticker(symbol string) (asterTicker, error) {

@@ -166,6 +166,7 @@ func (o *Ostium) FetchOI(asset string) (float64, error) {
 }
 
 type ostiumOrder struct {
+	ID          string `json:"id"`
 	Notional    string `json:"notional"` // 6-decimal USD
 	IsCancelled bool   `json:"isCancelled"`
 	IsFailed    bool   `json:"isFailed"`
@@ -176,18 +177,22 @@ type ostiumOrder struct {
 
 // FetchVolume24hUSD sums executed order notional for the asset over 24h.
 // Cancelled and failed orders are filtered here rather than in the where
-// clause, which returns nothing when a boolean is named.
+// clause, which returns nothing when a boolean is named. Rows are
+// deduplicated by id because skip paging over a live, newest-first list
+// repeats the tail of the previous page, and hitting the page cap is an
+// error rather than a partial denominator for the rank gate.
 func (o *Ostium) FetchVolume24hUSD(asset string) (float64, error) {
 	if !ostiumTrackedAssets[asset] {
 		return 0, fmt.Errorf("ostium: unsupported asset %q", asset)
 	}
 	since := time.Now().Add(-windowSpan).Unix()
 	total := 0.0
+	seen := make(map[string]bool, 256)
 	for page := 0; page < ostiumMaxPages; page++ {
 		q := fmt.Sprintf(
 			`{ orders(first:%d, skip:%d, orderBy:executedAt, orderDirection:desc, `+
 				`where:{executedAt_gte:"%d"}) `+
-				`{ notional isCancelled isFailed pair { from } } }`,
+				`{ id notional isCancelled isFailed pair { from } } }`,
 			ostiumPageLimit, page*ostiumPageLimit, since)
 		var out struct {
 			Orders []ostiumOrder `json:"orders"`
@@ -196,6 +201,12 @@ func (o *Ostium) FetchVolume24hUSD(asset string) (float64, error) {
 			return 0, err
 		}
 		for _, r := range out.Orders {
+			if r.ID != "" {
+				if seen[r.ID] {
+					continue
+				}
+				seen[r.ID] = true
+			}
 			if r.IsCancelled || r.IsFailed || !strings.EqualFold(r.Pair.From, asset) {
 				continue
 			}
@@ -206,8 +217,8 @@ func (o *Ostium) FetchVolume24hUSD(asset string) (float64, error) {
 			total += usd
 		}
 		if len(out.Orders) < ostiumPageLimit {
-			break
+			return total, nil
 		}
 	}
-	return total, nil
+	return 0, fmt.Errorf("ostium: more than %d orders in 24h; refusing a partial sum", ostiumMaxPages*ostiumPageLimit)
 }

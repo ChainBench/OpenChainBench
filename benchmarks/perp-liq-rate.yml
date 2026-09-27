@@ -68,7 +68,7 @@ abstract: |
 
 methodology:
   - "Cadence: every 5 minutes, in parallel across all venue and asset pairs."
-  - "Numerator: liquidation events are held in a 24-hour window keyed by event identity (trade id, or transaction hash plus log index on chain). Events older than 24 hours are dropped each tick."
+  - "Numerator: liquidation events are held in a 24-hour window keyed by event identity (trade id, or transaction hash plus log index on chain). Events older than 24 hours are dropped each tick. Every fetch re-asks for the previous 30 minutes as well, so a row an indexer ingests late is still picked up; the key set makes the repeat free."
   - "Aggregator buckets are restated, not deduplicated. An hourly total read while its hour is still open is smaller than the hour's final figure, so each hour's key carries the newest reading. Freezing the first reading is what made Lighter publish 887 dollars against 185.6M of ETH volume until 2026-09-27."
   - "Denominator: mean open interest over the same 24 hours, one reading per tick. An instantaneous denominator made the rate move with open interest rather than with liquidations: Gains read 343% on 2026-09-24 because its open interest fell from 37M to 7.3M dollars while the numerator stood still."
   - "Ranking: a row ranks only when its liquidated notional is between 0.01% and 3% of the venue's own 24h traded notional, read from the same endpoint as its open interest. The band is published per row as perp_liq_share_of_volume_pct, and perp_liq_ranked carries the verdict."
@@ -101,7 +101,7 @@ findings:
   - "{{best_name}} records the lowest ranked liquidation rate at {{best_p50}}, on {{ranked_count}} ranked rows out of {{count}} in the cohort. The rest publish their figures below the field with the reason they are not ranked."
   - "{{name:hyperliquid}} reads {{p50:hyperliquid}} on ETH and does not rank there. Its 0xArchive feed returned 22 ETH liquidations worth 25,834 dollars over the 24h to 2026-09-27, against 693 on BTC worth 1.87M and 569 on SOL worth 2.00M, on ETH and BTC books of comparable size. The ETH coverage is short, so the row publishes without a rank. BTC and SOL rank."
   - "{{name:lighter}} reads {{p50:lighter}}. Until 2026-09-27 this row published 887 dollars of liquidations against 185.6M of ETH volume, because each hourly bucket was captured minutes after its hour opened and then frozen by the dedup key. Coinalyze was reporting 16.36 ETH over the same window, about 44k dollars."
-  - "{{name:gains}} reads {{p50:gains}} and does not rank. Its 24h liquidated notional was 14.9% of its own traded notional on 2026-09-27, against 0.40% for {{name:hyperliquid}}, and two positions at 136x and 78x leverage were 91% of the figure. The decode is correct: the event's two independent encodings of position size agree to 0.02%."
+  - "{{name:gains}} reads {{p50:gains}} and does not rank, because its trading-variables payload publishes no per-asset traded notional to test the figure against. Against the venue-level 24h volume bench 266 reads, its liquidated notional was 14.9% on 2026-09-27, and two positions at 136x and 78x leverage were 91% of it. The decode is correct: the event's two independent encodings of position size agree to 0.02%."
   - "{{name:dydx}} does not rank on ETH or BTC. Paging the full 24h tape on 2026-09-27 returned one LIQUIDATED fill on each, 466.93 dollars and 16.92, against 54.97M and 7.24M of traded notional. The harness reproduced both to the cent, so the reading is right and it is not a rate."
   - "{{name:paradex}} does not rank. Its public tape carried no LIQUIDATION row on ETH or BTC over a full 24 hours, and its ETH book traded 1.4M dollars against 14.9M of open interest. An exact zero off a working feed is published as an observation, not as the lowest rate."
   - "{{name:gmx}} joined the measured field on 2026-09-27. This spec had claimed no liquidation source existed for it; the public squid's tradeActions does carry the order type, and 103 executed liquidations totalling 900,656 dollars were found over the previous 24 hours."
@@ -199,7 +199,7 @@ metric_panels:
     metric: perp_liq_largest_event_share_pct{}
     unit: pct
     higher_is_better: false
-    description: "The largest single liquidation in the window as a percentage of the window total. Near 100 the 24h figure is one position rather than a flow. Gains read 66 on ETH on 2026-09-27."
+    description: "The largest single liquidation in the window as a percentage of the window total. Near 100 the 24h figure is one position, not a flow. Gains read 66 on ETH on 2026-09-27. Blank for rows read from hourly buckets or a cumulative counter (Lighter, Aster, Nado), which carry no single event."
 
 ledger_columns:
   - { label: "Liq rate", slot: p50 }

@@ -4,13 +4,17 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
+	"math/big"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 )
 
-// buildGainsLimitExecuted encodes the 25 data words of a LimitExecuted log
-// with the fields the decoder reads. Amounts are in collateral units.
+// buildGainsLimitExecuted encodes the 32 data words of a LimitExecuted log
+// with the fields the decoder reads. Amounts are in collateral units. The
+// second encoding of position size (positionSizeToken x openPrice) is
+// written consistent with the first, at an openPrice of 1.0, so the
+// decoder's cross-check sees what the contract would write.
 func buildGainsLimitExecuted(pairIdx uint32, leverage1e3 uint32, collateralIdx uint8, collateralAmount uint64, orderType uint8, collateralPriceUsd1e8 uint64) string {
 	data := make([]byte, gainsLimitExecutedWords*32)
 	put := func(word int, v uint64) { binary.BigEndian.PutUint64(data[word*32+24:word*32+32], v) }
@@ -20,6 +24,21 @@ func buildGainsLimitExecuted(pairIdx uint32, leverage1e3 uint32, collateralIdx u
 	put(gainsWordCollateralAmount, collateralAmount)
 	put(gainsWordOrderType, uint64(orderType))
 	put(gainsWordCollateralPriceUS, collateralPriceUsd1e8)
+
+	dec, ok := testDecimals[uint64(collateralIdx)]
+	if !ok {
+		dec = 6
+	}
+	notional := new(big.Float).SetUint64(collateralAmount)
+	notional.Quo(notional, new(big.Float).SetInt(new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(dec)), nil)))
+	notional.Mul(notional, new(big.Float).SetUint64(uint64(leverage1e3)))
+	notional.Quo(notional, big.NewFloat(1e3))
+	notional.Mul(notional, new(big.Float).SetUint64(collateralPriceUsd1e8))
+	notional.Quo(notional, big.NewFloat(1e8))
+	put(gainsWordOpenPrice, 1e10) // openPrice 1.0
+	sizeToken, _ := new(big.Float).Mul(notional, big.NewFloat(1e18)).Int(nil)
+	b := sizeToken.Bytes()
+	copy(data[gainsWordPositionSizeToken*32+32-len(b):gainsWordPositionSizeToken*32+32], b)
 	return "0x" + hex.EncodeToString(data)
 }
 

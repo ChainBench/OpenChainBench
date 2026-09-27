@@ -12,6 +12,14 @@ import (
 // windowSpan is the sliding-window length the whole harness is built around.
 const windowSpan = 24 * time.Hour
 
+// liqFetchOverlap is subtracted from the high-water mark on every fetch. An
+// indexer (the GMX squid, the Ostium subgraph, 0xArchive) can ingest a
+// liquidation after the tick that should have seen it has already queried,
+// and a strict since filter then never asks for that row again. Re-asking
+// for the last half hour costs a few pages; the SeenSet makes the repeat
+// free. Bucket sources ignore since altogether.
+const liqFetchOverlap = 30 * time.Minute
+
 // pairState is the cross-tick state runTick reads and writes for one pair.
 type pairState struct {
 	window *SlidingWindow
@@ -49,18 +57,20 @@ func runTick(va VenueAsset, st *pairState, sinceMs int64) bool {
 	setSourceAvailable(va.Venue, hasLiqSource)
 
 	var liqErr error
-	aggregated := false // the window holds a windowed total, not events
+	// noEventDetail: the window holds hourly totals or one windowed figure,
+	// so "largest single event" has no meaning for this row.
+	noEventDetail := false
 	if hasLiqSource {
 		var events []LiqEvent
-		events, liqErr = va.Source.FetchLiquidationsSince(va.Asset, sinceMs)
+		events, liqErr = va.Source.FetchLiquidationsSince(va.Asset, sinceMs-liqFetchOverlap.Milliseconds())
 		if liqErr != nil {
 			handleFetchError(va, "liquidations", liqErr)
 			ok = false
 		} else {
 			added, updated := 0, 0
 			for _, e := range events {
-				if e.Aggregate {
-					aggregated = true
+				if e.Aggregate || e.Bucket {
+					noEventDetail = true
 				}
 				if e.Key == "" || e.TimestampMs <= 0 || e.NotionalUSD <= 0 {
 					continue
@@ -133,9 +143,10 @@ func runTick(va VenueAsset, st *pairState, sinceMs int64) bool {
 		if meanOI > 0 {
 			liqRate.WithLabelValues(va.Venue, va.Asset).Set(volume / meanOI * 100)
 		}
-		// Meaningless for a source that reports the window as one number: it
-		// would read 100% and claim the day was a single position.
-		if !aggregated {
+		// Meaningless for a source that reports hours or the whole window as
+		// one number: it would show the busiest hour, or 100%, and claim the
+		// day was a single position.
+		if !noEventDetail {
 			largest := st.window.Max()
 			share := 0.0
 			if volume > 0 {
@@ -154,7 +165,12 @@ func runTick(va VenueAsset, st *pairState, sinceMs int64) bool {
 		volUSD24h: vol,
 		hasVolume: hasVolSource,
 	}
-	liqShareOfVolume.WithLabelValues(va.Venue, va.Asset).Set(in.shareOfVolumePct())
+	// The share is a measurement only when both sides were read this tick;
+	// on a failed fetch or a venue with no notional it stays absent rather
+	// than reading as a 0 that the panel text calls "an absence".
+	if in.fetchOK && in.hasVolume && vol > 0 {
+		liqShareOfVolume.WithLabelValues(va.Venue, va.Asset).Set(in.shareOfVolumePct())
+	}
 	ranked, reason := evaluateRank(in)
 	setRanked(va.Venue, va.Asset, ranked)
 	if !ranked {
