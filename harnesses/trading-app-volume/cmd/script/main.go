@@ -18,8 +18,14 @@
 //
 //	GET https://api.llama.fi/summary/dexs/<slug>?dataType=dailyVolume
 //	GET https://api.llama.fi/summary/fees/<slug>?dataType=dailyRevenue
-//	  -> totalDataChart [[unix, usd]...], totalDataChartBreakdown
-//	     [[unix, {chain: {version: usd}}]...]
+//
+// Since 2026-09-27 this also feeds bench 201 (solana-trading-platform-wars),
+// which read third-party Dune datasets until they froze, then our own Dune SQL
+// until the trial ran out. Its volume, commission and take rate all come from
+// here now.
+//
+//	-> totalDataChart [[unix, usd]...], totalDataChartBreakdown
+//	   [[unix, {chain: {version: usd}}]...]
 //
 // One call per app per tick returns the whole history, so there is no
 // backfill machinery: every tick re-reads each app, keeps the last
@@ -150,6 +156,10 @@ var (
 		Name: "trading_app_take_rate_pct",
 		Help: "The app's commission as a percentage of the volume it routed over the same window and the same days.",
 	}, []string{"app", "window"})
+	gRevDay = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "trading_app_revenue_day_unix",
+		Help: "UTC midnight (unix seconds) of the latest day with both a volume and a commission figure; the 1d commission and take rate are that day's. Absent when the app has no commission at all.",
+	}, []string{"app"})
 	gChains = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "trading_app_chains",
 		Help: "Number of chains with volume on the app's latest closed day.",
@@ -171,6 +181,7 @@ var (
 func init() {
 	prometheus.MustRegister(gVolume, gChain, gShare, gCohort, gWindowDays, gDays, gLastDay, gRevenue,
 		gTakeRate,
+		gRevDay,
 		gChains, gHealth, gRefresh, gErrors)
 }
 
@@ -272,7 +283,7 @@ func sweep(client *http.Client, base string, historyDays int, prev map[string]Ap
 			defer wg.Done()
 			sem <- struct{}{}
 			defer func() { <-sem }()
-			ah, err := fetchApp(client, base, app, horizon, lastClosed)
+			ah, err := fetchApp(client, base, app, horizon, lastClosed, prev[app.Slug].Days)
 			if err != nil {
 				gErrors.WithLabelValues(app.Slug).Inc()
 				log.Printf("[%s] %v", app.Slug, err)
@@ -309,7 +320,7 @@ type llamaSummary struct {
 // fetchApp reads one app's DeFiLlama summary and folds it into closed UTC
 // days inside [horizon, lastClosed]. Breakdown rows are
 // [unix, {chain: {adapterVersion: usd}}]; versions are summed per chain.
-func fetchApp(client *http.Client, base string, app App, horizon, lastClosed time.Time) (AppHistory, error) {
+func fetchApp(client *http.Client, base string, app App, horizon, lastClosed time.Time, prev []DayPoint) (AppHistory, error) {
 	url := fmt.Sprintf("%s/summary/dexs/%s?dataType=dailyVolume", base, app.Llama)
 	req, _ := http.NewRequestWithContext(context.Background(), "GET", url, nil)
 	req.Header.Set("User-Agent", "OpenChainBench-TradingApps/1.0 (+https://openchainbench.com/benchmarks/trading-app-daily-volume)")
@@ -377,20 +388,40 @@ func fetchApp(client *http.Client, base string, app App, horizon, lastClosed tim
 	// The app's own commission, on the same days. A protocol with no fees
 	// adapter on DeFiLlama simply has no revenue, which the take rate then
 	// leaves absent rather than reading as zero.
-	if rev, err := fetchDaily(client, base, "fees", app.Llama, "dailyRevenue", horizon, lastClosed); err != nil {
-		log.Printf("[%s] revenue: %v", app.Slug, err)
-	} else {
-		for day, v := range rev {
-			// DeFiLlama reports a negative daily revenue now and then, from an
-			// adapter correcting itself: Pepeboost read -1,550 on 2026-09-26. A
-			// negative cut is not a measurement, so the day counts as having no
-			// revenue rather than dragging the window and the take rate below zero.
-			if v < 0 {
-				continue
-			}
-			if p, ok := byDay[day]; ok {
-				p.Rev, p.HasRev = v, true
-			}
+	//
+	// A failed request here used to be logged and dropped, which deleted the
+	// commission and take-rate gauges for a whole hour and, on a deployment where
+	// they are the only columns an app has, took the row off the page with them.
+	// So the previous sweep's commission is carried forward per day, exactly as
+	// the volume leg carries a whole failed app, and the error is counted.
+	priorRev := map[string]DayPoint{}
+	for _, d := range prev {
+		if d.HasRev {
+			priorRev[d.Day] = d
+		}
+	}
+	rev, revErr := fetchDaily(client, base, "fees", app.Llama, "dailyRevenue", horizon, lastClosed)
+	if revErr != nil {
+		gErrors.WithLabelValues(app.Slug).Inc()
+		log.Printf("[%s] revenue: %v (carrying %d day(s) forward)", app.Slug, revErr, len(priorRev))
+	}
+	for day, v := range rev {
+		// DeFiLlama reports a negative daily revenue now and then, from an
+		// adapter correcting itself: Pepeboost read -1,550 on 2026-09-26. A
+		// negative cut is not a measurement, so the day counts as having no
+		// revenue rather than dragging the window and the take rate below zero.
+		if v < 0 {
+			continue
+		}
+		if p, ok := byDay[day]; ok {
+			p.Rev, p.HasRev = v, true
+		}
+	}
+	// Any day the read did not cover, whether it failed outright or the fees
+	// adapter is simply behind the dexs one, keeps what the last sweep had.
+	for day, old := range priorRev {
+		if p, ok := byDay[day]; ok && !p.HasRev {
+			p.Rev, p.HasRev = old.Rev, true
 		}
 	}
 	days := make([]DayPoint, 0, len(byDay))
@@ -473,6 +504,7 @@ func publish(h *History) {
 				gTakeRate.DeleteLabelValues(a.Slug, w)
 				gWindowDays.WithLabelValues(a.Slug, w).Set(0)
 			}
+			gRevDay.DeleteLabelValues(a.Slug)
 			gLastDay.DeleteLabelValues(a.Slug)
 			gChain.DeletePartialMatch(prometheus.Labels{"app": a.Slug})
 			gChains.WithLabelValues(a.Slug).Set(0)
@@ -488,6 +520,28 @@ func publish(h *History) {
 		if lastClosed.Sub(end) > 72*time.Hour {
 			end = lastClosed
 		}
+		// The commission windows end on the latest day that has both legs, which is
+		// not always the volume day: a fees adapter can run a day behind the dexs
+		// one, and anchoring on the volume day would delete the 1d gauges for as
+		// long as that lasts. Volume keeps its own anchor so it is never held back
+		// by the slower leg.
+		// The walk back is bounded by the same 72 hours the volume leg uses for a
+		// stale adapter. Bloom's fees adapter last published on 2026-09-15: without
+		// the bound its "latest day" commission would have been twelve days old and
+		// labelled as the latest, which is the failure this whole change is about.
+		revEnd, hasRevEnd := end, false
+		for i := 0; i <= 3; i++ {
+			d := end.AddDate(0, 0, -i)
+			if p, ok := byDay[fmtDay(d)]; ok && p.HasRev {
+				revEnd, hasRevEnd = d, true
+				break
+			}
+		}
+		if hasRevEnd {
+			gRevDay.WithLabelValues(a.Slug).Set(float64(revEnd.Unix()))
+		} else {
+			gRevDay.DeleteLabelValues(a.Slug)
+		}
 		for w, n := range windows {
 			var sum, rev, revVol float64
 			present, revDays := 0, 0
@@ -499,14 +553,17 @@ func publish(h *History) {
 				}
 				sum += p.USD
 				present++
-				if p.HasRev {
-					rev += p.Rev
-					// The take rate divides by the volume of the same days the
-					// revenue covers, so a fees adapter that is a day behind the
-					// volume one cannot read as a lower cut.
-					revVol += p.USD
-					revDays++
+			}
+			for i := 0; i < n && hasRevEnd; i++ {
+				p, ok := byDay[fmtDay(revEnd.AddDate(0, 0, -i))]
+				if !ok || !p.HasRev {
+					continue
 				}
+				rev += p.Rev
+				// The take rate divides by the volume of the same days the revenue
+				// covers, so a partly covered window cannot read as a lower cut.
+				revVol += p.USD
+				revDays++
 			}
 			gWindowDays.WithLabelValues(a.Slug, w).Set(float64(present))
 			if present > 0 && float64(present) >= 0.8*float64(n) {
