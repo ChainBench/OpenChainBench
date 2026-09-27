@@ -149,3 +149,42 @@ func TestPublishRowsWithholdsFeesWithoutASolPrice(t *testing.T) {
 		t.Errorf("fee rate series = %d, want 0", got)
 	}
 }
+
+// The guard has to work on its own clock, not only on new data. A fetch that
+// starts failing leaves the harness re-publishing the rows it last saw, and those
+// have to age out: otherwise a rotated key or a Dune outage keeps yesterday's
+// figures on the board reading as healthy, which is the failure this whole change
+// exists to stop.
+func TestPublishRowsAgesOutTheSameRowsAsTimePasses(t *testing.T) {
+	t.Cleanup(func() { dropPlatform("held") })
+
+	day := dayUnix(2026, 9, 26)
+	rows := []duneRow{{
+		Platform: "held", DataDayUnix: day, DayLastTradeUnix: lastTradeAt(day),
+		SolPriceUSD: 119, VolumeUSD: 100, Txns: 4, AvgTradeUSD: 25,
+	}}
+
+	// Day after: inside the window.
+	if published, _ := publishRows(rows, 3, now, []string{"held"}); len(published) != 1 {
+		t.Fatalf("published = %v, want [held]", published)
+	}
+	if publishedDay != "2026-09-26" {
+		t.Errorf("publishedDay = %q, want 2026-09-26", publishedDay)
+	}
+
+	// Four days later, the very same rows: outside it.
+	later := now.AddDate(0, 0, 4)
+	published, dropped := publishRows(rows, 3, later, []string{"held"})
+	if len(published) != 0 {
+		t.Errorf("published = %v, want none", published)
+	}
+	if len(dropped) != 1 || dropped[0] != "held" {
+		t.Errorf("dropped = %v, want [held]", dropped)
+	}
+	if publishedDay != "" {
+		t.Errorf("publishedDay = %q, want empty once nothing is on the board", publishedDay)
+	}
+	if got := testutil.CollectAndCount(platformVolume, "dune_platform_volume_24h_usd"); got != 0 {
+		t.Errorf("volume series = %d, want 0", got)
+	}
+}

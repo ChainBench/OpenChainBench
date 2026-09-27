@@ -164,6 +164,7 @@ func publishRows(rows []duneRow, maxDays int, now time.Time, known []string) (pu
 		platformDataDay.WithLabelValues(r.Platform).Set(r.DataDayUnix)
 		platformHealth.WithLabelValues(r.Platform).Set(1)
 		published = append(published, r.Platform)
+		publishedDay = time.Unix(int64(r.DataDayUnix), 0).UTC().Format("2006-01-02")
 	}
 	for _, p := range known {
 		if !seen[p] {
@@ -171,8 +172,16 @@ func publishRows(rows []duneRow, maxDays int, now time.Time, known []string) (pu
 			dropped = append(dropped, p)
 		}
 	}
+	if len(published) == 0 {
+		publishedDay = ""
+	}
 	return published, dropped
 }
+
+// publishedDay is the data day the last publish put on the board, or "" when
+// nothing is published. The refresh loop reads it to decide whether the day it
+// would measure is already in hand.
+var publishedDay string
 
 func startMetricsServer(addr string) error {
 	mux := http.NewServeMux()

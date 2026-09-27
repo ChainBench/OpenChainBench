@@ -24,7 +24,9 @@ seo_intro: |
   compressing the size of each trade. Every figure here is fee-paying volume over
   fee-paying transactions, from our own SQL over Dune's solana.account_activity and
   dex_solana.trades, one execution a day, so the average is the size of a trade the
-  platform actually earned on rather than of anything routed near it.
+  platform actually earned on rather than of anything routed near it. Maestro,
+  Phantom and Bloom are the exception and come from Mobula attribution on a rolling
+  window, which the methodology flags.
 
 abstract: |
   The harness runs one Dune execution a day against its own SQL over
@@ -37,10 +39,11 @@ abstract: |
   multi-hop route is not counted several times.
 
 methodology:
-  - "Source: our own SQL over Dune's solana.account_activity, dex_solana.trades and prices.day, one execution a day. No uploaded third-party dataset: the eight this bench read until 2026-09-27 all froze on 2026-08-25 and were served as current for 32 days."
+  - "Source: our own SQL over Dune's solana.account_activity, dex_solana.trades and prices.day, one execution a day, for every row except Maestro, Phantom and Bloom. No uploaded third-party dataset: the eight this bench read until 2026-09-27 all froze on 2026-08-25 and were served as current for 32 days."
   - "Attribution: a transaction counts for a platform when that platform's fee wallet received value in it, and one dex_solana.trades leg per transaction and trader is taken so a multi-hop route counts once. Wallet lists come from the DeFiLlama adapter repo and our solana-unique-traders harness, read 2026-09-27."
   - "Average swap size: dune_platform_avg_trade_usd, the day's attributed volume_usd divided by its attributed transaction count, computed in the query rather than in PromQL."
   - "Bot inclusion: every attributed swap counts, bots and MEV included. A platform whose flow is mostly bot sniping reads a lower average than a human-only baseline would."
+  - "Three rows are measured differently and are not comparable to the rest. Maestro, Phantom and Bloom read solana_platform_volume_24h_usd / solana_platform_trades_24h from the solana-launchpad-wars harness, which is Mobula lighthouse attribution on a rolling 24h window rather than fee-gated volume on one UTC day."
   - "Day: the newest UTC day that closed at least 10 hours earlier, the rule DeFiLlama's own Solana adapters use. dune_platform_volume_data_day_unix carries the day each figure is for."
   - "Stale source: a platform whose data day falls more than 3 days behind, or that the query stops returning, has its gauges deleted and reads unresponsive. An old figure is never republished as current."
   - "Scope: Solana only. GMGN, Axiom and Terminal also trade on EVM chains, and those legs are not counted here. pump.fun and BasedBot are not measured at all."
@@ -48,7 +51,7 @@ methodology:
 findings:
   - "{{best_name}} attracts the largest average swap at {{best_p50}} per transaction."
   - "{{name:fomo}} reads {{p50:fomo}} and {{name:trojan}} {{p50:trojan}}, so the gap between a sponsored-gas retail wallet and a Telegram bot's flow shows up in the table rather than being asserted."
-  - "Every figure here is fee-paying volume: the denominator counts transactions that paid the platform, so the average is the size of a trade the platform actually earned on."
+  - "Every fee-attributed row here is fee-paying volume: the denominator counts transactions that paid the platform, so the average is the size of a trade the platform earned on. Maestro, Phantom and Bloom are the exception and read Mobula attribution on a rolling window."
   - "pump.fun and BasedBot read unresponsive. pump.fun charges no bonding-curve fee, so there is no fee wallet to attribute its transactions from, and BasedBot has no public wallet list."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/dune-platform-volume
@@ -63,7 +66,7 @@ faq:
   - q: "Why is the pump.fun row empty?"
     a: "pump.fun cut its bonding-curve fee to 0% in Aug 2026, so no fee wallet receives anything on its trades and the attribution this bench uses cannot see them. The retired dataset that used to fill this row stopped updating on 2026-08-25 and was served as current for a month; the row reads unresponsive now instead."
   - q: "Is this apple-to-apple across platforms?"
-    a: "Yes, closer than before. Every row uses the same rule: a transaction counts for the platform whose fee wallet received value in it, and one dex_solana.trades leg per transaction and trader is summed. A pump.fun token bought through GMGN counts under GMGN. The one asymmetry is Fomo, which sponsors gas and so is measured on its USDC fee leg per transaction instead."
+    a: "For most rows, yes: a transaction counts for the platform whose fee wallet received value in it, and one dex_solana.trades leg per transaction and trader is summed, so a pump.fun token bought through GMGN counts under GMGN. Two exceptions. Fomo sponsors gas and is measured on its USDC fee leg per transaction. Maestro, Phantom and Bloom come from Mobula attribution on a rolling 24h window, a different source and a different window, so read them against each other rather than against the fee-attributed rows."
   - q: "Why is Fomo's average trade size different from GMGN's?"
     a: "Fomo attracts a broader retail base through social copy-trading and wallet features, and it sponsors the gas on every trade it routes, so its transaction count includes flow a self-funded terminal would not see. Fomo also settles cross-chain trades through Relay, which is not on Solana and not counted here, so the figure is its Solana activity rather than its whole business."
 
@@ -110,7 +113,7 @@ providers:
   - slug: maestro
     name: Maestro
     tag: "Telegram trading bot on Solana"
-    formula: "Average swap size in USD routed through Maestro (Mobula lighthouse byPlatform, 15 min poll)."
+    formula: "Average swap size in USD routed through Maestro, from Mobula lighthouse byPlatform on a rolling 24h window, 15 min poll. A different source and window from the fee-attributed rows."
     queries:
       p50: solana_platform_volume_24h_usd{platform="maestro"} / solana_platform_trades_24h{platform="maestro"}
       p90: solana_platform_volume_24h_usd{platform="maestro"} / solana_platform_trades_24h{platform="maestro"}
@@ -188,7 +191,7 @@ providers:
   - slug: phantom
     name: Phantom
     tag: "Solana wallet, DEX aggregator"
-    formula: "Average swap size in USD routed through Phantom wallet (Mobula lighthouse byPlatform, 15 min poll)."
+    formula: "Average swap size in USD routed through Phantom wallet, from Mobula lighthouse byPlatform on a rolling 24h window, 15 min poll. A different source and window from the fee-attributed rows."
     queries:
       p50: solana_platform_volume_24h_usd{platform="phantom"} / solana_platform_trades_24h{platform="phantom"}
       p90: solana_platform_volume_24h_usd{platform="phantom"} / solana_platform_trades_24h{platform="phantom"}
@@ -201,7 +204,7 @@ providers:
   - slug: bloom
     name: Bloom
     tag: "Solana trading terminal"
-    formula: "Average swap size in USD routed through Bloom (Mobula lighthouse byPlatform, 15 min poll)."
+    formula: "Average swap size in USD routed through Bloom, from Mobula lighthouse byPlatform on a rolling 24h window, 15 min poll. A different source and window from the fee-attributed rows."
     queries:
       p50: solana_platform_volume_24h_usd{platform="bloom"} / solana_platform_trades_24h{platform="bloom"}
       p90: solana_platform_volume_24h_usd{platform="bloom"} / solana_platform_trades_24h{platform="bloom"}

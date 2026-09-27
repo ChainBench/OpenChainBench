@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sync"
 	"time"
 )
 
@@ -295,8 +296,11 @@ func dayString(day time.Time) string { return day.Format("2006-01-02") }
 const duneBase = "https://api.dune.com/api/v1"
 
 type duneClient struct {
-	apiKey             string
-	http               *http.Client
+	apiKey string
+	http   *http.Client
+	// lastExecutionEnded is written from the polling goroutine and read from the
+	// main loop, so it is behind a mutex.
+	mu                 sync.Mutex
 	lastExecutionEnded time.Time
 }
 
@@ -468,6 +472,12 @@ func (d *duneClient) executionState(execID string) (string, error) {
 		return "", err
 	}
 	defer resp.Body.Close()
+	// Without this, an error body with no state field decodes to "" and the caller
+	// keeps polling a dead execution to its timeout instead of reporting.
+	if resp.StatusCode >= 400 {
+		body, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("HTTP %d: %s", resp.StatusCode, body)
+	}
 	var out struct {
 		State string `json:"state"`
 	}
@@ -477,8 +487,23 @@ func (d *duneClient) executionState(execID string) (string, error) {
 	return out.State, nil
 }
 
+// executionResult reads the results of one execution by id. The execution is
+// parameterized on the data day, and GET /query/{id}/results takes no parameters,
+// so reading back through it means trusting Dune to hand back the run we asked
+// for rather than the one matching the query's saved default. perp-volume-history
+// reads by execution id for the same reason. latestResult stays for the startup
+// path, where there is no execution id to read and whatever ran last is the right
+// answer; the freshness guard covers it being old.
+func (d *duneClient) executionResult(execID string) ([]duneRow, error) {
+	return d.decodeRows("/execution/" + execID + "/results")
+}
+
 func (d *duneClient) latestResult(queryID string) ([]duneRow, error) {
-	resp, err := d.req("GET", "/query/"+queryID+"/results", nil)
+	return d.decodeRows("/query/" + queryID + "/results")
+}
+
+func (d *duneClient) decodeRows(path string) ([]duneRow, error) {
+	resp, err := d.req("GET", path, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -497,7 +522,9 @@ func (d *duneClient) latestResult(queryID string) ([]duneRow, error) {
 		return nil, err
 	}
 	if t, err := time.Parse(time.RFC3339Nano, out.ExecutionEndedAt); err == nil {
+		d.mu.Lock()
 		d.lastExecutionEnded = t
+		d.mu.Unlock()
 	}
 	return out.Result.Rows, nil
 }
@@ -505,6 +532,8 @@ func (d *duneClient) latestResult(queryID string) ([]duneRow, error) {
 // resultAge is the age of the newest cached result seen by latestResult,
 // or a very large duration before the first successful fetch.
 func (d *duneClient) resultAge() time.Duration {
+	d.mu.Lock()
+	defer d.mu.Unlock()
 	if d.lastExecutionEnded.IsZero() {
 		return 365 * 24 * time.Hour
 	}

@@ -461,8 +461,8 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // v83: add bench 278 rwa-solana-depth. Bench SET changed.
   // v84 (2026-09-25): benches 273 chain-bridged-tvl, 274 protocol-pf-ratio
   // and 275 chain-stablecoin-flow leave the dev-only list. Bench SET changed.
-  // v86 (2026-09-27): bench 201 and the three benches reading its gauges
-  // (206, 207, 209) move off the frozen third-party Dune datasets onto our
+  // v86 (2026-09-27): bench 201 and the benches reading its gauges
+  // (203, 206, 207, 232) move off the frozen third-party Dune datasets onto our
   // own SQL. Methodology, disclaimers, FAQ and every provider formula are
   // rewritten, and pump.fun and BasedBot become unresponsive rows, so cached
   // entries carry the retired dataset names into the Dataset blob and the

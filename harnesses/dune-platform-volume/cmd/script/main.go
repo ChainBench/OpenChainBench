@@ -35,6 +35,10 @@ import (
 
 const (
 	fetchInterval = 15 * time.Minute
+	// Retry budget for one data day. A query that cannot run must stop costing
+	// credits and let the freshness guard make the benches unresponsive.
+	maxAttemptsPerDay = 3
+	retryBackoff      = time.Hour
 )
 
 // refreshInterval is how often a fresh Dune execution is requested (credits
@@ -112,40 +116,52 @@ func main() {
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
 
-	// One execution a day, and only once the UTC clock is far enough past the
-	// indexing lag for the target day to be yesterday: a container that happens
-	// to start at 02:00 UTC would otherwise spend its one run a day measuring
-	// the day before that. The cached result's age is the clock, so a redeploy
-	// costs no credits and a restart does not double up.
+	// One execution for each data day, and only once the UTC clock is far enough
+	// past the indexing lag for the target day to be yesterday: a container that
+	// happens to start at 02:00 UTC would otherwise spend its run measuring the day
+	// before that. The gate is the day itself, not the age of the cached result:
+	// an age gate measured from Dune's own end time drifts a quarter of an hour
+	// later every day and eventually walks a run past midnight, skipping a day
+	// altogether, and it cannot tell a failed execution from one never tried.
 	var inFlight atomic.Bool
-	// lastAttempt bounds executions to one a cadence whatever the outcome. The
-	// cached result's age cannot do that alone: an execution that fails, is
-	// cancelled or outlives the polling budget leaves the old result in place, or
-	// leaves /results answering 404 after a SQL change, so resultAge stays large
-	// and every fetch tick would start another metered run.
+	var attemptDay string
+	var attempts int
 	var lastAttempt time.Time
 	maybeRefresh := func() {
 		if inFlight.Load() {
 			return
 		}
 		now := time.Now()
-		if !lastAttempt.IsZero() && now.Sub(lastAttempt) < refreshInterval {
-			return
-		}
-		if age := client.resultAge(); age < refreshInterval {
-			return
-		}
 		if !dayIsYesterday(now) {
 			return
 		}
 		d := targetDay(now)
+		want := dayString(d)
+		// Already on the board.
+		if publishedDay == want {
+			return
+		}
+		if attemptDay != want {
+			attemptDay, attempts = want, 0
+		}
+		// A deterministic failure, a renamed Spellbook column say, must not turn
+		// into a run every fetch tick until midnight. Three tries a day, an hour
+		// apart, then the freshness guard takes over and the benches go
+		// unresponsive, which is the correct outcome for a query that cannot run.
+		if attempts >= maxAttemptsPerDay {
+			return
+		}
+		if !lastAttempt.IsZero() && now.Sub(lastAttempt) < retryBackoff {
+			return
+		}
+		attempts++
 		lastAttempt = now
 		execID, err := client.execute(queryID, d)
 		if err != nil {
-			fmt.Printf("[refresh] execute failed: %v\n", err)
+			fmt.Printf("[refresh] execute for %s failed (attempt %d/%d): %v\n", want, attempts, maxAttemptsPerDay, err)
 			return
 		}
-		fmt.Printf("[refresh] execution %s started for %s\n", execID, dayString(d))
+		fmt.Printf("[refresh] execution %s started for %s (attempt %d/%d)\n", execID, want, attempts, maxAttemptsPerDay)
 		inFlight.Store(true)
 		go func() {
 			defer inFlight.Store(false)
@@ -171,17 +187,55 @@ func main() {
 	}
 }
 
+// lastRows is what the last successful fetch returned. Every tick re-runs the
+// freshness guard over it, so a fetch that starts failing, on a rotated key or a
+// Dune outage, does not leave the previous day's figures on the board reading as
+// healthy: the guard ages them out on its own clock and the benches go
+// unresponsive. Only the main loop and the polling goroutine touch it, and the
+// polling goroutine is the only one running while inFlight is set.
+var lastRows []duneRow
+
 func runFetch(c *duneClient, queryID string) {
 	rows, err := c.latestResult(queryID)
 	if err != nil {
 		fmt.Printf("[fetch] failed: %v\n", err)
+		republish("stale")
 		return
 	}
-	published, dropped := publishRows(rows, maxDataAgeDays, time.Now(), publishedPlatforms)
-	fmt.Printf("[fetch] published %d platform(s): %v\n", len(published), published)
+	lastRows = rows
+	pub, drop := publishRows(rows, maxDataAgeDays, time.Now(), publishedPlatforms)
+	report("fetch", pub, drop)
+}
+
+// publishFrom publishes the results of one execution, read back by its own id so
+// the day that ran is the day that lands.
+func publishFrom(c *duneClient, execID string) {
+	rows, err := c.executionResult(execID)
+	if err != nil {
+		fmt.Printf("[poll] reading execution %s results failed: %v\n", execID, err)
+		republish("stale")
+		return
+	}
+	lastRows = rows
+	pub, drop := publishRows(rows, maxDataAgeDays, time.Now(), publishedPlatforms)
+	report("poll", pub, drop)
+}
+
+// republish re-runs the guard over the last rows seen, which is how figures age
+// out when no new ones can be fetched.
+func republish(reason string) {
+	if lastRows == nil {
+		return
+	}
+	pub, drop := publishRows(lastRows, maxDataAgeDays, time.Now(), publishedPlatforms)
+	report(reason, pub, drop)
+}
+
+func report(tag string, published, dropped []string) {
+	fmt.Printf("[%s] published %d platform(s): %v\n", tag, len(published), published)
 	if len(dropped) > 0 {
-		fmt.Printf("[fetch] dropped %d platform(s) past the %d-day freshness window or absent from the result: %v\n",
-			len(dropped), maxDataAgeDays, dropped)
+		fmt.Printf("[%s] dropped %d platform(s) past the %d-day freshness window or absent from the result: %v\n",
+			tag, len(dropped), maxDataAgeDays, dropped)
 	}
 }
 
@@ -196,7 +250,7 @@ func pollUntilDone(c *duneClient, queryID, execID string) {
 		switch state {
 		case "QUERY_STATE_COMPLETED":
 			fmt.Printf("[poll] execution %s complete\n", execID)
-			runFetch(c, queryID)
+			publishFrom(c, execID)
 			return
 		case "QUERY_STATE_FAILED", "QUERY_STATE_CANCELLED", "QUERY_STATE_EXPIRED":
 			fmt.Printf("[poll] execution %s ended with state %s\n", execID, state)
