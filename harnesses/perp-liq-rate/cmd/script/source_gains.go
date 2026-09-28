@@ -70,7 +70,10 @@ const (
 	// 2,000 blocks (error -32614) since 2026-08; the previous 5,000 made
 	// every Base scan fail, so Gains published 0 liquidations for weeks.
 	gainsMaxLogRangeBlocks = 2000
-	gainsBlockTimeMs       = 2000 // Base ~2s blocks
+	// The floor for the adaptive span: below this a day's scan is too many
+	// calls to be worth making.
+	gainsMinLogRange = 250
+	gainsBlockTimeMs = 2000 // Base ~2s blocks
 
 	// Sanity ceiling on a single decoded leg to guard against ABI
 	// word-offset mistakes producing nonsense notionals.
@@ -203,6 +206,11 @@ type gainsExecution struct {
 	// carries both); a resize log carries only its delta.
 	collateralUSD float64
 	leverage      float64
+	// collateralIndex and the price the contract stamped on the event, which
+	// together make a historical price series for valuing past open interest
+	// at the price of its own day rather than at today's.
+	collateralIndex    uint64
+	collateralPriceUSD float64
 }
 
 // Gains implements Source via JSON-RPC log scanning of one deployment.
@@ -222,7 +230,14 @@ type Gains struct {
 	mu        sync.Mutex
 	cursor    uint64 // last block folded into execs, shared by every asset
 	execs     []gainsExecution
+	oiEvents  []gainsOiEvent // the diamond's own post-state record of the book
 	scannedAt time.Time
+	// logRange is the span eth_getLogs actually accepts here, probed down
+	// from maxLogRange and remembered. The caps differ by endpoint and by
+	// filter: a keyed Arbitrum endpoint refused this harness's 5,000 for the
+	// open-interest filter and took about 3,125, so the span cannot be a
+	// constant per chain.
+	logRange uint64
 	// collateralIndex -> decimals, from trading-variables (the index sets
 	// differ per deployment: Arbitrum DAI/WETH/USDC/GNS, Base USDC/BtcUSD).
 	decimals   map[uint64]int
@@ -415,6 +430,9 @@ func (g *Gains) scan() error {
 	defer g.scanMu.Unlock()
 
 	g.mu.Lock()
+	if g.logRange == 0 {
+		g.logRange = g.maxLogRange
+	}
 	fresh := !g.scannedAt.IsZero() && time.Since(g.scannedAt) < gainsScanTTL
 	cursor := g.cursor
 	g.mu.Unlock()
@@ -467,8 +485,10 @@ func (g *Gains) foldRange(from, latest uint64, now time.Time, commit bool) error
 	}
 
 	var found []gainsExecution
-	for start := from; start <= latest; start += g.maxLogRange {
-		end := start + g.maxLogRange - 1
+	var foundOi []gainsOiEvent
+	for start := from; start <= latest; {
+		span := g.currentLogRange()
+		end := start + span - 1
 		if end > latest {
 			end = latest
 		}
@@ -478,14 +498,39 @@ func (g *Gains) foldRange(from, latest uint64, now time.Time, commit bool) error
 			"address":   g.diamond,
 			"topics": []any{[]string{
 				gainsLimitExecutedTopic, gainsMarketExecutedTopic, gainsIncreaseTopic, gainsDecreaseTopic,
+				gainsPairOiTopic,
 			}},
 		}
 		var logs []ethLog
 		if err := g.rpcCall("eth_getLogs", []any{filter}, &logs); err != nil {
+			// A range the endpoint will not serve is not a failure to report,
+			// it is a span to stop asking for. Halve and retry the same start.
+			if isRangeTooWide(err) && span > gainsMinLogRange {
+				next := span / 2
+				if next < gainsMinLogRange {
+					next = gainsMinLogRange
+				}
+				g.setLogRange(next)
+				log.Printf("[gains/%s] %s refused a %d-block getLogs; using %d", g.chain, "endpoint", span, next)
+				continue
+			}
 			return err
 		}
+		start = end + 1
 		for _, lg := range logs {
 			if lg.Removed {
+				continue
+			}
+			// The open-interest events are the venue's own post-state record
+			// of the book, and they come off this same scan.
+			if len(lg.Topics) > 0 && strings.EqualFold(lg.Topics[0], gainsPairOiTopic) {
+				oiEv, oiErr := decodeGainsPairOi(lg)
+				if oiErr != nil {
+					log.Printf("[gains/%s] skipping undecodable oi log %s:%s: %v", g.chain, lg.TxHash, lg.LogIndex, oiErr)
+					continue
+				}
+				oiEv.tsMs = clock(oiEv.block)
+				foundOi = append(foundOi, oiEv)
 				continue
 			}
 			ex, ok, decodeErr := decodeGainsExecution(lg, decimals)
@@ -511,6 +556,7 @@ func (g *Gains) foldRange(from, latest uint64, now time.Time, commit bool) error
 	if !commit {
 		// An audit of a past range: keep what it read and touch nothing else.
 		g.execs = append(g.execs, found...)
+		g.oiEvents = append(g.oiEvents, foundOi...)
 		return nil
 	}
 	keepFromMs := now.Add(-(windowSpan + liqFetchOverlap)).UnixMilli()
@@ -524,11 +570,37 @@ func (g *Gains) foldRange(from, latest uint64, now time.Time, commit bool) error
 		g.execs[i] = gainsExecution{}
 	}
 	g.execs = append(kept, found...)
+	keptOi := g.oiEvents[:0]
+	for _, e := range g.oiEvents {
+		if e.tsMs >= keepFromMs {
+			keptOi = append(keptOi, e)
+		}
+	}
+	for i := len(keptOi); i < len(g.oiEvents); i++ {
+		g.oiEvents[i] = gainsOiEvent{}
+	}
+	g.oiEvents = append(keptOi, foundOi...)
 	if latest > g.cursor {
 		g.cursor = latest
 	}
 	g.scannedAt = now
 	return nil
+}
+
+// currentLogRange is the span this deployment's endpoint is known to accept.
+func (g *Gains) currentLogRange() uint64 {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.logRange == 0 {
+		return g.maxLogRange
+	}
+	return g.logRange
+}
+
+func (g *Gains) setLogRange(n uint64) {
+	g.mu.Lock()
+	g.logRange = n
+	g.mu.Unlock()
 }
 
 // FetchLiquidationsSince returns the liquidations of the asset held in the
@@ -703,15 +775,18 @@ func decodeGainsTradeLeg(lg ethLog, kind gainsExecKind, decimals map[uint64]int)
 	// multiple: the two figures that say what the notional means.
 	colUSD, _ := new(big.Float).Quo(new(big.Float).Mul(new(big.Float).Quo(collateral, scale), price), big.NewFloat(1e8)).Float64()
 	lev, _ := new(big.Float).Quo(leverage, big.NewFloat(1e3)).Float64()
+	colPxUSD, _ := new(big.Float).Quo(price, big.NewFloat(1e8)).Float64()
 	return gainsExecution{
-		key:           lg.TxHash + ":" + lg.LogIndex,
-		block:         blockNum,
-		pair:          pairWord.Uint64(),
-		notionalUSD:   n,
-		liquidation:   liquidation,
-		kind:          kind,
-		collateralUSD: colUSD,
-		leverage:      lev,
+		key:                lg.TxHash + ":" + lg.LogIndex,
+		block:              blockNum,
+		pair:               pairWord.Uint64(),
+		notionalUSD:        n,
+		liquidation:        liquidation,
+		kind:               kind,
+		collateralUSD:      colUSD,
+		leverage:           lev,
+		collateralIndex:    colIdx.Uint64(),
+		collateralPriceUSD: colPxUSD,
 	}, true, nil
 }
 
@@ -801,12 +876,15 @@ func decodeGainsResize(lg ethLog, kind gainsExecKind, decimals map[uint64]int) (
 	if err != nil {
 		return gainsExecution{}, false, fmt.Errorf("blockNumber: %w", err)
 	}
+	resizePx, _ := new(big.Float).Quo(new(big.Float).SetInt(word(gainsResizeWordColPriceUSD)), big.NewFloat(1e8)).Float64()
 	return gainsExecution{
-		key:         lg.TxHash + ":" + lg.LogIndex,
-		block:       blockNum,
-		pair:        pairWord.Uint64(),
-		notionalUSD: n,
-		kind:        kind,
+		key:                lg.TxHash + ":" + lg.LogIndex,
+		block:              blockNum,
+		pair:               pairWord.Uint64(),
+		notionalUSD:        n,
+		kind:               kind,
+		collateralIndex:    colIdx.Uint64(),
+		collateralPriceUSD: resizePx,
 	}, true, nil
 }
 

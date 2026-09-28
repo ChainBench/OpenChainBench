@@ -59,6 +59,7 @@ perp_liq_rate_24h_pct{venue,chain}
 perp_liq_volume_24h_usd{venue,chain}
 perp_liq_open_interest_usd{venue,chain}
 perp_liq_open_interest_peak_24h_usd{venue,chain}
+perp_liq_open_interest_trough_24h_usd{venue,chain}
 perp_liq_open_interest_avg_24h_usd{venue,chain}
 perp_liq_venue_volume_24h_usd{venue,chain}
 perp_liq_share_of_volume_pct{venue,chain}
@@ -74,7 +75,8 @@ perp_realized_vol_24h_pct{chain}
 ```
 
 `error_type` values: `http_4xx`, `http_5xx`, `http_status`, `timeout`,
-`decode`, `parse`, `unavailable`, `oi_zero`, `partial_window`, `other`.
+`decode`, `parse`, `unavailable`, `oi_zero`, `partial_window`,
+`oi_head_mismatch`, `other`.
 
 ## Semantics
 
@@ -97,6 +99,41 @@ perp_realized_vol_24h_pct{chain}
   harness did until 2026-09-28, put the rate above 100% with no turnover on
   an unbalanced book, and left the rate on one convention while the share of
   volume was on another. See `poolOpenInterest` in `common.go`.
+- **Gains' open interest is read off the chain, so it needs no warm-up.** The
+  diamond emits `PairOiAfterV10Updated` on every open and close carrying the
+  *post-state* book per collateral, so one pass of the same scan gives the
+  whole curve at every change. Reconstruction: keep the latest (long, short)
+  per collateral index and sum `(long + short) / 10^decimals x
+  collateralPriceUsd`, which is `FetchOI` exactly. Seeding is exact without a
+  walk-back: a collateral with events in the window takes its pre-window state
+  from the first of them (undo the delta on whichever leg `w3` names), and a
+  collateral with *no* event cannot have changed, so its head value is its
+  value throughout. Quantities are historical and so are the prices, taken
+  from the `collateralPriceUsd` the contract stamps on its own execution
+  events, nearest at or before each reading.
+
+  Validated against the venue's API and against an independently written
+  reconstruction, over 2026-09-28:
+
+  | | peak | trough | head vs live |
+  |---|---|---|---|
+  | ETH | $43,541,865 | $2,632,507 | -0.008% |
+  | BTC | $49,941,650 | $1,124,220 | -0.002% |
+
+  The accumulated window had been reading $2.72M on ETH and $10.79M on BTC,
+  because every sample it held was taken after the cascade. That is the
+  difference between publishing 952% and 63% on ETH, and 211% and 25% on BTC.
+  `checkOIHead` compares the reconstruction against the live book every tick
+  and counts `oi_head_mismatch` past 1%.
+- **The mean is time-weighted**, not averaged over readings. Event density is
+  wildly uneven: Gains ETH had 67 open-interest events across all of
+  2026-09-27 and 88 in the single hour it collapsed, so an average over
+  readings reports the collapse as the day's normal state. Each reading is
+  weighted by how long it stood. For the venues still sampled on a timer the
+  two agree.
+- **The trough publishes beside the peak** (`perp_liq_open_interest_trough_24h_usd`),
+  because a book that ran from $49.94M to $1.12M and back to $10.65M inside
+  one day is two markets and the peak alone hides that.
 - **The denominator is the window's peak.** The numerator covers 24 hours,
   so dividing by an instantaneous open interest made the rate move with the
   denominator: Gains published 343% on 2026-09-24 because its open interest

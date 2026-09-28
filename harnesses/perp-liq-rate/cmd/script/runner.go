@@ -35,6 +35,14 @@ type pairState struct {
 	// does not rank while the edge is inside the window, and the edge clears
 	// once it has aged out.
 	unreadBeforeMs int64
+	// oiHeadDisagrees is set when the reconstructed curve stopped matching the
+	// book the venue reports now, so the row publishes its figures and does
+	// not rank on a denominator that has drifted.
+	oiHeadDisagrees bool
+	// oiFromHistory is set once the open-interest window has been rebuilt
+	// from the venue's own record of the book rather than accumulated from
+	// this process's own readings. Such a window needs no warm-up.
+	oiFromHistory bool
 }
 
 // newPairState builds the windows for one venue+asset pair.
@@ -166,16 +174,53 @@ func runTick(va VenueAsset, st *pairState, sinceMs int64, tick time.Duration) bo
 	// this bench stopped publishing, and after a restart the numerator is a
 	// full 24h backfill against it, so the first hour would show the 343%
 	// class of artifact on the page as the latest reading.
+	// A venue that can read its own past open interest replaces the window
+	// rather than adding to it: the reconstruction is the record of the book,
+	// and the readings this process happened to take since boot are not. That
+	// is what makes the peak right on the first tick instead of an hour in,
+	// and it is the difference between Gains BTC reading a 49.94M dollar book
+	// and the 10.79M it held after the cascade.
+	if hist, ok := va.Source.(oiHistorySource); ok {
+		readings, hErr := hist.FetchOIHistory(va.Asset, nowMs-windowSpan.Milliseconds())
+		if hErr != nil {
+			handleFetchError(va, "oi history", hErr)
+		} else if len(readings) > 0 {
+			entries := make([]windowEntry, 0, len(readings))
+			for _, r := range readings {
+				if r.tsMs > 0 && r.usd > 0 {
+					entries = append(entries, windowEntry{tsMs: r.tsMs, notional: r.usd})
+				}
+			}
+			if len(entries) > 0 {
+				st.oi.ReplaceAll(entries)
+				st.oiFromHistory = true
+				if _, agrees := checkOIHead(va.Venue, va.Asset, readings, oi); agrees {
+					st.oiHeadDisagrees = false
+				} else if oi > 0 {
+					// Only a real head read can contradict the curve; a
+					// failed open-interest fetch already fails the tick.
+					st.oiHeadDisagrees = true
+				}
+			}
+		}
+	}
+
 	st.oi.Prune(nowMs)
-	peakOI, meanOI := st.oi.Max(), st.oi.Mean()
-	// The peak is only the 24h peak once the readings cover 24 hours. Until
-	// then it is the peak of a shorter span, and after a book collapses that
-	// is a denominator far below the one the numerator belongs to.
-	oiSpans := oiSpansWindow(st.oi, nowMs, tick)
-	oiReady := st.oi.Len() >= minOISamples
+	peakOI, meanOI := st.oi.Max(), st.oi.TimeWeightedMean(nowMs)
+	troughOI := st.oi.Min()
+	// A reconstructed series covers the window by construction, being the
+	// venue's own record of every change seeded at the window edge, so it
+	// needs neither the warm-up nor the span check that an accumulated window
+	// does. Both still guard every venue that publishes only the book it
+	// holds now, which is all ten of the others.
+	oiSpans := st.oiFromHistory || oiSpansWindow(st.oi, nowMs, tick)
+	oiReady := st.oiFromHistory || st.oi.Len() >= minOISamples
 	if oiReady && peakOI > 0 {
 		liqOpenInterestPeak.WithLabelValues(va.Venue, va.Asset).Set(peakOI)
 		liqOpenInterestAvg.WithLabelValues(va.Venue, va.Asset).Set(meanOI)
+		if troughOI > 0 {
+			liqOpenInterestTrough.WithLabelValues(va.Venue, va.Asset).Set(troughOI)
+		}
 	}
 
 	if hasVolSource && volErr == nil && vol > 0 {
@@ -227,6 +272,7 @@ func runTick(va VenueAsset, st *pairState, sinceMs int64, tick time.Duration) bo
 		hasEventDetail:  !st.noEventDetail,
 		largestEventPct: largestShare,
 		oiSpansWindow:   oiSpans,
+		oiHeadAgrees:    !st.oiHeadDisagrees,
 	}
 	// The share is republished only when both sides were read this tick. On
 	// a failed fetch it keeps its last good value, the rule every gauge
@@ -249,8 +295,8 @@ func runTick(va VenueAsset, st *pairState, sinceMs int64, tick time.Duration) bo
 		liqRate.DeleteLabelValues(va.Venue, va.Asset)
 	}
 	if !ranked {
-		log.Printf("[%s/%s] not ranked: %s (liq24h=$%.2f peakOI=$%.2f meanOI=$%.2f vol24h=$%.2f share=%.5f%% largest=%.1f%%)",
-			va.Venue, va.Asset, reason, volume, peakOI, meanOI, vol, in.shareOfVolumePct(), largestShare)
+		log.Printf("[%s/%s] not ranked: %s (liq24h=$%.2f peakOI=$%.2f meanOI=$%.2f troughOI=$%.2f vol24h=$%.2f share=%.5f%% largest=%.1f%%)",
+			va.Venue, va.Asset, reason, volume, peakOI, meanOI, troughOI, vol, in.shareOfVolumePct(), largestShare)
 	}
 
 	return ok

@@ -180,3 +180,59 @@ func TestLive_GMXVolumeIsPositive(t *testing.T) {
 		fmt.Printf("gmx %s 24h traded notional: $%.0f\n", asset, vol)
 	}
 }
+
+// The open-interest reconstruction against the live venue. This is the check
+// that makes the denominator trustworthy: the head of a curve rebuilt from the
+// diamond's own events has to equal the book the venue reports right now.
+//
+//	RPC_ARBITRUM=... go test -tags live -v -run TestLive_GainsOIHistory ./cmd/script
+//
+// Two independent nine-day backfills agreed with the API to the dollar, ETH at
+// 2,674,766 and BTC at 10,654,440, and reported these 2026-09-28 peaks, which
+// is what the accumulated window was getting wrong:
+//
+//	ETH peak 43,542,097  trough 2,632,738   (the harness had 2,720,929)
+//	BTC peak 49,942,261  trough 1,124,257   (the harness had 10,790,000)
+func TestLive_GainsOIHistory(t *testing.T) {
+	arb := os.Getenv("RPC_ARBITRUM")
+	if arb == "" {
+		arb = defaultRPCArbitrum
+	}
+	g := NewGainsArbitrum(arb)
+	since := time.Now().Add(-windowSpan).UnixMilli()
+
+	for _, asset := range []string{"ETH", "BTC"} {
+		hist, err := g.FetchOIHistory(asset, since)
+		if err != nil {
+			t.Fatalf("%s history: %v", asset, err)
+		}
+		if len(hist) < 2 {
+			t.Fatalf("%s: %d readings, want a curve", asset, len(hist))
+		}
+		live, err := g.FetchOI(asset)
+		if err != nil {
+			t.Fatalf("%s FetchOI: %v", asset, err)
+		}
+		peak, trough := 0.0, hist[0].usd
+		for _, r := range hist {
+			if r.usd > peak {
+				peak = r.usd
+			}
+			if r.usd < trough {
+				trough = r.usd
+			}
+		}
+		head := hist[len(hist)-1].usd
+		gap := (head - live) / live * 100
+		fmt.Printf("%s: %d readings, peak $%.0f trough $%.0f head $%.0f against $%.0f live (%.3f%%)\n",
+			asset, len(hist), peak, trough, head, live, gap)
+		if gap > 1 || gap < -1 {
+			t.Errorf("%s: the reconstruction head is %.3f%% from the live book", asset, gap)
+		}
+		// A peak below the book the venue holds now would mean the curve
+		// missed the state it is standing in.
+		if peak < live*0.999 {
+			t.Errorf("%s: peak $%.0f is below the live book $%.0f", asset, peak, live)
+		}
+	}
+}

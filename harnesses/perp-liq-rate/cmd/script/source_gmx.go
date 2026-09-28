@@ -44,6 +44,21 @@ const (
 	// The 24h volume query pages over a few thousand rows, so it is re-read
 	// on a timer rather than on every 5-minute tick.
 	gmxVolumeTTL = 15 * time.Minute
+	// A failure is remembered only long enough for the other asset of the
+	// same tick to reuse it, not for the success TTL. Caching a transient
+	// error for fifteen minutes is how one momentary empty market list took
+	// both GMX rows out for three ticks on 2026-09-28.
+	gmxVolumeErrTTL = 60 * time.Second
+	// The same rule for the market list: a failure is held only long enough
+	// for the other asset of the tick to reuse it.
+	gmxMarketsErrTTL = 60 * time.Second
+)
+
+// Attempts at the market list before an empty answer is believed. Vars so a
+// test can drive the path without paying the wait.
+var (
+	gmxMarketsAttempts  = 3
+	gmxMarketsRetryBase = 500 * time.Millisecond
 )
 
 // gmxTrackedAssets lists the assets supported by this source.
@@ -54,9 +69,10 @@ type GMX struct {
 	marketsURL string // defaults to gmxMarketsInfoURL
 	squidURL   string // defaults to gmxSquidURL
 
-	mu        sync.Mutex
-	markets   []gmxMarket
-	marketsAt time.Time
+	mu         sync.Mutex
+	markets    []gmxMarket
+	marketsErr error // the last failure, held for gmxMarketsErrTTL
+	marketsAt  time.Time
 	// volMu is held across the whole volume refresh, so the ETH and BTC
 	// goroutines that miss the cache on the same tick page the squid once
 	// between them rather than once each.
@@ -85,15 +101,44 @@ func (g *GMX) fetchMarkets() ([]gmxMarket, error) {
 	if g.markets != nil && time.Since(g.marketsAt) < gmxMarketsTTL {
 		return g.markets, nil
 	}
+	if g.marketsErr != nil && time.Since(g.marketsAt) < gmxMarketsErrTTL {
+		return nil, g.marketsErr
+	}
+	// An empty list is a 200 with nothing in it, so the HTTP retry does not
+	// see it. It happens, and a venue whose market list came back empty for
+	// a moment must not read as a venue with no liquidations, so ask again
+	// before believing it.
 	var resp struct {
 		Markets []gmxMarket `json:"markets"`
 	}
-	if err := httpGetJSON(g.marketsURL, &resp); err != nil {
-		return nil, fmt.Errorf("gmx markets: %w", err)
+	// Only the empty 200 is retried here. A transport error or a 5xx has
+	// already been retried inside doRaw, and retrying it again on top of that
+	// held this lock for minutes: two GMX goroutines need the market list, so
+	// a hanging endpoint used to stall every other venue's tick behind them.
+	var lastErr error
+	for attempt := 0; attempt < gmxMarketsAttempts; attempt++ {
+		if attempt > 0 {
+			time.Sleep(time.Duration(attempt) * gmxMarketsRetryBase)
+		}
+		resp.Markets = nil
+		if err := httpGetJSON(g.marketsURL, &resp); err != nil {
+			lastErr = fmt.Errorf("gmx markets: %w", err)
+			break
+		}
+		if len(resp.Markets) == 0 {
+			lastErr = fmt.Errorf("gmx markets: empty market list")
+			continue
+		}
+		lastErr = nil
+		break
 	}
-	if len(resp.Markets) == 0 {
-		return nil, fmt.Errorf("gmx markets: empty market list")
+	if lastErr != nil {
+		// Remember the failure for about a tick, so the second asset of this
+		// tick does not pay for it again.
+		g.marketsErr, g.marketsAt = lastErr, time.Now()
+		return nil, lastErr
 	}
+	g.marketsErr = nil
 	g.markets = resp.Markets
 	g.marketsAt = time.Now()
 	return g.markets, nil
@@ -277,12 +322,13 @@ func (g *GMX) FetchVolume24hUSD(asset string) (float64, error) {
 	// A failed read is cached for the same TTL as a good one. Without this
 	// the ETH goroutine and then the BTC goroutine each paged the squid to
 	// the cap on every tick, since only success wrote the cache.
-	if g.volErr != nil && time.Since(g.volumeAt) < gmxVolumeTTL {
+	if g.volErr != nil && time.Since(g.volumeAt) < gmxVolumeErrTTL {
 		return 0, g.volErr
 	}
 
 	byMarket, err := g.marketAsset()
 	if err != nil {
+		g.volume, g.volErr, g.volumeAt = nil, err, time.Now()
 		return 0, err
 	}
 	// Only the tracked markets. Asking for every market's executed orders
@@ -297,6 +343,7 @@ func (g *GMX) FetchVolume24hUSD(asset string) (float64, error) {
 	// both GMX rows with no volume denominator at all.
 	tracked, terr := g.trackedMarketTokens()
 	if terr != nil {
+		g.volume, g.volErr, g.volumeAt = nil, terr, time.Now()
 		return 0, terr
 	}
 	markets := make([]string, 0, 16)

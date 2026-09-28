@@ -39,12 +39,17 @@ var (
 
 	liqOpenInterestPeak = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "perp_liq_open_interest_peak_24h_usd",
-		Help: "Peak open interest (USD) over the trailing 24h, one sample per tick. This is the denominator of perp_liq_rate_24h_pct. An instantaneous denominator made the rate move with open interest (Gains read 343% on 2026-09-24), and the mean over the window still read 251% when Gains ETH fell from 43.7M to 2.1M dollars on 2026-09-28 because most of the book was liquidated; the peak is the largest book observed. One side for an order book, long plus short for a pool venue. Above 100% is turnover inside the window.",
+		Help: "Peak open interest (USD) over the trailing 24h, and the denominator of perp_liq_rate_24h_pct. Read from the venue's own on-chain record of every change where there is one (Gains), otherwise one sample per tick. An instantaneous denominator made the rate move with open interest (Gains read 343% on 2026-09-24), and the mean over the window still read 251% when Gains ETH fell from 43.7M to 2.1M dollars on 2026-09-28 because most of the book was liquidated; the peak is the largest book observed. One side for an order book, long plus short for a pool venue. Above 100% is turnover inside the window.",
+	}, []string{"venue", "chain"})
+
+	liqOpenInterestTrough = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "perp_liq_open_interest_trough_24h_usd",
+		Help: "Smallest open interest (USD) seen over the trailing 24h, published beside the peak because the gap between them says whether the peak and the mean describe the same market. Gains BTC ran from 49.94M dollars to 1.12M and back to 10.65M inside 2026-09-28.",
 	}, []string{"venue", "chain"})
 
 	liqOpenInterestAvg = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "perp_liq_open_interest_avg_24h_usd",
-		Help: "Mean open interest (USD) over the trailing 24h, one sample per tick. A companion to the peak: the gap between the two says how much the book moved inside the window.",
+		Help: "Mean open interest (USD) over the trailing 24h, weighted by how long each reading stood rather than averaged over readings. Weighted rather than averaged over readings because the readings come from the venue's own events where it publishes them, and their density is uneven: Gains ETH had 67 in a whole day and 88 in the hour it collapsed.",
 	}, []string{"venue", "chain"})
 
 	liqVenueVolume = prometheus.NewGaugeVec(prometheus.GaugeOpts{
@@ -114,6 +119,7 @@ func registerMetrics() *prometheus.Registry {
 		liqMedianLeverage,
 		liqOpenInterest,
 		liqOpenInterestPeak,
+		liqOpenInterestTrough,
 		liqOpenInterestAvg,
 		liqVenueVolume,
 		liqShareOfVolume,
