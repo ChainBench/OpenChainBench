@@ -1,6 +1,6 @@
 package main
 
-// source_nado.go — Nado on Ink, the venue the Vertex team runs since Vertex
+// source_nado.go: Nado on Ink, the venue the Vertex team runs since Vertex
 // wound down on Arbitrum.
 //
 // Added 2026-09-27 when the cohort was widened. Nado's archive does not
@@ -62,16 +62,18 @@ func NewNado() *Nado {
 	return &Nado{archiveURL: nadoArchiveURL, symbolsURL: nadoSymbolsURL}
 }
 
-// HasLiquidationSource reports true — the archive carries a cumulative
+// HasLiquidationSource reports true: the archive carries a cumulative
 // liquidated-USD counter per product.
 func (n *Nado) HasLiquidationSource() bool { return true }
 
-// nadoWindow is one asset's 24h deltas plus its current open interest.
+// nadoWindow is one asset's 24h deltas plus its current open interest, or
+// the reason that asset has none this window.
 type nadoWindow struct {
 	liqUSD   float64
 	volUSD   float64
 	oiUSD    float64
 	spanSecs int64
+	err      error
 }
 
 type nadoSymbol struct {
@@ -131,7 +133,7 @@ func (n *Nado) window(asset string) (nadoWindow, error) {
 		if !ok {
 			return nadoWindow{}, fmt.Errorf("nado: no snapshot for %s", asset)
 		}
-		return w, nil
+		return w, w.err
 	}
 	n.mu.Unlock()
 
@@ -185,22 +187,26 @@ func (n *Nado) window(asset string) (nadoWindow, error) {
 	for asset, id := range ids {
 		key := strconv.Itoa(id)
 		// A product missing from either snapshot is a source fault, not a
-		// day with no liquidations; it must fail the tick rather than read
-		// as an exact zero at full health.
+		// day with no liquidations; that asset's tick fails rather than
+		// reading as an exact zero at full health. The fault stays with the
+		// asset: a product listed less than a day ago, or dropped from the
+		// older snapshot, does not take the other assets' rows down with it.
+		w := nadoWindow{spanSecs: span}
 		for _, m := range []map[string]string{
 			newest.CumulativeLiquidationAmounts, oldest.CumulativeLiquidationAmounts,
 			newest.CumulativeVolumes, oldest.CumulativeVolumes, newest.OpenInterests,
 		} {
 			if _, ok := m[key]; !ok {
-				return nadoWindow{}, fmt.Errorf("nado market_snapshots: product %s (%s) missing from a snapshot", key, asset)
+				w.err = fmt.Errorf("nado market_snapshots: product %s (%s) missing from a snapshot", key, asset)
+				break
 			}
 		}
-		out[asset] = nadoWindow{
-			liqUSD:   x18Delta(newest.CumulativeLiquidationAmounts[key], oldest.CumulativeLiquidationAmounts[key]) * scale,
-			volUSD:   x18Delta(newest.CumulativeVolumes[key], oldest.CumulativeVolumes[key]) * scale,
-			oiUSD:    x18Value(newest.OpenInterests[key]),
-			spanSecs: span,
+		if w.err == nil {
+			w.liqUSD = x18Delta(newest.CumulativeLiquidationAmounts[key], oldest.CumulativeLiquidationAmounts[key]) * scale
+			w.volUSD = x18Delta(newest.CumulativeVolumes[key], oldest.CumulativeVolumes[key]) * scale
+			w.oiUSD = x18Value(newest.OpenInterests[key])
 		}
+		out[asset] = w
 	}
 	n.mu.Lock()
 	n.snapshot, n.snapshotAt = out, time.Now()
@@ -210,7 +216,7 @@ func (n *Nado) window(asset string) (nadoWindow, error) {
 	if !ok {
 		return nadoWindow{}, fmt.Errorf("nado: no snapshot for %s", asset)
 	}
-	return w, nil
+	return w, w.err
 }
 
 // x18Value parses an x18-scaled decimal string to a float.

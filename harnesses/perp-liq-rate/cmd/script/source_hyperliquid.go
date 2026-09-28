@@ -1,9 +1,9 @@
 package main
 
-// source_hyperliquid.go — Hyperliquid perps.
+// source_hyperliquid.go: Hyperliquid perps.
 //
 // Liquidations: 0xArchive REST API when OXARCHIVE_API_KEY is set (full
-// coverage — all liquidation types including market-order fills). Fallback
+// coverage: all liquidation types including market-order fills). Fallback
 // without a key: userFillsByTime on the HLP liquidator vault (backstop only,
 // minority of volume).
 // OI: POST /info {"type":"metaAndAssetCtxs"}; openInterest * midPx. ✓
@@ -32,7 +32,7 @@ type Hyperliquid struct {
 	infoURL        string // defaults to hyperliquidInfoURL
 	archiveBaseURL string // 0xArchive API base, defaults to oxArchiveBaseURL
 	archiveAPIKey  string // from env OXARCHIVE_API_KEY (currently returns empty data)
-	// Note: Coinalyze does not cover Hyperliquid — no HL symbols in /future-markets.
+	// Note: Coinalyze does not cover Hyperliquid: no HL symbols in /future-markets.
 }
 
 // NewHyperliquid returns the Hyperliquid source.

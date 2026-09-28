@@ -47,12 +47,29 @@ func TestSlidingWindowAndSeenSet(t *testing.T) {
 	if w.Len() != 2 {
 		t.Fatalf("Len = %d, want 2", w.Len())
 	}
-	if w.IsWarm(time.Now()) {
-		t.Fatalf("window should not be warm before MarkTick+span")
+	// Collateral and leverage travel with the entries that carry them and
+	// stay absent, not zero, for a window whose source exposes neither.
+	if _, ok := w.SumCollateral(); ok {
+		t.Fatal("a window of tape events reports collateral it does not have")
 	}
-	w.MarkTick(time.Now().Add(-25 * time.Hour))
-	if !w.IsWarm(time.Now()) {
-		t.Fatalf("window should be warm 25h after first tick")
+	if _, ok := w.MedianLeverage(); ok {
+		t.Fatal("a window of tape events reports a leverage it does not have")
+	}
+	w.AddEvent(LiqEvent{Key: "g1", TimestampMs: now, NotionalUSD: 1000, CollateralUSD: 10, Leverage: 100})
+	w.AddEvent(LiqEvent{Key: "g2", TimestampMs: now, NotionalUSD: 500, CollateralUSD: 25, Leverage: 20})
+	w.AddEvent(LiqEvent{Key: "g3", TimestampMs: now, NotionalUSD: 300, CollateralUSD: 6, Leverage: 50})
+	if col, ok := w.SumCollateral(); !ok || col != 41 {
+		t.Fatalf("SumCollateral = %v,%v want 41,true", col, ok)
+	}
+	if lev, ok := w.MedianLeverage(); !ok || lev != 50 {
+		t.Fatalf("MedianLeverage = %v,%v want 50,true", lev, ok)
+	}
+
+	oi := NewSampleWindow(24 * time.Hour)
+	oi.Add(now-3600*1000, 40)
+	oi.Add(now, 10)
+	if oi.Mean() != 25 || oi.Max() != 40 || oi.Len() != 2 {
+		t.Fatalf("SampleWindow mean=%v max=%v len=%d, want 25, 40, 2", oi.Mean(), oi.Max(), oi.Len())
 	}
 
 	s := NewSeenSet()

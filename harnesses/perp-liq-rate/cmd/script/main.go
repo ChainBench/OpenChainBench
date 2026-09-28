@@ -1,6 +1,6 @@
 package main
 
-// main.go — process entrypoint: signal handling, the metrics HTTP server
+// main.go: process entrypoint: signal handling, the metrics HTTP server
 // goroutine, and the tick loop that fans out per-venue-asset goroutines.
 
 import (
@@ -115,15 +115,19 @@ func main() {
 		wg.Wait()
 
 		now := time.Now()
-		// Warm-up: a venue is warm once every one of its windows has seen a
-		// full 24h since its first tick (they all start together, so this is
-		// effectively "24h since the venue's first tick").
+		// Warm-up: a venue is warming up while any of its rows holds fewer
+		// open-interest readings than the rank gate divides by. Every
+		// liquidation source backfills its full window on the first tick,
+		// so the numerator is whole from the start; the denominator is what
+		// fills, one reading per tick, and the rate is not published until
+		// it has. The flag therefore reads 1 exactly while the venue's rate
+		// is held, and 0 once it publishes.
 		venueWarm := make(map[string]bool, len(venues))
 		for venue := range venues {
 			venueWarm[venue] = true
 		}
 		for _, p := range pairs {
-			if !p.st.window.IsWarm(now) {
+			if p.st.oi.Len() < minOISamples {
 				venueWarm[p.va.Venue] = false
 			}
 		}

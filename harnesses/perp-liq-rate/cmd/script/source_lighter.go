@@ -1,6 +1,6 @@
 package main
 
-// source_lighter.go — Lighter (mainnet.zklighter.elliot.ai).
+// source_lighter.go: Lighter (mainnet.zklighter.elliot.ai).
 //
 // Liquidations: native /api/v1/trades requires auth. Data comes from Coinalyze
 // /v1/liquidation-history (symbols 0.T=ETH 1.T=BTC), 1-hour buckets in base

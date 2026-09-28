@@ -1,8 +1,8 @@
 package main
 
-// source_gmx.go — GMX v2 on Arbitrum.
+// source_gmx.go: GMX v2 on Arbitrum.
 //
-// OI: GET arbitrum-api.gmxinfra.io/markets/info — sums openInterestLong +
+// OI: GET arbitrum-api.gmxinfra.io/markets/info: sums openInterestLong +
 // openInterestShort across all isListed markets whose name matches the asset
 // (e.g. "ETH/USD [ETH-USDC]" + "ETH/USD [ETH-ETH]" for ETH). Values are
 // 30-decimal USD strings; divided by 1e30 to get USD.
@@ -21,6 +21,7 @@ package main
 // once as OrderExecuted, so eventName has to be pinned or the figure doubles.
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -124,11 +125,14 @@ type gmxTradeAction struct {
 // squidTradeActions pages tradeActions under one where clause. Rows are
 // deduplicated by orderKey: the squid is live and ordered newest first, so a
 // row inserted between two pages shifts the next page down and repeats the
-// tail of the previous one. Hitting the page cap is an error, not a partial
-// sum, because the caller feeds the rank gate's denominator with it.
+// tail of the previous one. Hitting the page cap hands back the rows read
+// with a partialWindowError naming the oldest of them; the liquidation
+// caller folds those in and holds the rank, the volume caller refuses the
+// partial sum because it feeds the rank gate's denominator.
 func (g *GMX) squidTradeActions(where string) ([]gmxTradeAction, error) {
 	var all []gmxTradeAction
 	seen := make(map[string]bool, 1024)
+	oldestRead := int64(0)
 	page := 0
 	for ; page < gmxSquidMaxPages; page++ {
 		q := fmt.Sprintf(
@@ -159,12 +163,15 @@ func (g *GMX) squidTradeActions(where string) ([]gmxTradeAction, error) {
 			}
 			seen[id] = true
 			all = append(all, r)
+			if oldestRead == 0 || r.Timestamp < oldestRead {
+				oldestRead = r.Timestamp
+			}
 		}
 		if len(resp.Data.TradeActions) < gmxSquidPageLimit {
 			return all, nil
 		}
 	}
-	return nil, fmt.Errorf("gmx squid: more than %d rows match %q; refusing a partial sum", gmxSquidMaxPages*gmxSquidPageLimit, where)
+	return all, &partialWindowError{OldestReadMs: oldestRead * 1000, Cap: gmxSquidMaxPages * gmxSquidPageLimit, What: "gmx squid tradeActions"}
 }
 
 // marketAsset maps a market token address to the asset it trades. The index
@@ -207,7 +214,8 @@ func (g *GMX) FetchLiquidationsSince(asset string, sinceMs int64) ([]LiqEvent, e
 	where := fmt.Sprintf(`orderType_eq:%d, eventName_eq:"OrderExecuted", timestamp_gte:%d`,
 		gmxOrderTypeLiquidation, sinceMs/1000)
 	rows, err := g.squidTradeActions(where)
-	if err != nil {
+	var partial *partialWindowError
+	if err != nil && !errors.As(err, &partial) {
 		return nil, err
 	}
 	want := strings.ToUpper(asset)
@@ -230,7 +238,8 @@ func (g *GMX) FetchLiquidationsSince(asset string, sinceMs int64) ([]LiqEvent, e
 			TimestampMs: r.Timestamp * 1000,
 		})
 	}
-	return events, nil
+	// err is nil or the partialWindowError, which travels with the rows.
+	return events, err
 }
 
 // FetchVolume24hUSD returns the asset's executed position notional over the

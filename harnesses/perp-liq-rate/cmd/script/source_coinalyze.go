@@ -1,6 +1,6 @@
 package main
 
-// source_coinalyze.go — shared Coinalyze client (Lighter + Hyperliquid).
+// source_coinalyze.go: shared Coinalyze client (Lighter + Hyperliquid).
 //
 // Key fix: buckets are converted to USD using the hourly close price of *that
 // specific bucket* (HL candleSnapshot, free, no key), not the current mark

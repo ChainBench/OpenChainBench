@@ -1,6 +1,6 @@
 package main
 
-// config.go — environment handling and the VenueAsset registry that binds
+// config.go: environment handling and the VenueAsset registry that binds
 // every (venue, asset) pair to its Source implementation.
 
 import (
@@ -38,10 +38,10 @@ const (
 //
 // Environment:
 //
-//	TICK_INTERVAL_SECONDS — poll interval, default 300
-//	RPC_BASE              — Base mainnet JSON-RPC URL, default https://mainnet.base.org
-//	RPC_ARBITRUM          — Arbitrum One JSON-RPC URL (Gains' main deployment), default https://arb1.arbitrum.io/rpc
-//	LISTEN_ADDR           — metrics listen address, default :2112
+//	TICK_INTERVAL_SECONDS: poll interval, default 300
+//	RPC_BASE             : Base mainnet JSON-RPC URL, default https://mainnet.base.org
+//	RPC_ARBITRUM         : Arbitrum One JSON-RPC URL (Gains' main deployment), default https://arb1.arbitrum.io/rpc
+//	LISTEN_ADDR          : metrics listen address, default :2112
 func loadConfig() (*Config, error) {
 	tickSeconds := defaultTickSeconds
 	if v := os.Getenv("TICK_INTERVAL_SECONDS"); v != "" {

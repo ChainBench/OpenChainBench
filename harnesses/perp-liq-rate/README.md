@@ -1,7 +1,7 @@
 # perp-liq-rate
 
 Prometheus exporter for bench 208. Publishes, per perp venue and per asset,
-liquidated notional over the trailing 24 hours divided by **mean** open
+liquidated notional over the trailing 24 hours divided by the **peak** open
 interest over the same 24 hours, times 100. Polls every 5 minutes, serves
 gauges on `:2112/metrics`.
 
@@ -17,7 +17,7 @@ gauges on `:2112/metrics`.
 | `paradex` | ETH BTC | public tape, `trade_type == LIQUIDATION` | on the band |
 | `orderly` | ETH BTC SOL | `GET /v1/public/liquidated_positions`, matching leg only, `cost_position_transfer` USD | on the band |
 | `nado` | ETH BTC | archive `market_snapshots`, delta of `cumulative_liquidation_amounts` (x18 USD), one aggregate figure | on the band |
-| `gains` | ETH BTC | on-chain `LimitExecuted` logs, `orderType` LIQ_CLOSE (6), Arbitrum and Base | no: no per-asset volume denominator |
+| `gains` | ETH BTC | on-chain `LimitExecuted` logs, `orderType` LIQ_CLOSE (6), Arbitrum and Base; traded notional from the same scan (MarketExecuted, LimitExecuted, executed resizes) | on the band |
 | `ostium` | ETH BTC | Ormi subgraph, `tradeEvents` type `LiquidationExecuted` | on the band |
 | `aevo` | ETH BTC | none reachable | no |
 
@@ -57,6 +57,7 @@ docker run -p 2112:2112 perp-liq-rate
 perp_liq_rate_24h_pct{venue,chain}
 perp_liq_volume_24h_usd{venue,chain}
 perp_liq_open_interest_usd{venue,chain}
+perp_liq_open_interest_peak_24h_usd{venue,chain}
 perp_liq_open_interest_avg_24h_usd{venue,chain}
 perp_liq_venue_volume_24h_usd{venue,chain}
 perp_liq_share_of_volume_pct{venue,chain}
@@ -72,7 +73,7 @@ perp_realized_vol_24h_pct{chain}
 ```
 
 `error_type` values: `http_4xx`, `http_5xx`, `http_status`, `timeout`,
-`decode`, `parse`, `unavailable`, `oi_zero`, `other`.
+`decode`, `parse`, `unavailable`, `oi_zero`, `partial_window`, `other`.
 
 ## Semantics
 
@@ -90,26 +91,40 @@ perp_realized_vol_24h_pct{chain}
 - **Open interest is one-sided.** A book reports one side; the pool venues
   (GMX v2, Gains, Ostium) report long and short and those are halved, so a
   liquidation flow reads the same rate on either kind of venue.
-- **The denominator is a mean.** The numerator covers 24 hours, so dividing
-  by an instantaneous open interest made the rate move with the denominator.
-  Gains published 343% on 2026-09-24 because its open interest fell from
-  $37M to $7.3M while its numerator stood still.
+- **The denominator is the window's peak.** The numerator covers 24 hours,
+  so dividing by an instantaneous open interest made the rate move with the
+  denominator: Gains published 343% on 2026-09-24 because its open interest
+  fell from $37M to $7.3M while its numerator stood still. The mean over the
+  window was the first repair and still read 251% on 2026-09-28, when Gains
+  ETH fell from $43.7M to $2.1M because most of the book was liquidated. The
+  peak is the most that could have been liquidated from the book; against
+  it that day reads 62%. The mean is published beside it.
+- **The rate waits for the denominator.** `perp_liq_rate_24h_pct` and the
+  peak are published only once a row holds 12 open-interest readings (an
+  hour), so a restart does not put a 24h numerator over one reading.
+  `perp_liq_warming_up{venue}` is 1 for exactly that hour.
 - **The rank gate** lives in `plausibility.go`. A row ranks only when it has
-  a feed, the tick succeeded, the denominator has at least 12 readings, some
-  liquidation was observed, the venue publishes a 24h notional, and
-  liquidated notional is between 0.01% and 3% of that notional. Every other
-  case publishes its figures with `perp_liq_ranked = 0`, and the harness logs
-  the reason by name. The band exists because the venues do not agree on what
-  a liquidation is: measured on 2026-09-27, Hyperliquid read 0.17% of its own
+  a feed, the tick succeeded, no page cap left part of the window unread,
+  the denominator has at least 12 readings, at least $10,000 was
+  liquidated, no single liquidation is more than half of the figure (rows
+  with event detail), the venue publishes a 24h notional, and liquidated
+  notional is between 0.01% and 3% of that notional. Every other case
+  publishes its figures with `perp_liq_ranked = 0`, and the harness logs the
+  reason by name. The band exists because the venues do not agree on what a
+  liquidation is: measured on 2026-09-27, Hyperliquid read 0.17% of its own
   BTC volume and 0.005% on ETH off a short feed, Aster 0.18%, Lighter 0.024%,
-  dYdX 0.00085% and Gains 14.9% of venue-level volume.
+  dYdX 0.00085% and Gains 14.9% of venue-level volume. The size gates exist
+  because on 2026-09-28 Ostium BTC sat inside the band on $338 from one
+  event, above Hyperliquid.
+- **Page caps hand over what they read.** The tapes that page newest first
+  (dYdX, Paradex, Orderly, Ostium, the GMX squid) return the rows read plus
+  a `partialWindowError` naming the oldest row reached. The runner folds the
+  rows in, counts `partial_window`, advances the high-water mark so the next
+  request fits, and holds the rank until the unread edge has aged out of the
+  window. 0xArchive keeps the refusal (its cap is 29x a busy BTC day).
 - On a fetch error the previously published gauges are kept,
   `perp_liq_fetch_errors_total` is incremented and the error is logged;
   `perp_liq_health{venue}` drops to 0 for the tick.
-- `perp_liq_warming_up{venue}` stays 1 until 24h after the venue's first
-  tick. Every liquidation source backfills its full 24h window on that first
-  tick, so the numerator is complete from the start; the flag marks the
-  window having seen a full span of its own.
 - `lighter`: HTTP 404/501 marks the venue unavailable (health 0). After 3
   consecutive unavailable ticks it logs once and suppresses further error
   increments until recovery.
@@ -118,8 +133,16 @@ perp_realized_vol_24h_pct{chain}
   decode is self-checking: the event encodes position size twice, as
   `collateralAmount x leverage` and as `positionSizeToken x openPrice`, and a
   log whose two encodings differ by more than 5% is refused rather than
-  published. `source_gains_golden_test.go` pins the word offsets against two
-  real Arbitrum logs.
+  published. `source_gains_golden_test.go` and `source_gains_volume_test.go`
+  pin the word offsets and the topic hashes against five real Arbitrum logs.
+  One scan per deployment per tick reads `LimitExecuted`, `MarketExecuted`,
+  `PositionSizeIncreaseExecuted` and `PositionSizeDecreaseExecuted` from a
+  block cursor; liquidations are the LIQ_CLOSE legs, traded notional is
+  every leg of the pair (resizes at `positionSizeCollateralDelta`), which is
+  the Gains backend's own auto-plus-direct perimeter. Logs are placed on the
+  clock by interpolating between the headers at both ends of the range.
+  `go test -tags live -run TestLive_GainsVolume` prints the scan next to the
+  backend's volume-mix.
 
 ## Venues checked and not added
 

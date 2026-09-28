@@ -1,6 +1,6 @@
 package main
 
-// source_dydx.go — dYdX v4 (indexer.dydx.trade).
+// source_dydx.go: dYdX v4 (indexer.dydx.trade).
 //
 // Liquidations: GET /v4/trades/perpetualMarket/{ticker}?limit=100, keep
 // type == "LIQUIDATED", paginate backwards with createdBeforeOrAt until the
@@ -49,7 +49,7 @@ type dydxTradesResp struct {
 	Trades []dydxTrade `json:"trades"`
 }
 
-// HasLiquidationSource reports true — public trade tape exposes LIQUIDATED type.
+// HasLiquidationSource reports true: public trade tape exposes LIQUIDATED type.
 func (d *Dydx) HasLiquidationSource() bool { return true }
 
 // FetchLiquidationsSince pages the trade feed backwards until sinceMs.
@@ -61,6 +61,7 @@ func (d *Dydx) FetchLiquidationsSince(asset string, sinceMs int64) ([]LiqEvent, 
 
 	var events []LiqEvent
 	createdBefore := ""
+	oldestReadMs := int64(0)
 
 	for page := 0; page < dydxMaxPages; page++ {
 		u := fmt.Sprintf("%s/trades/perpetualMarket/%s?limit=%d", d.baseURL, url.PathEscape(ticker), dydxPageSize)
@@ -112,11 +113,12 @@ func (d *Dydx) FetchLiquidationsSince(asset string, sinceMs int64) ([]LiqEvent, 
 		// createdBeforeOrAt is inclusive, so the boundary trade repeats on
 		// the next page; the SeenSet dedup absorbs that.
 		createdBefore = oldestStr
+		oldestReadMs = oldestMs
 	}
-	// Reaching the cap means the oldest part of the window was never read;
-	// say so rather than hand back a short numerator as if it were whole.
-	return nil, fmt.Errorf("dydx trades: more than %d rows since %d for %s; refusing a partial window",
-		dydxMaxPages*dydxPageSize, sinceMs, ticker)
+	// Reaching the cap means the oldest part of the window was never read.
+	// The rows read are handed over with the edge, so the runner can hold
+	// the rank rather than the harness repeating a request that cannot fit.
+	return events, &partialWindowError{OldestReadMs: oldestReadMs, Cap: dydxMaxPages * dydxPageSize, What: "dydx trades " + ticker}
 }
 
 type dydxMarket struct {

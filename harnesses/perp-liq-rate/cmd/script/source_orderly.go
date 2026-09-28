@@ -1,6 +1,6 @@
 package main
 
-// source_orderly.go — Orderly Network.
+// source_orderly.go: Orderly Network.
 //
 // Added 2026-09-27 when the cohort was widened. Orderly is the only venue in
 // this cohort with a purpose-built public liquidation endpoint that carries
@@ -49,7 +49,7 @@ type Orderly struct {
 // NewOrderly returns the Orderly source.
 func NewOrderly() *Orderly { return &Orderly{baseURL: orderlyBaseURL} }
 
-// HasLiquidationSource reports true — a dedicated public endpoint with history.
+// HasLiquidationSource reports true: a dedicated public endpoint with history.
 func (o *Orderly) HasLiquidationSource() bool { return true }
 
 type orderlyLiqLeg struct {
@@ -73,6 +73,7 @@ func (o *Orderly) FetchLiquidationsSince(asset string, sinceMs int64) ([]LiqEven
 	}
 	endMs := time.Now().UnixMilli()
 	var events []LiqEvent
+	oldestReadMs := int64(0)
 	for page := 1; page <= orderlyMaxPages; page++ {
 		u := fmt.Sprintf("%s/liquidated_positions?symbol=%s&start_t=%d&end_t=%d&page=%d&size=%d",
 			o.baseURL, url.QueryEscape(symbol), sinceMs, endMs, page, orderlyPageSize)
@@ -86,6 +87,9 @@ func (o *Orderly) FetchLiquidationsSince(asset string, sinceMs int64) ([]LiqEven
 		}
 		rows := resp.Data.Rows
 		for _, r := range rows {
+			if oldestReadMs == 0 || r.Timestamp < oldestReadMs {
+				oldestReadMs = r.Timestamp
+			}
 			for _, leg := range r.PositionsByPerp {
 				if !strings.EqualFold(leg.Symbol, symbol) {
 					continue // another market of the same liquidated account
@@ -109,8 +113,9 @@ func (o *Orderly) FetchLiquidationsSince(asset string, sinceMs int64) ([]LiqEven
 			return events, nil
 		}
 	}
-	return nil, fmt.Errorf("orderly liquidated_positions: more than %d rows since %d for %s; refusing a partial window",
-		orderlyMaxPages*orderlyPageSize, sinceMs, symbol)
+	// The feed is newest first, so what the cap left unread is older than
+	// every row held; the rows go back with the edge.
+	return events, &partialWindowError{OldestReadMs: oldestReadMs, Cap: orderlyMaxPages * orderlyPageSize, What: "orderly liquidated_positions " + symbol}
 }
 
 // orderlyFutures is the part of /futures/{symbol} this harness needs.

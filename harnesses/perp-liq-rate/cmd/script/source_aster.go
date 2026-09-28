@@ -1,6 +1,6 @@
 package main
 
-// source_aster.go — Aster on BNB Chain.
+// source_aster.go: Aster on BNB Chain.
 //
 // Added 2026-09-27 when the cohort was widened. Aster's own history endpoint
 // for forced orders is gone (/fapi/v1/allForceOrders answers "The endpoint

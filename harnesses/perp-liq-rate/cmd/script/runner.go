@@ -1,6 +1,6 @@
 package main
 
-// runner.go — runTick is executed once per (venue, asset) pair per tick, in
+// runner.go: runTick is executed once per (venue, asset) pair per tick, in
 // its own goroutine.
 
 import (
@@ -30,6 +30,11 @@ type pairState struct {
 	// no meaning for such a row, including on a tick where the source hands
 	// over nothing new.
 	noEventDetail bool
+	// unreadBeforeMs is the edge left by a read a page cap cut short: rows
+	// older than it were never read. Zero when the window is whole. The row
+	// does not rank while the edge is inside the window, and the edge clears
+	// once it has aged out.
+	unreadBeforeMs int64
 }
 
 // newPairState builds the windows for one venue+asset pair.
@@ -55,7 +60,6 @@ func runTick(va VenueAsset, st *pairState, sinceMs int64) bool {
 	now := time.Now()
 	nowMs := now.UnixMilli()
 	cutoffMs := nowMs - windowSpan.Milliseconds()
-	st.window.MarkTick(now)
 
 	ok := true
 	hasLiqSource := va.Source.HasLiquidationSource()
@@ -65,6 +69,20 @@ func runTick(va VenueAsset, st *pairState, sinceMs int64) bool {
 	if hasLiqSource {
 		var events []LiqEvent
 		events, liqErr = va.Source.FetchLiquidationsSince(va.Asset, sinceMs-liqFetchOverlap.Milliseconds())
+		var partial *partialWindowError
+		if errors.As(liqErr, &partial) {
+			// The rows read are real and go into the window; what was not
+			// read is older than all of them. The tick counts as a success
+			// so the high-water mark advances and the next request fits,
+			// and the row is held from ranking until the unread edge has
+			// aged out of the window.
+			if partial.OldestReadMs > st.unreadBeforeMs {
+				st.unreadBeforeMs = partial.OldestReadMs
+			}
+			recordFetchError(va.Venue, va.Asset, "partial_window")
+			log.Printf("[%s/%s] liquidations read short: %v; the row does not rank until the unread edge ages out", va.Venue, va.Asset, liqErr)
+			liqErr = nil
+		}
 		if liqErr != nil {
 			handleFetchError(va, "liquidations", liqErr)
 			ok = false
@@ -99,7 +117,7 @@ func runTick(va VenueAsset, st *pairState, sinceMs int64) bool {
 					continue // older than the window; irrelevant
 				}
 				if st.seen.Add(e.Key, e.TimestampMs) {
-					st.window.Add(e.Key, e.TimestampMs, e.NotionalUSD)
+					st.window.AddEvent(e)
 					added++
 				}
 			}
@@ -112,6 +130,9 @@ func runTick(va VenueAsset, st *pairState, sinceMs int64) bool {
 
 	st.window.Prune(nowMs)
 	st.seen.Prune(cutoffMs)
+	if st.unreadBeforeMs > 0 && st.unreadBeforeMs <= cutoffMs {
+		st.unreadBeforeMs = 0
+	}
 
 	oi, oiErr := va.Source.FetchOI(va.Asset)
 	if oiErr != nil {
@@ -140,8 +161,15 @@ func runTick(va VenueAsset, st *pairState, sinceMs int64) bool {
 			ok = false
 		}
 	}
-	meanOI := st.oi.Mean()
-	if meanOI > 0 {
+	// The denominator and the rate wait for the window to hold enough
+	// readings. One reading is the instantaneous open interest whose swings
+	// this bench stopped publishing, and after a restart the numerator is a
+	// full 24h backfill against it, so the first hour would show the 343%
+	// class of artifact on the page as the latest reading.
+	peakOI, meanOI := st.oi.Max(), st.oi.Mean()
+	oiReady := st.oi.Len() >= minOISamples
+	if oiReady && peakOI > 0 {
+		liqOpenInterestPeak.WithLabelValues(va.Venue, va.Asset).Set(peakOI)
 		liqOpenInterestAvg.WithLabelValues(va.Venue, va.Asset).Set(meanOI)
 	}
 
@@ -153,38 +181,49 @@ func runTick(va VenueAsset, st *pairState, sinceMs int64) bool {
 	// liquidation source; an absent series reads as N/A on the site rather
 	// than as a 0% that nobody can tell from a real one.
 	volume := 0.0
+	largestShare := 0.0
 	if hasLiqSource && liqErr == nil {
 		volume = st.window.Sum()
 		setLiqVolume(va.Venue, va.Asset, volume)
-		if meanOI > 0 {
-			liqRate.WithLabelValues(va.Venue, va.Asset).Set(volume / meanOI * 100)
+		if oiReady && peakOI > 0 {
+			liqRate.WithLabelValues(va.Venue, va.Asset).Set(volume / peakOI * 100)
 		}
 		if newest := st.window.NewestMs(); newest > 0 {
 			liqNewestAge.WithLabelValues(va.Venue, va.Asset).Set(float64(nowMs-newest) / 1000)
+		}
+		// The money behind the notional, where the source says. A window
+		// that has emptied keeps its last figure like every other gauge
+		// here; a source that never exposes collateral never publishes one.
+		if col, ok := st.window.SumCollateral(); ok {
+			liqCollateral.WithLabelValues(va.Venue, va.Asset).Set(col)
+		}
+		if lev, ok := st.window.MedianLeverage(); ok {
+			liqMedianLeverage.WithLabelValues(va.Venue, va.Asset).Set(lev)
 		}
 		// Meaningless for a source that reports hours or the whole window as
 		// one number: it would show the busiest hour, or 100%, and claim the
 		// day was a single position.
 		if !st.noEventDetail {
-			largest := st.window.Max()
-			share := 0.0
 			if volume > 0 {
-				share = largest / volume * 100
+				largestShare = st.window.Max() / volume * 100
 			}
-			liqLargestShare.WithLabelValues(va.Venue, va.Asset).Set(share)
+			liqLargestShare.WithLabelValues(va.Venue, va.Asset).Set(largestShare)
 		}
 	}
 
 	in := rankInput{
 		hasSource: hasLiqSource,
 		// An OI endpoint that answered zero is a failed read for the gate
-		// as it is for health, not a tick that passes on the trailing mean.
-		fetchOK:   liqErr == nil && oiErr == nil && oi > 0 && volErr == nil,
-		oiSamples: st.oi.Len(),
-		liqUSD24h: volume,
-		meanOIUSD: meanOI,
-		volUSD24h: vol,
-		hasVolume: hasVolSource,
+		// as it is for health, not a tick that passes on the trailing peak.
+		fetchOK:         liqErr == nil && oiErr == nil && oi > 0 && volErr == nil,
+		partialWindow:   st.unreadBeforeMs > 0,
+		oiSamples:       st.oi.Len(),
+		liqUSD24h:       volume,
+		peakOIUSD:       peakOI,
+		volUSD24h:       vol,
+		hasVolume:       hasVolSource,
+		hasEventDetail:  !st.noEventDetail,
+		largestEventPct: largestShare,
 	}
 	// The share is a measurement only when both sides were read this tick;
 	// on a failed fetch or a venue with no notional it stays absent rather
@@ -195,8 +234,8 @@ func runTick(va VenueAsset, st *pairState, sinceMs int64) bool {
 	ranked, reason := evaluateRank(in)
 	setRanked(va.Venue, va.Asset, ranked)
 	if !ranked {
-		log.Printf("[%s/%s] not ranked: %s (liq24h=$%.2f meanOI=$%.2f vol24h=$%.2f share=%.5f%%)",
-			va.Venue, va.Asset, reason, volume, meanOI, vol, in.shareOfVolumePct())
+		log.Printf("[%s/%s] not ranked: %s (liq24h=$%.2f peakOI=$%.2f meanOI=$%.2f vol24h=$%.2f share=%.5f%% largest=%.1f%%)",
+			va.Venue, va.Asset, reason, volume, peakOI, meanOI, vol, in.shareOfVolumePct(), largestShare)
 	}
 
 	return ok

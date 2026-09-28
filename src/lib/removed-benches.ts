@@ -94,6 +94,21 @@ export const REMOVED_ANSWER_SLUGS = new Set([
  * Moving a bench to production = remove its slug here.
  */
 export const DEV_ONLY_BENCH_SLUGS = new Set([
+  // 208 perp liquidation rate: gated 2026-09-28 while the metric is rebuilt.
+  // The sources are right (the Gains decode reproduces to 0.02% against an
+  // independent scan, Lighter, GMX, Aster, Ostium, Nado and Orderly read
+  // their feeds) and the headline is not: a 24h window is meaningless on a
+  // venue whose nine-day total sits in three days, a book liquidated away
+  // inside the window makes the rate exceed 100% on any open-interest
+  // denominator, and notional over notional open interest mostly reports a
+  // venue's leverage policy (Gains: $39.5M of notional on $423k of
+  // collateral on 2026-09-28, median 73x). Un-gate condition: the headline
+  // is a 30-day flow over flow (liquidated notional over traded notional,
+  // 7-day companion) with collateral lost and median leverage published per
+  // venue where the source exposes them, open interest as context only,
+  // the page saying plainly that a high rate on a high-leverage venue
+  // reflects the leverage it offers, and an audit round on that board.
+  "perp-liq-rate",
   // Released 2026-09-23: bridges 261 (on-chain execution), 263 (realized
   // cost), 264 (SOL->X quotes) and 268 terminal-fill-quality left this
   // list with release/2026-09-23.

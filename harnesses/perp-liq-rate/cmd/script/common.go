@@ -1,6 +1,6 @@
 package main
 
-// common.go — shared types and helpers used by every venue source.
+// common.go: shared types and helpers used by every venue source.
 //
 // This file exists so the eight source_*.go files do not each re-implement
 // HTTP plumbing and decimal parsing. It defines the LiqEvent normalization
@@ -26,6 +26,15 @@ type LiqEvent struct {
 	Key         string  // dedup key (trade hash or tx+index composite)
 	NotionalUSD float64 // liquidated notional in USD
 	TimestampMs int64   // event time, unix milliseconds
+	// CollateralUSD is the margin behind the liquidated position, the money
+	// the trader actually had at risk, and Leverage its notional over that
+	// margin. Both are 0 when the source does not expose them: a trade tape
+	// carries size and price, not the account behind the fill. Where they
+	// exist they are published beside the notional, because a rate over
+	// notional is not neutral to a venue's leverage: on 2026-09-28 Gains
+	// liquidated 39.5M dollars of notional on 423k of collateral.
+	CollateralUSD float64
+	Leverage      float64
 	// Bucket marks a figure that is still growing: an aggregator's hourly
 	// total, re-read on every tick while its hour is open. The runner
 	// replaces the stored value for such a key instead of discarding the
@@ -76,6 +85,26 @@ func venueVolume24h(s Source, asset string) (float64, bool, error) {
 		return 0, true, err
 	}
 	return v, true, nil
+}
+
+// partialWindowError accompanies the events a tape source did read when its
+// page cap stopped it before it reached sinceMs. Every tape that returns it
+// pages newest first (dYdX createdBeforeOrAt, Paradex and Orderly by page,
+// the Ostium subgraph and the GMX squid by timestamp desc), so the unread
+// part is older than everything read: rows before OldestReadMs. The runner
+// folds the rows in, remembers the edge, holds the row from ranking until
+// the edge has aged out of the window, and lets the high-water mark advance
+// so the next request fits. Repeating a 26h request that did not fit would
+// not fit next tick either, and a pair could sit unpublished for as long as
+// the tape stayed busy, which is exactly when liquidations happen.
+type partialWindowError struct {
+	OldestReadMs int64
+	Cap          int
+	What         string
+}
+
+func (e *partialWindowError) Error() string {
+	return fmt.Sprintf("%s: page cap of %d rows reached; rows older than %d unread", e.What, e.Cap, e.OldestReadMs)
 }
 
 // ErrVenueUnavailable marks a venue as temporarily unavailable for this tick

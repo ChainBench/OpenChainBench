@@ -1,10 +1,10 @@
 package main
 
-// source_paradex.go — Paradex.
+// source_paradex.go: Paradex.
 //
 // Liquidations: GET /v1/trades?market=X&start_at=<ms>&end_at=<now_ms>
 // &page_size=100, following the "next" cursor; keep rows whose trade_type
-// equals "LIQUIDATION". VERIFY: exact trade_type value — the field was added
+// equals "LIQUIDATION". VERIFY: exact trade_type value: the field was added
 // in Paradex v1.38; the assumed value is "LIQUIDATION". Notional = size×price.
 // OI: GET /v1/markets/summary?market=X → open_interest. VERIFY: unit
 // (base-asset vs USD) by comparing BTC vs ETH order of magnitude at runtime.
@@ -50,7 +50,7 @@ type paradexTradesResp struct {
 	Next    *string        `json:"next"`
 }
 
-// HasLiquidationSource reports true — public trade tape exposes LIQUIDATION trade_type.
+// HasLiquidationSource reports true: public trade tape exposes LIQUIDATION trade_type.
 func (p *Paradex) HasLiquidationSource() bool { return true }
 
 // FetchLiquidationsSince pages the public trade tape and keeps LIQUIDATION rows.
@@ -63,6 +63,7 @@ func (p *Paradex) FetchLiquidationsSince(asset string, sinceMs int64) ([]LiqEven
 	var events []LiqEvent
 	cursor := ""
 	endMs := time.Now().UnixMilli()
+	oldestReadMs := int64(0)
 
 	for page := 0; page < paradexMaxPages; page++ {
 		u := fmt.Sprintf("%s/trades?market=%s&start_at=%d&end_at=%d&page_size=%d",
@@ -75,6 +76,9 @@ func (p *Paradex) FetchLiquidationsSince(asset string, sinceMs int64) ([]LiqEven
 			return nil, fmt.Errorf("paradex trades: %w", err)
 		}
 		for _, t := range resp.Results {
+			if oldestReadMs == 0 || t.CreatedAt < oldestReadMs {
+				oldestReadMs = t.CreatedAt
+			}
 			if t.TradeType != "LIQUIDATION" {
 				continue
 			}
@@ -105,9 +109,8 @@ func (p *Paradex) FetchLiquidationsSince(asset string, sinceMs int64) ([]LiqEven
 		cursor = *resp.Next
 	}
 	// Reaching the cap means the oldest part of the window was never read;
-	// say so rather than hand back a short numerator as if it were whole.
-	return nil, fmt.Errorf("paradex trades: more than %d rows since %d for %s; refusing a partial window",
-		paradexMaxPages*paradexPageSize, sinceMs, market)
+	// the rows read go back with the edge (the tape is newest first).
+	return events, &partialWindowError{OldestReadMs: oldestReadMs, Cap: paradexMaxPages * paradexPageSize, What: "paradex trades " + market}
 }
 
 // paradexSummary is one row of /markets/summary.

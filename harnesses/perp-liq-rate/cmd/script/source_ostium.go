@@ -1,6 +1,6 @@
 package main
 
-// source_ostium.go — Ostium on Arbitrum.
+// source_ostium.go: Ostium on Arbitrum.
 //
 // Added 2026-09-27 when the cohort was widened. Ostium has no REST surface
 // (api.ostium.io and metadata.ostium.io do not resolve); the Ormi-hosted
@@ -44,7 +44,7 @@ type Ostium struct {
 // NewOstium returns the Ostium source.
 func NewOstium() *Ostium { return &Ostium{subgraphURL: ostiumSubgraphURL} }
 
-// HasLiquidationSource reports true — the subgraph carries a
+// HasLiquidationSource reports true: the subgraph carries a
 // LiquidationExecuted event type.
 func (o *Ostium) HasLiquidationSource() bool { return true }
 
@@ -85,6 +85,7 @@ func (o *Ostium) FetchLiquidationsSince(asset string, sinceMs int64) ([]LiqEvent
 	}
 	want := strings.ToUpper(asset)
 	var events []LiqEvent
+	oldestReadMs := int64(0)
 	for page := 0; page < ostiumMaxPages; page++ {
 		q := fmt.Sprintf(
 			`{ tradeEvents(first:%d, skip:%d, orderBy:timestamp, orderDirection:desc, `+
@@ -98,15 +99,18 @@ func (o *Ostium) FetchLiquidationsSince(asset string, sinceMs int64) ([]LiqEvent
 			return nil, err
 		}
 		for _, r := range out.TradeEvents {
+			sec, err := parseF(r.Timestamp)
+			if err != nil || sec <= 0 {
+				continue
+			}
+			if ms := int64(sec) * 1000; oldestReadMs == 0 || ms < oldestReadMs {
+				oldestReadMs = ms
+			}
 			if !strings.EqualFold(r.Pair.From, want) {
 				continue
 			}
 			usd, err := parseScaled(r.Trade.Notional, 6)
 			if err != nil || usd <= 0 {
-				continue
-			}
-			sec, err := parseF(r.Timestamp)
-			if err != nil || sec <= 0 {
 				continue
 			}
 			events = append(events, LiqEvent{
@@ -119,8 +123,9 @@ func (o *Ostium) FetchLiquidationsSince(asset string, sinceMs int64) ([]LiqEvent
 			return events, nil
 		}
 	}
-	return nil, fmt.Errorf("ostium: more than %d liquidation events since %d; refusing a partial window",
-		ostiumMaxPages*ostiumPageLimit, sinceMs/1000)
+	// Ordered by timestamp desc, so the unread part is the oldest; the rows
+	// go back with the edge.
+	return events, &partialWindowError{OldestReadMs: oldestReadMs, Cap: ostiumMaxPages * ostiumPageLimit, What: "ostium tradeEvents"}
 }
 
 type ostiumPair struct {

@@ -1,6 +1,6 @@
 package main
 
-// window.go — the 24h sliding window of liquidation notionals, the dedup
+// window.go: the 24h sliding window of liquidation notionals, the dedup
 // SeenSet pruned alongside it, and the 24h sample window that averages open
 // interest.
 //
@@ -16,14 +16,17 @@ package main
 // $185.6M of daily ETH volume until 2026-09-27 because of it.
 
 import (
+	"sort"
 	"sync"
 	"time"
 )
 
 type windowEntry struct {
-	key      string
-	tsMs     int64
-	notional float64
+	key        string
+	tsMs       int64
+	notional   float64
+	collateral float64 // 0 when the source does not expose it
+	leverage   float64 // 0 when the source does not expose it
 }
 
 // SlidingWindow accumulates (key, unix_ms, notional_usd) events and answers
@@ -33,7 +36,6 @@ type SlidingWindow struct {
 	entries []windowEntry
 	byKey   map[string]int // key -> index into entries, for Upsert
 	span    time.Duration
-	firstAt time.Time // wall time of the first tick that touched this window
 }
 
 // NewSlidingWindow returns a window covering the given span (24h here).
@@ -44,9 +46,15 @@ func NewSlidingWindow(span time.Duration) *SlidingWindow {
 // Add appends one event to the window. Callers gate on SeenSet first so the
 // same event key is never appended twice.
 func (w *SlidingWindow) Add(key string, tsMs int64, notionalUSD float64) {
+	w.AddEvent(LiqEvent{Key: key, TimestampMs: tsMs, NotionalUSD: notionalUSD})
+}
+
+// AddEvent appends one event with whatever detail its source carried.
+func (w *SlidingWindow) AddEvent(e LiqEvent) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	w.appendLocked(windowEntry{key: key, tsMs: tsMs, notional: notionalUSD})
+	w.appendLocked(windowEntry{key: e.Key, tsMs: e.TimestampMs, notional: e.NotionalUSD,
+		collateral: e.CollateralUSD, leverage: e.Leverage})
 }
 
 // Upsert stores a bucketed figure: if the key is already in the window its
@@ -89,16 +97,6 @@ func (w *SlidingWindow) Remove(key string) bool {
 func (w *SlidingWindow) appendLocked(e windowEntry) {
 	w.entries = append(w.entries, e)
 	w.byKey[e.key] = len(w.entries) - 1
-}
-
-// MarkTick records the first time a tick ran against this window; used by
-// IsWarm to decide when a full span of data has been observed.
-func (w *SlidingWindow) MarkTick(now time.Time) {
-	w.mu.Lock()
-	defer w.mu.Unlock()
-	if w.firstAt.IsZero() {
-		w.firstAt = now
-	}
 }
 
 // Prune drops entries older than span relative to nowMs.
@@ -149,6 +147,44 @@ func (w *SlidingWindow) Max() float64 {
 	return max
 }
 
+// SumCollateral returns the total collateral behind the window's entries and
+// whether any entry carried one; a source that does not expose collateral
+// leaves the figure absent rather than at zero.
+func (w *SlidingWindow) SumCollateral() (float64, bool) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	total, any := 0.0, false
+	for _, e := range w.entries {
+		if e.collateral > 0 {
+			total += e.collateral
+			any = true
+		}
+	}
+	return total, any
+}
+
+// MedianLeverage returns the median leverage of the entries that carry one,
+// and whether any did.
+func (w *SlidingWindow) MedianLeverage() (float64, bool) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	levs := make([]float64, 0, len(w.entries))
+	for _, e := range w.entries {
+		if e.leverage > 0 {
+			levs = append(levs, e.leverage)
+		}
+	}
+	if len(levs) == 0 {
+		return 0, false
+	}
+	sort.Float64s(levs)
+	if n := len(levs); n%2 == 1 {
+		return levs[n/2], true
+	} else {
+		return (levs[n/2-1] + levs[n/2]) / 2, true
+	}
+}
+
 // NewestMs returns the timestamp of the most recent entry, or 0 when empty.
 // Published as an age so a feed that has stopped reporting is visible next
 // to the rate it still produces.
@@ -171,20 +207,17 @@ func (w *SlidingWindow) Len() int {
 	return len(w.entries)
 }
 
-// IsWarm reports whether a full window span has elapsed since the first tick,
-// i.e. whether the 24h sum is trustworthy.
-func (w *SlidingWindow) IsWarm(now time.Time) bool {
-	w.mu.Lock()
-	defer w.mu.Unlock()
-	return !w.firstAt.IsZero() && now.Sub(w.firstAt) >= w.span
-}
-
 // SampleWindow holds a 24h trail of point-in-time readings and answers their
-// mean. Open interest is an instant, the liquidation sum is a 24h total, and
-// dividing one by the other made the published rate jump with the denominator
-// rather than the numerator: Gains read 343% on 2026-09-24 because its open
-// interest fell from $37M to $7.3M while the numerator stood still. The
-// denominator is the mean over the same 24 hours the numerator covers.
+// mean and their peak. Open interest is an instant, the liquidation sum is a
+// 24h total, and dividing one by the other made the published rate jump with
+// the denominator rather than the numerator: Gains read 343% on 2026-09-24
+// because its open interest fell from $37M to $7.3M while the numerator stood
+// still. The mean over the window was the first repair and it is not enough
+// when the book collapses inside the window because it was liquidated: on
+// 2026-09-28 Gains ETH went from $43.7M to $2.1M of open interest, the mean
+// was $10.9M, and $27.3M of liquidations read as 251%. The denominator this
+// bench divides by is the peak: the largest book the venue held during the
+// window, which is the most that could have been liquidated from it.
 type SampleWindow struct {
 	mu      sync.Mutex
 	samples []windowEntry // key unused; tsMs + value
@@ -226,6 +259,19 @@ func (s *SampleWindow) Mean() float64 {
 		total += e.notional
 	}
 	return total / float64(len(s.samples))
+}
+
+// Max returns the largest reading held, or 0 when empty.
+func (s *SampleWindow) Max() float64 {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	max := 0.0
+	for _, e := range s.samples {
+		if e.notional > max {
+			max = e.notional
+		}
+	}
+	return max
 }
 
 // Len returns how many readings the window holds.

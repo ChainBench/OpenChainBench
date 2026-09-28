@@ -145,7 +145,7 @@ func TestLighter_FetchLiquidationsSince_RecoveryAfterStreak(t *testing.T) {
 		t.Fatalf("expected recovery, got error: %v", err)
 	}
 	// resetUnavailable is not called in FetchLiquidationsSince (no trades fetch),
-	// so consecUnavl stays at 3 after recovery — check that the error is gone.
+	// so consecUnavl stays at 3 after recovery: check that the error is gone.
 	if err != nil {
 		t.Errorf("post-recovery error: %v", err)
 	}

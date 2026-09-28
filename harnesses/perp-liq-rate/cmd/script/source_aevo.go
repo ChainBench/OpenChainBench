@@ -1,6 +1,6 @@
 package main
 
-// source_aevo.go — Aevo.
+// source_aevo.go: Aevo.
 //
 // Liquidations: Aevo has no public liquidation feed as of 2025-08;
 // FetchLiquidationsSince returns empty with no error.
@@ -27,11 +27,11 @@ type Aevo struct {
 // NewAevo returns the Aevo source.
 func NewAevo() *Aevo { return &Aevo{baseURL: aevoBaseURL} }
 
-// HasLiquidationSource reports false — Aevo has no public liquidation feed.
+// HasLiquidationSource reports false: Aevo has no public liquidation feed.
 // liq_rate is not published (N/A, not 0%).
 func (a *Aevo) HasLiquidationSource() bool { return false }
 
-// FetchLiquidationsSince returns empty — Aevo has no public liquidation feed.
+// FetchLiquidationsSince returns empty: Aevo has no public liquidation feed.
 func (a *Aevo) FetchLiquidationsSince(asset string, sinceMs int64) ([]LiqEvent, error) {
 	if _, ok := aevoInstruments[asset]; !ok {
 		return nil, fmt.Errorf("aevo: unsupported asset %q", asset)

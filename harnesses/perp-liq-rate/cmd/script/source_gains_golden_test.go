@@ -1,6 +1,6 @@
 package main
 
-// source_gains_golden_test.go — the Gains decode pinned against real logs
+// source_gains_golden_test.go: the Gains decode pinned against real logs
 // pulled off the Arbitrum diamond, word for word.
 //
 // The 2026-09-27 audit read 36% on Gains and 491% over the trailing week,
@@ -83,6 +83,24 @@ func goldenGainsEthLiquidation() ethLog {
 }
 
 var gainsArbDecimals = map[uint64]int{1: 18, 2: 18, 3: 6, 4: 18}
+
+// The same log through the generic decode carries the margin behind the
+// position and its leverage: 90,519.73 USDC at $0.99987 and 136.337x.
+func TestGainsDecode_GoldenCollateralAndLeverage(t *testing.T) {
+	ex, ok, err := decodeGainsExecution(goldenGainsEthLiquidation(), gainsArbDecimals)
+	if err != nil || !ok {
+		t.Fatalf("decode (ok=%v): %v", ok, err)
+	}
+	if ex.collateralUSD < 90_500 || ex.collateralUSD > 90_520 {
+		t.Fatalf("collateral = %.2f, want about 90,508", ex.collateralUSD)
+	}
+	if ex.leverage < 136.33 || ex.leverage > 136.34 {
+		t.Fatalf("leverage = %.3f, want 136.337", ex.leverage)
+	}
+	if ex.notionalUSD/ex.collateralUSD < 136 || ex.notionalUSD/ex.collateralUSD > 137 {
+		t.Fatalf("notional / collateral = %.2f, want the leverage", ex.notionalUSD/ex.collateralUSD)
+	}
+}
 
 func TestGainsDecode_GoldenEthLiquidation(t *testing.T) {
 	lg := goldenGainsEthLiquidation()
