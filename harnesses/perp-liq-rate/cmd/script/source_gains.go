@@ -155,9 +155,15 @@ const (
 	gainsResizeWordColDelta      = 7
 	gainsResizeWordLevDelta      = 8
 	gainsIncreaseWordSizeDelta   = 9
+	gainsResizeWordExistingPos   = 10 // increase: values.existingPositionSizeCollateral
+	gainsResizeWordNewPos        = 11 // increase: values.newPositionSizeCollateral
 	gainsDecreaseWordSizeDelta   = 10
 	gainsDecreaseWordExistingPos = 11
 	gainsResizeCollateralTopic   = 1
+
+	// The three sizes of an increase are written as exact integers and add
+	// up exactly; the slack is for nothing but a rounding unit.
+	gainsResizeSumTol = 0.005
 
 	// The event encodes the position twice: collateralAmount x leverage in
 	// collateral units, and positionSizeToken x openPrice in index-token
@@ -735,18 +741,26 @@ func decodeGainsResize(lg ethLog, kind gainsExecKind, decimals map[uint64]int) (
 	}
 	switch kind {
 	case gainsKindIncrease:
-		// The contract writes the delta as collateralDelta x leverageDelta /
-		// 1e3 when both are given; requiring that agreement pins the word
-		// offsets the way the Trade tuple's second encoding does.
-		colDelta, levDelta := word(gainsResizeWordColDelta), word(gainsResizeWordLevDelta)
-		if colDelta.Sign() > 0 && levDelta.Sign() > 0 {
-			want := new(big.Int).Mul(colDelta, levDelta)
-			want.Quo(want, big.NewInt(1000))
-			wf, _ := new(big.Float).SetInt(want).Float64()
-			df, _ := new(big.Float).SetInt(delta).Float64()
-			if diff := (df - wf) / wf; diff > gainsSizeCrossCheckTol || diff < -gainsSizeCrossCheckTol {
+		// The contract writes the three sizes of an increase next to each
+		// other and they add up exactly: delta plus existing equals new.
+		// That is an invariant of the event rather than an assumption about
+		// fees, so it pins the three word offsets hard, the way the Trade
+		// tuple's second encoding of position size pins that layout.
+		//
+		// The first version of this check required the delta to equal
+		// collateralDelta x leverageDelta / 1e3, which is not an invariant:
+		// a resize that changes collateral and leverage at once, or adds
+		// leverage with no collateral, breaks it. On the first deploy that
+		// refused 16 real resizes on Base and Arbitrum, by up to 842%, and
+		// their notional went missing from the venue's traded total.
+		existing, updated := word(gainsResizeWordExistingPos), word(gainsResizeWordNewPos)
+		if existing.Sign() > 0 && updated.Sign() > 0 {
+			sum := new(big.Int).Add(delta, existing)
+			sf, _ := new(big.Float).SetInt(sum).Float64()
+			nf, _ := new(big.Float).SetInt(updated).Float64()
+			if diff := (sf - nf) / nf; diff > gainsResizeSumTol || diff < -gainsResizeSumTol {
 				return gainsExecution{}, false, fmt.Errorf(
-					"resize delta disagrees: collateralDelta x leverageDelta = %.0f, positionSizeCollateralDelta = %.0f", wf, df)
+					"resize sizes do not add up: delta plus existing = %.0f, new = %.0f", sf, nf)
 			}
 		}
 	case gainsKindDecrease:

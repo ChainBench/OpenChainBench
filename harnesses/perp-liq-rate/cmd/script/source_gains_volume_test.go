@@ -185,13 +185,35 @@ func TestGainsDecode_GoldenIncrease(t *testing.T) {
 		t.Fatalf("a cancelled increase counted as a leg (ok=%v err=%v)", ok, err)
 	}
 
-	// A leverageDelta read ten times too large breaks the agreement with
-	// positionSizeCollateralDelta and the log is refused, not published.
+	// The three sizes add up exactly on the real log: 1,681,410,000 delta
+	// plus 2,150,000,000 existing is the 3,831,410,000 new size.
+	lg = goldenGainsIncrease()
+	lg.Data = replaceWord(lg.Data, gainsResizeWordNewPos,
+		"00000000000000000000000000000000000000000000000000000000e45ead51") // one unit off
+	if _, _, err := decodeGainsExecution(lg, gainsArbDecimals); err != nil {
+		t.Fatalf("a one-unit rounding difference must still decode: %v", err)
+	}
+	lg = goldenGainsIncrease()
+	lg.Data = replaceWord(lg.Data, gainsIncreaseWordSizeDelta,
+		"0000000000000000000000000000000000000000000000000000000005f5e100") // 100,000,000
+	if _, _, err := decodeGainsExecution(lg, gainsArbDecimals); err == nil {
+		t.Fatal("an increase whose sizes do not add up decoded cleanly")
+	}
+
+	// The check that replaced: a resize changing collateral and leverage at
+	// once does not satisfy collateralDelta x leverageDelta = delta, and 16
+	// real legs were refused on the first deploy because of it. The same log
+	// with an unrelated leverageDelta must decode, because the sizes still
+	// add up.
 	lg = goldenGainsIncrease()
 	lg.Data = replaceWord(lg.Data, gainsResizeWordLevDelta,
 		"00000000000000000000000000000000000000000000000000000000004c4b40") // 5,000,000
-	if _, _, err := decodeGainsExecution(lg, gainsArbDecimals); err == nil {
-		t.Fatal("an increase whose deltas disagree decoded cleanly")
+	ex2, ok2, err2 := decodeGainsExecution(lg, gainsArbDecimals)
+	if err2 != nil || !ok2 {
+		t.Fatalf("a resize whose leverage delta is not the size ratio was refused: ok=%v err=%v", ok2, err2)
+	}
+	if ex2.notionalUSD < 1681 || ex2.notionalUSD > 1682 {
+		t.Fatalf("notional = %.2f, want the traded delta regardless of the leverage field", ex2.notionalUSD)
 	}
 }
 
