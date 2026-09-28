@@ -23,6 +23,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -61,6 +62,7 @@ type GMX struct {
 	// between them rather than once each.
 	volMu    sync.Mutex
 	volume   map[string]float64
+	volErr   error // the last refresh's failure, cached for the same TTL
 	volumeAt time.Time
 }
 
@@ -255,16 +257,39 @@ func (g *GMX) FetchVolume24hUSD(asset string) (float64, error) {
 	if g.volume != nil && time.Since(g.volumeAt) < gmxVolumeTTL {
 		return g.volume[strings.ToUpper(asset)], nil
 	}
+	// A failed read is cached for the same TTL as a good one. Without this
+	// the ETH goroutine and then the BTC goroutine each paged the squid to
+	// the cap on every tick, since only success wrote the cache.
+	if g.volErr != nil && time.Since(g.volumeAt) < gmxVolumeTTL {
+		return 0, g.volErr
+	}
 
 	byMarket, err := g.marketAsset()
 	if err != nil {
 		return 0, err
 	}
+	// Only the tracked markets. Asking for every market's executed orders
+	// put a normal day (a few thousand rows) a small multiple under the
+	// 10,000-row cap, so a busy day refused the sum and unranked GMX, on
+	// exactly the days this bench is about.
+	markets := make([]string, 0, 8)
+	for token, a := range byMarket {
+		if gmxTrackedAssets[a] {
+			markets = append(markets, `"`+token+`"`)
+		}
+	}
+	if len(markets) == 0 {
+		return 0, fmt.Errorf("gmx: no market tokens resolved for the tracked assets")
+	}
+	sort.Strings(markets) // stable query text, so the squid can cache it
 	since := time.Now().Add(-windowSpan).Unix()
-	where := fmt.Sprintf(`orderType_gte:%d, eventName_eq:"OrderExecuted", timestamp_gte:%d`,
-		gmxOrderTypeFirstPos, since)
+	where := fmt.Sprintf(`orderType_gte:%d, eventName_eq:"OrderExecuted", timestamp_gte:%d, marketAddress_in:[%s]`,
+		gmxOrderTypeFirstPos, since, strings.Join(markets, ","))
 	rows, err := g.squidTradeActions(where)
 	if err != nil {
+		// Including a page-cap refusal: a partial sum must not become the
+		// rank gate's denominator, so the row goes unranked for the tick.
+		g.volume, g.volErr, g.volumeAt = nil, err, time.Now()
 		return 0, err
 	}
 	totals := make(map[string]float64, 8)
@@ -279,7 +304,7 @@ func (g *GMX) FetchVolume24hUSD(asset string) (float64, error) {
 		}
 		totals[a] += usd
 	}
-	g.volume, g.volumeAt = totals, time.Now()
+	g.volume, g.volErr, g.volumeAt = totals, nil, time.Now()
 	return totals[strings.ToUpper(asset)], nil
 }
 
@@ -294,7 +319,7 @@ func (g *GMX) FetchOI(asset string) (float64, error) {
 		return 0, err
 	}
 
-	var totalOI float64
+	var long, short float64
 	matched := false
 	for _, m := range markets {
 		if !m.IsListed || !gmxAssetMatches(m.Name, asset) {
@@ -304,21 +329,18 @@ func (g *GMX) FetchOI(asset string) (float64, error) {
 		if m.OpenInterestLong != "" {
 			v, err := parseScaled(m.OpenInterestLong, 30)
 			if err == nil {
-				totalOI += v
+				long += v
 			}
 		}
 		if m.OpenInterestShort != "" {
 			v, err := parseScaled(m.OpenInterestShort, 30)
 			if err == nil {
-				totalOI += v
+				short += v
 			}
 		}
 	}
 	if !matched {
 		return 0, fmt.Errorf("gmx: no listed markets found for %q", asset)
 	}
-	// One-sided, like every order-book venue in the cohort: GMX reports long
-	// and short separately, and their sum would read twice the exposure a
-	// book reports for the same positions.
-	return totalOI / 2, nil
+	return poolOpenInterest(long, short), nil
 }

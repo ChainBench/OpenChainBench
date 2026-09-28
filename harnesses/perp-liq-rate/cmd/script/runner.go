@@ -166,6 +166,7 @@ func runTick(va VenueAsset, st *pairState, sinceMs int64) bool {
 	// this bench stopped publishing, and after a restart the numerator is a
 	// full 24h backfill against it, so the first hour would show the 343%
 	// class of artifact on the page as the latest reading.
+	st.oi.Prune(nowMs)
 	peakOI, meanOI := st.oi.Max(), st.oi.Mean()
 	oiReady := st.oi.Len() >= minOISamples
 	if oiReady && peakOI > 0 {
@@ -225,9 +226,12 @@ func runTick(va VenueAsset, st *pairState, sinceMs int64) bool {
 		hasEventDetail:  !st.noEventDetail,
 		largestEventPct: largestShare,
 	}
-	// The share is a measurement only when both sides were read this tick;
-	// on a failed fetch or a venue with no notional it stays absent rather
-	// than reading as a 0 that the panel text calls "an absence".
+	// The share is republished only when both sides were read this tick. On
+	// a failed fetch it keeps its last good value, the rule every gauge
+	// here follows, so a reader has to take perp_liq_ranked and the logged
+	// reason as the verdict and the share as the last measurement, not as
+	// this tick's. It is never written as a 0 that the panel text would
+	// call "an absence".
 	if in.fetchOK && in.hasVolume && vol > 0 {
 		liqShareOfVolume.WithLabelValues(va.Venue, va.Asset).Set(in.shareOfVolumePct())
 	}

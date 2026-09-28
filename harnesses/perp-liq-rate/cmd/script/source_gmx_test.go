@@ -68,9 +68,10 @@ func TestGMX_FetchOI_HappyPath(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	// ETH: (5000+3000) + (5000+5000) = 18000 long plus short, 9000 one-sided.
-	if oi < 8999 || oi > 9001 {
-		t.Errorf("OI = %v, want ~9000 (one-sided)", oi)
+	// ETH: (5000+3000) + (5000+5000) = 18000, long plus short across both
+	// markets. A pool venue's two sides are independent, so both count.
+	if oi < 17999 || oi > 18001 {
+		t.Errorf("OI = %v, want ~18000 (long plus short)", oi)
 	}
 }
 
@@ -87,9 +88,9 @@ func TestGMX_FetchOI_SkipsUnlisted(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	// Only the listed market: 5000 + 3000 = 8000 long plus short, 4000 one-sided.
-	if oi < 3999 || oi > 4001 {
-		t.Errorf("OI = %v, want ~4000 (unlisted market excluded, one-sided)", oi)
+	// Only the listed market: 5000 + 3000 = 8000, long plus short.
+	if oi < 7999 || oi > 8001 {
+		t.Errorf("OI = %v, want ~8000 (unlisted market excluded)", oi)
 	}
 }
 

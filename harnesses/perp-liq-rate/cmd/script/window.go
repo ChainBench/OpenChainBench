@@ -216,8 +216,11 @@ func (w *SlidingWindow) Len() int {
 // when the book collapses inside the window because it was liquidated: on
 // 2026-09-28 Gains ETH went from $43.7M to $2.1M of open interest, the mean
 // was $10.9M, and $27.3M of liquidations read as 251%. The denominator this
-// bench divides by is the peak: the largest book the venue held during the
-// window, which is the most that could have been liquidated from it.
+// bench divides by is the peak: the largest book the venue was observed
+// holding during the window. A figure above 100% is then turnover, not a
+// denominator artifact: a position opened after the peak reading, or opened
+// and closed between two readings, counts in the numerator and never enters
+// the denominator.
 type SampleWindow struct {
 	mu      sync.Mutex
 	samples []windowEntry // key unused; tsMs + value
@@ -232,9 +235,20 @@ func NewSampleWindow(span time.Duration) *SampleWindow {
 // Add records one reading and drops readings older than the span.
 func (s *SampleWindow) Add(tsMs int64, value float64) {
 	s.mu.Lock()
-	defer s.mu.Unlock()
 	s.samples = append(s.samples, windowEntry{tsMs: tsMs, notional: value})
-	cutoff := tsMs - s.span.Milliseconds()
+	s.mu.Unlock()
+	s.Prune(tsMs)
+}
+
+// Prune drops readings older than the span relative to nowMs. Called every
+// tick, not only on Add: an open-interest endpoint that has been failing for
+// more than a day would otherwise leave the window holding readings from
+// before the outage, and the peak and the mean would describe a book the
+// venue no longer has.
+func (s *SampleWindow) Prune(nowMs int64) {
+	cutoff := nowMs - s.span.Milliseconds()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	kept := s.samples[:0]
 	for _, e := range s.samples {
 		if e.tsMs >= cutoff {

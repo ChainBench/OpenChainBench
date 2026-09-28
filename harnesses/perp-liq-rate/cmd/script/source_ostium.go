@@ -166,9 +166,7 @@ func (o *Ostium) FetchOI(asset string) (float64, error) {
 		if px <= 0 {
 			return 0, fmt.Errorf("ostium: lastTradePrice is zero for %s", asset)
 		}
-		// One-sided, like every order-book venue in the cohort: Ostium reports
-		// long and short separately and their sum would read double.
-		return (long + short) / 2 * px, nil
+		return poolOpenInterest(long, short) * px, nil
 	}
 	return 0, fmt.Errorf("ostium: pair %q not found", asset)
 }

@@ -107,6 +107,31 @@ func (e *partialWindowError) Error() string {
 	return fmt.Sprintf("%s: page cap of %d rows reached; rows older than %d unread", e.What, e.Cap, e.OldestReadMs)
 }
 
+// poolOpenInterest documents the open-interest convention, which differs
+// between the two kinds of venue in this cohort and has to, for the rate to
+// mean one thing.
+//
+// The denominator is the notional that could have been force-closed.
+//
+//   - An order book (Hyperliquid, dYdX, Paradex, Lighter, Aster, Orderly,
+//     Nado) reports one side, because longs and shorts match: its open
+//     interest is the long book and equally the short book, and a
+//     liquidation of longs is measured against the longs that existed.
+//   - A pool venue (GMX v2, Gains, Ostium) reports long and short
+//     separately against the vault, and the two are independent: a crash
+//     liquidates longs, a squeeze liquidates shorts, and a volatile day
+//     takes some of each. What could be force-closed is every trader leg
+//     outstanding, so those venues publish long plus short.
+//
+// Halving the pool figure, as this harness did until 2026-09-28, made the
+// rate exceed 100% with no turnover at all whenever the book was unbalanced:
+// 30M of longs against 10M of shorts published a 20M denominator, and a
+// crash closing 25M of those longs read 125%. It also put the rate on one
+// model while the share of volume was on another, since a pool's traded
+// notional is counted once per trader leg against the vault. Both ratios now
+// count trader legs on both sides.
+func poolOpenInterest(long, short float64) float64 { return long + short }
+
 // ErrVenueUnavailable marks a venue as temporarily unavailable for this tick
 // (e.g. lighter returning 404/501). The runner sets health=0 but treats it
 // differently from a hard fetch error.

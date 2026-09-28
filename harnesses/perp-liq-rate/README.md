@@ -88,17 +88,24 @@ perp_realized_vol_24h_pct{chain}
   had minutes after the hour began: Lighter published $887 against $185.6M
   of ETH volume until 2026-09-27 because of that. See the note at the top of
   `window.go`.
-- **Open interest is one-sided.** A book reports one side; the pool venues
-  (GMX v2, Gains, Ostium) report long and short and those are halved, so a
-  liquidation flow reads the same rate on either kind of venue.
+- **Open interest is the notional that could have been force-closed.** A
+  book reports one side, since longs and shorts match and a liquidation of
+  longs is measured against the longs that existed. The pool venues (GMX v2,
+  Gains, Ostium) report long and short separately against their vault and
+  the two are independent, so both count. Halving the pool figure, as this
+  harness did until 2026-09-28, put the rate above 100% with no turnover on
+  an unbalanced book, and left the rate on one convention while the share of
+  volume was on another. See `poolOpenInterest` in `common.go`.
 - **The denominator is the window's peak.** The numerator covers 24 hours,
   so dividing by an instantaneous open interest made the rate move with the
   denominator: Gains published 343% on 2026-09-24 because its open interest
   fell from $37M to $7.3M while its numerator stood still. The mean over the
   window was the first repair and still read 251% on 2026-09-28, when Gains
   ETH fell from $43.7M to $2.1M because most of the book was liquidated. The
-  peak is the most that could have been liquidated from the book; against
-  it that day reads 62%. The mean is published beside it.
+  peak is the largest book the venue was observed holding; against it that
+  day reads 62%. The mean is published beside it. Above 100% is turnover:
+  positions opened after the peak reading, or opened and closed between two
+  readings, count in the numerator and never enter the denominator.
 - **The rate waits for the denominator.** `perp_liq_rate_24h_pct` and the
   peak are published only once a row holds 12 open-interest readings (an
   hour), so a restart does not put a 24h numerator over one reading.

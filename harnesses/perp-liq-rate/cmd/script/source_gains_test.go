@@ -302,9 +302,11 @@ func TestGains_FetchOI_SumsCollateralsInUSD(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// 60,923.29 long plus short, one-sided 30,461.64.
-	if oi < 30_461 || oi > 30_462 {
-		t.Errorf("oi = %v, want ~30461.64 (one-sided)", oi)
+	// Long plus short, the trader legs outstanding against the vault, not
+	// halved: 55,923.29 of USDC plus 5,000 of WETH = 60,923.29. Halving it
+	// is what let the rate exceed 100% on an unbalanced book.
+	if oi < 60_923 || oi > 60_924 {
+		t.Errorf("oi = %v, want ~60923.29 (long plus short)", oi)
 	}
 }
 
@@ -323,8 +325,8 @@ func TestGainsMulti_SumsChainsAndFailsClosed(t *testing.T) {
 	b := testGains("unused", tv.URL)
 	m := NewGainsMulti(a, b)
 	oi, err := m.FetchOI("ETH")
-	if err != nil || oi != 2e-6 {
-		t.Fatalf("oi=%v err=%v, want the two chains summed (2 x 2 units / 1e6, halved to one side)", oi, err)
+	if err != nil || oi != 4e-6 {
+		t.Fatalf("oi=%v err=%v, want the two chains summed (2 x (1+1) units / 1e6, long plus short)", oi, err)
 	}
 	broken := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(500) }))
 	defer broken.Close()

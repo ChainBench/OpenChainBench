@@ -39,7 +39,7 @@ var (
 
 	liqOpenInterestPeak = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "perp_liq_open_interest_peak_24h_usd",
-		Help: "Peak open interest (USD) over the trailing 24h, one sample per tick. This is the denominator of perp_liq_rate_24h_pct. An instantaneous denominator made the rate move with open interest (Gains read 343% on 2026-09-24), and the mean over the window still read 251% when Gains ETH fell from 43.7M to 2.1M dollars on 2026-09-28 because most of the book was liquidated; the peak is the most that could have been liquidated from the book.",
+		Help: "Peak open interest (USD) over the trailing 24h, one sample per tick. This is the denominator of perp_liq_rate_24h_pct. An instantaneous denominator made the rate move with open interest (Gains read 343% on 2026-09-24), and the mean over the window still read 251% when Gains ETH fell from 43.7M to 2.1M dollars on 2026-09-28 because most of the book was liquidated; the peak is the largest book observed. One side for an order book, long plus short for a pool venue. Above 100% is turnover inside the window.",
 	}, []string{"venue", "chain"})
 
 	liqOpenInterestAvg = prometheus.NewGaugeVec(prometheus.GaugeOpts{

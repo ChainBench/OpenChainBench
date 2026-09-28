@@ -28,7 +28,7 @@ package main
 //
 // OI: GET backend-<chain>.gains.trade/trading-variables, oiLongCollateral +
 // oiShortCollateral of the pair across every collateral, each at its
-// decimals and USD price, halved to the one-sided convention.
+// decimals and USD price, summed long plus short (see poolOpenInterest).
 //
 // Because the only permitted external dependency is the Prometheus client,
 // a minimal Keccak-256 (legacy padding, as used for Ethereum event topics)
@@ -847,7 +847,7 @@ func (g *Gains) FetchOI(asset string) (float64, error) {
 	if pairIdx < 0 {
 		return 0, fmt.Errorf("gains: asset %q not found in pairs", asset)
 	}
-	var totalOI float64
+	var long, short float64
 	for _, col := range tv.Collaterals {
 		if pairIdx >= len(col.PairOis) || col.Config.Decimals <= 0 || col.Prices.CollateralPriceUsd <= 0 {
 			continue
@@ -864,15 +864,14 @@ func (g *Gains) FetchOI(asset string) (float64, error) {
 		for i := 0; i < col.Config.Decimals; i++ {
 			scale *= 10
 		}
-		totalOI += (oiLong + oiShort) / scale * col.Prices.CollateralPriceUsd
+		long += oiLong / scale * col.Prices.CollateralPriceUsd
+		short += oiShort / scale * col.Prices.CollateralPriceUsd
 	}
+	totalOI := poolOpenInterest(long, short)
 	if totalOI == 0 {
 		return 0, fmt.Errorf("gains: no open interest found for %s", asset)
 	}
-	// One-sided, like every order-book venue in the cohort: gTrade reports
-	// long and short separately against the vault, and their sum would read
-	// twice the exposure a book reports for the same positions.
-	return totalOI / 2, nil
+	return totalOI, nil
 }
 
 // --- small hex helpers ---

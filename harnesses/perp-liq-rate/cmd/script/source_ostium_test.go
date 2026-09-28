@@ -83,7 +83,7 @@ func TestOstium_FetchOI_SumsBothSidesAtPrice(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	want := (16.2628 + 12.7176) / 2 * 2690.30 // one-sided
+	want := (16.2628 + 12.7176) * 2690.30 // long plus short
 	if oi < want*0.9999 || oi > want*1.0001 {
 		t.Errorf("OI = %v, want about %v", oi, want)
 	}
