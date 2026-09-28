@@ -1,17 +1,34 @@
 package main
 
-// source_gains.go — Gains (gTrade), one instance per deployment chain,
-// aggregated by GainsMulti. Until 2026-09-21 only Base was read, where
-// Gains holds about $60k of ETH/BTC open interest; Arbitrum holds the
-// bulk (about $20M on ETH alone), so the Gains row was measured on a
-// deployment that is a rounding error of the venue.
+// source_gains.go: Gains (gTrade), one instance per deployment chain
+// (Arbitrum, where the bulk of the open interest sits, and Base), summed by
+// GainsMulti into one venue row.
 //
-// Liquidations: eth_getLogs on the diamond for TradeClosed events, keeping
-// only those whose cancelReason (last uint8 word of the event data) == 1.
-// Notional = collateralAmount/1e6 * leverage/1e3.
-// OI: GET backend-base.gains.trade/trading-variables; find pairIndex from
-// pairs[i].from == asset, then sum oiLongCollateral+oiShortCollateral from
-// the USDC collateral's pairOis[pairIndex] / 1e6.
+// Everything the row needs except open interest comes off one scan of the
+// gTrade diamond's execution logs. The diamond emits four events when a
+// position changes size, and every one of them carries the pair index and
+// enough to price the leg in USD:
+//
+//   - MarketExecuted: a market open or a market close, full notional.
+//   - LimitExecuted: a limit or stop open, a take-profit, stop-loss or
+//     liquidation close, full notional. orderType LIQ_CLOSE (6) is the
+//     liquidation numerator.
+//   - PositionSizeIncreaseExecuted / PositionSizeDecreaseExecuted: a partial
+//     resize, at the traded delta.
+//
+// Each log is one leg of one trade, so the sum over all four is the venue's
+// traded notional at the same perimeter the Gains backend's volume-mix uses
+// ("opens and closes at full notional, resizes at their traded delta"), and
+// the liquidation share is a numerator and a denominator read off the same
+// contract by the same decode, the way GMX's are read off one squid.
+//
+// Notional for a full leg = collateralAmount / 10^decimals x leverage / 1e3
+// x collateralPriceUsd / 1e8. For a resize it is positionSizeCollateralDelta
+// / 10^decimals x collateralPriceUsd / 1e8.
+//
+// OI: GET backend-<chain>.gains.trade/trading-variables, oiLongCollateral +
+// oiShortCollateral of the pair across every collateral, each at its
+// decimals and USD price, summed long plus short (see poolOpenInterest).
 //
 // Because the only permitted external dependency is the Prometheus client,
 // a minimal Keccak-256 (legacy padding, as used for Ethereum event topics)
@@ -33,14 +50,15 @@ import (
 const (
 	// Base deployment. The Arbitrum diamond (0xFF162c…7f169) is the one the
 	// Gains front end reads its close-fee settings from; both run the same
-	// gTrade v8 diamond and emit the same TradeClosed event.
+	// gTrade v8 diamond and emit the same execution events.
 	gainsDiamond         = "0x6cd5ac19a07518a8092eeffda4f1174c72704eeb"
 	gainsArbitrumDiamond = "0xFF162c694eAA571f685030649814282eA457f169"
 	gainsTradingVarsURL  = "https://backend-base.gains.trade/trading-variables"
 	gainsArbitrumVarsURL = "https://backend-arbitrum.gains.trade/trading-variables"
 	gainsArbitrumBlockMs = 250
-	// ~24h of Arbitrum blocks at ~250 ms; scanned in 5k-block windows
-	// (about 20 min each), inside the range cap of the keyed RPCs (Chainstack).
+	// ~24h of Arbitrum blocks at ~250 ms (measured 267 ms on 2026-09-28, so
+	// this reaches a little over a day); scanned in 5k-block windows (about
+	// 20 min each), inside the range cap of the keyed RPCs (Chainstack).
 	gainsArbitrumLookback = 345600
 	gainsArbitrumLogRange = 5000
 
@@ -54,26 +72,43 @@ const (
 	gainsMaxLogRangeBlocks = 2000
 	gainsBlockTimeMs       = 2000 // Base ~2s blocks
 
-	// Sanity ceiling on a single decoded liquidation to guard against ABI
+	// Sanity ceiling on a single decoded leg to guard against ABI
 	// word-offset mistakes producing nonsense notionals.
 	gainsMaxSingleNotionalUSD = 1e10
+
+	// The ETH and BTC goroutines of one tick both ask for the scan; the
+	// second within this interval reuses the first. Between ticks the scan
+	// resumes from the block cursor.
+	gainsScanTTL = 45 * time.Second
 )
 
-// Liquidations are LimitExecuted events whose orderType is LIQ_CLOSE (6 in
-// the gTrade v8 PendingOrderType enum, per @gainsnetwork/sdk). Signature and
-// field order come from the GNSMultiCollatDiamond ABI (Gains docs); every
-// member is static so the data is a flat word array. Until 2026-09-21 the
-// harness listened for a "TradeClosed(...)" shape that the diamond never
-// emits with that signature, so Gains published 0 liquidations since launch.
-// Current shape (@gainsnetwork/sdk 1.8.10 GNSMultiCollatDiamond ABI): the
-// Trade struct carries isCounterTrade / positionSizeToken / __placeholder and
-// the price impact is a 6-field tuple.
-const gainsLimitExecutedSig = "LimitExecuted((address,uint32),address,uint32,uint32,(address,uint32,uint16,uint24,bool,bool,uint8,uint8,uint120,uint64,uint64,uint64,bool,uint160,uint24),address,uint8,uint256,uint256,uint256,(uint256,int256,int256,int256,int256,uint64),int256,uint256,uint256,bool)"
+// Event signatures from the GNSMultiCollatDiamond ABI (@gainsnetwork/sdk
+// 1.8.10). Every member is static so the data is a flat word array. Until
+// 2026-09-21 the harness listened for a "TradeClosed(...)" shape that the
+// diamond never emits with that signature, so Gains published 0
+// liquidations since launch. The Trade struct carries isCounterTrade /
+// positionSizeToken / __placeholder and the price impact is a 6-field tuple.
+const (
+	gainsTradeTuple       = "(address,uint32,uint16,uint24,bool,bool,uint8,uint8,uint120,uint64,uint64,uint64,bool,uint160,uint24)"
+	gainsPriceImpactTuple = "(uint256,int256,int256,int256,int256,uint64)"
 
-var gainsLimitExecutedTopic = func() string {
-	h := keccak256([]byte(gainsLimitExecutedSig))
+	gainsLimitExecutedSig  = "LimitExecuted((address,uint32),address,uint32,uint32," + gainsTradeTuple + ",address,uint8,uint256,uint256,uint256," + gainsPriceImpactTuple + ",int256,uint256,uint256,bool)"
+	gainsMarketExecutedSig = "MarketExecuted((address,uint32),address,uint32," + gainsTradeTuple + ",bool,uint256,uint256,uint256," + gainsPriceImpactTuple + ",int256,uint256,uint256)"
+	gainsIncreaseSig       = "PositionSizeIncreaseExecuted((address,uint32),uint8,uint8,address,uint256,uint256,bool,uint256,uint256,uint256,uint256,(uint256,uint256,uint256,uint256,uint256," + gainsPriceImpactTuple + ",int256,uint256,uint256,uint256,uint256,uint256,bool,uint256,uint256,uint256))"
+	gainsDecreaseSig       = "PositionSizeDecreaseExecuted((address,uint32),uint8,uint8,address,uint256,uint256,bool,uint256,uint256,uint256,uint256,(bool,uint256,uint256,uint256,uint256," + gainsPriceImpactTuple + ",int256,int256,int256,int256,uint256,uint256,int256,int256,uint120,uint24))"
+)
+
+func gainsTopic(sig string) string {
+	h := keccak256([]byte(sig))
 	return "0x" + hex.EncodeToString(h[:])
-}()
+}
+
+var (
+	gainsLimitExecutedTopic  = gainsTopic(gainsLimitExecutedSig)
+	gainsMarketExecutedTopic = gainsTopic(gainsMarketExecutedSig)
+	gainsIncreaseTopic       = gainsTopic(gainsIncreaseSig)
+	gainsDecreaseTopic       = gainsTopic(gainsDecreaseSig)
+)
 
 // gainsPairIndex maps assets to gTrade pair indices (same on every
 // deployment; confirmed from trading-variables: pairs[0]=BTC, pairs[1]=ETH).
@@ -86,16 +121,89 @@ var gainsPairIndex = map[string]uint64{
 // indexed topics): orderId (2) | trade t (15) | triggerCaller | orderType |
 // oraclePrice | marketPrice | liqPrice | priceImpact (6) | percentProfit |
 // amountSentToTrader | collateralPriceUsd | exactExecution = 32 words.
+//
+// MarketExecuted (user, index indexed) puts the same Trade tuple at the same
+// offset: orderId (2) | t (15) | open | oraclePrice | marketPrice | liqPrice |
+// priceImpact (6) | percentProfit | amountSentToTrader | collateralPriceUsd
+// = 30 words.
 const (
 	gainsLimitExecutedWords    = 32
+	gainsMarketExecutedWords   = 30
 	gainsWordPairIndex         = 4  // t.pairIndex
 	gainsWordLeverage          = 5  // t.leverage, 1e3 fixed point
 	gainsWordCollateralIndex   = 8  // t.collateralIndex
 	gainsWordCollateralAmount  = 10 // t.collateralAmount, collateral decimals
-	gainsWordOrderType         = 18
-	gainsWordCollateralPriceUS = 30 // 1e8 fixed point
+	gainsWordOpenPrice         = 11 // t.openPrice, 1e10 fixed point
+	gainsWordPositionSizeToken = 15 // t.positionSizeToken, 1e18 fixed point
+	gainsWordOrderType         = 18 // LimitExecuted only
+	gainsWordCollateralPriceUS = 30 // LimitExecuted: 1e8 fixed point
+	gainsWordMarketColPriceUSD = 29 // MarketExecuted: 1e8 fixed point
 	gainsOrderTypeLiqClose     = 6
+
+	// PositionSizeIncreaseExecuted and PositionSizeDecreaseExecuted
+	// (collateralIndex, trader, index indexed): orderId (2) | cancelReason |
+	// pairIndex | long | oraclePrice | collateralPriceUsd | collateralDelta |
+	// leverageDelta | values (21) = 30 words. In values, the traded delta in
+	// collateral units is the first word on an increase and the second on a
+	// decrease (the first is isLeverageUpdate). cancelReason 0 is an
+	// executed resize; anything else was refused by the contract and moved
+	// nothing. Pinned against real logs in source_gains_golden_test.go.
+	gainsResizeWords             = 30
+	gainsResizeWordCancelReason  = 2
+	gainsResizeWordPairIndex     = 3
+	gainsResizeWordColPriceUSD   = 6
+	gainsResizeWordColDelta      = 7
+	gainsResizeWordLevDelta      = 8
+	gainsIncreaseWordSizeDelta   = 9
+	gainsResizeWordExistingPos   = 10 // increase: values.existingPositionSizeCollateral
+	gainsResizeWordNewPos        = 11 // increase: values.newPositionSizeCollateral
+	gainsDecreaseWordSizeDelta   = 10
+	gainsDecreaseWordExistingPos = 11
+	gainsResizeCollateralTopic   = 1
+
+	// The three sizes of an increase are written as exact integers and add
+	// up exactly; the slack is for nothing but a rounding unit.
+	gainsResizeSumTol = 0.005
+
+	// The event encodes the position twice, both times in collateral units:
+	// collateralAmount x leverage, and positionSizeToken x openPrice (the
+	// contract stores the size divided by the open price, so multiplying it
+	// back returns collateral units for every collateral, stablecoin or
+	// not). They are written by the contract independently, so requiring
+	// them to agree pins every scale factor in the decode at once. A word
+	// offset off by one, or a leverage read at 1e18 instead of 1e3, moves
+	// one side by orders of magnitude and the log is refused rather than
+	// published. The two agreed to 0.01% on the golden USDC liquidation and
+	// to the unit on a real WETH-collateral ETH leg, so the tolerance is
+	// slack enough for the fee accrual that separates them.
+	gainsSizeCrossCheckTol = 0.05
 )
+
+// gainsExecKind names which diamond event a decoded leg came from.
+type gainsExecKind string
+
+const (
+	gainsKindLimit    gainsExecKind = "limit"
+	gainsKindMarket   gainsExecKind = "market"
+	gainsKindIncrease gainsExecKind = "increase"
+	gainsKindDecrease gainsExecKind = "decrease"
+)
+
+// gainsExecution is one decoded leg: one open, close or resize of one
+// position, priced in USD at execution.
+type gainsExecution struct {
+	key         string // tx:logIndex
+	block       uint64
+	tsMs        int64
+	pair        uint64
+	notionalUSD float64
+	liquidation bool
+	kind        gainsExecKind
+	// collateralUSD and leverage are set on a full leg (the Trade tuple
+	// carries both); a resize log carries only its delta.
+	collateralUSD float64
+	leverage      float64
+}
 
 // Gains implements Source via JSON-RPC log scanning of one deployment.
 type Gains struct {
@@ -107,8 +215,14 @@ type Gains struct {
 	lookbackBlocks uint64
 	maxLogRange    uint64
 
+	// scanMu is held for the whole of a scan so the asset goroutines of one
+	// tick page the chain once between them.
+	scanMu sync.Mutex
+
 	mu        sync.Mutex
-	lastBlock map[string]uint64 // per-asset processed high-water mark
+	cursor    uint64 // last block folded into execs, shared by every asset
+	execs     []gainsExecution
+	scannedAt time.Time
 	// collateralIndex -> decimals, from trading-variables (the index sets
 	// differ per deployment: Arbitrum DAI/WETH/USDC/GNS, Base USDC/BtcUSD).
 	decimals   map[uint64]int
@@ -125,7 +239,6 @@ func NewGains(rpcURL string) *Gains {
 		blockTimeMs:    gainsBlockTimeMs,
 		lookbackBlocks: gainsInitialLookbackBlocks,
 		maxLogRange:    gainsMaxLogRangeBlocks,
-		lastBlock:      make(map[string]uint64),
 	}
 }
 
@@ -139,13 +252,13 @@ func NewGainsArbitrum(rpcURL string) *Gains {
 		blockTimeMs:    gainsArbitrumBlockMs,
 		lookbackBlocks: gainsArbitrumLookback,
 		maxLogRange:    gainsArbitrumLogRange,
-		lastBlock:      make(map[string]uint64),
 	}
 }
 
 // GainsMulti sums the deployments: liquidation events concatenated, open
-// interest added. One deployment failing fails the tick (retried next
-// tick) rather than publishing a partial venue as if it were whole.
+// interest and traded notional added. One deployment failing fails the
+// tick (retried next tick) rather than publishing a partial venue as if it
+// were whole.
 type GainsMulti struct {
 	chains []*Gains
 }
@@ -174,6 +287,20 @@ func (m *GainsMulti) FetchOI(asset string) (float64, error) {
 			return 0, fmt.Errorf("gains/%s: %w", c.chain, err)
 		}
 		total += oi
+	}
+	return total, nil
+}
+
+// FetchVolume24hUSD is the venue's traded notional on the asset over the
+// trailing 24h, summed across the deployments.
+func (m *GainsMulti) FetchVolume24hUSD(asset string) (float64, error) {
+	var total float64
+	for _, c := range m.chains {
+		v, err := c.FetchVolume24hUSD(asset)
+		if err != nil {
+			return 0, fmt.Errorf("gains/%s: %w", c.chain, err)
+		}
+		total += v
 	}
 	return total, nil
 }
@@ -221,6 +348,50 @@ func (g *Gains) latestBlock() (uint64, error) {
 	return parseHexUint(hexStr)
 }
 
+// blockTimestampMs reads one block header's timestamp.
+func (g *Gains) blockTimestampMs(block uint64) (int64, error) {
+	var hdr struct {
+		Timestamp string `json:"timestamp"`
+	}
+	if err := g.rpcCall("eth_getBlockByNumber", []any{hexUint(block), false}, &hdr); err != nil {
+		return 0, err
+	}
+	sec, err := parseHexUint(hdr.Timestamp)
+	if err != nil {
+		return 0, fmt.Errorf("block %d timestamp: %w", block, err)
+	}
+	return int64(sec) * 1000, nil
+}
+
+// blockClock returns a function placing any block in [from, latest] on the
+// wall clock by linear interpolation between the two headers. Arbitrum's
+// nominal 250 ms is a target, not a fact (267 ms measured on 2026-09-28),
+// and over a day's scan the drift moves legs across the window edge; two
+// header reads pin both ends.
+func (g *Gains) blockClock(from, latest uint64) (func(uint64) int64, error) {
+	latestMs, err := g.blockTimestampMs(latest)
+	if err != nil {
+		return nil, err
+	}
+	if from >= latest {
+		return func(uint64) int64 { return latestMs }, nil
+	}
+	fromMs, err := g.blockTimestampMs(from)
+	if err != nil {
+		return nil, err
+	}
+	span := float64(latest - from)
+	return func(b uint64) int64 {
+		if b >= latest {
+			return latestMs
+		}
+		if b <= from {
+			return fromMs
+		}
+		return fromMs + int64(float64(latestMs-fromMs)*float64(b-from)/span)
+	}, nil
+}
+
 type ethLog struct {
 	Address     string   `json:"address"`
 	Topics      []string `json:"topics"`
@@ -231,48 +402,58 @@ type ethLog struct {
 	Removed     bool     `json:"removed"`
 }
 
-// FetchLiquidationsSince scans TradeClosed logs from lastBlock+1 (first tick:
-// HasLiquidationSource reports true — TradeClosed on-chain logs give full coverage.
+// HasLiquidationSource reports true: the diamond's LimitExecuted logs carry
+// every liquidation the venue executes.
 func (g *Gains) HasLiquidationSource() bool { return true }
 
-// latest-43200) to latest and returns those decoded as liquidations of the
-// requested asset. sinceMs is unused: block cursoring replaces it here.
-func (g *Gains) FetchLiquidationsSince(asset string, _ int64) ([]LiqEvent, error) {
-	pairIdx, ok := gainsPairIndex[asset]
-	if !ok {
-		return nil, fmt.Errorf("gains: unsupported asset %q", asset)
+// scan folds the diamond's execution logs from the cursor to the chain head
+// into the trailing buffer. It is the one chain read behind both the
+// liquidation numerator and the traded-notional denominator; a caller within
+// gainsScanTTL of the last successful scan gets that scan.
+func (g *Gains) scan() error {
+	g.scanMu.Lock()
+	defer g.scanMu.Unlock()
+
+	g.mu.Lock()
+	fresh := !g.scannedAt.IsZero() && time.Since(g.scannedAt) < gainsScanTTL
+	cursor := g.cursor
+	g.mu.Unlock()
+	if fresh {
+		return nil
 	}
 
 	latest, err := g.latestBlock()
 	if err != nil {
-		return nil, err
+		return err
 	}
-
 	floor := uint64(1)
 	if latest > g.lookbackBlocks {
 		floor = latest - g.lookbackBlocks
 	}
-
-	g.mu.Lock()
-	from := g.lastBlock[asset] + 1
-	if g.lastBlock[asset] == 0 || from < floor {
-		// First tick, or we fell behind by more than the window: anything
-		// older than 24h would be pruned immediately, so clamp.
+	from := cursor + 1
+	if cursor == 0 || from < floor {
+		// First scan, or we fell behind by more than the window: anything
+		// older than the window would be pruned immediately, so clamp.
 		from = floor
 	}
-	g.mu.Unlock()
-
+	now := time.Now()
 	if from > latest {
-		return nil, nil
+		g.mu.Lock()
+		g.scannedAt = now
+		g.mu.Unlock()
+		return nil
 	}
 
-	nowMs := time.Now().UnixMilli()
 	decimals, err := g.collateralDecimals()
 	if err != nil {
-		return nil, err
+		return err
 	}
-	var events []LiqEvent
+	clock, err := g.blockClock(from, latest)
+	if err != nil {
+		return err
+	}
 
+	var found []gainsExecution
 	for start := from; start <= latest; start += g.maxLogRange {
 		end := start + g.maxLogRange - 1
 		if end > latest {
@@ -282,89 +463,333 @@ func (g *Gains) FetchLiquidationsSince(asset string, _ int64) ([]LiqEvent, error
 			"fromBlock": hexUint(start),
 			"toBlock":   hexUint(end),
 			"address":   g.diamond,
-			"topics":    []any{gainsLimitExecutedTopic},
+			"topics": []any{[]string{
+				gainsLimitExecutedTopic, gainsMarketExecutedTopic, gainsIncreaseTopic, gainsDecreaseTopic,
+			}},
 		}
 		var logs []ethLog
 		if err := g.rpcCall("eth_getLogs", []any{filter}, &logs); err != nil {
-			return nil, err
+			return err
 		}
 		for _, lg := range logs {
 			if lg.Removed {
 				continue
 			}
-			ev, matched, decodeErr := decodeGainsLimitExecuted(lg, pairIdx, latest, nowMs, g.blockTimeMs, decimals)
+			ex, ok, decodeErr := decodeGainsExecution(lg, decimals)
 			if decodeErr != nil {
 				// A single malformed log should not poison the whole tick;
 				// log and continue.
-				log.Printf("[gains/%s] skipping undecodable log %s:%s: %v", asset, lg.TxHash, lg.LogIndex, decodeErr)
+				log.Printf("[gains/%s] skipping undecodable log %s:%s: %v", g.chain, lg.TxHash, lg.LogIndex, decodeErr)
 				continue
 			}
-			if matched {
-				events = append(events, ev)
+			if !ok {
+				continue
 			}
+			ex.tsMs = clock(ex.block)
+			found = append(found, ex)
 		}
 	}
 
-	// Advance the high-water mark only after the full range succeeded so a
-	// failed tick is retried from the same block next time.
+	// Commit only after the full range succeeded, so a failed scan is
+	// retried from the same cursor next time. The buffer keeps the window
+	// plus the runner's fetch overlap; the runner drops anything older.
+	keepFromMs := now.Add(-(windowSpan + liqFetchOverlap)).UnixMilli()
 	g.mu.Lock()
-	if latest > g.lastBlock[asset] {
-		g.lastBlock[asset] = latest
+	kept := g.execs[:0]
+	for _, e := range g.execs {
+		if e.tsMs >= keepFromMs {
+			kept = append(kept, e)
+		}
 	}
+	for i := len(kept); i < len(g.execs); i++ {
+		g.execs[i] = gainsExecution{}
+	}
+	g.execs = append(kept, found...)
+	if latest > g.cursor {
+		g.cursor = latest
+	}
+	g.scannedAt = now
 	g.mu.Unlock()
+	return nil
+}
 
+// FetchLiquidationsSince returns the liquidations of the asset held in the
+// scan buffer. sinceMs is unused: block cursoring replaces it here, and the
+// runner's SeenSet absorbs the legs it has already counted.
+func (g *Gains) FetchLiquidationsSince(asset string, _ int64) ([]LiqEvent, error) {
+	pairIdx, ok := gainsPairIndex[asset]
+	if !ok {
+		return nil, fmt.Errorf("gains: unsupported asset %q", asset)
+	}
+	if err := g.scan(); err != nil {
+		return nil, err
+	}
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	var events []LiqEvent
+	for _, e := range g.execs {
+		if !e.liquidation || e.pair != pairIdx {
+			continue
+		}
+		events = append(events, LiqEvent{Key: e.key, NotionalUSD: e.notionalUSD, TimestampMs: e.tsMs,
+			CollateralUSD: e.collateralUSD, Leverage: e.leverage})
+	}
 	return events, nil
 }
 
+// FetchVolume24hUSD sums every leg of the asset executed in the trailing
+// 24h: opens and closes at full notional, resizes at their traded delta.
+func (g *Gains) FetchVolume24hUSD(asset string) (float64, error) {
+	pairIdx, ok := gainsPairIndex[asset]
+	if !ok {
+		return 0, fmt.Errorf("gains: unsupported asset %q", asset)
+	}
+	if err := g.scan(); err != nil {
+		return 0, err
+	}
+	cutoff := time.Now().Add(-windowSpan).UnixMilli()
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	var total float64
+	for _, e := range g.execs {
+		if e.pair == pairIdx && e.tsMs >= cutoff {
+			total += e.notionalUSD
+		}
+	}
+	return total, nil
+}
+
+// decodeGainsExecution decodes one diamond log by its topic into a priced
+// leg. ok is false for a log that is a valid event but not a traded leg (a
+// refused resize); an error is a log the layout does not explain.
+func decodeGainsExecution(lg ethLog, decimals map[uint64]int) (gainsExecution, bool, error) {
+	if len(lg.Topics) == 0 {
+		return gainsExecution{}, false, fmt.Errorf("log has no topics")
+	}
+	switch strings.ToLower(lg.Topics[0]) {
+	case gainsLimitExecutedTopic:
+		return decodeGainsTradeLeg(lg, gainsKindLimit, decimals)
+	case gainsMarketExecutedTopic:
+		return decodeGainsTradeLeg(lg, gainsKindMarket, decimals)
+	case gainsIncreaseTopic:
+		return decodeGainsResize(lg, gainsKindIncrease, decimals)
+	case gainsDecreaseTopic:
+		return decodeGainsResize(lg, gainsKindDecrease, decimals)
+	}
+	return gainsExecution{}, false, fmt.Errorf("unknown topic %s", lg.Topics[0])
+}
+
 // decodeGainsLimitExecuted decodes one LimitExecuted log and reports whether
-// it is a liquidation (orderType LIQ_CLOSE) of the wanted pair. Notional =
-// collateralAmount / 10^decimals x leverage / 1e3 x collateralPriceUsd / 1e8.
+// it is a liquidation (orderType LIQ_CLOSE) of the wanted pair, with its
+// timestamp estimated from the block distance to latest at the nominal block
+// time. Kept as the entry point the decode tests pin the word offsets
+// through; the scan uses decodeGainsExecution and a header-anchored clock.
 func decodeGainsLimitExecuted(lg ethLog, wantPair uint64, latest uint64, nowMs int64, blockTimeMs int64, decimals map[uint64]int) (LiqEvent, bool, error) {
+	ex, ok, err := decodeGainsTradeLeg(lg, gainsKindLimit, decimals)
+	if err != nil || !ok {
+		return LiqEvent{}, false, err
+	}
+	if !ex.liquidation || ex.pair != wantPair {
+		return LiqEvent{}, false, nil
+	}
+	tsMs := nowMs
+	if ex.block < latest {
+		tsMs = nowMs - int64(latest-ex.block)*blockTimeMs
+	}
+	return LiqEvent{Key: ex.key, NotionalUSD: ex.notionalUSD, TimestampMs: tsMs,
+		CollateralUSD: ex.collateralUSD, Leverage: ex.leverage}, true, nil
+}
+
+// decodeGainsTradeLeg decodes a LimitExecuted or MarketExecuted log: a full
+// open or close carrying the Trade tuple. Notional = collateralAmount /
+// 10^decimals x leverage / 1e3 x collateralPriceUsd / 1e8.
+func decodeGainsTradeLeg(lg ethLog, kind gainsExecKind, decimals map[uint64]int) (gainsExecution, bool, error) {
 	data, err := hexBytes(lg.Data)
 	if err != nil {
-		return LiqEvent{}, false, fmt.Errorf("data hex: %w", err)
+		return gainsExecution{}, false, fmt.Errorf("data hex: %w", err)
 	}
-	if len(data) != gainsLimitExecutedWords*32 {
-		return LiqEvent{}, false, fmt.Errorf("data has %d bytes, expected %d words", len(data), gainsLimitExecutedWords)
+	wantWords, colPriceWord := gainsLimitExecutedWords, gainsWordCollateralPriceUS
+	if kind == gainsKindMarket {
+		wantWords, colPriceWord = gainsMarketExecutedWords, gainsWordMarketColPriceUSD
+	}
+	if len(data) != wantWords*32 {
+		return gainsExecution{}, false, fmt.Errorf("data has %d bytes, expected %d words", len(data), wantWords)
 	}
 	word := func(i int) *big.Int {
 		return new(big.Int).SetBytes(data[i*32 : (i+1)*32])
 	}
-	orderType := word(gainsWordOrderType)
-	if !orderType.IsUint64() || orderType.Uint64() != gainsOrderTypeLiqClose {
-		return LiqEvent{}, false, nil // a limit, take-profit or stop-loss execution
+	liquidation := false
+	if kind == gainsKindLimit {
+		orderType := word(gainsWordOrderType)
+		liquidation = orderType.IsUint64() && orderType.Uint64() == gainsOrderTypeLiqClose
 	}
 	pairWord := word(gainsWordPairIndex)
-	if !pairWord.IsUint64() || pairWord.Uint64() != wantPair {
-		return LiqEvent{}, false, nil // liquidation of a different pair
+	if !pairWord.IsUint64() {
+		return gainsExecution{}, false, fmt.Errorf("pairIndex word out of range")
 	}
 	colIdx := word(gainsWordCollateralIndex)
 	dec, ok := decimals[colIdx.Uint64()]
 	if !ok {
-		return LiqEvent{}, false, fmt.Errorf("unknown collateralIndex %s", colIdx)
+		return gainsExecution{}, false, fmt.Errorf("unknown collateralIndex %s", colIdx)
 	}
 	leverage := new(big.Float).SetInt(word(gainsWordLeverage))
 	collateral := new(big.Float).SetInt(word(gainsWordCollateralAmount))
-	price := new(big.Float).SetInt(word(gainsWordCollateralPriceUS))
+	price := new(big.Float).SetInt(word(colPriceWord))
 	scale := new(big.Float).SetInt(new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(dec)), nil))
-	notional := new(big.Float).Quo(collateral, scale)
-	notional.Mul(notional, leverage)
-	notional.Quo(notional, big.NewFloat(1e3))
-	notional.Mul(notional, price)
+	// The position size in collateral units: collateralAmount x leverage.
+	sizeCol := new(big.Float).Quo(collateral, scale)
+	sizeCol.Mul(sizeCol, leverage)
+	sizeCol.Quo(sizeCol, big.NewFloat(1e3))
+	sizeColF, _ := sizeCol.Float64()
+
+	// Second, independent reading of the same position size, also in
+	// collateral units: the contract writes positionSizeToken as the size
+	// divided by the open price, so multiplying the two back gives the
+	// position in collateral units whatever the collateral is. A zero here
+	// is itself a refusal: it means the size or price word is not where the
+	// layout says, which is exactly the drift the check exists to catch.
+	sizeToken := new(big.Float).Quo(new(big.Float).SetInt(word(gainsWordPositionSizeToken)), big.NewFloat(1e18))
+	openPrice := new(big.Float).Quo(new(big.Float).SetInt(word(gainsWordOpenPrice)), big.NewFloat(1e10))
+	alt, _ := new(big.Float).Mul(sizeToken, openPrice).Float64()
+	if alt <= 0 {
+		return gainsExecution{}, false, fmt.Errorf("position size cross-check unavailable: positionSizeToken x openPrice = %.2f", alt)
+	}
+	// Both sides are in collateral units, so the collateral's USD price
+	// cancels and one tolerance covers every collateral. Comparing the USD
+	// figure against the collateral-unit one instead, as this did until
+	// 2026-09-28, refused every WETH-collateral leg by a factor of the ETH
+	// price: 56 real legs in 24h, including ETH ones this bench publishes.
+	diff := (sizeColF - alt) / alt
+	if diff < 0 {
+		diff = -diff
+	}
+	if diff > gainsSizeCrossCheckTol {
+		return gainsExecution{}, false, fmt.Errorf(
+			"position size disagrees: collateral x leverage = %.6f, positionSizeToken x openPrice = %.6f (%.1f%% apart, both in collateral units)",
+			sizeColF, alt, diff*100)
+	}
+
+	// USD only now that the size is agreed, at the collateral's price on
+	// execution.
+	notional := new(big.Float).Mul(sizeCol, price)
 	notional.Quo(notional, big.NewFloat(1e8))
 	n, _ := notional.Float64()
 	if n <= 0 || n > gainsMaxSingleNotionalUSD {
-		return LiqEvent{}, false, fmt.Errorf("implausible notional %.2f", n)
+		return gainsExecution{}, false, fmt.Errorf("implausible notional %.2f", n)
 	}
 	blockNum, err := parseHexUint(lg.BlockNumber)
 	if err != nil {
-		return LiqEvent{}, false, fmt.Errorf("blockNumber: %w", err)
+		return gainsExecution{}, false, fmt.Errorf("blockNumber: %w", err)
 	}
-	tsMs := nowMs
-	if blockNum < latest {
-		tsMs = nowMs - int64(latest-blockNum)*blockTimeMs
+	// The margin behind the position in USD, and the leverage as a plain
+	// multiple: the two figures that say what the notional means.
+	colUSD, _ := new(big.Float).Quo(new(big.Float).Mul(new(big.Float).Quo(collateral, scale), price), big.NewFloat(1e8)).Float64()
+	lev, _ := new(big.Float).Quo(leverage, big.NewFloat(1e3)).Float64()
+	return gainsExecution{
+		key:           lg.TxHash + ":" + lg.LogIndex,
+		block:         blockNum,
+		pair:          pairWord.Uint64(),
+		notionalUSD:   n,
+		liquidation:   liquidation,
+		kind:          kind,
+		collateralUSD: colUSD,
+		leverage:      lev,
+	}, true, nil
+}
+
+// decodeGainsResize decodes a PositionSizeIncreaseExecuted or
+// PositionSizeDecreaseExecuted log into the traded delta of the resize.
+// Notional = positionSizeCollateralDelta / 10^decimals x collateralPriceUsd
+// / 1e8. A non-zero cancelReason is a resize the contract refused: no leg
+// traded, so ok is false.
+func decodeGainsResize(lg ethLog, kind gainsExecKind, decimals map[uint64]int) (gainsExecution, bool, error) {
+	data, err := hexBytes(lg.Data)
+	if err != nil {
+		return gainsExecution{}, false, fmt.Errorf("data hex: %w", err)
 	}
-	return LiqEvent{Key: lg.TxHash + ":" + lg.LogIndex, NotionalUSD: n, TimestampMs: tsMs}, true, nil
+	if len(data) != gainsResizeWords*32 {
+		return gainsExecution{}, false, fmt.Errorf("data has %d bytes, expected %d words", len(data), gainsResizeWords)
+	}
+	if len(lg.Topics) <= gainsResizeCollateralTopic {
+		return gainsExecution{}, false, fmt.Errorf("resize log has %d topics, expected 4", len(lg.Topics))
+	}
+	word := func(i int) *big.Int {
+		return new(big.Int).SetBytes(data[i*32 : (i+1)*32])
+	}
+	if word(gainsResizeWordCancelReason).Sign() != 0 {
+		return gainsExecution{}, false, nil
+	}
+	pairWord := word(gainsResizeWordPairIndex)
+	if !pairWord.IsUint64() {
+		return gainsExecution{}, false, fmt.Errorf("pairIndex word out of range")
+	}
+	colBytes, err := hexBytes(lg.Topics[gainsResizeCollateralTopic])
+	if err != nil {
+		return gainsExecution{}, false, fmt.Errorf("collateralIndex topic: %w", err)
+	}
+	colIdx := new(big.Int).SetBytes(colBytes)
+	dec, ok := decimals[colIdx.Uint64()]
+	if !ok {
+		return gainsExecution{}, false, fmt.Errorf("unknown collateralIndex %s", colIdx)
+	}
+	deltaWord := gainsIncreaseWordSizeDelta
+	if kind == gainsKindDecrease {
+		deltaWord = gainsDecreaseWordSizeDelta
+	}
+	delta := word(deltaWord)
+	if delta.Sign() == 0 {
+		return gainsExecution{}, false, nil
+	}
+	switch kind {
+	case gainsKindIncrease:
+		// The contract writes the three sizes of an increase next to each
+		// other and they add up exactly: delta plus existing equals new.
+		// That is an invariant of the event rather than an assumption about
+		// fees, so it pins the three word offsets hard, the way the Trade
+		// tuple's second encoding of position size pins that layout.
+		//
+		// The first version of this check required the delta to equal
+		// collateralDelta x leverageDelta / 1e3, which is not an invariant:
+		// a resize that changes collateral and leverage at once, or adds
+		// leverage with no collateral, breaks it. On the first deploy that
+		// refused 16 real resizes on Base and Arbitrum, by up to 842%, and
+		// their notional went missing from the venue's traded total.
+		existing, updated := word(gainsResizeWordExistingPos), word(gainsResizeWordNewPos)
+		if existing.Sign() > 0 && updated.Sign() > 0 {
+			sum := new(big.Int).Add(delta, existing)
+			sf, _ := new(big.Float).SetInt(sum).Float64()
+			nf, _ := new(big.Float).SetInt(updated).Float64()
+			if diff := (sf - nf) / nf; diff > gainsResizeSumTol || diff < -gainsResizeSumTol {
+				return gainsExecution{}, false, fmt.Errorf(
+					"resize sizes do not add up: delta plus existing = %.0f, new = %.0f", sf, nf)
+			}
+		}
+	case gainsKindDecrease:
+		// A decrease cannot trade more than the position held.
+		if existing := word(gainsDecreaseWordExistingPos); existing.Sign() > 0 && delta.Cmp(existing) > 0 {
+			return gainsExecution{}, false, fmt.Errorf(
+				"resize delta %s exceeds the existing position %s", delta, existing)
+		}
+	}
+	scale := new(big.Float).SetInt(new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(dec)), nil))
+	notional := new(big.Float).Quo(new(big.Float).SetInt(delta), scale)
+	notional.Mul(notional, new(big.Float).SetInt(word(gainsResizeWordColPriceUSD)))
+	notional.Quo(notional, big.NewFloat(1e8))
+	n, _ := notional.Float64()
+	if n <= 0 || n > gainsMaxSingleNotionalUSD {
+		return gainsExecution{}, false, fmt.Errorf("implausible resize notional %.2f", n)
+	}
+	blockNum, err := parseHexUint(lg.BlockNumber)
+	if err != nil {
+		return gainsExecution{}, false, fmt.Errorf("blockNumber: %w", err)
+	}
+	return gainsExecution{
+		key:         lg.TxHash + ":" + lg.LogIndex,
+		block:       blockNum,
+		pair:        pairWord.Uint64(),
+		notionalUSD: n,
+		kind:        kind,
+	}, true, nil
 }
 
 // collateralDecimals reads (and caches for an hour) each collateral's
@@ -437,7 +862,7 @@ func (g *Gains) FetchOI(asset string) (float64, error) {
 	if pairIdx < 0 {
 		return 0, fmt.Errorf("gains: asset %q not found in pairs", asset)
 	}
-	var totalOI float64
+	var long, short float64
 	for _, col := range tv.Collaterals {
 		if pairIdx >= len(col.PairOis) || col.Config.Decimals <= 0 || col.Prices.CollateralPriceUsd <= 0 {
 			continue
@@ -454,8 +879,10 @@ func (g *Gains) FetchOI(asset string) (float64, error) {
 		for i := 0; i < col.Config.Decimals; i++ {
 			scale *= 10
 		}
-		totalOI += (oiLong + oiShort) / scale * col.Prices.CollateralPriceUsd
+		long += oiLong / scale * col.Prices.CollateralPriceUsd
+		short += oiShort / scale * col.Prices.CollateralPriceUsd
 	}
+	totalOI := poolOpenInterest(long, short)
 	if totalOI == 0 {
 		return 0, fmt.Errorf("gains: no open interest found for %s", asset)
 	}
@@ -561,7 +988,7 @@ func keccakF(a *[25]uint64) {
 }
 
 // keccak256 computes the original Keccak-256 digest (0x01 padding, as used
-// by Ethereum for event topic hashing — not SHA3-256's 0x06 padding).
+// by Ethereum for event topic hashing, not SHA3-256's 0x06 padding).
 func keccak256(data []byte) [32]byte {
 	const rate = 136 // bytes; 1088-bit rate for 256-bit output
 	var st [25]uint64

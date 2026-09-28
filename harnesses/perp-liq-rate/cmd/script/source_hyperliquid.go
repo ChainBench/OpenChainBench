@@ -1,9 +1,9 @@
 package main
 
-// source_hyperliquid.go — Hyperliquid perps.
+// source_hyperliquid.go: Hyperliquid perps.
 //
 // Liquidations: 0xArchive REST API when OXARCHIVE_API_KEY is set (full
-// coverage — all liquidation types including market-order fills). Fallback
+// coverage: all liquidation types including market-order fills). Fallback
 // without a key: userFillsByTime on the HLP liquidator vault (backstop only,
 // minority of volume).
 // OI: POST /info {"type":"metaAndAssetCtxs"}; openInterest * midPx. ✓
@@ -32,7 +32,7 @@ type Hyperliquid struct {
 	infoURL        string // defaults to hyperliquidInfoURL
 	archiveBaseURL string // 0xArchive API base, defaults to oxArchiveBaseURL
 	archiveAPIKey  string // from env OXARCHIVE_API_KEY (currently returns empty data)
-	// Note: Coinalyze does not cover Hyperliquid — no HL symbols in /future-markets.
+	// Note: Coinalyze does not cover Hyperliquid: no HL symbols in /future-markets.
 }
 
 // NewHyperliquid returns the Hyperliquid source.
@@ -75,22 +75,21 @@ type oxaResponse struct {
 	} `json:"meta"`
 }
 
-// httpGetJSONKey performs a GET with an X-API-Key header.
-func httpGetJSONKey(u, apiKey string, out any) error {
+// httpGetJSONKey performs a GET carrying an API key in the named header, on
+// the shared timed client. It used http.DefaultClient, which has no timeout:
+// one hung 0xArchive request would have held the tick's WaitGroup open and
+// stalled every venue on the harness.
+func httpGetJSONKey(u, header, apiKey string, out any) error {
 	req, err := http.NewRequest(http.MethodGet, u, nil)
 	if err != nil {
-		return err
+		return fmt.Errorf("build request: %w", err)
 	}
-	req.Header.Set("X-API-Key", apiKey)
-	resp, err := http.DefaultClient.Do(req)
+	req.Header.Set(header, apiKey)
+	body, err := doRaw(req)
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return &httpStatusError{Code: resp.StatusCode}
-	}
-	return json.NewDecoder(resp.Body).Decode(out)
+	return decodeJSON(body, u, out)
 }
 
 // fetchOxaLiquidations pages 0xArchive for all HL liquidation events.
@@ -114,7 +113,7 @@ func (h *Hyperliquid) fetchOxaLiquidations(coin string, sinceMs int64) ([]LiqEve
 		}
 
 		var resp oxaResponse
-		if err := httpGetJSONKey(u, h.archiveAPIKey, &resp); err != nil {
+		if err := httpGetJSONKey(u, "X-API-Key", h.archiveAPIKey, &resp); err != nil {
 			return nil, fmt.Errorf("hyperliquid 0xarchive: %w", err)
 		}
 
@@ -142,19 +141,25 @@ func (h *Hyperliquid) fetchOxaLiquidations(coin string, sinceMs int64) ([]LiqEve
 		}
 
 		if resp.Meta.NextCursor == nil || *resp.Meta.NextCursor == "" {
-			break
+			return events, nil
 		}
 		cursor = *resp.Meta.NextCursor
 	}
-	return events, nil
+	return nil, fmt.Errorf("hyperliquid 0xarchive: more than %d rows since %s for %s; refusing a partial window",
+		oxaMaxPages*oxaPageLimit, startISO, coin)
 }
 
-// HasLiquidationSource reports true — Coinalyze (preferred), 0xArchive, or vault fallback.
-func (h *Hyperliquid) HasLiquidationSource() bool { return true }
+// HasLiquidationSource reports whether the 0xArchive key is present. The HLP
+// vault fallback sees backstop liquidations only, a knowably partial
+// numerator that must not publish under the same gauge as the full feed; the
+// row reads N/A without the key, the rule Lighter and Aster already follow.
+func (h *Hyperliquid) HasLiquidationSource() bool { return h.archiveAPIKey != "" }
 
 // FetchLiquidationsSince returns liquidation events newer than sinceMs.
-// Priority: (1) 0xArchive when OXARCHIVE_API_KEY is set, (2) HLP vault backstop fallback.
-// Coinalyze does not cover Hyperliquid.
+// Priority: (1) 0xArchive when OXARCHIVE_API_KEY is set, (2) HLP vault
+// backstop fallback. Coinalyze lists Hyperliquid (exchange code H) but its
+// liquidation-history returned nothing for ETH.H or BTC.H on 2026-09-27, so
+// it is not used here.
 func (h *Hyperliquid) FetchLiquidationsSince(asset string, sinceMs int64) ([]LiqEvent, error) {
 	coin, ok := hyperliquidCoins[asset]
 	if !ok {
@@ -214,18 +219,61 @@ func (h *Hyperliquid) FetchLiquidationsSince(asset string, sinceMs int64) ([]Liq
 
 // FetchOI returns open interest in USD: openInterest (base units) * midPx.
 func (h *Hyperliquid) FetchOI(asset string) (float64, error) {
+	ctx, err := h.assetCtx(asset)
+	if err != nil {
+		return 0, err
+	}
+	oi, err := parseF(ctx.OpenInterest)
+	if err != nil {
+		return 0, fmt.Errorf("hyperliquid openInterest: %w", err)
+	}
+	pxStr := ctx.MidPx
+	if strings.TrimSpace(pxStr) == "" {
+		pxStr = ctx.MarkPx
+	}
+	px, err := parseF(pxStr)
+	if err != nil {
+		return 0, fmt.Errorf("hyperliquid midPx: %w", err)
+	}
+	return oi * px, nil
+}
+
+// FetchVolume24hUSD returns the coin's 24h traded notional in USD.
+// dayNtlVlm on the same assetCtx is already notional, not base units.
+func (h *Hyperliquid) FetchVolume24hUSD(asset string) (float64, error) {
+	ctx, err := h.assetCtx(asset)
+	if err != nil {
+		return 0, err
+	}
+	v, err := parseF(ctx.DayNtlVlm)
+	if err != nil {
+		return 0, fmt.Errorf("hyperliquid dayNtlVlm: %w", err)
+	}
+	return v, nil
+}
+
+// hlAssetCtx is the per-coin context block of metaAndAssetCtxs.
+type hlAssetCtx struct {
+	OpenInterest string `json:"openInterest"`
+	MidPx        string `json:"midPx"`
+	MarkPx       string `json:"markPx"`
+	DayNtlVlm    string `json:"dayNtlVlm"`
+}
+
+// assetCtx resolves the coin's context by its position in the universe.
+func (h *Hyperliquid) assetCtx(asset string) (hlAssetCtx, error) {
 	coin, ok := hyperliquidCoins[asset]
 	if !ok {
-		return 0, fmt.Errorf("hyperliquid: unsupported asset %q", asset)
+		return hlAssetCtx{}, fmt.Errorf("hyperliquid: unsupported asset %q", asset)
 	}
 
 	payload := map[string]any{"type": "metaAndAssetCtxs"}
 	var raw []json.RawMessage
 	if err := httpPostJSON(h.infoURL, payload, &raw); err != nil {
-		return 0, fmt.Errorf("hyperliquid metaAndAssetCtxs: %w", err)
+		return hlAssetCtx{}, fmt.Errorf("hyperliquid metaAndAssetCtxs: %w", err)
 	}
 	if len(raw) < 2 {
-		return 0, fmt.Errorf("hyperliquid metaAndAssetCtxs: expected 2-element array, got %d", len(raw))
+		return hlAssetCtx{}, fmt.Errorf("hyperliquid metaAndAssetCtxs: expected 2-element array, got %d", len(raw))
 	}
 
 	var meta struct {
@@ -234,15 +282,11 @@ func (h *Hyperliquid) FetchOI(asset string) (float64, error) {
 		} `json:"universe"`
 	}
 	if err := json.Unmarshal(raw[0], &meta); err != nil {
-		return 0, fmt.Errorf("hyperliquid universe decode: %w", err)
+		return hlAssetCtx{}, fmt.Errorf("hyperliquid universe decode: %w", err)
 	}
-	var ctxs []struct {
-		OpenInterest string `json:"openInterest"`
-		MidPx        string `json:"midPx"`
-		MarkPx       string `json:"markPx"`
-	}
+	var ctxs []hlAssetCtx
 	if err := json.Unmarshal(raw[1], &ctxs); err != nil {
-		return 0, fmt.Errorf("hyperliquid assetCtxs decode: %w", err)
+		return hlAssetCtx{}, fmt.Errorf("hyperliquid assetCtxs decode: %w", err)
 	}
 
 	for i, u := range meta.Universe {
@@ -250,23 +294,11 @@ func (h *Hyperliquid) FetchOI(asset string) (float64, error) {
 			continue
 		}
 		if i >= len(ctxs) {
-			return 0, fmt.Errorf("hyperliquid: assetCtxs index %d out of range (%d)", i, len(ctxs))
+			return hlAssetCtx{}, fmt.Errorf("hyperliquid: assetCtxs index %d out of range (%d)", i, len(ctxs))
 		}
-		oi, err := parseF(ctxs[i].OpenInterest)
-		if err != nil {
-			return 0, fmt.Errorf("hyperliquid openInterest: %w", err)
-		}
-		pxStr := ctxs[i].MidPx
-		if strings.TrimSpace(pxStr) == "" {
-			pxStr = ctxs[i].MarkPx
-		}
-		px, err := parseF(pxStr)
-		if err != nil {
-			return 0, fmt.Errorf("hyperliquid midPx: %w", err)
-		}
-		return oi * px, nil
+		return ctxs[i], nil
 	}
-	return 0, fmt.Errorf("hyperliquid: coin %q not found in universe", coin)
+	return hlAssetCtx{}, fmt.Errorf("hyperliquid: coin %q not found in universe", coin)
 }
 
 // jsonNonNull reports whether a raw JSON field was present and not null.

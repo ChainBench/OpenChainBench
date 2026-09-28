@@ -129,8 +129,8 @@ func TestParadex_FetchOI_HappyPath(t *testing.T) {
 		resp := map[string]any{
 			"results": []map[string]any{
 				{
-					"open_interest": "25.0",    // 25 ETH
-					"mark_price":    "3000.0",  // $3000/ETH
+					"open_interest": "25.0",   // 25 ETH
+					"mark_price":    "3000.0", // $3000/ETH
 				},
 			},
 		}

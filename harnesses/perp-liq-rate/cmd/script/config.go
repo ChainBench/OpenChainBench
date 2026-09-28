@@ -1,6 +1,6 @@
 package main
 
-// config.go — environment handling and the VenueAsset registry that binds
+// config.go: environment handling and the VenueAsset registry that binds
 // every (venue, asset) pair to its Source implementation.
 
 import (
@@ -38,10 +38,10 @@ const (
 //
 // Environment:
 //
-//	TICK_INTERVAL_SECONDS — poll interval, default 300
-//	RPC_BASE              — Base mainnet JSON-RPC URL, default https://mainnet.base.org
-//	RPC_ARBITRUM          — Arbitrum One JSON-RPC URL (Gains' main deployment), default https://arb1.arbitrum.io/rpc
-//	LISTEN_ADDR           — metrics listen address, default :2112
+//	TICK_INTERVAL_SECONDS: poll interval, default 300
+//	RPC_BASE             : Base mainnet JSON-RPC URL, default https://mainnet.base.org
+//	RPC_ARBITRUM         : Arbitrum One JSON-RPC URL (Gains' main deployment), default https://arb1.arbitrum.io/rpc
+//	LISTEN_ADDR          : metrics listen address, default :2112
 func loadConfig() (*Config, error) {
 	tickSeconds := defaultTickSeconds
 	if v := os.Getenv("TICK_INTERVAL_SECONDS"); v != "" {
@@ -74,6 +74,17 @@ func loadConfig() (*Config, error) {
 	lighter := NewLighter()
 	aevo := NewAevo()
 	paradex := NewParadex()
+	// Added 2026-09-27: two venues whose liquidation feed was checked and
+	// found to exist. Aster via Coinalyze (exchange code S), Ostium via the
+	// Ormi subgraph the cohort harness reads. Slugs and display names match
+	// the site's perp venue registry so the product pages keep joining.
+	aster := NewAster()
+	ostium := NewOstium()
+	// Orderly has the only purpose-built public liquidation endpoint in the
+	// cohort with real history. Nado publishes a cumulative liquidated-USD
+	// counter instead of a tape, so its 24h figure is one aggregate number.
+	orderly := NewOrderly()
+	nado := NewNado()
 
 	pairs := []VenueAsset{
 		{Venue: "hyperliquid", Asset: "ETH", Source: hyperliquid},
@@ -98,6 +109,20 @@ func loadConfig() (*Config, error) {
 
 		{Venue: "paradex", Asset: "ETH", Source: paradex},
 		{Venue: "paradex", Asset: "BTC", Source: paradex},
+
+		{Venue: "aster", Asset: "ETH", Source: aster},
+		{Venue: "aster", Asset: "BTC", Source: aster},
+		{Venue: "aster", Asset: "SOL", Source: aster},
+
+		{Venue: "ostium", Asset: "ETH", Source: ostium},
+		{Venue: "ostium", Asset: "BTC", Source: ostium},
+
+		{Venue: "orderly", Asset: "ETH", Source: orderly},
+		{Venue: "orderly", Asset: "BTC", Source: orderly},
+		{Venue: "orderly", Asset: "SOL", Source: orderly},
+
+		{Venue: "nado", Asset: "ETH", Source: nado},
+		{Venue: "nado", Asset: "BTC", Source: nado},
 	}
 
 	return &Config{
