@@ -50,8 +50,9 @@ func TestSampleWindowPrunesWithoutAdd(t *testing.T) {
 	}
 	// Two days later, with no successful read in between.
 	s.Prune(now + 25*3600*1000)
-	if s.Len() != 0 || s.Max() != 0 || s.Mean() != 0 {
-		t.Fatalf("len=%d max=%v mean=%v, want the stale reading dropped", s.Len(), s.Max(), s.Mean())
+	if s.Len() != 0 || s.Max() != 0 || s.TimeWeightedMean(now) != 0 {
+		t.Fatalf("len=%d max=%v mean=%v, want the stale reading dropped",
+			s.Len(), s.Max(), s.TimeWeightedMean(now))
 	}
 }
 

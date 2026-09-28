@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/hex"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -68,8 +69,14 @@ func TestSlidingWindowAndSeenSet(t *testing.T) {
 	oi := NewSampleWindow(24 * time.Hour)
 	oi.Add(now-3600*1000, 40)
 	oi.Add(now, 10)
-	if oi.Mean() != 25 || oi.Max() != 40 || oi.Len() != 2 {
-		t.Fatalf("SampleWindow mean=%v max=%v len=%d, want 25, 40, 2", oi.Mean(), oi.Max(), oi.Len())
+	// Time-weighted: 40 stood for the hour, 10 has only just arrived, so the
+	// mean over the elapsed period is 40 and not the 25 an average of the two
+	// readings would report.
+	if got := oi.TimeWeightedMean(now); got < 39.9 || got > 40.1 {
+		t.Fatalf("TimeWeightedMean = %v, want about 40", got)
+	}
+	if oi.Max() != 40 || oi.Min() != 10 || oi.Len() != 2 {
+		t.Fatalf("SampleWindow max=%v min=%v len=%d, want 40, 10, 2", oi.Max(), oi.Min(), oi.Len())
 	}
 
 	s := NewSeenSet()
@@ -92,4 +99,11 @@ func TestParseScaled(t *testing.T) {
 	if err != nil || v != -2.5 {
 		t.Fatalf("parseScaled negative = %v (%v)", v, err)
 	}
+}
+
+// The retry backoff exists for the chain and the venues, not for the suite.
+func TestMain(m *testing.M) {
+	httpRetryBase = time.Millisecond
+	gmxMarketsRetryBase = time.Millisecond
+	os.Exit(m.Run())
 }

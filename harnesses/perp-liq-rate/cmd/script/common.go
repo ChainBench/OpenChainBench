@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"io"
 	"math/big"
+	"math/rand"
 	"net"
 	"net/http"
 	"net/url"
@@ -212,7 +213,70 @@ func httpPostJSON(rawURL string, payload any, out any) error {
 	return decodeJSON(body, rawURL, out)
 }
 
+// httpRetries is how many times a read is attempted before it is reported as
+// a failure, and httpRetryBase the first backoff. Every call this harness
+// makes is a read, so retrying is safe, and a scan that pages a chain for a
+// day makes hundreds of them: a nine-day reconstruction died at 99% on one
+// transient 503, which is the normal outcome without this rather than bad
+// luck. Transport errors and 5xx are retried; a 4xx is an answer.
+// Package vars rather than constants so a test can drive the retry path
+// without paying the backoff.
+var (
+	httpRetries   = 4
+	httpRetryBase = 400 * time.Millisecond
+)
+
+// doRaw performs the request, retrying a transport error or a 5xx with
+// exponential backoff and jitter.
 func doRaw(req *http.Request) ([]byte, error) {
+	var lastErr error
+	for attempt := 0; attempt < httpRetries; attempt++ {
+		if attempt > 0 {
+			// Jitter, so the venue-and-asset goroutines of one tick do not
+			// line up their retries into a second burst.
+			back := httpRetryBase * time.Duration(1<<(attempt-1))
+			time.Sleep(back + time.Duration(rand.Int63n(int64(back/2+1))))
+			if req.GetBody != nil {
+				body, err := req.GetBody()
+				if err != nil {
+					return nil, fmt.Errorf("rewind body: %w", err)
+				}
+				req.Body = body
+			}
+		}
+		body, err := doRawOnce(req)
+		if err == nil {
+			return body, nil
+		}
+		lastErr = err
+		if !httpWorthRetrying(err) {
+			return nil, err
+		}
+	}
+	return nil, lastErr
+}
+
+// httpWorthRetrying reports whether the error is the kind another attempt
+// might answer: a transport failure, a timeout, or a 5xx.
+func httpWorthRetrying(err error) bool {
+	var statusErr *httpStatusError
+	if errors.As(err, &statusErr) {
+		// 429 and 408 are the endpoint asking for a pause, which is exactly
+		// what the backoff is; a public Arbitrum endpoint answers 429 partway
+		// through a day-long scan as a matter of course.
+		return statusErr.Code >= 500 ||
+			statusErr.Code == http.StatusTooManyRequests ||
+			statusErr.Code == http.StatusRequestTimeout
+	}
+	var netErr net.Error
+	if errors.As(err, &netErr) {
+		return true
+	}
+	// A transport error that is not a net.Error still reached no answer.
+	return !errors.Is(err, ErrVenueUnavailable)
+}
+
+func doRawOnce(req *http.Request) ([]byte, error) {
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("User-Agent", "perp-liq-rate/1.0")
 	resp, err := httpClient.Do(req)
@@ -335,6 +399,25 @@ func (f *flexFloat) UnmarshalJSON(b []byte) error {
 	}
 	*f = flexFloat(v)
 	return nil
+}
+
+// isRangeTooWide reports whether the endpoint refused the block span rather
+// than the request. The wording is not standardised: Base answers -32614,
+// others say so in words, so both are matched.
+func isRangeTooWide(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	for _, s := range []string{
+		"-32614", "range is too large", "block range too large", "exceed maximum block range",
+		"query returned more than", "too many blocks", "limit exceeded", "range too wide",
+	} {
+		if strings.Contains(msg, s) {
+			return true
+		}
+	}
+	return false
 }
 
 // classifyError maps an error to a low-cardinality error_type label value.

@@ -270,18 +270,76 @@ func (s *SampleWindow) Prune(nowMs int64) {
 	s.samples = kept
 }
 
-// Mean returns the arithmetic mean of the readings held, or 0 when empty.
-func (s *SampleWindow) Mean() float64 {
+// TimeWeightedMean returns the mean of the readings weighted by how long each
+// stood before the next, which is the only honest mean once the readings come
+// from events rather than from a timer.
+//
+// Event density is wildly uneven: Gains ETH had 67 open-interest events across
+// the whole of 2026-09-27 and 88 in the single hour 09-28 02h. An arithmetic
+// mean over the readings would weight that one hour more than the preceding
+// day and report the collapse as the average state of the book.
+//
+// Each reading stands from its own timestamp until the next, and the last
+// stands until nowMs. With readings on a timer the two means agree, so this is
+// also correct for the venues that are still sampled per tick.
+func (s *SampleWindow) TimeWeightedMean(nowMs int64) float64 {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if len(s.samples) == 0 {
 		return 0
 	}
-	total := 0.0
-	for _, e := range s.samples {
-		total += e.notional
+	if len(s.samples) == 1 {
+		return s.samples[0].notional
 	}
-	return total / float64(len(s.samples))
+	ordered := make([]windowEntry, len(s.samples))
+	copy(ordered, s.samples)
+	sort.Slice(ordered, func(i, j int) bool { return ordered[i].tsMs < ordered[j].tsMs })
+
+	weighted, span := 0.0, int64(0)
+	for i, e := range ordered {
+		end := nowMs
+		if i+1 < len(ordered) {
+			end = ordered[i+1].tsMs
+		}
+		if end <= e.tsMs {
+			continue
+		}
+		d := end - e.tsMs
+		weighted += e.notional * float64(d)
+		span += d
+	}
+	if span == 0 {
+		// Every reading carries the same instant; fall back to the last.
+		return ordered[len(ordered)-1].notional
+	}
+	return weighted / float64(span)
+}
+
+// Min returns the smallest reading held, or 0 when empty. Published beside the
+// peak because a book that ran from 49.9M dollars to 1.1M inside one day is
+// two different markets, and a reader has to be able to see that.
+func (s *SampleWindow) Min() float64 {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if len(s.samples) == 0 {
+		return 0
+	}
+	min := s.samples[0].notional
+	for _, e := range s.samples {
+		if e.notional < min {
+			min = e.notional
+		}
+	}
+	return min
+}
+
+// ReplaceAll swaps the window's contents for a reconstructed series, for a
+// venue that can read its own open-interest history instead of accumulating
+// readings one tick at a time.
+func (s *SampleWindow) ReplaceAll(readings []windowEntry) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.samples = append(s.samples[:0], readings...)
 }
 
 // Max returns the largest reading held, or 0 when empty.

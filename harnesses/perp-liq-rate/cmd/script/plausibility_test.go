@@ -185,7 +185,7 @@ func TestSampleWindowPeakIsTheDenominator(t *testing.T) {
 	for i, oi := range readings {
 		s.Add(now-int64(len(readings)-i)*3600*1000, oi)
 	}
-	peak, mean := s.Max(), s.Mean()
+	peak, mean := s.Max(), s.TimeWeightedMean(now)
 	if peak != 43.67e6 {
 		t.Fatalf("peak = %.0f, want 43.67M", peak)
 	}
@@ -220,8 +220,8 @@ func TestSampleWindowPrunesOnAdd(t *testing.T) {
 	if s.Len() != 1 {
 		t.Fatalf("Len = %d, want 1", s.Len())
 	}
-	if got := s.Mean(); math.Abs(got-10) > 1e-9 {
-		t.Fatalf("Mean = %v, want 10", got)
+	if got := s.TimeWeightedMean(now); math.Abs(got-10) > 1e-9 {
+		t.Fatalf("TimeWeightedMean = %v, want 10", got)
 	}
 }
 

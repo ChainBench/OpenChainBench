@@ -44,6 +44,18 @@ const (
 	// The 24h volume query pages over a few thousand rows, so it is re-read
 	// on a timer rather than on every 5-minute tick.
 	gmxVolumeTTL = 15 * time.Minute
+	// A failure is remembered only long enough for the other asset of the
+	// same tick to reuse it, not for the success TTL. Caching a transient
+	// error for fifteen minutes is how one momentary empty market list took
+	// both GMX rows out for three ticks on 2026-09-28.
+	gmxVolumeErrTTL = 60 * time.Second
+)
+
+// Attempts at the market list before an empty answer is believed. Vars so a
+// test can drive the path without paying the wait.
+var (
+	gmxMarketsAttempts  = 3
+	gmxMarketsRetryBase = 500 * time.Millisecond
 )
 
 // gmxTrackedAssets lists the assets supported by this source.
@@ -85,14 +97,32 @@ func (g *GMX) fetchMarkets() ([]gmxMarket, error) {
 	if g.markets != nil && time.Since(g.marketsAt) < gmxMarketsTTL {
 		return g.markets, nil
 	}
+	// An empty list is a 200 with nothing in it, so the HTTP retry does not
+	// see it. It happens, and a venue whose market list came back empty for
+	// a moment must not read as a venue with no liquidations, so ask again
+	// before believing it.
 	var resp struct {
 		Markets []gmxMarket `json:"markets"`
 	}
-	if err := httpGetJSON(g.marketsURL, &resp); err != nil {
-		return nil, fmt.Errorf("gmx markets: %w", err)
+	var lastErr error
+	for attempt := 0; attempt < gmxMarketsAttempts; attempt++ {
+		if attempt > 0 {
+			time.Sleep(time.Duration(attempt) * gmxMarketsRetryBase)
+		}
+		resp.Markets = nil
+		if err := httpGetJSON(g.marketsURL, &resp); err != nil {
+			lastErr = fmt.Errorf("gmx markets: %w", err)
+			continue
+		}
+		if len(resp.Markets) == 0 {
+			lastErr = fmt.Errorf("gmx markets: empty market list")
+			continue
+		}
+		lastErr = nil
+		break
 	}
-	if len(resp.Markets) == 0 {
-		return nil, fmt.Errorf("gmx markets: empty market list")
+	if lastErr != nil {
+		return nil, lastErr
 	}
 	g.markets = resp.Markets
 	g.marketsAt = time.Now()
@@ -277,7 +307,7 @@ func (g *GMX) FetchVolume24hUSD(asset string) (float64, error) {
 	// A failed read is cached for the same TTL as a good one. Without this
 	// the ETH goroutine and then the BTC goroutine each paged the squid to
 	// the cap on every tick, since only success wrote the cache.
-	if g.volErr != nil && time.Since(g.volumeAt) < gmxVolumeTTL {
+	if g.volErr != nil && time.Since(g.volumeAt) < gmxVolumeErrTTL {
 		return 0, g.volErr
 	}
 
