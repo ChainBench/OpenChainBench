@@ -113,6 +113,49 @@ func TestGMXVolumeQueryFiltersToTrackedMarkets(t *testing.T) {
 	}
 }
 
+// The filter carries both spellings of each address. marketAddress_in is an
+// exact string match, the squid stores EIP-55 checksummed addresses and the
+// market map is keyed lowercase, so sending one spelling matched nothing and
+// left both GMX rows with no volume denominator at all.
+func TestGMXVolumeQueryCarriesBothAddressCasings(t *testing.T) {
+	markets := []map[string]any{
+		gmxMarketEntry("ETH/USD [ETH-USDC]", "0x70d95587d40A2caf56bd97485aB3Eec10Bee6336", true, gmxOI5000, gmxOI3000),
+	}
+	info := buildGMXInfoServer(t, markets)
+	defer info.Close()
+	var query string
+	squid := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			Query string `json:"query"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		query = body.Query
+		// The squid answers on the checksummed spelling only.
+		rows := []map[string]any{}
+		if strings.Contains(body.Query, `"0x70d95587d40A2caf56bd97485aB3Eec10Bee6336"`) {
+			rows = append(rows, map[string]any{
+				"marketAddress": "0x70d95587d40A2caf56bd97485aB3Eec10Bee6336",
+				"sizeDeltaUsd":  "5" + strings.Repeat("0", 30),
+				"timestamp":     time.Now().Unix(), "transactionHash": "0xtx", "orderKey": "k1",
+			})
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"tradeActions": rows}})
+	}))
+	defer squid.Close()
+
+	g := &GMX{marketsURL: info.URL, squidURL: squid.URL}
+	vol, err := g.FetchVolume24hUSD("ETH")
+	if err != nil {
+		t.Fatalf("volume: %v", err)
+	}
+	if vol <= 0 {
+		t.Fatalf("volume = %v with a checksummed squid; the filter lost the market: %s", vol, query)
+	}
+	if !strings.Contains(query, strings.ToLower("0x70d95587d40A2caf56bd97485aB3Eec10Bee6336")) {
+		t.Errorf("query carries no lowercase spelling: %s", query)
+	}
+}
+
 // A failed refresh is cached for the TTL. Only success wrote the cache
 // before, so the ETH goroutine and then the BTC goroutine each paged the
 // squid to the cap on every tick.

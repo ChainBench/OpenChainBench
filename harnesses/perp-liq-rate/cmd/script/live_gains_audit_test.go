@@ -128,3 +128,21 @@ func TestLive_GainsVolumeAudit(t *testing.T) {
 	}
 	fmt.Printf("\nextrapolated 24h (only meaningful for an hour window): $%.0f ETH, $%.0f all pairs\n", ethTotal*24, all*24)
 }
+
+// The GMX volume denominator must be a positive figure against the live
+// squid. It silently read zero for a while because marketAddress_in was sent
+// in the wrong case, and nothing failed: the gauge simply stopped being
+// published and both GMX rows lost their rank.
+func TestLive_GMXVolumeIsPositive(t *testing.T) {
+	g := NewGMX()
+	for _, asset := range []string{"ETH", "BTC"} {
+		vol, err := g.FetchVolume24hUSD(asset)
+		if err != nil {
+			t.Fatalf("%s volume: %v", asset, err)
+		}
+		if vol <= 0 {
+			t.Fatalf("%s volume = %v against the live squid", asset, vol)
+		}
+		fmt.Printf("gmx %s 24h traded notional: $%.0f\n", asset, vol)
+	}
+}
