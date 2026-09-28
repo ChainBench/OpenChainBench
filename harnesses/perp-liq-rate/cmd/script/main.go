@@ -58,16 +58,31 @@ func main() {
 	// Build per-pair runtime state. The initial since is now-24h so venues
 	// with historical endpoints backfill the full window on the first tick.
 	startBackfillMs := time.Now().Add(-windowSpan).UnixMilli()
+	// The windows come back from disk if they were saved. Open interest is
+	// the one input no source can backfill: a venue publishes the book it
+	// holds now, never the one it held at four this morning. Without this a
+	// redeploy divided a full 24h of liquidations by the peak of the minutes
+	// since boot, which is how Gains ETH published 952% on 2026-09-28.
+	state := newOIStateStore(cfg.StatePath)
+	nowMs := time.Now().UnixMilli()
+	restoredOI := make(map[string]int, len(cfg.Pairs))
+	restoredLiq := make(map[string]int, len(cfg.Pairs))
+
 	pairs := make([]*pairRuntime, 0, len(cfg.Pairs))
 	venues := make(map[string]bool, 8)
 	for _, va := range cfg.Pairs {
+		st := newPairState()
+		key := oiStateKey(va.Venue, va.Asset)
+		restoredOI[key] = state.restore(va.Venue, va.Asset, st.oi, nowMs)
+		restoredLiq[key] = state.restoreLiq(va.Venue, va.Asset, st, nowMs)
 		pairs = append(pairs, &pairRuntime{
 			va:      va,
-			st:      newPairState(),
+			st:      st,
 			sinceMs: startBackfillMs,
 		})
 		venues[va.Venue] = true
 	}
+	state.logRestore(pairs, restoredOI, restoredLiq)
 
 	// Before the first tick completes, every venue is warming up.
 	for venue := range venues {
@@ -97,7 +112,7 @@ func main() {
 				if floor := tickStartMs - windowSpan.Milliseconds(); since < floor {
 					since = floor
 				}
-				ok := runTick(p.va, p.st, since)
+				ok := runTick(p.va, p.st, since, cfg.TickInterval)
 				if ok {
 					// Next tick fetches from the start of this one; the
 					// overlap is harmless because of the SeenSet dedup.
@@ -156,6 +171,10 @@ func main() {
 				}
 			}(p.va.Asset)
 		}
+
+		// Save after the tick, so a restart resumes from at most one tick
+		// ago rather than from nothing.
+		state.save(pairs, now)
 
 		log.Printf("tick complete in %s", time.Since(tickStart).Round(time.Millisecond))
 	}

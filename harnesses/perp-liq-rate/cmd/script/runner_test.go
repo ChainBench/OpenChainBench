@@ -47,7 +47,7 @@ func TestRunTick_ZeroRestatementClearsTheWindow(t *testing.T) {
 	st := newPairState()
 	since := time.Now().Add(-24 * time.Hour).UnixMilli()
 
-	if !runTick(va, st, since) {
+	if !runTick(va, st, since, 5*time.Minute) {
 		t.Fatal("first tick should succeed")
 	}
 	if got := st.window.Sum(); got < 26033 || got > 26034 {
@@ -58,7 +58,7 @@ func TestRunTick_ZeroRestatementClearsTheWindow(t *testing.T) {
 	}
 
 	src.liq = 0
-	if !runTick(va, st, since) {
+	if !runTick(va, st, since, 5*time.Minute) {
 		t.Fatal("second tick should succeed")
 	}
 	if got := st.window.Sum(); got != 0 {
