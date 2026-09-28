@@ -20,6 +20,7 @@ import (
 	"sort"
 	"strconv"
 	"testing"
+	"time"
 )
 
 func TestLive_GainsVolumeAudit(t *testing.T) {
@@ -50,10 +51,31 @@ func TestLive_GainsVolumeAudit(t *testing.T) {
 		if err := g.scanRange(f, tb); err != nil {
 			t.Fatalf("scanRange: %v", err)
 		}
-		fmt.Printf("scanned blocks %d..%d\n", f, tb)
+		// The range is only a complete day if its ends say so, and the
+		// nominal block time cannot be assumed: 267 ms was measured on one
+		// day, and this range implies 280.7 ms. Read both headers and print
+		// them, so the window the figures describe is on the record.
+		fromMs, err := g.blockTimestampMs(f)
+		if err != nil {
+			t.Fatalf("from header: %v", err)
+		}
+		toMs, err := g.blockTimestampMs(tb)
+		if err != nil {
+			t.Fatalf("to header: %v", err)
+		}
+		fmt.Printf("scanned blocks %d..%d (%d blocks)\n", f, tb, tb-f+1)
+		fmt.Printf("window: %s .. %s (%.2f h, %.1f ms/block)\n",
+			time.UnixMilli(fromMs).UTC().Format(time.RFC3339),
+			time.UnixMilli(toMs).UTC().Format(time.RFC3339),
+			float64(toMs-fromMs)/3.6e6, float64(toMs-fromMs)/float64(tb-f))
 	} else {
-		// One hour of Arbitrum at the measured 267 ms per block.
+		// One hour up to the chain head: Arbitrum at the measured 267 ms a
+		// block, Base at 2 s, or the extrapolation below covers 7.5 hours on
+		// Base and calls it an hour.
 		g.lookbackBlocks = 13500
+		if g.chain == "base" {
+			g.lookbackBlocks = 1800
+		}
 		if err := g.scan(); err != nil {
 			t.Fatalf("scan: %v", err)
 		}
@@ -79,34 +101,46 @@ func TestLive_GainsVolumeAudit(t *testing.T) {
 		all += v
 	}
 	fmt.Printf("all pairs in the window: $%.0f across %d pairs\n", all, len(byPair))
-	fmt.Println("top pairs by notional:")
-	for i, p := range pairs {
-		if i >= 10 {
-			break
-		}
-		fmt.Printf("  pair %3d: $%12.0f  %4d legs  %5.1f%% of the window\n",
+	fmt.Println("every pair by notional:")
+	for _, p := range pairs {
+		fmt.Printf("  pair %3d: $%12.0f  %4d legs  %5.2f%% of the window\n",
 			p, byPair[p], cntPair[p], byPair[p]/all*100)
 	}
 
-	// Every leg of ETH, with the checks that matter.
+	// The duplicate check covers every leg in the window, not just the asset
+	// printed below: a BTC log present twice would be summed twice into the
+	// venue total, and a check scoped to ETH would pass anyway.
 	seenKey := map[string]int{}
 	seenTxPairNotional := map[string]int{}
+	for _, e := range g.execs {
+		seenKey[e.key]++
+		seenTxPairNotional[fmt.Sprintf("%s:%d:%.4f", e.key[:66], e.pair, e.notionalUSD)]++
+	}
+
+	// Every leg of one asset, printed so each can be read back against the
+	// chain. ETH by default; GAINS_AUDIT_PAIR picks another.
+	auditPair := uint64(1)
+	if v := os.Getenv("GAINS_AUDIT_PAIR"); v != "" {
+		p, err := strconv.ParseUint(v, 10, 64)
+		if err != nil {
+			t.Fatalf("GAINS_AUDIT_PAIR: %v", err)
+		}
+		auditPair = p
+	}
 	byKind := map[gainsExecKind]float64{}
 	kindCount := map[gainsExecKind]int{}
 	var ethTotal float64
-	fmt.Println("\nETH (pair 1) legs:")
+	fmt.Printf("\npair %d legs:\n", auditPair)
 	for _, e := range g.execs {
-		if e.pair != 1 {
+		if e.pair != auditPair {
 			continue
 		}
 		ethTotal += e.notionalUSD
 		byKind[e.kind] += e.notionalUSD
 		kindCount[e.kind]++
-		seenKey[e.key]++
-		seenTxPairNotional[fmt.Sprintf("%s:%.4f", e.key[:66], e.notionalUSD)]++
 		fmt.Printf("  %-8s $%12.2f  %s\n", e.kind, e.notionalUSD, e.key)
 	}
-	fmt.Printf("\nETH total in the window: $%.0f over %d legs\n", ethTotal, kindCount[gainsKindMarket]+kindCount[gainsKindLimit]+kindCount[gainsKindIncrease]+kindCount[gainsKindDecrease])
+	fmt.Printf("\npair %d total in the window: $%.0f over %d legs\n", auditPair, ethTotal, kindCount[gainsKindMarket]+kindCount[gainsKindLimit]+kindCount[gainsKindIncrease]+kindCount[gainsKindDecrease])
 	for _, k := range []gainsExecKind{gainsKindMarket, gainsKindLimit, gainsKindIncrease, gainsKindDecrease} {
 		fmt.Printf("  %-9s %4d legs  $%12.0f\n", k, kindCount[k], byKind[k])
 	}
@@ -126,7 +160,7 @@ func TestLive_GainsVolumeAudit(t *testing.T) {
 			fmt.Printf("same tx, same notional, %d legs (a round trip in one tx, or a duplicated event): %s\n", n, k)
 		}
 	}
-	fmt.Printf("\nextrapolated 24h (only meaningful for an hour window): $%.0f ETH, $%.0f all pairs\n", ethTotal*24, all*24)
+	fmt.Printf("\nextrapolated 24h (only meaningful for an hour window): $%.0f pair %d, $%.0f all pairs\n", ethTotal*24, auditPair, all*24)
 }
 
 // The GMX volume denominator must be a positive figure against the live
