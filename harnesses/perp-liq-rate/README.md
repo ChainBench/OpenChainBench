@@ -48,6 +48,7 @@ docker run -p 2112:2112 perp-liq-rate
 | `RPC_BASE` | `https://mainnet.base.org` | Base mainnet JSON-RPC (gains) |
 | `RPC_ARBITRUM` | `https://arb1.arbitrum.io/rpc` | Arbitrum One JSON-RPC (gains) |
 | `LISTEN_ADDR` | `:2112` | metrics listen address |
+| `STATE_PATH` | `/state/perp-liq-windows.json` | where the 24h windows are kept across restarts; set empty to disable |
 | `COINALYZE_API_KEY` | unset | required for the lighter and aster numerators |
 | `OXARCHIVE_API_KEY` | unset | required for the Hyperliquid numerator; without it the row reads N/A, since the HLP vault fallback sees backstop liquidations only |
 
@@ -106,6 +107,26 @@ perp_realized_vol_24h_pct{chain}
   day reads 62%. The mean is published beside it. Above 100% is turnover:
   positions opened after the peak reading, or opened and closed between two
   readings, count in the numerator and never enter the denominator.
+- **The windows survive a restart.** Both the open-interest sample window and
+  the liquidation window are kept in a JSON file (`STATE_PATH`, default
+  `/state/perp-liq-windows.json`) written after every tick and read on boot,
+  the shape `harnesses/protocol-valuation` uses for its fee-basis memory.
+  Open interest is the one input no source can backfill: a venue publishes
+  the book it holds now, never the book it held this morning. Without this a
+  redeploy divided a full 24h of liquidations by the peak of the minutes
+  since boot, and on 2026-09-28 Gains ETH published **952%** against a peak
+  of $2.9M when the book had actually held $43.7M inside the window.
+  Restored liquidation keys go back into the `SeenSet`, so a source that
+  re-reports them cannot double count. An unset or unwritable path is a
+  degraded mode, logged once, not a failure.
+- **A refused row can lose its rate, not just its rank.** An unranked row
+  still renders its headline figure, so `rateIsMeaningful` in
+  `plausibility.go` deletes `perp_liq_rate_24h_pct` when the reason means the
+  ratio describes nothing: `single_event_is_the_window`,
+  `no_volume_denominator`, `oi_window_shorter_than_numerator`,
+  `window_read_short`, a failed read, or warm-up. Every input still
+  publishes; only the ratio is withheld. `no_liquidations_observed` keeps its
+  honest zero.
 - **The rate waits for the denominator.** `perp_liq_rate_24h_pct` and the
   peak are published only once a row holds 12 open-interest readings (an
   hour), so a restart does not put a 24h numerator over one reading.

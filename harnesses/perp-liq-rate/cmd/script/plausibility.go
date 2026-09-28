@@ -79,6 +79,7 @@ const (
 	reasonFetchError   rankReason = "fetch_error"
 	reasonPartial      rankReason = "window_read_short"
 	reasonWarmingUp    rankReason = "warming_up"
+	reasonOIShort      rankReason = "oi_window_shorter_than_numerator"
 	reasonNoOI         rankReason = "no_open_interest"
 	reasonNoVolume     rankReason = "no_volume_denominator"
 	reasonZero         rankReason = "no_liquidations_observed"
@@ -95,6 +96,11 @@ type rankInput struct {
 	// partialWindow is set while the window is missing its oldest part
 	// because a page cap cut a read short; the numerator is real and low.
 	partialWindow bool
+	// oiSpansWindow is false while the open-interest readings cover less
+	// than the span the numerator covers, so their peak is the peak of a
+	// shorter period. Dividing a full 24h of liquidations by it is how Gains
+	// ETH published 952% an hour after a redeploy.
+	oiSpansWindow bool
 	oiSamples     int // readings behind peakOIUSD
 	liqUSD24h     float64
 	peakOIUSD     float64
@@ -130,6 +136,8 @@ func evaluateRank(in rankInput) (bool, rankReason) {
 		return false, reasonNoOI
 	case in.oiSamples < minOISamples:
 		return false, reasonWarmingUp
+	case !in.oiSpansWindow:
+		return false, reasonOIShort
 	case in.liqUSD24h <= 0:
 		// A zero is unfalsifiable as a best value: it reads identically
 		// whether the venue liquidated nothing or the feed returned
@@ -150,4 +158,36 @@ func evaluateRank(in rankInput) (bool, rankReason) {
 		return false, reasonAboveCeiling
 	}
 	return true, reasonRanked
+}
+
+// rateIsMeaningful says whether perp_liq_rate_24h_pct may be published for a
+// row the gate refused. An unranked row still renders its headline figure, so
+// a refusal that means "this ratio does not describe anything" has to delete
+// the series rather than merely set perp_liq_ranked to 0: Gains ETH published
+// 952% against a denominator that no longer existed, and a reader who sees
+// that will not go looking for the reason.
+//
+// The inputs are published either way. They are sound and useful on their
+// own: liquidated notional, collateral, open interest, share of volume and
+// the largest-event share are all measurements. It is only the ratio built on
+// a denominator or a numerator that cannot carry it which is withheld.
+func rateIsMeaningful(reason rankReason) bool {
+	switch reason {
+	case reasonSingleEvent:
+		// One position is not a rate, whatever it divides by.
+		return false
+	case reasonNoVolume:
+		// Nothing tested the figure, so the band never vouched for it.
+		return false
+	case reasonOIShort, reasonWarmingUp, reasonNoOI, reasonFetchError:
+		// The denominator is not the 24h book, or is not there at all.
+		return false
+	case reasonPartial:
+		// The numerator is missing its oldest part by a known amount.
+		return false
+	}
+	// Ranked, an honest zero, a real flow below the notional floor, and a
+	// share outside the band all divide a real 24h numerator by a real 24h
+	// book. They publish, and the board orders them or does not.
+	return true
 }

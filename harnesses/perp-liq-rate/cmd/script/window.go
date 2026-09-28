@@ -200,6 +200,15 @@ func (w *SlidingWindow) NewestMs() int64 {
 	return newest
 }
 
+// Entries returns a copy of the entries held, for persisting the window.
+func (w *SlidingWindow) Entries() []windowEntry {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	out := make([]windowEntry, len(w.entries))
+	copy(out, w.entries)
+	return out
+}
+
 // Len returns the number of entries currently inside the window.
 func (w *SlidingWindow) Len() int {
 	w.mu.Lock()
@@ -286,6 +295,31 @@ func (s *SampleWindow) Max() float64 {
 		}
 	}
 	return max
+}
+
+// Samples returns a copy of the readings held, for persisting the window.
+func (s *SampleWindow) Samples() []windowEntry {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	out := make([]windowEntry, len(s.samples))
+	copy(out, s.samples)
+	return out
+}
+
+// Bounds returns the oldest and newest reading timestamps and the count, so a
+// caller can tell whether the window yet covers the span it is divided over.
+func (s *SampleWindow) Bounds() (oldestMs, newestMs int64, n int) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for i, e := range s.samples {
+		if i == 0 || e.tsMs < oldestMs {
+			oldestMs = e.tsMs
+		}
+		if e.tsMs > newestMs {
+			newestMs = e.tsMs
+		}
+	}
+	return oldestMs, newestMs, len(s.samples)
 }
 
 // Len returns how many readings the window holds.

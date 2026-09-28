@@ -10,7 +10,7 @@ import (
 // own 24h traded notional, so the gate is tested on the field it was built
 // for rather than on invented numbers.
 func TestEvaluateRank_MeasuredField(t *testing.T) {
-	base := rankInput{hasSource: true, fetchOK: true, oiSamples: minOISamples, peakOIUSD: 1, hasVolume: true}
+	base := rankInput{hasSource: true, fetchOK: true, oiSamples: minOISamples, peakOIUSD: 1, hasVolume: true, oiSpansWindow: true}
 	with := func(liq, vol float64) rankInput {
 		in := base
 		in.liqUSD24h, in.volUSD24h = liq, vol
@@ -77,7 +77,7 @@ func TestEvaluateRank_MeasuredField(t *testing.T) {
 
 func TestEvaluateRank_StructuralRefusals(t *testing.T) {
 	good := rankInput{hasSource: true, fetchOK: true, oiSamples: minOISamples, liqUSD24h: 1e6,
-		peakOIUSD: 1e8, volUSD24h: 1e9, hasVolume: true}
+		peakOIUSD: 1e8, volUSD24h: 1e9, hasVolume: true, oiSpansWindow: true}
 	if ranked, reason := evaluateRank(good); !ranked || reason != reasonRanked {
 		t.Fatalf("baseline should rank, got (%v, %s)", ranked, reason)
 	}
@@ -91,6 +91,7 @@ func TestEvaluateRank_StructuralRefusals(t *testing.T) {
 		{"fetch failed", func(in *rankInput) { in.fetchOK = false }, reasonFetchError},
 		{"window read short", func(in *rankInput) { in.partialWindow = true }, reasonPartial},
 		{"too few OI readings", func(in *rankInput) { in.oiSamples = minOISamples - 1 }, reasonWarmingUp},
+		{"oi window shorter than the numerator", func(in *rankInput) { in.oiSpansWindow = false }, reasonOIShort},
 		{"no open interest", func(in *rankInput) { in.peakOIUSD = 0 }, reasonNoOI},
 		{"no volume endpoint", func(in *rankInput) { in.hasVolume = false }, reasonNoVolume},
 		{"volume endpoint read zero", func(in *rankInput) { in.volUSD24h = 0 }, reasonNoVolume},
@@ -110,7 +111,7 @@ func TestEvaluateRank_StructuralRefusals(t *testing.T) {
 // A venue with no volume denominator is refused before the band is consulted,
 // so a missing denominator can never be read as a passing share of zero.
 func TestEvaluateRank_ShareIsZeroWithoutDenominator(t *testing.T) {
-	in := rankInput{hasSource: true, fetchOK: true, oiSamples: minOISamples, liqUSD24h: 5e6, peakOIUSD: 1e8}
+	in := rankInput{hasSource: true, fetchOK: true, oiSamples: minOISamples, liqUSD24h: 5e6, peakOIUSD: 1e8, oiSpansWindow: true}
 	if got := in.shareOfVolumePct(); got != 0 {
 		t.Fatalf("share = %v, want 0 with no denominator", got)
 	}
@@ -221,5 +222,36 @@ func TestSampleWindowPrunesOnAdd(t *testing.T) {
 	}
 	if got := s.Mean(); math.Abs(got-10) > 1e-9 {
 		t.Fatalf("Mean = %v, want 10", got)
+	}
+}
+
+// An unranked row still renders its headline figure, so a refusal that means
+// the ratio describes nothing has to withhold the ratio and not merely set
+// perp_liq_ranked to 0. Gains ETH published 952% while unranked for
+// single_event_is_the_window, against a peak open interest that covered the
+// quiet hour after the cascade rather than the book the cascade liquidated.
+func TestRateIsMeaningful(t *testing.T) {
+	withheld := []rankReason{
+		reasonSingleEvent, reasonNoVolume, reasonOIShort,
+		reasonWarmingUp, reasonNoOI, reasonFetchError, reasonPartial,
+	}
+	for _, r := range withheld {
+		if rateIsMeaningful(r) {
+			t.Errorf("%s publishes a rate it cannot defend", r)
+		}
+	}
+	// These divide a real 24h numerator by a real 24h book. The board may
+	// refuse to order them, and the figure is still a figure.
+	kept := []rankReason{
+		reasonRanked, reasonZero, reasonTooSmall,
+		reasonBelowFloor, reasonAboveCeiling, reasonNoSource,
+	}
+	for _, r := range kept {
+		if r == reasonNoSource {
+			continue // no source publishes no rate at all, upstream of this
+		}
+		if !rateIsMeaningful(r) {
+			t.Errorf("%s withholds a rate that is sound", r)
+		}
 	}
 }

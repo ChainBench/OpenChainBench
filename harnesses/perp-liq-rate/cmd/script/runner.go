@@ -56,7 +56,7 @@ func newPairState() *pairState {
 // succeeded so the caller can advance sinceMs and aggregate venue health.
 // On a fetch error the previously published gauges are intentionally left
 // untouched.
-func runTick(va VenueAsset, st *pairState, sinceMs int64) bool {
+func runTick(va VenueAsset, st *pairState, sinceMs int64, tick time.Duration) bool {
 	now := time.Now()
 	nowMs := now.UnixMilli()
 	cutoffMs := nowMs - windowSpan.Milliseconds()
@@ -168,6 +168,10 @@ func runTick(va VenueAsset, st *pairState, sinceMs int64) bool {
 	// class of artifact on the page as the latest reading.
 	st.oi.Prune(nowMs)
 	peakOI, meanOI := st.oi.Max(), st.oi.Mean()
+	// The peak is only the 24h peak once the readings cover 24 hours. Until
+	// then it is the peak of a shorter span, and after a book collapses that
+	// is a denominator far below the one the numerator belongs to.
+	oiSpans := oiSpansWindow(st.oi, nowMs, tick)
 	oiReady := st.oi.Len() >= minOISamples
 	if oiReady && peakOI > 0 {
 		liqOpenInterestPeak.WithLabelValues(va.Venue, va.Asset).Set(peakOI)
@@ -186,9 +190,6 @@ func runTick(va VenueAsset, st *pairState, sinceMs int64) bool {
 	if hasLiqSource && liqErr == nil {
 		volume = st.window.Sum()
 		setLiqVolume(va.Venue, va.Asset, volume)
-		if oiReady && peakOI > 0 {
-			liqRate.WithLabelValues(va.Venue, va.Asset).Set(volume / peakOI * 100)
-		}
 		if newest := st.window.NewestMs(); newest > 0 {
 			liqNewestAge.WithLabelValues(va.Venue, va.Asset).Set(float64(nowMs-newest) / 1000)
 		}
@@ -225,6 +226,7 @@ func runTick(va VenueAsset, st *pairState, sinceMs int64) bool {
 		hasVolume:       hasVolSource,
 		hasEventDetail:  !st.noEventDetail,
 		largestEventPct: largestShare,
+		oiSpansWindow:   oiSpans,
 	}
 	// The share is republished only when both sides were read this tick. On
 	// a failed fetch it keeps its last good value, the rule every gauge
@@ -237,6 +239,15 @@ func runTick(va VenueAsset, st *pairState, sinceMs int64) bool {
 	}
 	ranked, reason := evaluateRank(in)
 	setRanked(va.Venue, va.Asset, ranked)
+
+	// The ratio is published only when the row's verdict leaves it meaning
+	// something. Every input above publishes either way; this is the one
+	// figure a reader would take at face value without reading the reason.
+	if hasLiqSource && liqErr == nil && oiReady && peakOI > 0 && rateIsMeaningful(reason) {
+		liqRate.WithLabelValues(va.Venue, va.Asset).Set(volume / peakOI * 100)
+	} else {
+		liqRate.DeleteLabelValues(va.Venue, va.Asset)
+	}
 	if !ranked {
 		log.Printf("[%s/%s] not ranked: %s (liq24h=$%.2f peakOI=$%.2f meanOI=$%.2f vol24h=$%.2f share=%.5f%% largest=%.1f%%)",
 			va.Venue, va.Asset, reason, volume, peakOI, meanOI, vol, in.shareOfVolumePct(), largestShare)

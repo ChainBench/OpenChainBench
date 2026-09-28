@@ -24,7 +24,11 @@ type Config struct {
 	TickInterval time.Duration
 	ListenAddr   string
 	RPCBase      string
-	Pairs        []VenueAsset
+	// StatePath is where the 24h windows are kept so a restart does not
+	// start them empty. Empty disables persistence and the harness runs as
+	// it did before, forgetting on restart.
+	StatePath string
+	Pairs     []VenueAsset
 }
 
 const (
@@ -32,6 +36,7 @@ const (
 	defaultListenAddr  = ":2112"
 	defaultRPCBase     = "https://mainnet.base.org"
 	defaultRPCArbitrum = "https://arb1.arbitrum.io/rpc"
+	defaultStatePath   = "/state/perp-liq-windows.json"
 )
 
 // loadConfig reads environment variables and builds the venue registry.
@@ -60,6 +65,13 @@ func loadConfig() (*Config, error) {
 	listen := os.Getenv("LISTEN_ADDR")
 	if listen == "" {
 		listen = defaultListenAddr
+	}
+
+	// STATE_PATH="" turns persistence off on purpose; unset takes the
+	// default, which is a mounted volume in the deployed container.
+	statePath := defaultStatePath
+	if v, ok := os.LookupEnv("STATE_PATH"); ok {
+		statePath = v
 	}
 
 	hyperliquid := NewHyperliquid()
@@ -129,6 +141,7 @@ func loadConfig() (*Config, error) {
 		TickInterval: time.Duration(tickSeconds) * time.Second,
 		ListenAddr:   listen,
 		RPCBase:      rpcBase,
+		StatePath:    statePath,
 		Pairs:        pairs,
 	}, nil
 }
