@@ -165,20 +165,18 @@ const (
 	// up exactly; the slack is for nothing but a rounding unit.
 	gainsResizeSumTol = 0.005
 
-	// The event encodes the position twice: collateralAmount x leverage in
-	// collateral units, and positionSizeToken x openPrice in index-token
-	// units. They are written by the contract independently, so requiring
+	// The event encodes the position twice, both times in collateral units:
+	// collateralAmount x leverage, and positionSizeToken x openPrice (the
+	// contract stores the size divided by the open price, so multiplying it
+	// back returns collateral units for every collateral, stablecoin or
+	// not). They are written by the contract independently, so requiring
 	// them to agree pins every scale factor in the decode at once. A word
 	// offset off by one, or a leverage read at 1e18 instead of 1e3, moves
 	// one side by orders of magnitude and the log is refused rather than
-	// published. The two agreed to 0.02% on the two 2026-09-26 ETH
-	// liquidations and to 0.01% on a 19x TAO close, so the tolerance is
+	// published. The two agreed to 0.01% on the golden USDC liquidation and
+	// to the unit on a real WETH-collateral ETH leg, so the tolerance is
 	// slack enough for the fee accrual that separates them.
 	gainsSizeCrossCheckTol = 0.05
-	// For collateral that is not a stablecoin the two encodings legitimately
-	// differ by the collateral's move since open; a scale error is still
-	// orders of magnitude, so this catches it without refusing a real close.
-	gainsSizeCrossCheckTolVolatile = 0.50
 )
 
 // gainsExecKind names which diamond event a decoded leg came from.
@@ -638,17 +636,17 @@ func decodeGainsTradeLeg(lg ethLog, kind gainsExecKind, decimals map[uint64]int)
 	collateral := new(big.Float).SetInt(word(gainsWordCollateralAmount))
 	price := new(big.Float).SetInt(word(colPriceWord))
 	scale := new(big.Float).SetInt(new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(dec)), nil))
-	notional := new(big.Float).Quo(collateral, scale)
-	notional.Mul(notional, leverage)
-	notional.Quo(notional, big.NewFloat(1e3))
-	notional.Mul(notional, price)
-	notional.Quo(notional, big.NewFloat(1e8))
-	n, _ := notional.Float64()
-	if n <= 0 || n > gainsMaxSingleNotionalUSD {
-		return gainsExecution{}, false, fmt.Errorf("implausible notional %.2f", n)
-	}
-	// Second, independent reading of the same position size. A zero here is
-	// itself a refusal: it means the size or price word is not where the
+	// The position size in collateral units: collateralAmount x leverage.
+	sizeCol := new(big.Float).Quo(collateral, scale)
+	sizeCol.Mul(sizeCol, leverage)
+	sizeCol.Quo(sizeCol, big.NewFloat(1e3))
+	sizeColF, _ := sizeCol.Float64()
+
+	// Second, independent reading of the same position size, also in
+	// collateral units: the contract writes positionSizeToken as the size
+	// divided by the open price, so multiplying the two back gives the
+	// position in collateral units whatever the collateral is. A zero here
+	// is itself a refusal: it means the size or price word is not where the
 	// layout says, which is exactly the drift the check exists to catch.
 	sizeToken := new(big.Float).Quo(new(big.Float).SetInt(word(gainsWordPositionSizeToken)), big.NewFloat(1e18))
 	openPrice := new(big.Float).Quo(new(big.Float).SetInt(word(gainsWordOpenPrice)), big.NewFloat(1e10))
@@ -656,25 +654,28 @@ func decodeGainsTradeLeg(lg ethLog, kind gainsExecKind, decimals map[uint64]int)
 	if alt <= 0 {
 		return gainsExecution{}, false, fmt.Errorf("position size cross-check unavailable: positionSizeToken x openPrice = %.2f", alt)
 	}
-	// n carries the collateral's USD price at execution; alt carries the
-	// index price at open. For a stablecoin those agree, so the two
-	// encodings do too, to a fraction of a percent. For WETH or GNS
-	// collateral the gap is the collateral's own move since open, which on a
-	// liquidation can be tens of percent. A scale or offset error moves one
-	// side by orders of magnitude, so a loose bound still catches it there.
-	tol := gainsSizeCrossCheckTol
-	colPx, _ := new(big.Float).Quo(price, big.NewFloat(1e8)).Float64()
-	if colPx < 0.98 || colPx > 1.02 {
-		tol = gainsSizeCrossCheckTolVolatile
-	}
-	diff := (n - alt) / alt
+	// Both sides are in collateral units, so the collateral's USD price
+	// cancels and one tolerance covers every collateral. Comparing the USD
+	// figure against the collateral-unit one instead, as this did until
+	// 2026-09-28, refused every WETH-collateral leg by a factor of the ETH
+	// price: 56 real legs in 24h, including ETH ones this bench publishes.
+	diff := (sizeColF - alt) / alt
 	if diff < 0 {
 		diff = -diff
 	}
-	if diff > tol {
+	if diff > gainsSizeCrossCheckTol {
 		return gainsExecution{}, false, fmt.Errorf(
-			"position size disagrees: collateral x leverage = %.2f, positionSizeToken x openPrice = %.2f (%.1f%% apart, tolerance %.0f%%)",
-			n, alt, diff*100, tol*100)
+			"position size disagrees: collateral x leverage = %.6f, positionSizeToken x openPrice = %.6f (%.1f%% apart, both in collateral units)",
+			sizeColF, alt, diff*100)
+	}
+
+	// USD only now that the size is agreed, at the collateral's price on
+	// execution.
+	notional := new(big.Float).Mul(sizeCol, price)
+	notional.Quo(notional, big.NewFloat(1e8))
+	n, _ := notional.Float64()
+	if n <= 0 || n > gainsMaxSingleNotionalUSD {
+		return gainsExecution{}, false, fmt.Errorf("implausible notional %.2f", n)
 	}
 	blockNum, err := parseHexUint(lg.BlockNumber)
 	if err != nil {
