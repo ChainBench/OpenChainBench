@@ -119,6 +119,12 @@ perp_realized_vol_24h_pct{chain}
   Restored liquidation keys go back into the `SeenSet`, so a source that
   re-reports them cannot double count. An unset or unwritable path is a
   degraded mode, logged once, not a failure.
+  Deploying: the image runs as `perpliq` (uid 1000), so the mounted volume
+  has to be writable by it. `docker run ... -v /data/state/perp-liq:/state`
+  plus `chown 1000:1000` on the host directory; a root-owned volume logs
+  `[oi-state] cannot write ... permission denied` once and the harness runs
+  on without persistence, which is the mode this replaces rather than a
+  crash.
 - **A refused row can lose its rate, not just its rank.** An unranked row
   still renders its headline figure, so `rateIsMeaningful` in
   `plausibility.go` deletes `perp_liq_rate_24h_pct` when the reason means the
