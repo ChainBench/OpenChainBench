@@ -443,7 +443,20 @@ func (g *Gains) scan() error {
 		g.mu.Unlock()
 		return nil
 	}
+	return g.foldRange(from, latest, now, true)
+}
 
+// scanRange folds an explicit block range into the buffer without moving the
+// cursor or pruning, so a past window can be audited against the venue's own
+// figure for the same window. Used by the live audit test only.
+func (g *Gains) scanRange(from, to uint64) error {
+	return g.foldRange(from, to, time.Now(), false)
+}
+
+// foldRange reads the diamond's execution logs over [from, to] and folds them
+// into the buffer. commit moves the cursor, prunes the window and stamps the
+// scan; an audit of a past range does none of that.
+func (g *Gains) foldRange(from, latest uint64, now time.Time, commit bool) error {
 	decimals, err := g.collateralDecimals()
 	if err != nil {
 		return err
@@ -493,8 +506,14 @@ func (g *Gains) scan() error {
 	// Commit only after the full range succeeded, so a failed scan is
 	// retried from the same cursor next time. The buffer keeps the window
 	// plus the runner's fetch overlap; the runner drops anything older.
-	keepFromMs := now.Add(-(windowSpan + liqFetchOverlap)).UnixMilli()
 	g.mu.Lock()
+	defer g.mu.Unlock()
+	if !commit {
+		// An audit of a past range: keep what it read and touch nothing else.
+		g.execs = append(g.execs, found...)
+		return nil
+	}
+	keepFromMs := now.Add(-(windowSpan + liqFetchOverlap)).UnixMilli()
 	kept := g.execs[:0]
 	for _, e := range g.execs {
 		if e.tsMs >= keepFromMs {
@@ -509,7 +528,6 @@ func (g *Gains) scan() error {
 		g.cursor = latest
 	}
 	g.scannedAt = now
-	g.mu.Unlock()
 	return nil
 }
 

@@ -149,7 +149,25 @@ perp_realized_vol_24h_pct{chain}
   the Gains backend's own auto-plus-direct perimeter. Logs are placed on the
   clock by interpolating between the headers at both ends of the range.
   `go test -tags live -run TestLive_GainsVolume` prints the scan next to the
-  backend's volume-mix.
+  backend's volume-mix, and `TestLive_GainsVolumeAudit` (with
+  `GAINS_FROM_BLOCK` / `GAINS_TO_BLOCK`, optionally `GAINS_CHAIN=base`) lists
+  every leg of a fixed block range grouped by pair, fails on any key counted
+  twice anywhere in the window, and prints both endpoint header timestamps so
+  the window a figure describes is on the record rather than inferred from a
+  nominal block time.
+- **The Gains perimeter is Arbitrum plus Base**, and all three of its figures
+  are read on it: liquidations, open interest and traded notional. So the row
+  is internally consistent and smaller than the venue as a whole, which also
+  trades on Polygon, MegaETH and ApeChain. Audited over the complete UTC day
+  2026-09-27 (both ranges verified at 24.00 h from their endpoint headers):
+  $26,267,342 on Arbitrum across 88 pairs and $1,075,396 on Base across 74,
+  against the Gains backend's $34,760,896 for every chain, so 79% of the
+  venue, with no key counted twice in either window. Per asset, summing both
+  deployments: BTC $15,125,974 and ETH $1,941,932; on Arbitrum alone BTC is
+  57.4% of the day and ETH 7.3%. Comparing this row with
+  a venue-level figure from elsewhere needs the same day as well as the same
+  chains: the venue's own backend reports $34.8M for 2026-09-27 and $210.8M
+  for 2026-09-28, a cascade day.
 
 ## Venues checked and not added
 

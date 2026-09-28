@@ -191,6 +191,23 @@ func (g *GMX) marketAsset() (map[string]string, error) {
 	return out, nil
 }
 
+// trackedMarketTokens returns the market token addresses of the assets this
+// source publishes, in the casing the markets endpoint reports them, which is
+// the casing the squid stores.
+func (g *GMX) trackedMarketTokens() ([]string, error) {
+	markets, err := g.fetchMarkets()
+	if err != nil {
+		return nil, err
+	}
+	out := make([]string, 0, 8)
+	for _, m := range markets {
+		if gmxTrackedAssets[gmxIndexToken(m.Name)] {
+			out = append(out, m.MarketToken)
+		}
+	}
+	return out, nil
+}
+
 // gmxIndexToken is the index token of a market name: the part before the
 // first separator, under the same rule gmxAssetMatches applies for OI, so the
 // numerator, the denominator and the open interest cover one market set.
@@ -272,10 +289,21 @@ func (g *GMX) FetchVolume24hUSD(asset string) (float64, error) {
 	// put a normal day (a few thousand rows) a small multiple under the
 	// 10,000-row cap, so a busy day refused the sum and unranked GMX, on
 	// exactly the days this bench is about.
-	markets := make([]string, 0, 8)
-	for token, a := range byMarket {
-		if gmxTrackedAssets[a] {
-			markets = append(markets, `"`+token+`"`)
+	//
+	// Both spellings of each address go into the filter. marketAddress_in is
+	// an exact string match and the two sources disagree on case: the squid
+	// stores EIP-55 checksummed addresses and this map is keyed lowercase.
+	// Sending only the lowercase form matched nothing, which silently left
+	// both GMX rows with no volume denominator at all.
+	tracked, terr := g.trackedMarketTokens()
+	if terr != nil {
+		return 0, terr
+	}
+	markets := make([]string, 0, 16)
+	for _, token := range tracked {
+		markets = append(markets, `"`+token+`"`)
+		if lower := strings.ToLower(token); lower != token {
+			markets = append(markets, `"`+lower+`"`)
 		}
 	}
 	if len(markets) == 0 {
