@@ -86,8 +86,9 @@ methodology:
   - "Headline: the latest trailing-24h reading. Averaging a trailing-24h gauge over a further 24h would weight two days and peak a day late, so p50 and mean are last_over_time over the past hour; p90 and p99 keep the day's range. perp_liq_newest_event_age_seconds says how long ago each row's feed last reported a liquidation."
   - "Denominator: the peak open interest over the same 24 hours, published as perp_liq_open_interest_peak_24h_usd with the mean beside it. An instantaneous denominator made the rate move with open interest (Gains read 343% on 2026-09-24 as its book fell from 37M to 7.3M dollars), and the mean still read 251% on 2026-09-28 when Gains ETH fell from 43.7M to 2.1M. The peak is the largest book observed; against it that day reads 62%. Above 100% is turnover, positions opened and closed inside the window."
   - "Ranking: a row ranks only when at least 10,000 dollars was liquidated, no single liquidation is more than half of the figure (rows with per-event detail), and the figure is between 0.01% and 3% of the venue's own 24h traded notional, from the venue's API or, for GMX and Gains, the same indexer or contract logs as the liquidations. Published per row as perp_liq_share_of_volume_pct and perp_liq_largest_event_share_pct; perp_liq_ranked carries the verdict."
-  - "What the rate is and is not. It is the share of a venue's book closed by force, in notional. It is not the money traders lost, and it is not neutral to leverage: a 100x position counts at 100 times the margin behind it, in the numerator and in open interest. On 2026-09-28 Gains liquidated 39.5M dollars of notional on 423k of collateral, median leverage 73x. Where the source exposes the position behind the fill, perp_liq_collateral_24h_usd and perp_liq_median_leverage_x publish beside it."
-  - "Collateral coverage: Gains reads it from the Trade tuple on chain. Ostium's subgraph trade carries collateral and leverage, the GMX squid carries initialCollateralDeltaAmount and a collateral price, and Orderly reports account-level collateral_value; none of those three is read yet. Hyperliquid, dYdX, Paradex, Lighter, Aster and Nado feeds carry size and price only, so the headline stays notional, which every venue can be measured on, and the leverage panel says where it is not comparable."
+  - "What the rate is and is not. It is the share of a venue's book closed by force, in notional. It is not the money traders lost, and not neutral to leverage: a 100x position counts at 100 times its margin, in the numerator and in open interest. On 2026-09-28 Gains liquidated 39.5M dollars of notional on 423k of collateral at a median 73x. Where this harness reads the position behind the fill, today Gains alone, perp_liq_collateral_24h_usd and perp_liq_median_leverage_x publish beside it."
+  - "Collateral coverage, measured across all eleven venues on 2026-09-28. Available: Gains (Trade tuple on chain, published today), Ostium (subgraph trade.collateral and trade.leverage) and GMX v2 (initialCollateralDeltaAmount x collateralTokenPriceMin on the liquidation row); the last two are reachable and not read yet. Partial: Orderly, whose collateral_value is account-level, cross-margin and the collateral remaining rather than the margin posted."
+  - "Not available, structurally: Hyperliquid's 0xArchive feed carries price, size, closed_pnl and the liquidated address but no margin; dYdX and Paradex tapes carry size and price; Lighter and Aster come through hourly aggregate buckets with no positions in them at all; Nado publishes one cumulative counter per window. Six of the ten feeds therefore cannot carry collateral, which is why the ranked column is notional and collateral is an annotation on the rows that have one."
   - "Why the size gates exist: on 2026-09-28 Ostium BTC sat inside the band at 0.458% on 338 dollars from a single liquidation, above Hyperliquid and GMX, while dYdX BTC sat outside it on 537 dollars from a single liquidation. A share of volume cannot tell a flow from an event; the notional floor and the largest-event ceiling can."
   - "Rows outside the gate keep every figure they measured and sit below the ranked field. Nothing is hidden and nothing is estimated to fill a gap."
   - "An exact zero never ranks. A zero reads the same whether the venue liquidated nothing or its feed returned nothing, so it is published as an observation and not as a best value."
@@ -193,14 +194,16 @@ metric_panels:
     metric: perp_liq_collateral_24h_usd{}
     unit: usd
     higher_is_better: false
-    description: "The margin behind the liquidated positions: the money traders actually lost, as opposed to the notional closed. Only where the source exposes the position behind the fill (Gains, on chain). Gains liquidated 39.5M of notional on 423k of collateral on 2026-09-28."
+    tab: false
+    description: "The margin behind the liquidated positions: the money traders lost, not the notional closed. An annotation on the rows whose feed carries the position, not a ranking: only Gains publishes it today and six of the ten feeds cannot carry it. Gains: 39.5M of notional on 423k of collateral, 2026-09-28."
   - id: median_leverage
     label: Median leverage
     label_key: venue
     metric: perp_liq_median_leverage_x{}
     unit: x
     higher_is_better: false
-    description: "Median leverage of the positions liquidated in the window, as a multiple, where the source exposes it. The rate above counts a 100x position at 100 times its margin, so two venues with similar rates and different leverage are not comparable."
+    tab: false
+    description: "Median leverage of the positions liquidated in the window, where this harness reads it, which today is Gains alone. An annotation, not a ranking: the rate above counts a 100x position at 100 times its margin, so two venues with similar rates and different leverage are not the same product."
   - id: oi_peak
     label: Peak OI 24h
     label_key: venue
