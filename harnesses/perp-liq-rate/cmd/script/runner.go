@@ -35,6 +35,10 @@ type pairState struct {
 	// does not rank while the edge is inside the window, and the edge clears
 	// once it has aged out.
 	unreadBeforeMs int64
+	// oiHeadDisagrees is set when the reconstructed curve stopped matching the
+	// book the venue reports now, so the row publishes its figures and does
+	// not rank on a denominator that has drifted.
+	oiHeadDisagrees bool
 	// oiFromHistory is set once the open-interest window has been rebuilt
 	// from the venue's own record of the book rather than accumulated from
 	// this process's own readings. Such a window needs no warm-up.
@@ -190,7 +194,13 @@ func runTick(va VenueAsset, st *pairState, sinceMs int64, tick time.Duration) bo
 			if len(entries) > 0 {
 				st.oi.ReplaceAll(entries)
 				st.oiFromHistory = true
-				_, _ = checkOIHead(va.Venue, va.Asset, readings, oi)
+				if _, agrees := checkOIHead(va.Venue, va.Asset, readings, oi); agrees {
+					st.oiHeadDisagrees = false
+				} else if oi > 0 {
+					// Only a real head read can contradict the curve; a
+					// failed open-interest fetch already fails the tick.
+					st.oiHeadDisagrees = true
+				}
 			}
 		}
 	}
@@ -262,6 +272,7 @@ func runTick(va VenueAsset, st *pairState, sinceMs int64, tick time.Duration) bo
 		hasEventDetail:  !st.noEventDetail,
 		largestEventPct: largestShare,
 		oiSpansWindow:   oiSpans,
+		oiHeadAgrees:    !st.oiHeadDisagrees,
 	}
 	// The share is republished only when both sides were read this tick. On
 	// a failed fetch it keeps its last good value, the rule every gauge

@@ -10,7 +10,7 @@ import (
 // own 24h traded notional, so the gate is tested on the field it was built
 // for rather than on invented numbers.
 func TestEvaluateRank_MeasuredField(t *testing.T) {
-	base := rankInput{hasSource: true, fetchOK: true, oiSamples: minOISamples, peakOIUSD: 1, hasVolume: true, oiSpansWindow: true}
+	base := rankInput{hasSource: true, fetchOK: true, oiSamples: minOISamples, peakOIUSD: 1, hasVolume: true, oiSpansWindow: true, oiHeadAgrees: true}
 	with := func(liq, vol float64) rankInput {
 		in := base
 		in.liqUSD24h, in.volUSD24h = liq, vol
@@ -77,7 +77,7 @@ func TestEvaluateRank_MeasuredField(t *testing.T) {
 
 func TestEvaluateRank_StructuralRefusals(t *testing.T) {
 	good := rankInput{hasSource: true, fetchOK: true, oiSamples: minOISamples, liqUSD24h: 1e6,
-		peakOIUSD: 1e8, volUSD24h: 1e9, hasVolume: true, oiSpansWindow: true}
+		peakOIUSD: 1e8, volUSD24h: 1e9, hasVolume: true, oiSpansWindow: true, oiHeadAgrees: true}
 	if ranked, reason := evaluateRank(good); !ranked || reason != reasonRanked {
 		t.Fatalf("baseline should rank, got (%v, %s)", ranked, reason)
 	}
@@ -92,6 +92,7 @@ func TestEvaluateRank_StructuralRefusals(t *testing.T) {
 		{"window read short", func(in *rankInput) { in.partialWindow = true }, reasonPartial},
 		{"too few OI readings", func(in *rankInput) { in.oiSamples = minOISamples - 1 }, reasonWarmingUp},
 		{"oi window shorter than the numerator", func(in *rankInput) { in.oiSpansWindow = false }, reasonOIShort},
+		{"oi reconstruction drifted", func(in *rankInput) { in.oiHeadAgrees = false }, reasonOIDisagrees},
 		{"no open interest", func(in *rankInput) { in.peakOIUSD = 0 }, reasonNoOI},
 		{"no volume endpoint", func(in *rankInput) { in.hasVolume = false }, reasonNoVolume},
 		{"volume endpoint read zero", func(in *rankInput) { in.volUSD24h = 0 }, reasonNoVolume},
@@ -111,7 +112,7 @@ func TestEvaluateRank_StructuralRefusals(t *testing.T) {
 // A venue with no volume denominator is refused before the band is consulted,
 // so a missing denominator can never be read as a passing share of zero.
 func TestEvaluateRank_ShareIsZeroWithoutDenominator(t *testing.T) {
-	in := rankInput{hasSource: true, fetchOK: true, oiSamples: minOISamples, liqUSD24h: 5e6, peakOIUSD: 1e8, oiSpansWindow: true}
+	in := rankInput{hasSource: true, fetchOK: true, oiSamples: minOISamples, liqUSD24h: 5e6, peakOIUSD: 1e8, oiSpansWindow: true, oiHeadAgrees: true}
 	if got := in.shareOfVolumePct(); got != 0 {
 		t.Fatalf("share = %v, want 0 with no denominator", got)
 	}
@@ -232,7 +233,7 @@ func TestSampleWindowPrunesOnAdd(t *testing.T) {
 // quiet hour after the cascade rather than the book the cascade liquidated.
 func TestRateIsMeaningful(t *testing.T) {
 	withheld := []rankReason{
-		reasonSingleEvent, reasonNoVolume, reasonOIShort,
+		reasonSingleEvent, reasonNoVolume, reasonOIShort, reasonOIDisagrees,
 		reasonWarmingUp, reasonNoOI, reasonFetchError, reasonPartial,
 	}
 	for _, r := range withheld {

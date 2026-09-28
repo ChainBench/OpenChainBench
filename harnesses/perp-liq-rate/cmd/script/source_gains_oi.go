@@ -73,6 +73,7 @@ const (
 // gainsOiEvent is one decoded PairOiAfterV10Updated.
 type gainsOiEvent struct {
 	block           uint64
+	logIndex        uint64 // order within the block, which decides the end state
 	tsMs            int64
 	collateralIndex uint64
 	pairIndex       uint64
@@ -121,8 +122,19 @@ func decodeGainsPairOi(lg ethLog) (gainsOiEvent, error) {
 	if err != nil {
 		return gainsOiEvent{}, fmt.Errorf("blockNumber: %w", err)
 	}
+	// The log index is not decoration. Several collaterals can move in one
+	// block, every event in it carries the same timestamp, and the merge keeps
+	// one reading per timestamp, so without this the reading that survives is
+	// whichever the sort happened to leave last and the block's real end state
+	// can be dropped: a cascade block that ends at the low would not put that
+	// low in the trough.
+	logIdx, err := parseHexUint(lg.LogIndex)
+	if err != nil {
+		return gainsOiEvent{}, fmt.Errorf("logIndex: %w", err)
+	}
 	return gainsOiEvent{
 		block:           blockNum,
+		logIndex:        logIdx,
 		collateralIndex: new(big.Int).SetBytes(colBytes).Uint64(),
 		pairIndex:       new(big.Int).SetBytes(pairBytes).Uint64(),
 		newLong:         word(gainsOiWordNewLong),
@@ -276,11 +288,14 @@ func (g *Gains) FetchOIHistory(asset string, sinceMs int64) ([]oiReading, error)
 	prices := g.buildPriceSeries()
 	g.mu.Unlock()
 
+	// Chain order, which is (block, logIndex). Sorting by collateral index
+	// instead put same-block events in an arbitrary order, and sort.Slice is
+	// not stable, so the state a block contributed varied per tick.
 	sort.Slice(events, func(i, j int) bool {
 		if events[i].block != events[j].block {
 			return events[i].block < events[j].block
 		}
-		return events[i].collateralIndex < events[j].collateralIndex
+		return events[i].logIndex < events[j].logIndex
 	})
 
 	// The state each collateral held when the window opened.

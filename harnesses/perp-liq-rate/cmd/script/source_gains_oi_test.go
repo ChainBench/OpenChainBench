@@ -300,10 +300,16 @@ func TestCheckOIHead_ReportsTheGap(t *testing.T) {
 
 // stubOIHistory is a source whose open interest is a read history rather than
 // a snapshot, to prove the runner uses it and skips the warm-up.
-type stubOIHistory struct{ readings []oiReading }
+type stubOIHistory struct {
+	readings []oiReading
+	liveOI   float64 // 0 means "agree with the curve"
+}
 
 func (s *stubOIHistory) HasLiquidationSource() bool { return true }
 func (s *stubOIHistory) FetchOI(string) (float64, error) {
+	if s.liveOI > 0 {
+		return s.liveOI, nil
+	}
 	return s.readings[len(s.readings)-1].usd, nil
 }
 func (s *stubOIHistory) FetchVolume24hUSD(string) (float64, error) { return 500e6, nil }
@@ -379,5 +385,128 @@ func TestOnlyGainsImplementsOIHistory(t *testing.T) {
 	}
 	if !seen["gains"] {
 		t.Fatal("no gains pair was registered at all")
+	}
+}
+
+// Several collaterals can move in one block, every event in that block carries
+// the same timestamp, and the merge keeps one reading per timestamp. So the
+// state a block contributes is whichever event the sort leaves last, and the
+// sort has to be chain order, (block, logIndex), not something else.
+//
+// Sorting by collateral index instead was both wrong and unstable: the reading
+// that survived varied between ticks, so agreeing with a backfill on one day
+// would not have caught it. A cascade block that ends at the low would leave
+// that low out of the trough.
+func TestGainsOiOrdersByLogIndexWithinABlock(t *testing.T) {
+	// Two collaterals move in one block. USDC (3) goes last in log order and
+	// leaves the book at its low; WETH (2) moved earlier in the same block.
+	// A sort on collateral index would put WETH last and lose the low.
+	collaterals := []map[string]any{
+		gainsCollateral(3, "USDC", 6, 1.0, []map[string]any{
+			gainsPairOI("0", "0"), gainsPairOI("1000000000", "0")}),
+		// The head has to agree with the events: WETH holds the 5 units its
+		// event reports, or the head check would be failing the fixture
+		// rather than the ordering.
+		gainsCollateral(2, "WETH", 18, 1.0, []map[string]any{
+			gainsPairOI("0", "0"), gainsPairOI("5000000000000000000", "0")}),
+	}
+	tv := tvServer(t, tradingVarsBody(btcEthPairs, collaterals))
+	defer tv.Close()
+
+	oiEvent := func(collateral, logIndex, newLong string) map[string]any {
+		return map[string]any{
+			"address": gainsArbitrumDiamond,
+			"topics": []string{gainsPairOiTopic,
+				"0x" + collateral,
+				"0x0000000000000000000000000000000000000000000000000000000000000001"},
+			"data": gainsWords(
+				zeroWord, zeroWord, zeroWord, oneWord,
+				newLong,
+				zeroWord, zeroWord, zeroWord,
+			),
+			"blockNumber": "0x64", "transactionHash": "0xsameblock", "logIndex": logIndex,
+		}
+	}
+	logs := []map[string]any{
+		// WETH (collateral 2) at log index 1, holding 5 units.
+		oiEvent("0000000000000000000000000000000000000000000000000000000000000002",
+			"0x1", "0000000000000000000000000000000000000000000000004563918244f40000"),
+		// USDC (collateral 3) at log index 2, the block's last word: 1,000.
+		oiEvent("0000000000000000000000000000000000000000000000000000000000000003",
+			"0x2", "000000000000000000000000000000000000000000000000000000003b9aca00"),
+	}
+	srv := mockRPCServer(t, "0x64", logs)
+	defer srv.Close()
+
+	g := NewGainsArbitrum(srv.URL)
+	g.tradingVarsURL = tv.URL
+	g.lookbackBlocks = 20
+	g.maxLogRange = 2000
+
+	since := time.Now().Add(-windowSpan).UnixMilli()
+	hist, err := g.FetchOIHistory("ETH", since)
+	if err != nil {
+		t.Fatalf("history: %v", err)
+	}
+
+	g.mu.Lock()
+	events := make([]gainsOiEvent, 0, len(g.oiEvents))
+	for _, e := range g.oiEvents {
+		if e.pairIndex == 1 {
+			events = append(events, e)
+		}
+	}
+	g.mu.Unlock()
+	if len(events) != 2 {
+		t.Fatalf("got %d oi events, want 2", len(events))
+	}
+	for _, e := range events {
+		if e.logIndex == 0 {
+			t.Fatalf("collateral %d carries no log index", e.collateralIndex)
+		}
+	}
+
+	// The head of the curve must be the state after the block's *last* event,
+	// which is USDC's 1,000 plus WETH's 5.
+	head := hist[len(hist)-1].usd
+	if head < 1004.9 || head > 1005.1 {
+		t.Fatalf("head = %.4f, want 1005 (the block's end state)", head)
+	}
+	// And it agrees with what the venue reports, which is the check that makes
+	// the whole series trustworthy.
+	live, err := g.FetchOI("ETH")
+	if err != nil {
+		t.Fatalf("FetchOI: %v", err)
+	}
+	if diff := head - live; diff > 0.01 || diff < -0.01 {
+		t.Fatalf("head %.4f against FetchOI %.4f", head, live)
+	}
+}
+
+// A curve that has drifted from the book the venue reports must not rank, even
+// though its figures still publish. Ignoring the head check's verdict left the
+// denominator setting the rate while the mismatch counter ticked every tick.
+func TestRunTick_ADriftedCurveDoesNotRank(t *testing.T) {
+	now := time.Now().UnixMilli()
+	hour := int64(3600 * 1000)
+	// The history says the book is 40M; the venue says it is 5M.
+	src := &stubOIHistory{readings: []oiReading{
+		{tsMs: now - 20*hour, usd: 40e6},
+		{tsMs: now, usd: 40e6},
+	}, liveOI: 5e6}
+	va := VenueAsset{Venue: "stubdrift", Asset: "ETH", Source: src}
+	st := newPairState()
+	runTick(va, st, now-windowSpan.Milliseconds(), 5*time.Minute)
+	if !st.oiHeadDisagrees {
+		t.Fatal("an 8x disagreement between the curve and the venue was not noticed")
+	}
+	in := rankInput{hasSource: true, fetchOK: true, oiSamples: minOISamples, oiSpansWindow: true,
+		oiHeadAgrees: !st.oiHeadDisagrees, peakOIUSD: 40e6, liqUSD24h: 1e6,
+		volUSD24h: 1e9, hasVolume: true}
+	if ranked, reason := evaluateRank(in); ranked || reason != reasonOIDisagrees {
+		t.Fatalf("got (%v, %s), want (false, %s)", ranked, reason, reasonOIDisagrees)
+	}
+	if rateIsMeaningful(reasonOIDisagrees) {
+		t.Fatal("a rate on a drifted denominator should be withheld")
 	}
 }

@@ -411,7 +411,8 @@ func isRangeTooWide(err error) bool {
 	msg := strings.ToLower(err.Error())
 	for _, s := range []string{
 		"-32614", "range is too large", "block range too large", "exceed maximum block range",
-		"query returned more than", "too many blocks", "limit exceeded", "range too wide",
+		"query returned more than", "too many blocks", "range too wide",
+		"block range is too wide", "logs matched by query exceeds",
 	} {
 		if strings.Contains(msg, s) {
 			return true

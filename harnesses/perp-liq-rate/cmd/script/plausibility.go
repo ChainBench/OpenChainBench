@@ -80,6 +80,7 @@ const (
 	reasonPartial      rankReason = "window_read_short"
 	reasonWarmingUp    rankReason = "warming_up"
 	reasonOIShort      rankReason = "oi_window_shorter_than_numerator"
+	reasonOIDisagrees  rankReason = "oi_reconstruction_disagrees"
 	reasonNoOI         rankReason = "no_open_interest"
 	reasonNoVolume     rankReason = "no_volume_denominator"
 	reasonZero         rankReason = "no_liquidations_observed"
@@ -96,6 +97,11 @@ type rankInput struct {
 	// partialWindow is set while the window is missing its oldest part
 	// because a page cap cut a read short; the numerator is real and low.
 	partialWindow bool
+	// oiHeadAgrees is false when a reconstructed open-interest curve no longer
+	// matches the book the venue reports now. The curve is the denominator, so
+	// a curve that has drifted is the one thing that would make this worse
+	// than the snapshots it replaced.
+	oiHeadAgrees bool
 	// oiSpansWindow is false while the open-interest readings cover less
 	// than the span the numerator covers, so their peak is the peak of a
 	// shorter period. Dividing a full 24h of liquidations by it is how Gains
@@ -138,6 +144,8 @@ func evaluateRank(in rankInput) (bool, rankReason) {
 		return false, reasonWarmingUp
 	case !in.oiSpansWindow:
 		return false, reasonOIShort
+	case !in.oiHeadAgrees:
+		return false, reasonOIDisagrees
 	case in.liqUSD24h <= 0:
 		// A zero is unfalsifiable as a best value: it reads identically
 		// whether the venue liquidated nothing or the feed returned
@@ -179,7 +187,7 @@ func rateIsMeaningful(reason rankReason) bool {
 	case reasonNoVolume:
 		// Nothing tested the figure, so the band never vouched for it.
 		return false
-	case reasonOIShort, reasonWarmingUp, reasonNoOI, reasonFetchError:
+	case reasonOIShort, reasonOIDisagrees, reasonWarmingUp, reasonNoOI, reasonFetchError:
 		// The denominator is not the 24h book, or is not there at all.
 		return false
 	case reasonPartial:
