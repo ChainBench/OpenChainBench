@@ -82,12 +82,7 @@ func main() {
 		})
 		venues[va.Venue] = true
 	}
-	if cfg.StatePath == "" {
-		log.Printf("state: persistence disabled, the windows start empty and the rate waits a full span")
-	} else {
-		log.Printf("state: %s restored open interest for %s and liquidations for %s",
-			cfg.StatePath, fmtStateSummary(restoredOI), fmtStateSummary(restoredLiq))
-	}
+	state.logRestore(pairs, restoredOI, restoredLiq)
 
 	// Before the first tick completes, every venue is warming up.
 	for venue := range venues {

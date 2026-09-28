@@ -247,3 +247,50 @@ func fmtStateSummary(restored map[string]int) string {
 	}
 	return fmt.Sprintf("%d pair(s), %d reading(s)", pairs, samples)
 }
+
+// exists reports whether the store found a file to read at all, so the boot
+// log can say "absent" rather than report zero restored and leave an operator
+// to guess which of the two it was.
+func (s *oiStateStore) exists() bool {
+	if s.path == "" {
+		return false
+	}
+	_, err := os.Stat(s.path)
+	return err == nil
+}
+
+// logRestore prints one line per pair with what came back. Twenty-six lines at
+// boot is a lot, and it is still cheaper than the afternoon spent working out
+// by hand whether a restore had happened: a row that restored nothing while
+// the file held readings for it is visible here and nowhere else.
+func (s *oiStateStore) logRestore(pairs []*pairRuntime, oi, liq map[string]int) {
+	if s.path == "" {
+		log.Printf("state: persistence disabled (STATE_PATH empty); every window starts empty and the rate waits a full span")
+		return
+	}
+	if !s.exists() {
+		log.Printf("state: %s absent; every window starts empty, which is expected on a first deploy", s.path)
+		return
+	}
+	s.mu.Lock()
+	haveOi, haveLiq := len(s.onDisk), len(s.liq)
+	s.mu.Unlock()
+	log.Printf("state: %s holds %d open-interest window(s) and %d liquidation window(s); restored open interest for %s and liquidations for %s",
+		s.path, haveOi, haveLiq, fmtStateSummary(oi), fmtStateSummary(liq))
+	for _, p := range pairs {
+		key := oiStateKey(p.va.Venue, p.va.Asset)
+		s.mu.Lock()
+		onDisk := len(s.onDisk[key])
+		s.mu.Unlock()
+		switch {
+		case onDisk == 0:
+			log.Printf("state: %s had no open-interest readings on file", key)
+		case oi[key] == 0:
+			log.Printf("state: %s restored 0 of %d open-interest readings on file; every one was outside the window",
+				key, onDisk)
+		default:
+			log.Printf("state: %s restored %d of %d open-interest readings and %d liquidation(s)",
+				key, oi[key], onDisk, liq[key])
+		}
+	}
+}

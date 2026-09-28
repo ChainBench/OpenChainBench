@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
@@ -132,5 +133,59 @@ func TestOISpansWindow(t *testing.T) {
 	sparse.Add(nowMs, 2e6)
 	if oiSpansWindow(sparse, nowMs, tick) {
 		t.Fatal("two readings a day apart reported as a window")
+	}
+}
+
+// Both halves of the file are keyed the same flat "venue/asset" way. A review
+// of the deployed board guessed that the liquidation half might be a nested
+// venue-then-asset map while the open-interest half was flat, which would have
+// meant only one of them ever came back. It is worth pinning that they cannot
+// drift apart, because the symptom of it would be a silent half-restore.
+func TestOIStateFileIsFlatlyKeyedOnBothHalves(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "w.json")
+	now := time.Now()
+	nowMs := now.UnixMilli()
+
+	pairs := []*pairRuntime{
+		{va: VenueAsset{Venue: "lighter", Asset: "BTC"}, st: newPairState()},
+		{va: VenueAsset{Venue: "gains", Asset: "ETH"}, st: newPairState()},
+	}
+	for _, p := range pairs {
+		p.st.oi.Add(nowMs-3600*1000, 1e6)
+		p.st.oi.Add(nowMs, 2e6)
+		p.st.window.AddEvent(LiqEvent{Key: p.va.Venue + ":1", TimestampMs: nowMs, NotionalUSD: 5e3})
+	}
+	newOIStateStore(path).save(pairs, now)
+
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read: %v", err)
+	}
+	var onDisk struct {
+		Windows map[string][]map[string]float64 `json:"windows"`
+		Liq     map[string][]map[string]any     `json:"liq"`
+	}
+	if err := json.Unmarshal(raw, &onDisk); err != nil {
+		t.Fatalf("the file is not the shape the loader expects: %v", err)
+	}
+	for _, key := range []string{"lighter/BTC", "gains/ETH"} {
+		if len(onDisk.Windows[key]) != 2 {
+			t.Errorf("windows[%q] has %d readings, want 2 under a flat key", key, len(onDisk.Windows[key]))
+		}
+		if len(onDisk.Liq[key]) != 1 {
+			t.Errorf("liq[%q] has %d entries, want 1 under the same flat key", key, len(onDisk.Liq[key]))
+		}
+	}
+
+	// And the round trip puts both halves back for both rows.
+	back := newOIStateStore(path)
+	for _, key := range [][2]string{{"lighter", "BTC"}, {"gains", "ETH"}} {
+		st := newPairState()
+		if n := back.restore(key[0], key[1], st.oi, nowMs); n != 2 {
+			t.Errorf("%s/%s restored %d open-interest readings, want 2", key[0], key[1], n)
+		}
+		if n := back.restoreLiq(key[0], key[1], st, nowMs); n != 1 {
+			t.Errorf("%s/%s restored %d liquidations, want 1", key[0], key[1], n)
+		}
 	}
 }
