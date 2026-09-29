@@ -428,9 +428,15 @@ export function capitalHubMarkdown(hub: CapitalHub): string {
       md.push("");
     }
   }
-  if (hub.pmOi.length > 0 || hub.perpOi.length > 0) {
+  if (hub.pmOi.length > 0 || hub.perpOi.length > 0 || !hub.perpVenueCohortLive) {
     md.push(`## Open interest`);
     md.push("");
+    if (!hub.perpVenueCohortLive) {
+      md.push(
+        `Perp DEX open interest is unavailable on this render: the perp venue cohort snapshot did not answer. Nothing is substituted for it, because the alternative reading of open interest on this page would be a different measurement. ${SITE.url}/perps and ${SITE.url}/benchmarks/perp-volume-oi-ratio carry the last measurements, and ${SITE.url}/api/capital is read per request rather than cached with the page.`,
+      );
+      md.push("");
+    }
     const oiTable = (title: string, rows: CapitalHub["perpOi"], benches: string[], note: string) => {
       // Every row, same as the HTML: a truncated table reads as a missing feed.
       const has7d = columnIsWorthShowing(rows, (r) => r.change7dPct);

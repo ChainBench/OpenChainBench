@@ -504,6 +504,10 @@ async function buildHub(): Promise<CapitalHub> {
       pmOi: pmOi[0] ?? null,
     },
     historyDays,
+    // A transient miss on the snapshot must not read as "no perp venues hold
+    // open interest": the section keeps its heading and says the source did
+    // not answer, the way a failed bench chip does.
+    perpVenueCohortLive: perpCohort !== null,
   };
 }
 
