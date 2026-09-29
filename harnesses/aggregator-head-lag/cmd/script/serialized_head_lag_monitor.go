@@ -45,7 +45,7 @@ const serializedStreamURL = "wss://api.serialized.xyz/v1/stream"
 var serializedPinnedToken = map[string]string{
 	"solana":    "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", // USDC
 	"base":      "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",   // USDC
-	"bnb":       "0xe9e7cea3dedca5984780bafc599bd69add087d56",   // BUSD
+	"bnb":       "0x55d398326f99059ff775485246999027b3197955",   // USDT
 	"robinhood": "0x5fc5360d040013d5cba0d1de2a9c7e6c4c16b83c",   // USDG (best effort; runtime resolve preferred)
 }
 
