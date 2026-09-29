@@ -273,13 +273,16 @@ export default async function CapitalHubPage() {
             price change. <strong className="text-ink">Polymarket and Kalshi</strong> APIs for prediction-market open interest, DeFiLlama TVL for
             venues that publish none.
           </p>
+          {hub.perpOi.length > 0 && (
           <p>
-            <strong className="text-ink">Each perp venue&apos;s own API</strong> through the perp cohort harness for 24-hour traded notional (bench
-            041) and for turnover, 24-hour volume over the venue&apos;s own open interest (bench 271). The open-interest column next to them is
-            DefiLlama&apos;s open-interest overview through bench 265, a different measurement, so turnover is read from bench 271 rather than
-            divided out of the two columns: on some venues the two open-interest figures differ by more than half, and one ratio must not have two
-            values on this site.
+            <strong className="text-ink">Each perp venue&apos;s own API</strong> through the perp cohort harness, for open interest and 24-hour traded
+            notional both. That column used to read DefiLlama&apos;s open-interest overview through bench 265, and it was changed on 29 September 2026
+            for two reasons: the two disagreed by half on the largest row (Hyperliquid at $8.6B against the venue&apos;s own $12.8B) and bench
+            265&apos;s cohort is token-gated, so venues without a ranked token had no row at all. Turnover is bench 271, which divides 24-hour
+            averages of the same two gauges, so it does not divide exactly into columns showing the latest read; it is read from the bench rather
+            than recomputed here because one ratio must not have two values on this site.
           </p>
+          )}
           <p>
             <strong className="text-ink">Not measured here.</strong> Token unlock schedules (no free source publishes them; float and its 90-day change
             are the closest public proxy), bridge volumes other than the ones OpenChainBench reads itself (DeFiLlama&apos;s bridge endpoints are paid),

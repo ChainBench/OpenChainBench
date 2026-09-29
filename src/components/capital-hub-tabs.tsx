@@ -96,8 +96,8 @@ export function CapitalHubTabs({ hub }: { hub: CapitalHub }) {
                     title="Perp DEX open interest"
                     rows={hub.perpOi}
                     link={(s) => `/products/${s}`}
-                    benches={[CAPITAL_BENCHES.perpPf, CAPITAL_BENCHES.perpVolume, CAPITAL_BENCHES.perpTurnover]}
-                    note="Open interest from bench 265 (DefiLlama's open-interest overview), volume and turnover from the perp cohort harness (the venue's own API). Turnover is bench 271's ratio, not this table's volume divided by this table's open interest: the two denominators are different measurements and differ by more than half on some venues."
+                    benches={[CAPITAL_BENCHES.perpTurnover]}
+                    note="Open interest and 24h volume as each venue's own API reports them, through the perp cohort harness, the same figures the perps hub shows. Turnover is bench 271's ratio of 24-hour averages of those two gauges, so it will not divide exactly into the two columns beside it, which are the latest read. Centralised venues are out; Polymarket and Kalshi sit in the prediction-market table rather than twice on one page."
                   />
                 )}
                 {hub.pmOi.length > 0 && (
@@ -478,19 +478,22 @@ function OiTable({
   benches: string[];
   note: string;
 }) {
-  const shown = rows.slice(0, 10);
-  const has7d = shown.some((r) => r.change7dPct != null);
-  const hasVolume = shown.some((r) => r.volume24h != null);
-  const hasTurnover = shown.some((r) => r.turnover != null);
+  // Every row, not a top ten: a reader who counts ten rows on a table of
+  // nineteen concludes the rest is missing, which is exactly what happened.
+  // The heading carries the count so the table says how long it is.
+  const has7d = columnIsWorthShowing(rows, (r) => r.change7dPct);
+  const hasVolume = columnIsWorthShowing(rows, (r) => r.volume24h);
+  const hasTurnover = columnIsWorthShowing(rows, (r) => r.turnover);
   const legend = naLegend([
-    ...(has7d ? shown.map((r) => r.change7dNaReason) : []),
-    ...(hasVolume ? shown.map((r) => r.volumeNaReason) : []),
-    ...(hasTurnover ? shown.map((r) => r.turnoverNaReason) : []),
+    ...rows.map((r) => r.oiNaReason),
+    ...(has7d ? rows.map((r) => r.change7dNaReason) : []),
+    ...(hasVolume ? rows.map((r) => r.volumeNaReason) : []),
+    ...(hasTurnover ? rows.map((r) => r.turnoverNaReason) : []),
   ]);
   return (
     <div className="card-soft rounded-xl border border-ink/10">
       <p className="px-3 pt-3 label-mono text-[10px] uppercase tracking-wide text-ink-faint" style={{ fontFamily: "var(--font-mono, monospace)" }}>
-        {title}
+        {title}, all {rows.length}
       </p>
       <div className="overflow-x-auto">
         <table className="w-full text-[12.5px] mt-2">
@@ -509,7 +512,7 @@ function OiTable({
             </tr>
           </thead>
           <tbody>
-            {shown.map((r, i) => (
+            {rows.map((r, i) => (
               <tr key={r.slug} className="border-t border-ink/5">
                 <Td muted mono>
                   {i + 1}
@@ -520,11 +523,15 @@ function OiTable({
                     <span className="text-ink">{r.name}</span>
                   </Link>
                 </Td>
-                <Td mono>{fmtUsdShort(r.oi)}</Td>
+                <CohortTd cell={plainCell(r.oi, r.oiNaReason)} legend={legend} fmt={fmtUsdShort} />
                 {has7d && (
                   <CohortTd cell={plainCell(r.change7dPct, r.change7dNaReason)} legend={legend} signed fmt={(v) => fmtPct(v)} />
                 )}
                 {hasVolume && <CohortTd cell={plainCell(r.volume24h, r.volumeNaReason)} legend={legend} fmt={fmtUsdShort} />}
+                {/* No outlier guard on turnover, deliberately: Gains reads far
+                    above every other row because its positions turn over in
+                    under half an hour, and that is the most informative cell
+                    on the table. Bench 271 publishes it unclipped too. */}
                 {hasTurnover && <CohortTd cell={plainCell(r.turnover, r.turnoverNaReason)} legend={legend} fmt={fmtX} />}
               </tr>
             ))}
