@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { headers } from "next/headers";
 import { SITE } from "@/data/site";
 
 /**
@@ -29,7 +30,9 @@ const AI_CRAWLERS = [
   "Diffbot", // generic LLM crawler
 ];
 
-export default function robots(): MetadataRoute.Robots {
+const canonicalHost = new URL(SITE.url).hostname.toLowerCase();
+
+export default async function robots(): Promise<MetadataRoute.Robots> {
   // Staging / preview deploys (Vercel `dev` branch, per-PR previews) must
   // not be indexed. Otherwise Google sees two copies of the site — the
   // openchainbench.com production and the *.vercel.app staging — and flags
@@ -37,6 +40,21 @@ export default function robots(): MetadataRoute.Robots {
   // VERCEL_ENV='production' (the alias openchainbench.com) gets the open
   // crawl policy; everything else returns Disallow: /.
   if (process.env.VERCEL_ENV && process.env.VERCEL_ENV !== "production") {
+    return {
+      rules: [{ userAgent: "*", disallow: "/" }],
+    };
+  }
+
+  // VERCEL_ENV alone is not enough. It describes the build, not the
+  // hostname serving it, so a production build aliased to another domain
+  // reports "production" and returns the open policy below. That happened:
+  // on 2026-09-29 staging.openchainbench.com pointed at a production
+  // deployment and served `Allow: /` with no noindex, making the whole
+  // catalog crawlable on two hostnames. Reading the request host closes it.
+  // next.config.ts carries the same rule as an X-Robots-Tag header, which
+  // covers every page rather than only this file.
+  const host = (await headers()).get("host")?.split(":")[0]?.toLowerCase();
+  if (host && host !== canonicalHost) {
     return {
       rules: [{ userAgent: "*", disallow: "/" }],
     };
