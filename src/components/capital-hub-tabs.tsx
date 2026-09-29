@@ -16,16 +16,25 @@ import {
 } from "@/lib/capital-hub-types";
 import {
   CAPITAL_READING,
-  CCTP_SCOPE_LABEL,
   OUTSIDE_COHORT_LABEL,
+  SIGNAL_FEE_GROWTH_MIN_PCT,
+  SIGNAL_MIN_CATEGORY_MEMBERS,
+  SIGNAL_PRICE_MOVE_MIN_PCT,
+  SIGNAL_READING,
+  UNKNOWN_LABEL,
   bridgedShareSubline,
   cohortCell,
   columnIsWorthShowing,
   fmtUsdLevel,
   isDust,
   levelSortValue,
+  naLegend,
+  naMarker,
+  plainCell,
   sevenDaySubline,
+  signalRowNote,
   type CohortCell,
+  type SignalKind,
 } from "@/lib/capital-hub-rules";
 
 /**
@@ -76,10 +85,22 @@ export function CapitalHubTabs({ hub }: { hub: CapitalHub }) {
               <h2 className="label-mono text-ink-muted mt-10 mb-3">Open interest: perp DEXes and prediction markets</h2>
               <div className="grid gap-6 lg:grid-cols-2">
                 {hub.perpOi.length > 0 && (
-                  <OiTable title="Perp DEX open interest" rows={hub.perpOi} link={(s) => `/products/${s}`} bench={CAPITAL_BENCHES.perpPf} />
+                  <OiTable
+                    title="Perp DEX open interest"
+                    rows={hub.perpOi}
+                    link={(s) => `/products/${s}`}
+                    benches={[CAPITAL_BENCHES.perpPf, CAPITAL_BENCHES.perpVolume, CAPITAL_BENCHES.perpTurnover]}
+                    note="Open interest from bench 265 (DefiLlama's open-interest overview), volume and turnover from the perp cohort harness (the venue's own API). Turnover is bench 271's ratio, not this table's volume divided by this table's open interest: the two denominators are different measurements and differ by more than half on some venues."
+                  />
                 )}
                 {hub.pmOi.length > 0 && (
-                  <OiTable title="Prediction market open interest" rows={hub.pmOi} link={(s) => `/products/${s}`} bench={CAPITAL_BENCHES.pmOi} showVolume />
+                  <OiTable
+                    title="Prediction market open interest"
+                    rows={hub.pmOi}
+                    link={(s) => `/products/${s}`}
+                    benches={[CAPITAL_BENCHES.pmOi]}
+                    note="Open interest, 24h volume and turnover all from bench 277, so turnover is this table's volume over this table's open interest."
+                  />
                 )}
               </div>
               <Reading lines={CAPITAL_READING.openInterest} />
@@ -94,6 +115,12 @@ export function CapitalHubTabs({ hub }: { hub: CapitalHub }) {
             <>
               <h2 className="label-mono text-ink-muted mb-3">Divergences this month: fees up, token down, price to fees under the category median</h2>
               <Divergences rows={hub.divergences} />
+              <SignalReadings
+                counts={{
+                  "fees-up-token-down": hub.protocols.filter((p) => p.signal === "fees-up-token-down").length,
+                  "fees-down-token-up": hub.protocols.filter((p) => p.signal === "fees-down-token-up").length,
+                }}
+              />
               <h2 className="label-mono text-ink-muted mt-10 mb-3">DeFi tokens ranked by price to fees, with fee trend against token move</h2>
               <ProtocolsTable rows={hub.protocols} />
               <Reading lines={CAPITAL_READING.tokens} />
@@ -191,12 +218,24 @@ function chainSortValue(key: keyof ChainRow, v: unknown): number | null {
 
 function ChainsTable({ rows }: { rows: ChainRow[] }) {
   // Columns fed by the daily history blob stay hidden until it carries
-  // values, instead of a wall of n/a on the first days.
+  // values, instead of a wall of empty cells on the first days.
   const hasTvl = rows.some((r) => r.tvl != null);
   const hasDex = rows.some((r) => r.dexVolume24h != null);
   const hasFees = rows.some((r) => r.fees30d != null || r.fees30dOutside != null);
   const hasCctp = rows.some((r) => r.cctpNet7d != null);
   const { sorted, key, dir, toggle } = useSorted(rows, hasTvl ? "tvl" : "stablesFloat", "desc", chainSortValue);
+  // One marker per distinct "does not apply" reason the cells carry, in the
+  // order the columns present them, so the legend reads left to right.
+  const legend = useMemo(
+    () =>
+      naLegend([
+        ...rows.map((r) => r.notApplicable.bridged),
+        ...rows.map((r) => r.notApplicable.stables),
+        ...(hasCctp ? rows.map((r) => r.notApplicable.cctp) : []),
+        ...(hasFees ? rows.map((r) => r.notApplicable.fees) : []),
+      ]),
+    [rows, hasCctp, hasFees],
+  );
   const col = (k: keyof ChainRow, label: string, title?: string, defaultDir: "desc" | "asc" = "desc") => (
     <ThSort active={key === k} dir={dir} onClick={() => toggle(k, defaultDir)} title={title}>
       {label}
@@ -245,14 +284,17 @@ function ChainsTable({ rows }: { rows: ChainRow[] }) {
                     <Level v={r.tvl} />
                   </Td>
                 )}
-                {/* L1s are outside the L2Beat cohort: a dash, so n/a keeps meaning missing data. */}
+                {/* Outside the L2Beat cohort the column does not apply and says
+                    why (Ethereum is the chain the bridges start from, the rest
+                    are L1s with no host chain), so a bare dash keeps meaning
+                    "the feed has no value", not "there is nothing to measure". */}
                 {r.inBridgedCohort ? (
                   <Td mono>
                     {fmtUsdShort(r.bridgedTvl)}
                     {bridgedShareSubline(r.bridgedSharePct) && <Sub>{bridgedShareSubline(r.bridgedSharePct)}</Sub>}
                   </Td>
                 ) : (
-                  <Dash label="not applicable" />
+                  <NaTd reason={r.notApplicable.bridged} legend={legend} />
                 )}
                 {r.inBridgedCohort ? (
                   <Td mono>
@@ -260,13 +302,14 @@ function ChainsTable({ rows }: { rows: ChainRow[] }) {
                     {sevenDaySubline(r.change7dPct, r.median7dPct) && <Sub>{sevenDaySubline(r.change7dPct, r.median7dPct)}</Sub>}
                   </Td>
                 ) : (
-                  <Dash label="not applicable" />
+                  <NaTd reason={r.notApplicable.bridged} legend={legend} />
                 )}
                 <Td mono>
                   <Level v={r.stablesFloat} />
                 </Td>
                 <CohortTd
-                  cell={cohortCell(r.inStablesCohort, r.stablesNet30d, r.stablesNet30dOutside)}
+                  cell={cohortCell(r.inStablesCohort, r.stablesNet30d, r.stablesNet30dOutside, r.notApplicable.stables ?? null)}
+                  legend={legend}
                   signed
                   fmt={fmtUsdShort}
                   sub={r.stablesChange30dPct != null ? fmtPct(r.stablesChange30dPct) : null}
@@ -282,20 +325,35 @@ function ChainsTable({ rows }: { rows: ChainRow[] }) {
                       )}
                     </Td>
                   ) : (
-                    <Dash label={CCTP_SCOPE_LABEL[r.cctpScope]} />
+                    <NaTd reason={r.notApplicable.cctp} legend={legend} />
                   ))}
                 {hasDex && (
                   <Td mono>
                     <Level v={r.dexVolume24h} />
                   </Td>
                 )}
-                {hasFees && <CohortTd cell={cohortCell(r.inFeesCohort, r.fees30d, r.fees30dOutside)} fmt={fmtUsdLevel} dust />}
-                {hasFees && <CohortTd cell={cohortCell(r.inFeesCohort, r.revenue30d, r.revenue30dOutside)} fmt={fmtUsdLevel} dust />}
+                {hasFees && (
+                  <CohortTd
+                    cell={cohortCell(r.inFeesCohort, r.fees30d, r.fees30dOutside, r.notApplicable.fees ?? null)}
+                    legend={legend}
+                    fmt={fmtUsdLevel}
+                    dust
+                  />
+                )}
+                {hasFees && (
+                  <CohortTd
+                    cell={cohortCell(r.inFeesCohort, r.revenue30d, r.revenue30dOutside, r.notApplicable.fees ?? null)}
+                    legend={legend}
+                    fmt={fmtUsdLevel}
+                    dust
+                  />
+                )}
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+      <NaLegend entries={legend} />
     </div>
   );
 }
@@ -324,9 +382,35 @@ function FlowBar({ shares }: { shares: { slug: string; name: string; usd: number
   );
 }
 
-function OiTable({ title, rows, link, bench, showVolume }: { title: string; rows: OiRow[]; link: (slug: string) => string; bench: string; showVolume?: boolean }) {
+/**
+ * Open interest with the two columns that make it a reading rather than a
+ * level: 24h volume and turnover, the number of times the venue traded its
+ * open interest in a day. A venue outside a source cohort reads "not
+ * applicable" with the reason; no cell is ever filled from a neighbouring
+ * venue or from a cohort-level figure.
+ */
+function OiTable({
+  title,
+  rows,
+  link,
+  benches,
+  note,
+}: {
+  title: string;
+  rows: OiRow[];
+  link: (slug: string) => string;
+  benches: string[];
+  note: string;
+}) {
   const shown = rows.slice(0, 10);
   const has7d = shown.some((r) => r.change7dPct != null);
+  const hasVolume = shown.some((r) => r.volume24h != null);
+  const hasTurnover = shown.some((r) => r.turnover != null);
+  const legend = naLegend([
+    ...(has7d ? shown.map((r) => r.change7dNaReason) : []),
+    ...(hasVolume ? shown.map((r) => r.volumeNaReason) : []),
+    ...(hasTurnover ? shown.map((r) => r.turnoverNaReason) : []),
+  ]);
   return (
     <div className="card-soft rounded-xl border border-ink/10">
       <p className="px-3 pt-3 label-mono text-[10px] uppercase tracking-wide text-ink-faint" style={{ fontFamily: "var(--font-mono, monospace)" }}>
@@ -339,8 +423,13 @@ function OiTable({ title, rows, link, bench, showVolume }: { title: string; rows
               <Th>#</Th>
               <Th>Venue</Th>
               <Th>Open interest</Th>
-              {has7d && <Th>7d</Th>}
-              {showVolume && <Th>Volume 24h</Th>}
+              {has7d && <Th title="Change of open interest over seven days">7d</Th>}
+              {hasVolume && <Th title="Traded notional over the trailing 24 hours, from the venue's own API">Volume 24h</Th>}
+              {hasTurnover && (
+                <Th title="Times the venue traded its own open interest in 24 hours: 24h volume over open interest, both as the venue's API reports them">
+                  Turnover 24h
+                </Th>
+              )}
             </tr>
           </thead>
           <tbody>
@@ -356,18 +445,24 @@ function OiTable({ title, rows, link, bench, showVolume }: { title: string; rows
                   </Link>
                 </Td>
                 <Td mono>{fmtUsdShort(r.oi)}</Td>
-                {/* Empty, not n/a: the window is not covered yet, nothing is missing from the bench. */}
-                {has7d && <Td mono>{r.change7dPct != null ? <Signed v={r.change7dPct} fmt={(v) => fmtPct(v)} /> : ""}</Td>}
-                {showVolume && <Td mono>{fmtUsdShort(r.volume24h)}</Td>}
+                {has7d && (
+                  <CohortTd cell={plainCell(r.change7dPct, r.change7dNaReason)} legend={legend} signed fmt={(v) => fmtPct(v)} />
+                )}
+                {hasVolume && <CohortTd cell={plainCell(r.volume24h, r.volumeNaReason)} legend={legend} fmt={fmtUsdShort} />}
+                {hasTurnover && <CohortTd cell={plainCell(r.turnover, r.turnoverNaReason)} legend={legend} fmt={fmtX} />}
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-      <p className="px-3 py-2 text-[11px] text-ink-faint">
-        <Link href={`/benchmarks/${bench}`} className="hover:underline">
-          Bench {bench}
-        </Link>
+      <NaLegend entries={legend} />
+      <p className="px-3 pb-2 text-[11px] text-ink-faint">{note}</p>
+      <p className="px-3 pb-2 text-[11px] text-ink-faint flex flex-wrap gap-x-3">
+        {benches.map((b) => (
+          <Link key={b} href={`/benchmarks/${b}`} className="hover:underline">
+            Bench {b}
+          </Link>
+        ))}
       </p>
     </div>
   );
@@ -378,7 +473,9 @@ function Divergences({ rows }: { rows: ProtocolRow[] }) {
   if (rows.length === 0) {
     return (
       <p className="text-sm text-ink-soft">
-        No token has its 30-day fees up against the prior 30 days, its price down over 30 days and its price to fees under the category median today.
+        No token clears all four conditions today: 30-day fees up more than {SIGNAL_FEE_GROWTH_MIN_PCT}% against the prior 30 days, the token down
+        more than {SIGNAL_PRICE_MOVE_MIN_PCT}% over the same days, price to fees under the category median, and at least{" "}
+        {SIGNAL_MIN_CATEGORY_MEMBERS} ranked protocols in the category. The badges in the table below mark the rows that clear them as the month moves.
       </p>
     );
   }
@@ -411,7 +508,9 @@ function Divergences({ rows }: { rows: ProtocolRow[] }) {
                   <Signed v={r.priceChange30dPct} fmt={(v) => fmtPct(v, 0)} />
                 </Td>
                 <Td mono>
-                  {fmtX(r.pf)} vs {fmtX(r.categoryMedianPf)}
+                  <span title={signalRowNote(r) ?? undefined}>
+                    {fmtX(r.pf)} vs {fmtX(r.categoryMedianPf)}
+                  </span>
                   <Sub>{fmtX(r.pfVsCategory)} of the {r.category || "category"} median</Sub>
                 </Td>
               </tr>
@@ -420,7 +519,9 @@ function Divergences({ rows }: { rows: ProtocolRow[] }) {
         </table>
       </div>
       <p className="px-3 py-2 text-[11px] text-ink-faint">
-        Three conditions at once, read from bench {CAPITAL_BENCHES.protocolPf}. A screen for further reading, not a signal to act on.
+        Four conditions at once on bench {CAPITAL_BENCHES.protocolPf}: fees up more than {SIGNAL_FEE_GROWTH_MIN_PCT}% against the prior 30 days, the
+        token down more than {SIGNAL_PRICE_MOVE_MIN_PCT}% over the same days, price to fees under the category median, and the category holding at
+        least {SIGNAL_MIN_CATEGORY_MEMBERS} ranked protocols. A screen for further reading, not a signal to act on.
       </p>
     </div>
   );
@@ -449,6 +550,9 @@ function ProtocolsTable({ rows }: { rows: ProtocolRow[] }) {
     </ThSort>
   );
   const colCount = 9 + [hasPs, hasSupply, hasTvl, hasRevenue].filter(Boolean).length;
+  // A category with too few ranked members has no usable median: the cell
+  // says so instead of printing a ratio against one or two protocols.
+  const protocolLegend = naLegend(rows.map((r) => r.pfVsCategoryNaReason));
   return (
     <div className="card-soft rounded-xl border border-ink/10">
       <div className="p-3 sm:p-4 border-b border-ink/8 flex items-center justify-between gap-3 flex-wrap">
@@ -511,11 +615,23 @@ function ProtocolsTable({ rows }: { rows: ProtocolRow[] }) {
                 <Td mono>
                   <Signed v={r.priceChange30dPct} fmt={(v) => fmtPct(v, 0)} />
                 </Td>
+                {r.pfVsCategoryNaReason ? (
+                  <NaTd reason={r.pfVsCategoryNaReason} legend={protocolLegend} />
+                ) : (
                 <Td mono>
                   {fmtX(r.pfVsCategory)}
-                  {r.signal === "fees-up-token-down" && <Badge tone="up">fees up, token down</Badge>}
-                  {r.signal === "fees-down-token-up" && <Badge tone="down">fees down, token up</Badge>}
+                  {r.signal === "fees-up-token-down" && (
+                    <Badge tone="up" title={signalRowNote(r) ?? undefined}>
+                      fees up, token down
+                    </Badge>
+                  )}
+                  {r.signal === "fees-down-token-up" && (
+                    <Badge tone="down" title={signalRowNote(r) ?? undefined}>
+                      fees down, token up
+                    </Badge>
+                  )}
                 </Td>
+                )}
                 {hasTvl && <Td mono>{fmtUsdShort(r.tvl)}</Td>}
                 {hasRevenue && (
                   <Td mono muted={r.revenueIncomplete}>
@@ -540,6 +656,7 @@ function ProtocolsTable({ rows }: { rows: ProtocolRow[] }) {
           </tbody>
         </table>
       </div>
+      <NaLegend entries={protocolLegend} />
     </div>
   );
 }
@@ -626,27 +743,52 @@ function NameCell({ slug, name, link }: { slug: string; name: string; link: stri
   );
 }
 
-/** A DeFiLlama level: n/a when missing, a muted "<$1K" under the dust floor (a zero for an untracked chain, not a measurement). */
+/** A DeFiLlama level: the unknown dash when missing, a muted "<$1K" under the dust floor (a zero for an untracked chain, not a measurement). */
 function Level({ v }: { v: number | null }) {
-  if (v == null) return <span className="text-ink-faint">n/a</span>;
+  if (v == null) return <Unknown />;
   if (isDust(v)) return <span className="text-ink-faint" title="Under $1,000: DeFiLlama reports zero for a chain it does not track">{fmtUsdLevel(v)}</span>;
   return <>{fmtUsdShort(v)}</>;
 }
 
 function Signed({ v, fmt, plain }: { v: number | null; fmt: (v: number) => string; plain?: boolean }) {
-  if (v == null) return <span className="text-ink-faint">n/a</span>;
+  if (v == null) return <Unknown />;
   const color = plain ? undefined : v > 0 ? "var(--color-good)" : v < 0 ? "var(--color-bad, #e5484d)" : undefined;
   return <span style={color ? { color } : undefined}>{fmt(v)}</span>;
 }
 
 /**
- * A cell of a bench-ranked column: the ranked value (signed or level), n/a
- * inside the cohort with no value, the blob value muted and labelled
- * outside the cohort, a dash when nothing exists for the row.
+ * The four states in one cell (src/lib/capital-hub-rules.ts):
+ *  - value: ranked, plain;
+ *  - outside: the daily history's number for a row the bench does not rank,
+ *    muted and labelled;
+ *  - na: does not apply, printed "n/a" with the superscript marker that ties
+ *    it to the reason in the legend under the table;
+ *  - unknown: a bare dash and nothing else.
+ * A reader tells the last two apart without a mouse: a marked "n/a" against
+ * a plain dash.
  */
-function CohortTd({ cell, fmt, signed, sub, dust }: { cell: CohortCell; fmt: (v: number) => string; signed?: boolean; sub?: string | null; dust?: boolean }) {
-  if (cell.kind === "dash") return <Dash label="not applicable" />;
-  if (cell.kind === "na") return <Td mono>{<span className="text-ink-faint">n/a</span>}</Td>;
+function CohortTd({
+  cell,
+  fmt,
+  legend,
+  signed,
+  sub,
+  dust,
+}: {
+  cell: CohortCell;
+  fmt: (v: number) => string;
+  legend: readonly { marker: string; reason: string }[];
+  signed?: boolean;
+  sub?: string | null;
+  dust?: boolean;
+}) {
+  if (cell.kind === "unknown")
+    return (
+      <Td mono>
+        <Unknown />
+      </Td>
+    );
+  if (cell.kind === "na") return <NaTd reason={cell.reason} legend={legend} />;
   if (cell.kind === "outside") {
     return (
       <td className="px-3 py-2 tabular-nums whitespace-nowrap text-ink-faint" style={{ fontFamily: "var(--font-mono, monospace)" }} aria-label={OUTSIDE_COHORT_LABEL} title={OUTSIDE_COHORT_LABEL}>
@@ -662,9 +804,86 @@ function CohortTd({ cell, fmt, signed, sub, dust }: { cell: CohortCell; fmt: (v:
   );
 }
 
-function Badge({ children, tone }: { children: React.ReactNode; tone: "up" | "down" }) {
+/** The feed carries no value for this row this run: a bare dash, and only that. */
+function Unknown() {
+  return (
+    <span className="text-ink-faint/60" title={UNKNOWN_LABEL} aria-label={UNKNOWN_LABEL}>
+      -
+    </span>
+  );
+}
+
+/** The column does not apply to this row: "n/a" with the marker that names the reason in the legend. */
+function NaTd({ reason, legend }: { reason: string | undefined; legend: readonly { marker: string; reason: string }[] }) {
+  if (!reason)
+    return (
+      <Td mono>
+        <Unknown />
+      </Td>
+    );
+  return (
+    <td
+      className="px-3 py-2 whitespace-nowrap text-ink-faint"
+      style={{ fontFamily: "var(--font-mono, monospace)" }}
+      title={`Not applicable: ${reason}`}
+      aria-label={`Not applicable: ${reason}`}
+    >
+      n/a<sup className="ml-px text-[9px]">{naMarker(legend, reason)}</sup>
+    </td>
+  );
+}
+
+/** One line under a table: what every marker on its "n/a" cells means, and what a bare dash means. */
+function NaLegend({ entries }: { entries: readonly { marker: string; reason: string }[] }) {
+  if (entries.length === 0) return null;
+  return (
+    <p className="px-3 py-2 text-[11px] text-ink-faint leading-relaxed">
+      <span className="text-ink-soft">n/a</span> is a column that does not apply to the row, and its marker says why.{" "}
+      {entries.map((e) => `${e.marker}: ${e.reason}`).join(". ")}. A bare dash is a different thing: {UNKNOWN_LABEL}.
+    </p>
+  );
+}
+
+/**
+ * What each signal implies, what would falsify it, what to check next. Three
+ * lines per signal, under the divergence table where the badges are read.
+ * The text lives in src/lib/capital-hub-rules.ts and the Markdown view
+ * prints the same words.
+ */
+function SignalReadings({ counts }: { counts: Record<SignalKind, number> }) {
+  const kinds: SignalKind[] = ["fees-up-token-down", "fees-down-token-up"];
+  return (
+    <div className="mt-4 max-w-3xl space-y-4">
+      {kinds.map((k) => (
+        <div key={k}>
+          <p className="text-[12.5px] font-medium text-ink">
+            {SIGNAL_READING[k].title}{" "}
+            <span className="text-ink-faint font-normal">
+              ({counts[k]} {counts[k] === 1 ? "token" : "tokens"} today)
+            </span>
+          </p>
+          <ul className="mt-1 space-y-1 text-[12px] text-ink-soft leading-relaxed list-disc pl-5">
+            <li>
+              <span className="text-ink-muted">What it means.</span> {SIGNAL_READING[k].means}
+            </li>
+            <li>
+              <span className="text-ink-muted">What would falsify it.</span> {SIGNAL_READING[k].falsifies}
+            </li>
+            <li>
+              <span className="text-ink-muted">What to check next.</span> {SIGNAL_READING[k].next}
+            </li>
+          </ul>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** The signal marker, carrying the row's own reading in its title: the three numbers, then the one thing that would change it. */
+function Badge({ children, tone, title }: { children: React.ReactNode; tone: "up" | "down"; title?: string }) {
   return (
     <span
+      title={title}
       className="ml-1 inline-block rounded px-1.5 py-0.5 text-[9.5px] uppercase tracking-wide align-middle"
       style={{
         background: tone === "up" ? "color-mix(in srgb, var(--color-good) 15%, transparent)" : "color-mix(in srgb, var(--color-bad, #e5484d) 15%, transparent)",
@@ -676,22 +895,17 @@ function Badge({ children, tone }: { children: React.ReactNode; tone: "up" | "do
   );
 }
 
-/** Not applicable to this row (outside the bench's cohort, no CCTP domain), as opposed to n/a for missing data. */
-function Dash({ label }: { label: string }) {
-  return (
-    <td className="px-3 py-2 text-ink-faint/60 text-center" aria-label={label} title={label}>
-      -
-    </td>
-  );
-}
-
 function Sub({ children }: { children: React.ReactNode }) {
   return <span className="block text-[10px] text-ink-faint">{children}</span>;
 }
 
-function Th({ children }: { children: React.ReactNode }) {
+function Th({ children, title }: { children: React.ReactNode; title?: string }) {
   return (
-    <th className="px-3 py-2 text-[10.5px] font-medium uppercase tracking-wide text-ink-faint whitespace-nowrap" style={{ fontFamily: "var(--font-mono, monospace)" }}>
+    <th
+      className="px-3 py-2 text-[10.5px] font-medium uppercase tracking-wide text-ink-faint whitespace-nowrap"
+      style={{ fontFamily: "var(--font-mono, monospace)" }}
+      title={title}
+    >
       {children}
     </th>
   );

@@ -1,12 +1,25 @@
 import { describe, expect, test } from "bun:test";
 import {
   CCTP_DOMAIN_CHAINS,
+  CCTP_SCOPE_LABEL,
+  NA_REASON,
+  SIGNAL_FEE_GROWTH_MIN_PCT,
+  SIGNAL_MIN_CATEGORY_MEMBERS,
+  SIGNAL_PRICE_MOVE_MIN_PCT,
+  SIGNAL_READING,
   bridgedShareSubline,
   cctpScope,
   change7dFromDays,
   change7dFromSeries,
+  categoryMedianUsable,
+  change7dOfSeries,
   cohortCell,
   fmtUsdLevel,
+  naLegend,
+  naMarker,
+  plainCell,
+  signalOf,
+  signalRowNote,
   isDust,
   levelSortValue,
   median7dPct,
@@ -64,17 +77,70 @@ describe("bridged share sub-line", () => {
   });
 });
 
-describe("cohort cells", () => {
-  test("ranked value inside the cohort, n/a inside without a value", () => {
+describe("the four cell states", () => {
+  test("ranked value inside the cohort; inside without a value is unknown, never not applicable", () => {
     expect(cohortCell(true, 202_400_000, null)).toEqual({ kind: "value", value: 202_400_000 });
-    // A withheld cohort row: the blob value never stands in for the bench.
-    expect(cohortCell(true, null, 5)).toEqual({ kind: "na" });
+    // A withheld cohort row: the blob value never stands in for the bench, and
+    // the cell reads unknown (a bare dash), not "does not apply".
+    expect(cohortCell(true, null, 5, NA_REASON.feesNone)).toEqual({ kind: "unknown" });
   });
-  test("outside the cohort: the blob value muted, a dash when nothing exists", () => {
+  test("outside the cohort: the blob value muted, the reason when nothing exists, unknown when there is no reason", () => {
     expect(cohortCell(false, null, -320_948.82)).toEqual({ kind: "outside", value: -320_948.82 });
-    expect(cohortCell(false, null, null)).toEqual({ kind: "dash" });
+    expect(cohortCell(false, null, null, NA_REASON.feesNone)).toEqual({ kind: "na", reason: NA_REASON.feesNone });
+    // No reason computed: the hub does not know why, so the cell must not claim inapplicability.
+    expect(cohortCell(false, null, null)).toEqual({ kind: "unknown" });
     // Outside the cohort there is no ranked value by construction; the blob decides.
-    expect(cohortCell(false, 1, null)).toEqual({ kind: "dash" });
+    expect(cohortCell(false, 1, null, NA_REASON.feesNone)).toEqual({ kind: "na", reason: NA_REASON.feesNone });
+  });
+  test("plainCell: a value, else the reason, else unknown", () => {
+    expect(plainCell(2.5, NA_REASON.perpTurnoverNone)).toEqual({ kind: "value", value: 2.5 });
+    expect(plainCell(null, NA_REASON.perpTurnoverNone)).toEqual({ kind: "na", reason: NA_REASON.perpTurnoverNone });
+    expect(plainCell(null, null)).toEqual({ kind: "unknown" });
+    expect(plainCell(Number.NaN, null)).toEqual({ kind: "unknown" });
+  });
+  test("the legend numbers each distinct reason once, in first-seen order", () => {
+    const legend = naLegend([NA_REASON.bridgedSource, null, NA_REASON.bridgedSovereign, NA_REASON.bridgedSource, undefined, NA_REASON.feesNone]);
+    expect(legend).toEqual([
+      { marker: "a", reason: NA_REASON.bridgedSource },
+      { marker: "b", reason: NA_REASON.bridgedSovereign },
+      { marker: "c", reason: NA_REASON.feesNone },
+    ]);
+    expect(naMarker(legend, NA_REASON.bridgedSovereign)).toBe("b");
+    // A reason the legend does not carry still prints a marker rather than nothing.
+    expect(naMarker(legend, NA_REASON.cctpNone)).toBe("*");
+    expect(naLegend([])).toEqual([]);
+  });
+  test("every CCTP scope off the scanned set has a not-applicable reason of its own", () => {
+    expect(CCTP_SCOPE_LABEL.none).toBe(NA_REASON.cctpNone);
+    expect(CCTP_SCOPE_LABEL.domain).toBe(NA_REASON.cctpUnscanned);
+    expect(CCTP_SCOPE_LABEL.none).not.toBe(CCTP_SCOPE_LABEL.domain);
+  });
+});
+
+describe("signal readings", () => {
+  test("both signals carry all three parts and no recommendation", () => {
+    const banned = ["buy", "sell", "undervalued", "overvalued", "opportunity", "cheap", "expensive"];
+    for (const k of ["fees-up-token-down", "fees-down-token-up"] as const) {
+      const r = SIGNAL_READING[k];
+      expect(r.means.length).toBeGreaterThan(40);
+      expect(r.falsifies.length).toBeGreaterThan(40);
+      expect(r.next.length).toBeGreaterThan(40);
+      const all = `${r.title} ${r.means} ${r.falsifies} ${r.next}`.toLowerCase();
+      for (const w of banned) expect(all.includes(w)).toBe(false);
+      // No em-dash anywhere in the prose the page prints.
+      expect(all.includes("\u2014")).toBe(false);
+    }
+  });
+  test("the per-row note restates the row's own three numbers and the falsifier; no signal, no note", () => {
+    const note = signalRowNote({ signal: "fees-up-token-down", feeGrowth30dPct: 263, priceChange30dPct: -20, pfVsCategory: 0.39, category: "Lending" });
+    expect(note).toContain("+263%");
+    expect(note).toContain("-20%");
+    expect(note).toContain("0.390x");
+    expect(note).toContain("Lending");
+    expect(note).toContain("incentive program");
+    const mirror = signalRowNote({ signal: "fees-down-token-up", feeGrowth30dPct: -12, priceChange30dPct: 30, pfVsCategory: 2.4, category: "DEXs" });
+    expect(mirror).toContain("adapter");
+    expect(signalRowNote({ signal: null, feeGrowth30dPct: 1, priceChange30dPct: 1, pfVsCategory: 1, category: "DEXs" })).toBeNull();
   });
 });
 
@@ -99,23 +165,52 @@ describe("CCTP scope", () => {
 });
 
 describe("divergences", () => {
-  const rows = [
-    { slug: "a", feeGrowth30dPct: 48, priceChange30dPct: -12, pfVsCategory: 0.07 },
-    { slug: "b", feeGrowth30dPct: 166, priceChange30dPct: -38, pfVsCategory: 0.06 },
-    { slug: "c", feeGrowth30dPct: 969, priceChange30dPct: 197, pfVsCategory: 0.02 }, // token up
-    { slug: "d", feeGrowth30dPct: 263, priceChange30dPct: -43, pfVsCategory: 1.2 }, // above the median
-    { slug: "e", feeGrowth30dPct: -4, priceChange30dPct: -10, pfVsCategory: 0.5 }, // fees down
-    { slug: "f", feeGrowth30dPct: 25, priceChange30dPct: -20, pfVsCategory: 0.46 },
-    { slug: "g", feeGrowth30dPct: 81, priceChange30dPct: -8, pfVsCategory: 0.18 },
-    { slug: "h", feeGrowth30dPct: 58, priceChange30dPct: -17, pfVsCategory: 0.05 },
-    { slug: "i", feeGrowth30dPct: 6, priceChange30dPct: -1, pfVsCategory: 0.93 },
-    { slug: "j", feeGrowth30dPct: null, priceChange30dPct: -1, pfVsCategory: 0.5 },
+  // Every row sits in a category large enough for its median to count unless
+  // the test says otherwise; the category floor has its own test below.
+  const rows: { slug: string; feeGrowth30dPct: number | null; priceChange30dPct: number; pfVsCategory: number; categorySize: number }[] = [
+    { slug: "a", feeGrowth30dPct: 48, priceChange30dPct: -12, pfVsCategory: 0.07, categorySize: 15 },
+    { slug: "b", feeGrowth30dPct: 166, priceChange30dPct: -38, pfVsCategory: 0.06, categorySize: 18 },
+    { slug: "c", feeGrowth30dPct: 969, priceChange30dPct: 197, pfVsCategory: 0.02, categorySize: 9 }, // token up
+    { slug: "d", feeGrowth30dPct: 263, priceChange30dPct: -43, pfVsCategory: 1.2, categorySize: 8 }, // above the median
+    { slug: "e", feeGrowth30dPct: -4, priceChange30dPct: -10, pfVsCategory: 0.5, categorySize: 6 }, // fees down
+    { slug: "f", feeGrowth30dPct: 25, priceChange30dPct: -20, pfVsCategory: 0.46, categorySize: 6 },
+    { slug: "g", feeGrowth30dPct: 81, priceChange30dPct: -8, pfVsCategory: 0.18, categorySize: 15 }, // token flat: inside the 10% band
+    { slug: "h", feeGrowth30dPct: 58, priceChange30dPct: -17, pfVsCategory: 0.05, categorySize: 5 },
+    { slug: "i", feeGrowth30dPct: 6, priceChange30dPct: -1, pfVsCategory: 0.93, categorySize: 18 },
+    { slug: "j", feeGrowth30dPct: null, priceChange30dPct: -1, pfVsCategory: 0.5, categorySize: 18 },
+    { slug: "k", feeGrowth30dPct: 92, priceChange30dPct: -19, pfVsCategory: 0.36, categorySize: 2 }, // Convex: a median over one other protocol
   ];
-  test("all three clauses, top five by fee growth", () => {
-    expect(selectDivergences(rows).map((r) => r.slug)).toEqual(["b", "g", "h", "a", "f"]);
+  test("all four clauses, largest fee growth first", () => {
+    expect(selectDivergences(rows).map((r) => r.slug)).toEqual(["b", "h", "a", "f"]);
+  });
+  test("a flat token does not count as a falling token", () => {
+    // g moves -8% over 30 days, inside the band 30% of the cohort sits in.
+    expect(signalOf(rows.find((r) => r.slug === "g")!)).toBeNull();
+    expect(signalOf({ ...rows.find((r) => r.slug === "g")!, priceChange30dPct: -SIGNAL_PRICE_MOVE_MIN_PCT })).toBeNull();
+    expect(signalOf({ ...rows.find((r) => r.slug === "g")!, priceChange30dPct: -10.1 })).toBe("fees-up-token-down");
+  });
+  test("fee growth at or under the cohort median does not qualify a row", () => {
+    const row = rows.find((r) => r.slug === "a")!;
+    expect(signalOf({ ...row, feeGrowth30dPct: SIGNAL_FEE_GROWTH_MIN_PCT })).toBeNull();
+    expect(signalOf({ ...row, feeGrowth30dPct: 20.1 })).toBe("fees-up-token-down");
+  });
+  test("a category under five members cannot qualify a row through its median", () => {
+    expect(categoryMedianUsable(SIGNAL_MIN_CATEGORY_MEMBERS)).toBe(true);
+    expect(categoryMedianUsable(SIGNAL_MIN_CATEGORY_MEMBERS - 1)).toBe(false);
+    // k clears both legs and sits under its median; only the category stops it.
+    const k = rows.find((r) => r.slug === "k")!;
+    expect(signalOf(k)).toBeNull();
+    expect(signalOf({ ...k, categorySize: 5 })).toBe("fees-up-token-down");
+  });
+  test("the mirror signal is symmetric on both legs", () => {
+    const base = { pfVsCategory: 3.3, categorySize: 18 };
+    expect(signalOf({ ...base, feeGrowth30dPct: -53, priceChange30dPct: 31 })).toBe("fees-down-token-up");
+    // Curve: fees -16.7% is inside the band, so the row no longer carries the badge.
+    expect(signalOf({ ...base, feeGrowth30dPct: -16.7, priceChange30dPct: 24.5 })).toBeNull();
+    expect(signalOf({ ...base, feeGrowth30dPct: -53, priceChange30dPct: 9 })).toBeNull();
   });
   test("empty when no row matches", () => {
-    expect(selectDivergences(rows.filter((r) => ["c", "d", "e", "j"].includes(r.slug)))).toEqual([]);
+    expect(selectDivergences(rows.filter((r) => ["c", "d", "e", "j", "k"].includes(r.slug)))).toEqual([]);
   });
 });
 
@@ -153,6 +248,21 @@ describe("7d change", () => {
     expect(change7dFromSeries(steady)).toBeCloseTo(80, 6);
     expect(change7dFromSeries(undefined)).toBeNull();
     expect(change7dFromSeries([null, null])).toBeNull();
+  });
+  test("an empty 7d cell says which condition failed, so the table never prints a bare dash for a known reason", () => {
+    expect(change7dOfSeries(undefined).naReason).toBe(NA_REASON.oiSeriesMissing);
+    expect(change7dOfSeries(Array.from({ length: 84 }, () => null)).naReason).toBe(NA_REASON.oiSeriesMissing);
+    // The eleven prediction-market venues whose series starts 11 buckets into
+    // an 85-bucket window: a warm-up, not a missing feed.
+    const warmup = Array.from({ length: 85 }, (_, i) => (i < 11 ? null : 100 + i));
+    expect(change7dOfSeries(warmup)).toEqual({ value: null, naReason: NA_REASON.oiSeriesShort });
+    // Kalshi: one bucket goes from $75M to $1.0B, a change in what the venue reports.
+    const step = Array.from({ length: 84 }, (_, i) => (i < 13 ? 75_000_000 : 1_000_000_000));
+    expect(change7dOfSeries(step)).toEqual({ value: null, naReason: NA_REASON.oiSeriesStep });
+    // One reading inside the window is not a move.
+    const single = Array.from({ length: 84 }, (_, i) => (i === 0 ? 100 : null));
+    expect(change7dOfSeries(single)).toEqual({ value: null, naReason: NA_REASON.oiSeriesFlat });
+    expect(change7dOfSeries(Array.from({ length: 84 }, (_, i) => 100 + i)).naReason).toBeNull();
   });
 });
 

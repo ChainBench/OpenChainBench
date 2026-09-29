@@ -2,6 +2,7 @@ import Link from "next/link";
 import { CapitalHubTabs } from "@/components/capital-hub-tabs";
 import { AnswersForBench } from "@/components/answers-for-bench";
 import { CAPITAL_BENCHES, fmtPct, fmtUsdShort, fmtX, getCapitalHub, type CapitalHub } from "@/lib/capital-hub";
+import { SIGNAL_FEE_GROWTH_MIN_PCT, SIGNAL_MIN_CATEGORY_MEMBERS, SIGNAL_PRICE_MOVE_MIN_PCT } from "@/lib/capital-hub-rules";
 import { pageMetadata } from "@/lib/page-metadata";
 import { safeJsonLd, buildBreadcrumbJsonLd, buildFaqPageJsonLd } from "@/lib/jsonld";
 import { SITE } from "@/data/site";
@@ -211,10 +212,33 @@ export default async function CapitalHubPage() {
           <p>
             <strong className="text-ink">Valuation divergences.</strong> Price to fees is market cap over the last 30 days of fees annualized; price to
             sales uses the protocol&apos;s own share of those fees. Each token is read against the fee-weighted median of its category, and the
-            &quot;fees up, token down&quot; badge marks the rows where fees grew month over month, the token fell over 30 days and the P/F sits below
-            that median, all three at once; the block at the top of the tab lists the five of them with the largest fee growth. The mirror badge
-            marks the opposite. Neither is a recommendation: fees can grow for one month, a token can fall for reasons the fee line does not see,
-            and a low float means most of the supply is still to come.
+            &quot;fees up, token down&quot; badge marks the rows where four things hold at once: fees grew more than {SIGNAL_FEE_GROWTH_MIN_PCT}%
+            against the prior 30 days, the token fell more than {SIGNAL_PRICE_MOVE_MIN_PCT}% over the same days, the P/F sits below the category
+            median, and the category holds at least {SIGNAL_MIN_CATEGORY_MEMBERS} ranked protocols. The block at the top of the tab lists the five
+            with the largest fee growth; the mirror badge marks the opposite. Neither is a recommendation: fees can grow for one month, a token can
+            fall for reasons the fee line does not see, and a low float means most of the supply is still to come.
+          </p>
+          <p>
+            <strong className="text-ink">Why those numbers.</strong> Both legs have to clear the cohort&apos;s own noise or the badge means nothing.
+            The median 30-day fee growth across the ranked protocols was +21%, so a row at or under {SIGNAL_FEE_GROWTH_MIN_PCT}% grew no faster than
+            the median protocol that month. Twenty of the ranked tokens, the flat middle of the field, moved less than {SIGNAL_PRICE_MOVE_MIN_PCT}%
+            in either direction over 30 days, so a move inside that band is not a direction. And a median over two protocols is a comparison with one
+            other protocol, so a category under {SIGNAL_MIN_CATEGORY_MEMBERS} ranked members has its vs-category cell marked not applicable instead
+            of carrying a ratio. Every threshold is checkable from the Fees MoM, Token 30d and Category columns in the table itself.
+          </p>
+          <p>
+            <strong className="text-ink">Reading each signal.</strong> Under the divergence table, each of the two signals says in three lines what it
+            means on the numbers in the row, what would falsify it, and what to check next. The falsifier is the part that matters: a month of fee
+            growth can be one incentive program and a month of fee decline can be a quiet category, so the reading names what to look at before
+            treating either as a trend. None of it is a recommendation, and every claim in it is checkable from a column on this page or a page it
+            names.
+          </p>
+          <p>
+            <strong className="text-ink">Empty cells say which kind of empty they are.</strong> A cell reading &quot;n/a&quot; with a small letter does
+            not apply to that row, and the legend under the table spells out why: Ethereum is the chain the bridges start from rather than a
+            destination, a sovereign L1 has no host chain to bridge from, Circle runs no CCTP domain there, DeFiLlama publishes no fee adapter for
+            the chain. A bare dash is the other thing entirely: the feed should carry a value for that row and does not. A muted value is a chain
+            outside a bench&apos;s ranked cohort, read from the daily history and left out of the leaders and the counts.
           </p>
           <p>
             Under each table, three lines say how to read its main column, where it misleads, and what it does not say.
@@ -247,6 +271,13 @@ export default async function CapitalHubPage() {
             <strong className="text-ink">CoinGecko</strong> for market cap, fully diluted valuation, circulating and total supply and the 30-day
             price change. <strong className="text-ink">Polymarket and Kalshi</strong> APIs for prediction-market open interest, DeFiLlama TVL for
             venues that publish none.
+          </p>
+          <p>
+            <strong className="text-ink">Each perp venue&apos;s own API</strong> through the perp cohort harness for 24-hour traded notional (bench
+            041) and for turnover, 24-hour volume over the venue&apos;s own open interest (bench 271). The open-interest column next to them is
+            DefiLlama&apos;s open-interest overview through bench 265, a different measurement, so turnover is read from bench 271 rather than
+            divided out of the two columns: on some venues the two open-interest figures differ by more than half, and one ratio must not have two
+            values on this site.
           </p>
           <p>
             <strong className="text-ink">Not measured here.</strong> Token unlock schedules (no free source publishes them; float and its 90-day change
@@ -327,11 +358,11 @@ function buildFaq(hub: CapitalHub): { q: string; a: string }[] {
       q: "What does the fees up, token down badge mean?",
       a:
         diverging.length > 0
-          ? `Three things at once: the protocol's 30-day fees grew against the prior 30 days, its token fell over the same 30 days, and its price to fees sits below its category median. ${diverging.length} of ${hub.protocols.length} tokens match today, ${diverging
+          ? `Four things at once: the protocol's 30-day fees grew more than ${SIGNAL_FEE_GROWTH_MIN_PCT}% against the prior 30 days, its token fell more than ${SIGNAL_PRICE_MOVE_MIN_PCT}% over the same days, its price to fees sits below its category median, and the category holds at least ${SIGNAL_MIN_CATEGORY_MEMBERS} ranked protocols. ${diverging.length} of ${hub.protocols.length} tokens match today, ${diverging
               .slice(0, 3)
               .map((r) => r.name)
-              .join(", ")} among them. It is a screen for further reading, not a signal to act on.`
-          : "Three things at once: the protocol's 30-day fees grew against the prior 30 days, its token fell over the same 30 days, and its price to fees sits below its category median. No token matches all three today.",
+              .join(", ")} among them. The two size thresholds keep a flat token and a fee month in line with the field off the list, and the category floor keeps a median over one or two peers from qualifying a row. It is a screen for further reading, not a signal to act on.`
+          : `Four things at once: the protocol's 30-day fees grew more than ${SIGNAL_FEE_GROWTH_MIN_PCT}% against the prior 30 days, its token fell more than ${SIGNAL_PRICE_MOVE_MIN_PCT}% over the same days, its price to fees sits below its category median, and the category holds at least ${SIGNAL_MIN_CATEGORY_MEMBERS} ranked protocols. No token matches all four today.`,
     },
     {
       q: "Where does bridged value come from and why are Ethereum and Solana missing from it?",

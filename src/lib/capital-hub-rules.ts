@@ -5,7 +5,7 @@
  * rule and the tests exercise the rule once. No server imports.
  */
 
-import { fmtPct, fmtUsdShort } from "@/lib/capital-hub-types";
+import { fmtPct, fmtUsdShort, fmtX } from "@/lib/capital-hub-types";
 
 /* ---------------------------------------------------------------- dust */
 
@@ -64,31 +64,97 @@ export function bridgedShareSubline(sharePct: number | null): string | null {
   return shown < 90 ? `${shown}% bridged` : null;
 }
 
-/* ------------------------------------------------ cohort-gated cells */
+/* ---------------------------------------------- the four cell states */
 
 /**
- * One cell of a bench-ranked column (Net stables 30d on bench 275, Fees
- * and Revenue 30d on bench 280):
- *  - value: the chain is in the bench's cohort (or the bench did not load,
- *    so membership is unknown) and the bench carries a value;
- *  - na: in the cohort, no value (a withheld row or a transient outage);
- *  - outside: the bench loaded, the chain is not in its cohort, and the
- *    history blob still has a value for it: shown muted, never ranked,
- *    counted or crowned;
- *  - dash: outside the cohort and no data source at all.
+ * A cell of the capital tables is one of four things, and a reader has to
+ * be able to tell them apart without a mouse:
+ *  - value: ranked by the bench that owns the column;
+ *  - outside: the bench loaded, the row is not in its cohort, and the daily
+ *    history still carries a number: shown muted, never ranked, counted or
+ *    crowned;
+ *  - na: not applicable, with the reason why there is no number to show and
+ *    never will be (Ethereum is the chain the bridges start from, Circle
+ *    runs no CCTP domain here, DeFiLlama publishes no fee adapter). The
+ *    cell prints "n/a" with a superscript marker into the legend under the
+ *    table;
+ *  - unknown: the feed should carry a value for this row and does not (a
+ *    withheld row, a bench that failed to load this render). The cell
+ *    prints a bare dash and nothing else.
+ *
+ * This is the bench 208 rule applied to a table: an absent measurement must
+ * not read as a measured absence.
  */
 export type CohortCell =
   | { kind: "value"; value: number }
-  | { kind: "na" }
   | { kind: "outside"; value: number }
-  | { kind: "dash" };
+  | { kind: "na"; reason: string }
+  | { kind: "unknown" };
 
 export const OUTSIDE_COHORT_LABEL = "outside the ranked cohort";
 
-export function cohortCell(inCohort: boolean, ranked: number | null, outside: number | null): CohortCell {
-  if (inCohort) return ranked != null && Number.isFinite(ranked) ? { kind: "value", value: ranked } : { kind: "na" };
+/** What a bare dash means, for the legend and the cell title. */
+export const UNKNOWN_LABEL = "the feed carries no value for this row on this run";
+
+/**
+ * Why a column can have no value for a row and never will. Every string is
+ * specific enough to be checked against the source: it names the chain's
+ * position (source of the bridges, sovereign L1), the deployment (no CCTP
+ * domain) or the missing adapter. Computed in src/lib/capital-hub.ts from
+ * the cohort flags the benches already publish, never guessed in the view.
+ */
+export const NA_REASON = {
+  bridgedSource: "source chain, not a bridge destination",
+  bridgedSovereign: "sovereign L1, not in the bridged cohort",
+  stablesNone: "DeFiLlama publishes no stablecoin float for this chain",
+  feesNone: "DeFiLlama publishes no chain fees adapter for this chain",
+  cctpNone: "CCTP not deployed on this chain",
+  cctpUnscanned: "CCTP domain outside the chains bench 281 scans as a source",
+  perpVolumeNone: "the venue publishes no 24h volume to the perp cohort harness",
+  perpTurnoverNone: "the venue publishes no open interest to the perp cohort harness, so volume over open interest is undefined",
+  oiSeriesMissing: "no 7-day series for this row",
+  oiSeriesShort: "the 7-day window is not covered: the series starts inside it",
+  oiSeriesFlat: "fewer than two readings in the 7-day window",
+  oiSeriesStep: "the series steps more than 2x inside the window: a change in what the venue reports, not a 7-day move",
+  categoryTooSmall: "category too small for a peer median: under five ranked protocols, the ratio compares the token with one or two others",
+} as const;
+
+export type NaReason = (typeof NA_REASON)[keyof typeof NA_REASON];
+
+export function cohortCell(
+  inCohort: boolean,
+  ranked: number | null,
+  outside: number | null,
+  /** Why the column does not apply to this row at all; null when a missing value would be unknown, not inapplicable. */
+  naReason: string | null = null,
+): CohortCell {
+  if (inCohort) return ranked != null && Number.isFinite(ranked) ? { kind: "value", value: ranked } : { kind: "unknown" };
   if (outside != null && Number.isFinite(outside)) return { kind: "outside", value: outside };
-  return { kind: "dash" };
+  return naReason ? { kind: "na", reason: naReason } : { kind: "unknown" };
+}
+
+/** A value the column does carry, or the reason it never will, or unknown. */
+export function plainCell(value: number | null, naReason: string | null): CohortCell {
+  if (value != null && Number.isFinite(value)) return { kind: "value", value };
+  return naReason ? { kind: "na", reason: naReason } : { kind: "unknown" };
+}
+
+/**
+ * The legend under a table: every distinct not-applicable reason its cells
+ * carry, in the order the columns present them, each with the superscript
+ * marker the cell prints. Letters rather than digits so a marker is never
+ * read as part of the number next to it.
+ */
+export const NA_MARKERS = "abcdefghij";
+
+export function naLegend(reasons: readonly (string | null | undefined)[]): { marker: string; reason: string }[] {
+  const seen: string[] = [];
+  for (const r of reasons) if (r && !seen.includes(r)) seen.push(r);
+  return seen.map((reason, i) => ({ marker: NA_MARKERS[i] ?? "*", reason }));
+}
+
+export function naMarker(legend: readonly { marker: string; reason: string }[], reason: string): string {
+  return legend.find((e) => e.reason === reason)?.marker ?? "*";
 }
 
 /* ------------------------------------------------------------- CCTP */
@@ -145,33 +211,76 @@ export function cctpScope(slug: string, scanned: ReadonlySet<string>): CctpScope
   return CCTP_DOMAIN_CHAINS.has(slug) ? "domain" : "none";
 }
 
+/** Why the CCTP column does not apply to a chain the bench does not scan. */
 export const CCTP_SCOPE_LABEL: Record<Exclude<CctpScope, "scanned">, string> = {
-  none: "no CCTP domain",
-  domain: "CCTP domain, not scanned as a source",
+  none: NA_REASON.cctpNone,
+  domain: NA_REASON.cctpUnscanned,
 };
 
 /* ------------------------------------------------------ divergences */
+
+/**
+ * Fee growth a row must clear on the 30-day column. The cohort's own median
+ * 30-day fee growth was +21.3% on 2026-09-29 (67 ranked protocols), so a row
+ * at or under 20% grew no faster than the median protocol did that month and
+ * is moving with the field, not against it; the constant is the median
+ * rounded down, so it does not drift with one month's reading.
+ */
+export const SIGNAL_FEE_GROWTH_MIN_PCT = 20;
+
+/**
+ * Size a 30-day token move must clear in either direction. Twenty of the 67
+ * ranked tokens, the flat middle 30% of the cohort, moved less than 10% over
+ * the 30 days to 2026-09-29; inside that band the sign of the move is not a
+ * direction, and a token at -1.3% was reading as "token down".
+ */
+export const SIGNAL_PRICE_MOVE_MIN_PCT = 10;
+
+/**
+ * Members a category needs before its median is allowed to qualify a row. A
+ * median over two protocols is a comparison with one other protocol, and
+ * Yield (2 members) and DEX Aggregator (3) were putting rows on the list on
+ * the strength of it. Below this floor the ratio is neither printed as a
+ * peer comparison nor used as a gate.
+ */
+export const SIGNAL_MIN_CATEGORY_MEMBERS = 5;
 
 export type DivergenceCandidate = {
   feeGrowth30dPct: number | null;
   priceChange30dPct: number | null;
   pfVsCategory: number | null;
+  /** Ranked protocols in the same category on this board, the reader can count them in the table. */
+  categorySize: number;
 };
 
+/** True when the category has enough members for its median to be a peer comparison rather than a pair. */
+export function categoryMedianUsable(categorySize: number): boolean {
+  return categorySize >= SIGNAL_MIN_CATEGORY_MEMBERS;
+}
+
 /**
- * The harness's protocol_diverging rule: fees up month over month, token
- * down over 30 days, P/F under the category median, all three at once.
- * The block on the tokens tab shows the five with the largest fee growth.
+ * Which signal a row carries, or none. Four clauses, not three: the fee leg
+ * and the price leg each have to clear the cohort's noise (constants above),
+ * the P/F has to sit on the right side of the category median, and the
+ * category has to be large enough for that median to mean anything. It is a
+ * screen for further reading and it is not the harness's protocol_diverging
+ * gauge, which applies the first three clauses at zero and no category
+ * floor: this list is the shorter one on purpose.
  */
+export function signalOf(r: DivergenceCandidate): SignalKind | null {
+  if (r.feeGrowth30dPct == null || r.priceChange30dPct == null || r.pfVsCategory == null) return null;
+  if (!categoryMedianUsable(r.categorySize)) return null;
+  if (r.feeGrowth30dPct > SIGNAL_FEE_GROWTH_MIN_PCT && r.priceChange30dPct < -SIGNAL_PRICE_MOVE_MIN_PCT && r.pfVsCategory < 1) {
+    return "fees-up-token-down";
+  }
+  if (r.feeGrowth30dPct < -SIGNAL_FEE_GROWTH_MIN_PCT && r.priceChange30dPct > SIGNAL_PRICE_MOVE_MIN_PCT && r.pfVsCategory > 1) {
+    return "fees-down-token-up";
+  }
+  return null;
+}
+
 export function isDiverging(r: DivergenceCandidate): boolean {
-  return (
-    r.feeGrowth30dPct != null &&
-    r.priceChange30dPct != null &&
-    r.pfVsCategory != null &&
-    r.feeGrowth30dPct > 0 &&
-    r.priceChange30dPct < 0 &&
-    r.pfVsCategory < 1
-  );
+  return signalOf(r) === "fees-up-token-down";
 }
 
 export function selectDivergences<T extends DivergenceCandidate>(rows: T[], limit = 5): T[] {
@@ -216,12 +325,15 @@ export const SERIES_STEP_MAX = 2;
  * first and last finite buckets, and only when the series covers the whole
  * window (first finite bucket inside the first tenth, about the first 16
  * hours), so a bench that started this week does not publish a shorter
- * move as 7d.
+ * move as 7d. When there is no number, the reason says which of the four
+ * conditions failed, so the cell can print why instead of a bare dash.
  */
-export function change7dFromSeries(series: (number | null)[] | undefined): number | null {
-  if (!series || series.length < 10) return null;
+export function change7dOfSeries(series: (number | null)[] | undefined): { value: number | null; naReason: string | null } {
+  const no = (naReason: string) => ({ value: null, naReason });
+  if (!series || series.length < 10) return no(NA_REASON.oiSeriesMissing);
   const firstIdx = series.findIndex((v) => typeof v === "number" && Number.isFinite(v) && v > 0);
-  if (firstIdx < 0 || firstIdx > Math.floor(series.length / 10)) return null;
+  if (firstIdx < 0) return no(NA_REASON.oiSeriesMissing);
+  if (firstIdx > Math.floor(series.length / 10)) return no(NA_REASON.oiSeriesShort);
   let lastIdx = -1;
   for (let i = series.length - 1; i >= 0; i--) {
     const v = series[i];
@@ -230,20 +342,25 @@ export function change7dFromSeries(series: (number | null)[] | undefined): numbe
       break;
     }
   }
-  if (lastIdx <= firstIdx) return null;
+  if (lastIdx <= firstIdx) return no(NA_REASON.oiSeriesFlat);
   // A step between two adjacent buckets (two hours apart) of more than 2x
   // is a change in what the bench measures (a source or scope switch), not
-  // capital moving in a week: the cell stays empty rather than print it as 7d.
+  // capital moving in a week: the cell says so rather than print it as 7d.
   let prev: number | null = null;
   for (let i = firstIdx; i <= lastIdx; i++) {
     const v = series[i];
     if (typeof v !== "number" || !Number.isFinite(v) || v <= 0) continue;
-    if (prev != null && (v > prev * SERIES_STEP_MAX || v < prev / SERIES_STEP_MAX)) return null;
+    if (prev != null && (v > prev * SERIES_STEP_MAX || v < prev / SERIES_STEP_MAX)) return no(NA_REASON.oiSeriesStep);
     prev = v;
   }
   const a = series[firstIdx] as number;
   const b = series[lastIdx] as number;
-  return ((b - a) / a) * 100;
+  return { value: ((b - a) / a) * 100, naReason: null };
+}
+
+/** The number only, for callers that already know why an empty cell is empty. */
+export function change7dFromSeries(series: (number | null)[] | undefined): number | null {
+  return change7dOfSeries(series).value;
 }
 
 /* --------------------------------------------------- reading notes */
@@ -261,7 +378,7 @@ export const CAPITAL_READING = {
   ],
   tokens: [
     "P/F is market cap over the last 30 days of protocol fees annualized; the column to read it against is vs category, the P/F divided by the fee-weighted median of the token's category, below 1 meaning under that median.",
-    "A P/F on an incomplete fee adapter is unranked and absent here, a float under 10% is held out too, and one month of fees is one month: Fees MoM can swing on a single incentive program.",
+    "A P/F on an incomplete fee adapter is unranked and absent here, a float under 10% is held out too, and one month of fees is one month: Fees MoM can swing on a single incentive program. The two badges need both legs to clear the cohort's noise (fees more than 20% against the prior month, token more than 10% over 30 days) and the category to hold at least five ranked protocols, so a flat token and a median over two peers no longer qualify a row.",
     "The table does not say whether a multiple should be higher or lower: it does not see token emissions ahead, buybacks, fee switches or where the fees go, only what the market paid per dollar of fees on the day.",
   ],
   perps: [
@@ -270,11 +387,66 @@ export const CAPITAL_READING = {
     "The table does not say how the fees were earned: incentivized or wash volume counts the same as organic volume in the fee line, and open interest is a level at one instant.",
   ],
   openInterest: [
-    "Open interest is the notional of positions open at the last read, for perp DEXes from each venue's API through bench 265 and for prediction markets from Polymarket, Kalshi and the venues' own endpoints through bench 277.",
-    "A level, not a flow: two venues can hold the same open interest with very different daily volume, and a prediction market's open interest is the value of unresolved contracts, not margin. The 7d column appears only where seven days of daily history exist.",
-    "The table does not say who holds the positions, how leveraged they are, or how much of the open interest is one market or one wallet.",
+    "Open interest is the notional of positions open at the last read, for perp DEXes from DefiLlama's open-interest overview through bench 265 and for prediction markets from Polymarket, Kalshi and the venues' own endpoints through bench 277. Turnover next to it is 24h volume over open interest: how many times a venue traded its whole book in a day.",
+    "Open interest is a level and turnover is the ratio that makes it readable: two venues can hold the same open interest with one recycling it several times a day and the other holding it for a week. Both terms of the perp turnover are the venue's own API through benches 041 and 271, while the open-interest column is DefiLlama's, so the two do not divide into each other and the ratio is read from bench 271 rather than computed here.",
+    "The table does not say who holds the positions, how leveraged they are, or how much of the open interest is one market or one wallet. A high turnover is not proof of wash trading: incentive programs, maker rebates and short-horizon retail flow raise it too.",
   ],
 } as const;
+
+/* --------------------------------------------- reading the signals */
+
+export type SignalKind = "fees-up-token-down" | "fees-down-token-up";
+
+/**
+ * What each signal implies, what would falsify it, and where to look next.
+ * Three short entries per signal, under the divergence table and in the
+ * Markdown view. Every claim is checkable from a column on this page or a
+ * page named in `next`, and nothing here is a recommendation: the reading
+ * says what the three numbers do and do not establish, so a reader who
+ * disagrees can see from the same table why.
+ */
+export const SIGNAL_READING: Record<SignalKind, { title: string; means: string; falsifies: string; next: string }> = {
+  "fees-up-token-down": {
+    title: "Fees up, token down",
+    means:
+      "Fees over the last 30 days grew by more than 20% against the prior 30, the token fell by more than 10% over the same days, and market cap per dollar of annualized fees sits under the fee-weighted median of a category with at least five ranked members. The three readings disagree with each other. It is a screen for further reading, not a conclusion, and the table does not say which of the three is early.",
+    falsifies:
+      "A 30-day fee jump can be one incentive program, one airdrop farm or one large user, and it ends when they do. The reading does not survive a fee series that is one month tall and flat before it, fee growth that revenue did not follow (the protocol passed the fees on), or a float under a fifth of supply, where the multiple is priced on a small part of the token.",
+    next:
+      "The product page carries the fee and revenue history month by month; bench protocol-pf-ratio carries the category median this row is divided by and every peer measured the same way, so the row is read against the peers rather than alone. Float and Supply 30d in the table below say how much of the supply has already arrived.",
+  },
+  "fees-down-token-up": {
+    title: "Fees down, token up",
+    means:
+      "Fees over the last 30 days fell by more than 20% against the prior 30, the token rose by more than 10%, and market cap per dollar of annualized fees sits above the median of a category with at least five ranked members. The price moved away from the fee line rather than with it. A screen for further reading, not a conclusion.",
+    falsifies:
+      "Fees fall for reasons that are not less usage: a quiet month across the whole category, a fee switch that changed what the adapter counts, or one large market closing. Check the category median in the same column, which moves with the whole category, and check whether the adapter's scope changed inside the window before reading the drop as activity.",
+    next:
+      "The product page for the fee series and the revenue split, bench protocol-pf-ratio for the peer distribution behind the median. P/S next to P/F says how much of the fees the protocol keeps, which is what a multiple on fees alone does not see.",
+  },
+};
+
+/**
+ * The per-row line behind the signal badge: the row's own three numbers,
+ * then the one thing that would change the reading. Numbers only, no
+ * verdict, so the badge says why it is there without a narrative column.
+ */
+export function signalRowNote(r: {
+  signal: SignalKind | null;
+  feeGrowth30dPct: number | null;
+  priceChange30dPct: number | null;
+  pfVsCategory: number | null;
+  category: string;
+}): string | null {
+  if (r.signal == null) return null;
+  const cat = r.category || "category";
+  const head = `Fees ${fmtPct(r.feeGrowth30dPct, 0)} over 30 days, token ${fmtPct(r.priceChange30dPct, 0)}, price to fees ${fmtX(r.pfVsCategory)} the ${cat} median.`;
+  const tail =
+    r.signal === "fees-up-token-down"
+      ? "One month of fee growth can be one incentive program: check the fee series and whether revenue moved with fees."
+      : "One month of fees can fall on a quiet category or an adapter scope change: check the category median and the adapter before reading it as usage.";
+  return `${head} ${tail}`;
+}
 
 /**
  * Whether an optional column is worth a place in the table: at least half the

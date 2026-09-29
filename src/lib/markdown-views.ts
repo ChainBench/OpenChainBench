@@ -25,14 +25,23 @@ import { perpProductSlug } from "@/lib/perp-product-slug";
 import { fmtPct as capPct, fmtUsdShort as capUsd, fmtX as capX, type CapitalHub } from "@/lib/capital-hub-types";
 import {
   CAPITAL_READING,
-  CCTP_SCOPE_LABEL,
   OUTSIDE_COHORT_LABEL,
+  SIGNAL_FEE_GROWTH_MIN_PCT,
+  SIGNAL_MIN_CATEGORY_MEMBERS,
+  SIGNAL_PRICE_MOVE_MIN_PCT,
+  SIGNAL_READING,
+  UNKNOWN_LABEL,
   bridgedShareSubline,
   cohortCell,
   columnIsWorthShowing,
   fmtUsdLevel,
+  naLegend,
+  naMarker,
+  plainCell,
   sevenDaySubline,
+  signalRowNote,
   type CohortCell,
+  type SignalKind,
 } from "@/lib/capital-hub-rules";
 
 export function rankingLines(b: Benchmark, ranked: ReturnType<typeof rankedCandidates>): string[] {
@@ -265,11 +274,17 @@ export function rwaHubMarkdown(benches: Benchmark[]): string {
 
 
 
-/** A bench-ranked cell in Markdown: the value, n/a, the blob value with a `*` (outside the ranked cohort), or a dash. */
-function cohortMd(cell: CohortCell, fmt: (v: number) => string): string {
+/**
+ * A cell in Markdown, the same four states the HTML table renders: the
+ * ranked value, the daily history's value with a `*` (outside the ranked
+ * cohort), `n/a` with the legend marker of the reason the column does not
+ * apply, or a bare `-` when the feed simply carries nothing.
+ */
+function cohortMd(cell: CohortCell, fmt: (v: number) => string, legend: readonly { marker: string; reason: string }[] = []): string {
   if (cell.kind === "value") return fmt(cell.value);
   if (cell.kind === "outside") return `${fmt(cell.value)}*`;
-  return cell.kind === "na" ? "n/a" : "-";
+  if (cell.kind === "na") return `n/a[${naMarker(legend, cell.reason)}]`;
+  return "-";
 }
 
 /** Markdown view of /capital: both cohorts, the same rows and rules as the HTML tables (src/lib/capital-hub-rules.ts). */
@@ -303,12 +318,20 @@ export function capitalHubMarkdown(hub: CapitalHub): string {
     // L2Beat cohort, a chain with no CCTP domain), n/a means missing data,
     // "<$1K" a DeFiLlama zero for an untracked chain, "*" a value for a
     // chain outside the ranked cohort.
+    // Same markers as the HTML legend, in the same column order.
+    const chainLegend = naLegend([
+      ...hub.chains.map((c) => c.notApplicable.bridged),
+      ...hub.chains.map((c) => c.notApplicable.stables),
+      ...(hasCctp ? hub.chains.map((c) => c.notApplicable.cctp) : []),
+      ...(hasFees ? hub.chains.map((c) => c.notApplicable.fees) : []),
+    ]);
+    const naMd = (reason: string | undefined) => (reason ? `n/a[${naMarker(chainLegend, reason)}]` : "-");
     const cols: { h: string; v: (c: Chain) => string }[] = [
       ...(hub.chains.some((c) => c.tvl != null) ? [{ h: "TVL", v: (c: Chain) => fmtUsdLevel(c.tvl) }] : []),
       {
         h: "Bridged value",
         v: (c) => {
-          if (!c.inBridgedCohort) return "-";
+          if (!c.inBridgedCohort) return naMd(c.notApplicable.bridged);
           const sub = bridgedShareSubline(c.bridgedSharePct);
           return sub ? `${capUsd(c.bridgedTvl)} (${sub})` : capUsd(c.bridgedTvl);
         },
@@ -316,17 +339,36 @@ export function capitalHubMarkdown(hub: CapitalHub): string {
       {
         h: "7d vs L2 median",
         v: (c) => {
-          if (!c.inBridgedCohort) return "-";
+          if (!c.inBridgedCohort) return naMd(c.notApplicable.bridged);
           const sub = sevenDaySubline(c.change7dPct, c.median7dPct);
           return sub ? `${capPct(c.excess7dPct)} (${sub})` : capPct(c.excess7dPct);
         },
       },
       { h: "Stablecoin float", v: (c) => fmtUsdLevel(c.stablesFloat) },
-      { h: "Net stables 30d", v: (c) => cohortMd(cohortCell(c.inStablesCohort, c.stablesNet30d, c.stablesNet30dOutside), capUsd) },
-      ...(hasCctp ? [{ h: "USDC over CCTP 7d", v: (c: Chain) => (c.cctpScope === "scanned" ? capUsd(c.cctpNet7d) : "-") }] : []),
+      {
+        h: "Net stables 30d",
+        v: (c) => cohortMd(cohortCell(c.inStablesCohort, c.stablesNet30d, c.stablesNet30dOutside, c.notApplicable.stables ?? null), capUsd, chainLegend),
+      },
+      ...(hasCctp
+        ? [{ h: "USDC over CCTP 7d", v: (c: Chain) => (c.cctpScope === "scanned" ? capUsd(c.cctpNet7d) : naMd(c.notApplicable.cctp)) }]
+        : []),
       ...(hub.chains.some((c) => c.dexVolume24h != null) ? [{ h: "DEX volume 24h", v: (c: Chain) => fmtUsdLevel(c.dexVolume24h) }] : []),
-      ...(hasFees ? [{ h: "Fees 30d", v: (c: Chain) => cohortMd(cohortCell(c.inFeesCohort, c.fees30d, c.fees30dOutside), fmtUsdLevel) }] : []),
-      ...(hasFees ? [{ h: "Revenue 30d", v: (c: Chain) => cohortMd(cohortCell(c.inFeesCohort, c.revenue30d, c.revenue30dOutside), fmtUsdLevel) }] : []),
+      ...(hasFees
+        ? [
+            {
+              h: "Fees 30d",
+              v: (c: Chain) => cohortMd(cohortCell(c.inFeesCohort, c.fees30d, c.fees30dOutside, c.notApplicable.fees ?? null), fmtUsdLevel, chainLegend),
+            },
+          ]
+        : []),
+      ...(hasFees
+        ? [
+            {
+              h: "Revenue 30d",
+              v: (c: Chain) => cohortMd(cohortCell(c.inFeesCohort, c.revenue30d, c.revenue30dOutside, c.notApplicable.fees ?? null), fmtUsdLevel, chainLegend),
+            },
+          ]
+        : []),
     ];
     md.push(`| # | Chain | ${cols.map((c) => c.h).join(" | ")} |`);
     md.push(`|---|---|${cols.map(() => "---").join("|")}|`);
@@ -335,8 +377,8 @@ export function capitalHubMarkdown(hub: CapitalHub): string {
     });
     md.push("");
     const legend = [
-      `"-": the bench does not cover the row (an L1 on the L2Beat cohort${hasCctp ? `, ${CCTP_SCOPE_LABEL.none} or ${CCTP_SCOPE_LABEL.domain}` : ""})`,
-      `n/a: missing data`,
+      ...chainLegend.map((e) => `"n/a[${e.marker}]": the column does not apply to the row (${e.reason})`),
+      `"-": ${UNKNOWN_LABEL}`,
       `"<$1K": a DeFiLlama zero for a chain it does not track, not a measurement`,
       `"*": ${OUTSIDE_COHORT_LABEL} (a history value for a chain the bench does not rank; it takes no part in the leaders or counts)`,
     ];
@@ -347,37 +389,85 @@ export function capitalHubMarkdown(hub: CapitalHub): string {
   if (hub.pmOi.length > 0 || hub.perpOi.length > 0) {
     md.push(`## Open interest`);
     md.push("");
-    const oiTable = (title: string, rows: CapitalHub["perpOi"], bench: string, volume: boolean) => {
-      const has7d = rows.some((r) => r.change7dPct != null);
-      md.push(`${title} (${SITE.url}/benchmarks/${bench})`);
+    const oiTable = (title: string, rows: CapitalHub["perpOi"], benches: string[], note: string) => {
+      const shown = rows.slice(0, 10);
+      const has7d = shown.some((r) => r.change7dPct != null);
+      const hasVol = shown.some((r) => r.volume24h != null);
+      const hasTurn = shown.some((r) => r.turnover != null);
+      const legend = naLegend([
+        ...(has7d ? shown.map((r) => r.change7dNaReason) : []),
+        ...(hasVol ? shown.map((r) => r.volumeNaReason) : []),
+        ...(hasTurn ? shown.map((r) => r.turnoverNaReason) : []),
+      ]);
+      md.push(`${title} (${benches.map((b) => `${SITE.url}/benchmarks/${b}`).join(" · ")})`);
       md.push("");
-      md.push(`| # | Venue | Open interest |${has7d ? " 7d |" : ""}${volume ? " Volume 24h |" : ""}`);
-      md.push(`|---|---|---|${has7d ? "---|" : ""}${volume ? "---|" : ""}`);
-      rows.slice(0, 10).forEach((r, i) => {
-        // An empty 7d cell: the window is not covered yet, nothing is missing from the bench.
-        md.push(`| ${i + 1} | ${r.name} | ${capUsd(r.oi)} |${has7d ? ` ${r.change7dPct != null ? capPct(r.change7dPct) : ""} |` : ""}${volume ? ` ${capUsd(r.volume24h)} |` : ""}`);
+      md.push(`| # | Venue | Open interest |${has7d ? " 7d |" : ""}${hasVol ? " Volume 24h |" : ""}${hasTurn ? " Turnover 24h |" : ""}`);
+      md.push(`|---|---|---|${has7d ? "---|" : ""}${hasVol ? "---|" : ""}${hasTurn ? "---|" : ""}`);
+      shown.forEach((r, i) => {
+        const cells = [
+          `${i + 1}`,
+          r.name,
+          capUsd(r.oi),
+          ...(has7d ? [cohortMd(plainCell(r.change7dPct, r.change7dNaReason), (v) => capPct(v), legend)] : []),
+          ...(hasVol ? [cohortMd(plainCell(r.volume24h, r.volumeNaReason), capUsd, legend)] : []),
+          ...(hasTurn ? [cohortMd(plainCell(r.turnover, r.turnoverNaReason), capX, legend)] : []),
+        ];
+        md.push(`| ${cells.join(" | ")} |`);
       });
       md.push("");
+      if (legend.length > 0) {
+        md.push(`Legend: ${legend.map((e) => `"n/a[${e.marker}]": ${e.reason}`).join("; ")}; "-": ${UNKNOWN_LABEL}.`);
+        md.push("");
+      }
+      md.push(note);
+      md.push("");
     };
-    if (hub.perpOi.length > 0) oiTable("Perp DEXes", hub.perpOi, "perp-pf-ratio", false);
-    if (hub.pmOi.length > 0) oiTable("Prediction markets", hub.pmOi, "pm-open-interest", true);
+    if (hub.perpOi.length > 0)
+      oiTable(
+        "Perp DEXes",
+        hub.perpOi,
+        ["perp-pf-ratio", "perp-volume-share", "perp-volume-oi-ratio"],
+        "Open interest from bench 265 (DefiLlama's open-interest overview), volume and turnover from the perp cohort harness (the venue's own API). Turnover is bench 271's ratio, not this table's volume divided by this table's open interest: the two denominators are different measurements.",
+      );
+    if (hub.pmOi.length > 0)
+      oiTable(
+        "Prediction markets",
+        hub.pmOi,
+        ["pm-open-interest"],
+        "Open interest, 24h volume and turnover all from bench 277, so turnover is this table's volume over this table's open interest.",
+      );
     reading(CAPITAL_READING.openInterest);
   }
   if (hub.protocols.length > 0) {
     md.push(`## Divergences this month: fees up, token down, price to fees under the category median`);
     md.push("");
     if (hub.divergences.length === 0) {
-      md.push(`No token has its 30-day fees up against the prior 30 days, its price down over 30 days and its price to fees under the category median today.`);
+      md.push(
+        `No token clears all four conditions today: 30-day fees up more than ${SIGNAL_FEE_GROWTH_MIN_PCT}% against the prior 30 days, the token down more than ${SIGNAL_PRICE_MOVE_MIN_PCT}% over the same days, price to fees under the category median, and at least ${SIGNAL_MIN_CATEGORY_MEMBERS} ranked protocols in the category.`,
+      );
     } else {
-      md.push(`| Token | Category | Fees MoM | Token 30d | P/F vs median |`);
-      md.push(`|---|---|---|---|---|`);
+      md.push(`| Token | Category | Fees MoM | Token 30d | P/F vs median | Reading |`);
+      md.push(`|---|---|---|---|---|---|`);
       for (const p of hub.divergences) {
-        md.push(`| ${p.name} | ${p.category || "n/a"} | ${capPct(p.feeGrowth30dPct, 0)} | ${capPct(p.priceChange30dPct, 0)} | ${capX(p.pf)} vs ${capX(p.categoryMedianPf)} (${capX(p.pfVsCategory)} of the median) |`);
+        md.push(`| ${p.name} | ${p.category || "n/a"} | ${capPct(p.feeGrowth30dPct, 0)} | ${capPct(p.priceChange30dPct, 0)} | ${capX(p.pf)} vs ${capX(p.categoryMedianPf)} (${capX(p.pfVsCategory)} of the median) | ${signalRowNote(p) ?? ""} |`);
       }
       md.push("");
-      md.push(`Three conditions at once, the five with the largest fee growth. A screen for further reading, not a signal to act on.`);
+      md.push(
+        `Four conditions at once, the five with the largest fee growth: fees up more than ${SIGNAL_FEE_GROWTH_MIN_PCT}% against the prior 30 days, the token down more than ${SIGNAL_PRICE_MOVE_MIN_PCT}% over the same days, price to fees under the category median, and at least ${SIGNAL_MIN_CATEGORY_MEMBERS} ranked protocols in the category. A screen for further reading, not a signal to act on.`,
+      );
     }
     md.push("");
+    // What each signal implies, what would falsify it, what to check next:
+    // the same words the page prints under the divergence table.
+    for (const k of ["fees-up-token-down", "fees-down-token-up"] as SignalKind[]) {
+      const n = hub.protocols.filter((p) => p.signal === k).length;
+      md.push(`### ${SIGNAL_READING[k].title} (${n} ${n === 1 ? "token" : "tokens"} today)`);
+      md.push("");
+      md.push(`- What it means. ${SIGNAL_READING[k].means}`);
+      md.push(`- What would falsify it. ${SIGNAL_READING[k].falsifies}`);
+      md.push(`- What to check next. ${SIGNAL_READING[k].next}`);
+      md.push("");
+    }
     md.push(`## Tokens by price to fees (market cap over annualized 30-day fees)`);
     md.push("");
     // Same rule as the table: the four columns the valuation harness adds appear once a row carries a value.
@@ -391,6 +481,7 @@ export function capitalHubMarkdown(hub: CapitalHub): string {
       ...(hasTvl ? ["TVL"] : []),
       ...(hasRevenue ? ["Revenue 30d"] : []),
     ];
+    const protocolLegend = naLegend(hub.protocols.map((p) => p.pfVsCategoryNaReason));
     md.push(`| # | Token | Category | P/F | FDV/F | Float | Fees MoM | Token 30d | vs category median |${extra.map((h) => ` ${h} |`).join("")}`);
     md.push(`|---|---|---|---|---|---|---|---|---|${extra.map(() => "---|").join("")}`);
     hub.protocols.forEach((p, i) => {
@@ -401,13 +492,20 @@ export function capitalHubMarkdown(hub: CapitalHub): string {
         ...(hasTvl ? [capUsd(p.tvl)] : []),
         ...(hasRevenue ? [p.revenue30d != null && p.revenueIncomplete ? `${capUsd(p.revenue30d)}*` : capUsd(p.revenue30d)] : []),
       ];
+      // A category under the floor has no usable median: the cell carries the
+      // reason, not a ratio against one or two protocols.
+      const vsCategory = p.pfVsCategoryNaReason ? `n/a[${naMarker(protocolLegend, p.pfVsCategoryNaReason)}]` : `${capX(p.pfVsCategory)}${flag}`;
       md.push(
-        `| ${i + 1} | ${p.name} | ${p.category || "n/a"} | ${capX(p.pf)} | ${capX(p.pfFdv)} | ${p.floatPct != null ? p.floatPct.toFixed(0) + "%" : "n/a"} | ${capPct(p.feeGrowth30dPct, 0)} | ${capPct(p.priceChange30dPct, 0)} | ${capX(p.pfVsCategory)}${flag} |${tail.map((t) => ` ${t} |`).join("")}`,
+        `| ${i + 1} | ${p.name} | ${p.category || "n/a"} | ${capX(p.pf)} | ${capX(p.pfFdv)} | ${p.floatPct != null ? p.floatPct.toFixed(0) + "%" : "n/a"} | ${capPct(p.feeGrowth30dPct, 0)} | ${capPct(p.priceChange30dPct, 0)} | ${vsCategory} |${tail.map((t) => ` ${t} |`).join("")}`,
       );
     });
     md.push("");
     if (hasRevenue && hub.protocols.some((p) => p.revenue30d != null && p.revenueIncomplete)) {
       md.push(`Legend: "*" after a revenue figure: the total is knowably short (a revenue adapter reports nothing this month), so it covers part of the protocol and no P/S is built on it.`);
+      md.push("");
+    }
+    if (protocolLegend.length > 0) {
+      md.push(`Legend: ${protocolLegend.map((e) => `"n/a[${e.marker}]": ${e.reason}`).join("; ")}.`);
       md.push("");
     }
     reading(CAPITAL_READING.tokens);
