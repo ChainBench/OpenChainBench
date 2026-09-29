@@ -25,6 +25,7 @@ import { perpProductSlug } from "@/lib/perp-product-slug";
 import { fmtPct as capPct, fmtUsdShort as capUsd, fmtX as capX, type CapitalHub } from "@/lib/capital-hub-types";
 import {
   CAPITAL_READING,
+  NOT_APPLICABLE_LABEL,
   OUTSIDE_COHORT_LABEL,
   SIGNAL_FEE_GROWTH_MIN_PCT,
   SIGNAL_MIN_CATEGORY_MEMBERS,
@@ -277,14 +278,15 @@ export function rwaHubMarkdown(benches: Benchmark[]): string {
 /**
  * A cell in Markdown, the same four states the HTML table renders: the
  * ranked value, the daily history's value with a `*` (outside the ranked
- * cohort), `n/a` with the legend marker of the reason the column does not
- * apply, or a bare `-` when the feed simply carries nothing.
+ * cohort), a dash carrying the legend marker of the reason the column does
+ * not apply, or `n/a` when the feed simply carries nothing. Same two tokens
+ * as the HTML, and `n/a` means what it means on the rest of the site.
  */
 function cohortMd(cell: CohortCell, fmt: (v: number) => string, legend: readonly { marker: string; reason: string }[] = []): string {
   if (cell.kind === "value") return fmt(cell.value);
   if (cell.kind === "outside") return `${fmt(cell.value)}*`;
-  if (cell.kind === "na") return `n/a[${naMarker(legend, cell.reason)}]`;
-  return "-";
+  if (cell.kind === "na") return `-[${naMarker(legend, cell.reason)}]`;
+  return "n/a";
 }
 
 /** Markdown view of /capital: both cohorts, the same rows and rules as the HTML tables (src/lib/capital-hub-rules.ts). */
@@ -325,7 +327,7 @@ export function capitalHubMarkdown(hub: CapitalHub): string {
       ...(hasCctp ? hub.chains.map((c) => c.notApplicable.cctp) : []),
       ...(hasFees ? hub.chains.map((c) => c.notApplicable.fees) : []),
     ]);
-    const naMd = (reason: string | undefined) => (reason ? `n/a[${naMarker(chainLegend, reason)}]` : "-");
+    const naMd = (reason: string | undefined) => (reason ? `-[${naMarker(chainLegend, reason)}]` : "n/a");
     const cols: { h: string; v: (c: Chain) => string }[] = [
       ...(hub.chains.some((c) => c.tvl != null) ? [{ h: "TVL", v: (c: Chain) => fmtUsdLevel(c.tvl) }] : []),
       {
@@ -377,8 +379,9 @@ export function capitalHubMarkdown(hub: CapitalHub): string {
     });
     md.push("");
     const legend = [
-      ...chainLegend.map((e) => `"n/a[${e.marker}]": the column does not apply to the row (${e.reason})`),
-      `"-": ${UNKNOWN_LABEL}`,
+      `a dash with a letter means ${NOT_APPLICABLE_LABEL}`,
+      ...chainLegend.map((e) => `"-[${e.marker}]": ${e.reason}`),
+      `"n/a": ${UNKNOWN_LABEL}`,
       `"<$1K": a DeFiLlama zero for a chain it does not track, not a measurement`,
       `"*": ${OUTSIDE_COHORT_LABEL} (a history value for a chain the bench does not rank; it takes no part in the leaders or counts)`,
     ];
@@ -416,7 +419,7 @@ export function capitalHubMarkdown(hub: CapitalHub): string {
       });
       md.push("");
       if (legend.length > 0) {
-        md.push(`Legend: ${legend.map((e) => `"n/a[${e.marker}]": ${e.reason}`).join("; ")}; "-": ${UNKNOWN_LABEL}.`);
+        md.push(`Legend: a dash with a letter means ${NOT_APPLICABLE_LABEL}; ${legend.map((e) => `"-[${e.marker}]": ${e.reason}`).join("; ")}; "n/a": ${UNKNOWN_LABEL}.`);
         md.push("");
       }
       md.push(note);
@@ -494,7 +497,7 @@ export function capitalHubMarkdown(hub: CapitalHub): string {
       ];
       // A category under the floor has no usable median: the cell carries the
       // reason, not a ratio against one or two protocols.
-      const vsCategory = p.pfVsCategoryNaReason ? `n/a[${naMarker(protocolLegend, p.pfVsCategoryNaReason)}]` : `${capX(p.pfVsCategory)}${flag}`;
+      const vsCategory = p.pfVsCategoryNaReason ? `-[${naMarker(protocolLegend, p.pfVsCategoryNaReason)}]` : `${capX(p.pfVsCategory)}${flag}`;
       md.push(
         `| ${i + 1} | ${p.name} | ${p.category || "n/a"} | ${capX(p.pf)} | ${capX(p.pfFdv)} | ${p.floatPct != null ? p.floatPct.toFixed(0) + "%" : "n/a"} | ${capPct(p.feeGrowth30dPct, 0)} | ${capPct(p.priceChange30dPct, 0)} | ${vsCategory} |${tail.map((t) => ` ${t} |`).join("")}`,
       );
@@ -505,7 +508,7 @@ export function capitalHubMarkdown(hub: CapitalHub): string {
       md.push("");
     }
     if (protocolLegend.length > 0) {
-      md.push(`Legend: ${protocolLegend.map((e) => `"n/a[${e.marker}]": ${e.reason}`).join("; ")}.`);
+      md.push(`Legend: a dash with a letter means ${NOT_APPLICABLE_LABEL}; ${protocolLegend.map((e) => `"-[${e.marker}]": ${e.reason}`).join("; ")}.`);
       md.push("");
     }
     reading(CAPITAL_READING.tokens);

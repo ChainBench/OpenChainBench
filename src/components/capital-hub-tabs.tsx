@@ -16,6 +16,7 @@ import {
 } from "@/lib/capital-hub-types";
 import {
   CAPITAL_READING,
+  NOT_APPLICABLE_LABEL,
   OUTSIDE_COHORT_LABEL,
   SIGNAL_FEE_GROWTH_MIN_PCT,
   SIGNAL_MIN_CATEGORY_MEMBERS,
@@ -286,7 +287,7 @@ function ChainsTable({ rows }: { rows: ChainRow[] }) {
                 )}
                 {/* Outside the L2Beat cohort the column does not apply and says
                     why (Ethereum is the chain the bridges start from, the rest
-                    are L1s with no host chain), so a bare dash keeps meaning
+                    are L1s with no host chain), so a plain "n/a" keeps meaning
                     "the feed has no value", not "there is nothing to measure". */}
                 {r.inBridgedCohort ? (
                   <Td mono>
@@ -743,7 +744,7 @@ function NameCell({ slug, name, link }: { slug: string; name: string; link: stri
   );
 }
 
-/** A DeFiLlama level: the unknown dash when missing, a muted "<$1K" under the dust floor (a zero for an untracked chain, not a measurement). */
+/** A DeFiLlama level: a muted "n/a" when missing, a muted "<$1K" under the dust floor (a zero for an untracked chain, not a measurement). */
 function Level({ v }: { v: number | null }) {
   if (v == null) return <Unknown />;
   if (isDust(v)) return <span className="text-ink-faint" title="Under $1,000: DeFiLlama reports zero for a chain it does not track">{fmtUsdLevel(v)}</span>;
@@ -761,11 +762,12 @@ function Signed({ v, fmt, plain }: { v: number | null; fmt: (v: number) => strin
  *  - value: ranked, plain;
  *  - outside: the daily history's number for a row the bench does not rank,
  *    muted and labelled;
- *  - na: does not apply, printed "n/a" with the superscript marker that ties
- *    it to the reason in the legend under the table;
- *  - unknown: a bare dash and nothing else.
- * A reader tells the last two apart without a mouse: a marked "n/a" against
- * a plain dash.
+ *  - na: does not apply, printed as a dash carrying the superscript marker
+ *    that ties it to the reason in the legend under the table;
+ *  - unknown: "n/a" and nothing else, the same thing "n/a" means on every
+ *    other page of the site.
+ * A reader tells the last two apart without a mouse by the letter: a marked
+ * dash against a plain "n/a".
  */
 function CohortTd({
   cell,
@@ -804,16 +806,16 @@ function CohortTd({
   );
 }
 
-/** The feed carries no value for this row this run: a bare dash, and only that. */
+/** The feed carries no value for this row this run: "n/a", the same as everywhere else on the site. */
 function Unknown() {
   return (
-    <span className="text-ink-faint/60" title={UNKNOWN_LABEL} aria-label={UNKNOWN_LABEL}>
-      -
+    <span className="text-ink-faint" title={UNKNOWN_LABEL} aria-label={UNKNOWN_LABEL}>
+      n/a
     </span>
   );
 }
 
-/** The column does not apply to this row: "n/a" with the marker that names the reason in the legend. */
+/** The column does not apply to this row: a dash carrying the marker that names the reason in the legend. */
 function NaTd({ reason, legend }: { reason: string | undefined; legend: readonly { marker: string; reason: string }[] }) {
   if (!reason)
     return (
@@ -823,23 +825,24 @@ function NaTd({ reason, legend }: { reason: string | undefined; legend: readonly
     );
   return (
     <td
-      className="px-3 py-2 whitespace-nowrap text-ink-faint"
+      className="px-3 py-2 whitespace-nowrap text-ink-faint/70"
       style={{ fontFamily: "var(--font-mono, monospace)" }}
       title={`Not applicable: ${reason}`}
       aria-label={`Not applicable: ${reason}`}
     >
-      n/a<sup className="ml-px text-[9px]">{naMarker(legend, reason)}</sup>
+      -<sup className="ml-px text-[10px] font-medium">{naMarker(legend, reason)}</sup>
     </td>
   );
 }
 
-/** One line under a table: what every marker on its "n/a" cells means, and what a bare dash means. */
+/** One line under a table: what a marked dash means, what each marker means, and what a plain "n/a" means. */
 function NaLegend({ entries }: { entries: readonly { marker: string; reason: string }[] }) {
   if (entries.length === 0) return null;
   return (
     <p className="px-3 py-2 text-[11px] text-ink-faint leading-relaxed">
-      <span className="text-ink-soft">n/a</span> is a column that does not apply to the row, and its marker says why.{" "}
-      {entries.map((e) => `${e.marker}: ${e.reason}`).join(". ")}. A bare dash is a different thing: {UNKNOWN_LABEL}.
+      A dash with a letter, like <span className="text-ink-soft">-{entries[0].marker}</span>, means {NOT_APPLICABLE_LABEL}.{" "}
+      {entries.map((e) => `${e.marker}: ${e.reason}`).join(". ")}. A plain <span className="text-ink-soft">n/a</span> is a different thing:{" "}
+      {UNKNOWN_LABEL}.
     </p>
   );
 }

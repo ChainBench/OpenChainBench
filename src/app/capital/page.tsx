@@ -234,11 +234,12 @@ export default async function CapitalHubPage() {
             names.
           </p>
           <p>
-            <strong className="text-ink">Empty cells say which kind of empty they are.</strong> A cell reading &quot;n/a&quot; with a small letter does
+            <strong className="text-ink">Empty cells say which kind of empty they are.</strong> A dash carrying a small letter is a column that does
             not apply to that row, and the legend under the table spells out why: Ethereum is the chain the bridges start from rather than a
             destination, a sovereign L1 has no host chain to bridge from, Circle runs no CCTP domain there, DeFiLlama publishes no fee adapter for
-            the chain. A bare dash is the other thing entirely: the feed should carry a value for that row and does not. A muted value is a chain
-            outside a bench&apos;s ranked cohort, read from the daily history and left out of the leaders and the counts.
+            the chain. A plain &quot;n/a&quot; is the other thing entirely, and it means here what it means on every other page of this site: the feed
+            should carry a value for that row and does not. A muted value is a chain outside a bench&apos;s ranked cohort, read from the daily
+            history and left out of the leaders and the counts.
           </p>
           <p>
             Under each table, three lines say how to read its main column, where it misleads, and what it does not say.

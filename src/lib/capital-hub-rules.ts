@@ -76,11 +76,17 @@ export function bridgedShareSubline(sharePct: number | null): string | null {
  *  - na: not applicable, with the reason why there is no number to show and
  *    never will be (Ethereum is the chain the bridges start from, Circle
  *    runs no CCTP domain here, DeFiLlama publishes no fee adapter). The
- *    cell prints "n/a" with a superscript marker into the legend under the
- *    table;
+ *    cell prints a dash carrying a superscript marker, and the marker is
+ *    what tells it apart: the legend under the table spells out the reason;
  *  - unknown: the feed should carry a value for this row and does not (a
  *    withheld row, a bench that failed to load this render). The cell
- *    prints a bare dash and nothing else.
+ *    prints "n/a" and nothing else.
+ *
+ * "n/a" is the missing value here because it is the missing value on the
+ * other 37 places the site uses it (perp head to head, the trading-app
+ * charts, the RPC tables, the fee comparison), and a token cannot mean two
+ * things on two pages. The inapplicable case gets its own rendering instead,
+ * as it already does on the fee comparison page.
  *
  * This is the bench 208 rule applied to a table: an absent measurement must
  * not read as a measured absence.
@@ -93,8 +99,11 @@ export type CohortCell =
 
 export const OUTSIDE_COHORT_LABEL = "outside the ranked cohort";
 
-/** What a bare dash means, for the legend and the cell title. */
+/** What a plain "n/a" means here, for the legend and the cell title: the same thing it means everywhere else on the site. */
 export const UNKNOWN_LABEL = "the feed carries no value for this row on this run";
+
+/** What a dash with a marker means, said once in the legend of every table that has one. */
+export const NOT_APPLICABLE_LABEL = "the column does not apply to this row, and the letter says why";
 
 /**
  * Why a column can have no value for a row and never will. Every string is
@@ -142,8 +151,9 @@ export function plainCell(value: number | null, naReason: string | null): Cohort
 /**
  * The legend under a table: every distinct not-applicable reason its cells
  * carry, in the order the columns present them, each with the superscript
- * marker the cell prints. Letters rather than digits so a marker is never
- * read as part of the number next to it.
+ * marker the cell prints next to its dash. Letters rather than digits so a
+ * marker is never read as part of the number next to it, and the letter is
+ * what separates "does not apply" from the plain "n/a" of a missing value.
  */
 export const NA_MARKERS = "abcdefghij";
 
