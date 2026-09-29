@@ -122,6 +122,24 @@ const nextConfig: NextConfig = {
         headers: SECURITY_HEADERS,
       },
       {
+        // Any hostname other than the canonical production domain is a
+        // duplicate of the whole site and must not be indexed. robots.ts
+        // and the layout's noindex both key off VERCEL_ENV, which says
+        // "production" for a production build no matter which hostname
+        // serves it. On 2026-09-29 staging.openchainbench.com was aliased
+        // to a production deployment and served `Allow: /` with no
+        // noindex, so the entire catalog was crawlable twice.
+        //
+        // This keys off the host instead, so an alias pointed at the wrong
+        // deployment can no longer expose a second indexable copy. It is a
+        // response header rather than a meta tag on purpose: reading the
+        // host in the root layout would opt every page out of static
+        // rendering.
+        source: "/:path*",
+        missing: [{ type: "host", value: "openchainbench.com" }],
+        headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }],
+      },
+      {
         // The RPC speed test fires fetch() at user-supplied endpoints
         // straight from the browser — the whole product. The site-wide
         // connect-src allowlist blocked every probe (surfaced as a fake
