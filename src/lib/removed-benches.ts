@@ -101,6 +101,22 @@ export const DEV_ONLY_BENCH_SLUGS = new Set([
   // release condition is more than two keyed providers. Was held off main
   // by its spec's absence there until release/2026-09-23 brought it.
   "fiat-onramp-cost",
+  // 208 perp liquidation rate: the metric divides liquidated notional by
+  // open interest, and both sides scale with leverage, so a venue whose
+  // traders sit at 100x is ranked against one at 44x by the arithmetic of
+  // its own product range rather than by how it treats a liquidation. Eight
+  // of the eleven venues publish hourly totals with no positions inside
+  // them, so they cannot be compared to the three that publish events, and
+  // the single-event guard can only fire on the venues transparent enough to
+  // be inspected. Measured 2026-09-29 across a common 29 day window: the
+  // headline gap moved from 2.4x to about 1.3x once dust below $50 was
+  // excluded, because the median liquidated position on one venue is $2.00.
+  // Every row is withheld by the gates today, so nothing is lost by gating
+  // the page too. Un-gate condition: a leverage-neutral denominator (margin
+  // destroyed over margin posted, already measured for three venues) and a
+  // size floor, plus a statement in the spec of which venues can be ranked
+  // against which.
+  "perp-liq-rate",
   // 273 bridged TVL: the harness is deployed and publishing all 41 rows,
   // but the 24h success window has not filled since the last rebuild, so a
   // production board would rank rows on a partial window. Un-gate once the
