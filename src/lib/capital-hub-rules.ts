@@ -5,7 +5,7 @@
  * rule and the tests exercise the rule once. No server imports.
  */
 
-import { fmtPct, fmtUsdShort, fmtX } from "@/lib/capital-hub-types";
+import { fmtPct, fmtUsdShort, fmtX, type OiRow } from "@/lib/capital-hub-types";
 
 /* ---------------------------------------------------------------- dust */
 
@@ -120,7 +120,9 @@ export const NA_REASON = {
   cctpNone: "CCTP not deployed on this chain",
   cctpUnscanned: "CCTP domain outside the chains bench 281 scans as a source",
   perpVolumeNone: "the venue publishes no 24h volume to the perp cohort harness",
+  perpOiNone: "the venue publishes no open interest to the perp cohort harness",
   perpTurnoverNone: "the venue publishes no open interest to the perp cohort harness, so volume over open interest is undefined",
+  perpOiNoSeries: "no 7-day series for this gauge: a 7-day move would have to come from a different measurement than the level",
   oiSeriesMissing: "no 7-day series for this row",
   oiSeriesShort: "the 7-day window is not covered: the series starts inside it",
   oiSeriesFlat: "fewer than two readings in the 7-day window",
@@ -408,11 +410,72 @@ export const CAPITAL_READING = {
     "The table does not say how the fees were earned: incentivized or wash volume counts the same as organic volume in the fee line, and open interest is a level at one instant.",
   ],
   openInterest: [
-    "Open interest is the notional of positions open at the last read, for perp DEXes from DefiLlama's open-interest overview through bench 265 and for prediction markets from Polymarket, Kalshi and the venues' own endpoints through bench 277. Turnover next to it is 24h volume over open interest: how many times a venue traded its whole book in a day.",
-    "Open interest is a level and turnover is the ratio that makes it readable: two venues can hold the same open interest with one recycling it several times a day and the other holding it for a week. Both terms of the perp turnover are the venue's own API through benches 041 and 271, while the open-interest column is DefiLlama's, so the two do not divide into each other and the ratio is read from bench 271 rather than computed here.",
-    "The table does not say who holds the positions, how leveraged they are, or how much of the open interest is one market or one wallet. A high turnover is not proof of wash trading: incentive programs, maker rebates and short-horizon retail flow raise it too.",
+    "Open interest is the notional of positions open at the last read: for perp DEXes as each venue's own API reports it through the perp cohort harness, the same figure the perps hub shows, and for prediction markets from Polymarket, Kalshi and the venues' own endpoints through bench 277. Turnover next to it is 24h volume over open interest: how many times a venue traded its whole book in a day.",
+    "Open interest is a level and turnover is the ratio that makes it readable: two venues can hold the same open interest with one recycling it several times a day and the other holding it for a week. Turnover is read from bench 271, which divides 24-hour averages of the same two gauges, so it does not divide exactly into two columns showing the latest read. DefiLlama's open-interest overview, which bench 265 publishes per protocol, reads differently from the venues on most rows and is not what these columns show.",
+    "The table does not say who holds the positions, how leveraged they are, or how much of the open interest is one market or one wallet. A high turnover is not proof of wash trading: incentive programs, maker rebates and short-horizon retail flow raise it too, and the highest row on the table is a venue whose positions are held for under an hour.",
   ],
 } as const;
+
+/* ------------------------------------------- perp open interest */
+
+/** What the perp cohort snapshot gives per venue, narrowed to the fields this table reads. */
+export type PerpCohortVenue = {
+  slug: string;
+  name: string;
+  venueType: "onchain" | "regulated" | "cex";
+  openInterest: number | null;
+  volume24h: number | null;
+};
+
+/**
+ * Rows of the perp open-interest table, from the perp cohort harness rather
+ * than from bench 265's DefiLlama panel: the column header claims each
+ * venue's open interest, so it reads each venue's own API, which is also what
+ * /perps shows and what bench 271's turnover divides.
+ *
+ * A centralised venue is not a perp DEX and is dropped. A venue already on the
+ * prediction-market table is dropped here, because one venue on one page must
+ * not print two different open-interest figures. Everything else keeps its row
+ * even with no open interest to show, with the reason on the cell: a venue that
+ * vanishes from a table is the complaint this whole branch is about.
+ */
+export function perpOiRows(
+  venues: readonly PerpCohortVenue[],
+  opts: {
+    /** Cohort slug to product slug, so links, logos and the turnover join all agree. */
+    productSlug: (cohortSlug: string) => string;
+    /** Bench 271's turnover, keyed by product slug. */
+    turnoverBy: ReadonlyMap<string, number | null>;
+    /** Slugs already shown on another table on the same page. */
+    exclude: ReadonlySet<string>;
+    /** False when bench 271 did not load, so a missing turnover is unknown rather than inapplicable. */
+    turnoverBenchLoaded: boolean;
+  },
+): OiRow[] {
+  const finite = (v: number | null | undefined) => (typeof v === "number" && Number.isFinite(v) ? v : null);
+  return venues
+    .filter((v) => v.venueType !== "cex" && !opts.exclude.has(opts.productSlug(v.slug)))
+    .map((v) => {
+      const slug = opts.productSlug(v.slug);
+      const turnover = finite(opts.turnoverBy.get(slug));
+      const oi = finite(v.openInterest);
+      const volume24h = finite(v.volume24h);
+      return {
+        slug,
+        name: v.name,
+        oi,
+        oiNaReason: oi == null ? NA_REASON.perpOiNone : null,
+        volume24h,
+        turnover,
+        change7dPct: null,
+        change7dNaReason: NA_REASON.perpOiNoSeries,
+        volumeNaReason: volume24h == null ? NA_REASON.perpVolumeNone : null,
+        turnoverNaReason: turnover == null && opts.turnoverBenchLoaded ? NA_REASON.perpTurnoverNone : null,
+      };
+    })
+    // Ranked by open interest, the rows without one last so the rank stays a rank.
+    .sort((a, b) => (b.oi ?? -1) - (a.oi ?? -1));
+}
 
 /* --------------------------------------------- reading the signals */
 

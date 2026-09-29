@@ -18,11 +18,9 @@ export const CAPITAL_BENCHES = {
   /** Bench 280, dev-only for now: fees paid on the chain over 30 days, with the revenue kept; the hub reads its
    *  cohort so a chain the bench does not rank shows its blob value muted instead of in the ranked column. */
   chainFees: "chain-fees-revenue",
-  /** Bench 041: 24h traded notional per perp venue, the volume column of the perp open-interest table. */
-  perpVolume: "perp-volume-share",
-  /** Bench 271: 24h volume over the venue's own open interest, the turnover column. Read from the bench rather than
-   *  divided out of the two columns next to it, because bench 265's open interest is DefiLlama's overview and this
-   *  ratio's denominator is the venue's own API: one entity must not print two values of one named ratio. */
+  /** Bench 271: 24h volume over the venue's own open interest, the turnover column of the perp open-interest table.
+   *  Read from the bench rather than divided out of the two columns next to it, because the bench divides 24-hour
+   *  averages of the two gauges and the table shows the latest read: one named ratio must not have two values. */
   perpTurnover: "perp-volume-oi-ratio",
 } as const;
 
@@ -130,8 +128,13 @@ export type PerpRow = {
 export type OiRow = {
   slug: string;
   name: string;
-  oi: number;
-  /** 24h traded notional: bench 277 for prediction markets, bench 041 for perp DEXes. */
+  /** Open interest: bench 277 for prediction markets, each venue's own API through the perp cohort harness for perp
+   *  DEXes. Null for a venue the harness gets no open interest from, which is a row on the table with a reason, not
+   *  a row left off it. */
+  oi: number | null;
+  /** Why open interest is absent for this row (the venue publishes none), null when the value is simply missing. */
+  oiNaReason: string | null;
+  /** 24h traded notional: bench 277 for prediction markets, the perp cohort harness for perp DEXes. */
   volume24h: number | null;
   /** 24h volume over open interest: bench 277's panel for prediction markets, bench 271's headline for perp DEXes. */
   turnover: number | null;

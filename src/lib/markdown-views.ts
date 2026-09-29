@@ -432,24 +432,25 @@ export function capitalHubMarkdown(hub: CapitalHub): string {
     md.push(`## Open interest`);
     md.push("");
     const oiTable = (title: string, rows: CapitalHub["perpOi"], benches: string[], note: string) => {
-      const shown = rows.slice(0, 10);
-      const has7d = shown.some((r) => r.change7dPct != null);
-      const hasVol = shown.some((r) => r.volume24h != null);
-      const hasTurn = shown.some((r) => r.turnover != null);
+      // Every row, same as the HTML: a truncated table reads as a missing feed.
+      const has7d = columnIsWorthShowing(rows, (r) => r.change7dPct);
+      const hasVol = columnIsWorthShowing(rows, (r) => r.volume24h);
+      const hasTurn = columnIsWorthShowing(rows, (r) => r.turnover);
       const legend = naLegend([
-        ...(has7d ? shown.map((r) => r.change7dNaReason) : []),
-        ...(hasVol ? shown.map((r) => r.volumeNaReason) : []),
-        ...(hasTurn ? shown.map((r) => r.turnoverNaReason) : []),
+        ...rows.map((r) => r.oiNaReason),
+        ...(has7d ? rows.map((r) => r.change7dNaReason) : []),
+        ...(hasVol ? rows.map((r) => r.volumeNaReason) : []),
+        ...(hasTurn ? rows.map((r) => r.turnoverNaReason) : []),
       ]);
-      md.push(`${title} (${benches.map((b) => `${SITE.url}/benchmarks/${b}`).join(" · ")})`);
+      md.push(`${title}, all ${rows.length} (${benches.map((b) => `${SITE.url}/benchmarks/${b}`).join(" · ")})`);
       md.push("");
       md.push(`| # | Venue | Open interest |${has7d ? " 7d |" : ""}${hasVol ? " Volume 24h |" : ""}${hasTurn ? " Turnover 24h |" : ""}`);
       md.push(`|---|---|---|${has7d ? "---|" : ""}${hasVol ? "---|" : ""}${hasTurn ? "---|" : ""}`);
-      shown.forEach((r, i) => {
+      rows.forEach((r, i) => {
         const cells = [
           `${i + 1}`,
           r.name,
-          capUsd(r.oi),
+          cohortMd(plainCell(r.oi, r.oiNaReason), capUsd, legend),
           ...(has7d ? [cohortMd(plainCell(r.change7dPct, r.change7dNaReason), (v) => capPct(v), legend)] : []),
           ...(hasVol ? [cohortMd(plainCell(r.volume24h, r.volumeNaReason), capUsd, legend)] : []),
           ...(hasTurn ? [cohortMd(plainCell(r.turnover, r.turnoverNaReason), capX, legend)] : []),
@@ -468,8 +469,8 @@ export function capitalHubMarkdown(hub: CapitalHub): string {
       oiTable(
         "Perp DEXes",
         hub.perpOi,
-        ["perp-pf-ratio", "perp-volume-share", "perp-volume-oi-ratio"],
-        "Open interest from bench 265 (DefiLlama's open-interest overview), volume and turnover from the perp cohort harness (the venue's own API). Turnover is bench 271's ratio, not this table's volume divided by this table's open interest: the two denominators are different measurements.",
+        ["perp-volume-oi-ratio"],
+        "Open interest and 24h volume as each venue's own API reports them, through the perp cohort harness, the same figures the perps hub shows. Turnover is bench 271's ratio of 24-hour averages of those two gauges, so it will not divide exactly into the two columns beside it, which are the latest read. Centralised venues are out; Polymarket and Kalshi sit in the prediction-market table.",
       );
     if (hub.pmOi.length > 0)
       oiTable(

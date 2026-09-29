@@ -50,13 +50,14 @@ import {
   NA_REASON,
   categoryMedianUsable,
   cctpScope,
-  change7dFromDays,
   change7dOfSeries,
   median7dPct,
+  perpOiRows,
   selectDivergences,
   signalOf,
 } from "@/lib/capital-hub-rules";
 import { perpProductSlug } from "@/lib/perp-product-slug";
+import { fetchPerpCohort } from "@/lib/perp-stats";
 
 export * from "@/lib/capital-hub-types";
 
@@ -182,7 +183,7 @@ async function buildHub(): Promise<CapitalHub> {
   // Bench 280 (chain fees and revenue) is dev-only until its audit round:
   // its series stay off the hub on deployments that do not serve the bench.
   const feesServed = !isDevOnlyBench(CAPITAL_BENCHES.chainFees);
-  const [bridgedL, stablesL, protocolsL, perpsL, pmL, cctpL, feesL, perpVolL, perpTurnL, chainsHist, valHist, pmSeries, perpSeries] =
+  const [bridgedL, stablesL, protocolsL, perpsL, pmL, cctpL, feesL, perpTurnL, perpCohort, chainsHist, valHist, pmSeries] =
     await Promise.all([
       loadLive(CAPITAL_BENCHES.bridgedTvl),
       loadLive(CAPITAL_BENCHES.stableFlow),
@@ -191,12 +192,11 @@ async function buildHub(): Promise<CapitalHub> {
       loadLive(CAPITAL_BENCHES.pmOi),
       cctpServed ? loadLive(CAPITAL_BENCHES.usdcCorridor) : Promise.resolve(NOT_SERVED),
       feesServed ? loadLive(CAPITAL_BENCHES.chainFees) : Promise.resolve(NOT_SERVED),
-      loadLive(CAPITAL_BENCHES.perpVolume),
       loadLive(CAPITAL_BENCHES.perpTurnover),
+      fetchPerpCohort().catch(() => null),
       getChainsHistory().catch(() => null),
       getValuationHistory().catch(() => null),
       series7dOf(CAPITAL_BENCHES.pmOi).catch(() => null),
-      series7dOf(CAPITAL_BENCHES.perpPf).catch(() => null),
     ]);
 
   const bridged = bridgedL.bench;
@@ -206,7 +206,6 @@ async function buildHub(): Promise<CapitalHub> {
   const pmB = pmL.bench;
   const cctp = cctpL.bench;
   const feesB = feesL.bench;
-  const perpVolB = perpVolL.bench;
   const perpTurnB = perpTurnL.bench;
   const entry = (slug: string, l: Loaded, fallbackTitle: string) => ({
     slug,
@@ -222,11 +221,10 @@ async function buildHub(): Promise<CapitalHub> {
     entry(CAPITAL_BENCHES.pmOi, pmL, "Prediction market open interest"),
     ...(cctpServed ? [entry(CAPITAL_BENCHES.usdcCorridor, cctpL, "USDC corridor flows over CCTP")] : []),
     ...(feesServed ? [entry(CAPITAL_BENCHES.chainFees, feesL, "Chain fees and revenue")] : []),
-    entry(CAPITAL_BENCHES.perpVolume, perpVolL, "Perp DEX volume share"),
     entry(CAPITAL_BENCHES.perpTurnover, perpTurnL, "Perp DEX volume to open interest"),
   ];
 
-  const asOfMs = [bridged, stables, protocolsB, perpsB, pmB, cctp, feesB, perpVolB, perpTurnB]
+  const asOfMs = [bridged, stables, protocolsB, perpsB, pmB, cctp, feesB, perpTurnB]
     .map((b) => (b?.lastRunAt ? Date.parse(b.lastRunAt) : NaN))
     .filter((t) => Number.isFinite(t));
   const asOf = asOfMs.length > 0 ? new Date(Math.max(...asOfMs)).toISOString() : null;
@@ -364,6 +362,7 @@ async function buildHub(): Promise<CapitalHub> {
         slug: r.slug,
         name: r.name,
         oi: r.ms.p50,
+        oiNaReason: null,
         volume24h: panel(pmB, "volume_24h", r.slug),
         turnover: panel(pmB, "turnover", r.slug),
         change7dPct: ch.value,
@@ -375,48 +374,35 @@ async function buildHub(): Promise<CapitalHub> {
     .filter((r) => r.oi > 0)
     .sort((a, b) => b.oi - a.oi);
 
-  // Perp DEX open interest: the valuation blob's daily `oi` gives the 7d
-  // change once it holds the older day (and its newest day is recent by
-  // the clock, so a stalled worker publishes nothing); the oi panel's 7d
-  // series from the full snapshot before that.
-  const valPerps = new Map((valHist?.perps ?? []).map((p) => [p.slug, p]));
-  const now = Date.now();
-  // Volume and turnover come from the perp cohort harness, which keys a few
-  // venues differently from the token bench (gmx-v2 there is gmx here), so
-  // both joins go through the product slug every venue link on the site
-  // already uses. Turnover is bench 271's published ratio rather than the
-  // volume column divided by the open-interest column: bench 265's open
-  // interest is DefiLlama's overview and bench 271's denominator is the
-  // venue's own API, and the two differ by more than half on some venues.
-  // Dividing the two columns would put a second value of one named ratio on
-  // the site; the reading line under the table says where each term comes
-  // from so the difference is visible instead of hidden.
-  const perpVolumeBy = new Map(liveRows(perpVolB).map((r) => [perpProductSlug(r.slug), num(r.ms.p50)]));
-  const perpTurnoverBy = new Map(liveRows(perpTurnB).map((r) => [perpProductSlug(r.slug), num(r.ms.p50)]));
-  const perpOi: OiRow[] = (perpsB?.results ?? [])
-    .map((r) => {
-      const change7dPct =
-        change7dFromDays(valPerps.get(r.slug)?.days ?? [], "oi", now) ?? change7dOfSeries(perpSeries?.panels.oi?.[r.slug]).value;
-      const volume24h = perpVolumeBy.get(r.slug) ?? null;
-      const turnover = perpTurnoverBy.get(r.slug) ?? null;
-      return {
-        slug: r.slug,
-        name: r.name,
-        oi: panel(perpsB, "oi", r.slug) ?? 0,
-        volume24h,
-        turnover,
-        change7dPct,
-        change7dNaReason: change7dPct == null ? change7dOfSeries(perpSeries?.panels.oi?.[r.slug]).naReason : null,
-        // A venue the volume bench does not list publishes no 24h notional to
-        // the cohort harness; one the turnover bench does not list publishes
-        // no open interest to it, so the ratio has no denominator. Neither is
-        // filled from a neighbouring figure.
-        volumeNaReason: volume24h == null && perpVolB ? NA_REASON.perpVolumeNone : null,
-        turnoverNaReason: turnover == null && perpTurnB ? NA_REASON.perpTurnoverNone : null,
-      };
-    })
-    .filter((r) => r.oi > 0)
-    .sort((a, b) => b.oi - a.oi);
+  // Perp DEX open interest and volume as each venue's own API reports them,
+  // through the perp cohort harness (perp_venue_oi_usd, perp_venue_volume_24h_usd),
+  // which is the cohort /perps shows and the one bench 271's turnover divides.
+  //
+  // It used to be bench 265's `oi` panel, which is DefiLlama's open-interest
+  // overview keyed by protocol. Two problems with that on a table headed
+  // "perp DEX open interest": the numbers disagree with the venues (Hyperliquid
+  // read $8.57B against the venue's own $12.77B, a 49% gap on the largest row)
+  // and the cohort is token-gated, so venues without a ranked token were absent
+  // (trade.xyz at $3.76B, GRVT at $472M, Lighter RH at $228M). The venue gauge
+  // is what the column header claims to measure, so the column reads it and the
+  // page says whose figure it is.
+  //
+  // Turnover stays bench 271's published ratio rather than this table's volume
+  // over this table's open interest: 271 divides 24-hour averages of the same
+  // two gauges and this table shows the latest read, so the two do not divide
+  // exactly, and one named ratio must not have two values on the site.
+  //
+  // No 7d column: nothing publishes a 7-day series of the venue open-interest
+  // gauge, and pairing a level from the venue with a move from DefiLlama would
+  // be the same seam one column over.
+  const perpOi: OiRow[] = perpOiRows(perpCohort?.venues ?? [], {
+    productSlug: perpProductSlug,
+    turnoverBy: new Map(liveRows(perpTurnB).map((r) => [perpProductSlug(r.slug), num(r.ms.p50)])),
+    // Polymarket and Kalshi carry bench 277's open interest on the
+    // prediction-market table; one venue must not print two figures on one page.
+    exclude: new Set(pmOi.map((r) => r.slug)),
+    turnoverBenchLoaded: !!perpTurnB,
+  });
 
   // ---- valuation: protocols ---------------------------------------------
   const valProtocols = new Map((valHist?.protocols ?? []).map((p) => [p.slug, p]));

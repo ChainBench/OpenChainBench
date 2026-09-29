@@ -24,6 +24,7 @@ import {
   isDust,
   levelSortValue,
   median7dPct,
+  perpOiRows,
   selectDivergences,
   sevenDaySubline,
   columnIsWorthShowing,
@@ -264,6 +265,67 @@ describe("7d change", () => {
     const single = Array.from({ length: 84 }, (_, i) => (i === 0 ? 100 : null));
     expect(change7dOfSeries(single)).toEqual({ value: null, naReason: NA_REASON.oiSeriesFlat });
     expect(change7dOfSeries(Array.from({ length: 84 }, (_, i) => 100 + i)).naReason).toBeNull();
+  });
+});
+
+describe("perp open interest rows", () => {
+  const venues = [
+    { slug: "hyperliquid", name: "Hyperliquid", venueType: "onchain" as const, openInterest: 12.77e9, volume24h: 6.61e9 },
+    { slug: "trade-xyz", name: "trade.xyz", venueType: "onchain" as const, openInterest: 3.76e9, volume24h: 2.19e9 },
+    { slug: "ondo", name: "Ondo Perps", venueType: "onchain" as const, openInterest: 88.6e6, volume24h: 126e6 },
+    { slug: "gmx-v2", name: "GMX v2", venueType: "onchain" as const, openInterest: 51.5e6, volume24h: 54.8e6 },
+    // The harness gets no open interest from these: a row with a reason, not a dropped row.
+    { slug: "orderly", name: "Orderly", venueType: "onchain" as const, openInterest: null, volume24h: 63.6e6 },
+    { slug: "backpack", name: "Backpack", venueType: "onchain" as const, openInterest: null, volume24h: 197.4e6 },
+    { slug: "kalshi", name: "Kalshi", venueType: "regulated" as const, openInterest: 36.8e6, volume24h: 1.08e9 },
+    { slug: "polymarket", name: "Polymarket", venueType: "onchain" as const, openInterest: 75.3e6, volume24h: 72e6 },
+    { slug: "binance", name: "Binance", venueType: "cex" as const, openInterest: 20e9, volume24h: 40e9 },
+  ];
+  const productSlug = (s: string) => (s === "gmx-v2" ? "gmx" : s === "trade-xyz" ? "xyz" : s);
+  const build = (turnover: [string, number][], loaded = true) =>
+    perpOiRows(venues, {
+      productSlug,
+      turnoverBy: new Map<string, number | null>(turnover),
+      exclude: new Set(["polymarket", "kalshi"]),
+      turnoverBenchLoaded: loaded,
+    });
+
+  test("centralised venues are out, prediction-market venues are out, everything else keeps a row", () => {
+    const rows = build([]);
+    expect(rows.map((r) => r.slug)).toEqual(["hyperliquid", "xyz", "ondo", "gmx", "orderly", "backpack"]);
+    // Ondo was in the gauge and off the page; it ranks third here on its own open interest.
+    expect(rows[2].oi).toBe(88.6e6);
+    expect(rows.some((r) => r.slug === "binance")).toBe(false);
+    expect(rows.some((r) => r.slug === "polymarket" || r.slug === "kalshi")).toBe(false);
+  });
+  test("a venue with no open interest keeps its row, ranked last, with the reason on the cell", () => {
+    const rows = build([]);
+    const orderly = rows.find((r) => r.slug === "orderly")!;
+    expect(orderly.oi).toBeNull();
+    expect(orderly.oiNaReason).toBe(NA_REASON.perpOiNone);
+    // Its volume is real, so that cell carries no reason.
+    expect(orderly.volume24h).toBe(63.6e6);
+    expect(orderly.volumeNaReason).toBeNull();
+    expect(rows.slice(-2).every((r) => r.oi == null)).toBe(true);
+    expect(plainCell(orderly.oi, orderly.oiNaReason)).toEqual({ kind: "na", reason: NA_REASON.perpOiNone });
+  });
+  test("turnover joins on the product slug, and a missing one is unknown when the bench did not load", () => {
+    // Bench 271 keys GMX as gmx-v2 and the join goes through the product slug.
+    const withTurnover = build([["gmx", 1.07]]);
+    expect(withTurnover.find((r) => r.slug === "gmx")!.turnover).toBeCloseTo(1.07, 6);
+    expect(withTurnover.find((r) => r.slug === "hyperliquid")!.turnoverNaReason).toBe(NA_REASON.perpTurnoverNone);
+    expect(build([], false).every((r) => r.turnoverNaReason === null)).toBe(true);
+  });
+  test("no 7d column is offered: the level and a 7-day move would come from two measurements", () => {
+    const rows = build([]);
+    expect(rows.every((r) => r.change7dPct === null && r.change7dNaReason === NA_REASON.perpOiNoSeries)).toBe(true);
+    // Zero coverage, so the column does not render at all rather than fill with markers.
+    expect(columnIsWorthShowing(rows, (r) => r.change7dPct)).toBe(false);
+    expect(columnIsWorthShowing(rows, (r) => r.volume24h)).toBe(true);
+  });
+  test("an unreachable cohort snapshot yields no rows rather than a table from another source", () => {
+    expect(build.length >= 0).toBe(true);
+    expect(perpOiRows([], { productSlug, turnoverBy: new Map(), exclude: new Set(), turnoverBenchLoaded: true })).toEqual([]);
   });
 });
 
