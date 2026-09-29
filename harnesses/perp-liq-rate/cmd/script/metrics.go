@@ -32,6 +32,36 @@ var (
 		Help: "Median leverage of the positions liquidated over the trailing 24h, as a multiple, where the source exposes it. The number that says why two venues with similar notional rates are not comparable: a rate over notional counts a 100x position at 100 times the money behind it.",
 	}, []string{"venue", "chain"})
 
+	liqForfeited = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "perp_liq_collateral_forfeited_pct",
+		Help: "Median share of a liquidated position's margin destroyed in excess of the loss the trader had actually incurred, over the forced closes of the trailing 24h. Computed per close as 100 minus its loss at trigger minus its returned share, then the median of those: it is NOT this gauge minus the medians beside it, which are three independent medians over the same closes and need not add to 100. The fees, the carry and the liquidation penalty, in points of margin. Published only where the feed carries the position behind the fill (Gains and Ostium on chain, GMX v2 from its squid); absent elsewhere, never zero.",
+	}, []string{"venue", "chain"})
+
+	liqLossAtTrigger = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "perp_liq_loss_at_trigger_pct",
+		Help: "Median share of a liquidated position's margin the price had already taken when the venue closed it, over the forced closes of the trailing 24h. The price move times the leverage, excluding fees and carry, which is how all three venues that report it define their own figure. Clamped to 100: a venue that closes later than the margin lasted absorbs the difference.",
+	}, []string{"venue", "chain"})
+
+	liqReturned = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "perp_liq_collateral_returned_pct",
+		Help: "Median share of a liquidated position's margin that went back to the trader, over the forced closes of the trailing 24h. Zero is a real reading and the common one: Gains and Ostium returned nothing on every liquidation measured, while GMX v2 pays out the residual after its fees.",
+	}, []string{"venue", "chain"})
+
+	liqForfeitEvents = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "perp_liq_forfeit_events",
+		Help: "How many liquidations in the trailing 24h carried all three quantities the forfeited share is built from. The medians beside it are medians over exactly these events, so a row reading 1 or 2 is those positions and not a rate. A row reading 0 is a venue that can report and saw no forced close; a venue that cannot report publishes no series here at all.",
+	}, []string{"venue", "chain"})
+
+	liqForfeitedByBand = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "perp_liq_collateral_forfeited_by_leverage_pct",
+		Help: "Median forfeited share of margin per leverage band (0-10x, 10-25x, 25-50x, 50-100x, 100x+). The forfeit grows with leverage, against the intuition: a position opened at 100x is closed after a smaller move, so less of its margin has gone to the price by the time the venue takes the rest. Read with perp_liq_liquidations_by_leverage_count.",
+	}, []string{"venue", "chain", "band"})
+
+	liqEventsByBand = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "perp_liq_liquidations_by_leverage_count",
+		Help: "How many liquidations of the trailing 24h sit in each leverage band and carry the forfeit detail. The denominator of perp_liq_collateral_forfeited_by_leverage_pct, published beside it so a band holding two positions cannot read as a measurement.",
+	}, []string{"venue", "chain", "band"})
+
 	liqOpenInterest = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "perp_liq_open_interest_usd",
 		Help: "Current open interest (USD) per venue and asset, read fresh on every tick.",
@@ -117,6 +147,12 @@ func registerMetrics() *prometheus.Registry {
 		liqVolume,
 		liqCollateral,
 		liqMedianLeverage,
+		liqForfeited,
+		liqLossAtTrigger,
+		liqReturned,
+		liqForfeitEvents,
+		liqForfeitedByBand,
+		liqEventsByBand,
 		liqOpenInterest,
 		liqOpenInterestPeak,
 		liqOpenInterestTrough,
@@ -190,4 +226,51 @@ func setVenueWarming(venue string, warming bool) {
 // setVenueRefreshed stamps the last fully successful tick time.
 func setVenueRefreshed(venue string, t time.Time) {
 	liqLastRefresh.WithLabelValues(venue).Set(float64(t.Unix()))
+}
+
+// setForfeitShares publishes the forfeited-collateral shares for a row, and
+// withholds them rather than zeroing them when there is nothing to measure.
+// Eight of the eleven venues here cannot report these quantities, and a 0.0% on
+// such a row would read as a venue that forfeits none of its traders' margin.
+//
+// carriesDetail separates the two kinds of blank. A venue whose feed carries the
+// position and simply saw no forced close in the window keeps
+// perp_liq_forfeit_events at zero and loses its three medians, because there is
+// nothing to take a median of; a venue whose feed cannot carry the position
+// publishes no series at all, the count included.
+func setForfeitShares(venue, asset string, forfeited, loss, returned float64, n int, carriesDetail bool) {
+	if n <= 0 {
+		liqForfeited.DeleteLabelValues(venue, asset)
+		liqLossAtTrigger.DeleteLabelValues(venue, asset)
+		liqReturned.DeleteLabelValues(venue, asset)
+		if carriesDetail {
+			liqForfeitEvents.WithLabelValues(venue, asset).Set(0)
+		} else {
+			liqForfeitEvents.DeleteLabelValues(venue, asset)
+		}
+		return
+	}
+	liqForfeited.WithLabelValues(venue, asset).Set(forfeited)
+	liqLossAtTrigger.WithLabelValues(venue, asset).Set(loss)
+	liqReturned.WithLabelValues(venue, asset).Set(returned)
+	liqForfeitEvents.WithLabelValues(venue, asset).Set(float64(n))
+}
+
+// setForfeitBands publishes the per-band medians and counts, deleting the bands
+// the window no longer holds anything for so a band that has emptied does not
+// keep yesterday's figure while the count beside it says nothing is there.
+func setForfeitBands(venue, asset string, bands map[string]struct {
+	Forfeited float64
+	N         int
+}) {
+	for _, b := range leverageBands {
+		v, ok := bands[b.name]
+		if !ok || v.N <= 0 {
+			liqForfeitedByBand.DeleteLabelValues(venue, asset, b.name)
+			liqEventsByBand.DeleteLabelValues(venue, asset, b.name)
+			continue
+		}
+		liqForfeitedByBand.WithLabelValues(venue, asset, b.name).Set(v.Forfeited)
+		liqEventsByBand.WithLabelValues(venue, asset, b.name).Set(float64(v.N))
+	}
 }

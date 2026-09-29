@@ -691,8 +691,12 @@ export const SpecSchema = z
         })
       )
       // Cap covers visible tabs plus data-only window panels (revenue,
-      // volume and users each carry a 7d + 30d variant on the HL bench).
-      .max(12)
+      // volume and users each carry a 7d + 30d variant on the HL bench) and
+      // the data-only annotations a bench needs to show a figure's arithmetic
+      // rather than assert it: bench 208 publishes the forfeited share of a
+      // liquidated position's margin next to the loss at trigger and the share
+      // returned, three panels that only mean anything together.
+      .max(15)
       .optional(),
 
     /**

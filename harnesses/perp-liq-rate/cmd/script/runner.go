@@ -247,6 +247,14 @@ func runTick(va VenueAsset, st *pairState, sinceMs int64, tick time.Duration) bo
 		if lev, ok := st.window.MedianLeverage(); ok {
 			liqMedianLeverage.WithLabelValues(va.Venue, va.Asset).Set(lev)
 		}
+		// What the forced closes cost the traders behind them, where the feed
+		// says. The notional rate above answers "how much of the book was
+		// closed by force"; this answers "and how much of a trader's own money
+		// went with it, beyond what they had already lost".
+		forf, loss, ret, n := st.window.ForfeitStats()
+		setForfeitShares(va.Venue, va.Asset, forf, loss, ret, n,
+			carriesPositionDetail(va.Source))
+		setForfeitBands(va.Venue, va.Asset, st.window.ForfeitByBand())
 		// Meaningless for a source that reports hours or the whole window as
 		// one number: it would show the busiest hour, or 100%, and claim the
 		// day was a single position.

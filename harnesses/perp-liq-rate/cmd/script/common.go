@@ -36,6 +36,24 @@ type LiqEvent struct {
 	// liquidated 39.5M dollars of notional on 423k of collateral.
 	CollateralUSD float64
 	Leverage      float64
+	// HasForfeitDetail is set when the source carried all three quantities
+	// the forfeited-collateral metric needs: the margin behind the position,
+	// the share of that margin the price had already taken when the venue
+	// closed it, and how much of it came back to the trader. Three of the
+	// eleven venues here carry them. A feed that does not leaves the gauges
+	// unpublished: an absent measurement is absent, not 0.0%, and a returned
+	// share of zero is a real and common reading (Gains and Ostium return
+	// nothing on a liquidation), so the flag cannot be inferred from the
+	// numbers being zero.
+	HasForfeitDetail bool
+	// LossAtTriggerPct is the price profit and loss on the position at the
+	// moment it was closed, as a percentage of the margin behind it, signed
+	// so that a loss is positive. It is the price move times the leverage and
+	// it excludes fees and carry, on all three venues that report it.
+	LossAtTriggerPct float64
+	// ReturnedUSD is the margin that went back to the trader out of the
+	// forced close, in USD.
+	ReturnedUSD float64
 	// Bucket marks a figure that is still growing: an aggregator's hourly
 	// total, re-read on every tick while its hour is open. The runner
 	// replaces the stored value for such a key instead of discarding the
@@ -71,6 +89,28 @@ type Source interface {
 // stub every source has to carry.
 type volumeSource interface {
 	FetchVolume24hUSD(asset string) (float64, error)
+}
+
+// positionSource is implemented by the venues whose liquidation feed carries the
+// position behind the fill, and so can answer the forfeited-collateral
+// question. It is a separate interface for the same reason volumeSource is: a
+// feed that reports size and price and nothing else is a fact about the venue's
+// API, not a stub every source should have to carry.
+//
+// The runner needs it to tell two blanks apart. A venue that *can* report and
+// simply liquidated nothing in the window publishes perp_liq_forfeit_events = 0;
+// a venue that cannot report publishes no series at all. Without the interface
+// both read as an empty cell, and "Ostium had no forced close today" would look
+// the same as "the dYdX tape cannot say".
+type positionSource interface {
+	CarriesPositionDetail() bool
+}
+
+// carriesPositionDetail reports whether the source's feed carries the margin,
+// the loss at trigger and the amount returned.
+func carriesPositionDetail(s Source) bool {
+	ps, ok := s.(positionSource)
+	return ok && ps.CarriesPositionDetail()
 }
 
 // venueVolume24h reads the venue's own 24h traded notional when the source

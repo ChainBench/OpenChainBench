@@ -27,6 +27,13 @@ type windowEntry struct {
 	notional   float64
 	collateral float64 // 0 when the source does not expose it
 	leverage   float64 // 0 when the source does not expose it
+	// hasForfeit says the three quantities below were read, so the entry can
+	// carry the forfeited-collateral arithmetic. A returned share of zero is
+	// the normal reading on two of the three venues that report it, so the
+	// flag is what separates "nothing came back" from "nobody said".
+	hasForfeit  bool
+	lossPct     float64 // price loss at the close, % of collateral, loss positive
+	returnedUSD float64 // margin returned to the trader, USD
 }
 
 // SlidingWindow accumulates (key, unix_ms, notional_usd) events and answers
@@ -54,7 +61,8 @@ func (w *SlidingWindow) AddEvent(e LiqEvent) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	w.appendLocked(windowEntry{key: e.Key, tsMs: e.TimestampMs, notional: e.NotionalUSD,
-		collateral: e.CollateralUSD, leverage: e.Leverage})
+		collateral: e.CollateralUSD, leverage: e.Leverage,
+		hasForfeit: e.HasForfeitDetail, lossPct: e.LossAtTriggerPct, returnedUSD: e.ReturnedUSD})
 }
 
 // Upsert stores a bucketed figure: if the key is already in the window its
@@ -177,12 +185,167 @@ func (w *SlidingWindow) MedianLeverage() (float64, bool) {
 	if len(levs) == 0 {
 		return 0, false
 	}
-	sort.Float64s(levs)
-	if n := len(levs); n%2 == 1 {
-		return levs[n/2], true
-	} else {
-		return (levs[n/2-1] + levs[n/2]) / 2, true
+	return median(levs), true
+}
+
+// forfeitShares is one entry's forfeited-collateral arithmetic, all three in
+// percentage points of the margin behind the position:
+//
+//	loss      what the price had taken when the venue closed the position
+//	returned  what went back to the trader
+//	forfeited 100 minus the other two, for this close
+//
+// forfeited is the collateral destroyed *in excess of the loss the trader
+// actually incurred*: the closing and liquidation fees, the carry accrued, and
+// whatever the venue keeps. It is the figure a trader asked for and the reason
+// the notional rate above cannot answer them.
+//
+// Both ends are clamped. A loss can read above 100% of the margin, because a
+// venue can close a position later than its margin lasted and then absorb the
+// difference (Ostium had one such row in 91 over 7 days, at 116%); the trader
+// forfeited nothing beyond their loss in that case, so forfeited is 0 rather
+// than a negative number that reads as money handed back.
+type forfeitShares struct {
+	loss      float64
+	returned  float64
+	forfeited float64
+}
+
+func (e windowEntry) forfeit() (forfeitShares, bool) {
+	if !e.hasForfeit || e.collateral <= 0 {
+		return forfeitShares{}, false
 	}
+	loss := e.lossPct
+	if loss < 0 {
+		loss = 0
+	}
+	if loss > 100 {
+		loss = 100
+	}
+	ret := e.returnedUSD / e.collateral * 100
+	if ret < 0 {
+		ret = 0
+	}
+	if ret > 100 {
+		ret = 100
+	}
+	forf := 100 - loss - ret
+	if forf < 0 {
+		forf = 0
+	}
+	return forfeitShares{loss: loss, returned: ret, forfeited: forf}, true
+}
+
+func median(xs []float64) float64 {
+	if len(xs) == 0 {
+		return 0
+	}
+	sort.Float64s(xs)
+	if n := len(xs); n%2 == 1 {
+		return xs[n/2]
+	}
+	n := len(xs)
+	return (xs[n/2-1] + xs[n/2]) / 2
+}
+
+// ForfeitStats returns the medians of the three shares over the entries that
+// carry them, and how many did. The medians rather than the aggregate ratio:
+// the question is what a trader's position loses, and one 200,000 dollar
+// position would otherwise be the whole answer for a venue whose other
+// hundred positions were a few hundred dollars each.
+//
+// The three are independent medians over the same set of closes, so they do not
+// add to 100. The subtraction happens per close, in forfeit(), and a median is
+// not linear: on GMX over the 24h to 2026-09-29 the medians came out at 63.3%
+// lost, 18.6% returned and 15.4 points forfeited, and 100 - 63.3 - 18.6 is
+// 18.1. Every published figure is the median of a real per-close quantity;
+// none of them is derived from the other two.
+func (w *SlidingWindow) ForfeitStats() (forfeited, loss, returned float64, n int) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	fs := make([]float64, 0, len(w.entries))
+	ls := make([]float64, 0, len(w.entries))
+	rs := make([]float64, 0, len(w.entries))
+	for _, e := range w.entries {
+		s, ok := e.forfeit()
+		if !ok {
+			continue
+		}
+		fs = append(fs, s.forfeited)
+		ls = append(ls, s.loss)
+		rs = append(rs, s.returned)
+	}
+	if len(fs) == 0 {
+		return 0, 0, 0, 0
+	}
+	return median(fs), median(ls), median(rs), len(fs)
+}
+
+// leverageBands are the bands the forfeited share is broken out over. They are
+// the single most useful thing a trader can read here, because the forfeit
+// *grows* with leverage, which is the opposite of the intuition: a position
+// opened at 100x is closed after a smaller move, so a smaller part of its
+// margin has been taken by the price when the venue takes the rest. On Gains
+// over the three days to 2026-09-29 the median forfeit ran from 26.3 points
+// under 10x to 40.9 points above 100x.
+var leverageBands = []struct {
+	name   string
+	maxInc float64 // upper bound, inclusive; 0 means no upper bound
+}{
+	{"0-10x", 10},
+	{"10-25x", 25},
+	{"25-50x", 50},
+	{"50-100x", 100},
+	{"100x+", 0},
+}
+
+// leverageBandOf names the band a leverage falls in, or "" when the source did
+// not report one.
+func leverageBandOf(lev float64) string {
+	if lev <= 0 {
+		return ""
+	}
+	for _, b := range leverageBands {
+		if b.maxInc == 0 || lev <= b.maxInc {
+			return b.name
+		}
+	}
+	return leverageBands[len(leverageBands)-1].name
+}
+
+// ForfeitByBand returns the median forfeited share and the event count per
+// leverage band, over the entries that carry both a leverage and the forfeit
+// detail. The count travels with the median because a median over two
+// positions is those two positions and a reader has to be able to see that.
+func (w *SlidingWindow) ForfeitByBand() map[string]struct {
+	Forfeited float64
+	N         int
+} {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	byBand := make(map[string][]float64, len(leverageBands))
+	for _, e := range w.entries {
+		s, ok := e.forfeit()
+		if !ok {
+			continue
+		}
+		band := leverageBandOf(e.leverage)
+		if band == "" {
+			continue
+		}
+		byBand[band] = append(byBand[band], s.forfeited)
+	}
+	out := make(map[string]struct {
+		Forfeited float64
+		N         int
+	}, len(byBand))
+	for band, vs := range byBand {
+		out[band] = struct {
+			Forfeited float64
+			N         int
+		}{Forfeited: median(vs), N: len(vs)}
+	}
+	return out
 }
 
 // NewestMs returns the timestamp of the most recent entry, or 0 when empty.

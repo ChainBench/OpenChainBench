@@ -66,16 +66,39 @@ func (o *Ostium) ostiumQuery(query string, out any) error {
 	return nil
 }
 
+// ostiumLiqRow is one LiquidationExecuted row. The forfeited-collateral
+// quantities come partly off the event and partly off the linked trade, because
+// the event's own collateralDelta, leverage and notional are all null on a
+// liquidation (checked on 91 rows over the 7 days to 2026-09-29):
+//
+//   - trade.collateral is the margin, 6-decimal USD.
+//   - trade.leverage is 1e2 fixed point, not 1e3: a row reading 7500 is 75x,
+//     and trade.notional / trade.collateral comes out at 75.00 on that row.
+//   - profitPercent is the price return at 1e6 fixed point, negative on a loss.
+//     Verified against (closePrice - openPrice) / openPrice x leverage on 91 of
+//     91 rows.
+//   - amountSentToTrader is 6-decimal USD and read zero on all 91. Confirmed
+//     against the chain: in 0xfa67b49b the two USDC transfers out of the
+//     trading storage total 1,516.844 against a collateral of 1,516.842, and
+//     both go to the vault.
 type ostiumLiqRow struct {
-	ID        string `json:"id"`
-	Timestamp string `json:"timestamp"` // unix seconds, as a string
-	Pair      struct {
+	ID             string `json:"id"`
+	Timestamp      string `json:"timestamp"`          // unix seconds, as a string
+	ProfitPercent  string `json:"profitPercent"`      // 1e6 fixed point percent, signed
+	AmountSentToTr string `json:"amountSentToTrader"` // 6-decimal USD
+	Pair           struct {
 		From string `json:"from"`
 	} `json:"pair"`
 	Trade struct {
-		Notional string `json:"notional"` // 6-decimal USD
+		Notional   string `json:"notional"`   // 6-decimal USD
+		Collateral string `json:"collateral"` // 6-decimal USD
+		Leverage   string `json:"leverage"`   // 1e2 fixed point
 	} `json:"trade"`
 }
+
+// ostiumLeverageScale is the divisor on trade.leverage. Ostium writes 7500 for
+// 75x, unlike Gains which writes 75000 for the same leverage.
+const ostiumLeverageScale = 2
 
 // FetchLiquidationsSince returns executed liquidations of the asset since
 // sinceMs.
@@ -90,7 +113,8 @@ func (o *Ostium) FetchLiquidationsSince(asset string, sinceMs int64) ([]LiqEvent
 		q := fmt.Sprintf(
 			`{ tradeEvents(first:%d, skip:%d, orderBy:timestamp, orderDirection:desc, `+
 				`where:{type:LiquidationExecuted, timestamp_gte:"%d"}) `+
-				`{ id timestamp pair { from } trade { notional } } }`,
+				`{ id timestamp profitPercent amountSentToTrader pair { from } `+
+				`trade { notional collateral leverage } } }`,
 			ostiumPageLimit, page*ostiumPageLimit, sinceMs/1000)
 		var out struct {
 			TradeEvents []ostiumLiqRow `json:"tradeEvents"`
@@ -113,11 +137,34 @@ func (o *Ostium) FetchLiquidationsSince(asset string, sinceMs int64) ([]LiqEvent
 			if err != nil || usd <= 0 {
 				continue
 			}
-			events = append(events, LiqEvent{
+			e := LiqEvent{
 				Key:         "ostium:" + r.ID,
 				NotionalUSD: usd,
 				TimestampMs: int64(sec) * 1000,
-			})
+			}
+			// The position behind the close, where the linked trade carries it.
+			// A row missing the collateral publishes its notional and stays out
+			// of the forfeited arithmetic rather than entering it as a zero.
+			col, cerr := parseScaled(r.Trade.Collateral, 6)
+			if cerr == nil && col > 0 {
+				// The margin and the leverage stand on the linked trade alone
+				// and feed two gauges older than this one, so they are not
+				// coupled to the two fields below: a row whose
+				// amountSentToTrader arrives null would otherwise drop out of
+				// perp_liq_collateral_24h_usd as well.
+				e.CollateralUSD = col
+				if lev, lerr := parseScaled(r.Trade.Leverage, ostiumLeverageScale); lerr == nil && lev > 0 {
+					e.Leverage = lev
+				}
+				pct, perr := parseScaled(r.ProfitPercent, 6)
+				sent, serr := parseScaled(r.AmountSentToTr, 6)
+				if perr == nil && serr == nil && pct <= 0 {
+					e.HasForfeitDetail = true
+					e.LossAtTriggerPct = -pct
+					e.ReturnedUSD = sent
+				}
+			}
+			events = append(events, e)
 		}
 		if len(out.TradeEvents) < ostiumPageLimit {
 			return events, nil
@@ -228,3 +275,8 @@ func (o *Ostium) FetchVolume24hUSD(asset string) (float64, error) {
 	}
 	return 0, fmt.Errorf("ostium: more than %d orders in 24h; refusing a partial sum", ostiumMaxPages*ostiumPageLimit)
 }
+
+// CarriesPositionDetail reports true: the subgraph's liquidation row carries
+// profitPercent and amountSentToTrader, and the linked trade carries the
+// collateral and the leverage.
+func (o *Ostium) CarriesPositionDetail() bool { return true }

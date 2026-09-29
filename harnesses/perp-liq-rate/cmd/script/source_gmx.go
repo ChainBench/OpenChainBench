@@ -23,6 +23,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"math/big"
 	"sort"
 	"strings"
 	"sync"
@@ -161,13 +162,78 @@ func gmxAssetMatches(marketName, asset string) bool {
 func (g *GMX) HasLiquidationSource() bool { return true }
 
 // gmxTradeAction is one row of the squid's tradeActions.
+//
+// The last four fields are what makes GMX the one order-executed feed in this
+// cohort that can answer the forfeited-collateral question:
+//
+//   - initialCollateralDeltaAmount on a liquidation row is the position's whole
+//     margin at the close, in the collateral token's own units.
+//   - collateralTokenPriceMin prices it. GMX quotes a price per smallest unit
+//     at 1e30, so collateral in USD is amount x price / 1e30 with no decimals
+//     lookup at all, which is why this source needs no token metadata.
+//   - basePnlUsd is the price profit and loss, before fees and price impact,
+//     at 30 decimals. The loss at trigger.
+//   - pnlUsd is the same figure all in: base P&L plus impact minus every fee
+//     (position fee, liquidation fee, borrowing, funding). collateral + pnlUsd
+//     is the residual paid out, verified against the chain.
 type gmxTradeAction struct {
 	MarketAddress   string `json:"marketAddress"`
 	SizeDeltaUsd    string `json:"sizeDeltaUsd"` // 30-decimal USD
 	Timestamp       int64  `json:"timestamp"`    // unix seconds
 	TransactionHash string `json:"transactionHash"`
 	OrderKey        string `json:"orderKey"`
+
+	InitialCollateralDeltaAmount string `json:"initialCollateralDeltaAmount"` // collateral token units
+	CollateralTokenPriceMin      string `json:"collateralTokenPriceMin"`      // USD per unit, 1e30
+	BasePnlUsd                   string `json:"basePnlUsd"`                   // 30-decimal USD, signed
+	PnlUsd                       string `json:"pnlUsd"`                       // 30-decimal USD, signed
 }
+
+// gmxCollateralUSD prices a liquidation row's margin. GMX's collateralTokenPrice
+// is USD per smallest unit scaled by 1e30, so amount x price / 1e30 is USD for
+// every token without knowing its decimals: 39,512,118 units of USDC at
+// 999971002500000000000000 is 39.5110 dollars.
+func gmxCollateralUSD(amount, priceMin string) (float64, error) {
+	if amount == "" || priceMin == "" {
+		return 0, fmt.Errorf("gmx: liquidation row carries no collateral amount or price")
+	}
+	a, ok := new(big.Float).SetPrec(256).SetString(amount)
+	if !ok {
+		return 0, fmt.Errorf("gmx: bad collateral amount %q", amount)
+	}
+	p, ok := new(big.Float).SetPrec(256).SetString(priceMin)
+	if !ok {
+		return 0, fmt.Errorf("gmx: bad collateral price %q", priceMin)
+	}
+	v, _ := new(big.Float).Quo(new(big.Float).Mul(a, p), big.NewFloat(1e30)).Float64()
+	return v, nil
+}
+
+// gmxSigned30 parses one of the squid's signed 30-decimal USD strings.
+func gmxSigned30(s string) (float64, error) {
+	if s == "" {
+		return 0, fmt.Errorf("gmx: empty signed usd figure")
+	}
+	f, ok := new(big.Float).SetPrec(256).SetString(s)
+	if !ok {
+		return 0, fmt.Errorf("gmx: bad signed usd figure %q", s)
+	}
+	v, _ := new(big.Float).Quo(f, big.NewFloat(1e30)).Float64()
+	return v, nil
+}
+
+// gmxFieldsSize is the selection the volume sum needs, and gmxFieldsPosition
+// the wider one the liquidation numerator needs. They are separate because the
+// volume query pages over a few thousand rows and the squid refuses a response
+// it estimates to be too large ("response might exceed the size limit"): asking
+// every executed order of a busy day for four more BigInt fields it has no use
+// for is how that refusal would arrive, and a refused volume read unranks both
+// GMX rows.
+const (
+	gmxFieldsSize     = "marketAddress sizeDeltaUsd timestamp transactionHash orderKey"
+	gmxFieldsPosition = gmxFieldsSize +
+		" initialCollateralDeltaAmount collateralTokenPriceMin basePnlUsd pnlUsd"
+)
 
 // squidTradeActions pages tradeActions under one where clause. Rows are
 // deduplicated by orderKey: the squid is live and ordered newest first, so a
@@ -176,7 +242,7 @@ type gmxTradeAction struct {
 // with a partialWindowError naming the oldest of them; the liquidation
 // caller folds those in and holds the rank, the volume caller refuses the
 // partial sum because it feeds the rank gate's denominator.
-func (g *GMX) squidTradeActions(where string) ([]gmxTradeAction, error) {
+func (g *GMX) squidTradeActions(where, fields string) ([]gmxTradeAction, error) {
 	var all []gmxTradeAction
 	seen := make(map[string]bool, 1024)
 	oldestRead := int64(0)
@@ -184,8 +250,8 @@ func (g *GMX) squidTradeActions(where string) ([]gmxTradeAction, error) {
 	for ; page < gmxSquidMaxPages; page++ {
 		q := fmt.Sprintf(
 			`{ tradeActions(where:{%s}, orderBy:timestamp_DESC, limit:%d, offset:%d) `+
-				`{ marketAddress sizeDeltaUsd timestamp transactionHash orderKey } }`,
-			where, gmxSquidPageLimit, page*gmxSquidPageLimit)
+				`{ %s } }`,
+			where, gmxSquidPageLimit, page*gmxSquidPageLimit, fields)
 		var resp struct {
 			Data struct {
 				TradeActions []gmxTradeAction `json:"tradeActions"`
@@ -277,7 +343,7 @@ func (g *GMX) FetchLiquidationsSince(asset string, sinceMs int64) ([]LiqEvent, e
 	}
 	where := fmt.Sprintf(`orderType_eq:%d, eventName_eq:"OrderExecuted", timestamp_gte:%d`,
 		gmxOrderTypeLiquidation, sinceMs/1000)
-	rows, err := g.squidTradeActions(where)
+	rows, err := g.squidTradeActions(where, gmxFieldsPosition)
 	var partial *partialWindowError
 	if err != nil && !errors.As(err, &partial) {
 		return nil, err
@@ -296,11 +362,38 @@ func (g *GMX) FetchLiquidationsSince(asset string, sinceMs int64) ([]LiqEvent, e
 		if key == "" {
 			key = fmt.Sprintf("%s:%s:%d", r.TransactionHash, r.MarketAddress, r.Timestamp)
 		}
-		events = append(events, LiqEvent{
+		e := LiqEvent{
 			Key:         "gmx:" + key,
 			NotionalUSD: usd,
 			TimestampMs: r.Timestamp * 1000,
-		})
+		}
+		// The position behind the fill, where the row carries it. A squid row
+		// with no collateral figure publishes its notional and stays out of
+		// the forfeited arithmetic rather than entering it as a zero.
+		if col, cerr := gmxCollateralUSD(r.InitialCollateralDeltaAmount, r.CollateralTokenPriceMin); cerr == nil && col > 0 {
+			// The margin and the leverage stand on the collateral figure alone,
+			// and they feed two gauges older than this one. Coupling them to the
+			// P&L reads below would have made perp_liq_collateral_24h_usd and
+			// perp_liq_median_leverage_x mean one thing on Gains, which sets
+			// them unconditionally, and another on GMX.
+			e.CollateralUSD = col
+			e.Leverage = usd / col
+			base, berr := gmxSigned30(r.BasePnlUsd)
+			allIn, aerr := gmxSigned30(r.PnlUsd)
+			if berr == nil && aerr == nil && base <= 0 {
+				e.HasForfeitDetail = true
+				e.LossAtTriggerPct = -base / col * 100
+				// What is left after the price loss, the impact and every fee
+				// is paid back out of the pool. Verified against the chain:
+				// in 0xee583c74 the residual computed here, 8.6551 USDC, is
+				// the 8.655363 USDC the pool transferred to the liquidated
+				// account in that same transaction.
+				if resid := col + allIn; resid > 0 {
+					e.ReturnedUSD = resid
+				}
+			}
+		}
+		events = append(events, e)
 	}
 	// err is nil or the partialWindowError, which travels with the rows.
 	return events, err
@@ -360,7 +453,7 @@ func (g *GMX) FetchVolume24hUSD(asset string) (float64, error) {
 	since := time.Now().Add(-windowSpan).Unix()
 	where := fmt.Sprintf(`orderType_gte:%d, eventName_eq:"OrderExecuted", timestamp_gte:%d, marketAddress_in:[%s]`,
 		gmxOrderTypeFirstPos, since, strings.Join(markets, ","))
-	rows, err := g.squidTradeActions(where)
+	rows, err := g.squidTradeActions(where, gmxFieldsSize)
 	if err != nil {
 		// Including a page-cap refusal: a partial sum must not become the
 		// rank gate's denominator, so the row goes unranked for the tick.
@@ -419,3 +512,8 @@ func (g *GMX) FetchOI(asset string) (float64, error) {
 	}
 	return poolOpenInterest(long, short), nil
 }
+
+// CarriesPositionDetail reports true: the squid's liquidation row carries
+// initialCollateralDeltaAmount, basePnlUsd and pnlUsd, so this venue can answer
+// the forfeited-collateral question.
+func (g *GMX) CarriesPositionDetail() bool { return true }

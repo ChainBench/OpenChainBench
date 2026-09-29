@@ -12,13 +12,13 @@ gauges on `:2112/metrics`.
 | `hyperliquid` | ETH BTC SOL | 0xArchive `/v1/hyperliquid/liquidations`, all liquidation types; no rate without the key | on the band |
 | `lighter` | ETH BTC | Coinalyze hourly buckets, symbols `0.T` `1.T` | on the band |
 | `aster` | ETH BTC SOL | Coinalyze hourly buckets, symbols `ETHUSDT.S` `BTCUSDT.S` `SOLUSDT.S` | on the band |
-| `gmx` | ETH BTC | Subsquid `tradeActions`, `orderType` 7 | on the band |
+| `gmx` | ETH BTC | Subsquid `tradeActions`, `orderType` 7; carries the position, so the forfeited share too | on the band |
 | `dydx` | ETH BTC SOL | v4 indexer tape, `type == LIQUIDATED` | on the band |
 | `paradex` | ETH BTC | public tape, `trade_type == LIQUIDATION` | on the band |
 | `orderly` | ETH BTC SOL | `GET /v1/public/liquidated_positions`, matching leg only, `cost_position_transfer` USD | on the band |
 | `nado` | ETH BTC | archive `market_snapshots`, delta of `cumulative_liquidation_amounts` (x18 USD), one aggregate figure | on the band |
-| `gains` | ETH BTC | on-chain `LimitExecuted` logs, `orderType` LIQ_CLOSE (6), Arbitrum and Base; traded notional from the same scan (MarketExecuted, LimitExecuted, executed resizes) | on the band |
-| `ostium` | ETH BTC | Ormi subgraph, `tradeEvents` type `LiquidationExecuted` | on the band |
+| `gains` | ETH BTC | on-chain `LimitExecuted` logs, `orderType` LIQ_CLOSE (6), Arbitrum and Base; traded notional from the same scan (MarketExecuted, LimitExecuted, executed resizes); carries the position, so the forfeited share too | on the band |
+| `ostium` | ETH BTC | Ormi subgraph, `tradeEvents` type `LiquidationExecuted`; carries the position, so the forfeited share too | on the band |
 | `aevo` | ETH BTC | none reachable | no |
 
 Slugs match the site's perp venue registry (`src/lib/perp-stats.ts`), except
@@ -61,6 +61,12 @@ perp_liq_open_interest_usd{venue,chain}
 perp_liq_open_interest_peak_24h_usd{venue,chain}
 perp_liq_open_interest_trough_24h_usd{venue,chain}
 perp_liq_open_interest_avg_24h_usd{venue,chain}
+perp_liq_collateral_forfeited_pct{venue,chain}
+perp_liq_loss_at_trigger_pct{venue,chain}
+perp_liq_collateral_returned_pct{venue,chain}
+perp_liq_forfeit_events{venue,chain}
+perp_liq_collateral_forfeited_by_leverage_pct{venue,chain,band}
+perp_liq_liquidations_by_leverage_count{venue,chain,band}
 perp_liq_venue_volume_24h_usd{venue,chain}
 perp_liq_share_of_volume_pct{venue,chain}
 perp_liq_largest_event_share_pct{venue,chain}
@@ -125,6 +131,144 @@ perp_realized_vol_24h_pct{chain}
   difference between publishing 952% and 63% on ETH, and 211% and 25% on BTC.
   `checkOIHead` compares the reconstruction against the live book every tick
   and counts `oi_head_mismatch` past 1%.
+- **What a forced close costs the trader, where the feed says.** The rate
+  above is notional and so it is leverage-sensitive; it cannot answer "how much
+  of my money would I lose". Three quantities per forced close can. The margin
+  behind the position; the share of that margin the price had already taken when
+  the venue closed it (`perp_liq_loss_at_trigger_pct`); and the share that went
+  back to the trader (`perp_liq_collateral_returned_pct`). What is left is
+  `perp_liq_collateral_forfeited_pct`, the margin destroyed *in excess of the
+  loss the trader actually incurred*, computed per close and then published as
+  the median of those, so it is **not** 100 minus the two medians beside it.
+  All three are medians over the same 24h window, taken independently, with
+  `perp_liq_forfeit_events` saying how many closes are behind them,
+  and `perp_liq_collateral_forfeited_by_leverage_pct` breaking the forfeit out
+  by leverage band beside its own count.
+
+  On the first deploy the three shares fill in over a day rather than at once.
+  A state file written before this change carries no forfeit detail, so the
+  liquidations restored from it come back with `HasForfeit` false and only the
+  closes read after the deploy count. Nothing is wrong and nothing needs doing:
+  `perp_liq_forfeit_events` climbs to the full window within 24h. The
+  liquidation and open-interest windows themselves restore as before.
+
+  Two blanks, told apart. A venue that can read the position and saw no forced
+  close in the window publishes `perp_liq_forfeit_events = 0` with no medians;
+  a venue whose feed cannot read the position publishes no series at all, count
+  included (`positionSource` in `common.go`). Ostium is regularly the first
+  case: one BTC liquidation in the 24h to 2026-09-29, none on ETH or SOL.
+
+  Three of the eleven venues carry all three quantities. Measured 2026-09-29:
+
+  | venue | window | n | margin | returned, median | loss at trigger, median | forfeited, median |
+  |---|---|---|---|---|---|---|
+  | gains, all pairs, Arbitrum | 3 d | 886 | $865,543 | 0.00% | 60.0% | **40.0 pts** |
+  | gmx, all markets | 24 h | 187 | $43,013 | 18.60% | 63.3% | **15.4 pts** |
+  | ostium, all pairs | 7 d | 91 | $16,984 | 0.00% | 79.2% | **20.8 pts** |
+
+  Every figure in the last three columns is a **median over the closes**, and
+  the three are taken independently, so they do not add to 100: on the GMX row,
+  `100 - 63.3 - 18.60` is 18.1 and the median forfeit is 15.4. The subtraction
+  happens per close, in `windowEntry.forfeit()`, and a median is not linear.
+  Aggregate shares, for the same three windows, are a different statistic and
+  read $0 of $865,543 returned on Gains, $4,827 of $42,980 (11.2%) on GMX and
+  $0 of $16,984 on Ostium.
+
+  By leverage band on the Gains window: 0-10x n=64 forfeit 26.3 pts, 10-25x
+  n=120 29.3, 25-50x n=112 31.8, 50-100x n=191 41.6, 100x+ n=399 40.9. The
+  forfeit *grows* with leverage, because a position opened at 100x is closed
+  after a smaller move and so less of its margin has gone to the price by the
+  time the venue takes the rest. That is the single most useful line here for a
+  trader picking a leverage.
+
+  Where the quantities come from, and what was checked against the chain rather
+  than against this harness:
+
+  - `gains`: `percentProfit` (w28 of `LimitExecuted`, **int256 and signed**,
+    1e10 fixed point percent) and `amountSentToTrader` (w29, the collateral's
+    own decimals). percentProfit is the price move times the leverage and
+    nothing else: `(liqPrice - openPrice) / openPrice x leverage`, signed by
+    `t.long`, reproduces it on 120 of 120 real liquidations. In tx
+    `0x427c242f` a 200,228 dollar ETH position at 108.213x closed 51.24% down,
+    and the transaction's three USDC transfers total the whole margin with every
+    one going to the vault at `0xd3443ee1`, none to the trader: that trader
+    forfeited 48.76 points, 97,631 dollars. `source_gains_forfeit_test.go` pins
+    the log word for word.
+  - `gmx`: `initialCollateralDeltaAmount` x `collateralTokenPriceMin` / 1e30 is
+    the margin (GMX quotes per smallest unit at 1e30, so no token decimals are
+    needed); `basePnlUsd` is the price P&L; `pnlUsd` is the same all in, and
+    margin plus `pnlUsd` is the residual paid out. In tx `0xee583c74` that
+    computes 8.6551 USDC and the transaction transferred 8.655363 to the
+    liquidated account. Of the twelve largest liquidations that day, seven
+    matched an on-chain transfer of exactly the predicted amount and five were
+    cross-chain orders paid to a GMX vault for the same amount. The volume query
+    deliberately keeps a narrower field list (`gmxFieldsSize`): asking every
+    executed order of a busy day for four more BigInt fields is how the squid's
+    "response might exceed the size limit" refusal would arrive, and a refused
+    volume read unranks both GMX rows.
+  - `ostium`: `profitPercent` (1e6 fixed point, signed), `amountSentToTrader`
+    (6-decimal USD) and the linked trade's `collateral` and `leverage`. Its
+    leverage is **1e2** fixed point, not the 1e3 Gains uses: a row reading 5000
+    is 50x, and `trade.notional / trade.collateral` confirms it. The event's own
+    `collateralDelta`, `leverage` and `notional` are all null on a liquidation.
+    In tx `0xfa67b49b` the two USDC legs total the margin and both go to the
+    vault, so the zero payout is the truth and not an unread field.
+
+  Three refusals and one clamp, all of them measured rather than defensive:
+
+  - A forced close whose **price return was positive** does not enter the
+    arithmetic on any of the three venues. Ten of the 886 Gains liquidations
+    were like that, the largest a long on pair 482 up 8.88% at 52.88x closed as
+    `LIQ_CLOSE` with nothing returned. The word is read correctly and the event
+    is not a trader losing money to a move; left in, each would have contributed
+    a forfeited share of 569 points. The row keeps its notional.
+  - A row with **no margin figure** publishes its notional and nothing here.
+  - A loss above 100% of margin **forfeits nothing** and publishes 0 rather than
+    a negative share that would read as money handed back. Ostium had one such
+    row in 91 over 7 days, at 116%; the venue absorbed the excess.
+  - The medians are medians, not aggregate ratios. One 200,228 dollar position
+    beside a hundred small ones would otherwise be a venue's whole answer.
+
+  **What the forfeited share contains.** All three venues define their loss
+  figure as price only, so the forfeit is the closing fee, the liquidation
+  penalty, and the funding and rollover accrued while the position was open.
+  Those are real costs the trader did incur, so it is the margin lost to
+  something other than the move, not a penalty. Gains shows the distinction
+  itself: its 602 stop losses over the same three days returned 75.2% of
+  154,420 dollars at a median loss at trigger of 24.3%, while its liquidations
+  returned nothing. (Twelve of those 602 stop losses returned zero too, so a
+  zero payout is not by itself the signature of a liquidation.)
+
+  **The eight venues that cannot report it, checked one record at a time on
+  2026-09-29 rather than assumed. Seven have a liquidation feed with no position
+  in it; Aevo has no liquidation feed at all.** Hyperliquid's 0xArchive row carries `coin`,
+  `timestamp`, `liquidated_user`, `price`, `size`, `side`, `mark_price`,
+  `closed_pnl` and `direction`: the realized P&L in dollars with no margin to
+  divide it by, and cross-margin at the account rather than the position.
+  Orderly comes closest and still cannot: `collateral_value` is the equity
+  remaining at the instant of liquidation (it equals `margin_ratio` x
+  `position_notional` exactly), not the margin posted, and `abs_liquidation_fee`
+  plus `abs_insurance_fund_fee` routinely exceeds it, so there is a numerator
+  and no denominator. dYdX's tape carries `id, side, size, price, type,
+  createdAt, createdAtHeight`; Paradex's carries `id, market, side, size, price,
+  created_at, trade_type` (and 12,000 BTC rows over 3.5 days held no LIQUIDATION
+  at all, only FILL and RPI). Lighter and Aster arrive as Coinalyze hourly
+  buckets of `{t, l, s}` in base units, with no positions inside them; Lighter's
+  own `/api/v1/liquidations` requires an `account_index` and Aster's
+  `allForceOrders` answers that it is out of maintenance. Nado's snapshot path
+  is one cumulative counter per product, and its `liquidate_subaccount` events
+  carry the perp balance and the venue's risk weights but no subaccount
+  collateral. Those eight rows publish **no series at all** on these gauges,
+  which is the whole point: a 0.0% would read as a venue that forfeits none of
+  its traders' margin and would sit at the top of the column.
+
+  **Not comparable across the kinds of feed, and the spec says so.** An event
+  feed reports positions; an hourly bucket reports a total. Lighter and Aster
+  already read a largest-event share of 0.0% purely because their feed holds no
+  events, and the same asymmetry applies here in its strongest form: they cannot
+  appear in this measurement at all, so the three venues that can are published
+  as annotations beside the ranked notional rate rather than as a ranked column.
+
 - **The mean is time-weighted**, not averaged over readings. Event density is
   wildly uneven: Gains ETH had 67 open-interest events across all of
   2026-09-27 and 88 in the single hour it collapsed, so an average over
@@ -212,6 +356,10 @@ perp_realized_vol_24h_pct{chain}
   every leg of the pair (resizes at `positionSizeCollateralDelta`), which is
   the Gains backend's own auto-plus-direct perimeter. Logs are placed on the
   clock by interpolating between the headers at both ends of the range.
+  `go test -tags live -run TestLive_ForfeitedCollateral` prints the three shares
+  and the leverage bands for every venue, and says "none" for the eight whose
+  feed carries no position (`LIQ_LOOKBACK_HOURS` widens the window past 24h for
+  the venues that liquidate a handful of positions a week).
   `go test -tags live -run TestLive_GainsVolume` prints the scan next to the
   backend's volume-mix, and `TestLive_GainsVolumeAudit` (with
   `GAINS_FROM_BLOCK` / `GAINS_TO_BLOCK`, optionally `GAINS_CHAIN=base`) lists
