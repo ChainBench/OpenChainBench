@@ -57,10 +57,25 @@ var headLagPools = []HeadLagPool{
 		ChainName:  "base",
 	},
 	{
-		Name:       "WBNB/BUSD PancakeSwap",
+		// PancakeSwap V3 USDT/WBNB 0.01%, the pool geckoterminal_monitor.go
+		// already reads. The WBNB/BUSD V2 pool this replaces went near-idle
+		// after Binance stopped issuing BUSD: measured 2026-09-29 against
+		// the chain, 1,248 swaps a day there, one every 69 s, against
+		// 441,120 a day here.
+		//
+		// Two costs of leaving it behind, both measured over 24 h:
+		// the flow watchdog below assumes a high-activity pool and takes a
+		// silence past 10 minutes for a dead subscription, so it purged the
+		// gauge and reconnected several times an hour — codex and
+		// serialized, the only two monitors carrying that watchdog, sat at
+		// 86 % presence on bnb while mobula and geckoterminal held 100 %;
+		// and geckoterminal was reading a different pool from the other
+		// three, so the bnb column compared head lags measured on two
+		// different trade streams.
+		Name:       "USDT/WBNB PancakeSwap V3",
 		Blockchain: "evm:56",
 		NetworkID:  56,
-		Address:    "0x58f876857a02d6762e0101bb5c46a8c1ed44dc16",
+		Address:    "0x172fcd41e0913e95784454622d1c3724f546f849",
 		ChainName:  "bnb",
 	},
 	{
