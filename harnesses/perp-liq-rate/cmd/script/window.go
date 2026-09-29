@@ -265,10 +265,16 @@ func median(xs []float64) float64 {
 //
 // The three are independent medians over the same set of closes, so they do not
 // add to 100. The subtraction happens per close, in forfeit(), and a median is
-// not linear: on GMX over the 24h to 2026-09-29 the medians came out at 63.3%
-// lost, 18.6% returned and 15.4 points forfeited, and 100 - 63.3 - 18.6 is
-// 18.1. Every published figure is the median of a real per-close quantity;
-// none of them is derived from the other two.
+// not linear: on GMX's crypto closes inside the range, the medians came out at
+// 64.5% lost, 17.50% returned and 15.5 points forfeited, and 100 - 64.5 - 17.5
+// is 18.0. Every published figure is the median of a real per-close quantity;
+// none is derived from the other two.
+//
+// One more thing a reader has to know. Where a venue returns nothing the
+// forfeit is exactly 100 minus the loss at trigger, so the two carry one number
+// between them: that identity held on 10,599 of 10,599 Gains closes and 262 of
+// 262 Ostium closes, and on 64 of 3,474 GMX closes. Only on GMX are they
+// independent measurements.
 func (w *SlidingWindow) ForfeitStats() forfeitSummary {
 	w.mu.Lock()
 	defer w.mu.Unlock()
@@ -351,13 +357,12 @@ func (w *SlidingWindow) MarginDestroyedUSD() (float64, bool) {
 // intuition: a position opened at 100x is closed after a smaller move, so less
 // of its margin has been taken by the price by the time the venue takes the
 // rest. So a venue-level median is mostly a statement about the venue's
-// leverage mix, and the venues do not sell the same mix. Measured on the
-// liquidated positions themselves, 2026-09-29: Gains' median was 91x with 45%
-// above 100x and a maximum of 803x, GMX's median 45x with 2% above 100x and
-// nothing past 107x, Ostium's median 66x with 0.5% above 100x. Gains' own group
-// settings allow 200x on crypto, 500x on crypto-degen and 1000x on forex.
-// Comparing one venue's all-leverage median against another's says which sells
-// more leverage, not which manages risk better.
+// leverage mix, and the venues do not sell the same mix. Measured on the crypto
+// liquidations of one common 29.27-day window to 2026-09-29: Gains' median was
+// 100x with 48.2% above 100x and a maximum of 1000x, GMX's 44x with 1.6% above
+// 100x and nothing past 106.7x, Ostium's 75x with none above 100x. Comparing one
+// venue's all-leverage median against another's says which sells more leverage,
+// not which manages risk better.
 var leverageBands = []struct {
 	name        string
 	minEx, maxI float64 // (minEx, maxI]; maxI 0 means no upper bound
@@ -375,10 +380,13 @@ var leverageBands = []struct {
 // in this cohort actually offers and actually liquidates inside, so a
 // venue-level figure computed over it compares risk management rather than
 // product range. 10x to 100x is where all three venues that report the position
-// hold real counts (Gains 418 closes, GMX 968, Ostium 366 over the windows
-// measured on 2026-09-29). Outside it the comparison breaks down in both
-// directions: GMX recorded no liquidation above 107x and Ostium two above 100x,
-// while Gains had 244 above 200x, a region the other two do not sell.
+// hold real counts: over one common 29.27-day window on crypto, Gains 10,599
+// closes, GMX 3,474, Ostium 262. Outside it the comparison breaks down in both
+// directions: GMX recorded no liquidation above 106.7x and Ostium none above
+// 100x, while Gains had 5,912 above 200x, a region the other two do not sell.
+//
+// Inside it, over that window, Gains forfeited a median 36.7 points of margin
+// against GMX's 15.5 and Ostium's 16.9.
 //
 // The per-band gauges carry the whole curve. Only the venue-level medians are
 // restricted, because those are the ones a reader compares across rows.

@@ -162,101 +162,120 @@ perp_realized_vol_24h_pct{chain}
   included (`positionSource` in `common.go`). Ostium is regularly the first
   case: one BTC liquidation in the 24h to 2026-09-29, none on ETH or SOL.
 
-  **Every cross-venue figure is computed inside a leverage band.** The forfeit
-  grows with leverage and the venues do not sell the same leverage, so a
-  venue-level median over everything is mostly a statement about a product
-  range. Observed on the liquidated positions themselves:
+  **Every cross-venue figure is computed inside a leverage band and within one
+  asset class**, on one window identical for all three venues. The forfeit grows
+  with leverage and the venues sell different ranges, so a venue median over
+  everything mostly reports a product range. The window is **29.27 days, 2026-08-30
+  20:44 to 2026-09-29 03:14 UTC**, the intersection of what the three feeds reach
+  (Ostium's subgraph is the binding constraint); Gains covers **Arbitrum and
+  Base**. Asset class is settled by the cohort rather than a filter: this harness
+  polls ETH, BTC and SOL only, so every published row is crypto.
 
-  | venue | n | p50 lev | p90 | max | above 100x | the venue allows |
+  | venue | crypto n | p50 lev | p90 | max | above 100x | margin |
   |---|---|---|---|---|---|---|
-  | gains (3 d, Arbitrum) | 876 | 91x | 500x | 803x | **45.1%** | 200x crypto, 500x degen, 1000x forex |
-  | gmx (7 d) | 1046 | 45x | 99.6x | 107x | 2.0% | nothing observed past 107x |
-  | ostium (30 d) | 383 | 66x | 100x | 200x | 0.5% | nothing observed past 200x |
+  | gains (Arbitrum + Base) | 20,933 | 100x | 500x | 1000x | **48.2%** | $1,722,090 |
+  | gmx | 3,858 | 44x | 99.6x | 106.7x | 1.6% | $1,963,273 |
+  | ostium | 266 | 75x | 100x | 100x | 0.0% | $25,992 |
 
-  So the matrix, median loss at trigger and median forfeit with the count, bands
+  The matrix, **crypto only**, n / median loss at trigger / median forfeit, bands
   being (min, max]. A cell a venue does not trade is **absent**, never zero:
 
-  | band | gains n / loss / forfeit | gmx n / loss / forfeit | ostium n / loss / forfeit |
+  | band | gains | gmx | ostium |
   |---|---|---|---|
-  | 0-5x | 9 / 89.5% / 10.5 | 27 / 94.5% / 1.4 | 5 / 73.9% / 26.1 |
-  | 5-10x | 54 / 72.0% / 28.0 | 30 / 90.4% / 4.0 | 10 / 92.1% / 7.9 |
-  | 10-25x | 119 / 70.8% / **29.2** | 176 / 85.1% / **6.3** | 71 / 95.1% / **4.9** |
-  | 25-50x | 111 / 68.7% / **31.3** | 482 / 63.0% / **15.0** | 84 / 87.7% / **12.3** |
-  | 50-100x | 188 / 58.7% / **41.3** | 310 / 53.4% / **24.1** | 211 / 78.0% / **22.0** |
-  | 100-200x | 151 / 60.0% / 40.0 | 21 / 47.0% / 27.6 | 2 / 72.0% / 28.0 |
-  | 200x+ | 244 / 58.7% / 41.3 | absent | absent |
+  | 0-5x | 77 / 88.6% / 11.4 | 135 / 95.9% / 1.6 | 1 / 100.0% / 0.0 |
+  | 5-10x | 163 / 75.8% / 24.2 | 189 / 92.7% / 3.4 | 3 / 97.6% / 2.4 |
+  | 10-25x | 836 / 78.0% / **22.0** | 710 / 86.1% / **6.6** | 47 / 96.1% / **3.9** |
+  | 25-50x | 1,646 / 66.1% / **33.9** | 1,601 / 64.6% / **14.6** | 44 / 89.1% / **10.9** |
+  | 50-100x | 8,117 / 63.0% / **37.0** | 1,163 / 54.7% / **23.6** | 171 / 78.4% / **21.6** |
+  | 100-200x | 4,182 / 54.6% / 45.4 | 60 / 47.0% / 27.8 | absent |
+  | 200x+ | 5,912 / 59.2% / 40.8 | absent | absent |
+  | **10-100x** | **10,599 / 63.3% / 36.7** | **3,474 / 64.5% / 15.5** | **262 / 83.1% / 16.9** |
+  | returned, 10-100x | 0.00% | 17.50% | 0.00% |
 
-  **Gains is still worse inside the overlap, by a factor rather than a margin.**
-  Restricted to the 10x to 100x range all three offer: Gains 32.8 points on 418
-  closes, GMX 16.0 on 968, Ostium 18.3 on 366. The leverage mix accounts for 7.2
-  of the 24-point venue-level gap (40.0 against 15.7) and the remaining 17
-  points are the venue. The mechanism is the loss at trigger, and it runs the
-  other way from the intuition: at 10-25x Gains closes a position once the price
-  has taken 70.8% of its margin, GMX at 85.1% and Ostium at 95.1%. Closing
-  earlier leaves more margin behind, and Gains returns none of it (0.00% on all
-  876) while GMX pays back a median 19.3% in the same range.
+  **The result holds, and widened.** On one window, crypto only, at equal
+  leverage, Gains forfeits **36.7** points against GMX's **15.5** and Ostium's
+  **16.9**: more than twice either. The earlier three-day Arbitrum-only reading
+  was 32.8 against 16.0 and 18.3, so the 28 September cascade was not inflating
+  it. Gains forfeits more in every band with a real count, three to five times at
+  the lower end and about 1.6 times at 50-100x.
 
-  The venue-level gauges therefore publish the **10x to 100x** figure only
-  (`comparableLeverageMin`/`Max` in `window.go`). The full curve publishes per
-  band on the metrics endpoint. Each figure is a median over the closes and the
-  three are taken independently, so they do not add to 100: on GMX,
-  `100 - 62.6 - 19.29` is 18.1 against a median forfeit of 16.0. The subtraction
-  happens per close, in `windowEntry.forfeit()`, and a median is not linear.
+  **Volatility is ruled out rather than merely allowed.** A price gapping past
+  the threshold would push the loss at trigger *up*, so the venue closing latest
+  should look worst. It is the other way: Gains' loss at trigger on crypto
+  10x-100x runs p10 52.7, p50 63.3, p90 74.3, the lowest and tightest of the
+  three, against GMX 47.7 to 87.4 and Ostium 76.0 to 96.1. Only 0.6% of Gains
+  closes reach the 100% clamp, against GMX's 1.4%. Gains closes on a rule at a
+  lower threshold and keeps the rest.
 
-  **The forfeit is not a penalty on its own, and where the feed says so it is
-  split.** All three venues define their loss figure as the price move times the
-  leverage, so the forfeit also holds the closing fee, the funding and the
-  rollover, which a trader pays on any close. `perp_liq_fee_and_carry_pct`
-  itemises that part:
+  **Base is in the perimeter and is a third of the count.** 14,454 liquidations
+  on Arbitrum and 6,651 on Base over the window, though only $137,796 of margin
+  against $1,696,795. Inside 10x-100x on crypto, Base forfeits a median 36.5
+  points against Arbitrum's 38.8, so neither chain carries the row alone.
 
-  | venue | band | forfeit | liquidation fee | trade fee | carry | impact |
-  |---|---|---|---|---|---|---|
-  | gmx | 10-25x | 6.3 | 4.8 | 0.8 | 0.2 | 0.3 |
-  | gmx | 50-100x | 24.1 | 19.7 | 4.0 | 0.0 | 0.6 |
-  | gmx | all | 15.7 | 12.0 | 2.0 | 0.1 | 0.5 |
-  | ostium | 50-100x | 22.0 | 15.2 (residual) | 6.4 | 0.3 | n/a |
-  | ostium | all | 18.3 | 14.3 (residual) | 3.8 | 0.1 | n/a |
+  The other asset classes, reported separately and never blended into the
+  headline (Gains 41 forex, 120 commodities, 11 equities; GMX 106 commodities
+  and 7 equities; Ostium 16 forex, 36 commodities, 65 equities). At 10x-100x on
+  commodities: Gains 34.9, GMX 22.0, Ostium 15.7. Counts in single digits in
+  most cells, so they qualify nothing.
 
-  GMX itemises all of it (`positionFeeAmount`, `borrowingFeeAmount`,
+  **The forfeit column carries no independent information where nothing comes
+  back.** Where the returned share is 0, the forfeit is exactly 100 minus the
+  loss at trigger by construction. Measured on crypto 10x-100x: that identity
+  holds in **10,599 of 10,599** Gains rows and **262 of 262** Ostium rows, and
+  in only **64 of 3,474** GMX rows. The table looks like three comparable
+  measurements and is one figure for two venues and two for the third.
+
+  **The forfeit is not all penalty, and where the feed says so it is split.**
+  All three define their loss as the price move times the leverage, so the
+  forfeit also holds the closing fee, the funding and the rollover, which a
+  trader pays on any close. On crypto 10x-100x: GMX 15.5 points of which 2.5 are
+  fees and carry, so about 13.0 is its own liquidation fee; Ostium 16.9 of which
+  4.9, so about 12.0. GMX itemises `positionFeeAmount`, `borrowingFeeAmount` and
   `fundingFeeAmount` beside its own `liquidationFeeAmount`, which is excluded
-  from the fee figure on purpose). Ostium carries `devFee`, `vaultFee`,
-  `oracleFee`, `funding` and `rollover`, but they are lifetime figures on the
-  trade rather than the close's own, so they bound the fee part from below and
-  the residual is the venue's liquidation claim.
+  from the fee figure on purpose; Ostium's five fee fields are lifetime figures
+  on the trade, so they bound the fee part from below.
 
-  **The Gains event carries no fee word at all**, so its forfeit cannot be split
-  from the event and its `perp_liq_fee_and_carry_pct` cell is absent rather than
-  zero. Its own stop losses bound it instead, carrying no liquidation penalty
-  over the same window and the same bands:
+  **The Gains event carries no fee word at all**, so its
+  `perp_liq_fee_and_carry_pct` cell is absent rather than zero, and its own stop
+  losses bound the split instead, carrying no liquidation penalty:
 
   | band | liq forfeit | stop-loss forfeit | difference |
   |---|---|---|---|
-  | 0-5x | 10.5 (n=9) | 0.9 (n=34) | 9.7 |
-  | 5-10x | 28.0 (n=54) | 1.4 (n=71) | 26.5 |
-  | 10-25x | 29.2 (n=119) | 2.0 (n=100) | 27.2 |
-  | 25-50x | 31.3 (n=111) | 4.0 (n=72) | 27.3 |
-  | 50-100x | 41.3 (n=188) | 8.0 (n=62) | 33.3 |
-  | 100-200x | 40.0 (n=151) | 12.8 (n=39) | 27.2 |
-  | 200x+ | 41.3 (n=244) | 20.6 (n=64) | 20.7 |
+  | 0-5x | 11.4 (n=77) | 0.3 (n=439) | 11.0 |
+  | 5-10x | 24.2 (n=163) | 0.9 (n=765) | 23.3 |
+  | 10-25x | 22.0 (n=836) | 2.0 (n=1073) | 20.0 |
+  | 25-50x | 33.9 (n=1646) | 4.5 (n=701) | 29.4 |
+  | 50-100x | 37.0 (n=8117) | 7.9 (n=762) | 29.1 |
+  | 100-200x | 45.4 (n=4182) | 14.5 (n=1450) | 30.9 |
+  | 200x+ | 40.8 (n=5912) | 20.3 (n=820) | 20.5 |
+  | **10-100x** | **36.7 (n=10599)** | **3.7 (n=2536)** | **33.0** |
 
-  Fees and carry on a Gains close run from 0.9 points at 0-5x to 20.6 above
-  200x, scaling with notional as they should, and the liquidation-specific
-  excess is about 27 points across most of the curve. The caveat is that stop
-  losses are not the same positions: matching on the leverage band controls the
-  fee-on-notional part and not the holding period.
+  Fees and carry on a Gains crypto close run 0.3 points at 0-5x to 20.3 above
+  200x, scaling with notional as they should, and the liquidation-specific excess
+  is 20 to 31 points across the curve. The caveat is that stop losses are not the
+  same positions: matching on the band controls the fee-on-notional part and not
+  the holding period.
 
   **The notional rate has the same problem, and the margin rate does not.**
-  `perp_liq_rate_24h_pct` and `perp_liq_share_of_volume_pct` are both notional
-  over notional, so they scale with the leverage a venue sells.
+  `perp_liq_rate_24h_pct` and `perp_liq_share_of_volume_pct` are notional over
+  notional, so they scale with the leverage a venue sells.
   `perp_liq_margin_destroyed_share_pct` is margin destroyed over the margin
-  behind every position the venue closed in the window: both halves are money
-  the trader posted, so leverage cancels. Measured 2026-09-29: GMX $337,015 of
-  $30,945,285 over 7 days, **1.09%**, split across market decrease $25.36M,
-  limit decrease $2.19M, stop loss $3.06M and liquidation $0.34M; Ostium $54,920
-  of $3,984,471 over 30 days, **1.38%**. The Gains figure comes off the same
-  scan as its numerator (`MarketExecuted` and `LimitExecuted` close legs) and is
-  not yet measured against live data, because the keyed Arbitrum RPC was in use
-  by another scan when this landed.
+  behind every position the venue closed: both halves are money the trader
+  posted, so leverage cancels. Of the margin behind the crypto positions each
+  venue force-closed inside 10x-100x, Gains destroyed $991,698 of $991,698,
+  Ostium $25,949 of $25,949 and GMX $1,332,710 of $1,484,688 (89.8%). Against
+  the margin behind *every* position closed in the window: GMX **1.09%** over 7
+  days ($337,015 of $30,945,285), Ostium **1.38%** over 30. The Gains half comes
+  off the `MarketExecuted` and `LimitExecuted` close legs the same scan already
+  reads and is not yet checked against live data.
+
+  Reproducing the measurement: `harnesses/perp-liq-rate` holds no offline
+  analysis script. The scan behind the tables above was one detached pass over
+  9,478,707 Arbitrum blocks and 1,296,000 Base blocks (43,063 decoded legs,
+  22,292 of them liquidations) in 346 s, paging `eth_getLogs` at 3,125 and 2,000
+  blocks with exponential backoff, and a log's time interpolated between the
+  headers at both ends of the range, which is accurate to a few hours over 30
+  days and so immaterial at this resolution.
 
   Where the quantities come from, and what was checked against the chain rather
   than against this harness:

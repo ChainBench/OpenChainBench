@@ -160,24 +160,27 @@ func TestForfeitByBand_BoundsAndCounts(t *testing.T) {
 	// Bands are (min, max], so a venue capped at a round number does not spill
 	// into the band above it: 100x is the top of 50-100x, not the bottom of
 	// 100-200x, which matters because GMX's cap is 100x.
+	// The loss figures are the Gains crypto curve measured over the common
+	// 29.27-day window to 2026-09-29, so a change to the band arithmetic shows
+	// up against the numbers the spec quotes.
 	cases := []struct {
 		lev, loss float64
 		band      string
 	}{
-		{1, 89.5, "0-5x"},
-		{5, 89.5, "0-5x"},
-		{5.1, 72, "5-10x"},
-		{10, 72, "5-10x"},
-		{10.1, 70.8, "10-25x"},
-		{25, 70.8, "10-25x"},
-		{40, 68.7, "25-50x"},
-		{50, 68.7, "25-50x"},
-		{75, 58.7, "50-100x"},
-		{100, 58.7, "50-100x"},
-		{100.1, 60, "100-200x"},
-		{200, 60, "100-200x"},
-		{200.1, 58.7, "200x+"},
-		{803, 58.7, "200x+"},
+		{1, 88.6, "0-5x"},
+		{5, 88.6, "0-5x"},
+		{5.1, 75.8, "5-10x"},
+		{10, 75.8, "5-10x"},
+		{10.1, 78.0, "10-25x"},
+		{25, 78.0, "10-25x"},
+		{40, 66.1, "25-50x"},
+		{50, 66.1, "25-50x"},
+		{75, 63.0, "50-100x"},
+		{100, 63.0, "50-100x"},
+		{100.1, 54.6, "100-200x"},
+		{200, 54.6, "100-200x"},
+		{200.1, 59.2, "200x+"},
+		{1000, 59.2, "200x+"},
 	}
 	for i, c := range cases {
 		if got := leverageBandOf(c.lev); got != c.band {
@@ -198,13 +201,13 @@ func TestForfeitByBand_BoundsAndCounts(t *testing.T) {
 		forfeited, loss float64
 		n               int
 	}{
-		{"0-5x", 10.5, 89.5, 2},
-		{"5-10x", 28, 72, 2},
-		{"10-25x", 29.2, 70.8, 2},
-		{"25-50x", 31.3, 68.7, 2},
-		{"50-100x", 41.3, 58.7, 2},
-		{"100-200x", 40, 60, 2},
-		{"200x+", 41.3, 58.7, 2},
+		{"0-5x", 11.4, 88.6, 2},
+		{"5-10x", 24.2, 75.8, 2},
+		{"10-25x", 22.0, 78.0, 2},
+		{"25-50x", 33.9, 66.1, 2},
+		{"50-100x", 37.0, 63.0, 2},
+		{"100-200x", 45.4, 54.6, 2},
+		{"200x+", 40.8, 59.2, 2},
 	} {
 		got := bands[want.band]
 		if got.N != want.n {
@@ -220,6 +223,15 @@ func TestForfeitByBand_BoundsAndCounts(t *testing.T) {
 	// The finding the band split exists to show, on the real curve.
 	if bands["0-5x"].Forfeited >= bands["200x+"].Forfeited {
 		t.Fatal("the forfeit should grow with leverage on this data")
+	}
+	// Where nothing is returned, the forfeit is 100 minus the loss exactly, so
+	// the two columns carry one number between them. That is Gains and Ostium on
+	// every liquidation measured, and a reader has to be told.
+	for band, b := range bands {
+		if math.Abs(b.Forfeited-(100-b.Loss)) > 0.01 {
+			t.Fatalf("band %s: forfeit %.2f is not 100 - loss %.2f, but nothing was returned",
+				band, b.Forfeited, b.Loss)
+		}
 	}
 
 	// The venue-level median covers only the three middle bands, so it is a

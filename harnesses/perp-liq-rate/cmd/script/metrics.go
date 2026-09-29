@@ -34,7 +34,7 @@ var (
 
 	liqForfeited = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "perp_liq_collateral_forfeited_pct",
-		Help: "Median share of a liquidated position's margin destroyed in excess of the loss the trader had actually incurred, over the forced closes of the trailing 24h whose leverage is between 10x and 100x. Restricted to that range because the forfeit grows with leverage and the venues do not sell the same leverage: Gains' all-leverage median is 40.0 points and its 10x to 100x median 32.8, since 45% of its liquidations sit above 100x where GMX records none. Computed per close as 100 minus its own loss and payout, then the median of those, so it is NOT this gauge minus the medians beside it. It contains the venue's liquidation penalty AND the trading fees and carry the trader did incur; perp_liq_fee_and_carry_pct itemises the second part where the feed can. Per-band figures carry the whole curve.",
+		Help: "Median share of a liquidated position's margin destroyed in excess of the loss the trader had actually incurred, over the forced closes of the trailing 24h whose leverage is between 10x and 100x. Restricted to that range because the forfeit grows with leverage and the venues do not sell the same leverage: over one common 29-day window on crypto, Gains reads 40.1 points over all leverage and 36.7 inside the range, since 48.2% of its liquidations sit above 100x where GMX records none. Computed per close as 100 minus its own loss and payout, then the median of those, so it is NOT this gauge minus the medians beside it. It contains the venue's liquidation penalty AND the trading fees and carry the trader did incur; perp_liq_fee_and_carry_pct itemises the second part where the feed can. Per-band figures carry the whole curve.",
 	}, []string{"venue", "chain"})
 
 	liqLossAtTrigger = prometheus.NewGaugeVec(prometheus.GaugeOpts{
@@ -44,7 +44,7 @@ var (
 
 	liqReturned = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "perp_liq_collateral_returned_pct",
-		Help: "Median share of a liquidated position's margin that went back to the trader, over the forced closes of the trailing 24h between 10x and 100x. Zero is a real reading and the common one: Gains and Ostium returned nothing on any of the 876 and 383 liquidations measured, while GMX v2 pays out the residual after its fees and returned a median 19.3% inside the same range.",
+		Help: "Median share of a liquidated position's margin that went back to the trader, over the forced closes of the trailing 24h between 10x and 100x. Zero is a real reading and the common one: Gains and Ostium returned nothing on any of the 21,105 and 383 liquidations of a 29-day window, while GMX v2 pays out the residual after its fees and returned a median 17.5% inside the same range. Where a venue returns nothing the forfeit beside this is exactly 100 minus the loss, so the two carry one number between them.",
 	}, []string{"venue", "chain"})
 
 	liqForfeitEvents = prometheus.NewGaugeVec(prometheus.GaugeOpts{
@@ -69,7 +69,7 @@ var (
 
 	liqLossByBand = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "perp_liq_loss_at_trigger_by_leverage_pct",
-		Help: "Median loss at trigger per leverage band, beside the forfeited share for the same band. The pair is the mechanism: a venue that closes at a lower loss keeps more of the margin, and band for band Gains closes earliest of the three.",
+		Help: "Median loss at trigger per leverage band, beside the forfeited share for the same band. The pair is the mechanism: a venue that closes at a lower loss keeps more of the margin, and band for band Gains closes earliest of the three. Volatility does not explain the gap, since gapping past the threshold would raise this figure and Gains' is the lowest and least dispersed.",
 	}, []string{"venue", "chain", "band"})
 
 	liqMarginDestroyedShare = prometheus.NewGaugeVec(prometheus.GaugeOpts{
