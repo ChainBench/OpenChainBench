@@ -18,6 +18,12 @@ export const CAPITAL_BENCHES = {
   /** Bench 280, dev-only for now: fees paid on the chain over 30 days, with the revenue kept; the hub reads its
    *  cohort so a chain the bench does not rank shows its blob value muted instead of in the ranked column. */
   chainFees: "chain-fees-revenue",
+  /** Bench 041: 24h traded notional per perp venue, the volume column of the perp open-interest table. */
+  perpVolume: "perp-volume-share",
+  /** Bench 271: 24h volume over the venue's own open interest, the turnover column. Read from the bench rather than
+   *  divided out of the two columns next to it, because bench 265's open interest is DefiLlama's overview and this
+   *  ratio's denominator is the venue's own API: one entity must not print two values of one named ratio. */
+  perpTurnover: "perp-volume-oi-ratio",
 } as const;
 
 export type ChainRow = {
@@ -25,8 +31,8 @@ export type ChainRow = {
   name: string;
   tvl: number | null;
   /** Member of bench 273's provider list (L2Beat cohort, unavailable and unranked rows included). False only when
-   *  the bench loaded and the chain is not in it (an L1), so the bridged columns show a dash; true when the bench
-   *  failed to load, so a transient outage reads n/a and never "not applicable". */
+   *  the bench loaded and the chain is not in it (an L1), so the bridged columns read "not applicable" with the
+   *  reason; true when the bench failed to load, so a transient outage reads unknown and never "not applicable". */
   inBridgedCohort: boolean;
   /** Same rule for bench 275's provider list (stablecoin cohort above $100M of float). */
   inStablesCohort: boolean;
@@ -46,7 +52,7 @@ export type ChainRow = {
   stablesChange30dPct: number | null;
   stablesNet7d: number | null;
   /** Where the chain stands on bench 281: scanned as a CCTP source, a CCTP domain the bench does not scan, or no
-   *  domain at all. Only a scanned chain can read n/a; the other two read a dash. */
+   *  domain at all. Only a scanned chain can read unknown; the other two are "not applicable" with their own reason. */
   cctpScope: "scanned" | "domain" | "none";
   /** Net USDC that entered the chain over Circle CCTP in 7 days (bench 281), null off the scanned set. */
   cctpNet7d: number | null;
@@ -55,13 +61,22 @@ export type ChainRow = {
   dexVolume24h: number | null;
   nativeMcap: number | null;
   /** Chain fees over 30 closed days from bench 280's ranked rows only (headline p50); null for a listed but
-   *  unranked chain and whenever the bench did not load, so the cell reads n/a. */
+   *  unranked chain and whenever the bench did not load, so the cell reads unknown. */
   fees30d: number | null;
   /** Revenue kept out of those fees, bench 280's revenue_30d panel, same gating. */
   revenue30d: number | null;
   /** The history blob's series for a chain outside bench 280's cohort: shown muted, never ranked. */
   fees30dOutside: number | null;
   revenue30dOutside: number | null;
+  /** Why a column has no value for this chain and never will, keyed by column (src/lib/capital-hub-rules.ts
+   *  NA_REASON). A key is absent when the column is ranked, muted, or missing for a reason the hub does not
+   *  know, which reads as unknown rather than as not applicable. */
+  notApplicable: {
+    bridged?: string;
+    stables?: string;
+    fees?: string;
+    cctp?: string;
+  };
   hasChainPage: boolean;
 };
 
@@ -87,6 +102,10 @@ export type ProtocolRow = {
   ps: number | null;
   /** Realized dilution: circulating supply change over 30 days (protocol_supply_change_30d_pct, blob `supply_change_30d_pct`). */
   supplyChange30dPct: number | null;
+  /** Ranked protocols in the same category on this board, the number the reader can count in the table. */
+  categorySize: number;
+  /** Why the vs-category cell carries no ratio: the category is too small for its median to be a peer comparison. */
+  pfVsCategoryNaReason: string | null;
   signal: "fees-up-token-down" | "fees-down-token-up" | null;
   hasProductPage: boolean;
 };
@@ -110,10 +129,18 @@ export type OiRow = {
   slug: string;
   name: string;
   oi: number;
+  /** 24h traded notional: bench 277 for prediction markets, bench 041 for perp DEXes. */
   volume24h: number | null;
+  /** 24h volume over open interest: bench 277's panel for prediction markets, bench 271's headline for perp DEXes. */
   turnover: number | null;
   /** Change of open interest over seven days, from the daily history or the bench's 7d series; null where neither covers seven days. */
   change7dPct: number | null;
+  /** Why the 7d cell has no number and will not get one from this series (warm-up, one reading, a step in what the venue reports). */
+  change7dNaReason: string | null;
+  /** Why the volume cell has no number: the venue is outside the volume cohort. Null when the value is simply missing. */
+  volumeNaReason: string | null;
+  /** Why the turnover cell has no number: the venue publishes no open interest to the cohort harness. */
+  turnoverNaReason: string | null;
 };
 
 export type FlowShare = { slug: string; name: string; usd: number; pct: number };
