@@ -174,6 +174,10 @@ export type CapitalHub = {
   };
   /** True when the daily history blobs carry at least two days. */
   historyDays: number;
+  /** False when the perp venue cohort snapshot did not answer this render. The perp open-interest table has no
+   *  rows then, and the page says so rather than letting the table vanish without a reason: a missing table is
+   *  the same defect as a missing cell, one level up. Never a reason to fall back to another measurement. */
+  perpVenueCohortLive: boolean;
 };
 
 export function fmtUsdShort(v: number | null): string {

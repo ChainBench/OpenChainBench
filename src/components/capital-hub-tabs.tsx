@@ -87,9 +87,33 @@ export function CapitalHubTabs({ hub }: { hub: CapitalHub }) {
           {hub.chains.length > 0 && <Reading lines={CAPITAL_READING.chains} />}
           {hub.stableFlowShares.length > 0 && <FlowBar shares={hub.stableFlowShares} />}
           {cctpRows.length > 0 && <CctpTable rows={cctpRows} />}
-          {(hub.perpOi.length > 0 || hub.pmOi.length > 0) && (
+          {(hub.perpOi.length > 0 || hub.pmOi.length > 0 || !hub.perpVenueCohortLive) && (
             <>
               <h2 className="label-mono text-ink-muted mt-10 mb-3">Open interest: perp DEXes and prediction markets</h2>
+              {/* The perp table reads the venue cohort snapshot. When that does
+                  not answer, the table has no rows, and a table that vanishes
+                  with nothing said is the defect this page spent a week
+                  removing, one level up from a cell. So the section says which
+                  source is missing and where the last measurements are, and it
+                  never fills in from another measurement. */}
+              {!hub.perpVenueCohortLive && (
+                <p className="mb-4 text-[12px] text-ink-soft leading-relaxed max-w-3xl">
+                  Perp DEX open interest is unavailable on this render: the perp venue cohort snapshot did not answer. Nothing is substituted for it,
+                  because the alternative reading of open interest on this page would be a different measurement. The{" "}
+                  <Link href="/perps" className="underline">
+                    perps hub
+                  </Link>{" "}
+                  and{" "}
+                  <Link href={`/benchmarks/${CAPITAL_BENCHES.perpTurnover}`} className="underline">
+                    bench {CAPITAL_BENCHES.perpTurnover}
+                  </Link>{" "}
+                  carry the last measurements, and{" "}
+                  <a href="/api/capital" className="underline">
+                    /api/capital
+                  </a>{" "}
+                  is read per request rather than cached with the page.
+                </p>
+              )}
               <div className="grid gap-6 lg:grid-cols-2">
                 {hub.perpOi.length > 0 && (
                   <OiTable
@@ -110,7 +134,7 @@ export function CapitalHubTabs({ hub }: { hub: CapitalHub }) {
                   />
                 )}
               </div>
-              <Reading lines={CAPITAL_READING.openInterest} />
+              {(hub.perpOi.length > 0 || hub.pmOi.length > 0) && <Reading lines={CAPITAL_READING.openInterest} />}
             </>
           )}
         </section>
