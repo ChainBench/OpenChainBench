@@ -64,10 +64,27 @@ jobs:
           echo "url=$url" >> "$GITHUB_OUTPUT"
           echo "Preview ready at $url"
 
+      # Alias the real staging domain, not a .vercel.app name.
+      #
+      # This step failed every run from 2026-09-28 with `The chosen alias
+      # "staging-openchainbench.vercel.app" is already in use`: that
+      # subdomain is globally unique across Vercel and is not ours. The
+      # build still deployed, so `dev` was reachable only at its per-run
+      # preview URL and staging.openchainbench.com was left pointing at
+      # whatever it was last assigned, which on 2026-09-29 was a
+      # PRODUCTION deployment serving the whole catalog under a second
+      # indexable hostname.
+      #
+      # Non-blocking on purpose: the domain lives under the team that owns
+      # openchainbench.com, and while that team carries an overdue balance
+      # Vercel refuses every alias operation on it. A billing problem must
+      # not turn a green build red, and the preview URL in the summary
+      # below is always usable regardless.
       - name: Update stable staging alias
+        continue-on-error: true
         run: |
           vercel alias set "${{ steps.deploy.outputs.url }}" \
-            staging-openchainbench.vercel.app \
+            staging.openchainbench.com \
             --token=${{ secrets.VERCEL_TOKEN }} \
             --scope=${{ secrets.VERCEL_ORG_ID }}
 
@@ -77,7 +94,7 @@ jobs:
       # ships a slow first impression.
       - name: Warm bench pages
         run: |
-          base="https://staging-openchainbench.vercel.app"
+          base="${{ steps.deploy.outputs.url }}"
           curl -sf --max-time 30 "$base/sitemap.xml" \
             | grep -o 'https://[^<]*/benchmarks/[a-z0-9-]*' \
             | sed "s|https://[^/]*|$base|" | sort -u \
@@ -89,7 +106,7 @@ jobs:
           {
             echo "## Vercel staging deploy ✓"
             echo ""
-            echo "**Stable:**  https://staging-openchainbench.vercel.app"
+            echo "**Stable:**  https://staging.openchainbench.com"
             echo ""
             echo "**Preview:** ${{ steps.deploy.outputs.url }}"
             echo ""
