@@ -62,8 +62,11 @@ func TestLive_ForfeitedCollateral(t *testing.T) {
 	}
 
 	fmt.Printf("\nwindow: the %.0f hours to %s UTC\n", hours, time.Now().UTC().Format(time.RFC3339))
-	fmt.Printf("%-12s %-5s %7s %7s %14s %14s %8s %8s %8s\n",
-		"venue", "asset", "events", "detail", "notional", "collateral", "loss%", "return%", "forfeit")
+	fmt.Printf("the venue-level columns cover closes between %.0fx and %.0fx only\n",
+		comparableLeverageMin, comparableLeverageMax)
+	fmt.Printf("%-12s %-5s %7s %7s %14s %14s %8s %8s %8s %8s %12s\n",
+		"venue", "asset", "events", "in band", "notional", "collateral",
+		"loss%", "return%", "forfeit", "fee%", "destroyed$")
 	for _, v := range venues {
 		for _, asset := range v.assets {
 			if !v.source.HasLiquidationSource() {
@@ -85,14 +88,20 @@ func TestLive_ForfeitedCollateral(t *testing.T) {
 				notional += e.NotionalUSD
 			}
 			col, _ := w.SumCollateral()
-			forf, loss, ret, n := w.ForfeitStats()
+			st := w.ForfeitStats()
+			forf, loss, ret, n := st.Forfeited, st.Loss, st.Returned, st.N
 			if n == 0 {
 				fmt.Printf("%-12s %-5s %7d %7s %14.0f %14s %8s %8s %8s\n",
 					v.name, asset, w.Len(), "none", notional, "-", "-", "-", "-")
 				continue
 			}
-			fmt.Printf("%-12s %-5s %7d %7d %14.0f %14.0f %8.1f %8.2f %8.1f\n",
-				v.name, asset, w.Len(), n, notional, col, loss, ret, forf)
+			fee := "-"
+			if st.HasFeeSplit {
+				fee = fmt.Sprintf("%.2f", st.FeeAndCarry)
+			}
+			destroyed, _ := w.MarginDestroyedUSD()
+			fmt.Printf("%-12s %-5s %7d %7d %14.0f %14.0f %8.1f %8.2f %8.1f %8s %12.0f\n",
+				v.name, asset, w.Len(), n, notional, col, loss, ret, forf, fee, destroyed)
 			bands := w.ForfeitByBand()
 			names := make([]string, 0, len(bands))
 			for _, b := range leverageBands {
@@ -102,8 +111,14 @@ func TestLive_ForfeitedCollateral(t *testing.T) {
 			}
 			for _, name := range names {
 				b := bands[name]
-				fmt.Printf("%-12s %-5s   band %-8s n=%-4d forfeit %.1f pts\n",
-					"", "", name, b.N, b.Forfeited)
+				fmt.Printf("%-12s %-5s   band %-9s n=%-5d loss %5.1f%%  forfeit %5.1f pts\n",
+					"", "", name, b.N, b.Loss, b.Forfeited)
+			}
+			if closed, has, cErr := marginClosed24h(v.source, asset); cErr != nil {
+				fmt.Printf("%-12s %-5s   margin closed: error %v\n", "", "", cErr)
+			} else if has && closed > 0 {
+				fmt.Printf("%-12s %-5s   margin destroyed $%.0f of $%.0f closed = %.2f%%\n",
+					"", "", destroyed, closed, destroyed/closed*100)
 			}
 		}
 	}

@@ -76,7 +76,8 @@ func TestOstiumForfeit_GoldenLiquidationRow(t *testing.T) {
 
 	w := NewSlidingWindow(windowSpan)
 	w.AddEvent(e)
-	forf, loss, ret, n := w.ForfeitStats()
+	s := w.ForfeitStats()
+	forf, loss, ret, n := s.Forfeited, s.Loss, s.Returned, s.N
 	if n != 1 {
 		t.Fatalf("window counted %d forfeit events, want 1", n)
 	}
@@ -125,7 +126,8 @@ func TestOstiumForfeit_LossAboveTheMarginForfeitsNothing(t *testing.T) {
 	}
 	w := NewSlidingWindow(windowSpan)
 	w.AddEvent(evs[0])
-	forf, loss, _, n := w.ForfeitStats()
+	s := w.ForfeitStats()
+	forf, loss, n := s.Forfeited, s.Loss, s.N
 	if n != 1 {
 		t.Fatalf("window counted %d forfeit events, want 1", n)
 	}
@@ -150,5 +152,84 @@ func TestOstiumForfeit_RefusesPriceProfitOnALiquidation(t *testing.T) {
 	}
 	if evs[0].HasForfeitDetail {
 		t.Fatal("a liquidation at a price profit entered the forfeited arithmetic")
+	}
+}
+
+// Ostium itemises the costs a trader pays on any close on the linked trade, so
+// part of the forfeit can be attributed. devFee, vaultFee and oracleFee are
+// 6-decimal USD; funding and rollover are x18. The venue's liquidation claim is
+// not among them, which is the point.
+func TestOstiumForfeit_FeeSplitFromTheLinkedTrade(t *testing.T) {
+	row := ostiumGoldenLiquidationRow()
+	tr := row["trade"].(map[string]any)
+	tr["devFee"] = "4035360"             // $4.03536
+	tr["vaultFee"] = "1729440"           // $1.72944
+	tr["oracleFee"] = "100000"           // $0.10
+	tr["funding"] = "213023342848997653" // $0.213023
+	tr["rollover"] = "95834833969463742" // $0.095835
+	o, _, done := ostiumStub(t, []map[string]any{row}, nil, nil)
+	defer done()
+
+	evs, err := o.FetchLiquidationsSince("BTC", 1790400000000)
+	if err != nil || len(evs) != 1 {
+		t.Fatalf("fetch (%d events): %v", len(evs), err)
+	}
+	e := evs[0]
+	if !e.HasFeeSplit {
+		t.Fatal("a trade carrying the fee fields must carry the split")
+	}
+	want := 4.03536 + 1.72944 + 0.10 + 0.213023342848997653 + 0.095834833969463742
+	if math.Abs(e.FeeAndCarryUSD-want) > 1e-6 {
+		t.Fatalf("fee and carry = %.6f, want %.6f (the x18 fields must not be read at 1e6)",
+			e.FeeAndCarryUSD, want)
+	}
+	// Read at the wrong scale, funding and rollover alone would be 2.1e11.
+	if e.FeeAndCarryUSD > e.CollateralUSD {
+		t.Fatalf("fee and carry %.2f exceeds the margin %.2f; a scale is wrong",
+			e.FeeAndCarryUSD, e.CollateralUSD)
+	}
+	w := NewSlidingWindow(windowSpan)
+	w.AddEvent(e)
+	s := w.ForfeitStats()
+	if !s.HasFeeSplit {
+		t.Fatal("the window should carry the fee share")
+	}
+	// 6.17 of 1516.842 is 0.41 points, well under the 11.99 forfeit: the rest
+	// is the venue's liquidation claim.
+	if s.FeeAndCarry >= s.Forfeited {
+		t.Fatalf("fee share %.3f is not below the forfeit %.3f", s.FeeAndCarry, s.Forfeited)
+	}
+}
+
+// A trade with none of the fee fields carries no split, so the row publishes no
+// fee share rather than a zero.
+func TestOstiumForfeit_NoFeeFieldsMeansNoSplit(t *testing.T) {
+	o, _, done := ostiumStub(t, []map[string]any{ostiumGoldenLiquidationRow()}, nil, nil)
+	defer done()
+	evs, err := o.FetchLiquidationsSince("BTC", 1790400000000)
+	if err != nil || len(evs) != 1 {
+		t.Fatalf("fetch (%d events): %v", len(evs), err)
+	}
+	if evs[0].HasFeeSplit {
+		t.Fatal("a row with no fee fields should carry no split")
+	}
+}
+
+// The close types are the four the subgraph actually accepts. "CloseExecuted"
+// is not one of them: asking for it is a query error, not an empty result, so a
+// denominator built on it would fail the read rather than undercount.
+func TestOstiumForfeit_CloseTypesAreTheAcceptedOnes(t *testing.T) {
+	if len(ostiumCloseTypes) != 4 {
+		t.Fatalf("got %d close types, want 4", len(ostiumCloseTypes))
+	}
+	seen := map[string]bool{}
+	for _, c := range ostiumCloseTypes {
+		seen[c] = true
+		if c == "CloseExecuted" {
+			t.Fatal("CloseExecuted is not a type this subgraph accepts")
+		}
+	}
+	if !seen["LiquidationExecuted"] {
+		t.Fatal("the closes must include liquidations, or the share can exceed 100%")
 	}
 }

@@ -6,6 +6,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"math"
 	"os"
 	"path/filepath"
@@ -31,7 +32,8 @@ func TestForfeitStats_MedianOverTheWindow(t *testing.T) {
 	for i, loss := range []float64{47.1, 57.0, 60.0, 68.8, 88.0} {
 		w.AddEvent(forfeitEvent("k"+string(rune('a'+i)), now-int64(i)*1000, 1000, 100, 80, loss, 0))
 	}
-	forf, loss, ret, n := w.ForfeitStats()
+	s := w.ForfeitStats()
+	forf, loss, ret, n := s.Forfeited, s.Loss, s.Returned, s.N
 	if n != 5 {
 		t.Fatalf("n = %d, want 5", n)
 	}
@@ -63,7 +65,8 @@ func TestForfeitStats_TheThreeMediansDoNotAddToAHundred(t *testing.T) {
 		w.AddEvent(forfeitEvent("k"+string(rune('a'+i)), now-int64(i)*1000,
 			1000, 100, 50, c.loss, c.ret))
 	}
-	forf, loss, ret, n := w.ForfeitStats()
+	s := w.ForfeitStats()
+	forf, loss, ret, n := s.Forfeited, s.Loss, s.Returned, s.N
 	if n != 3 {
 		t.Fatalf("n = %d, want 3", n)
 	}
@@ -90,8 +93,9 @@ func TestForfeitStats_OneWhaleDoesNotCarryTheRow(t *testing.T) {
 	for i := 0; i < 9; i++ {
 		w.AddEvent(forfeitEvent("small"+string(rune('a'+i)), now-int64(i)*1000, 500, 50, 80, 60, 0))
 	}
-	w.AddEvent(forfeitEvent("whale", now, 21_667_243, 200_227.73, 108.213, 51.2437, 0))
-	forf, _, _, n := w.ForfeitStats()
+	w.AddEvent(forfeitEvent("whale", now, 19_021_634, 200_227.73, 95, 51.2437, 0))
+	s := w.ForfeitStats()
+	forf, n := s.Forfeited, s.N
 	if n != 10 {
 		t.Fatalf("n = %d, want 10", n)
 	}
@@ -108,14 +112,15 @@ func TestForfeitStats_EventsWithoutDetailAreNotCounted(t *testing.T) {
 	now := time.Now().UnixMilli()
 	w.Add("tape1", now, 5000)   // a trade tape row: size and price only
 	w.Add("tape2", now-1, 7000) // likewise
-	if forf, loss, ret, n := w.ForfeitStats(); n != 0 || forf != 0 || loss != 0 || ret != 0 {
+	if s := w.ForfeitStats(); s.N != 0 || s.Forfeited != 0 || s.Loss != 0 || s.Returned != 0 {
 		t.Fatalf("a window of tape rows reported n=%d forf=%.2f loss=%.2f ret=%.2f, want all zero and n=0",
-			n, forf, loss, ret)
+			s.N, s.Forfeited, s.Loss, s.Returned)
 	}
 	// One event that does carry it makes the row a measurement over exactly
 	// that one event, and the count says so.
 	w.AddEvent(forfeitEvent("chain1", now-2, 1000, 100, 50, 70, 10))
-	forf, loss, ret, n := w.ForfeitStats()
+	s := w.ForfeitStats()
+	forf, loss, ret, n := s.Forfeited, s.Loss, s.Returned, s.N
 	if n != 1 {
 		t.Fatalf("n = %d, want 1", n)
 	}
@@ -131,7 +136,8 @@ func TestForfeitStats_ZeroReturnedIsAMeasurement(t *testing.T) {
 	w := NewSlidingWindow(windowSpan)
 	now := time.Now().UnixMilli()
 	w.AddEvent(forfeitEvent("k1", now, 1000, 100, 50, 60, 0))
-	_, _, ret, n := w.ForfeitStats()
+	s := w.ForfeitStats()
+	ret, n := s.Returned, s.N
 	if n != 1 || ret != 0 {
 		t.Fatalf("n = %d returned = %.2f, want 1 and 0", n, ret)
 	}
@@ -140,7 +146,7 @@ func TestForfeitStats_ZeroReturnedIsAMeasurement(t *testing.T) {
 	e := forfeitEvent("k1", now, 1000, 100, 50, 60, 0)
 	e.HasForfeitDetail = false
 	w2.AddEvent(e)
-	if _, _, _, n2 := w2.ForfeitStats(); n2 != 0 {
+	if n2 := w2.ForfeitStats().N; n2 != 0 {
 		t.Fatalf("n = %d without the flag, want 0", n2)
 	}
 }
@@ -151,41 +157,54 @@ func TestForfeitStats_ZeroReturnedIsAMeasurement(t *testing.T) {
 func TestForfeitByBand_BoundsAndCounts(t *testing.T) {
 	w := NewSlidingWindow(windowSpan)
 	now := time.Now().UnixMilli()
+	// Bands are (min, max], so a venue capped at a round number does not spill
+	// into the band above it: 100x is the top of 50-100x, not the bottom of
+	// 100-200x, which matters because GMX's cap is 100x.
 	cases := []struct {
 		lev, loss float64
 		band      string
 	}{
-		{5, 78, "0-10x"},
-		{10, 78, "0-10x"},
-		{10.1, 70.7, "10-25x"},
-		{25, 70.7, "10-25x"},
+		{1, 89.5, "0-5x"},
+		{5, 89.5, "0-5x"},
+		{5.1, 72, "5-10x"},
+		{10, 72, "5-10x"},
+		{10.1, 70.8, "10-25x"},
+		{25, 70.8, "10-25x"},
 		{40, 68.7, "25-50x"},
 		{50, 68.7, "25-50x"},
-		{75, 57.1, "50-100x"},
-		{100, 57.1, "50-100x"},
-		{100.1, 59.1, "100x+"},
-		{500, 59.1, "100x+"},
+		{75, 58.7, "50-100x"},
+		{100, 58.7, "50-100x"},
+		{100.1, 60, "100-200x"},
+		{200, 60, "100-200x"},
+		{200.1, 58.7, "200x+"},
+		{803, 58.7, "200x+"},
 	}
 	for i, c := range cases {
 		if got := leverageBandOf(c.lev); got != c.band {
 			t.Fatalf("%gx landed in %q, want %q", c.lev, got, c.band)
 		}
-		w.AddEvent(forfeitEvent("k"+string(rune('a'+i)), now-int64(i)*1000, 1000, 100, c.lev, c.loss, 0))
+		w.AddEvent(forfeitEvent(fmt.Sprintf("k%d", i), now-int64(i)*1000,
+			1000, 100, c.lev, c.loss, 0))
 	}
 	bands := w.ForfeitByBand()
-	if len(bands) != 5 {
-		t.Fatalf("got %d bands, want 5", len(bands))
+	if len(bands) != 7 {
+		t.Fatalf("got %d bands, want all 7", len(bands))
 	}
+	// The curve measured on Gains over the three days to 2026-09-29, band by
+	// band. The per-band gauges carry the whole of it, unlike the venue-level
+	// medians, because the bands are what makes the venues comparable.
 	for _, want := range []struct {
-		band      string
-		forfeited float64
-		n         int
+		band            string
+		forfeited, loss float64
+		n               int
 	}{
-		{"0-10x", 22, 2},
-		{"10-25x", 29.3, 2},
-		{"25-50x", 31.3, 2},
-		{"50-100x", 42.9, 2},
-		{"100x+", 40.9, 2},
+		{"0-5x", 10.5, 89.5, 2},
+		{"5-10x", 28, 72, 2},
+		{"10-25x", 29.2, 70.8, 2},
+		{"25-50x", 31.3, 68.7, 2},
+		{"50-100x", 41.3, 58.7, 2},
+		{"100-200x", 40, 60, 2},
+		{"200x+", 41.3, 58.7, 2},
 	} {
 		got := bands[want.band]
 		if got.N != want.n {
@@ -194,11 +213,46 @@ func TestForfeitByBand_BoundsAndCounts(t *testing.T) {
 		if math.Abs(got.Forfeited-want.forfeited) > 0.01 {
 			t.Fatalf("band %s: forfeited = %.2f, want %.2f", want.band, got.Forfeited, want.forfeited)
 		}
+		if math.Abs(got.Loss-want.loss) > 0.01 {
+			t.Fatalf("band %s: loss = %.2f, want %.2f", want.band, got.Loss, want.loss)
+		}
 	}
-	// The forfeit has to be monotone here, which is the finding the band split
-	// exists to show.
-	if bands["0-10x"].Forfeited >= bands["100x+"].Forfeited {
+	// The finding the band split exists to show, on the real curve.
+	if bands["0-5x"].Forfeited >= bands["200x+"].Forfeited {
 		t.Fatal("the forfeit should grow with leverage on this data")
+	}
+
+	// The venue-level median covers only the three middle bands, so it is a
+	// smaller set than the curve: 6 of the 14 closes here.
+	if n := w.ForfeitStats().N; n != 6 {
+		t.Fatalf("venue-level n = %d, want the 6 closes between 10x and 100x", n)
+	}
+}
+
+// A venue-level figure must never mix leverage ranges the venues do not share.
+// Gains' all-leverage median is 40.0 points and its 10x to 100x median 32.8,
+// and the second is the only one that can sit in a column beside GMX.
+func TestForfeitStats_ExcludesLeverageOutsideTheOverlap(t *testing.T) {
+	w := NewSlidingWindow(windowSpan)
+	now := time.Now().UnixMilli()
+	// Two closes inside the range at a 30 point forfeit, two outside it at 60.
+	for i, c := range []struct{ lev, loss float64 }{
+		{20, 70}, {80, 70}, {500, 40}, {3, 40},
+	} {
+		w.AddEvent(forfeitEvent(fmt.Sprintf("k%d", i), now-int64(i)*1000,
+			1000, 100, c.lev, c.loss, 0))
+	}
+	s := w.ForfeitStats()
+	if s.N != 2 {
+		t.Fatalf("n = %d, want the 2 closes inside 10x to 100x", s.N)
+	}
+	if s.Forfeited != 30 {
+		t.Fatalf("forfeited = %.2f, want 30: the 500x and 3x closes must not count", s.Forfeited)
+	}
+	// They are still in the curve, where they belong.
+	bands := w.ForfeitByBand()
+	if bands["200x+"].N != 1 || bands["0-5x"].N != 1 {
+		t.Fatalf("the excluded closes left the per-band curve: %+v", bands)
 	}
 }
 
@@ -215,9 +269,13 @@ func TestForfeitByBand_SkipsEventsWithNoLeverage(t *testing.T) {
 	if bands := w.ForfeitByBand(); len(bands) != 0 {
 		t.Fatalf("got %d bands from an event with no leverage, want 0", len(bands))
 	}
-	// It still counts in the overall shares, which do not need a leverage.
-	if _, _, _, n := w.ForfeitStats(); n != 1 {
-		t.Fatalf("n = %d, want 1", n)
+	// And it cannot count in the venue-level figure either: without a leverage
+	// there is no way to know whether it sits inside the range every venue
+	// offers, and including it would put the leverage mix back into the
+	// comparison. All three venues that report the position report a leverage,
+	// so nothing live is lost.
+	if n := w.ForfeitStats().N; n != 0 {
+		t.Fatalf("n = %d, want 0: a close with no leverage cannot be placed in the range", n)
 	}
 }
 
@@ -234,8 +292,11 @@ func TestForfeitStats_SurvivesARestart(t *testing.T) {
 		va: VenueAsset{Venue: "gains", Asset: "ETH"},
 		st: newPairState(),
 	}}
-	pairs[0].st.window.AddEvent(forfeitEvent("tx:1", nowMs-60_000, 21_667_243, 200_227.73, 108.213, 51.2437, 0))
-	pairs[0].st.window.AddEvent(forfeitEvent("tx:2", nowMs-120_000, 1000, 100, 8, 78, 0))
+	pairs[0].st.window.AddEvent(forfeitEvent("tx:1", nowMs-60_000, 5_004_000, 200_227.73, 25, 51.2437, 0))
+	pairs[0].st.window.AddEvent(forfeitEvent("tx:2", nowMs-120_000, 1000, 100, 80, 78, 0))
+	// One outside the comparable range, to prove the restriction survives the
+	// restart as well as the figures do.
+	pairs[0].st.window.AddEvent(forfeitEvent("tx:3", nowMs-180_000, 1000, 100, 500, 40, 0))
 	pairs[0].st.oi.Add(nowMs, 43_541_865)
 
 	store := newOIStateStore(path)
@@ -261,10 +322,11 @@ func TestForfeitStats_SurvivesARestart(t *testing.T) {
 
 	restored := newOIStateStore(path)
 	st := newPairState()
-	if n := restored.restoreLiq("gains", "ETH", st, nowMs); n != 2 {
-		t.Fatalf("restored %d liquidations, want 2", n)
+	if n := restored.restoreLiq("gains", "ETH", st, nowMs); n != 3 {
+		t.Fatalf("restored %d liquidations, want 3", n)
 	}
-	forf, loss, ret, n := st.window.ForfeitStats()
+	s := st.window.ForfeitStats()
+	forf, loss, ret, n := s.Forfeited, s.Loss, s.Returned, s.N
 	if n != 2 {
 		t.Fatalf("n after restore = %d, want 2", n)
 	}
@@ -275,7 +337,7 @@ func TestForfeitStats_SurvivesARestart(t *testing.T) {
 		t.Fatalf("shares after restore = loss %.4f forfeited %.4f, want the medians of the two", loss, forf)
 	}
 	bands := st.window.ForfeitByBand()
-	if bands["100x+"].N != 1 || bands["0-10x"].N != 1 {
+	if bands["10-25x"].N != 1 || bands["50-100x"].N != 1 || bands["200x+"].N != 1 {
 		t.Fatalf("bands after restore: %+v", bands)
 	}
 }
@@ -286,7 +348,7 @@ func TestForfeitStats_SurvivesARestart(t *testing.T) {
 // would put them at the top of a "least collateral forfeited" reading.
 func TestSetForfeitShares_AbsentRatherThanZero(t *testing.T) {
 	const venue, asset = "forfeit-test-venue", "ETH"
-	setForfeitShares(venue, asset, 40, 60, 0, 12, true)
+	setForfeitShares(venue, asset, forfeitSummary{Forfeited: 40, Loss: 60, Returned: 0, N: 12}, true)
 	if got := gaugeVal(t, liqForfeited, row(venue, asset)); got != 40 {
 		t.Fatalf("forfeited = %v, want 40", got)
 	}
@@ -296,7 +358,7 @@ func TestSetForfeitShares_AbsentRatherThanZero(t *testing.T) {
 
 	// A venue whose feed carries the position and saw no forced close: the
 	// medians go, and the count stays at zero to say the row was looked at.
-	setForfeitShares(venue, asset, 0, 0, 0, 0, true)
+	setForfeitShares(venue, asset, forfeitSummary{}, true)
 	for name, g := range map[string]*prometheus.GaugeVec{
 		"forfeited": liqForfeited, "loss": liqLossAtTrigger, "returned": liqReturned,
 	} {
@@ -311,7 +373,7 @@ func TestSetForfeitShares_AbsentRatherThanZero(t *testing.T) {
 	// A venue whose feed cannot carry the position publishes nothing at all,
 	// count included: an empty window and an unmeasurable feed must not read
 	// the same, and neither may read as 0.0% forfeited.
-	setForfeitShares(venue, asset, 0, 0, 0, 0, false)
+	setForfeitShares(venue, asset, forfeitSummary{}, false)
 	for name, g := range map[string]*prometheus.GaugeVec{
 		"forfeited": liqForfeited, "loss": liqLossAtTrigger,
 		"returned": liqReturned, "events": liqForfeitEvents,
@@ -352,26 +414,25 @@ func TestCarriesPositionDetail_OnlyTheThreeVenues(t *testing.T) {
 // median beside a count that is gone.
 func TestSetForfeitBands_EmptyBandsAreDeleted(t *testing.T) {
 	const venue, asset = "forfeit-band-venue", "BTC"
-	full := map[string]struct {
-		Forfeited float64
-		N         int
-	}{"0-10x": {22, 35}, "100x+": {40.9, 375}}
+	full := map[string]bandStats{
+		"0-5x":  {Forfeited: 22, Loss: 78, N: 35},
+		"200x+": {Forfeited: 41.3, Loss: 58.7, N: 244},
+	}
 	setForfeitBands(venue, asset, full)
-	if got := gaugeVal(t, liqForfeitedByBand, bandRow(venue, asset, "100x+")); got != 40.9 {
-		t.Fatalf("100x+ = %v, want 40.9", got)
+	if got := gaugeVal(t, liqForfeitedByBand, bandRow(venue, asset, "200x+")); got != 41.3 {
+		t.Fatalf("200x+ = %v, want 41.3", got)
 	}
 	if _, ok := gaugeLookup(t, liqForfeitedByBand, bandRow(venue, asset, "50-100x")); ok {
 		t.Fatal("a band with no events should have no series")
 	}
 
-	setForfeitBands(venue, asset, map[string]struct {
-		Forfeited float64
-		N         int
-	}{"0-10x": {22, 35}})
-	if _, ok := gaugeLookup(t, liqForfeitedByBand, bandRow(venue, asset, "100x+")); ok {
+	setForfeitBands(venue, asset, map[string]bandStats{
+		"0-5x": {Forfeited: 22, Loss: 78, N: 35},
+	})
+	if _, ok := gaugeLookup(t, liqForfeitedByBand, bandRow(venue, asset, "200x+")); ok {
 		t.Fatal("a band that emptied kept its median")
 	}
-	if _, ok := gaugeLookup(t, liqEventsByBand, bandRow(venue, asset, "100x+")); ok {
+	if _, ok := gaugeLookup(t, liqEventsByBand, bandRow(venue, asset, "200x+")); ok {
 		t.Fatal("a band that emptied kept its count")
 	}
 }
@@ -426,4 +487,71 @@ func row(venue, asset string) map[string]string {
 
 func bandRow(venue, asset, band string) map[string]string {
 	return map[string]string{"venue": venue, "chain": asset, "band": band}
+}
+
+// The leverage-neutral numerator: margin destroyed is what the closes consumed,
+// margin behind them less whatever came back. Notional would count a 100x
+// position at a hundred times the money behind it, which is the whole reason the
+// rate above cannot settle a comparison between venues selling different
+// leverage.
+func TestMarginDestroyed_IsMoneyNotNotional(t *testing.T) {
+	w := NewSlidingWindow(windowSpan)
+	now := time.Now().UnixMilli()
+	// 100 dollars of margin at 500x, nothing back: 100 destroyed on 50,000 of
+	// notional. And 100 at 5x with 40 back: 60 destroyed on 500 of notional.
+	w.AddEvent(forfeitEvent("a", now, 50_000, 100, 500, 100, 0))
+	w.AddEvent(forfeitEvent("b", now-1, 500, 100, 5, 60, 40))
+	got, ok := w.MarginDestroyedUSD()
+	if !ok {
+		t.Fatal("the window should report a destroyed figure")
+	}
+	if math.Abs(got-160) > 1e-9 {
+		t.Fatalf("destroyed = %.4f, want 160 (100 + 60), not a notional figure", got)
+	}
+	// It covers the whole curve, not just the comparable range: a rate is a
+	// flow over a flow and dropping part of the numerator would understate it.
+	if n := w.ForfeitStats().N; n != 0 {
+		t.Fatalf("venue-level n = %d; neither close is inside 10x to 100x", n)
+	}
+}
+
+// A window of trade-tape rows has no margin at all, so there is no numerator and
+// the share is not published rather than published as zero.
+func TestMarginDestroyed_AbsentWithoutPositions(t *testing.T) {
+	w := NewSlidingWindow(windowSpan)
+	now := time.Now().UnixMilli()
+	w.Add("tape1", now, 5000)
+	if got, ok := w.MarginDestroyedUSD(); ok || got != 0 {
+		t.Fatalf("destroyed = %.2f ok = %v, want 0 and false", got, ok)
+	}
+}
+
+// The fee share separates the venue's penalty from the costs the trader would
+// have paid anyway. A window where only some closes itemise it still reports one,
+// over those closes, and a window where none does reports none.
+func TestForfeitStats_FeeShareOnlyWhereItemised(t *testing.T) {
+	w := NewSlidingWindow(windowSpan)
+	now := time.Now().UnixMilli()
+	a := forfeitEvent("a", now, 2000, 100, 20, 60, 0)
+	a.HasFeeSplit, a.FeeAndCarryUSD = true, 2.0 // 2 points of the 40 forfeited
+	b := forfeitEvent("b", now-1, 2000, 100, 20, 60, 0)
+	w.AddEvent(a)
+	w.AddEvent(b)
+	s := w.ForfeitStats()
+	if s.N != 2 {
+		t.Fatalf("n = %d, want 2", s.N)
+	}
+	if !s.HasFeeSplit || math.Abs(s.FeeAndCarry-2) > 1e-9 {
+		t.Fatalf("fee share = %.4f (has=%v), want 2 over the one close that itemised it",
+			s.FeeAndCarry, s.HasFeeSplit)
+	}
+	if s.Forfeited <= s.FeeAndCarry {
+		t.Fatal("the forfeit should exceed the itemised fees, leaving the penalty")
+	}
+
+	w2 := NewSlidingWindow(windowSpan)
+	w2.AddEvent(b)
+	if s2 := w2.ForfeitStats(); s2.HasFeeSplit {
+		t.Fatal("a window where nothing itemises fees must publish no fee share")
+	}
 }

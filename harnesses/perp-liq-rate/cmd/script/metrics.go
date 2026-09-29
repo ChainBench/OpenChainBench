@@ -34,33 +34,48 @@ var (
 
 	liqForfeited = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "perp_liq_collateral_forfeited_pct",
-		Help: "Median share of a liquidated position's margin destroyed in excess of the loss the trader had actually incurred, over the forced closes of the trailing 24h. Computed per close as 100 minus its loss at trigger minus its returned share, then the median of those: it is NOT this gauge minus the medians beside it, which are three independent medians over the same closes and need not add to 100. The fees, the carry and the liquidation penalty, in points of margin. Published only where the feed carries the position behind the fill (Gains and Ostium on chain, GMX v2 from its squid); absent elsewhere, never zero.",
+		Help: "Median share of a liquidated position's margin destroyed in excess of the loss the trader had actually incurred, over the forced closes of the trailing 24h whose leverage is between 10x and 100x. Restricted to that range because the forfeit grows with leverage and the venues do not sell the same leverage: Gains' all-leverage median is 40.0 points and its 10x to 100x median 32.8, since 45% of its liquidations sit above 100x where GMX records none. Computed per close as 100 minus its own loss and payout, then the median of those, so it is NOT this gauge minus the medians beside it. It contains the venue's liquidation penalty AND the trading fees and carry the trader did incur; perp_liq_fee_and_carry_pct itemises the second part where the feed can. Per-band figures carry the whole curve.",
 	}, []string{"venue", "chain"})
 
 	liqLossAtTrigger = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "perp_liq_loss_at_trigger_pct",
-		Help: "Median share of a liquidated position's margin the price had already taken when the venue closed it, over the forced closes of the trailing 24h. The price move times the leverage, excluding fees and carry, which is how all three venues that report it define their own figure. Clamped to 100: a venue that closes later than the margin lasted absorbs the difference.",
+		Help: "Median share of a liquidated position's margin the price had already taken when the venue closed it, over the forced closes of the trailing 24h between 10x and 100x. The price move times the leverage, before fees and carry, which is how all three venues that report it define their own figure. A LOWER figure means the venue closed earlier relative to the margin and kept more of it: at 10x to 25x Gains reads 70.8%, GMX 85.1% and Ostium 95.1%. Clamped to 100, since a venue that closes later than the margin lasted absorbs the difference.",
 	}, []string{"venue", "chain"})
 
 	liqReturned = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "perp_liq_collateral_returned_pct",
-		Help: "Median share of a liquidated position's margin that went back to the trader, over the forced closes of the trailing 24h. Zero is a real reading and the common one: Gains and Ostium returned nothing on every liquidation measured, while GMX v2 pays out the residual after its fees.",
+		Help: "Median share of a liquidated position's margin that went back to the trader, over the forced closes of the trailing 24h between 10x and 100x. Zero is a real reading and the common one: Gains and Ostium returned nothing on any of the 876 and 383 liquidations measured, while GMX v2 pays out the residual after its fees and returned a median 19.3% inside the same range.",
 	}, []string{"venue", "chain"})
 
 	liqForfeitEvents = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "perp_liq_forfeit_events",
-		Help: "How many liquidations in the trailing 24h carried all three quantities the forfeited share is built from. The medians beside it are medians over exactly these events, so a row reading 1 or 2 is those positions and not a rate. A row reading 0 is a venue that can report and saw no forced close; a venue that cannot report publishes no series here at all.",
+		Help: "How many liquidations in the trailing 24h carried the position AND sat between 10x and 100x, which is the set the venue-level medians beside it are taken over. A row reading 1 or 2 is those positions and not a rate. A row reading 0 is a venue that can report and saw no qualifying close; a venue that cannot report publishes no series here at all. perp_liq_liquidations_by_leverage_count counts the unrestricted curve.",
 	}, []string{"venue", "chain"})
 
 	liqForfeitedByBand = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "perp_liq_collateral_forfeited_by_leverage_pct",
-		Help: "Median forfeited share of margin per leverage band (0-10x, 10-25x, 25-50x, 50-100x, 100x+). The forfeit grows with leverage, against the intuition: a position opened at 100x is closed after a smaller move, so less of its margin has gone to the price by the time the venue takes the rest. Read with perp_liq_liquidations_by_leverage_count.",
+		Help: "Median forfeited share of margin per leverage band (0-5x, 5-10x, 10-25x, 25-50x, 50-100x, 100-200x, 200x+), bands being (min, max]. This is the only honest cross-venue comparison here, because the forfeit grows with leverage and the venues sell different ranges. A band a venue does not trade has no series, never a zero. Read with perp_liq_liquidations_by_leverage_count: a band holding two positions is those two positions.",
 	}, []string{"venue", "chain", "band"})
 
 	liqEventsByBand = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "perp_liq_liquidations_by_leverage_count",
-		Help: "How many liquidations of the trailing 24h sit in each leverage band and carry the forfeit detail. The denominator of perp_liq_collateral_forfeited_by_leverage_pct, published beside it so a band holding two positions cannot read as a measurement.",
+		Help: "How many liquidations of the trailing 24h sit in each leverage band and carry the forfeit detail, over the whole curve rather than the comparable range. The denominator of the per-band gauges, published beside them so a band holding two positions cannot read as a measurement, and so a reader can see which bands each venue actually sells.",
 	}, []string{"venue", "chain", "band"})
+
+	liqFeeAndCarry = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "perp_liq_fee_and_carry_pct",
+		Help: "Median share of a liquidated position's margin that went on trading fees and carry rather than on the venue's liquidation penalty, over the same closes as perp_liq_collateral_forfeited_pct. A fee is a cost the trader incurred and a penalty is not, so the forfeit above must not be read as a penalty on its own. Published only where the feed itemises it: GMX v2 does in full (positionFeeAmount, borrowingFeeAmount, fundingFeeAmount beside liquidationFeeAmount) and Ostium in part; the Gains event carries no fee word at all, so its row is absent rather than zero.",
+	}, []string{"venue", "chain"})
+
+	liqLossByBand = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "perp_liq_loss_at_trigger_by_leverage_pct",
+		Help: "Median loss at trigger per leverage band, beside the forfeited share for the same band. The pair is the mechanism: a venue that closes at a lower loss keeps more of the margin, and band for band Gains closes earliest of the three.",
+	}, []string{"venue", "chain", "band"})
+
+	liqMarginDestroyedShare = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "perp_liq_margin_destroyed_share_pct",
+		Help: "Margin destroyed by force over the trailing 24h as a percentage of the margin behind every position the venue closed in the same window. The leverage-neutral companion to perp_liq_share_of_volume_pct, which is notional over notional and so counts a 100x position at a hundred times the money behind it. Both halves are money the trader posted, so leverage cancels. Measured 2026-09-29: GMX v2 1.09% over 7 days, Ostium 1.38% over 30 days. Published only where the feed carries the position on both halves.",
+	}, []string{"venue", "chain"})
 
 	liqOpenInterest = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "perp_liq_open_interest_usd",
@@ -151,6 +166,9 @@ func registerMetrics() *prometheus.Registry {
 		liqLossAtTrigger,
 		liqReturned,
 		liqForfeitEvents,
+		liqFeeAndCarry,
+		liqLossByBand,
+		liqMarginDestroyedShare,
 		liqForfeitedByBand,
 		liqEventsByBand,
 		liqOpenInterest,
@@ -238,11 +256,12 @@ func setVenueRefreshed(venue string, t time.Time) {
 // perp_liq_forfeit_events at zero and loses its three medians, because there is
 // nothing to take a median of; a venue whose feed cannot carry the position
 // publishes no series at all, the count included.
-func setForfeitShares(venue, asset string, forfeited, loss, returned float64, n int, carriesDetail bool) {
-	if n <= 0 {
+func setForfeitShares(venue, asset string, s forfeitSummary, carriesDetail bool) {
+	if s.N <= 0 {
 		liqForfeited.DeleteLabelValues(venue, asset)
 		liqLossAtTrigger.DeleteLabelValues(venue, asset)
 		liqReturned.DeleteLabelValues(venue, asset)
+		liqFeeAndCarry.DeleteLabelValues(venue, asset)
 		if carriesDetail {
 			liqForfeitEvents.WithLabelValues(venue, asset).Set(0)
 		} else {
@@ -250,27 +269,37 @@ func setForfeitShares(venue, asset string, forfeited, loss, returned float64, n 
 		}
 		return
 	}
-	liqForfeited.WithLabelValues(venue, asset).Set(forfeited)
-	liqLossAtTrigger.WithLabelValues(venue, asset).Set(loss)
-	liqReturned.WithLabelValues(venue, asset).Set(returned)
-	liqForfeitEvents.WithLabelValues(venue, asset).Set(float64(n))
+	liqForfeited.WithLabelValues(venue, asset).Set(s.Forfeited)
+	liqLossAtTrigger.WithLabelValues(venue, asset).Set(s.Loss)
+	liqReturned.WithLabelValues(venue, asset).Set(s.Returned)
+	liqForfeitEvents.WithLabelValues(venue, asset).Set(float64(s.N))
+	// Only where the feed itemises the fees. On Gains it does not, and a zero
+	// would say the whole forfeit is the venue's penalty, which is a claim the
+	// event cannot support.
+	if s.HasFeeSplit {
+		liqFeeAndCarry.WithLabelValues(venue, asset).Set(s.FeeAndCarry)
+	} else {
+		liqFeeAndCarry.DeleteLabelValues(venue, asset)
+	}
 }
 
 // setForfeitBands publishes the per-band medians and counts, deleting the bands
 // the window no longer holds anything for so a band that has emptied does not
 // keep yesterday's figure while the count beside it says nothing is there.
-func setForfeitBands(venue, asset string, bands map[string]struct {
-	Forfeited float64
-	N         int
-}) {
+func setForfeitBands(venue, asset string, bands map[string]bandStats) {
 	for _, b := range leverageBands {
 		v, ok := bands[b.name]
 		if !ok || v.N <= 0 {
+			// A band the venue does not sell, or sold nothing into, has no
+			// cell. Never a zero: a zero in the 200x+ column would say GMX
+			// forfeits nothing there, when GMX does not trade there at all.
 			liqForfeitedByBand.DeleteLabelValues(venue, asset, b.name)
+			liqLossByBand.DeleteLabelValues(venue, asset, b.name)
 			liqEventsByBand.DeleteLabelValues(venue, asset, b.name)
 			continue
 		}
 		liqForfeitedByBand.WithLabelValues(venue, asset, b.name).Set(v.Forfeited)
+		liqLossByBand.WithLabelValues(venue, asset, b.name).Set(v.Loss)
 		liqEventsByBand.WithLabelValues(venue, asset, b.name).Set(float64(v.N))
 	}
 }

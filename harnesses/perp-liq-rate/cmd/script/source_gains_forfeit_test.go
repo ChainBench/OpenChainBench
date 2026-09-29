@@ -162,8 +162,14 @@ func TestGainsForfeit_GoldenBigEthLiquidation(t *testing.T) {
 		t.Fatalf("shares = loss %.4f returned %.4f forfeited %.4f, want 51.2437 / 0 / 48.7563",
 			s.loss, s.returned, s.forfeited)
 	}
-	if got := leverageBandOf(ex.leverage); got != "100x+" {
-		t.Fatalf("108.213x landed in band %q, want 100x+", got)
+	if got := leverageBandOf(ex.leverage); got != "100-200x" {
+		t.Fatalf("108.213x landed in band %q, want 100-200x", got)
+	}
+	// And it is outside the range a venue-level median may be taken over: GMX
+	// recorded no liquidation above 107x over the week measured, so a Gains
+	// figure that included this position would be comparing product ranges.
+	if inComparableRange(ex.leverage) {
+		t.Fatal("108.213x should sit outside the comparable 10x to 100x range")
 	}
 }
 

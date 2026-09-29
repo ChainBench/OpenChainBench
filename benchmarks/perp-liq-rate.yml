@@ -71,12 +71,25 @@ abstract: |
   For each close: the loss at trigger, the share of margin returned, and the
   forfeited share, which is 100 minus the other two *for that close*. Each is
   then published as a median over the window, so the three medians are
-  independent and do not add to 100. Three of the eleven venues carry all three
-  quantities; the other eight publish no series at all rather than a 0.0% that
-  would read as a venue forfeiting none of its traders' margin. A feed of
-  hourly aggregates is not comparable to a feed of events on any per-position
-  figure, and Lighter, Aster and Nado are aggregates: they are absent here and
-  their largest-event share is left blank for the same reason.
+  independent and do not add to 100.
+
+  Every one of those is computed inside a leverage band, and the venue-level
+  medians over closes between 10x and 100x only, because the forfeit grows with
+  leverage and the venues sell different ranges: comparing a venue whose median
+  liquidated position is 91x against one at 45x otherwise reports which sells
+  more leverage. The forfeited share also holds the closing fee, the funding and
+  the rollover, which a trader pays on any close, so
+  perp_liq_fee_and_carry_pct itemises that part wherever the feed separates it.
+  perp_liq_margin_destroyed_share_pct answers the same question as the notional
+  rate in money instead of notional, and so cancels leverage rather than
+  scaling with it.
+
+  Three of the eleven venues carry these quantities; the other eight publish no
+  series at all rather than a 0.0% that would read as a venue forfeiting none of
+  its traders' margin. A feed of hourly aggregates is not comparable to a feed
+  of events on any per-position figure, and Lighter, Aster and Nado are
+  aggregates: they are absent here and their largest-event share is left blank
+  for the same reason.
 
   perp_liq_ranked is 1 when the row takes a rank. It reads 0 when the venue
   has no liquidation feed, when a fetch failed, when a page cap cut a read
@@ -100,10 +113,12 @@ methodology:
   - "Historical open interest is valued at historical prices, and how exactly depends on the collateral. The quantities come from the events; the price comes from the collateralPriceUsd the contract stamps on its own execution events, nearest at or before each reading, falling back to the current price when nothing earlier is held. Of the collaterals Gains runs, the stablecoins (USDC and DAI on Arbitrum) are exact either way, while a WETH, GNS or BtcUSD book is as good as the nearest execution to it."
   - "Ranking: a row ranks only when at least 10,000 dollars was liquidated, no single liquidation is more than half of the figure (rows with per-event detail), and the figure is between 0.01% and 3% of the venue's own 24h traded notional, from the venue's API or, for GMX and Gains, the same indexer or contract logs as the liquidations. Published per row as perp_liq_share_of_volume_pct and perp_liq_largest_event_share_pct; perp_liq_ranked carries the verdict."
   - "What the rate is and is not. It is the share of a venue's book closed by force, in notional. It is not the money traders lost, and not neutral to leverage: a 100x position counts at 100 times its margin, in the numerator and in open interest. On 2026-09-28 Gains liquidated 39.5M dollars of notional on 423k of collateral at a median 73x. The money itself is published separately, as the three shares below, wherever the feed carries the position behind the fill."
-  - "The three shares. Per forced close: the margin behind the position, the share of it the price had taken when the venue closed, and the share that went back. The forfeited share is 100 minus those two for that close, the margin destroyed in excess of the loss the trader incurred. All three publish as medians over the 24h window, so they are three independent medians and do not add to 100. perp_liq_forfeit_events says how many closes are behind them."
+  - "The three shares. Per forced close: the margin behind the position, the share of it the price had taken when the venue closed, and the share that went back. The forfeited share is 100 minus those two for that close, the margin destroyed in excess of the loss the trader incurred. All three publish as medians, so they are three independent medians and do not add to 100. perp_liq_forfeit_events says how many closes are behind them."
+  - "Every cross-venue figure is computed inside a leverage band: the forfeit grows with leverage and the venues sell different ranges. Gains' median forfeit runs 10.5 points under 5x to 41.3 above 200x, and 45% of its liquidations are above 100x against GMX's 2%. So the venue-level medians cover 10x to 100x, where all three liquidate (Gains 418 closes, GMX 968, Ostium 366). The full curve publishes per band with its own count; a band a venue does not trade has no series."
+  - "The forfeited share is not a penalty on its own. All three venues define their loss as the price move times the leverage, so the forfeit also holds the closing fee, the funding and the rollover, costs the trader did incur. perp_liq_fee_and_carry_pct itemises that part where the feed can: GMX separates positionFeeAmount, borrowingFeeAmount and fundingFeeAmount from its liquidationFeeAmount, Ostium carries five fee fields. The Gains event has no fee word, so its cell is blank."
   - "Three of the eleven venues carry all three: Gains reads percentProfit and amountSentToTrader off the LimitExecuted log, GMX v2 initialCollateralDeltaAmount, basePnlUsd and pnlUsd off its squid, Ostium profitPercent, amountSentToTrader and the linked trade's collateral off its subgraph. The other eight publish nothing rather than 0.0%, which would read as forfeiting none of a trader's margin: seven have a feed with no position in it, Aevo has no feed."
   - "Two blanks, told apart. A venue that can read the position and saw no forced close in the window publishes perp_liq_forfeit_events = 0 with no medians, because there is nothing to take a median of. A venue whose feed cannot read the position publishes no series at all, count included. Ostium is regularly the first case: it liquidated one BTC position in the 24h to 2026-09-29 and none on ETH or SOL."
-  - "What the forfeited share contains, and what it is not. All three venues define their own loss figure as the price move times the leverage, so the forfeit is everything else: the closing fee, the liquidation penalty, and the funding and rollover accrued while the position was open. Those are real costs a trader did incur, so read the figure as the margin lost to something other than the move, not as a penalty. A loss above 100% of margin forfeits nothing and publishes 0."
+  - "The same objection applies to the notional rate and the share of volume beside it. Both are notional over notional, so they scale with the leverage a venue sells: at a median 91x Gains is measured against a venue whose traders sit near 45x. perp_liq_margin_destroyed_share_pct is the leverage-neutral companion, margin destroyed over the margin behind every position the venue closed. Both halves are money the trader posted, so leverage cancels."
   - "Why the size gates exist: on 2026-09-28 Ostium BTC sat inside the band at 0.458% on 338 dollars from a single liquidation, above Hyperliquid and GMX, while dYdX BTC sat outside it on 537 dollars from a single liquidation. A share of volume cannot tell a flow from an event; the notional floor and the largest-event ceiling can."
   - "Rows outside the gate keep every figure they measured and sit below the ranked field. Nothing is hidden and nothing is estimated to fill a gap. An exact zero never ranks either: a zero reads the same whether the venue liquidated nothing or its feed returned nothing, so it is published as an observation and not as a best value."
   - "The rate is withheld, not merely unranked, when the gate's reason means the ratio describes nothing: one liquidation being most of the window, no notional to test it against, an open-interest window shorter than the numerator, or a failed read. Every input still publishes. Both windows survive a restart in a JSON file on a mounted volume, since open interest cannot be backfilled: without it a redeploy divided 24h of liquidations by the peak of the minutes since boot, and Gains ETH read 952%."
@@ -118,12 +133,10 @@ methodology:
   - "Gains traded notional comes off the same diamond scan as its liquidations, per pair: MarketExecuted and LimitExecuted legs at full notional plus executed resizes at their delta, the backend's own auto-plus-direct perimeter, validated on the complete UTC day 2026-09-27 at 79% of the venue. The scan runs once per deployment per tick from a block cursor, and each log is placed on the clock by interpolating between the headers at both ends of the range."
   - "The Gains row is the Arbitrum and Base deployments, and all three of its figures are read on that perimeter: liquidations, open interest and traded notional. It is internally consistent and smaller than the venue, which also trades on Polygon, MegaETH and ApeChain. Comparing it with a venue-level figure needs the same day as well: by the venue's own backend 2026-09-27 was 34.76M dollars and 2026-09-28, a cascade day, 210.8M."
   - "Gains open interest reads oiLongCollateral and oiShortCollateral across every collateral of both deployments, each at its own decimals and USD price, so open interest held in WETH or GNS is not counted at face value, and sums long plus short as the trader legs outstanding against the vault."
-  - "GMX v2: OI from arbitrum-api.gmxinfra.io/markets/info, openInterestLong plus openInterestShort over every listed market for the asset, at 30 decimals. Liquidations from the public Subsquid squid: tradeActions with orderType 7, pinned to eventName OrderExecuted because every liquidation also appears as OrderCreated. sizeDeltaUsd is USD at 30 decimals."
-  - "This spec said until 2026-09-27 that GMX had no reachable liquidation source because Subsquid positionChanges exposes no orderType. That is true of positionChanges and false of tradeActions. Re-measured on 2026-09-27: 103 executed liquidations in 24h across every market, 900,656 dollars, of which ETH 276,827 and BTC 145,148."
+  - "GMX v2: OI from arbitrum-api.gmxinfra.io/markets/info, openInterestLong plus openInterestShort over every listed market, at 30 decimals. Liquidations from the public Subsquid squid: tradeActions with orderType 7, pinned to eventName OrderExecuted because every liquidation also appears as OrderCreated. This spec said until 2026-09-27 that no source existed because positionChanges exposes no orderType; that is true of positionChanges and false of tradeActions."
   - "GMX's volume denominator is summed from the same squid, over executed tradeActions with orderType 2 or above, which excludes the plain swap types. Numerator and denominator therefore carry one definition. Cached for 15 minutes because the query pages over a few thousand rows."
   - "Aster: liquidations from Coinalyze hourly buckets for Aster's markets, in base units, converted at Hyperliquid's hourly close for that hour. Aster's own allForceOrders history endpoint answers that it is out of maintenance, forceOrders is per-account, and the public forceOrder websocket carries no history and drops every few minutes, so a 5-minute poller cannot use it. OI and 24h notional from the futures gateway."
-  - "Ostium: liquidations from tradeEvents of type LiquidationExecuted on the Ormi-hosted subgraph, which is the venue's only data surface. The size is read from the linked trade, whose notional is 6-decimal USD, because tradeEvents.notional is null on a liquidation row. Cancelled and failed orders are dropped in the harness: a where clause naming those booleans returns no rows at all."
-  - "Ostium is small. It executed 418k dollars of notional in the 24h to 2026-09-27 and liquidated nothing on any pair in that window, the most recent liquidation being 40 hours old. Over 7 days the same query returns 99 events including 159,564 dollars on ETH, so the path is live and the 24h zero is the venue. A zero does not rank."
+  - "Ostium: liquidations from tradeEvents of type LiquidationExecuted on the Ormi subgraph, the venue's only data surface. The size, the collateral and the leverage come off the linked trade, because the event's own notional, collateralDelta and leverage are null on a liquidation row. Its leverage is 1e2 fixed point, not the 1e3 Gains uses. Ostium is small: it liquidated nothing on any pair over the 24h to 2026-09-27 and 383 positions over 30 days. A zero does not rank."
   - "Orderly: liquidations from GET /v1/public/liquidated_positions, the only purpose-built public liquidation endpoint in the cohort that carries history; it takes a time range and pages. Filtering by symbol returns whole liquidated accounts, so only the leg on the requested market counts, at cost_position_transfer, which is already USD. OI, mark price and 24h_amount from /v1/public/futures. meta.total saturates at 500, so paging stops on a short page rather than on it."
   - "Nado: the archive publishes a cumulative liquidated-USD counter per product in its hourly snapshots rather than a tape, so the 24h figure is the difference between two snapshots, one number for the whole window, scaled to 24h by the span the snapshots actually cover. It is published, and because no per-event detail exists the largest-event panel is left blank for it rather than reading 100%. Traded notional and OI come from the same snapshot pair."
   - "Checked, feed present, not pollable: Pacifica (cause) and Extended (tT) flag liquidations on a public tape that reaches back only minutes, and Backpack publishes them on a websocket with no REST form, so all three need a persistent collector. Checked, no public signal: ApeX Omni, GRVT, Vest and StandX expose no liquidation flag on any public endpoint, only behind per-account authentication where it exists at all."
@@ -142,10 +155,15 @@ findings:
   - "{{name:aster}} and {{name:ostium}} were added the same day. Aster reads {{p50:aster}} on ETH, at 0.18% of its own traded notional. Ostium's feed works on a book of 78k and 158k dollars; it liquidated nothing on 2026-09-27 and 338 dollars in one BTC position on 2026-09-28, which sat inside the volume band and ranked above Hyperliquid until the size gates were added. It publishes without a rank."
   - "{{name:orderly}} and {{name:nado}} were added the same day. Orderly reads {{p50:orderly}} on ETH off a purpose-built public liquidation endpoint with history, at 0.028% of its own traded notional. Nado's archive reports the day as one cumulative figure, 26,033 dollars on BTC and nothing on ETH, so its BTC row ranks and its ETH row publishes a zero without one."
   - "{{name:aevo}} publishes open interest and traded notional with no rate, because every liquidation path on its API 404s, its trade history is per-account and no aggregator covers it. It is declared unranked in the spec rather than dropped, so the gap is visible. edgeX, Jupiter Perps and Drift were checked and left out, with reasons in the methodology."
-  - "The forfeited share is the figure a trader can act on, and it is not small. Measured on Gains across every pair on Arbitrum over the three days to 2026-09-29: 886 liquidations, 865,543 dollars of margin, nothing returned on any of them, a median loss at trigger of 60.0% and so a median forfeit of 40.0 points. Four dollars in every ten that a liquidated Gains trader posted went somewhere other than their own loss."
-  - "It is not a constant of the industry, which is the point of measuring it across venues. Over the 24 hours to 2026-09-29, GMX v2 liquidated 187 positions across every market on 42,980 dollars of margin at a median loss at trigger of 63.3%, paid back a median 18.6% of margin, and its median forfeit was 15.4 points (per close, not 100 minus those two). Ostium over 7 days: 91 liquidations, 16,984 dollars of margin, nothing returned, median forfeit 20.8 points."
-  - "The forfeit grows with leverage, against the intuition, and that is the most useful thing here for a trader choosing one. On the Gains three-day window the median forfeit ran 26.3 points under 10x (n=64), 29.3 at 10-25x (n=120), 31.8 at 25-50x (n=112), 41.6 at 50-100x (n=191) and 40.9 above 100x (n=399). A position opened at 100x is closed after a smaller move, so less of its margin has gone to the price before the venue takes the rest."
-  - "Gains returns nothing on a liquidation and something on a stop loss, which is the comparison that shows the forfeit is a liquidation cost and not a closing cost. Over the same three days its 602 stop losses returned 116,089 dollars of 154,420, 75.2%, on a median loss at trigger of 24.3%. Twelve of the 602 returned nothing at all, so a zero payout is not by itself the signature of a liquidation."
+  - "The forfeited share is the figure a trader can act on, and it is not small. Measured on Gains across every pair on Arbitrum over the three days to 2026-09-29: 876 liquidations carrying a leverage, 865,543 dollars of margin, nothing returned on any of them, a median loss at trigger of 60.0% and so a median forfeit of 40.0 points. Four dollars in every ten that a liquidated Gains trader posted went somewhere other than their own loss."
+  - "That 40.0 is not a cross-venue figure, because the forfeit grows with leverage and Gains sells more of it. Its own curve: 0-5x forfeits 10.5 points on 9 closes, 5-10x 28.0 on 54, 10-25x 29.2 on 119, 25-50x 31.3 on 111, 50-100x 41.3 on 188, 100-200x 40.0 on 151 and 200x+ 41.3 on 244. Its median liquidated position is 91x and 45% sit above 100x, against GMX's median 45x and 2%."
+  - "So compare inside the range all three sell. GMX v2 over 7 days: 0-5x 1.4 points on 27 closes, 5-10x 4.0 on 30, 10-25x 6.3 on 176, 25-50x 15.0 on 482, 50-100x 24.1 on 310, 100-200x 27.6 on 21, nothing above 107x at all. Ostium over 30 days: 0-5x 26.1 on 5, 5-10x 7.9 on 10, 10-25x 4.9 on 71, 25-50x 12.3 on 84, 50-100x 22.0 on 211, 100-200x 28.0 on 2, nothing above 200x."
+  - "Band for band, Gains still forfeits the most, and by a factor rather than a margin: 29.2 points against 6.3 and 4.9 at 10-25x, 31.3 against 15.0 and 12.3 at 25-50x, 41.3 against 24.1 and 22.0 at 50-100x. Restricted to 10x-100x the venue medians are Gains 32.8 points on 418 closes, GMX 16.0 on 968 and Ostium 18.3 on 366. The leverage mix accounts for 7.2 of the 24-point venue-level gap; the rest is the venue."
+  - "The mechanism is the loss at trigger, and it runs the other way. At 10-25x Gains closes a position once the price has taken 70.8% of its margin, GMX at 85.1% and Ostium at 95.1%. Closing earlier leaves more margin on the table, and on Gains none of it goes back: its returned share is 0.00% on all 876 liquidations, while GMX pays a median 19.3% of margin back inside the same leverage range."
+  - "The forfeit is not all penalty, and where the feed says so it is split. On GMX at 50-100x a median forfeit of 24.1 points is 19.7 of liquidation fee, 4.0 of trading fee, 0.0 of carry and 0.6 of price impact, so four fifths of it is the venue's own charge. On Ostium at the same band, 22.0 points holds 6.4 of itemised fees and 0.3 of carry. The Gains event carries no fee word at all, so its forfeit cannot be split from the event."
+  - "Gains' own stop losses bound it instead, since a stop loss carries no liquidation penalty. Over the same three days and the same bands, its stop-loss forfeit runs 0.9 points at 0-5x, 2.0 at 10-25x, 8.0 at 50-100x and 20.6 above 200x, against liquidation forfeits of 10.5, 29.2, 41.3 and 41.3. The difference, 9.7 to 33.3 points depending on the band, is what liquidation costs over and above closing the same position voluntarily."
+  - "The leverage-neutral rate says the same thing in money rather than notional. Margin destroyed over the margin behind every position the venue closed in the window: GMX v2 337,015 dollars of 30,945,285 over 7 days, 1.09%, and Ostium 54,920 of 3,984,471 over 30 days, 1.38%. Unlike the notional rate above, neither half counts a 100x position at a hundred times the money behind it."
+  - "Twelve of those 602 stop losses returned nothing at all, so a zero payout is not by itself the signature of a liquidation; in aggregate they returned 116,089 dollars of 154,420, 75.2%, at a median loss at trigger of 24.3%."
   - "Each venue's decode was checked against the chain and not against this harness. Gains: in tx 0x427c242f a 200,228 dollar ETH position at 108.213x was closed 51.24% down, and the three USDC transfers in that transaction total the whole margin and every one goes to the vault, none to the trader. So that trader forfeited 48.76 points, 97,631 dollars, on top of what the move had cost them."
   - "GMX v2: the residual this harness computes as margin plus all-in P&L is the amount the pool actually paid out. In tx 0xee583c74 it predicts 8.6551 USDC and the transaction transferred 8.655363 to the liquidated account. Across the twelve largest liquidations of that day seven matched an on-chain transfer of exactly that amount and five were cross-chain orders paid to a GMX vault for the same amount. Ostium: in tx 0xfa67b49b the two USDC legs total the margin and both go to the vault."
   - "Ten of the 886 Gains liquidations carried a positive price return, the largest a long on pair 482 up 8.88% at 52.88x, closed as a liquidation with nothing returned. The word is read correctly (the price move times the leverage reproduces it on 120 of 120 rows) and the event is not a trader losing money to a move, so those rows keep their notional and stay out of the forfeited arithmetic. Left in, each would have contributed 569 points."
@@ -178,22 +196,22 @@ faq:
     a: "Lighter's own trades endpoint needs authentication, so the numerator comes from Coinalyze hourly liquidation buckets for Lighter's markets, in base units, converted at that hour's close price. The bug was in how the buckets were folded in: each hour was captured minutes after it opened, when it was nearly empty, and the dedup key then held that reading for a full day. Hours are now restated as they fill. The figure went from 887 dollars to roughly 44k on ETH."
   - q: "How much of a liquidated position's margin does a trader actually forfeit?"
     a: |
-      Not all of it, and not only what the price took. The harness reads three
-      figures off each forced close: the margin behind the position, the share
-      of it the price had already taken when the venue closed (the loss at
-      trigger), and the share that went back to the trader. What is left is the
-      forfeited share, and it is the margin destroyed in excess of the loss the
-      trader actually incurred.
+      Not all of it, and not only what the price took. The harness reads the
+      margin behind each forced close, the share the price had taken (the loss
+      at trigger), and the share that went back. What is left is forfeited.
 
-      On Gains across every pair on Arbitrum over the three days to 2026-09-29,
-      886 liquidations on 865,543 dollars of margin returned nothing at all, at
-      a median loss at trigger of 60.0%: a median forfeit of 40.0 points. GMX
-      v2 pays the residual back after its fees and its median forfeit over the
-      24 hours to 2026-09-29 was 15.4 points; Ostium, which also returns
-      nothing, 20.8 points over 7 days. The forfeit contains the closing fee,
-      the liquidation penalty and the funding and rollover accrued, all of them
-      real costs, so read it as the margin lost to something other than the
-      move rather than as a penalty.
+      It only compares inside a leverage band, because the forfeit grows with
+      leverage and the venues sell different ranges. Measured 2026-09-29, Gains
+      forfeits the most band for band and by a factor: 29.2 points against GMX's
+      6.3 and Ostium's 4.9 at 10-25x, 41.3 against 24.1 and 22.0 at 50-100x.
+      Across 10x to 100x, Gains reads 32.8 points, GMX 16.0, Ostium 18.3. Gains
+      closes earliest, at 70.8% of margin lost against 85.1% and 95.1%, and
+      returns none of the rest.
+
+      It is not all penalty: it holds the closing fee, funding and rollover too.
+      GMX itemises that, and 19.7 of its 24.1 points at 50-100x is its own
+      liquidation fee. Gains has no fee word, so its split is bounded by its
+      stop losses, which forfeit 2.0 points at 10-25x against 29.2.
   - q: "Why is the forfeited share not ranked across the field?"
     a: |
       Because three of the eleven venues carry it. Gains and Ostium publish the
@@ -266,7 +284,7 @@ metric_panels:
     unit: pct
     higher_is_better: false
     tab: false
-    description: "Median share of a liquidated position's margin destroyed beyond the loss the trader incurred. Taken per close as 100 minus its own loss and payout, then the median of those, so it is not 100 minus the two panels beside it. An annotation on the three venues that carry the position, never ranked."
+    description: "Median share of a liquidated position's margin destroyed beyond the loss the trader incurred, over closes between 10x and 100x only, the range all three venues offer. Taken per close then medianed, so it is not 100 minus the panels beside it. It holds the venue's penalty AND fees. Never ranked."
   - id: loss_at_trigger
     label: Loss at trigger
     label_key: venue
@@ -274,7 +292,7 @@ metric_panels:
     unit: pct
     higher_is_better: false
     tab: false
-    description: "Median share of the margin the price had taken when the venue closed the position: the move times the leverage, before fees and carry, as all three venues define it. Neither end is good news, so it publishes to show what the forfeited share is measured against and never ranks."
+    description: "Median share of the margin the price had taken when the venue closed the position, over the same 10x to 100x closes. The move times the leverage, before fees and carry. A LOWER figure means the venue closed earlier and kept more: at 10-25x Gains reads 70.8%, GMX 85.1%, Ostium 95.1%."
   - id: returned
     label: Margin returned
     label_key: venue
@@ -282,7 +300,7 @@ metric_panels:
     unit: pct
     higher_is_better: true
     tab: false
-    description: "Median share of the margin that went back to the trader. Zero is a measurement and the common one: Gains and Ostium returned nothing on any liquidation read, GMX v2 pays the residual after its fees. Blank on the eight venues whose feed carries no position."
+    description: "Median share of the margin that went back to the trader, over the same 10x to 100x closes. Zero is a measurement and the common one: Gains and Ostium returned nothing on any of the 876 and 383 liquidations read, GMX v2 a median 19.3%. Blank on the eight venues with no position."
   - id: forfeit_events
     label: Forced closes measured
     label_key: venue
@@ -290,7 +308,23 @@ metric_panels:
     unit: count
     higher_is_better: false
     tab: false
-    description: "How many forced closes of the window carried the margin, the loss and the payout, so the three shares beside it are medians over exactly these. A 0 is a venue that can report and saw none; a venue whose feed cannot report publishes no figure here at all."
+    description: "How many forced closes of the window carried the position AND sat between 10x and 100x, the set the venue-level medians are taken over. A 0 is a venue that can report and saw none; one whose feed cannot report publishes no figure at all. The per-band counts cover the whole curve."
+  - id: fee_and_carry
+    label: Of which fees
+    label_key: venue
+    metric: perp_liq_fee_and_carry_pct{}
+    unit: pct
+    higher_is_better: false
+    tab: false
+    description: "The part of the forfeited share that is trading fees and carry rather than the venue's liquidation penalty. A fee is a cost the trader incurred and a penalty is not. GMX v2 itemises it in full, Ostium in part; the Gains event carries no fee word, so its cell is blank, not zero."
+  - id: margin_liq_share
+    label: Margin liquidated
+    label_key: venue
+    metric: perp_liq_margin_destroyed_share_pct{}
+    unit: pct
+    higher_is_better: false
+    tab: false
+    description: "Margin destroyed by force over the margin behind every position the venue closed in the window. The leverage-neutral companion to Share of volume, which is notional over notional and counts a 100x position at a hundred times the money behind it. GMX v2 1.09% over 7 days, Ostium 1.38% over 30."
   - id: oi_peak
     label: Peak OI 24h
     label_key: venue
@@ -347,8 +381,8 @@ ledger_columns:
   - { label: "Liq rate", slot: p50 }
   - { label: "Liquidated 24h", panel: liq_volume }
   - { label: "Peak OI 24h", panel: oi_peak }
-  - { label: "Trough OI 24h", panel: oi_trough }
   - { label: "Volume 24h", panel: venue_volume }
+  - { label: "Margin liquidated", panel: margin_liq_share, unit: pct }
   - { label: "Share of vol", panel: share_of_volume, unit: pct }
   - { label: "Largest event", panel: largest_event, unit: pct }
   - { label: "Margin forfeited", panel: forfeited, unit: pct }

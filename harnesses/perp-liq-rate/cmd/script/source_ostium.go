@@ -93,6 +93,18 @@ type ostiumLiqRow struct {
 		Notional   string `json:"notional"`   // 6-decimal USD
 		Collateral string `json:"collateral"` // 6-decimal USD
 		Leverage   string `json:"leverage"`   // 1e2 fixed point
+		// The costs a trader pays on any close. devFee, vaultFee and oracleFee
+		// are 6-decimal USD; funding and rollover are x18. They are lifetime
+		// figures on the trade rather than this close's own, so they bound the
+		// fee part of the forfeit from below and what is left over is the
+		// venue's liquidation claim. Measured over the 30 days to 2026-09-29, at
+		// 50-100x, a median forfeit of 22.0 points held 6.4 of fees and 0.3 of
+		// carry.
+		DevFee    string `json:"devFee"`
+		VaultFee  string `json:"vaultFee"`
+		OracleFee string `json:"oracleFee"`
+		Funding   string `json:"funding"`
+		Rollover  string `json:"rollover"`
 	} `json:"trade"`
 }
 
@@ -114,7 +126,8 @@ func (o *Ostium) FetchLiquidationsSince(asset string, sinceMs int64) ([]LiqEvent
 			`{ tradeEvents(first:%d, skip:%d, orderBy:timestamp, orderDirection:desc, `+
 				`where:{type:LiquidationExecuted, timestamp_gte:"%d"}) `+
 				`{ id timestamp profitPercent amountSentToTrader pair { from } `+
-				`trade { notional collateral leverage } } }`,
+				`trade { notional collateral leverage devFee vaultFee oracleFee `+
+				`funding rollover } } }`,
 			ostiumPageLimit, page*ostiumPageLimit, sinceMs/1000)
 		var out struct {
 			TradeEvents []ostiumLiqRow `json:"tradeEvents"`
@@ -162,6 +175,10 @@ func (o *Ostium) FetchLiquidationsSince(asset string, sinceMs int64) ([]LiqEvent
 					e.HasForfeitDetail = true
 					e.LossAtTriggerPct = -pct
 					e.ReturnedUSD = sent
+					if fees, ok := ostiumFeesUSD(r); ok {
+						e.HasFeeSplit = true
+						e.FeeAndCarryUSD = fees
+					}
 				}
 			}
 			events = append(events, e)
@@ -280,3 +297,86 @@ func (o *Ostium) FetchVolume24hUSD(asset string) (float64, error) {
 // profitPercent and amountSentToTrader, and the linked trade carries the
 // collateral and the leverage.
 func (o *Ostium) CarriesPositionDetail() bool { return true }
+
+// ostiumFeesUSD sums the costs the trader would have paid on any close: the dev,
+// vault and oracle fees at 6 decimals plus funding and rollover at x18. The
+// venue's liquidation claim is not among them, which is the point: the forfeit
+// less this figure is what the venue kept beyond the trader's own costs.
+func ostiumFeesUSD(r ostiumLiqRow) (float64, bool) {
+	total, any := 0.0, false
+	for _, f := range []string{r.Trade.DevFee, r.Trade.VaultFee, r.Trade.OracleFee} {
+		if f == "" {
+			continue
+		}
+		v, err := parseScaled(f, 6)
+		if err != nil {
+			return 0, false
+		}
+		total += v
+		any = true
+	}
+	for _, f := range []string{r.Trade.Funding, r.Trade.Rollover} {
+		if f == "" {
+			continue
+		}
+		v, err := parseScaled(f, 18)
+		if err != nil {
+			return 0, false
+		}
+		total += v
+		any = true
+	}
+	if !any || total < 0 {
+		return 0, false
+	}
+	return total, true
+}
+
+// ostiumCloseTypes are the tradeEvent types that close a position, so the
+// margin behind them sums to the margin Ostium closed over the window. Those are
+// the four the subgraph actually accepts; a "CloseExecuted" type does not exist
+// and asking for it is a query error rather than an empty result.
+var ostiumCloseTypes = []string{
+	"LiquidationExecuted", "TakeProfitExecuted", "StopLossExecuted", "MarketCloseExecuted",
+}
+
+// FetchMarginClosed24hUSD sums the margin behind every position Ostium closed on
+// the asset in the trailing 24h, the denominator of
+// perp_liq_margin_destroyed_share_pct.
+func (o *Ostium) FetchMarginClosed24hUSD(asset string) (float64, error) {
+	if !ostiumTrackedAssets[asset] {
+		return 0, fmt.Errorf("ostium: unsupported asset %q", asset)
+	}
+	want := strings.ToUpper(asset)
+	since := time.Now().Add(-windowSpan).Unix()
+	total := 0.0
+	for _, typ := range ostiumCloseTypes {
+		for page := 0; page < ostiumMaxPages; page++ {
+			q := fmt.Sprintf(
+				`{ tradeEvents(first:%d, skip:%d, orderBy:timestamp, orderDirection:desc, `+
+					`where:{type:%s, timestamp_gte:"%d"}) `+
+					`{ id pair { from } trade { collateral } } }`,
+				ostiumPageLimit, page*ostiumPageLimit, typ, since)
+			var out struct {
+				TradeEvents []ostiumLiqRow `json:"tradeEvents"`
+			}
+			if err := o.ostiumQuery(q, &out); err != nil {
+				return 0, err
+			}
+			for _, r := range out.TradeEvents {
+				if !strings.EqualFold(r.Pair.From, want) {
+					continue
+				}
+				col, err := parseScaled(r.Trade.Collateral, 6)
+				if err != nil || col <= 0 {
+					continue
+				}
+				total += col
+			}
+			if len(out.TradeEvents) < ostiumPageLimit {
+				break
+			}
+		}
+	}
+	return total, nil
+}

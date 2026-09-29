@@ -252,6 +252,10 @@ type gainsExecution struct {
 	hasForfeit       bool
 	lossAtTriggerPct float64
 	returnedUSD      float64
+	// isClose marks a leg that closed a position rather than opening one. The
+	// margin behind every close is the denominator of
+	// perp_liq_margin_destroyed_share_pct, and an open would double it.
+	isClose bool
 	// collateralIndex and the price the contract stamped on the event, which
 	// together make a historical price series for valuing past open interest
 	// at the price of its own day rather than at today's.
@@ -880,6 +884,7 @@ func decodeGainsTradeLeg(lg ethLog, kind gainsExecKind, decimals map[uint64]int)
 		hasForfeit:         hasForfeit,
 		lossAtTriggerPct:   -pct,
 		returnedUSD:        sentUSD,
+		isClose:            isClose,
 		collateralIndex:    colIdx.Uint64(),
 		collateralPriceUSD: colPxUSD,
 	}, true, nil
@@ -1222,4 +1227,42 @@ func (m *GainsMulti) CarriesPositionDetail() bool {
 		}
 	}
 	return len(m.chains) > 0
+}
+
+// FetchMarginClosed24hUSD sums the margin behind every position this deployment
+// closed on the asset in the trailing 24h: the take profits, stop losses,
+// liquidations and market closes already decoded by the same scan the numerator
+// comes from. Resizes carry a traded delta and no margin, so they are absent by
+// construction rather than excluded.
+func (g *Gains) FetchMarginClosed24hUSD(asset string) (float64, error) {
+	pairIdx, ok := gainsPairIndex[asset]
+	if !ok {
+		return 0, fmt.Errorf("gains: unsupported asset %q", asset)
+	}
+	if err := g.scan(); err != nil {
+		return 0, err
+	}
+	cutoff := time.Now().Add(-windowSpan).UnixMilli()
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	var total float64
+	for _, e := range g.execs {
+		if e.pair == pairIdx && e.tsMs >= cutoff && e.isClose && e.collateralUSD > 0 {
+			total += e.collateralUSD
+		}
+	}
+	return total, nil
+}
+
+// FetchMarginClosed24hUSD sums the deployments, as every other Gains figure does.
+func (m *GainsMulti) FetchMarginClosed24hUSD(asset string) (float64, error) {
+	var total float64
+	for _, c := range m.chains {
+		v, err := c.FetchMarginClosed24hUSD(asset)
+		if err != nil {
+			return 0, fmt.Errorf("gains/%s: %w", c.chain, err)
+		}
+		total += v
+	}
+	return total, nil
 }

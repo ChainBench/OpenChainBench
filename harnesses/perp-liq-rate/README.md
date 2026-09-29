@@ -65,7 +65,10 @@ perp_liq_collateral_forfeited_pct{venue,chain}
 perp_liq_loss_at_trigger_pct{venue,chain}
 perp_liq_collateral_returned_pct{venue,chain}
 perp_liq_forfeit_events{venue,chain}
+perp_liq_fee_and_carry_pct{venue,chain}
+perp_liq_margin_destroyed_share_pct{venue,chain}
 perp_liq_collateral_forfeited_by_leverage_pct{venue,chain,band}
+perp_liq_loss_at_trigger_by_leverage_pct{venue,chain,band}
 perp_liq_liquidations_by_leverage_count{venue,chain,band}
 perp_liq_venue_volume_24h_usd{venue,chain}
 perp_liq_share_of_volume_pct{venue,chain}
@@ -140,10 +143,11 @@ perp_realized_vol_24h_pct{chain}
   `perp_liq_collateral_forfeited_pct`, the margin destroyed *in excess of the
   loss the trader actually incurred*, computed per close and then published as
   the median of those, so it is **not** 100 minus the two medians beside it.
-  All three are medians over the same 24h window, taken independently, with
-  `perp_liq_forfeit_events` saying how many closes are behind them,
-  and `perp_liq_collateral_forfeited_by_leverage_pct` breaking the forfeit out
-  by leverage band beside its own count.
+  All three are medians, taken independently, over the closes between 10x and
+  100x, with `perp_liq_forfeit_events` saying how many are behind them. The whole
+  curve publishes per band as `perp_liq_collateral_forfeited_by_leverage_pct`,
+  `perp_liq_loss_at_trigger_by_leverage_pct` and
+  `perp_liq_liquidations_by_leverage_count`.
 
   On the first deploy the three shares fill in over a day rather than at once.
   A state file written before this change carries no forfeit detail, so the
@@ -158,28 +162,101 @@ perp_realized_vol_24h_pct{chain}
   included (`positionSource` in `common.go`). Ostium is regularly the first
   case: one BTC liquidation in the 24h to 2026-09-29, none on ETH or SOL.
 
-  Three of the eleven venues carry all three quantities. Measured 2026-09-29:
+  **Every cross-venue figure is computed inside a leverage band.** The forfeit
+  grows with leverage and the venues do not sell the same leverage, so a
+  venue-level median over everything is mostly a statement about a product
+  range. Observed on the liquidated positions themselves:
 
-  | venue | window | n | margin | returned, median | loss at trigger, median | forfeited, median |
+  | venue | n | p50 lev | p90 | max | above 100x | the venue allows |
   |---|---|---|---|---|---|---|
-  | gains, all pairs, Arbitrum | 3 d | 886 | $865,543 | 0.00% | 60.0% | **40.0 pts** |
-  | gmx, all markets | 24 h | 187 | $43,013 | 18.60% | 63.3% | **15.4 pts** |
-  | ostium, all pairs | 7 d | 91 | $16,984 | 0.00% | 79.2% | **20.8 pts** |
+  | gains (3 d, Arbitrum) | 876 | 91x | 500x | 803x | **45.1%** | 200x crypto, 500x degen, 1000x forex |
+  | gmx (7 d) | 1046 | 45x | 99.6x | 107x | 2.0% | nothing observed past 107x |
+  | ostium (30 d) | 383 | 66x | 100x | 200x | 0.5% | nothing observed past 200x |
 
-  Every figure in the last three columns is a **median over the closes**, and
-  the three are taken independently, so they do not add to 100: on the GMX row,
-  `100 - 63.3 - 18.60` is 18.1 and the median forfeit is 15.4. The subtraction
+  So the matrix, median loss at trigger and median forfeit with the count, bands
+  being (min, max]. A cell a venue does not trade is **absent**, never zero:
+
+  | band | gains n / loss / forfeit | gmx n / loss / forfeit | ostium n / loss / forfeit |
+  |---|---|---|---|
+  | 0-5x | 9 / 89.5% / 10.5 | 27 / 94.5% / 1.4 | 5 / 73.9% / 26.1 |
+  | 5-10x | 54 / 72.0% / 28.0 | 30 / 90.4% / 4.0 | 10 / 92.1% / 7.9 |
+  | 10-25x | 119 / 70.8% / **29.2** | 176 / 85.1% / **6.3** | 71 / 95.1% / **4.9** |
+  | 25-50x | 111 / 68.7% / **31.3** | 482 / 63.0% / **15.0** | 84 / 87.7% / **12.3** |
+  | 50-100x | 188 / 58.7% / **41.3** | 310 / 53.4% / **24.1** | 211 / 78.0% / **22.0** |
+  | 100-200x | 151 / 60.0% / 40.0 | 21 / 47.0% / 27.6 | 2 / 72.0% / 28.0 |
+  | 200x+ | 244 / 58.7% / 41.3 | absent | absent |
+
+  **Gains is still worse inside the overlap, by a factor rather than a margin.**
+  Restricted to the 10x to 100x range all three offer: Gains 32.8 points on 418
+  closes, GMX 16.0 on 968, Ostium 18.3 on 366. The leverage mix accounts for 7.2
+  of the 24-point venue-level gap (40.0 against 15.7) and the remaining 17
+  points are the venue. The mechanism is the loss at trigger, and it runs the
+  other way from the intuition: at 10-25x Gains closes a position once the price
+  has taken 70.8% of its margin, GMX at 85.1% and Ostium at 95.1%. Closing
+  earlier leaves more margin behind, and Gains returns none of it (0.00% on all
+  876) while GMX pays back a median 19.3% in the same range.
+
+  The venue-level gauges therefore publish the **10x to 100x** figure only
+  (`comparableLeverageMin`/`Max` in `window.go`). The full curve publishes per
+  band on the metrics endpoint. Each figure is a median over the closes and the
+  three are taken independently, so they do not add to 100: on GMX,
+  `100 - 62.6 - 19.29` is 18.1 against a median forfeit of 16.0. The subtraction
   happens per close, in `windowEntry.forfeit()`, and a median is not linear.
-  Aggregate shares, for the same three windows, are a different statistic and
-  read $0 of $865,543 returned on Gains, $4,827 of $42,980 (11.2%) on GMX and
-  $0 of $16,984 on Ostium.
 
-  By leverage band on the Gains window: 0-10x n=64 forfeit 26.3 pts, 10-25x
-  n=120 29.3, 25-50x n=112 31.8, 50-100x n=191 41.6, 100x+ n=399 40.9. The
-  forfeit *grows* with leverage, because a position opened at 100x is closed
-  after a smaller move and so less of its margin has gone to the price by the
-  time the venue takes the rest. That is the single most useful line here for a
-  trader picking a leverage.
+  **The forfeit is not a penalty on its own, and where the feed says so it is
+  split.** All three venues define their loss figure as the price move times the
+  leverage, so the forfeit also holds the closing fee, the funding and the
+  rollover, which a trader pays on any close. `perp_liq_fee_and_carry_pct`
+  itemises that part:
+
+  | venue | band | forfeit | liquidation fee | trade fee | carry | impact |
+  |---|---|---|---|---|---|---|
+  | gmx | 10-25x | 6.3 | 4.8 | 0.8 | 0.2 | 0.3 |
+  | gmx | 50-100x | 24.1 | 19.7 | 4.0 | 0.0 | 0.6 |
+  | gmx | all | 15.7 | 12.0 | 2.0 | 0.1 | 0.5 |
+  | ostium | 50-100x | 22.0 | 15.2 (residual) | 6.4 | 0.3 | n/a |
+  | ostium | all | 18.3 | 14.3 (residual) | 3.8 | 0.1 | n/a |
+
+  GMX itemises all of it (`positionFeeAmount`, `borrowingFeeAmount`,
+  `fundingFeeAmount` beside its own `liquidationFeeAmount`, which is excluded
+  from the fee figure on purpose). Ostium carries `devFee`, `vaultFee`,
+  `oracleFee`, `funding` and `rollover`, but they are lifetime figures on the
+  trade rather than the close's own, so they bound the fee part from below and
+  the residual is the venue's liquidation claim.
+
+  **The Gains event carries no fee word at all**, so its forfeit cannot be split
+  from the event and its `perp_liq_fee_and_carry_pct` cell is absent rather than
+  zero. Its own stop losses bound it instead, carrying no liquidation penalty
+  over the same window and the same bands:
+
+  | band | liq forfeit | stop-loss forfeit | difference |
+  |---|---|---|---|
+  | 0-5x | 10.5 (n=9) | 0.9 (n=34) | 9.7 |
+  | 5-10x | 28.0 (n=54) | 1.4 (n=71) | 26.5 |
+  | 10-25x | 29.2 (n=119) | 2.0 (n=100) | 27.2 |
+  | 25-50x | 31.3 (n=111) | 4.0 (n=72) | 27.3 |
+  | 50-100x | 41.3 (n=188) | 8.0 (n=62) | 33.3 |
+  | 100-200x | 40.0 (n=151) | 12.8 (n=39) | 27.2 |
+  | 200x+ | 41.3 (n=244) | 20.6 (n=64) | 20.7 |
+
+  Fees and carry on a Gains close run from 0.9 points at 0-5x to 20.6 above
+  200x, scaling with notional as they should, and the liquidation-specific
+  excess is about 27 points across most of the curve. The caveat is that stop
+  losses are not the same positions: matching on the leverage band controls the
+  fee-on-notional part and not the holding period.
+
+  **The notional rate has the same problem, and the margin rate does not.**
+  `perp_liq_rate_24h_pct` and `perp_liq_share_of_volume_pct` are both notional
+  over notional, so they scale with the leverage a venue sells.
+  `perp_liq_margin_destroyed_share_pct` is margin destroyed over the margin
+  behind every position the venue closed in the window: both halves are money
+  the trader posted, so leverage cancels. Measured 2026-09-29: GMX $337,015 of
+  $30,945,285 over 7 days, **1.09%**, split across market decrease $25.36M,
+  limit decrease $2.19M, stop loss $3.06M and liquidation $0.34M; Ostium $54,920
+  of $3,984,471 over 30 days, **1.38%**. The Gains figure comes off the same
+  scan as its numerator (`MarketExecuted` and `LimitExecuted` close legs) and is
+  not yet measured against live data, because the keyed Arbitrum RPC was in use
+  by another scan when this landed.
 
   Where the quantities come from, and what was checked against the chain rather
   than against this harness:

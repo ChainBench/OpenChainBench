@@ -110,7 +110,8 @@ func TestGMXForfeit_GoldenLiquidationRow(t *testing.T) {
 
 	w := NewSlidingWindow(windowSpan)
 	w.AddEvent(e)
-	forf, loss, ret, n := w.ForfeitStats()
+	s := w.ForfeitStats()
+	forf, loss, ret, n := s.Forfeited, s.Loss, s.Returned, s.N
 	if n != 1 {
 		t.Fatalf("window counted %d forfeit events, want 1", n)
 	}
@@ -168,7 +169,7 @@ func TestGMXForfeit_RowWithoutPositionFieldsPublishesNotionalOnly(t *testing.T) 
 	}
 	w := NewSlidingWindow(windowSpan)
 	w.AddEvent(evs[0])
-	if _, _, _, n := w.ForfeitStats(); n != 0 {
+	if n := w.ForfeitStats().N; n != 0 {
 		t.Fatalf("window counted %d forfeit events, want 0", n)
 	}
 }
@@ -202,5 +203,107 @@ func TestGMXForfeit_VolumeQueryKeepsItsFieldListNarrow(t *testing.T) {
 		if !strings.Contains(gmxFieldsPosition, f) {
 			t.Fatalf("the liquidation selection is missing %s", f)
 		}
+	}
+}
+
+// GMX is the one feed here that itemises its own liquidation penalty apart from
+// the costs a trader pays on any close, so the forfeit can be split rather than
+// published as if it were all penalty. On the golden row: positionFeeAmount
+// 0.770355 + borrowingFeeAmount 0.066294 + fundingFeeAmount 0 is 0.836649 USDC,
+// and liquidationFeeAmount 3.851779 is deliberately not in that sum.
+func TestGMXForfeit_FeeSplitExcludesTheLiquidationPenalty(t *testing.T) {
+	const market = "0xBcb8FE13d02b023e8f94f6881Cc0192fd918A5C0"
+	row := gmxGoldenLiquidationRow(market)
+	row["positionFeeAmount"] = "770355"
+	row["liquidationFeeAmount"] = "3851779"
+	row["borrowingFeeAmount"] = "66294"
+	row["fundingFeeAmount"] = "0"
+	g, done := gmxLiqSquid(t, market, []map[string]any{row})
+	defer done()
+
+	evs, err := g.FetchLiquidationsSince("ETH", 1790600000000)
+	if err != nil || len(evs) != 1 {
+		t.Fatalf("fetch (%d events): %v", len(evs), err)
+	}
+	e := evs[0]
+	if !e.HasFeeSplit {
+		t.Fatal("a row carrying the fee itemisation must carry the split")
+	}
+	if math.Abs(e.FeeAndCarryUSD-0.83662) > 0.001 {
+		t.Fatalf("fee and carry = %.6f, want 0.83662 (0.770355 + 0.066294 at 0.999971)", e.FeeAndCarryUSD)
+	}
+	// The liquidation fee is the venue's penalty, so it must not be in there:
+	// including it would put 4.688 in the field and leave the penalty reading
+	// as if the trader had incurred it.
+	if e.FeeAndCarryUSD > 1.0 {
+		t.Fatalf("fee and carry = %.6f; the 3.851779 liquidation fee has leaked in", e.FeeAndCarryUSD)
+	}
+	// 0.83662 of 39.5110 is 2.12 points of margin, against a forfeit of 12.51:
+	// the rest is the penalty.
+	w := NewSlidingWindow(windowSpan)
+	e.Leverage = 32.49 // inside the comparable range
+	w.AddEvent(e)
+	s := w.ForfeitStats()
+	if !s.HasFeeSplit {
+		t.Fatal("the window should carry the fee share")
+	}
+	if math.Abs(s.FeeAndCarry-2.117) > 0.01 {
+		t.Fatalf("fee share = %.3f%%, want 2.117%%", s.FeeAndCarry)
+	}
+	if s.Forfeited <= s.FeeAndCarry {
+		t.Fatalf("forfeit %.2f is not above the fee share %.2f, so nothing is left for the penalty",
+			s.Forfeited, s.FeeAndCarry)
+	}
+}
+
+// A row with no fee itemisation carries no split, and the window then publishes
+// no fee share rather than a zero that would read as "all of the forfeit is the
+// venue's penalty".
+func TestGMXForfeit_NoFeeItemisationMeansNoSplit(t *testing.T) {
+	const market = "0xBcb8FE13d02b023e8f94f6881Cc0192fd918A5C0"
+	g, done := gmxLiqSquid(t, market, []map[string]any{gmxGoldenLiquidationRow(market)})
+	defer done()
+	evs, err := g.FetchLiquidationsSince("ETH", 1790600000000)
+	if err != nil || len(evs) != 1 {
+		t.Fatalf("fetch (%d events): %v", len(evs), err)
+	}
+	if evs[0].HasFeeSplit {
+		t.Fatal("a row with no fee fields should carry no split")
+	}
+	w := NewSlidingWindow(windowSpan)
+	e := evs[0]
+	e.Leverage = 32.49
+	w.AddEvent(e)
+	if w.ForfeitStats().HasFeeSplit {
+		t.Fatal("the window should publish no fee share")
+	}
+}
+
+// The margin denominator asks for the collateral and nothing else: it pages four
+// order types and a wide field list is how the squid's size refusal arrives.
+func TestGMXForfeit_MarginFieldListIsNarrow(t *testing.T) {
+	for _, f := range []string{"basePnlUsd", "pnlUsd", "positionFeeAmount", "sizeDeltaUsd"} {
+		if strings.Contains(gmxFieldsMargin, f) {
+			t.Fatalf("the margin selection should not ask for %s", f)
+		}
+	}
+	for _, f := range []string{"initialCollateralDeltaAmount", "collateralTokenPriceMin"} {
+		if !strings.Contains(gmxFieldsMargin, f) {
+			t.Fatalf("the margin selection is missing %s", f)
+		}
+	}
+	// Liquidation is one of the closes, so the denominator contains the
+	// numerator's own margin and the share cannot exceed 100%.
+	found := false
+	for _, ot := range gmxDecreaseOrderTypes {
+		if ot == gmxOrderTypeLiquidation {
+			found = true
+		}
+		if ot < 4 {
+			t.Fatalf("orderType %d is not a close", ot)
+		}
+	}
+	if !found {
+		t.Fatal("the closes must include liquidations, or the share can exceed 100%")
 	}
 }

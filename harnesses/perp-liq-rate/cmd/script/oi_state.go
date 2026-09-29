@@ -59,6 +59,11 @@ type liqEntry struct {
 	HasForfeit  bool    `json:"f,omitempty"`
 	LossPct     float64 `json:"lp,omitempty"`
 	ReturnedUSD float64 `json:"r,omitempty"`
+	// The itemised fee part of the forfeit, where the feed splits it, under its
+	// own flag for the same reason as HasForfeit: a fee share of zero is a real
+	// reading on GMX's smallest positions.
+	HasFeeSplit    bool    `json:"fs,omitempty"`
+	FeeAndCarryUSD float64 `json:"fc,omitempty"`
 }
 
 // oiStateFile is the whole file: both windows of every pair, keyed
@@ -159,7 +164,8 @@ func (s *oiStateStore) restoreLiq(venue, asset string, st *pairState, nowMs int6
 		st.seen.Add(e.Key, e.TsMs)
 		st.window.AddEvent(LiqEvent{Key: e.Key, TimestampMs: e.TsMs, NotionalUSD: e.Notional,
 			CollateralUSD: e.Collateral, Leverage: e.Leverage,
-			HasForfeitDetail: e.HasForfeit, LossAtTriggerPct: e.LossPct, ReturnedUSD: e.ReturnedUSD})
+			HasForfeitDetail: e.HasForfeit, LossAtTriggerPct: e.LossPct, ReturnedUSD: e.ReturnedUSD,
+			HasFeeSplit: e.HasFeeSplit, FeeAndCarryUSD: e.FeeAndCarryUSD})
 		n++
 	}
 	return n
@@ -190,7 +196,8 @@ func (s *oiStateStore) save(pairs []*pairRuntime, now time.Time) {
 			for _, e := range entries {
 				out = append(out, liqEntry{Key: e.key, TsMs: e.tsMs, Notional: e.notional,
 					Collateral: e.collateral, Leverage: e.leverage,
-					HasForfeit: e.hasForfeit, LossPct: e.lossPct, ReturnedUSD: e.returnedUSD})
+					HasForfeit: e.hasForfeit, LossPct: e.lossPct, ReturnedUSD: e.returnedUSD,
+					HasFeeSplit: e.hasFeeSplit, FeeAndCarryUSD: e.feeAndCarryUSD})
 			}
 			f.Liq[key] = out
 		}

@@ -54,6 +54,16 @@ type LiqEvent struct {
 	// ReturnedUSD is the margin that went back to the trader out of the
 	// forced close, in USD.
 	ReturnedUSD float64
+	// HasFeeSplit and FeeAndCarryUSD carry the part of the forfeit the feed
+	// itemises as trading fees and carry, as opposed to the venue's own
+	// liquidation penalty. The distinction matters because a fee is a cost the
+	// trader incurred and a penalty is not, and publishing one as the other
+	// would be a claim about the venue that the data does not make. GMX
+	// itemises all of it and Ostium most of it; the Gains event carries no fee
+	// word, so its forfeit cannot be split from the event and the flag is
+	// false.
+	HasFeeSplit    bool
+	FeeAndCarryUSD float64
 	// Bucket marks a figure that is still growing: an aggregator's hourly
 	// total, re-read on every tick while its hour is open. The runner
 	// replaces the stored value for such a key instead of discarding the
@@ -111,6 +121,30 @@ type positionSource interface {
 func carriesPositionDetail(s Source) bool {
 	ps, ok := s.(positionSource)
 	return ok && ps.CarriesPositionDetail()
+}
+
+// marginClosedSource is implemented by the venues that can report the margin
+// behind every position they closed in the window, which is the denominator of
+// the leverage-neutral rate. It is the same three that carry the position: a
+// feed that cannot say what margin backed a liquidation cannot say what margin
+// backed a voluntary close either.
+type marginClosedSource interface {
+	FetchMarginClosed24hUSD(asset string) (float64, error)
+}
+
+// marginClosed24h reads that denominator when the source exposes one. The second
+// return says whether the source has one at all, which is reported differently
+// from a read that failed.
+func marginClosed24h(s Source, asset string) (float64, bool, error) {
+	ms, ok := s.(marginClosedSource)
+	if !ok {
+		return 0, false, nil
+	}
+	v, err := ms.FetchMarginClosed24hUSD(asset)
+	if err != nil {
+		return 0, true, err
+	}
+	return v, true, nil
 }
 
 // venueVolume24h reads the venue's own 24h traded notional when the source
