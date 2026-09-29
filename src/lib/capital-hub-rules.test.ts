@@ -18,6 +18,7 @@ import {
   naLegend,
   naMarker,
   plainCell,
+  printedValue,
   signalOf,
   signalRowNote,
   isDust,
@@ -273,5 +274,27 @@ describe("columnIsWorthShowing", () => {
     const half = Array.from({ length: 10 }, (_, i) => ({ v: i < 5 ? 1 : null }));
     expect(columnIsWorthShowing(half, (r) => r.v)).toBe(true);
     expect(columnIsWorthShowing([], (r: { v: number | null }) => r.v)).toBe(false);
+  });
+  test("a cohort column counts its muted out-of-cohort values, so 38 ranked plus 20 muted of 63 is a full column", () => {
+    // The chain fees column: ranked on the bench's 38, the daily history's
+    // value on 20 more, nothing on 5. A null check on the ranked field alone
+    // would read 38/63 and drop a column that covers 92% of the rows.
+    const rows = Array.from({ length: 63 }, (_, i) => ({
+      ranked: i < 38 ? 1e6 : null,
+      outside: i >= 38 && i < 58 ? 2e6 : null,
+    }));
+    expect(columnIsWorthShowing(rows, (r) => r.ranked)).toBe(true);
+    expect(columnIsWorthShowing(rows, (r) => printedValue(r.ranked, r.outside))).toBe(true);
+    expect(rows.filter((r) => printedValue(r.ranked, r.outside) != null).length).toBe(58);
+    // Net USDC over CCTP: 7 of 63, no muted fallback. Not a column.
+    const cctp = Array.from({ length: 63 }, (_, i) => ({ ranked: i < 7 ? 1e6 : null, outside: null }));
+    expect(columnIsWorthShowing(cctp, (r) => printedValue(r.ranked, r.outside))).toBe(false);
+  });
+  test("printedValue takes the ranked value first, then the muted one, then nothing", () => {
+    expect(printedValue(5, 9)).toBe(5);
+    expect(printedValue(null, 9)).toBe(9);
+    expect(printedValue(null, null)).toBeNull();
+    expect(printedValue(Number.NaN, 9)).toBe(9);
+    expect(printedValue(0, 9)).toBe(0);
   });
 });

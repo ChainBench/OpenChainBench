@@ -39,6 +39,7 @@ import {
   naLegend,
   naMarker,
   plainCell,
+  printedValue,
   sevenDaySubline,
   signalRowNote,
   type CohortCell,
@@ -313,48 +314,67 @@ export function capitalHubMarkdown(hub: CapitalHub): string {
   if (hub.chains.length > 0) {
     md.push(`## Chains: TVL, bridged value, stablecoin flows`);
     md.push("");
-    const hasCctp = hub.chains.some((c) => c.cctpNet7d != null);
-    const hasFees = hub.chains.some((c) => c.fees30d != null || c.fees30dOutside != null);
+    // Same coverage rule as the HTML: an optional column needs half the cohort
+    // on the value that would print. Net USDC over CCTP covers 7 of 63 and gets
+    // its own block below instead of a column of markers.
+    const hasTvl = columnIsWorthShowing(hub.chains, (c) => c.tvl);
+    const hasBridged = columnIsWorthShowing(hub.chains, (c) => c.bridgedTvl);
+    const has7dMedian = columnIsWorthShowing(hub.chains, (c) => c.excess7dPct);
+    const hasFloat = columnIsWorthShowing(hub.chains, (c) => c.stablesFloat);
+    const hasNetStables = columnIsWorthShowing(hub.chains, (c) => printedValue(c.stablesNet30d, c.stablesNet30dOutside));
+    const hasDex = columnIsWorthShowing(hub.chains, (c) => c.dexVolume24h);
+    const hasFees = columnIsWorthShowing(hub.chains, (c) => printedValue(c.fees30d, c.fees30dOutside));
+    const hasRevenue = columnIsWorthShowing(hub.chains, (c) => printedValue(c.revenue30d, c.revenue30dOutside));
     // Same rules as the table: history-fed columns appear once they carry
     // values; "-" means the bench does not cover the row (an L1 on the
     // L2Beat cohort, a chain with no CCTP domain), n/a means missing data,
     // "<$1K" a DeFiLlama zero for an untracked chain, "*" a value for a
     // chain outside the ranked cohort.
-    // Same markers as the HTML legend, in the same column order.
+    // Same markers as the HTML legend, in the same column order, and only for
+    // the columns this table actually renders.
     const chainLegend = naLegend([
-      ...hub.chains.map((c) => c.notApplicable.bridged),
-      ...hub.chains.map((c) => c.notApplicable.stables),
-      ...(hasCctp ? hub.chains.map((c) => c.notApplicable.cctp) : []),
-      ...(hasFees ? hub.chains.map((c) => c.notApplicable.fees) : []),
+      ...(hasBridged || has7dMedian ? hub.chains.map((c) => c.notApplicable.bridged) : []),
+      ...(hasNetStables ? hub.chains.map((c) => c.notApplicable.stables) : []),
+      ...(hasFees || hasRevenue ? hub.chains.map((c) => c.notApplicable.fees) : []),
     ]);
     const naMd = (reason: string | undefined) => (reason ? `-[${naMarker(chainLegend, reason)}]` : "n/a");
     const cols: { h: string; v: (c: Chain) => string }[] = [
-      ...(hub.chains.some((c) => c.tvl != null) ? [{ h: "TVL", v: (c: Chain) => fmtUsdLevel(c.tvl) }] : []),
-      {
-        h: "Bridged value",
-        v: (c) => {
-          if (!c.inBridgedCohort) return naMd(c.notApplicable.bridged);
-          const sub = bridgedShareSubline(c.bridgedSharePct);
-          return sub ? `${capUsd(c.bridgedTvl)} (${sub})` : capUsd(c.bridgedTvl);
-        },
-      },
-      {
-        h: "7d vs L2 median",
-        v: (c) => {
-          if (!c.inBridgedCohort) return naMd(c.notApplicable.bridged);
-          const sub = sevenDaySubline(c.change7dPct, c.median7dPct);
-          return sub ? `${capPct(c.excess7dPct)} (${sub})` : capPct(c.excess7dPct);
-        },
-      },
-      { h: "Stablecoin float", v: (c) => fmtUsdLevel(c.stablesFloat) },
-      {
-        h: "Net stables 30d",
-        v: (c) => cohortMd(cohortCell(c.inStablesCohort, c.stablesNet30d, c.stablesNet30dOutside, c.notApplicable.stables ?? null), capUsd, chainLegend),
-      },
-      ...(hasCctp
-        ? [{ h: "USDC over CCTP 7d", v: (c: Chain) => (c.cctpScope === "scanned" ? capUsd(c.cctpNet7d) : naMd(c.notApplicable.cctp)) }]
+      ...(hasTvl ? [{ h: "TVL", v: (c: Chain) => fmtUsdLevel(c.tvl) }] : []),
+      ...(hasBridged
+        ? [
+            {
+              h: "Bridged value",
+              v: (c: Chain) => {
+                if (!c.inBridgedCohort) return naMd(c.notApplicable.bridged);
+                const sub = bridgedShareSubline(c.bridgedSharePct);
+                return sub ? `${capUsd(c.bridgedTvl)} (${sub})` : capUsd(c.bridgedTvl);
+              },
+            },
+          ]
         : []),
-      ...(hub.chains.some((c) => c.dexVolume24h != null) ? [{ h: "DEX volume 24h", v: (c: Chain) => fmtUsdLevel(c.dexVolume24h) }] : []),
+      ...(has7dMedian
+        ? [
+            {
+              h: "7d vs L2 median",
+              v: (c: Chain) => {
+                if (!c.inBridgedCohort) return naMd(c.notApplicable.bridged);
+                const sub = sevenDaySubline(c.change7dPct, c.median7dPct);
+                return sub ? `${capPct(c.excess7dPct)} (${sub})` : capPct(c.excess7dPct);
+              },
+            },
+          ]
+        : []),
+      ...(hasFloat ? [{ h: "Stablecoin float", v: (c: Chain) => fmtUsdLevel(c.stablesFloat) }] : []),
+      ...(hasNetStables
+        ? [
+            {
+              h: "Net stables 30d",
+              v: (c: Chain) =>
+                cohortMd(cohortCell(c.inStablesCohort, c.stablesNet30d, c.stablesNet30dOutside, c.notApplicable.stables ?? null), capUsd, chainLegend),
+            },
+          ]
+        : []),
+      ...(hasDex ? [{ h: "DEX volume 24h", v: (c: Chain) => fmtUsdLevel(c.dexVolume24h) }] : []),
       ...(hasFees
         ? [
             {
@@ -363,7 +383,7 @@ export function capitalHubMarkdown(hub: CapitalHub): string {
             },
           ]
         : []),
-      ...(hasFees
+      ...(hasRevenue
         ? [
             {
               h: "Revenue 30d",
@@ -388,6 +408,25 @@ export function capitalHubMarkdown(hub: CapitalHub): string {
     md.push(`Legend: ${legend.join("; ")}.`);
     md.push("");
     reading(CAPITAL_READING.chains);
+    // Its own block, not a column: bench 281 scans seven chains as CCTP
+    // sources, too narrow for a column on a 63-row table.
+    const cctpRows = hub.chains.filter((c) => c.cctpScope === "scanned" && c.cctpNet7d != null);
+    if (cctpRows.length > 0) {
+      md.push(`### Net USDC over Circle CCTP, 7 days, on the ${cctpRows.length} chains the bench scans as sources`);
+      md.push("");
+      md.push(`| # | Chain | Net 7d | In 7d | Out 7d |`);
+      md.push(`|---|---|---|---|---|`);
+      [...cctpRows]
+        .sort((a, b) => (b.cctpNet7d ?? 0) - (a.cctpNet7d ?? 0))
+        .forEach((c, i) => {
+          md.push(`| ${i + 1} | ${c.name} | ${capUsd(c.cctpNet7d)} | ${capUsd(c.cctpIn7d)} | ${capUsd(c.cctpOut7d)} |`);
+        });
+      md.push("");
+      md.push(
+        `Circle CCTP burn and mint events read from public RPCs, bench ${SITE.url}/benchmarks/usdc-corridor-flows. One bridge's ledger over one stablecoin, not total cross-chain flow: the Net stables 30d column above is the bridge-agnostic reading, and a chain absent here either has no CCTP domain or is not scanned as a source.`,
+      );
+      md.push("");
+    }
   }
   if (hub.pmOi.length > 0 || hub.perpOi.length > 0) {
     md.push(`## Open interest`);

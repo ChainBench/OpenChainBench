@@ -142,6 +142,17 @@ export function cohortCell(
   return naReason ? { kind: "na", reason: naReason } : { kind: "unknown" };
 }
 
+/**
+ * The number a cohort-gated column would actually print for a row: the ranked
+ * value, else the muted out-of-cohort one. What `columnIsWorthShowing` has to
+ * count, because a column at 38 ranked plus 20 muted is a full column and a
+ * naive null check on the ranked field alone would drop it.
+ */
+export function printedValue(ranked: number | null, outside: number | null): number | null {
+  if (ranked != null && Number.isFinite(ranked)) return ranked;
+  return outside != null && Number.isFinite(outside) ? outside : null;
+}
+
 /** A value the column does carry, or the reason it never will, or unknown. */
 export function plainCell(value: number | null, naReason: string | null): CohortCell {
   if (value != null && Number.isFinite(value)) return { kind: "value", value };
@@ -461,9 +472,15 @@ export function signalRowNote(r: {
 /**
  * Whether an optional column is worth a place in the table: at least half the
  * rows carry a value. A column filled for two rows of seventy-nine paints the
- * table with n/a and says nothing (the owner's note on the first hub draft),
- * so a source still filling in, or one a rate limit keeps mostly empty, stays
- * hidden until it covers the cohort.
+ * table with empty cells and says nothing (the owner's note on the first hub
+ * draft), so a source still filling in, or one a rate limit keeps mostly
+ * empty, stays hidden until it covers the cohort.
+ *
+ * Every optional column of the chains table goes through this, on the value
+ * that would actually print (`printedValue`), so a column like net USDC over
+ * CCTP at 7 of 63 cannot paint 56 markers across a wide table again. A
+ * reading that does not cover the cohort is not deleted, it is rendered as
+ * its own block over the rows it does cover.
  */
 export const COLUMN_COVERAGE = 0.5;
 

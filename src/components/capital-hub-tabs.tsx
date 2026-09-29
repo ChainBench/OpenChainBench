@@ -32,6 +32,7 @@ import {
   naLegend,
   naMarker,
   plainCell,
+  printedValue,
   sevenDaySubline,
   signalRowNote,
   type CohortCell,
@@ -54,6 +55,10 @@ export function CapitalHubTabs({ hub }: { hub: CapitalHub }) {
   const hasCapital = hub.chains.length > 0 || hub.pmOi.length > 0 || hub.perpOi.length > 0;
   const hasValuation = hub.protocols.length > 0 || hub.perps.length > 0;
   const [tab, setTab] = useState<Tab>(hasCapital ? "capital" : "valuation");
+  // Bench 281 scans seven chains as CCTP sources. That is a real capital-flow
+  // reading and too narrow for a column on a 63-row table, so it gets its own
+  // block over the chains it covers instead of 56 markers across the page.
+  const cctpRows = hub.chains.filter((c) => c.cctpScope === "scanned" && c.cctpNet7d != null);
 
   return (
     <>
@@ -81,6 +86,7 @@ export function CapitalHubTabs({ hub }: { hub: CapitalHub }) {
           {hub.chains.length > 0 && <ChainsTable rows={hub.chains} />}
           {hub.chains.length > 0 && <Reading lines={CAPITAL_READING.chains} />}
           {hub.stableFlowShares.length > 0 && <FlowBar shares={hub.stableFlowShares} />}
+          {cctpRows.length > 0 && <CctpTable rows={cctpRows} />}
           {(hub.perpOi.length > 0 || hub.pmOi.length > 0) && (
             <>
               <h2 className="label-mono text-ink-muted mt-10 mb-3">Open interest: perp DEXes and prediction markets</h2>
@@ -218,24 +224,31 @@ function chainSortValue(key: keyof ChainRow, v: unknown): number | null {
 }
 
 function ChainsTable({ rows }: { rows: ChainRow[] }) {
-  // Columns fed by the daily history blob stay hidden until it carries
-  // values, instead of a wall of empty cells on the first days.
-  const hasTvl = rows.some((r) => r.tvl != null);
-  const hasDex = rows.some((r) => r.dexVolume24h != null);
-  const hasFees = rows.some((r) => r.fees30d != null || r.fees30dOutside != null);
-  const hasCctp = rows.some((r) => r.cctpNet7d != null);
+  // Every optional column has to cover at least half the cohort, counting a
+  // muted out-of-cohort figure as covered. A column that does not is not a
+  // column: net USDC over CCTP covers 7 of 63 chains and was painting 56
+  // markers across the widest table on the page, which reads as a broken
+  // table whatever the legend says. It now has its own block underneath
+  // (CctpTable) over the seven chains it does cover.
+  const hasTvl = columnIsWorthShowing(rows, (r) => r.tvl);
+  const hasBridged = columnIsWorthShowing(rows, (r) => r.bridgedTvl);
+  const has7dMedian = columnIsWorthShowing(rows, (r) => r.excess7dPct);
+  const hasFloat = columnIsWorthShowing(rows, (r) => r.stablesFloat);
+  const hasNetStables = columnIsWorthShowing(rows, (r) => printedValue(r.stablesNet30d, r.stablesNet30dOutside));
+  const hasDex = columnIsWorthShowing(rows, (r) => r.dexVolume24h);
+  const hasFees = columnIsWorthShowing(rows, (r) => printedValue(r.fees30d, r.fees30dOutside));
+  const hasRevenue = columnIsWorthShowing(rows, (r) => printedValue(r.revenue30d, r.revenue30dOutside));
   const { sorted, key, dir, toggle } = useSorted(rows, hasTvl ? "tvl" : "stablesFloat", "desc", chainSortValue);
-  // One marker per distinct "does not apply" reason the cells carry, in the
-  // order the columns present them, so the legend reads left to right.
+  // One marker per distinct "does not apply" reason the rendered cells carry,
+  // in the order the columns present them, so the legend reads left to right.
   const legend = useMemo(
     () =>
       naLegend([
-        ...rows.map((r) => r.notApplicable.bridged),
-        ...rows.map((r) => r.notApplicable.stables),
-        ...(hasCctp ? rows.map((r) => r.notApplicable.cctp) : []),
-        ...(hasFees ? rows.map((r) => r.notApplicable.fees) : []),
+        ...(hasBridged || has7dMedian ? rows.map((r) => r.notApplicable.bridged) : []),
+        ...(hasNetStables ? rows.map((r) => r.notApplicable.stables) : []),
+        ...(hasFees || hasRevenue ? rows.map((r) => r.notApplicable.fees) : []),
       ]),
-    [rows, hasCctp, hasFees],
+    [rows, hasBridged, has7dMedian, hasNetStables, hasFees, hasRevenue],
   );
   const col = (k: keyof ChainRow, label: string, title?: string, defaultDir: "desc" | "asc" = "desc") => (
     <ThSort active={key === k} dir={dir} onClick={() => toggle(k, defaultDir)} title={title}>
@@ -251,14 +264,13 @@ function ChainsTable({ rows }: { rows: ChainRow[] }) {
               <Th>#</Th>
               <Th>Chain</Th>
               {hasTvl && col("tvl", "TVL", "DeFi TVL on the chain (DeFiLlama), latest daily point")}
-              {col("bridgedTvl", "Bridged value", "Value secured that arrived from another chain, canonical plus external (L2Beat)")}
-              {col("excess7dPct", "7d vs L2 median", "Weekly move of value secured minus the median move across L2Beat projects above $200M")}
-              {col("stablesFloat", "Stablecoin float", "Pegged-USD circulating on the chain, every issuer (DeFiLlama)")}
-              {col("stablesNet30d", "Net stables 30d", "Dollar change of the stablecoin float over 30 days; muted for a chain outside the ranked cohort")}
-              {hasCctp && col("cctpNet7d", "USDC over CCTP 7d", "Net USDC that entered the chain over Circle CCTP in 7 days, burn events on seven EVM chains (bench 281); a dash for a chain the bench does not scan")}
+              {hasBridged && col("bridgedTvl", "Bridged value", "Value secured that arrived from another chain, canonical plus external (L2Beat)")}
+              {has7dMedian && col("excess7dPct", "7d vs L2 median", "Weekly move of value secured minus the median move across L2Beat projects above $200M")}
+              {hasFloat && col("stablesFloat", "Stablecoin float", "Pegged-USD circulating on the chain, every issuer (DeFiLlama)")}
+              {hasNetStables && col("stablesNet30d", "Net stables 30d", "Dollar change of the stablecoin float over 30 days; muted for a chain outside the ranked cohort")}
               {hasDex && col("dexVolume24h", "DEX volume 24h", "DEX volume on the chain over the trailing 24 hours (DeFiLlama)")}
               {hasFees && col("fees30d", "Fees 30d", "Fees users paid on the chain over 30 closed days: gas plus every protocol DeFiLlama tracks on it (bench 280); muted for a chain outside the ranked cohort")}
-              {hasFees && col("revenue30d", "Revenue 30d", "Revenue the chain and its protocols kept out of those fees, per each DeFiLlama adapter")}
+              {hasRevenue && col("revenue30d", "Revenue 30d", "Revenue the chain and its protocols kept out of those fees, per each DeFiLlama adapter")}
             </tr>
           </thead>
           <tbody>
@@ -289,45 +301,38 @@ function ChainsTable({ rows }: { rows: ChainRow[] }) {
                     why (Ethereum is the chain the bridges start from, the rest
                     are L1s with no host chain), so a plain "n/a" keeps meaning
                     "the feed has no value", not "there is nothing to measure". */}
-                {r.inBridgedCohort ? (
-                  <Td mono>
-                    {fmtUsdShort(r.bridgedTvl)}
-                    {bridgedShareSubline(r.bridgedSharePct) && <Sub>{bridgedShareSubline(r.bridgedSharePct)}</Sub>}
-                  </Td>
-                ) : (
-                  <NaTd reason={r.notApplicable.bridged} legend={legend} />
-                )}
-                {r.inBridgedCohort ? (
-                  <Td mono>
-                    <Signed v={r.excess7dPct} fmt={(v) => fmtPct(v)} />
-                    {sevenDaySubline(r.change7dPct, r.median7dPct) && <Sub>{sevenDaySubline(r.change7dPct, r.median7dPct)}</Sub>}
-                  </Td>
-                ) : (
-                  <NaTd reason={r.notApplicable.bridged} legend={legend} />
-                )}
-                <Td mono>
-                  <Level v={r.stablesFloat} />
-                </Td>
-                <CohortTd
-                  cell={cohortCell(r.inStablesCohort, r.stablesNet30d, r.stablesNet30dOutside, r.notApplicable.stables ?? null)}
-                  legend={legend}
-                  signed
-                  fmt={fmtUsdShort}
-                  sub={r.stablesChange30dPct != null ? fmtPct(r.stablesChange30dPct) : null}
-                />
-                {hasCctp &&
-                  (r.cctpScope === "scanned" ? (
+                {hasBridged &&
+                  (r.inBridgedCohort ? (
                     <Td mono>
-                      <Signed v={r.cctpNet7d} fmt={(v) => fmtUsdShort(v)} />
-                      {r.cctpIn7d != null && r.cctpOut7d != null && (
-                        <Sub>
-                          in {fmtUsdShort(r.cctpIn7d)} / out {fmtUsdShort(r.cctpOut7d)}
-                        </Sub>
-                      )}
+                      {fmtUsdShort(r.bridgedTvl)}
+                      {bridgedShareSubline(r.bridgedSharePct) && <Sub>{bridgedShareSubline(r.bridgedSharePct)}</Sub>}
                     </Td>
                   ) : (
-                    <NaTd reason={r.notApplicable.cctp} legend={legend} />
+                    <NaTd reason={r.notApplicable.bridged} legend={legend} />
                   ))}
+                {has7dMedian &&
+                  (r.inBridgedCohort ? (
+                    <Td mono>
+                      <Signed v={r.excess7dPct} fmt={(v) => fmtPct(v)} />
+                      {sevenDaySubline(r.change7dPct, r.median7dPct) && <Sub>{sevenDaySubline(r.change7dPct, r.median7dPct)}</Sub>}
+                    </Td>
+                  ) : (
+                    <NaTd reason={r.notApplicable.bridged} legend={legend} />
+                  ))}
+                {hasFloat && (
+                  <Td mono>
+                    <Level v={r.stablesFloat} />
+                  </Td>
+                )}
+                {hasNetStables && (
+                  <CohortTd
+                    cell={cohortCell(r.inStablesCohort, r.stablesNet30d, r.stablesNet30dOutside, r.notApplicable.stables ?? null)}
+                    legend={legend}
+                    signed
+                    fmt={fmtUsdShort}
+                    sub={r.stablesChange30dPct != null ? fmtPct(r.stablesChange30dPct) : null}
+                  />
+                )}
                 {hasDex && (
                   <Td mono>
                     <Level v={r.dexVolume24h} />
@@ -341,7 +346,7 @@ function ChainsTable({ rows }: { rows: ChainRow[] }) {
                     dust
                   />
                 )}
-                {hasFees && (
+                {hasRevenue && (
                   <CohortTd
                     cell={cohortCell(r.inFeesCohort, r.revenue30d, r.revenue30dOutside, r.notApplicable.fees ?? null)}
                     legend={legend}
@@ -355,6 +360,76 @@ function ChainsTable({ rows }: { rows: ChainRow[] }) {
         </table>
       </div>
       <NaLegend entries={legend} />
+    </div>
+  );
+}
+
+/**
+ * Net USDC over Circle CCTP on the chains bench 281 scans as sources. Its own
+ * block rather than a column, because seven rows of real numbers say more than
+ * sixty-three rows where seven carry a figure. The caveat is the same one the
+ * page's Sources section makes: one bridge's ledger, not total cross-chain flow.
+ */
+function CctpTable({ rows }: { rows: ChainRow[] }) {
+  const { sorted, key, dir, toggle } = useSorted(rows, "cctpNet7d", "desc", chainSortValue);
+  const col = (k: keyof ChainRow, label: string, title?: string) => (
+    <ThSort active={key === k} dir={dir} onClick={() => toggle(k)} title={title}>
+      {label}
+    </ThSort>
+  );
+  return (
+    <div className="mt-8">
+      <h3 className="label-mono text-ink-muted mb-3">Net USDC over Circle CCTP, 7 days, on the {rows.length} chains the bench scans as sources</h3>
+      <div className="card-soft rounded-xl border border-ink/10 max-w-3xl">
+        <div className="overflow-x-auto">
+          <table className="w-full text-[12.5px]">
+            <thead>
+              <tr className="bg-paper-soft/60 text-left">
+                <Th>#</Th>
+                <Th>Chain</Th>
+                {col("cctpNet7d", "Net 7d", "USDC that arrived over CCTP minus USDC that left, 7 days")}
+                {col("cctpIn7d", "In 7d", "USDC minted on this chain against a burn elsewhere")}
+                {col("cctpOut7d", "Out 7d", "USDC burned on this chain to be minted elsewhere")}
+              </tr>
+            </thead>
+            <tbody>
+              {sorted.map((r, i) => (
+                <tr key={r.slug} className="border-t border-ink/5 hover:bg-paper-soft/40 transition-colors">
+                  <Td muted mono>
+                    {i + 1}
+                  </Td>
+                  <Td>
+                    {r.hasChainPage ? (
+                      <Link href={`/chains/${r.slug}`} className="flex items-center gap-2 min-w-0 hover:underline whitespace-nowrap">
+                        <ProviderLogo slug={r.slug} name={r.name} size={18} />
+                        <span className="font-medium text-ink">{r.name}</span>
+                      </Link>
+                    ) : (
+                      <span className="flex items-center gap-2 min-w-0 whitespace-nowrap">
+                        <ProviderLogo slug={r.slug} name={r.name} size={18} />
+                        <span className="font-medium text-ink">{r.name}</span>
+                      </span>
+                    )}
+                  </Td>
+                  <Td mono>
+                    <Signed v={r.cctpNet7d} fmt={(v) => fmtUsdShort(v)} />
+                  </Td>
+                  <Td mono>{fmtUsdShort(r.cctpIn7d)}</Td>
+                  <Td mono>{fmtUsdShort(r.cctpOut7d)}</Td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="px-3 py-2 text-[11px] text-ink-faint leading-relaxed">
+          Circle CCTP burn and mint events read from public RPCs, bench{" "}
+          <Link href={`/benchmarks/${CAPITAL_BENCHES.usdcCorridor}`} className="hover:underline">
+            {CAPITAL_BENCHES.usdcCorridor}
+          </Link>
+          . One bridge&apos;s ledger over one stablecoin, not total cross-chain flow: the Net stables 30d column above is the bridge-agnostic
+          reading, and a chain absent here either has no CCTP domain or is not scanned as a source.
+        </p>
+      </div>
     </div>
   );
 }

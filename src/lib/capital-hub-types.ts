@@ -70,7 +70,9 @@ export type ChainRow = {
   revenue30dOutside: number | null;
   /** Why a column has no value for this chain and never will, keyed by column (src/lib/capital-hub-rules.ts
    *  NA_REASON). A key is absent when the column is ranked, muted, or missing for a reason the hub does not
-   *  know, which reads as unknown rather than as not applicable. */
+   *  know, which reads as unknown rather than as not applicable. `cctp` has no column on the page since the
+   *  CCTP reading moved to its own block over the seven scanned chains; it is kept here because it answers
+   *  the same question for a consumer of /api/capital, in words. */
   notApplicable: {
     bridged?: string;
     stables?: string;
