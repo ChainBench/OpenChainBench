@@ -22,6 +22,10 @@
  *   SMOKE_CONCURRENCY  parallel requests (default 8)
  *   SMOKE_TIMEOUT_MS   per-request timeout (default 20000)
  *   SMOKE_SKIP_REGEX   skip URLs matching this regex (default none)
+ *   SMOKE_SAMPLE       check hubs + touched pages + this many tail pages
+ *                      (default 0 = check everything, as before)
+ *   SMOKE_SEED         rotates which tail slice a run picks
+ *   SMOKE_ALWAYS_REGEX URLs to always check on top of the hubs
  */
 
 const base = process.argv[2];
@@ -109,10 +113,78 @@ const urls = locs.map((u) => {
 });
 
 const skipped = SKIP_REGEX ? urls.filter((u) => SKIP_REGEX.test(u)) : [];
-const checkUrls = SKIP_REGEX ? urls.filter((u) => !SKIP_REGEX.test(u)) : urls;
+const eligible = SKIP_REGEX ? urls.filter((u) => !SKIP_REGEX.test(u)) : urls;
+
+// Stratified selection, off by default.
+//
+// Checking all 1,211 sitemap URLs on every production deploy was the
+// single largest line of runtime cost we could attribute: six deploys in
+// the two days to 2026-09-30 rendered about 7,266 pages here, roughly 63%
+// of all cold renders in the window, and the two largest lines on the
+// Vercel bill were the function memory and CPU those renders consumed.
+//
+// The gate itself is not negotiable: it exists because on 2026-06-25 a
+// bench page went 404 with a noindex while still listed in the sitemap,
+// and nobody noticed until the crawl. So instead of checking less
+// carefully, it checks the same way over a smaller, deliberately chosen
+// set.
+//
+//   always      every hub and top-level page (path depth 0 or 1). These
+//               carry the traffic and the internal links, and a
+//               regression here is the expensive kind.
+//   always      anything the deploy actually touched, passed in as
+//               SMOKE_ALWAYS_REGEX by the workflow from the diff. New
+//               and edited pages are where regressions come from.
+//   sampled     the long tail of detail pages, SMOKE_SAMPLE of them,
+//               rotated by SMOKE_SEED so consecutive deploys cover
+//               different slices and the whole catalogue is covered
+//               across a handful of deploys.
+//
+// What this costs: a broken detail page can survive one deploy before it
+// is seen, instead of being caught within minutes. What it does not cost
+// is coverage over time, or any weakening of the per-URL check.
+//
+// Leave SMOKE_SAMPLE unset and the behaviour is exactly as before: every
+// eligible URL is checked. A manual run gets the full sweep.
+const SAMPLE = Number(process.env.SMOKE_SAMPLE ?? 0);
+const SEED = Number(process.env.SMOKE_SEED ?? 0);
+const ALWAYS_REGEX = process.env.SMOKE_ALWAYS_REGEX
+  ? new RegExp(process.env.SMOKE_ALWAYS_REGEX)
+  : null;
+
+function depth(u) {
+  try {
+    return new URL(u).pathname.replace(/^\/|\/$/g, "").split("/").filter(Boolean).length;
+  } catch {
+    return 99;
+  }
+}
+
+let checkUrls = eligible;
+let sampleNote = "";
+if (SAMPLE > 0) {
+  const always = eligible.filter((u) => depth(u) <= 1 || (ALWAYS_REGEX && ALWAYS_REGEX.test(u)));
+  const alwaysSet = new Set(always);
+  const tail = eligible.filter((u) => !alwaysSet.has(u)).sort();
+  let picked = tail;
+  if (tail.length > SAMPLE) {
+    // Rotate the window by the seed so the slice moves deploy to deploy
+    // and the tail is covered in full every ceil(tail / SAMPLE) deploys.
+    const windows = Math.ceil(tail.length / SAMPLE);
+    const start = ((SEED % windows) + windows) % windows * SAMPLE;
+    picked = tail.slice(start, start + SAMPLE);
+    if (picked.length < SAMPLE) picked = picked.concat(tail.slice(0, SAMPLE - picked.length));
+  }
+  checkUrls = always.concat(picked);
+  sampleNote =
+    `, stratified: ${always.length} always + ${picked.length} of ${tail.length} sampled` +
+    ` (seed ${SEED}, covers the tail every ${Math.max(1, Math.ceil(tail.length / SAMPLE))} deploys)`;
+}
+
 console.log(
   `[smoke] sitemap has ${urls.length} URLs, checking ${checkUrls.length}` +
-    (skipped.length > 0 ? ` (skipped ${skipped.length})` : ""),
+    (skipped.length > 0 ? ` (skipped ${skipped.length})` : "") +
+    sampleNote,
 );
 
 async function checkOne(url) {
