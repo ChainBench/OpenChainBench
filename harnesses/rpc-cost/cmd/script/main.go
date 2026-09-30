@@ -105,9 +105,6 @@ func priceEverything(cat *Catalogue) {
 			for _, b := range Buckets {
 				for _, tier := range PlanTiers {
 					filter := tier
-					if tier == "all" {
-						filter = ""
-					}
 					q := cheapest(cat, p, pr, b.Requests, filter)
 					if !q.Eligible {
 						if tier == "all" {

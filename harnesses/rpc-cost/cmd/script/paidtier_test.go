@@ -2,10 +2,11 @@ package main
 
 import "testing"
 
-// Reproduces Syndica exactly: the "paid" view dropped its 1,000M cell
-// while "all" and "enterprise" both kept it, which is impossible if
-// "paid" is really "all minus free".
-func TestPaidTierKeepsEveryNonFreePlan(t *testing.T) {
+// `all` is the default view and means "cheapest paid plan". It must keep
+// every non-free plan: reproducing Syndica, whose 1,000M cell once
+// vanished from that view while the enterprise filter kept it, which is
+// impossible when one is a superset of the other.
+func TestDefaultViewKeepsEveryNonFreePlan(t *testing.T) {
 	c := &Catalogue{FX: FX{EURUSD: 1}}
 	pr := Profile{ID: "solana-bot", Chain: "solana", Mix: map[string]float64{
 		"getAccountInfo": 0.40, "getMultipleAccounts": 0.20, "getLatestBlockhash": 0.15,
@@ -28,12 +29,12 @@ func TestPaidTierKeepsEveryNonFreePlan(t *testing.T) {
 		},
 	}
 
-	all := cheapest(c, p, pr, 1000e6, "")
+	unrestricted := cheapest(c, p, pr, 1000e6, "")
 	ent := cheapest(c, p, pr, 1000e6, TierEnterprise)
-	paid := cheapest(c, p, pr, 1000e6, "paid")
+	paid := cheapest(c, p, pr, 1000e6, "all")
 
-	if !all.Eligible || all.Plan != "calc-1000m" {
-		t.Fatalf("all: %+v", all)
+	if !unrestricted.Eligible || unrestricted.Plan != "calc-1000m" {
+		t.Fatalf("unrestricted: %+v", unrestricted)
 	}
 	if !ent.Eligible || ent.Plan != "calc-1000m" {
 		t.Fatalf("enterprise: %+v", ent)
@@ -44,6 +45,16 @@ func TestPaidTierKeepsEveryNonFreePlan(t *testing.T) {
 		t.Errorf("paid dropped a plan that the enterprise filter kept: %+v", paid)
 	}
 	if paid.Plan != "calc-1000m" || paid.MonthlyUSD != 1362 {
-		t.Errorf("paid = %s at $%.2f, want calc-1000m at $1362", paid.Plan, paid.MonthlyUSD)
+		t.Errorf("default view = %s at $%.2f, want calc-1000m at $1362", paid.Plan, paid.MonthlyUSD)
+	}
+
+	// And at a volume the free tier CAN serve, the default view must still
+	// price the cheapest paid plan rather than handing the cell to $0.
+	small := cheapest(c, p, pr, 5e6, "all")
+	if small.Plan == "free" || small.MonthlyUSD == 0 {
+		t.Errorf("default view took the free tier at 5M: %+v", small)
+	}
+	if free := cheapest(c, p, pr, 5e6, TierFree); !free.Eligible || free.MonthlyUSD != 0 {
+		t.Errorf("the free tab must still show the free tier at 5M: %+v", free)
 	}
 }

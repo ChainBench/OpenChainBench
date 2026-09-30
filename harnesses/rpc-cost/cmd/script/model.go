@@ -297,8 +297,9 @@ func cheapest(c *Catalogue, p Provider, pr Profile, requests float64, tier strin
 	if tier != "" {
 		best.Reason = "no plan in this tier"
 	}
-	// "paid" is a filter over tiers, not a tier itself.
-	paidOnly := tier == "paid"
+	// `all` is the default view, and it means "cheapest paid plan": a
+	// free tier winning the smallest volume would bury the comparison.
+	paidOnly := tier == "all"
 	if paidOnly {
 		tier = ""
 	}

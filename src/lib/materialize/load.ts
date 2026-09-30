@@ -180,6 +180,7 @@ export function buildEditorial(
     findings: spec.findings,
     source: spec.source,
     dimensions: spec.dimensions,
+    dimensionLabels: spec.dimension_labels,
     aggregateFilters: spec.aggregate_filters,
     ledgerColumns: spec.ledger_columns,
     ledgerReliability: spec.ledger_reliability,

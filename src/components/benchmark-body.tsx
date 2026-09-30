@@ -205,6 +205,7 @@ export function BenchmarkBody({
   venueOptions = [],
   bucketOptions = [],
   tierOptions = [],
+  dimensionLabels,
   venuesForChain,
   initialChain,
   initialRegion,
@@ -223,6 +224,18 @@ export function BenchmarkBody({
   venueOptions?: ChainOption[];
   /** Trade-size buckets (terminal-fill-quality). Same shape as venue. */
   bucketOptions?: ChainOption[];
+  /** Per-bench axis labels. The stock labels are named after the
+   *  dimension KEY, which misleads on a bench that reuses a key for
+   *  something else (rpc-cost carries plan tiers in `venue` and monthly
+   *  request volume in `bucket`). Absent keys keep the stock label. */
+  dimensionLabels?: {
+    chain?: string;
+    region?: string;
+    kind?: string;
+    venue?: string;
+    bucket?: string;
+    tier?: string;
+  };
   /** Access tiers (public / keyed), headline cohort first. The first
    *  option is the aggregate itself: it never hits the variant API and
    *  never appears in the URL. Another tier rides in the URL fragment
@@ -827,7 +840,7 @@ export function BenchmarkBody({
           )}
           {filteredVenueOptions.length > 0 && (
             <DimensionRow
-              label="Venue"
+              label={dimensionLabels?.venue ?? "Venue"}
               options={filteredVenueOptions}
               selected={venue ?? fallbackVenue}
               onSelect={(v) => { setVenue(v); setChain(null); }}
@@ -845,7 +858,7 @@ export function BenchmarkBody({
           )}
           {bucketOptions.length > 0 && (
             <DimensionRow
-              label="Trade size"
+              label={dimensionLabels?.bucket ?? "Trade size"}
               options={bucketOptions}
               selected={bucket ?? fallbackBucket}
               onSelect={setBucket}
@@ -863,7 +876,7 @@ export function BenchmarkBody({
           )}
           {kindOptions.length > 0 && (
             <DimensionRow
-              label="Kind"
+              label={dimensionLabels?.kind ?? "Kind"}
               options={kindOptions}
               selected={kind ?? fallbackKind}
               onSelect={setKind}
@@ -881,7 +894,7 @@ export function BenchmarkBody({
           )}
           {filteredChainOptions.length > 0 && (
             <DimensionRow
-              label="Chain"
+              label={dimensionLabels?.chain ?? "Chain"}
               options={filteredChainOptions}
               selected={chain ?? fallbackChain}
               onSelect={setChain}
@@ -897,7 +910,7 @@ export function BenchmarkBody({
           )}
           {regionOptions.length > 0 && (
             <DimensionRow
-              label="Region"
+              label={dimensionLabels?.region ?? "Region"}
               options={regionOptions}
               selected={region ?? fallbackRegion}
               onSelect={setRegion}
