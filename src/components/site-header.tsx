@@ -8,6 +8,7 @@ import { SearchTrigger } from "@/components/search/search-trigger";
 import { SiteLogoSwitcher } from "@/components/site-logo-switcher";
 import { headerNavItems, navGroups } from "@/components/site-nav-items";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { withUtm } from "@/lib/utm";
 
 function XIcon({ size = 15 }: { size?: number }) {
   return (
@@ -116,7 +117,7 @@ export function SiteHeader({ hiddenRoutes = [] }: { hiddenRoutes?: readonly stri
           {/* Utilities - X + GitHub + theme, gap-spaced, no pipe. */}
           <div className="hidden md:flex items-center gap-4 text-ink-muted shrink-0">
             <a
-              href="https://x.com/OpenChainBench"
+              href={withUtm("https://x.com/OpenChainBench")}
               className="inline-flex items-center hover:text-ink transition-colors"
               aria-label="Follow @OpenChainBench on X"
               target="_blank"
@@ -125,7 +126,7 @@ export function SiteHeader({ hiddenRoutes = [] }: { hiddenRoutes?: readonly stri
               <XIcon size={14} />
             </a>
             <a
-              href="https://github.com/ChainBench/OpenChainBench"
+              href={withUtm("https://github.com/ChainBench/OpenChainBench")}
               className="inline-flex items-center hover:text-ink transition-colors"
               aria-label="View source on GitHub"
             >
@@ -195,7 +196,7 @@ export function SiteHeader({ hiddenRoutes = [] }: { hiddenRoutes?: readonly stri
               ])}
               <li className="border-t border-rule mt-1 pt-1 flex items-center gap-4">
                 <a
-                  href="https://github.com/ChainBench/OpenChainBench"
+                  href={withUtm("https://github.com/ChainBench/OpenChainBench")}
                   className="inline-flex items-center gap-2 min-h-[44px] text-ink-muted hover:text-ink transition-colors"
                   aria-label="View source on GitHub"
                   onClick={() => setOpen(false)}

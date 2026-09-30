@@ -29,6 +29,7 @@ import { buildBreadcrumbJsonLd, safeJsonLd } from "@/lib/jsonld";
 import { capDescription, capSnippet } from "@/lib/seo-text";
 import { matchesChainSlug } from "@/lib/chain-aliases";
 import type { Benchmark } from "@/types/benchmark";
+import { withUtm } from "@/lib/utm";
 
 export const revalidate = 3600;
 export const maxDuration = 60;
@@ -216,7 +217,7 @@ export default async function ChainPage({
           </h1>
           {chain.website && (
             <a
-              href={chain.website}
+              href={withUtm(chain.website)}
               target="_blank"
               rel="noopener noreferrer"
               className="mt-1 inline-flex items-center gap-1 text-xs text-ink-muted hover:text-ink transition-colors"

@@ -14,6 +14,7 @@ import {
   CREATOR_PUBLISHER,
   DATASET_LICENSE,
 } from "@/lib/dataset-jsonld";
+import { withUtm } from "@/lib/utm";
 
 /**
  * Hub landing page for the prediction markets cohort. SSR'd against
@@ -440,7 +441,7 @@ export default async function PredictionMarketsHubPage() {
           <p className="mt-4 text-[11px] text-ink-faint italic">
             Source:{" "}
             <Link
-              href="https://github.com/ChainBench/upstream-monorepo/tree/dev/miniapps/pm-cohort-stats"
+              href={withUtm("https://github.com/ChainBench/upstream-monorepo/tree/dev/miniapps/pm-cohort-stats")}
               className="underline hover:text-ink"
               rel="noopener noreferrer"
               target="_blank"
