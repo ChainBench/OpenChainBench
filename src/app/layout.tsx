@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { DEV_ONLY_ROUTES, isDevOnlyRoute } from "@/lib/removed-benches";
 import localFont from "next/font/local";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
@@ -198,6 +199,13 @@ export default async function RootLayout({
   // The search corpus is no longer built here: it had grown to ~880
   // docs / 278 KB and was serialized into every page. The client fetches
   // /api/search/index on first intent instead.
+  //
+  // The nav gate is resolved HERE, in a server component, and handed to
+  // the two client components that draw the menu. They cannot read it
+  // themselves: process.env.VERCEL_ENV is not inlined into a client
+  // bundle, so isDevOnlyRoute() is always false in the browser and the
+  // menu offered routes production answers with a 404.
+  const hiddenRoutes = [...DEV_ONLY_ROUTES].filter(isDevOnlyRoute);
   return (
     <html
       lang="en"
@@ -288,8 +296,8 @@ export default async function RootLayout({
                 the three grid rows into one item at lg and the 1fr that
                 stretches <main> would stop applying, dropping the footer
                 up the page on short routes. */}
-            <SiteSidebar />
-            <SiteHeader />
+            <SiteSidebar hiddenRoutes={hiddenRoutes} />
+            <SiteHeader hiddenRoutes={hiddenRoutes} />
             <main id="main-content" className="flex-1 w-full max-w-full overflow-x-clip min-w-0">{children}</main>
             <SiteFooter />
           </SearchProvider>
