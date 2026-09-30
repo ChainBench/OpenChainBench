@@ -33,11 +33,29 @@ export function pageMetadata({
   const canonical = `${SITE_ORIGIN}${path}`;
   const socialUrl = chain && chain !== "all" ? `${canonical}?chain=${chain}` : canonical;
   const social = title.includes("OpenChainBench") ? title : `${title} · OpenChainBench`;
-  // Fallback to the root /opengraph-image and /twitter-image when a hub
-  // doesn't ship a dedicated card. Without this, Next.js treats the
-  // per-page `openGraph` block as a full override and drops the
-  // file-based root image, so /compare and /alternatives end up sharing
-  // unbranded blank cards on every social embed.
+  // No `images` on either block below, deliberately.
+  //
+  // This used to pin `images` to the ROOT /opengraph-image and
+  // /twitter-image, described as a fallback for hubs without a dedicated
+  // card. It was not a fallback, it was an unconditional override, and
+  // config-based `images` beats the file convention: 28 of the 30 routes
+  // that call this ship their own opengraph-image.tsx, every one of them
+  // was built and served at its own URL, and not one was ever named in a
+  // meta tag. Every hub shared the root card instead.
+  //
+  // Leaving `images` out lets Next resolve it from the route's own
+  // opengraph-image.tsx, and it also fills twitter:image from that same
+  // file when the route has no twitter-image.tsx of its own (checked in
+  // dev: /team, /capital and /perps each emit both tags pointing at their
+  // own card, with its real alt text and dimensions).
+  //
+  // What it does NOT do is inherit from an ancestor segment. There is no
+  // cascade: a route with no opengraph-image.tsx of its own emits no
+  // og:image at all, the root file notwithstanding. Checked the same way,
+  // and it is why /rwa, /rpc-map and /perps/[asset] each gained a
+  // one-line re-export file in this change. So every caller of this helper
+  // needs a file in its own segment; adding a new hub without one ships it
+  // with no share card and nothing will complain.
   const meta: Metadata = {
     // The layout template appends " · OpenChainBench" (17 characters):
     // past 43 the tail of the title, where the measured number sits, is
@@ -52,14 +70,12 @@ export function pageMetadata({
       url: socialUrl,
       type: "website",
       siteName: "OpenChainBench",
-      images: [{ url: `${SITE_ORIGIN}/opengraph-image`, width: 1200, height: 630 }],
     },
     twitter: {
       card: "summary_large_image",
       title: social,
       description,
       site: "@OpenChainBench",
-      images: [`${SITE_ORIGIN}/twitter-image`],
     },
   };
   return meta;
