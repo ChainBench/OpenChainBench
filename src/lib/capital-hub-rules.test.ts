@@ -28,6 +28,7 @@ import {
   selectDivergences,
   sevenDaySubline,
   columnIsWorthShowing,
+  sectionState,
 } from "./capital-hub-rules";
 import { fmtUsdShort } from "./capital-hub-types";
 
@@ -358,5 +359,40 @@ describe("columnIsWorthShowing", () => {
     expect(printedValue(null, null)).toBeNull();
     expect(printedValue(Number.NaN, 9)).toBe(9);
     expect(printedValue(0, 9)).toBe(0);
+  });
+});
+
+describe("sectionState", () => {
+  const B = (over: Partial<{ slug: string; live: boolean; failed: boolean }> = {}) => ({
+    slug: "protocol-pf-ratio",
+    live: true,
+    failed: false,
+    ...over,
+  });
+
+  test("a section with rows is not missing, whatever the bench says", () => {
+    expect(sectionState([B({ failed: true, live: false })], "protocol-pf-ratio", 67)).toBeNull();
+    expect(sectionState([B()], "protocol-pf-ratio", 1)).toBeNull();
+  });
+
+  test("the three kinds of nothing are told apart, because they mean different things", () => {
+    // Transient: the load threw. The reading exists, this render did not get it.
+    expect(sectionState([B({ failed: true, live: false })], "protocol-pf-ratio", 0)).toBe("failed");
+    // Not served here: a gated bench on a deployment that does not carry it.
+    expect(sectionState([B({ live: false })], "protocol-pf-ratio", 0)).toBe("unserved");
+    // Served, ran, ranked nobody. The only one of the three that is a measurement.
+    expect(sectionState([B()], "protocol-pf-ratio", 0)).toBe("empty");
+  });
+
+  test("a bench the deployment never listed stays silent, so a gated reading is not reported as missing", () => {
+    // Benches 280 and 281 are only in the list where they are served; without
+    // this the hub would print a "unavailable" note on prod for a reading it
+    // never promised.
+    expect(sectionState([B()], "usdc-corridor-flows", 0)).toBeNull();
+    expect(sectionState([], "chain-fees-revenue", 0)).toBeNull();
+  });
+
+  test("failed wins over live, so a bench that threw never reads as merely unserved", () => {
+    expect(sectionState([B({ live: true, failed: true })], "protocol-pf-ratio", 0)).toBe("failed");
   });
 });

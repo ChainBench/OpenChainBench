@@ -33,9 +33,11 @@ import {
   naMarker,
   plainCell,
   printedValue,
+  sectionState,
   sevenDaySubline,
   signalRowNote,
   type CohortCell,
+  type SectionState,
   type SignalKind,
 } from "@/lib/capital-hub-rules";
 
@@ -59,6 +61,13 @@ export function CapitalHubTabs({ hub }: { hub: CapitalHub }) {
   // reading and too narrow for a column on a 63-row table, so it gets its own
   // block over the chains it covers instead of 56 markers across the page.
   const cctpRows = hub.chains.filter((c) => c.cctpScope === "scanned" && c.cctpNet7d != null);
+  // Which sections have nothing to show, and which kind of nothing. Computed
+  // once here so the JSX below reads as "rows, or the reason there are none".
+  const flowState = sectionState(hub.benches, CAPITAL_BENCHES.stableFlow, hub.stableFlowShares.length);
+  const cctpState = sectionState(hub.benches, CAPITAL_BENCHES.usdcCorridor, cctpRows.length);
+  const pmOiState = sectionState(hub.benches, CAPITAL_BENCHES.pmOi, hub.pmOi.length);
+  const protocolsState = sectionState(hub.benches, CAPITAL_BENCHES.protocolPf, hub.protocols.length);
+  const perpsState = sectionState(hub.benches, CAPITAL_BENCHES.perpPf, hub.perps.length);
 
   return (
     <>
@@ -85,17 +94,51 @@ export function CapitalHubTabs({ hub }: { hub: CapitalHub }) {
           <h2 className="label-mono text-ink-muted mb-3">Chains ranked by capital: TVL, bridged value, stablecoin flows</h2>
           {hub.chains.length > 0 && <ChainsTable rows={hub.chains} />}
           {hub.chains.length > 0 && <Reading lines={CAPITAL_READING.chains} />}
-          {hub.stableFlowShares.length > 0 && <FlowBar shares={hub.stableFlowShares} />}
-          {cctpRows.length > 0 && <CctpTable rows={cctpRows} />}
+          {hub.stableFlowShares.length > 0 ? (
+            <FlowBar shares={hub.stableFlowShares} />
+          ) : (
+            flowState && (
+              <MissingSection
+                state={flowState}
+                what="The share of this month's stablecoin inflows per chain"
+                extra={
+                  <>
+                    The net column in the table above is the same measurement per row; this bar only
+                    apportions it, so read it there.
+                  </>
+                }
+              />
+            )
+          )}
+          {cctpRows.length > 0 ? (
+            <CctpTable rows={cctpRows} />
+          ) : (
+            cctpState && (
+              <MissingSection
+                state={cctpState}
+                what="Net USDC over Circle CCTP"
+                extra={
+                  <>
+                    It covers the seven chains bench {CAPITAL_BENCHES.usdcCorridor} scans as sources and is
+                    never inferred from the bridged or stablecoin columns, which measure something else.
+                  </>
+                }
+              />
+            )
+          )}
           {(hub.perpOi.length > 0 || hub.pmOi.length > 0 || !hub.perpVenueCohortLive) && (
             <>
               <h2 className="label-mono text-ink-muted mt-10 mb-3">Open interest: perp DEXes and prediction markets</h2>
-              {/* The perp table reads the venue cohort snapshot. When that does
-                  not answer, the table has no rows, and a table that vanishes
-                  with nothing said is the defect this page spent a week
-                  removing, one level up from a cell. So the section says which
-                  source is missing and where the last measurements are, and it
-                  never fills in from another measurement. */}
+              {/* A table that vanishes with nothing said is the defect this page
+                  spent a week removing, one level up from a cell, and every
+                  section on the page now says which kind of nothing it is:
+                  sectionState + MissingSection carry the bench-backed ones
+                  (flow bar, CCTP, prediction-market OI, both valuation tables).
+                  This one keeps its own paragraph because its source is not a
+                  bench: it reads the perp venue cohort snapshot, which has no
+                  entry in hub.benches and so no live/failed flag to read. Same
+                  rule, different source, and it never fills in from another
+                  measurement. */}
               {!hub.perpVenueCohortLive && (
                 <p className="mb-4 text-[12px] text-ink-soft leading-relaxed max-w-3xl">
                   Perp DEX open interest is unavailable on this render: the perp venue cohort snapshot did not answer. Nothing is substituted for it,
@@ -124,7 +167,7 @@ export function CapitalHubTabs({ hub }: { hub: CapitalHub }) {
                     note="Open interest and 24h volume as each venue's own API reports them, through the perp cohort harness, the same figures the perps hub shows. Turnover is bench 271's ratio of 24-hour averages of those two gauges, so it will not divide exactly into the two columns beside it, which are the latest read. Centralised venues are out; Polymarket and Kalshi sit in the prediction-market table rather than twice on one page."
                   />
                 )}
-                {hub.pmOi.length > 0 && (
+                {hub.pmOi.length > 0 ? (
                   <OiTable
                     title="Prediction market open interest"
                     rows={hub.pmOi}
@@ -132,6 +175,22 @@ export function CapitalHubTabs({ hub }: { hub: CapitalHub }) {
                     benches={[CAPITAL_BENCHES.pmOi]}
                     note="Open interest, 24h volume and turnover all from bench 277, so turnover is this table's volume over this table's open interest."
                   />
+                ) : (
+                  pmOiState && (
+                    <div>
+                      <h3 className="label-mono text-ink-muted mb-2">Prediction market open interest</h3>
+                      <MissingSection
+                        state={pmOiState}
+                        what="Prediction market open interest"
+                        extra={
+                          <>
+                            The perp table beside it is a different cohort measured from different feeds, so it
+                            is not a stand-in.
+                          </>
+                        }
+                      />
+                    </div>
+                  )
                 )}
               </div>
               {(hub.perpOi.length > 0 || hub.pmOi.length > 0) && <Reading lines={CAPITAL_READING.openInterest} />}
@@ -140,8 +199,26 @@ export function CapitalHubTabs({ hub }: { hub: CapitalHub }) {
         </section>
       )}
 
-      {hasValuation && (
+      {(hasValuation || protocolsState || perpsState) && (
         <section hidden={tab !== "valuation"} aria-hidden={tab !== "valuation"}>
+          {hub.protocols.length === 0 && protocolsState && (
+            <>
+              <h2 className="label-mono text-ink-muted mb-3">
+                DeFi tokens ranked by price to fees, with fee trend against token move
+              </h2>
+              <MissingSection
+                state={protocolsState}
+                what="The DeFi token board, and with it this month's divergences"
+                extra={
+                  <>
+                    The divergence screen is four conditions on that board, so it has nothing to screen
+                    rather than nothing to report. Bench {CAPITAL_BENCHES.protocolPf} carries the last
+                    measurements, and /api/capital is read per request rather than cached with the page.
+                  </>
+                }
+              />
+            </>
+          )}
           {hub.protocols.length > 0 && (
             <>
               <h2 className="label-mono text-ink-muted mb-3">Divergences this month: fees up, token down, price to fees under the category median</h2>
@@ -157,12 +234,28 @@ export function CapitalHubTabs({ hub }: { hub: CapitalHub }) {
               <Reading lines={CAPITAL_READING.tokens} />
             </>
           )}
-          {hub.perps.length > 0 && (
+          {hub.perps.length > 0 ? (
             <>
               <h2 className="label-mono text-ink-muted mt-10 mb-3">Perp DEX tokens: price to fees, price to sales, float and open interest</h2>
               <PerpsTable rows={hub.perps} />
               <Reading lines={CAPITAL_READING.perps} />
             </>
+          ) : (
+            perpsState && (
+              <>
+                <h2 className="label-mono text-ink-muted mt-10 mb-3">Perp DEX tokens: price to fees, price to sales, float and open interest</h2>
+                <MissingSection
+                  state={perpsState}
+                  what="The perp DEX token board"
+                  extra={
+                    <>
+                      The DeFi board above is a different cohort on a different fee source, so a perp venue
+                      is not read off it. Bench {CAPITAL_BENCHES.perpPf} carries the last measurements.
+                    </>
+                  }
+                />
+              </>
+            )
           )}
         </section>
       )}
@@ -824,6 +917,35 @@ function PerpsTable({ rows }: { rows: PerpRow[] }) {
 /* ------------------------------------------------------------------ */
 
 /** Three lines under a table: how to read the main column, the pitfall, what the table does not say. */
+/**
+ * The paragraph a section renders instead of vanishing. One implementation,
+ * because the whole point of the rule is that every section says it the same
+ * way; `extra` carries whatever is specific to the reading that is missing.
+ */
+function MissingSection({
+  state,
+  what,
+  extra,
+}: {
+  state: SectionState;
+  what: string;
+  extra?: React.ReactNode;
+}) {
+  const because =
+    state === "failed"
+      ? "the bench behind it did not answer on this render, which is transient and not a retirement"
+      : state === "unserved"
+        ? "the bench behind it is not served by this deployment"
+        : "the bench behind it ran and ranked no rows this time";
+  return (
+    <p className="mb-4 text-[12px] text-ink-soft leading-relaxed max-w-3xl">
+      {what} is unavailable here: {because}. Nothing is substituted for it,
+      because the nearest other reading on this page would be a different
+      measurement.{extra ? <> {extra}</> : null}
+    </p>
+  );
+}
+
 function Reading({ lines }: { lines: readonly string[] }) {
   return (
     <ul className="mt-3 max-w-3xl space-y-1 text-[12px] text-ink-soft leading-relaxed list-disc pl-5">
