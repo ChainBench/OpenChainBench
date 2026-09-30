@@ -218,6 +218,22 @@ scrape_configs:
           benchmark: terminal-fill-quality
           host: openchainbench
 
+  # Container ocb-rpc-cost. What each RPC provider bills for a fixed set of
+  # workload profiles (bench 282), plus the freshness and drift of every
+  # upstream pricing artifact the catalogue was verified against. Holds no
+  # API keys and sends no RPC traffic: its only outbound requests are HTTP
+  # GETs of public pricing pages.
+  - job_name: rpc-cost
+    metrics_path: /metrics
+    scheme: http
+    scrape_interval: 5m
+    static_configs:
+      - targets:
+          - ocb-rpc-cost:2112
+        labels:
+          benchmark: rpc-cost
+          host: openchainbench
+
   # ─ Self-scrape ────────────────────────────────────────────────────────
   # Surfaces Prometheus's own health (scrape error rates, target up/down)
   # in the same UI used to debug harnesses.
