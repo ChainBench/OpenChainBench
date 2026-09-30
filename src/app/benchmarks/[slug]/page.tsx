@@ -931,6 +931,7 @@ export default async function BenchmarkPage({
             venueOptions={venueOptions}
             bucketOptions={bucketOptions}
             tierOptions={tierOptions}
+            dimensionLabels={aggregate.dimensionLabels}
             venuesForChain={aggregate.extras?.venuesForChain}
             initialChain={chain ?? null}
             initialRegion={region ?? null}

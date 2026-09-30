@@ -58,6 +58,16 @@ type Provider struct {
 	// of methods and 1.5x on another, so no single multiplier is correct.
 	// When present it replaces Weights entirely for archive workloads.
 	ArchiveWeights map[string]Weights `yaml:"archive_weights"`
+	// ThroughputWeights is a SECOND, different unit table used only for the
+	// rate limit. Alchemy meters volume in Compute Units and throughput in
+	// Throughput Compute Units, and the two disagree by up to 25x on the
+	// same method (debug_traceTransaction: 40 billing, 1000 throughput), so
+	// checking a rate limit against billing units understates it badly.
+	// The published table is partial, and a partial table cannot produce an
+	// honest weighted average: when a profile uses a method the table does
+	// not price, the throughput check is skipped and said to be skipped,
+	// rather than quietly falling back to the wrong unit.
+	ThroughputWeights map[string]Weights `yaml:"throughput_weights"`
 	ArchiveRule    ArchiveRule        `yaml:"archive_rule"`
 	Source          map[string]Artifact `yaml:"source"` // "plans" | "weights"
 	Caveats         []string            `yaml:"caveats"`
@@ -260,6 +270,9 @@ func (c *Catalogue) validate() error {
 	}
 	return nil
 }
+
+// isReference reports whether the provider is published but never ranked.
+func (p Provider) isReference() bool { return p.Ranked != nil && !*p.Ranked }
 
 // Plan tiers. Provider plan names do not line up across the cohort —
 // Chainstack "Growth" is $49 and Helius "Business" is $499 — so a reader

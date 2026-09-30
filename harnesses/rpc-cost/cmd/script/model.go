@@ -54,23 +54,9 @@ func unitsPerRequest(p Provider, pr Profile) (float64, error) {
 		}
 	}
 
-	total, shares := 0.0, 0.0
-	for method, share := range pr.Mix {
-		units, ok := w.Weight(method)
-		if !ok {
-			return 0, fmt.Errorf("no published unit cost for %s", method)
-		}
-		total += share * units
-		shares += share
-	}
-	// Normalise by the shares actually summed rather than trusting them to
-	// total exactly 1. Floating-point addition of 0.40+0.20+0.15+0.15+0.10
-	// lands on 1.0000000000000002, and that 2e-16 was enough to push a
-	// 1,000M-request workload two ten-millionths of a unit past a plan
-	// whose allowance is exactly 1,000M — which hard-stopped it and
-	// silently dropped Syndica out of a leaderboard cell it wins.
-	if shares > 0 {
-		total /= shares
+	total, err := weightedUnits(w, pr)
+	if err != nil {
+		return 0, err
 	}
 
 	if pr.Archive && !usedArchiveTable {
@@ -89,12 +75,22 @@ func unitsPerRequest(p Provider, pr Profile) (float64, error) {
 			// to price the workload is the finding; inventing a multiple
 			// would be a guess wearing a decimal point.
 			return 0, fmt.Errorf("archive surcharge not published")
-		case "block_age", "none", "":
+		case "block_age":
+			// Chainstack: the surcharge is real, it is just triggered by how
+			// old the block is rather than by the method name. That is a
+			// documentary distinction, not a computational one, and reading
+			// it as a no-op priced the indexer profile at 1 RU per request
+			// instead of 2, publishing $3,990 for a bill of $8,990.
+			total *= p.ArchiveRule.Value
+		case "none", "":
 			// Either already encoded in the per-method weights (GetBlock
 			// carries an independent archive column rather than a
-			// multiplier, so its archive numbers live in the weights table)
-			// or genuinely free (Alchemy, dRPC, QuickNode charge no archive
-			// premium).
+			// multiplier, so its archive numbers live in archive_weights)
+			// or genuinely free (Alchemy, dRPC and QuickNode charge no
+			// archive premium at all).
+		default:
+			// An unrecognised rule must not silently price archive at par.
+			return 0, fmt.Errorf("unknown archive rule %q", p.ArchiveRule.Kind)
 		}
 	}
 	return total, nil
@@ -119,10 +115,21 @@ func quote(c *Catalogue, p Provider, pl Plan, pr Profile, requests float64) Quot
 	// factor of 30 — is handled properly by RequiresPlan below, which
 	// prices the prerequisite the add-on cannot be bought without.
 
-	upr, err := unitsPerRequest(p, pr)
-	if err != nil {
-		q.Reason = err.Error()
-		return q
+	// Dedicated capacity is sold by the month or the node-hour and serves
+	// requests unmetered, so it has no per-method weights and must not be
+	// run through them. Its bill is the monthly price, flat, whatever the
+	// workload — which is exactly what makes a break-even volume the right
+	// question for it. Without this branch all nine offerings failed with
+	// "provider does not price ethereum" and the cohort rendered empty.
+	unmetered := p.Cohort == "dedicated"
+	var upr float64
+	if !unmetered {
+		var err error
+		upr, err = unitsPerRequest(p, pr)
+		if err != nil {
+			q.Reason = err.Error()
+			return q
+		}
 	}
 	q.UnitsPerRequest = upr
 
@@ -138,6 +145,9 @@ func quote(c *Catalogue, p Provider, pl Plan, pr Profile, requests float64) Quot
 	}
 
 	needed := requests * upr
+	if unmetered {
+		needed = 0
+	}
 
 	// Throughput is a second, independent meter, and for several
 	// providers it binds before the bill does. Tatum and Moralis publish
@@ -152,13 +162,32 @@ func quote(c *Catalogue, p Provider, pl Plan, pr Profile, requests float64) Quot
 	// fails here fails harder in practice.
 	if pl.Throughput.Value != nil && *pl.Throughput.Value > 0 {
 		var required float64
+		skip := false
 		switch pl.Throughput.Unit {
 		case "rps":
 			required = requests / (daysPerMonth * 86400)
 		case "cu_per_s", "credits_per_s", "ru_per_s":
-			required = needed / (daysPerMonth * 86400)
+			// The rate limit is metered in a different unit from the bill.
+			// Alchemy charges 40 billing CU for debug_traceTransaction and
+			// counts 1000 against its throughput ceiling, so checking the
+			// limit against billing units understates it 25-fold. Use the
+			// provider's throughput table when it has one; when that table
+			// does not price every method in the profile, skip the check
+			// rather than mix two units and publish the difference.
+			if tw, ok := p.ThroughputWeights[pr.Chain]; ok {
+				tpr, err := weightedUnits(tw, pr)
+				if err != nil {
+					skip = true
+				} else {
+					required = requests * tpr / (daysPerMonth * 86400)
+				}
+			} else {
+				required = needed / (daysPerMonth * 86400)
+			}
+		default:
+			skip = true
 		}
-		if required > *pl.Throughput.Value {
+		if !skip && required > *pl.Throughput.Value {
 			q.Reason = fmt.Sprintf("published throughput is %.0f %s, workload needs %.0f sustained",
 				*pl.Throughput.Value, pl.Throughput.Unit, math.Ceil(required))
 			return q
@@ -297,9 +326,13 @@ func cheapest(c *Catalogue, p Provider, pr Profile, requests float64, tier strin
 	if tier != "" {
 		best.Reason = "no plan in this tier"
 	}
-	// "paid" is a filter over tiers, not a tier itself.
-	paidOnly := tier == "paid"
-	if paidOnly {
+	// `all` is the default view, and it means "cheapest paid plan": a
+	// free tier winning the smallest volume would bury the comparison.
+	// Reference rows are the exception. They are never ranked against
+	// anyone, and their only plan IS the free public endpoint, so
+	// filtering it out would empty the cohort the page publishes them in.
+	paidOnly := tier == "all" && !p.isReference()
+	if tier == "all" {
 		tier = ""
 	}
 	found := false
@@ -380,4 +413,28 @@ func isTraceProfile(pr Profile) bool {
 		}
 	}
 	return false
+}
+
+// weightedUnits averages a profile's method mix against a unit table.
+//
+// Shares are normalised by the total actually summed rather than trusted
+// to be exactly 1: floating-point addition of 0.40+0.20+0.15+0.15+0.10
+// lands on 1.0000000000000002, and that 2e-16 was once enough to push a
+// 1,000M-request workload two ten-millionths of a unit past a plan whose
+// allowance is exactly 1,000M, hard-stopping it and dropping a provider
+// out of a cell it wins.
+func weightedUnits(w Weights, pr Profile) (float64, error) {
+	total, shares := 0.0, 0.0
+	for method, share := range pr.Mix {
+		units, ok := w.Weight(method)
+		if !ok {
+			return 0, fmt.Errorf("no published unit cost for %s", method)
+		}
+		total += share * units
+		shares += share
+	}
+	if shares > 0 {
+		total /= shares
+	}
+	return total, nil
 }

@@ -113,19 +113,20 @@ var Buckets = []struct {
 // Free is scored here too — it costs $0 wherever it is eligible — but
 // the useful free-tier ranking is rpc_free_allowance_requests, since
 // every free plan ties at zero.
-// "paid" is the bench's default view and answers the question readers
-// actually ask: what is the cheapest thing I can buy. "all" includes the
-// free tiers, which genuinely win the smallest bucket — at 10M requests
-// a month several providers serve the workload for nothing, and the page
-// says so rather than hiding it behind a paid leaderboard.
-var PlanTiers = []string{"paid", "all", "free", "entry", "growth", "business", "enterprise"}
+// The plan-band axis. `all` is the value the bench's queries pin, and the
+// site replaces it when a reader picks a tab, so it has to carry the
+// default view: the cheapest PAID plan. Including free tiers there would
+// hand the leaderboard to the $0 rows at the smallest volume and hide the
+// comparison readers came for; the `free` tab answers that question on
+// its own axis (rpc_free_allowance_requests), where it belongs.
+var PlanTiers = []string{"all", "free", "entry", "growth", "business", "enterprise"}
 
-// The slice the site's unfiltered view shows: a dapp method mix at a
-// hundred million requests a month, which is the most common shape in
-// the cohort and sits in the middle of the volume range.
+// The slice the site's unfiltered view shows: a dapp method mix at ten
+// million requests a month, the entry-scale case most readers arrive
+// with. Bigger volumes are a tab away.
 const (
 	headlineKind   = "dapp"
-	headlineBucket = "100m"
+	headlineBucket = "10m"
 )
 
 const daysPerMonth = 30 // stated, not assumed: every derived figure uses it

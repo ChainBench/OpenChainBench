@@ -298,6 +298,19 @@ export type Benchmark = {
      *  injecting a PromQL label; the first value is the headline cohort. */
     tier?: { value: string; label: string }[];
   };
+  /** Per-bench axis labels for the dimension selectors, from the spec's
+   *  `dimension_labels`. Absent keys keep the UI's stock label. */
+  /** True when 0 is a real value on this bench (a free tier costing
+   *  nothing) rather than a missing one (a dead latency probe). */
+  zeroIsAValue?: boolean;
+  dimensionLabels?: {
+    chain?: string;
+    region?: string;
+    kind?: string;
+    venue?: string;
+    bucket?: string;
+    tier?: string;
+  };
   /** Default dimension scope for the unfiltered build (spec
    *  `aggregate_filters`). Presentation surfaces (e.g. the by-region
    *  grid) also read it to restrict what a single-vantage bench shows. */

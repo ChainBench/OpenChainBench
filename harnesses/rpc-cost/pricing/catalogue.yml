@@ -63,7 +63,7 @@ providers:
         allowance_period: month
         overage_per_1m_units_usd: 0.525
         overage_allowed: true
-        throughput: {unit: cu_per_s, value: 10000}
+        throughput: {unit: cu_per_s, value: 30000}   # self-serve ceiling: PAYG includes 10,000 and sells 5,000 more per $160/mo up to 30,000
         archive: true
         trace: true
         confidence: verified
@@ -101,11 +101,6 @@ providers:
         debug_traceTransaction: 40
         trace_block: 20
       # separate meter -- what counts against CU/s, not against the bill
-      ethereum_throughput_cu:
-        eth_getBlockReceipts: 500
-        debug_traceTransaction: 1000
-        eth_sendRawTransaction: 50
-        eth_chainId: 5
       solana:
         default: null
         getAccountInfo: 10
@@ -115,6 +110,26 @@ providers:
         simulateTransaction: 20
         getProgramAccounts: 20
         getTransaction: 40
+    # Alchemy meters volume in Compute Units and the rate limit in
+    # Throughput Compute Units, and the two differ by up to 25x on the same
+    # method. Its published table fills the Throughput column only where it
+    # differs; a blank means the CU value applies, which is the reading that
+    # reproduces Alchemy's own worked examples exactly. Values below are the
+    # CU column with the three published overrides applied.
+    throughput_weights:
+      ethereum:
+        default: null
+        eth_call: 26
+        eth_getLogs: 60
+        eth_getBlockByNumber: 20
+        eth_getBlockReceipts: 500
+        eth_getBalance: 20
+        eth_blockNumber: 10
+        eth_getTransactionReceipt: 20
+        eth_estimateGas: 20
+        eth_sendRawTransaction: 50
+        debug_traceTransaction: 1000
+        trace_block: 20
     archive_rule:
       kind: none
       value: 1
@@ -124,11 +139,15 @@ providers:
     source:
       plans:
         url: https://www.alchemy.com/docs/reference/pricing-plans.md
+        body_sha256: 141879aab5b692382d3e9d8bbedf5ed6ccc6fbbdffd5ac08f7878f82cc5ddc1c
+        verified_at: "2026-09-30"
         kind: markdown
         poll: body_hash
         extraction: "table under '## Feature comparison'; rows 'Compute Unit rate', 'Base Compute Units', 'Base Throughput (CUs/second)'; read col 2 (PAYG)"
       weights:
         url: https://www.alchemy.com/docs/reference/compute-unit-costs.md
+        body_sha256: 6fcfa2398263bdcdc6c889fc096de3da4c4997a97ab8f9c6c3a0210a056e899a
+        verified_at: "2026-09-30"
         kind: markdown
         poll: body_hash
         extraction: "slice between {/* cu:auto product=\"evm\" */} and {/* cu:auto end */}; header '| Method | CU | Throughput CU |'; 41 product blocks"
@@ -306,11 +325,14 @@ providers:
     source:
       plans:
         url: https://www.quicknode.com/pricing
+        verified_at: "2026-09-30"
         kind: html
-        poll: etag
+        poll: manual   # churns independently of price; hashed re-reads would alarm every cycle
         extraction: "embedded RSC plan objects: monthly, specs.{credits,effectiveMonthly,effectiveAnnual,overage,rps}; key on b6_* column ids, never 'build'/'scale'"
       weights:
         url: https://www.quicknode.com/api/v1/dev_portal/api_credits/eth
+        body_sha256: 96cff99e046db95d7ee9720b9f2f30b1307596137e923fcf67a5803819b6dfdf
+        verified_at: "2026-09-30"
         kind: json
         poll: etag
         extraction: "$[*].method / $[*].credits; 218 rows for eth, 147 for sol; unknown slug returns a clean 404"
@@ -444,11 +466,14 @@ providers:
     source:
       plans:
         url: https://www.infura.io/pricing
+        verified_at: "2026-09-30"
         kind: html
-        poll: etag
+        poll: manual   # churns independently of price; hashed re-reads would alarm every cycle
         extraction: "regex <script id=\"__NEXT_DATA__\">(.*?)</script>; Contentful plan cards. Only three US$ figures exist sitewide: $50, $225, $200/month. The _next/data/<buildId>/pricing.json route 404s."
       weights:
         url: https://docs.infura.io/get-started/pricing/credit-cost.md
+        body_sha256: e12a561d9b6db0e803f66b1e656ed871c500927c6d5261612c20ece7162ebe46
+        verified_at: "2026-09-30"
         kind: markdown
         poll: etag
         extraction: "## <Network> headings, ### <Category> under Ethereum; every table header is '| RPC method | Credit cost |'. Strip Docusaurus anchor junk from the first '['."
@@ -591,11 +616,15 @@ providers:
     source:
       plans:
         url: https://chainstack.com/pricing.md
+        body_sha256: 109e9a4f5af1b12843d904a5a462cf2acd7db394f486828e60468ec9de1681a0
+        verified_at: "2026-09-30"
         kind: markdown
         poll: etag
         extraction: "table header '| Plan | Price (monthly) | Price (annual) | Included RU/mo | Extra usage per 1M RU | RPS limit | Projects |'"
       weights:
         url: https://docs.chainstack.com/docs/request-units.md
+        body_sha256: 6a0d96b791a8452a34f95eb03a13cab823f93043e6fef432ff15b5b1b6ebf082
+        verified_at: "2026-09-30"
         kind: markdown
         poll: body_hash
         extraction: "'## Cost per request' table (Full 1 RU / Archive 2 RUs) + the 'Always 2 RUs' section + the 20-method block-age list"
@@ -705,16 +734,19 @@ providers:
     source:
       plans:
         url: https://drpc.org/pricing
+        verified_at: "2026-09-30"
         kind: html
-        poll: body_hash
+        poll: manual   # churns independently of price; hashed re-reads would alarm every cycle
         extraction: "SSR HTML plan cards; the headline price is computed in /_next/static/chunks/pages/pricing-*.js from the constant 3.34e6 CU per USD"
       weights:
         url: https://raw.githubusercontent.com/drpcorg/drpc-nextra/main/pages/pricing/compute-units.mdx
+        body_sha256: b70cd284a3ab98cedbb34d9cf91d3429c27a129927dc18db66e3589129e69f77
+        verified_at: "2026-09-30"
         kind: markdown
         poll: body_hash
         extraction: "14 chain sections, 421 priced rows; every row is 20 CU except 21 zero rows. Pin blob SHA f03e321f9c04209e002d412831e30bcb5e0b594b (unchanged since 2026-03-14)."
     caveats:
-      - "SCOPE: dRPC is a router over ~40 third-party operators and would fall under the aggregator exclusion on a mechanical reading. RETAINED BY EXPLICIT DECISION (user, 2026-09-29) because its $6.00/1M is a published, pinnable, chain-independent upper bound that no operator-run provider matches for transparency. The routing non-determinism is carried as the caveats below rather than as an exclusion."
+      - "SCOPE: dRPC is a router over 60+ third-party operators, by its own count and would fall under the aggregator exclusion on a mechanical reading. RETAINED BY EXPLICIT DECISION (user, 2026-09-29) because its $6.00/1M is a published, pinnable, chain-independent upper bound that no operator-run provider matches for transparency. The routing non-determinism is carried as the caveats below rather than as an exclusion."
       - "20 CU is a CEILING, not a bill. dRPC is a router; operators may discount the base price per method/chain/archive/region via a `mul` multiplier constrained to 0..1 ('base price is currently price ceiling'). Those multipliers are not published, no response header reports CU charged, and calls routed to public providers are billed at zero."
       - "Provider selection is random with probability proportional to a rating recomputed every 5 seconds that takes operator price as an input — two identical requests a second apart can bill differently."
       - "The charge is provisional and settled after the fact against the providers that did meaningful work; dRPC's cost-model doc allows it to 'deduct more'."
@@ -843,11 +875,15 @@ providers:
     source:
       plans:
         url: https://www.ankr.com/docs/rpc-service/service-plans/index.md
+        body_sha256: 3c9561dc3f16ec3dcfea1ccc4ec3415343943665a7ae85b93eacb4c6626911d0
+        verified_at: "2026-09-30"
         kind: markdown
         poll: etag
         extraction: "Freemium 200M credits; PAYG minimum 10USD; Deal 500USD-3000USD at 20% extra"
       weights:
         url: https://www.ankr.com/docs/rpc-service/pricing/index.md
+        body_sha256: ba4f0c914cf35535be435cb034954403ca551cb5f65815e81e95c381c9e9e506
+        verified_at: "2026-09-30"
         kind: markdown
         poll: etag
         extraction: "'## Pricing per request: RPC over HTTPS' table '| API Type | Method | API Credits | in USD |', 5 rows. Forward-fill col 0 on the WSS table."
@@ -987,11 +1023,15 @@ providers:
     source:
       plans:
         url: https://docs.blockpi.io/pricing/pricing-and-rate-limit.md
+        body_sha256: 54fa52a755cfff2b8d5b7df89ea9c9af1e6f3427b36c977112d9e8e7a9289d89
+        verified_at: "2026-09-30"
         kind: markdown
         poll: body_hash
         extraction: "package table | Package | Price | RUs | Expiration | Rate Limit |"
       weights:
         url: https://docs.blockpi.io/pricing/request-unit-ru/evm-ru-table.md
+        body_sha256: 652aec8507a9a16b43343b54303c887a0e0d77524d9bb3649908698105dfd017
+        verified_at: "2026-09-30"
         kind: markdown
         poll: body_hash
         extraction: "two-column-pair markdown table; Solana at solana-eclipse-ru-table.md (Default 65)"
@@ -1370,6 +1410,8 @@ providers:
     source:
       plans:
         url: https://account-api.nownodes.io/plans
+        body_sha256: 39a76a79d0bd9aae4f05ff30640970506afe11424585286256f0efd75740370d
+        verified_at: "2026-09-30"
         kind: json
         poll: etag
         extraction: "$.data[*] -> .name, .api_calls_limit, .over_limit_price, .billing_intervals[*].{interval, price}"
@@ -1650,6 +1692,8 @@ providers:
     source:
       plans:
         url: https://assets.tatum.io/pricing-widget/tiers.json
+        body_sha256: 27506ba36a630c8ae8bdeace73e4e0a2e1aa9a8ea401310e224c6df40ce4a622
+        verified_at: "2026-09-30"
         kind: json
         poll: etag
         extraction: "$.tiers[*].{name, metadata.credits, metadata.paygoTier, id}; $.prices[<tier.id>][*].{lookup_key, unit_amount (CENTS), recurring.interval}. Use _monthly lookup keys only."
@@ -1772,11 +1816,15 @@ providers:
     source:
       plans:
         url: https://www.helius.dev/pricing.md
+        body_sha256: d91c8fd0fbc4236dac1f4933b39be305f19fe2cf45bb6b8eadc1b15de0fde83d
+        verified_at: "2026-09-30"
         kind: markdown
         poll: etag
         extraction: "^### (?P<plan>\\w+) - \\$(?P<usd>[\\d,]+)/month$ ; detail under '## Detailed Plan Comparison'"
       weights:
         url: https://www.helius.dev/docs/billing/credits.md
+        body_sha256: cfc41720a5a403880dc034c61fb059645d71194602b3e0479e15c65b18908327
+        verified_at: "2026-09-30"
         kind: markdown
         poll: body_hash
         extraction: "MDX <table> blocks under '## Standard Credits' (Service | Credits | Notes); class-level, not per-method"
@@ -2322,11 +2370,15 @@ providers:
     source:
       plans:
         url: https://docs.cdp.coinbase.com/node/pricing.md
+        body_sha256: 247aac8b0336c0b9efd053249f62c3bb644821e9c4b99c6486eb5327345d2162
+        verified_at: "2026-09-30"
         kind: markdown
         poll: body_hash
         extraction: "3,668 bytes of raw markdown carrying both price figures and the complete BU-per-method lists"
       weights:
         url: https://docs.cdp.coinbase.com/node/pricing.md
+        body_sha256: 247aac8b0336c0b9efd053249f62c3bb644821e9c4b99c6486eb5327345d2162
+        verified_at: "2026-09-30"
         kind: markdown
         poll: body_hash
         extraction: "three tier lists: 30 BU / 100 BU / 500 BU"
@@ -3532,11 +3584,14 @@ providers:
     source:
       plans:
         url: https://static.chainstack.com/pricing/pricing_current.json
+        verified_at: "2026-09-30"
         kind: json
-        poll: body_hash
+        poll: manual   # churns independently of price; hashed re-reads would alarm every cycle
         extraction: "$.blockchains[*].total_cost_monthly keyed by slug; 293 SKUs, all money in integer cents. Add-on and prerequisite rows come from chainstack.com/pricing.md's feature matrix."
       weights:
         url: https://chainstack.com/pricing.md
+        body_sha256: 109e9a4f5af1b12843d904a5a462cf2acd7db394f486828e60468ec9de1681a0
+        verified_at: "2026-09-30"
         kind: markdown
         poll: etag
         extraction: "n/a — unmetered"
@@ -3639,11 +3694,15 @@ providers:
     source:
       plans:
         url: https://www.quicknode.com/docs/platform/billing/flat-rate-rps.md
+        body_sha256: b8100487a233e8ac2f9d5e2c8d1ccc0be1c1117fc52e76d066589af669e05d02
+        verified_at: "2026-09-30"
         kind: markdown
         poll: etag
         extraction: "EVM and Solana RPS ladders, concurrent-connection and WebSocket-connection counts"
       weights:
         url: https://www.quicknode.com/docs/platform/billing/flat-rate-rps.md
+        body_sha256: b8100487a233e8ac2f9d5e2c8d1ccc0be1c1117fc52e76d066589af669e05d02
+        verified_at: "2026-09-30"
         kind: markdown
         poll: etag
         extraction: "n/a — unmetered"
@@ -3655,7 +3714,12 @@ providers:
   - slug: google-bne
     name: Google Cloud — Blockchain Node Engine
     cohort: dedicated
-    status: live
+    status: end-of-life
+    # Google's own release notes: limited support from 2026-06-15 (no new
+    # node creation), COMPLETE shutdown on 2026-12-15 with every existing
+    # node and endpoint deleted, and customers pointed at QuickNode. The
+    # pricing page still shows $0.69/$2.74 per hour and carries no notice,
+    # which is how this was published as live.
     unit: request
     pricing_model: flat_request
     currency: USD
@@ -4133,7 +4197,7 @@ providers:
         extraction: "n/a — the unit is not a call (see caveats)"
     caveats:
       - "THE UNIT IS NOT A REQUEST. A billable 'request' is 32 KB exchanged OR 500 ms elapsed, whichever comes first — a 320 KB eth_getLogs bills as 10. No $/1M-CALLS figure is derivable without a response-size and latency distribution, so AWS is reported with a stated assumption rather than a number."
-      - "ANNOUNCED END OF SUPPORT: stops accepting new customers 2026-10-29, full end of support 2027-09-29. A benchmark row for it goes stale by design."
+      - "ANNOUNCED END OF SUPPORT: stops accepting new customers 2026-10-29, full end of support 2027-09-30. A benchmark row for it goes stale by design."
       - "Break-even against a $6.00/1M metered provider is node_cost / (6.00 - 3.00) per million: bc.t3.large 32.6M req/mo, bc.m5.large 37.5M, bc.c5.xlarge 66.2M — and storage and egress are excluded from those, so the real crossover is higher."
 
 # ─────────────────────────────────────────────────── excluded / dead providers
@@ -4352,6 +4416,8 @@ providers:
         extraction: "on-chain plan policy; the single live plan is 10,000,000,000 ulava/month with allowed_buyers restricted to two Lava addresses"
       weights:
         url: https://raw.githubusercontent.com/lavanet/lava/main/specs/mainnet-1/specs/ethereum.json
+        body_sha256: 9512efa659df226c9ec78fea77ac237e4c3676bef00b481e22922d8ffd4bf3f9
+        verified_at: "2026-09-30"
         kind: json
         poll: body_hash
         extraction: "api_collections[].apis[].compute_units, plus extensions[].cu_multiplier; mirrored live at lava.lava.build/lavanet/lava/spec/spec/ETH1"
@@ -4559,7 +4625,7 @@ providers:
     cohort: excluded
     status: dead
     exclusion_reason: >-
-      The domain no longer resolves. Only a 2026-03-14 archive snapshot survives, and archived plan
+      The domain resolves and now serves an unrelated squatted site, so any endpoint still configured against it is talking to a stranger. Only a 2026-03-14 archive snapshot survives, and archived plan
       figures must be marked historical, never live. NOT to be confused with Instanodes
       (instanodes.io), a different, live provider which IS catalogued.
     unit: request
@@ -4578,7 +4644,10 @@ providers:
     name: Extrnode (Everstake)
     cohort: excluded
     status: end-of-life
-    exclusion_reason: Retired — no longer sells RPC. No current plan, price or unit is published.
+    exclusion_reason: >-
+      Retired as an RPC provider. extrnode.com redirects to Everstake Blockspace,
+      an active MEV and shreds product with published prices, so the company
+      pivoted rather than closed.
     unit: request
     pricing_model: flat_request
     currency: USD
@@ -4594,7 +4663,7 @@ providers:
   - slug: google-blockchain-rpc
     name: Google Cloud — Blockchain RPC
     cohort: excluded
-    status: no-price-published
+    status: end-of-life
     exclusion_reason: >-
       In Preview at $0 with a 100 req/s cap and NO PAID SCHEDULE of any kind. Any Google per-request
       price quoted today would be fabricated. Distinct from Blockchain Node Engine, which IS

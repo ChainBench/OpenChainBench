@@ -6,11 +6,11 @@ import (
 
 // Metrics emitted by the rpc-cost harness.
 //
-//   rpc_cost_monthly_usd{provider, plan, kind, bucket, chain, cohort, venue}
+//   rpc_cost_monthly_usd{provider, plan, kind, bucket, chain, tier, venue}
 //     The monthly bill in USD for that workload at that volume, on the
 //     provider's cheapest eligible plan. Lower is better.
 //
-//   rpc_cost_per_million_usd{provider, plan, kind, bucket, chain, cohort, venue}
+//   rpc_cost_per_million_usd{provider, plan, kind, bucket, chain, tier, venue}
 //     The same bill expressed per million requests. Derived, not a
 //     published rate: a plan that bundles more than the workload uses
 //     shows a high effective rate here, which is the honest reading.
@@ -56,6 +56,12 @@ var (
 )
 
 func init() {
+	// The `tier` label carries the COHORT (usage / dedicated / reference).
+	// It is named `tier`, not `cohort`, because that is the spec's dimension
+	// key and the site injects a dimension filter under the key verbatim:
+	// a label named anything else makes the selector match nothing and the
+	// tab render empty.
+	//
 	// The `venue` label carries the PLAN TIER (free/entry/growth/business/
 	// enterprise, plus "all" for the unrestricted view). It is named
 	// `venue` because that is an existing dimension key the site already
@@ -65,13 +71,13 @@ func init() {
 	costMonthly = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "rpc_cost_monthly_usd",
 		Help: "Monthly USD bill for a workload profile at a given request volume, on the cheapest eligible plan in the tier (lower is better). `venue` is the plan tier.",
-	}, []string{"provider", "plan", "kind", "bucket", "chain", "cohort", "venue"})
+	}, []string{"provider", "plan", "kind", "bucket", "chain", "tier", "venue"})
 	prometheus.MustRegister(costMonthly)
 
 	costPerMillion = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "rpc_cost_per_million_usd",
 		Help: "Effective USD per million requests for a workload profile at a given volume. Derived from the monthly bill, not a published rate. `venue` is the plan tier.",
-	}, []string{"provider", "plan", "kind", "bucket", "chain", "cohort", "venue"})
+	}, []string{"provider", "plan", "kind", "bucket", "chain", "tier", "venue"})
 	prometheus.MustRegister(costPerMillion)
 
 	freeAllowance = prometheus.NewGaugeVec(prometheus.GaugeOpts{
