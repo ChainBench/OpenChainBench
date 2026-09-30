@@ -67,6 +67,31 @@ railway up --detach     # uploads this directory, builds the Dockerfile
 railway logs
 ```
 
+**That recipe only works from the main checkout, not from a worktree.**
+`railway up` walks up to the repository root and uploads that, so from a
+worktree it sends the whole repository; Railpack then finds the repo-root
+`pnpm-workspace.yaml`, ignores `crm/Dockerfile` entirely, and the build dies on
+`pnpm install --frozen-lockfile` with `ERROR packages field missing or empty`
+(deployment `e4cbecc6`, 2026-09-30). What gets uploaded is what decides the
+builder, so the fix is to make `crm/` the root of the upload by copying it
+somewhere that is not a repository:
+
+```bash
+rsync -a --exclude node_modules --exclude .next --exclude .snapshots \
+  --exclude .env.local crm/ /tmp/crm-deploy/
+cd /tmp/crm-deploy
+railway up --ci --service ocb-crm \
+  --project bab1e866-89a4-4aa7-a1d7-c461869c71bd --environment production
+```
+
+`--ci` streams the build and exits, which is how you see which builder ran:
+`[build 6/6] RUN pnpm build` means the Dockerfile was used. `--project` requires
+`--environment` alongside it. Confirm with `railway deployment list --service
+ocb-crm`, because a failed deploy leaves the previous container serving: the
+dashboard keeps working and the failure looks like nothing happened. The
+refresh line in `railway logs` names the section count, which is the cheapest
+proof the new build is live.
+
 Variables (Railway service settings): `CRM_PASSWORD`, `CRM_SESSION_SECRET`, `POSTHOG_PERSONAL_API_KEY`,
 `POSTHOG_PROJECT_ID`, `VERCEL_API_TOKEN`, `VERCEL_TEAM_ID`, `VERCEL_PROJECT_ID`, optionally
 `DUNE_API_KEY`, `POSTHOG_HOURLY_BUDGET`, `REFRESH_MINUTES`. `SNAPSHOT_DIR=/data` and `PORT`
