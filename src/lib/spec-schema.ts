@@ -539,6 +539,26 @@ export const SpecSchema = z
       .optional(),
 
     /**
+     * Per-bench axis labels for the dimension selectors. The UI's defaults
+     * are named after the dimension KEY ("Venue", "Trade size", "Kind"),
+     * which reads as noise on a bench that reuses a key for something
+     * else: rpc-cost carries plan tiers in `venue` and monthly request
+     * volume in `bucket`, so the stock labels actively mislead. Keys are
+     * dimension keys; anything absent keeps the current label.
+     */
+    dimension_labels: z
+      .object({
+        chain: z.string().min(1).max(40).optional(),
+        region: z.string().min(1).max(40).optional(),
+        kind: z.string().min(1).max(40).optional(),
+        venue: z.string().min(1).max(40).optional(),
+        bucket: z.string().min(1).max(40).optional(),
+        tier: z.string().min(1).max(40).optional(),
+      })
+      .strict()
+      .optional(),
+
+    /**
      * Default dimension scope for the unfiltered ("aggregate") build.
      * When set, the tier-A snapshot (sig "") is built with these labels
      * injected into every query selector, so the bench's headline view,
@@ -691,8 +711,15 @@ export const SpecSchema = z
         })
       )
       // Cap covers visible tabs plus data-only window panels (revenue,
-      // volume and users each carry a 7d + 30d variant on the HL bench).
-      .max(12)
+      // volume and users each carry a 7d + 30d variant on the HL bench) and
+      // the data-only annotations a bench needs to show a figure's arithmetic
+      // rather than assert it. Bench 208 is the case that sets this bound: the
+      // forfeited share of a liquidated position's margin only means anything
+      // beside the loss at trigger, the share returned, the count behind the
+      // median, the part of it that is fees rather than the venue's penalty,
+      // and the leverage-neutral rate that answers the same question in money
+      // instead of notional. Six panels that are one measurement.
+      .max(17)
       .optional(),
 
     /**
@@ -708,6 +735,18 @@ export const SpecSchema = z
      *  (0 or 1) rather than a probe success rate: the ledger then hides
      *  the Success and Reliability columns and describes an unpublished
      *  row as under its threshold, not as a dead endpoint. */
+    /**
+     * Whether 0 is a real value on this bench rather than a missing one.
+     *
+     * The ledger and the summary strip prune all-zero rows, because on a
+     * latency bench a provider emitting 0 ms is dead, not instant. On a
+     * cost bench $0 is the answer: several RPC providers genuinely serve a
+     * ten-million-request month for nothing, and pruning them made the
+     * page name a paid provider as the cheapest option.
+     *
+     * Defaults false, so every existing bench keeps the behaviour it has.
+     */
+    zero_is_a_value: z.boolean().default(false),
     ledger_reliability: z.boolean().default(true),
     ledger_columns: z
       .array(

@@ -1,10 +1,10 @@
 package main
 
-// source_paradex.go — Paradex.
+// source_paradex.go: Paradex.
 //
 // Liquidations: GET /v1/trades?market=X&start_at=<ms>&end_at=<now_ms>
 // &page_size=100, following the "next" cursor; keep rows whose trade_type
-// equals "LIQUIDATION". VERIFY: exact trade_type value — the field was added
+// equals "LIQUIDATION". VERIFY: exact trade_type value: the field was added
 // in Paradex v1.38; the assumed value is "LIQUIDATION". Notional = size×price.
 // OI: GET /v1/markets/summary?market=X → open_interest. VERIFY: unit
 // (base-asset vs USD) by comparing BTC vs ETH order of magnitude at runtime.
@@ -18,7 +18,10 @@ import (
 const (
 	paradexBaseURL  = "https://api.prod.paradex.trade/v1"
 	paradexPageSize = 100
-	paradexMaxPages = 20
+	// The first tick backfills a full 24h. Paradex's BTC tape carried 3,677
+	// rows in 24h on 2026-09-27; a cap of 20 pages silently dropped the
+	// oldest eleven hours of it after every restart.
+	paradexMaxPages = 300
 )
 
 var paradexMarkets = map[string]string{
@@ -47,7 +50,7 @@ type paradexTradesResp struct {
 	Next    *string        `json:"next"`
 }
 
-// HasLiquidationSource reports true — public trade tape exposes LIQUIDATION trade_type.
+// HasLiquidationSource reports true: public trade tape exposes LIQUIDATION trade_type.
 func (p *Paradex) HasLiquidationSource() bool { return true }
 
 // FetchLiquidationsSince pages the public trade tape and keeps LIQUIDATION rows.
@@ -60,6 +63,7 @@ func (p *Paradex) FetchLiquidationsSince(asset string, sinceMs int64) ([]LiqEven
 	var events []LiqEvent
 	cursor := ""
 	endMs := time.Now().UnixMilli()
+	oldestReadMs := int64(0)
 
 	for page := 0; page < paradexMaxPages; page++ {
 		u := fmt.Sprintf("%s/trades?market=%s&start_at=%d&end_at=%d&page_size=%d",
@@ -72,6 +76,9 @@ func (p *Paradex) FetchLiquidationsSince(asset string, sinceMs int64) ([]LiqEven
 			return nil, fmt.Errorf("paradex trades: %w", err)
 		}
 		for _, t := range resp.Results {
+			if oldestReadMs == 0 || t.CreatedAt < oldestReadMs {
+				oldestReadMs = t.CreatedAt
+			}
 			if t.TradeType != "LIQUIDATION" {
 				continue
 			}
@@ -97,37 +104,60 @@ func (p *Paradex) FetchLiquidationsSince(asset string, sinceMs int64) ([]LiqEven
 			})
 		}
 		if resp.Next == nil || *resp.Next == "" || *resp.Next == "null" || len(resp.Results) == 0 {
-			break
+			return events, nil
 		}
 		cursor = *resp.Next
 	}
-	return events, nil
+	// Reaching the cap means the oldest part of the window was never read;
+	// the rows read go back with the edge (the tape is newest first).
+	return events, &partialWindowError{OldestReadMs: oldestReadMs, Cap: paradexMaxPages * paradexPageSize, What: "paradex trades " + market}
+}
+
+// paradexSummary is one row of /markets/summary.
+type paradexSummary struct {
+	OpenInterest flexFloat `json:"open_interest"` // base units
+	MarkPrice    flexFloat `json:"mark_price"`    // USD per base unit
+	Volume24h    flexFloat `json:"volume_24h"`    // already quote-denominated
+}
+
+// summary reads the market summary row for the asset.
+func (p *Paradex) summary(asset string) (paradexSummary, error) {
+	market, ok := paradexMarkets[asset]
+	if !ok {
+		return paradexSummary{}, fmt.Errorf("paradex: unsupported asset %q", asset)
+	}
+	var resp struct {
+		Results []paradexSummary `json:"results"`
+	}
+	u := fmt.Sprintf("%s/markets/summary?market=%s", p.baseURL, url.QueryEscape(market))
+	if err := httpGetJSON(u, &resp); err != nil {
+		return paradexSummary{}, fmt.Errorf("paradex markets/summary: %w", err)
+	}
+	if len(resp.Results) == 0 {
+		return paradexSummary{}, fmt.Errorf("paradex markets/summary: empty results for %s", market)
+	}
+	return resp.Results[0], nil
 }
 
 // FetchOI returns open interest in USD from the market summary.
 // open_interest is in base-asset units (ETH, BTC); multiply by mark_price.
 func (p *Paradex) FetchOI(asset string) (float64, error) {
-	market, ok := paradexMarkets[asset]
-	if !ok {
-		return 0, fmt.Errorf("paradex: unsupported asset %q", asset)
+	r, err := p.summary(asset)
+	if err != nil {
+		return 0, err
 	}
-	var resp struct {
-		Results []struct {
-			OpenInterest flexFloat `json:"open_interest"` // base units
-			MarkPrice    flexFloat `json:"mark_price"`    // USD per base unit
-		} `json:"results"`
-	}
-	u := fmt.Sprintf("%s/markets/summary?market=%s", p.baseURL, url.QueryEscape(market))
-	if err := httpGetJSON(u, &resp); err != nil {
-		return 0, fmt.Errorf("paradex markets/summary: %w", err)
-	}
-	if len(resp.Results) == 0 {
-		return 0, fmt.Errorf("paradex markets/summary: empty results for %s", market)
-	}
-	r := resp.Results[0]
 	markPx := float64(r.MarkPrice)
 	if markPx == 0 {
-		return 0, fmt.Errorf("paradex markets/summary: mark_price is zero for %s", market)
+		return 0, fmt.Errorf("paradex markets/summary: mark_price is zero for %s", asset)
 	}
 	return float64(r.OpenInterest) * markPx, nil
+}
+
+// FetchVolume24hUSD returns the market's 24h traded notional in USD.
+func (p *Paradex) FetchVolume24hUSD(asset string) (float64, error) {
+	r, err := p.summary(asset)
+	if err != nil {
+		return 0, err
+	}
+	return float64(r.Volume24h), nil
 }

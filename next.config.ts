@@ -183,11 +183,19 @@ const nextConfig: NextConfig = {
         headers: [{ key: "X-Robots-Tag", value: "noindex" }],
       },
       {
-        // Citable JSON is polled by LLM crawlers (Perplexity, ChatGPT,
-        // Claude Deep Research) — a bare `public` with no s-maxage sent
-        // every scrape to origin. Sitemap's Cache-Control is set inside
-        // its route.ts (`src/app/sitemap.xml/route.ts`) because metadata
-        // routes ignore next.config headers().
+        // INERT, kept as a record of intent. Citable JSON is polled by
+        // LLM crawlers (Perplexity, ChatGPT, Claude Deep Research) and
+        // this rule was added to put it behind an hour-long edge cache.
+        // It does not: a config header does not override a Cache-Control
+        // the route handler sets on its own response, and
+        // src/app/api/citable/route.ts sets one. Sampled every 45 s on
+        // 2026-09-30, the edge entry for /api/citable went STALE at age
+        // 306 and reset to 42, then went STALE again at 313: two clean
+        // cycles, so the served window is that route's 300 s and not a
+        // one-off eviction. Change the window in the route, not here. Sitemap's
+        // Cache-Control is likewise set inside its route.ts
+        // (`src/app/sitemap.xml/route.ts`) because metadata routes
+        // ignore next.config headers().
         source: "/api/citable",
         headers: [
           {
@@ -222,6 +230,7 @@ const nextConfig: NextConfig = {
       { source: "/products/:slug", has: markdownOnly, destination: "/api/md/products/:slug" },
       { source: "/perps", has: markdownOnly, destination: "/api/md/perps" },
       { source: "/rwa", has: markdownOnly, destination: "/api/md/rwa" },
+      { source: "/capital", has: markdownOnly, destination: "/api/md/capital" },
     ];
     const afterFiles = [
       // PostHog reverse proxy — routes /ingest/* through the Next.js server
@@ -303,6 +312,25 @@ const nextConfig: NextConfig = {
       permanent: true,
     }));
     return [
+      // www to the apex, permanently.
+      //
+      // www.openchainbench.com served the whole site at 200 with no
+      // redirect, so the catalogue was reachable on two hostnames. The host
+      // rule added on 2026-09-30 now marks it noindex, which stops the
+      // duplicate being indexed but throws away anything that links to the
+      // www form. A 301 passes that authority to the apex instead, which is
+      // what a hostname with inbound links deserves; the noindex stays as
+      // the net for every other host.
+      //
+      // Written with `has` on the host rather than in middleware so it costs
+      // nothing at runtime and cannot be missed by a route that skips the
+      // matcher.
+      {
+        source: "/:path*",
+        has: [{ type: "host", value: "www.openchainbench.com" }],
+        destination: "https://openchainbench.com/:path*",
+        permanent: true,
+      },
       { source: "/live", destination: "/", permanent: true },
       { source: "/networks", destination: "/", permanent: true },
       { source: "/providers", destination: "/products", permanent: true },
@@ -313,8 +341,15 @@ const nextConfig: NextConfig = {
       // The /hyperliquid and /perps hubs (no slug) are untouched.
       // The hub's own image routes (/hyperliquid/opengraph-image) must
       // not match: a bare :slug would 308 them to a 404.
+      // Unlabeled builder addresses have no product page (hex slugs 404
+      // by design); their old detail URLs land on the bench that lists them.
       {
-        source: "/hyperliquid/:slug((?!opengraph-image|twitter-image|icon|apple-icon).*)",
+        source: "/hyperliquid/:slug(0x[0-9a-fA-F]+)",
+        destination: "/benchmarks/hyperliquid-frontends",
+        permanent: true,
+      },
+      {
+        source: "/hyperliquid/:slug((?!opengraph-image|twitter-image|icon|apple-icon|0x).*)",
         destination: "/products/:slug#hl",
         permanent: true,
       },

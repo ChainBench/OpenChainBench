@@ -156,9 +156,22 @@ export async function GET(
   }
 
   const payload: Payload = { sources, oraclePairs, rows, dataAsOf };
+  // An empty vector still answers 200, so it has to be cached on a
+  // shorter leash than a real answer. A Prom restart or a renamed
+  // `pair` / `source_a` label produces no rows, and at 300 s + 900 s SWR
+  // that would pin an empty "View by oracle pair" matrix at the edge for
+  // twenty minutes for every viewer, with nothing able to bust it. 60 s
+  // lets the next scrape heal it.
+  const empty = rows.length === 0;
   return NextResponse.json(payload, {
     headers: {
-      "cache-control": "public, s-maxage=60, stale-while-revalidate=300",
+      // 300 s: the Prom client fetches through the data cache
+      // (src/lib/prometheus.ts, revalidate 300), so a shorter edge window
+      // re-ran the handler against a cached query result. The figure is a
+      // 24 h quantile; it does not move on a one-minute scale.
+      "cache-control": empty
+        ? "public, s-maxage=60"
+        : "public, s-maxage=300, stale-while-revalidate=900",
     },
   });
 }

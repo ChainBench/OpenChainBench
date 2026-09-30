@@ -18,6 +18,23 @@ type Row struct {
 	PriceChgPct  float64
 	HasPriceChg  bool
 
+	// Price to sales: the same multiple on what the protocol keeps rather
+	// than on what its users paid. Absent when no adapter behind the token
+	// publishes a revenue series, which is "unknown", not "keeps nothing",
+	// and absent when the revenue total is knowably short: a multiple on a
+	// fraction of the revenue reads as a higher multiple than it is.
+	AnnualRev float64
+	PS        float64
+	HasPS     bool
+
+	// Realized dilution: circulating supply now against 30 and 90 days
+	// ago, from CoinGecko's daily market cap / price. Absent while the
+	// series is shorter than the window.
+	SupplyChg30d float64
+	HasSupply30d bool
+	SupplyChg90d float64
+	HasSupply90d bool
+
 	// Peer comparison. A P/F of 1.05 is cheap against Yield (median 16.66)
 	// and ordinary against Launchpad (median 1.05), so a single market-wide
 	// median would rank the categories rather than the protocols.
@@ -36,7 +53,7 @@ const MinPeerGroup = 5
 
 // buildRows joins the cohort to the market data and computes every ratio.
 // Pure, so the whole valuation is testable without a network.
-func buildRows(cohort []Protocol, markets map[string]cgMarket, minFloatPct float64) []Row {
+func buildRows(cohort []Protocol, markets map[string]cgMarket, minFloatPct, minMcapUSD float64) []Row {
 	rows := make([]Row, 0, len(cohort))
 	for _, p := range cohort {
 		m, ok := markets[p.GeckoID]
@@ -44,6 +61,15 @@ func buildRows(cohort []Protocol, markets map[string]cgMarket, minFloatPct float
 			// No listing, or a token CoinGecko has no market cap for.
 			// Publishing fees alone would put a row on a valuation board
 			// with no valuation.
+			continue
+		}
+		// A market cap floor, for the same reason as the float floor: a
+		// token worth a few hundred thousand dollars against millions of
+		// annual fees prints a ratio near zero and takes the top of an
+		// ascending board, where a reader reads it as the cheapest token
+		// in DeFi. It is an abandoned or unlisted token, and the ratio
+		// says nothing about value.
+		if m.Mcap < minMcapUSD {
 			continue
 		}
 		r := Row{Protocol: p, Mcap: m.Mcap, FDV: m.FDV, AnnualFees: annualize(p.Fees30d)}
@@ -63,7 +89,18 @@ func buildRows(cohort []Protocol, markets map[string]cgMarket, minFloatPct float
 				r.PFfdv, r.HasFDV = m.FDV/r.AnnualFees, true
 			}
 		}
-		if p.Prev30d > 0 {
+		if p.Rev30d > 0 {
+			r.AnnualRev = annualize(p.Rev30d)
+			if !p.RevIncomplete {
+				r.PS, r.HasPS = r.Mcap/r.AnnualRev, true
+			}
+		}
+		// Month over month needs a full prior month. A token whose adapter
+		// started 40 days ago has ten days in its prior window, and the
+		// ratio of a month to ten days prints as +200 percent growth and
+		// feeds the divergence screen. The year total is the only signal
+		// that the history reaches past both windows (review of PR 2691).
+		if p.Prev30d > 0 && p.Fees1y > p.Fees30d+p.Prev30d && !p.FeeBasisShift {
 			r.FeeGrowthPct, r.HasFeeGrowth = 100*(p.Fees30d/p.Prev30d-1), true
 		}
 		if m.PriceChg30d != nil {

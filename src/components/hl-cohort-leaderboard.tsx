@@ -118,7 +118,9 @@ export function HlCohortLeaderboard({
               // hyperliquid-frontends bench, so /products/<slug>#hl exists
               // for all of them (the Hyperliquid view degrades gracefully
               // when the history blob lacks the frontend).
-              const hasDetailPage = true;
+              // Unlabeled builder addresses (hex slugs) have no product
+              // page by design: render them as text, never as a link.
+              const hasDetailPage = !/^0x[a-f0-9]+$/i.test(r.slug);
               return (
                 <tr
                   key={r.slug}

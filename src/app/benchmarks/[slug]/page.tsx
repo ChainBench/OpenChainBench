@@ -719,6 +719,20 @@ export default async function BenchmarkPage({
             <span className="font-medium text-ink">TL;DR.</span> As of{" "}
             <time dateTime={trace.isoDate}>{trace.isoDate}</time>,{" "}
             {trace.claim}. Source: OpenChainBench, {trace.url}.
+            {/* The audit table sits under the board, and a reader who wants
+                the evidence should not have to find it by scrolling: the
+                first person to ask for "the transaction list" was looking
+                at a page that already had it. */}
+            {(benchmark.slug === "terminal-fill-quality" || benchmark.slug === "terminal-execution-quality") && (
+              <>
+                {" "}
+                Every swap behind these medians is listed{" "}
+                <a href="#swaps" className="underline underline-offset-2">
+                  below
+                </a>
+                , one row per transaction with its explorer link.
+              </>
+            )}
             {publicEndpointCount >= 2 && (
               <>
                 {" "}
@@ -931,6 +945,7 @@ export default async function BenchmarkPage({
             venueOptions={venueOptions}
             bucketOptions={bucketOptions}
             tierOptions={tierOptions}
+            dimensionLabels={aggregate.dimensionLabels}
             venuesForChain={aggregate.extras?.venuesForChain}
             initialChain={chain ?? null}
             initialRegion={region ?? null}
@@ -983,10 +998,12 @@ export default async function BenchmarkPage({
           SOL is 0.8% off Binance" maps to a visible cell on the page. */}
       {!isDraft && benchmark.slug === "oracle-deviation" && <OraclePairMatrix />}
 
-      {/* Bench 268: the sampled swaps behind the ledger, one real
-          transaction per row with its Solscan link, so every figure can
-          be checked on-chain. */}
+      {/* Benches 268 and 279: the sampled swaps behind the ledger, one
+          real transaction per row with its explorer link, so every figure
+          can be checked on-chain. 279 reads the same swaps and adds the
+          column it ranks on, the loss with the app's own fee removed. */}
       {benchmark.slug === "terminal-fill-quality" && <TerminalFillAudit />}
+      {benchmark.slug === "terminal-execution-quality" && <TerminalFillAudit exec />}
 
       {/* SEO-friendly per-chain H2 block. Renders server-side so the
           long-tail "Ethereum finality time", "Solana finality time"

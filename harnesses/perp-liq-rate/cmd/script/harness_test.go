@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/hex"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -37,9 +38,9 @@ func TestGainsTopicNonEmpty(t *testing.T) {
 func TestSlidingWindowAndSeenSet(t *testing.T) {
 	w := NewSlidingWindow(24 * time.Hour)
 	now := time.Now().UnixMilli()
-	w.Add(now-25*3600*1000, 100) // stale
-	w.Add(now-3600*1000, 50)
-	w.Add(now, 25)
+	w.Add("stale", now-25*3600*1000, 100) // stale
+	w.Add("a", now-3600*1000, 50)
+	w.Add("b", now, 25)
 	w.Prune(now)
 	if got := w.Sum(); got != 75 {
 		t.Fatalf("Sum = %v, want 75", got)
@@ -47,12 +48,35 @@ func TestSlidingWindowAndSeenSet(t *testing.T) {
 	if w.Len() != 2 {
 		t.Fatalf("Len = %d, want 2", w.Len())
 	}
-	if w.IsWarm(time.Now()) {
-		t.Fatalf("window should not be warm before MarkTick+span")
+	// Collateral and leverage travel with the entries that carry them and
+	// stay absent, not zero, for a window whose source exposes neither.
+	if _, ok := w.SumCollateral(); ok {
+		t.Fatal("a window of tape events reports collateral it does not have")
 	}
-	w.MarkTick(time.Now().Add(-25 * time.Hour))
-	if !w.IsWarm(time.Now()) {
-		t.Fatalf("window should be warm 25h after first tick")
+	if _, ok := w.MedianLeverage(); ok {
+		t.Fatal("a window of tape events reports a leverage it does not have")
+	}
+	w.AddEvent(LiqEvent{Key: "g1", TimestampMs: now, NotionalUSD: 1000, CollateralUSD: 10, Leverage: 100})
+	w.AddEvent(LiqEvent{Key: "g2", TimestampMs: now, NotionalUSD: 500, CollateralUSD: 25, Leverage: 20})
+	w.AddEvent(LiqEvent{Key: "g3", TimestampMs: now, NotionalUSD: 300, CollateralUSD: 6, Leverage: 50})
+	if col, ok := w.SumCollateral(); !ok || col != 41 {
+		t.Fatalf("SumCollateral = %v,%v want 41,true", col, ok)
+	}
+	if lev, ok := w.MedianLeverage(); !ok || lev != 50 {
+		t.Fatalf("MedianLeverage = %v,%v want 50,true", lev, ok)
+	}
+
+	oi := NewSampleWindow(24 * time.Hour)
+	oi.Add(now-3600*1000, 40)
+	oi.Add(now, 10)
+	// Time-weighted: 40 stood for the hour, 10 has only just arrived, so the
+	// mean over the elapsed period is 40 and not the 25 an average of the two
+	// readings would report.
+	if got := oi.TimeWeightedMean(now); got < 39.9 || got > 40.1 {
+		t.Fatalf("TimeWeightedMean = %v, want about 40", got)
+	}
+	if oi.Max() != 40 || oi.Min() != 10 || oi.Len() != 2 {
+		t.Fatalf("SampleWindow max=%v min=%v len=%d, want 40, 10, 2", oi.Max(), oi.Min(), oi.Len())
 	}
 
 	s := NewSeenSet()
@@ -75,4 +99,11 @@ func TestParseScaled(t *testing.T) {
 	if err != nil || v != -2.5 {
 		t.Fatalf("parseScaled negative = %v (%v)", v, err)
 	}
+}
+
+// The retry backoff exists for the chain and the venues, not for the suite.
+func TestMain(m *testing.M) {
+	httpRetryBase = time.Millisecond
+	gmxMarketsRetryBase = time.Millisecond
+	os.Exit(m.Run())
 }

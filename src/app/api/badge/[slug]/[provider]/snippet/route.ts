@@ -19,6 +19,12 @@
  * embed a scope-restricted badge (chain, region, kind). The site URL
  * the badge links to also picks up the same scope where applicable,
  * so a reader clicking through lands on the matching variant view.
+ *
+ * Cached for an hour at the edge. Unlike the badge SVG this body holds
+ * no measurement: it is the bench title, the provider name and two
+ * URLs, all of which come from the YAML specs and the registry and so
+ * change on deploy, not on a scrape. Same window as /api/cite, which
+ * publishes the same class of content.
  */
 
 import { type NextRequest, NextResponse } from "next/server";
@@ -114,7 +120,7 @@ export async function GET(
       },
       {
         headers: {
-          "cache-control": "public, s-maxage=300, stale-while-revalidate=600",
+          "cache-control": "public, s-maxage=3600, stale-while-revalidate=86400",
         },
       },
     );
@@ -123,7 +129,7 @@ export async function GET(
   return new NextResponse(snippets[format], {
     headers: {
       "content-type": "text/plain; charset=utf-8",
-      "cache-control": "public, s-maxage=300, stale-while-revalidate=600",
+      "cache-control": "public, s-maxage=3600, stale-while-revalidate=86400",
     },
   });
 }

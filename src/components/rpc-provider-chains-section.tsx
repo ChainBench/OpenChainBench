@@ -119,8 +119,8 @@ export async function RpcProviderChainsSection({
         {keyedOnly ? (
           <>
             Where {providerName}&apos;s private (API-key) endpoint ranks among the
-            private providers measured on each chain (Alchemy, Chainstack, QuickNode,
-            probed every 120 s): 24h p50 across 3 probe regions, success rate
+            private providers measured on each chain (Alchemy, Chainstack, GetBlock,
+            QuickNode, probed every 120 s): 24h p50 across 3 probe regions, success rate
             and failed probes. Never ranked against the free public gateways.
           </>
         ) : (

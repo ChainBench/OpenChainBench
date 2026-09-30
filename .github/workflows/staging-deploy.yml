@@ -64,49 +64,55 @@ jobs:
           echo "url=$url" >> "$GITHUB_OUTPUT"
           echo "Preview ready at $url"
 
-      # Alias the real staging domain, not a .vercel.app name.
+      # Alias openchainbench-staging.vercel.app, which this team owns.
       #
-      # This step failed every run from 2026-09-28 with `The chosen alias
-      # "staging-openchainbench.vercel.app" is already in use`: that
-      # subdomain is globally unique across Vercel and is not ours. The
-      # build still deployed, so `dev` was reachable only at its per-run
-      # preview URL and staging.openchainbench.com was left pointing at
-      # whatever it was last assigned, which on 2026-09-29 was a
-      # PRODUCTION deployment serving the whole catalog under a second
-      # indexable hostname.
+      # Two names were tried before this one and neither works.
+      # staging-openchainbench.vercel.app is globally unique across Vercel
+      # and belongs to someone else, so every run from 2026-09-28 died on
+      # `already in use`. staging.openchainbench.com cannot be used either:
+      # the apex openchainbench.com is registered under a different Vercel
+      # team from the one these deployments live in, so this scope gets
+      # `You don't have access to the domain`, and operating from the
+      # owning team is refused for an overdue balance. A DNS TXT
+      # verification record proves control of the DNS but does not move the
+      # domain between teams.
       #
-      # Non-blocking on purpose: the domain lives under the team that owns
-      # openchainbench.com, and while that team carries an overdue balance
-      # Vercel refuses every alias operation on it. A billing problem must
-      # not turn a green build red, and the preview URL in the summary
-      # below is always usable regardless.
+      # openchainbench-staging.vercel.app has none of those problems: it is
+      # already registered to this team and needs no billing, no DNS and no
+      # cross-team transfer. Kept non-blocking anyway so an alias problem
+      # never turns a green build red; the preview URL in the summary below
+      # is always usable regardless.
       - name: Update stable staging alias
         continue-on-error: true
         run: |
           vercel alias set "${{ steps.deploy.outputs.url }}" \
-            staging.openchainbench.com \
+            openchainbench-staging.vercel.app \
             --token=${{ secrets.VERCEL_TOKEN }} \
             --scope=${{ secrets.VERCEL_ORG_ID }}
 
-      # Each deployment starts with an empty ISR cache; until the
-      # materialize worker's next sweep (≤5 min) every page hit is a
-      # cold render. Warming here closes that window so a deploy never
-      # ships a slow first impression.
-      - name: Warm bench pages
-        run: |
-          base="${{ steps.deploy.outputs.url }}"
-          curl -sf --max-time 30 "$base/sitemap.xml" \
-            | grep -o 'https://[^<]*/benchmarks/[a-z0-9-]*' \
-            | sed "s|https://[^/]*|$base|" | sort -u \
-            | xargs -P 4 -I{} curl -s -o /dev/null -w "%{http_code} %{time_total}s {}\n" --max-time 120 {} \
-            || echo "warm-up failed (non-blocking)"
+      # No warm-up on staging, deliberately.
+      #
+      # This step used to fetch the sitemap and request all 184 benchmark
+      # pages after every deploy, to spare the first visitor a cold render.
+      # On production that reasoning holds. On staging it does not: a
+      # staging deploy is read by one reviewer opening a handful of pages,
+      # and there were 17 staging deploys in the two days to 2026-09-30,
+      # so the step was paying for about 3,100 cold renders every two days
+      # nobody was waiting on. Each one queries Prometheus and rebuilds a
+      # heavy page, which showed up as the two largest lines on the Vercel
+      # bill, Fluid provisioned memory and active CPU.
+      #
+      # The cost of not warming is that the reviewer's first page load is
+      # slow once, which is the correct trade on a review surface.
+      # Production warms its hubs only, trimmed the same day for the same
+      # reason; see prod-deploy.yml.
 
       - name: Comment summary
         run: |
           {
             echo "## Vercel staging deploy ✓"
             echo ""
-            echo "**Stable:**  https://staging.openchainbench.com"
+            echo "**Stable:**  https://openchainbench-staging.vercel.app"
             echo ""
             echo "**Preview:** ${{ steps.deploy.outputs.url }}"
             echo ""

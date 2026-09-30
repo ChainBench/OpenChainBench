@@ -171,10 +171,72 @@ const nativeNote = "Swaps routed through the terminal's own contracts on this ch
 type nativeFeed struct {
 	http   *http.Client
 	cursor map[string]int64 // chain -> last block scanned
+	// The eth_getLogs range this chain's endpoint actually accepts. A
+	// constant span cannot survive a provider that caps it: BNB's refused
+	// every 400-block call ("up to a 10 block range"), the cursor only
+	// advances on success, and it sat 623,045 blocks behind head for days
+	// while six products published All chains rows without BNB.
+	span map[string]int64
+	// How far behind head this chain's node still answers eth_getLogs.
+	// publicnode calls anything older "an archive request" and refuses it,
+	// so a resume point deeper than that can never be read: the poll
+	// failed, the cursor held, the next poll jumped to the same depth and
+	// failed the same way — BNB sat at feed_up 0 with an 18,000-block lag
+	// after a two-hour gap. Learned down on each refusal, from the budget.
+	depth map[string]int64
+	// Shared with State by reference, like the cursor: chain -> when its
+	// feed last failed, so compute() can tell a chain it cannot read from
+	// a chain nobody trades on.
+	down   map[string]int64
 	polled map[string][2]int64
 	box    map[string]*xinboxTx
 	up     map[string]bool
 	funded map[string]map[string]int64 // State.Funded, set by sampleNative each tick (app -> wallet -> time)
+}
+
+// logsAddrBatch: the most addresses one eth_getLogs filter may name.
+// publicnode answers "Request blocked" to a filter of ten or more, at any
+// block span — ten blocks or four hundred — and it is the one public node
+// that serves BNB's logs at all. The BNB router list is longer than that,
+// so every poll's first chunk was refused, the fallbacks then described
+// the failure in their own words, and the span learned the wrong lesson.
+const logsAddrBatch = 9
+
+// getLogsBatched: one block range, the routers in filters of at most
+// logsAddrBatch, results concatenated. A batch the node answers with a
+// null result is a quiet batch; any other error is the chunk's error.
+func getLogsBatched(ctx context.Context, httpc *http.Client, urls []string, from, to int64, routers []string) ([]evmLog, error) {
+	var out []evmLog
+	for i := 0; i < len(routers); i += logsAddrBatch {
+		j := i + logsAddrBatch
+		if j > len(routers) {
+			j = len(routers)
+		}
+		var part []evmLog
+		err := evmCall(ctx, httpc, urls, "eth_getLogs", []any{map[string]any{"fromBlock": "0x" + big.NewInt(from).Text(16), "toBlock": "0x" + big.NewInt(to).Text(16), "address": routers[i:j]}}, &part)
+		if err != nil && !strings.Contains(err.Error(), "empty result") {
+			return nil, err
+		}
+		out = append(out, part...)
+	}
+	return out, nil
+}
+
+// spanDefault: the eth_getLogs range a chain starts from, and the ceiling
+// a recovered span climbs back to. Ethereum's public nodes cap the call at
+// 50 blocks; everywhere else 400 is about ten minutes of chain.
+func (f *nativeFeed) spanDefault(chain string) int64 {
+	if chain == "ethereum" {
+		return 50
+	}
+	return 400
+}
+
+func min64(a, b int64) int64 {
+	if a < b {
+		return a
+	}
+	return b
 }
 
 // dropsLoops: whether the row leaves farming round trips out (DropLoops).
@@ -344,11 +406,30 @@ func (b *xinboxTx) add(hash string) bool {
 	return true
 }
 
-func newNativeFeed(httpc *http.Client, cursor map[string]int64) *nativeFeed {
+// rangeRefusal: the endpoint refused the block range rather than failing
+// for another reason. Providers word this differently, so match the words
+// they share rather than one vendor's sentence.
+func rangeRefusal(err error) bool {
+	s := strings.ToLower(err.Error())
+	if !strings.Contains(s, "block") && !strings.Contains(s, "range") {
+		return false
+	}
+	for _, w := range []string{"range", "limit", "exceed", "too large", "up to", "max results", "free tier"} {
+		if strings.Contains(s, w) {
+			return true
+		}
+	}
+	return false
+}
+
+func newNativeFeed(httpc *http.Client, cursor, down map[string]int64) *nativeFeed {
 	if cursor == nil {
 		cursor = map[string]int64{}
 	}
-	return &nativeFeed{http: httpc, cursor: cursor, polled: map[string][2]int64{}, box: map[string]*xinboxTx{}, up: map[string]bool{}}
+	if down == nil {
+		down = map[string]int64{}
+	}
+	return &nativeFeed{http: httpc, cursor: cursor, span: map[string]int64{}, depth: map[string]int64{}, down: down, polled: map[string][2]int64{}, box: map[string]*xinboxTx{}, up: map[string]bool{}}
 }
 
 // poll reads every router log since the cursor (at most 2,000 blocks a
@@ -374,39 +455,136 @@ func (f *nativeFeed) poll(ctx context.Context) {
 		var headHex string
 		if err := evmCall(ctx, f.http, c.rpc, "eth_blockNumber", []any{}, &headHex); err != nil {
 			f.up[c.slug] = false
+			if _, seen := f.down[c.slug]; !seen {
+				f.down[c.slug] = time.Now().Unix()
+			}
+			gNativeUp.WithLabelValues(c.slug).Set(0)
 			continue
 		}
 		head := hexInt(headHex)
+		// Ranges of at most 400 blocks (50 on Ethereum, where the public
+		// nodes cap eth_getLogs at 50 blocks; ten minutes of chain), a few
+		// per tick: a public RPC may refuse or redirect a heavier query.
+		span := f.span[c.slug]
+		if span <= 0 {
+			span = f.spanDefault(c.slug)
+		}
+		// What one tick can actually read. The resume window used to be a
+		// constant 200 blocks, which is far less than this and far less
+		// than a fast chain produces between polls: Robinhood ran about
+		// 3,000 blocks ahead every tick, so the "too far behind" branch
+		// fired every time, jumped back to head-200, and about 93 % of the
+		// chain was never read. cSkipped had been counting it all along.
+		const maxChunks = 40
+		budget := span * maxChunks
 		from := f.cursor[c.slug] + 1
-		if from == 1 || head-from > 2000 {
+		skipped := int64(0)
+		depth := budget
+		if d, ok := f.depth[c.slug]; ok && d > 0 && d < depth {
+			depth = d
+		}
+		if from == 1 || head-from > depth {
 			if from != 1 {
-				log.Printf("[native] %s: cursor %d is %d blocks behind head %d, resuming from head-200 (the gap is not read nor sampled)", c.slug, from-1, head-from, head)
-				cSkipped.WithLabelValues(c.slug).Add(float64(head - 200 - from))
+				log.Printf("[native] %s: cursor %d is %d blocks behind head %d, resuming from head-%d (the gap is not read nor sampled)", c.slug, from-1, head-from, head, depth)
+				// Counted only if this poll then succeeds. A stuck cursor
+				// would otherwise re-count the same gap on every tick and
+				// bury the signal under an impossible number.
+				skipped = head - depth - from
 			}
-			from = head - 200 // first run, or too far behind: start from the recent past
+			from = head - depth + 1 // first run, or too far behind: read as much as the node lets a tick read
 		}
 		if from > head {
 			f.up[c.slug] = true
 			continue
 		}
-		// Ranges of at most 400 blocks (50 on Ethereum, where the public
-		// nodes cap eth_getLogs at 50 blocks; ten minutes of chain), a few
-		// per tick: a public RPC may refuse or redirect a heavier query.
-		span := int64(400)
-		if c.slug == "ethereum" {
-			span = 50
+		// Only as many calls as the gap in front of us needs.
+		chunks := int((head-from)/span) + 1
+		if chunks < 1 {
+			chunks = 1
+		}
+		if chunks > maxChunks {
+			chunks = maxChunks
 		}
 		start := from
 		var logs []evmLog
 		failed := false
-		for chunk := 0; chunk < 5 && from <= head; chunk++ {
+		for chunk := 0; chunk < chunks && from <= head; chunk++ {
 			to := from + span - 1
 			if to > head {
 				to = head
 			}
-			var part []evmLog
-			if err := evmCall(ctx, f.http, c.logsRPC(), "eth_getLogs", []any{map[string]any{"fromBlock": "0x" + big.NewInt(from).Text(16), "toBlock": "0x" + big.NewInt(to).Text(16), "address": routers}}, &part); err != nil {
-				log.Printf("[native] %s getLogs %d-%d: %v", c.slug, from, to, err)
+			part, err := getLogsBatched(ctx, f.http, c.logsRPC(), from, to, routers)
+			if err != nil && strings.Contains(err.Error(), "empty result") {
+				// No logs in that range is the right answer, not a failure:
+				// the routers did not trade in those blocks. evmCall reports
+				// a null RPC result as an error, and treating it as one
+				// stalled the cursor, so a chain fell behind for being quiet
+				// and the wider gap made the next window likelier to be
+				// quiet too. Two other call sites already skip this.
+				f.cursor[c.slug] = to
+				from = to + 1
+				continue
+			}
+			if err != nil {
+				// A refusal about the range is the endpoint telling us its
+				// cap. Shrink and let the next tick use it, rather than
+				// repeat the same rejected call forever.
+				// Straight to the floor, not by halves. Each refusal costs a
+				// whole tick for that chain and the cursor restarts from
+				// head-200, so quartering 400 down to 6 would burn four
+				// ticks losing blocks the whole way. 10 is the cap the free
+				// tiers publish; an endpoint that allows more only loses a
+				// little throughput, an endpoint that allows less never
+				// stalls us again.
+				if truncated(err) {
+					f.narrowSpan(c.slug, from, to, span)
+					failed = true
+					break
+				}
+				// An archive refusal goes through the same re-ask as a range
+				// refusal below: evmCall returns the LAST endpoint's error,
+				// and a depth learned from a fallback's word halves for good
+				// on a blip of the serving node.
+				if (span > 10 && rangeRefusal(err)) || archiveRefusal(err) {
+					// Ask once more before believing it. evmCall hands back
+					// the LAST endpoint's error, so a blip on the node that
+					// serves the range lets whichever fallback answered last
+					// name the cause — and on BNB every fallback phrases its
+					// cap as a range refusal, so any blip read as one. The
+					// serving node answered 20 of 20 when reasked at once; a
+					// refusal that survives the retry is the cap itself.
+					//
+					// And ask the serving node alone. A retry across the whole
+					// list answers with the last fallback's error again — on
+					// BNB, drpc's "ranges over 10000 blocks" for a 400-block
+					// request, a rate limit wearing a range refusal's words —
+					// so only the first log endpoint's own answer decides the
+					// span. Anything else it says is an outage of this poll,
+					// not a cap: the cursor holds and the next poll retries.
+					serving := c.logsRPC()
+					if len(serving) > 1 {
+						serving = serving[:1]
+					}
+					again, err2 := getLogsBatched(ctx, f.http, serving, from, to, routers)
+					switch {
+					case err2 == nil || strings.Contains(err2.Error(), "empty result"):
+						logs = append(logs, again...)
+						f.cursor[c.slug] = to
+						from = to + 1
+						continue
+					case rangeRefusal(err2):
+						f.span[c.slug] = 10
+						log.Printf("[native] %s getLogs %d-%d: the serving node itself refused the %d-block range, dropping to %d: %v", c.slug, from, to, span, f.span[c.slug], err2)
+					case archiveRefusal(err2):
+						f.learnDepth(c.slug, head-from)
+					case truncated(err2):
+						f.narrowSpan(c.slug, from, to, span)
+					default:
+						log.Printf("[native] %s getLogs %d-%d: serving node failed, span kept at %d: %v", c.slug, from, to, span, err2)
+					}
+				} else {
+					log.Printf("[native] %s getLogs %d-%d: %v", c.slug, from, to, err)
+				}
 				failed = true
 				break
 			}
@@ -415,6 +593,37 @@ func (f *nativeFeed) poll(ctx context.Context) {
 			from = to + 1
 		}
 		f.up[c.slug] = !failed
+		if failed {
+			if _, seen := f.down[c.slug]; !seen {
+				f.down[c.slug] = time.Now().Unix() // first failure of this outage
+			}
+		} else {
+			delete(f.down, c.slug)
+		}
+		gNativeUp.WithLabelValues(c.slug).Set(map[bool]float64{true: 1}[!failed])
+		gNativeLag.WithLabelValues(c.slug).Set(float64(head - f.cursor[c.slug]))
+		gNativeSkipped.WithLabelValues(c.slug).Set(float64(skipped))
+		if !failed && skipped > 0 {
+			cSkipped.WithLabelValues(c.slug).Add(float64(skipped))
+		}
+		// Give the span back when the poll went through. It is learned
+		// downward on a single refusal and was never learned back up, and
+		// evmCall keeps only the LAST endpoint's error, so one blip on the
+		// node that serves the range hands the decision to whichever
+		// endpoint answered last — on BNB the free Alchemy tier, whose
+		// 10-block refusal then stood for the life of the process. At a
+		// span of 10 the budget is 400 blocks a poll against the ~613 BNB
+		// produces, so the feed could never catch up: 3,535 blocks dropped
+		// in half an hour, with feed_up 1 and a lag of 0 the whole time.
+		// A refusal costs one tick; a collapse that cannot recover costs a
+		// third of the chain, so the retry is worth far more than it risks.
+		if !failed && span < f.spanDefault(c.slug) {
+			f.span[c.slug] = min64(span*4, f.spanDefault(c.slug))
+			log.Printf("[native] %s read %d-%d at a span of %d, trying %d again", c.slug, start, f.cursor[c.slug], span, f.span[c.slug])
+		}
+		if !failed {
+			f.growDepth(c.slug, budget)
+		}
 		if f.cursor[c.slug] >= start {
 			f.polled[c.slug] = [2]int64{start, f.cursor[c.slug]}
 		} else {
@@ -582,12 +791,33 @@ func nativeRow(ctx context.Context, httpc *http.Client, t evmTerminal, hash stri
 	// assets is read from the same transfers or the native value.
 	bought, sold := map[string]*big.Int{}, map[string]*big.Int{}
 	quoteIn, quoteOut := 0.0, 0.0
-	for _, l := range rc.Logs {
-		if len(l.Topics) != 3 || l.Topics[0] != topicTransfer {
+	// Transfers of a quote asset anywhere in the transaction, not only the
+	// user's. A v4 swap that settles its quote natively or as an ERC-6909
+	// claim emits none, and the pool leg is then not measurable from
+	// transfers: see quoteMoves below.
+	quoteMoves := 0
+	twins := arcTwins(c.slug, rc.Logs)
+	for i, l := range rc.Logs {
+		if len(l.Topics) != 3 || l.Topics[0] != topicTransfer || twins[i] {
 			continue
 		}
 		erc, from, to, amt := strings.ToLower(l.Address), topicAddr(l.Topics[1]), topicAddr(l.Topics[2]), word(l.Data, 0)
+		if m := erc20(ctx, httpc, *c, erc); m.ok {
+			if _, isQuote := quoteUSD(m.symbol, *c, gas); isQuote {
+				quoteMoves++
+			}
+		}
 		if from != user && to != user {
+			continue
+		}
+		// A mirror log of the native value is the same money as tx.value,
+		// which the buy path adds separately. The rule below in the
+		// fallback pass was written for this and never reached here, the
+		// pass every router-attributed swap takes: 66 of 66 native Arc
+		// buys in a window carried `given` doubled, a loss over 5,000 bps
+		// and the out_of_bounds flag, so the Arc rows of GMGN, Maestro and
+		// Bloom were published on their sells alone.
+		if hexBig(tx.Value).Sign() > 0 && isNativeMirror(c.slug, erc) {
 			continue
 		}
 		m := erc20(ctx, httpc, *c, erc)
@@ -663,14 +893,21 @@ func nativeRow(ctx context.Context, httpc *http.Client, t evmTerminal, hash stri
 		if len(bought)+len(sold) > 0 {
 			// Quote legs for that trader.
 			quoteIn, quoteOut = 0, 0
-			for _, l := range rc.Logs {
-				if len(l.Topics) != 3 || l.Topics[0] != topicTransfer {
+			for i, l := range rc.Logs {
+				if len(l.Topics) != 3 || l.Topics[0] != topicTransfer || twins[i] {
 					continue
 				}
 				erc, from, to, amt := strings.ToLower(l.Address), topicAddr(l.Topics[1]), topicAddr(l.Topics[2]), word(l.Data, 0)
 				m := erc20(ctx, httpc, *c, erc)
 				q, ok := quoteUSD(m.symbol, *c, gas)
 				if !ok || !m.ok {
+					continue
+				}
+				// A mirror log of the native value is the same money as
+				// tx.value, which the buy path adds separately. Counting
+				// both doubled `given` on every Arc buy and pushed the
+				// terminal fee, a residual, to about 5,047 bps.
+				if hexBig(tx.Value).Sign() > 0 && isNativeMirror(c.slug, erc) {
 					continue
 				}
 				if from == user {
@@ -760,6 +997,15 @@ func nativeRow(ctx context.Context, httpc *http.Client, t evmTerminal, hash stri
 		}
 		ref := s.MidUSD
 		sw.finalize(&ref, 0, s.RefSrc)
+		// The pool leg is read from transfers. On a v4 pool whose quote
+		// settles natively or as an ERC-6909 claim there are none, so the
+		// residual app fee carries the pool's take: BasedBot's Base rows
+		// read 198.7 bps against a router that kept 100. Keep the row
+		// visible and out of every figure rather than publish a split we
+		// cannot measure.
+		if sw.Priced && quoteMoves == 0 && strings.HasSuffix(sw.Venue, "-v4") {
+			sw.Flag, sw.Priced = "unmeasured_quote_leg", false
+		}
 		implausibleSplit(sw)
 		return sw
 	}
@@ -811,6 +1057,15 @@ func nativeRow(ctx context.Context, httpc *http.Client, t evmTerminal, hash stri
 		}
 		ref := s.MidUSD
 		sw.finalize(&ref, 0, s.RefSrc)
+		// The pool leg is read from transfers. On a v4 pool whose quote
+		// settles natively or as an ERC-6909 claim there are none, so the
+		// residual app fee carries the pool's take: BasedBot's Base rows
+		// read 198.7 bps against a router that kept 100. Keep the row
+		// visible and out of every figure rather than publish a split we
+		// cannot measure.
+		if sw.Priced && quoteMoves == 0 && strings.HasSuffix(sw.Venue, "-v4") {
+			sw.Flag, sw.Priced = "unmeasured_quote_leg", false
+		}
 		implausibleSplit(sw)
 		return sw
 	}
@@ -824,4 +1079,61 @@ func unpricedFlag(reason string) string {
 		return "launch_first_trade"
 	}
 	return "unpriced_" + reason
+}
+
+// archiveRefusal: the node will not serve blocks that old.
+func archiveRefusal(err error) bool {
+	m := strings.ToLower(err.Error())
+	return strings.Contains(m, "archive") || strings.Contains(m, "personal token")
+}
+
+// learnDepth: a read `behind` blocks behind head was refused as history,
+// so the next poll resumes from half that distance, never under the
+// chain's default span. The blocks between are counted as skipped by
+// that poll's jump.
+func (f *nativeFeed) learnDepth(chain string, behind int64) {
+	d := behind / 2
+	// Never under the default span: a depth floored at a collapsed span
+	// (10) is under what BNB produces in one tick, and every poll would
+	// then jump to head-10 and skip the rest — feed_up 1, lag 0, blocks
+	// lost — the symptom this file exists to remove.
+	if floor := f.spanDefault(chain); d < floor {
+		d = floor
+	}
+	if cur, ok := f.depth[chain]; ok && cur > 0 && cur < d {
+		d = cur
+	}
+	f.depth[chain] = d
+	log.Printf("[native] %s: %d blocks behind head is past the node's history; resuming from head-%d next poll", chain, behind, d)
+}
+
+// truncated: the response ran past the read cap; the range is too dense
+// for one call, not the node's fault.
+func truncated(err error) bool { return strings.Contains(err.Error(), "response truncated") }
+
+// narrowSpan: a quarter of the span for the next poll, never under ten;
+// the recovery after a clean poll climbs it back.
+func (f *nativeFeed) narrowSpan(chain string, from, to, span int64) {
+	next := span / 4
+	if next < 10 {
+		next = 10
+	}
+	f.span[chain] = next
+	log.Printf("[native] %s getLogs %d-%d: response over the read cap, span %d -> %d for the next poll", chain, from, to, span, next)
+}
+
+// growDepth: a clean poll doubles a learned depth back toward the poll
+// budget, and forgets it once there. The depth only matters when the
+// cursor has fallen further behind than it, so the retest costs nothing
+// while the feed keeps up and one tick when it does not.
+func (f *nativeFeed) growDepth(chain string, budget int64) {
+	d, ok := f.depth[chain]
+	if !ok || d <= 0 {
+		return
+	}
+	if d*2 >= budget {
+		delete(f.depth, chain)
+		return
+	}
+	f.depth[chain] = d * 2
 }

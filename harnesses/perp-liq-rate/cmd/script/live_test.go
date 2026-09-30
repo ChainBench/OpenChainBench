@@ -175,7 +175,7 @@ func TestLive_HyperliquidRecentTrades(t *testing.T) {
 	}
 	fmt.Printf("  %d liquidation events in last 1h from recentTrades\n", len(events))
 	if len(events) == 0 {
-		fmt.Println("  NOTE: recentTrades may not carry a liquidation flag — field always absent/null")
+		fmt.Println("  NOTE: recentTrades may not carry a liquidation flag: field always absent/null")
 	}
 
 	fmt.Println("\n=== Hyperliquid: ETH OI ===")

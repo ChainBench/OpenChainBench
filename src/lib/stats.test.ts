@@ -19,6 +19,24 @@ describe("computeFieldStats", () => {
     expect(s.fieldMax).toBe(9);
   });
 
+  test("keeps all-zero rows when the bench says zero is an answer", () => {
+    // A cost bench: several RPC providers genuinely serve a ten-million
+    // request month for nothing. Pruning them let the page name a paid
+    // provider as the cheapest option.
+    const s = computeFieldStats(
+      [row("drpc", 0), row("onfinality", 0), row("blockpi", 29.5)],
+      true,
+    );
+    expect(s.fieldMin).toBe(0);
+    expect(s.fieldMax).toBe(29.5);
+    // ...and an unavailable row is still dropped, zero or not.
+    const t = computeFieldStats(
+      [row("drpc", 0), row("gone", 0, "unavailable"), row("blockpi", 29.5)],
+      true,
+    );
+    expect(t.fieldMax).toBe(29.5);
+  });
+
   test("ignores live rows with no headline value (all-zero), like the ledger", () => {
     // A token-less venue on a valuation bench: promoted to live by its
     // panel data, but no P/F to rank. Best must not read 0.

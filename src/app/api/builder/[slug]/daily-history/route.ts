@@ -1,7 +1,7 @@
 /**
  * Per-builder long-window Performance chart data source. Companion to
  * `/daily-series` which serves only the last 30 days from the live
- * hl-node harness in-memory ring: this route reaches into the
+ * feed harness 30-day window: this route reaches into the
  * hl-archive Go service (DuckDB-backed, ≈11 months of daily
  * aggregates) and returns the same wire shape as `/daily-series` so
  * the chart client can swap sources based on the user's range picker
@@ -100,7 +100,16 @@ export async function GET(
     },
     {
       headers: {
-        "cache-control": "public, s-maxage=60, stale-while-revalidate=600",
+        // 300 s: getArchiveBuilderBySlug reads through the hl-archive
+        // store cache (src/lib/hl-archive-store.ts, revalidate 300) and
+        // the archive holds daily aggregates, so nothing here can change
+        // inside five minutes. A 60 s window just recomputed the slice.
+        //
+        // Inert on production as of 2026-09-30: the archive blob is not
+        // ready, so this route returns archive_pending above and never
+        // reaches here. A 503 is not cacheable, so it pays a function per
+        // request until the hl-archive service has written a blob.
+        "cache-control": "public, s-maxage=300, stale-while-revalidate=900",
       },
     },
   );

@@ -20,7 +20,7 @@ limitations:
 
 faq:
   - q: "What is the cheapest perpetual DEX right now?"
-    a: "{{best_name}} at {{best_p50}} all in on a $1000 ETH long (24h average). {{count}} venues compete on identical measurement and the leaderboard re-sorts every 5 minutes against fresh Prometheus samples; the 24h window smooths intraday spread volatility so the headline reflects sustained competitiveness."
+    a: "{{best_name}} at {{best_p50}} all in on a $1000 ETH long (24h average). {{ranked_count}} venues compete on identical measurement and the leaderboard re-sorts every 5 minutes against fresh Prometheus samples; the 24h window smooths intraday spread volatility so the headline reflects sustained competitiveness."
   - q: "Is Lighter really zero fees on perp trading?"
     a: "The taker fee on Lighter is 0 bps, confirmed live via `/orderBookDetails` rather than a marketing page. The all in cost is not zero, however, because every market order still crosses the half spread and eats price impact at notional. The Lighter line on this leaderboard shows what that residual cost actually is at $1000, which is the right number to compare against a paid venue's all in figure."
   - q: "Why include spread and impact instead of just the taker fee?"

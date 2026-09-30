@@ -22,12 +22,13 @@ import type { FillSample } from "@/lib/terminal-fills";
  * Audit table of the sampled swaps behind bench 268: every row is one
  * real transaction with its Solscan link, side and route, size, loss
  * with its cost split drawn as a stacked bar, reference source and
- * sandwich screen. Filters by terminal, side, venue and reference; sort
+ * sandwich screen. Filters by terminal, chain, side, venue and reference; sort
  * by any numeric column; a summary strip of the filtered set. Client
  * component over the JSON the page already loads (last 400 samples).
  */
-export function TerminalFillSwaps({ swaps, terminals, focus }: { swaps: FillSample[]; terminals: { slug: string; name: string }[]; focus?: string }) {
+export function TerminalFillSwaps({ swaps, terminals, focus, exec }: { swaps: FillSample[]; terminals: { slug: string; name: string }[]; focus?: string; exec?: boolean }) {
   const [terminal, setTerminal] = useState(focus ?? "");
+  const [chain, setChain] = useState("");
   const [side, setSide] = useState("");
   const [venue, setVenue] = useState("");
   const [ref, setRef] = useState("");
@@ -35,9 +36,20 @@ export function TerminalFillSwaps({ swaps, terminals, focus }: { swaps: FillSamp
   const [limit, setLimit] = useState(50);
 
   const venues = useMemo(() => [...new Set(swaps.map((s) => s.venue))].sort(), [swaps]);
+  // A row with no chain field is a Solana row; the harness only stamps
+  // the field on the EVM legs.
+  const chains = useMemo(
+    () => [...new Set(swaps.map((s) => s.chain ?? "solana"))].sort((a, b) => (CHAIN_NAMES[a] ?? a).localeCompare(CHAIN_NAMES[b] ?? b)),
+    [swaps],
+  );
   const rows = useMemo(() => {
     const f = swaps.filter(
-      (s) => (!terminal || s.terminal === terminal) && (!side || s.side === side) && (!venue || s.venue === venue) && (!ref || (s.refSrc ?? "none") === ref),
+      (s) =>
+        (!terminal || s.terminal === terminal || s.product === terminal) &&
+        (!chain || (s.chain ?? "solana") === chain) &&
+        (!side || s.side === side) &&
+        (!venue || s.venue === venue) &&
+        (!ref || (s.refSrc ?? "none") === ref),
     );
     const v = (s: FillSample): number => {
       switch (sort.key) {
@@ -47,6 +59,8 @@ export function TerminalFillSwaps({ swaps, terminals, focus }: { swaps: FillSamp
           return s.tradeUsd;
         case "loss":
           return s.lossBps ?? -Infinity;
+        case "exec":
+          return s.lossBps === undefined ? -Infinity : s.lossBps - s.terminalBps;
         case "terminal":
           return s.terminalBps;
         case "network":
@@ -56,10 +70,19 @@ export function TerminalFillSwaps({ swaps, terminals, focus }: { swaps: FillSamp
       }
     };
     return f.sort((a, b) => (v(a) - v(b)) * sort.dir);
-  }, [swaps, terminal, side, venue, ref, sort]);
-  const nameOf = (slug: string) => terminals.find((t) => t.slug === slug)?.name ?? PRODUCT_NAMES[productOf(slug)] ?? productOf(slug);
-  // The row's product for the logo and the link, and what the slug's suffix means for the reader.
-  const productOf = (slug: string) => slug.replace(ROW_SUFFIX, "");
+  }, [swaps, terminal, chain, side, venue, ref, sort]);
+  const nameOf = (slug: string, product?: string) =>
+    terminals.find((t) => t.slug === slug)?.name ??
+    PRODUCT_NAMES[productOf(slug, product)] ??
+    terminals.find((t) => t.slug === productOf(slug, product))?.name ??
+    productOf(slug, product);
+  // The row's product for the logo and the link, and what the slug's suffix
+  // means for the reader. The payload states the product, so prefer it:
+  // stripping the chain off `binance-wallet-ethereum` leaves
+  // `binance-wallet`, which is not the product (`binance`) and matches
+  // neither the terminals list nor PRODUCT_NAMES, so 97 rows rendered a raw
+  // slug with no logo.
+  const productOf = (slug: string, product?: string) => product ?? slug.replace(ROW_SUFFIX, "");
   const legOf = (slug: string): { text: string; title: string } | null => {
     const m = slug.match(ROW_SUFFIX);
     if (!m) return null;
@@ -68,9 +91,10 @@ export function TerminalFillSwaps({ swaps, terminals, focus }: { swaps: FillSamp
     if (slug.startsWith("fomo-") || slug.startsWith("pump-fun-") || slug.startsWith("phantom-")) return { text: `on ${chain} via Relay`, title: `A trade delivered on ${chain} by a Relay solver: the user paid from the app's wallet on Solana` };
     return { text: chain, title: `A swap of this product on ${chain}, read from its router there` };
   };
-  const filtered = terminal !== (focus ?? "") || side || venue || ref;
+  const filtered = terminal !== (focus ?? "") || chain || side || venue || ref;
   const reset = () => {
     setTerminal(focus ?? "");
+    setChain("");
     setSide("");
     setVenue("");
     setRef("");
@@ -78,15 +102,36 @@ export function TerminalFillSwaps({ swaps, terminals, focus }: { swaps: FillSamp
   const stats = useMemo(() => {
     const losses = rows
       .filter((s) => s.priced && s.lossBps !== undefined)
-      .map((s) => s.lossBps as number)
-      .sort((a, b) => a - b);
+      .map((s) => ({ v: s.lossBps as number, w: s.w && s.w > 0 ? s.w : 1 }))
+      .sort((a, b) => a.v - b.v);
+    // Weighted, because the published figure is. A pooled row's median
+    // weights each chain by its flow, and the rows here cannot carry
+    // those proportions: pump.fun's Solana leg is 95% of the flow and we
+    // have priced 124 of its 664,575 attempts, all of them already
+    // shown. Counting each row once gave 320 against a published 250.
+    // Under a single-chain filter every weight is equal and this is a
+    // plain median again.
+    const totalW = losses.reduce((t, l) => t + l.w, 0);
+    let acc = 0;
+    let median: number | undefined;
+    for (const l of losses) {
+      acc += l.w;
+      if (acc >= totalW / 2) {
+        median = l.v;
+        break;
+      }
+    }
+    // The flat median of the same rows, so the strip can show what a
+    // reader gets by medianing the column and why it differs.
+    const plain = losses.length ? losses[Math.floor((losses.length - 1) / 2)].v : undefined;
     return {
       n: rows.length,
       priced: losses.length,
+      plain,
       flagged: rows.filter((s) => s.flag).length,
       sandwiched: rows.filter((s) => s.sandwich).length,
       scanned: rows.filter((s) => s.scanned).length,
-      median: losses.length ? losses[Math.floor(losses.length / 2)] : undefined,
+      median,
     };
   }, [rows]);
 
@@ -117,6 +162,16 @@ export function TerminalFillSwaps({ swaps, terminals, focus }: { swaps: FillSamp
             {terminals.map((t) => (
               <option key={t.slug} value={t.slug}>
                 {t.name}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Chain">
+          <select id="tfs-chain" value={chain} onChange={(e) => setChain(e.target.value)} className={selectCls} title="The published figure for a multi-chain product weights each chain by its flow, and this list cannot: pump.fun trades 95% on Solana but only 56% of the rows here are Solana. Pick one chain and the median of the rows is the published median for that chain.">
+            <option value="">All chains</option>
+            {chains.map((c) => (
+              <option key={c} value={c}>
+                {CHAIN_NAMES[c] ?? c}
               </option>
             ))}
           </select>
@@ -162,7 +217,12 @@ export function TerminalFillSwaps({ swaps, terminals, focus }: { swaps: FillSamp
         <div className="ml-auto flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-ink-faint tabular-nums self-center">
           <Stat value={stats.n} label="swaps" />
           <Stat value={stats.priced} label="priced" />
-          <Stat value={stats.median !== undefined ? `${Math.round(stats.median)} bps` : "—"} label="median loss" />
+          <Stat value={stats.median !== undefined ? `${Math.round(stats.median)} bps` : "—"} label={stats.plain !== undefined && stats.median !== undefined && Math.round(stats.plain) !== Math.round(stats.median) ? "median loss, flow-weighted" : "median loss"} />
+          {stats.plain !== undefined && stats.median !== undefined && Math.round(stats.plain) !== Math.round(stats.median) ? (
+            <span title="Each row counted once, ignoring how much of the product's flow its chain carries. The published figure weights by flow, which is the number to the left; pick a single chain above and the two agree.">
+              <span className="text-ink font-medium">{Math.round(stats.plain)} bps</span> counting each row once
+            </span>
+          ) : null}
           <Stat value={`${stats.sandwiched} / ${stats.scanned}`} label="sandwiched / screened" />
           {stats.flagged > 0 ? <Stat value={stats.flagged} label="flagged" /> : null}
         </div>
@@ -174,14 +234,17 @@ export function TerminalFillSwaps({ swaps, terminals, focus }: { swaps: FillSamp
             <tr>
               {th("time", "When", "UTC block time", "left")}
               {th(undefined, "Terminal", undefined, "left")}
-              {th(undefined, "Transaction", "click to open on Solscan", "left")}
+              {th(undefined, "Transaction", "Opens on the explorer of the chain this hash belongs to. A cross-chain trade has two: the one here is where the trade settled, and the chain shown next to the route links the side it was paid from.", "left")}
               {th(undefined, "Side · route", "final pool's venue; hops = pool instructions of the route before it; via X = final pool quoted in a third asset", "left")}
-              {th("trade", "Trade", "buy: quote spent, tx fee included; sell: tokens × reference")}
-              {th(undefined, "In $", "USD value the user gave: buy = quote spent (tx fee inside); sell = tokens at the pool's pre-trade reference, plus the gas paid apart on an EVM chain")}
+              {th("trade", "Trade", "buy: quote spent; sell: tokens × reference; plus the gas whenever it was paid in another asset than the quote")}
+              {th(undefined, "In $", "USD value the user gave: buy = quote spent; sell = tokens at the pool's pre-trade reference; either plus the gas, when the user paid it in another asset than the quote")}
               {th(undefined, "Out $", "USD value the user received: buy = tokens at the pool's pre-trade reference; sell = quote received")}
-              {th("loss", "Loss", "1 − value received / value given, basis points of the trade; ! = out of bounds, excluded from the statistics")}
+              {th("loss", "Loss", "1 − value received / value given, basis points of the trade. ! marks a row outside the plausible bounds: it stays visible so the sample can be audited, but it is excluded from every figure on this page, so averaging the column by eye gives a number the page never publishes.")}
+              {exec
+                ? th("exec", "Exec", "Loss with the app's own fee taken out, on this swap: what the routing cost, before any median. This is bench 279's figure, and it is subtracted swap by swap — the median of this column is not the median loss minus the median fee.")
+                : null}
               {th(undefined, "Where it goes", "terminal fee · network (tx fee + tips) · other (pump.fun, creator, referral) · pool (LP fee + impact, hops); shared 0 to 1,000 bps scale", "left")}
-              {th("terminal", "Fee", "terminal fee, bps")}
+              {th("terminal", "App fee", "What the app itself took, basis points of the trade. It is the one cost the app advertises; every other column here you only find on chain. On Solana it is measured: the money that reached its fee wallets in this transaction. On the EVM rows it is a residual, what is left of the user's money after the pool took its share and gas was paid, so a routing or accounting error anywhere in the row lands in this column and single rows can read far above the app's real rate. Compare the median, not the average: one row can carry ten times the rest.")}
               {th("network", "Net", "tx fee + inclusion tips + the deposit of new token accounts, bps; on Relay rows the destination gas Relay charged is included")}
               {th(undefined, "Protocol", "launchpad / curve / creator fees (pump.fun, the EVM launchpads), referral payouts, and on routed swaps the routers' cuts and hop leftovers, bps; blank when a routed swap's residual exceeds a quarter of the trade (left in Pool)")}
               {th("pool", "Pool", "loss − explicit costs: LP fee + impact (+ hops), bps")}
@@ -196,8 +259,8 @@ export function TerminalFillSwaps({ swaps, terminals, focus }: { swaps: FillSamp
                 <td className="py-2 px-3 whitespace-nowrap text-ink-soft">{fmtTime(s.time)}</td>
                 <td className="py-2 px-3 whitespace-nowrap">
                   <span className="inline-flex items-center gap-2 font-medium text-ink">
-                    <ProviderLogo slug={productOf(s.terminal)} name={nameOf(s.terminal)} size={16} />
-                    {nameOf(s.terminal)}
+                    <ProviderLogo slug={productOf(s.terminal, s.product)} name={nameOf(s.terminal, s.product)} size={16} />
+                    {nameOf(s.terminal, s.product)}
                     {legOf(s.terminal) ? (
                       <span className="text-[9px] uppercase tracking-[0.12em] text-ink-faint border border-rule rounded px-1 cursor-help font-normal" title={legOf(s.terminal)!.title}>
                         {legOf(s.terminal)!.text}
@@ -206,16 +269,24 @@ export function TerminalFillSwaps({ swaps, terminals, focus }: { swaps: FillSamp
                   </span>
                 </td>
                 <td className="py-2 px-3 whitespace-nowrap">
-                  <a
-                    href={`${txExplorer(s)}${s.sig}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 font-mono text-[11px] text-ink-soft hover:text-ink"
-                    title={s.sig}
-                  >
-                    {s.sig.slice(0, 6)}…{s.sig.slice(-4)}
-                    <ExternalLink className="h-3 w-3 opacity-60" />
-                  </a>
+                  {txExplorer(s) ? (
+                    <a
+                      href={`${txExplorer(s)}${s.sig}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 font-mono text-[11px] text-ink-soft hover:text-ink"
+                      title={hashTitle(s)}
+                    >
+                      {s.sig.slice(0, 6)}…{s.sig.slice(-4)}
+                      <ExternalLink className="h-3 w-3 opacity-60" />
+                    </a>
+                  ) : (
+                    // No explorer we can name for this hash: show it rather
+                    // than link somewhere it does not exist.
+                    <span className="inline-flex items-center gap-1 font-mono text-[11px] text-ink-faint" title={s.sig}>
+                      {s.sig.slice(0, 6)}…{s.sig.slice(-4)}
+                    </span>
+                  )}
                 </td>
                 <td className="py-2 px-3 whitespace-nowrap">
                   <span className="inline-flex items-center gap-1.5">
@@ -234,13 +305,13 @@ export function TerminalFillSwaps({ swaps, terminals, focus }: { swaps: FillSamp
                     ) : null}
                     {s.chain && s.inTx ? (
                       <a
-                        href={`${(s.terminal.endsWith("-" + s.chain) ? EXPLORERS.solana : EXPLORERS[s.chain]) ?? EXPLORERS.solana}${s.inTx}`}
+                        href={`${EXPLORERS[chainOfHash(s.inTx, s.chain) ?? "solana"] ?? EXPLORERS.solana}${s.inTx}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-[10px] uppercase tracking-[0.1em] text-ink-faint underline underline-offset-2 hover:text-ink"
-                        title={s.terminal.endsWith("-" + s.chain) ? `paid in USDC or SOL on Solana, settled on ${CHAIN_NAMES[s.chain] ?? s.chain}: open the deposit` : `paid on ${CHAIN_NAMES[s.chain] ?? s.chain}: open the origin deposit`}
+                        title={depositTitle(s)}
                       >
-                        {s.terminal.endsWith("-" + s.chain) ? `on ${CHAIN_NAMES[s.chain] ?? s.chain}` : `from ${CHAIN_NAMES[s.chain] ?? s.chain}`}
+                        {`from ${CHAIN_NAMES[chainOfHash(s.inTx, s.chain) ?? "solana"] ?? "Solana"}`}
                       </a>
                     ) : s.chain ? (
                       <span className="text-[10px] uppercase tracking-[0.1em] text-ink-faint">from {CHAIN_NAMES[s.chain] ?? s.chain}</span>
@@ -253,6 +324,11 @@ export function TerminalFillSwaps({ swaps, terminals, focus }: { swaps: FillSamp
                 <td className="py-2 px-3 text-right whitespace-nowrap">
                   <LossCell s={s} />
                 </td>
+                {exec ? (
+                  <td className="py-2 px-3 text-right whitespace-nowrap">
+                    <LossCell s={s} exFee />
+                  </td>
+                ) : null}
                 <td className="py-2 px-3">
                   <SplitBar s={s} />
                 </td>
@@ -271,7 +347,7 @@ export function TerminalFillSwaps({ swaps, terminals, focus }: { swaps: FillSamp
             ))}
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={13} className="py-8 text-center text-ink-faint">
+                <td colSpan={exec ? 14 : 13} className="py-8 text-center text-ink-faint">
                   No swap matches these filters.
                 </td>
               </tr>
@@ -279,25 +355,37 @@ export function TerminalFillSwaps({ swaps, terminals, focus }: { swaps: FillSamp
           </tbody>
         </table>
       </div>
-      <div className="mt-2 flex items-center justify-between text-[11px] text-ink-faint">
+      <div className="mt-2 flex items-center justify-between gap-3 text-[11px] text-ink-faint">
         <span>
           Showing {Math.min(limit, rows.length)} of {rows.length}
         </span>
-        {rows.length > limit ? (
+        <div className="flex items-center gap-2">
+          {/* Every row on screen, filters and sort included, not the fifty
+              that are rendered: someone who asks for the transaction list
+              wants it in a spreadsheet, not on a page. */}
           <button
             type="button"
-            onClick={() => setLimit((l) => l + 100)}
+            onClick={() => downloadCsv(rows)}
             className="text-[10px] uppercase tracking-[0.16em] px-3 py-1.5 border border-ink/20 rounded-md hover:border-ink/40 hover:bg-ink/5 transition-colors text-ink-soft"
           >
-            Show {Math.min(100, rows.length - limit)} more
+            Download {rows.length} rows (CSV)
           </button>
-        ) : null}
+          {rows.length > limit ? (
+            <button
+              type="button"
+              onClick={() => setLimit((l) => l + 100)}
+              className="text-[10px] uppercase tracking-[0.16em] px-3 py-1.5 border border-ink/20 rounded-md hover:border-ink/40 hover:bg-ink/5 transition-colors text-ink-soft"
+            >
+              Show {Math.min(100, rows.length - limit)} more
+            </button>
+          ) : null}
+        </div>
       </div>
     </div>
   );
 }
 
-type SortKey = "time" | "trade" | "loss" | "terminal" | "network" | "pool";
+type SortKey = "time" | "trade" | "loss" | "exec" | "terminal" | "network" | "pool";
 
 const COLORS = { terminal: "#FF6B35", network: "#FFC857", relay: "#2DD4BF", other: "#8B5CF6", pool: "#5B89FF" } as const;
 const LABELS = { terminal: "Terminal fee", network: "Network", relay: "Relay", other: "Protocol fees", pool: "Pool" } as const;
@@ -305,14 +393,51 @@ const ROW_SUFFIX = /-(funding|bnb|robinhood|base|ethereum|arc|hyperevm)$/;
 const PRODUCT_NAMES: Record<string, string> = { fomo: "FOMO", basedbot: "BasedBot", gmgn: "GMGN", axiom: "Axiom", "banana-gun": "Banana Gun", "binance-wallet": "Binance Wallet", padre: "Terminal", "pump-fun": "pump.fun app", phantom: "Phantom", maestro: "Maestro", bloom: "Bloom" };
 const CHAIN_NAMES: Record<string, string> = { bnb: "BNB", robinhood: "Robinhood", base: "Base", ethereum: "Ethereum", arc: "Arc", hyperevm: "HyperEVM", solana: "Solana" };
 const EXPLORERS: Record<string, string> = { bnb: "https://bscscan.com/tx/", robinhood: "https://robinhoodchain.blockscout.com/tx/", base: "https://basescan.org/tx/", ethereum: "https://etherscan.io/tx/", arc: "https://explorer.arc.io/tx/", hyperevm: "https://hyperevmscan.io/tx/", solana: "https://solscan.io/tx/" };
-/** The settlement's explorer: Solana rows settle on Solana, the per-chain rows on that chain. */
-function txExplorer(s: FillSample): string {
-  if (s.chain && s.chain !== "solana" && s.terminal.endsWith("-" + s.chain)) {
-    // A Relay sale settles on Solana (sig is the Solana signature); everything else on that chain is native or a Relay buy
-    if (s.side === "sell" && (s.terminal.startsWith("fomo-") || s.terminal.startsWith("pump-fun-") || s.terminal.startsWith("phantom-") || s.terminal.startsWith("basedbot-"))) return "https://solscan.io/tx/";
-    return EXPLORERS[s.chain];
+/** Which chain a hash belongs to, read from the hash rather than guessed
+ *  from the row's slug.
+ *
+ *  A Relay trade touches two chains and either leg can be the one we
+ *  sampled, so a slug rule ("a sell on fomo-/basedbot- settles on Solana")
+ *  mislabels whole families at once: BasedBot's EVM sells and every
+ *  *-funding row were sending an 0x hash to Solscan, 109 of 3,000 links,
+ *  all dead. An 0x-prefixed hash is EVM and belongs to the row's own
+ *  chain; anything else is a base58 Solana signature. */
+function chainOfHash(hash: string, chain?: string): string | undefined {
+  if (hash.startsWith("0x")) return chain && chain !== "solana" ? chain : undefined;
+  return "solana";
+}
+
+function txExplorer(s: FillSample): string | undefined {
+  const c = chainOfHash(s.sig, s.chain);
+  return c ? EXPLORERS[c] : undefined;
+}
+
+/** A cross-chain row carries two hashes on two chains, and the one in this
+ *  cell is not always the chain in the label: a Relay sell is executed on the
+ *  EVM chain and settles on Solana. Saying so on hover is the difference
+ *  between a correct row and one a reader reports as mislabelled. */
+function hashTitle(s: FillSample): string {
+  const c = chainOfHash(s.sig, s.chain);
+  const name = c ? (CHAIN_NAMES[c] ?? c) : "an unknown chain";
+  if (s.chain && c && c !== s.chain) {
+    return `${s.sig}\n\nThis is the ${name} leg: the trade executed on ${CHAIN_NAMES[s.chain] ?? s.chain} and settled on ${name}.`;
   }
-  return "https://solscan.io/tx/";
+  return `${s.sig}\n\nOn ${name}.`;
+}
+
+/** Where the money came in, read from the deposit hash.
+ *
+ *  A Relay buy is paid from the app's Solana wallet and delivered on the
+ *  EVM chain; a Relay sell is the reverse. The label used to be a slug
+ *  rule with no notion of side, so it described the buy and reversed the
+ *  289 sell rows: it called an EVM deposit a Solana one. */
+function depositTitle(s: FillSample): string {
+  const from = chainOfHash(s.inTx ?? "", s.chain) ?? "solana";
+  const to = chainOfHash(s.sig, s.chain) ?? "solana";
+  const fromName = CHAIN_NAMES[from] ?? from;
+  const toName = CHAIN_NAMES[to] ?? to;
+  if (from === to) return `paid on ${fromName}: open the origin transaction`;
+  return `paid on ${fromName}, settled on ${toName}: open the ${fromName} side`;
 }
 
 const selectCls = "h-7 rounded-md border border-rule bg-paper px-2 text-[11px] text-ink hover:border-ink/40 focus:outline-none focus:border-ink/60";
@@ -363,14 +488,65 @@ function SideChip({ side }: { side: "buy" | "sell" }) {
   );
 }
 
+/** The columns the table shows, plus the transaction hashes, in the order
+ *  a reader reads them. bps figures stay unrounded here: the table rounds
+ *  for the eye, a spreadsheet should get what was measured. */
+const CSV_COLUMNS: [string, (s: FillSample) => string | number | undefined][] = [
+  ["time_utc", (s) => new Date(s.time * 1000).toISOString()],
+  ["terminal", (s) => s.terminal],
+  ["product", (s) => s.product],
+  ["chain", (s) => s.chain ?? "solana"],
+  ["side", (s) => s.side],
+  ["venue", (s) => s.venue],
+  ["hops", (s) => s.hops],
+  ["quote", (s) => s.quote],
+  ["trade_usd", (s) => s.tradeUsd],
+  ["value_in_usd", (s) => s.valueInUsd],
+  ["value_out_usd", (s) => s.valueOutUsd],
+  ["loss_bps", (s) => s.lossBps],
+  ["terminal_bps", (s) => s.terminalBps],
+  ["network_bps", (s) => s.networkBps],
+  ["other_bps", (s) => s.otherBps],
+  ["pool_bps", (s) => s.poolBps],
+  ["relay_bps", (s) => s.relayBps],
+  ["rent_usd", (s) => s.rentUsd],
+  ["ref_src", (s) => s.refSrc],
+  ["ref_age_s", (s) => s.refAgeS],
+  ["priced", (s) => (s.priced ? "true" : "false")],
+  ["flag", (s) => s.flag],
+  ["tx", (s) => s.sig],
+  ["origin_tx", (s) => s.inTx],
+];
+
+function downloadCsv(rows: FillSample[]) {
+  const cell = (v: string | number | undefined) => {
+    if (v === undefined || v === null) return "";
+    const t = String(v);
+    return /[",\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t;
+  };
+  const lines = [CSV_COLUMNS.map(([h]) => h).join(",")];
+  for (const r of rows) lines.push(CSV_COLUMNS.map(([, read]) => cell(read(r))).join(","));
+  const url = URL.createObjectURL(new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" }));
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `openchainbench-swaps-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 /** Loss figure with a small gauge (0 to 1,000 bps), coloured by size. */
-function LossCell({ s }: { s: FillSample }) {
+function LossCell({ s, exFee }: { s: FillSample; exFee?: boolean }) {
   if (s.lossBps === undefined) return <span className="text-ink-faint">—</span>;
-  const v = s.lossBps;
+  const v = exFee ? s.lossBps - s.terminalBps : s.lossBps;
   const w = Math.max(0, Math.min(1, v / 1000)) * 44;
   const color = v < 200 ? "var(--color-good)" : v < 600 ? "var(--color-warn)" : "var(--color-bad)";
   return (
-    <span className={`inline-flex items-center gap-2 ${s.flag ? "text-ink-faint" : "text-ink font-medium"}`} title={s.flag ? `excluded: ${s.flag}` : `${v.toFixed(1)} bps of the trade`}>
+    <span
+      className={`inline-flex items-center gap-2 ${s.flag ? "text-ink-faint" : "text-ink font-medium"}`}
+      title={s.flag ? `excluded: ${s.flag}` : exFee ? `${v.toFixed(1)} bps of the trade, the app's own ${Math.round(s.terminalBps)} bps taken out` : `${v.toFixed(1)} bps of the trade`}
+    >
       <svg width="44" height="6" viewBox="0 0 44 6" aria-hidden="true" className="shrink-0">
         <rect x="0" y="0" width="44" height="6" rx="3" fill="currentColor" opacity="0.12" />
         {w > 0 ? <rect x="0" y="0" width={w} height="6" rx="3" fill={color} opacity={s.flag ? 0.4 : 1} /> : null}

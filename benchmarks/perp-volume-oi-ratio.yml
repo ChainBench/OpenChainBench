@@ -54,6 +54,7 @@ methodology:
   - "Both terms are as the venue reports them. A venue counting both legs of every fill doubles its ratio against one that counts one; the bench does not normalise that, the venue formula on each row says what the API returns."
   - "Ranking sorts ascending (lower is first) so the venues whose volume is most backed by open positions lead; the subtitle and the bands are the reading, not the rank alone."
   - "A one-print spike does not move the board: both terms are 24h time averages of gauges sampled every minute."
+  - "Why this ratio does not equal volume over open interest where both are shown beside it: the /capital open-interest table reads the latest value of these same two gauges, and this bench divides their 24-hour averages. Same gauges, same harness, different window, so a venue whose book moved during the day disagrees, by a lot on one that turns over in under an hour. Pages read the ratio from here rather than recomputing it, so one named ratio has one value across the site."
 findings:
   - "{{best_name}} turns over {{best_p50}} of its open interest a day, the most position-backed volume of the {{count}} venues; {{worst_name}} sits at {{worst_p50}}."
   - "{{name:hyperliquid}} reads {{p50:hyperliquid}}: a day of trading is half its open interest, the signature of a large, sticky position base."

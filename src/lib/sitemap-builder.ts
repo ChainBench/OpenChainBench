@@ -191,6 +191,21 @@ function staticHubRoutes(catalogTs: Date): MetadataRoute.Sitemap {
     { url: `${SITE.url}/rwa`, lastModified: catalogTs, changeFrequency: "hourly", priority: 0.9 },
     { url: `${SITE.url}/bridge`, lastModified: catalogTs, changeFrequency: "hourly", priority: 0.9 },
     { url: `${SITE.url}/trading-apps`, lastModified: catalogTs, changeFrequency: "hourly", priority: 0.9 },
+    // The capital hub is empty without its three chain and protocol benches; keep it out of the sitemap where they are not served.
+    ...(["chain-bridged-tvl", "chain-stablecoin-flow", "protocol-pf-ratio"].some(isDevOnlyBench)
+      ? []
+      : [
+          {
+            url: `${SITE.url}/capital`,
+            // Its own members, not the whole catalogue: a spec edit elsewhere must not move this hub.
+            lastModified: newestEditorial(
+              ["chain-bridged-tvl", "chain-stablecoin-flow", "protocol-pf-ratio", "perp-pf-ratio", "pm-open-interest"].map((s) => `bench:${s}`),
+              pageMtime("capital/page.tsx"),
+            ),
+            changeFrequency: "hourly" as const,
+            priority: 0.9,
+          },
+        ]),
     { url: `${SITE.url}/mcp`, lastModified: pageMtime("mcp/page.tsx"), changeFrequency: "monthly", priority: 0.8 },
     ...(isDevOnlyRoute("/speedtest-rpc")
       ? []
@@ -433,7 +448,7 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
     }));
 
   const answerRoutes: MetadataRoute.Sitemap = answers
-    .filter((a) => benchBySlug.has(a.benchmark))
+    .filter((a) => benchBySlug.has(a.benchmark) && !isDevOnlyBench(a.benchmark))
     .map((a) => {
       const last = newestEditorial([`answer:${a.slug}`, `bench:${a.benchmark}`], catalogTs);
       return {

@@ -21,6 +21,14 @@ const eslintConfig = defineConfig([
     "infrastructure/**",
     "worker/**",
     "crm/**",
+    // Background agents check the repo out into .claude/worktrees, so a
+    // local `pnpm lint` walked every copy as if it were source. On
+    // 2026-09-30 that turned 0 errors and 9 warnings into 5,085 errors and
+    // 72,199 warnings across 1,579 files, none of them this repo's code.
+    // CI never saw it because CI lints a fresh clone, so the local signal
+    // was the only one that was broken, and it was broken badly enough to
+    // be useless. Not a build artifact directory, hence the explicit entry.
+    ".claude/**",
   ]),
 ]);
 

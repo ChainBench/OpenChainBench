@@ -147,8 +147,13 @@ export async function GET(
     },
     {
       headers: {
+        // 300 s. The two provider profiles come from the providers cache
+        // (src/lib/providers.ts, revalidate 900) over benches cached for
+        // 300 s, so this window is still shorter than anything upstream
+        // and adds no staleness the /compare page does not already have
+        // (that page is ISR on 3600 s).
         "cache-control":
-          "public, s-maxage=60, stale-while-revalidate=300",
+          "public, s-maxage=300, stale-while-revalidate=900",
         "access-control-allow-origin": "*",
       },
     },

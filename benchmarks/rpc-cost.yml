@@ -1,0 +1,645 @@
+# OpenChainBench. Bench № 282
+
+slug: rpc-cost
+number: "282"
+title: Cheapest RPC provider, priced per workload across 18 ranked providers
+seo_title: "Cheapest RPC provider 2026: real cost per workload"
+seo_description: "What 18 ranked RPC providers actually bill for the same workload. Alchemy, QuickNode, Chainstack, Infura, Helius, BlockPI, dRPC and more, priced across 5 workload profiles, 3 volumes and every plan tier."
+subtitle: The monthly bill each RPC provider would send for the same workload, normalised across Compute Units, Request Units, credits and flat requests, at three volumes and every plan tier.
+
+category: RPCs
+status: live
+metric: Monthly cost
+unit: usd
+higher_is_better: false
+row_noun: { one: provider, many: providers }
+
+disclaimer: >
+  Published prices, not invoices. Each figure is human-verified against the
+  provider's own pricing page or API and carries the date it was read; the
+  harness re-hashes 21 of those artifacts on a loop and flags any that
+  changed. A 30-day month and flat traffic are assumed, the most generous
+  reading. NOWNodes prices in EUR. A provider absent from a cell is not
+  missing data: it has no plan that can serve that workload, usually a cap
+  or a throughput ceiling rather than the price.
+
+seo_intro: |
+  There is no cheapest RPC provider. That is the finding, not a hedge. We
+  priced the same five workloads against every major provider and the winner
+  changed five times across fifteen cells, by multiples rather than percent.
+  Alchemy charges half of QuickNode for eth_blockNumber and three times
+  QuickNode for eth_getLogs. Chainstack bills one flat Request Unit for every
+  method, which makes it uncompetitive on trivial reads and the cheapest option
+  by an order of magnitude on debug_traceTransaction. So a single "cheapest
+  RPC" number cannot be honest, and this page does not publish one. It
+  publishes a bill per workload.
+  The comparison is only possible because each provider's own method table is
+  applied first: a Compute Unit, a Request Unit, a credit and a flat request
+  are different things, and the weighted units per request are published
+  alongside the money so the arithmetic can be redone by hand. Two names worth
+  noting up front. Alchemy and QuickNode, the two largest providers in the
+  market, win no cell at any volume on any workload and sit three to four times
+  above the leaders. And at ten million requests a month, several providers
+  serve the workload for nothing.
+
+abstract: |
+  Twenty RPC providers, five workload profiles, three monthly volumes and every
+  plan tier. For each combination the harness applies the provider's own
+  billing rules, its method weights, its archive rule, its allowance period,
+  its overage bands, its throughput ceiling, and reports the monthly bill on
+  the cheapest plan that can actually serve the workload.
+  Eligibility is part of the answer. Infura's allowance is daily and does not
+  roll over, so it cannot serve a hundred million requests a month at any
+  price. Alchemy's published self-serve throughput ceiling is 30,000 compute
+  units per second, which is half what the indexer profile needs at a billion
+  requests and an eighth of what the trace profile needs, the bill would be
+  affordable and the service still cannot be bought. Tatum and Moralis publish
+  200 requests per second against the 386 a billion-request month requires.
+  In every case the provider is marked not ranked rather than
+  priced, because a blank cell and an unavailable product are different
+  claims. The reason is currently recorded in the harness log rather than
+  rendered on the page.
+  Pricing is human-verified rather than scraped: for most of this cohort the
+  price is prose on a marketing page, and a parser that guesses is worse than
+  one that does not exist. Every figure records the artifact it came from
+  and the date a human read it, and 21 of those artifacts carry a baseline
+  hash the harness re-checks on a loop, so an upstream edit surfaces as
+  drift rather than as a stale figure that still reads as current. The
+  remainder are marked for manual re-reading: a page behind a bot wall, or
+  a JSON that regenerates every fifteen minutes and would alarm every cycle
+  until everyone learned to ignore it.
+
+methodology:
+  - "Cohort. 20 providers billed per request, ranked. A separate dedicated-capacity cohort (per month or per node-hour, not per request) is ranked on its own axis with a break-even volume. Reference rows, PublicNode and the Solana Foundation endpoints, are published but never ranked: they are free, real and usable, and PublicNode publishes no rate limit of any kind, so calling it cheapest would be true and useless."
+  - "Normalisation. Every provider's published method table is applied to the profile's method mix to get weighted units per request, and that figure is published as rpc_cost_units_per_request so the arithmetic is checkable."
+  - "Most large providers do not price per method at all. Chainstack charges 1 Request Unit for every method and 2 at archive depth, decided by block age (EVM at 127+ blocks behind tip) rather than by method name. QuickNode weights per chain, Ethereum 20 credits and Solana 30, with x2 for advanced calls and x4 for large ones. GetBlock multiplies a chain factor spanning 10 to 300."
+  - "Archive. Handled per provider rather than as a uniform surcharge, because it is not one. Chainstack doubles on block age. BlockPI adds 30% to the whole endpoint. Alchemy, dRPC and QuickNode charge no archive premium at all."
+  - "GetBlock publishes an independent archive column, 2x on plain reads and 3x on debug and trace, so no single multiplier is correct and its own published formula is arithmetically impossible against its own API. Tatum serves archive but has never published what it charges for it in the credit model, so it is reported unpriceable on archive workloads rather than assigned a guess."
+  - "Eligibility before price. A plan is ranked only if it can serve the workload. Daily caps are compared against the daily share, not the monthly total, because Infura's credits do not roll over. Hard stops (Infura, NOWNodes Start and Pro, QuickNode's trial) make a plan unavailable above its cap rather than merely expensive. Published throughput is checked against the sustained rate the volume requires. Missing trace or archive access is unavailability, not cost."
+  - "Plan tiers. Provider plan names do not line up, Chainstack calls $49 Growth and Helius calls $499 Business, so plans are banded by monthly price into free, entry (to $50), growth (to $300), business (to $1,000) and enterprise. The default view is the cheapest paid plan; the free tier has its own panel because every free plan ties at $0 and can only be ranked on what its allowance buys."
+  - "Free tiers are ranked by burn time, not headline allowance. GetBlock advertises 20 requests per second and 50,000 compute units per day: at its own advertised rate the daily allowance is gone in 125 seconds. Infura's lasts 1.7 hours a day, OnFinality's 2.8 hours, Alchemy's 1.2 days a month. The panel publishes the allowance converted into requests of each profile, alongside the throughput cap that is often the real ceiling."
+  - "Add-ons are priced with their prerequisites. Infura's $200 extra-credits pack cannot be bought on the free tier, so its real entry cost is Developer at $50 plus $200, which loses to Team at $225. Helius advertises dedicated nodes from $2,900; whether a paid plan is a prerequisite is not clearly stated, so no surcharge is assumed."
+  - "Packages are pro-rated, not treated as subscriptions. BlockPI sells 500M Request Units for $49 over 60 days and 4,000M for $299 over 90 days, and its own page says 'without monthly subscription'. Both price and allowance are scaled to 30 days ($24.50 and $99.67), and unused units are forfeited at expiry."
+  - "Currency and period. A 30-day month throughout. NOWNodes prices in EUR and stays in EUR in the catalogue; the ECB reference rate sits in the catalogue header so the conversion is visible at the point of use rather than baked into a number."
+  - "Verification. Every figure was collected and then independently re-verified against the primary source by a second pass, which corrected about thirty values, including two that had been computed and then presented as published. A later adversarial audit corrected a dozen more, most of them in this prose rather than in the data."
+  - "Conflicts between a provider's own pages are reported rather than silently resolved. Alchemy's free-tier throughput was settled by a dated docs commit, Helius's archival credit cost by dating the documentation table, and Ankr's live model by reading its production application bundle, because its most machine-readable pricing page describes a model that is not the one being sold."
+  - "Freshness. The catalogue is committed and human-verified, not scraped, because most of this cohort publishes price as prose. 21 artifacts carry a baseline hash recorded when a human last read the numbers under them, and the harness re-fetches and re-hashes those on a loop, so an upstream edit surfaces as drift."
+  - "The rest are marked for manual re-reading and deliberately not polled: a page that churns for reasons unrelated to price would alarm every cycle and teach everyone to ignore the alarm. Age is published either way, so a figure nobody has re-read is visible as such."
+  - "Fifteen of the ranked providers expose a machine-readable pricing artifact, whether JSON or raw markdown, and four of them, GetBlock, NOWNodes, QuickNode and Tatum, expose unauthenticated pricing APIs a harness can poll directly. 21 artifacts across the cohort are re-hashed on a loop."
+  - "Measured, not just read. Chainstack's rules were tested against its billing API with 291 counted calls: 1 Request Unit for a full request, archive above 2x full, debug and trace at 2 RU even ten blocks behind tip (so the surcharge is method-driven, not recency-driven), and an HTTP batch of 30 billed as 30 rather than 1. The 127-block archive boundary the indexer and trace profiles rest on is confirmed to within five blocks: it is not 64, not 256 and not absent."
+  - "Two measurement traps worth publishing. Chainstack's per-node Request Unit column does not reconcile: two nodes came in at minus 66 and plus 59 against prediction, cancelling on the total, so it cannot be used for spend attribution."
+  - "And that counter is not live. It stayed flat for twelve minutes while 57 calls were served, because each hourly row covers the hour ending at its label and appears about fifty minutes later. A naive read, burst, re-read measurement concludes Chainstack bills nothing at all."
+  - "Two limits come from what providers do not publish, and no amount of access would close them. QuickNode publishes its rate limits in requests per second while its own support states they are enforced in credits per second, and declines to give those numbers, so the throughput check here compares requests against a ceiling that really applies to weighted units: on a heavy method mix QuickNode reaches its real limit earlier than this page predicts."
+  - "And Alchemy publishes no fallback cost for methods absent from its table, so a workload using an unlisted method cannot be priced at all. The five profiles here use only listed methods, but a reader with an unusual mix cannot extend the table without asking Alchemy."
+  - "Method costs are modelled once per provider, varied by chain and by archive depth but not by plan. Where a provider negotiates or varies weights per account, the figures here are its published list prices."
+  - "What is still not measured. These are published prices, not invoices. Alchemy and QuickNode carry no credit, compute-unit or quota header on any response, so their billed units cannot be confirmed without dashboard credentials we do not hold. Where a provider's real charge is non-deterministic by design, dRPC routes to third-party operators that can rewrite the price downward and exposes no per-response cost header, the published rate is reported as an upper bound and labelled as one."
+
+findings:
+  - "There is no cheapest RPC provider. Six of them win at least one of the fifteen workload-by-volume cells, and none wins more than four. The widest spread inside a single cell is 36.7x, and even the trace profile at a hundred million requests spans 7.6x, from Chainstack at $499 to GetBlock at $3,779."
+  - "Two of the best-known providers are among the most expensive. Alchemy and QuickNode win no cell at any volume on any workload, running between 2.5x and 10.6x the leader of each cell, Alchemy at $10,500 a month for a billion simple reads against BlockPI's $2,833."
+  - "Price is not always the binding constraint. Alchemy cannot serve the indexer or trace profile at a billion requests a month on any published self-serve plan: those need 61,728 and 234,568 Throughput Compute Units per second against a self-serve ceiling of 30,000, enforced per account rather than per app."
+  - "Alchemy meters volume and rate limit in different units, and the figures above use its throughput column, not its billing one. Infura, separately, cannot serve a hundred million requests a month at any price, because its allowance is daily and hard-stops at 402."
+  - "Only some of the cell winners rest on fully published, unambiguous numbers. Chainstack and BlockPI win on complete figures. OnFinality's default method weight is assumed on chains it says carry undisclosed higher weights, NOWNodes publishes no archive or trace availability at all while winning the largest trace cell on price, and Syndica's pricing survives only inside a calculator that ends in a lead-capture form."
+  - "The cheapest defensible answer for a billion trace requests a month is therefore dRPC at $6,000, which is 5.7% above NOWNodes and the cheapest option that actually publishes that it serves debug and trace."
+  - "Free tiers differ by 160x once the allowance is converted into requests. OnFinality's buys 12.0 million simple reads a month and GetBlock's buys 75,000. Several free tiers are throughput-capped rather than volume-capped, and GetBlock's daily allowance drains in 125 seconds at its own advertised rate."
+  - "Buying the small plan is often the most expensive choice. At a hundred million dapp requests the entry band costs $524.50 while the growth band costs $249 and the business band $499, because the entry allowance runs out and the overage rate does not fall."
+  - "Advertised capability is not served capability. Chainstack's own node API lists trace support on its Polygon node, and trace_block there returns method not found. Alchemy's free tier answers archive reads but refuses all four trace and debug methods outright. Both were found by calling the endpoints rather than by reading the matrix."
+  - "One plan in seven has no published price at all. Sixteen providers decline to name a number somewhere above the business tier, so most of the enterprise band cannot be compared, only described."
+  - "Four providers that still appear in public comparisons are gone. Grove wound down. LlamaRPC returns a Cloudflare error while its sister domain llamanodes.com now serves gambling spam. InstantNodes redirects to a squatted sports-streaming site, and is not Instanodes, a different and live provider whose name is one letter away. Blast API shut down in 2025 after Bware Labs was acquired, and its public endpoints still answer, served by Alchemy."
+  - "Two more are dated. AWS Managed Blockchain stops accepting new customers on 29 October 2026, and Google shuts Blockchain Node Engine down entirely on 15 December 2026, deleting every node."
+
+faq:
+  - q: "Which RPC provider is cheapest?"
+    a: "It depends on the workload, by multiples rather than percent. Across five workload profiles and three volumes, six providers win at least one cell: BlockPI and OnFinality four each, Chainstack three, Syndica two, and NOWNodes and Helius one apiece, with several ties at $49. Pick the profile that matches your method mix rather than reading a single number."
+  - q: "Why do Alchemy and QuickNode never win?"
+    a: "Because they are three to four times more expensive than the leaders for the same work. Alchemy bills $10,500 a month for a billion simple reads where BlockPI bills $2,833, and across the fifteen cells the two run between 2.5x and 10.6x the cell leader. Both are priced as premium products and both publish their rates plainly; the bench simply applies them."
+  - q: "How can you compare a Compute Unit to a Request Unit?"
+    a: "By applying each provider's own method table to the same method mix, which gives weighted units per request. That figure is published per provider and per profile, so the conversion is inspectable rather than asserted. It is also why the ranking changes with the workload: the unit conversions are not constant across methods."
+  - q: "Are these prices from real invoices?"
+    a: "No. They are published prices, human-verified against each provider's own pricing page or pricing API, with the date each figure was read. No provider in this cohort was billed to confirm its rate card. Where a provider's real charge is non-deterministic, dRPC routes to third-party operators that can rewrite the price downward and exposes no cost header, the published rate is reported as an upper bound."
+  - q: "Why is a provider missing from a cell?"
+    a: "Because it cannot serve that workload. The reason is recorded in the harness log; surfacing it on the page is not done yet. Infura's allowance is daily and hard-stops rather than metering overage. Alchemy's published self-serve throughput ceiling is below what a billion-request indexer workload needs. Tatum and Moralis publish 200 requests per second against the 386 that volume requires. A missing cell is a finding, not a gap in the data."
+  - q: "What about the free tiers?"
+    a: "They have their own panel, ranked by what the allowance actually buys rather than by price, since every free plan costs the same nothing. Converted into simple reads per month they differ by 160x, from OnFinality's 12.0 million to GetBlock's 75,000. The allowance ranking has its own panel on this page. Several are limited by throughput rather than volume: GetBlock's daily allowance drains in 125 seconds at its own advertised 20 requests per second."
+  - q: "How current are these numbers?"
+    a: "Every figure carries the date a human last verified it against the source. The harness re-fetches 21 artifacts that carry a baseline hash and flags any whose body has changed since a human last read it. Artifacts that churn for reasons unrelated to price are re-read by hand instead, and every figure publishes its age either way. Freshness varies within a provider: Chainstack's pricing markdown has not moved since April 2026 while its pricing JSON regenerates every fifteen minutes."
+  - q: "Can I reproduce these numbers?"
+    a: "Yes. The pricing catalogue, the cost model and the workload profiles are all in the harness repository linked below, and every figure carries its source URL and verification date. The weighted units per request are published as a metric so the arithmetic can be redone by hand."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/dev/harnesses/rpc-cost
+
+prometheus:
+  window: 24h
+  expected_freshness_seconds: 10800
+  freshness_timestamp_metric: rpc_cost_last_run_timestamp_seconds
+
+# Metrics exposed by the rpc-cost harness:
+#   rpc_cost_monthly_usd{provider, plan, kind, bucket, chain, cohort, venue}
+#   rpc_cost_per_million_usd{provider, plan, kind, bucket, chain, cohort, venue}
+#   rpc_cost_units_per_request{provider, kind, chain}
+#   rpc_cost_eligible{provider, kind, bucket}
+#   rpc_cost_plan_confidence{provider, plan, kind, bucket}
+#   rpc_free_allowance_requests{provider, plan, kind, chain}
+#   rpc_cost_breakeven_requests{provider, plan, chain}
+#   rpc_pricing_artifact_ok / _age_seconds / _drift{provider, artifact}
+#
+# `venue` carries the PLAN TIER. It is named venue because that is an
+# existing dimension key the site already plumbs end to end; adding a
+# `plan` key would have meant editing eight files shared by 240 other
+# benches for a cosmetic gain.
+
+# The stock selector labels are named after the dimension key ("Venue",
+# "Trade size", "Kind"), which says nothing on this bench. Name the axes
+# for what they actually hold.
+# The bill is a constant read from a committed catalogue, so p50, p90 and
+# p99 of it are the same number three times and a "success rate" measures
+# nothing: this bench sends no RPC traffic. Relabel the ledger to carry
+# figures that mean something instead, and turn the reliability columns off.
+# $0 is an answer here, not a missing value: several providers serve a
+# ten-million-request month for nothing. Without this the ledger prunes
+# them and the page names a paid provider as the cheapest option.
+zero_is_a_value: true
+ledger_reliability: false
+ledger_columns:
+  - { label: Monthly bill, slot: p50, unit: usd }
+  - { label: Per 1M requests, panel: per_million, unit: usd }
+  - { label: Units per request, panel: units_per_request, unit: count }
+
+metric_panels:
+  # What the same workload costs per million requests, which is the figure
+  # that makes providers with different plan shapes comparable at a glance.
+  - id: per_million
+    label: Effective cost per 1M requests
+    description: The monthly bill spread over the workload. Derived, not a published rate, so a plan that bundles far more than the workload uses shows a high effective rate here.
+    metric: rpc_cost_per_million_usd{kind="all",bucket="all",venue="all"}
+    label_key: provider
+    unit: usd
+    higher_is_better: false
+  # The conversion that makes a Compute Unit, a Request Unit and a credit
+  # comparable at all. Promised in the methodology, so publish it.
+  - id: units_per_request
+    label: Billing units per request
+    description: Weighted units the provider charges for one request of this workload, from its own published method table. The number that makes CU, RU, credits and flat requests comparable.
+    metric: rpc_cost_units_per_request{kind="all"}
+    label_key: provider
+    unit: count
+    higher_is_better: false
+  # Free tiers all cost the same nothing, so they can only be ranked on
+  # what the allowance actually buys.
+  - id: free_allowance
+    label: Free tier, requests per month
+    description: Requests of this workload the provider's free allowance covers each month, after converting its credits, units or daily cap. Higher is better; providers with no free tier are absent.
+    metric: rpc_free_allowance_requests{kind="all"}
+    label_key: provider
+    unit: count
+    higher_is_better: true
+  # The question the dedicated cohort exists to answer.
+  - id: breakeven
+    label: Dedicated break-even, requests per month
+    description: Monthly request volume at which a fixed-price dedicated node undercuts the cheapest metered rate. Lower means the fixed price pays for itself sooner.
+    metric: rpc_cost_breakeven_requests
+    label_key: provider
+    unit: count
+    higher_is_better: false
+
+dimension_labels:
+  kind: Workload
+  bucket: Monthly volume
+  venue: Plan
+  tier: Billing model
+
+dimensions:
+  kind:
+    # `all` is the slice the unfiltered view selects; the site replaces the
+    # pinned matcher when a reader picks a tab. Pooling a bill across
+    # workloads would average a $24 plan with a $10,500 one, so `all`
+    # carries the dapp mix at 10M requests a month rather than an average.
+    - { value: all,         label: Dapp frontend }
+    - { value: simple-read, label: Simple reads }
+    - { value: indexer,     label: Log indexer }
+    - { value: trace,       label: Trace and debug }
+    - { value: solana-bot,  label: Solana trading bot }
+  bucket:
+    - { value: all,   label: 10M requests/mo }
+    - { value: 100m,  label: 100M requests/mo }
+    - { value: 1000m, label: 1B requests/mo }
+  venue:
+    # Pinned in the queries, so it must come first, and it carries the
+    # default view: the cheapest PAID plan. Letting a free tier win the
+    # smallest volume would bury the comparison readers came for; the
+    # Free tier tab answers that question on its own terms.
+    - { value: all,        label: Cheapest paid plan }
+    - { value: free,       label: Free tier }
+    - { value: entry,      label: "Entry, to $50/mo" }
+    - { value: growth,     label: "Growth, to $300/mo" }
+    - { value: business,   label: "Business, to $1000/mo" }
+    - { value: enterprise, label: Enterprise }
+  tier:
+    - { value: usage,     label: Billed per request }
+    - { value: dedicated, label: Dedicated capacity }
+    - { value: reference, label: "Free public, not ranked" }
+
+providers:
+  - slug: alchemy
+    name: Alchemy
+    tier: usage
+    tag: Compute Unit, weighted per method
+    queries:
+      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="alchemy",kind="all",bucket="all",venue="all"}[24h])
+      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="alchemy",kind="all",bucket="all",venue="all"}[24h])
+      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="alchemy",kind="all",bucket="all",venue="all"}[24h])
+      ranked: rpc_cost_eligible{provider="alchemy",kind="all",bucket="all"}
+      mean: avg_over_time(rpc_cost_monthly_usd{provider="alchemy",kind="all",bucket="all",venue="all"}[24h])
+      series: rpc_cost_monthly_usd{provider="alchemy",kind="all",bucket="all",venue="all"}
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="alchemy",kind="all",bucket="all",venue="all"}[7d])
+
+  - slug: quicknode
+    name: QuickNode
+    tier: usage
+    tag: credit, weighted per chain
+    queries:
+      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="quicknode",kind="all",bucket="all",venue="all"}[24h])
+      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="quicknode",kind="all",bucket="all",venue="all"}[24h])
+      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="quicknode",kind="all",bucket="all",venue="all"}[24h])
+      ranked: rpc_cost_eligible{provider="quicknode",kind="all",bucket="all"}
+      mean: avg_over_time(rpc_cost_monthly_usd{provider="quicknode",kind="all",bucket="all",venue="all"}[24h])
+      series: rpc_cost_monthly_usd{provider="quicknode",kind="all",bucket="all",venue="all"}
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="quicknode",kind="all",bucket="all",venue="all"}[7d])
+
+  - slug: infura
+    name: Infura (MetaMask Developer)
+    tier: usage
+    tag: credit, weighted per method
+    queries:
+      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="infura",kind="all",bucket="all",venue="all"}[24h])
+      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="infura",kind="all",bucket="all",venue="all"}[24h])
+      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="infura",kind="all",bucket="all",venue="all"}[24h])
+      ranked: rpc_cost_eligible{provider="infura",kind="all",bucket="all"}
+      mean: avg_over_time(rpc_cost_monthly_usd{provider="infura",kind="all",bucket="all",venue="all"}[24h])
+      series: rpc_cost_monthly_usd{provider="infura",kind="all",bucket="all",venue="all"}
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="infura",kind="all",bucket="all",venue="all"}[7d])
+
+  - slug: chainstack
+    name: Chainstack
+    tier: usage
+    tag: Request Unit, 1 unit, 2 at archive depth
+    queries:
+      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="chainstack",kind="all",bucket="all",venue="all"}[24h])
+      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="chainstack",kind="all",bucket="all",venue="all"}[24h])
+      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="chainstack",kind="all",bucket="all",venue="all"}[24h])
+      ranked: rpc_cost_eligible{provider="chainstack",kind="all",bucket="all"}
+      mean: avg_over_time(rpc_cost_monthly_usd{provider="chainstack",kind="all",bucket="all",venue="all"}[24h])
+      series: rpc_cost_monthly_usd{provider="chainstack",kind="all",bucket="all",venue="all"}
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="chainstack",kind="all",bucket="all",venue="all"}[7d])
+
+  - slug: drpc
+    name: dRPC
+    tier: usage
+    tag: Compute Unit, flat per request
+    queries:
+      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="drpc",kind="all",bucket="all",venue="all"}[24h])
+      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="drpc",kind="all",bucket="all",venue="all"}[24h])
+      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="drpc",kind="all",bucket="all",venue="all"}[24h])
+      ranked: rpc_cost_eligible{provider="drpc",kind="all",bucket="all"}
+      mean: avg_over_time(rpc_cost_monthly_usd{provider="drpc",kind="all",bucket="all",venue="all"}[24h])
+      series: rpc_cost_monthly_usd{provider="drpc",kind="all",bucket="all",venue="all"}
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="drpc",kind="all",bucket="all",venue="all"}[7d])
+
+  - slug: ankr
+    name: Ankr
+    tier: usage
+    tag: credit, weighted per chain
+    queries:
+      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="ankr",kind="all",bucket="all",venue="all"}[24h])
+      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="ankr",kind="all",bucket="all",venue="all"}[24h])
+      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="ankr",kind="all",bucket="all",venue="all"}[24h])
+      ranked: rpc_cost_eligible{provider="ankr",kind="all",bucket="all"}
+      mean: avg_over_time(rpc_cost_monthly_usd{provider="ankr",kind="all",bucket="all",venue="all"}[24h])
+      series: rpc_cost_monthly_usd{provider="ankr",kind="all",bucket="all",venue="all"}
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="ankr",kind="all",bucket="all",venue="all"}[7d])
+
+  - slug: blockpi
+    name: BlockPI
+    tier: usage
+    tag: Request Unit, weighted per method
+    queries:
+      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="blockpi",kind="all",bucket="all",venue="all"}[24h])
+      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="blockpi",kind="all",bucket="all",venue="all"}[24h])
+      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="blockpi",kind="all",bucket="all",venue="all"}[24h])
+      ranked: rpc_cost_eligible{provider="blockpi",kind="all",bucket="all"}
+      mean: avg_over_time(rpc_cost_monthly_usd{provider="blockpi",kind="all",bucket="all",venue="all"}[24h])
+      series: rpc_cost_monthly_usd{provider="blockpi",kind="all",bucket="all",venue="all"}
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="blockpi",kind="all",bucket="all",venue="all"}[7d])
+
+  - slug: getblock
+    name: GetBlock
+    tier: usage
+    tag: Compute Unit, weighted per chain
+    queries:
+      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="getblock",kind="all",bucket="all",venue="all"}[24h])
+      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="getblock",kind="all",bucket="all",venue="all"}[24h])
+      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="getblock",kind="all",bucket="all",venue="all"}[24h])
+      ranked: rpc_cost_eligible{provider="getblock",kind="all",bucket="all"}
+      mean: avg_over_time(rpc_cost_monthly_usd{provider="getblock",kind="all",bucket="all",venue="all"}[24h])
+      series: rpc_cost_monthly_usd{provider="getblock",kind="all",bucket="all",venue="all"}
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="getblock",kind="all",bucket="all",venue="all"}[7d])
+
+  - slug: nownodes
+    name: NOWNodes
+    tier: usage
+    tag: request, flat per request
+    queries:
+      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="nownodes",kind="all",bucket="all",venue="all"}[24h])
+      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="nownodes",kind="all",bucket="all",venue="all"}[24h])
+      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="nownodes",kind="all",bucket="all",venue="all"}[24h])
+      ranked: rpc_cost_eligible{provider="nownodes",kind="all",bucket="all"}
+      mean: avg_over_time(rpc_cost_monthly_usd{provider="nownodes",kind="all",bucket="all",venue="all"}[24h])
+      series: rpc_cost_monthly_usd{provider="nownodes",kind="all",bucket="all",venue="all"}
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="nownodes",kind="all",bucket="all",venue="all"}[7d])
+
+  - slug: tatum
+    name: Tatum
+    tier: usage
+    tag: credit, weighted per method
+    queries:
+      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="tatum",kind="all",bucket="all",venue="all"}[24h])
+      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="tatum",kind="all",bucket="all",venue="all"}[24h])
+      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="tatum",kind="all",bucket="all",venue="all"}[24h])
+      ranked: rpc_cost_eligible{provider="tatum",kind="all",bucket="all"}
+      mean: avg_over_time(rpc_cost_monthly_usd{provider="tatum",kind="all",bucket="all",venue="all"}[24h])
+      series: rpc_cost_monthly_usd{provider="tatum",kind="all",bucket="all",venue="all"}
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="tatum",kind="all",bucket="all",venue="all"}[7d])
+
+  - slug: helius
+    name: Helius
+    tier: usage
+    tag: credit, weighted per method
+    queries:
+      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="helius",kind="all",bucket="all",venue="all"}[24h])
+      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="helius",kind="all",bucket="all",venue="all"}[24h])
+      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="helius",kind="all",bucket="all",venue="all"}[24h])
+      ranked: rpc_cost_eligible{provider="helius",kind="all",bucket="all"}
+      mean: avg_over_time(rpc_cost_monthly_usd{provider="helius",kind="all",bucket="all",venue="all"}[24h])
+      series: rpc_cost_monthly_usd{provider="helius",kind="all",bucket="all",venue="all"}
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="helius",kind="all",bucket="all",venue="all"}[7d])
+
+  - slug: moralis
+    name: Moralis
+    tier: usage
+    tag: Compute Unit, weighted per method
+    queries:
+      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="moralis",kind="all",bucket="all",venue="all"}[24h])
+      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="moralis",kind="all",bucket="all",venue="all"}[24h])
+      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="moralis",kind="all",bucket="all",venue="all"}[24h])
+      ranked: rpc_cost_eligible{provider="moralis",kind="all",bucket="all"}
+      mean: avg_over_time(rpc_cost_monthly_usd{provider="moralis",kind="all",bucket="all",venue="all"}[24h])
+      series: rpc_cost_monthly_usd{provider="moralis",kind="all",bucket="all",venue="all"}
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="moralis",kind="all",bucket="all",venue="all"}[7d])
+
+  - slug: validation-cloud
+    name: Validation Cloud
+    tier: usage
+    tag: Compute Unit, weighted per method
+    queries:
+      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="validation-cloud",kind="all",bucket="all",venue="all"}[24h])
+      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="validation-cloud",kind="all",bucket="all",venue="all"}[24h])
+      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="validation-cloud",kind="all",bucket="all",venue="all"}[24h])
+      ranked: rpc_cost_eligible{provider="validation-cloud",kind="all",bucket="all"}
+      mean: avg_over_time(rpc_cost_monthly_usd{provider="validation-cloud",kind="all",bucket="all",venue="all"}[24h])
+      series: rpc_cost_monthly_usd{provider="validation-cloud",kind="all",bucket="all",venue="all"}
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="validation-cloud",kind="all",bucket="all",venue="all"}[7d])
+
+  - slug: blockdaemon
+    name: Blockdaemon
+    tier: usage
+    tag: Compute Unit, weighted per method
+    queries:
+      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="blockdaemon",kind="all",bucket="all",venue="all"}[24h])
+      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="blockdaemon",kind="all",bucket="all",venue="all"}[24h])
+      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="blockdaemon",kind="all",bucket="all",venue="all"}[24h])
+      ranked: rpc_cost_eligible{provider="blockdaemon",kind="all",bucket="all"}
+      mean: avg_over_time(rpc_cost_monthly_usd{provider="blockdaemon",kind="all",bucket="all",venue="all"}[24h])
+      series: rpc_cost_monthly_usd{provider="blockdaemon",kind="all",bucket="all",venue="all"}
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="blockdaemon",kind="all",bucket="all",venue="all"}[7d])
+
+  - slug: thirdweb
+    name: thirdweb
+    tier: usage
+    tag: request, flat per request
+    queries:
+      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="thirdweb",kind="all",bucket="all",venue="all"}[24h])
+      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="thirdweb",kind="all",bucket="all",venue="all"}[24h])
+      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="thirdweb",kind="all",bucket="all",venue="all"}[24h])
+      ranked: rpc_cost_eligible{provider="thirdweb",kind="all",bucket="all"}
+      mean: avg_over_time(rpc_cost_monthly_usd{provider="thirdweb",kind="all",bucket="all",venue="all"}[24h])
+      series: rpc_cost_monthly_usd{provider="thirdweb",kind="all",bucket="all",venue="all"}
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="thirdweb",kind="all",bucket="all",venue="all"}[7d])
+
+  - slug: coinbase-cdp
+    name: Coinbase Developer Platform, CDP Node
+    tier: usage
+    tag: Billing Unit, weighted per method
+    queries:
+      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="coinbase-cdp",kind="all",bucket="all",venue="all"}[24h])
+      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="coinbase-cdp",kind="all",bucket="all",venue="all"}[24h])
+      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="coinbase-cdp",kind="all",bucket="all",venue="all"}[24h])
+      ranked: rpc_cost_eligible{provider="coinbase-cdp",kind="all",bucket="all"}
+      mean: avg_over_time(rpc_cost_monthly_usd{provider="coinbase-cdp",kind="all",bucket="all",venue="all"}[24h])
+      series: rpc_cost_monthly_usd{provider="coinbase-cdp",kind="all",bucket="all",venue="all"}
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="coinbase-cdp",kind="all",bucket="all",venue="all"}[7d])
+
+  - slug: onfinality
+    name: OnFinality
+    tier: usage
+    tag: Request Unit, weighted per method
+    queries:
+      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="onfinality",kind="all",bucket="all",venue="all"}[24h])
+      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="onfinality",kind="all",bucket="all",venue="all"}[24h])
+      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="onfinality",kind="all",bucket="all",venue="all"}[24h])
+      ranked: rpc_cost_eligible{provider="onfinality",kind="all",bucket="all"}
+      mean: avg_over_time(rpc_cost_monthly_usd{provider="onfinality",kind="all",bucket="all",venue="all"}[24h])
+      series: rpc_cost_monthly_usd{provider="onfinality",kind="all",bucket="all",venue="all"}
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="onfinality",kind="all",bucket="all",venue="all"}[7d])
+
+  - slug: syndica
+    name: Syndica
+    tier: usage
+    tag: request, flat per request
+    queries:
+      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="syndica",kind="all",bucket="all",venue="all"}[24h])
+      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="syndica",kind="all",bucket="all",venue="all"}[24h])
+      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="syndica",kind="all",bucket="all",venue="all"}[24h])
+      ranked: rpc_cost_eligible{provider="syndica",kind="all",bucket="all"}
+      mean: avg_over_time(rpc_cost_monthly_usd{provider="syndica",kind="all",bucket="all",venue="all"}[24h])
+      series: rpc_cost_monthly_usd{provider="syndica",kind="all",bucket="all",venue="all"}
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="syndica",kind="all",bucket="all",venue="all"}[7d])
+
+  - slug: triton
+    name: Triton One
+    tier: usage
+    tag: request, flat per request
+    queries:
+      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="triton",kind="all",bucket="all",venue="all"}[24h])
+      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="triton",kind="all",bucket="all",venue="all"}[24h])
+      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="triton",kind="all",bucket="all",venue="all"}[24h])
+      ranked: rpc_cost_eligible{provider="triton",kind="all",bucket="all"}
+      mean: avg_over_time(rpc_cost_monthly_usd{provider="triton",kind="all",bucket="all",venue="all"}[24h])
+      series: rpc_cost_monthly_usd{provider="triton",kind="all",bucket="all",venue="all"}
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="triton",kind="all",bucket="all",venue="all"}[7d])
+
+  - slug: instanodes
+    name: Instanodes
+    tier: usage
+    tag: request, flat per request
+    queries:
+      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="instanodes",kind="all",bucket="all",venue="all"}[24h])
+      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="instanodes",kind="all",bucket="all",venue="all"}[24h])
+      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="instanodes",kind="all",bucket="all",venue="all"}[24h])
+      ranked: rpc_cost_eligible{provider="instanodes",kind="all",bucket="all"}
+      mean: avg_over_time(rpc_cost_monthly_usd{provider="instanodes",kind="all",bucket="all",venue="all"}[24h])
+      series: rpc_cost_monthly_usd{provider="instanodes",kind="all",bucket="all",venue="all"}
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="instanodes",kind="all",bucket="all",venue="all"}[7d])
+
+  - slug: publicnode
+    name: PublicNode (by Allnodes)
+    tier: reference
+    tag: request, flat per request
+    queries:
+      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="publicnode",kind="all",bucket="all",venue="all"}[24h])
+      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="publicnode",kind="all",bucket="all",venue="all"}[24h])
+      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="publicnode",kind="all",bucket="all",venue="all"}[24h])
+      ranked: rpc_cost_eligible{provider="publicnode",kind="all",bucket="all"}
+      mean: avg_over_time(rpc_cost_monthly_usd{provider="publicnode",kind="all",bucket="all",venue="all"}[24h])
+      series: rpc_cost_monthly_usd{provider="publicnode",kind="all",bucket="all",venue="all"}
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="publicnode",kind="all",bucket="all",venue="all"}[7d])
+
+  - slug: solana-foundation
+    name: Solana Foundation / Anza public endpoints
+    tier: reference
+    tag: request, flat per request
+    queries:
+      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="solana-foundation",kind="all",bucket="all",venue="all"}[24h])
+      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="solana-foundation",kind="all",bucket="all",venue="all"}[24h])
+      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="solana-foundation",kind="all",bucket="all",venue="all"}[24h])
+      ranked: rpc_cost_eligible{provider="solana-foundation",kind="all",bucket="all"}
+      mean: avg_over_time(rpc_cost_monthly_usd{provider="solana-foundation",kind="all",bucket="all",venue="all"}[24h])
+      series: rpc_cost_monthly_usd{provider="solana-foundation",kind="all",bucket="all",venue="all"}
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="solana-foundation",kind="all",bucket="all",venue="all"}[7d])
+
+  - slug: getblock-dedicated
+    name: GetBlock, Dedicated & Limitless nodes
+    tier: dedicated
+    tag: request, flat per request
+    queries:
+      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="getblock-dedicated",kind="all",bucket="all",venue="all"}[24h])
+      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="getblock-dedicated",kind="all",bucket="all",venue="all"}[24h])
+      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="getblock-dedicated",kind="all",bucket="all",venue="all"}[24h])
+      ranked: rpc_cost_eligible{provider="getblock-dedicated",kind="all",bucket="all"}
+      mean: avg_over_time(rpc_cost_monthly_usd{provider="getblock-dedicated",kind="all",bucket="all",venue="all"}[24h])
+      series: rpc_cost_monthly_usd{provider="getblock-dedicated",kind="all",bucket="all",venue="all"}
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="getblock-dedicated",kind="all",bucket="all",venue="all"}[7d])
+
+  - slug: chainstack-dedicated
+    name: Chainstack, Dedicated Node & Unlimited Node
+    tier: dedicated
+    tag: request, flat per request
+    queries:
+      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="chainstack-dedicated",kind="all",bucket="all",venue="all"}[24h])
+      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="chainstack-dedicated",kind="all",bucket="all",venue="all"}[24h])
+      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="chainstack-dedicated",kind="all",bucket="all",venue="all"}[24h])
+      ranked: rpc_cost_eligible{provider="chainstack-dedicated",kind="all",bucket="all"}
+      mean: avg_over_time(rpc_cost_monthly_usd{provider="chainstack-dedicated",kind="all",bucket="all",venue="all"}[24h])
+      series: rpc_cost_monthly_usd{provider="chainstack-dedicated",kind="all",bucket="all",venue="all"}
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="chainstack-dedicated",kind="all",bucket="all",venue="all"}[7d])
+
+  - slug: quicknode-flat-rate
+    name: QuickNode, Flat Rate RPS
+    tier: dedicated
+    tag: request, flat per request
+    queries:
+      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="quicknode-flat-rate",kind="all",bucket="all",venue="all"}[24h])
+      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="quicknode-flat-rate",kind="all",bucket="all",venue="all"}[24h])
+      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="quicknode-flat-rate",kind="all",bucket="all",venue="all"}[24h])
+      ranked: rpc_cost_eligible{provider="quicknode-flat-rate",kind="all",bucket="all"}
+      mean: avg_over_time(rpc_cost_monthly_usd{provider="quicknode-flat-rate",kind="all",bucket="all",venue="all"}[24h])
+      series: rpc_cost_monthly_usd{provider="quicknode-flat-rate",kind="all",bucket="all",venue="all"}
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="quicknode-flat-rate",kind="all",bucket="all",venue="all"}[7d])
+
+  - slug: google-bne
+    name: Google Cloud, Blockchain Node Engine
+    tier: dedicated
+    tag: request, flat per request
+    queries:
+      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="google-bne",kind="all",bucket="all",venue="all"}[24h])
+      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="google-bne",kind="all",bucket="all",venue="all"}[24h])
+      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="google-bne",kind="all",bucket="all",venue="all"}[24h])
+      ranked: rpc_cost_eligible{provider="google-bne",kind="all",bucket="all"}
+      mean: avg_over_time(rpc_cost_monthly_usd{provider="google-bne",kind="all",bucket="all",venue="all"}[24h])
+      series: rpc_cost_monthly_usd{provider="google-bne",kind="all",bucket="all",venue="all"}
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="google-bne",kind="all",bucket="all",venue="all"}[7d])
+
+  - slug: helius-dedicated
+    name: Helius, Dedicated Nodes
+    tier: dedicated
+    tag: request, flat per request
+    queries:
+      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="helius-dedicated",kind="all",bucket="all",venue="all"}[24h])
+      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="helius-dedicated",kind="all",bucket="all",venue="all"}[24h])
+      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="helius-dedicated",kind="all",bucket="all",venue="all"}[24h])
+      ranked: rpc_cost_eligible{provider="helius-dedicated",kind="all",bucket="all"}
+      mean: avg_over_time(rpc_cost_monthly_usd{provider="helius-dedicated",kind="all",bucket="all",venue="all"}[24h])
+      series: rpc_cost_monthly_usd{provider="helius-dedicated",kind="all",bucket="all",venue="all"}
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="helius-dedicated",kind="all",bucket="all",venue="all"}[7d])
+
+  - slug: shyft
+    name: Shyft
+    tier: dedicated
+    tag: request, flat per request
+    queries:
+      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="shyft",kind="all",bucket="all",venue="all"}[24h])
+      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="shyft",kind="all",bucket="all",venue="all"}[24h])
+      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="shyft",kind="all",bucket="all",venue="all"}[24h])
+      ranked: rpc_cost_eligible{provider="shyft",kind="all",bucket="all"}
+      mean: avg_over_time(rpc_cost_monthly_usd{provider="shyft",kind="all",bucket="all",venue="all"}[24h])
+      series: rpc_cost_monthly_usd{provider="shyft",kind="all",bucket="all",venue="all"}
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="shyft",kind="all",bucket="all",venue="all"}[7d])
+
+  - slug: allnodes
+    name: Allnodes
+    tier: dedicated
+    tag: request, flat per request
+    queries:
+      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="allnodes",kind="all",bucket="all",venue="all"}[24h])
+      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="allnodes",kind="all",bucket="all",venue="all"}[24h])
+      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="allnodes",kind="all",bucket="all",venue="all"}[24h])
+      ranked: rpc_cost_eligible{provider="allnodes",kind="all",bucket="all"}
+      mean: avg_over_time(rpc_cost_monthly_usd{provider="allnodes",kind="all",bucket="all",venue="all"}[24h])
+      series: rpc_cost_monthly_usd{provider="allnodes",kind="all",bucket="all",venue="all"}
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="allnodes",kind="all",bucket="all",venue="all"}[7d])
+
+  - slug: zeeve
+    name: Zeeve
+    tier: dedicated
+    tag: request, flat per request
+    queries:
+      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="zeeve",kind="all",bucket="all",venue="all"}[24h])
+      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="zeeve",kind="all",bucket="all",venue="all"}[24h])
+      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="zeeve",kind="all",bucket="all",venue="all"}[24h])
+      ranked: rpc_cost_eligible{provider="zeeve",kind="all",bucket="all"}
+      mean: avg_over_time(rpc_cost_monthly_usd{provider="zeeve",kind="all",bucket="all",venue="all"}[24h])
+      series: rpc_cost_monthly_usd{provider="zeeve",kind="all",bucket="all",venue="all"}
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="zeeve",kind="all",bucket="all",venue="all"}[7d])
+
+  - slug: aws-amb
+    name: Amazon Managed Blockchain (AMB) Access, Ethereum
+    tier: dedicated
+    tag: request, flat per request
+    queries:
+      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="aws-amb",kind="all",bucket="all",venue="all"}[24h])
+      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="aws-amb",kind="all",bucket="all",venue="all"}[24h])
+      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="aws-amb",kind="all",bucket="all",venue="all"}[24h])
+      ranked: rpc_cost_eligible{provider="aws-amb",kind="all",bucket="all"}
+      mean: avg_over_time(rpc_cost_monthly_usd{provider="aws-amb",kind="all",bucket="all",venue="all"}[24h])
+      series: rpc_cost_monthly_usd{provider="aws-amb",kind="all",bucket="all",venue="all"}
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="aws-amb",kind="all",bucket="all",venue="all"}[7d])
+

@@ -118,6 +118,20 @@ export const PERP_VENUES: VenueSeed[] = [
   { slug: "jupiter",    name: "Jupiter Perps", chain: "Solana",     venueType: "onchain" },
   { slug: "lighter-rh", name: "Lighter RH", chain: "Lighter L2, Robinhood", venueType: "onchain" },
   { slug: "trade-xyz",  name: "trade.xyz",  chain: "Hyperliquid HIP-3", venueType: "onchain" },
+  // Ondo Perps, live since June 2026: matching runs off-chain in Intel SGX
+  // enclaves, custody is on-chain on Ethereum and Arbitrum, collateral is USDC
+  // and Ondo's tokenised stocks. Read from its own API (api.ondoperps.xyz),
+  // not from a CEX aggregator, and already a ranked provider on bench 041 and
+  // bench 271, so it sits in the DEX cohort those boards already count it in.
+  // perp_venue_oi_usd has carried it all along and this seed list did not,
+  // which is why /perps and the /capital open-interest table both dropped a
+  // venue holding about $89M of open interest on $126M of 24h volume
+  // (2026-09-29). Variational is the other venue in the gauge and not here,
+  // deliberately: api.variational.io is NXDOMAIN, so its open interest comes
+  // from DefiLlama alone and it publishes no volume, market count or top
+  // market (harnesses/perp-cohort-stats/cmd/script/source_variational.go and
+  // bench 043's FAQ). It comes in when a source for its own figures does.
+  { slug: "ondo",       name: "Ondo Perps", chain: "Ethereum and Arbitrum custody", venueType: "onchain" },
   { slug: "binance",    name: "Binance",    chain: "Offchain",      venueType: "cex" },
   { slug: "okx",        name: "OKX",        chain: "Offchain",      venueType: "cex" },
   { slug: "bybit",      name: "Bybit",      chain: "Offchain",      venueType: "cex" },

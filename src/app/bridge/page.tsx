@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { fetchBridgeHub } from "@/lib/bridge-hub-stats";
 import { BridgeHubTable, BridgeCorridorMatrix } from "@/components/bridge-hub-table";
+import { AnswersForBench } from "@/components/answers-for-bench";
 import { pageMetadata } from "@/lib/page-metadata";
 import { safeJsonLd, buildBreadcrumbJsonLd } from "@/lib/jsonld";
 import { SITE } from "@/data/site";
@@ -265,6 +266,13 @@ export default async function BridgeHubPage() {
           </ul>
         </section>
       )}
+
+      {/* Four answer pages sit on these two benches and nothing outside /answers linked them
+          from the bridge cluster. Same component the bench and perps pages use. */}
+      <AnswersForBench
+        benchSlugs={["bridge-fee", "bridge-quote-latency"]}
+        heading="Questions these benchmarks answer"
+      />
 
       <footer className="mt-16 pt-6 border-t border-ink/10 text-[12px] text-ink-soft leading-relaxed">
         <p className="label-mono text-ink-faint mb-2">Methodology</p>

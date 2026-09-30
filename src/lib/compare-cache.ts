@@ -46,7 +46,11 @@ const KEY_PREFIX = "ocb:cmp:v1:";
  *  ignored on the very first read after a shape-changing deploy. The
  *  inputsHash already provides per-input invalidation; this is the
  *  schema-shape escape hatch. */
-const SCHEMA_VERSION = 1 as const;
+// 2: the shared-bench schema was missing `panelScopes`, and zod strips what
+// it does not declare, so every cache hit handed the card an object without
+// the field it renders first — `bench.panelScopes.length` on undefined. The
+// bump retires every entry written under the old shape in one go.
+const SCHEMA_VERSION = 2 as const;
 
 /** TTL chosen relative to the underlying bench freshness: each bench
  *  page revalidates every 60 s, so a 15 min compare cache lags by at
@@ -74,6 +78,20 @@ const ChainRegionEntrySchema = BreakdownRowSchema.extend({
   regionRows: z.array(BreakdownRowSchema),
 });
 
+// One metric tab of a card. Missing from this schema until 2026-09-28,
+// which is the whole bug: zod's object strips unknown keys, the cast to
+// T[] below hides the loss from the compiler, and the page throws at
+// render on a cache hit while a cache miss renders perfectly.
+const PanelScopeSchema = z.object({
+  id: z.string(),
+  label: z.string(),
+  unit: z.string(),
+  higherIsBetter: z.boolean(),
+  aValue: z.number(),
+  bValue: z.number(),
+  neutral: z.boolean().optional(),
+});
+
 const SharedBenchSchema = z.object({
   slug: z.string(),
   title: z.string(),
@@ -88,6 +106,8 @@ const SharedBenchSchema = z.object({
   chainBreakdown: z.array(BreakdownRowSchema),
   regionBreakdown: z.array(BreakdownRowSchema),
   chainRegionMatrix: z.array(ChainRegionEntrySchema),
+  panelScopes: z.array(PanelScopeSchema),
+  note: z.string().optional(),
 });
 
 const EnvelopeSchema = z.object({
@@ -195,6 +215,9 @@ export async function readPairCache<T>(
     console.warn(
       `[CMP-CACHE] read HIT pair=${pairSlug} ms=${ms} entries=${parsed.data.shared.length}`,
     );
+    // The cast is why the missing field above compiled: nothing checks that
+    // what the schema keeps is still what the caller's type requires. A
+    // field added to CompareBench has to be added here too.
     return parsed.data.shared as T[];
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);

@@ -14,6 +14,6 @@ export default function OG() {
     kicker: "Hyperliquid",
     headline: "Every HL frontend, ranked.",
     subline:
-      "Revenue, volume and daily users for every Hyperliquid frontend and HIP-3 deployer. Server-side data from a local node tailing every fill.",
+      "Revenue, volume and daily users for every Hyperliquid frontend, volume and open interest for every HIP-3 dex. From Hyperliquid's public feeds.",
   });
 }

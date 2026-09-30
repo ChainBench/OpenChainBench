@@ -159,6 +159,18 @@ export default function PartnersPage() {
           code={`https://openchainbench.com/api/mcp/mcp`}
         />
         <Example
+          label="Daily history, valuation (P/F, P/S, mcap, FDV, float, fees, revenue per protocol)"
+          code={`GET https://kv.openchainbench.com/aggregate/valuation/history.json`}
+        />
+        <Example
+          label="Daily history, chains (TVL, bridged TVL, stablecoin flows, native mcap, fees)"
+          code={`GET https://kv.openchainbench.com/aggregate/chains/history.json`}
+        />
+        <Example
+          label="Capital hub, one payload (chains, tokens, perp DEXes, open interest, divergences; the rows /capital renders, cached 5 minutes)"
+          code={`GET https://openchainbench.com/api/capital`}
+        />
+        <Example
           label="LLM-ready context dump (~80 KB markdown)"
           code={`GET https://openchainbench.com/api/llm-context`}
         />

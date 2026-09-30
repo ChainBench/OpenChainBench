@@ -73,16 +73,26 @@ jobs:
           echo "url=$url" >> "$GITHUB_OUTPUT"
           echo "Production deployed at $url"
 
-      # Each deployment starts with an empty ISR cache; until the
-      # materialize worker's next sweep (≤5 min) every page hit is a
-      # cold render. Warming here closes that window so a deploy never
-      # ships a slow first impression.
-      - name: Warm bench pages
+      # Each deployment starts with an empty ISR cache, so the first hit on
+      # a page is a cold render. Warming closes that window.
+      #
+      # This warmed all 184 benchmark pages until 2026-09-30. It no longer
+      # does, for the same reason the smoke test below is now stratified:
+      # six production deploys in two days spent most of the runtime bill
+      # on cold renders nobody was waiting for. The hubs carry the traffic
+      # and are warmed here; a detail page warms on its first visitor and
+      # then serves from ISR for an hour.
+      #
+      # The smoke test used to render the whole catalogue a minute later
+      # anyway, which is why trimming this step alone would have saved
+      # nothing. It samples now, so this saving is real.
+      - name: Warm hubs and top-level pages
         run: |
           base="https://openchainbench.com"
           curl -sf --max-time 30 "$base/sitemap.xml" \
-            | grep -o 'https://[^<]*/benchmarks/[a-z0-9-]*' \
+            | grep -o 'https://[^<]*' \
             | sort -u \
+            | awk -F/ 'NF<=4' \
             | xargs -P 4 -I{} curl -s -o /dev/null -w "%{http_code} %{time_total}s {}\n" --max-time 120 {} \
             || echo "warm-up failed (non-blocking)"
 
@@ -127,9 +137,27 @@ jobs:
       # 1 h, causing false rollbacks). Pages checked against the prod
       # domain (second arg) so the noindex injected on Vercel preview
       # URLs does not false-fail the per-page checks.
+      # Pages this deploy actually touched are always checked, on top of
+      # the hubs. A regression arrives with a change, so the changed set
+      # is the half of the catalogue worth checking every single time.
+      - name: Collect touched page slugs
+        id: touched
+        run: |
+          slugs=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} 2>/dev/null \
+            | grep -oE '^(benchmarks|answers|alternatives)/[a-z0-9-]+\.yml' \
+            | sed -E 's|.*/||; s|\.yml$||' | sort -u | paste -sd'|' -)
+          echo "regex=${slugs}" >> "$GITHUB_OUTPUT"
+          echo "touched slugs: ${slugs:-none}"
+
       - name: Sitemap indexability smoke
         id: smoke
         continue-on-error: true
+        env:
+          # Hubs and touched pages in full, plus a rotating slice of the
+          # tail. See the reasoning block in scripts/sitemap-smoke.mjs.
+          SMOKE_SAMPLE: "120"
+          SMOKE_SEED: ${{ github.run_number }}
+          SMOKE_ALWAYS_REGEX: ${{ steps.touched.outputs.regex }}
         run: node scripts/sitemap-smoke.mjs ${{ steps.deploy.outputs.url }} https://openchainbench.com
 
       - name: Auto-rollback on smoke failure
