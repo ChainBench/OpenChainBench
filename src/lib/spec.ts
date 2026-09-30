@@ -472,7 +472,10 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // without BasedBot, a commission and take-rate panel) and benches 203, 206,
   // 207 and 232 are gated to staging. Bench SET changed and 201's providers,
   // panels and copy all changed.
-  ["bench-unfiltered-v87", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v88 (2026-09-30): GetBlock joins the keyed cohort on the nine chain RPC
+  // benches. The provider set of those benches changed, so v87 entries hold a
+  // keyed cohort of three and a GetBlock exclusion row that is no longer true.
+  ["bench-unfiltered-v88", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -707,7 +710,9 @@ const loadAllBenchmarksCached = unstable_cache(
   // v79: lockstep with bench-unfiltered-v86 (bench 201 source swap).
   // v80: lockstep with bench-unfiltered-v87 (bench 201 to DeFiLlama, four
   // Dune benches gated).
-  ["all-benchmarks-v80", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v81: lockstep with bench-unfiltered-v88 (GetBlock joins the keyed cohort
+  // on the nine chain RPC benches).
+  ["all-benchmarks-v81", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -807,7 +812,10 @@ const loadBenchmarkFiltered = unstable_cache(
   // v24: lockstep with bench-unfiltered-v57 (drop rpc-keyed-latency).
   // v30: lockstep with bench-unfiltered-v66 (Benchmark.chart on variants).
   // v31: lockstep with bench-unfiltered-v71 (tier variants).
-  ["bench-filters-v31", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v32: lockstep with bench-unfiltered-v88. The GetBlock row lives only in
+  // the tier=keyed variants, so without this bump the keyed tabs keep serving
+  // a three-provider cohort.
+  ["bench-filters-v32", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 

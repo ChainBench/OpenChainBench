@@ -114,7 +114,7 @@ export async function GET() {
               required: false,
               schema: { type: "string", enum: ["public", "keyed"] },
               description:
-                "Access cohort on chain RPC benchmarks (<chain>-rpc): 'public' (default, free no-key endpoints) or 'keyed' (private, API-key providers such as Alchemy, Chainstack, QuickNode). The two cohorts are ranked apart; the record's value, leader, rankings, quote and pageUrl describe the requested cohort. Unknown values 400.",
+                "Access cohort on chain RPC benchmarks (<chain>-rpc): 'public' (default, free no-key endpoints) or 'keyed' (private, API-key providers such as Alchemy, Chainstack, GetBlock, QuickNode). The two cohorts are ranked apart; the record's value, leader, rankings, quote and pageUrl describe the requested cohort. Unknown values 400.",
             },
             {
               name: "venue",

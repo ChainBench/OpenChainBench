@@ -87,7 +87,7 @@ export async function GET() {
   // are available at /rpc (hub) or /api/stat/<slug> for each chain.
   lines.push(`## RPC latency benchmarks (${rpc.length} chains)`);
   lines.push("");
-  lines.push(`Live p50/p90/p99 latency for free no-key public RPC endpoints, measured every 60 seconds from US-East, EU-West and Singapore. On the major chains the same page also ranks a private cohort (API-key endpoints of Alchemy, Chainstack, QuickNode, every 120 s) under ?tier=keyed, never against the public rows. Hub: ${SITE.url}/rpc, JSON: ${SITE.url}/api/citable`);
+  lines.push(`Live p50/p90/p99 latency for free no-key public RPC endpoints, measured every 60 seconds from US-East, EU-West and Singapore. On the major chains the same page also ranks a private cohort (API-key endpoints of Alchemy, Chainstack, GetBlock, QuickNode, every 120 s) under ?tier=keyed, never against the public rows. Hub: ${SITE.url}/rpc, JSON: ${SITE.url}/api/citable`);
   lines.push("");
   for (const b of rpc) {
     lines.push(`- [${b.title}](${SITE.url}/benchmarks/${b.slug}): ${groundingTraceLine(b, SITE.url)}`);

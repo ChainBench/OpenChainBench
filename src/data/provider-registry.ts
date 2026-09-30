@@ -1039,6 +1039,12 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "Managed blockchain node platform. Deploys dedicated Global Nodes per chain with keyed HTTPS/WSS endpoints; free plan includes one node and 3M requests per month.",
     twitter: "@ChainstackHQ",
   },
+  getblock: {
+    url: "https://getblock.io",
+    description:
+      "Node provider serving keyed JSON-RPC endpoints on shared nodes, with the serving region selectable between New York, Frankfurt and Singapore. Plans are metered in compute units weighted per chain; the Starter plan carries 50M compute units per month.",
+    twitter: "@getblockio",
+  },
   publicnode: {
     url: "https://www.publicnode.com",
     description:
