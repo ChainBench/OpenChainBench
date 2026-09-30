@@ -126,6 +126,15 @@ func quote(c *Catalogue, p Provider, pl Plan, pr Profile, requests float64) Quot
 	// workload — which is exactly what makes a break-even volume the right
 	// question for it. Without this branch all nine offerings failed with
 	// "provider does not price ethereum" and the cohort rendered empty.
+	// Capacity sold by the month serves the chains it was provisioned for
+	// and no others. This is the only chain test on the unmetered path,
+	// because that path skips unitsPerRequest, where every other cohort's
+	// test lives.
+	if len(pl.Chains) > 0 && !servesChain(pl, pr.Chain) {
+		q.Reason = fmt.Sprintf("plan does not serve %s", pr.Chain)
+		return q
+	}
+
 	unmetered := p.Cohort == "dedicated"
 	var upr float64
 	if !unmetered {
@@ -136,6 +145,7 @@ func quote(c *Catalogue, p Provider, pl Plan, pr Profile, requests float64) Quot
 			return q
 		}
 	}
+
 	q.UnitsPerRequest = upr
 
 	// Trace workloads on a plan that does not serve trace are not "more
@@ -442,4 +452,17 @@ func weightedUnits(w Weights, pr Profile) (float64, error) {
 		total /= shares
 	}
 	return total, nil
+}
+
+// servesChain reports whether a plan is provisioned for a chain. An empty
+// list means the weights table decides, which is right for a per-request
+// plan and wrong for a dedicated node, so validate() requires the list on
+// the dedicated cohort.
+func servesChain(pl Plan, chain string) bool {
+	for _, c := range pl.Chains {
+		if c == chain {
+			return true
+		}
+	}
+	return false
 }

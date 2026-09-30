@@ -2,7 +2,6 @@ package main
 
 import (
 	"log"
-	"math"
 	"net/http"
 	"os"
 	"os/signal"
@@ -87,11 +86,14 @@ func run(cat *Catalogue) {
 }
 
 func priceEverything(cat *Catalogue) {
-	// The cheapest metered rate across the usage cohort, used as the
-	// denominator for the dedicated cohort's break-even. Computed from
-	// the simple-read profile at the largest bucket, which is the rate a
-	// high-volume buyer would actually be quoted.
-	meteredFloor := math.Inf(1)
+	// The cheapest metered rate across the usage cohort, per chain, used
+	// as the denominator for the dedicated cohort's break-even. Computed
+	// from the simple-read profile at the largest bucket, the rate a
+	// high-volume buyer would actually be quoted. Per chain because a
+	// Solana node compared against an Ethereum rate answers a question
+	// nobody asked: every break-even used to be labelled ethereum,
+	// including the ones for Solana-only nodes.
+	meteredFloor := map[string]float64{}
 
 	for _, p := range cat.Providers {
 		if p.Cohort == "excluded" {
@@ -139,8 +141,10 @@ func priceEverything(cat *Catalogue) {
 								eligible.WithLabelValues(p.Slug, ka, ba).Set(1)
 							}
 						}
-						if cohort == "usage" && pr.ID == "simple-read" && b.ID == "1000m" && q.PerMillionUSD < meteredFloor {
-							meteredFloor = q.PerMillionUSD
+						if cohort == "usage" && pr.ID == baselineProfile(pr.Chain) && b.ID == "1000m" {
+							if cur, ok := meteredFloor[pr.Chain]; !ok || q.PerMillionUSD < cur {
+								meteredFloor[pr.Chain] = q.PerMillionUSD
+							}
 						}
 					}
 					if tier == "all" {
@@ -165,9 +169,6 @@ func priceEverything(cat *Catalogue) {
 		}
 	}
 
-	if math.IsInf(meteredFloor, 1) {
-		return
-	}
 	for _, p := range cat.Providers {
 		if p.Cohort != "dedicated" {
 			continue
@@ -177,7 +178,15 @@ func priceEverything(cat *Catalogue) {
 				continue
 			}
 			monthly := cat.toUSD(*pl.MonthlyUSD, p.Currency)
-			breakevenReqs.WithLabelValues(p.Slug, pl.ID, "ethereum").Set(breakeven(monthly, meteredFloor))
+			// One series per chain the plan actually serves, against that
+			// chain's own metered floor.
+			for _, ch := range pl.Chains {
+				floor, ok := meteredFloor[ch]
+				if !ok {
+					continue
+				}
+				breakevenReqs.WithLabelValues(p.Slug, pl.ID, ch).Set(breakeven(monthly, floor))
+			}
 		}
 	}
 }
