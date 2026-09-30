@@ -200,9 +200,10 @@ export const DEV_ONLY_BENCH_SLUGS = new Set([
  * llms.txt and the /rpc hub stop linking them there. Staging shows them.
  */
 export const DEV_ONLY_ROUTES = new Set<string>([
-  // /speedtest-rpc (browser RPC speed test) and /rpc-map (crowdsourced
-  // latency map) were held here from 2026-09-21 (2 cells, 32 samples: not
-  // ready for an audience) and left this list on 2026-09-30.
+  // The crowdsourced latency map (2 cells, 32 samples on 2026-09-21: not
+  // ready for an audience). /speedtest-rpc, held here with it since
+  // 2026-09-21, left this list on 2026-09-30.
+  "/rpc-map",
 ]);
 
 export const IS_PRODUCTION = process.env.VERCEL_ENV === "production";
