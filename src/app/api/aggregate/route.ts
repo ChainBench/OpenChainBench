@@ -10,6 +10,26 @@
 // aggregate-blob.ts can point AGGREGATE_BLOB_URL at this route instead
 // of kv.openchainbench.com to get near-zero latency from any Vercel
 // function in the same region.
+//
+// UNFILTERED BY DESIGN. This route serves the worker's blob verbatim, so on
+// production it carries every dev-only bench (the DEV_ONLY_BENCH_SLUGS set in
+// src/lib/removed-benches.ts) with its full editorial fields, including a
+// seo_title that names a leader for a bench whose page 404s. An SEO audit on
+// 2026-09-30 flagged that as a leak. Do not "fix" it by filtering on
+// VERCEL_ENV here.
+//
+// The reason is aggregate-blob.ts:66: on ANY Vercel deployment, staging and
+// previews included, the site fetches this route on the production domain.
+// Staging is the only place the dev-only benches render, so filtering them out
+// here would empty the staging pipeline of all nine of them. The gate belongs
+// where it is, at the loader (src/lib/materialize/load.ts), which drops them
+// per deployment; this route is transport underneath that gate, not a public
+// surface.
+//
+// What bounds the exposure instead: the route is noindex (the /api/:path*
+// X-Robots-Tag in next.config.ts), it is linked from no page and listed in
+// neither llms.txt nor the OpenAPI document, and it carries no secret. Checked
+// 2026-09-30: no keyed URL shape appears anywhere in the payload.
 export const runtime = "nodejs";
 // force-dynamic + explicit Cache-Control: CDN caches via s-maxage without
 // generating ISR write entries. revalidateTag("bench-aggregate") from the
