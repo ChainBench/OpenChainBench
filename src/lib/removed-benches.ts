@@ -173,11 +173,10 @@ export const DEV_ONLY_BENCH_SLUGS = new Set([
  * way: the page renders notFound() on prod, the sitemap, the footer,
  * llms.txt and the /rpc hub stop linking them there. Staging shows them.
  */
-export const DEV_ONLY_ROUTES = new Set([
-  // browser RPC speed test and the crowdsourced latency map (2 cells,
-  // 32 samples on 2026-09-21: not ready for an audience)
-  "/speedtest-rpc",
-  "/rpc-map",
+export const DEV_ONLY_ROUTES = new Set<string>([
+  // /speedtest-rpc (browser RPC speed test) and /rpc-map (crowdsourced
+  // latency map) were held here from 2026-09-21 (2 cells, 32 samples: not
+  // ready for an audience) and left this list on 2026-09-30.
 ]);
 
 export const IS_PRODUCTION = process.env.VERCEL_ENV === "production";
