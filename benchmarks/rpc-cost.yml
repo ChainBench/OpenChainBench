@@ -142,18 +142,25 @@ prometheus:
 
 dimensions:
   kind:
+    # `all` is the pooled slice the unfiltered view selects. Pooling a bill
+    # across workloads would average a $24 plan with a $10,500 one, so it
+    # carries the dapp mix instead and says so.
+    - { value: all,         label: Dapp frontend (default) }
     - { value: simple-read, label: Simple reads }
-    - { value: dapp,        label: Dapp frontend }
     - { value: indexer,     label: Log indexer }
     - { value: trace,       label: Trace and debug }
     - { value: solana-bot,  label: Solana trading bot }
   bucket:
+    - { value: all,   label: 100M requests/mo (default) }
     - { value: 10m,   label: 10M requests/mo }
-    - { value: 100m,  label: 100M requests/mo }
     - { value: 1000m, label: 1B requests/mo }
   venue:
+    # Pinned in the queries, so it must come first. At the default slice
+    # (dapp at 100M/mo) no free tier is eligible, so `all` and `paid`
+    # agree there; they diverge at 10M, where several providers serve the
+    # workload for nothing.
+    - { value: all,        label: Cheapest plan, free included }
     - { value: paid,       label: Cheapest paid plan }
-    - { value: all,        label: Any plan, free included }
     - { value: free,       label: Free tier }
     - { value: entry,      label: "Entry, to $50/mo" }
     - { value: growth,     label: "Growth, to $300/mo" }
@@ -170,370 +177,370 @@ providers:
     tier: usage
     tag: Compute Unit, weighted per method
     queries:
-      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="alchemy"}[24h])
-      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="alchemy"}[24h])
-      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="alchemy"}[24h])
-      mean: avg_over_time(rpc_cost_monthly_usd{provider="alchemy"}[24h])
-      series: rpc_cost_monthly_usd{provider="alchemy"}
-      sample_size: count_over_time(rpc_cost_monthly_usd{provider="alchemy"}[7d])
+      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="alchemy",kind="all",bucket="all",venue="all"}[24h])
+      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="alchemy",kind="all",bucket="all",venue="all"}[24h])
+      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="alchemy",kind="all",bucket="all",venue="all"}[24h])
+      mean: avg_over_time(rpc_cost_monthly_usd{provider="alchemy",kind="all",bucket="all",venue="all"}[24h])
+      series: rpc_cost_monthly_usd{provider="alchemy",kind="all",bucket="all",venue="all"}
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="alchemy",kind="all",bucket="all",venue="all"}[7d])
 
   - slug: quicknode
     name: QuickNode
     tier: usage
     tag: credit, weighted per chain
     queries:
-      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="quicknode"}[24h])
-      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="quicknode"}[24h])
-      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="quicknode"}[24h])
-      mean: avg_over_time(rpc_cost_monthly_usd{provider="quicknode"}[24h])
-      series: rpc_cost_monthly_usd{provider="quicknode"}
-      sample_size: count_over_time(rpc_cost_monthly_usd{provider="quicknode"}[7d])
+      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="quicknode",kind="all",bucket="all",venue="all"}[24h])
+      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="quicknode",kind="all",bucket="all",venue="all"}[24h])
+      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="quicknode",kind="all",bucket="all",venue="all"}[24h])
+      mean: avg_over_time(rpc_cost_monthly_usd{provider="quicknode",kind="all",bucket="all",venue="all"}[24h])
+      series: rpc_cost_monthly_usd{provider="quicknode",kind="all",bucket="all",venue="all"}
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="quicknode",kind="all",bucket="all",venue="all"}[7d])
 
   - slug: infura
     name: Infura (MetaMask Developer)
     tier: usage
     tag: credit, weighted per method
     queries:
-      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="infura"}[24h])
-      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="infura"}[24h])
-      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="infura"}[24h])
-      mean: avg_over_time(rpc_cost_monthly_usd{provider="infura"}[24h])
-      series: rpc_cost_monthly_usd{provider="infura"}
-      sample_size: count_over_time(rpc_cost_monthly_usd{provider="infura"}[7d])
+      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="infura",kind="all",bucket="all",venue="all"}[24h])
+      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="infura",kind="all",bucket="all",venue="all"}[24h])
+      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="infura",kind="all",bucket="all",venue="all"}[24h])
+      mean: avg_over_time(rpc_cost_monthly_usd{provider="infura",kind="all",bucket="all",venue="all"}[24h])
+      series: rpc_cost_monthly_usd{provider="infura",kind="all",bucket="all",venue="all"}
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="infura",kind="all",bucket="all",venue="all"}[7d])
 
   - slug: chainstack
     name: Chainstack
     tier: usage
     tag: Request Unit, 1 unit, 2 at archive depth
     queries:
-      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="chainstack"}[24h])
-      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="chainstack"}[24h])
-      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="chainstack"}[24h])
-      mean: avg_over_time(rpc_cost_monthly_usd{provider="chainstack"}[24h])
-      series: rpc_cost_monthly_usd{provider="chainstack"}
-      sample_size: count_over_time(rpc_cost_monthly_usd{provider="chainstack"}[7d])
+      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="chainstack",kind="all",bucket="all",venue="all"}[24h])
+      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="chainstack",kind="all",bucket="all",venue="all"}[24h])
+      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="chainstack",kind="all",bucket="all",venue="all"}[24h])
+      mean: avg_over_time(rpc_cost_monthly_usd{provider="chainstack",kind="all",bucket="all",venue="all"}[24h])
+      series: rpc_cost_monthly_usd{provider="chainstack",kind="all",bucket="all",venue="all"}
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="chainstack",kind="all",bucket="all",venue="all"}[7d])
 
   - slug: drpc
     name: dRPC
     tier: usage
     tag: Compute Unit, flat per request
     queries:
-      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="drpc"}[24h])
-      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="drpc"}[24h])
-      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="drpc"}[24h])
-      mean: avg_over_time(rpc_cost_monthly_usd{provider="drpc"}[24h])
-      series: rpc_cost_monthly_usd{provider="drpc"}
-      sample_size: count_over_time(rpc_cost_monthly_usd{provider="drpc"}[7d])
+      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="drpc",kind="all",bucket="all",venue="all"}[24h])
+      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="drpc",kind="all",bucket="all",venue="all"}[24h])
+      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="drpc",kind="all",bucket="all",venue="all"}[24h])
+      mean: avg_over_time(rpc_cost_monthly_usd{provider="drpc",kind="all",bucket="all",venue="all"}[24h])
+      series: rpc_cost_monthly_usd{provider="drpc",kind="all",bucket="all",venue="all"}
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="drpc",kind="all",bucket="all",venue="all"}[7d])
 
   - slug: ankr
     name: Ankr
     tier: usage
     tag: credit, weighted per chain
     queries:
-      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="ankr"}[24h])
-      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="ankr"}[24h])
-      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="ankr"}[24h])
-      mean: avg_over_time(rpc_cost_monthly_usd{provider="ankr"}[24h])
-      series: rpc_cost_monthly_usd{provider="ankr"}
-      sample_size: count_over_time(rpc_cost_monthly_usd{provider="ankr"}[7d])
+      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="ankr",kind="all",bucket="all",venue="all"}[24h])
+      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="ankr",kind="all",bucket="all",venue="all"}[24h])
+      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="ankr",kind="all",bucket="all",venue="all"}[24h])
+      mean: avg_over_time(rpc_cost_monthly_usd{provider="ankr",kind="all",bucket="all",venue="all"}[24h])
+      series: rpc_cost_monthly_usd{provider="ankr",kind="all",bucket="all",venue="all"}
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="ankr",kind="all",bucket="all",venue="all"}[7d])
 
   - slug: blockpi
     name: BlockPI
     tier: usage
     tag: Request Unit, weighted per method
     queries:
-      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="blockpi"}[24h])
-      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="blockpi"}[24h])
-      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="blockpi"}[24h])
-      mean: avg_over_time(rpc_cost_monthly_usd{provider="blockpi"}[24h])
-      series: rpc_cost_monthly_usd{provider="blockpi"}
-      sample_size: count_over_time(rpc_cost_monthly_usd{provider="blockpi"}[7d])
+      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="blockpi",kind="all",bucket="all",venue="all"}[24h])
+      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="blockpi",kind="all",bucket="all",venue="all"}[24h])
+      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="blockpi",kind="all",bucket="all",venue="all"}[24h])
+      mean: avg_over_time(rpc_cost_monthly_usd{provider="blockpi",kind="all",bucket="all",venue="all"}[24h])
+      series: rpc_cost_monthly_usd{provider="blockpi",kind="all",bucket="all",venue="all"}
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="blockpi",kind="all",bucket="all",venue="all"}[7d])
 
   - slug: getblock
     name: GetBlock
     tier: usage
     tag: Compute Unit, weighted per chain
     queries:
-      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="getblock"}[24h])
-      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="getblock"}[24h])
-      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="getblock"}[24h])
-      mean: avg_over_time(rpc_cost_monthly_usd{provider="getblock"}[24h])
-      series: rpc_cost_monthly_usd{provider="getblock"}
-      sample_size: count_over_time(rpc_cost_monthly_usd{provider="getblock"}[7d])
+      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="getblock",kind="all",bucket="all",venue="all"}[24h])
+      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="getblock",kind="all",bucket="all",venue="all"}[24h])
+      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="getblock",kind="all",bucket="all",venue="all"}[24h])
+      mean: avg_over_time(rpc_cost_monthly_usd{provider="getblock",kind="all",bucket="all",venue="all"}[24h])
+      series: rpc_cost_monthly_usd{provider="getblock",kind="all",bucket="all",venue="all"}
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="getblock",kind="all",bucket="all",venue="all"}[7d])
 
   - slug: nownodes
     name: NOWNodes
     tier: usage
     tag: request, flat per request
     queries:
-      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="nownodes"}[24h])
-      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="nownodes"}[24h])
-      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="nownodes"}[24h])
-      mean: avg_over_time(rpc_cost_monthly_usd{provider="nownodes"}[24h])
-      series: rpc_cost_monthly_usd{provider="nownodes"}
-      sample_size: count_over_time(rpc_cost_monthly_usd{provider="nownodes"}[7d])
+      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="nownodes",kind="all",bucket="all",venue="all"}[24h])
+      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="nownodes",kind="all",bucket="all",venue="all"}[24h])
+      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="nownodes",kind="all",bucket="all",venue="all"}[24h])
+      mean: avg_over_time(rpc_cost_monthly_usd{provider="nownodes",kind="all",bucket="all",venue="all"}[24h])
+      series: rpc_cost_monthly_usd{provider="nownodes",kind="all",bucket="all",venue="all"}
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="nownodes",kind="all",bucket="all",venue="all"}[7d])
 
   - slug: tatum
     name: Tatum
     tier: usage
     tag: credit, weighted per method
     queries:
-      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="tatum"}[24h])
-      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="tatum"}[24h])
-      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="tatum"}[24h])
-      mean: avg_over_time(rpc_cost_monthly_usd{provider="tatum"}[24h])
-      series: rpc_cost_monthly_usd{provider="tatum"}
-      sample_size: count_over_time(rpc_cost_monthly_usd{provider="tatum"}[7d])
+      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="tatum",kind="all",bucket="all",venue="all"}[24h])
+      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="tatum",kind="all",bucket="all",venue="all"}[24h])
+      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="tatum",kind="all",bucket="all",venue="all"}[24h])
+      mean: avg_over_time(rpc_cost_monthly_usd{provider="tatum",kind="all",bucket="all",venue="all"}[24h])
+      series: rpc_cost_monthly_usd{provider="tatum",kind="all",bucket="all",venue="all"}
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="tatum",kind="all",bucket="all",venue="all"}[7d])
 
   - slug: helius
     name: Helius
     tier: usage
     tag: credit, weighted per method
     queries:
-      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="helius"}[24h])
-      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="helius"}[24h])
-      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="helius"}[24h])
-      mean: avg_over_time(rpc_cost_monthly_usd{provider="helius"}[24h])
-      series: rpc_cost_monthly_usd{provider="helius"}
-      sample_size: count_over_time(rpc_cost_monthly_usd{provider="helius"}[7d])
+      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="helius",kind="all",bucket="all",venue="all"}[24h])
+      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="helius",kind="all",bucket="all",venue="all"}[24h])
+      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="helius",kind="all",bucket="all",venue="all"}[24h])
+      mean: avg_over_time(rpc_cost_monthly_usd{provider="helius",kind="all",bucket="all",venue="all"}[24h])
+      series: rpc_cost_monthly_usd{provider="helius",kind="all",bucket="all",venue="all"}
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="helius",kind="all",bucket="all",venue="all"}[7d])
 
   - slug: moralis
     name: Moralis
     tier: usage
     tag: Compute Unit, weighted per method
     queries:
-      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="moralis"}[24h])
-      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="moralis"}[24h])
-      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="moralis"}[24h])
-      mean: avg_over_time(rpc_cost_monthly_usd{provider="moralis"}[24h])
-      series: rpc_cost_monthly_usd{provider="moralis"}
-      sample_size: count_over_time(rpc_cost_monthly_usd{provider="moralis"}[7d])
+      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="moralis",kind="all",bucket="all",venue="all"}[24h])
+      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="moralis",kind="all",bucket="all",venue="all"}[24h])
+      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="moralis",kind="all",bucket="all",venue="all"}[24h])
+      mean: avg_over_time(rpc_cost_monthly_usd{provider="moralis",kind="all",bucket="all",venue="all"}[24h])
+      series: rpc_cost_monthly_usd{provider="moralis",kind="all",bucket="all",venue="all"}
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="moralis",kind="all",bucket="all",venue="all"}[7d])
 
   - slug: validation-cloud
     name: Validation Cloud
     tier: usage
     tag: Compute Unit, weighted per method
     queries:
-      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="validation-cloud"}[24h])
-      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="validation-cloud"}[24h])
-      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="validation-cloud"}[24h])
-      mean: avg_over_time(rpc_cost_monthly_usd{provider="validation-cloud"}[24h])
-      series: rpc_cost_monthly_usd{provider="validation-cloud"}
-      sample_size: count_over_time(rpc_cost_monthly_usd{provider="validation-cloud"}[7d])
+      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="validation-cloud",kind="all",bucket="all",venue="all"}[24h])
+      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="validation-cloud",kind="all",bucket="all",venue="all"}[24h])
+      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="validation-cloud",kind="all",bucket="all",venue="all"}[24h])
+      mean: avg_over_time(rpc_cost_monthly_usd{provider="validation-cloud",kind="all",bucket="all",venue="all"}[24h])
+      series: rpc_cost_monthly_usd{provider="validation-cloud",kind="all",bucket="all",venue="all"}
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="validation-cloud",kind="all",bucket="all",venue="all"}[7d])
 
   - slug: blockdaemon
     name: Blockdaemon
     tier: usage
     tag: Compute Unit, weighted per method
     queries:
-      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="blockdaemon"}[24h])
-      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="blockdaemon"}[24h])
-      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="blockdaemon"}[24h])
-      mean: avg_over_time(rpc_cost_monthly_usd{provider="blockdaemon"}[24h])
-      series: rpc_cost_monthly_usd{provider="blockdaemon"}
-      sample_size: count_over_time(rpc_cost_monthly_usd{provider="blockdaemon"}[7d])
+      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="blockdaemon",kind="all",bucket="all",venue="all"}[24h])
+      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="blockdaemon",kind="all",bucket="all",venue="all"}[24h])
+      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="blockdaemon",kind="all",bucket="all",venue="all"}[24h])
+      mean: avg_over_time(rpc_cost_monthly_usd{provider="blockdaemon",kind="all",bucket="all",venue="all"}[24h])
+      series: rpc_cost_monthly_usd{provider="blockdaemon",kind="all",bucket="all",venue="all"}
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="blockdaemon",kind="all",bucket="all",venue="all"}[7d])
 
   - slug: thirdweb
     name: thirdweb
     tier: usage
     tag: request, flat per request
     queries:
-      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="thirdweb"}[24h])
-      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="thirdweb"}[24h])
-      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="thirdweb"}[24h])
-      mean: avg_over_time(rpc_cost_monthly_usd{provider="thirdweb"}[24h])
-      series: rpc_cost_monthly_usd{provider="thirdweb"}
-      sample_size: count_over_time(rpc_cost_monthly_usd{provider="thirdweb"}[7d])
+      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="thirdweb",kind="all",bucket="all",venue="all"}[24h])
+      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="thirdweb",kind="all",bucket="all",venue="all"}[24h])
+      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="thirdweb",kind="all",bucket="all",venue="all"}[24h])
+      mean: avg_over_time(rpc_cost_monthly_usd{provider="thirdweb",kind="all",bucket="all",venue="all"}[24h])
+      series: rpc_cost_monthly_usd{provider="thirdweb",kind="all",bucket="all",venue="all"}
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="thirdweb",kind="all",bucket="all",venue="all"}[7d])
 
   - slug: coinbase-cdp
     name: Coinbase Developer Platform, CDP Node
     tier: usage
     tag: Billing Unit, weighted per method
     queries:
-      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="coinbase-cdp"}[24h])
-      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="coinbase-cdp"}[24h])
-      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="coinbase-cdp"}[24h])
-      mean: avg_over_time(rpc_cost_monthly_usd{provider="coinbase-cdp"}[24h])
-      series: rpc_cost_monthly_usd{provider="coinbase-cdp"}
-      sample_size: count_over_time(rpc_cost_monthly_usd{provider="coinbase-cdp"}[7d])
+      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="coinbase-cdp",kind="all",bucket="all",venue="all"}[24h])
+      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="coinbase-cdp",kind="all",bucket="all",venue="all"}[24h])
+      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="coinbase-cdp",kind="all",bucket="all",venue="all"}[24h])
+      mean: avg_over_time(rpc_cost_monthly_usd{provider="coinbase-cdp",kind="all",bucket="all",venue="all"}[24h])
+      series: rpc_cost_monthly_usd{provider="coinbase-cdp",kind="all",bucket="all",venue="all"}
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="coinbase-cdp",kind="all",bucket="all",venue="all"}[7d])
 
   - slug: onfinality
     name: OnFinality
     tier: usage
     tag: Request Unit, weighted per method
     queries:
-      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="onfinality"}[24h])
-      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="onfinality"}[24h])
-      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="onfinality"}[24h])
-      mean: avg_over_time(rpc_cost_monthly_usd{provider="onfinality"}[24h])
-      series: rpc_cost_monthly_usd{provider="onfinality"}
-      sample_size: count_over_time(rpc_cost_monthly_usd{provider="onfinality"}[7d])
+      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="onfinality",kind="all",bucket="all",venue="all"}[24h])
+      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="onfinality",kind="all",bucket="all",venue="all"}[24h])
+      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="onfinality",kind="all",bucket="all",venue="all"}[24h])
+      mean: avg_over_time(rpc_cost_monthly_usd{provider="onfinality",kind="all",bucket="all",venue="all"}[24h])
+      series: rpc_cost_monthly_usd{provider="onfinality",kind="all",bucket="all",venue="all"}
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="onfinality",kind="all",bucket="all",venue="all"}[7d])
 
   - slug: syndica
     name: Syndica
     tier: usage
     tag: request, flat per request
     queries:
-      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="syndica"}[24h])
-      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="syndica"}[24h])
-      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="syndica"}[24h])
-      mean: avg_over_time(rpc_cost_monthly_usd{provider="syndica"}[24h])
-      series: rpc_cost_monthly_usd{provider="syndica"}
-      sample_size: count_over_time(rpc_cost_monthly_usd{provider="syndica"}[7d])
+      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="syndica",kind="all",bucket="all",venue="all"}[24h])
+      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="syndica",kind="all",bucket="all",venue="all"}[24h])
+      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="syndica",kind="all",bucket="all",venue="all"}[24h])
+      mean: avg_over_time(rpc_cost_monthly_usd{provider="syndica",kind="all",bucket="all",venue="all"}[24h])
+      series: rpc_cost_monthly_usd{provider="syndica",kind="all",bucket="all",venue="all"}
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="syndica",kind="all",bucket="all",venue="all"}[7d])
 
   - slug: triton
     name: Triton One
     tier: usage
     tag: request, flat per request
     queries:
-      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="triton"}[24h])
-      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="triton"}[24h])
-      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="triton"}[24h])
-      mean: avg_over_time(rpc_cost_monthly_usd{provider="triton"}[24h])
-      series: rpc_cost_monthly_usd{provider="triton"}
-      sample_size: count_over_time(rpc_cost_monthly_usd{provider="triton"}[7d])
+      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="triton",kind="all",bucket="all",venue="all"}[24h])
+      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="triton",kind="all",bucket="all",venue="all"}[24h])
+      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="triton",kind="all",bucket="all",venue="all"}[24h])
+      mean: avg_over_time(rpc_cost_monthly_usd{provider="triton",kind="all",bucket="all",venue="all"}[24h])
+      series: rpc_cost_monthly_usd{provider="triton",kind="all",bucket="all",venue="all"}
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="triton",kind="all",bucket="all",venue="all"}[7d])
 
   - slug: instanodes
     name: Instanodes
     tier: usage
     tag: request, flat per request
     queries:
-      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="instanodes"}[24h])
-      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="instanodes"}[24h])
-      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="instanodes"}[24h])
-      mean: avg_over_time(rpc_cost_monthly_usd{provider="instanodes"}[24h])
-      series: rpc_cost_monthly_usd{provider="instanodes"}
-      sample_size: count_over_time(rpc_cost_monthly_usd{provider="instanodes"}[7d])
+      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="instanodes",kind="all",bucket="all",venue="all"}[24h])
+      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="instanodes",kind="all",bucket="all",venue="all"}[24h])
+      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="instanodes",kind="all",bucket="all",venue="all"}[24h])
+      mean: avg_over_time(rpc_cost_monthly_usd{provider="instanodes",kind="all",bucket="all",venue="all"}[24h])
+      series: rpc_cost_monthly_usd{provider="instanodes",kind="all",bucket="all",venue="all"}
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="instanodes",kind="all",bucket="all",venue="all"}[7d])
 
   - slug: publicnode
     name: PublicNode (by Allnodes)
     tier: reference
     tag: request, flat per request
     queries:
-      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="publicnode"}[24h])
-      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="publicnode"}[24h])
-      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="publicnode"}[24h])
-      mean: avg_over_time(rpc_cost_monthly_usd{provider="publicnode"}[24h])
-      series: rpc_cost_monthly_usd{provider="publicnode"}
-      sample_size: count_over_time(rpc_cost_monthly_usd{provider="publicnode"}[7d])
+      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="publicnode",kind="all",bucket="all",venue="all"}[24h])
+      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="publicnode",kind="all",bucket="all",venue="all"}[24h])
+      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="publicnode",kind="all",bucket="all",venue="all"}[24h])
+      mean: avg_over_time(rpc_cost_monthly_usd{provider="publicnode",kind="all",bucket="all",venue="all"}[24h])
+      series: rpc_cost_monthly_usd{provider="publicnode",kind="all",bucket="all",venue="all"}
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="publicnode",kind="all",bucket="all",venue="all"}[7d])
 
   - slug: solana-foundation
     name: Solana Foundation / Anza public endpoints
     tier: reference
     tag: request, flat per request
     queries:
-      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="solana-foundation"}[24h])
-      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="solana-foundation"}[24h])
-      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="solana-foundation"}[24h])
-      mean: avg_over_time(rpc_cost_monthly_usd{provider="solana-foundation"}[24h])
-      series: rpc_cost_monthly_usd{provider="solana-foundation"}
-      sample_size: count_over_time(rpc_cost_monthly_usd{provider="solana-foundation"}[7d])
+      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="solana-foundation",kind="all",bucket="all",venue="all"}[24h])
+      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="solana-foundation",kind="all",bucket="all",venue="all"}[24h])
+      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="solana-foundation",kind="all",bucket="all",venue="all"}[24h])
+      mean: avg_over_time(rpc_cost_monthly_usd{provider="solana-foundation",kind="all",bucket="all",venue="all"}[24h])
+      series: rpc_cost_monthly_usd{provider="solana-foundation",kind="all",bucket="all",venue="all"}
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="solana-foundation",kind="all",bucket="all",venue="all"}[7d])
 
   - slug: getblock-dedicated
     name: GetBlock, Dedicated & Limitless nodes
     tier: dedicated
     tag: request, flat per request
     queries:
-      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="getblock-dedicated"}[24h])
-      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="getblock-dedicated"}[24h])
-      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="getblock-dedicated"}[24h])
-      mean: avg_over_time(rpc_cost_monthly_usd{provider="getblock-dedicated"}[24h])
-      series: rpc_cost_monthly_usd{provider="getblock-dedicated"}
-      sample_size: count_over_time(rpc_cost_monthly_usd{provider="getblock-dedicated"}[7d])
+      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="getblock-dedicated",kind="all",bucket="all",venue="all"}[24h])
+      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="getblock-dedicated",kind="all",bucket="all",venue="all"}[24h])
+      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="getblock-dedicated",kind="all",bucket="all",venue="all"}[24h])
+      mean: avg_over_time(rpc_cost_monthly_usd{provider="getblock-dedicated",kind="all",bucket="all",venue="all"}[24h])
+      series: rpc_cost_monthly_usd{provider="getblock-dedicated",kind="all",bucket="all",venue="all"}
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="getblock-dedicated",kind="all",bucket="all",venue="all"}[7d])
 
   - slug: chainstack-dedicated
     name: Chainstack, Dedicated Node & Unlimited Node
     tier: dedicated
     tag: request, flat per request
     queries:
-      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="chainstack-dedicated"}[24h])
-      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="chainstack-dedicated"}[24h])
-      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="chainstack-dedicated"}[24h])
-      mean: avg_over_time(rpc_cost_monthly_usd{provider="chainstack-dedicated"}[24h])
-      series: rpc_cost_monthly_usd{provider="chainstack-dedicated"}
-      sample_size: count_over_time(rpc_cost_monthly_usd{provider="chainstack-dedicated"}[7d])
+      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="chainstack-dedicated",kind="all",bucket="all",venue="all"}[24h])
+      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="chainstack-dedicated",kind="all",bucket="all",venue="all"}[24h])
+      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="chainstack-dedicated",kind="all",bucket="all",venue="all"}[24h])
+      mean: avg_over_time(rpc_cost_monthly_usd{provider="chainstack-dedicated",kind="all",bucket="all",venue="all"}[24h])
+      series: rpc_cost_monthly_usd{provider="chainstack-dedicated",kind="all",bucket="all",venue="all"}
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="chainstack-dedicated",kind="all",bucket="all",venue="all"}[7d])
 
   - slug: quicknode-flat-rate
     name: QuickNode, Flat Rate RPS
     tier: dedicated
     tag: request, flat per request
     queries:
-      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="quicknode-flat-rate"}[24h])
-      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="quicknode-flat-rate"}[24h])
-      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="quicknode-flat-rate"}[24h])
-      mean: avg_over_time(rpc_cost_monthly_usd{provider="quicknode-flat-rate"}[24h])
-      series: rpc_cost_monthly_usd{provider="quicknode-flat-rate"}
-      sample_size: count_over_time(rpc_cost_monthly_usd{provider="quicknode-flat-rate"}[7d])
+      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="quicknode-flat-rate",kind="all",bucket="all",venue="all"}[24h])
+      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="quicknode-flat-rate",kind="all",bucket="all",venue="all"}[24h])
+      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="quicknode-flat-rate",kind="all",bucket="all",venue="all"}[24h])
+      mean: avg_over_time(rpc_cost_monthly_usd{provider="quicknode-flat-rate",kind="all",bucket="all",venue="all"}[24h])
+      series: rpc_cost_monthly_usd{provider="quicknode-flat-rate",kind="all",bucket="all",venue="all"}
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="quicknode-flat-rate",kind="all",bucket="all",venue="all"}[7d])
 
   - slug: google-bne
     name: Google Cloud, Blockchain Node Engine
     tier: dedicated
     tag: request, flat per request
     queries:
-      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="google-bne"}[24h])
-      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="google-bne"}[24h])
-      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="google-bne"}[24h])
-      mean: avg_over_time(rpc_cost_monthly_usd{provider="google-bne"}[24h])
-      series: rpc_cost_monthly_usd{provider="google-bne"}
-      sample_size: count_over_time(rpc_cost_monthly_usd{provider="google-bne"}[7d])
+      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="google-bne",kind="all",bucket="all",venue="all"}[24h])
+      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="google-bne",kind="all",bucket="all",venue="all"}[24h])
+      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="google-bne",kind="all",bucket="all",venue="all"}[24h])
+      mean: avg_over_time(rpc_cost_monthly_usd{provider="google-bne",kind="all",bucket="all",venue="all"}[24h])
+      series: rpc_cost_monthly_usd{provider="google-bne",kind="all",bucket="all",venue="all"}
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="google-bne",kind="all",bucket="all",venue="all"}[7d])
 
   - slug: helius-dedicated
     name: Helius, Dedicated Nodes
     tier: dedicated
     tag: request, flat per request
     queries:
-      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="helius-dedicated"}[24h])
-      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="helius-dedicated"}[24h])
-      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="helius-dedicated"}[24h])
-      mean: avg_over_time(rpc_cost_monthly_usd{provider="helius-dedicated"}[24h])
-      series: rpc_cost_monthly_usd{provider="helius-dedicated"}
-      sample_size: count_over_time(rpc_cost_monthly_usd{provider="helius-dedicated"}[7d])
+      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="helius-dedicated",kind="all",bucket="all",venue="all"}[24h])
+      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="helius-dedicated",kind="all",bucket="all",venue="all"}[24h])
+      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="helius-dedicated",kind="all",bucket="all",venue="all"}[24h])
+      mean: avg_over_time(rpc_cost_monthly_usd{provider="helius-dedicated",kind="all",bucket="all",venue="all"}[24h])
+      series: rpc_cost_monthly_usd{provider="helius-dedicated",kind="all",bucket="all",venue="all"}
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="helius-dedicated",kind="all",bucket="all",venue="all"}[7d])
 
   - slug: shyft
     name: Shyft
     tier: dedicated
     tag: request, flat per request
     queries:
-      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="shyft"}[24h])
-      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="shyft"}[24h])
-      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="shyft"}[24h])
-      mean: avg_over_time(rpc_cost_monthly_usd{provider="shyft"}[24h])
-      series: rpc_cost_monthly_usd{provider="shyft"}
-      sample_size: count_over_time(rpc_cost_monthly_usd{provider="shyft"}[7d])
+      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="shyft",kind="all",bucket="all",venue="all"}[24h])
+      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="shyft",kind="all",bucket="all",venue="all"}[24h])
+      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="shyft",kind="all",bucket="all",venue="all"}[24h])
+      mean: avg_over_time(rpc_cost_monthly_usd{provider="shyft",kind="all",bucket="all",venue="all"}[24h])
+      series: rpc_cost_monthly_usd{provider="shyft",kind="all",bucket="all",venue="all"}
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="shyft",kind="all",bucket="all",venue="all"}[7d])
 
   - slug: allnodes
     name: Allnodes
     tier: dedicated
     tag: request, flat per request
     queries:
-      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="allnodes"}[24h])
-      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="allnodes"}[24h])
-      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="allnodes"}[24h])
-      mean: avg_over_time(rpc_cost_monthly_usd{provider="allnodes"}[24h])
-      series: rpc_cost_monthly_usd{provider="allnodes"}
-      sample_size: count_over_time(rpc_cost_monthly_usd{provider="allnodes"}[7d])
+      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="allnodes",kind="all",bucket="all",venue="all"}[24h])
+      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="allnodes",kind="all",bucket="all",venue="all"}[24h])
+      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="allnodes",kind="all",bucket="all",venue="all"}[24h])
+      mean: avg_over_time(rpc_cost_monthly_usd{provider="allnodes",kind="all",bucket="all",venue="all"}[24h])
+      series: rpc_cost_monthly_usd{provider="allnodes",kind="all",bucket="all",venue="all"}
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="allnodes",kind="all",bucket="all",venue="all"}[7d])
 
   - slug: zeeve
     name: Zeeve
     tier: dedicated
     tag: request, flat per request
     queries:
-      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="zeeve"}[24h])
-      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="zeeve"}[24h])
-      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="zeeve"}[24h])
-      mean: avg_over_time(rpc_cost_monthly_usd{provider="zeeve"}[24h])
-      series: rpc_cost_monthly_usd{provider="zeeve"}
-      sample_size: count_over_time(rpc_cost_monthly_usd{provider="zeeve"}[7d])
+      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="zeeve",kind="all",bucket="all",venue="all"}[24h])
+      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="zeeve",kind="all",bucket="all",venue="all"}[24h])
+      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="zeeve",kind="all",bucket="all",venue="all"}[24h])
+      mean: avg_over_time(rpc_cost_monthly_usd{provider="zeeve",kind="all",bucket="all",venue="all"}[24h])
+      series: rpc_cost_monthly_usd{provider="zeeve",kind="all",bucket="all",venue="all"}
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="zeeve",kind="all",bucket="all",venue="all"}[7d])
 
   - slug: aws-amb
     name: Amazon Managed Blockchain (AMB) Access, Ethereum
     tier: dedicated
     tag: request, flat per request
     queries:
-      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="aws-amb"}[24h])
-      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="aws-amb"}[24h])
-      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="aws-amb"}[24h])
-      mean: avg_over_time(rpc_cost_monthly_usd{provider="aws-amb"}[24h])
-      series: rpc_cost_monthly_usd{provider="aws-amb"}
-      sample_size: count_over_time(rpc_cost_monthly_usd{provider="aws-amb"}[7d])
+      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="aws-amb",kind="all",bucket="all",venue="all"}[24h])
+      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="aws-amb",kind="all",bucket="all",venue="all"}[24h])
+      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="aws-amb",kind="all",bucket="all",venue="all"}[24h])
+      mean: avg_over_time(rpc_cost_monthly_usd{provider="aws-amb",kind="all",bucket="all",venue="all"}[24h])
+      series: rpc_cost_monthly_usd{provider="aws-amb",kind="all",bucket="all",venue="all"}
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="aws-amb",kind="all",bucket="all",venue="all"}[7d])
 
