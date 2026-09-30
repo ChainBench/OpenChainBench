@@ -50,6 +50,7 @@ import { renderTemplate } from "@/lib/bench-template";
 import { canonicalChainSlug } from "@/lib/chain-aliases";
 import { PERSON_ID } from "@/lib/hub-jsonld";
 import type { Benchmark } from "@/types/benchmark";
+import { withUtm } from "@/lib/utm";
 
 // ISR with a 60 s revalidate window. The page is prerendered by
 // generateStaticParams below and served from the CDN until 60 s after
@@ -1061,7 +1062,7 @@ export default async function BenchmarkPage({
       {!isDraft && (
         <p className="mt-4 text-[11px] uppercase tracking-[0.16em] text-ink-muted break-all">
           Source code{" "}
-          <a className="lnk inline max-w-full" href={benchmark.source}>
+          <a className="lnk inline max-w-full" href={withUtm(benchmark.source)}>
             {benchmark.source.replace("https://github.com/", "github.com/")}
             <ArrowUpRight size={12} strokeWidth={2} className="inline ml-1" />
           </a>
@@ -1203,7 +1204,7 @@ function DraftNotice({ source }: { source: string }) {
         starts emitting metrics.
       </p>
       <a
-        href={source}
+        href={withUtm(source)}
         className="mt-4 inline-flex items-center gap-1 text-sm font-medium lnk"
       >
         Source code

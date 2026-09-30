@@ -8,6 +8,7 @@ import { SearchTrigger } from "@/components/search/search-trigger";
 import { SiteLogoSwitcher } from "@/components/site-logo-switcher";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { navGroups } from "@/components/site-nav-items";
+import { withUtm } from "@/lib/utm";
 
 function XIcon({ size = 14 }: { size?: number }) {
   return (
@@ -271,7 +272,7 @@ export function SiteSidebar({ hiddenRoutes = [] }: { hiddenRoutes?: readonly str
             <span className="sr-only">{pinned ? "Unpin the sidebar" : "Keep the sidebar open"}</span>
           </button>
           <a
-            href="https://x.com/OpenChainBench"
+            href={withUtm("https://x.com/OpenChainBench")}
             className="site-rail-label inline-flex items-center hover:text-ink transition-colors"
             aria-label="Follow @OpenChainBench on X"
             target="_blank"
@@ -280,7 +281,7 @@ export function SiteSidebar({ hiddenRoutes = [] }: { hiddenRoutes?: readonly str
             <XIcon size={13} />
           </a>
           <a
-            href="https://github.com/ChainBench/OpenChainBench"
+            href={withUtm("https://github.com/ChainBench/OpenChainBench")}
             className="site-rail-label inline-flex items-center hover:text-ink transition-colors"
             aria-label="View source on GitHub"
             target="_blank"

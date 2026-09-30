@@ -15,6 +15,7 @@ import {
 import { pageMetadata } from "@/lib/page-metadata";
 import { safeJsonLd, buildBreadcrumbJsonLd } from "@/lib/jsonld";
 import { SITE } from "@/data/site";
+import { withUtm } from "@/lib/utm";
 
 const DESCRIPTION =
   "Cross-chain daily volume, what each app charges on it, fill quality and app ratings for trading apps and Telegram bots (GMGN, Axiom, FOMO, Photon, Trojan), measured on closed UTC days.";
@@ -423,7 +424,7 @@ export default async function TradingAppsHubPage() {
           on-chain swaps, app store ratings from the Apple iTunes lookup API.
           {pausedNote}All harnesses open source on{" "}
           <Link
-            href="https://github.com/ChainBench/OpenChainBench"
+            href={withUtm("https://github.com/ChainBench/OpenChainBench")}
             className="underline hover:text-ink"
             rel="noopener noreferrer"
             target="_blank"

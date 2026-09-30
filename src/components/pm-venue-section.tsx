@@ -14,6 +14,7 @@ import {
 import { PmTopMarketsTable } from "@/components/pm-top-markets-table";
 import { PmCategoryDonut } from "@/components/pm-category-donut";
 import { PmVolumeOiChart } from "@/components/pm-volume-oi-chart";
+import { withUtm } from "@/lib/utm";
 
 /**
  * Per-venue anchored section on /prediction-markets. URL anchor is the
@@ -87,7 +88,7 @@ export async function PmVenueSection({
           </span>
         </div>
         <a
-          href={externalUrl}
+          href={withUtm(externalUrl)}
           target="_blank"
           rel="noopener noreferrer"
           className="text-sm text-ink-faint hover:text-ink underline underline-offset-2"
@@ -176,7 +177,7 @@ export async function PmVenueSection({
           </>
         )}
         <a
-          href={externalUrl}
+          href={withUtm(externalUrl)}
           target="_blank"
           rel="noopener noreferrer"
           className="hover:text-ink underline underline-offset-2"
