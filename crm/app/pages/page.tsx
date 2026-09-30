@@ -32,7 +32,7 @@ export default async function PagesPage({ searchParams }: { searchParams: Promis
                 <tr>
                   <th>Section</th>
                   <th className="num">Page visits</th>
-                  <th className="num">w/w</th>
+                  <th className="num">{w.deltaLabel}</th>
                   <th className="num">Pageviews</th>
                   <th className="num">Pages with a visit</th>
                 </tr>
@@ -89,7 +89,7 @@ export default async function PagesPage({ searchParams }: { searchParams: Promis
                   <th>Path</th>
                   <th>Section</th>
                   <th className="num">Visitors</th>
-                  <th className="num">w/w</th>
+                  <th className="num">{w.deltaLabel}</th>
                   <th className="num">Pageviews</th>
                 </tr>
               </thead>
