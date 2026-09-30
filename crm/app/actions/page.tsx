@@ -53,7 +53,7 @@ export default async function ActionsPage({ searchParams }: { searchParams: Prom
                 <tr>
                   <th>Host</th>
                   <th className="num">Clicks</th>
-                  <th className="num">w/w</th>
+                  <th className="num">{w.deltaLabel}</th>
                   <th className="num">Visitors</th>
                   <th>From</th>
                 </tr>

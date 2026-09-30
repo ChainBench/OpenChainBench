@@ -28,11 +28,14 @@ export type ReportWindow = {
   label: string;
   /** Suffix for a delta: "vs previous 7 d". */
   prevLabel: string;
+  /** Header for a delta column in a table. "w/w" under a 24 h window said
+   *  week over week over a comparison that was a day. */
+  deltaLabel: string;
 };
 
 export const WINDOWS: Record<WindowKey, ReportWindow> = {
-  "7d": { key: "7d", days: 7, label: "7 d", prevLabel: "previous 7 d" },
-  "24h": { key: "24h", days: 1, label: "24 h", prevLabel: "previous 24 h" },
+  "7d": { key: "7d", days: 7, label: "7 d", prevLabel: "previous 7 d", deltaLabel: "w/w" },
+  "24h": { key: "24h", days: 1, label: "24 h", prevLabel: "previous 24 h", deltaLabel: "d/d" },
 };
 
 export const DEFAULT_WINDOW: WindowKey = "7d";

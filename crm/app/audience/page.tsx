@@ -377,7 +377,7 @@ export default async function AudiencePage({ searchParams }: { searchParams: Pro
                 <th>Domain</th>
                 <th>Channel</th>
                 <th className="num">Visitors</th>
-                <th className="num">w/w</th>
+                <th className="num">{w.deltaLabel}</th>
                 <th className="num">Pageviews</th>
               </tr>
             </thead>
