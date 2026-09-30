@@ -4,6 +4,7 @@ import {
   PmVenueBenchCards,
   type PmVenueBenchRow,
 } from "@/components/pm-venue-bench-cards";
+import { withUtm } from "@/lib/utm";
 
 /**
  * Per-data-feed anchored section on /prediction-markets. Lighter than the
@@ -87,7 +88,7 @@ export async function PmDataFeedSection({
         </div>
         {externalUrl && (
           <a
-            href={externalUrl}
+            href={withUtm(externalUrl)}
             target="_blank"
             rel="noopener noreferrer"
             className="text-sm text-ink-faint hover:text-ink underline underline-offset-2"

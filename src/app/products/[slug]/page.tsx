@@ -57,6 +57,7 @@ import { getTerminalFills } from "@/lib/terminal-fills";
 import { fetchDataApiSnapshot } from "@/lib/data-api-stats";
 import { getTradingAppHistory } from "@/lib/trading-app-history";
 import { fetchBridgeHub } from "@/lib/bridge-hub-stats";
+import { withUtm } from "@/lib/utm";
 
 export const revalidate = 3600;
 
@@ -1037,7 +1038,7 @@ export default async function ProviderPage({
             <li className="min-w-0">
               <a
                 className="lnk inline-flex items-center gap-1 font-sans text-[11px] uppercase tracking-[0.16em] font-medium text-ink-soft hover:text-ink break-all"
-                href={reg.url}
+                href={withUtm(reg.url)}
                 rel="noopener"
               >
                 {reg.url.replace(/^https?:\/\//, "").replace(/\/$/, "")}
@@ -1048,7 +1049,7 @@ export default async function ProviderPage({
               <li>
                 <a
                   className="lnk inline-flex items-center gap-1 font-sans text-[11px] uppercase tracking-[0.16em] font-medium text-ink-soft hover:text-ink"
-                  href={`https://x.com/${reg.twitter.replace(/^@/, "")}`}
+                  href={withUtm(`https://x.com/${reg.twitter.replace(/^@/, "")}`)}
                   rel="noopener"
                 >
                   {reg.twitter}

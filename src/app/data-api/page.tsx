@@ -4,6 +4,7 @@ import { DataApiHubTabs } from "@/components/data-api-hub-tabs";
 import { pageMetadata } from "@/lib/page-metadata";
 import { safeJsonLd, buildBreadcrumbJsonLd } from "@/lib/jsonld";
 import { SITE } from "@/data/site";
+import { withUtm } from "@/lib/utm";
 
 /**
  * Hub landing page for the data API vertical: price feeds, token metadata,
@@ -218,7 +219,7 @@ export default async function DataApiHubPage() {
           the moment each wallet API returns the transaction. All harnesses
           are open source on{" "}
           <Link
-            href="https://github.com/ChainBench/OpenChainBench"
+            href={withUtm("https://github.com/ChainBench/OpenChainBench")}
             className="underline hover:text-ink"
             rel="noopener noreferrer"
             target="_blank"

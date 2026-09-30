@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { SITE } from "@/data/site";
+import { withUtm } from "@/lib/utm";
 
 /**
  * Compact footer, one row of links plus the legal line.
@@ -64,7 +65,7 @@ export function SiteFooter() {
             </Link>
           ))}
           <a
-            href="https://github.com/ChainBench/OpenChainBench/issues/new"
+            href={withUtm("https://github.com/ChainBench/OpenChainBench/issues/new")}
             className="text-[13px] text-ink-muted hover:text-ink transition-colors"
           >
             Open an issue

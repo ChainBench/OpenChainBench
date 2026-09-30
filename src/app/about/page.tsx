@@ -4,6 +4,7 @@ import { SectionRule } from "@/components/section-rule";
 import { aboutPageLd } from "@/lib/hub-jsonld";
 import { safeJsonLd } from "@/lib/jsonld";
 import { pageMetadata } from "@/lib/page-metadata";
+import { withUtm } from "@/lib/utm";
 
 export const metadata: Metadata = pageMetadata({
   path: "/about",
@@ -59,11 +60,11 @@ export default function AboutPage() {
       </p>
       <ul className="mt-3 space-y-3 text-base leading-relaxed text-ink-soft">
         <li className="flex gap-3"><span className="text-ink-faint">·</span><span><strong>Open Prometheus data</strong>. Every number on the site is a literal <code>quantile_over_time</code> query. Anyone can hit our <Link className="lnk" href="/api/citable">/api/citable</Link> or <code>/api/stat/&lt;slug&gt;</code> endpoint and re-derive the leaderboard with their own aggregation. The raw data is the source of truth.</span></li>
-        <li className="flex gap-3"><span className="text-ink-faint">·</span><span><strong>Open harness source</strong>. Every harness is on <a className="lnk" href="https://github.com/ChainBench/OpenChainBench/tree/main/harnesses" rel="noopener">GitHub under harnesses/</a>. Clone, run <code>docker compose up</code>, your <code>/metrics</code> endpoint emits the same numbers ours does within 30 seconds.</span></li>
-        <li className="flex gap-3"><span className="text-ink-faint">·</span><span><strong>Public methodology review</strong>. We invite external review and ship the fixes publicly. In June 2026 four issues were flagged on the stablecoin peg and oracle deviation benches; three were shipped in pull requests <a className="lnk" href="https://github.com/ChainBench/OpenChainBench/pull/349" rel="noopener">#349</a>, <a className="lnk" href="https://github.com/ChainBench/OpenChainBench/pull/352" rel="noopener">#352</a> and <a className="lnk" href="https://github.com/ChainBench/OpenChainBench/pull/353" rel="noopener">#353</a> within twenty-four hours; the fourth was answered with citations to CME, Chainlink and CoinGecko convention.</span></li>
+        <li className="flex gap-3"><span className="text-ink-faint">·</span><span><strong>Open harness source</strong>. Every harness is on <a className="lnk" href={withUtm("https://github.com/ChainBench/OpenChainBench/tree/main/harnesses")} rel="noopener">GitHub under harnesses/</a>. Clone, run <code>docker compose up</code>, your <code>/metrics</code> endpoint emits the same numbers ours does within 30 seconds.</span></li>
+        <li className="flex gap-3"><span className="text-ink-faint">·</span><span><strong>Public methodology review</strong>. We invite external review and ship the fixes publicly. In June 2026 four issues were flagged on the stablecoin peg and oracle deviation benches; three were shipped in pull requests <a className="lnk" href={withUtm("https://github.com/ChainBench/OpenChainBench/pull/349")} rel="noopener">#349</a>, <a className="lnk" href={withUtm("https://github.com/ChainBench/OpenChainBench/pull/352")} rel="noopener">#352</a> and <a className="lnk" href={withUtm("https://github.com/ChainBench/OpenChainBench/pull/353")} rel="noopener">#353</a> within twenty-four hours; the fourth was answered with citations to CME, Chainlink and CoinGecko convention.</span></li>
       </ul>
       <p className="mt-4 text-base leading-relaxed text-ink-soft">
-        No paid tier. No sold ranking slots. No provider sponsorship in exchange for inclusion. No token. If you spot any deviation from this policy, file a <a className="lnk" href="https://github.com/ChainBench/OpenChainBench/security/advisories/new" rel="noopener">private security advisory</a> and we will treat it as the integrity incident it would be.
+        No paid tier. No sold ranking slots. No provider sponsorship in exchange for inclusion. No token. If you spot any deviation from this policy, file a <a className="lnk" href={withUtm("https://github.com/ChainBench/OpenChainBench/security/advisories/new")} rel="noopener">private security advisory</a> and we will treat it as the integrity incident it would be.
       </p>
 
       <SectionRule label="How it works" number="iv" />
@@ -80,14 +81,14 @@ export default function AboutPage() {
       <ul className="space-y-4 text-base leading-relaxed text-ink-soft">
         <li className="flex gap-3"><span className="text-ink-faint">·</span><span><strong>Read</strong> the{" "}<Link className="lnk" href="/#latest">live benchmarks</Link>{" "}.</span></li>
         <li className="flex gap-3"><span className="text-ink-faint">·</span><span><strong>Reproduce</strong> any number. the{" "}<Link className="lnk" href="/methodology">methodology</Link>{" "}page tells you how.</span></li>
-        <li className="flex gap-3"><span className="text-ink-faint">·</span><span><strong>Contribute</strong> a harness via{" "}<a className="lnk" href="https://github.com/ChainBench/OpenChainBench">GitHub</a>. Pull requests for new providers and new benchmarks are reviewed openly.</span></li>
-        <li className="flex gap-3"><span className="text-ink-faint">·</span><span><strong>Discuss</strong> ideas in{" "}<a className="lnk" href="https://github.com/ChainBench/OpenChainBench/discussions">GitHub Discussions</a>{" "}or follow{" "}<a className="lnk" href="https://x.com/OpenChainBench">@OpenChainBench</a>.</span></li>
+        <li className="flex gap-3"><span className="text-ink-faint">·</span><span><strong>Contribute</strong> a harness via{" "}<a className="lnk" href={withUtm("https://github.com/ChainBench/OpenChainBench")}>GitHub</a>. Pull requests for new providers and new benchmarks are reviewed openly.</span></li>
+        <li className="flex gap-3"><span className="text-ink-faint">·</span><span><strong>Discuss</strong> ideas in{" "}<a className="lnk" href={withUtm("https://github.com/ChainBench/OpenChainBench/discussions")}>GitHub Discussions</a>{" "}or follow{" "}<a className="lnk" href={withUtm("https://x.com/OpenChainBench")}>@OpenChainBench</a>.</span></li>
       </ul>
 
       <SectionRule label="Contact" number="vi" />
       <p className="text-base leading-relaxed text-ink-soft">
         See a number you can&apos;t reproduce? File a{" "}
-        <a className="lnk" href="https://github.com/ChainBench/OpenChainBench/issues/new/choose">
+        <a className="lnk" href={withUtm("https://github.com/ChainBench/OpenChainBench/issues/new/choose")}>
           data-quality issue or a provider correction
         </a>
         . For press, partnerships or anything else, reach us at{" "}

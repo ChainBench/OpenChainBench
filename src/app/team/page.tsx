@@ -5,6 +5,7 @@ import { SectionRule } from "@/components/section-rule";
 import { teamPageLd } from "@/lib/hub-jsonld";
 import { safeJsonLd } from "@/lib/jsonld";
 import { pageMetadata } from "@/lib/page-metadata";
+import { withUtm } from "@/lib/utm";
 
 export const metadata: Metadata = pageMetadata({
   path: "/team",
@@ -52,7 +53,7 @@ export default function TeamPage() {
         </p>
         <div className="mt-5 flex flex-wrap gap-2">
           <a
-            href="https://github.com/Flotapponnier"
+            href={withUtm("https://github.com/Flotapponnier")}
             rel="noopener"
             className="inline-flex items-center gap-1.5 rounded-md card-soft px-3 py-1.5 text-sm text-ink-soft hover:text-ink"
           >
@@ -60,7 +61,7 @@ export default function TeamPage() {
             <ArrowUpRight size={12} strokeWidth={2} />
           </a>
           <a
-            href="https://www.linkedin.com/in/florent-tapponnier-26324a17a/"
+            href={withUtm("https://www.linkedin.com/in/florent-tapponnier-26324a17a/")}
             rel="noopener"
             className="inline-flex items-center gap-1.5 rounded-md card-soft px-3 py-1.5 text-sm text-ink-soft hover:text-ink"
           >
