@@ -457,7 +457,12 @@ function contributeToMap(chainSlug: string | null, endpoints: Endpoint[]) {
   }).catch(() => {});
 }
 
-export function SpeedtestRpcClient() {
+/**
+ * @param mapLive whether /rpc-map is served on this deployment (it is held off production in
+ *   DEV_ONLY_ROUTES). Results are still contributed either way, so the map has data the day it
+ *   ships; only the wording and the link to it depend on this.
+ */
+export function SpeedtestRpcClient({ mapLive }: { mapLive: boolean }) {
   const [stage, setStage] = useState<Stage>("setup");
   const [inputs, setInputs] = useState<string[]>(["", ""]);
   const [chainQuery, setChainQuery] = useState("");
@@ -1112,12 +1117,18 @@ export function SpeedtestRpcClient() {
 
           <p className="mt-4 text-[11px] text-ink-faint leading-snug max-w-[560px]">
             {contribOff
-              ? "Anonymous map contribution is off for this browser."
-              : "This result was added anonymously to the global latency map (provider names and medians only, no URLs, no IP stored)."}{" "}
-            <a href="/rpc-map" className="lnk">
-              View the map
-            </a>
-            {" · "}
+              ? "Anonymous contribution is off for this browser."
+              : mapLive
+                ? "This result was added anonymously to the global latency map (provider names and medians only, no URLs, no IP stored)."
+                : "This result was added anonymously to the crowdsourced latency data (provider names and medians only, no URLs, no IP stored)."}{" "}
+            {mapLive && (
+              <>
+                <a href="/rpc-map" className="lnk">
+                  View the map
+                </a>
+                {" · "}
+              </>
+            )}
             <button
               type="button"
               className="lnk"
