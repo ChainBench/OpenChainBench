@@ -100,7 +100,16 @@ export async function GET(
     },
     {
       headers: {
-        "cache-control": "public, s-maxage=60, stale-while-revalidate=600",
+        // 300 s: getArchiveBuilderBySlug reads through the hl-archive
+        // store cache (src/lib/hl-archive-store.ts, revalidate 300) and
+        // the archive holds daily aggregates, so nothing here can change
+        // inside five minutes. A 60 s window just recomputed the slice.
+        //
+        // Inert on production as of 2026-09-30: the archive blob is not
+        // ready, so this route returns archive_pending above and never
+        // reaches here. A 503 is not cacheable, so it pays a function per
+        // request until the hl-archive service has written a blob.
+        "cache-control": "public, s-maxage=300, stale-while-revalidate=900",
       },
     },
   );

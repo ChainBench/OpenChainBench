@@ -180,7 +180,14 @@ export async function GET(
 
   return NextResponse.json(payload, {
     headers: {
-      "cache-control": "public, s-maxage=60, stale-while-revalidate=300",
+      // 300 s, not 60: getBenchmark reads through the bench data cache
+      // (src/lib/spec.ts, revalidate 300), so four of every five fills at
+      // a 60 s window recomputed this payload and returned the same bytes.
+      // The two windows do compose, so this is not free: worst-case data
+      // age goes from about 360 s to about 600 s. That is parity with the
+      // 600 s ISR on the bench page this mirrors, which is the number a
+      // reader comparing the two would see anyway.
+      "cache-control": "public, s-maxage=300, stale-while-revalidate=900",
       "access-control-allow-origin": "*",
     },
   });

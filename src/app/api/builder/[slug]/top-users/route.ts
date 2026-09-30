@@ -71,7 +71,27 @@ export async function GET(
   const data = await res.json();
   return NextResponse.json(data, {
     headers: {
-      "cache-control": "public, s-maxage=30, stale-while-revalidate=60",
+      // 900 s, resting on the shape of the data rather than on the poll
+      // interval. The harness aggregates whole UTC days and its window
+      // ends yesterday (fetchRange in
+      // harnesses/hyperliquid-frontends/cmd/script/agg.go), so a point in
+      // this series is final once it is published: the only thing that
+      // ever changes is a new day appearing after the UTC rollover. That
+      // holds whatever -poll the deployed harness runs, which matters
+      // because the 30 m in main.go:47 is the flag default and nothing in
+      // this repo pins the value used on the VPS.
+      //
+      // Worst case a viewer is handed a body 900 + 1800 = 2700 s old,
+      // about 45 minutes, since stale-while-revalidate adds to the fresh
+      // window. On a chart whose finest grain is a day, and whose newest
+      // point is always yesterday, that is invisible.
+      //
+      // Inert on production as of 2026-09-30: HL_NODE_AUTH is unset there
+      // so this route 503s above before reaching here, and a 503 is not a
+      // cacheable status, meaning it costs a function per request and
+      // caches nothing. The window below starts mattering once the
+      // credential is set.
+      "cache-control": "public, s-maxage=900, stale-while-revalidate=1800",
     },
   });
 }
