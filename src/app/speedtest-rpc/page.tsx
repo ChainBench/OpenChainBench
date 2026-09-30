@@ -130,7 +130,7 @@ export default function SpeedtestRpcPage() {
         so you can verify exactly what runs.
       </p>
 
-      <SpeedtestRpcClient />
+      <SpeedtestRpcClient mapLive={!isDevOnlyRoute("/rpc-map")} />
 
       <section className="mt-14 border-t border-rule pt-6 text-[13px] text-ink-soft leading-relaxed max-w-2xl">
         <p className="label-mono text-[10px] uppercase tracking-[0.2em] text-ink-faint mb-3">
