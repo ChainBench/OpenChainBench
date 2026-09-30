@@ -13,8 +13,11 @@ import { buildCitationMeta, CREATOR_PUBLISHER, DATASET_LICENSE } from "@/lib/dat
  * (TVL, bridged value, stablecoin flows, open interest) and how tokens are
  * priced against the fees their protocols earn (P/F, P/S, FDV, float, fee
  * trend against token move). Everything is read from the materialized
- * benches 273, 275, 274, 265 and 277 plus the two daily history blobs the
- * worker publishes; see src/lib/capital-hub.ts.
+ * benches plus the two daily history blobs the worker publishes. The bench
+ * list is CAPITAL_BENCHES in src/lib/capital-hub-types.ts, eight of them
+ * today (273, 274, 275, 265, 277, 271, 280, 281); read it there rather
+ * than from a copy here, because this copy went stale the first time the
+ * list grew. See src/lib/capital-hub.ts for how each is used.
  *
  * The page names numbers and the peers they are compared against. It does
  * not tell the reader what to do with them: the neutral wording is the

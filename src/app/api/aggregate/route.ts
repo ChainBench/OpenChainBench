@@ -42,8 +42,10 @@ export async function GET() {
         headers: { "Accept-Encoding": "gzip, br" },
         // No cache:"no-store" here: that flag opts the route into
         // dynamic mode and causes Next.js to strip s-maxage from our
-        // response headers, breaking Vercel CDN caching. The ISR
-        // revalidate=60 above handles freshness instead.
+        // response headers, breaking Vercel CDN caching. There is no ISR
+        // revalidate on this route to fall back on (it is force-dynamic,
+        // line 18); freshness comes from the s-maxage=300 the response
+        // below sets, which is what the edge honours.
       });
     } catch (err) {
       lastErr = String(err);

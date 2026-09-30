@@ -192,10 +192,13 @@ const nextConfig: NextConfig = {
         // 2026-09-30, the edge entry for /api/citable went STALE at age
         // 306 and reset to 42, then went STALE again at 313: two clean
         // cycles, so the served window is that route's 300 s and not a
-        // one-off eviction. Change the window in the route, not here. Sitemap's
-        // Cache-Control is likewise set inside its route.ts
-        // (`src/app/sitemap.xml/route.ts`) because metadata routes
-        // ignore next.config headers().
+        // one-off eviction. Change the window in the route, not here.
+        // The sitemap sets its Cache-Control the same way and for the same
+        // reason: `src/app/sitemap.xml/route.ts` is a Route Handler that
+        // returns its own Response, so whatever it sets wins over this
+        // layer. (It is a Route Handler rather than a `sitemap.ts`
+        // metadata route precisely because a metadata route left Next in
+        // charge of the header; the file's own docblock has that history.)
         source: "/api/citable",
         headers: [
           {
