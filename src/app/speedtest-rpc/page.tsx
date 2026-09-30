@@ -7,6 +7,7 @@ import { pageMetadata } from "@/lib/page-metadata";
 import { SpeedtestRpcClient } from "@/components/speedtest/speedtest-rpc-client";
 import { buildBreadcrumbJsonLd, buildFaqPageJsonLd, safeJsonLd } from "@/lib/jsonld";
 import { SITE } from "@/data/site";
+import { withUtm } from "@/lib/utm";
 
 // Long-lived branch link: the probe engine ships in the site bundle, so
 // pointing at the source file IS the full disclosure of what runs in the
@@ -123,7 +124,7 @@ export default function SpeedtestRpcPage() {
       <p className="mt-2 text-sm text-ink-faint">
         No install, no signup. Your URLs and API keys never leave this browser
         tab. Requests go straight from you to the provider.{" "}
-        <a href={SOURCE_URL} className="lnk" rel="noopener noreferrer" target="_blank">
+        <a href={withUtm(SOURCE_URL)} className="lnk" rel="noopener noreferrer" target="_blank">
           The probe engine is open source
           <ArrowUpRight size={11} strokeWidth={2} className="inline ml-0.5 align-baseline" />
         </a>{" "}
@@ -158,12 +159,12 @@ export default function SpeedtestRpcPage() {
         </p>
         <p className="mt-3">
           Everything on this page is open source:{" "}
-          <a href={SOURCE_URL} className="lnk" rel="noopener noreferrer" target="_blank">
+          <a href={withUtm(SOURCE_URL)} className="lnk" rel="noopener noreferrer" target="_blank">
             browser probe engine
           </a>{" "}
           and the{" "}
           <a
-            href="https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities"
+            href={withUtm("https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities")}
             className="lnk"
             rel="noopener noreferrer"
             target="_blank"

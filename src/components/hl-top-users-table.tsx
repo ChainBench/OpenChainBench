@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { withUtm } from "@/lib/utm";
 
 /**
  * Per-builder top-traders table. Mirrors HyperTracker's
@@ -140,7 +141,7 @@ export function HlTopUsersTable({ slug }: { slug: string }) {
                 </Td>
                 <Td mono>
                   <a
-                    href={`https://app.hyperliquid.xyz/explorer/address/${r.address}`}
+                    href={withUtm(`https://app.hyperliquid.xyz/explorer/address/${r.address}`)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="hover:underline"
