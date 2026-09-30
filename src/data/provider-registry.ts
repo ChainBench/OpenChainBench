@@ -2848,16 +2848,15 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     url: "https://getblock.io",
     description:
       "Multi-chain RPC provider covering 130+ networks, billed in Compute Units. Cost is a chain multiplier times a method multiplier, with archive priced from an independent column rather than as a fixed surcharge.",
-    twitter: "@getblock_io",
+    twitter: "@getblockio",
     pricing:
-      "Free tier 50,000 CU per day. Paid plans $49 to $699/mo with 20% off annually; dedicated nodes from $1,000/mo. The chain multiplier spans 10 to 300, so the same plan costs a different amount per chain.",
+      "Free tier 50,000 CU per day. Paid plans $49 to $699/mo with 20% off annually, Enterprise from $999; dedicated nodes from $1,000/mo. The chain multiplier spans 10 to 300, so the same plan costs a different amount per chain.",
     docs: "https://getblock.io/docs/",
   },
   syndica: {
     url: "https://syndica.io",
     description:
-      "Solana infrastructure provider. Bills flat per RPC call plus a separate data-transfer meter, with capacity sized by requests per second rather than by a monthly allowance.",
-    twitter: "@Syndica_io",
+      "Solana infrastructure provider. Bills flat per RPC call with no per-method weighting, plus a separate data-transfer meter; a configuration is sized by both monthly requests and sustained requests per second.",
     chains: ["Solana"],
     pricing:
       "Self-serve plan pages are gone; the surviving enterprise calculator prices a configuration from requests per month and RPS. Free tier 10M requests/mo.",
@@ -2866,8 +2865,8 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     url: "https://triton.one",
     description:
       "Solana RPC and bare-metal node operator. One of the few providers that publishes a straight per-call price with no credit weighting.",
-    twitter: "@TritonOne_",
-    chains: ["Solana"],
+    twitter: "@triton_one",
+    chains: ["Solana", "Monad", "Sui"],
     pricing:
       "$10.00 per million calls plus $0.08/GB egress; DAS $50/million; Hydrant archive adds $10/million. No free tier, and a $125 prepaid deposit over 12 months.",
     docs: "https://docs.triton.one",
@@ -2894,17 +2893,16 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   instanodes: {
     url: "https://instanodes.io",
     description:
-      "Solana RPC provider. Listed for completeness: the domain no longer serves the product and the last genuine pricing snapshot dates from March 2026.",
-    chains: ["Solana"],
+      "Multi-chain RPC provider covering 50+ EVM and non-EVM networks, billed flat per request. Not to be confused with InstantNodes (instantnodes.io), a separate and now-defunct Solana provider.",
     pricing:
-      "No current published pricing. Figures circulating in comparison articles match no archived snapshot and are not used here.",
+      "Free $0 (20,000 requests/day and 600,000/month, both caps bind), Build $29, Basic $79, Advanced $169 per month; 12% off on a 6-month commitment and 20% annually.",
   },
   "aws-amb": {
     url: "https://aws.amazon.com/managed-blockchain/",
     description:
       "Amazon Managed Blockchain Access. Bills per 32KB of data exchanged or 500ms of response time, whichever comes first, on top of a node-hour charge, so its per-request price is not directly comparable to a per-call rate card.",
     pricing:
-      "Ethereum from $3.00 per million requests in us-east-1, plus node-hours and storage. End of support announced: closed to new customers 29 October 2026, shut down 29 September 2027.",
+      "Ethereum from $3.00 per million requests in us-east-1, plus node-hours and storage. End of support announced: closed to new customers 29 October 2026, access ends after 30 September 2027.",
     docs: "https://docs.aws.amazon.com/managed-blockchain/",
   },
 

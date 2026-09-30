@@ -64,6 +64,22 @@ func main() {
 }
 
 func run(cat *Catalogue) {
+	// Clear every gauge before recomputing. Without this a provider that
+	// stops being eligible, or a plan that leaves the catalogue, keeps
+	// exporting its last value forever: Prometheus cannot know the series
+	// was withdrawn, and the page would quote a price the model no longer
+	// stands behind.
+	costMonthly.Reset()
+	costPerMillion.Reset()
+	freeAllowance.Reset()
+	planConfidence.Reset()
+	unitsPerReq.Reset()
+	eligible.Reset()
+	breakevenReqs.Reset()
+	artifactOK.Reset()
+	artifactAge.Reset()
+	artifactDrift.Reset()
+
 	priceEverything(cat)
 	checkFreshness(cat)
 	lastRun.SetToCurrentTime()

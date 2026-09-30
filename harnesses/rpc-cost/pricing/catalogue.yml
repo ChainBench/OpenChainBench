@@ -63,7 +63,7 @@ providers:
         allowance_period: month
         overage_per_1m_units_usd: 0.525
         overage_allowed: true
-        throughput: {unit: cu_per_s, value: 10000}
+        throughput: {unit: cu_per_s, value: 30000}   # self-serve ceiling: PAYG includes 10,000 and sells 5,000 more per $160/mo up to 30,000
         archive: true
         trace: true
         confidence: verified
@@ -101,11 +101,6 @@ providers:
         debug_traceTransaction: 40
         trace_block: 20
       # separate meter -- what counts against CU/s, not against the bill
-      ethereum_throughput_cu:
-        eth_getBlockReceipts: 500
-        debug_traceTransaction: 1000
-        eth_sendRawTransaction: 50
-        eth_chainId: 5
       solana:
         default: null
         getAccountInfo: 10
@@ -115,6 +110,26 @@ providers:
         simulateTransaction: 20
         getProgramAccounts: 20
         getTransaction: 40
+    # Alchemy meters volume in Compute Units and the rate limit in
+    # Throughput Compute Units, and the two differ by up to 25x on the same
+    # method. Its published table fills the Throughput column only where it
+    # differs; a blank means the CU value applies, which is the reading that
+    # reproduces Alchemy's own worked examples exactly. Values below are the
+    # CU column with the three published overrides applied.
+    throughput_weights:
+      ethereum:
+        default: null
+        eth_call: 26
+        eth_getLogs: 60
+        eth_getBlockByNumber: 20
+        eth_getBlockReceipts: 500
+        eth_getBalance: 20
+        eth_blockNumber: 10
+        eth_getTransactionReceipt: 20
+        eth_estimateGas: 20
+        eth_sendRawTransaction: 50
+        debug_traceTransaction: 1000
+        trace_block: 20
     archive_rule:
       kind: none
       value: 1
@@ -714,7 +729,7 @@ providers:
         poll: body_hash
         extraction: "14 chain sections, 421 priced rows; every row is 20 CU except 21 zero rows. Pin blob SHA f03e321f9c04209e002d412831e30bcb5e0b594b (unchanged since 2026-03-14)."
     caveats:
-      - "SCOPE: dRPC is a router over ~40 third-party operators and would fall under the aggregator exclusion on a mechanical reading. RETAINED BY EXPLICIT DECISION (user, 2026-09-29) because its $6.00/1M is a published, pinnable, chain-independent upper bound that no operator-run provider matches for transparency. The routing non-determinism is carried as the caveats below rather than as an exclusion."
+      - "SCOPE: dRPC is a router over 60+ third-party operators, by its own count and would fall under the aggregator exclusion on a mechanical reading. RETAINED BY EXPLICIT DECISION (user, 2026-09-29) because its $6.00/1M is a published, pinnable, chain-independent upper bound that no operator-run provider matches for transparency. The routing non-determinism is carried as the caveats below rather than as an exclusion."
       - "20 CU is a CEILING, not a bill. dRPC is a router; operators may discount the base price per method/chain/archive/region via a `mul` multiplier constrained to 0..1 ('base price is currently price ceiling'). Those multipliers are not published, no response header reports CU charged, and calls routed to public providers are billed at zero."
       - "Provider selection is random with probability proportional to a rating recomputed every 5 seconds that takes operator price as an input — two identical requests a second apart can bill differently."
       - "The charge is provisional and settled after the fact against the providers that did meaningful work; dRPC's cost-model doc allows it to 'deduct more'."
@@ -3655,7 +3670,12 @@ providers:
   - slug: google-bne
     name: Google Cloud — Blockchain Node Engine
     cohort: dedicated
-    status: live
+    status: end-of-life
+    # Google's own release notes: limited support from 2026-06-15 (no new
+    # node creation), COMPLETE shutdown on 2026-12-15 with every existing
+    # node and endpoint deleted, and customers pointed at QuickNode. The
+    # pricing page still shows $0.69/$2.74 per hour and carries no notice,
+    # which is how this was published as live.
     unit: request
     pricing_model: flat_request
     currency: USD
@@ -4133,7 +4153,7 @@ providers:
         extraction: "n/a — the unit is not a call (see caveats)"
     caveats:
       - "THE UNIT IS NOT A REQUEST. A billable 'request' is 32 KB exchanged OR 500 ms elapsed, whichever comes first — a 320 KB eth_getLogs bills as 10. No $/1M-CALLS figure is derivable without a response-size and latency distribution, so AWS is reported with a stated assumption rather than a number."
-      - "ANNOUNCED END OF SUPPORT: stops accepting new customers 2026-10-29, full end of support 2027-09-29. A benchmark row for it goes stale by design."
+      - "ANNOUNCED END OF SUPPORT: stops accepting new customers 2026-10-29, full end of support 2027-09-30. A benchmark row for it goes stale by design."
       - "Break-even against a $6.00/1M metered provider is node_cost / (6.00 - 3.00) per million: bc.t3.large 32.6M req/mo, bc.m5.large 37.5M, bc.c5.xlarge 66.2M — and storage and egress are excluded from those, so the real crossover is higher."
 
 # ─────────────────────────────────────────────────── excluded / dead providers
@@ -4559,7 +4579,7 @@ providers:
     cohort: excluded
     status: dead
     exclusion_reason: >-
-      The domain no longer resolves. Only a 2026-03-14 archive snapshot survives, and archived plan
+      The domain resolves and now serves an unrelated squatted site, so any endpoint still configured against it is talking to a stranger. Only a 2026-03-14 archive snapshot survives, and archived plan
       figures must be marked historical, never live. NOT to be confused with Instanodes
       (instanodes.io), a different, live provider which IS catalogued.
     unit: request
@@ -4578,7 +4598,7 @@ providers:
     name: Extrnode (Everstake)
     cohort: excluded
     status: end-of-life
-    exclusion_reason: Retired — no longer sells RPC. No current plan, price or unit is published.
+    exclusion_reason: Retired — no longer sells RPC. No longer sells RPC: extrnode.com redirects to Everstake Blockspace, an active MEV and shreds product with published prices, so the company pivoted rather than closed.
     unit: request
     pricing_model: flat_request
     currency: USD
@@ -4594,7 +4614,7 @@ providers:
   - slug: google-blockchain-rpc
     name: Google Cloud — Blockchain RPC
     cohort: excluded
-    status: no-price-published
+    status: end-of-life
     exclusion_reason: >-
       In Preview at $0 with a 100 req/s cap and NO PAID SCHEDULE of any kind. Any Google per-request
       price quoted today would be fabricated. Distinct from Blockchain Node Engine, which IS
