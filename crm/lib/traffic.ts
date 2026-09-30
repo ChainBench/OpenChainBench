@@ -11,6 +11,7 @@
  */
 import { classifyPath, classifyReferrer, referrerPredicate, type Channel, type Section } from "@/lib/channels";
 import { num, queryHogQL, str } from "@/lib/posthog";
+import { WINDOWS, type ReportWindow } from "@/lib/window";
 
 const SITE_HOST = process.env.SITE_HOST ?? "openchainbench.com";
 const HOST_FILTER = `properties.$host = '${SITE_HOST}'`;
@@ -175,67 +176,67 @@ export const QUERIES = {
     FROM events
     WHERE ${PV()} AND timestamp >= toStartOfWeek(now() - INTERVAL 11 WEEK, 1)
     GROUP BY week ORDER BY week`,
-  pages: () => `
+  pages: (w: ReportWindow) => `
     SELECT properties.$pathname AS path,
-           uniqIf(distinct_id, timestamp >= now() - INTERVAL 7 DAY) AS visitors,
-           uniqIf(distinct_id, timestamp < now() - INTERVAL 7 DAY) AS prev_visitors,
-           countIf(timestamp >= now() - INTERVAL 7 DAY) AS pageviews
+           uniqIf(distinct_id, timestamp >= now() - INTERVAL ${w.days} DAY) AS visitors,
+           uniqIf(distinct_id, timestamp < now() - INTERVAL ${w.days} DAY) AS prev_visitors,
+           countIf(timestamp >= now() - INTERVAL ${w.days} DAY) AS pageviews
     FROM events
-    WHERE ${PV()} AND timestamp >= now() - INTERVAL 14 DAY
+    WHERE ${PV()} AND timestamp >= now() - INTERVAL ${2 * w.days} DAY
     GROUP BY path ORDER BY greatest(visitors, prev_visitors) DESC, pageviews DESC LIMIT 2000`,
-  entries: () => `
+  entries: (w: ReportWindow) => `
     SELECT path, count() AS sessions FROM (
       SELECT properties.$session_id AS s, argMin(properties.$pathname, timestamp) AS path
-      FROM events WHERE ${PV()} AND timestamp >= now() - INTERVAL 7 DAY GROUP BY s
+      FROM events WHERE ${PV()} AND timestamp >= now() - INTERVAL ${w.days} DAY GROUP BY s
     ) GROUP BY path ORDER BY sessions DESC LIMIT 40`,
-  referrers: () => `
+  referrers: (w: ReportWindow) => `
     SELECT properties.$referring_domain AS domain,
-           uniqIf(distinct_id, timestamp >= now() - INTERVAL 7 DAY) AS visitors,
-           uniqIf(distinct_id, timestamp < now() - INTERVAL 7 DAY) AS prev_visitors,
-           countIf(timestamp >= now() - INTERVAL 7 DAY) AS pageviews
+           uniqIf(distinct_id, timestamp >= now() - INTERVAL ${w.days} DAY) AS visitors,
+           uniqIf(distinct_id, timestamp < now() - INTERVAL ${w.days} DAY) AS prev_visitors,
+           countIf(timestamp >= now() - INTERVAL ${w.days} DAY) AS pageviews
     FROM events
-    WHERE ${PV()} AND timestamp >= now() - INTERVAL 14 DAY
+    WHERE ${PV()} AND timestamp >= now() - INTERVAL ${2 * w.days} DAY
     GROUP BY domain ORDER BY greatest(visitors, prev_visitors) DESC LIMIT 400`,
-  countries: () => `
+  countries: (w: ReportWindow) => `
     SELECT properties.$geoip_country_code AS country, uniq(distinct_id) AS visitors
-    FROM events WHERE ${PV()} AND timestamp >= now() - INTERVAL 7 DAY
+    FROM events WHERE ${PV()} AND timestamp >= now() - INTERVAL ${w.days} DAY
     GROUP BY country ORDER BY visitors DESC LIMIT 20`,
-  devices: () => `
+  devices: (w: ReportWindow) => `
     SELECT properties.$device_type AS device, uniq(distinct_id) AS visitors
-    FROM events WHERE ${PV()} AND timestamp >= now() - INTERVAL 7 DAY
+    FROM events WHERE ${PV()} AND timestamp >= now() - INTERVAL ${w.days} DAY
     GROUP BY device ORDER BY visitors DESC LIMIT 6`,
-  utm: () => `
+  utm: (w: ReportWindow) => `
     SELECT properties.utm_source AS source, properties.utm_medium AS medium, uniq(distinct_id) AS visitors
-    FROM events WHERE ${PV()} AND timestamp >= now() - INTERVAL 7 DAY AND properties.utm_source IS NOT NULL AND properties.utm_source != ''
+    FROM events WHERE ${PV()} AND timestamp >= now() - INTERVAL ${w.days} DAY AND properties.utm_source IS NOT NULL AND properties.utm_source != ''
     GROUP BY source, medium ORDER BY visitors DESC LIMIT 25`,
-  totals: () => `
-    SELECT uniqIf(distinct_id, timestamp >= now() - INTERVAL 7 DAY) AS visitors,
-           uniqIf(distinct_id, timestamp < now() - INTERVAL 7 DAY) AS prev_visitors,
-           countIf(timestamp >= now() - INTERVAL 7 DAY) AS pageviews,
-           countIf(timestamp < now() - INTERVAL 7 DAY) AS prev_pageviews,
-           uniqIf(properties.$session_id, timestamp >= now() - INTERVAL 7 DAY) AS sessions,
-           uniqIf(properties.$session_id, timestamp < now() - INTERVAL 7 DAY) AS prev_sessions,
-           uniqIf(distinct_id, timestamp >= now() - INTERVAL 7 DAY AND ${referrerPredicate("ai")}) AS ai_visitors,
-           uniqIf(distinct_id, timestamp < now() - INTERVAL 7 DAY AND ${referrerPredicate("ai")}) AS prev_ai_visitors,
-           uniqIf(distinct_id, timestamp >= now() - INTERVAL 7 DAY AND ${referrerPredicate("search")}) AS search_visitors,
-           uniqIf(distinct_id, timestamp < now() - INTERVAL 7 DAY AND ${referrerPredicate("search")}) AS prev_search_visitors
-    FROM events WHERE ${PV()} AND timestamp >= now() - INTERVAL 14 DAY`,
-  engagedVisitors: () => `
+  totals: (w: ReportWindow) => `
+    SELECT uniqIf(distinct_id, timestamp >= now() - INTERVAL ${w.days} DAY) AS visitors,
+           uniqIf(distinct_id, timestamp < now() - INTERVAL ${w.days} DAY) AS prev_visitors,
+           countIf(timestamp >= now() - INTERVAL ${w.days} DAY) AS pageviews,
+           countIf(timestamp < now() - INTERVAL ${w.days} DAY) AS prev_pageviews,
+           uniqIf(properties.$session_id, timestamp >= now() - INTERVAL ${w.days} DAY) AS sessions,
+           uniqIf(properties.$session_id, timestamp < now() - INTERVAL ${w.days} DAY) AS prev_sessions,
+           uniqIf(distinct_id, timestamp >= now() - INTERVAL ${w.days} DAY AND ${referrerPredicate("ai")}) AS ai_visitors,
+           uniqIf(distinct_id, timestamp < now() - INTERVAL ${w.days} DAY AND ${referrerPredicate("ai")}) AS prev_ai_visitors,
+           uniqIf(distinct_id, timestamp >= now() - INTERVAL ${w.days} DAY AND ${referrerPredicate("search")}) AS search_visitors,
+           uniqIf(distinct_id, timestamp < now() - INTERVAL ${w.days} DAY AND ${referrerPredicate("search")}) AS prev_search_visitors
+    FROM events WHERE ${PV()} AND timestamp >= now() - INTERVAL ${2 * w.days} DAY`,
+  engagedVisitors: (w: ReportWindow) => `
     SELECT countIf(pages >= 2) AS engaged, countIf(prev_pages >= 2) AS prev_engaged
     FROM (
       SELECT distinct_id,
-             uniqIf(properties.$pathname, timestamp >= now() - INTERVAL 7 DAY) AS pages,
-             uniqIf(properties.$pathname, timestamp < now() - INTERVAL 7 DAY) AS prev_pages
-      FROM events WHERE ${PV()} AND timestamp >= now() - INTERVAL 14 DAY
+             uniqIf(properties.$pathname, timestamp >= now() - INTERVAL ${w.days} DAY) AS pages,
+             uniqIf(properties.$pathname, timestamp < now() - INTERVAL ${w.days} DAY) AS prev_pages
+      FROM events WHERE ${PV()} AND timestamp >= now() - INTERVAL ${2 * w.days} DAY
       GROUP BY distinct_id)`,
-  audience: () => `
+  audience: (w: ReportWindow) => `
     SELECT count() AS active_visitors,
-           countIf(first_seen >= now() - INTERVAL 7 DAY) AS new_visitors,
+           countIf(first_seen >= now() - INTERVAL ${w.days} DAY) AS new_visitors,
            countIf(toDate(first_seen) < toDate(last_seen)) AS returning_visitors
     FROM (
       SELECT distinct_id, min(timestamp) AS first_seen, max(timestamp) AS last_seen
       FROM events WHERE ${PV()} GROUP BY distinct_id
-    ) WHERE last_seen >= now() - INTERVAL 7 DAY`,
+    ) WHERE last_seen >= now() - INTERVAL ${w.days} DAY`,
   audienceDaily: () => `
     SELECT day, uniq(distinct_id) AS visitors,
            uniqIf(distinct_id, first_day = day) AS new_visitors,
@@ -262,63 +263,63 @@ export const QUERIES = {
     FROM events
     WHERE ${SURFACES()} AND timestamp >= toStartOfDay(now() - INTERVAL 89 DAY)
     GROUP BY day ORDER BY day`,
-  endpoints: () => `
+  endpoints: (w: ReportWindow) => `
     SELECT event, properties.path AS path,
-           countIf(timestamp >= now() - INTERVAL 7 DAY) AS reads,
-           countIf(timestamp < now() - INTERVAL 7 DAY) AS prev_reads,
-           uniqIf(distinct_id, timestamp >= now() - INTERVAL 7 DAY) AS agents,
+           countIf(timestamp >= now() - INTERVAL ${w.days} DAY) AS reads,
+           countIf(timestamp < now() - INTERVAL ${w.days} DAY) AS prev_reads,
+           uniqIf(distinct_id, timestamp >= now() - INTERVAL ${w.days} DAY) AS agents,
            topK(3)(properties.ua_family) AS families
-    FROM events WHERE ${SERVER_READS} AND timestamp >= now() - INTERVAL 14 DAY
+    FROM events WHERE ${SERVER_READS} AND timestamp >= now() - INTERVAL ${2 * w.days} DAY
     GROUP BY event, path ORDER BY greatest(reads, prev_reads) DESC LIMIT 80`,
-  families: () => `
+  families: (w: ReportWindow) => `
     SELECT event, properties.ua_family AS family, count() AS reads
-    FROM events WHERE ${SERVER_READS} AND timestamp >= now() - INTERVAL 7 DAY
+    FROM events WHERE ${SERVER_READS} AND timestamp >= now() - INTERVAL ${w.days} DAY
     GROUP BY event, family ORDER BY reads DESC LIMIT 60`,
-  engagement: () => `
+  engagement: (w: ReportWindow) => `
     SELECT avg(n) AS pages_per_session, countIf(n = 1) / count() AS bounce_rate, count() AS sessions FROM (
       SELECT properties.$session_id AS s, count() AS n
-      FROM events WHERE ${PV()} AND timestamp >= now() - INTERVAL 7 DAY AND s IS NOT NULL GROUP BY s
+      FROM events WHERE ${PV()} AND timestamp >= now() - INTERVAL ${w.days} DAY AND s IS NOT NULL GROUP BY s
     )`,
-  actions: () => `
-    SELECT event, countIf(timestamp >= now() - INTERVAL 7 DAY) AS n, countIf(timestamp < now() - INTERVAL 7 DAY) AS prev_n,
-           uniqIf(distinct_id, timestamp >= now() - INTERVAL 7 DAY) AS visitors
-    FROM events WHERE ${CUSTOM} AND timestamp >= now() - INTERVAL 14 DAY
+  actions: (w: ReportWindow) => `
+    SELECT event, countIf(timestamp >= now() - INTERVAL ${w.days} DAY) AS n, countIf(timestamp < now() - INTERVAL ${w.days} DAY) AS prev_n,
+           uniqIf(distinct_id, timestamp >= now() - INTERVAL ${w.days} DAY) AS visitors
+    FROM events WHERE ${CUSTOM} AND timestamp >= now() - INTERVAL ${2 * w.days} DAY
     GROUP BY event ORDER BY n DESC`,
-  outbound: () => `
-    SELECT properties.host AS host, countIf(timestamp >= now() - INTERVAL 7 DAY) AS clicks, countIf(timestamp < now() - INTERVAL 7 DAY) AS prev_clicks,
-           uniqIf(distinct_id, timestamp >= now() - INTERVAL 7 DAY) AS visitors, topK(1)(properties.page) AS top_page
-    FROM events WHERE event = 'outbound_click' AND ${HOST_FILTER} AND timestamp >= now() - INTERVAL 14 DAY
+  outbound: (w: ReportWindow) => `
+    SELECT properties.host AS host, countIf(timestamp >= now() - INTERVAL ${w.days} DAY) AS clicks, countIf(timestamp < now() - INTERVAL ${w.days} DAY) AS prev_clicks,
+           uniqIf(distinct_id, timestamp >= now() - INTERVAL ${w.days} DAY) AS visitors, topK(1)(properties.page) AS top_page
+    FROM events WHERE event = 'outbound_click' AND ${HOST_FILTER} AND timestamp >= now() - INTERVAL ${2 * w.days} DAY
     GROUP BY host ORDER BY greatest(clicks, prev_clicks) DESC LIMIT 40`,
-  searches: () => `
+  searches: (w: ReportWindow) => `
     SELECT lower(properties.query) AS q, count() AS n, topK(1)(properties.kind) AS kind, topK(1)(properties.url) AS url
-    FROM events WHERE event = 'search' AND ${HOST_FILTER} AND timestamp >= now() - INTERVAL 7 DAY AND q != ''
+    FROM events WHERE event = 'search' AND ${HOST_FILTER} AND timestamp >= now() - INTERVAL ${w.days} DAY AND q != ''
     GROUP BY q ORDER BY n DESC LIMIT 40`,
-  copies: () => `
+  copies: (w: ReportWindow) => `
     SELECT properties.kind AS kind, properties.value AS value, properties.bench AS bench, count() AS n
-    FROM events WHERE event = 'copy' AND ${HOST_FILTER} AND timestamp >= now() - INTERVAL 7 DAY
+    FROM events WHERE event = 'copy' AND ${HOST_FILTER} AND timestamp >= now() - INTERVAL ${w.days} DAY
     GROUP BY kind, value, bench ORDER BY n DESC LIMIT 40`,
-  vitals: () => `
+  vitals: (w: ReportWindow) => `
     SELECT properties.$device_type AS device, count() AS samples,
            quantile(0.75)(toFloat(properties.$web_vitals_LCP_value)) AS lcp,
            quantile(0.75)(toFloat(properties.$web_vitals_INP_value)) AS inp,
            quantile(0.75)(toFloat(properties.$web_vitals_CLS_value)) AS cls,
            quantile(0.75)(toFloat(properties.$web_vitals_FCP_value)) AS fcp
-    FROM events WHERE event = '$web_vitals' AND ${HOST_FILTER} AND timestamp >= now() - INTERVAL 7 DAY
+    FROM events WHERE event = '$web_vitals' AND ${HOST_FILTER} AND timestamp >= now() - INTERVAL ${w.days} DAY
     GROUP BY device ORDER BY samples DESC LIMIT 4`,
-  engaged: () => `
+  engaged: (w: ReportWindow) => `
     SELECT properties.$prev_pageview_pathname AS path, count() AS leaves,
            quantile(0.5)(toFloat(properties.$prev_pageview_duration)) AS med,
            quantile(0.75)(toFloat(properties.$prev_pageview_duration)) AS p75
-    FROM events WHERE ${PL()} AND timestamp >= now() - INTERVAL 7 DAY
+    FROM events WHERE ${PL()} AND timestamp >= now() - INTERVAL ${w.days} DAY
       AND properties.$prev_pageview_duration IS NOT NULL AND toFloat(properties.$prev_pageview_duration) BETWEEN 0 AND 1800
     GROUP BY path ORDER BY leaves DESC LIMIT 1500`,
-  notFound: () => `
+  notFound: (w: ReportWindow) => `
     SELECT properties.path AS path, count() AS hits, uniq(distinct_id) AS visitors, topK(1)(properties.referrer) AS ref
-    FROM events WHERE event = 'not_found' AND ${HOST_FILTER} AND timestamp >= now() - INTERVAL 7 DAY
+    FROM events WHERE event = 'not_found' AND ${HOST_FILTER} AND timestamp >= now() - INTERVAL ${w.days} DAY
     GROUP BY path ORDER BY hits DESC LIMIT 40`,
-  noResults: () => `
+  noResults: (w: ReportWindow) => `
     SELECT lower(properties.query) AS q, count() AS n
-    FROM events WHERE event = 'search_no_result' AND ${HOST_FILTER} AND timestamp >= now() - INTERVAL 7 DAY AND q != ''
+    FROM events WHERE event = 'search_no_result' AND ${HOST_FILTER} AND timestamp >= now() - INTERVAL ${w.days} DAY AND q != ''
     GROUP BY q ORDER BY n DESC LIMIT 40`,
   // Weekly cohorts. The inner query is deliberately unbounded in time so
   // a visitor's cohort is the week they were first seen ever, not the
@@ -348,11 +349,49 @@ export const QUERIES = {
 } as const;
 
 export type TrafficSection = keyof typeof QUERIES;
+
+/**
+ * Builds one section's SQL. The fixed sections declare no parameter (their
+ * SQL does not move with the window), the windowed ones take it, and this
+ * accessor lets every caller pass one without caring which it is.
+ */
+export const query = (name: TrafficSection, w: ReportWindow): string => (QUERIES[name] as (w: ReportWindow) => string)(w);
+
 export const TRAFFIC_SECTIONS = Object.keys(QUERIES) as TrafficSection[];
 
+/**
+ * The sections whose figures move with the reporting window, and so are
+ * refreshed once per window. The rest are long series (the 28-day and
+ * 90-day charts, the weekly cohorts) or the kiosk list, all of which mean
+ * the same thing whatever window the reader picked, and are fetched once.
+ */
+export const WINDOWED_SECTIONS = new Set<TrafficSection>([
+  "pages",
+  "entries",
+  "referrers",
+  "countries",
+  "devices",
+  "utm",
+  "totals",
+  "engagedVisitors",
+  "audience",
+  "endpoints",
+  "families",
+  "engagement",
+  "actions",
+  "outbound",
+  "searches",
+  "copies",
+  "vitals",
+  "engaged",
+  "notFound",
+  "noResults",
+]);
+export const isWindowed = (s: TrafficSection): boolean => WINDOWED_SECTIONS.has(s);
+
 /** Runs one section; the caller decides what a failure means for the snapshot. */
-export async function loadTrafficSection(section: TrafficSection): Promise<Partial<Traffic>> {
-  const rows = await queryHogQL(section, QUERIES[section]());
+export async function loadTrafficSection(section: TrafficSection, w: ReportWindow = WINDOWS["7d"]): Promise<Partial<Traffic>> {
+  const rows = await queryHogQL(isWindowed(section) ? `${section}:${w.key}` : section, query(section, w));
   switch (section) {
     case "daily":
       return {

@@ -21,7 +21,20 @@ export function Delta({ now, prev }: { now: number; prev: number }) {
   );
 }
 
-export function Kpi({ label, value, sub, delta }: { label: string; value: string; sub?: string; delta?: { now: number; prev: number } }) {
+export function Kpi({
+  label,
+  value,
+  sub,
+  delta,
+  prevLabel = "previous 7 d",
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+  delta?: { now: number; prev: number };
+  /** What the delta compares against; follows the reporting window. */
+  prevLabel?: string;
+}) {
   return (
     <div className="panel px-4 py-3">
       <p className="label">{label}</p>
@@ -29,7 +42,7 @@ export function Kpi({ label, value, sub, delta }: { label: string; value: string
       <p className="mt-0.5 text-xs" style={{ color: "var(--muted)" }}>
         {delta && (
           <>
-            <Delta now={delta.now} prev={delta.prev} /> vs previous 7 d{sub ? " · " : ""}
+            <Delta now={delta.now} prev={delta.prev} /> vs {prevLabel}{sub ? " · " : ""}
           </>
         )}
         {sub}

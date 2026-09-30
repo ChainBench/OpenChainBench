@@ -3,8 +3,8 @@
  *
  * PostHog rate-limits the query endpoint at 2400 requests per hour for the
  * whole organisation (every key, every team member). This app never queries
- * in the request path: a refresh runs a fixed list of about a dozen queries,
- * one at a time, and the pages read the resulting snapshot. The budget below
+ * in the request path: a refresh runs a fixed list of queries, one at a
+ * time, and the pages read the resulting snapshot. The budget below
  * is a second guard so a bug in a loop cannot spend the organisation's hour.
  * A 429 stops the batch for the Retry-After the server names; the sections
  * that did not run keep their previous values (see snapshot.ts).
@@ -19,7 +19,14 @@ const REQUEST_TIMEOUT_MS = 60_000;
 /** PostHog's organisation-wide limit on the query endpoint, per hour. */
 export const POSTHOG_ORG_LIMIT_PER_HOUR = 2400;
 
-export function readBudgetLimit(raw: string | undefined, fallback = 300): number {
+/**
+ * Default local budget. One refresh runs 28 sections for the 7 d window and
+ * repeats the 20 windowed ones for 24 h, so 48 queries a pass and 192 an
+ * hour at the 15 min cadence. 500 leaves room for the manual refreshes on
+ * top (one per 5 min at worst) and still sits at 8 % of PostHog's
+ * organisation-wide 2,400.
+ */
+export function readBudgetLimit(raw: string | undefined, fallback = 500): number {
   const n = Number.parseInt(raw ?? "", 10);
   if (!Number.isFinite(n)) return fallback;
   return Math.min(POSTHOG_ORG_LIMIT_PER_HOUR, Math.max(1, n));

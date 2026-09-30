@@ -1,12 +1,14 @@
 import { Shell, fmtAge } from "@/components/shell";
 import { Empty, fmtInt, Kpi } from "@/components/ui";
 import { readHistory, readSnapshot } from "@/lib/snapshot";
+import { parseWindow } from "@/lib/window";
 
 export const dynamic = "force-dynamic";
 const SITE = `https://${process.env.SITE_HOST ?? "openchainbench.com"}`;
 
-export default async function HealthPage({ searchParams }: { searchParams: Promise<{ refresh?: string }> }) {
+export default async function HealthPage({ searchParams }: { searchParams: Promise<{ refresh?: string; w?: string }> }) {
   const [snap, history, sp] = await Promise.all([readSnapshot(), readHistory(), searchParams]);
+  const w = parseWindow(sp.w);
   const b = snap.benches;
   const h = snap.harness;
   const d = snap.dune;
@@ -14,7 +16,7 @@ export default async function HealthPage({ searchParams }: { searchParams: Promi
   const duneDaysLeft = d?.periodEnd ? Math.max(0, Math.ceil((Date.parse(d.periodEnd) - Date.now()) / 86_400_000)) : null;
 
   return (
-    <Shell current="/health" snapshot={snap} refreshFlag={sp.refresh}>
+    <Shell current="/health" snapshot={snap} refreshFlag={sp.refresh} window={w}>
       <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <Kpi label="Live benches" value={b ? fmtInt(b.total) : "–"} sub={b ? `${fmtInt(b.fresh)} fresh` : undefined} />
         <Kpi label="Stale (> 24 h)" value={b ? fmtInt(b.stale) : "–"} sub="the page says so" />
@@ -136,6 +138,9 @@ export default async function HealthPage({ searchParams }: { searchParams: Promi
       </section>
 
       <section className="panel mt-6 p-4">
+        {/* The journal records the 7 d headline numbers once a day whatever
+            window the reader is on, so these columns say 7 d and do not
+            follow the toggle in the header. See HistoryLine in snapshot.ts. */}
         <p className="label">Daily history (one line per refresh day, kept on the volume)</p>
         {history.length > 0 ? (
           <div className="overflow-x-auto">

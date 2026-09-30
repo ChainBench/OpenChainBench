@@ -1,27 +1,30 @@
 import { Shell } from "@/components/shell";
 import { Delta, Empty, fmtInt } from "@/components/ui";
 import { SECTION_LABEL, type Section } from "@/lib/channels";
-import { readSnapshot } from "@/lib/snapshot";
+import { parseWindow, withWindow } from "@/lib/window";
+import { readSnapshot, trafficFor } from "@/lib/snapshot";
 import { sectionTotals } from "@/lib/traffic";
 
 export const dynamic = "force-dynamic";
 const SITE = `https://${process.env.SITE_HOST ?? "openchainbench.com"}`;
 
-export default async function PagesPage({ searchParams }: { searchParams: Promise<{ refresh?: string; section?: string }> }) {
+export default async function PagesPage({ searchParams }: { searchParams: Promise<{ refresh?: string; section?: string; w?: string }> }) {
   const [snap, sp] = await Promise.all([readSnapshot(), searchParams]);
-  const pages = snap.traffic.pages ?? [];
+  const w = parseWindow(sp.w);
+  const t = trafficFor(snap, w.key);
+  const pages = t.pages ?? [];
   const sections = sectionTotals(pages);
   const filter = (sp.section ?? "") as Section | "";
   const shown = (filter ? pages.filter((p) => p.section === filter) : pages).slice(0, 100);
   const risers = pages.filter((p) => p.prevVisitors >= 3 || p.visitors >= 3).map((p) => ({ ...p, diff: p.visitors - p.prevVisitors }));
   const up = [...risers].sort((a, b) => b.diff - a.diff).slice(0, 10);
   const down = [...risers].sort((a, b) => a.diff - b.diff).filter((p) => p.diff < 0).slice(0, 10);
-  const entries = snap.traffic.entries ?? [];
+  const entries = t.entries ?? [];
 
   return (
-    <Shell current="/pages" snapshot={snap} refreshFlag={sp.refresh}>
+    <Shell current="/pages" snapshot={snap} refreshFlag={sp.refresh} window={w}>
       <section className="panel p-4">
-        <p className="label">Sections, 7 d vs previous 7 d</p>
+        <p className="label">{`Sections, ${w.label} vs ${w.prevLabel}`}</p>
         {sections.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="data mt-2">
@@ -29,7 +32,7 @@ export default async function PagesPage({ searchParams }: { searchParams: Promis
                 <tr>
                   <th>Section</th>
                   <th className="num">Page visits</th>
-                  <th className="num">w/w</th>
+                  <th className="num">{w.deltaLabel}</th>
                   <th className="num">Pageviews</th>
                   <th className="num">Pages with a visit</th>
                 </tr>
@@ -38,7 +41,7 @@ export default async function PagesPage({ searchParams }: { searchParams: Promis
                 {sections.map((s) => (
                   <tr key={s.section}>
                     <td>
-                      <a href={`/pages?section=${s.section}`} className="underline-offset-2 hover:underline">
+                      <a href={withWindow(`/pages?section=${s.section}`, w)} className="underline-offset-2 hover:underline">
                         {SECTION_LABEL[s.section]}
                       </a>
                     </td>
@@ -60,7 +63,7 @@ export default async function PagesPage({ searchParams }: { searchParams: Promis
 
       <section className="mt-6 grid gap-3 md:grid-cols-2">
         <div className="panel p-4">
-          <p className="label">Biggest gains, 7 d vs previous 7 d</p>
+          <p className="label">{`Biggest gains, ${w.label} vs ${w.prevLabel}`}</p>
           <MoverTable rows={up} />
         </div>
         <div className="panel p-4">
@@ -71,9 +74,9 @@ export default async function PagesPage({ searchParams }: { searchParams: Promis
 
       <section className="panel mt-6 p-4">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <p className="label">Top pages, 7 d{filter ? ` · ${SECTION_LABEL[filter]}` : ""}</p>
+          <p className="label">{`Top pages, ${w.label}`}{filter ? ` · ${SECTION_LABEL[filter]}` : ""}</p>
           {filter && (
-            <a href="/pages" className="text-xs underline" style={{ color: "var(--muted)" }}>
+            <a href={withWindow("/pages", w)} className="text-xs underline" style={{ color: "var(--muted)" }}>
               all sections
             </a>
           )}
@@ -86,7 +89,7 @@ export default async function PagesPage({ searchParams }: { searchParams: Promis
                   <th>Path</th>
                   <th>Section</th>
                   <th className="num">Visitors</th>
-                  <th className="num">w/w</th>
+                  <th className="num">{w.deltaLabel}</th>
                   <th className="num">Pageviews</th>
                 </tr>
               </thead>
@@ -115,7 +118,7 @@ export default async function PagesPage({ searchParams }: { searchParams: Promis
       </section>
 
       <section className="panel mt-6 p-4">
-        <p className="label">Entry pages, 7 d (first page of a session)</p>
+        <p className="label">{`Entry pages, ${w.label} (first page of a session)`}</p>
         {entries.length > 0 ? (
           <table className="data mt-2">
             <thead>

@@ -13,11 +13,13 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { budget, BudgetExhausted, HOURLY_BUDGET, posthogConfigured, RateLimited } from "@/lib/posthog";
 import { loadBenchHealth, loadDuneUsage, loadHarnessHealth, type BenchHealth, type DuneUsage, type HarnessHealth } from "@/lib/ocb";
-import { loadTrafficSection, TRAFFIC_SECTIONS, type Traffic } from "@/lib/traffic";
+import { isWindowed, loadTrafficSection, TRAFFIC_SECTIONS, type Traffic } from "@/lib/traffic";
+import { WINDOWS, type ReportWindow, type WindowKey } from "@/lib/window";
 
-// 15 min by default: 15 queries per pass, 60 per hour, 2.5 % of PostHog's
+// 15 min by default: 48 queries per pass (28 sections over 7 d plus the 20
+// windowed ones repeated over 24 h), 192 an hour, 8 % of PostHog's
 // organisation budget; the Railway cost does not move with this number, the
-// container is always on and a pass is about 40 s of light CPU.
+// container is always on and a pass is about 80 s of light CPU.
 export const REFRESH_MINUTES = clampInt(process.env.REFRESH_MINUTES, 15, 5, 24 * 60);
 /** A manual refresh is refused while the last one is younger than this. */
 export const MANUAL_COOLDOWN_MINUTES = 5;
@@ -33,6 +35,11 @@ export type Snapshot = {
   refreshedAt: string | null;
   posthogConfigured: boolean;
   traffic: Partial<Traffic>;
+  /** The same windowed sections over 24 h, for ?w=24h. The long series
+   *  (the 28-day and 90-day charts, the weekly cohorts) are not repeated
+   *  here: they mean the same thing whatever window the reader picked, so
+   *  a 24 h page reads them from `traffic`. */
+  traffic24h: Partial<Traffic>;
   benches: BenchHealth | null;
   harness: HarnessHealth | null;
   dune: DuneUsage | null;
@@ -51,7 +58,7 @@ export type HistoryLine = {
   targetsDown: number;
 };
 
-const EMPTY: Snapshot = { v: 1, refreshedAt: null, posthogConfigured: posthogConfigured(), traffic: {}, benches: null, harness: null, dune: null, status: {}, budget: { used: 0, limit: HOURLY_BUDGET } };
+const EMPTY: Snapshot = { v: 1, refreshedAt: null, posthogConfigured: posthogConfigured(), traffic: {}, traffic24h: {}, benches: null, harness: null, dune: null, status: {}, budget: { used: 0, limit: HOURLY_BUDGET } };
 
 function clampInt(raw: string | undefined, fallback: number, min: number, max: number): number {
   const n = Number.parseInt(raw ?? "", 10);
@@ -150,7 +157,7 @@ export function refreshSnapshot(reason: string): Promise<RefreshResult> {
 async function doRefresh(reason: string): Promise<RefreshResult> {
   const started = Date.now();
   const prev = await readSnapshot();
-  const next: Snapshot = { ...prev, traffic: { ...prev.traffic }, status: { ...prev.status }, posthogConfigured: posthogConfigured() };
+  const next: Snapshot = { ...prev, traffic: { ...prev.traffic }, traffic24h: { ...prev.traffic24h }, status: { ...prev.status }, posthogConfigured: posthogConfigured() };
   const ran: string[] = [];
   const failed: string[] = [];
   let stoppedBy: string | null = null;
@@ -183,9 +190,20 @@ async function doRefresh(reason: string): Promise<RefreshResult> {
     // The "not configured" note from earlier refreshes must not outlive the fix.
     delete next.status.posthog;
     try {
+      // The 7 d pass runs every section, including the long series and the
+      // kiosk list that the 24 h pass then reuses (kiosks is first in the
+      // list and this loop is sequential, so the ids are known by the time
+      // any other query is built).
       for (const section of TRAFFIC_SECTIONS) {
-        await step(`traffic.${section}`, async () => {
-          Object.assign(next.traffic, await loadTrafficSection(section));
+        await step(statusKey(section, WINDOWS["7d"]), async () => {
+          Object.assign(next.traffic, await loadTrafficSection(section, WINDOWS["7d"]));
+        });
+      }
+      // The second window repeats only what moves with it.
+      for (const section of TRAFFIC_SECTIONS) {
+        if (!isWindowed(section)) continue;
+        await step(statusKey(section, WINDOWS["24h"]), async () => {
+          Object.assign(next.traffic24h, await loadTrafficSection(section, WINDOWS["24h"]));
         });
       }
     } catch (err) {
@@ -206,7 +224,8 @@ async function doRefresh(reason: string): Promise<RefreshResult> {
     "harness",
     "dune",
     "posthog",
-    ...TRAFFIC_SECTIONS.map((s) => `traffic.${s}`),
+    ...TRAFFIC_SECTIONS.map((s) => statusKey(s, WINDOWS["7d"])),
+    ...TRAFFIC_SECTIONS.filter(isWindowed).map((s) => statusKey(s, WINDOWS["24h"])),
   ]);
   for (const key of Object.keys(next.status)) {
     if (!knownSections.has(key)) delete next.status[key];
@@ -218,6 +237,18 @@ async function doRefresh(reason: string): Promise<RefreshResult> {
   await appendHistory(next).catch((e) => console.warn("[refresh] history:", e));
   console.log(`[refresh] ${reason}: ${ran.length} sections in ${Date.now() - started} ms, ${failed.length} failed${stoppedBy ? `, stopped: ${stoppedBy}` : ""}`);
   return { snapshot: next, ran, failed, stoppedBy, joined: false };
+}
+
+/** Status key for one section in one window. The default window keeps the
+ *  bare `traffic.<section>` name it has always had, so a stored snapshot's
+ *  statuses survive this change instead of being swept as unknown. */
+export function statusKey(section: string, w: ReportWindow): string {
+  return w.key === "7d" ? `traffic.${section}` : `traffic.${section}@${w.key}`;
+}
+
+/** The windowed slice a page should read. */
+export function trafficFor(s: Snapshot, key: WindowKey): Partial<Traffic> {
+  return key === "24h" ? { ...s.traffic, ...s.traffic24h } : s.traffic;
 }
 
 export function snapshotAgeMinutes(s: Snapshot, now = Date.now()): number | null {
