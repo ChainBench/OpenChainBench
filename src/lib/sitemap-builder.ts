@@ -191,6 +191,10 @@ function staticHubRoutes(catalogTs: Date): MetadataRoute.Sitemap {
     { url: `${SITE.url}/rwa`, lastModified: catalogTs, changeFrequency: "hourly", priority: 0.9 },
     { url: `${SITE.url}/bridge`, lastModified: catalogTs, changeFrequency: "hourly", priority: 0.9 },
     { url: `${SITE.url}/trading-apps`, lastModified: catalogTs, changeFrequency: "hourly", priority: 0.9 },
+    // Every other hub above was listed here from the day it shipped; this
+    // one was not, with no comment saying why, while the product pages
+    // linked to it and production served it. An omission, not a decision.
+    { url: `${SITE.url}/data-api`, lastModified: catalogTs, changeFrequency: "hourly", priority: 0.9 },
     // The capital hub is empty without its three chain and protocol benches; keep it out of the sitemap where they are not served.
     ...(["chain-bridged-tvl", "chain-stablecoin-flow", "protocol-pf-ratio"].some(isDevOnlyBench)
       ? []
