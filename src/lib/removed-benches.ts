@@ -109,6 +109,21 @@ export const DEV_ONLY_BENCH_SLUGS = new Set([
   // the page saying plainly that a high rate on a high-leverage venue
   // reflects the leverage it offers, and an audit round on that board.
   "perp-liq-rate",
+  // 282 RPC cost: held back from the release of 2026-09-30 while three
+  // findings from that day's audit are settled. The Access selector renders
+  // the word "Access" sixteen times on a cost bench because
+  // benchmark-body.tsx hardcodes the label instead of reading
+  // dimension_labels.tier, which the spec already sets to "Billing model".
+  // Two comments in the harness give GetBlock's archive multiplier as 1.5x
+  // where the catalogue computes 2x for plain reads and 3x for debug and
+  // trace. And there is an open suspicion that the Chainstack trace profile
+  // double counts, doubling a weighted total whose two trace methods are
+  // already priced at 2 RU, which would publish 4 RU per call. The first two
+  // are wording; the third is a number on a published column and needs a
+  // bench audit before a reader sees it. Un-gate condition: the label wired,
+  // the multiplier comments corrected, and the trace profile confirmed
+  // against the catalogue.
+  "rpc-cost",
   // Released 2026-09-23: bridges 261 (on-chain execution), 263 (realized
   // cost), 264 (SOL->X quotes) and 268 terminal-fill-quality left this
   // list with release/2026-09-23.
