@@ -16,8 +16,12 @@ import (
 // artifact it came from, the harness re-fetches those artifacts on a
 // loop, and the bench publishes how stale each provider's numbers are.
 //
-// A number nobody has re-verified in 90 days is reported as such on the
-// page instead of quietly passing for current.
+// Note what that check is and is not: the age is PUBLISHED, per provider
+// per artifact, as rpc_pricing_artifact_age_seconds. Nothing in this
+// harness compares it to a threshold, so there is no cutoff past which a
+// figure is withheld or relabelled. A stale number is visible as stale
+// because its age is on the board next to it, which is what the spec
+// claims ("Age is published either way"), and nothing more.
 
 type Catalogue struct {
 	Version   int        `yaml:"version"`

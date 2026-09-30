@@ -57,8 +57,10 @@ func checkArtifact(a Artifact) artifactState {
 	}
 
 	if a.URL == "" || a.Poll == "manual" {
-		// Nothing to fetch, but the age still matters: a figure nobody has
-		// re-read in 90 days is the thing this bench most needs to admit.
+		// Nothing to fetch, but the age still matters: it is the only thing
+		// that distinguishes a manually-read figure someone checked this
+		// week from one nobody has looked at in a year. Published as a
+		// gauge, not compared to any threshold here.
 		return st
 	}
 	st.polled = true
