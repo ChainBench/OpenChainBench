@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { channelTotals, engagedBySection, QUERIES, sectionTotals, sumWindow, TRAFFIC_SECTIONS } from "../lib/traffic";
+import { channelTotals, engagedBySection, QUERIES, sectionTotals, setKiosks, sumWindow, TRAFFIC_SECTIONS } from "../lib/traffic";
 
 describe("queries", () => {
   test("every query is scoped to the production host and to a named event", () => {
@@ -11,8 +11,53 @@ describe("queries", () => {
       ).toBe(true);
     }
   });
+  // A screen left on one page is not a reader. Two of them sent 1,411 of
+  // the site's 2,989 pageviews in the week of 2026-09-20, so every
+  // pageview query holds them out; the count of visitors barely moves
+  // (885 against 887) and the count of pageviews halves.
+  test("every pageview query holds kiosks out once they are known", () => {
+    setKiosks(["kiosk-a", "kiosk-b"]);
+    try {
+      for (const name of TRAFFIC_SECTIONS) {
+        if (name === "kiosks") continue; // the section that finds them
+        const q = QUERIES[name]();
+        if (!q.includes("event = '$pageview'") && !q.includes("event = '$pageleave'")) continue;
+        expect(q).toContain("distinct_id NOT IN ('kiosk-a', 'kiosk-b')");
+      }
+    } finally {
+      setKiosks([]);
+    }
+  });
+
+  // Nobody found yet, or the section failed: the queries count everyone,
+  // which is what this file did before the rule existed.
+  test("an unknown kiosk list changes no query", () => {
+    setKiosks([]);
+    expect(QUERIES.totals()).not.toContain("NOT IN (");
+    expect(QUERIES.totals()).toContain("1 = 1");
+  });
+
+  test("a kiosk is one page and many views", () => {
+    const q = QUERIES.kiosks();
+    expect(q).toContain("uniq(properties.$pathname) = 1");
+    expect(q).toMatch(/count\(\) >= \d+/);
+    expect(q).toContain("INTERVAL 90 DAY");
+  });
+
+  test("the engaged visitor is the one who opened a second page", () => {
+    const q = QUERIES.engagedVisitors();
+    expect(q).toContain("uniqIf(properties.$pathname, timestamp >= now() - INTERVAL 7 DAY) AS pages");
+    expect(q).toContain("countIf(pages >= 2)");
+    expect(q).toContain("countIf(prev_pages >= 2)");
+  });
+
+  // The guard is against a loop spending the organisation's hour, not
+  // against the list growing: PostHog allows 2,400 queries an hour across
+  // every key, this app's own budget defaults to 300, and one refresh
+  // spends the list once. The bound had been passed by two sections
+  // before the kiosk rule added a third.
   test("the refresh spends a bounded number of queries", () => {
-    expect(TRAFFIC_SECTIONS.length).toBeLessThanOrEqual(24);
+    expect(TRAFFIC_SECTIONS.length).toBeLessThanOrEqual(30);
   });
   test("the surfaces series counts the four read events per day over 90 days", () => {
     const q = QUERIES.surfaces();

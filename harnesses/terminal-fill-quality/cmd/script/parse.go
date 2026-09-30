@@ -75,26 +75,30 @@ type Swap struct {
 	XMint string  `json:"x_mint,omitempty"`
 	XRate float64 `json:"x_rate,omitempty"` // quote units per X
 
-	UserQ     float64  `json:"user_q"`
-	PoolQ     float64  `json:"pool_q"`
-	TerminalQ float64  `json:"terminal_q"`
-	NetworkQ  float64  `json:"network_q"`
-	OtherQ    *float64 `json:"other_q,omitempty"`
+	UserQ     float64 `json:"user_q"`
+	PoolQ     float64 `json:"pool_q"`
+	TerminalQ float64 `json:"terminal_q"`
+	NetworkQ  float64 `json:"network_q"`
+	// The share of NetworkQ the user paid out of their own balance, as
+	// opposed to a relayer's. Zero on a sponsored transaction, where the
+	// gas is already inside what the user gave in the quote.
+	UserSolQ float64  `json:"user_sol_q,omitempty"`
+	OtherQ   *float64 `json:"other_q,omitempty"`
 	// Cross-chain settlements (see xchain.go): the origin chain, Relay's
 	// own fees the user paid (quote units), the Relay request id and the
 	// origin deposit hash. UserQ is then the origin deposit in quote units,
 	// NetworkQ the origin gas.
-	Chain    string  `json:"chain,omitempty"`
-	RelayQ   float64 `json:"relay_q,omitempty"`
-	FeeSig   string  `json:"fee_sig,omitempty"` // the separate fee transaction (BasedBot on Solana)
-	RentQ    float64 `json:"rent_q,omitempty"`  // SOL deposit of the token accounts the swap created: counted in network (a refund on close is not credited)
-	RelayID  string  `json:"relay_id,omitempty"`
+	Chain   string  `json:"chain,omitempty"`
+	RelayQ  float64 `json:"relay_q,omitempty"`
+	FeeSig  string  `json:"fee_sig,omitempty"` // the separate fee transaction (BasedBot on Solana)
+	RentQ   float64 `json:"rent_q,omitempty"`  // SOL deposit of the token accounts the swap created: counted in network (a refund on close is not credited)
+	RelayID string  `json:"relay_id,omitempty"`
 	// The Relay request carried no fee of any kind. RelayQ is then 0
 	// because we were not told, not because the solver took nothing, and a
 	// residual pool component would silently absorb the bridge's take.
-	RelayUnknown bool `json:"relay_unknown,omitempty"`
-	InTx     string  `json:"in_tx,omitempty"`
-	QuoteUSD float64 `json:"quote_usd"` // quote unit price used for sizing
+	RelayUnknown bool    `json:"relay_unknown,omitempty"`
+	InTx         string  `json:"in_tx,omitempty"`
+	QuoteUSD     float64 `json:"quote_usd"` // quote unit price used for sizing
 	// Quote received by accounts that are neither user, pool, terminal nor
 	// tip, by pubkey (token accounts keyed by owner): what "other" is made
 	// of, aggregated per terminal for audit.
@@ -109,7 +113,7 @@ type Swap struct {
 	RefAgeS  *int64   `json:"ref_age_s,omitempty"`
 	Priced   bool     `json:"priced"`
 	Flag     string   `json:"flag,omitempty"`
-	TradeUSD float64  `json:"trade_usd"` // buy: quote spent; sell: tokens × ref (quote moved when unpriced)
+	TradeUSD float64  `json:"trade_usd"` // buy: quote spent; sell: tokens × ref; plus the gas paid in another asset (quote moved when unpriced)
 	// Neighbourhood scan for a sandwich around this swap (see sandwich.go).
 	Scanned      bool      `json:"scanned"`
 	BlockPoolTxs int       `json:"block_pool_txs,omitempty"`
@@ -131,6 +135,12 @@ const (
 	lossMinBps = -1000
 	lossMaxBps = 5000
 )
+
+// pump.fun's program, and the discriminator of close_user_volume_accumulator
+// (sha256("global:close_user_volume_accumulator")[:8]).
+const pumpProgramID = "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P"
+
+var discPumpCloseVolume = [8]byte{0xf9, 0x45, 0xa4, 0xda, 0x96, 0x67, 0x54, 0x8a}
 
 // parseReject explains why a transaction touching a fee wallet is not a
 // swap we can measure; counted per terminal for the coverage figures.
@@ -221,15 +231,29 @@ func parseSwap(t Terminal, sig string, tx *parsedTx, solUSD float64, forceUser s
 		venue string
 		accts map[string]bool
 	}
-	var vixs []venueIx               // known venue programs: pool identity
-	var hixs []venueIx               // every program instruction with an account list: hop detection (venue "" when unknown)
-	rentAccts := map[string]string{} // created account -> funder ("" when unknown)
+	var vixs []venueIx                   // known venue programs: pool identity
+	var hixs []venueIx                   // every program instruction with an account list: hop detection (venue "" when unknown)
+	rentAccts := map[string]string{}     // created account -> funder ("" when unknown)
+	closedByProgram := map[string]bool{} // accounts a program closed back to the user this tx
 	type tokTransfer struct {
 		authority, dest string
 		amount          float64 // raw units
 	}
 	var transfers []tokTransfer
 	for _, ix := range ixs {
+		// pump.fun's close_user_volume_accumulator hands a program-owned
+		// account's lamports back to the user. It is neither a token
+		// account nor one this transaction created, so neither rent loop
+		// below sees it, and the refund read as sale proceeds on a sell
+		// (277.7 bps of a $5.69 trade) and as a smaller spend on a buy
+		// (432 bps of $3.25). Two of 309 pump-curve rows in a day.
+		if ix.ProgramID == pumpProgramID {
+			if raw, ok := base58Decode(ix.Data); ok && len(raw) >= 8 && [8]byte(raw[:8]) == discPumpCloseVolume {
+				for _, k := range ix.Accounts {
+					closedByProgram[k] = true
+				}
+			}
+		}
 		if v, ok := venuePrograms[ix.ProgramID]; ok && v.name != "jupiter" {
 			a := make(map[string]bool, len(ix.Accounts))
 			for _, k := range ix.Accounts {
@@ -396,18 +420,46 @@ func parseSwap(t Terminal, sig string, tx *parsedTx, solUSD float64, forceUser s
 	rent := 0.0
 	rentPaid := map[string]bool{}
 	for i, e := range tok {
-		if e.owner != user {
-			continue
+		// A deposit is the user's cost when the user funded it, which is
+		// not the same as owning the account. This loop tested the owner
+		// while the PDA loop below has always tested the funder, and both
+		// halves of the difference reach the board: a relayer that creates
+		// the trader's token account pays the rent, and the trader was
+		// charged it anyway — on pump.fun's USDC rows that was the whole
+		// of the published network cost, 637 bps of a $2.78 trade, on a
+		// wallet whose lamport balance never moved. The other way round,
+		// rent the user pays for an account somebody else owns — a
+		// creator-fee vault, a recipient's ATA — fell out of network
+		// entirely and into the residual, which the split then takes off
+		// the pool: ten rows, a median of 53 bps and a worst of 523.
+		src, declared := rentAccts[pubkeyAt(i)]
+		paidByUser := e.owner == user
+		if declared {
+			paidByUser = src == user || (src == "" && pubkeyAt(0) == user)
 		}
 		wsolPre, wsolPost := 0.0, 0.0
 		if e.mint == wsolMint {
 			wsolPre, wsolPost = e.pre*math.Pow10(-e.dec), e.post*math.Pow10(-e.dec)
 		}
-		if !e.hadPre && tx.Meta.PostBalances[i] > tx.Meta.PreBalances[i] {
+		if paidByUser && !e.hadPre && tx.Meta.PostBalances[i] > tx.Meta.PreBalances[i] {
 			rent += float64(tx.Meta.PostBalances[i]-tx.Meta.PreBalances[i])/1e9 - wsolPost
 		}
-		if e.hadPre && tx.Meta.PostBalances[i] == 0 && tx.Meta.PreBalances[i] > 0 {
+		// A refund goes back to the account's owner, so only the user's
+		// own accounts credit one back.
+		if e.owner == user && e.hadPre && tx.Meta.PostBalances[i] == 0 && tx.Meta.PreBalances[i] > 0 {
 			rent -= float64(tx.Meta.PreBalances[i])/1e9 - wsolPre
+		}
+	}
+	for k := range closedByProgram {
+		i, ok := index[k]
+		if !ok || k == user {
+			continue
+		}
+		if _, isTok := tok[i]; isTok {
+			continue
+		}
+		if tx.Meta.PreBalances[i] > 0 && tx.Meta.PostBalances[i] == 0 {
+			rent -= float64(tx.Meta.PreBalances[i]) / 1e9 // a refund, handled like a closed token account's
 		}
 	}
 	for k, src := range rentAccts {
@@ -507,6 +559,16 @@ func parseSwap(t Terminal, sig string, tx *parsedTx, solUSD float64, forceUser s
 	}
 	networkQ := toQuote("SOL", network+rentPaidQ)
 	userQ := quoteDelta[quote] // negative on a buy, positive on a sell
+	// The gas the user themselves parted with, which is their own lamport
+	// movement and nothing else. It is zero when a relayer signed and
+	// funded the transaction: the terminal's gas is then already inside
+	// what the user handed over in the quote, and counting it again would
+	// charge them twice. Only used when the quote is not SOL, where the
+	// lamport movement is gas rather than the trade itself.
+	userSolQ := 0.0
+	if d := quoteDelta["SOL"]; d < 0 {
+		userSolQ = toQuote("SOL", -d)
+	}
 
 	// Pools: the counterparties of the token leg, one per token vault
 	// that moved against the user. Each pool's quote vaults are the token
@@ -831,16 +893,34 @@ func parseSwap(t Terminal, sig string, tx *parsedTx, solUSD float64, forceUser s
 		}
 	}
 
-	if sponsoredFee > 0 {
-		// The sponsor's gas comes out of the fee the user paid the terminal.
-		terminalQ = math.Max(0, terminalQ-toQuote("SOL", sponsoredFee))
+	// A relayer's gas comes out of the fee the user paid the terminal —
+	// all of it, the inclusion tip and the rent included, and not the
+	// transaction fee alone. The tips are added to the network cost above
+	// whoever paid them; on a sponsored swap that is the terminal, out of
+	// money the user had already handed over in the quote. Subtracting
+	// only the transaction fee left the tip charged twice: once inside
+	// the fee, once again as network. On FOMO's small trades the tip runs
+	// about 0.17 of the quote against a 0.25 flat fee, which is most of
+	// what the user paid, and the residual went negative to absorb it.
+	//
+	// Written so that terminal + network comes to exactly what the user
+	// parted with: the fee they paid the terminal, plus whatever gas came
+	// out of their own balance.
+	// The signal is the fee payer, not the user's lamports: when the quote
+	// is SOL their lamport movement is the trade itself and says nothing
+	// about gas. On every sponsored row read against the chain the user
+	// spent no SOL at all, so the terminal funded the whole of it.
+	if internal[pubkeyAt(0)] && networkQ > 0 {
+		sponsored := math.Min(networkQ, terminalQ) // it cannot pass on more than it took
+		terminalQ -= sponsored
+		networkQ = sponsored
 	}
 	tokens := math.Abs(best.delta) * math.Pow10(-best.dec)
 	s := &Swap{
 		Method: methodVersion, Sig: sig, Terminal: t.Slug, Slot: tx.Slot, User: user, Side: side, Quote: quote, Venue: venue, Mint: best.mint, Tokens: tokens,
 		PoolVault: main.base, PoolOwner: main.owner, PoolQuoteVaults: append(append([]string{}, main.quoteVaults...), main.xVaults...),
 		Pools: len(pools), Hops: hops, PoolBasePre: basePre, PoolQuotePre: quotePre, XMint: xMint, XRate: xRate,
-		UserQ: math.Abs(userQ), PoolQ: poolQ, TerminalQ: terminalQ, NetworkQ: networkQ, QuoteUSD: quoteUSD,
+		UserQ: math.Abs(userQ), PoolQ: poolQ, TerminalQ: terminalQ, NetworkQ: networkQ, UserSolQ: userSolQ, QuoteUSD: quoteUSD,
 		Others: others,
 	}
 	if tx.BlockTime != nil {
@@ -890,15 +970,32 @@ func (s *Swap) finalize(ref *float64, refAge int64, src string) {
 	s.LossBps, s.PoolBps, s.RefPrice, s.RefAgeS, s.RefSrc = nil, nil, nil, nil, ""
 	if ref != nil && *ref > 0 && s.QuoteUSD > 0 {
 		value := s.Tokens * *ref // token leg in quote units
+		// The gas counts in what the user gave whenever it was paid in
+		// something other than the quote asset. On Solana the quote
+		// movement is the user's own lamport balance, so a SOL-quoted swap
+		// already carries the fee (see quoteDelta above) and a swap quoted
+		// in a stable does not: there the SOL leaves a balance the loss
+		// never looks at, and the split then subtracted a cost the base
+		// had never been charged.
+		//
+		// What goes in is what the user themselves parted with, not the
+		// whole network cost. On a sponsored swap a relayer signs and
+		// funds, the user spends no SOL at all, and the terminal recovers
+		// the gas out of the fee they already paid in the quote — so it
+		// is inside the base once and must not be added a second time.
+		gasApart := 0.0
+		if s.Chain == "" && s.Quote != "SOL" {
+			gasApart = math.Min(s.UserSolQ, s.NetworkQ)
+		}
 		var loss float64
 		switch s.Side {
 		case "buy":
-			trade = s.UserQ
+			trade = s.UserQ + gasApart // on another chain the gas is already inside UserQ
 			if trade > 0 {
 				loss = 1e4 * (1 - value/trade)
 			}
 		case "sell":
-			trade = value
+			trade = value + gasApart
 			if s.Chain != "" {
 				// A sale on another chain: the gas was paid apart from the
 				// tokens, so what the user gave is the tokens plus that gas.

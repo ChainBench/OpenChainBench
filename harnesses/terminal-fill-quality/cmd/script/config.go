@@ -5,12 +5,26 @@ import "strings"
 // methodVersion tags every sampled swap. Statistics are computed only on
 // rows produced by the running method, so a change of accounting or
 // reference never mixes with older rows inside the window; rows of an
-// older version are dropped at load.
+// older version are dropped at load, unless the change moved only the
+// arithmetic and loadState can recompute them in place.
 //
 //	3: pools identified by vault pubkeys (not owner), tx fee inside the
 //	   user's cost, terminal tip relays as network, FOMO stable fee legs,
 //	   WSOL / program-account rent, loss bounds, 60 s reference cap.
-const methodVersion = 3
+//	4: the gas joins the base whenever it was paid in an asset other than
+//	   the quote, which on Solana means a swap quoted in a stable: the
+//	   split had been charging a cost the base was never charged, and the
+//	   residual went negative on a quarter of those buys. v3 rows are
+//	   recomputed from their stored reference, not dropped.
+//	5: only the gas the user themselves parted with joins the base. v4
+//	   added the whole network cost, including a relayer's on a sponsored
+//	   swap, where the user spends no SOL and the terminal takes the gas
+//	   out of the fee they already paid in the quote — so v4 charged those
+//	   rows twice, by a median of 52 bps across the cell. Rows written
+//	   before v5 carry no record of who paid, and are recomputed as if the
+//	   user paid nothing: right for the sponsored majority, and the window
+//	   turns over within the day.
+const methodVersion = 5
 
 // Evidence published behind the board, per row rather than overall.
 //

@@ -22,6 +22,10 @@ export default async function Overview({ searchParams }: { searchParams: Promise
   // below sums per-domain uniques and can count a visitor twice.
   const ai = totals ? { visitors: totals.aiVisitors, prevVisitors: totals.prevAiVisitors } : undefined;
   const search = totals ? { visitors: totals.searchVisitors, prevVisitors: totals.prevSearchVisitors } : undefined;
+  // Visitors who opened more than one page: the rest are a single hit, and
+  // most of them never navigated at all (whole countries sit at exactly
+  // 1.00 pageviews a visitor, which is a crawler, not a reader).
+  const engaged = t.engagedVisitors;
   // PostHog started receiving events on 2026-09-20 (the site token shipped
   // as the literal "[SENSITIVE]" from 2026-08-24 until then), so the 28-day
   // and 12-week windows are mostly empty and the cards must say so instead
@@ -69,6 +73,9 @@ export default async function Overview({ searchParams }: { searchParams: Promise
           label="Pageviews, 7 d"
           value={fmtInt(totals?.pageviews)}
           delta={totals && { now: totals.pageviews, prev: totals.prevPageviews }}
+          // A filter nobody can see is worse than no filter: say how many
+          // screens-left-on this figure is missing.
+          sub={t.kiosks?.devices ? `${fmtInt(t.kiosks.devices)} kiosk ${t.kiosks.devices === 1 ? "device" : "devices"} held out` : undefined}
           series={series((d) => d.pageviews)}
           unit="pageviews"
         />
@@ -97,6 +104,12 @@ export default async function Overview({ searchParams }: { searchParams: Promise
           delta={totals && { now: totals.sessions, prev: totals.prevSessions }}
           series={series((d) => d.sessions)}
           unit="sessions"
+        />
+        <Kpi
+          label="Engaged visitors, 7 d"
+          value={fmtInt(engaged?.visitors)}
+          delta={engaged && { now: engaged.visitors, prev: engaged.prevVisitors }}
+          sub={engaged && totals?.visitors ? `${fmtPct(engaged.visitors / totals.visitors, 1)} of visitors, 2+ pages` : "2+ pages"}
         />
         <Kpi label="Pages per session" value={t.engagement ? t.engagement.pagesPerSession.toFixed(2) : "–"} sub={t.engagement ? `bounce ${fmtPct(t.engagement.bounceRate)}` : undefined} />
         <Kpi
