@@ -457,7 +457,7 @@ function contributeToMap(chainSlug: string | null, endpoints: Endpoint[]) {
   }).catch(() => {});
 }
 
-export function SpeedtestRpcClient() {
+export function SpeedtestRpcClient({ mapLive = true }: { mapLive?: boolean }) {
   const [stage, setStage] = useState<Stage>("setup");
   const [inputs, setInputs] = useState<string[]>(["", ""]);
   const [chainQuery, setChainQuery] = useState("");
@@ -1075,9 +1075,24 @@ export function SpeedtestRpcClient() {
               );
               if (blockedDir.length === 0) return null;
               return (
+                // When SOME endpoints answered, a blocked one really is a
+                // provider that does not allow browser calls. When NONE
+                // did, saying so blames six providers for what is almost
+                // always one local cause: a shields-up browser, a privacy
+                // extension or a VPN. Four of the six Ethereum endpoints
+                // send access-control-allow-origin for this site, so "not
+                // testable from a browser" cannot be true of all of them
+                // at once, and the reader is left with a dead end instead
+                // of the one thing that would fix it.
+                ranked.length === 0 ? (
+                  <p className="st-row label-mono text-[10px] text-ink-faint text-center pt-1" style={{ animationDelay: "0.2s" }}>
+                    Every endpoint was blocked before it answered, including ones that do allow browser calls. That points at this browser rather than at the providers: a shields-up browser, a privacy or ad-blocking extension, a VPN or a corporate network will stop requests to RPC hosts. Try a normal window with extensions off, or paste your own endpoint. The public benchmarks measure all of these server-side.
+                  </p>
+                ) : (
                 <p className="st-row label-mono text-[10px] text-ink-faint text-center pt-1" style={{ animationDelay: `${0.2 + ranked.length * 0.12}s` }}>
                   Not testable from a browser (skipped): {blockedDir.map((e) => epLabel(e)).join(", ")}. The public bench covers {blockedDir.length > 1 ? "them" : "it"} server-side.
                 </p>
+                )
               );
             })()}
             {endpoints
@@ -1113,11 +1128,20 @@ export function SpeedtestRpcClient() {
           <p className="mt-4 text-[11px] text-ink-faint leading-snug max-w-[560px]">
             {contribOff
               ? "Anonymous map contribution is off for this browser."
-              : "This result was added anonymously to the global latency map (provider names and medians only, no URLs, no IP stored)."}{" "}
-            <a href="/rpc-map" className="lnk">
-              View the map
-            </a>
-            {" · "}
+              : mapLive
+                ? "This result was added anonymously to the global latency map (provider names and medians only, no URLs, no IP stored)."
+                : // The map is not served here yet, so there is nothing to
+                  // link to. The contribution is still recorded: say that,
+                  // rather than pointing at a 404 or claiming a map exists.
+                  "This result was recorded anonymously for the global latency map, which opens once enough areas have samples (provider names and medians only, no URLs, no IP stored)."}{" "}
+            {mapLive && (
+              <>
+                <a href="/rpc-map" className="lnk">
+                  View the map
+                </a>
+                {" · "}
+              </>
+            )}
             <button
               type="button"
               className="lnk"

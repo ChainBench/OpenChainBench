@@ -200,16 +200,29 @@ export const DEV_ONLY_BENCH_SLUGS = new Set([
  * llms.txt and the /rpc hub stop linking them there. Staging shows them.
  */
 export const DEV_ONLY_ROUTES = new Set<string>([
-  // Empty on purpose. /speedtest-rpc and /rpc-map were held here from
-  // 2026-09-21 because the map had 2 cells and 32 samples, which is a
-  // blank map under a latency legend. They shipped on 2026-09-30 with
-  // that reasoning inverted: the speed test is what produces the
-  // contributions, so gating it off production guaranteed the map would
-  // stay empty forever. The map's own empty state says which kind of
-  // nothing it is ("No community samples for this chain yet. The map
-  // fills up as people run the speed test") rather than drawing an empty
-  // map and letting the legend imply an answer, which is what made the
-  // original hold the right call at the time.
+  // The map waits for its data; the speed test that produces it does not.
+  //
+  // Both shipped on 2026-09-30 to break the deadlock that had kept them
+  // off production since 2026-09-21: the speed test is the only source of
+  // contributions, so gating it guaranteed the map would never fill, and
+  // nine gated days had produced exactly zero samples. Publishing the
+  // test was the half that mattered. The map went with it and should not
+  // have: an honest empty state still asks a reader to look at a world
+  // map with nothing on it, which is a worse first impression than not
+  // offering the page at all.
+  //
+  // So /speedtest-rpc stays on production and keeps collecting, and the
+  // map comes back once there is something to draw. Collection does NOT
+  // depend on this line: /api/speedtest/contribute is gated on
+  // "/speedtest-rpc", and it derives the city cell server-side from
+  // Vercel's IP headers, so it needs neither the map page nor
+  // /api/speedtest/whereami (which only serves the map's "near me" pin).
+  //
+  // Un-gate condition: enough cells that the map reads as a map. Check
+  // with `curl .../api/speedtest/map?chain=ethereum` on staging, which
+  // reports `total` (every contribution ever) and `cells`. It was 0 and 0
+  // on 2026-09-30.
+  "/rpc-map",
 ]);
 
 export const IS_PRODUCTION = process.env.VERCEL_ENV === "production";
