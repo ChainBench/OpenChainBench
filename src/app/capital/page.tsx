@@ -365,10 +365,19 @@ function buildFaq(hub: CapitalHub): { q: string; a: string }[] {
       q: "What does the fees up, token down badge mean?",
       a:
         diverging.length > 0
-          ? `Four things at once: the protocol's 30-day fees grew more than ${SIGNAL_FEE_GROWTH_MIN_PCT}% against the prior 30 days, its token fell more than ${SIGNAL_PRICE_MOVE_MIN_PCT}% over the same days, its price to fees sits below its category median, and the category holds at least ${SIGNAL_MIN_CATEGORY_MEMBERS} ranked protocols. ${diverging.length} of ${hub.protocols.length} tokens match today, ${diverging
-              .slice(0, 3)
-              .map((r) => r.name)
-              .join(", ")} among them. The two size thresholds keep a flat token and a fee month in line with the field off the list, and the category floor keeps a median over one or two peers from qualifying a row. It is a screen for further reading, not a signal to act on.`
+          ? `Four things at once: the protocol's 30-day fees grew more than ${SIGNAL_FEE_GROWTH_MIN_PCT}% against the prior 30 days, its token fell more than ${SIGNAL_PRICE_MOVE_MIN_PCT}% over the same days, its price to fees sits below its category median, and the category holds at least ${SIGNAL_MIN_CATEGORY_MEMBERS} ranked protocols. ${
+              // Singular is the common case now the rule is four clauses with two
+              // size floors: it selected 11 rows before them and 1 today. "1 of 67
+              // tokens match today, X among them" was the previous wording, and
+              // this answer is in the FAQPage JSON-LD, so it is the sentence an
+              // answer engine quotes.
+              diverging.length === 1
+                ? `1 of ${hub.protocols.length} tokens matches today, ${diverging[0].name}`
+                : `${diverging.length} of ${hub.protocols.length} tokens match today, ${diverging
+                    .slice(0, 3)
+                    .map((r) => r.name)
+                    .join(", ")} among them`
+            }. The two size thresholds keep a flat token and a fee month in line with the field off the list, and the category floor keeps a median over one or two peers from qualifying a row. It is a screen for further reading, not a signal to act on.`
           : `Four things at once: the protocol's 30-day fees grew more than ${SIGNAL_FEE_GROWTH_MIN_PCT}% against the prior 30 days, its token fell more than ${SIGNAL_PRICE_MOVE_MIN_PCT}% over the same days, its price to fees sits below its category median, and the category holds at least ${SIGNAL_MIN_CATEGORY_MEMBERS} ranked protocols. No token matches all four today.`,
     },
     {

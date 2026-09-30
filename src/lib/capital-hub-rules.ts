@@ -311,6 +311,36 @@ export function selectDivergences<T extends DivergenceCandidate>(rows: T[], limi
     .slice(0, limit);
 }
 
+/* --------------------------------------------- missing sections */
+
+/**
+ * Which kind of nothing a whole section is, or null when it has rows.
+ *
+ * The four-cell rule one level up: an absent section must not read as a
+ * measured absence either. A bench entry carries `live` and `failed`, so the
+ * page can tell a transient load failure from a bench this deployment does not
+ * serve from a bench that ran and ranked nobody, and say which of the three it
+ * is instead of rendering nothing.
+ *
+ * Null when the bench is not in the list at all. That is the gated case
+ * (benches 280 and 281 are only listed where they are served), and a reading
+ * the deployment never promised is not a reading that is missing.
+ */
+export type SectionState = "failed" | "unserved" | "empty";
+
+export function sectionState(
+  benches: readonly { slug: string; live: boolean; failed: boolean }[],
+  slug: string,
+  rowCount: number,
+): SectionState | null {
+  if (rowCount > 0) return null;
+  const b = benches.find((x) => x.slug === slug);
+  if (!b) return null;
+  if (b.failed) return "failed";
+  if (!b.live) return "unserved";
+  return "empty";
+}
+
 /* ------------------------------------------------------- 7d change */
 
 /** Largest bucket-to-bucket ratio a 7d series may carry and still read as one continuous window. */
