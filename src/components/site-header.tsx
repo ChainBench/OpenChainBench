@@ -27,7 +27,7 @@ function GithubIcon({ size = 15 }: { size?: number }) {
 
 
 
-export function SiteHeader() {
+export function SiteHeader({ hiddenRoutes = [] }: { hiddenRoutes?: readonly string[] }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname() ?? "/";
 
@@ -78,7 +78,7 @@ export function SiteHeader() {
           {/* md and up only; below md the burger menu owns navigation.
               The whole header is gone at lg, where the rail takes over. */}
           <nav className="hidden md:flex items-center h-full gap-3 text-[13px] font-medium shrink-0">
-            {headerNavItems().map((item) => {
+            {headerNavItems(hiddenRoutes).map((item) => {
               const active = item.match(pathname);
               return (
                 <Link
@@ -161,7 +161,7 @@ export function SiteHeader() {
                 are where it bit hardest. Capped in height so a long list
                 scrolls inside the sheet instead of running off-screen. */}
             <ul className="max-w-[1400px] mx-auto px-4 sm:px-6 py-2 flex flex-col max-h-[calc(100dvh-3.5rem)] overflow-y-auto">
-              {navGroups().flatMap((group, gi) => [
+              {navGroups(hiddenRoutes).flatMap((group, gi) => [
                 ...(group.label
                   ? [
                       <li
