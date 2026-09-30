@@ -3,16 +3,18 @@ import { Shell } from "@/components/shell";
 import { Metric } from "@/components/metric";
 import { Bars, Delta, Empty, fmtInt, fmtPct, Kpi, Spark } from "@/components/ui";
 import { SECTION_LABEL } from "@/lib/channels";
-import { readSnapshot } from "@/lib/snapshot";
+import { parseWindow, withWindow } from "@/lib/window";
+import { readSnapshot, trafficFor } from "@/lib/snapshot";
 import { channelTotals, sectionTotals } from "@/lib/traffic";
 
 export const dynamic = "force-dynamic";
 
 const CHANNEL_LABEL = { ai: "AI assistants", search: "Search", social: "Social", direct: "Direct", referral: "Other sites", internal: "Internal" } as const;
 
-export default async function Overview({ searchParams }: { searchParams: Promise<{ refresh?: string }> }) {
+export default async function Overview({ searchParams }: { searchParams: Promise<{ refresh?: string; w?: string }> }) {
   const [snap, sp] = await Promise.all([readSnapshot(), searchParams]);
-  const t = snap.traffic;
+  const w = parseWindow(sp.w);
+  const t = trafficFor(snap, w.key);
   const totals = t.totals;
   const weekly = t.weekly ?? [];
   // Set below, after the partial-history helpers: the last two weeks that
@@ -60,17 +62,19 @@ export default async function Overview({ searchParams }: { searchParams: Promise
   const h = snap.harness;
 
   return (
-    <Shell current="/" snapshot={snap} refreshFlag={sp.refresh}>
+    <Shell current="/" snapshot={snap} refreshFlag={sp.refresh} window={w}>
       <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <Metric
-          label="Visitors, 7 d"
+          prevLabel={w.prevLabel}
+          label={`Visitors, ${w.label}`}
           value={fmtInt(totals?.visitors)}
           delta={totals && { now: totals.visitors, prev: totals.prevVisitors }}
           series={series((d) => d.visitors)}
           unit="visitors"
         />
         <Metric
-          label="Pageviews, 7 d"
+          prevLabel={w.prevLabel}
+          label={`Pageviews, ${w.label}`}
           value={fmtInt(totals?.pageviews)}
           delta={totals && { now: totals.pageviews, prev: totals.prevPageviews }}
           // A filter nobody can see is worse than no filter: say how many
@@ -80,7 +84,8 @@ export default async function Overview({ searchParams }: { searchParams: Promise
           unit="pageviews"
         />
         <Metric
-          label="AI-referred visitors, 7 d"
+          prevLabel={w.prevLabel}
+          label={`AI-referred visitors, ${w.label}`}
           value={fmtInt(ai?.visitors)}
           delta={ai && { now: ai.visitors, prev: ai.prevVisitors }}
           sub={ai && totals?.visitors ? `${fmtPct(ai.visitors / totals.visitors, 1)} of visitors` : undefined}
@@ -88,7 +93,8 @@ export default async function Overview({ searchParams }: { searchParams: Promise
           unit="visitors"
         />
         <Metric
-          label="Search-referred visitors, 7 d"
+          prevLabel={w.prevLabel}
+          label={`Search-referred visitors, ${w.label}`}
           value={fmtInt(search?.visitors)}
           delta={search && { now: search.visitors, prev: search.prevVisitors }}
           sub={search && totals?.visitors ? `${fmtPct(search.visitors / totals.visitors, 1)} of visitors` : undefined}
@@ -99,16 +105,18 @@ export default async function Overview({ searchParams }: { searchParams: Promise
 
       <section className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">
         <Metric
-          label="Sessions, 7 d"
+          prevLabel={w.prevLabel}
+          label={`Sessions, ${w.label}`}
           value={fmtInt(totals?.sessions)}
           delta={totals && { now: totals.sessions, prev: totals.prevSessions }}
           series={series((d) => d.sessions)}
           unit="sessions"
         />
         <Kpi
-          label="Engaged visitors, 7 d"
+          label={`Engaged visitors, ${w.label}`}
           value={fmtInt(engaged?.visitors)}
           delta={engaged && { now: engaged.visitors, prev: engaged.prevVisitors }}
+          prevLabel={w.prevLabel}
           sub={engaged && totals?.visitors ? `${fmtPct(engaged.visitors / totals.visitors, 1)} of visitors, 2+ pages` : "2+ pages"}
         />
         <Kpi label="Pages per session" value={t.engagement ? t.engagement.pagesPerSession.toFixed(2) : "–"} sub={t.engagement ? `bounce ${fmtPct(t.engagement.bounceRate)}` : undefined} />
@@ -165,7 +173,7 @@ export default async function Overview({ searchParams }: { searchParams: Promise
 
       <section className="mt-6 grid gap-3 md:grid-cols-3">
         <div className="panel p-4 md:col-span-1">
-          <p className="label">Channels, 7 d (per-domain visitors summed)</p>
+          <p className="label">{`Channels, ${w.label} (per-domain visitors summed)`}</p>
           {channels.length > 0 ? (
             <table className="data mt-2">
               <tbody>
@@ -185,7 +193,7 @@ export default async function Overview({ searchParams }: { searchParams: Promise
           )}
         </div>
         <div className="panel p-4">
-          <p className="label">AI assistants by domain, 7 d</p>
+          <p className="label">{`AI assistants by domain, ${w.label}`}</p>
           {aiDomains.length > 0 ? (
             <table className="data mt-2">
               <tbody>
@@ -205,14 +213,14 @@ export default async function Overview({ searchParams }: { searchParams: Promise
           )}
         </div>
         <div className="panel p-4">
-          <p className="label">Sections, 7 d (page visits)</p>
+          <p className="label">{`Sections, ${w.label} (page visits)`}</p>
           {sections.length > 0 ? (
             <Bars rows={sections.slice(0, 10).map((s) => ({ label: SECTION_LABEL[s.section], value: s.visitors, hint: `· ${s.pages} pages` }))} />
           ) : (
             <Empty text="No page data yet." />
           )}
           <p className="mt-3 text-[11px]" style={{ color: "var(--faint)" }}>
-            Page visits sum per-page visitors; a visitor who saw two pages of a section counts twice. <Link href="/pages" className="underline">Pages</Link> has the per-page table.
+            Page visits sum per-page visitors; a visitor who saw two pages of a section counts twice. <Link href={withWindow("/pages", w)} className="underline">Pages</Link> has the per-page table.
           </p>
         </div>
       </section>

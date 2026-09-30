@@ -2,7 +2,8 @@ import { FrequencyPanel, RetentionGrid } from "@/components/retention";
 import { Shell } from "@/components/shell";
 import { Bars, Delta, Empty, fmtInt, fmtPct, Kpi, Lines } from "@/components/ui";
 import { SECTION_LABEL } from "@/lib/channels";
-import { readSnapshot } from "@/lib/snapshot";
+import { parseWindow, withWindow } from "@/lib/window";
+import { readSnapshot, trafficFor } from "@/lib/snapshot";
 
 const fmtMs = (v: number) => (v >= 1000 ? `${(v / 1000).toFixed(2)} s` : `${Math.round(v)} ms`);
 const fmtSec = (v: number) => (v >= 60 ? `${Math.floor(v / 60)} min ${Math.round(v % 60)} s` : `${Math.round(v)} s`);
@@ -64,9 +65,10 @@ function kpiSeries(t: { audienceDaily?: { day: string; visitors: number; newVisi
   return [...acc.entries()].map(([bucket, v]) => ({ bucket, value: v.num }));
 }
 
-export default async function AudiencePage({ searchParams }: { searchParams: Promise<{ refresh?: string; range?: string; kpi?: string; g?: string }> }) {
+export default async function AudiencePage({ searchParams }: { searchParams: Promise<{ refresh?: string; range?: string; kpi?: string; g?: string; w?: string }> }) {
   const [snap, sp] = await Promise.all([readSnapshot(), searchParams]);
-  const t = snap.traffic;
+  const w = parseWindow(sp.w);
+  const t = trafficFor(snap, w.key);
   const a = t.audience;
   const active = a?.activeVisitors ?? 0;
   const firstDay = t.daily?.[0]?.day ?? null;
@@ -75,8 +77,8 @@ export default async function AudiencePage({ searchParams }: { searchParams: Pro
   const detail = kpi ? kpiSeries(t, kpi, grain) : [];
   const detailShown = grain === "day" ? detail.slice(-28) : detail;
   const fmtVal = (v: number) => (kpi === "bounce" ? fmtPct(v) : fmtInt(v));
-  const kpiHref = (k: Kpi) => `/audience?kpi=${k}&g=${grain}${sp.range ? `&range=${sp.range}` : ""}`;
-  const grainHref = (g: Grain) => `/audience?kpi=${kpi}&g=${g}${sp.range ? `&range=${sp.range}` : ""}`;
+  const kpiHref = (k: Kpi) => withWindow(`/audience?kpi=${k}&g=${grain}${sp.range ? `&range=${sp.range}` : ""}`, w);
+  const grainHref = (g: Grain) => withWindow(`/audience?kpi=${kpi}&g=${g}${sp.range ? `&range=${sp.range}` : ""}`, w);
   const range = sp.range === "all" ? "all" : "28";
   const surfacesAll = t.surfaces ?? [];
   const surfaces = range === "all" ? surfacesAll : surfacesAll.slice(-28);
@@ -91,15 +93,15 @@ export default async function AudiencePage({ searchParams }: { searchParams: Pro
   const referrers = (t.referrers ?? []).filter((r) => r.channel !== "direct" && r.channel !== "internal" && (r.visitors > 0 || r.prevVisitors > 0)).slice(0, 40);
 
   return (
-    <Shell current="/audience" snapshot={snap} refreshFlag={sp.refresh}>
+    <Shell current="/audience" snapshot={snap} refreshFlag={sp.refresh} window={w}>
       <section className="grid grid-cols-2 gap-3 md:grid-cols-5">
         {(
           [
-            ["visitors", "Active visitors, 7 d", fmtInt(active), "click for the daily series"],
-            ["new", "New visitors, 7 d", fmtInt(a?.newVisitors), active > 0 && a ? `${fmtPct(a.newVisitors / active)} of active, first pageview in the window` : undefined],
-            ["returning", "Returning visitors, 7 d", fmtInt(a?.returningVisitors), active > 0 && a ? `${fmtPct(a.returningVisitors / active)} of active, seen on an earlier day` : "seen on an earlier day"],
-            ["sessions", "Sessions, 7 d", fmtInt(t.engagement?.sessions), undefined],
-            ["bounce", "Bounce rate, 7 d", fmtPct(t.engagement?.bounceRate), "single-pageview sessions"],
+            ["visitors", `Active visitors, ${w.label}`, fmtInt(active), "click for the daily series"],
+            ["new", `New visitors, ${w.label}`, fmtInt(a?.newVisitors), active > 0 && a ? `${fmtPct(a.newVisitors / active)} of active, first pageview in the window` : undefined],
+            ["returning", `Returning visitors, ${w.label}`, fmtInt(a?.returningVisitors), active > 0 && a ? `${fmtPct(a.returningVisitors / active)} of active, seen on an earlier day` : "seen on an earlier day"],
+            ["sessions", `Sessions, ${w.label}`, fmtInt(t.engagement?.sessions), undefined],
+            ["bounce", `Bounce rate, ${w.label}`, fmtPct(t.engagement?.bounceRate), "single-pageview sessions"],
           ] as const
         ).map(([k, label, value, sub]) => (
           <a key={k} href={kpi === k ? `/audience${sp.range ? `?range=${sp.range}` : ""}` : kpiHref(k)} className="block" style={kpi === k ? { outline: "1px solid var(--accent)", borderRadius: 8 } : undefined}>
@@ -160,9 +162,9 @@ export default async function AudiencePage({ searchParams }: { searchParams: Pro
             Reads per surface, daily{firstDay ? `, since ${firstDay}` : ""} ({surfaces.length} d{logScale ? ", log scale" : ""})
           </p>
           <p className="text-xs" style={{ color: "var(--muted)" }}>
-            <a href="/audience?range=28" style={{ color: range === "28" ? "var(--ink)" : undefined }}>28 d</a>
+            <a href={withWindow("/audience?range=28", w)} style={{ color: range === "28" ? "var(--ink)" : undefined }}>28 d</a>
             {" · "}
-            <a href="/audience?range=all" style={{ color: range === "all" ? "var(--ink)" : undefined }}>all ({surfacesAll.length} d, up to 90)</a>
+            <a href={withWindow("/audience?range=all", w)} style={{ color: range === "all" ? "var(--ink)" : undefined }}>all ({surfacesAll.length} d, up to 90)</a>
           </p>
         </div>
         {surfaces.length > 1 ? (
@@ -190,7 +192,7 @@ export default async function AudiencePage({ searchParams }: { searchParams: Pro
 
       <section className="mt-6 grid gap-3 md:grid-cols-[3fr_2fr]">
         <div className="panel p-4">
-          <p className="label">Endpoints read by agents, 7 d</p>
+          <p className="label">{`Endpoints read by agents, ${w.label}`}</p>
           {t.endpoints && t.endpoints.some((e) => e.reads > 0) ? (
             <table className="data mt-2">
               <thead>
@@ -198,7 +200,7 @@ export default async function AudiencePage({ searchParams }: { searchParams: Pro
                   <th>Surface</th>
                   <th>Path</th>
                   <th className="num">Reads</th>
-                  <th className="num">vs prev 7 d</th>
+                  <th className="num">vs prev {w.label}</th>
                   <th className="num">Agents</th>
                   <th>Top families</th>
                 </tr>
@@ -230,7 +232,7 @@ export default async function AudiencePage({ searchParams }: { searchParams: Pro
           )}
         </div>
         <div className="panel p-4">
-          <p className="label">Agent families, 7 d (server reads)</p>
+          <p className="label">{`Agent families, ${w.label} (server reads)`}</p>
           {families.length > 0 ? <Bars rows={families} /> : <Empty text="No server-side read yet on production." />}
           <p className="mt-3 text-[11px]" style={{ color: "var(--faint)" }}>
             Family is a coarse user-agent bucket (gptbot, claudebot, perplexitybot, googlebot, curl, python, browser). Distinct agents are counted per user agent per day, never per IP.
@@ -248,7 +250,7 @@ export default async function AudiencePage({ searchParams }: { searchParams: Pro
 
       <section className="mt-6 grid gap-3 md:grid-cols-2">
         <div className="panel p-4">
-          <p className="label">Countries, 7 d</p>
+          <p className="label">{`Countries, ${w.label}`}</p>
           {t.countries && t.countries.length > 0 ? (
             <Bars rows={t.countries.slice(0, 15).map((c) => ({ label: c.name, value: c.visitors, hint: `· ${fmtPct(c.share)}` }))} />
           ) : (
@@ -256,13 +258,13 @@ export default async function AudiencePage({ searchParams }: { searchParams: Pro
           )}
         </div>
         <div className="panel p-4">
-          <p className="label">Devices, 7 d</p>
+          <p className="label">{`Devices, ${w.label}`}</p>
           {t.devices && t.devices.length > 0 ? (
             <Bars rows={t.devices.map((d) => ({ label: d.name, value: d.visitors, hint: `· ${fmtPct(d.share)}` }))} />
           ) : (
             <Empty text="No device data yet." />
           )}
-          <p className="label mt-6">UTM sources, 7 d</p>
+          <p className="label mt-6">{`UTM sources, ${w.label}`}</p>
           {t.utm && t.utm.length > 0 ? (
             <table className="data mt-2">
               <tbody>
@@ -283,7 +285,7 @@ export default async function AudiencePage({ searchParams }: { searchParams: Pro
 
       <section className="mt-6 grid gap-3 md:grid-cols-2">
         <div className="panel p-4">
-          <p className="label">Core Web Vitals, 7 d (p75, by device)</p>
+          <p className="label">{`Core Web Vitals, ${w.label} (p75, by device)`}</p>
           {t.vitals && t.vitals.length > 0 ? (
             <table className="data mt-2">
               <thead>
@@ -317,7 +319,7 @@ export default async function AudiencePage({ searchParams }: { searchParams: Pro
           </p>
         </div>
         <div className="panel p-4">
-          <p className="label">Time on page by section, 7 d (median of leaves)</p>
+          <p className="label">{`Time on page by section, ${w.label} (median of leaves)`}</p>
           {t.engaged && t.engaged.length > 0 ? (
             <table className="data mt-2">
               <thead>
@@ -367,7 +369,7 @@ export default async function AudiencePage({ searchParams }: { searchParams: Pro
       </section>
 
       <section className="panel mt-6 p-4">
-        <p className="label">Referring domains, 7 d (direct and internal excluded)</p>
+        <p className="label">{`Referring domains, ${w.label} (direct and internal excluded)`}</p>
         {referrers.length > 0 ? (
           <table className="data mt-2">
             <thead>

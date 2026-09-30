@@ -3,8 +3,8 @@ import { Budget, POSTHOG_ORG_LIMIT_PER_HOUR, readBudgetLimit } from "../lib/post
 
 describe("budget", () => {
   test("limit from env, clamped to PostHog's organisation limit", () => {
-    expect(readBudgetLimit(undefined)).toBe(300);
-    expect(readBudgetLimit("abc")).toBe(300);
+    expect(readBudgetLimit(undefined)).toBe(500);
+    expect(readBudgetLimit("abc")).toBe(500);
     expect(readBudgetLimit("50")).toBe(50);
     expect(readBudgetLimit("0")).toBe(1);
     expect(readBudgetLimit("99999")).toBe(POSTHOG_ORG_LIMIT_PER_HOUR);

@@ -25,6 +25,7 @@ export function Metric({
   delta,
   sub,
   unit,
+  prevLabel = "previous 7 d",
 }: {
   label: string;
   value: string;
@@ -32,6 +33,9 @@ export function Metric({
   delta?: { now: number; prev: number };
   sub?: string;
   unit?: string;
+  /** What the delta compares against. Follows the reporting window, so a
+   *  24 h card never claims to be measured against the previous week. */
+  prevLabel?: string;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDialogElement | null>(null);
@@ -60,7 +64,7 @@ export function Metric({
         <p className="mt-0.5 text-xs" style={{ color: "var(--muted)" }}>
           {delta && (
             <>
-              <Delta now={delta.now} prev={delta.prev} /> vs previous 7 d{sub ? " · " : ""}
+              <Delta now={delta.now} prev={delta.prev} /> vs {prevLabel}{sub ? " · " : ""}
             </>
           )}
           {sub}
