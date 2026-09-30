@@ -111,13 +111,21 @@ func priceEverything(cat *Catalogue) {
 					q := cheapest(cat, p, pr, b.Requests, filter)
 					if !q.Eligible {
 						if tier == "all" {
-							eligible.WithLabelValues(p.Slug, pr.ID, b.ID).Set(0)
+							for _, ka := range aliasesFor(pr.ID, headlineKind) {
+								for _, ba := range aliasesFor(b.ID, headlineBucket) {
+									eligible.WithLabelValues(p.Slug, ka, ba).Set(0)
+								}
+							}
 							log.Printf("%s %s @%s: not ranked (%s)", p.Slug, pr.ID, b.ID, q.Reason)
 						}
 						continue
 					}
 					if tier == "all" {
-						eligible.WithLabelValues(p.Slug, pr.ID, b.ID).Set(1)
+						for _, ka := range aliasesFor(pr.ID, headlineKind) {
+							for _, ba := range aliasesFor(b.ID, headlineBucket) {
+								eligible.WithLabelValues(p.Slug, ka, ba).Set(1)
+							}
+						}
 						if cohort == "usage" && pr.ID == "simple-read" && b.ID == "1000m" && q.PerMillionUSD < meteredFloor {
 							meteredFloor = q.PerMillionUSD
 						}
@@ -125,8 +133,20 @@ func priceEverything(cat *Catalogue) {
 					if tier == "all" {
 						planConfidence.WithLabelValues(p.Slug, q.Plan, pr.ID, b.ID).Set(boolGauge(q.Confidence == "verified"))
 					}
-					costMonthly.WithLabelValues(p.Slug, q.Plan, pr.ID, b.ID, pr.Chain, cohort, tier).Set(q.MonthlyUSD)
-					costPerMillion.WithLabelValues(p.Slug, q.Plan, pr.ID, b.ID, pr.Chain, cohort, tier).Set(q.PerMillionUSD)
+					// The site's unfiltered view selects `kind="all"` and
+					// `bucket="all"` and REPLACES those matchers when a reader
+					// picks a tab (injectLabels treats a pinned "all" as the
+					// pooled form). Pooling a cost across profiles and volumes
+					// would be meaningless -- averaging a $24 bill with a
+					// $10,500 one -- so the pooled series is the headline
+					// slice instead, and the dimension labels on the page name
+					// it honestly rather than saying "all".
+					for _, ka := range aliasesFor(pr.ID, headlineKind) {
+						for _, ba := range aliasesFor(b.ID, headlineBucket) {
+							costMonthly.WithLabelValues(p.Slug, q.Plan, ka, ba, pr.Chain, cohort, tier).Set(q.MonthlyUSD)
+							costPerMillion.WithLabelValues(p.Slug, q.Plan, ka, ba, pr.Chain, cohort, tier).Set(q.PerMillionUSD)
+						}
+					}
 				}
 			}
 		}
@@ -183,6 +203,16 @@ func envDefault(key, fallback string) string {
 		return v
 	}
 	return fallback
+}
+
+// aliasesFor returns the label values a series should be published under:
+// its own, plus "all" when it is the headline slice the unfiltered view
+// selects.
+func aliasesFor(value, headline string) []string {
+	if value == headline {
+		return []string{value, "all"}
+	}
+	return []string{value}
 }
 
 func boolGauge(b bool) float64 {
