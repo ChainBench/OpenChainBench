@@ -120,4 +120,12 @@ var Buckets = []struct {
 // says so rather than hiding it behind a paid leaderboard.
 var PlanTiers = []string{"paid", "all", "free", "entry", "growth", "business", "enterprise"}
 
+// The slice the site's unfiltered view shows: a dapp method mix at a
+// hundred million requests a month, which is the most common shape in
+// the cohort and sits in the middle of the volume range.
+const (
+	headlineKind   = "dapp"
+	headlineBucket = "100m"
+)
+
 const daysPerMonth = 30 // stated, not assumed: every derived figure uses it
