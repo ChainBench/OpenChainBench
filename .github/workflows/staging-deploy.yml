@@ -97,14 +97,15 @@ jobs:
       # On production that reasoning holds. On staging it does not: a
       # staging deploy is read by one reviewer opening a handful of pages,
       # and there were 17 staging deploys in the two days to 2026-09-30,
-      # so the step was paying for about 3,100 cold renders a week that
+      # so the step was paying for about 3,100 cold renders every two days
       # nobody was waiting on. Each one queries Prometheus and rebuilds a
       # heavy page, which showed up as the two largest lines on the Vercel
       # bill, Fluid provisioned memory and active CPU.
       #
       # The cost of not warming is that the reviewer's first page load is
       # slow once, which is the correct trade on a review surface.
-      # Production keeps its warm-up.
+      # Production warms its hubs only, trimmed the same day for the same
+      # reason; see prod-deploy.yml.
 
       - name: Comment summary
         run: |
