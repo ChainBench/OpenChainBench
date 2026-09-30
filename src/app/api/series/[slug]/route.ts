@@ -174,7 +174,7 @@ export const dynamic = "force-dynamic";
  *
  * Consumer: the OpenChainBench Export Video modal, which needs honest
  * trajectories to drive race compositions. Designed to be cacheable at
- * the CDN edge (60s s-maxage, 300s swr) — the data underneath only
+ * the CDN edge (300s s-maxage, 900s swr): the data underneath only
  * refreshes when the spec loader re-runs.
  */
 
@@ -389,7 +389,11 @@ export async function GET(
     },
     {
       headers: {
-        "cache-control": "public, s-maxage=60, stale-while-revalidate=300",
+        // 300 s matches both caches underneath: getSeriesMapCached above
+        // (revalidate 300) and the slim bench read (src/lib/spec.ts, 300).
+        // A shorter edge window only bought repeated recomputation of an
+        // identical body.
+        "cache-control": "public, s-maxage=300, stale-while-revalidate=900",
         "access-control-allow-origin": "*",
       },
     },

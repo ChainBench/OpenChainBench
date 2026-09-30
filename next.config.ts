@@ -183,11 +183,19 @@ const nextConfig: NextConfig = {
         headers: [{ key: "X-Robots-Tag", value: "noindex" }],
       },
       {
-        // Citable JSON is polled by LLM crawlers (Perplexity, ChatGPT,
-        // Claude Deep Research) — a bare `public` with no s-maxage sent
-        // every scrape to origin. Sitemap's Cache-Control is set inside
-        // its route.ts (`src/app/sitemap.xml/route.ts`) because metadata
-        // routes ignore next.config headers().
+        // INERT, kept as a record of intent. Citable JSON is polled by
+        // LLM crawlers (Perplexity, ChatGPT, Claude Deep Research) and
+        // this rule was added to put it behind an hour-long edge cache.
+        // It does not: a config header does not override a Cache-Control
+        // the route handler sets on its own response, and
+        // src/app/api/citable/route.ts sets one. Sampled every 45 s on
+        // 2026-09-30, the edge entry for /api/citable went STALE at age
+        // 306 and reset to 42, then went STALE again at 313: two clean
+        // cycles, so the served window is that route's 300 s and not a
+        // one-off eviction. Change the window in the route, not here. Sitemap's
+        // Cache-Control is likewise set inside its route.ts
+        // (`src/app/sitemap.xml/route.ts`) because metadata routes
+        // ignore next.config headers().
         source: "/api/citable",
         headers: [
           {

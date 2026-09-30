@@ -44,8 +44,10 @@ export async function GET(req: Request) {
   if (!r.ok) return tooManyRequests(r.retryAfterSec);
   // After the canonical redirect and the limiter: a 308 is not a read, and
   // a query-rotating client must meet the limiter before it can queue
-  // events. The document sits behind a one-hour edge cache, so this counts
-  // cache fills, not every read (review 2026-09-24).
+  // events. The document sits behind an edge cache, so this counts cache
+  // fills, not every read (review 2026-09-24). That cache is five
+  // minutes, not the hour this comment used to claim: see the header at
+  // the bottom of this file for the measurement.
   captureServer(req, "citable_read", { path: "/api/citable" });
 
   let benches;
@@ -151,6 +153,18 @@ export async function GET(req: Request) {
       answers: answerRows,
     },
     {
+      // This header, not the `headers()` rule in next.config.ts, is what
+      // production serves. That rule matches source "/api/citable" and
+      // asks for s-maxage=3600, but a config header does not override a
+      // Cache-Control the handler sets itself: sampled every 45 s on
+      // 2026-09-30, the edge entry went STALE at age 306 and reset to
+      // 42, then climbed and went STALE again at 313. Two clean cycles,
+      // so this is the window and not a one-off eviction; it is the
+      // 300 s below. The rule is inert; see the
+      // note on it in next.config.ts. 300 s is also the TTL of the bench
+      // data cache this reads through, so it is the right number
+      // regardless. Raising it is a freshness call on the endpoint LLMs
+      // cite most, not a caching one, so it is left alone here.
       headers: {
         "cache-control": "public, s-maxage=300, stale-while-revalidate=900",
         "access-control-allow-origin": "*",

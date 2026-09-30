@@ -94,7 +94,12 @@ export async function GET(
 
   return NextResponse.json(payload, {
     headers: {
-      "cache-control": "public, s-maxage=60, stale-while-revalidate=300",
+      // 300 s: the worker republishes variant blobs every VARIANT_EVERY
+      // sweeps (worker/index.ts, 5 x 60 s = 300 s) and the loader caches
+      // them for 300 s on top. Nothing downstream could observe a change
+      // faster than that, so a 60 s edge window was five recomputations
+      // of the same bytes per publish.
+      "cache-control": "public, s-maxage=300, stale-while-revalidate=900",
       Vary: "Accept-Encoding",
     },
   });

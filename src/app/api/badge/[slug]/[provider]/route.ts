@@ -6,7 +6,11 @@
  *
  * Returns an SVG showing the provider's current rank + headline figure
  * on that bench. Cache-Control is short so the figure refreshes within
- * a few minutes of a new run.
+ * a few minutes of a new run: 300 s, the TTL of the bench data cache
+ * getBenchmark reads through (src/lib/spec.ts), so a tighter window
+ * could not have surfaced a newer rank anyway. The "measurement
+ * pending" placeholder deliberately keeps a shorter window; see the
+ * note on placeholderSvg.
  *
  * The optional `?chain=` / `?region=` query params scope the rank
  * computation. When the bench carries exact per-cell rankings (from its
@@ -421,6 +425,13 @@ function placeholderSvg(benchTitle: string): NextResponse {
     headers: {
       "Content-Type": "image/svg+xml; charset=utf-8",
       Vary: "Accept, Accept-Encoding",
+      // Stays at 60 s while the real badge sits at 300 s, on purpose. The
+      // asymmetry is the point: a rank that is five minutes old is a
+      // slightly stale number, but "Measurement pending" once data exists
+      // is a wrong claim rendered in someone else's README, and the
+      // browser max-age adds to the edge window before they see it fixed.
+      // Nothing is saved by lengthening it either, since a provider with
+      // no measurement is the rare path.
       "Cache-Control":
         "public, max-age=60, s-maxage=60, stale-while-revalidate=300",
     },
