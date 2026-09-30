@@ -107,15 +107,11 @@ var Buckets = []struct {
 	{"1000m", 1000e6},
 }
 
-// PlanTiers is the plan-band axis. "all" is the unrestricted view (the
-// cheapest plan of any tier) and is the bench's default; the rest answer
+// PlanTiers is the plan-band axis; every tab other than `all` answers
 // "which provider is cheapest if I am shopping at this budget level".
-// Free is scored here too — it costs $0 wherever it is eligible — but
-// the useful free-tier ranking is rpc_free_allowance_requests, since
-// every free plan ties at zero.
-// The plan-band axis. `all` is the value the bench's queries pin, and the
-// site replaces it when a reader picks a tab, so it has to carry the
-// default view: the cheapest PAID plan. Including free tiers there would
+// `all` is the value the bench's queries pin and the site replaces it
+// when a reader picks a tab, so it has to carry the default view: the
+// cheapest PAID plan. Including free tiers there would
 // hand the leaderboard to the $0 rows at the smallest volume and hide the
 // comparison readers came for; the `free` tab answers that question on
 // its own axis (rpc_free_allowance_requests), where it belongs.

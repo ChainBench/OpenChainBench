@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"math"
@@ -50,7 +51,7 @@ const (
 	// PoolManager ERC-6909 Transfer(caller, from indexed, to indexed,
 	// id indexed, amount): how a v4 hook takes its cut without moving
 	// an ERC20. Four topics, two words of data.
-	topicV4Claim  = "0x1b3d7edb2e9c0b0e7c525b20aaaef0f5940d2ed71663c7d39266ecafac728859"
+	topicV4Claim = "0x1b3d7edb2e9c0b0e7c525b20aaaef0f5940d2ed71663c7d39266ecafac728859"
 	// A hook that logs its own fee rather than minting a claim. Read off
 	// chain on an Axiom sale where it took exactly 1.000 % of the swap:
 	// two topics, three data words, the amount in word 1 (word 0 is 0).
@@ -82,6 +83,11 @@ type evmTx struct {
 
 // evmCall runs one JSON-RPC call against the chain's public endpoints in
 // order; the first one that answers with a result wins.
+// evmReadCap bounds one JSON-RPC response. 8 MiB was not enough for a
+// dense 400-block log window on BNB; 32 MiB is, with room, and a body
+// that still reaches it is reported as such rather than as bad JSON.
+const evmReadCap = 32 << 20
+
 func evmCall(ctx context.Context, httpc *http.Client, urls []string, method string, params []any, out any) error {
 	body, _ := json.Marshal(map[string]any{"jsonrpc": "2.0", "id": 1, "method": method, "params": params})
 	var last error = errors.New("no endpoint")
@@ -97,18 +103,53 @@ func evmCall(ctx context.Context, httpc *http.Client, urls []string, method stri
 			last = errors.New(redactURL(err.Error(), url))
 			continue
 		}
-		data, _ := io.ReadAll(io.LimitReader(resp.Body, 8<<20))
+		data, _ := io.ReadAll(io.LimitReader(resp.Body, evmReadCap))
 		resp.Body.Close()
+		if len(data) >= evmReadCap {
+			// A body cut at the cap is not a JSON error, it is a range too
+			// dense for one call: a 400-block window over fifteen routers
+			// near BNB's head ran past 8 MiB, read as "unparseable body",
+			// and the feed took that for a node outage and held its cursor
+			// on the same window poll after poll. Named, so the caller can
+			// narrow the range instead.
+			// Returned at once: every endpoint would send the same body,
+			// and the loop would otherwise hand back whatever the last
+			// fallback said about the same range — a 429 or a "Request
+			// blocked" that reads as an outage, cursor held on the same
+			// window every poll.
+			return fmt.Errorf("response truncated at %d bytes: narrow the range", evmReadCap)
+		}
 		var env struct {
 			Result json.RawMessage `json:"result"`
 			Error  *rpcError       `json:"error"`
 		}
-		if json.Unmarshal(data, &env) != nil || env.Error != nil || len(env.Result) == 0 || string(env.Result) == "null" {
-			if env.Error != nil {
-				last = errors.New(env.Error.Message)
-			} else {
-				last = errors.New("empty result")
-			}
+		// An HTTP status the caller never saw is how a refusal became a
+		// quiet range. This read no status at all and turned any body it
+		// could not parse into "empty result", which the log walk treats
+		// as "this pool had no trade here" — and from the VPS the last
+		// endpoint in Ethereum's list answers 403 with the plain text
+		// "forbidden", so every failure ended up wearing that label. A
+		// v4 reference then walked back past 54 swaps and priced a sell
+		// 20 hours stale, published as -952 bps against a true +388.
+		// Reproduced from the same host: 2 replays in 30 return exactly
+		// the sqrtPriceX96 that was published.
+		if err := json.Unmarshal(data, &env); err != nil {
+			last = fmt.Errorf("http %d, unparseable body (%d bytes)", resp.StatusCode, len(data))
+			continue
+		}
+		if env.Error != nil {
+			last = errors.New(env.Error.Message)
+			continue
+		}
+		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+			last = fmt.Errorf("http %d", resp.StatusCode)
+			continue
+		}
+		// A JSON-RPC null is a real answer only for a lookup; for a list
+		// it is the node declining. An empty array is not this: it parses
+		// to a non-zero Result and means the range was genuinely quiet.
+		if len(env.Result) == 0 || string(env.Result) == "null" {
+			last = errors.New("empty result")
 			continue
 		}
 		return json.Unmarshal(env.Result, out)
@@ -157,16 +198,42 @@ func hookClaimUSD(ctx context.Context, httpc *http.Client, c originChain, logs [
 		}
 		total += f(word(l.Data, 1)) * math.Pow10(-m.dec) * u
 	}
-	// The same hook, logging its fee instead of minting a claim. The
-	// amount is in the pool's own currency, the gas coin on the rows this
-	// was found on, so it values like any native leg.
-	if p, ok := gas[c.gas]; ok && p > 0 {
+	// The same hook, logging its fee instead of minting a claim. The event
+	// is (address currency, uint256 protocolFee, uint256 creatorFee), and
+	// this had read the second word alone as wei of the gas coin — wrong
+	// twice over. It missed the creator cut, a median two thirds of what
+	// the hook charged, which stayed in the residual and published as the
+	// app's fee: that is how routers charging 1 % came to read 295 to 494
+	// bps. And on a fee taken in the traded token it valued that token's
+	// raw units at the gas coin's price with eighteen decimals assumed,
+	// which put 30,560,853 dollars of pool on a 53 dollar trade, 43 rows
+	// of it in the window.
+	//
+	// Word 0 is the currency: zero for native, otherwise the token. A fee
+	// in a token we cannot price is left out rather than guessed at, the
+	// same choice the claim branch above makes.
+	{
+		gp, gok := gas[c.gas]
 		for i := range logs {
 			l := &logs[i]
 			if len(l.Topics) == 0 || l.Topics[0] != topicV4HookFee || len(l.Data) < 2+3*64 {
 				continue
 			}
-			total += f(word(l.Data, 1)) / 1e18 * p
+			cur := "0x" + strings.ToLower(strings.TrimPrefix(l.Data, "0x")[24:64])
+			amt := f(word(l.Data, 1)) + f(word(l.Data, 2))
+			if cur == zero {
+				if !gok || gp <= 0 {
+					continue
+				}
+				total += amt / 1e18 * gp
+				continue
+			}
+			m := erc20(ctx, httpc, c, cur)
+			u, ok := quoteUSD(m.symbol, c, gas)
+			if !m.ok || !ok {
+				continue // a fee in the traded token: not a quote-side cost we can value
+			}
+			total += amt * math.Pow10(-m.dec) * u
 		}
 	}
 	return total
@@ -326,6 +393,47 @@ func isNativeMirror(chain, erc string) bool {
 	return ok && m[strings.ToLower(erc)]
 }
 
+// arcTwins: the pseudo-token Transfers of a receipt that repeat a
+// 6-decimal USDC Transfer (same sender, same receiver, amount × 10^12),
+// by log index. Arc logs a router paying its user in USDC both ways when
+// the router holds the token and once, as the pseudo-token alone, when
+// it pays native: GMGN's second router did the former, and the user's
+// take on a sale read twice (26.31 received on a pool that paid 13.29,
+// −8,989 bps, out of bounds). tx.value says nothing about that leg, so
+// the twin is found in the receipt itself.
+func arcTwins(chain string, logs []evmLog) map[int]bool {
+	if chain != "arc" {
+		return nil
+	}
+	seen := map[string]bool{}
+	for i := range logs {
+		l := &logs[i]
+		if len(l.Topics) != 3 || l.Topics[0] != topicTransfer || strings.ToLower(l.Address) != arcUSDC {
+			continue
+		}
+		seen[topicAddr(l.Topics[1])+"|"+topicAddr(l.Topics[2])+"|"+word(l.Data, 0).String()] = true
+	}
+	if len(seen) == 0 {
+		return nil
+	}
+	scale := new(big.Int).Exp(big.NewInt(10), big.NewInt(12), nil)
+	twins := map[int]bool{}
+	for i := range logs {
+		l := &logs[i]
+		if len(l.Topics) != 3 || l.Topics[0] != topicTransfer || strings.ToLower(l.Address) != arcPseudo {
+			continue
+		}
+		amt := word(l.Data, 0)
+		if new(big.Int).Mod(amt, scale).Sign() != 0 {
+			continue
+		}
+		if seen[topicAddr(l.Topics[1])+"|"+topicAddr(l.Topics[2])+"|"+new(big.Int).Div(amt, scale).String()] {
+			twins[i] = true
+		}
+	}
+	return twins
+}
+
 // nativeV4Quote: a v4 pool holds the gas coin itself, so a swap against
 // ETH logs no ERC20 transfer for the quote leg. When no ERC20 flow of the
 // manager matches the quote (to 0.5 %), the quote is the gas coin at the
@@ -364,6 +472,69 @@ func (c originChain) logsSpan() int64 {
 
 // quoteUSD prices a quote token: stables at $1, wrapped gas coins at the
 // Coinbase spot of the chain's gas token.
+// routeGasRate: USD per raw unit of the gas coin, read from the route's
+// own conversion of it in this transaction — the counterparty it sent
+// exactly this amount to, and the stable that came back from the same
+// address. The hop is not always a swap event we parse (HyperEVM's
+// WHYPE/USDC leg emits its own), so the transfers are what can be
+// relied on.
+//
+// Accepted only within a tenth of the exchange's price: this corrects
+// the basis between a print on another venue and the rate the user's own
+// route got, it does not invent a price. Off by 21 bps on a HyperEVM
+// sale, which is more than that row's whole loss and published a pool of
+// −12 bps.
+func routeGasRate(ctx context.Context, httpc *http.Client, c originChain, logs []evmLog, gas map[string]float64, erc string, amount *big.Int, exchange float64) (float64, bool) {
+	var a, b string
+	for i := range logs {
+		l := &logs[i]
+		if len(l.Topics) != 3 || l.Topics[0] != topicTransfer || strings.ToLower(l.Address) != erc {
+			continue
+		}
+		if word(l.Data, 0).Cmp(amount) == 0 {
+			a, b = topicAddr(l.Topics[1]), topicAddr(l.Topics[2])
+		}
+	}
+	if a == "" || b == "" || a == b {
+		return 0, false
+	}
+	for i := range logs {
+		l := &logs[i]
+		if len(l.Topics) != 3 || l.Topics[0] != topicTransfer {
+			continue
+		}
+		if topicAddr(l.Topics[1]) != b || topicAddr(l.Topics[2]) != a {
+			continue
+		}
+		m := erc20(ctx, httpc, c, strings.ToLower(l.Address))
+		u, ok := quoteUSD(m.symbol, c, gas)
+		if !m.ok || !ok || isGasCoin(m.symbol) {
+			continue
+		}
+		back := f(word(l.Data, 0)) * math.Pow10(-m.dec) * u
+		if back <= 0 || f(amount) <= 0 {
+			continue
+		}
+		r := back / f(amount)
+		if exchange > 0 && (r/exchange < 0.9 || r/exchange > 1.1) {
+			continue
+		}
+		return r, true
+	}
+	return 0, false
+}
+
+// isGasCoin: a symbol quoteUSD prices from the exchange rather than at a
+// dollar. Its price is a print from another venue; a stable's is the unit
+// the user was actually paid in.
+func isGasCoin(sym string) bool {
+	switch sym {
+	case "WETH", "ETH", "WBNB", "BNB", "WHYPE", "HYPE":
+		return true
+	}
+	return false
+}
+
 func quoteUSD(sym string, c originChain, gas map[string]float64) (float64, bool) {
 	switch sym {
 	case "USDC", "USDT", "USDG", "USD1", "DAI", "USDS", "USDE", "PYUSD", "USDC.E", "USDBC", "FDUSD", "USDH":
@@ -996,6 +1167,15 @@ func priceEvmOriginSale(ctx context.Context, httpc *http.Client, c originChain, 
 	// in and paid a priced asset out).
 	var usdPerRaw func(ev *swapEv, quoteRaw *big.Int, depth int) (float64, int, bool)
 	usdPerRaw = func(ev *swapEv, quoteRaw *big.Int, depth int) (float64, int, bool) {
+		// A pool quoted in the wrapped gas coin, on a route that sells it
+		// on for a stable in the same transaction, is valued at that hop's
+		// own rate rather than at the exchange print: the user was paid in
+		// the stable, and the difference between the two prices is basis,
+		// not a cost the trade incurred. A HyperEVM sale through a WHYPE
+		// pool carried 21 bps of it — more than the whole loss on the row,
+		// which published a pool of −12 bps. Held here, used below if no
+		// hop prices the leg.
+		gasRate := 0.0
 		// The priced ERC20 whose outflow equals the quote first (Arc logs
 		// the same USDC move twice, 6-decimal token and 18-decimal native
 		// pseudo-token: only one matches the event).
@@ -1013,11 +1193,23 @@ func priceEvmOriginSale(ctx context.Context, httpc *http.Client, c originChain, 
 					continue
 				}
 				if amt.Cmp(quoteRaw) >= 0 || ev.kind != "v4" {
-					return q * math.Pow10(-qm.dec), 0, true
+					rate := q * math.Pow10(-qm.dec)
+					if !isGasCoin(qm.symbol) {
+						return rate, 0, true
+					}
+					if r, ok := routeGasRate(ctx, httpc, c, rc.Logs, gas, erc, amt, rate); ok {
+						return r, 1, true
+					}
+					if gasRate == 0 {
+						gasRate = rate
+					}
 				}
 			}
 		}
 		if depth >= 2 {
+			if gasRate > 0 {
+				return gasRate, 0, true
+			}
 			return 0, 0, false
 		}
 		for pass := 0; pass < 2; pass++ {
@@ -1034,6 +1226,9 @@ func priceEvmOriginSale(ctx context.Context, httpc *http.Client, c originChain, 
 					}
 				}
 			}
+		}
+		if gasRate > 0 {
+			return gasRate, 0, true // no hop sold it on: the exchange's price stands
 		}
 		if u, ok := nativeV4Quote(c, gas, ev, quoteRaw, outOfPool[ev.pool]); ok {
 			return u, 0, true
@@ -1406,7 +1601,15 @@ func prevSqrtPrice(ctx context.Context, httpc *http.Client, c originChain, pool,
 			from = 0
 		}
 		var part []evmLog
-		if err := evmCall(ctx, httpc, c.logsRPC(), "eth_getLogs", []any{map[string]any{"address": pool, "topics": topics, "fromBlock": "0x" + big.NewInt(from).Text(16), "toBlock": "0x" + big.NewInt(to).Text(16)}}, &part); err != nil && !strings.Contains(err.Error(), "empty result") {
+		// Any error is the chunk's error, "empty result" included. That
+		// string used to be exempt, on the theory that a null result meant
+		// a quiet range — and evmCall then handed the same string to any
+		// body it could not parse, so a plain-text 403 read as "no trade
+		// here" and the walk went 3,000 blocks further back: a sell priced
+		// 20 hours and 54 swaps stale, published at -952 bps against a true
+		// +388. A quiet range answers with an empty array, which is not an
+		// error; a read that failed leaves the row unpriced.
+		if err := evmCall(ctx, httpc, c.logsRPC(), "eth_getLogs", []any{map[string]any{"address": pool, "topics": topics, "fromBlock": "0x" + big.NewInt(from).Text(16), "toBlock": "0x" + big.NewInt(to).Text(16)}}, &part); err != nil {
 			return nil, err
 		}
 		logs = append(logs, part...)

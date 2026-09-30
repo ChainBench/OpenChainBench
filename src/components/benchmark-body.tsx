@@ -492,7 +492,7 @@ export function BenchmarkBody({
   // + first render), which the user otherwise eats as a long dimmed
   // state after clicking a tab. Warming them right after mount turns
   // tab flips into in-memory swaps. Staggered 400ms apart to stay
-  // gentle; the variant API dedupes across users via its 60s cache,
+  // gentle; the variant API dedupes across users via its 300s cache,
   // and re-runs when the user settles on a new axis value so the
   // cross-axis re-warms.
   useEffect(() => {
@@ -817,7 +817,7 @@ export function BenchmarkBody({
         <div className="mt-8 space-y-3">
           {tierOptions.length > 0 && (
             <DimensionRow
-              label="Access"
+              label={dimensionLabels?.tier ?? "Access"}
               options={tierOptions}
               selected={tier ?? headlineTier}
               onSelect={setTier}

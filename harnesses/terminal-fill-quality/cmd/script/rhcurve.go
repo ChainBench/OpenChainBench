@@ -101,6 +101,21 @@ func priceRHCurve(ctx context.Context, httpc *http.Client, c originChain, out *e
 	out.OtherUSD = f(fees) * unit
 	out.PoolInUSD = tr.reservePrice() * f(tr.tokens) * unit
 	out.Tokens = f(tr.tokens) * math.Pow10(-tokenDec)
+	// The curve's own state before the trade, when the node serves it:
+	// its reserve getters at block−1, rolled through the curve's earlier
+	// trades in this block, and checked against this trade on the
+	// constant product. Exact where the previous trade's average is not:
+	// that average sits below the price a buy leaves behind and above the
+	// one a sale leaves, so a sell after a buy read a median 63 bps better
+	// than the curve's true state and a buy after a buy 63 bps worse,
+	// one-signed on every curve measured (92 of 92 reproduced the trade's
+	// own output to 5e-9 from these two reads).
+	if mid, ok := rhCurveState(ctx, httpc, c, tr); ok {
+		out.MidUSD = mid * math.Pow10(tokenDec-qdec) * p
+		out.RefSrc = "reserves"
+		out.Priced = out.MidUSD > 0
+		return
+	}
 	// The previous trade on the curve: Robinhood Chain makes ~590 blocks
 	// a minute and the keyed node caps eth_getLogs at 10,000 blocks, so
 	// the walk goes back in 9,000-block chunks (about 15 min each) up to
@@ -114,7 +129,7 @@ func priceRHCurve(ctx context.Context, httpc *http.Client, c originChain, out *e
 			from = 0
 		}
 		var logs []evmLog
-		if err := evmCall(ctx, httpc, c.logsRPC(), "eth_getLogs", []any{map[string]any{"address": tr.curve, "topics": []any{[]string{topicRHCurveBuy, topicRHCurveSell}}, "fromBlock": "0x" + big.NewInt(from).Text(16), "toBlock": "0x" + big.NewInt(to).Text(16)}}, &logs); err != nil && !strings.Contains(err.Error(), "empty result") {
+		if err := evmCall(ctx, httpc, c.logsRPC(), "eth_getLogs", []any{map[string]any{"address": tr.curve, "topics": []any{[]string{topicRHCurveBuy, topicRHCurveSell}}, "fromBlock": "0x" + big.NewInt(from).Text(16), "toBlock": "0x" + big.NewInt(to).Text(16)}}, &logs); err != nil { // see prevSqrtPrice: a failed read is not a quiet range
 			out.Unpriced = "curve_logs"
 			log.Printf("[evm] curve %s previous trades: %s", tr.curve, redactURL(err.Error(), c.logsRPC()[0]))
 			return
@@ -220,4 +235,77 @@ func curveQuoteUnit(ctx context.Context, httpc *http.Client, c originChain, tr r
 		}
 	}
 	return 0, 0, false
+}
+
+const (
+	selRHQuoteReserve = "0x9da771f4" // quoteReserve(): phantom quote + real quote reserve
+	selRHTokenReserve = "0xcbcb3171" // tokenReserve()
+)
+
+// rhCurveState: the curve's reserves before tr — its getters at block−1,
+// rolled through the block's earlier trades on the same curve — as raw
+// quote per raw token, accepted only if the constant product on those
+// reserves reproduces tr's own output within 0.1 %. A curve that does not
+// (another formula, a getter that means something else) falls back to
+// the previous-trade walk, exactly as before.
+func rhCurveState(ctx context.Context, httpc *http.Client, c originChain, tr rhTrade) (float64, bool) {
+	if tr.block <= 0 {
+		return 0, false
+	}
+	tag := "0x" + big.NewInt(tr.block-1).Text(16)
+	read := func(sel string) (*big.Int, bool) {
+		var hexOut string
+		if err := evmCall(ctx, httpc, c.rpc, "eth_call", []any{map[string]any{"to": tr.curve, "data": sel}, tag}, &hexOut); err != nil || len(hexOut) < 66 {
+			return nil, false
+		}
+		return word(hexOut, 0), true
+	}
+	q, okQ := read(selRHQuoteReserve)
+	t, okT := read(selRHTokenReserve)
+	if !okQ || !okT || q.Sign() <= 0 || t.Sign() <= 0 {
+		return 0, false
+	}
+	// Earlier trades on this curve in the same block moved the state
+	// between block−1 and ours; the block's own logs carry them.
+	blk := "0x" + big.NewInt(tr.block).Text(16)
+	var logs []evmLog
+	if err := evmCall(ctx, httpc, c.logsRPC(), "eth_getLogs", []any{map[string]any{"address": tr.curve, "topics": []any{[]string{topicRHCurveBuy, topicRHCurveSell}}, "fromBlock": blk, "toBlock": blk}}, &logs); err != nil {
+		return 0, false
+	}
+	sort.Slice(logs, func(i, j int) bool { return hexInt(logs[i].LogIndex) < hexInt(logs[j].LogIndex) })
+	q, t = new(big.Int).Set(q), new(big.Int).Set(t)
+	for i := range logs {
+		e, ok := rhTradeOf(&logs[i])
+		if !ok || e.index >= tr.index {
+			continue
+		}
+		if e.buy {
+			q.Add(q, e.quote)
+			q.Sub(q, e.fee1)
+			q.Sub(q, e.fee2)
+			t.Sub(t, e.tokens)
+		} else {
+			q.Sub(q, e.quote)
+			q.Sub(q, e.fee1)
+			q.Sub(q, e.fee2)
+			t.Add(t, e.tokens)
+		}
+	}
+	if q.Sign() <= 0 || t.Sign() <= 0 {
+		return 0, false
+	}
+	Q, T := f(q), f(t)
+	// The check: does x·y = k on these reserves give this very trade?
+	var want, got float64
+	if tr.buy {
+		in := f(tr.quote) - f(tr.fee1) - f(tr.fee2)
+		want, got = T*in/(Q+in), f(tr.tokens)
+	} else {
+		in := f(tr.tokens)
+		want, got = Q*in/(T+in), f(tr.quote)+f(tr.fee1)+f(tr.fee2)
+	}
+	if got <= 0 || math.Abs(want-got)/got > 0.001 {
+		return 0, false
+	}
+	return Q / T, true
 }

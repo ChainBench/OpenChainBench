@@ -44,9 +44,14 @@ func unitsPerRequest(p Provider, pr Profile) (float64, error) {
 		return 0, fmt.Errorf("provider does not price %s", pr.Chain)
 	}
 	// A provider with a real archive price list uses it wholesale, and
-	// the multiplier branch below is skipped. GetBlock's archive cost is
-	// 3x on debug/trace and 1.5x on the enumerated trace family, so
+	// the multiplier branch below is skipped. GetBlock is the case that
+	// forced it: read off its own full_cu / archive_cu columns, archive
+	// costs 2x on the catch-all reads (Ethereum 20 -> 40) and 3x on the
+	// enumerated debug, trace and txpool methods (40 -> 120), so
 	// collapsing it to one multiplier would be wrong in both directions.
+	// The 1.5x that GetBlock's published archive_multiplier implies is a
+	// property of that unusable formula, not of these columns: see the
+	// archive_rule note on getblock in pricing/catalogue.yml.
 	usedArchiveTable := false
 	if pr.Archive {
 		if aw, ok := p.ArchiveWeights[pr.Chain]; ok {
@@ -123,8 +128,8 @@ func quote(c *Catalogue, p Provider, pl Plan, pr Profile, requests float64) Quot
 	// "provider does not price ethereum" and the cohort rendered empty.
 	// Capacity sold by the month serves the chains it was provisioned for
 	// and no others. This is the only chain test on the unmetered path,
-	// because it skips unitsPerRequest where every other cohort's test
-	// lives.
+	// because that path skips unitsPerRequest, where every other cohort's
+	// test lives.
 	if len(pl.Chains) > 0 && !servesChain(pl, pr.Chain) {
 		q.Reason = fmt.Sprintf("plan does not serve %s", pr.Chain)
 		return q
@@ -140,6 +145,7 @@ func quote(c *Catalogue, p Provider, pl Plan, pr Profile, requests float64) Quot
 			return q
 		}
 	}
+
 	q.UnitsPerRequest = upr
 
 	// Trace workloads on a plan that does not serve trace are not "more

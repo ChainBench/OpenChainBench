@@ -15,9 +15,15 @@ import { SITE } from "@/data/site";
  * What did NOT change is the link set. None of these ten appear in the
  * left rail: the rail carries the editorial sections (/benchmarks,
  * /perps, /rpc and so on) and this carries the developer and project
- * surfaces. /llms.txt and /api/citable are not in the sitemap either, so
- * this footer is their only inbound link and dropping it would orphan the
- * two files the whole citability effort exists to serve.
+ * surfaces.
+ *
+ * Before pruning this row, check the sitemap. FOUR of these ten are
+ * absent from it, so for each of them this footer is the only inbound
+ * link on the site: /llms.txt, /api/citable, /api/openapi.json and
+ * /api/llm-context. Dropping any one orphans a file the citability work
+ * exists to serve. (/partners, /badges, /team and /press are in the
+ * sitemap and would survive a cut here.) An earlier version of this note
+ * named only the first two, which read as a complete list and was not.
  */
 const DEVELOPER_LINKS = [
   { label: "Partners + embeds", href: "/partners" },

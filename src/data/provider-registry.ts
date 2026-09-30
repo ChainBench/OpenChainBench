@@ -2847,7 +2847,7 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   getblock: {
     url: "https://getblock.io",
     description:
-      "Multi-chain RPC provider covering 130+ networks, billed in Compute Units. Cost is a chain multiplier times a method multiplier, with archive priced from an independent column rather than as a fixed surcharge.",
+      "Multi-chain RPC provider covering 130+ networks, billed in Compute Units. Keyed JSON-RPC runs on shared nodes with the serving region selectable between New York, Frankfurt and Singapore. Cost is a chain multiplier times a method multiplier, with archive priced from an independent column rather than as a fixed surcharge.",
     twitter: "@getblockio",
     pricing:
       "Free tier 50,000 CU per day. Paid plans $49 to $699/mo with 20% off annually, Enterprise from $999; dedicated nodes from $1,000/mo. The chain multiplier spans 10 to 300, so the same plan costs a different amount per chain.",

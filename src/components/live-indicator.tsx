@@ -12,9 +12,13 @@ import { useEffect, useState } from "react";
  * Every page that renders this widget has its own ISR cycle, so the SSR
  * `lastRunAt` can drift across pages by a few seconds (home was rendered
  * at one cache miss, detail at another). To present a single canonical
- * value site-wide, when a `slug` is passed we re-fetch /api/citable on
- * mount and replace the SSR value with the API value. /api/citable is
- * edge-cached for 60 s so the network cost is amortised across viewers.
+ * value site-wide, when a `slug` is passed we re-fetch /api/freshness on
+ * mount and replace the SSR value with the API value. That route is
+ * edge-cached for 30 s (s-maxage=30, stale-while-revalidate=60) so the
+ * network cost is amortised across viewers. Note the asymmetry: at 30 s
+ * this widget is the freshest clock on the page, so it can read newer
+ * than the table under it, whose figures come from the page's own ISR
+ * window and from per-panel routes on 300 s.
  */
 export function LiveIndicator({
   lastRunAt,

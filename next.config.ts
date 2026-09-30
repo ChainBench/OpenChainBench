@@ -192,10 +192,13 @@ const nextConfig: NextConfig = {
         // 2026-09-30, the edge entry for /api/citable went STALE at age
         // 306 and reset to 42, then went STALE again at 313: two clean
         // cycles, so the served window is that route's 300 s and not a
-        // one-off eviction. Change the window in the route, not here. Sitemap's
-        // Cache-Control is likewise set inside its route.ts
-        // (`src/app/sitemap.xml/route.ts`) because metadata routes
-        // ignore next.config headers().
+        // one-off eviction. Change the window in the route, not here.
+        // The sitemap sets its Cache-Control the same way and for the same
+        // reason: `src/app/sitemap.xml/route.ts` is a Route Handler that
+        // returns its own Response, so whatever it sets wins over this
+        // layer. (It is a Route Handler rather than a `sitemap.ts`
+        // metadata route precisely because a metadata route left Next in
+        // charge of the header; the file's own docblock has that history.)
         source: "/api/citable",
         headers: [
           {
@@ -312,6 +315,25 @@ const nextConfig: NextConfig = {
       permanent: true,
     }));
     return [
+      // www to the apex, permanently.
+      //
+      // www.openchainbench.com served the whole site at 200 with no
+      // redirect, so the catalogue was reachable on two hostnames. The host
+      // rule added on 2026-09-30 now marks it noindex, which stops the
+      // duplicate being indexed but throws away anything that links to the
+      // www form. A 301 passes that authority to the apex instead, which is
+      // what a hostname with inbound links deserves; the noindex stays as
+      // the net for every other host.
+      //
+      // Written with `has` on the host rather than in middleware so it costs
+      // nothing at runtime and cannot be missed by a route that skips the
+      // matcher.
+      {
+        source: "/:path*",
+        has: [{ type: "host", value: "www.openchainbench.com" }],
+        destination: "https://openchainbench.com/:path*",
+        permanent: true,
+      },
       { source: "/live", destination: "/", permanent: true },
       { source: "/networks", destination: "/", permanent: true },
       { source: "/providers", destination: "/products", permanent: true },

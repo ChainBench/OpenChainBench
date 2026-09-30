@@ -247,6 +247,31 @@ func runTick(va VenueAsset, st *pairState, sinceMs int64, tick time.Duration) bo
 		if lev, ok := st.window.MedianLeverage(); ok {
 			liqMedianLeverage.WithLabelValues(va.Venue, va.Asset).Set(lev)
 		}
+		// What the forced closes cost the traders behind them, where the feed
+		// says. The notional rate above answers "how much of the book was
+		// closed by force"; this answers "and how much of a trader's own money
+		// went with it, beyond what they had already lost".
+		setForfeitShares(va.Venue, va.Asset, st.window.ForfeitStats(),
+			carriesPositionDetail(va.Source))
+		setForfeitBands(va.Venue, va.Asset, st.window.ForfeitByBand())
+		// The leverage-neutral rate: margin destroyed over the margin behind
+		// every position the venue closed. Both halves are money the trader
+		// posted, so the leverage a venue sells cancels instead of scaling the
+		// figure the way notional over notional does.
+		if destroyed, ok := st.window.MarginDestroyedUSD(); ok {
+			closed, hasClosed, cErr := marginClosed24h(va.Source, va.Asset)
+			if cErr != nil {
+				handleFetchError(va, "margin closed", cErr)
+				liqMarginDestroyedShare.DeleteLabelValues(va.Venue, va.Asset)
+			} else if hasClosed && closed > 0 {
+				liqMarginDestroyedShare.WithLabelValues(va.Venue, va.Asset).
+					Set(destroyed / closed * 100)
+			} else {
+				liqMarginDestroyedShare.DeleteLabelValues(va.Venue, va.Asset)
+			}
+		} else {
+			liqMarginDestroyedShare.DeleteLabelValues(va.Venue, va.Asset)
+		}
 		// Meaningless for a source that reports hours or the whole window as
 		// one number: it would show the busiest hour, or 100%, and claim the
 		// day was a single position.

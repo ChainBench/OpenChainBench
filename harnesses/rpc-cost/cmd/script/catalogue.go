@@ -16,8 +16,12 @@ import (
 // artifact it came from, the harness re-fetches those artifacts on a
 // loop, and the bench publishes how stale each provider's numbers are.
 //
-// A number nobody has re-verified in 90 days is reported as such on the
-// page instead of quietly passing for current.
+// Note what that check is and is not: the age is PUBLISHED, per provider
+// per artifact, as rpc_pricing_artifact_age_seconds. Nothing in this
+// harness compares it to a threshold, so there is no cutoff past which a
+// figure is withheld or relabelled. A stale number is visible as stale
+// because its age is on the board next to it, which is what the spec
+// claims ("Age is published either way"), and nothing more.
 
 type Catalogue struct {
 	Version   int        `yaml:"version"`
@@ -54,8 +58,9 @@ type Provider struct {
 	// ArchiveWeights is a full second table for providers whose archive
 	// cost is an independent lookup rather than a multiple of the
 	// standard cost. GetBlock is the case that forced it: its API returns
-	// full_cu and archive_cu per method, and the ratio is 3x on one family
-	// of methods and 1.5x on another, so no single multiplier is correct.
+	// full_cu and archive_cu per method, and the ratio is 2x on the
+	// catch-all reads and 3x on the enumerated debug, trace and txpool
+	// methods, so no single multiplier is correct.
 	// When present it replaces Weights entirely for archive workloads.
 	ArchiveWeights map[string]Weights `yaml:"archive_weights"`
 	// ThroughputWeights is a SECOND, different unit table used only for the

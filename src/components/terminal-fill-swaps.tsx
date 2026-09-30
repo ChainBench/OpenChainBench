@@ -26,7 +26,7 @@ import type { FillSample } from "@/lib/terminal-fills";
  * by any numeric column; a summary strip of the filtered set. Client
  * component over the JSON the page already loads (last 400 samples).
  */
-export function TerminalFillSwaps({ swaps, terminals, focus }: { swaps: FillSample[]; terminals: { slug: string; name: string }[]; focus?: string }) {
+export function TerminalFillSwaps({ swaps, terminals, focus, exec }: { swaps: FillSample[]; terminals: { slug: string; name: string }[]; focus?: string; exec?: boolean }) {
   const [terminal, setTerminal] = useState(focus ?? "");
   const [chain, setChain] = useState("");
   const [side, setSide] = useState("");
@@ -59,6 +59,8 @@ export function TerminalFillSwaps({ swaps, terminals, focus }: { swaps: FillSamp
           return s.tradeUsd;
         case "loss":
           return s.lossBps ?? -Infinity;
+        case "exec":
+          return s.lossBps === undefined ? -Infinity : s.lossBps - s.terminalBps;
         case "terminal":
           return s.terminalBps;
         case "network":
@@ -234,10 +236,13 @@ export function TerminalFillSwaps({ swaps, terminals, focus }: { swaps: FillSamp
               {th(undefined, "Terminal", undefined, "left")}
               {th(undefined, "Transaction", "Opens on the explorer of the chain this hash belongs to. A cross-chain trade has two: the one here is where the trade settled, and the chain shown next to the route links the side it was paid from.", "left")}
               {th(undefined, "Side · route", "final pool's venue; hops = pool instructions of the route before it; via X = final pool quoted in a third asset", "left")}
-              {th("trade", "Trade", "buy: quote spent, tx fee included; sell: tokens × reference")}
-              {th(undefined, "In $", "USD value the user gave: buy = quote spent (tx fee inside); sell = tokens at the pool's pre-trade reference, plus the gas paid apart on an EVM chain")}
+              {th("trade", "Trade", "buy: quote spent; sell: tokens × reference; plus the gas whenever it was paid in another asset than the quote")}
+              {th(undefined, "In $", "USD value the user gave: buy = quote spent; sell = tokens at the pool's pre-trade reference; either plus the gas, when the user paid it in another asset than the quote")}
               {th(undefined, "Out $", "USD value the user received: buy = tokens at the pool's pre-trade reference; sell = quote received")}
               {th("loss", "Loss", "1 − value received / value given, basis points of the trade. ! marks a row outside the plausible bounds: it stays visible so the sample can be audited, but it is excluded from every figure on this page, so averaging the column by eye gives a number the page never publishes.")}
+              {exec
+                ? th("exec", "Exec", "Loss with the app's own fee taken out, on this swap: what the routing cost, before any median. This is bench 279's figure, and it is subtracted swap by swap — the median of this column is not the median loss minus the median fee.")
+                : null}
               {th(undefined, "Where it goes", "terminal fee · network (tx fee + tips) · other (pump.fun, creator, referral) · pool (LP fee + impact, hops); shared 0 to 1,000 bps scale", "left")}
               {th("terminal", "App fee", "What the app itself took, basis points of the trade. It is the one cost the app advertises; every other column here you only find on chain. On Solana it is measured: the money that reached its fee wallets in this transaction. On the EVM rows it is a residual, what is left of the user's money after the pool took its share and gas was paid, so a routing or accounting error anywhere in the row lands in this column and single rows can read far above the app's real rate. Compare the median, not the average: one row can carry ten times the rest.")}
               {th("network", "Net", "tx fee + inclusion tips + the deposit of new token accounts, bps; on Relay rows the destination gas Relay charged is included")}
@@ -319,6 +324,11 @@ export function TerminalFillSwaps({ swaps, terminals, focus }: { swaps: FillSamp
                 <td className="py-2 px-3 text-right whitespace-nowrap">
                   <LossCell s={s} />
                 </td>
+                {exec ? (
+                  <td className="py-2 px-3 text-right whitespace-nowrap">
+                    <LossCell s={s} exFee />
+                  </td>
+                ) : null}
                 <td className="py-2 px-3">
                   <SplitBar s={s} />
                 </td>
@@ -337,7 +347,7 @@ export function TerminalFillSwaps({ swaps, terminals, focus }: { swaps: FillSamp
             ))}
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={13} className="py-8 text-center text-ink-faint">
+                <td colSpan={exec ? 14 : 13} className="py-8 text-center text-ink-faint">
                   No swap matches these filters.
                 </td>
               </tr>
@@ -345,25 +355,37 @@ export function TerminalFillSwaps({ swaps, terminals, focus }: { swaps: FillSamp
           </tbody>
         </table>
       </div>
-      <div className="mt-2 flex items-center justify-between text-[11px] text-ink-faint">
+      <div className="mt-2 flex items-center justify-between gap-3 text-[11px] text-ink-faint">
         <span>
           Showing {Math.min(limit, rows.length)} of {rows.length}
         </span>
-        {rows.length > limit ? (
+        <div className="flex items-center gap-2">
+          {/* Every row on screen, filters and sort included, not the fifty
+              that are rendered: someone who asks for the transaction list
+              wants it in a spreadsheet, not on a page. */}
           <button
             type="button"
-            onClick={() => setLimit((l) => l + 100)}
+            onClick={() => downloadCsv(rows)}
             className="text-[10px] uppercase tracking-[0.16em] px-3 py-1.5 border border-ink/20 rounded-md hover:border-ink/40 hover:bg-ink/5 transition-colors text-ink-soft"
           >
-            Show {Math.min(100, rows.length - limit)} more
+            Download {rows.length} rows (CSV)
           </button>
-        ) : null}
+          {rows.length > limit ? (
+            <button
+              type="button"
+              onClick={() => setLimit((l) => l + 100)}
+              className="text-[10px] uppercase tracking-[0.16em] px-3 py-1.5 border border-ink/20 rounded-md hover:border-ink/40 hover:bg-ink/5 transition-colors text-ink-soft"
+            >
+              Show {Math.min(100, rows.length - limit)} more
+            </button>
+          ) : null}
+        </div>
       </div>
     </div>
   );
 }
 
-type SortKey = "time" | "trade" | "loss" | "terminal" | "network" | "pool";
+type SortKey = "time" | "trade" | "loss" | "exec" | "terminal" | "network" | "pool";
 
 const COLORS = { terminal: "#FF6B35", network: "#FFC857", relay: "#2DD4BF", other: "#8B5CF6", pool: "#5B89FF" } as const;
 const LABELS = { terminal: "Terminal fee", network: "Network", relay: "Relay", other: "Protocol fees", pool: "Pool" } as const;
@@ -466,14 +488,65 @@ function SideChip({ side }: { side: "buy" | "sell" }) {
   );
 }
 
+/** The columns the table shows, plus the transaction hashes, in the order
+ *  a reader reads them. bps figures stay unrounded here: the table rounds
+ *  for the eye, a spreadsheet should get what was measured. */
+const CSV_COLUMNS: [string, (s: FillSample) => string | number | undefined][] = [
+  ["time_utc", (s) => new Date(s.time * 1000).toISOString()],
+  ["terminal", (s) => s.terminal],
+  ["product", (s) => s.product],
+  ["chain", (s) => s.chain ?? "solana"],
+  ["side", (s) => s.side],
+  ["venue", (s) => s.venue],
+  ["hops", (s) => s.hops],
+  ["quote", (s) => s.quote],
+  ["trade_usd", (s) => s.tradeUsd],
+  ["value_in_usd", (s) => s.valueInUsd],
+  ["value_out_usd", (s) => s.valueOutUsd],
+  ["loss_bps", (s) => s.lossBps],
+  ["terminal_bps", (s) => s.terminalBps],
+  ["network_bps", (s) => s.networkBps],
+  ["other_bps", (s) => s.otherBps],
+  ["pool_bps", (s) => s.poolBps],
+  ["relay_bps", (s) => s.relayBps],
+  ["rent_usd", (s) => s.rentUsd],
+  ["ref_src", (s) => s.refSrc],
+  ["ref_age_s", (s) => s.refAgeS],
+  ["priced", (s) => (s.priced ? "true" : "false")],
+  ["flag", (s) => s.flag],
+  ["tx", (s) => s.sig],
+  ["origin_tx", (s) => s.inTx],
+];
+
+function downloadCsv(rows: FillSample[]) {
+  const cell = (v: string | number | undefined) => {
+    if (v === undefined || v === null) return "";
+    const t = String(v);
+    return /[",\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t;
+  };
+  const lines = [CSV_COLUMNS.map(([h]) => h).join(",")];
+  for (const r of rows) lines.push(CSV_COLUMNS.map(([, read]) => cell(read(r))).join(","));
+  const url = URL.createObjectURL(new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" }));
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `openchainbench-swaps-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 /** Loss figure with a small gauge (0 to 1,000 bps), coloured by size. */
-function LossCell({ s }: { s: FillSample }) {
+function LossCell({ s, exFee }: { s: FillSample; exFee?: boolean }) {
   if (s.lossBps === undefined) return <span className="text-ink-faint">—</span>;
-  const v = s.lossBps;
+  const v = exFee ? s.lossBps - s.terminalBps : s.lossBps;
   const w = Math.max(0, Math.min(1, v / 1000)) * 44;
   const color = v < 200 ? "var(--color-good)" : v < 600 ? "var(--color-warn)" : "var(--color-bad)";
   return (
-    <span className={`inline-flex items-center gap-2 ${s.flag ? "text-ink-faint" : "text-ink font-medium"}`} title={s.flag ? `excluded: ${s.flag}` : `${v.toFixed(1)} bps of the trade`}>
+    <span
+      className={`inline-flex items-center gap-2 ${s.flag ? "text-ink-faint" : "text-ink font-medium"}`}
+      title={s.flag ? `excluded: ${s.flag}` : exFee ? `${v.toFixed(1)} bps of the trade, the app's own ${Math.round(s.terminalBps)} bps taken out` : `${v.toFixed(1)} bps of the trade`}
+    >
       <svg width="44" height="6" viewBox="0 0 44 6" aria-hidden="true" className="shrink-0">
         <rect x="0" y="0" width="44" height="6" rx="3" fill="currentColor" opacity="0.12" />
         {w > 0 ? <rect x="0" y="0" width={w} height="6" rx="3" fill={color} opacity={s.flag ? 0.4 : 1} /> : null}

@@ -27,6 +27,21 @@ type windowEntry struct {
 	notional   float64
 	collateral float64 // 0 when the source does not expose it
 	leverage   float64 // 0 when the source does not expose it
+	// hasForfeit says the three quantities below were read, so the entry can
+	// carry the forfeited-collateral arithmetic. A returned share of zero is
+	// the normal reading on two of the three venues that report it, so the
+	// flag is what separates "nothing came back" from "nobody said".
+	hasForfeit  bool
+	lossPct     float64 // price loss at the close, % of collateral, loss positive
+	returnedUSD float64 // margin returned to the trader, USD
+	// hasFeeSplit and feeAndCarryUSD hold the part of the forfeit the feed
+	// itemises as trading fees and carry rather than as the venue's
+	// liquidation penalty. GMX itemises all of it (positionFeeAmount,
+	// borrowingFeeAmount, fundingFeeAmount beside liquidationFeeAmount) and
+	// Ostium most of it; the Gains event carries no fee word at all, so its
+	// forfeit cannot be split from the event and the flag stays false.
+	hasFeeSplit    bool
+	feeAndCarryUSD float64
 }
 
 // SlidingWindow accumulates (key, unix_ms, notional_usd) events and answers
@@ -54,7 +69,9 @@ func (w *SlidingWindow) AddEvent(e LiqEvent) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	w.appendLocked(windowEntry{key: e.Key, tsMs: e.TimestampMs, notional: e.NotionalUSD,
-		collateral: e.CollateralUSD, leverage: e.Leverage})
+		collateral: e.CollateralUSD, leverage: e.Leverage,
+		hasForfeit: e.HasForfeitDetail, lossPct: e.LossAtTriggerPct, returnedUSD: e.ReturnedUSD,
+		hasFeeSplit: e.HasFeeSplit, feeAndCarryUSD: e.FeeAndCarryUSD})
 }
 
 // Upsert stores a bucketed figure: if the key is already in the window its
@@ -177,12 +194,269 @@ func (w *SlidingWindow) MedianLeverage() (float64, bool) {
 	if len(levs) == 0 {
 		return 0, false
 	}
-	sort.Float64s(levs)
-	if n := len(levs); n%2 == 1 {
-		return levs[n/2], true
-	} else {
-		return (levs[n/2-1] + levs[n/2]) / 2, true
+	return median(levs), true
+}
+
+// forfeitShares is one entry's forfeited-collateral arithmetic, all three in
+// percentage points of the margin behind the position:
+//
+//	loss      what the price had taken when the venue closed the position
+//	returned  what went back to the trader
+//	forfeited 100 minus the other two, for this close
+//
+// forfeited is the collateral destroyed *in excess of the loss the trader
+// actually incurred*: the closing and liquidation fees, the carry accrued, and
+// whatever the venue keeps. It is the figure a trader asked for and the reason
+// the notional rate above cannot answer them.
+//
+// Both ends are clamped. A loss can read above 100% of the margin, because a
+// venue can close a position later than its margin lasted and then absorb the
+// difference (Ostium had one such row in 91 over 7 days, at 116%); the trader
+// forfeited nothing beyond their loss in that case, so forfeited is 0 rather
+// than a negative number that reads as money handed back.
+type forfeitShares struct {
+	loss      float64
+	returned  float64
+	forfeited float64
+}
+
+func (e windowEntry) forfeit() (forfeitShares, bool) {
+	if !e.hasForfeit || e.collateral <= 0 {
+		return forfeitShares{}, false
 	}
+	loss := e.lossPct
+	if loss < 0 {
+		loss = 0
+	}
+	if loss > 100 {
+		loss = 100
+	}
+	ret := e.returnedUSD / e.collateral * 100
+	if ret < 0 {
+		ret = 0
+	}
+	if ret > 100 {
+		ret = 100
+	}
+	forf := 100 - loss - ret
+	if forf < 0 {
+		forf = 0
+	}
+	return forfeitShares{loss: loss, returned: ret, forfeited: forf}, true
+}
+
+func median(xs []float64) float64 {
+	if len(xs) == 0 {
+		return 0
+	}
+	sort.Float64s(xs)
+	if n := len(xs); n%2 == 1 {
+		return xs[n/2]
+	}
+	n := len(xs)
+	return (xs[n/2-1] + xs[n/2]) / 2
+}
+
+// ForfeitStats returns the medians of the three shares over the entries that
+// carry them, and how many did. The medians rather than the aggregate ratio:
+// the question is what a trader's position loses, and one 200,000 dollar
+// position would otherwise be the whole answer for a venue whose other
+// hundred positions were a few hundred dollars each.
+//
+// The three are independent medians over the same set of closes, so they do not
+// add to 100. The subtraction happens per close, in forfeit(), and a median is
+// not linear: on GMX's crypto closes inside the range, the medians came out at
+// 64.5% lost, 17.50% returned and 15.5 points forfeited, and 100 - 64.5 - 17.5
+// is 18.0. Every published figure is the median of a real per-close quantity;
+// none is derived from the other two.
+//
+// One more thing a reader has to know. Where a venue returns nothing the
+// forfeit is exactly 100 minus the loss at trigger, so the two carry one number
+// between them: that identity held on 10,599 of 10,599 Gains closes and 262 of
+// 262 Ostium closes, and on 64 of 3,474 GMX closes. Only on GMX are they
+// independent measurements.
+func (w *SlidingWindow) ForfeitStats() forfeitSummary {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	var fs, ls, rs, cs []float64
+	for _, e := range w.entries {
+		s, ok := e.forfeit()
+		if !ok {
+			continue
+		}
+		// A venue-level median is computed only inside the range every venue
+		// offers. Outside it the figure describes a product range: Gains'
+		// all-leverage median is 40.0 points and its 10x to 100x median is
+		// 32.8, because 45% of its liquidations sit above 100x where GMX has
+		// none at all.
+		if !inComparableRange(e.leverage) {
+			continue
+		}
+		fs = append(fs, s.forfeited)
+		ls = append(ls, s.loss)
+		rs = append(rs, s.returned)
+		if e.hasFeeSplit && e.collateral > 0 {
+			c := e.feeAndCarryUSD / e.collateral * 100
+			if c < 0 {
+				c = 0
+			}
+			if c > 100 {
+				c = 100
+			}
+			cs = append(cs, c)
+		}
+	}
+	if len(fs) == 0 {
+		return forfeitSummary{}
+	}
+	out := forfeitSummary{Forfeited: median(fs), Loss: median(ls),
+		Returned: median(rs), N: len(fs)}
+	if len(cs) > 0 {
+		out.FeeAndCarry, out.HasFeeSplit = median(cs), true
+	}
+	return out
+}
+
+// forfeitSummary is one row's venue-level figures, every one of them a median
+// over the closes inside the comparable leverage range.
+type forfeitSummary struct {
+	Forfeited   float64
+	Loss        float64
+	Returned    float64
+	FeeAndCarry float64 // the itemised part of the forfeit, where the feed splits it
+	HasFeeSplit bool
+	N           int
+}
+
+// MarginDestroyedUSD is the margin the window's forced closes actually consumed:
+// the margin behind them less whatever came back. The numerator of the
+// leverage-neutral rate, because both halves are then money the trader posted
+// rather than notional, and notional counts a 100x position at a hundred times
+// the money behind it.
+func (w *SlidingWindow) MarginDestroyedUSD() (float64, bool) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	total, any := 0.0, false
+	for _, e := range w.entries {
+		if !e.hasForfeit || e.collateral <= 0 {
+			continue
+		}
+		d := e.collateral - e.returnedUSD
+		if d < 0 {
+			d = 0
+		}
+		total += d
+		any = true
+	}
+	return total, any
+}
+
+// leverageBands are the bands every cross-venue figure here is computed within.
+//
+// They are not a nicety. The forfeit *grows* with leverage, against the
+// intuition: a position opened at 100x is closed after a smaller move, so less
+// of its margin has been taken by the price by the time the venue takes the
+// rest. So a venue-level median is mostly a statement about the venue's
+// leverage mix, and the venues do not sell the same mix. Measured on the crypto
+// liquidations of one common 29.27-day window to 2026-09-29: Gains' median was
+// 100x with 48.2% above 100x and a maximum of 1000x, GMX's 44x with 1.6% above
+// 100x and nothing past 106.7x, Ostium's 75x with none above 100x. Comparing one
+// venue's all-leverage median against another's says which sells more leverage,
+// not which manages risk better.
+var leverageBands = []struct {
+	name        string
+	minEx, maxI float64 // (minEx, maxI]; maxI 0 means no upper bound
+}{
+	{"0-5x", 0, 5},
+	{"5-10x", 5, 10},
+	{"10-25x", 10, 25},
+	{"25-50x", 25, 50},
+	{"50-100x", 50, 100},
+	{"100-200x", 100, 200},
+	{"200x+", 200, 0},
+}
+
+// comparableLeverageMin and comparableLeverageMax bound the range every venue
+// in this cohort actually offers and actually liquidates inside, so a
+// venue-level figure computed over it compares risk management rather than
+// product range. 10x to 100x is where all three venues that report the position
+// hold real counts: over one common 29.27-day window on crypto, Gains 10,599
+// closes, GMX 3,474, Ostium 262. Outside it the comparison breaks down in both
+// directions: GMX recorded no liquidation above 106.7x and Ostium none above
+// 100x, while Gains had 5,912 above 200x, a region the other two do not sell.
+//
+// Inside it, over that window, Gains forfeited a median 36.7 points of margin
+// against GMX's 15.5 and Ostium's 16.9.
+//
+// The per-band gauges carry the whole curve. Only the venue-level medians are
+// restricted, because those are the ones a reader compares across rows.
+const (
+	comparableLeverageMin = 10.0
+	comparableLeverageMax = 100.0
+)
+
+// leverageBandOf names the band a leverage falls in, or "" when the source did
+// not report one. Bands are (min, max]: 10x sits in 0-10x territory, which here
+// is 5-10x, and 100x in 50-100x, so a venue whose cap is a round number does not
+// spill a band above it.
+func leverageBandOf(lev float64) string {
+	if lev <= 0 {
+		return ""
+	}
+	for _, b := range leverageBands {
+		if lev > b.minEx && (b.maxI == 0 || lev <= b.maxI) {
+			return b.name
+		}
+	}
+	return ""
+}
+
+// inComparableRange reports whether a leverage sits inside the range every
+// venue here offers, which is what a venue-level median may be computed over.
+func inComparableRange(lev float64) bool {
+	return lev > comparableLeverageMin && lev <= comparableLeverageMax
+}
+
+// bandStats is one leverage band's figures. The count travels with the medians
+// because a median over two positions is those two positions, and a band a
+// venue does not sell has no cell at all rather than a zero.
+type bandStats struct {
+	Forfeited float64
+	Loss      float64
+	N         int
+}
+
+// ForfeitByBand returns the median forfeited share, the median loss at trigger
+// and the count per leverage band, over every entry that carries a leverage and
+// the forfeit detail. Unlike the venue-level medians this covers the whole
+// curve: the bands are what makes the venues comparable, so none is dropped.
+func (w *SlidingWindow) ForfeitByBand() map[string]bandStats {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	type acc struct{ forf, loss []float64 }
+	byBand := make(map[string]*acc, len(leverageBands))
+	for _, e := range w.entries {
+		s, ok := e.forfeit()
+		if !ok {
+			continue
+		}
+		band := leverageBandOf(e.leverage)
+		if band == "" {
+			continue
+		}
+		a := byBand[band]
+		if a == nil {
+			a = &acc{}
+			byBand[band] = a
+		}
+		a.forf = append(a.forf, s.forfeited)
+		a.loss = append(a.loss, s.loss)
+	}
+	out := make(map[string]bandStats, len(byBand))
+	for band, a := range byBand {
+		out[band] = bandStats{Forfeited: median(a.forf), Loss: median(a.loss), N: len(a.forf)}
+	}
+	return out
 }
 
 // NewestMs returns the timestamp of the most recent entry, or 0 when empty.

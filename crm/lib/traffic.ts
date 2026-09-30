@@ -1,7 +1,8 @@
 /**
  * The PostHog side of the snapshot: one fixed list of HogQL queries per
- * refresh (nineteen today), each mapped to a plain JSON section. Every query is
- * scoped to the production host, so staging and localhost never count, and
+ * refresh (twenty today), each mapped to a plain JSON section. Every query is
+ * scoped to the production host, so staging and localhost never count, to
+ * visitors that are not kiosks (see KIOSK below), and
  * to one named event: `$pageview` for the traffic sections, the three custom
  * events of src/lib/analytics.ts for the Actions sections (autocapture is off).
  *
@@ -13,16 +14,57 @@ import { num, queryHogQL, str } from "@/lib/posthog";
 
 const SITE_HOST = process.env.SITE_HOST ?? "openchainbench.com";
 const HOST_FILTER = `properties.$host = '${SITE_HOST}'`;
-const PV = `event = '$pageview' AND ${HOST_FILTER}`;
+const PV_ANY = `event = '$pageview' AND ${HOST_FILTER}`;
+
+/**
+ * Kiosks: a device that has fired a great many pageviews at ONE page and
+ * never gone anywhere else. Two of them — a Mac and an iPhone, both in
+ * Canada, both parked on /benchmarks/aggregator-head-lag — sent 1,411 of
+ * the site's 2,989 pageviews in the week of 2026-09-20, around the clock,
+ * 8 to 84 an hour including through the night. They are real browsers
+ * (the SDK is client-side JS, so nothing that skips JS is ever here), but
+ * they are a screen left on, not a reader, and every per-page and
+ * per-channel figure was theirs.
+ *
+ * One distinct path is deliberately strict: a reader who comes back to
+ * the same bench every morning still browses elsewhere eventually, and
+ * counting a real visitor out is worse than leaving a kiosk in. The
+ * threshold sits far above the heaviest single-page human in the window
+ * (29 views) and far below the smaller kiosk (311).
+ */
+const KIOSK_MIN_VIEWS = Number.parseInt(process.env.KIOSK_MIN_VIEWS ?? "", 10) || 50;
+
+/**
+ * The kiosks, resolved once per refresh by the `kiosks` section (first in
+ * the list, and the loop in snapshot.ts is sequential) and spliced into
+ * every later query as a literal list. As a subquery it is correct and
+ * too slow: the daily audience series and the surfaces series both ran
+ * past PostHog's sixty-second ceiling and returned 504. As a handful of
+ * ids it costs nothing.
+ *
+ * Empty until that section has run, and empty if it fails — the queries
+ * then count everyone, which is the behaviour this file had before.
+ */
+let kioskIds: string[] = [];
+/** Test seam; the refresh sets this through the `kiosks` section. */
+export function setKiosks(ids: string[]): void {
+  kioskIds = ids;
+}
+export function kioskCount(): number {
+  return kioskIds.length;
+}
+const NOT_KIOSK = (alias = "") =>
+  kioskIds.length === 0 ? "1 = 1" : `${alias}distinct_id NOT IN (${kioskIds.map((d) => `'${d.replace(/'/g, "")}'`).join(", ")})`;
+const PV = () => `${PV_ANY} AND ${NOT_KIOSK()}`;
 // The site's custom events (src/lib/analytics.ts): outbound_click, copy, search.
 const CUSTOM = `event IN ('outbound_click', 'copy', 'search') AND ${HOST_FILTER}`;
-const PL = `event = '$pageleave' AND ${HOST_FILTER}`;
+const PL = () => `event = '$pageleave' AND ${HOST_FILTER} AND ${NOT_KIOSK()}`;
 // Server-side reads the browser never renders (src/lib/analytics-server.ts,
 // 2026-09-24): the Markdown views, /api/stat and /api/citable. Markdown is
 // one event per read; stat and citable sit behind an edge cache and count
 // cache fills, which the dashboard says next to the figures.
 const SERVER_READS = `event IN ('markdown_read', 'stat_read', 'citable_read') AND ${HOST_FILTER}`;
-const SURFACES = `event IN ('$pageview', 'markdown_read', 'stat_read', 'citable_read') AND ${HOST_FILTER}`;
+const SURFACES = () => `event IN ('$pageview', 'markdown_read', 'stat_read', 'citable_read') AND ${HOST_FILTER} AND ${NOT_KIOSK()}`;
 
 export type DailyPoint = { day: string; pageviews: number; visitors: number; sessions: number; ai: number; search: number };
 /** One cohort week, and how many of it came back n weeks later. */
@@ -86,6 +128,12 @@ export type Traffic = {
     searchVisitors: number;
     prevSearchVisitors: number;
   };
+  /** How many devices the kiosk rule held out of every other section. */
+  kiosks: { devices: number };
+  /** Visitors who opened at least two different pages in the window: the
+   *  one headline that moves when the site is read rather than hit. In the
+   *  week of 2026-09-20, 94 of 836. */
+  engagedVisitors: { visitors: number; prevVisitors: number };
   engagement: { pagesPerSession: number; bounceRate: number; sessions: number };
   actions: ActionRow[];
   outbound: OutboundRow[];
@@ -101,12 +149,22 @@ export type Traffic = {
 };
 
 export const QUERIES = {
+  // First: every query below splices its result in. One distinct path and
+  // a great many views is a screen left on, not a reader — two of them,
+  // both parked on /benchmarks/aggregator-head-lag, sent 1,411 of the
+  // site's 2,989 pageviews in the week of 2026-09-20.
+  kiosks: () => `
+    SELECT distinct_id FROM events
+    WHERE ${PV_ANY} AND timestamp >= now() - INTERVAL 90 DAY
+    GROUP BY distinct_id
+    HAVING uniq(properties.$pathname) = 1 AND count() >= ${KIOSK_MIN_VIEWS}
+    ORDER BY count() DESC LIMIT 200`,
   daily: () => `
     SELECT toDate(timestamp) AS day, count() AS pageviews, uniq(distinct_id) AS visitors, uniq(properties.$session_id) AS sessions,
            uniqIf(distinct_id, ${referrerPredicate("ai")}) AS ai,
            uniqIf(distinct_id, ${referrerPredicate("search")}) AS search
     FROM events
-    WHERE ${PV} AND timestamp >= toStartOfDay(now() - INTERVAL 27 DAY)
+    WHERE ${PV()} AND timestamp >= toStartOfDay(now() - INTERVAL 27 DAY)
     GROUP BY day ORDER BY day`,
   weekly: () => `
     SELECT toStartOfWeek(timestamp, 1) AS week,
@@ -115,7 +173,7 @@ export const QUERIES = {
            uniqIf(distinct_id, ${referrerPredicate("search")}) AS search,
            count() AS pageviews
     FROM events
-    WHERE ${PV} AND timestamp >= toStartOfWeek(now() - INTERVAL 11 WEEK, 1)
+    WHERE ${PV()} AND timestamp >= toStartOfWeek(now() - INTERVAL 11 WEEK, 1)
     GROUP BY week ORDER BY week`,
   pages: () => `
     SELECT properties.$pathname AS path,
@@ -123,12 +181,12 @@ export const QUERIES = {
            uniqIf(distinct_id, timestamp < now() - INTERVAL 7 DAY) AS prev_visitors,
            countIf(timestamp >= now() - INTERVAL 7 DAY) AS pageviews
     FROM events
-    WHERE ${PV} AND timestamp >= now() - INTERVAL 14 DAY
+    WHERE ${PV()} AND timestamp >= now() - INTERVAL 14 DAY
     GROUP BY path ORDER BY greatest(visitors, prev_visitors) DESC, pageviews DESC LIMIT 2000`,
   entries: () => `
     SELECT path, count() AS sessions FROM (
       SELECT properties.$session_id AS s, argMin(properties.$pathname, timestamp) AS path
-      FROM events WHERE ${PV} AND timestamp >= now() - INTERVAL 7 DAY GROUP BY s
+      FROM events WHERE ${PV()} AND timestamp >= now() - INTERVAL 7 DAY GROUP BY s
     ) GROUP BY path ORDER BY sessions DESC LIMIT 40`,
   referrers: () => `
     SELECT properties.$referring_domain AS domain,
@@ -136,19 +194,19 @@ export const QUERIES = {
            uniqIf(distinct_id, timestamp < now() - INTERVAL 7 DAY) AS prev_visitors,
            countIf(timestamp >= now() - INTERVAL 7 DAY) AS pageviews
     FROM events
-    WHERE ${PV} AND timestamp >= now() - INTERVAL 14 DAY
+    WHERE ${PV()} AND timestamp >= now() - INTERVAL 14 DAY
     GROUP BY domain ORDER BY greatest(visitors, prev_visitors) DESC LIMIT 400`,
   countries: () => `
     SELECT properties.$geoip_country_code AS country, uniq(distinct_id) AS visitors
-    FROM events WHERE ${PV} AND timestamp >= now() - INTERVAL 7 DAY
+    FROM events WHERE ${PV()} AND timestamp >= now() - INTERVAL 7 DAY
     GROUP BY country ORDER BY visitors DESC LIMIT 20`,
   devices: () => `
     SELECT properties.$device_type AS device, uniq(distinct_id) AS visitors
-    FROM events WHERE ${PV} AND timestamp >= now() - INTERVAL 7 DAY
+    FROM events WHERE ${PV()} AND timestamp >= now() - INTERVAL 7 DAY
     GROUP BY device ORDER BY visitors DESC LIMIT 6`,
   utm: () => `
     SELECT properties.utm_source AS source, properties.utm_medium AS medium, uniq(distinct_id) AS visitors
-    FROM events WHERE ${PV} AND timestamp >= now() - INTERVAL 7 DAY AND properties.utm_source IS NOT NULL AND properties.utm_source != ''
+    FROM events WHERE ${PV()} AND timestamp >= now() - INTERVAL 7 DAY AND properties.utm_source IS NOT NULL AND properties.utm_source != ''
     GROUP BY source, medium ORDER BY visitors DESC LIMIT 25`,
   totals: () => `
     SELECT uniqIf(distinct_id, timestamp >= now() - INTERVAL 7 DAY) AS visitors,
@@ -161,14 +219,22 @@ export const QUERIES = {
            uniqIf(distinct_id, timestamp < now() - INTERVAL 7 DAY AND ${referrerPredicate("ai")}) AS prev_ai_visitors,
            uniqIf(distinct_id, timestamp >= now() - INTERVAL 7 DAY AND ${referrerPredicate("search")}) AS search_visitors,
            uniqIf(distinct_id, timestamp < now() - INTERVAL 7 DAY AND ${referrerPredicate("search")}) AS prev_search_visitors
-    FROM events WHERE ${PV} AND timestamp >= now() - INTERVAL 14 DAY`,
+    FROM events WHERE ${PV()} AND timestamp >= now() - INTERVAL 14 DAY`,
+  engagedVisitors: () => `
+    SELECT countIf(pages >= 2) AS engaged, countIf(prev_pages >= 2) AS prev_engaged
+    FROM (
+      SELECT distinct_id,
+             uniqIf(properties.$pathname, timestamp >= now() - INTERVAL 7 DAY) AS pages,
+             uniqIf(properties.$pathname, timestamp < now() - INTERVAL 7 DAY) AS prev_pages
+      FROM events WHERE ${PV()} AND timestamp >= now() - INTERVAL 14 DAY
+      GROUP BY distinct_id)`,
   audience: () => `
     SELECT count() AS active_visitors,
            countIf(first_seen >= now() - INTERVAL 7 DAY) AS new_visitors,
            countIf(toDate(first_seen) < toDate(last_seen)) AS returning_visitors
     FROM (
       SELECT distinct_id, min(timestamp) AS first_seen, max(timestamp) AS last_seen
-      FROM events WHERE ${PV} GROUP BY distinct_id
+      FROM events WHERE ${PV()} GROUP BY distinct_id
     ) WHERE last_seen >= now() - INTERVAL 7 DAY`,
   audienceDaily: () => `
     SELECT day, uniq(distinct_id) AS visitors,
@@ -178,13 +244,14 @@ export const QUERIES = {
     FROM (
       SELECT toDate(e.timestamp) AS day, e.distinct_id AS distinct_id, e.properties.$session_id AS s, f.first_day AS first_day
       FROM events e
-      INNER JOIN (SELECT distinct_id, min(toDate(timestamp)) AS first_day FROM events WHERE ${PV} GROUP BY distinct_id) f ON e.distinct_id = f.distinct_id
-      WHERE e.event = '$pageview' AND e.properties.$host = '${SITE_HOST}' AND e.timestamp >= toStartOfDay(now() - INTERVAL 89 DAY)
+      INNER JOIN (SELECT distinct_id, min(toDate(timestamp)) AS first_day FROM events WHERE ${PV()} GROUP BY distinct_id) f ON e.distinct_id = f.distinct_id
+      WHERE e.event = '$pageview' AND e.properties.$host = '${SITE_HOST}' AND ${NOT_KIOSK("e.")}
+        AND e.timestamp >= toStartOfDay(now() - INTERVAL 89 DAY)
     ) GROUP BY day ORDER BY day`,
   bounceDaily: () => `
     SELECT day, count() AS sessions, countIf(n = 1) AS bounced FROM (
       SELECT toDate(min(timestamp)) AS day, properties.$session_id AS s, count() AS n
-      FROM events WHERE ${PV} AND timestamp >= toStartOfDay(now() - INTERVAL 89 DAY) AND s IS NOT NULL GROUP BY s
+      FROM events WHERE ${PV()} AND timestamp >= toStartOfDay(now() - INTERVAL 89 DAY) AND s IS NOT NULL GROUP BY s
     ) GROUP BY day ORDER BY day`,
   surfaces: () => `
     SELECT toDate(timestamp) AS day,
@@ -193,7 +260,7 @@ export const QUERIES = {
            countIf(event = 'stat_read') AS stat,
            countIf(event = 'citable_read') AS citable
     FROM events
-    WHERE ${SURFACES} AND timestamp >= toStartOfDay(now() - INTERVAL 89 DAY)
+    WHERE ${SURFACES()} AND timestamp >= toStartOfDay(now() - INTERVAL 89 DAY)
     GROUP BY day ORDER BY day`,
   endpoints: () => `
     SELECT event, properties.path AS path,
@@ -210,7 +277,7 @@ export const QUERIES = {
   engagement: () => `
     SELECT avg(n) AS pages_per_session, countIf(n = 1) / count() AS bounce_rate, count() AS sessions FROM (
       SELECT properties.$session_id AS s, count() AS n
-      FROM events WHERE ${PV} AND timestamp >= now() - INTERVAL 7 DAY AND s IS NOT NULL GROUP BY s
+      FROM events WHERE ${PV()} AND timestamp >= now() - INTERVAL 7 DAY AND s IS NOT NULL GROUP BY s
     )`,
   actions: () => `
     SELECT event, countIf(timestamp >= now() - INTERVAL 7 DAY) AS n, countIf(timestamp < now() - INTERVAL 7 DAY) AS prev_n,
@@ -242,7 +309,7 @@ export const QUERIES = {
     SELECT properties.$prev_pageview_pathname AS path, count() AS leaves,
            quantile(0.5)(toFloat(properties.$prev_pageview_duration)) AS med,
            quantile(0.75)(toFloat(properties.$prev_pageview_duration)) AS p75
-    FROM events WHERE ${PL} AND timestamp >= now() - INTERVAL 7 DAY
+    FROM events WHERE ${PL()} AND timestamp >= now() - INTERVAL 7 DAY
       AND properties.$prev_pageview_duration IS NOT NULL AND toFloat(properties.$prev_pageview_duration) BETWEEN 0 AND 1800
     GROUP BY path ORDER BY leaves DESC LIMIT 1500`,
   notFound: () => `
@@ -266,7 +333,7 @@ export const QUERIES = {
       SELECT distinct_id,
              toStartOfWeek(min(timestamp), 1) AS cohort,
              arrayJoin(groupUniqArray(toStartOfWeek(timestamp, 1))) AS wk
-      FROM events WHERE ${PV} GROUP BY distinct_id
+      FROM events WHERE ${PV()} GROUP BY distinct_id
     )
     WHERE cohort >= toStartOfWeek(now() - INTERVAL 76 DAY, 1) AND wk >= cohort
     GROUP BY cohort, n ORDER BY cohort, n`,
@@ -275,7 +342,7 @@ export const QUERIES = {
   frequency: () => `
     SELECT days, count() AS visitors FROM (
       SELECT distinct_id, uniq(toDate(timestamp)) AS days
-      FROM events WHERE ${PV} AND timestamp >= now() - INTERVAL 28 DAY
+      FROM events WHERE ${PV()} AND timestamp >= now() - INTERVAL 28 DAY
       GROUP BY distinct_id
     ) GROUP BY days ORDER BY days LIMIT 40`,
 } as const;
@@ -331,6 +398,13 @@ export async function loadTrafficSection(section: TrafficSection): Promise<Parti
           prevSearchVisitors: num(rows[0]?.[9]),
         },
       };
+    case "kiosks": {
+      const ids = rows.map((r) => str(r[0])).filter(Boolean);
+      setKiosks(ids);
+      return { kiosks: { devices: ids.length } };
+    }
+    case "engagedVisitors":
+      return { engagedVisitors: { visitors: num(rows[0]?.[0]), prevVisitors: num(rows[0]?.[1]) } };
     case "retention":
       return { retention: rows.map((r) => ({ cohort: str(r[0]).slice(0, 10), week: num(r[1]), visitors: num(r[2]) })) };
     case "frequency":

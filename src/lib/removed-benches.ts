@@ -1,19 +1,45 @@
 /**
- * Bench slugs that must not exist on production. They render normally
- * on dev / staging / preview (VERCEL_ENV !== "production") and are the
- * staging pipeline: benches still being validated, or held back for a
- * partnership announcement.
+ * Which bench slugs production does not serve, and what a hit on one gets.
  *
- * Enforced in three places, all driven by this single set:
- *  1. src/middleware.ts returns 410 Gone for direct URL hits on prod
- *     (SEO-correct signal for previously indexed URLs).
- *  2. src/lib/materialize/load.ts drops the specs at loader level on
- *     prod, so the catalog index, category pages, /rpc hub, compare
- *     pairs, /api/citable, llms.txt and RSS never link or cite them.
- *  3. src/app/sitemap.ts excludes the routes on prod.
+ * This file holds three sets, and they are NOT interchangeable. Each has its
+ * own docblock below; this is the map, because an earlier version of this
+ * comment described all of them as one and got the status code wrong.
  *
- * Moving a bench to production = remove its slug here, bump the
- * bench-set cache keys in src/lib/spec.ts, ship dev to main.
+ *  REMOVED_BENCH_SLUGS   retired for good, plus a few held for review.
+ *                        src/middleware.ts answers 410 Gone on prod, which is
+ *                        the SEO-correct signal for a URL that was indexed.
+ *  RENAMED_BENCH_SLUGS   split or renamed; a 308 to the successor, issued from
+ *                        next.config.ts redirects() so it costs no invocation.
+ *                        Checked before the 410 so a rename always wins.
+ *  DEV_ONLY_BENCH_SLUGS  the staging pipeline: still being validated, or held
+ *                        back on purpose. Dropped at the loader, so the page
+ *                        404s rather than 410s. Nothing was ever published at
+ *                        those URLs, so there is no signal to preserve.
+ *
+ * The loader gate (src/lib/materialize/load.ts) is what keeps every rendered
+ * surface consistent: catalog index, category pages, /rpc hub, compare pairs,
+ * /api/citable, /api/stat, llms.txt, RSS, MCP and the Markdown views never
+ * link or cite a slug this deployment does not serve. The sitemap is dropped
+ * separately in src/lib/sitemap-builder.ts, through the isDevOnlyBench and
+ * isDevOnlyRoute helpers below rather than the sets directly, and is served by
+ * src/app/sitemap.xml/route.ts (there is no src/app/sitemap.ts; it became a
+ * Route Handler so it could set its own Cache-Control).
+ *
+ * Moving a bench to production = remove its slug from DEV_ONLY_BENCH_SLUGS,
+ * bump the bench-set cache keys in src/lib/spec.ts, ship dev to main.
+ *
+ * TWO PRODUCTION ENDPOINTS DELIBERATELY DO NOT ENFORCE ANY OF THIS, and an
+ * audit will find them again: /api/aggregate and /api/sitemap-data serve the
+ * worker's blobs verbatim, so on production both carry every dev-only slug
+ * with its editorial fields, including an seo_title naming a leader for a
+ * bench whose page 404s. Flagged 2026-09-30. They are transport, not a public
+ * surface: every Vercel deployment including staging fetches those two routes
+ * on the production domain (src/lib/aggregate-blob.ts, src/lib/sitemap-blob.ts),
+ * and staging is the only place these benches render, so filtering them there
+ * would empty the staging pipeline of all of them. Both routes carry that
+ * warning at the top. What bounds the exposure: noindex via the /api/:path*
+ * X-Robots-Tag, linked from no page, absent from llms.txt and the OpenAPI
+ * document, and no secret in the payload (no keyed URL shape, checked).
  */
 /**
  * Bench slugs renamed / split, mapped to their canonical successor.
@@ -109,6 +135,21 @@ export const DEV_ONLY_BENCH_SLUGS = new Set([
   // the page saying plainly that a high rate on a high-leverage venue
   // reflects the leverage it offers, and an audit round on that board.
   "perp-liq-rate",
+  // 282 RPC cost: held back from the release of 2026-09-30 while three
+  // findings from that day's audit are settled. The Access selector renders
+  // the word "Access" sixteen times on a cost bench because
+  // benchmark-body.tsx hardcodes the label instead of reading
+  // dimension_labels.tier, which the spec already sets to "Billing model".
+  // Two comments in the harness give GetBlock's archive multiplier as 1.5x
+  // where the catalogue computes 2x for plain reads and 3x for debug and
+  // trace. And there is an open suspicion that the Chainstack trace profile
+  // double counts, doubling a weighted total whose two trace methods are
+  // already priced at 2 RU, which would publish 4 RU per call. The first two
+  // are wording; the third is a number on a published column and needs a
+  // bench audit before a reader sees it. Un-gate condition: the label wired,
+  // the multiplier comments corrected, and the trace profile confirmed
+  // against the catalogue.
+  "rpc-cost",
   // Released 2026-09-23: bridges 261 (on-chain execution), 263 (realized
   // cost), 264 (SOL->X quotes) and 268 terminal-fill-quality left this
   // list with release/2026-09-23.

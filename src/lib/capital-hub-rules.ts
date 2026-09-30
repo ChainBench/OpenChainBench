@@ -82,11 +82,11 @@ export function bridgedShareSubline(sharePct: number | null): string | null {
  *    withheld row, a bench that failed to load this render). The cell
  *    prints "n/a" and nothing else.
  *
- * "n/a" is the missing value here because it is the missing value on the
- * other 37 places the site uses it (perp head to head, the trading-app
- * charts, the RPC tables, the fee comparison), and a token cannot mean two
- * things on two pages. The inapplicable case gets its own rendering instead,
- * as it already does on the fee comparison page.
+ * "n/a" is the missing value here because it is the missing value
+ * everywhere else on the site (perp head to head, the trading-app charts,
+ * the RPC tables, the fee comparison), and a token cannot mean two things
+ * on two pages. The inapplicable case gets its own rendering instead, as it
+ * already does on the fee comparison page.
  *
  * This is the bench 208 rule applied to a table: an absent measurement must
  * not read as a measured absence.
@@ -127,10 +127,8 @@ export const NA_REASON = {
   oiSeriesShort: "the 7-day window is not covered: the series starts inside it",
   oiSeriesFlat: "fewer than two readings in the 7-day window",
   oiSeriesStep: "the series steps more than 2x inside the window: a change in what the venue reports, not a 7-day move",
-  categoryTooSmall: "category too small for a peer median: under five ranked protocols, the ratio compares the token with one or two others",
+  categoryTooSmall: "category too small for a peer median: under five ranked protocols, the ratio compares the token with at most three others",
 } as const;
-
-export type NaReason = (typeof NA_REASON)[keyof typeof NA_REASON];
 
 export function cohortCell(
   inCohort: boolean,
@@ -313,32 +311,37 @@ export function selectDivergences<T extends DivergenceCandidate>(rows: T[], limi
     .slice(0, limit);
 }
 
-/* ------------------------------------------------------- 7d change */
-
-/** A daily history counts as current while its newest day is today or yesterday by the clock (UTC), not by the blob's own stamp. */
-export const HISTORY_FRESH_MS = 2 * 86_400_000;
+/* --------------------------------------------- missing sections */
 
 /**
- * Percent change between the newest point and the point seven days before
- * it in a daily history (the valuation blob's `oi` per perp). Null until
- * the blob holds that older day, and null when the newest day is older
- * than `nowMs` minus two days: no shorter window is passed off as 7d and
- * a stalled worker publishes no change.
+ * Which kind of nothing a whole section is, or null when it has rows.
+ *
+ * The four-cell rule one level up: an absent section must not read as a
+ * measured absence either. A bench entry carries `live` and `failed`, so the
+ * page can tell a transient load failure from a bench this deployment does not
+ * serve from a bench that ran and ranked nobody, and say which of the three it
+ * is instead of rendering nothing.
+ *
+ * Null when the bench is not in the list at all. That is the gated case
+ * (benches 280 and 281 are only listed where they are served), and a reading
+ * the deployment never promised is not a reading that is missing.
  */
-export function change7dFromDays(days: { day: string; [k: string]: unknown }[], field: string, nowMs: number = Date.now()): number | null {
-  if (days.length === 0) return null;
-  const last = days[days.length - 1];
-  const lastV = last[field];
-  if (typeof lastV !== "number" || !Number.isFinite(lastV)) return null;
-  const t = Date.parse(`${last.day}T00:00:00Z`);
-  if (!Number.isFinite(t)) return null;
-  if (nowMs - t > HISTORY_FRESH_MS) return null;
-  const target = new Date(t - 7 * 86_400_000).toISOString().slice(0, 10);
-  const before = days.find((d) => d.day === target);
-  const beforeV = before?.[field];
-  if (typeof beforeV !== "number" || !Number.isFinite(beforeV) || beforeV <= 0) return null;
-  return ((lastV - beforeV) / beforeV) * 100;
+export type SectionState = "failed" | "unserved" | "empty";
+
+export function sectionState(
+  benches: readonly { slug: string; live: boolean; failed: boolean }[],
+  slug: string,
+  rowCount: number,
+): SectionState | null {
+  if (rowCount > 0) return null;
+  const b = benches.find((x) => x.slug === slug);
+  if (!b) return null;
+  if (b.failed) return "failed";
+  if (!b.live) return "unserved";
+  return "empty";
 }
+
+/* ------------------------------------------------------- 7d change */
 
 /** Largest bucket-to-bucket ratio a 7d series may carry and still read as one continuous window. */
 export const SERIES_STEP_MAX = 2;
@@ -379,11 +382,6 @@ export function change7dOfSeries(series: (number | null)[] | undefined): { value
   const a = series[firstIdx] as number;
   const b = series[lastIdx] as number;
   return { value: ((b - a) / a) * 100, naReason: null };
-}
-
-/** The number only, for callers that already know why an empty cell is empty. */
-export function change7dFromSeries(series: (number | null)[] | undefined): number | null {
-  return change7dOfSeries(series).value;
 }
 
 /* --------------------------------------------------- reading notes */
@@ -536,8 +534,9 @@ export function signalRowNote(r: {
  * Whether an optional column is worth a place in the table: at least half the
  * rows carry a value. A column filled for two rows of seventy-nine paints the
  * table with empty cells and says nothing (the owner's note on the first hub
- * draft), so a source still filling in, or one a rate limit keeps mostly
- * empty, stays hidden until it covers the cohort.
+ * draft, whose chain cohort was seventy-nine rows; it is 63 today), so a
+ * source still filling in, or one a rate limit keeps mostly empty, stays
+ * hidden until it covers the cohort.
  *
  * Every optional column of the chains table goes through this, on the value
  * that would actually print (`printedValue`), so a column like net USDC over
