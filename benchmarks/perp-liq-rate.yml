@@ -2,10 +2,10 @@
 
 slug: perp-liq-rate
 number: "208"
-title: "Perp DEX liquidation rate: 24h liquidated notional as % of open interest, live"
+title: "Perp DEX liquidation rate: 24h liquidated notional over the day's peak open interest, live"
 seo_title: "Perp DEX liquidation rate: {{best_name}} lowest at {{best_p50}}"
-seo_description: "{{best_name}} shows the lowest 24h liquidation rate, {{best_p50}} of open interest, on ETH and BTC across Hyperliquid, GMX, dYdX, Lighter, Gains, Aevo and Paradex."
-subtitle: "Liquidated notional over the trailing 24 hours divided by current open interest, in percent. Higher means more positions are being forcibly closed relative to the venue's total exposure. Measured live every 5 minutes on ETH and BTC across 7 perpetual DEX venues."
+seo_description: "Liquidated notional over 24 hours as a percentage of the peak open interest over the same 24 hours, on ETH and BTC across Hyperliquid, Lighter, dYdX v4, Aster, GMX v2, Orderly, Nado, Gains, Paradex, Ostium and Aevo. Rows whose liquidation figure is not comparable publish unranked."
+subtitle: "Liquidated notional over the trailing 24 hours divided by the peak open interest over the same 24 hours, in percent. Measured every 5 minutes on ETH and BTC, and SOL where a venue lists it. A row ranks only when the figure is a flow (10,000 dollars or more, no single liquidation over half) between 0.01% and 3% of the venue's own 24h traded notional; otherwise it publishes without a rank."
 category: Trading
 status: live
 metric: Liquidation rate
@@ -14,68 +14,160 @@ higher_is_better: false
 row_noun: { one: venue, many: venues }
 
 seo_intro: |
-  Every perpetual futures platform liquidates positions when a trader's
-  margin falls below the maintenance requirement. The liquidation rate,
-  defined as 24-hour liquidated notional divided by current open interest,
-  measures how aggressively a venue's position book turns over by force.
-  A low rate can mean tight margin parameters that leave little room for
-  error, a highly sophisticated trader base that manages risk carefully,
-  or simply low volatility during the measurement window. A high rate
-  signals that many positions are being closed at a loss, which matters
-  for traders sizing their margin buffers and for LPs trying to understand
-  adverse selection risk. This benchmark measures that rate live, every
-  five minutes, using native on-chain and API sources for both numerator
-  and denominator so the figure is apples-to-apples across venues.
+  Every perpetual futures platform closes a position when the margin behind
+  it falls below the maintenance requirement. The liquidation rate, defined
+  here as liquidated notional over 24 hours divided by the peak open
+  interest over the same 24 hours, measures how much of the largest book a
+  venue held that day was closed by force rather than by its owner.
 
-  The liquidation source varies by venue. Hyperliquid uses the 0xArchive
-  REST indexer, which covers all liquidation types including market-order
-  fills, giving full coverage rather than the backstop-only subset
-  accessible through the HLP vault endpoint. dYdX, Paradex and Aevo use
-  their own native REST APIs. Lighter uses Coinalyze hourly liquidation
-  buckets converted to USD at the current mark price. Gains on Base
-  scans TradeClosed event logs on-chain and keeps only cancelReason=1
-  (liquidation). GMX v2 open interest is read from the arbitrum-api
-  gmxinfra endpoint, giving real per-asset notional rather than a TVL
-  proxy; liquidation data remains unavailable (TheGraph subgraph defunct)
-  so GMX shows OI but a zero liquidation rate until a source is found.
+  The hard part of this measurement is not the arithmetic, it is that the
+  venues do not agree on what counts as a liquidation. Hyperliquid's feed
+  covers every liquidation type including positions closed by market order.
+  dYdX v4 labels a fill LIQUIDATED only when it came through the dedicated
+  liquidation path, and over the 24 hours to 2026-09-27 that was one fill
+  on ETH and one on BTC. Paradex's public tape carried no LIQUIDATION row
+  at all over the same day, and its ETH book traded about 1.4M dollars.
+  Gains, whose crypto pairs allow up to 200x, emits an explicit liquidation
+  order type on chain; on 2026-09-27 two positions at 136x and 78x were 91%
+  of its whole day, and in the cascade of 2026-09-28 its ETH book went from
+  43.7M dollars to 2.1M with 27.3M liquidated.
 
-  Open interest is the total current notional value of all open positions
-  at each venue, sourced natively: Hyperliquid metaAndAssetCtxs, Lighter
-  orderBookDetails, dYdX REST, Paradex REST, Aevo REST, Gains
-  trading-variables per pair, GMX arbitrum-api markets/info. All figures
-  are in USD and use current mark price rather than entry price where a
-  live price is available.
+  Every one of those figures is a correct reading of its own source, and
+  they span four orders of magnitude as a share of each venue's own traded
+  notional. So this bench states the source behind each row and ranks only
+  the rows whose figure is a flow (at least 10,000 dollars, no single
+  liquidation more than half of it) inside the band a perp venue's
+  liquidation flow actually occupies. A venue whose feed reports nothing is
+  published as reporting nothing, and never as the lowest rate on the board.
+
+  Open interest is read natively per venue every 5 minutes and the rate
+  divides by its peak over the same 24 hours the numerator covers:
+  Hyperliquid metaAndAssetCtxs, Lighter orderBookDetails, dYdX v4 and
+  Paradex REST, Aevo statistics, Gains trading-variables across every
+  collateral of both deployments, GMX v2 from the gmxinfra markets endpoint.
 
 abstract: |
   A Go exporter polls each venue every 5 minutes. Liquidation events are
-  accumulated in a 24-hour sliding window with deduplication by event key
-  (trade hash or composite). Open interest is fetched fresh each tick.
-  The liquidation rate is published as
-  perp_liq_rate_24h_pct = sum(liquidated_notional_usd, last 24h) / oi_usd * 100.
-  The first 24 hours of each venue's life in the exporter are flagged as
-  warming up (perp_liq_warming_up=1) because the sliding window is not
-  yet full. Fetch failures leave the previous gauge value unchanged and
-  increment perp_liq_fetch_errors_total; the health gauge drops to 0.
+  accumulated in a 24-hour sliding window keyed by event identity, so the
+  same close is never counted twice. An aggregator that publishes hourly
+  totals rather than events is folded in by restatement: each hour's key
+  carries the newest figure for that hour, because an hour read while it is
+  still open under-reports. Open interest and the venue's 24h traded
+  notional are read fresh on each tick, and the rate divides by the peak
+  open interest of the trailing 24 hours: the largest book the venue was
+  observed holding, so the published rate moves with its numerator rather
+  than with a denominator read at one instant, and a book that is liquidated
+  away inside the window is still measured against the book it had. A figure
+  above 100% is then turnover: positions opened after the peak reading, or
+  opened and closed between two readings, count in the numerator without
+  ever entering the denominator.
+
+  perp_liq_rate_24h_pct = sum(liquidated_notional_usd, 24h) /
+  max(one_sided_open_interest_usd, 24h) * 100. The page's headline is the
+  latest reading of that gauge, not a further average of it.
+
+  Beside the rate, and separately from it, the harness publishes what a forced
+  close costs the trader where the feed carries the position behind the fill.
+  For each close: the loss at trigger, the share of margin returned, and the
+  forfeited share, which is 100 minus the other two *for that close*. Each is
+  then published as a median over the window, so the three medians are
+  independent and do not add to 100.
+
+  Every one of those is computed inside a leverage band, and the venue-level
+  medians over closes between 10x and 100x only, because the forfeit grows with
+  leverage and the venues sell different ranges: comparing a venue whose median
+  liquidated position is 91x against one at 45x otherwise reports which sells
+  more leverage. The forfeited share also holds the closing fee, the funding and
+  the rollover, which a trader pays on any close, so
+  perp_liq_fee_and_carry_pct itemises that part wherever the feed separates it.
+  perp_liq_margin_destroyed_share_pct answers the same question as the notional
+  rate in money instead of notional, and so cancels leverage rather than
+  scaling with it.
+
+  Three of the eleven venues carry these quantities; the other eight publish no
+  series at all rather than a 0.0% that would read as a venue forfeiting none of
+  its traders' margin. A feed of hourly aggregates is not comparable to a feed
+  of events on any per-position figure, and Lighter, Aster and Nado are
+  aggregates: they are absent here and their largest-event share is left blank
+  for the same reason.
+
+  perp_liq_ranked is 1 when the row takes a rank. It reads 0 when the venue
+  has no liquidation feed, when a fetch failed, when a page cap cut a read
+  short and the unread edge is still inside the window, for the first hour
+  after a restart while the denominator fills, when no liquidation was
+  observed at all, when less than 10,000 dollars was liquidated, when one
+  liquidation is more than half of the figure, when the venue publishes no
+  24h notional to test the figure against, or when
+  perp_liq_share_of_volume_pct falls outside 0.01% to 3%. Fetch failures
+  leave the previous gauges unchanged and increment
+  perp_liq_fetch_errors_total; the health gauge drops to 0.
 
 methodology:
-  - "Cadence: every 5 minutes, in parallel across all venue/asset pairs."
-  - "Sliding window: liquidation events are stored in a 24-hour ring buffer keyed by a dedup string (trade hash or composite timestamp+size key). Events older than 24 hours are pruned on each tick. The window sum is the numerator of the liq rate."
-  - "Hyperliquid: OI from POST /info {type:metaAndAssetCtxs} (openInterest in base units × midPx). Liquidations from 0xArchive GET /v1/hyperliquid/liquidations/{coin} with cursor pagination, covering all liquidation types. Fallback without OXARCHIVE_API_KEY: userFillsByTime on HLP vault address (backstop-only subset)."
-  - "dYdX v4: OI from GET /v4/perpetualMarkets (openInterest base units * oraclePrice). Liquidations from GET /v4/trades/perpetualMarket/{ticker}?limit=100 paginated backwards, keeping type == LIQUIDATED rows; notional = size * price."
-  - "GMX v2 (Arbitrum): OI from arbitrum-api.gmxinfra.io/markets/info (openInterestLong + openInterestShort per market, 30-decimal USD, summed across all listed markets for the asset). Liquidation source: unavailable (TheGraph subgraph defunct; Subsquid positionChanges does not expose orderType/isLiquidation). liq_rate and liq_volume are not published for GMX; perp_liq_source_available{venue='gmx'} = 0."
-  - "Lighter: OI from GET /api/v1/orderBookDetails?filter=perp (open_interest in base units × mark_price). Liquidations from Coinalyze /v1/liquidation-history (hourly buckets, symbols 0.T=ETH 1.T=BTC, base asset units × current mark_price). Requires COINALYZE_API_KEY."
-  - "Gains (Base): OI from GET backend-base.gains.trade/trading-variables, sum of oiLongCollateral + oiShortCollateral for the USDC collateral at the asset's pair index (BTC=0, ETH=1), divided by 1e6. Liquidations from eth_getLogs on the Gains diamond (0x6cd5ac19...) filtering TradeClosed events with cancelReason=1; notional = collateralAmount/1e6 × leverage/1e3."
-  - "Aevo: OI from GET /statistics?asset=BASE&instrument_type=PERPETUAL (open_interest.total contracts * mark_price). Liquidation source: none; Aevo has no public liquidation feed as of 2025-08. liq_rate and liq_volume are not published; perp_liq_source_available{venue='aevo'} = 0."
-  - "Paradex: OI from GET /v1/markets/summary?market=X (open_interest base units * mark_price). Liquidations from GET /v1/trades?market=X&start_at=<ms>&end_at=<ms> paginated by cursor, keeping trade_type == LIQUIDATION rows."
-  - "Apple-to-apple: OI = current notional USD (collateral × leverage) at all venues. Liquidation events = notional USD of forcibly closed positions. Both sides use the same definition across all venues with available data."
-  - "GMX caveat: liq_rate is effectively 0% due to missing liquidation data; OI is real and per-asset. Do not compare GMX liq_rate to other venues until a working source is added."
+  - "Cadence: every 5 minutes, in parallel across all venue and asset pairs. Numerator: liquidation events are held in a 24-hour window keyed by event identity: a trade, order or event id where the venue issues one, or transaction hash plus log index on chain. Events older than 24 hours are dropped each tick. Every fetch re-asks for the previous two hours as well, so a row an indexer ingests late is still picked up; the key set makes the repeat free."
+  - "Aggregator buckets are restated, not deduplicated. An hourly total read while its hour is still open is smaller than the hour's final figure, so each hour's key carries the newest reading. Freezing the first reading is what made Lighter publish 887 dollars against 185.6M of ETH volume until 2026-09-27."
+  - "Open interest is the notional that could have been force-closed, read differently per venue kind. An order book (Hyperliquid, dYdX, Paradex, Lighter, Aster, Orderly, Nado) reports one side, because longs and shorts match. A pool venue (GMX v2, Gains, Ostium) reports long and short separately against its vault and the two are independent, so both count. Halving the pool figure, as this did until 2026-09-28, put the rate over 100% on an unbalanced book with no turnover."
+  - "Headline: the latest trailing-24h reading. Averaging a trailing-24h gauge over a further 24h would weight two days and peak a day late, so p50 and mean are last_over_time over the past hour; p90 and p99 keep the day's range. perp_liq_newest_event_age_seconds says how long ago each row's feed last reported a liquidation."
+  - "Denominator: the peak open interest over the same 24 hours, with the mean and the trough beside it. The peak, because the numerator is everything force-closed in the window and the book it came from is the largest one held: an instant moves with open interest rather than liquidations, and a mean is dragged down by the collapse it is measuring. The trough publishes alongside, because a book that ran from 49.94M dollars to 1.12M in a day is two markets."
+  - "Where the open-interest series comes from decides whether it is right. Gains is read from the chain: the diamond emits PairOiAfterV10Updated on every open and close carrying the post-state book per collateral, so one pass of the scan gives the whole curve at every change, seeded at the window edge and needing no warm-up. Every other venue publishes only the book it holds now, so its curve is still accumulated one reading per tick and its peak is only as old as the process."
+  - "That distinction was worth 15x. On 2026-09-28 the accumulated window gave Gains ETH a peak of 2.72M dollars, every reading having been taken after the cascade, and the bench published 952%. The reconstruction gives the 43.54M the venue held, so 27.29M of liquidations reads 63%. On BTC the accumulated peak understated the book 4.6x and 211% becomes 25%. Two independent reconstructions agree with the API to five figures."
+  - "Historical open interest is valued at historical prices, and how exactly depends on the collateral. The quantities come from the events; the price comes from the collateralPriceUsd the contract stamps on its own execution events, nearest at or before each reading, falling back to the current price when nothing earlier is held. Of the collaterals Gains runs, the stablecoins (USDC and DAI on Arbitrum) are exact either way, while a WETH, GNS or BtcUSD book is as good as the nearest execution to it."
+  - "Ranking: a row ranks only when at least 10,000 dollars was liquidated, no single liquidation is more than half of the figure, and the figure is between 0.01% and 3% of the venue's own 24h traded notional. The size gates exist because on 2026-09-28 Ostium BTC sat inside the band at 0.458% on 338 dollars from one liquidation, above Hyperliquid and GMX, while dYdX BTC sat outside it on 537 dollars from one. A share of volume cannot tell a flow from an event."
+  - "What the rate is and is not. It is the share of a venue's book closed by force, in notional. It is not the money traders lost, and not neutral to leverage: a 100x position counts at 100 times its margin, in the numerator and in open interest. On 2026-09-28 Gains liquidated 39.5M dollars of notional on 423k of collateral at a median 73x. The money itself is published separately, as the three shares below, wherever the feed carries the position behind the fill."
+  - "The three shares. Per forced close: the margin behind the position, the share of it the price had taken when the venue closed, and the share that went back. The forfeited share is 100 minus those two for that close, the margin destroyed in excess of the loss the trader incurred. All three publish as medians, so they are three independent medians and do not add to 100. perp_liq_forfeit_events says how many closes are behind them."
+  - "Every cross-venue figure is computed inside a leverage band and within one asset class, because both move the forfeit and the venues match on neither. On crypto the forfeit grows with leverage: Gains runs 11.4 points under 5x to 45.4 at 100-200x, with 48.2% of its liquidations above 100x and a maximum of 1000x against GMX's 1.6% and 106.7x. So the venue medians cover 10x to 100x, where all three liquidate; the full curve publishes per band with its count."
+  - "The asset class is settled by the cohort, not by a filter: this bench polls ETH, BTC and SOL only, so every published row is crypto and none blends classes. It matters because volatility drives how far a price gaps past the threshold before the close lands, which feeds the loss at trigger. Figures measured across a venue's forex, commodity and equity pairs describe a different population and are not quoted here."
+  - "The forfeited share is not a penalty on its own. All three venues define their loss as the price move times the leverage, so the forfeit also holds the closing fee, the funding and the rollover, costs the trader did incur. perp_liq_fee_and_carry_pct itemises that part where the feed can: GMX separates positionFeeAmount, borrowingFeeAmount and fundingFeeAmount from its liquidationFeeAmount, Ostium carries five fee fields. The Gains event has no fee word, so its cell is blank."
+  - "Three of the eleven venues carry all three: Gains reads percentProfit and amountSentToTrader off the LimitExecuted log, GMX v2 initialCollateralDeltaAmount, basePnlUsd and pnlUsd off its squid, Ostium profitPercent, amountSentToTrader and the linked trade's collateral. The other eight publish nothing rather than 0.0%: seven have a feed with no position, Aevo none at all. A venue that can read the position but saw no qualifying close publishes perp_liq_forfeit_events = 0 instead."
+  - "Read the forfeit and the loss at trigger as one measurement, not two, on the venues that return nothing. Where the returned share is 0 the forfeit is exactly 100 minus the loss at trigger by construction, so the two columns carry one number between them: that is Gains and Ostium on every liquidation measured. Only GMX v2 returns a residual, and only there are the two quantities independent. The table shows three comparable rows and is really one figure for two venues and two for the third."
+  - "The same objection applies to the notional rate and the share of volume beside it. Both are notional over notional, so they scale with the leverage a venue sells: at a median 91x Gains is measured against a venue whose traders sit near 45x. perp_liq_margin_destroyed_share_pct is the leverage-neutral companion, margin destroyed over the margin behind every position the venue closed. Both halves are money the trader posted, so leverage cancels."
+  - "Rows outside the gate keep every figure they measured and sit below the ranked field. Nothing is hidden and nothing is estimated to fill a gap. An exact zero never ranks either: a zero reads the same whether the venue liquidated nothing or its feed returned nothing, so it is published as an observation and not as a best value."
+  - "The rate is withheld, not merely unranked, when the gate's reason means the ratio describes nothing: one liquidation being most of the window, no notional to test it against, an open-interest window shorter than the numerator, or a failed read. Every input still publishes. Both windows survive a restart in a JSON file on a mounted volume, since open interest cannot be backfilled: without it a redeploy divided 24h of liquidations by the peak of the minutes since boot, and Gains ETH read 952%."
+  - "Page caps. The tapes that page newest first (dYdX, Paradex, Orderly, the Ostium subgraph, the GMX squid) hand over what they read when a cap stops them short of the window, with the oldest row reached. The rows count, the high-water mark advances so the next request fits, and the row does not rank until the unread edge has aged out of the window. Repeating a request that did not fit would lock the pair out while the tape stayed busy. 0xArchive keeps the refusal: its cap is 29 busy BTC days."
+  - "A venue with no 24h traded notional of its own cannot be tested and is not ranked. Gains was the case until 2026-09-28: its trading-variables payload carries open interest per pair and no volume. Its notional is now summed from the diamond's own execution logs, see below."
+  - "Hyperliquid: OI and 24h notional from POST /info {type:metaAndAssetCtxs} (openInterest x midPx, dayNtlVlm). Liquidations from 0xArchive GET /v1/hyperliquid/liquidations/{coin} with cursor pagination. Without OXARCHIVE_API_KEY the row publishes no rate at all: the HLP vault fallback sees backstop liquidations only, a knowably partial numerator, and the same rule that keeps Lighter and Aster silent without a Coinalyze key applies."
+  - "The band caught the reference feed itself. On 2026-09-27 0xArchive returned 22 ETH liquidations in 24h, one page with no cursor, the most recent nine hours stale, against 693 on BTC and 569 on SOL over the same window and on a comparable book. 25,834 dollars on 505.7M of ETH volume is 0.005%, below the floor, so the ETH row publishes and does not rank."
+  - "dYdX v4: OI, oracle price and volume24H from GET /v4/perpetualMarkets. Liquidations from GET /v4/trades/perpetualMarket/{ticker} paged backwards, keeping type == LIQUIDATED; notional = size x price. Verified by paging the full 24h tape on 2026-09-27: one fill on ETH at 466.93 dollars, one on BTC at 16.92, ten on SOL totalling 5,024.62."
+  - "Paradex: OI, mark price and volume_24h from GET /v1/markets/summary. Liquidations from GET /v1/trades paged by cursor, keeping trade_type == LIQUIDATION. Over the full 24h to 2026-09-27 the ETH and BTC tapes carried none: 354 and 3,677 rows, all FILL, RPI, BLOCK_TRADE or UNWIND_TRANSFER."
+  - "Lighter: OI, mark price and daily_quote_token_volume from GET /api/v1/orderBookDetails?filter=perp. Liquidations from Coinalyze /v1/liquidation-history hourly buckets (symbols 0.T for ETH, 1.T for BTC), in base units, converted at Hyperliquid's hourly close for that hour, since the aggregator publishes no price and Lighter's own candles are not public. Requires COINALYZE_API_KEY."
+  - "Gains: liquidations from eth_getLogs on the gTrade diamond on Arbitrum and Base, keeping LimitExecuted logs whose orderType is LIQ_CLOSE (6). Notional = collateralAmount / 10^decimals x leverage / 1e3 x collateralPriceUsd / 1e8; the TradeClosed shape this spec once named is not emitted. The decode is self-checking: the event encodes the position twice, both in collateral units, and a log whose encodings differ by over 5% is refused. Six real logs are pinned."
+  - "Gains traded notional comes off the same diamond scan as its liquidations, per pair: MarketExecuted and LimitExecuted legs at full notional plus executed resizes at their delta, the backend's own auto-plus-direct perimeter, validated on the complete UTC day 2026-09-27 at 79% of the venue. The scan runs once per deployment per tick from a block cursor, and each log is placed on the clock by interpolating between the headers at both ends of the range."
+  - "The Gains row is the Arbitrum and Base deployments, and all three of its figures are read on that perimeter: liquidations, open interest and traded notional. It is internally consistent and smaller than the venue, which also trades on Polygon, MegaETH and ApeChain. Comparing it with a venue-level figure needs the same day as well: by the venue's own backend 2026-09-27 was 34.76M dollars and 2026-09-28, a cascade day, 210.8M."
+  - "Gains open interest reads oiLongCollateral and oiShortCollateral across every collateral of both deployments, each at its own decimals and USD price, so open interest held in WETH or GNS is not counted at face value, and sums long plus short as the trader legs outstanding against the vault."
+  - "GMX v2: OI from arbitrum-api.gmxinfra.io/markets/info, openInterestLong plus openInterestShort over every listed market, at 30 decimals. Liquidations from the public Subsquid squid: tradeActions with orderType 7, pinned to eventName OrderExecuted because every liquidation also appears as OrderCreated. This spec said until 2026-09-27 that no source existed because positionChanges exposes no orderType; that is true of positionChanges and false of tradeActions."
+  - "GMX's volume denominator is summed from the same squid, over executed tradeActions with orderType 2 or above, which excludes the plain swap types. Numerator and denominator therefore carry one definition. Cached for 15 minutes because the query pages over a few thousand rows."
+  - "Aster: liquidations from Coinalyze hourly buckets for Aster's markets, in base units, converted at Hyperliquid's hourly close for that hour. Aster's own allForceOrders history endpoint answers that it is out of maintenance, forceOrders is per-account, and the public forceOrder websocket carries no history and drops every few minutes, so a 5-minute poller cannot use it. OI and 24h notional from the futures gateway."
+  - "Ostium: liquidations from tradeEvents of type LiquidationExecuted on the Ormi subgraph, the venue's only data surface. The size, the collateral and the leverage come off the linked trade, because the event's own notional, collateralDelta and leverage are null on a liquidation row. Its leverage is 1e2 fixed point, not the 1e3 Gains uses. Ostium is small: it liquidated nothing on any pair over the 24h to 2026-09-27 and 383 positions over 30 days. A zero does not rank."
+  - "Orderly: liquidations from GET /v1/public/liquidated_positions, the only purpose-built public liquidation endpoint in the cohort that carries history; it takes a time range and pages. Filtering by symbol returns whole liquidated accounts, so only the leg on the requested market counts, at cost_position_transfer, which is already USD. OI, mark price and 24h_amount from /v1/public/futures. meta.total saturates at 500, so paging stops on a short page rather than on it."
+  - "Nado: the archive publishes a cumulative liquidated-USD counter per product in its hourly snapshots rather than a tape, so the 24h figure is the difference between two snapshots, one number for the whole window, scaled to 24h by the span the snapshots actually cover. It is published, and because no per-event detail exists the largest-event panel is left blank for it rather than reading 100%. Traded notional and OI come from the same snapshot pair."
+  - "Checked, feed present, not pollable: Pacifica (cause) and Extended (tT) flag liquidations on a public tape that reaches back only minutes, and Backpack publishes them on a websocket with no REST form, so all three need a persistent collector. Checked, no public signal: ApeX Omni, GRVT, Vest and StandX expose no liquidation flag on any public endpoint, only behind per-account authentication where it exists at all."
+  - "Venues checked and left out, with the reason. edgeX: the v2 deployment has no public trade tape at all (every trades and liquidation path 404s) and the only websocket gateway serves the dead v1 contract ids. Jupiter Perps: /v1/trades requires a wallet address and its action enum has no liquidation value, so there is no venue-level feed. Drift: the venue is now Velocity, a fresh program deployment carrying single-digit thousands of dollars of ETH and BTC open interest."
+  - "Aevo: OI from GET /statistics?asset=X&instrument_type=PERPETUAL, open_interest.total x mark_price, with daily_volume as the 24h notional. No public liquidation feed was reachable, so no rate is published and the row is declared unranked."
+  - "Not apples to apples across the whole field, and the bench says so rather than implying otherwise. Open interest and traded notional are comparable everywhere. The liquidation definition is not, which is why the ranked field is a subset and every row carries its source."
 
 findings:
-  - "{{best_name}} records the lowest 24h liquidation rate at {{best_p50}}% of open interest (24h average, ETH and BTC combined)."
-  - "{{name:hyperliquid}} shows {{p50:hyperliquid}}% liq rate on a combined ETH+BTC open interest of over $4B. Hyperliquid dominates perpetual DEX volume and its liquidation coverage is the most complete of any venue here, sourced from 0xArchive which captures all liquidation types."
-  - "{{name:lighter}} shows {{p50:lighter}}% liq rate. Liquidation data via Coinalyze is available in hourly buckets; the USD conversion uses the current mark price rather than the exact price at liquidation time, so intra-hour values are approximate."
-  - "{{name:gains}} shows {{p50:gains}}% liq rate on a small Base deployment ($55K ETH OI, $161K BTC OI). Zero liquidations in quiet 24-hour windows is consistent with this OI level."
-  - "GMX and Aevo show no liquidation rate because no public liquidation data source exists for either venue. GMX OI is correct ($29M ETH, $21M BTC). Aevo OI is correct ($3M ETH). The perp_liq_source_available gauge is 0 for both, so the frontend displays N/A rather than 0%."
+  - "{{best_name}} records the lowest ranked liquidation rate at {{best_p50}}, on {{ranked_count}} ranked rows out of {{count}} in the cohort. The rest publish their figures below the field with the reason they are not ranked."
+  - "{{name:hyperliquid}} reads {{p50:hyperliquid}} on ETH and does not rank there. Its 0xArchive feed returned 22 ETH liquidations worth 25,834 dollars over the 24h to 2026-09-27, against 693 on BTC worth 1.87M and 569 on SOL worth 2.00M, on ETH and BTC books of comparable size. The ETH coverage is short, so the row publishes without a rank. BTC and SOL rank."
+  - "{{name:lighter}} reads {{p50:lighter}}. Until 2026-09-27 this row published 887 dollars of liquidations against 185.6M of ETH volume, because each hourly bucket was captured minutes after its hour opened and then frozen by the dedup key. Coinalyze was reporting 16.36 ETH over the same window, about 44k dollars."
+  - "{{name:gains}} reads {{p50:gains}}. Since 2026-09-28 its traded notional is summed per pair from the same diamond logs as its liquidations, so the row goes through the same gate as every other. In the cascade of that day it liquidated 27.3M dollars on ETH against a peak book of 43.7M, 62% of the book, on 423k of collateral venue-wide at a median 73x: the notional is right (two encodings agree to 0.02%) and the leverage is why a 2.8% move clears most of a book."
+  - "{{name:dydx}} does not rank on ETH or BTC. Paging the full 24h tape on 2026-09-27 returned one LIQUIDATED fill on each, 466.93 dollars and 16.92, against 54.97M and 7.24M of traded notional. The harness reproduced both to the cent, so the reading is right and it is not a rate: one fill is an event, and the gate now says so by name."
+  - "{{name:paradex}} does not rank. Its public tape carried no LIQUIDATION row on ETH or BTC over a full 24 hours, and its ETH book traded 1.4M dollars against 14.9M of open interest. An exact zero off a working feed is published as an observation, not as the lowest rate."
+  - "{{name:gmx}} joined the measured field on 2026-09-27. This spec had claimed no liquidation source existed for it; the public squid's tradeActions does carry the order type, and 103 executed liquidations totalling 900,656 dollars were found over the previous 24 hours."
+  - "{{name:aster}} and {{name:ostium}} were added the same day. Aster reads {{p50:aster}} on ETH, at 0.18% of its own traded notional. Ostium's feed works on a book of 78k and 158k dollars; it liquidated nothing on 2026-09-27 and 338 dollars in one BTC position on 2026-09-28, which sat inside the volume band and ranked above Hyperliquid until the size gates were added. It publishes without a rank."
+  - "{{name:orderly}} and {{name:nado}} were added the same day. Orderly reads {{p50:orderly}} on ETH off a purpose-built public liquidation endpoint with history, at 0.028% of its own traded notional. Nado's archive reports the day as one cumulative figure, 26,033 dollars on BTC and nothing on ETH, so its BTC row ranks and its ETH row publishes a zero without one."
+  - "{{name:aevo}} publishes open interest and traded notional with no rate, because every liquidation path on its API 404s, its trade history is per-account and no aggregator covers it. It is declared unranked in the spec rather than dropped, so the gap is visible. edgeX, Jupiter Perps and Drift were checked and left out, with reasons in the methodology."
+  - "The forfeited share is the figure a trader can act on, and it is not small. Measured over one common window for all three venues, 29.27 days to 2026-09-29, on crypto pairs only and inside the 10x to 100x range all three offer: Gains forfeits a median 36.7 points of margin on 10,599 liquidations, GMX v2 15.5 on 3,474 and Ostium 16.9 on 262. Gains destroys more than twice what either of the others does on an equally levered crypto position."
+  - "That result survived the checks that could have broken it. The three venues are now measured on the same window rather than 3, 7 and 30 days; the Gains figure covers Arbitrum and Base rather than Arbitrum alone; and the comparison is crypto against crypto rather than across a venue's forex, commodity and equity pairs. The gap widened slightly rather than closing: the earlier 3-day Arbitrum reading was 32.8 points against 16.0 and 18.3, so the 28 September cascade was not inflating it."
+  - "Per band on crypto, n / median loss at trigger / median forfeit. Gains: 77 / 88.6% / 11.4 at 0-5x, 163 / 75.8% / 24.2 at 5-10x, 836 / 78.0% / 22.0 at 10-25x, 1,646 / 66.1% / 33.9 at 25-50x, 8,117 / 63.0% / 37.0 at 50-100x, 4,182 / 54.6% / 45.4 at 100-200x, 5,912 / 59.2% / 40.8 above 200x. Its median liquidated position is 100x and 48.2% sit above 100x."
+  - "GMX v2 on crypto over the same window: 135 / 95.9% / 1.6 at 0-5x, 189 / 92.7% / 3.4 at 5-10x, 710 / 86.1% / 6.6 at 10-25x, 1,601 / 64.6% / 14.6 at 25-50x, 1,163 / 54.7% / 23.6 at 50-100x, 60 / 47.0% / 27.8 at 100-200x, and nothing above 106.7x. Ostium: 47 / 96.1% / 3.9 at 10-25x, 44 / 89.1% / 10.9 at 25-50x, 171 / 78.4% / 21.6 at 50-100x, and nothing above 100x."
+  - "Gains forfeits more in every band with a real count, by three to five times at the lower end and about 1.6 times at 50-100x. The mechanism is the loss at trigger: on crypto at 10-25x Gains closes once the price has taken 78.0% of the margin, GMX at 86.1%, Ostium at 96.1%. Closing earlier leaves more behind, and Gains returns none of it while GMX returns a median 17.5%."
+  - "Underlying volatility is not the explanation, and the distributions rule it out rather than merely allowing it. A price gapping past the liquidation threshold would push the loss at trigger up, so the venue closing latest should look worst. Gains' loss at trigger on crypto 10x-100x runs p10 52.7, p50 63.3, p90 74.3, the lowest and tightest of the three; GMX runs 47.7 to 87.4 and Ostium 76.0 to 96.1. Only 0.6% of Gains closes reach the 100% clamp against GMX's 1.4%."
+  - "The Base deployment is in the perimeter and is not a rounding error in count. Over the common window Gains liquidated 14,454 positions on Arbitrum and 6,651 on Base, though only 137,796 dollars of margin against 1,696,795. Inside 10x-100x on crypto, Base forfeits a median 36.5 points against Arbitrum's 38.8, so the row is not carried by either chain alone."
+  - "The forfeit is not all penalty, and on crypto 10x-100x the split is: GMX 15.5 points of which 2.5 are trading fees and carry, so about 13.0 is its own liquidation fee; Ostium 16.9 of which 4.9, so about 12.0. The Gains event carries no fee word, so its own stop losses bound it instead: over the same window and range they forfeit 3.7 points against the liquidations' 36.7, a difference of 33.0 points that closing voluntarily does not cost."
+  - "The leverage-neutral rate says the same in money rather than notional. Of the margin behind the crypto positions each venue force-closed inside 10x-100x, Gains destroyed 991,698 dollars of 991,698, all of it; Ostium 25,949 of 25,949; GMX 1,332,710 of 1,484,688, 89.8%. Against the margin behind every position closed in the window, GMX liquidated 1.09% over 7 days and Ostium 1.38% over 30."
+  - "Twelve of those 602 stop losses returned nothing at all, so a zero payout is not by itself the signature of a liquidation; in aggregate they returned 116,089 dollars of 154,420, 75.2%, at a median loss at trigger of 24.3%."
+  - "Each venue's decode was checked against the chain and not against this harness. Gains: in tx 0x427c242f a 200,228 dollar ETH position at 108.213x was closed 51.24% down, and the three USDC transfers in that transaction total the whole margin and every one goes to the vault, none to the trader. So that trader forfeited 48.76 points, 97,631 dollars, on top of what the move had cost them."
+  - "GMX v2: the residual this harness computes as margin plus all-in P&L is the amount the pool actually paid out. In tx 0xee583c74 it predicts 8.6551 USDC and the transaction transferred 8.655363 to the liquidated account. Across the twelve largest liquidations of that day seven matched an on-chain transfer of exactly that amount and five were cross-chain orders paid to a GMX vault for the same amount. Ostium: in tx 0xfa67b49b the two USDC legs total the margin and both go to the vault."
+  - "Ten of the 886 Gains liquidations carried a positive price return, the largest a long on pair 482 up 8.88% at 52.88x, closed as a liquidation with nothing returned. The word is read correctly (the price move times the leverage reproduces it on 120 of 120 rows) and the event is not a trader losing money to a move, so those rows keep their notional and stay out of the forfeited arithmetic. Left in, each would have contributed 569 points."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/perp-liq-rate
 
@@ -86,19 +178,61 @@ prometheus:
 
 faq:
   - q: "What is the liquidation rate and why does it matter?"
-    a: "The liquidation rate is the fraction of a venue's open interest that gets forcibly closed in 24 hours. A high rate means many traders are hitting their margin limits and being liquidated by the venue's insurance or backstop system. For a trader it signals how aggressively the venue's risk engine operates and whether the margin buffer they need to survive a volatile session is larger or smaller than on a competing venue."
-  - q: "Why does GMX show no liquidation rate?"
-    a: "GMX v2 open interest is fetched correctly from the gmxinfra /markets/info endpoint ($29M ETH, $21M BTC). There is no accessible liquidation source: the TheGraph subgraph is defunct, and the Subsquid positionChanges API does not expose an orderType or isLiquidation flag to distinguish liquidations from voluntary closes. The bench publishes perp_liq_source_available=0 for GMX, so the frontend shows N/A rather than a misleading 0%. OI can still be compared across venues."
-  - q: "How is Lighter liquidation data obtained?"
-    a: "Lighter's /api/v1/trades endpoint requires authentication, so direct liquidation data is not available. The bench uses Coinalyze /v1/liquidation-history for Lighter's exchange ID (symbols 0.T=ETH, 1.T=BTC), which provides hourly buckets of long and short liquidation volume in base asset units. These are converted to USD using the current mark price from orderBookDetails at the time of each 5-minute tick. The USD value of old buckets may be slightly off if the price moved significantly during the hour, but the error is bounded."
-  - q: "How is Hyperliquid liquidation data obtained?"
-    a: "With the OXARCHIVE_API_KEY environment variable set, the bench uses the 0xArchive REST API /v1/hyperliquid/liquidations/{coin} with cursor pagination, which covers all liquidation types including positions closed via market orders (not just backstop vault liquidations). Without the key the bench falls back to userFillsByTime on the HLP liquidator vault address, which captures backstop liquidations only (a minority of volume)."
+    a: "It is the share of a venue's book closed by force over 24 hours: liquidated notional divided by the peak open interest across the same day. For a trader it says how much of the book the venue's risk engine is closing, which bears on how large a margin buffer a position needs to survive a volatile session. For anyone providing liquidity to a vault-backed venue it bears on how often the vault is on the other side of a forced close."
+  - q: "Why is the ranked field smaller than the cohort?"
+    a: "Because the venues do not agree on what a liquidation is, and a single ranked column would imply they do. dYdX labels a fill LIQUIDATED only on its dedicated liquidation path and returned one such fill on ETH over the 24 hours to 2026-09-27. Paradex's tape returned none. Hyperliquid's ETH feed returned 22 events against 693 on BTC. A row ranks only when its figure is a flow (10,000 dollars or more, no single event over half) between 0.01% and 3% of the venue's own traded notional."
+  - q: "Why 0.01% to 3% of traded notional, and why the size gates?"
+    a: "The band is where a perp venue's liquidation flow sits, and traded notional is a denominator nearly every venue publishes (GMX's from the same squid as its liquidations, Gains' from the same contract logs), so it cancels venue size. On 2026-09-27: Hyperliquid 0.17% on BTC and 0.93% on SOL, Aster 0.18% and 0.09%, Lighter 0.024% and 0.018%, GMX v2 2.02% on BTC. The size gates exist because a share cannot tell a flow from an event: Ostium BTC sat inside the band on 338 dollars from one close."
+  - q: "Why does Gains read so much higher than the rest?"
+    a: "Because the reading is right and the venue is different. Gains allows up to 200x, so a position is liquidated on a move of well under a percent and a liquidation carries the full leveraged notional. On 2026-09-28, a day ETH fell 2.8%, it liquidated 27.3M dollars on ETH from a peak book of 43.7M, 62% of the book, while the traders behind all 84 liquidations lost 423k of collateral at a median 73x. The two encodings of position size in each event agree to 0.02%."
+  - q: "Is the rate the money traders lost?"
+    a: "No. It is the share of the book closed by force, counted in notional, and not neutral to leverage: a 100x position counts at 100 times its margin, in the numerator and in open interest, so a 200x venue and a 20x one are two products on one column. Where a source exposes the position behind the fill (Gains on chain), collateral lost and median leverage publish beside the notional. Trade tapes and hourly buckets carry size and price only, so notional is the figure every venue can be measured on."
+  - q: "Why does Aevo show no rate, and what changed for GMX v2?"
+    a: "Aevo has no public liquidation feed: every liquidation path on its API 404s, its trade history endpoint is per-account, and no aggregator covers it. It is declared unranked and publishes open interest and 24h traded notional so the gap is visible rather than rendered as a zero. GMX v2 had a feed all along: this spec blamed Subsquid positionChanges for exposing no order type, true of that entity and false of tradeActions, whose orderType is 7 for a liquidation. GMX publishes a measured rate."
+  - q: "Which venues were checked and left out?"
+    a: "Pacifica, Extended and Backpack flag liquidations publicly, but only on a tape or stream that reaches back minutes, so a 5-minute poller cannot see a day; they need a persistent collector. ApeX Omni, GRVT, Vest and StandX expose no liquidation signal on any public endpoint. edgeX v2 publishes no public trade tape. Jupiter Perps' trades endpoint needs a wallet address and has no liquidation action. Drift is now Velocity, a fresh deployment holding a few thousand dollars of ETH and BTC."
+  - q: "Why is the denominator the peak open interest of the day rather than the current figure or the mean?"
+    a: "Because the numerator covers 24 hours, so the denominator has to describe the book that was there to be liquidated over those hours. Against the instant, Gains published 343% on 2026-09-24 as its open interest fell from 37M to 7.3M dollars while the numerator stood still. Against the mean it still read 251% on 2026-09-28, when its ETH book went from 43.7M to 2.1M because most of it was liquidated. The peak is the largest book observed, and above 100% is turnover; that day reads 62%."
+  - q: "How is Lighter liquidation data obtained, and what was wrong with it?"
+    a: "Lighter's own trades endpoint needs authentication, so the numerator comes from Coinalyze hourly liquidation buckets for Lighter's markets, in base units, converted at that hour's close price. The bug was in how the buckets were folded in: each hour was captured minutes after it opened, when it was nearly empty, and the dedup key then held that reading for a full day. Hours are now restated as they fill. The figure went from 887 dollars to roughly 44k on ETH."
+  - q: "How much of a liquidated position's margin does a trader actually forfeit?"
+    a: |
+      Not all of it, and not only what the price took. The harness reads the
+      margin behind each forced close, the share the price had taken (the loss
+      at trigger), and the share that went back. What is left is forfeited.
+
+      It only compares inside a leverage band and within one asset class, since
+      both move it. Over one common 29-day window, on crypto, Gains forfeits the
+      most band for band and by a factor: 22.0 points against GMX's 6.6 and
+      Ostium's 3.9 at 10-25x, 37.0 against 23.6 and 21.6 at 50-100x. Across 10x
+      to 100x, Gains reads 36.7 points, GMX 15.5, Ostium 16.9. Gains closes
+      earliest, at 78.0% of margin lost against 86.1% and 96.1%, and returns
+      none of the rest.
+
+      It is not all penalty: it holds the closing fee, funding and rollover too.
+      On GMX, 2.5 of its 15.5 points are those costs. Gains has no fee word, so
+      its stop losses bound it: they forfeit 3.7 points over the same window and
+      range against the liquidations' 36.7.
+  - q: "Why is the forfeited share not ranked across the field?"
+    a: |
+      Because three of the eleven venues carry it. Gains and Ostium publish the
+      position behind the close on chain and GMX v2 publishes it on its squid.
+      Hyperliquid's feed carries the realized P&L in dollars but no margin to
+      divide it by; the dYdX and Paradex tapes carry size and price; Lighter and
+      Aster arrive as hourly aggregate buckets with no positions in them at all;
+      Nado publishes one cumulative counter for the window. Orderly comes
+      closest and still cannot: its collateral_value is the equity remaining at
+      the moment of liquidation, not the margin posted, so there is no
+      denominator.
+
+      Those seven, and Aevo which has no liquidation feed at all, publish
+      nothing on these columns rather than 0.0%, which would read as a venue
+      that forfeits none of its traders' margin. The three that do report are
+      annotations beside the ranked notional rate, never a ranked column, and
+      the ledger carries the count of forced closes next to the figure, because
+      on a quiet day for a small venue that count is 1.
   - q: "What does the warming up period mean?"
-    a: "The first 24 hours after the harness starts, the sliding window is not yet full. The liq_rate during this period underestimates the true 24-hour rate because fewer than 24 hours of liquidation events have been accumulated. The perp_liq_warming_up metric is 1 during this period so the UI can flag the value as provisional."
-  - q: "Why are Gains OI values so small compared to other venues?"
-    a: "The Gains deployment on Base is a newer, smaller deployment than their Arbitrum and Polygon deployments. The $55K ETH OI and $161K BTC OI reported here reflect actual trading-variables from the Base chain, not the venue's total cross-chain OI. The liq_rate for Gains Base should be interpreted in this context: 0 liquidations on $55K OI is a different regime than 0 liquidations on $1B OI."
-  - q: "Is this an apples-to-apples comparison across all venues?"
-    a: "Yes for OI and liquidation definition: both sides use notional USD (position size including leverage) at all venues with available data. Hyperliquid, Lighter, dYdX and Paradex use current mark price for OI; Gains uses entry-price notional from the protocol's internal accounting (oiLongCollateral), which may differ from current-price notional if ETH/BTC prices have moved significantly since positions were opened. The main non-comparability is GMX with 0 liquidation data and Aevo/Paradex with typically low liquidation counts. The OI numbers are comparable across all venues."
+    a: "Every liquidation source backfills the full 24 hours on the first tick, so the numerator is complete from the start. The denominator depends on the venue. Gains reads its past open interest off the chain, so its curve is complete on the first tick and it never warms up. Every other venue publishes only the book it holds now, so its window needs twelve readings, an hour here, before a peak is worth dividing by; until then the rate is withheld."
 
 dimensions:
   chain:
@@ -117,95 +251,291 @@ aggregate_filters: { chain: ETH }
 # load.ts then reads as 100% healthy. Those selectors carry chain=~".*",
 # which suppresses the injection (a selector already naming the label is
 # left alone) and still matches series that have no chain label.
+# perp_liq_ranked and every metric_panel below are per venue and per asset,
+# so they take the pin and must not carry that escape hatch.
+
+metric_panels:
+  - id: liq_volume
+    label: Liquidated 24h
+    label_key: venue
+    metric: perp_liq_volume_24h_usd{}
+    unit: usd
+    higher_is_better: false
+    description: "The numerator: liquidated notional in USD over the trailing 24 hours, summed over the window the rate is built on. Absent for a venue with no liquidation feed."
+  - id: collateral
+    label: Collateral lost 24h
+    label_key: venue
+    metric: perp_liq_collateral_24h_usd{}
+    unit: usd
+    higher_is_better: false
+    tab: false
+    description: "The margin behind the liquidated positions: the money traders lost, not the notional closed. An annotation, not a ranking: Gains, GMX v2 and Ostium publish it, the other eight cannot carry it. Gains: 39.5M of notional on 423k of collateral, 2026-09-28."
+  - id: median_leverage
+    label: Median leverage
+    label_key: venue
+    metric: perp_liq_median_leverage_x{}
+    unit: x
+    higher_is_better: false
+    tab: false
+    description: "Median leverage of the positions liquidated in the window, where the feed says: Gains and Ostium off chain, GMX v2 as notional over margin. An annotation, not a ranking: the rate above counts a 100x position at 100 times its margin, so equal rates at unequal leverage are not equal products."
+  - id: forfeited
+    label: Margin forfeited
+    label_key: venue
+    metric: perp_liq_collateral_forfeited_pct{}
+    unit: pct
+    higher_is_better: false
+    tab: false
+    description: "Median share of a liquidated position's margin destroyed beyond the loss the trader incurred, over closes between 10x and 100x, the range all three venues offer. Where a venue returns nothing, as Gains and Ostium do, this is exactly 100 minus the loss beside it and adds nothing."
+  - id: loss_at_trigger
+    label: Loss at trigger
+    label_key: venue
+    metric: perp_liq_loss_at_trigger_pct{}
+    unit: pct
+    higher_is_better: false
+    tab: false
+    description: "Median share of the margin the price had taken when the venue closed the position, over the same 10x to 100x closes. The move times the leverage, before fees and carry. A LOWER figure means the venue closed earlier and kept more: at 10-25x on crypto Gains reads 78.0%, GMX 86.1%, Ostium 96.1%."
+  - id: returned
+    label: Margin returned
+    label_key: venue
+    metric: perp_liq_collateral_returned_pct{}
+    unit: pct
+    higher_is_better: true
+    tab: false
+    description: "Median share of the margin that went back to the trader, over the same 10x to 100x closes. Zero is a measurement and the common one: Gains and Ostium returned nothing on any of 21,105 and 383 liquidations over 29 days, GMX v2 a median 17.5%. Blank on the eight venues with no position."
+  - id: forfeit_events
+    label: Forced closes measured
+    label_key: venue
+    metric: perp_liq_forfeit_events{}
+    unit: count
+    higher_is_better: false
+    tab: false
+    description: "How many forced closes of the window carried the position AND sat between 10x and 100x, the set the venue-level medians are taken over. A 0 is a venue that can report and saw none; one whose feed cannot report publishes no figure at all. The per-band counts cover the whole curve."
+  - id: fee_and_carry
+    label: Of which fees
+    label_key: venue
+    metric: perp_liq_fee_and_carry_pct{}
+    unit: pct
+    higher_is_better: false
+    tab: false
+    description: "The part of the forfeited share that is trading fees and carry rather than the venue's liquidation penalty. A fee is a cost the trader incurred and a penalty is not. GMX v2 itemises it in full, Ostium in part; the Gains event carries no fee word, so its cell is blank, not zero."
+  - id: margin_liq_share
+    label: Margin liquidated
+    label_key: venue
+    metric: perp_liq_margin_destroyed_share_pct{}
+    unit: pct
+    higher_is_better: false
+    tab: false
+    description: "Margin destroyed by force over the margin behind every position the venue closed in the window. The leverage-neutral companion to Share of volume, which is notional over notional and counts a 100x position at a hundred times the money behind it. GMX v2 1.09% over 7 days, Ostium 1.38% over 30."
+  - id: oi_peak
+    label: Peak OI 24h
+    label_key: venue
+    metric: perp_liq_open_interest_peak_24h_usd{}
+    unit: usd
+    higher_is_better: true
+    description: "The denominator: the peak open interest in USD over the same 24 hours, read from the venue's own on-chain record of every change where there is one, otherwise sampled per tick. The largest book the venue held, so a book liquidated away inside the day is still measured against the book it had."
+  - id: oi_trough
+    label: Trough OI 24h
+    label_key: venue
+    metric: perp_liq_open_interest_trough_24h_usd{}
+    unit: usd
+    higher_is_better: true
+    description: "Smallest open interest in USD over the same 24 hours. Read it against the peak: when the two are far apart the peak and the mean describe different markets. Gains BTC ran from 49.94M dollars to 1.12M and back to 10.65M inside 2026-09-28."
+  - id: oi_avg
+    label: Mean OI 24h
+    label_key: venue
+    metric: perp_liq_open_interest_avg_24h_usd{}
+    unit: usd
+    higher_is_better: true
+    tab: false
+    description: "Mean open interest in USD over the same 24 hours, beside the peak. A wide gap between the two is a book that moved a lot inside the day, as Gains ETH did on 2026-09-28 (peak 43.7M, mean 10.9M)."
+  - id: oi_now
+    label: OI now
+    label_key: venue
+    metric: perp_liq_open_interest_usd{}
+    unit: usd
+    higher_is_better: true
+    tab: false
+    description: "Open interest in USD at the most recent tick, read natively per venue."
+  - id: venue_volume
+    label: Volume 24h
+    label_key: venue
+    metric: perp_liq_venue_volume_24h_usd{}
+    unit: usd
+    higher_is_better: true
+    description: "The venue's own 24h traded notional for this market, from its own API (GMX from the same squid as its liquidations, Gains from the same contract logs). Blank for a venue that publishes none, which is why such a row cannot be tested and does not rank."
+  - id: share_of_volume
+    label: Share of volume
+    label_key: venue
+    metric: perp_liq_share_of_volume_pct{}
+    unit: pct
+    higher_is_better: false
+    description: "Liquidated notional as a percentage of the venue's own 24h traded notional. Between 0.01 and 3 the figure is treated as a measurement and the row can rank. Below the floor it is an absence; above the ceiling it is not comparable to the field."
+  - id: largest_event
+    label: Largest event
+    label_key: venue
+    metric: perp_liq_largest_event_share_pct{}
+    unit: pct
+    higher_is_better: false
+    description: "The largest single liquidation in the window as a percentage of the window total. Above 50 the row does not rank: the 24h figure is one position, not a flow. Blank for rows read from hourly buckets or a cumulative counter (Lighter, Aster, Nado), which carry no single event."
+
+ledger_columns:
+  - { label: "Liq rate", slot: p50 }
+  - { label: "Liquidated 24h", panel: liq_volume }
+  - { label: "Peak OI 24h", panel: oi_peak }
+  - { label: "Volume 24h", panel: venue_volume }
+  - { label: "Margin liquidated", panel: margin_liq_share, unit: pct }
+  - { label: "Share of vol", panel: share_of_volume, unit: pct }
+  - { label: "Largest event", panel: largest_event, unit: pct }
+  - { label: "Margin forfeited", panel: forfeited, unit: pct }
+  - { label: "Closes measured", panel: forfeit_events }
 
 providers:
   - slug: hyperliquid
     name: Hyperliquid
-    tag: HyperBFT L1, full liquidation coverage via 0xArchive
-    formula: "24h sum of liquidated notional USD (0xArchive /v1/hyperliquid/liquidations, all types) divided by current OI (openInterest × midPx from metaAndAssetCtxs), as a percentage. Sliding window with event-key deduplication."
+    tag: HyperBFT L1; 0xArchive feed covers every liquidation type
+    formula: "24h sum of liquidated notional USD (0xArchive liquidations, all types) over peak 24h OI (openInterest x midPx from metaAndAssetCtxs), as a percentage. Window deduplicated by trade id."
     queries:
-      p50: avg_over_time(perp_liq_rate_24h_pct{venue="hyperliquid"}[24h])
+      p50: last_over_time(perp_liq_rate_24h_pct{venue="hyperliquid"}[1h])
       p90: quantile_over_time(0.90, perp_liq_rate_24h_pct{venue="hyperliquid"}[24h])
       p99: quantile_over_time(0.99, perp_liq_rate_24h_pct{venue="hyperliquid"}[24h])
-      mean: avg_over_time(perp_liq_rate_24h_pct{venue="hyperliquid"}[24h])
+      mean: last_over_time(perp_liq_rate_24h_pct{venue="hyperliquid"}[1h])
       success: avg_over_time(perp_liq_health{venue="hyperliquid",chain=~".*"}[24h])
       sample_size: count_over_time(perp_liq_rate_24h_pct{venue="hyperliquid"}[24h])
+      ranked: min_over_time(perp_liq_ranked{venue="hyperliquid"}[1h])
       series: perp_liq_rate_24h_pct{venue="hyperliquid"}
-
-  - slug: dydx
-    name: dYdX v4
-    tag: Cosmos appchain perps, native liquidation API
-    formula: "24h sum of liquidated notional USD (dYdX indexer liquidation endpoint) divided by current OI (native REST), as a percentage."
-    queries:
-      p50: avg_over_time(perp_liq_rate_24h_pct{venue="dydx"}[24h])
-      p90: quantile_over_time(0.90, perp_liq_rate_24h_pct{venue="dydx"}[24h])
-      p99: quantile_over_time(0.99, perp_liq_rate_24h_pct{venue="dydx"}[24h])
-      mean: avg_over_time(perp_liq_rate_24h_pct{venue="dydx"}[24h])
-      success: avg_over_time(perp_liq_health{venue="dydx",chain=~".*"}[24h])
-      sample_size: count_over_time(perp_liq_rate_24h_pct{venue="dydx"}[24h])
-      series: perp_liq_rate_24h_pct{venue="dydx"}
-
-  - slug: gmx
-    name: GMX v2
-    tag: Arbitrum synthetics, OI from gmxinfra API, liq data unavailable
-    formula: "Liq rate = 0 (TheGraph subgraph defunct, no alternative source). OI from arbitrum-api.gmxinfra.io/markets/info, sum of openInterestLong + openInterestShort across all listed markets for the asset, divided by 1e30."
-    queries:
-      p50: avg_over_time(perp_liq_rate_24h_pct{venue="gmx"}[24h])
-      p90: quantile_over_time(0.90, perp_liq_rate_24h_pct{venue="gmx"}[24h])
-      p99: quantile_over_time(0.99, perp_liq_rate_24h_pct{venue="gmx"}[24h])
-      mean: avg_over_time(perp_liq_rate_24h_pct{venue="gmx"}[24h])
-      success: avg_over_time(perp_liq_health{venue="gmx",chain=~".*"}[24h])
-      sample_size: count_over_time(perp_liq_rate_24h_pct{venue="gmx"}[24h])
-      series: perp_liq_rate_24h_pct{venue="gmx"}
 
   - slug: lighter
     name: Lighter
-    tag: zk-rollup, liquidations via Coinalyze hourly buckets
-    formula: "24h sum of (long_liqs + short_liqs) × current_mark_price (Coinalyze /v1/liquidation-history, 1-hour resolution) divided by current OI (open_interest × mark_price from orderBookDetails), as a percentage."
+    tag: zk-rollup; liquidations via Coinalyze hourly buckets, restated as they fill
+    formula: "24h sum of (long + short) base units x Hyperliquid's close for that hour (Coinalyze liquidation-history, 1h resolution) over peak 24h OI (open_interest x mark_price from orderBookDetails), as a percentage."
     queries:
-      p50: avg_over_time(perp_liq_rate_24h_pct{venue="lighter"}[24h])
+      p50: last_over_time(perp_liq_rate_24h_pct{venue="lighter"}[1h])
       p90: quantile_over_time(0.90, perp_liq_rate_24h_pct{venue="lighter"}[24h])
       p99: quantile_over_time(0.99, perp_liq_rate_24h_pct{venue="lighter"}[24h])
-      mean: avg_over_time(perp_liq_rate_24h_pct{venue="lighter"}[24h])
+      mean: last_over_time(perp_liq_rate_24h_pct{venue="lighter"}[1h])
       success: avg_over_time(perp_liq_health{venue="lighter",chain=~".*"}[24h])
       sample_size: count_over_time(perp_liq_rate_24h_pct{venue="lighter"}[24h])
+      ranked: min_over_time(perp_liq_ranked{venue="lighter"}[1h])
       series: perp_liq_rate_24h_pct{venue="lighter"}
 
-  - slug: gains
-    name: Gains
-    tag: Synthetic perps on Base, liquidations from TradeClosed on-chain logs
-    formula: "TradeClosed logs (cancelReason=1) on Base: notional = collateralAmount/1e6 x leverage/1e3. OI = oiLongCollateral + oiShortCollateral from trading-variables / 1e6. Liq rate = 24h notional / OI."
+  - slug: dydx
+    name: dYdX v4
+    tag: Cosmos appchain; tape labels a fill LIQUIDATED on the liquidation path only
+    formula: "24h sum of size x price over trades whose type is LIQUIDATED (v4 indexer tape, paged backwards) over peak 24h OI (openInterest x oraclePrice), as a percentage."
     queries:
-      p50: avg_over_time(perp_liq_rate_24h_pct{venue="gains"}[24h])
-      p90: quantile_over_time(0.90, perp_liq_rate_24h_pct{venue="gains"}[24h])
-      p99: quantile_over_time(0.99, perp_liq_rate_24h_pct{venue="gains"}[24h])
-      mean: avg_over_time(perp_liq_rate_24h_pct{venue="gains"}[24h])
-      success: avg_over_time(perp_liq_health{venue="gains",chain=~".*"}[24h])
-      sample_size: count_over_time(perp_liq_rate_24h_pct{venue="gains"}[24h])
-      series: perp_liq_rate_24h_pct{venue="gains"}
-
-  - slug: aevo
-    name: Aevo
-    tag: Optimism rollup perps, no public liquidation API
-    formula: "OI from native Aevo REST API. Liquidation source: no public API found, liq_rate = 0."
-    queries:
-      p50: avg_over_time(perp_liq_rate_24h_pct{venue="aevo"}[24h])
-      p90: quantile_over_time(0.90, perp_liq_rate_24h_pct{venue="aevo"}[24h])
-      p99: quantile_over_time(0.99, perp_liq_rate_24h_pct{venue="aevo"}[24h])
-      mean: avg_over_time(perp_liq_rate_24h_pct{venue="aevo"}[24h])
-      success: avg_over_time(perp_liq_health{venue="aevo",chain=~".*"}[24h])
-      sample_size: count_over_time(perp_liq_rate_24h_pct{venue="aevo"}[24h])
-      series: perp_liq_rate_24h_pct{venue="aevo"}
+      p50: last_over_time(perp_liq_rate_24h_pct{venue="dydx"}[1h])
+      p90: quantile_over_time(0.90, perp_liq_rate_24h_pct{venue="dydx"}[24h])
+      p99: quantile_over_time(0.99, perp_liq_rate_24h_pct{venue="dydx"}[24h])
+      mean: last_over_time(perp_liq_rate_24h_pct{venue="dydx"}[1h])
+      success: avg_over_time(perp_liq_health{venue="dydx",chain=~".*"}[24h])
+      sample_size: count_over_time(perp_liq_rate_24h_pct{venue="dydx"}[24h])
+      ranked: min_over_time(perp_liq_ranked{venue="dydx"}[1h])
+      series: perp_liq_rate_24h_pct{venue="dydx"}
 
   - slug: paradex
     name: Paradex
-    tag: Starknet appchain perps, native liquidation API
-    formula: "24h sum of liquidated notional USD (Paradex native REST) divided by current OI (native REST), as a percentage."
+    tag: Starknet appchain; public tape carries a LIQUIDATION trade type
+    formula: "24h sum of size x price over trades whose trade_type is LIQUIDATION (public tape, cursor paged) over peak 24h OI (open_interest x mark_price), as a percentage."
     queries:
-      p50: avg_over_time(perp_liq_rate_24h_pct{venue="paradex"}[24h])
+      p50: last_over_time(perp_liq_rate_24h_pct{venue="paradex"}[1h])
       p90: quantile_over_time(0.90, perp_liq_rate_24h_pct{venue="paradex"}[24h])
       p99: quantile_over_time(0.99, perp_liq_rate_24h_pct{venue="paradex"}[24h])
-      mean: avg_over_time(perp_liq_rate_24h_pct{venue="paradex"}[24h])
+      mean: last_over_time(perp_liq_rate_24h_pct{venue="paradex"}[1h])
       success: avg_over_time(perp_liq_health{venue="paradex",chain=~".*"}[24h])
       sample_size: count_over_time(perp_liq_rate_24h_pct{venue="paradex"}[24h])
+      ranked: min_over_time(perp_liq_ranked{venue="paradex"}[1h])
       series: perp_liq_rate_24h_pct{venue="paradex"}
+
+  - slug: gains
+    name: Gains
+    tag: gTrade on Arbitrum and Base; liquidations and traded notional off the same diamond logs, up to 200x leverage
+    formula: "24h sum of collateral x leverage x collateralPriceUsd over LimitExecuted logs with orderType LIQ_CLOSE, over peak 24h OI from trading-variables. Traded notional: every execution log of the pair off the same scan, resizes at their delta."
+    queries:
+      p50: last_over_time(perp_liq_rate_24h_pct{venue="gains"}[1h])
+      p90: quantile_over_time(0.90, perp_liq_rate_24h_pct{venue="gains"}[24h])
+      p99: quantile_over_time(0.99, perp_liq_rate_24h_pct{venue="gains"}[24h])
+      mean: last_over_time(perp_liq_rate_24h_pct{venue="gains"}[1h])
+      success: avg_over_time(perp_liq_health{venue="gains",chain=~".*"}[24h])
+      sample_size: count_over_time(perp_liq_rate_24h_pct{venue="gains"}[24h])
+      ranked: min_over_time(perp_liq_ranked{venue="gains"}[1h])
+      series: perp_liq_rate_24h_pct{venue="gains"}
+
+  - slug: gmx
+    name: GMX v2
+    tag: Arbitrum synthetics; on-chain liquidation orders via the public squid
+    formula: "24h sum of sizeDeltaUsd over executed tradeActions with orderType 7 (30-decimal USD, already priced at execution) over peak 24h OI from gmxinfra markets/info, as a percentage."
+    queries:
+      p50: last_over_time(perp_liq_rate_24h_pct{venue="gmx"}[1h])
+      p90: quantile_over_time(0.90, perp_liq_rate_24h_pct{venue="gmx"}[24h])
+      p99: quantile_over_time(0.99, perp_liq_rate_24h_pct{venue="gmx"}[24h])
+      mean: last_over_time(perp_liq_rate_24h_pct{venue="gmx"}[1h])
+      success: avg_over_time(perp_liq_health{venue="gmx",chain=~".*"}[24h])
+      sample_size: count_over_time(perp_liq_rate_24h_pct{venue="gmx"}[24h])
+      ranked: min_over_time(perp_liq_ranked{venue="gmx"}[1h])
+      series: perp_liq_rate_24h_pct{venue="gmx"}
+
+  - slug: aster
+    name: Aster
+    tag: BNB Chain; liquidations via Coinalyze hourly buckets, OI and notional native
+    formula: "24h sum of (long + short) base units x Hyperliquid's close for that hour (Coinalyze liquidation-history for Aster) over peak 24h OI (openInterest x lastPrice from the futures gateway), as a percentage."
+    queries:
+      p50: last_over_time(perp_liq_rate_24h_pct{venue="aster"}[1h])
+      p90: quantile_over_time(0.90, perp_liq_rate_24h_pct{venue="aster"}[24h])
+      p99: quantile_over_time(0.99, perp_liq_rate_24h_pct{venue="aster"}[24h])
+      mean: last_over_time(perp_liq_rate_24h_pct{venue="aster"}[1h])
+      success: avg_over_time(perp_liq_health{venue="aster",chain=~".*"}[24h])
+      sample_size: count_over_time(perp_liq_rate_24h_pct{venue="aster"}[24h])
+      ranked: min_over_time(perp_liq_ranked{venue="aster"}[1h])
+      series: perp_liq_rate_24h_pct{venue="aster"}
+
+  - slug: orderly
+    name: Orderly
+    tag: Omnichain orderbook; dedicated public liquidation endpoint with history
+    formula: "24h sum of the matching leg's cost_position_transfer (USD) over /v1/public/liquidated_positions, over peak 24h OI (open_interest x mark_price from /v1/public/futures), as a percentage."
+    queries:
+      p50: last_over_time(perp_liq_rate_24h_pct{venue="orderly"}[1h])
+      p90: quantile_over_time(0.90, perp_liq_rate_24h_pct{venue="orderly"}[24h])
+      p99: quantile_over_time(0.99, perp_liq_rate_24h_pct{venue="orderly"}[24h])
+      mean: last_over_time(perp_liq_rate_24h_pct{venue="orderly"}[1h])
+      success: avg_over_time(perp_liq_health{venue="orderly",chain=~".*"}[24h])
+      sample_size: count_over_time(perp_liq_rate_24h_pct{venue="orderly"}[24h])
+      ranked: min_over_time(perp_liq_ranked{venue="orderly"}[1h])
+      series: perp_liq_rate_24h_pct{venue="orderly"}
+
+  - slug: nado
+    name: Nado
+    tag: Ink orderbook; 24h figure is a cumulative counter delta, no per-event detail
+    formula: "Difference of cumulative_liquidation_amounts between the newest and oldest of 25 hourly archive snapshots (x18 USD), over peak 24h OI from the same snapshots, as a percentage."
+    queries:
+      p50: last_over_time(perp_liq_rate_24h_pct{venue="nado"}[1h])
+      p90: quantile_over_time(0.90, perp_liq_rate_24h_pct{venue="nado"}[24h])
+      p99: quantile_over_time(0.99, perp_liq_rate_24h_pct{venue="nado"}[24h])
+      mean: last_over_time(perp_liq_rate_24h_pct{venue="nado"}[1h])
+      success: avg_over_time(perp_liq_health{venue="nado",chain=~".*"}[24h])
+      sample_size: count_over_time(perp_liq_rate_24h_pct{venue="nado"}[24h])
+      ranked: min_over_time(perp_liq_ranked{venue="nado"}[1h])
+      series: perp_liq_rate_24h_pct{venue="nado"}
+
+  - slug: ostium
+    name: Ostium
+    tag: Arbitrum synthetics; LiquidationExecuted events from the public subgraph
+    formula: "24h sum of the liquidated trade's notional (6-decimal USD) over tradeEvents of type LiquidationExecuted, over peak 24h OI ((longOI + shortOI) x lastTradePrice), as a percentage."
+    queries:
+      p50: last_over_time(perp_liq_rate_24h_pct{venue="ostium"}[1h])
+      p90: quantile_over_time(0.90, perp_liq_rate_24h_pct{venue="ostium"}[24h])
+      p99: quantile_over_time(0.99, perp_liq_rate_24h_pct{venue="ostium"}[24h])
+      mean: last_over_time(perp_liq_rate_24h_pct{venue="ostium"}[1h])
+      success: avg_over_time(perp_liq_health{venue="ostium",chain=~".*"}[24h])
+      sample_size: count_over_time(perp_liq_rate_24h_pct{venue="ostium"}[24h])
+      ranked: min_over_time(perp_liq_ranked{venue="ostium"}[1h])
+      series: perp_liq_rate_24h_pct{venue="ostium"}
+
+  - slug: aevo
+    name: Aevo
+    tag: OP Stack rollup perps; no reachable public liquidation feed
+    unranked: "No liq feed"
+    formula: "No rate. OI from GET /statistics?asset=X&instrument_type=PERPETUAL, open_interest.total x mark_price, with daily_volume as the 24h notional."
+    queries:
+      p50: last_over_time(perp_liq_rate_24h_pct{venue="aevo"}[1h])
+      success: avg_over_time(perp_liq_health{venue="aevo",chain=~".*"}[24h])
+      series: perp_liq_rate_24h_pct{venue="aevo"}

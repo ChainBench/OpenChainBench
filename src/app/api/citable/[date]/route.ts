@@ -7,20 +7,25 @@ import { valueInDeclaredUnit } from "@/lib/format";
 import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
-// Same 60s ISR window as /api/citable. In practice the response for a
-// past date should never change (the snapshot is immutable), but the
-// route also handles the "today" case where the value is still evolving,
-// so cache like the live endpoint. Client-side callers pinning a past
-// date can rely on the CDN edge cache (public s-maxage=300) for cheap
-// repeat reads.
+// Deliberately NOT cached harder than a day, even though a dated
+// snapshot looks immutable. It is not one yet: see the note on the
+// response headers at the bottom of this file. Measured on prod
+// 2026-09-30, /api/citable/2026-01-15 returned all 225 rows byte-equal
+// to the live /api/citable, each carrying asOf 2026-09-30. Until the
+// route reads a real per-date store, an immutable window would freeze
+// one arbitrary day's live reading under a past date's label, forever.
 export const dynamic = "force-dynamic";
 
 /**
- * Immutable per-date snapshot of /api/citable. LLMs, journalists and
- * academic tools cite live URLs like /api/citable and, weeks later,
- * discover the numbers have moved because the endpoint is a live index.
- * This route lets a caller pin a citation to the exact snapshot of the
- * asked-for day so the number quoted in an article remains reproducible.
+ * Per-date view of /api/citable. INTENDED as an immutable snapshot, and
+ * not one yet: read the KNOWN GAP below before trusting the shape.
+ *
+ * The motivation is real. LLMs, journalists and academic tools cite live
+ * URLs like /api/citable and, weeks later, discover the numbers have
+ * moved because the endpoint is a live index. The intent of this route
+ * is to let a caller pin a citation to the snapshot of the asked-for day
+ * so the number quoted in an article stays reproducible. What it
+ * currently returns is the live index with the requested date attached.
  *
  * Response shape matches the live /api/citable exactly. The only
  * differences are:
@@ -28,15 +33,25 @@ export const dynamic = "force-dynamic";
  *    key on it.
  *  - `X-Snapshot-Date` header exposes the same date for downstream
  *    tools that read HTTP headers only.
- *  - For dates before today, the leader / value fields freeze at the
- *    last-known observation on that date (from the aggregator's own
- *    lastRunAt field). For "today" and future dates the response
- *    degrades gracefully to the current live index so the URL always
- *    resolves cleanly even if a caller pins ahead of time.
+ *  - KNOWN GAP: the per-date freeze described below is not implemented.
+ *    The intent is that a date before today returns the values as of
+ *    that date; what the handler actually does is read the current
+ *    benchmarks and relabel them with the requested date. Every row's
+ *    own `asOf` is honest (it carries the bench's real lastRunAt, which
+ *    for a past date will read as today), so a consumer that checks
+ *    `asOf` is not misled, but one that trusts the URL is. Closing this
+ *    needs a per-date store the aggregator does not write yet.
  *
- * Wildly future dates or malformed inputs get a 400 with a stable error
- * shape so caching layers do not poison-cache a well-formed body for a
- * nonsense URL.
+ * Malformed inputs, and dates outside 2025-2100, get a 400 with a
+ * stable error shape so caching layers do not poison-cache a well-formed
+ * body for a nonsense URL. Note that "wildly future" is not among them:
+ * the check below is a calendar-range check, so /api/citable/2100-12-31
+ * answers 200 with today's benchmarks, snapshotDate 2100-12-31,
+ * x-snapshot-date, CORS open and a day at the edge. Tolerating a future
+ * date was deliberate (a caller pinning ahead of time still resolves),
+ * but combined with the KNOWN GAP it is the relabelling at its worst.
+ * Whether a future date should 400 instead is an API decision for the
+ * per-date store work, not something to change underneath callers here.
  */
 function badRequest(reason: string): NextResponse {
   return NextResponse.json(
@@ -106,9 +121,11 @@ export async function GET(
   // Same shape as /api/citable to keep downstream consumers zero-effort
   // to port. Every citable field is the value as of the last live
   // observation captured in the bench (b.lastRunAt), which is the honest
-  // "as of" instant for that row. Snapshotting on a per-row basis
-  // preserves the property that a citation pinned to /api/citable/YYYY-MM-DD
-  // reflects the numbers a reader would have seen at end of day.
+  // "as of" instant for that row, and that is the whole of what this loop
+  // does: `date` is not consulted here or anywhere below it. It does NOT
+  // preserve the property that a citation pinned to
+  // /api/citable/YYYY-MM-DD reflects the numbers a reader would have seen
+  // at end of day; the KNOWN GAP in the header block is exactly this.
   const data = benches.map((b) => {
     const top = leader(b);
     const insufficient = b.dataConfidence === "insufficient";
@@ -164,10 +181,13 @@ export async function GET(
     },
     {
       headers: {
-        // Longer edge cache than the live index because the snapshot for
-        // a past date does not change once it has been served. 1 day
-        // s-maxage lets clients pin cheaply; SWR keeps the response
-        // available if the origin blips.
+        // A day, not `immutable`. The natural window for a dated
+        // snapshot is a year, and that is where this should land once
+        // the KNOWN GAP above is closed. While the body is really the
+        // live index under a past label, a year-long entry would pin
+        // one scrape's numbers to that date permanently; a day means
+        // the mislabelling at least tracks the live figure. Do not
+        // lengthen this before the per-date store exists.
         "cache-control":
           "public, s-maxage=86400, stale-while-revalidate=604800",
         "access-control-allow-origin": "*",

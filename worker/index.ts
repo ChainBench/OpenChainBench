@@ -52,6 +52,9 @@ import {
   fetchHlCohortFresh,
   fetchHlHip3CohortFresh,
   fetchHlHistoryFresh,
+  HL_FRONTENDS_KEY,
+  HL_HIP3_KEY,
+  HL_HISTORY_KEY,
 } from "@/lib/hl-builder-stats";
 import { fetchPmCohortFresh } from "@/lib/pm-stats";
 import { buildRpcHubSnapshotFresh, RPC_HUB_KEY } from "@/lib/rpc-hub-stats";
@@ -63,6 +66,7 @@ import type { Spec } from "@/lib/spec-schema";
 import { variantCombos } from "./variant-combos";
 export { variantCombos };
 import { publishAggregate, publishVariants, publishSitemapSlim } from "./publish-aggregate";
+import { publishCapitalHistory } from "./publish-history";
 
 const SWEEP_SEC = Number(process.env.SWEEP_SEC ?? 60);
 const VARIANT_EVERY = Number(process.env.VARIANT_EVERY ?? 5);
@@ -355,6 +359,10 @@ async function sweep(iteration: number): Promise<void> {
     }
   }
 
+  // Daily capital and valuation history blobs (valuation/history.json,
+  // chains/history.json). Throttled inside; see worker/publish-history.ts.
+  await publishCapitalHistory();
+
   // Cohort snapshots used by the hub pages and the search dialog. Each
   // builder hits Prom directly (via the in-network http://ocb-prom:9090
   // URL), so they don't add load on the public reverse proxy. Failures
@@ -377,9 +385,12 @@ async function sweep(iteration: number): Promise<void> {
       // /perps/eth, /perps/btc, /perps/sol: per-asset cost, slippage and
       // funding per venue, one blob for the three assets.
       { key: PERP_ASSET_PAGES_KEY, build: () => fetchPerpAssetPagesFresh() },
-      { key: "hl-frontends", build: () => Promise.resolve(hlCohort) },
-      { key: "hl-hip3", build: () => fetchHlHip3CohortFresh() },
-      { key: "hl-history", build: () => fetchHlHistoryFresh() },
+      // Keys are shared with the readers in hl-builder-stats so a shape
+      // bump on one side (hl-hip3 -> hl-hip3-v2, 2026-09-24) cannot leave
+      // the site reading a key the worker no longer writes.
+      { key: HL_FRONTENDS_KEY, build: () => Promise.resolve(hlCohort) },
+      { key: HL_HIP3_KEY, build: () => fetchHlHip3CohortFresh() },
+      { key: HL_HISTORY_KEY, build: () => fetchHlHistoryFresh() },
       { key: "pm-hub", build: () => fetchPmCohortFresh() },
       // Cross-chain RPC hub (/rpc). Store-only builder: folds the
       // `-rpc` bench blobs this sweep just published into one snapshot,

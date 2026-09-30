@@ -72,6 +72,54 @@ export function Bars({ rows, max }: { rows: { label: string; value: number; hint
   );
 }
 
+/** Inline multi-series SVG line chart with a legend; no client code. Each
+ *  series is scaled to the shared maximum so the surfaces stay comparable;
+ *  `logScale` compresses a series that dwarfs the others (HTML pageviews
+ *  against a handful of agent reads a day). */
+export function Lines({
+  series,
+  height = 120,
+  width = 640,
+  logScale = false,
+}: {
+  series: { name: string; color: string; values: number[] }[];
+  height?: number;
+  width?: number;
+  logScale?: boolean;
+}) {
+  const n = Math.max(...series.map((s) => s.values.length), 0);
+  if (n < 2) return <div style={{ height }} />;
+  const y = (v: number) => (logScale ? Math.log10(v + 1) : v);
+  const max = Math.max(1e-9, ...series.flatMap((s) => s.values.map(y)));
+  const x = (i: number) => ((i / (n - 1)) * (width - 2) + 1).toFixed(1);
+  const py = (v: number) => (height - 2 - (y(v) / max) * (height - 6)).toFixed(1);
+  return (
+    <div>
+      <svg viewBox={`0 0 ${width} ${height}`} width="100%" height={height} preserveAspectRatio="none" aria-hidden>
+        {series.map((s) => (
+          <polyline
+            key={s.name}
+            points={s.values.map((v, i) => `${x(i)},${py(v)}`).join(" ")}
+            fill="none"
+            stroke={s.color}
+            strokeWidth="1.5"
+            vectorEffect="non-scaling-stroke"
+          />
+        ))}
+      </svg>
+      <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs" style={{ color: "var(--muted)" }}>
+        {series.map((s) => (
+          <li key={s.name} className="flex items-center gap-1.5">
+            <span className="inline-block h-2 w-2 rounded-sm" style={{ background: s.color }} />
+            {s.name}
+            <span className="mono">{fmtInt(s.values.reduce((a, v) => a + v, 0))}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 export function Empty({ text }: { text: string }) {
   return (
     <p className="py-6 text-center text-xs" style={{ color: "var(--faint)" }}>

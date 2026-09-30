@@ -1,6 +1,6 @@
 package main
 
-// source_coinalyze.go — shared Coinalyze client (Lighter + Hyperliquid).
+// source_coinalyze.go: shared Coinalyze client (Lighter + Hyperliquid).
 //
 // Key fix: buckets are converted to USD using the hourly close price of *that
 // specific bucket* (HL candleSnapshot, free, no key), not the current mark
@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"math"
 	"net/url"
-	"strings"
 	"time"
 )
 
@@ -34,8 +33,10 @@ type czClient struct {
 // fetchLiqBuckets returns hourly liquidation buckets for the given Coinalyze
 // symbol over [fromSec, toSec].
 func (c *czClient) fetchLiqBuckets(symbol string, fromSec, toSec int64) ([]czBucket, error) {
-	u := fmt.Sprintf("%s/liquidation-history?symbols=%s&interval=1hour&from=%d&to=%d&api_key=%s",
-		c.baseURL, url.QueryEscape(symbol), fromSec, toSec, c.apiKey)
+	// The key travels as a header, not a query parameter: a failed request's
+	// error carries its URL into the harness log.
+	u := fmt.Sprintf("%s/liquidation-history?symbols=%s&interval=1hour&from=%d&to=%d",
+		c.baseURL, url.QueryEscape(symbol), fromSec, toSec)
 	var resp []struct {
 		History []struct {
 			T int64   `json:"t"`
@@ -43,7 +44,7 @@ func (c *czClient) fetchLiqBuckets(symbol string, fromSec, toSec int64) ([]czBuc
 			S float64 `json:"s"`
 		} `json:"history"`
 	}
-	if err := httpGetJSON(u, &resp); err != nil {
+	if err := httpGetJSONKey(u, "api_key", c.apiKey, &resp); err != nil {
 		return nil, fmt.Errorf("coinalyze liquidation-history %s: %w", symbol, err)
 	}
 	var out []czBucket
@@ -53,32 +54,6 @@ func (c *czClient) fetchLiqBuckets(symbol string, fromSec, toSec int64) ([]czBuc
 		}
 	}
 	return out, nil
-}
-
-// czDiscoverSymbol queries /future-markets and finds the symbol for a given
-// exchange (partial name match) and base asset. Used once at startup to
-// resolve Hyperliquid's symbol codes without hardcoding the exchange ID.
-func (c *czClient) czDiscoverSymbol(exchangeSlug, asset string) (string, error) {
-	u := fmt.Sprintf("%s/future-markets?api_key=%s", c.baseURL, c.apiKey)
-	var markets []struct {
-		Symbol    string `json:"symbol"`
-		Exchange  string `json:"exchange"`
-		BaseAsset string `json:"base_asset"`
-	}
-	if err := httpGetJSON(u, &markets); err != nil {
-		return "", fmt.Errorf("coinalyze future-markets: %w", err)
-	}
-	slug := strings.ToLower(exchangeSlug)
-	assetUpper := strings.ToUpper(asset)
-	for _, m := range markets {
-		if !strings.Contains(strings.ToLower(m.Exchange), slug) {
-			continue
-		}
-		if strings.ToUpper(m.BaseAsset) == assetUpper {
-			return m.Symbol, nil
-		}
-	}
-	return "", fmt.Errorf("coinalyze: no symbol found for exchange %q asset %q", exchangeSlug, asset)
 }
 
 // hlCandle is one candle from Hyperliquid candleSnapshot.
@@ -123,17 +98,26 @@ func fetchHourlyCloses(coin string, fromMs, toMs int64, infoURL string) (map[int
 
 // bucketsToEvents converts Coinalyze buckets → LiqEvents using per-bucket close prices.
 // Falls back to fallbackPx when a bucket has no corresponding candle.
-func bucketsToEvents(keyPrefix, assetName string, buckets []czBucket, priceMap map[int64]float64, fallbackPx float64, sinceMs int64) []LiqEvent {
+//
+// Every bucket the caller fetched is returned, and each is marked Bucket so
+// the runner restates the value it already holds for that hour. There is
+// deliberately no sinceMs filter here. The old one dropped any bucket whose
+// hour began before the current tick, which is every bucket except the one
+// opened in the past few minutes, and the dedup key then froze that
+// near-empty reading for 24 hours: Lighter published $887 of liquidations
+// against $185.6M of ETH volume on 2026-09-27 while Coinalyze was reporting
+// 16.36 ETH, about $44k. The window's own cutoff, applied by the runner,
+// is what bounds the trail.
+func bucketsToEvents(keyPrefix, assetName string, buckets []czBucket, priceMap map[int64]float64, fallbackPx float64) []LiqEvent {
 	var events []LiqEvent
 	for _, b := range buckets {
-		tsMs := b.T * 1000
-		if tsMs < sinceMs {
-			continue
-		}
+		// Stamped at the hour's midpoint. The window cuts on the stamp: at
+		// the hour's start the boundary bucket is dropped with most of its
+		// hour inside the 24h (coverage 23 to 24h), at its end it is kept
+		// with most of its hour outside (24 to 25h). The midpoint makes the
+		// expected coverage 24h, within half an hour either way.
+		tsMs := (b.T + 1800) * 1000
 		total := b.L + b.S
-		if total == 0 {
-			continue
-		}
 		px, ok := priceMap[b.T]
 		if !ok || px == 0 {
 			px = fallbackPx
@@ -141,10 +125,14 @@ func bucketsToEvents(keyPrefix, assetName string, buckets []czBucket, priceMap m
 		if px == 0 {
 			continue
 		}
+		// An empty hour is handed over as a zero restatement rather than
+		// skipped, so an hour the aggregator later corrects down to nothing
+		// clears the figure the window holds for it.
 		events = append(events, LiqEvent{
 			Key:         fmt.Sprintf("%s:%s:%d", keyPrefix, assetName, b.T),
 			NotionalUSD: total * px,
 			TimestampMs: tsMs,
+			Bucket:      true,
 		})
 	}
 	return events
@@ -165,7 +153,10 @@ func fetchRealizedVol24h(coin string) (float64, error) {
 		return 0, nil
 	}
 
-	type kv struct{ sec int64; px float64 }
+	type kv struct {
+		sec int64
+		px  float64
+	}
 	sorted := make([]kv, 0, len(prices))
 	for sec, px := range prices {
 		sorted = append(sorted, kv{sec, px})

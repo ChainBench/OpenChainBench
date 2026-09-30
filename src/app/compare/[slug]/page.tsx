@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound, redirect } from "next/navigation";
+import { notFound, permanentRedirect, redirect } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, ArrowUpRight } from "lucide-react";
 import { getProvider, canonicalize } from "@/lib/providers";
@@ -29,6 +29,7 @@ import {
   writePairCache,
 } from "@/lib/compare-cache";
 import { sharedBenchSlugs } from "@/lib/compare-compute";
+import { isLiveAppearance } from "@/lib/related-providers";
 
 /**
  * Compare pages reuse the parent benchmarks' Prom data, so freshness
@@ -194,8 +195,8 @@ export async function generateMetadata({
   // fact on the page (11 vs 9 on gains-vs-gmx, audit 2026-09-21).
   const sharedCount = sharedSlugsForMeta.length;
   const liveForMeta = sharedSlugsForMeta.filter((s) => {
-    const okA = a.appearances.some((x) => x.benchmark.slug === s && x.result.availability !== "unavailable" && x.result.ms.p50 > 0);
-    const okB = b.appearances.some((x) => x.benchmark.slug === s && x.result.availability !== "unavailable" && x.result.ms.p50 > 0);
+    const okA = a.appearances.some((x) => x.benchmark.slug === s && isLiveAppearance(x));
+    const okB = b.appearances.some((x) => x.benchmark.slug === s && isLiveAppearance(x));
     return okA && okB;
   }).length;
   const metaCount = liveForMeta > 0 ? liveForMeta : sharedCount;
@@ -212,24 +213,13 @@ export async function generateMetadata({
   // must not 404) but are marked noindex so direct hits stop counting
   // against the domain. Mirrors the >= 2 live-shared emission floor in
   // src/lib/compare/adhoc-pairs.ts so the sitemap never advertises a
-  // noindexed URL. Live rule matches isLiveAppearance() in
-  // related-providers.ts (not "unavailable" and p50 > 0), so the link gate
-  // and this page agree; liveResults() itself keeps zero and negative rows
-  // since bench 263.
-  const aLive = new Set(
-    a.appearances
-      .filter(
-        (x) => x.result.availability !== "unavailable" && x.result.ms.p50 > 0,
-      )
-      .map((x) => x.benchmark.slug),
-  );
-  const bLive = new Set(
-    b.appearances
-      .filter(
-        (x) => x.result.availability !== "unavailable" && x.result.ms.p50 > 0,
-      )
-      .map((x) => x.benchmark.slug),
-  );
+  // noindexed URL. The live rule IS isLiveAppearance() from
+  // related-providers.ts (not "unavailable", and p50 or 7d mean above
+  // zero), so the link gate and this page agree on every daily-cut bench
+  // (review 2026-09-24); liveResults() itself keeps zero and negative
+  // rows since bench 263.
+  const aLive = new Set(a.appearances.filter(isLiveAppearance).map((x) => x.benchmark.slug));
+  const bLive = new Set(b.appearances.filter(isLiveAppearance).map((x) => x.benchmark.slug));
   const liveSharedCount = sharedSlugsForMeta.filter(
     (s) => aLive.has(s) && bLive.has(s),
   ).length;
@@ -250,6 +240,10 @@ export async function generateMetadata({
   // count dipped is a render-window accident, so it noindexes and recovers:
   // /compare/fomo-vs-invo sits at exactly two live shared benches and earns
   // 36 of the site's 289 clicks, and a 404 there would be self-inflicted.
+  // Ten such pairs among Hyperliquid frontends held 637 brand-query
+  // impressions while 404ing (audit 2026-09-24); the one bench both
+  // products sit on is the page that lists them side by side.
+  if (!isCurated && sharedSlugsForMeta.length === 1) permanentRedirect(`/benchmarks/${sharedSlugsForMeta[0]}`);
   if (!isCurated && sharedSlugsForMeta.length < 2) notFound();
   // A pair whose shared benches are all RWA compares assets (AAPL vs
   // NVDA), not providers; it stays reachable and noindexed, and the link
@@ -840,6 +834,8 @@ export default async function ComparePage({
   // noindex, not here with a 404, so a flapping bench cannot delete a page
   // that earns clicks. Curated pairs are exempt.
   if (getComparePair(pair.slug) === undefined && shared.length < 2) {
+    const only = sharedBenchSlugs(pair, a.appearances, b.appearances);
+    if (only.length === 1) permanentRedirect(`/benchmarks/${only[0]}`);
     return notFound();
   }
 

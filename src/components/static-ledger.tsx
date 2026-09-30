@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 /**
  * Server-rendered results table, used as the Suspense fallback around
  * BenchmarkBody. The interactive body is a client component that bails
@@ -32,6 +33,15 @@ export function StaticLedger({ benchmark }: { benchmark: Benchmark }) {
   // The TL;DR, the leader and /api/stat rank the 50 % floor cohort; the
   // table shows the 5 % floor cohort. Say both when they differ.
   const ranked = rankedCandidates(benchmark).length;
+  // Rows the bench declines to rank must not be numbered as if it did.
+  // This table is the Suspense fallback, so it is the only one a crawler
+  // sees, and it numbered Phantom 1 at 160 bps while the TL;DR two blocks
+  // above named FOMO the leader at 216. The interactive table sorts them
+  // below with a Provisional hint after hydration; nothing did so before.
+  const rankedSlugs = new Set(rankedCandidates(benchmark).map((r) => r.slug));
+  const rankedRows = rows.filter((r) => rankedSlugs.has(r.slug));
+  const provisionalRows = rows.filter((r) => !rankedSlugs.has(r.slug));
+  const ordered = [...rankedRows, ...provisionalRows];
   const rowNounOne = nounFor(benchmark, 1);
   const qualifier = valueQualifier(benchmark);
   // Metric panels are tabs in the interactive body, so the served HTML
@@ -76,9 +86,19 @@ export function StaticLedger({ benchmark }: { benchmark: Benchmark }) {
             </tr>
           </thead>
           <tbody>
-            {rows.map((r, i) => (
-              <tr key={r.slug} className="border-b border-ink/10">
-                <td className="py-2 pr-3 tabular-nums text-ink-faint">{i + 1}</td>
+            {ordered.map((r, i) => (
+              <Fragment key={r.slug}>
+                {i === rankedRows.length && provisionalRows.length > 0 ? (
+                  <tr className="border-b border-ink/10">
+                    <td colSpan={99} className="py-2 pr-3 text-[11px] uppercase tracking-[0.14em] text-ink-faint">
+                      Measured, not ranked: sample below the ranking floor
+                    </td>
+                  </tr>
+                ) : null}
+              <tr className="border-b border-ink/10">
+                <td className="py-2 pr-3 tabular-nums text-ink-faint">
+                  {i < rankedRows.length ? i + 1 : <span className="sr-only">not ranked</span>}
+                </td>
                 <td className="py-2 pr-3 font-medium text-ink">
                   {/* Crawlable path from a ranking to the venue page: the
                       interactive ledger links on mount, this server-rendered
@@ -111,6 +131,7 @@ export function StaticLedger({ benchmark }: { benchmark: Benchmark }) {
                 })}
                 <td className="py-2 pl-3 text-right tabular-nums text-ink-soft">{r.successRate.toFixed(2)}%</td>
               </tr>
+              </Fragment>
             ))}
           </tbody>
         </table>

@@ -15,7 +15,7 @@ per_chain_explainer:
   - slug: bnb
     h2: "Lowest BNB Chain price feed head lag"
     body: |
-      {{best_name:chain:bnb}} currently leads BNB Chain head lag at {{best_p50:chain:bnb}} (p50, 24h). BNB Smart Chain runs a Parlia PoSA consensus with 21 active validators on a fixed 3 s slot (recently tightened toward 0.75 s under BEP-524 testing), which sets the structural floor for any price-feed provider; the spread between leader and trailer reflects indexer pipeline depth, not chain speed. Cross-region samples taken every 15 seconds.
+      {{best_name:chain:bnb}} currently leads BNB Chain head lag at {{best_p50:chain:bnb}} (p50, 24h). BNB Smart Chain runs a Parlia PoSA consensus with 21 active validators on a fixed 3 s slot (recently tightened toward 0.75 s under BEP-524 testing), which sets the structural floor for any price-feed provider; the spread between leader and trailer reflects indexer pipeline depth, not chain speed. Cross-region samples taken every 30 seconds.
   - slug: solana
     h2: "Lowest Solana price feed head lag"
     body: |
@@ -50,7 +50,7 @@ seo_intro: |
   p50 and p99 are computed via Prometheus `quantile_over_time` over a
   24-hour window so the leaderboard reflects sustained freshness, not
   a cherry-picked cold-start sample. The same harness tracks presence
-  (5760 expected samples per provider per day), so a provider whose
+  (2,880 expected samples per provider per day), so a provider whose
   feed dropped for an hour shows it on the success rate column rather
   than disappearing silently from the latency aggregate.
 

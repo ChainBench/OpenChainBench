@@ -5,12 +5,69 @@ import "strings"
 // methodVersion tags every sampled swap. Statistics are computed only on
 // rows produced by the running method, so a change of accounting or
 // reference never mixes with older rows inside the window; rows of an
-// older version are dropped at load.
+// older version are dropped at load, unless the change moved only the
+// arithmetic and loadState can recompute them in place.
 //
 //	3: pools identified by vault pubkeys (not owner), tx fee inside the
 //	   user's cost, terminal tip relays as network, FOMO stable fee legs,
 //	   WSOL / program-account rent, loss bounds, 60 s reference cap.
-const methodVersion = 3
+//	4: the gas joins the base whenever it was paid in an asset other than
+//	   the quote, which on Solana means a swap quoted in a stable: the
+//	   split had been charging a cost the base was never charged, and the
+//	   residual went negative on a quarter of those buys. v3 rows are
+//	   recomputed from their stored reference, not dropped.
+//	5: only the gas the user themselves parted with joins the base. v4
+//	   added the whole network cost, including a relayer's on a sponsored
+//	   swap, where the user spends no SOL and the terminal takes the gas
+//	   out of the fee they already paid in the quote — so v4 charged those
+//	   rows twice, by a median of 52 bps across the cell. Rows written
+//	   before v5 carry no record of who paid, and are recomputed as if the
+//	   user paid nothing: right for the sponsored majority, and the window
+//	   turns over within the day.
+const methodVersion = 5
+
+// Evidence published behind the board, per row rather than overall.
+//
+// 15 per row covers the 56 ranked rows with room to spare and keeps the
+// payload near 1.1 MB (the global 400-swap tail it replaces was 0.66 MB
+// and left 89% of rows with fewer than 20 transactions to show). The
+// total is a ceiling for the payload, not a target.
+const (
+	// Every row gets the floor, and what is left over is split in
+	// proportion to flow. Equal shares per row read fine on a
+	// single-chain row and wrong on a pooled one, whose median weights
+	// its members by flow: pump.fun's Solana leg carried 55% of the flow
+	// and 12% of the table, so the table sat above the figure it was
+	// meant to support.
+	//
+	// No per-row ceiling: one existed and it re-created the very bug,
+	// because a ceiling that binds on the dominant row flattens it back
+	// toward everyone else. The floor is the coverage guarantee and the
+	// total is the payload guard; a row that is most of the flow is
+	// supposed to be most of the sample.
+	// 6 could not represent a median of 38, let alone one of 112: a row
+	// cut to its floor read 1719 against a published 646 on nine rows.
+	// The total comes down to pay for it — fills.json sits at 1.53 MB
+	// against a 2 MB cache ceiling, so the floor is funded out of the
+	// budget rather than added on top of it.
+	// PublicSwap dropped the fields nothing renders — pool identity, the
+	// payer, the mint, the per-leg quote amounts, the reference price —
+	// which roughly halves the bytes a row costs. That is what buys this
+	// budget, and the budget is what stops the floor and the flow
+	// weighting competing: every row the floor gives a quiet chain used
+	// to come off the chain carrying 95% of the flow.
+	// 3000, not 2400: the remainder loop was capped at three passes and
+	// returned only ~204 of the seats its clipping freed, so the old
+	// total was never reached anyway (1621 rows shipped). With the loop
+	// fixed the budget binds again, and the ceiling is what sets it.
+	// Measured on the live payload: 511 B a row and 0.25 MB of non-row
+	// JSON, so 3000 rows is ~1.78 MB against the 2 MB cache ceiling, with
+	// room for the window to grow. Full coverage of the 4309 swaps priced
+	// in a 24 h window would be ~2.45 MB and does not fit; it would need
+	// the row to shrink again, and shortening every key buys only 17%.
+	recentMinPerTerminal = 12
+	recentTotal          = 3000
+)
 
 // Terminal is one cohort member: the trading app or Telegram bot whose
 // swaps we sample. Wallets are the Solana accounts that receive the

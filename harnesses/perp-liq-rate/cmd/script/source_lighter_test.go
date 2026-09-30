@@ -145,7 +145,7 @@ func TestLighter_FetchLiquidationsSince_RecoveryAfterStreak(t *testing.T) {
 		t.Fatalf("expected recovery, got error: %v", err)
 	}
 	// resetUnavailable is not called in FetchLiquidationsSince (no trades fetch),
-	// so consecUnavl stays at 3 after recovery — check that the error is gone.
+	// so consecUnavl stays at 3 after recovery: check that the error is gone.
 	if err != nil {
 		t.Errorf("post-recovery error: %v", err)
 	}
@@ -197,6 +197,17 @@ func TestLighter_FetchOI_MarketNotFound(t *testing.T) {
 	}
 }
 
+// Without the key there is no numerator: the row must be N/A, not a 0% rate
+// at full health, so the source declares it has no liquidation feed.
+func TestLighter_NoKeyMeansNoLiquidationSource(t *testing.T) {
+	if (&Lighter{}).HasLiquidationSource() {
+		t.Fatal("HasLiquidationSource must be false without COINALYZE_API_KEY")
+	}
+	if !(&Lighter{czAPIKey: "k"}).HasLiquidationSource() {
+		t.Fatal("HasLiquidationSource must be true with a key")
+	}
+}
+
 func TestLighter_FetchLiquidationsSince_CoinalyzeNoKey(t *testing.T) {
 	markets := []map[string]any{lighterTestMarket("ETH-USD", 0, 42.0, "1878.0")}
 	srv := buildLighterOBServer(t, markets)
@@ -241,9 +252,23 @@ func TestLighter_FetchLiquidationsSince_CoinalyzeHappyPath(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if len(events) != 1 {
-		t.Fatalf("expected 1 event (zero bucket skipped), got %d", len(events))
+	// Both hours come back: the empty one as a zero restatement the runner
+	// removes, the other with its figure.
+	if len(events) != 2 {
+		t.Fatalf("expected 2 events (the empty hour restated as zero), got %d", len(events))
 	}
+	var nonzero []LiqEvent
+	for _, e := range events {
+		if e.NotionalUSD > 0 {
+			nonzero = append(nonzero, e)
+		} else if !e.Bucket {
+			t.Errorf("zero hour %+v must be a Bucket entry", e)
+		}
+	}
+	if len(nonzero) != 1 {
+		t.Fatalf("expected 1 non-zero hour, got %d", len(nonzero))
+	}
+	events = nonzero
 	// (3 + 2) ETH * 2000 = 10000
 	if events[0].NotionalUSD < 9999 || events[0].NotionalUSD > 10001 {
 		t.Errorf("notional = %v, want ~10000", events[0].NotionalUSD)
@@ -253,7 +278,14 @@ func TestLighter_FetchLiquidationsSince_CoinalyzeHappyPath(t *testing.T) {
 	}
 }
 
-func TestLighter_FetchLiquidationsSince_CoinalyzeSinceFilter(t *testing.T) {
+// A bucket older than the tick's high-water mark still has to come back, and
+// it has to come back marked Bucket. The old code filtered on sinceMs here,
+// which dropped every hour that had begun before the current tick: only the
+// hour opened minutes ago survived, and its near-empty reading was then
+// frozen by the dedup key for a full day. Lighter published $887 against
+// $185.6M of ETH volume on 2026-09-27 because of it, while Coinalyze was
+// reporting 16.36 ETH over the same window.
+func TestLighter_CoinalyzeBucketsIgnoreSinceAndAreRestatable(t *testing.T) {
 	markets := []map[string]any{lighterTestMarket("ETH-USD", 0, 10.0, "1000.0")}
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -264,8 +296,8 @@ func TestLighter_FetchLiquidationsSince_CoinalyzeSinceFilter(t *testing.T) {
 		if strings.Contains(r.URL.Path, "liquidation-history") {
 			_ = json.NewEncoder(w).Encode([]map[string]any{
 				{"symbol": "0.T", "history": []map[string]any{
-					{"t": int64(1000), "l": 5.0, "s": 0.0},  // before sinceMs (2000000ms), skipped
-					{"t": int64(3000), "l": 2.0, "s": 1.0},  // after sinceMs (2000000ms), kept
+					{"t": int64(1000), "l": 5.0, "s": 0.0}, // older than sinceMs: still wanted
+					{"t": int64(3000), "l": 2.0, "s": 1.0},
 				}},
 			})
 			return
@@ -275,12 +307,21 @@ func TestLighter_FetchLiquidationsSince_CoinalyzeSinceFilter(t *testing.T) {
 	defer srv.Close()
 
 	l := &Lighter{baseURL: srv.URL, czBaseURL: srv.URL, czAPIKey: "testkey"}
-	events, err := l.FetchLiquidationsSince("ETH", 2000000) // sinceMs = 2000 unix seconds in ms
+	events, err := l.FetchLiquidationsSince("ETH", 2000000) // sinceMs = 2000s in ms
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if len(events) != 1 {
-		t.Fatalf("expected 1 event (old bucket filtered), got %d", len(events))
+	if len(events) != 2 {
+		t.Fatalf("expected both buckets regardless of sinceMs, got %d", len(events))
+	}
+	for _, e := range events {
+		if !e.Bucket {
+			t.Errorf("bucket %q not marked Bucket; the runner would treat a restated hour as a duplicate", e.Key)
+		}
+	}
+	// 5 ETH at the 1000.0 fallback mark, and 3 ETH at the same mark.
+	if events[0].NotionalUSD < 4999 || events[0].NotionalUSD > 5001 {
+		t.Errorf("older bucket notional = %v, want ~5000", events[0].NotionalUSD)
 	}
 }
 

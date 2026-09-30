@@ -105,7 +105,7 @@ export default async function AlternativePage({
   const { bench } = alt;
   const isDraft = bench.status === "draft";
   const { fieldMin, fieldMedian, fieldMax, tailMin, tailMax, tailSpread } =
-    computeFieldStats(bench.results);
+    computeFieldStats(bench.results, bench.zeroIsAValue);
 
   // Top alternatives = leading bench results, excluding the target product
   // itself, region pseudo-slugs, and any zero-data fallback rows (Prom miss

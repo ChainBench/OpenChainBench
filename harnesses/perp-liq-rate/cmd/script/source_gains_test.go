@@ -4,13 +4,18 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
+	"math/big"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 )
 
-// buildGainsLimitExecuted encodes the 25 data words of a LimitExecuted log
-// with the fields the decoder reads. Amounts are in collateral units.
+// buildGainsLimitExecuted encodes the 32 data words of a LimitExecuted log
+// with the fields the decoder reads. Amounts are in collateral units. The
+// second encoding of position size (positionSizeToken x openPrice) is
+// written consistent with the first, at an openPrice of 1.0, so the
+// decoder's cross-check sees what the contract would write.
 func buildGainsLimitExecuted(pairIdx uint32, leverage1e3 uint32, collateralIdx uint8, collateralAmount uint64, orderType uint8, collateralPriceUsd1e8 uint64) string {
 	data := make([]byte, gainsLimitExecutedWords*32)
 	put := func(word int, v uint64) { binary.BigEndian.PutUint64(data[word*32+24:word*32+32], v) }
@@ -20,6 +25,21 @@ func buildGainsLimitExecuted(pairIdx uint32, leverage1e3 uint32, collateralIdx u
 	put(gainsWordCollateralAmount, collateralAmount)
 	put(gainsWordOrderType, uint64(orderType))
 	put(gainsWordCollateralPriceUS, collateralPriceUsd1e8)
+
+	dec, ok := testDecimals[uint64(collateralIdx)]
+	if !ok {
+		dec = 6
+	}
+	notional := new(big.Float).SetUint64(collateralAmount)
+	notional.Quo(notional, new(big.Float).SetInt(new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(dec)), nil)))
+	notional.Mul(notional, new(big.Float).SetUint64(uint64(leverage1e3)))
+	notional.Quo(notional, big.NewFloat(1e3))
+	notional.Mul(notional, new(big.Float).SetUint64(collateralPriceUsd1e8))
+	notional.Quo(notional, big.NewFloat(1e8))
+	put(gainsWordOpenPrice, 1e10) // openPrice 1.0
+	sizeToken, _ := new(big.Float).Mul(notional, big.NewFloat(1e18)).Int(nil)
+	b := sizeToken.Bytes()
+	copy(data[gainsWordPositionSizeToken*32+32-len(b):gainsWordPositionSizeToken*32+32], b)
 	return "0x" + hex.EncodeToString(data)
 }
 
@@ -129,8 +149,9 @@ func tvServer(t *testing.T, body map[string]any) *httptest.Server {
 	}))
 }
 
-// mockRPCServer answers eth_blockNumber and eth_getLogs (every getLogs call
-// returns the same logs).
+// mockRPCServer answers eth_blockNumber, eth_getBlockByNumber (every header
+// stamped now, so the block clock places every log at the wall clock) and
+// eth_getLogs (every getLogs call returns the same logs).
 func mockRPCServer(t *testing.T, blockHex string, logs []map[string]any) *httptest.Server {
 	t.Helper()
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -143,6 +164,8 @@ func mockRPCServer(t *testing.T, blockHex string, logs []map[string]any) *httpte
 		switch req.Method {
 		case "eth_blockNumber":
 			result = blockHex
+		case "eth_getBlockByNumber":
+			result = map[string]any{"timestamp": hexUint(uint64(time.Now().Unix()))}
 		case "eth_getLogs":
 			result = logs
 		}
@@ -190,7 +213,7 @@ func TestGains_FetchLiquidationsSince_RPCError(t *testing.T) {
 	}
 }
 
-func TestGains_FetchLiquidationsSince_LastBlockAdvances(t *testing.T) {
+func TestGains_FetchLiquidationsSince_CursorAdvances(t *testing.T) {
 	tv := tvServer(t, tradingVarsBody(btcEthPairs, usdcOnly))
 	defer tv.Close()
 	srv := mockRPCServer(t, "0x100", []map[string]any{})
@@ -200,10 +223,69 @@ func TestGains_FetchLiquidationsSince_LastBlockAdvances(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	g.mu.Lock()
-	lb := g.lastBlock["ETH"]
+	cursor := g.cursor
 	g.mu.Unlock()
-	if lb == 0 {
-		t.Error("lastBlock should advance after successful fetch")
+	if cursor != 0x100 {
+		t.Errorf("cursor = %d after a successful scan, want the chain head 256", cursor)
+	}
+}
+
+// One scan serves both assets and both figures: the liquidation of pair 1
+// is ETH's numerator, every leg of pair 1 is ETH's traded notional, and BTC
+// sees none of it. The mock counts eth_getLogs calls to show the second
+// asset did not page the chain again.
+func TestGains_VolumeAndLiquidationsShareOneScan(t *testing.T) {
+	tv := tvServer(t, tradingVarsBody(btcEthPairs, usdcOnly))
+	defer tv.Close()
+	getLogsCalls := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var req rpcRequest
+		_ = json.NewDecoder(r.Body).Decode(&req)
+		var result any
+		switch req.Method {
+		case "eth_blockNumber":
+			result = "0x64"
+		case "eth_getBlockByNumber":
+			result = map[string]any{"timestamp": hexUint(uint64(time.Now().Unix()))}
+		case "eth_getLogs":
+			getLogsCalls++
+			result = []map[string]any{
+				// ETH liquidation, 10x on 1,000 USDC = $10,000.
+				{"address": gainsDiamond, "topics": []string{gainsLimitExecutedTopic}, "data": buildGainsLimitExecuted(1, 10_000, 3, 1_000_000_000, gainsOrderTypeLiqClose, 100_000_000), "blockNumber": "0x64", "transactionHash": "0xtx1", "logIndex": "0x0"},
+				// ETH take-profit close, 5x on 2,000 USDC = $10,000: volume, not a liquidation.
+				{"address": gainsDiamond, "topics": []string{gainsLimitExecutedTopic}, "data": buildGainsLimitExecuted(1, 5_000, 3, 2_000_000_000, 4, 100_000_000), "blockNumber": "0x64", "transactionHash": "0xtx2", "logIndex": "0x0"},
+				// BTC liquidation, must not land on ETH.
+				{"address": gainsDiamond, "topics": []string{gainsLimitExecutedTopic}, "data": buildGainsLimitExecuted(0, 20_000, 3, 500_000_000, gainsOrderTypeLiqClose, 100_000_000), "blockNumber": "0x64", "transactionHash": "0xtx3", "logIndex": "0x0"},
+			}
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"jsonrpc": "2.0", "id": req.ID, "result": result})
+	}))
+	defer srv.Close()
+	g := testGains(srv.URL, tv.URL)
+
+	events, err := g.FetchLiquidationsSince("ETH", 0)
+	if err != nil {
+		t.Fatalf("liquidations: %v", err)
+	}
+	if len(events) != 1 || events[0].NotionalUSD < 9_999 || events[0].NotionalUSD > 10_001 {
+		t.Fatalf("ETH liquidations = %+v, want one $10,000 event", events)
+	}
+	vol, err := g.FetchVolume24hUSD("ETH")
+	if err != nil {
+		t.Fatalf("volume: %v", err)
+	}
+	if vol < 19_999 || vol > 20_001 {
+		t.Fatalf("ETH volume = %.2f, want 20,000 (liquidation plus take-profit close)", vol)
+	}
+	btcVol, err := g.FetchVolume24hUSD("BTC")
+	if err != nil {
+		t.Fatalf("btc volume: %v", err)
+	}
+	if btcVol < 9_999 || btcVol > 10_001 {
+		t.Fatalf("BTC volume = %.2f, want 10,000", btcVol)
+	}
+	if getLogsCalls != 1 {
+		t.Fatalf("eth_getLogs called %d times across three reads inside the scan TTL, want 1", getLogsCalls)
 	}
 }
 
@@ -220,8 +302,11 @@ func TestGains_FetchOI_SumsCollateralsInUSD(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// Long plus short, the trader legs outstanding against the vault, not
+	// halved: 55,923.29 of USDC plus 5,000 of WETH = 60,923.29. Halving it
+	// is what let the rate exceed 100% on an unbalanced book.
 	if oi < 60_923 || oi > 60_924 {
-		t.Errorf("oi = %v, want ~60923.29", oi)
+		t.Errorf("oi = %v, want ~60923.29 (long plus short)", oi)
 	}
 }
 
@@ -241,7 +326,7 @@ func TestGainsMulti_SumsChainsAndFailsClosed(t *testing.T) {
 	m := NewGainsMulti(a, b)
 	oi, err := m.FetchOI("ETH")
 	if err != nil || oi != 4e-6 {
-		t.Fatalf("oi=%v err=%v, want the two chains summed (2 x 2 units / 1e6)", oi, err)
+		t.Fatalf("oi=%v err=%v, want the two chains summed (2 x (1+1) units / 1e6, long plus short)", oi, err)
 	}
 	broken := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(500) }))
 	defer broken.Close()

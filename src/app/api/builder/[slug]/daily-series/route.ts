@@ -1,10 +1,10 @@
 /**
  * Per-builder Performance chart data source. Server-side proxy to the
- * on-node harness `/daily-series/<slug>` endpoint, fronted by Caddy
+ * feed harness `/daily-series/<slug>` endpoint, fronted by Caddy
  * basic_auth (same credential as the Prom-gateway scrape job).
  *
  * Browser path: GET /api/builder/<slug>/daily-series
- *  → Vercel function reads HL_NODE_URL + HL_NODE_AUTH env vars
+ *  → Vercel function reads HL_FEED_URL (optional) + HL_NODE_AUTH env vars
  *  → forwards to <node>/daily-series/<slug> with Basic auth
  *  → echoes the harness JSON to the client with a CDN-friendly cache
  *    header so per-builder reads collapse on the edge.
@@ -20,6 +20,8 @@ import { isHlBuilderSlug } from "@/lib/hl-builder-stats";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+const HL_FEED_DEFAULT_URL = "https://hl-archive.openchainbench.com";
+
 type Params = { slug: string };
 
 export async function GET(
@@ -34,11 +36,14 @@ export async function GET(
     return NextResponse.json({ error: "not_a_builder" }, { status: 404 });
   }
 
-  const nodeUrl = process.env.HL_NODE_URL?.trim();
+  // The feed harness sits behind the VPS Caddy (hl-archive host, basic
+  // auth). HL_FEED_URL overrides the host; HL_NODE_AUTH is the existing
+  // base64 user:password the same Caddy users accept.
+  const nodeUrl = process.env.HL_FEED_URL?.trim() || HL_FEED_DEFAULT_URL;
   const auth = process.env.HL_NODE_AUTH?.trim();
-  if (!nodeUrl || !auth) {
+  if (!auth) {
     return NextResponse.json(
-      { error: "hl_node_not_configured" },
+      { error: "hl_feed_not_configured" },
       { status: 503 },
     );
   }
@@ -69,7 +74,27 @@ export async function GET(
   const data = await res.json();
   return NextResponse.json(data, {
     headers: {
-      "cache-control": "public, s-maxage=30, stale-while-revalidate=60",
+      // 900 s, resting on the shape of the data rather than on the poll
+      // interval. The harness aggregates whole UTC days and its window
+      // ends yesterday (fetchRange in
+      // harnesses/hyperliquid-frontends/cmd/script/agg.go), so a point in
+      // this series is final once it is published: the only thing that
+      // ever changes is a new day appearing after the UTC rollover. That
+      // holds whatever -poll the deployed harness runs, which matters
+      // because the 30 m in main.go:47 is the flag default and nothing in
+      // this repo pins the value used on the VPS.
+      //
+      // Worst case a viewer is handed a body 900 + 1800 = 2700 s old,
+      // about 45 minutes, since stale-while-revalidate adds to the fresh
+      // window. On a chart whose finest grain is a day, and whose newest
+      // point is always yesterday, that is invisible.
+      //
+      // Inert on production as of 2026-09-30: HL_NODE_AUTH is unset there
+      // so this route 503s above before reaching here, and a 503 is not a
+      // cacheable status, meaning it costs a function per request and
+      // caches nothing. The window below starts mattering once the
+      // credential is set.
+      "cache-control": "public, s-maxage=900, stale-while-revalidate=1800",
     },
   });
 }

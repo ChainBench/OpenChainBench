@@ -155,6 +155,8 @@ export function overlayEditorial(stored: Benchmark, spec: Spec): Benchmark {
     // worker running a divergent branch (keyed-rpc-robinhood: main is
     // Singapore-only while dev/worker carries the region dims).
     dimensions: spec.dimensions,
+    dimensionLabels: spec.dimension_labels,
+    zeroIsAValue: spec.zero_is_a_value,
     chart: chartFromSpec(spec) ?? stored.chart,
     // Same source-of-truth rule as dimensions: the live YAML decides
     // the aggregate pin, never the snapshot.
@@ -441,6 +443,8 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // v76: add bench 274 protocol-pf-ratio (dev-only). Bench SET grew.
   // v77: add bench 275 chain-stablecoin-flow (dev-only). Bench SET grew.
   // v81: add bench 276 perp-fee-disclosure (dev-only). Bench SET grew.
+  // v85: bench 274 market cap floor of $5M; 11 provider rows leave the
+  // board, so cached entries hold a cohort led by a $380k token.
   // v80: bench 274 display names taken from protocol_info instead of
   // title-cased slugs; 26 of 80 were wrong, including the leader.
   // v79: bench 274 audit: categories by fee weight, the fee floor moved
@@ -457,13 +461,23 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // added, ProviderResult.tier and Benchmark.tierResults. Bench SET changed.
   // v82: add bench 277 pm-open-interest. Bench SET changed.
   // v83: add bench 278 rwa-solana-depth. Bench SET changed.
-  // v84 (2026-09-27): the Dune trial ends 2026-10-02, so bench 201 moves onto
-  // DeFiLlama's free dexs and fees adapters (new gauges, a provider set without
-  // BasedBot, commission and take-rate panels) and benches 203, 206, 207 and 232
-  // are gated to staging. Bench SET changed and 201's providers, panels and copy
-  // all changed. This branch numbers its own keys: dev is several releases ahead
-  // and its numbering must not be copied here.
-  ["bench-unfiltered-v84", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v84 (2026-09-25): benches 273 chain-bridged-tvl, 274 protocol-pf-ratio
+  // and 275 chain-stablecoin-flow leave the dev-only list. Bench SET changed.
+  // v86 (2026-09-27): bench 201 and the benches reading its gauges
+  // (203, 206, 207, 232) move off the frozen third-party Dune datasets onto our
+  // own SQL. Methodology, disclaimers, FAQ and every provider formula are
+  // rewritten, and pump.fun and BasedBot become unresponsive rows, so cached
+  // entries carry the retired dataset names into the Dataset blob and the
+  // quotable sentence.
+  // v87 (2026-09-27): the Dune trial ends 2026-10-02, so bench 201 moves onto
+  // DeFiLlama's free dexs and fees adapters (new gauges, new provider set
+  // without BasedBot, a commission and take-rate panel) and benches 203, 206,
+  // 207 and 232 are gated to staging. Bench SET changed and 201's providers,
+  // panels and copy all changed.
+  // v88 (2026-09-30): GetBlock joins the keyed cohort on the nine chain RPC
+  // benches. The provider set of those benches changed, so v87 entries hold a
+  // keyed cohort of three and a GetBlock exclusion row that is no longer true.
+  ["bench-unfiltered-v88", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -693,9 +707,14 @@ const loadAllBenchmarksCached = unstable_cache(
   // v74: lockstep with bench-unfiltered-v80 (bench 274 names).
   // v75: lockstep with bench-unfiltered-v81 (add bench 276).
   // v76: lockstep with bench-unfiltered-v82 (add bench 277).
-  // v77: lockstep with bench-unfiltered-v84 (bench 201 to DeFiLlama, four Dune
-  // benches gated).
-  ["all-benchmarks-v77", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v77: bumped with bench-unfiltered-v84 (273, 274, 275 join the set).
+  // v78: lockstep with bench-unfiltered-v85 (bench 274 market cap floor).
+  // v79: lockstep with bench-unfiltered-v86 (bench 201 source swap).
+  // v80: lockstep with bench-unfiltered-v87 (bench 201 to DeFiLlama, four
+  // Dune benches gated).
+  // v81: lockstep with bench-unfiltered-v88 (GetBlock joins the keyed cohort
+  // on the nine chain RPC benches).
+  ["all-benchmarks-v81", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -795,7 +814,10 @@ const loadBenchmarkFiltered = unstable_cache(
   // v24: lockstep with bench-unfiltered-v57 (drop rpc-keyed-latency).
   // v30: lockstep with bench-unfiltered-v66 (Benchmark.chart on variants).
   // v31: lockstep with bench-unfiltered-v71 (tier variants).
-  ["bench-filters-v31", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v32: lockstep with bench-unfiltered-v88. The GetBlock row lives only in
+  // the tier=keyed variants, so without this bump the keyed tabs keep serving
+  // a three-provider cohort.
+  ["bench-filters-v32", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 

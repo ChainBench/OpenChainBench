@@ -180,6 +180,8 @@ export function buildEditorial(
     findings: spec.findings,
     source: spec.source,
     dimensions: spec.dimensions,
+    dimensionLabels: spec.dimension_labels,
+    zeroIsAValue: spec.zero_is_a_value,
     aggregateFilters: spec.aggregate_filters,
     ledgerColumns: spec.ledger_columns,
     ledgerReliability: spec.ledger_reliability,
@@ -1187,7 +1189,20 @@ async function tryLoadLive(
     // brownout (counters often survive a partial outage that kills the
     // heavier percentile queries).
     const rankedCount = liveResults.filter((r) => !r.unresponsive).length;
-    if (rankedCount === 0) return null;
+    if (rankedCount === 0) {
+      // On a filtered view this is a real state, not a failed cycle: a
+      // chain tab whose providers all fell under the floor published
+      // nothing on that chain in the window. Returning null here pins the
+      // tab to its last render with no expiry, which is how the Arc tab
+      // served a 4.5 hour old page carrying a 5,045 bps app fee under
+      // GMGN and Maestro after its legs were purged. An empty result lets
+      // the page say so. The unfiltered guard below, and the quorum guard
+      // after it, are the ones that protect against a Prom brownout.
+      if (isFiltered) {
+        return { results: [], extras: { series24h: {}, regions: {} }, sampleSize: 0, lastRunAt: new Date().toISOString(), metricPanels: [] };
+      }
+      return null;
+    }
 
     // Quorum guard. Providers whose p50/p90/p99 come back null are
     // silently skipped above, which is correct for a single flaky source

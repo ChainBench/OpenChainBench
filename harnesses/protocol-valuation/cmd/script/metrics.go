@@ -35,6 +35,34 @@ var (
 	pvPFfdv = gaugeVec("protocol_pf_fdv_ratio",
 		"FDV to fees: fully diluted valuation / annualized fees. The conservative multiple.", "protocol")
 
+	// What the protocol keeps, what it holds, and how much its float grew.
+	// Asked for by retail readers who know P/S, TVL and dilution from
+	// other screens; each is absent, never zero, when the source has no
+	// figure for the token.
+	pvRev30d = gaugeVec("protocol_revenue_30d_usd",
+		"Trailing 30d revenue in USD, the share of fees the protocol keeps per each adapter's DeFiLlama definition, summed over the same adapters as protocol_fees_30d_usd. Absent when none of them publishes a revenue series; 0 when they do and report none.",
+		"protocol", "category")
+	pvAnnualRev = gaugeVec("protocol_annual_revenue_usd",
+		"Annualized revenue in USD (trailing 30d x 365/30).", "protocol")
+	pvPS = gaugeVec("protocol_ps_ratio",
+		"Price to sales: circulating market cap / annualized revenue. Absent when revenue is missing or zero, and when the revenue total is knowably short (protocol_revenue_incomplete = 1).",
+		"protocol", "category")
+	pvRevIncomplete = gaugeVec("protocol_revenue_incomplete",
+		"1 when the revenue total is knowably short: the token's fee total is (protocol_fees_incomplete), a revenue adapter reports nothing over 30 days after real revenue over the year, or a product earning fees this month has no revenue series while its siblings do. Revenue is published with the flag; P/S is not.",
+		"protocol")
+	pvRevMissingAdapters = gaugeVec("protocol_revenue_missing_adapters",
+		"Fee adapters of this token earning fees this month with no revenue series on DeFiLlama, the size of the coverage gap behind protocol_revenue_incomplete.",
+		"protocol")
+	pvTVL = gaugeVec("protocol_tvl_usd",
+		"Total value locked in USD, summed over every DeFiLlama /protocols row that resolves to this token, own row or parent. Absent when no row carries a TVL.",
+		"protocol", "category")
+	pvSupplyChg30d = gaugeVec("protocol_supply_change_30d_pct",
+		"Realized dilution: circulating supply now against 30 days ago, in percent, from CoinGecko daily market cap / price. Not an unlock schedule. Absent when the series is shorter than 30 days.",
+		"protocol", "category")
+	pvSupplyChg90d = gaugeVec("protocol_supply_change_90d_pct",
+		"Realized dilution: circulating supply now against 90 days ago, in percent, from CoinGecko daily market cap / price. Not an unlock schedule. Absent when the series is shorter than 90 days.",
+		"protocol", "category")
+
 	// The peer comparison. A P/F means nothing outside its category, so the
 	// median is published per category and the row's distance to it is its
 	// own series rather than something a reader has to compute.
@@ -48,7 +76,13 @@ var (
 		"1 when fees grew on the month, the token fell, and the P/F sits below the category median. A screen, not a verdict.", "protocol")
 
 	pvIncomplete = gaugeVec("protocol_fees_incomplete",
-		"1 when one of this token's fee adapters reports nothing over 30 days after real fees over the year, so the published total is short of the protocol's revenue. Such a row keeps its gauges but leaves the ranking and the category median.",
+		"1 when the trailing 30 day fee total cannot be annualized honestly: one of this token's fee adapters reports nothing over 30 days after real fees over the year (the total is short of the protocol), or the whole fee history sits inside the window (protocol_fees_window_short = 1, so x 365/30 overstates). Such a row keeps its gauges but leaves the ranking and the category median.",
+		"protocol")
+	pvFeeBasisShift = gaugeVec("protocol_fee_basis_shift",
+		"1 when the fee line and the revenue line moved apart by more than half again over the same month, which is a change in what is counted rather than in the business, or when such a reading was seen in the past month. The month over month fee trend is withheld for that row, so a non-retroactive upstream methodology change does not read as growth.",
+		"protocol")
+	pvWindowShort = gaugeVec("protocol_fees_window_short",
+		"1 when every fee the token's adapters ever reported falls inside the trailing 30 days: the protocol or its adapter is younger than the window, and the annualized figure is built on fewer than 30 days.",
 		"protocol")
 	pvSilentFees1y = gaugeVec("protocol_silent_adapter_fees_1y_usd",
 		"What this token's silent adapters earned over the past year, so the size of the gap is visible.", "protocol")
@@ -84,6 +118,21 @@ var (
 		Name: "protocol_valuation_fetch_errors_total",
 		Help: "Fetch failures by source.",
 	}, []string{"source"})
+
+	// The CoinGecko budget, so a reader can check the one-call-per-token
+	// per-day claim against the counter rather than trust it.
+	pvCoinGeckoCalls = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "protocol_valuation_coingecko_calls_total",
+		Help: "CoinGecko requests made, /coins/markets and /market_chart together, retries included.",
+	})
+	pvCoinGecko429s = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "protocol_valuation_coingecko_429_total",
+		Help: "CoinGecko responses that were a rate limit.",
+	})
+	pvSupplyCacheSize = gauge("protocol_valuation_supply_cache_size",
+		"Tokens whose supply series is cached for the current UTC day.")
+	pvCoinGeckoGap = gauge("protocol_valuation_coingecko_gap_seconds",
+		"Current spacing between CoinGecko calls. Doubles on a 429, halves back after a run of clean calls.")
 )
 
 func gaugeVec(name, help string, labels ...string) *prometheus.GaugeVec {
@@ -99,12 +148,15 @@ func init() {
 		pvFees30d, pvFeesPrev30d, pvAnnualFees, pvFeeGrowth,
 		pvMcap, pvFDV, pvFloat, pvPriceChg,
 		pvPF, pvPFfdv,
+		pvRev30d, pvAnnualRev, pvPS, pvRevIncomplete, pvRevMissingAdapters, pvTVL, pvSupplyChg30d, pvSupplyChg90d,
 		pvCategoryMedianPF, pvCategorySize, pvPFvsCategory, pvDiverging,
-		pvIncomplete, pvSilentFees1y, pvInfo,
+		pvIncomplete, pvWindowShort, pvFeeBasisShift, pvSilentFees1y, pvInfo,
 		pvHealth,
 		pvCohortSize, pvAdapters, pvUnmapped, pvViaParent, pvMerged,
 		pvPeerGroups, pvLastSuccessUnix, pvFetchErrors,
+		pvCoinGeckoCalls, pvCoinGecko429s, pvSupplyCacheSize, pvCoinGeckoGap,
 	)
+	pvCoinGeckoGap.Set(cgMinGap.Seconds())
 }
 
 // publish writes one poll's rows. Every per-protocol vector is reset first:
@@ -118,7 +170,8 @@ func publish(rows []Row, medians map[string]float64, sizes map[string]int, st co
 	for _, v := range []*prometheus.GaugeVec{
 		pvFees30d, pvFeesPrev30d, pvAnnualFees, pvFeeGrowth, pvMcap, pvFDV,
 		pvFloat, pvPriceChg, pvPF, pvPFfdv, pvPFvsCategory, pvDiverging,
-		pvIncomplete, pvSilentFees1y, pvInfo,
+		pvRev30d, pvAnnualRev, pvPS, pvRevIncomplete, pvRevMissingAdapters, pvTVL, pvSupplyChg30d, pvSupplyChg90d,
+		pvIncomplete, pvWindowShort, pvFeeBasisShift, pvSilentFees1y, pvInfo,
 		pvHealth, pvCategoryMedianPF, pvCategorySize,
 	} {
 		v.Reset()
@@ -132,6 +185,8 @@ func publish(rows []Row, medians map[string]float64, sizes map[string]int, st co
 		pvHealth.WithLabelValues(r.Slug).Set(1)
 		pvInfo.WithLabelValues(r.Slug, r.Name, r.Category).Set(1)
 		pvIncomplete.WithLabelValues(r.Slug).Set(boolGauge(r.Incomplete))
+		pvWindowShort.WithLabelValues(r.Slug).Set(boolGauge(r.WindowShort))
+		pvFeeBasisShift.WithLabelValues(r.Slug).Set(boolGauge(r.FeeBasisShift))
 		if r.SilentFees1y > 0 {
 			pvSilentFees1y.WithLabelValues(r.Slug).Set(r.SilentFees1y)
 		}
@@ -152,6 +207,26 @@ func publish(rows []Row, medians map[string]float64, sizes map[string]int, st co
 		}
 		if r.HasFDV {
 			pvPFfdv.WithLabelValues(r.Slug).Set(r.PFfdv)
+		}
+		if r.RevKnown {
+			pvRev30d.WithLabelValues(r.Slug, r.Category).Set(r.Rev30d)
+			pvAnnualRev.WithLabelValues(r.Slug).Set(r.AnnualRev)
+			pvRevIncomplete.WithLabelValues(r.Slug).Set(boolGauge(r.RevIncomplete))
+			if r.RevMissingAdapters > 0 {
+				pvRevMissingAdapters.WithLabelValues(r.Slug).Set(float64(r.RevMissingAdapters))
+			}
+		}
+		if r.HasPS {
+			pvPS.WithLabelValues(r.Slug, r.Category).Set(r.PS)
+		}
+		if r.HasTVL {
+			pvTVL.WithLabelValues(r.Slug, r.Category).Set(r.TVL)
+		}
+		if r.HasSupply30d {
+			pvSupplyChg30d.WithLabelValues(r.Slug, r.Category).Set(r.SupplyChg30d)
+		}
+		if r.HasSupply90d {
+			pvSupplyChg90d.WithLabelValues(r.Slug, r.Category).Set(r.SupplyChg90d)
 		}
 		if r.HasPF && r.HasPeerGroup && r.CategoryMedianPF > 0 {
 			pvPFvsCategory.WithLabelValues(r.Slug).Set(r.PF / r.CategoryMedianPF)

@@ -555,7 +555,10 @@ const fetchRpcHubCached = unstable_cache(
   //   null on every /chains/<slug> render (Fastest public RPC on <chain> text
   //   missing prod-wide). Bump busts the stuck v4 entry.
   // v7: snapshot carries the keyed cohort (tier dimension).
-  ["rpc-hub-cohort-v7", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v8 (2026-09-30): lockstep with bench-unfiltered-v88. The keyed cohort on
+  // the nine chain RPC benches gains GetBlock, and this snapshot holds the
+  // per-chain keyed provider list the hub and /products read.
+  ["rpc-hub-cohort-v8", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["rpc-cohort"] },
 );
 

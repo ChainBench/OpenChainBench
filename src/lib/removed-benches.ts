@@ -94,6 +94,36 @@ export const REMOVED_ANSWER_SLUGS = new Set([
  * Moving a bench to production = remove its slug here.
  */
 export const DEV_ONLY_BENCH_SLUGS = new Set([
+  // 208 perp liquidation rate: gated 2026-09-28 while the metric is rebuilt.
+  // The sources are right (the Gains decode reproduces to 0.02% against an
+  // independent scan, Lighter, GMX, Aster, Ostium, Nado and Orderly read
+  // their feeds) and the headline is not: a 24h window is meaningless on a
+  // venue whose nine-day total sits in three days, a book liquidated away
+  // inside the window makes the rate exceed 100% on any open-interest
+  // denominator, and notional over notional open interest mostly reports a
+  // venue's leverage policy (Gains: $39.5M of notional on $423k of
+  // collateral on 2026-09-28, median 73x). Un-gate condition: the headline
+  // is a 30-day flow over flow (liquidated notional over traded notional,
+  // 7-day companion) with collateral lost and median leverage published per
+  // venue where the source exposes them, open interest as context only,
+  // the page saying plainly that a high rate on a high-leverage venue
+  // reflects the leverage it offers, and an audit round on that board.
+  "perp-liq-rate",
+  // 282 RPC cost: held back from the release of 2026-09-30 while three
+  // findings from that day's audit are settled. The Access selector renders
+  // the word "Access" sixteen times on a cost bench because
+  // benchmark-body.tsx hardcodes the label instead of reading
+  // dimension_labels.tier, which the spec already sets to "Billing model".
+  // Two comments in the harness give GetBlock's archive multiplier as 1.5x
+  // where the catalogue computes 2x for plain reads and 3x for debug and
+  // trace. And there is an open suspicion that the Chainstack trace profile
+  // double counts, doubling a weighted total whose two trace methods are
+  // already priced at 2 RU, which would publish 4 RU per call. The first two
+  // are wording; the third is a number on a published column and needs a
+  // bench audit before a reader sees it. Un-gate condition: the label wired,
+  // the multiplier comments corrected, and the trace profile confirmed
+  // against the catalogue.
+  "rpc-cost",
   // Released 2026-09-23: bridges 261 (on-chain execution), 263 (realized
   // cost), 264 (SOL->X quotes) and 268 terminal-fill-quality left this
   // list with release/2026-09-23.
@@ -101,45 +131,26 @@ export const DEV_ONLY_BENCH_SLUGS = new Set([
   // release condition is more than two keyed providers. Was held off main
   // by its spec's absence there until release/2026-09-23 brought it.
   "fiat-onramp-cost",
-  // 208 perp liquidation rate: the metric divides liquidated notional by
-  // open interest, and both sides scale with leverage, so a venue whose
-  // traders sit at 100x is ranked against one at 44x by the arithmetic of
-  // its own product range rather than by how it treats a liquidation. Eight
-  // of the eleven venues publish hourly totals with no positions inside
-  // them, so they cannot be compared to the three that publish events, and
-  // the single-event guard can only fire on the venues transparent enough to
-  // be inspected. Measured 2026-09-29 across a common 29 day window: the
-  // headline gap moved from 2.4x to about 1.3x once dust below $50 was
-  // excluded, because the median liquidated position on one venue is $2.00.
-  // Every row is withheld by the gates today, so nothing is lost by gating
-  // the page too. Un-gate condition: a leverage-neutral denominator (margin
-  // destroyed over margin posted, already measured for three venues) and a
-  // size floor, plus a statement in the spec of which venues can be ranked
-  // against which.
-  "perp-liq-rate",
-  // 273 bridged TVL: the harness is deployed and publishing all 41 rows,
-  // but the 24h success window has not filled since the last rebuild, so a
-  // production board would rank rows on a partial window. Un-gate once the
-  // window is full and a re-audit is clean (2 rounds so far, last change
-  // 2026-09-23).
-  "chain-bridged-tvl",
-  // 274 protocol P/F: first deploy of the protocol-valuation harness, no
-  // 24h window yet and no audit round. Un-gate after both.
-  "protocol-pf-ratio",
-  // 275 stablecoin flow: new gauges on the chain-kpis harness, no 24h
-  // window yet and no audit round. Un-gate after both.
-  "chain-stablecoin-flow",
+  // 273 chain-bridged-tvl, 274 protocol-pf-ratio and 275 chain-stablecoin-flow
+  // left this list on 2026-09-25 (windows full, audit round clean).
+  // 280 chain fees and revenue: new gauges on the chain-kpis harness
+  // (2026-09-25), no 24h window yet and no audit round. Un-gate after both.
+  "chain-fees-revenue",
+  // 281 USDC corridor flows: first deploy of the bridge-flows harness
+  // (CCTP burns over public RPCs), the 7d window fills over its first
+  // week and no audit round yet. Un-gate after both.
+  "usdc-corridor-flows",
   // 276 perp fee disclosure: the maker gauge is one deploy old and three
   // of the eight rows have no maker rate at all. Un-gate after a 24h
   // window and an audit round.
   "perp-fee-disclosure",
-  // The Dune team trial ends 2026-10-02 and no paid plan is committed, so the
+  // The Dune trial ends 2026-10-02 and no paid plan is committed, so the
   // four benches below stand down until one is. They are gated rather than
-  // removed because nothing about them is wrong: the harness, the SQL and its
-  // freshness guard all work, and the day the plan is paid for these four come
-  // back by deleting these lines. Bench 201 is not among them because it moved
-  // to DeFiLlama's free adapters (see benches 201 and 267); these four have no
-  // free equivalent for what they measure.
+  // removed because nothing about them is wrong: the harnesses, the SQL and
+  // the freshness guard all work, and the day the plan is paid for these
+  // four come back by deleting these lines. Bench 201 stays on production
+  // because it moved to DeFiLlama's free adapters (see bench 201 and 267);
+  // these four have no free equivalent for what they measure.
   //
   // 206 average trade size, 207 swap transactions, 232 active wallets: all
   // three read dune-platform-volume, whose one execution a day is metered.
@@ -149,10 +160,11 @@ export const DEV_ONLY_BENCH_SLUGS = new Set([
   "trading-platform-wallets",
   // 203 memecoin platform fee rates: its headline take rate reads
   // dune-platform-volume and its coverage and fee-paying-rate columns come
-  // from the memecoin-platforms harness, which is its own metered Dune query.
-  // Re-sourcing only the headline would leave the rest of the page dark, and
-  // bench 201 now carries a take rate from DeFiLlama, so the signal is not
-  // lost while this one waits. Un-gate condition: a paid Dune plan.
+  // from the memecoin-platforms harness, which is its own metered Dune
+  // query. Re-sourcing only the headline would leave the rest of the page
+  // dark, and bench 201 now carries a take rate from DeFiLlama, so the
+  // signal is not lost while this one waits. Un-gate condition: a paid
+  // Dune plan.
   "memecoin-platforms",
 ]);
 

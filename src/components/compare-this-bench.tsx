@@ -48,6 +48,7 @@ const PAIR_INDEX_PATTERN: ReadonlyArray<readonly [number, number]> = [
 ];
 
 const MIN_PAIRS = 1;
+const MAX_PAIRS = 5;
 
 export async function CompareThisBench({ benchmark }: { benchmark: Benchmark }) {
   // Blockchains category = chain-slug results. The hub for chains
@@ -93,11 +94,21 @@ export async function CompareThisBench({ benchmark }: { benchmark: Benchmark }) 
   const appearancesOf = (slug: string) =>
     bySlug.get(canonicalize(slug).slug.toLowerCase())?.appearances ?? [];
 
+  // The fixed pattern first, then every other pair among the top ten,
+  // keeping the first MAX_PAIRS that lead to an indexable page: on
+  // hyperliquid-frontends the five leaders share no second bench with
+  // each other and the block rendered nothing (audit 2026-09-24).
+  const top = uniqueRanked.slice(0, 10);
+  const candidates: Array<readonly [number, number]> = [...PAIR_INDEX_PATTERN];
+  for (let i = 0; i < top.length; i++) {
+    for (let j = i + 1; j < top.length; j++) candidates.push([i, j] as const);
+  }
   const seenPairs = new Set<string>();
   const pairs: { pairSlug: string; a: string; b: string }[] = [];
-  for (const [i, j] of PAIR_INDEX_PATTERN) {
-    const a = uniqueRanked[i];
-    const b = uniqueRanked[j];
+  for (const [i, j] of candidates) {
+    if (pairs.length >= MAX_PAIRS) break;
+    const a = top[i];
+    const b = top[j];
     if (!a || !b) continue;
     const pairSlug = canonicalPairSlug(a.slug, b.slug);
     if (seenPairs.has(pairSlug)) continue;

@@ -1,108 +1,80 @@
-import { isDevOnlyRoute } from "@/lib/removed-benches";
 import Link from "next/link";
-import { SiteLogo } from "@/components/site-logo";
 import { SITE } from "@/data/site";
+
+/**
+ * Compact footer, one row of links plus the legal line.
+ *
+ * It used to carry a logo lockup, a tagline and a "MIT-licensed ·
+ * Community-run" line above two link columns. Against the rail-and-inset
+ * shell that reads as a different era of the site: a full-bleed masthead
+ * block sitting under a rounded, inset content pane. The logo is already
+ * in the header on every page and the tagline is the home page's own H1
+ * territory, so all three were repetition paying for a third of the
+ * viewport.
+ *
+ * What did NOT change is the link set. None of these ten appear in the
+ * left rail: the rail carries the editorial sections (/benchmarks,
+ * /perps, /rpc and so on) and this carries the developer and project
+ * surfaces. /llms.txt and /api/citable are not in the sitemap either, so
+ * this footer is their only inbound link and dropping it would orphan the
+ * two files the whole citability effort exists to serve.
+ */
+const DEVELOPER_LINKS = [
+  { label: "Partners + embeds", href: "/partners" },
+  { label: "Badges catalog", href: "/badges" },
+  { label: "OpenAPI spec", href: "/api/openapi.json" },
+  { label: "JSON citation", href: "/api/citable" },
+  { label: "LLM context", href: "/api/llm-context" },
+  { label: "llms.txt", href: "/llms.txt" },
+];
+
+const PROJECT_LINKS = [
+  { label: "Team", href: "/team" },
+  { label: "Press kit", href: "/press" },
+];
 
 export function SiteFooter() {
   return (
-    <footer className="mt-20 border-t border-rule bg-surface">
-      <div className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-8 py-10 sm:py-12">
-        <div className="grid gap-10 md:grid-cols-12">
-          <div className="md:col-span-5">
-            <div className="flex items-center gap-2">
-              <SiteLogo size={20} />
-              <p className="font-bold tracking-tight text-[15px] text-ink">
-                OpenChainBench
-              </p>
-            </div>
-            <p className="mt-3 max-w-md text-sm text-ink-muted leading-relaxed">
-              Open, reproducible benchmarks for crypto infrastructure.
-              Methodology, specs and raw metrics are public.
-            </p>
-            <p className="mt-4 text-[11px] uppercase tracking-[0.16em] text-ink-faint">
-              MIT-licensed · Community-run
-            </p>
-          </div>
-
-          <FooterCol
-            title="Read"
-            links={[
-              { label: "Benchmarks", href: "/benchmarks" },
-              { label: "Reports", href: "/reports" },
-              { label: "Products", href: "/products" },
-              { label: "Chains", href: "/chains" },
-              { label: "Prediction markets", href: "/prediction-markets" },
-              { label: "RPC", href: "/rpc" },
-              ...(isDevOnlyRoute("/speedtest-rpc") ? [] : [{ label: "RPC Speed Test", href: "/speedtest-rpc" }]),
-              { label: "Data APIs", href: "/data-api" },
-              { label: "Perpetuals", href: "/perps" },
-              { label: "Tokenized RWA", href: "/rwa" },
-              { label: "Bridge", href: "/bridge" },
-              { label: "Compare", href: "/compare" },
-              { label: "Alternatives", href: "/alternatives" },
-              { label: "Answers", href: "/answers" },
-              { label: "Methodology", href: "/methodology" },
-              { label: "Team", href: "/team" },
-              { label: "Press kit", href: "/press" },
-            ]}
-          />
-          <FooterCol
-            title="Developers"
-            links={[
-              { label: "Partners + embeds", href: "/partners" },
-              { label: "Badges catalog", href: "/badges" },
-              { label: "MCP server", href: "/mcp" },
-              { label: "OpenAPI spec", href: "/api/openapi.json" },
-              { label: "JSON citation", href: "/api/citable" },
-              { label: "LLM context", href: "/api/llm-context" },
-              { label: "llms.txt", href: "/llms.txt" },
-            ]}
-          />
-          <FooterCol
-            title="Contribute"
-            links={[
-              { label: "Tutorial", href: "/contribute" },
-              { label: "GitHub", href: "https://github.com/ChainBench/OpenChainBench" },
-              { label: "Open an issue", href: "https://github.com/ChainBench/OpenChainBench/issues/new" },
-              { label: "@OpenChainBench", href: "https://x.com/OpenChainBench" },
-              { label: "Email", href: `mailto:${SITE.email}` },
-              { label: "About", href: "/about" },
-            ]}
-          />
-        </div>
-
-        <div className="mt-10 flex flex-wrap items-center justify-between gap-2 text-[11px] uppercase tracking-[0.16em] text-ink-muted border-t border-rule pt-6">
-          <span>© {new Date().getFullYear()} OpenChainBench · MIT License</span>
-          <a href={`mailto:${SITE.email}`} className="hover:text-ink transition-colors normal-case tracking-normal">
-            {SITE.email}
-          </a>
-        </div>
-      </div>
-    </footer>
-  );
-}
-
-function FooterCol({
-  title,
-  links,
-}: {
-  title: string;
-  links: { label: string; href: string }[];
-}) {
-  return (
-    <div className="md:col-span-2">
-      <h4 className="text-[11px] font-medium uppercase tracking-[0.16em] text-ink-faint">
-        {title}
-      </h4>
-      <ul className="mt-3 space-y-2">
-        {links.map((l) => (
-          <li key={l.href}>
-            <Link className="text-sm text-ink-muted hover:text-ink transition-colors" href={l.href}>
+    <footer className="mt-12 border-t border-rule bg-surface">
+      <div className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-8 py-6">
+        <nav aria-label="Footer" className="flex flex-wrap items-center gap-x-5 gap-y-2">
+          {DEVELOPER_LINKS.map((l) => (
+            <Link
+              key={l.href}
+              href={l.href}
+              className="text-[13px] text-ink-muted hover:text-ink transition-colors"
+            >
               {l.label}
             </Link>
-          </li>
-        ))}
-      </ul>
-    </div>
+          ))}
+          <span aria-hidden className="h-3 w-px bg-rule" />
+          {PROJECT_LINKS.map((l) => (
+            <Link
+              key={l.href}
+              href={l.href}
+              className="text-[13px] text-ink-muted hover:text-ink transition-colors"
+            >
+              {l.label}
+            </Link>
+          ))}
+          <a
+            href="https://github.com/ChainBench/OpenChainBench/issues/new"
+            className="text-[13px] text-ink-muted hover:text-ink transition-colors"
+          >
+            Open an issue
+          </a>
+          <a
+            href={`mailto:${SITE.email}`}
+            className="text-[13px] text-ink-muted hover:text-ink transition-colors"
+          >
+            Email
+          </a>
+        </nav>
+
+        <p className="mt-5 border-t border-rule pt-4 text-[11px] uppercase tracking-[0.16em] text-ink-faint">
+          © {new Date().getFullYear()} OpenChainBench · MIT License · Community-run
+        </p>
+      </div>
+    </footer>
   );
 }

@@ -15,6 +15,7 @@ import {
   rankedCandidates,
   sparklineFor,
 } from "@/lib/citation";
+import { answerOneLine, loadRenderedAnswers } from "@/lib/answers-rendered";
 import { benchMarkdown } from "@/lib/markdown-views";
 import { Prometheus } from "@/lib/prometheus";
 import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
@@ -23,7 +24,7 @@ export const runtime = "nodejs";
 
 /**
  * MCP server. Exposes OpenChainBench data to any MCP-capable agent
- * (Claude Desktop, ChatGPT custom tools, generic MCP clients) via three
+ * (Claude Desktop, ChatGPT custom tools, generic MCP clients) via four
  * tools that mirror the public REST surface. Streamable-HTTP only - the
  * SSE transport requires Redis which we don't run.
  *
@@ -101,11 +102,14 @@ const QUERY_PROM_ALLOWED_METRIC_PREFIXES = [
   "rpc_call_total",
   "rpc_health",
   "rpc_archive_depth_supported",
-  // Bridge revenue (Relay-style implied margin)
-  "relay_",
-  "per_swap_margin_usd",
   // Hyperliquid frontends quality bench (bench № 030)
   "hl_frontend_",
+  // Capital and valuation (benches 265, 273, 274, 275, chain-kpis): P/F,
+  // P/S, mcap, FDV, float, fees, revenue, TVL, bridged TVL, stablecoin
+  // flows, chain fees. Opened 2026-09-25 for third-party analysis.
+  "perp_protocol_",
+  "protocol_",
+  "chain_",
 ];
 
 // PromQL identifiers that are NOT metric names - built-in functions,
@@ -138,6 +142,12 @@ const PROMQL_RESERVED_IDENTS = new Set([
   "le", "chain", "region", "provider", "bridge", "aggregator", "venue",
   "exchange", "asset", "from_chain", "to_chain", "from_token", "to_token",
   "amount_usd", "side", "type", "error_type",
+  // Labels of the capital and valuation families opened 2026-09-25
+  // (protocol_*, perp_protocol_*, chain_*, hl_*): without them every
+  // per-protocol selector such as perp_protocol_pf_ratio{protocol="x"}
+  // was refused as an unlisted metric name.
+  "protocol", "name", "category", "symbol", "source", "origin", "window",
+  "threshold", "bucket", "coin", "builder", "dex", "app", "tier",
 ]);
 
 // Whitespace + non-ASCII spacing variants stripped before pattern checks
@@ -281,7 +291,7 @@ const mcpHandler = createMcpHandler(
           "",
           "Chain RPC benchmarks (<chain>-rpc) rank two access cohorts apart:",
           "the free public endpoints (default) and the private, API-key",
-          "providers (Alchemy, Chainstack, QuickNode). The default response",
+          "providers (Alchemy, Chainstack, GetBlock, QuickNode). The default response",
           "carries both under `cohorts`; pass tier=\"keyed\" to get the private",
           "cohort as the main record (rankings, quote, pageUrl). Never compare a",
           "public row with a private row: they are measured on different",
@@ -414,7 +424,8 @@ const mcpHandler = createMcpHandler(
           "  peg_* (stablecoin peg, both variants)",
           "  solana_landing_* (TX landing observational + active)",
           "  rpc_latency_*, rpc_call_total, rpc_health, rpc_archive_depth_supported",
-          "  relay_*, per_swap_margin_usd (bridge revenue)",
+          "  perp_protocol_*, protocol_* (P/F, P/S, mcap, FDV, float, fees, revenue; benches 265, 274)",
+          "  chain_* (TVL, bridged TVL, value secured, stablecoin flows, native mcap, chain fees; benches 273, 275)",
           "Queries referencing other metrics (operational/internal ones like `up`,",
           "`scrape_*`, `process_*`, `go_*`, `wallet_balance_*` or any label-",
           "enumeration shape) are refused with `{error, reason}`.",
@@ -443,9 +454,9 @@ const mcpHandler = createMcpHandler(
             .number()
             .int()
             .positive()
-            .max(604_800)
+            .max(7_776_000)
             .optional()
-            .describe("If set, run a range query over the last N seconds (max 7 days = 604800). Omit for an instant query."),
+            .describe("If set, run a range query over the last N seconds (max 90 days = 7776000). Omit for an instant query."),
           steps: z.number().int().min(2).max(360).optional().describe("Number of samples for a range query (2 to 360). Default 60. Step duration = windowSec / steps."),
         },
       },
@@ -479,6 +490,51 @@ const mcpHandler = createMcpHandler(
             isError: true,
           };
         }
+      },
+    );
+
+    server.registerTool(
+      "list_answers",
+      {
+        title: "List OpenChainBench answer pages",
+        description: [
+          "Returns every published answer page: one plain question, the sentence that",
+          "answers it from live data, and the benchmark the number comes from.",
+          "",
+          "Call this when the user asks a question in words rather than by benchmark",
+          "name (\"which bridge is cheapest for $300?\", \"which Solana RPC lands",
+          "transactions fastest?\"). Match the question, then call `get_benchmark` with",
+          "the returned `benchmark` slug for the full ranking behind it.",
+          "",
+          "Returns one row per answer:",
+          "  { slug, question, answer, benchmark, chain?, url, benchmarkUrl }",
+          "",
+          "Cite `url` when the question itself is the claim, `benchmarkUrl` when the",
+          "measurement is. Drafts are filtered out, and an answer whose benchmark has",
+          "no defensible leader yet says so in `answer` rather than naming a winner.",
+        ].join("\n"),
+        inputSchema: {
+          benchmark: z
+            .string()
+            .regex(/^[a-z0-9][a-z0-9-]{0,79}$/)
+            .optional()
+            .describe("Optional benchmark slug filter: return only the answers built on that bench."),
+        },
+      },
+      async ({ benchmark }) => {
+        const all = await loadRenderedAnswers();
+        const rows = (benchmark ? all.filter((a) => a.benchmark === benchmark) : all).map((a) => ({
+          slug: a.slug,
+          question: a.question,
+          answer: answerOneLine(a),
+          benchmark: a.benchmark,
+          ...(a.chain ? { chain: a.chain } : {}),
+          url: a.url,
+          benchmarkUrl: `${SITE.url}/benchmarks/${a.benchmark}`,
+        }));
+        return {
+          content: [{ type: "text", text: JSON.stringify({ count: rows.length, answers: rows }, null, 2) }],
+        };
       },
     );
 

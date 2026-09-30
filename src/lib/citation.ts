@@ -113,6 +113,13 @@ export function fieldValue(b: Benchmark): number | null {
 export function leader(b: Benchmark): { name: string; slug: string; value: number } | null {
   if (b.status !== "live") return null;
   if (b.dataConfidence === "insufficient") return null;
+  // An all-zero board has no leader: when the Hyperliquid builder-fee feed
+  // went to 0 for every frontend (2026-09-24, 14:46 UTC), the headline,
+  // /api/stat and three answer pages crowned "Phantom (tied) at $0 across
+  // 104 ranked providers". isInsufficient already drops zero rows; the
+  // leader must follow it, so those surfaces fall back to their pending
+  // wording instead of naming a winner on no data.
+  if (isInsufficient(b)) return null;
   const sorted = rankedCandidates(b);
   if (sorted.length === 0) return null;
   return { name: sorted[0].name, slug: sorted[0].slug, value: sorted[0].ms.p50 };

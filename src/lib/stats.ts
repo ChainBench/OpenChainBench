@@ -6,7 +6,12 @@ import type { ProviderResult } from "@/types/benchmark";
  * landing pages, which both render the same summary strip above the
  * chart.
  */
-export function computeFieldStats(results: ProviderResult[]): {
+export function computeFieldStats(
+  results: ProviderResult[],
+  /** When true, a row of zeros is a real answer (a free tier) and is
+   *  kept in the aggregates instead of read as a missing value. */
+  zeroIsAValue = false,
+): {
   fieldMin: number;
   fieldMedian: number;
   fieldMax: number;
@@ -27,7 +32,7 @@ export function computeFieldStats(results: ProviderResult[]): {
   const live = results.filter(
     (r) =>
       r.availability !== "unavailable" &&
-      (r.ms.p50 !== 0 || r.ms.p90 !== 0 || r.ms.p99 !== 0),
+      (zeroIsAValue || r.ms.p50 !== 0 || r.ms.p90 !== 0 || r.ms.p99 !== 0),
   );
   const p50s = live.map((r) => r.ms.p50);
   const p99s = live.map((r) => r.ms.p99);

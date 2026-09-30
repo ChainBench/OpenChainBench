@@ -18,7 +18,7 @@ export async function GET() {
     info: {
       title: "OpenChainBench API",
       version: "1.1.0",
-      description: `${SITE.description} An MCP server (Streamable HTTP, POST only) is also available at ${SITE.url}/api/mcp/mcp exposing list_benchmarks, get_benchmark and query_prom tools; see ${SITE.url}/mcp for install instructions.`,
+      description: `${SITE.description} An MCP server (Streamable HTTP, POST only) is also available at ${SITE.url}/api/mcp/mcp exposing list_benchmarks, get_benchmark, list_answers and query_prom tools; see ${SITE.url}/mcp for install instructions.`,
       license: { name: "CC-BY-4.0", url: "https://creativecommons.org/licenses/by/4.0/" },
     },
     servers: [{ url: SITE.url }],
@@ -31,6 +31,19 @@ export async function GET() {
             "200": {
               description: "OK",
               content: { "application/json": { schema: { $ref: "#/components/schemas/CitableIndex" } } },
+            },
+          },
+        },
+      },
+      "/api/capital": {
+        get: {
+          summary:
+            "The /capital hub in one payload: chains (TVL, bridged value, 7d vs the L2 median, stablecoin float and 30-day net flow, DEX volume), DeFi tokens by price to fees with the fees-up-token-down divergences, perp DEX tokens, and open interest per perp DEX and prediction market. Same rows as the page and its Markdown view; fields of a bench this deployment does not serve are absent. Cached 300 s.",
+          operationId: "get_capital_hub",
+          responses: {
+            "200": {
+              description: "OK",
+              content: { "application/json": { schema: { type: "object" } } },
             },
           },
         },
@@ -101,7 +114,7 @@ export async function GET() {
               required: false,
               schema: { type: "string", enum: ["public", "keyed"] },
               description:
-                "Access cohort on chain RPC benchmarks (<chain>-rpc): 'public' (default, free no-key endpoints) or 'keyed' (private, API-key providers such as Alchemy, Chainstack, QuickNode). The two cohorts are ranked apart; the record's value, leader, rankings, quote and pageUrl describe the requested cohort. Unknown values 400.",
+                "Access cohort on chain RPC benchmarks (<chain>-rpc): 'public' (default, free no-key endpoints) or 'keyed' (private, API-key providers such as Alchemy, Chainstack, GetBlock, QuickNode). The two cohorts are ranked apart; the record's value, leader, rankings, quote and pageUrl describe the requested cohort. Unknown values 400.",
             },
             {
               name: "venue",

@@ -1,6 +1,6 @@
 package main
 
-// config.go — environment handling and the VenueAsset registry that binds
+// config.go: environment handling and the VenueAsset registry that binds
 // every (venue, asset) pair to its Source implementation.
 
 import (
@@ -24,7 +24,11 @@ type Config struct {
 	TickInterval time.Duration
 	ListenAddr   string
 	RPCBase      string
-	Pairs        []VenueAsset
+	// StatePath is where the 24h windows are kept so a restart does not
+	// start them empty. Empty disables persistence and the harness runs as
+	// it did before, forgetting on restart.
+	StatePath string
+	Pairs     []VenueAsset
 }
 
 const (
@@ -32,16 +36,17 @@ const (
 	defaultListenAddr  = ":2112"
 	defaultRPCBase     = "https://mainnet.base.org"
 	defaultRPCArbitrum = "https://arb1.arbitrum.io/rpc"
+	defaultStatePath   = "/state/perp-liq-windows.json"
 )
 
 // loadConfig reads environment variables and builds the venue registry.
 //
 // Environment:
 //
-//	TICK_INTERVAL_SECONDS — poll interval, default 300
-//	RPC_BASE              — Base mainnet JSON-RPC URL, default https://mainnet.base.org
-//	RPC_ARBITRUM          — Arbitrum One JSON-RPC URL (Gains' main deployment), default https://arb1.arbitrum.io/rpc
-//	LISTEN_ADDR           — metrics listen address, default :2112
+//	TICK_INTERVAL_SECONDS: poll interval, default 300
+//	RPC_BASE             : Base mainnet JSON-RPC URL, default https://mainnet.base.org
+//	RPC_ARBITRUM         : Arbitrum One JSON-RPC URL (Gains' main deployment), default https://arb1.arbitrum.io/rpc
+//	LISTEN_ADDR          : metrics listen address, default :2112
 func loadConfig() (*Config, error) {
 	tickSeconds := defaultTickSeconds
 	if v := os.Getenv("TICK_INTERVAL_SECONDS"); v != "" {
@@ -62,6 +67,13 @@ func loadConfig() (*Config, error) {
 		listen = defaultListenAddr
 	}
 
+	// STATE_PATH="" turns persistence off on purpose; unset takes the
+	// default, which is a mounted volume in the deployed container.
+	statePath := defaultStatePath
+	if v, ok := os.LookupEnv("STATE_PATH"); ok {
+		statePath = v
+	}
+
 	hyperliquid := NewHyperliquid()
 	// Gains: Base plus Arbitrum (where the venue's open interest lives).
 	rpcArbitrum := os.Getenv("RPC_ARBITRUM")
@@ -74,6 +86,17 @@ func loadConfig() (*Config, error) {
 	lighter := NewLighter()
 	aevo := NewAevo()
 	paradex := NewParadex()
+	// Added 2026-09-27: two venues whose liquidation feed was checked and
+	// found to exist. Aster via Coinalyze (exchange code S), Ostium via the
+	// Ormi subgraph the cohort harness reads. Slugs and display names match
+	// the site's perp venue registry so the product pages keep joining.
+	aster := NewAster()
+	ostium := NewOstium()
+	// Orderly has the only purpose-built public liquidation endpoint in the
+	// cohort with real history. Nado publishes a cumulative liquidated-USD
+	// counter instead of a tape, so its 24h figure is one aggregate number.
+	orderly := NewOrderly()
+	nado := NewNado()
 
 	pairs := []VenueAsset{
 		{Venue: "hyperliquid", Asset: "ETH", Source: hyperliquid},
@@ -98,12 +121,27 @@ func loadConfig() (*Config, error) {
 
 		{Venue: "paradex", Asset: "ETH", Source: paradex},
 		{Venue: "paradex", Asset: "BTC", Source: paradex},
+
+		{Venue: "aster", Asset: "ETH", Source: aster},
+		{Venue: "aster", Asset: "BTC", Source: aster},
+		{Venue: "aster", Asset: "SOL", Source: aster},
+
+		{Venue: "ostium", Asset: "ETH", Source: ostium},
+		{Venue: "ostium", Asset: "BTC", Source: ostium},
+
+		{Venue: "orderly", Asset: "ETH", Source: orderly},
+		{Venue: "orderly", Asset: "BTC", Source: orderly},
+		{Venue: "orderly", Asset: "SOL", Source: orderly},
+
+		{Venue: "nado", Asset: "ETH", Source: nado},
+		{Venue: "nado", Asset: "BTC", Source: nado},
 	}
 
 	return &Config{
 		TickInterval: time.Duration(tickSeconds) * time.Second,
 		ListenAddr:   listen,
 		RPCBase:      rpcBase,
+		StatePath:    statePath,
 		Pairs:        pairs,
 	}, nil
 }
