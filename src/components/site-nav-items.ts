@@ -14,6 +14,7 @@ import {
   Info,
   Landmark,
   Layers,
+  MapPin,
   PiggyBank,
   Scale,
   Server,
@@ -111,6 +112,20 @@ export function navGroups(): NavGroup[] {
                 label: "RPC speed test",
                 icon: Gauge,
                 match: section("/speedtest-rpc"),
+              },
+            ]),
+        // The map is what the speed test feeds, and it had no link from
+        // anywhere on the site: it reached production in the sitemap and
+        // llms.txt with no path a reader could follow, so the only people
+        // who could find it were crawlers.
+        ...(isDevOnlyRoute("/rpc-map")
+          ? []
+          : [
+              {
+                href: "/rpc-map",
+                label: "RPC latency map",
+                icon: MapPin,
+                match: section("/rpc-map"),
               },
             ]),
         { href: "/data-api", label: "Data APIs", icon: Database, match: section("/data-api") },
