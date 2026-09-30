@@ -173,11 +173,17 @@ export const DEV_ONLY_BENCH_SLUGS = new Set([
  * way: the page renders notFound() on prod, the sitemap, the footer,
  * llms.txt and the /rpc hub stop linking them there. Staging shows them.
  */
-export const DEV_ONLY_ROUTES = new Set([
-  // browser RPC speed test and the crowdsourced latency map (2 cells,
-  // 32 samples on 2026-09-21: not ready for an audience)
-  "/speedtest-rpc",
-  "/rpc-map",
+export const DEV_ONLY_ROUTES = new Set<string>([
+  // Empty on purpose. /speedtest-rpc and /rpc-map were held here from
+  // 2026-09-21 because the map had 2 cells and 32 samples, which is a
+  // blank map under a latency legend. They shipped on 2026-09-30 with
+  // that reasoning inverted: the speed test is what produces the
+  // contributions, so gating it off production guaranteed the map would
+  // stay empty forever. The map's own empty state says which kind of
+  // nothing it is ("No community samples for this chain yet. The map
+  // fills up as people run the speed test") rather than drawing an empty
+  // map and letting the legend imply an answer, which is what made the
+  // original hold the right call at the time.
 ]);
 
 export const IS_PRODUCTION = process.env.VERCEL_ENV === "production";
