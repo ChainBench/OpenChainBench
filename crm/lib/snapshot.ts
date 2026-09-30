@@ -14,6 +14,7 @@ import path from "node:path";
 import { budget, BudgetExhausted, HOURLY_BUDGET, posthogConfigured, RateLimited } from "@/lib/posthog";
 import { loadBenchHealth, loadDuneUsage, loadHarnessHealth, type BenchHealth, type DuneUsage, type HarnessHealth } from "@/lib/ocb";
 import { isWindowed, loadTrafficSection, TRAFFIC_SECTIONS, type Traffic } from "@/lib/traffic";
+import { loadAgentTraffic, vercelObsConfigured, type AgentTraffic } from "@/lib/vercel-obs";
 import { WINDOWS, type ReportWindow, type WindowKey } from "@/lib/window";
 
 // 15 min by default: 48 queries per pass (28 sections over 7 d plus the 20
@@ -43,6 +44,8 @@ export type Snapshot = {
   benches: BenchHealth | null;
   harness: HarnessHealth | null;
   dune: DuneUsage | null;
+  /** Bot and agent traffic, from Vercel rather than PostHog; see lib/vercel-obs.ts. */
+  agents: AgentTraffic | null;
   status: Record<string, SectionStatus>;
   budget: { used: number; limit: number };
 };
@@ -58,7 +61,7 @@ export type HistoryLine = {
   targetsDown: number;
 };
 
-const EMPTY: Snapshot = { v: 1, refreshedAt: null, posthogConfigured: posthogConfigured(), traffic: {}, traffic24h: {}, benches: null, harness: null, dune: null, status: {}, budget: { used: 0, limit: HOURLY_BUDGET } };
+const EMPTY: Snapshot = { v: 1, refreshedAt: null, posthogConfigured: posthogConfigured(), traffic: {}, traffic24h: {}, benches: null, harness: null, dune: null, agents: null, status: {}, budget: { used: 0, limit: HOURLY_BUDGET } };
 
 function clampInt(raw: string | undefined, fallback: number, min: number, max: number): number {
   const n = Number.parseInt(raw ?? "", 10);
@@ -186,6 +189,16 @@ async function doRefresh(reason: string): Promise<RefreshResult> {
   await step("dune", async () => {
     next.dune = await loadDuneUsage();
   });
+  // Vercel, not PostHog: every other section here is blind to anything that
+  // does not run our JavaScript or reach an uncached route of ours.
+  if (vercelObsConfigured()) {
+    delete next.status.agents;
+    await step("agents", async () => {
+      next.agents = await loadAgentTraffic();
+    });
+  } else {
+    next.status.agents = { at: null, error: "VERCEL_API_TOKEN, VERCEL_TEAM_ID or VERCEL_PROJECT_ID not set" };
+  }
   if (posthogConfigured()) {
     // The "not configured" note from earlier refreshes must not outlive the fix.
     delete next.status.posthog;
@@ -224,6 +237,7 @@ async function doRefresh(reason: string): Promise<RefreshResult> {
     "harness",
     "dune",
     "posthog",
+    "agents",
     ...TRAFFIC_SECTIONS.map((s) => statusKey(s, WINDOWS["7d"])),
     ...TRAFFIC_SECTIONS.filter(isWindowed).map((s) => statusKey(s, WINDOWS["24h"])),
   ]);
