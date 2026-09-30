@@ -1,6 +1,7 @@
 import { Shell } from "@/components/shell";
 import { Delta, Empty, fmtInt, Kpi } from "@/components/ui";
-import { readSnapshot } from "@/lib/snapshot";
+import { parseWindow } from "@/lib/window";
+import { readSnapshot, trafficFor } from "@/lib/snapshot";
 
 export const dynamic = "force-dynamic";
 const SITE = `https://${process.env.SITE_HOST ?? "openchainbench.com"}`;
@@ -11,9 +12,10 @@ const ACTION_LABEL: Record<string, string> = {
   search: "Searches",
 };
 
-export default async function ActionsPage({ searchParams }: { searchParams: Promise<{ refresh?: string }> }) {
+export default async function ActionsPage({ searchParams }: { searchParams: Promise<{ refresh?: string; w?: string }> }) {
   const [snap, sp] = await Promise.all([readSnapshot(), searchParams]);
-  const t = snap.traffic;
+  const w = parseWindow(sp.w);
+  const t = trafficFor(snap, w.key);
   const actions = t.actions ?? [];
   const byName = (n: string) => actions.find((a) => a.name === n);
   const outbound = (t.outbound ?? []).filter((o) => o.clicks > 0 || o.prevClicks > 0);
@@ -21,16 +23,17 @@ export default async function ActionsPage({ searchParams }: { searchParams: Prom
   const searches = t.searches ?? [];
 
   return (
-    <Shell current="/actions" snapshot={snap} refreshFlag={sp.refresh}>
+    <Shell current="/actions" snapshot={snap} refreshFlag={sp.refresh} window={w}>
       <section className="grid grid-cols-2 gap-3 md:grid-cols-3">
         {(["outbound_click", "copy", "search"] as const).map((n) => {
           const a = byName(n);
           return (
             <Kpi
               key={n}
-              label={`${ACTION_LABEL[n]}, 7 d`}
+              label={`${ACTION_LABEL[n]}, ${w.label}`}
               value={fmtInt(a?.count)}
               delta={a && { now: a.count, prev: a.prevCount }}
+              prevLabel={w.prevLabel}
               sub={a ? `${fmtInt(a.visitors)} visitors` : "no event yet"}
             />
           );
@@ -43,7 +46,7 @@ export default async function ActionsPage({ searchParams }: { searchParams: Prom
 
       <section className="mt-6 grid gap-3 md:grid-cols-2">
         <div className="panel p-4">
-          <p className="label">Where visitors go, 7 d (outbound clicks by host)</p>
+          <p className="label">{`Where visitors go, ${w.label} (outbound clicks by host)`}</p>
           {outbound.length > 0 ? (
             <table className="data mt-2">
               <thead>
@@ -76,7 +79,7 @@ export default async function ActionsPage({ searchParams }: { searchParams: Prom
           )}
         </div>
         <div className="panel p-4">
-          <p className="label">What gets copied, 7 d</p>
+          <p className="label">{`What gets copied, ${w.label}`}</p>
           {copies.length > 0 ? (
             <table className="data mt-2">
               <thead>
@@ -115,7 +118,7 @@ export default async function ActionsPage({ searchParams }: { searchParams: Prom
       </section>
 
       <section className="panel mt-6 p-4">
-        <p className="label">Searches with no result, 7 d (content gaps)</p>
+        <p className="label">{`Searches with no result, ${w.label} (content gaps)`}</p>
         {(t.noResults ?? []).length > 0 ? (
           <table className="data mt-2">
             <tbody>
@@ -133,7 +136,7 @@ export default async function ActionsPage({ searchParams }: { searchParams: Prom
       </section>
 
       <section className="panel mt-6 p-4">
-        <p className="label">What people search for, 7 d (a result was picked)</p>
+        <p className="label">{`What people search for, ${w.label} (a result was picked)`}</p>
         {searches.length > 0 ? (
           <table className="data mt-2">
             <thead>

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { MANUAL_COOLDOWN_MINUTES, REFRESH_MINUTES, snapshotAgeMinutes, type Snapshot } from "@/lib/snapshot";
+import { WINDOW_KEYS, WINDOWS, withWindow, type ReportWindow } from "@/lib/window";
 
 const NAV = [
   ["/", "Overview"],
@@ -17,7 +18,7 @@ export function fmtAge(min: number | null): string {
   return `${Math.round(min / 1440)} d ago`;
 }
 
-export function Shell({ current, snapshot, refreshFlag, children }: { current: string; snapshot: Snapshot; refreshFlag?: string; children: React.ReactNode }) {
+export function Shell({ current, snapshot, refreshFlag, window: w, children }: { current: string; snapshot: Snapshot; refreshFlag?: string; window: ReportWindow; children: React.ReactNode }) {
   const age = snapshotAgeMinutes(snapshot);
   const errors = Object.entries(snapshot.status).filter(([, s]) => s.error);
   const canRefresh = age == null || age >= MANUAL_COOLDOWN_MINUTES;
@@ -29,18 +30,34 @@ export function Shell({ current, snapshot, refreshFlag, children }: { current: s
         </Link>
         <nav className="flex flex-wrap gap-1 text-[13px]">
           {NAV.map(([href, label]) => (
-            <Link key={href} href={href} className="nav" aria-current={current === href ? "page" : undefined}>
+            <Link key={href} href={withWindow(href, w)} className="nav" aria-current={current === href ? "page" : undefined}>
               {label}
             </Link>
           ))}
         </nav>
         <div className="ml-auto flex items-center gap-3 text-xs" style={{ color: "var(--muted)" }}>
+          {/* Every windowed figure on the dashboard follows this, and the
+              refresh stores both windows, so switching costs no query. */}
+          <div className="flex rounded-md border" style={{ borderColor: "var(--line)" }} role="group" aria-label="Reporting window">
+            {WINDOW_KEYS.map((k) => (
+              <Link
+                key={k}
+                href={withWindow(current, WINDOWS[k])}
+                aria-current={w.key === k ? "true" : undefined}
+                className="px-2.5 py-1 text-xs first:rounded-l-md last:rounded-r-md"
+                style={w.key === k ? { background: "var(--line)", color: "var(--fg)" } : undefined}
+                title={k === "24h" ? "Today against yesterday" : "The last 7 days against the 7 before"}
+              >
+                {WINDOWS[k].label}
+              </Link>
+            ))}
+          </div>
           <span title={snapshot.refreshedAt ?? ""}>
             Snapshot {fmtAge(age)}
             {age != null && age < REFRESH_MINUTES ? ` · next in ${Math.max(1, Math.round(REFRESH_MINUTES - age))} min` : ` · refreshes every ${REFRESH_MINUTES} min`}
             {" "}· PostHog {snapshot.budget.used}/{snapshot.budget.limit} queries per hour
           </span>
-          <form action="/api/refresh" method="post">
+          <form action={withWindow("/api/refresh", w)} method="post">
             <button
               type="submit"
               disabled={!canRefresh}
