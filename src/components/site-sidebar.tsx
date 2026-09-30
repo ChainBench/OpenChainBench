@@ -98,9 +98,9 @@ const COLLAPSE_DELAY_MS = 80;
  * about iOS sticky behaviour and column sizing that were both hard-won,
  * and a fixed rail leaves them alone.
  */
-export function SiteSidebar() {
+export function SiteSidebar({ hiddenRoutes = [] }: { hiddenRoutes?: readonly string[] }) {
   const pathname = usePathname() ?? "/";
-  const groups = navGroups();
+  const groups = navGroups(hiddenRoutes);
 
   const pinned = useSyncExternalStore(subscribePin, readPin, () => false);
   // Starts narrow, on the server and on the client alike. The first

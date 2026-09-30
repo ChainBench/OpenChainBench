@@ -23,7 +23,22 @@ import {
   TrendingUp,
   Zap,
 } from "lucide-react";
-import { isDevOnlyRoute } from "@/lib/removed-benches";
+/**
+ * The gate is a PARAMETER here, not a module-level read of the
+ * environment, because this file is reached from client components.
+ *
+ * isDevOnlyRoute() closes over `process.env.VERCEL_ENV`, which Next only
+ * inlines into a client bundle for NEXT_PUBLIC_-prefixed variables. In the
+ * browser it is undefined, so the flag was false, so the guard passed and
+ * the nav rendered links to routes production does not serve. The server
+ * rendered the correct HTML and hydration put the link back: on
+ * 2026-09-30 production shipped no /rpc-map link in its HTML and showed
+ * one in the sidebar anyway.
+ *
+ * The layout is a server component, reads the gate where the environment
+ * is real, and passes the result down. Callers that do not know (a test,
+ * a story) get the full nav, which is the safe default for a menu.
+ */
 
 /**
  * The site's navigation, in one place, because it was previously in two
@@ -56,7 +71,7 @@ export type NavGroup = { label?: string; items: NavItem[] };
 const section = (href: string) => (p: string) =>
   p === href || p.startsWith(href + "/");
 
-export function navGroups(): NavGroup[] {
+export function navGroups(hiddenRoutes: readonly string[] = []): NavGroup[] {
   const groups: NavGroup[] = [
     {
       items: [
@@ -104,7 +119,7 @@ export function navGroups(): NavGroup[] {
       label: "Infrastructure",
       items: [
         { href: "/rpc", label: "RPC", icon: Server, match: (p) => p === "/rpc" || p.startsWith("/rpc/") },
-        ...(isDevOnlyRoute("/speedtest-rpc")
+        ...(hiddenRoutes.includes("/speedtest-rpc")
           ? []
           : [
               {
@@ -118,7 +133,7 @@ export function navGroups(): NavGroup[] {
         // anywhere on the site: it reached production in the sitemap and
         // llms.txt with no path a reader could follow, so the only people
         // who could find it were crawlers.
-        ...(isDevOnlyRoute("/rpc-map")
+        ...(hiddenRoutes.includes("/rpc-map")
           ? []
           : [
               {
@@ -180,11 +195,11 @@ export function navGroups(): NavGroup[] {
 }
 
 /** Flattened, in the order the sidebar shows them. */
-export function navItems(): NavItem[] {
-  return navGroups().flatMap((g) => g.items);
+export function navItems(hiddenRoutes: readonly string[] = []): NavItem[] {
+  return navGroups(hiddenRoutes).flatMap((g) => g.items);
 }
 
 /** The pre-sidebar header row: the same six links it had before. */
-export function headerNavItems(): NavItem[] {
-  return navItems().filter((i) => i.inHeader);
+export function headerNavItems(hiddenRoutes: readonly string[] = []): NavItem[] {
+  return navItems(hiddenRoutes).filter((i) => i.inHeader);
 }
