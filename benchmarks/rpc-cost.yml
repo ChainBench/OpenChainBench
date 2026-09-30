@@ -4,7 +4,7 @@ slug: rpc-cost
 number: "282"
 title: Cheapest RPC provider, priced per workload across 18 ranked providers
 seo_title: "Cheapest RPC provider 2026: real cost per workload"
-seo_description: "What 18 ranked RPC providers actually bill for the same workload. Alchemy, QuickNode, Chainstack, Infura, Helius, BlockPI, dRPC and more, priced across 5 workload profiles, 3 volumes and every plan tier."
+seo_description: "What 18 RPC providers bill for the same workload. Alchemy, QuickNode, Chainstack, BlockPI and dRPC priced across 5 workloads and 3 volumes."
 subtitle: The monthly bill each RPC provider would send for the same workload, normalised across Compute Units, Request Units, credits and flat requests, at three volumes and every plan tier.
 
 category: RPCs
