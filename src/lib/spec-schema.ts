@@ -711,8 +711,15 @@ export const SpecSchema = z
         })
       )
       // Cap covers visible tabs plus data-only window panels (revenue,
-      // volume and users each carry a 7d + 30d variant on the HL bench).
-      .max(12)
+      // volume and users each carry a 7d + 30d variant on the HL bench) and
+      // the data-only annotations a bench needs to show a figure's arithmetic
+      // rather than assert it. Bench 208 is the case that sets this bound: the
+      // forfeited share of a liquidated position's margin only means anything
+      // beside the loss at trigger, the share returned, the count behind the
+      // median, the part of it that is fees rather than the venue's penalty,
+      // and the leverage-neutral rate that answers the same question in money
+      // instead of notional. Six panels that are one measurement.
+      .max(17)
       .optional(),
 
     /**

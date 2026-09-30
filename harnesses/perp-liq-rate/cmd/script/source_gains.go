@@ -138,10 +138,45 @@ const (
 	gainsWordCollateralAmount  = 10 // t.collateralAmount, collateral decimals
 	gainsWordOpenPrice         = 11 // t.openPrice, 1e10 fixed point
 	gainsWordPositionSizeToken = 15 // t.positionSizeToken, 1e18 fixed point
+	gainsWordLong              = 6  // t.long
 	gainsWordOrderType         = 18 // LimitExecuted only
+	// liqPrice, the price the close executed at on a liquidation (the event
+	// also carries oraclePrice and marketPrice, equal to it whenever
+	// exactExecution is set, which it was on all 886 liquidations measured).
+	// Not read by the decode; named so the identity that pins percentProfit
+	// can be asserted against the layout rather than against a literal 21.
+	gainsWordLiqPrice = 21
+	// MarketExecuted's `open` bool, at the offset LimitExecuted uses for
+	// triggerCaller. It says whether the leg opened or closed a position,
+	// which is what LimitExecuted's orderType says.
+	gainsMarketWordOpen        = 17
 	gainsWordCollateralPriceUS = 30 // LimitExecuted: 1e8 fixed point
 	gainsWordMarketColPriceUSD = 29 // MarketExecuted: 1e8 fixed point
 	gainsOrderTypeLiqClose     = 6
+
+	// The three words that make the forfeited-collateral arithmetic. Their
+	// offsets fall out of the same tuple walk as the rest: the Trade tuple
+	// ends at w16, then triggerCaller, orderType, oraclePrice, marketPrice,
+	// liqPrice, the six-field price impact (w22..w27), and these.
+	//
+	// percentProfit is int256 and signed: negative is the loss the price had
+	// taken on the position when it was closed, as a percentage at 1e10 fixed
+	// point. Reading it unsigned turns a 65% loss into a number near 2^256.
+	// It is the price move times the leverage and nothing else, verified
+	// against (liqPrice - openPrice) / openPrice x leverage, signed by t.long,
+	// on 120 of 120 real Arbitrum liquidations.
+	gainsWordPercentProfit = 28
+	// amountSentToTrader is in the collateral's own decimals, like
+	// collateralAmount. Zero on every one of 886 liquidations measured over
+	// the three days to 2026-09-29, and confirmed against the chain: in
+	// 0x427c242f (a 200,227 dollar ETH position at 108x) the three USDC
+	// transfers out of the diamond total the collateral exactly and every one
+	// of them goes to the vault, none to the trader.
+	gainsWordAmountSentToTrader = 29
+	// The same two words on MarketExecuted, which has no triggerCaller or
+	// orderType, so both sit one word earlier.
+	gainsMarketWordPercentProfit      = 27
+	gainsMarketWordAmountSentToTrader = 28
 
 	// PositionSizeIncreaseExecuted and PositionSizeDecreaseExecuted
 	// (collateralIndex, trader, index indexed): orderId (2) | cancelReason |
@@ -206,6 +241,21 @@ type gainsExecution struct {
 	// carries both); a resize log carries only its delta.
 	collateralUSD float64
 	leverage      float64
+	// lossAtTriggerPct is the price loss on the position when it was closed,
+	// as a percentage of the margin behind it, loss positive. hasForfeit is
+	// false for a leg the arithmetic does not describe: a resize, which
+	// carries no percentProfit, or a forced close whose price return was
+	// *positive*, of which there were 10 in 886 over three days (the largest
+	// a long on pair 482 up 8.88% at 52.88x, closed as LIQ_CLOSE with nothing
+	// returned). Those are real logs and they are not a trader losing money
+	// to a move, so they publish in the notional and stay out of this.
+	hasForfeit       bool
+	lossAtTriggerPct float64
+	returnedUSD      float64
+	// isClose marks a leg that closed a position rather than opening one. The
+	// margin behind every close is the denominator of
+	// perp_liq_margin_destroyed_share_pct, and an open would double it.
+	isClose bool
 	// collateralIndex and the price the contract stamped on the event, which
 	// together make a historical price series for valuing past open interest
 	// at the price of its own day rather than at today's.
@@ -622,7 +672,9 @@ func (g *Gains) FetchLiquidationsSince(asset string, _ int64) ([]LiqEvent, error
 			continue
 		}
 		events = append(events, LiqEvent{Key: e.key, NotionalUSD: e.notionalUSD, TimestampMs: e.tsMs,
-			CollateralUSD: e.collateralUSD, Leverage: e.leverage})
+			CollateralUSD: e.collateralUSD, Leverage: e.leverage,
+			HasForfeitDetail: e.hasForfeit, LossAtTriggerPct: e.lossAtTriggerPct,
+			ReturnedUSD: e.returnedUSD})
 	}
 	return events, nil
 }
@@ -687,7 +739,9 @@ func decodeGainsLimitExecuted(lg ethLog, wantPair uint64, latest uint64, nowMs i
 		tsMs = nowMs - int64(latest-ex.block)*blockTimeMs
 	}
 	return LiqEvent{Key: ex.key, NotionalUSD: ex.notionalUSD, TimestampMs: tsMs,
-		CollateralUSD: ex.collateralUSD, Leverage: ex.leverage}, true, nil
+		CollateralUSD: ex.collateralUSD, Leverage: ex.leverage,
+		HasForfeitDetail: ex.hasForfeit, LossAtTriggerPct: ex.lossAtTriggerPct,
+		ReturnedUSD: ex.returnedUSD}, true, nil
 }
 
 // decodeGainsTradeLeg decodes a LimitExecuted or MarketExecuted log: a full
@@ -699,14 +753,24 @@ func decodeGainsTradeLeg(lg ethLog, kind gainsExecKind, decimals map[uint64]int)
 		return gainsExecution{}, false, fmt.Errorf("data hex: %w", err)
 	}
 	wantWords, colPriceWord := gainsLimitExecutedWords, gainsWordCollateralPriceUS
+	pctWord, sentWord := gainsWordPercentProfit, gainsWordAmountSentToTrader
 	if kind == gainsKindMarket {
 		wantWords, colPriceWord = gainsMarketExecutedWords, gainsWordMarketColPriceUSD
+		pctWord, sentWord = gainsMarketWordPercentProfit, gainsMarketWordAmountSentToTrader
 	}
 	if len(data) != wantWords*32 {
 		return gainsExecution{}, false, fmt.Errorf("data has %d bytes, expected %d words", len(data), wantWords)
 	}
 	word := func(i int) *big.Int {
 		return new(big.Int).SetBytes(data[i*32 : (i+1)*32])
+	}
+	// percentProfit is declared int256, so its word is two's complement.
+	signedWord := func(i int) *big.Int {
+		v := word(i)
+		if v.Bit(255) == 1 {
+			return new(big.Int).Sub(v, new(big.Int).Lsh(big.NewInt(1), 256))
+		}
+		return v
 	}
 	liquidation := false
 	if kind == gainsKindLimit {
@@ -776,6 +840,38 @@ func decodeGainsTradeLeg(lg ethLog, kind gainsExecKind, decimals map[uint64]int)
 	colUSD, _ := new(big.Float).Quo(new(big.Float).Mul(new(big.Float).Quo(collateral, scale), price), big.NewFloat(1e8)).Float64()
 	lev, _ := new(big.Float).Quo(leverage, big.NewFloat(1e3)).Float64()
 	colPxUSD, _ := new(big.Float).Quo(price, big.NewFloat(1e8)).Float64()
+
+	// What the close cost the trader: the price loss the contract stamped on
+	// the event, and what it sent back. percentProfit is signed and negative
+	// on a loss, so the loss is its negation.
+	pct, _ := new(big.Float).Quo(new(big.Float).SetInt(signedWord(pctWord)), big.NewFloat(1e10)).Float64()
+	sentUSD, _ := new(big.Float).Quo(
+		new(big.Float).Mul(new(big.Float).Quo(new(big.Float).SetInt(word(sentWord)), scale), price),
+		big.NewFloat(1e8)).Float64()
+	// The forfeited arithmetic only describes a *close*. On an open,
+	// percentProfit and amountSentToTrader are both zero, which would read as a
+	// position that lost nothing and got nothing back: a forfeit of 100 points.
+	// Only liquidations reach the window today, so this is belt and braces, and
+	// it is the belt that matters if a later change publishes stop losses too.
+	isClose := false
+	switch kind {
+	case gainsKindLimit:
+		// TP_CLOSE (4), SL_CLOSE (5) and LIQ_CLOSE (6), and only those: the
+		// enum continues into UPDATE_LEVERAGE (7) and MARKET_PARTIAL_OPEN (8),
+		// so an open bound would let an open back through the guard that
+		// exists to keep opens out.
+		ot := word(gainsWordOrderType)
+		if ot.IsUint64() {
+			v := ot.Uint64()
+			isClose = v >= 4 && v <= gainsOrderTypeLiqClose
+		}
+	case gainsKindMarket:
+		isClose = word(gainsMarketWordOpen).Sign() == 0
+	}
+	// A forced close whose price return was positive is not a trader losing
+	// money to a move, whatever the contract labelled it, so it does not enter
+	// the forfeited arithmetic. Everything else about the leg still publishes.
+	hasForfeit := isClose && colUSD > 0 && pct <= 0
 	return gainsExecution{
 		key:                lg.TxHash + ":" + lg.LogIndex,
 		block:              blockNum,
@@ -785,6 +881,10 @@ func decodeGainsTradeLeg(lg ethLog, kind gainsExecKind, decimals map[uint64]int)
 		kind:               kind,
 		collateralUSD:      colUSD,
 		leverage:           lev,
+		hasForfeit:         hasForfeit,
+		lossAtTriggerPct:   -pct,
+		returnedUSD:        sentUSD,
+		isClose:            isClose,
 		collateralIndex:    colIdx.Uint64(),
 		collateralPriceUSD: colPxUSD,
 	}, true, nil
@@ -1111,4 +1211,58 @@ func keccak256(data []byte) [32]byte {
 		binary.LittleEndian.PutUint64(out[i*8:], st[i])
 	}
 	return out
+}
+
+// CarriesPositionDetail reports true: the Trade tuple on every LimitExecuted and
+// MarketExecuted log carries the margin, and the event carries percentProfit and
+// amountSentToTrader beside it.
+func (g *Gains) CarriesPositionDetail() bool { return true }
+
+// CarriesPositionDetail reports true when every deployment does, which is both
+// of them: they run the same diamond and emit the same events.
+func (m *GainsMulti) CarriesPositionDetail() bool {
+	for _, c := range m.chains {
+		if !c.CarriesPositionDetail() {
+			return false
+		}
+	}
+	return len(m.chains) > 0
+}
+
+// FetchMarginClosed24hUSD sums the margin behind every position this deployment
+// closed on the asset in the trailing 24h: the take profits, stop losses,
+// liquidations and market closes already decoded by the same scan the numerator
+// comes from. Resizes carry a traded delta and no margin, so they are absent by
+// construction rather than excluded.
+func (g *Gains) FetchMarginClosed24hUSD(asset string) (float64, error) {
+	pairIdx, ok := gainsPairIndex[asset]
+	if !ok {
+		return 0, fmt.Errorf("gains: unsupported asset %q", asset)
+	}
+	if err := g.scan(); err != nil {
+		return 0, err
+	}
+	cutoff := time.Now().Add(-windowSpan).UnixMilli()
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	var total float64
+	for _, e := range g.execs {
+		if e.pair == pairIdx && e.tsMs >= cutoff && e.isClose && e.collateralUSD > 0 {
+			total += e.collateralUSD
+		}
+	}
+	return total, nil
+}
+
+// FetchMarginClosed24hUSD sums the deployments, as every other Gains figure does.
+func (m *GainsMulti) FetchMarginClosed24hUSD(asset string) (float64, error) {
+	var total float64
+	for _, c := range m.chains {
+		v, err := c.FetchMarginClosed24hUSD(asset)
+		if err != nil {
+			return 0, fmt.Errorf("gains/%s: %w", c.chain, err)
+		}
+		total += v
+	}
+	return total, nil
 }

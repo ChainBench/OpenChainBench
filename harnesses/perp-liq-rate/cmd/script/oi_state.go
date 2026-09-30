@@ -51,6 +51,19 @@ type liqEntry struct {
 	Notional   float64 `json:"n"`
 	Collateral float64 `json:"c,omitempty"`
 	Leverage   float64 `json:"l,omitempty"`
+	// HasForfeit and the two figures under it carry the forfeited-collateral
+	// arithmetic across a restart. The flag is written even though it is
+	// implied by nothing else, because a returned amount of zero is the
+	// normal reading on Gains and Ostium and must not come back as "the
+	// source never said".
+	HasForfeit  bool    `json:"f,omitempty"`
+	LossPct     float64 `json:"lp,omitempty"`
+	ReturnedUSD float64 `json:"r,omitempty"`
+	// The itemised fee part of the forfeit, where the feed splits it, under its
+	// own flag for the same reason as HasForfeit: a fee share of zero is a real
+	// reading on GMX's smallest positions.
+	HasFeeSplit    bool    `json:"fs,omitempty"`
+	FeeAndCarryUSD float64 `json:"fc,omitempty"`
 }
 
 // oiStateFile is the whole file: both windows of every pair, keyed
@@ -150,7 +163,9 @@ func (s *oiStateStore) restoreLiq(venue, asset string, st *pairState, nowMs int6
 		}
 		st.seen.Add(e.Key, e.TsMs)
 		st.window.AddEvent(LiqEvent{Key: e.Key, TimestampMs: e.TsMs, NotionalUSD: e.Notional,
-			CollateralUSD: e.Collateral, Leverage: e.Leverage})
+			CollateralUSD: e.Collateral, Leverage: e.Leverage,
+			HasForfeitDetail: e.HasForfeit, LossAtTriggerPct: e.LossPct, ReturnedUSD: e.ReturnedUSD,
+			HasFeeSplit: e.HasFeeSplit, FeeAndCarryUSD: e.FeeAndCarryUSD})
 		n++
 	}
 	return n
@@ -180,7 +195,9 @@ func (s *oiStateStore) save(pairs []*pairRuntime, now time.Time) {
 			out := make([]liqEntry, 0, len(entries))
 			for _, e := range entries {
 				out = append(out, liqEntry{Key: e.key, TsMs: e.tsMs, Notional: e.notional,
-					Collateral: e.collateral, Leverage: e.leverage})
+					Collateral: e.collateral, Leverage: e.leverage,
+					HasForfeit: e.hasForfeit, LossPct: e.lossPct, ReturnedUSD: e.returnedUSD,
+					HasFeeSplit: e.hasFeeSplit, FeeAndCarryUSD: e.feeAndCarryUSD})
 			}
 			f.Liq[key] = out
 		}
