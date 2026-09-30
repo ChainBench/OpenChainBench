@@ -36,7 +36,11 @@ export const dynamic = "force-dynamic";
 
 const BENCH_SLUG = "hyperliquid-frontends";
 
-const CACHE_HEADER = "public, s-maxage=60, stale-while-revalidate=300";
+// 300 s: both sources are already cached for that long - getBenchmark
+// through the bench data cache (src/lib/spec.ts) and getArchive through
+// hl-archive-store. The archive itself holds daily aggregates, so the
+// long windows cannot move inside a five-minute window at all.
+const CACHE_HEADER = "public, s-maxage=300, stale-while-revalidate=900";
 
 function isWindow(v: string | null): v is HlArchiveWindow {
   return v !== null && (HL_ARCHIVE_WINDOWS as readonly string[]).includes(v);
@@ -215,7 +219,16 @@ export async function GET(req: NextRequest) {
     // return the original 503 so the UI reverts to the 30d range.
     const fallback = await buildFromBlobFallback(window);
     if (fallback) {
-      return NextResponse.json(fallback, { headers: { "cache-control": "public, s-maxage=120, stale-while-revalidate=300" } });
+      // Deliberately NOT CACHE_HEADER. This body is 30-day totals
+      // labelled as the 90d or 180d window, a stand-in for an archive
+      // that has not been written yet. What governs how long a stand-in
+      // may persist is how soon the real archive could replace it, not
+      // the TTL of the caches it was built from, so it keeps the shorter
+      // window it had: once hl-archive finishes its backfill the tabs
+      // stop showing 30-day figures within ~7 minutes rather than ~20.
+      return NextResponse.json(fallback, {
+        headers: { "cache-control": "public, s-maxage=120, stale-while-revalidate=300" },
+      });
     }
     return NextResponse.json(
       {

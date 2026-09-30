@@ -19,10 +19,21 @@ import { getCapitalHub } from "@/lib/capital-hub";
 // server-side analytics event exists to tell which agent reads what. A
 // cached document (origin ISR, or the CDN behind s-maxage) would emit one
 // event per cache fill and credit whichever family missed the cache, so
-// the response is not cached anywhere and every read runs the handler,
-// behind the same per-client limiter as /api/stat. The bench data it
-// renders is itself read through the data cache; the per-request cost is
-// the Markdown rendering and one PostHog POST after the response.
+// the response asks not to be cached anywhere, behind the same per-client
+// limiter as /api/stat. The bench data it renders is itself read through
+// the data cache; the per-request cost is the Markdown rendering and one
+// PostHog POST after the response.
+//
+// Measured on prod 2026-09-30, that premise does not hold: the no-store
+// below does not survive to the edge. A fresh cache key answers MISS,
+// then HIT with a climbing age, and the response reaching the client
+// carries a bare `cache-control: public`. So markdown_read already
+// counts cache fills, not reads, and this route is not the per-request
+// cost the comment assumes. Left as is on purpose, because the two ways
+// out point opposite ways: making no-store stick restores the analytics
+// and pays a function per read, while accepting the cache means fixing
+// the counting instead. That is a product call, not a caching one.
+// Nothing below is changed until it is made.
 export const dynamic = "force-dynamic";
 
 const SLUG = /^[a-z0-9][a-z0-9-]{0,79}$/;
