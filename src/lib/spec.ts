@@ -156,6 +156,7 @@ export function overlayEditorial(stored: Benchmark, spec: Spec): Benchmark {
     // Singapore-only while dev/worker carries the region dims).
     dimensions: spec.dimensions,
     dimensionLabels: spec.dimension_labels,
+    zeroIsAValue: spec.zero_is_a_value,
     chart: chartFromSpec(spec) ?? stored.chart,
     // Same source-of-truth rule as dimensions: the live YAML decides
     // the aggregate pin, never the snapshot.

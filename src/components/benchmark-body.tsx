@@ -452,6 +452,7 @@ export function BenchmarkBody({
     (!effectiveRegion || effectiveRegion === "all") &&
     (!effectiveKind || effectiveKind === "all") &&
     (!effectiveVenue || effectiveVenue === "all") &&
+    (!effectiveBucket || effectiveBucket === "all") &&
     !effectiveTier;
   useEffect(() => {
     if (variantMap[activeKey] || !aggregateBench) return;
@@ -464,6 +465,13 @@ export function BenchmarkBody({
     if (!isAll(effectiveRegion)) qs.set("region", effectiveRegion!);
     if (!isAll(effectiveKind)) qs.set("kind", effectiveKind!);
     if (!isAll(effectiveVenue)) qs.set("venue", effectiveVenue!);
+    // The bucket was missing from both the all-selection test and the
+    // query string, so picking only a bucket fetched nothing and any
+    // other fetch returned the default bucket's numbers, which then got
+    // cached under a key that DOES include the bucket. Every bucket tab
+    // rendered the default one's figures. Affects any bench with a
+    // bucket dimension, bench 268's trade sizes included.
+    if (!isAll(effectiveBucket)) qs.set("bucket", effectiveBucket!);
     if (effectiveTier) qs.set("tier", effectiveTier);
     let cancelled = false;
     fetch(`/api/bench/${aggregateBench.slug}/variant?${qs.toString()}`)
@@ -788,7 +796,7 @@ export function BenchmarkBody({
     .join(" · ");
   const isDraft = viewBenchmark.status === "draft";
   const { fieldMin, fieldMedian, fieldMax, tailMin, tailMax, tailSpread } =
-    computeFieldStats(viewBenchmark.results);
+    computeFieldStats(viewBenchmark.results, viewBenchmark.zeroIsAValue);
 
   const sharedHeaderActions = (
     <>

@@ -155,6 +155,10 @@ prometheus:
 # p99 of it are the same number three times and a "success rate" measures
 # nothing: this bench sends no RPC traffic. Relabel the ledger to carry
 # figures that mean something instead, and turn the reliability columns off.
+# $0 is an answer here, not a missing value: several providers serve a
+# ten-million-request month for nothing. Without this the ledger prunes
+# them and the page names a paid provider as the cheapest option.
+zero_is_a_value: true
 ledger_reliability: false
 ledger_columns:
   - { label: Monthly bill, slot: p50, unit: usd }
