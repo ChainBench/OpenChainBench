@@ -41,6 +41,8 @@ methodology:
   - "GetBlock regional pairing: each probe region uses GetBlock's nearest endpoint, us-east to New York, eu-west to Frankfurt, sgp to Singapore. That keeps the comparison about the provider rather than about transatlantic distance."
   - "Two cohorts, two rankings: the public endpoints are shared, rate-limited gateways probed every 60 seconds; the keyed endpoints are metered or dedicated and probed every 120 seconds. The selector switches the whole page (ranking, chart, region tabs, badges, citation) between them. No figure on this page compares a public endpoint with a keyed one."
 
+excluded_providers: []
+
 faq:
   - q: "Which HyperEVM RPCs work without an API key?"
     a: "{{count}} endpoints sustain continuous keyless probing today; each is listed with its URL, 24h median and success rate in the endpoints table on this page. Every listed endpoint was live-verified with an `eth_getBlockByNumber` POST returning a parsable hex head before inclusion. Excluded by the audit: Alchemy's demo key path is rate-limited dead, thirdweb returns `Invalid chain` on HyperEVM, Grove/Pocket public LB requires an app id at the LB path, and AllThatNode / Blast API / Chainstack / Gelato / Imperator HyperEVM paths either DNS-fail or 401 without a key. HyperEVM is a young chain so this list will shift as providers stand up dedicated endpoints."
@@ -49,7 +51,7 @@ faq:
   - q: "Why is the probe `eth_getBlockByNumber` and not `eth_blockNumber`?"
     a: "Two reasons. First, `eth_getBlockByNumber(\"latest\", false)` forces the node to actually assemble the block header (timestamp, hash, gas metrics) which a polite CDN cannot synthesise from a stale integer , `eth_blockNumber` on its own can be answered from an edge cache without touching a node, defeating the point of a latency probe. Second, the returned header lets the harness populate the `latest_block_hash` and `timestamp` fields the cross-provider tip machinery uses to detect stale endpoints. Both together mean the number on this page is what your app actually pays when it fetches a fresh head."
   - q: "Which Hyperliquid RPC provider is fastest with an API key?"
-    a: "Per the live data: {{best_name:tier:keyed}} at {{best_p50:tier:keyed}} (eth_getBlockByNumber p50 over 24h, averaged across us-east, eu-west and Singapore); Alchemy measures {{p50:alchemy}}, Chainstack {{p50:chainstack}}, QuickNode {{p50:quicknode}} and GetBlock {{p50:getblock}}. On the free cohort {{best_name}} leads at {{best_p50}}, measured on the same call from the same three regions; the two cohorts are never ranked in one table (shared gateways at 60 s against metered endpoints at 120 s). Switch the Access selector to Private for the region tabs and the p99 column; plan tiers are disclosed in the methodology."
+    a: "Per the live data: {{best_name:tier:keyed}} at {{best_p50:tier:keyed}} (eth_getBlockByNumber p50 over 24h, averaged across us-east, eu-west and Singapore); Alchemy measures {{p50:alchemy}}, Chainstack {{p50:chainstack}} and QuickNode {{p50:quicknode}}; GetBlock measures {{p50:getblock}}. On the free cohort {{best_name}} leads at {{best_p50}}, measured on the same call from the same three regions; the two cohorts are never ranked in one table (shared gateways at 60 s against metered endpoints at 120 s). Switch the Access selector to Private for the region tabs and the p99 column; plan tiers are disclosed in the methodology."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
 

@@ -46,7 +46,7 @@ faq:
   - q: "Why is there no archive-depth column like the EVM pages?"
     a: "The EVM cluster probes eth_getBalance at historical block heights to expose which free endpoints serve archive state. Public Solana endpoints expose no comparable keyless historical-state query, so the audit is disclosed as not applicable rather than approximated."
   - q: "Which Solana RPC provider is fastest with an API key?"
-    a: "Per the live data: {{best_name:tier:keyed}} at {{best_p50:tier:keyed}} (getSlot p50 over 24h, averaged across us-east, eu-west and Singapore); Alchemy measures {{p50:alchemy}}, Chainstack {{p50:chainstack}}, QuickNode {{p50:quicknode}} and GetBlock {{p50:getblock}}. On the free cohort {{best_name}} leads at {{best_p50}}, measured on the same call from the same three regions; the two cohorts are never ranked in one table (shared gateways at 60 s against metered endpoints at 120 s). Switch the Access selector to Private for the region tabs and the p99 column; plan tiers are disclosed in the methodology."
+    a: "Per the live data: {{best_name:tier:keyed}} at {{best_p50:tier:keyed}} (getSlot p50 over 24h, averaged across us-east, eu-west and Singapore); Alchemy measures {{p50:alchemy}}, Chainstack {{p50:chainstack}} and QuickNode {{p50:quicknode}}; GetBlock measures {{p50:getblock}}. On the free cohort {{best_name}} leads at {{best_p50}}, measured on the same call from the same three regions; the two cohorts are never ranked in one table (shared gateways at 60 s against metered endpoints at 120 s). Switch the Access selector to Private for the region tabs and the p99 column; plan tiers are disclosed in the methodology."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
 
