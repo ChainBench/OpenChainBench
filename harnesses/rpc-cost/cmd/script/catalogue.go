@@ -153,6 +153,13 @@ type Plan struct {
 	// adjudicate its ambiguous allowance period. Helius's dedicated nodes
 	// require the $499 Business plan the same way.
 	RequiresPlan string `yaml:"requires_plan"`
+	// Chains this plan actually serves. Required on unmetered capacity:
+	// that path skips unitsPerRequest, which is where every other cohort's
+	// chain check lives, so without it an Ethereum-only node leads the
+	// Solana tab at an Ethereum price and a Solana node carries an
+	// Ethereum bill. Empty means "the weights table decides", which is
+	// correct for per-request plans and wrong for a dedicated node.
+	Chains []string `yaml:"chains"`
 	Throughput     Throughput `yaml:"throughput"`
 	Archive        string     `yaml:"archive"` // true | false | gated
 	Trace          *bool      `yaml:"trace"`
@@ -259,6 +266,17 @@ func (c *Catalogue) validate() error {
 			}
 		}
 
+		if p.Cohort == "dedicated" {
+			for _, pl := range p.Plans {
+				if pl.Confidence == "unpublished" {
+					continue
+				}
+				if len(pl.Chains) == 0 {
+					return fmt.Errorf("%s/%s: dedicated capacity must declare `chains:`; without it the plan prices every chain tab, including ones it does not serve", p.Slug, pl.ID)
+				}
+			}
+		}
+
 		// A zero or missing archive multiplier silently zeroes every
 		// archive workload's unit cost, which made GetBlock the cheapest
 		// indexer and trace provider in the cohort at $0 per month.
@@ -319,6 +337,19 @@ func (c *Catalogue) PlanTier(p Provider, pl Plan) string {
 func (c *Catalogue) FreeAllowanceRequests(p Provider, pr Profile) (float64, string, bool) {
 	for _, pl := range p.Plans {
 		if c.PlanTier(p, pl) != TierFree || pl.IncludedUnits == nil {
+			continue
+		}
+		// An allowance the plan cannot spend on this workload is not an
+		// allowance. dRPC's free tier led the trace panel at 10.5M requests
+		// while its own plan is archive: false, trace: false and the ledger
+		// on the same page refused it: the panel contradicted the table.
+		if pr.Archive && pl.Archive == "false" {
+			continue
+		}
+		if isTraceProfile(pr) && pl.Trace != nil && !*pl.Trace {
+			continue
+		}
+		if len(pl.Chains) > 0 && !servesChain(pl, pr.Chain) {
 			continue
 		}
 		upr, err := unitsPerRequest(p, pr)
