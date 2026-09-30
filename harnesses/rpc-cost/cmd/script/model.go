@@ -44,9 +44,14 @@ func unitsPerRequest(p Provider, pr Profile) (float64, error) {
 		return 0, fmt.Errorf("provider does not price %s", pr.Chain)
 	}
 	// A provider with a real archive price list uses it wholesale, and
-	// the multiplier branch below is skipped. GetBlock's archive cost is
-	// 3x on debug/trace and 1.5x on the enumerated trace family, so
+	// the multiplier branch below is skipped. GetBlock is the case that
+	// forced it: read off its own full_cu / archive_cu columns, archive
+	// costs 2x on the catch-all reads (Ethereum 20 -> 40) and 3x on the
+	// enumerated debug, trace and txpool methods (40 -> 120), so
 	// collapsing it to one multiplier would be wrong in both directions.
+	// The 1.5x that GetBlock's published archive_multiplier implies is a
+	// property of that unusable formula, not of these columns: see the
+	// archive_rule note on getblock in pricing/catalogue.yml.
 	usedArchiveTable := false
 	if pr.Archive {
 		if aw, ok := p.ArchiveWeights[pr.Chain]; ok {

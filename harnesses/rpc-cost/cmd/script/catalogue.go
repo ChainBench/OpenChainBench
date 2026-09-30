@@ -54,8 +54,9 @@ type Provider struct {
 	// ArchiveWeights is a full second table for providers whose archive
 	// cost is an independent lookup rather than a multiple of the
 	// standard cost. GetBlock is the case that forced it: its API returns
-	// full_cu and archive_cu per method, and the ratio is 3x on one family
-	// of methods and 1.5x on another, so no single multiplier is correct.
+	// full_cu and archive_cu per method, and the ratio is 2x on the
+	// catch-all reads and 3x on the enumerated debug, trace and txpool
+	// methods, so no single multiplier is correct.
 	// When present it replaces Weights entirely for archive workloads.
 	ArchiveWeights map[string]Weights `yaml:"archive_weights"`
 	// ThroughputWeights is a SECOND, different unit table used only for the
