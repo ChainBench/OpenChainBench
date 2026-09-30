@@ -75,7 +75,7 @@ export function RpcHubTabs({
           </div>
           <span className="text-[12px] text-ink-faint">
             {cohort === "keyed"
-              ? "Private endpoints (API key): Alchemy, Chainstack and QuickNode, probed every 120 s. Ranked on their own, never against the public gateways."
+              ? "Private endpoints (API key): Alchemy, Chainstack, GetBlock and QuickNode, probed every 120 s. Ranked on their own, never against the public gateways."
               : "Free, no-key endpoints probed every 60 s."}
           </span>
         </div>

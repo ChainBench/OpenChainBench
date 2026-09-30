@@ -291,7 +291,7 @@ const mcpHandler = createMcpHandler(
           "",
           "Chain RPC benchmarks (<chain>-rpc) rank two access cohorts apart:",
           "the free public endpoints (default) and the private, API-key",
-          "providers (Alchemy, Chainstack, QuickNode). The default response",
+          "providers (Alchemy, Chainstack, GetBlock, QuickNode). The default response",
           "carries both under `cohorts`; pass tier=\"keyed\" to get the private",
           "cohort as the main record (rankings, quote, pageUrl). Never compare a",
           "public row with a private row: they are measured on different",
