@@ -457,7 +457,39 @@ function contributeToMap(chainSlug: string | null, endpoints: Endpoint[]) {
   }).catch(() => {});
 }
 
+/**
+ * Brave exposes `navigator.brave.isBrave()`, which is the only browser
+ * check on this page and it earns its place: Brave Shields blocks
+ * requests to RPC hosts by default through its filter lists, so a Brave
+ * visitor gets every endpoint blocked and no result at all.
+ *
+ * The generic advice ("a shields-up browser, a privacy extension, a VPN")
+ * is true and useless to someone who has none of those and has never
+ * heard of Shields. Naming the browser turns it into one click. We cannot
+ * fix this from our side: the whole point of the tool is that requests go
+ * from the visitor's browser straight to the provider, so routing them
+ * through us to dodge the block would measure our server instead of their
+ * connection and would send their API keys to us.
+ */
+function useIsBrave(): boolean {
+  const [brave, setBrave] = useState(false);
+  useEffect(() => {
+    const nav = navigator as Navigator & { brave?: { isBrave?: () => Promise<boolean> } };
+    let live = true;
+    nav.brave?.isBrave?.()
+      .then((yes) => {
+        if (live) setBrave(Boolean(yes));
+      })
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, []);
+  return brave;
+}
+
 export function SpeedtestRpcClient({ mapLive = true }: { mapLive?: boolean }) {
+  const isBrave = useIsBrave();
   const [stage, setStage] = useState<Stage>("setup");
   const [inputs, setInputs] = useState<string[]>(["", ""]);
   const [chainQuery, setChainQuery] = useState("");
@@ -823,6 +855,14 @@ export function SpeedtestRpcClient({ mapLive = true }: { mapLive?: boolean }) {
                 Skipped {skippedProviders.join(", ")}: no browser (CORS) support. The public bench probes it server-side.
               </p>
             )}
+            {/* Said before the run, not after it: with Shields up every
+                endpoint fails and the visitor has spent the whole test
+                duration to be told to change a setting. */}
+            {isBrave && (
+              <p className="mt-2 label-mono text-[10px] text-ink-faint">
+                Brave detected. Shields blocks requests to RPC hosts by default, which makes every endpoint fail. Turn Shields down for this site (the lion in the address bar) before you start.
+              </p>
+            )}
           </div>
           <div className="space-y-2">
             {inputs.map((u, i) => (
@@ -1086,7 +1126,11 @@ export function SpeedtestRpcClient({ mapLive = true }: { mapLive?: boolean }) {
                 // of the one thing that would fix it.
                 ranked.length === 0 ? (
                   <p className="st-row label-mono text-[10px] text-ink-faint text-center pt-1" style={{ animationDelay: "0.2s" }}>
-                    Every endpoint was blocked before it answered, including ones that do allow browser calls. That points at this browser rather than at the providers: a shields-up browser, a privacy or ad-blocking extension, a VPN or a corporate network will stop requests to RPC hosts. Try a normal window with extensions off, or paste your own endpoint. The public benchmarks measure all of these server-side.
+                    Every endpoint was blocked before it answered, including ones that do allow browser calls, so the block is on this side rather than at the providers.{" "}
+                    {isBrave
+                      ? "Brave Shields blocks requests to RPC hosts by default. Click the lion in the address bar and turn Shields down for this site, then run the test again. We cannot do this for you: the test only means anything because the requests go from your browser straight to the provider, never through us."
+                      : "A shields-up browser, a privacy or ad-blocking extension, a VPN or a corporate network will stop requests to RPC hosts. Try a normal window with extensions off, or paste your own endpoint."}{" "}
+                    The public benchmarks measure all of these server-side.
                   </p>
                 ) : (
                 <p className="st-row label-mono text-[10px] text-ink-faint text-center pt-1" style={{ animationDelay: `${0.2 + ranked.length * 0.12}s` }}>
