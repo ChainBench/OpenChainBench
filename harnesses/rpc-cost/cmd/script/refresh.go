@@ -39,6 +39,12 @@ type artifactState struct {
 	ok    bool
 	drift bool
 	age   time.Duration
+	// polled is false for an artifact we deliberately do not fetch (a
+	// page behind a bot wall, a JSON that regenerates every 15 minutes and
+	// would drift-alarm forever). Its `ok` gauge is then not emitted at
+	// all, because publishing 0 for "we never asked" reads as "the
+	// provider's page is down", which is a different and untrue claim.
+	polled bool
 }
 
 func checkArtifact(a Artifact) artifactState {
@@ -53,9 +59,9 @@ func checkArtifact(a Artifact) artifactState {
 	if a.URL == "" || a.Poll == "manual" {
 		// Nothing to fetch, but the age still matters: a figure nobody has
 		// re-read in 90 days is the thing this bench most needs to admit.
-		st.ok = a.URL == ""
 		return st
 	}
+	st.polled = true
 
 	req, err := http.NewRequest(http.MethodGet, a.URL, nil)
 	if err != nil {

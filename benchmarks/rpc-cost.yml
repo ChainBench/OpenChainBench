@@ -16,12 +16,12 @@ row_noun: { one: provider, many: providers }
 
 disclaimer: >
   Published prices, not invoices. Each figure is human-verified against the
-  provider's own pricing page or API and carries the date it was read; drift
-  detection is wired but not yet armed, so read them as of that date. A
-  30-day month and flat traffic are assumed, the most generous reading.
-  NOWNodes prices in EUR. A provider absent from a cell is not missing data:
-  it has no plan that can serve that workload, usually because of a cap or a
-  throughput ceiling rather than the price.
+  provider's own pricing page or API and carries the date it was read; the
+  harness re-hashes 21 of those artifacts on a loop and flags any that
+  changed. A 30-day month and flat traffic are assumed, the most generous
+  reading. NOWNodes prices in EUR. A provider absent from a cell is not
+  missing data: it has no plan that can serve that workload, usually a cap
+  or a throughput ceiling rather than the price.
 
 seo_intro: |
   There is no cheapest RPC provider. That is the finding, not a hedge. We
@@ -62,10 +62,12 @@ abstract: |
   Pricing is human-verified rather than scraped: for most of this cohort the
   price is prose on a marketing page, and a parser that guesses is worse than
   one that does not exist. Every figure records the artifact it came from
-  and the date a human read it. The harness hashes the artifacts that expose
-  a stable URL so an upstream edit can surface as drift, but the baseline
-  hashes are not recorded yet, so that check is wired rather than armed and
-  no per-figure staleness is shown on the page.
+  and the date a human read it, and 21 of those artifacts carry a baseline
+  hash the harness re-checks on a loop, so an upstream edit surfaces as
+  drift rather than as a stale figure that still reads as current. The
+  remainder are marked for manual re-reading: a page behind a bot wall, or
+  a JSON that regenerates every fifteen minutes and would alarm every cycle
+  until everyone learned to ignore it.
 
 methodology:
   - "Cohort. 20 providers billed per request, ranked. A separate dedicated-capacity cohort (per month or per node-hour, not per request) is ranked on its own axis with a break-even volume. Reference rows, PublicNode and the Solana Foundation endpoints, are published but never ranked: they are free, real and usable, and PublicNode publishes no rate limit of any kind, so calling it cheapest would be true and useless."
@@ -81,8 +83,9 @@ methodology:
   - "Currency and period. A 30-day month throughout. NOWNodes prices in EUR and stays in EUR in the catalogue; the ECB reference rate sits in the catalogue header so the conversion is visible at the point of use rather than baked into a number."
   - "Verification. Every figure was collected and then independently re-verified against the primary source by a second pass, which corrected about thirty values, including two that had been computed and then presented as published. A later adversarial audit corrected a dozen more, most of them in this prose rather than in the data."
   - "Conflicts between a provider's own pages are reported rather than silently resolved. Alchemy's free-tier throughput was settled by a dated docs commit, Helius's archival credit cost by dating the documentation table, and Ankr's live model by reading its production application bundle, because its most machine-readable pricing page describes a model that is not the one being sold."
-  - "Freshness. The catalogue is committed and human-verified, not scraped, because most of this cohort publishes price as prose. The harness hashes the artifacts that expose a stable URL so an upstream edit can surface as drift, but the baseline hashes are not recorded yet, so that check is wired and not yet armed. Most artifacts are marked for manual re-reading and are not polled at all."
-  - "Fifteen of the ranked providers expose a machine-readable pricing artifact, whether JSON or raw markdown, and four of them, GetBlock, NOWNodes, QuickNode and Tatum, expose unauthenticated pricing APIs a harness can poll directly."
+  - "Freshness. The catalogue is committed and human-verified, not scraped, because most of this cohort publishes price as prose. 21 artifacts carry a baseline hash recorded when a human last read the numbers under them, and the harness re-fetches and re-hashes those on a loop, so an upstream edit surfaces as drift."
+  - "The rest are marked for manual re-reading and deliberately not polled: a page that churns for reasons unrelated to price would alarm every cycle and teach everyone to ignore the alarm. Age is published either way, so a figure nobody has re-read is visible as such."
+  - "Fifteen of the ranked providers expose a machine-readable pricing artifact, whether JSON or raw markdown, and four of them, GetBlock, NOWNodes, QuickNode and Tatum, expose unauthenticated pricing APIs a harness can poll directly. 21 artifacts across the cohort are re-hashed on a loop."
   - "Measured, not just read. Chainstack's rules were tested against its billing API with 291 counted calls: 1 Request Unit for a full request, archive above 2x full, debug and trace at 2 RU even ten blocks behind tip (so the surcharge is method-driven, not recency-driven), and an HTTP batch of 30 billed as 30 rather than 1. The 127-block archive boundary the indexer and trace profiles rest on is confirmed to within five blocks: it is not 64, not 256 and not absent."
   - "Two measurement traps worth publishing. Chainstack's per-node Request Unit column does not reconcile: two nodes came in at minus 66 and plus 59 against prediction, cancelling on the total, so it cannot be used for spend attribution."
   - "And that counter is not live. It stayed flat for twelve minutes while 57 calls were served, because each hourly row covers the hour ending at its label and appears about fifty minutes later. A naive read, burst, re-read measurement concludes Chainstack bills nothing at all."
@@ -117,9 +120,9 @@ faq:
   - q: "Why is a provider missing from a cell?"
     a: "Because it cannot serve that workload. The reason is recorded in the harness log; surfacing it on the page is not done yet. Infura's allowance is daily and hard-stops rather than metering overage. Alchemy's published self-serve throughput ceiling is below what a billion-request indexer workload needs. Tatum and Moralis publish 200 requests per second against the 386 that volume requires. A missing cell is a finding, not a gap in the data."
   - q: "What about the free tiers?"
-    a: "They have their own panel, ranked by what the allowance actually buys rather than by price, since every free plan costs the same nothing. Converted into simple reads per month they differ by 160x, from OnFinality's 12.0 million to GetBlock's 75,000. The free-tier allowance ranking is published as a metric but is not yet rendered as its own panel. Several are limited by throughput rather than volume: GetBlock's daily allowance drains in 125 seconds at its own advertised 20 requests per second."
+    a: "They have their own panel, ranked by what the allowance actually buys rather than by price, since every free plan costs the same nothing. Converted into simple reads per month they differ by 160x, from OnFinality's 12.0 million to GetBlock's 75,000. The allowance ranking has its own panel on this page. Several are limited by throughput rather than volume: GetBlock's daily allowance drains in 125 seconds at its own advertised 20 requests per second."
   - q: "How current are these numbers?"
-    a: "Every figure carries the date a human last verified it against the source. The harness hashes the artifacts that expose a stable URL, but the baseline hashes are not recorded yet, so drift detection is wired and not yet armed. Freshness varies within a provider: Chainstack's pricing markdown has not moved since April 2026 while its pricing JSON regenerates every fifteen minutes."
+    a: "Every figure carries the date a human last verified it against the source. The harness re-fetches 21 artifacts that carry a baseline hash and flags any whose body has changed since a human last read it. Artifacts that churn for reasons unrelated to price are re-read by hand instead, and every figure publishes its age either way. Freshness varies within a provider: Chainstack's pricing markdown has not moved since April 2026 while its pricing JSON regenerates every fifteen minutes."
   - q: "Can I reproduce these numbers?"
     a: "Yes. The pricing catalogue, the cost model and the workload profiles are all in the harness repository linked below, and every figure carries its source URL and verification date. The weighted units per request are published as a metric so the arithmetic can be redone by hand."
 
@@ -148,6 +151,53 @@ prometheus:
 # The stock selector labels are named after the dimension key ("Venue",
 # "Trade size", "Kind"), which says nothing on this bench. Name the axes
 # for what they actually hold.
+# The bill is a constant read from a committed catalogue, so p50, p90 and
+# p99 of it are the same number three times and a "success rate" measures
+# nothing: this bench sends no RPC traffic. Relabel the ledger to carry
+# figures that mean something instead, and turn the reliability columns off.
+ledger_reliability: false
+ledger_columns:
+  - { label: Monthly bill, slot: p50, unit: usd }
+  - { label: Per 1M requests, panel: per_million, unit: usd }
+  - { label: Units per request, panel: units_per_request, unit: count }
+
+metric_panels:
+  # What the same workload costs per million requests, which is the figure
+  # that makes providers with different plan shapes comparable at a glance.
+  - id: per_million
+    label: Effective cost per 1M requests
+    description: The monthly bill spread over the workload. Derived, not a published rate, so a plan that bundles far more than the workload uses shows a high effective rate here.
+    metric: rpc_cost_per_million_usd{kind="all",bucket="all",venue="all"}
+    label_key: provider
+    unit: usd
+    higher_is_better: false
+  # The conversion that makes a Compute Unit, a Request Unit and a credit
+  # comparable at all. Promised in the methodology, so publish it.
+  - id: units_per_request
+    label: Billing units per request
+    description: Weighted units the provider charges for one request of this workload, from its own published method table. The number that makes CU, RU, credits and flat requests comparable.
+    metric: rpc_cost_units_per_request{kind="all"}
+    label_key: provider
+    unit: count
+    higher_is_better: false
+  # Free tiers all cost the same nothing, so they can only be ranked on
+  # what the allowance actually buys.
+  - id: free_allowance
+    label: Free tier, requests per month
+    description: Requests of this workload the provider's free allowance covers each month, after converting its credits, units or daily cap. Higher is better; providers with no free tier are absent.
+    metric: rpc_free_allowance_requests{kind="all"}
+    label_key: provider
+    unit: count
+    higher_is_better: true
+  # The question the dedicated cohort exists to answer.
+  - id: breakeven
+    label: Dedicated break-even, requests per month
+    description: Monthly request volume at which a fixed-price dedicated node undercuts the cheapest metered rate. Lower means the fixed price pays for itself sooner.
+    metric: rpc_cost_breakeven_requests
+    label_key: provider
+    unit: count
+    higher_is_better: false
+
 dimension_labels:
   kind: Workload
   bucket: Monthly volume

@@ -189,8 +189,10 @@ func checkFreshness(cat *Catalogue) {
 		}
 		for name, a := range p.Source {
 			st := checkArtifact(a)
-			artifactOK.WithLabelValues(p.Slug, name).Set(boolGauge(st.ok))
-			artifactDrift.WithLabelValues(p.Slug, name).Set(boolGauge(st.drift))
+			if st.polled {
+				artifactOK.WithLabelValues(p.Slug, name).Set(boolGauge(st.ok))
+				artifactDrift.WithLabelValues(p.Slug, name).Set(boolGauge(st.drift))
+			}
 			if st.age > 0 {
 				artifactAge.WithLabelValues(p.Slug, name).Set(st.age.Seconds())
 			}
