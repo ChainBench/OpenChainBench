@@ -11,11 +11,14 @@ export const runtime = "nodejs";
  * (`scalar(time() - max(timestamp(<metric>)))`), returning just the
  * resolved data timestamp per slug.
  *
- * Separate from /api/citable so the LiveIndicator can poll fast (every
- * 8 s) without re-running the heavy spec → rankings → sparkline → series
- * pipeline. Edge-cache is short (5 s s-maxage, 20 s swr) so the visible
- * staleness lands around 15-20 s p99 - close to the Prom scrape interval
- * floor (15 s) that bounds how fresh any client-side query can ever be.
+ * Separate from /api/citable so the LiveIndicator can poll cheaply
+ * without re-running the heavy spec → rankings → sparkline → series
+ * pipeline. It polls every 30 s (live-indicator.tsx) against a 30 s
+ * s-maxage and 60 s swr, so the visible staleness lands within about a
+ * minute, above the Prom scrape interval floor (15 s) that bounds how
+ * fresh any client-side query can ever be. This is the shortest window on
+ * the site, which is why the widget can read newer than the table beneath
+ * it.
  */
 
 // Cache window has to stay STRICTLY shorter than the LiveIndicator poll

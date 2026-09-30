@@ -619,7 +619,9 @@ export async function aggregateBenchmarks(
 // Promise.allSettled so a single bench's transient throw doesn't bring
 // down the whole list. See aggregateBenchmarks for the actual logic.
 // This wrapper layers unstable_cache on top so the result is shared
-// across requests with 60s revalidate.
+// across requests with 300s revalidate (the option is on the call below;
+// several API routes size their own edge windows against this number, so
+// the two have to be read together).
 const loadAllBenchmarksCached = unstable_cache(
   async (): Promise<Benchmark[]> => {
     const specs = await loadSpecs();

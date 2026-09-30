@@ -723,19 +723,6 @@ export const SpecSchema = z
       .optional(),
 
     /**
-     * Optional relabeling of the ledger's aggregate columns. For benches
-     * whose unit has no percentile semantics (USD revenue leaderboards),
-     * the p50/p90/p99/mean slots are repurposed; declaring ledger_columns
-     * renders each column with an honest label and unit instead of the
-     * default latency headers. `slot` reads the provider's headline slot,
-     * `panel` reads the values of a metric_panels entry by id. The first
-     * column is the headline (sort key, data bar, mobile column).
-     */
-    /** false when the providers' `success` query is a publication gate
-     *  (0 or 1) rather than a probe success rate: the ledger then hides
-     *  the Success and Reliability columns and describes an unpublished
-     *  row as under its threshold, not as a dead endpoint. */
-    /**
      * Whether 0 is a real value on this bench rather than a missing one.
      *
      * The ledger and the summary strip prune all-zero rows, because on a
@@ -747,7 +734,20 @@ export const SpecSchema = z
      * Defaults false, so every existing bench keeps the behaviour it has.
      */
     zero_is_a_value: z.boolean().default(false),
+    /** false when the providers' `success` query is a publication gate
+     *  (0 or 1) rather than a probe success rate: the ledger then hides
+     *  the Success and Reliability columns and describes an unpublished
+     *  row as under its threshold, not as a dead endpoint. */
     ledger_reliability: z.boolean().default(true),
+    /**
+     * Optional relabeling of the ledger's aggregate columns. For benches
+     * whose unit has no percentile semantics (USD revenue leaderboards),
+     * the p50/p90/p99/mean slots are repurposed; declaring ledger_columns
+     * renders each column with an honest label and unit instead of the
+     * default latency headers. `slot` reads the provider's headline slot,
+     * `panel` reads the values of a metric_panels entry by id. The first
+     * column is the headline (sort key, data bar, mobile column).
+     */
     ledger_columns: z
       .array(
         z

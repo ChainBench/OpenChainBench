@@ -5,16 +5,24 @@
  * bench pages render) plus the two daily history blobs the worker writes
  * (src/lib/capital-history.ts). No Prometheus call at render time.
  *
- * Two cohorts:
+ * Two cohorts (the full bench list is CAPITAL_BENCHES in
+ * src/lib/capital-hub-types.ts, eight entries):
  *  - follow the capital: chains, from bench 273 chain-bridged-tvl (L2Beat
  *    value secured), bench 275 chain-stablecoin-flow (DeFiLlama stablecoin
- *    float per chain) and the chains history blob (TVL, native mcap, DEX
- *    volume, chain fees and revenue when the chain-kpis harness publishes
- *    them); open interest from bench 265 (perp DEX OI) and bench 277
- *    (prediction markets).
+ *    float per chain), bench 280 chain-fees-revenue, bench 281
+ *    usdc-corridor-flows (net USDC over CCTP) and the chains history blob
+ *    (TVL, native mcap, DEX volume, chain fees and revenue when the
+ *    chain-kpis harness publishes them); open interest from the perp venue
+ *    cohort gauges with turnover from bench 271 perp-volume-oi-ratio, and
+ *    from bench 277 pm-open-interest for prediction markets.
  *  - valuation: bench 274 protocol-pf-ratio (cross-DeFi P/F, fees MoM,
  *    token 30d, category median) and bench 265 perp-pf-ratio (P/F, P/S,
  *    FDV, float, OI, fees and revenue).
+ *
+ * Perp open interest is NOT bench 265's `oi` panel. It was until
+ * 2026-09-30; the block above perpOi below says why it moved and what
+ * disagreed. Bench 265 is named once here, as perp-pf-ratio, and that is
+ * the only thing it feeds.
  *
  * Every field is independently nullable, and an empty cell says which kind
  * of empty it is: a column that does not apply to the row carries the

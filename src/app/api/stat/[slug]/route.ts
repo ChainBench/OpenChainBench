@@ -183,10 +183,21 @@ export async function GET(
       // 300 s, not 60: getBenchmark reads through the bench data cache
       // (src/lib/spec.ts, revalidate 300), so four of every five fills at
       // a 60 s window recomputed this payload and returned the same bytes.
-      // The two windows do compose, so this is not free: worst-case data
-      // age goes from about 360 s to about 600 s. That is parity with the
-      // 600 s ISR on the bench page this mirrors, which is the number a
-      // reader comparing the two would see anyway.
+      //
+      // The two windows compose, and stale-while-revalidate is part of the
+      // window the edge actually serves: 60 + 300 was a worst case of
+      // about 360 s, 300 + 900 is about 1200 s, plus the 300 s data cache
+      // under it. So this is not parity with the 600 s ISR on the bench
+      // page; it is roughly twice it, and an earlier version of this
+      // comment claimed parity by counting swr on the old header and not
+      // on the new one.
+      //
+      // Where that shows: /rwa is revalidate = 300 and its FAQ (which
+      // becomes FAQPage JSON-LD) tells readers this endpoint carries "the
+      // same values and timestamp" as the page, while advertising it as a
+      // DataDownload. An agent that follows that link can get a body older
+      // than the stamp the page showed it. Narrow the window here, or
+      // soften that sentence there, before treating the two as identical.
       "cache-control": "public, s-maxage=300, stale-while-revalidate=900",
       "access-control-allow-origin": "*",
     },
