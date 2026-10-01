@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { compactRow, compareOnBenchmark, matchUseCase, scoreBenchmark, searchBenchmarks } from "./mcp-tools";
+import { compactRow, compareOnBenchmark, matchUseCase, redactSecrets, scoreBenchmark, searchBenchmarks } from "./mcp-tools";
 import type { Benchmark, ProviderResult } from "@/types/benchmark";
 
 const SITE = "https://openchainbench.com";
@@ -143,5 +143,47 @@ describe("head to head comparison", () => {
     const c = compareOnBenchmark(b, ["Serialized", "Nobody"], SITE);
     expect(c.rows[0].value).toBeCloseTo(0.443494, 6);
     expect(c.missing).toEqual(["nobody"]);
+  });
+});
+
+describe("a query is never echoed back with a secret in it", () => {
+  // Found by calling production: asked to search for "my API key abc123SECRET",
+  // the endpoint returned the secret inside its own payload. Nothing stored it,
+  // but it reached the model's context and whatever the client logs, and the
+  // rule here is that a key appears in none of those.
+  test("redacts a named credential", () => {
+    expect(redactSecrets("test my RPC with my api key abc123SECRETVALUE")).not.toContain("abc123SECRETVALUE");
+  });
+
+  test("redacts a bare high-entropy run", () => {
+    expect(redactSecrets("use vcp_4Zj1bbjGZf1m4tUxJ52RD4SCW")).toBe("use [redacted]");
+  });
+
+  test("redacts a keyed endpoint", () => {
+    expect(redactSecrets("https://eth.example.com/v2/deadbeefkey")).toBe("[redacted-url]");
+  });
+
+  test("leaves an ordinary question alone", () => {
+    expect(redactSecrets("which solana rpc is fastest")).toBe("which solana rpc is fastest");
+    expect(redactSecrets("Alchemy or QuickNode on Base")).toBe("Alchemy or QuickNode on Base");
+  });
+});
+
+describe("weak matches are not published as relevant", () => {
+  const pool = [
+    bench(),
+    bench({ slug: "buyback-audit", title: "Buyback audit", category: "Trading", results: [r("x", "X", 1)] }),
+  ];
+
+  test("a prefix-only hit is below the floor", () => {
+    // "buy SOL for me" scored buyback-audit and three Solana benches on three
+    // leading letters. Eight results for a question that matches nothing is
+    // noise a model may read as relevance.
+    expect(searchBenchmarks(pool, { query: "buy SOL for me", siteUrl: SITE })).toHaveLength(0);
+  });
+
+  test("a real provider-name match still clears it", () => {
+    const hits = searchBenchmarks(pool, { query: "helius triton", siteUrl: SITE });
+    expect(hits.map((h) => h.slug)).toEqual(["solana-rpc"]);
   });
 });

@@ -22,6 +22,7 @@ import {
   compactRow,
   compareOnBenchmark,
   matchUseCase,
+  redactSecrets,
   searchBenchmarks,
 } from "@/lib/mcp-tools";
 import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
@@ -219,7 +220,9 @@ const mcpHandler = createMcpHandler(
           siteUrl: SITE.url,
         });
         const payload = {
-          query,
+          // Never echo the caller's text back raw: asked to search for an API
+          // key, this endpoint returned the key inside its own payload.
+          query: redactSecrets(query),
           count: matches.length,
           matches,
           ...(matches.length === 0
@@ -527,7 +530,7 @@ const mcpHandler = createMcpHandler(
         );
 
         const payload = {
-          useCase: use_case,
+          useCase: redactSecrets(use_case),
           ...(chain ? { chain } : {}),
           recognisedAs: uc?.id ?? null,
           guidance:
