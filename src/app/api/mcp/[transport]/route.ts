@@ -67,6 +67,52 @@ export const runtime = "nodejs";
 // we do it before letting the package parse the body.
 const MAX_BODY_BYTES = 64 * 1024;
 
+/**
+ * Resolve a benchmark with only the filters it declares.
+ *
+ * A chain RPC bench IS a chain: `solana-rpc` declares no `chain` dimension,
+ * so `getBenchmark("solana-rpc", { chain: "solana" })` resolves to nothing
+ * and the caller sees unknown_slug. Passing a user's chain through blindly
+ * therefore empties the result for the most common question on the site.
+ * Drop a filter the bench does not declare instead of failing on it.
+ */
+async function resolveBenchmark(
+  slug: string,
+  want: { chain?: string; region?: string; tier?: string },
+): Promise<{ bench: Awaited<ReturnType<typeof getBenchmark>>; applied: Record<string, string> } > {
+  const aggregate = await getBenchmark(slug);
+  if (!aggregate) return { bench: undefined, applied: {} };
+  const dims = aggregate.dimensions;
+  const applied: Record<string, string> = {};
+
+  for (const key of ["chain", "region"] as const) {
+    const asked = want[key];
+    if (!asked) continue;
+    const declared = dims?.[key];
+    if (declared?.some((d) => d.value.toLowerCase() === asked.toLowerCase())) {
+      applied[key] = asked;
+    }
+  }
+
+  // Tier resolves like the get_benchmark tool: the headline tier is the
+  // aggregate itself, so only a non-headline tier becomes a filter.
+  if (want.tier) {
+    const option = dims?.tier?.find((t) => t.value.toLowerCase() === want.tier?.toLowerCase());
+    const headline = aggregate.aggregateFilters?.tier ?? dims?.tier?.[0]?.value;
+    if (option && option.value !== headline) applied.tier = option.value;
+    else if (option) applied.tier = option.value;
+  }
+
+  const bench = await getBenchmark(slug, {
+    ...(applied.chain ? { chain: applied.chain } : {}),
+    ...(applied.region ? { region: applied.region } : {}),
+    ...(applied.tier && applied.tier !== (aggregate.aggregateFilters?.tier ?? dims?.tier?.[0]?.value)
+      ? { tier: applied.tier }
+      : {}),
+  });
+  return { bench, applied };
+}
+
 const mcpHandler = createMcpHandler(
   (server) => {
     server.registerTool(
@@ -348,13 +394,18 @@ const mcpHandler = createMcpHandler(
             .min(2)
             .max(10)
             .describe("Two to ten provider names or slugs, as the user said them, e.g. ['Alchemy', 'QuickNode']."),
-          chain: z.string().regex(/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$/).optional().describe("Optional chain slice when the bench declares chains."),
+          chain: z.string().regex(/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$/).optional().describe("Optional chain slice when the bench declares chains. Ignored on a bench that is already one chain, like solana-rpc."),
           region: z.string().regex(/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$/).optional().describe("Optional region slice when the bench declares regions."),
+          tier: z
+            .string()
+            .regex(/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$/)
+            .optional()
+            .describe("Access cohort on chain RPC benchmarks: 'public' (default, free no-key endpoints) or 'keyed' (API-key providers such as Alchemy, QuickNode, Chainstack, GetBlock). Named providers usually live on the keyed cohort."),
         },
         annotations: { readOnlyHint: true, openWorldHint: true },
       },
-      async ({ benchmark, providers, chain, region }) => {
-        const b = await getBenchmark(benchmark, { chain, region });
+      async ({ benchmark, providers, chain, region, tier }) => {
+        const { bench: b, applied } = await resolveBenchmark(benchmark, { chain, region, tier });
         if (!b || b.editorialStatus !== "live") {
           const payload = { error: "unknown_slug", slug: benchmark };
           return {
@@ -364,12 +415,41 @@ const mcpHandler = createMcpHandler(
           };
         }
         const comparison = compareOnBenchmark(b, providers, SITE.url);
+
+        // A provider missing from this cohort is often measured on the other
+        // one: the default is the public endpoints, and the names people ask
+        // about (Alchemy, QuickNode) are keyed. Saying "not measured" when the
+        // answer is one tab away is the wrong answer, so look before saying it.
+        const otherTiers = (b.dimensions?.tier ?? [])
+          .map((t) => t.value)
+          .filter((v) => v !== (applied.tier ?? b.aggregateFilters?.tier ?? b.dimensions?.tier?.[0]?.value));
+        const elsewhere: Record<string, string> = {};
+        if (comparison.missing.length > 0 && otherTiers.length > 0) {
+          for (const other of otherTiers) {
+            const alt = await getBenchmark(benchmark, { tier: other });
+            if (!alt) continue;
+            for (const name of comparison.missing) {
+              if (elsewhere[name]) continue;
+              if (alt.results.some((r) => r.slug.toLowerCase() === name || r.name.toLowerCase() === name)) {
+                elsewhere[name] = other;
+              }
+            }
+          }
+        }
+
         const payload = {
           ...comparison,
           title: b.title,
+          cohort: applied.tier ?? b.aggregateFilters?.tier ?? b.dimensions?.tier?.[0]?.value ?? null,
           headline: headlineSentence(b),
           quote: citationQuote(b, SITE.url),
           lowerIsBetter: !b.higherIsBetter,
+          ...(Object.keys(elsewhere).length > 0
+            ? {
+                measuredOnAnotherCohort: elsewhere,
+                note: `Not on this cohort, but measured on: ${[...new Set(Object.values(elsewhere))].join(", ")}. Call again with that tier.`,
+              }
+            : {}),
         };
         return {
           content: [{ type: "text", text: JSON.stringify(payload, null, 2) }],
@@ -427,7 +507,9 @@ const mcpHandler = createMcpHandler(
 
         const detailed = await Promise.all(
           matches.slice(0, 3).map(async (m) => {
-            const full = await getBenchmark(m.slug, { chain, region });
+            // Only the filters this bench declares: an RPC bench is already a
+            // chain, and passing one through would resolve to nothing.
+            const { bench: full } = await resolveBenchmark(m.slug, { chain, region });
             if (!full || full.editorialStatus !== "live") return null;
             const top = isInsufficient(full) ? null : leader(full);
             return {
