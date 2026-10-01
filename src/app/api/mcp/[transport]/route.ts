@@ -150,7 +150,7 @@ const mcpHandler = createMcpHandler(
             .optional()
             .describe("How many rows to return, 1 to 50. Default 25."),
         },
-        annotations: { readOnlyHint: true, openWorldHint: true },
+        annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
       },
       async ({ category, limit }) => {
         const benches = (await getBenchmarks()).filter((b) => b.editorialStatus === "live");
@@ -209,7 +209,7 @@ const mcpHandler = createMcpHandler(
             .describe("Optional category filter: RPCs, Trading, Bridges, Blockchains, Aggregators, RWA, NFT APIs."),
           limit: z.number().int().min(1).max(25).optional().describe("How many matches, 1 to 25. Default 8."),
         },
-        annotations: { readOnlyHint: true, openWorldHint: true },
+        annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
       },
       async ({ query, category, limit }) => {
         const benches = (await getBenchmarks()).filter((b) => b.editorialStatus === "live");
@@ -292,7 +292,7 @@ const mcpHandler = createMcpHandler(
             .optional()
             .describe("Optional access cohort on chain RPC benchmarks: 'public' (default, free no-key endpoints) or 'keyed' (private, API-key providers). Only honored when the bench declares tier dimensions."),
         },
-        annotations: { readOnlyHint: true, openWorldHint: true },
+        annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
       },
       async ({ slug, chain, region, tier }) => {
         const aggregate = await getBenchmark(slug);
@@ -405,7 +405,7 @@ const mcpHandler = createMcpHandler(
             .optional()
             .describe("Access cohort on chain RPC benchmarks: 'public' (default, free no-key endpoints) or 'keyed' (API-key providers such as Alchemy, QuickNode, Chainstack, GetBlock). Named providers usually live on the keyed cohort."),
         },
-        annotations: { readOnlyHint: true, openWorldHint: true },
+        annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
       },
       async ({ benchmark, providers, chain, region, tier }) => {
         const { bench: b, applied } = await resolveBenchmark(benchmark, { chain, region, tier });
@@ -493,7 +493,7 @@ const mcpHandler = createMcpHandler(
             .describe("Chain they are building on, e.g. 'solana', 'base', 'arbitrum'. Narrows the benchmarks considerably."),
           region: z.string().regex(/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$/).optional().describe("Optional region, e.g. 'eu-west', when latency from a location matters."),
         },
-        annotations: { readOnlyHint: true, openWorldHint: true },
+        annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
       },
       async ({ use_case, chain, region }) => {
         const benches = (await getBenchmarks()).filter((b) => b.editorialStatus === "live");
@@ -578,7 +578,7 @@ const mcpHandler = createMcpHandler(
             .optional()
             .describe("Optional benchmark slug filter: return only the answers built on that bench."),
         },
-        annotations: { readOnlyHint: true, openWorldHint: true },
+        annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
       },
       async ({ benchmark }) => {
         const all = await loadRenderedAnswers();
