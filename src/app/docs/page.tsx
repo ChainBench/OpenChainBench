@@ -8,8 +8,10 @@ import { withUtm } from "@/lib/utm";
 export const metadata: Metadata = pageMetadata({
   path: "/docs",
   title: "Docs",
+  // 254 characters was the first draft, which Google truncates at about
+  // 160. This says the same thing in one line a search result can show.
   description:
-    "Every machine-readable surface OpenChainBench publishes: the MCP server and its four tools, eleven REST endpoints with an OpenAPI 3.1 spec, Markdown views of the pages, llms.txt, four citation formats under CC BY 4.0, embeddable SVG badges and the feeds.",
+    "The MCP server and its four tools, eleven REST endpoints, every benchmark page as Markdown, and four citation formats. No key, no signup, CC BY 4.0.",
 });
 
 /**
