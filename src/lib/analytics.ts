@@ -4,6 +4,7 @@
  * sites never guard.
  *
  *   outbound_click  {href, host, text, page}   a link to another site, delegated listener
+ *   contact_click   {page}                      the email address, same listener
  *   copy            {kind, value?, bench?}     endpoint / API URL / MCP URL or config / embed / brief
  *   search          {query, kind, url}         a result picked in the search dialog
  *   search_no_result {query}                   a query that matched nothing (content gaps)
@@ -16,6 +17,10 @@ import posthog from "posthog-js";
 
 export type SiteEvent =
   | { name: "outbound_click"; props: { href: string; host: string; text: string; page: string } }
+  /** The mailto. outbound_click only fires on http(s), so the one contact
+   *  channel the site has was the one surface it never measured. No
+   *  address is sent: there is only one, and it is already public. */
+  | { name: "contact_click"; props: { page: string } }
   | { name: "copy"; props: { kind: "endpoint" | "api_url" | "mcp_url" | "mcp_config" | "embed" | "brief" | "other"; value?: string; bench?: string } }
   | { name: "search"; props: { query: string; kind: string; url: string } }
   | { name: "search_no_result"; props: { query: string } }

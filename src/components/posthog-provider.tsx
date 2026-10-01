@@ -23,6 +23,14 @@ function OutboundClicks() {
       } catch {
         return;
       }
+      // The mailto is the site's only contact channel and the only one
+      // this listener used to drop, so "nobody wrote to us" and "we never
+      // looked" were the same number. Counted separately, and without the
+      // address: there is one, and it is on the page already.
+      if (url.protocol === "mailto:") {
+        track("contact_click", { page: window.location.pathname });
+        return;
+      }
       if (url.protocol !== "http:" && url.protocol !== "https:") return;
       if (url.host === window.location.host) return;
       track("outbound_click", {
