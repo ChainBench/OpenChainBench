@@ -13,18 +13,20 @@ import { withUtm } from "@/lib/utm";
  * territory, so all three were repetition paying for a third of the
  * viewport.
  *
- * What did NOT change is the link set. None of these ten appear in the
- * left rail: the rail carries the editorial sections (/benchmarks,
- * /perps, /rpc and so on) and this carries the developer and project
- * surfaces.
+ * What did NOT change is the link set. These are the developer and
+ * project surfaces; the left rail carries the editorial sections
+ * (/benchmarks, /perps, /rpc and so on). /contact is the one link that
+ * sits in both, because the rail is where someone looks for it and the
+ * footer is where they happen to be when they need it.
  *
- * Before pruning this row, check the sitemap. FOUR of these ten are
- * absent from it, so for each of them this footer is the only inbound
- * link on the site: /llms.txt, /api/citable, /api/openapi.json and
+ * Before pruning this row, check the sitemap. FOUR of these are absent
+ * from it, so for each of them this footer is the only inbound link on
+ * the site: /llms.txt, /api/citable, /api/openapi.json and
  * /api/llm-context. Dropping any one orphans a file the citability work
- * exists to serve. (/partners, /badges, /team and /press are in the
- * sitemap and would survive a cut here.) An earlier version of this note
- * named only the first two, which read as a complete list and was not.
+ * exists to serve. (/partners, /badges, /team, /press and /contact are
+ * in the sitemap and would survive a cut here.) An earlier version of
+ * this note named only the first two, which read as a complete list and
+ * was not, and a later one said "ten" when counting was the point.
  */
 const DEVELOPER_LINKS = [
   { label: "Partners + embeds", href: "/partners" },
@@ -38,6 +40,7 @@ const DEVELOPER_LINKS = [
 const PROJECT_LINKS = [
   { label: "Team", href: "/team" },
   { label: "Press kit", href: "/press" },
+  { label: "Contact", href: "/contact" },
 ];
 
 export function SiteFooter() {
