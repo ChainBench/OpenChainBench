@@ -185,7 +185,7 @@ ${SITE.url}/api/cite/ethereum-rpc/ris    # RIS, for Zotero and EndNote
 ${SITE.url}/api/cite/ethereum-rpc/apa    # APA, as plain text
 ${SITE.url}/api/cite/ethereum-rpc/txt    # one sentence with the value and date`}</Code>
       <p className="mt-3 text-[14px] text-ink-soft leading-relaxed">
-        A benchmark page moves. <a className="lnk font-mono text-[13px]" href="/api/citable">/api/citable</a> is the index as it stands now, and <code className="font-mono text-[13px]">/api/citable/{"{date}"}</code> is that index as it stood on a past day, which is what a paper should point at.
+        A benchmark page moves. <Link className="lnk font-mono text-[13px]" href="/api/citable">/api/citable</Link> is the index as it stands now, and <code className="font-mono text-[13px]">/api/citable/{"{date}"}</code> is that index as it stood on a past day, which is what a paper should point at.
       </p>
 
       <SectionRule label="Badges and embeds" />
