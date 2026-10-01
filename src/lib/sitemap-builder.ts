@@ -195,6 +195,11 @@ function staticHubRoutes(catalogTs: Date): MetadataRoute.Sitemap {
     // one was not, with no comment saying why, while the product pages
     // linked to it and production served it. An omission, not a decision.
     { url: `${SITE.url}/data-api`, lastModified: catalogTs, changeFrequency: "hourly", priority: 0.9 },
+    // Legal. Low priority and rarely changed, but they must be crawlable:
+    // the ChatGPT app directory requires a reachable Privacy Policy URL and
+    // Terms of Service URL for the MCP listing, and a reviewer follows them.
+    { url: `${SITE.url}/privacy`, lastModified: catalogTs, changeFrequency: "yearly", priority: 0.3 },
+    { url: `${SITE.url}/terms`, lastModified: catalogTs, changeFrequency: "yearly", priority: 0.3 },
     // The capital hub is empty without its three chain and protocol benches; keep it out of the sitemap where they are not served.
     ...(["chain-bridged-tvl", "chain-stablecoin-flow", "protocol-pf-ratio"].some(isDevOnlyBench)
       ? []

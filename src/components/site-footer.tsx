@@ -13,7 +13,7 @@ import { withUtm } from "@/lib/utm";
  * territory, so all three were repetition paying for a third of the
  * viewport.
  *
- * What did NOT change is the link set. None of these ten appear in the
+ * What did NOT change is the link set. None of these twelve appear in the
  * left rail: the rail carries the editorial sections (/benchmarks,
  * /perps, /rpc and so on) and this carries the developer and project
  * surfaces.
@@ -38,6 +38,14 @@ const DEVELOPER_LINKS = [
 const PROJECT_LINKS = [
   { label: "Team", href: "/team" },
   { label: "Press kit", href: "/press" },
+];
+
+// Legal, kept in its own group after the rule. Both pages are required
+// submission fields for the ChatGPT app directory listing of the MCP server,
+// and neither is in the sitemap, so this footer is their only inbound link.
+const LEGAL_LINKS = [
+  { label: "Privacy", href: "/privacy" },
+  { label: "Terms", href: "/terms" },
 ];
 
 export function SiteFooter() {
@@ -76,6 +84,16 @@ export function SiteFooter() {
           >
             Email
           </a>
+          <span aria-hidden className="h-3 w-px bg-rule" />
+          {LEGAL_LINKS.map((l) => (
+            <Link
+              key={l.href}
+              href={l.href}
+              className="text-[13px] text-ink-muted hover:text-ink transition-colors"
+            >
+              {l.label}
+            </Link>
+          ))}
         </nav>
 
         <p className="mt-5 border-t border-rule pt-4 text-[11px] uppercase tracking-[0.16em] text-ink-faint">
