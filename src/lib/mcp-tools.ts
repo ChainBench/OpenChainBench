@@ -112,12 +112,22 @@ export function scoreBenchmark(b: Benchmark, query: string): number {
   const hay = new Set(haystack(b));
   const slugTokens = new Set(tokens(b.slug));
   const titleTokens = new Set(tokens(b.title));
+  // The category is what the bench is ABOUT, as opposed to which chain it
+  // happens to cover. Without it a chain name outranks the subject: "cheapest
+  // bridge to arbitrum" put arbitrum-nova-rpc and arbitrum-rpc above
+  // bridge-fee, because "arbitrum" hit two slugs while "bridge" hit one.
+  // Matched as a prefix in both directions so the singular a user types
+  // ("bridge") reaches the plural we store ("Bridges").
+  const categoryTokens = tokens(b.category);
 
   let score = 0;
   for (const t of q) {
+    const subject = categoryTokens.some((c) => c.startsWith(t) || t.startsWith(c));
+    if (subject) score += 3;
     if (slugTokens.has(t)) score += 4;
     else if (titleTokens.has(t)) score += 2;
     else if (hay.has(t)) score += 1;
+    else if (subject) continue;
     // Prefix match catches "solana" against "solana-rpc" and "arb" against
     // "arbitrum", which exact token overlap misses.
     else if ([...hay].some((h) => h.startsWith(t) || t.startsWith(h))) score += 0.5;
