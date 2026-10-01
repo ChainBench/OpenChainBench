@@ -17,258 +17,172 @@ import {
 } from "@/lib/citation";
 import { answerOneLine, loadRenderedAnswers } from "@/lib/answers-rendered";
 import { benchMarkdown } from "@/lib/markdown-views";
-import { Prometheus } from "@/lib/prometheus";
+import { valueInDeclaredUnit } from "@/lib/format";
+import {
+  compactRow,
+  compareOnBenchmark,
+  matchUseCase,
+  searchBenchmarks,
+} from "@/lib/mcp-tools";
 import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
 /**
  * MCP server. Exposes OpenChainBench data to any MCP-capable agent
- * (Claude Desktop, ChatGPT custom tools, generic MCP clients) via four
- * tools that mirror the public REST surface. Streamable-HTTP only - the
- * SSE transport requires Redis which we don't run.
+ * (Claude Desktop, ChatGPT apps, generic MCP clients). Streamable-HTTP only
+ * - the SSE transport requires Redis which we don't run.
  *
  * Connect at:
  *     https://openchainbench.com/api/mcp/mcp
+ *
+ * The tools are shaped by the questions people ask, not by the REST surface
+ * they used to mirror, because a client routes on the description text: a
+ * tool called "list_benchmarks" is never going to match "which Solana RPC
+ * should I use". So `search_benchmarks` takes the user's own words,
+ * `compare_providers` takes the names they said, and `recommend_provider`
+ * takes the goal they stated. `get_benchmark` remains the way to open one
+ * bench in full once you know its slug.
+ *
+ * Two deliberate removals:
+ *   - `query_prom` took raw PromQL. Behind an allowlist it was safe enough
+ *     for a developer tool, but no end user asks for a PromQL passthrough,
+ *     it was attack surface with no reader, and every extra tool dilutes the
+ *     routing the useful ones depend on. Agents that want arbitrary series
+ *     can still query Prometheus directly; the site does not proxy it.
+ *   - `list_benchmarks` no longer returns the catalogue. It served all 229
+ *     live benches in one response, 142,534 characters, about 35,600 tokens,
+ *     for questions as broad as "what do you measure". It is now compact,
+ *     capped and filterable.
+ *
+ * Values cross this boundary in the unit the bench declares, via
+ * `valueInDeclaredUnit`. Latency benches declaring `unit: "s"` store
+ * milliseconds internally, and this endpoint used to publish the stored
+ * number: {"value":443.494,"unit":"s"} for a head lag the site and
+ * /api/stat both render as 0.44 s. Same bug the REST route fixed earlier;
+ * it was never carried across.
  */
 
 // Maximum POST body. The MCP handler doesn't enforce a per-request cap;
 // we do it before letting the package parse the body.
 const MAX_BODY_BYTES = 64 * 1024;
 
-// query_prom allowlist: every metric-like identifier in a query must
-// match one of these prefixes. Closes the wallet_balance / up / scrape
-// / instance-leak class of exfil attacks via the public MCP endpoint.
-// Derived from the metric names declared by current benchmark YAMLs.
-const QUERY_PROM_ALLOWED_METRIC_PREFIXES = [
-  // Aggregator latency / head-lag
-  "head_lag_seconds",
-  // Bridge benches (bridge-fee + bridge-quote-latency)
-  "bridge_quote_latency_ms",
-  "bridge_cost",
-  "bridge_fees",
-  "bridge_fix_fee",
-  "bridge_gas",
-  "bridge_output",
-  "bridge_estimated_time",
-  "bridge_quote_success",
-  // Bridge execution bench (#261): real on-chain settlement + realized cost
-  "bridge_execution_latency_ms",
-  "bridge_e2e_latency_ms",
-  "bridge_success_total",
-  "bridge_reverts_total",
-  "bridge_refunds_total",
-  "bridge_stuck_total",
-  "bridge_refund_latency_ms",
-  "bridge_realized_output_usd",
-  "bridge_quote_slippage_usd",
-  "bridge_exec_gas_usd",
-  // L1 finality + L2 block time
-  "l1_finality_",
-  "l2_block_time_",
-  // Metadata + network + wallet coverage
-  "metadata_coverage_",
-  "metadata_api_latency_",
-  "networks_supported",
-  "network_coverage_",
-  "wallet_labels_",
-  // PM freshness bench
-  "pm_",
-  // EVM swap quote latency bench (#033)
-  "evm_swap_quote_",
-  // Perp fees + funding + venue KPIs + execution scanner + buyback + oracle + validator yield
-  "perp_fees_",
-  "perp_funding_",
-  "perp_venue_",
-  "perp_execution_",
-  // Perp liquidation rate bench (bench 208)
-  "perp_liq_",
-  "perp_realized_vol_",
-  "ocb_buyback_",
-  "ocb_oracle_",
-  "ocb_validator_",
-  "ocb_chain_",
-  // Gas oracle prediction accuracy
-  "gas_error_",
-  "gas_predicted_",
-  "gas_realized_",
-  "gas_oracle_",
-  // Stablecoin peg (+ usdt-anchored variant)
-  "peg_",
-  // Solana TX landing (observational + active)
-  "solana_landing_",
-  // Public RPC capabilities
-  "rpc_latency_",
-  "rpc_call_total",
-  "rpc_health",
-  "rpc_archive_depth_supported",
-  // Hyperliquid frontends quality bench (bench № 030)
-  "hl_frontend_",
-  // Capital and valuation (benches 265, 273, 274, 275, chain-kpis): P/F,
-  // P/S, mcap, FDV, float, fees, revenue, TVL, bridged TVL, stablecoin
-  // flows, chain fees. Opened 2026-09-25 for third-party analysis.
-  "perp_protocol_",
-  "protocol_",
-  "chain_",
-];
-
-// PromQL identifiers that are NOT metric names - built-in functions,
-// aggregators, modifiers, plus the label names that appear bare in
-// selectors. Mirrors the set in src/lib/prometheus.ts plus the labels.
-const PROMQL_RESERVED_IDENTS = new Set([
-  "sum", "avg", "max", "min", "count", "count_values", "stddev", "stdvar",
-  "topk", "bottomk", "group", "quantile",
-  "on", "ignoring", "group_left", "group_right", "by", "without", "bool",
-  "and", "or", "unless", "offset",
-  "rate", "irate", "increase", "delta", "idelta", "deriv", "predict_linear",
-  "quantile_over_time", "avg_over_time", "max_over_time", "min_over_time",
-  "sum_over_time", "count_over_time", "stddev_over_time", "stdvar_over_time",
-  "last_over_time", "present_over_time", "mad_over_time",
-  "changes", "resets",
-  "histogram_quantile", "histogram_sum", "histogram_count", "histogram_avg",
-  "histogram_fraction", "histogram_stddev", "histogram_stdvar",
-  "label_replace", "label_join",
-  "abs", "floor", "ceil", "round", "exp", "ln", "log2", "log10", "sqrt",
-  "clamp_max", "clamp_min", "clamp", "sgn", "sort", "sort_desc",
-  "atan", "atanh", "acos", "acosh", "asin", "asinh",
-  "cos", "cosh", "sin", "sinh", "tan", "tanh", "deg", "rad",
-  "time", "timestamp", "scalar", "vector", "minute", "hour",
-  "day_of_month", "day_of_week", "day_of_year", "days_in_month",
-  "month", "year",
-  "absent", "absent_over_time", "present", "pi",
-  // PromQL @-modifier anchors (Prom 2.26+): `metric @ start()` / `@ end()`.
-  "start", "end", "step",
-  // Label names that appear as bare identifiers inside selectors / `by(...)`.
-  "le", "chain", "region", "provider", "bridge", "aggregator", "venue",
-  "exchange", "asset", "from_chain", "to_chain", "from_token", "to_token",
-  "amount_usd", "side", "type", "error_type",
-  // Labels of the capital and valuation families opened 2026-09-25
-  // (protocol_*, perp_protocol_*, chain_*, hl_*): without them every
-  // per-protocol selector such as perp_protocol_pf_ratio{protocol="x"}
-  // was refused as an unlisted metric name.
-  "protocol", "name", "category", "symbol", "source", "origin", "window",
-  "threshold", "bucket", "coin", "builder", "dex", "app", "tier",
-]);
-
-// Whitespace + non-ASCII spacing variants stripped before pattern checks
-// so a NBSP / ZWSP between __name__ and the operator can't slip the rules.
-const NON_ASCII_WS = new RegExp(
-  "[\\s\\u00a0\\u1680\\u2000-\\u200b\\u202f\\u205f\\u3000\\ufeff]+",
-  "g",
-);
-
-/** Decide whether a public query_prom request is allowed. Two passes:
- *  - Enumeration patterns that would walk the metric catalog / fingerprint
- *    topology, ignoring case-sensitivity tricks via Unicode whitespace.
- *  - Allowlist of metric-name prefixes - every metric-like identifier in
- *    the query must match a published benchmark namespace, otherwise the
- *    query is refused. This is what turns the public MCP from a passthrough
- *    into a sandbox bound to the data the site already serves. */
-function isQueryAllowed(q: string): { ok: true } | { ok: false; reason: string } {
-  // Strip PromQL `#` comments first so a comment like `# wallet_balance`
-  // doesn't tip the allowlist. PromQL comments run to end-of-line.
-  const noComments = q.replace(/#[^\n]*/g, "");
-  // Strip string literals so quoted label VALUES (`aggregator="mobula"`)
-  // never get scanned as identifiers - they're attacker-controlled text,
-  // but PromQL escapes their content via Prom's parser, not our regex.
-  const stripped = noComments.replace(/"(?:\\.|[^"\\])*"/g, '""');
-  // Whitespace-normalised form. Used for every pattern check so a NBSP
-  // between operator and operand can't slip a rule.
-  const c = stripped.replace(NON_ASCII_WS, "");
-
-  // Pattern blocks - all operate on `c`, the comment+string-stripped,
-  // whitespace-normalised form.
-  if (/__name__[=!]~/.test(c)) return { ok: false, reason: "name_regex_blocked" };
-  if (c.includes("{}")) return { ok: false, reason: "empty_selector_blocked" };
-  if (/__name__="(\.\+|\.\*|\(.+\))"/.test(c)) return { ok: false, reason: "name_catchall_blocked" };
-  if (/(__name__|__address__|job|instance|host)(!?~|!="")/.test(c)) {
-    return { ok: false, reason: "label_enum_blocked" };
-  }
-  // Aggregation by (instance|host|__name__|__address__|job) reveals
-  // topology labels we don't publish. `by (le)` is fine - it's how
-  // every histogram_quantile query in our specs is shaped.
-  if (
-    /\b(group|count|sum|avg|min|max|topk|bottomk|stddev|stdvar|quantile)by\((__name__|__address__|job|instance|host)\b/.test(
-      c,
-    )
-  ) {
-    return { ok: false, reason: "topology_aggregation_blocked" };
-  }
-  if (/\bcount_values\b/.test(c)) return { ok: false, reason: "count_values_blocked" };
-
-  // Metric-name allowlist - every identifier-like token outside strings,
-  // comments, AND range-vector durations must match a published benchmark
-  // namespace. Strip `[5m]` / `[24h]` / `[7d]` etc. so the `h`/`m`/`d`/`s`
-  // suffix letters aren't scanned as identifiers.
-  const noDurations = stripped.replace(/\[\s*\d+\s*(?:ms|s|m|h|d|w|y)\s*\]/g, "[]");
-  let sawAllowed = false;
-  const idents = noDurations.match(/[a-zA-Z_:][a-zA-Z0-9_:]*/g) ?? [];
-  for (const id of idents) {
-    if (PROMQL_RESERVED_IDENTS.has(id)) continue;
-    if (/^\d/.test(id)) continue;
-    if (QUERY_PROM_ALLOWED_METRIC_PREFIXES.some((p) => id.startsWith(p))) {
-      sawAllowed = true;
-      continue;
-    }
-    return { ok: false, reason: `metric_not_allowlisted:${id}` };
-  }
-  if (!sawAllowed) return { ok: false, reason: "no_benchmark_metric_referenced" };
-  return { ok: true };
-}
-
 const mcpHandler = createMcpHandler(
   (server) => {
     server.registerTool(
       "list_benchmarks",
       {
-        title: "List OpenChainBench benchmarks",
+        title: "Browse the benchmark catalogue",
         description: [
-          "Returns a flat index of every published OpenChainBench benchmark with its",
-          "current headline value, leader, category, units, and citation URL.",
+          "A compact index of what OpenChainBench measures. One short row per",
+          "benchmark: slug, title, category, the metric, the current value and",
+          "who leads it.",
           "",
-          "Call this first when the user asks a discovery question like",
-          "\"what benchmarks does OpenChainBench have?\" or \"compare crypto aggregators\".",
-          "Then use `get_benchmark` for the specific slug(s) the answer needs.",
+          "Use when the user asks what is measured at all (\"what does",
+          "OpenChainBench cover?\", \"do you track bridges?\"). When they ask a",
+          "question about a provider or a chain, use `search_benchmarks` instead:",
+          "it ranks the catalogue against their words and costs far less to read.",
           "",
-          "Returns one line per bench:",
-          "  { slug, title, category, metric, unit, value, leader, headline, url, asOf }",
+          "The catalogue holds over 200 benchmarks, so this is capped and",
+          "filterable rather than exhaustive. Narrow with `category`, then open",
+          "the one you need with `get_benchmark`.",
           "",
-          "Drafts are filtered out: only live benchmarks appear.",
+          "Categories: RPCs, Trading, Bridges, Blockchains, Aggregators, RWA, NFT APIs.",
         ].join("\n"),
-        inputSchema: {},
+        inputSchema: {
+          category: z
+            .string()
+            .max(40)
+            .optional()
+            .describe("Only this category: RPCs, Trading, Bridges, Blockchains, Aggregators, RWA or NFT APIs."),
+          limit: z
+            .number()
+            .int()
+            .min(1)
+            .max(50)
+            .optional()
+            .describe("How many rows to return, 1 to 50. Default 25."),
+        },
+        annotations: { readOnlyHint: true, openWorldHint: true },
       },
-      async () => {
+      async ({ category, limit }) => {
         const benches = (await getBenchmarks()).filter((b) => b.editorialStatus === "live");
-        const rows = benches.map((b) => {
-          const insufficient = isInsufficient(b);
-          const top = insufficient ? null : leader(b);
-          const status: "live" | "draft" | "insufficient" = insufficient
-            ? "insufficient"
-            : b.status;
-          return {
-            slug: b.slug,
-            title: b.title,
-            category: b.category,
-            metric: b.metric,
-            unit: b.unit,
-            status,
-            value: insufficient ? null : fieldValue(b),
-            leader: top,
-            headline: headlineSentence(b),
-            url: `${SITE.url}/benchmarks/${b.slug}`,
-            asOf: citableAsOf(b),
-            // Chain RPC pages rank two access cohorts apart (public, no
-            // key; private, API key): each with its own leader and URL.
-            ...(() => {
-              const cohorts = cohortSummaries(b, SITE.url);
-              return cohorts.length > 0
-                ? { cohorts: cohorts.map((c) => ({ tier: c.tier, label: c.label, leader: c.leader, url: c.url })) }
-                : {};
-            })(),
-          };
-        });
+        const cat = category?.trim().toLowerCase();
+        const pool = cat ? benches.filter((b) => b.category.toLowerCase() === cat) : benches;
+        const capped = pool.slice(0, Math.min(Math.max(limit ?? 25, 1), 50));
+        const rows = capped.map((b) => compactRow(b, SITE.url));
+        const payload = {
+          returned: rows.length,
+          totalMatching: pool.length,
+          totalLive: benches.length,
+          ...(cat ? { category } : {}),
+          note:
+            pool.length > rows.length
+              ? `Showing ${rows.length} of ${pool.length}. Narrow with category, or use search_benchmarks with the user's own words.`
+              : undefined,
+          benchmarks: rows,
+        };
         return {
-          content: [{ type: "text", text: JSON.stringify({ count: rows.length, benchmarks: rows }, null, 2) }],
+          content: [{ type: "text", text: JSON.stringify(payload, null, 2) }],
+          structuredContent: payload,
+        };
+      },
+    );
+
+    server.registerTool(
+      "search_benchmarks",
+      {
+        title: "Find the benchmark that answers a question",
+        description: [
+          "Ranks the benchmark catalogue against a question in the user's own",
+          "words and returns the best few matches.",
+          "",
+          "Use this when somebody asks which provider, chain or service is",
+          "fastest, cheapest, most reliable or best for something. Pass their",
+          "phrasing through: provider names, chain names and goals all match.",
+          "",
+          "  • \"which Solana RPC is fastest\"      -> search_benchmarks({ query: \"solana rpc\" })",
+          "  • \"Alchemy or QuickNode on Base?\"    -> search_benchmarks({ query: \"alchemy quicknode base\" })",
+          "  • \"cheapest way to bridge to Arbitrum\" -> search_benchmarks({ query: \"bridge arbitrum\" })",
+          "",
+          "Returns compact rows. Open the one you want with `get_benchmark` for",
+          "the full ranking and a citation line. An empty result means nothing",
+          "is measured for that question; say so rather than guessing.",
+        ].join("\n"),
+        inputSchema: {
+          query: z
+            .string()
+            .min(1)
+            .max(200)
+            .describe("The user's question or keywords, verbatim. Provider and chain names work well."),
+          category: z
+            .string()
+            .max(40)
+            .optional()
+            .describe("Optional category filter: RPCs, Trading, Bridges, Blockchains, Aggregators, RWA, NFT APIs."),
+          limit: z.number().int().min(1).max(25).optional().describe("How many matches, 1 to 25. Default 8."),
+        },
+        annotations: { readOnlyHint: true, openWorldHint: true },
+      },
+      async ({ query, category, limit }) => {
+        const benches = (await getBenchmarks()).filter((b) => b.editorialStatus === "live");
+        const matches = searchBenchmarks(benches, {
+          query,
+          category,
+          limit: limit ?? 8,
+          siteUrl: SITE.url,
+        });
+        const payload = {
+          query,
+          count: matches.length,
+          matches,
+          ...(matches.length === 0
+            ? { note: "Nothing in the catalogue matches. OpenChainBench may not measure this; do not infer a winner." }
+            : {}),
+        };
+        return {
+          content: [{ type: "text", text: JSON.stringify(payload, null, 2) }],
+          structuredContent: payload,
         };
       },
     );
@@ -329,6 +243,7 @@ const mcpHandler = createMcpHandler(
             .optional()
             .describe("Optional access cohort on chain RPC benchmarks: 'public' (default, free no-key endpoints) or 'keyed' (private, API-key providers). Only honored when the bench declares tier dimensions."),
         },
+        annotations: { readOnlyHint: true, openWorldHint: true },
       },
       async ({ slug, chain, region, tier }) => {
         const aggregate = await getBenchmark(slug);
@@ -357,6 +272,9 @@ const mcpHandler = createMcpHandler(
         const status: "live" | "draft" | "insufficient" = insufficient
           ? "insufficient"
           : b.status;
+        // `ms` is the stored field and keeps its name; `value` beside it is
+        // the same number in the bench's declared unit, so a caller reading
+        // either one is right.
         const rankings = insufficient
           ? b.results.map((r) => ({
               name: r.name,
@@ -368,16 +286,22 @@ const mcpHandler = createMcpHandler(
               name: r.name,
               slug: r.slug,
               ms: r.ms,
+              value: r.ms.p50 == null ? null : valueInDeclaredUnit(r.ms.p50, b.unit),
               successRate: r.successRate,
             }));
+        // Latency benches declaring unit "s" store milliseconds (the fmtUnit
+        // convention in format.ts). /api/stat has converted on the way out
+        // since that bug was found there; this endpoint never did, and served
+        // {"value":443.494,"unit":"s"} for a head lag the site renders 0.44 s.
+        const raw = insufficient ? null : fieldValue(b);
         const payload = {
           slug: b.slug,
           title: b.title,
           metric: b.metric,
           unit: b.unit,
           status,
-          value: insufficient ? null : fieldValue(b),
-          leader: top,
+          value: raw == null ? null : valueInDeclaredUnit(raw, b.unit),
+          leader: top == null ? null : { ...top, value: valueInDeclaredUnit(top.value, b.unit) },
           rankings,
           sparkline: insufficient ? [] : sparklineFor(b, top?.slug),
           headline: headlineSentence(b),
@@ -389,107 +313,156 @@ const mcpHandler = createMcpHandler(
           source: b.source,
           ...(cohortSummaries(b, SITE.url).length > 0 ? { cohorts: cohortSummaries(b, SITE.url) } : {}),
         };
-        return { content: [{ type: "text", text: JSON.stringify(payload, null, 2) }] };
+        return {
+          content: [{ type: "text", text: JSON.stringify(payload, null, 2) }],
+          structuredContent: payload,
+        };
       },
     );
 
     server.registerTool(
-      "query_prom",
+      "compare_providers",
       {
-        title: "Run a PromQL query (scoped to benchmark metric namespaces)",
+        title: "Compare named providers head to head",
         description: [
-          "Direct PromQL passthrough for advanced questions that don't map cleanly",
-          "to `list_benchmarks` / `get_benchmark`, e.g. \"what was Mobula's p50",
-          "head-lag yesterday at 14:00 UTC\" or \"plot bridge fees over the last hour\".",
+          "Puts two or more named providers side by side on one benchmark, with",
+          "each one's rank, measured value and success rate.",
           "",
-          "Prefer the higher-level tools first; reach for this when you need:",
-          "  • a custom time window (instant query at a specific point, or range)",
-          "  • a derived metric (rates, ratios, deltas)",
-          "  • a histogram bucket aggregation across chains/regions",
+          "Use when the user names the candidates themselves: \"Alchemy or",
+          "QuickNode?\", \"is Helius faster than Triton for Solana?\", \"compare",
+          "Across and Stargate on fees\".",
           "",
-          "Allowed metric namespaces (one prefix per OCB bench family):",
-          "  head_lag_seconds (aggregator latency)",
-          "  bridge_quote_latency_ms*, bridge_cost*, bridge_fees*, bridge_fix_fee*,",
-          "  bridge_execution_latency_ms*, bridge_e2e_latency_ms*, bridge_success_total,",
-          "    bridge_reverts_total, bridge_refunds_total, bridge_stuck_total,",
-          "    bridge_refund_latency_ms*, bridge_realized_output_usd, bridge_quote_slippage_usd, bridge_exec_gas_usd,",
-          "    bridge_gas*, bridge_output*, bridge_estimated_time*, bridge_quote_success",
-          "  l1_finality_*, l2_block_time_*",
-          "  metadata_coverage_*, metadata_api_latency_*, network_coverage_*,",
-          "    networks_supported, wallet_labels_*",
-          "  perp_fees_*, perp_funding_*, perp_venue_*, perp_execution_*,",
-          "  perp_liq_*, perp_realized_vol_*,",
-          "  ocb_buyback_*, ocb_oracle_*, ocb_validator_*, ocb_chain_*",
-          "  gas_error_*, gas_predicted_*, gas_realized_*, gas_oracle_*",
-          "  peg_* (stablecoin peg, both variants)",
-          "  solana_landing_* (TX landing observational + active)",
-          "  rpc_latency_*, rpc_call_total, rpc_health, rpc_archive_depth_supported",
-          "  perp_protocol_*, protocol_* (P/F, P/S, mcap, FDV, float, fees, revenue; benches 265, 274)",
-          "  chain_* (TVL, bridged TVL, value secured, stablecoin flows, native mcap, chain fees; benches 273, 275)",
-          "Queries referencing other metrics (operational/internal ones like `up`,",
-          "`scrape_*`, `process_*`, `go_*`, `wallet_balance_*` or any label-",
-          "enumeration shape) are refused with `{error, reason}`.",
-          "",
-          "Example: instant p50 over 1h for Mobula head-lag on Base:",
-          "  query_prom({",
-          "    query: \"quantile_over_time(0.5, head_lag_seconds{aggregator=\\\"mobula\\\",chain=\\\"base\\\"}[1h]) * 1000\"",
-          "  })",
-          "",
-          "Example: 7-day sparkline of average bridge fees:",
-          "  query_prom({",
-          "    query: \"avg_over_time(bridge_fees_percent[1d])\",",
-          "    windowSec: 604800,",
-          "    steps: 168",
-          "  })",
-          "",
-          "Returns: `{ query, value }` for instant queries, `{ query, windowSec, series }` for range.",
+          "Find the benchmark slug with `search_benchmarks` first if you do not",
+          "already have it. Providers the benchmark does not measure come back",
+          "in `missing`: say they are not measured rather than implying they",
+          "ranked badly. A provider measured but below the ranking floor comes",
+          "back with rank null, which is also not a loss.",
         ].join("\n"),
         inputSchema: {
-          query: z
+          benchmark: z
             .string()
-            .min(1)
-            .max(2000)
-            .describe("PromQL expression referencing published benchmark metric prefixes only. Function names, label keys, and quoted label values are fine; bare metric names must be allowlisted."),
-          windowSec: z
-            .number()
-            .int()
-            .positive()
-            .max(7_776_000)
-            .optional()
-            .describe("If set, run a range query over the last N seconds (max 90 days = 7776000). Omit for an instant query."),
-          steps: z.number().int().min(2).max(360).optional().describe("Number of samples for a range query (2 to 360). Default 60. Step duration = windowSec / steps."),
+            .regex(/^[a-z0-9][a-z0-9-]{0,79}$/)
+            .describe("Benchmark slug, e.g. 'solana-rpc' or 'bridge-fee'. Get it from search_benchmarks."),
+          providers: z
+            .array(z.string().min(1).max(60))
+            .min(2)
+            .max(10)
+            .describe("Two to ten provider names or slugs, as the user said them, e.g. ['Alchemy', 'QuickNode']."),
+          chain: z.string().regex(/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$/).optional().describe("Optional chain slice when the bench declares chains."),
+          region: z.string().regex(/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$/).optional().describe("Optional region slice when the bench declares regions."),
         },
+        annotations: { readOnlyHint: true, openWorldHint: true },
       },
-      async ({ query, windowSec, steps }) => {
-        const verdict = isQueryAllowed(query);
-        if (!verdict.ok) {
+      async ({ benchmark, providers, chain, region }) => {
+        const b = await getBenchmark(benchmark, { chain, region });
+        if (!b || b.editorialStatus !== "live") {
+          const payload = { error: "unknown_slug", slug: benchmark };
           return {
-            content: [{ type: "text", text: JSON.stringify({ error: "query_refused", reason: verdict.reason }) }],
+            content: [{ type: "text", text: JSON.stringify(payload) }],
+            structuredContent: payload,
             isError: true,
           };
         }
-        const url = process.env.PROMETHEUS_URL;
-        if (!url) {
-          return {
-            content: [{ type: "text", text: JSON.stringify({ error: "prometheus_unconfigured" }) }],
-            isError: true,
-          };
-        }
-        const prom = new Prometheus(url);
-        try {
-          if (windowSec) {
-            const series = await prom.series(query, windowSec, steps ?? 60);
-            return { content: [{ type: "text", text: JSON.stringify({ query, windowSec, series }, null, 2) }] };
-          }
-          const v = await prom.scalar(query);
-          return { content: [{ type: "text", text: JSON.stringify({ query, value: v }) }] };
-        } catch (err) {
-          console.error("[mcp:query_prom] upstream error", err);
-          return {
-            content: [{ type: "text", text: JSON.stringify({ error: "upstream_error" }) }],
-            isError: true,
-          };
-        }
+        const comparison = compareOnBenchmark(b, providers, SITE.url);
+        const payload = {
+          ...comparison,
+          title: b.title,
+          headline: headlineSentence(b),
+          quote: citationQuote(b, SITE.url),
+          lowerIsBetter: !b.higherIsBetter,
+        };
+        return {
+          content: [{ type: "text", text: JSON.stringify(payload, null, 2) }],
+          structuredContent: payload,
+        };
+      },
+    );
+
+    server.registerTool(
+      "recommend_provider",
+      {
+        title: "Recommend a provider for a stated use case",
+        description: [
+          "Answers \"which should I use for X\" by picking the benchmarks that",
+          "measure X and reporting who currently leads them.",
+          "",
+          "Pass the user's goal in their own words: \"a Solana trading bot\", \"an",
+          "indexer backfilling Base\", \"a wallet that needs price data\", \"bridging",
+          "to Arbitrum\".",
+          "",
+          "This returns measurements and the caveat that goes with them, not an",
+          "endorsement. A leader on one benchmark is the leader of that one",
+          "measurement over its stated window. Where the use case has a known",
+          "caveat (a bot should read p99 rather than p50, an indexer is bound by",
+          "archive depth) it comes back in `guidance`; pass it on, it is usually",
+          "more useful than the ranking itself.",
+        ].join("\n"),
+        inputSchema: {
+          use_case: z
+            .string()
+            .min(2)
+            .max(200)
+            .describe("What the user is building or doing, in their words. e.g. 'solana trading bot', 'indexer', 'price feed for a wallet'."),
+          chain: z
+            .string()
+            .regex(/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$/)
+            .optional()
+            .describe("Chain they are building on, e.g. 'solana', 'base', 'arbitrum'. Narrows the benchmarks considerably."),
+          region: z.string().regex(/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$/).optional().describe("Optional region, e.g. 'eu-west', when latency from a location matters."),
+        },
+        annotations: { readOnlyHint: true, openWorldHint: true },
+      },
+      async ({ use_case, chain, region }) => {
+        const benches = (await getBenchmarks()).filter((b) => b.editorialStatus === "live");
+        const uc = matchUseCase(use_case);
+        // The chain is the strongest signal when present, so it leads the
+        // query; the use case words follow and break ties.
+        const query = [chain ?? "", use_case].join(" ").trim();
+        const matches = searchBenchmarks(benches, {
+          query,
+          category: uc?.category,
+          limit: 5,
+          siteUrl: SITE.url,
+        });
+
+        const detailed = await Promise.all(
+          matches.slice(0, 3).map(async (m) => {
+            const full = await getBenchmark(m.slug, { chain, region });
+            if (!full || full.editorialStatus !== "live") return null;
+            const top = isInsufficient(full) ? null : leader(full);
+            return {
+              benchmark: full.slug,
+              title: full.title,
+              metric: full.metric,
+              unit: full.unit,
+              leader: top == null ? null : { ...top, value: valueInDeclaredUnit(top.value, full.unit) },
+              headline: headlineSentence(full),
+              quote: citationQuote(full, SITE.url),
+              url: `${SITE.url}${benchPath(full)}`,
+              asOf: citableAsOf(full),
+            };
+          }),
+        );
+
+        const payload = {
+          useCase: use_case,
+          ...(chain ? { chain } : {}),
+          recognisedAs: uc?.id ?? null,
+          guidance:
+            uc?.why ??
+            "No specific guidance for this use case; the benchmarks below are the closest matches by wording.",
+          caveat:
+            "These are measurements over a stated window, not endorsements. Check the window and the sample size on the page before relying on a ranking.",
+          benchmarks: detailed.filter((d) => d !== null),
+          alsoRelevant: matches.slice(3),
+          ...(matches.length === 0
+            ? { note: "Nothing in the catalogue matches this use case; do not infer a recommendation." }
+            : {}),
+        };
+        return {
+          content: [{ type: "text", text: JSON.stringify(payload, null, 2) }],
+          structuredContent: payload,
+        };
       },
     );
 
@@ -520,6 +493,7 @@ const mcpHandler = createMcpHandler(
             .optional()
             .describe("Optional benchmark slug filter: return only the answers built on that bench."),
         },
+        annotations: { readOnlyHint: true, openWorldHint: true },
       },
       async ({ benchmark }) => {
         const all = await loadRenderedAnswers();
@@ -532,8 +506,10 @@ const mcpHandler = createMcpHandler(
           url: a.url,
           benchmarkUrl: `${SITE.url}/benchmarks/${a.benchmark}`,
         }));
+        const payload = { count: rows.length, answers: rows };
         return {
-          content: [{ type: "text", text: JSON.stringify({ count: rows.length, answers: rows }, null, 2) }],
+          content: [{ type: "text", text: JSON.stringify(payload, null, 2) }],
+          structuredContent: payload,
         };
       },
     );
