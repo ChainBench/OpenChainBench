@@ -35,6 +35,8 @@ export default function AppleIcon() {
         />
       </div>
     ),
-    { ...size },
+    // Indexable: this is the home-screen icon, and the fallback several crawlers read.
+    // See og-response.tsx for why every other generated image is not.
+    { ...size, indexable: true },
   );
 }
