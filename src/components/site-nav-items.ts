@@ -1,6 +1,7 @@
 import {
   ArrowLeftRight,
   BookOpen,
+  BookMarked,
   Boxes,
   ChartColumn,
   CircleHelp,
@@ -14,6 +15,7 @@ import {
   Info,
   Landmark,
   Layers,
+  Mail,
   MapPin,
   PiggyBank,
   Scale,
@@ -165,6 +167,13 @@ export function navGroups(hiddenRoutes: readonly string[] = []): NavGroup[] {
       label: "Docs",
       items: [
         {
+          href: "/docs",
+          label: "Docs",
+          icon: BookMarked,
+          match: (p) => p === "/docs",
+          inHeader: true,
+        },
+        {
           href: "/methodology",
           label: "Methodology",
           icon: BookOpen,
@@ -186,6 +195,13 @@ export function navGroups(hiddenRoutes: readonly string[] = []): NavGroup[] {
           icon: Info,
           match: (p) => p === "/about",
           inHeader: true,
+          mdHidden: true,
+        },
+        {
+          href: "/contact",
+          label: "Contact",
+          icon: Mail,
+          match: (p) => p === "/contact",
           mdHidden: true,
         },
       ],

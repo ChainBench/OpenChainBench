@@ -222,6 +222,8 @@ function staticHubRoutes(catalogTs: Date): MetadataRoute.Sitemap {
     ...(isDevOnlyRoute("/rpc-map")
       ? []
       : [{ url: `${SITE.url}/rpc-map`, lastModified: pageMtime("rpc-map/page.tsx"), changeFrequency: "daily" as const, priority: 0.8 }]),
+    { url: `${SITE.url}/docs`, lastModified: pageMtime("docs/page.tsx"), changeFrequency: "monthly", priority: 0.8 },
+    { url: `${SITE.url}/contact`, lastModified: pageMtime("contact/page.tsx"), changeFrequency: "monthly", priority: 0.6 },
     { url: `${SITE.url}/fee-compare`, lastModified: pageMtime("fee-compare/page.tsx"), changeFrequency: "monthly", priority: 0.7 },
     { url: `${SITE.url}/methodology`, lastModified: pageMtime("methodology/page.tsx"), changeFrequency: "monthly", priority: 0.7 },
     { url: `${SITE.url}/contribute`, lastModified: pageMtime("contribute/page.tsx"), changeFrequency: "monthly", priority: 0.7 },
