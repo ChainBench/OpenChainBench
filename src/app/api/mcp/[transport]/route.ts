@@ -584,14 +584,18 @@ const mcpHandler = createMcpHandler(
         const status: "live" | "draft" | "insufficient" = insufficient
           ? "insufficient"
           : b.status;
+        // Same declared-unit rule as the tools above: a unit "s" bench stores
+        // milliseconds, and this resource serves the same fields to the same
+        // clients, so it cannot publish the stored number either.
+        const rawValue = insufficient ? null : fieldValue(b);
         const payload = {
           slug: b.slug,
           title: b.title,
           metric: b.metric,
           unit: b.unit,
           status,
-          value: insufficient ? null : fieldValue(b),
-          leader: top,
+          value: rawValue == null ? null : valueInDeclaredUnit(rawValue, b.unit),
+          leader: top == null ? null : { ...top, value: valueInDeclaredUnit(top.value, b.unit) },
           rankings: insufficient
             ? b.results.map((r) => ({
                 name: r.name,
@@ -604,6 +608,7 @@ const mcpHandler = createMcpHandler(
                 name: r.name,
                 slug: r.slug,
                 ms: r.ms,
+                value: r.ms.p50 == null ? null : valueInDeclaredUnit(r.ms.p50, b.unit),
                 successRate: r.successRate,
                 sampleSize: r.sampleSize,
               })),
