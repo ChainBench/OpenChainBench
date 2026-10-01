@@ -262,7 +262,7 @@ export function headlineParts(b: Benchmark): { claim: string; rest: string } {
   // checkable, and not the page title (55 to 95 characters that every
   // quoting surface repeated, audit 2026-09-22).
   const ranked = rankedCandidates(b).length;
-  const rest = `${windowSuffix(b)} across ${ranked} ranked ${nounFor(b, ranked)}.`;
+  const rest = `${windowSuffix(b)} across ${ranked} ranked ${nounFor(b, ranked)}${sliceClause(b)}.`;
   const tied = leaderNames(b);
   if (tied.length > 1) {
     const both = tied.length === 2;
@@ -285,6 +285,37 @@ export function headlineParts(b: Benchmark): { claim: string; rest: string } {
     claim: `${top.name} ${verb} ${metricInSentence(b.metric)} at ${value}`,
     rest,
   };
+}
+
+/** The slice a headline figure was measured on, when the default view is a
+ *  slice rather than an aggregate.
+ *
+ *  A bench that declares dimensions answers a different question per tab.
+ *  rpc-cost's headline ("BlockPI posts the lowest monthly cost at $29.50")
+ *  holds for the dapp workload, at ten million requests a month, on the
+ *  cheapest paid plan, and for none of the other fourteen cells. That
+ *  sentence is what /api/stat, /api/citable and llms.txt hand to an answer
+ *  engine, so leaving the slice out publishes the single "cheapest" the
+ *  page's own intro says cannot be honest.
+ *
+ *  A dimension whose first value reads "All ..." is a real aggregate and is
+ *  skipped, so a chain- or region-dimensioned bench is unaffected. `tier`
+ *  is skipped too: it partitions the provider list rather than the
+ *  measurement, and the cohort size is already in the sentence.
+ */
+function sliceClause(b: Benchmark): string {
+  const dims = b.dimensions;
+  if (!dims) return "";
+  const parts: string[] = [];
+  for (const key of ["kind", "bucket", "venue"] as const) {
+    const first = dims[key]?.[0];
+    if (!first) continue;
+    const label = first.label.trim();
+    if (/^all\b/i.test(label)) continue;
+    parts.push(label.replace(/\s*\(default\)\s*$/i, ""));
+  }
+  if (parts.length === 0) return "";
+  return `, measured on ${parts.join(", ")}`;
 }
 
 /** Pasteable attribution string. Standard convention: "<sentence> Source: OpenChainBench (url)". */

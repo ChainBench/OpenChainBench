@@ -3348,6 +3348,7 @@ providers:
     currency: USD
     plans:
       - id: dedicated-eth-full
+        chains: [ethereum]
         name: Dedicated Ethereum full node (geth/nethermind/reth/reth+prysm/teku+geth)
         tier: enterprise
         monthly_usd: 1100
@@ -3366,6 +3367,7 @@ providers:
           Every dedicated node bundles a free $49/mo shared plan, so there is NO prerequisite.
           Term discounts: 1 mo base / 6 mo -10% / 12 mo -20% (annual_monthly_usd = 1100 x 0.80).
       - id: dedicated-eth-archive
+        chains: [ethereum]
         name: Dedicated Ethereum archive node (erigon / reth)
         tier: enterprise
         monthly_usd: 1300
@@ -3380,6 +3382,7 @@ providers:
         confidence: verified
         note: geth archive is a separate, much dearer SKU at $2,400/mo.
       - id: dedicated-sol-full
+        chains: [solana]
         name: Dedicated Solana full node
         tier: enterprise
         monthly_usd: 2900
@@ -3394,6 +3397,7 @@ providers:
         confidence: verified
         note: $3,200 for the high-performance variant. There is NO Solana dedicated archive SKU.
       - id: limitless-evm-full-25
+        chains: [ethereum]
         name: Limitless Node, EVM full, 25 RPS
         tier: growth
         monthly_usd: 150
@@ -3412,6 +3416,7 @@ providers:
           "No shared or dedicated plan required." "No usage-based billing and no overage charges."
           15 chains. Ladder: 25/50/150/300 RPS at $150/$300/$500/$1,000.
       - id: limitless-evm-archive-15
+        chains: [ethereum]
         name: Limitless Node, EVM archive, 15 RPS
         tier: growth
         monthly_usd: 150
@@ -3426,6 +3431,7 @@ providers:
         confidence: verified
         note: 'Same price ladder as full, lower RPS: 15/30/50/100 RPS at $150/$300/$500/$1,000.'
       - id: limitless-sol-full-5
+        chains: [solana]
         name: Limitless Node, Solana full, 5 RPS
         tier: growth
         monthly_usd: 150
@@ -3469,6 +3475,7 @@ providers:
     currency: USD
     plans:
       - id: unlimited-25
+        chains: [ethereum, solana]
         name: Unlimited Node add-on, 25 RPS (+ Growth $49)
         tier: growth
         monthly_usd: 198
@@ -3487,6 +3494,7 @@ providers:
           incurs overage." Ladder: 25/100/250/500 RPS at $149/$649/$1,649/$3,199 (+$49 each);
           a 1000-RPS tier exists in the docs with NO PUBLISHED PRICE.
       - id: unlimited-100
+        chains: [ethereum, solana]
         name: Unlimited Node add-on, 100 RPS (+ Growth $49)
         tier: business
         monthly_usd: 698
@@ -3500,6 +3508,7 @@ providers:
         trace: true
         confidence: verified
       - id: unlimited-250
+        chains: [ethereum, solana]
         name: Unlimited Node add-on, 250 RPS (+ Growth $49)
         tier: enterprise
         monthly_usd: 1698
@@ -3513,6 +3522,7 @@ providers:
         trace: true
         confidence: verified
       - id: unlimited-500
+        chains: [ethereum, solana]
         name: Unlimited Node add-on, 500 RPS (+ Growth $49)
         tier: enterprise
         monthly_usd: 3248
@@ -3526,6 +3536,7 @@ providers:
         trace: true
         confidence: verified
       - id: dedicated-eth-full-geth
+        chains: [ethereum]
         name: Dedicated Node, Ethereum full, geth 2-C16-R64-S 2,501 GB (+ Pro $199)
         tier: enterprise
         monthly_usd: 1841.50
@@ -3545,6 +3556,7 @@ providers:
           "$0.50 vs $0.10" conflict decisively in favour of $0.50. Storage and egress are folded into
           the compute hour. No RPS cap is published.
       - id: dedicated-eth-archive-erigon
+        chains: [ethereum]
         name: Dedicated Node, Ethereum archive, erigon 3-C32-R128-M 3,652 GB (+ Pro $199)
         tier: enterprise
         monthly_usd: 2629.90
@@ -3561,6 +3573,7 @@ providers:
           Node $2,430.90/mo [x730], decomposing exactly as (3 x $0.50 x 730) + (183 storage packages x
           $0.01 x 730) = $1,095.00 + $1,335.90. Plus the Pro $199 prerequisite.
       - id: dedicated-sol-full
+        chains: [solana]
         name: Dedicated Node, Solana full, 6-C128-R1024-M 3,800 GB (+ Pro $199)
         tier: enterprise
         monthly_usd: 3776.00
@@ -3609,6 +3622,7 @@ providers:
     currency: USD
     plans:
       - id: evm-75
+        chains: [ethereum]
         name: Flat Rate RPS, EVM 75 RPS (+ Build $49)
         tier: business
         monthly_usd: 848
@@ -3628,6 +3642,7 @@ providers:
           API credits"; excess gets 429 with no overage. EVM ladder 75/150/250 RPS at
           $799/$1,499/$1,949. Enterprise accounts cannot self-serve this.
       - id: evm-150
+        chains: [ethereum]
         name: Flat Rate RPS, EVM 150 RPS (+ Build $49)
         tier: enterprise
         monthly_usd: 1548
@@ -3641,6 +3656,7 @@ providers:
         trace: true
         confidence: verified
       - id: evm-250
+        chains: [ethereum]
         name: Flat Rate RPS, EVM 250 RPS (+ Build $49)
         tier: enterprise
         monthly_usd: 1998
@@ -3654,6 +3670,7 @@ providers:
         trace: true
         confidence: verified
       - id: sol-75
+        chains: [solana]
         name: Flat Rate RPS, Solana 75 RPS (+ Build $49)
         tier: enterprise
         monthly_usd: 1248
@@ -3725,6 +3742,7 @@ providers:
     currency: USD
     plans:
       - id: eth-full
+        chains: [ethereum]
         name: Ethereum full node (Geth)
         tier: business
         monthly_usd: 503.70
@@ -3743,6 +3761,7 @@ providers:
           single-tenant node in the cohort — roughly half GetBlock's $1,100 — but Ethereum-only,
           3 regions, and no SLA or RPS guarantee is published.
       - id: eth-archive
+        chains: [ethereum]
         name: Ethereum archive node (Erigon)
         tier: enterprise
         monthly_usd: 2000.20
@@ -3786,6 +3805,7 @@ providers:
     currency: USD
     plans:
       - id: mainnet-floor
+        chains: [solana]
         name: Dedicated Solana node, mainnet (+ Business $499)
         tier: enterprise
         monthly_usd: 3399
@@ -3836,6 +3856,7 @@ providers:
     currency: USD
     plans:
       - id: free
+        chains: [solana]
         name: Free
         tier: free
         monthly_usd: 0
@@ -3852,6 +3873,7 @@ providers:
           "Unlimited Credits" — there is NO volume unit on the current plans, only an RPS ceiling.
           10 RPC/s, 0 index/s, 1 sendTransaction/s. At the ceiling you get 429, not a bill.
       - id: build
+        chains: [solana]
         name: Build
         tier: growth
         monthly_usd: 199
@@ -3868,6 +3890,7 @@ providers:
           100 RPC/s, 10 index/s, 20 sendTransaction/s, 10 gRPC connections.
           "No Credits. No Bandwidth Limits. No Overages." Extra gRPC connections $100 per 10.
       - id: grow
+        chains: [solana]
         name: Grow
         tier: business
         monthly_usd: 349
@@ -3884,6 +3907,7 @@ providers:
           150 RPC/s, 20 gRPC connections. The secondary index/API RPS column CONFLICTS between two
           primaries: the pricing page says 30/s, the docs say 20/s. Both live, same date.
       - id: accelerate
+        chains: [solana]
         name: Accelerate
         tier: business
         monthly_usd: 649
@@ -3898,6 +3922,7 @@ providers:
         confidence: uncertain
         note: '400 RPC/s, 50 gRPC connections. Same index-RPS conflict: pricing page 100/s vs docs 40/s.'
       - id: dedicated
+        chains: [solana]
         name: Dedicated Solana RPC / gRPC node
         tier: enterprise
         monthly_usd: 1800
@@ -3912,6 +3937,7 @@ providers:
         confidence: uncertain
         note: '"Starting from $1800/mo" — a floor. Gen5 AMD with shred acceleration. Everything above the entry price is SALES-GATED.'
       - id: legacy-scale
+        chains: [solana]
         name: Legacy Scale (credit-based, still listed)
         tier: business
         monthly_usd: 499
@@ -3961,6 +3987,7 @@ providers:
     currency: USD
     plans:
       - id: eth-advanced
+        chains: [ethereum]
         name: Ethereum full node, Advanced
         tier: business
         monthly_usd: 320
@@ -3978,6 +4005,7 @@ providers:
           and you reach it directly. The right self-host reference row, and it must be labelled as such.
           Annual is -25%. Archive add-on +$320 (=> $640); failover add-on +$160. No meter at all.
       - id: eth-enterprise
+        chains: [ethereum]
         name: Ethereum full node, Enterprise
         tier: business
         monthly_usd: 640
@@ -3992,6 +4020,7 @@ providers:
         confidence: verified
         note: Archive add-on +$640 (=> $1,280); failover +$320.
       - id: sol-advanced
+        chains: [solana]
         name: Solana full node, Advanced
         tier: enterprise
         monthly_usd: 1920
@@ -4037,6 +4066,7 @@ providers:
     currency: USD
     plans:
       - id: eth-basic
+        chains: [ethereum]
         name: Ethereum Basic (dedicated RPC)
         tier: growth
         monthly_usd: 149
@@ -4057,6 +4087,7 @@ providers:
           by arithmetic; that label sits on a duplicated markup block and is simply wrong.
           Bandwidth 100 Mbps. NO RPS FIGURE IS PUBLISHED AT ANY TIER.
       - id: eth-advance
+        chains: [ethereum]
         name: Ethereum Advance
         tier: growth
         monthly_usd: 299
@@ -4075,6 +4106,7 @@ providers:
           price at 100% saturation of an unverified ceiling — 2B/month is 771 RPS sustained and Zeeve
           publishes no RPS at all.
       - id: eth-enterprise
+        chains: [ethereum]
         name: Ethereum Enterprise
         tier: business
         monthly_usd: 599
@@ -4089,6 +4121,7 @@ providers:
         confidence: uncertain
         note: '"Unmetered", 3 Gbps.'
       - id: sol-basic
+        chains: [solana]
         name: Solana Basic
         tier: business
         monthly_usd: 640
@@ -4134,6 +4167,7 @@ providers:
     currency: USD
     plans:
       - id: bc-t3-large-us-east-1
+        chains: [ethereum]
         name: bc.t3.large node, us-east-1
         tier: growth
         monthly_usd: 97.82
@@ -4152,6 +4186,7 @@ providers:
           standard AWS data-transfer charges. Quoting AWS at "$3/1M" alone understates it by roughly a
           third at 100M requests/month. Larger instances run to $897.17/mo (bc.m5.4xlarge).
       - id: bc-t3-large-eu-west-1
+        chains: [ethereum]
         name: bc.t3.large node, eu-west-1
         tier: growth
         monthly_usd: 97.82
@@ -4166,6 +4201,7 @@ providers:
         confidence: uncertain
         note: Same $0.134/node-hour [x730]; only the per-request rate differs by region. Same 32 KB / 500 ms unit caveat and same end-of-life dates.
       - id: bc-t3-large-ap-southeast-1
+        chains: [ethereum]
         name: bc.t3.large node, ap-southeast-1
         tier: growth
         monthly_usd: 97.82

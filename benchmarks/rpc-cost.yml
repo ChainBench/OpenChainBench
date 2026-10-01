@@ -4,7 +4,7 @@ slug: rpc-cost
 number: "282"
 title: Cheapest RPC provider, priced per workload across 18 ranked providers
 seo_title: "Cheapest RPC provider 2026: real cost per workload"
-seo_description: "What 18 ranked RPC providers actually bill for the same workload. Alchemy, QuickNode, Chainstack, Infura, Helius, BlockPI, dRPC and more, priced across 5 workload profiles, 3 volumes and every plan tier."
+seo_description: "What 18 RPC providers bill for the same workload. Alchemy, QuickNode, Chainstack, BlockPI and dRPC priced across 5 workloads and 3 volumes."
 subtitle: The monthly bill each RPC provider would send for the same workload, normalised across Compute Units, Request Units, credits and flat requests, at three volumes and every plan tier.
 
 category: RPCs
@@ -95,11 +95,11 @@ methodology:
   - "What is still not measured. These are published prices, not invoices. Alchemy and QuickNode carry no credit, compute-unit or quota header on any response, so their billed units cannot be confirmed without dashboard credentials we do not hold. Where a provider's real charge is non-deterministic by design, dRPC routes to third-party operators that can rewrite the price downward and exposes no per-response cost header, the published rate is reported as an upper bound and labelled as one."
 
 findings:
-  - "There is no cheapest RPC provider. Six of them win at least one of the fifteen workload-by-volume cells, and none wins more than four. The widest spread inside a single cell is 36.7x, and even the trace profile at a hundred million requests spans 7.6x, from Chainstack at $499 to GetBlock at $3,779."
-  - "Two of the best-known providers are among the most expensive. Alchemy and QuickNode win no cell at any volume on any workload, running between 2.5x and 10.6x the leader of each cell, Alchemy at $10,500 a month for a billion simple reads against BlockPI's $2,833."
+  - "There is no cheapest RPC provider. Five win a workload-by-volume cell outright, none more than four of the fifteen, and two more share a cell on a tie. The widest spread inside one cell is 36.7x, on a billion Solana bot requests, and even the trace profile at a hundred million spans 6.7x, from NOWNodes at $567.75 to GetBlock at $3,779."
+  - "Two of the best-known providers are among the most expensive. Alchemy and QuickNode win no cell at any volume on any workload, running between 1.7x and 10.6x the leader of each cell, Alchemy at $10,500 a month for a billion simple reads against BlockPI's $2,833."
   - "Price is not always the binding constraint. Alchemy cannot serve the indexer or trace profile at a billion requests a month on any published self-serve plan: those need 61,728 and 234,568 Throughput Compute Units per second against a self-serve ceiling of 30,000, enforced per account rather than per app."
   - "Alchemy meters volume and rate limit in different units, and the figures above use its throughput column, not its billing one. Infura, separately, cannot serve a hundred million requests a month at any price, because its allowance is daily and hard-stops at 402."
-  - "Only some of the cell winners rest on fully published, unambiguous numbers. Chainstack and BlockPI win on complete figures. OnFinality's default method weight is assumed on chains it says carry undisclosed higher weights, NOWNodes publishes no archive or trace availability at all while winning the largest trace cell on price, and Syndica's pricing survives only inside a calculator that ends in a lead-capture form."
+  - "Only some of the cell winners rest on fully published, unambiguous numbers. BlockPI and Chainstack publish complete figures. OnFinality's default method weight is assumed on chains it says carry undisclosed higher weights, NOWNodes publishes no archive or trace availability at all while winning the largest trace cell on price, and Syndica's pricing survives only inside a calculator that ends in a lead-capture form."
   - "The cheapest defensible answer for a billion trace requests a month is therefore dRPC at $6,000, which is 5.7% above NOWNodes and the cheapest option that actually publishes that it serves debug and trace."
   - "Free tiers differ by 160x once the allowance is converted into requests. OnFinality's buys 12.0 million simple reads a month and GetBlock's buys 75,000. Several free tiers are throughput-capped rather than volume-capped, and GetBlock's daily allowance drains in 125 seconds at its own advertised rate."
   - "Buying the small plan is often the most expensive choice. At a hundred million dapp requests the entry band costs $524.50 while the growth band costs $249 and the business band $499, because the entry allowance runs out and the overage rate does not fall."
@@ -110,9 +110,9 @@ findings:
 
 faq:
   - q: "Which RPC provider is cheapest?"
-    a: "It depends on the workload, by multiples rather than percent. Across five workload profiles and three volumes, six providers win at least one cell: BlockPI and OnFinality four each, Chainstack three, Syndica two, and NOWNodes and Helius one apiece, with several ties at $49. Pick the profile that matches your method mix rather than reading a single number."
+    a: "It depends on the workload, by multiples rather than percent. Across five workload profiles and three volumes, five providers win a cell outright: BlockPI and OnFinality four each, NOWNodes and Syndica two each, and dRPC one. Two further cells are ties at $49, shared by Chainstack, Helius and OnFinality. Pick the profile that matches your method mix rather than reading a single number."
   - q: "Why do Alchemy and QuickNode never win?"
-    a: "Because they are three to four times more expensive than the leaders for the same work. Alchemy bills $10,500 a month for a billion simple reads where BlockPI bills $2,833, and across the fifteen cells the two run between 2.5x and 10.6x the cell leader. Both are priced as premium products and both publish their rates plainly; the bench simply applies them."
+    a: "Because they are three to four times more expensive than the leaders for the same work. Alchemy bills $10,500 a month for a billion simple reads where BlockPI bills $2,833, and across the fifteen cells the two run between 1.7x and 10.6x the cell leader. Both are priced as premium products and both publish their rates plainly; the bench simply applies them."
   - q: "How can you compare a Compute Unit to a Request Unit?"
     a: "By applying each provider's own method table to the same method mix, which gives weighted units per request. That figure is published per provider and per profile, so the conversion is inspectable rather than asserted. It is also why the ranking changes with the workload: the unit conversions are not constant across methods."
   - q: "Are these prices from real invoices?"

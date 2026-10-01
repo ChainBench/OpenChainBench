@@ -235,3 +235,37 @@ describe("all-zero leaderboard", () => {
     expect(leader(b)?.slug).toBe("a");
   });
 });
+
+describe("citation, a headline measured on a slice", () => {
+  const cost = (dimensions: Benchmark["dimensions"]): Benchmark => ({
+    ...bench([r("blockpi", "BlockPI", 29.5), r("alchemy", "Alchemy", 125)]),
+    slug: "rpc-cost",
+    metric: "Monthly cost",
+    unit: "usd",
+    dimensions,
+  });
+
+  test("names the slice when the default view is one", () => {
+    // rpc-cost's headline holds for one of fifteen cells, and this sentence
+    // is what /api/stat, /api/citable and llms.txt hand to an answer engine.
+    // Leaving the slice out published the single "cheapest" the page's own
+    // intro says cannot be honest.
+    const b = cost({
+      kind: [{ value: "all", label: "Dapp frontend" }, { value: "trace", label: "Trace and debug" }],
+      bucket: [{ value: "all", label: "10M requests/mo" }, { value: "100m", label: "100M requests/mo" }],
+      venue: [{ value: "all", label: "Cheapest paid plan" }, { value: "free", label: "Free tier" }],
+    });
+    const s = headlineSentence(b);
+    expect(s).toContain("Dapp frontend");
+    expect(s).toContain("10M requests/mo");
+    expect(s).toContain("Cheapest paid plan");
+  });
+
+  test("stays silent when the default view is a real aggregate", () => {
+    // Naming "All chains" would be noise on every latency bench.
+    const b = cost({
+      chain: [{ value: "all", label: "All chains" }, { value: "solana", label: "Solana" }],
+    });
+    expect(headlineSentence(b)).not.toContain("measured on");
+  });
+});

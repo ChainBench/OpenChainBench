@@ -125,4 +125,19 @@ const (
 	headlineBucket = "10m"
 )
 
+// baselineProfile returns the profile used as a chain's reference workload
+// when pricing a break-even: the first profile declared for that chain.
+// Ethereum's is simple-read, Solana's is solana-bot, because that is the
+// only Solana workload defined. Without a per-chain baseline the floor was
+// computed on an Ethereum profile and every Solana node was dropped for
+// want of a denominator.
+func baselineProfile(chain string) string {
+	for _, pr := range Profiles {
+		if pr.Chain == chain {
+			return pr.ID
+		}
+	}
+	return ""
+}
+
 const daysPerMonth = 30 // stated, not assumed: every derived figure uses it
