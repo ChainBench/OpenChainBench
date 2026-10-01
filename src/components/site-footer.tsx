@@ -43,6 +43,15 @@ const PROJECT_LINKS = [
   { label: "Contact", href: "/contact" },
 ];
 
+// Legal, kept in its own group after the rule. Both pages are required
+// submission fields for the ChatGPT app directory listing of the MCP server.
+// They are in the sitemap, but nothing in the rail or the body links them, so
+// this row is the only path a reader or a reviewer can follow to reach them.
+const LEGAL_LINKS = [
+  { label: "Privacy", href: "/privacy" },
+  { label: "Terms", href: "/terms" },
+];
+
 export function SiteFooter() {
   return (
     <footer className="mt-12 border-t border-rule bg-surface">
@@ -79,6 +88,16 @@ export function SiteFooter() {
           >
             Email
           </a>
+          <span aria-hidden className="h-3 w-px bg-rule" />
+          {LEGAL_LINKS.map((l) => (
+            <Link
+              key={l.href}
+              href={l.href}
+              className="text-[13px] text-ink-muted hover:text-ink transition-colors"
+            >
+              {l.label}
+            </Link>
+          ))}
         </nav>
 
         <p className="mt-5 border-t border-rule pt-4 text-[11px] uppercase tracking-[0.16em] text-ink-faint">
