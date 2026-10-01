@@ -24,6 +24,8 @@ export default function Icon() {
         <img src={logoDataUrl} alt="OpenChainBench" width={52} height={52} style={{ objectFit: "contain" }} />
       </div>
     ),
-    { ...size }
+    // Indexable: this is the browser tab favicon and the mark Google shows beside a result.
+    // See og-response.tsx for why every other generated image is not.
+    { ...size, indexable: true },
   );
 }
