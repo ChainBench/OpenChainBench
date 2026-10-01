@@ -127,6 +127,40 @@ export function scoreBenchmark(b: Benchmark, query: string): number {
   return score / q.length;
 }
 
+
+/**
+ * Minimum score for a match to be published.
+ *
+ * A slug token is worth 4 and a provider name 1, so a real question clears
+ * this easily ("solana rpc" scores 4, "helius triton" scores 1). What it cuts
+ * is prefix-only noise: "buy SOL for me" matched buyback-audit and three
+ * Solana benches at 0.5, on nothing but the first three letters. Returning
+ * those invites a model to treat them as relevant.
+ */
+const MIN_SCORE = 1;
+
+/**
+ * Redact anything secret-shaped before echoing a query back.
+ *
+ * The search echo is useful (the model should see what it searched) but it is
+ * also a reflection: asked "test my RPC with my API key abc123SECRET", the
+ * endpoint returned the secret inside its own payload. Nothing persists it,
+ * yet it still reaches the model's context and the client's logs, and the
+ * rule here is that a key never appears in any of those.
+ *
+ * Deliberately blunt. Over-redacting a benchmark query costs a reader
+ * nothing; under-redacting a live credential costs them the credential.
+ */
+export function redactSecrets(text: string): string {
+  return text
+    // key=value and bearer forms
+    .replace(/\b(api[-_ ]?key|apikey|token|secret|bearer|password|pwd)\b\s*[:=]?\s*\S+/gi, "$1 [redacted]")
+    // bare high-entropy runs: 16+ chars mixing letters and digits
+    .replace(/\b(?=[A-Za-z0-9_-]*\d)(?=[A-Za-z0-9_-]*[A-Za-z])[A-Za-z0-9_-]{16,}\b/g, "[redacted]")
+    // anything that looks like a keyed endpoint
+    .replace(/https?:\/\/\S+/gi, "[redacted-url]");
+}
+
 export type SearchResult = CompactRow & { score: number };
 
 /**
@@ -150,7 +184,7 @@ export function searchBenchmarks(
 
   const scored = pool
     .map((b) => ({ b, score: scoreBenchmark(b, opts.query as string) }))
-    .filter((x) => x.score > 0)
+    .filter((x) => x.score >= MIN_SCORE)
     .sort((a, b) => b.score - a.score || a.b.slug.localeCompare(b.b.slug))
     .slice(0, limit);
 
