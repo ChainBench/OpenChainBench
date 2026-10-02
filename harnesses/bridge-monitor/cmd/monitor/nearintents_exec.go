@@ -39,7 +39,10 @@ import (
 const (
 	usdcDecimals            = 6
 	nearIntents1ClickBase   = "https://1click.chaindefuser.com"
-	nearIntentsSettleWaitMs = 15 * time.Second
+	// Settlement poll cadence, shared with every other bridge (tx_executor.go
+	// uses the same constant). It was 15 s here against 5 s elsewhere, which
+	// quantised this bridge's latency three times coarser than its competitors'.
+	nearIntentsSettleWaitMs = settlePollInterval
 )
 
 // SetNearIntents wires the Near Intents client used for the USDC-triangle
@@ -325,16 +328,20 @@ func (e *Executor) pollNearIntentsSettle(depositAddress, memo string, timeout ti
 	deadline := time.Now().Add(timeout)
 	last := "UNKNOWN"
 	for time.Now().Before(deadline) {
-		time.Sleep(nearIntentsSettleWaitMs)
+		// Check first, sleep after, exactly like PollMobulaStatus and
+		// PollRelayStatus. Sleeping first put a floor of one interval under
+		// every measurement: a settlement that had already landed still read
+		// as 15 s, which is most of the gap this bridge showed against the
+		// others.
 		st, err := e.nearIntents.Status(depositAddress, memo)
-		if err != nil {
-			continue
+		if err == nil {
+			last = st
+			switch st {
+			case "SUCCESS", "REFUNDED", "FAILED":
+				return st
+			}
 		}
-		last = st
-		switch st {
-		case "SUCCESS", "REFUNDED", "FAILED":
-			return st
-		}
+		time.Sleep(nearIntentsSettleWaitMs)
 	}
 	return last
 }
