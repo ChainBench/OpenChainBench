@@ -10,6 +10,9 @@ const FETCH_TIMEOUT_MS = 15_000;
 export type SitemapBench = {
   slug: string;
   lastRunAt: string | null;
+  /** Absent on rows published before 2026-10-02; isExpiredBench treats a
+   *  missing value as live so the guard still fires on them. */
+  status?: string | null;
   category: string;
   perChainSlugs: string[];
   chainDimensions: string[];
