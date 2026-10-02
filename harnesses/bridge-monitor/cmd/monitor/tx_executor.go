@@ -398,13 +398,28 @@ type BridgeStatus struct {
 }
 
 // PollMobulaStatus polls Mobula bridge status until completion
+// settlePollInterval is how often every bridge's settlement status is checked
+// after the first, immediate call.
+//
+// One constant for all four on purpose. Near Intents used to poll at 15 s
+// while these three polled at 5 s, and the published latency comparison
+// recorded that difference as if it were the bridges' own: 36.7 s against
+// 1.0 to 1.5 s. A benchmark that penalises a provider for how we poll it is
+// not measuring the provider.
+//
+// 1 s rather than the previous 5 s because the floor is already the first
+// check, so this only bounds the error on settlements slower than one round
+// trip. At roughly 90 executions per bridge per month the extra calls are a
+// rounding error against any provider's rate limit.
+const settlePollInterval = 1 * time.Second
+
 func (tx *TxExecutor) PollMobulaStatus(txHash string, timeout time.Duration) (*BridgeStatus, error) {
 	if tx.dryRun {
 		return &BridgeStatus{Status: "filled", TxHash: txHash, LatencyMs: 5000}, nil
 	}
 
 	deadline := time.Now().Add(timeout)
-	pollInterval := 5 * time.Second
+	pollInterval := settlePollInterval
 
 	for time.Now().Before(deadline) {
 		status, err := tx.getMobulaStatus(txHash)
@@ -475,7 +490,7 @@ func (tx *TxExecutor) PollLiFiStatus(txHash, fromChain, toChain string, timeout 
 	}
 
 	deadline := time.Now().Add(timeout)
-	pollInterval := 5 * time.Second
+	pollInterval := settlePollInterval
 
 	for time.Now().Before(deadline) {
 		status, err := tx.getLiFiStatus(txHash, fromChain, toChain)
@@ -544,7 +559,7 @@ func (tx *TxExecutor) PollRelayStatus(requestID string, timeout time.Duration) (
 	}
 
 	deadline := time.Now().Add(timeout)
-	pollInterval := 5 * time.Second
+	pollInterval := settlePollInterval
 
 	for time.Now().Before(deadline) {
 		status, err := tx.getRelayStatus(requestID)
