@@ -100,11 +100,26 @@ export function dataAgeHours(b: { lastRunAt?: string | null }): number {
 export const STALE_AFTER_HOURS = 24;
 /** Data older than a week: the page is noindex and leaves the sitemap. */
 export const NOINDEX_AFTER_HOURS = 168;
-export function isStaleBench(b: { lastRunAt?: string | null; status?: string }): boolean {
+export function isStaleBench(b: { lastRunAt?: string | null; status?: string | null }): boolean {
   return b.status === "live" && dataAgeHours(b) > STALE_AFTER_HOURS;
 }
-export function isExpiredBench(b: { lastRunAt?: string | null; status?: string }): boolean {
-  return b.status === "live" && dataAgeHours(b) > NOINDEX_AFTER_HOURS;
+export function isExpiredBench(b: { lastRunAt?: string | null; status?: string | null }): boolean {
+  // A missing status counts as live, and that is the whole point. The
+  // sitemap rows the worker publishes carry slug, lastRunAt, category and
+  // perChainSlugs, and no status, so `b.status === "live"` was false for
+  // every one of them and this guard never fired on the surface it was
+  // written for. The RPC variant below has no status check, which is why
+  // chain pages expired correctly while everything else did not.
+  //
+  // Found on 2026-10-02 when bridge-execution-latency and
+  // bridge-realized-cost blocked a deploy: both render noindex (their
+  // harness has recorded no run, so lastRunAt is the epoch and the age is
+  // 56 years) and both sat in the sitemap, which is exactly the
+  // contradiction the smoke gate exists to catch.
+  //
+  // A draft bench has no business in the sitemap either, so defaulting an
+  // absent status to live loses nothing.
+  return (b.status ?? "live") === "live" && dataAgeHours(b) > NOINDEX_AFTER_HOURS;
 }
 
 /** The chain RPC page gate, app side, in one place: a `<chain>-rpc` bench
@@ -117,7 +132,7 @@ export function isExpiredRpcPage(b: {
   slug: string;
   category?: string;
   lastRunAt?: string | null;
-  status?: string;
+  status?: string | null;
 }): boolean {
   if (!b.slug.endsWith("-rpc") || (b.category && b.category !== "RPCs")) return false;
   return dataAgeHours(b) > NOINDEX_AFTER_HOURS;
@@ -134,7 +149,7 @@ export function isExpiredPage(b: {
   slug: string;
   category?: string;
   lastRunAt?: string | null;
-  status?: string;
+  status?: string | null;
 }): boolean {
   return isExpiredBench(b) || isExpiredRpcPage(b);
 }

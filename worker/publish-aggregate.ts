@@ -291,6 +291,10 @@ export async function publishSitemapSlim(
       return {
         slug: b.slug,
         lastRunAt: b.lastRunAt ?? null,
+        // Carried so isExpiredBench reads the real value instead of its
+        // "absent means live" default. The field was missing, so that
+        // guard silently never fired on a sitemap row.
+        status: b.status ?? null,
         category: b.category ?? "",
         // Validate perChainSlugs against live results + chain dimensions.
         // Slugs in perChainExplainer that have no bench data produce 404
