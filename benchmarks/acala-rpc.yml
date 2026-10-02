@@ -28,7 +28,7 @@ methodology:
 
 faq:
   - q: "Which Acala RPC endpoints work without an API key?"
-    a: "{{count}} endpoints sustain continuous keyless probing today: Dwellir (acala-rpc.n.dwellir.com), Acala RPC-0 (acala-rpc-0.aca-api.network) and Acala RPC-2 (acala-rpc-2.aca-api.network). Every listed endpoint was live-verified before inclusion."
+    a: "{{declared_count}} endpoints are probed on this chain: Dwellir (acala-rpc.n.dwellir.com), Acala RPC-0 (acala-rpc-0.aca-api.network) and Acala RPC-2 (acala-rpc-2.aca-api.network). Every listed endpoint was live-verified before inclusion."
   - q: "How does Acala RPC latency compare to other Polkadot parachains?"
     a: "All Polkadot parachains use the same Substrate JSON-RPC probe (chain_getHeader), making latency directly comparable across the per-chain RPC cluster. The parent rpc-capabilities benchmark shows the cross-chain view."
 

@@ -45,7 +45,7 @@ methodology:
 
 faq:
   - q: "Which TRON RPCs work without an API key?"
-    a: "{{count}} JSON-RPC endpoints sustain continuous keyless probing: TronGrid (`api.trongrid.io/jsonrpc`) and PublicNode / Allnodes (`tron.publicnode.com/jsonrpc`). dRPC was removed after the TRON JSON-RPC method became unavailable. Ankr's TRON JSON-RPC path rejects keyless probes with `API key is not allowed to access blockchain`; Chainstack, NOWNodes, GetBlock, Tatum and BlockPI require an API key on the TRON JSON-RPC path even though branded as public; OnFinality, Blast API and AllThatNode have no public TRON JSON-RPC gateway."
+    a: "{{declared_count}} JSON-RPC endpoints are probed on this chain: TronGrid (`api.trongrid.io/jsonrpc`) and PublicNode / Allnodes (`tron.publicnode.com/jsonrpc`). dRPC was removed after the TRON JSON-RPC method became unavailable. Ankr's TRON JSON-RPC path rejects keyless probes with `API key is not allowed to access blockchain`; Chainstack, NOWNodes, GetBlock, Tatum and BlockPI require an API key on the TRON JSON-RPC path even though branded as public; OnFinality, Blast API and AllThatNode have no public TRON JSON-RPC gateway."
   - q: "Why only {{count}} providers when other RPC benches have 5+?"
     a: "TRON's JSON-RPC compat layer is thinner than the EVM one, and most infra vendors gate it behind an API key even when their native TRON REST endpoints are keyless. dRPC was removed after the TRON JSON-RPC method became unavailable. The {{count}} providers on this page are all keyless endpoints that responded correctly to a plain POST; when other vendors open a keyless JSON-RPC path we will add them."
   - q: "Does this bench cover the native TRON REST API (`wallet/getnowblock`)?"

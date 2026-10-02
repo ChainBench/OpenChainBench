@@ -28,7 +28,7 @@ methodology:
 
 faq:
   - q: "Which Sei RPCs work without an API key?"
-    a: "{{count}} endpoints sustain continuous keyless probing, each listed with its URL in the endpoints table above. Every listed endpoint was live-verified with a `eth_getBlockByNumber` POST returning a parsable response before inclusion."
+    a: "{{declared_count}} endpoints are probed on this chain, each listed with its URL in the endpoints table above. Every listed endpoint was live-verified with a `eth_getBlockByNumber` POST returning a parsable response before inclusion."
   - q: "How is Sei RPC latency measured here, technically?"
     a: "One identical `eth_getBlockByNumber(\"latest\", false)` POST every 60 seconds against each provider from each of 3 regions, using the same plain HTTP client the rest of the RPC cluster uses. Wall-clock round-trip is recorded at millisecond precision; p50/p90/p99 are computed via Prometheus `quantile_over_time` over 24 hours. Responses are classified (`ok` / `http_err` / `jsonrpc_err` / `stale` / `timeout`) so an endpoint stuck on an old head or returning errors behind HTTP 200 is never ranked as fastest."
 

@@ -28,7 +28,7 @@ methodology:
 
 faq:
   - q: "Which Stellar Soroban RPCs work without an API key?"
-    a: "{{count}} endpoints sustain continuous keyless probing today; each is listed with its URL, 24h median and success rate in the endpoints table on this page, and the list changes as providers come and go. Every listed endpoint was live-verified with a `getLatestLedger` request before inclusion."
+    a: "{{declared_count}} endpoints are probed on this chain; each is listed with its URL, 24h median and success rate in the endpoints table on this page, and the list changes as providers come and go. Every listed endpoint was live-verified with a `getLatestLedger` request before inclusion."
   - q: "What is the difference between Stellar Horizon and Soroban RPC?"
     a: "Horizon is Stellar's REST API for classic payments and account operations. Soroban RPC is the JSON-RPC interface for Stellar's smart contract platform. This benchmark measures Soroban RPC endpoints since they are the primary interface for dApp developers building on Stellar."
 

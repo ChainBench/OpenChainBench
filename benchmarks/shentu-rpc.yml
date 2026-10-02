@@ -28,7 +28,7 @@ methodology:
 
 faq:
   - q: "Which Shentu RPC endpoints work without an API key?"
-    a: "{{count}} endpoints sustain continuous keyless probing today: Shentu official (rpc.shentu.org), Polkachu (shentu-rpc.polkachu.com), and High Stakes (shentu-rpc.highstakes.ch). Every listed endpoint was live-verified before inclusion."
+    a: "{{declared_count}} endpoints are probed on this chain: Shentu official (rpc.shentu.org), Polkachu (shentu-rpc.polkachu.com), and High Stakes (shentu-rpc.highstakes.ch). Every listed endpoint was live-verified before inclusion."
   - q: "What is Shentu and why does its RPC latency matter?"
     a: "Shentu is a Cosmos SDK blockchain built by CertiK, focused on blockchain security infrastructure. It powers the CertiK Shield decentralized reimbursement platform and a security oracle that scores smart contracts on-chain. Developers integrating with CertiK Shield, querying security scores, or building on the Shentu ecosystem need reliable low-latency RPC access."
   - q: "What is the CTK token on Shentu?"

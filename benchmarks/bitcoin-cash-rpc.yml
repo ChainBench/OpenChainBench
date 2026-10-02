@@ -30,7 +30,7 @@ methodology:
 
 faq:
   - q: "Which Bitcoin Cash RPC endpoints work without an API key?"
-    a: "{{count}} endpoints sustain continuous keyless probing today: Blockchair (api.blockchair.com/bitcoin-cash/stats, REST GET), Bitcore by Bitpay (api.bitcore.io/api/BCH/mainnet/block/tip, REST GET) and BiggestFan BCHN node (rest1.biggestfan.net/v2/blockchain/getBlockchainInfo, REST GET). Every listed endpoint was live-verified with a block-height probe returning a parsable result before inclusion."
+    a: "{{declared_count}} endpoints are probed on this chain: Blockchair (api.blockchair.com/bitcoin-cash/stats, REST GET), Bitcore by Bitpay (api.bitcore.io/api/BCH/mainnet/block/tip, REST GET) and BiggestFan BCHN node (rest1.biggestfan.net/v2/blockchain/getBlockchainInfo, REST GET). Every listed endpoint was live-verified with a block-height probe returning a parsable result before inclusion."
   - q: "Why do Bitcoin Cash providers use REST APIs instead of JSON-RPC?"
     a: "Bitcoin Cash nodes do support Bitcoin-compatible JSON-RPC, but no public provider exposes that interface without authentication on a keyless endpoint. Blockchair and Bitcore expose proprietary REST APIs; BiggestFan runs a BCHN full node and wraps its output in a REST endpoint. All three return a parsable block height in their response, which is what the harness reads."
   - q: "What is Bitcoin Cash staleness measured as on this benchmark?"

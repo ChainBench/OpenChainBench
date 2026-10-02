@@ -28,7 +28,7 @@ methodology:
 
 faq:
   - q: "Which Aptos nodes work without an API key?"
-    a: "{{count}} endpoints sustain continuous keyless probing today, each listed with its URL, 24h median and success rate in the endpoints table on this page. Every listed endpoint was live-verified with a GET /v1/ returning a parsable block_height before inclusion."
+    a: "{{declared_count}} endpoints are probed on this chain, each listed with its URL, 24h median and success rate in the endpoints table on this page. Every listed endpoint was live-verified with a GET /v1/ returning a parsable block_height before inclusion."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
 

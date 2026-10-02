@@ -28,7 +28,7 @@ methodology:
 
 faq:
   - q: "Which WAX RPC endpoints work without an API key?"
-    a: "{{count}} endpoints sustain continuous keyless probing today: Greymass (wax.greymass.com), EOSUSA (wax.eosusa.io) and WAX Sweden (api.waxsweden.org). Every listed endpoint was live-verified with a get_info call returning a parsable head_block_num before inclusion."
+    a: "{{declared_count}} endpoints are probed on this chain: Greymass (wax.greymass.com), EOSUSA (wax.eosusa.io) and WAX Sweden (api.waxsweden.org). Every listed endpoint was live-verified with a get_info call returning a parsable head_block_num before inclusion."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
 

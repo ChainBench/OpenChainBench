@@ -28,7 +28,7 @@ methodology:
 
 faq:
   - q: "Which Band Protocol RPC endpoints work without an API key?"
-    a: "{{count}} endpoints sustain continuous keyless probing today: Band Protocol official (rpc.laozi1.bandchain.org), High Stakes (bandprotocol-rpc.highstakes.ch), and Stakewolle (public.stakewolle.com/cosmos/bandchain/rpc). Every listed endpoint was live-verified before inclusion."
+    a: "{{declared_count}} endpoints are probed on this chain: Band Protocol official (rpc.laozi1.bandchain.org), High Stakes (bandprotocol-rpc.highstakes.ch), and Stakewolle (public.stakewolle.com/cosmos/bandchain/rpc). Every listed endpoint was live-verified before inclusion."
   - q: "What is Band Protocol and why does its RPC latency matter?"
     a: "Band Protocol is a cross-chain data oracle that aggregates real-world data feeds and delivers them to smart contracts via oracle scripts. Validators running the Yoda daemon and DeFi protocols consuming Band price feeds both depend on low-latency reliable RPC access to the Band chain."
   - q: "What is the BAND token?"

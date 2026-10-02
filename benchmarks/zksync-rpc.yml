@@ -28,7 +28,7 @@ methodology:
 
 faq:
   - q: "Which zkSync Era RPCs work without an API key?"
-    a: "{{count}} endpoints sustain continuous keyless probing today; each is listed with its URL, 24h median and success rate in the endpoints table on this page, and the list changes as providers come and go."
+    a: "{{declared_count}} endpoints are probed on this chain; each is listed with its URL, 24h median and success rate in the endpoints table on this page, and the list changes as providers come and go."
   - q: "Why is PublicNode not listed for zkSync Era?"
     a: "Because it does not serve the chain: both plausible PublicNode subdomains returned 404 in our 2026-07-03 verification sweep, making zkSync Era the only chain we probe without a PublicNode endpoint. The bench lists what actually answers, not what coverage pages claim, so the leaderboard has {{count}} providers and {{best_name}} ({{best_p50}}) currently leads them."
 

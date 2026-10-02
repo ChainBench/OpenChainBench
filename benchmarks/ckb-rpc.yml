@@ -28,7 +28,7 @@ methodology:
 
 faq:
   - q: "Which Nervos CKB RPC endpoints work without an API key?"
-    a: "{{count}} endpoints sustain continuous keyless probing today: the Nervos Foundation node (mainnet.ckb.dev/rpc) and CKBapp (mainnet.ckbapp.dev/rpc). Every listed endpoint was live-verified with a get_tip_block_number call returning a parsable hex block number before inclusion."
+    a: "{{declared_count}} endpoints are probed on this chain: the Nervos Foundation node (mainnet.ckb.dev/rpc) and CKBapp (mainnet.ckbapp.dev/rpc). Every listed endpoint was live-verified with a get_tip_block_number call returning a parsable hex block number before inclusion."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
 

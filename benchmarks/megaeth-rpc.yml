@@ -38,7 +38,7 @@ methodology:
 
 faq:
   - q: "Which MegaETH RPCs work without an API key in 2026?"
-    a: "{{count}} endpoints sustain continuous keyless probing today; each is listed with its URL, 24h median and success rate in the endpoints table on this page, and the list changes as providers come and go."
+    a: "{{declared_count}} endpoints are probed on this chain; each is listed with its URL, 24h median and success rate in the endpoints table on this page, and the list changes as providers come and go."
   - q: "Does this page measure MegaETH's 10 ms real-time claim?"
     a: "No, and deliberately so. The 10 ms figure refers to sequencer mini-blocks delivered over the WebSocket realtime API; this page measures the plain HTTP JSON-RPC surface that wallets, indexers and most tooling actually poll. Both numbers are real, they describe different transport layers. A WebSocket-level benchmark is a separate methodology."
 
