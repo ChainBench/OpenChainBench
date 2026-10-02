@@ -140,6 +140,16 @@ var (
 		Help: "Total cost as percentage of amount",
 	}, []string{"bridge", "from_chain", "to_chain", "from_token", "to_token", "amount_usd", "region", "chain"})
 
+	// Does the source transaction tell the source chain where the money is
+	// going? 1 when our destination address is in the payload we broadcast, 0
+	// when it is not. A route we cannot read emits nothing rather than a 0,
+	// because "not disclosed" and "not measured" must never be the same
+	// series. See disclosure.go for what a 0 does and does not prove.
+	bridgeDestinationDisclosed = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "bridge_destination_disclosed",
+		Help: "1 if the destination address appears in the source transaction payload, 0 if not. Absent when unmeasurable.",
+	}, []string{"bridge", "from_chain", "to_chain", "region"})
+
 	// Slippage in USD (output - input)
 	bridgeSlippageUSD = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "bridge_slippage_usd",

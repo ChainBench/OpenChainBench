@@ -568,16 +568,19 @@ func (e *Executor) executeMobula(route TestRoute, amount float64, quoteStart tim
 	if quote.Data.Deposit.Solana.SerializedTx != "" {
 		// Solana source - use deposit.solana.serializedTx
 		log.Printf("    [mobula] 📤 Broadcasting Solana TX (type=%s, len=%d)", quote.Data.Deposit.Solana.Type, len(quote.Data.Deposit.Solana.SerializedTx))
+		recordDestinationDisclosure("mobula", route, quote.Data.Deposit.Solana.SerializedTx, receiverAddress, senderAddress, e.region, payloadSerializedSolana)
 		txHash, err = e.txExecutor.ExecuteSolanaTransaction(quote.Data.Deposit.Solana.SerializedTx)
 	} else if quote.Data.Deposit.EVM.To != "" {
 		// EVM source - use deposit.evm
 		log.Printf("    [mobula] 📤 Broadcasting EVM TX to=%s, value=%s", quote.Data.Deposit.EVM.To, quote.Data.Deposit.EVM.Value)
+		recordDestinationDisclosure("mobula", route, quote.Data.Deposit.EVM.Data, receiverAddress, senderAddress, e.region, payloadText)
 		txHash, err = e.txExecutor.ExecuteEVMTransaction(route.FromChain, quote.Data.Deposit.EVM.To, quote.Data.Deposit.EVM.Data, quote.Data.Deposit.EVM.Value)
 	} else if len(quote.Data.Steps) > 0 {
 		// Use steps array - approval already handled above, find bridgeToken step
 		for _, step := range quote.Data.Steps {
 			if step.Type == "bridgeToken" || step.Type != "approve" {
 				log.Printf("    [mobula] 📤 Broadcasting EVM TX (steps) to=%s, value=%s", step.Tx.To, step.Tx.Value)
+				recordDestinationDisclosure("mobula", route, step.Tx.Data, receiverAddress, senderAddress, e.region, payloadText)
 				txHash, err = e.txExecutor.ExecuteEVMTransaction(route.FromChain, step.Tx.To, step.Tx.Data, step.Tx.Value)
 				break
 			}
@@ -731,10 +734,12 @@ func (e *Executor) executeRelay(route TestRoute, rawUnits string, quoteStart tim
 	if hasSolanaInstructions {
 		item := bridgeStep.Items[0]
 		log.Printf("    [relay] 📤 Building Solana TX from %d instructions", len(item.Data.Instructions))
+		recordDestinationDisclosure("relay", route, solanaInstructionsPayload(item.Data.Instructions), receiverAddress, senderAddress, e.region, payloadText)
 		txHash, err = e.txExecutor.ExecuteSolanaFromInstructions(item.Data.Instructions, item.Data.AddressLookupTableAddresses)
 	} else if hasEVMTx {
 		item := bridgeStep.Items[0]
 		log.Printf("    [relay] 📤 Broadcasting EVM TX to=%s, value=%s", item.Data.To, item.Data.Value)
+		recordDestinationDisclosure("relay", route, item.Data.Data, receiverAddress, senderAddress, e.region, payloadText)
 		txHash, err = e.txExecutor.ExecuteEVMTransaction(route.FromChain, item.Data.To, item.Data.Data, item.Data.Value)
 	} else {
 		log.Printf("    [relay] ❌ No TX data in bridge step: steps=%d", len(quote.Steps))
@@ -861,6 +866,7 @@ func (e *Executor) executeLiFi(route TestRoute, rawUnits string, quoteStart time
 	if isSolanaTx {
 		// Solana transaction - data field contains base64 serialized TX
 		log.Printf("    [lifi] 📤 Broadcasting Solana TX (len=%d)", len(quote.TransactionRequest.Data))
+		recordDestinationDisclosure("lifi", route, quote.TransactionRequest.Data, receiverAddress, senderAddress, e.region, payloadSerializedSolana)
 		txHash, err = e.txExecutor.ExecuteSolanaTransaction(quote.TransactionRequest.Data)
 	} else if isEVMTx {
 		// EVM transaction

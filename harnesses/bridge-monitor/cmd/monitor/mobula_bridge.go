@@ -333,7 +333,26 @@ type TestRoute struct {
 	QuoteOnly    bool      // true if route should NEVER be executed (quote loop only — for asymmetric or unsupported destinations like HC where we don't yet have on-chain fill plumbing)
 }
 
+// depthProbeUSD is the quote-only rung that prices liquidity rather than fees.
+// Large enough that a thin corridor's depth binds, small enough that a
+// provider which does price impact returns a usable number instead of giving
+// up. Quotes cost nothing and sign nothing, so the only budget this spends is
+// a provider's rate limit.
+const depthProbeUSD = 25000.0
+
 func GetTestRoutes() []TestRoute {
+	// Quote ladder: $5, $50, $300 price the fixed fees, $25,000 prices the
+	// depth. Across the first three the cost curve only shows a fixed fee
+	// being amortised (debridge: 62.9% of $5, 1.3% of $300, and every bridge
+	// falls the same way), so none of them can tell whether a provider is
+	// shielding a user from thin liquidity. The fourth rung is large enough
+	// that a corridor's depth starts to bind, and the shape of the answer is
+	// the measurement: a cost% that keeps falling promises a price the
+	// corridor may not fill, one that turns upward is pricing the impact, and
+	// no quote at all is the provider declining the size.
+	//
+	// QUOTES ONLY. The execution ladder in main.go moves real money and does
+	// not see this value; nothing here is ever signed or broadcast.
 	// USDC Triangle (self-balancing):
 	// R1: Solana USDC → Base USDC
 	// R2: Base USDC → Arbitrum USDT
@@ -349,6 +368,10 @@ func GetTestRoutes() []TestRoute {
 	trump5 := 5.0 / trumpPrice
 	trump50 := 50.0 / trumpPrice
 	trump300 := 300.0 / trumpPrice
+	// The depth rung in TRUMP units. This corridor is the thinnest the
+	// harness quotes, so it is where a provider either prices the impact or
+	// promises a fill it cannot make.
+	trumpDepth := depthProbeUSD / trumpPrice
 
 	return []TestRoute{
 		// R1: Solana USDC → Base USDC
@@ -358,8 +381,8 @@ func GetTestRoutes() []TestRoute {
 			FromToken: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
 			ToChain:   "Base", ToChainAPI: "evm:8453",
 			ToToken:     "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
-			Amounts:     []float64{5, 50, 300},
-			UsdAmounts:  []float64{5, 50, 300},
+			Amounts:     []float64{5, 50, 300, depthProbeUSD},
+			UsdAmounts:  []float64{5, 50, 300, depthProbeUSD},
 			IsSolanaSrc: true,
 			WeeklyOnly:  false,
 		},
@@ -370,8 +393,8 @@ func GetTestRoutes() []TestRoute {
 			FromToken: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
 			ToChain:   "Arbitrum", ToChainAPI: "evm:42161",
 			ToToken:     "0xaf88d065e77c8cc2239327c5edb3a432268e5831",
-			Amounts:     []float64{5, 50, 300},
-			UsdAmounts:  []float64{5, 50, 300},
+			Amounts:     []float64{5, 50, 300, depthProbeUSD},
+			UsdAmounts:  []float64{5, 50, 300, depthProbeUSD},
 			IsSolanaSrc: false,
 			WeeklyOnly:  false,
 		},
@@ -382,8 +405,8 @@ func GetTestRoutes() []TestRoute {
 			FromToken: "0xaf88d065e77c8cc2239327c5edb3a432268e5831",
 			ToChain:   "Solana", ToChainAPI: "solana:solana",
 			ToToken:     "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
-			Amounts:     []float64{5, 50, 300},
-			UsdAmounts:  []float64{5, 50, 300},
+			Amounts:     []float64{5, 50, 300, depthProbeUSD},
+			UsdAmounts:  []float64{5, 50, 300, depthProbeUSD},
 			IsSolanaSrc: false,
 			WeeklyOnly:  false,
 		},
@@ -398,8 +421,8 @@ func GetTestRoutes() []TestRoute {
 			FromToken: "6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN",
 			ToChain:   "Base", ToChainAPI: "evm:8453",
 			ToToken:     "0x532f27101965dd16442E59d40670FaF5eBB142E4",
-			Amounts:     []float64{trump5, trump50, trump300},
-			UsdAmounts:  []float64{5, 50, 300},
+			Amounts:     []float64{trump5, trump50, trump300, trumpDepth},
+			UsdAmounts:  []float64{5, 50, 300, depthProbeUSD},
 			IsSolanaSrc: true,
 			WeeklyOnly:  true,
 		},
@@ -416,8 +439,8 @@ func GetTestRoutes() []TestRoute {
 			FromToken: "0xaf88d065e77c8cc2239327c5edb3a432268e5831",
 			ToChain:   "HyperCore", ToChainAPI: "hl:mainnet",
 			ToToken:     "USDC", // Mobula uses symbol; per-bridge translators map to provider-specific addr
-			Amounts:     []float64{5, 50, 300},
-			UsdAmounts:  []float64{5, 50, 300},
+			Amounts:     []float64{5, 50, 300, depthProbeUSD},
+			UsdAmounts:  []float64{5, 50, 300, depthProbeUSD},
 			IsSolanaSrc: false,
 			WeeklyOnly:  false,
 			QuoteOnly:   true,
@@ -433,8 +456,8 @@ func GetTestRoutes() []TestRoute {
 			FromToken: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
 			ToChain:   "Arbitrum", ToChainAPI: "evm:42161",
 			ToToken:     "0xaf88d065e77c8cc2239327c5edb3a432268e5831",
-			Amounts:     []float64{5, 50, 300},
-			UsdAmounts:  []float64{5, 50, 300},
+			Amounts:     []float64{5, 50, 300, depthProbeUSD},
+			UsdAmounts:  []float64{5, 50, 300, depthProbeUSD},
 			IsSolanaSrc: true,
 			QuoteOnly:   true,
 		},
@@ -444,8 +467,8 @@ func GetTestRoutes() []TestRoute {
 			FromToken: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
 			ToChain:   "BNB", ToChainAPI: "evm:56",
 			ToToken:     "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d",
-			Amounts:     []float64{5, 50, 300},
-			UsdAmounts:  []float64{5, 50, 300},
+			Amounts:     []float64{5, 50, 300, depthProbeUSD},
+			UsdAmounts:  []float64{5, 50, 300, depthProbeUSD},
 			IsSolanaSrc: true,
 			QuoteOnly:   true,
 		},
@@ -455,8 +478,8 @@ func GetTestRoutes() []TestRoute {
 			FromToken: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
 			ToChain:   "Ethereum", ToChainAPI: "evm:1",
 			ToToken:     "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-			Amounts:     []float64{5, 50, 300},
-			UsdAmounts:  []float64{5, 50, 300},
+			Amounts:     []float64{5, 50, 300, depthProbeUSD},
+			UsdAmounts:  []float64{5, 50, 300, depthProbeUSD},
 			IsSolanaSrc: true,
 			QuoteOnly:   true,
 		},
@@ -471,8 +494,8 @@ func GetTestRoutes() []TestRoute {
 			FromToken: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
 			ToChain:   "Robinhood", ToChainAPI: "evm:4663",
 			ToToken:     "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168", // USDG on Robinhood Chain
-			Amounts:     []float64{5, 50, 300},
-			UsdAmounts:  []float64{5, 50, 300},
+			Amounts:     []float64{5, 50, 300, depthProbeUSD},
+			UsdAmounts:  []float64{5, 50, 300, depthProbeUSD},
 			IsSolanaSrc: true,
 			QuoteOnly:   true,
 		},
