@@ -56,6 +56,16 @@ describe("renderTemplate", () => {
     expect(renderTemplate("{{count}} providers", live)).toBe("2 providers");
   });
 
+  // {{count}} is the display cohort, behind a 5 % success floor. The FAQ
+  // endpoint sentence names every declared endpoint, so pairing it with
+  // {{count}} made 29 specs contradict themselves (2026-10-02). This one
+  // counts what the spec declares, answering or not.
+  test("declared_count counts every declared provider, answering or not", () => {
+    expect(renderTemplate("{{declared_count}} endpoints", live)).toBe(
+      `${live.results.length} endpoints`,
+    );
+  });
+
   test("leaves unknown keyword tokens untouched", () => {
     expect(renderTemplate("{{frobnicate:alpha}}", live)).toBe(
       "{{frobnicate:alpha}}",

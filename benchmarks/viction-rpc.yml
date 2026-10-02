@@ -28,7 +28,7 @@ methodology:
 
 faq:
   - q: "Which Viction RPC endpoints work without an API key?"
-    a: "{{count}} endpoints sustain continuous keyless probing today: Viction Official (rpc.viction.xyz), Viction RPC2 (rpc2.viction.xyz) and dRPC (viction.drpc.org). Every listed endpoint was live-verified with an eth_getBlockByNumber call returning a parsable block number before inclusion."
+    a: "{{declared_count}} endpoints are probed on this chain: Viction Official (rpc.viction.xyz), Viction RPC2 (rpc2.viction.xyz) and dRPC (viction.drpc.org). Every listed endpoint was live-verified with an eth_getBlockByNumber call returning a parsable block number before inclusion."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
 

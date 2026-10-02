@@ -28,7 +28,7 @@ methodology:
 
 faq:
   - q: "Which NEO N3 RPC endpoints work without an API key?"
-    a: "{{count}} endpoints sustain continuous keyless probing today: NSPCC (rpc10.n3.nspcc.ru:10331), NGD seed node 1 (n3seed1.ngd.network:10332) and NGD seed node 2 (n3seed2.ngd.network:10332). Every listed endpoint was live-verified with a getblockcount call returning a parsable block count before inclusion."
+    a: "{{declared_count}} endpoints are probed on this chain: NSPCC (rpc10.n3.nspcc.ru:10331), NGD seed node 1 (n3seed1.ngd.network:10332) and NGD seed node 2 (n3seed2.ngd.network:10332). Every listed endpoint was live-verified with a getblockcount call returning a parsable block count before inclusion."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
 

@@ -28,7 +28,7 @@ methodology:
 
 faq:
   - q: "Which Neon EVM RPC endpoints work without an API key?"
-    a: "{{count}} endpoints sustain continuous keyless probing today: P2P Neon Proxy (neon-proxy-mainnet.solana.p2p.org), Thirdweb (245022934.rpc.thirdweb.com) and Everstake (neon-mainnet.everstake.one). Every listed endpoint was live-verified with an eth_getBlockByNumber call returning a parsable block number before inclusion."
+    a: "{{declared_count}} endpoints are probed on this chain: P2P Neon Proxy (neon-proxy-mainnet.solana.p2p.org), Thirdweb (245022934.rpc.thirdweb.com) and Everstake (neon-mainnet.everstake.one). Every listed endpoint was live-verified with an eth_getBlockByNumber call returning a parsable block number before inclusion."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
 

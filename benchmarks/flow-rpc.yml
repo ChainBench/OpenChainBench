@@ -28,7 +28,7 @@ methodology:
 
 faq:
   - q: "Which Flow RPC endpoints work without an API key?"
-    a: "{{count}} endpoints sustain continuous keyless probing today: the Flow Foundation REST node (rest-mainnet.onflow.org) and the Flow access node REST endpoint (access.mainnet.nodes.onflow.org). Every listed endpoint was live-verified with a GET /v1/blocks?height=sealed returning a parsable height before inclusion."
+    a: "{{declared_count}} endpoints are probed on this chain: the Flow Foundation REST node (rest-mainnet.onflow.org) and the Flow access node REST endpoint (access.mainnet.nodes.onflow.org). Every listed endpoint was live-verified with a GET /v1/blocks?height=sealed returning a parsable height before inclusion."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
 

@@ -28,7 +28,7 @@ methodology:
 
 faq:
   - q: "Which Hedera RPC endpoints work without an API key?"
-    a: "{{count}} endpoints sustain continuous keyless probing today: Hashio (mainnet.hashio.io/api, operated by the Hedera Foundation) and thirdweb (295.rpc.thirdweb.com). Every listed endpoint was live-verified with an eth_getBlockByNumber call returning a parsable block number before inclusion."
+    a: "{{declared_count}} endpoints are probed on this chain: Hashio (mainnet.hashio.io/api, operated by the Hedera Foundation) and thirdweb (295.rpc.thirdweb.com). Every listed endpoint was live-verified with an eth_getBlockByNumber call returning a parsable block number before inclusion."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
 

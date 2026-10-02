@@ -28,7 +28,7 @@ methodology:
 
 faq:
   - q: "Which Fetch.ai RPC endpoints work without an API key?"
-    a: "{{count}} endpoints sustain continuous keyless probing today: Fetch.ai official (rpc-fetchhub.fetch.ai), PublicNode (fetch-rpc.publicnode.com), and Cosmos Directory (rpc.cosmos.directory/fetchhub). Every listed endpoint was live-verified before inclusion."
+    a: "{{declared_count}} endpoints are probed on this chain: Fetch.ai official (rpc-fetchhub.fetch.ai), PublicNode (fetch-rpc.publicnode.com), and Cosmos Directory (rpc.cosmos.directory/fetchhub). Every listed endpoint was live-verified before inclusion."
   - q: "What is Fetch.ai and why does its RPC latency matter?"
     a: "Fetch.ai is a Cosmos SDK blockchain enabling autonomous AI agents to transact, negotiate, and execute tasks on-chain. The FET token (rebranded as ASI following the ASI Alliance merger with SingularityNET and Ocean Protocol) powers agent services and staking. Developers building AI agent frameworks, DeFi integrations, or on-chain governance tools need reliable low-latency RPC access to query agent registrations, transactions, and network state."
   - q: "What is the ASI Alliance and how does it relate to FetchHub?"

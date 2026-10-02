@@ -28,7 +28,7 @@ methodology:
 
 faq:
   - q: "Which MultiversX RPC endpoints work without an API key?"
-    a: "{{count}} endpoints sustain continuous keyless probing today: the MultiversX Gateway (gateway.multiversx.com), the MultiversX API (api.multiversx.com), and the Elrond legacy API (api.elrond.com, maintained as a public alias by the MultiversX team). Every listed endpoint was live-verified with a GET /network/status/4294967295 returning a parsable erd_nonce before inclusion."
+    a: "{{declared_count}} endpoints are probed on this chain: the MultiversX Gateway (gateway.multiversx.com), the MultiversX API (api.multiversx.com), and the Elrond legacy API (api.elrond.com, maintained as a public alias by the MultiversX team). Every listed endpoint was live-verified with a GET /network/status/4294967295 returning a parsable erd_nonce before inclusion."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
 

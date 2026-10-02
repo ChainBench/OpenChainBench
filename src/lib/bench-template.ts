@@ -41,6 +41,7 @@
  *   {{best_p50:tier:<t>}}      p50 of that cohort's leader, formatted.
  *   {{count:tier:<t>}}         live providers in that cohort.
  *   {{count}}                  number of providers with live data.
+ *   {{declared_count}}         number of providers the spec declares.
  *
  * Per-slug lookups ({{p50:<slug>}}, {{name:<slug>}}...) search the
  * active cohort first and then every other tier's stash, so the public
@@ -274,6 +275,15 @@ export function renderTemplate(text: string, benchmark: Benchmark): string {
         // The display cohort (5 % success floor), the same set the Results
         // table and the endpoints block count.
         return String(displayResults(benchmark.results).length);
+      case "declared_count":
+        // Every provider the spec declares, answering or not. The endpoint
+        // sentence in 89 specs paired a hand-written list of names with
+        // {{count}}, which is the display cohort: on 29 of them the two
+        // disagreed, and the sentence asserted that endpoints "sustain
+        // continuous keyless probing" while some answered under 2 % of the
+        // time (Thirdweb, 2026-10-02). Deriving both numbers leaves only the
+        // names authored, and a test pins those against this count.
+        return String(benchmark.results?.length ?? 0);
       case "ranked_count":
         // The ranked cohort the TL;DR, the leader and /api/stat rankings use
         // (50 % success floor, spec rank gate, sample gate). Copy that names

@@ -28,7 +28,7 @@ methodology:
 
 faq:
   - q: "Which EOS RPC endpoints work without an API key?"
-    a: "{{count}} endpoints sustain continuous keyless probing today: Greymass (eos.greymass.com), EOS Nation (eos.api.eosnation.io) and Aloha EOS (api.main.alohaeos.com). Every listed endpoint was live-verified with a get_info call returning a parsable head_block_num before inclusion."
+    a: "{{declared_count}} endpoints are probed on this chain: Greymass (eos.greymass.com), EOS Nation (eos.api.eosnation.io) and Aloha EOS (api.main.alohaeos.com). Every listed endpoint was live-verified with a get_info call returning a parsable head_block_num before inclusion."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
 

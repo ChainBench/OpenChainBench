@@ -28,7 +28,7 @@ methodology:
 
 faq:
   - q: "Which Algorand nodes work without an API key?"
-    a: "{{count}} endpoints sustain continuous keyless probing today: AlgoNode community node, Nodely (mainnet-api.4160.nodely.dev) and Tatum gateway. Every listed endpoint was live-verified with a GET /v2/status returning a parsable last-round before inclusion."
+    a: "{{declared_count}} endpoints are probed on this chain: AlgoNode community node, Nodely (mainnet-api.4160.nodely.dev) and Tatum gateway. Every listed endpoint was live-verified with a GET /v2/status returning a parsable last-round before inclusion."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
 

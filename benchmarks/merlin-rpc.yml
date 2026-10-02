@@ -28,7 +28,7 @@ methodology:
 
 faq:
   - q: "Which Merlin Chain RPC endpoints work without an API key?"
-    a: "{{count}} endpoints sustain continuous keyless probing today: Merlin Official (rpc.merlinchain.io), dRPC (merlin.drpc.org) and BlockPI (merlin.blockpi.network). Every listed endpoint was live-verified with an eth_getBlockByNumber call returning a parsable block number before inclusion."
+    a: "{{declared_count}} endpoints are probed on this chain: Merlin Official (rpc.merlinchain.io), dRPC (merlin.drpc.org) and BlockPI (merlin.blockpi.network). Every listed endpoint was live-verified with an eth_getBlockByNumber call returning a parsable block number before inclusion."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
 

@@ -28,7 +28,7 @@ methodology:
 
 faq:
   - q: "Which Babylon RPC endpoints work without an API key?"
-    a: "{{count}} endpoints sustain continuous keyless probing today: PublicNode (babylon-rpc.publicnode.com), Polkachu (babylon-rpc.polkachu.com) and LavenderFive (rpc.lavenderfive.com/babylon). Every listed endpoint was live-verified with a block-height probe returning a parsable result before inclusion."
+    a: "{{declared_count}} endpoints are probed on this chain: PublicNode (babylon-rpc.publicnode.com), Polkachu (babylon-rpc.polkachu.com) and LavenderFive (rpc.lavenderfive.com/babylon). Every listed endpoint was live-verified with a block-height probe returning a parsable result before inclusion."
   - q: "What is Babylon and why does its RPC latency matter?"
     a: "Babylon is a Cosmos SDK chain that enables native Bitcoin staking. Developers building on Babylon or integrating its Bitcoin staking protocol need reliable low-latency RPC access to query chain state, submit transactions, and monitor finality. Knowing which public endpoint is fastest from your region helps optimize integration performance."
 
