@@ -1044,16 +1044,6 @@ func chains() []Chain {
 				{Slug: "ankr", Name: "Ankr", URL: envDefault("RPC_URL_FILECOIN_ANKR", "https://rpc.ankr.com/filecoin")},
 			},
 		},
-		// 2026-08-04 wave-5. Canto EVM L1 (chain 7700). 1 keyless provider:
-		// canto-official (canto.gravitychain.io). Excluded: dRPC (404),
-		// PublicNode (404), Ankr (403 API key required).
-		{
-			Slug: "canto",
-			Name: "Canto",
-			Providers: []Provider{
-				{Slug: "canto-official", Name: "Canto Official", URL: envDefault("RPC_URL_CANTO_OFFICIAL", "https://canto.gravitychain.io/")},
-			},
-		},
 		// 2026-08-04 wave-5. Aurora EVM on NEAR Protocol (chain 1313161554). 1 keyless
 		// provider: aurora-official (mainnet.aurora.dev). Excluded: Ankr (403 API key
 		// required), dRPC (403 API key required).
@@ -1199,15 +1189,6 @@ func chains() []Chain {
 				{Slug: "zircuit-official", Name: "Zircuit Foundation", URL: envDefault("RPC_URL_ZIRCUIT_OFFICIAL", "https://mainnet.zircuit.com")},
 			},
 		},
-		// Plume — RWA EVM L1 (chain 98866). 2 keyless providers.
-		{
-			Slug: "plume",
-			Name: "Plume",
-			Providers: []Provider{
-				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_PLUME_PUBLICNODE", "https://plume-rpc.publicnode.com")},
-				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_PLUME_DRPC", "https://plume.drpc.org")},
-			},
-		},
 		// Vana — Data economy EVM L1 (chain 1480). 1 keyless provider.
 		{
 			Slug: "vana",
@@ -1349,17 +1330,6 @@ func chains() []Chain {
 				{Slug: "nibiru-official", Name: "Nibiru Foundation", URL: envDefault("RPC_URL_NIBIRU_OFFICIAL", "https://rpc.nibiru.fi:443")},
 			},
 		},
-		// Quicksilver — ICS liquid staking (quicksilver-2). 3 keyless providers.
-		{
-			Slug: "quicksilver",
-			Name: "Quicksilver",
-			Kind: "cosmos",
-			Providers: []Provider{
-				{Slug: "polkachu", Name: "Polkachu", URL: envDefault("RPC_URL_QUICKSILVER_POLKACHU", "https://quicksilver-rpc.polkachu.com")},
-				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_QUICKSILVER_PUBLICNODE", "https://quicksilver-rpc.publicnode.com:443")},
-				{Slug: "quicksilver-official", Name: "Quicksilver Foundation", URL: envDefault("RPC_URL_QUICKSILVER_OFFICIAL", "https://rpc.quicksilver.zone")},
-			},
-		},
 		// Terra 2 — relaunched Cosmos chain (phoenix-1). 4 keyless providers.
 		{
 			Slug: "terra",
@@ -1410,17 +1380,6 @@ func chains() []Chain {
 				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_KUSAMA_PUBLICNODE", "https://kusama-rpc.publicnode.com")},
 				{Slug: "onfinality", Name: "OnFinality", URL: envDefault("RPC_URL_KUSAMA_ONFINALITY", "https://kusama.api.onfinality.io/public")},
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_KUSAMA_DRPC", "https://kusama.drpc.org")},
-			},
-		},
-		// Hydration — Polkadot DeFi parachain (HydraDX). All providers dead
-		// (DNS dead or HTTP 400). Chain suspended from active probing.
-		// ZetaChain — EVM omnichain L1 (chain 7000). 1 keyless provider.
-		// Excluded: BlockPI (404), AllThatNode (DNS dead).
-		{
-			Slug: "zetachain",
-			Name: "ZetaChain",
-			Providers: []Provider{
-				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_ZETACHAIN_THIRDWEB", "https://7000.rpc.thirdweb.com")},
 			},
 		},
 		// HAQQ — EVM Islamic finance L1 (chain 11235). 3 keyless providers.
@@ -1936,16 +1895,6 @@ func chains() []Chain {
 				{Slug: "waxsweden", Name: "WAX Sweden", URL: envDefault("RPC_URL_WAX_SWEDEN", "https://api.waxsweden.org")},
 			},
 		},
-		// 2026-08-18 wave-8. Neon EVM — EVM runtime on Solana (chain 245022934), eth_getBlockByNumber probe. 3 keyless providers.
-		{
-			Slug: "neon",
-			Name: "Neon EVM",
-			Providers: []Provider{
-				{Slug: "neon-p2p", Name: "P2P Neon Proxy", URL: envDefault("RPC_URL_NEON_P2P", "https://neon-proxy-mainnet.solana.p2p.org")},
-				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_NEON_THIRDWEB", "https://245022934.rpc.thirdweb.com")},
-				{Slug: "everstake", Name: "Everstake", URL: envDefault("RPC_URL_NEON_EVERSTAKE", "https://neon-mainnet.everstake.one")},
-			},
-		},
 		// 2026-08-18 wave-8. Merlin Chain — Bitcoin L2 EVM (chain 4200), eth_getBlockByNumber probe. 3 keyless providers.
 		{
 			Slug: "merlin",
@@ -1964,16 +1913,6 @@ func chains() []Chain {
 				{Slug: "viction-official", Name: "Viction Official", URL: envDefault("RPC_URL_VICTION_OFFICIAL", "https://rpc.viction.xyz")},
 				{Slug: "viction-rpc2", Name: "Viction RPC2", URL: envDefault("RPC_URL_VICTION_RPC2", "https://rpc2.viction.xyz")},
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_VICTION_DRPC", "https://viction.drpc.org")},
-			},
-		},
-		// 2026-08-18 wave-8. ThunderCore — EVM L1 (chain 108), eth_getBlockByNumber probe. 3 keyless providers.
-		{
-			Slug: "thundercore",
-			Name: "ThunderCore",
-			Providers: []Provider{
-				{Slug: "thundercore-official", Name: "ThunderCore Official", URL: envDefault("RPC_URL_THUNDERCORE_OFFICIAL", "https://mainnet-rpc.thundercore.com")},
-				{Slug: "thundertoken", Name: "ThunderToken", URL: envDefault("RPC_URL_THUNDERCORE_THUNDERTOKEN", "https://mainnet-rpc.thundertoken.net")},
-				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_THUNDERCORE_DRPC", "https://thundercore.drpc.org")},
 			},
 		},
 		// 2026-08-18 wave-8. OKTC (OKX Token Chain) — EVM L1 (chain 66), eth_getBlockByNumber probe. 3 keyless providers.

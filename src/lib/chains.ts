@@ -671,15 +671,6 @@ export const CHAINS: ChainEntry[] = [
       "Ethereum-compatible smart-contract environment on Filecoin (FEVM, chain 314) powered by the Filecoin Virtual Machine, FIL gas token, ~30 s epoch time, decentralized storage proofs securing state.",
   },
   {
-    slug: "canto",
-    label: "Canto",
-    category: "L1",
-    nativeSymbol: "CANTO",
-    website: "https://canto.io",
-    description:
-      "Permissionless EVM L1 (chain 7700) with free public infrastructure (DEX, lending market, stablecoin) built into the protocol as core primitives, CANTO gas token, ~6 s block time.",
-  },
-  {
     slug: "aurora",
     label: "Aurora",
     category: "L2",
@@ -978,15 +969,6 @@ export const CHAINS: ChainEntry[] = [
       "Cosmos SDK blockchain (cataclysm-1) supporting both CosmWasm and EVM smart contracts with sub-second block times, NIBI staking token, CometBFT consensus.",
   },
   {
-    slug: "quicksilver",
-    label: "Quicksilver",
-    category: "L1",
-    nativeSymbol: "QCK",
-    website: "https://quicksilver.zone",
-    description:
-      "Cosmos SDK ICS liquid staking protocol (quicksilver-2) providing qATOM, qOSMO, qSTARS and other IBC-connected staked representations, QCK staking token, CometBFT consensus.",
-  },
-  {
     slug: "terra",
     label: "Terra",
     category: "L1",
@@ -1039,15 +1021,6 @@ export const CHAINS: ChainEntry[] = [
     website: "https://hydration.net",
     description:
       "Polkadot parachain DeFi hub (formerly HydraDX) featuring an Omnipool AMM, Stableswap, money market, and OTC desk, secured by Polkadot shared security with HDX as the native governance token.",
-  },
-  {
-    slug: "zetachain",
-    label: "ZetaChain",
-    category: "L1",
-    nativeSymbol: "ZETA",
-    website: "https://www.zetachain.com",
-    description:
-      "EVM omnichain L1 (chain 7000) with native cross-chain messaging and value transfer across Bitcoin, Ethereum, BNB Chain, and other networks without bridges, using ZETA as the gas and bonding token.",
   },
   {
     slug: "haqq",
@@ -1248,15 +1221,6 @@ export const CHAINS: ChainEntry[] = [
       "Delegated proof-of-stake L1 using the Antelope (EOSIO) protocol, purpose-built for NFT trading and gaming with 0.5-second block times and no gas fees for users.",
   },
   {
-    slug: "neon",
-    label: "Neon EVM",
-    category: "L2",
-    nativeSymbol: "NEON",
-    website: "https://neon.evm.build",
-    description:
-      "EVM runtime on Solana that executes Ethereum-compatible transactions via a proxy layer, inheriting Solana throughput and low fees while exposing a standard Ethereum JSON-RPC interface (chain ID 245022934).",
-  },
-  {
     slug: "merlin",
     label: "Merlin Chain",
     category: "L2",
@@ -1273,15 +1237,6 @@ export const CHAINS: ChainEntry[] = [
     website: "https://viction.xyz",
     description:
       "Proof-of-stake-voting EVM L1 (formerly TomoChain, chain ID 88) with 2-second block times, zero-gas-fee UX via the TomoZ protocol, and on-chain governance through Masternodes.",
-  },
-  {
-    slug: "thundercore",
-    label: "ThunderCore",
-    category: "L1",
-    nativeSymbol: "TT",
-    website: "https://www.thundercore.com",
-    description:
-      "EVM-compatible L1 using the Thunder consensus protocol for high throughput, producing approximately one block per second with fast finality (chain ID 108).",
   },
   {
     slug: "oktc",

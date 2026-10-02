@@ -238,6 +238,34 @@ export function isDevOnlyRoute(path: string): boolean {
 }
 
 export const REMOVED_BENCH_SLUGS = new Set([
+  // Six chain RPC benches retired 2026-10-02 after an audit of all 161.
+  // Each was probed on the usual schedule and produced nothing rankable:
+  // every declared endpoint was re-tested by hand on the day, and the
+  // chains below have no public RPC that answers us at all.
+  //
+  //   quicksilver   0 of 3 endpoints alive, last sample 29 days old
+  //   thundercore   0 of 3 (two answer 503), 24 days
+  //   canto         0 of 1 (connection times out), 24 days
+  //   neon          0 of 3, 8 days
+  //   plume         0 of 1 (drpc answers 400), probe fresh
+  //   zetachain     1 endpoint alive, 0.37 % success, probe fresh
+  //
+  // The last two are the interesting pair: the probe is running and the
+  // data is current, and what it says is that nobody answers. zetachain's
+  // one endpoint is Thirdweb, which serves browsers and refuses our probe
+  // hosts everywhere (0.3 % to 1.5 % across 29 chains, see #2779).
+  //
+  // Specs and harness entries deleted; the slugs stay here so an indexed
+  // URL answers 410 Gone rather than 404. Un-gate condition: a public
+  // endpoint on that chain that answers us. plume keeps its /chains page,
+  // which carries chain-bridged-tvl and chain-fees-revenue; the other five
+  // had nothing but the RPC bench and leave the chain registry with it.
+  "quicksilver-rpc",
+  "thundercore-rpc",
+  "canto-rpc",
+  "neon-rpc",
+  "plume-rpc",
+  "zetachain-rpc",
   // retired for good
   "bridge-revenue",
   // duplicate of solana-tx-landing (bench 016); the 027 active-probe
