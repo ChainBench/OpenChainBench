@@ -21,7 +21,7 @@ import { fmtUnit } from "@/lib/format";
 import { canonicalize } from "@/lib/providers";
 import { EVM_CHAIN_IDS } from "@/lib/evm-chain-ids";
 import { LEADER_MIN_SUCCESS_PCT, rpcChainLabel } from "@/lib/citation";
-import { displayResults, liveResults } from "@/lib/provider-filters";
+import { belowDisplayFloor, displayResults, liveResults, MIN_DISPLAY_SUCCESS_PCT } from "@/lib/provider-filters";
 import { CHAIN_BY_SLUG } from "@/lib/chains";
 import type { Benchmark } from "@/types/benchmark";
 
@@ -42,9 +42,38 @@ export function publicEndpointRows(benchmark: Benchmark) {
     });
 }
 
+/**
+ * Declared endpoints that answer, but almost never.
+ *
+ * publicEndpointRows starts from displayResults, a 5 % success floor, so a
+ * provider below it vanished from the page entirely: the spec named it, the
+ * probes measured it, and the reader saw a shorter list with no hint that
+ * anything was missing. On 2026-10-02 Thirdweb was declared on 31 chain RPC
+ * benches and ranked on none, at 0.3 % to 1.5 % success across 29 chains,
+ * while answering 25 of 25 calls from a consumer connection. That gap is the
+ * most useful thing we know about it, because our readers deploy on servers
+ * and will meet the same wall.
+ *
+ * So the measurement gets published instead of dropped. The block is derived,
+ * never authored: an endpoint that starts answering rejoins the list above on
+ * its own, and one that stops falls here without anyone editing a spec. The
+ * authored `excludedProviders` block below is for the other kind of absence,
+ * a provider we chose not to probe.
+ */
+export function silentEndpointRows(benchmark: Benchmark) {
+  return belowDisplayFloor(benchmark.results).filter((r) => r.endpoint && !r.unrankedLabel);
+}
+
 export async function PublicEndpointsSection({ benchmark }: { benchmark: Benchmark }) {
   const rows = publicEndpointRows(benchmark);
-  if (rows.length < 2) return null;
+  const silent = silentEndpointRows(benchmark);
+  // One usable endpoint was not worth a section listing URLs to paste. It is
+  // worth one as soon as another endpoint is declared and silent, because
+  // that is exactly the page where a reader would otherwise conclude the
+  // chain has a single provider: the pages needing the explanation most were
+  // the ones bailing out before it (iotex-rpc, 2026-10-02).
+  if (rows.length < 2 && silent.length === 0) return null;
+  if (rows.length === 0) return null;
 
   // Chain entity for the H2, from the title patterns the cluster uses
   // (both the "Fastest free X RPC" and the "X RPC endpoints" shapes),
@@ -132,6 +161,34 @@ export async function PublicEndpointsSection({ benchmark }: { benchmark: Benchma
         probe regions; the ranked table above carries p90, p99 and the
         per-region split.
       </p>
+      {silent.length > 0 && (
+        <div className="mt-5">
+          <h3 className="text-sm font-medium text-ink">
+            Declared, but not answering our probes
+          </h3>
+          <p className="mt-1 text-[12.5px] text-ink-soft leading-snug">
+            {silent.length === 1 ? "This endpoint is" : "These endpoints are"} named in the spec and
+            probed on the same schedule as the rest, and {silent.length === 1 ? "answers" : "answer"}{" "}
+            too rarely to carry a median. Below {MIN_DISPLAY_SUCCESS_PCT} % success we leave{" "}
+            {silent.length === 1 ? "it" : "them"} out of the table rather than publish a latency drawn
+            from a handful of replies. A provider can serve a browser and refuse a datacenter, so this
+            says what a server deployment would meet, not what the endpoint is capable of.
+          </p>
+          <ul className="mt-2 space-y-1 text-[12.5px]">
+            {silent.map((r) => (
+              <li key={r.slug} className="flex flex-wrap items-center gap-x-2">
+                <span className="font-medium text-ink">{r.name}</span>
+                <code className="font-mono text-[11.5px] text-ink-faint truncate max-w-full" title={r.endpoint}>
+                  {r.endpoint}
+                </code>
+                <span className="tabular-nums text-ink-soft">
+                  {r.successRate.toFixed(1)} % success over 24 h
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       {benchmark.excludedProviders && benchmark.excludedProviders.length > 0 && (
         <div className="mt-4">
           <h3 className="text-sm font-medium text-ink">
