@@ -10,14 +10,43 @@
  * factual, no marketing adjectives. Twitter handle without the URL.
  */
 
+/**
+ * A statement the provider makes about itself that no harness can measure:
+ * swap insurance, confidentiality, whether users are shielded from
+ * questionable liquidity. Aurora asked for exactly these, and they are real
+ * properties, but they are not measurements.
+ *
+ * Three fields a measurement does not need, all required: where we read it,
+ * when we last looked, and the provider's own words for it. The product page
+ * renders all three under a heading that says the provider is speaking, and
+ * flags a claim nobody has re-checked in six months. See lib/provider-claims.ts.
+ *
+ * A claim never enters a benchmark, never ranks anything, and never moves a
+ * leader. If a property can be probed, probe it and publish the measurement
+ * instead; this is only for the ones that cannot.
+ */
+export type ProviderClaim = {
+  /** What the claim is about. "Swap insurance", "Confidentiality". */
+  label: string;
+  /** The provider's position, in plain words, no superlatives. */
+  value: string;
+  /** https URL where this was read. An unsourced claim is a rumour. */
+  source: string;
+  /** YYYY-MM-DD the source was last checked by a human. */
+  verifiedAt: string;
+};
+
 export type ProviderRegistryEntry = {
   url: string;
   description: string;
   twitter?: string;
 
-  // Optional rich content surfaced on the product detail page when present.
-  // Every field is independently optional; the page renders only the
-  // sections that have data, so partial enrichment is safe.
+  // Optional enrichment. NOTE: of the seven fields below, none is currently
+  // read by any page. They were added for a product-page section that was
+  // never built, and the comment here used to claim they were "surfaced on
+  // the product detail page", which is not true. Either wire them or drop
+  // them; do not add an eighth expecting it to render. `claims` below IS
+  // rendered, and its test fails the build if a claim is malformed.
   longDescription?: string;
   chains?: string[];
   features?: string[];
@@ -33,6 +62,11 @@ export type ProviderRegistryEntry = {
    * Sub-products keep their own bench rankings — this is editorial
    * cross-linking, not data merging. */
   parent?: string;
+
+  /** Provider statements we cannot measure, each with a source and a date.
+   *  Rendered in their own section, never mixed with measured columns.
+   *  See lib/provider-claims.ts for the rules and the staleness window. */
+  claims?: ProviderClaim[];
 };
 
 export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
