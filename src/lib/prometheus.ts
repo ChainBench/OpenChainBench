@@ -187,6 +187,8 @@ export class Prometheus {
   }
 
   private async fetchEnvelope<T>(url: URL, signal?: AbortSignal): Promise<T> {
+    const authHeaders = promAuthHeaders(url);
+
     // Defense in depth against DNS-rebinding: the schema guards URL
     // literals, but a hostname can resolve to a private address at fetch
     // time. Refuse if any resolved IP is loopback / RFC1918 / link-local
@@ -206,6 +208,7 @@ export class Prometheus {
       const merged = signal ? mergeSignals(signal, controller.signal) : controller.signal;
       const res = await fetch(url, {
         signal: merged,
+        headers: authHeaders,
         // Refuse to follow redirects. blocks 3xx into a private host.
         redirect: "manual",
         // Cache at the platform level. pages call us through ISR.
@@ -441,6 +444,38 @@ const hostCheckCache = new Map<string, HostCheckEntry>();
 // that herd is what produced the "dns: timeout resolving <prom-host>"
 // failure storms. First caller does the lookup, the rest await it.
 const hostCheckInFlight = new Map<string, Promise<void>>();
+
+/** Basic-auth header for the public Prometheus host, when one is configured.
+ *
+ *  prom.openchainbench.com answers the internet, because the Vercel site
+ *  queries it directly (PROMETHEUS_URL is set in production). Until something
+ *  authenticates, Prometheus runs there with --web.enable-admin-api and no
+ *  credential, so the destructive routes are blocked at the edge instead.
+ *  This closes the rest.
+ *
+ *  It has to be a header: Node's fetch refuses a URL that embeds credentials
+ *  outright ("Request cannot be constructed from a URL that includes
+ *  credentials"), so putting user:pass@ in PROMETHEUS_URL would not weaken
+ *  auth, it would break every query.
+ *
+ *  Absent the variable this adds nothing, which is what makes the edge
+ *  switchable in the only safe order: ship this, set the variable, redeploy
+ *  (env binds at deployment, not at request time), then turn auth on in
+ *  Caddy. Reversed, every bench 401s until the redeploy lands.
+ *
+ *  Never sent over plain http. The worker's in-network hop to ocb-prom needs
+ *  no credential, and forwarding one would put it somewhere it never has to
+ *  be. */
+export function promAuthHeaders(url: URL): Record<string, string> {
+  if (url.protocol !== "https:") return {};
+  const raw = process.env.PROMETHEUS_BASIC_AUTH?.trim();
+  // A value without a colon cannot be user:password; sending it would be a
+  // silent 401 on every bench rather than a visible misconfiguration.
+  if (!raw || !raw.includes(":")) return {};
+  return {
+    authorization: `Basic ${Buffer.from(raw, "utf8").toString("base64")}`,
+  };
+}
 
 async function assertPublicHost(url: URL): Promise<void> {
   // The worker on the VPS reaches Prometheus over the docker bridge by
