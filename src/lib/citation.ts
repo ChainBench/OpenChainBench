@@ -5,7 +5,7 @@
  */
 
 import type { Benchmark, ProviderResult } from "@/types/benchmark";
-import { liveResults, displayResults } from "@/lib/provider-filters";
+import { liveResults, displayResults, belowDisplayFloor } from "@/lib/provider-filters";
 import { fmtUnit } from "@/lib/format";
 import { nounFor } from "@/lib/row-noun";
 import { valueSuffix } from "@/lib/value-window";
@@ -241,12 +241,20 @@ export function headlineParts(b: Benchmark): { claim: string; rest: string } {
     const listed = displayResults(b.results).length;
     const ranked = rankedCandidates(b).length;
     const below = listed - ranked;
+    // Declared, probed, and answering too rarely to carry a median. They
+    // are not in `listed`, so without this the one-endpoint sentence below
+    // said "the only endpoint measured" on a chain where three were
+    // measured and two answered under 2 % of the time (iotex-rpc,
+    // 2026-10-02). "Answering" is the honest verb for what `listed` holds.
+    const silent = belowDisplayFloor(b.results).length;
     // The keyed variant of a chain page names its cohort: "API-key
     // Arbitrum RPC endpoints", never "free public".
     const cohort = nonHeadlineTier(b) === "keyed" ? "private (API-key)" : "free public";
     const claim =
       ranked === 1 && listed === 1
-        ? `${top.name} is the only ${cohort} ${chain} RPC endpoint measured, at ${value}`
+        ? silent > 0
+          ? `${top.name} is the only one of the ${listed + silent} ${cohort} ${chain} RPC endpoints answering our probes, at ${value}`
+          : `${top.name} is the only ${cohort} ${chain} RPC endpoint measured, at ${value}`
         : ranked === 1
           ? `${top.name} is the only one of the ${listed} ${cohort} ${chain} RPC endpoints measured above the ${LEADER_MIN_SUCCESS_PCT} % success floor, at ${value}`
           : `${top.name} has the lowest median latency of the ${ranked} ${cohort} ${chain} RPC endpoints measured${below > 0 ? ` above the ${LEADER_MIN_SUCCESS_PCT} % success floor (${listed} listed)` : ""}, ${value}`;
