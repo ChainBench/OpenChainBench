@@ -568,16 +568,19 @@ func (e *Executor) executeMobula(route TestRoute, amount float64, quoteStart tim
 	if quote.Data.Deposit.Solana.SerializedTx != "" {
 		// Solana source - use deposit.solana.serializedTx
 		log.Printf("    [mobula] 📤 Broadcasting Solana TX (type=%s, len=%d)", quote.Data.Deposit.Solana.Type, len(quote.Data.Deposit.Solana.SerializedTx))
+		recordDestinationDisclosure("mobula", route, quote.Data.Deposit.Solana.SerializedTx, receiverAddress, senderAddress, e.region)
 		txHash, err = e.txExecutor.ExecuteSolanaTransaction(quote.Data.Deposit.Solana.SerializedTx)
 	} else if quote.Data.Deposit.EVM.To != "" {
 		// EVM source - use deposit.evm
 		log.Printf("    [mobula] 📤 Broadcasting EVM TX to=%s, value=%s", quote.Data.Deposit.EVM.To, quote.Data.Deposit.EVM.Value)
+		recordDestinationDisclosure("mobula", route, quote.Data.Deposit.EVM.Data, receiverAddress, senderAddress, e.region)
 		txHash, err = e.txExecutor.ExecuteEVMTransaction(route.FromChain, quote.Data.Deposit.EVM.To, quote.Data.Deposit.EVM.Data, quote.Data.Deposit.EVM.Value)
 	} else if len(quote.Data.Steps) > 0 {
 		// Use steps array - approval already handled above, find bridgeToken step
 		for _, step := range quote.Data.Steps {
 			if step.Type == "bridgeToken" || step.Type != "approve" {
 				log.Printf("    [mobula] 📤 Broadcasting EVM TX (steps) to=%s, value=%s", step.Tx.To, step.Tx.Value)
+				recordDestinationDisclosure("mobula", route, step.Tx.Data, receiverAddress, senderAddress, e.region)
 				txHash, err = e.txExecutor.ExecuteEVMTransaction(route.FromChain, step.Tx.To, step.Tx.Data, step.Tx.Value)
 				break
 			}
