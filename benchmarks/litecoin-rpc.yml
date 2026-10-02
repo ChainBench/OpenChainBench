@@ -30,7 +30,7 @@ methodology:
 
 faq:
   - q: "Which Litecoin RPC endpoints work without an API key?"
-    a: "{{count}} endpoints sustain continuous keyless probing today: Tatum (litecoin-mainnet.gateway.tatum.io, JSON-RPC), BlockCypher (api.blockcypher.com/v1/ltc/main, REST GET) and LitecoinSpace (litecoinspace.org/api/blocks/tip/height, Esplora REST). Every listed endpoint was live-verified with a block-height probe returning a parsable result before inclusion."
+    a: "{{declared_count}} endpoints are probed on this chain: Tatum (litecoin-mainnet.gateway.tatum.io, JSON-RPC), BlockCypher (api.blockcypher.com/v1/ltc/main, REST GET) and LitecoinSpace (litecoinspace.org/api/blocks/tip/height, Esplora REST). Every listed endpoint was live-verified with a block-height probe returning a parsable result before inclusion."
   - q: "Why does LitecoinSpace return a plain integer instead of JSON?"
     a: "LitecoinSpace is built on the Esplora block explorer API, which exposes the current tip height at /api/blocks/tip/height as a raw ASCII integer with no JSON envelope. This is the same format used by mempool.space for Bitcoin. The harness reads the body directly and parses it as a uint64."
 

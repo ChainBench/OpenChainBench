@@ -28,7 +28,7 @@ methodology:
 
 faq:
   - q: "Which Union RPC endpoints work without an API key?"
-    a: "{{count}} endpoints sustain continuous keyless probing today: Nodes.Guru (rpc-1.union.nodes.guru), Stake And Relax (union-rpc.stakeandrelax.net), and High Stakes (union-rpc.highstakes.ch). Every listed endpoint was live-verified before inclusion."
+    a: "{{declared_count}} endpoints are probed on this chain: Nodes.Guru (rpc-1.union.nodes.guru), Stake And Relax (union-rpc.stakeandrelax.net), and High Stakes (union-rpc.highstakes.ch). Every listed endpoint was live-verified before inclusion."
   - q: "What is Union and why does its RPC latency matter?"
     a: "Union is a ZK-based cross-chain interoperability protocol with a native Cosmos SDK chain (union-1). It connects blockchains without widely used intermediaries by verifying consensus proofs on-chain. Developers building cross-chain applications, bridges, or omnichain protocols on Union need reliable low-latency RPC access to query transactions, proofs, and chain state."
   - q: "What makes Union different from other cross-chain protocols?"

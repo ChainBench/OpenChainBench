@@ -28,7 +28,7 @@ methodology:
 
 faq:
   - q: "Which Chihuahua RPC endpoints work without an API key?"
-    a: "{{count}} endpoints sustain continuous keyless probing today: Chihuahua official (rpc.chihuahua.wtf), Polkachu (chihuahua-rpc.polkachu.com), and Validatus (rpc.chihuahua.validatus.com). Every listed endpoint was live-verified before inclusion."
+    a: "{{declared_count}} endpoints are probed on this chain: Chihuahua official (rpc.chihuahua.wtf), Polkachu (chihuahua-rpc.polkachu.com), and Validatus (rpc.chihuahua.validatus.com). Every listed endpoint was live-verified before inclusion."
   - q: "What is Chihuahua and why does its RPC latency matter?"
     a: "Chihuahua is a Cosmos SDK chain and the home of HUAHUA, a community-driven meme token in the Cosmos ecosystem. Developers building wallets, explorers, or integrations for HUAHUA need low-latency RPC access to query balances, transactions, and governance state."
 

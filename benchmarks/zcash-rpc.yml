@@ -29,7 +29,7 @@ methodology:
 
 faq:
   - q: "Which Zcash RPC endpoints work without an API key?"
-    a: "{{count}} endpoints sustain continuous keyless probing today: Tatum zcashd (zcash-mainnet.gateway.tatum.io; JSON-RPC), Tatum Zebra (zcash-mainnet-zebrad.gateway.tatum.io; JSON-RPC) and Blockchair (api.blockchair.com/zcash/stats; REST GET). Every listed endpoint was live-verified with a block-height probe returning a parsable result before inclusion."
+    a: "{{declared_count}} endpoints are probed on this chain: Tatum zcashd (zcash-mainnet.gateway.tatum.io; JSON-RPC), Tatum Zebra (zcash-mainnet-zebrad.gateway.tatum.io; JSON-RPC) and Blockchair (api.blockchair.com/zcash/stats; REST GET). Every listed endpoint was live-verified with a block-height probe returning a parsable result before inclusion."
   - q: "What is the difference between Tatum zcashd and Tatum Zebra?"
     a: "Both are Tatum gateways for Zcash mainnet. zcashd is the original C++ Zcash node that reached end of life in July 2026, while Zebra is the new Rust full-node implementation maintained by the Zcash Foundation. Tatum runs both backends and exposes them on separate gateway URLs. Comparing their latency shows whether the node implementation itself affects response time."
   - q: "Why does Blockchair use a different API method than the Tatum providers?"

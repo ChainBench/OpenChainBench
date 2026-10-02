@@ -28,7 +28,7 @@ methodology:
 
 faq:
   - q: "Which ICON RPC endpoints work without an API key?"
-    a: "{{count}} endpoints sustain continuous keyless probing today: ICON Foundation (ctz.solidwallet.io), ICON Community (api.icon.community), and iconblockchain.xyz. Every listed endpoint was live-verified before inclusion."
+    a: "{{declared_count}} endpoints are probed on this chain: ICON Foundation (ctz.solidwallet.io), ICON Community (api.icon.community), and iconblockchain.xyz. Every listed endpoint was live-verified before inclusion."
   - q: "What is ICON and why does its RPC latency matter?"
     a: "ICON is a South Korean blockchain focused on enterprise interoperability, originally built for connecting financial institutions and public organizations. ICX wallets, DApp integrations, and BTP cross-chain bridging all depend on reliable RPC access. Low latency matters for real-time ICX transfers and DeFi protocols built on the ICON ecosystem."
   - q: "What is the ICX token?"

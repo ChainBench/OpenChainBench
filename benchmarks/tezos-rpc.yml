@@ -28,7 +28,7 @@ methodology:
 
 faq:
   - q: "Which Tezos RPC endpoints work without an API key?"
-    a: "{{count}} endpoints sustain continuous keyless probing today: SmartPy (mainnet.smartpy.io), TezBeta (rpc.tzbeta.net), TzKT by Baking Bad (rpc.tzkt.io/mainnet) and TCInfra (prod.tcinfra.net/rpc/mainnet). Every listed endpoint was live-verified with a block header call returning a parsable level before inclusion."
+    a: "{{declared_count}} endpoints are probed on this chain: SmartPy (mainnet.smartpy.io), TezBeta (rpc.tzbeta.net), TzKT by Baking Bad (rpc.tzkt.io/mainnet) and TCInfra (prod.tcinfra.net/rpc/mainnet). Every listed endpoint was live-verified with a block header call returning a parsable level before inclusion."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
 

@@ -29,7 +29,7 @@ methodology:
 
 faq:
   - q: "Which Dogecoin RPC endpoints work without an API key?"
-    a: "{{count}} endpoints sustain continuous keyless probing today: Tatum (dogecoin-mainnet.gateway.tatum.io, JSON-RPC), dRPC (dogecoin.drpc.org, JSON-RPC) and BlockCypher (api.blockcypher.com/v1/doge/main, REST GET). Every listed endpoint was live-verified with a block-height probe returning a parsable result before inclusion."
+    a: "{{declared_count}} endpoints are probed on this chain: Tatum (dogecoin-mainnet.gateway.tatum.io, JSON-RPC), dRPC (dogecoin.drpc.org, JSON-RPC) and BlockCypher (api.blockcypher.com/v1/doge/main, REST GET). Every listed endpoint was live-verified with a block-height probe returning a parsable result before inclusion."
   - q: "Why does BlockCypher use a different API method than the other Dogecoin providers?"
     a: "BlockCypher exposes a proprietary REST API rather than a Bitcoin-compatible JSON-RPC interface. Instead of getblockcount, we send a GET request to its blockchain info endpoint, which returns a JSON object with a height field. The measurement logic is identical: client-side round-trip in milliseconds, classified as ok when a parsable block height is returned."
 

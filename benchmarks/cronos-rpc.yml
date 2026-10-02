@@ -34,7 +34,7 @@ methodology:
 
 faq:
   - q: "Which Cronos RPCs work without an API key?"
-    a: "{{count}} endpoints sustain continuous keyless probing: PublicNode (at `cronos-evm-rpc.publicnode.com`, note the non-intuitive subdomain), dRPC, and the chain-linked public endpoint. Tenderly's public gateway does not reach Cronos, and 1RPC was descoped cluster-wide to Ethereum and Arbitrum because its keyless per-IP daily budget cannot sustain continuous multi-chain probing. Every listed endpoint was live-verified before inclusion."
+    a: "{{declared_count}} endpoints are probed on this chain: PublicNode (at `cronos-evm-rpc.publicnode.com`, note the non-intuitive subdomain), dRPC, and the chain-linked public endpoint. Tenderly's public gateway does not reach Cronos, and 1RPC was descoped cluster-wide to Ethereum and Arbitrum because its keyless per-IP daily budget cannot sustain continuous multi-chain probing. Every listed endpoint was live-verified before inclusion."
   - q: "Why isn't MeowRPC listed on Cronos?"
     a: "We tried it. MeowRPC's long-tail endpoints no longer resolve (DNS gone), and the provider appears defunct outside a few legacy chains, so it failed the live verification, eth_chainId match plus sustained probing, that gates admission to this cluster. Directories still listing it are copying stale metadata; this bench only ranks endpoints that answer."
 

@@ -28,7 +28,7 @@ methodology:
 
 faq:
   - q: "Which Hydration RPC endpoints work without an API key?"
-    a: "{{count}} endpoints sustain continuous keyless probing today: Hydration official (rpc.hydradx.cloud) and Dwellir (hydration-rpc.n.dwellir.com). Every listed endpoint was live-verified with a chain_getHeader call returning a parsable block number before inclusion."
+    a: "{{declared_count}} endpoints are probed on this chain: Hydration official (rpc.hydradx.cloud) and Dwellir (hydration-rpc.n.dwellir.com). Every listed endpoint was live-verified with a chain_getHeader call returning a parsable block number before inclusion."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
 

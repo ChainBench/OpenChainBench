@@ -28,7 +28,7 @@ methodology:
 
 faq:
   - q: "Which MANTRA Chain RPC endpoints work without an API key?"
-    a: "{{count}} endpoints sustain continuous keyless probing today: MANTRA official (rpc.mantrachain.io), ITRocket (mantra-mainnet-rpc.itrocket.net), and Polkachu (mantra-rpc.polkachu.com). Every listed endpoint was live-verified before inclusion."
+    a: "{{declared_count}} endpoints are probed on this chain: MANTRA official (rpc.mantrachain.io), ITRocket (mantra-mainnet-rpc.itrocket.net), and Polkachu (mantra-rpc.polkachu.com). Every listed endpoint was live-verified before inclusion."
   - q: "What is MANTRA Chain and why does its RPC latency matter?"
     a: "MANTRA Chain is a Cosmos SDK Layer 1 built for real-world asset tokenization under regulatory frameworks. It enables compliant issuance and trading of tokenized financial assets such as real estate, bonds, and commodities. Developers building RWA applications, compliance tooling, or DeFi protocols on MANTRA need reliable low-latency RPC access to query asset state, transactions, and governance."
   - q: "What is the OM token on MANTRA Chain?"

@@ -28,7 +28,7 @@ methodology:
 
 faq:
   - q: "Which NEAR RPC endpoints work without an API key?"
-    a: "{{count}} endpoints sustain continuous keyless probing today: NEAR Foundation (rpc.mainnet.near.org), FastNEAR (free.rpc.fastnear.com), Lava (near.lava.build) and dRPC (near.drpc.org). Every listed endpoint was live-verified with a block/finality:final call returning a parsable height before inclusion."
+    a: "{{declared_count}} endpoints are probed on this chain: NEAR Foundation (rpc.mainnet.near.org), FastNEAR (free.rpc.fastnear.com), Lava (near.lava.build) and dRPC (near.drpc.org). Every listed endpoint was live-verified with a block/finality:final call returning a parsable height before inclusion."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
 

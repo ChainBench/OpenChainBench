@@ -28,7 +28,7 @@ methodology:
 
 faq:
   - q: "Which Sentinel DVPN RPC endpoints work without an API key?"
-    a: "{{count}} endpoints sustain continuous keyless probing today: Polkachu (sentinel-rpc.polkachu.com), PublicNode (sentinel-rpc.publicnode.com), and Cosmos Directory (rpc.cosmos.directory/sentinel). Every listed endpoint was live-verified before inclusion."
+    a: "{{declared_count}} endpoints are probed on this chain: Polkachu (sentinel-rpc.polkachu.com), PublicNode (sentinel-rpc.publicnode.com), and Cosmos Directory (rpc.cosmos.directory/sentinel). Every listed endpoint was live-verified before inclusion."
   - q: "What is Sentinel and why does its RPC latency matter?"
     a: "Sentinel is a decentralized VPN network where node operators earn DVPN tokens for sharing bandwidth. Developers building dVPN clients, node management tools, or on-chain governance integrations require reliable low-latency RPC access to query bandwidth sessions, staking state, and transaction history."
 

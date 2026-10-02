@@ -28,7 +28,7 @@ methodology:
 
 faq:
   - q: "Which VeChain RPC endpoints work without an API key?"
-    a: "{{count}} endpoints sustain continuous keyless probing today: VeChain Foundation mainnet node (mainnet.vechain.org), VeThor Node (vethor-node.vechain.com) and VeChain.energy community node (node-mainnet.vechain.energy). Every listed endpoint was live-verified with a blocks/best call returning a parsable block number before inclusion."
+    a: "{{declared_count}} endpoints are probed on this chain: VeChain Foundation mainnet node (mainnet.vechain.org), VeThor Node (vethor-node.vechain.com) and VeChain.energy community node (node-mainnet.vechain.energy). Every listed endpoint was live-verified with a blocks/best call returning a parsable block number before inclusion."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
 

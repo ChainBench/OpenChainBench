@@ -28,7 +28,7 @@ methodology:
 
 faq:
   - q: "Which cheqd RPC endpoints work without an API key?"
-    a: "{{count}} endpoints sustain continuous keyless probing today: cheqd official (rpc.cheqd.net), PublicNode (cheqd-rpc.publicnode.com), and NodeStake (rpc.cheqd.nodestake.org). Every listed endpoint was live-verified before inclusion."
+    a: "{{declared_count}} endpoints are probed on this chain: cheqd official (rpc.cheqd.net), PublicNode (cheqd-rpc.publicnode.com), and NodeStake (rpc.cheqd.nodestake.org). Every listed endpoint was live-verified before inclusion."
   - q: "What is cheqd and why does its RPC latency matter?"
     a: "cheqd is a Cosmos SDK blockchain built for decentralized identity (DID) and verifiable credentials. DID resolution, verifiable credential anchoring, and CHEQ token transfers all depend on RPC availability. Applications using the cheqd DID method resolve identifiers via RPC, making latency directly visible to end users and credential verifiers."
   - q: "What is the CHEQ token?"
