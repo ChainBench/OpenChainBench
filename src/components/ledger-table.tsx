@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { rateDecimals, successTitle } from "@/lib/sample-precision";
 import { rowHref } from "@/lib/row-link";
 
 import Link from "next/link";
@@ -41,6 +42,16 @@ function isHexAddressSlug(slug: string): boolean {
 function errorCount(r: ProviderResult): number | null {
   if (r.sampleSize == null) return null;
   return Math.round(r.sampleSize * (1 - r.successRate / 100));
+}
+
+/** The success percentage as its sample can support it, and what it rests on.
+ *  See src/lib/sample-precision.ts: this column used to print two decimals
+ *  regardless, so four bridges with ~70 executions a week all read 100.00%. */
+function fmtSuccess(r: ProviderResult): string {
+  return `${r.successRate.toFixed(rateDecimals(r.sampleSize))}%`;
+}
+function successTooltip(r: ProviderResult): string | undefined {
+  return successTitle(r.successRate, r.sampleSize);
 }
 
 /** Sort keys exposed by the header click handlers. `null` (the default)
@@ -1045,8 +1056,11 @@ function Row({
             </td>
           )}
           {showRel && (
-            <td className={`py-2.5 px-3 text-right text-ink-soft whitespace-nowrap ${dense ? "hidden xl:table-cell" : "hidden md:table-cell"}`}>
-              {r.successRate.toFixed(2)}%
+            <td
+              className={`py-2.5 px-3 text-right text-ink-soft whitespace-nowrap ${dense ? "hidden xl:table-cell" : "hidden md:table-cell"}`}
+              title={successTooltip(r)}
+            >
+              {fmtSuccess(r)}
             </td>
           )}
           {!dense && showRel && (
@@ -1117,8 +1131,11 @@ function Row({
             </td>
           )}
           {showRel && (
-            <td className={`py-2.5 px-3 text-right text-ink-soft whitespace-nowrap ${dense ? "hidden xl:table-cell" : "hidden md:table-cell"}`}>
-              {isUnranked ? "—" : `${r.successRate.toFixed(2)}%`}
+            <td
+              className={`py-2.5 px-3 text-right text-ink-soft whitespace-nowrap ${dense ? "hidden xl:table-cell" : "hidden md:table-cell"}`}
+              title={isUnranked ? undefined : successTooltip(r)}
+            >
+              {isUnranked ? "—" : fmtSuccess(r)}
             </td>
           )}
           {!dense && showRel && (
