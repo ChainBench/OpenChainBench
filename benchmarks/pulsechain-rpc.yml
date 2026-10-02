@@ -29,7 +29,7 @@ methodology:
 
 faq:
   - q: "Which PulseChain RPCs work without an API key?"
-    a: "{{count}} endpoints sustain continuous keyless probing, each listed with its URL in the endpoints table above."
+    a: "{{declared_count}} endpoints are probed on this chain, each listed with its URL in the endpoints table above."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
 

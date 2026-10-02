@@ -40,7 +40,7 @@ excluded_providers:
 
 faq:
   - q: "Which Solana RPCs work without an API key?"
-    a: "{{count}} endpoints sustain continuous keyless probing today; each is listed with its URL, 24h median and success rate in the endpoints table on this page, and the list changes as providers come and go."
+    a: "{{declared_count}} endpoints are probed on this chain; each is listed with its URL, 24h median and success rate in the endpoints table on this page, and the list changes as providers come and go."
   - q: "Is api.mainnet-beta.solana.com good enough for production?"
     a: "For development, demos and light read workloads, yes: Solana Labs documents roughly 100 requests per 10 seconds per IP. For production trading, indexing or anything latency-sensitive, dedicated providers exist for a reason; this page measures the free tier so you know exactly what the default gets you before you decide."
   - q: "Why is there no archive-depth column like the EVM pages?"

@@ -28,7 +28,7 @@ methodology:
 
 faq:
   - q: "Which Waves RPC endpoints work without an API key?"
-    a: "{{count}} endpoints sustain continuous keyless probing today: Waves Foundation nodes (nodes.wavesnodes.com), Waves.Exchange (nodes.wx.network) and WavesExchange (nodes.waves.exchange). Every listed endpoint was live-verified with a blocks/last call returning a parsable height before inclusion."
+    a: "{{declared_count}} endpoints are probed on this chain: Waves Foundation nodes (nodes.wavesnodes.com), Waves.Exchange (nodes.wx.network) and WavesExchange (nodes.waves.exchange). Every listed endpoint was live-verified with a blocks/last call returning a parsable height before inclusion."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
 

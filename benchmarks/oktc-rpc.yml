@@ -28,7 +28,7 @@ methodology:
 
 faq:
   - q: "Which OKTC RPC endpoints work without an API key?"
-    a: "{{count}} endpoints sustain continuous keyless probing today: OKX Chain Official (exchainrpc.okex.org), 1RPC (1rpc.io/oktc) and dRPC (oktc.drpc.org). Every listed endpoint was live-verified with an eth_getBlockByNumber call returning a parsable block number before inclusion."
+    a: "{{declared_count}} endpoints are probed on this chain: OKX Chain Official (exchainrpc.okex.org), 1RPC (1rpc.io/oktc) and dRPC (oktc.drpc.org). Every listed endpoint was live-verified with an eth_getBlockByNumber call returning a parsable block number before inclusion."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
 

@@ -32,7 +32,7 @@ faq:
   - q: "How is Bitcoin RPC latency measured?"
     a: "A single getblockcount call every 60 seconds from three regions (us-east, eu-west, Singapore), recording the wall-clock round trip. Only successful, non-stale responses count."
   - q: "Do these endpoints need an API key?"
-    a: "{{count}} endpoints sustain continuous keyless probing today; each is listed with its URL, 24h median and success rate in the endpoints table on this page, and the list changes as providers come and go."
+    a: "{{declared_count}} endpoints are probed on this chain; each is listed with its URL, 24h median and success rate in the endpoints table on this page, and the list changes as providers come and go."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
 

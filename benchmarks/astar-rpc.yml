@@ -28,7 +28,7 @@ methodology:
 
 faq:
   - q: "Which Astar Network RPCs work without an API key?"
-    a: "{{count}} endpoints sustain continuous keyless probing, each listed with its URL in the endpoints table above. PublicNode returned 404 and BlastAPI's DNS is dead; both were removed."
+    a: "{{declared_count}} endpoints are probed on this chain, each listed with its URL in the endpoints table above. PublicNode returned 404 and BlastAPI's DNS is dead; both were removed."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
 
