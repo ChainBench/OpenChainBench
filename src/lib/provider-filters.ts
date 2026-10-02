@@ -54,6 +54,27 @@ export function displayResults(results: ProviderResult[]): ProviderResult[] {
 }
 
 /**
+ * The mirror of displayResults: measured, declared, and below the floor.
+ *
+ * These used to be invisible. A provider under 5 % success dropped out of
+ * the table, out of {{count}}, and out of the headline, so a page listing
+ * one endpoint read as a chain that has one endpoint. On 2026-10-02
+ * Thirdweb was declared on 31 chain RPC benches and ranked on none, at
+ * 0.3 % to 1.5 % success across 29 chains, while answering 25 of 25 calls
+ * from a consumer connection: it serves browsers and refuses our probe
+ * hosts. Dropping that silently published the flattering half of a fact
+ * our readers, who deploy on servers, would meet the hard way.
+ *
+ * Keep it derived. An endpoint that recovers rejoins displayResults on its
+ * own, and nothing has to be edited in a spec for either direction.
+ */
+export function belowDisplayFloor(results: ProviderResult[]): ProviderResult[] {
+  return liveResults(results)
+    .filter((r) => (r.successRate ?? 100) < MIN_DISPLAY_SUCCESS_PCT)
+    .sort((a, b) => (b.successRate ?? 0) - (a.successRate ?? 0));
+}
+
+/**
  * The RPC thin gate, in one place. A chain RPC bench with fewer than three
  * declared results is noindex (src/app/benchmarks/[slug]/page.tsx) and the
  * worker keeps it out of the sitemap; hubs and the benchmarks index must not
