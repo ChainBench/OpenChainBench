@@ -1,3 +1,4 @@
+import { claimAgeLabel, viewClaims } from "@/lib/provider-claims";
 import { distinctBenchCount } from "@/lib/providers";
 import type { Metadata } from "next";
 import { loadSitemapBlob } from "@/lib/sitemap-blob";
@@ -1060,6 +1061,58 @@ export default async function ProviderPage({
           </ul>
         </section>
       )}
+
+      {(() => {
+        // Properties this site has no instrument for: insurance,
+        // confidentiality, whether users are shielded from questionable
+        // liquidity. Real, and worth a reader knowing, but not measured. They
+        // get their own section with the source and the date attached, never
+        // a column next to the measured ones, and the heading names the
+        // speaker. See lib/provider-claims.ts.
+        const claims = viewClaims(reg?.claims);
+        if (claims.length === 0) return null;
+        return (
+          <section className="mt-10">
+            <h2 className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-muted">
+              Stated by {p.name}, not measured here
+            </h2>
+            <div className="mt-2 h-px bg-rule" />
+            <p className="mt-3 max-w-2xl text-sm text-ink-muted leading-relaxed">
+              These are the provider&rsquo;s own statements about properties no
+              benchmark on this site measures. We checked that each one appears
+              at the source on the date given; we did not verify that it holds.
+            </p>
+            <dl className="mt-5 flex flex-col gap-4">
+              {claims.map((c) => (
+                <div key={c.label} className="border-l-2 border-rule pl-4">
+                  <dt className="text-[11px] font-medium uppercase tracking-[0.16em] text-ink-muted">
+                    {c.label}
+                  </dt>
+                  <dd className="mt-1 text-base text-ink-soft leading-relaxed">
+                    {c.value}
+                  </dd>
+                  <dd className="mt-1 text-xs text-ink-faint">
+                    <a
+                      className="lnk underline underline-offset-2 hover:text-ink"
+                      href={withUtm(c.source)}
+                      rel="noopener nofollow"
+                    >
+                      source
+                    </a>
+                    {" · "}
+                    <time dateTime={c.verifiedAt}>{claimAgeLabel(c)}</time>
+                    {c.stale && (
+                      <span className="ml-2 text-warn">
+                        not re-checked recently
+                      </span>
+                    )}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </section>
+        );
+      })()}
 
       {(() => {
         // Most recent lastRunAt across every appearance is the truest
