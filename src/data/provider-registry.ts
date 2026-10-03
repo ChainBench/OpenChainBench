@@ -1976,8 +1976,9 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   okx: {
     url: "https://www.okx.com",
     description:
-      "OKX is a major centralized exchange whose USDT-margined perpetual swaps settle funding on variable periods (typically 8 hours), with rates capped per instrument.",
+      "OKX is a major centralized exchange whose USDT-margined perpetual swaps settle funding on variable periods (typically 8 hours), with rates capped per instrument. Its OnchainOS Market API also indexes DEX trades across 27 chains, which is the surface measured for head lag.",
     twitter: "@okx",
+    docs: "https://web3.okx.com/onchainos/dev-docs/market/market-api-introduction",
   },
   paradex: {
     url: "https://www.paradex.trade",
