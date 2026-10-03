@@ -826,6 +826,11 @@ func runHeadLagMonitor(config *Config, stopChan <-chan struct{}) {
 	wg.Add(1)
 	go runSerializedHeadLagMonitor(config, stopChan, &wg)
 
+	// Start OKX monitor. Base and Solana only, and token-scoped upstream:
+	// see the header of okx_head_lag_monitor.go for both reasons.
+	wg.Add(1)
+	go runOKXHeadLagMonitor(config, stopChan, &wg)
+
 	// Wait for all to finish
 	wg.Wait()
 	fmt.Println("[HEAD-LAG] All monitors stopped")
