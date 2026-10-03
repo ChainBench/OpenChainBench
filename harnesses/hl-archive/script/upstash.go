@@ -41,16 +41,8 @@ type UpstashBuilder struct {
 // they're constant-size per builder.
 const upstashTimeseriesDaysCap = 90
 
-// PushUpstash sends the payload to the configured Upstash key. No-op
-// (returns nil) when UPSTASH_REDIS_REST_URL/TOKEN are unset so local
-// dev runs don't fail.
+// PushUpstash sends the builder payload to the configured Upstash key.
 func PushUpstash(ctx context.Context, payload UpstashPayload) error {
-	base := strings.TrimRight(strings.TrimSpace(os.Getenv("UPSTASH_REDIS_REST_URL")), "/")
-	token := strings.TrimSpace(os.Getenv("UPSTASH_REDIS_REST_TOKEN"))
-	if base == "" || token == "" {
-		Log.Warn("upstash disabled (env not set)")
-		return nil
-	}
 	key := strings.TrimSpace(os.Getenv("HL_ARCHIVE_UPSTASH_KEY"))
 	if key == "" {
 		key = "ocb:hl-archive:v1"
@@ -68,6 +60,21 @@ func PushUpstash(ctx context.Context, payload UpstashPayload) error {
 	body, err := json.Marshal(payload)
 	if err != nil {
 		return fmt.Errorf("marshal payload: %w", err)
+	}
+	return upstashSet(ctx, key, body)
+}
+
+// upstashSet performs one REST SET against the configured instance.
+//
+// Extracted from PushUpstash when the trader audit gained its own key:
+// two payloads, two keys, one transport. Returns nil (not an error) when
+// UPSTASH_REDIS_REST_URL/TOKEN are unset so local dev runs don't fail.
+func upstashSet(ctx context.Context, key string, body []byte) error {
+	base := strings.TrimRight(strings.TrimSpace(os.Getenv("UPSTASH_REDIS_REST_URL")), "/")
+	token := strings.TrimSpace(os.Getenv("UPSTASH_REDIS_REST_TOKEN"))
+	if base == "" || token == "" {
+		Log.Warn("upstash disabled (env not set)", "key", key)
+		return nil
 	}
 
 	endpoint := fmt.Sprintf("%s/set/%s", base, url.PathEscape(key))
