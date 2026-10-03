@@ -61,6 +61,21 @@ var pending = &pendingQueue{}
 // before every provider (head_lag_ref_seconds positive for all of them).
 var referenceChains = map[string]bool{"base": true}
 
+// tokenScopedAggregators cannot scope their subscription to a pool, so they
+// push every pool on a token and most of what they send is off-bench.
+//
+// This changes nothing about what is scored: only emissions matched to the
+// reference by transaction hash are, and the reference is the bench pool, so
+// the scored set is the same for every provider. It changes only the miss
+// counter, which for these providers would otherwise be dominated by trades
+// that were never supposed to match.
+//
+// OKX is here because six ways of passing a pool address to its channel are
+// accepted and silently ignored, and its paid channel is token-scoped too.
+// Measured on the Base pool over 20 minutes: 213 of 213 pool swaps present,
+// so the coverage this relies on is not assumed.
+var tokenScopedAggregators = map[string]bool{"okx": true}
+
 // emitHeadLag is the single entry point for a provider emission.
 //
 // Chains outside referenceChains keep publishing the provider-timestamp
@@ -116,7 +131,14 @@ func runPendingResolver(stopChan <-chan struct{}) {
 				continue
 			}
 			if now.Sub(e.receiveTime) > pendingDeadline {
-				RecordHeadLagRefMiss(e.aggregator, e.chain, e.region)
+				// A token-scoped provider sends us every pool on the token,
+				// so an emission the reference never saw is a trade from
+				// another pool, not a failure. Counting it would read as a
+				// 96%-miss provider and would drown the signal this counter
+				// exists for: whether the reference itself is healthy.
+				if !tokenScopedAggregators[e.aggregator] {
+					RecordHeadLagRefMiss(e.aggregator, e.chain, e.region)
+				}
 				continue
 			}
 			keep = append(keep, e)
