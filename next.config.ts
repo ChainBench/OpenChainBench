@@ -343,7 +343,11 @@ const nextConfig: NextConfig = {
       // as views behind the pill bar; the hash opens the matching view.
       // The /hyperliquid and /perps hubs (no slug) are untouched.
       // The hub's own image routes (/hyperliquid/opengraph-image) must
-      // not match: a bare :slug would 308 them to a 404.
+      // not match: a bare :slug would 308 them to a 404. Same for the
+      // hub's own sub-pages: /hyperliquid/traders is the leaderboard
+      // audit, not a builder slug, and without the exclusion it 308s to
+      // /products/traders#hl, which does not exist. Any future sub-page
+      // of the hub has to be added here too.
       // Unlabeled builder addresses have no product page (hex slugs 404
       // by design); their old detail URLs land on the bench that lists them.
       {
@@ -352,7 +356,8 @@ const nextConfig: NextConfig = {
         permanent: true,
       },
       {
-        source: "/hyperliquid/:slug((?!opengraph-image|twitter-image|icon|apple-icon|0x).*)",
+        source:
+          "/hyperliquid/:slug((?!opengraph-image|twitter-image|icon|apple-icon|traders|0x).*)",
         destination: "/products/:slug#hl",
         permanent: true,
       },
