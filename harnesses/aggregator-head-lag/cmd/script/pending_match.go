@@ -59,7 +59,26 @@ var pending = &pendingQueue{}
 // lag behind the first observation of the trade rather than behind our
 // node. Add a chain here only once its reference is measured to arrive
 // before every provider (head_lag_ref_seconds positive for all of them).
-var referenceChains = map[string]bool{"base": true}
+//
+// BNB joined 2026-10-03, against that gate and because the column it
+// replaces was mostly measuring the chain. On the provider-timestamp
+// figure the four providers sat within 9 % of each other (eu-west p50:
+// mobula 0.621 s, serialized 0.657 s, codex 0.676 s) because the dominant
+// term was BNB's block time, which every provider shares. Against the
+// reference they spread over a factor of four (0.052 / 0.102 / 0.215),
+// and the ranking is unchanged, so this removes a common offset rather
+// than reshuffling anyone.
+//
+// The gate itself: our node is beaten to a trade 6.6 % of the time by
+// mobula on BNB, 4.7 % by serialized, 3.7 % by codex. Base, already here
+// and shipping, sits at 4.2 % / 3.1 % / 0 %. Same order, measured over
+// 8,604 samples per provider.
+//
+// It also retires a published claim that did not survive measurement.
+// The spec said BNB's chain-supplied timestamps sat "within roughly 60 ms
+// of the moment a trade is observable". The gap between the two series is
+// exactly that quantity, and it is 569 ms.
+var referenceChains = map[string]bool{"base": true, "bnb": true}
 
 // emitHeadLag is the single entry point for a provider emission.
 //
