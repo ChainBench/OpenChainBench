@@ -117,6 +117,17 @@ var (
 		Help: "Exact execution latency (broadcast to funds received) in ms, last value per corridor",
 	}, []string{"bridge", "from_chain", "to_chain", "from_token", "to_token", "amount_usd", "region", "chain"})
 
+	// Persistent: unix time of the last completed execution per bridge and
+	// region, the site's freshness source (prometheus.freshness_timestamp_metric
+	// in bridge-execution-latency.yml and bridge-realized-cost.yml). Backed by
+	// last_execution.go so a restart does not blank it: the execution cycle
+	// runs once a day, and without the persisted copy both benches read "no
+	// run recorded" and go noindex until the next one.
+	bridgeLastExecutionTs = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "bridge_last_execution_timestamp_seconds",
+		Help: "Unix time of the last execution that reached a terminal state (settled, reverted, refunded or stuck), per bridge and region",
+	}, []string{"bridge", "region"})
+
 	// Error counter
 	bridgeErrors = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "bridge_errors_total",

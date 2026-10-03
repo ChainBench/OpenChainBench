@@ -61,6 +61,12 @@ type ExecutionResult struct {
 
 // Executor handles the execution loop
 type Executor struct {
+	// Last-execution times, persisted so a restart does not blank the
+	// site's freshness source. See last_execution.go: the execution
+	// cycle runs once a day, so an in-process gauge alone leaves two
+	// benches reading "no run recorded" (and therefore noindex) for up
+	// to twenty-four hours after any deploy.
+	lastExec *lastExecStore
 	config        *ExecutionConfig
 	walletManager *WalletManager
 	balanceCheck  *BalanceChecker
@@ -92,6 +98,15 @@ func (e *Executor) AddDailySpend(usd float64) {
 // not confirm as a success books a conservative flat estimate, because the
 // deposit or approval TX most likely burned gas even without a fill. Results
 // that never broadcast cost nothing.
+// noteExecution records that this bridge ran, so the site's freshness source
+// survives the next restart.
+func (e *Executor) noteExecution(result *ExecutionResult) {
+	if result == nil || e.lastExec == nil || result.DryRun {
+		return
+	}
+	e.lastExec.record(result.Bridge, e.region, time.Now())
+}
+
 func (e *Executor) accountSpend(result *ExecutionResult) {
 	if result == nil || result.DryRun {
 		return
@@ -127,7 +142,13 @@ func NewExecutor(
 		region:        region,
 		slack:         slack,
 		spend:         NewSpendTracker(spendStatePath(), time.Now),
+		lastExec:      newLastExecStore(lastExecPath()),
 	}
+	// Re-publish what the last run recorded, before anything else happens.
+	// Without this the store is written and never read back, the gauge stays
+	// empty after every deploy, and the two execution benches read "no run
+	// recorded" until the next daily cycle.
+	e.lastExec.expose(region)
 
 	// Initialize TxExecutor if we have private keys
 	if walletManager != nil && walletManager.HasPrivateKeys() {
@@ -310,6 +331,7 @@ func (e *Executor) RunReal(route TestRoute, amountUSD float64) []*ExecutionResul
 			// Update daily spending (realized fee on success, flat gas
 			// estimate on a broadcast that never confirmed).
 			e.accountSpend(result)
+			e.noteExecution(result)
 		}
 
 		// Wait between bridges to avoid rate limiting
@@ -350,6 +372,7 @@ func (e *Executor) RunBridgeOnRoute(bridge string, route TestRoute, amountUSD fl
 	}
 
 	e.accountSpend(result)
+	e.noteExecution(result)
 	return result
 }
 
