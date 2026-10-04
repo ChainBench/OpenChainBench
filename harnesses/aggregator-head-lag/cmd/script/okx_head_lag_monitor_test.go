@@ -71,16 +71,31 @@ func TestOKXChainsAvoidTheProviderTimestamp(t *testing.T) {
 	}
 }
 
-// BNB is a bench pool and OKX supports the chain, so nothing stops someone
-// adding it except the reason above. This fails if that happens without BNB
-// first gaining a reference or race instrument.
-func TestOKXDoesNotCoverBNB(t *testing.T) {
+// BNB is covered, and may be covered only while it reads a clock we own.
+//
+// This test used to assert the opposite, because when OKX shipped bnb was still
+// outside referenceChains and the column published receiveTime minus OKX's
+// own whole-second timestamp. bnb gained the reference clock afterwards, which
+// is the single fact that made coverage admissible: the feed was never the
+// obstacle (938 trades in 45 s on chainId 56, all with a hash).
+//
+// Stated as the coupling so it still protects something: take bnb out of
+// referenceChains and this fails, naming OKX as the reason, which the
+// unconditional version could not do.
+func TestOKXBNBRequiresAClockWeOwn(t *testing.T) {
+	covered := false
 	for _, c := range okxChains {
 		if c.ChainName == "bnb" {
-			t.Fatal("bnb publishes the provider-timestamp figure; adding OKX there " +
-				"publishes its one-second quantisation as latency. Give bnb a " +
-				"reference clock first, then revisit.")
+			covered = true
 		}
+	}
+	if !covered {
+		t.Skip("OKX does not cover bnb; nothing to couple")
+	}
+	if !referenceChains["bnb"] && !raceChains["bnb"] {
+		t.Fatal("OKX covers bnb while bnb reads no clock we own, so the column " +
+			"publishes OKX's one-second quantisation as its latency. Either " +
+			"restore bnb to referenceChains or drop it from okxChains.")
 	}
 }
 
@@ -92,10 +107,14 @@ func TestOKXChainNameMapsOKXIndexes(t *testing.T) {
 	if got, ok := okxChainName("501"); !ok || got != "solana" {
 		t.Errorf("501: got %q %v want solana true", got, ok)
 	}
-	// 56 is BNB at OKX. We do not measure it, so a frame claiming it must be
-	// dropped rather than mapped onto whichever chain we were subscribed to.
-	if _, ok := okxChainName("56"); ok {
-		t.Error("56 (bnb) must not resolve while OKX is not measured there")
+	if got, ok := okxChainName("56"); !ok || got != "bnb" {
+		t.Errorf("56: got %q %v want bnb true", got, ok)
+	}
+	// A chain we do not measure must be dropped rather than mapped onto
+	// whichever chain the socket happened to be subscribed to. 1 is Ethereum
+	// at OKX, which is not a bench pool.
+	if got, ok := okxChainName("1"); ok {
+		t.Errorf("1 (ethereum) resolved to %q; an unmeasured chain must not map", got)
 	}
 	if _, ok := okxChainName(""); ok {
 		t.Error("empty chain index must not resolve")
@@ -154,6 +173,85 @@ func TestOnlyTokenScopedProvidersSkipTheMissCounter(t *testing.T) {
 		if tokenScopedAggregators[a] {
 			t.Errorf("%q subscribes per pool, so an unmatched emission really is a "+
 				"miss and must still be counted", a)
+		}
+	}
+}
+
+// The channel sends `data` as a single OBJECT, not the array every other OKX
+// channel uses. This shipped once as []okxTrade: every data frame failed to
+// unmarshal, the read loop skipped what it could not parse, and the monitor
+// acked its subscribe then scored nothing for two chains. Measured on the
+// deployed build before the fix: 163 frames in, 0 trades out.
+//
+// The Node probe that validated the feed had written
+// `Array.isArray(m.data) ? m.data : [m.data]`, which absorbed the difference
+// silently, so the shape never surfaced until Go refused it.
+func TestOKXFrameTradesAcceptsBothShapes(t *testing.T) {
+	// The wire form: timestamp BARE, not quoted. This is what the gateway
+	// actually sends and what a `string` field rejected 136 frames out of 136.
+	object := []byte(`{"chainId":"8453","txHash":"0xabc","timestamp":1790963535000,"dexName":"Uniswap V3"}`)
+	got := okxFrameTrades(object)
+	if len(got) != 1 {
+		t.Fatalf("a single object must yield one trade, got %d", len(got))
+	}
+	if got[0].TxHash != "0xabc" || got[0].ChainID != "8453" {
+		t.Errorf("object decoded wrong: %+v", got[0])
+	}
+
+	array := []byte(`[{"chainId":"501","txHash":"sig1"},{"chainId":"501","txHash":"sig2"}]`)
+	got = okxFrameTrades(array)
+	if len(got) != 2 {
+		t.Fatalf("an array must yield every trade, got %d", len(got))
+	}
+	if got[1].TxHash != "sig2" {
+		t.Errorf("array decoded wrong: %+v", got)
+	}
+}
+
+// Anything unusable must yield nothing rather than a zero-valued trade: an
+// empty hash would be enqueued and never match, and a zero timestamp would
+// publish a 56-year lag.
+func TestOKXFrameTradesRejectsUnusable(t *testing.T) {
+	for name, raw := range map[string]string{
+		"empty":          ``,
+		"null":           `null`,
+		"number":         `42`,
+		"object no hash": `{"chainId":"8453","dexName":"Uniswap V3"}`,
+		"empty array":    `[]`,
+	} {
+		if got := okxFrameTrades([]byte(raw)); len(got) != 0 {
+			t.Errorf("%s: expected no trades, got %d (%+v)", name, len(got), got)
+		}
+	}
+}
+
+// The timestamp arrives bare on the WebSocket and quoted over REST. Both must
+// decode, and an unreadable one must leave the trade usable rather than drop it:
+// neither measured chain publishes the provider timestamp anyway, so losing a
+// whole trade over that field would cost far more than losing the field.
+func TestOKXTimestampAcceptsBothJSONShapes(t *testing.T) {
+	cases := map[string]struct {
+		raw  string
+		want int64
+	}{
+		"bare number (websocket)": {`{"txHash":"0xa","timestamp":1790963535000}`, 1790963535000},
+		"quoted string (REST)":    {`{"txHash":"0xa","timestamp":"1790963535000"}`, 1790963535000},
+		"absent":                  {`{"txHash":"0xa"}`, 0},
+		"null":                    {`{"txHash":"0xa","timestamp":null}`, 0},
+		"seconds not millis":      {`{"txHash":"0xa","timestamp":1790963535}`, 0},
+		"junk":                    {`{"txHash":"0xa","timestamp":"abc"}`, 0},
+	}
+	for name, c := range cases {
+		got := okxFrameTrades([]byte(c.raw))
+		if len(got) != 1 {
+			t.Errorf("%s: the trade must survive, got %d trades", name, len(got))
+			continue
+		}
+		if int64(got[0].Timestamp) != c.want {
+			t.Errorf("%s: timestamp = %d, want %d", name, int64(got[0].Timestamp), c.want)
+		}
+		if got[0].TxHash != "0xa" {
+			t.Errorf("%s: the hash must survive a bad timestamp, got %q", name, got[0].TxHash)
 		}
 	}
 }

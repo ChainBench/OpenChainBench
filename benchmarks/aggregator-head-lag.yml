@@ -5,7 +5,7 @@ number: "001"
 title: Fastest crypto price API, live head lag across 5 data providers
 seo_title: "Fastest crypto price API 2026: live head lag by chain"
 seo_description: "{{best_name}} leads cross-chain head lag at {{best_p50}} (p50, 24h); per-chain leaders differ. Mobula, Codex, GeckoTerminal, Serialized, OKX and Birdeye measured live."
-subtitle: Wall-clock head lag in seconds from on-chain swap event to API emission, measured live for Mobula, Codex, GeckoTerminal, Serialized, OKX and Birdeye on Base, BNB Chain, Solana and Robinhood Chain. OKX and Birdeye are measured on Base and Solana, the two chains where the headline does not read their timestamps.
+subtitle: Wall-clock head lag in seconds from on-chain swap event to API emission, measured live for Mobula, Codex, GeckoTerminal, Serialized, OKX and Birdeye on Base, BNB Chain, Solana and Robinhood Chain. OKX and Birdeye are measured on Base, BNB Chain and Solana, the three chains where the headline does not read their own timestamps; neither indexes Robinhood Chain.
 
 per_chain_explainer:
   - slug: base
@@ -63,7 +63,8 @@ abstract: |
   same event.
 
 methodology:
-  - "Aggregators measured: Mobula, Codex, GeckoTerminal, Serialized on every chain; OKX and Birdeye on Base and Solana only. OKX's DEX feed cannot be scoped to a pool, so it is subscribed per token and matched to the bench pool by transaction hash; its off-pool trades are discarded rather than scored. It is absent from BNB because that chain's headline reads the provider's own timestamp and OKX sends whole seconds, and absent from Robinhood Chain because OKX does not index it."
+  - "Aggregators measured: Mobula, Codex, GeckoTerminal and Serialized on all four chains; OKX and Birdeye on Base, BNB and Solana. Neither can scope a subscription to a pool, so both are subscribed per token and matched to the bench pool by transaction hash, their off-pool trades discarded rather than scored. Both send whole-second timestamps, which is why they are measured only on chains whose headline reads a clock we hold rather than the provider's own."
+  - "Robinhood Chain carries four of the six feeds. Neither OKX nor Birdeye indexes it, measured rather than inferred: both accept the subscription and then deliver nothing (0 trades in 40 to 45 s, on the pool and on its non-stable leg) while Base and BNB on the same code delivered hundreds. An accepted subscription is not evidence of coverage on either feed."
   - "Chains: Base, BNB Chain, Solana, Robinhood Chain."
   - "Reference on BNB Chain: a node subscription we hold ourselves, every emission matched to it by transaction hash, the ruler Base uses. Until 2026-10-03 the column used each provider's own timestamp, assuming BNB's chain-supplied timestamps sat within roughly 60 ms of a trade becoming observable. Measured, that gap is 569 ms, so the old column tracked block time more than any pipeline: the four feeds sat within 9% of each other, against the common clock they spread over a factor of four."
   - "Solana (since 2026-09-16): the headline is the lag behind the first feed to report the trade, our own node subscription included in the race. Solana has no on-chain timestamp with sub-second precision, so the timestamps providers send compare conventions: Mobula's `date` (its ingestion time) read as a constant 0.10 s, Serialized's `at` (blockTime, whole seconds) as 0.75 s, while against a common clock the two feeds are 10 to 30 ms apart."
@@ -75,7 +76,8 @@ methodology:
   - "Base emissions we cannot match to a flashblock are dropped rather than measured against a different ruler. Measuring against the block timestamp charged a provider reading preconfirmations with a negative lag, and described the chain's stamping convention rather than the provider's pipeline."
   - "Metric: gauge `head_lag_seconds`, scraped every 30 seconds. Aggregated over the 24-hour window using `quantile_over_time`."
   - "Success rate: presence ratio. Share of expected sampling slots where a value was actually emitted (2,880 expected per provider per day at the 30 s scrape). 100% means the aggregator's feed was reachable for the full window."
-  - "Cardinality: 4 aggregators × 4 chains × 3 regions = 48 active series."
+  - "Coverage is not the same as presence. Birdeye's stream carries part of the bench pool's flow rather than all of it: 106 of 442 and 13 of 44 pool swaps over two Base windows, about a quarter. Its percentiles therefore describe the trades it does report, and the presence ratio above measures whether the feed was reachable, not how much of the pool it covered."
+  - "Cardinality: four aggregators on four chains plus two on three (OKX, Birdeye) is 22 aggregator-chain pairs × 3 regions = 66 active series."
   - "Probe placement: the three probes run in their named regions on Railway (europe-west4, us-east4, asia-southeast1). Until 2026-09-15 all three ran in asia-southeast1 under regional labels; region columns before that date are three Singapore vantage points."
 
 findings:
@@ -298,22 +300,26 @@ providers:
           series: avg_over_time(head_lag_seconds{aggregator="geckoterminal", region="sgp"}[1h]) * 1000 unless (changes(head_lag_seconds{aggregator="geckoterminal", region="sgp"}[15m]) == 0 and count_over_time(head_lag_seconds{aggregator="geckoterminal", region="sgp"}[15m]) > 5 and on(chain, region) sum by (chain, region) (changes(head_lag_seconds{region="sgp"}[15m])) > 5)
 
 
-  # Base and Solana only, and both reasons are structural rather than
-  # provisional. BNB publishes `head_lag_seconds` as receiveTime minus the
-  # provider's own timestamp, and every OKX timestamp is a whole second
-  # (1,800 sampled across three chains, all ts%1000 == 0), so measuring it
-  # there would publish our own arithmetic as OKX's latency. Robinhood Chain
-  # is not in OKX's supported set at all.
+  # Three chains, and the one constraint is the provider's clock rather than
+  # its coverage. Every OKX timestamp is a whole second (1,800 sampled across
+  # three chains, all ts%1000 == 0, and 938 of 938 again on BNB), so a chain
+  # whose headline reads receiveTime minus the provider's own timestamp would
+  # publish our arithmetic as OKX's latency. This paragraph used to call that
+  # reason structural rather than provisional, which was wrong in exactly the
+  # way that matters: BNB joined referenceChains and the reason expired.
   #
   # OKX also cannot scope a subscription to a pool, so it pushes every pool on
   # a token and most of what it sends is discarded. That does not change what
   # is scored: only emissions matched to the reference by transaction hash are,
   # and the reference is the bench pool. Measured on the Base pool before
-  # shipping: 213 of 213 pool swaps present in OKX's stream.
+  # shipping: 213 of 213 pool swaps present in OKX's stream. BNB followed once
+  # it joined referenceChains, the only thing that had excluded it: every OKX
+  # timestamp is a whole second, so a chain reading the provider's own clock
+  # would have published that quantisation as OKX's latency.
   - slug: okx
     name: OKX
     tag: WebSocket trades stream
-    formula: "Median seconds between an on-chain swap on the bench pools and the same trade arriving on OKX's DEX WebSocket trades stream (subscribed per token, matched to the pool by transaction hash), sampled every 15s over 24h. Base and Solana only."
+    formula: "Median seconds between an on-chain swap on the bench pools and the same trade arriving on OKX's DEX WebSocket trades stream, subscribed per token and matched to the pool by transaction hash, over 24h. Base, BNB and Solana."
     queries:
       p50: avg by (aggregator) (quantile_over_time(0.50, head_lag_seconds{aggregator="okx"}[24h])) * 1000
       p90: avg by (aggregator) (quantile_over_time(0.90, head_lag_seconds{aggregator="okx"}[24h])) * 1000
@@ -334,11 +340,17 @@ providers:
           p50: avg by (aggregator) (quantile_over_time(0.50, head_lag_seconds{aggregator="okx", region="sgp"}[24h])) * 1000
           series: avg_over_time(head_lag_seconds{aggregator="okx", region="sgp"}[1h]) * 1000 unless (changes(head_lag_seconds{aggregator="okx", region="sgp"}[15m]) == 0 and count_over_time(head_lag_seconds{aggregator="okx", region="sgp"}[15m]) > 5 and on(chain, region) sum by (chain, region) (changes(head_lag_seconds{region="sgp"}[15m])) > 5 and on(aggregator, region) avg_over_time(ws_connected{aggregator="okx", region="sgp", chain=""}[15m]) > 0.8)
 
-  # Base and Solana only, for the same two structural reasons as OKX. BNB
-  # publishes head_lag_seconds as receiveTime minus the provider's own
-  # timestamp, and Birdeye's blockUnixTime is in whole seconds, so that column
-  # would carry our arithmetic rather than its latency. Robinhood Chain is not
-  # covered upstream.
+  # Three of the four bench chains. Birdeye's blockUnixTime is in whole
+  # seconds, so a chain publishing receiveTime minus the provider's own
+  # timestamp would carry our arithmetic rather than its latency; that ruled
+  # out BNB until BNB joined referenceChains and stopped reading provider
+  # timestamps. Measured on the bench pool's WBNB leg before adding it: 825
+  # trades in 45 s, all with a hash.
+  #
+  # Robinhood Chain is absent, measured rather than assumed: the route exists
+  # (an invented chain name 404s, /robinhood/ returns the WELLCOME frame) and
+  # the subscription is accepted, but 0 trades arrive in 45 s on the bench pool
+  # and on its USDG leg, while BSC on the same socket code delivered 825.
   #
   # Subscribed per token rather than per pool, so most of what arrives is
   # off-bench and discarded: only emissions matched to the reference by
@@ -347,7 +359,7 @@ providers:
   - slug: birdeye
     name: Birdeye
     tag: WebSocket trades stream
-    formula: "Median seconds between an on-chain swap on the bench pools and the same trade arriving on Birdeye's trades WebSocket, subscribed per token and matched to the pool by transaction hash. Base and Solana only."
+    formula: "Median seconds between an on-chain swap on the bench pools and the same trade arriving on Birdeye's trades WebSocket, subscribed per token and matched to the pool by transaction hash, over 24h. Base, BNB and Solana."
     queries:
       p50: avg by (aggregator) (quantile_over_time(0.50, head_lag_seconds{aggregator="birdeye"}[24h])) * 1000
       p90: avg by (aggregator) (quantile_over_time(0.90, head_lag_seconds{aggregator="birdeye"}[24h])) * 1000
