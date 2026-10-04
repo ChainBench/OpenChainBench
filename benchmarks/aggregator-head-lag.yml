@@ -5,7 +5,7 @@ number: "001"
 title: Fastest crypto price API, live head lag across 5 data providers
 seo_title: "Fastest crypto price API 2026: live head lag by chain"
 seo_description: "{{best_name}} leads cross-chain head lag at {{best_p50}} (p50, 24h); per-chain leaders differ. Mobula, Codex, GeckoTerminal, Serialized, OKX and Birdeye measured live."
-subtitle: Wall-clock head lag in seconds from on-chain swap event to API emission, measured live for Mobula, Codex, GeckoTerminal, Serialized, OKX and Birdeye on Base, BNB Chain, Solana and Robinhood Chain. OKX and Birdeye are measured on Base and Solana, the two chains where the headline does not read their timestamps.
+subtitle: Wall-clock head lag in seconds from on-chain swap event to API emission, measured live for Mobula, Codex, GeckoTerminal, Serialized, OKX and Birdeye on Base, BNB Chain, Solana and Robinhood Chain. OKX and Birdeye are measured on Base, BNB Chain and Solana, the three chains where the headline does not read their own timestamps; neither indexes Robinhood Chain.
 
 per_chain_explainer:
   - slug: base
@@ -300,12 +300,13 @@ providers:
           series: avg_over_time(head_lag_seconds{aggregator="geckoterminal", region="sgp"}[1h]) * 1000 unless (changes(head_lag_seconds{aggregator="geckoterminal", region="sgp"}[15m]) == 0 and count_over_time(head_lag_seconds{aggregator="geckoterminal", region="sgp"}[15m]) > 5 and on(chain, region) sum by (chain, region) (changes(head_lag_seconds{region="sgp"}[15m])) > 5)
 
 
-  # Base and Solana only, and both reasons are structural rather than
-  # provisional. BNB publishes `head_lag_seconds` as receiveTime minus the
-  # provider's own timestamp, and every OKX timestamp is a whole second
-  # (1,800 sampled across three chains, all ts%1000 == 0), so measuring it
-  # there would publish our own arithmetic as OKX's latency. Robinhood Chain
-  # is not in OKX's supported set at all.
+  # Three chains, and the one constraint is the provider's clock rather than
+  # its coverage. Every OKX timestamp is a whole second (1,800 sampled across
+  # three chains, all ts%1000 == 0, and 938 of 938 again on BNB), so a chain
+  # whose headline reads receiveTime minus the provider's own timestamp would
+  # publish our arithmetic as OKX's latency. This paragraph used to call that
+  # reason structural rather than provisional, which was wrong in exactly the
+  # way that matters: BNB joined referenceChains and the reason expired.
   #
   # OKX also cannot scope a subscription to a pool, so it pushes every pool on
   # a token and most of what it sends is discarded. That does not change what
