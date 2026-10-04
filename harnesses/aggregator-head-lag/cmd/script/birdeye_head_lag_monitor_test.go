@@ -2,15 +2,17 @@ package main
 
 import (
 	"bytes"
-	"errors"
 	"compress/zlib"
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/gorilla/websocket"
+	utls "github.com/refraction-networking/utls"
 )
 
 // The User-Agent is the whole gate. Measured one factor at a time against the
@@ -143,8 +145,14 @@ func TestBirdeyeLiveFeed(t *testing.T) {
 	if !birdeyeLive {
 		t.Skip("live feed check, flip birdeyeLive to run it by hand")
 	}
-	conn, resp, err := (&websocket.Dialer{HandshakeTimeout: 20 * time.Second}).
-		Dial(birdeyeWSHost+"/solana/socket-optimize", birdeyeHeaders())
+	// The monitor's dialer, not a fresh one: the pinned Chrome fingerprint is
+	// the whole reason this connects at all under the toolchain that ships,
+	// and a test that builds its own websocket.Dialer silently tests nothing.
+	d := &websocket.Dialer{
+		HandshakeTimeout:  20 * time.Second,
+		NetDialTLSContext: birdeyeTLSDial,
+	}
+	conn, resp, err := d.Dial(birdeyeWSHost+"/solana/socket-optimize", birdeyeHeaders())
 	if err != nil {
 		code := 0
 		if resp != nil {
@@ -215,5 +223,70 @@ func TestBirdeyeForbiddenIsNotRetriedForever(t *testing.T) {
 	}
 	if msg := errBirdeyeForbidden.Error(); !strings.Contains(msg, "egress IP") {
 		t.Errorf("the message must say what is actually wrong, got %q", msg)
+	}
+}
+
+// The fingerprint is the whole gate, and it is invisible: nothing in the
+// request or the response names it. Measured on one machine, one network, one
+// code path, changing only the Go toolchain:
+//
+//	Go 1.24.4 (what the Dockerfile builds)  stock TLS  0/5, all 403
+//	Go 1.27.1 (a laptop)                    stock TLS  5/5
+//	Go 1.24.4                               uTLS       5/5
+//
+// So the dialer must carry a pinned hello, not the toolchain's. Reverting to a
+// plain websocket.Dialer would pass every test here and 403 in production on
+// the image this repo builds.
+func TestBirdeyeDialPinsAChromeFingerprint(t *testing.T) {
+	// The spec the dialer applies must exist and must offer http/1.1 only.
+	spec, err := utls.UTLSIdToSpec(utls.HelloChrome_120)
+	if err != nil {
+		t.Fatalf("chrome hello spec: %v", err)
+	}
+	found := false
+	for _, ext := range spec.Extensions {
+		alpn, ok := ext.(*utls.ALPNExtension)
+		if !ok {
+			continue
+		}
+		found = true
+		// Unedited, the preset advertises h2. That is the trap: the server
+		// selects it, the upgrade returns an HTTP/2 SETTINGS frame, and gorilla
+		// reports a malformed HTTP response rather than anything about ALPN.
+		hasH2 := false
+		for _, p := range alpn.AlpnProtocols {
+			if p == "h2" {
+				hasH2 = true
+			}
+		}
+		if !hasH2 {
+			t.Log("note: the preset no longer advertises h2; the edit below is now a no-op")
+		}
+	}
+	if !found {
+		t.Fatal("the chrome preset carries no ALPN extension; the dialer's edit " +
+			"would silently do nothing and the dial would fall back to h2")
+	}
+}
+
+// A WebSocket cannot ride HTTP/2, so whatever the dialer negotiates must be
+// http/1.1. This drives the real dialer rather than a copy of its logic.
+func TestBirdeyeTLSDialNegotiatesHTTP11(t *testing.T) {
+	if !birdeyeLive {
+		t.Skip("needs the network, flip birdeyeLive to run it by hand")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	conn, err := birdeyeTLSDial(ctx, "tcp", "multichain-socket.birdeye.so:443")
+	if err != nil {
+		t.Fatalf("dial: %v", err)
+	}
+	defer conn.Close()
+	uc, ok := conn.(*utls.UConn)
+	if !ok {
+		t.Fatalf("expected a uTLS connection, got %T", conn)
+	}
+	if proto := uc.ConnectionState().NegotiatedProtocol; proto != "http/1.1" && proto != "" {
+		t.Errorf("negotiated %q; a WebSocket cannot ride anything but http/1.1", proto)
 	}
 }

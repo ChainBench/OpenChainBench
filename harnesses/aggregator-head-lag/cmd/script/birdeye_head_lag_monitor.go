@@ -2,19 +2,21 @@ package main
 
 import (
 	"bytes"
-	"errors"
 	"compress/zlib"
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"net/http"
-	"net/url"
-	"os"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/gorilla/websocket"
+	utls "github.com/refraction-networking/utls"
 )
 
 // ============================================================================
@@ -99,6 +101,60 @@ type birdeyeFrame struct {
 	Data []birdeyeTrade `json:"data"`
 }
 
+// birdeyeTLSDial performs the TLS handshake with a pinned Chrome ClientHello.
+//
+// Cloudflare scores the fingerprint, and Go's own hello changes between
+// releases. One machine, one network, one code path, changing only the
+// toolchain:
+//
+//	Go 1.24.4 (what the Dockerfile builds)  stock TLS  0/5 connected, all 403
+//	Go 1.27.1 (a laptop)                    stock TLS  5/5 connected
+//	Go 1.24.4                               uTLS       5/5 connected
+//
+// That is also why this looked like an egress problem for an afternoon: the
+// VPS that "worked" was running a binary cross-compiled from the laptop, so it
+// carried 1.27's hello. The proxy this used to dial through is not needed.
+//
+// Bumping the Dockerfile to 1.27 would work today and break silently the next
+// time Go changes its hello, with nobody connecting the two events.
+func birdeyeTLSDial(ctx context.Context, network, addr string) (net.Conn, error) {
+	host, _, err := net.SplitHostPort(addr)
+	if err != nil {
+		host = addr
+	}
+	raw, err := (&net.Dialer{Timeout: 20 * time.Second}).DialContext(ctx, network, addr)
+	if err != nil {
+		return nil, err
+	}
+
+	spec, err := utls.UTLSIdToSpec(utls.HelloChrome_120)
+	if err != nil {
+		raw.Close()
+		return nil, fmt.Errorf("chrome hello spec: %w", err)
+	}
+	// ALPN must offer http/1.1 ONLY, and Config.NextProtos does not win here:
+	// the preset carries its own ALPN extension advertising h2, the server
+	// selects it, and the upgrade returns an HTTP/2 SETTINGS frame that gorilla
+	// reports as `malformed HTTP response "\x00\x00\x12\x04..."`. A WebSocket
+	// cannot ride HTTP/2, so the extension is edited inside the spec.
+	for _, ext := range spec.Extensions {
+		if alpn, ok := ext.(*utls.ALPNExtension); ok {
+			alpn.AlpnProtocols = []string{"http/1.1"}
+		}
+	}
+
+	uc := utls.UClient(raw, &utls.Config{ServerName: host}, utls.HelloCustom)
+	if err := uc.ApplyPreset(&spec); err != nil {
+		raw.Close()
+		return nil, fmt.Errorf("apply chrome preset: %w", err)
+	}
+	if err := uc.HandshakeContext(ctx); err != nil {
+		raw.Close()
+		return nil, fmt.Errorf("tls handshake: %w", err)
+	}
+	return uc, nil
+}
+
 // birdeyeHeaders is not optional. Without the User-Agent the dial is answered
 // 403 by Cloudflare before the upgrade, which reads as "the socket is closed"
 // rather than "you forgot a header".
@@ -125,20 +181,9 @@ func birdeyeInflate(raw []byte) string {
 
 func runBirdeyeHeadLagMonitor(config *Config, stopChan <-chan struct{}, wg *sync.WaitGroup) {
 	defer wg.Done()
-	// Birdeye's edge refuses this project's Railway egress, so the dial only
-	// works through the proxy. getProxyDialer falls back to a direct dial when
-	// the variable is missing, silently, which is indistinguishable from the
-	// proxy itself being refused. Say which it is.
-	proxy := os.Getenv("HTTP_PROXY")
-	if proxy == "" {
-		proxy = os.Getenv("HTTPS_PROXY")
-	}
-	if proxy == "" {
-		fmt.Println("[HEAD-LAG][BIRDEYE] no HTTP_PROXY in the environment: dialing direct, " +
-			"which Birdeye's edge refuses from this host")
-	} else {
-		fmt.Printf("[HEAD-LAG][BIRDEYE] proxy configured (%d chars)\n", len(proxy))
-	}
+	// The dial carries a pinned Chrome ClientHello rather than the Go
+	// toolchain's, which Cloudflare refuses on the version this image builds.
+	fmt.Println("[HEAD-LAG][BIRDEYE] dialing with a pinned Chrome TLS fingerprint (ALPN http/1.1)")
 	fmt.Printf("[HEAD-LAG][BIRDEYE] Starting WebSocket monitors for %d chains...\n", len(birdeyeChains))
 
 	var inner sync.WaitGroup
@@ -211,22 +256,11 @@ func birdeyeConnectAndStream(config *Config, chainName, path, token string, stop
 	// direct is what made this 403 from Railway while the same binary got 101
 	// from a laptop and from the OVH VPS: the edge scores the egress IP, and
 	// HTTP_PROXY is already set on these services for exactly this reason.
-	dialer := getProxyDialer()
-	dialer.HandshakeTimeout = 20 * time.Second
-
-	// Whether the dialer actually carries the proxy, checked here rather than
-	// inferred from the variable existing. getProxyDialer sets Proxy only when
-	// url.Parse succeeds and drops it in silence otherwise, so a malformed
-	// value dials direct and looks exactly like a refused proxy.
-	if dialer.Proxy == nil {
-		log.Printf("[HEAD-LAG][BIRDEYE][%s] dialing DIRECT: the dialer carries no proxy", chainName)
-	} else if u, perr := dialer.Proxy(&http.Request{URL: &url.URL{Scheme: "https", Host: "multichain-socket.birdeye.so"}}); perr != nil || u == nil {
-		log.Printf("[HEAD-LAG][BIRDEYE][%s] dialing DIRECT: proxy resolver returned %v (err %v)",
-			chainName, u, perr)
-	} else {
-		log.Printf("[HEAD-LAG][BIRDEYE][%s] dialing through proxy host %s", chainName, u.Host)
+	// No proxy: the refusal was never about the egress IP. See birdeyeTLSDial.
+	dialer := websocket.Dialer{
+		HandshakeTimeout:  20 * time.Second,
+		NetDialTLSContext: birdeyeTLSDial,
 	}
-
 	conn, resp, err := dialer.Dial(birdeyeWSHost+path, birdeyeHeaders())
 	if err != nil {
 		if resp != nil && resp.StatusCode == http.StatusForbidden {
