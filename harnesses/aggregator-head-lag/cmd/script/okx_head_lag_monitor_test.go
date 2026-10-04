@@ -71,16 +71,31 @@ func TestOKXChainsAvoidTheProviderTimestamp(t *testing.T) {
 	}
 }
 
-// BNB is a bench pool and OKX supports the chain, so nothing stops someone
-// adding it except the reason above. This fails if that happens without BNB
-// first gaining a reference or race instrument.
-func TestOKXDoesNotCoverBNB(t *testing.T) {
+// BNB is covered, and may be covered only while it reads a clock we own.
+//
+// This test used to assert the opposite, because when OKX shipped bnb was still
+// outside referenceChains and the column published receiveTime minus OKX's
+// own whole-second timestamp. bnb gained the reference clock afterwards, which
+// is the single fact that made coverage admissible: the feed was never the
+// obstacle (938 trades in 45 s on chainId 56, all with a hash).
+//
+// Stated as the coupling so it still protects something: take bnb out of
+// referenceChains and this fails, naming OKX as the reason, which the
+// unconditional version could not do.
+func TestOKXBNBRequiresAClockWeOwn(t *testing.T) {
+	covered := false
 	for _, c := range okxChains {
 		if c.ChainName == "bnb" {
-			t.Fatal("bnb publishes the provider-timestamp figure; adding OKX there " +
-				"publishes its one-second quantisation as latency. Give bnb a " +
-				"reference clock first, then revisit.")
+			covered = true
 		}
+	}
+	if !covered {
+		t.Skip("OKX does not cover bnb; nothing to couple")
+	}
+	if !referenceChains["bnb"] && !raceChains["bnb"] {
+		t.Fatal("OKX covers bnb while bnb reads no clock we own, so the column " +
+			"publishes OKX's one-second quantisation as its latency. Either " +
+			"restore bnb to referenceChains or drop it from okxChains.")
 	}
 }
 
@@ -92,10 +107,14 @@ func TestOKXChainNameMapsOKXIndexes(t *testing.T) {
 	if got, ok := okxChainName("501"); !ok || got != "solana" {
 		t.Errorf("501: got %q %v want solana true", got, ok)
 	}
-	// 56 is BNB at OKX. We do not measure it, so a frame claiming it must be
-	// dropped rather than mapped onto whichever chain we were subscribed to.
-	if _, ok := okxChainName("56"); ok {
-		t.Error("56 (bnb) must not resolve while OKX is not measured there")
+	if got, ok := okxChainName("56"); !ok || got != "bnb" {
+		t.Errorf("56: got %q %v want bnb true", got, ok)
+	}
+	// A chain we do not measure must be dropped rather than mapped onto
+	// whichever chain the socket happened to be subscribed to. 1 is Ethereum
+	// at OKX, which is not a bench pool.
+	if got, ok := okxChainName("1"); ok {
+		t.Errorf("1 (ethereum) resolved to %q; an unmeasured chain must not map", got)
 	}
 	if _, ok := okxChainName(""); ok {
 		t.Error("empty chain index must not resolve")
@@ -205,7 +224,6 @@ func TestOKXFrameTradesRejectsUnusable(t *testing.T) {
 		}
 	}
 }
-
 
 // The timestamp arrives bare on the WebSocket and quoted over REST. Both must
 // decode, and an unreadable one must leave the trade usable rather than drop it:

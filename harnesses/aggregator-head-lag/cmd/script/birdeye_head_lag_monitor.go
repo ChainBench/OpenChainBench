@@ -31,11 +31,11 @@ import (
 //
 // Three things to know, each of which produced a wrong conclusion first:
 //
-//  1. The dial FAILS without a User-Agent. Cloudflare's default rule answers
-//     403 "Just a moment..." to a client that declares none. Tested one factor
-//     at a time: no headers 403, Origin alone 403, Origin + User-Agent 101.
-//     That is the whole gate; no TLS fingerprinting is involved and the uTLS
-//     machinery in utls_codex.go is not needed here.
+//  1. The dial needs BOTH a User-Agent and a credible TLS fingerprint, and
+//     each alone reads as the whole gate. Origin + User-Agent got 101 from a
+//     laptop, which is how this comment used to end "no TLS fingerprinting is
+//     involved"; the same code 403d from Railway until the ClientHello was
+//     pinned. See birdeyeTLSDial. Both are required.
 //
 //  2. Frames are zlib-compressed JSON, not text and not a bespoke binary
 //     format. DevTools shows them as "Binary message", which reads like
@@ -44,11 +44,18 @@ import (
 //  3. An ack proves nothing, as on the OKX path. Only decoded trades do, so
 //     the connected gauge is not set until a TXS_DATA frame arrives.
 //
-// Base and Solana only, for the same two reasons OKX is limited to them:
-// `blockUnixTime` is in whole SECONDS, so a chain whose headline reads the
-// provider's own timestamp (anything outside referenceChains and raceChains)
-// would publish that quantisation as Birdeye's latency; and Robinhood Chain is
-// not covered upstream.
+// Three of the four bench chains. `blockUnixTime` is in whole SECONDS, so a
+// chain whose headline reads the provider's own timestamp (anything outside
+// referenceChains and raceChains) would publish that quantisation as Birdeye's
+// latency. That ruled out BNB until BNB joined referenceChains, which is why
+// this file shipped with two chains and now carries three: 825 trades in 45 s
+// on the bench pool's WBNB leg, all with a hash.
+//
+// Robinhood Chain stays out, now measured rather than assumed. The route
+// exists (an invented chain name 404s, /robinhood/ returns the WELLCOME
+// frame), the subscription is accepted without an error, and no trade ever
+// arrives: 0 in 45 s on the bench pool and on its USDG leg, while BSC on the
+// same socket code delivered 825. Birdeye does not index the chain.
 //
 // Like OKX, the subscription is per token rather than per pool, so most of
 // what arrives is off-bench and is discarded: only emissions matched to the
@@ -73,9 +80,10 @@ const (
 
 // errBirdeyeForbidden marks the one failure that retrying cannot fix.
 var errBirdeyeForbidden = errors.New(
-	"403 from the edge: this egress IP is refused. The same dial succeeds from " +
-		"a residential connection and from the OVH VPS, so this is not a header " +
-		"problem and not transient")
+	"403 from the edge. Not the egress IP: that was the wrong diagnosis for an " +
+		"afternoon, because the VPS that 'worked' ran a binary cross-compiled " +
+		"from a laptop and so carried a different TLS ClientHello. Check the " +
+		"fingerprint and the User-Agent first (see birdeyeTLSDial)")
 
 // birdeyeChains mirrors okxChains: the non-stable leg of each bench pool,
 // because the feed is indexed by token and the stable leg would pull in the
@@ -87,6 +95,8 @@ var birdeyeChains = []struct {
 }{
 	{ChainName: "solana", Path: "/solana/socket-optimize", Token: "So11111111111111111111111111111111111111112"},
 	{ChainName: "base", Path: "/base/socket-optimize", Token: "0x4200000000000000000000000000000000000006"},
+	// "bsc", not "bnb": /bnb/socket-optimize 404s.
+	{ChainName: "bnb", Path: "/bsc/socket-optimize", Token: "0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c"},
 }
 
 type birdeyeTrade struct {
