@@ -360,10 +360,15 @@ providers:
       series: tfq_loss_bps{terminal="banana-gun",chain="all",stat="median",bucket="all"}
 
   # Product slug is "binance" (one product page for the exchange's RPC and
-  # its wallet); the harness label stays terminal="binance".
+  # its wallet); the harness label stays terminal="binance". The display
+  # name must not: the row measures the self-custody wallet's swap router,
+  # and only the page shows the tag beside it. The headline, the citable
+  # API and the share card carry the name alone, so "Binance posts the
+  # lowest cost per swap" read as the exchange on every surface a reader
+  # meets away from the table.
   - slug: binance
-    name: Binance
-    tag: "Binance Wallet swap, BNB + Ethereum + Base"
+    name: Binance Wallet
+    tag: "Swap router on BNB, Ethereum and Base"
     formula: "Transactions sent to Binance Wallet's swap router (one address on BNB, Ethereum and Base) in a sample of blocks read in full, valued at the pool's state before the swap; loss in bps (gas inside), median over 24 h."
     queries:
       p50: tfq_loss_bps{terminal="binance",chain="all",stat="median",bucket="all"}

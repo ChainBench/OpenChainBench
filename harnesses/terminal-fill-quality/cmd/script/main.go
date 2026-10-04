@@ -1441,7 +1441,7 @@ func productOf(slug string) (string, string) {
 	return slug, "solana"
 }
 
-var productNames = map[string]string{"fomo": "FOMO", "gmgn": "GMGN", "axiom": "Axiom", "banana-gun": "Banana Gun", "binance": "Binance", "basedbot": "BasedBot", "pump-fun": "pump.fun app", "phantom": "Phantom", "maestro": "Maestro", "bloom": "Bloom"}
+var productNames = map[string]string{"fomo": "FOMO", "gmgn": "GMGN", "axiom": "Axiom", "banana-gun": "Banana Gun", "binance": "Binance Wallet", "basedbot": "BasedBot", "pump-fun": "pump.fun app", "phantom": "Phantom", "maestro": "Maestro", "bloom": "Bloom"}
 
 // productAlias: the product a row belongs to when the bench names it
 // differently from the row prefix (Binance Wallet's rows are the Binance
