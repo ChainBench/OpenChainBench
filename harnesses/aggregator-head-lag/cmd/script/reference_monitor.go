@@ -75,6 +75,28 @@ type refClock struct {
 
 var reference = &refClock{seen: map[string]refEntry{}}
 
+// poolTrades answers a different question from `reference`: not "when did we
+// first see this trade" but "is this trade in the bench pool at all".
+//
+// Only the pool subscriptions below write to it. base_flashblock_ref.go
+// deliberately does not: that stream carries every transaction on Base, which
+// is what makes it the right CLOCK and the wrong MEMBERSHIP test. Conflating
+// the two is what let a token-scoped provider be scored on trades from pools
+// the bench does not measure.
+//
+// Timing for a bench-pool trade still comes from `reference`, so Base keeps
+// the flashblock zero point. This set only decides what is eligible.
+var poolTrades = &refClock{seen: map[string]refEntry{}}
+
+// benchPoolScoped reports whether we hold a pool subscription for a chain and
+// can therefore tell pool trades from the rest. False leaves a chain's races
+// unfiltered rather than voiding all of them: Robinhood has no endpoint we
+// trust, and silently scoring nothing there would look exactly like a quiet
+// feed.
+func benchPoolScoped(chainName string) bool {
+	return refWSURL(chainName) != ""
+}
+
 const (
 	refTTL         = 10 * time.Minute
 	refMaxEntries  = 200000
@@ -109,6 +131,12 @@ func (r *refClock) lookup(chain, hash string) (time.Time, bool) {
 	e, ok := r.seen[refKey(chain, hash)]
 	r.mu.RUnlock()
 	return e.at, ok
+}
+
+// has reports membership without caring when, for the pool set.
+func (r *refClock) has(chain, hash string) bool {
+	_, ok := r.lookup(chain, hash)
+	return ok
 }
 
 func (r *refClock) sweep() {
@@ -148,6 +176,7 @@ func runReferenceMonitor(stopChan <-chan struct{}) {
 				return
 			case <-t.C:
 				reference.sweep()
+				poolTrades.sweep()
 				RecordRefClockSize(reference.size())
 			}
 		}
@@ -274,6 +303,7 @@ func refConnect(p HeadLagPool, url string, stopChan <-chan struct{}) error {
 				continue
 			}
 			reference.observe(p.ChainName, r.Value.Signature, now)
+			poolTrades.observe(p.ChainName, r.Value.Signature, now)
 			continue
 		}
 
@@ -289,6 +319,7 @@ func refConnect(p HeadLagPool, url string, stopChan <-chan struct{}) error {
 			continue
 		}
 		reference.observe(p.ChainName, r.TransactionHash, now)
+		poolTrades.observe(p.ChainName, r.TransactionHash, now)
 	}
 }
 
