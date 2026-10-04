@@ -195,6 +195,7 @@ func (b *raceBook) closeLocked(e *raceEntry, k string) {
 		e.closed = true
 		e.void = true
 		e.closedAt = time.Now()
+		RecordRaceVoided(e.chain, "off_pool")
 		return
 	}
 	// Our own node takes part when it saw the trade. It also validates
@@ -214,6 +215,7 @@ func (b *raceBook) closeLocked(e *raceEntry, k string) {
 		e.closed = true
 		e.void = true
 		e.closedAt = time.Now()
+		RecordRaceVoided(e.chain, "single_participant")
 		return
 	}
 	providers := 0
@@ -240,18 +242,18 @@ func (b *raceBook) closeLocked(e *raceEntry, k string) {
 		}
 	}
 	winners := []string{}
+	referenceFirst := false
 	for _, o := range e.obs {
 		delta := o.at.Sub(e.t0)
 		if o.aggregator == "reference" {
 			if !providerT0.IsZero() && providerT0.Sub(o.at) > raceTie {
-				headLagFirst.WithLabelValues("reference", e.chain, e.region).Inc()
+				referenceFirst = true
 			}
 			continue
 		}
 		b.note(e.chain, e.region, o.aggregator)
 		if o.at.Sub(providerT0) <= raceTie {
 			winners = append(winners, o.aggregator)
-			headLagFirst.WithLabelValues(o.aggregator, e.chain, e.region).Inc()
 		}
 		if raceChains[e.chain] {
 			RecordHeadLag(o.aggregator, e.chain, o.lagBlocks, raceLagSeconds(delta), e.region, hash)
@@ -262,9 +264,21 @@ func (b *raceBook) closeLocked(e *raceEntry, k string) {
 	if providers < 2 {
 		// One feed against our node only: lags are recorded above, but
 		// there was no race between feeds to score.
+		RecordRaceVoided(e.chain, "single_participant")
 		return
 	}
 	headLagRaces.WithLabelValues(e.chain, e.region).Inc()
+	// Awarded only now, past the single-participant return. These used to be
+	// incremented inside the loop above, so a trade one feed alone reported
+	// handed it a first that never entered the race count or the share
+	// history: a numerator moving without its denominator, which is the same
+	// defect that put OKX at 95.93% on Solana.
+	if referenceFirst {
+		headLagFirst.WithLabelValues("reference", e.chain, e.region).Inc()
+	}
+	for _, w := range winners {
+		headLagFirst.WithLabelValues(w, e.chain, e.region).Inc()
+	}
 
 	// Rolling 24 h share.
 	pk := e.chain + "|" + e.region
