@@ -2,8 +2,11 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"compress/zlib"
 	"encoding/json"
+	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -186,5 +189,31 @@ func TestBirdeyeLiveFeed(t *testing.T) {
 	}
 	if withHash != decoded {
 		t.Errorf("%d of %d trades carried no usable hash", decoded-withHash, decoded)
+	}
+}
+
+// A 403 is not transient and retrying cannot fix it: the edge scores the
+// egress IP, and the same dial with the same headers succeeds from a
+// residential connection and from the OVH VPS while Railway is refused.
+//
+// Shipped without a breaker, the monitor retried every 5 to 60 seconds forever
+// on three regions and two chains against an endpoint refusing all of them.
+// That is hammering a third party for no measurement, and it ran in production
+// before this was caught.
+func TestBirdeyeForbiddenIsNotRetriedForever(t *testing.T) {
+	if birdeyeForbiddenGiveUp < 1 || birdeyeForbiddenGiveUp > 10 {
+		t.Errorf("give-up threshold %d is not a sane number of attempts", birdeyeForbiddenGiveUp)
+	}
+	// errors.Is must match through a wrap, because the run loop tests it that way.
+	wrapped := fmt.Errorf("chain base: %w", errBirdeyeForbidden)
+	if !errors.Is(wrapped, errBirdeyeForbidden) {
+		t.Error("errors.Is must see through a wrap or the breaker never trips")
+	}
+	// And it must NOT swallow an ordinary disconnect, which should keep retrying.
+	if errors.Is(errors.New("read: connection reset"), errBirdeyeForbidden) {
+		t.Error("an ordinary disconnect must not trip the breaker")
+	}
+	if msg := errBirdeyeForbidden.Error(); !strings.Contains(msg, "egress IP") {
+		t.Errorf("the message must say what is actually wrong, got %q", msg)
 	}
 }

@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"compress/zlib"
 	"encoding/json"
 	"fmt"
@@ -60,7 +61,18 @@ const (
 	// gap this long is a dead subscription, not a quiet market.
 	birdeyeFlowTimeout = 10 * time.Minute
 	birdeyeReadTimeout = 90 * time.Second
+
+	// Consecutive 403s after which this chain gives up for good. The edge
+	// scores the egress IP, so an environment that is refused once will be
+	// refused every time; retrying past this only hammers a third party.
+	birdeyeForbiddenGiveUp = 3
 )
+
+// errBirdeyeForbidden marks the one failure that retrying cannot fix.
+var errBirdeyeForbidden = errors.New(
+	"403 from the edge: this egress IP is refused. The same dial succeeds from " +
+		"a residential connection and from the OVH VPS, so this is not a header " +
+		"problem and not transient")
 
 // birdeyeChains mirrors okxChains: the non-stable leg of each bench pool,
 // because the feed is indexed by token and the stable leg would pull in the
@@ -131,6 +143,7 @@ func birdeyeRunChain(config *Config, chainName, path, token string, stopChan <-c
 	const maxDelay = 60 * time.Second
 	delay := baseDelay
 	attempt := 0
+	forbidden := 0
 
 	for {
 		select {
@@ -148,11 +161,22 @@ func birdeyeRunChain(config *Config, chainName, path, token string, stopChan <-c
 		default:
 		}
 
-		if err != nil {
+		if errors.Is(err, errBirdeyeForbidden) {
+			forbidden++
+			RecordHeadLagError("birdeye", chainName, "forbidden", config.MonitorRegion)
+			if forbidden >= birdeyeForbiddenGiveUp {
+				log.Printf("[HEAD-LAG][BIRDEYE][%s] %d consecutive 403s, disabling this chain. %v",
+					chainName, forbidden, err)
+				return
+			}
+		} else if err != nil {
+			forbidden = 0
 			RecordWSReconnect("birdeye", config.MonitorRegion)
 			RecordHeadLagError("birdeye", chainName, "disconnect", config.MonitorRegion)
 			log.Printf("[HEAD-LAG][BIRDEYE][%s] attempt #%d ended: %v, reconnect in %v",
 				chainName, attempt, err, delay)
+		} else {
+			forbidden = 0
 		}
 
 		select {
@@ -172,7 +196,10 @@ func birdeyeConnectAndStream(config *Config, chainName, path, token string, stop
 	conn, resp, err := dialer.Dial(birdeyeWSHost+path, birdeyeHeaders())
 	if err != nil {
 		if resp != nil && resp.StatusCode == http.StatusForbidden {
-			return fmt.Errorf("dial: 403 from the edge, which is what a missing or stale User-Agent looks like: %w", err)
+			// Not a header problem: the same dial, same headers, succeeds from
+			// a laptop and from the OVH VPS and is refused from Railway. The
+			// edge is scoring the egress IP, so retrying cannot help.
+			return errBirdeyeForbidden
 		}
 		return fmt.Errorf("dial: %w", err)
 	}
