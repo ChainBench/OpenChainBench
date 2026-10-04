@@ -37,6 +37,13 @@ export type ProviderRegistryEntry = {
 
 export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   // ─── Data aggregator APIs ─────────────────────────────────────
+  birdeye: {
+    url: "https://birdeye.so",
+    description:
+      "Birdeye is a multichain on-chain market data platform covering Solana and EVM chains, with token analytics, OHLCV, trader tooling and a trades WebSocket. Its head lag is measured on the per-token trades stream its own token pages hold.",
+    twitter: "@birdeye_so",
+    docs: "https://docs.birdeye.so",
+  },
   mobula: {
     url: "https://mobula.io",
     description:
