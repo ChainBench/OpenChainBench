@@ -157,3 +157,83 @@ func TestOnlyTokenScopedProvidersSkipTheMissCounter(t *testing.T) {
 		}
 	}
 }
+
+// The channel sends `data` as a single OBJECT, not the array every other OKX
+// channel uses. This shipped once as []okxTrade: every data frame failed to
+// unmarshal, the read loop skipped what it could not parse, and the monitor
+// acked its subscribe then scored nothing for two chains. Measured on the
+// deployed build before the fix: 163 frames in, 0 trades out.
+//
+// The Node probe that validated the feed had written
+// `Array.isArray(m.data) ? m.data : [m.data]`, which absorbed the difference
+// silently, so the shape never surfaced until Go refused it.
+func TestOKXFrameTradesAcceptsBothShapes(t *testing.T) {
+	// The wire form: timestamp BARE, not quoted. This is what the gateway
+	// actually sends and what a `string` field rejected 136 frames out of 136.
+	object := []byte(`{"chainId":"8453","txHash":"0xabc","timestamp":1790963535000,"dexName":"Uniswap V3"}`)
+	got := okxFrameTrades(object)
+	if len(got) != 1 {
+		t.Fatalf("a single object must yield one trade, got %d", len(got))
+	}
+	if got[0].TxHash != "0xabc" || got[0].ChainID != "8453" {
+		t.Errorf("object decoded wrong: %+v", got[0])
+	}
+
+	array := []byte(`[{"chainId":"501","txHash":"sig1"},{"chainId":"501","txHash":"sig2"}]`)
+	got = okxFrameTrades(array)
+	if len(got) != 2 {
+		t.Fatalf("an array must yield every trade, got %d", len(got))
+	}
+	if got[1].TxHash != "sig2" {
+		t.Errorf("array decoded wrong: %+v", got)
+	}
+}
+
+// Anything unusable must yield nothing rather than a zero-valued trade: an
+// empty hash would be enqueued and never match, and a zero timestamp would
+// publish a 56-year lag.
+func TestOKXFrameTradesRejectsUnusable(t *testing.T) {
+	for name, raw := range map[string]string{
+		"empty":          ``,
+		"null":           `null`,
+		"number":         `42`,
+		"object no hash": `{"chainId":"8453","dexName":"Uniswap V3"}`,
+		"empty array":    `[]`,
+	} {
+		if got := okxFrameTrades([]byte(raw)); len(got) != 0 {
+			t.Errorf("%s: expected no trades, got %d (%+v)", name, len(got), got)
+		}
+	}
+}
+
+
+// The timestamp arrives bare on the WebSocket and quoted over REST. Both must
+// decode, and an unreadable one must leave the trade usable rather than drop it:
+// neither measured chain publishes the provider timestamp anyway, so losing a
+// whole trade over that field would cost far more than losing the field.
+func TestOKXTimestampAcceptsBothJSONShapes(t *testing.T) {
+	cases := map[string]struct {
+		raw  string
+		want int64
+	}{
+		"bare number (websocket)": {`{"txHash":"0xa","timestamp":1790963535000}`, 1790963535000},
+		"quoted string (REST)":    {`{"txHash":"0xa","timestamp":"1790963535000"}`, 1790963535000},
+		"absent":                  {`{"txHash":"0xa"}`, 0},
+		"null":                    {`{"txHash":"0xa","timestamp":null}`, 0},
+		"seconds not millis":      {`{"txHash":"0xa","timestamp":1790963535}`, 0},
+		"junk":                    {`{"txHash":"0xa","timestamp":"abc"}`, 0},
+	}
+	for name, c := range cases {
+		got := okxFrameTrades([]byte(c.raw))
+		if len(got) != 1 {
+			t.Errorf("%s: the trade must survive, got %d trades", name, len(got))
+			continue
+		}
+		if int64(got[0].Timestamp) != c.want {
+			t.Errorf("%s: timestamp = %d, want %d", name, int64(got[0].Timestamp), c.want)
+		}
+		if got[0].TxHash != "0xa" {
+			t.Errorf("%s: the hash must survive a bad timestamp, got %q", name, got[0].TxHash)
+		}
+	}
+}
