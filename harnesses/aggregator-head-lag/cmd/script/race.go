@@ -195,6 +195,7 @@ func (b *raceBook) closeLocked(e *raceEntry, k string) {
 		e.closed = true
 		e.void = true
 		e.closedAt = time.Now()
+		RecordRaceVoided(e.chain, "off_pool")
 		return
 	}
 	// Our own node takes part when it saw the trade. It also validates
@@ -214,6 +215,7 @@ func (b *raceBook) closeLocked(e *raceEntry, k string) {
 		e.closed = true
 		e.void = true
 		e.closedAt = time.Now()
+		RecordRaceVoided(e.chain, "single_participant")
 		return
 	}
 	providers := 0

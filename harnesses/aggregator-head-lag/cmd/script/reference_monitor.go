@@ -178,6 +178,7 @@ func runReferenceMonitor(stopChan <-chan struct{}) {
 				reference.sweep()
 				poolTrades.sweep()
 				RecordRefClockSize(reference.size())
+				RecordPoolSetSize(poolTrades.size())
 			}
 		}
 	}()
@@ -304,6 +305,7 @@ func refConnect(p HeadLagPool, url string, stopChan <-chan struct{}) error {
 			}
 			reference.observe(p.ChainName, r.Value.Signature, now)
 			poolTrades.observe(p.ChainName, r.Value.Signature, now)
+			RecordPoolObserved(p.ChainName)
 			continue
 		}
 
@@ -320,6 +322,7 @@ func refConnect(p HeadLagPool, url string, stopChan <-chan struct{}) error {
 		}
 		reference.observe(p.ChainName, r.TransactionHash, now)
 		poolTrades.observe(p.ChainName, r.TransactionHash, now)
+		RecordPoolObserved(p.ChainName)
 	}
 }
 
