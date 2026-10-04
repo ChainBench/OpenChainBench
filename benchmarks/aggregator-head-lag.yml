@@ -2,7 +2,7 @@
 
 slug: aggregator-head-lag
 number: "001"
-title: Fastest crypto price API, live head lag across 5 data providers
+title: Fastest crypto price API, live head lag across 6 data providers
 seo_title: "Fastest crypto price API 2026: live head lag by chain"
 seo_description: "{{best_name}} leads cross-chain head lag at {{best_p50}} (p50, 24h); per-chain leaders differ. Mobula, Codex, GeckoTerminal, Serialized, OKX and Birdeye measured live."
 subtitle: Wall-clock head lag in seconds from on-chain swap event to API emission, measured live for Mobula, Codex, GeckoTerminal, Serialized, OKX and Birdeye on Base, BNB Chain, Solana and Robinhood Chain. OKX and Birdeye are measured on Base, BNB Chain and Solana, the three chains where the headline does not read their own timestamps; neither indexes Robinhood Chain.
@@ -73,6 +73,7 @@ methodology:
   - "Race eligibility (since 2026-10-04): only trades our own pool subscription saw are raced. OKX and Birdeye are subscribed per token and see every pool on it, so the book had filled with trades from pools this bench does not measure, scored as a race between those two alone. Measured after the filter: on Solana it discards 576,530 off-pool races an hour and scores 254. Feeds seeing only our pool had been divided by a denominator they could not enter."
   - "Consequence for the Solana column: `head_lag_seconds` there is the lag behind the first feed in a race, so it moved with the same fix. Figures published before 2026-10-04 for OKX and Birdeye on that column were measured on a wider set of trades than the other four feeds."
   - "Solana headline: `head_lag_seconds` is the lag behind the first observation of the trade, our node included, floored at 1 ms. GeckoTerminal polls and lands 15 to 100 s later; it is measured against the same first arrival."
+  - "Reading the Solana column: the leading feed's figure is the floor, not a measured latency. Whichever feed wins a race has a lag of zero by definition, published as 1 ms so the row renders, and over a recent 30 minutes the leader sat on that floor for 94% of its samples with p50 and p90 both at 1 ms. So the gap between the leader and the next feed is not a speed ratio; it is how far behind the others arrived. Read the leader through First to report and the others through their own lag."
   - "Regions: us-east, eu-west, sgp. Cross-region median reported in the headline."
   - "Reference on Base: the sequencer's flashblock preconfirmation stream, held by us in every region. A Base block becomes queryable about 0.36 s after the timestamp it carries, while flashblocks publish every 200 ms inside the 2 s interval, so that timestamp is not the moment a trade becomes knowable."
   - "Base emissions we cannot match to a flashblock are dropped rather than measured against a different ruler. Measuring against the block timestamp charged a provider reading preconfirmations with a negative lag, and described the chain's stamping convention rather than the provider's pipeline."
