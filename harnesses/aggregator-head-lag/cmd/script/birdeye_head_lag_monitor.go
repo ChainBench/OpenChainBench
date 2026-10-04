@@ -10,6 +10,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -62,9 +63,12 @@ const (
 	birdeyeFlowTimeout = 10 * time.Minute
 	birdeyeReadTimeout = 90 * time.Second
 
-	// Consecutive 403s after which this chain gives up for good. The edge
-	// scores the egress IP, so an environment that is refused once will be
-	// refused every time; retrying past this only hammers a third party.
+	// Consecutive 403s after which this chain gives up for good. Overridable
+	// with BIRDEYE_FORBIDDEN_GIVEUP, because the proxy hands out a different
+	// exit IP per connection and three attempts cannot tell "always refused"
+	// from "refused often": from a laptop the same proxy connects 20 for 20,
+	// from Railway it failed 3 for 3, twice. Raise it on one deployment to
+	// settle that, then leave it alone.
 	birdeyeForbiddenGiveUp = 3
 )
 
@@ -96,6 +100,18 @@ type birdeyeTrade struct {
 type birdeyeFrame struct {
 	Type string         `json:"type"`
 	Data []birdeyeTrade `json:"data"`
+}
+
+// birdeyeGiveUpAfter is the breaker threshold, overridable for one deployment
+// when the question is whether persistence helps. Out-of-range values fall back
+// to the compiled default rather than failing the monitor.
+func birdeyeGiveUpAfter() int {
+	if v := strings.TrimSpace(os.Getenv("BIRDEYE_FORBIDDEN_GIVEUP")); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n >= 1 && n <= 100 {
+			return n
+		}
+	}
+	return birdeyeForbiddenGiveUp
 }
 
 // birdeyeHeaders is not optional. Without the User-Agent the dial is answered
@@ -178,7 +194,9 @@ func birdeyeRunChain(config *Config, chainName, path, token string, stopChan <-c
 		if errors.Is(err, errBirdeyeForbidden) {
 			forbidden++
 			RecordHeadLagError("birdeye", chainName, "forbidden", config.MonitorRegion)
-			if forbidden >= birdeyeForbiddenGiveUp {
+			// Deliberate pacing: 25 attempts spread over minutes, not a burst.
+			time.Sleep(10 * time.Second)
+			if forbidden >= birdeyeGiveUpAfter() {
 				log.Printf("[HEAD-LAG][BIRDEYE][%s] %d consecutive 403s, disabling this chain. %v",
 					chainName, forbidden, err)
 				return
