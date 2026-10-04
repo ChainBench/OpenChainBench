@@ -9,6 +9,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -123,6 +124,20 @@ func birdeyeInflate(raw []byte) string {
 
 func runBirdeyeHeadLagMonitor(config *Config, stopChan <-chan struct{}, wg *sync.WaitGroup) {
 	defer wg.Done()
+	// Birdeye's edge refuses this project's Railway egress, so the dial only
+	// works through the proxy. getProxyDialer falls back to a direct dial when
+	// the variable is missing, silently, which is indistinguishable from the
+	// proxy itself being refused. Say which it is.
+	proxy := os.Getenv("HTTP_PROXY")
+	if proxy == "" {
+		proxy = os.Getenv("HTTPS_PROXY")
+	}
+	if proxy == "" {
+		fmt.Println("[HEAD-LAG][BIRDEYE] no HTTP_PROXY in the environment: dialing direct, " +
+			"which Birdeye's edge refuses from this host")
+	} else {
+		fmt.Printf("[HEAD-LAG][BIRDEYE] proxy configured (%d chars)\n", len(proxy))
+	}
 	fmt.Printf("[HEAD-LAG][BIRDEYE] Starting WebSocket monitors for %d chains...\n", len(birdeyeChains))
 
 	var inner sync.WaitGroup
