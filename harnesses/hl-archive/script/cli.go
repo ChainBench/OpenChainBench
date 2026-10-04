@@ -80,6 +80,8 @@ func Run(args []string) error {
 		return cmdServe(rest)
 	case "query":
 		return cmdQuery(rest)
+	case "traders":
+		return cmdTraders(rest)
 	case "-h", "--help", "help":
 		printUsage()
 		return nil
@@ -98,6 +100,7 @@ Usage:
   hl-archive rebuild --confirm
   hl-archive serve
   hl-archive query --builder 0x... --days N
+  hl-archive traders
 `)
 }
 
@@ -441,4 +444,37 @@ func builderActiveOn(b Builder, day time.Time) bool {
 		return true
 	}
 	return !day.Before(vf)
+}
+
+// cmdTraders runs one trader-leaderboard audit cycle.
+//
+// Stateless on purpose: every figure it publishes is an aggregate over a
+// single snapshot of the venue's own blob, so the run needs no DuckDB and
+// a failed cycle costs nothing but the next one. The per-account history
+// the persistence measurement wants already ships inside the info API
+// response (see portfolio.go), so storage is a follow-up concern rather
+// than a precondition.
+func cmdTraders(_ []string) error {
+	ctx, cancel := signalCtx()
+	defer cancel()
+
+	snap, err := RunTraders(ctx, TradersOptionsFromEnv())
+	if err != nil {
+		return err
+	}
+	in := snap.Integrity
+	Log.Info("leaderboard audit",
+		"accounts", in.Accounts,
+		"winners_pct", fmt.Sprintf("%.1f", in.WinnersPct),
+		"agg_pnl_usd", fmt.Sprintf("%.0f", in.AggPnL),
+		"zero_vlm_accounts", in.ZeroVlmAccounts,
+		"zero_vlm_pnl_pct", fmt.Sprintf("%.1f", in.ZeroVlmPnLPct),
+		"top100_pnl_pct", fmt.Sprintf("%.1f", in.Top100PnLPct),
+		"roi_outliers", in.ROIOutliers,
+		"malformed_rows", in.MalformedRows,
+	)
+	if err := PushTradersUpstash(ctx, snap); err != nil {
+		return err
+	}
+	return nil
 }
