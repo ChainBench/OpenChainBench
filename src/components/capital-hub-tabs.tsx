@@ -26,6 +26,7 @@ import {
   bridgedShareSubline,
   cohortCell,
   columnIsWorthShowing,
+  divergenceFunnel,
   fmtUsdLevel,
   isDust,
   levelSortValue,
@@ -221,8 +222,9 @@ export function CapitalHubTabs({ hub }: { hub: CapitalHub }) {
           )}
           {hub.protocols.length > 0 && (
             <>
-              <h2 className="label-mono text-ink-muted mb-3">Divergences this month: fees up, token down, price to fees under the category median</h2>
+              <h2 className="label-mono text-ink-muted mb-3">Divergences this month: fee trend against token move, in both directions</h2>
               <Divergences rows={hub.divergences} />
+              <DivergenceFunnelNote rows={hub.protocols} />
               <SignalReadings
                 counts={{
                   "fees-up-token-down": hub.protocols.filter((p) => p.signal === "fees-up-token-down").length,
@@ -1081,6 +1083,47 @@ function NaLegend({ entries }: { entries: readonly { marker: string; reason: str
  * The text lives in src/lib/capital-hub-rules.ts and the Markdown view
  * prints the same words.
  */
+/**
+ * The denominator under the divergence list.
+ *
+ * "1 token today" reads as a surveyed field that produced one answer. The
+ * usual cause is the opposite: the screen had almost nothing to test,
+ * because one of its legs is conditioned on a market direction that
+ * barely occurred that month. On 2026-10-04 the fee leg and the P/F leg
+ * each matched about half the board and the token leg matched four rows
+ * out of sixty-two, so the short list was the month rather than the
+ * filter. Printing the three counts costs nothing and turns a puzzling
+ * number into a readable one.
+ *
+ * Counts come from the same rows the table below renders, so a reader can
+ * recompute every one of them.
+ */
+function DivergenceFunnelNote({ rows }: { rows: ProtocolRow[] }) {
+  const f = divergenceFunnel(rows);
+  if (f.testable === 0) return null;
+  return (
+    <p className="mt-3 max-w-3xl text-[12px] text-ink-soft leading-relaxed">
+      <span className="text-ink-muted">What the screen had to work with.</span>{" "}
+      Both readings run over the same {f.testable} testable {f.testable === 1 ? "protocol" : "protocols"}
+      {f.board !== f.testable && <> of {f.board} on the board</>}. This month {f.feesUp} grew fees past{" "}
+      {SIGNAL_FEE_GROWTH_MIN_PCT}% and {f.pfBelowMedian} sit under their category median, but only{" "}
+      {f.tokenDown} saw the token fall more than {SIGNAL_PRICE_MOVE_MIN_PCT}%, against {f.tokenUp} that rose
+      by more than that. A screen that wants a falling token has that many candidates before any other
+      clause applies, so a short list here is usually the month rather than the filter.
+      {f.thinCategory > 0 && (
+        <>
+          {" "}
+          A further {f.thinCategory}{" "}
+          {f.thinCategory === 1 ? "protocol sits" : "protocols sit"} in{" "}
+          {f.thinCategoryNames.join(" and ")}, {f.thinCategoryNames.length === 1 ? "a category" : "categories"}{" "}
+          with fewer than {SIGNAL_MIN_CATEGORY_MEMBERS} ranked members: the median there is a pair rather
+          than a peer group, so those rows cannot carry either signal whatever they do.
+        </>
+      )}
+    </p>
+  );
+}
+
 function SignalReadings({ counts }: { counts: Record<SignalKind, number> }) {
   const kinds: SignalKind[] = ["fees-up-token-down", "fees-down-token-up"];
   return (

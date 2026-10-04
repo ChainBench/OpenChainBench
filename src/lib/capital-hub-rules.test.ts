@@ -12,6 +12,7 @@ import {
   categoryMedianUsable,
   change7dOfSeries,
   cohortCell,
+  divergenceFunnel,
   fmtUsdLevel,
   naLegend,
   naMarker,
@@ -379,3 +380,61 @@ describe("sectionState", () => {
     expect(sectionState([B({ live: true, failed: true })], "protocol-pf-ratio", 0)).toBe("failed");
   });
 });
+
+describe("divergenceFunnel", () => {
+  // Shaped like the live board on 2026-10-04: fees up and P/F below median
+  // are each roughly half the field, the token leg is the scarce one, and
+  // two rows sit in a category too small for its median to be a peer group.
+  const board = [
+    { feeGrowth30dPct: 263, priceChange30dPct: -21, pfVsCategory: 0.39, categorySize: 15, category: "Lending" },
+    { feeGrowth30dPct: 40, priceChange30dPct: 35, pfVsCategory: 0.5, categorySize: 18, category: "DEXs" },
+    { feeGrowth30dPct: 5, priceChange30dPct: 12, pfVsCategory: 2.1, categorySize: 18, category: "DEXs" },
+    { feeGrowth30dPct: -55, priceChange30dPct: 18, pfVsCategory: 1.8, categorySize: 18, category: "DEXs" },
+    { feeGrowth30dPct: 90, priceChange30dPct: -4, pfVsCategory: 0.7, categorySize: 9, category: "Liquid Staking" },
+    // Sub-floor category: disqualified before any clause is tested.
+    { feeGrowth30dPct: 300, priceChange30dPct: -40, pfVsCategory: 0.1, categorySize: 2, category: "Yield" },
+    { feeGrowth30dPct: 120, priceChange30dPct: -30, pfVsCategory: 0.2, categorySize: 3, category: "DEX Aggregator" },
+    // Incomplete reading: not testable, and not a thin-category exclusion.
+    { feeGrowth30dPct: null, priceChange30dPct: -50, pfVsCategory: 0.3, categorySize: 15, category: "Lending" },
+  ];
+
+  test("separates the board from what the screen could actually test", () => {
+    const f = divergenceFunnel(board);
+    expect(f.board).toBe(8);
+    expect(f.testable).toBe(5);
+    expect(f.thinCategory).toBe(2);
+  });
+
+  test("names the thin categories so the page can say who cannot signal", () => {
+    expect(divergenceFunnel(board).thinCategoryNames).toEqual(["DEX Aggregator", "Yield"]);
+  });
+
+  test("counts each leg over the testable rows only", () => {
+    const f = divergenceFunnel(board);
+    // 263, 40 and 90 clear +20; -55 clears -20.
+    expect(f.feesUp).toBe(3);
+    expect(f.feesDown).toBe(1);
+    // Only the -21 row clears -10; the -4 row sits inside the flat band.
+    expect(f.tokenDown).toBe(1);
+    expect(f.tokenUp).toBe(3);
+    expect(f.pfBelowMedian).toBe(3);
+    expect(f.pfAboveMedian).toBe(2);
+  });
+
+  test("a row the thin-category floor excluded never reaches a leg count", () => {
+    const f = divergenceFunnel(board);
+    // Both sub-floor rows would have cleared fees-up and token-down.
+    // Counting them would overstate how much the screen had to work with.
+    expect(f.feesUp).toBeLessThan(5);
+    expect(f.tokenDown).toBe(1);
+  });
+
+  test("an empty board yields zeros rather than NaN", () => {
+    const f = divergenceFunnel([]);
+    expect(f.board).toBe(0);
+    expect(f.testable).toBe(0);
+    expect(f.thinCategoryNames).toEqual([]);
+    expect(f.feesUp).toBe(0);
+  });
+});
+
