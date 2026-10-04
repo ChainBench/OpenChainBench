@@ -13,7 +13,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gorilla/websocket"
 )
 
 // ============================================================================
@@ -192,7 +191,12 @@ func birdeyeRunChain(config *Config, chainName, path, token string, stopChan <-c
 }
 
 func birdeyeConnectAndStream(config *Config, chainName, path, token string, stopChan <-chan struct{}) error {
-	dialer := websocket.Dialer{HandshakeTimeout: 20 * time.Second}
+	// Through the proxy, like geckoterminal and both mobula paths. Dialing
+	// direct is what made this 403 from Railway while the same binary got 101
+	// from a laptop and from the OVH VPS: the edge scores the egress IP, and
+	// HTTP_PROXY is already set on these services for exactly this reason.
+	dialer := getProxyDialer()
+	dialer.HandshakeTimeout = 20 * time.Second
 	conn, resp, err := dialer.Dial(birdeyeWSHost+path, birdeyeHeaders())
 	if err != nil {
 		if resp != nil && resp.StatusCode == http.StatusForbidden {
