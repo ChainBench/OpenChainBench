@@ -9,6 +9,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"sync"
@@ -212,12 +213,31 @@ func birdeyeConnectAndStream(config *Config, chainName, path, token string, stop
 	// HTTP_PROXY is already set on these services for exactly this reason.
 	dialer := getProxyDialer()
 	dialer.HandshakeTimeout = 20 * time.Second
+
+	// Whether the dialer actually carries the proxy, checked here rather than
+	// inferred from the variable existing. getProxyDialer sets Proxy only when
+	// url.Parse succeeds and drops it in silence otherwise, so a malformed
+	// value dials direct and looks exactly like a refused proxy.
+	if dialer.Proxy == nil {
+		log.Printf("[HEAD-LAG][BIRDEYE][%s] dialing DIRECT: the dialer carries no proxy", chainName)
+	} else if u, perr := dialer.Proxy(&http.Request{URL: &url.URL{Scheme: "https", Host: "multichain-socket.birdeye.so"}}); perr != nil || u == nil {
+		log.Printf("[HEAD-LAG][BIRDEYE][%s] dialing DIRECT: proxy resolver returned %v (err %v)",
+			chainName, u, perr)
+	} else {
+		log.Printf("[HEAD-LAG][BIRDEYE][%s] dialing through proxy host %s", chainName, u.Host)
+	}
+
 	conn, resp, err := dialer.Dial(birdeyeWSHost+path, birdeyeHeaders())
 	if err != nil {
 		if resp != nil && resp.StatusCode == http.StatusForbidden {
-			// Not a header problem: the same dial, same headers, succeeds from
-			// a laptop and from the OVH VPS and is refused from Railway. The
-			// edge is scoring the egress IP, so retrying cannot help.
+			// Say WHO refused. Cloudflare stamps Server and Cf-Ray; a proxy
+			// rejecting an unauthorised source IP sends neither, and the two
+			// are indistinguishable from the error alone.
+			log.Printf("[HEAD-LAG][BIRDEYE][%s] 403 from server=%q cf-ray=%q via=%q",
+				chainName, resp.Header.Get("Server"), resp.Header.Get("Cf-Ray"),
+				resp.Header.Get("Via"))
+			// Not a header problem: the same dial, same headers, same proxy,
+			// succeeds from a laptop and from the OVH VPS. Retrying cannot help.
 			return errBirdeyeForbidden
 		}
 		return fmt.Errorf("dial: %w", err)
