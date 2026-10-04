@@ -177,6 +177,26 @@ func (b *raceBook) resolve(now time.Time) {
 
 func (b *raceBook) closeLocked(e *raceEntry, k string) {
 	hash := k[len(e.chain)+len(e.region)+2:]
+	// A trade outside the bench pool is not this bench's race.
+	//
+	// OKX and Birdeye are subscribed per token, so they see every pool on it
+	// while the other four see only ours. Scoring what they both happened to
+	// report made the book a duel between those two on the whole token: 77,776
+	// races an hour on Solana against ~1,200 pool trades, 75,151 firsts to OKX
+	// on 1,210 pool trades of its own, and Mobula publishing 0.08% while it
+	// was first on 78% of what it actually reported.
+	//
+	// Checked against poolTrades, not `reference`: on Base the reference is the
+	// chain-wide flashblock stream and matches every transaction, so it cannot
+	// answer this. The pool subscription lands within ~130 ms of the fastest
+	// feed on Solana, comfortably inside raceWindow, so a genuine pool trade is
+	// present by the time its race closes.
+	if benchPoolScoped(e.chain) && !poolTrades.has(e.chain, hash) {
+		e.closed = true
+		e.void = true
+		e.closedAt = time.Now()
+		return
+	}
 	// Our own node takes part when it saw the trade. It also validates
 	// that the hash is real; a race nobody but a single provider saw is
 	// still closed, but carries no reference lag.
