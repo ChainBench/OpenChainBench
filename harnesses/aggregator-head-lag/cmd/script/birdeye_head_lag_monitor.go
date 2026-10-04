@@ -3,16 +3,20 @@ package main
 import (
 	"bytes"
 	"compress/zlib"
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
+	utls "github.com/refraction-networking/utls"
 )
 
 // ============================================================================
@@ -27,11 +31,11 @@ import (
 //
 // Three things to know, each of which produced a wrong conclusion first:
 //
-//  1. The dial FAILS without a User-Agent. Cloudflare's default rule answers
-//     403 "Just a moment..." to a client that declares none. Tested one factor
-//     at a time: no headers 403, Origin alone 403, Origin + User-Agent 101.
-//     That is the whole gate; no TLS fingerprinting is involved and the uTLS
-//     machinery in utls_codex.go is not needed here.
+//  1. The dial needs BOTH a User-Agent and a credible TLS fingerprint, and
+//     each alone reads as the whole gate. Origin + User-Agent got 101 from a
+//     laptop, which is how this comment used to end "no TLS fingerprinting is
+//     involved"; the same code 403d from Railway until the ClientHello was
+//     pinned. See birdeyeTLSDial. Both are required.
 //
 //  2. Frames are zlib-compressed JSON, not text and not a bespoke binary
 //     format. DevTools shows them as "Binary message", which reads like
@@ -40,11 +44,18 @@ import (
 //  3. An ack proves nothing, as on the OKX path. Only decoded trades do, so
 //     the connected gauge is not set until a TXS_DATA frame arrives.
 //
-// Base and Solana only, for the same two reasons OKX is limited to them:
-// `blockUnixTime` is in whole SECONDS, so a chain whose headline reads the
-// provider's own timestamp (anything outside referenceChains and raceChains)
-// would publish that quantisation as Birdeye's latency; and Robinhood Chain is
-// not covered upstream.
+// Three of the four bench chains. `blockUnixTime` is in whole SECONDS, so a
+// chain whose headline reads the provider's own timestamp (anything outside
+// referenceChains and raceChains) would publish that quantisation as Birdeye's
+// latency. That ruled out BNB until BNB joined referenceChains, which is why
+// this file shipped with two chains and now carries three: 825 trades in 45 s
+// on the bench pool's WBNB leg, all with a hash.
+//
+// Robinhood Chain stays out, now measured rather than assumed. The route
+// exists (an invented chain name 404s, /robinhood/ returns the WELLCOME
+// frame), the subscription is accepted without an error, and no trade ever
+// arrives: 0 in 45 s on the bench pool and on its USDG leg, while BSC on the
+// same socket code delivered 825. Birdeye does not index the chain.
 //
 // Like OKX, the subscription is per token rather than per pool, so most of
 // what arrives is off-bench and is discarded: only emissions matched to the
@@ -60,7 +71,19 @@ const (
 	// gap this long is a dead subscription, not a quiet market.
 	birdeyeFlowTimeout = 10 * time.Minute
 	birdeyeReadTimeout = 90 * time.Second
+
+	// Consecutive 403s after which this chain gives up for good. The edge
+	// scores the egress IP, so an environment that is refused once will be
+	// refused every time; retrying past this only hammers a third party.
+	birdeyeForbiddenGiveUp = 3
 )
+
+// errBirdeyeForbidden marks the one failure that retrying cannot fix.
+var errBirdeyeForbidden = errors.New(
+	"403 from the edge. Not the egress IP: that was the wrong diagnosis for an " +
+		"afternoon, because the VPS that 'worked' ran a binary cross-compiled " +
+		"from a laptop and so carried a different TLS ClientHello. Check the " +
+		"fingerprint and the User-Agent first (see birdeyeTLSDial)")
 
 // birdeyeChains mirrors okxChains: the non-stable leg of each bench pool,
 // because the feed is indexed by token and the stable leg would pull in the
@@ -72,6 +95,8 @@ var birdeyeChains = []struct {
 }{
 	{ChainName: "solana", Path: "/solana/socket-optimize", Token: "So11111111111111111111111111111111111111112"},
 	{ChainName: "base", Path: "/base/socket-optimize", Token: "0x4200000000000000000000000000000000000006"},
+	// "bsc", not "bnb": /bnb/socket-optimize 404s.
+	{ChainName: "bnb", Path: "/bsc/socket-optimize", Token: "0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c"},
 }
 
 type birdeyeTrade struct {
@@ -84,6 +109,60 @@ type birdeyeTrade struct {
 type birdeyeFrame struct {
 	Type string         `json:"type"`
 	Data []birdeyeTrade `json:"data"`
+}
+
+// birdeyeTLSDial performs the TLS handshake with a pinned Chrome ClientHello.
+//
+// Cloudflare scores the fingerprint, and Go's own hello changes between
+// releases. One machine, one network, one code path, changing only the
+// toolchain:
+//
+//	Go 1.24.4 (what the Dockerfile builds)  stock TLS  0/5 connected, all 403
+//	Go 1.27.1 (a laptop)                    stock TLS  5/5 connected
+//	Go 1.24.4                               uTLS       5/5 connected
+//
+// That is also why this looked like an egress problem for an afternoon: the
+// VPS that "worked" was running a binary cross-compiled from the laptop, so it
+// carried 1.27's hello. The proxy this used to dial through is not needed.
+//
+// Bumping the Dockerfile to 1.27 would work today and break silently the next
+// time Go changes its hello, with nobody connecting the two events.
+func birdeyeTLSDial(ctx context.Context, network, addr string) (net.Conn, error) {
+	host, _, err := net.SplitHostPort(addr)
+	if err != nil {
+		host = addr
+	}
+	raw, err := (&net.Dialer{Timeout: 20 * time.Second}).DialContext(ctx, network, addr)
+	if err != nil {
+		return nil, err
+	}
+
+	spec, err := utls.UTLSIdToSpec(utls.HelloChrome_120)
+	if err != nil {
+		raw.Close()
+		return nil, fmt.Errorf("chrome hello spec: %w", err)
+	}
+	// ALPN must offer http/1.1 ONLY, and Config.NextProtos does not win here:
+	// the preset carries its own ALPN extension advertising h2, the server
+	// selects it, and the upgrade returns an HTTP/2 SETTINGS frame that gorilla
+	// reports as `malformed HTTP response "\x00\x00\x12\x04..."`. A WebSocket
+	// cannot ride HTTP/2, so the extension is edited inside the spec.
+	for _, ext := range spec.Extensions {
+		if alpn, ok := ext.(*utls.ALPNExtension); ok {
+			alpn.AlpnProtocols = []string{"http/1.1"}
+		}
+	}
+
+	uc := utls.UClient(raw, &utls.Config{ServerName: host}, utls.HelloCustom)
+	if err := uc.ApplyPreset(&spec); err != nil {
+		raw.Close()
+		return nil, fmt.Errorf("apply chrome preset: %w", err)
+	}
+	if err := uc.HandshakeContext(ctx); err != nil {
+		raw.Close()
+		return nil, fmt.Errorf("tls handshake: %w", err)
+	}
+	return uc, nil
 }
 
 // birdeyeHeaders is not optional. Without the User-Agent the dial is answered
@@ -112,6 +191,9 @@ func birdeyeInflate(raw []byte) string {
 
 func runBirdeyeHeadLagMonitor(config *Config, stopChan <-chan struct{}, wg *sync.WaitGroup) {
 	defer wg.Done()
+	// The dial carries a pinned Chrome ClientHello rather than the Go
+	// toolchain's, which Cloudflare refuses on the version this image builds.
+	fmt.Println("[HEAD-LAG][BIRDEYE] dialing with a pinned Chrome TLS fingerprint (ALPN http/1.1)")
 	fmt.Printf("[HEAD-LAG][BIRDEYE] Starting WebSocket monitors for %d chains...\n", len(birdeyeChains))
 
 	var inner sync.WaitGroup
@@ -131,6 +213,7 @@ func birdeyeRunChain(config *Config, chainName, path, token string, stopChan <-c
 	const maxDelay = 60 * time.Second
 	delay := baseDelay
 	attempt := 0
+	forbidden := 0
 
 	for {
 		select {
@@ -148,11 +231,22 @@ func birdeyeRunChain(config *Config, chainName, path, token string, stopChan <-c
 		default:
 		}
 
-		if err != nil {
+		if errors.Is(err, errBirdeyeForbidden) {
+			forbidden++
+			RecordHeadLagError("birdeye", chainName, "forbidden", config.MonitorRegion)
+			if forbidden >= birdeyeForbiddenGiveUp {
+				log.Printf("[HEAD-LAG][BIRDEYE][%s] %d consecutive 403s, disabling this chain. %v",
+					chainName, forbidden, err)
+				return
+			}
+		} else if err != nil {
+			forbidden = 0
 			RecordWSReconnect("birdeye", config.MonitorRegion)
 			RecordHeadLagError("birdeye", chainName, "disconnect", config.MonitorRegion)
 			log.Printf("[HEAD-LAG][BIRDEYE][%s] attempt #%d ended: %v, reconnect in %v",
 				chainName, attempt, err, delay)
+		} else {
+			forbidden = 0
 		}
 
 		select {
@@ -168,11 +262,27 @@ func birdeyeRunChain(config *Config, chainName, path, token string, stopChan <-c
 }
 
 func birdeyeConnectAndStream(config *Config, chainName, path, token string, stopChan <-chan struct{}) error {
-	dialer := websocket.Dialer{HandshakeTimeout: 20 * time.Second}
+	// Through the proxy, like geckoterminal and both mobula paths. Dialing
+	// direct is what made this 403 from Railway while the same binary got 101
+	// from a laptop and from the OVH VPS: the edge scores the egress IP, and
+	// HTTP_PROXY is already set on these services for exactly this reason.
+	// No proxy: the refusal was never about the egress IP. See birdeyeTLSDial.
+	dialer := websocket.Dialer{
+		HandshakeTimeout:  20 * time.Second,
+		NetDialTLSContext: birdeyeTLSDial,
+	}
 	conn, resp, err := dialer.Dial(birdeyeWSHost+path, birdeyeHeaders())
 	if err != nil {
 		if resp != nil && resp.StatusCode == http.StatusForbidden {
-			return fmt.Errorf("dial: 403 from the edge, which is what a missing or stale User-Agent looks like: %w", err)
+			// Say WHO refused. Cloudflare stamps Server and Cf-Ray; a proxy
+			// rejecting an unauthorised source IP sends neither, and the two
+			// are indistinguishable from the error alone.
+			log.Printf("[HEAD-LAG][BIRDEYE][%s] 403 from server=%q cf-ray=%q via=%q",
+				chainName, resp.Header.Get("Server"), resp.Header.Get("Cf-Ray"),
+				resp.Header.Get("Via"))
+			// Not a header problem: the same dial, same headers, same proxy,
+			// succeeds from a laptop and from the OVH VPS. Retrying cannot help.
+			return errBirdeyeForbidden
 		}
 		return fmt.Errorf("dial: %w", err)
 	}
