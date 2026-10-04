@@ -93,7 +93,7 @@ var referenceChains = map[string]bool{"base": true, "bnb": true}
 // accepted and silently ignored, and its paid channel is token-scoped too.
 // Measured on the Base pool over 20 minutes: 213 of 213 pool swaps present,
 // so the coverage this relies on is not assumed.
-var tokenScopedAggregators = map[string]bool{"okx": true}
+var tokenScopedAggregators = map[string]bool{"okx": true, "birdeye": true}
 
 // emitHeadLag is the single entry point for a provider emission.
 //

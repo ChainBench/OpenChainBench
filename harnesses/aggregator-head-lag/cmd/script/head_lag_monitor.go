@@ -831,6 +831,11 @@ func runHeadLagMonitor(config *Config, stopChan <-chan struct{}) {
 	wg.Add(1)
 	go runOKXHeadLagMonitor(config, stopChan, &wg)
 
+	// Start Birdeye monitor. Same shape as OKX: Base and Solana, token-scoped,
+	// and its dial needs a User-Agent or the edge answers 403.
+	wg.Add(1)
+	go runBirdeyeHeadLagMonitor(config, stopChan, &wg)
+
 	// Wait for all to finish
 	wg.Wait()
 	fmt.Println("[HEAD-LAG] All monitors stopped")
