@@ -455,13 +455,32 @@ type cgMarket struct {
 	PriceChg30d *float64
 }
 
-// fetchMarkets pages through CoinGecko 250 ids at a time. The free tier
-// takes the whole cohort in one page today; the loop is there so a cohort
-// that grows past 250 does not silently lose its tail.
+// cgMarketsBatch is how many ids go into one /coins/markets call.
+//
+// Not a rate-limit knob: it is a URL-length one. CoinGecko answers 403
+// (not 429) when the query string gets long, and the handler only retries
+// on 429, so the sweep failed on its first call and gave up, once an hour,
+// for 5.6 days. Measured from the probe host on 2026-10-04, same
+// User-Agent, calls seconds apart: 3 ids / 136 chars -> 200, 50 ids /
+// 547 chars -> 200, 250 ids / 2,307 chars -> 403. The old batch of 250 put
+// the whole 152-protocol cohort in one request and never came back.
+//
+// The exact threshold is unmeasured: 547 characters is the longest query
+// observed to succeed and 2,307 the shortest to fail, so anything in
+// between is a guess. 40 is sized against the safe end rather than the
+// unknown middle. it keeps a worst-case batch of 24-character slugs near
+// 1,150 characters and a realistic one near 650, and costs 4 calls an
+// hour for the current 152-protocol cohort, far under any tier's limit.
+// Raise it only against a new measurement, not against the arithmetic.
+const cgMarketsBatch = 40
+
+// fetchMarkets pages through CoinGecko cgMarketsBatch ids at a time. The
+// free tier caps a page at 250 rows, and paging here means a cohort
+// that grows does not silently lose its tail.
 func fetchMarkets(ids []string) (map[string]cgMarket, error) {
 	out := map[string]cgMarket{}
-	for i := 0; i < len(ids); i += 250 {
-		end := i + 250
+	for i := 0; i < len(ids); i += cgMarketsBatch {
+		end := i + cgMarketsBatch
 		if end > len(ids) {
 			end = len(ids)
 		}
@@ -480,7 +499,7 @@ func fetchMarkets(ids []string) (map[string]cgMarket, error) {
 			Chg30d      *float64 `json:"price_change_percentage_30d_in_currency"`
 		}
 		if err := getCoinGecko(cgMarkets+"?"+q.Encode(), &page); err != nil {
-			return out, fmt.Errorf("coingecko page %d: %w", i/250, err)
+			return out, fmt.Errorf("coingecko page %d: %w", i/cgMarketsBatch, err)
 		}
 		for _, c := range page {
 			out[c.ID] = cgMarket{
