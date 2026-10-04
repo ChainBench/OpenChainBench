@@ -37,19 +37,23 @@ import (
 // and the column reads "Feed down" rather than a wrong number.
 //
 // ---------------------------------------------------------------------------
-// Why only Base and Solana
+// Why three chains and not four
 // ---------------------------------------------------------------------------
 //
-// BNB is deliberately absent. The chain publishes `head_lag_seconds` as
-// receiveTime minus the provider's OWN timestamp (it is in neither
-// referenceChains nor raceChains), and every OKX timestamp is a whole second:
-// 1,800 sampled across three chains, all ts%1000 == 0. Putting a
-// second-quantised clock in the same column as the others' millisecond clocks
-// would publish our arithmetic as OKX's latency. Base reads the reference
-// clock and Solana the race, neither of which touches the provider timestamp,
-// so both are safe. BNB can follow if it ever gains a reference.
+// Every OKX timestamp is a whole second: 1,800 sampled across three chains,
+// all ts%1000 == 0, and 938 of 938 again on BNB. A chain that publishes
+// `head_lag_seconds` as receiveTime minus the provider's OWN timestamp would
+// therefore publish our arithmetic as OKX's latency. That is the only
+// constraint, and it is satisfied by reading a clock we own rather than
+// theirs: Base takes the reference clock, Solana the race, and BNB joined
+// referenceChains, which is what retired its exclusion here. The feed itself
+// was never the obstacle: 938 trades in 45 s on chainId 56, all with a hash.
 //
-// Robinhood Chain is absent because OKX does not support it at all.
+// Robinhood Chain is absent, and measured rather than read off their chain
+// list: subscribing chainId 4663 for the bench's USDG and for the pool itself
+// is ACKED both times and yields 0 trades in 40 s, while Base on the same
+// socket delivered 267. That is the same ack-proves-nothing shape as the six
+// pool-scoping attempts above, so the ack is not evidence of coverage.
 //
 // ---------------------------------------------------------------------------
 // Why the subscription is per token while every other provider is per pool
@@ -94,11 +98,12 @@ const (
 // chain's stablecoin flow.
 var okxChains = []struct {
 	ChainName string // metrics label, must match headLagPools
-	OKXChain  string // OKX's own chain index: 8453 Base, 501 Solana
+	OKXChain  string // OKX's own chain index: 8453 Base, 501 Solana, 56 BNB
 	Token     string
 }{
 	{ChainName: "base", OKXChain: "8453", Token: "0x4200000000000000000000000000000000000006"},
 	{ChainName: "solana", OKXChain: "501", Token: "So11111111111111111111111111111111111111112"},
+	{ChainName: "bnb", OKXChain: "56", Token: "0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c"},
 }
 
 type okxTrade struct {
