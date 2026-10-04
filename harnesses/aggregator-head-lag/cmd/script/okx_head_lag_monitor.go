@@ -102,10 +102,27 @@ var okxChains = []struct {
 }
 
 type okxTrade struct {
-	ChainID   string `json:"chainId"`
-	TxHash    string `json:"txHash"`
-	Timestamp string `json:"timestamp"`
-	DexName   string `json:"dexName"`
+	ChainID string `json:"chainId"`
+	TxHash  string `json:"txHash"`
+	// Not a string. The WebSocket sends unix millis as a JSON NUMBER while the
+	// REST endpoint of the same product sends the same field quoted. Declaring
+	// it string made every WS frame fail to decode on this one field, with the
+	// hash already parsed correctly just above it: 136 of 136 frames rejected.
+	Timestamp okxMillis `json:"timestamp"`
+	DexName   string    `json:"dexName"`
+}
+
+// okxMillis accepts the timestamp in either shape, quoted or bare.
+//
+// It never fails the decode: a timestamp we cannot read leaves the value zero,
+// which the caller treats as "no provider timestamp", because losing the whole
+// trade over a field neither measured chain actually publishes would be a far
+// worse trade than losing the field.
+type okxMillis int64
+
+func (m *okxMillis) UnmarshalJSON(b []byte) error {
+	*m = okxMillis(parseOKXMillis(strings.Trim(strings.TrimSpace(string(b)), `"`)))
+	return nil
 }
 
 type okxFrame struct {
@@ -116,7 +133,32 @@ type okxFrame struct {
 		Channel     string `json:"channel"`
 		ExtraParams string `json:"extraParams"`
 	} `json:"arg"`
-	Data []okxTrade `json:"data"`
+	// Raw because this channel sends `data` as a single OBJECT, not the array
+	// every other OKX channel uses. Declaring []okxTrade here makes every data
+	// frame fail to unmarshal, and the read loop skips what it cannot parse, so
+	// the monitor acks its subscribe and then silently scores nothing. That
+	// shipped once: 163 frames arrived and 0 trades came out of them.
+	Data json.RawMessage `json:"data"`
+}
+
+// okxFrameTrades reads `data` whichever shape it arrives in.
+//
+// Observed live: this channel sends one object per frame. The array form is
+// accepted too because the documented v6 `trades` channel uses it, and a
+// provider that quietly switches shape should not take the monitor silent.
+func okxFrameTrades(raw json.RawMessage) []okxTrade {
+	if len(raw) == 0 {
+		return nil
+	}
+	var many []okxTrade
+	if err := json.Unmarshal(raw, &many); err == nil {
+		return many
+	}
+	var one okxTrade
+	if err := json.Unmarshal(raw, &one); err == nil && one.TxHash != "" {
+		return []okxTrade{one}
+	}
+	return nil
 }
 
 // okxExtraParams is the arg shape the gateway actually honours. Flat keys are
@@ -332,7 +374,8 @@ func okxConnectAndStream(config *Config, chainName, okxChain, token string, stop
 			log.Printf("[HEAD-LAG][OKX][%s] subscribe acked, waiting for frames", chainName)
 			continue
 		}
-		if len(f.Data) == 0 {
+		trades := okxFrameTrades(f.Data)
+		if len(trades) == 0 {
 			continue
 		}
 
@@ -345,7 +388,7 @@ func okxConnectAndStream(config *Config, chainName, okxChain, token string, stop
 		lastTrade = receiveTime
 		lastMu.Unlock()
 
-		for _, t := range f.Data {
+		for _, t := range trades {
 			okxHandleTrade(config, chainName, t, receiveTime)
 		}
 	}
@@ -375,7 +418,7 @@ func okxHandleTrade(config *Config, subChain string, t okxTrade, receiveTime tim
 	}
 
 	providerLag := 0.0
-	if ms := parseOKXMillis(t.Timestamp); ms > 0 {
+	if ms := int64(t.Timestamp); ms > 0 {
 		providerLag = receiveTime.Sub(time.UnixMilli(ms)).Seconds()
 	}
 
