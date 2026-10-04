@@ -168,3 +168,38 @@ func TestTokenScopedProvidersAreTheOnesNeedingPoolFiltering(t *testing.T) {
 		}
 	}
 }
+
+// A trade one feed alone reported must not award it a first.
+//
+// The counter used to be incremented inside the winners loop, which runs
+// before the single-participant return, so such a trade handed that feed a
+// first while never entering the race count or the share history. A numerator
+// moving without its denominator is the same defect that published OKX at
+// 95.93% on Solana, and it survived the first fix.
+func TestSingleProviderRaceAwardsNoFirst(t *testing.T) {
+	withPoolTrades(t, func(p *refClock) {
+		p.observe("solana", "LONEHASH", time.Now())
+	})
+	// A reference observation makes len(obs) == 2, so the race passes the
+	// participant guard and reaches the providers < 2 return. That is exactly
+	// the path that used to award the free first.
+	savedRef := reference
+	reference = &refClock{seen: map[string]refEntry{}}
+	reference.observe("solana", "LONEHASH", time.Now())
+	t.Cleanup(func() { reference = savedRef })
+
+	b := newTestBook()
+	now := time.Now()
+	b.observe("okx", "solana", "eu-west", "LONEHASH", now, 0)
+
+	b.resolve(now.Add(raceWindow + time.Second))
+
+	e := b.entries[raceKey("solana", "eu-west", "LONEHASH")]
+	if e == nil || !e.closed {
+		t.Fatal("race did not close")
+	}
+	if len(b.history["solana|eu-west"]) != 0 {
+		t.Error("a single-provider race entered the share history, so it would " +
+			"sit in every other feed's denominator")
+	}
+}
