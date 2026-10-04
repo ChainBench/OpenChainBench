@@ -40,6 +40,9 @@ var (
 	headLagRaces       *prometheus.CounterVec
 	headLagFirstShare  *prometheus.GaugeVec
 	headLagRefMatches  *prometheus.CounterVec
+	headLagPoolSeen    *prometheus.CounterVec
+	headLagPoolEntries *prometheus.GaugeVec
+	headLagRacesVoided *prometheus.CounterVec
 	refClockEntries    prometheus.Gauge
 
 	// Fast-trade latency (for comparison with Pulse V2)
@@ -227,6 +230,40 @@ func init() {
 		[]string{"aggregator", "chain", "region", "outcome"},
 	)
 	prometheus.MustRegister(headLagRefMatches)
+
+	// What the pool subscription actually sees, per chain. The race filter
+	// reads this set, and until now nothing published its rate, so a filter
+	// that passed everything and a pool that is genuinely busy produced the
+	// same observable.
+	headLagPoolSeen = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "head_lag_pool_observed_total",
+			Help: "Trades observed by the bench pool subscription, per chain.",
+		},
+		[]string{"chain"},
+	)
+	prometheus.MustRegister(headLagPoolSeen)
+
+	headLagPoolEntries = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "head_lag_pool_trades_entries",
+			Help: "Live entries in the pool membership set (TTL bounded).",
+		},
+		[]string{},
+	)
+	prometheus.MustRegister(headLagPoolEntries)
+
+	// Why a race was discarded. "off_pool" is the filter doing its job;
+	// "single_participant" is the pre-existing rule. A population that stays
+	// high with off_pool near zero means the filter is not biting.
+	headLagRacesVoided = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "head_lag_races_voided_total",
+			Help: "Races closed without being scored, by reason.",
+		},
+		[]string{"chain", "reason"},
+	)
+	prometheus.MustRegister(headLagRacesVoided)
 
 	// Per-transaction race (race.go): who reported the trade first, and
 	// how often, our node reference included as aggregator="reference".
@@ -516,6 +553,18 @@ func RecordHeadLagRefMiss(aggregator, chain, region string) {
 }
 
 // RecordRefClockSize publishes the reference window occupancy.
+func RecordPoolObserved(chain string) {
+	headLagPoolSeen.WithLabelValues(chain).Inc()
+}
+
+func RecordPoolSetSize(n int) {
+	headLagPoolEntries.WithLabelValues().Set(float64(n))
+}
+
+func RecordRaceVoided(chain, reason string) {
+	headLagRacesVoided.WithLabelValues(chain, reason).Inc()
+}
+
 func RecordRefClockSize(n int) { refClockEntries.Set(float64(n)) }
 
 // RecordBlockchainHead records the current blockchain head block number
