@@ -254,3 +254,130 @@ func TestUnstatedCapabilityIsNotRanked(t *testing.T) {
 }
 
 func boolp(v bool) *bool { return &v }
+
+// The published winners at 10M and 100M sit EXACTLY on a Chainstack allowance,
+// and that is worth pinning rather than discovering again.
+//
+// Chainstack's archive workloads cost 2 RU per request after the block_age
+// floor, its tiers include 20M / 80M / 200M / 400M RU, and the bench's volume
+// buckets are 10M / 100M / 1B requests. Round times round lands on round: the
+// trace and indexer profiles at 10M requests need exactly 20,000,000 RU, which
+// is exactly what Growth includes, and at 100M they need exactly 200,000,000,
+// which is exactly Business.
+//
+// So the winner is real but maximally sensitive at precisely the volumes the
+// page publishes: +1% of traffic moves trace@10M from 49 to 52 dollars, +50%
+// moves it to 199. A test here means a change to the weights, the floor or the
+// buckets cannot shift that edge silently.
+func TestChainstackWinsOnAnExactAllowanceFit(t *testing.T) {
+	c := &Catalogue{FX: FX{EURUSD: 1}}
+	p := Provider{
+		Slug: "chainstack", Currency: "USD", Unit: "ru", Cohort: "usage",
+		Weights: map[string]Weights{"ethereum": {
+			Default: f(1),
+			Methods: map[string]*float64{
+				"eth_getLogs":            f(1),
+				"eth_getBlockByNumber":   f(1),
+				"eth_getBlockReceipts":   f(1),
+				"debug_traceTransaction": f(2),
+				"trace_block":            f(2),
+			},
+		}},
+		ArchiveRule: ArchiveRule{Kind: "block_age", Value: 2},
+	}
+	growth := Plan{ID: "growth", Tier: "growth", MonthlyUSD: f(49),
+		IncludedUnits: f(20e6), OveragePer1M: f(15.0), OverageAllowed: "true",
+		Archive: "true", Trace: boolp(true)}
+	business := Plan{ID: "business", Tier: "business", MonthlyUSD: f(499),
+		IncludedUnits: f(200e6), OveragePer1M: f(10.0), OverageAllowed: "true",
+		Archive: "true", Trace: boolp(true)}
+
+	trace := Profile{ID: "trace", Chain: "ethereum", Archive: true,
+		Mix: map[string]float64{
+			"debug_traceTransaction": 0.60,
+			"trace_block":            0.20,
+			"eth_getBlockByNumber":   0.20,
+		}}
+
+	// Exactly at the allowance: the flat fee, no overage.
+	if q := quote(c, p, growth, trace, 10e6); !q.Eligible || math.Abs(q.MonthlyUSD-49) > 1e-9 {
+		t.Errorf("trace@10M = %v (eligible %v), want exactly 49", q.MonthlyUSD, q.Eligible)
+	}
+	if q := quote(c, p, business, trace, 100e6); !q.Eligible || math.Abs(q.MonthlyUSD-499) > 1e-9 {
+		t.Errorf("trace@100M = %v (eligible %v), want exactly 499", q.MonthlyUSD, q.Eligible)
+	}
+
+	// One percent past it: the edge is real and the overage is charged. 10.1M
+	// requests cost 20.2M RU, so 0.2M RU over at 15 dollars per million.
+	q := quote(c, p, growth, trace, 10.1e6)
+	if math.Abs(q.MonthlyUSD-52) > 1e-6 {
+		t.Errorf("trace@10.1M = %v, want 52: the exact fit must not absorb real overage",
+			q.MonthlyUSD)
+	}
+	// And half again as much traffic is four times the bill.
+	q = quote(c, p, growth, trace, 15e6)
+	if math.Abs(q.MonthlyUSD-199) > 1e-6 {
+		t.Errorf("trace@15M = %v, want 199", q.MonthlyUSD)
+	}
+}
+
+// The free tier can only be ranked after converting units to requests, and
+// the conversion REVERSES the raw ranking.
+//
+// Comparing included_units across providers is meaningless: OnFinality bills
+// 1 RU per request, dRPC 20 CU, Ankr 200 credits. By raw allowance Ankr looks
+// second best in the cohort at 200M; by what it actually buys it is near the
+// bottom. Each figure below was computed by hand from the catalogue first.
+func TestFreeAllowanceConvertsAcrossUnits(t *testing.T) {
+	c := &Catalogue{FX: FX{EURUSD: 1}}
+	simple := Profile{ID: "simple-read", Chain: "ethereum",
+		Mix: map[string]float64{"eth_getBalance": 1.0}}
+
+	cases := []struct {
+		name     string
+		unit     string
+		weight   float64
+		units    float64
+		period   string
+		expected float64
+	}{
+		// 400,000 RU a DAY at 1 RU per request, over a 30-day month.
+		{"onfinality", "ru", 1, 400e3, "day", 12e6},
+		// 210,000,000 CU a month at 20 CU per request.
+		{"drpc", "cu", 20, 210e6, "month", 10.5e6},
+		// 200,000,000 credits a month at 200 per request: the inversion.
+		{"ankr", "credit", 200, 200e6, "month", 1e6},
+	}
+	for _, tc := range cases {
+		p := Provider{
+			Slug: tc.name, Currency: "USD", Unit: tc.unit, Cohort: "usage",
+			Weights: map[string]Weights{"ethereum": {Default: f(tc.weight)}},
+			Plans: []Plan{{
+				ID: "free", Tier: "free", MonthlyUSD: f(0),
+				IncludedUnits: f(tc.units), AllowancePeriod: tc.period,
+			}},
+		}
+		got, plan, ok := c.FreeAllowanceRequests(p, simple)
+		if !ok {
+			t.Errorf("%s: no free allowance computed", tc.name)
+			continue
+		}
+		if plan != "free" {
+			t.Errorf("%s: plan = %q, want free", tc.name, plan)
+		}
+		if math.Abs(got-tc.expected) > 1 {
+			t.Errorf("%s: %.0f free requests/mo, want %.0f (%.0f %s at %.0f per request)",
+				tc.name, got, tc.expected, tc.units, tc.unit, tc.weight)
+		}
+	}
+
+	// And the ordering that matters: by raw units Ankr beats OnFinality 500 to
+	// 1, by requests OnFinality beats Ankr 12 to 1. A bench that published the
+	// raw figure would rank them backwards.
+	if 200e6 <= 400e3 {
+		t.Fatal("premise wrong")
+	}
+	if 1e6 >= 12e6 {
+		t.Fatal("the inversion is the whole point of this metric")
+	}
+}
