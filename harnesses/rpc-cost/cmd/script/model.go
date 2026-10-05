@@ -86,7 +86,24 @@ func unitsPerRequest(p Provider, pr Profile) (float64, error) {
 			// documentary distinction, not a computational one, and reading
 			// it as a no-op priced the indexer profile at 1 RU per request
 			// instead of 2, publishing $3,990 for a bill of $8,990.
-			total *= p.ArchiveRule.Value
+			//
+			// It is NOT a multiplier on the total, which is how this was
+			// first written and what the 2026-09-30 audit caught. Several
+			// methods already carry the doubled figure in their own weight:
+			// debug_traceTransaction is listed at 2 RU and the empirical pass
+			// measured 2 RU even at tip-10, so the cost is method-driven
+			// there, not recency-driven. Multiplying again charged trace 3.6
+			// RU against a real 2.0, an 80 % overstatement that moved the
+			// winner in two cells.
+			//
+			// Per method, the archive weight is therefore the larger of what
+			// the provider lists and what the block-age surcharge implies:
+			// a base read goes 1 -> 2, a debug call already at 2 stays 2.
+			var err error
+			total, err = blockAgeUnits(w, pr, p.ArchiveRule.Value)
+			if err != nil {
+				return 0, err
+			}
 		case "none", "":
 			// Either already encoded in the per-method weights (GetBlock
 			// carries an independent archive column rather than a
@@ -135,9 +152,16 @@ func quote(c *Catalogue, p Provider, pl Plan, pr Profile, requests float64) Quot
 		return q
 	}
 
-	unmetered := p.Cohort == "dedicated"
-	var upr float64
-	if !unmetered {
+	// Every plan in the dedicated cohort bills in `request`, so one request
+	// is one unit and there are no per-method weights to resolve. It used to
+	// take upr = 0 and then needed = 0, which made the overage and max_units
+	// branches below unreachable for the whole cohort: AWS AMB read $97.82 at
+	// every volume against a real 1B bill of $3,097.82, and Zeeve's published
+	// ceilings bound nothing. Whether the requests are actually metered is
+	// decided further down, by the plan, not here by the cohort.
+	dedicated := p.Cohort == "dedicated"
+	upr := 1.0
+	if !dedicated {
 		var err error
 		upr, err = unitsPerRequest(p, pr)
 		if err != nil {
@@ -150,19 +174,40 @@ func quote(c *Catalogue, p Provider, pl Plan, pr Profile, requests float64) Quot
 
 	// Trace workloads on a plan that does not serve trace are not "more
 	// expensive", they are unavailable. Same for archive.
-	if pr.Archive && pl.Archive == "false" {
-		q.Reason = "plan has no archive access"
-		return q
+	//
+	// And a plan that has never SAID must not be ranked either. Both fields
+	// used to pass when null — one test looked for the string "false", the
+	// other for a non-nil pointer — so 27 of the 106 usage plans were scored
+	// on archive and trace workloads without having claimed support. NOWNodes
+	// won trace cells that way, on a capability it makes no claim about.
+	//
+	// The reason distinguishes the two cases on purpose. "Does not serve" is
+	// the provider's statement; "has not published" is ours, and it is a gap
+	// in this catalogue rather than a limit of the product. Only the second is
+	// supportable for a null, and saying which it is turns each one into a
+	// research task instead of a silent omission.
+	if pr.Archive {
+		switch pl.Archive {
+		case "false":
+			q.Reason = "plan has no archive access"
+			return q
+		case "":
+			q.Reason = "archive support for this plan is not published; not ranked"
+			return q
+		}
 	}
-	if isTraceProfile(pr) && pl.Trace != nil && !*pl.Trace {
-		q.Reason = "plan has no trace/debug access"
-		return q
+	if isTraceProfile(pr) {
+		if pl.Trace == nil {
+			q.Reason = "trace/debug support for this plan is not published; not ranked"
+			return q
+		}
+		if !*pl.Trace {
+			q.Reason = "plan has no trace/debug access"
+			return q
+		}
 	}
 
 	needed := requests * upr
-	if unmetered {
-		needed = 0
-	}
 
 	// Throughput is a second, independent meter, and for several
 	// providers it binds before the bill does. Tatum and Moralis publish
@@ -239,6 +284,18 @@ func quote(c *Catalogue, p Provider, pl Plan, pr Profile, requests float64) Quot
 	included := 0.0
 	if pl.IncludedUnits != nil {
 		included = *pl.IncludedUnits * periodScale(pl.AllowancePeriod)
+	} else if dedicated && pl.OveragePer1M == nil && len(pl.OverageBands) == 0 {
+		// A missing included_units means two opposite things in this cohort,
+		// and that ambiguity is what produced blocker 2. GetBlock's dedicated
+		// node serves unlimited requests for its monthly fee; AWS AMB includes
+		// none and bills every request on top. Both write null.
+		//
+		// The plan's own overage rate decides: publishing one means it meters
+		// from the first request, publishing none means the node is flat. 33
+		// of the 37 plans here are flat and must stay so; the 4 that meter
+		// (AWS AMB in three regions, Shyft legacy-scale) now reach the branches
+		// below.
+		included = math.Inf(1)
 	}
 	// A daily cap is not a monthly pool. Infura's 15M credits/day cannot
 	// be spent as 450M on the first of the month, so the plan is eligible
@@ -446,6 +503,35 @@ func weightedUnits(w Weights, pr Profile) (float64, error) {
 			return 0, fmt.Errorf("no published unit cost for %s", method)
 		}
 		total += share * units
+		shares += share
+	}
+	if shares > 0 {
+		total /= shares
+	}
+	return total, nil
+}
+
+// blockAgeUnits prices a profile under a block-age archive surcharge.
+//
+// The surcharge raises the floor rather than scaling the bill: a method whose
+// own listed weight is already at or above what the surcharge implies is
+// unaffected by it. See the block_age branch in unitsPerRequest for why.
+func blockAgeUnits(w Weights, pr Profile, mult float64) (float64, error) {
+	if w.Default == nil {
+		// Without a chain default there is nothing for the surcharge to act
+		// on, and guessing one would invent the number this bench exists to
+		// report. The provider's own archive table is the supported way to
+		// price this; see ArchiveWeights.
+		return 0, fmt.Errorf("block_age archive rule needs a chain default weight")
+	}
+	floor := *w.Default * mult
+	total, shares := 0.0, 0.0
+	for method, share := range pr.Mix {
+		units, ok := w.Weight(method)
+		if !ok {
+			return 0, fmt.Errorf("no published unit cost for %s", method)
+		}
+		total += share * math.Max(units, floor)
 		shares += share
 	}
 	if shares > 0 {
