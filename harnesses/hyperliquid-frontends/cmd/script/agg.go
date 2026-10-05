@@ -372,6 +372,10 @@ func (a *Aggregator) publish() {
 		}
 	}
 
+	// day key -> the latest fill second seen across every builder. Used to
+	// tell a short day from a truncated feed; see publishCoverage.
+	cohortLastFill := map[string]int64{}
+
 	rows := make(map[string]builderWindow, len(a.builders))
 	var cohortVol float64
 	for _, b := range a.builders {
@@ -393,6 +397,12 @@ func (a *Aggregator) publish() {
 				continue
 			}
 			s := a.merged(b, d)
+			if s != nil && s.lastFillS > cohortLastFill[dayKey(d)] {
+				// Furthest fill any builder saw that day. One builder going
+				// quiet in the evening proves nothing; the whole cohort going
+				// quiet at the same minute is the feed being cut short.
+				cohortLastFill[dayKey(d)] = s.lastFillS
+			}
 			if i == 0 {
 				w.day = s
 				w.dayKnown = s != nil || a.allAbsent(b, d)
@@ -483,6 +493,7 @@ func (a *Aggregator) publish() {
 
 	hlDataDay.Set(float64(D.Unix()))
 	hlDataDayEnd.Set(float64(D.Unix() + daySec))
+	a.publishCoverage(D, windowStart, cohortLastFill)
 	// Liveness means "the feed was reachable and the gauges were rebuilt",
 	// not just that the process is up: a pass with transport failures
 	// leaves the tick alone so the success query goes false after 2 h.
@@ -828,4 +839,57 @@ func (a *Aggregator) writeLedgerDay(b Builder, d time.Time) {
 	if a.allAbsent(b, d) {
 		a.state.setLedger(b.Slug, dayKey(d), dayTotals{})
 	}
+}
+
+// dayCoverageHours is how far into a UTC day the cohort's furthest fill
+// reached. A complete day lands within minutes of 24; anything materially
+// short means the published file stops before the day does.
+func dayCoverageHours(day time.Time, lastFillS int64) float64 {
+	if lastFillS <= 0 {
+		return 0
+	}
+	h := float64(lastFillS-day.Unix()) / 3600
+	switch {
+	case h < 0:
+		return 0
+	case h > 24:
+		return 24
+	}
+	return h
+}
+
+// coverageCompleteHours is the point past which a day counts as whole.
+//
+// Hyperliquid's per-builder export started stopping at roughly 12:11 UTC on
+// 2026-09-22 and has every day since: 21 September ran to 23:59:54, 22
+// September to 12:27:11, and 2 October to 12:10:58, with the file stable
+// across re-downloads, so this is the published artefact and not a partial
+// fetch. Summing such a day beside a whole one understates it by about half
+// and says nothing, which is the shape of error this harness exists to
+// avoid. 23 leaves an hour of slack for a genuinely quiet late evening
+// across the entire cohort, which has never happened in the mirror.
+const coverageCompleteHours = 23
+
+// publishCoverage reports how much of each day the feed actually carried.
+// The figures stay published either way: the fix for a truncated upstream is
+// to say so, not to drop the day and let the window silently shorten.
+func (a *Aggregator) publishCoverage(D, windowStart time.Time, lastFill map[string]int64) {
+	cov := dayCoverageHours(D, lastFill[dayKey(D)])
+	hlDayCoverageHours.Set(cov)
+	if cov < coverageCompleteHours {
+		hlDayTruncated.Set(1)
+	} else {
+		hlDayTruncated.Set(0)
+	}
+	truncated := 0
+	for d := windowStart; !d.After(D); d = d.AddDate(0, 0, 1) {
+		ls, ok := lastFill[dayKey(d)]
+		if !ok {
+			continue // no file for that day: already counted elsewhere
+		}
+		if dayCoverageHours(d, ls) < coverageCompleteHours {
+			truncated++
+		}
+	}
+	hlTruncatedDaysWindow.Set(float64(truncated))
 }
