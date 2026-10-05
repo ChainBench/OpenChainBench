@@ -131,8 +131,16 @@ func (a *Aggregator) runJobs(ctx context.Context, jobs []fetchJob) int {
 				if ctx.Err() != nil {
 					return
 				}
+				had := a.mirror.present(j.addr, j.day)
 				err := a.mirror.fetch(ctx, j.addr, j.day)
-				if err != nil && err != errFeedAbsent {
+				if err == nil && had {
+					// Revalidation returned a new body: the CDN completed a
+					// day it had published short. The parse we cached is of
+					// the old half, so drop it.
+					a.forgetDay(j.addr, j.day)
+					log.Printf("feed %s %s: upstream republished, cached parse dropped", j.addr, j.day.Format(dayFormat))
+				}
+				if err != nil && err != errFeedAbsent && err != errFeedUnchanged {
 					fmu.Lock()
 					failures++
 					fmu.Unlock()
@@ -166,7 +174,21 @@ func (a *Aggregator) syncWindow(ctx context.Context) {
 		recent := d.After(to.AddDate(0, 0, -a.graceDays))
 		for _, addr := range a.addrs {
 			if a.mirror.present(addr, d) {
-				continue
+				// Not "we have it, we are done". Hyperliquid publishes a day
+				// short and completes it later: 3 October was still a 403 at
+				// 22:00 on the 4th and was whole by 01:00 on the 5th, while
+				// 22 September to 2 October stopped near 12:11 UTC and have
+				// never moved since. Holding the first copy for ever is how a
+				// half day becomes permanent on our side.
+				//
+				// Revalidation is conditional (If-Modified-Since from the
+				// file's own mtime), so an unchanged day costs a 304 and
+				// nothing else. Only days still inside the grace window are
+				// re-checked: past it the upstream has never once gone back
+				// and filled a day in, so it would be pure load.
+				if !recent {
+					continue
+				}
 			}
 			// A 403 on an old day is final (no fills). On a recent day every
 			// missing file is re-requested on every pass, so by the time the
@@ -892,4 +914,16 @@ func (a *Aggregator) publishCoverage(D, windowStart time.Time, lastFill map[stri
 		}
 	}
 	hlTruncatedDaysWindow.Set(float64(truncated))
+}
+
+// forgetDay drops one cached parse so the next read re-reads the file from
+// disk. Used when a revalidation replaces a mirrored day with a longer one.
+func (a *Aggregator) forgetDay(addr string, day time.Time) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	// Keyed exactly as summary() keys it: the address as the caller passes
+	// it, which is the form a.addrs carries.
+	if m, ok := a.cache[addr]; ok {
+		delete(m, dayKey(day))
+	}
 }
