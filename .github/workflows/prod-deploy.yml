@@ -14,6 +14,21 @@ on:
   push:
     branches:
       - main
+    paths-ignore:
+      # Directories the site build never opens, so a change confined to one of
+      # them cannot alter a rendered page. Verified by grep from src/, scripts/
+      # and next.config.ts: harnesses/ has no real reference at all (every
+      # mention is a GitHub URL in prose) and crm/ has one, in a comment.
+      #
+      # Deliberately NOT listed, because the build does read them: benchmarks/
+      # (76 references), alternatives/ (19), answers/ (18), data/ (4), docs/ (4).
+      # A spec change must still deploy.
+      - 'harnesses/**'
+      - 'crm/**'
+      - 'infrastructure/**'
+      - 'worker/**'
+      - 'outreach/**'
+      - 'packages/**'
   workflow_dispatch:
 
 concurrency:
