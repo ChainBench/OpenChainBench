@@ -133,15 +133,13 @@ export default async function TradingAgentsHubPage() {
               tip="Least negative, not positive. No agent in this arena is above zero."
             />
             <SummaryCard
-              label="Rounds behind each row"
+              label="Separable pairs"
               value={
-                hub.minRounds != null && hub.maxRounds != null
-                  ? hub.minRounds === hub.maxRounds
-                    ? String(hub.maxRounds)
-                    : `${hub.minRounds} to ${hub.maxRounds}`
+                hub.stats.separablePairs != null
+                  ? `${fmtInt(hub.stats.separablePairs)} of ${hub.stats.pairsTested}`
                   : "..."
               }
-              tip="Agents did not all fund the same weeks, so each figure is computed over that agent's own rounds and no others."
+              tip="Pairs of agents whose week-by-week difference clears statistical significance. Zero means the order on this page is an order of finish, not a ranking."
             />
           </section>
 
@@ -185,6 +183,9 @@ export default async function TradingAgentsHubPage() {
                     <Th align="right" tip="Regression slope against ETH over the same rounds. 1.0 would be holding ETH outright.">
                       Exposure
                     </Th>
+                    <Th align="right" tip="Standard deviation of this agent's weekly returns. The roster spans a factor of two and a half: the steadiest and the wildest can reach the same total by very different routes.">
+                      Weekly swing
+                    </Th>
                     <Th align="right" tip="Funded rounds behind every figure on this row.">
                       Rounds
                     </Th>
@@ -221,6 +222,61 @@ export default async function TradingAgentsHubPage() {
                 label="Numbers or a picture"
                 body="Most models are entered twice, once fed the chart as numeric series and once fed it as an image. Only three models currently have both variants, so the contrast is indicative rather than a result: the mean paired difference is 7.3 points with a standard deviation of 7.1."
               />
+            </div>
+          </section>
+
+          <section className="mb-10">
+            <h2 className="display text-xl sm:text-2xl text-ink mb-3">
+              How much of this is signal
+            </h2>
+            <div className="rounded-xl border border-ink/10 card-soft p-5 sm:p-6 text-sm text-ink-soft leading-relaxed max-w-3xl">
+              <p>
+                The table above puts eight agents in an order across a wide
+                spread, and that order is not yet a result. Pairing each two
+                agents on the weeks both of them ran cancels the market
+                completely, with no exposure to estimate and no counterfactual
+                to argue about. On those paired differences,{" "}
+                <strong className="text-ink">
+                  {hub.stats.separablePairs != null
+                    ? `${fmtInt(hub.stats.separablePairs)} of ${hub.stats.pairsTested} comparisons`
+                    : "none of the comparisons"}
+                </strong>{" "}
+                clears statistical significance. Read the ranking as an order
+                of finish over the rounds run so far.
+              </p>
+              <p className="mt-3">
+                The headline is in better shape and is not there either. Every
+                ranked agent is below zero, and pooling the roster round by
+                round
+                {hub.stats.pooledAlpha != null
+                  ? ` gives a mean alpha of ${fmtPct(hub.stats.pooledAlpha)} per round`
+                  : " gives a negative mean alpha"}
+                {hub.stats.pooledT != null
+                  ? ` at t = ${hub.stats.pooledT.toFixed(2)}`
+                  : ""}
+                . Two is the conventional bar, so the direction is consistent
+                and the size is not yet separable from noise.
+              </p>
+              {hub.stats.roundsNeeded != null && hub.maxRounds != null && (
+                <p className="mt-3">
+                  <strong className="text-ink">
+                    {fmtInt(hub.maxRounds)} of the {fmtInt(hub.stats.roundsNeeded)}{" "}
+                    rounds needed.
+                  </strong>{" "}
+                  At the dispersion measured so far, that is how many weekly
+                  rounds this effect size requires before the finding clears
+                  the bar. The arena runs one round a week, so the count moves
+                  on its own and this page publishes it rather than waiting to
+                  claim the result.
+                </p>
+              )}
+              <p className="mt-3 text-ink-muted">
+                Pooling is done within the round before testing. The eight
+                agents trade the same week, so their results are correlated:
+                treating each agent-round as an independent observation would
+                count one week eight times and overstate the confidence by
+                roughly the square root of the roster size.
+              </p>
             </div>
           </section>
 
@@ -329,7 +385,7 @@ function LabGroup({
   return (
     <>
       <tr className="border-b border-ink/10 bg-ink/[0.02]">
-        <td className="py-2.5 pr-3" colSpan={7}>
+        <td className="py-2.5 pr-3" colSpan={8}>
           <div className="flex items-center gap-2">
             <ProviderLogo slug={lab.slug} name={lab.name} size={20} />
             <Link
@@ -355,6 +411,7 @@ function LabGroup({
           <Td value={a.passive} fmt={fmtPct} />
           <Td value={a.hitRate} fmt={fmtPct0} />
           <Td value={a.beta} fmt={fmtX} />
+          <Td value={a.weeklySwing} fmt={fmtPlainPct} />
           <Td value={a.rounds} fmt={fmtInt} />
         </tr>
       ))}
@@ -448,6 +505,12 @@ function ArchCard({ label, body }: { label: string; body: string }) {
       <p className="text-sm text-ink-soft leading-relaxed">{body}</p>
     </div>
   );
+}
+
+/** A dispersion, not a signed result: a leading plus would read as a gain. */
+function fmtPlainPct(v: number): string {
+  if (!Number.isFinite(v)) return "...";
+  return `${v.toFixed(2)}%`;
 }
 
 function fmtPct(v: number): string {

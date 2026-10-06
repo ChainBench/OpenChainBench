@@ -50,8 +50,8 @@ func TestSlugOfMatchesSpec(t *testing.T) {
 
 func TestSlugOfShape(t *testing.T) {
 	cases := map[string]string{
-		"opus 4.5 chart":  "opus-45-chart",  // a dot joins, never separates
-		"gpt-5.2 vision":  "gpt-52-vision",  // an existing dash survives
+		"opus 4.5 chart":  "opus-45-chart", // a dot joins, never separates
+		"gpt-5.2 vision":  "gpt-52-vision", // an existing dash survives
 		"grok 4 chart":    "grok-4-chart",
 		"  padded  name ": "padded-name", // no leading or trailing dash
 	}
