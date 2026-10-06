@@ -160,8 +160,14 @@ async function _fetchBridgeHub(): Promise<BridgeHubData | null> {
   };
 }
 
+// Tagged "benchmarks" so the worker's post-publish revalidation reaches this
+// hub the way it reaches the bench pages it reads. Untagged, it ran on its own
+// 300s clock under a page whose ISR is 3600s, so the hub could show figures up
+// to an hour behind /benchmarks/bridge-fee and /benchmarks/bridge-quote-latency
+// while claiming the same trailing 24h window. Same defect, same fix, as the
+// /trading-agents hub.
 export const fetchBridgeHub = unstable_cache(
   _fetchBridgeHub,
   ["bridge-hub"],
-  { revalidate: 300 }
+  { revalidate: 300, tags: ["benchmarks"] }
 );
