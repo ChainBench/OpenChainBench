@@ -40,13 +40,13 @@ var Profiles = []Profile{
 		// A wallet or dapp UI: mostly contract reads and balances, a few
 		// receipts as transactions confirm, a thin tail of writes.
 		Mix: map[string]float64{
-			"eth_call":               0.40,
-			"eth_getBalance":         0.15,
-			"eth_blockNumber":        0.15,
+			"eth_call":                  0.40,
+			"eth_getBalance":            0.15,
+			"eth_blockNumber":           0.15,
 			"eth_getTransactionReceipt": 0.15,
-			"eth_estimateGas":        0.05,
-			"eth_sendRawTransaction": 0.05,
-			"eth_getLogs":            0.05,
+			"eth_estimateGas":           0.05,
+			"eth_sendRawTransaction":    0.05,
+			"eth_getLogs":               0.05,
 		},
 	},
 	{
@@ -86,10 +86,10 @@ var Profiles = []Profile{
 		// cohort (QuickNode 1.5x, Ankr 2.5x, GetBlock 2.5x), so it needs
 		// its own column rather than a footnote.
 		Mix: map[string]float64{
-			"getAccountInfo":     0.40,
+			"getAccountInfo":      0.40,
 			"getMultipleAccounts": 0.20,
-			"getLatestBlockhash": 0.15,
-			"sendTransaction":    0.15,
+			"getLatestBlockhash":  0.15,
+			"sendTransaction":     0.15,
 			"simulateTransaction": 0.10,
 		},
 	},
@@ -123,10 +123,6 @@ var PlanTiers = []string{"all", "free", "entry", "growth", "business", "enterpri
 const (
 	headlineKind   = "dapp"
 	headlineBucket = "10m"
-	// headlineChain is the slice the free-tier board shows unfiltered.
-	// Ethereum because every free plan in the catalogue serves it, so the
-	// default view is the one comparison nobody is missing from.
-	headlineChain = "ethereum"
 )
 
 // baselineProfile returns the profile used as a chain's reference workload
