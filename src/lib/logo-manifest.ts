@@ -12,6 +12,16 @@
  */
 
 const RAW: Record<string, string> = {
+  // Bench 284 (AI trading agents). The four labs whose models the Recall
+  // arena runs. Each is that lab's own published mark, committed like every
+  // other logo here: OpenAI and Anthropic from Simple Icons (CC0), the Gemini
+  // sparkle from Google's own gstatic asset so it keeps its purple-to-blue
+  // gradient, and the Grok mark from grok.com's favicon.
+  openai: "/logos/openai.svg",
+  anthropic: "/logos/anthropic.svg",
+  "google-deepmind": "/logos/google-deepmind.svg",
+  xai: "/logos/xai.svg",
+
   // Bench 274 (protocol P/F). 67 of its 80 rows rendered as initials
   // chips because the board is market-wide and most of these
   // protocols had never appeared on an OCB bench before. Marks are
@@ -926,6 +936,20 @@ const ALIASES: Record<string, string> = {
   thundertoken: "thundercore",
   "oktc-official": "oktc",
 
+  // Bench 284 (AI trading agents). Each row is one lab's model inside Recall's
+  // harness, and the arena runs most models twice (fed numbers, fed an image),
+  // so eight rows resolve to four marks. Aliasing rather than eight copies is
+  // the point: the two rows ARE the same model, and the shared mark says so at
+  // a glance. Without this every row rendered as an initials chip, which for
+  // "grok 4 chart" and "grok 4 vision" both read "G4".
+  "gpt-52-chart": "openai",
+  "gpt-52-vision": "openai",
+  "opus-45-chart": "anthropic",
+  "sonnet-45-vision": "anthropic",
+  "gemini-3-pro-chart": "google-deepmind",
+  "gemini-3-pro-vision": "google-deepmind",
+  "grok-4-chart": "xai",
+  "grok-4-vision": "xai",
 };
 
 export function logoPath(slug: string): string | null {

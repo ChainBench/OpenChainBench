@@ -283,6 +283,42 @@ func parseDay(s string) (time.Time, error) {
 	return t, err
 }
 
+// slugOf turns a declared agent name into the kebab form the site uses as a
+// provider slug: "gemini 3 pro chart" -> "gemini-3-pro-chart".
+//
+// This is the label the `agent` series carry, and it has to be the slug rather
+// than the name. The site builds a bench's metric-panel queries itself, as
+// `<metric>{<label_key>="<provider slug>"}`, with no way for a spec to say the
+// label holds something else. Publishing the name matched the spec's
+// hand-written headline queries and nothing else, so the alpha column rendered
+// while Return, Same exposure held, Winning rounds, Exposure and Rounds were
+// all blank: five of the six columns the table promises, querying a label
+// value that did not exist.
+// A dot is DROPPED rather than turned into a separator, because a version
+// number is one token: "opus 4.5 chart" is opus-45-chart and "gpt-5.2 vision"
+// is gpt-52-vision, which is what the spec declares. Mapping the dot to a dash
+// instead yields opus-4-5-chart and misses every slug carrying a minor
+// version. TestSlugOfMatchesSpec pins all eight against the YAML.
+func slugOf(name string) string {
+	var b strings.Builder
+	prevDash := false
+	for _, r := range strings.ToLower(name) {
+		switch {
+		case (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9'):
+			b.WriteRune(r)
+			prevDash = false
+		case r == '.':
+			// part of the token, contributes nothing
+		default:
+			if !prevDash && b.Len() > 0 {
+				b.WriteByte('-')
+				prevDash = true
+			}
+		}
+	}
+	return strings.TrimRight(b.String(), "-")
+}
+
 // kindOf reads the input modality out of the declared agent name. The arena
 // runs each model twice, once fed numeric chart data and once fed an image, so
 // the modality is a real axis of the experiment rather than a naming quirk.
@@ -420,7 +456,7 @@ func runOnce() error {
 		// modality instead would show an unfiltered number under a filtered
 		// label.
 		for _, k := range []string{kindOf(name), "all"} {
-			lbl := []string{name, k, arena}
+			lbl := []string{slugOf(name), k, arena}
 			alphaPct.WithLabelValues(lbl...).Set(agentRet - passiveRet)
 			returnPct.WithLabelValues(lbl...).Set(agentRet)
 			passivePct.WithLabelValues(lbl...).Set(passiveRet)

@@ -36,6 +36,41 @@ export type ProviderRegistryEntry = {
 };
 
 export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
+  // ─── AI labs (bench 284) ──────────────────────────────────────
+  // These four entries are the labs whose models Recall Labs runs in its
+  // weekly spot-trading arena. The row on the bench is an agent, never a
+  // product these labs sell: Recall writes the harness, the prompt and the
+  // execution, and the model is the one part it swaps. Nothing here is a
+  // claim about a lab's own trading product, because none of them ship one.
+  openai: {
+    url: "https://openai.com",
+    description:
+      "AI lab behind the GPT model family. Appears on OpenChainBench only through Recall Labs' trading arena, where GPT-5.2 drives two of the eight agents.",
+    twitter: "@OpenAI",
+    docs: "https://platform.openai.com/docs",
+  },
+  anthropic: {
+    url: "https://www.anthropic.com",
+    description:
+      "AI lab behind the Claude model family. Appears on OpenChainBench only through Recall Labs' trading arena, where Opus 4.5 and Sonnet 4.5 each drive one agent.",
+    twitter: "@AnthropicAI",
+    docs: "https://docs.anthropic.com",
+  },
+  "google-deepmind": {
+    url: "https://deepmind.google",
+    description:
+      "Google's AI lab, behind the Gemini model family. Appears on OpenChainBench only through Recall Labs' trading arena, where Gemini 3 Pro drives two of the eight agents.",
+    twitter: "@GoogleDeepMind",
+    docs: "https://ai.google.dev/docs",
+  },
+  xai: {
+    url: "https://x.ai",
+    description:
+      "AI lab behind the Grok model family. Appears on OpenChainBench only through Recall Labs' trading arena, where Grok 4 drives two of the eight agents.",
+    twitter: "@xai",
+    docs: "https://docs.x.ai",
+  },
+
   // ─── Data aggregator APIs ─────────────────────────────────────
   birdeye: {
     url: "https://birdeye.so",

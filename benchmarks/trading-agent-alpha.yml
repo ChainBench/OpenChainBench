@@ -124,101 +124,101 @@ providers:
     tag: Recall harness, Gemini 3 Pro, fed chart data
     formula: "Compounded return over this agent's funded rounds minus a passive position at its own measured beta to ETH over the same rounds. Declared model, not verified."
     queries:
-      p50: avg(quantile_over_time(0.50, trading_agent_alpha_pct{agent="gemini 3 pro chart", kind="all"}[30d]))
-      p90: avg(quantile_over_time(0.90, trading_agent_alpha_pct{agent="gemini 3 pro chart", kind="all"}[30d]))
-      p99: avg(quantile_over_time(0.99, trading_agent_alpha_pct{agent="gemini 3 pro chart", kind="all"}[30d]))
-      mean: avg(avg_over_time(trading_agent_alpha_pct{agent="gemini 3 pro chart", kind="all"}[30d]))
-      success: clamp_max(avg(trading_agent_rounds{agent="gemini 3 pro chart", kind="all"}) / 20, 1)
-      sample_size: avg(trading_agent_rounds{agent="gemini 3 pro chart", kind="all"})
-      series: avg_over_time(trading_agent_alpha_pct{agent="gemini 3 pro chart", kind="all"}[1d])
+      p50: avg(quantile_over_time(0.50, trading_agent_alpha_pct{agent="gemini-3-pro-chart", kind="all"}[30d]))
+      p90: avg(quantile_over_time(0.90, trading_agent_alpha_pct{agent="gemini-3-pro-chart", kind="all"}[30d]))
+      p99: avg(quantile_over_time(0.99, trading_agent_alpha_pct{agent="gemini-3-pro-chart", kind="all"}[30d]))
+      mean: avg(avg_over_time(trading_agent_alpha_pct{agent="gemini-3-pro-chart", kind="all"}[30d]))
+      success: clamp_max(avg(trading_agent_rounds{agent="gemini-3-pro-chart", kind="all"}) / 20, 1)
+      sample_size: avg(trading_agent_rounds{agent="gemini-3-pro-chart", kind="all"})
+      series: avg_over_time(trading_agent_alpha_pct{agent="gemini-3-pro-chart", kind="all"}[1d])
 
   - slug: grok-4-chart
     name: grok 4 chart
     tag: Recall harness, Grok 4, fed chart data
     formula: "Compounded return over this agent's funded rounds minus a passive position at its own measured beta to ETH over the same rounds. Declared model, not verified."
     queries:
-      p50: avg(quantile_over_time(0.50, trading_agent_alpha_pct{agent="grok 4 chart", kind="all"}[30d]))
-      p90: avg(quantile_over_time(0.90, trading_agent_alpha_pct{agent="grok 4 chart", kind="all"}[30d]))
-      p99: avg(quantile_over_time(0.99, trading_agent_alpha_pct{agent="grok 4 chart", kind="all"}[30d]))
-      mean: avg(avg_over_time(trading_agent_alpha_pct{agent="grok 4 chart", kind="all"}[30d]))
-      success: clamp_max(avg(trading_agent_rounds{agent="grok 4 chart", kind="all"}) / 20, 1)
-      sample_size: avg(trading_agent_rounds{agent="grok 4 chart", kind="all"})
-      series: avg_over_time(trading_agent_alpha_pct{agent="grok 4 chart", kind="all"}[1d])
+      p50: avg(quantile_over_time(0.50, trading_agent_alpha_pct{agent="grok-4-chart", kind="all"}[30d]))
+      p90: avg(quantile_over_time(0.90, trading_agent_alpha_pct{agent="grok-4-chart", kind="all"}[30d]))
+      p99: avg(quantile_over_time(0.99, trading_agent_alpha_pct{agent="grok-4-chart", kind="all"}[30d]))
+      mean: avg(avg_over_time(trading_agent_alpha_pct{agent="grok-4-chart", kind="all"}[30d]))
+      success: clamp_max(avg(trading_agent_rounds{agent="grok-4-chart", kind="all"}) / 20, 1)
+      sample_size: avg(trading_agent_rounds{agent="grok-4-chart", kind="all"})
+      series: avg_over_time(trading_agent_alpha_pct{agent="grok-4-chart", kind="all"}[1d])
 
   - slug: grok-4-vision
     name: grok 4 vision
     tag: Recall harness, Grok 4, fed chart images
     formula: "Compounded return over this agent's funded rounds minus a passive position at its own measured beta to ETH over the same rounds. Declared model, not verified."
     queries:
-      p50: avg(quantile_over_time(0.50, trading_agent_alpha_pct{agent="grok 4 vision", kind="all"}[30d]))
-      p90: avg(quantile_over_time(0.90, trading_agent_alpha_pct{agent="grok 4 vision", kind="all"}[30d]))
-      p99: avg(quantile_over_time(0.99, trading_agent_alpha_pct{agent="grok 4 vision", kind="all"}[30d]))
-      mean: avg(avg_over_time(trading_agent_alpha_pct{agent="grok 4 vision", kind="all"}[30d]))
-      success: clamp_max(avg(trading_agent_rounds{agent="grok 4 vision", kind="all"}) / 20, 1)
-      sample_size: avg(trading_agent_rounds{agent="grok 4 vision", kind="all"})
-      series: avg_over_time(trading_agent_alpha_pct{agent="grok 4 vision", kind="all"}[1d])
+      p50: avg(quantile_over_time(0.50, trading_agent_alpha_pct{agent="grok-4-vision", kind="all"}[30d]))
+      p90: avg(quantile_over_time(0.90, trading_agent_alpha_pct{agent="grok-4-vision", kind="all"}[30d]))
+      p99: avg(quantile_over_time(0.99, trading_agent_alpha_pct{agent="grok-4-vision", kind="all"}[30d]))
+      mean: avg(avg_over_time(trading_agent_alpha_pct{agent="grok-4-vision", kind="all"}[30d]))
+      success: clamp_max(avg(trading_agent_rounds{agent="grok-4-vision", kind="all"}) / 20, 1)
+      sample_size: avg(trading_agent_rounds{agent="grok-4-vision", kind="all"})
+      series: avg_over_time(trading_agent_alpha_pct{agent="grok-4-vision", kind="all"}[1d])
 
   - slug: opus-45-chart
     name: opus 4.5 chart
     tag: Recall harness, Claude Opus 4.5, fed chart data
     formula: "Compounded return over this agent's funded rounds minus a passive position at its own measured beta to ETH over the same rounds. Declared model, not verified."
     queries:
-      p50: avg(quantile_over_time(0.50, trading_agent_alpha_pct{agent="opus 4.5 chart", kind="all"}[30d]))
-      p90: avg(quantile_over_time(0.90, trading_agent_alpha_pct{agent="opus 4.5 chart", kind="all"}[30d]))
-      p99: avg(quantile_over_time(0.99, trading_agent_alpha_pct{agent="opus 4.5 chart", kind="all"}[30d]))
-      mean: avg(avg_over_time(trading_agent_alpha_pct{agent="opus 4.5 chart", kind="all"}[30d]))
-      success: clamp_max(avg(trading_agent_rounds{agent="opus 4.5 chart", kind="all"}) / 20, 1)
-      sample_size: avg(trading_agent_rounds{agent="opus 4.5 chart", kind="all"})
-      series: avg_over_time(trading_agent_alpha_pct{agent="opus 4.5 chart", kind="all"}[1d])
+      p50: avg(quantile_over_time(0.50, trading_agent_alpha_pct{agent="opus-45-chart", kind="all"}[30d]))
+      p90: avg(quantile_over_time(0.90, trading_agent_alpha_pct{agent="opus-45-chart", kind="all"}[30d]))
+      p99: avg(quantile_over_time(0.99, trading_agent_alpha_pct{agent="opus-45-chart", kind="all"}[30d]))
+      mean: avg(avg_over_time(trading_agent_alpha_pct{agent="opus-45-chart", kind="all"}[30d]))
+      success: clamp_max(avg(trading_agent_rounds{agent="opus-45-chart", kind="all"}) / 20, 1)
+      sample_size: avg(trading_agent_rounds{agent="opus-45-chart", kind="all"})
+      series: avg_over_time(trading_agent_alpha_pct{agent="opus-45-chart", kind="all"}[1d])
 
   - slug: gpt-52-chart
     name: gpt-5.2 chart
     tag: Recall harness, GPT-5.2, fed chart data
     formula: "Compounded return over this agent's funded rounds minus a passive position at its own measured beta to ETH over the same rounds. Declared model, not verified."
     queries:
-      p50: avg(quantile_over_time(0.50, trading_agent_alpha_pct{agent="gpt-5.2 chart", kind="all"}[30d]))
-      p90: avg(quantile_over_time(0.90, trading_agent_alpha_pct{agent="gpt-5.2 chart", kind="all"}[30d]))
-      p99: avg(quantile_over_time(0.99, trading_agent_alpha_pct{agent="gpt-5.2 chart", kind="all"}[30d]))
-      mean: avg(avg_over_time(trading_agent_alpha_pct{agent="gpt-5.2 chart", kind="all"}[30d]))
-      success: clamp_max(avg(trading_agent_rounds{agent="gpt-5.2 chart", kind="all"}) / 20, 1)
-      sample_size: avg(trading_agent_rounds{agent="gpt-5.2 chart", kind="all"})
-      series: avg_over_time(trading_agent_alpha_pct{agent="gpt-5.2 chart", kind="all"}[1d])
+      p50: avg(quantile_over_time(0.50, trading_agent_alpha_pct{agent="gpt-52-chart", kind="all"}[30d]))
+      p90: avg(quantile_over_time(0.90, trading_agent_alpha_pct{agent="gpt-52-chart", kind="all"}[30d]))
+      p99: avg(quantile_over_time(0.99, trading_agent_alpha_pct{agent="gpt-52-chart", kind="all"}[30d]))
+      mean: avg(avg_over_time(trading_agent_alpha_pct{agent="gpt-52-chart", kind="all"}[30d]))
+      success: clamp_max(avg(trading_agent_rounds{agent="gpt-52-chart", kind="all"}) / 20, 1)
+      sample_size: avg(trading_agent_rounds{agent="gpt-52-chart", kind="all"})
+      series: avg_over_time(trading_agent_alpha_pct{agent="gpt-52-chart", kind="all"}[1d])
 
   - slug: gemini-3-pro-vision
     name: gemini 3 pro vision
     tag: Recall harness, Gemini 3 Pro, fed chart images
     formula: "Compounded return over this agent's funded rounds minus a passive position at its own measured beta to ETH over the same rounds. Declared model, not verified."
     queries:
-      p50: avg(quantile_over_time(0.50, trading_agent_alpha_pct{agent="gemini 3 pro vision", kind="all"}[30d]))
-      p90: avg(quantile_over_time(0.90, trading_agent_alpha_pct{agent="gemini 3 pro vision", kind="all"}[30d]))
-      p99: avg(quantile_over_time(0.99, trading_agent_alpha_pct{agent="gemini 3 pro vision", kind="all"}[30d]))
-      mean: avg(avg_over_time(trading_agent_alpha_pct{agent="gemini 3 pro vision", kind="all"}[30d]))
-      success: clamp_max(avg(trading_agent_rounds{agent="gemini 3 pro vision", kind="all"}) / 20, 1)
-      sample_size: avg(trading_agent_rounds{agent="gemini 3 pro vision", kind="all"})
-      series: avg_over_time(trading_agent_alpha_pct{agent="gemini 3 pro vision", kind="all"}[1d])
+      p50: avg(quantile_over_time(0.50, trading_agent_alpha_pct{agent="gemini-3-pro-vision", kind="all"}[30d]))
+      p90: avg(quantile_over_time(0.90, trading_agent_alpha_pct{agent="gemini-3-pro-vision", kind="all"}[30d]))
+      p99: avg(quantile_over_time(0.99, trading_agent_alpha_pct{agent="gemini-3-pro-vision", kind="all"}[30d]))
+      mean: avg(avg_over_time(trading_agent_alpha_pct{agent="gemini-3-pro-vision", kind="all"}[30d]))
+      success: clamp_max(avg(trading_agent_rounds{agent="gemini-3-pro-vision", kind="all"}) / 20, 1)
+      sample_size: avg(trading_agent_rounds{agent="gemini-3-pro-vision", kind="all"})
+      series: avg_over_time(trading_agent_alpha_pct{agent="gemini-3-pro-vision", kind="all"}[1d])
 
   - slug: sonnet-45-vision
     name: sonnet 4.5 vision
     tag: Recall harness, Claude Sonnet 4.5, fed chart images
     formula: "Compounded return over this agent's funded rounds minus a passive position at its own measured beta to ETH over the same rounds. Declared model, not verified."
     queries:
-      p50: avg(quantile_over_time(0.50, trading_agent_alpha_pct{agent="sonnet 4.5 vision", kind="all"}[30d]))
-      p90: avg(quantile_over_time(0.90, trading_agent_alpha_pct{agent="sonnet 4.5 vision", kind="all"}[30d]))
-      p99: avg(quantile_over_time(0.99, trading_agent_alpha_pct{agent="sonnet 4.5 vision", kind="all"}[30d]))
-      mean: avg(avg_over_time(trading_agent_alpha_pct{agent="sonnet 4.5 vision", kind="all"}[30d]))
-      success: clamp_max(avg(trading_agent_rounds{agent="sonnet 4.5 vision", kind="all"}) / 20, 1)
-      sample_size: avg(trading_agent_rounds{agent="sonnet 4.5 vision", kind="all"})
-      series: avg_over_time(trading_agent_alpha_pct{agent="sonnet 4.5 vision", kind="all"}[1d])
+      p50: avg(quantile_over_time(0.50, trading_agent_alpha_pct{agent="sonnet-45-vision", kind="all"}[30d]))
+      p90: avg(quantile_over_time(0.90, trading_agent_alpha_pct{agent="sonnet-45-vision", kind="all"}[30d]))
+      p99: avg(quantile_over_time(0.99, trading_agent_alpha_pct{agent="sonnet-45-vision", kind="all"}[30d]))
+      mean: avg(avg_over_time(trading_agent_alpha_pct{agent="sonnet-45-vision", kind="all"}[30d]))
+      success: clamp_max(avg(trading_agent_rounds{agent="sonnet-45-vision", kind="all"}) / 20, 1)
+      sample_size: avg(trading_agent_rounds{agent="sonnet-45-vision", kind="all"})
+      series: avg_over_time(trading_agent_alpha_pct{agent="sonnet-45-vision", kind="all"}[1d])
 
   - slug: gpt-52-vision
     name: gpt-5.2 vision
     tag: Recall harness, GPT-5.2, fed chart images
     formula: "Compounded return over this agent's funded rounds minus a passive position at its own measured beta to ETH over the same rounds. Declared model, not verified."
     queries:
-      p50: avg(quantile_over_time(0.50, trading_agent_alpha_pct{agent="gpt-5.2 vision", kind="all"}[30d]))
-      p90: avg(quantile_over_time(0.90, trading_agent_alpha_pct{agent="gpt-5.2 vision", kind="all"}[30d]))
-      p99: avg(quantile_over_time(0.99, trading_agent_alpha_pct{agent="gpt-5.2 vision", kind="all"}[30d]))
-      mean: avg(avg_over_time(trading_agent_alpha_pct{agent="gpt-5.2 vision", kind="all"}[30d]))
-      success: clamp_max(avg(trading_agent_rounds{agent="gpt-5.2 vision", kind="all"}) / 20, 1)
-      sample_size: avg(trading_agent_rounds{agent="gpt-5.2 vision", kind="all"})
-      series: avg_over_time(trading_agent_alpha_pct{agent="gpt-5.2 vision", kind="all"}[1d])
+      p50: avg(quantile_over_time(0.50, trading_agent_alpha_pct{agent="gpt-52-vision", kind="all"}[30d]))
+      p90: avg(quantile_over_time(0.90, trading_agent_alpha_pct{agent="gpt-52-vision", kind="all"}[30d]))
+      p99: avg(quantile_over_time(0.99, trading_agent_alpha_pct{agent="gpt-52-vision", kind="all"}[30d]))
+      mean: avg(avg_over_time(trading_agent_alpha_pct{agent="gpt-52-vision", kind="all"}[30d]))
+      success: clamp_max(avg(trading_agent_rounds{agent="gpt-52-vision", kind="all"}) / 20, 1)
+      sample_size: avg(trading_agent_rounds{agent="gpt-52-vision", kind="all"})
+      series: avg_over_time(trading_agent_alpha_pct{agent="gpt-52-vision", kind="all"}[1d])
