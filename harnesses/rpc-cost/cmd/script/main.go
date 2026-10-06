@@ -71,6 +71,8 @@ func run(cat *Catalogue) {
 	costMonthly.Reset()
 	costPerMillion.Reset()
 	freeAllowance.Reset()
+	freeFloor.Reset()
+	freeCeiling.Reset()
 	planConfidence.Reset()
 	unitsPerReq.Reset()
 	eligible.Reset()
@@ -107,6 +109,12 @@ func priceEverything(cat *Catalogue) {
 		if p.Ranked != nil && !*p.Ranked {
 			cohort = "reference"
 		}
+		// One pass over the profiles before publishing any of them: the
+		// floor and the ceiling of this plan's allowance are properties of
+		// the whole workload set, not of the profile being priced, so they
+		// cannot be computed inside the loop that publishes them.
+		envelopes := cat.FreeEnvelopes(p)
+
 		for _, pr := range Profiles {
 			if upr, err := unitsPerRequest(p, pr); err == nil {
 				unitsPerReq.WithLabelValues(p.Slug, pr.ID, pr.Chain).Set(upr)
@@ -133,8 +141,18 @@ func priceEverything(cat *Catalogue) {
 				// are Ethereum, solana-bot is Solana), so a chain axis beside
 				// the workload axis offers combinations that cannot exist and
 				// a chain alias makes `kind="all"` match two chains at once.
+				//
+				// The floor and the ceiling ride the same labels as the
+				// allowance, carrying the span of this chain's workloads
+				// under each one. A reader on the trace tab then sees that
+				// BlockPI's 368k is the bottom of a range reaching 3.1M,
+				// and a reader on the dapp tab sees that Ankr's 1M is the
+				// whole range. Neither fact is readable from one figure.
+				env := envelopes[pr.Chain]
 				for _, ka := range aliasesFor(pr.ID, headlineKind) {
 					freeAllowance.WithLabelValues(p.Slug, planID, ka, pr.Chain).Set(reqs)
+					freeFloor.WithLabelValues(p.Slug, planID, ka, pr.Chain).Set(env.Lo)
+					freeCeiling.WithLabelValues(p.Slug, planID, ka, pr.Chain).Set(env.Hi)
 				}
 			}
 

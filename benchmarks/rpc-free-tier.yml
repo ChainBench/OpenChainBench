@@ -32,8 +32,13 @@ seo_intro: |
   charging. The answer moves with the workload, which is why the figure is
   published per workload rather than as one number. A dapp frontend calling
   eth_call and eth_getBalance drains an allowance at a different rate than a
-  log indexer calling eth_getLogs, and on some providers the gap is a factor
-  of five on the same plan.
+  log indexer calling eth_getLogs, and on BlockPI's free plan the gap between
+  the cheapest workload and the most expensive is a factor of eight: 3.1M
+  requests against 368k, on one plan, with nothing on the pricing page saying
+  so. Every row carries the two ends of that span next to its headline
+  figure, so the plans a workload cannot surprise are visible without
+  reading four tabs: Ankr, dRPC, OnFinality, InstaNodes and Validation Cloud
+  meter flat, and their floor is their ceiling.
 
 abstract: |
   We take each provider's free plan allowance as published, in whatever unit
@@ -45,11 +50,16 @@ abstract: |
   Those four numbers are not comparable until they are divided by the method
   mix that spends them.
 
-  Five workloads are published. The unfiltered view is the dapp frontend mix
-  on Ethereum, the case most readers arrive with. A plan that leads one
-  workload can trail on another, and the table does not hide that by averaging
-  them: an allowance averaged across a trace mix and a simple-read mix
-  describes no workload anyone runs.
+  Five mixes are priced and four are offered as tabs. The unfiltered view is
+  the dapp frontend mix on Ethereum, the case most readers arrive with. A plan
+  that leads one workload can trail on another, and the table does not hide
+  that by averaging them: an allowance averaged across a trace mix and a
+  simple-read mix describes no workload anyone runs, and taking each plan's
+  best workload instead would rank every provider on its most flattering
+  measurement. So the span is reported rather than collapsed. Beside each
+  headline figure sit the least and the most generous workload that plan
+  serves on that chain, which is what separates an allowance that can be
+  budgeted from one that happens to be large on the mix you opened.
 
 methodology:
   - "Allowance source: each provider's published free plan, read from its own pricing page or API, with the date of reading and a confidence flag recorded in the catalogue. The same catalogue prices the paid plans on bench 282; this page reads only the rows whose monthly price is zero and whose allowance renews."
@@ -57,11 +67,13 @@ methodology:
   - "Daily caps: Infura, BlockPI and GetBlock publish a daily allowance rather than a monthly one. The daily figure is multiplied by 30, the most generous reading, and the plan is still subject to its throughput ceiling, which this page does not score."
   - "What counts as free: a plan that costs nothing and renews. QuickNode's Free trial is excluded because it runs for one month and does not renew; it is priced on bench 282 as an entry plan instead. Public endpoints with no key and no published allowance are also excluded: there is no allowance to rank."
   - "Headline slice: the unfiltered view is the dapp mix on Ethereum, published under the `all` label as the headline slice and not as a pooled average, because an allowance averaged across workloads describes none of them. Switching a tab reads a different slice, never a blend. The chain is a property of the workload rather than a second axis: the Ethereum mixes cover 11 of the 14 plans and the Solana bot mix covers 13, so a provider absent from one tab serves a chain that tab does not ask about."
+  - "Floor and ceiling: the two columns beside the headline are the least and the most generous of the workloads that plan serves on the selected chain, over all five priced mixes including the simple-read mix, which has no tab. They describe the plan rather than the open tab, so they read the same on every tab. A workload the plan refuses is excluded, not counted as zero: Alchemy's free tier does no trace, so its floor is its indexer mix and the refusal shows as its absence from the trace tab."
+  - "Why the span is reported and not collapsed: the two ends are published separately rather than averaged into one number, and the provider's own best workload is never used as its score. Both would rank each plan on a different workload from its neighbour. Floor equal to ceiling is a measurement, not a placeholder: a plan metering one flat unit per method buys the same number of requests whatever is called, and on Solana only one mix is priced, so every row there reports a degenerate span."
   - "Not scored here: latency, reliability, archive depth, throughput ceilings and support. A large allowance behind a 25 requests per second cap serves a different application than the same allowance behind 300. The per-chain RPC pages measure the speed of these same endpoints."
 
 faq:
   - q: "Which free RPC plan gives the most requests?"
-    a: "It depends on the workload, and the table reorders when you change it. On the Ethereum dapp mix the leader is the plan at the top of the board right now; on a log indexer mix the order is different, because methods like eth_getLogs cost more units on providers that weight per method and cost the same as any other call on providers that do not. Read the figure for the workload you actually run."
+    a: "It depends on the workload, and the table reorders when you change it. On the Ethereum dapp mix the leader is the plan at the top of the board right now; on a log indexer mix the order is different, because methods like eth_getLogs cost more units on providers that weight per method and cost the same as any other call on providers that do not. Read the figure for the workload you actually run, and read the two columns beside it: they give the worst and the best that plan does across every workload it serves, so you can see whether its headline is a floor or a best case before committing to it."
   - q: "Why not just compare the advertised numbers?"
     a: "Because they are in four different units. 30M Compute Units, 3M Request Units, 3M daily credits and 1M requests are four numbers that cannot be ordered until each is divided by what one request of your workload costs in that unit. That division is what this page does."
   - q: "Is the biggest allowance the best free plan?"
@@ -78,144 +90,187 @@ dimensions:
   #
   # `all` is the headline slice, not a pooled average: an allowance averaged
   # across a trace mix and a simple-read mix describes no workload anyone runs.
+  #
+  # Four tabs, for five measured mixes. The simple-read mix is still priced
+  # and still feeds the floor and ceiling columns, but it had no tab of its
+  # own to earn: it draws the same 11 plans as the dapp tab in the same
+  # order bar one mid-table swap, because it is the optimistic edge of that
+  # same mix rather than a different thing to build. The ceiling column
+  # reports the number a tab would have shown, on every row at once. What
+  # the remaining four ask is what you are building, which is the only
+  # version of this question a reader can answer about themselves.
   kind:
     - { value: all,         label: "Dapp frontend, Ethereum" }
-    - { value: simple-read, label: "Simple reads, Ethereum" }
     - { value: indexer,     label: "Log indexer, Ethereum" }
     - { value: trace,       label: "Trace and debug, Ethereum" }
     - { value: solana-bot,  label: "Trading bot, Solana" }
 
+# Three columns for one measurement: the selected workload, and the two ends
+# of the span across every workload this plan serves on that chain.
+#
+# The headline alone was read as a promise on plans where it is a best case.
+# BlockPI publishes one free tier that buys 3.1M simple reads and 368k
+# traces, a factor of eight, and Infura and Blockdaemon swing five; a reader
+# who landed on one tab had no way to learn that without clicking the others
+# and holding the numbers in their head. Ankr, dRPC, OnFinality, InstaNodes
+# and Validation Cloud meter flat and report floor equal to ceiling, so the
+# two columns also say outright which plans the workload cannot surprise,
+# which is the fact that decides whether an allowance can be budgeted.
+ledger_columns:
+  - { label: Free allowance, slot: p50, unit: count }
+  - { label: Least generous workload, slot: p90, unit: count }
+  - { label: Most generous workload, slot: p99, unit: count }
+
 source: https://github.com/ChainBench/OpenChainBench/tree/dev/harnesses/rpc-cost
 
 prometheus:
+  # 24h is the chart's window, not the headline's. The scalar queries look
+  # back 3h, matching expected_freshness_seconds below and the harness's
+  # hourly cycle, because a range selector keeps a retired series alive for
+  # its whole length: the chain alias was removed on 2026-10-06 and the old
+  # `chain="all"` series went on answering for 21 more hours, nulling the
+  # headline column, while dRPC's Solana allowance kept being published by a
+  # query whose fix had already shipped. A lookback longer than the freshness
+  # the page promises is a lookback that outlives its own corrections.
   window: 24h
   expected_freshness_seconds: 10800
   freshness_timestamp_metric: rpc_cost_last_run_timestamp_seconds
   url: https://prom.openchainbench.com
 
+# Every query aggregates, and that is not decoration. The metric carries a
+# `chain` label this bench does not axis on, because a workload already
+# belongs to one chain, and a provider publishes exactly one chain per
+# workload. So the aggregation is a no-op on correct data. What it buys is
+# survival across a harness label change: when the chain alias was removed on
+# 2026-10-06 the retired `chain="all"` series stayed inside the 24h range
+# selector for another 21 hours, every quantile_over_time returned two series
+# where the loader wanted one, and the headline column went null on all 14
+# rows while the floor and ceiling columns beside it read fine. A page whose
+# numbers vanish for a day after a correct fix to the harness is reporting on
+# its own deploy history.
 providers:
   - slug: onfinality
     name: OnFinality
     tag: "Developer, 25M OnFinality credits a month"
     queries:
-      p50: quantile_over_time(0.50, rpc_free_allowance_requests{provider="onfinality",kind="all"}[24h])
-      p90: quantile_over_time(0.90, rpc_free_allowance_requests{provider="onfinality",kind="all"}[24h])
-      p99: quantile_over_time(0.99, rpc_free_allowance_requests{provider="onfinality",kind="all"}[24h])
-      series: rpc_free_allowance_requests{provider="onfinality",kind="all"}
+      p50: max(quantile_over_time(0.50, rpc_free_allowance_requests{provider="onfinality",kind="all"}[3h]))
+      p90: max(quantile_over_time(0.50, rpc_free_allowance_requests_floor{provider="onfinality",kind="all"}[3h]))
+      p99: max(quantile_over_time(0.50, rpc_free_allowance_requests_ceiling{provider="onfinality",kind="all"}[3h]))
+      series: max by (provider) (rpc_free_allowance_requests{provider="onfinality",kind="all"})
 
   - slug: drpc
     name: dRPC
     tag: "Free, 210M Compute Units a month"
     queries:
-      p50: quantile_over_time(0.50, rpc_free_allowance_requests{provider="drpc",kind="all"}[24h])
-      p90: quantile_over_time(0.90, rpc_free_allowance_requests{provider="drpc",kind="all"}[24h])
-      p99: quantile_over_time(0.99, rpc_free_allowance_requests{provider="drpc",kind="all"}[24h])
-      series: rpc_free_allowance_requests{provider="drpc",kind="all"}
+      p50: max(quantile_over_time(0.50, rpc_free_allowance_requests{provider="drpc",kind="all"}[3h]))
+      p90: max(quantile_over_time(0.50, rpc_free_allowance_requests_floor{provider="drpc",kind="all"}[3h]))
+      p99: max(quantile_over_time(0.50, rpc_free_allowance_requests_ceiling{provider="drpc",kind="all"}[3h]))
+      series: max by (provider) (rpc_free_allowance_requests{provider="drpc",kind="all"})
 
   - slug: chainstack
     name: Chainstack
     tag: "Developer, 3M Request Units a month, one flat RU per method"
     queries:
-      p50: quantile_over_time(0.50, rpc_free_allowance_requests{provider="chainstack",kind="all"}[24h])
-      p90: quantile_over_time(0.90, rpc_free_allowance_requests{provider="chainstack",kind="all"}[24h])
-      p99: quantile_over_time(0.99, rpc_free_allowance_requests{provider="chainstack",kind="all"}[24h])
-      series: rpc_free_allowance_requests{provider="chainstack",kind="all"}
+      p50: max(quantile_over_time(0.50, rpc_free_allowance_requests{provider="chainstack",kind="all"}[3h]))
+      p90: max(quantile_over_time(0.50, rpc_free_allowance_requests_floor{provider="chainstack",kind="all"}[3h]))
+      p99: max(quantile_over_time(0.50, rpc_free_allowance_requests_ceiling{provider="chainstack",kind="all"}[3h]))
+      series: max by (provider) (rpc_free_allowance_requests{provider="chainstack",kind="all"})
 
   - slug: blockpi
     name: BlockPI
     tag: "Free, 100 RU/s and a daily cap, weighted per method"
     queries:
-      p50: quantile_over_time(0.50, rpc_free_allowance_requests{provider="blockpi",kind="all"}[24h])
-      p90: quantile_over_time(0.90, rpc_free_allowance_requests{provider="blockpi",kind="all"}[24h])
-      p99: quantile_over_time(0.99, rpc_free_allowance_requests{provider="blockpi",kind="all"}[24h])
-      series: rpc_free_allowance_requests{provider="blockpi",kind="all"}
+      p50: max(quantile_over_time(0.50, rpc_free_allowance_requests{provider="blockpi",kind="all"}[3h]))
+      p90: max(quantile_over_time(0.50, rpc_free_allowance_requests_floor{provider="blockpi",kind="all"}[3h]))
+      p99: max(quantile_over_time(0.50, rpc_free_allowance_requests_ceiling{provider="blockpi",kind="all"}[3h]))
+      series: max by (provider) (rpc_free_allowance_requests{provider="blockpi",kind="all"})
 
   - slug: alchemy
     name: Alchemy
     tag: "Free, 30M Compute Units a month, hard stop"
     queries:
-      p50: quantile_over_time(0.50, rpc_free_allowance_requests{provider="alchemy",kind="all"}[24h])
-      p90: quantile_over_time(0.90, rpc_free_allowance_requests{provider="alchemy",kind="all"}[24h])
-      p99: quantile_over_time(0.99, rpc_free_allowance_requests{provider="alchemy",kind="all"}[24h])
-      series: rpc_free_allowance_requests{provider="alchemy",kind="all"}
+      p50: max(quantile_over_time(0.50, rpc_free_allowance_requests{provider="alchemy",kind="all"}[3h]))
+      p90: max(quantile_over_time(0.50, rpc_free_allowance_requests_floor{provider="alchemy",kind="all"}[3h]))
+      p99: max(quantile_over_time(0.50, rpc_free_allowance_requests_ceiling{provider="alchemy",kind="all"}[3h]))
+      series: max by (provider) (rpc_free_allowance_requests{provider="alchemy",kind="all"})
 
   - slug: validation-cloud
     name: Validation Cloud
     tag: "Free, weighted per method"
     queries:
-      p50: quantile_over_time(0.50, rpc_free_allowance_requests{provider="validation-cloud",kind="all"}[24h])
-      p90: quantile_over_time(0.90, rpc_free_allowance_requests{provider="validation-cloud",kind="all"}[24h])
-      p99: quantile_over_time(0.99, rpc_free_allowance_requests{provider="validation-cloud",kind="all"}[24h])
-      series: rpc_free_allowance_requests{provider="validation-cloud",kind="all"}
+      p50: max(quantile_over_time(0.50, rpc_free_allowance_requests{provider="validation-cloud",kind="all"}[3h]))
+      p90: max(quantile_over_time(0.50, rpc_free_allowance_requests_floor{provider="validation-cloud",kind="all"}[3h]))
+      p99: max(quantile_over_time(0.50, rpc_free_allowance_requests_ceiling{provider="validation-cloud",kind="all"}[3h]))
+      series: max by (provider) (rpc_free_allowance_requests{provider="validation-cloud",kind="all"})
 
   - slug: ankr
     name: Ankr
     tag: "Freemium, flat request count"
     queries:
-      p50: quantile_over_time(0.50, rpc_free_allowance_requests{provider="ankr",kind="all"}[24h])
-      p90: quantile_over_time(0.90, rpc_free_allowance_requests{provider="ankr",kind="all"}[24h])
-      p99: quantile_over_time(0.99, rpc_free_allowance_requests{provider="ankr",kind="all"}[24h])
-      series: rpc_free_allowance_requests{provider="ankr",kind="all"}
+      p50: max(quantile_over_time(0.50, rpc_free_allowance_requests{provider="ankr",kind="all"}[3h]))
+      p90: max(quantile_over_time(0.50, rpc_free_allowance_requests_floor{provider="ankr",kind="all"}[3h]))
+      p99: max(quantile_over_time(0.50, rpc_free_allowance_requests_ceiling{provider="ankr",kind="all"}[3h]))
+      series: max by (provider) (rpc_free_allowance_requests{provider="ankr",kind="all"})
 
   - slug: infura
     name: Infura
     tag: "Core, 3M credits a day, hard stop"
     queries:
-      p50: quantile_over_time(0.50, rpc_free_allowance_requests{provider="infura",kind="all"}[24h])
-      p90: quantile_over_time(0.90, rpc_free_allowance_requests{provider="infura",kind="all"}[24h])
-      p99: quantile_over_time(0.99, rpc_free_allowance_requests{provider="infura",kind="all"}[24h])
-      series: rpc_free_allowance_requests{provider="infura",kind="all"}
+      p50: max(quantile_over_time(0.50, rpc_free_allowance_requests{provider="infura",kind="all"}[3h]))
+      p90: max(quantile_over_time(0.50, rpc_free_allowance_requests_floor{provider="infura",kind="all"}[3h]))
+      p99: max(quantile_over_time(0.50, rpc_free_allowance_requests_ceiling{provider="infura",kind="all"}[3h]))
+      series: max by (provider) (rpc_free_allowance_requests{provider="infura",kind="all"})
 
   - slug: instanodes
     name: InstaNodes
     tag: "Free, Ethereum only"
     queries:
-      p50: quantile_over_time(0.50, rpc_free_allowance_requests{provider="instanodes",kind="all"}[24h])
-      p90: quantile_over_time(0.90, rpc_free_allowance_requests{provider="instanodes",kind="all"}[24h])
-      p99: quantile_over_time(0.99, rpc_free_allowance_requests{provider="instanodes",kind="all"}[24h])
-      series: rpc_free_allowance_requests{provider="instanodes",kind="all"}
+      p50: max(quantile_over_time(0.50, rpc_free_allowance_requests{provider="instanodes",kind="all"}[3h]))
+      p90: max(quantile_over_time(0.50, rpc_free_allowance_requests_floor{provider="instanodes",kind="all"}[3h]))
+      p99: max(quantile_over_time(0.50, rpc_free_allowance_requests_ceiling{provider="instanodes",kind="all"}[3h]))
+      series: max by (provider) (rpc_free_allowance_requests{provider="instanodes",kind="all"})
 
   - slug: blockdaemon
     name: Blockdaemon
     tag: "Free, weighted per method"
     queries:
-      p50: quantile_over_time(0.50, rpc_free_allowance_requests{provider="blockdaemon",kind="all"}[24h])
-      p90: quantile_over_time(0.90, rpc_free_allowance_requests{provider="blockdaemon",kind="all"}[24h])
-      p99: quantile_over_time(0.99, rpc_free_allowance_requests{provider="blockdaemon",kind="all"}[24h])
-      series: rpc_free_allowance_requests{provider="blockdaemon",kind="all"}
+      p50: max(quantile_over_time(0.50, rpc_free_allowance_requests{provider="blockdaemon",kind="all"}[3h]))
+      p90: max(quantile_over_time(0.50, rpc_free_allowance_requests_floor{provider="blockdaemon",kind="all"}[3h]))
+      p99: max(quantile_over_time(0.50, rpc_free_allowance_requests_ceiling{provider="blockdaemon",kind="all"}[3h]))
+      series: max by (provider) (rpc_free_allowance_requests{provider="blockdaemon",kind="all"})
 
   - slug: getblock
     name: GetBlock
     tag: "Free, 50k Compute Units a day"
     queries:
-      p50: quantile_over_time(0.50, rpc_free_allowance_requests{provider="getblock",kind="all"}[24h])
-      p90: quantile_over_time(0.90, rpc_free_allowance_requests{provider="getblock",kind="all"}[24h])
-      p99: quantile_over_time(0.99, rpc_free_allowance_requests{provider="getblock",kind="all"}[24h])
-      series: rpc_free_allowance_requests{provider="getblock",kind="all"}
+      p50: max(quantile_over_time(0.50, rpc_free_allowance_requests{provider="getblock",kind="all"}[3h]))
+      p90: max(quantile_over_time(0.50, rpc_free_allowance_requests_floor{provider="getblock",kind="all"}[3h]))
+      p99: max(quantile_over_time(0.50, rpc_free_allowance_requests_ceiling{provider="getblock",kind="all"}[3h]))
+      series: max by (provider) (rpc_free_allowance_requests{provider="getblock",kind="all"})
 
   - slug: helius
     name: Helius
     tag: "Free, Solana only"
     queries:
-      p50: quantile_over_time(0.50, rpc_free_allowance_requests{provider="helius",kind="all"}[24h])
-      p90: quantile_over_time(0.90, rpc_free_allowance_requests{provider="helius",kind="all"}[24h])
-      p99: quantile_over_time(0.99, rpc_free_allowance_requests{provider="helius",kind="all"}[24h])
-      series: rpc_free_allowance_requests{provider="helius",kind="all"}
+      p50: max(quantile_over_time(0.50, rpc_free_allowance_requests{provider="helius",kind="all"}[3h]))
+      p90: max(quantile_over_time(0.50, rpc_free_allowance_requests_floor{provider="helius",kind="all"}[3h]))
+      p99: max(quantile_over_time(0.50, rpc_free_allowance_requests_ceiling{provider="helius",kind="all"}[3h]))
+      series: max by (provider) (rpc_free_allowance_requests{provider="helius",kind="all"})
 
   - slug: syndica
     name: Syndica
     tag: "Free, Solana only"
     queries:
-      p50: quantile_over_time(0.50, rpc_free_allowance_requests{provider="syndica",kind="all"}[24h])
-      p90: quantile_over_time(0.90, rpc_free_allowance_requests{provider="syndica",kind="all"}[24h])
-      p99: quantile_over_time(0.99, rpc_free_allowance_requests{provider="syndica",kind="all"}[24h])
-      series: rpc_free_allowance_requests{provider="syndica",kind="all"}
+      p50: max(quantile_over_time(0.50, rpc_free_allowance_requests{provider="syndica",kind="all"}[3h]))
+      p90: max(quantile_over_time(0.50, rpc_free_allowance_requests_floor{provider="syndica",kind="all"}[3h]))
+      p99: max(quantile_over_time(0.50, rpc_free_allowance_requests_ceiling{provider="syndica",kind="all"}[3h]))
+      series: max by (provider) (rpc_free_allowance_requests{provider="syndica",kind="all"})
 
   - slug: solana-foundation
     name: Solana Foundation
     tag: "Public endpoint, Solana only, no key"
     queries:
-      p50: quantile_over_time(0.50, rpc_free_allowance_requests{provider="solana-foundation",kind="all"}[24h])
-      p90: quantile_over_time(0.90, rpc_free_allowance_requests{provider="solana-foundation",kind="all"}[24h])
-      p99: quantile_over_time(0.99, rpc_free_allowance_requests{provider="solana-foundation",kind="all"}[24h])
-      series: rpc_free_allowance_requests{provider="solana-foundation",kind="all"}
+      p50: max(quantile_over_time(0.50, rpc_free_allowance_requests{provider="solana-foundation",kind="all"}[3h]))
+      p90: max(quantile_over_time(0.50, rpc_free_allowance_requests_floor{provider="solana-foundation",kind="all"}[3h]))
+      p99: max(quantile_over_time(0.50, rpc_free_allowance_requests_ceiling{provider="solana-foundation",kind="all"}[3h]))
+      series: max by (provider) (rpc_free_allowance_requests{provider="solana-foundation",kind="all"})

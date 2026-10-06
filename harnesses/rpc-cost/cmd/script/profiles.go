@@ -1,5 +1,7 @@
 package main
 
+import "sort"
+
 // Workload profiles.
 //
 // The single most robust finding of the pricing audit behind this bench
@@ -93,6 +95,27 @@ var Profiles = []Profile{
 			"simulateTransaction": 0.10,
 		},
 	},
+}
+
+// MixOrder returns this profile's methods in a fixed order.
+//
+// Summing a weighted mix by ranging over the map adds the same terms in a
+// different order on every call, and floating-point addition is not
+// associative, so the model did not return the same number twice: the
+// Solana allowance for Alchemy came back differing in its last bits from
+// one call to the next. Nothing on the page showed it, the figures are
+// rounded several digits before display, but FreeEnvelopes computes a
+// span in a separate pass from the figures it brackets, and a floor a
+// hair above the number it was derived from is a table contradicting
+// itself. A pricing model that cannot be checked against its own output
+// is worth less than the ordering costs.
+func (pr Profile) MixOrder() []string {
+	methods := make([]string, 0, len(pr.Mix))
+	for m := range pr.Mix {
+		methods = append(methods, m)
+	}
+	sort.Strings(methods)
+	return methods
 }
 
 // Volume buckets, in requests per month. Chosen to straddle the points

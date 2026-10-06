@@ -45,6 +45,8 @@ var (
 	costMonthly    *prometheus.GaugeVec
 	costPerMillion *prometheus.GaugeVec
 	freeAllowance  *prometheus.GaugeVec
+	freeFloor      *prometheus.GaugeVec
+	freeCeiling    *prometheus.GaugeVec
 	planConfidence *prometheus.GaugeVec
 	unitsPerReq    *prometheus.GaugeVec
 	eligible       *prometheus.GaugeVec
@@ -85,6 +87,24 @@ func init() {
 		Help: "Requests of this workload profile a provider's free tier buys per month. Free tiers all cost $0, so this is the only axis they can be ranked on (higher is better).",
 	}, []string{"provider", "plan", "kind", "chain"})
 	prometheus.MustRegister(freeAllowance)
+
+	// The two ends of the same measurement. Published under every workload
+	// label (the value is the span, not a per-workload figure) so a reader
+	// on any tab sees how far the allowance moves with the method mix: the
+	// headline figure alone reads as a promise on a plan where it is a best
+	// case. Floor equal to ceiling is itself the answer on a flat-rate
+	// plan.
+	freeFloor = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "rpc_free_allowance_requests_floor",
+		Help: "Fewest requests this free plan buys across the workloads it serves on this chain. Identical under every kind label: it describes the span, not one workload.",
+	}, []string{"provider", "plan", "kind", "chain"})
+	prometheus.MustRegister(freeFloor)
+
+	freeCeiling = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "rpc_free_allowance_requests_ceiling",
+		Help: "Most requests this free plan buys across the workloads it serves on this chain. Identical under every kind label: it describes the span, not one workload.",
+	}, []string{"provider", "plan", "kind", "chain"})
+	prometheus.MustRegister(freeCeiling)
 
 	planConfidence = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "rpc_cost_plan_confidence",

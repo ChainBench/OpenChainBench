@@ -370,6 +370,61 @@ func (c *Catalogue) FreeAllowanceRequests(p Provider, pr Profile) (float64, stri
 	return 0, "", false
 }
 
+// FreeEnvelope is the span of requests a free plan buys across the
+// workloads it actually serves on one chain. Lo is the least generous
+// workload, Hi the most generous.
+type FreeEnvelope struct {
+	Lo, Hi float64
+}
+
+// FreeEnvelopes computes one envelope per chain for a provider's free
+// plan.
+//
+// A free allowance has no single value in requests, because providers
+// meter in units and a request costs a different number of units
+// depending on the method. On the same BlockPI plan the allowance is
+// 3.1M simple reads and 368k traces, a factor of eight, and a reader who
+// lands on one workload tab has no way to learn that from the one figure
+// in front of them. Publishing the floor and the ceiling next to it
+// turns the spread into something visible without clicking, and it
+// separates the plans that meter flat (Ankr, dRPC, OnFinality: floor
+// equals ceiling, the workload does not matter) from the ones weighted
+// per method, which is the difference that decides whether a published
+// allowance is a promise or a best case.
+//
+// Scoped per chain, because an Ethereum mix and a Solana mix are not two
+// ends of one range: folding them together prints 750k to 1.9M for
+// Alchemy, a span no single application occupies. A chain with one
+// declared profile reports floor equal to ceiling, which is the honest
+// reading of having measured one mix there rather than a claim of
+// flatness.
+//
+// Only workloads the plan serves count. Alchemy's free plan does no
+// trace, so its floor is the indexer mix rather than zero; the refusal
+// is already visible in its absence from the trace slice.
+func (c *Catalogue) FreeEnvelopes(p Provider) map[string]FreeEnvelope {
+	out := map[string]FreeEnvelope{}
+	for _, pr := range Profiles {
+		reqs, _, ok := c.FreeAllowanceRequests(p, pr)
+		if !ok {
+			continue
+		}
+		e, seen := out[pr.Chain]
+		if !seen {
+			out[pr.Chain] = FreeEnvelope{Lo: reqs, Hi: reqs}
+			continue
+		}
+		if reqs < e.Lo {
+			e.Lo = reqs
+		}
+		if reqs > e.Hi {
+			e.Hi = reqs
+		}
+		out[pr.Chain] = e
+	}
+	return out
+}
+
 // toUSD converts a catalogue figure into USD. Only NOWNodes prices in
 // EUR today; the rate lives in the catalogue header so the conversion is
 // visible on the page rather than baked into a number.
