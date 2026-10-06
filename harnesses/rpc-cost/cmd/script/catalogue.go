@@ -340,6 +340,23 @@ func (c *Catalogue) PlanTier(p Provider, pl Plan) string {
 // $0, so the question is what you get, and "200M credits" means nothing
 // until you know a credit buys 1/200th of a request.
 func (c *Catalogue) FreeAllowanceRequests(p Provider, pr Profile) (float64, string, bool) {
+	// A reference row has no allowance to rank, and the bench's own
+	// methodology says so: "Public endpoints with no key and no published
+	// allowance are also excluded: there is no allowance to rank."
+	//
+	// Solana Foundation is the case. Its 25.92M is 10 requests/second
+	// integrated over 30 days, which its own catalogue entry calls DERIVED,
+	// not published, and caveats as "a throughput ceiling converted at 30
+	// days, not a published allowance" on an endpoint Solana's docs say is
+	// "not intended for production applications". It was ranked first on
+	// the Solana tab at more than double OnFinality, so the page crowned a
+	// row the catalogue refuses to rank and contradicted the method printed
+	// underneath it. The cost benches can show a reference row next to the
+	// ranked ones because they have other columns; here the allowance IS the
+	// ranking, so a row that cannot be ranked has nothing to show.
+	if p.isReference() {
+		return 0, "", false
+	}
 	for _, pl := range p.Plans {
 		if c.PlanTier(p, pl) != TierFree || pl.IncludedUnits == nil {
 			continue
