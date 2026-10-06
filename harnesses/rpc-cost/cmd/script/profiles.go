@@ -123,6 +123,10 @@ var PlanTiers = []string{"all", "free", "entry", "growth", "business", "enterpri
 const (
 	headlineKind   = "dapp"
 	headlineBucket = "10m"
+	// headlineChain is the slice the free-tier board shows unfiltered.
+	// Ethereum because every free plan in the catalogue serves it, so the
+	// default view is the one comparison nobody is missing from.
+	headlineChain = "ethereum"
 )
 
 // baselineProfile returns the profile used as a chain's reference workload

@@ -117,7 +117,21 @@ func priceEverything(cat *Catalogue) {
 			// buys. "200M credits" is meaningless until it is divided by
 			// what a credit buys.
 			if reqs, planID, ok := cat.FreeAllowanceRequests(p, pr); ok {
-				freeAllowance.WithLabelValues(p.Slug, planID, pr.ID, pr.Chain).Set(reqs)
+				// Published under the real labels and under the `all`
+				// aliases the unfiltered view selects. Without the aliases a
+				// reader switching tabs changes nothing, because injectLabels
+				// only replaces a selector pinned to `="all"`, and the
+				// default view spans every combination instead of one slice.
+				//
+				// `all` is the headline slice, not a pooled average: an
+				// allowance in requests depends on what a request costs in
+				// units, so averaging the dapp mix with a trace mix would
+				// describe no workload at all. The dimension label says so.
+				for _, ka := range aliasesFor(pr.ID, headlineKind) {
+					for _, ca := range aliasesFor(pr.Chain, headlineChain) {
+						freeAllowance.WithLabelValues(p.Slug, planID, ka, ca).Set(reqs)
+					}
+				}
 			}
 
 			for _, b := range Buckets {
@@ -245,4 +259,3 @@ func boolGauge(b bool) float64 {
 	}
 	return 0
 }
-

@@ -76,8 +76,8 @@ methodology:
   - "Archive. Handled per provider rather than as a uniform surcharge, because it is not one. Chainstack doubles on block age. BlockPI adds 30% to the whole endpoint. Alchemy, dRPC and QuickNode charge no archive premium at all."
   - "GetBlock publishes an independent archive column, 2x on plain reads and 3x on debug and trace, so no single multiplier is correct and its own published formula is arithmetically impossible against its own API. Tatum serves archive but has never published what it charges for it in the credit model, so it is reported unpriceable on archive workloads rather than assigned a guess."
   - "Eligibility before price. A plan is ranked only if it can serve the workload. Daily caps are compared against the daily share, not the monthly total, because Infura's credits do not roll over. Hard stops (Infura, NOWNodes Start and Pro, QuickNode's trial) make a plan unavailable above its cap rather than merely expensive. Published throughput is checked against the sustained rate the volume requires. Missing trace or archive access is unavailability, not cost."
-  - "Plan tiers. Provider plan names do not line up, Chainstack calls $49 Growth and Helius calls $499 Business, so plans are banded by monthly price into free, entry (to $50), growth (to $300), business (to $1,000) and enterprise. The default view is the cheapest paid plan; the free tier has its own panel because every free plan ties at $0 and can only be ranked on what its allowance buys."
-  - "Free tiers are ranked by burn time, not headline allowance. GetBlock advertises 20 requests per second and 50,000 compute units per day: at its own advertised rate the daily allowance is gone in 125 seconds. Infura's lasts 1.7 hours a day, OnFinality's 2.8 hours, Alchemy's 1.2 days a month. The panel publishes the allowance converted into requests of each profile, alongside the throughput cap that is often the real ceiling."
+  - "Plan tiers. Provider plan names do not line up, Chainstack calls $49 Growth and Helius calls $499 Business, so plans are banded by monthly price into free, entry (to $50), growth (to $300), business (to $1,000) and enterprise. The default view is the cheapest paid plan. Free plans are not banded here at all: every one ties at $0, so this page would order them by their overage bill, and it is bench 283 that ranks them on what their allowance buys."
+  - "Free tiers moved to bench 283 (rpc-free-tier), ranked by what the allowance buys rather than by price. GetBlock advertises 20 requests per second and 50,000 compute units per day: at its own advertised rate the daily allowance is gone in 125 seconds. Infura's lasts 1.7 hours a day, OnFinality's 2.8 hours, Alchemy's 1.2 days a month. The panel publishes the allowance converted into requests of each profile, alongside the throughput cap that is often the real ceiling."
   - "Add-ons are priced with their prerequisites. Infura's $200 extra-credits pack cannot be bought on the free tier, so its real entry cost is Developer at $50 plus $200, which loses to Team at $225. Helius advertises dedicated nodes from $2,900; whether a paid plan is a prerequisite is not clearly stated, so no surcharge is assumed."
   - "Packages are pro-rated, not treated as subscriptions. BlockPI sells 500M Request Units for $49 over 60 days and 4,000M for $299 over 90 days, and its own page says 'without monthly subscription'. Both price and allowance are scaled to 30 days ($24.50 and $99.67), and unused units are forfeited at expiry."
   - "Currency and period. A 30-day month throughout. NOWNodes prices in EUR and stays in EUR in the catalogue; the ECB reference rate sits in the catalogue header so the conversion is visible at the point of use rather than baked into a number."
@@ -120,7 +120,7 @@ faq:
   - q: "Why is a provider missing from a cell?"
     a: "Because it cannot serve that workload. The reason is recorded in the harness log; surfacing it on the page is not done yet. Infura's allowance is daily and hard-stops rather than metering overage. Alchemy's published self-serve throughput ceiling is below what a billion-request indexer workload needs. Tatum and Moralis publish 200 requests per second against the 386 that volume requires. A missing cell is a finding, not a gap in the data."
   - q: "What about the free tiers?"
-    a: "They have their own panel, ranked by what the allowance actually buys rather than by price, since every free plan costs the same nothing. Converted into simple reads per month they differ by 160x, from OnFinality's 12.0 million to GetBlock's 75,000. The allowance ranking has its own panel on this page. Several are limited by throughput rather than volume: GetBlock's daily allowance drains in 125 seconds at its own advertised 20 requests per second."
+    a: "They have their own bench, 283 rpc-free-tier, ranked by what the allowance actually buys rather than by price, since every free plan costs the same nothing. Converted into simple reads per month they differ by 160x, from OnFinality's 12.0 million to GetBlock's 75,000. The allowance ranking is bench 283, rpc-free-tier. Several are limited by throughput rather than volume: GetBlock's daily allowance drains in 125 seconds at its own advertised 20 requests per second."
   - q: "How current are these numbers?"
     a: "Every figure carries the date a human last verified it against the source. The harness re-fetches 21 artifacts that carry a baseline hash and flags any whose body has changed since a human last read it. Artifacts that churn for reasons unrelated to price are re-read by hand instead, and every figure publishes its age either way. Freshness varies within a provider: Chainstack's pricing markdown has not moved since April 2026 while its pricing JSON regenerates every fifteen minutes."
   - q: "Can I reproduce these numbers?"
@@ -225,11 +225,13 @@ dimensions:
     - { value: 1000m, label: 1B requests/mo }
   venue:
     # Pinned in the queries, so it must come first, and it carries the
-    # default view: the cheapest PAID plan. Letting a free tier win the
-    # smallest volume would bury the comparison readers came for; the
-    # Free tier tab answers that question on its own terms.
+    # default view: the cheapest PAID plan. Free plans left this axis when
+    # bench 283 took them: every free plan ties at $0, so ranking them here
+    # ordered them by their overage bill, which showed the ones that meter
+    # overage and hid the ones that simply stop. They are ranked on what
+    # their allowance buys instead, which is the only axis that separates
+    # them.
     - { value: all,        label: Cheapest paid plan }
-    - { value: free,       label: Free tier }
     - { value: entry,      label: "Entry, to $50/mo" }
     - { value: growth,     label: "Growth, to $300/mo" }
     - { value: business,   label: "Business, to $1000/mo" }

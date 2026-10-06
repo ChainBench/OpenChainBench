@@ -1,0 +1,221 @@
+# OpenChainBench. Bench № 283
+
+slug: rpc-free-tier
+number: "283"
+title: Most requests a free RPC plan buys, across 14 providers
+seo_title: "Best free RPC provider 2026: how far each free plan goes"
+seo_description: "How many requests a month each free RPC plan actually buys. Alchemy, Infura, Ankr, dRPC, Chainstack and 9 more, converted from credits into requests."
+subtitle: How many requests of a real workload each provider's free plan allowance buys in a month, once credits, Compute Units and Request Units are converted into the requests they actually pay for.
+
+category: RPCs
+status: live
+metric: Free allowance
+unit: count
+higher_is_better: true
+row_noun: { one: plan, many: plans }
+
+disclaimer: >
+  Allowance, not latency and not reliability. A plan that buys the most
+  requests is not thereby the fastest or the most correct; those are measured
+  on the per-chain RPC pages. Published allowances, human-verified against
+  each provider's own pricing page with the date it was read. A free plan is
+  one that costs nothing and renews, so QuickNode's one-month trial is not
+  here. Where a provider publishes a daily cap it is multiplied by 30.
+
+seo_intro: |
+  "200 million credits a month" tells you nothing until you know what a credit
+  buys. Providers meter free plans in four different units, and the same unit
+  costs a different number of credits depending on the method called, so the
+  advertised numbers cannot be compared as printed. This page converts every
+  free allowance into the one unit a developer can reason about: how many
+  requests of a real workload it pays for before the plan stops or starts
+  charging. The answer moves with the workload, which is why the figure is
+  published per workload rather than as one number. A dapp frontend calling
+  eth_call and eth_getBalance drains an allowance at a different rate than a
+  log indexer calling eth_getLogs, and on some providers the gap is a factor
+  of five on the same plan.
+
+abstract: |
+  We take each provider's free plan allowance as published, in whatever unit
+  the provider meters, and divide it by what one request of a given workload
+  costs in that unit. The result is the number of requests the free plan buys
+  in a month. The unit conversion is the whole point: Alchemy meters Compute
+  Units weighted per method, Chainstack meters one flat Request Unit for every
+  method, Infura meters credits on a daily cap, and Ankr meters flat requests.
+  Those four numbers are not comparable until they are divided by the method
+  mix that spends them.
+
+  Five workloads are published. The unfiltered view is the dapp frontend mix
+  on Ethereum, the case most readers arrive with. A plan that leads one
+  workload can trail on another, and the table does not hide that by averaging
+  them: an allowance averaged across a trace mix and a simple-read mix
+  describes no workload anyone runs.
+
+methodology:
+  - "Allowance source: each provider's published free plan, read from its own pricing page or API, with the date of reading and a confidence flag recorded in the catalogue. The same catalogue prices the paid plans on bench 282; this page reads only the rows whose monthly price is zero and whose allowance renews."
+  - "Unit conversion: allowance divided by the weighted cost of one request of the selected workload, in the provider's own unit. A workload is a fixed method mix with shares that sum to 1, so the weighted cost is the sum of each method's unit weight times its share. A provider that meters flat requests has a weight of 1 on every method."
+  - "Daily caps: Infura, BlockPI and GetBlock publish a daily allowance rather than a monthly one. The daily figure is multiplied by 30, the most generous reading, and the plan is still subject to its throughput ceiling, which this page does not score."
+  - "What counts as free: a plan that costs nothing and renews. QuickNode's Free trial is excluded because it runs for one month and does not renew; it is priced on bench 282 as an entry plan instead. Public endpoints with no key and no published allowance are also excluded: there is no allowance to rank."
+  - "Headline slice: the unfiltered view is the dapp mix on Ethereum. Both are published under the `all` label as the headline slice, not as a pooled average, because an allowance averaged across workloads describes none of them. Switching a tab reads a different slice, never a blend."
+  - "Not scored here: latency, reliability, archive depth, throughput ceilings and support. A large allowance behind a 25 requests per second cap serves a different application than the same allowance behind 300. The per-chain RPC pages measure the speed of these same endpoints."
+
+faq:
+  - q: "Which free RPC plan gives the most requests?"
+    a: "It depends on the workload, and the table reorders when you change it. On the Ethereum dapp mix the leader is the plan at the top of the board right now; on a log indexer mix the order is different, because methods like eth_getLogs cost more units on providers that weight per method and cost the same as any other call on providers that do not. Read the figure for the workload you actually run."
+  - q: "Why not just compare the advertised numbers?"
+    a: "Because they are in four different units. 30M Compute Units, 3M Request Units, 3M daily credits and 1M requests are four numbers that cannot be ordered until each is divided by what one request of your workload costs in that unit. That division is what this page does."
+  - q: "Is the biggest allowance the best free plan?"
+    a: "Not on its own. Throughput ceilings, archive access and reliability are not scored here, and a plan with a large allowance behind a low rate limit will not serve a busy frontend. This page answers one question, how far the allowance goes, and the per-chain RPC pages answer how fast those endpoints respond."
+
+dimension_labels:
+  kind: Workload
+  chain: Chain
+
+dimensions:
+  kind:
+    # `all` is the headline slice the unfiltered view selects, not a pooled
+    # average: an allowance averaged across a trace mix and a simple-read mix
+    # describes no workload anyone runs. The label names the slice it carries.
+    - { value: all,         label: Dapp frontend }
+    - { value: simple-read, label: Simple reads }
+    - { value: indexer,     label: Log indexer }
+    - { value: trace,       label: Trace and debug }
+    - { value: solana-bot,  label: Solana trading bot }
+  chain:
+    - { value: all,     label: Ethereum }
+    - { value: solana,  label: Solana }
+
+source: https://github.com/ChainBench/OpenChainBench/tree/dev/harnesses/rpc-cost
+
+prometheus:
+  window: 24h
+  expected_freshness_seconds: 10800
+  freshness_timestamp_metric: rpc_cost_last_run_timestamp_seconds
+  url: https://prom.openchainbench.com
+
+providers:
+  - slug: onfinality
+    name: OnFinality
+    tag: "Developer, 25M OnFinality credits a month"
+    queries:
+      p50: quantile_over_time(0.50, rpc_free_allowance_requests{provider="onfinality",kind="all",chain="all"}[24h])
+      p90: quantile_over_time(0.90, rpc_free_allowance_requests{provider="onfinality",kind="all",chain="all"}[24h])
+      p99: quantile_over_time(0.99, rpc_free_allowance_requests{provider="onfinality",kind="all",chain="all"}[24h])
+      series: rpc_free_allowance_requests{provider="onfinality",kind="all",chain="all"}
+
+  - slug: drpc
+    name: dRPC
+    tag: "Free, 210M Compute Units a month"
+    queries:
+      p50: quantile_over_time(0.50, rpc_free_allowance_requests{provider="drpc",kind="all",chain="all"}[24h])
+      p90: quantile_over_time(0.90, rpc_free_allowance_requests{provider="drpc",kind="all",chain="all"}[24h])
+      p99: quantile_over_time(0.99, rpc_free_allowance_requests{provider="drpc",kind="all",chain="all"}[24h])
+      series: rpc_free_allowance_requests{provider="drpc",kind="all",chain="all"}
+
+  - slug: chainstack
+    name: Chainstack
+    tag: "Developer, 3M Request Units a month, one flat RU per method"
+    queries:
+      p50: quantile_over_time(0.50, rpc_free_allowance_requests{provider="chainstack",kind="all",chain="all"}[24h])
+      p90: quantile_over_time(0.90, rpc_free_allowance_requests{provider="chainstack",kind="all",chain="all"}[24h])
+      p99: quantile_over_time(0.99, rpc_free_allowance_requests{provider="chainstack",kind="all",chain="all"}[24h])
+      series: rpc_free_allowance_requests{provider="chainstack",kind="all",chain="all"}
+
+  - slug: blockpi
+    name: BlockPI
+    tag: "Free, 100 RU/s and a daily cap, weighted per method"
+    queries:
+      p50: quantile_over_time(0.50, rpc_free_allowance_requests{provider="blockpi",kind="all",chain="all"}[24h])
+      p90: quantile_over_time(0.90, rpc_free_allowance_requests{provider="blockpi",kind="all",chain="all"}[24h])
+      p99: quantile_over_time(0.99, rpc_free_allowance_requests{provider="blockpi",kind="all",chain="all"}[24h])
+      series: rpc_free_allowance_requests{provider="blockpi",kind="all",chain="all"}
+
+  - slug: alchemy
+    name: Alchemy
+    tag: "Free, 30M Compute Units a month, hard stop"
+    queries:
+      p50: quantile_over_time(0.50, rpc_free_allowance_requests{provider="alchemy",kind="all",chain="all"}[24h])
+      p90: quantile_over_time(0.90, rpc_free_allowance_requests{provider="alchemy",kind="all",chain="all"}[24h])
+      p99: quantile_over_time(0.99, rpc_free_allowance_requests{provider="alchemy",kind="all",chain="all"}[24h])
+      series: rpc_free_allowance_requests{provider="alchemy",kind="all",chain="all"}
+
+  - slug: validation-cloud
+    name: Validation Cloud
+    tag: "Free, weighted per method"
+    queries:
+      p50: quantile_over_time(0.50, rpc_free_allowance_requests{provider="validation-cloud",kind="all",chain="all"}[24h])
+      p90: quantile_over_time(0.90, rpc_free_allowance_requests{provider="validation-cloud",kind="all",chain="all"}[24h])
+      p99: quantile_over_time(0.99, rpc_free_allowance_requests{provider="validation-cloud",kind="all",chain="all"}[24h])
+      series: rpc_free_allowance_requests{provider="validation-cloud",kind="all",chain="all"}
+
+  - slug: ankr
+    name: Ankr
+    tag: "Freemium, flat request count"
+    queries:
+      p50: quantile_over_time(0.50, rpc_free_allowance_requests{provider="ankr",kind="all",chain="all"}[24h])
+      p90: quantile_over_time(0.90, rpc_free_allowance_requests{provider="ankr",kind="all",chain="all"}[24h])
+      p99: quantile_over_time(0.99, rpc_free_allowance_requests{provider="ankr",kind="all",chain="all"}[24h])
+      series: rpc_free_allowance_requests{provider="ankr",kind="all",chain="all"}
+
+  - slug: infura
+    name: Infura
+    tag: "Core, 3M credits a day, hard stop"
+    queries:
+      p50: quantile_over_time(0.50, rpc_free_allowance_requests{provider="infura",kind="all",chain="all"}[24h])
+      p90: quantile_over_time(0.90, rpc_free_allowance_requests{provider="infura",kind="all",chain="all"}[24h])
+      p99: quantile_over_time(0.99, rpc_free_allowance_requests{provider="infura",kind="all",chain="all"}[24h])
+      series: rpc_free_allowance_requests{provider="infura",kind="all",chain="all"}
+
+  - slug: instanodes
+    name: InstaNodes
+    tag: "Free, Ethereum only"
+    queries:
+      p50: quantile_over_time(0.50, rpc_free_allowance_requests{provider="instanodes",kind="all",chain="all"}[24h])
+      p90: quantile_over_time(0.90, rpc_free_allowance_requests{provider="instanodes",kind="all",chain="all"}[24h])
+      p99: quantile_over_time(0.99, rpc_free_allowance_requests{provider="instanodes",kind="all",chain="all"}[24h])
+      series: rpc_free_allowance_requests{provider="instanodes",kind="all",chain="all"}
+
+  - slug: blockdaemon
+    name: Blockdaemon
+    tag: "Free, weighted per method"
+    queries:
+      p50: quantile_over_time(0.50, rpc_free_allowance_requests{provider="blockdaemon",kind="all",chain="all"}[24h])
+      p90: quantile_over_time(0.90, rpc_free_allowance_requests{provider="blockdaemon",kind="all",chain="all"}[24h])
+      p99: quantile_over_time(0.99, rpc_free_allowance_requests{provider="blockdaemon",kind="all",chain="all"}[24h])
+      series: rpc_free_allowance_requests{provider="blockdaemon",kind="all",chain="all"}
+
+  - slug: getblock
+    name: GetBlock
+    tag: "Free, 50k Compute Units a day"
+    queries:
+      p50: quantile_over_time(0.50, rpc_free_allowance_requests{provider="getblock",kind="all",chain="all"}[24h])
+      p90: quantile_over_time(0.90, rpc_free_allowance_requests{provider="getblock",kind="all",chain="all"}[24h])
+      p99: quantile_over_time(0.99, rpc_free_allowance_requests{provider="getblock",kind="all",chain="all"}[24h])
+      series: rpc_free_allowance_requests{provider="getblock",kind="all",chain="all"}
+
+  - slug: helius
+    name: Helius
+    tag: "Free, Solana only"
+    queries:
+      p50: quantile_over_time(0.50, rpc_free_allowance_requests{provider="helius",kind="all",chain="all"}[24h])
+      p90: quantile_over_time(0.90, rpc_free_allowance_requests{provider="helius",kind="all",chain="all"}[24h])
+      p99: quantile_over_time(0.99, rpc_free_allowance_requests{provider="helius",kind="all",chain="all"}[24h])
+      series: rpc_free_allowance_requests{provider="helius",kind="all",chain="all"}
+
+  - slug: syndica
+    name: Syndica
+    tag: "Free, Solana only"
+    queries:
+      p50: quantile_over_time(0.50, rpc_free_allowance_requests{provider="syndica",kind="all",chain="all"}[24h])
+      p90: quantile_over_time(0.90, rpc_free_allowance_requests{provider="syndica",kind="all",chain="all"}[24h])
+      p99: quantile_over_time(0.99, rpc_free_allowance_requests{provider="syndica",kind="all",chain="all"}[24h])
+      series: rpc_free_allowance_requests{provider="syndica",kind="all",chain="all"}
+
+  - slug: solana-foundation
+    name: Solana Foundation
+    tag: "Public endpoint, Solana only, no key"
+    queries:
+      p50: quantile_over_time(0.50, rpc_free_allowance_requests{provider="solana-foundation",kind="all",chain="all"}[24h])
+      p90: quantile_over_time(0.90, rpc_free_allowance_requests{provider="solana-foundation",kind="all",chain="all"}[24h])
+      p99: quantile_over_time(0.99, rpc_free_allowance_requests{provider="solana-foundation",kind="all",chain="all"}[24h])
+      series: rpc_free_allowance_requests{provider="solana-foundation",kind="all",chain="all"}
