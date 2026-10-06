@@ -496,19 +496,39 @@ func isTraceProfile(pr Profile) bool {
 // allowance is exactly 1,000M, hard-stopping it and dropping a provider
 // out of a cell it wins.
 func weightedUnits(w Weights, pr Profile) (float64, error) {
+	// Fixed order, not map order: see Profile.MixOrder.
+	methods := pr.MixOrder()
+	if len(methods) == 0 {
+		return 0, fmt.Errorf("profile declares no method mix")
+	}
+	base, ok := w.Weight(methods[0])
+	if !ok {
+		return 0, fmt.Errorf("no published unit cost for %s", methods[0])
+	}
+	// Shifted mean: average the distance from the first method's weight and
+	// add that weight back. Algebraically the same as averaging the weights,
+	// and exact in the one case that has to be exact. Ankr charges a flat 200
+	// units for every method, and summing share*200 over the seven-term dapp
+	// mix returned 199.99999999999994: the free allowance then came back as
+	// 1,000,000.0000000002 on dapp and 1,000,000 on the other three mixes, so
+	// the floor and ceiling columns reported a spread on a plan that has none
+	// and called a flat-rate plan workload-sensitive. Here every term is
+	// zero when the weights are uniform, and the result is that weight to the
+	// bit.
 	total, shares := 0.0, 0.0
-	for method, share := range pr.Mix {
+	for _, method := range methods {
+		share := pr.Mix[method]
 		units, ok := w.Weight(method)
 		if !ok {
 			return 0, fmt.Errorf("no published unit cost for %s", method)
 		}
-		total += share * units
+		total += share * (units - base)
 		shares += share
 	}
-	if shares > 0 {
-		total /= shares
+	if shares <= 0 {
+		return 0, fmt.Errorf("profile shares sum to zero")
 	}
-	return total, nil
+	return base + total/shares, nil
 }
 
 // blockAgeUnits prices a profile under a block-age archive surcharge.
@@ -525,17 +545,30 @@ func blockAgeUnits(w Weights, pr Profile, mult float64) (float64, error) {
 		return 0, fmt.Errorf("block_age archive rule needs a chain default weight")
 	}
 	floor := *w.Default * mult
+	// Fixed order, not map order: see Profile.MixOrder. Shifted mean for the
+	// same reason as weightedUnits: a mix every one of whose methods is
+	// raised to the floor must price at exactly the floor.
+	methods := pr.MixOrder()
+	if len(methods) == 0 {
+		return 0, fmt.Errorf("profile declares no method mix")
+	}
+	firstUnits, ok := w.Weight(methods[0])
+	if !ok {
+		return 0, fmt.Errorf("no published unit cost for %s", methods[0])
+	}
+	base := math.Max(firstUnits, floor)
 	total, shares := 0.0, 0.0
-	for method, share := range pr.Mix {
+	for _, method := range methods {
+		share := pr.Mix[method]
 		units, ok := w.Weight(method)
 		if !ok {
 			return 0, fmt.Errorf("no published unit cost for %s", method)
 		}
-		total += share * math.Max(units, floor)
+		total += share * (math.Max(units, floor) - base)
 		shares += share
 	}
 	if shares > 0 {
-		total /= shares
+		total = base + total/shares
 	}
 	return total, nil
 }
