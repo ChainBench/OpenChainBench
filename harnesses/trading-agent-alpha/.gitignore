@@ -1,0 +1,4 @@
+# go build without -o names the binary after the module, which the repo-wide
+# harnesses/*/script rule does not cover.
+trading-agent-alpha
+monitor
