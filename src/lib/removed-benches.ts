@@ -150,20 +150,6 @@ export const DEV_ONLY_BENCH_SLUGS = new Set([
   // the multiplier comments corrected, and the trace profile confirmed
   // against the catalogue.
   "rpc-cost",
-  // Bench 283, split out of 282 so cost ranks only the paid plans. Every
-  // free plan ties at $0, so ranking them on the cost axis ordered them by
-  // their overage bill: it showed the ones that meter overage (Chainstack
-  // Developer at $140 for a 10M workload) and hid the ones that simply stop
-  // (Alchemy and Infura are hard_stop, so they fell out of the panel
-  // entirely). The allowance axis separates them honestly.
-  //
-  // Gated until the harness that feeds it is redeployed. Its queries pin
-  // kind="all" and chain="all", and those aliases land with the change in
-  // this same PR: rpc_free_allowance_requests has only ever been published
-  // under the real labels, so until the rebuild the page would render a
-  // table with nothing in it. Un-gate condition: the aliases visible in
-  // Prometheus for all 14 providers.
-  "rpc-free-tier",
   // Released 2026-09-23: bridges 261 (on-chain execution), 263 (realized
   // cost), 264 (SOL->X quotes) and 268 terminal-fill-quality left this
   // list with release/2026-09-23.
