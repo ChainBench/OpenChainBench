@@ -10,7 +10,7 @@ import { safeJsonLd, buildBreadcrumbJsonLd } from "@/lib/jsonld";
 import { SITE } from "@/data/site";
 
 const DESCRIPTION =
-  "Live results for autonomous AI trading agents: eight frontier models from four labs trading ETH/USDC on Base under identical rules, scored on return net of the exposure each one carried.";
+  "Eight frontier models from four labs trade ETH/USDC on Base under identical rules. Live results scored net of the exposure each agent actually carried.";
 
 export const metadata: import("next").Metadata = pageMetadata({
   path: "/trading-agents",
