@@ -24,6 +24,9 @@ export type AgentRow = {
   hitRate: number | null;
   beta: number | null;
   rounds: number | null;
+  /** Standard deviation of this agent's weekly returns. The roster spans a
+   *  factor of two and a half, which compounded totals hide entirely. */
+  weeklySwing: number | null;
 };
 
 export type LabRow = {
@@ -52,6 +55,26 @@ export type TradingAgentHub = {
   maxRounds: number | null;
   minRounds: number | null;
   asOf: string | null;
+
+  /** Arena-level statistics, published identically on every row by the
+   *  harness because the site builds panel queries per provider and an
+   *  arena-scope figure can only reach the page that way.
+   *
+   *  These exist because the table ranks eight agents over a nineteen-point
+   *  spread and a reader will take that as a hierarchy. It is not one, and
+   *  the page has to say so with a number rather than a hedge. */
+  stats: {
+    /** Mean alpha per round, averaged within the round first. */
+    pooledAlpha: number | null;
+    /** t of that series against zero. Significant past -2. */
+    pooledT: number | null;
+    /** Rounds this effect size needs to reach t=2. */
+    roundsNeeded: number | null;
+    /** Pairs of agents whose paired weekly difference clears |t|>2. */
+    separablePairs: number | null;
+    /** Pairs compared: every unordered pair of ranked agents. */
+    pairsTested: number;
+  };
 };
 
 /** Which lab makes which model. The bench's own rows are agents, so the lab
@@ -103,6 +126,7 @@ async function _fetchTradingAgentHub(): Promise<TradingAgentHub | null> {
         // figure from two paths; prefer the panel and fall back, so the
         // column holds a number even on a sweep that missed the panels.
         rounds: panelValue(panels, "n_rounds", slug) ?? r.sampleSize ?? null,
+        weeklySwing: panelValue(panels, "weekly_swing", slug),
       });
     }
   }
@@ -130,6 +154,16 @@ async function _fetchTradingAgentHub(): Promise<TradingAgentHub | null> {
     .map((a) => a.rounds)
     .filter((v): v is number => v != null && v > 0);
 
+  // Arena-level: identical on every row, so read the first row that has it.
+  const arenaStat = (id: string): number | null => {
+    for (const a of agents) {
+      const v = panelValue(panels, id, a.slug);
+      if (v != null) return v;
+    }
+    return null;
+  };
+  const n = agents.length;
+
   return {
     labs,
     agents: ranked,
@@ -143,6 +177,13 @@ async function _fetchTradingAgentHub(): Promise<TradingAgentHub | null> {
     maxRounds: roundCounts.length ? Math.max(...roundCounts) : null,
     minRounds: roundCounts.length ? Math.min(...roundCounts) : null,
     asOf: bench.lastRunAt ?? null,
+    stats: {
+      pooledAlpha: arenaStat("pooled_alpha"),
+      pooledT: arenaStat("pooled_t"),
+      roundsNeeded: arenaStat("rounds_needed"),
+      separablePairs: arenaStat("separable_pairs"),
+      pairsTested: (n * (n - 1)) / 2,
+    },
   };
 }
 

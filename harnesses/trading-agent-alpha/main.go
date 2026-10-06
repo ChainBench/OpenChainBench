@@ -46,6 +46,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math"
 	"net/http"
 	"os"
 	"sort"
@@ -118,6 +119,44 @@ var (
 		Help: "Funded rounds behind this agent's figures.",
 	}, []string{"agent", "kind", "arena"})
 
+	weeklySD = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "trading_agent_weekly_sd_pct",
+		Help: "Standard deviation of the agent's weekly returns. The spread across the roster is a factor of two and a half, which a table of compounded totals hides completely.",
+	}, []string{"agent", "kind", "arena"})
+
+	alphaT = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "trading_agent_alpha_tstat",
+		Help: "t of this agent's own weekly alpha residuals against zero. Between -2 and 2 the agent's shortfall is not distinguishable from noise on its own record.",
+	}, []string{"agent", "kind", "arena"})
+
+	// The four gauges below are ARENA-level, not per-agent, and carry the same
+	// value on every agent label.
+	//
+	// Not an accident. The site builds a metric panel's query per provider, so
+	// an arena-scope figure can only reach the page through a series that
+	// exists for each one. The `asset_hold` panel already works out this way,
+	// carrying two distinct values across eight agents. Each panel's
+	// description says it is arena-level so the table never implies otherwise.
+	pooledAlphaPct = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "trading_agent_pooled_alpha_pct",
+		Help: "ARENA-LEVEL. Mean alpha per round, averaged across the ranked roster within each round first so that one week counts once rather than eight times.",
+	}, []string{"agent", "kind", "arena"})
+
+	pooledAlphaT = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "trading_agent_pooled_alpha_tstat",
+		Help: "ARENA-LEVEL. t of the round-level alpha series against zero. The headline finding is only significant once this passes -2.",
+	}, []string{"agent", "kind", "arena"})
+
+	roundsNeeded = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "trading_agent_rounds_needed_for_significance",
+		Help: "ARENA-LEVEL. Rounds this effect size would need to reach t=2, holding the observed mean and dispersion. The honest answer to when we will know.",
+	}, []string{"agent", "kind", "arena"})
+
+	separableCount = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "trading_agent_separable_pairs",
+		Help: "ARENA-LEVEL. Pairs of ranked agents whose paired weekly difference clears |t|>2. Zero means the published order is an order of finish and not a ranking.",
+	}, []string{"agent", "kind", "arena"})
+
 	roundsScored = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "trading_agent_rounds_scored",
 		Help: "Rounds in the arena that carried a real field and were scored.",
@@ -147,7 +186,9 @@ var (
 func init() {
 	for _, c := range []prometheus.Collector{
 		alphaPct, returnPct, passivePct, assetPct, hitRatePct, beta,
-		rounds, roundsScored, roundsSkipped, lastRun, lastRoundEnd, errors,
+		rounds, weeklySD, alphaT, pooledAlphaPct, pooledAlphaT,
+		roundsNeeded, separableCount,
+		roundsScored, roundsSkipped, lastRun, lastRoundEnd, errors,
 	} {
 		prometheus.MustRegister(c)
 	}
@@ -372,6 +413,10 @@ func runOnce() error {
 	// Per agent, the paired series it needs: its own round return and the
 	// asset's return over the same round.
 	obs := map[string][]observation{}
+	// The same data kept ROUND-first, for the significance work. The agents
+	// trade the same week, so an agent-round is not an independent
+	// observation and the round has to stay addressable as a unit.
+	var byRound []roundObs
 	scored := 0
 	for _, c := range comps {
 		a, err1 := parseDay(c.StartDate)
@@ -391,9 +436,12 @@ func runOnce() error {
 		}
 		assetRet := 100 * (p1/p0 - 1)
 		scored++
+		r := roundObs{assetPct: assetRet, agents: map[string]float64{}}
 		for _, row := range byComp[c.ID] {
 			obs[row.Name] = append(obs[row.Name], observation{*row.PnLPercent, assetRet})
+			r.agents[row.Name] = *row.PnLPercent
 		}
+		byRound = append(byRound, r)
 	}
 
 	alphaPct.Reset()
@@ -403,7 +451,19 @@ func runOnce() error {
 	hitRatePct.Reset()
 	beta.Reset()
 	rounds.Reset()
+	weeklySD.Reset()
+	alphaT.Reset()
+	pooledAlphaPct.Reset()
+	pooledAlphaT.Reset()
+	roundsNeeded.Reset()
+	separableCount.Reset()
 	roundsSkipped.Reset()
+
+	// Betas are needed by the pooled test, which cannot run until every
+	// agent has one, so they are collected here and the significance block
+	// runs after the loop.
+	betas := map[string]float64{}
+	var ranked []string
 
 	published := 0
 	for name, o := range obs {
@@ -445,6 +505,9 @@ func runOnce() error {
 			passive[i] = b * x
 		}
 
+		betas[name] = b
+		ranked = append(ranked, name)
+
 		agentRet := compound(ag)
 		passiveRet := compound(passive)
 		// Every figure is published TWICE: once under the agent's real input
@@ -464,12 +527,54 @@ func runOnce() error {
 			hitRatePct.WithLabelValues(lbl...).Set(100 * float64(wins) / float64(len(ag)))
 			beta.WithLabelValues(lbl...).Set(b)
 			rounds.WithLabelValues(lbl...).Set(float64(len(ag)))
+			// Dispersion, and whether this agent's own shortfall clears its
+			// own noise. A compounded total hides both.
+			if v := sd(ag); !math.IsNaN(v) {
+				weeklySD.WithLabelValues(lbl...).Set(v)
+			}
+			if t := tStat(agentAlphaSeries(name, byRound, b)); !math.IsNaN(t) {
+				alphaT.WithLabelValues(lbl...).Set(t)
+			}
 		}
 		published++
 
 		log.Printf("[284] %-22s n=%2d beta=%+.2f return=%+7.2f%% passive=%+7.2f%% alpha=%+7.2f%% hit=%.0f%%",
 			name, len(ag), b, agentRet, passiveRet, agentRet-passiveRet,
 			100*float64(wins)/float64(len(ag)))
+	}
+
+	// Significance, after the loop because the pooled test needs every beta.
+	//
+	// This is the part the page was missing. It ranked eight agents over a
+	// nineteen-point spread with nothing saying whether the order means
+	// anything, and it does not: on the paired weekly differences no two
+	// agents here are separable. The headline shortfall is real in sign and
+	// not yet significant in size. Publishing those two facts next to the
+	// table is the difference between a benchmark and a leaderboard.
+	if len(ranked) >= 2 && len(byRound) >= 3 {
+		series := pooledAlpha(byRound, betas)
+		pm, pt := mean(series), tStat(series)
+		need := roundsForT2(series)
+		sep, tested, maxT := separablePairs(ranked, byRound)
+
+		for _, name := range ranked {
+			for _, k := range []string{kindOf(name), "all"} {
+				lbl := []string{slugOf(name), k, arena}
+				if !math.IsNaN(pm) {
+					pooledAlphaPct.WithLabelValues(lbl...).Set(pm)
+				}
+				if !math.IsNaN(pt) {
+					pooledAlphaT.WithLabelValues(lbl...).Set(pt)
+				}
+				if !math.IsNaN(need) {
+					roundsNeeded.WithLabelValues(lbl...).Set(need)
+				}
+				separableCount.WithLabelValues(lbl...).Set(float64(sep))
+			}
+		}
+		log.Printf("[284] significance: pooled alpha %+.3f%%/round t=%+.2f over %d rounds, "+
+			"needs %.0f for t=2; %d of %d pairs separable (max |t| %.2f)",
+			pm, pt, len(series), need, sep, tested, maxT)
 	}
 
 	roundsScored.WithLabelValues(arena).Set(float64(scored))

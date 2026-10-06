@@ -18,7 +18,7 @@ seo_intro: |
   Recall Labs runs a weekly spot-trading arena on Base where eight autonomous agents trade the same ETH/USDC pair for six days under identical rules. Each agent is one harness wrapped around a different frontier model, so the roster holds everything constant except the model. Recall publishes who won each round. This page publishes what that cannot show: whether any of them beat simply holding the exposure they were already carrying.
 
 abstract: |
-  Eight frontier models, same token, same rules, {{count}} ranked over the weekly rounds each one funded. {{best_name}} leads at {{best_p50}}; the trailer is {{worst_name}} at {{worst_p50}}. Every figure is alpha, not return.
+  Eight frontier models, same token, same rules, {{count}} ranked over the weekly rounds each one funded. {{best_name}} leads at {{best_p50}}; the trailer is {{worst_name}} at {{worst_p50}}. Every figure is alpha, not return, and the ordering between them is not yet a result: none of the 28 pairwise gaps survives its own noise.
   The arena is single-asset, so a round's raw return is mostly ETH's move: measured across the scored rounds, the correlation between the round's median agent return and ETH's own return is 0.81, and the agents carry an implied exposure near 0.43. Ranking raw returns would rank ETH weeks. So the headline subtracts, round by round, what a passive position at that agent's own measured beta would have returned over exactly the rounds it funded. No agent is charged for a round it sat out, and none is credited for the asset rising.
 
 methodology:
@@ -34,10 +34,14 @@ methodology:
   - "What this does not measure: Recall builds the agents. Their own description reads `Autonomous live spot trading agent built by Recall Labs, powered by` the model in question, so the prompt, the rebalancing and the execution are Recall's and are held constant. This is one harness interacting with each model, never a model's trading ability in the abstract."
   - "Agent names are declared, not verified. Nothing in the data proves which model sits behind a name, so no row here is a claim about a vendor's product."
   - "Input modality (since 2026-10-06): the arena runs several models twice, once fed numeric chart data and once fed an image. The tabs expose it, but only three models have both variants, so the contrast is indicative and not a result. The mean paired difference is 7.3 points with a standard deviation of 7.1 across those three."
+  - "Significance, published rather than implied: the unit of observation is the ROUND, not the agent-round. The eight agents trade the same week, so their results are correlated and pooling every agent-round would treat one week as eight and overstate the confidence by roughly the square root of the roster. The harness averages alpha within each round first, then tests that series against zero, and publishes the t, the rounds held and the rounds the effect size needs."
+  - "Separability: each pair of agents is compared on the rounds BOTH of them funded. The paired difference cancels the asset entirely, so this test needs no beta and no counterfactual and is the cleanest statement available about whether two agents differ. The count of pairs that clear |t|>2 is published; it is currently zero of 28."
   - "Cadence: rounds are weekly and last six days, so a figure that has not moved in days is current rather than stale. Freshness is published as `trading_agent_last_round_end_timestamp_seconds`."
 
 findings:
   - "{{count}} agents are ranked and not one of them beats a passive position at its own measured exposure. The leader, {{best_name}}, still gives up {{best_p50}} against simply holding what it was already holding."
+  - "The order on this page is an order of finish, not a ranking. Pairing the agents week by week on the rounds both of them ran, so the market cancels and no counterfactual is needed, not one of the 28 comparisons between them clears statistical significance: the largest absolute t is 1.36 against the 2 that would be needed. Separating the first from the second at that bar would take several hundred more weeks."
+  - "The shortfall itself is consistent in sign and not yet significant in size. Every ranked agent is negative, and pooling the roster round by round gives a mean alpha near one point a week, but at this dispersion the series needs about thirty rounds to clear t=2. The page publishes the count it has and the count it needs rather than asserting the finding, so a reader can see how close it is."
   - "Raw returns on this arena are mostly the asset. The correlation between the round median and ETH's own move is 0.81, which leaves about a third of a round's outcome for everything the agents do, including fees and slippage."
   - "The spread between models is far smaller than the spread between the agents that wrap them. In a separate Recall round that put these models against purpose-built agents on Hyperliquid perpetuals, the purpose-built entries took the first three places and all six models trailed, while the gap between models inside this one harness stays inside a few points."
   - "{{worst_name}} is the trailer at {{worst_p50}}, and it also carries the lowest measured exposure at 0.12. Holding less of the asset did not protect it: the shortfall is the trading, not the market."
@@ -45,6 +49,8 @@ findings:
 faq:
   - q: "Are there AI agents that trade profitably on their own?"
     a: "On a single round, yes, and some post large gains. Across a record, no agent in this arena beats holding the exposure it already carries. The leader's alpha is {{best_p50}} and every one of the {{count}} ranked agents is negative, measured over the weekly rounds each one funded with real money on Base."
+  - q: "Is the gap between these agents meaningful?"
+    a: "No, and the page says so rather than letting the ordering imply otherwise. Pairing each two agents on the weeks both of them ran cancels the market completely, with no beta to estimate: on those paired differences not one of the 28 pairs reaches statistical significance, and the largest absolute t is 1.36. Read the table as an order of finish over the rounds so far."
   - q: "Which AI model is the best trader?"
     a: "This data cannot answer that, and a page that claimed to would be overstating it. Every agent here is the same harness built by Recall Labs with a different model behind it, so the comparison is between models inside one wrapper. The measured gap between them is small enough that separating them confidently would need years more rounds."
   - q: "Why measure alpha instead of return?"
@@ -111,12 +117,55 @@ metric_panels:
     unit: count
     description: "Funded rounds behind this agent's figures. Every column on this page is computed over exactly these rounds and no others."
 
+  - id: weekly_swing
+    label: Weekly swing
+    label_key: agent
+    metric: trading_agent_weekly_sd_pct{kind="all"}
+    unit: pct
+    description: "Standard deviation of this agent's weekly returns. The roster spans a factor of two and a half here, which a table of compounded totals hides: the steadiest agent and the wildest can land on the same total by very different routes."
+  - id: own_t
+    label: Own significance
+    label_key: agent
+    metric: trading_agent_alpha_tstat{kind="all"}
+    unit: x
+    tab: false
+    description: "t of this agent's own weekly alpha against zero. Between -2 and 2 its shortfall is not distinguishable from noise on its own record alone."
+  - id: pooled_alpha
+    label: Pooled alpha per round
+    label_key: agent
+    metric: trading_agent_pooled_alpha_pct{kind="all"}
+    unit: pct
+    tab: false
+    description: "ARENA-LEVEL, identical on every row. Mean alpha per round across the ranked roster, averaged within each round first so one week counts once rather than eight times."
+  - id: pooled_t
+    label: Pooled significance
+    label_key: agent
+    metric: trading_agent_pooled_alpha_tstat{kind="all"}
+    unit: x
+    tab: false
+    description: "ARENA-LEVEL, identical on every row. t of the round-level alpha series against zero. The headline finding becomes significant when this passes -2."
+  - id: rounds_needed
+    label: Rounds needed
+    label_key: agent
+    metric: trading_agent_rounds_needed_for_significance{kind="all"}
+    unit: count
+    tab: false
+    description: "ARENA-LEVEL, identical on every row. Rounds this effect size needs to reach t=2 at the observed dispersion. Compare it with the Rounds column to see how far off the finding is."
+  - id: separable_pairs
+    label: Separable pairs
+    label_key: agent
+    metric: trading_agent_separable_pairs{kind="all"}
+    unit: count
+    tab: false
+    description: "ARENA-LEVEL, identical on every row. How many of the 28 pairwise comparisons between ranked agents survive their own noise at |t|>2. Zero means the order on this page is an order of finish, not a ranking."
+
 ledger_columns:
   - { label: "Alpha", slot: p50 }
   - { label: "Return", panel: raw_return }
   - { label: "Same exposure held", panel: passive }
   - { label: "Winning rounds", panel: hit_rate }
   - { label: "Exposure", panel: exposure }
+  - { label: "Weekly swing", panel: weekly_swing }
   - { label: "Rounds", panel: n_rounds }
 
 providers:
