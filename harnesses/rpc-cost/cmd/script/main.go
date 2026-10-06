@@ -127,10 +127,14 @@ func priceEverything(cat *Catalogue) {
 				// allowance in requests depends on what a request costs in
 				// units, so averaging the dapp mix with a trace mix would
 				// describe no workload at all. The dimension label says so.
+				//
+				// Only `kind` is aliased, never `chain`. A profile already
+				// belongs to one chain (simple-read, dapp, indexer and trace
+				// are Ethereum, solana-bot is Solana), so a chain axis beside
+				// the workload axis offers combinations that cannot exist and
+				// a chain alias makes `kind="all"` match two chains at once.
 				for _, ka := range aliasesFor(pr.ID, headlineKind) {
-					for _, ca := range aliasesFor(pr.Chain, headlineChain) {
-						freeAllowance.WithLabelValues(p.Slug, planID, ka, ca).Set(reqs)
-					}
+					freeAllowance.WithLabelValues(p.Slug, planID, ka, pr.Chain).Set(reqs)
 				}
 			}
 

@@ -16,9 +16,6 @@ func TestFreeAllowancePublishesHeadlineUnderAll(t *testing.T) {
 	if got := aliasesFor(headlineKind, headlineKind); len(got) != 2 || got[1] != "all" {
 		t.Errorf("headline kind %q aliases = %v, want it published under its own name and under all", headlineKind, got)
 	}
-	if got := aliasesFor(headlineChain, headlineChain); len(got) != 2 || got[1] != "all" {
-		t.Errorf("headline chain %q aliases = %v, want it published under its own name and under all", headlineChain, got)
-	}
 }
 
 func TestNonHeadlineSlicesDoNotClaimAll(t *testing.T) {
@@ -29,27 +26,30 @@ func TestNonHeadlineSlicesDoNotClaimAll(t *testing.T) {
 			t.Errorf("kind %q aliases = %v, want only itself", kind, got)
 		}
 	}
-	if got := aliasesFor("solana", headlineChain); len(got) != 1 || got[0] != "solana" {
-		t.Errorf("chain solana aliases = %v, want only itself", got)
-	}
 }
 
-// Both headline constants have to name slices the harness actually produces,
+// The headline constant has to name a slice the harness actually produces,
 // or the board pins a selector nothing writes to.
 func TestHeadlineConstantsNameRealSlices(t *testing.T) {
-	var kindFound, chainFound bool
+	var kindFound bool
 	for _, p := range Profiles {
 		if p.ID == headlineKind {
 			kindFound = true
-		}
-		if p.Chain == headlineChain {
-			chainFound = true
 		}
 	}
 	if !kindFound {
 		t.Errorf("headlineKind %q matches no profile", headlineKind)
 	}
-	if !chainFound {
-		t.Errorf("headlineChain %q matches no profile chain", headlineChain)
+
+	// Every workload the board offers has to resolve to exactly one chain,
+	// or a query that does not pin chain matches two series and the scalar
+	// read returns null. This is the shape that emptied the Solana tab: a
+	// chain axis beside the workload axis offered cells no profile fills.
+	chainOf := map[string]string{}
+	for _, p := range Profiles {
+		if prev, seen := chainOf[p.ID]; seen && prev != p.Chain {
+			t.Errorf("profile %q exists on %s and %s; a workload must belong to one chain", p.ID, prev, p.Chain)
+		}
+		chainOf[p.ID] = p.Chain
 	}
 }
