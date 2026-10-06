@@ -658,6 +658,14 @@ providers:
         throughput: {unit: cu_per_s, value: 2000}
         archive: false
         trace: false
+        # Ethereum only, and that is a measurement rather than a reading of
+        # a pricing page: the note below records Solana answering error 35,
+        # "chain is not available on free plan", on 2026-09-29. dRPC prices
+        # Solana on its paid plans, so unitsPerRequest resolves and the chain
+        # test every metered cohort leans on cannot catch this. Without this
+        # line the free-tier board published a 10.5M Solana allowance for a
+        # plan that refuses Solana.
+        chains: [ethereum]
         confidence: uncertain
         note: >-
           210M CU per 30-day period = 10.5M requests. Public nodes only. The throughput limit is
