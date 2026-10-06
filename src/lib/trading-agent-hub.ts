@@ -146,8 +146,13 @@ async function _fetchTradingAgentHub(): Promise<TradingAgentHub | null> {
   };
 }
 
+// Tagged "benchmarks" so the worker's post-publish revalidation reaches this
+// hub the way it reaches the bench pages. Untagged, it runs on its own 300s
+// clock under a page whose ISR is 3600s, which is how the hub kept rendering
+// empty columns for the better part of an hour after the data behind them was
+// fixed. /bridge has the same shape and the same lag.
 export const fetchTradingAgentHub = unstable_cache(
   _fetchTradingAgentHub,
   ["trading-agent-hub"],
-  { revalidate: 300 },
+  { revalidate: 300, tags: ["benchmarks"] },
 );
