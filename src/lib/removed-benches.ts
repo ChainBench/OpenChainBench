@@ -150,6 +150,13 @@ export const DEV_ONLY_BENCH_SLUGS = new Set([
   // the multiplier comments corrected, and the trace profile confirmed
   // against the catalogue.
   "rpc-cost",
+  // Bench 284 trading-agent-alpha, added 2026-10-06. Gated while it is
+  // validated: the harness is new, the upstream is a single third-party API
+  // with no second source, and the headline is an alpha against a passive
+  // counterfactual that no reader has sanity-checked yet. Un-gate condition:
+  // a bench audit clean, an SEO audit clean, and a second weekly round
+  // observed so the figures are seen to move the way the arena does.
+  "trading-agent-alpha",
   // Released 2026-09-23: bridges 261 (on-chain execution), 263 (realized
   // cost), 264 (SOL->X quotes) and 268 terminal-fill-quality left this
   // list with release/2026-09-23.
