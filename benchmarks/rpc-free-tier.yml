@@ -2,9 +2,9 @@
 
 slug: rpc-free-tier
 number: "283"
-title: Most requests a free RPC plan buys, across 14 providers
+title: Most requests a free RPC plan buys, across 13 providers
 seo_title: "Best free RPC provider 2026: how far each free plan goes"
-seo_description: "How many requests a month each free RPC plan actually buys. Alchemy, Infura, Ankr, dRPC, Chainstack and 9 more, converted from credits into requests."
+seo_description: "How many requests a month each free RPC plan actually buys. Alchemy, Infura, Ankr, dRPC, Chainstack and 8 more, converted from credits into requests."
 subtitle: How many requests of a real workload each provider's free plan allowance buys in a month, once credits, Compute Units and Request Units are converted into the requests they actually pay for.
 
 category: RPCs
@@ -64,9 +64,9 @@ abstract: |
 methodology:
   - "Allowance source: each provider's published free plan, read from its own pricing page or API, with the date of reading and a confidence flag recorded in the catalogue. The same catalogue prices the paid plans on bench 282; this page reads only the rows whose monthly price is zero and whose allowance renews."
   - "Unit conversion: allowance divided by the weighted cost of one request of the selected workload, in the provider's own unit. A workload is a fixed method mix with shares that sum to 1, so the weighted cost is the sum of each method's unit weight times its share. A provider that meters flat requests has a weight of 1 on every method."
-  - "Daily caps: Infura, BlockPI and GetBlock publish a daily allowance rather than a monthly one. The daily figure is multiplied by 30, the most generous reading, and the plan is still subject to its throughput ceiling, which this page does not score."
+  - "Periods that are not a month: Infura, GetBlock and OnFinality publish a daily allowance, multiplied by 30, the most generous reading, and OnFinality at 40 response units a second cannot reach its monthly figure in a burst. BlockPI is neither daily nor monthly: a 50M RU package issued on the 1st, expiring after 32 days and not accumulating, pro-rated here to 30 days (46.875M RU). Every plan stays subject to its throughput ceiling, which this page does not score."
   - "What counts as free: a plan that costs nothing and renews. QuickNode's Free trial is excluded because it runs for one month and does not renew; it is priced on bench 282 as an entry plan instead. Public endpoints with no key and no published allowance are also excluded: there is no allowance to rank."
-  - "Headline slice: the unfiltered view is the dapp mix on Ethereum, published under the `all` label as the headline slice and not as a pooled average, because an allowance averaged across workloads describes none of them. Switching a tab reads a different slice, never a blend. The chain is a property of the workload rather than a second axis: the Ethereum mixes cover 11 of the 14 plans and the Solana bot mix covers 13, so a provider absent from one tab serves a chain that tab does not ask about."
+  - "Headline slice: the unfiltered view is the dapp mix on Ethereum, published under the `all` label as the headline slice and not as a pooled average, because an allowance averaged across workloads describes none of them. Switching a tab reads a different slice, never a blend. The chain is a property of the workload rather than a second axis: the Ethereum mixes cover 11 of the 13 plans and the Solana bot mix covers 11, so a provider absent from one tab serves a chain that tab does not ask about."
   - "Floor and ceiling: the two columns beside the headline are the least and the most generous of the workloads that plan serves on the selected chain, over all five priced mixes including the simple-read mix, which has no tab. They describe the plan rather than the open tab, so they read the same on every tab. A workload the plan refuses is excluded, not counted as zero: Alchemy's free tier does no trace, so its floor is its indexer mix and the refusal shows as its absence from the trace tab."
   - "Why the span is reported and not collapsed: the two ends are published separately rather than averaged into one number, and the provider's own best workload is never used as its score. Both would rank each plan on a different workload from its neighbour. Floor equal to ceiling is a measurement, not a placeholder: a plan metering one flat unit per method buys the same number of requests whatever is called, and on Solana only one mix is priced, so every row there reports a degenerate span."
   - "Not scored here: latency, reliability, archive depth, throughput ceilings and support. A large allowance behind a 25 requests per second cap serves a different application than the same allowance behind 300. The per-chain RPC pages measure the speed of these same endpoints."
@@ -151,7 +151,7 @@ prometheus:
 providers:
   - slug: onfinality
     name: OnFinality
-    tag: "Developer, 25M OnFinality credits a month"
+    tag: "Developer, 400k response units a day, 40/s, no trace"
     queries:
       p50: max(quantile_over_time(0.50, rpc_free_allowance_requests{provider="onfinality",kind="all"}[3h]))
       p90: max(quantile_over_time(0.50, rpc_free_allowance_requests_floor{provider="onfinality",kind="all"}[3h]))
@@ -178,7 +178,7 @@ providers:
 
   - slug: blockpi
     name: BlockPI
-    tag: "Free, 100 RU/s and a daily cap, weighted per method"
+    tag: "Free, 50M RU per 32-day package, 400 RU/s, weighted per method"
     queries:
       p50: max(quantile_over_time(0.50, rpc_free_allowance_requests{provider="blockpi",kind="all"}[3h]))
       p90: max(quantile_over_time(0.50, rpc_free_allowance_requests_floor{provider="blockpi",kind="all"}[3h]))
@@ -266,11 +266,3 @@ providers:
       p99: max(quantile_over_time(0.50, rpc_free_allowance_requests_ceiling{provider="syndica",kind="all"}[3h]))
       series: max by (provider) (rpc_free_allowance_requests{provider="syndica",kind="all"})
 
-  - slug: solana-foundation
-    name: Solana Foundation
-    tag: "Public endpoint, Solana only, no key"
-    queries:
-      p50: max(quantile_over_time(0.50, rpc_free_allowance_requests{provider="solana-foundation",kind="all"}[3h]))
-      p90: max(quantile_over_time(0.50, rpc_free_allowance_requests_floor{provider="solana-foundation",kind="all"}[3h]))
-      p99: max(quantile_over_time(0.50, rpc_free_allowance_requests_ceiling{provider="solana-foundation",kind="all"}[3h]))
-      series: max by (provider) (rpc_free_allowance_requests{provider="solana-foundation",kind="all"})
