@@ -157,6 +157,35 @@ var (
 		Help: "ARENA-LEVEL. Pairs of ranked agents whose paired weekly difference clears |t|>2. Zero means the published order is an order of finish and not a ranking.",
 	}, []string{"agent", "kind", "arena"})
 
+	// THE FAILURE MODE THIS BENCH IS MOST EXPOSED TO.
+	//
+	// The harness scores ENDED rounds, so a dead arena and a healthy one look
+	// identical from the page: the figures simply stop moving, and the spec's
+	// own methodology tells the reader that a figure which has not moved in
+	// days is current rather than stale. That sentence is true while the
+	// arena runs and becomes a lie the week it stops.
+	//
+	// Recall's own history says it will stop. hyperliquid-perps ran 9 rounds
+	// and ended 2026-01-29; open-paper-trading ran 11 and ended; four other
+	// arenas ran once. This one has 39 rounds and is the only one with a
+	// forward schedule, which is a reason to trust it today and not a reason
+	// to assume it is permanent.
+	//
+	// So the forward schedule is published, not just the history. Freshness
+	// cannot carry this: the site noindexes a page whose data passes seven
+	// days (NOINDEX_AFTER_HOURS), and a weekly arena is legitimately six days
+	// stale most of the time, so wiring freshness to the round clock would
+	// deindex the page every week.
+	scheduledRounds = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "trading_agent_scheduled_rounds",
+		Help: "Rounds in the arena that have not ended yet, active plus pending. Zero means the experiment is over and the published figures are a closed record, which is the one thing this bench cannot otherwise tell.",
+	}, []string{"agent", "kind", "arena"})
+
+	daysSinceRound = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "trading_agent_days_since_last_round",
+		Help: "Days since the most recent scored round ended. Rounds are weekly, so up to 7 is normal and past 14 means two were missed.",
+	}, []string{"agent", "kind", "arena"})
+
 	roundsScored = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "trading_agent_rounds_scored",
 		Help: "Rounds in the arena that carried a real field and were scored.",
@@ -187,7 +216,7 @@ func init() {
 	for _, c := range []prometheus.Collector{
 		alphaPct, returnPct, passivePct, assetPct, hitRatePct, beta,
 		rounds, weeklySD, alphaT, pooledAlphaPct, pooledAlphaT,
-		roundsNeeded, separableCount,
+		roundsNeeded, separableCount, scheduledRounds, daysSinceRound,
 		roundsScored, roundsSkipped, lastRun, lastRoundEnd, errors,
 	} {
 		prometheus.MustRegister(c)
@@ -224,28 +253,36 @@ func getJSON(url string, out any) error {
 
 // fetchRounds returns the arena's ended rounds that carry a real field, each
 // with its funded agents, oldest first.
-func fetchRounds() ([]competition, map[string][]agentRow, map[string]int, error) {
+func fetchRounds() ([]competition, map[string][]agentRow, map[string]int, int, error) {
 	var page struct {
 		Success      bool          `json:"success"`
 		Competitions []competition `json:"competitions"`
 	}
 	if err := getJSON(fmt.Sprintf("%s/competitions?limit=%d", recallAPI, pageLimit), &page); err != nil {
 		errors.WithLabelValues("competitions").Inc()
-		return nil, nil, nil, err
+		return nil, nil, nil, 0, err
 	}
 	// An error can arrive as HTTP 200 with success:false, which is how
 	// limit=200 fails. Trust the field, not the status line.
 	if !page.Success {
 		errors.WithLabelValues("competitions").Inc()
-		return nil, nil, nil, fmt.Errorf("upstream reported success:false")
+		return nil, nil, nil, 0, fmt.Errorf("upstream reported success:false")
 	}
 
 	var kept []competition
 	byComp := map[string][]agentRow{}
 	skipped := map[string]int{}
 
+	scheduled := 0
 	for _, c := range page.Competitions {
-		if c.ArenaID != arena || c.Status != "ended" {
+		if c.ArenaID != arena {
+			continue
+		}
+		if c.Status != "ended" {
+			// Active or pending: not scorable, but the only evidence that the
+			// arena has a future. Counting it is the difference between a
+			// benchmark and an epitaph.
+			scheduled++
 			continue
 		}
 		var ap struct {
@@ -272,7 +309,7 @@ func fetchRounds() ([]competition, map[string][]agentRow, map[string]int, error)
 		byComp[c.ID] = funded
 	}
 	sort.Slice(kept, func(i, j int) bool { return kept[i].EndDate < kept[j].EndDate })
-	return kept, byComp, skipped, nil
+	return kept, byComp, skipped, scheduled, nil
 }
 
 // ethCloses returns daily ETH-USD closes keyed by date, covering the span.
@@ -389,7 +426,7 @@ func compound(xs []float64) float64 {
 }
 
 func runOnce() error {
-	comps, byComp, skipped, err := fetchRounds()
+	comps, byComp, skipped, scheduled, err := fetchRounds()
 	if err != nil {
 		return err
 	}
@@ -457,6 +494,8 @@ func runOnce() error {
 	pooledAlphaT.Reset()
 	roundsNeeded.Reset()
 	separableCount.Reset()
+	scheduledRounds.Reset()
+	daysSinceRound.Reset()
 	roundsSkipped.Reset()
 
 	// Betas are needed by the pooled test, which cannot run until every
@@ -575,6 +614,35 @@ func runOnce() error {
 		log.Printf("[284] significance: pooled alpha %+.3f%%/round t=%+.2f over %d rounds, "+
 			"needs %.0f for t=2; %d of %d pairs separable (max |t| %.2f)",
 			pm, pt, len(series), need, sep, tested, maxT)
+	}
+
+	// Liveness, published per agent for the same reason the arena-level
+	// statistics are: the site builds a panel query per provider, so this is
+	// the only route an arena-scope figure has to the page.
+	var daysSince float64 = -1
+	if t, err := parseDay(comps[len(comps)-1].EndDate); err == nil {
+		daysSince = time.Since(t).Hours() / 24
+	}
+	for _, name := range ranked {
+		for _, k := range []string{kindOf(name), "all"} {
+			lbl := []string{slugOf(name), k, arena}
+			scheduledRounds.WithLabelValues(lbl...).Set(float64(scheduled))
+			if daysSince >= 0 {
+				daysSinceRound.WithLabelValues(lbl...).Set(daysSince)
+			}
+		}
+	}
+	if scheduled == 0 {
+		// Loud on purpose. Every published figure is still correct; what has
+		// changed is that they are now a closed record rather than a running
+		// experiment, and the page's copy has to move to the past tense.
+		log.Printf("[284] WARNING arena %s has no active or pending round: "+
+			"the experiment appears to be over (last round ended %.0f days ago). "+
+			"The figures stay valid as history; the page's copy does not.",
+			arena, daysSince)
+	} else {
+		log.Printf("[284] arena liveness: %d rounds scheduled, last ended %.1f days ago",
+			scheduled, daysSince)
 	}
 
 	roundsScored.WithLabelValues(arena).Set(float64(scored))

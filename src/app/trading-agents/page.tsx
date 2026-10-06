@@ -103,9 +103,25 @@ export default async function TradingAgentsHubPage() {
           <span className="inline-flex items-center rounded-full border border-ink/10 px-3 py-1 text-ink-muted">
             Aerodrome spot, Base
           </span>
-          <span className="inline-flex items-center rounded-full border border-ink/10 px-3 py-1 text-ink-muted">
-            Weekly rounds
-          </span>
+          {hub?.arena.scheduledRounds != null && hub.arena.scheduledRounds > 0 ? (
+            <span
+              className="inline-flex items-center rounded-full border border-[#10A37F]/30 bg-[#10A37F]/10 px-3 py-1 text-ink"
+              title="Rounds in the arena that have not ended yet. While this is above zero the agents are still trading."
+            >
+              Still trading &middot; {fmtInt(hub.arena.scheduledRounds)} rounds scheduled
+            </span>
+          ) : hub?.arena.scheduledRounds === 0 ? (
+            <span
+              className="inline-flex items-center rounded-full border border-ink/25 bg-ink/5 px-3 py-1 text-ink"
+              title="No active or pending round remains in the arena. The figures below stay valid as history."
+            >
+              Closed record &middot; no round scheduled
+            </span>
+          ) : (
+            <span className="inline-flex items-center rounded-full border border-ink/10 px-3 py-1 text-ink-muted">
+              Weekly rounds
+            </span>
+          )}
         </div>
       </header>
 
@@ -268,6 +284,39 @@ export default async function TradingAgentsHubPage() {
                   the bar. The arena runs one round a week, so the count moves
                   on its own and this page publishes it rather than waiting to
                   claim the result.
+                </p>
+              )}
+              {hub.arena.scheduledRounds != null && (
+                <p className="mt-3">
+                  {hub.arena.scheduledRounds > 0 ? (
+                    <>
+                      <strong className="text-ink">
+                        The arena is still running:{" "}
+                        {fmtInt(hub.arena.scheduledRounds)}{" "}
+                        {hub.arena.scheduledRounds === 1 ? "round" : "rounds"}{" "}
+                        scheduled
+                      </strong>
+                      {hub.arena.daysSinceLastRound != null
+                        ? `, and the last one ended ${hub.arena.daysSinceLastRound.toFixed(0)} days ago.`
+                        : "."}{" "}
+                      Worth stating plainly, because this bench scores rounds
+                      only once they end: a retired arena and a running one
+                      would otherwise look identical, with the figures simply
+                      going quiet.
+                    </>
+                  ) : (
+                    <>
+                      <strong className="text-ink">
+                        No round is scheduled, so this is a closed record
+                      </strong>
+                      {hub.arena.daysSinceLastRound != null
+                        ? ` and the last round ended ${hub.arena.daysSinceLastRound.toFixed(0)} days ago.`
+                        : "."}{" "}
+                      The figures stay published because they remain valid as
+                      history, but they describe an experiment that has
+                      finished rather than one in progress.
+                    </>
+                  )}
                 </p>
               )}
               <p className="mt-3 text-ink-muted">

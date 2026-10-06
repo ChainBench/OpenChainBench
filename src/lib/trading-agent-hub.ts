@@ -75,6 +75,20 @@ export type TradingAgentHub = {
     /** Pairs compared: every unordered pair of ranked agents. */
     pairsTested: number;
   };
+
+  /** Whether the arena still has a future.
+   *
+   *  The bench scores ENDED rounds, so a retired arena and a running one look
+   *  identical: the figures just stop moving, and the methodology tells the
+   *  reader that is normal. Recall has retired arenas before. So the forward
+   *  schedule is published and shown, rather than left for a reader to infer
+   *  from a date. */
+  arena: {
+    /** Rounds not yet ended, active plus pending. Zero means it is over. */
+    scheduledRounds: number | null;
+    /** Days since the most recent scored round ended. Up to 7 is normal. */
+    daysSinceLastRound: number | null;
+  };
 };
 
 /** Which lab makes which model. The bench's own rows are agents, so the lab
@@ -183,6 +197,10 @@ async function _fetchTradingAgentHub(): Promise<TradingAgentHub | null> {
       roundsNeeded: arenaStat("rounds_needed"),
       separablePairs: arenaStat("separable_pairs"),
       pairsTested: (n * (n - 1)) / 2,
+    },
+    arena: {
+      scheduledRounds: arenaStat("scheduled_rounds"),
+      daysSinceLastRound: arenaStat("days_since_round"),
     },
   };
 }

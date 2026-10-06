@@ -36,7 +36,9 @@ methodology:
   - "Input modality (since 2026-10-06): the arena runs several models twice, once fed numeric chart data and once fed an image. The tabs expose it, but only three models have both variants, so the contrast is indicative and not a result. The mean paired difference is 7.3 points with a standard deviation of 7.1 across those three."
   - "Significance, published rather than implied: the unit of observation is the ROUND, not the agent-round. The eight agents trade the same week, so their results are correlated and pooling every agent-round would treat one week as eight and overstate the confidence by roughly the square root of the roster. The harness averages alpha within each round first, then tests that series against zero, and publishes the t, the rounds held and the rounds the effect size needs."
   - "Separability: each pair of agents is compared on the rounds BOTH of them funded. The paired difference cancels the asset entirely, so this test needs no beta and no counterfactual and is the cleanest statement available about whether two agents differ. The count of pairs that clear |t|>2 is published; it is currently zero of 28."
-  - "Cadence: rounds are weekly and last six days, so a figure that has not moved in days is current rather than stale. Freshness is published as `trading_agent_last_round_end_timestamp_seconds`."
+  - "Cadence: rounds are weekly and last six days, so a figure that has not moved in days is current rather than stale. That holds only while the arena runs, so the harness also publishes the forward schedule as `trading_agent_scheduled_rounds`: rounds that have not ended yet. Zero means the experiment is over and this table is a closed record."
+  - "Liveness is published as a count rather than inferred from data age, because a weekly arena is legitimately six days stale most of the time while the site stops indexing a page whose data passes seven days. Tying the two together would deindex this page every week."
+  - "What happens when the arena stops: Recall has retired arenas before, and this one will end eventually. The published figures stay valid as history, so they are not withdrawn; what changes is the tense. The page states the number of scheduled rounds and the age of the last one so a reader can tell a running experiment from a finished one without taking our word for it."
 
 findings:
   - "{{count}} agents are ranked and not one of them beats a passive position at its own measured exposure. The leader, {{best_name}}, still gives up {{best_p50}} against simply holding what it was already holding."
@@ -55,6 +57,8 @@ faq:
     a: "This data cannot answer that, and a page that claimed to would be overstating it. Every agent here is the same harness built by Recall Labs with a different model behind it, so the comparison is between models inside one wrapper. The measured gap between them is small enough that separating them confidently would need years more rounds."
   - q: "Why measure alpha instead of return?"
     a: "The arena is single-asset: every agent holds a mix of ETH and USDC, so a round's return is mostly ETH's move. The return column is published for context, but ranking it would rank weeks in which ETH rose. Alpha subtracts a passive position at each agent's own measured exposure over exactly the rounds it funded."
+  - q: "Is this still running, or is it a finished experiment?"
+    a: "The page publishes the answer rather than asserting it. `Rounds scheduled` counts the rounds in the arena that have not ended yet; while it is above zero the arena is still trading and new rounds keep landing. If it reaches zero the figures become a closed record of what happened, and they stay published because they remain valid as history. Recall has retired arenas before: its Hyperliquid perpetuals arena ran nine rounds and stopped in January 2026."
   - q: "Is this real money?"
     a: "Yes. The arena is live spot trading on Base through Aerodrome with self-funded wallets, and the swaps are on-chain. The portfolios are small, with medians in the low hundreds of dollars, so nothing here speaks to how these strategies would behave at size where slippage and capacity bind."
 
@@ -158,6 +162,21 @@ metric_panels:
     unit: count
     tab: false
     description: "ARENA-LEVEL, identical on every row. How many of the 28 pairwise comparisons between ranked agents survive their own noise at |t|>2. Zero means the order on this page is an order of finish, not a ranking."
+
+  - id: scheduled_rounds
+    label: Rounds scheduled
+    label_key: agent
+    metric: trading_agent_scheduled_rounds{kind="all"}
+    unit: count
+    tab: false
+    description: "ARENA-LEVEL, identical on every row. Rounds that have not ended yet, active plus pending. Zero means the experiment is over and these figures are a closed record rather than a running measurement."
+  - id: days_since_round
+    label: Days since last round
+    label_key: agent
+    metric: trading_agent_days_since_last_round{kind="all"}
+    unit: count
+    tab: false
+    description: "ARENA-LEVEL, identical on every row. Days since the most recent scored round ended. Rounds are weekly, so up to 7 is normal and past 14 means two were missed."
 
 ledger_columns:
   - { label: "Alpha", slot: p50 }
