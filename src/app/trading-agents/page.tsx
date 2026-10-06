@@ -252,10 +252,10 @@ export default async function TradingAgentsHubPage() {
                   ? ` gives a mean alpha of ${fmtPct(hub.stats.pooledAlpha)} per round`
                   : " gives a negative mean alpha"}
                 {hub.stats.pooledT != null
-                  ? ` at t = ${hub.stats.pooledT.toFixed(2)}`
-                  : ""}
-                . Two is the conventional bar, so the direction is consistent
-                and the size is not yet separable from noise.
+                  ? ` at t = ${hub.stats.pooledT.toFixed(2)}.`
+                  : "."}{" "}
+                Two is the conventional bar, so the direction is consistent and
+                the size is not yet separable from noise.
               </p>
               {hub.stats.roundsNeeded != null && hub.maxRounds != null && (
                 <p className="mt-3">
