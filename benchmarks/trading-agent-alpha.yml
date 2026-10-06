@@ -60,6 +60,17 @@ prometheus:
   freshness_timestamp_metric: trading_agent_last_run_timestamp_seconds
   expected_freshness_seconds: 10800
 
+# The metric panels declare a bare metric name, and the site turns that into
+# `<metric>{<label_key>="<slug>"}` with no dimension in it. Every series here
+# is published twice, under the agent's real modality and under kind="all", so
+# a bare selector matches two series and prom.scalar refuses to guess: the five
+# panel-backed ledger columns came back null. Pinning the dimension here
+# injects kind="all" into the panel queries on the unfiltered view, and a
+# reader who picks a modality tab still overrides the pin, which is the whole
+# reason the pin lives here rather than being hard-coded into each metric.
+aggregate_filters:
+  kind: all
+
 dimensions:
   kind:
     # Input modality, not strategy: the same model fed numbers or fed a chart
