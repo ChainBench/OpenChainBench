@@ -60,16 +60,6 @@ prometheus:
   freshness_timestamp_metric: trading_agent_last_run_timestamp_seconds
   expected_freshness_seconds: 10800
 
-# The metric panels declare a bare metric name, and the site turns that into
-# `<metric>{<label_key>="<slug>"}` with no dimension in it. Every series here
-# is published twice, under the agent's real modality and under kind="all", so
-# a bare selector matches two series and prom.scalar refuses to guess: the five
-# panel-backed ledger columns came back null. Pinning the dimension here
-# injects kind="all" into the panel queries on the unfiltered view, and a
-# reader who picks a modality tab still overrides the pin, which is the whole
-# reason the pin lives here rather than being hard-coded into each metric.
-aggregate_filters:
-  kind: all
 
 dimensions:
   kind:
@@ -87,37 +77,37 @@ metric_panels:
   - id: raw_return
     label: Return
     label_key: agent
-    metric: trading_agent_return_pct
+    metric: trading_agent_return_pct{kind="all"}
     unit: pct
     description: "Compounded return over the rounds this agent funded. Published for context: on a single-asset arena this mostly tracks ETH, which is why it is not the headline."
   - id: passive
     label: Same exposure held
     label_key: agent
-    metric: trading_agent_passive_pct
+    metric: trading_agent_passive_pct{kind="all"}
     unit: pct
     description: "What holding this agent's own measured beta to ETH would have returned over exactly the same rounds. The counterfactual the alpha is measured against."
   - id: asset_hold
     label: Asset held outright
     label_key: agent
-    metric: trading_agent_asset_pct
+    metric: trading_agent_asset_pct{kind="all"}
     unit: pct
     description: "What holding ETH outright would have returned over the rounds this agent funded. Shown so the reader can see the market the agent was trading in."
   - id: hit_rate
     label: Winning rounds
     label_key: agent
-    metric: trading_agent_hit_rate_pct
+    metric: trading_agent_hit_rate_pct{kind="all"}
     unit: pct
     description: "Share of funded rounds that finished above zero. Unfunded rounds are excluded: an agent that did not put money up has not had a flat week, it has had no week."
   - id: exposure
     label: Measured exposure
     label_key: agent
-    metric: trading_agent_beta
+    metric: trading_agent_beta{kind="all"}
     unit: x
     description: "Regression slope of the agent's round returns against ETH over the same rounds. 1.0 would be holding ETH outright, 0 would be sitting in stablecoins."
   - id: n_rounds
     label: Rounds
     label_key: agent
-    metric: trading_agent_rounds
+    metric: trading_agent_rounds{kind="all"}
     unit: count
     description: "Funded rounds behind this agent's figures. Every column on this page is computed over exactly these rounds and no others."
 
