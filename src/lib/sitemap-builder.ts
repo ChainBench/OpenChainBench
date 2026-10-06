@@ -222,6 +222,21 @@ function staticHubRoutes(catalogTs: Date): MetadataRoute.Sitemap {
     ...(isDevOnlyRoute("/rpc-map")
       ? []
       : [{ url: `${SITE.url}/rpc-map`, lastModified: pageMtime("rpc-map/page.tsx"), changeFrequency: "daily" as const, priority: 0.8 }]),
+    // Guarded on the BENCH as well as the route: the hub has nothing to show
+    // without bench 284, and the two are meant to un-gate together.
+    ...(isDevOnlyRoute("/trading-agents") || isDevOnlyBench("trading-agent-alpha")
+      ? []
+      : [
+          {
+            url: `${SITE.url}/trading-agents`,
+            lastModified: newestEditorial(
+              ["bench:trading-agent-alpha"],
+              pageMtime("trading-agents/page.tsx"),
+            ),
+            changeFrequency: "daily" as const,
+            priority: 0.9,
+          },
+        ]),
     { url: `${SITE.url}/docs`, lastModified: pageMtime("docs/page.tsx"), changeFrequency: "monthly", priority: 0.8 },
     { url: `${SITE.url}/contact`, lastModified: pageMtime("contact/page.tsx"), changeFrequency: "monthly", priority: 0.6 },
     { url: `${SITE.url}/fee-compare`, lastModified: pageMtime("fee-compare/page.tsx"), changeFrequency: "monthly", priority: 0.7 },

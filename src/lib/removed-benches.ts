@@ -230,6 +230,12 @@ export const DEV_ONLY_ROUTES = new Set<string>([
   // reports `total` (every contribution ever) and `cells`. It was 0 and 0
   // on 2026-09-30.
   "/rpc-map",
+  // The hub for bench 284, added 2026-10-06. It must carry exactly the same
+  // gate as the bench itself: the aggregate blob it reads is shared between
+  // environments, so an un-gated hub would render a full table on production
+  // whose every row links to a bench page that 404s there. Un-gate the two
+  // together, on the condition recorded against "trading-agent-alpha" above.
+  "/trading-agents",
 ]);
 
 export const IS_PRODUCTION = process.env.VERCEL_ENV === "production";
