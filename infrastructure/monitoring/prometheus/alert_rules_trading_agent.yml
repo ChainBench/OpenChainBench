@@ -1,0 +1,60 @@
+# Bench 284 trading-agent-alpha.
+#
+# One alert matters here more than any other: the upstream going quiet silences
+# this bench without breaking anything visibly. The harness scores ENDED rounds
+# and republishes the same figures every hour, so every other health signal
+# stays green while the experiment is over. These are the two that would not.
+groups:
+  - name: trading_agent_alpha
+    rules:
+      # THE important one. Recall retires arenas: hyperliquid-perps ran nine
+      # rounds and ended 2026-01-29, open-paper-trading ran eleven and ended.
+      # When this one goes, the page's copy has to move to the past tense and
+      # nothing else on the system will say so.
+      - alert: TradingAgentArenaRetired
+        expr: max(trading_agent_scheduled_rounds) == 0
+        for: 6h
+        labels:
+          severity: warning
+          benchmark: trading-agent-alpha
+        annotations:
+          summary: "Bench 284: the Recall arena has no scheduled round left"
+          description: >-
+            No active or pending round remains in aerodrome-spot-live, so the
+            experiment is over. The published figures stay valid as history and
+            must not be withdrawn. What needs doing is editorial: the bench and
+            /trading-agents move to the past tense, and the hub's "Still
+            trading" pill flips to "Closed record" on its own once the metric
+            reaches zero.
+
+      # A gap of up to seven days is the normal weekly cadence. Past fourteen,
+      # two rounds have been missed, which is either an upstream problem or a
+      # schedule that quietly stopped while rounds were still listed.
+      - alert: TradingAgentRoundsStalled
+        expr: max(trading_agent_days_since_last_round) > 14
+        for: 12h
+        labels:
+          severity: warning
+          benchmark: trading-agent-alpha
+        annotations:
+          summary: "Bench 284: no round has ended in over 14 days"
+          description: >-
+            Rounds are weekly, so up to seven days is expected and past
+            fourteen means two were missed. Check whether the arena is still
+            scheduling rounds (trading_agent_scheduled_rounds) and whether the
+            harness can still reach the API (trading_agent_errors_total).
+
+      # The harness itself. A pass an hour, so three hours is two missed.
+      - alert: TradingAgentHarnessSilent
+        expr: time() - max(trading_agent_last_run_timestamp_seconds) > 10800
+        for: 15m
+        labels:
+          severity: warning
+          benchmark: trading-agent-alpha
+        annotations:
+          summary: "Bench 284: the harness has not completed a pass in 3h"
+          description: >-
+            The harness recomputes everything from scratch once an hour and
+            holds no state, so a restart is always safe and a missed pass loses
+            nothing. Three hours means it is not running or cannot reach
+            Recall's API.
