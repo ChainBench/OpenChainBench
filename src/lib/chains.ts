@@ -43,6 +43,96 @@ export type ChainEntry = {
 
 export const CHAINS: ChainEntry[] = [
   {
+    slug: "0g",
+    label: "0G",
+    category: "L1",
+    nativeSymbol: "0G",
+    website: "https://0g.ai",
+    description:
+      "Data-availability and AI-oriented Layer 1 (chain 16661) with a standard EVM JSON-RPC surface. Its storage services expose separate APIs not measured here.",
+  },
+  {
+    slug: "agoric",
+    label: "Agoric",
+    category: "L1",
+    nativeSymbol: "BLD",
+    website: "https://agoric.com",
+    description:
+      "Cosmos SDK chain (agoric-3) running a JavaScript smart-contract environment. Its registry entry lists eleven public RPCs and most of them no longer answer.",
+  },
+  {
+    slug: "katana",
+    label: "Katana",
+    category: "L2",
+    nativeSymbol: "KAT",
+    website: "https://katana.network",
+    description:
+      "EVM Layer 2 (chain 747474) built for DeFi. Standard Ethereum JSON-RPC surface; four keyless public endpoints including a Tenderly managed gateway.",
+  },
+  {
+    slug: "neox",
+    label: "Neo X",
+    category: "L2",
+    nativeSymbol: "GAS",
+    website: "https://neo.org",
+    description:
+      "Neo's EVM-compatible sidechain (chain 47763). Two of its three keyless endpoints are hostnames of one operator, Bane Labs, so they do not fail independently.",
+  },
+  {
+    slug: "superseed",
+    label: "Superseed",
+    category: "L2",
+    nativeSymbol: "SUPR",
+    website: "https://www.superseed.xyz",
+    description:
+      "OP Stack Layer 2 (chain 5330). Standard Ethereum JSON-RPC surface; PublicNode carries no route, so the keyless roster is official plus two gateways.",
+  },
+  {
+    slug: "tac",
+    label: "TAC",
+    category: "L1",
+    nativeSymbol: "TAC",
+    website: "https://tac.build",
+    description:
+      "EVM Layer 1 (chain 239) that also runs a Cosmos consensus layer. The endpoints we measure are the EVM JSON-RPC surface; the consensus RPC is a separate service.",
+  },
+  {
+    slug: "tempo",
+    label: "Tempo",
+    category: "L1",
+    nativeSymbol: "TEMPO",
+    website: "https://tempo.xyz",
+    description:
+      "EVM chain (4217). Standard Ethereum JSON-RPC surface; Thirdweb has no route for this chain id, so the roster is the official endpoint plus independent gateways.",
+  },
+  {
+    slug: "xpla",
+    label: "XPLA",
+    category: "L1",
+    nativeSymbol: "XPLA",
+    website: "https://xpla.io",
+    description:
+      "Cosmos SDK chain (dimension_37-1). CometBFT consensus, Tendermint `status` probe. Its registry Allnodes entry resolves to PublicNode's host, so it counts once.",
+  },
+  {
+    slug: "xrplevm",
+    label: "XRPL EVM",
+    category: "L1",
+    nativeSymbol: "XRP",
+    website: "https://xrplevm.org",
+    description:
+      "Cosmos SDK chain (xrplevm_1440000-1) bringing EVM execution to the XRP ecosystem. We measure its Cosmos consensus RPC; the EVM JSON-RPC is a separate surface.",
+  },
+  {
+    slug: "zigchain",
+    label: "ZIGChain",
+    category: "L1",
+    nativeSymbol: "ZIG",
+    website: "https://zigchain.com",
+    description:
+      "Cosmos SDK chain (zigchain-1). CometBFT consensus, Tendermint `status` probe. Every public RPC its chain registry entry lists answered on our sweep, which is rare.",
+  },
+  {
     slug: "bitcoin",
     label: "Bitcoin",
     category: "L1",

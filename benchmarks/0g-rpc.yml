@@ -1,0 +1,148 @@
+# OpenChainBench. Bench No 288
+
+slug: 0g-rpc
+number: "288"
+title: "0G RPC endpoints: free public URLs by latency"
+seo_title: "0G RPC endpoints: free public URLs by latency"
+seo_description: "{{best_name}} leads free 0G RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h). URLs for all {{count}} no-key endpoints, probed every 60 s."
+subtitle: HTTP round-trip latency for the `eth_getBlockByNumber(\"latest\", false)` method against every free, no-key public 0G EVM endpoint, audited every 60 seconds from 3 regions.
+
+category: RPCs
+status: live
+metric: RPC latency
+unit: ms
+higher_is_better: false
+
+seo_intro: |
+  0G is a data-availability and AI-oriented L1 (chain 16661) with a standard EVM JSON-RPC surface. It has the joint-widest keyless roster of the chains added on 2026-10-07: the 0G Labs official endpoint (evmrpc.0g.ai), dRPC (0g.drpc.org), PublicNode (0g-rpc.publicnode.com) and Thirdweb (16661.rpc.thirdweb.com), all returning chain id 0x4115. A roster this wide lets the ranking survive one endpoint having a bad day, which is not true of most chains at this size.
+
+abstract: |
+  0G: {{count}} free public RPC endpoints answering `eth_getBlockByNumber` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}; the chain-official endpoint measures {{p50:0g-official}}.
+  We measure the round-trip latency of a single, identical JSON-RPC call (`eth_getBlockByNumber(\"latest\", false)`) against every no-key public 0G endpoint that sustains continuous probing, {{count}} providers measured, every 60 seconds, from us-east, eu-west and Singapore. The harness classifies every response (ok / http_err / jsonrpc_err / stale / timeout) with a 0G-scaled staleness gap (20 blocks at 0G's ~2 s block time). The cross-chain view lives on the parent `rpc-capabilities` benchmark; this page is the 0G-scoped answer with per-region breakdowns as a first-class dimension.
+
+methodology:
+  - "Cadence: every 60 seconds per provider, from each of 3 probe regions (us-east Virginia, eu-west Amsterdam, sgp Singapore). Headline p50/p90/p99 aggregate across all 3 regions via Prometheus `avg(quantile_over_time(...))`; per-region breakdowns are first-class on this page via the region tabs."
+  - "Payload: `{\"jsonrpc\":\"2.0\",\"id\":<rotating>,\"method\":\"eth_getBlockByNumber\",\"params\":[\"latest\", false]}`. Plain HTTP POST, identical for every endpoint, no API key in any request. Non-cacheable by design: the rotating id defeats edge caches that would answer a bare head query without touching a node."
+  - "Latency measurement, call-result classification (`ok`, `http_err`, `jsonrpc_err`, `stale`, `timeout`) and the exclusion rules follow the cluster method documented on [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities#methodology); this page is the 0G-scoped view of the same harness."
+  - "Roster: every endpoint here answered a real `eth_getBlockByNumber` call without a key on the 2026-10-07 sweep before being added to the probe matrix. An endpoint that needs a key, region-blocks us or rate-limits below the 60-second cadence is excluded rather than listed with an asterisk."
+  - "Chain scope: every query on this page is pinned to `chain=\"0g\"`. Provider coverage: {{count}} no-key endpoints."
+
+faq:
+  - q: "Which 0G RPCs work without an API key?"
+    a: "{{declared_count}} endpoints are probed on this chain: 0G Labs (evmrpc.0g.ai), dRPC (0g.drpc.org), PublicNode (0g-rpc.publicnode.com), Thirdweb (16661.rpc.thirdweb.com). Every listed endpoint was live-verified with a `eth_getBlockByNumber` call returning a parsable response before inclusion."
+  - q: "How is 0G RPC latency measured here, technically?"
+    a: "One identical `eth_getBlockByNumber` call every 60 seconds against each provider from each of 3 regions, using the same plain HTTP client the rest of the RPC cluster uses. Wall-clock round-trip is recorded at millisecond precision; p50/p90/p99 are computed via Prometheus `quantile_over_time` over 24 hours. Responses are classified (`ok` / `http_err` / `jsonrpc_err` / `stale` / `timeout`) so an endpoint stuck on an old head or returning errors behind HTTP 200 is never ranked as fastest."
+  - q: "Does 0G's EVM endpoint cover its data-availability layer?"
+    a: "No. The endpoints on this page answer the EVM JSON-RPC surface, which is what a wallet or a contract call uses. 0G's storage and data-availability services expose their own APIs and are not measured here. This page answers one question only: how fast does a standard EVM head query come back, and from which origin."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
+
+prometheus:
+  window: 24h
+  freshness_metric: rpc_latency_milliseconds
+
+rank_matrix_query: avg by (provider, region) (ocb:rpc_latency_milliseconds:p50_24h{chain="0g"})
+
+dimensions:
+  region:
+    - { value: all,     label: All regions }
+    - { value: us-east, label: US-East }
+    - { value: eu-west, label: EU-West }
+    - { value: sgp,     label: Singapore }
+
+providers:
+  - slug: 0g-official
+    name: 0G Labs
+    endpoint: https://evmrpc.0g.ai
+    tag: 0G Labs official public EVM RPC endpoint for 0G mainnet
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to 0G Labs's no-key 0g RPC endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="0g-official", chain="0g"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="0g-official", chain="0g"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="0g-official", chain="0g"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="0g-official", chain="0g"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="0g-official", chain="0g"}) / sum(ocb:rpc_call:rate_24h{provider="0g-official", chain="0g"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="0g-official", chain="0g"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="0g-official", chain="0g"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="0g-official", chain="0g", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="0g-official", chain="0g", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="0g-official", chain="0g", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="0g-official", chain="0g", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="0g-official", chain="0g", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="0g-official", chain="0g", region="sgp"}[1h])
+
+  - slug: drpc
+    name: dRPC
+    endpoint: https://0g.drpc.org
+    tag: dRPC public gateway routing to a 0G node pool
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to dRPC's no-key 0g RPC endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="0g"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="drpc", chain="0g"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="drpc", chain="0g"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="drpc", chain="0g"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="drpc", chain="0g"}) / sum(ocb:rpc_call:rate_24h{provider="drpc", chain="0g"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="drpc", chain="0g"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="0g"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="0g", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="0g", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="0g", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="0g", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="0g", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="0g", region="sgp"}[1h])
+
+  - slug: publicnode
+    name: PublicNode
+    endpoint: https://0g-rpc.publicnode.com
+    tag: PublicNode free public RPC endpoint for 0G
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to PublicNode's no-key 0g RPC endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="0g"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="publicnode", chain="0g"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="publicnode", chain="0g"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="publicnode", chain="0g"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="publicnode", chain="0g"}) / sum(ocb:rpc_call:rate_24h{provider="publicnode", chain="0g"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="publicnode", chain="0g"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="0g"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="0g", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="0g", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="0g", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="0g", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="0g", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="0g", region="sgp"}[1h])
+
+  - slug: thirdweb
+    name: Thirdweb
+    endpoint: https://16661.rpc.thirdweb.com
+    tag: Thirdweb public RPC gateway for 0G
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Thirdweb's no-key 0g RPC endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="thirdweb", chain="0g"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="thirdweb", chain="0g"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="thirdweb", chain="0g"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="thirdweb", chain="0g"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="thirdweb", chain="0g"}) / sum(ocb:rpc_call:rate_24h{provider="thirdweb", chain="0g"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="thirdweb", chain="0g"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="thirdweb", chain="0g"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="thirdweb", chain="0g", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="thirdweb", chain="0g", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="thirdweb", chain="0g", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="thirdweb", chain="0g", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="thirdweb", chain="0g", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="thirdweb", chain="0g", region="sgp"}[1h])
