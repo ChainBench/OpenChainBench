@@ -122,3 +122,27 @@ providers:
         - region: ap-southeast
           p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="polkachu", chain="xrplevm", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="polkachu", chain="xrplevm", region="sgp"}[1h])
+
+  - slug: itrocket
+    name: ITRocket
+    endpoint: https://xrplevm-mainnet-rpc.itrocket.net
+    tag: ITRocket validator public Tendermint RPC, listed on XRPL EVM's Public APIs page
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single Tendermint `status` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to ITRocket's no-key XRPL EVM RPC endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="itrocket", chain="xrplevm"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="itrocket", chain="xrplevm"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="itrocket", chain="xrplevm"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="itrocket", chain="xrplevm"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="itrocket", chain="xrplevm"}) / sum(ocb:rpc_call:rate_24h{provider="itrocket", chain="xrplevm"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="itrocket", chain="xrplevm"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="itrocket", chain="xrplevm"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="itrocket", chain="xrplevm", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="itrocket", chain="xrplevm", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="itrocket", chain="xrplevm", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="itrocket", chain="xrplevm", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="itrocket", chain="xrplevm", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="itrocket", chain="xrplevm", region="sgp"}[1h])

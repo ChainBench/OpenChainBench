@@ -12,6 +12,8 @@
  */
 
 const RAW: Record<string, string> = {
+  // Added 2026-10-07 with the Conduit endpoint Katana's own docs list.
+  conduit: "/logos/conduit.svg",
   // Cosmos RPC operators added with the ten-chain sweep 2026-10-07. Every
   // operator already here ships a mark, so these three need one or their row in
   // the endpoint list renders an empty chip. StakeAngle and Cumulo publish no
