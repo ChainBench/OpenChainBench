@@ -135,7 +135,6 @@ faq:
 providers:
   - slug: fomo
     name: Fomo
-    url: https://fomo.family
     tag: "Cross-chain terminal, gas sponsored"
     formula: "Distinct wallets that traded through Fomo on this chain on the day, from the tehcscreener /bots/fomo series. Counted directly, not attributed from a fee payment: Fomo sponsors its traders' gas, which is why this row used to be blank."
     queries:
@@ -148,7 +147,6 @@ providers:
 
   - slug: axiom
     name: Axiom
-    url: https://axiom.trade
     tag: "Solana-first trading terminal"
     formula: "Distinct wallets that traded through Axiom on this chain on the day, from the tehcscreener /bots/axiom series."
     queries:
@@ -161,7 +159,6 @@ providers:
 
   - slug: pump-fun
     name: pump.fun
-    url: https://pump.fun
     tag: "Launchpad's own trading app"
     formula: "Distinct wallets that traded through the pump.fun app on this chain on the day, from the tehcscreener /bots/pumpapp series. Measurable at last: the app charges no terminal fee, so there was no fee payment to attribute from."
     queries:
@@ -174,7 +171,6 @@ providers:
 
   - slug: gmgn
     name: GMGN
-    url: https://gmgn.ai
     tag: "Multi-chain terminal, widest chain reach"
     formula: "Distinct wallets that traded through GMGN on this chain on the day, from the tehcscreener /bots/gmgn series. GMGN routes on more chains than any other terminal in the cohort, so its figure here is one slice of its user base."
     queries:
@@ -187,7 +183,6 @@ providers:
 
   - slug: padre
     name: Terminal
-    url: https://trade.padre.gg
     tag: "Trading terminal, heaviest wallets"
     formula: "Distinct wallets that traded through Terminal on this chain on the day, from the tehcscreener /bots/terminal series."
     queries:
@@ -200,7 +195,6 @@ providers:
 
   - slug: trojan
     name: Trojan
-    url: https://trojan.com
     tag: "Telegram-native bot, Solana only"
     formula: "Distinct wallets that traded through Trojan on this chain on the day, from the tehcscreener /bots/trojan series."
     queries:
@@ -213,7 +207,6 @@ providers:
 
   - slug: photon
     name: Photon
-    url: https://photon-sol.tinyastro.io
     tag: "Web terminal, Solana only"
     formula: "Distinct wallets that traded through Photon on this chain on the day, from the tehcscreener /bots/photon series."
     queries:
@@ -226,7 +219,6 @@ providers:
 
   - slug: maestro
     name: Maestro
-    url: https://t.me/maestro
     tag: "Telegram bot, multi-chain"
     formula: "Distinct wallets that traded through Maestro on this chain on the day, from the tehcscreener /bots/maestro series."
     queries:
@@ -239,7 +231,6 @@ providers:
 
   - slug: basedbot
     name: BasedBot
-    url: https://basedbot.app
     tag: "Robinhood Chain native, little Solana flow"
     formula: "Distinct wallets that traded through BasedBot on this chain on the day, from the tehcscreener /bots/basedbot series. It routes on Robinhood Chain and almost none on Solana, so it ranks on one tab and is unresponsive on the other."
     queries:

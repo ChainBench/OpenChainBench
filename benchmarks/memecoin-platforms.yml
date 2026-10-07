@@ -118,7 +118,6 @@ faq:
 providers:
   - slug: padre
     name: Terminal
-    url: https://trade.padre.gg
     tag: "Trading terminal, highest observed take"
     formula: "A day's fee revenue divided by that day's routed volume for Terminal on this chain, both from the tehcscreener /bots/terminal series."
     queries:
@@ -131,7 +130,6 @@ providers:
 
   - slug: trojan
     name: Trojan
-    url: https://trojan.com
     tag: "Telegram-native bot, Solana only"
     formula: "A day's fee revenue divided by that day's routed volume for Trojan on this chain, both from the tehcscreener /bots/trojan series."
     queries:
@@ -144,7 +142,6 @@ providers:
 
   - slug: gmgn
     name: GMGN
-    url: https://gmgn.ai
     tag: "Multi-chain terminal, widest chain reach"
     formula: "A day's fee revenue divided by that day's routed volume for GMGN on this chain, both from the tehcscreener /bots/gmgn series."
     queries:
@@ -157,7 +154,6 @@ providers:
 
   - slug: photon
     name: Photon
-    url: https://photon-sol.tinyastro.io
     tag: "Web terminal, Solana only"
     formula: "A day's fee revenue divided by that day's routed volume for Photon on this chain, both from the tehcscreener /bots/photon series."
     queries:
@@ -170,7 +166,6 @@ providers:
 
   - slug: maestro
     name: Maestro
-    url: https://t.me/maestro
     tag: "Telegram bot, multi-chain"
     formula: "A day's fee revenue divided by that day's routed volume for Maestro on this chain, both from the tehcscreener /bots/maestro series."
     queries:
@@ -183,7 +178,6 @@ providers:
 
   - slug: axiom
     name: Axiom
-    url: https://axiom.trade
     tag: "Solana-first trading terminal"
     formula: "A day's fee revenue divided by that day's routed volume for Axiom on this chain, both from the tehcscreener /bots/axiom series."
     queries:
@@ -196,7 +190,6 @@ providers:
 
   - slug: fomo
     name: Fomo
-    url: https://fomo.family
     tag: "Cross-chain terminal, gas sponsored"
     formula: "A day's fee revenue divided by that day's routed volume for Fomo on this chain, both from the tehcscreener /bots/fomo series."
     queries:
@@ -209,7 +202,6 @@ providers:
 
   - slug: basedbot
     name: BasedBot
-    url: https://basedbot.app
     tag: "Robinhood Chain native, little Solana flow"
     formula: "A day's fee revenue divided by that day's routed volume for BasedBot on this chain, both from the tehcscreener /bots/basedbot series."
     queries:
@@ -222,7 +214,6 @@ providers:
 
   - slug: pump-fun
     name: pump.fun
-    url: https://pump.fun
     tag: "Launchpad's own app, no terminal fee"
     formula: "A day's fee revenue divided by that day's routed volume for the pump.fun app. It reports fees on four chains and exactly zero on Solana, where it routes $252M a week, so the Solana cell is withheld rather than ranked as the market floor."
     queries:
