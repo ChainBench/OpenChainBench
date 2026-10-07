@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { extractMetricName } from "./prometheus";
+import { extractMetricName, trimScalar } from "./prometheus";
 
 describe("extractMetricName", () => {
   test("plain metric with label selector", () => {
@@ -108,5 +108,39 @@ describe("denseSeriesFromMatrix", () => {
     const m: PromMatrix[] = [{ metric: {}, values: [[grid(0), "123.4567891"]] }];
     const out = denseSeriesFromMatrix(m, start, end, step)!;
     expect(out[0]).toBe(123.457);
+  });
+});
+
+describe("trimScalar", () => {
+  // The case that exposed this. hl_frontend_biggest_day_unix_v2 for fomo was
+  // 1791244800, midnight UTC on 2026-10-06. Rounded to six significant
+  // digits it becomes 1791240000, which is 22:40 on the 5th, and the
+  // "Biggest complete day" card said 2026-10-05 for a day that ended on the
+  // 6th. The previous value rounded by 20 minutes and stayed inside its own
+  // date, which is why the bug sat there unnoticed.
+  test("keeps a unix second exact", () => {
+    expect(trimScalar(1791244800)).toBe(1791244800);
+    const iso = new Date(1791244800 * 1000).toISOString().slice(0, 10);
+    expect(iso).toBe("2026-10-06");
+  });
+
+  test("keeps any integer exact", () => {
+    expect(trimScalar(53017)).toBe(53017);
+    expect(trimScalar(192499360)).toBe(192499360);
+    expect(trimScalar(-1)).toBe(-1);
+  });
+
+  // The rounding exists to stop full-precision float tails bloating the
+  // cached Benchmark objects, and that still applies to anything that is not
+  // a whole number.
+  test("still trims a float tail", () => {
+    expect(trimScalar(93131.21526500066)).toBe(93131.2);
+    expect(trimScalar(0.19919808618886373)).toBe(0.199198);
+  });
+
+  test("passes zero and refuses non-finite", () => {
+    expect(trimScalar(0)).toBe(0);
+    expect(trimScalar(Number.NaN)).toBeNull();
+    expect(trimScalar(Number.POSITIVE_INFINITY)).toBeNull();
   });
 });
