@@ -12,6 +12,15 @@
  */
 
 const RAW: Record<string, string> = {
+  // Cosmos RPC operators added with the ten-chain sweep 2026-10-07. Every
+  // operator already here ships a mark, so these three need one or their row in
+  // the endpoint list renders an empty chip. StakeAngle and Cumulo publish no
+  // usable SVG: StakeAngle's only one is a template glyph, and Cumulo's is a
+  // 194x31 wordmark that disappears in a round chip, so both take their square
+  // raster instead.
+  numia: "/logos/numia.svg",
+  cumulo: "/logos/cumulo.png",
+  stakeangle: "/logos/stakeangle.png",
   // Ten chains added 2026-10-07 by the chain-hunt sweep, each the chain's own
   // SVG mark, committed rather than hotlinked like every other logo here.
   // Two are compromises: superseed ships only a monochrome mask and a wordmark
@@ -970,6 +979,20 @@ const ALIASES: Record<string, string> = {
   "gemini-3-pro-vision": "google-deepmind",
   "grok-4-chart": "xai",
   "grok-4-vision": "xai",
+  // Ten-chain sweep 2026-10-07. Without these the chain's own endpoint
+  // renders a blank chip while the third-party rows on the same page are
+  // fine, because this table is explicit: nothing strips "-official".
+  "katana-official": "katana",
+  "superseed-official": "superseed",
+  "tempo-official": "tempo",
+  "0g-official": "0g",
+  "neox-official-1": "neox",
+  "neox-official-2": "neox",
+  "tac-official": "tac",
+  "zigchain-official": "zigchain",
+  "agoric-official": "agoric",
+  "xpla-official": "xpla",
+  "xrplevm-official": "xrplevm",
 };
 
 export function logoPath(slug: string): string | null {
