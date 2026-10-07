@@ -196,6 +196,36 @@ var (
 		Help: "Lifetime trades the upstream reports for this agent. Checked against /agents/{id}/competitions: 35 to 37 of each agent's rounds are this arena, so the counter is not diluted by others.",
 	}, []string{"agent", "kind", "arena"})
 
+	// Capital context. The published return COMPOUNDS each round's percentage,
+	// which is a time-weighted return: it deliberately ignores deposits and
+	// withdrawals between rounds, because those are Recall's decisions and not
+	// the agent's. That is the right measure of a manager and it is NOT the
+	// change in the wallet. The two diverge enormously here:
+	//
+	//   gemini 3 pro vision   published -15.72 %   wallet  264.87 -> 3.33
+	//   sonnet 4.5 vision     published -25.22 %   wallet  229.40 -> 10.74
+	//   opus 4.5 chart        published -19.22 %   wallet  297.64 -> 302.76
+	//
+	// The last one is the clincher: its wallet GAINED 1.7 % over a record we
+	// publish as -19.2 %. A reader seeing the return column and assuming it is
+	// what happened to the money would be wrong by twenty points, so the page
+	// has to say which one it is showing.
+	//
+	// Capital also did not hold still. The largest-to-smallest ratio across an
+	// agent's own rounds runs from 1.3 to about 190, and half the roster is
+	// above 5. That matters on its own: gas is a fixed cost per swap, so the
+	// same strategy drags far harder on a three-dollar wallet than on a
+	// three-hundred-dollar one.
+	medianCapital = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "trading_agent_median_capital_usd",
+		Help: "Median portfolio value over the rounds this agent funded. The arena is a few hundred dollars per agent, so nothing here speaks to behaviour at size.",
+	}, []string{"agent", "kind", "arena"})
+
+	capitalRatio = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "trading_agent_capital_ratio",
+		Help: "Largest portfolio value over smallest, across the rounds this agent funded. Above ~2 the later rounds are traded on a different capital base from the earlier ones, and fixed per-swap gas weighs very differently across them.",
+	}, []string{"agent", "kind", "arena"})
+
 	registeredAt = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "trading_agent_registered_timestamp_seconds",
 		Help: "When this agent was enrolled upstream. The roster went in once, December 2025 and January 2026, and has not been refreshed since.",
@@ -238,6 +268,7 @@ func init() {
 		rounds, weeklySD, alphaT, pooledAlphaPct, pooledAlphaT,
 		roundsNeeded, separableCount, scheduledRounds, daysSinceRound,
 		tradesPerRound, tradesTotal, registeredAt, rosterAgeDays,
+		medianCapital, capitalRatio,
 		roundsScored, roundsSkipped, lastRun, lastRoundEnd, errors,
 	} {
 		prometheus.MustRegister(c)
@@ -439,6 +470,10 @@ func kindOf(name string) string {
 type observation struct {
 	agentPct float64
 	assetPct float64
+	// capital is the portfolio value the upstream reported for that round.
+	// Needed for the capital context, and deliberately NOT used in the
+	// return: compounding the percentages is the time-weighted measure.
+	capital float64
 }
 
 func compound(xs []float64) float64 {
@@ -504,7 +539,11 @@ func runOnce() error {
 			if row.ID != "" {
 				agentIDs[row.Name] = row.ID
 			}
-			obs[row.Name] = append(obs[row.Name], observation{*row.PnLPercent, assetRet})
+			pv := 0.0
+			if row.PortfolioValue != nil {
+				pv = *row.PortfolioValue
+			}
+			obs[row.Name] = append(obs[row.Name], observation{*row.PnLPercent, assetRet, pv})
 			r.agents[row.Name] = *row.PnLPercent
 		}
 		byRound = append(byRound, r)
@@ -529,6 +568,8 @@ func runOnce() error {
 	tradesTotal.Reset()
 	registeredAt.Reset()
 	rosterAgeDays.Reset()
+	medianCapital.Reset()
+	capitalRatio.Reset()
 	roundsSkipped.Reset()
 
 	// Betas are needed by the pooled test, which cannot run until every
@@ -606,6 +647,10 @@ func runOnce() error {
 			}
 			if t := tStat(agentAlphaSeries(name, byRound, b)); !math.IsNaN(t) {
 				alphaT.WithLabelValues(lbl...).Set(t)
+			}
+			if med, ratio, ok2 := capitalStats(o); ok2 {
+				medianCapital.WithLabelValues(lbl...).Set(med)
+				capitalRatio.WithLabelValues(lbl...).Set(ratio)
 			}
 		}
 		published++

@@ -38,6 +38,9 @@ methodology:
   - "Significance, published rather than implied: the unit of observation is the ROUND, not the agent-round. The eight agents trade the same week, so their results are correlated and pooling every agent-round would treat one week as eight and overstate the confidence by roughly the square root of the roster. The harness averages alpha within each round first, then tests that series against zero, and publishes the t, the rounds held and the rounds the effect size needs."
   - "Separability: each pair of agents is compared on the rounds BOTH of them funded. The paired difference cancels the asset entirely, so this test needs no beta and no counterfactual and is the cleanest statement available about whether two agents differ. The count of pairs that clear |t|>2 is published; it is currently zero of 28."
   - "Cadence: rounds are weekly and last six days, so a figure that has not moved in days is current rather than stale. That holds only while the arena runs, so the harness also publishes the forward schedule as `trading_agent_scheduled_rounds`: rounds that have not ended yet. Zero means the experiment is over and this table is a closed record."
+  - "Which return this is: the Return column compounds each round's percentage, a time-weighted return. It ignores money moved in or out between rounds, because the arena decides those and the agent does not, which is the standard way to judge a manager whose cash flows it does not control."
+  - "That return is NOT the change in the wallet, and the gap can be large. Over this record opus 4.5 chart publishes -19.22 percent while its wallet went from 297.64 to 302.76 dollars, a gain of 1.7 percent, because capital was withdrawn along the way. Read the column as the trading record, not as the balance."
+  - "Capital is small and did not hold still. Median portfolio value is a few hundred dollars per agent, but the largest-to-smallest ratio across an agent's own rounds runs from 1.3 to about 190, and half the roster is above 5. Published as `trading_agent_capital_ratio`, because gas is a fixed cost per swap: the same strategy drags far harder on a three-dollar wallet than on a three-hundred-dollar one, so for those agents the late rounds are not comparable with the early ones."
   - "Trade counts come from each agent's own upstream record, and are lifetime rather than per arena. They are not diluted: checked against each agent's round list, 35 to 37 of every agent's 32 to 34 completed rounds are this arena. A missing counter is published as missing rather than as zero, because zero would read as an agent that never trades."
   - "What the fee arithmetic assumes, and why it is not yet a finding: it charges the full portfolio to every trade. The real cost depends on the NOTIONAL of each trade, which this API does not serve. That figure is on-chain, and the upstream publishes each agent's wallet address, so every swap is independently checkable on Base. Until it is measured, treat the cost figure as an upper bound rather than an explanation."
   - "Liveness is published as a count rather than inferred from data age, because a weekly arena is legitimately six days stale most of the time while the site stops indexing a page whose data passes seven days. Tying the two together would deindex this page every week."
@@ -66,6 +69,8 @@ faq:
     a: "Partly, maybe, and the page refuses to overstate it. At the roster average of 29 trades a round and a 0.05 percent pool fee, full turnover on every trade would cost more per week than the whole measured shortfall. But the agents that trade least do not do better: the correlation between trades per round and alpha is -0.25 over eight agents, which is nothing. What would settle it is the size of each trade, which is on-chain rather than in this API."
   - q: "Is this still running, or is it a finished experiment?"
     a: "The page publishes the answer rather than asserting it. `Rounds scheduled` counts the rounds in the arena that have not ended yet; while it is above zero the arena is still trading and new rounds keep landing. If it reaches zero the figures become a closed record of what happened, and they stay published because they remain valid as history. Recall has retired arenas before: its Hyperliquid perpetuals arena ran nine rounds and stopped in January 2026."
+  - q: "Does the Return column say what happened to the money?"
+    a: "No, and the difference is large. It compounds each round's percentage, a time-weighted return that ignores deposits and withdrawals between rounds because the arena makes those, not the agent. Judging a manager that way is standard. But opus 4.5 chart shows -19.22 percent here while its wallet went from 297.64 to 302.76 dollars, so read the column as the trading record and not as the balance."
   - q: "Is this real money?"
     a: "Yes. The arena is live spot trading on Base through Aerodrome with self-funded wallets, and the swaps are on-chain. The portfolios are small, with medians in the low hundreds of dollars, so nothing here speaks to how these strategies would behave at size where slippage and capacity bind."
 
@@ -134,13 +139,6 @@ metric_panels:
     metric: trading_agent_weekly_sd_pct{kind="all"}
     unit: pct
     description: "Standard deviation of this agent's weekly returns. The roster spans a factor of two and a half here, which a table of compounded totals hides: the steadiest agent and the wildest can land on the same total by very different routes."
-  - id: own_t
-    label: Own significance
-    label_key: agent
-    metric: trading_agent_alpha_tstat{kind="all"}
-    unit: x
-    tab: false
-    description: "t of this agent's own weekly alpha against zero. Between -2 and 2 its shortfall is not distinguishable from noise on its own record alone."
   - id: pooled_alpha
     label: Pooled alpha per round
     label_key: agent
@@ -200,6 +198,20 @@ metric_panels:
     tab: false
     description: "ARENA-LEVEL, identical on every row. Days since the most recent agent was enrolled. The field went in once and has not changed since, so calling these frontier models dates that claim rather than making it about today."
 
+  - id: median_capital
+    label: Median capital
+    label_key: agent
+    metric: trading_agent_median_capital_usd{kind="all"}
+    unit: usd
+    description: "Median portfolio value over the rounds this agent funded. A few hundred dollars each, so nothing on this page speaks to how any of it behaves at size."
+  - id: capital_ratio
+    label: Capital swing
+    label_key: agent
+    metric: trading_agent_capital_ratio{kind="all"}
+    unit: x
+    tab: false
+    description: "Largest portfolio value over smallest across this agent's rounds. Near 1 the base held steady; half this roster is above 5 and the widest near 190. Fixed per-swap gas weighs very differently on three dollars than on three hundred."
+
 ledger_columns:
   - { label: "Alpha", slot: p50 }
   - { label: "Return", panel: raw_return }
@@ -208,6 +220,7 @@ ledger_columns:
   - { label: "Exposure", panel: exposure }
   - { label: "Weekly swing", panel: weekly_swing }
   - { label: "Trades per round", panel: trades_per_round }
+  - { label: "Median capital", panel: median_capital }
   - { label: "Rounds", panel: n_rounds }
 
 providers:
