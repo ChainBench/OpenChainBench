@@ -19,8 +19,9 @@ The move also removed three structural blind spots that belonged to the old
 method, not to the old vendor. Fee-wallet attribution can only see a terminal
 that charges a fee, so:
 
-- **pump.fun** takes no terminal fee and was absent from three of the four
-  benches whatever its real volume.
+- **pump.fun** reports no terminal fee on Solana and was absent from three of
+  the four benches whatever its real volume. (It does report fees on four other
+  chains, so its Solana zero is withheld rather than ranked; see below.)
 - **BasedBot** had no public fee-wallet list and read unresponsive everywhere.
 - **Fomo** sponsors the gas on the trades it routes, so the addresses on its
   transactions were its own routing accounts; its wallet count was orders of
@@ -112,3 +113,25 @@ sum of its per-chain counts, because a wallet trading on two chains is one
 wallet. Summing the chains would overstate every multi-chain terminal, so this
 harness publishes per-chain counts everywhere and the benches read one chain at
 a time rather than mixing a deduplicated column with a summed one.
+
+## Zeros in the fee column are guarded at two levels
+
+**Per chain** (`terminal_fee_column_ok{chain}`): when no terminal on a chain
+reports any fee, the column has failed and no take rate is published there. A
+market of free terminals is the most flattering possible reading of a blank.
+
+**Per cell** (`terminal_fee_withheld{platform,chain}`): a chain-level gate
+cannot see a gap in one row. Measured 2026-10-07, Axiom routed $29.8M on
+Robinhood and $21.7M on BNB over a week with fees of exactly $0.00, while
+charging 0.92% on Solana. The other terminals on those chains do report fees,
+so the column gate read healthy and Axiom's zero was published as the lowest
+take rate in the market and crowned both tabs. pump.fun is the same shape
+inverted: fees on Robinhood, BNB, Ethereum and Base, and exactly $0.00 on the
+$252M it routes on Solana.
+
+Nobody routes tens of millions for free for a week, and this harness cannot
+tell a waived fee from an unmeasured one. So a platform that charges somewhere
+and reports exactly nothing elsewhere has that cell withheld and flagged.
+Volume, transactions and wallets for the cell are unaffected. A platform
+reporting zero on **every** chain it serves is a different claim, and that one
+still publishes as a real zero.

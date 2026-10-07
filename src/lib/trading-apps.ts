@@ -108,7 +108,7 @@ export const ALL_TRADING_APP_COLUMNS: readonly TradingAppColumn[] = [
     scope: "solana",
     bench: "memecoin-platforms",
     fmt: fmtPct,
-    tip: "Observed take rate on Solana from the tehcscreener API: one day's fee revenue over that day's routed volume, both from the same row. A lower bound on the published fee, since waivers and rebates reduce what a terminal keeps. pump.fun reads 0 because it takes no terminal fee, which is a measurement and not a gap.",
+    tip: "Observed take rate on Solana from the tehcscreener API: one day's fee revenue over that day's routed volume, both from the same row. A lower bound on the published fee, since waivers and rebates reduce what a terminal keeps. A cell is left blank rather than ranked when a terminal charges on one chain and reports exactly nothing on another, since a waived fee and an unmeasured one look identical here.",
     higherBetter: false,
   },
   {

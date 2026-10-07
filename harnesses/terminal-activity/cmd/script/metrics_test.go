@@ -13,6 +13,7 @@ func resetAll() {
 		g.Reset()
 	}
 	health.Reset()
+	feeWithheld.Reset()
 	chainBreadth.Reset()
 	feeColumnOK.Reset()
 }
@@ -208,5 +209,68 @@ func TestChainBreadthCountsPublishedChains(t *testing.T) {
 	}
 	if got := testutil.ToFloat64(chainBreadth.WithLabelValues("trojan")); got != 1 {
 		t.Errorf("trojan breadth: got %v want 1", got)
+	}
+}
+
+// A platform that charges somewhere and reports exactly nothing elsewhere has
+// its take rate withheld for that cell, not published as the market floor.
+//
+// This is the bug a chain-level gate could not see. Axiom routed $29.8M on
+// Robinhood and $21.7M on BNB over a week with fees of exactly $0.00 while
+// charging 0.92% on Solana. The other terminals on those chains do report
+// fees, so the column gate read healthy, and Axiom's zero was published as the
+// lowest take rate in the market and crowned both tabs. Nobody routes tens of
+// millions for free for a week, and this harness cannot tell a waived fee from
+// an unmeasured one, so the honest move is to withhold the cell and say why.
+func TestUnexplainedZeroFeeIsWithheldNotCrowned(t *testing.T) {
+	resetAll()
+	now := time.Now()
+	d := day(now, 1)
+	publish([]sample{
+		// Axiom: real fees on Solana, exactly zero on BNB with real volume.
+		mk("axiom", "solana", d, 100000, 1000, 920, 50),
+		mk("axiom", "bnb", d, 50000, 500, 0, 25),
+		// Another terminal reports fees on BNB, so the column gate reads healthy
+		// and cannot be what saves us here.
+		mk("gmgn", "bnb", d, 40000, 400, 420, 20),
+	}, []string{"axiom", "gmgn"}, 3, now)
+
+	if got := testutil.ToFloat64(feeColumnOK.WithLabelValues("bnb")); got != 1 {
+		t.Fatalf("precondition: the bnb fee column must read healthy, got %v", got)
+	}
+	if n := testutil.CollectAndCount(feeRatePct); n != 3 {
+		// axiom/solana under two aliases, gmgn/bnb under one. Axiom on bnb: none.
+		t.Errorf("expected 3 take-rate series, got %d", n)
+	}
+	if got := testutil.ToFloat64(feeWithheld.WithLabelValues("axiom", "bnb")); got != 1 {
+		t.Errorf("axiom on bnb must be flagged withheld, got %v", got)
+	}
+	// Everything that does not depend on the fee column survives.
+	if got := testutil.ToFloat64(volumeUSD.WithLabelValues("axiom", "bnb")); got != 50000 {
+		t.Errorf("volume must survive a withheld fee cell, got %v", got)
+	}
+	if got := testutil.ToFloat64(wallets.WithLabelValues("axiom", "bnb")); got != 25 {
+		t.Errorf("wallets must survive a withheld fee cell, got %v", got)
+	}
+}
+
+// A platform that reports zero on every chain it serves is making a different
+// claim, and that one still publishes as a real zero. Without this the guard
+// would erase a genuinely free terminal, which is the opposite error.
+func TestZeroEverywhereStillPublishesAsZero(t *testing.T) {
+	resetAll()
+	now := time.Now()
+	d := day(now, 1)
+	publish([]sample{
+		mk("freebot", "solana", d, 100000, 1000, 0, 50),
+		mk("freebot", "bnb", d, 50000, 500, 0, 25),
+		mk("gmgn", "solana", d, 40000, 400, 420, 20),
+	}, []string{"freebot", "gmgn"}, 3, now)
+
+	if got := testutil.ToFloat64(feeRatePct.WithLabelValues("freebot", "solana")); got != 0 {
+		t.Errorf("a platform free on every chain must publish 0, got %v", got)
+	}
+	if n := testutil.CollectAndCount(feeWithheld); n != 0 {
+		t.Errorf("nothing should be withheld for a uniformly free platform, got %d flags", n)
 	}
 }
