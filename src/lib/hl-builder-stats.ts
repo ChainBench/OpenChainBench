@@ -101,11 +101,12 @@ function promUrl(): string | null {
  * were added to stop making in the first place.
  */
 async function readFeedCoverage(prom: Prometheus): Promise<HlFeedCoverage | null> {
-  const [hours, truncated, inWindow, measured] = await Promise.all([
+  const [hours, truncated, inWindow, measured, nodeDays] = await Promise.all([
     prom.scalar(`hl_frontend_day_coverage_hours_v2`),
     prom.scalar(`hl_frontend_day_truncated_v2`),
     prom.scalar(`hl_frontend_truncated_days_window_v2`),
     prom.scalar(`hl_frontend_coverage_days_measured_v2`),
+    prom.scalar(`hl_frontend_node_days_window_v2`),
   ]);
   if (hours === null && truncated === null && inWindow === null) return null;
   const windowDays = 30;
@@ -119,6 +120,7 @@ async function readFeedCoverage(prom: Prometheus): Promise<HlFeedCoverage | null
     // denominator instead of inventing one.
     daysMeasured: Math.round(measured ?? 0),
     windowDays,
+    nodeDays: Math.round(nodeDays ?? 0),
   };
 }
 

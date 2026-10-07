@@ -1,5 +1,10 @@
 import { describe, expect, it } from "bun:test";
-import { feedNeedsDisclosure, HL_WINDOWS, HL_WINDOW_LABEL } from "@/lib/hl-feed";
+import {
+  feedIsMostlyWhole,
+  feedNeedsDisclosure,
+  HL_WINDOWS,
+  HL_WINDOW_LABEL,
+} from "@/lib/hl-feed";
 
 describe("feedNeedsDisclosure", () => {
   // The real shape on 2026-10-07: Hyperliquid's per-builder export carried
@@ -13,6 +18,7 @@ describe("feedNeedsDisclosure", () => {
         truncatedDaysWindow: 17,
         daysMeasured: 24,
         windowDays: 30,
+        nodeDays: 0,
       }),
     ).toBe(true);
   });
@@ -25,6 +31,7 @@ describe("feedNeedsDisclosure", () => {
         truncatedDaysWindow: 0,
         daysMeasured: 30,
         windowDays: 30,
+        nodeDays: 30,
       }),
     ).toBe(false);
   });
@@ -39,6 +46,7 @@ describe("feedNeedsDisclosure", () => {
         truncatedDaysWindow: 0,
         daysMeasured: 30,
         windowDays: 30,
+        nodeDays: 29,
       }),
     ).toBe(true);
   });
@@ -63,5 +71,38 @@ describe("window labels", () => {
     for (const w of HL_WINDOWS) {
       expect(HL_WINDOW_LABEL[w]).toBeTruthy();
     }
+  });
+});
+
+describe("feedIsMostlyWhole", () => {
+  const base = {
+    coverageHours: 24,
+    latestDayTruncated: false,
+    truncatedDaysWindow: 0,
+    daysMeasured: 30,
+    windowDays: 30,
+    nodeDays: 30,
+  };
+
+  // The live state on 2026-10-07 once the node source landed: 26 of 30 days
+  // read whole off our own node, the other four being days the node was
+  // down. The figures went from 0.53x of CoinMarketMan's to 0.89x, so the
+  // page should footnote the gap rather than lead with it.
+  it("treats a window that is nearly all node days as whole", () => {
+    expect(feedIsMostlyWhole({ ...base, nodeDays: 26, truncatedDaysWindow: 3 })).toBe(true);
+  });
+
+  // The state before the node source: every day off the truncated export.
+  it("does not soften a window built from the export", () => {
+    expect(feedIsMostlyWhole({ ...base, nodeDays: 0, truncatedDaysWindow: 18 })).toBe(false);
+  });
+
+  // Half the window missing is not a footnote.
+  it("does not soften a half-sourced window", () => {
+    expect(feedIsMostlyWhole({ ...base, nodeDays: 15, truncatedDaysWindow: 9 })).toBe(false);
+  });
+
+  it("never softens an unmeasured feed", () => {
+    expect(feedIsMostlyWhole(null)).toBe(false);
   });
 });
