@@ -1,0 +1,70 @@
+# Alerts for the Hyperliquid node box in Singapore (15.235.224.14), scraped
+# as job hl-fills-reduce.
+#
+# Written after 2026-10-07, when that box ran 15 hours with its cleanup job
+# failing every 15 minutes and its disk climbing from 80% to 86%, roughly a
+# day and a half from full. Nothing noticed, because nothing scraped it. A
+# full disk stops the node, and the node is now the only source of whole
+# Hyperliquid days.
+groups:
+  - name: ocb_hl_node_box
+    interval: 60s
+    rules:
+      # The disk is the failure that takes everything else with it. 75% gives
+      # days of warning at the observed ~340 GB/day fill rate; 88% is above
+      # the cleanup's own 85% ceiling, so firing means the cleanup is not
+      # keeping up rather than merely that it has not run yet.
+      - alert: HlNodeDiskFilling
+        expr: hl_reduce_disk_used_pct > 75
+        for: 30m
+        labels: { severity: warning }
+        annotations:
+          summary: "HL node box disk at {{ $value | printf \"%.0f\" }}%"
+          description: "Cleanup holds this under 85%. Above 75% for 30m means retention is losing ground. Check hl-cleanup.service on 15.235.224.14."
+
+      - alert: HlNodeDiskCritical
+        expr: hl_reduce_disk_used_pct > 88
+        for: 10m
+        labels: { severity: critical }
+        annotations:
+          summary: "HL node box disk at {{ $value | printf \"%.0f\" }}%, above the cleanup ceiling"
+          description: "hl-cleanup enforces 85% and is not succeeding. A full disk stops hl-node. Check `journalctl -u hl-cleanup.service` first: in the 2026-10-07 incident it had been exiting non-zero every 15 minutes."
+
+      # systemd can report hyperliquid.service active while the node has
+      # stopped applying blocks, so liveness is read from the data it writes.
+      # Hours land on the hour, so 2h is one missed file plus slack.
+      - alert: HlNodeNotWritingFills
+        expr: hl_reduce_node_last_hour_age_seconds > 7200
+        for: 15m
+        labels: { severity: critical }
+        annotations:
+          summary: "HL node has not written a fill file for {{ $value | humanizeDuration }}"
+          description: "hl-node writes one file per hour. Silence here means the node is stalled or desynced even if systemd calls it active, and the whole-day Hyperliquid figures stop advancing."
+
+      # The reducer should always hold yesterday. Two days means it is stuck
+      # or the node is not producing days to reduce.
+      - alert: HlFillsReduceStale
+        expr: hl_reduce_newest_day_age_seconds > 172800
+        for: 1h
+        labels: { severity: warning }
+        annotations:
+          summary: "Newest reduced Hyperliquid day is {{ $value | humanizeDuration }} old"
+          description: "hl-fills-reduce sweeps every 30m and should hold yesterday within 90 minutes of midnight UTC. Check hl-fills-reduce.service."
+
+      # The window the site reads is 30 days. Fewer whole days than that and
+      # the figures start leaning back on the truncated public export.
+      - alert: HlFillsReduceThinWindow
+        expr: hl_reduce_days_total{complete="true"} < 30
+        for: 2h
+        labels: { severity: warning }
+        annotations:
+          summary: "Only {{ $value }} whole Hyperliquid days reduced"
+          description: "The site reads a 30-day window. Below 30 whole days it falls back to the public export, which carries about half of each day. Check the node's uptime and FILLS_RETENTION_DAYS in hl-cleanup.sh."
+
+      - alert: HlNodeBoxUnreachable
+        expr: up{job="hl-fills-reduce"} == 0
+        for: 15m
+        labels: { severity: warning }
+        annotations:
+          summary: "HL node box is not answering the scrape"
+          description: "Port 8090 on 15.235.224.14 is open to this VPS only. Check caddy and hl-fills-reduce.service on the box."
