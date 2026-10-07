@@ -106,7 +106,6 @@ faq:
 providers:
   - slug: fomo
     name: Fomo
-    url: https://fomo.family
     tag: "Cross-chain terminal, gas sponsored"
     formula: "A day's routed Solana volume divided by that day's swap count for Fomo, both from the tehcscreener /bots/fomo series."
     queries:
@@ -119,7 +118,6 @@ providers:
 
   - slug: axiom
     name: Axiom
-    url: https://axiom.trade
     tag: "Solana-first trading terminal"
     formula: "A day's routed Solana volume divided by that day's swap count for Axiom, both from the tehcscreener /bots/axiom series."
     queries:
@@ -132,7 +130,6 @@ providers:
 
   - slug: pump-fun
     name: pump.fun
-    url: https://pump.fun
     tag: "Launchpad's own trading app"
     formula: "A day's routed Solana volume divided by that day's swap count for pump.fun, both from the tehcscreener /bots/pumpapp series."
     queries:
@@ -145,7 +142,6 @@ providers:
 
   - slug: gmgn
     name: GMGN
-    url: https://gmgn.ai
     tag: "Multi-chain terminal, widest chain reach"
     formula: "A day's routed Solana volume divided by that day's swap count for GMGN, both from the tehcscreener /bots/gmgn series."
     queries:
@@ -158,7 +154,6 @@ providers:
 
   - slug: padre
     name: Terminal
-    url: https://trade.padre.gg
     tag: "Trading terminal, heaviest wallets"
     formula: "A day's routed Solana volume divided by that day's swap count for Terminal, both from the tehcscreener /bots/terminal series."
     queries:
@@ -171,7 +166,6 @@ providers:
 
   - slug: trojan
     name: Trojan
-    url: https://trojan.com
     tag: "Telegram-native bot, Solana only"
     formula: "A day's routed Solana volume divided by that day's swap count for Trojan, both from the tehcscreener /bots/trojan series."
     queries:
@@ -184,7 +178,6 @@ providers:
 
   - slug: photon
     name: Photon
-    url: https://photon-sol.tinyastro.io
     tag: "Web terminal, Solana only"
     formula: "A day's routed Solana volume divided by that day's swap count for Photon, both from the tehcscreener /bots/photon series."
     queries:
@@ -197,7 +190,6 @@ providers:
 
   - slug: maestro
     name: Maestro
-    url: https://t.me/maestro
     tag: "Telegram bot, multi-chain"
     formula: "A day's routed Solana volume divided by that day's swap count for Maestro, both from the tehcscreener /bots/maestro series."
     queries:
@@ -210,7 +202,6 @@ providers:
 
   - slug: basedbot
     name: BasedBot
-    url: https://basedbot.app
     tag: "Robinhood Chain native, little Solana flow"
     formula: "A day's routed Solana volume divided by that day's swap count for BasedBot, both from the tehcscreener /bots/basedbot series."
     queries:
