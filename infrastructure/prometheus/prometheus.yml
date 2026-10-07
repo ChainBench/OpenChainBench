@@ -189,6 +189,22 @@ scrape_configs:
           benchmark: trading-app-daily-volume
           host: openchainbench
 
+  # ─ Terminal activity (benches 203, 206, 207, 232) ─────────────────────
+  # Container ocb-terminal-activity on the OCB VPS. Daily volume,
+  # transactions, fees and distinct wallets per trading terminal per chain,
+  # from the public tehcscreener API (Allium-backed, no key). Replaces the
+  # dune-platform-volume source for these four benches, which were gated to
+  # staging on 2026-10-02 when the Dune trial ended. No secret to inject.
+  - job_name: terminal-activity
+    metrics_path: /metrics
+    scheme: http
+    static_configs:
+      - targets:
+          - ocb-terminal-activity:2116
+        labels:
+          benchmark: trading-platform-wallets
+          host: openchainbench
+
   # ─ USDC corridor flows (bench 281) ────────────────────────────────────
   # Container ocb-bridge-flows on the Paris VPS. Circle CCTP burns
   # (DepositForBurn v1 and v2) read off seven EVM chains over public RPCs,

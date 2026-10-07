@@ -1,10 +1,19 @@
-// dune-platform-volume -- benches 203, 206, 207 and 232
+// dune-platform-volume -- NO BENCH READS THIS ANY MORE
 //
-// Bench 201 read this until 2026-09-27 and now reads DeFiLlama through
-// harnesses/trading-app-volume, because its two figures are free there. The four
-// benches left need what only this can measure, they are gated to staging while
-// the Dune plan is unpaid, and this harness stays deployed and correct for the
-// day it is paid for.
+// Bench 201 left on 2026-09-27 for DeFiLlama via harnesses/trading-app-volume.
+// Benches 203, 206, 207 and 232 left on 2026-10-07 for the public tehcscreener
+// API via harnesses/terminal-activity, which is Allium-backed and keyless. The
+// claim this file used to make, that the four "need what only this can
+// measure", was true of the vendor and false of the method: fee-wallet
+// attribution cannot see a terminal that charges no fee, so pump.fun was
+// structurally absent from three of those benches and Fomo's wallet count was
+// unpublishable. Counting routed activity directly fixed all of it.
+//
+// Kept, not deleted, for one reason: the SQL below is the only thing in this
+// repo that attributes Solana trades to a platform through its fee wallets, and
+// that is worth having written down. Nothing scrapes it, no spec queries
+// dune_platform_*, and running it costs Dune credits for metrics nobody reads.
+// If you redeploy it, know that you are paying for a shadow.
 //
 // Measures one complete UTC day of Solana trading volume, transactions, platform
 // fees and unique wallets per trading platform, with our own SQL over Dune's
