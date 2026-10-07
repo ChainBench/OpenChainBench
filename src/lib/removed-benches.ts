@@ -178,36 +178,23 @@ export const DEV_ONLY_BENCH_SLUGS = new Set([
   // of the eight rows have no maker rate at all. Un-gate after a 24h
   // window and an audit round.
   "perp-fee-disclosure",
-  // The Dune trial ended 2026-10-02 and no paid plan was committed, so these
-  // four stood down. The note here used to say they "have no free equivalent
-  // for what they measure"; that stopped being true on 2026-10-07, when they
-  // were re-sourced to the public tehcscreener API (Allium-backed, no key) via
-  // harnesses/terminal-activity. Bench 201 had already moved to DeFiLlama's
-  // free adapters (see bench 201 and 267).
+  // Benches 203, 206, 207 and 232 left this list on 2026-10-07.
   //
-  // They stay here for the ordinary reason, not the old one: a re-sourced
-  // bench needs a full 24h window of the new series and an audit round before
-  // production serves it. Un-gate condition: both of those, not a Dune plan.
+  // They were gated on 2026-10-02 when the Dune trial ended, under a note
+  // saying they "have no free equivalent for what they measure". They were
+  // re-sourced the same week to the public tehcscreener API (Allium-backed,
+  // no key) via harnesses/terminal-activity: a different vendor, not a
+  // cheaper route to the same one. Bench 201 had already moved to DeFiLlama.
   //
-  // The move was not a cheaper route to the same numbers. Fee-wallet
-  // attribution could not see a terminal that charges no fee, so pump.fun was
-  // structurally absent from three of the four and Fomo from the wallet count;
-  // all five rows that were blank for source reasons now carry a figure, and
-  // the comparison is per chain rather than Solana-only.
+  // Un-gated after the audit round rather than after a 24h window, because
+  // these four read instant gauges and declare no range selector: the only
+  // thing a day buys them is a complete chart, which is cosmetic. What the
+  // audit round caught is in #2843, #2844, #2846, #2848 and #2849.
   //
-  // 206 average trade size, 207 swap transactions, 232 active wallets: all
-  // three now read terminal-activity. Un-gate condition: a 24h window of the
-  // new series plus an audit round.
-  "solana-avg-trade-size",
-  "solana-unique-traders",
-  "trading-platform-wallets",
-  // 203 memecoin platform fee rates: the headline take rate now reads
-  // terminal-activity. Its fee-paying-rate panel was removed rather than
-  // re-sourced: that column measured the share of transactions that actually
-  // paid a fee, which the new source does not report and which none of its
-  // fields reconstruct. Approximating it would have put a derived number where
-  // a measured one stood. Un-gate condition: a 24h window plus an audit round.
-  "memecoin-platforms",
+  // 206 and 207 were renamed on the way out, from solana-avg-trade-size and
+  // solana-unique-traders. Neither was ever served on production, so there is
+  // no signal to preserve and no redirect is owed: their default view is
+  // all-chains now and the old slugs claimed otherwise.
 ]);
 
 /**

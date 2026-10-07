@@ -477,7 +477,9 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // v88 (2026-09-30): GetBlock joins the keyed cohort on the nine chain RPC
   // benches. The provider set of those benches changed, so v87 entries hold a
   // keyed cohort of three and a GetBlock exclusion row that is no longer true.
-  ["bench-unfiltered-v88", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v89: four benches left DEV_ONLY for production (203, 206, 207, 232) and
+  //      two of them changed slug, so every cached bench set is stale.
+  ["bench-unfiltered-v89", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -716,7 +718,9 @@ const loadAllBenchmarksCached = unstable_cache(
   // Dune benches gated).
   // v81: lockstep with bench-unfiltered-v88 (GetBlock joins the keyed cohort
   // on the nine chain RPC benches).
-  ["all-benchmarks-v81", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v82: lockstep with bench-unfiltered-v89 (four benches to production, two
+  //      renamed).
+  ["all-benchmarks-v82", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -819,7 +823,9 @@ const loadBenchmarkFiltered = unstable_cache(
   // v32: lockstep with bench-unfiltered-v88. The GetBlock row lives only in
   // the tier=keyed variants, so without this bump the keyed tabs keep serving
   // a three-provider cohort.
-  ["bench-filters-v32", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v33: lockstep with bench-unfiltered-v89. The four new production benches
+  //      carry a chain dimension the cached filter sets do not know about.
+  ["bench-filters-v33", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 
