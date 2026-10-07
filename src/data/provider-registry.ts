@@ -1461,6 +1461,18 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "Photon is a Solana trading terminal targeting advanced traders with fast token sniping, smart-money wallet tracking, and direct DEX routing. It charges a per-trade platform fee on swap volume.",
     twitter: "@photon_sol",
   },
+  padre: {
+    url: "https://trade.padre.gg",
+    description:
+      "Padre is a multichain trading terminal, now presented as Terminal: trade.padre.gg titles itself \"Terminal | Your Edge in Memecoin Trading\". It routes on Solana, Robinhood Chain, BNB Chain, Base and Arc, and carries the highest observed take rate in the terminal cohort at about 1.1%.",
+    twitter: "@TradingTerminal",
+  },
+  basedbot: {
+    url: "https://basedbot.app",
+    description:
+      "BasedBot is a trading bot whose flow is almost entirely on Robinhood Chain, with routing on BNB Chain, Base, Ethereum, Arc, HyperEVM and Avalanche and very little on Solana. Not to be confused with Based App, the Hyperliquid frontend tracked separately.",
+    twitter: "@BasedBot",
+  },
   trojan: {
     url: "https://trojan.bot",
     description:
