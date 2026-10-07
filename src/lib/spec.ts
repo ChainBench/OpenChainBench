@@ -480,7 +480,8 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // v89: four benches left DEV_ONLY for production (203, 206, 207, 232) and
   //      two of them changed slug, so every cached bench set is stale.
   // v90: bench 205 retired into 201.
-  ["bench-unfiltered-v90", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v91: bench 201 renamed solana-trading-platform-wars -> trading-platform-wars.
+  ["bench-unfiltered-v91", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -722,7 +723,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v82: lockstep with bench-unfiltered-v89 (four benches to production, two
   //      renamed).
   // v83: lockstep with bench-unfiltered-v90.
-  ["all-benchmarks-v83", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v84: lockstep with bench-unfiltered-v91.
+  ["all-benchmarks-v84", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -828,7 +830,8 @@ const loadBenchmarkFiltered = unstable_cache(
   // v33: lockstep with bench-unfiltered-v89. The four new production benches
   //      carry a chain dimension the cached filter sets do not know about.
   // v34: lockstep with bench-unfiltered-v90.
-  ["bench-filters-v34", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v35: lockstep with bench-unfiltered-v91.
+  ["bench-filters-v35", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 

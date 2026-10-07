@@ -66,6 +66,14 @@ export const RENAMED_BENCH_SLUGS: Record<string, string> = {
   // Bench 200 covered Robinhood Chain and Arc pads from 2026-10-07, so a slug
   // promising Solana became false. This one WAS served on production, unlike
   // the two dev-only renames the same week, so it owes a 301 and not a 404.
+  //
+  // Bench 201 is the same story a day later. It opens on all chains and
+  // carries tabs for Solana, BNB, Robinhood, Base, Arc and more, so
+  // "solana-trading-platform-wars" named one tab of seven. Served on
+  // production and the site's highest-impression page, so it owes a 301.
+  // The solana-dex-volume entry below points at the new slug: a chain of two
+  // redirects would resolve, but it would drop the ?chain=solana that entry
+  // exists to carry.
   // Bench 205 retired 2026-10-07. Once every bench on the hub read one
   // source it stopped being a second measurement and became the same one:
   // 201 pinned to Solana, same cohort bar a row, same definition, values
@@ -77,7 +85,8 @@ export const RENAMED_BENCH_SLUGS: Record<string, string> = {
   // A 301 to 201's Solana tab rather than a 410, because "solana-dex-volume"
   // is a keyword slug worth consolidating into the page that now answers it,
   // and the reader lands on exactly the view they were looking for.
-  "solana-dex-volume": "solana-trading-platform-wars?chain=solana",
+  "solana-trading-platform-wars": "trading-platform-wars",
+  "solana-dex-volume": "trading-platform-wars?chain=solana",
   "solana-launchpad-wars": "launchpad-wars",
   "network-coverage": "asset-registry-coverage",
   // Keyed RPC cohort folded into the per-chain RPC pages (2026-09-21):

@@ -811,7 +811,7 @@ const buildProvidersCached = unstable_cache(
   // v15 (2026-09-30): lockstep with bench-unfiltered-v88. GetBlock gains nine
   // appearances (the keyed cohort on the chain RPC benches) and its first
   // registry entry, so the v14 list would keep /products/getblock without them.
-  ["providers-v15"],
+  ["providers-v16"],
   // 900 s: the provider index feeds products / compare / answers, whose
   // numbers move slowly, and this revalidate is also the effective ISR
   // period of those ~500 pages (Next takes the min across a route's caches).
