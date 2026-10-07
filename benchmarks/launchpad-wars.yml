@@ -1,0 +1,174 @@
+# OpenChainBench. Bench № 200
+
+slug: launchpad-wars
+number: "200"
+title: "Launchpad leaderboard: pump.fun vs Pons Family vs Stonk.fun vs long.xyz"
+seo_title: "Memecoin launchpad volume 2026: pump.fun vs Pons Family vs Stonk.fun"
+seo_description: "{{best_name}} leads memecoin launchpads with {{best_p50}} in a day. pump.fun, Pons Family, Stonk.fun, long.xyz, LetsBonk and ArgusPad, across Solana, Robinhood Chain and Arc."
+subtitle: Trading volume on each launchpad's tokens for one complete day, whoever routed the trade. Across Solana, Robinhood Chain and Arc, or one chain at a time.
+
+category: Trading
+status: live
+metric: 24h volume
+unit: usd
+higher_is_better: true
+row_noun: { one: launchpad, many: launchpads }
+ledger_reliability: false
+
+disclaimer: |
+  Volume on a launchpad's tokens for one complete UTC day, from the public tehcscreener API, which is Allium-backed. This counts every trade on those tokens whoever routed it, so it is not the launchpad's own interface volume: pump.fun appears on this page and on the terminal benches with figures an order of magnitude apart, and both are correct for what they measure. This source's figures diverge from other indexers in both directions; the methodology gives the numbers.
+
+seo_intro: |
+  A launchpad is where a token is created and first traded, and its volume is
+  every trade on those tokens afterwards, whoever routed them. That makes it a
+  different question from how much a trading terminal routes, and a much larger
+  number: pump.fun's tokens carry more volume in a day than every other pad on
+  this page combined, while its own app routes a fraction of that. This page
+  ranks the pads by that first figure, across Solana, Robinhood Chain and Arc.
+
+abstract: |
+  The harness reads /launchpads from the tehcscreener API once per cycle and
+  publishes each pad's volume, launches and trade count for the latest complete
+  day as launchpad_volume_usd, launchpad_tokens_launched and
+  launchpad_trade_txns. The all-chains slice is a real total: a pad running on
+  two chains is one pad with two markets.
+
+  This bench read Mobula until 2026-10-07 and covered eight Solana pads. It now
+  reads tehcscreener, which is the single source behind every bench on the
+  /trading-apps hub. Six pads left the cohort because this source does not
+  cover them (Meteora DBC, NOXA Fun, Bankr, LetsCash, dontblink and Raydium
+  Launchlab) and five joined, three of them outside Solana. A pad the source
+  does not carry is removed rather than published as zero.
+
+methodology:
+  - "Source: the public tehcscreener API (https://tehcscreener.com/api), Allium-backed, no key, synced once a day. One read of /launchpads per cycle, taking the window=1d totals, so every figure is a single day's and never a window sum."
+  - "What is counted: trading volume on the tokens that launched on that pad, whoever routed the trade. A swap executed through Axiom on a pump.fun token counts here for pump.fun and on bench 267 for Axiom. The two benches are not double counting; they are answering different questions."
+  - "Known divergence from other indexers, unresolved and stated rather than smoothed. On 2026-10-07 this source reported pump.fun at $688.4M for the day against $185.0M from DeFiLlama and $188.4M from Mobula, two indexers that share no code and landed 1.8% apart. On `flap` the comparison runs the other way, $0.5M here against $21.4M from Mobula."
+  - "Why that divergence is not a counting convention: at chain level this source reads 2.08x DeFiLlama on Solana, 1.16x on Base and 0.27x on HyperEVM. The three differ in which venues they index, not in whether they count both legs of a swap."
+  - "Single source by decision. Every bench on the /trading-apps hub reads tehcscreener so that no two columns on one page can disagree about the same product. The cost is that nothing here is cross-checked against a second indexer, and the pump.fun figure above is what that costs."
+  - "Chains: Solana and Robinhood Chain as tabs, plus an all-chains total. Volume adds up across chains, so that total is a sum rather than a headline slice. Arc is measured and counted in the total but gets no tab, because one pad on a chain is a list rather than a comparison."
+  - "Stale source: a pad the source stops returning, or one with no volume on the day, has its gauges deleted and reads unresponsive. An old figure is never republished as current."
+  - "Not the launchpad's own revenue: this is volume on its tokens, not fees it collected. The revenue endpoint this source exposes covers pump.fun only and is 987 of 988 days Dune-seeded, so it is not read here."
+
+findings:
+  - "{{best_name}} leads memecoin launchpads with {{best_p50}} of volume on its tokens in a day."
+  - "Launchpad volume and terminal volume are different measurements of the same market. pump.fun's tokens carry an order of magnitude more than pump.fun's own app routes, because most of that flow arrives through other terminals."
+  - "Three of the pads here are not on Solana. Robinhood Chain carries two of them and Arc one, which is volume no Solana-only launchpad board can see."
+  - "This page reads one indexer and is not cross-checked. Its pump.fun figure is 3.7x what two other indexers report, and the methodology says so rather than leaving a reader to find out."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/dev/harnesses/terminal-activity
+
+prometheus:
+  window: 24h
+  url: https://prom.openchainbench.com
+  expected_freshness_seconds: 172800
+  freshness_timestamp_metric: terminal_activity_last_success_unix
+
+dimension_labels:
+  chain: Chain
+
+dimensions:
+  # `all` is a real total: launchpad volume adds up across chains, unlike a
+  # wallet count. A pad running on two chains is one pad with two markets.
+  #
+  # Arc is measured and queryable but gets no tab: one pad on a chain is a
+  # list, not a comparison. Its volume is still inside the all-chains total.
+  chain:
+    - { value: all,       label: All chains }
+    - { value: solana,    label: Solana }
+    - { value: robinhood, label: Robinhood Chain }
+
+faq:
+  - q: "Why is pump.fun's figure here so much bigger than on the trading app benches?"
+    a: "Because they measure different things. This page counts every trade on tokens that launched on pump.fun, whoever routed it. The terminal benches count what came through pump.fun's own interface. Most people trade pump.fun tokens through Axiom, GMGN, Photon or a Telegram bot, so the first number is an order of magnitude larger."
+  - q: "Does this agree with other sources?"
+    a: "Not on pump.fun. On 2026-10-07 this source said $688.4M for the day where DeFiLlama said $185.0M and Mobula said $188.4M, and those two agreed with each other to within 1.8%. On another pad, flap, this source reads far lower instead. The site publishes this source by decision and states the gap rather than hiding it."
+  - q: "Why did six launchpads disappear?"
+    a: "Meteora DBC, NOXA Fun, Bankr, LetsCash, dontblink and Raydium Launchlab are not covered by this source. A pad that cannot be measured is removed rather than shown as zero, because a zero would rank it last on a figure nobody took."
+  - q: "Is launchpad volume the same as launchpad revenue?"
+    a: "No. This is the volume traded on its tokens, not what the pad collected in fees. Fee revenue is published by this source for pump.fun only, and almost its whole history is seeded from a third-party dataset, so it is not read here."
+
+providers:
+  - slug: pumpfun
+    name: pump.fun
+    tag: "Solana launchpad"
+    formula: "The Solana launchpad the cohort is measured against; its tokens carry more volume than every other pad here combined."
+    queries:
+      p50: max(launchpad_volume_usd{pad="pumpfun",chain="all"})
+      p90: max(launchpad_volume_usd{pad="pumpfun",chain="all"})
+      p99: max(launchpad_volume_usd{pad="pumpfun",chain="all"})
+      success: max(launchpad_health{pad="pumpfun",chain="all"})
+      sample_size: max(launchpad_trade_txns{pad="pumpfun",chain="all"})
+      series: max by (pad) (launchpad_volume_usd{pad="pumpfun",chain="all"})
+
+  - slug: pons-family
+    name: Pons Family
+    tag: "Robinhood Chain launchpad"
+    formula: "Robinhood Chain launchpad, the largest outside Solana in this cohort."
+    queries:
+      p50: max(launchpad_volume_usd{pad="ponsfamily.com",chain="all"})
+      p90: max(launchpad_volume_usd{pad="ponsfamily.com",chain="all"})
+      p99: max(launchpad_volume_usd{pad="ponsfamily.com",chain="all"})
+      success: max(launchpad_health{pad="ponsfamily.com",chain="all"})
+      sample_size: max(launchpad_trade_txns{pad="ponsfamily.com",chain="all"})
+      series: max by (pad) (launchpad_volume_usd{pad="ponsfamily.com",chain="all"})
+
+  - slug: stonkfun
+    name: Stonk.fun
+    tag: "Solana launchpad"
+    formula: "Solana launchpad."
+    queries:
+      p50: max(launchpad_volume_usd{pad="stonkfun",chain="all"})
+      p90: max(launchpad_volume_usd{pad="stonkfun",chain="all"})
+      p99: max(launchpad_volume_usd{pad="stonkfun",chain="all"})
+      success: max(launchpad_health{pad="stonkfun",chain="all"})
+      sample_size: max(launchpad_trade_txns{pad="stonkfun",chain="all"})
+      series: max by (pad) (launchpad_volume_usd{pad="stonkfun",chain="all"})
+
+  - slug: long-xyz
+    name: long.xyz
+    tag: "Robinhood Chain launchpad"
+    formula: "Robinhood Chain launchpad."
+    queries:
+      p50: max(launchpad_volume_usd{pad="long.xyz",chain="all"})
+      p90: max(launchpad_volume_usd{pad="long.xyz",chain="all"})
+      p99: max(launchpad_volume_usd{pad="long.xyz",chain="all"})
+      success: max(launchpad_health{pad="long.xyz",chain="all"})
+      sample_size: max(launchpad_trade_txns{pad="long.xyz",chain="all"})
+      series: max by (pad) (launchpad_volume_usd{pad="long.xyz",chain="all"})
+
+  - slug: letsbonk
+    name: LetsBonk
+    tag: "Solana launchpad"
+    formula: "Solana launchpad run by the BONK community."
+    queries:
+      p50: max(launchpad_volume_usd{pad="letsbonk",chain="all"})
+      p90: max(launchpad_volume_usd{pad="letsbonk",chain="all"})
+      p99: max(launchpad_volume_usd{pad="letsbonk",chain="all"})
+      success: max(launchpad_health{pad="letsbonk",chain="all"})
+      sample_size: max(launchpad_trade_txns{pad="letsbonk",chain="all"})
+      series: max by (pad) (launchpad_volume_usd{pad="letsbonk",chain="all"})
+
+  - slug: arguspad
+    name: ArgusPad
+    tag: "Arc launchpad"
+    formula: "Arc launchpad, the only pad this cohort tracks on that chain."
+    queries:
+      p50: max(launchpad_volume_usd{pad="arguspad.io",chain="all"})
+      p90: max(launchpad_volume_usd{pad="arguspad.io",chain="all"})
+      p99: max(launchpad_volume_usd{pad="arguspad.io",chain="all"})
+      success: max(launchpad_health{pad="arguspad.io",chain="all"})
+      sample_size: max(launchpad_trade_txns{pad="arguspad.io",chain="all"})
+      series: max by (pad) (launchpad_volume_usd{pad="arguspad.io",chain="all"})
+
+  - slug: flap
+    name: Flap
+    tag: "Robinhood Chain launchpad"
+    formula: "Robinhood Chain launchpad."
+    queries:
+      p50: max(launchpad_volume_usd{pad="flap",chain="all"})
+      p90: max(launchpad_volume_usd{pad="flap",chain="all"})
+      p99: max(launchpad_volume_usd{pad="flap",chain="all"})
+      success: max(launchpad_health{pad="flap",chain="all"})
+      sample_size: max(launchpad_trade_txns{pad="flap",chain="all"})
+      series: max by (pad) (launchpad_volume_usd{pad="flap",chain="all"})
