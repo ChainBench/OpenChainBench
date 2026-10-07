@@ -1,4 +1,4 @@
-import { distinctBenchCount } from "@/lib/providers";
+import { benchesLedCount, distinctBenchCount } from "@/lib/providers";
 import { ogResponse } from "@/lib/og-response";
 import { getProvider } from "@/lib/providers";
 import { OgHighlight } from "@/lib/og-claim";
@@ -30,7 +30,7 @@ export default async function OG({
 
   const top1Line =
     p.wins > 0
-      ? `#1 on ${p.wins} benchmark${p.wins === 1 ? "" : "s"}`
+      ? `#1 on ${benchesLedCount(p.appearances)} benchmark${benchesLedCount(p.appearances) === 1 ? "" : "s"}`
       : "Tracked across the leaderboard";
   const appearancesLine = `${distinctBenchCount(p.appearances)} benchmark${distinctBenchCount(p.appearances) === 1 ? "" : "s"} measured`;
   const accent = p.wins > 0 ? "#6a9466" : "#7a7166";
@@ -95,7 +95,7 @@ export default async function OG({
           <OgHighlight
             lead={
               p.wins > 0
-                ? `#1 on ${p.wins} of ${distinctBenchCount(p.appearances)} benchmark${distinctBenchCount(p.appearances) === 1 ? "" : "s"}`
+                ? `#1 on ${benchesLedCount(p.appearances)} of ${distinctBenchCount(p.appearances)} benchmark${distinctBenchCount(p.appearances) === 1 ? "" : "s"}`
                 : appearancesLine
             }
             rest={p.wins > 0 ? "measured live on OpenChainBench" : "on OpenChainBench"}
