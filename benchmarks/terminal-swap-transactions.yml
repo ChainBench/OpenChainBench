@@ -1,6 +1,6 @@
 # OpenChainBench. Bench № 207
 
-slug: solana-unique-traders
+slug: terminal-swap-transactions
 number: "207"
 title: "Daily swap transactions per trading terminal: Axiom vs Fomo vs pump.fun vs GMGN"
 seo_title: "Daily swap transactions by trading terminal 2026"
@@ -51,7 +51,7 @@ methodology:
   - "Latest complete day, not a rolling 24 hours: the source publishes daily and its latest day is normally yesterday. A terminal with no activity on that day carries no figure and reads unresponsive rather than having its last live day carried forward. BasedBot is the live case, with volume on Robinhood Chain and almost none on Solana."
   - "Stale source: a day more than 3 whole days behind, or a terminal the source stops returning, has its gauges deleted and reads unresponsive. An old figure is never republished as current, because these gauges are scraped every 60 seconds and read through a 24h window, which would average a frozen figure in as though it had just been measured."
   - "Two freshness layers, because they fail differently: terminal_activity_last_success_unix says the harness is still running, and terminal_activity_health says this particular terminal and chain published a day inside the window. A harness that runs while its source freezes trips the second, not the first."
-  - "Scope: seven chains as tabs plus an all-chains total, from the ten the harness measures. The slug still reads solana- because this bench was Solana-only until 2026-10-07 and renaming a slug is a separate change; the page, its title and its default view are not Solana-only any more."
+  - "Scope: seven chains as tabs plus an all-chains total, from the ten the harness measures. The remaining three carry one or two terminals each, which is a list rather than a comparison."
   - "Not scored here: what those transactions cost. A terminal can lead on transaction count and be the most expensive way to route a swap; benches 268 and 279 measure that."
 
 findings:

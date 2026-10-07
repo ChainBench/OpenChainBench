@@ -33,8 +33,8 @@ const ALL_BENCH_SLUGS = [
   "terminal-fill-quality",
   "solana-trading-platform-wars",
   "solana-dex-volume",
-  "solana-unique-traders",
-  "solana-avg-trade-size",
+  "terminal-swap-transactions",
+  "terminal-avg-trade-size",
   "trading-platform-wallets",
   "solana-launchpad-wars",
   "memecoin-platforms",
@@ -51,8 +51,8 @@ const ALL_GROUPS = [
     items: [
       { slug: "solana-trading-platform-wars", title: "Volume and commission" },
       { slug: "solana-dex-volume", title: "DEX volume & protocol revenue" },
-      { slug: "solana-unique-traders", title: "Swap transactions" },
-      { slug: "solana-avg-trade-size", title: "Average trade size" },
+      { slug: "terminal-swap-transactions", title: "Swap transactions" },
+      { slug: "terminal-avg-trade-size", title: "Average trade size" },
       { slug: "trading-platform-wallets", title: "Daily active wallets" },
     ],
   },
@@ -110,7 +110,7 @@ export default async function TradingAppsHubPage() {
   // tehcscreener API on 2026-10-07 and are in the staging pipeline for the 24h
   // window and the audit round every bench serves on production after, so say
   // that rather than naming a blocker that has been cleared.
-  const pausedNote = isDevOnlyBench("solana-unique-traders")
+  const pausedNote = isDevOnlyBench("terminal-swap-transactions")
     ? "Benches 203 platform fee rates, 206 average trade size, 207 swap transactions and 232 active wallets were re-sourced on 2026-10-07 and are completing validation on staging. "
     : "";
   const kpiCol = COLUMNS.find(

@@ -79,7 +79,7 @@ export const ALL_TRADING_APP_COLUMNS: readonly TradingAppColumn[] = [
     key: "traders",
     label: "Swap Tx",
     scope: "solana",
-    bench: "solana-unique-traders",
+    bench: "terminal-swap-transactions",
     fmt: fmtCount,
     tip: "Swap transactions routed on one complete UTC day, on Solana, from the tehcscreener API. Counted directly rather than inferred from who paid a fee, so a terminal that charges nothing is still counted: pump.fun now appears, having been structurally invisible before.",
     higherBetter: true,
@@ -88,7 +88,7 @@ export const ALL_TRADING_APP_COLUMNS: readonly TradingAppColumn[] = [
     key: "tradeSize",
     label: "Avg Trade",
     scope: "solana",
-    bench: "solana-avg-trade-size",
+    bench: "terminal-avg-trade-size",
     fmt: fmtUSD,
     tip: "One complete UTC day's routed Solana volume divided by that day's swap count, from the tehcscreener API. Includes bots and MEV, so a terminal carrying heavy sniping reads lower than a human-only baseline would. Padre, Phantom and Bloom left this column on 2026-10-07: the current source does not cover them, and a row that cannot be measured is removed rather than shown as zero.",
     higherBetter: true,
@@ -152,8 +152,8 @@ const SOURCE_BY_BENCH: Record<string, string> = {
   // fee-wallet attribution could not see a terminal that charges no fee, so
   // pump.fun was structurally absent from three of these four columns and
   // Fomo from the wallet one.
-  "solana-unique-traders": "tehcscreener",
-  "solana-avg-trade-size": "tehcscreener",
+  "terminal-swap-transactions": "tehcscreener",
+  "terminal-avg-trade-size": "tehcscreener",
   "trading-platform-wallets": "tehcscreener",
   "memecoin-platforms": "tehcscreener",
   "solana-trading-platform-wars": "DeFiLlama",

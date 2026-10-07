@@ -1,6 +1,6 @@
 # OpenChainBench. Bench № 206
 
-slug: solana-avg-trade-size
+slug: terminal-avg-trade-size
 number: "206"
 title: "Average swap size per trading terminal: who carries the biggest tickets"
 seo_title: "Average trade size by trading terminal 2026"
