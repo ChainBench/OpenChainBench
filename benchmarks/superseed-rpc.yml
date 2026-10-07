@@ -1,0 +1,124 @@
+# OpenChainBench. Bench No 286
+
+slug: superseed-rpc
+number: "286"
+title: "Superseed RPC endpoints: free public URLs by latency"
+seo_title: "Superseed RPC endpoints: free public URLs by latency"
+seo_description: "{{best_name}} leads free Superseed RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h). URLs for all {{count}} no-key endpoints, probed every 60 s."
+subtitle: HTTP round-trip latency for the `eth_getBlockByNumber(\"latest\", false)` method against every free, no-key public Superseed EVM endpoint, audited every 60 seconds from 3 regions.
+
+category: RPCs
+status: live
+metric: RPC latency
+unit: ms
+higher_is_better: false
+
+seo_intro: |
+  Superseed is an OP Stack L2 (chain 5330). The 2026-10-07 sweep found {{count}} clean keyless endpoints: the Superseed official RPC (mainnet.superseed.xyz), dRPC (superseed.drpc.org) and Thirdweb (5330.rpc.thirdweb.com), all three returning chain id 0x14d2. PublicNode carries no Superseed route, which is worth noting because it serves most OP Stack chains: the absence is the provider's choice, not a measurement failure on our side.
+
+abstract: |
+  Superseed: {{count}} free public RPC endpoints answering `eth_getBlockByNumber` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}; the chain-official endpoint measures {{p50:superseed-official}}.
+  We measure the round-trip latency of a single, identical JSON-RPC call (`eth_getBlockByNumber(\"latest\", false)`) against every no-key public Superseed endpoint that sustains continuous probing, {{count}} providers measured, every 60 seconds, from us-east, eu-west and Singapore. The harness classifies every response (ok / http_err / jsonrpc_err / stale / timeout) with a Superseed-scaled staleness gap (20 blocks at Superseed's ~2 s block time). The cross-chain view lives on the parent `rpc-capabilities` benchmark; this page is the Superseed-scoped answer with per-region breakdowns as a first-class dimension.
+
+methodology:
+  - "Cadence: every 60 seconds per provider, from each of 3 probe regions (us-east Virginia, eu-west Amsterdam, sgp Singapore). Headline p50/p90/p99 aggregate across all 3 regions via Prometheus `avg(quantile_over_time(...))`; per-region breakdowns are first-class on this page via the region tabs."
+  - "Payload: `{\"jsonrpc\":\"2.0\",\"id\":<rotating>,\"method\":\"eth_getBlockByNumber\",\"params\":[\"latest\", false]}`. Plain HTTP POST, identical for every endpoint, no API key in any request. Non-cacheable by design: the rotating id defeats edge caches that would answer a bare head query without touching a node."
+  - "Latency measurement, call-result classification (`ok`, `http_err`, `jsonrpc_err`, `stale`, `timeout`) and the exclusion rules follow the cluster method documented on [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities#methodology); this page is the Superseed-scoped view of the same harness."
+  - "Roster: every endpoint here answered a real `eth_getBlockByNumber` call without a key on the 2026-10-07 sweep before being added to the probe matrix. An endpoint that needs a key, region-blocks us or rate-limits below the 60-second cadence is excluded rather than listed with an asterisk."
+  - "Chain scope: every query on this page is pinned to `chain=\"superseed\"`. Provider coverage: {{count}} no-key endpoints."
+
+faq:
+  - q: "Which Superseed RPCs work without an API key?"
+    a: "{{declared_count}} endpoints are probed on this chain: Superseed (mainnet.superseed.xyz), dRPC (superseed.drpc.org), Thirdweb (5330.rpc.thirdweb.com). Every listed endpoint was live-verified with a `eth_getBlockByNumber` call returning a parsable response before inclusion."
+  - q: "How is Superseed RPC latency measured here, technically?"
+    a: "One identical `eth_getBlockByNumber` call every 60 seconds against each provider from each of 3 regions, using the same plain HTTP client the rest of the RPC cluster uses. Wall-clock round-trip is recorded at millisecond precision; p50/p90/p99 are computed via Prometheus `quantile_over_time` over 24 hours. Responses are classified (`ok` / `http_err` / `jsonrpc_err` / `stale` / `timeout`) so an endpoint stuck on an old head or returning errors behind HTTP 200 is never ranked as fastest."
+  - q: "Why is PublicNode missing from the Superseed roster?"
+    a: "PublicNode has no Superseed route. It serves most OP Stack L2s, so its absence here is a coverage gap on the provider's side rather than something our probe failed to reach. We list only endpoints that answered a real `eth_getBlockByNumber` POST without a key, so a provider that does not route the chain is excluded rather than shown with an asterisk."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
+
+prometheus:
+  window: 24h
+  freshness_metric: rpc_latency_milliseconds
+
+rank_matrix_query: avg by (provider, region) (ocb:rpc_latency_milliseconds:p50_24h{chain="superseed"})
+
+dimensions:
+  region:
+    - { value: all,     label: All regions }
+    - { value: us-east, label: US-East }
+    - { value: eu-west, label: EU-West }
+    - { value: sgp,     label: Singapore }
+
+providers:
+  - slug: superseed-official
+    name: Superseed
+    endpoint: https://mainnet.superseed.xyz
+    tag: Superseed official public RPC endpoint for Superseed mainnet
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Superseed's no-key superseed RPC endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="superseed-official", chain="superseed"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="superseed-official", chain="superseed"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="superseed-official", chain="superseed"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="superseed-official", chain="superseed"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="superseed-official", chain="superseed"}) / sum(ocb:rpc_call:rate_24h{provider="superseed-official", chain="superseed"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="superseed-official", chain="superseed"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="superseed-official", chain="superseed"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="superseed-official", chain="superseed", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="superseed-official", chain="superseed", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="superseed-official", chain="superseed", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="superseed-official", chain="superseed", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="superseed-official", chain="superseed", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="superseed-official", chain="superseed", region="sgp"}[1h])
+
+  - slug: drpc
+    name: dRPC
+    endpoint: https://superseed.drpc.org
+    tag: dRPC public gateway routing to a Superseed node pool
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to dRPC's no-key superseed RPC endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="superseed"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="drpc", chain="superseed"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="drpc", chain="superseed"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="drpc", chain="superseed"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="drpc", chain="superseed"}) / sum(ocb:rpc_call:rate_24h{provider="drpc", chain="superseed"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="drpc", chain="superseed"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="superseed"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="superseed", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="superseed", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="superseed", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="superseed", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="superseed", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="superseed", region="sgp"}[1h])
+
+  - slug: thirdweb
+    name: Thirdweb
+    endpoint: https://5330.rpc.thirdweb.com
+    tag: Thirdweb public RPC gateway for Superseed
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Thirdweb's no-key superseed RPC endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="thirdweb", chain="superseed"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="thirdweb", chain="superseed"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="thirdweb", chain="superseed"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="thirdweb", chain="superseed"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="thirdweb", chain="superseed"}) / sum(ocb:rpc_call:rate_24h{provider="thirdweb", chain="superseed"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="thirdweb", chain="superseed"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="thirdweb", chain="superseed"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="thirdweb", chain="superseed", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="thirdweb", chain="superseed", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="thirdweb", chain="superseed", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="thirdweb", chain="superseed", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="thirdweb", chain="superseed", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="thirdweb", chain="superseed", region="sgp"}[1h])
