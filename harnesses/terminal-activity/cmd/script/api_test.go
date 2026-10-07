@@ -119,7 +119,7 @@ func TestRosterIsReadOverFullHistory(t *testing.T) {
 			Series: []struct {
 				Name        string `json:"name"`
 				DisplayName string `json:"display_name"`
-			}{{Name: "axiom"}, {Name: ""}, {Name: "bullx"}},
+			}{{Name: "axiom"}, {Name: ""}, {Name: "bullx"}, {Name: "pumpapp"}},
 		})
 	}))
 	defer srv.Close()
@@ -131,7 +131,32 @@ func TestRosterIsReadOverFullHistory(t *testing.T) {
 	if gotQuery != "window=all&group=bot" {
 		t.Errorf("roster must ask for the full history, asked %q", gotQuery)
 	}
-	if len(got) != 2 || got[0] != "axiom" || got[1] != "bullx" {
-		t.Errorf("expected the named bots only, got %+v", got)
+	// RAW ids: this list addresses the API, which 404s on a canonical slug.
+	want := []string{"axiom", "bullx", "pumpapp"}
+	if len(got) != len(want) {
+		t.Fatalf("expected %v, got %+v", want, got)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("roster[%d]: got %q want %q", i, got[i], want[i])
+		}
+	}
+}
+
+// canonicalRoster is the other half, and the two must not be conflated. The
+// roster addresses the API, which only knows its own ids; publish() compares
+// against samples carrying our slugs. Canonicalising the fetch list made every
+// renamed bot a 404 and dropped both rows; leaving the comparison list raw
+// publishes a phantom unhealthy row beside each real one.
+func TestCanonicalRosterConvertsOnlyForComparison(t *testing.T) {
+	got := canonicalRoster([]string{"axiom", "pumpapp", "terminal", "pumpapp"})
+	want := []string{"axiom", "pump-fun", "padre"}
+	if len(got) != len(want) {
+		t.Fatalf("expected %v, got %v", want, got)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("[%d]: got %q want %q", i, got[i], want[i])
+		}
 	}
 }

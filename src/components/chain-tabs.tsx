@@ -51,6 +51,20 @@ export function ChainTabs({
   );
 }
 
+/** The slug to look a logo up under.
+ *
+ *  Normally the dimension value is the slug, but a bench whose headline slice
+ *  is aliased publishes it under `all` while labelling it with the real chain:
+ *  the terminal benches show a chip reading SOLANA whose value is `all`, so
+ *  hasLogo("all") missed and the chip rendered bare next to chips that had
+ *  their logo. Falling back to the label covers every aliased chip without
+ *  each spec having to carry an icon field. */
+function logoSlug(value: string, label: string): string | null {
+  if (hasLogo(value)) return value;
+  const fromLabel = label.trim().toLowerCase().replace(/\s+/g, "-");
+  return hasLogo(fromLabel) ? fromLabel : null;
+}
+
 function Tab({
   active,
   value,
@@ -81,8 +95,8 @@ function Tab({
   return (
     <button type="button" onClick={onClick} style={activeStyle} className={className}>
       <span className="inline-flex items-center gap-1.5">
-        {hasLogo(value) ? (
-          <ProviderLogo slug={value} name={label} size={14} />
+        {logoSlug(value, label) ? (
+          <ProviderLogo slug={logoSlug(value, label)!} name={label} size={14} />
         ) : isRegion(value) ? (
           <span
             className="inline-flex items-center justify-center rounded-full"

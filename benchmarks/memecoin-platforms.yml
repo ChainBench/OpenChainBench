@@ -82,21 +82,26 @@ dimension_labels:
   chain: Chain
 
 dimensions:
-  # One axis. `all` is the headline slice and carries Solana, not a pooled
-  # cross-chain rate: a take rate is a ratio, and pooling ratios across chains
-  # weights them by nothing anyone chose. The harness publishes Solana under
-  # `chain="all"` as well as its own name so the site's label injection has a
-  # pinned matcher to rewrite.
+  # `all` is a real cross-chain total here, not an alias: volume, transactions
+  # and fees add up, and the two ratios built on them (average trade is total
+  # volume over total transactions, take rate is total fees over the volume of
+  # the chains whose fees could be measured) are correctly volume-weighted by
+  # construction. Bench 232 is the exception and says why on its own page: a
+  # wallet trading on two chains is one wallet, so there is no honest
+  # all-chains wallet count and its `all` carries Solana instead.
   #
-  # Five tabs for ten measured chains. Arc, HyperEVM, Monad, X Layer and
-  # Avalanche are measured and queryable but not offered: one or two terminals
-  # on a chain is a list, not a comparison.
+  # Seven chains, the ones with at least four terminals. X Layer, Avalanche and
+  # Monad are measured and queryable but not offered: one or two terminals on a
+  # chain is a list, not a comparison.
   chain:
-    - { value: all,       label: Solana }
+    - { value: all,       label: All chains }
+    - { value: solana,    label: Solana }
     - { value: bnb,       label: BNB Chain }
     - { value: robinhood, label: Robinhood Chain }
-    - { value: ethereum,  label: Ethereum }
     - { value: base,      label: Base }
+    - { value: arc,       label: Arc }
+    - { value: ethereum,  label: Ethereum }
+    - { value: hyperevm,  label: HyperEVM }
 
 faq:
   - q: "What is an observed take rate?"
@@ -111,20 +116,22 @@ faq:
     a: "It was removed on 2026-10-07 with the source change. It measured the share of a terminal's transactions that actually paid a fee, which the current source does not report and which cannot be derived from the fields it does. It was dropped rather than approximated."
 
 providers:
-  - slug: terminal
+  - slug: padre
     name: Terminal
+    url: https://trade.padre.gg
     tag: "Trading terminal, highest observed take"
     formula: "A day's fee revenue divided by that day's routed volume for Terminal on this chain, both from the tehcscreener /bots/terminal series."
     queries:
-      p50: max(terminal_fee_rate_pct{platform="terminal",chain="all"})
-      p90: max(terminal_fee_rate_pct{platform="terminal",chain="all"})
-      p99: max(terminal_fee_rate_pct{platform="terminal",chain="all"})
-      success: max(terminal_fee_rate_health{platform="terminal",chain="all"})
-      sample_size: max(terminal_fees_usd{platform="terminal",chain="all"})
-      series: max by (platform) (terminal_fee_rate_pct{platform="terminal",chain="all"})
+      p50: max(terminal_fee_rate_pct{platform="padre",chain="all"})
+      p90: max(terminal_fee_rate_pct{platform="padre",chain="all"})
+      p99: max(terminal_fee_rate_pct{platform="padre",chain="all"})
+      success: max(terminal_fee_rate_health{platform="padre",chain="all"})
+      sample_size: max(terminal_fees_usd{platform="padre",chain="all"})
+      series: max by (platform) (terminal_fee_rate_pct{platform="padre",chain="all"})
 
   - slug: trojan
     name: Trojan
+    url: https://trojan.com
     tag: "Telegram-native bot, Solana only"
     formula: "A day's fee revenue divided by that day's routed volume for Trojan on this chain, both from the tehcscreener /bots/trojan series."
     queries:
@@ -137,6 +144,7 @@ providers:
 
   - slug: gmgn
     name: GMGN
+    url: https://gmgn.ai
     tag: "Multi-chain terminal, widest chain reach"
     formula: "A day's fee revenue divided by that day's routed volume for GMGN on this chain, both from the tehcscreener /bots/gmgn series."
     queries:
@@ -149,6 +157,7 @@ providers:
 
   - slug: photon
     name: Photon
+    url: https://photon-sol.tinyastro.io
     tag: "Web terminal, Solana only"
     formula: "A day's fee revenue divided by that day's routed volume for Photon on this chain, both from the tehcscreener /bots/photon series."
     queries:
@@ -161,6 +170,7 @@ providers:
 
   - slug: maestro
     name: Maestro
+    url: https://t.me/maestro
     tag: "Telegram bot, multi-chain"
     formula: "A day's fee revenue divided by that day's routed volume for Maestro on this chain, both from the tehcscreener /bots/maestro series."
     queries:
@@ -173,6 +183,7 @@ providers:
 
   - slug: axiom
     name: Axiom
+    url: https://axiom.trade
     tag: "Solana-first trading terminal"
     formula: "A day's fee revenue divided by that day's routed volume for Axiom on this chain, both from the tehcscreener /bots/axiom series."
     queries:
@@ -185,6 +196,7 @@ providers:
 
   - slug: fomo
     name: Fomo
+    url: https://fomo.family
     tag: "Cross-chain terminal, gas sponsored"
     formula: "A day's fee revenue divided by that day's routed volume for Fomo on this chain, both from the tehcscreener /bots/fomo series."
     queries:
@@ -197,6 +209,7 @@ providers:
 
   - slug: basedbot
     name: BasedBot
+    url: https://basedbot.app
     tag: "Robinhood Chain native, little Solana flow"
     formula: "A day's fee revenue divided by that day's routed volume for BasedBot on this chain, both from the tehcscreener /bots/basedbot series."
     queries:
@@ -207,14 +220,15 @@ providers:
       sample_size: max(terminal_fees_usd{platform="basedbot",chain="all"})
       series: max by (platform) (terminal_fee_rate_pct{platform="basedbot",chain="all"})
 
-  - slug: pumpapp
+  - slug: pump-fun
     name: pump.fun
+    url: https://pump.fun
     tag: "Launchpad's own app, no terminal fee"
     formula: "A day's fee revenue divided by that day's routed volume for the pump.fun app. It reports fees on four chains and exactly zero on Solana, where it routes $252M a week, so the Solana cell is withheld rather than ranked as the market floor."
     queries:
-      p50: max(terminal_fee_rate_pct{platform="pumpapp",chain="all"})
-      p90: max(terminal_fee_rate_pct{platform="pumpapp",chain="all"})
-      p99: max(terminal_fee_rate_pct{platform="pumpapp",chain="all"})
-      success: max(terminal_fee_rate_health{platform="pumpapp",chain="all"})
-      sample_size: max(terminal_fees_usd{platform="pumpapp",chain="all"})
-      series: max by (platform) (terminal_fee_rate_pct{platform="pumpapp",chain="all"})
+      p50: max(terminal_fee_rate_pct{platform="pump-fun",chain="all"})
+      p90: max(terminal_fee_rate_pct{platform="pump-fun",chain="all"})
+      p99: max(terminal_fee_rate_pct{platform="pump-fun",chain="all"})
+      success: max(terminal_fee_rate_health{platform="pump-fun",chain="all"})
+      sample_size: max(terminal_fees_usd{platform="pump-fun",chain="all"})
+      series: max by (platform) (terminal_fee_rate_pct{platform="pump-fun",chain="all"})

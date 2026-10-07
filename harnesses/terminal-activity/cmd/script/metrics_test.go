@@ -28,15 +28,16 @@ func mk(platform, chain string, dayUnix, vol, tx, fees, w float64) sample {
 	return sample{Platform: platform, Chain: chain, DayUnix: dayUnix, Volume: vol, Txns: tx, Fees: fees, Wallets: w}
 }
 
-// The headline slice has to be published under chain="all", and nothing else
-// may claim it.
+// chain="all" is a true total where totalling is valid, and the headline chain
+// where it is not. Both halves are pinned here, because getting either one
+// wrong publishes a number that reads like a measurement.
 //
-// The site's label injection only rewrites a selector already pinned to
-// `="all"`. Without the alias a spec cannot pin the dimension, so it reads every
-// chain at once and the loader returns null where it wanted one series. If a
-// second chain also published under `all`, pinning it would match two chains and
-// the same null comes back from the other direction.
-func TestHeadlineChainIsAliasedAndIsUnique(t *testing.T) {
+// Summing volume across chains is right: a terminal's day is the sum of its
+// chains. Summing wallets is wrong: a wallet trading on two chains is one
+// wallet, and the source's own deduplicated count runs about 0.6 of the
+// per-chain sum. There is no deduplicated figure for 7 of the 9 terminals, so
+// the wallet metrics carry Solana under `all` rather than an overstatement.
+func TestAllSlicesTotalWhereValidAndCarrySolanaWhereNot(t *testing.T) {
 	resetAll()
 	now := time.Now()
 	d := day(now, 1)
@@ -45,23 +46,56 @@ func TestHeadlineChainIsAliasedAndIsUnique(t *testing.T) {
 		mk("axiom", "bnb", d, 500, 5, 3, 2),
 	}, []string{"axiom"}, 3, now)
 
-	if got := testutil.ToFloat64(volumeUSD.WithLabelValues("axiom", "all")); got != 1000 {
-		t.Errorf(`chain="all" should carry the %s figure 1000, got %v`, headlineChain, got)
-	}
-	if got := testutil.ToFloat64(volumeUSD.WithLabelValues("axiom", headlineChain)); got != 1000 {
-		t.Errorf("the real chain label must still be published, got %v", got)
-	}
-	// Collect every chain label value that exists and check only one aliases.
-	aliased := 0
-	for _, c := range []string{"solana", "bnb"} {
-		for _, a := range aliasesFor(c) {
-			if a == "all" {
-				aliased++
-			}
+	for _, c := range []struct {
+		what string
+		got  float64
+		want float64
+	}{
+		{"volume totals (1000+500)", testutil.ToFloat64(volumeUSD.WithLabelValues("axiom", "all")), 1500},
+		{"transactions total (10+5)", testutil.ToFloat64(txns.WithLabelValues("axiom", "all")), 15},
+		{"fees total (7+3)", testutil.ToFloat64(feesUSD.WithLabelValues("axiom", "all")), 10},
+		{"avg trade is the weighted mean (1500/15)", testutil.ToFloat64(avgTradeUSD.WithLabelValues("axiom", "all")), 100},
+		{"take rate is volume-weighted (10/1500)", testutil.ToFloat64(feeRatePct.WithLabelValues("axiom", "all")), 10.0 / 1500 * 100},
+		// Not 7. Summing wallets would say this terminal has seven users.
+		{"wallets carry solana, never the sum", testutil.ToFloat64(wallets.WithLabelValues("axiom", "all")), 5},
+		{"swaps per wallet carries solana (10/5)", testutil.ToFloat64(tradesPerWallet.WithLabelValues("axiom", "all")), 2},
+		{"volume per wallet carries solana (1000/5)", testutil.ToFloat64(volumePerWalletUSD.WithLabelValues("axiom", "all")), 200},
+		{"the real chain is still published", testutil.ToFloat64(volumeUSD.WithLabelValues("axiom", "solana")), 1000},
+	} {
+		if math.Abs(c.got-c.want) > 1e-9 {
+			t.Errorf("%s: got %v want %v", c.what, c.got, c.want)
 		}
 	}
-	if aliased != 1 {
-		t.Errorf("exactly one chain may alias to all, %d do", aliased)
+}
+
+// The all-chains take rate divides by the volume of the chains it could
+// measure, not by all of it.
+//
+// Axiom is the live case: measured fees on Solana, withheld cells on Robinhood
+// and BNB. Dividing its Solana fees by Solana plus Robinhood plus BNB volume
+// reads 0.66% where the measured rate is 0.92%, understating a terminal
+// precisely because part of it could not be measured. A withheld cell has to
+// leave the ratio entirely, numerator and denominator together.
+func TestAllChainsTakeRateExcludesWithheldVolume(t *testing.T) {
+	resetAll()
+	now := time.Now()
+	d := day(now, 1)
+	publish([]sample{
+		mk("axiom", "solana", d, 1000, 10, 9.2, 5), // 0.92%
+		mk("axiom", "bnb", d, 1000, 10, 0, 5),      // withheld
+		mk("gmgn", "bnb", d, 400, 4, 4, 2),         // keeps the bnb column alive
+	}, []string{"axiom", "gmgn"}, 3, now)
+
+	if got := testutil.ToFloat64(feeWithheld.WithLabelValues("axiom", "bnb")); got != 1 {
+		t.Fatalf("precondition: axiom on bnb must be withheld, got %v", got)
+	}
+	got := testutil.ToFloat64(feeRatePct.WithLabelValues("axiom", "all"))
+	if math.Abs(got-0.92) > 1e-9 {
+		t.Errorf("all-chains take rate must be 9.2/1000 = 0.92%%, got %v (0.46 means withheld volume stayed in the denominator)", got)
+	}
+	// The volume total is unaffected: it is a total, not a ratio.
+	if v := testutil.ToFloat64(volumeUSD.WithLabelValues("axiom", "all")); v != 2000 {
+		t.Errorf("all-chains volume must still total both chains, got %v", v)
 	}
 }
 

@@ -112,6 +112,12 @@ func (c *apiClient) roster() ([]string, error) {
 	if err := c.getJSON("/bots?window=all&group=bot", &r); err != nil {
 		return nil, err
 	}
+	// Raw ids, deliberately. The roster has two consumers that need opposite
+	// things: the per-bot fetch below addresses the API, which only knows its
+	// own ids (GET /bots/pump-fun is a 404), while publish() compares against
+	// samples carrying canonical slugs. Canonicalising here served the second
+	// and broke the first. canonicalRoster does the conversion at the one
+	// place that needs it.
 	out := make([]string, 0, len(r.Series))
 	for _, s := range r.Series {
 		if s.Name != "" {
@@ -121,12 +127,54 @@ func (c *apiClient) roster() ([]string, error) {
 	return out, nil
 }
 
+// canonicalRoster maps a raw roster onto the slugs the samples carry, so a
+// platform the cycle did not publish is dropped under the name it would have
+// been published as. Without it the harness publishes pump-fun correctly and,
+// beside it, a permanently unhealthy phantom row called pumpapp.
+func canonicalRoster(raw []string) []string {
+	out := make([]string, 0, len(raw))
+	seen := map[string]bool{}
+	for _, id := range raw {
+		c := canonical(id)
+		if seen[c] {
+			continue
+		}
+		seen[c] = true
+		out = append(out, c)
+	}
+	return out
+}
+
 func (c *apiClient) bot(id string) (*botDetail, error) {
 	var d botDetail
 	if err := c.getJSON("/bots/"+url.PathEscape(id)+"?window="+botsWindow, &d); err != nil {
 		return nil, err
 	}
 	return &d, nil
+}
+
+// canonicalSlug maps the source's bot id onto the slug this repo already uses
+// for that product, so one product is one row across every bench.
+//
+// Two differ, and both were found by a reader noticing a missing logo. The
+// logo lookup keys on the provider slug, so publishing `pumpapp` meant
+// pump-fun.jpg was never found and the row rendered as the initials "PU".
+// `terminal` was worse than cosmetic: bench 201 already carries that product
+// as slug `padre`, display name Terminal, because Padre renamed itself
+// (trade.padre.gg still titles itself "Terminal | Your Edge in Memecoin
+// Trading"). Publishing it under a second slug split one product across two
+// identities, and led me to write that "Padre is not covered by this source"
+// in bench 206 when Padre is in the cohort under its new name.
+var canonicalSlug = map[string]string{
+	"pumpapp":  "pump-fun",
+	"terminal": "padre",
+}
+
+func canonical(botID string) string {
+	if s, ok := canonicalSlug[botID]; ok {
+		return s
+	}
+	return botID
 }
 
 // sample is one platform on one chain for one UTC day: the unit every gauge in
@@ -179,7 +227,7 @@ func latestSamples(d *botDetail) []sample {
 			continue
 		}
 		out = append(out, sample{
-			Platform: d.Bot,
+			Platform: canonical(d.Bot),
 			Chain:    s.Name,
 			Day:      day,
 			DayUnix:  dayUnix,
