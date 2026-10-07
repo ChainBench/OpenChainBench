@@ -81,7 +81,7 @@ export const ALL_TRADING_APP_COLUMNS: readonly TradingAppColumn[] = [
     scope: "solana",
     bench: "solana-unique-traders",
     fmt: fmtCount,
-    tip: "Swap transactions on one complete UTC day, from our own SQL over Dune: the transactions in which the platform's fee wallet received value, on Solana. pump.fun and BasedBot are not measured, having no fee wallet to attribute from.",
+    tip: "Swap transactions routed on one complete UTC day, on Solana, from the tehcscreener API. Counted directly rather than inferred from who paid a fee, so a terminal that charges nothing is still counted: pump.fun now appears, having been structurally invisible before.",
     higherBetter: true,
   },
   {
@@ -90,7 +90,7 @@ export const ALL_TRADING_APP_COLUMNS: readonly TradingAppColumn[] = [
     scope: "solana",
     bench: "solana-avg-trade-size",
     fmt: fmtUSD,
-    tip: "One complete UTC day of fee-paying volume divided by that day's fee-paying transactions, from our own SQL over Dune, on Solana. Includes bots and MEV, so a platform carrying heavy sniping reads lower than a human-only baseline would. Maestro, Phantom and Bloom in this column come from Mobula on a rolling window instead.",
+    tip: "One complete UTC day's routed Solana volume divided by that day's swap count, from the tehcscreener API. Includes bots and MEV, so a terminal carrying heavy sniping reads lower than a human-only baseline would. Padre, Phantom and Bloom left this column on 2026-10-07: the current source does not cover them, and a row that cannot be measured is removed rather than shown as zero.",
     higherBetter: true,
   },
   {
@@ -99,7 +99,7 @@ export const ALL_TRADING_APP_COLUMNS: readonly TradingAppColumn[] = [
     scope: "solana",
     bench: "trading-platform-wallets",
     fmt: fmtCount,
-    tip: "Distinct trading accounts in the platform's fee-paying transactions on one complete UTC day, from our own SQL over Dune, on Solana. A better signal of a user base than raw transaction count. FOMO, pump.fun and BasedBot are not measured here.",
+    tip: "Distinct wallets that traded through the terminal on one complete UTC day, on Solana, from the tehcscreener API. A better signal of a user base than raw transaction count. Counted directly, so Fomo and pump.fun now carry a figure; BasedBot routes almost nothing on Solana and reads unresponsive.",
     higherBetter: true,
   },
   {
@@ -108,7 +108,7 @@ export const ALL_TRADING_APP_COLUMNS: readonly TradingAppColumn[] = [
     scope: "solana",
     bench: "memecoin-platforms",
     fmt: fmtPct,
-    tip: "Observed take rate on Solana from our own SQL over Dune: the SOL, USDC and wSOL reaching the platform's fee wallets over the volume of the transactions that paid them, so both halves cover the same trades. pump.fun charges no bonding-curve fee since Aug 2026 and is not measured.",
+    tip: "Observed take rate on Solana from the tehcscreener API: one day's fee revenue over that day's routed volume, both from the same row. A lower bound on the published fee, since waivers and rebates reduce what a terminal keeps. pump.fun reads 0 because it takes no terminal fee, which is a measurement and not a gap.",
     higherBetter: false,
   },
   {
@@ -147,10 +147,15 @@ export const ALL_TRADING_APP_COLUMNS: readonly TradingAppColumn[] = [
  *  have to name the source. Keyed by bench so a column set built from
  *  TRADING_APP_COLUMNS can describe itself rather than hardcoding "Dune". */
 const SOURCE_BY_BENCH: Record<string, string> = {
-  "solana-unique-traders": "Dune",
-  "solana-avg-trade-size": "Dune",
-  "trading-platform-wallets": "Dune",
-  "memecoin-platforms": "Dune",
+  // These four moved off Dune on 2026-10-07 to the public tehcscreener API,
+  // which is Allium-backed. The move was not a cost saving on the same data:
+  // fee-wallet attribution could not see a terminal that charges no fee, so
+  // pump.fun was structurally absent from three of these four columns and
+  // Fomo from the wallet one.
+  "solana-unique-traders": "tehcscreener",
+  "solana-avg-trade-size": "tehcscreener",
+  "trading-platform-wallets": "tehcscreener",
+  "memecoin-platforms": "tehcscreener",
   "solana-trading-platform-wars": "DeFiLlama",
   "app-store-ratings": "the App Store",
 };

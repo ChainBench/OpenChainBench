@@ -102,11 +102,16 @@ export default async function TradingAppsHubPage() {
   // high-is-good, so it does not depend on one particular bench being live.
   // The direction comes from the matrix, which resolved it from each panel's own
   // spec, so this never names a "highest" leader of a column where less is better.
-  // Only say the Dune benches are paused where they actually are. On staging they
-  // are live and the sentence would contradict the table above it. The pairing
+  // Only say these four are paused where they actually are. On staging they are
+  // live and the sentence would contradict the table above it. The pairing
   // matters too: 203 is fee rates, 206 average trade size, 207 swap counts.
+  //
+  // They no longer wait on a Dune plan. They were re-sourced to the public
+  // tehcscreener API on 2026-10-07 and are in the staging pipeline for the 24h
+  // window and the audit round every bench serves on production after, so say
+  // that rather than naming a blocker that has been cleared.
   const pausedNote = isDevOnlyBench("solana-unique-traders")
-    ? "Benches 203 platform fee rates, 206 average trade size, 207 swap transactions and 232 active wallets need a paid Dune plan and are paused; they run on staging. "
+    ? "Benches 203 platform fee rates, 206 average trade size, 207 swap transactions and 232 active wallets were re-sourced on 2026-10-07 and are completing validation on staging. "
     : "";
   const kpiCol = COLUMNS.find(
     (c) =>

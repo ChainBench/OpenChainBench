@@ -1,196 +1,188 @@
-# OpenChainBench. Bench 207
+# OpenChainBench. Bench № 207
 
 slug: solana-unique-traders
 number: "207"
-title: "Daily swap transactions on Solana: Axiom vs Fomo vs GMGN vs Terminal vs Trojan"
-seo_title: "Daily swap transactions by Solana platform 2026: Axiom vs Fomo vs GMGN vs Terminal vs Trojan"
-seo_description: "{{best_name}} leads Solana platforms with {{best_p50}} swap transactions in a day. Axiom vs Fomo vs GMGN vs Terminal vs Trojan ranked by daily trading activity, from our own Dune SQL over fee-wallet attribution."
-subtitle: Count of swap transactions executed through each Solana trading platform in one complete day. Built from our own SQL over Dune's solana.account_activity and dex_solana.trades, one execution a day. Reveals which platforms drive the most activity and which serve concentrated whales against broad retail flow.
+title: "Daily swap transactions on Solana: Axiom vs Fomo vs pump.fun vs GMGN"
+seo_title: "Daily swap transactions by Solana terminal 2026"
+seo_description: "{{best_name}} leads Solana terminals with {{best_p50}} swap transactions in a day. Axiom, Fomo, pump.fun, GMGN, Terminal and Trojan ranked."
+subtitle: Swap transactions routed through each trading terminal on Solana in one complete day. Counts transactions, not wallets, so an automated trader sending hundreds of swaps a day counts hundreds of times.
 
 category: Trading
 status: live
-metric: Unique swap tx 24h
+metric: Swap transactions 24h
 unit: count
 higher_is_better: true
+row_noun: { one: terminal, many: terminals }
+# The success query is a publication gate (the harness published this terminal
+# and chain on a day inside the window, or it did not), never a probe success
+# rate. Declaring that hides the Success and Reliability columns, which would
+# otherwise read 100% on every live row and invite a reader to take it for a
+# measured uptime.
+ledger_reliability: false
 
 disclaimer: |
-  Counts distinct transaction ids per platform, not wallets, and the wallet count is several times lower because an active trader or bot sends many transactions a day. Bots, MEV searchers and multi-wallet traders are all included. A transaction counts for a platform when that platform's fee wallet received value in it, on Solana. pump.fun and BasedBot read unresponsive, for reasons the methodology gives.
+  Transaction counts for one complete UTC day on Solana, from the public tehcscreener API, which is Allium-backed. Counts transactions, not wallets: bench 232 counts the distinct wallets behind them, and the ratio between the two pages is a measure of automation. Bots, MEV searchers and multi-wallet traders are all included. Solana only, which is this bench's scope and not a limit of the source: the harness measures ten chains and bench 232 offers five of them as tabs.
 
 seo_intro: |
-  {{best_name}} leads Solana platforms by raw swap transaction count. The terminals
-  with broad web-native user bases and high-frequency retail flow sit at the top,
-  and the Telegram-native segment below them sends fewer transactions of a larger
-  average size. Fomo is counted one transaction at a time like the rest, so the gas
-  it sponsors cannot multiply its count. Every count here is fee-paying: a transaction
-  is attributed to the platform whose fee wallet received value in it, from our own
-  SQL over Dune's solana.account_activity and dex_solana.trades, one execution a day.
-  Transaction count and volume rankings diverge, which is the point of reading both.
+  Transaction count is the rawest measure of how much a trading terminal is
+  used, and the least flattering to read alone: an automated strategy sending
+  three hundred swaps from one wallet counts three hundred times, so a terminal
+  can lead on transactions while serving a fraction of another's users. This
+  page counts the swaps routed through each terminal on Solana on the latest
+  complete day. Read it next to bench 232, which counts the wallets behind
+  those swaps on the same day from the same source, and the division is the
+  automation ratio.
 
 abstract: |
-  The dune-platform-volume harness runs one Dune execution a day against its own SQL
-  and counts the distinct transaction ids attributed to each platform for one
-  complete UTC day. A transaction is attributed when the platform's fee wallet
-  received value in it: a native SOL inflow on the wallet itself, or a USDC or wSOL
-  inflow into a token account it owns. The count is exposed as
-  dune_platform_txns_24h, alongside dune_platform_volume_data_day_unix and
-  dune_platform_volume_health per platform. Bench 210 measures the same activity on
-  a rolling 24h window from the solana-unique-traders harness and publishes
-  solana_platform_unique_traders_24h, which is a different window and a separate
-  series.
+  The harness reads one day per terminal from the tehcscreener /bots/{bot}
+  endpoint, takes the Solana series, and publishes its transaction count as
+  terminal_txns. The figure is one chain's and one day's.
+
+  Until 2026-10-07 this bench counted transactions in which a terminal's fee
+  wallet received value, computed from our own SQL over Dune. That attribution
+  could not see a terminal that charges no fee, so pump.fun was structurally
+  absent from a transaction count it leads on. The current source counts
+  routed transactions directly, so the cohort is complete.
 
 methodology:
-  - "Source: our own SQL over Dune's solana.account_activity, dex_solana.trades and prices.day, one execution a day. No uploaded third-party dataset: the eight this bench read until 2026-09-27 all froze on 2026-08-25 and were served as current for 32 days."
-  - "Count: COUNT(DISTINCT tx_id) over the transactions in which the platform's fee wallet received value on the data day, either a native SOL inflow on the wallet or a USDC or wSOL inflow into a token account it owns, joined to dex_solana.trades."
-  - "Day: the newest UTC day that closed at least 10 hours earlier, the rule DeFiLlama's own Solana adapters use. dune_platform_volume_data_day_unix carries the day each figure is for."
-  - "Stale source: a platform whose data day falls more than 3 days behind, or that the query stops returning, has its gauges deleted and reads unresponsive. An old figure is never republished as current."
-  - "Scope: Solana only. GMGN, Axiom and Terminal also trade on EVM chains, and those legs are not counted here."
-  - "pump.fun and BasedBot are not measured. pump.fun charges no bonding-curve fee since Aug 2026, so fee-wallet attribution cannot see it; no public fee wallet or router list for BasedBot exists."
-  - "Metric represents unique swap transactions per platform. Actual unique-wallet count is 3-10x lower since active traders (and bots) execute multiple transactions per day."
-  - "Bot inclusion: all transactions counted including automated traders, sniping bots, and copy-trade bots."
-  - "Double-count across platforms: a tx touching two fee wallets is counted in both. Counts are not mutually exclusive."
+  - "Source: the public tehcscreener API (https://tehcscreener.com/api), Allium-backed, no key, synced once a day. The harness reads /bots over the full history for the roster and /bots/{bot} for each terminal's per-chain daily series, and publishes one day: the latest the source names."
+  - "Transactions: the source's swap transaction count for that terminal on Solana on the day. A transaction is counted once, so a multi-hop route is one transaction and not one per hop."
+  - "Not wallets: bench 232 counts the distinct wallets behind these transactions from the same source and the same day, and publishes the division as a Swaps per wallet column. A terminal whose users average thirty swaps a day is not serving the same behaviour as one whose users average nine."
+  - "Latest complete day, not a rolling 24 hours: the source publishes daily and its latest day is normally yesterday. A terminal with no activity on that day carries no figure and reads unresponsive rather than having its last live day carried forward. BasedBot is the live case, with volume on Robinhood Chain and almost none on Solana."
+  - "Stale source: a day more than 3 whole days behind, or a terminal the source stops returning, has its gauges deleted and reads unresponsive. An old figure is never republished as current, because these gauges are scraped every 60 seconds and read through a 24h window, which would average a frozen figure in as though it had just been measured."
+  - "Two freshness layers, because they fail differently: terminal_activity_last_success_unix says the harness is still running, and terminal_activity_health says this particular terminal and chain published a day inside the window. A harness that runs while its source freezes trips the second, not the first."
+  - "Scope: Solana only, by this bench's own definition rather than by what the source can see. The harness publishes ten chains; bench 232 and bench 203 offer the comparable ones as tabs."
+  - "Not scored here: what those transactions cost. A terminal can lead on transaction count and be the most expensive way to route a swap; benches 268 and 279 measure that."
 
 findings:
-  - "{{best_name}} leads Solana platforms with {{best_p50}} daily swap transactions."
-  - "Every count here is fee-paying, so a transaction appears only where a platform earned on it. A trade routed through one terminal into another's pool counts once, for the terminal that took the fee."
-  - "{{best_name}} leads on transaction count, and the terminals with broad web-native user bases sit above the Telegram-native segment."
-  - "Trojan and Photon serve a smaller but highly active segment, with fewer transactions and a higher average trade size."
-  - "pump.fun and BasedBot read unresponsive. pump.fun charges no bonding-curve fee, so there is no fee wallet to attribute its transactions from, and BasedBot has no public wallet list."
-  - "Transaction count and volume rankings diverge, which is why both are worth reading: a platform can send many small transactions or few large ones and land in a different place on each."
+  - "{{best_name}} leads Solana trading terminals with {{best_p50}} swap transactions in a day."
+  - "Transaction count and wallet count rank differently, and the gap is the point. Bench 232 counts the wallets behind these same transactions on the same day."
+  - "pump.fun appears here for the first time. It charges no terminal fee, so a count built on fee-wallet attribution could not see it at all, whatever its real volume."
+  - "A transaction is one routed swap, counted once however many hops it took, so a terminal that splits a route is not rewarded for it."
 
-source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/dune-platform-volume
+source: https://github.com/ChainBench/OpenChainBench/tree/dev/harnesses/terminal-activity
 
 prometheus:
   window: 24h
-  freshness_metric: dune_platform_txns_24h
+  url: https://prom.openchainbench.com
+  expected_freshness_seconds: 172800
+  freshness_timestamp_metric: terminal_activity_last_success_unix
 
 faq:
-  - q: "What does unique daily swap transactions measure?"
-    a: "Unique daily swap transactions counts the number of distinct tx_ids per platform in the rolling 24-hour window. For terminals it detects fee wallet inflows; for pump.fun it uses dex_solana.trades (pumpdotfun + pumpswap). Each tx_id represents one swap event. Actual unique-wallet count is 3-10x lower since active traders and bots execute many transactions per day."
-  - q: "Why does pump.fun have so many more transactions than GMGN?"
-    a: "pump.fun's bonding curve launch mechanic triggers massive bot sniping activity as automated traders race to buy newly created tokens in the first seconds of each launch. GMGN serves a more deliberate, power-trader segment with larger positions and fewer but higher-value transactions."
-  - q: "Is this apple-to-apple between pump.fun and the others?"
-    a: "Approximately yes. Both measure COUNT(DISTINCT tx_id) over 24h: terminals via fee wallet inflow detection (all trades generate a fee inflow), pump.fun via dex_solana.trades Spellbook (all indexed swap events). The methodological difference is the data source, not the underlying event type. Both capture real on-chain swap activity."
-  - q: "Why did you switch pump.fun from fee wallets to dex_solana.trades?"
-    a: "After pump.fun cut bonding-curve trading fees to 0% on 2026-08-07, its fee wallets still appeared in every bonding-curve tx as required program accounts, with micro-SOL balance changes from rent and account-creation side-effects. This inflated the fee-wallet count by ~60% (9.7M vs 6M real swaps). dex_solana.trades indexes actual swap events via the Dune Spellbook, eliminating the noise."
-  - q: "How is Fomo tracked given its off-chain relay fees?"
-    a: "Fomo collects per-trade fees in USDC to a protocol-owned token account. The Dune query matches on token_balance_owner = Fomo's fee wallet in solana.account_activity with USDC mint and positive balance change, capturing on-chain per-trade fee inflows. Fomo's off-chain relay fee component is not counted here."
-  - q: "How is this different from bench 201 (24h volume)?"
-    a: "Bench 201 ranks platforms by 24h swap volume in USD. This bench ranks by unique daily swap transactions. A platform can have high volume with few transactions (large trades) or high tx count with low volume (micro-trades and bots). Both metrics together reveal the full trader profile."
+  - q: "What counts as a swap transaction here?"
+    a: "One on-chain transaction that routed a swap through the terminal on Solana, counted once however many hops or pools it touched. A wallet sending fifty swaps in the day contributes fifty."
+  - q: "Why is this higher than the wallet count on bench 232?"
+    a: "Because one wallet sends many transactions. The two pages read the same source on the same day, so dividing one by the other gives swaps per wallet, which bench 232 now publishes as a column so you do not have to."
+  - q: "Why was pump.fun missing before?"
+    a: "The previous source counted transactions in which a terminal's fee wallet received value. The pump.fun app charges no terminal fee, so there was nothing to attribute from and the row was structurally blank rather than low. The current source counts routed transactions directly."
+  - q: "Is this Solana only?"
+    a: "This page is. The harness behind it measures ten chains, and bench 232 offers five of them as tabs for wallet counts. The Solana scope here is the bench's definition, which is why the slug says so."
 
 providers:
-  - slug: pump-fun
-    name: pump.fun
-    tag: "Solana meme launchpad + relay"
-    formula: "Not measured. pump.fun charges no bonding-curve fee since Aug 2026, so no fee wallet receives anything on its trades and fee-wallet attribution cannot see them. The row reads unresponsive."
+  - slug: fomo
+    name: Fomo
+    tag: "Cross-chain terminal, gas sponsored"
+    formula: "Swap transactions routed through Fomo on Solana on the day, from the tehcscreener /bots/fomo series."
     queries:
-      p50: dune_platform_txns_24h{platform="pump-fun"}
-      p90: dune_platform_txns_24h{platform="pump-fun"}
-      p99: dune_platform_txns_24h{platform="pump-fun"}
-      mean: dune_platform_txns_24h{platform="pump-fun"}
-      success: dune_platform_volume_health{platform="pump-fun"}
-      sample_size: dune_platform_txns_24h{platform="pump-fun"}
-      series: dune_platform_txns_24h{platform="pump-fun"}
-
-  - slug: gmgn
-    name: GMGN
-    tag: "AI trading terminal, multi-chain"
-    formula: "Daily Solana transaction count from our own Dune SQL: transactions paying a GMGN fee wallet, joined to dex_solana.trades, one leg per transaction and trader. Solana only."
-    queries:
-      p50: dune_platform_txns_24h{platform="gmgn"}
-      p90: dune_platform_txns_24h{platform="gmgn"}
-      p99: dune_platform_txns_24h{platform="gmgn"}
-      mean: dune_platform_txns_24h{platform="gmgn"}
-      success: dune_platform_volume_health{platform="gmgn"}
-      sample_size: dune_platform_txns_24h{platform="gmgn"}
-      series: dune_platform_txns_24h{platform="gmgn"}
+      p50: max(terminal_txns{platform="fomo",chain="solana"})
+      p90: max(terminal_txns{platform="fomo",chain="solana"})
+      p99: max(terminal_txns{platform="fomo",chain="solana"})
+      success: max(terminal_activity_health{platform="fomo",chain="solana"})
+      sample_size: max(terminal_volume_usd{platform="fomo",chain="solana"})
+      series: max by (platform) (terminal_txns{platform="fomo",chain="solana"})
 
   - slug: axiom
     name: Axiom
-    tag: "Web trading terminal, multi-chain"
-    formula: "Daily Solana transaction count from our own Dune SQL: transactions paying a Axiom fee wallet, joined to dex_solana.trades, one leg per transaction and trader. Solana only."
+    tag: "Solana-first trading terminal"
+    formula: "Swap transactions routed through Axiom on Solana on the day, from the tehcscreener /bots/axiom series."
     queries:
-      p50: dune_platform_txns_24h{platform="axiom"}
-      p90: dune_platform_txns_24h{platform="axiom"}
-      p99: dune_platform_txns_24h{platform="axiom"}
-      mean: dune_platform_txns_24h{platform="axiom"}
-      success: dune_platform_volume_health{platform="axiom"}
-      sample_size: dune_platform_txns_24h{platform="axiom"}
-      series: dune_platform_txns_24h{platform="axiom"}
+      p50: max(terminal_txns{platform="axiom",chain="solana"})
+      p90: max(terminal_txns{platform="axiom",chain="solana"})
+      p99: max(terminal_txns{platform="axiom",chain="solana"})
+      success: max(terminal_activity_health{platform="axiom",chain="solana"})
+      sample_size: max(terminal_volume_usd{platform="axiom",chain="solana"})
+      series: max by (platform) (terminal_txns{platform="axiom",chain="solana"})
 
-  - slug: fomo
-    name: Fomo
-    tag: "Solana trading platform"
-    formula: "Daily Solana transaction count from our own Dune SQL: transactions paying a Fomo fee wallet, joined to dex_solana.trades, largest USDC leg per transaction. Solana only."
+  - slug: pumpapp
+    name: pump.fun
+    tag: "Launchpad's own trading app"
+    formula: "Swap transactions routed through pump.fun on Solana on the day, from the tehcscreener /bots/pumpapp series."
     queries:
-      p50: dune_platform_txns_24h{platform="fomo"}
-      p90: dune_platform_txns_24h{platform="fomo"}
-      p99: dune_platform_txns_24h{platform="fomo"}
-      mean: dune_platform_txns_24h{platform="fomo"}
-      success: dune_platform_volume_health{platform="fomo"}
-      sample_size: dune_platform_txns_24h{platform="fomo"}
-      series: dune_platform_txns_24h{platform="fomo"}
+      p50: max(terminal_txns{platform="pumpapp",chain="solana"})
+      p90: max(terminal_txns{platform="pumpapp",chain="solana"})
+      p99: max(terminal_txns{platform="pumpapp",chain="solana"})
+      success: max(terminal_activity_health{platform="pumpapp",chain="solana"})
+      sample_size: max(terminal_volume_usd{platform="pumpapp",chain="solana"})
+      series: max by (platform) (terminal_txns{platform="pumpapp",chain="solana"})
+
+  - slug: gmgn
+    name: GMGN
+    tag: "Multi-chain terminal, widest chain reach"
+    formula: "Swap transactions routed through GMGN on Solana on the day, from the tehcscreener /bots/gmgn series."
+    queries:
+      p50: max(terminal_txns{platform="gmgn",chain="solana"})
+      p90: max(terminal_txns{platform="gmgn",chain="solana"})
+      p99: max(terminal_txns{platform="gmgn",chain="solana"})
+      success: max(terminal_activity_health{platform="gmgn",chain="solana"})
+      sample_size: max(terminal_volume_usd{platform="gmgn",chain="solana"})
+      series: max by (platform) (terminal_txns{platform="gmgn",chain="solana"})
+
+  - slug: terminal
+    name: Terminal
+    tag: "Trading terminal, heaviest wallets"
+    formula: "Swap transactions routed through Terminal on Solana on the day, from the tehcscreener /bots/terminal series."
+    queries:
+      p50: max(terminal_txns{platform="terminal",chain="solana"})
+      p90: max(terminal_txns{platform="terminal",chain="solana"})
+      p99: max(terminal_txns{platform="terminal",chain="solana"})
+      success: max(terminal_activity_health{platform="terminal",chain="solana"})
+      sample_size: max(terminal_volume_usd{platform="terminal",chain="solana"})
+      series: max by (platform) (terminal_txns{platform="terminal",chain="solana"})
 
   - slug: trojan
     name: Trojan
-    tag: "Telegram trading bot on Solana"
-    formula: "Daily Solana transaction count from our own Dune SQL: transactions paying a Trojan fee wallet, joined to dex_solana.trades, one leg per transaction and trader. Solana only."
+    tag: "Telegram-native bot, Solana only"
+    formula: "Swap transactions routed through Trojan on Solana on the day, from the tehcscreener /bots/trojan series."
     queries:
-      p50: dune_platform_txns_24h{platform="trojan"}
-      p90: dune_platform_txns_24h{platform="trojan"}
-      p99: dune_platform_txns_24h{platform="trojan"}
-      mean: dune_platform_txns_24h{platform="trojan"}
-      success: dune_platform_volume_health{platform="trojan"}
-      sample_size: dune_platform_txns_24h{platform="trojan"}
-      series: dune_platform_txns_24h{platform="trojan"}
+      p50: max(terminal_txns{platform="trojan",chain="solana"})
+      p90: max(terminal_txns{platform="trojan",chain="solana"})
+      p99: max(terminal_txns{platform="trojan",chain="solana"})
+      success: max(terminal_activity_health{platform="trojan",chain="solana"})
+      sample_size: max(terminal_volume_usd{platform="trojan",chain="solana"})
+      series: max by (platform) (terminal_txns{platform="trojan",chain="solana"})
 
   - slug: photon
     name: Photon
-    tag: "Solana trading terminal"
-    formula: "Daily Solana transaction count from our own Dune SQL: transactions paying a Photon fee wallet, joined to dex_solana.trades, one leg per transaction and trader. Solana only."
+    tag: "Web terminal, Solana only"
+    formula: "Swap transactions routed through Photon on Solana on the day, from the tehcscreener /bots/photon series."
     queries:
-      p50: dune_platform_txns_24h{platform="photon"}
-      p90: dune_platform_txns_24h{platform="photon"}
-      p99: dune_platform_txns_24h{platform="photon"}
-      mean: dune_platform_txns_24h{platform="photon"}
-      success: dune_platform_volume_health{platform="photon"}
-      sample_size: dune_platform_txns_24h{platform="photon"}
-      series: dune_platform_txns_24h{platform="photon"}
-
-  - slug: padre
-    name: Terminal
-    tag: "pump.fun's own trading app (formerly Padre)"
-    formula: "Daily Solana transaction count from our own Dune SQL: transactions paying a Terminal fee wallet, joined to dex_solana.trades, one leg per transaction and trader. Solana only."
-    queries:
-      p50: dune_platform_txns_24h{platform="padre"}
-      p90: dune_platform_txns_24h{platform="padre"}
-      p99: dune_platform_txns_24h{platform="padre"}
-      mean: dune_platform_txns_24h{platform="padre"}
-      success: dune_platform_volume_health{platform="padre"}
-      sample_size: dune_platform_txns_24h{platform="padre"}
-      series: dune_platform_txns_24h{platform="padre"}
-
-  - slug: basedbot
-    name: BasedBot
-    tag: "Multi-chain trading bot"
-    formula: "Not measured. No public fee wallet or router list for BasedBot exists to attribute its transactions from. The row reads unresponsive."
-    queries:
-      p50: dune_platform_txns_24h{platform="basedbot"}
-      p90: dune_platform_txns_24h{platform="basedbot"}
-      p99: dune_platform_txns_24h{platform="basedbot"}
-      mean: dune_platform_txns_24h{platform="basedbot"}
-      success: dune_platform_volume_health{platform="basedbot"}
-      sample_size: dune_platform_txns_24h{platform="basedbot"}
-      series: dune_platform_txns_24h{platform="basedbot"}
+      p50: max(terminal_txns{platform="photon",chain="solana"})
+      p90: max(terminal_txns{platform="photon",chain="solana"})
+      p99: max(terminal_txns{platform="photon",chain="solana"})
+      success: max(terminal_activity_health{platform="photon",chain="solana"})
+      sample_size: max(terminal_volume_usd{platform="photon",chain="solana"})
+      series: max by (platform) (terminal_txns{platform="photon",chain="solana"})
 
   - slug: maestro
     name: Maestro
-    tag: "Telegram trading bot on Solana"
-    formula: "Unique tx_ids where Maestro fee wallets received SOL inflow in the last 24h (Dune: solana.account_activity, hourly refresh)."
+    tag: "Telegram bot, multi-chain"
+    formula: "Swap transactions routed through Maestro on Solana on the day, from the tehcscreener /bots/maestro series."
     queries:
-      p50: solana_platform_unique_traders_24h{platform="maestro"}
-      p90: solana_platform_unique_traders_24h{platform="maestro"}
-      p99: solana_platform_unique_traders_24h{platform="maestro"}
-      mean: solana_platform_unique_traders_24h{platform="maestro"}
-      success: solana_platform_trader_health{platform="maestro"}
-      sample_size: solana_platform_unique_traders_24h{platform="maestro"}
-      series: solana_platform_unique_traders_24h{platform="maestro"}
+      p50: max(terminal_txns{platform="maestro",chain="solana"})
+      p90: max(terminal_txns{platform="maestro",chain="solana"})
+      p99: max(terminal_txns{platform="maestro",chain="solana"})
+      success: max(terminal_activity_health{platform="maestro",chain="solana"})
+      sample_size: max(terminal_volume_usd{platform="maestro",chain="solana"})
+      series: max by (platform) (terminal_txns{platform="maestro",chain="solana"})
+
+  - slug: basedbot
+    name: BasedBot
+    tag: "Robinhood Chain native, little Solana flow"
+    formula: "Swap transactions routed through BasedBot on Solana on the day, from the tehcscreener /bots/basedbot series."
+    queries:
+      p50: max(terminal_txns{platform="basedbot",chain="solana"})
+      p90: max(terminal_txns{platform="basedbot",chain="solana"})
+      p99: max(terminal_txns{platform="basedbot",chain="solana"})
+      success: max(terminal_activity_health{platform="basedbot",chain="solana"})
+      sample_size: max(terminal_volume_usd{platform="basedbot",chain="solana"})
+      series: max by (platform) (terminal_txns{platform="basedbot",chain="solana"})
