@@ -12,19 +12,21 @@
  */
 
 const RAW: Record<string, string> = {
-  // Ten chains added 2026-10-07 by the chain-hunt sweep. Each mark is the
-  // chain's own favicon where it served a usable raster, otherwise DeFiLlama's
-  // chain-icon CDN, committed like every other logo here rather than hotlinked.
-  "0g": "/logos/0g.webp",
-  agoric: "/logos/agoric.ico",
-  katana: "/logos/katana.png",
-  neox: "/logos/neox.ico",
-  superseed: "/logos/superseed.ico",
-  tac: "/logos/tac.webp",
-  tempo: "/logos/tempo.ico",
-  xpla: "/logos/xpla.webp",
-  xrplevm: "/logos/xrplevm.ico",
-  zigchain: "/logos/zigchain.webp",
+  // Ten chains added 2026-10-07 by the chain-hunt sweep, each the chain's own
+  // SVG mark, committed rather than hotlinked like every other logo here.
+  // Two are compromises: superseed ships only a monochrome mask and a wordmark
+  // too wide for a chip, and Neo X ships no resolvable SVG at all, so it
+  // carries Neo's mark as its parent chain. Both are in NEEDS_LIGHT_CHIP.
+  "0g": "/logos/0g.svg",
+  agoric: "/logos/agoric.svg",
+  katana: "/logos/katana.svg",
+  neox: "/logos/neox.svg",
+  superseed: "/logos/superseed.svg",
+  tac: "/logos/tac.svg",
+  tempo: "/logos/tempo.svg",
+  xpla: "/logos/xpla.svg",
+  xrplevm: "/logos/xrplevm.svg",
+  zigchain: "/logos/zigchain.svg",
 
   // Bench 284 (AI trading agents). The four labs whose models the Recall
   // arena runs. Each is that lab's own published mark, committed like every
