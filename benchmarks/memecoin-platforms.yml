@@ -119,7 +119,7 @@ providers:
       p50: max(terminal_fee_rate_pct{platform="terminal",chain="all"})
       p90: max(terminal_fee_rate_pct{platform="terminal",chain="all"})
       p99: max(terminal_fee_rate_pct{platform="terminal",chain="all"})
-      success: max(terminal_activity_health{platform="terminal",chain="all"})
+      success: max(terminal_fee_rate_health{platform="terminal",chain="all"})
       sample_size: max(terminal_fees_usd{platform="terminal",chain="all"})
       series: max by (platform) (terminal_fee_rate_pct{platform="terminal",chain="all"})
 
@@ -131,7 +131,7 @@ providers:
       p50: max(terminal_fee_rate_pct{platform="trojan",chain="all"})
       p90: max(terminal_fee_rate_pct{platform="trojan",chain="all"})
       p99: max(terminal_fee_rate_pct{platform="trojan",chain="all"})
-      success: max(terminal_activity_health{platform="trojan",chain="all"})
+      success: max(terminal_fee_rate_health{platform="trojan",chain="all"})
       sample_size: max(terminal_fees_usd{platform="trojan",chain="all"})
       series: max by (platform) (terminal_fee_rate_pct{platform="trojan",chain="all"})
 
@@ -143,7 +143,7 @@ providers:
       p50: max(terminal_fee_rate_pct{platform="gmgn",chain="all"})
       p90: max(terminal_fee_rate_pct{platform="gmgn",chain="all"})
       p99: max(terminal_fee_rate_pct{platform="gmgn",chain="all"})
-      success: max(terminal_activity_health{platform="gmgn",chain="all"})
+      success: max(terminal_fee_rate_health{platform="gmgn",chain="all"})
       sample_size: max(terminal_fees_usd{platform="gmgn",chain="all"})
       series: max by (platform) (terminal_fee_rate_pct{platform="gmgn",chain="all"})
 
@@ -155,7 +155,7 @@ providers:
       p50: max(terminal_fee_rate_pct{platform="photon",chain="all"})
       p90: max(terminal_fee_rate_pct{platform="photon",chain="all"})
       p99: max(terminal_fee_rate_pct{platform="photon",chain="all"})
-      success: max(terminal_activity_health{platform="photon",chain="all"})
+      success: max(terminal_fee_rate_health{platform="photon",chain="all"})
       sample_size: max(terminal_fees_usd{platform="photon",chain="all"})
       series: max by (platform) (terminal_fee_rate_pct{platform="photon",chain="all"})
 
@@ -167,7 +167,7 @@ providers:
       p50: max(terminal_fee_rate_pct{platform="maestro",chain="all"})
       p90: max(terminal_fee_rate_pct{platform="maestro",chain="all"})
       p99: max(terminal_fee_rate_pct{platform="maestro",chain="all"})
-      success: max(terminal_activity_health{platform="maestro",chain="all"})
+      success: max(terminal_fee_rate_health{platform="maestro",chain="all"})
       sample_size: max(terminal_fees_usd{platform="maestro",chain="all"})
       series: max by (platform) (terminal_fee_rate_pct{platform="maestro",chain="all"})
 
@@ -179,7 +179,7 @@ providers:
       p50: max(terminal_fee_rate_pct{platform="axiom",chain="all"})
       p90: max(terminal_fee_rate_pct{platform="axiom",chain="all"})
       p99: max(terminal_fee_rate_pct{platform="axiom",chain="all"})
-      success: max(terminal_activity_health{platform="axiom",chain="all"})
+      success: max(terminal_fee_rate_health{platform="axiom",chain="all"})
       sample_size: max(terminal_fees_usd{platform="axiom",chain="all"})
       series: max by (platform) (terminal_fee_rate_pct{platform="axiom",chain="all"})
 
@@ -191,7 +191,7 @@ providers:
       p50: max(terminal_fee_rate_pct{platform="fomo",chain="all"})
       p90: max(terminal_fee_rate_pct{platform="fomo",chain="all"})
       p99: max(terminal_fee_rate_pct{platform="fomo",chain="all"})
-      success: max(terminal_activity_health{platform="fomo",chain="all"})
+      success: max(terminal_fee_rate_health{platform="fomo",chain="all"})
       sample_size: max(terminal_fees_usd{platform="fomo",chain="all"})
       series: max by (platform) (terminal_fee_rate_pct{platform="fomo",chain="all"})
 
@@ -203,7 +203,7 @@ providers:
       p50: max(terminal_fee_rate_pct{platform="basedbot",chain="all"})
       p90: max(terminal_fee_rate_pct{platform="basedbot",chain="all"})
       p99: max(terminal_fee_rate_pct{platform="basedbot",chain="all"})
-      success: max(terminal_activity_health{platform="basedbot",chain="all"})
+      success: max(terminal_fee_rate_health{platform="basedbot",chain="all"})
       sample_size: max(terminal_fees_usd{platform="basedbot",chain="all"})
       series: max by (platform) (terminal_fee_rate_pct{platform="basedbot",chain="all"})
 
@@ -215,6 +215,6 @@ providers:
       p50: max(terminal_fee_rate_pct{platform="pumpapp",chain="all"})
       p90: max(terminal_fee_rate_pct{platform="pumpapp",chain="all"})
       p99: max(terminal_fee_rate_pct{platform="pumpapp",chain="all"})
-      success: max(terminal_activity_health{platform="pumpapp",chain="all"})
+      success: max(terminal_fee_rate_health{platform="pumpapp",chain="all"})
       sample_size: max(terminal_fees_usd{platform="pumpapp",chain="all"})
       series: max by (platform) (terminal_fee_rate_pct{platform="pumpapp",chain="all"})

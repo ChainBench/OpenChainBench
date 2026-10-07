@@ -91,6 +91,21 @@ var (
 		Help: "Unix timestamp of the last cycle that published at least one platform. Prometheus gauges keep their last value, so a spec needs this to tell a quiet harness from a dead one.",
 	})
 
+	// Whether a take rate exists for this cell, which is NOT the same question
+	// as whether the platform published anything.
+	//
+	// terminal_activity_health answers "did this platform publish on this
+	// chain", and for a withheld fee cell the answer is yes: volume,
+	// transactions and wallets are all there. Bench 203 used that as its
+	// success gate, so Axiom's withheld cell rendered as a live row, its
+	// absent take rate became 0 under zero_is_a_value, and with lower-is-better
+	// it won the BNB and Robinhood tabs. A bench has to gate on the metric it
+	// ranks, not on whether the row exists at all.
+	feeRateHealth = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "terminal_fee_rate_health",
+		Help: "1 when a take rate is published for this platform and chain, 0 when the cell exists but its take rate was withheld or its chain's fee column failed. Gate bench 203 on this, not on terminal_activity_health.",
+	}, []string{"platform", "chain"})
+
 	feeWithheld = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "terminal_fee_withheld",
 		Help: "1 when this platform and chain reported exactly zero fees on material volume while the same platform reports fees on another chain, so the zero is an unexplained gap rather than a price. The take rate is not published for that cell.",
@@ -106,7 +121,7 @@ func init() {
 	prometheus.MustRegister(
 		volumeUSD, txns, feesUSD, wallets,
 		avgTradeUSD, feeRatePct, tradesPerWallet, volumePerWalletUSD,
-		chainBreadth, dataDayUnix, health, lastSuccessUnix, feeColumnOK, feeWithheld,
+		chainBreadth, dataDayUnix, health, lastSuccessUnix, feeColumnOK, feeWithheld, feeRateHealth,
 	)
 }
 
@@ -225,9 +240,11 @@ func publish(samples []sample, roster []string, maxAgeDays int, now time.Time) (
 			if feesSeen[s.Chain] && !unexplainedZero {
 				feesUSD.WithLabelValues(s.Platform, alias).Set(s.Fees)
 				feeRatePct.WithLabelValues(s.Platform, alias).Set(s.Fees / s.Volume * 100)
+				feeRateHealth.WithLabelValues(s.Platform, alias).Set(1)
 			} else {
 				feesUSD.DeleteLabelValues(s.Platform, alias)
 				feeRatePct.DeleteLabelValues(s.Platform, alias)
+				feeRateHealth.WithLabelValues(s.Platform, alias).Set(0)
 			}
 			if unexplainedZero {
 				feeWithheld.WithLabelValues(s.Platform, alias).Set(1)
