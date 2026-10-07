@@ -4,6 +4,7 @@ import { HlPerformanceChart } from "@/components/hl-performance-chart";
 import { HlCoinDistribution } from "@/components/hl-coin-distribution";
 import { HlUserPercentile } from "@/components/hl-user-percentile";
 import { HlTopUsersTable } from "@/components/hl-top-users-table";
+import { HlFeedCoverageNote } from "@/components/hl-feed-coverage-note";
 
 /**
  * Per-builder HyperTracker-parity dashboard on /products/[slug].
@@ -38,6 +39,8 @@ export function HlBuilderDashboard({
       <p className="label-mono text-ink-faint mb-3">
         Hyperliquid frontend dashboard
       </p>
+
+      <HlFeedCoverageNote feed={stats.feed} className="mb-4 max-w-3xl" />
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         <KpiCard
@@ -98,13 +101,26 @@ export function HlBuilderDashboard({
         <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
           {stats.biggestDayRevenue > 0 && (
             <Milestone
-              label="Biggest day"
+              // "Biggest day" was the wrong promise while the upstream feed
+              // publishes partial days: a maximum over days of unequal length
+              // ranks coverage, not activity. The harness now picks the
+              // biggest day the feed carried whole, so the card says that.
+              label={
+                stats.feed && stats.feed.truncatedDaysWindow > 0
+                  ? "Biggest complete day"
+                  : "Biggest day"
+              }
               value={fmtUSD(stats.biggestDayRevenue)}
               detail={
                 stats.biggestDayUnix > 0
                   ? new Date(stats.biggestDayUnix * 1000)
                       .toISOString()
                       .slice(0, 10)
+                  : undefined
+              }
+              tip={
+                stats.feed && stats.feed.truncatedDaysWindow > 0
+                  ? "Highest single UTC day the per-builder feed published in full. Days the feed cut short are skipped: their totals are lower bounds and cannot be compared against a whole day."
                   : undefined
               }
             />
@@ -193,13 +209,15 @@ function Milestone({
   label,
   value,
   detail,
+  tip,
 }: {
   label: string;
   value: string;
   detail?: string;
+  tip?: string;
 }) {
   return (
-    <div className="card-soft rounded-lg p-3 border border-ink/10">
+    <div className="card-soft rounded-lg p-3 border border-ink/10" title={tip}>
       <p className="label-mono text-[10px] text-ink-faint mb-1">{label}</p>
       <p className="text-base font-semibold tabular-nums">{value}</p>
       {detail && <p className="text-[11px] text-ink-faint mt-0.5">{detail}</p>}

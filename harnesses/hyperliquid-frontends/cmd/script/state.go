@@ -34,6 +34,13 @@ type State struct {
 	Hip3Daily map[string]map[string]float64 `json:"hip3_daily"`
 	// DataDay is the last complete feed day the gauges were published for.
 	DataDay string `json:"data_day"`
+	// DayCoverage[day] = the furthest fill second seen across the cohort on
+	// that day, as hours into the day. Written while the day is inside the
+	// mirror window and kept afterwards, because the files it was measured
+	// from are deleted once the fetch range moves on: without this the
+	// truncated-day count could only look at the mirror window and reported
+	// 12 of 30 where the real figure was 17.
+	DayCoverage map[string]float64 `json:"day_coverage"`
 
 	mu     sync.Mutex
 	saveMu sync.Mutex // one writer of the file at a time (poller, aggregator, shutdown)
@@ -67,7 +74,44 @@ func (s *State) init() {
 	if s.Hip3Daily == nil {
 		s.Hip3Daily = make(map[string]map[string]float64)
 	}
+	if s.DayCoverage == nil {
+		s.DayCoverage = make(map[string]float64)
+	}
 	s.Version = 2
+}
+
+// setDayCoverage records how far into `day` the cohort's furthest fill
+// reached, in hours. Only ever called for a day whose files are present, so a
+// day already recorded is refreshed rather than overwritten with a zero.
+func (s *State) setDayCoverage(day string, hours float64) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.DayCoverage == nil {
+		s.DayCoverage = make(map[string]float64)
+	}
+	s.DayCoverage[day] = hours
+}
+
+// dayCoverage returns the recorded coverage for a day and whether it was ever
+// measured. The second return is the whole point: a day nobody measured must
+// not read as a day measured at zero.
+func (s *State) dayCoverage(day string) (float64, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	h, ok := s.DayCoverage[day]
+	return h, ok
+}
+
+// pruneDayCoverage drops recorded days older than `oldest` so the file does
+// not grow without bound.
+func (s *State) pruneDayCoverage(oldest string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for d := range s.DayCoverage {
+		if d < oldest {
+			delete(s.DayCoverage, d)
+		}
+	}
 }
 
 func (s *State) save() error {
