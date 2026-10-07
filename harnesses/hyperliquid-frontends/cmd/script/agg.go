@@ -27,6 +27,11 @@ type Aggregator struct {
 	ledgerFrom   time.Time // oldest day the ledger backfill walks to
 	settle       time.Duration
 
+	// node is the Hyperliquid node's own reduced fill stream, when one is
+	// configured. Where it has a whole day, that day wins over the mirror;
+	// see nodesource.go.
+	node *NodeSource
+
 	mu              sync.Mutex
 	cache           map[string]map[string]*daySummary // addr -> day -> parsed CSV
 	dataDay         time.Time                         // zero until a feed day is eligible
@@ -74,6 +79,7 @@ func newAggregator(builders []Builder, mirror *Mirror, state *State) *Aggregator
 		cache:      make(map[string]map[string]*daySummary),
 		prevCoins:  make(map[string][]string),
 		snapshots:  make(map[string]*builderSnapshot),
+		node:       newNodeSource(2 * time.Minute),
 	}
 	for _, b := range builders {
 		for _, addr := range b.allAddresses() {
@@ -304,6 +310,18 @@ func (a *Aggregator) evictCache(now time.Time) {
 // merged folds every address of a builder for one day into one summary.
 // nil when no address has a file that day.
 func (a *Aggregator) merged(b Builder, day time.Time) *daySummary {
+	// The node's own stream first, where it carried the day end to end. The
+	// public export cuts most days at roughly 12:10 UTC and the node does
+	// not, so this is not a preference between two measurements: it is the
+	// whole day in place of a fraction of one. A day the node only partly
+	// covered falls through to the mirror, which may hold the hours the node
+	// missed; the two are never added together.
+	if a.node != nil {
+		if s := a.node.Summary(b.allAddresses(), dayKey(day)); s != nil {
+			return s
+		}
+	}
+
 	var out *daySummary
 	for _, addr := range b.allAddresses() {
 		s := a.summary(addr, day)
@@ -361,6 +379,15 @@ func (a *Aggregator) publish() {
 	start := time.Now()
 	now := time.Now().UTC()
 	dKey := D.Format(dayFormat)
+
+	// Re-read what the node has before walking the window. A failure here is
+	// not fatal: the listing from the previous cycle still describes days
+	// that are finished and cannot change, and the mirror covers the rest.
+	if a.node != nil {
+		if err := a.node.Refresh(); err != nil {
+			log.Printf("node reducer listing: %v (using the previous listing)", err)
+		}
+	}
 	// Every day from the fetch-range start is on disk, so the ledger rows
 	// for [mirrorFrom, D] are rewritten from the mirror on each publish and
 	// count as complete; older days need the one-off backfill.
@@ -493,6 +520,27 @@ func (a *Aggregator) publish() {
 	hlDataDay.Set(float64(D.Unix()))
 	hlDataDayEnd.Set(float64(D.Unix() + daySec))
 	short := a.publishCoverage(D, windowStart, cohortLastFill)
+
+	// How much of the window came from the node rather than the public
+	// export. This is the figure that says whether the page is reading whole
+	// days or half ones, so it is published rather than inferred from the
+	// truncation count.
+	if a.node != nil {
+		whole := a.node.WholeDays()
+		keep := map[string]bool{}
+		fromNode := 0
+		for d := windowStart; !d.After(D); d = d.AddDate(0, 0, 1) {
+			k := dayKey(d)
+			keep[k] = true
+			if whole[k] {
+				fromNode++
+			}
+		}
+		hlNodeDaysWindow.Set(float64(fromNode))
+		a.node.Evict(keep)
+	} else {
+		hlNodeDaysWindow.Set(0)
+	}
 
 	// Second pass: the biggest day needs to know which days were cut short,
 	// and cohortLastFill is only complete once every builder has been walked.
