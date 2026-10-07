@@ -2,10 +2,10 @@
 
 slug: solana-avg-trade-size
 number: "206"
-title: "Average swap size on Solana: which trading terminal carries the biggest tickets"
-seo_title: "Average trade size by Solana terminal 2026"
+title: "Average swap size per trading terminal: who carries the biggest tickets"
+seo_title: "Average trade size by trading terminal 2026"
 seo_description: "{{best_name}} carries the largest average Solana swap at {{best_p50}}. Fomo, Maestro, Terminal, GMGN, Axiom and pump.fun ranked by ticket."
-subtitle: A day's routed Solana volume divided by that day's swap count, per trading terminal. Separates the terminals carrying large tickets from the ones carrying many small ones.
+subtitle: A day's routed volume divided by that day's swap count, per trading terminal, across every chain or one at a time. Separates the terminals carrying large tickets from the ones carrying many small ones.
 
 category: Trading
 status: live
@@ -60,6 +60,31 @@ findings:
   - "This is a mean over a day's totals, so it moves with a handful of large trades. It is a description of flow mix, not the size of a typical trade."
   - "Padre, Phantom and Bloom left the cohort on 2026-10-07 because the current source does not cover them. A row that cannot be measured is removed, not published as zero."
 
+dimension_labels:
+  chain: Chain
+
+dimensions:
+  # `all` is a real cross-chain total here, not an alias: volume, transactions
+  # and fees add up, and the two ratios built on them (average trade is total
+  # volume over total transactions, take rate is total fees over the volume of
+  # the chains whose fees could be measured) are correctly volume-weighted by
+  # construction. Bench 232 is the exception and says why on its own page: a
+  # wallet trading on two chains is one wallet, so there is no honest
+  # all-chains wallet count and its `all` carries Solana instead.
+  #
+  # Seven chains, the ones with at least four terminals. X Layer, Avalanche and
+  # Monad are measured and queryable but not offered: one or two terminals on a
+  # chain is a list, not a comparison.
+  chain:
+    - { value: all,       label: All chains }
+    - { value: solana,    label: Solana }
+    - { value: bnb,       label: BNB Chain }
+    - { value: robinhood, label: Robinhood Chain }
+    - { value: base,      label: Base }
+    - { value: arc,       label: Arc }
+    - { value: ethereum,  label: Ethereum }
+    - { value: hyperevm,  label: HyperEVM }
+
 source: https://github.com/ChainBench/OpenChainBench/tree/dev/harnesses/terminal-activity
 
 prometheus:
@@ -81,108 +106,117 @@ faq:
 providers:
   - slug: fomo
     name: Fomo
+    url: https://fomo.family
     tag: "Cross-chain terminal, gas sponsored"
     formula: "A day's routed Solana volume divided by that day's swap count for Fomo, both from the tehcscreener /bots/fomo series."
     queries:
-      p50: max(terminal_avg_trade_usd{platform="fomo",chain="solana"})
-      p90: max(terminal_avg_trade_usd{platform="fomo",chain="solana"})
-      p99: max(terminal_avg_trade_usd{platform="fomo",chain="solana"})
-      success: max(terminal_activity_health{platform="fomo",chain="solana"})
-      sample_size: max(terminal_txns{platform="fomo",chain="solana"})
-      series: max by (platform) (terminal_avg_trade_usd{platform="fomo",chain="solana"})
+      p50: max(terminal_avg_trade_usd{platform="fomo",chain="all"})
+      p90: max(terminal_avg_trade_usd{platform="fomo",chain="all"})
+      p99: max(terminal_avg_trade_usd{platform="fomo",chain="all"})
+      success: max(terminal_activity_health{platform="fomo",chain="all"})
+      sample_size: max(terminal_txns{platform="fomo",chain="all"})
+      series: max by (platform) (terminal_avg_trade_usd{platform="fomo",chain="all"})
 
   - slug: axiom
     name: Axiom
+    url: https://axiom.trade
     tag: "Solana-first trading terminal"
     formula: "A day's routed Solana volume divided by that day's swap count for Axiom, both from the tehcscreener /bots/axiom series."
     queries:
-      p50: max(terminal_avg_trade_usd{platform="axiom",chain="solana"})
-      p90: max(terminal_avg_trade_usd{platform="axiom",chain="solana"})
-      p99: max(terminal_avg_trade_usd{platform="axiom",chain="solana"})
-      success: max(terminal_activity_health{platform="axiom",chain="solana"})
-      sample_size: max(terminal_txns{platform="axiom",chain="solana"})
-      series: max by (platform) (terminal_avg_trade_usd{platform="axiom",chain="solana"})
+      p50: max(terminal_avg_trade_usd{platform="axiom",chain="all"})
+      p90: max(terminal_avg_trade_usd{platform="axiom",chain="all"})
+      p99: max(terminal_avg_trade_usd{platform="axiom",chain="all"})
+      success: max(terminal_activity_health{platform="axiom",chain="all"})
+      sample_size: max(terminal_txns{platform="axiom",chain="all"})
+      series: max by (platform) (terminal_avg_trade_usd{platform="axiom",chain="all"})
 
-  - slug: pumpapp
+  - slug: pump-fun
     name: pump.fun
+    url: https://pump.fun
     tag: "Launchpad's own trading app"
     formula: "A day's routed Solana volume divided by that day's swap count for pump.fun, both from the tehcscreener /bots/pumpapp series."
     queries:
-      p50: max(terminal_avg_trade_usd{platform="pumpapp",chain="solana"})
-      p90: max(terminal_avg_trade_usd{platform="pumpapp",chain="solana"})
-      p99: max(terminal_avg_trade_usd{platform="pumpapp",chain="solana"})
-      success: max(terminal_activity_health{platform="pumpapp",chain="solana"})
-      sample_size: max(terminal_txns{platform="pumpapp",chain="solana"})
-      series: max by (platform) (terminal_avg_trade_usd{platform="pumpapp",chain="solana"})
+      p50: max(terminal_avg_trade_usd{platform="pump-fun",chain="all"})
+      p90: max(terminal_avg_trade_usd{platform="pump-fun",chain="all"})
+      p99: max(terminal_avg_trade_usd{platform="pump-fun",chain="all"})
+      success: max(terminal_activity_health{platform="pump-fun",chain="all"})
+      sample_size: max(terminal_txns{platform="pump-fun",chain="all"})
+      series: max by (platform) (terminal_avg_trade_usd{platform="pump-fun",chain="all"})
 
   - slug: gmgn
     name: GMGN
+    url: https://gmgn.ai
     tag: "Multi-chain terminal, widest chain reach"
     formula: "A day's routed Solana volume divided by that day's swap count for GMGN, both from the tehcscreener /bots/gmgn series."
     queries:
-      p50: max(terminal_avg_trade_usd{platform="gmgn",chain="solana"})
-      p90: max(terminal_avg_trade_usd{platform="gmgn",chain="solana"})
-      p99: max(terminal_avg_trade_usd{platform="gmgn",chain="solana"})
-      success: max(terminal_activity_health{platform="gmgn",chain="solana"})
-      sample_size: max(terminal_txns{platform="gmgn",chain="solana"})
-      series: max by (platform) (terminal_avg_trade_usd{platform="gmgn",chain="solana"})
+      p50: max(terminal_avg_trade_usd{platform="gmgn",chain="all"})
+      p90: max(terminal_avg_trade_usd{platform="gmgn",chain="all"})
+      p99: max(terminal_avg_trade_usd{platform="gmgn",chain="all"})
+      success: max(terminal_activity_health{platform="gmgn",chain="all"})
+      sample_size: max(terminal_txns{platform="gmgn",chain="all"})
+      series: max by (platform) (terminal_avg_trade_usd{platform="gmgn",chain="all"})
 
-  - slug: terminal
+  - slug: padre
     name: Terminal
+    url: https://trade.padre.gg
     tag: "Trading terminal, heaviest wallets"
     formula: "A day's routed Solana volume divided by that day's swap count for Terminal, both from the tehcscreener /bots/terminal series."
     queries:
-      p50: max(terminal_avg_trade_usd{platform="terminal",chain="solana"})
-      p90: max(terminal_avg_trade_usd{platform="terminal",chain="solana"})
-      p99: max(terminal_avg_trade_usd{platform="terminal",chain="solana"})
-      success: max(terminal_activity_health{platform="terminal",chain="solana"})
-      sample_size: max(terminal_txns{platform="terminal",chain="solana"})
-      series: max by (platform) (terminal_avg_trade_usd{platform="terminal",chain="solana"})
+      p50: max(terminal_avg_trade_usd{platform="padre",chain="all"})
+      p90: max(terminal_avg_trade_usd{platform="padre",chain="all"})
+      p99: max(terminal_avg_trade_usd{platform="padre",chain="all"})
+      success: max(terminal_activity_health{platform="padre",chain="all"})
+      sample_size: max(terminal_txns{platform="padre",chain="all"})
+      series: max by (platform) (terminal_avg_trade_usd{platform="padre",chain="all"})
 
   - slug: trojan
     name: Trojan
+    url: https://trojan.com
     tag: "Telegram-native bot, Solana only"
     formula: "A day's routed Solana volume divided by that day's swap count for Trojan, both from the tehcscreener /bots/trojan series."
     queries:
-      p50: max(terminal_avg_trade_usd{platform="trojan",chain="solana"})
-      p90: max(terminal_avg_trade_usd{platform="trojan",chain="solana"})
-      p99: max(terminal_avg_trade_usd{platform="trojan",chain="solana"})
-      success: max(terminal_activity_health{platform="trojan",chain="solana"})
-      sample_size: max(terminal_txns{platform="trojan",chain="solana"})
-      series: max by (platform) (terminal_avg_trade_usd{platform="trojan",chain="solana"})
+      p50: max(terminal_avg_trade_usd{platform="trojan",chain="all"})
+      p90: max(terminal_avg_trade_usd{platform="trojan",chain="all"})
+      p99: max(terminal_avg_trade_usd{platform="trojan",chain="all"})
+      success: max(terminal_activity_health{platform="trojan",chain="all"})
+      sample_size: max(terminal_txns{platform="trojan",chain="all"})
+      series: max by (platform) (terminal_avg_trade_usd{platform="trojan",chain="all"})
 
   - slug: photon
     name: Photon
+    url: https://photon-sol.tinyastro.io
     tag: "Web terminal, Solana only"
     formula: "A day's routed Solana volume divided by that day's swap count for Photon, both from the tehcscreener /bots/photon series."
     queries:
-      p50: max(terminal_avg_trade_usd{platform="photon",chain="solana"})
-      p90: max(terminal_avg_trade_usd{platform="photon",chain="solana"})
-      p99: max(terminal_avg_trade_usd{platform="photon",chain="solana"})
-      success: max(terminal_activity_health{platform="photon",chain="solana"})
-      sample_size: max(terminal_txns{platform="photon",chain="solana"})
-      series: max by (platform) (terminal_avg_trade_usd{platform="photon",chain="solana"})
+      p50: max(terminal_avg_trade_usd{platform="photon",chain="all"})
+      p90: max(terminal_avg_trade_usd{platform="photon",chain="all"})
+      p99: max(terminal_avg_trade_usd{platform="photon",chain="all"})
+      success: max(terminal_activity_health{platform="photon",chain="all"})
+      sample_size: max(terminal_txns{platform="photon",chain="all"})
+      series: max by (platform) (terminal_avg_trade_usd{platform="photon",chain="all"})
 
   - slug: maestro
     name: Maestro
+    url: https://t.me/maestro
     tag: "Telegram bot, multi-chain"
     formula: "A day's routed Solana volume divided by that day's swap count for Maestro, both from the tehcscreener /bots/maestro series."
     queries:
-      p50: max(terminal_avg_trade_usd{platform="maestro",chain="solana"})
-      p90: max(terminal_avg_trade_usd{platform="maestro",chain="solana"})
-      p99: max(terminal_avg_trade_usd{platform="maestro",chain="solana"})
-      success: max(terminal_activity_health{platform="maestro",chain="solana"})
-      sample_size: max(terminal_txns{platform="maestro",chain="solana"})
-      series: max by (platform) (terminal_avg_trade_usd{platform="maestro",chain="solana"})
+      p50: max(terminal_avg_trade_usd{platform="maestro",chain="all"})
+      p90: max(terminal_avg_trade_usd{platform="maestro",chain="all"})
+      p99: max(terminal_avg_trade_usd{platform="maestro",chain="all"})
+      success: max(terminal_activity_health{platform="maestro",chain="all"})
+      sample_size: max(terminal_txns{platform="maestro",chain="all"})
+      series: max by (platform) (terminal_avg_trade_usd{platform="maestro",chain="all"})
 
   - slug: basedbot
     name: BasedBot
+    url: https://basedbot.app
     tag: "Robinhood Chain native, little Solana flow"
     formula: "A day's routed Solana volume divided by that day's swap count for BasedBot, both from the tehcscreener /bots/basedbot series."
     queries:
-      p50: max(terminal_avg_trade_usd{platform="basedbot",chain="solana"})
-      p90: max(terminal_avg_trade_usd{platform="basedbot",chain="solana"})
-      p99: max(terminal_avg_trade_usd{platform="basedbot",chain="solana"})
-      success: max(terminal_activity_health{platform="basedbot",chain="solana"})
-      sample_size: max(terminal_txns{platform="basedbot",chain="solana"})
-      series: max by (platform) (terminal_avg_trade_usd{platform="basedbot",chain="solana"})
+      p50: max(terminal_avg_trade_usd{platform="basedbot",chain="all"})
+      p90: max(terminal_avg_trade_usd{platform="basedbot",chain="all"})
+      p99: max(terminal_avg_trade_usd{platform="basedbot",chain="all"})
+      success: max(terminal_activity_health{platform="basedbot",chain="all"})
+      sample_size: max(terminal_txns{platform="basedbot",chain="all"})
+      series: max by (platform) (terminal_avg_trade_usd{platform="basedbot",chain="all"})

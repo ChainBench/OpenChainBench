@@ -2,10 +2,10 @@
 
 slug: solana-unique-traders
 number: "207"
-title: "Daily swap transactions on Solana: Axiom vs Fomo vs pump.fun vs GMGN"
-seo_title: "Daily swap transactions by Solana terminal 2026"
+title: "Daily swap transactions per trading terminal: Axiom vs Fomo vs pump.fun vs GMGN"
+seo_title: "Daily swap transactions by trading terminal 2026"
 seo_description: "{{best_name}} leads Solana terminals with {{best_p50}} swap transactions in a day. Axiom, Fomo, pump.fun, GMGN, Terminal and Trojan ranked."
-subtitle: Swap transactions routed through each trading terminal on Solana in one complete day. Counts transactions, not wallets, so an automated trader sending hundreds of swaps a day counts hundreds of times.
+subtitle: Swap transactions routed through each trading terminal in one complete day, across every chain or one at a time. Counts transactions, not wallets, so an automated trader sending hundreds of swaps a day counts hundreds of times.
 
 category: Trading
 status: live
@@ -51,7 +51,7 @@ methodology:
   - "Latest complete day, not a rolling 24 hours: the source publishes daily and its latest day is normally yesterday. A terminal with no activity on that day carries no figure and reads unresponsive rather than having its last live day carried forward. BasedBot is the live case, with volume on Robinhood Chain and almost none on Solana."
   - "Stale source: a day more than 3 whole days behind, or a terminal the source stops returning, has its gauges deleted and reads unresponsive. An old figure is never republished as current, because these gauges are scraped every 60 seconds and read through a 24h window, which would average a frozen figure in as though it had just been measured."
   - "Two freshness layers, because they fail differently: terminal_activity_last_success_unix says the harness is still running, and terminal_activity_health says this particular terminal and chain published a day inside the window. A harness that runs while its source freezes trips the second, not the first."
-  - "Scope: Solana only, by this bench's own definition rather than by what the source can see. The harness publishes ten chains; bench 232 and bench 203 offer the comparable ones as tabs."
+  - "Scope: seven chains as tabs plus an all-chains total, from the ten the harness measures. The slug still reads solana- because this bench was Solana-only until 2026-10-07 and renaming a slug is a separate change; the page, its title and its default view are not Solana-only any more."
   - "Not scored here: what those transactions cost. A terminal can lead on transaction count and be the most expensive way to route a swap; benches 268 and 279 measure that."
 
 findings:
@@ -59,6 +59,31 @@ findings:
   - "Transaction count and wallet count rank differently, and the gap is the point. Bench 232 counts the wallets behind these same transactions on the same day."
   - "pump.fun appears here for the first time. It charges no terminal fee, so a count built on fee-wallet attribution could not see it at all, whatever its real volume."
   - "A transaction is one routed swap, counted once however many hops it took, so a terminal that splits a route is not rewarded for it."
+
+dimension_labels:
+  chain: Chain
+
+dimensions:
+  # `all` is a real cross-chain total here, not an alias: volume, transactions
+  # and fees add up, and the two ratios built on them (average trade is total
+  # volume over total transactions, take rate is total fees over the volume of
+  # the chains whose fees could be measured) are correctly volume-weighted by
+  # construction. Bench 232 is the exception and says why on its own page: a
+  # wallet trading on two chains is one wallet, so there is no honest
+  # all-chains wallet count and its `all` carries Solana instead.
+  #
+  # Seven chains, the ones with at least four terminals. X Layer, Avalanche and
+  # Monad are measured and queryable but not offered: one or two terminals on a
+  # chain is a list, not a comparison.
+  chain:
+    - { value: all,       label: All chains }
+    - { value: solana,    label: Solana }
+    - { value: bnb,       label: BNB Chain }
+    - { value: robinhood, label: Robinhood Chain }
+    - { value: base,      label: Base }
+    - { value: arc,       label: Arc }
+    - { value: ethereum,  label: Ethereum }
+    - { value: hyperevm,  label: HyperEVM }
 
 source: https://github.com/ChainBench/OpenChainBench/tree/dev/harnesses/terminal-activity
 
@@ -81,108 +106,117 @@ faq:
 providers:
   - slug: fomo
     name: Fomo
+    url: https://fomo.family
     tag: "Cross-chain terminal, gas sponsored"
     formula: "Swap transactions routed through Fomo on Solana on the day, from the tehcscreener /bots/fomo series."
     queries:
-      p50: max(terminal_txns{platform="fomo",chain="solana"})
-      p90: max(terminal_txns{platform="fomo",chain="solana"})
-      p99: max(terminal_txns{platform="fomo",chain="solana"})
-      success: max(terminal_activity_health{platform="fomo",chain="solana"})
-      sample_size: max(terminal_volume_usd{platform="fomo",chain="solana"})
-      series: max by (platform) (terminal_txns{platform="fomo",chain="solana"})
+      p50: max(terminal_txns{platform="fomo",chain="all"})
+      p90: max(terminal_txns{platform="fomo",chain="all"})
+      p99: max(terminal_txns{platform="fomo",chain="all"})
+      success: max(terminal_activity_health{platform="fomo",chain="all"})
+      sample_size: max(terminal_volume_usd{platform="fomo",chain="all"})
+      series: max by (platform) (terminal_txns{platform="fomo",chain="all"})
 
   - slug: axiom
     name: Axiom
+    url: https://axiom.trade
     tag: "Solana-first trading terminal"
     formula: "Swap transactions routed through Axiom on Solana on the day, from the tehcscreener /bots/axiom series."
     queries:
-      p50: max(terminal_txns{platform="axiom",chain="solana"})
-      p90: max(terminal_txns{platform="axiom",chain="solana"})
-      p99: max(terminal_txns{platform="axiom",chain="solana"})
-      success: max(terminal_activity_health{platform="axiom",chain="solana"})
-      sample_size: max(terminal_volume_usd{platform="axiom",chain="solana"})
-      series: max by (platform) (terminal_txns{platform="axiom",chain="solana"})
+      p50: max(terminal_txns{platform="axiom",chain="all"})
+      p90: max(terminal_txns{platform="axiom",chain="all"})
+      p99: max(terminal_txns{platform="axiom",chain="all"})
+      success: max(terminal_activity_health{platform="axiom",chain="all"})
+      sample_size: max(terminal_volume_usd{platform="axiom",chain="all"})
+      series: max by (platform) (terminal_txns{platform="axiom",chain="all"})
 
-  - slug: pumpapp
+  - slug: pump-fun
     name: pump.fun
+    url: https://pump.fun
     tag: "Launchpad's own trading app"
     formula: "Swap transactions routed through pump.fun on Solana on the day, from the tehcscreener /bots/pumpapp series."
     queries:
-      p50: max(terminal_txns{platform="pumpapp",chain="solana"})
-      p90: max(terminal_txns{platform="pumpapp",chain="solana"})
-      p99: max(terminal_txns{platform="pumpapp",chain="solana"})
-      success: max(terminal_activity_health{platform="pumpapp",chain="solana"})
-      sample_size: max(terminal_volume_usd{platform="pumpapp",chain="solana"})
-      series: max by (platform) (terminal_txns{platform="pumpapp",chain="solana"})
+      p50: max(terminal_txns{platform="pump-fun",chain="all"})
+      p90: max(terminal_txns{platform="pump-fun",chain="all"})
+      p99: max(terminal_txns{platform="pump-fun",chain="all"})
+      success: max(terminal_activity_health{platform="pump-fun",chain="all"})
+      sample_size: max(terminal_volume_usd{platform="pump-fun",chain="all"})
+      series: max by (platform) (terminal_txns{platform="pump-fun",chain="all"})
 
   - slug: gmgn
     name: GMGN
+    url: https://gmgn.ai
     tag: "Multi-chain terminal, widest chain reach"
     formula: "Swap transactions routed through GMGN on Solana on the day, from the tehcscreener /bots/gmgn series."
     queries:
-      p50: max(terminal_txns{platform="gmgn",chain="solana"})
-      p90: max(terminal_txns{platform="gmgn",chain="solana"})
-      p99: max(terminal_txns{platform="gmgn",chain="solana"})
-      success: max(terminal_activity_health{platform="gmgn",chain="solana"})
-      sample_size: max(terminal_volume_usd{platform="gmgn",chain="solana"})
-      series: max by (platform) (terminal_txns{platform="gmgn",chain="solana"})
+      p50: max(terminal_txns{platform="gmgn",chain="all"})
+      p90: max(terminal_txns{platform="gmgn",chain="all"})
+      p99: max(terminal_txns{platform="gmgn",chain="all"})
+      success: max(terminal_activity_health{platform="gmgn",chain="all"})
+      sample_size: max(terminal_volume_usd{platform="gmgn",chain="all"})
+      series: max by (platform) (terminal_txns{platform="gmgn",chain="all"})
 
-  - slug: terminal
+  - slug: padre
     name: Terminal
+    url: https://trade.padre.gg
     tag: "Trading terminal, heaviest wallets"
     formula: "Swap transactions routed through Terminal on Solana on the day, from the tehcscreener /bots/terminal series."
     queries:
-      p50: max(terminal_txns{platform="terminal",chain="solana"})
-      p90: max(terminal_txns{platform="terminal",chain="solana"})
-      p99: max(terminal_txns{platform="terminal",chain="solana"})
-      success: max(terminal_activity_health{platform="terminal",chain="solana"})
-      sample_size: max(terminal_volume_usd{platform="terminal",chain="solana"})
-      series: max by (platform) (terminal_txns{platform="terminal",chain="solana"})
+      p50: max(terminal_txns{platform="padre",chain="all"})
+      p90: max(terminal_txns{platform="padre",chain="all"})
+      p99: max(terminal_txns{platform="padre",chain="all"})
+      success: max(terminal_activity_health{platform="padre",chain="all"})
+      sample_size: max(terminal_volume_usd{platform="padre",chain="all"})
+      series: max by (platform) (terminal_txns{platform="padre",chain="all"})
 
   - slug: trojan
     name: Trojan
+    url: https://trojan.com
     tag: "Telegram-native bot, Solana only"
     formula: "Swap transactions routed through Trojan on Solana on the day, from the tehcscreener /bots/trojan series."
     queries:
-      p50: max(terminal_txns{platform="trojan",chain="solana"})
-      p90: max(terminal_txns{platform="trojan",chain="solana"})
-      p99: max(terminal_txns{platform="trojan",chain="solana"})
-      success: max(terminal_activity_health{platform="trojan",chain="solana"})
-      sample_size: max(terminal_volume_usd{platform="trojan",chain="solana"})
-      series: max by (platform) (terminal_txns{platform="trojan",chain="solana"})
+      p50: max(terminal_txns{platform="trojan",chain="all"})
+      p90: max(terminal_txns{platform="trojan",chain="all"})
+      p99: max(terminal_txns{platform="trojan",chain="all"})
+      success: max(terminal_activity_health{platform="trojan",chain="all"})
+      sample_size: max(terminal_volume_usd{platform="trojan",chain="all"})
+      series: max by (platform) (terminal_txns{platform="trojan",chain="all"})
 
   - slug: photon
     name: Photon
+    url: https://photon-sol.tinyastro.io
     tag: "Web terminal, Solana only"
     formula: "Swap transactions routed through Photon on Solana on the day, from the tehcscreener /bots/photon series."
     queries:
-      p50: max(terminal_txns{platform="photon",chain="solana"})
-      p90: max(terminal_txns{platform="photon",chain="solana"})
-      p99: max(terminal_txns{platform="photon",chain="solana"})
-      success: max(terminal_activity_health{platform="photon",chain="solana"})
-      sample_size: max(terminal_volume_usd{platform="photon",chain="solana"})
-      series: max by (platform) (terminal_txns{platform="photon",chain="solana"})
+      p50: max(terminal_txns{platform="photon",chain="all"})
+      p90: max(terminal_txns{platform="photon",chain="all"})
+      p99: max(terminal_txns{platform="photon",chain="all"})
+      success: max(terminal_activity_health{platform="photon",chain="all"})
+      sample_size: max(terminal_volume_usd{platform="photon",chain="all"})
+      series: max by (platform) (terminal_txns{platform="photon",chain="all"})
 
   - slug: maestro
     name: Maestro
+    url: https://t.me/maestro
     tag: "Telegram bot, multi-chain"
     formula: "Swap transactions routed through Maestro on Solana on the day, from the tehcscreener /bots/maestro series."
     queries:
-      p50: max(terminal_txns{platform="maestro",chain="solana"})
-      p90: max(terminal_txns{platform="maestro",chain="solana"})
-      p99: max(terminal_txns{platform="maestro",chain="solana"})
-      success: max(terminal_activity_health{platform="maestro",chain="solana"})
-      sample_size: max(terminal_volume_usd{platform="maestro",chain="solana"})
-      series: max by (platform) (terminal_txns{platform="maestro",chain="solana"})
+      p50: max(terminal_txns{platform="maestro",chain="all"})
+      p90: max(terminal_txns{platform="maestro",chain="all"})
+      p99: max(terminal_txns{platform="maestro",chain="all"})
+      success: max(terminal_activity_health{platform="maestro",chain="all"})
+      sample_size: max(terminal_volume_usd{platform="maestro",chain="all"})
+      series: max by (platform) (terminal_txns{platform="maestro",chain="all"})
 
   - slug: basedbot
     name: BasedBot
+    url: https://basedbot.app
     tag: "Robinhood Chain native, little Solana flow"
     formula: "Swap transactions routed through BasedBot on Solana on the day, from the tehcscreener /bots/basedbot series."
     queries:
-      p50: max(terminal_txns{platform="basedbot",chain="solana"})
-      p90: max(terminal_txns{platform="basedbot",chain="solana"})
-      p99: max(terminal_txns{platform="basedbot",chain="solana"})
-      success: max(terminal_activity_health{platform="basedbot",chain="solana"})
-      sample_size: max(terminal_volume_usd{platform="basedbot",chain="solana"})
-      series: max by (platform) (terminal_txns{platform="basedbot",chain="solana"})
+      p50: max(terminal_txns{platform="basedbot",chain="all"})
+      p90: max(terminal_txns{platform="basedbot",chain="all"})
+      p99: max(terminal_txns{platform="basedbot",chain="all"})
+      success: max(terminal_activity_health{platform="basedbot",chain="all"})
+      sample_size: max(terminal_volume_usd{platform="basedbot",chain="all"})
+      series: max by (platform) (terminal_txns{platform="basedbot",chain="all"})
