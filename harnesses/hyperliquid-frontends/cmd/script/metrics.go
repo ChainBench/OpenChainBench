@@ -49,6 +49,10 @@ var (
 		Name: "hl_frontend_truncated_days_window_v2",
 		Help: "Days inside the 30-day window whose published file stops short of 23 hours. Every windowed total is understated by roughly half a day for each one counted here.",
 	})
+	hlNodeDaysWindow = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "hl_frontend_node_days_window_v2",
+		Help: "Days in the 30-day window read from the Hyperliquid node's own fill stream rather than the public per-builder export. The export cuts most days off around 12:10 UTC; a day sourced here is whole. The window is only as good as this number is close to 30.",
+	})
 	hlCoverageDaysMeasured = promauto.NewGauge(prometheus.GaugeOpts{
 		Name: "hl_frontend_coverage_days_measured_v2",
 		Help: "Days in the 30-day window whose feed coverage was actually measured. The truncated-day count is out of this, not out of 30: a day that left the mirror window before this harness first ran was never measured, and counting it as clean would understate the truncation.",

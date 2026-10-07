@@ -1,0 +1,37 @@
+# Append to /etc/caddy/Caddyfile on the node box (15.235.224.14).
+# Same auth model as :8088 and :8089: basic_auth on everything that carries
+# data, /healthz open for liveness. Reuse the existing ocb_scraper and
+# vps_scraper bcrypt hashes from the :8088 block rather than minting new ones.
+:8090 {
+	handle /healthz {
+		respond "ok" 200
+	}
+
+	handle /metrics {
+		basicauth {
+			ocb_scraper <paste the ocb_scraper hash from the :8088 block>
+			vps_scraper <paste the vps_scraper hash from the :8088 block>
+		}
+		reverse_proxy 127.0.0.1:2115
+	}
+
+	handle /daily/* {
+		basicauth {
+			ocb_scraper <paste the ocb_scraper hash from the :8088 block>
+			vps_scraper <paste the vps_scraper hash from the :8088 block>
+		}
+		reverse_proxy 127.0.0.1:2115
+	}
+
+	handle /days {
+		basicauth {
+			ocb_scraper <paste the ocb_scraper hash from the :8088 block>
+			vps_scraper <paste the vps_scraper hash from the :8088 block>
+		}
+		reverse_proxy 127.0.0.1:2115
+	}
+
+	handle {
+		respond 404
+	}
+}
