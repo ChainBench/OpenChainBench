@@ -42,6 +42,7 @@
 //	terminal_activity_health{platform,chain}
 //	terminal_activity_last_success_unix
 //	terminal_fee_column_ok{chain}
+//	terminal_fee_withheld{platform,chain}
 package main
 
 import (
