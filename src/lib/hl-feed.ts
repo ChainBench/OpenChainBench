@@ -51,6 +51,10 @@ export type HlFeedCoverage = {
   daysMeasured: number;
   /** Days the window spans, for context when it differs from daysMeasured. */
   windowDays: number;
+  /** Days in the window read from our own Hyperliquid node's fill stream
+   *  rather than the public per-builder export. A day sourced there is whole;
+   *  the export cuts most days off around 12:10 UTC. */
+  nodeDays: number;
 };
 
 /**
@@ -66,4 +70,21 @@ export type HlFeedCoverage = {
 export function feedNeedsDisclosure(feed: HlFeedCoverage | null): boolean {
   if (!feed) return true;
   return feed.truncatedDaysWindow > 0 || feed.latestDayTruncated;
+}
+
+/**
+ * Whether the window is whole enough that the note should read as a footnote
+ * rather than a warning.
+ *
+ * Most of the window now comes from our own node, which publishes every hour
+ * of every day it was up. What is left is the handful of days the node was
+ * down, which fall back to the public export and are short. Those days still
+ * pull a 30-day total down by a few per cent and the reader should be told,
+ * but a page whose figures are 0.96x of a full-feed tracker should not carry
+ * the same red banner as one whose figures were 0.53x.
+ */
+export function feedIsMostlyWhole(feed: HlFeedCoverage | null): boolean {
+  if (!feed) return false;
+  if (feed.windowDays <= 0) return false;
+  return feed.nodeDays >= feed.windowDays - 5;
 }
