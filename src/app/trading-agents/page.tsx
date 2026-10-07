@@ -202,6 +202,9 @@ export default async function TradingAgentsHubPage() {
                     <Th align="right" tip="Standard deviation of this agent's weekly returns. The roster spans a factor of two and a half: the steadiest and the wildest can reach the same total by very different routes.">
                       Weekly swing
                     </Th>
+                    <Th align="right" tip="Trades in a six-day round. The roster spans 2 to 89 under identical rules, the widest spread on this page.">
+                      Trades per round
+                    </Th>
                     <Th align="right" tip="Funded rounds behind every figure on this row.">
                       Rounds
                     </Th>
@@ -331,6 +334,45 @@ export default async function TradingAgentsHubPage() {
 
           <section className="mb-10">
             <h2 className="display text-xl sm:text-2xl text-ink mb-3">
+              The widest spread on this page is not the returns
+            </h2>
+            <div className="rounded-xl border border-ink/10 card-soft p-5 sm:p-6 text-sm text-ink-soft leading-relaxed max-w-3xl">
+              <p>
+                Same harness, same prompt, same pair, same six days. The agents
+                still disagree about how much to act by a factor of forty: the
+                quietest trades about twice in a round, the busiest close to
+                ninety. Two halves of the same model sit at opposite ends of
+                that range, so what moves it is the input format rather than
+                the model, and a table of returns cannot show it at all.
+              </p>
+              <p className="mt-3">
+                It also complicates the headline. At the roster average of
+                roughly 29 trades a round and Aerodrome&rsquo;s 0.05 percent
+                pool fee, charging the full portfolio to every trade would cost
+                about 1.45 percent a week, which is more than the whole
+                measured shortfall. Friction on that arithmetic is large enough
+                to account for the gap.
+              </p>
+              <p className="mt-3">
+                The cross-section refuses to go along with it. The correlation
+                between trades per round and alpha is -0.25 across the eight
+                agents, which is nothing: the quietest agent still gives up
+                16.4 points, and the busiest finishes third. So friction is big
+                enough to matter in aggregate and is not what separates them.
+              </p>
+              <p className="mt-3 text-ink-muted">
+                What would settle it is the size of each trade, not just the
+                count, and that is on-chain rather than in the upstream API.
+                The arena publishes each agent&rsquo;s wallet, so every swap is
+                checkable on Base. Until it is measured the cost figure above
+                is an upper bound, not an explanation, and the page states it
+                as one.
+              </p>
+            </div>
+          </section>
+
+          <section className="mb-10">
+            <h2 className="display text-xl sm:text-2xl text-ink mb-3">
               Why one arena and not a pooled leaderboard
             </h2>
             <div className="rounded-xl border border-ink/10 card-soft p-5 sm:p-6 text-sm text-ink-soft leading-relaxed max-w-3xl">
@@ -434,7 +476,7 @@ function LabGroup({
   return (
     <>
       <tr className="border-b border-ink/10 bg-ink/[0.02]">
-        <td className="py-2.5 pr-3" colSpan={8}>
+        <td className="py-2.5 pr-3" colSpan={9}>
           <div className="flex items-center gap-2">
             <ProviderLogo slug={lab.slug} name={lab.name} size={20} />
             <Link
@@ -461,6 +503,7 @@ function LabGroup({
           <Td value={a.hitRate} fmt={fmtPct0} />
           <Td value={a.beta} fmt={fmtX} />
           <Td value={a.weeklySwing} fmt={fmtPlainPct} />
+          <Td value={a.tradesPerRound} fmt={fmtTrades} />
           <Td value={a.rounds} fmt={fmtInt} />
         </tr>
       ))}
@@ -554,6 +597,13 @@ function ArchCard({ label, body }: { label: string; body: string }) {
       <p className="text-sm text-ink-soft leading-relaxed">{body}</p>
     </div>
   );
+}
+
+/** One decimal: the difference between 2.2 and 88.7 is the point, and
+ *  rounding the quiet end to "2" loses that it is not zero. */
+function fmtTrades(v: number): string {
+  if (!Number.isFinite(v)) return "...";
+  return v.toFixed(1);
 }
 
 /** A dispersion, not a signed result: a leading plus would read as a gain. */
