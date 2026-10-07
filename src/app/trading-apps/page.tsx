@@ -32,7 +32,7 @@ const ALL_BENCH_SLUGS = [
   "trading-app-daily-volume",
   "terminal-fill-quality",
   "terminal-execution-quality",
-  "solana-trading-platform-wars",
+  "trading-platform-wars",
   "terminal-swap-transactions",
   "terminal-avg-trade-size",
   "trading-platform-wallets",
@@ -50,7 +50,7 @@ const ALL_GROUPS = [
   {
     label: "Volume & activity",
     items: [
-      { slug: "solana-trading-platform-wars", title: "Volume and commission" },
+      { slug: "trading-platform-wars", title: "Volume and commission" },
       { slug: "terminal-swap-transactions", title: "Swap transactions" },
       { slug: "terminal-avg-trade-size", title: "Average trade size" },
       { slug: "trading-platform-wallets", title: "Daily active wallets" },
