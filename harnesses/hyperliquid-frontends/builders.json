@@ -39,7 +39,11 @@
     "name": "MetaMask",
     "address": "0xe95a5e31904e005066614247d309e00d8ad753aa",
     "valid_from": "2026-05-31",
-    "notes": "MetaMask HL integration (primary address). MetaMask is documented to operate a secondary address 0xea2c82b5aba243ab631c0ce151763d5e38df75b3 \u2014 aggregate manually if needed."
+    "notes": "MetaMask HL integration. Tracks both documented builder addresses. The secondary carried 2.2% of the volume and 2.4% of the fees over the 26 whole days to 2026-10-06, with 473 of its 992 wallets also trading through the primary, so the two are unioned and never summed.",
+    "addresses": [
+      "0xe95a5e31904e005066614247d309e00d8ad753aa",
+      "0xea2c82b5aba243ab631c0ce151763d5e38df75b3"
+    ]
   },
   {
     "slug": "dexari",
