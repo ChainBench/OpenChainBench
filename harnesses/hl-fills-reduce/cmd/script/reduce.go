@@ -102,6 +102,10 @@ func (r *Reducer) outPath(day string) string {
 	return filepath.Join(r.OutDir, day+".json.gz")
 }
 
+// nowUTCDay is the current UTC day key. Split out so the sweep's "do not
+// touch a day still being written" rule is testable.
+func nowUTCDay() string { return time.Now().UTC().Format("20060102") }
+
 // Sweep reduces every day that is final, present, and not already reduced.
 func (r *Reducer) Sweep() (int, error) {
 	entries, err := os.ReadDir(r.FillsDir)
