@@ -1934,6 +1934,7 @@ func chains() []Chain {
 				{Slug: "tenderly", Name: "Tenderly", URL: envDefault("RPC_URL_KATANA_TENDERLY", "https://katana.gateway.tenderly.co")},
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_KATANA_DRPC", "https://katana.drpc.org")},
 				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_KATANA_THIRDWEB", "https://747474.rpc.thirdweb.com")},
+				{Slug: "conduit", Name: "Conduit", URL: envDefault("RPC_URL_KATANA_CONDUIT", "https://rpc.katanarpc.com")},
 			},
 		},
 		// 2026-10-07 chain-hunt sweep. Superseed (chain 5330), OP Stack L2. 3 clean keyless providers; publicnode has no superseed route.
@@ -2032,6 +2033,7 @@ func chains() []Chain {
 				{Slug: "xrplevm-official", Name: "Peersyst", URL: envDefault("RPC_URL_XRPLEVM_XRPLEVM_OFFICIAL", "https://cosmos-rpc.xrplevm.org")},
 				{Slug: "cumulo", Name: "Cumulo", URL: envDefault("RPC_URL_XRPLEVM_CUMULO", "https://rpc.xrpl.cumulo.org.es")},
 				{Slug: "polkachu", Name: "Polkachu", URL: envDefault("RPC_URL_XRPLEVM_POLKACHU", "https://xrp-rpc.polkachu.com")},
+				{Slug: "itrocket", Name: "ITRocket", URL: envDefault("RPC_URL_XRPLEVM_ITROCKET", "https://xrplevm-mainnet-rpc.itrocket.net")},
 			},
 		},
 	}
