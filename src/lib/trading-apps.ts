@@ -14,7 +14,7 @@ import type { ProviderResult } from "@/types/benchmark";
  * production since 2026-09-27 that removes swap transactions, average
  * trade, active wallets and the Dune fee rate, because the Dune trial
  * ended and those four benches stood down; the commission and take rate
- * from bench 201 arrive in their place, from DeFiLlama's free adapters.
+ * from bench 201 arrive in their place, from the tehcscreener API.
  *
  * Volume itself is not a column here: it lives in bench 267's table above,
  * so one app has one volume figure per page. Terminal (slug: padre) is
@@ -118,20 +118,13 @@ export const ALL_TRADING_APP_COLUMNS: readonly TradingAppColumn[] = [
     bench: "solana-trading-platform-wars",
     panel: "revenue_1d",
     fmt: fmtUSD0,
-    tip: "What the app itself collected, every chain summed (DeFiLlama dailyRevenue). The app's own cut, not the total fees paid on the trade. It covers the newest UTC day carrying both a volume and a commission figure, which can trail the volume day by up to 3 days when the fees adapter is behind.",
+    tip: "Fees the source reports on this app's flow for the day, every chain summed. More than the app's own commission: measured against published schedules it runs above them, and the source does not document what it includes. Bench 203 carries the same caveat per dollar routed.",
     higherBetter: true,
   },
-  {
-    key: "takeRate",
-    label: "Take Rate",
-    scope: "app",
-    bench: "solana-trading-platform-wars",
-    panel: "take_1d",
-    fmt: fmtPct,
-    tip: "What the app kept per dollar it routed, on the newest day carrying both figures. DeFiLlama's revenue is net of referral and cashback paybacks, so this is the app's own margin: an app that rebates a third of its fee reads a third lower while its traders pay the same. Not the price of a swap, and not ranked.",
-    higherBetter: true,
-    rankable: false,
-  },
+  // The "Take rate" column was removed on 2026-10-07. It came from bench 201
+  // and Fee Rate comes from bench 203; once both read tehcscreener they became
+  // the same number from the same source, and two identical columns side by
+  // side read as a mistake rather than as corroboration.
   {
     key: "rating",
     label: "App Rating",
@@ -147,16 +140,17 @@ export const ALL_TRADING_APP_COLUMNS: readonly TradingAppColumn[] = [
  *  have to name the source. Keyed by bench so a column set built from
  *  TRADING_APP_COLUMNS can describe itself rather than hardcoding "Dune". */
 const SOURCE_BY_BENCH: Record<string, string> = {
-  // These four moved off Dune on 2026-10-07 to the public tehcscreener API,
-  // which is Allium-backed. The move was not a cost saving on the same data:
-  // fee-wallet attribution could not see a terminal that charges no fee, so
-  // pump.fun was structurally absent from three of these four columns and
-  // Fomo from the wallet one.
+  // Every bench on this hub reads tehcscreener as of 2026-10-07, except the
+  // App Store ratings, which that source does not carry. One source is a
+  // deliberate choice: the hub previously showed a DeFiLlama take rate beside
+  // a tehcscreener fee rate, disagreeing by up to a factor of two on the same
+  // terminal, which is a contradiction a reader cannot resolve. The cost is
+  // that nothing here is cross-checked any more.
   "terminal-swap-transactions": "tehcscreener",
   "terminal-avg-trade-size": "tehcscreener",
   "trading-platform-wallets": "tehcscreener",
   "memecoin-platforms": "tehcscreener",
-  "solana-trading-platform-wars": "DeFiLlama",
+  "solana-trading-platform-wars": "tehcscreener",
   "app-store-ratings": "the App Store",
 };
 
@@ -216,7 +210,7 @@ function formulaBySlug(results: ProviderResult[] | undefined): Record<string, st
 }
 
 /** Every platform's figures for the columns this deployment serves, with
- *  per-column ranks. Volume is not here: it lives in bench 267 (DeFiLlama,
+ *  per-column ranks. Volume is not here: it lives in bench 267 (tehcscreener,
  *  cross-chain), so one app has one volume figure per page. */
 export async function loadTradingAppMatrix(): Promise<TradingAppMatrix> {
   const benches = await Promise.all(TRADING_APP_COLUMNS.map((c) => getBenchmark(c.bench)));
@@ -268,7 +262,7 @@ export async function loadTradingAppMatrix(): Promise<TradingAppMatrix> {
     });
   }
   // A row with nothing in it is a hole, not a measurement. Maestro and BasedBot
-  // are the two platforms here with no DeFiLlama adapter and no App Store entry,
+  // are the two platforms here with no tehcscreener coverage and no App Store entry,
   // so on a deployment without the Dune benches they have nothing left to show
   // and leave the table rather than filling it with dashes. Maestro's average
   // trade came from Mobula rather than Dune, but that column goes with the same
