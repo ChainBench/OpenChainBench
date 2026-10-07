@@ -150,13 +150,14 @@ export const DEV_ONLY_BENCH_SLUGS = new Set([
   // the multiplier comments corrected, and the trace profile confirmed
   // against the catalogue.
   "rpc-cost",
-  // Bench 284 trading-agent-alpha, added 2026-10-06. Gated while it is
-  // validated: the harness is new, the upstream is a single third-party API
-  // with no second source, and the headline is an alpha against a passive
-  // counterfactual that no reader has sanity-checked yet. Un-gate condition:
-  // a bench audit clean, an SEO audit clean, and a second weekly round
-  // observed so the figures are seen to move the way the arena does.
-  "trading-agent-alpha",
+  // Bench 284 trading-agent-alpha was gated here on 2026-10-06 and released on
+  // 2026-10-07 with /trading-agents. The condition was a clean bench audit, a
+  // clean SEO audit and a second weekly round observed; all three were met,
+  // and a fourth was added along the way and met too: the table had to stop
+  // reading as a ranking, because zero of its 28 pairwise comparisons clears
+  // significance and the copy saying so could not outvote a sorted leaderboard
+  // with a bold first place. It is now grouped by lab, ordered alphabetically,
+  // and banners the tie above the table.
   // Released 2026-09-23: bridges 261 (on-chain execution), 263 (realized
   // cost), 264 (SOL->X quotes) and 268 terminal-fill-quality left this
   // list with release/2026-09-23.
@@ -238,12 +239,10 @@ export const DEV_ONLY_ROUTES = new Set<string>([
   // reports `total` (every contribution ever) and `cells`. It was 0 and 0
   // on 2026-09-30.
   "/rpc-map",
-  // The hub for bench 284, added 2026-10-06. It must carry exactly the same
-  // gate as the bench itself: the aggregate blob it reads is shared between
-  // environments, so an un-gated hub would render a full table on production
-  // whose every row links to a bench page that 404s there. Un-gate the two
-  // together, on the condition recorded against "trading-agent-alpha" above.
-  "/trading-agents",
+  // /trading-agents was gated here on 2026-10-06 and released on 2026-10-07
+  // together with its bench, which was the point: the aggregate blob is shared
+  // between environments, so an un-gated hub would have rendered a full table
+  // on production whose every row linked to a 404.
 ]);
 
 export const IS_PRODUCTION = process.env.VERCEL_ENV === "production";

@@ -141,10 +141,10 @@ export default async function TradingAgentsHubPage() {
         <>
           <section className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
             <SummaryCard
-              label="Agents ranked"
+              label="Agents measured"
               value={`${hub.agentCount} from ${hub.labCount} labs`}
               accent="#10A37F"
-              tip="Every agent with at least ten funded rounds. Models with fewer appearances are excluded rather than averaged in."
+              tip="Every agent with at least ten funded rounds. Models with fewer appearances are excluded rather than averaged in. Measured, not ranked: no pair of these agents is separable."
             />
             <SummaryCard
               label="Beating their own exposure"
