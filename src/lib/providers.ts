@@ -234,6 +234,37 @@ function profileDisplayName(
  *  cohorts of one tier-dimensioned bench (QuickNode on arc-rpc: public
  *  row and keyed row) has two appearances there and must count it once
  *  (release review 2026-09-24). */
+/** Distinct benchmarks on which the provider ranks first.
+ *
+ *  `wins` deliberately counts one per chain led, so a provider topping four
+ *  chain tabs of one bench earns four. That is the right basis for ranking
+ *  the products index, and the wrong one for a sentence ending "of N
+ *  benchmarks": the two halves then count different things, and on
+ *  2026-10-07 the FOMO card read "#1 on 23 of 11 benchmarks".
+ *
+ *  It had been true enough while the trading benches carried no chain axis
+ *  and one win meant one bench. Seven chain tabs landed on four of them that
+ *  afternoon and the numerator multiplied while the denominator did not.
+ *
+ *  Use this wherever the denominator is benchmarks. Use `wins` where the
+ *  question is how many leaderboards a provider tops, chains included. */
+export function benchesLedCount(
+  appearances: readonly {
+    benchmark: { slug: string };
+    rank?: number | null;
+    rankPerChain?: Record<string, { rank: number }> | undefined;
+  }[],
+): number {
+  return new Set(
+    appearances
+      // Led in the aggregate view, or on at least one chain. rankPerChain is
+      // populated only for chains the provider leads, so a non-empty record
+      // is itself the claim. Counting the bench once either way is the point.
+      .filter((a) => a.rank === 1 || Object.keys(a.rankPerChain ?? {}).length > 0)
+      .map((a) => a.benchmark.slug),
+  ).size;
+}
+
 export function distinctBenchCount(appearances: readonly { benchmark: { slug: string } }[]): number {
   return new Set(appearances.map((a) => a.benchmark.slug)).size;
 }
