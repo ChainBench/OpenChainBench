@@ -485,15 +485,20 @@ func (a *Aggregator) publish() {
 
 		ledger := a.state.ledgerFor(b.Slug)
 		a.publishDeltas(b.Slug, ledger, D, mirrorFrom)
-		if ledgerDone {
-			a.publishLedgerStats(b.Slug, ledger)
-		}
 		a.buildSnapshot(b.Slug, D, ledger, w.users30m)
 	}
 
 	hlDataDay.Set(float64(D.Unix()))
 	hlDataDayEnd.Set(float64(D.Unix() + daySec))
-	a.publishCoverage(D, windowStart, cohortLastFill)
+	short := a.publishCoverage(D, windowStart, cohortLastFill)
+
+	// Second pass: the biggest day needs to know which days were cut short,
+	// and cohortLastFill is only complete once every builder has been walked.
+	if ledgerDone {
+		for _, b := range a.builders {
+			a.publishLedgerStats(b.Slug, a.state.ledgerFor(b.Slug), short)
+		}
+	}
 	// Liveness means "the feed was reachable and the gauges were rebuilt",
 	// not just that the process is up: a pass with transport failures
 	// leaves the tick alone so the success query goes false after 2 h.
@@ -657,7 +662,19 @@ var milestoneThresholds = []struct {
 
 // publishLedgerStats emits the biggest day and the revenue milestones from
 // the complete ledger.
-func (a *Aggregator) publishLedgerStats(slug string, ledger map[string]dayTotals) {
+//
+// `short` is the set of day keys the feed published cut short. Those days are
+// skipped when picking the biggest day, and only there. A sum over the window
+// that includes a half day understates the window, which the coverage gauges
+// disclose; a *maximum* over days of unequal length answers a different
+// question than the one asked. Measured on fomo 2026-10-07, the biggest day
+// came out as 21 September purely because 21 September is one of twelve days
+// in the window the feed carried to 23:59, while the genuinely larger days
+// after it were cut at 12:00 and summed to less than half their size. Ranking
+// coverage and calling it activity is worse than publishing a smaller number,
+// so the figure is the biggest day the feed carried *whole* and the site
+// labels it that way.
+func (a *Aggregator) publishLedgerStats(slug string, ledger map[string]dayTotals, short map[string]bool) {
 	days := ledgerDaysSorted(ledger)
 	var bestFees float64
 	var bestDay string
@@ -669,7 +686,7 @@ func (a *Aggregator) publishLedgerStats(slug string, ledger map[string]dayTotals
 		if t.Fills > 0 && first == "" {
 			first = d
 		}
-		if t.Fees > bestFees {
+		if t.Fees > bestFees && !short[d] {
 			bestFees = t.Fees
 			bestDay = d
 		}
@@ -860,20 +877,45 @@ func dayCoverageHours(day time.Time, lastFillS int64) float64 {
 
 // coverageCompleteHours is the point past which a day counts as whole.
 //
-// Hyperliquid's per-builder export started stopping at roughly 12:11 UTC on
-// 2026-09-22 and has every day since: 21 September ran to 23:59:54, 22
-// September to 12:27:11, and 2 October to 12:10:58, with the file stable
-// across re-downloads, so this is the published artefact and not a partial
-// fetch. Summing such a day beside a whole one understates it by about half
-// and says nothing, which is the shape of error this harness exists to
-// avoid. 23 leaves an hour of slack for a genuinely quiet late evening
-// across the entire cohort, which has never happened in the mirror.
+// Hyperliquid's per-builder export cuts days off at roughly 12:10 UTC, and it
+// does so intermittently rather than from one clean break: measured across
+// the archive on 2026-10-07, 15, 16 and 18 September were already short while
+// 17, 19, 20 and 21 September ran to 23:5x, and 3 October ran to 23:58:44 in
+// the middle of an otherwise unbroken run of short days from 22 September.
+// Seventeen of the thirty days ending 6 October were short. The file is
+// stable across re-downloads, so this is the published artefact and not a
+// partial fetch.
+//
+// Summing such a day beside a whole one understates it by about half and says
+// nothing, which is the shape of error this harness exists to avoid. 23
+// leaves an hour of slack for a genuinely quiet late evening across the
+// entire cohort, which has never happened in the mirror.
+//
+// Note the threshold is applied to the cohort's furthest fill, never to one
+// builder's. A single builder's file ending at midday usually means that
+// builder stopped trading: fomo's own file ends at 12:xx on 8 September, a
+// day the cohort carried to 23:59:51.
 const coverageCompleteHours = 23
 
-// publishCoverage reports how much of each day the feed actually carried.
-// The figures stay published either way: the fix for a truncated upstream is
-// to say so, not to drop the day and let the window silently shorten.
-func (a *Aggregator) publishCoverage(D, windowStart time.Time, lastFill map[string]int64) {
+// publishCoverage reports how much of each day the feed actually carried and
+// returns the set of day keys it proved short.
+//
+// The window figures stay published either way: the fix for a truncated
+// upstream is to say so, not to drop the day and let the window silently
+// shorten. The returned set exists for the one figure where a short day is not
+// an understatement but a wrong answer, the biggest day on record, which
+// compares days against each other rather than summing them.
+func (a *Aggregator) publishCoverage(D, windowStart time.Time, lastFill map[string]int64) map[string]bool {
+	// Record every day we could measure this pass, so the count below can
+	// still see it once the fetch range moves past it and the files are gone.
+	for k, ls := range lastFill {
+		d, err := time.Parse(dayFormat, k)
+		if err != nil {
+			continue
+		}
+		a.state.setDayCoverage(k, dayCoverageHours(d, ls))
+	}
+
 	cov := dayCoverageHours(D, lastFill[dayKey(D)])
 	hlDayCoverageHours.Set(cov)
 	if cov < coverageCompleteHours {
@@ -881,15 +923,25 @@ func (a *Aggregator) publishCoverage(D, windowStart time.Time, lastFill map[stri
 	} else {
 		hlDayTruncated.Set(0)
 	}
-	truncated := 0
+
+	short := map[string]bool{}
+	measured := 0
 	for d := windowStart; !d.After(D); d = d.AddDate(0, 0, 1) {
-		ls, ok := lastFill[dayKey(d)]
+		k := dayKey(d)
+		h, ok := a.state.dayCoverage(k)
 		if !ok {
-			continue // no file for that day: already counted elsewhere
+			// Never measured: the harness started after this day left the
+			// mirror window. Not counted either way, and the examined count
+			// says so rather than letting the ratio imply a clean day.
+			continue
 		}
-		if dayCoverageHours(d, ls) < coverageCompleteHours {
-			truncated++
+		measured++
+		if h < coverageCompleteHours {
+			short[k] = true
 		}
 	}
-	hlTruncatedDaysWindow.Set(float64(truncated))
+	hlTruncatedDaysWindow.Set(float64(len(short)))
+	hlCoverageDaysMeasured.Set(float64(measured))
+	a.state.pruneDayCoverage(dayKey(windowStart.AddDate(0, 0, -30)))
+	return short
 }
