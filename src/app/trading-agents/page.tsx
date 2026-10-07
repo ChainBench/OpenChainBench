@@ -152,13 +152,13 @@ export default async function TradingAgentsHubPage() {
               tip="Agents whose alpha is above zero. Alpha is return minus a passive position at that agent's own measured beta, over exactly the rounds it funded."
             />
             <SummaryCard
-              label="Best alpha"
+              label="Alpha range"
               value={
-                hub.bestName && hub.bestAlpha != null
-                  ? `${hub.bestName} · ${fmtPct(hub.bestAlpha)}`
+                hub.bestAlpha != null && hub.worstAlpha != null
+                  ? `${fmtPct(hub.worstAlpha)} to ${fmtPct(hub.bestAlpha)}`
                   : "..."
               }
-              tip="Least negative, not positive. No agent in this arena is above zero."
+              tip="Every agent is below zero. The ends are not separable from each other: no pairwise comparison in this arena clears statistical significance, so this is a range and not a podium."
             />
             <SummaryCard
               label="Separable pairs"
@@ -187,9 +187,29 @@ export default async function TradingAgentsHubPage() {
               Grouped by the lab that makes the model, because the arena runs
               most models twice: once fed the numbers behind a chart and once
               fed an image of it. Those two rows are one model under two input
-              conditions, not two competitors. Sorted by each lab&rsquo;s best
-              alpha.
+              conditions, not two competitors. Labs are listed alphabetically;
+              the order carries no claim.
             </p>
+
+            <div
+              className="mb-4 rounded-lg border px-4 py-3 text-[13px] leading-relaxed"
+              style={{
+                borderColor: "rgba(16,163,127,0.35)",
+                background: "rgba(16,163,127,0.07)",
+              }}
+            >
+              <strong className="text-ink">
+                These eight are statistically tied.
+              </strong>{" "}
+              {hub.stats.separablePairs != null
+                ? `${fmtInt(hub.stats.separablePairs)} of ${hub.stats.pairsTested} pairwise comparisons`
+                : "No pairwise comparison"}{" "}
+              clears significance on the weeks both agents ran, so the table is
+              grouped by lab and ordered alphabetically rather than by result.
+              The alpha column is a measurement with error bars, not a
+              leaderboard position, and reading it as an order of merit is the
+              one mistake this page is built to prevent.
+            </div>
 
             <div className="overflow-x-auto">
               <table className="w-full min-w-[720px] text-sm border-collapse">
@@ -217,6 +237,9 @@ export default async function TradingAgentsHubPage() {
                     <Th align="right" tip="Trades in a six-day round. The roster spans 2 to 89 under identical rules, the widest spread on this page.">
                       Trades per round
                     </Th>
+                    <Th align="right" tip="Median portfolio value over this agent's rounds. A few hundred dollars each, so nothing here speaks to behaviour at size.">
+                      Median capital
+                    </Th>
                     <Th align="right" tip="Funded rounds behind every figure on this row.">
                       Rounds
                     </Th>
@@ -230,6 +253,13 @@ export default async function TradingAgentsHubPage() {
               </table>
             </div>
             <p className="mt-3 text-[12px] text-ink-muted">
+              Return compounds each round&rsquo;s percentage, so it is the
+              trading record and not the balance: it ignores money the arena
+              moved in or out between rounds. Over this record one agent
+              publishes a return near -19% while its wallet finished slightly
+              up, because capital was withdrawn along the way.
+            </p>
+            <p className="mt-2 text-[12px] text-ink-muted">
               Agent names are declared by the arena, not verified. Nothing in
               the data proves which model sits behind a name, so no row here is
               a claim about a vendor&rsquo;s product.
@@ -488,7 +518,7 @@ function LabGroup({
   return (
     <>
       <tr className="border-b border-ink/10 bg-ink/[0.02]">
-        <td className="py-2.5 pr-3" colSpan={9}>
+        <td className="py-2.5 pr-3" colSpan={10}>
           <div className="flex items-center gap-2">
             <ProviderLogo slug={lab.slug} name={lab.name} size={20} />
             <Link
@@ -509,13 +539,14 @@ function LabGroup({
               {a.modality === "vision" ? "fed an image" : "fed numbers"}
             </span>
           </td>
-          <Td value={a.alpha} fmt={fmtPct} strong />
+          <Td value={a.alpha} fmt={fmtPct} />
           <Td value={a.ret} fmt={fmtPct} />
           <Td value={a.passive} fmt={fmtPct} />
           <Td value={a.hitRate} fmt={fmtPct0} />
           <Td value={a.beta} fmt={fmtX} />
           <Td value={a.weeklySwing} fmt={fmtPlainPct} />
           <Td value={a.tradesPerRound} fmt={fmtTrades} />
+          <Td value={a.medianCapital} fmt={fmtUsd} />
           <Td value={a.rounds} fmt={fmtInt} />
         </tr>
       ))}
@@ -609,6 +640,11 @@ function ArchCard({ label, body }: { label: string; body: string }) {
       <p className="text-sm text-ink-soft leading-relaxed">{body}</p>
     </div>
   );
+}
+
+function fmtUsd(v: number): string {
+  if (!Number.isFinite(v)) return "...";
+  return `$${Math.round(v)}`;
 }
 
 /** One decimal: the difference between 2.2 and 88.7 is the point, and

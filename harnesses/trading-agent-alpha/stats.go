@@ -157,3 +157,34 @@ func separablePairs(names []string, rounds []roundObs) (separable, tested int, m
 	}
 	return separable, tested, maxAbsT
 }
+
+// capitalStats returns the median portfolio value across an agent's funded
+// rounds and the ratio of its largest to its smallest.
+//
+// The ratio is the one that matters for reading the table. A value near 1 means
+// the agent traded a stable base throughout; the two agents that fell to
+// single-digit dollars carry ratios near 86, which means their late rounds and
+// their early rounds are not the same experiment. Fixed per-swap gas is
+// weightless on three hundred dollars and heavy on three.
+func capitalStats(o []observation) (median, ratio float64, ok bool) {
+	caps := make([]float64, 0, len(o))
+	for _, x := range o {
+		if x.capital > 0 {
+			caps = append(caps, x.capital)
+		}
+	}
+	if len(caps) == 0 {
+		return 0, 0, false
+	}
+	sort.Float64s(caps)
+	n := len(caps)
+	if n%2 == 1 {
+		median = caps[n/2]
+	} else {
+		median = (caps[n/2-1] + caps[n/2]) / 2
+	}
+	if caps[0] > 0 {
+		ratio = caps[n-1] / caps[0]
+	}
+	return median, ratio, true
+}

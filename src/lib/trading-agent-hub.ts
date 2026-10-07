@@ -30,6 +30,9 @@ export type AgentRow = {
   /** Trades in a six-day round. Spans 2 to 89 across the roster under
    *  identical rules, which is the widest spread on the page. */
   tradesPerRound: number | null;
+  /** Median portfolio value over this agent's rounds. A few hundred dollars,
+   *  so nothing on the page speaks to behaviour at size. */
+  medianCapital: number | null;
 };
 
 export type LabRow = {
@@ -149,6 +152,7 @@ async function _fetchTradingAgentHub(): Promise<TradingAgentHub | null> {
         rounds: panelValue(panels, "n_rounds", slug) ?? r.sampleSize ?? null,
         weeklySwing: panelValue(panels, "weekly_swing", slug),
         tradesPerRound: panelValue(panels, "trades_per_round", slug),
+        medianCapital: panelValue(panels, "median_capital", slug),
       });
     }
   }
@@ -166,7 +170,10 @@ async function _fetchTradingAgentHub(): Promise<TradingAgentHub | null> {
     };
   })
     .filter((l) => l.agents.length > 0)
-    .sort((a, b) => (b.bestAlpha ?? -Infinity) - (a.bestAlpha ?? -Infinity));
+    // Alphabetical, deliberately. Sorting the labs by their best alpha is a
+    // ranking claim, and none of the 28 pairwise comparisons between these
+    // agents clears significance, so the page has no ranking to make.
+    .sort((a, b) => a.name.localeCompare(b.name));
 
   const ranked = [...agents]
     .filter((a) => a.alpha != null)
