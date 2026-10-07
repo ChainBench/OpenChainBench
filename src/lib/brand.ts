@@ -56,6 +56,15 @@ const BRANDS: Record<string, Brand> = {
   sgp: { color: "#3F8F66" },
   global: { color: "#7a7166" },
 
+  // ─── AI labs (bench 284) ───
+  // Registered for the four LAB slugs only, never for the eight agent slugs.
+  // The agents keep their rotating palette colors so a chart holding all eight
+  // stays readable; two lines sharing one lab color would be two of the same.
+  openai: { color: "#10A37F" },
+  anthropic: { color: "#D97757" },      // the clay of Anthropic's own brand
+  "google-deepmind": { color: "#1BA1E3" }, // the blue end of the Gemini sparkle
+  xai: { color: "#1F2430", dark: true },
+
   // ─── Aggregators / providers (bright, saturated - read on both modes) ───
   mobula: { color: "#FF6B35" },        // vivid orange
   serialized: { color: "#3D74FF" },    // serialized logo blue - was falling back to the
