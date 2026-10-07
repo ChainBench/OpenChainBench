@@ -37,6 +37,8 @@ methodology:
   - "Significance, published rather than implied: the unit of observation is the ROUND, not the agent-round. The eight agents trade the same week, so their results are correlated and pooling every agent-round would treat one week as eight and overstate the confidence by roughly the square root of the roster. The harness averages alpha within each round first, then tests that series against zero, and publishes the t, the rounds held and the rounds the effect size needs."
   - "Separability: each pair of agents is compared on the rounds BOTH of them funded. The paired difference cancels the asset entirely, so this test needs no beta and no counterfactual and is the cleanest statement available about whether two agents differ. The count of pairs that clear |t|>2 is published; it is currently zero of 28."
   - "Cadence: rounds are weekly and last six days, so a figure that has not moved in days is current rather than stale. That holds only while the arena runs, so the harness also publishes the forward schedule as `trading_agent_scheduled_rounds`: rounds that have not ended yet. Zero means the experiment is over and this table is a closed record."
+  - "Trade counts come from each agent's own upstream record, and are lifetime rather than per arena. They are not diluted: checked against each agent's round list, 35 to 37 of every agent's 32 to 34 completed rounds are this arena. A missing counter is published as missing rather than as zero, because zero would read as an agent that never trades."
+  - "What the fee arithmetic assumes, and why it is not yet a finding: it charges the full portfolio to every trade. The real cost depends on the NOTIONAL of each trade, which this API does not serve. That figure is on-chain, and the upstream publishes each agent's wallet address, so every swap is independently checkable on Base. Until it is measured, treat the cost figure as an upper bound rather than an explanation."
   - "Liveness is published as a count rather than inferred from data age, because a weekly arena is legitimately six days stale most of the time while the site stops indexing a page whose data passes seven days. Tying the two together would deindex this page every week."
   - "What happens when the arena stops: Recall has retired arenas before, and this one will end eventually. The published figures stay valid as history, so they are not withdrawn; what changes is the tense. The page states the number of scheduled rounds and the age of the last one so a reader can tell a running experiment from a finished one without taking our word for it."
 
@@ -46,6 +48,8 @@ findings:
   - "The shortfall itself is consistent in sign and not yet significant in size. Every ranked agent is negative, and pooling the roster round by round gives a mean alpha near one point a week, but at this dispersion the series needs about thirty rounds to clear t=2. The page publishes the count it has and the count it needs rather than asserting the finding, so a reader can see how close it is."
   - "Raw returns on this arena are mostly the asset. The correlation between the round median and ETH's own move is 0.81, which leaves about a third of a round's outcome for everything the agents do, including fees and slippage."
   - "The spread between models is far smaller than the spread between the agents that wrap them. In a separate Recall round that put these models against purpose-built agents on Hyperliquid perpetuals, the purpose-built entries took the first three places and all six models trailed, while the gap between models inside this one harness stays inside a few points."
+  - "Under identical rules the agents disagree about how much to act by a factor of forty. The quietest trades 2.2 times in a six-day round, the busiest 88.7, and the two halves of the same model can sit at opposite ends: it is the input format, numbers against an image, that moves this far more than the model does. Nothing else publishes it, and a leaderboard of returns cannot show it."
+  - "Friction is large enough to account for the whole shortfall in aggregate, and is not what separates the agents. At the roster average of 29 trades a round and Aerodrome's 0.05 percent volatile-pool fee, full portfolio turnover on every trade would cost about 1.45 percent a week against a measured shortfall of 1.07. Yet the correlation between trades per round and alpha is -0.25 across the eight, which is nothing: the quietest agent still gives up 16.4 points and the busiest finishes third."
   - "{{worst_name}} is the trailer at {{worst_p50}}, and it also carries the lowest measured exposure at 0.12. Holding less of the asset did not protect it: the shortfall is the trading, not the market."
 
 faq:
@@ -57,6 +61,8 @@ faq:
     a: "This data cannot answer that, and a page that claimed to would be overstating it. Every agent here is the same harness built by Recall Labs with a different model behind it, so the comparison is between models inside one wrapper. The measured gap between them is small enough that separating them confidently would need years more rounds."
   - q: "Why measure alpha instead of return?"
     a: "The arena is single-asset: every agent holds a mix of ETH and USDC, so a round's return is mostly ETH's move. The return column is published for context, but ranking it would rank weeks in which ETH rose. Alpha subtracts a passive position at each agent's own measured exposure over exactly the rounds it funded."
+  - q: "Are they losing to trading costs rather than bad decisions?"
+    a: "Partly, maybe, and the page refuses to overstate it. At the roster average of 29 trades a round and a 0.05 percent pool fee, full turnover on every trade would cost more per week than the whole measured shortfall. But the agents that trade least do not do better: the correlation between trades per round and alpha is -0.25 over eight agents, which is nothing. What would settle it is the size of each trade, which is on-chain rather than in this API."
   - q: "Is this still running, or is it a finished experiment?"
     a: "The page publishes the answer rather than asserting it. `Rounds scheduled` counts the rounds in the arena that have not ended yet; while it is above zero the arena is still trading and new rounds keep landing. If it reaches zero the figures become a closed record of what happened, and they stay published because they remain valid as history. Recall has retired arenas before: its Hyperliquid perpetuals arena ran nine rounds and stopped in January 2026."
   - q: "Is this real money?"
@@ -178,6 +184,20 @@ metric_panels:
     tab: false
     description: "ARENA-LEVEL, identical on every row. Days since the most recent scored round ended. Rounds are weekly, so up to 7 is normal and past 14 means two were missed."
 
+  - id: trades_per_round
+    label: Trades per round
+    label_key: agent
+    metric: trading_agent_trades_per_round{kind="all"}
+    unit: count
+    description: "How often this agent trades in a six-day round. Under identical rules the roster spans 2 to 89, a forty-fold difference in how much the same harness acts depending only on which model drives it."
+  - id: trades_total
+    label: Trades, lifetime
+    label_key: agent
+    metric: trading_agent_trades_total{kind="all"}
+    unit: count
+    tab: false
+    description: "Lifetime trades the upstream reports. Checked against the agent's own round list: 35 to 37 of each agent's rounds are this arena, so the counter is not diluted by others."
+
 ledger_columns:
   - { label: "Alpha", slot: p50 }
   - { label: "Return", panel: raw_return }
@@ -185,6 +205,7 @@ ledger_columns:
   - { label: "Winning rounds", panel: hit_rate }
   - { label: "Exposure", panel: exposure }
   - { label: "Weekly swing", panel: weekly_swing }
+  - { label: "Trades per round", panel: trades_per_round }
   - { label: "Rounds", panel: n_rounds }
 
 providers:

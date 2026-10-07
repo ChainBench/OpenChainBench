@@ -186,6 +186,16 @@ var (
 		Help: "Days since the most recent scored round ended. Rounds are weekly, so up to 7 is normal and past 14 means two were missed.",
 	}, []string{"agent", "kind", "arena"})
 
+	tradesPerRound = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "trading_agent_trades_per_round",
+		Help: "Trades per competition. Under identical rules the roster spans 2 to 89, a forty-fold spread in how much the same harness acts depending only on which model drives it.",
+	}, []string{"agent", "kind", "arena"})
+
+	tradesTotal = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "trading_agent_trades_total",
+		Help: "Lifetime trades the upstream reports for this agent. Checked against /agents/{id}/competitions: 35 to 37 of each agent's rounds are this arena, so the counter is not diluted by others.",
+	}, []string{"agent", "kind", "arena"})
+
 	roundsScored = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "trading_agent_rounds_scored",
 		Help: "Rounds in the arena that carried a real field and were scored.",
@@ -217,6 +227,7 @@ func init() {
 		alphaPct, returnPct, passivePct, assetPct, hitRatePct, beta,
 		rounds, weeklySD, alphaT, pooledAlphaPct, pooledAlphaT,
 		roundsNeeded, separableCount, scheduledRounds, daysSinceRound,
+		tradesPerRound, tradesTotal,
 		roundsScored, roundsSkipped, lastRun, lastRoundEnd, errors,
 	} {
 		prometheus.MustRegister(c)
@@ -233,6 +244,9 @@ type competition struct {
 }
 
 type agentRow struct {
+	// ID reaches the /agents/{id} record, which carries the lifetime trade
+	// counters and the wallet. Neither is on the per-competition row.
+	ID             string   `json:"id"`
 	Name           string   `json:"name"`
 	PortfolioValue *float64 `json:"portfolioValue"`
 	PnLPercent     *float64 `json:"pnlPercent"`
@@ -454,6 +468,8 @@ func runOnce() error {
 	// trade the same week, so an agent-round is not an independent
 	// observation and the round has to stay addressable as a unit.
 	var byRound []roundObs
+	// One id per agent, for the activity lookup after the roster is known.
+	agentIDs := map[string]string{}
 	scored := 0
 	for _, c := range comps {
 		a, err1 := parseDay(c.StartDate)
@@ -475,6 +491,9 @@ func runOnce() error {
 		scored++
 		r := roundObs{assetPct: assetRet, agents: map[string]float64{}}
 		for _, row := range byComp[c.ID] {
+			if row.ID != "" {
+				agentIDs[row.Name] = row.ID
+			}
 			obs[row.Name] = append(obs[row.Name], observation{*row.PnLPercent, assetRet})
 			r.agents[row.Name] = *row.PnLPercent
 		}
@@ -496,6 +515,8 @@ func runOnce() error {
 	separableCount.Reset()
 	scheduledRounds.Reset()
 	daysSinceRound.Reset()
+	tradesPerRound.Reset()
+	tradesTotal.Reset()
 	roundsSkipped.Reset()
 
 	// Betas are needed by the pooled test, which cannot run until every
@@ -614,6 +635,25 @@ func runOnce() error {
 		log.Printf("[284] significance: pooled alpha %+.3f%%/round t=%+.2f over %d rounds, "+
 			"needs %.0f for t=2; %d of %d pairs separable (max |t| %.2f)",
 			pm, pt, len(series), need, sep, tested, maxT)
+	}
+
+	// Trading activity. One extra request per ranked agent, after the roster
+	// is settled so we never fetch a detail record for an entry that will not
+	// be published.
+	wanted := map[string]string{}
+	for _, name := range ranked {
+		if id, ok := agentIDs[name]; ok {
+			wanted[name] = id
+		}
+	}
+	for name, act := range fetchActivity(wanted) {
+		for _, k := range []string{kindOf(name), "all"} {
+			lbl := []string{slugOf(name), k, arena}
+			tradesPerRound.WithLabelValues(lbl...).Set(act.tradesPerRound)
+			tradesTotal.WithLabelValues(lbl...).Set(act.totalTrades)
+		}
+		log.Printf("[284] %-22s %7.0f trades, %6.2f per round, wallet %s",
+			name, act.totalTrades, act.tradesPerRound, act.wallet)
 	}
 
 	// Liveness, published per agent for the same reason the arena-level

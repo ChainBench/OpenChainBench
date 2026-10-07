@@ -27,6 +27,9 @@ export type AgentRow = {
   /** Standard deviation of this agent's weekly returns. The roster spans a
    *  factor of two and a half, which compounded totals hide entirely. */
   weeklySwing: number | null;
+  /** Trades in a six-day round. Spans 2 to 89 across the roster under
+   *  identical rules, which is the widest spread on the page. */
+  tradesPerRound: number | null;
 };
 
 export type LabRow = {
@@ -141,6 +144,7 @@ async function _fetchTradingAgentHub(): Promise<TradingAgentHub | null> {
         // column holds a number even on a sweep that missed the panels.
         rounds: panelValue(panels, "n_rounds", slug) ?? r.sampleSize ?? null,
         weeklySwing: panelValue(panels, "weekly_swing", slug),
+        tradesPerRound: panelValue(panels, "trades_per_round", slug),
       });
     }
   }
