@@ -1,0 +1,172 @@
+# OpenChainBench. Bench No 291
+
+slug: zigchain-rpc
+number: "291"
+title: "ZIGChain RPC endpoints: free public URLs by latency"
+seo_title: "ZIGChain RPC endpoints: free public URLs by latency"
+seo_description: "{{best_name}} leads free ZIGChain RPC at {{best_p50}} (Tendermint status p50, 24h). URLs for all {{count}} no-key endpoints, probed every 60 s."
+subtitle: HTTP round-trip latency for the Tendermint `status` method against every free, no-key public ZIGChain Cosmos SDK endpoint, audited every 60 seconds from 3 regions.
+
+category: RPCs
+status: live
+metric: RPC latency
+unit: ms
+higher_is_better: false
+
+seo_intro: |
+  ZIGChain is a Cosmos SDK chain (zigchain-1) and carries the widest keyless roster of every chain added on 2026-10-07: all five public RPCs the Cosmos chain registry lists answered the Tendermint `status` probe. That is rare. Across the same sweep Agoric listed eleven and three answered, and most chains at this size have two. The five are the ZIGChain official endpoint (rpc.zigchain.com), Numia, Polkachu, NodeStake and Stake and Relax.
+
+abstract: |
+  ZIGChain: {{count}} free public RPC endpoints answering Tendermint status every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}; the chain-official endpoint measures {{p50:zigchain-official}}.
+  We measure the round-trip latency of a single Tendermint `status` call against every no-key public ZIGChain endpoint that sustains continuous probing, {{count}} providers measured, every 60 seconds, from us-east, eu-west and Singapore. The harness classifies every response (ok / http_err / jsonrpc_err / stale / timeout) with a ZIGChain-scaled staleness gap (20 blocks at ZIGChain's ~5 s block time). The cross-chain view lives on the parent `rpc-capabilities` benchmark; this page is the ZIGChain-scoped answer with per-region breakdowns as a first-class dimension.
+
+methodology:
+  - "Cadence: every 60 seconds per provider, from each of 3 probe regions (us-east Virginia, eu-west Amsterdam, sgp Singapore). Headline p50/p90/p99 aggregate across all 3 regions via Prometheus `avg(quantile_over_time(...))`; per-region breakdowns are first-class on this page via the region tabs."
+  - "Payload: `{\"jsonrpc\":\"2.0\",\"id\":<rotating>,\"method\":\"status\",\"params\":[]}`. Plain HTTP POST, identical for every endpoint, no API key in any request. Non-cacheable by design: the rotating id defeats edge caches that would answer a bare head query without touching a node."
+  - "Latency measurement, call-result classification (`ok`, `http_err`, `jsonrpc_err`, `stale`, `timeout`) and the exclusion rules follow the cluster method documented on [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities#methodology); this page is the ZIGChain-scoped view of the same harness."
+  - "Roster: every endpoint here answered a real Tendermint status call without a key on the 2026-10-07 sweep before being added to the probe matrix. An endpoint that needs a key, region-blocks us or rate-limits below the 60-second cadence is excluded rather than listed with an asterisk."
+  - "Chain scope: every query on this page is pinned to `chain=\"zigchain\"`. Provider coverage: {{count}} no-key endpoints."
+
+faq:
+  - q: "Which ZIGChain RPCs work without an API key?"
+    a: "{{declared_count}} endpoints are probed on this chain: ZIGChain (rpc.zigchain.com), Numia (public-zigchain-rpc.numia.xyz), Polkachu (zigchain-rpc.polkachu.com), NodeStake (rpc.zigchain.nodestake.org), Stake and Relax (zigchain-rpc.stakeandrelax.net). Every listed endpoint was live-verified with a Tendermint status call returning a parsable response before inclusion."
+  - q: "How is ZIGChain RPC latency measured here, technically?"
+    a: "One identical Tendermint status call every 60 seconds against each provider from each of 3 regions, using the same plain HTTP client the rest of the RPC cluster uses. Wall-clock round-trip is recorded at millisecond precision; p50/p90/p99 are computed via Prometheus `quantile_over_time` over 24 hours. Responses are classified (`ok` / `http_err` / `jsonrpc_err` / `stale` / `timeout`) so an endpoint stuck on an old head or returning errors behind HTTP 200 is never ranked as fastest."
+  - q: "Five working endpoints is unusual for a chain this size. Why?"
+    a: "Because the validator operators behind them keep their public RPCs running, which is not the norm. The Cosmos chain registry lists endpoints that were contributed once and are never pruned when they die, so a long list usually collapses under probing: on this sweep Agoric's eleven listed endpoints produced three live ones. ZIGChain's five listed produced five live. The count on this page is what answered, not what is listed."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
+
+prometheus:
+  window: 24h
+  freshness_metric: rpc_latency_milliseconds
+
+rank_matrix_query: avg by (provider, region) (ocb:rpc_latency_milliseconds:p50_24h{chain="zigchain"})
+
+dimensions:
+  region:
+    - { value: all,     label: All regions }
+    - { value: us-east, label: US-East }
+    - { value: eu-west, label: EU-West }
+    - { value: sgp,     label: Singapore }
+
+providers:
+  - slug: zigchain-official
+    name: ZIGChain
+    endpoint: https://rpc.zigchain.com
+    tag: ZIGChain official public Tendermint RPC endpoint
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single Tendermint `status` call sent every 60s from 3 regions (us-east + eu-west + sgp) to ZIGChain's no-key zigchain RPC endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="zigchain-official", chain="zigchain"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="zigchain-official", chain="zigchain"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="zigchain-official", chain="zigchain"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="zigchain-official", chain="zigchain"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="zigchain-official", chain="zigchain"}) / sum(ocb:rpc_call:rate_24h{provider="zigchain-official", chain="zigchain"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="zigchain-official", chain="zigchain"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="zigchain-official", chain="zigchain"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="zigchain-official", chain="zigchain", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="zigchain-official", chain="zigchain", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="zigchain-official", chain="zigchain", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="zigchain-official", chain="zigchain", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="zigchain-official", chain="zigchain", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="zigchain-official", chain="zigchain", region="sgp"}[1h])
+
+  - slug: numia
+    name: Numia
+    endpoint: https://public-zigchain-rpc.numia.xyz
+    tag: Numia public Tendermint RPC endpoint for ZIGChain
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single Tendermint `status` call sent every 60s from 3 regions (us-east + eu-west + sgp) to Numia's no-key zigchain RPC endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="numia", chain="zigchain"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="numia", chain="zigchain"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="numia", chain="zigchain"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="numia", chain="zigchain"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="numia", chain="zigchain"}) / sum(ocb:rpc_call:rate_24h{provider="numia", chain="zigchain"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="numia", chain="zigchain"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="numia", chain="zigchain"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="numia", chain="zigchain", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="numia", chain="zigchain", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="numia", chain="zigchain", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="numia", chain="zigchain", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="numia", chain="zigchain", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="numia", chain="zigchain", region="sgp"}[1h])
+
+  - slug: polkachu
+    name: Polkachu
+    endpoint: https://zigchain-rpc.polkachu.com
+    tag: Polkachu public Tendermint RPC endpoint for ZIGChain
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single Tendermint `status` call sent every 60s from 3 regions (us-east + eu-west + sgp) to Polkachu's no-key zigchain RPC endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="polkachu", chain="zigchain"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="polkachu", chain="zigchain"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="polkachu", chain="zigchain"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="polkachu", chain="zigchain"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="polkachu", chain="zigchain"}) / sum(ocb:rpc_call:rate_24h{provider="polkachu", chain="zigchain"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="polkachu", chain="zigchain"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="polkachu", chain="zigchain"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="polkachu", chain="zigchain", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="polkachu", chain="zigchain", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="polkachu", chain="zigchain", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="polkachu", chain="zigchain", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="polkachu", chain="zigchain", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="polkachu", chain="zigchain", region="sgp"}[1h])
+
+  - slug: nodestake
+    name: NodeStake
+    endpoint: https://rpc.zigchain.nodestake.org
+    tag: NodeStake public Tendermint RPC endpoint for ZIGChain
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single Tendermint `status` call sent every 60s from 3 regions (us-east + eu-west + sgp) to NodeStake's no-key zigchain RPC endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="nodestake", chain="zigchain"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="nodestake", chain="zigchain"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="nodestake", chain="zigchain"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="nodestake", chain="zigchain"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="nodestake", chain="zigchain"}) / sum(ocb:rpc_call:rate_24h{provider="nodestake", chain="zigchain"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="nodestake", chain="zigchain"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="nodestake", chain="zigchain"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="nodestake", chain="zigchain", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="nodestake", chain="zigchain", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="nodestake", chain="zigchain", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="nodestake", chain="zigchain", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="nodestake", chain="zigchain", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="nodestake", chain="zigchain", region="sgp"}[1h])
+
+  - slug: stakeandrelax
+    name: Stake and Relax
+    endpoint: https://zigchain-rpc.stakeandrelax.net
+    tag: Stake and Relax public Tendermint RPC endpoint for ZIGChain
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single Tendermint `status` call sent every 60s from 3 regions (us-east + eu-west + sgp) to Stake and Relax's no-key zigchain RPC endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="stakeandrelax", chain="zigchain"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="stakeandrelax", chain="zigchain"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="stakeandrelax", chain="zigchain"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="stakeandrelax", chain="zigchain"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="stakeandrelax", chain="zigchain"}) / sum(ocb:rpc_call:rate_24h{provider="stakeandrelax", chain="zigchain"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="stakeandrelax", chain="zigchain"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="stakeandrelax", chain="zigchain"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="stakeandrelax", chain="zigchain", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="stakeandrelax", chain="zigchain", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="stakeandrelax", chain="zigchain", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="stakeandrelax", chain="zigchain", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="stakeandrelax", chain="zigchain", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="stakeandrelax", chain="zigchain", region="sgp"}[1h])

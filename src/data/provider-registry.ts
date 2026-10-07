@@ -36,6 +36,27 @@ export type ProviderRegistryEntry = {
 };
 
 export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
+  // ─── Cosmos RPC operators (chain-hunt sweep 2026-10-07) ───────
+  // New to the site with ZIGChain, Agoric, XPLA and XRPL EVM. Each runs a
+  // keyless public Tendermint RPC that answered our probe before inclusion.
+  cumulo: {
+    url: "https://cumulo.pro",
+    description:
+      "Validator operator running public Tendermint RPC endpoints for Cosmos SDK chains, including XRPL EVM.",
+    twitter: "@cumulo_pro",
+  },
+  numia: {
+    url: "https://numia.xyz",
+    description:
+      "Cosmos data and infrastructure provider. Runs public Tendermint RPC endpoints for several Cosmos SDK chains alongside its indexing products.",
+    twitter: "@NumiaData",
+  },
+  stakeangle: {
+    url: "https://stakeangle.com",
+    description:
+      "Validator operator publishing free Tendermint RPC endpoints for the Cosmos chains it validates.",
+  },
+
   // ─── AI labs (bench 284) ──────────────────────────────────────
   // These four entries are the labs whose models Recall Labs runs in its
   // weekly spot-trading arena. The row on the bench is an agent, never a
