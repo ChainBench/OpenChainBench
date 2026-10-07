@@ -22,16 +22,18 @@ ledger_reliability: false
 zero_is_a_value: true
 
 disclaimer: |
-  One complete UTC day's fee revenue divided by that day's routed volume, from the public tehcscreener API, which is Allium-backed. What the terminal kept, which is a lower bound on what it charges: waivers, rebates and promotions all pull it down. Zero is a measurement, not a gap: the pump.fun app takes no terminal fee. Not the all-in cost of a swap, which also includes slippage and priority fees; benches 268 and 279 measure that.
+  One complete UTC day's fee revenue divided by that day's routed volume, from the public tehcscreener API, which is Allium-backed. What the terminal kept, a lower bound on what it charges: waivers and rebates pull it down. A cell reading zero is withheld rather than ranked whenever that platform charges on another chain, because this page cannot tell a waived fee from an unmeasured one. Not the all-in cost of a swap, which also includes slippage; benches 268 and 279 measure that.
 
 seo_intro: |
   Every trading terminal publishes a fee. What it actually keeps per dollar
   routed is a different number, and it is the one that shows up in revenue.
   This page divides each terminal's fee revenue on the latest complete day by
   the volume it routed that day, per chain. The spread is wider than any fee
-  schedule suggests, and the floor is zero: the pump.fun app charges no
-  terminal fee at all, while the terminals around it keep between a half and
-  one and a tenth of a percent.
+  schedule suggests: the terminals that report fees on a chain keep between
+  about a half and one and a tenth of a percent of what they route. Cells
+  reading exactly zero are not ranked as the cheapest. A terminal that charges
+  elsewhere and reports nothing here has a gap, not a price, and the page says
+  so rather than crowning it.
 
 abstract: |
   The harness reads one day per terminal per chain from the tehcscreener
@@ -49,7 +51,7 @@ abstract: |
 methodology:
   - "Source: the public tehcscreener API (https://tehcscreener.com/api), Allium-backed, no key, synced once a day. The harness reads /bots over the full history for the roster and /bots/{bot} for each terminal's per-chain daily series, and publishes one day: the latest the source names."
   - "The ratio: that day's fee revenue in USD divided by that day's routed volume in USD, times 100, both read from the same row of the same series. A lower bound on what the terminal charges, because waivers, rebates and promotions reduce what it keeps without changing its schedule."
-  - "Zero is a measurement: the pump.fun app takes no terminal fee and reads 0. A whole chain reading zero is a different thing, and the harness publishes terminal_fee_column_ok per chain to tell them apart. When no terminal on a chain reports any fee, the fee column has failed and no take rate is published at all, because a market of free terminals is the most flattering possible reading of missing data."
+  - "Zeros are not ranked unless they are consistent, guarded at two levels. Per chain: when no terminal on a chain reports any fee, the column has failed and no take rate publishes there. Per cell: a terminal reporting fees on one chain and exactly zero on another, on material volume, has that cell withheld, because a waived fee and an unmeasured one look identical here. Axiom charges 0.92% on Solana and reported $0.00 on $29.8M of Robinhood volume."
   - "Removed on 2026-10-07: the fee-paying rate panel, the share of transactions that paid a fee. The current source publishes fee totals, not that share, and nothing here reconstructs it. Approximating it from the fields that do exist would have put a derived number where a measured one used to be."
   - "Latest complete day, not a rolling 24 hours: the source publishes daily and its latest day is normally yesterday. A terminal with no activity on that day carries no figure and reads unresponsive rather than having its last live day carried forward. BasedBot is the live case, with volume on Robinhood Chain and almost none on Solana."
   - "Stale source: a day more than 3 whole days behind, or a terminal the source stops returning, has its gauges deleted and reads unresponsive. An old figure is never republished as current, because these gauges are scraped every 60 seconds and read through a 24h window."
@@ -59,7 +61,7 @@ methodology:
 
 findings:
   - "{{best_name}} keeps the least per dollar routed at {{best_p50}} on this chain."
-  - "The pump.fun app takes no terminal fee, so it reads 0 while every other terminal in the cohort keeps between about a half and one and a tenth of a percent. That is a measurement, not an empty cell."
+  - "Two cells are withheld rather than ranked, and the reason is the same for both: Axiom reports no fee on Robinhood and BNB while charging 0.92% on Solana, and pump.fun reports no fee on Solana while charging on four other chains. A zero from a platform that charges elsewhere is a gap, not the cheapest price in the market."
   - "Observed take rate is a lower bound on the published fee. Waivers, referral rebates and promotional periods all reduce what a terminal keeps without changing what its schedule says."
   - "Take rates differ by chain on the same terminal, which is why this page has a chain axis rather than one pooled number."
 
@@ -99,8 +101,8 @@ dimensions:
 faq:
   - q: "What is an observed take rate?"
     a: "A day's fee revenue divided by the volume routed that day, as a percentage. It is what the terminal kept, which is not the same as what its fee page says it charges: waived fees, referral rebates and promotions all reduce the first without touching the second."
-  - q: "Why does pump.fun read zero?"
-    a: "Because its app takes no terminal fee. That is the measurement, not a missing value, and it is the whole reason this page exists in a market where every other terminal keeps between a half and one and a tenth of a percent. The harness publishes a separate per-chain flag so a genuinely zero column can never be mistaken for this."
+  - q: "Why do some cells have no take rate at all?"
+    a: "Because the zero could not be explained. A terminal that charges a fee on one chain and reports exactly nothing on another, while routing tens of millions there, has a gap rather than a price, and this page cannot tell a waived fee from an unmeasured one. Rather than rank that zero as the cheapest in the market, the cell is withheld and flagged. Axiom off Solana and pump.fun on Solana are both in that state as of 2026-10-07. Volume, transactions and wallets for those cells are unaffected and still published."
   - q: "Is this what a swap costs me?"
     a: "No. This is the terminal's cut only. The all-in cost of a swap also includes slippage, priority fees and the pool's own fee, and a terminal with a low cut can still deliver a worse fill. Benches 268 and 279 measure the total."
   - q: "Why does the same terminal show a different rate on each chain?"
@@ -208,7 +210,7 @@ providers:
   - slug: pumpapp
     name: pump.fun
     tag: "Launchpad's own app, no terminal fee"
-    formula: "A day's fee revenue divided by that day's routed volume for the pump.fun app. It takes no terminal fee, so this reads 0: a measurement, not a missing value."
+    formula: "A day's fee revenue divided by that day's routed volume for the pump.fun app. It reports fees on four chains and exactly zero on Solana, where it routes $252M a week, so the Solana cell is withheld rather than ranked as the market floor."
     queries:
       p50: max(terminal_fee_rate_pct{platform="pumpapp",chain="all"})
       p90: max(terminal_fee_rate_pct{platform="pumpapp",chain="all"})

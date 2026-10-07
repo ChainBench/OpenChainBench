@@ -91,6 +91,11 @@ var (
 		Help: "Unix timestamp of the last cycle that published at least one platform. Prometheus gauges keep their last value, so a spec needs this to tell a quiet harness from a dead one.",
 	})
 
+	feeWithheld = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "terminal_fee_withheld",
+		Help: "1 when this platform and chain reported exactly zero fees on material volume while the same platform reports fees on another chain, so the zero is an unexplained gap rather than a price. The take rate is not published for that cell.",
+	}, []string{"platform", "chain"})
+
 	feeColumnOK = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "terminal_fee_column_ok",
 		Help: "1 when at least one platform on this chain reported non-zero fees on the data day, 0 when the whole column was zero. A zero column is a source failure, not a market where every platform is free.",
@@ -101,7 +106,7 @@ func init() {
 	prometheus.MustRegister(
 		volumeUSD, txns, feesUSD, wallets,
 		avgTradeUSD, feeRatePct, tradesPerWallet, volumePerWalletUSD,
-		chainBreadth, dataDayUnix, health, lastSuccessUnix, feeColumnOK,
+		chainBreadth, dataDayUnix, health, lastSuccessUnix, feeColumnOK, feeWithheld,
 	)
 }
 
@@ -177,6 +182,31 @@ func publish(samples []sample, roster []string, maxAgeDays int, now time.Time) (
 		}
 	}
 
+	// And whether each PLATFORM reports fees anywhere, which is the finer
+	// question and the one that matters.
+	//
+	// A chain-level gate cannot catch a gap in one row. Axiom routed $29.8M on
+	// Robinhood and $21.7M on BNB over a week with fees of exactly $0.00, while
+	// charging 0.92% on Solana; the other terminals on those chains do report
+	// fees, so the column gate read healthy and Axiom's zero was published as
+	// the lowest take rate in the market and crowned the tab. pump.fun is the
+	// same shape in the other direction: it reports fees on Robinhood, BNB,
+	// Ethereum and Base and exactly $0.00 on Solana, where it routes $252M.
+	//
+	// Nobody routes tens of millions for free for a week. A platform that
+	// demonstrably charges somewhere and reports exactly nothing elsewhere has
+	// an unexplained zero, and this harness is not able to tell a waived fee
+	// from an unmeasured one. So the cell's take rate is withheld and a flag
+	// says why, instead of publishing the most flattering possible reading of
+	// a blank. A platform reporting zero on every chain it serves is a
+	// different claim, and that one still publishes as a real zero.
+	platformFeesAnywhere := map[string]bool{}
+	for _, s := range fresh {
+		if s.Fees > 0 {
+			platformFeesAnywhere[s.Platform] = true
+		}
+	}
+
 	seen := map[string]bool{}   // platform|chain
 	breadth := map[string]int{} // platform -> chains with a published row
 	chainSet := map[string]bool{}
@@ -191,12 +221,18 @@ func publish(samples []sample, roster []string, maxAgeDays int, now time.Time) (
 			dataDayUnix.WithLabelValues(s.Platform, alias).Set(s.DayUnix)
 			health.WithLabelValues(s.Platform, alias).Set(1)
 
-			if feesSeen[s.Chain] {
+			unexplainedZero := s.Fees <= 0 && platformFeesAnywhere[s.Platform]
+			if feesSeen[s.Chain] && !unexplainedZero {
 				feesUSD.WithLabelValues(s.Platform, alias).Set(s.Fees)
 				feeRatePct.WithLabelValues(s.Platform, alias).Set(s.Fees / s.Volume * 100)
 			} else {
 				feesUSD.DeleteLabelValues(s.Platform, alias)
 				feeRatePct.DeleteLabelValues(s.Platform, alias)
+			}
+			if unexplainedZero {
+				feeWithheld.WithLabelValues(s.Platform, alias).Set(1)
+			} else {
+				feeWithheld.DeleteLabelValues(s.Platform, alias)
 			}
 
 			// Wallets are the one field the source does not always carry. The
