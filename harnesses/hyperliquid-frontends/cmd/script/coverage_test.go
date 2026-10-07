@@ -170,11 +170,13 @@ func TestCoverageCountSpansTheWholeWindow(t *testing.T) {
 	}
 	a := &Aggregator{state: st}
 
-	// This pass can only reach the last few days.
-	lastFill := map[string]int64{
-		dayKey(utc(2026, 10, 4)): at(utc(2026, 10, 4), 12, 4, 17),
-		dayKey(utc(2026, 10, 5)): at(utc(2026, 10, 5), 11, 59, 53),
-		dayKey(D):                at(D, 12, 6, 23),
+	// This pass can only reach the last few days. Each day carries one sample
+	// per qualifying builder; under coverageSamplesMin the reduction falls
+	// back to the furthest fill, which is what these single samples get.
+	lastFill := map[string][]int64{
+		dayKey(utc(2026, 10, 4)): {at(utc(2026, 10, 4), 12, 4, 17)},
+		dayKey(utc(2026, 10, 5)): {at(utc(2026, 10, 5), 11, 59, 53)},
+		dayKey(D):                {at(D, 12, 6, 23)},
 	}
 
 	short := a.publishCoverage(D, windowStart, lastFill)
@@ -196,5 +198,55 @@ func TestCoverageCountSpansTheWholeWindow(t *testing.T) {
 	// What this pass measured is kept for the passes after the files go away.
 	if h, ok := st.dayCoverage(dayKey(D)); !ok || math.Abs(h-12.106) > 0.01 {
 		t.Fatalf("coverage for the feed day not recorded: %v %v", h, ok)
+	}
+}
+
+// TestCohortLastFillIsTheMedian is the bug that made the first version of the
+// coverage disclosure understate itself by a third.
+//
+// The feed cuts a day at one instant for the whole cohort, so the per-builder
+// last fills cluster inside a few minutes: on 6 October 2026 every qualifying
+// builder's file ended between 11:58 and 12:09. A single file reaching past
+// that cutoff then lifted the day's recorded coverage over the 23h threshold
+// and the day read whole. 23 September recorded 19.9 hours and 8 September
+// recorded 24 that way, and the window count came out at 12 short days where
+// the median finds 18.
+func TestCohortLastFillIsTheMedian(t *testing.T) {
+	D := utc(2026, 10, 6)
+
+	// The real shape: a tight cluster at the cutoff, plus one straggler.
+	cluster := []int64{}
+	for i := 0; i < 20; i++ {
+		cluster = append(cluster, at(D, 12, 8, 30+i))
+	}
+	withOutlier := append(append([]int64{}, cluster...), at(D, 23, 59, 51))
+
+	ls, ok := cohortLastFillSecond(D, withOutlier)
+	if !ok {
+		t.Fatal("no reading from a populated day")
+	}
+	if h := dayCoverageHours(D, ls); h >= coverageCompleteHours {
+		t.Fatalf("one late file made a cut day read whole: %.2fh", h)
+	}
+
+	// A genuinely whole day still reads whole.
+	whole := []int64{}
+	for i := 0; i < 20; i++ {
+		whole = append(whole, at(D, 23, 50+i/10, i))
+	}
+	ls, _ = cohortLastFillSecond(D, whole)
+	if h := dayCoverageHours(D, ls); h < coverageCompleteHours {
+		t.Fatalf("a whole day read short: %.2fh", h)
+	}
+
+	// Too few samples to trust a median: fall back to the furthest fill,
+	// which can only call a short day whole and never the reverse.
+	ls, _ = cohortLastFillSecond(D, []int64{at(D, 12, 8, 0), at(D, 23, 59, 0)})
+	if h := dayCoverageHours(D, ls); h < coverageCompleteHours {
+		t.Fatalf("thin sample should fall back to the max, got %.2fh", h)
+	}
+
+	if _, ok := cohortLastFillSecond(D, nil); ok {
+		t.Fatal("a day with no samples must report nothing, not zero coverage")
 	}
 }

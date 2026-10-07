@@ -28,12 +28,12 @@ export const HL_WINDOW_LABEL: Record<HlWindow, string> = {
  * across the whole cohort.
  *
  * This matters because every window figure is a sum over days. The export
- * stopped publishing whole days on 2026-09-22 and most days since end at
- * roughly 12:00 UTC, while on the complete days the hours before 13:00 carry
- * only about 43% of the notional and 44% of the fees. A 30d total built from
- * such a window is the right arithmetic on an incomplete feed and reads about
- * half of what a tracker on a complete feed reports. Publishing the figure
- * without the coverage beside it is the part that misleads.
+ * cuts days off at roughly 12:10 UTC, intermittently since 2026-09-08 and on
+ * all but one day since 2026-09-22, while on the whole days the hours before
+ * 13:00 carry only about 43% of the notional and 44% of the fees. A 30d total
+ * built from such a window is the right arithmetic on an incomplete feed and
+ * reads about half of what a tracker on a complete feed reports. Publishing
+ * the figure without the coverage beside it is the part that misleads.
  */
 export type HlFeedCoverage = {
   /** Hours of the latest feed day the export carried. 24 = whole day. */
@@ -47,7 +47,7 @@ export type HlFeedCoverage = {
    *  `windowDays`: a day that left the harness's mirror window before it
    *  first ran was never measured, and treating it as clean is how the first
    *  version of this disclosure came to report 12 short days where the
-   *  archive held 17. */
+   *  archive held 18. */
   daysMeasured: number;
   /** Days the window spans, for context when it differs from daysMeasured. */
   windowDays: number;

@@ -39,7 +39,7 @@ var (
 
 	hlDayCoverageHours = promauto.NewGauge(prometheus.GaugeOpts{
 		Name: "hl_frontend_day_coverage_hours_v2",
-		Help: "How far into the headline feed day the cohort's furthest fill reached, in hours. A whole day lands within minutes of 24. Hyperliquid's per-builder export has stopped at roughly 12:11 UTC every day since 2026-09-22, so a reading near 12 means the published file ends before the day does and the 24h figures describe half a day.",
+		Help: "How far into the headline feed day the cohort's median last fill reached, in hours. A whole day lands at 23:48 or later. Hyperliquid's per-builder export cuts days off at roughly 12:10 UTC on most days since 2026-09-22, so a reading near 12 means the published file ends before the day does and the 24h figures describe half a day.",
 	})
 	hlDayTruncated = promauto.NewGauge(prometheus.GaugeOpts{
 		Name: "hl_frontend_day_truncated_v2",
