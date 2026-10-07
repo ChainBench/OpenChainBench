@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"math"
+	"time"
 )
 
 // How often each agent actually trades.
@@ -44,6 +45,7 @@ type agentDetail struct {
 	Agent struct {
 		Name          string `json:"name"`
 		WalletAddress string `json:"walletAddress"`
+		CreatedAt     string `json:"createdAt"`
 		Stats         struct {
 			TotalTrades           *float64 `json:"totalTrades"`
 			CompletedCompetitions *float64 `json:"completedCompetitions"`
@@ -56,6 +58,11 @@ type activity struct {
 	totalTrades    float64
 	tradesPerRound float64
 	wallet         string
+	// registered is when the agent was created upstream. The roster was
+	// enrolled once, in December 2025 and January 2026, and never refreshed,
+	// so "frontier models" is a claim about the frontier AT ENROLMENT. The
+	// page has no business making it undated.
+	registered time.Time
 }
 
 // fetchActivity reads one record per agent id.
@@ -83,11 +90,18 @@ func fetchActivity(ids map[string]string) map[string]activity {
 		if math.IsNaN(per) || math.IsInf(per, 0) {
 			continue
 		}
-		out[name] = activity{
+		act := activity{
 			totalTrades:    *st.TotalTrades,
 			tradesPerRound: per,
 			wallet:         d.Agent.WalletAddress,
 		}
+		// RFC3339 with milliseconds, e.g. 2026-01-14T06:28:12.853Z. A date we
+		// cannot parse is left zero and simply not published, rather than
+		// defaulting to now, which would read as a roster refreshed today.
+		if t, err := time.Parse(time.RFC3339, d.Agent.CreatedAt); err == nil {
+			act.registered = t
+		}
+		out[name] = act
 	}
 	return out
 }

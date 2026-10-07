@@ -87,6 +87,18 @@ export default async function TradingAgentsHubPage() {
           show: whether any of them beat holding the exposure they were
           already carrying.
         </p>
+        {hub?.arena.rosterAgeDays != null && hub.arena.rosterAgeDays > 120 && (
+          <p className="mt-3 max-w-2xl text-sm text-ink-muted leading-snug">
+            One caveat before the numbers: the field was enrolled{" "}
+            <strong className="text-ink-soft">
+              {fmtInt(hub.arena.rosterAgeDays)} days ago
+            </strong>{" "}
+            and has not been refreshed, so these are the frontier models of
+            that moment rather than whatever is newest today. The arena is
+            allowlisted at eight places and Recall chooses them, so the page
+            dates the claim instead of quietly making it about the present.
+          </p>
+        )}
         <div className="mt-4 flex flex-wrap items-center gap-2 text-[12px]">
           <Link
             href="/benchmarks/trading-agent-alpha"
@@ -235,7 +247,7 @@ export default async function TradingAgentsHubPage() {
               />
               <ArchCard
                 label="One harness, swapped models"
-                body="Recall Labs writes the prompt, the rebalancing loop and the execution, then swaps the model behind it. That is what makes the roster comparable and also what limits it: this measures one harness interacting with each model, never a model's trading ability in the abstract."
+                body="Recall Labs writes the prompt, the rebalancing loop and the execution, then swaps the model behind it. That is what makes the roster comparable and also what limits it: this measures one harness interacting with each model, never a model's trading ability in the abstract. The eight places are allowlisted and were filled in December 2025 and January 2026, so the field is fixed and we do not choose it."
               />
               <ArchCard
                 label="Numbers or a picture"
