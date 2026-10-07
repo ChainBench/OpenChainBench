@@ -165,7 +165,7 @@ func cycle(client *apiClient) {
 		return
 	}
 
-	published, chains := publish(samples, roster, maxDataAgeDays(), time.Now())
+	published, chains := publish(samples, canonicalRoster(roster), maxDataAgeDays(), time.Now())
 	if published > 0 {
 		lastSuccessUnix.SetToCurrentTime()
 	}

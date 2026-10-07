@@ -79,22 +79,23 @@ dimension_labels:
   chain: Chain
 
 dimensions:
-  # One axis. `all` is the headline slice and carries Solana, not a pooled
-  # cross-chain figure: the source's own deduplication shows a wallet trading
-  # on two chains is one wallet, so a pooled count would be an overstatement
-  # rather than a total. The harness publishes Solana under `chain="all"` as
-  # well as under its own name so the site's label injection has a pinned
-  # matcher to rewrite.
+  # No all-chains tab, and that is a measurement rather than an omission. A
+  # wallet trading on two chains is one wallet; the source's own deduplicated
+  # count runs about 0.6 of the sum of the per-chain counts, and it exists for
+  # only 2 of the 9 terminals. Summing the tabs would overstate every
+  # multi-chain terminal, so `all` carries Solana, the headline chain, and the
+  # label says Solana rather than pretending to be a total.
   #
-  # Five tabs for ten measured chains. Arc, HyperEVM, Monad, X Layer and
-  # Avalanche are measured and queryable but not offered: one or two terminals
-  # on a chain is a list, not a comparison.
+  # Every other bench on this harness does offer a real all-chains slice,
+  # because volume, transactions and fees add up and wallets do not.
   chain:
     - { value: all,       label: Solana }
     - { value: bnb,       label: BNB Chain }
     - { value: robinhood, label: Robinhood Chain }
-    - { value: ethereum,  label: Ethereum }
     - { value: base,      label: Base }
+    - { value: arc,       label: Arc }
+    - { value: ethereum,  label: Ethereum }
+    - { value: hyperevm,  label: HyperEVM }
 
 # The count, then the two ratios built on it. All three are one terminal on one
 # chain on one day, so a reader never has to hold two definitions at once.
@@ -134,6 +135,7 @@ faq:
 providers:
   - slug: fomo
     name: Fomo
+    url: https://fomo.family
     tag: "Cross-chain terminal, gas sponsored"
     formula: "Distinct wallets that traded through Fomo on this chain on the day, from the tehcscreener /bots/fomo series. Counted directly, not attributed from a fee payment: Fomo sponsors its traders' gas, which is why this row used to be blank."
     queries:
@@ -146,6 +148,7 @@ providers:
 
   - slug: axiom
     name: Axiom
+    url: https://axiom.trade
     tag: "Solana-first trading terminal"
     formula: "Distinct wallets that traded through Axiom on this chain on the day, from the tehcscreener /bots/axiom series."
     queries:
@@ -156,20 +159,22 @@ providers:
       sample_size: max(terminal_txns{platform="axiom",chain="all"})
       series: max by (platform) (terminal_wallets{platform="axiom",chain="all"})
 
-  - slug: pumpapp
+  - slug: pump-fun
     name: pump.fun
+    url: https://pump.fun
     tag: "Launchpad's own trading app"
     formula: "Distinct wallets that traded through the pump.fun app on this chain on the day, from the tehcscreener /bots/pumpapp series. Measurable at last: the app charges no terminal fee, so there was no fee payment to attribute from."
     queries:
-      p50: max(terminal_wallets{platform="pumpapp",chain="all"})
-      p90: max(terminal_wallets{platform="pumpapp",chain="all"})
-      p99: max(terminal_wallets{platform="pumpapp",chain="all"})
-      success: max(terminal_activity_health{platform="pumpapp",chain="all"})
-      sample_size: max(terminal_txns{platform="pumpapp",chain="all"})
-      series: max by (platform) (terminal_wallets{platform="pumpapp",chain="all"})
+      p50: max(terminal_wallets{platform="pump-fun",chain="all"})
+      p90: max(terminal_wallets{platform="pump-fun",chain="all"})
+      p99: max(terminal_wallets{platform="pump-fun",chain="all"})
+      success: max(terminal_activity_health{platform="pump-fun",chain="all"})
+      sample_size: max(terminal_txns{platform="pump-fun",chain="all"})
+      series: max by (platform) (terminal_wallets{platform="pump-fun",chain="all"})
 
   - slug: gmgn
     name: GMGN
+    url: https://gmgn.ai
     tag: "Multi-chain terminal, widest chain reach"
     formula: "Distinct wallets that traded through GMGN on this chain on the day, from the tehcscreener /bots/gmgn series. GMGN routes on more chains than any other terminal in the cohort, so its figure here is one slice of its user base."
     queries:
@@ -180,20 +185,22 @@ providers:
       sample_size: max(terminal_txns{platform="gmgn",chain="all"})
       series: max by (platform) (terminal_wallets{platform="gmgn",chain="all"})
 
-  - slug: terminal
+  - slug: padre
     name: Terminal
+    url: https://trade.padre.gg
     tag: "Trading terminal, heaviest wallets"
     formula: "Distinct wallets that traded through Terminal on this chain on the day, from the tehcscreener /bots/terminal series."
     queries:
-      p50: max(terminal_wallets{platform="terminal",chain="all"})
-      p90: max(terminal_wallets{platform="terminal",chain="all"})
-      p99: max(terminal_wallets{platform="terminal",chain="all"})
-      success: max(terminal_activity_health{platform="terminal",chain="all"})
-      sample_size: max(terminal_txns{platform="terminal",chain="all"})
-      series: max by (platform) (terminal_wallets{platform="terminal",chain="all"})
+      p50: max(terminal_wallets{platform="padre",chain="all"})
+      p90: max(terminal_wallets{platform="padre",chain="all"})
+      p99: max(terminal_wallets{platform="padre",chain="all"})
+      success: max(terminal_activity_health{platform="padre",chain="all"})
+      sample_size: max(terminal_txns{platform="padre",chain="all"})
+      series: max by (platform) (terminal_wallets{platform="padre",chain="all"})
 
   - slug: trojan
     name: Trojan
+    url: https://trojan.com
     tag: "Telegram-native bot, Solana only"
     formula: "Distinct wallets that traded through Trojan on this chain on the day, from the tehcscreener /bots/trojan series."
     queries:
@@ -206,6 +213,7 @@ providers:
 
   - slug: photon
     name: Photon
+    url: https://photon-sol.tinyastro.io
     tag: "Web terminal, Solana only"
     formula: "Distinct wallets that traded through Photon on this chain on the day, from the tehcscreener /bots/photon series."
     queries:
@@ -218,6 +226,7 @@ providers:
 
   - slug: maestro
     name: Maestro
+    url: https://t.me/maestro
     tag: "Telegram bot, multi-chain"
     formula: "Distinct wallets that traded through Maestro on this chain on the day, from the tehcscreener /bots/maestro series."
     queries:
@@ -230,6 +239,7 @@ providers:
 
   - slug: basedbot
     name: BasedBot
+    url: https://basedbot.app
     tag: "Robinhood Chain native, little Solana flow"
     formula: "Distinct wallets that traded through BasedBot on this chain on the day, from the tehcscreener /bots/basedbot series. It routes on Robinhood Chain and almost none on Solana, so it ranks on one tab and is unresponsive on the other."
     queries:
