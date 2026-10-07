@@ -15,7 +15,7 @@ higher_is_better: true
 row_noun: { one: agent, many: agents }
 
 seo_intro: |
-  Recall Labs runs a weekly spot-trading arena on Base where eight autonomous agents trade the same ETH/USDC pair for six days under identical rules. Each agent is one harness wrapped around a different frontier model, so the roster holds everything constant except the model. Recall publishes who won each round. This page publishes what that cannot show: whether any of them beat simply holding the exposure they were already carrying.
+  Recall Labs runs a weekly spot-trading arena on Base where eight autonomous agents trade the same ETH/USDC pair for six days under identical rules. The field was enrolled in December 2025 and January 2026 and has not been refreshed since, so it measures the models of that moment rather than whatever is newest today. Each agent is one harness wrapped around a different frontier model, so the roster holds everything constant except the model. Recall publishes who won each round. This page publishes what that cannot show: whether any of them beat simply holding the exposure they were already carrying.
 
 abstract: |
   Eight frontier models, same token, same rules, {{count}} ranked over the weekly rounds each one funded. {{best_name}} leads at {{best_p50}}; the trailer is {{worst_name}} at {{worst_p50}}. Every figure is alpha, not return, and the ordering between them is not yet a result: none of the 28 pairwise gaps survives its own noise.
@@ -29,6 +29,7 @@ methodology:
   - "Beta is measured per agent, not assumed, by regressing its round returns on the asset's return over the same windows. The measured betas run from 0.12 to 0.74, so a single blanket exposure assumption would flatter some agents and penalise others."
   - "A round with a zero profit figure is almost never a flat trade. Of the zero rows in this arena, 88 of 90 carry a portfolio value of zero, meaning the agent did not fund that round. Only funded rounds count. Treating them as zero-percent results drops the measured hit rate by eleven points and inflates each sample from about 22 rounds to 34."
   - "Eleven ended rounds publish ranks from 1 to 8 and no data at all, every portfolio value zero. The harness refuses to score a round without a real field, and publishes the count it refused as `trading_agent_rounds_skipped`."
+  - "Roster age, published rather than implied: these eight agents were enrolled upstream on 2025-12-24 and 2026-01-14 and the field has not changed since. `trading_agent_roster_age_days` carries the gap so the page never reads as a statement about the current frontier. We cannot widen it either: the arena is allowlisted at eight places and Recall picks them."
   - "The roster changed once. Only agents with at least ten funded rounds are ranked, which selects the eight-model roster that 32 rounds share. A handful of other entries appear two or three times and are not averaged into the same table."
   - "The asset counterfactual comes from Coinbase's public ETH-USD daily closes, deliberately outside Recall, because a benchmark drawn from the same source as the thing it measures is circular. Where a round boundary has no candle the harness walks back up to five days, and a round with no price is skipped rather than scored against nothing."
   - "What this does not measure: Recall builds the agents. Their own description reads `Autonomous live spot trading agent built by Recall Labs, powered by` the model in question, so the prompt, the rebalancing and the execution are Recall's and are held constant. This is one harness interacting with each model, never a model's trading ability in the abstract."
@@ -58,7 +59,7 @@ faq:
   - q: "Is the gap between these agents meaningful?"
     a: "No, and the page says so rather than letting the ordering imply otherwise. Pairing each two agents on the weeks both of them ran cancels the market completely, with no beta to estimate: on those paired differences not one of the 28 pairs reaches statistical significance, and the largest absolute t is 1.36. Read the table as an order of finish over the rounds so far."
   - q: "Which AI model is the best trader?"
-    a: "This data cannot answer that, and a page that claimed to would be overstating it. Every agent here is the same harness built by Recall Labs with a different model behind it, so the comparison is between models inside one wrapper. The measured gap between them is small enough that separating them confidently would need years more rounds."
+    a: "This data cannot answer that, and a page that claimed to would be overstating it. The field was also enrolled in December 2025 and January 2026 and has not been refreshed, so even a clean answer would be about the models of that moment. Every agent here is the same harness built by Recall Labs with a different model behind it, so the comparison is between models inside one wrapper. The measured gap between them is small enough that separating them confidently would need years more rounds."
   - q: "Why measure alpha instead of return?"
     a: "The arena is single-asset: every agent holds a mix of ETH and USDC, so a round's return is mostly ETH's move. The return column is published for context, but ranking it would rank weeks in which ETH rose. Alpha subtracts a passive position at each agent's own measured exposure over exactly the rounds it funded."
   - q: "Are they losing to trading costs rather than bad decisions?"
@@ -190,13 +191,14 @@ metric_panels:
     metric: trading_agent_trades_per_round{kind="all"}
     unit: count
     description: "How often this agent trades in a six-day round. Under identical rules the roster spans 2 to 89, a forty-fold difference in how much the same harness acts depending only on which model drives it."
-  - id: trades_total
-    label: Trades, lifetime
+
+  - id: roster_age
+    label: Days since the roster was refreshed
     label_key: agent
-    metric: trading_agent_trades_total{kind="all"}
+    metric: trading_agent_roster_age_days{kind="all"}
     unit: count
     tab: false
-    description: "Lifetime trades the upstream reports. Checked against the agent's own round list: 35 to 37 of each agent's rounds are this arena, so the counter is not diluted by others."
+    description: "ARENA-LEVEL, identical on every row. Days since the most recent agent was enrolled. The field went in once and has not changed since, so calling these frontier models dates that claim rather than making it about today."
 
 ledger_columns:
   - { label: "Alpha", slot: p50 }

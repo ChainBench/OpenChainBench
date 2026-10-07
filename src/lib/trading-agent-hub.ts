@@ -91,6 +91,10 @@ export type TradingAgentHub = {
     scheduledRounds: number | null;
     /** Days since the most recent scored round ended. Up to 7 is normal. */
     daysSinceLastRound: number | null;
+    /** Days since the most recent agent was enrolled. The field went in once,
+     *  in December 2025 and January 2026, and has not changed, so "frontier
+     *  models" is a claim about that moment and the page has to date it. */
+    rosterAgeDays: number | null;
   };
 };
 
@@ -205,6 +209,7 @@ async function _fetchTradingAgentHub(): Promise<TradingAgentHub | null> {
     arena: {
       scheduledRounds: arenaStat("scheduled_rounds"),
       daysSinceLastRound: arenaStat("days_since_round"),
+      rosterAgeDays: arenaStat("roster_age"),
     },
   };
 }

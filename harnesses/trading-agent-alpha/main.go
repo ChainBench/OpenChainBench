@@ -196,6 +196,16 @@ var (
 		Help: "Lifetime trades the upstream reports for this agent. Checked against /agents/{id}/competitions: 35 to 37 of each agent's rounds are this arena, so the counter is not diluted by others.",
 	}, []string{"agent", "kind", "arena"})
 
+	registeredAt = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "trading_agent_registered_timestamp_seconds",
+		Help: "When this agent was enrolled upstream. The roster went in once, December 2025 and January 2026, and has not been refreshed since.",
+	}, []string{"agent", "kind", "arena"})
+
+	rosterAgeDays = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "trading_agent_roster_age_days",
+		Help: "ARENA-LEVEL. Days since the MOST RECENT enrolment on the roster, i.e. how long since the field was last refreshed. A benchmark calling these agents frontier models is dating that claim, not making it about today.",
+	}, []string{"agent", "kind", "arena"})
+
 	roundsScored = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "trading_agent_rounds_scored",
 		Help: "Rounds in the arena that carried a real field and were scored.",
@@ -227,7 +237,7 @@ func init() {
 		alphaPct, returnPct, passivePct, assetPct, hitRatePct, beta,
 		rounds, weeklySD, alphaT, pooledAlphaPct, pooledAlphaT,
 		roundsNeeded, separableCount, scheduledRounds, daysSinceRound,
-		tradesPerRound, tradesTotal,
+		tradesPerRound, tradesTotal, registeredAt, rosterAgeDays,
 		roundsScored, roundsSkipped, lastRun, lastRoundEnd, errors,
 	} {
 		prometheus.MustRegister(c)
@@ -517,6 +527,8 @@ func runOnce() error {
 	daysSinceRound.Reset()
 	tradesPerRound.Reset()
 	tradesTotal.Reset()
+	registeredAt.Reset()
+	rosterAgeDays.Reset()
 	roundsSkipped.Reset()
 
 	// Betas are needed by the pooled test, which cannot run until every
@@ -646,14 +658,36 @@ func runOnce() error {
 			wanted[name] = id
 		}
 	}
-	for name, act := range fetchActivity(wanted) {
+	acts := fetchActivity(wanted)
+	// The newest enrolment, which is how long since the field was refreshed.
+	// Newest rather than oldest: one agent added yesterday would make the
+	// roster current, and the oldest date would hide that.
+	var newest time.Time
+	for name, act := range acts {
 		for _, k := range []string{kindOf(name), "all"} {
 			lbl := []string{slugOf(name), k, arena}
 			tradesPerRound.WithLabelValues(lbl...).Set(act.tradesPerRound)
 			tradesTotal.WithLabelValues(lbl...).Set(act.totalTrades)
+			if !act.registered.IsZero() {
+				registeredAt.WithLabelValues(lbl...).Set(float64(act.registered.Unix()))
+			}
 		}
-		log.Printf("[284] %-22s %7.0f trades, %6.2f per round, wallet %s",
-			name, act.totalTrades, act.tradesPerRound, act.wallet)
+		if act.registered.After(newest) {
+			newest = act.registered
+		}
+		log.Printf("[284] %-22s %7.0f trades, %6.2f per round, enrolled %s, wallet %s",
+			name, act.totalTrades, act.tradesPerRound,
+			act.registered.Format("2006-01-02"), act.wallet)
+	}
+	if !newest.IsZero() {
+		age := time.Since(newest).Hours() / 24
+		for _, name := range ranked {
+			for _, k := range []string{kindOf(name), "all"} {
+				rosterAgeDays.WithLabelValues(slugOf(name), k, arena).Set(age)
+			}
+		}
+		log.Printf("[284] roster: last enrolled %s, %.0f days ago",
+			newest.Format("2006-01-02"), age)
 	}
 
 	// Liveness, published per agent for the same reason the arena-level
