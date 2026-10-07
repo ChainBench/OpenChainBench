@@ -1925,6 +1925,115 @@ func chains() []Chain {
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_OKTC_DRPC", "https://oktc.drpc.org")},
 			},
 		},
+		// 2026-10-07 chain-hunt sweep. Katana (chain 747474), the DeFi-focused L2. 4 clean keyless providers. Best outside-PR record of the sweep at 28 merged from non-members on katana-network/katana-docs.
+		{
+			Slug: "katana",
+			Name: "Katana",
+			Providers: []Provider{
+				{Slug: "katana-official", Name: "Katana", URL: envDefault("RPC_URL_KATANA_KATANA_OFFICIAL", "https://rpc.katana.network")},
+				{Slug: "tenderly", Name: "Tenderly", URL: envDefault("RPC_URL_KATANA_TENDERLY", "https://katana.gateway.tenderly.co")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_KATANA_DRPC", "https://katana.drpc.org")},
+				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_KATANA_THIRDWEB", "https://747474.rpc.thirdweb.com")},
+			},
+		},
+		// 2026-10-07 chain-hunt sweep. Superseed (chain 5330), OP Stack L2. 3 clean keyless providers; publicnode has no superseed route.
+		{
+			Slug: "superseed",
+			Name: "Superseed",
+			Providers: []Provider{
+				{Slug: "superseed-official", Name: "Superseed", URL: envDefault("RPC_URL_SUPERSEED_SUPERSEED_OFFICIAL", "https://mainnet.superseed.xyz")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_SUPERSEED_DRPC", "https://superseed.drpc.org")},
+				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_SUPERSEED_THIRDWEB", "https://5330.rpc.thirdweb.com")},
+			},
+		},
+		// 2026-10-07 chain-hunt sweep. Tempo (chain 4217). 3 clean keyless providers; thirdweb returns no route for 4217 so the roster is official, drpc and publicnode.
+		{
+			Slug: "tempo",
+			Name: "Tempo",
+			Providers: []Provider{
+				{Slug: "tempo-official", Name: "Tempo", URL: envDefault("RPC_URL_TEMPO_TEMPO_OFFICIAL", "https://rpc.mainnet.tempo.xyz")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_TEMPO_DRPC", "https://tempo.drpc.org")},
+				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_TEMPO_PUBLICNODE", "https://tempo-rpc.publicnode.com")},
+			},
+		},
+		// 2026-10-07 chain-hunt sweep. 0G (chain 16661), the AI-data L1 with an EVM surface. 4 clean keyless providers, the joint-widest roster of this sweep.
+		{
+			Slug: "0g",
+			Name: "0G",
+			Providers: []Provider{
+				{Slug: "0g-official", Name: "0G Labs", URL: envDefault("RPC_URL_0G_0G_OFFICIAL", "https://evmrpc.0g.ai")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_0G_DRPC", "https://0g.drpc.org")},
+				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_0G_PUBLICNODE", "https://0g-rpc.publicnode.com")},
+				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_0G_THIRDWEB", "https://16661.rpc.thirdweb.com")},
+			},
+		},
+		// 2026-10-07 chain-hunt sweep. Neo X (chain 47763), Neo's EVM sidechain. 3 clean keyless providers: two Bane Labs endpoints plus thirdweb. No drpc or publicnode route.
+		{
+			Slug: "neox",
+			Name: "Neo X",
+			Providers: []Provider{
+				{Slug: "neox-official-1", Name: "Bane Labs", URL: envDefault("RPC_URL_NEOX_NEOX_OFFICIAL_1", "https://mainnet-1.rpc.banelabs.org")},
+				{Slug: "neox-official-2", Name: "Bane Labs (secondary)", URL: envDefault("RPC_URL_NEOX_NEOX_OFFICIAL_2", "https://mainnet-2.rpc.banelabs.org")},
+				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_NEOX_THIRDWEB", "https://47763.rpc.thirdweb.com")},
+			},
+		},
+		// 2026-10-07 chain-hunt sweep. TAC (chain 239), the TON-adjacent EVM L1. 4 clean keyless providers. Its Cosmos side is a separate surface and is not probed here; this is the EVM JSON-RPC.
+		{
+			Slug: "tac",
+			Name: "TAC",
+			Providers: []Provider{
+				{Slug: "tac-official", Name: "TAC", URL: envDefault("RPC_URL_TAC_TAC_OFFICIAL", "https://rpc.tac.build")},
+				{Slug: "ankr", Name: "Ankr", URL: envDefault("RPC_URL_TAC_ANKR", "https://rpc.ankr.com/tac")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_TAC_DRPC", "https://tac.drpc.org")},
+				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_TAC_THIRDWEB", "https://239.rpc.thirdweb.com")},
+			},
+		},
+		// 2026-10-07 chain-hunt sweep. ZIGChain (zigchain-1). 5 live of the 5 the Cosmos registry lists, the widest roster of this sweep. Note for anyone planning a docs PR: ZIGChain/docs has merged ZERO outside PRs, so the best bench here sits behind the least receptive repo.
+		{
+			Slug: "zigchain",
+			Name: "ZIGChain",
+			Kind: "cosmos",
+			Providers: []Provider{
+				{Slug: "zigchain-official", Name: "ZIGChain", URL: envDefault("RPC_URL_ZIGCHAIN_ZIGCHAIN_OFFICIAL", "https://rpc.zigchain.com")},
+				{Slug: "numia", Name: "Numia", URL: envDefault("RPC_URL_ZIGCHAIN_NUMIA", "https://public-zigchain-rpc.numia.xyz")},
+				{Slug: "polkachu", Name: "Polkachu", URL: envDefault("RPC_URL_ZIGCHAIN_POLKACHU", "https://zigchain-rpc.polkachu.com")},
+				{Slug: "nodestake", Name: "NodeStake", URL: envDefault("RPC_URL_ZIGCHAIN_NODESTAKE", "https://rpc.zigchain.nodestake.org")},
+				{Slug: "stakeandrelax", Name: "Stake and Relax", URL: envDefault("RPC_URL_ZIGCHAIN_STAKEANDRELAX", "https://zigchain-rpc.stakeandrelax.net")},
+			},
+		},
+		// 2026-10-07 chain-hunt sweep. Agoric (agoric-3). The registry lists ELEVEN public RPCs and only 3 answer: kjnodes, AutoStake, Stakeflow, 0base, w3coins, StakeWithUs, Stake&Relax and Bro_n_Bro were all dead on the sweep. A count of listed endpoints is not a count of providers.
+		{
+			Slug: "agoric",
+			Name: "Agoric",
+			Kind: "cosmos",
+			Providers: []Provider{
+				{Slug: "agoric-official", Name: "Agoric", URL: envDefault("RPC_URL_AGORIC_AGORIC_OFFICIAL", "https://main.rpc.agoric.net")},
+				{Slug: "stakeangle", Name: "StakeAngle", URL: envDefault("RPC_URL_AGORIC_STAKEANGLE", "https://agoric-rpc.stakeangle.com")},
+				{Slug: "polkachu", Name: "Polkachu", URL: envDefault("RPC_URL_AGORIC_POLKACHU", "https://agoric-rpc.polkachu.com")},
+			},
+		},
+		// 2026-10-07 chain-hunt sweep. XPLA (dimension_37-1). 3 clean keyless providers. Note the Allnodes entry resolves to publicnode's host, so it is recorded under the publicnode slug rather than twice.
+		{
+			Slug: "xpla",
+			Name: "XPLA",
+			Kind: "cosmos",
+			Providers: []Provider{
+				{Slug: "xpla-official", Name: "XPLA", URL: envDefault("RPC_URL_XPLA_XPLA_OFFICIAL", "https://dimension-rpc.xpla.dev")},
+				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_XPLA_PUBLICNODE", "https://xpla-rpc.publicnode.com")},
+				{Slug: "polkachu", Name: "Polkachu", URL: envDefault("RPC_URL_XPLA_POLKACHU", "https://xpla-rpc.polkachu.com")},
+			},
+		},
+		// 2026-10-07 chain-hunt sweep. XRPL EVM (xrplevm_1440000-1). 3 live of 3 listed. This is the Cosmos consensus RPC; the chain also exposes an EVM JSON-RPC which is a separate surface. Docs sit under the ripple org, 19 outside PRs merged.
+		{
+			Slug: "xrplevm",
+			Name: "XRPL EVM",
+			Kind: "cosmos",
+			Providers: []Provider{
+				{Slug: "xrplevm-official", Name: "Peersyst", URL: envDefault("RPC_URL_XRPLEVM_XRPLEVM_OFFICIAL", "https://cosmos-rpc.xrplevm.org")},
+				{Slug: "cumulo", Name: "Cumulo", URL: envDefault("RPC_URL_XRPLEVM_CUMULO", "https://rpc.xrpl.cumulo.org.es")},
+				{Slug: "polkachu", Name: "Polkachu", URL: envDefault("RPC_URL_XRPLEVM_POLKACHU", "https://xrp-rpc.polkachu.com")},
+			},
+		},
 	}
 
 	filter := strings.TrimSpace(os.Getenv("OCB_CHAINS"))
