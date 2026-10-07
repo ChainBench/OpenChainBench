@@ -177,27 +177,35 @@ export const DEV_ONLY_BENCH_SLUGS = new Set([
   // of the eight rows have no maker rate at all. Un-gate after a 24h
   // window and an audit round.
   "perp-fee-disclosure",
-  // The Dune trial ends 2026-10-02 and no paid plan is committed, so the
-  // four benches below stand down until one is. They are gated rather than
-  // removed because nothing about them is wrong: the harnesses, the SQL and
-  // the freshness guard all work, and the day the plan is paid for these
-  // four come back by deleting these lines. Bench 201 stays on production
-  // because it moved to DeFiLlama's free adapters (see bench 201 and 267);
-  // these four have no free equivalent for what they measure.
+  // The Dune trial ended 2026-10-02 and no paid plan was committed, so these
+  // four stood down. The note here used to say they "have no free equivalent
+  // for what they measure"; that stopped being true on 2026-10-07, when they
+  // were re-sourced to the public tehcscreener API (Allium-backed, no key) via
+  // harnesses/terminal-activity. Bench 201 had already moved to DeFiLlama's
+  // free adapters (see bench 201 and 267).
+  //
+  // They stay here for the ordinary reason, not the old one: a re-sourced
+  // bench needs a full 24h window of the new series and an audit round before
+  // production serves it. Un-gate condition: both of those, not a Dune plan.
+  //
+  // The move was not a cheaper route to the same numbers. Fee-wallet
+  // attribution could not see a terminal that charges no fee, so pump.fun was
+  // structurally absent from three of the four and Fomo from the wallet count;
+  // all five rows that were blank for source reasons now carry a figure, and
+  // the comparison is per chain rather than Solana-only.
   //
   // 206 average trade size, 207 swap transactions, 232 active wallets: all
-  // three read dune-platform-volume, whose one execution a day is metered.
-  // Un-gate condition: a paid Dune plan.
+  // three now read terminal-activity. Un-gate condition: a 24h window of the
+  // new series plus an audit round.
   "solana-avg-trade-size",
   "solana-unique-traders",
   "trading-platform-wallets",
-  // 203 memecoin platform fee rates: its headline take rate reads
-  // dune-platform-volume and its coverage and fee-paying-rate columns come
-  // from the memecoin-platforms harness, which is its own metered Dune
-  // query. Re-sourcing only the headline would leave the rest of the page
-  // dark, and bench 201 now carries a take rate from DeFiLlama, so the
-  // signal is not lost while this one waits. Un-gate condition: a paid
-  // Dune plan.
+  // 203 memecoin platform fee rates: the headline take rate now reads
+  // terminal-activity. Its fee-paying-rate panel was removed rather than
+  // re-sourced: that column measured the share of transactions that actually
+  // paid a fee, which the new source does not report and which none of its
+  // fields reconstruct. Approximating it would have put a derived number where
+  // a measured one stood. Un-gate condition: a 24h window plus an audit round.
   "memecoin-platforms",
 ]);
 

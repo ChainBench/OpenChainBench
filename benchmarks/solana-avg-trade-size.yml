@@ -1,215 +1,188 @@
-# OpenChainBench. Bench 206
+# OpenChainBench. Bench № 206
 
 slug: solana-avg-trade-size
 number: "206"
-title: "Average swap size on Solana: GMGN vs Axiom vs Trojan vs Terminal"
-seo_title: "Average trade size by Solana trading platform 2026: GMGN vs Axiom vs Trojan vs Terminal"
-seo_description: "{{best_name}} has the largest average swap size at {{best_p50}} per trade. GMGN vs Axiom vs Fomo vs Trojan vs Terminal ranked by average trade size, from Solana fee-wallet attribution. Maestro, Phantom and Bloom come from Mobula on a rolling window."
-subtitle: Average swap size in USD per attributed transaction for each Solana trading platform, for one complete day. Built from our own SQL over Dune's solana.account_activity and dex_solana.trades. Reveals the trader profile of each platform, from retail micro-trades to large-order flow.
+title: "Average swap size on Solana: which trading terminal carries the biggest tickets"
+seo_title: "Average trade size by Solana terminal 2026"
+seo_description: "{{best_name}} carries the largest average Solana swap at {{best_p50}}. Fomo, Maestro, Terminal, GMGN, Axiom and pump.fun ranked by ticket."
+subtitle: A day's routed Solana volume divided by that day's swap count, per trading terminal. Separates the terminals carrying large tickets from the ones carrying many small ones.
 
 category: Trading
 status: live
 metric: Avg swap size
 unit: usd
 higher_is_better: true
+row_noun: { one: terminal, many: terminals }
+# The success query is a publication gate (the harness published this terminal
+# and chain on a day inside the window, or it did not), never a probe success
+# rate. Declaring that hides the Success and Reliability columns, which would
+# otherwise read 100% on every live row and invite a reader to take it for a
+# measured uptime.
+ledger_reliability: false
 
 disclaimer: |
-  Average swap size is a day's attributed Solana volume divided by that day's attributed transaction count. Both include bot and MEV activity: the figure covers every on-chain swap attributed to the platform, not human-only trades. A transaction is attributed when that platform's fee wallet received value in it, and one leg per transaction and trader is counted. GMGN, Axiom and Terminal also trade on EVM chains and those legs are not in here. pump.fun and BasedBot read unresponsive.
+  Average swap size is one complete UTC day's routed Solana volume divided by that day's swap count, from the public tehcscreener API, which is Allium-backed. Both figures include bot and MEV activity: this is every swap the source attributes to the terminal, not human-only trades. A mean, not a median, so a handful of large tickets moves it and the figure is not the typical trade. Larger is not better here in any product sense; it describes who the terminal serves.
 
 seo_intro: |
-  The average swap size on Solana varies by several multiples across platforms,
-  which is the clearest read there is on who trades where. Trojan and Terminal sit
-  at the top, serving traders running larger positions, and the terminals that carry
-  heavy bot flow sit lower because sniping inflates the transaction count while
-  compressing the size of each trade. Every figure here is fee-paying volume over
-  fee-paying transactions, from our own SQL over Dune's solana.account_activity and
-  dex_solana.trades, one execution a day, so the average is the size of a trade the
-  platform actually earned on rather than of anything routed near it. Maestro,
-  Phantom and Bloom are the exception and come from Mobula attribution on a rolling
-  window, which the methodology flags.
+  Average swap size tells you who a trading terminal serves without asking
+  anyone. A terminal whose average ticket is ninety dollars is carrying
+  different flow from one averaging thirty-eight, even when both route
+  comparable volume, and the difference shows up in what they can charge and
+  who they keep. This page divides each terminal's routed Solana volume on the
+  latest complete day by the number of swaps it took to get there. It is a
+  mean, so read it alongside volume rather than instead of it.
 
 abstract: |
-  The harness runs one Dune execution a day against its own SQL over
-  solana.account_activity, dex_solana.trades and prices.day, and divides the day's
-  attributed volume by its attributed transaction count. It exposes
-  dune_platform_avg_trade_usd, dune_platform_txns_24h,
-  dune_platform_volume_data_day_unix and dune_platform_volume_health per platform.
-  A transaction is attributed to the platform whose fee wallet received value in
-  it, and one dex_solana.trades leg per transaction and trader is summed so a
-  multi-hop route is not counted several times.
+  The harness reads one day per terminal from the tehcscreener /bots/{bot}
+  endpoint, takes the Solana series, and publishes volume divided by
+  transactions as terminal_avg_trade_usd. Numerator and denominator are the
+  same row of the same day, so the ratio cannot mix two periods.
+
+  Three names left this cohort when the source changed on 2026-10-07. Padre,
+  Phantom and Bloom are not covered by the current source, and a row that
+  cannot be measured is removed rather than left to read as zero. pump.fun
+  joined it, because a figure built on fee-wallet attribution could not see a
+  terminal that charges no fee.
 
 methodology:
-  - "Source: our own SQL over Dune's solana.account_activity, dex_solana.trades and prices.day, one execution a day, for every row except Maestro, Phantom and Bloom. No uploaded third-party dataset: the eight this bench read until 2026-09-27 all froze on 2026-08-25 and were served as current for 32 days."
-  - "Attribution: a transaction counts for a platform when that platform's fee wallet received value in it, and one dex_solana.trades leg per transaction and trader is taken so a multi-hop route counts once. Wallet lists come from the DeFiLlama adapter repo and our solana-unique-traders harness, read 2026-09-27."
-  - "Average swap size: dune_platform_avg_trade_usd, the day's attributed volume_usd divided by its attributed transaction count, computed in the query rather than in PromQL."
-  - "Bot inclusion: every attributed swap counts, bots and MEV included. A platform whose flow is mostly bot sniping reads a lower average than a human-only baseline would."
-  - "Three rows are measured differently and are not comparable to the rest. Maestro, Phantom and Bloom read solana_platform_volume_24h_usd / solana_platform_trades_24h from the solana-launchpad-wars harness, which is Mobula lighthouse attribution on a rolling 24h window rather than fee-gated volume on one UTC day."
-  - "Day: the newest UTC day that closed at least 10 hours earlier, the rule DeFiLlama's own Solana adapters use. dune_platform_volume_data_day_unix carries the day each figure is for."
-  - "Stale source: a platform whose data day falls more than 3 days behind, or that the query stops returning, has its gauges deleted and reads unresponsive. An old figure is never republished as current."
-  - "Scope: Solana only. GMGN, Axiom and Terminal also trade on EVM chains, and those legs are not counted here. pump.fun and BasedBot are not measured at all."
+  - "Source: the public tehcscreener API (https://tehcscreener.com/api), Allium-backed, no key, synced once a day. The harness reads /bots over the full history for the roster and /bots/{bot} for each terminal's per-chain daily series, and publishes one day: the latest the source names."
+  - "The ratio: that day's routed volume in USD divided by that day's swap transaction count, both read from the same row of the same series. A terminal whose day carries volume but no transaction count, or the reverse, publishes nothing rather than a ratio built on a half-loaded day."
+  - "A mean, not a median: the source publishes daily totals, not a trade-size distribution, so a small number of large tickets moves this figure. It describes the mix of flow a terminal carries, and it is not the size of a typical trade on it."
+  - "Cohort changes on 2026-10-07: Padre, Phantom and Bloom are not covered by the current source and were removed rather than published as zero. pump.fun was added, having been invisible to fee-wallet attribution because it charges no terminal fee."
+  - "Latest complete day, not a rolling 24 hours: the source publishes daily and its latest day is normally yesterday. A terminal with no activity on that day carries no figure and reads unresponsive rather than having its last live day carried forward. BasedBot is the live case, with volume on Robinhood Chain and almost none on Solana."
+  - "Stale source: a day more than 3 whole days behind, or a terminal the source stops returning, has its gauges deleted and reads unresponsive. An old figure is never republished as current, because these gauges are scraped every 60 seconds and read through a 24h window, which would average a frozen figure in as though it had just been measured."
+  - "Two freshness layers, because they fail differently: terminal_activity_last_success_unix says the harness is still running, and terminal_activity_health says this particular terminal and chain published a day inside the window. A harness that runs while its source freezes trips the second, not the first."
+  - "Not scored here: execution quality. A large average ticket says nothing about slippage or fees on that ticket, which benches 268 and 279 measure directly."
 
 findings:
-  - "{{best_name}} attracts the largest average swap at {{best_p50}} per transaction."
-  - "{{name:fomo}} reads {{p50:fomo}} and {{name:trojan}} {{p50:trojan}}, so the gap between a sponsored-gas retail wallet and a Telegram bot's flow shows up in the table rather than being asserted."
-  - "Every fee-attributed row here is fee-paying volume: the denominator counts transactions that paid the platform, so the average is the size of a trade the platform earned on. Maestro, Phantom and Bloom are the exception and read Mobula attribution on a rolling window."
-  - "pump.fun and BasedBot read unresponsive. pump.fun charges no bonding-curve fee, so there is no fee wallet to attribute its transactions from, and BasedBot has no public wallet list."
+  - "{{best_name}} carries the largest average swap on Solana at {{best_p50}}."
+  - "Average ticket and total volume rank differently. A terminal can route the most dollars and carry the smallest tickets, which is what a broad retail base looks like in one number."
+  - "This is a mean over a day's totals, so it moves with a handful of large trades. It is a description of flow mix, not the size of a typical trade."
+  - "Padre, Phantom and Bloom left the cohort on 2026-10-07 because the current source does not cover them. A row that cannot be measured is removed, not published as zero."
 
-source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/dune-platform-volume
+source: https://github.com/ChainBench/OpenChainBench/tree/dev/harnesses/terminal-activity
 
 prometheus:
   window: 24h
-  freshness_metric: dune_platform_avg_trade_usd
+  url: https://prom.openchainbench.com
+  expected_freshness_seconds: 172800
+  freshness_timestamp_metric: terminal_activity_last_success_unix
 
 faq:
-  - q: "What does average swap size measure?"
-    a: "Average swap size is total 24h attributed volume divided by total 24h attributed trade count. It reflects the typical notional size of a single swap on each platform. A platform with many small trades will show a low average; one with fewer but larger trades will show a high average."
-  - q: "Why is the pump.fun row empty?"
-    a: "pump.fun cut its bonding-curve fee to 0% in Aug 2026, so no fee wallet receives anything on its trades and the attribution this bench uses cannot see them. The retired dataset that used to fill this row stopped updating on 2026-08-25 and was served as current for a month; the row reads unresponsive now instead."
-  - q: "Is this apple-to-apple across platforms?"
-    a: "For most rows, yes: a transaction counts for the platform whose fee wallet received value in it, and one dex_solana.trades leg per transaction and trader is summed, so a pump.fun token bought through GMGN counts under GMGN. Two exceptions. Fomo sponsors gas and is measured on its USDC fee leg per transaction. Maestro, Phantom and Bloom come from Mobula attribution on a rolling 24h window, a different source and a different window, so read them against each other rather than against the fee-attributed rows."
-  - q: "Why is Fomo's average trade size different from GMGN's?"
-    a: "Fomo attracts a broader retail base through social copy-trading and wallet features, and it sponsors the gas on every trade it routes, so its transaction count includes flow a self-funded terminal would not see. Fomo also settles cross-chain trades through Relay, which is not on Solana and not counted here, so the figure is its Solana activity rather than its whole business."
+  - q: "Is a larger average swap better?"
+    a: "Not in any product sense. It describes who the terminal serves: larger tickets usually mean more professional or automated flow, smaller ones a broader retail base. Read it next to volume and wallet count rather than as a ranking of quality."
+  - q: "Is this the typical trade size?"
+    a: "No. It is a day's volume divided by a day's swap count, so it is a mean over totals. The source publishes daily aggregates rather than a trade-size distribution, so no median is available and a handful of large tickets pulls the figure up."
+  - q: "Why did Padre, Phantom and Bloom disappear?"
+    a: "The source behind this bench changed on 2026-10-07 and does not cover those three. They were removed rather than left in the table reading zero, because a zero would rank them last on a figure nobody measured."
+  - q: "Does this include bot activity?"
+    a: "Yes, every swap the source attributes to the terminal, including automated and MEV flow. A terminal serving mostly bots will usually show a smaller average ticket and a much higher swap count than wallet count; bench 232 publishes that ratio."
 
 providers:
-  - slug: pump-fun
-    name: pump.fun
-    tag: "Solana meme launchpad + relay"
-    formula: "Not measured. pump.fun charges no bonding-curve fee since Aug 2026, so no fee wallet receives anything on its trades and fee-wallet attribution cannot see them. The row reads unresponsive."
-    queries:
-      p50: dune_platform_avg_trade_usd{platform="pump-fun"}
-      p90: dune_platform_avg_trade_usd{platform="pump-fun"}
-      p99: dune_platform_avg_trade_usd{platform="pump-fun"}
-      mean: dune_platform_avg_trade_usd{platform="pump-fun"}
-      success: dune_platform_volume_health{platform="pump-fun"}
-      sample_size: dune_platform_txns_24h{platform="pump-fun"}
-      series: dune_platform_avg_trade_usd{platform="pump-fun"}
-
-  - slug: gmgn
-    name: GMGN
-    tag: "AI trading terminal, multi-chain"
-    formula: "Average swap size in USD (volume_usd / txns) from our own Dune SQL: transactions paying a GMGN fee wallet, joined to dex_solana.trades, one leg per transaction and trader. Solana only."
-    queries:
-      p50: dune_platform_avg_trade_usd{platform="gmgn"}
-      p90: dune_platform_avg_trade_usd{platform="gmgn"}
-      p99: dune_platform_avg_trade_usd{platform="gmgn"}
-      mean: dune_platform_avg_trade_usd{platform="gmgn"}
-      success: dune_platform_volume_health{platform="gmgn"}
-      sample_size: dune_platform_txns_24h{platform="gmgn"}
-      series: dune_platform_avg_trade_usd{platform="gmgn"}
-
-  - slug: trojan
-    name: Trojan
-    tag: "Telegram trading bot on Solana"
-    formula: "Average swap size in USD (volume_usd / txns) from our own Dune SQL: transactions paying a Trojan fee wallet, joined to dex_solana.trades, one leg per transaction and trader. Solana only."
-    queries:
-      p50: dune_platform_avg_trade_usd{platform="trojan"}
-      p90: dune_platform_avg_trade_usd{platform="trojan"}
-      p99: dune_platform_avg_trade_usd{platform="trojan"}
-      mean: dune_platform_avg_trade_usd{platform="trojan"}
-      success: dune_platform_volume_health{platform="trojan"}
-      sample_size: dune_platform_txns_24h{platform="trojan"}
-      series: dune_platform_avg_trade_usd{platform="trojan"}
-
-  - slug: maestro
-    name: Maestro
-    tag: "Telegram trading bot on Solana"
-    formula: "Average swap size in USD routed through Maestro, from Mobula lighthouse byPlatform on a rolling 24h window, 15 min poll. A different source and window from the fee-attributed rows."
-    queries:
-      p50: solana_platform_volume_24h_usd{platform="maestro"} / solana_platform_trades_24h{platform="maestro"}
-      p90: solana_platform_volume_24h_usd{platform="maestro"} / solana_platform_trades_24h{platform="maestro"}
-      p99: solana_platform_volume_24h_usd{platform="maestro"} / solana_platform_trades_24h{platform="maestro"}
-      mean: solana_platform_volume_24h_usd{platform="maestro"} / solana_platform_trades_24h{platform="maestro"}
-      success: solana_platform_health{platform="maestro"}
-      sample_size: solana_platform_trades_24h{platform="maestro"}
-      series: solana_platform_volume_24h_usd{platform="maestro"} / solana_platform_trades_24h{platform="maestro"}
-
   - slug: fomo
     name: Fomo
-    tag: "Solana trading platform"
-    formula: "Average swap size in USD (volume_usd / txns) from our own Dune SQL: transactions paying a Fomo fee wallet, joined to dex_solana.trades, largest USDC leg per transaction. Solana only."
+    tag: "Cross-chain terminal, gas sponsored"
+    formula: "A day's routed Solana volume divided by that day's swap count for Fomo, both from the tehcscreener /bots/fomo series."
     queries:
-      p50: dune_platform_avg_trade_usd{platform="fomo"}
-      p90: dune_platform_avg_trade_usd{platform="fomo"}
-      p99: dune_platform_avg_trade_usd{platform="fomo"}
-      mean: dune_platform_avg_trade_usd{platform="fomo"}
-      success: dune_platform_volume_health{platform="fomo"}
-      sample_size: dune_platform_txns_24h{platform="fomo"}
-      series: dune_platform_avg_trade_usd{platform="fomo"}
+      p50: max(terminal_avg_trade_usd{platform="fomo",chain="solana"})
+      p90: max(terminal_avg_trade_usd{platform="fomo",chain="solana"})
+      p99: max(terminal_avg_trade_usd{platform="fomo",chain="solana"})
+      success: max(terminal_activity_health{platform="fomo",chain="solana"})
+      sample_size: max(terminal_txns{platform="fomo",chain="solana"})
+      series: max by (platform) (terminal_avg_trade_usd{platform="fomo",chain="solana"})
 
   - slug: axiom
     name: Axiom
-    tag: "Web trading terminal, multi-chain"
-    formula: "Average swap size in USD (volume_usd / txns) from our own Dune SQL: transactions paying a Axiom fee wallet, joined to dex_solana.trades, one leg per transaction and trader. Solana only."
+    tag: "Solana-first trading terminal"
+    formula: "A day's routed Solana volume divided by that day's swap count for Axiom, both from the tehcscreener /bots/axiom series."
     queries:
-      p50: dune_platform_avg_trade_usd{platform="axiom"}
-      p90: dune_platform_avg_trade_usd{platform="axiom"}
-      p99: dune_platform_avg_trade_usd{platform="axiom"}
-      mean: dune_platform_avg_trade_usd{platform="axiom"}
-      success: dune_platform_volume_health{platform="axiom"}
-      sample_size: dune_platform_txns_24h{platform="axiom"}
-      series: dune_platform_avg_trade_usd{platform="axiom"}
+      p50: max(terminal_avg_trade_usd{platform="axiom",chain="solana"})
+      p90: max(terminal_avg_trade_usd{platform="axiom",chain="solana"})
+      p99: max(terminal_avg_trade_usd{platform="axiom",chain="solana"})
+      success: max(terminal_activity_health{platform="axiom",chain="solana"})
+      sample_size: max(terminal_txns{platform="axiom",chain="solana"})
+      series: max by (platform) (terminal_avg_trade_usd{platform="axiom",chain="solana"})
+
+  - slug: pumpapp
+    name: pump.fun
+    tag: "Launchpad's own trading app"
+    formula: "A day's routed Solana volume divided by that day's swap count for pump.fun, both from the tehcscreener /bots/pumpapp series."
+    queries:
+      p50: max(terminal_avg_trade_usd{platform="pumpapp",chain="solana"})
+      p90: max(terminal_avg_trade_usd{platform="pumpapp",chain="solana"})
+      p99: max(terminal_avg_trade_usd{platform="pumpapp",chain="solana"})
+      success: max(terminal_activity_health{platform="pumpapp",chain="solana"})
+      sample_size: max(terminal_txns{platform="pumpapp",chain="solana"})
+      series: max by (platform) (terminal_avg_trade_usd{platform="pumpapp",chain="solana"})
+
+  - slug: gmgn
+    name: GMGN
+    tag: "Multi-chain terminal, widest chain reach"
+    formula: "A day's routed Solana volume divided by that day's swap count for GMGN, both from the tehcscreener /bots/gmgn series."
+    queries:
+      p50: max(terminal_avg_trade_usd{platform="gmgn",chain="solana"})
+      p90: max(terminal_avg_trade_usd{platform="gmgn",chain="solana"})
+      p99: max(terminal_avg_trade_usd{platform="gmgn",chain="solana"})
+      success: max(terminal_activity_health{platform="gmgn",chain="solana"})
+      sample_size: max(terminal_txns{platform="gmgn",chain="solana"})
+      series: max by (platform) (terminal_avg_trade_usd{platform="gmgn",chain="solana"})
+
+  - slug: terminal
+    name: Terminal
+    tag: "Trading terminal, heaviest wallets"
+    formula: "A day's routed Solana volume divided by that day's swap count for Terminal, both from the tehcscreener /bots/terminal series."
+    queries:
+      p50: max(terminal_avg_trade_usd{platform="terminal",chain="solana"})
+      p90: max(terminal_avg_trade_usd{platform="terminal",chain="solana"})
+      p99: max(terminal_avg_trade_usd{platform="terminal",chain="solana"})
+      success: max(terminal_activity_health{platform="terminal",chain="solana"})
+      sample_size: max(terminal_txns{platform="terminal",chain="solana"})
+      series: max by (platform) (terminal_avg_trade_usd{platform="terminal",chain="solana"})
+
+  - slug: trojan
+    name: Trojan
+    tag: "Telegram-native bot, Solana only"
+    formula: "A day's routed Solana volume divided by that day's swap count for Trojan, both from the tehcscreener /bots/trojan series."
+    queries:
+      p50: max(terminal_avg_trade_usd{platform="trojan",chain="solana"})
+      p90: max(terminal_avg_trade_usd{platform="trojan",chain="solana"})
+      p99: max(terminal_avg_trade_usd{platform="trojan",chain="solana"})
+      success: max(terminal_activity_health{platform="trojan",chain="solana"})
+      sample_size: max(terminal_txns{platform="trojan",chain="solana"})
+      series: max by (platform) (terminal_avg_trade_usd{platform="trojan",chain="solana"})
 
   - slug: photon
     name: Photon
-    tag: "Solana trading terminal"
-    formula: "Average swap size in USD (volume_usd / txns) from our own Dune SQL: transactions paying a Photon fee wallet, joined to dex_solana.trades, one leg per transaction and trader. Solana only."
+    tag: "Web terminal, Solana only"
+    formula: "A day's routed Solana volume divided by that day's swap count for Photon, both from the tehcscreener /bots/photon series."
     queries:
-      p50: dune_platform_avg_trade_usd{platform="photon"}
-      p90: dune_platform_avg_trade_usd{platform="photon"}
-      p99: dune_platform_avg_trade_usd{platform="photon"}
-      mean: dune_platform_avg_trade_usd{platform="photon"}
-      success: dune_platform_volume_health{platform="photon"}
-      sample_size: dune_platform_txns_24h{platform="photon"}
-      series: dune_platform_avg_trade_usd{platform="photon"}
+      p50: max(terminal_avg_trade_usd{platform="photon",chain="solana"})
+      p90: max(terminal_avg_trade_usd{platform="photon",chain="solana"})
+      p99: max(terminal_avg_trade_usd{platform="photon",chain="solana"})
+      success: max(terminal_activity_health{platform="photon",chain="solana"})
+      sample_size: max(terminal_txns{platform="photon",chain="solana"})
+      series: max by (platform) (terminal_avg_trade_usd{platform="photon",chain="solana"})
 
-  - slug: padre
-    name: Terminal
-    tag: "pump.fun's own trading app (formerly Padre)"
-    formula: "Average swap size in USD (volume_usd / txns) from our own Dune SQL: transactions paying a Terminal fee wallet, joined to dex_solana.trades, one leg per transaction and trader. Solana only."
+  - slug: maestro
+    name: Maestro
+    tag: "Telegram bot, multi-chain"
+    formula: "A day's routed Solana volume divided by that day's swap count for Maestro, both from the tehcscreener /bots/maestro series."
     queries:
-      p50: dune_platform_avg_trade_usd{platform="padre"}
-      p90: dune_platform_avg_trade_usd{platform="padre"}
-      p99: dune_platform_avg_trade_usd{platform="padre"}
-      mean: dune_platform_avg_trade_usd{platform="padre"}
-      success: dune_platform_volume_health{platform="padre"}
-      sample_size: dune_platform_txns_24h{platform="padre"}
-      series: dune_platform_avg_trade_usd{platform="padre"}
+      p50: max(terminal_avg_trade_usd{platform="maestro",chain="solana"})
+      p90: max(terminal_avg_trade_usd{platform="maestro",chain="solana"})
+      p99: max(terminal_avg_trade_usd{platform="maestro",chain="solana"})
+      success: max(terminal_activity_health{platform="maestro",chain="solana"})
+      sample_size: max(terminal_txns{platform="maestro",chain="solana"})
+      series: max by (platform) (terminal_avg_trade_usd{platform="maestro",chain="solana"})
 
   - slug: basedbot
     name: BasedBot
-    tag: "Multi-chain trading bot"
-    formula: "Not measured. No public fee wallet or router list for BasedBot exists to attribute its transactions from. The row reads unresponsive."
+    tag: "Robinhood Chain native, little Solana flow"
+    formula: "A day's routed Solana volume divided by that day's swap count for BasedBot, both from the tehcscreener /bots/basedbot series."
     queries:
-      p50: dune_platform_avg_trade_usd{platform="basedbot"}
-      p90: dune_platform_avg_trade_usd{platform="basedbot"}
-      p99: dune_platform_avg_trade_usd{platform="basedbot"}
-      mean: dune_platform_avg_trade_usd{platform="basedbot"}
-      success: dune_platform_volume_health{platform="basedbot"}
-      sample_size: dune_platform_txns_24h{platform="basedbot"}
-      series: dune_platform_avg_trade_usd{platform="basedbot"}
-
-  - slug: phantom
-    name: Phantom
-    tag: "Solana wallet, DEX aggregator"
-    formula: "Average swap size in USD routed through Phantom wallet, from Mobula lighthouse byPlatform on a rolling 24h window, 15 min poll. A different source and window from the fee-attributed rows."
-    queries:
-      p50: solana_platform_volume_24h_usd{platform="phantom"} / solana_platform_trades_24h{platform="phantom"}
-      p90: solana_platform_volume_24h_usd{platform="phantom"} / solana_platform_trades_24h{platform="phantom"}
-      p99: solana_platform_volume_24h_usd{platform="phantom"} / solana_platform_trades_24h{platform="phantom"}
-      mean: solana_platform_volume_24h_usd{platform="phantom"} / solana_platform_trades_24h{platform="phantom"}
-      success: solana_platform_health{platform="phantom"}
-      sample_size: solana_platform_trades_24h{platform="phantom"}
-      series: solana_platform_volume_24h_usd{platform="phantom"} / solana_platform_trades_24h{platform="phantom"}
-
-  - slug: bloom
-    name: Bloom
-    tag: "Solana trading terminal"
-    formula: "Average swap size in USD routed through Bloom, from Mobula lighthouse byPlatform on a rolling 24h window, 15 min poll. A different source and window from the fee-attributed rows."
-    queries:
-      p50: solana_platform_volume_24h_usd{platform="bloom"} / solana_platform_trades_24h{platform="bloom"}
-      p90: solana_platform_volume_24h_usd{platform="bloom"} / solana_platform_trades_24h{platform="bloom"}
-      p99: solana_platform_volume_24h_usd{platform="bloom"} / solana_platform_trades_24h{platform="bloom"}
-      mean: solana_platform_volume_24h_usd{platform="bloom"} / solana_platform_trades_24h{platform="bloom"}
-      success: solana_platform_health{platform="bloom"}
-      sample_size: solana_platform_trades_24h{platform="bloom"}
-      series: solana_platform_volume_24h_usd{platform="bloom"} / solana_platform_trades_24h{platform="bloom"}
+      p50: max(terminal_avg_trade_usd{platform="basedbot",chain="solana"})
+      p90: max(terminal_avg_trade_usd{platform="basedbot",chain="solana"})
+      p99: max(terminal_avg_trade_usd{platform="basedbot",chain="solana"})
+      success: max(terminal_activity_health{platform="basedbot",chain="solana"})
+      sample_size: max(terminal_txns{platform="basedbot",chain="solana"})
+      series: max by (platform) (terminal_avg_trade_usd{platform="basedbot",chain="solana"})
