@@ -1,250 +1,229 @@
-# OpenChainBench. Bench 201
+# OpenChainBench. Bench № 201
 
 slug: solana-trading-platform-wars
 number: "201"
-title: "Trading platform leaderboard: what GMGN, Axiom, FOMO and Terminal route and what they charge"
-seo_title: "Trading app volume and commission: GMGN vs Axiom vs FOMO vs Terminal"
-seo_description: "{{best_name}} leads {{ranked_count}} trading apps at {{best_p50}} of routed volume on its latest closed day, with the commission each one took on it. GMGN, Axiom, FOMO, Terminal, pump.fun, Trojan, Photon."
-subtitle: Routed swap volume per trading app and Telegram bot on its latest closed UTC day, every chain summed, next to the commission the app itself collected on that volume and the take rate the two imply. From DeFiLlama's open dexs and fees adapters.
+title: "Trading terminal leaderboard: what GMGN, Axiom, Fomo and Terminal route and what they charge"
+seo_title: "Trading terminal volume and fees 2026: GMGN vs Axiom vs Fomo"
+seo_description: "{{best_name}} leads trading terminals with {{best_p50}} routed in a day. Volume, fee revenue and observed take rate for eight terminals, per chain or across all."
+subtitle: Routed volume, fee revenue and observed take rate per trading terminal, over one day, seven days or thirty, on one chain or across every chain.
 
 category: Trading
 status: live
 metric: Daily volume
 unit: usd
 higher_is_better: true
+row_noun: { one: terminal, many: terminals }
+ledger_reliability: false
 
 disclaimer: |
-  Volume is what each app's DeFiLlama dexs adapter attributes to it per UTC day, over every chain that adapter covers. Commission is the app's own cut from its fees adapter (dailyRevenue), not the total fees paid on the trade: the venue underneath takes its own share, and counting that would roughly double the figure. The take rate divides the two over the same days, so it is a floor where an adapter covers fewer chains for fees than for volume. Rows end on each app's own latest closed day.
+  Volume routed through each terminal's own interface, not volume on the tokens it trades: a swap on a pump.fun token executed through Axiom counts for Axiom here and for pump.fun on bench 200. From the public tehcscreener API, which is Allium-backed. Fee revenue is what the source reports as fees, which is more than the terminal's own commission; bench 203 explains what that is and is not.
 
 seo_intro: |
-  A trading app is a router. It does not settle a trade, it sends it to pump.fun,
-  Raydium, PancakeSwap or a Robinhood Chain pool and takes a cut on the way, so the
-  two numbers that describe it are the volume it routed and the commission it kept.
-  This benchmark puts them side by side for the majors, on closed UTC days, from
-  DeFiLlama's open adapters. {{best_name}} leads on routed volume at {{best_p50}},
-  and the take rate column is where the apps separate: a terminal charging around
-  1% of a smaller book can out-earn one routing several times the volume at half
-  that. FOMO settles cross-chain trades through Relay and books them on Solana, so
-  its volume is its whole business rather than a Solana slice. For the wider
-  fourteen-app cohort with the per-chain split and a year of daily history, read
-  bench 267.
+  A trading terminal makes money on flow, so the two figures that describe one
+  are how much it routes and what it keeps per dollar. This page puts them side
+  by side for eight terminals, over a day, a week or a month, on one chain or
+  across all of them. The spread is wide in both directions: the largest
+  terminal routes more than a hundred times the smallest, and take rates run
+  from nothing at all to above one percent.
 
 abstract: |
-  The trading-app-volume harness reads DeFiLlama's free summary endpoints once an
-  hour: /summary/dexs/<slug>?dataType=dailyVolume for routed volume with its
-  per-chain split, and /summary/fees/<slug>?dataType=dailyRevenue for the app's own
-  commission, both on UTC day buckets. The open day is dropped. Each app's figures
-  end on its own latest closed day, because most adapters are Dune queries that
-  publish a day 10 to 20 hours after it closes. The harness exposes
-  trading_app_volume_usd, trading_app_revenue_usd, trading_app_take_rate_pct and
-  trading_app_health per app and window. The take rate is computed over the days
-  that have both legs, so a fees adapter running a day behind the volume one cannot
-  read as a lower cut.
+  The harness reads the tehcscreener /bots endpoint and publishes routed
+  volume, fee revenue and transaction counts per terminal per chain, summed
+  over 1, 7 and 30 days. The take rate is total fees over the volume of the
+  days whose fees could be measured, so it is volume-weighted and never a mean
+  of daily rates.
+
+  This bench read DeFiLlama until 2026-10-07. It now reads tehcscreener, which
+  is the single source behind every bench on the /trading-apps hub. The move
+  removed a contradiction: the hub previously showed a DeFiLlama take rate and
+  a tehcscreener fee rate in the same table, disagreeing by up to a factor of
+  two on the same terminal.
 
 methodology:
-  - "Source: DeFiLlama's open dexs and fees adapters, read hourly from the free summary endpoints. Both legs are per UTC day and the current open day is dropped."
-  - "Volume: /summary/dexs/<slug>?dataType=dailyVolume, summed over every chain the adapter covers. This bench read third-party Dune datasets until 2026-09-27; they froze on 2026-08-25 and were served as current for 32 days, which is why the source is now one with a maintained adapter behind it."
-  - "Commission: /summary/fees/<slug>?dataType=dailyRevenue, the app's own cut net of referral and cashback paybacks. Not dailyFees, which adds what the venue underneath charges: for Axiom on 2026-09-26 that reads 2.27M against 1.38M of revenue. A day returned as zero against real volume is treated as an artifact and the newest day with a positive cut is used instead."
-  - "Take rate: commission divided by the volume of the same days, so the two halves describe the same trades. It is the app's own margin, not the price of a swap: DeFiLlama's revenue is net of referral and cashback paybacks, so an app that rebates a third of its fee reads a third lower while its traders pay the same. Ranking it higher rewards the larger margin, which is what this bench is about."
-  - "Day anchoring: every figure for an app ends on that app's own latest closed day, not on a shared cohort day. An adapter more than 3 days behind snaps back to the cohort day and reads unresponsive; a window it can no longer fill to 80% coverage goes absent with it."
-  - "The commission can trail the volume by up to 3 days, because a fees adapter sometimes runs behind its dexs one. It ends on the newest day that has both legs, so the take rate always divides figures from the same day; dune_platform is no longer involved and trading_app_revenue_day_unix carries the day."
-  - "Cohort: the seven apps this bench ranks, each with both a dexs and a fees adapter on DeFiLlama. Others have both too and sit in bench 267 instead, which is the whole cohort. BasedBot has neither and left the table on 2026-09-27; it was unmeasured before that too."
-  - "Cross-check against our own Solana SQL for 2026-09-26: Trojan +0.1%, Terminal +1.4%, Photon +4.9% on volume, and Axiom -2.3%, Photon -0.7% on commission. GMGN and FOMO read higher here because this counts every chain and every Relay leg."
+  - "Source: the public tehcscreener API (https://tehcscreener.com/api), Allium-backed, no key, synced once a day. The single source behind every bench on the /trading-apps hub, so no two columns on one page can disagree about the same product."
+  - "Volume: what the terminal routed through its own interface on the selected chain, or summed across every chain on the all-chains tab. Not volume on the tokens it trades, which is bench 200."
+  - "Fee revenue: what this source reports as fees. It is demonstrably more than the terminal's own commission, measured against published fee schedules: Trojan advertises 0.9% and this source reads 1.12%. The exact composition is not documented by the source."
+  - "Windows are sums over days, never averages of daily rates. Volume, fees and transactions add over days the same way they add over chains, and the take rate built on them is volume-weighted by construction: total fees over the volume of the days whose fees could be measured."
+  - "A day a platform reports exactly zero fees while charging on another day or chain is treated as a gap, not a price, and leaves the ratio entirely, numerator and denominator together. A platform reporting nothing anywhere is uniformly free and keeps a real zero."
+  - "Single source by decision, and this is what it costs: nothing here is cross-checked against a second indexer. On 2026-10-07 this source read pump.fun 2.2x above DeFiLlama on app volume and 3.7x above both DeFiLlama and Mobula on launchpad volume, while agreeing with DeFiLlama within 30% on six other platforms. The figures published are this source's."
+  - "Latest complete day: the source publishes daily and its latest day is normally yesterday. A terminal with no activity on the selected chain reads unresponsive rather than carrying its last live day forward."
 
 findings:
-  - "{{best_name}} leads trading apps at {{best_p50}} of routed volume on its latest closed day."
-  - "Volume and commission do not rank the same way: the take rate column shows an app routing several times another's volume at half the cut, so the second-largest book can be the larger business."
-  - "{{name:fomo}} reads {{p50:fomo}} and {{name:trojan}} {{p50:trojan}}, the distance between a wallet with cross-chain settlement and a Telegram-native bot."
-  - "Terminal is pump.fun's own trading app, formerly Padre, and the pump.fun row here is its mobile app rather than the launchpad's bonding curve."
-  - "Commission is the app's cut alone. The venue underneath takes its own share on the same trade, which is why the fees series is about twice the revenue series for most of these apps."
+  - "{{best_name}} routes the most of any trading terminal, at {{best_p50}} in a day."
+  - "Volume and take rate rank differently. The terminal routing the most is not the one keeping the most per dollar, and a reader choosing where to trade cares about the second."
+  - "This is interface volume, not token volume. The same swap appears here under the terminal that routed it and on bench 200 under the launchpad whose token it touched."
+  - "One source, not cross-checked. Its pump.fun figures sit well above two other indexers, which the methodology states rather than leaving a reader to discover."
 
-source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/trading-app-volume
+source: https://github.com/ChainBench/OpenChainBench/tree/dev/harnesses/terminal-activity
 
 prometheus:
   window: 24h
-  freshness_metric: trading_app_volume_usd
+  url: https://prom.openchainbench.com
+  expected_freshness_seconds: 172800
+  freshness_timestamp_metric: terminal_activity_last_success_unix
 
-metric_panels:
-  - id: revenue_1d
-    label: Commission
-    label_key: app
-    metric: trading_app_revenue_usd{window="1d"}
-    unit: usd
-    higher_is_better: true
-    description: "The app's own cut, from DeFiLlama's fees adapter (dailyRevenue), on the newest day with both a volume and a commission figure. That can trail the volume day by up to 3 days when the fees adapter is behind."
-  - id: take_1d
-    label: Take rate
-    label_key: app
-    metric: trading_app_take_rate_pct{window="1d"}
-    unit: pct
-    higher_is_better: true
-    description: "What the app kept per dollar it routed, on the newest day carrying both figures. DeFiLlama's revenue is net of referral and cashback paybacks, so this is the app's own margin and not what a trader pays."
-  - id: revenue_7d
-    label: Commission 7d
-    label_key: app
-    metric: trading_app_revenue_usd{window="7d"}
-    unit: usd
-    higher_is_better: true
-    tab: false
-    description: "The app's cut over 7 closed days ending on the newest day with both figures, not necessarily the volume day."
-  - id: take_7d
-    label: Take rate 7d
-    label_key: app
-    metric: trading_app_take_rate_pct{window="7d"}
-    unit: pct
-    higher_is_better: true
-    tab: false
-    description: "Commission over those same 7 days divided by the volume of exactly those days."
-  - id: vol_7d
-    label: Volume 7d
-    label_key: app
-    metric: trading_app_volume_usd{window="7d"}
-    unit: usd
-    higher_is_better: true
-    tab: false
-    description: "Routed volume over the 7 closed days ending on the app's latest one, every chain."
-  - id: vol_30d
-    label: Volume 30d
-    label_key: app
-    metric: trading_app_volume_usd{window="30d"}
-    unit: usd
-    higher_is_better: true
-    tab: false
-    description: "Routed volume over the 30 closed days ending on the app's latest one, every chain."
-  - id: revenue_30d
-    label: Commission 30d
-    label_key: app
-    metric: trading_app_revenue_usd{window="30d"}
-    unit: usd
-    higher_is_better: true
-    tab: false
-    description: "The app's cut over 30 closed days ending on the newest day with both figures, not necessarily the volume day."
-  - id: take_30d
-    label: Take rate 30d
-    label_key: app
-    metric: trading_app_take_rate_pct{window="30d"}
-    unit: pct
-    higher_is_better: true
-    tab: false
-    description: "Commission over those same 30 days divided by the volume of exactly those days."
+dimension_labels:
+  chain: Chain
+
+dimensions:
+  chain:
+    - { value: all,       label: All chains }
+    - { value: solana,    label: Solana }
+    - { value: bnb,       label: BNB Chain }
+    - { value: robinhood, label: Robinhood Chain }
+    - { value: base,      label: Base }
+    - { value: arc,       label: Arc }
+    - { value: ethereum,  label: Ethereum }
+    - { value: hyperevm,  label: HyperEVM }
 
 ledger_columns:
-  - { label: "Volume", slot: p50, windows: { 7d: vol_7d, 30d: vol_30d } }
-  - { label: "Commission", panel: revenue_1d, windows: { 7d: revenue_7d, 30d: revenue_30d } }
-  - { label: "Take rate", panel: take_1d, windows: { 7d: take_7d, 30d: take_30d } }
+  - { label: "Volume", slot: p50, unit: usd, windows: { 7d: vol_7d, 30d: vol_30d } }
+  - { label: "Fee revenue", panel: fees_1d, unit: usd, windows: { 7d: fees_7d, 30d: fees_30d } }
+  - { label: "Take rate", panel: take_1d, unit: pct, windows: { 7d: take_7d, 30d: take_30d } }
 
-# The gauges step once per UTC day, so a sub-day range would plot one point
-# at "now". The chart opens on 30 days and the ledger's base window is the
-# app's last closed day rather than "24h".
-chart:
-  min_range: 7d
-  default_range: 30d
-  window_label: latest closed day
+metric_panels:
+  - id: vol_7d
+    label: Volume 7d
+    description: Routed volume summed over the last seven days.
+    metric: terminal_window_volume_usd{chain="all",window="7d"}
+    label_key: platform
+    unit: usd
+    higher_is_better: true
+  - id: vol_30d
+    label: Volume 30d
+    description: Routed volume summed over the last thirty days.
+    metric: terminal_window_volume_usd{chain="all",window="30d"}
+    label_key: platform
+    unit: usd
+    higher_is_better: true
+  - id: fees_1d
+    label: Fee revenue
+    description: Fees reported on the day. More than the terminal's own commission; see the methodology.
+    metric: terminal_window_fees_usd{chain="all",window="1d"}
+    label_key: platform
+    unit: usd
+    higher_is_better: true
+  - id: fees_7d
+    label: Fee revenue 7d
+    description: Fees summed over the last seven days.
+    metric: terminal_window_fees_usd{chain="all",window="7d"}
+    label_key: platform
+    unit: usd
+    higher_is_better: true
+  - id: fees_30d
+    label: Fee revenue 30d
+    description: Fees summed over the last thirty days.
+    metric: terminal_window_fees_usd{chain="all",window="30d"}
+    label_key: platform
+    unit: usd
+    higher_is_better: true
+  - id: take_1d
+    label: Take rate
+    description: Fees over the volume of the days whose fees could be measured, in percent.
+    metric: terminal_window_take_rate_pct{chain="all",window="1d"}
+    label_key: platform
+    unit: pct
+    higher_is_better: false
+  - id: take_7d
+    label: Take rate 7d
+    description: Fees over measurable volume across seven days.
+    metric: terminal_window_take_rate_pct{chain="all",window="7d"}
+    label_key: platform
+    unit: pct
+    higher_is_better: false
+  - id: take_30d
+    label: Take rate 30d
+    description: Fees over measurable volume across thirty days.
+    metric: terminal_window_take_rate_pct{chain="all",window="30d"}
+    label_key: platform
+    unit: pct
+    higher_is_better: false
 
 faq:
-  - q: "Which trading app routes the most volume?"
-    a: "{{best_name}} leads at {{best_p50}} on its latest closed UTC day. The order of the top three changes from one day to the next rather than settling, and each row ends on that app's own latest closed day because DeFiLlama's adapters publish at different hours. Read it as a day, not as an intraday ticker: claims that one app has overtaken another are usually a single day or a single metric."
-  - q: "Is the fee column what a trade costs me?"
-    a: "No. It is the app's own commission, DeFiLlama's dailyRevenue, which is the cut the app keeps. A trade also pays the venue underneath, so the total the trader pays is higher: for most of these apps the fees series is about twice the revenue series. The take rate here is what the app earns per dollar routed, not the all-in cost of a swap."
-  - q: "Why did the numbers change on 2026-09-27?"
-    a: "The source changed. This bench read eight uploaded Dune datasets that stopped updating on 2026-08-25 and were served as current for 32 days. It now reads DeFiLlama's open adapters. For the apps that trade mainly on Solana the two agree closely, Trojan within 0.1% and Terminal within 1.4% on 2026-09-26, but GMGN and FOMO read much higher here because this counts every chain and every cross-chain leg rather than the Solana slice."
-  - q: "How is this different from bench 267?"
-    a: "Bench 267 is the same volume series over a wider cohort of fourteen apps, with the per-chain breakdown, share of the cohort and a year of daily history. This bench is the seven majors with the commission and take rate alongside, which is the part that says which of them is the larger business rather than the larger router."
-  - q: "What is the difference between GMGN and Axiom?"
-    a: "Both are web trading terminals aimed at active traders. GMGN leans on wallet analysis and copy trading and runs on ten chains, with most of its volume outside Solana. Axiom is a terminal focused on chart speed and order execution across Solana, BSC and Robinhood Chain. Both route into the same underlying pools."
-  - q: "Why is BasedBot not in the table?"
-    a: "It has no dexs adapter and no fees adapter on DeFiLlama, and no published fee wallet list anywhere else, so there is nothing to attribute its volume from. It carried no figure under the previous source either, and it left the table when the source changed rather than staying as a permanently blank row."
-  - q: "Where does the pump.fun row come from?"
-    a: "DeFiLlama's pump.fun mobile app adapter, which attributes trades placed through the official app. The launchpad's own bonding-curve volume is a separate and much larger series, and a trade on a pump.fun token routed through GMGN or Axiom counts under those apps rather than here."
+  - q: "Is this the same as the volume on bench 200?"
+    a: "No, and the two should not be added. This counts what each terminal routed through its own interface. Bench 200 counts trading on each launchpad's tokens whoever routed it. One swap can appear on both, under a terminal here and under a launchpad there."
+  - q: "Why did this move off DeFiLlama?"
+    a: "So that every bench on the /trading-apps hub reads one source. The hub previously showed a DeFiLlama take rate next to a tehcscreener fee rate, disagreeing by up to two times on the same terminal, which is a contradiction a reader has no way to resolve."
+  - q: "What does the fee revenue column actually count?"
+    a: "More than the terminal's own commission. Measured against published schedules it runs above them, and the source does not document what it includes. Bench 203 carries the same caveat and the same number per dollar routed."
 
 providers:
   - slug: fomo
-    name: FOMO
-    tag: "Trading wallet, Solana with cross-chain settlement"
-    formula: "DeFiLlama dexs adapter fomo-wallet: daily routed volume, booked on Solana including trades settled cross-chain through Relay. Commission from its fees adapter (dailyRevenue)."
+    name: Fomo
     queries:
-      p50: trading_app_volume_usd{app="fomo",window="1d"}
-      p90: trading_app_volume_usd{app="fomo",window="1d"}
-      p99: trading_app_volume_usd{app="fomo",window="1d"}
-      mean: trading_app_volume_usd{app="fomo",window="1d"}
-      success: trading_app_health{app="fomo"}
-      sample_size: trading_app_history_days{app="fomo"}
-      series: trading_app_volume_usd{app="fomo",window="1d"}
+      p50: max(terminal_window_volume_usd{platform="fomo",chain="all",window="1d"})
+      p90: max(terminal_window_volume_usd{platform="fomo",chain="all",window="1d"})
+      p99: max(terminal_window_volume_usd{platform="fomo",chain="all",window="1d"})
+      success: max(terminal_activity_health{platform="fomo",chain="all"})
+      sample_size: max(terminal_window_txns{platform="fomo",chain="all",window="1d"})
+      series: max by (platform) (terminal_window_volume_usd{platform="fomo",chain="all",window="1d"})
 
   - slug: axiom
     name: Axiom
-    tag: "Web trading terminal, Solana + BSC + Robinhood Chain"
-    formula: "DeFiLlama dexs adapter axiom: sum of every chain's daily routed volume. Commission from its fees adapter (dailyRevenue)."
     queries:
-      p50: trading_app_volume_usd{app="axiom",window="1d"}
-      p90: trading_app_volume_usd{app="axiom",window="1d"}
-      p99: trading_app_volume_usd{app="axiom",window="1d"}
-      mean: trading_app_volume_usd{app="axiom",window="1d"}
-      success: trading_app_health{app="axiom"}
-      sample_size: trading_app_history_days{app="axiom"}
-      series: trading_app_volume_usd{app="axiom",window="1d"}
+      p50: max(terminal_window_volume_usd{platform="axiom",chain="all",window="1d"})
+      p90: max(terminal_window_volume_usd{platform="axiom",chain="all",window="1d"})
+      p99: max(terminal_window_volume_usd{platform="axiom",chain="all",window="1d"})
+      success: max(terminal_activity_health{platform="axiom",chain="all"})
+      sample_size: max(terminal_window_txns{platform="axiom",chain="all",window="1d"})
+      series: max by (platform) (terminal_window_volume_usd{platform="axiom",chain="all",window="1d"})
 
   - slug: gmgn
     name: GMGN
-    tag: "AI trading terminal, ten chains"
-    formula: "DeFiLlama dexs adapter gmgn: sum of every chain's daily routed volume, most of it outside Solana. Commission from its fees adapter (dailyRevenue)."
     queries:
-      p50: trading_app_volume_usd{app="gmgn",window="1d"}
-      p90: trading_app_volume_usd{app="gmgn",window="1d"}
-      p99: trading_app_volume_usd{app="gmgn",window="1d"}
-      mean: trading_app_volume_usd{app="gmgn",window="1d"}
-      success: trading_app_health{app="gmgn"}
-      sample_size: trading_app_history_days{app="gmgn"}
-      series: trading_app_volume_usd{app="gmgn",window="1d"}
+      p50: max(terminal_window_volume_usd{platform="gmgn",chain="all",window="1d"})
+      p90: max(terminal_window_volume_usd{platform="gmgn",chain="all",window="1d"})
+      p99: max(terminal_window_volume_usd{platform="gmgn",chain="all",window="1d"})
+      success: max(terminal_activity_health{platform="gmgn",chain="all"})
+      sample_size: max(terminal_window_txns{platform="gmgn",chain="all",window="1d"})
+      series: max by (platform) (terminal_window_volume_usd{platform="gmgn",chain="all",window="1d"})
 
   - slug: pump-fun
-    name: pump.fun app
-    tag: "The launchpad's own mobile app"
-    formula: "DeFiLlama dexs adapter pump.fun-mobile-app: trades placed through the official app, not the launchpad's bonding-curve volume. Commission from its fees adapter (dailyRevenue)."
+    name: pump.fun
     queries:
-      p50: trading_app_volume_usd{app="pump-fun",window="1d"}
-      p90: trading_app_volume_usd{app="pump-fun",window="1d"}
-      p99: trading_app_volume_usd{app="pump-fun",window="1d"}
-      mean: trading_app_volume_usd{app="pump-fun",window="1d"}
-      success: trading_app_health{app="pump-fun"}
-      sample_size: trading_app_history_days{app="pump-fun"}
-      series: trading_app_volume_usd{app="pump-fun",window="1d"}
+      p50: max(terminal_window_volume_usd{platform="pump-fun",chain="all",window="1d"})
+      p90: max(terminal_window_volume_usd{platform="pump-fun",chain="all",window="1d"})
+      p99: max(terminal_window_volume_usd{platform="pump-fun",chain="all",window="1d"})
+      success: max(terminal_activity_health{platform="pump-fun",chain="all"})
+      sample_size: max(terminal_window_txns{platform="pump-fun",chain="all",window="1d"})
+      series: max by (platform) (terminal_window_volume_usd{platform="pump-fun",chain="all",window="1d"})
 
   - slug: padre
     name: Terminal
-    tag: "pump.fun's own trading app, formerly Padre"
-    formula: "DeFiLlama dexs adapter terminal: sum of every chain's daily routed volume. Commission from its fees adapter (dailyRevenue)."
     queries:
-      p50: trading_app_volume_usd{app="padre",window="1d"}
-      p90: trading_app_volume_usd{app="padre",window="1d"}
-      p99: trading_app_volume_usd{app="padre",window="1d"}
-      mean: trading_app_volume_usd{app="padre",window="1d"}
-      success: trading_app_health{app="padre"}
-      sample_size: trading_app_history_days{app="padre"}
-      series: trading_app_volume_usd{app="padre",window="1d"}
+      p50: max(terminal_window_volume_usd{platform="padre",chain="all",window="1d"})
+      p90: max(terminal_window_volume_usd{platform="padre",chain="all",window="1d"})
+      p99: max(terminal_window_volume_usd{platform="padre",chain="all",window="1d"})
+      success: max(terminal_activity_health{platform="padre",chain="all"})
+      sample_size: max(terminal_window_txns{platform="padre",chain="all",window="1d"})
+      series: max by (platform) (terminal_window_volume_usd{platform="padre",chain="all",window="1d"})
 
   - slug: trojan
     name: Trojan
-    tag: "Telegram trading bot on Solana"
-    formula: "DeFiLlama dexs adapter trojan: daily routed volume on Solana. Commission from its fees adapter (dailyRevenue)."
     queries:
-      p50: trading_app_volume_usd{app="trojan",window="1d"}
-      p90: trading_app_volume_usd{app="trojan",window="1d"}
-      p99: trading_app_volume_usd{app="trojan",window="1d"}
-      mean: trading_app_volume_usd{app="trojan",window="1d"}
-      success: trading_app_health{app="trojan"}
-      sample_size: trading_app_history_days{app="trojan"}
-      series: trading_app_volume_usd{app="trojan",window="1d"}
+      p50: max(terminal_window_volume_usd{platform="trojan",chain="all",window="1d"})
+      p90: max(terminal_window_volume_usd{platform="trojan",chain="all",window="1d"})
+      p99: max(terminal_window_volume_usd{platform="trojan",chain="all",window="1d"})
+      success: max(terminal_activity_health{platform="trojan",chain="all"})
+      sample_size: max(terminal_window_txns{platform="trojan",chain="all",window="1d"})
+      series: max by (platform) (terminal_window_volume_usd{platform="trojan",chain="all",window="1d"})
 
   - slug: photon
     name: Photon
-    tag: "Solana trading terminal"
-    formula: "DeFiLlama dexs adapter photon: daily routed volume on Solana. Commission from its fees adapter (dailyRevenue)."
     queries:
-      p50: trading_app_volume_usd{app="photon",window="1d"}
-      p90: trading_app_volume_usd{app="photon",window="1d"}
-      p99: trading_app_volume_usd{app="photon",window="1d"}
-      mean: trading_app_volume_usd{app="photon",window="1d"}
-      success: trading_app_health{app="photon"}
-      sample_size: trading_app_history_days{app="photon"}
-      series: trading_app_volume_usd{app="photon",window="1d"}
+      p50: max(terminal_window_volume_usd{platform="photon",chain="all",window="1d"})
+      p90: max(terminal_window_volume_usd{platform="photon",chain="all",window="1d"})
+      p99: max(terminal_window_volume_usd{platform="photon",chain="all",window="1d"})
+      success: max(terminal_activity_health{platform="photon",chain="all"})
+      sample_size: max(terminal_window_txns{platform="photon",chain="all",window="1d"})
+      series: max by (platform) (terminal_window_volume_usd{platform="photon",chain="all",window="1d"})
+
+  - slug: basedbot
+    name: BasedBot
+    queries:
+      p50: max(terminal_window_volume_usd{platform="basedbot",chain="all",window="1d"})
+      p90: max(terminal_window_volume_usd{platform="basedbot",chain="all",window="1d"})
+      p99: max(terminal_window_volume_usd{platform="basedbot",chain="all",window="1d"})
+      success: max(terminal_activity_health{platform="basedbot",chain="all"})
+      sample_size: max(terminal_window_txns{platform="basedbot",chain="all",window="1d"})
+      series: max by (platform) (terminal_window_volume_usd{platform="basedbot",chain="all",window="1d"})

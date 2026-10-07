@@ -121,17 +121,10 @@ export const ALL_TRADING_APP_COLUMNS: readonly TradingAppColumn[] = [
     tip: "What the app itself collected, every chain summed (DeFiLlama dailyRevenue). The app's own cut, not the total fees paid on the trade. It covers the newest UTC day carrying both a volume and a commission figure, which can trail the volume day by up to 3 days when the fees adapter is behind.",
     higherBetter: true,
   },
-  {
-    key: "takeRate",
-    label: "Take Rate",
-    scope: "app",
-    bench: "solana-trading-platform-wars",
-    panel: "take_1d",
-    fmt: fmtPct,
-    tip: "What the app kept per dollar it routed, on the newest day carrying both figures. DeFiLlama's revenue is net of referral and cashback paybacks, so this is the app's own margin: an app that rebates a third of its fee reads a third lower while its traders pay the same. Not the price of a swap, and not ranked.",
-    higherBetter: true,
-    rankable: false,
-  },
+  // The "Take rate" column was removed on 2026-10-07. It came from bench 201
+  // and Fee Rate comes from bench 203; once both read tehcscreener they became
+  // the same number from the same source, and two identical columns side by
+  // side read as a mistake rather than as corroboration.
   {
     key: "rating",
     label: "App Rating",
@@ -147,16 +140,17 @@ export const ALL_TRADING_APP_COLUMNS: readonly TradingAppColumn[] = [
  *  have to name the source. Keyed by bench so a column set built from
  *  TRADING_APP_COLUMNS can describe itself rather than hardcoding "Dune". */
 const SOURCE_BY_BENCH: Record<string, string> = {
-  // These four moved off Dune on 2026-10-07 to the public tehcscreener API,
-  // which is Allium-backed. The move was not a cost saving on the same data:
-  // fee-wallet attribution could not see a terminal that charges no fee, so
-  // pump.fun was structurally absent from three of these four columns and
-  // Fomo from the wallet one.
+  // Every bench on this hub reads tehcscreener as of 2026-10-07, except the
+  // App Store ratings, which that source does not carry. One source is a
+  // deliberate choice: the hub previously showed a DeFiLlama take rate beside
+  // a tehcscreener fee rate, disagreeing by up to a factor of two on the same
+  // terminal, which is a contradiction a reader cannot resolve. The cost is
+  // that nothing here is cross-checked any more.
   "terminal-swap-transactions": "tehcscreener",
   "terminal-avg-trade-size": "tehcscreener",
   "trading-platform-wallets": "tehcscreener",
   "memecoin-platforms": "tehcscreener",
-  "solana-trading-platform-wars": "DeFiLlama",
+  "solana-trading-platform-wars": "tehcscreener",
   "app-store-ratings": "the App Store",
 };
 

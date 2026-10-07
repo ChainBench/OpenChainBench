@@ -21,11 +21,11 @@ import (
 // revenue (987 of 988 days tagged dune_seed), which this harness does not read.
 const apiBase = "https://tehcscreener.com/api/v1"
 
-// botsWindow is the window asked of the per-bot endpoint. Seven days is enough
-// to find the latest day with activity and to let the freshness gate see that a
-// pair has gone quiet, without pulling years of series on every cycle: the
-// figures published are one day's, never the window's sum.
-const botsWindow = "7d"
+// botsWindow is the window asked of the per-bot endpoint. Thirty days, because
+// the 7d and 30d columns on benches 201, 205 and 267 are sums over this series
+// and the endpoint returns a series rather than per-window totals. The daily
+// gauges still publish one day: the window is what is read, not what is shown.
+const botsWindow = "30d"
 
 type apiClient struct {
 	http *http.Client
@@ -264,4 +264,56 @@ func min(a, b int) int {
 		return a
 	}
 	return b
+}
+
+// ───────────────────────────────────────────────────────────── launchpads
+
+// launchpadsResponse is /launchpads: every listed pad with its totals over the
+// window, one row per (chain, pad).
+type launchpadsResponse struct {
+	Window  string `json:"window"`
+	Through string `json:"through"`
+	Pads    []struct {
+		Chain          string  `json:"chain"`
+		Pad            string  `json:"pad"`
+		TokensLaunched float64 `json:"tokens_launched"`
+		VolumeUSD      float64 `json:"volume_usd"`
+		TradeTxns      float64 `json:"trade_txns"`
+	} `json:"pads"`
+}
+
+// padKey identifies one pad on one chain. The same pad id can run on two
+// chains, so neither half identifies a row on its own.
+type padKey struct{ Pad, Chain string }
+
+// padSample is one pad on one chain for the latest complete day.
+type padSample struct {
+	Pad            string
+	Chain          string
+	Volume         float64
+	TokensLaunched float64
+	TradeTxns      float64
+}
+
+// launchpads reads one day. window=1d rather than a longer window because
+// every figure published is a single day's and summing a window would mix
+// days: the endpoint returns totals over the window, not a series.
+func (c *apiClient) launchpads() ([]padSample, []padKey, error) {
+	var r launchpadsResponse
+	if err := c.getJSON("/launchpads?window=1d", &r); err != nil {
+		return nil, nil, err
+	}
+	out := make([]padSample, 0, len(r.Pads))
+	roster := make([]padKey, 0, len(r.Pads))
+	for _, p := range r.Pads {
+		if p.Pad == "" || p.Chain == "" {
+			continue
+		}
+		roster = append(roster, padKey{Pad: p.Pad, Chain: p.Chain})
+		out = append(out, padSample{
+			Pad: p.Pad, Chain: p.Chain,
+			Volume: p.VolumeUSD, TokensLaunched: p.TokensLaunched, TradeTxns: p.TradeTxns,
+		})
+	}
+	return out, roster, nil
 }
