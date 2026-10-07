@@ -769,6 +769,7 @@ const ALIASES: Record<string, string> = {
   sol: "solana",
   bsc: "bnb",
   hypercore: "hyperliquid", // HyperCore is the Hyperliquid trading engine, same brand
+  hyperevm: "hyperliquid", // HyperEVM is Hyperliquid's EVM execution layer, same brand
   "hyperliquid-hip3": "hyperliquid", // bench 266 row for builder-deployed HIP-3 dexs
   "publicnode-feehistory": "publicnode",
   "binance-wallet": "binance", // bench 268 per-chain rows (binance-wallet-bnb…); the spec row is `binance`
