@@ -18,6 +18,19 @@ export type Brand = {
 };
 
 const BRANDS: Record<string, Brand> = {
+  // Ten chains added 2026-10-07. Drives the chip fallback and chart series,
+  // so each is taken from the chain's own brand rather than the palette.
+  "0g": { color: "#d29922" },
+  agoric: { color: "#c9a227" },
+  katana: { color: "#1f6feb" },
+  neox: { color: "#00e599" },
+  superseed: { color: "#2ea043" },
+  tac: { color: "#f85149" },
+  tempo: { color: "#8957e5" },
+  xpla: { color: "#1f8fff" },
+  xrplevm: { color: "#23292f" },
+  zigchain: { color: "#00b8d4" },
+
   // ─── L1 chains ───
   ethereum: { color: "#627EEA" },
   solana: { color: "#9945FF" },

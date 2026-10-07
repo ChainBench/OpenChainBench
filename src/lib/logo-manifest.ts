@@ -12,6 +12,22 @@
  */
 
 const RAW: Record<string, string> = {
+  // Ten chains added 2026-10-07 by the chain-hunt sweep, each the chain's own
+  // SVG mark, committed rather than hotlinked like every other logo here.
+  // Two are compromises: superseed ships only a monochrome mask and a wordmark
+  // too wide for a chip, and Neo X ships no resolvable SVG at all, so it
+  // carries Neo's mark as its parent chain. Both are in NEEDS_LIGHT_CHIP.
+  "0g": "/logos/0g.svg",
+  agoric: "/logos/agoric.svg",
+  katana: "/logos/katana.svg",
+  neox: "/logos/neox.svg",
+  superseed: "/logos/superseed.svg",
+  tac: "/logos/tac.svg",
+  tempo: "/logos/tempo.svg",
+  xpla: "/logos/xpla.svg",
+  xrplevm: "/logos/xrplevm.svg",
+  zigchain: "/logos/zigchain.svg",
+
   // Bench 284 (AI trading agents). The four labs whose models the Recall
   // arena runs. Each is that lab's own published mark, committed like every
   // other logo here: OpenAI and Anthropic from Simple Icons (CC0), the Gemini

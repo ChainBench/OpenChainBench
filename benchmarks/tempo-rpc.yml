@@ -1,0 +1,124 @@
+# OpenChainBench. Bench No 287
+
+slug: tempo-rpc
+number: "287"
+title: "Tempo RPC endpoints: free public URLs by latency"
+seo_title: "Tempo RPC endpoints: free public URLs by latency"
+seo_description: "{{best_name}} leads free Tempo RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h). URLs for all {{count}} no-key endpoints, probed every 60 s."
+subtitle: HTTP round-trip latency for the `eth_getBlockByNumber(\"latest\", false)` method against every free, no-key public Tempo EVM endpoint, audited every 60 seconds from 3 regions.
+
+category: RPCs
+status: live
+metric: RPC latency
+unit: ms
+higher_is_better: false
+
+seo_intro: |
+  Tempo is an EVM chain (4217) reachable through {{count}} keyless endpoints: the official RPC (rpc.mainnet.tempo.xyz), dRPC (tempo.drpc.org) and PublicNode (tempo-rpc.publicnode.com), all returning chain id 0x1079 on the 2026-10-07 sweep. Thirdweb returns no route for 4217, so unlike most chains in this cluster the roster here is the official endpoint plus independent public gateways, with no aggregator-of-last-resort behind them.
+
+abstract: |
+  Tempo: {{count}} free public RPC endpoints answering `eth_getBlockByNumber` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}; the chain-official endpoint measures {{p50:tempo-official}}.
+  We measure the round-trip latency of a single, identical JSON-RPC call (`eth_getBlockByNumber(\"latest\", false)`) against every no-key public Tempo endpoint that sustains continuous probing, {{count}} providers measured, every 60 seconds, from us-east, eu-west and Singapore. The harness classifies every response (ok / http_err / jsonrpc_err / stale / timeout) with a Tempo-scaled staleness gap (20 blocks at Tempo's ~1 s block time). The cross-chain view lives on the parent `rpc-capabilities` benchmark; this page is the Tempo-scoped answer with per-region breakdowns as a first-class dimension.
+
+methodology:
+  - "Cadence: every 60 seconds per provider, from each of 3 probe regions (us-east Virginia, eu-west Amsterdam, sgp Singapore). Headline p50/p90/p99 aggregate across all 3 regions via Prometheus `avg(quantile_over_time(...))`; per-region breakdowns are first-class on this page via the region tabs."
+  - "Payload: `{\"jsonrpc\":\"2.0\",\"id\":<rotating>,\"method\":\"eth_getBlockByNumber\",\"params\":[\"latest\", false]}`. Plain HTTP POST, identical for every endpoint, no API key in any request. Non-cacheable by design: the rotating id defeats edge caches that would answer a bare head query without touching a node."
+  - "Latency measurement, call-result classification (`ok`, `http_err`, `jsonrpc_err`, `stale`, `timeout`) and the exclusion rules follow the cluster method documented on [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities#methodology); this page is the Tempo-scoped view of the same harness."
+  - "Roster: every endpoint here answered a real `eth_getBlockByNumber` call without a key on the 2026-10-07 sweep before being added to the probe matrix. An endpoint that needs a key, region-blocks us or rate-limits below the 60-second cadence is excluded rather than listed with an asterisk."
+  - "Chain scope: every query on this page is pinned to `chain=\"tempo\"`. Provider coverage: {{count}} no-key endpoints."
+
+faq:
+  - q: "Which Tempo RPCs work without an API key?"
+    a: "{{declared_count}} endpoints are probed on this chain: Tempo (rpc.mainnet.tempo.xyz), dRPC (tempo.drpc.org), PublicNode (tempo-rpc.publicnode.com). Every listed endpoint was live-verified with a `eth_getBlockByNumber` call returning a parsable response before inclusion."
+  - q: "How is Tempo RPC latency measured here, technically?"
+    a: "One identical `eth_getBlockByNumber` call every 60 seconds against each provider from each of 3 regions, using the same plain HTTP client the rest of the RPC cluster uses. Wall-clock round-trip is recorded at millisecond precision; p50/p90/p99 are computed via Prometheus `quantile_over_time` over 24 hours. Responses are classified (`ok` / `http_err` / `jsonrpc_err` / `stale` / `timeout`) so an endpoint stuck on an old head or returning errors behind HTTP 200 is never ranked as fastest."
+  - q: "Which Tempo RPC should I use if I only pick one?"
+    a: "Read the region tabs rather than the headline. With no Thirdweb fallback on this chain, the practical question is which public gateway is closer to your deployment, because the official endpoint and a gateway usually trade places by origin. The headline p50 averages three probe regions and will mislead you if your traffic comes from one."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
+
+prometheus:
+  window: 24h
+  freshness_metric: rpc_latency_milliseconds
+
+rank_matrix_query: avg by (provider, region) (ocb:rpc_latency_milliseconds:p50_24h{chain="tempo"})
+
+dimensions:
+  region:
+    - { value: all,     label: All regions }
+    - { value: us-east, label: US-East }
+    - { value: eu-west, label: EU-West }
+    - { value: sgp,     label: Singapore }
+
+providers:
+  - slug: tempo-official
+    name: Tempo
+    endpoint: https://rpc.mainnet.tempo.xyz
+    tag: Tempo official public RPC endpoint for Tempo mainnet
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Tempo's no-key tempo RPC endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="tempo-official", chain="tempo"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="tempo-official", chain="tempo"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="tempo-official", chain="tempo"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="tempo-official", chain="tempo"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="tempo-official", chain="tempo"}) / sum(ocb:rpc_call:rate_24h{provider="tempo-official", chain="tempo"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="tempo-official", chain="tempo"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="tempo-official", chain="tempo"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="tempo-official", chain="tempo", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="tempo-official", chain="tempo", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="tempo-official", chain="tempo", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="tempo-official", chain="tempo", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="tempo-official", chain="tempo", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="tempo-official", chain="tempo", region="sgp"}[1h])
+
+  - slug: drpc
+    name: dRPC
+    endpoint: https://tempo.drpc.org
+    tag: dRPC public gateway routing to a Tempo node pool
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to dRPC's no-key tempo RPC endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="tempo"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="drpc", chain="tempo"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="drpc", chain="tempo"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="drpc", chain="tempo"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="drpc", chain="tempo"}) / sum(ocb:rpc_call:rate_24h{provider="drpc", chain="tempo"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="drpc", chain="tempo"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="tempo"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="tempo", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="tempo", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="tempo", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="tempo", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="tempo", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="tempo", region="sgp"}[1h])
+
+  - slug: publicnode
+    name: PublicNode
+    endpoint: https://tempo-rpc.publicnode.com
+    tag: PublicNode free public RPC endpoint for Tempo
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to PublicNode's no-key tempo RPC endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="tempo"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="publicnode", chain="tempo"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="publicnode", chain="tempo"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="publicnode", chain="tempo"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="publicnode", chain="tempo"}) / sum(ocb:rpc_call:rate_24h{provider="publicnode", chain="tempo"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="publicnode", chain="tempo"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="tempo"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="tempo", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="tempo", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="tempo", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="tempo", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="tempo", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="tempo", region="sgp"}[1h])
