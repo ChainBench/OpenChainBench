@@ -14,6 +14,7 @@ func resetAll() {
 	}
 	health.Reset()
 	feeWithheld.Reset()
+	feeRateHealth.Reset()
 	chainBreadth.Reset()
 	feeColumnOK.Reset()
 }
@@ -272,5 +273,36 @@ func TestZeroEverywhereStillPublishesAsZero(t *testing.T) {
 	}
 	if n := testutil.CollectAndCount(feeWithheld); n != 0 {
 		t.Errorf("nothing should be withheld for a uniformly free platform, got %d flags", n)
+	}
+}
+
+// A withheld fee cell must read unhealthy on the FEE gate while the platform
+// still reads healthy overall, because those are different questions.
+//
+// Conflating them is what let Axiom win the BNB and Robinhood tabs after the
+// per-cell guard was already in place: terminal_activity_health said yes (it
+// has volume, transactions and wallets), bench 203 gated on that, the absent
+// take rate became 0 under zero_is_a_value, and lower-is-better crowned it.
+func TestWithheldCellIsUnhealthyOnTheFeeGateOnly(t *testing.T) {
+	resetAll()
+	now := time.Now()
+	d := day(now, 1)
+	publish([]sample{
+		mk("axiom", "solana", d, 100000, 1000, 920, 50),
+		mk("axiom", "bnb", d, 50000, 500, 0, 25),
+		mk("gmgn", "bnb", d, 40000, 400, 420, 20),
+	}, []string{"axiom", "gmgn"}, 3, now)
+
+	if got := testutil.ToFloat64(health.WithLabelValues("axiom", "bnb")); got != 1 {
+		t.Errorf("the platform published on bnb, so overall health stays 1, got %v", got)
+	}
+	if got := testutil.ToFloat64(feeRateHealth.WithLabelValues("axiom", "bnb")); got != 0 {
+		t.Errorf("the take rate is withheld, so the fee gate must read 0, got %v", got)
+	}
+	if got := testutil.ToFloat64(feeRateHealth.WithLabelValues("gmgn", "bnb")); got != 1 {
+		t.Errorf("gmgn has a real take rate on bnb, fee gate must read 1, got %v", got)
+	}
+	if got := testutil.ToFloat64(feeRateHealth.WithLabelValues("axiom", "solana")); got != 1 {
+		t.Errorf("axiom has a real take rate on solana, fee gate must read 1, got %v", got)
 	}
 }
