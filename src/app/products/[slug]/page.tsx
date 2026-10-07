@@ -200,7 +200,11 @@ export async function generateMetadata({
   // first word is the provider name, which is what the SERP snippet keeps
   // when it truncates.
   const benchWord = benchCount === 1 ? "benchmark" : "benchmarks";
-  const winWord = p.wins === 1 ? "first-place finish" : "first-place finishes";
+  // `wins` counts one per chain led, not one per bench, so a product topping
+  // four chain tabs of one bench reads 4. Saying "first-place finishes" is
+  // true but invites the reader to divide it by the bench count and get
+  // nonsense; naming the basis costs two words and removes the trap.
+  const winWord = p.wins === 1 ? "first-place finish" : "first-place finishes across chains";
   const winSuffix = p.wins > 0 ? `, ${p.wins} ${winWord}` : "";
   const fallbackDescription = `${p.name} reviewed across ${benchCount} live OpenChainBench ${benchWord}${winSuffix}.`;
   // Registry descriptions use markdown-flavour backticks for host names
@@ -531,7 +535,7 @@ export default async function ProviderPage({
   const proseParts: string[] = [];
   if (topLines.length > 0) {
     proseParts.push(
-      `${p.name} ${topLines.length === 1 ? "is measured on" : "is measured across"} ${living.length} live OpenChainBench ${living.length === 1 ? "benchmark" : "benchmarks"}${p.wins > 0 ? `, with ${p.wins} #1 ${p.wins === 1 ? "finish" : "finishes"}` : ""}:`,
+      `${p.name} ${topLines.length === 1 ? "is measured on" : "is measured across"} ${living.length} live OpenChainBench ${living.length === 1 ? "benchmark" : "benchmarks"}${p.wins > 0 ? `, with ${p.wins} #1 ${p.wins === 1 ? "finish" : "finishes across chains"}` : ""}:`,
     );
     proseParts.push(`${topLines.join(", ")}.`);
   } else {
