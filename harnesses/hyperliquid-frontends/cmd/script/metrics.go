@@ -37,6 +37,23 @@ var (
 	hlPercentile   = gauge("hl_frontend_volume_by_percentile_30d_v2", "Share (0..1) of the builder's 30-day notional contributed by wallets in the rank bucket: top1, p1_5, p5_10, p10_25, p25_50, rest.", "builder", "bucket")
 	hlCoinShare    = gauge("hl_frontend_coin_volume_share_24h_v2", "Share (0..1) of the feed day's notional per coin, top 15 coins plus 'other'.", "builder", "coin")
 
+	hlDayCoverageHours = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "hl_frontend_day_coverage_hours_v2",
+		Help: "How far into the headline feed day the cohort's median last fill reached, in hours. A whole day lands at 23:48 or later. Hyperliquid's per-builder export cuts days off at roughly 12:10 UTC on most days since 2026-09-22, so a reading near 12 means the published file ends before the day does and the 24h figures describe half a day.",
+	})
+	hlDayTruncated = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "hl_frontend_day_truncated_v2",
+		Help: "1 when the headline feed day covers less than 23 hours. The figures are still published: the honest answer to a truncated upstream is to say so, not to drop the day and let the window silently shorten.",
+	})
+	hlTruncatedDaysWindow = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "hl_frontend_truncated_days_window_v2",
+		Help: "Days inside the 30-day window whose published file stops short of 23 hours. Every windowed total is understated by roughly half a day for each one counted here.",
+	})
+	hlCoverageDaysMeasured = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "hl_frontend_coverage_days_measured_v2",
+		Help: "Days in the 30-day window whose feed coverage was actually measured. The truncated-day count is out of this, not out of 30: a day that left the mirror window before this harness first ran was never measured, and counting it as clean would understate the truncation.",
+	})
+
 	hlDataDay = promauto.NewGauge(prometheus.GaugeOpts{
 		Name: "hl_frontend_data_day_unix_v2",
 		Help: "UTC midnight (unix seconds) that opens the feed day the 24h gauges describe.",

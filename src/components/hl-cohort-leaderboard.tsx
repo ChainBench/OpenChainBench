@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { ProviderLogo } from "@/components/provider-logo";
 import { HlSparkline } from "@/components/hl-sparkline";
+import { HL_WINDOWS, HL_WINDOW_LABEL } from "@/lib/hl-feed";
+import type { HlWindow } from "@/lib/hl-feed";
 import type {
   HlCohortRow,
   HlHistoryFrontendCompact,
@@ -19,9 +21,18 @@ import type {
  * 12-month sparkline in the trend column (matches the parent hub's
  * per-frontend detail page). Slugs missing from the map render an
  * em-dash so builders without a history sample don't blank the column.
+ *
+ * The timeframe control swaps the revenue/volume/users columns between the
+ * three windows the harness publishes. 24h means the last complete UTC feed
+ * day rather than a rolling 24 hours, which is why the label says "feed day";
+ * every builder is measured on the same day, so the column is comparable.
+ * Users do not add across windows (a wallet active on five days is one user
+ * over 7d), so the 7d and 30d figures are unions the harness computes, never
+ * sums of the 24h column.
  */
 
-type SortKey = "revenue30d" | "volume30d" | "users30d" | "cohortVolumeShare24h";
+/** The three value columns, plus the share column which only exists for 24h. */
+type SortKey = "revenue" | "volume" | "users" | "cohortVolumeShare24h";
 
 export function HlCohortLeaderboard({
   rows,
@@ -30,9 +41,24 @@ export function HlCohortLeaderboard({
   rows: HlCohortRow[];
   historyBySlug?: Map<string, HlHistoryFrontendCompact>;
 }) {
-  const [sortKey, setSortKey] = useState<SortKey>("revenue30d");
+  const [sortKey, setSortKey] = useState<SortKey>("revenue");
   const [sortDir, setSortDir] = useState<"desc" | "asc">("desc");
   const [q, setQ] = useState("");
+  const [timeframe, setTimeframe] = useState<HlWindow>("30d");
+
+  // A snapshot written before the per-window fields existed has no byWindow,
+  // and the Upstash blob can be up to ten minutes old. Fall back to the flat
+  // 30d fields rather than render a table of zeros for one cache cycle.
+  const valueOf = (r: HlCohortRow, key: SortKey): number => {
+    if (key === "cohortVolumeShare24h") return r.cohortVolumeShare24h;
+    const w = r.byWindow?.[timeframe];
+    if (w) return w[key];
+    return key === "revenue"
+      ? r.revenue30d
+      : key === "volume"
+        ? r.volume30d
+        : r.users30d;
+  };
 
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
@@ -44,8 +70,12 @@ export function HlCohortLeaderboard({
         )
       : rows;
     const factor = sortDir === "desc" ? -1 : 1;
-    return [...out].sort((a, b) => factor * (a[sortKey] - b[sortKey]));
-  }, [rows, sortKey, sortDir, q]);
+    return [...out].sort(
+      (a, b) => factor * (valueOf(a, sortKey) - valueOf(b, sortKey)),
+    );
+    // valueOf closes over `timeframe`, which is listed; it is stable otherwise.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, sortKey, sortDir, q, timeframe]);
 
   const setSort = (k: SortKey) => {
     if (k === sortKey) setSortDir((d) => (d === "desc" ? "asc" : "desc"));
@@ -58,12 +88,36 @@ export function HlCohortLeaderboard({
   return (
     <div className="mt-6 card-soft rounded-xl border border-ink/10">
       <div className="p-3 sm:p-4 border-b border-ink/8 flex items-center justify-between gap-3 flex-wrap">
-        <p
-          className="text-[11px] text-ink-faint"
-          style={{ fontFamily: "var(--font-mono, monospace)" }}
-        >
-          {filtered.length} of {rows.length} builders
-        </p>
+        <div className="flex items-center gap-3 flex-wrap">
+          <p
+            className="text-[11px] text-ink-faint"
+            style={{ fontFamily: "var(--font-mono, monospace)" }}
+          >
+            {filtered.length} of {rows.length} builders
+          </p>
+          <div
+            className="inline-flex rounded-md border border-ink/15 overflow-hidden"
+            role="group"
+            aria-label="Timeframe"
+          >
+            {HL_WINDOWS.map((w) => (
+              <button
+                key={w}
+                type="button"
+                onClick={() => setTimeframe(w)}
+                aria-pressed={timeframe === w}
+                className={
+                  "px-2.5 py-1 text-[11px] tabular-nums transition-colors " +
+                  (timeframe === w
+                    ? "bg-ink text-paper"
+                    : "text-ink-soft hover:bg-paper-soft/60")
+                }
+              >
+                {HL_WINDOW_LABEL[w]}
+              </button>
+            ))}
+          </div>
+        </div>
         <input
           type="search" aria-label="Search builder…"
           value={q}
@@ -80,25 +134,25 @@ export function HlCohortLeaderboard({
               <Th>#</Th>
               <Th>Builder</Th>
               <ThSort
-                active={sortKey === "revenue30d"}
+                active={sortKey === "revenue"}
                 dir={sortDir}
-                onClick={() => setSort("revenue30d")}
+                onClick={() => setSort("revenue")}
               >
-                Revenue 30d
+                Revenue {HL_WINDOW_LABEL[timeframe]}
               </ThSort>
               <ThSort
-                active={sortKey === "volume30d"}
+                active={sortKey === "volume"}
                 dir={sortDir}
-                onClick={() => setSort("volume30d")}
+                onClick={() => setSort("volume")}
               >
-                Volume 30d
+                Volume {HL_WINDOW_LABEL[timeframe]}
               </ThSort>
               <ThSort
-                active={sortKey === "users30d"}
+                active={sortKey === "users"}
                 dir={sortDir}
-                onClick={() => setSort("users30d")}
+                onClick={() => setSort("users")}
               >
-                Users 30d
+                Users {HL_WINDOW_LABEL[timeframe]}
               </ThSort>
               <ThSort
                 active={sortKey === "cohortVolumeShare24h"}
@@ -149,9 +203,9 @@ export function HlCohortLeaderboard({
                       </span>
                     )}
                   </Td>
-                  <Td mono>{fmtUSD(r.revenue30d)}</Td>
-                  <Td mono>{fmtUSD(r.volume30d)}</Td>
-                  <Td mono>{fmtCount(r.users30d)}</Td>
+                  <Td mono>{fmtUSD(valueOf(r, "revenue"))}</Td>
+                  <Td mono>{fmtUSD(valueOf(r, "volume"))}</Td>
+                  <Td mono>{fmtCount(valueOf(r, "users"))}</Td>
                   <Td mono>{fmtPct(r.cohortVolumeShare24h)}</Td>
                   {historyBySlug && (
                     <Td>
