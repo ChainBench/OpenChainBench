@@ -25,6 +25,25 @@ type PromEnvelope<T> =
  *  still bounding the SSR render at a tolerable ceiling. */
 const DEFAULT_TIMEOUT_MS = 10_000;
 
+/**
+ * Trim a scalar's float tail before it is cached.
+ *
+ * Six significant digits keeps cached Benchmark objects under the 2MB limit,
+ * and for a latency or a fee the digits past that are noise. An integer has
+ * no tail to trim, and rounding one is pure loss: a unix second is the case
+ * that matters, because 1791244800 (2026-10-06 00:00 UTC) rounds to
+ * 1791240000, which is 22:40 the day before. The "Biggest complete day" card
+ * read 2026-10-05 for a day that ended on the 6th, and the error only showed
+ * at all because that particular timestamp rounded across a midnight; the
+ * previous value had rounded by 20 minutes and landed on the same date.
+ */
+export function trimScalar(v: number): number | null {
+  if (!Number.isFinite(v)) return null;
+  if (v === 0) return 0;
+  if (Number.isInteger(v)) return v;
+  return Number(v.toPrecision(6));
+}
+
 export class Prometheus {
   constructor(public readonly baseUrl: string) {
     if (!baseUrl) throw new Error("Prometheus baseUrl is required");
@@ -109,8 +128,7 @@ export class Prometheus {
       // 6 significant digits, same rationale as series(): full-precision
       // tails bloat cached Benchmark objects toward the 2MB cache limit.
       if (res.resultType === "scalar") {
-        const v = Number(res.result[1]);
-        return Number.isFinite(v) ? (v === 0 ? 0 : Number(v.toPrecision(6))) : null;
+        return trimScalar(Number(res.result[1]));
       }
       if (res.resultType === "vector" && res.result.length > 0) {
         // More than one series means the query did not identify a single
@@ -135,7 +153,7 @@ export class Prometheus {
           return null;
         }
         const v = Number(res.result[0].value[1]);
-        return Number.isFinite(v) ? (v === 0 ? 0 : Number(v.toPrecision(6))) : null;
+        return trimScalar(v);
       }
       return null; // legitimately empty - not an error, not logged
     } catch (err) {
