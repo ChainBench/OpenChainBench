@@ -1,6 +1,7 @@
 import {
   ArrowLeftRight,
   BookOpen,
+  Bot,
   BookMarked,
   Boxes,
   ChartColumn,
@@ -107,6 +108,19 @@ export function navGroups(hiddenRoutes: readonly string[] = []): NavGroup[] {
         },
         { href: "/rwa", label: "Tokenized RWA", icon: Landmark, match: section("/rwa") },
         { href: "/bridge", label: "Bridge", icon: ArrowLeftRight, match: section("/bridge") },
+        // Gated with bench 284 itself: the hub reads a blob that exists in
+        // both environments, so a link here on production would lead to a
+        // page whose every row 404s.
+        ...(hiddenRoutes.includes("/trading-agents")
+          ? []
+          : [
+              {
+                href: "/trading-agents",
+                label: "AI trading agents",
+                icon: Bot,
+                match: section("/trading-agents"),
+              },
+            ]),
         {
           href: "/trading-apps",
           label: "Trading apps",

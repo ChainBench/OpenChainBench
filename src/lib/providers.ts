@@ -34,6 +34,21 @@ import type { Benchmark, ProviderResult } from "@/types/benchmark";
  * aggregator never has to read the registry at build time.
  */
 const PRODUCT_ALIASES: Record<string, string> = {
+  // Bench 284 rows → the lab that makes the model. The arena runs most models
+  // twice, once fed numeric data and once fed an image, so eight bench rows
+  // are four models from four labs. The modality split is the experiment and
+  // stays on the bench page; a product page for "grok 4 vision" separate from
+  // "grok 4 chart" would be two pages about one model. Both fold here, and
+  // /products/xai shows the pair.
+  "gpt-52-chart": "openai",
+  "gpt-52-vision": "openai",
+  "opus-45-chart": "anthropic",
+  "sonnet-45-vision": "anthropic",
+  "gemini-3-pro-chart": "google-deepmind",
+  "gemini-3-pro-vision": "google-deepmind",
+  "grok-4-chart": "xai",
+  "grok-4-vision": "xai",
+
   // Sub-products → parent brand
   "helius-sender": "helius",
   "publicnode-feehistory": "publicnode",
@@ -100,6 +115,13 @@ const PRODUCT_ALIASES: Record<string, string> = {
  * pair). Falls back to title-case of the slug for anything not listed.
  */
 const CANONICAL_NAMES: Record<string, string> = {
+  // Bench 284 labs. Title-casing the slug would render "Openai", "Xai" and
+  // "Google Deepmind" in every H1, breadcrumb and OG card.
+  openai: "OpenAI",
+  anthropic: "Anthropic",
+  "google-deepmind": "Google DeepMind",
+  xai: "xAI",
+
   bitcoin: "Bitcoin",
   ethereum: "Ethereum",
   solana: "Solana",

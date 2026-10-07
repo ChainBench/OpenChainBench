@@ -105,6 +105,17 @@ const NEEDS_LIGHT_CHIP = new Set([
   "moralis",
   "nodies",
   "zerion",
+  // Bench 284. OpenAI's and Anthropic's marks are single black paths on
+  // transparent, so they vanish on a dark page. The Gemini sparkle carries its
+  // own gradient and the Grok mark its own dark tile, so neither is listed.
+  // The agent slugs are listed alongside the lab slugs because this lookup
+  // runs on the slug the caller passes, before the logo manifest aliases it.
+  "openai",
+  "anthropic",
+  "gpt-52-chart",
+  "gpt-52-vision",
+  "opus-45-chart",
+  "sonnet-45-vision",
 ]);
 
 // White-on-transparent logos — invisible on a white chip. They get a
