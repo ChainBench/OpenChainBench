@@ -502,7 +502,10 @@ const RAW: Record<string, string> = {
   soltradingbot: "/logos/soltradingbot.png",
   "o1-exchange": "/logos/o1-exchange.png",
   pepeboost: "/logos/pepeboost.png",
-  basedbot: "/logos/based-app.png",
+  // BasedBot (basedbot.app, "#1 Degen Trading Bot") is not Based App (the
+  // Hyperliquid frontend on bench 269, slug `based-app`). They aliased to one
+  // file, so BasedBot rendered with another product's orange B. Own logo now.
+  basedbot: "/logos/basedbot.jpg",
 
   // ─── App Store ratings (bench № 202) ───
   moonshot: "/logos/moonshot.svg",
@@ -756,6 +759,7 @@ const ALIASES: Record<string, string> = {
   sol: "solana",
   bsc: "bnb",
   hypercore: "hyperliquid", // HyperCore is the Hyperliquid trading engine, same brand
+  hyperevm: "hyperliquid", // HyperEVM is Hyperliquid's EVM execution layer, same brand
   "hyperliquid-hip3": "hyperliquid", // bench 266 row for builder-deployed HIP-3 dexs
   "publicnode-feehistory": "publicnode",
   "binance-wallet": "binance", // bench 268 per-chain rows (binance-wallet-bnb…); the spec row is `binance`

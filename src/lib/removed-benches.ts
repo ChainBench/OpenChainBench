@@ -170,28 +170,23 @@ export const DEV_ONLY_BENCH_SLUGS = new Set([
   // of the eight rows have no maker rate at all. Un-gate after a 24h
   // window and an audit round.
   "perp-fee-disclosure",
-  // The Dune trial ends 2026-10-02 and no paid plan is committed, so the
-  // four benches below stand down until one is. They are gated rather than
-  // removed because nothing about them is wrong: the harnesses, the SQL and
-  // the freshness guard all work, and the day the plan is paid for these
-  // four come back by deleting these lines. Bench 201 stays on production
-  // because it moved to DeFiLlama's free adapters (see bench 201 and 267);
-  // these four have no free equivalent for what they measure.
+  // Benches 203, 206, 207 and 232 left this list on 2026-10-07.
   //
-  // 206 average trade size, 207 swap transactions, 232 active wallets: all
-  // three read dune-platform-volume, whose one execution a day is metered.
-  // Un-gate condition: a paid Dune plan.
-  "solana-avg-trade-size",
-  "solana-unique-traders",
-  "trading-platform-wallets",
-  // 203 memecoin platform fee rates: its headline take rate reads
-  // dune-platform-volume and its coverage and fee-paying-rate columns come
-  // from the memecoin-platforms harness, which is its own metered Dune
-  // query. Re-sourcing only the headline would leave the rest of the page
-  // dark, and bench 201 now carries a take rate from DeFiLlama, so the
-  // signal is not lost while this one waits. Un-gate condition: a paid
-  // Dune plan.
-  "memecoin-platforms",
+  // They were gated on 2026-10-02 when the Dune trial ended, under a note
+  // saying they "have no free equivalent for what they measure". They were
+  // re-sourced the same week to the public tehcscreener API (Allium-backed,
+  // no key) via harnesses/terminal-activity: a different vendor, not a
+  // cheaper route to the same one. Bench 201 had already moved to DeFiLlama.
+  //
+  // Un-gated after the audit round rather than after a 24h window, because
+  // these four read instant gauges and declare no range selector: the only
+  // thing a day buys them is a complete chart, which is cosmetic. What the
+  // audit round caught is in #2843, #2844, #2846, #2848 and #2849.
+  //
+  // 206 and 207 were renamed on the way out, from solana-avg-trade-size and
+  // solana-unique-traders. Neither was ever served on production, so there is
+  // no signal to preserve and no redirect is owed: their default view is
+  // all-chains now and the old slugs claimed otherwise.
 ]);
 
 /**

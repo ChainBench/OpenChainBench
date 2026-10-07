@@ -1,206 +1,225 @@
-# OpenChainBench. Bench 203
+# OpenChainBench. Bench № 203
 
 slug: memecoin-platforms
 number: "203"
-title: "Solana memecoin platform fee rates: Axiom vs Fomo vs GMGN vs Trojan vs Terminal"
-seo_title: "Solana memecoin platform fees 2026: Axiom, Fomo, GMGN, Trojan, Terminal, Photon, Maestro"
-seo_description: "{{best_name}} leads Solana memecoin platforms at {{best_p50}} take rate. Axiom vs Fomo vs GMGN vs Trojan vs Terminal ranked by protocol revenue per dollar traded, from on-chain fee wallet attribution."
-subtitle: Daily protocol fee revenue divided by trading volume for each Solana memecoin platform. The take rate column reads our own Dune SQL over the SOL, USDC and wSOL landing in each platform's fee wallets, against the volume of the transactions that paid them, one execution a day.
+title: "Memecoin terminal take rates: what Terminal, Trojan, GMGN and pump.fun keep"
+seo_title: "Memecoin terminal take rates 2026"
+seo_description: "What each memecoin terminal keeps per dollar routed, measured not quoted. Terminal, Trojan, GMGN, Axiom, Fomo and pump.fun, per chain."
+subtitle: Observed take rate per memecoin trading terminal, a day's fee revenue divided by that day's routed volume, per chain. What the terminal kept, not what its fee schedule says it charges.
 
 category: Trading
 status: live
-metric: 24h take rate
+metric: Observed take rate
 unit: pct
 higher_is_better: false
+row_noun: { one: terminal, many: terminals }
+# The success query is a publication gate (the harness published this terminal
+# and chain on a day inside the window, or it did not), never a probe success
+# rate. Declaring that hides the Success and Reliability columns, which would
+# otherwise read 100% on every live row and invite a reader to take it for a
+# measured uptime.
+ledger_reliability: false
+zero_is_a_value: true
 
 disclaimer: |
-  Take rate = fees / volume * 100. Fees are on-chain inflows to known fee wallets (Dune query 8316589, refreshed every 6h). Fomo fees come from DeFiLlama (on-chain USDC + off-chain relay). Volume is total Mobula-attributed volume; the take rate is a lower bound since platforms with variable or waivable fees will show lower observed rates.
+  One complete UTC day's fee revenue divided by that day's routed volume, from the public tehcscreener API, which is Allium-backed. What the terminal kept, a lower bound on what it charges: waivers and rebates pull it down. A cell reading zero is withheld rather than ranked whenever that platform charges on another chain, because this page cannot tell a waived fee from an unmeasured one. Not the all-in cost of a swap, which also includes slippage; benches 268 and 279 measure that.
 
 seo_intro: |
-  Solana memecoin platforms charge fees in different ways and at different rates,
-  making direct comparison difficult without on-chain data. This benchmark
-  measures the actual protocol revenue collected over 24 hours by monitoring
-  known fee wallets on Dune Analytics, then divides by the total trading volume
-  attributed to each platform by Mobula's lighthouse aggregator. Axiom leads on
-  absolute protocol revenue, consistent with its 0.9% per-trade fee applied
-  across high-volume memecoin flow. The observed take rate for GMGN and Trojan
-  is lower than their stated fee because Mobula's volume attribution is broader
-  than the set of trades on which the platforms actually charge. pump.fun cut its
-  bonding-curve trading fees to 0% in August 2026, so its observed take rate has
-  dropped near zero; protocol revenue now comes from graduation fees only.
+  Every trading terminal publishes a fee. What it actually keeps per dollar
+  routed is a different number, and it is the one that shows up in revenue.
+  This page divides each terminal's fee revenue on the latest complete day by
+  the volume it routed that day, per chain. The spread is wider than any fee
+  schedule suggests: the terminals that report fees on a chain keep between
+  about a half and one and a tenth of a percent of what they route. Cells
+  reading exactly zero are not ranked as the cheapest. A terminal that charges
+  elsewhere and reports nothing here has a gap, not a price, and the page says
+  so rather than crowning it.
 
 abstract: |
-  Fee data: Dune query 8316589 monitors native SOL inflows (via solana.account_activity,
-  address column) and USDC/WSOL inflows (via token_balance_owner column) to known
-  protocol fee wallets for each platform, summed over a rolling 24-hour window.
-  Executed every 6 hours (costs Dune credits); cached results read every 15 minutes.
-  Fomo exception: Fomo combines on-chain USDC sweeps with off-chain relay fees
-  stored in a private Dune table accessible only to DeFiLlama; fees for Fomo come
-  from DeFiLlama /summary/fees/fomo chainBreakdown[Solana]. Volume data: Mobula
-  lighthouse (api.mobula.io/api/2/market/lighthouse) polled every 15 minutes.
-  Trading platforms from byPlatform; pump.fun from byLaunchpad[name=PumpFun].
-  Two take-rate metrics: fee_rate_pct = fees / Mobula total volume (lower bound);
-  fee_paying_rate_pct = fees / fee-paying volume (Dune tx join to dex_solana.trades,
-  comparable across platforms). coverage_pct = fee-paying / Mobula volume.
+  The harness reads one day per terminal per chain from the tehcscreener
+  /bots/{bot} endpoint and publishes fees divided by volume as
+  terminal_fee_rate_pct. Numerator and denominator are the same row of the
+  same day, so the ratio cannot mix two periods or two chains.
+
+  One column this bench used to carry is gone. Until 2026-10-07 it published a
+  fee-paying rate, the share of a terminal's transactions that actually paid a
+  fee, from a second metered Dune query. The current source reports fee totals
+  and not the fee-paying share of transactions, and no arithmetic on the fields
+  it does publish recovers it. The panel was removed rather than approximated,
+  and the take rate it sat next to is unaffected.
 
 methodology:
-  - "Companion gauges, fee source (all except Fomo): Dune query 8316589 on solana.account_activity. Native SOL inflows matched by address = fee wallet; USDC and wSOL by token_balance_owner = fee wallet, summed over NOW() - 1 DAY, executed every 6h. This feeds the memecoin_platform_* gauges, not the take rate column."
-  - "Companion gauges, fee source (Fomo): DeFiLlama /summary/fees/fomo, chainBreakdown[Solana].total24h, which combines on-chain USDC inflows to R4rNJHaffSUotNmqSKNEfDcJE8A7zJUkaoM5Jkd7cYX with off-chain relay fees. Also the memecoin_platform_* gauges only; the take rate column reads our own SQL for every platform, Fomo included."
-  - "Take rate column: dune_platform_fee_rate_pct, from our own SQL over Dune's solana.account_activity, dex_solana.trades and prices.day. Fees and volume cover the same transactions, the ones that paid the platform's fee wallet, so the rate is the observed per-trade cut rather than fees over a broader attributed volume."
-  - "Stale source: a platform whose data day falls more than 3 days behind, or that the query stops returning, has its gauges deleted and reads unresponsive. The eight uploaded datasets this column read until 2026-09-27 all froze on 2026-08-25 and were served as current for 32 days."
-  - "pump.fun and BasedBot are not measured in the take rate column. pump.fun charges no bonding-curve fee since Aug 2026, so fee-wallet attribution cannot see it; no public fee wallet list for BasedBot exists. The companion memecoin_platform_* gauges below come from a separate harness and are unaffected."
-  - "Volume source (Mobula): Mobula lighthouse byPlatform for trading terminals; byLaunchpad[name=PumpFun] for pump.fun (bonding curve + PumpSwap graduated AMM). Updated every 15 minutes. This feeds the memecoin_platform_* gauges, not the take rate column."
-  - "Volume source (fee-paying, Dune): For each transaction that generated a native SOL, USDC, or WSOL inflow to a fee wallet, the largest swap trade in dex_solana.trades with matching tx_id is taken (MAX amount_usd per tx, to avoid double-counting multi-hop routes). Sum across all such transactions = fee_paying_volume_usd_24h. This denominator is self-consistent with the fee numerator."
-  - "Two take-rate metrics: memecoin_platform_fee_rate_pct = fees / Mobula total volume (lower bound, shows attribution breadth); memecoin_platform_fee_paying_rate_pct = fees / fee-paying volume (comparable across platforms, closer to the actual per-trade fee rate). memecoin_platform_coverage_pct = fee-paying volume / Mobula volume (shows what fraction of attributed volume generated a fee)."
-  - "SOL price: CoinGecko simple/price, refreshed every 5 minutes. Used to convert native SOL and WSOL inflows to USD."
-  - "GMGN: 9 fee wallets verified by DeFiLlama adapter (master, 2026-06) as pure collectors sweeping to a single treasury. DeFiLlama Solana-only fees match ours within 5%, confirming the wallet list is complete. GMGN's $772K/day DeFiLlama total includes BSC, Base, Ethereum, Monad and other EVM chains; this bench is Solana-only."
-  - "pump.fun: fees captured via native SOL and WSOL inflows to the 9 known protocol fee wallets. pump.fun cut its bonding-curve trading fees to 0% in August 2026; observed fee revenue post that date reflects token graduation fees only. Creator fees (0.30%) and LP fees flow to separate recipients not tracked here."
-  - "Trojan: fee wallets capture the per-swap protocol transfer; DeFiLlama Solana match at 6% confirms fees are in the swap transaction, not a separate settlement."
+  - "Source: the public tehcscreener API (https://tehcscreener.com/api), Allium-backed, no key, synced once a day. The harness reads /bots over the full history for the roster and /bots/{bot} for each terminal's per-chain daily series, and publishes one day: the latest the source names."
+  - "The ratio: that day's fee revenue in USD divided by that day's routed volume in USD, times 100, both read from the same row of the same series. A lower bound on what the terminal charges, because waivers, rebates and promotions reduce what it keeps without changing its schedule."
+  - "Zeros are not ranked unless they are consistent, guarded at two levels. Per chain: when no terminal on a chain reports any fee, the column has failed and no take rate publishes there. Per cell: a terminal reporting fees on one chain and exactly zero on another, on material volume, has that cell withheld, because a waived fee and an unmeasured one look identical here. Axiom charges 0.92% on Solana and reported $0.00 on $29.8M of Robinhood volume."
+  - "Removed on 2026-10-07: the fee-paying rate panel, the share of transactions that paid a fee. The current source publishes fee totals, not that share, and nothing here reconstructs it. Approximating it from the fields that do exist would have put a derived number where a measured one used to be."
+  - "Latest complete day, not a rolling 24 hours: the source publishes daily and its latest day is normally yesterday. A terminal with no activity on that day carries no figure and reads unresponsive rather than having its last live day carried forward. BasedBot is the live case, with volume on Robinhood Chain and almost none on Solana."
+  - "Stale source: a day more than 3 whole days behind, or a terminal the source stops returning, has its gauges deleted and reads unresponsive. An old figure is never republished as current, because these gauges are scraped every 60 seconds and read through a 24h window."
+  - "Two freshness layers, because they fail differently: terminal_activity_last_success_unix says the harness is still running, and terminal_activity_health says this terminal and chain published a day inside the window. A harness that runs while its source freezes trips the second, not the first."
+  - "Chains: five are offered as tabs, the ones with at least five terminals and meaningful volume. Arc, HyperEVM, Monad, X Layer and Avalanche are measured but not offered, because one or two terminals on a chain is a list rather than a comparison."
+  - "Not the cost of a swap: this is the terminal's cut only. Slippage, priority fees and pool fees are not in it, and a low take rate can sit on top of a worse total execution. Benches 268 and 279 measure the all-in figure."
 
 findings:
-  - "{{best_name}} has the highest observed take rate at {{best_p50}} over the last 24h."
-  - "Axiom leads on absolute protocol revenue at roughly $800K per day, consistent with its 0.9% stated fee applied across high-volume memecoin flow."
-  - "Using the self-consistent fee-paying volume denominator (Dune tx join), Axiom shows ~1.25%, GMGN ~1.73%, Trojan ~1.35%, and Maestro ~1.87%, clustered closer to stated rates than the Mobula-volume figures, which are depressed by volume attribution breadth."
-  - "pump.fun cut its bonding-curve trading fees to 0% in August 2026; its observed take rate has dropped near zero as protocol fee revenue is now only graduation fees. Creator and LP fee shares flow to separate recipients."
-  - "GMGN and Trojan show ~8% coverage (fee-paying volume / Mobula volume), meaning only 8% of attributed volume generates a fee inflow. Their Dune fee captures match DeFiLlama Solana within 5-6%, confirming the wallet list is complete."
-  - "Fomo fees include both on-chain USDC sweeps and off-chain relay fees; the latter are not directly capturable via Dune without access to Fomo's private data feed."
+  - "{{best_name}} keeps the least per dollar routed at {{best_p50}} on this chain."
+  - "Two cells are withheld rather than ranked, and the reason is the same for both: Axiom reports no fee on Robinhood and BNB while charging 0.92% on Solana, and pump.fun reports no fee on Solana while charging on four other chains. A zero from a platform that charges elsewhere is a gap, not the cheapest price in the market."
+  - "Observed take rate is a lower bound on the published fee. Waivers, referral rebates and promotional periods all reduce what a terminal keeps without changing what its schedule says."
+  - "Take rates differ by chain on the same terminal, which is why this page has a chain axis rather than one pooled number."
 
-source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/memecoin-platforms
+source: https://github.com/ChainBench/OpenChainBench/tree/dev/harnesses/terminal-activity
 
 prometheus:
   window: 24h
-  freshness_metric: dune_platform_fee_rate_pct
+  url: https://prom.openchainbench.com
+  expected_freshness_seconds: 172800
+  freshness_timestamp_metric: terminal_activity_last_success_unix
+  # The fee column's own integrity gate, per chain. One terminal at zero is a
+  # finding; every terminal on a chain at zero is the column having failed, and
+  # the harness says which it is. When it says the column failed, no badge on
+  # this page may claim a leader.
+  probe_ok: max(terminal_fee_column_ok{chain="all"})
+
+dimension_labels:
+  chain: Chain
+
+dimensions:
+  # `all` is a real cross-chain total here, not an alias: volume, transactions
+  # and fees add up, and the two ratios built on them (average trade is total
+  # volume over total transactions, take rate is total fees over the volume of
+  # the chains whose fees could be measured) are correctly volume-weighted by
+  # construction. Bench 232 is the exception and says why on its own page: a
+  # wallet trading on two chains is one wallet, so there is no honest
+  # all-chains wallet count and its `all` carries Solana instead.
+  #
+  # Seven chains, the ones with at least four terminals. X Layer, Avalanche and
+  # Monad are measured and queryable but not offered: one or two terminals on a
+  # chain is a list, not a comparison.
+  chain:
+    - { value: all,       label: All chains }
+    - { value: solana,    label: Solana }
+    - { value: bnb,       label: BNB Chain }
+    - { value: robinhood, label: Robinhood Chain }
+    - { value: base,      label: Base }
+    - { value: arc,       label: Arc }
+    - { value: ethereum,  label: Ethereum }
+    - { value: hyperevm,  label: HyperEVM }
 
 faq:
-  - q: "What is a take rate?"
-    a: "Take rate is the fraction of trading volume captured as protocol revenue: fees_usd_24h / volume_usd_24h * 100. A platform with a 1% per-trade fee and full fee coverage on all attributed volume would show a 1% take rate. Lower rates indicate either a lower stated fee, waived fees on some trades, or a volume denominator that includes trades where no fee was charged."
-  - q: "Why is GMGN's take rate 0.14% if they charge 1%?"
-    a: "GMGN charges 1% per trade, and their fee wallets do collect ~$155K/day on Solana, matching DeFiLlama's Solana-only figure within 5%. But Mobula's lighthouse attributes $108M in volume to GMGN, which is broader than the volume on which GMGN actually collects a fee. The 0.14% figure is the ratio of fees to total attributed volume, not the per-trade fee rate. GMGN's total revenue across all chains (BSC, Base, Ethereum, Monad, etc.) is ~$772K/day per DeFiLlama."
-  - q: "Why does pump.fun show a near-zero take rate?"
-    a: "pump.fun cut its bonding-curve trading fees to 0% in August 2026, eliminating its per-swap protocol revenue. The Dune fee wallet monitors now capture primarily token graduation fees rather than trading fees. The byLaunchpad volume denominator remains high ($100M+), so the computed take rate is near zero. Pre-August 2026, pump.fun ran a 0.95% protocol share on buys and sells, producing ~0.45% observed take rate."
-  - q: "Why is Fomo sourced from DeFiLlama instead of Dune directly?"
-    a: "Fomo collects fees in two ways: on-chain USDC sweeps to a fee wallet, and off-chain relay fees reported to a private Dune table (dune.tryfomo.fomo_relay_fees) that only Fomo's team can write to. DeFiLlama has access to this private table via a partnership. Without it, on-chain monitoring alone would capture only a fraction of Fomo's revenue."
-  - q: "How reliable are the fee wallet addresses?"
-    a: "GMGN's 9 Solana wallets are verified by DeFiLlama's adapter (reviewed 2026-06) as pure fee collectors with no inter-wallet flows. Our 5% match to DeFiLlama Solana confirms the list is current. Axiom, Trojan, Photon, and Maestro wallets were identified by reverse-engineering tagged trades and cross-checked against DeFiLlama. A monthly diff of the DeFiLlama adapter detects any rotation."
-  - q: "What is memecoin_platform_fee_paying_rate_pct and how does it differ from fee_rate_pct?"
-    a: "memecoin_platform_fee_rate_pct uses Mobula's total attributed volume as the denominator, which is a lower bound because Mobula attributes more trades to each platform than those that actually paid a fee. memecoin_platform_fee_paying_rate_pct uses only the volume of trades that generated a fee inflow (from Dune: for each fee-receiving transaction, we look up the largest swap in dex_solana.trades via tx_id match and sum those). This denominator is self-consistent with the fee numerator, so the resulting rate is comparable across platforms and approximates the actual per-trade fee. memecoin_platform_coverage_pct shows what fraction of Mobula volume actually generated a fee."
-  - q: "What is memecoin_dune_data_freshness_seconds?"
-    a: "It is the Unix timestamp of the most recent block_time seen in the Dune query results. If Dune's solana.account_activity table lags, the nominal 24-hour window silently shrinks. A gap of more than 4 hours between this metric and the current time indicates stale data."
+  - q: "What is an observed take rate?"
+    a: "A day's fee revenue divided by the volume routed that day, as a percentage. It is what the terminal kept, which is not the same as what its fee page says it charges: waived fees, referral rebates and promotions all reduce the first without touching the second."
+  - q: "Why do some cells have no take rate at all?"
+    a: "Because the zero could not be explained. A terminal that charges a fee on one chain and reports exactly nothing on another, while routing tens of millions there, has a gap rather than a price, and this page cannot tell a waived fee from an unmeasured one. Rather than rank that zero as the cheapest in the market, the cell is withheld and flagged. Axiom off Solana and pump.fun on Solana are both in that state as of 2026-10-07. Volume, transactions and wallets for those cells are unaffected and still published."
+  - q: "Is this what a swap costs me?"
+    a: "No. This is the terminal's cut only. The all-in cost of a swap also includes slippage, priority fees and the pool's own fee, and a terminal with a low cut can still deliver a worse fill. Benches 268 and 279 measure the total."
+  - q: "Why does the same terminal show a different rate on each chain?"
+    a: "Because fee schedules, flow mix and competition differ by chain, and because the rate is observed rather than quoted. Pooling the chains into one number would average ratios with weights nobody chose, so each chain is read on its own."
+  - q: "What happened to the fee-paying rate column?"
+    a: "It was removed on 2026-10-07 with the source change. It measured the share of a terminal's transactions that actually paid a fee, which the current source does not report and which cannot be derived from the fields it does. It was dropped rather than approximated."
 
 providers:
-  - slug: axiom
-    name: Axiom
-    tag: "Trading terminal, 0.9% fee"
-    formula: "Daily fee rate % (fees_usd / volume_usd * 100) from our own Dune SQL: SOL, USDC and wSOL landing in Axiom's fee wallets over the volume of the transactions paying them, one leg per transaction and trader. Solana only."
+  - slug: padre
+    name: Terminal
+    tag: "Trading terminal, highest observed take"
+    formula: "A day's fee revenue divided by that day's routed volume for Terminal on this chain, both from the tehcscreener /bots/terminal series."
     queries:
-      p50: dune_platform_fee_rate_pct{platform="axiom"}
-      p90: dune_platform_fee_rate_pct{platform="axiom"}
-      p99: dune_platform_fee_rate_pct{platform="axiom"}
-      mean: dune_platform_fee_rate_pct{platform="axiom"}
-      success: dune_platform_volume_health{platform="axiom"}
-      sample_size: dune_platform_fees_24h_usd{platform="axiom"}
-      series: dune_platform_fee_rate_pct{platform="axiom"}
-
-  - slug: fomo
-    name: Fomo
-    tag: "Solana trading platform"
-    formula: "Daily fee rate % (fees_usd / volume_usd * 100) from our own Dune SQL: SOL, USDC and wSOL landing in Fomo's fee wallets over the volume of the transactions paying them, largest USDC leg per transaction. Solana only."
-    queries:
-      p50: dune_platform_fee_rate_pct{platform="fomo"}
-      p90: dune_platform_fee_rate_pct{platform="fomo"}
-      p99: dune_platform_fee_rate_pct{platform="fomo"}
-      mean: dune_platform_fee_rate_pct{platform="fomo"}
-      success: dune_platform_volume_health{platform="fomo"}
-      sample_size: dune_platform_fees_24h_usd{platform="fomo"}
-      series: dune_platform_fee_rate_pct{platform="fomo"}
-
-  - slug: pump-fun
-    name: pump.fun
-    tag: "Solana meme launchpad + relay, 0% fee since Aug 2026"
-    formula: "Not measured. pump.fun charges no bonding-curve fee since Aug 2026, so no fee wallet receives anything on its trades and fee-wallet attribution cannot see them. The row reads unresponsive."
-    queries:
-      p50: dune_platform_fee_rate_pct{platform="pump-fun"}
-      p90: dune_platform_fee_rate_pct{platform="pump-fun"}
-      p99: dune_platform_fee_rate_pct{platform="pump-fun"}
-      mean: dune_platform_fee_rate_pct{platform="pump-fun"}
-      success: dune_platform_volume_health{platform="pump-fun"}
-      sample_size: dune_platform_fees_24h_usd{platform="pump-fun"}
-      series: dune_platform_fee_rate_pct{platform="pump-fun"}
-
-  - slug: gmgn
-    name: GMGN
-    tag: "AI trading terminal, ~1% fee, multi-chain"
-    formula: "Daily fee rate % (fees_usd / volume_usd * 100) from our own Dune SQL: SOL, USDC and wSOL landing in GMGN's fee wallets over the volume of the transactions paying them, one leg per transaction and trader. Solana only."
-    queries:
-      p50: dune_platform_fee_rate_pct{platform="gmgn"}
-      p90: dune_platform_fee_rate_pct{platform="gmgn"}
-      p99: dune_platform_fee_rate_pct{platform="gmgn"}
-      mean: dune_platform_fee_rate_pct{platform="gmgn"}
-      success: dune_platform_volume_health{platform="gmgn"}
-      sample_size: dune_platform_fees_24h_usd{platform="gmgn"}
-      series: dune_platform_fee_rate_pct{platform="gmgn"}
-
-  - slug: photon
-    name: Photon
-    tag: "Solana trading terminal, ~1% fee"
-    formula: "Daily fee rate % (fees_usd / volume_usd * 100) from our own Dune SQL: SOL, USDC and wSOL landing in Photon's fee wallets over the volume of the transactions paying them, one leg per transaction and trader. Solana only."
-    queries:
-      p50: dune_platform_fee_rate_pct{platform="photon"}
-      p90: dune_platform_fee_rate_pct{platform="photon"}
-      p99: dune_platform_fee_rate_pct{platform="photon"}
-      mean: dune_platform_fee_rate_pct{platform="photon"}
-      success: dune_platform_volume_health{platform="photon"}
-      sample_size: dune_platform_fees_24h_usd{platform="photon"}
-      series: dune_platform_fee_rate_pct{platform="photon"}
+      p50: max(terminal_fee_rate_pct{platform="padre",chain="all"})
+      p90: max(terminal_fee_rate_pct{platform="padre",chain="all"})
+      p99: max(terminal_fee_rate_pct{platform="padre",chain="all"})
+      success: max(terminal_fee_rate_health{platform="padre",chain="all"})
+      sample_size: max(terminal_fees_usd{platform="padre",chain="all"})
+      series: max by (platform) (terminal_fee_rate_pct{platform="padre",chain="all"})
 
   - slug: trojan
     name: Trojan
-    tag: "Solana Telegram bot, ~0.9% fee"
-    formula: "Daily fee rate % (fees_usd / volume_usd * 100) from our own Dune SQL: SOL, USDC and wSOL landing in Trojan's fee wallets over the volume of the transactions paying them, one leg per transaction and trader. Solana only."
+    tag: "Telegram-native bot, Solana only"
+    formula: "A day's fee revenue divided by that day's routed volume for Trojan on this chain, both from the tehcscreener /bots/trojan series."
     queries:
-      p50: dune_platform_fee_rate_pct{platform="trojan"}
-      p90: dune_platform_fee_rate_pct{platform="trojan"}
-      p99: dune_platform_fee_rate_pct{platform="trojan"}
-      mean: dune_platform_fee_rate_pct{platform="trojan"}
-      success: dune_platform_volume_health{platform="trojan"}
-      sample_size: dune_platform_fees_24h_usd{platform="trojan"}
-      series: dune_platform_fee_rate_pct{platform="trojan"}
+      p50: max(terminal_fee_rate_pct{platform="trojan",chain="all"})
+      p90: max(terminal_fee_rate_pct{platform="trojan",chain="all"})
+      p99: max(terminal_fee_rate_pct{platform="trojan",chain="all"})
+      success: max(terminal_fee_rate_health{platform="trojan",chain="all"})
+      sample_size: max(terminal_fees_usd{platform="trojan",chain="all"})
+      series: max by (platform) (terminal_fee_rate_pct{platform="trojan",chain="all"})
 
-  - slug: padre
-    name: Terminal
-    tag: "pump.fun's own trading app (formerly Padre)"
-    formula: "Daily fee rate % (fees_usd / volume_usd * 100) from our own Dune SQL: SOL, USDC and wSOL landing in Terminal's fee wallets over the volume of the transactions paying them, one leg per transaction and trader. Solana only."
+  - slug: gmgn
+    name: GMGN
+    tag: "Multi-chain terminal, widest chain reach"
+    formula: "A day's fee revenue divided by that day's routed volume for GMGN on this chain, both from the tehcscreener /bots/gmgn series."
     queries:
-      p50: dune_platform_fee_rate_pct{platform="padre"}
-      p90: dune_platform_fee_rate_pct{platform="padre"}
-      p99: dune_platform_fee_rate_pct{platform="padre"}
-      mean: dune_platform_fee_rate_pct{platform="padre"}
-      success: dune_platform_volume_health{platform="padre"}
-      sample_size: dune_platform_fees_24h_usd{platform="padre"}
-      series: dune_platform_fee_rate_pct{platform="padre"}
+      p50: max(terminal_fee_rate_pct{platform="gmgn",chain="all"})
+      p90: max(terminal_fee_rate_pct{platform="gmgn",chain="all"})
+      p99: max(terminal_fee_rate_pct{platform="gmgn",chain="all"})
+      success: max(terminal_fee_rate_health{platform="gmgn",chain="all"})
+      sample_size: max(terminal_fees_usd{platform="gmgn",chain="all"})
+      series: max by (platform) (terminal_fee_rate_pct{platform="gmgn",chain="all"})
 
-  - slug: basedbot
-    name: BasedBot
-    tag: "Multi-chain trading bot"
-    formula: "Not measured. No public fee wallet or router list for BasedBot exists to attribute its transactions from. The row reads unresponsive."
+  - slug: photon
+    name: Photon
+    tag: "Web terminal, Solana only"
+    formula: "A day's fee revenue divided by that day's routed volume for Photon on this chain, both from the tehcscreener /bots/photon series."
     queries:
-      p50: dune_platform_fee_rate_pct{platform="basedbot"}
-      p90: dune_platform_fee_rate_pct{platform="basedbot"}
-      p99: dune_platform_fee_rate_pct{platform="basedbot"}
-      mean: dune_platform_fee_rate_pct{platform="basedbot"}
-      success: dune_platform_volume_health{platform="basedbot"}
-      sample_size: dune_platform_fees_24h_usd{platform="basedbot"}
-      series: dune_platform_fee_rate_pct{platform="basedbot"}
+      p50: max(terminal_fee_rate_pct{platform="photon",chain="all"})
+      p90: max(terminal_fee_rate_pct{platform="photon",chain="all"})
+      p99: max(terminal_fee_rate_pct{platform="photon",chain="all"})
+      success: max(terminal_fee_rate_health{platform="photon",chain="all"})
+      sample_size: max(terminal_fees_usd{platform="photon",chain="all"})
+      series: max by (platform) (terminal_fee_rate_pct{platform="photon",chain="all"})
 
   - slug: maestro
     name: Maestro
-    tag: "Solana Telegram bot, ~1% fee"
-    formula: "24h protocol fee revenue (Dune wallet inflows) / 24h fee-paying volume (Dune tx join). No community dataset available; sourced from on-chain fee wallet detection."
+    tag: "Telegram bot, multi-chain"
+    formula: "A day's fee revenue divided by that day's routed volume for Maestro on this chain, both from the tehcscreener /bots/maestro series."
     queries:
-      p50: memecoin_platform_fee_paying_rate_pct{platform="maestro"}
-      p90: memecoin_platform_fee_paying_rate_pct{platform="maestro"}
-      p99: memecoin_platform_fee_paying_rate_pct{platform="maestro"}
-      mean: memecoin_platform_fee_paying_rate_pct{platform="maestro"}
-      success: memecoin_platform_health
-      sample_size: memecoin_platform_fees_usd_24h{platform="maestro"}
-      series: memecoin_platform_fee_paying_rate_pct{platform="maestro"}
+      p50: max(terminal_fee_rate_pct{platform="maestro",chain="all"})
+      p90: max(terminal_fee_rate_pct{platform="maestro",chain="all"})
+      p99: max(terminal_fee_rate_pct{platform="maestro",chain="all"})
+      success: max(terminal_fee_rate_health{platform="maestro",chain="all"})
+      sample_size: max(terminal_fees_usd{platform="maestro",chain="all"})
+      series: max by (platform) (terminal_fee_rate_pct{platform="maestro",chain="all"})
+
+  - slug: axiom
+    name: Axiom
+    tag: "Solana-first trading terminal"
+    formula: "A day's fee revenue divided by that day's routed volume for Axiom on this chain, both from the tehcscreener /bots/axiom series."
+    queries:
+      p50: max(terminal_fee_rate_pct{platform="axiom",chain="all"})
+      p90: max(terminal_fee_rate_pct{platform="axiom",chain="all"})
+      p99: max(terminal_fee_rate_pct{platform="axiom",chain="all"})
+      success: max(terminal_fee_rate_health{platform="axiom",chain="all"})
+      sample_size: max(terminal_fees_usd{platform="axiom",chain="all"})
+      series: max by (platform) (terminal_fee_rate_pct{platform="axiom",chain="all"})
+
+  - slug: fomo
+    name: Fomo
+    tag: "Cross-chain terminal, gas sponsored"
+    formula: "A day's fee revenue divided by that day's routed volume for Fomo on this chain, both from the tehcscreener /bots/fomo series."
+    queries:
+      p50: max(terminal_fee_rate_pct{platform="fomo",chain="all"})
+      p90: max(terminal_fee_rate_pct{platform="fomo",chain="all"})
+      p99: max(terminal_fee_rate_pct{platform="fomo",chain="all"})
+      success: max(terminal_fee_rate_health{platform="fomo",chain="all"})
+      sample_size: max(terminal_fees_usd{platform="fomo",chain="all"})
+      series: max by (platform) (terminal_fee_rate_pct{platform="fomo",chain="all"})
+
+  - slug: basedbot
+    name: BasedBot
+    tag: "Robinhood Chain native, little Solana flow"
+    formula: "A day's fee revenue divided by that day's routed volume for BasedBot on this chain, both from the tehcscreener /bots/basedbot series."
+    queries:
+      p50: max(terminal_fee_rate_pct{platform="basedbot",chain="all"})
+      p90: max(terminal_fee_rate_pct{platform="basedbot",chain="all"})
+      p99: max(terminal_fee_rate_pct{platform="basedbot",chain="all"})
+      success: max(terminal_fee_rate_health{platform="basedbot",chain="all"})
+      sample_size: max(terminal_fees_usd{platform="basedbot",chain="all"})
+      series: max by (platform) (terminal_fee_rate_pct{platform="basedbot",chain="all"})
+
+  - slug: pump-fun
+    name: pump.fun
+    tag: "Launchpad's own app, no terminal fee"
+    formula: "A day's fee revenue divided by that day's routed volume for the pump.fun app. It reports fees on four chains and exactly zero on Solana, where it routes $252M a week, so the Solana cell is withheld rather than ranked as the market floor."
+    queries:
+      p50: max(terminal_fee_rate_pct{platform="pump-fun",chain="all"})
+      p90: max(terminal_fee_rate_pct{platform="pump-fun",chain="all"})
+      p99: max(terminal_fee_rate_pct{platform="pump-fun",chain="all"})
+      success: max(terminal_fee_rate_health{platform="pump-fun",chain="all"})
+      sample_size: max(terminal_fees_usd{platform="pump-fun",chain="all"})
+      series: max by (platform) (terminal_fee_rate_pct{platform="pump-fun",chain="all"})

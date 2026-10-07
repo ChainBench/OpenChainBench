@@ -1,0 +1,402 @@
+package main
+
+import (
+	"net/http"
+	"sort"
+	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+)
+
+// headlineChain is the slice a spec's unfiltered view selects. Every gauge keyed
+// on chain is published under its real chain and, for this one, again under
+// chain="all".
+//
+// The alias is not decoration and it is not an average. The site's label
+// injection only replaces a selector already pinned to `="all"`, so a spec that
+// does not pin it reads every chain at once and the loader returns null for
+// "more than one series where one was expected". Bench 283 spent a day with a
+// blank headline column for exactly that reason. `all` therefore has to carry
+// one real slice, and it carries Solana: it is where most of this cohort's
+// volume is, and a pooled cross-chain figure would describe no venue anyone
+// trades on.
+const headlineChain = "solana"
+
+// What chain="all" means, and why it is not one thing.
+//
+// It is a true cross-chain total wherever totalling is valid, and the headline
+// chain wherever it is not. The split is forced by arithmetic, not taste:
+//
+//	volume, transactions, fees   add up. A terminal's day is the sum of its
+//	                             chains, and the ratios built on them
+//	                             (avg trade = ΣV/ΣT, take rate = ΣF/ΣV) are
+//	                             correctly volume-weighted by construction.
+//
+//	wallets                      do not. A wallet trading on two chains is one
+//	                             wallet, and summing overstates: measured on
+//	                             Fomo, the source's own deduplicated count is
+//	                             about 0.6 of the sum of its per-chain counts.
+//	                             That deduplicated figure exists for only 2 of
+//	                             the 9 terminals, so there is no honest
+//	                             all-chains wallet count to publish and `all`
+//	                             carries Solana instead.
+//
+// Everything built on the wallet denominator inherits that: swaps per wallet
+// and volume per wallet are per-chain figures, so their `all` is Solana too.
+//
+// The alias exists at all because the site's label injection only rewrites a
+// selector already pinned to `="all"`. A spec that cannot pin the dimension
+// reads every chain at once and the loader returns null where it wanted one
+// series; bench 283 spent a day with a blank headline column for exactly that.
+const aggregateChain = "all"
+
+// aliasesFor returns the labels a per-chain sample is published under. Only
+// the headline chain doubles as `all`, and only for the wallet-denominated
+// metrics; the summable ones get their `all` written once, from the totals.
+func aliasesFor(chain string) []string {
+	if chain == headlineChain {
+		return []string{chain, aggregateChain}
+	}
+	return []string{chain}
+}
+
+var (
+	volumeUSD = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "terminal_volume_usd",
+		Help: "Routed swap volume in USD for one platform on one chain, on the latest complete UTC day the source published.",
+	}, []string{"platform", "chain"})
+
+	txns = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "terminal_txns",
+		Help: "Swap transactions for one platform on one chain, on the latest complete UTC day.",
+	}, []string{"platform", "chain"})
+
+	feesUSD = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "terminal_fees_usd",
+		Help: "Platform fee revenue in USD for one platform on one chain, on the latest complete UTC day.",
+	}, []string{"platform", "chain"})
+
+	wallets = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "terminal_wallets",
+		Help: "Distinct wallets that traded through one platform on one chain, on the latest complete UTC day. Per chain, so it is not deduplicated across chains.",
+	}, []string{"platform", "chain"})
+
+	avgTradeUSD = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "terminal_avg_trade_usd",
+		Help: "Average swap size in USD (volume / transactions) for one platform on one chain.",
+	}, []string{"platform", "chain"})
+
+	feeRatePct = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "terminal_fee_rate_pct",
+		Help: "Observed take rate in percent (fees / volume * 100) for one platform on one chain. Zero is a measurement: an app that charges no terminal fee reads 0.",
+	}, []string{"platform", "chain"})
+
+	tradesPerWallet = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "terminal_trades_per_wallet",
+		Help: "Swaps per distinct wallet (transactions / wallets) for one platform on one chain: how heavily that platform's users trade in a day.",
+	}, []string{"platform", "chain"})
+
+	volumePerWalletUSD = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "terminal_volume_per_wallet_usd",
+		Help: "Volume per distinct wallet in USD (volume / wallets) for one platform on one chain.",
+	}, []string{"platform", "chain"})
+
+	chainBreadth = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "terminal_chain_breadth",
+		Help: "How many chains a platform routed measurable volume on, on the latest complete UTC day.",
+	}, []string{"platform"})
+
+	dataDayUnix = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "terminal_data_day_unix",
+		Help: "Unix timestamp of 00:00 UTC on the day every other gauge for this platform and chain describes.",
+	}, []string{"platform", "chain"})
+
+	health = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "terminal_activity_health",
+		Help: "1 when this platform and chain published a day inside the freshness window on the last poll, 0 when it is in the roster and did not.",
+	}, []string{"platform", "chain"})
+
+	lastSuccessUnix = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "terminal_activity_last_success_unix",
+		Help: "Unix timestamp of the last cycle that published at least one platform. Prometheus gauges keep their last value, so a spec needs this to tell a quiet harness from a dead one.",
+	})
+
+	// Whether a take rate exists for this cell, which is NOT the same question
+	// as whether the platform published anything.
+	//
+	// terminal_activity_health answers "did this platform publish on this
+	// chain", and for a withheld fee cell the answer is yes: volume,
+	// transactions and wallets are all there. Bench 203 used that as its
+	// success gate, so Axiom's withheld cell rendered as a live row, its
+	// absent take rate became 0 under zero_is_a_value, and with lower-is-better
+	// it won the BNB and Robinhood tabs. A bench has to gate on the metric it
+	// ranks, not on whether the row exists at all.
+	feeRateHealth = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "terminal_fee_rate_health",
+		Help: "1 when a take rate is published for this platform and chain, 0 when the cell exists but its take rate was withheld or its chain's fee column failed. Gate bench 203 on this, not on terminal_activity_health.",
+	}, []string{"platform", "chain"})
+
+	feeWithheld = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "terminal_fee_withheld",
+		Help: "1 when this platform and chain reported exactly zero fees on material volume while the same platform reports fees on another chain, so the zero is an unexplained gap rather than a price. The take rate is not published for that cell.",
+	}, []string{"platform", "chain"})
+
+	feeColumnOK = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "terminal_fee_column_ok",
+		Help: "1 when at least one platform on this chain reported non-zero fees on the data day, 0 when the whole column was zero. A zero column is a source failure, not a market where every platform is free.",
+	}, []string{"chain"})
+)
+
+func init() {
+	prometheus.MustRegister(
+		volumeUSD, txns, feesUSD, wallets,
+		avgTradeUSD, feeRatePct, tradesPerWallet, volumePerWalletUSD,
+		chainBreadth, dataDayUnix, health, lastSuccessUnix, feeColumnOK, feeWithheld, feeRateHealth,
+	)
+}
+
+// pairGauges are the gauges keyed on (platform, chain). health is deliberately
+// not in the list: dropping a pair sets it to 0 rather than deleting it, so a
+// platform that went quiet is visibly unhealthy instead of absent.
+func pairGauges() []*prometheus.GaugeVec {
+	return []*prometheus.GaugeVec{
+		volumeUSD, txns, feesUSD, wallets,
+		avgTradeUSD, feeRatePct, tradesPerWallet, volumePerWalletUSD, dataDayUnix,
+	}
+}
+
+// dropPair removes every figure for a platform on a chain and marks it
+// unhealthy, under the real chain label and under every alias it was published
+// with.
+//
+// Deleting rather than republishing is the whole mechanism. These gauges are
+// scraped every 60 seconds and read through a 24h window, so a figure left in
+// place is averaged in as though it had just been measured. The source this
+// cohort read until 2026-09-27 froze on 2026-08-25 and was republished for 32
+// days with nothing in the metrics saying so.
+func dropPair(platform, chain string) {
+	for _, alias := range aliasesFor(chain) {
+		for _, g := range pairGauges() {
+			g.DeleteLabelValues(platform, alias)
+		}
+		health.WithLabelValues(platform, alias).Set(0)
+	}
+}
+
+// daysBehind is how many whole UTC days separate a data day from now: 0 today,
+// 1 yesterday. A sample with no day is treated as very stale rather than as
+// current, because a source that will not say which day it measured has not
+// earned the benefit of the doubt.
+func daysBehind(dayUnix float64, now time.Time) int {
+	if dayUnix <= 0 {
+		return 1 << 20
+	}
+	day := time.Unix(int64(dayUnix), 0).UTC().Truncate(24 * time.Hour)
+	today := now.UTC().Truncate(24 * time.Hour)
+	return int(today.Sub(day) / (24 * time.Hour))
+}
+
+// publish writes one cycle's samples and drops everything in the roster that
+// those samples do not cover.
+//
+// roster is every platform the source offers, including the quiet ones, so a
+// platform that stops reporting is marked unhealthy instead of vanishing.
+// maxAgeDays is how many whole days behind the data day may be.
+func publish(samples []sample, roster []string, maxAgeDays int, now time.Time) (published int, chains []string) {
+	fresh := make([]sample, 0, len(samples))
+	for _, s := range samples {
+		if s.Platform == "" || s.Chain == "" {
+			continue
+		}
+		if daysBehind(s.DayUnix, now) > maxAgeDays {
+			continue
+		}
+		fresh = append(fresh, s)
+	}
+
+	// Whether each chain's fee column carries any signal at all, decided across
+	// the cohort before a single take rate is written. One platform reporting no
+	// fees is a finding (pump.fun's own app charges no terminal fee). Every
+	// platform on a chain reporting no fees is the column having failed, and
+	// publishing that as a market of free terminals would be the most flattering
+	// possible reading of missing data.
+	feesSeen := map[string]bool{}
+	for _, s := range fresh {
+		if s.Fees > 0 {
+			feesSeen[s.Chain] = true
+		}
+	}
+
+	// And whether each PLATFORM reports fees anywhere, which is the finer
+	// question and the one that matters.
+	//
+	// A chain-level gate cannot catch a gap in one row. Axiom routed $29.8M on
+	// Robinhood and $21.7M on BNB over a week with fees of exactly $0.00, while
+	// charging 0.92% on Solana; the other terminals on those chains do report
+	// fees, so the column gate read healthy and Axiom's zero was published as
+	// the lowest take rate in the market and crowned the tab. pump.fun is the
+	// same shape in the other direction: it reports fees on Robinhood, BNB,
+	// Ethereum and Base and exactly $0.00 on Solana, where it routes $252M.
+	//
+	// Nobody routes tens of millions for free for a week. A platform that
+	// demonstrably charges somewhere and reports exactly nothing elsewhere has
+	// an unexplained zero, and this harness is not able to tell a waived fee
+	// from an unmeasured one. So the cell's take rate is withheld and a flag
+	// says why, instead of publishing the most flattering possible reading of
+	// a blank. A platform reporting zero on every chain it serves is a
+	// different claim, and that one still publishes as a real zero.
+	platformFeesAnywhere := map[string]bool{}
+	for _, s := range fresh {
+		if s.Fees > 0 {
+			platformFeesAnywhere[s.Platform] = true
+		}
+	}
+
+	seen := map[string]bool{}   // platform|chain
+	breadth := map[string]int{} // platform -> chains with a published row
+	chainSet := map[string]bool{}
+	// Running cross-chain totals per platform, for the `all` slice.
+	type totals struct {
+		vol, tx, fee float64
+		// feeVol is the volume of the chains whose fee cell was usable, and it
+		// is the only correct denominator for the all-chains take rate. Total
+		// volume would divide a partial numerator by a whole one: Axiom's
+		// measured Solana fees over its Solana plus Robinhood plus BNB volume
+		// reads 0.66% where the measured rate is 0.92%, understating a terminal
+		// precisely because part of it could not be measured.
+		feeVol float64
+		feeOK  bool
+	}
+	tot := map[string]*totals{}
+
+	for _, s := range fresh {
+		seen[s.Platform+"|"+s.Chain] = true
+		breadth[s.Platform]++
+		chainSet[s.Chain] = true
+
+		unexplainedZero := s.Fees <= 0 && platformFeesAnywhere[s.Platform]
+		feeUsable := feesSeen[s.Chain] && !unexplainedZero
+
+		// Summable metrics: written under the real chain only. Their `all` is
+		// computed from the totals after this loop, never copied from one chain.
+		volumeUSD.WithLabelValues(s.Platform, s.Chain).Set(s.Volume)
+		txns.WithLabelValues(s.Platform, s.Chain).Set(s.Txns)
+		avgTradeUSD.WithLabelValues(s.Platform, s.Chain).Set(s.Volume / s.Txns)
+		dataDayUnix.WithLabelValues(s.Platform, s.Chain).Set(s.DayUnix)
+		health.WithLabelValues(s.Platform, s.Chain).Set(1)
+
+		if feeUsable {
+			feesUSD.WithLabelValues(s.Platform, s.Chain).Set(s.Fees)
+			feeRatePct.WithLabelValues(s.Platform, s.Chain).Set(s.Fees / s.Volume * 100)
+			feeRateHealth.WithLabelValues(s.Platform, s.Chain).Set(1)
+			feeWithheld.DeleteLabelValues(s.Platform, s.Chain)
+		} else {
+			feesUSD.DeleteLabelValues(s.Platform, s.Chain)
+			feeRatePct.DeleteLabelValues(s.Platform, s.Chain)
+			feeRateHealth.WithLabelValues(s.Platform, s.Chain).Set(0)
+			if unexplainedZero {
+				feeWithheld.WithLabelValues(s.Platform, s.Chain).Set(1)
+			} else {
+				feeWithheld.DeleteLabelValues(s.Platform, s.Chain)
+			}
+		}
+
+		// Wallet-denominated metrics: these keep the `all` alias, because a
+		// wallet on two chains is one wallet and there is no honest total.
+		// Wallets are also the one field the source does not always carry, so
+		// no ratio is invented from a zero denominator.
+		for _, alias := range aliasesFor(s.Chain) {
+			if s.Wallets > 0 {
+				wallets.WithLabelValues(s.Platform, alias).Set(s.Wallets)
+				tradesPerWallet.WithLabelValues(s.Platform, alias).Set(s.Txns / s.Wallets)
+				volumePerWalletUSD.WithLabelValues(s.Platform, alias).Set(s.Volume / s.Wallets)
+			} else {
+				wallets.DeleteLabelValues(s.Platform, alias)
+				tradesPerWallet.DeleteLabelValues(s.Platform, alias)
+				volumePerWalletUSD.DeleteLabelValues(s.Platform, alias)
+			}
+			if alias == aggregateChain {
+				// health and the data day describe the row, so the headline
+				// chain's values stand in for `all` on the wallet metrics.
+				health.WithLabelValues(s.Platform, alias).Set(1)
+				dataDayUnix.WithLabelValues(s.Platform, alias).Set(s.DayUnix)
+			}
+		}
+
+		t := tot[s.Platform]
+		if t == nil {
+			t = &totals{}
+			tot[s.Platform] = t
+		}
+		t.vol += s.Volume
+		t.tx += s.Txns
+		if feeUsable {
+			t.fee += s.Fees
+			t.feeVol += s.Volume
+			t.feeOK = true
+		}
+		published++
+	}
+
+	// The `all` slice for the summable metrics: a real total, volume-weighted
+	// by construction for the two ratios. A platform whose every fee cell was
+	// withheld gets no all-chains take rate either, rather than one computed
+	// from a partial numerator over a whole denominator.
+	for p, t := range tot {
+		if t.vol <= 0 || t.tx <= 0 {
+			continue
+		}
+		volumeUSD.WithLabelValues(p, aggregateChain).Set(t.vol)
+		txns.WithLabelValues(p, aggregateChain).Set(t.tx)
+		avgTradeUSD.WithLabelValues(p, aggregateChain).Set(t.vol / t.tx)
+		if t.feeOK && t.feeVol > 0 {
+			feesUSD.WithLabelValues(p, aggregateChain).Set(t.fee)
+			feeRatePct.WithLabelValues(p, aggregateChain).Set(t.fee / t.feeVol * 100)
+			feeRateHealth.WithLabelValues(p, aggregateChain).Set(1)
+		} else {
+			feesUSD.DeleteLabelValues(p, aggregateChain)
+			feeRatePct.DeleteLabelValues(p, aggregateChain)
+			feeRateHealth.WithLabelValues(p, aggregateChain).Set(0)
+		}
+		health.WithLabelValues(p, aggregateChain).Set(1)
+	}
+
+	for chain := range chainSet {
+		v := 0.0
+		if feesSeen[chain] {
+			v = 1
+		}
+		for _, alias := range aliasesFor(chain) {
+			feeColumnOK.WithLabelValues(alias).Set(v)
+		}
+	}
+
+	// Drop every roster pair this cycle did not publish, on every chain the
+	// cycle saw. A platform that left one chain keeps its rows on the others.
+	for _, p := range roster {
+		for chain := range chainSet {
+			if !seen[p+"|"+chain] {
+				dropPair(p, chain)
+			}
+		}
+		chainBreadth.WithLabelValues(p).Set(float64(breadth[p]))
+	}
+
+	chains = make([]string, 0, len(chainSet))
+	for c := range chainSet {
+		chains = append(chains, c)
+	}
+	sort.Strings(chains)
+	return published, chains
+}
+
+func startMetricsServer(addr string) error {
+	mux := http.NewServeMux()
+	mux.Handle("/metrics", promhttp.Handler())
+	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("OK"))
+	})
+	return http.ListenAndServe(addr, mux)
+}
