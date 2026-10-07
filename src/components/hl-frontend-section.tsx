@@ -6,6 +6,7 @@ import {
   type HlHistoryFrontendCompact,
 } from "@/lib/hl-builder-stats";
 import { HlBuilderDashboard } from "@/components/hl-builder-dashboard";
+import { HlFeedCoverageNote } from "@/components/hl-feed-coverage-note";
 
 /**
  * Hyperliquid frontend view on /products/<slug>, behind the
@@ -92,6 +93,12 @@ export async function HlFrontendSection({
       {hlStats ? (
         <HlBuilderDashboard stats={hlStats} name={displayName} />
       ) : frontend || cohortRow ? (
+        <>
+          {/* The dashboard carries its own copy of this note. The fallback
+              grid reads the same partial-day sums, so it needs one too. */}
+          {cohort && (
+            <HlFeedCoverageNote feed={cohort.feed} className="mb-4 max-w-3xl" />
+          )}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-10">
           <Kpi label="Fees 30d" value={fmtUSDShort(currentFees)} />
           <Kpi label="Volume 30d" value={fmtUSDShort(currentVolume)} />
@@ -109,6 +116,7 @@ export async function HlFrontendSection({
             />
           ) : null}
         </div>
+        </>
       ) : null}
 
       {!frontend && (

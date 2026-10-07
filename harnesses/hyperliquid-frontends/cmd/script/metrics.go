@@ -49,6 +49,10 @@ var (
 		Name: "hl_frontend_truncated_days_window_v2",
 		Help: "Days inside the 30-day window whose published file stops short of 23 hours. Every windowed total is understated by roughly half a day for each one counted here.",
 	})
+	hlCoverageDaysMeasured = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "hl_frontend_coverage_days_measured_v2",
+		Help: "Days in the 30-day window whose feed coverage was actually measured. The truncated-day count is out of this, not out of 30: a day that left the mirror window before this harness first ran was never measured, and counting it as clean would understate the truncation.",
+	})
 
 	hlDataDay = promauto.NewGauge(prometheus.GaugeOpts{
 		Name: "hl_frontend_data_day_unix_v2",

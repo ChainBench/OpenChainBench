@@ -8,11 +8,14 @@
 
 import { unstable_cache } from "next/cache";
 import { Prometheus } from "@/lib/prometheus";
+import type { HlWindow, HlFeedCoverage } from "@/lib/hl-feed";
 import { getSpecs } from "@/lib/spec";
 import {
   readCohortSnapshot,
   writeCohortSnapshot,
 } from "@/lib/cohort-snapshot";
+
+export type { HlWindow, HlFeedCoverage } from "@/lib/hl-feed";
 
 export type CoinShare = { coin: string; share: number };
 export type PercentileBucket = {
@@ -53,6 +56,9 @@ export type HlBuilderStats = {
   percentileShares30d: PercentileBucket[];
   /** Fraction of 30d-active users with realized PnL > 0 (0..1). */
   profitableUserPct30d: number;
+  /** Feed coverage for the window these figures were summed over. Null when
+   *  the gauges are not published yet (pre-2026-10-07 harness builds). */
+  feed: HlFeedCoverage | null;
 };
 
 /**
@@ -85,6 +91,35 @@ export async function isHlBuilderWithHistory(slug: string): Promise<boolean> {
 
 function promUrl(): string | null {
   return process.env.PROMETHEUS_URL?.trim() || null;
+}
+
+/**
+ * Read the three cohort-wide coverage gauges. They carry no `builder` label,
+ * so one read serves every caller. A missing gauge returns null rather than
+ * a reassuring zero: "we did not measure the coverage" and "the feed is
+ * whole" must not look the same, which is the mistake the coverage gauges
+ * were added to stop making in the first place.
+ */
+async function readFeedCoverage(prom: Prometheus): Promise<HlFeedCoverage | null> {
+  const [hours, truncated, inWindow, measured] = await Promise.all([
+    prom.scalar(`hl_frontend_day_coverage_hours_v2`),
+    prom.scalar(`hl_frontend_day_truncated_v2`),
+    prom.scalar(`hl_frontend_truncated_days_window_v2`),
+    prom.scalar(`hl_frontend_coverage_days_measured_v2`),
+  ]);
+  if (hours === null && truncated === null && inWindow === null) return null;
+  const windowDays = 30;
+  return {
+    coverageHours: hours ?? 0,
+    latestDayTruncated: (truncated ?? 0) > 0,
+    truncatedDaysWindow: Math.round(inWindow ?? 0),
+    // 0 means the harness is too old to report how many days it measured.
+    // Neither denominator is safe to assume there: the full window overstates
+    // it and the numerator's own scope reads as "N of N". The note drops the
+    // denominator instead of inventing one.
+    daysMeasured: Math.round(measured ?? 0),
+    windowDays,
+  };
 }
 
 const PERCENTILE_ORDER: PercentileBucket["bucket"][] = [
@@ -133,6 +168,7 @@ export async function fetchHlBuilderStatsFresh(
     profitableUserPct30d,
     coinSharesRaw,
     percentileSharesRaw,
+    feed,
   ] = await Promise.all([
     prom.scalar(`hl_frontend_fees_usd_30d_v2${sel}`),
     prom.scalar(`hl_frontend_revenue_delta_pct_v2{builder="${slug}",window="30d"}`),
@@ -147,6 +183,7 @@ export async function fetchHlBuilderStatsFresh(
     prom.scalar(`hl_frontend_profitable_user_pct_30d_v2${sel}`),
     queryVector(prom, `hl_frontend_coin_volume_share_24h_v2${sel}`),
     queryVector(prom, `hl_frontend_volume_by_percentile_30d_v2${sel}`),
+    readFeedCoverage(prom),
   ]);
 
   if (
@@ -199,6 +236,7 @@ export async function fetchHlBuilderStatsFresh(
     coinShares24h,
     percentileShares30d,
     profitableUserPct30d: profitableUserPct30d ?? 0,
+    feed,
   };
 }
 
@@ -255,6 +293,10 @@ export type HlCohortRow = {
   volume30d: number;
   users30d: number;
   cohortVolumeShare24h: number;
+  /** Revenue, volume and users per window. The leaderboard's timeframe
+   *  control reads these; the flat `*30d` fields above stay for callers that
+   *  only ever wanted the headline window. */
+  byWindow: Record<HlWindow, { revenue: number; volume: number; users: number }>;
 };
 
 export type HlCohortSummary = {
@@ -263,6 +305,8 @@ export type HlCohortSummary = {
   totalVolume30d: number;
   totalUsers30d: number;
   asOf: number;
+  /** Feed coverage, shared by every row: the gauges are cohort-wide. */
+  feed: HlFeedCoverage | null;
 };
 
 export type HlHip3Row = {
@@ -369,40 +413,88 @@ export async function fetchHlCohortFresh(): Promise<HlCohortSummary | null> {
   const providers = hl?.providers ?? [];
   const nameBySlug = new Map(providers.map((p) => [p.slug, p.name]));
 
-  const [feesRaw, volumeRaw, usersRaw, shareRaw] = await Promise.all([
+  // Nine vectors rather than three: the leaderboard's timeframe control needs
+  // 24h and 7d alongside 30d, and a vector query costs the same whatever the
+  // cohort size, so this is three extra round trips, not 6 x 104.
+  const [
+    feesRaw,
+    volumeRaw,
+    usersRaw,
+    shareRaw,
+    fees24hRaw,
+    volume24hRaw,
+    users24hRaw,
+    fees7dRaw,
+    volume7dRaw,
+    users7dRaw,
+    feed,
+  ] = await Promise.all([
     queryVector(prom, `hl_frontend_fees_usd_30d_v2`),
     queryVector(prom, `hl_frontend_volume_usd_30d_v2`),
     queryVector(prom, `hl_frontend_users_30d_v2`),
     queryVector(prom, `hl_frontend_global_volume_share_24h_v2`),
+    queryVector(prom, `hl_frontend_fees_usd_24h_v2`),
+    queryVector(prom, `hl_frontend_volume_usd_24h_v2`),
+    queryVector(prom, `hl_frontend_users_24h_v2`),
+    queryVector(prom, `hl_frontend_fees_usd_7d_v2`),
+    queryVector(prom, `hl_frontend_volume_usd_7d_v2`),
+    queryVector(prom, `hl_frontend_users_7d_v2`),
+    readFeedCoverage(prom),
   ]);
 
   if (feesRaw === null && volumeRaw === null && usersRaw === null) {
     return null;
   }
 
-  const byBuilder = new Map<
-    string,
-    { revenue: number; volume: number; users: number; share: number }
-  >();
-  const ensure = (slug: string) => {
+  type Acc = {
+    revenue: number;
+    volume: number;
+    users: number;
+    share: number;
+    byWindow: Record<HlWindow, { revenue: number; volume: number; users: number }>;
+  };
+  const byBuilder = new Map<string, Acc>();
+  const ensure = (slug: string): Acc => {
     let r = byBuilder.get(slug);
     if (!r) {
-      r = { revenue: 0, volume: 0, users: 0, share: 0 };
+      r = {
+        revenue: 0,
+        volume: 0,
+        users: 0,
+        share: 0,
+        byWindow: {
+          "24h": { revenue: 0, volume: 0, users: 0 },
+          "7d": { revenue: 0, volume: 0, users: 0 },
+          "30d": { revenue: 0, volume: 0, users: 0 },
+        },
+      };
       byBuilder.set(slug, r);
     }
     return r;
   };
-  for (const s of feesRaw ?? []) {
-    const b = s.labels.builder;
-    if (b) ensure(b).revenue = s.value;
-  }
-  for (const s of volumeRaw ?? []) {
-    const b = s.labels.builder;
-    if (b) ensure(b).volume = s.value;
-  }
-  for (const s of usersRaw ?? []) {
-    const b = s.labels.builder;
-    if (b) ensure(b).users = s.value;
+  const absorb = (
+    raw: Awaited<ReturnType<typeof queryVector>>,
+    window: HlWindow,
+    field: "revenue" | "volume" | "users",
+  ) => {
+    for (const s of raw ?? []) {
+      const b = s.labels.builder;
+      if (b) ensure(b).byWindow[window][field] = s.value;
+    }
+  };
+  absorb(feesRaw, "30d", "revenue");
+  absorb(volumeRaw, "30d", "volume");
+  absorb(usersRaw, "30d", "users");
+  absorb(fees24hRaw, "24h", "revenue");
+  absorb(volume24hRaw, "24h", "volume");
+  absorb(users24hRaw, "24h", "users");
+  absorb(fees7dRaw, "7d", "revenue");
+  absorb(volume7dRaw, "7d", "volume");
+  absorb(users7dRaw, "7d", "users");
+  for (const [, v] of byBuilder) {
+    v.revenue = v.byWindow["30d"].revenue;
+    v.volume = v.byWindow["30d"].volume;
+    v.users = v.byWindow["30d"].users;
   }
   for (const s of shareRaw ?? []) {
     const b = s.labels.builder;
@@ -423,6 +515,7 @@ export async function fetchHlCohortFresh(): Promise<HlCohortSummary | null> {
       volume30d: v.volume,
       users30d: v.users,
       cohortVolumeShare24h: v.share,
+      byWindow: v.byWindow,
     });
     totalRevenue30d += v.revenue;
     totalVolume30d += v.volume;
@@ -436,6 +529,7 @@ export async function fetchHlCohortFresh(): Promise<HlCohortSummary | null> {
     totalVolume30d,
     totalUsers30d,
     asOf: Math.floor(Date.now() / 1000),
+    feed,
   };
 }
 

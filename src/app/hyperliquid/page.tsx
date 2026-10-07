@@ -5,6 +5,7 @@ import {
   fetchHlHistory,
 } from "@/lib/hl-builder-stats";
 import { HlHubTabs } from "@/components/hl-hub-tabs";
+import { HlFeedCoverageNote } from "@/components/hl-feed-coverage-note";
 import { pageMetadata } from "@/lib/page-metadata";
 import { safeJsonLd } from "@/lib/jsonld";
 
@@ -205,6 +206,10 @@ export default async function HyperliquidHubPage() {
           </Link>
         </div>
       </header>
+
+      {frontends && (
+        <HlFeedCoverageNote feed={frontends.feed} className="mb-6 max-w-3xl" />
+      )}
 
       {frontends || hip3 ? (
         <>
