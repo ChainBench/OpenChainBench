@@ -4,7 +4,7 @@ slug: terminal-swap-transactions
 number: "207"
 title: "Daily swap transactions per trading terminal: Axiom vs Fomo vs pump.fun vs GMGN"
 seo_title: "Daily swap transactions by trading terminal 2026"
-seo_description: "{{best_name}} leads Solana terminals with {{best_p50}} swap transactions in a day. Axiom, Fomo, pump.fun, GMGN, Terminal and Trojan ranked."
+seo_description: "{{best_name}} leads trading terminals with {{best_p50}} swap transactions in a day. Axiom, Fomo, pump.fun, GMGN, Terminal and Trojan ranked, per chain or across all."
 subtitle: Swap transactions routed through each trading terminal in one complete day, across every chain or one at a time. Counts transactions, not wallets, so an automated trader sending hundreds of swaps a day counts hundreds of times.
 
 category: Trading
@@ -21,14 +21,14 @@ row_noun: { one: terminal, many: terminals }
 ledger_reliability: false
 
 disclaimer: |
-  Transaction counts for one complete UTC day on Solana, from the public tehcscreener API, which is Allium-backed. Counts transactions, not wallets: bench 232 counts the distinct wallets behind them, and the ratio between the two pages is a measure of automation. Bots, MEV searchers and multi-wallet traders are all included. Solana only, which is this bench's scope and not a limit of the source: the harness measures ten chains and bench 232 offers five of them as tabs.
+  Transaction counts for one complete UTC day, on the chain the tab names or summed across all of them, from the public tehcscreener API, which is Allium-backed. Counts transactions, not wallets: bench 232 counts the distinct wallets behind them, and the ratio between the two pages is a measure of automation. Bots, MEV searchers and multi-wallet traders are all included.
 
 seo_intro: |
   Transaction count is the rawest measure of how much a trading terminal is
   used, and the least flattering to read alone: an automated strategy sending
   three hundred swaps from one wallet counts three hundred times, so a terminal
   can lead on transactions while serving a fraction of another's users. This
-  page counts the swaps routed through each terminal on Solana on the latest
+  page counts the swaps routed through each terminal on the latest
   complete day. Read it next to bench 232, which counts the wallets behind
   those swaps on the same day from the same source, and the division is the
   automation ratio.
@@ -46,7 +46,7 @@ abstract: |
 
 methodology:
   - "Source: the public tehcscreener API (https://tehcscreener.com/api), Allium-backed, no key, synced once a day. The harness reads /bots over the full history for the roster and /bots/{bot} for each terminal's per-chain daily series, and publishes one day: the latest the source names."
-  - "Transactions: the source's swap transaction count for that terminal on Solana on the day. A transaction is counted once, so a multi-hop route is one transaction and not one per hop."
+  - "Transactions: the source's swap transaction count for that terminal on the selected chain on the day, or the sum across every chain it serves on the all-chains tab. Transactions add up, so that sum is a real total. A transaction is counted once, so a multi-hop route is one transaction and not one per hop."
   - "Not wallets: bench 232 counts the distinct wallets behind these transactions from the same source and the same day, and publishes the division as a Swaps per wallet column. A terminal whose users average thirty swaps a day is not serving the same behaviour as one whose users average nine."
   - "Latest complete day, not a rolling 24 hours: the source publishes daily and its latest day is normally yesterday. A terminal with no activity on that day carries no figure and reads unresponsive rather than having its last live day carried forward. BasedBot is the live case, with volume on Robinhood Chain and almost none on Solana."
   - "Stale source: a day more than 3 whole days behind, or a terminal the source stops returning, has its gauges deleted and reads unresponsive. An old figure is never republished as current, because these gauges are scraped every 60 seconds and read through a 24h window, which would average a frozen figure in as though it had just been measured."
@@ -95,19 +95,19 @@ prometheus:
 
 faq:
   - q: "What counts as a swap transaction here?"
-    a: "One on-chain transaction that routed a swap through the terminal on Solana, counted once however many hops or pools it touched. A wallet sending fifty swaps in the day contributes fifty."
+    a: "One on-chain transaction that routed a swap through the terminal on the selected chain, counted once however many hops or pools it touched. A wallet sending fifty swaps in the day contributes fifty."
   - q: "Why is this higher than the wallet count on bench 232?"
     a: "Because one wallet sends many transactions. The two pages read the same source on the same day, so dividing one by the other gives swaps per wallet, which bench 232 now publishes as a column so you do not have to."
   - q: "Why was pump.fun missing before?"
     a: "The previous source counted transactions in which a terminal's fee wallet received value. The pump.fun app charges no terminal fee, so there was nothing to attribute from and the row was structurally blank rather than low. The current source counts routed transactions directly."
-  - q: "Is this Solana only?"
-    a: "This page is. The harness behind it measures ten chains, and bench 232 offers five of them as tabs for wallet counts. The Solana scope here is the bench's definition, which is why the slug says so."
+  - q: "Can I see one chain at a time?"
+    a: "Yes. The tab strip carries seven chains plus an all-chains total, and the URL keeps your choice so the view is shareable. The harness measures ten; the three left off each carry one or two terminals, which is a list rather than a comparison."
 
 providers:
   - slug: fomo
     name: Fomo
     tag: "Cross-chain terminal, gas sponsored"
-    formula: "Swap transactions routed through Fomo on Solana on the day, from the tehcscreener /bots/fomo series."
+    formula: "Swap transactions routed through Fomo on the selected chain on the day, from the tehcscreener /bots/fomo series."
     queries:
       p50: max(terminal_txns{platform="fomo",chain="all"})
       p90: max(terminal_txns{platform="fomo",chain="all"})
@@ -119,7 +119,7 @@ providers:
   - slug: axiom
     name: Axiom
     tag: "Solana-first trading terminal"
-    formula: "Swap transactions routed through Axiom on Solana on the day, from the tehcscreener /bots/axiom series."
+    formula: "Swap transactions routed through Axiom on the selected chain on the day, from the tehcscreener /bots/axiom series."
     queries:
       p50: max(terminal_txns{platform="axiom",chain="all"})
       p90: max(terminal_txns{platform="axiom",chain="all"})
@@ -131,7 +131,7 @@ providers:
   - slug: pump-fun
     name: pump.fun
     tag: "Launchpad's own trading app"
-    formula: "Swap transactions routed through pump.fun on Solana on the day, from the tehcscreener /bots/pumpapp series."
+    formula: "Swap transactions routed through pump.fun on the selected chain on the day, from the tehcscreener /bots/pumpapp series."
     queries:
       p50: max(terminal_txns{platform="pump-fun",chain="all"})
       p90: max(terminal_txns{platform="pump-fun",chain="all"})
@@ -143,7 +143,7 @@ providers:
   - slug: gmgn
     name: GMGN
     tag: "Multi-chain terminal, widest chain reach"
-    formula: "Swap transactions routed through GMGN on Solana on the day, from the tehcscreener /bots/gmgn series."
+    formula: "Swap transactions routed through GMGN on the selected chain on the day, from the tehcscreener /bots/gmgn series."
     queries:
       p50: max(terminal_txns{platform="gmgn",chain="all"})
       p90: max(terminal_txns{platform="gmgn",chain="all"})
@@ -155,7 +155,7 @@ providers:
   - slug: padre
     name: Terminal
     tag: "Trading terminal, heaviest wallets"
-    formula: "Swap transactions routed through Terminal on Solana on the day, from the tehcscreener /bots/terminal series."
+    formula: "Swap transactions routed through Terminal on the selected chain on the day, from the tehcscreener /bots/terminal series."
     queries:
       p50: max(terminal_txns{platform="padre",chain="all"})
       p90: max(terminal_txns{platform="padre",chain="all"})
@@ -167,7 +167,7 @@ providers:
   - slug: trojan
     name: Trojan
     tag: "Telegram-native bot, Solana only"
-    formula: "Swap transactions routed through Trojan on Solana on the day, from the tehcscreener /bots/trojan series."
+    formula: "Swap transactions routed through Trojan on the selected chain on the day, from the tehcscreener /bots/trojan series."
     queries:
       p50: max(terminal_txns{platform="trojan",chain="all"})
       p90: max(terminal_txns{platform="trojan",chain="all"})
@@ -179,7 +179,7 @@ providers:
   - slug: photon
     name: Photon
     tag: "Web terminal, Solana only"
-    formula: "Swap transactions routed through Photon on Solana on the day, from the tehcscreener /bots/photon series."
+    formula: "Swap transactions routed through Photon on the selected chain on the day, from the tehcscreener /bots/photon series."
     queries:
       p50: max(terminal_txns{platform="photon",chain="all"})
       p90: max(terminal_txns{platform="photon",chain="all"})
@@ -191,7 +191,7 @@ providers:
   - slug: maestro
     name: Maestro
     tag: "Telegram bot, multi-chain"
-    formula: "Swap transactions routed through Maestro on Solana on the day, from the tehcscreener /bots/maestro series."
+    formula: "Swap transactions routed through Maestro on the selected chain on the day, from the tehcscreener /bots/maestro series."
     queries:
       p50: max(terminal_txns{platform="maestro",chain="all"})
       p90: max(terminal_txns{platform="maestro",chain="all"})
@@ -203,7 +203,7 @@ providers:
   - slug: basedbot
     name: BasedBot
     tag: "Robinhood Chain native, little Solana flow"
-    formula: "Swap transactions routed through BasedBot on Solana on the day, from the tehcscreener /bots/basedbot series."
+    formula: "Swap transactions routed through BasedBot on the selected chain on the day, from the tehcscreener /bots/basedbot series."
     queries:
       p50: max(terminal_txns{platform="basedbot",chain="all"})
       p90: max(terminal_txns{platform="basedbot",chain="all"})

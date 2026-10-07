@@ -21,14 +21,14 @@ row_noun: { one: terminal, many: terminals }
 ledger_reliability: false
 
 disclaimer: |
-  Average swap size is one complete UTC day's routed Solana volume divided by that day's swap count, from the public tehcscreener API, which is Allium-backed. Both figures include bot and MEV activity: this is every swap the source attributes to the terminal, not human-only trades. A mean, not a median, so a handful of large tickets moves it and the figure is not the typical trade. Larger is not better here in any product sense; it describes who the terminal serves.
+  Average swap size is one complete UTC day's routed volume divided by that day's swap count, on the chain the tab names or across all of them. From the public tehcscreener API, which is Allium-backed. Both figures include bot and MEV activity. A mean, not a median, so a handful of large tickets moves it and this is not the typical trade. Larger is not better in any product sense; it describes who the terminal serves.
 
 seo_intro: |
   Average swap size tells you who a trading terminal serves without asking
   anyone. A terminal whose average ticket is ninety dollars is carrying
   different flow from one averaging thirty-eight, even when both route
   comparable volume, and the difference shows up in what they can charge and
-  who they keep. This page divides each terminal's routed Solana volume on the
+  who they keep. This page divides each terminal's routed volume on the
   latest complete day by the number of swaps it took to get there. It is a
   mean, so read it alongside volume rather than instead of it.
 
@@ -55,7 +55,7 @@ methodology:
   - "Not scored here: execution quality. A large average ticket says nothing about slippage or fees on that ticket, which benches 268 and 279 measure directly."
 
 findings:
-  - "{{best_name}} carries the largest average swap on Solana at {{best_p50}}."
+  - "{{best_name}} carries the largest average swap at {{best_p50}} on this chain."
   - "Average ticket and total volume rank differently. A terminal can route the most dollars and carry the smallest tickets, which is what a broad retail base looks like in one number."
   - "This is a mean over a day's totals, so it moves with a handful of large trades. It is a description of flow mix, not the size of a typical trade."
   - "Padre, Phantom and Bloom left the cohort on 2026-10-07 because the current source does not cover them. A row that cannot be measured is removed, not published as zero."
@@ -107,7 +107,7 @@ providers:
   - slug: fomo
     name: Fomo
     tag: "Cross-chain terminal, gas sponsored"
-    formula: "A day's routed Solana volume divided by that day's swap count for Fomo, both from the tehcscreener /bots/fomo series."
+    formula: "A day's routed volume divided by that day's swap count for Fomo, both from the tehcscreener /bots/fomo series."
     queries:
       p50: max(terminal_avg_trade_usd{platform="fomo",chain="all"})
       p90: max(terminal_avg_trade_usd{platform="fomo",chain="all"})
@@ -119,7 +119,7 @@ providers:
   - slug: axiom
     name: Axiom
     tag: "Solana-first trading terminal"
-    formula: "A day's routed Solana volume divided by that day's swap count for Axiom, both from the tehcscreener /bots/axiom series."
+    formula: "A day's routed volume divided by that day's swap count for Axiom, both from the tehcscreener /bots/axiom series."
     queries:
       p50: max(terminal_avg_trade_usd{platform="axiom",chain="all"})
       p90: max(terminal_avg_trade_usd{platform="axiom",chain="all"})
@@ -131,7 +131,7 @@ providers:
   - slug: pump-fun
     name: pump.fun
     tag: "Launchpad's own trading app"
-    formula: "A day's routed Solana volume divided by that day's swap count for pump.fun, both from the tehcscreener /bots/pumpapp series."
+    formula: "A day's routed volume divided by that day's swap count for pump.fun, both from the tehcscreener /bots/pumpapp series."
     queries:
       p50: max(terminal_avg_trade_usd{platform="pump-fun",chain="all"})
       p90: max(terminal_avg_trade_usd{platform="pump-fun",chain="all"})
@@ -143,7 +143,7 @@ providers:
   - slug: gmgn
     name: GMGN
     tag: "Multi-chain terminal, widest chain reach"
-    formula: "A day's routed Solana volume divided by that day's swap count for GMGN, both from the tehcscreener /bots/gmgn series."
+    formula: "A day's routed volume divided by that day's swap count for GMGN, both from the tehcscreener /bots/gmgn series."
     queries:
       p50: max(terminal_avg_trade_usd{platform="gmgn",chain="all"})
       p90: max(terminal_avg_trade_usd{platform="gmgn",chain="all"})
@@ -155,7 +155,7 @@ providers:
   - slug: padre
     name: Terminal
     tag: "Trading terminal, heaviest wallets"
-    formula: "A day's routed Solana volume divided by that day's swap count for Terminal, both from the tehcscreener /bots/terminal series."
+    formula: "A day's routed volume divided by that day's swap count for Terminal, both from the tehcscreener /bots/terminal series."
     queries:
       p50: max(terminal_avg_trade_usd{platform="padre",chain="all"})
       p90: max(terminal_avg_trade_usd{platform="padre",chain="all"})
@@ -167,7 +167,7 @@ providers:
   - slug: trojan
     name: Trojan
     tag: "Telegram-native bot, Solana only"
-    formula: "A day's routed Solana volume divided by that day's swap count for Trojan, both from the tehcscreener /bots/trojan series."
+    formula: "A day's routed volume divided by that day's swap count for Trojan, both from the tehcscreener /bots/trojan series."
     queries:
       p50: max(terminal_avg_trade_usd{platform="trojan",chain="all"})
       p90: max(terminal_avg_trade_usd{platform="trojan",chain="all"})
@@ -179,7 +179,7 @@ providers:
   - slug: photon
     name: Photon
     tag: "Web terminal, Solana only"
-    formula: "A day's routed Solana volume divided by that day's swap count for Photon, both from the tehcscreener /bots/photon series."
+    formula: "A day's routed volume divided by that day's swap count for Photon, both from the tehcscreener /bots/photon series."
     queries:
       p50: max(terminal_avg_trade_usd{platform="photon",chain="all"})
       p90: max(terminal_avg_trade_usd{platform="photon",chain="all"})
@@ -191,7 +191,7 @@ providers:
   - slug: maestro
     name: Maestro
     tag: "Telegram bot, multi-chain"
-    formula: "A day's routed Solana volume divided by that day's swap count for Maestro, both from the tehcscreener /bots/maestro series."
+    formula: "A day's routed volume divided by that day's swap count for Maestro, both from the tehcscreener /bots/maestro series."
     queries:
       p50: max(terminal_avg_trade_usd{platform="maestro",chain="all"})
       p90: max(terminal_avg_trade_usd{platform="maestro",chain="all"})
@@ -203,7 +203,7 @@ providers:
   - slug: basedbot
     name: BasedBot
     tag: "Robinhood Chain native, little Solana flow"
-    formula: "A day's routed Solana volume divided by that day's swap count for BasedBot, both from the tehcscreener /bots/basedbot series."
+    formula: "A day's routed volume divided by that day's swap count for BasedBot, both from the tehcscreener /bots/basedbot series."
     queries:
       p50: max(terminal_avg_trade_usd{platform="basedbot",chain="all"})
       p90: max(terminal_avg_trade_usd{platform="basedbot",chain="all"})
