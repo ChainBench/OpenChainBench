@@ -115,7 +115,7 @@ export const ALL_TRADING_APP_COLUMNS: readonly TradingAppColumn[] = [
     key: "commission",
     label: "Commission",
     scope: "app",
-    bench: "solana-trading-platform-wars",
+    bench: "trading-platform-wars",
     panel: "revenue_1d",
     fmt: fmtUSD0,
     tip: "Fees the source reports on this app's flow for the day, every chain summed. More than the app's own commission: measured against published schedules it runs above them, and the source does not document what it includes. Bench 203 carries the same caveat per dollar routed.",
@@ -150,7 +150,7 @@ const SOURCE_BY_BENCH: Record<string, string> = {
   "terminal-avg-trade-size": "tehcscreener",
   "trading-platform-wallets": "tehcscreener",
   "memecoin-platforms": "tehcscreener",
-  "solana-trading-platform-wars": "tehcscreener",
+  "trading-platform-wars": "tehcscreener",
   "app-store-ratings": "the App Store",
 };
 

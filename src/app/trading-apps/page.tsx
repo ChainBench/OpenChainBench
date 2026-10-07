@@ -31,8 +31,8 @@ export const revalidate = 300; // the fill rows' fetch revalidates at 300 s; an 
 const ALL_BENCH_SLUGS = [
   "trading-app-daily-volume",
   "terminal-fill-quality",
-  "solana-trading-platform-wars",
-  "solana-dex-volume",
+  "terminal-execution-quality",
+  "trading-platform-wars",
   "terminal-swap-transactions",
   "terminal-avg-trade-size",
   "trading-platform-wallets",
@@ -41,7 +41,8 @@ const ALL_BENCH_SLUGS = [
   "app-store-ratings",
 ] as const;
 // The ItemList and the "Active benchmarks" count name only the benches this
-// deployment serves (bench 268 is dev-only on production).
+// deployment serves. Nothing here is gated today; the filter stays because
+// gating is a per-deployment fact, not a permanent one.
 const BENCH_SLUGS: string[] = ALL_BENCH_SLUGS.filter((slug) => !isDevOnlyBench(slug));
 
 
@@ -49,11 +50,25 @@ const ALL_GROUPS = [
   {
     label: "Volume & activity",
     items: [
-      { slug: "solana-trading-platform-wars", title: "Volume and commission" },
-      { slug: "solana-dex-volume", title: "DEX volume & protocol revenue" },
+      { slug: "trading-platform-wars", title: "Volume and commission" },
       { slug: "terminal-swap-transactions", title: "Swap transactions" },
       { slug: "terminal-avg-trade-size", title: "Average trade size" },
       { slug: "trading-platform-wallets", title: "Daily active wallets" },
+    ],
+  },
+  {
+    // Two readings of the same swap, which is why they sit together. 268 is
+    // what the swap cost in total; 279 is the same with the app's own fee
+    // removed, so it isolates routing from pricing. A terminal can look
+    // expensive on one and excellent on the other, and showing only the first
+    // would read as a verdict on execution when it is a verdict on the fee.
+    //
+    // 268 was in ALL_BENCH_SLUGS without appearing in any group, so it was
+    // counted on this page and linked from nowhere. 279 was absent entirely.
+    label: "Execution quality",
+    items: [
+      { slug: "terminal-fill-quality", title: "Cost per swap" },
+      { slug: "terminal-execution-quality", title: "Execution loss, fee removed" },
     ],
   },
   {
