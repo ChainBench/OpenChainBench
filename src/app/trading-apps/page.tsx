@@ -36,7 +36,7 @@ const ALL_BENCH_SLUGS = [
   "terminal-swap-transactions",
   "terminal-avg-trade-size",
   "trading-platform-wallets",
-  "solana-launchpad-wars",
+  "launchpad-wars",
   "memecoin-platforms",
   "app-store-ratings",
 ] as const;
@@ -58,7 +58,7 @@ const ALL_GROUPS = [
   },
   {
     label: "Launchpads",
-    items: [{ slug: "solana-launchpad-wars", title: "Launchpad volume" }],
+    items: [{ slug: "launchpad-wars", title: "Launchpad volume" }],
   },
   {
     label: "Fees",
@@ -83,7 +83,7 @@ export default async function TradingAppsHubPage() {
     getTradingAppHistory(),
   ]);
   // Last-day chain split per app from bench 267, for the chains column of
-  // the Dune table (apps DeFiLlama does not track show a dash).
+  // the source table (apps tehcscreener does not cover show a dash).
   const chainSplitOf = new Map<string, { chain: string; usd: number; pct: number }[]>();
   const chainLabelOf = new Map<string, string>();
   if (history)
@@ -225,7 +225,7 @@ export default async function TradingAppsHubPage() {
         <p className="text-sm text-ink-soft max-w-2xl mb-6">
           The commission each app collected on its latest closed UTC day and the
           take rate that implies, next to how its users rate it. Commission is
-          the app&apos;s own cut from DeFiLlama&apos;s fees adapter, not the
+          the fees the source reports on its flow, which is more than the app&apos;s own cut and not the
           total fees paid on the trade. Each row covers whatever chains its own
           adapter covers, which the Chains cell shows.
         </p>
@@ -270,7 +270,7 @@ export default async function TradingAppsHubPage() {
                 </th>
                 <th
                   className="text-left px-4 py-3 font-medium text-ink-muted text-xs uppercase tracking-wide whitespace-nowrap cursor-help"
-                  title="Where the app's volume settled on its latest closed UTC day (DeFiLlama, bench 267). Dash: not tracked by DeFiLlama."
+                  title="Where the app's volume settled on its latest closed UTC day (tehcscreener, bench 267). Dash: not covered by tehcscreener."
                 >
                   Chains
                 </th>
@@ -416,7 +416,7 @@ export default async function TradingAppsHubPage() {
           Methodology
         </p>
         <p className="max-w-3xl">
-          Volume and commission from DeFiLlama&apos;s open dexs and fees adapters,
+          Volume and fees from the public tehcscreener API, which is Allium-backed,
           per closed UTC day, summed over every chain the adapter covers: ten
           chains for GMGN, three for Axiom, Solana for Trojan and Photon.
           FOMO&apos;s cross-chain trades settle through Relay and are booked on

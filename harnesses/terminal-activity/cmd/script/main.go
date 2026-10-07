@@ -42,6 +42,16 @@
 //	terminal_activity_health{platform,chain}
 //	terminal_activity_last_success_unix
 //	terminal_fee_column_ok{chain}
+//	launchpad_volume_usd{pad,chain}
+//	launchpad_tokens_launched{pad,chain}
+//	launchpad_trade_txns{pad,chain}
+//	launchpad_health{pad,chain}
+//	terminal_window_volume_usd{platform,chain,window}
+//	terminal_window_fees_usd{platform,chain,window}
+//	terminal_window_txns{platform,chain,window}
+//	terminal_window_take_rate_pct{platform,chain,window}
+//	terminal_window_share_pct{platform,chain,window}
+//	terminal_history_days{platform}
 //	terminal_fee_withheld{platform,chain}
 package main
 
@@ -142,6 +152,7 @@ func cycle(client *apiClient) {
 	}
 
 	var samples []sample
+	var details []*botDetail
 	failed := 0
 	for i, id := range roster {
 		if i > 0 {
@@ -153,6 +164,7 @@ func cycle(client *apiClient) {
 			failed++
 			continue
 		}
+		details = append(details, d)
 		samples = append(samples, latestSamples(d)...)
 	}
 
@@ -166,9 +178,25 @@ func cycle(client *apiClient) {
 	}
 
 	published, chains := publish(samples, canonicalRoster(roster), maxDataAgeDays(), time.Now())
+
+	// The multi-day columns on benches 201, 205 and 267, summed from the same
+	// series the daily gauges take their latest point from.
+	wAgg, firstDays, wChains := buildWindows(details)
+	publishWindows(wAgg, canonicalRoster(roster), wChains, firstDays)
+
+	// Launchpads are a separate read and a separate metric family. A failure
+	// here leaves the terminal figures alone rather than dropping the cycle:
+	// the two feed different benches and share nothing but the HTTP client.
+	pads, padRoster, perr := client.launchpads()
+	padCount := 0
+	if perr != nil {
+		log.Printf("launchpads: %v (keeping the previous cycle's pads)", perr)
+	} else {
+		padCount = publishLaunchpads(pads, padRoster)
+	}
 	if published > 0 {
 		lastSuccessUnix.SetToCurrentTime()
 	}
-	log.Printf("cycle complete: %d rows across %d chains (%v), %d of %d bots read, %d read errors",
-		published, len(chains), chains, len(roster)-failed, len(roster), failed)
+	log.Printf("cycle complete: %d terminal rows across %d chains (%v), %d launchpad rows, %d of %d bots read, %d read errors",
+		published, len(chains), chains, padCount, len(roster)-failed, len(roster), failed)
 }

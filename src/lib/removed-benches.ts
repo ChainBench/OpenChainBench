@@ -63,6 +63,10 @@ export const RENAMED_BENCH_SLUGS: Record<string, string> = {
   // framing, so 301 the legacy URL there; DEX-only readers reach the
   // dex-network-coverage bench via the cross-link at the top of the
   // successor page.
+  // Bench 200 covered Robinhood Chain and Arc pads from 2026-10-07, so a slug
+  // promising Solana became false. This one WAS served on production, unlike
+  // the two dev-only renames the same week, so it owes a 301 and not a 404.
+  "solana-launchpad-wars": "launchpad-wars",
   "network-coverage": "asset-registry-coverage",
   // Keyed RPC cohort folded into the per-chain RPC pages (2026-09-21):
   // one page per chain, the private (API-key) providers behind the
