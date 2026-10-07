@@ -39,7 +39,7 @@ type State struct {
 	// mirror window and kept afterwards, because the files it was measured
 	// from are deleted once the fetch range moves on: without this the
 	// truncated-day count could only look at the mirror window and reported
-	// 12 of 30 where the real figure was 17.
+	// 12 of 30 where the real figure was 18.
 	DayCoverage map[string]float64 `json:"day_coverage"`
 
 	mu     sync.Mutex

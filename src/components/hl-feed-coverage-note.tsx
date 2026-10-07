@@ -6,11 +6,12 @@ import type { HlFeedCoverage } from "@/lib/hl-feed";
  * carried, whenever that is less than all of it.
  *
  * Every figure on these pages is a sum over UTC days read from that export.
- * It stopped publishing whole days on 2026-09-22: most days since end at
- * roughly 12:00 UTC, and on the days it did carry in full, the hours before
- * 13:00 hold about 43% of the notional and 44% of the fees. So a 30d total
- * built from a window half made of those days lands near half of what a
- * tracker reading a complete feed reports, and nothing on the page said so.
+ * It cuts days off at roughly 12:10 UTC, intermittently since 2026-09-08 and
+ * on all but one day since 2026-09-22, and on the days it did carry in full,
+ * the hours before 13:00 hold about 43% of the notional and 44% of the fees.
+ * So a 30d total built from a window more than half made of those days lands
+ * near half of what a tracker reading a complete feed reports, and nothing on
+ * the page said so.
  *
  * The figures stay as measured rather than scaled up to a guess. What changes
  * is that the reader is told what the denominator is, which is the difference
@@ -65,9 +66,10 @@ export function HlFeedCoverageNote({
         <p>
           Coverage of Hyperliquid&apos;s public per-builder export is not being
           measured on this run, so how much of each UTC day the figures below
-          cover is unknown. The export has been publishing days cut off around
-          12:00 UTC since 2026-09-22, which halves a window sum, so treat the
-          figures as a floor until coverage reports again.
+          cover is unknown. The export has been publishing days cut off
+          around 12:10 UTC on all but one day since 2026-09-22, which halves a
+          window sum, so treat the figures as a floor until coverage reports
+          again.
         </p>
       )}
     </aside>
