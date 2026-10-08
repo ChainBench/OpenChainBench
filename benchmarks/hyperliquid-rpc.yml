@@ -75,6 +75,7 @@ dimensions:
   tier:
     - { value: public, label: "Public, no key" }
     - { value: keyed,  label: "Private, API key" }
+    - { value: keyed-cold, label: "Private, cold start" }
 
 providers:
   - slug: hyperliquid-official
@@ -294,3 +295,96 @@ providers:
         - region: ap-southeast
           p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="quicknode",chain="hyperliquid",tier="keyed",region="sgp"})
           series: avg(avg_over_time(rpc_latency_milliseconds{provider="quicknode",chain="hyperliquid",tier="keyed",region="sgp"}[1h]))
+
+  - slug: alchemy-cold
+    name: Alchemy
+    tier: keyed-cold
+    tag: Same endpoint, measured on a connection that is never reused
+    formula: "p50 over 24h of round-trip latency (ms) for the same call on a connection that is never reused: DNS, TCP and the TLS handshake are paid every time. What a serverless or one-shot client gets."
+    queries:
+      p50: avg(ocb:rpc_latency_cold_milliseconds:p50_24h{provider="alchemy",chain="hyperliquid",tier="keyed"})
+      p90: avg(ocb:rpc_latency_cold_milliseconds:p90_24h{provider="alchemy",chain="hyperliquid",tier="keyed"})
+      p99: avg(ocb:rpc_latency_cold_milliseconds:p99_24h{provider="alchemy",chain="hyperliquid",tier="keyed"})
+      mean: avg(ocb:rpc_latency_cold_milliseconds:mean_24h{provider="alchemy",chain="hyperliquid",tier="keyed"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="alchemy",chain="hyperliquid",tier="keyed"}) / sum(ocb:rpc_call:rate_24h{provider="alchemy",chain="hyperliquid",tier="keyed"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="alchemy",chain="hyperliquid",tier="keyed"})
+      series: avg(avg_over_time(rpc_latency_cold_milliseconds{provider="alchemy",chain="hyperliquid",tier="keyed"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_cold_milliseconds:p50_24h{provider="alchemy",chain="hyperliquid",tier="keyed",region="us-east"})
+          series: avg(avg_over_time(rpc_latency_cold_milliseconds{provider="alchemy",chain="hyperliquid",tier="keyed",region="us-east"}[1h]))
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_cold_milliseconds:p50_24h{provider="alchemy",chain="hyperliquid",tier="keyed",region="eu-west"})
+          series: avg(avg_over_time(rpc_latency_cold_milliseconds{provider="alchemy",chain="hyperliquid",tier="keyed",region="eu-west"}[1h]))
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_cold_milliseconds:p50_24h{provider="alchemy",chain="hyperliquid",tier="keyed",region="sgp"})
+          series: avg(avg_over_time(rpc_latency_cold_milliseconds{provider="alchemy",chain="hyperliquid",tier="keyed",region="sgp"}[1h]))
+  - slug: chainstack-cold
+    name: Chainstack
+    tier: keyed-cold
+    tag: Same endpoint, measured on a connection that is never reused
+    formula: "p50 over 24h of round-trip latency (ms) for the same call on a connection that is never reused: DNS, TCP and the TLS handshake are paid every time. What a serverless or one-shot client gets."
+    queries:
+      p50: avg(ocb:rpc_latency_cold_milliseconds:p50_24h{provider="chainstack",chain="hyperliquid",tier="keyed"})
+      p90: avg(ocb:rpc_latency_cold_milliseconds:p90_24h{provider="chainstack",chain="hyperliquid",tier="keyed"})
+      p99: avg(ocb:rpc_latency_cold_milliseconds:p99_24h{provider="chainstack",chain="hyperliquid",tier="keyed"})
+      mean: avg(ocb:rpc_latency_cold_milliseconds:mean_24h{provider="chainstack",chain="hyperliquid",tier="keyed"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="chainstack",chain="hyperliquid",tier="keyed"}) / sum(ocb:rpc_call:rate_24h{provider="chainstack",chain="hyperliquid",tier="keyed"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="chainstack",chain="hyperliquid",tier="keyed"})
+      series: avg(avg_over_time(rpc_latency_cold_milliseconds{provider="chainstack",chain="hyperliquid",tier="keyed"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_cold_milliseconds:p50_24h{provider="chainstack",chain="hyperliquid",tier="keyed",region="us-east"})
+          series: avg(avg_over_time(rpc_latency_cold_milliseconds{provider="chainstack",chain="hyperliquid",tier="keyed",region="us-east"}[1h]))
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_cold_milliseconds:p50_24h{provider="chainstack",chain="hyperliquid",tier="keyed",region="eu-west"})
+          series: avg(avg_over_time(rpc_latency_cold_milliseconds{provider="chainstack",chain="hyperliquid",tier="keyed",region="eu-west"}[1h]))
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_cold_milliseconds:p50_24h{provider="chainstack",chain="hyperliquid",tier="keyed",region="sgp"})
+          series: avg(avg_over_time(rpc_latency_cold_milliseconds{provider="chainstack",chain="hyperliquid",tier="keyed",region="sgp"}[1h]))
+  - slug: getblock-cold
+    name: GetBlock
+    tier: keyed-cold
+    tag: Same endpoint, measured on a connection that is never reused
+    formula: "p50 over 24h of round-trip latency (ms) for the same call on a connection that is never reused: DNS, TCP and the TLS handshake are paid every time. What a serverless or one-shot client gets."
+    queries:
+      p50: avg(ocb:rpc_latency_cold_milliseconds:p50_24h{provider="getblock",chain="hyperliquid",tier="keyed"})
+      p90: avg(ocb:rpc_latency_cold_milliseconds:p90_24h{provider="getblock",chain="hyperliquid",tier="keyed"})
+      p99: avg(ocb:rpc_latency_cold_milliseconds:p99_24h{provider="getblock",chain="hyperliquid",tier="keyed"})
+      mean: avg(ocb:rpc_latency_cold_milliseconds:mean_24h{provider="getblock",chain="hyperliquid",tier="keyed"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="getblock",chain="hyperliquid",tier="keyed"}) / sum(ocb:rpc_call:rate_24h{provider="getblock",chain="hyperliquid",tier="keyed"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="getblock",chain="hyperliquid",tier="keyed"})
+      series: avg(avg_over_time(rpc_latency_cold_milliseconds{provider="getblock",chain="hyperliquid",tier="keyed"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_cold_milliseconds:p50_24h{provider="getblock",chain="hyperliquid",tier="keyed",region="us-east"})
+          series: avg(avg_over_time(rpc_latency_cold_milliseconds{provider="getblock",chain="hyperliquid",tier="keyed",region="us-east"}[1h]))
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_cold_milliseconds:p50_24h{provider="getblock",chain="hyperliquid",tier="keyed",region="eu-west"})
+          series: avg(avg_over_time(rpc_latency_cold_milliseconds{provider="getblock",chain="hyperliquid",tier="keyed",region="eu-west"}[1h]))
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_cold_milliseconds:p50_24h{provider="getblock",chain="hyperliquid",tier="keyed",region="sgp"})
+          series: avg(avg_over_time(rpc_latency_cold_milliseconds{provider="getblock",chain="hyperliquid",tier="keyed",region="sgp"}[1h]))
+  - slug: quicknode-cold
+    name: QuickNode
+    tier: keyed-cold
+    tag: Same endpoint, measured on a connection that is never reused
+    formula: "p50 over 24h of round-trip latency (ms) for the same call on a connection that is never reused: DNS, TCP and the TLS handshake are paid every time. What a serverless or one-shot client gets."
+    queries:
+      p50: avg(ocb:rpc_latency_cold_milliseconds:p50_24h{provider="quicknode",chain="hyperliquid",tier="keyed"})
+      p90: avg(ocb:rpc_latency_cold_milliseconds:p90_24h{provider="quicknode",chain="hyperliquid",tier="keyed"})
+      p99: avg(ocb:rpc_latency_cold_milliseconds:p99_24h{provider="quicknode",chain="hyperliquid",tier="keyed"})
+      mean: avg(ocb:rpc_latency_cold_milliseconds:mean_24h{provider="quicknode",chain="hyperliquid",tier="keyed"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="quicknode",chain="hyperliquid",tier="keyed"}) / sum(ocb:rpc_call:rate_24h{provider="quicknode",chain="hyperliquid",tier="keyed"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="quicknode",chain="hyperliquid",tier="keyed"})
+      series: avg(avg_over_time(rpc_latency_cold_milliseconds{provider="quicknode",chain="hyperliquid",tier="keyed"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_cold_milliseconds:p50_24h{provider="quicknode",chain="hyperliquid",tier="keyed",region="us-east"})
+          series: avg(avg_over_time(rpc_latency_cold_milliseconds{provider="quicknode",chain="hyperliquid",tier="keyed",region="us-east"}[1h]))
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_cold_milliseconds:p50_24h{provider="quicknode",chain="hyperliquid",tier="keyed",region="eu-west"})
+          series: avg(avg_over_time(rpc_latency_cold_milliseconds{provider="quicknode",chain="hyperliquid",tier="keyed",region="eu-west"}[1h]))
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_cold_milliseconds:p50_24h{provider="quicknode",chain="hyperliquid",tier="keyed",region="sgp"})
+          series: avg(avg_over_time(rpc_latency_cold_milliseconds{provider="quicknode",chain="hyperliquid",tier="keyed",region="sgp"}[1h]))

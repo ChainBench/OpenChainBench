@@ -30,3 +30,30 @@ groups:
         expr: sum by (provider, chain, region) (rate(rpc_call_total[24h]))
       - record: ocb:rpc_call:increase_24h
         expr: sum by (provider, chain, region) (increase(rpc_call_total[24h]))
+
+      # Cold-connection arm, added 2026-10-08 with the keyed probe fix.
+      #
+      # rpc_latency_milliseconds is now explicitly the WARM arm: a probe on a
+      # pooled connection. rpc_latency_cold_milliseconds is the same call on a
+      # connection that is never reused, so it carries DNS + TCP + TLS every
+      # time. The keyed harness alternates between the two, which is why each
+      # arm lands half the samples of the old single series.
+      #
+      # Why the arms exist at all: every probe used to share one implicit
+      # transport, so whether a call was warm or cold depended on how often its
+      # HOSTNAME happened to be touched. A provider serving nine chains from one
+      # hostname stayed warm; a provider using a hostname per chain went cold
+      # between 60 s ticks and paid a ~25 ms handshake. That gap, not node
+      # speed, was most of the published ranking.
+      #
+      # No tier filter, same as the rules above: the keyed harness emits the
+      # same metric names with tier="keyed", so one rule set covers both
+      # cohorts and all three regions.
+      - record: ocb:rpc_latency_cold_milliseconds:p50_24h
+        expr: quantile_over_time(0.50, rpc_latency_cold_milliseconds[24h])
+      - record: ocb:rpc_latency_cold_milliseconds:p90_24h
+        expr: quantile_over_time(0.90, rpc_latency_cold_milliseconds[24h])
+      - record: ocb:rpc_latency_cold_milliseconds:p99_24h
+        expr: quantile_over_time(0.99, rpc_latency_cold_milliseconds[24h])
+      - record: ocb:rpc_latency_cold_milliseconds:mean_24h
+        expr: avg_over_time(rpc_latency_cold_milliseconds[24h])
