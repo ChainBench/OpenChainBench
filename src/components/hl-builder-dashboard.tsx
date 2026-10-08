@@ -5,6 +5,7 @@ import { HlCoinDistribution } from "@/components/hl-coin-distribution";
 import { HlUserPercentile } from "@/components/hl-user-percentile";
 import { HlTopUsersTable } from "@/components/hl-top-users-table";
 import { HlFeedCoverageNote } from "@/components/hl-feed-coverage-note";
+import { HlKpiStrip } from "@/components/hl-kpi-strip";
 
 /**
  * Per-builder HyperTracker-parity dashboard on /products/[slug].
@@ -36,44 +37,9 @@ export function HlBuilderDashboard({
 
   return (
     <section className="mt-8 mb-12">
-      <p className="label-mono text-ink-faint mb-3">
-        Hyperliquid frontend dashboard
-      </p>
-
       <HlFeedCoverageNote feed={stats.feed} className="mb-4 max-w-3xl" />
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        <KpiCard
-          label="Revenue 30d"
-          value={fmtUSD(stats.revenue30d)}
-          delta={stats.revenueDelta30d}
-          tone="primary"
-        />
-        <KpiCard
-          label="Volume 30d"
-          value={fmtUSD(stats.volume30d)}
-          tone="primary"
-        />
-        <KpiCard
-          label="Users 30d"
-          value={fmtCount(stats.users30d)}
-          tone="primary"
-        />
-        <KpiCard
-          label="$ / user 30d"
-          value={fmtUSD(stats.feesPerUser30d)}
-        />
-        <KpiCard
-          label="Annualised"
-          value={fmtUSD(stats.annualisedRevenue)}
-          tip="Projection: revenue × 365/30"
-        />
-        <KpiCard
-          label="% cohort 24h vol"
-          value={fmtPct(stats.cohortVolumeShare24h)}
-          tip="Share of the 104 tracked builders' 24h notional volume"
-        />
-      </div>
+      <HlKpiStrip stats={stats} />
 
       <HlPerformanceChart
         slug={stats.slug}
@@ -163,48 +129,6 @@ export function HlBuilderDashboard({
   );
 }
 
-function KpiCard({
-  label,
-  value,
-  delta,
-  tip,
-  tone,
-}: {
-  label: string;
-  value: string;
-  delta?: number;
-  tip?: string;
-  tone?: "primary";
-}) {
-  const arrowTone =
-    delta === undefined
-      ? ""
-      : delta > 0
-        ? "text-emerald-600 dark:text-emerald-400"
-        : delta < 0
-          ? "text-red-600 dark:text-red-400"
-          : "text-ink-faint";
-  return (
-    <div
-      className={
-        "card-soft rounded-lg p-3 sm:p-4 " +
-        (tone === "primary"
-          ? "border border-ink/15"
-          : "border border-ink/8")
-      }
-      title={tip}
-    >
-      <p className="label-mono text-[10px] text-ink-faint mb-1">{label}</p>
-      <p className="text-lg sm:text-xl font-semibold tabular-nums leading-tight">
-        {value}
-      </p>
-      {delta !== undefined && (
-        <p className={`mt-0.5 text-xs ${arrowTone}`}>{fmtDelta(delta)}</p>
-      )}
-    </div>
-  );
-}
-
 function Milestone({
   label,
   value,
@@ -235,26 +159,5 @@ function fmtUSD(v: number): string {
   return `$${v.toFixed(4)}`;
 }
 
-function fmtCount(v: number): string {
-  if (!Number.isFinite(v) || v === 0) return "0";
-  const abs = Math.abs(v);
-  if (abs >= 1_000_000) return `${(v / 1_000_000).toFixed(2)}M`;
-  if (abs >= 1_000) return `${(v / 1_000).toFixed(1)}K`;
-  return Math.round(v).toLocaleString("en-US");
-}
 
-function fmtPct(v: number): string {
-  if (!Number.isFinite(v) || v === 0) return "0%";
-  const pct = v * 100;
-  if (pct >= 10) return `${pct.toFixed(1)}%`;
-  if (pct >= 1) return `${pct.toFixed(2)}%`;
-  return `${pct.toFixed(3)}%`;
-}
 
-function fmtDelta(v: number): string {
-  if (!Number.isFinite(v) || v === 0) return "0%";
-  const pct = v * 100;
-  const sign = v > 0 ? "+" : "";
-  if (Math.abs(pct) >= 10) return `${sign}${pct.toFixed(0)}%`;
-  return `${sign}${pct.toFixed(1)}%`;
-}
