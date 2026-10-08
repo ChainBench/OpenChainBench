@@ -59,6 +59,14 @@ export type HlBuilderStats = {
   /** Feed coverage for the window these figures were summed over. Null when
    *  the gauges are not published yet (pre-2026-10-07 harness builds). */
   feed: HlFeedCoverage | null;
+  /** The same headline figures for each window the harness publishes, so the
+   *  dashboard's timeframe control has something to switch to. The flat
+   *  fields above stay as the 30d view, which is what callers that never
+   *  wanted a control already read. */
+  byWindow: Record<
+    HlWindow,
+    { revenue: number; volume: number; users: number; revenueDelta: number }
+  >;
 };
 
 /**
@@ -161,6 +169,14 @@ export async function fetchHlBuilderStatsFresh(
     revenueDelta30d,
     volume30d,
     users30d,
+    revenue24h,
+    volume24h,
+    users24h,
+    revenueDelta24h,
+    revenue7d,
+    volume7d,
+    users7d,
+    revenueDelta7d,
     cohortShare,
     biggestDay,
     biggestDayUnix,
@@ -176,6 +192,14 @@ export async function fetchHlBuilderStatsFresh(
     prom.scalar(`hl_frontend_revenue_delta_pct_v2{builder="${slug}",window="30d"}`),
     prom.scalar(`hl_frontend_volume_usd_30d_v2${sel}`),
     prom.scalar(`hl_frontend_users_30d_v2${sel}`),
+    prom.scalar(`hl_frontend_fees_usd_24h_v2${sel}`),
+    prom.scalar(`hl_frontend_volume_usd_24h_v2${sel}`),
+    prom.scalar(`hl_frontend_users_24h_v2${sel}`),
+    prom.scalar(`hl_frontend_revenue_delta_pct_v2{builder="${slug}",window="24h"}`),
+    prom.scalar(`hl_frontend_fees_usd_7d_v2${sel}`),
+    prom.scalar(`hl_frontend_volume_usd_7d_v2${sel}`),
+    prom.scalar(`hl_frontend_users_7d_v2${sel}`),
+    prom.scalar(`hl_frontend_revenue_delta_pct_v2{builder="${slug}",window="7d"}`),
     prom.scalar(`hl_frontend_global_volume_share_24h_v2${sel}`),
     prom.scalar(`hl_frontend_biggest_day_revenue_usd_v2${sel}`),
     prom.scalar(`hl_frontend_biggest_day_unix_v2${sel}`),
@@ -239,6 +263,26 @@ export async function fetchHlBuilderStatsFresh(
     percentileShares30d,
     profitableUserPct30d: profitableUserPct30d ?? 0,
     feed,
+    byWindow: {
+      "24h": {
+        revenue: revenue24h ?? 0,
+        volume: volume24h ?? 0,
+        users: users24h ?? 0,
+        revenueDelta: revenueDelta24h ?? 0,
+      },
+      "7d": {
+        revenue: revenue7d ?? 0,
+        volume: volume7d ?? 0,
+        users: users7d ?? 0,
+        revenueDelta: revenueDelta7d ?? 0,
+      },
+      "30d": {
+        revenue: rev,
+        volume: volume30d ?? 0,
+        users: usr,
+        revenueDelta: revenueDelta30d ?? 0,
+      },
+    },
   };
 }
 
