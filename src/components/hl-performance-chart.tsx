@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 /**
  * Per-builder Performance chart: daily revenue bars + a unique-users
@@ -655,15 +655,44 @@ function Tooltip({
   // Position over the canvas in % units — keeps it sticky as the svg
   // scales responsively. Clamp so the card doesn't run off either edge.
   const left = Math.max(4, Math.min(96, xFrac * 100));
-  const top = Math.max(6, yFrac * 100 - 6);
+  const top = Math.max(0, Math.min(100, yFrac * 100));
   const flipX = left > 70;
+
+  // The card sits above the point, and the canvas clips its overflow, so a
+  // tall bar left it with nowhere to go: hovering the biggest day showed a
+  // card with its date, revenue and users rows sliced off at the top edge
+  // and only "Volume" still legible. When there is not room above, it flips
+  // below the point instead, the same way flipX already handles the right
+  // edge. The anchor is always high when that happens, so there is room.
+  //
+  // Measured rather than guessed from a percentage: the card's height
+  // depends on whether the users row is shown and on the viewer's font, and
+  // the canvas is 300px or 340px depending on the breakpoint. useLayoutEffect
+  // so the flip lands before paint and the card never visibly jumps.
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [flipY, setFlipY] = useState(false);
+  useLayoutEffect(() => {
+    const el = cardRef.current;
+    const canvas = el?.offsetParent as HTMLElement | null;
+    if (!el || !canvas) return;
+    const needed = el.offsetHeight + 14; // card plus the gap it leaves
+    setFlipY(yFrac * canvas.clientHeight < needed);
+  }, [yFrac, showUsers, point.date]);
+
   return (
     <div
+      ref={cardRef}
       className="pointer-events-none absolute z-10 rounded-lg border border-ink/15 bg-paper shadow-lg px-3 py-2 text-[11.5px]"
       style={{
         left: `${left}%`,
         top: `${top}%`,
-        transform: `translate(${flipX ? "-100%" : "0%"}, -100%) translateX(${flipX ? -8 : 8}px) translateY(-6px)`,
+        transform: [
+          `translate(${flipX ? "-100%" : "0%"}, ${flipY ? "0%" : "-100%"})`,
+          `translateX(${flipX ? -8 : 8}px)`,
+          // Same 10px gap either way. The old code gapped with 6% of the
+          // canvas plus 6px, which drifted with the breakpoint.
+          `translateY(${flipY ? 10 : -10}px)`,
+        ].join(" "),
         minWidth: 168,
       }}
     >
