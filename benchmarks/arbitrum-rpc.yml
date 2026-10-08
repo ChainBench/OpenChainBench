@@ -26,7 +26,7 @@ methodology:
   - "Latency measurement, call-result classification (`ok`, `http_err`, `jsonrpc_err`, `stale`, `timeout`) and the archive-depth audit follow the cluster method documented on [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities#methodology); this page is the Arbitrum-scoped view of the same harness, with the same exclusion rules."
   - "Chain scope: every query on this page is pinned to chain=\"arbitrum\". Provider coverage: {{count}} no-key public-read endpoints live today, each listed with its URL in the endpoints table on this page. Exclusions follow the cluster-wide rules documented on the parent benchmark."
   - "Private cohort (Access selector, Private): Alchemy, Chainstack, GetBlock and QuickNode probed on their keyed Arbitrum endpoints every 120 seconds from the same 3 regions, same call (eth_getBlockByNumber, rotating id), same ok / http_err / jsonrpc_err / stale / timeout classification."
-  - "Keys live in the probe environment, never in the repo. Plan tiers, disclosed: Alchemy: a Free plan key (30M CU per month, 25 requests per second) normal signup, the tier any reader gets; Alchemy states free and paid keys share one routing; Chainstack: a Global Node on the Growth plan, sponsored by Chainstack; QuickNode: an endpoint on a Build plan ($49 per month), shared fleet; GetBlock: a Starter plan, 50M compute units per month shared by the three probe regions, 20 CU per call."
+  - "Keys live in the probe environment, never in the repo. Plan tiers, disclosed: Alchemy: a Free plan key (30M CU per month, 25 requests per second), the tier any reader gets; Alchemy states free and paid keys share one routing; Chainstack: a Global Node on the Growth plan; QuickNode: an endpoint on a Build plan ($49 per month), shared fleet; GetBlock: a Starter plan, 50M CU per month shared by the three probe regions, 20 CU per call. Chainstack and QuickNode provided their endpoints."
   - "GetBlock regional pairing: each probe region uses GetBlock's nearest endpoint, us-east to New York, eu-west to Frankfurt, sgp to Singapore. Alchemy, Chainstack and QuickNode publish one routed entry point per chain instead, which in the general case does land a probe on a nearby node. Some of any gap between the two arrangements is deployment topology rather than node speed, and a deployment in one of these regions would see the same benefit GetBlock's endpoint gives the probe."
   - "Two cohorts, two rankings: the public endpoints are shared, rate-limited gateways probed every 60 seconds; the keyed endpoints are metered or dedicated and probed every 120 seconds. The selector switches the whole page (ranking, chart, region tabs, badges, citation) between them. No figure on this page compares a public endpoint with a keyed one."
 
@@ -269,7 +269,7 @@ providers:
   - slug: chainstack
     name: Chainstack
     tier: keyed
-    tag: Growth plan Global Node, sponsored access, plan disclosed
+    tag: Growth plan Global Node, endpoint provided, plan disclosed
     formula: "p50 over 24h of round-trip latency (ms) for eth_getBlockByNumber probed every 120 s from us-east, eu-west and Singapore on Chainstack's keyed Arbitrum endpoint."
     queries:
       p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="chainstack",chain="arbitrum",tier="keyed"})
@@ -317,7 +317,7 @@ providers:
   - slug: quicknode
     name: QuickNode
     tier: keyed
-    tag: Build plan endpoint, plan disclosed
+    tag: Build plan endpoint provided, plan disclosed
     formula: "p50 over 24h of round-trip latency (ms) for eth_getBlockByNumber probed every 120 s from us-east, eu-west and Singapore on QuickNode's keyed Arbitrum endpoint."
     queries:
       p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="quicknode",chain="arbitrum",tier="keyed"})
