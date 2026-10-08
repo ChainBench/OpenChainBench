@@ -136,7 +136,49 @@ type blockHeader struct {
 	Number string `json:"number"`
 }
 
-func doPost(ctx context.Context, url string, body []byte) (raw []byte, latencyMs float64, classified string, err error) {
+// Two explicit transports, because the implicit one was deciding the ranking.
+//
+// Until 2026-10-08 every probe used http.DefaultTransport, shared with the
+// whole process and sized by Go's defaults. Whether a given call rode a pooled
+// connection or paid a fresh TLS handshake was therefore an accident of how
+// often that HOSTNAME happened to be touched.
+//
+// It is not evenly distributed. GetBlock serves all nine chains from ONE
+// hostname with the key in the path, so that host is hit nine times a cycle
+// and its connection stays warm. Every other provider uses a hostname per
+// chain, touched once per 60 s. A handshake costs about 25 ms from these
+// containers, and 16 + 25 is 41, which is exactly what this harness was
+// publishing for QuickNode against a measured 8. Three of the four keyed
+// providers were reported 4 to 6x slower than they answer.
+//
+// So measure both deliberately and publish both. Warm is what a server-side
+// application with a connection pool gets. Cold is what a one-shot client or
+// a serverless invocation gets. Neither is "the" latency and the difference
+// between them is itself worth reading.
+var (
+	// Pooled. IdleConnTimeout must exceed the probe interval or the socket
+	// is gone before the next tick and "warm" quietly becomes cold again.
+	warmTransport = &http.Transport{
+		MaxIdleConns:        256,
+		MaxIdleConnsPerHost: 4,
+		IdleConnTimeout:     5 * time.Minute,
+		ForceAttemptHTTP2:   true,
+	}
+	// Never reuses. Every call pays DNS, TCP and TLS.
+	coldTransport = &http.Transport{
+		DisableKeepAlives: true,
+		ForceAttemptHTTP2: true,
+	}
+)
+
+func transportFor(warm bool) *http.Transport {
+	if warm {
+		return warmTransport
+	}
+	return coldTransport
+}
+
+func doPost(ctx context.Context, url string, body []byte, warm bool) (raw []byte, latencyMs float64, classified string, err error) {
 	req, _ := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("User-Agent", "OpenChainBench/1.0 (+https://openchainbench.com)")
@@ -180,7 +222,7 @@ func doPost(ctx context.Context, url string, body []byte) (raw []byte, latencyMs
 		}))
 	}
 
-	client := &http.Client{Timeout: probeTimeout}
+	client := &http.Client{Timeout: probeTimeout, Transport: transportFor(warm)}
 
 	start := time.Now()
 	resp, err := client.Do(req)
@@ -219,12 +261,12 @@ func doPost(ctx context.Context, url string, body []byte) (raw []byte, latencyMs
 	return raw, latencyMs, "", nil
 }
 
-func probeEVM(ctx context.Context, url string) (head uint64, result string, latencyMs float64, err error) {
+func probeEVM(ctx context.Context, url string, warm bool) (head uint64, result string, latencyMs float64, err error) {
 	body := []byte(fmt.Sprintf(
 		`{"jsonrpc":"2.0","method":"eth_getBlockByNumber","params":["latest",false],"id":%d}`,
 		time.Now().UnixNano(),
 	))
-	raw, latencyMs, classified, err := doPost(ctx, url, body)
+	raw, latencyMs, classified, err := doPost(ctx, url, body, warm)
 	if classified != "" {
 		return 0, classified, latencyMs, err
 	}
@@ -249,12 +291,12 @@ func probeEVM(ctx context.Context, url string) (head uint64, result string, late
 	return n, "ok", latencyMs, nil
 }
 
-func probeSolana(ctx context.Context, url string) (slot uint64, result string, latencyMs float64, err error) {
+func probeSolana(ctx context.Context, url string, warm bool) (slot uint64, result string, latencyMs float64, err error) {
 	body := []byte(fmt.Sprintf(
 		`{"jsonrpc":"2.0","method":"getSlot","params":[{"commitment":"processed"}],"id":%d}`,
 		time.Now().UnixNano(),
 	))
-	raw, latencyMs, classified, err := doPost(ctx, url, body)
+	raw, latencyMs, classified, err := doPost(ctx, url, body, warm)
 	if classified != "" {
 		return 0, classified, latencyMs, err
 	}
@@ -295,11 +337,17 @@ func probeOne(ctx context.Context, e Endpoint) {
 	t := time.NewTicker(interval)
 	defer t.Stop()
 
+	// Per-endpoint, not global: a shared counter would leave providers in
+	// different arms at the same instant, and the warm/cold comparison is
+	// only honest when every endpoint alternates on its own schedule.
+	var n uint64
+
 	tick := func() {
 		if !quota.allow(e.Provider, currentRegion) {
 			rpcCallTotal.WithLabelValues(e.Provider, e.Chain, currentRegion, "quota_paused", "keyed").Inc()
 			rpcHealth.WithLabelValues(e.Provider, e.Chain, currentRegion, "keyed").Set(0)
 			rpcLatency.DeleteLabelValues(e.Provider, e.Chain, currentRegion, "keyed")
+			rpcLatencyCold.DeleteLabelValues(e.Provider, e.Chain, currentRegion, "keyed")
 			fmt.Printf("[%s/%s] quota guard tripped (>=90%% of monthly region budget) — paused until month rollover\n", e.Chain, e.Provider)
 			return
 		}
@@ -311,10 +359,18 @@ func probeOne(ctx context.Context, e Endpoint) {
 		var result string
 		var latency float64
 		var err error
+		// Alternate rather than double: the keyed budgets have headroom
+		// (600k-2M per region per month against ~195k used) but doubling a
+		// metered key to answer a methodology question is the wrong trade.
+		// Each arm lands 720 samples per day per region, which is ample for
+		// a p50 and still leaves the call volume exactly where it was.
+		n++
+		warm := n%2 == 0
+
 		if e.Kind == "solana" {
-			head, result, latency, err = probeSolana(probeCtx, e.URL)
+			head, result, latency, err = probeSolana(probeCtx, e.URL, warm)
 		} else {
-			head, result, latency, err = probeEVM(probeCtx, e.URL)
+			head, result, latency, err = probeEVM(probeCtx, e.URL, warm)
 		}
 
 		if result == "ok" {
@@ -333,12 +389,25 @@ func probeOne(ctx context.Context, e Endpoint) {
 			// Same rule as the no-key harness: latency is recorded ONLY
 			// for fresh valid responses (error responses are often faster
 			// than real work and would poison the p50).
-			rpcLatency.WithLabelValues(e.Provider, e.Chain, currentRegion, "keyed").Set(latency)
-			rpcLatencyHist.WithLabelValues(e.Provider, e.Chain, currentRegion, "keyed").Observe(latency)
+			if warm {
+				rpcLatency.WithLabelValues(e.Provider, e.Chain, currentRegion, "keyed").Set(latency)
+				rpcLatencyHist.WithLabelValues(e.Provider, e.Chain, currentRegion, "keyed").Observe(latency)
+			} else {
+				rpcLatencyCold.WithLabelValues(e.Provider, e.Chain, currentRegion, "keyed").Set(latency)
+				rpcLatencyColdHist.WithLabelValues(e.Provider, e.Chain, currentRegion, "keyed").Observe(latency)
+			}
 			rpcHealth.WithLabelValues(e.Provider, e.Chain, currentRegion, "keyed").Set(1)
-			fmt.Printf("[%s/%s] head=%d latency=%.0fms\n", e.Chain, e.Provider, head, latency)
+			mode := "cold"
+			if warm {
+				mode = "warm"
+			}
+			fmt.Printf("[%s/%s] head=%d latency=%.0fms conn=%s\n", e.Chain, e.Provider, head, latency, mode)
 		} else {
+			// Both arms, not just the warm one: leaving the cold series behind
+			// would freeze a dead endpoint at its last good number in exactly
+			// the half of the data nobody is looking at.
 			rpcLatency.DeleteLabelValues(e.Provider, e.Chain, currentRegion, "keyed")
+			rpcLatencyCold.DeleteLabelValues(e.Provider, e.Chain, currentRegion, "keyed")
 			rpcHealth.WithLabelValues(e.Provider, e.Chain, currentRegion, "keyed").Set(0)
 			// Go http errors embed the full request URL, which carries the
 			// API key in the path/query for every provider here. Redact it
