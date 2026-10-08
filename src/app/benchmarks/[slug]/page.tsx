@@ -301,11 +301,16 @@ export default async function BenchmarkPage({
   // declared value) leads the selector so the clean URL is that tab.
   const declaredTiers = aggregate.dimensions?.tier ?? [];
   const headlineTier = aggregate.aggregateFilters?.tier ?? declaredTiers[0]?.value ?? null;
+  // `keyed-cold` is deliberately kept OUT of this row. It is not a third kind
+  // of access, it is the same private endpoints measured on a connection that
+  // is never reused, so it belongs next to the numbers as a warm/cold toggle
+  // rather than as a sibling of "Public" and "Private". BenchmarkBody renders
+  // that toggle in the chart header and switches the tier itself.
   const tierOptions = headlineTier
     ? [
         ...declaredTiers.filter((t) => t.value === headlineTier),
         ...declaredTiers.filter((t) => t.value !== headlineTier),
-      ]
+      ].filter((t) => t.value !== "keyed-cold")
     : [];
   const chain = chainOptions[0]?.value ?? null;
   const region = regionOptions[0]?.value ?? null;

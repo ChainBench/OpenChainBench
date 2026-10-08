@@ -798,8 +798,52 @@ export function BenchmarkBody({
   const { fieldMin, fieldMedian, fieldMax, tailMin, tailMax, tailSpread } =
     computeFieldStats(viewBenchmark.results, viewBenchmark.zeroIsAValue);
 
+  // Warm / cold toggle, shown only on the private cohort and only next to the
+  // numbers it changes.
+  //
+  // `keyed-cold` is a tier in the data model because that is how a cohort is
+  // expressed, but it is not a third kind of ACCESS: it is the same endpoints
+  // on a connection that is never reused. Putting it in the access row read as
+  // "Public / Private / a third thing", so page.tsx filters it out of that row
+  // and it surfaces here instead.
+  //
+  // Why the distinction is worth a control at all: a pooled connection is what
+  // a long-running backend gets, a fresh one is what a serverless invocation
+  // gets, and the gap between them is a TLS handshake. Until 2026-10-08 the
+  // bench measured whichever happened to apply and ranked providers on that
+  // accident.
+  const inKeyedCohort = tier === "keyed" || tier === "keyed-cold";
+  const connModeToggle = inKeyedCohort ? (
+    <div className="inline-flex shrink-0 items-center rounded-md border border-rule bg-surface overflow-hidden">
+      {([
+        ["keyed", "Pooled"],
+        ["keyed-cold", "Cold start"],
+      ] as const).map(([value, label]) => (
+        <button
+          key={value}
+          type="button"
+          onClick={() => setTier(value)}
+          aria-pressed={tier === value}
+          title={
+            value === "keyed"
+              ? "Connection reused, what a long-running backend gets"
+              : "New connection every call, what a serverless invocation gets"
+          }
+          className={`h-7 px-2 text-[11px] uppercase tracking-wide transition-colors ${
+            tier === value
+              ? "bg-ink text-paper"
+              : "text-ink-muted hover:text-ink hover:bg-paper-soft"
+          }`}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  ) : null;
+
   const sharedHeaderActions = (
     <>
+      {connModeToggle}
       <CsvButton benchmark={viewBenchmark ?? benchmark} range={chartRange} />
       {pageActions}
       <ViewSwitcher allowed={allowedViews} value={view} onChange={setView} />
