@@ -297,16 +297,16 @@ async function fetchHlBuilderStatsRaw(
   slug: string,
 ): Promise<HlBuilderStats | null> {
   const snapshot = await readCohortSnapshot<HlBuilderStats>(
-    `hl-builder:${slug}`,
+    hlBuilderKey(slug),
   );
   if (snapshot) return snapshot.data;
   const fresh = await fetchHlBuilderStatsFresh(slug);
   if (fresh) {
     try {
-      await writeCohortSnapshot(`hl-builder:${slug}`, fresh);
+      await writeCohortSnapshot(hlBuilderKey(slug), fresh);
     } catch (err) {
       console.warn(
-        `hl-builder:${slug} writeback failed: ${
+        `${hlBuilderKey(slug)} writeback failed: ${
           err instanceof Error ? err.message : String(err)
         }`,
       );
@@ -387,9 +387,26 @@ export type HlHip3Summary = {
  *  /api/cron/snapshot-hl-cohort. Bump the suffix here if either summary
  *  shape changes so a stale-shape blob can never deserialize into a
  *  misaligned payload. The cohort-snapshot module appends its own `:v1`. */
-export const HL_FRONTENDS_KEY = "hl-frontends";
+/**
+ * Upstash snapshot keys. **Bump the suffix whenever the stored shape
+ * changes**, the way hl-hip3 went to v2.
+ *
+ * The reader serves a blob until it is ten minutes old, and a blob written
+ * under an older shape decodes with the new fields simply absent. On
+ * 2026-10-08 that meant six minutes where the product dashboard's new
+ * timeframe control rendered the 30d figures under all three labels: the
+ * fallback did its job and the page still showed the same number three ways,
+ * which is a quieter wrong answer than an empty one. A key bump makes the
+ * old blob unreachable instead of stale-but-readable.
+ */
+export const HL_FRONTENDS_KEY = "hl-frontends-v2";
 export const HL_HIP3_KEY = "hl-hip3-v2";
 export const HL_HISTORY_KEY = "hl-history";
+
+/** Per-builder stats snapshot. v2 added `feed` and `byWindow`. */
+export function hlBuilderKey(slug: string): string {
+  return `hl-builder-v2:${slug}`;
+}
 
 /** One evenly-spaced point on a rolling-window history series. `v = null`
  *  means the underlying gauge had no sample at that timestamp (harness

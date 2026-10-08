@@ -53,6 +53,7 @@ import {
   fetchHlHip3CohortFresh,
   fetchHlHistoryFresh,
   HL_FRONTENDS_KEY,
+  hlBuilderKey,
   HL_HIP3_KEY,
   HL_HISTORY_KEY,
 } from "@/lib/hl-builder-stats";
@@ -409,7 +410,7 @@ async function sweep(iteration: number): Promise<void> {
       // global semaphore keeps the concurrency bounded and the whole
       // batch typically completes in a few seconds.
       ...hlBuilders.map((slug) => ({
-        key: `hl-builder:${slug}`,
+        key: hlBuilderKey(slug),
         build: () => fetchHlBuilderStatsFresh(slug),
       })),
     ];
