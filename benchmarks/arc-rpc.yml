@@ -40,7 +40,7 @@ methodology:
   - "Endpoints published by the chain: the RPC endpoints page of the Arc docs lists Circle's primary endpoint plus Alchemy, Blockdaemon, dRPC and QuickNode. The Blockdaemon and QuickNode rows are Arc-branded URLs (rpc.blockdaemon.mainnet.arc.io, rpc.quicknode.mainnet.arc.io) that answer without a key, verified before inclusion, and are measured here as such."
   - "The dRPC row of that table (rpc.drpc.mainnet.arc.io) serves the same free tier as arc.drpc.org, identical x-drpc-owner-id, and is measured once under dRPC; the Alchemy row needs a key and sits in the private cohort."
   - "Private cohort (Access selector, Private): Alchemy, Chainstack, GetBlock and QuickNode probed on their keyed Arc endpoints every 120 seconds from us-east and eu-west, same call (eth_getBlockByNumber, rotating id), same ok / http_err / jsonrpc_err / stale / timeout classification."
-  - "Keys live in the probe environment, never in the repo. Plan tiers, disclosed: Chainstack: a Global Node on the Growth plan, sponsored by Chainstack; QuickNode: an endpoint on the Mobula enterprise-tier account, shared fleet; Alchemy: a Free plan key (30M CU per month, 25 requests per second) normal signup, the tier any reader gets; Alchemy states free and paid keys share one routing; GetBlock: a Starter plan, 50M compute units per month shared by the two probe regions, 20 CU per call."
+  - "Keys live in the probe environment, never in the repo. Plan tiers, disclosed: Chainstack: a Global Node on the Growth plan, sponsored by Chainstack; QuickNode: an endpoint on a Build plan ($49 per month), shared fleet; Alchemy: a Free plan key (30M CU per month, 25 requests per second) normal signup, the tier any reader gets; Alchemy states free and paid keys share one routing; GetBlock: a Starter plan, 50M compute units per month shared by the two probe regions, 20 CU per call."
   - "GetBlock regional pairing: us-east uses GetBlock's New York endpoint and eu-west its Frankfurt endpoint. Alchemy, Chainstack and QuickNode publish one routed entry point per chain instead, which in the general case does land a probe on a nearby node. Some of any gap between the two arrangements is deployment topology rather than node speed, and a deployment in one of these regions would see the same benefit GetBlock's endpoint gives the probe."
   - "GetBlock coverage: GetBlock does not offer Arc in Singapore, so no GetBlock row exists for that region: the endpoint is not offered there, which is not a failed or pending measurement. The whole keyed cohort is therefore measured from us-east and eu-west, because averaging a two-region row against three-region rows would compare different populations."
   - "Two cohorts, two rankings: the public endpoints are shared, rate-limited gateways probed every 60 seconds; the keyed endpoints are metered or dedicated and probed every 120 seconds. The selector switches the whole page (ranking, chart, region tabs, badges, citation) between them. No figure on this page compares a public endpoint with a keyed one."
@@ -311,7 +311,7 @@ providers:
   - slug: quicknode
     name: QuickNode
     tier: keyed
-    tag: Enterprise-tier endpoint (Mobula account), plan disclosed
+    tag: Build plan endpoint, plan disclosed
     formula: "p50 over 24h of round-trip latency (ms) for eth_getBlockByNumber probed every 120 s from us-east and eu-west on QuickNode's keyed Arc endpoint."
     queries:
       p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="quicknode",chain="arc",tier="keyed",region!="sgp"})
