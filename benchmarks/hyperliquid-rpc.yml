@@ -37,7 +37,7 @@ methodology:
   - "Chain scope: every query on this page is pinned to `chain=\"hyperliquid\"`. Provider coverage today: {{count}} no-key endpoints (Hyperliquid Labs official, dRPC, Stakely, Purroof Group, Hypurrscan)."
   - "Excluded by the launch audit: Alchemy demo path (rate-limited dead), thirdweb (`Invalid chain` on HyperEVM), Grove/Pocket public LB (requires an app id at the LB path), AllThatNode + Blast API + Chainstack + Gelato + Imperator HyperEVM paths (DNS-fail or 401 without a key), PublicNode (no HyperEVM subdomain yet). HyperEVM is a young chain (mainnet Feb 2025) so this list will shift quickly."
   - "Private cohort (Access selector, Private): Alchemy, Chainstack, GetBlock and QuickNode probed on their keyed Hyperliquid endpoints every 120 seconds from the same 3 regions, same call (eth_getBlockByNumber, rotating id), same ok / http_err / jsonrpc_err / stale / timeout classification."
-  - "Keys live in the probe environment, never in the repo. Plan tiers, disclosed: Alchemy: the Mobula enterprise-tier key; Alchemy states free and paid keys share one routing; Chainstack: a Global Node on the Growth plan, sponsored by Chainstack; QuickNode: an endpoint on the Mobula enterprise-tier account, shared fleet; GetBlock: a Starter plan, 50M compute units per month shared by the three probe regions, 20 CU per call."
+  - "Keys live in the probe environment, never in the repo. Plan tiers, disclosed: Alchemy: a Free plan key (30M CU per month, 25 requests per second) normal signup, the tier any reader gets; Alchemy states free and paid keys share one routing; Chainstack: a Global Node on the Growth plan, sponsored by Chainstack; QuickNode: an endpoint on a Build plan ($49 per month), shared fleet; GetBlock: a Starter plan, 50M compute units per month shared by the three probe regions, 20 CU per call."
   - "GetBlock regional pairing: each probe region uses GetBlock's nearest endpoint, us-east to New York, eu-west to Frankfurt, sgp to Singapore. Alchemy, Chainstack and QuickNode publish one routed entry point per chain instead, which in the general case does land a probe on a nearby node. Some of any gap between the two arrangements is deployment topology rather than node speed, and a deployment in one of these regions would see the same benefit GetBlock's endpoint gives the probe."
   - "Two cohorts, two rankings: the public endpoints are shared, rate-limited gateways probed every 60 seconds; the keyed endpoints are metered or dedicated and probed every 120 seconds. The selector switches the whole page (ranking, chart, region tabs, badges, citation) between them. No figure on this page compares a public endpoint with a keyed one."
 
@@ -202,7 +202,7 @@ providers:
   - slug: alchemy
     name: Alchemy
     tier: keyed
-    tag: Enterprise-tier key (Mobula account), plan disclosed
+    tag: Free plan key, plan disclosed
     formula: "p50 over 24h of round-trip latency (ms) for eth_getBlockByNumber probed every 120 s from us-east, eu-west and Singapore on Alchemy's keyed HyperEVM endpoint."
     queries:
       p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="alchemy",chain="hyperliquid",tier="keyed"})
@@ -274,7 +274,7 @@ providers:
   - slug: quicknode
     name: QuickNode
     tier: keyed
-    tag: Enterprise-tier endpoint (Mobula account), plan disclosed
+    tag: Build plan endpoint, plan disclosed
     formula: "p50 over 24h of round-trip latency (ms) for eth_getBlockByNumber probed every 120 s from us-east, eu-west and Singapore on QuickNode's keyed HyperEVM endpoint."
     queries:
       p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="quicknode",chain="hyperliquid",tier="keyed"})
