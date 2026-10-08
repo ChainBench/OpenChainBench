@@ -993,6 +993,16 @@ const ALIASES: Record<string, string> = {
   "agoric-official": "agoric",
   "xpla-official": "xpla",
   "xrplevm-official": "xrplevm",
+  // Cold-start cohort on the nine keyed RPC pages (2026-10-08). Same four
+  // providers, same endpoints, measured on a connection that is never
+  // reused, so they need a `-cold` slug to stay distinct from the pooled
+  // rows. Without these aliases the rows render initials instead of marks:
+  // nothing strips a suffix, this table is explicit. Same mistake as the
+  // "-official" slugs earlier today.
+  "getblock-cold": "getblock",
+  "quicknode-cold": "quicknode",
+  "alchemy-cold": "alchemy",
+  "chainstack-cold": "chainstack",
 };
 
 export function logoPath(slug: string): string | null {
