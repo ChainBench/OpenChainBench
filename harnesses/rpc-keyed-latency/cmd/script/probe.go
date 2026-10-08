@@ -178,7 +178,48 @@ func transportFor(warm bool) *http.Transport {
 	return coldTransport
 }
 
+// primeWarm opens (or revives) the pooled connection to url and throws the
+// response away, so the measurement that follows is guaranteed to ride a warm
+// socket instead of hoping one survived.
+//
+// Why this is not optional. Alternating warm and cold ticks doubled each arm's
+// effective interval from 60 s to 120 s, and most endpoints drop an idle
+// connection inside that window. The connection trace on 2026-10-08 showed the
+// consequence plainly: every per-chain hostname logged reused=false and paid a
+// ~10 ms handshake, while shared.eu-central-1.getblock.io logged reused=true
+// because GetBlock serves all nine chains from that one host and the other
+// chains' traffic kept it hot. The "warm" arm was therefore warm for exactly
+// one provider, which is the bug the two arms were introduced to remove, made
+// worse rather than better.
+//
+// Priming costs one extra unmeasured call on warm ticks (+50% request volume,
+// well inside budgets that run 600k-2M per region per month against ~195k
+// used). That is the right trade: a warm number that depends on whether a
+// socket happened to survive is not a measurement, it is a coin flip that
+// favours whoever reuses one hostname across many chains.
+func primeWarm(ctx context.Context, url string, body []byte) {
+	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(body))
+	if err != nil {
+		return
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("User-Agent", "OpenChainBench/1.0 (+https://openchainbench.com)")
+	client := &http.Client{Timeout: probeTimeout, Transport: warmTransport}
+	resp, err := client.Do(req)
+	if err != nil {
+		return
+	}
+	// Drain before closing: a body left unread cannot return to the pool, which
+	// would defeat the entire point of this call.
+	_, _ = io.Copy(io.Discard, resp.Body)
+	_ = resp.Body.Close()
+}
+
 func doPost(ctx context.Context, url string, body []byte, warm bool) (raw []byte, latencyMs float64, classified string, err error) {
+	if warm {
+		primeWarm(ctx, url, body)
+	}
+
 	req, _ := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("User-Agent", "OpenChainBench/1.0 (+https://openchainbench.com)")
@@ -366,6 +407,14 @@ func probeOne(ctx context.Context, e Endpoint) {
 		// a p50 and still leaves the call volume exactly where it was.
 		n++
 		warm := n%2 == 0
+
+		// A warm tick spends TWO requests: the unmeasured priming call plus the
+		// measured one. Reserve the second so the monthly guard counts what we
+		// actually send rather than half of it.
+		if warm && !quota.allow(e.Provider, currentRegion) {
+			rpcCallTotal.WithLabelValues(e.Provider, e.Chain, currentRegion, "quota_paused", "keyed").Inc()
+			return
+		}
 
 		if e.Kind == "solana" {
 			head, result, latency, err = probeSolana(probeCtx, e.URL, warm)
