@@ -3,16 +3,33 @@ package main
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/httptrace"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 )
+
+// traceConn turns on the connection-reuse trace in doPost. Read once at
+// startup so the hot path is a bool test, not a getenv per probe.
+var traceConn = os.Getenv("PROBE_TRACE_CONN") == "1"
+
+// hostOf returns a URL's hostname, so a trace line can name an endpoint
+// WITHOUT printing the key that every keyed URL carries in its path or query.
+func hostOf(raw string) string {
+	u, err := url.Parse(raw)
+	if err != nil || u.Host == "" {
+		return "unparsable"
+	}
+	return u.Hostname()
+}
 
 const (
 	defaultProbeSeconds = 60
@@ -165,6 +182,46 @@ func doPost(ctx context.Context, url string, body []byte, warm bool) (raw []byte
 	req, _ := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("User-Agent", "OpenChainBench/1.0 (+https://openchainbench.com)")
+
+	// PROBE_TRACE_CONN=1: record whether this call rode a pooled connection or
+	// paid a fresh TLS handshake, and what that handshake cost.
+	//
+	// Why this exists. Measured 2026-10-08 from inside this container: a
+	// direct, pooled, 25-sample measurement of these same four endpoints on
+	// Ethereum returns getblock 15.6 ms, quicknode 8.3, chainstack 9.0,
+	// alchemy 13.3. In the same minutes this harness recorded getblock 15-19
+	// but quicknode 25-41, chainstack 32-105, alchemy 37-71. GetBlock is the
+	// only provider whose published number matches a direct measurement; the
+	// other three are reported 4 to 6x slower than they answer. The residual
+	// is about 25 ms, which is exactly what a TLS handshake costs from here.
+	//
+	// The suspicion is structural, not about any provider: GetBlock serves all
+	// nine chains from ONE hostname with the key in the path, so its entry in
+	// Go's shared pool is touched nine times per cycle and stays warm. Every
+	// other provider uses a hostname per chain, touched once per 60 s. If
+	// those are not being reused, this bench has been ranking URL architecture
+	// rather than RPC performance, and the keyed cohort's published order is
+	// wrong.
+	//
+	// Reused/WasIdle settles it either way. Gated: httptrace allocates per
+	// request and this loop runs 9 chains x 4 providers x 3 regions.
+	var connReused, connIdle bool
+	var tlsMs float64
+	if traceConn {
+		var tlsStart time.Time
+		req = req.WithContext(httptrace.WithClientTrace(req.Context(), &httptrace.ClientTrace{
+			GotConn: func(i httptrace.GotConnInfo) {
+				connReused, connIdle = i.Reused, i.WasIdle
+			},
+			TLSHandshakeStart: func() { tlsStart = time.Now() },
+			TLSHandshakeDone: func(tls.ConnectionState, error) {
+				if !tlsStart.IsZero() {
+					tlsMs = float64(time.Since(tlsStart).Nanoseconds()) / 1e6
+				}
+			},
+		}))
+	}
+
 	client := &http.Client{Timeout: probeTimeout, Transport: transportFor(warm)}
 
 	start := time.Now()
@@ -178,6 +235,14 @@ func doPost(ctx context.Context, url string, body []byte, warm bool) (raw []byte
 	// the 24h aggregate down to a nonsensical 0 ms on the BNB + US-East
 	// cell, then rendered as "QuickNode leads at 0 ms" on the UI).
 	latencyMs = float64(time.Since(start).Nanoseconds()) / 1e6
+
+	if traceConn {
+		// hostOf, never the raw URL: every keyed endpoint carries its key in
+		// the path or the query.
+		fmt.Printf("[conn] %-46s reused=%-5v idle=%-5v tls=%4.0fms total=%4.0fms\n",
+			hostOf(url), connReused, connIdle, tlsMs, latencyMs)
+	}
+
 	if err != nil {
 		if ctx.Err() != nil || strings.Contains(err.Error(), "deadline exceeded") || strings.Contains(err.Error(), "Timeout") {
 			return nil, latencyMs, "timeout", err
