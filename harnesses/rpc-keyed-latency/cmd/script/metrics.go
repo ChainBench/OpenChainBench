@@ -34,6 +34,40 @@ var (
 		[]string{"provider", "chain", "region", "tier"},
 	)
 
+	// Cold arm. The existing rpc_latency_milliseconds series becomes the WARM
+	// one from 2026-10-08: a probe on a pooled connection, which is what a
+	// server-side application with a connection pool experiences. These two
+	// record the same call on a connection that is never reused, which is
+	// what a one-shot client or a serverless invocation experiences.
+	//
+	// Separate metric names rather than a `mode` label on the existing ones,
+	// deliberately: the nine keyed specs and the recording rules select on the
+	// current label set, and adding a dimension to a metric a spec already
+	// queries is how you silently turn a published column into two series and
+	// blank it. Same reason the panel label has to equal the provider slug.
+	//
+	// History note for whoever reads a chart across this date: before
+	// 2026-10-08 neither arm existed. Every probe shared one implicit
+	// transport, so a call was warm or cold by accident, depending on how
+	// often its hostname happened to be touched. Series before that date are
+	// a mixture and are not comparable with either arm after it.
+	rpcLatencyCold = promauto.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "rpc_latency_cold_milliseconds",
+			Help: "Latest observed HTTP round-trip in milliseconds on a connection that is NEVER reused (DNS + TCP + TLS paid every call), for `eth_getBlockByNumber(latest)` (EVM) / `getSlot` (Solana) against a keyed RPC endpoint.",
+		},
+		[]string{"provider", "chain", "region", "tier"},
+	)
+
+	rpcLatencyColdHist = promauto.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "rpc_latency_cold_milliseconds_histogram",
+			Help:    "Histogram of cold-connection keyed RPC probe latencies — drives p50/p90/p99 via `quantile_over_time`.",
+			Buckets: []float64{50, 100, 150, 200, 300, 500, 750, 1000, 1500, 2000, 3000, 5000, 10000},
+		},
+		[]string{"provider", "chain", "region", "tier"},
+	)
+
 	rpcCallTotal = promauto.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "rpc_call_total",
