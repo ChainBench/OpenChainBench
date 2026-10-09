@@ -11,8 +11,31 @@
  */
 
 export type ProviderRegistryEntry = {
-  url: string;
-  description: string;
+  /**
+   * Optional since 2026-10-09, for the opposite reason to `description`
+   * below. A sweep of all 341 published URLs found domains that had simply
+   * died since someone added them: NXDOMAIN, a refused connection, a
+   * certificate for another host. Nothing in the build ever fetches these, so
+   * a link rots silently and we keep serving it as the product's official
+   * site. Dropping the field is better than publishing a dead destination,
+   * and it keeps the entry's description and Twitter handle.
+   *
+   * getProviderRegistry already coerced a rejected URL to "" at the access
+   * boundary, so every render site had to cope with a falsy url anyway.
+   */
+  url?: string;
+  /**
+   * Optional since 2026-10-09. It used to be required, which meant a provider
+   * could not get its official link published without someone also writing a
+   * sober one-liner for it, and 192 product pages were shipping with no
+   * outbound link at all as a result. A verified URL is worth publishing on
+   * its own; the description is enrichment and can follow.
+   *
+   * Every consumer guards it. The product page skips the paragraph, the
+   * metadata builder falls back to the rank sentence, and /compare passes it
+   * through as an optional prop.
+   */
+  description?: string;
   twitter?: string;
 
   // Optional rich content surfaced on the product detail page when present.
@@ -140,13 +163,13 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     twitter: "@RaydiumProtocol",
   },
   openocean: {
-    url: "https://openocean.finance",
+    url: "https://app.openocean.finance",
     description:
       "Multi-chain DEX aggregator. v4 swap API quotes and routes across EVM chains and Solana, aggregating across multiple AMMs with gas-aware path selection.",
     twitter: "@OpenOceanGlobal",
   },
   moralis: {
-    url: "https://moralis.io",
+    url: "https://moralis.com",
     description:
       "Multi-chain Web3 data API across EVM chains and Solana. REST endpoints for tokens, NFTs, wallets, balances, and prices.",
     twitter: "@MoralisWeb3",
@@ -274,7 +297,7 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     twitter: "@KyberNetwork",
   },
   paraswap: {
-    url: "https://www.paraswap.xyz",
+    url: "https://www.velora.xyz",
     description:
       "DEX aggregator and DeFi middleware layer. The Augustus Router splits orders across AMMs, PMMs, and direct pools on 10+ EVM chains to minimize price impact and gas costs. Also offers a developer SDK for integrating best-execution routing into dApps and wallets.",
     twitter: "@paraswap",
@@ -477,7 +500,7 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     parent: "helius",
   },
   nozomi: {
-    url: "https://www.temporal.xyz/nozomi",
+    url: "https://www.temporal.xyz/services/nozomi",
     description:
       "Solana transaction landing service by Temporal Labs. Direct-to-leader submission from 9 colocated regions, tip paid only on successful landing.",
     twitter: "@temporal_xyz",
@@ -627,7 +650,7 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     twitter: "@lifiprotocol",
   },
   debridge: {
-    url: "https://debridge.finance",
+    url: "https://debridge.com",
     description:
       "Cross-chain intent protocol using the DLN solver network. Liquidity is filled by solvers on the destination chain, no wrapped assets or LP pools.",
     twitter: "@deBridgeFinance",
@@ -740,7 +763,7 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     twitter: "@BNBCHAIN",
   },
   avalanche: {
-    url: "https://www.avax.network",
+    url: "https://www.avalanche.com",
     description:
       "Primary Network runs the Snowman BFT consensus derived from Snow protocols. Sub-second deterministic finality with no chain reorganizations.",
     twitter: "@avax",
@@ -1058,7 +1081,7 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     twitter: "@thirdweb",
   },
   gelato: {
-    url: "https://gelato.network",
+    url: "https://gelato.cloud",
     description:
       "Gelato Network runs a rollup-as-a-service platform and operates RPC infrastructure for OP Stack + Arbitrum Orbit chains it hosts. On the RPC latency cluster it appears as the Kraken Ink chain's Gelato-backed official endpoint (`rpc-gel.inkonchain.com`), running active-active alongside the QuickNode-backed sibling.",
     twitter: "@gelatonetwork",
@@ -1141,7 +1164,7 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     twitter: "@flashbots",
   },
   cloudflare: {
-    url: "https://cloudflare-eth.com",
+    url: "https://www.cloudflare.com/products/web3/",
     description:
       "Cloudflare's public Ethereum gateway. Recently switched to a permissioned mode for many JSON-RPC methods, returning `-32046 Cannot fulfill request` for most endpoints.",
     twitter: "@Cloudflare",
@@ -1451,13 +1474,12 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     twitter: "@coin98_wallet",
   },
   coinpilot: {
-    url: "https://www.trycoinpilot.com",
+    url: "https://coinpilot.com",
     description:
       "Coinpilot is a non custodial mobile copy trading app that mirrors top Hyperliquid traders' perp positions in real time using a registered builder code.",
     twitter: "@trycoinpilot",
   },
   echosync: {
-    url: "https://www.echosync.io",
     description:
       "EchoSync is a copy trading platform for Hyperliquid and Aster that replicates top traders' perp positions with configurable ratios, executing via a registered builder code.",
     twitter: "@echosync",
@@ -1505,7 +1527,6 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     twitter: "@BasedBot",
   },
   trojan: {
-    url: "https://trojan.bot",
     description:
       "Trojan is a Telegram trading bot for Solana memecoins. It provides fast sniping, copy trading, limit orders and MEV protection, charging a 0.9% fee per trade routed through pump.fun and Raydium pools.",
     twitter: "@solana_trojan",
@@ -1579,7 +1600,6 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     twitter: "@dextrabot",
   },
   kinto: {
-    url: "https://kinto.xyz",
     description:
       "Kinto was a non custodial smart wallet modular exchange that routed perps trading into Hyperliquid via a registered builder code. The project announced its shutdown in September 2025; its builder address remains on chain.",
     twitter: "@KintoXYZ",
@@ -1765,7 +1785,6 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     twitter: "@senpi_ai",
   },
   superx: {
-    url: "https://trysuper.co",
     description:
       "Hyperliquid trading dashboard and Telegram bot offering discretionary perps trading and copy trading from curated vaults and wallets.",
     twitter: "@trysuper_",
@@ -1806,7 +1825,7 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     features: ["Country passed as a parameter", "Itemized feeBreakdown", "Staging host for integration tests"],
   },
   ramp: {
-    url: "https://ramp.network",
+    url: "https://rampnetwork.com",
     description:
       "Fiat to crypto on-ramp and off-ramp with a host API. One quote call returns the crypto amount and applied fee for every payment method at once, with the asset price alongside.",
     longDescription:
@@ -1926,7 +1945,7 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     twitter: "@massdotmoney",
   },
   moonbot: {
-    url: "https://moon-bot.com",
+    url: "https://moonbot.pro",
     description:
       "Advanced manual and automated trading terminal supporting CEXs and Hyperliquid with on chart order placement and strategy automation.",
     twitter: "@moonboteth",
@@ -1944,7 +1963,6 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     twitter: "@try_supercexy",
   },
   superstack: {
-    url: "https://superstack.xyz",
     description:
       "Custom built trading platform on Hyperliquid bringing institutional grade tools and capital efficiency to retail traders.",
     twitter: "@superstackxyz",
@@ -1980,7 +1998,6 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     twitter: "@tread_fi",
   },
   flowbot: {
-    url: "https://flowbot.pro",
     description:
       "Automated volume trading bot built to help traders earn perp DEX points and rewards on Hyperliquid without manual market making.",
     twitter: "@T0nyCrypt0",
@@ -2091,7 +2108,7 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   },
   // ─── Perp DEX valuation (bench 265 perp-pf-ratio) ─────────────
   avantis: {
-    url: "https://avantisfi.com",
+    url: "https://www.veranta.xyz",
     description:
       "Avantis is a synthetic perpetuals DEX on Base covering crypto, forex and commodities. Trades settle against a USDC vault with oracle pricing; AVNT is the protocol token.",
     twitter: "@avantisfi",
@@ -2312,7 +2329,7 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     twitter: "@variational_io",
   },
   ostium: {
-    url: "https://ostium.app",
+    url: "https://app.ostium.com",
     description:
       "Arbitrum-based perp DEX specialized in RWA exposure including FX, commodities and indices.",
     twitter: "@ostium_app",
@@ -2674,7 +2691,7 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
 
   // ─── Algorand providers (bench 214) ───
   algonode: {
-    url: "https://algonode.io",
+    url: "https://nodely.io",
     description:
       "AlgoNode is a community-operated free Algorand mainnet node (mainnet-api.algonode.cloud). No API key required; provides both algod (API) and indexer endpoints for the Algorand ecosystem.",
     twitter: "@algonode_io",
@@ -2757,7 +2774,7 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   },
   // ─── Hedera providers (bench 218) ────────────────────────────────
   hashio: {
-    url: "https://swirldslabs.com/hashio",
+    url: "https://hashgraph.com",
     description:
       "Hashio is a free public EVM-compatible JSON-RPC gateway for Hedera Hashgraph, operated by Swirlds Labs. No API key required; supports standard Ethereum JSON-RPC 2.0 methods.",
     twitter: "@SwirldsLabs",
@@ -2770,7 +2787,6 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     twitter: "@NervosNetwork",
   },
   ckbapp: {
-    url: "https://ckbapp.dev",
     description:
       "CKBapp community-operated Nervos CKB mainnet public RPC node (mainnet.ckbapp.dev/rpc). Provides JSON-RPC access without an API key.",
   },
@@ -2790,7 +2806,7 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   },
   // ─── NEO N3 providers (bench 221) ────────────────────────────────
   nspcc: {
-    url: "https://nspcc.ru",
+    url: "https://nspcc.io",
     description:
       "NSPCC (Russian National Crypto Standard Committee) operates a public NEO N3 mainnet RPC node at rpc10.n3.nspcc.ru:10331. No API key required.",
   },
@@ -2815,7 +2831,6 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "ECADinfra operates a public Tezos mainnet node (mainnet.ecadinfra.com). Provides the Tezos RPC API without an API key.",
   },
   tzbeta: {
-    url: "https://tzbeta.net",
     description:
       "TzBeta public Tezos mainnet RPC node (rpc.tzbeta.net). Free community-run Tezos RPC endpoint, no API key required.",
   },
@@ -2840,7 +2855,7 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     twitter: "@EOS_Nation",
   },
   alohaeos: {
-    url: "https://www.alohaeos.com",
+    url: "https://www.alohablocks.com",
     description:
       "Aloha EOS is a block producer for EOS. Operates a public EOS mainnet API node (api.main.alohaeos.com), no API key required.",
     twitter: "@AlohaEOS",
@@ -2869,7 +2884,6 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
 
   // ─── Waves providers (bench 225) ──────────────────────────────
   wavesnodes: {
-    url: "https://wavesnodes.com",
     description:
       "Wavesnodes.com community-operated public Waves mainnet node (nodes.wavesnodes.com). Provides the Waves REST API without an API key.",
   },
@@ -2908,7 +2922,7 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     twitter: "@p2pvalidator",
   },
   everstake: {
-    url: "https://everstake.one",
+    url: "https://everstake.com",
     description:
       "Everstake is a staking provider that also runs public RPC infrastructure. Operates a public Neon EVM mainnet node (neon-mainnet.everstake.one), no API key required.",
     twitter: "@everstake_pool",
@@ -3021,7 +3035,7 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
 
   // ─── Tezos providers (bench 222) ────────────────────────────
   smartpy: {
-    url: "https://smartpy.io",
+    url: "https://smartpy.tezos.com",
     description:
       "SmartPy public Tezos mainnet RPC node (mainnet.smartpy.io). Open-source Tezos development toolkit; the public node is operated alongside their IDE and testing tools.",
     twitter: "@SmartPy_io",
@@ -3063,7 +3077,7 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
 
   // ─── OKTC providers (bench 231) ───────────────────────────────
   "oktc-official": {
-    url: "https://www.okx.com/oktc",
+    url: "https://www.okx.com",
     description:
       "OKX Chain (OKTC) official public EVM RPC node (exchainrpc.okex.org). Provides standard Ethereum JSON-RPC for OKX Token Chain mainnet, no API key required.",
     twitter: "@OKXOfficial",
@@ -3192,7 +3206,6 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     twitter: "@helloiconworld",
   },
   iconblockchain: {
-    url: "https://iconblockchain.xyz",
     description:
       "iconblockchain.xyz community-operated public ICON RPC node. Keyless icx_getLastBlock endpoint.",
   },
@@ -3215,6 +3228,175 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "High Stakes Swiss validator and public RPC operator. Provides keyless Tendermint RPC endpoints for multiple Cosmos SDK chains including Union.",
     twitter: "@HighStakesCH",
   },
+
+  // ─── Official URLs, researched and verified 2026-10-09 ────────
+  // 192 product pages were rendering with no outbound link at all, because
+  // the link block needs a registry entry and these providers had none.
+  // Each URL below was fetched: it answers, its final host is the one we
+  // asked for, it carries no domain-broker boilerplate, and the page names
+  // the product. URL only, no description: a verified link is worth
+  // publishing on its own and prose can follow. Several rows of one brand
+  // (market categories, numbered validators) share a host on purpose.
+  // Still unpublished on purpose: a joint-venture validator with no site of
+  // its own, and three destinations whose evidence was too thin.
+  "0g-official": { url: "https://0g.ai" },
+  aave: { url: "https://aave.com" },
+  aerodrome: { url: "https://aerodrome.finance" },
+  "agoric-official": { url: "https://agoric.com" },
+  alphafi: { url: "https://alphafi.xyz" },
+  alphaticks: { url: "https://alphaticks.io" },
+  "anchorage-by-figment": { url: "https://www.anchorage.com" },
+  "ansem-io": { url: "https://ansem.io" },
+  "apex-protocol": { url: "https://www.apex.exchange" },
+  "archway-official": { url: "https://archway.io" },
+  arguspad: { url: "https://argus.world" },
+  asxn: { url: "https://www.asxn.xyz" },
+  "asymmetric-research": { url: "https://asymmetric.com" },
+  "b-harvest": { url: "https://altuslabs.io" },
+  "banana-gun": { url: "https://bananagun.io" },
+  benqi: { url: "https://benqi.fi" },
+  "berachain-official": { url: "https://berachain.com" },
+  "blast-official": { url: "https://blast.io" },
+  blinklabs: { url: "https://blinklabs.xyz" },
+  bloom: { url: "https://www.bloombot.app" },
+  "boba-official": { url: "https://boba.network" },
+  "bonk-fun": { url: "https://bonk.fun" },
+  bonkbot: { url: "https://bonkbot.io" },
+  cap: { url: "https://cap.app" },
+  "celo-official": { url: "https://celo.org" },
+  centrifuge: { url: "https://centrifuge.io" },
+  cetus: { url: "https://cetus.zone" },
+  chainflip: { url: "https://chainflip.io" },
+  "chiliz-official": { url: "https://chiliz.com" },
+  coingecko: { url: "https://coingecko.com" },
+  "compound-finance": { url: "https://compound.xyz" },
+  "conflux-global": { url: "https://confluxnetwork.org" },
+  "conflux-official": { url: "https://confluxnetwork.org" },
+  "convex-finance": { url: "https://convexfinance.com" },
+  "coreum-official": { url: "https://tx.org" },
+  cowswap: { url: "https://cow.fi" },
+  "cp0x-by-stakr-space": { url: "https://stakr.space" },
+  "cronos-official": { url: "https://cronos.com" },
+  "cronos-zkevm-official": { url: "https://zkevm.cronos.org" },
+  "curve-finance": { url: "https://curve.finance" },
+  definitive: { url: "https://definitive.fi" },
+  dolomite: { url: "https://dolomite.io" },
+  ecostake: { url: "https://www.ecostake.com" },
+  "ekubo-protocol": { url: "https://ekubo.org" },
+  elrond: { url: "https://multiversx.com" },
+  "enigma-hypedexer-com-x-meria": { url: "https://hypedexer.com" },
+  "ether-fi": { url: "https://www.ether.fi" },
+  "etherlink-official": { url: "https://www.etherlink.com" },
+  euler: { url: "https://www.euler.finance" },
+  "fantom-official": { url: "https://fantom.foundation" },
+  figment: { url: "https://www.figment.io" },
+  flap: { url: "https://flap.sh" },
+  flowdex: { url: "https://www.flowdesk.co" },
+  fluid: { url: "https://fluid.io" },
+  "frax-finance": { url: "https://frax.com" },
+  "fraxtal-official": { url: "https://frax.com" },
+  g4mm4: { url: "https://www.g4mm4.io" },
+  "gains-network": { url: "https://gains.trade" },
+  galaxydigital: { url: "https://www.galaxy.com" },
+  "gnosis-official": { url: "https://www.gnosis.io" },
+  "gravity-official": { url: "https://gravity.xyz" },
+  "haqq-official": { url: "https://haqq.network" },
+  "harmony-s0": { url: "https://harmony.one" },
+  humidifi: { url: "https://humidifi.xyz" },
+  "hydration-official": { url: "https://hydration.net" },
+  "hyper-foundation-1": { url: "https://hyperfoundation.org" },
+  "hyper-foundation-2": { url: "https://hyperfoundation.org" },
+  "hyper-foundation-3": { url: "https://hyperfoundation.org" },
+  "hyper-foundation-4": { url: "https://hyperfoundation.org" },
+  "hyper-foundation-5": { url: "https://hyperfoundation.org" },
+  hyperlend: { url: "https://hyperlend.finance" },
+  "hyperliquid-hip3": { url: "https://hyperliquid.xyz" },
+  "hypurrcorea-spacebar-x-despread": { url: "https://hypurrcorea.com" },
+  "infinitefield-xyz": { url: "https://infinitefield.xyz" },
+  io: { url: "https://entropy.io" },
+  "iotex-mirror": { url: "https://iotex.io" },
+  justlend: { url: "https://justlend.org" },
+  "kalshi-all": { url: "https://kalshi.com" },
+  "kalshi-crypto": { url: "https://kalshi.com" },
+  "kalshi-politics": { url: "https://kalshi.com" },
+  "kalshi-sports": { url: "https://kalshi.com" },
+  kamino: { url: "https://kamino.com" },
+  "katana-official": { url: "https://katana.network" },
+  kinetiq: { url: "https://kinetiq.xyz" },
+  letsbonk: { url: "https://letsbonk.fun" },
+  lido: { url: "https://lido.fi" },
+  liquid8: { url: "https://pocketprotector.xyz" },
+  "lista-dao": { url: "https://lista.org" },
+  "long-xyz": { url: "https://long.xyz" },
+  "maple-finance": { url: "https://maple.finance" },
+  meria: { url: "https://meria.com" },
+  "metamask-alt": { url: "https://metamask.io" },
+  meteora: { url: "https://www.meteora.ag" },
+  mevblocker: { url: "https://mevblocker.io" },
+  mkts: { url: "https://markets.xyz" },
+  moonwell: { url: "https://moonwell.fi" },
+  morpho: { url: "https://morpho.org" },
+  "navi-protocol": { url: "https://naviprotocol.io" },
+  "neox-official-1": { url: "https://x.neo.org" },
+  "neox-official-2": { url: "https://x.neo.org" },
+  nethermind: { url: "https://www.nethermind.io" },
+  "nibiru-official": { url: "https://nibiru.fi" },
+  re: { url: "https://re.xyz" },
+  "reya-official": { url: "https://reya.xyz" },
+  "rhea-finance": { url: "https://rhea.finance" },
+  "rocket-pool": { url: "https://rocketpool.net" },
+  sanctum: { url: "https://sanctum.so" },
+  securitize: { url: "https://securitize.io" },
+  "soneium-official": { url: "https://soneium.org" },
+  "sonic-official": { url: "https://soniclabs.com" },
+  stader: { url: "https://staderlabs.com" },
+  "stake-link": { url: "https://stake.link" },
+  stavr: { url: "https://stavr.tech" },
+  stonkfun: { url: "https://www.stonkfun.xyz" },
+  sun: { url: "https://sun.io" },
+  "superseed-official": { url: "https://superseed.xyz" },
+  "tac-official": { url: "https://tac.build" },
+  "taiko-official": { url: "https://taiko.xyz" },
+  "tatum-zebra": { url: "https://tatum.io" },
+  "tempo-official": { url: "https://tempo.xyz" },
+  "thorchain-dex": { url: "https://thorchain.org" },
+  "unichain-official": { url: "https://unichain.org" },
+  unifra: { url: "https://unifra.io" },
+  uniswap: { url: "https://uniswap.org" },
+  "usd-ai": { url: "https://usd.ai" },
+  validao: { url: "https://validao.xyz" },
+  "vana-official": { url: "https://vana.org" },
+  velodrome: { url: "https://velodrome.finance" },
+  venus: { url: "https://venus.io" },
+  "warden-official": { url: "https://wardenprotocol.org" },
+  "wemix-official": { url: "https://www.wemix.com" },
+  "world-liberty-financial": { url: "https://worldlibertyfinancial.com" },
+  "xdc-erpc": { url: "https://xdc.org" },
+  "xpla-official": { url: "https://conx.xyz" },
+  "xrplevm-official": { url: "https://xrplevm.org" },
+  "zigchain-official": { url: "https://zigchain.com" },
+  "zircuit-official": { url: "https://www.zircuit.com" },
+  "zksync-official": { url: "https://zksync.io" },
+
+  "o1-exchange": { url: "https://o1.exchange" },
+  "oasis-official": { url: "https://oasis.net" },
+  "ondo-finance": { url: "https://ondo.finance" },
+  "orai-official": { url: "https://orai.io" },
+  orca: { url: "https://www.orca.so" },
+  pendle: { url: "https://www.pendle.finance" },
+  pepeboost: { url: "https://docs.pepeboost.io" },
+  "persistence-official": { url: "https://persistence.one" },
+  "polymarket-all": { url: "https://polymarket.com" },
+  "polymarket-crypto": { url: "https://polymarket.com" },
+  "polymarket-other": { url: "https://polymarket.com" },
+  "polymarket-politics": { url: "https://polymarket.com" },
+  "polymarket-sports": { url: "https://polymarket.com" },
+  pons: { url: "https://ponsfamily.com" },
+  "pons-family": { url: "https://ponsfamily.com" },
+  "pulsechain-official": { url: "https://pulsechain.com" },
+  pump: { url: "https://pump.fun" },
+  pumpfun: { url: "https://pump.fun" },
+  quickswap: { url: "https://quickswap.exchange" },
 };
 
 /**

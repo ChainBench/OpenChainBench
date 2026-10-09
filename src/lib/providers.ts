@@ -55,6 +55,18 @@ const PRODUCT_ALIASES: Record<string, string> = {
   // Arc publishes a keyless QuickNode endpoint under its own domain; the
   // product page is QuickNode's.
   "arc-quicknode": "quicknode",
+  // The cold-start cohort added on 2026-10-08 is the same four vendors on a
+  // connection that is never reused. Each `-cold` slug built its own product
+  // page: four indexable duplicates of the real provider, with no description
+  // and no official link, because the registry has no entry for them. They are
+  // a measurement arm, not a product. Folding them here collapses their bench
+  // appearances onto the vendor's page and leaves one page per vendor, which
+  // also restores parity with the logo-manifest ALIASES entries they already
+  // have.
+  "alchemy-cold": "alchemy",
+  "chainstack-cold": "chainstack",
+  "getblock-cold": "getblock",
+  "quicknode-cold": "quicknode",
   // Vertex wound down on Arbitrum; the team's venue is Nado on Ink and the
   // cohort row moved with it on 2026-09-22.
   vertex: "nado",
