@@ -351,7 +351,25 @@ func main() {
 	defer cancel()
 
 	go runChainlink(ctx, specs)
-	go runPyth(ctx, specs)
+	// Pyth is paused, not removed. Hermes' price paths
+	// (/api/latest_price_feeds and /v2/updates/price/latest) now answer 401
+	// to an anonymous client, so this poller had fetched nothing for at
+	// least 30 days while burning ~34,500 rejected requests a day at a third
+	// party. The gate is endpoint-scoped, not an IP block: /v2/price_feeds
+	// on the same host still returns 200.
+	//
+	// Nothing published was wrong, which is why it went unnoticed. The
+	// headline reads the time-aligned family, and lookupNearest cannot find
+	// a 30-day-old point inside alignTolerance, so Pyth was silently dropped
+	// and the figures stayed honest 3-source deviations. What failed is
+	// detection: the price gauge holds its last value forever, and
+	// ocb_oracle_alignment_miss_total reads 0 for every Pyth pair because a
+	// miss is only counted once a lookup is attempted. Only
+	// ocb_oracle_scrape_errors_total moved, and nobody reads it.
+	//
+	// Re-enable the moment a key exists: set PYTH_HERMES_KEY and restore the
+	// call. See the spec's Sources bullet, which now says three.
+	// go runPyth(ctx, specs)
 	go runBinance(ctx, specs)
 	go runCoinbase(ctx, specs)
 	go runLatencyUpdater(ctx)
