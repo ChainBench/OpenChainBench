@@ -17,6 +17,7 @@
 
 import { unstable_cache } from "next/cache";
 import { loadBenchFromBlob } from "@/lib/bench-blob";
+import { DEV_ONLY_BENCH_SLUGS, REMOVED_BENCH_SLUGS } from "@/lib/removed-benches";
 import type { Benchmark, ProviderResult } from "@/types/benchmark";
 
 export type DataApiGroup =
@@ -83,7 +84,24 @@ const BENCH_GROUP: Record<string, DataApiGroup> = {
   "nft-collection-metadata": "nft-data",
 };
 
-const BENCH_SLUGS = Object.keys(BENCH_GROUP);
+/**
+ * Filtered through the retirement sets, because BENCH_GROUP above is a
+ * hand-written map and a hand-written map goes stale the day a bench is
+ * retired. This one had: indexing-freshness (retired 2026-08-05) and
+ * portfolio-chain-coverage both stayed in it, and every surface reading this
+ * list rendered a link to a page that answers 410 — the /data-api hub, and
+ * the data-API section on /products/mobula ("Wallet indexing freshness 1.5 s
+ * rank #1") and /products/moralis.
+ *
+ * The product pages are the reason this belongs here rather than only in the
+ * hub page: their own living-appearance filter does not reach this section,
+ * so filtering at the one place the list is built is what actually closes it.
+ *
+ * Names stay in BENCH_GROUP so an un-retirement restores the bench on its own.
+ */
+const BENCH_SLUGS = Object.keys(BENCH_GROUP).filter(
+  (slug) => !REMOVED_BENCH_SLUGS.has(slug) && !DEV_ONLY_BENCH_SLUGS.has(slug),
+);
 
 /** Short display titles for table rows (trimmed from the full spec title). */
 const BENCH_SHORT_TITLE: Record<string, string> = {

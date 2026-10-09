@@ -5,6 +5,7 @@ import { pageMetadata } from "@/lib/page-metadata";
 import { safeJsonLd, buildBreadcrumbJsonLd } from "@/lib/jsonld";
 import { SITE } from "@/data/site";
 import { withUtm } from "@/lib/utm";
+import { DEV_ONLY_BENCH_SLUGS, REMOVED_BENCH_SLUGS } from "@/lib/removed-benches";
 
 /**
  * Hub landing page for the data API vertical: price feeds, token metadata,
@@ -27,7 +28,24 @@ export const metadata: import("next").Metadata = pageMetadata({
 
 export const revalidate = 3600;
 
-const BENCH_SLUGS = [
+/**
+ * The vertical's benches, as curated rather than derived: this hub groups
+ * and orders them editorially, so the list is written out.
+ *
+ * Filtered against the retirement sets before use. A hand-written list of
+ * slugs goes stale the day a bench is retired, and this one had: it still
+ * carried indexing-freshness (retired 2026-08-05) and
+ * portfolio-chain-coverage, both of which 410 on prod, and the first of them
+ * dragged /products/zerion onto the page as well — zerion has no product
+ * page and is itself in the removal set, exactly as the comment beside it
+ * there predicts ("zerion ... appear[s] in stale Redis results from retired
+ * benches (indexing-freshness for zerion)").
+ *
+ * Three dead internal links on a live hub page, found by probing them. The
+ * filter is the fix rather than deleting the two entries, so the next
+ * retirement cannot put them back.
+ */
+const CURATED_BENCH_SLUGS = [
   "aggregator-head-lag",
   "metadata-coverage",
   "asset-registry-coverage",
@@ -38,6 +56,10 @@ const BENCH_SLUGS = [
   "dex-network-coverage",
   "nft-collection-metadata",
 ] as const;
+
+const BENCH_SLUGS = CURATED_BENCH_SLUGS.filter(
+  (slug) => !REMOVED_BENCH_SLUGS.has(slug) && !DEV_ONLY_BENCH_SLUGS.has(slug),
+);
 
 export default async function DataApiHubPage() {
   const snapshot = await fetchDataApiSnapshot();
@@ -147,16 +169,13 @@ export default async function DataApiHubPage() {
               tip="Best provider on aggregator-head-lag (p50 head lag, 24h, all chains & regions)."
               accent="#f59e0b"
             />
-            <KpiCard
-              label="Fastest wallet indexing"
-              value={
-                snapshot.totals.headlineIndexing
-                  ? `${snapshot.totals.headlineIndexing.name} · ${snapshot.totals.headlineIndexing.value}`
-                  : "..."
-              }
-              tip="Best provider on indexing-freshness: seconds from Base tx confirm to API visibility (p50, 24h)."
-              accent="#10b981"
-            />
+            {/* The "Fastest wallet indexing" tile was removed on 2026-10-09
+                with the bench behind it. indexing-freshness retired on
+                2026-08-05, so headlineIndexing has been null ever since and
+                the tile rendered its fallback, "...", which reads as data
+                still loading rather than a bench that no longer exists. The
+                snapshot field stays and stays null, so the tile comes back
+                on its own if the bench ever does. */}
           </section>
 
           {/* Group summary pills */}
