@@ -40,7 +40,7 @@ type Quote struct {
 // profile costs on this provider, or reports why it cannot be computed.
 func unitsPerRequest(p Provider, pr Profile) (float64, error) {
 	w, ok := p.Weights[pr.Chain]
-	if !ok {
+	if !ok || w.IsEmpty() {
 		return 0, fmt.Errorf("provider does not price %s", pr.Chain)
 	}
 	// A provider with a real archive price list uses it wholesale, and

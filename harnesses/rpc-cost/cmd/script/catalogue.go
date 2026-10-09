@@ -111,6 +111,20 @@ func (w Weights) Weight(method string) (float64, bool) {
 	return 0, false
 }
 
+// IsEmpty reports a chain the provider does not price at all, written in the
+// catalogue as `ethereum: null` under weights.
+//
+// The key exists, so a plain map lookup finds it and hands back a table with
+// nothing in it, and the first method then fails for want of a weight. That
+// produced the right verdict with the wrong explanation: Syndica, Triton and
+// Coinbase CDP each read "no published unit cost for eth_blockNumber", which
+// sounds like a provider being coy about one method when the catalogue in
+// fact says the chain is not served. It only mattered in a log line until the
+// cost curve started printing the reason next to the provider's name.
+func (w Weights) IsEmpty() bool {
+	return w.Default == nil && len(w.Methods) == 0
+}
+
 type Plan struct {
 	ID           string     `yaml:"id"`
 	Name         string     `yaml:"name"`

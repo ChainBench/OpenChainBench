@@ -338,12 +338,12 @@
       {
        "r": 100000,
        "usd": null,
-       "why": "no published unit cost for eth_getBalance"
+       "why": "provider does not price ethereum"
       },
       {
        "r": 5000000000,
        "usd": null,
-       "why": "no published unit cost for eth_getBalance"
+       "why": "provider does not price ethereum"
       }
      ]
     },
@@ -1358,12 +1358,12 @@
       {
        "r": 100000,
        "usd": null,
-       "why": "no published unit cost for eth_getBalance"
+       "why": "provider does not price ethereum"
       },
       {
        "r": 5000000000,
        "usd": null,
-       "why": "no published unit cost for eth_getBalance"
+       "why": "provider does not price ethereum"
       }
      ]
     },
@@ -1682,12 +1682,12 @@
       {
        "r": 100000,
        "usd": null,
-       "why": "no published unit cost for eth_getBalance"
+       "why": "provider does not price ethereum"
       },
       {
        "r": 5000000000,
        "usd": null,
-       "why": "no published unit cost for eth_getBalance"
+       "why": "provider does not price ethereum"
       }
      ]
     },
@@ -2112,12 +2112,12 @@
       {
        "r": 100000,
        "usd": null,
-       "why": "no published unit cost for eth_blockNumber"
+       "why": "provider does not price ethereum"
       },
       {
        "r": 5000000000,
        "usd": null,
-       "why": "no published unit cost for eth_blockNumber"
+       "why": "provider does not price ethereum"
       }
      ]
     },
@@ -3127,12 +3127,12 @@
       {
        "r": 100000,
        "usd": null,
-       "why": "no published unit cost for eth_blockNumber"
+       "why": "provider does not price ethereum"
       },
       {
        "r": 5000000000,
        "usd": null,
-       "why": "no published unit cost for eth_blockNumber"
+       "why": "provider does not price ethereum"
       }
      ]
     },
@@ -3451,12 +3451,12 @@
       {
        "r": 100000,
        "usd": null,
-       "why": "no published unit cost for eth_blockNumber"
+       "why": "provider does not price ethereum"
       },
       {
        "r": 5000000000,
        "usd": null,
-       "why": "no published unit cost for eth_blockNumber"
+       "why": "provider does not price ethereum"
       }
      ]
     },
@@ -3896,12 +3896,12 @@
       {
        "r": 100000,
        "usd": null,
-       "why": "no published unit cost for eth_getBlockByNumber"
+       "why": "provider does not price ethereum"
       },
       {
        "r": 5000000000,
        "usd": null,
-       "why": "no published unit cost for eth_getBlockByNumber"
+       "why": "provider does not price ethereum"
       }
      ]
     },
@@ -4821,12 +4821,12 @@
       {
        "r": 100000,
        "usd": null,
-       "why": "no published unit cost for eth_getBlockByNumber"
+       "why": "provider does not price ethereum"
       },
       {
        "r": 5000000000,
        "usd": null,
-       "why": "no published unit cost for eth_getBlockByNumber"
+       "why": "provider does not price ethereum"
       }
      ]
     },
@@ -4875,12 +4875,12 @@
       {
        "r": 100000,
        "usd": null,
-       "why": "no published unit cost for eth_getBlockByNumber"
+       "why": "provider does not price ethereum"
       },
       {
        "r": 5000000000,
        "usd": null,
-       "why": "no published unit cost for eth_getBlockByNumber"
+       "why": "provider does not price ethereum"
       }
      ]
     },
@@ -5300,12 +5300,12 @@
       {
        "r": 100000,
        "usd": null,
-       "why": "no published unit cost for debug_traceTransaction"
+       "why": "provider does not price ethereum"
       },
       {
        "r": 5000000000,
        "usd": null,
-       "why": "no published unit cost for debug_traceTransaction"
+       "why": "provider does not price ethereum"
       }
      ]
     },
@@ -6055,12 +6055,12 @@
       {
        "r": 100000,
        "usd": null,
-       "why": "no published unit cost for debug_traceTransaction"
+       "why": "provider does not price ethereum"
       },
       {
        "r": 5000000000,
        "usd": null,
-       "why": "no published unit cost for debug_traceTransaction"
+       "why": "provider does not price ethereum"
       }
      ]
     },
@@ -6109,12 +6109,12 @@
       {
        "r": 100000,
        "usd": null,
-       "why": "no published unit cost for debug_traceTransaction"
+       "why": "provider does not price ethereum"
       },
       {
        "r": 5000000000,
        "usd": null,
-       "why": "no published unit cost for debug_traceTransaction"
+       "why": "provider does not price ethereum"
       }
      ]
     },
@@ -6489,12 +6489,12 @@
       {
        "r": 100000,
        "usd": null,
-       "why": "no published unit cost for getAccountInfo"
+       "why": "provider does not price solana"
       },
       {
        "r": 5000000000,
        "usd": null,
-       "why": "no published unit cost for getAccountInfo"
+       "why": "provider does not price solana"
       }
      ]
     },
@@ -6943,12 +6943,12 @@
       {
        "r": 100000,
        "usd": null,
-       "why": "no published unit cost for getAccountInfo"
+       "why": "provider does not price solana"
       },
       {
        "r": 5000000000,
        "usd": null,
-       "why": "no published unit cost for getAccountInfo"
+       "why": "provider does not price solana"
       }
      ]
     },
@@ -6961,12 +6961,12 @@
       {
        "r": 100000,
        "usd": null,
-       "why": "no published unit cost for getAccountInfo"
+       "why": "provider does not price solana"
       },
       {
        "r": 5000000000,
        "usd": null,
-       "why": "no published unit cost for getAccountInfo"
+       "why": "provider does not price solana"
       }
      ]
     },
@@ -7720,12 +7720,12 @@
       {
        "r": 100000,
        "usd": null,
-       "why": "no published unit cost for getAccountInfo"
+       "why": "provider does not price solana"
       },
       {
        "r": 5000000000,
        "usd": null,
-       "why": "no published unit cost for getAccountInfo"
+       "why": "provider does not price solana"
       }
      ]
     },
