@@ -2,10 +2,10 @@
 
 slug: xpla-rpc
 number: "293"
-title: "XPLA RPC endpoints: free public URLs by latency"
-seo_title: "XPLA RPC endpoints: free public URLs by latency"
-seo_description: "{{best_name}} leads free XPLA RPC at {{best_p50}} (Tendermint status p50, 24h). URLs for all {{count}} no-key endpoints, probed every 60 s."
-subtitle: HTTP round-trip latency for the Tendermint `status` method against every free, no-key public XPLA Cosmos SDK endpoint, audited every 60 seconds from 3 regions.
+title: "CONX (ex-XPLA) RPC endpoints: free public URLs"
+seo_title: "CONX (ex-XPLA) RPC endpoints: free public URLs"
+seo_description: "{{best_name}} leads free CONX (XPLA) RPC at {{best_p50}} (Tendermint status p50, 24h). URLs for all {{count}} no-key endpoints, probed every 60 s."
+subtitle: HTTP round-trip latency for the Tendermint `status` method against every free, no-key public CONX (ex-XPLA) Cosmos SDK endpoint, audited every 60 seconds from 3 regions.
 
 category: RPCs
 status: live
@@ -14,10 +14,10 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  XPLA is a Cosmos SDK chain (dimension_37-1). Three public Tendermint RPCs answered on 2026-10-07: the XPLA official endpoint (dimension-rpc.xpla.dev), PublicNode and Polkachu. One detail worth recording because it changes the count: the registry's Allnodes entry resolves to PublicNode's host, so it is the same endpoint under two names and appears once here rather than twice.
+  CONX is a Cosmos SDK chain (dimension_37-1), known as XPLA until a governance proposal renamed the token, its symbol and the chain brand in November 2025; the public endpoints still carry the old name. Three public Tendermint RPCs answered on 2026-10-07: the chain-official endpoint (dimension-rpc.xpla.dev), PublicNode and Polkachu. One detail worth recording because it changes the count: the registry's Allnodes entry resolves to PublicNode's host, so it is the same endpoint under two names and appears once here rather than twice.
 
 abstract: |
-  XPLA: {{count}} free public RPC endpoints answering Tendermint status every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}; the chain-official endpoint measures {{p50:xpla-official}}.
+  CONX (formerly XPLA): {{count}} free public RPC endpoints answering Tendermint status every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}; the chain-official endpoint measures {{p50:xpla-official}}.
   We measure the round-trip latency of a single Tendermint `status` call against every no-key public XPLA endpoint that sustains continuous probing, {{count}} providers measured, every 60 seconds, from us-east, eu-west and Singapore. The harness classifies every response (ok / http_err / jsonrpc_err / stale / timeout) with a XPLA-scaled staleness gap (20 blocks at XPLA's ~5 s block time). The cross-chain view lives on the parent `rpc-capabilities` benchmark; this page is the XPLA-scoped answer with per-region breakdowns as a first-class dimension.
 
 methodology:
