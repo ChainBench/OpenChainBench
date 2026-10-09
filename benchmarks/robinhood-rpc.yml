@@ -301,6 +301,30 @@ providers:
         - region: eu-west
           p50: avg(ocb:rpc_latency_cold_milliseconds:p50_24h{provider="chainstack",chain="robinhood",tier="keyed",region="eu-west"})
           series: avg(avg_over_time(rpc_latency_cold_milliseconds{provider="chainstack",chain="robinhood",tier="keyed",region="eu-west"}[1h]))
+  - slug: dwellir
+    name: Dwellir
+    tier: keyed
+    tag: Free plan key, 100k responses per day, plan disclosed
+    formula: "p50 over 24h of round-trip latency (ms) for eth_getBlockByNumber probed every 120 s from us-east, eu-west and Singapore on Dwellir's keyed Robinhood Chain endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="dwellir",chain="robinhood",tier="keyed"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="dwellir",chain="robinhood",tier="keyed"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="dwellir",chain="robinhood",tier="keyed"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="dwellir",chain="robinhood",tier="keyed"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="dwellir",chain="robinhood",tier="keyed"}) / sum(ocb:rpc_call:rate_24h{provider="dwellir",chain="robinhood",tier="keyed"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="dwellir",chain="robinhood",tier="keyed"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="dwellir",chain="robinhood",tier="keyed"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="dwellir",chain="robinhood",tier="keyed",region="us-east"})
+          series: avg(avg_over_time(rpc_latency_milliseconds{provider="dwellir",chain="robinhood",tier="keyed",region="us-east"}[1h]))
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="dwellir",chain="robinhood",tier="keyed",region="eu-west"})
+          series: avg(avg_over_time(rpc_latency_milliseconds{provider="dwellir",chain="robinhood",tier="keyed",region="eu-west"}[1h]))
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="dwellir",chain="robinhood",tier="keyed",region="sgp"})
+          series: avg(avg_over_time(rpc_latency_milliseconds{provider="dwellir",chain="robinhood",tier="keyed",region="sgp"}[1h]))
+
   - slug: alchemy-cold
     name: Alchemy
     tier: keyed-cold
@@ -361,3 +385,26 @@ providers:
         - region: eu-west
           p50: avg(ocb:rpc_latency_cold_milliseconds:p50_24h{provider="getblock",chain="robinhood",tier="keyed",region="eu-west"})
           series: avg(avg_over_time(rpc_latency_cold_milliseconds{provider="getblock",chain="robinhood",tier="keyed",region="eu-west"}[1h]))
+  - slug: dwellir-cold
+    name: Dwellir
+    tier: keyed-cold
+    tag: Same endpoint, measured on a connection that is never reused
+    formula: "p50 over 24h of round-trip latency (ms) for the same call on a connection that is never reused: DNS, TCP and the TLS handshake are paid every time. What a serverless or one-shot client gets."
+    queries:
+      p50: avg(ocb:rpc_latency_cold_milliseconds:p50_24h{provider="dwellir",chain="robinhood",tier="keyed"})
+      p90: avg(ocb:rpc_latency_cold_milliseconds:p90_24h{provider="dwellir",chain="robinhood",tier="keyed"})
+      p99: avg(ocb:rpc_latency_cold_milliseconds:p99_24h{provider="dwellir",chain="robinhood",tier="keyed"})
+      mean: avg(ocb:rpc_latency_cold_milliseconds:mean_24h{provider="dwellir",chain="robinhood",tier="keyed"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="dwellir",chain="robinhood",tier="keyed"}) / sum(ocb:rpc_call:rate_24h{provider="dwellir",chain="robinhood",tier="keyed"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="dwellir",chain="robinhood",tier="keyed"})
+      series: avg(avg_over_time(rpc_latency_cold_milliseconds{provider="dwellir",chain="robinhood",tier="keyed"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_cold_milliseconds:p50_24h{provider="dwellir",chain="robinhood",tier="keyed",region="us-east"})
+          series: avg(avg_over_time(rpc_latency_cold_milliseconds{provider="dwellir",chain="robinhood",tier="keyed",region="us-east"}[1h]))
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_cold_milliseconds:p50_24h{provider="dwellir",chain="robinhood",tier="keyed",region="eu-west"})
+          series: avg(avg_over_time(rpc_latency_cold_milliseconds{provider="dwellir",chain="robinhood",tier="keyed",region="eu-west"}[1h]))
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_cold_milliseconds:p50_24h{provider="dwellir",chain="robinhood",tier="keyed",region="sgp"})
+          series: avg(avg_over_time(rpc_latency_cold_milliseconds{provider="dwellir",chain="robinhood",tier="keyed",region="sgp"}[1h]))

@@ -172,7 +172,7 @@ const RAW: Record<string, string> = {
   plasma: "/logos/plasma.webp",
   ondo: "/logos/ondo-perps.svg",
   onfinality: "/logos/onfinality.png",
-  dwellir: "/logos/dwellir.svg",
+  dwellir: "/logos/dwellir.png",
   berachain: "/logos/berachain.png",
 
 
@@ -1005,6 +1005,7 @@ const ALIASES: Record<string, string> = {
   "quicknode-cold": "quicknode",
   "alchemy-cold": "alchemy",
   "chainstack-cold": "chainstack",
+  "dwellir-cold": "dwellir",
 };
 
 export function logoPath(slug: string): string | null {
