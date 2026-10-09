@@ -106,13 +106,22 @@ export const CHAINS: ChainEntry[] = [
       "EVM chain (4217). Standard Ethereum JSON-RPC surface; Thirdweb has no route for this chain id, so the roster is the official endpoint plus independent gateways.",
   },
   {
+    // Renamed to CONX. The proposal to rename the token, its symbol and the
+    // brand identity of the chain passed on 2025-11-10, and xpla.io now
+    // redirects to conx.xyz.
+    //
+    // The slug stays `xpla` on purpose. It is the Prometheus label every query
+    // on the bench is pinned to (`chain="xpla"`), it is the bench URL, and the
+    // endpoints themselves are still named for it (dimension-rpc.xpla.dev,
+    // xpla-rpc.publicnode.com, xpla-rpc.polkachu.com). Renaming it would blank
+    // the published columns and reset the page's search history for nothing.
     slug: "xpla",
-    label: "XPLA",
+    label: "CONX",
     category: "L1",
-    nativeSymbol: "XPLA",
-    website: "https://xpla.io",
+    nativeSymbol: "CONX",
+    website: "https://conx.xyz",
     description:
-      "Cosmos SDK chain (dimension_37-1). CometBFT consensus, Tendermint `status` probe. Its registry Allnodes entry resolves to PublicNode's host, so it counts once.",
+      "Cosmos SDK chain (dimension_37-1), known as XPLA until the CONX rename passed in November 2025; the public endpoints still carry the old name. CometBFT consensus, Tendermint `status` probe. Its registry Allnodes entry resolves to PublicNode's host, so it counts once.",
   },
   {
     slug: "xrplevm",
