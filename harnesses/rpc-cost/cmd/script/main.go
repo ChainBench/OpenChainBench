@@ -36,6 +36,18 @@ func main() {
 	}
 	log.Printf("loaded catalogue version %d as of %s: %d providers", cat.Version, cat.AsOf, len(cat.Providers))
 
+	// One-shot mode: write the cost curves and exit. The site reads that
+	// artifact to draw a slider over any request count, instead of the
+	// three volumes the gauges publish. It is generated from this process
+	// so the slider and the gauges cannot drift apart: both go through
+	// cheapest(). See curve.go.
+	if out := os.Getenv("RPC_COST_EMIT_CURVES"); out != "" {
+		if err := WriteCurves(cat, out); err != nil {
+			log.Fatalf("emit curves: %v", err)
+		}
+		return
+	}
+
 	go serve(port)
 
 	stop := make(chan os.Signal, 1)

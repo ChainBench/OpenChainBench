@@ -111,6 +111,20 @@ func (w Weights) Weight(method string) (float64, bool) {
 	return 0, false
 }
 
+// IsEmpty reports a chain the provider does not price at all, written in the
+// catalogue as `ethereum: null` under weights.
+//
+// The key exists, so a plain map lookup finds it and hands back a table with
+// nothing in it, and the first method then fails for want of a weight. That
+// produced the right verdict with the wrong explanation: Syndica, Triton and
+// Coinbase CDP each read "no published unit cost for eth_blockNumber", which
+// sounds like a provider being coy about one method when the catalogue in
+// fact says the chain is not served. It only mattered in a log line until the
+// cost curve started printing the reason next to the provider's name.
+func (w Weights) IsEmpty() bool {
+	return w.Default == nil && len(w.Methods) == 0
+}
+
 type Plan struct {
 	ID           string     `yaml:"id"`
 	Name         string     `yaml:"name"`
@@ -150,6 +164,22 @@ type Plan struct {
 	// the cap rather than billing extra, so it is ineligible above it
 	// instead of merely expensive.
 	OverageAllowed string `yaml:"overage_allowed"`
+	// NonRecurring marks an offer that exists once and then ends: a
+	// one-month free trial, not a plan anybody runs on. The bench measures
+	// a MONTHLY bill, so a trial's $0 is not a price on that axis, and
+	// cheapest() skips it.
+	//
+	// All three carriers are already annotated as such in the catalogue's
+	// own prose — QuickNode's "ONE-MONTH trial ... not a recurring free
+	// tier", NOWNodes' "a free Start plan for 1 month ... not recurring",
+	// Tatum's "100k credits are LIFETIME and never renew" — and all three
+	// are banded `entry` rather than `free` precisely so they would sit
+	// beside what they become. The band was right and the price was not:
+	// the model read the $0 and quoted it. That stayed invisible while the
+	// only published volumes were 10M and up, where a 10M-credit trial is
+	// already ineligible. The curve reaches 100k, where a trial would have
+	// led the board.
+	NonRecurring bool `yaml:"non_recurring"`
 	// RequiresPlan names a plan on the same provider that must be held
 	// before this one can be bought. Its price is added to the bill.
 	// Infura's $200 extra-credits add-on cannot be bought on the free

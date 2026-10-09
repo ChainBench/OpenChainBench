@@ -171,6 +171,7 @@ providers:
         name: Free trial
         tier: entry
         tier_note: "TIER: banded `entry`, not `free` — this is a ONE-MONTH trial (10M credits, no overage, no card), not a recurring free tier. Banded by what it becomes: Build at $49/mo."
+        non_recurring: true
         monthly_usd: 0
         annual_monthly_usd: null
         included_units: 10000000
@@ -1291,6 +1292,7 @@ providers:
         name: Start (free trial)
         tier: entry
         tier_note: "TIER: banded `entry`, not `free` — \"a free Start plan for 1 month\", not recurring. Banded by what it becomes: Pro at EUR 20 = $22.71/mo."
+        non_recurring: true
         monthly_usd: 0
         annual_monthly_usd: null
         included_units: 100000
@@ -1448,6 +1450,7 @@ providers:
         name: Free
         tier: entry
         tier_note: "TIER: banded `entry`, not `free` — 100k credits are LIFETIME and never renew, so this is a one-off grant rather than a recurring free tier. Banded by what it becomes: Starter 4M at $49/mo."
+        non_recurring: true
         monthly_usd: 0
         annual_monthly_usd: null
         included_units: 100000
