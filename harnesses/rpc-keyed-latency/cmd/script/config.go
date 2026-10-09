@@ -126,12 +126,14 @@ var defaultBudgets = map[string]int64{
 	"getblock":   600_000,
 	"ankr":       300_000,
 	"helius":     300_000,
-	// dwellir: free tier is 100k responses/day, 1 RPC response = 1 credit,
-	// so ~3M/month across the three regions sharing the key. The eight EVM
-	// chains cost 173k per region per month at the 120 s cadence, so this is
-	// a runaway guard rather than a quota. Dwellir does not serve Solana,
-	// and a cell with no URL is simply skipped, so that chain stays at four
-	// providers without any special casing.
+	// dwellir: Developer plan, $49/month, 25M API responses and 100
+	// responses/sec, 1 RPC response = 1 API credit with no compute units.
+	// Three regions share the key, so 8.3M per region is what the plan
+	// actually allows; the eight EVM chains cost 173k per region per month at
+	// the 120 s cadence, under 1% of it. The number below is therefore a
+	// runaway guard, not a quota, and sits well inside the plan.
+	// Dwellir does not serve Solana, and a cell with no URL is simply
+	// skipped, so that chain stays at four providers with no special casing.
 	"dwellir":    1_000_000,
 }
 

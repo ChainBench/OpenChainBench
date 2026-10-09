@@ -39,6 +39,7 @@ methodology:
   - "Chain scope: every query on this page is pinned to chain=\"robinhood\" (chain id 4663). Provider coverage: {{count}} no-key public-read endpoints live today, each listed with its URL in the endpoints table on this page. Exclusions follow the cluster-wide rules documented on the parent benchmark."
   - "Private cohort (Access selector, Private): Chainstack, Alchemy, QuickNode and GetBlock probed on their keyed Robinhood Chain endpoints every 120 seconds from us-east and eu-west, same call (eth_getBlockByNumber, rotating id), same ok / http_err / jsonrpc_err / stale / timeout classification."
   - "Keys live in the probe environment, never in the repo. Plan tiers, disclosed: Chainstack: a Global Node on the Growth plan; Alchemy: a Free plan key (30M CU per month, 25 requests per second), the tier any reader gets; Alchemy states free and paid keys share one routing; QuickNode: an endpoint on a Build plan ($49 per month), shared fleet; GetBlock: an endpoint on the Enterprise plan, shared by the two probe regions. Chainstack, GetBlock and QuickNode provided their endpoints."
+  - "Dwellir plan tier, disclosed: a Developer plan key ($49 per month, 25 million API responses, 100 responses per second; 1 RPC response = 1 API credit, no compute units). Shared nodes, the same product a reader buys. Dwellir publishes no Solana endpoint, so it is absent from that page rather than shown as unavailable."
   - "GetBlock regional pairing: us-east uses GetBlock's New York endpoint and eu-west its Frankfurt endpoint. Alchemy, Chainstack and QuickNode publish one routed entry point per chain instead, which in the general case does land a probe on a nearby node. Some of any gap between the two arrangements is deployment topology rather than node speed, and a deployment in one of these regions would see the same benefit GetBlock's endpoint gives the probe."
   - "GetBlock coverage: GetBlock does not offer Robinhood Chain in Singapore, so no GetBlock row exists for that region: the endpoint is not offered there, which is not a failed or pending measurement. The whole keyed cohort is therefore measured from us-east and eu-west, because averaging a two-region row against three-region rows would compare different populations."
   - "Two cohorts, two rankings: the public endpoints are shared, rate-limited gateways probed every 60 seconds; the keyed endpoints are metered or dedicated and probed every 120 seconds. The selector switches the whole page (ranking, chart, region tabs, badges, citation) between them. No figure on this page compares a public endpoint with a keyed one."
@@ -304,7 +305,7 @@ providers:
   - slug: dwellir
     name: Dwellir
     tier: keyed
-    tag: Free plan key, 100k responses per day, plan disclosed
+    tag: Developer plan key, 25M responses per month, plan disclosed
     formula: "p50 over 24h of round-trip latency (ms) for eth_getBlockByNumber probed every 120 s from us-east, eu-west and Singapore on Dwellir's keyed Robinhood Chain endpoint."
     queries:
       p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="dwellir",chain="robinhood",tier="keyed"})
