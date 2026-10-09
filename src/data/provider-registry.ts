@@ -93,6 +93,15 @@ export type ProviderRegistryEntry = {
 };
 
 export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
+  // Rollup-as-a-service operator. Runs the Katana public RPC that Katana's own
+  // network documentation lists alongside the official and Tenderly endpoints.
+  conduit: {
+    url: "https://www.conduit.xyz",
+    description:
+      "Rollup-as-a-service platform that deploys and operates OP Stack and Arbitrum Orbit chains, including the public RPC endpoints for several of the networks it hosts.",
+    twitter: "@conduitxyz",
+  },
+
   // ─── Cosmos RPC operators (chain-hunt sweep 2026-10-07) ───────
   // New to the site with ZIGChain, Agoric, XPLA and XRPL EVM. Each runs a
   // keyless public Tendermint RPC that answered our probe before inclusion.
