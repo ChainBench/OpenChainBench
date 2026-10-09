@@ -1439,13 +1439,23 @@ func chains() []Chain {
 			},
 		},
 		// Ethereum Classic — Original Ethereum chain (chain 61). 3 keyless providers.
+		//
+		// Two of the three were dead and only drpc ever reached the page, which
+		// is why it went noindex as thin content. Repaired 2026-10-09.
+		//
+		// The ETC Desktop host was a certificate mismatch rather than an outage:
+		// rpc.etcdesktop.com serves a certificate that does not cover that name,
+		// while etc.etcdesktop.com answers normally. ETCMC's etcmc.rpc.nz has no
+		// DNS record at all and is replaced by ETC Network. Both replacements
+		// were probed with eth_getBlockByNumber, not a liveness ping, and all
+		// three returned the same head before inclusion.
 		{
 			Slug: "ethereum-classic",
 			Name: "Ethereum Classic",
 			Providers: []Provider{
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_ETC_DRPC", "https://etc.drpc.org")},
-				{Slug: "etcdesktop", Name: "ETC Desktop", URL: envDefault("RPC_URL_ETC_ETCDESKTOP", "https://rpc.etcdesktop.com")},
-				{Slug: "etcmc", Name: "ETCMC", URL: envDefault("RPC_URL_ETC_ETCMC", "https://etcmc.rpc.nz")},
+				{Slug: "etcdesktop", Name: "ETC Desktop", URL: envDefault("RPC_URL_ETC_ETCDESKTOP", "https://etc.etcdesktop.com")},
+				{Slug: "etcnetwork", Name: "ETC Network", URL: envDefault("RPC_URL_ETC_ETCNETWORK", "https://geth-at.etc-network.info")},
 			},
 		},
 		// Telos EVM — High-performance EVM (chain 40). 1 keyless provider.

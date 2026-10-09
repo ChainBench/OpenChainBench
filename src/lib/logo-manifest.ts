@@ -365,6 +365,7 @@ const RAW: Record<string, string> = {
   chainstack: "/logos/chainstack.jpg",
   getblock: "/logos/getblock.png",
   drpc: "/logos/drpc.png",
+  etcnetwork: "/logos/etcnetwork.png",
   thirdweb: "/logos/thirdweb.png",
   gelato: "/logos/gelato.svg",
   "1rpc": "/logos/1rpc.svg",

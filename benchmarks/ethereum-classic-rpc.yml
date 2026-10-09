@@ -69,3 +69,50 @@ providers:
         - region: ap-southeast
           p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="ethereum-classic", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="ethereum-classic", region="sgp"}[1h])
+  - slug: etcdesktop
+    name: ETC Desktop
+    endpoint: https://etc.etcdesktop.com
+    tag: ETC Desktop community node, no key
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions to ETC Desktop's no-key Ethereum Classic endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="etcdesktop", chain="ethereum-classic"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="etcdesktop", chain="ethereum-classic"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="etcdesktop", chain="ethereum-classic"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="etcdesktop", chain="ethereum-classic"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="etcdesktop", chain="ethereum-classic"}) / sum(ocb:rpc_call:rate_24h{provider="etcdesktop", chain="ethereum-classic"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="etcdesktop", chain="ethereum-classic"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="etcdesktop", chain="ethereum-classic"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="etcdesktop", chain="ethereum-classic", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="etcdesktop", chain="ethereum-classic", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="etcdesktop", chain="ethereum-classic", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="etcdesktop", chain="ethereum-classic", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="etcdesktop", chain="ethereum-classic", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="etcdesktop", chain="ethereum-classic", region="sgp"}[1h])
+
+  - slug: etcnetwork
+    name: ETC Network
+    endpoint: https://geth-at.etc-network.info
+    tag: ETC Network geth node, no key
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions to ETC Network's no-key Ethereum Classic endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="etcnetwork", chain="ethereum-classic"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="etcnetwork", chain="ethereum-classic"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="etcnetwork", chain="ethereum-classic"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="etcnetwork", chain="ethereum-classic"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="etcnetwork", chain="ethereum-classic"}) / sum(ocb:rpc_call:rate_24h{provider="etcnetwork", chain="ethereum-classic"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="etcnetwork", chain="ethereum-classic"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="etcnetwork", chain="ethereum-classic"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="etcnetwork", chain="ethereum-classic", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="etcnetwork", chain="ethereum-classic", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="etcnetwork", chain="ethereum-classic", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="etcnetwork", chain="ethereum-classic", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="etcnetwork", chain="ethereum-classic", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="etcnetwork", chain="ethereum-classic", region="sgp"}[1h])
