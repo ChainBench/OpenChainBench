@@ -1,4 +1,6 @@
-import { describe, expect, it } from "bun:test";
+import { describe, expect, it, test } from "bun:test";
+import { displayResults } from "@/lib/provider-filters";
+import type { ProviderResult } from "@/types/benchmark";
 
 /**
  * The bar geometry of the default USD leaderboard, extracted so the
@@ -72,5 +74,70 @@ describe("the summary strip", () => {
     // the axis, so the ratio is refused.
     const gap = leader > 0 && trailer > 0 ? leader / trailer : 0;
     expect(gap).toBe(0);
+  });
+});
+
+/**
+ * The list and the summary strip have to agree on who is on the board.
+ *
+ * Bench 282 on 2026-10-09: the strip said "LEADER $29.5 BlockPI" while the
+ * list under it ranked Helius, Blockdaemon, Coinbase CDP, Syndica and Triton
+ * One at $0 in positions 01 to 05. None of the five publishes an Ethereum
+ * plan, so the loader had already marked them unavailable, carrying p50 = 0
+ * and a success rate of 0. The strip ran on a filtered list and ignored them;
+ * the list ran on the raw one and sorted them to the top, because on a cost
+ * board zero is the best possible price.
+ *
+ * displayResults is the filter both have to share. Its own doc comment asks
+ * for exactly this: "use for ranked surfaces (ledger, bar chart, per-chain
+ * pages)".
+ */
+describe("count leaderboard excludes rows with no reading", () => {
+  const costRow = (
+    slug: string,
+    p50: number,
+    availability: "live" | "unavailable",
+    successRate: number,
+  ): ProviderResult =>
+    ({
+      slug,
+      name: slug,
+      ms: { p50, p90: p50, p99: p50, mean: p50 },
+      availability,
+      successRate,
+    }) as unknown as ProviderResult;
+
+  // The real board: five providers with no Ethereum plan, two with one.
+  const board = [
+    costRow("helius", 0, "unavailable", 0),
+    costRow("blockdaemon", 0, "unavailable", 0),
+    costRow("coinbase-cdp", 0, "unavailable", 0),
+    costRow("syndica", 0, "unavailable", 0),
+    costRow("triton-one", 0, "unavailable", 0),
+    costRow("blockpi", 29.5, "live", 100),
+    costRow("chainstack", 49, "live", 100),
+  ];
+
+  test("keeps only the providers that actually quoted", () => {
+    expect(displayResults(board).map((r) => r.slug)).toEqual([
+      "blockpi",
+      "chainstack",
+    ]);
+  });
+
+  test("puts the real leader first once the empty rows are gone", () => {
+    const shown = [...displayResults(board)].sort((a, b) => a.ms.p50 - b.ms.p50);
+    expect(shown[0]?.slug).toBe("blockpi");
+    expect(shown[0]?.ms.p50).toBe(29.5);
+  });
+
+  // The guard is availability, not the value. A plan that genuinely bills
+  // nothing is a real answer and has to survive, or the fix for one wrong
+  // zero would hide every right one.
+  test("keeps a measured zero", () => {
+    const withFree = [...board, costRow("a-real-free-plan", 0, "live", 100)];
+    expect(displayResults(withFree).map((r) => r.slug)).toContain(
+      "a-real-free-plan",
+    );
   });
 });
