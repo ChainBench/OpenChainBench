@@ -17,7 +17,7 @@ import { CATEGORIES } from "@/lib/categories";
 import { SITE } from "@/data/site";
 import { loadSitemapBlob, type SitemapBench } from "@/lib/sitemap-blob";
 import { adHocPairs } from "@/lib/compare/adhoc-pairs";
-import { getProvider, getProviders, type ProviderProfile, isBlacklistedSlug } from "@/lib/providers";
+import { canonicalize, getProvider, getProviders, type ProviderProfile, isBlacklistedSlug } from "@/lib/providers";
 import { isPairLinkable } from "@/lib/related-providers";
 import { isExpiredPage } from "@/lib/provider-filters";
 import type { Answer } from "@/lib/answers";
@@ -426,7 +426,23 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
   // arc-quicknode -> quicknode, base-official -> base); 19 of them sat in
   // the sitemap as "Page with redirect" (release audit 2026-09-24). The
   // same resolver the page runs decides.
-  const profiles = await safeLoad("providers", () => getProviders(), [] as ProviderProfile[]);
+  // Drop aliased profiles before anything reads this list.
+  //
+  // getProviders() folds aliases when it builds from bench rows, but a stale
+  // store keeps rows under the old slug and so keeps the aliased profile
+  // alive until the store refreshes. Two sitemap sections then advertise URLs
+  // the app redirects away from: the product routes below treat the slug as
+  // canonical and skip the redirect check, and adHocPairs() builds /compare
+  // pairs out of it. That is how the four `-cold` slugs, folded into their
+  // vendor on 2026-10-09, left ten redirecting URLs in the sitemap and failed
+  // the deploy smoke gate, which rolled prod back.
+  //
+  // Filtering here fixes both sections at once, from the alias table rather
+  // than from whatever the store still holds, and covers every future alias.
+  const allProfiles = await safeLoad("providers", () => getProviders(), [] as ProviderProfile[]);
+  const profiles = allProfiles.filter(
+    (p) => canonicalize(p.slug).slug === p.slug.toLowerCase(),
+  );
   const canonicalProfileSlugs = new Set(profiles.map((p) => p.slug));
   const redirectingSlugs = new Set<string>();
   for (const slug of candidateSlugs) {

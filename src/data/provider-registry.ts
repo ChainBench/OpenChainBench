@@ -3292,7 +3292,6 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   "banana-gun": { url: "https://bananagun.io" },
   benqi: { url: "https://benqi.fi" },
   "berachain-official": { url: "https://berachain.com" },
-  "blast-official": { url: "https://blast.io" },
   blinklabs: { url: "https://blinklabs.xyz" },
   bloom: { url: "https://www.bloombot.app" },
   "boba-official": { url: "https://boba.network" },
