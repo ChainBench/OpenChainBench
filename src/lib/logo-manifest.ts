@@ -360,7 +360,9 @@ const RAW: Record<string, string> = {
   infura: "/logos/infura.png",
   ankr: "/logos/ankr.png",
   blockdaemon: "/logos/blockdaemon.svg",
-  chainstack: "/logos/chainstack.svg",
+  // Replaced 2026-10-09 with the square mark Chainstack supplied: white glyph
+  // on their blue, so it fills the round chip instead of floating in it.
+  chainstack: "/logos/chainstack.jpg",
   getblock: "/logos/getblock.png",
   drpc: "/logos/drpc.png",
   thirdweb: "/logos/thirdweb.png",
