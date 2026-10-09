@@ -4,8 +4,8 @@ slug: oracle-deviation
 number: "025"
 title: Chainlink vs Pyth vs Binance vs Coinbase, live oracle deviation
 seo_title: "Chainlink vs Pyth oracle deviation 2026"
-seo_description: "Chainlink, Pyth, Binance, Coinbase oracle deviation ranked live on BTC, ETH, SOL, BNB, XRP, ADA, DOGE, AVAX, LINK, POL. Max pairwise bps, p99 over 24h."
-subtitle: Maximum pairwise price disagreement in basis points across Chainlink, Pyth, Binance and Coinbase, polled every 30 seconds on 10 USD pairs.
+seo_description: "Chainlink, Binance and Coinbase oracle deviation ranked live on BTC, ETH, SOL, BNB, XRP, ADA, DOGE, AVAX, LINK, POL. Max pairwise bps, p99 over 24h. Pyth paused since its endpoint went keyed."
+subtitle: Maximum pairwise price disagreement in basis points across Chainlink, Binance and Coinbase, polled every 30 seconds on 10 USD pairs. Pyth is paused, its free price endpoint now requires a key.
 category: Trading
 status: live
 metric: Max cross-oracle deviation
@@ -26,10 +26,12 @@ seo_intro: |
   `|a-b|/avg * 100` for every source pair, and publish the per-asset
   maximum as a Prometheus gauge in basis points. Coverage. Chainlink
   AggregatorV3 (eth_call against the canonical Ethereum mainnet
-  contracts), Pyth Hermes REST (batched latest_price_feeds), Binance
-  REST ticker (USDT-quoted, treated as ≈ USD), Coinbase REST ticker
-  (USD-quoted). Pairs. BTC, ETH, SOL, BNB, AVAX, LINK, POL (4
-  oracles each) and XRP, ADA, DOGE (3 oracles, Chainlink mainnet
+  contracts), Binance REST ticker (USDT-quoted, treated as ≈ USD),
+  Coinbase REST ticker (USD-quoted). Pyth Hermes was the fourth source
+  until its price endpoints began answering 401 without a key; it has
+  contributed nothing since at least 2026-09-09 and is excluded rather
+  than averaged in stale. Pairs. BTC, ETH, SOL, BNB, AVAX, LINK, POL (3
+  oracles each) and XRP, ADA, DOGE (2 oracles, Chainlink mainnet
   feeds for these pairs are deprecated, documented per provider).
   Honest about the SOL case. SOL/USD currently shows the widest
   disagreement (~1.2% live) not because the bench is broken but
@@ -61,9 +63,9 @@ abstract: |
   feed vs. a CEX outlier) without confusing the reader.
 
 methodology:
-  - "Sources. Chainlink AggregatorV3 via `eth_call(latestRoundData())` on Ethereum mainnet (no API key, public RPC with fallback), Pyth Network via Hermes REST `/api/latest_price_feeds` batch endpoint (no key), Binance REST `/api/v3/ticker/price` on USDT-quoted symbols (treated as ≈ USD), Coinbase REST `/products/<P>/ticker` on USD-quoted products. All four are free, no-auth, public endpoints."
-  - "Pairs (10). BTC, ETH, SOL, BNB, AVAX, LINK and POL are tracked on all 4 sources. XRP, ADA, DOGE are tracked on 3 sources (Pyth + Binance + Coinbase) because the Chainlink mainnet AggregatorV3 contracts for these USD feeds are deprecated and no longer updated by node operators, the provider tag flags it."
-  - "Cadence. 30 second polling interval per (source, pair). 4 sources × 10 pairs × 2/minute = 80 requests/minute total, comfortably under every free-tier ceiling (Binance 1200/min, Coinbase 10/s public, Pyth ~30/s soft, public RPC courteous). HTTP timeout is 8 s per request to match the gas-estimation harness."
+  - "Sources. Chainlink AggregatorV3 via `eth_call(latestRoundData())` on Ethereum mainnet (no API key, public RPC with fallback), Binance REST `/api/v3/ticker/price` on USDT-quoted symbols (treated as ≈ USD), Coinbase REST `/products/<P>/ticker` on USD-quoted products. All three are free, no-auth, public endpoints. Pyth Hermes was a fourth until its price paths began returning 401 without a key."
+  - "Pairs (10). BTC, ETH, SOL, BNB, AVAX, LINK and POL are tracked on all 4 sources. XRP, ADA, DOGE are tracked on 2 sources (Binance + Coinbase) because the Chainlink mainnet AggregatorV3 contracts for these USD feeds are deprecated and no longer updated by node operators, the provider tag flags it."
+  - "Cadence. 30 second polling interval per (source, pair). 3 sources × 10 pairs × 2/minute = 60 requests/minute total, comfortably under every free-tier ceiling (Binance 1200/min, Coinbase 10/s public, public RPC courteous). HTTP timeout is 8 s per request to match the gas-estimation harness."
   - "Deviation formula. For every unordered pair of sources `(a, b)` that both have a fresh sample for the same pair: `deviation_pct = |price_a - price_b| / ((price_a + price_b) / 2) * 100`. With 4 sources we compute 6 pairwise deviations per asset; with 3 sources we compute 3. Per-pair headline is the max across all source-pairs (`ocb_oracle_max_deviation_pct`)."
   - "Stale-price guard. A source's sample is considered stale and excluded from the deviation calculation if its last successful update is older than `2 * pollInterval` (60 s). Prevents a dead Coinbase ticker from registering as a 0% deviation against itself by leaving the price gauge fossilized."
   - "Chainlink round age. The on-chain `updatedAt` timestamp from `latestRoundData()` is published separately as `ocb_oracle_last_round_age_seconds{source=\"chainlink\", pair}`. Chainlink updates only on deviation (typically 0.25-0.5% for blue chips) or heartbeat (~1 h), so a 30-minute age on a quiet ETH minute is normal; a 2-hour age on SOL during a volatile minute is the actual signal."
@@ -75,8 +77,8 @@ methodology:
 findings:
   - "{{best_name}} currently leads at {{best_p50}} (p99 max cross-oracle deviation, 24 h) across {{count}} measured pairs. The leaderboard ranks by how tightly the available sources agree on the asset's price, lower = better, so the leader is the asset for which every source you might integrate would settle within fractions of a basis point of every other."
   - "{{name:btc-usd}} clocks {{p50:btc-usd}} on 4 sources. BTC's deep liquidity on every CEX plus the most-watched Chainlink feed on mainnet (heartbeats updated within minutes by competing node operators) means the 4-way disagreement is structurally near the floor; if you can't get oracle agreement on BTC, you have a poller bug, not a market signal."
-  - "{{name:sol-usd}} runs wider at {{p50:sol-usd}} on 4 sources. This is a real signal, not a bench bug. Chainlink SOL/USD updates only on 0.5% deviation or 1h heartbeat while Pyth/Binance/Coinbase publish continuously, during fast SOL moves the on-chain Chainlink price lags the CEX print by minutes (`ocb_oracle_last_round_age_seconds` often shows multi-thousand-second ages vs ~1000-1500s for blue chips). Any perp DEX settling SOL liquidations off Chainlink alone inherits this as trader slippage."
-  - "XRP, ADA and DOGE are measured on 3 sources, not 4, the Chainlink mainnet AggregatorV3 contracts for these USD pairs are deprecated and no longer updated by node operators, so the bench drops them from the deviation matrix rather than averaging in stale data. The 3-source deviation is honest (Pyth + Binance + Coinbase, all live), and the provider tag flags the asymmetry. Protocols settling these assets on Chainlink mainnet should confirm directly with the contract's `updatedAt`."
+  - "{{name:sol-usd}} runs wider at {{p50:sol-usd}}. This is a real signal, not a bench bug. Chainlink SOL/USD updates only on 0.5% deviation or 1h heartbeat while Binance and Coinbase publish continuously, during fast SOL moves the on-chain Chainlink price lags the CEX print by minutes (`ocb_oracle_last_round_age_seconds` often shows multi-thousand-second ages vs ~1000-1500s for blue chips). Any perp DEX settling SOL liquidations off Chainlink alone inherits this as trader slippage."
+  - "XRP, ADA and DOGE are measured on 2 sources, not 3, the Chainlink mainnet AggregatorV3 contracts for these USD pairs are deprecated and no longer updated by node operators, so the bench drops them from the deviation matrix rather than averaging in stale data. The 2-source deviation is honest (Binance + Coinbase, both live), and the provider tag flags the asymmetry. Protocols settling these assets on Chainlink mainnet should confirm directly with the contract's `updatedAt`."
   - "{{name:matic-usd}} sits at {{p50:matic-usd}}, the post-migration POL token. The Chainlink mainnet contract still answers to the legacy MATIC/USD name but on-chain `description()` confirms it tracks POL 1:1 (verified against Pyth's renamed POL/USD feed and Coinbase's POL-USD product). If you're building on Polygon and integrating the legacy contract address, you're already on POL, no migration needed."
   - "{{worst_name}} trails at {{worst_p50}} on the active filter. The gap between leader and laggard is dominated by two factors: how fast the asset moves (volatile minutes widen the deviation regardless of oracle quality) and how aggressive each oracle's update trigger is (Chainlink's deviation threshold is the binding constraint on most pairs; Pyth/Binance/Coinbase are within bps of each other most of the time)."
 
