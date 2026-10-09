@@ -10,6 +10,7 @@ import { BenchInfobox } from "@/components/bench-infobox";
 import { StaticLedger } from "@/components/static-ledger";
 import { OraclePairMatrix } from "@/components/oracle-pair-matrix";
 import { TerminalFillAudit } from "@/components/terminal-fill-audit";
+import { RpcCostSlider } from "@/components/rpc-cost-slider";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { ChainHeadingsSummary } from "@/components/chain-headings-summary";
 import { CompareThisBench } from "@/components/compare-this-bench";
@@ -1010,6 +1011,13 @@ export default async function BenchmarkPage({
           column it ranks on, the loss with the app's own fee removed. */}
       {benchmark.slug === "terminal-fill-quality" && <TerminalFillAudit />}
       {benchmark.slug === "terminal-execution-quality" && <TerminalFillAudit exec />}
+
+      {/* Bench 282: the ledger prices 10M, 100M and 1B requests a month,
+          because a metric needs a fixed label, and most readers are
+          somewhere else. This prices any volume off a committed curve the
+          same harness emits through the same model, so the panel and the
+          ledger cannot drift apart. */}
+      {!isDraft && benchmark.slug === "rpc-cost" && <RpcCostSlider />}
 
       {/* SEO-friendly per-chain H2 block. Renders server-side so the
           long-tail "Ethereum finality time", "Solana finality time"
