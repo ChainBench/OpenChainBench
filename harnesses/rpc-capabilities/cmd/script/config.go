@@ -163,7 +163,7 @@ func chains() []Chain {
 				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_COSMOSHUB_PUBLICNODE", "https://cosmos-rpc.publicnode.com")},
 				{Slug: "polkachu", Name: "Polkachu", URL: envDefault("RPC_URL_COSMOSHUB_POLKACHU", "https://cosmos-rpc.polkachu.com")},
 				{Slug: "lavenderfive", Name: "LavenderFive", URL: envDefault("RPC_URL_COSMOSHUB_LAVENDERFIVE", "https://rpc.lavenderfive.com:443/cosmoshub")},
-				{Slug: "lava", Name: "Lava Network", URL: envDefault("RPC_URL_COSMOSHUB_LAVA", "https://cosmoshub.tendermintrpc.lava.build")},
+				{Slug: "ecostake", Name: "ecostake", URL: envDefault("RPC_URL_COSMOSHUB_ECOSTAKE", "https://rpc-cosmoshub.ecostake.com")},
 			},
 		},
 		// ─── Injective (bench 095) — added 2026-07-24. Cosmos SDK L1
@@ -479,10 +479,9 @@ func chains() []Chain {
 			Slug: "moonbeam",
 			Name: "Moonbeam",
 			Providers: []Provider{
-				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_MOONBEAM_PUBLICNODE", "https://moonbeam-rpc.publicnode.com")},
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_MOONBEAM_DRPC", "https://moonbeam.drpc.org")},
-				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_MOONBEAM_TENDERLY", "https://gateway.tenderly.co/public/moonbeam")},
-				{Slug: "moonbeam-official", Name: "Moonbeam Official", URL: envDefault("RPC_URL_MOONBEAM_OFFICIAL", "https://rpc.api.moonbeam.network")},
+				{Slug: "onfinality", Name: "OnFinality", URL: envDefault("RPC_URL_MOONBEAM_ONFINALITY", "https://moonbeam.api.onfinality.io/public")},
+				{Slug: "unitedbloc", Name: "UnitedBloc", URL: envDefault("RPC_URL_MOONBEAM_UNITEDBLOC", "https://moonbeam.unitedbloc.com")},
 			},
 		},
 		// ─── Berachain (4 providers) ────────────────────────────────
@@ -924,9 +923,9 @@ func chains() []Chain {
 			Slug: "moonriver",
 			Name: "Moonriver",
 			Providers: []Provider{
-				{Slug: "moonriver-official", Name: "Moonbeam Foundation", URL: envDefault("RPC_URL_MOONRIVER_OFFICIAL", "https://rpc.api.moonriver.moonbeam.network")},
-				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_MOONRIVER_PUBLICNODE", "https://moonriver-rpc.publicnode.com")},
 				{Slug: "onfinality", Name: "OnFinality", URL: envDefault("RPC_URL_MOONRIVER_ONFINALITY", "https://moonriver.api.onfinality.io/public")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_MOONRIVER_DRPC", "https://moonriver.drpc.org")},
+				{Slug: "unitedbloc", Name: "UnitedBloc", URL: envDefault("RPC_URL_MOONRIVER_UNITEDBLOC", "https://moonriver.unitedbloc.com")},
 			},
 		},
 		// 2026-08-03 audit. Hemi BTC+ETH hybrid OP Stack L2 (chain 43111). 3 clean
@@ -1131,7 +1130,8 @@ func chains() []Chain {
 			Name: "Astar",
 			Providers: []Provider{
 				{Slug: "onfinality", Name: "OnFinality", URL: envDefault("RPC_URL_ASTAR_ONFINALITY", "https://astar.api.onfinality.io/public")},
-				{Slug: "1rpc", Name: "1RPC", URL: envDefault("RPC_URL_ASTAR_1RPC", "https://1rpc.io/astr")},
+				{Slug: "astar-official", Name: "Astar", URL: envDefault("RPC_URL_ASTAR_OFFICIAL", "https://evm.astar.network")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_ASTAR_DRPC", "https://astar.drpc.org")},
 			},
 		},
 		// Oasis Sapphire — Confidential EVM paratime (chain 23294). 1 keyless provider.
@@ -1203,7 +1203,7 @@ func chains() []Chain {
 			Name: "Gravity",
 			Providers: []Provider{
 				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_GRAVITY_PUBLICNODE", "https://rpc.gravity.xyz")},
-				{Slug: "ankr", Name: "Ankr", URL: envDefault("RPC_URL_GRAVITY_ANKR", "https://rpc.ankr.com/gravity")},
+				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_GRAVITY_THIRDWEB", "https://1625.rpc.thirdweb.com")},
 			},
 		},
 		// Reya Network — Trading EVM L2 (chain 1729). 2 keyless providers.
