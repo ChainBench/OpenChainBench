@@ -35,6 +35,35 @@ const pollInterval = 30 * time.Second
 // any of the four upstreams when healthy.
 const httpTimeout = 8 * time.Second
 
+// feedPromise is what a Chainlink mainnet feed publicly commits to: write
+// on-chain when the price moves more than ThresholdPct, and in any case at
+// least every HeartbeatSeconds.
+//
+// These values are read from Chainlink's own machine-readable directory,
+// https://reference-data-directory.vercel.app/feeds-mainnet.json (fields
+// `threshold` and `heartbeat`), checked 2026-10-09. Hardcoded rather than
+// fetched at runtime so every value is auditable in the diff and the harness
+// gains no third-party dependency; re-check when adding a feed.
+//
+// They matter because they are NOT uniform, which freshness.go used to assume.
+// BTC, ETH and LINK run 0.5% on a 1h heartbeat; SOL and AVAX run 2% on a 24h
+// heartbeat. Judging a 2%/24h feed against a 0.5%/300s bar calls it late
+// against a standard that was never its own.
+type feedPromise struct {
+	HeartbeatSeconds float64
+	ThresholdPct     float64
+}
+
+var chainlinkPromise = map[Pair]feedPromise{
+	"BTC/USD":   {HeartbeatSeconds: 3600, ThresholdPct: 0.5},
+	"ETH/USD":   {HeartbeatSeconds: 3600, ThresholdPct: 0.5},
+	"LINK/USD":  {HeartbeatSeconds: 3600, ThresholdPct: 0.5},
+	"SOL/USD":   {HeartbeatSeconds: 86400, ThresholdPct: 2},
+	"BNB/USD":   {HeartbeatSeconds: 86400, ThresholdPct: 1},
+	"AVAX/USD":  {HeartbeatSeconds: 86400, ThresholdPct: 2},
+	"MATIC/USD": {HeartbeatSeconds: 86400, ThresholdPct: 1},
+}
+
 // PairSpec wires one canonical pair to its per-source identifier.
 // Filling all four fields is mandatory; an empty field is treated as
 // "not supported" by the poller and the metric simply won't appear.

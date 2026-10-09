@@ -377,7 +377,30 @@ func main() {
 	// № 082 freshness-only pollers. Kept out of the deviation store by
 	// construction (see ChainFeed / runRedstone docs).
 	go runChainlinkChains(ctx, extraChainlinkFeeds())
-	go runRedstone(ctx, redstoneFeeds())
+	// RedStone is paused. Its leg had been dead for 64 days
+	// (ocb_oracle_staleness_seconds{chain="gateway"} at 5,542,355s, 5,760
+	// scrape errors a day) and nobody could see it, because bench 082's page
+	// is retired so these metrics have no reader.
+	//
+	// It is NOT a paywall and it is not restorable by changing the URL, which
+	// was the first conclusion and it was wrong. The per-symbol API this
+	// poller calls, /prices?symbol=<S>&provider=redstone&limit=1, now answers
+	// 200 with an empty array; every documented replacement was probed on
+	// 2026-10-09 and none filters:
+	//
+	//   /v2/data-packages/latest/redstone-primary-prod/ETH   29 b health stub
+	//   ...?dataFeedId=ETH  and  ...?dataFeedIds=ETH         1.98 MB, all feeds
+	//   /prices/?symbol=ETH&provider=redstone-primary-prod   2 b, empty array
+	//   /v1/prices?symbol=ETH                                404
+	//
+	// So the only live source is the unfiltered 1.98 MB payload, 12.7 s to
+	// fetch. At this harness's 30 s cadence that is ~237 MB/hour to learn a
+	// number that barely moves: packages are produced every ~10 s, so the age
+	// reads 15-25 s whenever you look. Expensive to poll, and nearly constant,
+	// which is not worth a column.
+	//
+	// Re-enable if RedStone restores a per-symbol endpoint.
+	// go runRedstone(ctx, redstoneFeeds())
 	go runFreshnessUpdater(ctx)
 
 	sig := make(chan os.Signal, 1)
