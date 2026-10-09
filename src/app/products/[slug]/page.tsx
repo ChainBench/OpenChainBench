@@ -837,7 +837,13 @@ export default async function ProviderPage({
         const parentReg = parentSlug ? getProviderRegistry(parentSlug) : undefined;
         const children = Object.entries(PROVIDER_REGISTRY)
           .filter(([childSlug, e]) => e.parent === p.slug && childSlug !== p.slug)
-          .map(([childSlug, e]) => ({ slug: childSlug, name: e.description.split(".")[0] || childSlug }));
+          // The child's display name is the first sentence of its description.
+          // An entry that carries only a verified URL has none, so fall back
+          // to the slug rather than crashing the parent's page.
+          .map(([childSlug, e]) => ({
+            slug: childSlug,
+            name: e.description?.split(".")[0] || childSlug,
+          }));
         return (
           <>
             <header className="mt-6 flex items-center gap-4 border-b-2 border-ink pb-6">
@@ -1034,22 +1040,40 @@ export default async function ProviderPage({
         return <VenueKpiToggle sections={sections} />;
       })()}
 
-      {reg && (
+      {/* Now that url and description are both optional, an entry can exist
+          and have nothing to show (a dead domain dropped from an entry that
+          never had prose). Render the section only when it holds something. */}
+      {reg && (reg.description || reg.url || reg.twitter) && (
         <section className="mt-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-8">
-          <p className="text-base text-ink-soft leading-relaxed max-w-2xl">
-            {reg.description}
-          </p>
-          <ul className="flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:gap-x-4 sm:gap-y-1 sm:ml-auto sm:flex-col sm:items-end sm:text-right shrink-0 min-w-0">
-            <li className="min-w-0">
-              <a
-                className="lnk inline-flex items-center gap-1 font-sans text-[11px] uppercase tracking-[0.16em] font-medium text-ink-soft hover:text-ink break-all"
-                href={withUtm(reg.url)}
-                rel="noopener"
-              >
-                {reg.url.replace(/^https?:\/\//, "").replace(/\/$/, "")}
-                <ArrowUpRight size={11} strokeWidth={2} className="shrink-0" />
-              </a>
-            </li>
+          {reg.description && (
+            <p className="text-base text-ink-soft leading-relaxed max-w-2xl">
+              {reg.description}
+            </p>
+          )}
+          {/* Pushed to the right only when there is a paragraph to sit beside.
+              A lone link floated right with nothing on its left reads as a
+              stray element, so on a description-less entry it stays at the
+              start of the row. */}
+          <ul
+            className={`flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:gap-x-4 sm:gap-y-1 sm:flex-col shrink-0 min-w-0 ${
+              reg.description ? "sm:ml-auto sm:items-end sm:text-right" : "sm:items-start"
+            }`}
+          >
+            {/* Absent when the provider's domain died and the url was dropped
+                rather than left pointing at nothing, and absent too for the
+                rejected-scheme case getProviderRegistry coerces to "". */}
+            {reg.url && (
+              <li className="min-w-0">
+                <a
+                  className="lnk inline-flex items-center gap-1 font-sans text-[11px] uppercase tracking-[0.16em] font-medium text-ink-soft hover:text-ink break-all"
+                  href={withUtm(reg.url)}
+                  rel="noopener"
+                >
+                  {reg.url.replace(/^https?:\/\//, "").replace(/\/$/, "")}
+                  <ArrowUpRight size={11} strokeWidth={2} className="shrink-0" />
+                </a>
+              </li>
+            )}
             {reg.twitter && (
               <li>
                 <a
