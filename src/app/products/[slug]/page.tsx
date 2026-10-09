@@ -1039,7 +1039,10 @@ export default async function ProviderPage({
         return <VenueKpiToggle sections={sections} />;
       })()}
 
-      {reg && (
+      {/* Now that url and description are both optional, an entry can exist
+          and have nothing to show (a dead domain dropped from an entry that
+          never had prose). Render the section only when it holds something. */}
+      {reg && (reg.description || reg.url || reg.twitter) && (
         <section className="mt-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-8">
           {reg.description && (
             <p className="text-base text-ink-soft leading-relaxed max-w-2xl">
@@ -1055,16 +1058,21 @@ export default async function ProviderPage({
               reg.description ? "sm:ml-auto sm:items-end sm:text-right" : "sm:items-start"
             }`}
           >
-            <li className="min-w-0">
-              <a
-                className="lnk inline-flex items-center gap-1 font-sans text-[11px] uppercase tracking-[0.16em] font-medium text-ink-soft hover:text-ink break-all"
-                href={withUtm(reg.url)}
-                rel="noopener"
-              >
-                {reg.url.replace(/^https?:\/\//, "").replace(/\/$/, "")}
-                <ArrowUpRight size={11} strokeWidth={2} className="shrink-0" />
-              </a>
-            </li>
+            {/* Absent when the provider's domain died and the url was dropped
+                rather than left pointing at nothing, and absent too for the
+                rejected-scheme case getProviderRegistry coerces to "". */}
+            {reg.url && (
+              <li className="min-w-0">
+                <a
+                  className="lnk inline-flex items-center gap-1 font-sans text-[11px] uppercase tracking-[0.16em] font-medium text-ink-soft hover:text-ink break-all"
+                  href={withUtm(reg.url)}
+                  rel="noopener"
+                >
+                  {reg.url.replace(/^https?:\/\//, "").replace(/\/$/, "")}
+                  <ArrowUpRight size={11} strokeWidth={2} className="shrink-0" />
+                </a>
+              </li>
+            )}
             {reg.twitter && (
               <li>
                 <a
