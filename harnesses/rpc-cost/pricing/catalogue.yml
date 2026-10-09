@@ -783,10 +783,17 @@ providers:
         overage_per_1m_units_usd: null
         overage_allowed: hard_stop
         throughput: {unit: rps, value: 30}
-        archive: false
+        archive: true
         trace: false
-        confidence: uncertain
-        note: Unmetered but throttled (~1800 req/min). Archive/trace availability NOT PUBLISHED.
+        confidence: verified
+        note: >-
+          Unmetered but throttled (~1800 req/min). Archive and trace ARE published, in the
+          service-plans feature table: "Full and Archive data" is a tick for Public, while the
+          Node API "Trace" and "Debug" rows are crosses for Public and Freemium and ticks only
+          for Premium. This read "archive: false ... NOT PUBLISHED" until 2026-10-09, which was
+          wrong twice over: the figure is published, and it is the opposite of what was recorded.
+          No published cell moves, because Public carries no allowance to rank and is a free tier
+          the paid view excludes, but it was excluding Public from archive workloads it serves.
       - id: freemium
         name: Freemium
         tier: free
@@ -798,11 +805,17 @@ providers:
         overage_allowed: hard_stop
         throughput: {unit: rps, value: null}
         archive: true
-        trace: true
+        trace: false
         confidence: verified
         note: >-
-          "free monthly spending quota of 200M API Credits" — confirmed in service-plans/index.md and
-          in the live app bundle. = 1,000,000 EVM calls or 400,000 Solana calls per month.
+          200M API credits a month, confirmed in service-plans/index.md ("Provides free 200M API
+          credits monthly for API interactions", and the feature table's Cost cell "Free 200M API
+          Credits / monthly") and in the live app bundle. = 1,000,000 EVM calls or 400,000 Solana
+          calls per month. Archive IS served on Freemium ("Full and Archive data" is a tick in all
+          three columns), but trace is NOT: the Node API rows read "Trace ❌ ❌ ✅" and
+          "Debug ❌ ❌ ✅" across Public / Freemium / Premium, so trace and debug are Premium-only.
+          trace was `true` here until 2026-10-09, which put Freemium second on bench 283's trace
+          tab at 1,000,000 requests a month on a workload Ankr does not sell it for.
       - id: payg
         name: Premium (Pay-as-you-go)
         tier: entry
@@ -3110,10 +3123,19 @@ providers:
         overage_per_1m_units_usd: null
         overage_allowed: hard_stop
         throughput: {unit: rps, value: 40}
-        archive: null
+        archive: false
         trace: null
         confidence: uncertain
-        note: 20,000 requests/day AND 600,000/month — both caps are published and both bind.
+        note: >-
+          20,000 requests/day AND 600,000/month — both caps are published and both bind.
+          Archive is published as ABSENT on this plan, not merely unstated: the Free card lists
+          "Not included: Archive node access", and the comparison table's Archive row is a dash
+          for Free and Build while the three plans above them carry it. This was `null` until
+          2026-10-09, and null is a no-op in both capability gates, so Instanodes was ranked on
+          bench 283's indexer AND trace tabs at 600,000 requests a month on archive workloads
+          its own pricing page says the plan cannot serve. trace stays null: Instanodes publishes
+          nothing either way about debug and trace, and archive: false already excludes both
+          archive profiles.
       - id: build
         name: Build
         tier: entry

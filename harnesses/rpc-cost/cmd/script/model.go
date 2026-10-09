@@ -450,14 +450,53 @@ func cheapest(c *Catalogue, p Provider, pr Profile, requests float64, tier strin
 	return best
 }
 
-// breakeven returns the monthly request count at which a fixed-price
-// offering (a dedicated node, a flat-rate RPS plan) undercuts a metered
-// rate. It is the question the dedicated cohort exists to answer.
-func breakeven(monthlyUSD, meteredPerMillionUSD float64) float64 {
+// breakeven returns the monthly request count at which a dedicated offering
+// undercuts a metered rate. It is the question the dedicated cohort exists to
+// answer.
+//
+// Four of the dedicated plans are not purely fixed: they charge a base fee
+// AND a per-request rate on top, so the comparison is
+//
+//	base + ownRate x V   vs   floor x V        (V in millions)
+//
+// which crosses at base / (floor - ownRate), and only when the market floor
+// is above the plan's own rate. Dividing the base by the floor alone answers
+// a different question, the one where the plan meters nothing.
+//
+// AWS AMB is why this matters. It bills $97.82 plus $3.00 per 1M requests
+// against an Ethereum floor of $2.833 per 1M, so it is dearer at every
+// volume and the gap widens rather than closes. The bare division published
+// 34,528,768 requests as its break-even; at exactly that volume AWS bills
+// $201.41 against $97.82 metered. There is no break-even, and saying so is
+// the honest answer -- a volume at which a thing becomes cheaper is a strong
+// claim, and inventing one is worse than publishing none.
+// The bill is piecewise: flat up to the plan's included allowance, then
+// base + rate x (V - included). Both regions are solved and the smaller
+// valid crossing wins; NaN means the plan is never cheaper, which is a real
+// answer and the one the page must print instead of a number.
+func breakeven(monthlyUSD, includedMillions, ownRatePerMillionUSD, meteredPerMillionUSD float64) float64 {
 	if meteredPerMillionUSD <= 0 {
 		return math.NaN()
 	}
-	return monthlyUSD / meteredPerMillionUSD * 1e6
+
+	// Inside the included allowance the dedicated bill does not move, so the
+	// crossing is the bare division -- which is the only case the old
+	// formula described, and it covers the 33 flat plans correctly.
+	if v := monthlyUSD / meteredPerMillionUSD; v <= includedMillions {
+		return v * 1e6
+	}
+
+	// Past the allowance both sides grow with volume, so the plan closes the
+	// gap only if the market's floor is above its own rate.
+	margin := meteredPerMillionUSD - ownRatePerMillionUSD
+	if margin <= 0 {
+		return math.NaN()
+	}
+	v := (monthlyUSD - ownRatePerMillionUSD*includedMillions) / margin
+	if v < includedMillions {
+		return math.NaN()
+	}
+	return v * 1e6
 }
 
 func perMillion(monthlyUSD, requests float64) float64 {
@@ -592,4 +631,33 @@ func servesChain(pl Plan, chain string) bool {
 		}
 	}
 	return false
+}
+
+// dedicatedRate reports what a dedicated plan charges per million requests
+// beyond its included allowance, and how large that allowance is in millions.
+//
+// A flat node returns (0, +Inf): nothing is metered, so no volume escapes the
+// fixed fee. A metering plan returns its own rate and its allowance, which is
+// zero for AWS AMB (`included_units: null` with an overage rate published,
+// the pair that means "bills every request on top").
+//
+// Banded plans return the LAST band's rate, because the question a break-even
+// answers is whether the plan ever becomes cheaper, and that is decided by
+// the rate it charges at high volume rather than by its first band.
+func dedicatedRate(c *Catalogue, p Provider, pl Plan) (ratePerMillion, includedMillions float64) {
+	switch {
+	case pl.OveragePer1M != nil:
+		ratePerMillion = c.toUSD(*pl.OveragePer1M, p.Currency)
+	case len(pl.OverageBands) > 0:
+		last := pl.OverageBands[len(pl.OverageBands)-1]
+		ratePerMillion = c.toUSD(last.PricePer1M, p.Currency)
+	default:
+		// Flat: the fee buys every request the node can serve.
+		return 0, math.Inf(1)
+	}
+
+	if pl.IncludedUnits != nil {
+		includedMillions = *pl.IncludedUnits * periodScale(pl.AllowancePeriod) / 1e6
+	}
+	return ratePerMillion, includedMillions
 }

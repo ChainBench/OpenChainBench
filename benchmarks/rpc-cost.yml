@@ -17,7 +17,7 @@ row_noun: { one: provider, many: providers }
 disclaimer: >
   Published prices, not invoices. Each figure is human-verified against the
   provider's own pricing page or API and carries the date it was read; the
-  harness re-hashes 21 of those artifacts on a loop and flags any that
+  harness re-hashes 20 of those artifacts on a loop and flags any that
   changed. A 30-day month and flat traffic are assumed, the most generous
   reading. NOWNodes prices in EUR. A provider absent from a cell is not
   missing data: it has no plan that can serve that workload, usually a cap
@@ -39,8 +39,10 @@ seo_intro: |
   alongside the money so the arithmetic can be redone by hand. Two names worth
   noting up front. Alchemy and QuickNode, the two largest providers in the
   market, win no cell at any volume on any workload and sit three to four times
-  above the leaders. And at ten million requests a month, several providers
-  serve the workload for nothing.
+  above the leaders. And at ten million requests a month the cheapest paid plan
+  in the market is $29.50, which is the figure this page ranks; several free
+  plans cover that workload outright, and bench 283 ranks those on what their
+  allowance buys.
 
 abstract: |
   Twenty RPC providers, five workload profiles, three monthly volumes and every
@@ -57,12 +59,12 @@ abstract: |
   200 requests per second against the 386 a billion-request month requires.
   In every case the provider is marked not ranked rather than
   priced, because a blank cell and an unavailable product are different
-  claims. The reason is currently recorded in the harness log rather than
-  rendered on the page.
+  claims. The volume panel names each one with its own reason, so an
+  absence reads as an absence rather than as a free plan.
   Pricing is human-verified rather than scraped: for most of this cohort the
   price is prose on a marketing page, and a parser that guesses is worse than
   one that does not exist. Every figure records the artifact it came from
-  and the date a human read it, and 21 of those artifacts carry a baseline
+  and the date a human read it, and 20 of those artifacts carry a baseline
   hash the harness re-checks on a loop, so an upstream edit surfaces as
   drift rather than as a stale figure that still reads as current. The
   remainder are marked for manual re-reading: a page behind a bot wall, or
@@ -80,14 +82,14 @@ methodology:
   - "One-off offers are not monthly prices. QuickNode's one-month trial, NOWNodes' one-month Start and Tatum's lifetime 100,000 credits each cost $0 and never renew, so they are excluded rather than quoted. All three are banded as paid plans by what they become: $49 Build, EUR 20 Pro, $49 Starter. A plan that recurs at $0 is kept, because that is a price. Validation Cloud's Scale carries no subscription and its first 50M compute units are free."
   - "Any volume, not only three. The ranked columns price 10M, 100M and 1B requests a month because a metric needs a fixed label. A panel on the page prices anything from 100,000 to 5B, reading a curve the same harness emits through the same model, with a point at every plan boundary and a straight line between them, which is the real shape of a metered bill. The three published volumes are marked on its track so the two can be checked against each other."
   - "Free tiers moved to bench 283 (rpc-free-tier), ranked by what the allowance buys rather than by price. GetBlock advertises 20 requests per second and 50,000 compute units per day: at its own advertised rate the daily allowance is gone in 125 seconds. Infura's lasts 1.7 hours a day, OnFinality's 2.8 hours, Alchemy's 1.2 days a month. The panel publishes the allowance converted into requests of each profile, alongside the throughput cap that is often the real ceiling."
-  - "Add-ons are priced with their prerequisites. Infura's $200 extra-credits pack cannot be bought on the free tier, so its real entry cost is Developer at $50 plus $200, which loses to Team at $225. Helius advertises dedicated nodes from $2,900; whether a paid plan is a prerequisite is not clearly stated, so no surcharge is assumed."
+  - "Add-ons are priced with their prerequisites. Infura's $200 extra-credits pack cannot be bought on the free tier, so its real entry cost is Developer at $50 plus $200, which loses to Team at $225. Helius advertises dedicated nodes from $2,900 and states that mainnet requires a Business or Professional plan, so the floor priced here is $2,900 plus the $499 Business plan, $3,399 a month."
   - "Packages are pro-rated, not treated as subscriptions. BlockPI sells 500M Request Units for $49 over 60 days and 4,000M for $299 over 90 days, and its own page says 'without monthly subscription'. Both price and allowance are scaled to 30 days ($24.50 and $99.67), and unused units are forfeited at expiry."
   - "Currency and period. A 30-day month throughout. NOWNodes prices in EUR and stays in EUR in the catalogue; the ECB reference rate sits in the catalogue header so the conversion is visible at the point of use rather than baked into a number."
   - "Verification. Every figure was collected and then independently re-verified against the primary source by a second pass, which corrected about thirty values, including two that had been computed and then presented as published. A later adversarial audit corrected a dozen more, most of them in this prose rather than in the data."
   - "Conflicts between a provider's own pages are reported rather than silently resolved. Alchemy's free-tier throughput was settled by a dated docs commit, Helius's archival credit cost by dating the documentation table, and Ankr's live model by reading its production application bundle, because its most machine-readable pricing page describes a model that is not the one being sold."
-  - "Freshness. The catalogue is committed and human-verified, not scraped, because most of this cohort publishes price as prose. 21 artifacts carry a baseline hash recorded when a human last read the numbers under them, and the harness re-fetches and re-hashes those on a loop, so an upstream edit surfaces as drift."
+  - "Freshness. The catalogue is committed and human-verified, not scraped, because most of this cohort publishes price as prose. 20 artifacts carry a baseline hash recorded when a human last read the numbers under them, and the harness re-fetches and re-hashes those on a loop, so an upstream edit surfaces as drift."
   - "The rest are marked for manual re-reading and deliberately not polled: a page that churns for reasons unrelated to price would alarm every cycle and teach everyone to ignore the alarm. Age is published either way, so a figure nobody has re-read is visible as such."
-  - "Fifteen of the ranked providers expose a machine-readable pricing artifact, whether JSON or raw markdown, and four of them, GetBlock, NOWNodes, QuickNode and Tatum, expose unauthenticated pricing APIs a harness can poll directly. 21 artifacts across the cohort are re-hashed on a loop."
+  - "Fifteen of the ranked providers expose a machine-readable pricing artifact, whether JSON or raw markdown, and four of them, GetBlock, NOWNodes, QuickNode and Tatum, expose unauthenticated pricing APIs a harness can poll directly. 20 artifacts across the cohort are re-hashed on a loop."
   - "Measured, not just read. Chainstack's rules were tested against its billing API with 291 counted calls: 1 Request Unit for a full request, archive above 2x full, debug and trace at 2 RU even ten blocks behind tip (so the surcharge is method-driven, not recency-driven), and an HTTP batch of 30 billed as 30 rather than 1. The 127-block archive boundary the indexer and trace profiles rest on is confirmed to within five blocks: it is not 64, not 256 and not absent."
   - "Two measurement traps worth publishing. Chainstack's per-node Request Unit column does not reconcile: two nodes came in at minus 66 and plus 59 against prediction, cancelling on the total, so it cannot be used for spend attribution."
   - "And that counter is not live. It stayed flat for twelve minutes while 57 calls were served, because each hourly row covers the hour ending at its label and appears about fifty minutes later. A naive read, burst, re-read measurement concludes Chainstack bills nothing at all."
@@ -97,12 +99,12 @@ methodology:
   - "What is still not measured. These are published prices, not invoices. Alchemy and QuickNode carry no credit, compute-unit or quota header on any response, so their billed units cannot be confirmed without dashboard credentials we do not hold. Where a provider's real charge is non-deterministic by design, dRPC routes to third-party operators that can rewrite the price downward and exposes no per-response cost header, the published rate is reported as an upper bound and labelled as one."
 
 findings:
-  - "There is no cheapest RPC provider. Five win a workload-by-volume cell outright, none more than four of the fifteen, and two more share a cell on a tie. The widest spread inside one cell is 36.7x, on a billion Solana bot requests, and even the trace profile at a hundred million spans 6.7x, from NOWNodes at $567.75 to GetBlock at $3,779."
+  - "There is no cheapest RPC provider. Five win a workload-by-volume cell outright, none more than four of the fifteen, and two further cells end in a tie at $49. The widest spread inside one cell is 36.7x, on a billion Solana bot requests, and even the trace profile at a hundred million spans 7.6x, from Chainstack at $499 to GetBlock at $3,779."
   - "Two of the best-known providers are among the most expensive. Alchemy and QuickNode win no cell at any volume on any workload, running between 1.7x and 10.6x the leader of each cell, Alchemy at $10,500 a month for a billion simple reads against BlockPI's $2,833."
   - "Price is not always the binding constraint. Alchemy cannot serve the indexer or trace profile at a billion requests a month on any published self-serve plan: those need 61,728 and 234,568 Throughput Compute Units per second against a self-serve ceiling of 30,000, enforced per account rather than per app."
   - "Alchemy meters volume and rate limit in different units, and the figures above use its throughput column, not its billing one. Infura, separately, cannot serve a hundred million requests a month at any price, because its allowance is daily and hard-stops at 402."
-  - "Only some of the cell winners rest on fully published, unambiguous numbers. BlockPI and Chainstack publish complete figures. OnFinality's default method weight is assumed on chains it says carry undisclosed higher weights, NOWNodes publishes no archive or trace availability at all while winning the largest trace cell on price, and Syndica's pricing survives only inside a calculator that ends in a lead-capture form."
-  - "The cheapest defensible answer for a billion trace requests a month is therefore dRPC at $6,000, which is 5.7% above NOWNodes and the cheapest option that actually publishes that it serves debug and trace."
+  - "Only some of the cell winners rest on fully published, unambiguous numbers. BlockPI and Chainstack publish complete figures. OnFinality's default method weight is assumed on chains it says carry undisclosed higher weights, NOWNodes publishes no archive or trace availability at all and so is not ranked on those workloads even where its price alone would lead them, and Syndica's pricing survives only inside a calculator that ends in a lead-capture form."
+  - "The cheapest answer for a billion trace requests a month is therefore dRPC at $6,000, the cheapest option that actually publishes that it serves debug and trace. Chainstack is second at $8,990."
   - "Free tiers differ by 160x once the allowance is converted into requests. OnFinality's buys 12.0 million simple reads a month and GetBlock's buys 75,000. Several free tiers are throughput-capped rather than volume-capped, and GetBlock's daily allowance drains in 125 seconds at its own advertised rate."
   - "Buying the small plan is often the most expensive choice. At a hundred million dapp requests the entry band costs $524.50 while the growth band costs $249 and the business band $499, because the entry allowance runs out and the overage rate does not fall."
   - "Advertised capability is not served capability. Chainstack's own node API lists trace support on its Polygon node, and trace_block there returns method not found. Alchemy's free tier answers archive reads but refuses all four trace and debug methods outright. Both were found by calling the endpoints rather than by reading the matrix."
@@ -112,7 +114,7 @@ findings:
 
 faq:
   - q: "Which RPC provider is cheapest?"
-    a: "It depends on the workload, by multiples rather than percent. Across five workload profiles and three volumes, five providers win a cell outright: BlockPI and OnFinality four each, NOWNodes and Syndica two each, and dRPC one. Two further cells are ties at $49, shared by Chainstack, Helius and OnFinality. Pick the profile that matches your method mix rather than reading a single number."
+    a: "It depends on the workload, by multiples rather than percent. Across five workload profiles and three volumes, five providers win a cell outright: BlockPI and OnFinality four each, Chainstack and Syndica two each, and dRPC one. Two further cells are ties at $49, shared by Chainstack, Helius and OnFinality. Pick the profile that matches your method mix rather than reading a single number."
   - q: "Why do Alchemy and QuickNode never win?"
     a: "Because they are three to four times more expensive than the leaders for the same work. Alchemy bills $10,500 a month for a billion simple reads where BlockPI bills $2,833, and across the fifteen cells the two run between 1.7x and 10.6x the cell leader. Both are priced as premium products and both publish their rates plainly; the bench simply applies them."
   - q: "How can you compare a Compute Unit to a Request Unit?"
@@ -124,7 +126,7 @@ faq:
   - q: "What about the free tiers?"
     a: "They have their own bench, 283 rpc-free-tier, ranked by what the allowance actually buys rather than by price, since every free plan costs the same nothing. Converted into simple reads per month they differ by 160x, from OnFinality's 12.0 million to GetBlock's 75,000. The allowance ranking is bench 283, rpc-free-tier. Several are limited by throughput rather than volume: GetBlock's daily allowance drains in 125 seconds at its own advertised 20 requests per second."
   - q: "How current are these numbers?"
-    a: "Every figure carries the date a human last verified it against the source. The harness re-fetches 21 artifacts that carry a baseline hash and flags any whose body has changed since a human last read it. Artifacts that churn for reasons unrelated to price are re-read by hand instead, and every figure publishes its age either way. Freshness varies within a provider: Chainstack's pricing markdown has not moved since April 2026 while its pricing JSON regenerates every fifteen minutes."
+    a: "Every figure carries the date a human last verified it against the source. The harness re-fetches 20 artifacts that carry a baseline hash and flags any whose body has changed since a human last read it. Artifacts that churn for reasons unrelated to price are re-read by hand instead, and every figure publishes its age either way. Freshness varies within a provider: Chainstack's pricing markdown has not moved since April 2026 while its pricing JSON regenerates every fifteen minutes."
   - q: "Can I reproduce these numbers?"
     a: "Yes. The pricing catalogue, the cost model and the workload profiles are all in the harness repository linked below, and every figure carries its source URL and verification date. The weighted units per request are published as a metric so the arithmetic can be redone by hand."
 

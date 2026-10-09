@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"math"
 	"net/http"
 	"os"
 	"os/signal"
@@ -226,6 +227,13 @@ func priceEverything(cat *Catalogue) {
 				continue
 			}
 			monthly := cat.toUSD(*pl.MonthlyUSD, p.Currency)
+			// Four of these plans bill a base fee AND a per-request rate on
+			// top (AWS AMB in three regions, Shyft legacy-scale), so the
+			// plan's own rate and its included allowance both belong in the
+			// comparison. The dedicated cohort bills in whole requests, one
+			// unit per request, so these are directly comparable to the
+			// floor's dollars per million requests.
+			ownRate, included := dedicatedRate(cat, p, pl)
 			// One series per chain the plan actually serves, against that
 			// chain's own metered floor.
 			for _, ch := range pl.Chains {
@@ -233,7 +241,18 @@ func priceEverything(cat *Catalogue) {
 				if !ok {
 					continue
 				}
-				breakevenReqs.WithLabelValues(p.Slug, pl.ID, ch).Set(breakeven(monthly, floor))
+				v := breakeven(monthly, included, ownRate, floor)
+				if math.IsNaN(v) || math.IsInf(v, 0) {
+					// Never cheaper than metering, at any volume. Publishing
+					// nothing is the honest outcome: a reader who sees no
+					// break-even learns the right thing, and one who sees a
+					// number learns a wrong one. AWS AMB published 34,528,768
+					// requests while being dearer at every volume.
+					log.Printf("%s %s %s: no break-even (own rate $%.3f/1M vs floor $%.3f/1M)",
+						p.Slug, pl.ID, ch, ownRate, floor)
+					continue
+				}
+				breakevenReqs.WithLabelValues(p.Slug, pl.ID, ch).Set(v)
 			}
 		}
 	}
