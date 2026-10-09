@@ -391,6 +391,16 @@ func (c *Catalogue) FreeAllowanceRequests(p Provider, pr Profile) (float64, stri
 		if c.PlanTier(p, pl) != TierFree || pl.IncludedUnits == nil {
 			continue
 		}
+		// Bench 283's methodology promises it "reads only the rows whose
+		// monthly price is zero AND whose allowance renews". Until now the
+		// second half was true only by hand: the three non-recurring offers
+		// are banded `entry` in the catalogue, so TierFree above happened to
+		// exclude them. That is a convention, not a guard, and periodScale
+		// returns 1 for `lifetime` — so a one-off grant banded `free` by
+		// anyone later would publish as a full monthly allowance.
+		if pl.NonRecurring {
+			continue
+		}
 		// An allowance the plan cannot spend on this workload is not an
 		// allowance. dRPC's free tier led the trace panel at 10.5M requests
 		// while its own plan is archive: false, trace: false and the ledger
