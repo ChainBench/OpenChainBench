@@ -37,8 +37,8 @@ seo_intro: |
   requests against 368k, on one plan, with nothing on the pricing page saying
   so. Every row carries the two ends of that span next to its headline
   figure, so the plans a workload cannot surprise are visible without
-  reading four tabs: Ankr, dRPC, OnFinality, InstaNodes and Validation Cloud
-  meter flat, and their floor is their ceiling.
+  reading four tabs: Ankr, dRPC, OnFinality and InstaNodes meter flat, and
+  their floor is their ceiling.
 
 abstract: |
   We take each provider's free plan allowance as published, in whatever unit
@@ -112,8 +112,8 @@ dimensions:
 # BlockPI publishes one free tier that buys 3.1M simple reads and 368k
 # traces, a factor of eight, and Infura and Blockdaemon swing five; a reader
 # who landed on one tab had no way to learn that without clicking the others
-# and holding the numbers in their head. Ankr, dRPC, OnFinality, InstaNodes
-# and Validation Cloud meter flat and report floor equal to ceiling, so the
+# and holding the numbers in their head. Ankr, dRPC, OnFinality and
+# InstaNodes meter flat and report floor equal to ceiling, so the
 # two columns also say outright which plans the workload cannot surprise,
 # which is the fact that decides whether an allowance can be budgeted.
 ledger_columns:
