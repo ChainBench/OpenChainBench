@@ -215,15 +215,19 @@ export default async function ChainPage({
           <h1 className="display text-2xl sm:text-3xl md:text-4xl tracking-tight leading-tight">
             {chain.label} live benchmarks
           </h1>
+          {/* Same treatment as the product header: full text size and
+              foreground colour. At 11px in muted grey this link was there and
+              unfindable, which is how a reader concluded the site had no
+              official link at all. */}
           {chain.website && (
             <a
               href={withUtm(chain.website)}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-1 inline-flex items-center gap-1 text-xs text-ink-muted hover:text-ink transition-colors"
+              className="lnk mt-2 inline-flex items-center gap-1 text-sm font-medium text-ink hover:text-accent transition-colors break-all"
             >
-              {chain.website.replace(/^https?:\/\//, "")}
-              <ArrowUpRight size={11} strokeWidth={2} />
+              {chain.website.replace(/^https?:\/\//, "").replace(/\/$/, "")}
+              <ArrowUpRight size={13} strokeWidth={2} className="shrink-0" />
             </a>
           )}
         </div>
