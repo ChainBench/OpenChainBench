@@ -150,6 +150,22 @@ type Plan struct {
 	// the cap rather than billing extra, so it is ineligible above it
 	// instead of merely expensive.
 	OverageAllowed string `yaml:"overage_allowed"`
+	// NonRecurring marks an offer that exists once and then ends: a
+	// one-month free trial, not a plan anybody runs on. The bench measures
+	// a MONTHLY bill, so a trial's $0 is not a price on that axis, and
+	// cheapest() skips it.
+	//
+	// All three carriers are already annotated as such in the catalogue's
+	// own prose — QuickNode's "ONE-MONTH trial ... not a recurring free
+	// tier", NOWNodes' "a free Start plan for 1 month ... not recurring",
+	// Tatum's "100k credits are LIFETIME and never renew" — and all three
+	// are banded `entry` rather than `free` precisely so they would sit
+	// beside what they become. The band was right and the price was not:
+	// the model read the $0 and quoted it. That stayed invisible while the
+	// only published volumes were 10M and up, where a 10M-credit trial is
+	// already ineligible. The curve reaches 100k, where a trial would have
+	// led the board.
+	NonRecurring bool `yaml:"non_recurring"`
 	// RequiresPlan names a plan on the same provider that must be held
 	// before this one can be bought. Its price is added to the bill.
 	// Infura's $200 extra-credits add-on cannot be bought on the free

@@ -421,6 +421,14 @@ func cheapest(c *Catalogue, p Provider, pr Profile, requests float64, tier strin
 		if paidOnly && planTier == TierFree {
 			continue
 		}
+		// A one-month trial is not a monthly price, at any volume and in
+		// any band. Skipped for every tier rather than only the paid view:
+		// a $0 trial crowning the `entry` tab is the same wrong answer as
+		// a $0 trial crowning the default one. The free tiers that ARE
+		// recurring stay exactly where they were, which is bench 283.
+		if pl.NonRecurring {
+			continue
+		}
 		q := quote(c, p, pl, pr, requests)
 		if !q.Eligible {
 			if found {
