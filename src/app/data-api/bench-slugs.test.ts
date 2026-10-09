@@ -21,7 +21,8 @@ import {
 const SRC = readFileSync(join(import.meta.dir, "page.tsx"), "utf8");
 
 function curatedSlugs(): string[] {
-  const m = SRC.match(/const CURATED_BENCH_SLUGS = \[([^\]]*)\]/s);
+  // [\s\S] rather than . with the s flag: the repo's tsconfig target predates it.
+  const m = SRC.match(/const CURATED_BENCH_SLUGS = \[([\s\S]*?)\]/);
   if (!m) throw new Error("CURATED_BENCH_SLUGS not found in page.tsx");
   return [...m[1]!.matchAll(/"([a-z0-9-]+)"/g)].map((x) => x[1]!);
 }

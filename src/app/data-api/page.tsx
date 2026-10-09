@@ -169,16 +169,13 @@ export default async function DataApiHubPage() {
               tip="Best provider on aggregator-head-lag (p50 head lag, 24h, all chains & regions)."
               accent="#f59e0b"
             />
-            <KpiCard
-              label="Fastest wallet indexing"
-              value={
-                snapshot.totals.headlineIndexing
-                  ? `${snapshot.totals.headlineIndexing.name} · ${snapshot.totals.headlineIndexing.value}`
-                  : "..."
-              }
-              tip="Best provider on indexing-freshness: seconds from Base tx confirm to API visibility (p50, 24h)."
-              accent="#10b981"
-            />
+            {/* The "Fastest wallet indexing" tile was removed on 2026-10-09
+                with the bench behind it. indexing-freshness retired on
+                2026-08-05, so headlineIndexing has been null ever since and
+                the tile rendered its fallback, "...", which reads as data
+                still loading rather than a bench that no longer exists. The
+                snapshot field stays and stays null, so the tile comes back
+                on its own if the bench ever does. */}
           </section>
 
           {/* Group summary pills */}
