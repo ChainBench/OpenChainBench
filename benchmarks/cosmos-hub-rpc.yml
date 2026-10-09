@@ -115,26 +115,27 @@ providers:
           p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="lavenderfive", chain="cosmos-hub", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="lavenderfive", chain="cosmos-hub", region="sgp"}[1h])
 
-  - slug: lava
-    name: Lava Network
-    endpoint: https://cosmoshub.tendermintrpc.lava.build
-    tag: Multi-chain RPC gateway with a no-key Cosmos Hub tier
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single Tendermint `status` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Lava Network's no-key cosmos-hub RPC endpoint."
+  - slug: ecostake
+    name: ecostake
+    endpoint: https://rpc-cosmoshub.ecostake.com
+    tag: ecostake community validator public RPC
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single Tendermint `status` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to ecostake's no-key cosmos-hub RPC endpoint."
     queries:
-      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="lava", chain="cosmos-hub"})
-      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="lava", chain="cosmos-hub"})
-      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="lava", chain="cosmos-hub"})
-      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="lava", chain="cosmos-hub"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="lava", chain="cosmos-hub"}) / sum(ocb:rpc_call:rate_24h{provider="lava", chain="cosmos-hub"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="lava", chain="cosmos-hub"})
-      series: avg(avg_over_time(rpc_latency_milliseconds{provider="lava", chain="cosmos-hub"}[1h]))
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="ecostake", chain="cosmos-hub"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="ecostake", chain="cosmos-hub"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="ecostake", chain="cosmos-hub"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="ecostake", chain="cosmos-hub"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="ecostake", chain="cosmos-hub"}) / sum(ocb:rpc_call:rate_24h{provider="ecostake", chain="cosmos-hub"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="ecostake", chain="cosmos-hub"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="ecostake", chain="cosmos-hub"}[1h]))
       regions:
         - region: us-east
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="lava", chain="cosmos-hub", region="us-east"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="lava", chain="cosmos-hub", region="us-east"}[1h])
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="ecostake", chain="cosmos-hub", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="ecostake", chain="cosmos-hub", region="us-east"}[1h])
         - region: eu-west
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="lava", chain="cosmos-hub", region="eu-west"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="lava", chain="cosmos-hub", region="eu-west"}[1h])
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="ecostake", chain="cosmos-hub", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="ecostake", chain="cosmos-hub", region="eu-west"}[1h])
         - region: ap-southeast
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="lava", chain="cosmos-hub", region="sgp"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="lava", chain="cosmos-hub", region="sgp"}[1h])
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="ecostake", chain="cosmos-hub", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="ecostake", chain="cosmos-hub", region="sgp"}[1h])
+

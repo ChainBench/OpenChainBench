@@ -829,6 +829,7 @@ const ALIASES: Record<string, string> = {
   "optimism-official": "optimism",
   // Long-tail RPC cluster (055-066).
   "sonic-official": "sonic",
+  "astar-official": "astar",
   "monad-official": "monad",
   "solana-official": "solana",
   "solana-labs": "solana",
