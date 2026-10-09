@@ -143,7 +143,19 @@ var (
 	oracleStaleButMoved = promauto.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "ocb_oracle_stale_but_moved",
-			Help: "1 when the feed is older than 300s AND the CEX reference price (Binance, Coinbase fallback) has moved more than 0.5% since the update was observed, else 0. Staleness alone is normal for deviation-triggered feeds; stale AND moved is the dangerous state.",
+			Help: "1 when the CEX reference price (Binance, Coinbase fallback) has moved more than THIS feed's own published deviation threshold since its last update, and the feed still has not written after a 300s grace. Staleness alone is normal for a deviation-triggered feed; late against its own trigger is the dangerous state.",
+		},
+		[]string{"oracle", "pair", "chain"},
+	)
+
+	// The other half of a push oracle's promise: it may stay silent while the
+	// price is calm, but never longer than its heartbeat. Published only for
+	// feeds that state one, so an absent series means "no promise declared",
+	// never "never breached".
+	oracleHeartbeatBreach = promauto.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "ocb_oracle_heartbeat_breach",
+			Help: "1 when the feed has been silent longer than its own published heartbeat (3600s for BTC, ETH and LINK; 86400s for SOL, BNB, AVAX and MATIC on Ethereum mainnet), else 0.",
 		},
 		[]string{"oracle", "pair", "chain"},
 	)
