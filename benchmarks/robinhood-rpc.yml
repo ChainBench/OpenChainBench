@@ -45,7 +45,7 @@ methodology:
   - "Robinhood Chain runs on the Arbitrum Orbit stack with about 100 ms block times; the probe samples the serving path, not block production. The stale check tolerates 200 blocks behind the cross-provider tip (20 s of wall clock, the same tolerance as the 1 s chains at 20 blocks) on the public cohort and 20 blocks on the keyed one."
 
 excluded_providers:
-  - { name: Ankr, reason: "does not list Robinhood Chain" }
+  - { name: Ankr, reason: "serves Robinhood Chain on Premium only, not on the Freemium or public plans" }
   - { name: Infura, reason: "does not list Robinhood Chain" }
   - { name: Tenderly, reason: "no public gateway for Robinhood Chain at the last sweep" }
   - { name: Nodies, reason: "no public endpoint for Robinhood Chain at the last sweep" }
