@@ -12,7 +12,18 @@
 
 export type ProviderRegistryEntry = {
   url: string;
-  description: string;
+  /**
+   * Optional since 2026-10-09. It used to be required, which meant a provider
+   * could not get its official link published without someone also writing a
+   * sober one-liner for it, and 192 product pages were shipping with no
+   * outbound link at all as a result. A verified URL is worth publishing on
+   * its own; the description is enrichment and can follow.
+   *
+   * Every consumer guards it. The product page skips the paragraph, the
+   * metadata builder falls back to the rank sentence, and /compare passes it
+   * through as an optional prop.
+   */
+  description?: string;
   twitter?: string;
 
   // Optional rich content surfaced on the product detail page when present.

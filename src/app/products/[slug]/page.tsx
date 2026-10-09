@@ -836,7 +836,13 @@ export default async function ProviderPage({
         const parentReg = parentSlug ? getProviderRegistry(parentSlug) : undefined;
         const children = Object.entries(PROVIDER_REGISTRY)
           .filter(([childSlug, e]) => e.parent === p.slug && childSlug !== p.slug)
-          .map(([childSlug, e]) => ({ slug: childSlug, name: e.description.split(".")[0] || childSlug }));
+          // The child's display name is the first sentence of its description.
+          // An entry that carries only a verified URL has none, so fall back
+          // to the slug rather than crashing the parent's page.
+          .map(([childSlug, e]) => ({
+            slug: childSlug,
+            name: e.description?.split(".")[0] || childSlug,
+          }));
         return (
           <>
             <header className="mt-6 flex items-center gap-4 border-b-2 border-ink pb-6">
@@ -1035,10 +1041,20 @@ export default async function ProviderPage({
 
       {reg && (
         <section className="mt-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-8">
-          <p className="text-base text-ink-soft leading-relaxed max-w-2xl">
-            {reg.description}
-          </p>
-          <ul className="flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:gap-x-4 sm:gap-y-1 sm:ml-auto sm:flex-col sm:items-end sm:text-right shrink-0 min-w-0">
+          {reg.description && (
+            <p className="text-base text-ink-soft leading-relaxed max-w-2xl">
+              {reg.description}
+            </p>
+          )}
+          {/* Pushed to the right only when there is a paragraph to sit beside.
+              A lone link floated right with nothing on its left reads as a
+              stray element, so on a description-less entry it stays at the
+              start of the row. */}
+          <ul
+            className={`flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:gap-x-4 sm:gap-y-1 sm:flex-col shrink-0 min-w-0 ${
+              reg.description ? "sm:ml-auto sm:items-end sm:text-right" : "sm:items-start"
+            }`}
+          >
             <li className="min-w-0">
               <a
                 className="lnk inline-flex items-center gap-1 font-sans text-[11px] uppercase tracking-[0.16em] font-medium text-ink-soft hover:text-ink break-all"
