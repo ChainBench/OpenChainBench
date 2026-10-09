@@ -32,12 +32,19 @@ type relayEndpoint struct {
 }
 
 // relays verified answering keyless at bench inception (2026-07-14).
+//
+// bloXroute's max-profit relay was dropped on 2026-10-09: it has no DNS
+// record at all (NXDOMAIN at 8.8.8.8, so not a local resolver artefact) and
+// delivered 0 payloads in the preceding 24h while the other six all moved.
+// Its counter kept a plausible-looking 26,395 total only because a Prometheus
+// counter never goes down, which is exactly why the row looked alive. The
+// spec advertised "seven MEV-Boost relays" in four places and has been
+// corrected to six.
 func relays() []relayEndpoint {
 	return []relayEndpoint{
 		{"flashbots", "https://boost-relay.flashbots.net"},
 		{"ultrasound", "https://relay.ultrasound.money"},
 		{"agnostic", "https://agnostic-relay.net"},
-		{"bloxroute-max-profit", "https://bloxroute.max-profit.blxrbdn.com"},
 		{"bloxroute-regulated", "https://bloxroute.regulated.blxrbdn.com"},
 		{"titan", "https://titanrelay.xyz"},
 		{"aestus", "https://aestus.live"},
