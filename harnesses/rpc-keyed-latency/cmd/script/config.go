@@ -23,7 +23,7 @@ type Endpoint struct {
 
 // matrix declares which (provider, chain) cells we look for in env.
 // Kind is derived from the chain.
-var providers = []string{"infura", "alchemy", "chainstack", "ankr", "helius", "quicknode", "getblock"}
+var providers = []string{"infura", "alchemy", "chainstack", "ankr", "helius", "quicknode", "getblock", "dwellir"}
 
 // Per-provider probe-interval multiplier. Infura's free tier 402'd daily
 // at the old 60 s cadence (its real daily credit budget is below the
@@ -126,6 +126,15 @@ var defaultBudgets = map[string]int64{
 	"getblock":   600_000,
 	"ankr":       300_000,
 	"helius":     300_000,
+	// dwellir: Developer plan, $49/month, 25M API responses and 100
+	// responses/sec, 1 RPC response = 1 API credit with no compute units.
+	// Three regions share the key, so 8.3M per region is what the plan
+	// actually allows; the eight EVM chains cost 173k per region per month at
+	// the 120 s cadence, under 1% of it. The number below is therefore a
+	// runaway guard, not a quota, and sits well inside the plan.
+	// Dwellir does not serve Solana, and a cell with no URL is simply
+	// skipped, so that chain stays at four providers with no special casing.
+	"dwellir":    1_000_000,
 }
 
 func budgetFor(provider string) int64 {
