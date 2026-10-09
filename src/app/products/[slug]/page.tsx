@@ -855,6 +855,37 @@ export default async function ProviderPage({
                 <p className="mt-1 text-base text-ink-soft">
                   {productProse}
                 </p>
+                {/* The official site, in the header where a reader looks for
+                    it. It used to sit far down the page beside the
+                    description, right-aligned at 11px in muted grey, and it
+                    was effectively invisible: the first question asked about
+                    this page was "where is the Chainstack link, did you add
+                    it". It was there. Nobody could see it. Full text size and
+                    foreground colour here, directly under the title. */}
+                {(reg?.url || reg?.twitter) && (
+                  <p className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+                    {reg.url && (
+                      <a
+                        className="lnk inline-flex items-center gap-1 font-medium text-ink hover:text-accent transition-colors break-all"
+                        href={withUtm(reg.url)}
+                        rel="noopener"
+                      >
+                        {reg.url.replace(/^https?:\/\//, "").replace(/\/$/, "")}
+                        <ArrowUpRight size={13} strokeWidth={2} className="shrink-0" />
+                      </a>
+                    )}
+                    {reg.twitter && (
+                      <a
+                        className="lnk inline-flex items-center gap-1 text-ink-soft hover:text-ink transition-colors"
+                        href={withUtm(`https://x.com/${reg.twitter.replace(/^@/, "")}`)}
+                        rel="noopener"
+                      >
+                        {reg.twitter}
+                        <ArrowUpRight size={13} strokeWidth={2} className="shrink-0" />
+                      </a>
+                    )}
+                  </p>
+                )}
                 <p className="mt-2 font-sans text-[11px] uppercase tracking-[0.18em] text-ink-muted font-medium">
                   {distinctBenchCount(p.appearances)} {distinctBenchCount(p.appearances) === 1 ? "benchmark" : "benchmarks"}
                   {p.wins > 0 && (
@@ -1040,53 +1071,14 @@ export default async function ProviderPage({
         return <VenueKpiToggle sections={sections} />;
       })()}
 
-      {/* Now that url and description are both optional, an entry can exist
-          and have nothing to show (a dead domain dropped from an entry that
-          never had prose). Render the section only when it holds something. */}
-      {reg && (reg.description || reg.url || reg.twitter) && (
-        <section className="mt-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-8">
-          {reg.description && (
-            <p className="text-base text-ink-soft leading-relaxed max-w-2xl">
-              {reg.description}
-            </p>
-          )}
-          {/* Pushed to the right only when there is a paragraph to sit beside.
-              A lone link floated right with nothing on its left reads as a
-              stray element, so on a description-less entry it stays at the
-              start of the row. */}
-          <ul
-            className={`flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:gap-x-4 sm:gap-y-1 sm:flex-col shrink-0 min-w-0 ${
-              reg.description ? "sm:ml-auto sm:items-end sm:text-right" : "sm:items-start"
-            }`}
-          >
-            {/* Absent when the provider's domain died and the url was dropped
-                rather than left pointing at nothing, and absent too for the
-                rejected-scheme case getProviderRegistry coerces to "". */}
-            {reg.url && (
-              <li className="min-w-0">
-                <a
-                  className="lnk inline-flex items-center gap-1 font-sans text-[11px] uppercase tracking-[0.16em] font-medium text-ink-soft hover:text-ink break-all"
-                  href={withUtm(reg.url)}
-                  rel="noopener"
-                >
-                  {reg.url.replace(/^https?:\/\//, "").replace(/\/$/, "")}
-                  <ArrowUpRight size={11} strokeWidth={2} className="shrink-0" />
-                </a>
-              </li>
-            )}
-            {reg.twitter && (
-              <li>
-                <a
-                  className="lnk inline-flex items-center gap-1 font-sans text-[11px] uppercase tracking-[0.16em] font-medium text-ink-soft hover:text-ink"
-                  href={withUtm(`https://x.com/${reg.twitter.replace(/^@/, "")}`)}
-                  rel="noopener"
-                >
-                  {reg.twitter}
-                  <ArrowUpRight size={11} strokeWidth={2} />
-                </a>
-              </li>
-            )}
-          </ul>
+      {/* Description only. The official site and the X handle moved into
+          the header above: here they sat right-aligned at 11px beside the
+          prose and readers could not find them. */}
+      {reg?.description && (
+        <section className="mt-8">
+          <p className="text-base text-ink-soft leading-relaxed max-w-2xl">
+            {reg.description}
+          </p>
         </section>
       )}
 
