@@ -30,8 +30,8 @@ seo_intro: |
   proposer built locally instead of outsourcing; that row is the live
   measure of how much of Ethereum still self-builds. As an independent
   cross-check the harness also polls the public bidtrace data APIs of
-  seven MEV-Boost relays (Flashbots, ultrasound, Agnostic, bloXroute
-  max-profit and regulated, Titan, Aestus) and counts delivered
+  six MEV-Boost relays (Flashbots, ultrasound, Agnostic, bloXroute
+  regulated, Titan, Aestus) and counts delivered
   payloads per relay, a signal that does not depend on any builder's
   self-chosen label.
 
@@ -51,7 +51,7 @@ abstract: |
   bench 016. The headline metric is each builder's percentage of all
   blocks observed in the last 24 hours. Two companion measurements ship
   in the same harness. First, an independent cross-check: the public
-  bidtrace APIs of seven MEV-Boost relays are polled every five minutes
+  bidtrace APIs of six MEV-Boost relays are polled every five minutes
   and delivered payloads are counted per relay, deduped per relay by
   slot high-water-mark; the same slot appearing on several relays is
   normal because builders multi-home their bids. Second, an L2
@@ -68,7 +68,7 @@ methodology:
   - "Vanilla detection: empty extraData or execution-client default tags (geth, reth, nethermind, besu, erigon, go1.x, platform strings) count as builder=vanilla, meaning the proposer built the block locally instead of outsourcing to a builder. This row is the live self-built share of Ethereum."
   - "Unattributed handling: any non-empty tag not in the table counts as builder=other, increments ebb_unattributed_total, and logs the raw extraData string. The table grows from operator logs instead of silently under-counting, the bench 016 pattern."
   - "Self-labeling caveat: extraData is voluntary. A builder can rebrand, blank its tag, or impersonate another. The relay cross-check below is the independent signal; a large divergence between extraData share and relay-side delivered payloads would surface tag games."
-  - "Relay cross-check: seven MEV-Boost relay data APIs (Flashbots, ultrasound, Agnostic, bloXroute max-profit, bloXroute regulated, Titan, Aestus) are polled keyless every 5 min via GET /relay/v1/data/bidtraces/proposer_payload_delivered?limit=50. Delivered payloads are counted per relay (ebb_relay_payloads_total), deduped per relay by slot high-water-mark. The same slot on multiple relays is normal: builders multi-home bids, so relay counters measure relay share, not a partition of blocks."
+  - "Relay cross-check: six MEV-Boost relay data APIs (Flashbots, ultrasound, Agnostic, bloXroute regulated, Titan, Aestus) are polled keyless every 5 min via GET /relay/v1/data/bidtraces/proposer_payload_delivered?limit=50. Delivered payloads are counted per relay (ebb_relay_payloads_total), deduped per relay by slot high-water-mark. The same slot on multiple relays is normal: builders multi-home bids, so relay counters measure relay share, not a partition of blocks."
   - "Single vantage: one harness in one region observes the chain through one public RPC. Attribution is not latency-sensitive (extraData is consensus data, identical from every vantage), so single-vantage only affects liveness, which the health gauges expose."
   - "Companion L2 metrics: the same harness measures Arbitrum sequencer-feed soft-confirmation lag (ebb_arb_softconf_lag_milliseconds, feed arrival to public RPC visibility, offset derived at runtime) and Base flashblocks cadence plus flashblock-to-RPC lag (ebb_base_flashblock_interval_milliseconds, ebb_base_softconf_lag_milliseconds). These are per-chain, not per-builder, so this spec surfaces builder share only; the L2 lag series feed a future bench page."
 
@@ -87,7 +87,7 @@ faq:
   - q: "Why do the p50, p90 and p99 columns show the same number?"
     a: "This bench has no latency dimension, so the percentile slots are repurposed, same convention as bench 016. Every aggregate column carries the builder's 24h block share; the sample column carries the raw block count and the success column reports the harness's own RPC poll health, not anything about the builder. The ranking signal is the share itself."
   - q: "What is the relay cross-check and why does it not sum to 100 percent?"
-    a: "Seven MEV-Boost relays expose a public data API listing every payload they delivered to a proposer. The harness counts delivered payloads per relay every five minutes. Because builders submit the same bid through several relays and every relay that carried the winning payload reports it, one block can legitimately appear on multiple relays. Relay counts therefore measure relay market share and act as an attribution sanity check independent of extraData; they are not a partition of blocks and do not sum to the block count."
+    a: "Six MEV-Boost relays expose a public data API listing every payload they delivered to a proposer. The harness counts delivered payloads per relay every five minutes. Because builders submit the same bid through several relays and every relay that carried the winning payload reports it, one block can legitimately appear on multiple relays. Relay counts therefore measure relay market share and act as an attribution sanity check independent of extraData; they are not a partition of blocks and do not sum to the block count."
   - q: "Why does builder concentration matter?"
     a: "Under MEV-Boost, validators outsource block construction, so whoever builds most blocks decides transaction ordering and inclusion for most of Ethereum. Concentration in two or three private firms creates censorship surface (a dominant builder filtering transactions affects most blocks), a single point of failure for liveness of the fee market, and information asymmetry for anyone trading on-chain. Projects like BuilderNet exist specifically to mutualize this layer; this bench provides the neutral number for whether concentration is getting better or worse."
 
