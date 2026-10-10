@@ -111,3 +111,40 @@ func TestEveryMeteringDedicatedPlanIsHandled(t *testing.T) {
 		t.Errorf("%d metering dedicated plans, expected 4 (AWS AMB x3, Shyft legacy-scale)", metering)
 	}
 }
+
+// A plan that costs nothing has no break-even: there is nothing to pay back.
+//
+// The panel collapses each provider's plans to its soonest crossing, so a
+// zero does not sit quietly in one series — it becomes the provider's
+// headline, and on a lower-is-better panel zero is the best score there is.
+// Shyft has a free tier in the dedicated cohort, and it read "breaks even at
+// zero requests" above eight providers that actually charge for a node.
+func TestAFreePlanHasNoBreakEven(t *testing.T) {
+	c, err := LoadCatalogue("../../pricing/catalogue.yml")
+	if err != nil {
+		t.Skipf("catalogue not readable from here: %v", err)
+	}
+
+	zeroPriced := 0
+	for _, p := range c.Providers {
+		if p.Cohort != "dedicated" {
+			continue
+		}
+		for _, pl := range p.Plans {
+			if pl.MonthlyUSD != nil && c.toUSD(*pl.MonthlyUSD, p.Currency) <= 0 {
+				zeroPriced++
+				t.Logf("%s/%s is $0 and must publish no break-even", p.Slug, pl.ID)
+			}
+		}
+	}
+	if zeroPriced == 0 {
+		t.Skip("no $0 dedicated plan in the catalogue; nothing to guard")
+	}
+
+	// The formula itself still answers 0, which is arithmetically right and
+	// editorially wrong. The guard belongs at the publishing site, so this
+	// pins the thing a reader would see rather than the function.
+	if v := breakeven(0, math.Inf(1), 0, 2.833); v != 0 {
+		t.Errorf("breakeven(0,...) = %v; the caller, not the formula, is what filters it", v)
+	}
+}

@@ -188,6 +188,12 @@ metric_panels:
     label_key: provider
     unit: count
     higher_is_better: false
+    # The gauge is labelled (provider, kind, chain) and carries neither a
+    # bucket nor a venue: units per request do not change with how many
+    # requests you buy or which plan band you are on, which is the point of
+    # publishing it. Appending those two matched nothing and left this panel
+    # blank on 71 of 75 views.
+    ignore_dimensions: [bucket, venue]
   # Free tiers all cost the same nothing, so they can only be ranked on
   # what the allowance actually buys.
   - id: free_allowance
@@ -200,11 +206,23 @@ metric_panels:
   # The question the dedicated cohort exists to answer.
   - id: breakeven
     label: Dedicated break-even, requests per month
-    description: Monthly request volume at which a fixed-price dedicated node undercuts the cheapest metered rate. Lower means the fixed price pays for itself sooner.
-    metric: rpc_cost_breakeven_requests
+    description: Monthly request volume at which a fixed-price dedicated node undercuts the cheapest metered rate, taking each provider's soonest-crossing plan. Lower means the fixed price pays for itself sooner. A provider absent here never breaks even, because its own per-request rate is above the metered floor.
+    metric: min by (provider) (rpc_cost_breakeven_requests)
     label_key: provider
     unit: count
     higher_is_better: false
+    # Two reasons this reads differently from the other panels.
+    #
+    # `min by (provider)`: the gauge is one series per plan per chain, and
+    # the loader asks for a scalar per provider. Chainstack's dedicated
+    # cohort alone publishes eleven, and prom.scalar returns null on more
+    # than one series, so the panel showed 1 provider of 9. The minimum is
+    # the right collapse: the question is the soonest volume at which buying
+    # beats metering.
+    #
+    # The gauge is labelled (provider, plan, chain) and carries no workload,
+    # volume or plan-band dimension, so appending them matched nothing.
+    ignore_dimensions: [kind, bucket, venue]
 
 dimension_labels:
   kind: Workload
