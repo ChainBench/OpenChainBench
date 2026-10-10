@@ -1,5 +1,5 @@
 import { unstable_cache } from "next/cache";
-import { Prometheus } from "@/lib/prometheus";
+import { Prometheus, extractMetricName } from "@/lib/prometheus";
 import { getSpecs } from "@/lib/spec";
 import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
 import { stripQueryRedirect } from "@/lib/canonical-query";
@@ -7,9 +7,10 @@ import { stripQueryRedirect } from "@/lib/canonical-query";
 export const runtime = "nodejs";
 
 /**
- * Ultra-light freshness probe. One Prometheus instant query per spec
- * (`scalar(time() - max(timestamp(<metric>)))`), returning just the
- * resolved data timestamp per slug.
+ * Ultra-light freshness probe. One Prometheus instant query for every
+ * spec's probe metric (`time() - max(timestamp(<metric>))` per metric,
+ * OR-ed into one union),
+ * returning just the resolved data timestamp per slug.
  *
  * Separate from /api/citable so the LiveIndicator can poll cheaply
  * without re-running the heavy spec → rankings → sparkline → series
@@ -42,32 +43,40 @@ const computeFreshness = unstable_cache(
     );
     const fallback = process.env.PROMETHEUS_URL;
 
-    const entries = await Promise.all(
-      specs.map(async (spec) => {
-        const url = spec.prometheus?.url ?? fallback;
-        if (!url) return [spec.slug, null] as const;
-        // Use the first provider's p50 query as the freshness probe. Same
-        // logic as src/lib/spec.ts tryLoadLive - keeps the asOf reported
-        // here consistent with what /api/citable would compute.
-        const probe = spec.providers.find((p) => p.queries?.p50)?.queries?.p50;
-        if (!probe) return [spec.slug, null] as const;
+    // Use the first provider's p50 query as the freshness probe. Same
+    // logic as src/lib/spec.ts tryLoadLive - keeps the asOf reported
+    // here consistent with what /api/citable would compute.
+    //
+    // One query per Prom instance, not one per spec: the per-spec fan-out
+    // was ~98 queries per fill, 509k a day, 30% of every outbound call
+    // the project made (2026-10-10), and each one bills as an
+    // Observability Event.
+    const metricsByUrl = new Map<string, Map<string, string>>();
+    for (const spec of specs) {
+      const url = spec.prometheus?.url ?? fallback;
+      const probe = spec.providers.find((p) => p.queries?.p50)?.queries?.p50;
+      const metric = probe ? extractMetricName(probe) : null;
+      if (!url || !metric) continue;
+      if (!metricsByUrl.has(url)) metricsByUrl.set(url, new Map());
+      metricsByUrl.get(url)!.set(spec.slug, metric);
+    }
+
+    const freshness: Record<string, number> = {};
+    await Promise.all(
+      [...metricsByUrl].map(async ([url, slugToMetric]) => {
         try {
-          const prom = new Prometheus(url);
-          const ageSec = await prom.dataAgeSec(probe);
-          if (ageSec == null || !Number.isFinite(ageSec) || ageSec < 0) {
-            return [spec.slug, null] as const;
+          const ages = await new Prometheus(url).dataAgesSec([...slugToMetric.values()]);
+          const now = Date.now();
+          for (const [slug, metric] of slugToMetric) {
+            const ageSec = ages.get(metric);
+            if (ageSec == null || ageSec < 0) continue;
+            freshness[slug] = now - Math.floor(ageSec * 1000);
           }
-          return [spec.slug, Date.now() - Math.floor(ageSec * 1000)] as const;
         } catch {
-          return [spec.slug, null] as const;
+          // this instance's specs stay absent, as a failed probe did before
         }
       }),
     );
-
-    const freshness: Record<string, number> = {};
-    for (const [slug, asOf] of entries) {
-      if (asOf != null) freshness[slug] = asOf;
-    }
     // Store fallback: the Vercel site has no PROMETHEUS_URL (Prom lives
     // on a private VPS), so on prod every probe above fails and this
     // map came back EMPTY since launch, blanking the LiveIndicator.
