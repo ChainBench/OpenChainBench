@@ -207,7 +207,12 @@ metric_panels:
   - id: breakeven
     label: Dedicated break-even, requests per month
     description: Monthly request volume at which a fixed-price dedicated node undercuts the cheapest metered rate, taking each provider's soonest-crossing plan. Lower means the fixed price pays for itself sooner. A provider absent here never breaks even, because its own per-request rate is above the metered floor.
-    metric: min by (provider) (rpc_cost_breakeven_requests)
+    # The empty selector is load-bearing. The loader splices the provider
+    # filter at the metric's FIRST brace and appends `{provider="x"}` to the
+    # end when there is none, which on an aggregation lands outside the
+    # closing paren and will not parse. Verified against Prometheus both
+    # ways: without it, `1:48: parse error: unexpected "{"`.
+    metric: min by (provider) (rpc_cost_breakeven_requests{})
     label_key: provider
     unit: count
     higher_is_better: false
