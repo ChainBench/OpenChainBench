@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { extractMetricName, trimScalar } from "./prometheus";
+import { Prometheus, extractMetricName, trimScalar } from "./prometheus";
 
 describe("extractMetricName", () => {
   test("plain metric with label selector", () => {
@@ -142,5 +142,38 @@ describe("trimScalar", () => {
     expect(trimScalar(0)).toBe(0);
     expect(trimScalar(Number.NaN)).toBeNull();
     expect(trimScalar(Number.POSITIVE_INFINITY)).toBeNull();
+  });
+});
+
+describe("dataAgesSec", () => {
+  test("one query for every metric, keyed back by name", async () => {
+    const seen: string[] = [];
+    const realFetch = globalThis.fetch;
+    globalThis.fetch = (async (input: string | URL | Request) => {
+      seen.push(new URL(String(input)).searchParams.get("query") ?? "");
+      return Response.json({
+        status: "success",
+        data: {
+          resultType: "vector",
+          result: [
+            { metric: { m: "a_ms" }, value: [1, "12.5"] },
+            { metric: { m: "b_ms" }, value: [1, "NaN"] },
+          ],
+        },
+      });
+    }) as typeof fetch;
+    try {
+      const ages = await new Prometheus("http://localhost:9090").dataAgesSec([
+        "a_ms",
+        "b_ms",
+        "a_ms",
+        'bad"name',
+      ]);
+      expect(seen).toHaveLength(1);
+      expect(seen[0]).toBe('label_replace(time() - max(timestamp(a_ms)), "m", "a_ms", "", "") or label_replace(time() - max(timestamp(b_ms)), "m", "b_ms", "", "")');
+      expect([...ages]).toEqual([["a_ms", 12.5]]);
+    } finally {
+      globalThis.fetch = realFetch;
+    }
   });
 });

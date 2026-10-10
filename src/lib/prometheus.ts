@@ -112,6 +112,29 @@ export class Prometheus {
     return this.scalar(`scalar(time() - max(timestamp(${metric})))`);
   }
 
+  /** `dataAgeSec` for many metrics in ONE instant query: a union of
+   *  per-metric terms, each labelled with its name. `timestamp()` has to
+   *  wrap the bare selector: around anything else (a `label_replace`, a
+   *  regex selector inside one) it returns the evaluation time, so every
+   *  recording rule read as 0 s old. Metrics with no samples are absent
+   *  from the map. Throws on a Prom error, like `query`. */
+  async dataAgesSec(metrics: string[]): Promise<Map<string, number>> {
+    const ages = new Map<string, number>();
+    const names = [...new Set(metrics)].filter((m) => /^[a-zA-Z_:][a-zA-Z0-9_:]*$/.test(m));
+    if (names.length === 0) return ages;
+    const res = await this.query(
+      names
+        .map((m) => `label_replace(time() - max(timestamp(${m})), "m", "${m}", "", "")`)
+        .join(" or "),
+    );
+    if (res.resultType !== "vector") return ages;
+    for (const s of res.result) {
+      const age = Number(s.value[1]);
+      if (s.metric.m && Number.isFinite(age)) ages.set(s.metric.m, age);
+    }
+    return ages;
+  }
+
   /** Convenience: scalar number from any instant query, or null if empty
    *  / error. Errors are logged with the query that failed and the
    *  underlying reason ("empty", "timeout", network error, parse error)
