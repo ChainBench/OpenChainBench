@@ -133,6 +133,16 @@ faq:
 source: https://github.com/ChainBench/OpenChainBench/tree/dev/harnesses/rpc-cost
 
 prometheus:
+  # 24h is the CHART's window, not the headline's. The scalar queries read
+  # min(last_over_time(...[20m])) instead, because a price is not a
+  # distribution and a range selector keeps a withdrawn series alive for its
+  # whole length. On 2026-10-10 a catalogue correction removed OnFinality
+  # from the Solana bot cell and the page went on publishing its $49 for the
+  # rest of the day, labelled "Provisional" under a tooltip saying the
+  # sample was too small to rank. Measured on the withdrawn series: instant
+  # and [20m] return nothing, [3h] and the 24h quantile still serve the $49.
+  # min() also collapses the two series a mid-window plan switch produces,
+  # which prom.scalar would otherwise refuse as ambiguous.
   window: 24h
   expected_freshness_seconds: 10800
   freshness_timestamp_metric: rpc_cost_last_run_timestamp_seconds
@@ -274,11 +284,11 @@ providers:
     tier: usage
     tag: Compute Unit, weighted per method
     queries:
-      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="alchemy",kind="all",bucket="all",venue="all"}[24h])
-      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="alchemy",kind="all",bucket="all",venue="all"}[24h])
-      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="alchemy",kind="all",bucket="all",venue="all"}[24h])
+      p50: min(last_over_time(rpc_cost_monthly_usd{provider="alchemy",kind="all",bucket="all",venue="all"}[20m]))
+      p90: min(last_over_time(rpc_cost_monthly_usd{provider="alchemy",kind="all",bucket="all",venue="all"}[20m]))
+      p99: min(last_over_time(rpc_cost_monthly_usd{provider="alchemy",kind="all",bucket="all",venue="all"}[20m]))
       ranked: rpc_cost_eligible{provider="alchemy",kind="all",bucket="all"}
-      mean: avg_over_time(rpc_cost_monthly_usd{provider="alchemy",kind="all",bucket="all",venue="all"}[24h])
+      mean: min(last_over_time(rpc_cost_monthly_usd{provider="alchemy",kind="all",bucket="all",venue="all"}[20m]))
       series: rpc_cost_monthly_usd{provider="alchemy",kind="all",bucket="all",venue="all"}
       sample_size: count_over_time(rpc_cost_monthly_usd{provider="alchemy",kind="all",bucket="all",venue="all"}[7d])
 
@@ -287,11 +297,11 @@ providers:
     tier: usage
     tag: credit, weighted per chain
     queries:
-      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="quicknode",kind="all",bucket="all",venue="all"}[24h])
-      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="quicknode",kind="all",bucket="all",venue="all"}[24h])
-      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="quicknode",kind="all",bucket="all",venue="all"}[24h])
+      p50: min(last_over_time(rpc_cost_monthly_usd{provider="quicknode",kind="all",bucket="all",venue="all"}[20m]))
+      p90: min(last_over_time(rpc_cost_monthly_usd{provider="quicknode",kind="all",bucket="all",venue="all"}[20m]))
+      p99: min(last_over_time(rpc_cost_monthly_usd{provider="quicknode",kind="all",bucket="all",venue="all"}[20m]))
       ranked: rpc_cost_eligible{provider="quicknode",kind="all",bucket="all"}
-      mean: avg_over_time(rpc_cost_monthly_usd{provider="quicknode",kind="all",bucket="all",venue="all"}[24h])
+      mean: min(last_over_time(rpc_cost_monthly_usd{provider="quicknode",kind="all",bucket="all",venue="all"}[20m]))
       series: rpc_cost_monthly_usd{provider="quicknode",kind="all",bucket="all",venue="all"}
       sample_size: count_over_time(rpc_cost_monthly_usd{provider="quicknode",kind="all",bucket="all",venue="all"}[7d])
 
@@ -300,11 +310,11 @@ providers:
     tier: usage
     tag: credit, weighted per method
     queries:
-      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="infura",kind="all",bucket="all",venue="all"}[24h])
-      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="infura",kind="all",bucket="all",venue="all"}[24h])
-      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="infura",kind="all",bucket="all",venue="all"}[24h])
+      p50: min(last_over_time(rpc_cost_monthly_usd{provider="infura",kind="all",bucket="all",venue="all"}[20m]))
+      p90: min(last_over_time(rpc_cost_monthly_usd{provider="infura",kind="all",bucket="all",venue="all"}[20m]))
+      p99: min(last_over_time(rpc_cost_monthly_usd{provider="infura",kind="all",bucket="all",venue="all"}[20m]))
       ranked: rpc_cost_eligible{provider="infura",kind="all",bucket="all"}
-      mean: avg_over_time(rpc_cost_monthly_usd{provider="infura",kind="all",bucket="all",venue="all"}[24h])
+      mean: min(last_over_time(rpc_cost_monthly_usd{provider="infura",kind="all",bucket="all",venue="all"}[20m]))
       series: rpc_cost_monthly_usd{provider="infura",kind="all",bucket="all",venue="all"}
       sample_size: count_over_time(rpc_cost_monthly_usd{provider="infura",kind="all",bucket="all",venue="all"}[7d])
 
@@ -313,11 +323,11 @@ providers:
     tier: usage
     tag: Request Unit, 1 unit, 2 at archive depth
     queries:
-      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="chainstack",kind="all",bucket="all",venue="all"}[24h])
-      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="chainstack",kind="all",bucket="all",venue="all"}[24h])
-      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="chainstack",kind="all",bucket="all",venue="all"}[24h])
+      p50: min(last_over_time(rpc_cost_monthly_usd{provider="chainstack",kind="all",bucket="all",venue="all"}[20m]))
+      p90: min(last_over_time(rpc_cost_monthly_usd{provider="chainstack",kind="all",bucket="all",venue="all"}[20m]))
+      p99: min(last_over_time(rpc_cost_monthly_usd{provider="chainstack",kind="all",bucket="all",venue="all"}[20m]))
       ranked: rpc_cost_eligible{provider="chainstack",kind="all",bucket="all"}
-      mean: avg_over_time(rpc_cost_monthly_usd{provider="chainstack",kind="all",bucket="all",venue="all"}[24h])
+      mean: min(last_over_time(rpc_cost_monthly_usd{provider="chainstack",kind="all",bucket="all",venue="all"}[20m]))
       series: rpc_cost_monthly_usd{provider="chainstack",kind="all",bucket="all",venue="all"}
       sample_size: count_over_time(rpc_cost_monthly_usd{provider="chainstack",kind="all",bucket="all",venue="all"}[7d])
 
@@ -326,11 +336,11 @@ providers:
     tier: usage
     tag: Compute Unit, flat per request
     queries:
-      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="drpc",kind="all",bucket="all",venue="all"}[24h])
-      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="drpc",kind="all",bucket="all",venue="all"}[24h])
-      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="drpc",kind="all",bucket="all",venue="all"}[24h])
+      p50: min(last_over_time(rpc_cost_monthly_usd{provider="drpc",kind="all",bucket="all",venue="all"}[20m]))
+      p90: min(last_over_time(rpc_cost_monthly_usd{provider="drpc",kind="all",bucket="all",venue="all"}[20m]))
+      p99: min(last_over_time(rpc_cost_monthly_usd{provider="drpc",kind="all",bucket="all",venue="all"}[20m]))
       ranked: rpc_cost_eligible{provider="drpc",kind="all",bucket="all"}
-      mean: avg_over_time(rpc_cost_monthly_usd{provider="drpc",kind="all",bucket="all",venue="all"}[24h])
+      mean: min(last_over_time(rpc_cost_monthly_usd{provider="drpc",kind="all",bucket="all",venue="all"}[20m]))
       series: rpc_cost_monthly_usd{provider="drpc",kind="all",bucket="all",venue="all"}
       sample_size: count_over_time(rpc_cost_monthly_usd{provider="drpc",kind="all",bucket="all",venue="all"}[7d])
 
@@ -339,11 +349,11 @@ providers:
     tier: usage
     tag: credit, weighted per chain
     queries:
-      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="ankr",kind="all",bucket="all",venue="all"}[24h])
-      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="ankr",kind="all",bucket="all",venue="all"}[24h])
-      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="ankr",kind="all",bucket="all",venue="all"}[24h])
+      p50: min(last_over_time(rpc_cost_monthly_usd{provider="ankr",kind="all",bucket="all",venue="all"}[20m]))
+      p90: min(last_over_time(rpc_cost_monthly_usd{provider="ankr",kind="all",bucket="all",venue="all"}[20m]))
+      p99: min(last_over_time(rpc_cost_monthly_usd{provider="ankr",kind="all",bucket="all",venue="all"}[20m]))
       ranked: rpc_cost_eligible{provider="ankr",kind="all",bucket="all"}
-      mean: avg_over_time(rpc_cost_monthly_usd{provider="ankr",kind="all",bucket="all",venue="all"}[24h])
+      mean: min(last_over_time(rpc_cost_monthly_usd{provider="ankr",kind="all",bucket="all",venue="all"}[20m]))
       series: rpc_cost_monthly_usd{provider="ankr",kind="all",bucket="all",venue="all"}
       sample_size: count_over_time(rpc_cost_monthly_usd{provider="ankr",kind="all",bucket="all",venue="all"}[7d])
 
@@ -352,11 +362,11 @@ providers:
     tier: usage
     tag: Request Unit, weighted per method
     queries:
-      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="blockpi",kind="all",bucket="all",venue="all"}[24h])
-      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="blockpi",kind="all",bucket="all",venue="all"}[24h])
-      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="blockpi",kind="all",bucket="all",venue="all"}[24h])
+      p50: min(last_over_time(rpc_cost_monthly_usd{provider="blockpi",kind="all",bucket="all",venue="all"}[20m]))
+      p90: min(last_over_time(rpc_cost_monthly_usd{provider="blockpi",kind="all",bucket="all",venue="all"}[20m]))
+      p99: min(last_over_time(rpc_cost_monthly_usd{provider="blockpi",kind="all",bucket="all",venue="all"}[20m]))
       ranked: rpc_cost_eligible{provider="blockpi",kind="all",bucket="all"}
-      mean: avg_over_time(rpc_cost_monthly_usd{provider="blockpi",kind="all",bucket="all",venue="all"}[24h])
+      mean: min(last_over_time(rpc_cost_monthly_usd{provider="blockpi",kind="all",bucket="all",venue="all"}[20m]))
       series: rpc_cost_monthly_usd{provider="blockpi",kind="all",bucket="all",venue="all"}
       sample_size: count_over_time(rpc_cost_monthly_usd{provider="blockpi",kind="all",bucket="all",venue="all"}[7d])
 
@@ -365,11 +375,11 @@ providers:
     tier: usage
     tag: Compute Unit, weighted per chain
     queries:
-      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="getblock",kind="all",bucket="all",venue="all"}[24h])
-      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="getblock",kind="all",bucket="all",venue="all"}[24h])
-      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="getblock",kind="all",bucket="all",venue="all"}[24h])
+      p50: min(last_over_time(rpc_cost_monthly_usd{provider="getblock",kind="all",bucket="all",venue="all"}[20m]))
+      p90: min(last_over_time(rpc_cost_monthly_usd{provider="getblock",kind="all",bucket="all",venue="all"}[20m]))
+      p99: min(last_over_time(rpc_cost_monthly_usd{provider="getblock",kind="all",bucket="all",venue="all"}[20m]))
       ranked: rpc_cost_eligible{provider="getblock",kind="all",bucket="all"}
-      mean: avg_over_time(rpc_cost_monthly_usd{provider="getblock",kind="all",bucket="all",venue="all"}[24h])
+      mean: min(last_over_time(rpc_cost_monthly_usd{provider="getblock",kind="all",bucket="all",venue="all"}[20m]))
       series: rpc_cost_monthly_usd{provider="getblock",kind="all",bucket="all",venue="all"}
       sample_size: count_over_time(rpc_cost_monthly_usd{provider="getblock",kind="all",bucket="all",venue="all"}[7d])
 
@@ -378,11 +388,11 @@ providers:
     tier: usage
     tag: request, flat per request
     queries:
-      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="nownodes",kind="all",bucket="all",venue="all"}[24h])
-      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="nownodes",kind="all",bucket="all",venue="all"}[24h])
-      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="nownodes",kind="all",bucket="all",venue="all"}[24h])
+      p50: min(last_over_time(rpc_cost_monthly_usd{provider="nownodes",kind="all",bucket="all",venue="all"}[20m]))
+      p90: min(last_over_time(rpc_cost_monthly_usd{provider="nownodes",kind="all",bucket="all",venue="all"}[20m]))
+      p99: min(last_over_time(rpc_cost_monthly_usd{provider="nownodes",kind="all",bucket="all",venue="all"}[20m]))
       ranked: rpc_cost_eligible{provider="nownodes",kind="all",bucket="all"}
-      mean: avg_over_time(rpc_cost_monthly_usd{provider="nownodes",kind="all",bucket="all",venue="all"}[24h])
+      mean: min(last_over_time(rpc_cost_monthly_usd{provider="nownodes",kind="all",bucket="all",venue="all"}[20m]))
       series: rpc_cost_monthly_usd{provider="nownodes",kind="all",bucket="all",venue="all"}
       sample_size: count_over_time(rpc_cost_monthly_usd{provider="nownodes",kind="all",bucket="all",venue="all"}[7d])
 
@@ -391,11 +401,11 @@ providers:
     tier: usage
     tag: credit, weighted per method
     queries:
-      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="tatum",kind="all",bucket="all",venue="all"}[24h])
-      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="tatum",kind="all",bucket="all",venue="all"}[24h])
-      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="tatum",kind="all",bucket="all",venue="all"}[24h])
+      p50: min(last_over_time(rpc_cost_monthly_usd{provider="tatum",kind="all",bucket="all",venue="all"}[20m]))
+      p90: min(last_over_time(rpc_cost_monthly_usd{provider="tatum",kind="all",bucket="all",venue="all"}[20m]))
+      p99: min(last_over_time(rpc_cost_monthly_usd{provider="tatum",kind="all",bucket="all",venue="all"}[20m]))
       ranked: rpc_cost_eligible{provider="tatum",kind="all",bucket="all"}
-      mean: avg_over_time(rpc_cost_monthly_usd{provider="tatum",kind="all",bucket="all",venue="all"}[24h])
+      mean: min(last_over_time(rpc_cost_monthly_usd{provider="tatum",kind="all",bucket="all",venue="all"}[20m]))
       series: rpc_cost_monthly_usd{provider="tatum",kind="all",bucket="all",venue="all"}
       sample_size: count_over_time(rpc_cost_monthly_usd{provider="tatum",kind="all",bucket="all",venue="all"}[7d])
 
@@ -404,11 +414,11 @@ providers:
     tier: usage
     tag: credit, weighted per method
     queries:
-      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="helius",kind="all",bucket="all",venue="all"}[24h])
-      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="helius",kind="all",bucket="all",venue="all"}[24h])
-      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="helius",kind="all",bucket="all",venue="all"}[24h])
+      p50: min(last_over_time(rpc_cost_monthly_usd{provider="helius",kind="all",bucket="all",venue="all"}[20m]))
+      p90: min(last_over_time(rpc_cost_monthly_usd{provider="helius",kind="all",bucket="all",venue="all"}[20m]))
+      p99: min(last_over_time(rpc_cost_monthly_usd{provider="helius",kind="all",bucket="all",venue="all"}[20m]))
       ranked: rpc_cost_eligible{provider="helius",kind="all",bucket="all"}
-      mean: avg_over_time(rpc_cost_monthly_usd{provider="helius",kind="all",bucket="all",venue="all"}[24h])
+      mean: min(last_over_time(rpc_cost_monthly_usd{provider="helius",kind="all",bucket="all",venue="all"}[20m]))
       series: rpc_cost_monthly_usd{provider="helius",kind="all",bucket="all",venue="all"}
       sample_size: count_over_time(rpc_cost_monthly_usd{provider="helius",kind="all",bucket="all",venue="all"}[7d])
 
@@ -417,11 +427,11 @@ providers:
     tier: usage
     tag: Compute Unit, weighted per method
     queries:
-      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="moralis",kind="all",bucket="all",venue="all"}[24h])
-      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="moralis",kind="all",bucket="all",venue="all"}[24h])
-      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="moralis",kind="all",bucket="all",venue="all"}[24h])
+      p50: min(last_over_time(rpc_cost_monthly_usd{provider="moralis",kind="all",bucket="all",venue="all"}[20m]))
+      p90: min(last_over_time(rpc_cost_monthly_usd{provider="moralis",kind="all",bucket="all",venue="all"}[20m]))
+      p99: min(last_over_time(rpc_cost_monthly_usd{provider="moralis",kind="all",bucket="all",venue="all"}[20m]))
       ranked: rpc_cost_eligible{provider="moralis",kind="all",bucket="all"}
-      mean: avg_over_time(rpc_cost_monthly_usd{provider="moralis",kind="all",bucket="all",venue="all"}[24h])
+      mean: min(last_over_time(rpc_cost_monthly_usd{provider="moralis",kind="all",bucket="all",venue="all"}[20m]))
       series: rpc_cost_monthly_usd{provider="moralis",kind="all",bucket="all",venue="all"}
       sample_size: count_over_time(rpc_cost_monthly_usd{provider="moralis",kind="all",bucket="all",venue="all"}[7d])
 
@@ -430,11 +440,11 @@ providers:
     tier: usage
     tag: Compute Unit, weighted per method
     queries:
-      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="validation-cloud",kind="all",bucket="all",venue="all"}[24h])
-      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="validation-cloud",kind="all",bucket="all",venue="all"}[24h])
-      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="validation-cloud",kind="all",bucket="all",venue="all"}[24h])
+      p50: min(last_over_time(rpc_cost_monthly_usd{provider="validation-cloud",kind="all",bucket="all",venue="all"}[20m]))
+      p90: min(last_over_time(rpc_cost_monthly_usd{provider="validation-cloud",kind="all",bucket="all",venue="all"}[20m]))
+      p99: min(last_over_time(rpc_cost_monthly_usd{provider="validation-cloud",kind="all",bucket="all",venue="all"}[20m]))
       ranked: rpc_cost_eligible{provider="validation-cloud",kind="all",bucket="all"}
-      mean: avg_over_time(rpc_cost_monthly_usd{provider="validation-cloud",kind="all",bucket="all",venue="all"}[24h])
+      mean: min(last_over_time(rpc_cost_monthly_usd{provider="validation-cloud",kind="all",bucket="all",venue="all"}[20m]))
       series: rpc_cost_monthly_usd{provider="validation-cloud",kind="all",bucket="all",venue="all"}
       sample_size: count_over_time(rpc_cost_monthly_usd{provider="validation-cloud",kind="all",bucket="all",venue="all"}[7d])
 
@@ -443,11 +453,11 @@ providers:
     tier: usage
     tag: Compute Unit, weighted per method
     queries:
-      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="blockdaemon",kind="all",bucket="all",venue="all"}[24h])
-      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="blockdaemon",kind="all",bucket="all",venue="all"}[24h])
-      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="blockdaemon",kind="all",bucket="all",venue="all"}[24h])
+      p50: min(last_over_time(rpc_cost_monthly_usd{provider="blockdaemon",kind="all",bucket="all",venue="all"}[20m]))
+      p90: min(last_over_time(rpc_cost_monthly_usd{provider="blockdaemon",kind="all",bucket="all",venue="all"}[20m]))
+      p99: min(last_over_time(rpc_cost_monthly_usd{provider="blockdaemon",kind="all",bucket="all",venue="all"}[20m]))
       ranked: rpc_cost_eligible{provider="blockdaemon",kind="all",bucket="all"}
-      mean: avg_over_time(rpc_cost_monthly_usd{provider="blockdaemon",kind="all",bucket="all",venue="all"}[24h])
+      mean: min(last_over_time(rpc_cost_monthly_usd{provider="blockdaemon",kind="all",bucket="all",venue="all"}[20m]))
       series: rpc_cost_monthly_usd{provider="blockdaemon",kind="all",bucket="all",venue="all"}
       sample_size: count_over_time(rpc_cost_monthly_usd{provider="blockdaemon",kind="all",bucket="all",venue="all"}[7d])
 
@@ -456,11 +466,11 @@ providers:
     tier: usage
     tag: request, flat per request
     queries:
-      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="thirdweb",kind="all",bucket="all",venue="all"}[24h])
-      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="thirdweb",kind="all",bucket="all",venue="all"}[24h])
-      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="thirdweb",kind="all",bucket="all",venue="all"}[24h])
+      p50: min(last_over_time(rpc_cost_monthly_usd{provider="thirdweb",kind="all",bucket="all",venue="all"}[20m]))
+      p90: min(last_over_time(rpc_cost_monthly_usd{provider="thirdweb",kind="all",bucket="all",venue="all"}[20m]))
+      p99: min(last_over_time(rpc_cost_monthly_usd{provider="thirdweb",kind="all",bucket="all",venue="all"}[20m]))
       ranked: rpc_cost_eligible{provider="thirdweb",kind="all",bucket="all"}
-      mean: avg_over_time(rpc_cost_monthly_usd{provider="thirdweb",kind="all",bucket="all",venue="all"}[24h])
+      mean: min(last_over_time(rpc_cost_monthly_usd{provider="thirdweb",kind="all",bucket="all",venue="all"}[20m]))
       series: rpc_cost_monthly_usd{provider="thirdweb",kind="all",bucket="all",venue="all"}
       sample_size: count_over_time(rpc_cost_monthly_usd{provider="thirdweb",kind="all",bucket="all",venue="all"}[7d])
 
@@ -469,11 +479,11 @@ providers:
     tier: usage
     tag: Billing Unit, weighted per method
     queries:
-      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="coinbase-cdp",kind="all",bucket="all",venue="all"}[24h])
-      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="coinbase-cdp",kind="all",bucket="all",venue="all"}[24h])
-      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="coinbase-cdp",kind="all",bucket="all",venue="all"}[24h])
+      p50: min(last_over_time(rpc_cost_monthly_usd{provider="coinbase-cdp",kind="all",bucket="all",venue="all"}[20m]))
+      p90: min(last_over_time(rpc_cost_monthly_usd{provider="coinbase-cdp",kind="all",bucket="all",venue="all"}[20m]))
+      p99: min(last_over_time(rpc_cost_monthly_usd{provider="coinbase-cdp",kind="all",bucket="all",venue="all"}[20m]))
       ranked: rpc_cost_eligible{provider="coinbase-cdp",kind="all",bucket="all"}
-      mean: avg_over_time(rpc_cost_monthly_usd{provider="coinbase-cdp",kind="all",bucket="all",venue="all"}[24h])
+      mean: min(last_over_time(rpc_cost_monthly_usd{provider="coinbase-cdp",kind="all",bucket="all",venue="all"}[20m]))
       series: rpc_cost_monthly_usd{provider="coinbase-cdp",kind="all",bucket="all",venue="all"}
       sample_size: count_over_time(rpc_cost_monthly_usd{provider="coinbase-cdp",kind="all",bucket="all",venue="all"}[7d])
 
@@ -482,11 +492,11 @@ providers:
     tier: usage
     tag: Request Unit, weighted per method
     queries:
-      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="onfinality",kind="all",bucket="all",venue="all"}[24h])
-      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="onfinality",kind="all",bucket="all",venue="all"}[24h])
-      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="onfinality",kind="all",bucket="all",venue="all"}[24h])
+      p50: min(last_over_time(rpc_cost_monthly_usd{provider="onfinality",kind="all",bucket="all",venue="all"}[20m]))
+      p90: min(last_over_time(rpc_cost_monthly_usd{provider="onfinality",kind="all",bucket="all",venue="all"}[20m]))
+      p99: min(last_over_time(rpc_cost_monthly_usd{provider="onfinality",kind="all",bucket="all",venue="all"}[20m]))
       ranked: rpc_cost_eligible{provider="onfinality",kind="all",bucket="all"}
-      mean: avg_over_time(rpc_cost_monthly_usd{provider="onfinality",kind="all",bucket="all",venue="all"}[24h])
+      mean: min(last_over_time(rpc_cost_monthly_usd{provider="onfinality",kind="all",bucket="all",venue="all"}[20m]))
       series: rpc_cost_monthly_usd{provider="onfinality",kind="all",bucket="all",venue="all"}
       sample_size: count_over_time(rpc_cost_monthly_usd{provider="onfinality",kind="all",bucket="all",venue="all"}[7d])
 
@@ -495,11 +505,11 @@ providers:
     tier: usage
     tag: request, flat per request
     queries:
-      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="syndica",kind="all",bucket="all",venue="all"}[24h])
-      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="syndica",kind="all",bucket="all",venue="all"}[24h])
-      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="syndica",kind="all",bucket="all",venue="all"}[24h])
+      p50: min(last_over_time(rpc_cost_monthly_usd{provider="syndica",kind="all",bucket="all",venue="all"}[20m]))
+      p90: min(last_over_time(rpc_cost_monthly_usd{provider="syndica",kind="all",bucket="all",venue="all"}[20m]))
+      p99: min(last_over_time(rpc_cost_monthly_usd{provider="syndica",kind="all",bucket="all",venue="all"}[20m]))
       ranked: rpc_cost_eligible{provider="syndica",kind="all",bucket="all"}
-      mean: avg_over_time(rpc_cost_monthly_usd{provider="syndica",kind="all",bucket="all",venue="all"}[24h])
+      mean: min(last_over_time(rpc_cost_monthly_usd{provider="syndica",kind="all",bucket="all",venue="all"}[20m]))
       series: rpc_cost_monthly_usd{provider="syndica",kind="all",bucket="all",venue="all"}
       sample_size: count_over_time(rpc_cost_monthly_usd{provider="syndica",kind="all",bucket="all",venue="all"}[7d])
 
@@ -508,11 +518,11 @@ providers:
     tier: usage
     tag: request, flat per request
     queries:
-      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="triton",kind="all",bucket="all",venue="all"}[24h])
-      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="triton",kind="all",bucket="all",venue="all"}[24h])
-      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="triton",kind="all",bucket="all",venue="all"}[24h])
+      p50: min(last_over_time(rpc_cost_monthly_usd{provider="triton",kind="all",bucket="all",venue="all"}[20m]))
+      p90: min(last_over_time(rpc_cost_monthly_usd{provider="triton",kind="all",bucket="all",venue="all"}[20m]))
+      p99: min(last_over_time(rpc_cost_monthly_usd{provider="triton",kind="all",bucket="all",venue="all"}[20m]))
       ranked: rpc_cost_eligible{provider="triton",kind="all",bucket="all"}
-      mean: avg_over_time(rpc_cost_monthly_usd{provider="triton",kind="all",bucket="all",venue="all"}[24h])
+      mean: min(last_over_time(rpc_cost_monthly_usd{provider="triton",kind="all",bucket="all",venue="all"}[20m]))
       series: rpc_cost_monthly_usd{provider="triton",kind="all",bucket="all",venue="all"}
       sample_size: count_over_time(rpc_cost_monthly_usd{provider="triton",kind="all",bucket="all",venue="all"}[7d])
 
@@ -521,11 +531,11 @@ providers:
     tier: usage
     tag: request, flat per request
     queries:
-      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="instanodes",kind="all",bucket="all",venue="all"}[24h])
-      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="instanodes",kind="all",bucket="all",venue="all"}[24h])
-      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="instanodes",kind="all",bucket="all",venue="all"}[24h])
+      p50: min(last_over_time(rpc_cost_monthly_usd{provider="instanodes",kind="all",bucket="all",venue="all"}[20m]))
+      p90: min(last_over_time(rpc_cost_monthly_usd{provider="instanodes",kind="all",bucket="all",venue="all"}[20m]))
+      p99: min(last_over_time(rpc_cost_monthly_usd{provider="instanodes",kind="all",bucket="all",venue="all"}[20m]))
       ranked: rpc_cost_eligible{provider="instanodes",kind="all",bucket="all"}
-      mean: avg_over_time(rpc_cost_monthly_usd{provider="instanodes",kind="all",bucket="all",venue="all"}[24h])
+      mean: min(last_over_time(rpc_cost_monthly_usd{provider="instanodes",kind="all",bucket="all",venue="all"}[20m]))
       series: rpc_cost_monthly_usd{provider="instanodes",kind="all",bucket="all",venue="all"}
       sample_size: count_over_time(rpc_cost_monthly_usd{provider="instanodes",kind="all",bucket="all",venue="all"}[7d])
 
@@ -534,11 +544,11 @@ providers:
     tier: reference
     tag: request, flat per request
     queries:
-      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="publicnode",kind="all",bucket="all",venue="all"}[24h])
-      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="publicnode",kind="all",bucket="all",venue="all"}[24h])
-      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="publicnode",kind="all",bucket="all",venue="all"}[24h])
+      p50: min(last_over_time(rpc_cost_monthly_usd{provider="publicnode",kind="all",bucket="all",venue="all"}[20m]))
+      p90: min(last_over_time(rpc_cost_monthly_usd{provider="publicnode",kind="all",bucket="all",venue="all"}[20m]))
+      p99: min(last_over_time(rpc_cost_monthly_usd{provider="publicnode",kind="all",bucket="all",venue="all"}[20m]))
       ranked: rpc_cost_eligible{provider="publicnode",kind="all",bucket="all"}
-      mean: avg_over_time(rpc_cost_monthly_usd{provider="publicnode",kind="all",bucket="all",venue="all"}[24h])
+      mean: min(last_over_time(rpc_cost_monthly_usd{provider="publicnode",kind="all",bucket="all",venue="all"}[20m]))
       series: rpc_cost_monthly_usd{provider="publicnode",kind="all",bucket="all",venue="all"}
       sample_size: count_over_time(rpc_cost_monthly_usd{provider="publicnode",kind="all",bucket="all",venue="all"}[7d])
 
@@ -547,11 +557,11 @@ providers:
     tier: reference
     tag: request, flat per request
     queries:
-      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="solana-foundation",kind="all",bucket="all",venue="all"}[24h])
-      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="solana-foundation",kind="all",bucket="all",venue="all"}[24h])
-      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="solana-foundation",kind="all",bucket="all",venue="all"}[24h])
+      p50: min(last_over_time(rpc_cost_monthly_usd{provider="solana-foundation",kind="all",bucket="all",venue="all"}[20m]))
+      p90: min(last_over_time(rpc_cost_monthly_usd{provider="solana-foundation",kind="all",bucket="all",venue="all"}[20m]))
+      p99: min(last_over_time(rpc_cost_monthly_usd{provider="solana-foundation",kind="all",bucket="all",venue="all"}[20m]))
       ranked: rpc_cost_eligible{provider="solana-foundation",kind="all",bucket="all"}
-      mean: avg_over_time(rpc_cost_monthly_usd{provider="solana-foundation",kind="all",bucket="all",venue="all"}[24h])
+      mean: min(last_over_time(rpc_cost_monthly_usd{provider="solana-foundation",kind="all",bucket="all",venue="all"}[20m]))
       series: rpc_cost_monthly_usd{provider="solana-foundation",kind="all",bucket="all",venue="all"}
       sample_size: count_over_time(rpc_cost_monthly_usd{provider="solana-foundation",kind="all",bucket="all",venue="all"}[7d])
 
@@ -560,11 +570,11 @@ providers:
     tier: dedicated
     tag: request, flat per request
     queries:
-      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="getblock-dedicated",kind="all",bucket="all",venue="all"}[24h])
-      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="getblock-dedicated",kind="all",bucket="all",venue="all"}[24h])
-      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="getblock-dedicated",kind="all",bucket="all",venue="all"}[24h])
+      p50: min(last_over_time(rpc_cost_monthly_usd{provider="getblock-dedicated",kind="all",bucket="all",venue="all"}[20m]))
+      p90: min(last_over_time(rpc_cost_monthly_usd{provider="getblock-dedicated",kind="all",bucket="all",venue="all"}[20m]))
+      p99: min(last_over_time(rpc_cost_monthly_usd{provider="getblock-dedicated",kind="all",bucket="all",venue="all"}[20m]))
       ranked: rpc_cost_eligible{provider="getblock-dedicated",kind="all",bucket="all"}
-      mean: avg_over_time(rpc_cost_monthly_usd{provider="getblock-dedicated",kind="all",bucket="all",venue="all"}[24h])
+      mean: min(last_over_time(rpc_cost_monthly_usd{provider="getblock-dedicated",kind="all",bucket="all",venue="all"}[20m]))
       series: rpc_cost_monthly_usd{provider="getblock-dedicated",kind="all",bucket="all",venue="all"}
       sample_size: count_over_time(rpc_cost_monthly_usd{provider="getblock-dedicated",kind="all",bucket="all",venue="all"}[7d])
 
@@ -573,11 +583,11 @@ providers:
     tier: dedicated
     tag: request, flat per request
     queries:
-      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="chainstack-dedicated",kind="all",bucket="all",venue="all"}[24h])
-      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="chainstack-dedicated",kind="all",bucket="all",venue="all"}[24h])
-      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="chainstack-dedicated",kind="all",bucket="all",venue="all"}[24h])
+      p50: min(last_over_time(rpc_cost_monthly_usd{provider="chainstack-dedicated",kind="all",bucket="all",venue="all"}[20m]))
+      p90: min(last_over_time(rpc_cost_monthly_usd{provider="chainstack-dedicated",kind="all",bucket="all",venue="all"}[20m]))
+      p99: min(last_over_time(rpc_cost_monthly_usd{provider="chainstack-dedicated",kind="all",bucket="all",venue="all"}[20m]))
       ranked: rpc_cost_eligible{provider="chainstack-dedicated",kind="all",bucket="all"}
-      mean: avg_over_time(rpc_cost_monthly_usd{provider="chainstack-dedicated",kind="all",bucket="all",venue="all"}[24h])
+      mean: min(last_over_time(rpc_cost_monthly_usd{provider="chainstack-dedicated",kind="all",bucket="all",venue="all"}[20m]))
       series: rpc_cost_monthly_usd{provider="chainstack-dedicated",kind="all",bucket="all",venue="all"}
       sample_size: count_over_time(rpc_cost_monthly_usd{provider="chainstack-dedicated",kind="all",bucket="all",venue="all"}[7d])
 
@@ -586,11 +596,11 @@ providers:
     tier: dedicated
     tag: request, flat per request
     queries:
-      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="quicknode-flat-rate",kind="all",bucket="all",venue="all"}[24h])
-      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="quicknode-flat-rate",kind="all",bucket="all",venue="all"}[24h])
-      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="quicknode-flat-rate",kind="all",bucket="all",venue="all"}[24h])
+      p50: min(last_over_time(rpc_cost_monthly_usd{provider="quicknode-flat-rate",kind="all",bucket="all",venue="all"}[20m]))
+      p90: min(last_over_time(rpc_cost_monthly_usd{provider="quicknode-flat-rate",kind="all",bucket="all",venue="all"}[20m]))
+      p99: min(last_over_time(rpc_cost_monthly_usd{provider="quicknode-flat-rate",kind="all",bucket="all",venue="all"}[20m]))
       ranked: rpc_cost_eligible{provider="quicknode-flat-rate",kind="all",bucket="all"}
-      mean: avg_over_time(rpc_cost_monthly_usd{provider="quicknode-flat-rate",kind="all",bucket="all",venue="all"}[24h])
+      mean: min(last_over_time(rpc_cost_monthly_usd{provider="quicknode-flat-rate",kind="all",bucket="all",venue="all"}[20m]))
       series: rpc_cost_monthly_usd{provider="quicknode-flat-rate",kind="all",bucket="all",venue="all"}
       sample_size: count_over_time(rpc_cost_monthly_usd{provider="quicknode-flat-rate",kind="all",bucket="all",venue="all"}[7d])
 
@@ -599,11 +609,11 @@ providers:
     tier: dedicated
     tag: request, flat per request
     queries:
-      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="google-bne",kind="all",bucket="all",venue="all"}[24h])
-      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="google-bne",kind="all",bucket="all",venue="all"}[24h])
-      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="google-bne",kind="all",bucket="all",venue="all"}[24h])
+      p50: min(last_over_time(rpc_cost_monthly_usd{provider="google-bne",kind="all",bucket="all",venue="all"}[20m]))
+      p90: min(last_over_time(rpc_cost_monthly_usd{provider="google-bne",kind="all",bucket="all",venue="all"}[20m]))
+      p99: min(last_over_time(rpc_cost_monthly_usd{provider="google-bne",kind="all",bucket="all",venue="all"}[20m]))
       ranked: rpc_cost_eligible{provider="google-bne",kind="all",bucket="all"}
-      mean: avg_over_time(rpc_cost_monthly_usd{provider="google-bne",kind="all",bucket="all",venue="all"}[24h])
+      mean: min(last_over_time(rpc_cost_monthly_usd{provider="google-bne",kind="all",bucket="all",venue="all"}[20m]))
       series: rpc_cost_monthly_usd{provider="google-bne",kind="all",bucket="all",venue="all"}
       sample_size: count_over_time(rpc_cost_monthly_usd{provider="google-bne",kind="all",bucket="all",venue="all"}[7d])
 
@@ -612,11 +622,11 @@ providers:
     tier: dedicated
     tag: request, flat per request
     queries:
-      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="helius-dedicated",kind="all",bucket="all",venue="all"}[24h])
-      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="helius-dedicated",kind="all",bucket="all",venue="all"}[24h])
-      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="helius-dedicated",kind="all",bucket="all",venue="all"}[24h])
+      p50: min(last_over_time(rpc_cost_monthly_usd{provider="helius-dedicated",kind="all",bucket="all",venue="all"}[20m]))
+      p90: min(last_over_time(rpc_cost_monthly_usd{provider="helius-dedicated",kind="all",bucket="all",venue="all"}[20m]))
+      p99: min(last_over_time(rpc_cost_monthly_usd{provider="helius-dedicated",kind="all",bucket="all",venue="all"}[20m]))
       ranked: rpc_cost_eligible{provider="helius-dedicated",kind="all",bucket="all"}
-      mean: avg_over_time(rpc_cost_monthly_usd{provider="helius-dedicated",kind="all",bucket="all",venue="all"}[24h])
+      mean: min(last_over_time(rpc_cost_monthly_usd{provider="helius-dedicated",kind="all",bucket="all",venue="all"}[20m]))
       series: rpc_cost_monthly_usd{provider="helius-dedicated",kind="all",bucket="all",venue="all"}
       sample_size: count_over_time(rpc_cost_monthly_usd{provider="helius-dedicated",kind="all",bucket="all",venue="all"}[7d])
 
@@ -625,11 +635,11 @@ providers:
     tier: dedicated
     tag: request, flat per request
     queries:
-      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="shyft",kind="all",bucket="all",venue="all"}[24h])
-      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="shyft",kind="all",bucket="all",venue="all"}[24h])
-      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="shyft",kind="all",bucket="all",venue="all"}[24h])
+      p50: min(last_over_time(rpc_cost_monthly_usd{provider="shyft",kind="all",bucket="all",venue="all"}[20m]))
+      p90: min(last_over_time(rpc_cost_monthly_usd{provider="shyft",kind="all",bucket="all",venue="all"}[20m]))
+      p99: min(last_over_time(rpc_cost_monthly_usd{provider="shyft",kind="all",bucket="all",venue="all"}[20m]))
       ranked: rpc_cost_eligible{provider="shyft",kind="all",bucket="all"}
-      mean: avg_over_time(rpc_cost_monthly_usd{provider="shyft",kind="all",bucket="all",venue="all"}[24h])
+      mean: min(last_over_time(rpc_cost_monthly_usd{provider="shyft",kind="all",bucket="all",venue="all"}[20m]))
       series: rpc_cost_monthly_usd{provider="shyft",kind="all",bucket="all",venue="all"}
       sample_size: count_over_time(rpc_cost_monthly_usd{provider="shyft",kind="all",bucket="all",venue="all"}[7d])
 
@@ -638,11 +648,11 @@ providers:
     tier: dedicated
     tag: request, flat per request
     queries:
-      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="allnodes",kind="all",bucket="all",venue="all"}[24h])
-      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="allnodes",kind="all",bucket="all",venue="all"}[24h])
-      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="allnodes",kind="all",bucket="all",venue="all"}[24h])
+      p50: min(last_over_time(rpc_cost_monthly_usd{provider="allnodes",kind="all",bucket="all",venue="all"}[20m]))
+      p90: min(last_over_time(rpc_cost_monthly_usd{provider="allnodes",kind="all",bucket="all",venue="all"}[20m]))
+      p99: min(last_over_time(rpc_cost_monthly_usd{provider="allnodes",kind="all",bucket="all",venue="all"}[20m]))
       ranked: rpc_cost_eligible{provider="allnodes",kind="all",bucket="all"}
-      mean: avg_over_time(rpc_cost_monthly_usd{provider="allnodes",kind="all",bucket="all",venue="all"}[24h])
+      mean: min(last_over_time(rpc_cost_monthly_usd{provider="allnodes",kind="all",bucket="all",venue="all"}[20m]))
       series: rpc_cost_monthly_usd{provider="allnodes",kind="all",bucket="all",venue="all"}
       sample_size: count_over_time(rpc_cost_monthly_usd{provider="allnodes",kind="all",bucket="all",venue="all"}[7d])
 
@@ -651,11 +661,11 @@ providers:
     tier: dedicated
     tag: request, flat per request
     queries:
-      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="zeeve",kind="all",bucket="all",venue="all"}[24h])
-      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="zeeve",kind="all",bucket="all",venue="all"}[24h])
-      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="zeeve",kind="all",bucket="all",venue="all"}[24h])
+      p50: min(last_over_time(rpc_cost_monthly_usd{provider="zeeve",kind="all",bucket="all",venue="all"}[20m]))
+      p90: min(last_over_time(rpc_cost_monthly_usd{provider="zeeve",kind="all",bucket="all",venue="all"}[20m]))
+      p99: min(last_over_time(rpc_cost_monthly_usd{provider="zeeve",kind="all",bucket="all",venue="all"}[20m]))
       ranked: rpc_cost_eligible{provider="zeeve",kind="all",bucket="all"}
-      mean: avg_over_time(rpc_cost_monthly_usd{provider="zeeve",kind="all",bucket="all",venue="all"}[24h])
+      mean: min(last_over_time(rpc_cost_monthly_usd{provider="zeeve",kind="all",bucket="all",venue="all"}[20m]))
       series: rpc_cost_monthly_usd{provider="zeeve",kind="all",bucket="all",venue="all"}
       sample_size: count_over_time(rpc_cost_monthly_usd{provider="zeeve",kind="all",bucket="all",venue="all"}[7d])
 
@@ -664,11 +674,11 @@ providers:
     tier: dedicated
     tag: request, flat per request
     queries:
-      p50: quantile_over_time(0.50, rpc_cost_monthly_usd{provider="aws-amb",kind="all",bucket="all",venue="all"}[24h])
-      p90: quantile_over_time(0.90, rpc_cost_monthly_usd{provider="aws-amb",kind="all",bucket="all",venue="all"}[24h])
-      p99: quantile_over_time(0.99, rpc_cost_monthly_usd{provider="aws-amb",kind="all",bucket="all",venue="all"}[24h])
+      p50: min(last_over_time(rpc_cost_monthly_usd{provider="aws-amb",kind="all",bucket="all",venue="all"}[20m]))
+      p90: min(last_over_time(rpc_cost_monthly_usd{provider="aws-amb",kind="all",bucket="all",venue="all"}[20m]))
+      p99: min(last_over_time(rpc_cost_monthly_usd{provider="aws-amb",kind="all",bucket="all",venue="all"}[20m]))
       ranked: rpc_cost_eligible{provider="aws-amb",kind="all",bucket="all"}
-      mean: avg_over_time(rpc_cost_monthly_usd{provider="aws-amb",kind="all",bucket="all",venue="all"}[24h])
+      mean: min(last_over_time(rpc_cost_monthly_usd{provider="aws-amb",kind="all",bucket="all",venue="all"}[20m]))
       series: rpc_cost_monthly_usd{provider="aws-amb",kind="all",bucket="all",venue="all"}
       sample_size: count_over_time(rpc_cost_monthly_usd{provider="aws-amb",kind="all",bucket="all",venue="all"}[7d])
 
