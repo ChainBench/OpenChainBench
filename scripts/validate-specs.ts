@@ -158,6 +158,25 @@ async function main() {
       }
     }
 
+    // A panel metric that aggregates must carry its own selector.
+    //
+    // The loader splices the provider filter at the metric's FIRST brace and,
+    // when there is none, appends `{provider="x"}` to the end. On a bare
+    // metric that is correct. On an aggregation it lands outside the closing
+    // paren, Prometheus answers `parse error: unexpected "{"`, and the panel
+    // renders empty with nothing in a log to say why. Bench 282's break-even
+    // panel shipped exactly that shape.
+    for (const panel of spec.metric_panels ?? []) {
+      const m = panel.metric.trim();
+      if (/^[a-z_][a-z0-9_]*\s*(?:by\s*\([^)]*\)\s*)?\(/i.test(m) && !m.includes("{")) {
+        issues.push({
+          file: f,
+          level: "error",
+          message: `metric_panels.${panel.id}: "${m.slice(0, 60)}" aggregates but carries no selector; the loader appends the provider filter after the closing paren and Prometheus will not parse it. Add an empty {} inside the aggregation.`,
+        });
+      }
+    }
+
     // Provider slugs unique within a spec
     const providerSlugs = new Set<string>();
     for (const p of spec.providers) {
