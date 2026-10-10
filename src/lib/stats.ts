@@ -29,10 +29,25 @@ export function computeFieldStats(
   // prunes such rows, so the strip must not report Best = 0 for a
   // provider the table does not rank. Signed benches keep negative
   // rows because the check is "not all zero", not "> 0".
+  // `zeroIsAValue` says a zero CAN be an answer; it does not say every zero
+  // is one. Bench 282 sets it so a genuinely free plan survives, and that
+  // turned the all-zero guard off for rows that were never measured:
+  // Blockdaemon publishes no paid price at all, the load path promoted it to
+  // "live" on the strength of its companion panels, and the strip printed
+  // Best "$0" above a ledger whose real leader is BlockPI at $29.50. The
+  // spread died with it, because tailMin became 0.
+  //
+  // So the test is whether the row was READ, not whether it came out zero.
+  // A measured zero keeps its success rate and stays; an unmeasured one has
+  // none and goes, exactly as the ranked surfaces already treat it.
+  const hasReading = (r: ProviderResult) =>
+    typeof r.successRate === "number" ? r.successRate > 0 : true;
   const live = results.filter(
     (r) =>
       r.availability !== "unavailable" &&
-      (zeroIsAValue || r.ms.p50 !== 0 || r.ms.p90 !== 0 || r.ms.p99 !== 0),
+      (r.ms.p50 !== 0 || r.ms.p90 !== 0 || r.ms.p99 !== 0
+        ? true
+        : zeroIsAValue && hasReading(r)),
   );
   const p50s = live.map((r) => r.ms.p50);
   const p99s = live.map((r) => r.ms.p99);
