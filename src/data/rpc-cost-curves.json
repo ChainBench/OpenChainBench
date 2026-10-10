@@ -2768,28 +2768,28 @@
        "plan": "growth"
       },
       {
-       "r": 20000000,
+       "r": 11428571,
        "usd": 49,
        "plan": "growth"
       },
       {
-       "r": 53297012,
-       "usd": 248.78,
+       "r": 30456098,
+       "usd": 248.79,
        "plan": "growth"
       },
       {
-       "r": 53365544,
+       "r": 30493028,
        "usd": 249,
        "plan": "accelerate"
       },
       {
-       "r": 100000000,
+       "r": 57142857,
        "usd": 249,
        "plan": "accelerate"
       },
       {
        "r": 1295075885,
-       "usd": 4730.53,
+       "usd": 8372.94,
        "plan": "accelerate"
       },
       {
@@ -4462,28 +4462,28 @@
        "plan": "growth"
       },
       {
-       "r": 20000000,
+       "r": 4000000,
        "usd": 49,
        "plan": "growth"
       },
       {
-       "r": 53297012,
-       "usd": 248.78,
+       "r": 10659911,
+       "usd": 248.8,
        "plan": "growth"
       },
       {
-       "r": 53365544,
+       "r": 10674520,
        "usd": 249,
        "plan": "accelerate"
       },
       {
-       "r": 100000000,
+       "r": 20000000,
        "usd": 249,
        "plan": "accelerate"
       },
       {
        "r": 1295075885,
-       "usd": 4730.53,
+       "usd": 24156.67,
        "plan": "accelerate"
       },
       {
@@ -5762,13 +5762,83 @@
      "points": [
       {
        "r": 100000,
+       "usd": 49,
+       "plan": "growth"
+      },
+      {
+       "r": 1075269,
+       "usd": 49,
+       "plan": "growth"
+      },
+      {
+       "r": 2867123,
+       "usd": 248.97,
+       "plan": "growth"
+      },
+      {
+       "r": 2870237,
+       "usd": 249,
+       "plan": "accelerate"
+      },
+      {
+       "r": 5376344,
+       "usd": 249,
+       "plan": "accelerate"
+      },
+      {
+       "r": 1295075885,
+       "usd": 90205.54,
+       "plan": "accelerate"
+      },
+      {
+       "r": 1296584071,
        "usd": null,
-       "why": "no published unit cost for debug_traceTransaction"
+       "why": "published throughput is 500 rps, workload needs 501 sustained"
+      },
+      {
+       "r": 1298092257,
+       "usd": null,
+       "why": "published throughput is 500 rps, workload needs 501 sustained"
+      },
+      {
+       "r": 1301108630,
+       "usd": null,
+       "why": "published throughput is 500 rps, workload needs 502 sustained"
+      },
+      {
+       "r": 1307141376,
+       "usd": null,
+       "why": "published throughput is 500 rps, workload needs 505 sustained"
+      },
+      {
+       "r": 1355403339,
+       "usd": null,
+       "why": "published throughput is 500 rps, workload needs 523 sustained"
+      },
+      {
+       "r": 1451927266,
+       "usd": null,
+       "why": "published throughput is 500 rps, workload needs 561 sustained"
+      },
+      {
+       "r": 1977885501,
+       "usd": null,
+       "why": "published throughput is 500 rps, workload needs 764 sustained"
+      },
+      {
+       "r": 2694371231,
+       "usd": null,
+       "why": "published throughput is 500 rps, workload needs 1040 sustained"
+      },
+      {
+       "r": 3670402724,
+       "usd": null,
+       "why": "published throughput is 500 rps, workload needs 1417 sustained"
       },
       {
        "r": 5000000000,
        "usd": null,
-       "why": "no published unit cost for debug_traceTransaction"
+       "why": "published throughput is 500 rps, workload needs 1930 sustained"
       }
      ]
     },
@@ -7056,83 +7126,13 @@
      "points": [
       {
        "r": 100000,
-       "usd": 49,
-       "plan": "growth"
-      },
-      {
-       "r": 20000000,
-       "usd": 49,
-       "plan": "growth"
-      },
-      {
-       "r": 53297012,
-       "usd": 248.78,
-       "plan": "growth"
-      },
-      {
-       "r": 53365544,
-       "usd": 249,
-       "plan": "accelerate"
-      },
-      {
-       "r": 100000000,
-       "usd": 249,
-       "plan": "accelerate"
-      },
-      {
-       "r": 1295075885,
-       "usd": 4730.53,
-       "plan": "accelerate"
-      },
-      {
-       "r": 1296584071,
        "usd": null,
-       "why": "published throughput is 500 rps, workload needs 501 sustained"
-      },
-      {
-       "r": 1298092257,
-       "usd": null,
-       "why": "published throughput is 500 rps, workload needs 501 sustained"
-      },
-      {
-       "r": 1301108630,
-       "usd": null,
-       "why": "published throughput is 500 rps, workload needs 502 sustained"
-      },
-      {
-       "r": 1307141376,
-       "usd": null,
-       "why": "published throughput is 500 rps, workload needs 505 sustained"
-      },
-      {
-       "r": 1355403339,
-       "usd": null,
-       "why": "published throughput is 500 rps, workload needs 523 sustained"
-      },
-      {
-       "r": 1451927266,
-       "usd": null,
-       "why": "published throughput is 500 rps, workload needs 561 sustained"
-      },
-      {
-       "r": 1977885501,
-       "usd": null,
-       "why": "published throughput is 500 rps, workload needs 764 sustained"
-      },
-      {
-       "r": 2694371231,
-       "usd": null,
-       "why": "published throughput is 500 rps, workload needs 1040 sustained"
-      },
-      {
-       "r": 3670402724,
-       "usd": null,
-       "why": "published throughput is 500 rps, workload needs 1417 sustained"
+       "why": "no published unit cost for sendTransaction"
       },
       {
        "r": 5000000000,
        "usd": null,
-       "why": "published throughput is 500 rps, workload needs 1930 sustained"
+       "why": "no published unit cost for sendTransaction"
       }
      ]
     },
