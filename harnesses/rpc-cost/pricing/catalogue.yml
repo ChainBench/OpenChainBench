@@ -506,12 +506,15 @@ providers:
         throughput: {unit: rps, value: 25}
         archive: true
         trace: true
-        confidence: uncertain
+        confidence: verified
         note: >-
-          Developer RPS is UNRESOLVED: rps-plan-limits.md and the pricing page say 25,
-          manage-your-billing.md says 30. Both live 2026-09-29, both Mintlify pages return request-time
-          Last-Modified so neither can be shown newer. 25 recorded (2 of 3 primaries, incl. the
-          customer-facing page). Extra usage is a user toggle, so even the free plan can overage.
+          RPS is 25, on three primaries against one: the pricing table and feature matrix on 
+          chainstack.com/pricing.md, the commercial page's own arithmetic ("Developer plan - 25 
+          RPS = 625 CUs/API Credits per second"), and docs rps-plan-limits.md ("Developer plan: 25 
+          requests per second"). The lone outlier is still live on 2026-10-10, a Warning aside in 
+          docs manage-your-billing.md reading "a rate limit of 30 request per second". Neither 
+          docs page exposes a real Last-Modified, so this is settled on weight of evidence rather 
+          than recency. RPS does not enter the allowance.
       - id: growth
         name: Growth
         tier: entry
@@ -2546,11 +2549,14 @@ providers:
         throughput: {unit: rps, value: 40}
         archive: true
         trace: false
-        confidence: uncertain
+        confidence: verified
         note: >-
-          400,000 RU per DAY (~12M/month at full use, but it cannot be spent in a burst). Archive is
-          included, which is unusual for a free tier; Trace API is No. Behaviour at the cap is NOT
-          PUBLISHED as throttle-vs-hard-stop; hard_stop is the conservative reading.
+          Behaviour at the cap IS published, which is what settled this row: /support/error-codes 
+          gives HTTP 403 and WS -32403 "Daily response limit exceeded", and the pricing page's 
+          "Additional Response Units" cell for Developer reads "Not provided" — a hard stop with 
+          no overage to buy. 400,000 RU per DAY, so 12,000,000 a month at 30 days and not 
+          spendable in a burst. The 40/s ceiling is RESPONSE UNITS per second, not requests. Trace 
+          and debug are paid-plan only.
       - id: growth
         name: Growth
         tier: entry
@@ -2599,28 +2605,54 @@ providers:
         confidence: unpublished
         note: SALES-GATED ("Custom RPC daily limit", "Custom throughput").
     weights:
+      # Read from OnFinality's own per-network tables, not defaulted.
+      #
+      # Until 2026-10-10 every weight here was 1, on the belief that the
+      # multipliers were unpublished: /support/response-units says the
+      # default is 1 "across the majority of our networks" and names
+      # Ethereum and Solana as exceptions "with higher Response Unit
+      # weightings for more intensive methods", without giving them. The
+      # numbers are one click away. Those network names are links, the index
+      # at /support/networks promises "supported methods and response unit
+      # weighting", and /support/ethereum carries a table headed "The
+      # current supported method set and their Response Units weighting".
+      #
+      # The cost of the assumption was not small: the dapp mix is 1.75 RU
+      # per request and the indexer mix is 5.00, so the free allowance read
+      # 12M requests a month on the indexer tab against a real 2.4M, and it
+      # led that board.
       ethereum:
         default: 1
         eth_call: 1
-        eth_getLogs: 1
+        eth_getLogs: 3
         eth_getBlockByNumber: 1
-        eth_getBlockReceipts: 1
+        eth_getBlockReceipts: 13
         eth_getBalance: 1
         eth_blockNumber: 1
         eth_getTransactionReceipt: 1
-        eth_estimateGas: 1
-        eth_sendRawTransaction: 1
-        debug_traceTransaction: null
-        trace_block: null
+        eth_estimateGas: 3
+        eth_sendRawTransaction: 12
+        debug_traceTransaction: 30
+        trace_block: 2
       solana:
-        default: 1
-        getAccountInfo: 1
-        getMultipleAccounts: 1
-        getLatestBlockhash: 1
-        sendTransaction: 1
-        simulateTransaction: 1
-        getProgramAccounts: 1
-        getTransaction: 1
+        # All 60 methods in the published table weigh 2, and the page
+        # declares no default, so `default` stays null: an unlisted method
+        # has no published price here.
+        #
+        # sendTransaction is the one that matters and it is absent from the
+        # table entirely. That reads as unpriceable rather than as 2, which
+        # drops OnFinality from the Solana bot profile on both benches. Same
+        # rule Tatum gets on archive and NOWNodes gets on trace: a weight the
+        # provider has not published is not one we may invent. If the row
+        # appears, the cell returns on its own.
+        default: null
+        getAccountInfo: 2
+        getMultipleAccounts: 2
+        getLatestBlockhash: 2
+        sendTransaction: null
+        simulateTransaction: 2
+        getProgramAccounts: 2
+        getTransaction: 2
     archive_rule:
       kind: none
       value: 1
@@ -3125,17 +3157,14 @@ providers:
         throughput: {unit: rps, value: 40}
         archive: false
         trace: null
-        confidence: uncertain
+        confidence: verified
         note: >-
-          20,000 requests/day AND 600,000/month — both caps are published and both bind.
-          Archive is published as ABSENT on this plan, not merely unstated: the Free card lists
-          "Not included: Archive node access", and the comparison table's Archive row is a dash
-          for Free and Build while the three plans above them carry it. This was `null` until
-          2026-10-09, and null is a no-op in both capability gates, so Instanodes was ranked on
-          bench 283's indexer AND trace tabs at 600,000 requests a month on archive workloads
-          its own pricing page says the plan cannot serve. trace stays null: Instanodes publishes
-          nothing either way about debug and trace, and archive: false already excludes both
-          archive profiles.
+          Both caps are published and both bind, on three surfaces: the pricing cards and 
+          comparison table, docs/api-reference/rate-limits ("| Free | 20,000 | 600,000 | 40 |") 
+          and docs/billing. Cap behaviour is a hard stop and is sourced too: "A 429 response means 
+          you hit your current tier's ceiling", the error table's "429 Rate limit exceeded for 
+          your current tier", and no overage rate on any Instanodes surface — the only published 
+          escape is a tier change.
       - id: build
         name: Build
         tier: entry

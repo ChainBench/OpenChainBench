@@ -129,8 +129,17 @@ func priceEverything(cat *Catalogue) {
 		envelopes := cat.FreeEnvelopes(p)
 
 		for _, pr := range Profiles {
+			// Published under the real workload id and, for the headline
+			// one, under `all` as well — the same aliasing freeAllowance
+			// below already uses. Without it the dapp mix had no series any
+			// page could reach: the unfiltered view selects kind="all", and
+			// the variant API answers "unknown kind" for kind=dapp, so the
+			// one workload most readers arrive on was the one this gauge
+			// could not be read for.
 			if upr, err := unitsPerRequest(p, pr); err == nil {
-				unitsPerReq.WithLabelValues(p.Slug, pr.ID, pr.Chain).Set(upr)
+				for _, ka := range aliasesFor(pr.ID, headlineKind) {
+					unitsPerReq.WithLabelValues(p.Slug, ka, pr.Chain).Set(upr)
+				}
 			}
 
 			// Free tiers cannot be ranked on price, so they get their own
@@ -227,6 +236,17 @@ func priceEverything(cat *Catalogue) {
 				continue
 			}
 			monthly := cat.toUSD(*pl.MonthlyUSD, p.Currency)
+			// A plan that costs nothing has no break-even, because there is
+			// nothing to pay back. The arithmetic says 0 and 0 is the best
+			// possible score on a lower-is-better panel, so Shyft's free
+			// tier read "breaks even at zero requests" and, once the panel
+			// collapses a provider's plans to its soonest crossing, that
+			// zero became Shyft's headline. The question this cohort asks is
+			// at what volume BUYING the node beats metering; a free plan is
+			// not an answer to it.
+			if monthly <= 0 {
+				continue
+			}
 			// Four of these plans bill a base fee AND a per-request rate on
 			// top (AWS AMB in three regions, Shyft legacy-scale), so the
 			// plan's own rate and its included allowance both belong in the
