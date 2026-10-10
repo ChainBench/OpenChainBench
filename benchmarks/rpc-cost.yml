@@ -25,8 +25,8 @@ disclaimer: >
 
 seo_intro: |
   There is no cheapest RPC provider. That is the finding, not a hedge. We
-  priced the same five workloads against every major provider and the winner
-  changed five times across fifteen cells, by multiples rather than percent.
+  priced the same five workloads against every major provider and four
+  different names take the fifteen cells, by multiples rather than percent.
   Alchemy charges half of QuickNode for eth_blockNumber and three times
   QuickNode for eth_getLogs. Chainstack bills one flat Request Unit for every
   method, which makes it uncompetitive on trivial reads and the cheapest option
@@ -99,11 +99,11 @@ methodology:
   - "What is still not measured. These are published prices, not invoices. Alchemy and QuickNode carry no credit, compute-unit or quota header on any response, so their billed units cannot be confirmed without dashboard credentials we do not hold. Where a provider's real charge is non-deterministic by design, dRPC routes to third-party operators that can rewrite the price downward and exposes no per-response cost header, the published rate is reported as an upper bound and labelled as one."
 
 findings:
-  - "There is no cheapest RPC provider. Five win a workload-by-volume cell outright, none more than four of the fifteen, and two further cells end in a tie at $49. The widest spread inside one cell is 36.7x, on a billion Solana bot requests, and even the trace profile at a hundred million spans 7.6x, from Chainstack at $499 to GetBlock at $3,779."
+  - "There is no cheapest RPC provider. Four win a workload-by-volume cell outright, none more than five of the fifteen, and one further cell ends in a tie at $49. The widest spread inside one cell is 36.7x, on a billion Solana bot requests, and even the trace profile at a hundred million spans 13.7x, from Chainstack at $499 to OnFinality at $6,849."
   - "Two of the best-known providers are among the most expensive. Alchemy and QuickNode win no cell at any volume on any workload, running between 1.7x and 10.6x the leader of each cell, Alchemy at $10,500 a month for a billion simple reads against BlockPI's $2,833."
   - "Price is not always the binding constraint. Alchemy cannot serve the indexer or trace profile at a billion requests a month on any published self-serve plan: those need 61,728 and 234,568 Throughput Compute Units per second against a self-serve ceiling of 30,000, enforced per account rather than per app."
   - "Alchemy meters volume and rate limit in different units, and the figures above use its throughput column, not its billing one. Infura, separately, cannot serve a hundred million requests a month at any price, because its allowance is daily and hard-stops at 402."
-  - "Only some of the cell winners rest on fully published, unambiguous numbers. BlockPI and Chainstack publish complete figures. OnFinality's default method weight is assumed on chains it says carry undisclosed higher weights, NOWNodes publishes no archive or trace availability at all and so is not ranked on those workloads even where its price alone would lead them, and Syndica's pricing survives only inside a calculator that ends in a lead-capture form."
+  - "Only some of the cell winners rest on fully published, unambiguous numbers. BlockPI and Chainstack publish complete figures. Reading OnFinality's own per-method weight table, rather than assuming its documented default of 1, moved it out of all four cells it had won. NOWNodes publishes no archive or trace availability, so it is not ranked there even where its price would lead. Syndica's pricing survives only inside a calculator that ends in a lead-capture form."
   - "The cheapest answer for a billion trace requests a month is therefore dRPC at $6,000, the cheapest option that actually publishes that it serves debug and trace. Chainstack is second at $8,990."
   - "Free tiers differ by 160x once the allowance is converted into requests. OnFinality's buys 12.0 million simple reads a month and GetBlock's buys 75,000. Several free tiers are throughput-capped rather than volume-capped, and GetBlock's daily allowance drains in 125 seconds at its own advertised rate."
   - "Buying the small plan is often the most expensive choice. At a hundred million dapp requests the entry band costs $524.50 while the growth band costs $249 and the business band $499, because the entry allowance runs out and the overage rate does not fall."
@@ -114,7 +114,7 @@ findings:
 
 faq:
   - q: "Which RPC provider is cheapest?"
-    a: "It depends on the workload, by multiples rather than percent. Across five workload profiles and three volumes, five providers win a cell outright: BlockPI and OnFinality four each, Chainstack and Syndica two each, and dRPC one. Two further cells are ties at $49, shared by Chainstack, Helius and OnFinality. Pick the profile that matches your method mix rather than reading a single number."
+    a: "It depends on the workload, by multiples rather than percent. Across five workload profiles and three volumes, four providers win a cell outright: BlockPI and Chainstack five each, dRPC and Syndica two each. One further cell is a tie at $49, shared by Chainstack and Helius. Pick the profile that matches your method mix rather than reading a single number."
   - q: "Why do Alchemy and QuickNode never win?"
     a: "Because they are three to four times more expensive than the leaders for the same work. Alchemy bills $10,500 a month for a billion simple reads where BlockPI bills $2,833, and across the fifteen cells the two run between 1.7x and 10.6x the cell leader. Both are priced as premium products and both publish their rates plainly; the bench simply applies them."
   - q: "How can you compare a Compute Unit to a Request Unit?"
@@ -188,6 +188,12 @@ metric_panels:
     label_key: provider
     unit: count
     higher_is_better: false
+    # The gauge is labelled (provider, kind, chain) and carries neither a
+    # bucket nor a venue: units per request do not change with how many
+    # requests you buy or which plan band you are on, which is the point of
+    # publishing it. Appending those two matched nothing and left this panel
+    # blank on 71 of 75 views.
+    ignore_dimensions: [bucket, venue]
   # Free tiers all cost the same nothing, so they can only be ranked on
   # what the allowance actually buys.
   - id: free_allowance
@@ -200,11 +206,23 @@ metric_panels:
   # The question the dedicated cohort exists to answer.
   - id: breakeven
     label: Dedicated break-even, requests per month
-    description: Monthly request volume at which a fixed-price dedicated node undercuts the cheapest metered rate. Lower means the fixed price pays for itself sooner.
-    metric: rpc_cost_breakeven_requests
+    description: Monthly request volume at which a fixed-price dedicated node undercuts the cheapest metered rate, taking each provider's soonest-crossing plan. Lower means the fixed price pays for itself sooner. A provider absent here never breaks even, because its own per-request rate is above the metered floor.
+    metric: min by (provider) (rpc_cost_breakeven_requests)
     label_key: provider
     unit: count
     higher_is_better: false
+    # Two reasons this reads differently from the other panels.
+    #
+    # `min by (provider)`: the gauge is one series per plan per chain, and
+    # the loader asks for a scalar per provider. Chainstack's dedicated
+    # cohort alone publishes eleven, and prom.scalar returns null on more
+    # than one series, so the panel showed 1 provider of 9. The minimum is
+    # the right collapse: the question is the soonest volume at which buying
+    # beats metering.
+    #
+    # The gauge is labelled (provider, plan, chain) and carries no workload,
+    # volume or plan-band dimension, so appending them matched nothing.
+    ignore_dimensions: [kind, bucket, venue]
 
 dimension_labels:
   kind: Workload

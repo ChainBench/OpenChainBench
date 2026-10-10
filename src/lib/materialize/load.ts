@@ -826,13 +826,25 @@ function applyDimensionsToSpec(spec: Spec, labels: Record<string, string>): Spec
     // braced form so dimension labels (chain=..., region=...) reach them
     // like every provider query. Without this a panel on a chain-dimensioned
     // bench silently mixes every chain's series.
-    metric_panels: spec.metric_panels?.map((panel) => ({
-      ...panel,
-      metric: injectLabels(
-        panel.metric.includes("{") ? panel.metric : `${panel.metric}{}`,
-        labels,
-      ),
-    })),
+    metric_panels: spec.metric_panels?.map((panel) => {
+      // A panel may declare the dimensions its metric does not carry.
+      // Appending one of those matches nothing and empties the panel in
+      // silence, which is how bench 282 shipped a "Billing units per
+      // request" chart that was blank on 71 of 75 views.
+      const ignored = new Set(panel.ignore_dimensions ?? []);
+      const panelLabels = ignored.size
+        ? Object.fromEntries(
+            Object.entries(labels).filter(([k]) => !ignored.has(k)),
+          )
+        : labels;
+      return {
+        ...panel,
+        metric: injectLabels(
+          panel.metric.includes("{") ? panel.metric : `${panel.metric}{}`,
+          panelLabels,
+        ),
+      };
+    }),
     providers: spec.providers.map((p) => ({
       ...p,
       queries: p.queries
