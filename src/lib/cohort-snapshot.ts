@@ -12,14 +12,28 @@
  * a fresh JSON every 60s, the fetcher reads it first, and only falls
  * through to Prom when the snapshot is missing or stale.
  *
- * Storage: Upstash REST (KV_REST_API_URL + KV_REST_API_TOKEN, falling back
- * to UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN for parity with the
- * materialize layer). When neither pair is configured, every function is a
- * silent no-op so the live Prom path keeps working in local dev.
+ * Storage: Upstash-style REST (COHORT_KV_REST_API_URL + _TOKEN first, then
+ * KV_REST_API_URL + KV_REST_API_TOKEN, then UPSTASH_REDIS_REST_URL +
+ * UPSTASH_REDIS_REST_TOKEN for parity with the materialize layer). When no
+ * pair is configured, every function is a silent no-op so the live Prom
+ * path keeps working in local dev.
+ *
+ * The COHORT_ pair exists because the VPS worker writes these blobs to the
+ * VPS Redis (SRH, public as https://kv.openchainbench.com), while the
+ * site's KV_REST_API_* point at Upstash for snapshot.ts and compare-cache,
+ * which use path-style routes SRH does not serve. Reading cohorts from
+ * Upstash found only staging's occasional writebacks, past the 10 min
+ * ceiling, so prod rebuilt the RPC hub from ~100 blobs on every /products
+ * render (2026-10-10).
  */
 
-const URL_ENV = ["KV_REST_API_URL", "UPSTASH_REDIS_REST_URL"] as const;
-const TOKEN_ENV = ["KV_REST_API_TOKEN", "UPSTASH_REDIS_REST_TOKEN"] as const;
+// Pairs, not two independent lists: a URL from one store with the token
+// of another would 401 on every call.
+const CRED_ENV = [
+  ["COHORT_KV_REST_API_URL", "COHORT_KV_REST_API_TOKEN"],
+  ["KV_REST_API_URL", "KV_REST_API_TOKEN"],
+  ["UPSTASH_REDIS_REST_URL", "UPSTASH_REDIS_REST_TOKEN"],
+] as const;
 
 const KEY_PREFIX = "ocb:cohort:";
 const KEY_SUFFIX = ":v1";
@@ -35,9 +49,12 @@ const DEFAULT_MAX_AGE_MS = 10 * 60 * 1000;
 type Envelope<T> = { data: T; asOf: number };
 
 function creds(): { url: string; token: string } | null {
-  const url = URL_ENV.map((k) => process.env[k]?.trim()).find(Boolean);
-  const token = TOKEN_ENV.map((k) => process.env[k]?.trim()).find(Boolean);
-  return url && token ? { url: url.replace(/\/+$/, ""), token } : null;
+  for (const [urlKey, tokenKey] of CRED_ENV) {
+    const url = process.env[urlKey]?.trim();
+    const token = process.env[tokenKey]?.trim();
+    if (url && token) return { url: url.replace(/\/+$/, ""), token };
+  }
+  return null;
 }
 
 function isConfigured(): boolean {
