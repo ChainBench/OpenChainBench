@@ -14,7 +14,7 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  BNB Chain is the incumbent's chain: Binance's `bsc-dataseed1.binance.org` has been the copy-paste default since 2020, and it measures {{p50:binance}} on the cross-region median today (see the region tabs for the origin split). The catch is that it serves exactly one chain, while PublicNode, dRPC and Nodies bring multi-chain coverage with increasingly competitive latency from EU origins. {{count}} providers, identical probes, three regions.
+  BNB Chain is the incumbent's chain: Binance's `bsc-dataseed1.binance.org` has been the copy-paste default since 2020, and it measures {{p50:binance}} on the cross-region median today (see the region tabs for the origin split). The catch is that it serves exactly one chain, while PublicNode, NOWNodes and bloXroute bring multi-chain coverage at competitive latency. {{count}} providers, identical probes, three regions.
 
 abstract: |
   BNB Chain: {{count}} free public RPC endpoints answering `eth_getBlockByNumber` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}. The same page carries the private cohort (API key), Alchemy, Chainstack, GetBlock and QuickNode on their keyed BNB Chain endpoints every 120 seconds: switch the Access selector; {{best_name:tier:keyed}} leads it at {{best_p50:tier:keyed}}.
