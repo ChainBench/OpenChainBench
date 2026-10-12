@@ -167,16 +167,6 @@
        "plan": "payg"
       },
       {
-       "r": 3125000,
-       "usd": 9.37,
-       "plan": "payg"
-      },
-      {
-       "r": 3125000,
-       "usd": 9.38,
-       "plan": "payg"
-      },
-      {
        "r": 8157676,
        "usd": 24.47,
        "plan": "payg"
@@ -543,12 +533,12 @@
       {
        "r": 100000,
        "usd": null,
-       "why": "price not published (sales-gated)"
+       "why": "provider does not price ethereum"
       },
       {
        "r": 5000000000,
        "usd": null,
-       "why": "price not published (sales-gated)"
+       "why": "provider does not price ethereum"
       }
      ]
     },
@@ -1941,16 +1931,6 @@
        "plan": "payg"
       },
       {
-       "r": 1704545,
-       "usd": 9.37,
-       "plan": "payg"
-      },
-      {
-       "r": 1704545,
-       "usd": 9.38,
-       "plan": "payg"
-      },
-      {
        "r": 4453750,
        "usd": 24.5,
        "plan": "payg"
@@ -2317,12 +2297,12 @@
       {
        "r": 100000,
        "usd": null,
-       "why": "price not published (sales-gated)"
+       "why": "provider does not price ethereum"
       },
       {
        "r": 5000000000,
        "usd": null,
-       "why": "price not published (sales-gated)"
+       "why": "provider does not price ethereum"
       }
      ]
     },
@@ -3725,16 +3705,6 @@
        "plan": "payg"
       },
       {
-       "r": 534188,
-       "usd": 9.37,
-       "plan": "payg"
-      },
-      {
-       "r": 534188,
-       "usd": 9.38,
-       "plan": "payg"
-      },
-      {
        "r": 1395668,
        "usd": 24.49,
        "plan": "payg"
@@ -4101,12 +4071,12 @@
       {
        "r": 100000,
        "usd": null,
-       "why": "price not published (sales-gated)"
+       "why": "provider does not price ethereum"
       },
       {
        "r": 5000000000,
        "usd": null,
-       "why": "price not published (sales-gated)"
+       "why": "provider does not price ethereum"
       }
      ]
     },
@@ -5108,12 +5078,12 @@
       {
        "r": 100000,
        "usd": null,
-       "why": "price not published (sales-gated)"
+       "why": "no published unit cost for trace_block"
       },
       {
        "r": 5000000000,
        "usd": null,
-       "why": "price not published (sales-gated)"
+       "why": "no published unit cost for trace_block"
       }
      ]
     },
@@ -5126,16 +5096,6 @@
       {
        "r": 100000,
        "usd": 2.55,
-       "plan": "payg"
-      },
-      {
-       "r": 367936,
-       "usd": 9.37,
-       "plan": "payg"
-      },
-      {
-       "r": 367936,
-       "usd": 9.38,
        "plan": "payg"
       },
       {
@@ -5505,12 +5465,12 @@
       {
        "r": 100000,
        "usd": null,
-       "why": "price not published (sales-gated)"
+       "why": "provider does not price ethereum"
       },
       {
        "r": 5000000000,
        "usd": null,
-       "why": "price not published (sales-gated)"
+       "why": "provider does not price ethereum"
       }
      ]
     },
@@ -6375,16 +6335,6 @@
       {
        "r": 100000,
        "usd": 1.3,
-       "plan": "payg"
-      },
-      {
-       "r": 721154,
-       "usd": 9.37,
-       "plan": "payg"
-      },
-      {
-       "r": 721154,
-       "usd": 9.38,
        "plan": "payg"
       },
       {

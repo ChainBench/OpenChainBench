@@ -33,8 +33,8 @@ seo_intro: |
   published per workload rather than as one number. A dapp frontend calling
   eth_call and eth_getBalance drains an allowance at a different rate than a
   log indexer calling eth_getLogs, and on BlockPI's free plan the gap between
-  the cheapest workload and the most expensive is a factor of eight: 3.1M
-  requests against 368k, on one plan, with nothing on the pricing page saying
+  the cheapest workload and the most expensive is a factor of eight: 3.3M
+  requests against 392k, on one plan, with nothing on the pricing page saying
   so. Every row carries the two ends of that span next to its headline
   figure, so the plans a workload cannot surprise are visible without
   reading four tabs: Ankr, dRPC and InstaNodes meter flat, and their floor is
@@ -65,7 +65,7 @@ methodology:
   - "Allowance source: each provider's published free plan, read from its own pricing page or API, with the date of reading and a confidence flag recorded in the catalogue. The same catalogue prices the paid plans on bench 282; this page reads only the rows whose monthly price is zero and whose allowance renews."
   - "Confidence, stated rather than implied. Nine of the eleven ranked allowances are verified against the provider's own published figure. Two are not, and both are named here. dRPC publishes its 210M CU allowance but nothing about what happens on exhausting it. Blockdaemon's documentation disagrees with itself: an October plan table says 1M CU a month where an April page and an archived pricing card say 3M, and 3M is what two sources carry."
   - "Unit conversion: allowance divided by the weighted cost of one request of the selected workload, in the provider's own unit. A workload is a fixed method mix with shares that sum to 1, so the weighted cost is the sum of each method's unit weight times its share. A provider that meters flat requests has a weight of 1 on every method."
-  - "Periods that are not a month: Infura, GetBlock and OnFinality publish a daily allowance, multiplied by 30, the most generous reading, and OnFinality at 40 response units a second cannot reach its monthly figure in a burst. BlockPI is neither daily nor monthly: a 50M RU package issued on the 1st, expiring after 32 days and not accumulating, pro-rated here to 30 days (46.875M RU). Every plan stays subject to its throughput ceiling, which this page does not score."
+  - "Periods that are not a month: Infura, GetBlock and OnFinality publish a daily allowance, multiplied by 30, the most generous reading, and OnFinality at 40 response units a second cannot reach its monthly figure in a burst. BlockPI's 50M RU package arrives on the 1st of every month and stays valid 32 days without accumulating, so a month delivers 50M and the overlap is forfeited. Every plan stays subject to its throughput ceiling, which this page does not score."
   - "What counts as free: a plan that costs nothing and renews. QuickNode's Free trial is excluded because it runs for one month and does not renew; it is priced on bench 282 as an entry plan instead. Public endpoints with no key and no published allowance are also excluded: there is no allowance to rank."
   - "Headline slice: the unfiltered view is the dapp mix on Ethereum, published under the `all` label as the headline slice and not as a pooled average, because an allowance averaged across workloads describes none of them. Switching a tab reads a different slice, never a blend. The chain is a property of the workload rather than a second axis: the Ethereum mixes cover 11 of the 13 plans and the Solana bot mix covers 11, so a provider absent from one tab serves a chain that tab does not ask about."
   - "Floor and ceiling: the two columns beside the headline are the least and the most generous of the workloads that plan serves on the selected chain, over all five priced mixes including the simple-read mix, which has no tab. They describe the plan rather than the open tab, so they read the same on every tab. A workload the plan refuses is excluded, not counted as zero: Alchemy's free tier does no trace, so its floor is its indexer mix and the refusal shows as its absence from the trace tab."
@@ -110,7 +110,7 @@ dimensions:
 # of the span across every workload this plan serves on that chain.
 #
 # The headline alone was read as a promise on plans where it is a best case.
-# BlockPI publishes one free tier that buys 3.1M simple reads and 368k
+# BlockPI publishes one free tier that buys 3.3M simple reads and 392k
 # traces, a factor of eight, and Infura and Blockdaemon swing five; a reader
 # who landed on one tab had no way to learn that without clicking the others
 # and holding the numbers in their head. Ankr, dRPC and InstaNodes meter
