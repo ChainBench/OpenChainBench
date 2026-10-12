@@ -80,6 +80,40 @@ var (
 		},
 		[]string{"venue"},
 	)
+	// High-leverage terms ==============================================
+	// Governance parameters rather than sampled measurements, read fresh
+	// each tick. Keyed by market as well as venue because the comparison
+	// only means anything on the same asset, and the only assets two
+	// high-leverage venues both list are BTC and ETH.
+	//
+	// The market label is called `kind` and not `market` on purpose: the
+	// site injects a fixed set of dimension labels into a bench's queries
+	// (chain, region, kind, venue, bucket, amount_usd, tier) and `kind` is
+	// the generic partition among them. Naming it `market` would mean
+	// teaching the site's spec schema a new dimension for one bench, and a
+	// dimension the site cannot inject leaves two series matching every
+	// selector, which renders as an empty page with no error anywhere.
+	perpLeverageMax = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "perp_leverage_max",
+			Help: "Maximum leverage a venue allows on a market. Source: Gains pairMaxLeverage on the Arbitrum diamond, Papertrade /state/trading instrument tuple.",
+		},
+		[]string{"venue", "kind"},
+	)
+	perpLiqPriceMovePct = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "perp_liq_price_move_pct",
+			Help: "Adverse price move, in percent, that liquidates a position opened at the venue's maximum leverage on that market, measured at open and excluding carry. Gains: liquidation threshold divided by leverage. Papertrade: the bust buffer, which is already a share of price and does not vary with leverage.",
+		},
+		[]string{"venue", "kind"},
+	)
+	perpLiqCollateralKeptPct = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "perp_liq_collateral_kept_pct",
+			Help: "Share of collateral, in percent, returned to the trader when a position is liquidated. Gains: 100 minus the liquidation threshold. Papertrade: zero, crossing the bust price forfeits the whole margin.",
+		},
+		[]string{"venue", "kind"},
+	)
 	perpVenueHealth = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "perp_venue_health",
@@ -152,6 +186,7 @@ func init() {
 		perpVenueFees30dUsd, perpVenueActiveMarkets, perpVenueTopMarketVolume24hUsd,
 		perpVenueMarketsByClass, perpVenueNoncoreMarketsTotal,
 		perpVenueTvlUsd,
+		perpLeverageMax, perpLiqPriceMovePct, perpLiqCollateralKeptPct,
 		perpVenueHealth, perpVenueFunding24hBps, perpVenueFundingIntervalHours,
 		perpVenueFundingRefreshUnix, perpVenueLastRefreshUnix,
 		perpCohortFetchErrors, perpCohortSourceUsed, perpCohortDataDivergence,
