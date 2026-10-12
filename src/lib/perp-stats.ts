@@ -94,7 +94,7 @@ type VenueSeed = {
 export const PERP_VENUES: VenueSeed[] = [
   { slug: "hyperliquid", name: "Hyperliquid", chain: "Hyperliquid L1", venueType: "onchain" },
   { slug: "lighter",     name: "Lighter",     chain: "Lighter L2",    venueType: "onchain" },
-  { slug: "gmx-v2",      name: "GMX v2",      chain: "Arbitrum",      venueType: "onchain" },
+  { slug: "gmx-v2",      name: "GMX",         chain: "Arbitrum",      venueType: "onchain" },
   { slug: "gains",       name: "Gains",         chain: "Arbitrum",    venueType: "onchain" },
   { slug: "dydx",        name: "dYdX v4",     chain: "Cosmos",        venueType: "onchain" },
   { slug: "nado",        name: "Nado",        chain: "Ink",           venueType: "onchain" },

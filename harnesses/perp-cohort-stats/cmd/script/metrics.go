@@ -86,33 +86,40 @@ var (
 	// only means anything on the same asset, and the only assets two
 	// high-leverage venues both list are BTC and ETH.
 	//
-	// The market label is called `kind` and not `market` on purpose: the
-	// site injects a fixed set of dimension labels into a bench's queries
-	// (chain, region, kind, venue, bucket, amount_usd, tier) and `kind` is
-	// the generic partition among them. Naming it `market` would mean
-	// teaching the site's spec schema a new dimension for one bench, and a
-	// dimension the site cannot inject leaves two series matching every
-	// selector, which renders as an empty page with no error anywhere.
+	// Two label names here are the site's, not ours. The site injects a
+	// fixed set of dimension labels into a bench's queries (chain, region,
+	// kind, venue, bucket, amount_usd, tier), so the market rides in `kind`
+	// and the leverage setting in `bucket`. Naming them `market` and
+	// `leverage` would mean teaching the spec schema two new dimensions for
+	// one bench, and a dimension the site cannot inject leaves every
+	// selector matching many series, which renders as an empty page with no
+	// error anywhere.
+	//
+	// `bucket="all"` is the venue's OWN maximum, not a pooled series. The
+	// site replaces a selector pinned to "all" with the chosen value, so the
+	// spec pins bucket="all" and the unfiltered page reads as the
+	// max-leverage view while every other tab is a setting shared across
+	// venues.
 	perpLeverageMax = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "perp_leverage_max",
-			Help: "Maximum leverage a venue allows on a market. Source: Gains pairMaxLeverage on the Arbitrum diamond, Papertrade /state/trading instrument tuple.",
+			Help: "Maximum leverage a venue allows on a market, repeated at every bucket so the column reads the same on each leverage tab. Source: Gains pairMaxLeverage on the Arbitrum diamond, Papertrade /state/trading instrument tuple.",
 		},
-		[]string{"venue", "kind"},
+		[]string{"venue", "kind", "bucket"},
 	)
 	perpLiqPriceMovePct = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "perp_liq_price_move_pct",
-			Help: "Adverse price move, in percent, that liquidates a position opened at the venue's maximum leverage on that market, measured at open and excluding carry. Gains: liquidation threshold divided by leverage. Papertrade: the bust buffer, which is already a share of price and does not vary with leverage.",
+			Help: "Adverse price move, in percent, that liquidates a position opened at the leverage in `bucket` (`all` = the venue maximum), measured at open and excluding carry. Computed as 1/leverage minus the venue maintenance requirement as a share of notional. Gains: liquidation threshold divided by leverage. Papertrade: the bust buffer, which is already a share of price and does not vary with leverage.",
 		},
-		[]string{"venue", "kind"},
+		[]string{"venue", "kind", "bucket"},
 	)
 	perpLiqCollateralKeptPct = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "perp_liq_collateral_kept_pct",
-			Help: "Share of collateral, in percent, returned to the trader when a position is liquidated. Gains: 100 minus the liquidation threshold. Papertrade: zero, crossing the bust price forfeits the whole margin.",
+			Help: "Share of collateral, in percent, returned to the trader when a position opened at the leverage in `bucket` is liquidated. Maintenance requirement times leverage. Gains: 100 minus the liquidation threshold. Papertrade: zero, crossing the bust price forfeits the whole margin.",
 		},
-		[]string{"venue", "kind"},
+		[]string{"venue", "kind", "bucket"},
 	)
 	perpVenueHealth = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{

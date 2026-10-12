@@ -205,7 +205,7 @@ providers:
       series: perp_venue_noncore_markets_total{venue="dydx"}
 
   - slug: gmx-v2
-    name: GMX v2
+    name: GMX
     tag: Arbitrum and Avalanche pool perps, gold, silver, oil, gas, SPY, QQQ next to crypto
     formula: "Count of synthetic tokens in GET arbitrum-api.gmxinfra.io/tokens matched as commodity or index by the symbol table, plus the reviewed equity synthetics (SPCX). Live."
     queries:

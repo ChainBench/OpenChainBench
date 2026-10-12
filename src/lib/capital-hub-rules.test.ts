@@ -258,7 +258,7 @@ describe("perp open interest rows", () => {
     { slug: "hyperliquid", name: "Hyperliquid", venueType: "onchain" as const, openInterest: 12.77e9, volume24h: 6.61e9 },
     { slug: "trade-xyz", name: "trade.xyz", venueType: "onchain" as const, openInterest: 3.76e9, volume24h: 2.19e9 },
     { slug: "ondo", name: "Ondo Perps", venueType: "onchain" as const, openInterest: 88.6e6, volume24h: 126e6 },
-    { slug: "gmx-v2", name: "GMX v2", venueType: "onchain" as const, openInterest: 51.5e6, volume24h: 54.8e6 },
+    { slug: "gmx-v2", name: "GMX", venueType: "onchain" as const, openInterest: 51.5e6, volume24h: 54.8e6 },
     // The harness gets no open interest from these: a row with a reason, not a dropped row.
     { slug: "orderly", name: "Orderly", venueType: "onchain" as const, openInterest: null, volume24h: 63.6e6 },
     { slug: "backpack", name: "Backpack", venueType: "onchain" as const, openInterest: null, volume24h: 197.4e6 },

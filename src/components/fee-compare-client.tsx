@@ -19,7 +19,7 @@ const COMPARABLE_VENUES = [
   { slug: "hyperliquid", name: "Hyperliquid", chain: "Hyperliquid L1" },
   { slug: "gains",       name: "Gains",       chain: "Arbitrum / Base" },
   { slug: "dydx",        name: "dYdX v4",     chain: "Cosmos" },
-  { slug: "gmx-v2",      name: "GMX v2",      chain: "Arbitrum" },
+  { slug: "gmx-v2",      name: "GMX",         chain: "Arbitrum" },
   { slug: "paradex",     name: "Paradex",     chain: "Starknet" },
   { slug: "edgex",       name: "EdgeX",       chain: "StarkEx" },
 ] as const;
