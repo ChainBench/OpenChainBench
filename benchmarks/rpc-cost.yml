@@ -213,6 +213,12 @@ metric_panels:
     label_key: provider
     unit: count
     higher_is_better: true
+    # Same label set as units_per_request above: (provider, plan, kind,
+    # chain), with no bucket and no venue. A free allowance does not change
+    # with how many requests you intend to buy or which paid band you would
+    # land in, which is the point of ranking it separately. Appending those
+    # two matched nothing and left this panel blank on 70 of 75 views.
+    ignore_dimensions: [bucket, venue]
   # The question the dedicated cohort exists to answer.
   - id: breakeven
     label: Dedicated break-even, requests per month

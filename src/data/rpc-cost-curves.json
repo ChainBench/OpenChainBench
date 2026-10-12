@@ -543,12 +543,12 @@
       {
        "r": 100000,
        "usd": null,
-       "why": "price not published (sales-gated)"
+       "why": "provider does not price ethereum"
       },
       {
        "r": 5000000000,
        "usd": null,
-       "why": "price not published (sales-gated)"
+       "why": "provider does not price ethereum"
       }
      ]
     },
@@ -2317,12 +2317,12 @@
       {
        "r": 100000,
        "usd": null,
-       "why": "price not published (sales-gated)"
+       "why": "provider does not price ethereum"
       },
       {
        "r": 5000000000,
        "usd": null,
-       "why": "price not published (sales-gated)"
+       "why": "provider does not price ethereum"
       }
      ]
     },
@@ -4101,12 +4101,12 @@
       {
        "r": 100000,
        "usd": null,
-       "why": "price not published (sales-gated)"
+       "why": "provider does not price ethereum"
       },
       {
        "r": 5000000000,
        "usd": null,
-       "why": "price not published (sales-gated)"
+       "why": "provider does not price ethereum"
       }
      ]
     },
@@ -5108,12 +5108,12 @@
       {
        "r": 100000,
        "usd": null,
-       "why": "price not published (sales-gated)"
+       "why": "no published unit cost for trace_block"
       },
       {
        "r": 5000000000,
        "usd": null,
-       "why": "price not published (sales-gated)"
+       "why": "no published unit cost for trace_block"
       }
      ]
     },
@@ -5505,12 +5505,12 @@
       {
        "r": 100000,
        "usd": null,
-       "why": "price not published (sales-gated)"
+       "why": "provider does not price ethereum"
       },
       {
        "r": 5000000000,
        "usd": null,
-       "why": "price not published (sales-gated)"
+       "why": "provider does not price ethereum"
       }
      ]
     },
