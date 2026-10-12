@@ -10,7 +10,7 @@ import path from "node:path";
 import yaml from "js-yaml";
 import { cache } from "react";
 import { leader } from "@/lib/citation";
-import { downsample, MINI_CHART_POINTS } from "@/lib/downsample";
+import { downsample, MINI_CHART_MAX_LINES, MINI_CHART_POINTS } from "@/lib/downsample";
 import type { Benchmark, BenchIndexEntry } from "@/types/benchmark";
 import { loadBenchIndexFromBlob } from "@/lib/bench-blob";
 import {
@@ -74,6 +74,12 @@ export type BenchmarkCardData = {
  *  `results` in its original sort order so the card's own sort
  *  (best-leader heuristic) stays correct. */
 export function toBenchmarkCardData(b: Benchmark): BenchmarkCardData {
+  // Same order as MiniChart, best first; a slug without a usable series
+  // is skipped there, so over-keep by ranking every result that has one.
+  const withSeries = b.results
+    .filter((r) => (b.extras?.series24h?.[r.slug]?.length ?? 0) > 1)
+    .sort(b.higherIsBetter ? (x, y) => y.ms.p50 - x.ms.p50 : (x, y) => x.ms.p50 - y.ms.p50);
+  const drawnSlugs = new Set(withSeries.slice(0, MINI_CHART_MAX_LINES).map((r) => r.slug));
   return {
     slug: b.slug,
     title: b.title,
@@ -97,12 +103,13 @@ export function toBenchmarkCardData(b: Benchmark): BenchmarkCardData {
     // rendering at MINI_CHART_POINTS anyway, so shipping the raw 24h
     // series (hundreds of points x providers x benches) only bloated
     // the RSC payload without changing a single drawn pixel.
+    // Only the series the card draws: its MiniChart keeps the
+    // MINI_CHART_MAX_LINES best by p50, so the rest never reach a pixel.
     extras: {
       series24h: Object.fromEntries(
-        Object.entries(b.extras?.series24h ?? {}).map(([slug, values]) => [
-          slug,
-          downsample(values, MINI_CHART_POINTS),
-        ])
+        Object.entries(b.extras?.series24h ?? {})
+          .filter(([slug]) => drawnSlugs.has(slug))
+          .map(([slug, values]) => [slug, downsample(values, MINI_CHART_POINTS)])
       ),
     },
   };

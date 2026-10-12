@@ -36,7 +36,13 @@ export async function TerminalFillAudit({ exec }: { exec?: boolean } = {}) {
         </p>
       </div>
       <div className="mt-6">
-        <TerminalFillSwaps swaps={f.recent} terminals={f.terminals.map((t) => ({ slug: t.slug, name: t.name }))} exec={exec} />
+        {/* The 50 most recent only: the full sample (~3,000 rows) is fetched
+            by the table after hydration instead of being serialised into
+            the page, where it was 85% of a 2.4 MB document. */}
+        <TerminalFillSwaps
+          swaps={[...f.recent].sort((a, b) => b.time - a.time).slice(0, 50)}
+          total={f.recent.length}
+          terminals={f.terminals.map((t) => ({ slug: t.slug, name: t.name }))} exec={exec} />
       </div>
     </div>
   );

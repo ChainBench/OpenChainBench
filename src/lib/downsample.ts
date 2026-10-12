@@ -35,3 +35,9 @@ export function downsample(values: (number | null)[], target: number): number[] 
 /** Max points a 48-px MiniChart sparkline can usefully render. Series
  *  shipped to hub cards are capped to this at the projection boundary. */
 export const MINI_CHART_POINTS = 28;
+
+/** Lines a bench card's MiniChart draws, best first. One card drew 104
+ *  (an RPC bench with every provider x chain), unreadable at 400 x 48
+ *  and ~70 KB of markup on /benchmarks; the legend and the card footer
+ *  still count every provider. */
+export const MINI_CHART_MAX_LINES = 12;
