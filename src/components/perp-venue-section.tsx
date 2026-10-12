@@ -7,6 +7,7 @@ import { findVenue, getPerpVolumeHistory } from "@/lib/perp-volume-history";
 import { PERP_VENUES, type PerpVenueType } from "@/lib/perp-stats";
 import { loadBenchFromBlob } from "@/lib/bench-blob";
 import { logoPath } from "@/lib/logo-manifest";
+import { perpProductSlug } from "@/lib/perp-product-slug";
 import { PerpVenueKpiStrip } from "@/components/perp-venue-kpi-strip";
 import { PerpBarChart } from "@/components/perp-bar-chart";
 import {
@@ -306,8 +307,12 @@ export async function PerpVenueSection({
           <SectionLabel>Other perp venues on the same benchmarks</SectionLabel>
           <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {otherVenues.map((v) => {
-              const productSlug = v.slug === "gmx-v2" ? "gmx" : v.slug;
-              const lp = logoPath(v.slug);
+              // One slug for both: this used to normalize gmx-v2 to gmx for the
+              // link on the line above and then look the logo up under the raw
+              // cohort slug, which has no manifest entry, so GMX rendered with
+              // the initial-letter fallback while every other venue had a mark.
+              const productSlug = perpProductSlug(v.slug);
+              const lp = logoPath(productSlug);
               return (
                 <li key={v.slug}>
                   <Link
