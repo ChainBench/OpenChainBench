@@ -56,7 +56,9 @@ func ptTuple(t *testing.T, raw string) []json.RawMessage {
 
 // gainsVenue builds the venueTerms fetchGains would build from a decoded
 // return, so the tests exercise the same closure the harness publishes from.
-func gainsVenue(t *testing.T, hexStr string, maxLev float64) venueTerms {
+// The fee is the pair's position-size fee read from its fee group: 0.02% on the
+// degen pairs, 0.035% on the standard ones.
+func gainsVenue(t *testing.T, hexStr string, maxLev, feePerLeg float64) venueTerms {
 	t.Helper()
 	w := words(t, hexStr)
 	if len(w) != 5 {
@@ -71,7 +73,21 @@ func gainsVenue(t *testing.T, hexStr string, maxLev float64) venueTerms {
 		maintenance: func(lev float64) float64 {
 			return (100 - interpolateThreshold(startTh, endTh, startLev, endLev, lev)) / 100 / lev
 		},
+		costPerLeg:  feePerLeg,
+		forfeitsAll: true,
 	}
+}
+
+// papertradeVenue mirrors fetchPapertrade: no fee at either leg, a buffer fixed
+// in price, and a hard bust.
+func papertradeVenue(t *testing.T, raw string) venueTerms {
+	t.Helper()
+	sym, lev, buf, ok := papertradeTerms(ptTuple(t, raw))
+	if !ok {
+		t.Fatalf("papertrade fixture rejected")
+	}
+	return venueTerms{venue: "papertrade", market: sym, maxLev: lev,
+		maintenance: func(float64) float64 { return buf }, forfeitsAll: true}
 }
 
 // TestGainsScaleCalibration is the anchor: the standard pair must read as the
@@ -107,24 +123,74 @@ func TestGainsThresholdInterpolates(t *testing.T) {
 	}
 }
 
-// TestGainsRoomScalesWithLeverage: because the threshold is a share of
-// collateral and is flat on a degen pair, the room falls in exact proportion to
-// leverage while the share returned never moves. That is the property the bench
-// contrasts Papertrade against.
+// TestGainsRoomMatchesWhatLiquidationsShow is the test the measurement earned.
+//
+// The contract's threshold is 80% of collateral, which would put the room at
+// 0.1600% of price at 500x. Eleven real liquidations on pairs 300 and 313 fired
+// at a median 59.4% of collateral, which is 0.1189% of price. The gap is both
+// fee legs: 0.02% x 500 x 2 is 20 points of collateral, and 80 - 20 is 60. The
+// model therefore has to predict 60.0% and 0.1200%, within a point of the
+// measurement, the remainder being borrowing which accrues with holding time
+// and is not a term at open.
+func TestGainsRoomMatchesWhatLiquidationsShow(t *testing.T) {
+	g := gainsVenue(t, degenLiqParams, 500, 0.02)
+	room, lost, kept, ok := termsAt(g, 500)
+	if !ok {
+		t.Fatal("rejected at 500x")
+	}
+	approx(t, "room at 500x", room, 0.12, 1e-9)
+	approx(t, "collateral lost at 500x", lost, 60, 1e-9)
+	approx(t, "collateral kept", kept, 0, 0)
+
+	// Against the measurement, loosely: the model must land within a point of
+	// the median, and must NOT reproduce the fee-free 0.16%.
+	const measuredLostPct = 59.44
+	if diff := lost - measuredLostPct; diff < 0 || diff > 1.5 {
+		t.Errorf("model says %.2f%% of collateral, measured median %.2f%%, gap %.2f points",
+			lost, measuredLostPct, diff)
+	}
+	if room > 0.15 {
+		t.Errorf("room %.4f%% is back at the fee-free figure, the fee legs are missing", room)
+	}
+}
+
+// TestGainsRoomScalesWithLeverage: the threshold is a share of collateral and
+// flat on a degen pair, so the room falls close to proportionally with
+// leverage. The fee legs bend it slightly, and the bend grows with leverage
+// because the fee is a share of notional.
 func TestGainsRoomScalesWithLeverage(t *testing.T) {
-	g := gainsVenue(t, degenLiqParams, 500)
-	for _, c := range []struct{ lev, room, kept float64 }{
-		{500, 0.16, 20}, // at the maximum
-		{100, 0.8, 20},
-		{50, 1.6, 20},
-		{10, 8, 20},
+	g := gainsVenue(t, degenLiqParams, 500, 0.02)
+	for _, c := range []struct{ lev, room, lost float64 }{
+		{500, 0.12, 60.0},
+		{200, 0.36, 72.0},
+		{100, 0.76, 76.0},
+		{50, 1.56, 78.0},
+		{10, 7.96, 79.6},
 	} {
-		room, kept, ok := termsAt(g, c.lev)
+		room, lost, kept, ok := termsAt(g, c.lev)
 		if !ok {
 			t.Fatalf("gains rejected at %.0fx", c.lev)
 		}
 		approx(t, "gains room", room, c.room, 1e-9)
-		approx(t, "gains kept", kept, c.kept, 1e-9)
+		approx(t, "gains collateral lost", lost, c.lost, 1e-9)
+		approx(t, "gains collateral kept", kept, 0, 0)
+	}
+}
+
+// TestGainsReturnsNothing states the measurement plainly: amountSentToTrader
+// was 0 on all 27 liquidations found, every pair, 7.5x to 500x. The 20 points
+// the threshold leaves never reach the trader, so the column is a real zero at
+// every leverage and not a figure derived from the threshold.
+func TestGainsReturnsNothing(t *testing.T) {
+	g := gainsVenue(t, degenLiqParams, 500, 0.02)
+	for _, lev := range []float64{10, 50, 100, 500} {
+		_, _, kept, ok := termsAt(g, lev)
+		if !ok {
+			t.Fatalf("rejected at %.0fx", lev)
+		}
+		if kept != 0 {
+			t.Errorf("gains returned %.2f%% at %.0fx, measurement says nothing comes back", kept, lev)
+		}
 	}
 }
 
@@ -146,15 +212,17 @@ func TestPapertradeBufferIsAnOffsetNotTheRoom(t *testing.T) {
 	// About 5 basis points of price, which is what the docs call it.
 	approx(t, "buffer in percent", buffer*100, 0.0476041580087574, 1e-12)
 
-	pt := venueTerms{venue: "papertrade", market: sym, maxLev: lev,
-		maintenance: func(float64) float64 { return buffer }, forfeitsAll: true}
+	pt := papertradeVenue(t, ptBTCInstrument)
 
-	room, kept, ok := termsAt(pt, 1000)
+	room, lost, kept, ok := termsAt(pt, 1000)
 	if !ok {
 		t.Fatal("rejected at 1000x")
 	}
 	// The docs' own worked figure, to their stated precision.
 	approx(t, "room at 1000x", room, 0.052, 5e-4)
+	// And in the unit venues quote among themselves: Sacha at Gains read this
+	// as "almost 50% of collat", which is this number.
+	approx(t, "collateral lost at 1000x", lost, 52.4, 0.1)
 	// And not the buffer itself, which is the mistake this test guards.
 	if math.Abs(room-buffer*100) < 1e-6 {
 		t.Errorf("room %.6f equals the buffer, the offset was read as the room", room)
@@ -181,13 +249,12 @@ func TestPapertradeBufferCostsMoreAsLeverageGrows(t *testing.T) {
 		t.Errorf("at max leverage the buffer should eat most of the margin, got %.1f%%", buffer*lev*100)
 	}
 
-	pt := venueTerms{venue: "papertrade", maxLev: lev,
-		maintenance: func(float64) float64 { return buffer }, forfeitsAll: true}
+	pt := papertradeVenue(t, ptBTCInstrument)
 	// Room shrinks with leverage like everywhere else; it is the buffer that
 	// is constant, not the room. The first version of this source had that
 	// backwards and claimed the room was identical at 1x and 1000x.
-	r10, _, _ := termsAt(pt, 10)
-	r1000, _, _ := termsAt(pt, 1000)
+	r10, _, _, _ := termsAt(pt, 10)
+	r1000, _, _, _ := termsAt(pt, 1000)
 	if !(r10 > r1000) {
 		t.Errorf("room should shrink with leverage: 10x=%.4f 1000x=%.4f", r10, r1000)
 	}
@@ -224,23 +291,27 @@ func TestPapertradeTermsGuardsTupleShape(t *testing.T) {
 
 // TestMarginFractionVenues covers dYdX, whose two fractions are published, and
 // Hyperliquid, whose maintenance requirement comes from the documented halving
-// rule. The trap is that the share returned is a ratio of the two fractions and
-// not their difference, because the collateral posted is the initial one.
+// rule. Neither publishes a fee in the payload we read, so their rows carry no
+// fee legs and the bench says so.
+//
+// The trap is that the share returned is a ratio of the two fractions and not
+// their difference, because the collateral posted is the initial one.
 func TestMarginFractionVenues(t *testing.T) {
 	// dYdX BTC-USD, read live 2026-10-12: IMF 0.02, MMF 0.012.
 	dydx := venueTerms{venue: "dydx", maxLev: 1 / 0.02,
 		maintenance: func(float64) float64 { return 0.012 }}
 	approx(t, "dydx max leverage", dydx.maxLev, 50, 1e-9)
-	for _, c := range []struct{ lev, room, kept float64 }{
-		{50, 0.8, 60},
-		{25, 2.8, 30},
-		{10, 8.8, 12},
+	for _, c := range []struct{ lev, room, lost, kept float64 }{
+		{50, 0.8, 40, 60},
+		{25, 2.8, 70, 30},
+		{10, 8.8, 88, 12},
 	} {
-		room, kept, ok := termsAt(dydx, c.lev)
+		room, lost, kept, ok := termsAt(dydx, c.lev)
 		if !ok {
 			t.Fatalf("dydx rejected at %.0fx", c.lev)
 		}
 		approx(t, "dydx room", room, c.room, 1e-9)
+		approx(t, "dydx lost", lost, c.lost, 1e-9)
 		approx(t, "dydx kept", kept, c.kept, 1e-9)
 	}
 
@@ -249,85 +320,102 @@ func TestMarginFractionVenues(t *testing.T) {
 	// whatever the asset.
 	hl := venueTerms{venue: "hyperliquid", maxLev: 40,
 		maintenance: func(float64) float64 { return 1.0 / 80 }}
-	for _, c := range []struct{ lev, room, kept float64 }{
-		{40, 1.25, 50},
-		{10, 8.75, 12.5},
+	for _, c := range []struct{ lev, room, lost, kept float64 }{
+		{40, 1.25, 50, 50},
+		{10, 8.75, 87.5, 12.5},
 	} {
-		room, kept, ok := termsAt(hl, c.lev)
+		room, lost, kept, ok := termsAt(hl, c.lev)
 		if !ok {
 			t.Fatalf("hyperliquid rejected at %.0fx", c.lev)
 		}
 		approx(t, "hl room", room, c.room, 1e-9)
+		approx(t, "hl lost", lost, c.lost, 1e-9)
 		approx(t, "hl kept", kept, c.kept, 1e-9)
 	}
 }
 
-// TestTermsAtRefusesImpossible: a leverage the venue does not offer, or a
-// maintenance requirement that swallows the whole margin, is refused rather
-// than published. A venue that published a leverage but no room would read as
-// the safest row on the board.
+// TestTermsAtRefusesImpossible: a leverage the venue does not offer, or costs
+// that swallow the whole margin, is refused rather than published. A venue that
+// published a leverage but no room would read as the safest row on the board.
 func TestTermsAtRefusesImpossible(t *testing.T) {
 	v := venueTerms{maxLev: 40, maintenance: func(float64) float64 { return 1.0 / 80 }}
 	for _, lev := range []float64{0, -10, 41, 1000} {
-		if _, _, ok := termsAt(v, lev); ok {
+		if _, _, _, ok := termsAt(v, lev); ok {
 			t.Errorf("accepted leverage %.0f on a 40x venue", lev)
 		}
 	}
-	// Maintenance at or above 1/L: liquidated before it opens.
 	tight := venueTerms{maxLev: 100, maintenance: func(float64) float64 { return 0.02 }}
-	if _, _, ok := termsAt(tight, 100); ok {
+	if _, _, _, ok := termsAt(tight, 100); ok {
 		t.Error("accepted a maintenance requirement above the margin posted")
 	}
-	if _, _, ok := termsAt(venueTerms{maxLev: 10, maintenance: func(float64) float64 { return 0 }}, 10); ok {
+	if _, _, _, ok := termsAt(venueTerms{maxLev: 10, maintenance: func(float64) float64 { return 0 }}, 10); ok {
 		t.Error("accepted a zero maintenance requirement")
+	}
+	// Fees alone can exhaust the margin at high leverage: a 0.2% fee a leg at
+	// 250x is the whole collateral twice over.
+	feeHeavy := venueTerms{maxLev: 500, costPerLeg: 0.2,
+		maintenance: func(lev float64) float64 { return 0.2 / 100 / lev }}
+	if _, _, _, ok := termsAt(feeHeavy, 250); ok {
+		t.Error("accepted a position whose fees exceed its margin")
 	}
 }
 
 // TestRankingInvertsWithLeverage is the finding the leverage selector exists
-// for, and the reason the bench cannot be published at max leverage alone.
+// for, and the reason the bench publishes no single ranking.
 //
-// At each venue's OWN maximum, Papertrade has the least room of the four. At a
-// leverage they all offer, it has the MOST, because its buffer is five basis
-// points while the others hold back more than a percent. The ranking inverts,
-// and only the collateral column stays damning throughout.
+// At each venue's OWN maximum the room shrinks as leverage grows, which reads
+// as a ranking but compares four different leverages. At a leverage they all
+// offer the order is different, and Papertrade leads because its maintenance
+// requirement is five basis points of price where the others hold back more
+// than a percent of notional.
+//
+// Measured, not modelled, on the Gains side: its room at 500x is the one 11
+// real liquidations show, and Papertrade's is a ceiling 384 adverse closes
+// never crossed.
 func TestRankingInvertsWithLeverage(t *testing.T) {
-	_, ptLev, buffer, ok := papertradeTerms(ptTuple(t, ptBTCInstrument))
-	if !ok {
-		t.Fatal("papertrade rejected")
-	}
-	pt := venueTerms{venue: "papertrade", maxLev: ptLev,
-		maintenance: func(float64) float64 { return buffer }, forfeitsAll: true}
-	gains := gainsVenue(t, degenLiqParams, 500)
+	pt := papertradeVenue(t, ptBTCInstrument)
+	gains := gainsVenue(t, degenLiqParams, 500, 0.02)
 	dydx := venueTerms{venue: "dydx", maxLev: 50, maintenance: func(float64) float64 { return 0.012 }}
 	hl := venueTerms{venue: "hyperliquid", maxLev: 40, maintenance: func(float64) float64 { return 1.0 / 80 }}
 
 	// At each venue's own maximum: more leverage, less room, monotonically.
-	ptMax, _, _ := termsAt(pt, pt.maxLev)
-	gMax, gKeptMax, _ := termsAt(gains, gains.maxLev)
-	dMax, dKeptMax, _ := termsAt(dydx, dydx.maxLev)
-	hMax, hKeptMax, _ := termsAt(hl, hl.maxLev)
+	ptMax, _, ptKeptMax, _ := termsAt(pt, pt.maxLev)
+	gMax, _, gKeptMax, _ := termsAt(gains, gains.maxLev)
+	dMax, _, dKeptMax, _ := termsAt(dydx, dydx.maxLev)
+	hMax, _, hKeptMax, _ := termsAt(hl, hl.maxLev)
 	if !(ptMax < gMax && gMax < dMax && dMax < hMax) {
 		t.Errorf("at max leverage the room should shrink as leverage grows: pt=%.4f gains=%.4f dydx=%.4f hl=%.4f",
 			ptMax, gMax, dMax, hMax)
 	}
 
-	// At 10x, which all four offer, the order reverses for Papertrade.
-	pt10, pt10Kept, _ := termsAt(pt, 10)
-	g10, _, _ := termsAt(gains, 10)
-	d10, _, _ := termsAt(dydx, 10)
-	h10, _, _ := termsAt(hl, 10)
-	if !(pt10 > d10 && pt10 > h10 && pt10 > g10) {
-		t.Errorf("at 10x papertrade should have the most room: pt=%.4f gains=%.4f dydx=%.4f hl=%.4f",
-			pt10, g10, d10, h10)
+	// At 500x, the only setting Gains and Papertrade both offer, Papertrade
+	// leads once Gains' fee legs are counted. Before the fees were counted the
+	// bench published 0.1600 for Gains and had this the other way round.
+	g500, _, _, _ := termsAt(gains, 500)
+	p500, _, _, _ := termsAt(pt, 500)
+	approx(t, "gains at 500x", g500, 0.12, 1e-9)
+	approx(t, "papertrade at 500x", p500, 0.1523958419912426, 1e-9)
+	if !(p500 > g500) {
+		t.Errorf("at 500x papertrade should leave more room: pt=%.4f gains=%.4f", p500, g500)
 	}
-	if !(g10 < d10 && g10 < h10) {
-		t.Errorf("at 10x gains should have the least room, it liquidates at 80%% of collateral at any leverage: gains=%.4f dydx=%.4f hl=%.4f",
-			g10, d10, h10)
+
+	// At 10x, which all four offer, Gains is last: it liquidates at a share of
+	// collateral whatever the leverage, which is harsh when leverage is low.
+	pt10, _, _, _ := termsAt(pt, 10)
+	g10, _, _, _ := termsAt(gains, 10)
+	d10, _, _, _ := termsAt(dydx, 10)
+	h10, _, _, _ := termsAt(hl, 10)
+	if !(pt10 > d10 && d10 > h10 && h10 > g10) {
+		t.Errorf("at 10x expected pt > dydx > hl > gains, got pt=%.4f dydx=%.4f hl=%.4f gains=%.4f",
+			pt10, d10, h10, g10)
 	}
-	// The collateral column does not invert: Papertrade returns nothing at
-	// every leverage, and the other three always return something.
-	approx(t, "papertrade kept at 10x", pt10Kept, 0, 0)
-	for name, kept := range map[string]float64{"gains": gKeptMax, "dydx": dKeptMax, "hyperliquid": hKeptMax} {
+
+	// The collateral column does not invert, and it is the one where the two
+	// high-leverage venues are alike: neither returns anything, measured on
+	// both sides. The two margin-fraction venues do return something.
+	approx(t, "papertrade kept at its max", ptKeptMax, 0, 0)
+	approx(t, "gains kept at its max", gKeptMax, 0, 0)
+	for name, kept := range map[string]float64{"dydx": dKeptMax, "hyperliquid": hKeptMax} {
 		if kept <= 0 {
 			t.Errorf("%s should return collateral, got %.2f", name, kept)
 		}
@@ -379,7 +467,7 @@ func TestLeverageTermsLive(t *testing.T) {
 			if v.maxLev < 10 {
 				t.Errorf("%s/%s max leverage = %.0fx, implausibly low", venue, v.market, v.maxLev)
 			}
-			room, kept, ok := termsAt(v, v.maxLev)
+			room, lost, kept, ok := termsAt(v, v.maxLev)
 			if !ok {
 				t.Errorf("%s/%s produced no terms at its own maximum", venue, v.market)
 				continue
@@ -387,10 +475,24 @@ func TestLeverageTermsLive(t *testing.T) {
 			if room <= 0 || room > 15 {
 				t.Errorf("%s/%s room = %.4f%%, outside a plausible range", venue, v.market, room)
 			}
+			if lost <= 0 || lost > 100 {
+				t.Errorf("%s/%s collateral lost = %.2f%%, outside a plausible range", venue, v.market, lost)
+			}
 			if kept < 0 || kept >= 100 {
 				t.Errorf("%s/%s kept = %.2f%%, outside a plausible range", venue, v.market, kept)
 			}
-			t.Logf("%-12s %-4s %5.0fx room=%.4f%% kept=%.1f%%", venue, v.market, v.maxLev, room, kept)
+			// The two units must agree by construction: lost is room times
+			// leverage. A mismatch means one of them was computed elsewhere.
+			if diff := lost - room*v.maxLev; diff > 1e-9 || diff < -1e-9 {
+				t.Errorf("%s/%s units disagree: lost=%.4f, room*lev=%.4f", venue, v.market, lost, room*v.maxLev)
+			}
+			// Gains is measured to return nothing; so is Papertrade by its
+			// hard bust rule.
+			if (venue == "gains" || venue == "papertrade") && kept != 0 {
+				t.Errorf("%s/%s returned %.2f%%, measurement says nothing comes back", venue, v.market, kept)
+			}
+			t.Logf("%-12s %-4s %5.0fx room=%.4f%% lost=%.1f%% kept=%.1f%%",
+				venue, v.market, v.maxLev, room, lost, kept)
 		}
 	}
 	// The source must reach every venue over the network, not just parse.

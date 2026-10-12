@@ -114,6 +114,13 @@ var (
 		},
 		[]string{"venue", "kind", "bucket"},
 	)
+	perpLiqCollateralLostPct = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "perp_liq_collateral_lost_pct",
+			Help: "Share of the collateral, in percent, already lost when the position is liquidated at the leverage in `bucket`. The same measurement as perp_liq_price_move_pct in the unit venues quote among themselves: room times leverage.",
+		},
+		[]string{"venue", "kind", "bucket"},
+	)
 	perpLiqCollateralKeptPct = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "perp_liq_collateral_kept_pct",
@@ -193,7 +200,7 @@ func init() {
 		perpVenueFees30dUsd, perpVenueActiveMarkets, perpVenueTopMarketVolume24hUsd,
 		perpVenueMarketsByClass, perpVenueNoncoreMarketsTotal,
 		perpVenueTvlUsd,
-		perpLeverageMax, perpLiqPriceMovePct, perpLiqCollateralKeptPct,
+		perpLeverageMax, perpLiqPriceMovePct, perpLiqCollateralLostPct, perpLiqCollateralKeptPct,
 		perpVenueHealth, perpVenueFunding24hBps, perpVenueFundingIntervalHours,
 		perpVenueFundingRefreshUnix, perpVenueLastRefreshUnix,
 		perpCohortFetchErrors, perpCohortSourceUsed, perpCohortDataDivergence,
