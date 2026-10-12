@@ -365,3 +365,15 @@ providers:
       success: avg_over_time(perp_venue_health{venue="trade-xyz"}[24h])
       sample_size: count_over_time(perp_venue_active_markets{venue="trade-xyz"}[24h])
       series: perp_venue_active_markets{venue="trade-xyz"}
+  - slug: papertrade
+    name: Papertrade
+    tag: Hyperliquid, single house LP, BTC and ETH only
+    formula: "Instruments listed by GET /state/trading."
+    queries:
+      p50: avg_over_time(perp_venue_active_markets{venue="papertrade"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_active_markets{venue="papertrade"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_active_markets{venue="papertrade"}[24h])
+      mean: avg_over_time(perp_venue_active_markets{venue="papertrade"}[24h])
+      success: avg_over_time(perp_venue_health{venue="papertrade"}[24h])
+      sample_size: count_over_time(perp_venue_active_markets{venue="papertrade"}[24h])
+      series: perp_venue_active_markets{venue="papertrade"}

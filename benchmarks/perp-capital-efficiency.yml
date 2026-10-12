@@ -236,3 +236,17 @@ providers:
       success: avg_over_time(perp_venue_health{venue="grvt"}[24h])
       sample_size: count_over_time(perp_venue_active_markets{venue="grvt"}[24h])
       series: perp_venue_active_markets{venue="grvt"} / perp_venue_tvl_usd{venue="grvt"} * 1000000
+  - slug: papertrade
+    name: Papertrade
+    tag: Hyperliquid, single house LP, BTC and ETH only
+    confidence_tier: onchain
+    formula: "Markets listed by GET /state/trading over TVL from GET /query/protocol/history."
+    queries:
+      p50: avg_over_time(perp_venue_active_markets{venue="papertrade"}[24h]) / avg_over_time(perp_venue_tvl_usd{venue="papertrade"}[24h]) * 1000000
+      p90: quantile_over_time(0.90, perp_venue_active_markets{venue="papertrade"}[24h]) / avg_over_time(perp_venue_tvl_usd{venue="papertrade"}[24h]) * 1000000
+      p99: quantile_over_time(0.99, perp_venue_active_markets{venue="papertrade"}[24h]) / avg_over_time(perp_venue_tvl_usd{venue="papertrade"}[24h]) * 1000000
+      mean: avg_over_time(perp_venue_active_markets{venue="papertrade"}[24h]) / avg_over_time(perp_venue_tvl_usd{venue="papertrade"}[24h]) * 1000000
+      success: avg_over_time(perp_venue_health{venue="papertrade"}[24h])
+      sample_size: count_over_time(perp_venue_active_markets{venue="papertrade"}[24h])
+      series: perp_venue_active_markets{venue="papertrade"} / perp_venue_tvl_usd{venue="papertrade"} * 1000000
+

@@ -85,6 +85,7 @@ const BRANDS: Record<string, Brand> = {
   codex: { color: "#84cc16" },         // saturated lime - readable on white + dark
   geckoterminal: { color: "#8B5CF6" }, // vivid violet (gecko brand)
   jupiter: { color: "#C7F284" },       // jupiter matrix green (secondary brand) - keeps it
+  papertrade: { color: "#8B2020" },    // the red underscore in their own favicon
                                        //   distinct from mobula's orange on solana-dex-quote
   raydium: { color: "#00C2FF" },       // raydium cyan
   openocean: { color: "#2563EB" },     // openocean deep blue
