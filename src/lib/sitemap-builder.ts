@@ -240,6 +240,8 @@ function staticHubRoutes(catalogTs: Date): MetadataRoute.Sitemap {
     { url: `${SITE.url}/docs`, lastModified: pageMtime("docs/page.tsx"), changeFrequency: "monthly", priority: 0.8 },
     { url: `${SITE.url}/contact`, lastModified: pageMtime("contact/page.tsx"), changeFrequency: "monthly", priority: 0.6 },
     { url: `${SITE.url}/fee-compare`, lastModified: pageMtime("fee-compare/page.tsx"), changeFrequency: "monthly", priority: 0.7 },
+    { url: `${SITE.url}/tools`, lastModified: pageMtime("tools/page.tsx"), changeFrequency: "monthly", priority: 0.7 },
+    { url: `${SITE.url}/tools/perp-cost`, lastModified: pageMtime("tools/perp-cost/page.tsx"), changeFrequency: "monthly", priority: 0.7 },
     { url: `${SITE.url}/methodology`, lastModified: pageMtime("methodology/page.tsx"), changeFrequency: "monthly", priority: 0.7 },
     { url: `${SITE.url}/contribute`, lastModified: pageMtime("contribute/page.tsx"), changeFrequency: "monthly", priority: 0.7 },
     { url: `${SITE.url}/partners`, lastModified: pageMtime("partners/page.tsx"), changeFrequency: "monthly", priority: 0.7 },
