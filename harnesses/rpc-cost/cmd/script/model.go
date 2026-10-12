@@ -407,6 +407,24 @@ func cheapest(c *Catalogue, p Provider, pr Profile, requests float64, tier strin
 	if tier == "all" {
 		tier = ""
 	}
+	// Whether the provider serves this chain at all is a PROVIDER fact, and
+	// it outranks every plan-level question about price. Asked in plan order
+	// instead, quote() reaches `confidence: unpublished` before it reaches
+	// the chain test, and cheapest() then keeps whichever ineligible plan had
+	// the largest allowance — so Helius, which publishes a $49 Developer
+	// plan and simply has no Ethereum weights, told readers its "price [is]
+	// not published (sales-gated)". That is false about the price and silent
+	// about the chain, on a panel whose whole job is telling a missing price
+	// apart from a cheap one.
+	//
+	// The dedicated cohort is exempt: it bills whole requests with no method
+	// weights, and its own chain test lives in quote().
+	if p.Cohort != "dedicated" {
+		if _, err := unitsPerRequest(p, pr); err != nil {
+			return Quote{Provider: p.Slug, Reason: err.Error()}
+		}
+	}
+
 	found := false
 	// When nothing is eligible, the useful explanation comes from the
 	// provider's most capable plan, not the first one tried. Reporting
