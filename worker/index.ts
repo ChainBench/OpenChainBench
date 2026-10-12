@@ -25,6 +25,7 @@ import {
   filterSig,
   type BenchmarkFilters,
 } from "@/lib/materialize/load";
+import { mergeWithPrevious } from "./merge";
 import {
   MAT_SCHEMA_VERSION,
   RING_CADENCE,
@@ -75,107 +76,7 @@ const VARIANT_EVERY = Number(process.env.VARIANT_EVERY ?? 5);
  *  query semaphore is global, so this only bounds per-bench overhead. */
 const BENCH_CONCURRENCY = Number(process.env.BENCH_CONCURRENCY ?? 3);
 
-function ringFromSeries(
-  window: keyof typeof RING_CADENCE,
-  series: (number | null)[],
-  now: number,
-): SeriesRing {
-  const { stepSec } = RING_CADENCE[window];
-  return {
-    startEpoch: now - series.length * stepSec * 1000,
-    stepSec,
-    points: series,
-  };
-}
 
-/** Merge a fresh live load with the previous snapshot: carried-forward
- *  providers keep last good values/series, marked via meta. */
-function mergeWithPrevious(
-  fresh: Benchmark,
-  prev: MaterializedSnapshot | null,
-  now: number,
-  declaredSlugs?: Set<string>,
-): { bench: Benchmark; state: WorkerState } {
-  const state: WorkerState = { providers: {}, rings: {} };
-  const prevState = prev?.state;
-  const prevBench = prev?.bench;
-
-  const liveSlugs = new Set(fresh.results.map((r) => r.slug));
-
-  // Fresh providers: stamp meta, refresh ring state from live series.
-  for (const r of fresh.results) {
-    r.meta = { observedAt: now };
-    state.providers[r.slug] = r.meta;
-    const rings: Record<string, SeriesRing> = {};
-    const windows = [
-      ["24h", fresh.extras.series24h?.[r.slug]],
-      ["7d", fresh.extras.series7d?.[r.slug]],
-      ["30d", fresh.extras.series30d?.[r.slug]],
-    ] as const;
-    for (const [w, s] of windows) {
-      if (s && s.length > 0) rings[w] = ringFromSeries(w, s, now);
-    }
-    if (Object.keys(rings).length > 0) state.rings[r.slug] = rings;
-  }
-
-  // Carried providers: present in the previous snapshot, absent from this
-  // sweep's live load. Keep values + series, set staleSince once.
-  if (prevBench) {
-    for (const pr of prevBench.results) {
-      if (liveSlugs.has(pr.slug)) continue;
-      // Deliberately delisted providers (removed from the spec) must NOT
-      // be carried: the staleness carry exists for transient query
-      // failures, not for editorial removals (1RPC ghost row, 2026-07-09).
-      if (declaredSlugs && !declaredSlugs.has(pr.slug)) continue;
-      const prevMeta: StalenessMeta = prevState?.providers[pr.slug] ?? {
-        observedAt: prev?.builtAt ?? now,
-      };
-      const meta: StalenessMeta = {
-        observedAt: prevMeta.observedAt,
-        staleSince: prevMeta.staleSince ?? now,
-      };
-      fresh.results.push({ ...pr, meta });
-      state.providers[pr.slug] = meta;
-      const prevRings = prevState?.rings[pr.slug];
-      if (prevRings) {
-        state.rings[pr.slug] = prevRings;
-        const s24 = prevRings["24h"]?.points;
-        const s7 = prevRings["7d"]?.points;
-        const s30 = prevRings["30d"]?.points;
-        if (s24) (fresh.extras.series24h ??= {})[pr.slug] = s24 as number[];
-        if (s7) (fresh.extras.series7d ??= {})[pr.slug] = s7 as number[];
-        if (s30) (fresh.extras.series30d ??= {})[pr.slug] = s30 as number[];
-      }
-    }
-
-    // Panels: carry per-provider values the same way.
-    for (const panel of fresh.metricPanels ?? []) {
-      const prevPanel = (prevBench.metricPanels ?? []).find(
-        (p: MetricPanel) => p.id === panel.id,
-      );
-      if (!prevPanel) continue;
-      panel.valuesMeta ??= {};
-      for (const slug of Object.keys(panel.values)) {
-        panel.valuesMeta[slug] = { observedAt: now };
-      }
-      for (const [slug, v] of Object.entries(prevPanel.values)) {
-        if (panel.values[slug] != null) continue;
-        const pm = prevPanel.valuesMeta?.[slug];
-        panel.values[slug] = v;
-        panel.valuesMeta[slug] = {
-          observedAt: pm?.observedAt ?? prev?.builtAt ?? now,
-          staleSince: pm?.staleSince ?? now,
-        };
-        if (prevPanel.seriesByProvider?.[slug] && panel.seriesByProvider) {
-          panel.seriesByProvider[slug] ??= prevPanel.seriesByProvider[slug];
-        }
-      }
-    }
-  }
-
-  fresh.dataAsOf = now;
-  return { bench: fresh, state };
-}
 
 async function materializeOne(
   spec: Spec,
@@ -204,7 +105,13 @@ async function materializeOne(
   }
 
   const now = Date.now();
-  const { bench, state } = mergeWithPrevious(fresh, prev, now, new Set(spec.providers.map((p) => p.slug)));
+  const { bench, state } = mergeWithPrevious(
+    fresh,
+    prev,
+    now,
+    new Set(spec.providers.map((p) => p.slug)),
+    spec.prometheus?.expected_freshness_seconds,
+  );
 
   const snap: MaterializedSnapshot = {
     v: MAT_SCHEMA_VERSION,
