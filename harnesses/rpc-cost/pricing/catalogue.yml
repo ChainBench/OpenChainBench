@@ -929,12 +929,12 @@ providers:
     currency: USD
     plans:
       - id: free
-        name: Free (32-day package)
+        name: Free (monthly package)
         tier: free
         monthly_usd: 0
         annual_monthly_usd: null
         included_units: 50000000
-        allowance_period: package_32d
+        allowance_period: month
         overage_per_1m_units_usd: null
         overage_allowed: hard_stop
         throughput: {unit: rps, value: 20}
@@ -943,7 +943,13 @@ providers:
         confidence: verified
         note: >-
           "not purchasable ... a gift package distributed to registered users on the 1st of every month",
-          expires after 32 days, does not accumulate. 400 RU/sec. ~46.9M RU per 30 days pro-rated.
+          expires after 32 days, does not accumulate. 400 RU/sec.
+          PERIOD CORRECTED 2026-10-12: this was package_32d, which pro-rated the 50M to 46.875M for a
+          30-day month and made every BlockPI figure on bench 283 6.25% low. The 32 days is how long one
+          package stays valid, not how often one arrives. BlockPI's own wording settles it, "distributed
+          ... on the 1st of every month": a calendar month delivers 50M, and the 32nd-day overlap is
+          forfeited rather than accumulated, which is the same sentence's other half. Strict pro-rating
+          would not give 46.875M either, since 12 packages over 365 days is 49.3M per 30.
       - id: elementary
         name: Elementary
         tier: entry
