@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { downsample, MINI_CHART_POINTS } from "@/lib/downsample";
+import { downsample, MINI_CHART_MAX_LINES, MINI_CHART_POINTS } from "@/lib/downsample";
 import { buildProviderColors } from "@/lib/series-colors";
 
 /**
@@ -57,17 +57,18 @@ export function MiniChart({
       color: colors.get(r.slug) ?? "var(--color-ink-soft)",
     }))
     .filter((s) => s.values.length > 1);
+  const drawn = seriesList.slice(0, MINI_CHART_MAX_LINES);
 
   if (seriesList.length === 0) return null;
 
   // Shared scale across providers so magnitudes are directly comparable.
-  const all = seriesList.flatMap((s) => s.values);
+  const all = drawn.flatMap((s) => s.values);
   const min = Math.min(...all);
   const max = Math.max(...all);
   const range = max - min || 1;
 
   // Take the longest series to anchor the X-axis grid.
-  const maxLen = Math.max(...seriesList.map((s) => s.values.length));
+  const maxLen = Math.max(...drawn.map((s) => s.values.length));
 
   return (
     <div className={className}>
@@ -79,31 +80,30 @@ export function MiniChart({
         className="overflow-visible"
         aria-hidden
       >
-        {seriesList.map(({ slug, values, color }) => {
+        {/* Shared stroke style set once on the group, where it is
+            inherited, instead of on each of up to a thousand polylines
+            on the hub; the circles set no stroke, so it does not reach
+            them. vector-effect is not inherited and stays per line. */}
+        <g fill="none" strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round" strokeOpacity={0.85}>
+        {drawn.map(({ slug, values, color }) => {
           const points = values
             .map((v, i) => {
               const x = (i / Math.max(1, maxLen - 1)) * width;
               const y = height - ((v - min) / range) * (height - 4) - 2;
-              return `${x.toFixed(2)},${y.toFixed(2)}`;
+              // One decimal: a tenth of a viewBox unit is under a pixel
+              // at any width the card renders, and two decimals were a
+              // third of the hub's sparkline markup.
+              return `${x.toFixed(1)},${y.toFixed(1)}`;
             })
             .join(" ");
 
           const last = values[values.length - 1];
-          const lastX = ((values.length - 1) / Math.max(1, maxLen - 1)) * width;
-          const lastY = height - ((last - min) / range) * (height - 4) - 2;
+          const lastX = Number((((values.length - 1) / Math.max(1, maxLen - 1)) * width).toFixed(1));
+          const lastY = Number((height - ((last - min) / range) * (height - 4) - 2).toFixed(1));
 
           return (
             <g key={slug}>
-              <polyline
-                fill="none"
-                stroke={color}
-                strokeWidth={1.4}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeOpacity={0.85}
-                vectorEffect="non-scaling-stroke"
-                points={points}
-              />
+              <polyline stroke={color} vectorEffect="non-scaling-stroke" points={points} />
               {/* Live pulse halo. CSS keyframes (globals.css) instead of
                   SMIL <animate>: with 37 benches x N providers on the hub
                   grid the two <animate> children per halo added ~800
@@ -120,6 +120,7 @@ export function MiniChart({
             </g>
           );
         })}
+        </g>
       </svg>
 
       {legend && (() => {
@@ -129,7 +130,10 @@ export function MiniChart({
         // 4-chip cap in HomeBenchTable's title cell.
         const MAX_VISIBLE = 5;
         const visible = seriesList.slice(0, MAX_VISIBLE);
-        const hidden = seriesList.length - visible.length;
+        // Counted on the results, not the series: the hub's card data
+        // only carries the series of the lines it draws.
+        const rest = sortedResults.filter((r) => !visible.some((v) => v.slug === r.slug));
+        const hidden = rest.length;
         return (
           <ul className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] font-medium tabular leading-none">
             {visible.map((s) => (
@@ -151,7 +155,7 @@ export function MiniChart({
             {hidden > 0 && (
               <li
                 className="text-ink-muted"
-                title={seriesList.slice(MAX_VISIBLE).map((s) => s.name).join(", ")}
+                title={rest.map((r) => r.name).join(", ")}
               >
                 +{hidden} more
               </li>

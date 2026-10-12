@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ArrowDownRight,
   ArrowUpRight,
@@ -27,7 +27,36 @@ import { withUtm } from "@/lib/utm";
  * by any numeric column; a summary strip of the filtered set. Client
  * component over the JSON the page already loads (last 400 samples).
  */
-export function TerminalFillSwaps({ swaps, terminals, focus, exec }: { swaps: FillSample[]; terminals: { slug: string; name: string }[]; focus?: string; exec?: boolean }) {
+export function TerminalFillSwaps({
+  swaps: initial,
+  total,
+  terminals,
+  focus,
+  exec,
+}: {
+  swaps: FillSample[];
+  /** Size of the full sample when `swaps` is only its most recent rows;
+   *  the rest is fetched after hydration so the page does not embed it. */
+  total?: number;
+  terminals: { slug: string; name: string }[];
+  focus?: string;
+  exec?: boolean;
+}) {
+  const [swaps, setSwaps] = useState(initial);
+  const pending = total !== undefined && swaps.length < total;
+  useEffect(() => {
+    if (total === undefined || initial.length >= total) return;
+    let live = true;
+    fetch("/api/terminal-fills/swaps")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { swaps?: FillSample[] } | null) => {
+        if (live && Array.isArray(d?.swaps) && d.swaps.length > 0) setSwaps(d.swaps);
+      })
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [initial, total]);
   const [terminal, setTerminal] = useState(focus ?? "");
   const [chain, setChain] = useState("");
   const [side, setSide] = useState("");
@@ -215,6 +244,9 @@ export function TerminalFillSwaps({ swaps, terminals, focus, exec }: { swaps: Fi
             <RotateCcw className="h-3 w-3" /> Reset
           </button>
         ) : null}
+        {pending ? (
+          <div className="ml-auto text-[11px] text-ink-faint self-center">Loading all {total} swaps…</div>
+        ) : (
         <div className="ml-auto flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-ink-faint tabular-nums self-center">
           <Stat value={stats.n} label="swaps" />
           <Stat value={stats.priced} label="priced" />
@@ -227,6 +259,7 @@ export function TerminalFillSwaps({ swaps, terminals, focus, exec }: { swaps: Fi
           <Stat value={`${stats.sandwiched} / ${stats.scanned}`} label="sandwiched / screened" />
           {stats.flagged > 0 ? <Stat value={stats.flagged} label="flagged" /> : null}
         </div>
+        )}
       </div>
 
       <div className="overflow-auto max-h-[70vh] rounded-lg border border-rule">
@@ -358,7 +391,7 @@ export function TerminalFillSwaps({ swaps, terminals, focus, exec }: { swaps: Fi
       </div>
       <div className="mt-2 flex items-center justify-between gap-3 text-[11px] text-ink-faint">
         <span>
-          Showing {Math.min(limit, rows.length)} of {rows.length}
+          Showing {Math.min(limit, rows.length)} of {pending ? total : rows.length}
         </span>
         <div className="flex items-center gap-2">
           {/* Every row on screen, filters and sort included, not the fifty
@@ -366,6 +399,7 @@ export function TerminalFillSwaps({ swaps, terminals, focus, exec }: { swaps: Fi
               wants it in a spreadsheet, not on a page. */}
           <button
             type="button"
+            disabled={pending}
             onClick={() => downloadCsv(rows)}
             className="text-[10px] uppercase tracking-[0.16em] px-3 py-1.5 border border-ink/20 rounded-md hover:border-ink/40 hover:bg-ink/5 transition-colors text-ink-soft"
           >
