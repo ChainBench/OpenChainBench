@@ -135,6 +135,7 @@ const (
 	srcApexNative        = "apex_native"
 	srcJupiterNative     = "jupiter_native"
 	srcPapertradeNative  = "papertrade_native"
+	srcLeverageTerms     = "leverage_terms"
 	srcLighterRHNative   = "lighter_rh_native"
 	srcHLXyzNative       = "hl_xyz_native"
 	srcCexCoinGecko      = "cex_coingecko"
@@ -546,6 +547,7 @@ func NewRouter(cfg *Config) *Router {
 		NewOrderlyNativeSource(),
 		NewBackpackNativeSource(),
 		NewPapertradeNativeSource(),
+		NewLeverageTermsSource(),
 		NewOndoNativeSource(),
 		NewKalshiNativeSource(),
 		NewVestNativeSource(),
