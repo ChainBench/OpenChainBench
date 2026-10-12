@@ -119,7 +119,7 @@ providers:
       series: perp_mark_deviation_bps{venue="gains"}
 
   - slug: gmx
-    name: GMX v2
+    name: GMX
     tag: "Oracle-priced (Chainlink), mark read from the GMX v2 oracle API on Arbitrum"
     formula: "24h p50 of abs(GMX oracle price - Binance spot mid) / Binance spot mid x 10000, sampled every 60 seconds. Mark = mid of minPrice and maxPrice from arbitrum-api.gmxinfra.io/prices/tickers. Binance spot mid is the reference."
     queries:

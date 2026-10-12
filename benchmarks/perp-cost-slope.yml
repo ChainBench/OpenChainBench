@@ -149,7 +149,7 @@ providers:
       series: perp_fees_all_in_bps_tier{venue="gains",notional="1000000"}
 
   - slug: gmx
-    name: GMX v2
+    name: GMX
     tag: "Synthetics on Arbitrum, oracle-priced, flat cost at any size"
     formula: "all_in_bps_tier{notional=1000000}[24h] / all_in_bps_tier{notional=1000}[24h]. Oracle-priced (positionFeeFactor flat % of notional, no orderbook): ratio always 1.00."
     queries:

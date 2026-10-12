@@ -261,7 +261,7 @@ providers:
       series: perp_venue_volume_24h_usd{venue="gains"} / perp_venue_oi_usd{venue="gains"}
 
   - slug: gmx-v2
-    name: GMX v2
+    name: GMX
     tag: Arbitrum and Avalanche pool perps; volume from the Subsquid indexer, OI from DefiLlama
     formula: "avg_over_time(perp_venue_volume_24h_usd{venue=\"gmx-v2\"}[24h]) / avg_over_time(perp_venue_oi_usd{venue=\"gmx-v2\"}[24h])"
     queries:
