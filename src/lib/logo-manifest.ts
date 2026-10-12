@@ -301,6 +301,7 @@ const RAW: Record<string, string> = {
   moralis: "/logos/moralis.png",
   stellarexpert: "/logos/stellarexpert.png",
   jupiter: "/logos/jupiter.png",
+  papertrade: "/logos/papertrade.svg",
   raydium: "/logos/raydium.svg",
   openocean: "/logos/openocean.png",
   cow: "/logos/cow.png",

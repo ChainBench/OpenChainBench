@@ -57,6 +57,9 @@ var Registry = []Venue{
 	{Slug: "standx", Name: "StandX", Type: "perp", Chain: "bnb"},
 	{Slug: "apex", Name: "ApeX Omni", Type: "perp", Chain: "omni"},
 	{Slug: "jupiter", Name: "Jupiter Perps", Type: "perp", Chain: "solana"},
+	// Papertrade: synthetic perps on Hyperliquid, launched 2026-10-10, two
+	// markets (BTC, ETH) at up to 1000x against a single house LP.
+	{Slug: "papertrade", Name: "Papertrade", Type: "perp", Chain: "hyperliquid"},
 	// Lighter's Robinhood deployment: separate books and API host.
 	{Slug: "lighter-rh", Name: "Lighter RH", Type: "perp", Chain: "lighter-rh"},
 	// trade.xyz is the operator of Hyperliquid's `xyz` HIP-3 dex.

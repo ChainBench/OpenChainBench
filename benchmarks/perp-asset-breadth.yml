@@ -270,3 +270,14 @@ providers:
       mean: avg_over_time(perp_venue_noncore_markets_total{venue="trade-xyz"}[24h])
       sample_size: count_over_time(perp_venue_noncore_markets_total{venue="trade-xyz"}[24h])
       series: perp_venue_noncore_markets_total{venue="trade-xyz"}
+  - slug: papertrade
+    name: Papertrade
+    tag: Hyperliquid, single house LP, BTC and ETH only
+    formula: "Non-crypto markets among the instruments listed by GET /state/trading."
+    queries:
+      p50: perp_venue_noncore_markets_total{venue="papertrade"}
+      p90: perp_venue_noncore_markets_total{venue="papertrade"}
+      p99: perp_venue_noncore_markets_total{venue="papertrade"}
+      mean: avg_over_time(perp_venue_noncore_markets_total{venue="papertrade"}[24h])
+      sample_size: count_over_time(perp_venue_noncore_markets_total{venue="papertrade"}[24h])
+      series: perp_venue_noncore_markets_total{venue="papertrade"}

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <rect width="64" height="64" rx="10" fill="#F4ECD8"/>
+  <text x="32" y="48" text-anchor="middle"
+        font-family="Inter, system-ui, -apple-system, 'Segoe UI', Helvetica, sans-serif"
+        font-weight="500" font-size="44" letter-spacing="-1.76"
+        fill="#2A2520">p<tspan fill="#8B2020">_</tspan></text>
+</svg>

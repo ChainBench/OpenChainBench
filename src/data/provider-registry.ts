@@ -150,6 +150,11 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "DEX data terminal by CoinGecko covering 200+ chains. REST API for pools, tokens, trades, and OHLCV.",
     twitter: "@GeckoTerminal",
   },
+  papertrade: {
+    url: "https://papertrade.xyz",
+    description:
+      "Synthetic perpetuals on Hyperliquid with two markets, BTC and ETH, at up to 1000x. Positions face a single house LP rather than an order book, and there are no open, close or funding fees.",
+  },
   jupiter: {
     url: "https://jup.ag",
     description:

@@ -134,6 +134,7 @@ const (
 	srcStandXNative      = "standx_native"
 	srcApexNative        = "apex_native"
 	srcJupiterNative     = "jupiter_native"
+	srcPapertradeNative  = "papertrade_native"
 	srcLighterRHNative   = "lighter_rh_native"
 	srcHLXyzNative       = "hl_xyz_native"
 	srcCexCoinGecko      = "cex_coingecko"
@@ -195,6 +196,11 @@ func priorityMap(venue, metric string) []string {
 			return []string{srcOrderlyNative}
 		case "backpack":
 			return []string{srcBackpackNative}
+		case "papertrade":
+			// DefiLlama's derivatives volume endpoint is paid (402), and the
+			// venue publishes everything we need itself, so the native API is
+			// the only source rather than the preferred one.
+			return []string{srcPapertradeNative}
 		case "kalshi":
 			return []string{srcKalshiNative}
 		case "vest":
@@ -529,6 +535,7 @@ func NewRouter(cfg *Config) *Router {
 		NewKiloExNativeSource(),
 		NewOrderlyNativeSource(),
 		NewBackpackNativeSource(),
+		NewPapertradeNativeSource(),
 		NewOndoNativeSource(),
 		NewKalshiNativeSource(),
 		NewVestNativeSource(),
