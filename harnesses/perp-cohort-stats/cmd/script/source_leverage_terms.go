@@ -63,6 +63,8 @@ const (
 	// harness needs no hashing dependency.
 	selPairMaxLev   = "0x281b693c" // pairMaxLeverage(uint256), 1e3
 	selPairLiqParam = "0x6633ced6" // getPairLiquidationParams(uint256)
+	selPairs        = "0xb91ac788" // pairs(uint256), word 9 is the fee index
+	selFees         = "0x4acc79ed" // fees(uint256), word 0 is the size fee at 1e10
 
 	leverageTermsUA = "OpenChainBench-PerpCohort/1.0 contact@openchainbench.com"
 )
@@ -99,10 +101,19 @@ var leverageBuckets = []struct {
 // given leverage; it takes the leverage because Gains' threshold interpolates
 // with it while the other three are flat.
 type venueTerms struct {
-	venue       string
-	market      string
-	maxLev      float64
+	venue  string
+	market string
+	maxLev float64
+	// maintenance is the requirement as a share of notional at that leverage.
 	maintenance func(lev float64) float64
+	// costPerLeg is the venue's fee as a share of notional, charged on the way
+	// in and again on the way out. It sits INSIDE the liquidation trigger: a
+	// position pays it out of the same collateral the threshold is measured
+	// against, so the price does not have to travel as far. Measured on Gains:
+	// 11 liquidations at 500x fired at a 59.4% price loss against an 80%
+	// threshold, and 0.02% x 500 x 2 is the 20 point gap.
+	costPerLeg float64
+	// forfeitsAll: nothing comes back whatever the arithmetic leaves.
 	forfeitsAll bool
 }
 
@@ -113,6 +124,15 @@ func (s *LeverageTermsSource) Fetch() (*SourceResult, error) {
 	// express a per-market, per-leverage figure, so these three gauges are
 	// written directly. Nothing here feeds a bench the router serves.
 	res := newSourceResult()
+	// Clear every series before republishing. A gauge keeps its last value
+	// forever, so a venue that lowered its maximum leverage would keep a row
+	// on the tabs it no longer offers, at 100% success, contradicting the
+	// bench's own rule that a venue below the selected setting is absent.
+	perpLeverageMax.Reset()
+	perpLiqPriceMovePct.Reset()
+	perpLiqCollateralLostPct.Reset()
+	perpLiqCollateralKeptPct.Reset()
+
 	var all []venueTerms
 	all = append(all, s.fetchGains()...)
 	all = append(all, s.fetchPapertrade()...)
@@ -137,17 +157,18 @@ func publishLeverageTerms(t venueTerms) {
 		if lev > t.maxLev {
 			continue // the venue does not offer this setting
 		}
-		room, kept, ok := termsAt(t, lev)
+		room, lost, kept, ok := termsAt(t, lev)
 		if !ok {
 			perpCohortFetchErrors.WithLabelValues(t.venue, srcLeverageTerms, "parse").Inc()
 			continue
 		}
 		perpLeverageMax.WithLabelValues(t.venue, t.market, b.label).Set(t.maxLev)
 		perpLiqPriceMovePct.WithLabelValues(t.venue, t.market, b.label).Set(room)
+		perpLiqCollateralLostPct.WithLabelValues(t.venue, t.market, b.label).Set(lost)
 		perpLiqCollateralKeptPct.WithLabelValues(t.venue, t.market, b.label).Set(kept)
 		if b.label == "all" {
-			fmt.Printf("[perp-cohort][%s][%s] %s at max %.0fx: room=%.4f%% kept=%.1f%%\n",
-				t.venue, srcLeverageTerms, t.market, t.maxLev, room, kept)
+			fmt.Printf("[perp-cohort][%s][%s] %s at max %.0fx: room=%.4f%% lost=%.1f%% kept=%.1f%%\n",
+				t.venue, srcLeverageTerms, t.market, t.maxLev, room, lost, kept)
 		}
 	}
 }
@@ -155,27 +176,41 @@ func publishLeverageTerms(t venueTerms) {
 // termsAt is the arithmetic of the model, kept separate from the gauge writes
 // so it can be checked against each venue's own worked example.
 //
-// A position at leverage L posts 1/L of notional and is liquidated when equity
-// reaches the maintenance requirement m, so the room is their difference and
-// the share returned is m*L. A room at or below zero would describe a position
-// liquidated before it opens, which is a unit error rather than a term, so it
-// is refused rather than published.
-func termsAt(t venueTerms, lev float64) (roomPct, keptPct float64, ok bool) {
+// A position at leverage L posts 1/L of notional and is liquidated when its
+// equity reaches the maintenance requirement m. Both fee legs come out of that
+// same collateral, so the price has that much less distance to travel:
+//
+//	room    = 1/L - m - 2*cost          (a share of price)
+//	lost    = room * L                  (a share of the collateral)
+//	kept    = 1 - lost                  (zero where the venue forfeits all)
+//
+// Checked against Gains: threshold 80% at 500x with a 0.02% fee gives
+// (0.80 - 2*0.0002*500)/500 = 0.1400% of price and 70% of collateral, against a
+// measured median of 59.4% of collateral. The remaining gap is the borrowing
+// fee, which accrues with holding time and is not a term at open.
+func termsAt(t venueTerms, lev float64) (roomPct, lostPct, keptPct float64, ok bool) {
 	if lev <= 0 || lev > t.maxLev {
-		return 0, 0, false
+		return 0, 0, 0, false
 	}
 	m := t.maintenance(lev)
 	if m <= 0 {
-		return 0, 0, false
+		return 0, 0, 0, false
 	}
-	room := (1/lev - m) * 100
+	room := (1/lev - m - 2*t.costPerLeg/100) * 100
 	if room <= 0 {
-		return 0, 0, false
+		// The fees alone exhaust the margin, so the position cannot be opened
+		// at this leverage on these terms. Refuse rather than publish a
+		// negative or a zero that would read as "liquidated instantly".
+		return 0, 0, 0, false
+	}
+	lost := room * lev
+	if lost <= 0 || lost > 100 {
+		return 0, 0, 0, false
 	}
 	if t.forfeitsAll {
-		return room, 0, true
+		return room, lost, 0, true
 	}
-	return room, m * lev * 100, true
+	return room, lost, 100 - lost, true
 }
 
 // ---------------------------------------------------------------- Gains
@@ -209,6 +244,12 @@ func (s *LeverageTermsSource) fetchGains() []venueTerms {
 			perpCohortFetchErrors.WithLabelValues("gains", srcLeverageTerms, "parse").Inc()
 			continue
 		}
+		fee, err := s.gainsPairFee(idx)
+		if err != nil {
+			perpCohortFetchErrors.WithLabelValues("gains", srcLeverageTerms, "parse").Inc()
+			fmt.Printf("[perp-cohort][gains][%s] fee %s: %v\n", srcLeverageTerms, market, err)
+			continue
+		}
 		out = append(out, venueTerms{
 			venue:  "gains",
 			market: market,
@@ -219,9 +260,52 @@ func (s *LeverageTermsSource) fetchGains() []venueTerms {
 				th := interpolateThreshold(startTh, endTh, startLev, endLev, lev)
 				return (100 - th) / 100 / lev
 			},
+			costPerLeg: fee,
+			// Measured, not assumed: amountSentToTrader is 0 on all 27
+			// liquidations found across every pair and every leverage from
+			// 7.5x to 500x. The threshold says when the position closes, not
+			// what comes back, and what comes back is nothing.
+			forfeitsAll: true,
 		})
 	}
 	return out
+}
+
+// gainsPairFee reads the pair's position-size fee as a percentage of notional.
+//
+// pairs(uint256) returns the pair struct; word 9 is its fee index, the same
+// offset the perp-fees harness reads in production. fees(uint256) then returns
+// the fee group, whose word 0 is the size fee at 1e10 precision: 350_000_000
+// is 0.035%, which is the worked example in that harness.
+//
+// The fee matters here because it sits inside the liquidation trigger. On the
+// x500 degen pairs it reads 0.02%, and two legs of it at 500x are 20 points of
+// collateral, which is exactly the gap between the 80% threshold and the 59.4%
+// median that 11 real liquidations show.
+func (s *LeverageTermsSource) gainsPairFee(pairIdx int64) (float64, error) {
+	pw, err := s.gainsCall(selPairs, pairIdx)
+	if err != nil {
+		return 0, err
+	}
+	if len(pw) < 10 {
+		return 0, fmt.Errorf("pairs(%d) returned %d words", pairIdx, len(pw))
+	}
+	feeIdx := pw[9].Int64()
+	fw, err := s.gainsCall(selFees, feeIdx)
+	if err != nil {
+		return 0, err
+	}
+	if len(fw) < 1 {
+		return 0, fmt.Errorf("fees(%d) returned nothing", feeIdx)
+	}
+	fee := bigToFloat(fw[0], 1e10)
+	// A fee at or above one percent of notional would be an order of magnitude
+	// out and would swallow the trigger at high leverage; refuse rather than
+	// publish a room computed from a misread scale.
+	if fee < 0 || fee > 1 {
+		return 0, fmt.Errorf("fee index %d reads %.6f%%, outside a plausible range", feeIdx, fee)
+	}
+	return fee, nil
 }
 
 // interpolateThreshold mirrors getLiqPnlThresholdP in the gTrade contracts: the
