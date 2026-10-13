@@ -113,6 +113,7 @@ export const config = {
     "/answers/which-prediction-market-data-api-is-the-freshest",
     "/answers/polymarket-fees-explained",
     "/answers/polymarket-vs-kalshi-fees",
+    "/products/blast",
     "/products/bitquery",
     "/products/goldrush",
     "/products/zerion",
