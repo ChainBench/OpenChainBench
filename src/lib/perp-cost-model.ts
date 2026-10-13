@@ -91,8 +91,22 @@ export function gainsStandardThresholdPct(leverage: number): number {
 export type Venue = {
   id: string;
   name: string;
-  /** What distinguishes this product from the venue's others. */
+  /**
+   * What distinguishes this product from the venue's other one, empty when the
+   * venue has only this product. The chain and execution tags carry the rest,
+   * so this never repeats them.
+   */
   sub: string;
+  /**
+   * Logo manifest key, and the provider-registry key the official link comes
+   * from. Both read the same slug, so a venue cannot show one brand's mark
+   * beside another brand's site.
+   */
+  logoKey: string;
+  /** Where the figures in this row were read, not every chain it serves. */
+  chain: string;
+  /** How a fill happens, which is why some rows carry no spread at all. */
+  execution: "Order book" | "Oracle pool" | "House LP";
   /** What the fee is charged on. */
   charges: "notional" | "gain";
   src: Provenance;
@@ -123,6 +137,9 @@ export type Venue = {
 export const VENUES: readonly Venue[] = [
   {
     id: "gains-std",
+    logoKey: "gains",
+    chain: "Arbitrum",
+    execution: "Oracle pool",
     name: "Gains",
     sub: "standard pair",
     charges: "notional",
@@ -139,6 +156,9 @@ export const VENUES: readonly Venue[] = [
     // pairMinLeverage and pairMaxLeverage both read 500x, so this is a fixed
     // leverage product and not a 500x ceiling.
     id: "gains-degen",
+    logoKey: "gains",
+    chain: "Arbitrum",
+    execution: "Oracle pool",
     name: "Gains",
     sub: "x500 degen, fixed",
     charges: "notional",
@@ -153,6 +173,9 @@ export const VENUES: readonly Venue[] = [
   },
   {
     id: "papertrade",
+    logoKey: "papertrade",
+    chain: "HyperEVM",
+    execution: "House LP",
     name: "Papertrade",
     sub: "charges on the gain",
     charges: "gain",
@@ -167,8 +190,11 @@ export const VENUES: readonly Venue[] = [
   },
   {
     id: "lighter",
+    logoKey: "lighter",
+    chain: "zkSync rollup",
+    execution: "Order book",
     name: "Lighter",
-    sub: "order book",
+    sub: "",
     charges: "notional",
     src: "api",
     takerBps: 0,
@@ -181,8 +207,11 @@ export const VENUES: readonly Venue[] = [
   },
   {
     id: "paradex",
+    logoKey: "paradex",
+    chain: "Starknet",
+    execution: "Order book",
     name: "Paradex",
-    sub: "order book",
+    sub: "",
     charges: "notional",
     src: "api",
     takerBps: 0,
@@ -195,8 +224,11 @@ export const VENUES: readonly Venue[] = [
   },
   {
     id: "extended",
+    logoKey: "extended",
+    chain: "Starknet",
+    execution: "Order book",
     name: "Extended",
-    sub: "order book",
+    sub: "",
     charges: "notional",
     src: "docs",
     takerBps: 2.5,
@@ -209,8 +241,11 @@ export const VENUES: readonly Venue[] = [
   },
   {
     id: "edgex",
+    logoKey: "edgex",
+    chain: "StarkEx",
+    execution: "Order book",
     name: "edgeX",
-    sub: "order book",
+    sub: "",
     charges: "notional",
     src: "api",
     takerBps: 4.5,
@@ -223,8 +258,11 @@ export const VENUES: readonly Venue[] = [
   },
   {
     id: "hyperliquid",
+    logoKey: "hyperliquid",
+    chain: "Hyperliquid L1",
+    execution: "Order book",
     name: "Hyperliquid",
-    sub: "order book",
+    sub: "",
     charges: "notional",
     src: "docs",
     takerBps: 4.5,
@@ -237,8 +275,11 @@ export const VENUES: readonly Venue[] = [
   },
   {
     id: "dydx",
+    logoKey: "dydx",
+    chain: "dYdX Chain",
+    execution: "Order book",
     name: "dYdX v4",
-    sub: "order book",
+    sub: "",
     charges: "notional",
     src: "api",
     takerBps: 5,
@@ -254,8 +295,11 @@ export const VENUES: readonly Venue[] = [
     // which the margin requirement equals the whole margin, so a position AT
     // 200x has no room at all and only something strictly below can be opened.
     id: "gmx",
+    logoKey: "gmx",
+    chain: "Arbitrum",
+    execution: "Oracle pool",
     name: "GMX v2",
-    sub: "pool, implied cap",
+    sub: "implied cap",
     charges: "notional",
     src: "chain",
     takerBps: 6,
@@ -282,6 +326,11 @@ export const NOT_SHOWN = [
       "its subgraph publishes two threshold fields and only one matches its documented formula, an unresolved conflict",
   },
 ] as const;
+
+/** "Gains x500 degen, fixed" or just "Lighter", for prose and for labels. */
+export function venueLabel(venue: Venue): string {
+  return venue.sub ? `${venue.name} ${venue.sub}` : venue.name;
+}
 
 /** Taker fee plus half the quoted spread, as a fraction of notional, per leg. */
 export function feeLegFraction(venue: Venue, market: Market): number {

@@ -1,15 +1,21 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { PerpCostChart, seriesColor } from "@/components/perp-cost-chart";
+import { ProviderLogo } from "@/components/provider-logo";
+import { getProviderRegistry, safeRegistryURL } from "@/data/provider-registry";
 import {
-  computeCostModel,
   type CostRow,
+  computeCostModel,
+  feeLegFraction,
   LEVERAGE_RANGE,
   type Market,
   MARGIN_RANGE,
   MOVE_RANGE,
   unavailableReason,
+  venueLabel,
 } from "@/lib/perp-cost-model";
+import { withUtm } from "@/lib/utm";
 
 // ── Formatting ────────────────────────────────────────────────────────────
 
@@ -47,23 +53,36 @@ function shareOfGainLabel(share: number): string {
   return `${share.toLocaleString("en-US", { maximumFractionDigits: 1 })}x the gain`;
 }
 
+function bps(value: number): string {
+  return value.toLocaleString("en-US", { maximumFractionDigits: 2 });
+}
+
 // ── Input handling ────────────────────────────────────────────────────────
 
-type NumberField = { raw: string; value: number; valid: boolean };
+type NumberField = { value: number; valid: boolean };
 
 function readField(raw: string, min: number, max: number, fallback: number): NumberField {
   const trimmed = raw.trim();
   const parsed = Number(trimmed);
   const valid = trimmed !== "" && Number.isFinite(parsed) && parsed >= min && parsed <= max;
-  return { raw, value: valid ? parsed : fallback, valid };
+  return { value: valid ? parsed : fallback, valid };
 }
+
+/**
+ * The leverages where something actually changes: each is a venue's cap, its
+ * minimum, or the only leverage one product trades at. Typing 500 to discover
+ * that the x500 degen pair exists is not discoverable, a chip is.
+ */
+const LEVERAGE_PICKS = [1, 10, 25, 40, 50, 100, 200, 500, 1000];
 
 // ── Shared class strings ──────────────────────────────────────────────────
 
 const LABEL = "block font-sans text-[10px] uppercase tracking-[0.16em] text-ink-faint mb-1.5";
 const TH =
-  "px-3 py-3 font-sans text-[10px] uppercase tracking-[0.14em] text-ink-faint font-medium text-right whitespace-nowrap";
-const TD = "px-3 py-3 text-right font-mono text-xs text-ink-soft tabular-nums";
+  "px-3 py-2.5 font-sans text-[10px] uppercase tracking-[0.12em] text-ink-faint font-medium text-right whitespace-nowrap";
+const TD = "px-3 py-3 text-right font-mono text-xs tabular-nums text-ink-soft";
+const TAG =
+  "inline-block rounded border border-rule px-1.5 py-px font-mono text-[10px] uppercase tracking-[0.08em] text-ink-faint";
 
 function numberInputClass(valid: boolean): string {
   return [
@@ -98,12 +117,13 @@ export function PerpCostClient() {
 
   const inputsValid = margin.valid && leverage.valid;
   const widestShare = Math.max(...model.live.map((r) => r.shareOfGain), 1e-4);
+  const runnerUp = model.live[1] ?? null;
 
   return (
-    <div className="space-y-6">
-      {/* Controls */}
+    <div className="space-y-5">
+      {/* ── Controls ────────────────────────────────────────────────── */}
       <section className="rounded-2xl border border-rule bg-surface p-5 sm:p-6">
-        <div className="grid gap-5 sm:grid-cols-3">
+        <div className="grid gap-5 sm:grid-cols-[1fr_1fr_auto]">
           <div>
             <label htmlFor="perp-cost-margin" className={LABEL}>
               Margin posted (USD)
@@ -147,7 +167,7 @@ export function PerpCostClient() {
             <div
               role="group"
               aria-labelledby="perp-cost-market-label"
-              className="flex rounded-xl border border-ink/15 bg-paper p-1"
+              className="flex gap-1 rounded-xl border border-ink/15 bg-paper p-1"
             >
               {(["BTC", "ETH"] as const).map((m) => (
                 <button
@@ -155,8 +175,10 @@ export function PerpCostClient() {
                   type="button"
                   aria-pressed={market === m}
                   onClick={() => setMarket(m)}
-                  className={`flex-1 rounded-lg py-1.5 font-mono text-xs transition-colors ${
-                    market === m ? "bg-ink text-paper font-semibold" : "text-ink-faint hover:text-ink"
+                  className={`rounded-lg px-4 py-1.5 font-mono text-xs transition-colors ${
+                    market === m
+                      ? "bg-ink text-paper font-semibold"
+                      : "text-ink-faint hover:text-ink"
                   }`}
                 >
                   {m}
@@ -164,6 +186,27 @@ export function PerpCostClient() {
               ))}
             </div>
           </div>
+        </div>
+
+        <div className="mt-4 flex flex-wrap items-center gap-1.5">
+          <span className="mr-1 font-sans text-[10px] uppercase tracking-[0.16em] text-ink-faint">
+            Jump to
+          </span>
+          {LEVERAGE_PICKS.map((lev) => (
+            <button
+              key={lev}
+              type="button"
+              aria-pressed={leverage.valid && leverage.value === lev}
+              onClick={() => setLeverageRaw(String(lev))}
+              className={`rounded-lg border px-2.5 py-1 font-mono text-[11px] transition-colors ${
+                leverage.valid && leverage.value === lev
+                  ? "border-accent bg-accent text-white"
+                  : "border-rule text-ink-faint hover:border-rule-strong hover:text-ink"
+              }`}
+            >
+              {lev}x
+            </button>
+          ))}
         </div>
 
         <div className="mt-5">
@@ -186,11 +229,14 @@ export function PerpCostClient() {
               <strong className="font-mono text-base font-semibold text-ink">
                 {pct(move * 100, 3)}
               </strong>{" "}
-              of price
+              of {market} price
             </span>
             <span>
-              = <strong className="font-semibold text-ink">+{gainPct((model.rawGain / model.margin) * 100)}</strong>{" "}
-              on your margin
+              ={" "}
+              <strong className="font-semibold text-ink">
+                +{gainPct((model.rawGain / model.margin) * 100)}
+              </strong>{" "}
+              on your margin, {usd(model.rawGain)} on {usd(model.notional)} of notional
             </span>
           </div>
         </div>
@@ -203,40 +249,124 @@ export function PerpCostClient() {
         )}
       </section>
 
-      {/* Summary */}
+      {/* ── Verdict ─────────────────────────────────────────────────── */}
       <section
         aria-live="polite"
-        className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-rule bg-rule sm:grid-cols-4"
+        className="overflow-hidden rounded-2xl border border-rule bg-surface"
       >
-        <SummaryCell
-          label="Raw gain"
-          value={usd(model.rawGain)}
-          sub={`${gainPct((model.rawGain / model.margin) * 100)} of your margin`}
-        />
-        <SummaryCell
-          label="Cheapest"
-          value={model.cheapest ? model.cheapest.venue.name : "n/a"}
-          sub={
-            model.cheapest
-              ? `${usd(model.cheapest.cost)} taken`
-              : `no venue offers ${model.leverage}x`
-          }
-        />
-        <SummaryCell
-          label="Dearest"
-          value={model.dearest ? model.dearest.venue.name : "n/a"}
-          sub={model.dearest ? `${usd(model.dearest.cost)} taken` : "only one venue open"}
-        />
-        <SummaryCell
-          label="Spread"
-          value={
-            model.dearest && model.cheapest ? usd(model.dearest.cost - model.cheapest.cost) : "n/a"
-          }
-          sub={model.dearest ? "between them, same trade" : "only one venue open"}
-        />
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-4 p-5 sm:p-6">
+          {model.cheapest ? (
+            <>
+              <div className="flex items-center gap-3">
+                <ProviderLogo
+                  slug={model.cheapest.venue.logoKey}
+                  name={model.cheapest.venue.name}
+                  size={40}
+                />
+                <div>
+                  <p className="font-sans text-[10px] uppercase tracking-[0.16em] text-ink-faint">
+                    {model.anyProfitable ? "Cheapest on this trade" : "Least bad on this trade"}
+                  </p>
+                  {/* Name alone on the headline line: "Papertrade charges on
+                      the gain" at display size read as a sentence, not a name. */}
+                  <p className="display text-xl leading-tight text-ink">
+                    {model.cheapest.venue.name}
+                  </p>
+                  <p className="font-mono text-[11px] text-ink-faint">
+                    {model.cheapest.venue.sub || model.cheapest.venue.execution} ·{" "}
+                    {model.cheapest.venue.chain}
+                  </p>
+                </div>
+              </div>
+
+              <dl className="flex flex-wrap gap-x-6 gap-y-3">
+                <Figure
+                  k="It takes"
+                  v={usd(model.cheapest.cost)}
+                  s={`${shareOfGainLabel(model.cheapest.shareOfGain)} of the gain`}
+                />
+                <Figure
+                  k="You keep"
+                  v={usd(model.cheapest.net)}
+                  s={`${gainPct((model.cheapest.net / model.margin) * 100)} on your margin`}
+                  tone={model.cheapest.net > 0 ? "good" : "bad"}
+                />
+                {runnerUp && (
+                  <Figure
+                    k="Versus next"
+                    v={usd(runnerUp.cost - model.cheapest.cost)}
+                    s={`cheaper than ${venueLabel(runnerUp.venue)}`}
+                  />
+                )}
+                <Figure
+                  k="Open here"
+                  v={`${model.live.length} of ${model.live.length + model.unavailable.length}`}
+                  s={`products at ${model.leverage}x`}
+                />
+              </dl>
+            </>
+          ) : (
+            <p className="text-sm text-ink-soft">
+              No venue in this set offers {model.leverage}x on {market}. The table below says what
+              each one caps at.
+            </p>
+          )}
+        </div>
+
+        {!model.anyProfitable && model.cheapest && (
+          <p className="border-t border-rule bg-bad/5 px-5 py-3 text-sm text-ink-soft sm:px-6">
+            <strong className="font-semibold text-ink">At this move nothing is profitable.</strong>{" "}
+            The fees exceed the gain on every open venue, so the ranking below is the order of the
+            damage and not a recommendation.
+          </p>
+        )}
       </section>
 
-      {/* The winning path */}
+      {/* ── Chart ───────────────────────────────────────────────────── */}
+      <section className="rounded-2xl border border-rule bg-surface p-5 sm:p-6">
+        <p className="font-sans text-[10px] uppercase tracking-[0.18em] text-ink-faint">
+          Why the order flips
+        </p>
+        <h2 className="display mt-1 text-xl text-ink">
+          A flat fee is a line, a fee on the gain is a curve
+        </h2>
+        <div className="mt-4 overflow-x-auto">
+          <div className="min-w-[560px]">
+            <PerpCostChart model={model} market={market} />
+          </div>
+        </div>
+
+        {/* The legend doubles as the chart's data: a reader who cannot see the
+            lines still gets every series, its colour and its cost here. */}
+        <ul className="mt-4 flex flex-wrap gap-x-5 gap-y-2 border-t border-rule pt-3">
+          {model.live.map((row, i) => (
+            <li key={row.venue.id} className="flex items-center gap-2">
+              <span
+                aria-hidden="true"
+                className="h-0.5 w-4 shrink-0 rounded"
+                style={{
+                  background: seriesColor(
+                    row.venue.logoKey,
+                    row.venue.charges === "gain" ? 0 : i + 1,
+                  ),
+                }}
+              />
+              <ProviderLogo slug={row.venue.logoKey} name={row.venue.name} size={18} />
+              <span className="font-sans text-xs text-ink-soft">
+                {row.venue.name}
+                {row.venue.sub && (
+                  <span className="ml-1 font-mono text-[11px] text-ink-faint">
+                    {row.venue.sub}
+                  </span>
+                )}
+                <span className="ml-1.5 font-mono tabular-nums text-ink">{usd(row.cost)}</span>
+              </span>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      {/* ── The winning path ────────────────────────────────────────── */}
       <section className="rounded-2xl border border-rule bg-surface">
         <header className="px-5 pt-5 sm:px-6">
           <p className="font-sans text-[10px] uppercase tracking-[0.18em] text-ink-faint">
@@ -263,6 +393,9 @@ export function PerpCostClient() {
                 <th scope="col" className={`${TH} text-left`}>
                   Venue
                 </th>
+                <th scope="col" className={`${TH} hidden md:table-cell`}>
+                  Taker + half spread
+                </th>
                 <th scope="col" className={TH}>
                   Cost
                 </th>
@@ -273,13 +406,14 @@ export function PerpCostClient() {
                   Share of gain
                 </th>
                 <th scope="col" className={TH}>
-                  Room to liq. (% of price)
+                  Room to liq.
                 </th>
               </tr>
             </thead>
             <tbody>
               {model.live.map((row, i) => {
                 const crowned = i === 0 && row.net > 0;
+                const leg = feeLegFraction(row.venue, market) * 1e4;
                 return (
                   <tr
                     key={row.venue.id}
@@ -287,9 +421,21 @@ export function PerpCostClient() {
                   >
                     <td className="px-3 py-3 font-mono text-[11px] text-ink-faint">{i + 1}</td>
                     <td className="px-3 py-3 text-left">
-                      <VenueName row={row} />
+                      <VenueCell row={row} />
                     </td>
-                    <td className={TD}>{usd(row.cost)}</td>
+                    <td className={`${TD} hidden md:table-cell`}>
+                      {row.venue.charges === "gain" ? (
+                        <span className="text-ink-faint">no fee, no spread</span>
+                      ) : (
+                        <>
+                          {bps(row.venue.takerBps)} + {bps(row.venue.spreadBps[market] / 2)} bps
+                          <span className="block text-[10px] text-ink-faint">
+                            {bps(leg)} bps a leg
+                          </span>
+                        </>
+                      )}
+                    </td>
+                    <td className={`${TD} text-ink`}>{usd(row.cost)}</td>
                     <td
                       className={`${TD} font-semibold ${
                         row.net > 0 ? (crowned ? "text-good" : "text-ink") : "text-bad"
@@ -305,7 +451,9 @@ export function PerpCostClient() {
                           className="hidden h-1.5 w-12 shrink-0 overflow-hidden rounded-full bg-rule-strong sm:block"
                         >
                           <span
-                            className={`block h-full rounded-full ${crowned ? "bg-good" : "bg-bad"}`}
+                            className={`block h-full rounded-full ${
+                              crowned ? "bg-good" : "bg-bad"
+                            }`}
                             style={{
                               width: `${Math.min(100, (row.shareOfGain / widestShare) * 100)}%`,
                             }}
@@ -314,9 +462,9 @@ export function PerpCostClient() {
                       </span>
                     </td>
                     <td className={TD}>
-                      {row.roomPct === null ? "n/a" : pct(row.roomPct, row.roomPct < 1 ? 3 : 2)}{" "}
-                      <span className="font-sans text-[9px] uppercase tracking-[0.1em] text-ink-faint">
-                        {row.venue.src}
+                      {row.roomPct === null ? "n/a" : pct(row.roomPct, row.roomPct < 1 ? 3 : 2)}
+                      <span className="block whitespace-nowrap text-[10px] text-ink-faint">
+                        of price · {row.venue.src}
                       </span>
                     </td>
                   </tr>
@@ -327,10 +475,13 @@ export function PerpCostClient() {
                 <tr key={row.venue.id} className="border-b border-rule/60">
                   <td className="px-3 py-3 font-mono text-[11px] text-ink-faint">n/a</td>
                   <td className="px-3 py-3 text-left">
-                    <VenueName row={row} muted />
+                    <VenueCell row={row} muted />
                   </td>
-                  <td colSpan={4} className="px-3 py-3 text-left font-mono text-xs text-ink-faint">
-                    <span className="mr-2 rounded bg-bad/10 px-2 py-0.5 text-[11px] text-bad">
+                  {/* Not a failure, just a product that does not trade here, so
+                      this reads neutral: eight red pills made the default view
+                      look like an error state. */}
+                  <td colSpan={5} className="px-3 py-3 text-left font-mono text-xs text-ink-faint">
+                    <span className="mr-2 rounded border border-rule px-2 py-0.5 text-[11px]">
                       not offered at {model.leverage}x
                     </span>
                     {unavailableReason(row, model.leverage)}
@@ -342,23 +493,11 @@ export function PerpCostClient() {
         </div>
 
         <p className="px-5 py-5 text-sm leading-snug text-ink-soft sm:px-6">
-          {!model.anyProfitable && model.cheapest && (
-            <>
-              <strong className="font-semibold text-ink">
-                At this move no venue is profitable.
-              </strong>{" "}
-              The cheapest of them, {model.cheapest.venue.name}, still takes{" "}
-              {usd(model.cheapest.cost)} out of a {usd(model.rawGain)} gain, so every row above is a
-              loss and the ranking is only the order of the damage.{" "}
-            </>
-          )}
-
           {model.crossoverMove !== null && model.rival ? (
             <>
               <strong className="font-semibold text-ink">
-                Against {model.rival.venue.name} {model.rival.venue.sub}, the cheapest
-                notional-fee venue open at {model.leverage}x, the crossover sits at a{" "}
-                {pct(model.crossoverMove * 100, 3)} move
+                Against {venueLabel(model.rival.venue)}, the cheapest notional-fee venue open at{" "}
+                {model.leverage}x, the crossover sits at a {pct(model.crossoverMove * 100, 3)} move
               </strong>
               , a gain of{" "}
               {gainPct(((model.crossoverMove * model.notional) / model.margin) * 100)} on your
@@ -388,7 +527,7 @@ export function PerpCostClient() {
         </p>
       </section>
 
-      {/* The other two paths */}
+      {/* ── The other two paths ─────────────────────────────────────── */}
       <section className="rounded-2xl border border-rule bg-surface">
         <header className="px-5 pt-5 sm:px-6">
           <p className="font-sans text-[10px] uppercase tracking-[0.18em] text-ink-faint">
@@ -424,18 +563,23 @@ export function PerpCostClient() {
               {model.live.map((row) => (
                 <tr key={row.venue.id} className="border-b border-rule/60">
                   <td className="px-3 py-3 text-left">
-                    <VenueName row={row} />
+                    <VenueCell row={row} compact />
                   </td>
                   <td className="px-3 py-3 text-left font-mono text-xs text-ink-soft">
-                    {row.flatCost === 0
-                      ? "costs nothing"
-                      : `${usd(row.flatCost)} of fees on a $0 gain`}
+                    {row.flatCost === 0 ? (
+                      <span className="text-good">costs nothing</span>
+                    ) : (
+                      `${usd(row.flatCost)} of fees on a $0 gain`
+                    )}
                   </td>
                   <td className="px-3 py-3 text-left font-mono text-xs text-ink-soft">
                     {row.equityLeftPct > 0 ? (
-                      `${usd(row.equityLeftPct * model.margin)} of your ${usd(
-                        model.margin,
-                      )} left at the trigger`
+                      <>
+                        {usd(row.equityLeftPct * model.margin)} left of {usd(model.margin)}
+                        <span className="block text-[10px] text-ink-faint">
+                          {pct(row.equityLeftPct * 100, 1)} of your margin, before the closing fee
+                        </span>
+                      </>
                     ) : (
                       <span className="rounded bg-bad/10 px-2 py-0.5 text-[11px] text-bad">
                         nothing comes back
@@ -454,8 +598,9 @@ export function PerpCostClient() {
           <strong className="font-semibold text-ink">before</strong> the closing fee that trigger
           charges, and it is not a promise the money reaches you. On{" "}
           <strong className="font-semibold text-ink">Gains it does not</strong>: we paired every
-          liquidation we could find and <code className="font-mono text-xs">amountSentToTrader</code>{" "}
-          read zero on all 27, across every pair from 7.5x to 500x.{" "}
+          liquidation we could find and{" "}
+          <code className="font-mono text-xs">amountSentToTrader</code> read zero on all 27, across
+          every pair from 7.5x to 500x.{" "}
           <strong className="font-semibold text-ink">Papertrade&apos;s</strong> documentation calls
           its liquidation a hard bust that forfeits the full isolated margin. For the others this is
           the parameter, which we have not checked against a realised payout.
@@ -465,25 +610,78 @@ export function PerpCostClient() {
   );
 }
 
-function SummaryCell({ label, value, sub }: { label: string; value: string; sub: string }) {
+function Figure({
+  k,
+  v,
+  s,
+  tone,
+}: {
+  k: string;
+  v: string;
+  s: string;
+  tone?: "good" | "bad";
+}) {
   return (
-    <div className="bg-surface px-4 py-3.5">
-      <p className="font-sans text-[10px] uppercase tracking-[0.14em] text-ink-faint">{label}</p>
-      <p className="mt-0.5 break-words font-mono text-lg font-semibold tabular-nums text-ink">
-        {value}
-      </p>
-      <p className="text-xs text-ink-faint">{sub}</p>
+    <div>
+      <dt className="font-sans text-[10px] uppercase tracking-[0.14em] text-ink-faint">{k}</dt>
+      <dd
+        className={`font-mono text-lg font-semibold tabular-nums ${
+          tone === "good" ? "text-good" : tone === "bad" ? "text-bad" : "text-ink"
+        }`}
+      >
+        {v}
+      </dd>
+      <dd className="text-xs text-ink-faint">{s}</dd>
     </div>
   );
 }
 
-function VenueName({ row, muted = false }: { row: CostRow; muted?: boolean }) {
+/**
+ * Logo, name, what sets this product apart, and where it trades. `compact`
+ * drops the chain and execution tags for the second table, which lists the
+ * same venues a screen below and does not need to repeat them.
+ */
+function VenueCell({
+  row,
+  muted = false,
+  compact = false,
+}: {
+  row: CostRow;
+  muted?: boolean;
+  compact?: boolean;
+}) {
+  const { venue } = row;
+  const site = safeRegistryURL(getProviderRegistry(venue.logoKey)?.url);
   return (
-    <span className="block whitespace-nowrap">
-      <span className={`font-sans text-sm font-medium ${muted ? "text-ink-faint" : "text-ink"}`}>
-        {row.venue.name}
-      </span>
-      <span className="block font-mono text-[11px] text-ink-faint">{row.venue.sub}</span>
-    </span>
+    <div className={`flex items-center gap-2.5 ${muted ? "opacity-70" : ""}`}>
+      <ProviderLogo slug={venue.logoKey} name={venue.name} size={compact ? 22 : 26} />
+      <div className="min-w-0">
+        <p className="whitespace-nowrap font-sans text-sm font-medium text-ink">
+          {site ? (
+            <a
+              href={withUtm(site)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:underline"
+            >
+              {venue.name}
+            </a>
+          ) : (
+            venue.name
+          )}
+          {venue.sub && (
+            <span className="ml-1.5 font-mono text-[11px] font-normal text-ink-faint">
+              {venue.sub}
+            </span>
+          )}
+        </p>
+        {!compact && (
+          <p className="mt-0.5 flex flex-wrap items-center gap-1">
+            <span className={TAG}>{venue.chain}</span>
+            <span className={TAG}>{venue.execution}</span>
+          </p>
+        )}
+      </div>
+    </div>
   );
 }
