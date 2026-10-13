@@ -41,7 +41,7 @@ type ChainConfig struct {
 	//               embeds the data cost: zkSync pubdata, Taiko, Linea)
 	//   "opstack"   GasPriceOracle predeploy 0x42..0F getL1Fee(bytes) on
 	//               a serialized 21000-gas EIP-1559 transfer (Optimism,
-	//               Base, Blast, Mantle)
+	//               Base, Mantle)
 	//   "scroll"    L1GasPriceOracle 0x53..02 getL1Fee(bytes)
 	//   "arbitrum"  eth_estimateGas on a native transfer, which Nitro
 	//               inflates by the L1 calldata component, times the gas
@@ -200,16 +200,6 @@ func loadConfig() *Config {
 				Name:              "Optimism",
 				Kind:              KindEVM,
 				RPCURL:            getenvDefault("RPC_OPTIMISM", "https://optimism-rpc.publicnode.com"),
-				MobulaSlug:        "ethereum",
-				HasPriorityMarket: true,
-				Layer:             "l2",
-				L1Fee:             "opstack",
-			},
-			{
-				Slug:              "blast",
-				Name:              "Blast",
-				Kind:              KindEVM,
-				RPCURL:            getenvDefault("RPC_BLAST", "https://rpc.blast.io"),
 				MobulaSlug:        "ethereum",
 				HasPriorityMarket: true,
 				Layer:             "l2",

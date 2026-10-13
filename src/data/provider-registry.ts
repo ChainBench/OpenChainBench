@@ -401,9 +401,9 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   "predict-fun": {
     url: "https://predict.fun",
     description:
-      "Prediction market on BNB Chain and Blast covering sports, crypto and world events. Pays yield on collateral backing open positions rather than leaving it idle.",
+      "Prediction market on BNB Chain covering sports, crypto and world events. Pays yield on collateral backing open positions rather than leaving it idle.",
     twitter: "@predictdotfun",
-    chains: ["BNB Chain", "Blast"],
+    chains: ["BNB Chain"],
     docs: "https://docs.predict.fun",
   },
   opinion: {
@@ -866,12 +866,6 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     description:
       "Coinbase-operated optimistic rollup on the OP Stack. 2-second sequencer block time, shared bridge with Optimism via the OP Superchain, fastest-growing L2 by TVL since 2024.",
     twitter: "@base",
-  },
-  blast: {
-    url: "https://blast.io",
-    description:
-      "OP Stack fork with native ETH and stablecoin yield baked into the L2 protocol (ETH rebases via Lido, USDB via MakerDAO). 2-second sequencer block time, otherwise stock OP Stack.",
-    twitter: "@Blast_L2",
   },
   mantle: {
     url: "https://www.mantle.xyz",

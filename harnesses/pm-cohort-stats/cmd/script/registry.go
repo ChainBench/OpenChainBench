@@ -55,7 +55,7 @@ var Registry = []Venue{
 	// move cannot break the series; the Chain field below is the label
 	// that goes stale, and DefiLlama still reports Base alone today.
 	{Slug: "rain", Name: "Rain", Type: "onchain", Chain: "arbitrum"},
-	{Slug: "predict-fun", Name: "Predict Fun", Type: "onchain", Chain: "blast"},
+	{Slug: "predict-fun", Name: "Predict Fun", Type: "onchain", Chain: "bnb"},
 	{Slug: "opinion", Name: "OPINION", Type: "onchain", Chain: "bnb"},
 	{Slug: "sport-fun", Name: "Sport.fun", Type: "onchain", Chain: "base"},
 	{Slug: "augur", Name: "Augur", Type: "onchain", Chain: "ethereum"},

@@ -65,11 +65,6 @@ func l2Chains() []L2Chain {
 			URL:  envDefault("RPC_WS_SCROLL", "wss://scroll-rpc.publicnode.com"),
 		},
 		{
-			Slug: "blast",
-			Name: "Blast",
-			URL:  envDefault("RPC_WS_BLAST", "wss://blast-rpc.publicnode.com"),
-		},
-		{
 			Slug: "mantle",
 			Name: "Mantle",
 			URL:  envDefault("RPC_WS_MANTLE", "wss://mantle-rpc.publicnode.com"),

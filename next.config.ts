@@ -333,7 +333,6 @@ const nextConfig: NextConfig = {
       "zksync",
       "linea",
       "scroll",
-      "blast",
       "mantle",
       "taiko",
     ];

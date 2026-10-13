@@ -38,7 +38,6 @@ CHAINS = {
     "celo":      {"num": "057", "label": "Celo",      "providers": ["publicnode", "drpc", "1rpc", "tenderly", "celo-official"]},
     "moonbeam":  {"num": "058", "label": "Moonbeam",  "providers": ["publicnode", "drpc", "1rpc", "tenderly", "moonbeam-official"]},
     "unichain":  {"num": "059", "label": "Unichain",  "providers": ["publicnode", "drpc", "1rpc", "tenderly", "unichain-official"]},
-    "blast":     {"num": "060", "label": "Blast",     "providers": ["publicnode", "drpc", "tenderly", "blast-official"]},
     "taiko":     {"num": "061", "label": "Taiko",     "providers": ["publicnode", "drpc", "tenderly", "taiko-official"]},
     "berachain": {"num": "062", "label": "Berachain", "providers": ["publicnode", "drpc", "tenderly", "berachain-official"]},
     # seo_label keeps "Fastest free zkSync RPC 2026" inside the 26-31
@@ -59,7 +58,6 @@ EXTRA_PROVIDERS = {
     "celo-official":      {"name": "Celo (Forno)", "tag": "cLabs Forno public RPC, Celo mainnet only"},
     "moonbeam-official":  {"name": "Moonbeam",   "tag": "Moonbeam Foundation public RPC, Moonbeam only"},
     "unichain-official":  {"name": "Unichain",   "tag": "Uniswap Labs public RPC, Unichain mainnet only"},
-    "blast-official":     {"name": "Blast",      "tag": "Chain-official RPC, edge-terminated (see findings)"},
     "taiko-official":     {"name": "Taiko",      "tag": "Taiko Labs public RPC, Taiko mainnet only"},
     "berachain-official": {"name": "Berachain",  "tag": "Berachain Foundation public RPC, Berachain only"},
     "zksync-official":    {"name": "zkSync",     "tag": "Matter Labs public RPC, zkSync Era only"},
@@ -75,7 +73,7 @@ EXTRA_PROVIDERS = {
 TAG_OVERRIDES = {
     ("sonic", "lava"): "Decentralized permissionless RPC mesh (sonic.lava.build, open no-key)",
 }
-for _c in ("sonic", "gnosis", "celo", "moonbeam", "unichain", "blast",
+for _c in ("sonic", "gnosis", "celo", "moonbeam", "unichain",
            "taiko", "berachain", "zksync", "fraxtal", "soneium"):
     TAG_OVERRIDES[(_c, "tenderly")] = "Multi-chain public gateway, no key"
 
@@ -238,17 +236,6 @@ EDITORIAL = {
         ],
         "faq_extra_q": "Should I use mainnet.unichain.org or a gateway for Unichain?",
         "faq_extra_a": "Check the region tab nearest your deployment. Chain-official endpoints are typically a single origin, so they can only be close to one of our three probes, while anycast gateways answer everywhere. On the 3-region average the current leader is {{best_name}} at {{best_p50}}; a primary-plus-fallback pair from the top of this page is the resilient default for a chain this young.",
-    },
-    "blast": {
-        "intro": "Blast is the expansion's measurement cautionary tale. The chain-official `rpc.blast.io` answers in roughly 2 ms from all three probe regions at once, which no single origin can do: Virginia, Amsterdam and Singapore are separated by 80+ ms round trips at the speed of light. The endpoint terminates at an edge network. Our stale-head detection confirms the blocks it serves are fresh, but a sub-5 ms number measures the edge handshake, not the chain. 4 no-key providers, identical probes, three regions.",
-        "findings": [
-            "{{best_name}} currently leads free Blast RPC at {{best_p50}} (`eth_blockNumber` p50, 24h) across 4 measured providers.",
-            "`rpc.blast.io` posts ~2 ms in every region simultaneously, physically impossible for one origin. Read it as an edge-terminated endpoint: heads are fresh per our stale detection, but the latency column measures CDN termination rather than a node round trip, the same class of caution we document for Cloudflare-eth.",
-            "{{name:drpc}} ({{p50:drpc}}) is the honest-infrastructure comparison point: anycast consistency across the three regions with real node round trips behind it, the profile that wins it 10 of the 12 expansion chains.",
-            "{{name:tenderly}} sits at the expansion's familiar flat ~330 ms in all regions on Blast, single-origin routing on a gateway that is genuinely quick on the major chains.",
-        ],
-        "faq_extra_q": "Is rpc.blast.io really that fast, or is something else going on?",
-        "faq_extra_a": "Something else. Two milliseconds simultaneously from Virginia, Amsterdam and Singapore is below the physical round-trip floor for any single origin, so the endpoint is answering at an anycast/CDN edge. Our stale-head detection shows the blocks it returns are current, so it is not serving a stale cache today, but edge termination means the latency figure describes the edge network, not node processing. We keep it ranked with the caveat documented, exactly as we do for Cloudflare's fast-but-permissioned Ethereum endpoint.",
     },
     "taiko": {
         "intro": "Taiko, the based rollup where Ethereum validators sequence L2 blocks, fields 4 no-key providers. Our verification sweep caught one routing quirk worth encoding: Tenderly serves the chain only at the `taiko-mainnet` gateway slug, the plain `/taiko` path 404s. Probes run every 15 seconds from us-east, eu-west and Singapore with stale-head detection against the cross-provider tip.",
