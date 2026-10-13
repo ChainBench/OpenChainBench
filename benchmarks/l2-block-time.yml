@@ -36,10 +36,6 @@ per_chain_explainer:
     h2: "Scroll block time"
     body: |
       Scroll block time is {{p50:scroll}} (p50, 24h). Scroll is a bytecode-equivalent zkEVM running a centralized sequencer that batches transactions for a Halo2-based prover; the nominal block target is 3 s but the practical floor is driven by the prover-batch cadence, identical in shape to Linea and zkSync, with a long idle tail when traffic is sparse. Measured via the public Scroll WebSocket and `newHeads` deltas.
-  - slug: blast
-    h2: "Blast block time"
-    body: |
-      Blast block time is {{p50:blast}} (p50, 24h). Blast is an OP Stack fork operated by the Blast team with the same 2 s sequencer default as Optimism and Base, layered with native yield on ETH and USDB deposits that auto-rebase against L1 staking and T-bill yields. Settlement is on Ethereum via blob calldata. Measured live by holding a `newHeads` WebSocket against the Blast sequencer RPC.
   - slug: mantle
     h2: "Mantle block time"
     body: |
@@ -57,7 +53,7 @@ higher_is_better: false
 row_noun: { one: chain, many: chains }
 
 seo_intro: |
-  This benchmark measures the live block time of every major Ethereum Layer 2, the actual wall-clock interval between two consecutive newHeads events on the sequencer, not the marketing figure each chain advertises. Arbitrum One leads with sub-second blocks (~250 ms median), built on Nitro's fast-finality fork. Optimism, Base, Blast and Mantle all cluster around the 2 s OP Stack default. zkSync Era, Linea and Scroll show batched cadence with p50 around 3-6 s and a long tail on idle gaps. Taiko's based rollup sits at the 3 s mark. The p99 column reveals stalls 2-3× the nominal block time on every L2, the part marketing pages never quote.
+  This benchmark measures the live block time of every major Ethereum Layer 2, the actual wall-clock interval between two consecutive newHeads events on the sequencer, not the marketing figure each chain advertises. Arbitrum One leads with sub-second blocks (~250 ms median), built on Nitro's fast-finality fork. Optimism, Base and Mantle all cluster around the 2 s OP Stack default. zkSync Era, Linea and Scroll show batched cadence with p50 around 3-6 s and a long tail on idle gaps. Taiko's based rollup sits at the 3 s mark. The p99 column reveals stalls 2-3× the nominal block time on every L2, the part marketing pages never quote.
 
 abstract: |
   We measure the live block time of every major Ethereum L2 by holding a
@@ -82,7 +78,7 @@ methodology:
 
 findings:
   - "{{best_name}} currently leads at {{best_p50}} (p50, 24 h), by far the fastest sequencer in the cohort."
-  - "{{name:optimism}}, {{name:base}}, {{name:blast}} and {{name:mantle}} all sit around 2 s, matching the OP Stack's default sequencer interval ({{p50:optimism}} / {{p50:base}} / {{p50:blast}} / {{p50:mantle}})."
+  - "{{name:optimism}}, {{name:base}} and {{name:mantle}} all sit around 2 s, matching the OP Stack's default sequencer interval ({{p50:optimism}} / {{p50:base}} / {{p50:mantle}})."
   - "{{name:zksync}}, {{name:linea}} and {{name:scroll}} show variable p50 with a long tail, block production batches when traffic is low ({{p50:zksync}} / {{p50:linea}} / {{p50:scroll}})."
   - "{{name:taiko}} clocks {{p50:taiko}} on a based-rollup design where Ethereum L1 validators sequence the L2 directly, fundamentally different from the sequencer model used by every other chain in this leaderboard."
   - "{{count}} L2s measured live. Trailing the leaderboard: {{worst_name}} at {{worst_p50}} (p50)."
@@ -96,7 +92,7 @@ faq:
   - q: "What is the fastest Layer 2 block time?"
     a: "Arbitrum One leads the leaderboard at sub-second block times, typically 200-300 ms median, occasionally spiking past 800 ms under load. Arbitrum Nitro's fast-finality fork is the reason: it commits blocks every 250 ms by default, far below the 2 s convention used by most OP Stack chains."
   - q: "Why are Base and Optimism block times so similar?"
-    a: "Base and Optimism both run the OP Stack with the same default sequencer cadence (2 s). Blast and Mantle are also OP Stack forks, their block times cluster identically. The architectural similarity is by design: OP Stack is meant to be a turnkey rollup framework where the sequencer interval is a configuration constant, not a chain-specific design choice."
+    a: "Base and Optimism both run the OP Stack with the same default sequencer cadence (2 s). Mantle is also an OP Stack fork, and its block time clusters identically. The architectural similarity is by design: OP Stack is meant to be a turnkey rollup framework where the sequencer interval is a configuration constant, not a chain-specific design choice."
   - q: "What is the block time on zkSync Era, Linea, and Scroll?"
     a: "zk rollups produce blocks in bursts rather than at a fixed cadence. p50 sits around 3-6 s but p90 / p99 can balloon to 15-30 s during idle periods because the sequencer waits for enough transactions to fill a batch before generating the validity proof. The nominal '2 s block time' those chains advertise is the within-burst figure, not the median observed externally."
   - q: "Is L2 block time the same as L2 finality?"
@@ -196,19 +192,6 @@ providers:
       success: avg_over_time(l2_block_time_health{chain="scroll"}[24h])
       sample_size: increase(l2_block_time_samples_total{chain="scroll"}[24h])
       series: l2_block_time_milliseconds{chain="scroll"}
-
-  - slug: blast
-    name: Blast
-    tag: OP Stack fork, 2 s sequencer + native yield
-    formula: "Median wall-clock milliseconds between consecutive `newHeads` events on the Blast sequencer WebSocket, tracking the OP Stack fork's 2s interval, p50 over 24h."
-    queries:
-      p50: histogram_quantile(0.50, sum(rate(l2_block_time_milliseconds_histogram_bucket{chain="blast"}[24h])) by (le))
-      p90: histogram_quantile(0.90, sum(rate(l2_block_time_milliseconds_histogram_bucket{chain="blast"}[24h])) by (le))
-      p99: histogram_quantile(0.99, sum(rate(l2_block_time_milliseconds_histogram_bucket{chain="blast"}[24h])) by (le))
-      mean: sum(rate(l2_block_time_milliseconds_histogram_sum{chain="blast"}[24h])) / sum(rate(l2_block_time_milliseconds_histogram_count{chain="blast"}[24h]))
-      success: avg_over_time(l2_block_time_health{chain="blast"}[24h])
-      sample_size: increase(l2_block_time_samples_total{chain="blast"}[24h])
-      series: l2_block_time_milliseconds{chain="blast"}
 
   - slug: mantle
     name: Mantle

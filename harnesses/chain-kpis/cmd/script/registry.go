@@ -73,7 +73,6 @@ var Registry = []Chain{
 	{Slug: "zksync", DefiLlama: "ZKsync Era", Mobula: "ZkSync", NativeSymbol: "ETH", L2Beat: "zksync2"},
 	{Slug: "linea", DefiLlama: "Linea", Mobula: "Linea", NativeSymbol: "ETH", L2Beat: "linea"},
 	{Slug: "scroll", DefiLlama: "Scroll", Mobula: "Scroll", NativeSymbol: "ETH", L2Beat: "scroll"},
-	{Slug: "blast", DefiLlama: "Blast", Mobula: "Blast", NativeSymbol: "ETH", L2Beat: "blast"},
 	{Slug: "mantle", DefiLlama: "Mantle", Mobula: "Mantle", NativeSymbol: "MNT", L2Beat: "mantle"},
 	{Slug: "taiko", DefiLlama: "Taiko", Mobula: "Taiko", NativeSymbol: "ETH", L2Beat: "taiko"},
 	// Chains added to the site registry after the original harness config

@@ -270,6 +270,13 @@ export function isDevOnlyRoute(path: string): boolean {
 }
 
 export const REMOVED_BENCH_SLUGS = new Set([
+  // Blast (the L2) is being shut down, 2026-10-13. Its RPC bench goes,
+  // and so does every row the chain held elsewhere: l2-block-time,
+  // network-fees and chain-bridged-tvl, the /chains/blast page, the
+  // harness entries and the logo. The slug stays so an indexed URL
+  // answers 410 Gone. (Blast API, the RPC provider, was a separate
+  // company and left the benches in September.)
+  "blast-rpc",
   // Six chain RPC benches retired 2026-10-02 after an audit of all 161.
   // Each was probed on the usual schedule and produced nothing rankable:
   // every declared endpoint was re-tested by hand on the day, and the

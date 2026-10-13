@@ -114,7 +114,7 @@ const PM_VENUES: VenueSeed[] = [
   // probes, so the right-hand columns stay empty until a native fetcher
   // exists for them. Each one is a row on bench pm-open-interest.
   { slug: "rain",          name: "Rain",          type: "onchain",  chain: "arbitrum" },
-  { slug: "predict-fun",   name: "Predict Fun",   type: "onchain",  chain: "blast" },
+  { slug: "predict-fun",   name: "Predict Fun",   type: "onchain",  chain: "bnb" },
   { slug: "opinion",       name: "OPINION",       type: "onchain",  chain: "bnb" },
   { slug: "sport-fun",     name: "Sport.fun",     type: "onchain",  chain: "base" },
   { slug: "augur",         name: "Augur",         type: "onchain",  chain: "ethereum" },

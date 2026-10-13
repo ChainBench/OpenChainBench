@@ -315,19 +315,6 @@ providers:
       sample_size: count_over_time(chain_bridged_tvl_usd{chain="unichain"}[24h])
       series: chain_bridged_tvl_usd{chain="unichain"}
 
-  - slug: blast
-    name: Blast
-    tag: Other on Ethereum, OP Stack
-    formula: "last_over_time(chain_bridged_tvl_usd{chain=\"blast\"}[1h])"
-    queries:
-      p50: last_over_time(chain_bridged_tvl_usd{chain="blast"}[1h])
-      p90: last_over_time(chain_bridged_tvl_usd{chain="blast"}[1h])
-      p99: last_over_time(chain_bridged_tvl_usd{chain="blast"}[1h])
-      mean: last_over_time(chain_bridged_tvl_usd{chain="blast"}[1h])
-      success: avg_over_time(chain_kpis_health{chain="blast",source="l2beat"}[24h])
-      sample_size: count_over_time(chain_bridged_tvl_usd{chain="blast"}[24h])
-      series: chain_bridged_tvl_usd{chain="blast"}
-
   - slug: scroll
     name: Scroll
     tag: ZK Rollup on Ethereum
