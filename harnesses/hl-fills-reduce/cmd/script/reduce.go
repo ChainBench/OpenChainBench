@@ -357,10 +357,31 @@ func (r *Reducer) LoadDay(day string) (*Day, error) {
 	return &d, nil
 }
 
-// freeSpace reports the mount's free fraction, 0..1.
+// rootMount is the filesystem holding the binaries, the journal and the
+// system temp directory. It is watched alongside the data volume because a
+// full root stops the node without touching the data volume at all: on
+// 2026-10-08 this box's root filled to 100% while /mnt/hyperliquid sat at
+// 29%, hl-visor could not stage the 106 MB node binary a hardfork required
+// through /tmp, and the node froze at the fork height for three days. Every
+// disk signal on the box pointed at the data volume, so nothing fired.
+const rootMount = "/"
+
+// freeSpace reports free and total bytes on the mount holding the node data.
 func (r *Reducer) freeSpace() (free, total uint64) {
+	return spaceOn(r.Mount)
+}
+
+// rootSpace reports free and total bytes on the root filesystem.
+func (r *Reducer) rootSpace() (free, total uint64) {
+	return spaceOn(rootMount)
+}
+
+// spaceOn returns zeroes when the path cannot be read, which callers must
+// treat as "not measured" rather than "empty": a 0% gauge on an unreadable
+// mount is the reassuring lie this whole file exists to avoid.
+func spaceOn(path string) (free, total uint64) {
 	var st syscall.Statfs_t
-	if err := syscall.Statfs(r.Mount, &st); err != nil {
+	if err := syscall.Statfs(path, &st); err != nil {
 		return 0, 0
 	}
 	return st.Bavail * uint64(st.Bsize), st.Blocks * uint64(st.Bsize)

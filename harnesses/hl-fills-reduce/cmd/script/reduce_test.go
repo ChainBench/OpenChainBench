@@ -193,6 +193,37 @@ func TestSweepSkipsUnsettledDays(t *testing.T) {
 	}
 }
 
+// The root filesystem is measured separately from the data volume, because a
+// healthy data volume is not evidence that the host is healthy. On 2026-10-08
+// this box's root filled to 100% while the data volume sat at 29%, hl-visor
+// could not stage the node binary a hardfork required through /tmp, and the
+// node froze at the fork height for three days with every disk signal on the
+// box reading normal.
+func TestRootSpaceIsMeasuredSeparatelyFromTheDataVolume(t *testing.T) {
+	r := &Reducer{Mount: t.TempDir()}
+
+	if _, rootTotal := r.rootSpace(); rootTotal == 0 {
+		t.Fatal("rootSpace reported no total bytes for /, so the root filesystem would go unmonitored")
+	}
+	// Both mounts are readable here, so both must report. What the pair buys
+	// is that rootSpace reads / rather than r.Mount: one reading serving both
+	// is the blind spot these two methods replaced.
+	if _, dataTotal := r.freeSpace(); dataTotal == 0 {
+		t.Fatal("freeSpace reported no total bytes for the data mount")
+	}
+}
+
+// An unreadable mount must report zeroes so callers can tell "not measured"
+// from "empty". A 0% gauge on a mount nobody could stat is the reassuring
+// lie this harness's alerts exist to avoid, which is why serve.go turns
+// these zeroes into -1 rather than publishing 0%.
+func TestSpaceOnUnreadablePathReportsZeroNotEmpty(t *testing.T) {
+	free, total := spaceOn(filepath.Join(t.TempDir(), "no", "such", "mount"))
+	if free != 0 || total != 0 {
+		t.Fatalf("spaceOn on a missing path gave free=%d total=%d, want 0 and 0", free, total)
+	}
+}
+
 func keys(m map[string]*Totals) []string {
 	out := make([]string, 0, len(m))
 	for k := range m {

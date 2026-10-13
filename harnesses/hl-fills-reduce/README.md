@@ -83,9 +83,25 @@ the data and the health of the machine that produces it travel together.
 | `hl_reduce_newest_day_age_seconds` | staleness of the newest reduced day |
 | `hl_reduce_node_last_hour_age_seconds` | **the node's real liveness**: systemd can call it active while it has stopped writing fills |
 | `hl_reduce_disk_used_pct`, `hl_reduce_disk_free_bytes` | the filesystem holding the node data |
+| `hl_reduce_root_disk_used_pct`, `hl_reduce_root_disk_free_bytes` | the root filesystem, which holds the node binaries, the journal and `/tmp`. `-1` when `statfs` fails, so an unmeasured mount cannot read as an empty one |
 
-Alerts live in `deploy/ocb_hl_node_box.yml`, installed into
-`/opt/ocb/prom-rules/` on the OCB VPS.
+The two disk readings are separate because a healthy data volume is not
+evidence that the host is healthy. On 2026-10-08 the root filled to 100% while
+`/mnt/hyperliquid` sat at 29%, held by a deleted-but-open trace file a
+container had kept open since August. `hl-visor` stages new node binaries
+through `/tmp`, which lives on the root, so it could not write the 106 MB
+binary a hardfork required, and the node froze at the fork height from
+2026-10-10 08:17 until it was found three days later. Every disk signal on the
+box pointed at the data volume, so none of them moved. Deleted-but-open files
+are invisible to `du` and counted by `df`, which is the gap to look for first:
+`sudo lsof -nP +L1 | sort -k8 -rn | head`, then truncate the descriptor
+(`truncate -s 0 /proc/<pid>/fd/<fd>`) rather than restarting the holder.
+
+Alerts live in `deploy/ocb_hl_node_box.yml`, loaded from
+`/etc/prometheus/rules/` in the `ocb-prom` container on the OCB VPS. Validate a
+change with `docker exec ocb-prom promtool check rules <file>` before copying
+it in, and confirm the group is live with
+`docker exec ocb-prom wget -qO- http://localhost:9090/api/v1/rules`.
 
 ## Three things worth knowing before changing this
 
