@@ -37,7 +37,7 @@ import (
 // series (including its filter that drops negatives). `head_lag_ref_
 // seconds` uses the node reference clock matched by txHash, which is the
 // series that can actually compare providers. See reference_monitor.go.
-const serializedStreamURL = "wss://api.serialized.xyz/v1/stream"
+// The endpoint is Config.SerializedWSURL (SERIALIZED_WS_URL).
 
 // serializedPinnedToken is the fallback when /v1/pool is unreachable at
 // boot. Values are the `token` side of each bench pool as Serialized
@@ -165,7 +165,7 @@ func serializedConnectAndStream(config *Config, tokens map[string]string, poolCh
 	// Plain dialer, not getProxyDialer: the scraping proxy is only for
 	// Defined.fi and would add its own latency to this feed.
 	dialer := &websocket.Dialer{HandshakeTimeout: 15 * time.Second}
-	conn, _, err := dialer.Dial(serializedStreamURL, nil)
+	conn, _, err := dialer.Dial(config.SerializedWSURL, nil)
 	if err != nil {
 		return fmt.Errorf("dial: %w", err)
 	}
