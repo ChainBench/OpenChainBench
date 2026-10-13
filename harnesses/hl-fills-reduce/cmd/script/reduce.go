@@ -168,6 +168,15 @@ func (r *Reducer) alreadyWhole(day string) (bool, error) {
 	return hours <= d.Hours, nil
 }
 
+// hoursPresent counts the hours a day actually holds.
+//
+// An empty file does not count. The node creates an hour file when the hour
+// turns and writes into it as it applies blocks, so a node that is stalled or
+// catching up leaves 0-byte files behind: on 2026-10-13 hour 12 was 0 bytes
+// while hours 13 to 16 held between 13% and 54% of a normal hour's volume.
+// Counting that file made the day report 5 hours of 24 when it held none for
+// that hour at all, and coverage is exactly what the consumer uses to decide
+// whether to trust this day over the truncated public export.
 func (r *Reducer) hoursPresent(day string) (int, error) {
 	ents, err := os.ReadDir(dayPath(r.FillsDir, day))
 	if err != nil {
@@ -175,9 +184,13 @@ func (r *Reducer) hoursPresent(day string) (int, error) {
 	}
 	n := 0
 	for _, e := range ents {
-		if !e.IsDir() {
-			n++
+		if e.IsDir() {
+			continue
 		}
+		if info, err := e.Info(); err == nil && info.Size() == 0 {
+			continue
+		}
+		n++
 	}
 	return n, nil
 }
@@ -196,6 +209,13 @@ func (r *Reducer) ReduceDay(day string) error {
 		}
 		h, err := strconv.Atoi(e.Name())
 		if err != nil {
+			continue
+		}
+		// Skip empty hours for the same reason hoursPresent does: the file
+		// exists because the hour turned, not because the node wrote
+		// anything into it. Counting it inflates the day's coverage, and the
+		// two counts must agree or alreadyWhole re-reduces for ever.
+		if info, err := e.Info(); err == nil && info.Size() == 0 {
 			continue
 		}
 		hours = append(hours, h)
