@@ -129,6 +129,16 @@ func (r *Reducer) writeMetrics(w http.ResponseWriter) {
 		usedPct = float64(total-free) / float64(total) * 100
 	}
 
+	// The root filesystem, separately. A healthy data volume says nothing
+	// about the one holding the binaries, the journal and /tmp, and that is
+	// the one that took this node down for three days in October 2026.
+	// -1 when unreadable, so "not measured" cannot be read as "empty".
+	rootFree, rootTotal := r.rootSpace()
+	rootUsedPct := -1.0
+	if rootTotal > 0 {
+		rootUsedPct = float64(rootTotal-rootFree) / float64(rootTotal) * 100
+	}
+
 	// The node's own liveness, read from the hourly tree rather than from
 	// systemd: a node that is "active" but not writing fills is the failure
 	// mode that matters here, and it looks healthy to systemctl.
@@ -154,10 +164,16 @@ hl_reduce_disk_used_pct %.1f
 # HELP hl_reduce_disk_free_bytes Free space on the filesystem holding the node data.
 # TYPE hl_reduce_disk_free_bytes gauge
 hl_reduce_disk_free_bytes %d
+# HELP hl_reduce_root_disk_used_pct Used space on the root filesystem, which holds the node binaries, the journal and /tmp. A full root stops the node while the data volume still looks healthy. -1 when unreadable.
+# TYPE hl_reduce_root_disk_used_pct gauge
+hl_reduce_root_disk_used_pct %.1f
+# HELP hl_reduce_root_disk_free_bytes Free space on the root filesystem.
+# TYPE hl_reduce_root_disk_free_bytes gauge
+hl_reduce_root_disk_free_bytes %d
 # HELP hl_reduce_last_scrape_unix Unix time this endpoint was last read.
 # TYPE hl_reduce_last_scrape_unix gauge
 hl_reduce_last_scrape_unix %d
-`, whole, partial, newestAge, lastHourAge, usedPct, free, time.Now().Unix())
+`, whole, partial, newestAge, lastHourAge, usedPct, free, rootUsedPct, rootFree, time.Now().Unix())
 }
 
 // newestHourFile finds the most recently written hourly fill file.

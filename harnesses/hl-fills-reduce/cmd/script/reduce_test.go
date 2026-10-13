@@ -193,6 +193,80 @@ func TestSweepSkipsUnsettledDays(t *testing.T) {
 	}
 }
 
+// An hour file exists because the hour turned, not because the node wrote
+// anything into it. A stalled or catching-up node leaves 0-byte files behind,
+// and counting them inflates the day's coverage: on 2026-10-13 hour 12 was
+// empty while the node was fetching state, and the day would have claimed an
+// hour it held nothing for. Coverage is what the consumer uses to decide
+// whether to trust a node day over the truncated public export, so an hour
+// that holds nothing must not read as an hour that holds something.
+func TestEmptyHourFileIsNotCountedAsAnHour(t *testing.T) {
+	r := newTestReducer(t)
+	const day = "20261012"
+	writeHour(t, r.FillsDir, day, "0", blockWithOneBuilderFill+"\n")
+	writeHour(t, r.FillsDir, day, "1", "")
+	writeHour(t, r.FillsDir, day, "2", blockSameTraderAgain+"\n")
+
+	n, err := r.hoursPresent(day)
+	if err != nil {
+		t.Fatalf("hoursPresent: %v", err)
+	}
+	if n != 2 {
+		t.Fatalf("hoursPresent counted %d hours; the empty one must not count", n)
+	}
+
+	if err := r.ReduceDay(day); err != nil {
+		t.Fatalf("reduce: %v", err)
+	}
+	d, err := r.LoadDay(day)
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if d.Hours != 2 {
+		t.Fatalf("reduced day reports %d hours; want 2, the empty file excluded", d.Hours)
+	}
+	// The two counts have to agree, or alreadyWhole compares a file count
+	// against a reduced count that never matches and re-reduces for ever.
+	whole, err := r.alreadyWhole(day)
+	if err != nil {
+		t.Fatalf("alreadyWhole: %v", err)
+	}
+	if !whole {
+		t.Fatal("alreadyWhole says the day changed; the empty hour is counted inconsistently between the two paths")
+	}
+}
+
+// The root filesystem is measured separately from the data volume, because a
+// healthy data volume is not evidence that the host is healthy. On 2026-10-08
+// this box's root filled to 100% while the data volume sat at 29%, hl-visor
+// could not stage the node binary a hardfork required through /tmp, and the
+// node froze at the fork height for three days with every disk signal on the
+// box reading normal.
+func TestRootSpaceIsMeasuredSeparatelyFromTheDataVolume(t *testing.T) {
+	r := &Reducer{Mount: t.TempDir()}
+
+	if _, rootTotal := r.rootSpace(); rootTotal == 0 {
+		t.Fatal("rootSpace reported no total bytes for /, so the root filesystem would go unmonitored")
+	}
+	// Both mounts are readable here, so both must report. What the pair buys
+	// is that rootSpace reads / rather than r.Mount: one reading serving both
+	// is the blind spot these two methods replaced.
+	if _, dataTotal := r.freeSpace(); dataTotal == 0 {
+		t.Fatal("freeSpace reported no total bytes for the data mount")
+	}
+}
+
+// An unreadable mount must report zeroes so callers can tell "not measured"
+// from "empty". A 0% gauge on a mount nobody could stat is the reassuring
+// lie this harness's alerts exist to avoid, which is why serve.go turns
+// these zeroes into -1 rather than publishing 0%.
+func TestSpaceOnUnreadablePathReportsZeroNotEmpty(t *testing.T) {
+	free, total := spaceOn(filepath.Join(t.TempDir(), "no", "such", "mount"))
+	if free != 0 || total != 0 {
+		t.Fatalf("spaceOn on a missing path gave free=%d total=%d, want 0 and 0", free, total)
+	}
+}
+
 func keys(m map[string]*Totals) []string {
 	out := make([]string, 0, len(m))
 	for k := range m {

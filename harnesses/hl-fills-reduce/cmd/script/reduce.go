@@ -168,6 +168,15 @@ func (r *Reducer) alreadyWhole(day string) (bool, error) {
 	return hours <= d.Hours, nil
 }
 
+// hoursPresent counts the hours a day actually holds.
+//
+// An empty file does not count. The node creates an hour file when the hour
+// turns and writes into it as it applies blocks, so a node that is stalled or
+// catching up leaves 0-byte files behind: on 2026-10-13 hour 12 was 0 bytes
+// while hours 13 to 16 held between 13% and 54% of a normal hour's volume.
+// Counting that file made the day report 5 hours of 24 when it held none for
+// that hour at all, and coverage is exactly what the consumer uses to decide
+// whether to trust this day over the truncated public export.
 func (r *Reducer) hoursPresent(day string) (int, error) {
 	ents, err := os.ReadDir(dayPath(r.FillsDir, day))
 	if err != nil {
@@ -175,9 +184,13 @@ func (r *Reducer) hoursPresent(day string) (int, error) {
 	}
 	n := 0
 	for _, e := range ents {
-		if !e.IsDir() {
-			n++
+		if e.IsDir() {
+			continue
 		}
+		if info, err := e.Info(); err == nil && info.Size() == 0 {
+			continue
+		}
+		n++
 	}
 	return n, nil
 }
@@ -196,6 +209,13 @@ func (r *Reducer) ReduceDay(day string) error {
 		}
 		h, err := strconv.Atoi(e.Name())
 		if err != nil {
+			continue
+		}
+		// Skip empty hours for the same reason hoursPresent does: the file
+		// exists because the hour turned, not because the node wrote
+		// anything into it. Counting it inflates the day's coverage, and the
+		// two counts must agree or alreadyWhole re-reduces for ever.
+		if info, err := e.Info(); err == nil && info.Size() == 0 {
 			continue
 		}
 		hours = append(hours, h)
@@ -357,10 +377,31 @@ func (r *Reducer) LoadDay(day string) (*Day, error) {
 	return &d, nil
 }
 
-// freeSpace reports the mount's free fraction, 0..1.
+// rootMount is the filesystem holding the binaries, the journal and the
+// system temp directory. It is watched alongside the data volume because a
+// full root stops the node without touching the data volume at all: on
+// 2026-10-08 this box's root filled to 100% while /mnt/hyperliquid sat at
+// 29%, hl-visor could not stage the 106 MB node binary a hardfork required
+// through /tmp, and the node froze at the fork height for three days. Every
+// disk signal on the box pointed at the data volume, so nothing fired.
+const rootMount = "/"
+
+// freeSpace reports free and total bytes on the mount holding the node data.
 func (r *Reducer) freeSpace() (free, total uint64) {
+	return spaceOn(r.Mount)
+}
+
+// rootSpace reports free and total bytes on the root filesystem.
+func (r *Reducer) rootSpace() (free, total uint64) {
+	return spaceOn(rootMount)
+}
+
+// spaceOn returns zeroes when the path cannot be read, which callers must
+// treat as "not measured" rather than "empty": a 0% gauge on an unreadable
+// mount is the reassuring lie this whole file exists to avoid.
+func spaceOn(path string) (free, total uint64) {
 	var st syscall.Statfs_t
-	if err := syscall.Statfs(r.Mount, &st); err != nil {
+	if err := syscall.Statfs(path, &st); err != nil {
 		return 0, 0
 	}
 	return st.Bavail * uint64(st.Bsize), st.Blocks * uint64(st.Bsize)
