@@ -396,6 +396,10 @@ export const REMOVED_BENCH_SLUGS = new Set([
  * exists purely to swap the resulting 404 for a 410 on prod.
  */
 export const REMOVED_PRODUCT_SLUGS = new Set([
+  // Blast (the L2) left every bench on 2026-10-13. /products/blast used
+  // to 308 to /chains/blast; with the chain gone it rendered an
+  // indexable "Blast: chain benchmark" page from the worker's last blob.
+  "blast",
   // bitquery was only referenced in bench 090 token-trade-coverage,
   // dropped 2026-07-24. Product page was live briefly, so Google
   // likely indexed the URL. 410 speeds de-indexing.
