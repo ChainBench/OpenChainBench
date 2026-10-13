@@ -14,6 +14,7 @@ type Config struct {
 	DefinedSessionCookie string
 	MonitorRegion        string // Deployment region: us-west, us-east, singapore, etc.
 	MobulaWSURL          string // Mobula fast-trade WebSocket endpoint (allows staging to use EU-specific cluster)
+	SerializedWSURL      string // Serialized stream endpoint (override to roll back to the legacy engine)
 }
 
 func loadEnv() (*Config, error) {
@@ -26,6 +27,7 @@ func loadEnv() (*Config, error) {
 	config.DefinedSessionCookie = strings.TrimSpace(os.Getenv("DEFINED_SESSION_COOKIE"))
 	config.MonitorRegion = strings.TrimSpace(os.Getenv("MONITOR_REGION"))
 	config.MobulaWSURL = strings.TrimSpace(os.Getenv("MOBULA_WS_URL"))
+	config.SerializedWSURL = strings.TrimSpace(os.Getenv("SERIALIZED_WS_URL"))
 
 	// Default to "unknown" if not set
 	if config.MonitorRegion == "" {
@@ -35,6 +37,14 @@ func loadEnv() (*Config, error) {
 	// Default Mobula WS endpoint (global). Staging can override to wss://api-prod-eu.mobula.io
 	if config.MobulaWSURL == "" {
 		config.MobulaWSURL = "wss://api.mobula.io"
+	}
+
+	// Serialized's new stream engine (2026-10-13): same key, same frames,
+	// plus `cursor` on events and `updatePeriod` on subscribed, which the
+	// decoder ignores. The legacy wss://api.serialized.xyz/v1/stream is
+	// being retired; set SERIALIZED_WS_URL to it to roll back.
+	if config.SerializedWSURL == "" {
+		config.SerializedWSURL = "wss://ws.serialized.xyz/v1/stream"
 	}
 
 	// If all env vars are set, return early (production mode)
