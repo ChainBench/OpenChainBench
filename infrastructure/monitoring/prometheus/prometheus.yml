@@ -132,8 +132,8 @@ scrape_configs:
           benchmark: wallet-labels
     metrics_path: /metrics
 
-  # OpenChainBench bench №009 — live sequencer block-time across 9 EVM L2s
-  # (Arbitrum, Optimism, Base, zkSync Era, Linea, Scroll, Blast, Mantle,
+  # OpenChainBench bench №009 — live sequencer block-time across 8 EVM L2s
+  # (Arbitrum, Optimism, Base, zkSync Era, Linea, Scroll, Mantle,
   # Taiko). One persistent eth_subscribe(newHeads) WS per chain; metric
   # is the wall-clock interval between two consecutive head events.
   - job_name: 'l2-block-time'

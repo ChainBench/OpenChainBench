@@ -167,7 +167,7 @@ providers:
 
   - slug: predict-fun
     name: Predict Fun
-    tag: BNB Chain and Blast; DefiLlama TVL
+    tag: BNB Chain; DefiLlama TVL
     formula: "avg_over_time(pm_venue_open_interest_usd{venue=\"predict-fun\"}[24h])"
     queries:
       p50: avg_over_time(pm_venue_open_interest_usd{venue="predict-fun"}[24h])

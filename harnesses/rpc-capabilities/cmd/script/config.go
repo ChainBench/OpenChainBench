@@ -329,7 +329,6 @@ func chains() []Chain {
 				{Slug: "nodies", Name: "Nodies (POKT)", URL: envDefault("RPC_URL_ARBITRUM_NODIES", "https://arb-pokt.nodies.app")},
 				{Slug: "lava", Name: "Lava Network", URL: envDefault("RPC_URL_ARBITRUM_LAVA", "https://arb1.lava.build")},
 				{Slug: "arbitrum-official", Name: "Arbitrum Official", URL: envDefault("RPC_URL_ARBITRUM_OFFICIAL", "https://arb1.arbitrum.io/rpc")},
-				{Slug: "blastapi", Name: "Blast API", URL: envDefault("RPC_URL_ARBITRUM_BLASTAPI", "https://arbitrum-one.public.blastapi.io")},
 			},
 		},
 		// ─── Optimism (6 providers) ─────────────────────────────────
@@ -354,7 +353,6 @@ func chains() []Chain {
 				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_BASE_TENDERLY", "https://gateway.tenderly.co/public/base")},
 				{Slug: "nodies", Name: "Nodies (POKT)", URL: envDefault("RPC_URL_BASE_NODIES", "https://base-pokt.nodies.app")},
 				{Slug: "base-official", Name: "Base Official", URL: envDefault("RPC_URL_BASE_OFFICIAL", "https://mainnet.base.org")},
-				{Slug: "blastapi", Name: "Blast API", URL: envDefault("RPC_URL_BASE_BLASTAPI", "https://base-mainnet.public.blastapi.io")},
 				{Slug: "bloxroute", Name: "bloXroute", URL: envDefault("RPC_URL_BASE_BLOXROUTE", "https://base.rpc.blxrbdn.com")},
 			},
 		},
@@ -367,7 +365,6 @@ func chains() []Chain {
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_BNB_DRPC", "https://bsc.drpc.org")},
 				{Slug: "nodies", Name: "Nodies (POKT)", URL: envDefault("RPC_URL_BNB_NODIES", "https://bsc-pokt.nodies.app")},
 				{Slug: "binance", Name: "Binance Official", URL: envDefault("RPC_URL_BNB_OFFICIAL", "https://bsc-dataseed1.binance.org")},
-				{Slug: "blastapi", Name: "Blast API", URL: envDefault("RPC_URL_BNB_BLASTAPI", "https://bsc-mainnet.public.blastapi.io")},
 				{Slug: "bloxroute", Name: "bloXroute", URL: envDefault("RPC_URL_BNB_BLOXROUTE", "https://bsc.rpc.blxrbdn.com")},
 				{Slug: "nownodes", Name: "NOWNodes", URL: envDefault("RPC_URL_BNB_NOWNODES", "https://public-bsc.nownodes.io")},
 			},
@@ -448,17 +445,6 @@ func chains() []Chain {
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_CELO_DRPC", "https://celo.drpc.org")},
 				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_CELO_TENDERLY", "https://gateway.tenderly.co/public/celo")},
 				{Slug: "celo-official", Name: "Celo Official (Forno)", URL: envDefault("RPC_URL_CELO_OFFICIAL", "https://forno.celo.org")},
-			},
-		},
-		// ─── Blast (4 providers) ────────────────────────────────────
-		{
-			Slug: "blast",
-			Name: "Blast",
-			Providers: []Provider{
-				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_BLAST_PUBLICNODE", "https://blast-rpc.publicnode.com")},
-				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_BLAST_DRPC", "https://blast.drpc.org")},
-				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_BLAST_TENDERLY", "https://gateway.tenderly.co/public/blast")},
-				{Slug: "blast-official", Name: "Blast Official", URL: envDefault("RPC_URL_BLAST_OFFICIAL", "https://rpc.blast.io")},
 			},
 		},
 		// ─── Taiko (4 providers) ────────────────────────────────────

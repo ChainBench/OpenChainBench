@@ -6,7 +6,7 @@
  * indexed) on a fixed cadence.
  *
  * Each field is independently nullable: a chain that DefiLlama doesn't
- * track for stables (Stellar, Blast, …) gets a real TVL value but a
+ * track for stables (Stellar, …) gets a real TVL value but a
  * null stables. The page renders only the cards that have data, so the
  * adaptive grid never shows a fake-zero placeholder.
  *
@@ -236,7 +236,6 @@ const DEFILLAMA_CHAIN_NAME: Record<string, string> = {
   zksync: "ZKsync Era",
   linea: "Linea",
   scroll: "Scroll",
-  blast: "Blast",
   mantle: "Mantle",
   taiko: "Taiko",
 };

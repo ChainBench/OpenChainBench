@@ -18,11 +18,10 @@ Every L2 marketing page quotes a single nominal block time ("Base: 2 s", "Arbitr
 | zksync | zkSync Era | wss://mainnet.era.zksync.io/ws | ~3 s, batched |
 | linea | Linea | wss://linea-rpc.publicnode.com | ~3 s, batched |
 | scroll | Scroll | wss://scroll-rpc.publicnode.com | ~3 s, batched |
-| blast | Blast | wss://blast-rpc.publicnode.com | 2 s |
 | mantle | Mantle | wss://mantle-rpc.publicnode.com | 2 s |
 | taiko | Taiko | wss://taiko-rpc.publicnode.com | 3 s |
 
-Every URL was probed live before inception (90 s newHeads window): all 9 confirmed subscribe, no API key required, no idle disconnect at 60 s.
+Every URL was probed live before inception (90 s newHeads window): all 8 confirmed subscribe, no API key required, no idle disconnect at 60 s.
 
 ## Endpoints
 

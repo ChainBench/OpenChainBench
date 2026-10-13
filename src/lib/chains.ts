@@ -349,14 +349,6 @@ export const CHAINS: ChainEntry[] = [
       "Bytecode-equivalent zkEVM with Halo2 prover, 3 s nominal block target, centralized sequencer batching for prover.",
   },
   {
-    slug: "blast",
-    label: "Blast",
-    category: "L2",
-    nativeSymbol: "ETH",
-    description:
-      "OP Stack fork with native ETH yield auto-rebasing against L1 staking + T-bill yields, 2 s sequencer.",
-  },
-  {
     slug: "mantle",
     label: "Mantle",
     category: "L2",

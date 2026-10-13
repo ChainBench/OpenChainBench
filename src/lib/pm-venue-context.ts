@@ -36,7 +36,7 @@ export const PM_VENUE_META: Record<string, { url: string; chainLabel: string }> 
   // multi-chain ones rather than the largest, because this string is
   // the page's only answer to "where does this run".
   rain: { url: "https://www.rain.one", chainLabel: "Arbitrum" },
-  "predict-fun": { url: "https://predict.fun", chainLabel: "BNB Chain, Blast" },
+  "predict-fun": { url: "https://predict.fun", chainLabel: "BNB Chain" },
   opinion: { url: "https://app.opinion.trade", chainLabel: "BNB Chain" },
   "sport-fun": { url: "https://pro.sport.fun", chainLabel: "Base" },
   augur: { url: "https://augur.net", chainLabel: "Ethereum" },
