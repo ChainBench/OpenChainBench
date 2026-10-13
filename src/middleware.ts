@@ -84,6 +84,7 @@ export function middleware(req: NextRequest) {
 // src/middleware.test.ts. Keep sorted by section, one path per line.
 export const config = {
   matcher: [
+    "/benchmarks/blast-rpc",
     "/benchmarks/quicksilver-rpc",
     "/benchmarks/thundercore-rpc",
     "/benchmarks/canto-rpc",

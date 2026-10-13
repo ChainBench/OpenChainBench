@@ -23,7 +23,6 @@ export const CHAIN_LIST: ChainMeta[] = [
   { key: "avalanche", slug: "avalanche", display: "Avalanche", color: "#E84142" },
   { key: "linea", slug: "linea", display: "Linea", color: "#61DFFF" },
   { key: "mantle", slug: "mantle", display: "Mantle", color: "#79EAA1" },
-  { key: "blast", slug: "blast", display: "Blast", color: "#FCFC03" },
   { key: "scroll", slug: "scroll", display: "Scroll", color: "#C78F50" },
   { key: "zksync", slug: "zksync", display: "zkSync Era", color: "#8C8DFC" },
   { key: "sonic", slug: "sonic", display: "Sonic", color: "#FE9933" },
