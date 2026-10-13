@@ -252,6 +252,13 @@ providers:
   - slug: helius
     name: Helius
     tag: "Free, Solana only"
+    # The unfiltered view is the Ethereum dapp mix, and this provider
+    # publishes only a Solana allowance. Without a label the loader reads
+    # the empty slice as a lost provider and the row said "Currently
+    # unavailable" under the hint "Provider or its upstream is
+    # unavailable" — false twice over, since it is up and it is ranked on
+    # the Solana tab. The label applies to the unfiltered view only.
+    unranked: "Solana only"
     queries:
       p50: max(quantile_over_time(0.50, rpc_free_allowance_requests{provider="helius",kind="all"}[3h]))
       p90: max(quantile_over_time(0.50, rpc_free_allowance_requests_floor{provider="helius",kind="all"}[3h]))
@@ -261,6 +268,13 @@ providers:
   - slug: syndica
     name: Syndica
     tag: "Free, Solana only"
+    # The unfiltered view is the Ethereum dapp mix, and this provider
+    # publishes only a Solana allowance. Without a label the loader reads
+    # the empty slice as a lost provider and the row said "Currently
+    # unavailable" under the hint "Provider or its upstream is
+    # unavailable" — false twice over, since it is up and it is ranked on
+    # the Solana tab. The label applies to the unfiltered view only.
+    unranked: "Solana only"
     queries:
       p50: max(quantile_over_time(0.50, rpc_free_allowance_requests{provider="syndica",kind="all"}[3h]))
       p90: max(quantile_over_time(0.50, rpc_free_allowance_requests_floor{provider="syndica",kind="all"}[3h]))
