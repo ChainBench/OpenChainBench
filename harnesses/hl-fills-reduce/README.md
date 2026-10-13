@@ -28,6 +28,19 @@ block, and each fill carries `builder` and `builderFee` alongside the trader,
 coin, price, size, `crossed` and `closedPnl`. Everything the site reports is
 in there; it is just four gigabytes a day, so this reduces it to about 1.6 MB.
 
+`--write-raw-book-diffs` is deliberately not passed, and should not be added
+back. It wrote 4 GB on 2026-10-13 against 123 MB of fills, roughly 32x the
+volume of the data anything uses, and nothing reads it: the only reference to
+`node_raw_book_diffs_by_block` anywhere is `deploy/hl-cleanup.sh`, which
+deletes it after three days. It had accumulated 85 GB written to be thrown
+away. It also cost throughput where the node could least afford it: catching up
+from an outage, the node was applying 787 blocks/min against the 837/min the
+chain produces, so it lost ground until it hit its own limit and panicked with
+`too many blocks to request`, at which point hl-visor restarted it and the
+cycle repeated. Measure the chain's rate before judging such a shortfall: the
+node logs the network's `latest_height`, and two readings an hour apart give it
+directly. Assuming a block time turns a 6% deficit into an apparent 23% one.
+
 ## What it is not
 
 A second opinion. Where this has a whole day, the consumer uses it *instead
