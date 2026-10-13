@@ -345,7 +345,19 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
   // carries specs a production checkout may not have yet (arc-rpc and
   // robinhood-rpc were listed in the production sitemap while 404ing,
   // audit 2026-09-21).
-  const servedSlugs = new Set((await getSpecs()).map((s) => s.slug));
+  const servedSpecs = await getSpecs();
+  const servedSlugs = new Set(servedSpecs.map((s) => s.slug));
+  // Same reasoning for the per-chain sub-pages: the blob's perChainSlugs
+  // come from the worker's checkout, so a chain this build dropped from a
+  // bench (Blast, 2026-10-13) stayed listed until the worker was rebuilt,
+  // while the page 308s to the parent. The smoke test rolled the deploy
+  // back over exactly that. List only chains this build's spec declares.
+  const servedChains = new Map(
+    servedSpecs.map((s) => [
+      s.slug,
+      new Set((s.per_chain_explainer ?? []).map((e) => canonicalChainSlug(e.slug))),
+    ]),
+  );
   const benchmarkRoutes: MetadataRoute.Sitemap = blobBenches.flatMap((b) => {
     if (REMOVED_BENCH_SLUGS.has(b.slug)) return [];
     if (!servedSlugs.has(b.slug)) return [];
@@ -375,6 +387,7 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
     // against results and chain dimensions.
     for (const chainSlug of b.perChainSlugs) {
       const canon = canonicalChainSlug(chainSlug);
+      if (!servedChains.get(b.slug)?.has(canon)) continue;
       entries.push({
         url: `${SITE.url}/benchmarks/${b.slug}/${canon}`,
         lastModified: last,
