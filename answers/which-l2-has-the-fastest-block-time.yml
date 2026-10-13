@@ -20,7 +20,7 @@ limitations:
 
 faq:
   - q: "Which L2 has the fastest block time right now?"
-    a: "{{best_name}} currently posts the fastest block time at {{best_p50}} (p50, 24h) across 8 measured L2s. The leaderboard reads a fresh p50 every minute from the Prometheus quantile over the 24 hour window, so the headline is sustained, not a single lucky head. Arbitrum One's Nitro stack runs a 250 ms sequencer interval by default, which is roughly 8x faster than the OP Stack 2 s convention used by Optimism, Base and Mantle."
+    a: "{{best_name}} currently posts the fastest block time at {{best_p50}} (p50, 24h) across 9 measured L2s. The leaderboard reads a fresh p50 every minute from the Prometheus quantile over the 24 hour window, so the headline is sustained, not a single lucky head. Arbitrum One's Nitro stack runs a 250 ms sequencer interval by default, which is roughly 8x faster than the OP Stack 2 s convention used by Optimism, Base and Mantle."
   - q: "Why are Base and Optimism block times nearly identical?"
     a: "Both run the OP Stack with the same default sequencer cadence (2 s). Mantle is also an OP Stack fork and clusters at the same number; this is by design because OP Stack is a turnkey rollup framework where the sequencer interval is a configuration constant, not a chain specific design choice. The leaderboard makes the architectural family visible at a glance."
   - q: "Is zkSync Era really slower than Arbitrum?"
