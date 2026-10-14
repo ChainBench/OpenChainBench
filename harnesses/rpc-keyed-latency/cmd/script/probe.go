@@ -433,6 +433,25 @@ func probeOne(ctx context.Context, e Endpoint) {
 				result = "stale"
 			}
 		}
+		// A sample is only publishable if its region label is true. When this
+		// probe's egress has been confirmed to sit on the wrong continent, the
+		// call succeeded but its geography is a lie, so it is dropped rather
+		// than recorded under a region it did not come from. Same treatment as
+		// a quota pause: delete the series instead of leaving it frozen at its
+		// last good number.
+		//
+		// Deliberately NOT counted in rpc_call_total. That counter is the
+		// provider's reliability record and feeds the published success rate;
+		// filing our own misrouting there would dent every provider in the
+		// region for a fault on our side. The drop is counted on its own
+		// series instead.
+		if result == "ok" && !egressPublishable() {
+			probeEgressDropped.WithLabelValues(currentRegion).Inc()
+			rpcLatency.DeleteLabelValues(e.Provider, e.Chain, currentRegion, "keyed")
+			rpcLatencyCold.DeleteLabelValues(e.Provider, e.Chain, currentRegion, "keyed")
+			rpcHealth.WithLabelValues(e.Provider, e.Chain, currentRegion, "keyed").Set(0)
+			return
+		}
 		rpcCallTotal.WithLabelValues(e.Provider, e.Chain, currentRegion, result, "keyed").Inc()
 		if result == "ok" {
 			// Same rule as the no-key harness: latency is recorded ONLY
