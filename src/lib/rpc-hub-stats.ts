@@ -161,6 +161,14 @@ export type RpcHubSnapshot = RpcHubCohort & {
    *  blobs written before the tier dimension existed and when no keyed
    *  blob resolves yet; the hub then shows the public view alone. */
   keyed?: RpcHubCohort;
+  /** The cold-start arm (bench blobs at sig `tier=keyed-cold`): the same
+   *  vendors and endpoints as `keyed`, measured on a connection that is
+   *  never reused, so DNS, TCP and the TLS handshake are paid on every
+   *  call. Ranked on its own and never merged into `keyed`: the two are
+   *  different questions (a pooled service against a one-shot client),
+   *  and the ordering between vendors is not the same in both. Absent on
+   *  blobs written before this arm reached the hub. */
+  keyedCold?: RpcHubCohort;
   generatedAt: string;
 };
 
@@ -181,7 +189,12 @@ export type RpcHubSnapshot = RpcHubCohort & {
 //     site reads the worker's snapshot again instead of rebuilding on
 //     every cache miss: the two had drifted apart at v2 ("rpc-hub" on
 //     the worker side, "rpc-hub-v2" here).
-export const RPC_HUB_KEY = "rpc-hub-v3";
+// v4: `keyedCold` cohort (the cold-start arm reaches the hub). Same reasoning
+//     as v3: a v3 blob from an older worker has no keyedCold field, so the
+//     third pill would stay hidden until the worker rebuild lands. A fresh key
+//     makes Vercel rebuild from the bench blobs, which already carry the
+//     `tier=keyed-cold` variants, and the worker writes this same constant.
+export const RPC_HUB_KEY = "rpc-hub-v4";
 
 const round1 = (v: number) => Math.round(v * 10) / 10;
 const round2 = (v: number) => Math.round(v * 100) / 100;
@@ -478,10 +491,20 @@ export async function buildRpcHubSnapshotFresh(): Promise<RpcHubSnapshot | null>
     (s.dimensions?.tier ?? []).some((t) => t.value === "keyed"),
   );
   const keyed = keyedSpecs.length > 0 ? await cohortFor(keyedSpecs, "keyed") : null;
+  // The cold-start arm, same shape, read from the `tier=keyed-cold` variant
+  // blobs. Selected on its own tier value rather than reusing keyedSpecs: a
+  // spec can declare the keyed tier without declaring the cold one, which is
+  // exactly the state the six Validation Cloud chains were in.
+  const keyedColdSpecs = rpcSpecs.filter((s) =>
+    (s.dimensions?.tier ?? []).some((t) => t.value === "keyed-cold"),
+  );
+  const keyedCold =
+    keyedColdSpecs.length > 0 ? await cohortFor(keyedColdSpecs, "keyed-cold") : null;
 
   return {
     ...publicCohort,
     ...(keyed ? { keyed } : {}),
+    ...(keyedCold ? { keyedCold } : {}),
     generatedAt: new Date().toISOString(),
   };
 }
@@ -515,7 +538,11 @@ function gateSnapshotForProd(snap: RpcHubSnapshot): RpcHubSnapshot {
     };
   };
   const gated = gateCohort(snap);
-  return snap.keyed ? { ...gated, keyed: gateCohort(snap.keyed) } : gated;
+  return {
+    ...gated,
+    ...(snap.keyed ? { keyed: gateCohort(snap.keyed) } : {}),
+    ...(snap.keyedCold ? { keyedCold: gateCohort(snap.keyedCold) } : {}),
+  };
 }
 
 async function fetchRpcHubRaw(): Promise<RpcHubSnapshot | null> {
@@ -558,7 +585,9 @@ const fetchRpcHubCached = unstable_cache(
   // v8 (2026-09-30): lockstep with bench-unfiltered-v88. The keyed cohort on
   // the nine chain RPC benches gains GetBlock, and this snapshot holds the
   // per-chain keyed provider list the hub and /products read.
-  ["rpc-hub-cohort-v8", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v9: the snapshot carries the cold-start cohort, so a v8 entry cached
+  // before this change would hide the third pill for its whole TTL.
+  ["rpc-hub-cohort-v9", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["rpc-cohort"] },
 );
 
@@ -599,5 +628,9 @@ export async function hasRpcProviderData(slug: string): Promise<boolean> {
   const inCohort = (c: RpcHubChain) =>
     c.providers.some((p) => p.provider === slug) ||
     c.unresponsive?.some((u) => u.provider === slug);
+  // Deliberately not keyedCold: it carries the same vendors on the same
+  // chains under `<vendor>-cold` slugs, which providers.ts folds onto the
+  // vendor. Counting it would add no (provider, chain) pair that `keyed`
+  // does not already have, and would hand a KPI pill to a measurement arm.
   return snapshot.chains.some(inCohort) || (snapshot.keyed?.chains.some(inCohort) ?? false);
 }

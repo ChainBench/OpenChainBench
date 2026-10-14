@@ -20,10 +20,36 @@ import type { RpcHubCohort, RpcHubSnapshot } from "@/lib/rpc-hub-stats";
  * public gateway against a keyed provider. The public view is the
  * default and the only one crawlers see; the keyed rows link to
  * `/benchmarks/<chain>-rpc#tier=keyed`, the tab that ranks them.
+ *
+ * Third cohort: the cold-start arm, the same keyed vendors and endpoints
+ * measured on a connection that is never reused. It has been a tier on
+ * the per-chain bench pages since 2026-10-08 but could not reach the hub
+ * until the snapshot carried it. Kept as its own cohort rather than extra
+ * columns because the vendor ordering differs between the two arms, and a
+ * reader comparing a pooled service with a one-shot client is asking a
+ * different question, not reading a second column.
  */
 
 type Tab = "chains" | "providers";
-type Cohort = "public" | "keyed";
+type Cohort = "public" | "keyed" | "keyed-cold";
+
+/** Caption under the Access pills. Deliberately not a vendor list: the old
+ *  copy named four providers and went stale twice as the cohort grew to six,
+ *  so the count comes from the data and the names come from the table. */
+const COHORT_NOTE: Record<Cohort, string> = {
+  public: "Free, no-key endpoints probed every 60 s.",
+  keyed:
+    "Private endpoints (API key) on a pooled connection, probed every 120 s. Ranked on their own, never against the public gateways.",
+  "keyed-cold":
+    "The same private endpoints on a connection that is never reused: DNS, TCP and the TLS handshake are paid on every call. What a serverless or one-shot client gets.",
+};
+
+/** How each cohort's table is named inside the summary-card tooltip. */
+const COHORT_MATRIX: Record<Cohort, string> = {
+  public: "public",
+  keyed: "private",
+  "keyed-cold": "cold-start",
+};
 
 export function RpcHubTabs({
   snapshot,
@@ -40,15 +66,25 @@ export function RpcHubTabs({
   const [tab, setTab] = useState<Tab>("chains");
   const [cohort, setCohort] = useState<Cohort>("public");
   const keyed = snapshot.keyed;
-  const view: RpcHubCohort = cohort === "keyed" && keyed ? keyed : snapshot;
-  const benchQuery = cohort === "keyed" && keyed ? "#tier=keyed" : "";
+  const keyedCold = snapshot.keyedCold;
+  // A cohort the snapshot does not carry falls back to the public view
+  // rather than rendering an empty table: an older worker blob has no
+  // keyedCold field, and the pill for it is hidden in that case anyway.
+  const cohorts: Record<Cohort, RpcHubCohort | undefined> = {
+    public: snapshot,
+    keyed,
+    "keyed-cold": keyedCold,
+  };
+  const view: RpcHubCohort = cohorts[cohort] ?? snapshot;
+  const resolved: Cohort = cohorts[cohort] ? cohort : "public";
+  const benchQuery = resolved === "public" ? "" : `#tier=${resolved}`;
   // Keyed chain pages are indexable through their public view; the
   // sitemap gate applies to the page, not to the cohort.
   const fastest = fastestOverall(view);
 
   return (
     <>
-      {keyed && (
+      {(keyed || keyedCold) && (
         <div className="flex flex-wrap items-center gap-3 mb-4">
           <span className="font-sans text-[10px] uppercase tracking-[0.18em] text-ink-faint shrink-0 font-medium">
             Access
@@ -65,19 +101,26 @@ export function RpcHubTabs({
             >
               Public, no key
             </TabButton>
-            <TabButton
-              active={cohort === "keyed"}
-              onClick={() => setCohort("keyed")}
-              count={chainCount(keyed)}
-            >
-              Private, API key
-            </TabButton>
+            {keyed && (
+              <TabButton
+                active={cohort === "keyed"}
+                onClick={() => setCohort("keyed")}
+                count={chainCount(keyed)}
+              >
+                Private, API key
+              </TabButton>
+            )}
+            {keyedCold && (
+              <TabButton
+                active={cohort === "keyed-cold"}
+                onClick={() => setCohort("keyed-cold")}
+                count={chainCount(keyedCold)}
+              >
+                Private, cold start
+              </TabButton>
+            )}
           </div>
-          <span className="text-[12px] text-ink-faint">
-            {cohort === "keyed"
-              ? "Private endpoints (API key): Alchemy, Chainstack, GetBlock and QuickNode, probed every 120 s. Ranked on their own, never against the public gateways."
-              : "Free, no-key endpoints probed every 60 s."}
-          </span>
+          <span className="text-[12px] text-ink-faint">{COHORT_NOTE[resolved]}</span>
         </div>
       )}
 
@@ -90,11 +133,17 @@ export function RpcHubTabs({
           tip="us-east (N. Virginia), eu-west (Amsterdam), Singapore. Every provider is probed from all three."
         />
         <SummaryCard
-          label={cohort === "keyed" ? "Lowest private median" : "Fastest provider overall"}
+          label={
+            resolved === "public"
+              ? "Fastest provider overall"
+              : resolved === "keyed"
+                ? "Lowest private median"
+                : "Lowest cold-start median"
+          }
           value={fastest ? `${fastest.provider} · ${fmtMs(fastest.p50Ms)}` : "..."}
           tip={
             fastest
-              ? `Best chain leader across the ${cohort === "keyed" ? "private" : "public"} matrix: ${fastest.provider} on ${fastest.chain} (24h p50, all regions).`
+              ? `Best chain leader across the ${COHORT_MATRIX[resolved]} matrix: ${fastest.provider} on ${fastest.chain} (24h p50, all regions).`
               : undefined
           }
         />
