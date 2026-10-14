@@ -431,6 +431,9 @@ providers:
         - region: eu-west
           p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="validationcloud",chain="robinhood",tier="keyed",region="eu-west"})
           series: avg(avg_over_time(rpc_latency_milliseconds{provider="validationcloud",chain="robinhood",tier="keyed",region="eu-west"}[1h]))
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="validationcloud",chain="robinhood",tier="keyed",region="sgp"})
+          series: avg(avg_over_time(rpc_latency_milliseconds{provider="validationcloud",chain="robinhood",tier="keyed",region="sgp"}[1h]))
 
   - slug: validationcloud-cold
     name: Validation Cloud
