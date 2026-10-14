@@ -692,6 +692,12 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   },
 
   // ─── Perp DEX ─────────────────────────────────────────────────
+  validationcloud: {
+    url: "https://www.validationcloud.io",
+    description:
+      "Node API provider with keyed endpoints on Ethereum, Base, Arbitrum, Polygon, Robinhood Chain and Arc, plus staking and data products. Probed in the private cohort on the chain RPC pages.",
+    twitter: "@ValidationCloud",
+  },
   lighter: {
     url: "https://lighter.xyz",
     description:
