@@ -1023,17 +1023,19 @@ const ALIASES: Record<string, string> = {
   "agoric-official": "agoric",
   "xpla-official": "xpla",
   "xrplevm-official": "xrplevm",
-  // Cold-start cohort on the nine keyed RPC pages (2026-10-08). Same four
-  // providers, same endpoints, measured on a connection that is never
-  // reused, so they need a `-cold` slug to stay distinct from the pooled
-  // rows. Without these aliases the rows render initials instead of marks:
-  // nothing strips a suffix, this table is explicit. Same mistake as the
-  // "-official" slugs earlier today.
+  // Cold-start cohort on the nine keyed RPC pages (2026-10-08). The same
+  // providers and endpoints as the keyed tier, measured on a connection that
+  // is never reused, so they need a `-cold` slug to stay distinct from the
+  // pooled rows. Without these aliases the rows render initials instead of
+  // marks: nothing strips a suffix, this table is explicit. Same mistake as
+  // the "-official" slugs earlier today. The twin list lives in
+  // providers.ts ALIASES, which also needs a line per cold vendor.
   "getblock-cold": "getblock",
   "quicknode-cold": "quicknode",
   "alchemy-cold": "alchemy",
   "chainstack-cold": "chainstack",
   "dwellir-cold": "dwellir",
+  "validationcloud-cold": "validationcloud",
 };
 
 export function logoPath(slug: string): string | null {
