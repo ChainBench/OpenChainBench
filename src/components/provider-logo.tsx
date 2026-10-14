@@ -132,6 +132,8 @@ const NEEDS_DARK_CHIP = new Set([
   "astralane",
   "sky",
   "dydx",
+  // Validation Cloud's mark is a silver stadium on transparent.
+  "validationcloud",
 ]);
 
 function Chip({

@@ -297,6 +297,7 @@ const RAW: Record<string, string> = {
   hyperliquid: "/logos/hyperliquid.png",
   helius: "/logos/helius.svg",
   dydx: "/logos/dydx.svg",
+  validationcloud: "/logos/validationcloud.svg",
   moralis: "/logos/moralis.png",
   stellarexpert: "/logos/stellarexpert.png",
   jupiter: "/logos/jupiter.png",
