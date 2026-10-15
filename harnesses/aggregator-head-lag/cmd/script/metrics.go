@@ -633,6 +633,7 @@ func StartMetricsServer(addr string) error {
 
 	// Debug: tail of in-memory log ring (shared loghub package)
 	mux.Handle("/logs", logsHandler())
+	mux.Handle("/logs/serialized", serializedLogsHandler())
 
 	return http.ListenAndServe(addr, mux)
 }
