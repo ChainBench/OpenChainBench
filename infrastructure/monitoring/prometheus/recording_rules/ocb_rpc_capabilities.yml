@@ -57,3 +57,52 @@ groups:
         expr: quantile_over_time(0.99, rpc_latency_cold_milliseconds[24h])
       - record: ocb:rpc_latency_cold_milliseconds:mean_24h
         expr: avg_over_time(rpc_latency_cold_milliseconds[24h])
+
+      # WebSocket arm, added 2026-10-15. Same keyed endpoints, subscription
+      # instead of request/response.
+      #
+      # The headline is a race rather than a latency: every provider on a chain
+      # waits for the same block, so head_lead is the distance from whoever
+      # pushed it first and the chain's block time cancels out. Do NOT build a
+      # column on time-to-first-head: that is block time with a provider's name
+      # on it (7 to 11 s on Ethereum, 240 to 490 ms on Robinhood, for everyone
+      # alike).
+      #
+      # head_lead's p50 is the honest headline. Its mean is not, because one
+      # reconnection drags it: a provider that drops a connection misses pushes
+      # and then scores a large lead on the block it rejoins.
+      - record: ocb:rpc_ws_head_lead_milliseconds:p50_24h
+        expr: quantile_over_time(0.50, rpc_ws_head_lead_milliseconds[24h])
+      - record: ocb:rpc_ws_head_lead_milliseconds:p90_24h
+        expr: quantile_over_time(0.90, rpc_ws_head_lead_milliseconds[24h])
+      - record: ocb:rpc_ws_head_lead_milliseconds:p99_24h
+        expr: quantile_over_time(0.99, rpc_ws_head_lead_milliseconds[24h])
+
+      - record: ocb:rpc_ws_subscribe_milliseconds:p50_24h
+        expr: quantile_over_time(0.50, rpc_ws_subscribe_milliseconds[24h])
+      - record: ocb:rpc_ws_subscribe_milliseconds:p90_24h
+        expr: quantile_over_time(0.90, rpc_ws_subscribe_milliseconds[24h])
+
+      - record: ocb:rpc_ws_call_milliseconds:p50_24h
+        expr: quantile_over_time(0.50, rpc_ws_call_milliseconds[24h])
+      - record: ocb:rpc_ws_call_milliseconds:p90_24h
+        expr: quantile_over_time(0.90, rpc_ws_call_milliseconds[24h])
+      - record: ocb:rpc_ws_call_milliseconds:p99_24h
+        expr: quantile_over_time(0.99, rpc_ws_call_milliseconds[24h])
+
+      # Win rate as a numerator/denominator pair, the same convention as
+      # ocb:rpc_call above, so the site keeps ratio-of-sums semantics when it
+      # aggregates across regions. A ratio recorded here would average
+      # percentages of unequal block counts instead.
+      - record: ocb:rpc_ws_head_first:increase_24h
+        expr: sum by (provider, chain, region, tier) (increase(rpc_ws_head_first_total[24h]))
+      - record: ocb:rpc_ws_head_seen:increase_24h
+        expr: sum by (provider, chain, region, tier) (increase(rpc_ws_head_seen_total[24h]))
+
+      # Stability. Published as a result, not kept as an implementation
+      # detail: a provider that reconnects twice in two minutes is unusable for
+      # a subscriber however good its median is, and nobody publishes this.
+      - record: ocb:rpc_ws_disconnect:increase_24h
+        expr: sum by (provider, chain, region, tier) (increase(rpc_ws_disconnect_total[24h]))
+      - record: ocb:rpc_ws_messages:increase_24h
+        expr: sum by (provider, chain, region, tier) (increase(rpc_ws_messages_total[24h]))
