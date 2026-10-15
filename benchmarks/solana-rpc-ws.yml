@@ -43,7 +43,8 @@ methodology:
   - "One persistent socket per provider per region, slotSubscribe for EVM chains and slotSubscribe for Solana. Every frame timestamped on receipt. A provider that drops its socket misses pushes, so coverage is reported as slots seen over the cohort maximum rather than as a success rate."
   - "Histogram buckets floor at 0.5 ms. The winner reads 0 by construction, so a coarse first bucket collapses every leader's p50 into an interpolation artifact inside it."
   - "Reconnections are a published result, not an implementation detail: a provider that drops twice in two minutes is unusable to a subscriber whatever its median says."
-  - "Alchemy answers every Solana subscribe method with method not found on its keyed endpoint, so it is absent here while present on the HTTP cohort. Dwellir publishes no Solana endpoint at all."
+  - "Dwellir publishes no Solana endpoint at all, so it is absent from every arm on this chain."
+  - "Alchemy is measured on the HTTP cohort but not here, and the reason is ours rather than theirs: its endpoint bills WebSocket per message, these subscriptions pushed about 116 million frames a month against the Free plan key that row discloses, and the key is shared with the HTTP probes. Racing a provider until its account is exhausted would remove it from nine other pages, so it waits for a message budget guard."
   - "Same keyed endpoints as the HTTP cohort on this chain, same keys, same three regions. Keys live in the probe environment, never in this repository. Plan tiers are disclosed on the HTTP cohort's methodology."
 
 expected_n: 7000
@@ -69,7 +70,7 @@ faq:
   - q: "Why does the fastest provider show a lag near zero?"
     a: "By construction. Each slot is a race: the earliest arrival defines T0 and every sample is measured against it, so the provider that wins most races accumulates mostly zero samples. A single vantage point cannot measure absolute production-to-client latency without a node co-located with block producers; it can measure fairly which provider delivers the same slot earlier over the same path. Read the win rate and the trailing distribution, not the leader's absolute number."
   - q: "Is this the same as the HTTP latency cohort on this chain?"
-    a: "Same providers, same keys, same regions, different question. The HTTP cohort measures a request you send; this measures a push you wait for, and the two orderings are not the same. Alchemy answers every Solana subscribe method with method not found on its keyed endpoint, so it is absent here while present on the HTTP cohort. Dwellir publishes no Solana endpoint at all."
+    a: "Same providers, same keys, same regions, different question. The HTTP cohort measures a request you send; this measures a push you wait for, and the two orderings are not the same. Dwellir publishes no Solana endpoint at all, so it is absent from every arm on this chain."
   - q: "Could a provider win by pushing slots before validating them?"
     a: "In principle, at the cost of occasionally pushing something that gets retracted. That is why coverage is published next to the lag: a provider that pushes early but wrong shows gaps, and the coverage column counts slots seen against the cohort maximum. Hash-level cross-checking against an independent reference is not in this version."
 
