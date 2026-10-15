@@ -4,9 +4,11 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -28,6 +30,12 @@ type logRing struct {
 }
 
 var globalLogRing = &logRing{max: logRingMax}
+
+// serializedLogRing keeps the Serialized monitor's lines apart, so they
+// survive the GeckoTerminal tape that turns the shared ring over in under
+// an hour, and so Serialized can read its own lines without seeing the
+// other providers'. Served at /logs/serialized.
+var serializedLogRing = &logRing{max: 20000}
 
 func (b *logRing) push(line string) {
 	entry := time.Now().UTC().Format("2006-01-02T15:04:05.000Z") + " " + line
@@ -72,6 +80,10 @@ func doInstallLogCapture() {
 	}
 	os.Stdout = w
 	os.Stderr = w
+	// The log package captured the original stderr at init; without this
+	// every log.Printf line (drops, slow trades, duplicates) bypassed the
+	// rings and only reached the platform log.
+	log.SetOutput(w)
 
 	go func() {
 		scanner := bufio.NewScanner(r)
@@ -81,6 +93,9 @@ func doInstallLogCapture() {
 			line := scanner.Text()
 			fmt.Fprintln(originalStdout, line)
 			globalLogRing.push(line)
+			if strings.Contains(line, "[SERIALIZED]") {
+				serializedLogRing.push(line)
+			}
 		}
 		_, _ = io.Copy(originalStdout, r)
 		_ = originalStderr
@@ -108,6 +123,35 @@ func logsHandler() http.Handler {
 		}
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		for _, l := range globalLogRing.snapshot(tail) {
+			fmt.Fprintln(w, l)
+		}
+	})
+}
+
+// serializedLogsHandler serves GET /logs/serialized?tail=N, the Serialized
+// monitor's lines only (connects, drops, slow trades with hash and both
+// clocks, duplicate deliveries). It takes its own token,
+// SERIALIZED_LOGS_TOKEN, in X-Logs-Token, so it can be handed to
+// Serialized without opening the full log. Disabled when the env is unset.
+func serializedLogsHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		expected := os.Getenv("SERIALIZED_LOGS_TOKEN")
+		if expected == "" {
+			http.Error(w, "logs disabled: SERIALIZED_LOGS_TOKEN unset", http.StatusForbidden)
+			return
+		}
+		if r.Header.Get("X-Logs-Token") != expected {
+			http.Error(w, "forbidden", http.StatusForbidden)
+			return
+		}
+		tail := 2000
+		if t := r.URL.Query().Get("tail"); t != "" {
+			if n, err := strconv.Atoi(t); err == nil && n > 0 {
+				tail = n
+			}
+		}
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		for _, l := range serializedLogRing.snapshot(tail) {
 			fmt.Fprintln(w, l)
 		}
 	})
