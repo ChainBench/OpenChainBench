@@ -4,7 +4,7 @@ slug: polygon-rpc-ws
 number: "300"
 title: Fastest private Polygon WebSocket push, per-block race across keyed RPC providers
 seo_title: "Fastest Polygon WebSocket RPC push 2026, private endpoints"
-seo_description: "{{best_name}} pushes Polygon blocks first on the private cohort. Per-block WebSocket lag for Alchemy, Chainstack, GetBlock, QuickNode, Dwellir and Validation Cloud, measured from 3 regions."
+seo_description: "{{best_name}} pushes Polygon blocks first on the private cohort. Per-block WebSocket lag for Chainstack, GetBlock, QuickNode, Dwellir and Validation Cloud, measured from 3 regions."
 subtitle: Per-block WebSocket push lag in milliseconds versus the first provider to deliver the same Polygon block, across API-key endpoints probed from us-east, eu-west and Singapore.
 
 category: RPCs
@@ -43,7 +43,8 @@ methodology:
   - "One persistent socket per provider per region, eth_subscribe(newHeads) for EVM chains and slotSubscribe for Solana. Every frame timestamped on receipt. A provider that drops its socket misses pushes, so coverage is reported as blocks seen over the cohort maximum rather than as a success rate."
   - "Histogram buckets floor at 0.5 ms. The winner reads 0 by construction, so a coarse first bucket collapses every leader's p50 into an interpolation artifact inside it."
   - "Reconnections are a published result, not an implementation detail: a provider that drops twice in two minutes is unusable to a subscriber whatever its median says."
-  - "All six keyed providers are raced here. GetBlock issues one WebSocket token per chain per region, so its three cells are distinct endpoints rather than one URL probed from three places."
+  - "GetBlock issues one WebSocket token per chain per region, so its three cells are distinct endpoints rather than one URL probed from three places."
+  - "Alchemy is measured on the HTTP cohort but not here, and the reason is ours rather than theirs: its endpoint bills WebSocket per message, these subscriptions pushed about 116 million frames a month against the Free plan key that row discloses, and the key is shared with the HTTP probes. Racing a provider until its account is exhausted would remove it from nine other pages, so it waits for a message budget guard."
   - "Same keyed endpoints as the HTTP cohort on this chain, same keys, same three regions. Keys live in the probe environment, never in this repository. Plan tiers are disclosed on the HTTP cohort's methodology."
 
 expected_n: 7000
@@ -69,34 +70,11 @@ faq:
   - q: "Why does the fastest provider show a lag near zero?"
     a: "By construction. Each block is a race: the earliest arrival defines T0 and every sample is measured against it, so the provider that wins most races accumulates mostly zero samples. A single vantage point cannot measure absolute production-to-client latency without a node co-located with block producers; it can measure fairly which provider delivers the same block earlier over the same path. Read the win rate and the trailing distribution, not the leader's absolute number."
   - q: "Is this the same as the HTTP latency cohort on this chain?"
-    a: "Same providers, same keys, same regions, different question. The HTTP cohort measures a request you send; this measures a push you wait for, and the two orderings are not the same. All six keyed providers are raced here. GetBlock issues one WebSocket token per chain per region, so its three cells are distinct endpoints rather than one URL probed from three places."
+    a: "Same providers, same keys, same regions, different question. The HTTP cohort measures a request you send; this measures a push you wait for, and the two orderings are not the same. GetBlock issues one WebSocket token per chain per region, so its three cells are distinct endpoints rather than one URL probed from three places."
   - q: "Could a provider win by pushing blocks before validating them?"
     a: "In principle, at the cost of occasionally pushing something that gets retracted. That is why coverage is published next to the lag: a provider that pushes early but wrong shows gaps, and the coverage column counts blocks seen against the cohort maximum. Hash-level cross-checking against an independent reference is not in this version."
 
 providers:
-  - slug: alchemy
-    name: Alchemy
-    tag: Private WS, same keyed endpoint as the HTTP cohort
-    formula: "Median ms behind the first provider to push each Polygon block over eth_subscribe(newHeads), from one persistent socket per provider per region, histogram_quantile over 24h. The per-block winner scores 0 by construction."
-    queries:
-      p50: histogram_quantile(0.50, sum by (le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{provider="alchemy",chain="polygon",tier="keyed"}))
-      p90: histogram_quantile(0.90, sum by (le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{provider="alchemy",chain="polygon",tier="keyed"}))
-      p99: histogram_quantile(0.99, sum by (le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{provider="alchemy",chain="polygon",tier="keyed"}))
-      mean: sum(ocb:rpc_ws_head_lead_milliseconds_sum:rate24h{provider="alchemy",chain="polygon",tier="keyed"}) / sum(ocb:rpc_ws_head_lead_milliseconds_count:rate24h{provider="alchemy",chain="polygon",tier="keyed"})
-      success: clamp_max(sum(increase(rpc_ws_head_seen_total{provider="alchemy",chain="polygon",tier="keyed"}[24h])) / max(sum by (provider) (increase(rpc_ws_head_seen_total{chain="polygon",tier="keyed"}[24h]))), 1)
-      sample_size: sum(increase(rpc_ws_head_seen_total{provider="alchemy",chain="polygon",tier="keyed"}[24h]))
-      series: histogram_quantile(0.50, sum by (le) (rate(rpc_ws_head_lead_milliseconds_histogram_bucket{provider="alchemy",chain="polygon",tier="keyed"}[1h])))
-      regions:
-        - region: us-east
-          p50: histogram_quantile(0.50, sum by (le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{provider="alchemy",chain="polygon",tier="keyed",region="us-east"}))
-          series: histogram_quantile(0.50, sum by (le) (rate(rpc_ws_head_lead_milliseconds_histogram_bucket{provider="alchemy",chain="polygon",tier="keyed",region="us-east"}[1h])))
-        - region: eu-west
-          p50: histogram_quantile(0.50, sum by (le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{provider="alchemy",chain="polygon",tier="keyed",region="eu-west"}))
-          series: histogram_quantile(0.50, sum by (le) (rate(rpc_ws_head_lead_milliseconds_histogram_bucket{provider="alchemy",chain="polygon",tier="keyed",region="eu-west"}[1h])))
-        - region: ap-southeast
-          p50: histogram_quantile(0.50, sum by (le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{provider="alchemy",chain="polygon",tier="keyed",region="sgp"}))
-          series: histogram_quantile(0.50, sum by (le) (rate(rpc_ws_head_lead_milliseconds_histogram_bucket{provider="alchemy",chain="polygon",tier="keyed",region="sgp"}[1h])))
-
   - slug: chainstack
     name: Chainstack
     tag: Private WS, same keyed endpoint as the HTTP cohort
