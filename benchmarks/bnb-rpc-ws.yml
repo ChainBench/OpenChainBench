@@ -4,7 +4,7 @@ slug: bnb-rpc-ws
 number: "299"
 title: Fastest private BNB Chain WebSocket push, per-block race across keyed RPC providers
 seo_title: "Fastest BNB Chain WebSocket RPC push 2026, private endpoints"
-seo_description: "{{best_name}} pushes BNB Chain blocks first on the private cohort. Per-block WebSocket lag for Alchemy, Chainstack, QuickNode, Dwellir and Validation Cloud, measured from 3 regions."
+seo_description: "{{best_name}} pushes BNB Chain blocks first on the private cohort. Per-block WebSocket lag for Alchemy, Chainstack, GetBlock, QuickNode, Dwellir and Validation Cloud, measured from 3 regions."
 subtitle: Per-block WebSocket push lag in milliseconds versus the first provider to deliver the same BNB Chain block, across API-key endpoints probed from us-east, eu-west and Singapore.
 
 category: RPCs
@@ -43,7 +43,7 @@ methodology:
   - "One persistent socket per provider per region, eth_subscribe(newHeads) for EVM chains and slotSubscribe for Solana. Every frame timestamped on receipt. A provider that drops its socket misses pushes, so coverage is reported as blocks seen over the cohort maximum rather than as a success rate."
   - "Histogram buckets floor at 0.5 ms. The winner reads 0 by construction, so a coarse first bucket collapses every leader's p50 into an interpolation artifact inside it."
   - "Reconnections are a published result, not an implementation detail: a provider that drops twice in two minutes is unusable to a subscriber whatever its median says."
-  - "GetBlock speaks no WebSocket on its regional hosts, so it is absent here while present on the HTTP cohort."
+  - "All six keyed providers are raced here. GetBlock issues one WebSocket token per chain per region, so its three cells are distinct endpoints rather than one URL probed from three places."
   - "Same keyed endpoints as the HTTP cohort on this chain, same keys, same three regions. Keys live in the probe environment, never in this repository. Plan tiers are disclosed on the HTTP cohort's methodology."
 
 expected_n: 7000
@@ -69,7 +69,7 @@ faq:
   - q: "Why does the fastest provider show a lag near zero?"
     a: "By construction. Each block is a race: the earliest arrival defines T0 and every sample is measured against it, so the provider that wins most races accumulates mostly zero samples. A single vantage point cannot measure absolute production-to-client latency without a node co-located with block producers; it can measure fairly which provider delivers the same block earlier over the same path. Read the win rate and the trailing distribution, not the leader's absolute number."
   - q: "Is this the same as the HTTP latency cohort on this chain?"
-    a: "Same providers, same keys, same regions, different question. The HTTP cohort measures a request you send; this measures a push you wait for, and the two orderings are not the same. GetBlock speaks no WebSocket on its regional hosts, so it is absent here while present on the HTTP cohort."
+    a: "Same providers, same keys, same regions, different question. The HTTP cohort measures a request you send; this measures a push you wait for, and the two orderings are not the same. All six keyed providers are raced here. GetBlock issues one WebSocket token per chain per region, so its three cells are distinct endpoints rather than one URL probed from three places."
   - q: "Could a provider win by pushing blocks before validating them?"
     a: "In principle, at the cost of occasionally pushing something that gets retracted. That is why coverage is published next to the lag: a provider that pushes early but wrong shows gaps, and the coverage column counts blocks seen against the cohort maximum. Hash-level cross-checking against an independent reference is not in this version."
 
@@ -119,6 +119,29 @@ providers:
         - region: ap-southeast
           p50: histogram_quantile(0.50, sum by (le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{provider="chainstack",chain="bnb",tier="keyed",region="sgp"}))
           series: histogram_quantile(0.50, sum by (le) (rate(rpc_ws_head_lead_milliseconds_histogram_bucket{provider="chainstack",chain="bnb",tier="keyed",region="sgp"}[1h])))
+
+  - slug: getblock
+    name: GetBlock
+    tag: Private WS, same keyed endpoint as the HTTP cohort
+    formula: "Median ms behind the first provider to push each BNB Chain block over eth_subscribe(newHeads), from one persistent socket per provider per region, histogram_quantile over 24h. The per-block winner scores 0 by construction."
+    queries:
+      p50: histogram_quantile(0.50, sum by (le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{provider="getblock",chain="bnb",tier="keyed"}))
+      p90: histogram_quantile(0.90, sum by (le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{provider="getblock",chain="bnb",tier="keyed"}))
+      p99: histogram_quantile(0.99, sum by (le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{provider="getblock",chain="bnb",tier="keyed"}))
+      mean: sum(ocb:rpc_ws_head_lead_milliseconds_sum:rate24h{provider="getblock",chain="bnb",tier="keyed"}) / sum(ocb:rpc_ws_head_lead_milliseconds_count:rate24h{provider="getblock",chain="bnb",tier="keyed"})
+      success: clamp_max(sum(increase(rpc_ws_head_seen_total{provider="getblock",chain="bnb",tier="keyed"}[24h])) / max(sum by (provider) (increase(rpc_ws_head_seen_total{chain="bnb",tier="keyed"}[24h]))), 1)
+      sample_size: sum(increase(rpc_ws_head_seen_total{provider="getblock",chain="bnb",tier="keyed"}[24h]))
+      series: histogram_quantile(0.50, sum by (le) (rate(rpc_ws_head_lead_milliseconds_histogram_bucket{provider="getblock",chain="bnb",tier="keyed"}[1h])))
+      regions:
+        - region: us-east
+          p50: histogram_quantile(0.50, sum by (le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{provider="getblock",chain="bnb",tier="keyed",region="us-east"}))
+          series: histogram_quantile(0.50, sum by (le) (rate(rpc_ws_head_lead_milliseconds_histogram_bucket{provider="getblock",chain="bnb",tier="keyed",region="us-east"}[1h])))
+        - region: eu-west
+          p50: histogram_quantile(0.50, sum by (le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{provider="getblock",chain="bnb",tier="keyed",region="eu-west"}))
+          series: histogram_quantile(0.50, sum by (le) (rate(rpc_ws_head_lead_milliseconds_histogram_bucket{provider="getblock",chain="bnb",tier="keyed",region="eu-west"}[1h])))
+        - region: ap-southeast
+          p50: histogram_quantile(0.50, sum by (le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{provider="getblock",chain="bnb",tier="keyed",region="sgp"}))
+          series: histogram_quantile(0.50, sum by (le) (rate(rpc_ws_head_lead_milliseconds_histogram_bucket{provider="getblock",chain="bnb",tier="keyed",region="sgp"}[1h])))
 
   - slug: quicknode
     name: QuickNode
