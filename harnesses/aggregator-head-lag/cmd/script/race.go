@@ -130,6 +130,11 @@ func (b *raceBook) observe(aggregator, chain, region, hash string, at time.Time,
 		if e.void {
 			return // single-feed race: no ruler to measure against
 		}
+		for _, o := range e.obs {
+			if o.aggregator == aggregator {
+				return // re-delivery after close: already scored, not late
+			}
+		}
 		// Late arrival: it lost, and its lag is against the recorded first.
 		b.note(chain, region, aggregator)
 		if raceChains[chain] {
