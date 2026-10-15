@@ -31,7 +31,7 @@ import type { RpcHubCohort, RpcHubSnapshot } from "@/lib/rpc-hub-stats";
  */
 
 type Tab = "chains" | "providers";
-type Cohort = "public" | "keyed" | "keyed-cold";
+type Cohort = "public" | "keyed" | "keyed-cold" | "websocket";
 
 /** Caption under the Access pills. Deliberately not a vendor list: the old
  *  copy named four providers and went stale twice as the cohort grew to six,
@@ -42,6 +42,8 @@ const COHORT_NOTE: Record<Cohort, string> = {
     "Private endpoints (API key) on a pooled connection, probed every 120 s. Ranked on their own, never against the public gateways.",
   "keyed-cold":
     "The same private endpoints on a connection that is never reused: DNS, TCP and the TLS handshake are paid on every call. What a serverless or one-shot client gets.",
+  websocket:
+    "The same private endpoints racing to push each new block. The figure is milliseconds behind whichever provider delivered that block first, so the leader reads near zero by construction and the spread is what matters.",
 };
 
 /** How each cohort's table is named inside the summary-card tooltip. */
@@ -49,6 +51,7 @@ const COHORT_MATRIX: Record<Cohort, string> = {
   public: "public",
   keyed: "private",
   "keyed-cold": "cold-start",
+  websocket: "block-push",
 };
 
 export function RpcHubTabs({
@@ -67,6 +70,7 @@ export function RpcHubTabs({
   const [cohort, setCohort] = useState<Cohort>("public");
   const keyed = snapshot.keyed;
   const keyedCold = snapshot.keyedCold;
+  const websocket = snapshot.websocket;
   // A cohort the snapshot does not carry falls back to the public view
   // rather than rendering an empty table: an older worker blob has no
   // keyedCold field, and the pill for it is hidden in that case anyway.
@@ -74,6 +78,7 @@ export function RpcHubTabs({
     public: snapshot,
     keyed,
     "keyed-cold": keyedCold,
+    websocket,
   };
   const view: RpcHubCohort = cohorts[cohort] ?? snapshot;
   const resolved: Cohort = cohorts[cohort] ? cohort : "public";
@@ -84,7 +89,7 @@ export function RpcHubTabs({
 
   return (
     <>
-      {(keyed || keyedCold) && (
+      {(keyed || keyedCold || websocket) && (
         <div className="flex flex-wrap items-center gap-3 mb-4">
           <span className="font-sans text-[10px] uppercase tracking-[0.18em] text-ink-faint shrink-0 font-medium">
             Access
@@ -119,6 +124,15 @@ export function RpcHubTabs({
                 Private, cold start
               </TabButton>
             )}
+            {websocket && (
+              <TabButton
+                active={cohort === "websocket"}
+                onClick={() => setCohort("websocket")}
+                count={chainCount(websocket)}
+              >
+                Private, block push
+              </TabButton>
+            )}
           </div>
           <span className="text-[12px] text-ink-faint">{COHORT_NOTE[resolved]}</span>
         </div>
@@ -138,7 +152,9 @@ export function RpcHubTabs({
               ? "Fastest provider overall"
               : resolved === "keyed"
                 ? "Lowest private median"
-                : "Lowest cold-start median"
+                : resolved === "keyed-cold"
+                  ? "Lowest cold-start median"
+                  : "Smallest push lag"
           }
           value={fastest ? `${fastest.provider} · ${fmtMs(fastest.p50Ms)}` : "..."}
           tip={
