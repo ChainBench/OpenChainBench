@@ -169,6 +169,16 @@ export type RpcHubSnapshot = RpcHubCohort & {
    *  and the ordering between vendors is not the same in both. Absent on
    *  blobs written before this arm reached the hub. */
   keyedCold?: RpcHubCohort;
+  /** The WebSocket race (benches 296 to 304, slugs `<chain>-rpc-ws`): the same
+   *  private providers measured on block delivery instead of request latency.
+   *
+   *  A separate bench family rather than a tier, so it is read from its own
+   *  slugs and not from a variant sig. Its figure is also a different quantity:
+   *  milliseconds behind whichever provider pushed that block first, where the
+   *  leader reads near zero by construction. The page must label it as a lag
+   *  rather than as a latency, or a reader sees "0 ms" and concludes the
+   *  provider answers instantly. */
+  websocket?: RpcHubCohort;
   generatedAt: string;
 };
 
@@ -194,7 +204,12 @@ export type RpcHubSnapshot = RpcHubCohort & {
 //     third pill would stay hidden until the worker rebuild lands. A fresh key
 //     makes Vercel rebuild from the bench blobs, which already carry the
 //     `tier=keyed-cold` variants, and the worker writes this same constant.
-export const RPC_HUB_KEY = "rpc-hub-v4";
+// v5: `websocket` cohort (benches 296-304 reach the hub). Same reasoning as
+//     v3 and v4: a v4 blob from an older worker has no websocket field, so
+//     the pill would stay hidden for a full TTL behind a blob that can never
+//     grow it. The worker imports this constant and writes the new shape
+//     after its next rebuild.
+export const RPC_HUB_KEY = "rpc-hub-v5";
 
 const round1 = (v: number) => Math.round(v * 10) / 10;
 const round2 = (v: number) => Math.round(v * 100) / 100;
@@ -303,7 +318,10 @@ async function buildChain(spec: Spec, tier?: string): Promise<RpcHubChain | null
   }
 
   const leader = rows[0];
-  const chain = spec.slug.replace(/-rpc$/, "");
+  // "-rpc-ws" before "-rpc": the WebSocket benches live on their own slugs and
+  // a trailing-only strip would leave the chain named "ethereum-rpc-ws", which
+  // no chain registry resolves, so the hub would label the row by its slug.
+  const chain = spec.slug.replace(/-rpc-ws$/, "").replace(/-rpc$/, "");
   // Dense series carry nulls for empty Prom buckets; the hub sparkline
   // blob stays numbers-only (48-pt cap, gap fidelity irrelevant there).
   const leaderSeries = bench.extras.series24h?.[leader.slug]?.filter(
@@ -501,10 +519,19 @@ export async function buildRpcHubSnapshotFresh(): Promise<RpcHubSnapshot | null>
   const keyedCold =
     keyedColdSpecs.length > 0 ? await cohortFor(keyedColdSpecs, "keyed-cold") : null;
 
+  // The WebSocket race. Its own bench family, so it is selected from the spec
+  // list directly rather than from rpcSpecs, which only holds slugs ending in
+  // "-rpc" and therefore excludes these by construction.
+  const wsSpecs = specs
+    .filter((s) => s.slug.endsWith("-rpc-ws"))
+    .sort((a, b) => a.slug.localeCompare(b.slug));
+  const websocket = wsSpecs.length > 0 ? await cohortFor(wsSpecs) : null;
+
   return {
     ...publicCohort,
     ...(keyed ? { keyed } : {}),
     ...(keyedCold ? { keyedCold } : {}),
+    ...(websocket ? { websocket } : {}),
     generatedAt: new Date().toISOString(),
   };
 }
@@ -542,6 +569,7 @@ function gateSnapshotForProd(snap: RpcHubSnapshot): RpcHubSnapshot {
     ...gated,
     ...(snap.keyed ? { keyed: gateCohort(snap.keyed) } : {}),
     ...(snap.keyedCold ? { keyedCold: gateCohort(snap.keyedCold) } : {}),
+    ...(snap.websocket ? { websocket: gateCohort(snap.websocket) } : {}),
   };
 }
 
@@ -587,7 +615,8 @@ const fetchRpcHubCached = unstable_cache(
   // per-chain keyed provider list the hub and /products read.
   // v9: the snapshot carries the cold-start cohort, so a v8 entry cached
   // before this change would hide the third pill for its whole TTL.
-  ["rpc-hub-cohort-v9", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v10: the snapshot carries the WebSocket cohort.
+  ["rpc-hub-cohort-v10", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["rpc-cohort"] },
 );
 
