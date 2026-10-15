@@ -49,14 +49,21 @@ var (
 		[]string{"provider", "chain", "region", "tier"},
 	)
 
-	// Buckets start at 1 ms, not 50. The HTTP arm's histogram starts at 50 and
-	// is useless for a field whose top five sit between 2 and 20 ms; this one
-	// has to resolve a race decided in single-digit milliseconds.
+	// Buckets copied from bench 081, which solved this first and for a reason
+	// worth repeating: the winner reads 0 by construction, so a coarse first
+	// bucket collapses every leader's p50 into an interpolation artifact
+	// inside it. A 1 ms floor is not enough either, hence 0.5. The range runs
+	// to 10 s to cover a straggler on a 12 s Ethereum block.
+	//
+	// The HTTP arm's buckets start at 50 ms and cannot resolve any of this.
 	wsHeadLeadHist = promauto.NewHistogramVec(
 		prometheus.HistogramOpts{
-			Name:    "rpc_ws_head_lead_milliseconds_histogram",
-			Help:    "Milliseconds behind the first provider to push a given block. 0 means it won the race.",
-			Buckets: []float64{1, 2, 5, 10, 20, 35, 50, 75, 100, 150, 250, 500, 1000, 2500},
+			Name: "rpc_ws_head_lead_milliseconds_histogram",
+			Help: "Milliseconds behind the first provider to push a given block. 0 means it won the race.",
+			Buckets: []float64{
+				0.5, 1, 2, 3, 5, 8, 12, 20, 35, 60,
+				100, 160, 260, 420, 680, 1100, 1800, 3000, 5000, 10000,
+			},
 		},
 		[]string{"provider", "chain", "region", "tier"},
 	)

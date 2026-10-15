@@ -1,0 +1,144 @@
+# OpenChainBench. Bench № 304
+
+slug: solana-rpc-ws
+number: "304"
+title: Fastest private Solana WebSocket push, per-slot race across keyed RPC providers
+seo_title: "Fastest Solana WebSocket RPC push 2026, private endpoints"
+seo_description: "{{best_name}} pushes Solana slots first on the private cohort. Per-slot WebSocket lag for Chainstack, QuickNode and Validation Cloud, measured from 3 regions."
+subtitle: Per-slot WebSocket push lag in milliseconds versus the first provider to deliver the same Solana slot, across API-key endpoints probed from us-east, eu-west and Singapore.
+
+category: RPCs
+status: live
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-keyed-latency
+metric: Push lag
+unit: ms
+higher_is_better: false
+
+seo_intro: |
+  A bot that subscribes to slotSubscribe does not care what a
+  provider's median HTTP latency is. It cares who hands it slot N first,
+  and by how much the others trail. This page races the private (Solana)
+  cohort: one persistent WebSocket per provider per region, every frame
+  timestamped on arrival, each slot scored against whichever provider
+  delivered it earliest. {{best_name}} currently leads at {{best_p50}}
+  (p50, 24h) across {{count}} keyed providers.
+
+  Because the measurement is relative, the leader reads near zero by
+  construction. The numbers to read are the win rate and the shape of the
+  trailing distribution, p50 against p99, not the leader's absolute figure.
+
+abstract: |
+  Private, API-key Solana endpoints raced on WebSocket delivery. One harness
+  holds a persistent slotSubscribe subscription per provider in
+  each of three regions and timestamps every push on receipt. Per slot, the
+  earliest arrival across providers in that region defines T0; each provider's
+  sample is its own arrival minus T0, in milliseconds.
+
+  The same process runs the HTTP arm of the keyed cohort, which is deliberate:
+  comparing arrival times recorded by separate processes would compare clocks
+  as much as providers, and the differences here are tens of milliseconds.
+
+methodology:
+  - "Race, not latency: all providers on a chain wait for the same slot, so only the spread between them belongs to them. Time from slot production to first arrival is the chain's slot time and is not published as a provider result."
+  - "One persistent socket per provider per region, slotSubscribe for EVM chains and slotSubscribe for Solana. Every frame timestamped on receipt. A provider that drops its socket misses pushes, so coverage is reported as slots seen over the cohort maximum rather than as a success rate."
+  - "Histogram buckets floor at 0.5 ms. The winner reads 0 by construction, so a coarse first bucket collapses every leader's p50 into an interpolation artifact inside it."
+  - "Reconnections are a published result, not an implementation detail: a provider that drops twice in two minutes is unusable to a subscriber whatever its median says."
+  - "GetBlock speaks no WebSocket on its regional hosts, Alchemy answers slotSubscribe with method not found, and Dwellir publishes no Solana endpoint at all, so three HTTP cohort members are absent here."
+  - "Same keyed endpoints as the HTTP cohort on this chain, same keys, same three regions. Keys live in the probe environment, never in this repository. Plan tiers are disclosed on the HTTP cohort's methodology."
+
+expected_n: 7000
+
+prometheus:
+  window: 24h
+  freshness_metric: rpc_ws_head_seen_total
+
+# Per-cell (region) ranking matrix for scoped badge claims. Chain is fixed for
+# the whole bench, so cells key on provider and region.
+rank_matrix_query: histogram_quantile(0.50, sum by (provider, region, le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{chain="solana",tier="keyed"}))
+
+dimensions:
+  region:
+    - { value: all,     label: All regions }
+    - { value: us-east, label: US-East }
+    - { value: eu-west, label: EU-West }
+    - { value: sgp,     label: Singapore }
+
+faq:
+  - q: "Which private RPC provider pushes new Solana slots first over WebSocket?"
+    a: "{{best_name}} wins most per-slot races, with a median lag of {{best_p50}} behind the first arrival (p50, 24h) across {{count}} keyed providers. The board re-scores on every Solana slot. Read the win rate and the trailers' p99 before wiring a latency-sensitive bot to one provider."
+  - q: "Why does the fastest provider show a lag near zero?"
+    a: "By construction. Each slot is a race: the earliest arrival defines T0 and every sample is measured against it, so the provider that wins most races accumulates mostly zero samples. A single vantage point cannot measure absolute production-to-client latency without a node co-located with block producers; it can measure fairly which provider delivers the same slot earlier over the same path. Read the win rate and the trailing distribution, not the leader's absolute number."
+  - q: "Is this the same as the HTTP latency cohort on this chain?"
+    a: "Same providers, same keys, same regions, different question. The HTTP cohort measures a request you send; this measures a push you wait for, and the two orderings are not the same. GetBlock speaks no WebSocket on its regional hosts, Alchemy answers slotSubscribe with method not found, and Dwellir publishes no Solana endpoint at all, so three HTTP cohort members are absent here."
+  - q: "Could a provider win by pushing slots before validating them?"
+    a: "In principle, at the cost of occasionally pushing something that gets retracted. That is why coverage is published next to the lag: a provider that pushes early but wrong shows gaps, and the coverage column counts slots seen against the cohort maximum. Hash-level cross-checking against an independent reference is not in this version."
+
+providers:
+  - slug: chainstack
+    name: Chainstack
+    tag: Private WS, same keyed endpoint as the HTTP cohort
+    formula: "Median ms behind the first provider to push each Solana slot over slotSubscribe, from one persistent socket per provider per region, histogram_quantile over 24h. The per-slot winner scores 0 by construction."
+    queries:
+      p50: histogram_quantile(0.50, sum by (le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{provider="chainstack",chain="solana",tier="keyed"}))
+      p90: histogram_quantile(0.90, sum by (le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{provider="chainstack",chain="solana",tier="keyed"}))
+      p99: histogram_quantile(0.99, sum by (le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{provider="chainstack",chain="solana",tier="keyed"}))
+      mean: sum(ocb:rpc_ws_head_lead_milliseconds_sum:rate24h{provider="chainstack",chain="solana",tier="keyed"}) / sum(ocb:rpc_ws_head_lead_milliseconds_count:rate24h{provider="chainstack",chain="solana",tier="keyed"})
+      success: clamp_max(sum(increase(rpc_ws_head_seen_total{provider="chainstack",chain="solana",tier="keyed"}[24h])) / max(sum by (provider) (increase(rpc_ws_head_seen_total{chain="solana",tier="keyed"}[24h]))), 1)
+      sample_size: sum(increase(rpc_ws_head_seen_total{provider="chainstack",chain="solana",tier="keyed"}[24h]))
+      series: histogram_quantile(0.50, sum by (le) (rate(rpc_ws_head_lead_milliseconds_histogram_bucket{provider="chainstack",chain="solana",tier="keyed"}[1h])))
+      regions:
+        - region: us-east
+          p50: histogram_quantile(0.50, sum by (le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{provider="chainstack",chain="solana",tier="keyed",region="us-east"}))
+          series: histogram_quantile(0.50, sum by (le) (rate(rpc_ws_head_lead_milliseconds_histogram_bucket{provider="chainstack",chain="solana",tier="keyed",region="us-east"}[1h])))
+        - region: eu-west
+          p50: histogram_quantile(0.50, sum by (le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{provider="chainstack",chain="solana",tier="keyed",region="eu-west"}))
+          series: histogram_quantile(0.50, sum by (le) (rate(rpc_ws_head_lead_milliseconds_histogram_bucket{provider="chainstack",chain="solana",tier="keyed",region="eu-west"}[1h])))
+        - region: ap-southeast
+          p50: histogram_quantile(0.50, sum by (le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{provider="chainstack",chain="solana",tier="keyed",region="sgp"}))
+          series: histogram_quantile(0.50, sum by (le) (rate(rpc_ws_head_lead_milliseconds_histogram_bucket{provider="chainstack",chain="solana",tier="keyed",region="sgp"}[1h])))
+
+  - slug: quicknode
+    name: QuickNode
+    tag: Private WS, same keyed endpoint as the HTTP cohort
+    formula: "Median ms behind the first provider to push each Solana slot over slotSubscribe, from one persistent socket per provider per region, histogram_quantile over 24h. The per-slot winner scores 0 by construction."
+    queries:
+      p50: histogram_quantile(0.50, sum by (le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{provider="quicknode",chain="solana",tier="keyed"}))
+      p90: histogram_quantile(0.90, sum by (le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{provider="quicknode",chain="solana",tier="keyed"}))
+      p99: histogram_quantile(0.99, sum by (le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{provider="quicknode",chain="solana",tier="keyed"}))
+      mean: sum(ocb:rpc_ws_head_lead_milliseconds_sum:rate24h{provider="quicknode",chain="solana",tier="keyed"}) / sum(ocb:rpc_ws_head_lead_milliseconds_count:rate24h{provider="quicknode",chain="solana",tier="keyed"})
+      success: clamp_max(sum(increase(rpc_ws_head_seen_total{provider="quicknode",chain="solana",tier="keyed"}[24h])) / max(sum by (provider) (increase(rpc_ws_head_seen_total{chain="solana",tier="keyed"}[24h]))), 1)
+      sample_size: sum(increase(rpc_ws_head_seen_total{provider="quicknode",chain="solana",tier="keyed"}[24h]))
+      series: histogram_quantile(0.50, sum by (le) (rate(rpc_ws_head_lead_milliseconds_histogram_bucket{provider="quicknode",chain="solana",tier="keyed"}[1h])))
+      regions:
+        - region: us-east
+          p50: histogram_quantile(0.50, sum by (le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{provider="quicknode",chain="solana",tier="keyed",region="us-east"}))
+          series: histogram_quantile(0.50, sum by (le) (rate(rpc_ws_head_lead_milliseconds_histogram_bucket{provider="quicknode",chain="solana",tier="keyed",region="us-east"}[1h])))
+        - region: eu-west
+          p50: histogram_quantile(0.50, sum by (le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{provider="quicknode",chain="solana",tier="keyed",region="eu-west"}))
+          series: histogram_quantile(0.50, sum by (le) (rate(rpc_ws_head_lead_milliseconds_histogram_bucket{provider="quicknode",chain="solana",tier="keyed",region="eu-west"}[1h])))
+        - region: ap-southeast
+          p50: histogram_quantile(0.50, sum by (le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{provider="quicknode",chain="solana",tier="keyed",region="sgp"}))
+          series: histogram_quantile(0.50, sum by (le) (rate(rpc_ws_head_lead_milliseconds_histogram_bucket{provider="quicknode",chain="solana",tier="keyed",region="sgp"}[1h])))
+
+  - slug: validationcloud
+    name: Validation Cloud
+    tag: Private WS, same keyed endpoint as the HTTP cohort
+    formula: "Median ms behind the first provider to push each Solana slot over slotSubscribe, from one persistent socket per provider per region, histogram_quantile over 24h. The per-slot winner scores 0 by construction."
+    queries:
+      p50: histogram_quantile(0.50, sum by (le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{provider="validationcloud",chain="solana",tier="keyed"}))
+      p90: histogram_quantile(0.90, sum by (le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{provider="validationcloud",chain="solana",tier="keyed"}))
+      p99: histogram_quantile(0.99, sum by (le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{provider="validationcloud",chain="solana",tier="keyed"}))
+      mean: sum(ocb:rpc_ws_head_lead_milliseconds_sum:rate24h{provider="validationcloud",chain="solana",tier="keyed"}) / sum(ocb:rpc_ws_head_lead_milliseconds_count:rate24h{provider="validationcloud",chain="solana",tier="keyed"})
+      success: clamp_max(sum(increase(rpc_ws_head_seen_total{provider="validationcloud",chain="solana",tier="keyed"}[24h])) / max(sum by (provider) (increase(rpc_ws_head_seen_total{chain="solana",tier="keyed"}[24h]))), 1)
+      sample_size: sum(increase(rpc_ws_head_seen_total{provider="validationcloud",chain="solana",tier="keyed"}[24h]))
+      series: histogram_quantile(0.50, sum by (le) (rate(rpc_ws_head_lead_milliseconds_histogram_bucket{provider="validationcloud",chain="solana",tier="keyed"}[1h])))
+      regions:
+        - region: us-east
+          p50: histogram_quantile(0.50, sum by (le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{provider="validationcloud",chain="solana",tier="keyed",region="us-east"}))
+          series: histogram_quantile(0.50, sum by (le) (rate(rpc_ws_head_lead_milliseconds_histogram_bucket{provider="validationcloud",chain="solana",tier="keyed",region="us-east"}[1h])))
+        - region: eu-west
+          p50: histogram_quantile(0.50, sum by (le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{provider="validationcloud",chain="solana",tier="keyed",region="eu-west"}))
+          series: histogram_quantile(0.50, sum by (le) (rate(rpc_ws_head_lead_milliseconds_histogram_bucket{provider="validationcloud",chain="solana",tier="keyed",region="eu-west"}[1h])))
+        - region: ap-southeast
+          p50: histogram_quantile(0.50, sum by (le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{provider="validationcloud",chain="solana",tier="keyed",region="sgp"}))
+          series: histogram_quantile(0.50, sum by (le) (rate(rpc_ws_head_lead_milliseconds_histogram_bucket{provider="validationcloud",chain="solana",tier="keyed",region="sgp"}[1h])))

@@ -71,24 +71,34 @@ groups:
       # head_lead's p50 is the honest headline. Its mean is not, because one
       # reconnection drags it: a provider that drops a connection misses pushes
       # and then scores a large lead on the block it rejoins.
-      - record: ocb:rpc_ws_head_lead_milliseconds:p50_24h
-        expr: quantile_over_time(0.50, rpc_ws_head_lead_milliseconds[24h])
-      - record: ocb:rpc_ws_head_lead_milliseconds:p90_24h
-        expr: quantile_over_time(0.90, rpc_ws_head_lead_milliseconds[24h])
-      - record: ocb:rpc_ws_head_lead_milliseconds:p99_24h
-        expr: quantile_over_time(0.99, rpc_ws_head_lead_milliseconds[24h])
+      #
+      # Recorded as bucket rates rather than finished quantiles, following
+      # histogram_recording_rules.yml: one rule then serves the headline and
+      # every region tab, and the heavy 24h bucket rate is evaluated once a
+      # minute here instead of on every page render. Nine new pages each firing
+      # a raw rate(..._bucket[24h]) is precisely the outbound-call cost these
+      # rules exist to avoid.
+      #
+      # Keeping the dimensions puts an obligation on the SPEC: it must
+      # aggregate with sum by (le) over whatever it does not pin, or
+      # prom.scalar takes result[0] and the headline becomes a random cell.
+      # That is how a live page once showed a p99 below its own p50.
+      - record: ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h
+        expr: sum by (provider, chain, region, tier, le) (rate(rpc_ws_head_lead_milliseconds_histogram_bucket[24h]))
+      - record: ocb:rpc_ws_head_lead_milliseconds_sum:rate24h
+        expr: sum by (provider, chain, region, tier) (rate(rpc_ws_head_lead_milliseconds_histogram_sum[24h]))
+      - record: ocb:rpc_ws_head_lead_milliseconds_count:rate24h
+        expr: sum by (provider, chain, region, tier) (rate(rpc_ws_head_lead_milliseconds_histogram_count[24h]))
 
+      - record: ocb:rpc_ws_call_milliseconds_bucket:rate24h
+        expr: sum by (provider, chain, region, tier, le) (rate(rpc_ws_call_milliseconds_histogram_bucket[24h]))
+
+      # The subscribe round trip is a gauge set once per connection rather than
+      # a stream of observations, so a quantile over time is its right shape.
       - record: ocb:rpc_ws_subscribe_milliseconds:p50_24h
         expr: quantile_over_time(0.50, rpc_ws_subscribe_milliseconds[24h])
       - record: ocb:rpc_ws_subscribe_milliseconds:p90_24h
         expr: quantile_over_time(0.90, rpc_ws_subscribe_milliseconds[24h])
-
-      - record: ocb:rpc_ws_call_milliseconds:p50_24h
-        expr: quantile_over_time(0.50, rpc_ws_call_milliseconds[24h])
-      - record: ocb:rpc_ws_call_milliseconds:p90_24h
-        expr: quantile_over_time(0.90, rpc_ws_call_milliseconds[24h])
-      - record: ocb:rpc_ws_call_milliseconds:p99_24h
-        expr: quantile_over_time(0.99, rpc_ws_call_milliseconds[24h])
 
       # Win rate as a numerator/denominator pair, the same convention as
       # ocb:rpc_call above, so the site keeps ratio-of-sums semantics when it
