@@ -55,6 +55,14 @@ export type HlFeedCoverage = {
    *  rather than the public per-builder export. A day sourced there is whole;
    *  the export cuts most days off around 12:10 UTC. */
   nodeDays: number;
+  /** Days in the window served as reconstructions: the export's own morning
+   *  spliced to an afternoon rebuilt per wallet from Hyperliquid's info API,
+   *  for outages the node cannot replay. Measured 0.43% under the node on a
+   *  held-out day, so these are close to whole, but they are not measured and
+   *  are never counted in `nodeDays`. Told to the reader because a
+   *  reconstruction presented as a measurement is the one thing this
+   *  disclosure exists to prevent. */
+  rebuiltDays: number;
 };
 
 /**

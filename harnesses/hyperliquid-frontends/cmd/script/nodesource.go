@@ -43,6 +43,12 @@ type nodeDayIndex struct {
 	Day      string `json:"day"`
 	Hours    int    `json:"hours"`
 	Complete bool   `json:"complete"`
+	// Rebuilt marks a day the reducer assembled from the public export plus
+	// the per-wallet info API instead of measuring it. Such a day is used,
+	// because it beats the export alone by a wide margin, but it is counted
+	// apart: "read from the node" and "reconstructed" are different claims
+	// and the page makes both.
+	Rebuilt bool `json:"rebuilt"`
 }
 
 type nodeUserAgg struct {
@@ -67,6 +73,7 @@ type nodeDay struct {
 	Day      string                 `json:"day"`
 	Hours    int                    `json:"hours"`
 	Complete bool                   `json:"complete"`
+	Rebuilt  bool                   `json:"rebuilt"`
 	Builders map[string]*nodeTotals `json:"builders"`
 }
 
@@ -168,12 +175,31 @@ func (n *NodeSource) Refresh() error {
 }
 
 // WholeDays is the set of days the node covered end to end.
+// RebuiltDays is the days served as reconstructions. Disjoint from
+// WholeDays, so a caller can report each without the other.
+func (n *NodeSource) RebuiltDays() map[string]bool {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+	out := make(map[string]bool, len(n.index))
+	for d, e := range n.index {
+		if e.Complete && e.Rebuilt {
+			out[d] = true
+		}
+	}
+	return out
+}
+
+// WholeDays is the days the node measured in full. Rebuilt days are excluded
+// deliberately: this feeds hl_frontend_node_days_window_v2, whose help text
+// promises days "read from the Hyperliquid node's own fill stream", and a
+// reconstruction counted there would quietly inflate the one number that says
+// how much of the window is real.
 func (n *NodeSource) WholeDays() map[string]bool {
 	n.mu.Lock()
 	defer n.mu.Unlock()
 	out := make(map[string]bool, len(n.index))
 	for d, e := range n.index {
-		if e.Complete {
+		if e.Complete && !e.Rebuilt {
 			out[d] = true
 		}
 	}

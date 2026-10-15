@@ -32,7 +32,7 @@ func serve(addr string, r *Reducer) error {
 			http.Error(w, "bad day", http.StatusBadRequest)
 			return
 		}
-		f, err := os.Open(r.outPath(day))
+		f, err := os.Open(r.servePathFor(day))
 		if err != nil {
 			http.Error(w, "not reduced", http.StatusNotFound)
 			return
@@ -53,7 +53,8 @@ func serve(addr string, r *Reducer) error {
 			if i > 0 {
 				fmt.Fprint(w, ",")
 			}
-			fmt.Fprintf(w, `{"day":%q,"hours":%d,"complete":%t}`, d.Day, d.Hours, d.Complete)
+			fmt.Fprintf(w, `{"day":%q,"hours":%d,"complete":%t,"rebuilt":%t}`,
+				d.Day, d.Hours, d.Complete, d.Rebuilt)
 		}
 		fmt.Fprint(w, "]")
 	})
@@ -70,43 +71,116 @@ func serve(addr string, r *Reducer) error {
 	return srv.ListenAndServe()
 }
 
+// servePathFor is which file /daily/<day> hands over, and it must follow the
+// same rule availableDays lists by: a WHOLE measured day wins, a partial
+// measured day loses to a rebuilt whole one, and with no rebuilt day the
+// partial measurement is still the best there is.
+//
+// Shared rather than duplicated on purpose. The first version inlined this in
+// the handler and opened the reduced file whenever it existed, so a day the
+// listing announced as a rebuilt whole day was served as the partial
+// measurement: the consumer would have summed 11 hours believing it held 24,
+// which is the exact class of quiet wrong answer this harness exists to stop.
+func (r *Reducer) servePathFor(day string) string {
+	reducedPath := r.outPath(day)
+	if r.RebuiltDir == "" {
+		return reducedPath
+	}
+	if d, err := r.LoadDay(day); err == nil && d.Complete {
+		return reducedPath
+	}
+	cand := filepath.Join(r.RebuiltDir, day+".json.gz")
+	if d, err := r.loadFrom(cand); err == nil && d.Rebuilt {
+		return cand
+	}
+	return reducedPath
+}
+
 type dayInfo struct {
 	Day      string
 	Hours    int
 	Complete bool
+	// Rebuilt marks a day assembled from the public export and the per-wallet
+	// info API rather than measured by the node. Consumers must be able to
+	// tell the two apart: the figures are close (-0.43% on the 2026-10-09
+	// validation) but they are a reconstruction, and a reconstruction that
+	// reads as a measurement is the failure this harness was written against.
+	Rebuilt bool
 }
 
+// availableDays lists the reduced days, then fills the gaps with rebuilt ones.
+//
+// A measured day always wins. A rebuilt day is offered only where the node has
+// no whole day, so restoring the node never silently keeps a reconstruction in
+// service, and a rebuilt day never displaces a real one.
 func (r *Reducer) availableDays() []dayInfo {
-	ents, err := os.ReadDir(r.OutDir)
-	if err != nil {
-		return nil
-	}
-	var out []dayInfo
-	for _, e := range ents {
-		n := e.Name()
-		if !strings.HasSuffix(n, ".json.gz") {
-			continue
+	out := make([]dayInfo, 0, 64)
+	whole := map[string]bool{}
+
+	if ents, err := os.ReadDir(r.OutDir); err == nil {
+		for _, e := range ents {
+			n := e.Name()
+			if !strings.HasSuffix(n, ".json.gz") {
+				continue
+			}
+			d, err := r.LoadDay(strings.TrimSuffix(n, ".json.gz"))
+			if err != nil {
+				continue
+			}
+			out = append(out, dayInfo{Day: d.Day, Hours: d.Hours, Complete: d.Complete})
+			if d.Complete {
+				whole[d.Day] = true
+			}
 		}
-		day := strings.TrimSuffix(n, ".json.gz")
-		d, err := r.LoadDay(day)
-		if err != nil {
-			continue
-		}
-		out = append(out, dayInfo{Day: d.Day, Hours: d.Hours, Complete: d.Complete})
 	}
+
+	if r.RebuiltDir != "" {
+		if ents, err := os.ReadDir(r.RebuiltDir); err == nil {
+			for _, e := range ents {
+				n := e.Name()
+				if !strings.HasSuffix(n, ".json.gz") {
+					continue
+				}
+				day := strings.TrimSuffix(n, ".json.gz")
+				if whole[day] {
+					continue // the node measured this one; keep the measurement
+				}
+				d, err := r.loadFrom(filepath.Join(r.RebuiltDir, n))
+				if err != nil || !d.Rebuilt {
+					continue // unflagged files in this directory are not trusted
+				}
+				// Replace the partial reduced entry for the same day, if any.
+				replaced := false
+				for i := range out {
+					if out[i].Day == day {
+						out[i] = dayInfo{Day: day, Hours: d.Hours, Complete: d.Complete, Rebuilt: true}
+						replaced = true
+						break
+					}
+				}
+				if !replaced {
+					out = append(out, dayInfo{Day: day, Hours: d.Hours, Complete: d.Complete, Rebuilt: true})
+				}
+			}
+		}
+	}
+
 	sort.Slice(out, func(i, j int) bool { return out[i].Day < out[j].Day })
 	return out
 }
 
 func (r *Reducer) writeMetrics(w http.ResponseWriter) {
 	days := r.availableDays()
-	whole, partial := 0, 0
+	whole, partial, rebuilt := 0, 0, 0
 	newest := ""
 	for _, d := range days {
 		if d.Complete {
 			whole++
 		} else {
 			partial++
+		}
+		if d.Rebuilt {
+			rebuilt++
 		}
 		if d.Day > newest {
 			newest = d.Day
@@ -152,6 +226,9 @@ func (r *Reducer) writeMetrics(w http.ResponseWriter) {
 # TYPE hl_reduce_days_total gauge
 hl_reduce_days_total{complete="true"} %d
 hl_reduce_days_total{complete="false"} %d
+# HELP hl_reduce_rebuilt_days_total Days served from the rebuild directory rather than measured by the node. Assembled from the public export plus the per-wallet info API, and close but not measurements: the 2026-10-09 validation came out 0.43 per cent under the node. A window leaning on these is a window to say so about. Note for editors: a literal percent sign here is a format verb to Go and silently eats the next argument.
+# TYPE hl_reduce_rebuilt_days_total gauge
+hl_reduce_rebuilt_days_total %d
 # HELP hl_reduce_newest_day_age_seconds Age of the newest reduced day, measured from the end of that UTC day. Negative when nothing is reduced.
 # TYPE hl_reduce_newest_day_age_seconds gauge
 hl_reduce_newest_day_age_seconds %.0f
@@ -173,7 +250,7 @@ hl_reduce_root_disk_free_bytes %d
 # HELP hl_reduce_last_scrape_unix Unix time this endpoint was last read.
 # TYPE hl_reduce_last_scrape_unix gauge
 hl_reduce_last_scrape_unix %d
-`, whole, partial, newestAge, lastHourAge, usedPct, free, rootUsedPct, rootFree, time.Now().Unix())
+`, whole, partial, rebuilt, newestAge, lastHourAge, usedPct, free, rootUsedPct, rootFree, time.Now().Unix())
 }
 
 // newestHourFile finds the most recently written hourly fill file.

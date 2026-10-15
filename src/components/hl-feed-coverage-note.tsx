@@ -12,6 +12,14 @@ import type { HlFeedCoverage } from "@/lib/hl-feed";
  * the hours before 13:00 hold only about 43% of the notional: a day from
  * there is closer to a third than a half of itself.
  *
+ * A third kind of day exists since 2026-10-15: one the node missed and cannot
+ * replay, rebuilt from the export's own morning spliced to an afternoon
+ * reassembled wallet by wallet from the info API. Rebuilding a day held in
+ * full came out 0.43% under the node, against 31% short for the export alone.
+ * Those days are reported on their own line and never folded into the node-day
+ * count, because close is not measured and the whole point of this note is
+ * that the reader can tell which they are reading.
+ *
  * The note therefore has two voices. A window built from the export is a
  * warning, because its totals read near half of what a full-feed tracker
  * reports. A window that is almost all node days is a footnote naming the
@@ -26,7 +34,13 @@ export function HlFeedCoverageNote({
   feed: HlFeedCoverage | null;
   className?: string;
 }) {
-  if (!feedNeedsDisclosure(feed)) return null;
+  // A window holding reconstructions has to say so even when every day in it
+  // is nominally whole, which is exactly when the truncation test goes quiet.
+  // Saying nothing here would publish a reconstruction as a measurement, and
+  // that is the single thing this note exists to prevent.
+  const rebuilt = feed?.rebuiltDays ?? 0;
+  const truncation = feedNeedsDisclosure(feed);
+  if (!truncation && rebuilt === 0) return null;
 
   const mostlyWhole = feedIsMostlyWhole(feed);
   const tone = mostlyWhole
@@ -41,11 +55,13 @@ export function HlFeedCoverageNote({
       className={`rounded-lg border p-4 text-[12.5px] leading-relaxed ${tone} ${className}`}
     >
       <p className={`label-mono text-[10px] mb-1.5 ${labelTone}`}>
-        {mostlyWhole
-          ? "A few days come from a partial upstream feed"
-          : "Upstream feed is publishing partial days"}
+        {!truncation
+          ? "Some days are rebuilt, not measured"
+          : mostlyWhole
+            ? "A few days come from a partial upstream feed"
+            : "Upstream feed is publishing partial days"}
       </p>
-      {!feed ? (
+      {!truncation ? null : !feed ? (
         <p>
           Coverage is not being measured on this run, so how much of each UTC
           day the figures below cover is unknown. Hyperliquid&apos;s public
@@ -93,6 +109,22 @@ export function HlFeedCoverageNote({
             .join(" ")
             .replace(" , ", ", ")
             .replace(" . ", ". ")}
+        </p>
+      )}
+      {rebuilt > 0 && (
+        <p className="mt-2">
+          {[
+            truncation
+              ? `${rebuilt} of those ${rebuilt === 1 ? "days is" : "days are"} rebuilt rather than measured:`
+              : `${rebuilt} ${rebuilt === 1 ? "day in this window is" : "days in this window are"} rebuilt rather than measured:`,
+            "the export's own hours up to its cutoff, spliced to an afternoon",
+            "reassembled wallet by wallet from Hyperliquid's info API, for an",
+            "outage our node cannot replay. Rebuilding a day we did hold in",
+            "full came out 0.43% under the node, against 31% short for the",
+            "export alone, so these are close. They are still a",
+            "reconstruction and not a measurement, which is why they are",
+            "counted separately here and never added to the node-day count.",
+          ].join(" ")}
         </p>
       )}
     </aside>

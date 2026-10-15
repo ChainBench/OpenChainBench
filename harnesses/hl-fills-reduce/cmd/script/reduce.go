@@ -60,14 +60,19 @@ const reduceSchema = 2
 
 // Day is the reduced form of one day of the node's fill stream.
 type Day struct {
-	Schema    int                `json:"schema"`
-	Day       string             `json:"day"`
-	Hours     int                `json:"hours"`
-	Complete  bool               `json:"complete"`
-	FirstFill string             `json:"first_fill,omitempty"`
-	LastFill  string             `json:"last_fill,omitempty"`
-	ReducedAt int64              `json:"reduced_at"`
-	Builders  map[string]*Totals `json:"builders"`
+	Schema    int    `json:"schema"`
+	Day       string `json:"day"`
+	Hours     int    `json:"hours"`
+	Complete  bool   `json:"complete"`
+	FirstFill string `json:"first_fill,omitempty"`
+	LastFill  string `json:"last_fill,omitempty"`
+	ReducedAt int64  `json:"reduced_at"`
+	// Rebuilt marks a day assembled from the public export plus the
+	// per-wallet info API instead of measured by the node. Absent on every
+	// day the reducer writes itself, so a consumer that does not know the
+	// field still cannot read a reconstruction as a measurement.
+	Rebuilt  bool               `json:"rebuilt,omitempty"`
+	Builders map[string]*Totals `json:"builders"`
 }
 
 // fillEvent mirrors only the fields this reads. The node's record carries a
@@ -92,8 +97,14 @@ type blockLine struct {
 type Reducer struct {
 	FillsDir string
 	OutDir   string
-	Mount    string
-	Backfill int
+	// RebuiltDir holds days rebuilt from the public export plus the info API,
+	// for outages the node cannot replay: it fast-forwards instead of
+	// backfilling, so a gap is permanent locally. Served only for days OutDir
+	// has no whole day for, and always flagged, because a rebuilt day is not
+	// a measured one and this harness exists to keep that distinction.
+	RebuiltDir string
+	Mount      string
+	Backfill   int
 }
 
 // outPath is where a reduced day lands. Gzipped because the trader lists
@@ -360,7 +371,12 @@ func (r *Reducer) write(d *Day) error {
 
 // LoadDay reads a reduced day back.
 func (r *Reducer) LoadDay(day string) (*Day, error) {
-	f, err := os.Open(r.outPath(day))
+	return r.loadFrom(r.outPath(day))
+}
+
+// loadFrom reads one reduced or rebuilt day from an explicit path.
+func (r *Reducer) loadFrom(path string) (*Day, error) {
+	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}

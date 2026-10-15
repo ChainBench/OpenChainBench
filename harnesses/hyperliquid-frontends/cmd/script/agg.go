@@ -527,19 +527,29 @@ func (a *Aggregator) publish() {
 	// truncation count.
 	if a.node != nil {
 		whole := a.node.WholeDays()
+		rebuilt := a.node.RebuiltDays()
 		keep := map[string]bool{}
-		fromNode := 0
+		fromNode, fromRebuilt := 0, 0
 		for d := windowStart; !d.After(D); d = d.AddDate(0, 0, 1) {
 			k := dayKey(d)
 			keep[k] = true
 			if whole[k] {
 				fromNode++
 			}
+			// Counted apart from fromNode, never added to it. A rebuilt day
+			// beats the truncated export by a wide margin but it is a
+			// reconstruction, and the node-days figure is what tells a reader
+			// how much of the window was actually measured.
+			if rebuilt[k] {
+				fromRebuilt++
+			}
 		}
 		hlNodeDaysWindow.Set(float64(fromNode))
+		hlRebuiltDaysWindow.Set(float64(fromRebuilt))
 		a.node.Evict(keep)
 	} else {
 		hlNodeDaysWindow.Set(0)
+		hlRebuiltDaysWindow.Set(0)
 	}
 
 	// Second pass: the biggest day needs to know which days were cut short,

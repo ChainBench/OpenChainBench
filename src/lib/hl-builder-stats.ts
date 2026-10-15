@@ -109,12 +109,13 @@ function promUrl(): string | null {
  * were added to stop making in the first place.
  */
 async function readFeedCoverage(prom: Prometheus): Promise<HlFeedCoverage | null> {
-  const [hours, truncated, inWindow, measured, nodeDays] = await Promise.all([
+  const [hours, truncated, inWindow, measured, nodeDays, rebuiltDays] = await Promise.all([
     prom.scalar(`hl_frontend_day_coverage_hours_v2`),
     prom.scalar(`hl_frontend_day_truncated_v2`),
     prom.scalar(`hl_frontend_truncated_days_window_v2`),
     prom.scalar(`hl_frontend_coverage_days_measured_v2`),
     prom.scalar(`hl_frontend_node_days_window_v2`),
+    prom.scalar(`hl_frontend_rebuilt_days_window_v2`),
   ]);
   if (hours === null && truncated === null && inWindow === null) return null;
   const windowDays = 30;
@@ -129,6 +130,10 @@ async function readFeedCoverage(prom: Prometheus): Promise<HlFeedCoverage | null
     daysMeasured: Math.round(measured ?? 0),
     windowDays,
     nodeDays: Math.round(nodeDays ?? 0),
+    // 0 when the harness predates the gauge, which reads the same as "no
+    // reconstructions in the window" and is the safe way round: it never
+    // claims a day was rebuilt when it was measured.
+    rebuiltDays: Math.round(rebuiltDays ?? 0),
   };
 }
 
