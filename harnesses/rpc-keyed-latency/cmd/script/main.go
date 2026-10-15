@@ -77,6 +77,10 @@ func main() {
 	// for the ninety minutes of Singapore numbers served from California.
 	StartEgressWatch(ctx)
 	StartProbeLoop(ctx)
+	// The WebSocket arm shares this process on purpose: its headline metric is
+	// a race between providers on the same block, and arrival times from
+	// separate processes would compare clocks. See ws.go.
+	StartWSLoop(ctx)
 
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
