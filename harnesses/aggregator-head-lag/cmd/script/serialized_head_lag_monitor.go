@@ -39,6 +39,16 @@ import (
 // series that can actually compare providers. See reference_monitor.go.
 // The endpoint is Config.SerializedWSURL (SERIALIZED_WS_URL).
 
+const (
+	serializedPingEvery    = 10 * time.Second
+	serializedReadDeadline = 20 * time.Second // two missed pongs
+	// serializedSlowLog is the lag above which a trade is logged one by
+	// one, hash and both clocks, so a spike can be checked tx by tx
+	// against Serialized's own send logs.
+	serializedSlowLog = 3 * time.Second
+	serializedSeenMax = 20000
+)
+
 // serializedPinnedToken is the fallback when /v1/pool is unreachable at
 // boot. Values are the `token` side of each bench pool as Serialized
 // reports it (2026-09-06).
@@ -118,6 +128,7 @@ func runSerializedHeadLagMonitor(config *Config, stopChan <-chan struct{}, wg *s
 
 	const baseDelay = 5 * time.Second
 	const maxDelay = 60 * time.Second
+	const healthySession = 2 * time.Minute
 	delay := baseDelay
 	attempt := 0
 
@@ -128,8 +139,16 @@ func runSerializedHeadLagMonitor(config *Config, stopChan <-chan struct{}, wg *s
 		default:
 		}
 		attempt++
+		started := time.Now()
 		err := serializedConnectAndStream(config, tokens, poolChain, stopChan)
 		RecordWSConnected("serialized", config.MonitorRegion, false)
+		// A session that streamed for a while ended on its own; the backoff
+		// is for consecutive failures. Without this reset every drop after
+		// the fifth waited the 60 s ceiling, a minute of missing trades
+		// charged to the provider for an ordinary disconnect.
+		if time.Since(started) > healthySession {
+			delay = baseDelay
+		}
 		if err != nil {
 			RecordWSReconnect("serialized", config.MonitorRegion)
 			log.Printf("[HEAD-LAG][SERIALIZED] ❌ attempt #%d ended: %v — reconnect in %v", attempt, err, delay)
@@ -213,11 +232,16 @@ func serializedConnectAndStream(config *Config, tokens map[string]string, poolCh
 	RecordWSConnected("serialized", config.MonitorRegion, true)
 	fmt.Printf("[HEAD-LAG][SERIALIZED] ✅ connected, %d pool subscriptions sent\n", subscribed)
 
-	// Keepalive: {"op":"ping"} every 25 s; server closes idle sockets at 60 s.
+	// Keepalive: {"op":"ping"} every serializedPingEvery; the pongs keep
+	// the read deadline moving. The server closes idle sockets at 60 s,
+	// but the bench has to notice a stalled path far sooner: with a 90 s
+	// deadline a socket that froze and then resumed handed over its whole
+	// backlog at once, scored as 60-118 s of lag on 2026-10-14 in us-east
+	// while the other feeds, which redial within seconds, read 1-3 s.
 	done := make(chan struct{})
 	defer close(done)
 	go func() {
-		t := time.NewTicker(25 * time.Second)
+		t := time.NewTicker(serializedPingEvery)
 		defer t.Stop()
 		for {
 			select {
@@ -270,13 +294,17 @@ func serializedConnectAndStream(config *Config, tokens map[string]string, poolCh
 		}
 	}()
 
+	// Deliveries already scored, by trade id, bounded FIFO. Per connection:
+	// a replay after a reconnect is filtered by the race and the 120 s cap.
+	seen := map[string]time.Time{}
+	var seenOrder []string
 	for {
 		select {
 		case <-stopChan:
 			return nil
 		default:
 		}
-		_ = conn.SetReadDeadline(time.Now().Add(90 * time.Second))
+		_ = conn.SetReadDeadline(time.Now().Add(serializedReadDeadline))
 		_, raw, err := conn.ReadMessage()
 		if err != nil {
 			return fmt.Errorf("read: %w", err)
@@ -324,9 +352,35 @@ func serializedConnectAndStream(config *Config, tokens map[string]string, poolCh
 		lastEvent[chainName] = time.Now()
 		lastMu.Unlock()
 
+		lagSeconds := receiveTime.Sub(time.UnixMilli(d.At)).Seconds()
+
+		// A trade delivered twice (same id, or same hash when id is
+		// missing) is logged and dropped: scored again it would read as
+		// one trade arriving minutes late.
+		key := chainName + "|" + d.ID
+		if d.ID == "" {
+			key = chainName + "|" + txHash
+		}
+		if first, ok := seen[key]; ok {
+			log.Printf("[HEAD-LAG][SERIALIZED] 🔁 duplicate %s on %s: first received %s, again %s (+%.1fs), at=%s",
+				key, chainName, first.Format("15:04:05.000"), receiveTime.Format("15:04:05.000"),
+				receiveTime.Sub(first).Seconds(), time.UnixMilli(d.At).UTC().Format("15:04:05.000"))
+			continue
+		}
+		seen[key] = receiveTime
+		seenOrder = append(seenOrder, key)
+		if len(seenOrder) > serializedSeenMax {
+			delete(seen, seenOrder[0])
+			seenOrder = seenOrder[1:]
+		}
+		if lagSeconds > serializedSlowLog.Seconds() {
+			log.Printf("[HEAD-LAG][SERIALIZED] 🐢 slow %s on %s: at=%s received=%s lag %.2fs (block %d)",
+				txHash, chainName, time.UnixMilli(d.At).UTC().Format("15:04:05.000"),
+				receiveTime.Format("15:04:05.000"), lagSeconds, d.Block)
+		}
+
 		// Legacy series: provider's own clock, identical treatment to the
 		// incumbents (RecordHeadLag drops negatives and >120 s itself).
-		lagSeconds := receiveTime.Sub(time.UnixMilli(d.At)).Seconds()
 		emitHeadLag("serialized", chainName, config.MonitorRegion, txHash, receiveTime, 0, lagSeconds)
 
 		// Reference series: our node clock, matched by hash.
