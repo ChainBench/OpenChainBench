@@ -40,6 +40,7 @@ export function RpcProvidersPivot({
   chains,
   regionLabel = "all regions",
   geoControl,
+  raceMode = false,
 }: {
   rows: RpcHubPivotRow[];
   chains: ChainRef[];
@@ -51,6 +52,10 @@ export function RpcProvidersPivot({
   /** The hub's region selector, rendered in this table's header bar so the
    *  control sits with the caption it changes. */
   geoControl?: React.ReactNode;
+  /** The block-push cohort is a race: this column is a median lag behind
+   *  whichever provider pushed the block first, not a latency, and the
+   *  winner sits near zero because it is zero behind itself. */
+  raceMode?: boolean;
 }) {
   const router = useRouter();
   const [sortKey, setSortKey] = useState<SortKey>("chainsCovered");
@@ -161,7 +166,15 @@ export function RpcProvidersPivot({
                 dir={sortDir}
                 onClick={() => setSort("medianP50Ms")}
               >
-                Median p50
+                <span
+                  title={
+                    raceMode
+                      ? "Median milliseconds behind whichever provider pushed the block first, across covered chains. The leader sits near zero because it is zero behind itself; read the trailers' distance from it."
+                      : "Median 24h p50 across the chains this provider covers."
+                  }
+                >
+                  {raceMode ? "Median lag" : "Median p50"}
+                </span>
               </ThSort>
               {hasSuccess && (
                 <ThSort
@@ -396,6 +409,11 @@ function Td({
 
 function fmtMs(v: number | null | undefined): string {
   if (v == null || !Number.isFinite(v)) return "...";
+  // One decimal below 10 ms. Rounding to the nearest millisecond printed a
+  // 0.3 ms median as "0 ms", which reads as a broken measurement rather than
+  // as a provider that is a third of a millisecond behind, and it flattened
+  // 2.1 against 5.8 into 2 against 6 on the HTTP cohorts.
+  if (v < 10) return `${v.toFixed(1)} ms`;
   if (v < 1000) return `${Math.round(v)} ms`;
   return `${(v / 1000).toFixed(2)} s`;
 }

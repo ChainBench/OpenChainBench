@@ -294,6 +294,7 @@ export function RpcHubTabs({
           rows={view.providersPivot}
           regionLabel={geoLabel}
           geoControl={geoControl}
+          raceMode={resolved === "websocket"}
           chains={view.chains.map((c) => ({
             chain: c.chain,
             name: c.name,
@@ -347,6 +348,9 @@ function SummaryCard({
 
 function fmtMs(v: number): string {
   if (!Number.isFinite(v)) return "...";
+  // Same rule as the tables: the summary card carried the same zero, since
+  // "Smallest push lag" on the race cohort is a figure under one millisecond.
+  if (v < 10) return `${v.toFixed(1)} ms`;
   if (v < 1000) return `${Math.round(v)} ms`;
   return `${(v / 1000).toFixed(2)} s`;
 }
