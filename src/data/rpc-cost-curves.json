@@ -499,7 +499,15 @@
       "unlimited-25": "Unlimited Node, 25 RPS",
       "unlimited-250": "Unlimited Node, 250 RPS",
       "unlimited-500": "Unlimited Node, 500 RPS"
-     }
+     },
+     "unverified": [
+      "cluster-eth-archive",
+      "unlimited-100",
+      "unlimited-1000",
+      "unlimited-25",
+      "unlimited-250",
+      "unlimited-500"
+     ]
     },
     {
      "slug": "getblock",
@@ -958,7 +966,12 @@
       "business": "Business",
       "pro": "Pro",
       "starter": "Starter"
-     }
+     },
+     "unverified": [
+      "business",
+      "pro",
+      "starter"
+     ]
     },
     {
      "slug": "nownodes",
@@ -1708,7 +1721,21 @@
       "t40m": "Pro 40M",
       "t4m": "Starter 4M",
       "t80m": "Pro 80M"
-     }
+     },
+     "unverified": [
+      "t10m",
+      "t150m",
+      "t15m",
+      "t200m",
+      "t20m",
+      "t250m",
+      "t300m",
+      "t350m",
+      "t400m",
+      "t40m",
+      "t4m",
+      "t80m"
+     ]
     },
     {
      "slug": "thirdweb",
@@ -1766,7 +1793,10 @@
       "growth": "Growth",
       "pro": "Pro (from)",
       "scale": "Scale"
-     }
+     },
+     "unverified": [
+      "pro"
+     ]
     },
     {
      "slug": "triton",
@@ -1825,7 +1855,10 @@
      ],
      "planNames": {
       "scale": "Scale (banded pay-as-you-go)"
-     }
+     },
+     "unverified": [
+      "scale"
+     ]
     },
     {
      "slug": "zeeve",
@@ -1868,7 +1901,12 @@
       "eth-advance": "Ethereum Advance",
       "eth-basic": "Ethereum Basic (dedicated RPC)",
       "eth-enterprise": "Ethereum Enterprise"
-     }
+     },
+     "unverified": [
+      "eth-advance",
+      "eth-basic",
+      "eth-enterprise"
+     ]
     }
    ]
   },
@@ -2376,7 +2414,15 @@
       "unlimited-25": "Unlimited Node, 25 RPS",
       "unlimited-250": "Unlimited Node, 250 RPS",
       "unlimited-500": "Unlimited Node, 500 RPS"
-     }
+     },
+     "unverified": [
+      "cluster-eth-archive",
+      "unlimited-100",
+      "unlimited-1000",
+      "unlimited-25",
+      "unlimited-250",
+      "unlimited-500"
+     ]
     },
     {
      "slug": "getblock",
@@ -2830,7 +2876,12 @@
       "business": "Business",
       "pro": "Pro",
       "starter": "Starter"
-     }
+     },
+     "unverified": [
+      "business",
+      "pro",
+      "starter"
+     ]
     },
     {
      "slug": "nownodes",
@@ -3580,7 +3631,21 @@
       "t40m": "Pro 40M",
       "t4m": "Starter 4M",
       "t80m": "Pro 80M"
-     }
+     },
+     "unverified": [
+      "t10m",
+      "t150m",
+      "t15m",
+      "t200m",
+      "t20m",
+      "t250m",
+      "t300m",
+      "t350m",
+      "t400m",
+      "t40m",
+      "t4m",
+      "t80m"
+     ]
     },
     {
      "slug": "thirdweb",
@@ -3638,7 +3703,10 @@
       "growth": "Growth",
       "pro": "Pro (from)",
       "scale": "Scale"
-     }
+     },
+     "unverified": [
+      "pro"
+     ]
     },
     {
      "slug": "triton",
@@ -3697,7 +3765,10 @@
      ],
      "planNames": {
       "scale": "Scale (banded pay-as-you-go)"
-     }
+     },
+     "unverified": [
+      "scale"
+     ]
     },
     {
      "slug": "zeeve",
@@ -3740,7 +3811,12 @@
       "eth-advance": "Ethereum Advance",
       "eth-basic": "Ethereum Basic (dedicated RPC)",
       "eth-enterprise": "Ethereum Enterprise"
-     }
+     },
+     "unverified": [
+      "eth-advance",
+      "eth-basic",
+      "eth-enterprise"
+     ]
     }
    ]
   },
@@ -4260,7 +4336,15 @@
       "unlimited-25": "Unlimited Node, 25 RPS",
       "unlimited-250": "Unlimited Node, 250 RPS",
       "unlimited-500": "Unlimited Node, 500 RPS"
-     }
+     },
+     "unverified": [
+      "cluster-eth-archive",
+      "unlimited-100",
+      "unlimited-1000",
+      "unlimited-25",
+      "unlimited-250",
+      "unlimited-500"
+     ]
     },
     {
      "slug": "getblock",
@@ -4754,7 +4838,12 @@
       "business": "Business",
       "pro": "Pro",
       "starter": "Starter"
-     }
+     },
+     "unverified": [
+      "business",
+      "pro",
+      "starter"
+     ]
     },
     {
      "slug": "nownodes",
@@ -5800,7 +5889,15 @@
       "unlimited-25": "Unlimited Node, 25 RPS",
       "unlimited-250": "Unlimited Node, 250 RPS",
       "unlimited-500": "Unlimited Node, 500 RPS"
-     }
+     },
+     "unverified": [
+      "cluster-eth-archive",
+      "unlimited-100",
+      "unlimited-1000",
+      "unlimited-25",
+      "unlimited-250",
+      "unlimited-500"
+     ]
     },
     {
      "slug": "getblock",
@@ -7388,7 +7485,10 @@
      ],
      "planNames": {
       "mainnet-floor": "Dedicated Solana node, mainnet (+ Business $499)"
-     }
+     },
+     "unverified": [
+      "mainnet-floor"
+     ]
     },
     {
      "slug": "infura",
@@ -7914,7 +8014,13 @@
       "dedicated": "Dedicated Solana RPC / gRPC node",
       "grow": "Grow",
       "legacy-scale": "Legacy Scale (credit-based, still listed)"
-     }
+     },
+     "unverified": [
+      "accelerate",
+      "dedicated",
+      "grow",
+      "legacy-scale"
+     ]
     },
     {
      "slug": "syndica",
@@ -8253,7 +8359,21 @@
       "t40m": "Pro 40M",
       "t4m": "Starter 4M",
       "t80m": "Pro 80M"
-     }
+     },
+     "unverified": [
+      "t10m",
+      "t150m",
+      "t15m",
+      "t200m",
+      "t20m",
+      "t250m",
+      "t300m",
+      "t350m",
+      "t400m",
+      "t40m",
+      "t4m",
+      "t80m"
+     ]
     },
     {
      "slug": "thirdweb",
@@ -8344,7 +8464,10 @@
      ],
      "planNames": {
       "scale": "Scale (banded pay-as-you-go)"
-     }
+     },
+     "unverified": [
+      "scale"
+     ]
     },
     {
      "slug": "zeeve",
@@ -8375,7 +8498,10 @@
      ],
      "planNames": {
       "sol-basic": "Solana Basic"
-     }
+     },
+     "unverified": [
+      "sol-basic"
+     ]
     }
    ]
   },
@@ -8880,7 +9006,15 @@
       "unlimited-25": "Unlimited Node, 25 RPS",
       "unlimited-250": "Unlimited Node, 250 RPS",
       "unlimited-500": "Unlimited Node, 500 RPS"
-     }
+     },
+     "unverified": [
+      "cluster-eth-archive",
+      "unlimited-100",
+      "unlimited-1000",
+      "unlimited-25",
+      "unlimited-250",
+      "unlimited-500"
+     ]
     },
     {
      "slug": "getblock",
@@ -9334,7 +9468,12 @@
       "business": "Business",
       "pro": "Pro",
       "starter": "Starter"
-     }
+     },
+     "unverified": [
+      "business",
+      "pro",
+      "starter"
+     ]
     },
     {
      "slug": "nownodes",

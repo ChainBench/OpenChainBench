@@ -6,6 +6,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 )
 
@@ -63,6 +64,11 @@ type CurveProvider struct {
 	// PlanNames maps the plan ids the points carry to the catalogue's own
 	// names: "bc-t3-large-us-east-1" is a key, not something to show.
 	PlanNames map[string]string `json:"planNames,omitempty"`
+	// Unverified lists the plan ids the points carry whose catalogue
+	// confidence is not "verified". The gauges carry this as
+	// rpc_cost_plan_confidence; the calculator needs it too, because it is
+	// where an unverified flat-rate price would otherwise lead unmarked.
+	Unverified []string `json:"unverified,omitempty"`
 }
 
 type CurveProfile struct {
@@ -299,16 +305,24 @@ func BuildCurves(c *Catalogue) CurveFile {
 				continue
 			}
 			names := map[string]string{}
+			unverified := []string{}
 			for _, pt := range pts {
 				for _, pl := range p.Plans {
-					if pt.Plan != "" && pl.ID == pt.Plan && pl.Name != "" {
+					if pt.Plan == "" || pl.ID != pt.Plan {
+						continue
+					}
+					if pl.Name != "" {
 						names[pl.ID] = pl.Name
+					}
+					if pl.Confidence != "verified" && !slices.Contains(unverified, pl.ID) {
+						unverified = append(unverified, pl.ID)
 					}
 				}
 			}
+			sort.Strings(unverified)
 			cp.Providers = append(cp.Providers, CurveProvider{
 				Slug: p.Slug, Name: p.Name, Cohort: p.Cohort, Unit: p.Unit, Points: pts,
-				PlanNames: names,
+				PlanNames: names, Unverified: unverified,
 			})
 		}
 		sort.Slice(cp.Providers, func(i, j int) bool { return cp.Providers[i].Slug < cp.Providers[j].Slug })

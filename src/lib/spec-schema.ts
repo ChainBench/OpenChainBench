@@ -530,6 +530,10 @@ export const SpecSchema = z
             z.object({
               value: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/),
               label: z.string().min(1).max(64),
+              /** false = a published-but-never-ranked cohort (bench 282's
+               *  free public endpoints): its rows show their figures and
+               *  take no rank, no win and no badge anywhere. */
+              ranked: z.boolean().optional(),
             })
           )
           .min(2)

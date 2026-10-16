@@ -338,6 +338,11 @@ export type ProviderAppearance = {
    *  default view is the public cohort). `rank` / `totalRanked` are then
    *  within that cohort and the bench link needs `?tier=<value>`. */
   tier?: string;
+  /** The cohort is published but never ranked (spec tier `ranked: false`):
+   *  show the figure, never a rank. */
+  unrankedCohort?: boolean;
+  /** The bench treats 0 as a real figure ($0 for a free endpoint). */
+  zeroIsAValue?: boolean;
   /** Per-chain leadership for this provider on this bench. Populated only
    *  for chains this provider *leads*, so `rank` is always 1 and an absent
    *  key means "does not lead here", never "ranked lower here". Key = chain
@@ -587,8 +592,15 @@ export function buildProvidersFromBenches(benches: Benchmark[]): ProviderProfile
     // consumers key off `tier` to ignore its cellRanks / bestPerChain,
     // which describe the headline cohort only.
     for (const [tier, rows] of Object.entries(b.tierResults ?? {})) {
-      // Same reliability gate as the headline cohort (rankProviders).
-      const cohortRanked = b.status === "live" ? rankProviders({ ...b, results: rows }) : [];
+      // Same reliability gate as the headline cohort (rankProviders). A
+      // cohort the spec declares `ranked: false` takes no rank at all:
+      // bench 282's free public endpoints were "#1 of 1" on their product
+      // page, with a shareable badge, under a methodology that says they
+      // are never ranked (audit 2026-10-16).
+      const unrankedCohort =
+        b.dimensions?.tier?.find((t) => t.value === tier)?.ranked === false;
+      const cohortRanked =
+        b.status === "live" && !unrankedCohort ? rankProviders({ ...b, results: rows }) : [];
       const cohortRankBySlug = new Map<string, number>();
       cohortRanked.forEach((r, idx) => cohortRankBySlug.set(r.slug.toLowerCase(), idx));
       for (const r of rows) {
@@ -621,6 +633,8 @@ export function buildProvidersFromBenches(benches: Benchmark[]): ProviderProfile
           rank: isRanked ? (idx as number) + 1 : 0,
           totalRanked: cohortRanked.length,
           tier,
+          ...(unrankedCohort ? { unrankedCohort: true } : {}),
+          ...(b.zeroIsAValue ? { zeroIsAValue: true } : {}),
         };
         if (existing) {
           existing.appearances.push(appearance);
