@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"math"
+	"sort"
 )
 
 // The cost model. Given a provider, a workload profile and a monthly
@@ -205,6 +206,10 @@ func quote(c *Catalogue, p Provider, pl Plan, pr Profile, requests float64) Quot
 			q.Reason = "plan has no trace/debug access"
 			return q
 		}
+	}
+	if m, ok := unservedMethod(pl, pr); ok {
+		q.Reason = fmt.Sprintf("plan does not serve %s", m)
+		return q
 	}
 
 	needed := requests * upr
@@ -541,6 +546,22 @@ func periodScale(period string) float64 {
 		// recurring plan at all.
 		return 1
 	}
+}
+
+// unservedMethod reports the first method of the profile's mix that the
+// plan lists in unserved_methods, in sorted order so the reason is stable.
+func unservedMethod(pl Plan, pr Profile) (string, bool) {
+	hit := []string{}
+	for _, m := range pl.UnservedMethods {
+		if pr.Mix[m] > 0 {
+			hit = append(hit, m)
+		}
+	}
+	if len(hit) == 0 {
+		return "", false
+	}
+	sort.Strings(hit)
+	return hit[0], true
 }
 
 func isTraceProfile(pr Profile) bool {

@@ -4,7 +4,7 @@ slug: rpc-cost
 number: "282"
 title: Cheapest RPC provider, priced per workload across 18 ranked providers
 seo_title: "Cheapest RPC provider 2026: real cost per workload"
-seo_description: "What 18 RPC providers bill for the same workload. Alchemy, QuickNode, Chainstack, BlockPI and dRPC priced across 5 workloads and 3 volumes."
+seo_description: "What 18 RPC providers bill for the same workload. Dwellir, Chainstack, BlockPI, Alchemy and QuickNode priced across 5 workloads and 3 volumes."
 subtitle: The monthly bill each RPC provider would send for the same workload, normalised across Compute Units, Request Units, credits and flat requests, at three volumes and every plan tier.
 
 category: RPCs
@@ -25,12 +25,15 @@ disclaimer: >
 
 seo_intro: |
   There is no cheapest RPC provider. That is the finding, not a hedge. We
-  priced the same five workloads against every major provider and four
-  different names take the fifteen cells, by multiples rather than percent.
+  priced the same five workloads against every major provider and five
+  different names lead the fifteen cells, by multiples rather than percent.
   Alchemy charges half of QuickNode for eth_blockNumber and three times
-  QuickNode for eth_getLogs. Chainstack bills one flat Request Unit for every
-  method, which makes it uncompetitive on trivial reads and the cheapest option
-  by an order of magnitude on debug_traceTransaction. So a single "cheapest
+  QuickNode for eth_getLogs. Dwellir and Chainstack both bill one flat unit per
+  call and still differ by a factor of two where it matters: Chainstack charges
+  2 Request Units for an archive read and for every debug or trace call,
+  Dwellir 1 credit for every response, trace included. That is why Dwellir
+  leads every trace and indexer cell from a hundred million up, and ties
+  Chainstack at $49 below it. So a single "cheapest
   RPC" number cannot be honest, and this page does not publish one. It
   publishes a bill per workload.
   The comparison is only possible because each provider's own method table is
@@ -75,7 +78,7 @@ methodology:
   - "Cohort. 20 providers billed per request, ranked. A separate dedicated-capacity cohort (per month or per node-hour, not per request) is ranked on its own axis with a break-even volume. Reference rows, PublicNode and the Solana Foundation endpoints, are published but never ranked: they are free, real and usable, and PublicNode publishes no rate limit of any kind, so calling it cheapest would be true and useless."
   - "Normalisation. Every provider's published method table is applied to the profile's method mix to get weighted units per request, and that figure is published as rpc_cost_units_per_request so the arithmetic is checkable."
   - "Most large providers do not price per method at all. Chainstack charges 1 Request Unit for every method and 2 at archive depth, decided by block age (EVM at 127+ blocks behind tip) rather than by method name. QuickNode weights per chain, Ethereum 20 credits and Solana 30, with x2 for advanced calls and x4 for large ones. GetBlock multiplies a chain factor spanning 10 to 300."
-  - "Archive. Handled per provider rather than as a uniform surcharge, because it is not one. Chainstack doubles on block age. BlockPI adds 30% to the whole endpoint. Alchemy, dRPC and QuickNode charge no archive premium at all."
+  - "Archive. Handled per provider rather than as a uniform surcharge, because it is not one. Chainstack doubles on block age. BlockPI adds 30% to the whole endpoint. Alchemy, dRPC and QuickNode charge no archive premium at all, and neither does Dwellir, which bills 1 credit per response on every method, archive, debug and trace included; that archive is served on its shared plans is stated in Dwellir's own Ethereum comparison post rather than its price table."
   - "GetBlock publishes an independent archive column, 2x on plain reads and 3x on debug and trace, so no single multiplier is correct and its own published formula is arithmetically impossible against its own API. Tatum serves archive but has never published what it charges for it in the credit model, so it is reported unpriceable on archive workloads rather than assigned a guess."
   - "Eligibility before price. A plan is ranked only if it can serve the workload. Daily caps are compared against the daily share, not the monthly total, because Infura's credits do not roll over. Hard stops (Infura, NOWNodes Start and Pro, QuickNode's trial) make a plan unavailable above its cap rather than merely expensive. Published throughput is checked against the sustained rate the volume requires. Missing trace or archive access is unavailability, not cost."
   - "Plan tiers. Provider plan names do not line up, Chainstack calls $49 Growth and Helius calls $499 Business, so plans are banded by monthly price into free, entry (to $50), growth (to $300), business (to $1,000) and enterprise. The default view is the cheapest paid plan. Free plans are not banded here at all: every one ties at $0, so this page would order them by their overage bill, and it is bench 283 that ranks them on what their allowance buys."
@@ -99,24 +102,26 @@ methodology:
   - "What is still not measured. These are published prices, not invoices. Alchemy and QuickNode carry no credit, compute-unit or quota header on any response, so their billed units cannot be confirmed without dashboard credentials we do not hold. Where a provider's real charge is non-deterministic by design, dRPC routes to third-party operators that can rewrite the price downward and exposes no per-response cost header, the published rate is reported as an upper bound and labelled as one."
 
 findings:
-  - "There is no cheapest RPC provider. Four win a workload-by-volume cell outright, none more than five of the fifteen, and one further cell ends in a tie at $49. The widest spread inside one cell is 36.7x, on a billion Solana bot requests, and even the trace profile at a hundred million spans 13.7x, from Chainstack at $499 to OnFinality at $6,849."
-  - "Two of the best-known providers are among the most expensive. Alchemy and QuickNode win no cell at any volume on any workload, running between 1.7x and 10.6x the leader of each cell, Alchemy at $10,500 a month for a billion simple reads against BlockPI's $2,833."
+  - "There is no cheapest RPC provider, though one comes close on Ethereum. Three win a workload-by-volume cell outright, Dwellir seven of the fifteen, BlockPI three and Syndica two, and three more cells end in a tie at $49. Dwellir prices no Solana, so the Solana cells are someone else's. The widest spread inside one cell is 36.7x, on a billion Solana bot requests, and the trace profile at a hundred million spans 22.9x, from Dwellir at $299 to OnFinality at $6,849."
+  - "Two of the best-known providers are among the most expensive. Alchemy and QuickNode win no cell at any volume on any workload, running between 1.7x and 10.6x the leader of each cell, Alchemy at $10,500 a month for a billion simple reads against Dwellir's $1,999."
   - "Price is not always the binding constraint. Alchemy cannot serve the indexer or trace profile at a billion requests a month on any published self-serve plan: those need 61,728 and 234,568 Throughput Compute Units per second against a self-serve ceiling of 30,000, enforced per account rather than per app."
   - "Alchemy meters volume and rate limit in different units, and the figures above use its throughput column, not its billing one. Infura, separately, cannot serve a hundred million requests a month at any price, because its allowance is daily and hard-stops at 402."
-  - "Only some of the cell winners rest on fully published, unambiguous numbers. BlockPI and Chainstack publish complete figures. Reading OnFinality's own per-method weight table, rather than assuming its documented default of 1, moved it out of all four cells it had won. NOWNodes publishes no archive or trace availability, so it is not ranked there even where its price would lead. Syndica's pricing survives only inside a calculator that ends in a lead-capture form."
-  - "The cheapest answer for a billion trace requests a month is therefore dRPC at $6,000, the cheapest option that actually publishes that it serves debug and trace. Chainstack is second at $8,990."
+  - "Only some of the cell winners rest on fully published, unambiguous numbers. BlockPI, Chainstack and Dwellir publish complete figures. Reading OnFinality's own per-method weight table, rather than assuming its documented default of 1, moved it out of all four cells it had won. NOWNodes publishes no archive or trace availability, so it is not ranked there even where its price would lead. Syndica's pricing survives only inside a calculator that ends in a lead-capture form."
+  - "The cheapest answer for a billion trace requests a month is Dwellir at $1,999: its $999 Scale plan plus 500 million responses at $2, with every trace call at 1 credit. dRPC is second at $6,000 and Chainstack third at $8,990, because Chainstack bills the same calls at 2 Request Units each."
   - "Free tiers differ by 160x once the allowance is converted into requests. OnFinality's buys 12.0 million simple reads a month and GetBlock's buys 75,000. Several free tiers are throughput-capped rather than volume-capped, and GetBlock's daily allowance drains in 125 seconds at its own advertised rate."
-  - "Buying the small plan is often the most expensive choice. At a hundred million dapp requests the entry band costs $524.50 while the growth band costs $249 and the business band $499, because the entry allowance runs out and the overage rate does not fall."
+  - "Buying the small plan is often the most expensive choice. At a hundred million dapp requests Dwellir's own $49 Developer plan bills $424 while its $299 Growth plan covers the month outright, because the entry allowance runs out at 25 million and the $5 overage costs more than the next plan."
   - "Advertised capability is not served capability. Chainstack's own node API lists trace support on its Polygon node, and trace_block there returns method not found. Alchemy's free tier answers archive reads but refuses all four trace and debug methods outright. Both were found by calling the endpoints rather than by reading the matrix."
   - "One plan in seven has no published price at all. Sixteen providers decline to name a number somewhere above the business tier, so most of the enterprise band cannot be compared, only described."
-  - "Four providers that still appear in public comparisons are gone. Grove wound down. LlamaRPC returns a Cloudflare error while its sister domain llamanodes.com now serves gambling spam. InstantNodes redirects to a squatted sports-streaming site, and is not Instanodes, a different and live provider whose name is one letter away. Blast API shut down in 2025 after Bware Labs was acquired, and its public endpoints still answer, served by Alchemy."
+  - "Three providers that still appear in public comparisons are gone. Grove wound down. LlamaRPC returns a Cloudflare error while its sister domain llamanodes.com now serves gambling spam. Blast API shut down in 2025 after Bware Labs was acquired, and its public endpoints still answer, served by Alchemy."
   - "Two more are dated. AWS Managed Blockchain stops accepting new customers on 29 October 2026, and Google shuts Blockchain Node Engine down entirely on 15 December 2026, deleting every node."
 
 faq:
   - q: "Which RPC provider is cheapest?"
-    a: "It depends on the workload, by multiples rather than percent. Across five workload profiles and three volumes, four providers win a cell outright: BlockPI and Chainstack five each, dRPC and Syndica two each. One further cell is a tie at $49, shared by Chainstack and Helius. Pick the profile that matches your method mix rather than reading a single number."
+    a: "It depends on the workload, by multiples rather than percent. Across five workload profiles and three volumes, three providers win a cell outright: Dwellir seven, BlockPI three and Syndica two. Three more cells are ties at $49: Dwellir and Chainstack on the indexer and trace profiles at ten million, Chainstack and Helius on Solana at ten million. Pick the profile that matches your method mix rather than reading a single number."
   - q: "Why do Alchemy and QuickNode never win?"
-    a: "Because they are three to four times more expensive than the leaders for the same work. Alchemy bills $10,500 a month for a billion simple reads where BlockPI bills $2,833, and across the fifteen cells the two run between 1.7x and 10.6x the cell leader. Both are priced as premium products and both publish their rates plainly; the bench simply applies them."
+    a: "Because they are three to four times more expensive than the leaders for the same work. Alchemy bills $10,500 a month for a billion simple reads where Dwellir bills $1,999, and across the fifteen cells the two run between 1.7x and 10.6x the cell leader. Both are priced as premium products and both publish their rates plainly; the bench simply applies them."
+  - q: "Dwellir or Chainstack, which is cheaper?"
+    a: "They tie on recent-state reads and part ways on history. Both bill one flat unit per call, so a simple read costs 1 on either. Chainstack charges 2 Request Units for any read 127 or more blocks behind the tip and for every debug or trace call; Dwellir charges 1 credit for every response, archive and trace included. At ten million indexer or trace requests both land on $49. From a hundred million up Dwellir is cheaper and the gap widens with volume: $299 against $499 at a hundred million, $1,999 against $8,990 at a billion trace requests. Chainstack's rules were measured against its billing API; Dwellir's are its published price list. On Solana the comparison does not arise: Chainstack serves it and Dwellir does not."
   - q: "How can you compare a Compute Unit to a Request Unit?"
     a: "By applying each provider's own method table to the same method mix, which gives weighted units per request. That figure is published per provider and per profile, so the conversion is inspectable rather than asserted. It is also why the ranking changes with the workload: the unit conversions are not constant across methods."
   - q: "Are these prices from real invoices?"
@@ -454,6 +459,19 @@ providers:
       series: rpc_cost_monthly_usd{provider="validation-cloud",kind="all",bucket="all",venue="all"}
       sample_size: count_over_time(rpc_cost_monthly_usd{provider="validation-cloud",kind="all",bucket="all",venue="all"}[7d])
 
+  - slug: dwellir
+    name: Dwellir
+    tier: usage
+    tag: request, flat per response
+    queries:
+      p50: min(last_over_time(rpc_cost_monthly_usd{provider="dwellir",kind="all",bucket="all",venue="all"}[20m]))
+      p90: min(last_over_time(rpc_cost_monthly_usd{provider="dwellir",kind="all",bucket="all",venue="all"}[20m]))
+      p99: min(last_over_time(rpc_cost_monthly_usd{provider="dwellir",kind="all",bucket="all",venue="all"}[20m]))
+      ranked: rpc_cost_eligible{provider="dwellir",kind="all",bucket="all"}
+      mean: min(last_over_time(rpc_cost_monthly_usd{provider="dwellir",kind="all",bucket="all",venue="all"}[20m]))
+      series: rpc_cost_monthly_usd{provider="dwellir",kind="all",bucket="all",venue="all"}
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="dwellir",kind="all",bucket="all",venue="all"}[7d])
+
   - slug: blockdaemon
     name: Blockdaemon
     tier: usage
@@ -532,19 +550,6 @@ providers:
       series: rpc_cost_monthly_usd{provider="triton",kind="all",bucket="all",venue="all"}
       sample_size: count_over_time(rpc_cost_monthly_usd{provider="triton",kind="all",bucket="all",venue="all"}[7d])
 
-  - slug: instanodes
-    name: Instanodes
-    tier: usage
-    tag: request, flat per request
-    queries:
-      p50: min(last_over_time(rpc_cost_monthly_usd{provider="instanodes",kind="all",bucket="all",venue="all"}[20m]))
-      p90: min(last_over_time(rpc_cost_monthly_usd{provider="instanodes",kind="all",bucket="all",venue="all"}[20m]))
-      p99: min(last_over_time(rpc_cost_monthly_usd{provider="instanodes",kind="all",bucket="all",venue="all"}[20m]))
-      ranked: rpc_cost_eligible{provider="instanodes",kind="all",bucket="all"}
-      mean: min(last_over_time(rpc_cost_monthly_usd{provider="instanodes",kind="all",bucket="all",venue="all"}[20m]))
-      series: rpc_cost_monthly_usd{provider="instanodes",kind="all",bucket="all",venue="all"}
-      sample_size: count_over_time(rpc_cost_monthly_usd{provider="instanodes",kind="all",bucket="all",venue="all"}[7d])
-
   - slug: publicnode
     name: PublicNode (by Allnodes)
     tier: reference
@@ -596,6 +601,19 @@ providers:
       mean: min(last_over_time(rpc_cost_monthly_usd{provider="chainstack-dedicated",kind="all",bucket="all",venue="all"}[20m]))
       series: rpc_cost_monthly_usd{provider="chainstack-dedicated",kind="all",bucket="all",venue="all"}
       sample_size: count_over_time(rpc_cost_monthly_usd{provider="chainstack-dedicated",kind="all",bucket="all",venue="all"}[7d])
+
+  - slug: dwellir-unlimited
+    name: Dwellir, Unlimited Nodes & dedicated clusters
+    tier: dedicated
+    tag: request, flat per request
+    queries:
+      p50: min(last_over_time(rpc_cost_monthly_usd{provider="dwellir-unlimited",kind="all",bucket="all",venue="all"}[20m]))
+      p90: min(last_over_time(rpc_cost_monthly_usd{provider="dwellir-unlimited",kind="all",bucket="all",venue="all"}[20m]))
+      p99: min(last_over_time(rpc_cost_monthly_usd{provider="dwellir-unlimited",kind="all",bucket="all",venue="all"}[20m]))
+      ranked: rpc_cost_eligible{provider="dwellir-unlimited",kind="all",bucket="all"}
+      mean: min(last_over_time(rpc_cost_monthly_usd{provider="dwellir-unlimited",kind="all",bucket="all",venue="all"}[20m]))
+      series: rpc_cost_monthly_usd{provider="dwellir-unlimited",kind="all",bucket="all",venue="all"}
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="dwellir-unlimited",kind="all",bucket="all",venue="all"}[7d])
 
   - slug: quicknode-flat-rate
     name: QuickNode, Flat Rate RPS

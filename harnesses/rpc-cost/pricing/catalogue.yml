@@ -2112,6 +2112,139 @@ providers:
       - "validationcloud.io/pricing 404s; the canonical page is /node."
       - "WebSocket per-event metering and batch metering: NOT PUBLISHED. eth_subscribe is 20 CU."
 
+  - slug: dwellir
+    name: Dwellir
+    cohort: usage
+    status: live
+    unit: request
+    pricing_model: flat_request
+    currency: USD
+    plans:
+      - id: free
+        name: Free
+        tier: free
+        monthly_usd: 0
+        annual_monthly_usd: null
+        included_units: 100000
+        allowance_period: day
+        overage_per_1m_units_usd: null
+        overage_allowed: hard_stop
+        unserved_methods: [eth_getLogs]
+        throughput: {unit: rps, value: 20}
+        archive: true
+        trace: false
+        confidence: verified
+        note: >-
+          "100,000 daily limit" at 20 responses/sec, and the comparison table prints a cross on
+          Overages, Trace APIs, Debug APIs and the eth_getLogs block range for Free. Dwellir's own
+          Ethereum comparison (blog/best-ethereum-rpc-providers.md, checked by them 2026-10-07) says
+          it outright: "Dwellir's Free plan excludes eth_getLogs". The cap does not roll over, so a
+          month is 100,000 x 30, not a 3M pool.
+      - id: developer
+        name: Developer
+        tier: entry
+        monthly_usd: 49
+        annual_monthly_usd: null
+        included_units: 25000000
+        allowance_period: month
+        overage_per_1m_units_usd: 5.0
+        overage_allowed: true
+        throughput: {unit: rps, value: 100}
+        archive: true
+        trace: true
+        confidence: verified
+        note: >-
+          100 responses/sec sustained, 500 burst. eth_getLogs is capped at a 500-block range here
+          (10,000 from Growth up): a backfill pays for more, narrower calls, which a per-request
+          model cannot see. No annual price is published.
+      - id: growth
+        name: Growth
+        tier: growth
+        monthly_usd: 299
+        annual_monthly_usd: null
+        included_units: 150000000
+        allowance_period: month
+        overage_per_1m_units_usd: 3.0
+        overage_allowed: true
+        throughput: {unit: rps, value: 500}
+        archive: true
+        trace: true
+        confidence: verified
+        note: 500 responses/sec sustained, 2,500 burst.
+      - id: scale
+        name: Scale
+        tier: business
+        monthly_usd: 999
+        annual_monthly_usd: null
+        included_units: 500000000
+        allowance_period: month
+        overage_per_1m_units_usd: 2.0
+        overage_allowed: true
+        throughput: {unit: rps, value: 5000}
+        archive: true
+        trace: true
+        confidence: verified
+        note: 5,000 responses/sec sustained, 10,000 burst.
+      - id: enterprise
+        name: Enterprise
+        tier: enterprise
+        monthly_usd: null
+        annual_monthly_usd: null
+        included_units: null
+        allowance_period: month
+        overage_per_1m_units_usd: null
+        overage_allowed: true
+        throughput: {unit: rps, value: null}
+        archive: true
+        trace: true
+        confidence: unpublished
+        note: SALES-GATED. "Custom quote", aimed at 5+ billion monthly responses.
+    weights:
+      ethereum:
+        default: 1
+        eth_call: 1
+        eth_getLogs: 1
+        eth_getBlockByNumber: 1
+        eth_getBlockReceipts: 1
+        eth_getBalance: 1
+        eth_blockNumber: 1
+        eth_getTransactionReceipt: 1
+        eth_estimateGas: 1
+        eth_sendRawTransaction: 1
+        debug_traceTransaction: 1
+        trace_block: 1
+      solana: null
+    archive_rule:
+      kind: none
+      value: 1
+      note: >-
+        "One RPC response equals one API credit. No compute-unit math and no surprise multipliers.
+        Trace and debug methods are always included", and the FAQ: "one RPC response = 1 API credit.
+        Yes, even for trace and debug methods." Archive is not priced separately: the Ethereum
+        comparison gives "Every method (standard, trace, debug, archive) costs 1 credit" and "Full
+        historical Ethereum state available on all endpoints". This is the opposite of Chainstack,
+        which bills the same archive read and every debug or trace call at 2 RU.
+    source:
+      plans:
+        url: https://www.dwellir.com/pricing.md
+        body_sha256: 8427bad202c0ba8da0cfc7f6d0a94afd48b2efa807d510aed7849ef7cce04b79
+        verified_at: "2026-10-16"
+        kind: markdown
+        poll: body_hash
+        extraction: "'## Plan Comparison Table': | Feature | Free | Developer | Growth | Scale | rows Price, Included responses, Overages, Responses per second, Daily response limit, Trace APIs, Debug APIs, eth_getLogs block range"
+      weights:
+        url: https://www.dwellir.com/pricing.md
+        body_sha256: 8427bad202c0ba8da0cfc7f6d0a94afd48b2efa807d510aed7849ef7cce04b79
+        verified_at: "2026-10-16"
+        kind: markdown
+        poll: body_hash
+        extraction: "'## Billing Philosophy' ('1 Response = 1 Credit') and the FAQ 'Do you charge compute units?'"
+    caveats:
+      - "Dwellir bills responses, not requests. On a single call the two are the same; a JSON-RPC batch is not documented either way."
+      - "No Solana: dwellir.com/networks/solana is a 404 and Solana is absent from the 150+ network list, so Dwellir is Ethereum-tab only here."
+      - "The archive claim comes from Dwellir's own comparison post, not from the pricing table, which says nothing about archive on shared plans."
+      - "Dwellir is also in the keyed RPC latency cohort on the chain pages (slug dwellir); this entry is its price, not its speed."
+
   - slug: blockdaemon
     name: Blockdaemon
     cohort: usage
@@ -3143,113 +3276,6 @@ providers:
       - "Quotas are daily and no overage is published on any plan. RPS per plan is NOT PUBLISHED."
       - "Chain count: 15 public endpoints verified against the page HTML; a '62+ networks' claim could not be confirmed."
 
-  - slug: instanodes
-    name: Instanodes
-    cohort: usage
-    status: live
-    unit: request
-    pricing_model: flat_request
-    currency: USD
-    plans:
-      - id: free
-        name: Free
-        tier: free
-        monthly_usd: 0
-        annual_monthly_usd: null
-        included_units: 600000
-        allowance_period: month
-        overage_per_1m_units_usd: null
-        overage_allowed: hard_stop
-        throughput: {unit: rps, value: 40}
-        archive: false
-        trace: null
-        confidence: verified
-        note: >-
-          Both caps are published and both bind, on three surfaces: the pricing cards and 
-          comparison table, docs/api-reference/rate-limits ("| Free | 20,000 | 600,000 | 40 |") 
-          and docs/billing. Cap behaviour is a hard stop and is sourced too: "A 429 response means 
-          you hit your current tier's ceiling", the error table's "429 Rate limit exceeded for 
-          your current tier", and no overage rate on any Instanodes surface — the only published 
-          escape is a tier change.
-      - id: build
-        name: Build
-        tier: entry
-        monthly_usd: 29
-        annual_monthly_usd: 23.20
-        included_units: 1800000
-        allowance_period: month
-        overage_per_1m_units_usd: null
-        overage_allowed: hard_stop
-        throughput: {unit: rps, value: 60}
-        archive: null
-        trace: null
-        confidence: uncertain
-        note: 60,000/day. Commit discounts 6-month -12%, annual -20%; the annual figure here is derived from that -20%.
-      - id: basic
-        name: Basic
-        tier: growth
-        monthly_usd: 79
-        annual_monthly_usd: 63.20
-        included_units: 15000000
-        allowance_period: month
-        overage_per_1m_units_usd: null
-        overage_allowed: hard_stop
-        throughput: {unit: rps, value: 180}
-        archive: null
-        trace: null
-        confidence: uncertain
-        note: 500,000/day.
-      - id: advanced
-        name: Advanced
-        tier: growth
-        monthly_usd: 169
-        annual_monthly_usd: 135.20
-        included_units: 48000000
-        allowance_period: month
-        overage_per_1m_units_usd: null
-        overage_allowed: hard_stop
-        throughput: {unit: rps, value: 220}
-        archive: null
-        trace: null
-        confidence: uncertain
-        note: 1,600,000/day. Largest purchasable plan — 48M/month is the ceiling.
-    weights:
-      ethereum:
-        default: 1
-        eth_call: 1
-        eth_getLogs: 1
-        eth_getBlockByNumber: 1
-        eth_getBlockReceipts: 1
-        eth_getBalance: 1
-        eth_blockNumber: 1
-        eth_getTransactionReceipt: 1
-        eth_estimateGas: 1
-        eth_sendRawTransaction: 1
-        debug_traceTransaction: 1
-        trace_block: 1
-      solana: null
-    archive_rule:
-      kind: none
-      value: 1
-      note: Archive and trace/debug availability are NOT PUBLISHED. The weights above assume the published flat per-request model.
-    source:
-      plans:
-        url: https://instanodes.io/pricing
-        kind: html
-        poll: manual
-        extraction: "rendered plan cards: $/mo, requests/day, requests/month, RPS, endpoints. No llms.txt or pricing JSON found."
-      weights:
-        url: https://instanodes.io/pricing
-        kind: html
-        poll: manual
-        extraction: "none — no credit weighting is published"
-    caveats:
-      - "EVERY FIGURE IS confidence uncertain: Instanodes was not an assigned wave-1 provider and was surfaced incidentally while chasing the defunct InstantNodes domain. Wave 2 did not verify it. It must be independently re-fetched before publication."
-      - "Not to be confused with InstantNodes (instantnodes.io), which is DEFUNCT — the domain no longer resolves."
-      - "Maximum purchasable volume is 48M requests/month, so Instanodes is only eligible at the 10M bucket."
-      - "Dedicated-node prices are shown only inside the dashboard: login-gated."
-      - "Overage is not published; the plans state hard requests/day and requests/month caps."
-
   - slug: publicnode
     name: PublicNode (by Allnodes)
     cohort: usage
@@ -3680,6 +3706,120 @@ providers:
       - "BOTH offerings have a prerequisite plan that wave 1 omitted: Unlimited Node requires Growth ($49), Dedicated Node requires Pro ($199). The real floors are $198 and $1,841.50, not $149 and $1,642.50."
       - "pricing_current.json regenerates every 15 minutes whether or not a price changed — diff the parsed content, never the headers."
       - "The 1000-RPS Unlimited tier is documented but its price is absent from every published surface."
+
+  - slug: dwellir-unlimited
+    name: Dwellir, Unlimited Nodes & dedicated clusters
+    cohort: dedicated
+    status: live
+    unit: request
+    pricing_model: flat_request
+    currency: USD
+    plans:
+      - id: unlimited-25
+        chains: [ethereum]
+        name: Unlimited Node, 25 RPS
+        tier: growth
+        monthly_usd: 119
+        annual_monthly_usd: null
+        included_units: null
+        allowance_period: month
+        overage_per_1m_units_usd: null
+        overage_allowed: false
+        throughput: {unit: rps, value: 25}
+        archive: true
+        trace: true
+        confidence: uncertain
+        note: >-
+          NOT a dedicated node: "a single Dwellir endpoint with the meter switched off ... served from
+          Dwellir's shared node pool", capped at the RPS bought, 429 above it and never billed. $4.80
+          per RPS per month on every tier. Uncertain because "On a premium endpoint, the purchase also
+          adds the required premium add-on as a second line item", and neither which endpoints are
+          premium nor the add-on's price is published.
+      - id: unlimited-100
+        chains: [ethereum]
+        name: Unlimited Node, 100 RPS
+        tier: business
+        monthly_usd: 479
+        annual_monthly_usd: null
+        included_units: null
+        allowance_period: month
+        overage_per_1m_units_usd: null
+        overage_allowed: false
+        throughput: {unit: rps, value: 100}
+        archive: true
+        trace: true
+        confidence: uncertain
+      - id: unlimited-250
+        chains: [ethereum]
+        name: Unlimited Node, 250 RPS
+        tier: enterprise
+        monthly_usd: 1199
+        annual_monthly_usd: null
+        included_units: null
+        allowance_period: month
+        overage_per_1m_units_usd: null
+        overage_allowed: false
+        throughput: {unit: rps, value: 250}
+        archive: true
+        trace: true
+        confidence: uncertain
+      - id: unlimited-500
+        chains: [ethereum]
+        name: Unlimited Node, 500 RPS
+        tier: enterprise
+        monthly_usd: 2399
+        annual_monthly_usd: null
+        included_units: null
+        allowance_period: month
+        overage_per_1m_units_usd: null
+        overage_allowed: false
+        throughput: {unit: rps, value: 500}
+        archive: true
+        trace: true
+        confidence: uncertain
+      - id: unlimited-1000
+        chains: [ethereum]
+        name: Unlimited Node, 1,000 RPS
+        tier: enterprise
+        monthly_usd: 4799
+        annual_monthly_usd: null
+        included_units: null
+        allowance_period: month
+        overage_per_1m_units_usd: null
+        overage_allowed: false
+        throughput: {unit: rps, value: 1000}
+        archive: true
+        trace: true
+        confidence: uncertain
+      - id: cluster-eth-archive
+        chains: [ethereum]
+        name: Dedicated Ethereum archive cluster (list price)
+        tier: enterprise
+        monthly_usd: 12600
+        annual_monthly_usd: null
+        included_units: null
+        allowance_period: month
+        overage_per_1m_units_usd: null
+        overage_allowed: false
+        throughput: {unit: rps, value: null}
+        archive: true
+        trace: true
+        confidence: uncertain
+        note: >-
+          "$12,600/month" is the list price; "The final quote depends on regions and cluster size",
+          after a scoping call. A cluster of redundant archive nodes, "no rate limits and no request
+          counting", 99.99% SLA, monthly with no long-term commitment.
+    source:
+      plans:
+        url: https://www.dwellir.com/pricing.md
+        body_sha256: 8427bad202c0ba8da0cfc7f6d0a94afd48b2efa807d510aed7849ef7cce04b79
+        verified_at: "2026-10-16"
+        kind: markdown
+        poll: body_hash
+        extraction: "'## Unlimited Nodes' table (| Tier | Monthly price | Requests per month | ...) and the '## Dedicated Node Clusters' per-chain table, row Ethereum"
+    caveats:
+      - "The pricing page's own 'Requests per month' column (65M at 25 RPS) is the RPS ceiling run flat out for a month, not an allowance."
+      - "Dwellir's 'Saving' column compares against its $2.00/M Scale overage, a rate only reachable after paying $999 for Scale; it is their framing, not this bench's."
 
   - slug: quicknode-flat-rate
     name: QuickNode — Flat Rate RPS
@@ -4723,26 +4863,6 @@ providers:
       weights: {url: https://llamarpc.com/, kind: html, poll: manual, extraction: n/a}
     caveats:
       - "SECURITY: if any OpenChainBench config still points at llamarpc.com or llamanodes.com, remove it. Sending traffic to a re-registered domain under unknown control is a live risk, not just a dead row."
-
-  - slug: instantnodes
-    name: InstantNodes (instantnodes.io)
-    cohort: excluded
-    status: dead
-    exclusion_reason: >-
-      The domain resolves and now serves an unrelated squatted site, so any endpoint still configured against it is talking to a stranger. Only a 2026-03-14 archive snapshot survives, and archived plan
-      figures must be marked historical, never live. NOT to be confused with Instanodes
-      (instanodes.io), a different, live provider which IS catalogued.
-    unit: request
-    pricing_model: flat_request
-    currency: USD
-    plans: []
-    weights: null
-    archive_rule: {kind: none, value: null, note: n/a}
-    source:
-      plans: {url: https://instantnodes.io/, kind: html, poll: manual, extraction: "domain does not resolve"}
-      weights: {url: https://instantnodes.io/, kind: html, poll: manual, extraction: n/a}
-    caveats:
-      - "The near-identical name is the trap: instantnodes.io is dead, instanodes.io is alive."
 
   - slug: extrnode
     name: Extrnode (Everstake)

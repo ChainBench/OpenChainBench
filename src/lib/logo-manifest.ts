@@ -297,6 +297,7 @@ const RAW: Record<string, string> = {
   hyperliquid: "/logos/hyperliquid.png",
   helius: "/logos/helius.svg",
   dydx: "/logos/dydx.svg",
+  // Redrawn 2026-10-16 from the square mark Validation Cloud supplied.
   validationcloud: "/logos/validationcloud.svg",
   moralis: "/logos/moralis.png",
   stellarexpert: "/logos/stellarexpert.png",
@@ -1036,6 +1037,8 @@ const ALIASES: Record<string, string> = {
   "chainstack-cold": "chainstack",
   "dwellir-cold": "dwellir",
   "validationcloud-cold": "validationcloud",
+  "validation-cloud": "validationcloud",
+  "dwellir-unlimited": "dwellir",
 };
 
 export function logoPath(slug: string): string | null {

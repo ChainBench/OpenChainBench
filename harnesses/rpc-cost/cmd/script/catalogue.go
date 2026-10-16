@@ -195,6 +195,13 @@ type Plan struct {
 	// Ethereum bill. Empty means "the weights table decides", which is
 	// correct for per-request plans and wrong for a dedicated node.
 	Chains []string `yaml:"chains"`
+	// UnservedMethods are methods this plan refuses although the provider's
+	// other plans serve them, so the provider-wide weights table cannot say
+	// it. Dwellir is the case: one credit per response on every method, but
+	// its Free plan excludes eth_getLogs. A workload that calls a listed
+	// method is unavailable on the plan, exactly like trace on a plan with
+	// trace: false.
+	UnservedMethods []string `yaml:"unserved_methods"`
 	Throughput     Throughput `yaml:"throughput"`
 	Archive        string     `yaml:"archive"` // true | false | gated
 	Trace          *bool      `yaml:"trace"`
@@ -409,6 +416,9 @@ func (c *Catalogue) FreeAllowanceRequests(p Provider, pr Profile) (float64, stri
 			continue
 		}
 		if isTraceProfile(pr) && pl.Trace != nil && !*pl.Trace {
+			continue
+		}
+		if _, ok := unservedMethod(pl, pr); ok {
 			continue
 		}
 		if len(pl.Chains) > 0 && !servesChain(pl, pr.Chain) {
