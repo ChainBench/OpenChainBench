@@ -827,6 +827,10 @@ const ALIASES: Record<string, string> = {
   // mapping for the link. Without this alias logoPath returns null and the
   // row renders with no mark, which is how it shipped.
   "gmx-v2": "gmx",
+  // bench 'launchpad-wars' publishes its leader as `pumpfun` while the logo
+  // file, the product page and every other reference spell it `pump-fun`, so
+  // the winning row of a live bench rendered initials instead of the mark.
+  pumpfun: "pump-fun",
   "publicnode-feehistory": "publicnode",
   "binance-wallet": "binance", // bench 268 per-chain rows (binance-wallet-bnb…); the spec row is `binance`
   // Same brand split across two HL builder addresses; one logo is enough.
