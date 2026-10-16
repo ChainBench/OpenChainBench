@@ -59,6 +59,7 @@ import { fetchDataApiSnapshot } from "@/lib/data-api-stats";
 import { getTradingAppHistory } from "@/lib/trading-app-history";
 import { fetchBridgeHub } from "@/lib/bridge-hub-stats";
 import { withUtm } from "@/lib/utm";
+import { noFigureLabel } from "@/lib/no-figure-label";
 
 export const revalidate = 3600;
 
@@ -1251,7 +1252,7 @@ export default async function ProviderPage({
                       </>
                     ) : (
                       <p className="font-sans text-[10px] uppercase tracking-[0.16em] text-ink-faint italic font-medium">
-                        data warming up
+                        {noFigureLabel(a.benchmark.slug)}
                       </p>
                     )}
                   </div>

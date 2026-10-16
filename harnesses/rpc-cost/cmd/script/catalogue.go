@@ -324,6 +324,11 @@ func (c *Catalogue) validate() error {
 		// indexer and trace provider in the cohort at $0 per month.
 		// Providers whose archive price is an independent lookup rather
 		// than a multiple must publish an archive_weights table.
+		// block_age has the same failure: its value is the floor multiplier,
+		// and 0 would price Chainstack's archive reads at 0 RU.
+		if p.ArchiveRule.Kind == "block_age" && p.ArchiveRule.Value <= 0 {
+			return fmt.Errorf("%s: archive_rule.kind is block_age but value is %v; it is the multiplier applied past the block-age boundary and must be positive", p.Slug, p.ArchiveRule.Value)
+		}
 		if p.ArchiveRule.Kind == "multiplier" && p.ArchiveRule.Value <= 0 && len(p.ArchiveWeights) == 0 {
 			return fmt.Errorf("%s: archive_rule.kind is multiplier but value is %v; set a positive multiplier, or supply archive_weights if the archive cost is an independent table, or use kind: none", p.Slug, p.ArchiveRule.Value)
 		}
