@@ -15,12 +15,14 @@ are wrong, which is worse than no bench. So the input of record is
 `pricing/catalogue.yml`: a committed, human-verified file where every
 figure carries the artifact it came from and the date a human read it.
 
-What *is* live is the freshness check. The harness re-fetches every
-source artifact each cycle, hashes the body, and compares against the
-hash recorded when the catalogue was last verified. When a provider edits
-its pricing, `rpc_pricing_artifact_drift` goes to 1 and the bench page
-says the numbers are behind — instead of serving a stale figure that
-still reads as current.
+What *is* live is the freshness check. Each cycle the harness re-fetches
+the polled artifacts (the ones not marked `poll: manual`), hashes the
+body, and compares against the hash recorded when the catalogue was last
+verified. When a provider edits its pricing, `rpc_pricing_artifact_drift`
+goes to 1. That is an alarm for the maintainers, not a display: the bench
+page reads the committed curve (`src/data/rpc-cost-curves.json`) and shows
+the catalogue date, and it changes only when a human re-reads the page and
+the catalogue and curve are re-committed.
 
 Eleven of the twelve ranked providers do publish a machine-readable
 artifact (JSON API or raw markdown), listed per provider under `source:`

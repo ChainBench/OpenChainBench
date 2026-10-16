@@ -74,8 +74,16 @@ export function RpcCostSlider() {
   if (!file || file.profiles.length === 0) return null;
 
   const { floor, ceiling } = file;
-  const leader = priced[0];
-  const rest = priced.slice(1);
+  // The leader slot takes the cheapest VERIFIED price. An uncertain one
+  // (Zeeve publishes no throughput, Dwellir Unlimited has an unpriced
+  // premium add-on) stays in the list with a badge and is named on the card
+  // as cheaper-but-unverified, so the headline answer never rests on a
+  // figure the catalogue itself doubts (audit 2026-10-16).
+  const leader = priced.find((r) => r.verified) ?? priced[0];
+  const cheaperUnverified = leader
+    ? priced.filter((r) => !r.verified && (r.usd ?? 0) < (leader.usd ?? 0))
+    : [];
+  const rest = priced.filter((r) => r !== leader);
   const visible = showAll ? rest : rest.slice(0, SHOWN - 1);
   const onPublished = PUBLISHED.find((p) => p.requests === requests);
   const rps = requests / (30 * 86400);
@@ -153,7 +161,12 @@ export function RpcCostSlider() {
       {/* Answer + chart */}
       <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
         {leader ? (
-          <BestPlanCard leader={leader} next={priced[1]} requests={requests} />
+          <BestPlanCard
+            leader={leader}
+            next={rest.find((r) => r.verified)}
+            cheaperUnverified={cheaperUnverified[0]}
+            requests={requests}
+          />
         ) : (
           <div className="rounded-xl border border-rule p-5 text-sm text-ink-muted">
             No provider publishes a plan for this volume.
@@ -164,7 +177,7 @@ export function RpcCostSlider() {
           requests={requests}
           floor={floor}
           ceiling={ceiling}
-          runnersUp={priced.slice(1, 1 + SERIES.length)}
+          runnersUp={rest.slice(0, SERIES.length)}
           onPick={(r) => setRequests(roundRequests(r))}
         />
       </div>
@@ -334,6 +347,7 @@ export function RpcCostWinnersGrid() {
                                 <span className="text-ink-faint">
                                   {" "}
                                   {shortPlan(r.planName || planLabel(r.plan))}
+                                  {!r.verified ? " (unverified)" : ""}
                                 </span>
                               </span>
                             </Link>
@@ -403,10 +417,12 @@ function ArchiveSwitch({
 function BestPlanCard({
   leader,
   next,
+  cheaperUnverified,
   requests,
 }: {
   leader: RpcCostRankedRow;
   next?: RpcCostRankedRow;
+  cheaperUnverified?: RpcCostRankedRow;
   requests: number;
 }) {
   const gap =
@@ -445,6 +461,14 @@ function BestPlanCard({
                 {next.planName || planLabel(next.plan)}.
               </>
             )}
+          </p>
+        )}
+        {cheaperUnverified && (
+          <p className="mt-3 text-xs text-ink-muted">
+            {brandOf(cheaperUnverified.name)}{" "}
+            {cheaperUnverified.planName || planLabel(cheaperUnverified.plan)} lists{" "}
+            {fmtUSD(cheaperUnverified.usd)}/mo, but its price is not verified, so it
+            is not the headline answer.
           </p>
         )}
         {leader.usd === 0 && (
@@ -520,6 +544,7 @@ function RankRow({
             <span className="block truncate text-xs text-ink-faint sm:hidden">
               {row.planName || planLabel(row.plan)}
               {row.cohort === "dedicated" ? " · flat rate" : ""}
+              {!row.verified ? " · unverified" : ""}
             </span>
           </span>
         </span>
@@ -529,6 +554,14 @@ function RankRow({
             {row.cohort === "dedicated" && (
               <span className="ml-1.5 rounded border border-rule px-1 py-px text-[10px] uppercase tracking-wider text-ink-faint">
                 flat rate
+              </span>
+            )}
+            {!row.verified && (
+              <span
+                title="The catalogue marks this price uncertain: part of it is unpublished or no longer published."
+                className="ml-1.5 rounded border border-warn/50 px-1 py-px text-[10px] uppercase tracking-wider text-warn"
+              >
+                unverified
               </span>
             )}
           </span>
@@ -593,7 +626,7 @@ function CostChart({
     // axis has no zero to draw it on: the chart shades that span instead.
     let freeUntil: number | null = null;
     const envelope = xs.map((r) => {
-      const top = rpcCostRankAt(profileId, r).priced[0];
+      const top = rpcCostRankAt(profileId, r).priced.find((x) => x.verified);
       if (top && top.usd === 0) freeUntil = r;
       return top && top.usd !== null && top.usd > 0 ? top.usd : null;
     });
@@ -654,14 +687,14 @@ function CostChart({
   const freeUntil = data.freeUntil;
 
   const cx = xFor(requests);
-  const leaderNow = rpcCostRankAt(profileId, requests).priced[0]?.usd ?? null;
+  const leaderNow = rpcCostRankAt(profileId, requests).priced.find((x) => x.verified)?.usd ?? null;
 
   return (
     <figure className="rounded-xl border border-rule bg-paper p-3 sm:p-4">
       <figcaption className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-ink-faint">
         <span className="inline-flex items-center gap-1.5">
           <span className="h-0.5 w-4 rounded bg-accent" aria-hidden />
-          Cheapest plan at each volume
+          Cheapest verified plan at each volume
         </span>
         {runnersUp.map((row, i) => (
           <span key={row.slug} className="inline-flex items-center gap-1.5">

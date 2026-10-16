@@ -63,6 +63,8 @@ export type RpcCostCurveProvider = {
   points: RpcCostCurvePoint[];
   /** Plan id to the catalogue's name for it. Absent in older artifacts. */
   planNames?: Record<string, string>;
+  /** Plan ids whose catalogue confidence is not "verified". */
+  unverified?: string[];
 };
 
 export type RpcCostCurveProfile = {
@@ -181,6 +183,9 @@ export type RpcCostRankedRow = {
   plan: string;
   /** The catalogue's name for `plan`, or "" when the artifact has none. */
   planName: string;
+  /** False when the catalogue marks this plan's price uncertain or
+   *  unpublished: shown, badged, and never put in the leader slot. */
+  verified: boolean;
   reason: string;
 };
 
@@ -213,6 +218,7 @@ export function rpcCostRankAt(
       usd: q.usd,
       plan: q.usd === null ? "" : q.plan,
       planName: q.usd === null ? "" : (provider.planNames?.[q.plan] ?? ""),
+      verified: q.usd === null ? true : !(provider.unverified ?? []).includes(q.plan),
       reason: q.usd === null ? q.reason : "",
     };
     (q.usd === null ? unpriced : priced).push(row);

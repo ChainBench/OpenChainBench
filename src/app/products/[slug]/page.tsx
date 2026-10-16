@@ -1113,7 +1113,12 @@ export default async function ProviderPage({
         <ol className="mt-4 divide-y divide-rule border-y border-rule">
           {sorted.map((a) => {
             const catColor = CATEGORY_COLOR[a.benchmark.category];
-            const hasData = a.rank > 0 && a.result.ms.p50 !== 0;
+            // An unranked cohort (bench 282's free public endpoints) has a
+            // figure and no rank; on a bench where 0 is a value, $0 is that
+            // figure, not missing data.
+            const hasData =
+              (a.rank > 0 || (a.unrankedCohort === true && a.result.availability !== "unavailable")) &&
+              (a.result.ms.p50 !== 0 || a.zeroIsAValue === true);
             const value = hasData ? fmtUnit(a.result.ms.p50, a.benchmark.unit) : null;
             // Per-chain leadership chips, rendered alongside the aggregate
             // rank when the bench declares chain dimensions. Leaders only:
@@ -1151,7 +1156,11 @@ export default async function ProviderPage({
                     className="font-sans tabular text-xl sm:text-2xl font-semibold w-12 text-center"
                     style={{ color: a.rank === 1 ? "var(--color-good)" : "var(--color-ink-soft)" }}
                   >
-                    {hasData ? (
+                    {hasData && a.rank === 0 ? (
+                      <span className="block text-[10px] uppercase tracking-[0.16em] text-ink-faint font-normal">
+                        not ranked
+                      </span>
+                    ) : hasData ? (
                       <>
                         #{a.rank}
                         <span className="block text-[9px] uppercase tracking-[0.16em] text-ink-faint mt-0.5">

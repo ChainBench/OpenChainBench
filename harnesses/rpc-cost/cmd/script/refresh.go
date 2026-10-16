@@ -14,10 +14,10 @@ import (
 // The catalogue's numbers are human-verified. What this file does is
 // keep them honest: it re-fetches every artifact those numbers came
 // from, hashes the body, and compares against the hash recorded when a
-// human last read it. When a provider edits its pricing page, the bench
-// says so on the page — `rpc_pricing_artifact_drift` goes to 1 and the
-// spec renders a "pricing changed upstream" note — instead of serving a
-// stale figure that still looks authoritative.
+// human last read it. When a provider edits its pricing page,
+// `rpc_pricing_artifact_drift` goes to 1: an alarm for the maintainers,
+// who re-read the page and re-commit the catalogue. Nothing on the bench
+// page reads this gauge; the page shows the catalogue date.
 //
 // Two upstream behaviours make the obvious implementation wrong, both
 // found by probing rather than by reading docs:
