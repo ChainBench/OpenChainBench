@@ -53,8 +53,8 @@ func serve(addr string, r *Reducer) error {
 			if i > 0 {
 				fmt.Fprint(w, ",")
 			}
-			fmt.Fprintf(w, `{"day":%q,"hours":%d,"complete":%t,"rebuilt":%t}`,
-				d.Day, d.Hours, d.Complete, d.Rebuilt)
+			fmt.Fprintf(w, `{"day":%q,"hours":%d,"complete":%t,"rebuilt":%t,"expected_error_pct":%.1f,"expected_error_extrapolated":%t}`,
+				d.Day, d.Hours, d.Complete, d.Rebuilt, d.ExpectedErrorPct, d.Extrapolated)
 		}
 		fmt.Fprint(w, "]")
 	})
@@ -106,6 +106,27 @@ type dayInfo struct {
 	// validation) but they are a reconstruction, and a reconstruction that
 	// reads as a measurement is the failure this harness was written against.
 	Rebuilt bool
+	// ExpectedErrorPct is how far short a rebuilt day is expected to fall, and
+	// 0 for a measured one. Carried in the listing so a consumer can weigh the
+	// window without fetching every day.
+	ExpectedErrorPct float64
+	Extrapolated     bool
+}
+
+// rebuiltInfo builds the listing entry for a rebuilt day, expected shortfall
+// included. A rebuilt day with no stated error reads as a perfect one, so a
+// file missing the field is reported as the worst case measured rather than as
+// zero.
+func rebuiltInfo(day string, d *Day) dayInfo {
+	info := dayInfo{Day: day, Hours: d.Hours, Complete: d.Complete, Rebuilt: true}
+	if d.RebuiltFrom != nil && d.RebuiltFrom.ExpectedErrorPct != 0 {
+		info.ExpectedErrorPct = d.RebuiltFrom.ExpectedErrorPct
+		info.Extrapolated = d.RebuiltFrom.Extrapolated
+	} else {
+		info.ExpectedErrorPct = -28.2
+		info.Extrapolated = true
+	}
+	return info
 }
 
 // availableDays lists the reduced days, then fills the gaps with rebuilt ones.
@@ -153,13 +174,13 @@ func (r *Reducer) availableDays() []dayInfo {
 				replaced := false
 				for i := range out {
 					if out[i].Day == day {
-						out[i] = dayInfo{Day: day, Hours: d.Hours, Complete: d.Complete, Rebuilt: true}
+						out[i] = rebuiltInfo(day, d)
 						replaced = true
 						break
 					}
 				}
 				if !replaced {
-					out = append(out, dayInfo{Day: day, Hours: d.Hours, Complete: d.Complete, Rebuilt: true})
+					out = append(out, rebuiltInfo(day, d))
 				}
 			}
 		}

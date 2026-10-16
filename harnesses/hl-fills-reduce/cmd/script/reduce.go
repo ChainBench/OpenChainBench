@@ -71,8 +71,24 @@ type Day struct {
 	// per-wallet info API instead of measured by the node. Absent on every
 	// day the reducer writes itself, so a consumer that does not know the
 	// field still cannot read a reconstruction as a measurement.
-	Rebuilt  bool               `json:"rebuilt,omitempty"`
-	Builders map[string]*Totals `json:"builders"`
+	Rebuilt bool `json:"rebuilt,omitempty"`
+	// RebuiltFrom carries a rebuilt day's provenance and, above all, how far
+	// short it is expected to fall. Accuracy depends almost entirely on how much
+	// of the day the export's morning covered, which is known before any
+	// rebuilding happens, so the figure can travel with the day instead of
+	// living in someone's head: two complete days scored against the node gave
+	// -0.43 per cent at a 68.8 per cent morning and -28.2 per cent at 27.2.
+	RebuiltFrom *RebuiltFrom       `json:"rebuilt_from,omitempty"`
+	Builders    map[string]*Totals `json:"builders"`
+}
+
+// RebuiltFrom is the subset of a rebuilt day's provenance this needs. The
+// rebuild tool writes more than these fields; unknown keys decode away, and
+// nothing here ever rewrites a rebuilt file.
+type RebuiltFrom struct {
+	ExpectedErrorPct float64 `json:"expected_error_pct"`
+	MorningSharePct  float64 `json:"morning_share_pct"`
+	Extrapolated     bool    `json:"expected_error_extrapolated"`
 }
 
 // fillEvent mirrors only the fields this reads. The node's record carries a

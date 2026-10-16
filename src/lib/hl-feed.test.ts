@@ -20,6 +20,7 @@ describe("feedNeedsDisclosure", () => {
         windowDays: 30,
         nodeDays: 0,
         rebuiltDays: 0,
+        rebuiltWorstErrorPct: 0,
       }),
     ).toBe(true);
   });
@@ -34,6 +35,7 @@ describe("feedNeedsDisclosure", () => {
         windowDays: 30,
         nodeDays: 30,
         rebuiltDays: 0,
+        rebuiltWorstErrorPct: 0,
       }),
     ).toBe(false);
   });
@@ -50,6 +52,7 @@ describe("feedNeedsDisclosure", () => {
         windowDays: 30,
         nodeDays: 29,
         rebuiltDays: 0,
+        rebuiltWorstErrorPct: 0,
       }),
     ).toBe(true);
   });
@@ -86,6 +89,7 @@ describe("feedIsMostlyWhole", () => {
     windowDays: 30,
     nodeDays: 30,
     rebuiltDays: 0,
+    rebuiltWorstErrorPct: 0,
   };
 
   // The live state on 2026-10-07 once the node source landed: 26 of 30 days
@@ -93,17 +97,23 @@ describe("feedIsMostlyWhole", () => {
   // down. The figures went from 0.53x of CoinMarketMan's to 0.89x, so the
   // page should footnote the gap rather than lead with it.
   it("treats a window that is nearly all node days as whole", () => {
-    expect(feedIsMostlyWhole({ ...base, nodeDays: 26, truncatedDaysWindow: 3 })).toBe(true);
+    expect(
+      feedIsMostlyWhole({ ...base, nodeDays: 26, truncatedDaysWindow: 3 }),
+    ).toBe(true);
   });
 
   // The state before the node source: every day off the truncated export.
   it("does not soften a window built from the export", () => {
-    expect(feedIsMostlyWhole({ ...base, nodeDays: 0, truncatedDaysWindow: 18 })).toBe(false);
+    expect(
+      feedIsMostlyWhole({ ...base, nodeDays: 0, truncatedDaysWindow: 18 }),
+    ).toBe(false);
   });
 
   // Half the window missing is not a footnote.
   it("does not soften a half-sourced window", () => {
-    expect(feedIsMostlyWhole({ ...base, nodeDays: 15, truncatedDaysWindow: 9 })).toBe(false);
+    expect(
+      feedIsMostlyWhole({ ...base, nodeDays: 15, truncatedDaysWindow: 9 }),
+    ).toBe(false);
   });
 
   it("never softens an unmeasured feed", () => {
@@ -128,6 +138,7 @@ describe("rebuilt days are not covered by the truncation trigger", () => {
     windowDays: 30,
     nodeDays: 25,
     rebuiltDays: 5,
+    rebuiltWorstErrorPct: 0,
   };
 
   it("says nothing about a window of whole days, rebuilt or not", () => {

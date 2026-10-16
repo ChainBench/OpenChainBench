@@ -356,6 +356,31 @@ func TestRebuiltDaysOnlyFillGapsAndNeverOutrankAMeasuredDay(t *testing.T) {
 	}
 }
 
+// A rebuilt day states how far short it is expected to fall. A file without
+// that field would otherwise report 0, which reads as a perfect reconstruction
+// and is the most flattering possible lie: the figure would be published as if
+// it were measured. Absent means "assume the worst case we have measured".
+func TestRebuiltDayWithNoStatedErrorIsNotTreatedAsPerfect(t *testing.T) {
+	stated := rebuiltInfo("20261013", &Day{
+		Hours: 24, Complete: true, Rebuilt: true,
+		RebuiltFrom: &RebuiltFrom{ExpectedErrorPct: -0.5, MorningSharePct: 68.7},
+	})
+	if stated.ExpectedErrorPct != -0.5 || stated.Extrapolated {
+		t.Fatalf("a stated error must carry through, got %+v", stated)
+	}
+
+	silent := rebuiltInfo("20261014", &Day{Hours: 24, Complete: true, Rebuilt: true})
+	if silent.ExpectedErrorPct == 0 {
+		t.Fatal("a rebuilt day with no stated error reported 0, which reads as measured")
+	}
+	if !silent.Extrapolated {
+		t.Fatal("a guessed error must be flagged as not measured")
+	}
+	if silent.ExpectedErrorPct > -28.0 {
+		t.Fatalf("the fallback should be the worst case measured, got %.1f", silent.ExpectedErrorPct)
+	}
+}
+
 func keys(m map[string]*Totals) []string {
 	out := make([]string, 0, len(m))
 	for k := range m {

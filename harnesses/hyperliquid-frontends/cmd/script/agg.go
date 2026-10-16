@@ -546,10 +546,12 @@ func (a *Aggregator) publish() {
 		}
 		hlNodeDaysWindow.Set(float64(fromNode))
 		hlRebuiltDaysWindow.Set(float64(fromRebuilt))
+		hlRebuiltWorstError.Set(a.node.WorstRebuiltErrorPct(keep))
 		a.node.Evict(keep)
 	} else {
 		hlNodeDaysWindow.Set(0)
 		hlRebuiltDaysWindow.Set(0)
+		hlRebuiltWorstError.Set(0)
 	}
 
 	// Second pass: the biggest day needs to know which days were cut short,

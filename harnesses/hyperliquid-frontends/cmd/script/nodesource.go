@@ -49,6 +49,12 @@ type nodeDayIndex struct {
 	// apart: "read from the node" and "reconstructed" are different claims
 	// and the page makes both.
 	Rebuilt bool `json:"rebuilt"`
+	// ExpectedErrorPct is how far short a rebuilt day is expected to fall,
+	// negative, and 0 on a measured day. Reported rather than averaged away:
+	// the shortfall ranges from -0.5 to -35 per cent across the rebuilt days,
+	// so a single figure for the window would be meaningless.
+	ExpectedErrorPct float64 `json:"expected_error_pct"`
+	Extrapolated     bool    `json:"expected_error_extrapolated"`
 }
 
 type nodeUserAgg struct {
@@ -175,6 +181,26 @@ func (n *NodeSource) Refresh() error {
 }
 
 // WholeDays is the set of days the node covered end to end.
+// WorstRebuiltErrorPct is the largest expected shortfall among the rebuilt
+// days in the window, as a negative percent, and 0 when none are rebuilt. The
+// worst rather than the mean, because what a reader needs is how wrong the
+// window could be, and averaging a -0.5 per cent day with a -35 per cent one
+// describes neither.
+func (n *NodeSource) WorstRebuiltErrorPct(window map[string]bool) float64 {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+	worst := 0.0
+	for d, e := range n.index {
+		if !e.Complete || !e.Rebuilt || !window[d] {
+			continue
+		}
+		if e.ExpectedErrorPct < worst {
+			worst = e.ExpectedErrorPct
+		}
+	}
+	return worst
+}
+
 // RebuiltDays is the days served as reconstructions. Disjoint from
 // WholeDays, so a caller can report each without the other.
 func (n *NodeSource) RebuiltDays() map[string]bool {

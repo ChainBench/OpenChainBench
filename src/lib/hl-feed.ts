@@ -57,12 +57,21 @@ export type HlFeedCoverage = {
   nodeDays: number;
   /** Days in the window served as reconstructions: the export's own morning
    *  spliced to an afternoon rebuilt per wallet from Hyperliquid's info API,
-   *  for outages the node cannot replay. Measured 0.43% under the node on a
-   *  held-out day, so these are close to whole, but they are not measured and
-   *  are never counted in `nodeDays`. Told to the reader because a
-   *  reconstruction presented as a measurement is the one thing this
-   *  disclosure exists to prevent. */
+   *  for outages the node cannot replay. How close they land varies with how
+   *  much of the day the morning covered, from -0.4% to -28% across the two
+   *  days scored against the node, so `rebuiltWorstErrorPct` carries the
+   *  magnitude and this is only the count. Never folded into `nodeDays`, and
+   *  told to the reader because a reconstruction presented as a measurement
+   *  is the one thing this disclosure exists to prevent. */
   rebuiltDays: number;
+  /** Largest expected shortfall among the rebuilt days in the window, as a
+   *  negative percent, and 0 when none are rebuilt. A rebuilt day's accuracy
+   *  follows how much of it the export's morning covered: two complete days
+   *  scored against the node gave -0.4% at a 68.8% morning and -28.2% at
+   *  27.2%. The worst of the window rather than its mean, because what a
+   *  reader needs is how wrong the figure could be, and averaging a -0.5%
+   *  day with a -35% one describes neither. */
+  rebuiltWorstErrorPct: number;
 };
 
 /**
