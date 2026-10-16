@@ -573,6 +573,11 @@ function Td({
 
 function fmtMs(v: number | null | undefined): string {
   if (v == null || !Number.isFinite(v)) return "...";
+  // One decimal below 10 ms. Rounding to the nearest millisecond printed a
+  // 0.3 ms median as "0 ms", which reads as a broken measurement rather than
+  // as a provider that is a third of a millisecond behind, and it flattened
+  // 2.1 against 5.8 into 2 against 6 on the HTTP cohorts.
+  if (v < 10) return `${v.toFixed(1)} ms`;
   if (v < 1000) return `${Math.round(v)} ms`;
   return `${(v / 1000).toFixed(2)} s`;
 }
