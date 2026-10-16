@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronRight } from "lucide-react";
 import { ProviderLogo } from "@/components/provider-logo";
-import type { RpcHubPivotRow } from "@/lib/rpc-hub-stats";
+import type { RpcHubPivotRow } from "@/lib/rpc-hub-shape";
 
 /**
  * Provider pivot for /rpc: one row per free RPC gateway across every
@@ -38,9 +38,15 @@ function sortValue(r: RpcHubPivotRow, k: SortKey): number | null {
 export function RpcProvidersPivot({
   rows,
   chains,
+  regionLabel = "all regions",
 }: {
   rows: RpcHubPivotRow[];
   chains: ChainRef[];
+  /** Which probe scope the cells were measured in, named in the footnote.
+   *  The hub's geo selector re-scopes the rows to one region, and a cell
+   *  that reads "all regions" when it holds Singapore only is a wrong
+   *  caption on a right number. */
+  regionLabel?: string;
 }) {
   const router = useRouter();
   const [sortKey, setSortKey] = useState<SortKey>("chainsCovered");
@@ -276,7 +282,7 @@ export function RpcProvidersPivot({
 
       <p className="px-3 sm:px-4 py-2.5 border-t border-ink/8 text-[10.5px] text-ink-faint">
         Per-chain cells show the provider&apos;s leaderboard rank on the
-        chain marked by the logo above (24h p50, all regions). Success is
+        chain marked by the logo above (24h p50, {regionLabel}). Success is
         the median 24h success rate across covered chains; Errors (24h) is
         the summed failed-probe count (sample size × failure rate).
       </p>

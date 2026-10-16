@@ -1,9 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { RpcChainsLeaderboard } from "@/components/rpc-chains-leaderboard";
 import { RpcProvidersPivot } from "@/components/rpc-providers-pivot";
-import type { RpcHubCohort, RpcHubSnapshot } from "@/lib/rpc-hub-stats";
+import {
+  RPC_REGION_KEYS,
+  RPC_REGION_LABELS,
+  scopeCohortToRegion,
+  type RpcHubCohort,
+  type RpcHubSnapshot,
+  type RpcRegionKey,
+} from "@/lib/rpc-hub-shape";
 
 /**
  * Tab wrapper for the /rpc hub. Mirrors PmHubTabs: two pills that swap
@@ -28,9 +35,18 @@ import type { RpcHubCohort, RpcHubSnapshot } from "@/lib/rpc-hub-stats";
  * columns because the vendor ordering differs between the two arms, and a
  * reader comparing a pooled service with a one-shot client is asking a
  * different question, not reading a second column.
+ *
+ * Geo selector (2026-10-16): the chain table always had three region
+ * columns, but each held only that region's winner, and the provider pivot
+ * averaged the three, so "who is fastest for my users in Singapore,
+ * provider by provider" was unreadable here. The per-provider per-region
+ * p50 was in the snapshot all along, so the selector re-scopes the cohort
+ * in place: no extra fetch, and the tail columns go empty rather than
+ * repeat a 3-region number under a region heading.
  */
 
 type Tab = "chains" | "providers";
+type Geo = RpcRegionKey | "all";
 type Cohort = "public" | "keyed" | "keyed-cold" | "websocket";
 
 /** Caption under the Access pills. Deliberately not a vendor list: the old
@@ -68,6 +84,7 @@ export function RpcHubTabs({
     linkableSlugs ? c.chains.filter((ch) => linkableSlugs.includes(ch.slug)).length : c.chains.length;
   const [tab, setTab] = useState<Tab>("chains");
   const [cohort, setCohort] = useState<Cohort>("public");
+  const [geo, setGeo] = useState<Geo>("all");
   const keyed = snapshot.keyed;
   const keyedCold = snapshot.keyedCold;
   const websocket = snapshot.websocket;
@@ -80,8 +97,30 @@ export function RpcHubTabs({
     "keyed-cold": keyedCold,
     websocket,
   };
-  const view: RpcHubCohort = cohorts[cohort] ?? snapshot;
+  const all: RpcHubCohort = cohorts[cohort] ?? snapshot;
   const resolved: Cohort = cohorts[cohort] ? cohort : "public";
+  // One region's numbers substituted for the blended ones. Derived here so
+  // both tables and every summary card read the same scope.
+  const view: RpcHubCohort = useMemo(
+    () => (geo === "all" ? all : scopeCohortToRegion(all, geo)),
+    [all, geo],
+  );
+  // Chains with at least one provider answering from each region, which is
+  // what the pill's count has to say: Singapore is short of us-east on the
+  // private cohort because not every vendor has a point of presence there.
+  const geoCounts = useMemo(
+    () =>
+      Object.fromEntries(
+        RPC_REGION_KEYS.map((k) => [
+          k,
+          all.chains.filter((c) =>
+            c.providers.some((p) => p.regions?.[k] != null),
+          ).length,
+        ]),
+      ) as Record<RpcRegionKey, number>,
+    [all],
+  );
+  const geoLabel = geo === "all" ? "all regions" : RPC_REGION_LABELS[geo];
   const benchQuery = resolved === "public" ? "" : `#tier=${resolved}`;
   // Keyed chain pages are indexable through their public view; the
   // sitemap gate applies to the page, not to the cohort.
@@ -138,12 +177,46 @@ export function RpcHubTabs({
         </div>
       )}
 
+      <div className="flex flex-wrap items-center gap-3 mb-4">
+        <span className="font-sans text-[10px] uppercase tracking-[0.18em] text-ink-faint shrink-0 font-medium">
+          Geo
+        </span>
+        <div
+          className="inline-flex rounded-lg border border-ink/15 p-1 bg-paper-soft/40"
+          role="tablist"
+          aria-label="RPC probe region"
+        >
+          <TabButton
+            active={geo === "all"}
+            onClick={() => setGeo("all")}
+            count={all.chains.length}
+          >
+            All regions
+          </TabButton>
+          {RPC_REGION_KEYS.map((k) => (
+            <TabButton
+              key={k}
+              active={geo === k}
+              onClick={() => setGeo(k)}
+              count={geoCounts[k]}
+            >
+              {RPC_REGION_LABELS[k]}
+            </TabButton>
+          ))}
+        </div>
+        <span className="text-[12px] text-ink-faint">
+          {geo === "all"
+            ? "Each column holds that region's winner; the leading column is the 3-region average."
+            : `Every number on the board is measured from ${RPC_REGION_LABELS[geo]} only. Tail columns are empty here: the blob's p90 is computed across all three regions.`}
+        </span>
+      </div>
+
       <section className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
         <SummaryCard label="Chains benched" value={String(chainCount(view))} accent="#0ea5e9" />
         <SummaryCard label="Unique providers" value={String(view.totals.uniqueProviders)} />
         <SummaryCard
-          label="Probe regions"
-          value={String(view.totals.regions)}
+          label={geo === "all" ? "Probe regions" : "Probe region"}
+          value={geo === "all" ? String(view.totals.regions) : RPC_REGION_LABELS[geo]}
           tip="us-east (N. Virginia), eu-west (Amsterdam), Singapore. Every provider is probed from all three."
         />
         <SummaryCard
@@ -159,7 +232,7 @@ export function RpcHubTabs({
           value={fastest ? `${fastest.provider} · ${fmtMs(fastest.p50Ms)}` : "..."}
           tip={
             fastest
-              ? `Best chain leader across the ${COHORT_MATRIX[resolved]} matrix: ${fastest.provider} on ${fastest.chain} (24h p50, all regions).`
+              ? `Best chain leader across the ${COHORT_MATRIX[resolved]} matrix: ${fastest.provider} on ${fastest.chain} (24h p50, ${geoLabel}).`
               : undefined
           }
         />
@@ -188,16 +261,25 @@ export function RpcHubTabs({
 
       {tab === "chains" && (
         <RpcChainsLeaderboard
-          key={cohort}
+          key={`${cohort}:${geo}`}
           rows={view.chains}
           linkableSlugs={linkableSlugs}
           benchQuery={benchQuery}
+          {...(geo === "all"
+            ? {}
+            : {
+                regions: [],
+                scopeNote: `${RPC_REGION_LABELS[geo]} only`,
+                bestLabel: `Best in ${RPC_REGION_LABELS[geo]}`,
+                bestTip: `Lowest 24h p50 measured from ${RPC_REGION_LABELS[geo]} only, and the provider serving it. A provider can lead here and lose everywhere else.`,
+              })}
         />
       )}
       {tab === "providers" && (
         <RpcProvidersPivot
-          key={cohort}
+          key={`${cohort}:${geo}`}
           rows={view.providersPivot}
+          regionLabel={geoLabel}
           chains={view.chains.map((c) => ({
             chain: c.chain,
             name: c.name,
