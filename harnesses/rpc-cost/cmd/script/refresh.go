@@ -84,12 +84,14 @@ func checkArtifact(a Artifact) artifactState {
 		log.Printf("artifact %s: HTTP %d", a.URL, resp.StatusCode)
 		return st
 	}
-	st.ok = true
-
 	body, err := io.ReadAll(io.LimitReader(resp.Body, 32<<20))
 	if err != nil {
+		// A body cut off mid-read is not a healthy fetch: marking ok before
+		// the read published it as reachable and undrifted.
+		log.Printf("artifact %s: read: %v", a.URL, err)
 		return st
 	}
+	st.ok = true
 	sum := sha256.Sum256(body)
 	got := hex.EncodeToString(sum[:])
 

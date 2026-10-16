@@ -125,3 +125,51 @@ describe("carrying a provider the harness stopped publishing", () => {
     expect(out.results.map((r: { slug: string }) => r.slug)).toEqual(["syndica"]);
   });
 });
+
+describe("carrying a panel value the harness stopped publishing", () => {
+  const now = Date.now();
+  const withPanel = (
+    b: Benchmark,
+    values: Record<string, number>,
+    meta?: Record<string, { observedAt: number }>,
+  ) =>
+    ({
+      ...b,
+      metricPanels: [{ id: "per_million", values, valuesMeta: meta }],
+    }) as unknown as Benchmark;
+
+  // Bench 282 served Instanodes' per-million price hours after it left the
+  // spec, and AWS AMB's Solana break-even 265 hours after the harness stopped
+  // emitting it: the panel carry had neither guard the row carry has.
+  test("drops a panel value for a provider no longer in the spec", () => {
+    const prev = prevSnapshot([["dwellir", 1]], {}, now);
+    prev.bench = withPanel(prev.bench, { dwellir: 2, instanodes: 7.9 }, {
+      dwellir: { observedAt: now - HOUR },
+      instanodes: { observedAt: now - HOUR },
+    });
+    const { bench: out } = mergeWithPrevious(
+      withPanel(bench([["dwellir", 1]]), { dwellir: 2 }),
+      prev,
+      now,
+      new Set(["dwellir"]),
+      3 * 3600,
+    );
+    expect(Object.keys(out.metricPanels?.[0]?.values ?? {})).toEqual(["dwellir"]);
+  });
+
+  test("drops a panel value older than the carry ceiling, keeps a recent one", () => {
+    const prev = prevSnapshot([["dwellir", 1]], {}, now);
+    prev.bench = withPanel(prev.bench, { "aws-amb": 9.782, zeeve: 3 }, {
+      "aws-amb": { observedAt: now - 265 * HOUR },
+      zeeve: { observedAt: now - 10 * 60_000 },
+    });
+    const { bench: out } = mergeWithPrevious(
+      withPanel(bench([["dwellir", 1]]), {}),
+      prev,
+      now,
+      new Set(["dwellir", "aws-amb", "zeeve"]),
+      3 * 3600,
+    );
+    expect(Object.keys(out.metricPanels?.[0]?.values ?? {})).toEqual(["zeeve"]);
+  });
+});

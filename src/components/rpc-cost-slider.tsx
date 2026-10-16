@@ -91,9 +91,9 @@ export function RpcCostSlider() {
         Which RPC plan is cheapest at your volume?
       </h2>
       <p className="mt-1 text-sm text-ink-muted max-w-prose">
-        Ethereum, a typical dapp mix. Every provider&apos;s published plans are
-        priced, metered and flat rate, and the cheapest one that can serve the
-        month wins.
+        Ethereum, a typical dapp mix. Every provider&apos;s published paid
+        plans are priced, billed per request and flat-rate nodes alike, and the
+        cheapest one that can serve the month wins.
       </p>
 
       {/* Controls */}
@@ -210,8 +210,10 @@ export function RpcCostSlider() {
           <ul className="mt-3 space-y-1.5 text-sm">
             {unpriced.map((row) => (
               <li key={row.slug} className="flex flex-wrap gap-x-2 text-ink-muted">
+                {/* Full name here, not the brand: Helius and Helius Dedicated
+                    both quote nothing on Ethereum, for different reasons. */}
                 <Link href={`/products/${row.slug}`} className="font-medium text-ink hover:underline">
-                  {brandOf(row.name)}
+                  {row.name}
                 </Link>
                 <span>{row.reason}</span>
               </li>
@@ -222,14 +224,144 @@ export function RpcCostSlider() {
 
       <p className="mt-5 text-[11px] text-ink-faint">
         {onPublished
-          ? `${onPublished.label} is one of the three volumes the findings below quote, so the two agree here. `
+          ? `At ${onPublished.label} the grid below gives the metered winner for every workload; this list adds flat-rate nodes, which can undercut it. `
           : "Exact at every plan boundary, linear in between, which is the real shape of a metered bill. "}
-        Pricing catalogue as of {file.catalogueAsOf}. A free plan wins when it
-        covers the volume; a blank is a provider with no plan for it, never a
-        free one.
+        Paid plans only: free tiers are ranked on bench 283 by what their
+        allowance buys. Pricing catalogue as of {file.catalogueAsOf}; a
+        provider with no plan for the volume is listed as quoting nothing,
+        never as free.
       </p>
     </section>
   );
+}
+
+/** The workloads the gauges rank, in the order the methodology lists them. */
+const GRID_PROFILES = ["simple-read", "dapp", "indexer", "trace", "solana-bot"];
+
+/**
+ * The fifteen cells the findings and the FAQ talk about: the cheapest
+ * metered plan for each workload at each published volume. Metered only,
+ * because that is the cohort the gauges rank and the copy counts (Dwellir
+ * seven, BlockPI three, Syndica two, three ties at $49); flat-rate nodes are
+ * in the calculator above. No selectors: one glance gives every answer.
+ */
+export function RpcCostWinnersGrid() {
+  const file = rpcCostCurves();
+  if (!file) return null;
+  const profiles = GRID_PROFILES.map((id) =>
+    file.profiles.find((p) => p.id === id),
+  ).filter((p): p is NonNullable<typeof p> => Boolean(p));
+  if (profiles.length === 0) return null;
+
+  return (
+    <section
+      id="by-workload"
+      className="mt-8 card-soft rounded-2xl p-4 sm:p-6 lg:p-8"
+      aria-label="Cheapest metered plan by workload and volume"
+    >
+      <p className="label-mono text-accent">By workload</p>
+      <h2 className="mt-1 text-xl sm:text-2xl font-semibold tracking-tight text-ink">
+        The cheapest metered plan, workload by workload
+      </h2>
+      <p className="mt-1 text-sm text-ink-muted max-w-prose">
+        Five method mixes at three monthly volumes, plans billed per request
+        only. The winner changes with the mix, by multiples rather than
+        percent, which is why there is no single cheapest provider.
+      </p>
+      <div className="mt-5 overflow-x-auto">
+        <table className="w-full min-w-[640px] border-separate border-spacing-0 text-sm">
+          <thead>
+            <tr>
+              <th className="py-2 pr-3 text-left font-medium label-mono text-ink-faint">
+                Workload
+              </th>
+              {PUBLISHED.map((v) => (
+                <th
+                  key={v.label}
+                  className="py-2 px-2 text-left font-medium label-mono text-ink-faint"
+                >
+                  {v.label} / month
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {profiles.map((p) => (
+              <tr key={p.id}>
+                <th
+                  scope="row"
+                  className="border-t border-rule py-3 pr-3 text-left align-top font-medium text-ink"
+                >
+                  {p.label}
+                  <span className="block text-[11px] font-normal text-ink-faint">
+                    {p.chain === "solana" ? "Solana" : "Ethereum"}
+                    {p.id === "indexer" || p.id === "trace" ? ", archive" : ""}
+                  </span>
+                </th>
+                {PUBLISHED.map((v) => {
+                  const metered = rpcCostRankAt(p.id, v.requests).priced.filter(
+                    (r) => r.cohort === "usage",
+                  );
+                  const best = metered[0]?.usd ?? null;
+                  const top =
+                    best === null
+                      ? []
+                      : metered.filter((r) => Math.abs((r.usd ?? 0) - best) < 0.005);
+                  return (
+                    <td
+                      key={v.label}
+                      className="border-t border-rule py-3 px-2 align-top"
+                    >
+                      {top.length === 0 ? (
+                        <span className="text-ink-faint">-</span>
+                      ) : (
+                        <>
+                          <span className="block tabular-nums text-base font-semibold text-ink">
+                            {fmtUSD(best)}
+                            <span className="text-xs font-normal text-ink-faint">/mo</span>
+                          </span>
+                          {top.map((r) => (
+                            <Link
+                              key={r.slug}
+                              href={`/products/${r.slug}`}
+                              className="mt-1 flex min-w-0 items-center gap-1.5 text-ink-soft hover:text-ink hover:underline"
+                            >
+                              {hasLogo(r.slug) && (
+                                <ProviderLogo slug={r.slug} name={r.name} size={14} />
+                              )}
+                              <span className="truncate">
+                                {brandOf(r.name)}
+                                <span className="text-ink-faint">
+                                  {" "}
+                                  {shortPlan(r.planName || planLabel(r.plan))}
+                                </span>
+                              </span>
+                            </Link>
+                          ))}
+                          {top.length > 1 && (
+                            <span className="mt-0.5 block text-[10px] uppercase tracking-wider text-ink-faint">
+                              tie
+                            </span>
+                          )}
+                        </>
+                      )}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+/** Syndica's plans are named after the calculator inputs they came from. */
+function shortPlan(name: string): string {
+  // "Calculator: 200M calls @ 300 RPS, 5 users" reads as "200M calls".
+  const n = name.replace(/^Calculator:\s*/, "").split(" @")[0] ?? name;
+  return n.length > 22 ? `${n.slice(0, 20).trimEnd()}…` : n;
 }
 
 function ArchiveSwitch({
@@ -317,7 +449,7 @@ function BestPlanCard({
         )}
         {leader.usd === 0 && (
           <p className="mt-5 text-sm text-ink-soft">
-            A free plan covers this volume outright.
+            $0 at this volume: the plan&apos;s included allowance covers it.
           </p>
         )}
       </div>
