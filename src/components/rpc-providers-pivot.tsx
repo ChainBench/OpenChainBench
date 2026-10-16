@@ -39,6 +39,7 @@ export function RpcProvidersPivot({
   rows,
   chains,
   regionLabel = "all regions",
+  geoControl,
 }: {
   rows: RpcHubPivotRow[];
   chains: ChainRef[];
@@ -47,6 +48,9 @@ export function RpcProvidersPivot({
    *  that reads "all regions" when it holds Singapore only is a wrong
    *  caption on a right number. */
   regionLabel?: string;
+  /** The hub's region selector, rendered in this table's header bar so the
+   *  control sits with the caption it changes. */
+  geoControl?: React.ReactNode;
 }) {
   const router = useRouter();
   const [sortKey, setSortKey] = useState<SortKey>("chainsCovered");
@@ -100,13 +104,16 @@ export function RpcProvidersPivot({
   return (
     <div className="mt-6 card-soft rounded-xl border border-ink/10">
       <div className="p-3 sm:p-4 border-b border-ink/8 flex items-center justify-between gap-3 flex-wrap">
-        <p
-          className="text-[11px] text-ink-faint"
-          style={{ fontFamily: "var(--font-mono, monospace)" }}
-        >
-          {filtered.length} of {rows.length} providers · rank + median
-          p50 across {chains.length} chains
-        </p>
+        <div className="flex items-center gap-3 flex-wrap min-w-0">
+          <p
+            className="text-[11px] text-ink-faint"
+            style={{ fontFamily: "var(--font-mono, monospace)" }}
+          >
+            {filtered.length} of {rows.length} providers · rank + median
+            p50 across {chains.length} chains, {regionLabel}
+          </p>
+          {geoControl}
+        </div>
         <input
           type="search" aria-label="Search provider..."
           value={q}

@@ -62,6 +62,7 @@ export function RpcChainsLeaderboard({
   bestLabel = "Best overall (3-region avg)",
   bestTip = "Lowest p50 averaged across the 3 probe regions. A provider can win overall without winning any single region: consistent everywhere beats fast in one region, slow elsewhere.",
   scopeNote = "3 probe regions",
+  geoControl,
 }: {
   rows: RpcHubChain[];
   /** Bench slugs whose page is indexable (worker sitemap). When given it
@@ -82,6 +83,10 @@ export function RpcChainsLeaderboard({
   /** Tail of the caption above the table, which claimed three regions
    *  whatever the rows held. */
   scopeNote?: string;
+  /** The hub's region selector, rendered in this table's header bar. The
+   *  state belongs to the hub (both tables are scoped by it); only the
+   *  placement is ours, beside the caption that names the scope. */
+  geoControl?: React.ReactNode;
 }) {
   const [showAll, setShowAll] = useState(false);
   const linkableSet = useMemo(
@@ -162,12 +167,15 @@ export function RpcChainsLeaderboard({
   return (
     <div className="mt-6 card-soft rounded-xl border border-ink/10">
       <div className="p-3 sm:p-4 border-b border-ink/8 flex items-center justify-between gap-3 flex-wrap">
-        <p
-          className="text-[11px] text-ink-faint"
-          style={{ fontFamily: "var(--font-mono, monospace)" }}
-        >
-          {filtered.length} of {rows.length} chains · 24h p50, {scopeNote}
-        </p>
+        <div className="flex items-center gap-3 flex-wrap min-w-0">
+          <p
+            className="text-[11px] text-ink-faint"
+            style={{ fontFamily: "var(--font-mono, monospace)" }}
+          >
+            {filtered.length} of {rows.length} chains · 24h p50, {scopeNote}
+          </p>
+          {geoControl}
+        </div>
         <input
           type="search" aria-label="Search chain or provider..."
           value={q}
