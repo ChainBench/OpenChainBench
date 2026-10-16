@@ -14,14 +14,13 @@ import (
 // parser that guesses is worse than a parser that does not exist. What
 // IS live is the freshness check in refresh.go: every figure carries the
 // artifact it came from, the harness re-fetches those artifacts on a
-// loop, and the bench publishes how stale each provider's numbers are.
+// loop, and exports how stale each provider's numbers are.
 //
-// Note what that check is and is not: the age is PUBLISHED, per provider
-// per artifact, as rpc_pricing_artifact_age_seconds. Nothing in this
-// harness compares it to a threshold, so there is no cutoff past which a
-// figure is withheld or relabelled. A stale number is visible as stale
-// because its age is on the board next to it, which is what the spec
-// claims ("Age is published either way"), and nothing more.
+// Note what that check is and is not: the age is exported, per provider
+// per artifact, as rpc_pricing_artifact_age_seconds, for the maintainers.
+// Nothing compares it to a threshold and the bench page does not read it:
+// the page shows the catalogue's as_of date, and each figure's own
+// verified_at stays in this file.
 
 type Catalogue struct {
 	Version   int        `yaml:"version"`

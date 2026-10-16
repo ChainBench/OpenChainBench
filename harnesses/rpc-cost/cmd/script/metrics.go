@@ -34,7 +34,7 @@ import (
 //
 //   rpc_pricing_artifact_age_seconds{provider, artifact}
 //     Seconds since a human last verified the figures under that
-//     artifact. The bench page ages its own numbers in public.
+//     artifact. A maintainer signal; the bench page shows the catalogue date.
 //
 //   rpc_pricing_artifact_drift{provider, artifact}
 //     1 when the artifact's body no longer matches the hash recorded at
