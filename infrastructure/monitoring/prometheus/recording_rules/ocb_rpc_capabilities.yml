@@ -32,12 +32,20 @@ groups:
         expr: quantile_over_time(0.99, rpc_latency_milliseconds[24h])
       - record: ocb:rpc_latency_milliseconds:mean_24h
         expr: avg_over_time(rpc_latency_milliseconds[24h])
+      # `tier` is in the by-clause since 2026-10-16, and its absence was not
+      # cosmetic: the keyed harness emits rpc_call_total with tier="keyed",
+      # these rules summed it away, and so every keyed spec's success and
+      # sample_size query matched nothing. The loader defaults a missing
+      # success to 100, so the private cohort published a success rate of
+      # exactly 100% on every row as an assumption. Public series carry no
+      # tier label, and an absent label equals an empty one, so selectors
+      # without `tier` keep matching them unchanged.
       - record: ocb:rpc_call:ok_rate_24h
-        expr: sum by (provider, chain, region) (rate(rpc_call_total{result="ok"}[24h]))
+        expr: sum by (provider, chain, region, tier) (rate(rpc_call_total{result="ok"}[24h]))
       - record: ocb:rpc_call:rate_24h
-        expr: sum by (provider, chain, region) (rate(rpc_call_total[24h]))
+        expr: sum by (provider, chain, region, tier) (rate(rpc_call_total[24h]))
       - record: ocb:rpc_call:increase_24h
-        expr: sum by (provider, chain, region) (increase(rpc_call_total[24h]))
+        expr: sum by (provider, chain, region, tier) (increase(rpc_call_total[24h]))
 
       # Cold-connection arm, added 2026-10-08 with the keyed probe fix.
       #

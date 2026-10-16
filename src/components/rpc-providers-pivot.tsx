@@ -89,6 +89,19 @@ export function RpcProvidersPivot({
     });
   }, [rows, sortKey, sortDir, q]);
 
+  /** Both are optional on the row and absent whenever the cohort's specs
+   *  have no success or sample-size query that resolves. A column of dashes
+   *  states "no failures counted", which is a claim about the providers
+   *  rather than about the measurement. */
+  const hasSuccess = useMemo(
+    () => rows.some((r) => r.medianSuccessPct != null),
+    [rows],
+  );
+  const hasErrors = useMemo(
+    () => rows.some((r) => r.errors24h != null),
+    [rows],
+  );
+
   const setSort = (k: SortKey) => {
     if (k === sortKey) setSortDir((d) => (d === "desc" ? "asc" : "desc"));
     else {
@@ -150,20 +163,24 @@ export function RpcProvidersPivot({
               >
                 Median p50
               </ThSort>
-              <ThSort
-                active={sortKey === "medianSuccessPct"}
-                dir={sortDir}
-                onClick={() => setSort("medianSuccessPct")}
-              >
-                Success
-              </ThSort>
-              <ThSort
-                active={sortKey === "errors24h"}
-                dir={sortDir}
-                onClick={() => setSort("errors24h")}
-              >
-                Errors (24h)
-              </ThSort>
+              {hasSuccess && (
+                <ThSort
+                  active={sortKey === "medianSuccessPct"}
+                  dir={sortDir}
+                  onClick={() => setSort("medianSuccessPct")}
+                >
+                  Success
+                </ThSort>
+              )}
+              {hasErrors && (
+                <ThSort
+                  active={sortKey === "errors24h"}
+                  dir={sortDir}
+                  onClick={() => setSort("errors24h")}
+                >
+                  Errors (24h)
+                </ThSort>
+              )}
               {/* Chain logos double as column headers for the rank
                   strip below: same 22px slots + gap as the cells, so
                   each rank square reads under its chain mark. */}
@@ -236,16 +253,20 @@ export function RpcProvidersPivot({
                 </Td>
                 <Td mono>#{fmtRank(r.medianRank)}</Td>
                 <Td mono>{fmtMs(r.medianP50Ms)}</Td>
-                <Td mono>
-                  {r.medianSuccessPct != null
-                    ? `${r.medianSuccessPct.toFixed(2)}%`
-                    : "—"}
-                </Td>
-                <Td mono muted>
-                  {r.errors24h != null
-                    ? r.errors24h.toLocaleString("en-US")
-                    : "—"}
-                </Td>
+                {hasSuccess && (
+                  <Td mono>
+                    {r.medianSuccessPct != null
+                      ? `${r.medianSuccessPct.toFixed(2)}%`
+                      : "—"}
+                  </Td>
+                )}
+                {hasErrors && (
+                  <Td mono muted>
+                    {r.errors24h != null
+                      ? r.errors24h.toLocaleString("en-US")
+                      : "—"}
+                  </Td>
+                )}
                 <Td>
                   <span className="inline-flex items-center gap-1">
                     {chains.map((c) => {
@@ -276,7 +297,7 @@ export function RpcProvidersPivot({
             {filtered.length === 0 && (
               <tr>
                 <td
-                  colSpan={8}
+                  colSpan={6 + (hasSuccess ? 1 : 0) + (hasErrors ? 1 : 0)}
                   className="px-3 py-8 text-center text-[12px] text-ink-faint"
                 >
                   No provider matches &ldquo;{q}&rdquo;.
@@ -289,9 +310,13 @@ export function RpcProvidersPivot({
 
       <p className="px-3 sm:px-4 py-2.5 border-t border-ink/8 text-[10.5px] text-ink-faint">
         Per-chain cells show the provider&apos;s leaderboard rank on the
-        chain marked by the logo above (24h p50, {regionLabel}). Success is
-        the median 24h success rate across covered chains; Errors (24h) is
-        the summed failed-probe count (sample size × failure rate).
+        chain marked by the logo above (24h p50, {regionLabel}).
+        {hasSuccess
+          ? " Success is the median 24h success rate across covered chains."
+          : ""}
+        {hasErrors
+          ? " Errors (24h) is the summed failed-probe count (sample size × failure rate)."
+          : ""}
       </p>
     </div>
   );
