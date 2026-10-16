@@ -9,7 +9,7 @@ subtitle: The monthly bill each RPC provider would send for the same workload, n
 
 category: RPCs
 status: live
-metric: Monthly cost
+metric: Monthly cost, dapp mix at 10M requests
 unit: usd
 higher_is_better: false
 row_noun: { one: provider, many: providers }
@@ -27,8 +27,8 @@ seo_intro: |
   There is no cheapest RPC provider. That is the finding, not a hedge. We
   priced the same five workloads against every major provider and five
   different names lead the fifteen cells, by multiples rather than percent.
-  Alchemy charges half of QuickNode for eth_blockNumber and three times
-  QuickNode for eth_getLogs. Dwellir and Chainstack both bill one flat unit per
+  Per call, Alchemy costs well under half of QuickNode for eth_blockNumber
+  and about two and a half times QuickNode for eth_getLogs. Dwellir and Chainstack both bill one flat unit per
   call and still differ by a factor of two where it matters: Chainstack charges
   2 Request Units for an archive read and for every debug or trace call,
   Dwellir 1 credit for every response, trace included. That is why Dwellir
@@ -216,7 +216,7 @@ metric_panels:
   # what the allowance actually buys.
   - id: free_allowance
     label: Free tier, requests per month
-    description: Requests of this workload the provider's free allowance covers each month, after converting its credits, units or daily cap. Higher is better; providers with no free tier are absent.
+    description: Requests of this workload the provider's free allowance covers each month, after converting its credits, units or daily cap. Higher is better; absent means no free tier, or one that refuses a method of the workload (Dwellir's free plan serves no eth_getLogs).
     metric: rpc_free_allowance_requests{kind="all"}
     label_key: provider
     unit: count
@@ -228,31 +228,6 @@ metric_panels:
     # two matched nothing and left this panel blank on 70 of 75 views.
     ignore_dimensions: [bucket, venue]
   # The question the dedicated cohort exists to answer.
-  - id: breakeven
-    label: Dedicated break-even, requests per month
-    description: Monthly request volume at which a fixed-price dedicated node undercuts the cheapest metered rate, taking each provider's soonest-crossing plan. Lower means the fixed price pays for itself sooner. A provider absent here never breaks even, because its own per-request rate is above the metered floor.
-    # The empty selector is load-bearing. The loader splices the provider
-    # filter at the metric's FIRST brace and appends `{provider="x"}` to the
-    # end when there is none, which on an aggregation lands outside the
-    # closing paren and will not parse. Verified against Prometheus both
-    # ways: without it, `1:48: parse error: unexpected "{"`.
-    metric: min by (provider) (rpc_cost_breakeven_requests{})
-    label_key: provider
-    unit: count
-    higher_is_better: false
-    # Two reasons this reads differently from the other panels.
-    #
-    # `min by (provider)`: the gauge is one series per plan per chain, and
-    # the loader asks for a scalar per provider. Chainstack's dedicated
-    # cohort alone publishes eleven, and prom.scalar returns null on more
-    # than one series, so the panel showed 1 provider of 9. The minimum is
-    # the right collapse: the question is the soonest volume at which buying
-    # beats metering.
-    #
-    # The gauge is labelled (provider, plan, chain) and carries no workload,
-    # volume or plan-band dimension, so appending them matched nothing.
-    ignore_dimensions: [kind, bucket, venue]
-
 dimension_labels:
   kind: Workload
   bucket: Monthly volume
@@ -283,13 +258,13 @@ dimensions:
     # their allowance buys instead, which is the only axis that separates
     # them.
     - { value: all,        label: Cheapest paid plan }
-    - { value: entry,      label: "Entry, to $50/mo" }
-    - { value: growth,     label: "Growth, to $300/mo" }
-    - { value: business,   label: "Business, to $1000/mo" }
+    - { value: entry,      label: "Entry, base fee to $50/mo" }
+    - { value: growth,     label: "Growth, base fee to $300/mo" }
+    - { value: business,   label: "Business, base fee to $1000/mo" }
     - { value: enterprise, label: Enterprise }
   tier:
     - { value: usage,     label: Billed per request }
-    - { value: dedicated, label: Dedicated capacity }
+    - { value: dedicated, label: Dedicated capacity, ranked: false }
     - { value: reference, label: "Free public, not ranked", ranked: false }
 
 providers:
@@ -304,7 +279,7 @@ providers:
       ranked: rpc_cost_eligible{provider="alchemy",kind="all",bucket="all"}
       mean: min(last_over_time(rpc_cost_monthly_usd{provider="alchemy",kind="all",bucket="all",venue="all"}[20m]))
       series: rpc_cost_monthly_usd{provider="alchemy",kind="all",bucket="all",venue="all"}
-      sample_size: count_over_time(rpc_cost_monthly_usd{provider="alchemy",kind="all",bucket="all",venue="all"}[7d])
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="alchemy",kind="all",bucket="all",venue="all"}[20m])
 
   - slug: quicknode
     name: QuickNode
@@ -317,7 +292,7 @@ providers:
       ranked: rpc_cost_eligible{provider="quicknode",kind="all",bucket="all"}
       mean: min(last_over_time(rpc_cost_monthly_usd{provider="quicknode",kind="all",bucket="all",venue="all"}[20m]))
       series: rpc_cost_monthly_usd{provider="quicknode",kind="all",bucket="all",venue="all"}
-      sample_size: count_over_time(rpc_cost_monthly_usd{provider="quicknode",kind="all",bucket="all",venue="all"}[7d])
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="quicknode",kind="all",bucket="all",venue="all"}[20m])
 
   - slug: infura
     name: Infura (MetaMask Developer)
@@ -330,7 +305,7 @@ providers:
       ranked: rpc_cost_eligible{provider="infura",kind="all",bucket="all"}
       mean: min(last_over_time(rpc_cost_monthly_usd{provider="infura",kind="all",bucket="all",venue="all"}[20m]))
       series: rpc_cost_monthly_usd{provider="infura",kind="all",bucket="all",venue="all"}
-      sample_size: count_over_time(rpc_cost_monthly_usd{provider="infura",kind="all",bucket="all",venue="all"}[7d])
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="infura",kind="all",bucket="all",venue="all"}[20m])
 
   - slug: chainstack
     name: Chainstack
@@ -343,7 +318,7 @@ providers:
       ranked: rpc_cost_eligible{provider="chainstack",kind="all",bucket="all"}
       mean: min(last_over_time(rpc_cost_monthly_usd{provider="chainstack",kind="all",bucket="all",venue="all"}[20m]))
       series: rpc_cost_monthly_usd{provider="chainstack",kind="all",bucket="all",venue="all"}
-      sample_size: count_over_time(rpc_cost_monthly_usd{provider="chainstack",kind="all",bucket="all",venue="all"}[7d])
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="chainstack",kind="all",bucket="all",venue="all"}[20m])
 
   - slug: drpc
     name: dRPC
@@ -356,7 +331,7 @@ providers:
       ranked: rpc_cost_eligible{provider="drpc",kind="all",bucket="all"}
       mean: min(last_over_time(rpc_cost_monthly_usd{provider="drpc",kind="all",bucket="all",venue="all"}[20m]))
       series: rpc_cost_monthly_usd{provider="drpc",kind="all",bucket="all",venue="all"}
-      sample_size: count_over_time(rpc_cost_monthly_usd{provider="drpc",kind="all",bucket="all",venue="all"}[7d])
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="drpc",kind="all",bucket="all",venue="all"}[20m])
 
   - slug: ankr
     name: Ankr
@@ -369,7 +344,7 @@ providers:
       ranked: rpc_cost_eligible{provider="ankr",kind="all",bucket="all"}
       mean: min(last_over_time(rpc_cost_monthly_usd{provider="ankr",kind="all",bucket="all",venue="all"}[20m]))
       series: rpc_cost_monthly_usd{provider="ankr",kind="all",bucket="all",venue="all"}
-      sample_size: count_over_time(rpc_cost_monthly_usd{provider="ankr",kind="all",bucket="all",venue="all"}[7d])
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="ankr",kind="all",bucket="all",venue="all"}[20m])
 
   - slug: blockpi
     name: BlockPI
@@ -382,7 +357,7 @@ providers:
       ranked: rpc_cost_eligible{provider="blockpi",kind="all",bucket="all"}
       mean: min(last_over_time(rpc_cost_monthly_usd{provider="blockpi",kind="all",bucket="all",venue="all"}[20m]))
       series: rpc_cost_monthly_usd{provider="blockpi",kind="all",bucket="all",venue="all"}
-      sample_size: count_over_time(rpc_cost_monthly_usd{provider="blockpi",kind="all",bucket="all",venue="all"}[7d])
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="blockpi",kind="all",bucket="all",venue="all"}[20m])
 
   - slug: getblock
     name: GetBlock
@@ -395,7 +370,7 @@ providers:
       ranked: rpc_cost_eligible{provider="getblock",kind="all",bucket="all"}
       mean: min(last_over_time(rpc_cost_monthly_usd{provider="getblock",kind="all",bucket="all",venue="all"}[20m]))
       series: rpc_cost_monthly_usd{provider="getblock",kind="all",bucket="all",venue="all"}
-      sample_size: count_over_time(rpc_cost_monthly_usd{provider="getblock",kind="all",bucket="all",venue="all"}[7d])
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="getblock",kind="all",bucket="all",venue="all"}[20m])
 
   - slug: nownodes
     name: NOWNodes
@@ -408,7 +383,7 @@ providers:
       ranked: rpc_cost_eligible{provider="nownodes",kind="all",bucket="all"}
       mean: min(last_over_time(rpc_cost_monthly_usd{provider="nownodes",kind="all",bucket="all",venue="all"}[20m]))
       series: rpc_cost_monthly_usd{provider="nownodes",kind="all",bucket="all",venue="all"}
-      sample_size: count_over_time(rpc_cost_monthly_usd{provider="nownodes",kind="all",bucket="all",venue="all"}[7d])
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="nownodes",kind="all",bucket="all",venue="all"}[20m])
 
   - slug: tatum
     name: Tatum
@@ -421,7 +396,7 @@ providers:
       ranked: rpc_cost_eligible{provider="tatum",kind="all",bucket="all"}
       mean: min(last_over_time(rpc_cost_monthly_usd{provider="tatum",kind="all",bucket="all",venue="all"}[20m]))
       series: rpc_cost_monthly_usd{provider="tatum",kind="all",bucket="all",venue="all"}
-      sample_size: count_over_time(rpc_cost_monthly_usd{provider="tatum",kind="all",bucket="all",venue="all"}[7d])
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="tatum",kind="all",bucket="all",venue="all"}[20m])
 
   - slug: helius
     name: Helius
@@ -434,7 +409,7 @@ providers:
       ranked: rpc_cost_eligible{provider="helius",kind="all",bucket="all"}
       mean: min(last_over_time(rpc_cost_monthly_usd{provider="helius",kind="all",bucket="all",venue="all"}[20m]))
       series: rpc_cost_monthly_usd{provider="helius",kind="all",bucket="all",venue="all"}
-      sample_size: count_over_time(rpc_cost_monthly_usd{provider="helius",kind="all",bucket="all",venue="all"}[7d])
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="helius",kind="all",bucket="all",venue="all"}[20m])
 
   - slug: moralis
     name: Moralis
@@ -447,7 +422,7 @@ providers:
       ranked: rpc_cost_eligible{provider="moralis",kind="all",bucket="all"}
       mean: min(last_over_time(rpc_cost_monthly_usd{provider="moralis",kind="all",bucket="all",venue="all"}[20m]))
       series: rpc_cost_monthly_usd{provider="moralis",kind="all",bucket="all",venue="all"}
-      sample_size: count_over_time(rpc_cost_monthly_usd{provider="moralis",kind="all",bucket="all",venue="all"}[7d])
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="moralis",kind="all",bucket="all",venue="all"}[20m])
 
   - slug: validation-cloud
     name: Validation Cloud
@@ -460,7 +435,7 @@ providers:
       ranked: rpc_cost_eligible{provider="validation-cloud",kind="all",bucket="all"}
       mean: min(last_over_time(rpc_cost_monthly_usd{provider="validation-cloud",kind="all",bucket="all",venue="all"}[20m]))
       series: rpc_cost_monthly_usd{provider="validation-cloud",kind="all",bucket="all",venue="all"}
-      sample_size: count_over_time(rpc_cost_monthly_usd{provider="validation-cloud",kind="all",bucket="all",venue="all"}[7d])
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="validation-cloud",kind="all",bucket="all",venue="all"}[20m])
 
   - slug: dwellir
     name: Dwellir
@@ -473,7 +448,7 @@ providers:
       ranked: rpc_cost_eligible{provider="dwellir",kind="all",bucket="all"}
       mean: min(last_over_time(rpc_cost_monthly_usd{provider="dwellir",kind="all",bucket="all",venue="all"}[20m]))
       series: rpc_cost_monthly_usd{provider="dwellir",kind="all",bucket="all",venue="all"}
-      sample_size: count_over_time(rpc_cost_monthly_usd{provider="dwellir",kind="all",bucket="all",venue="all"}[7d])
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="dwellir",kind="all",bucket="all",venue="all"}[20m])
 
   - slug: thirdweb
     name: thirdweb
@@ -486,7 +461,7 @@ providers:
       ranked: rpc_cost_eligible{provider="thirdweb",kind="all",bucket="all"}
       mean: min(last_over_time(rpc_cost_monthly_usd{provider="thirdweb",kind="all",bucket="all",venue="all"}[20m]))
       series: rpc_cost_monthly_usd{provider="thirdweb",kind="all",bucket="all",venue="all"}
-      sample_size: count_over_time(rpc_cost_monthly_usd{provider="thirdweb",kind="all",bucket="all",venue="all"}[7d])
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="thirdweb",kind="all",bucket="all",venue="all"}[20m])
 
   - slug: onfinality
     name: OnFinality
@@ -499,7 +474,7 @@ providers:
       ranked: rpc_cost_eligible{provider="onfinality",kind="all",bucket="all"}
       mean: min(last_over_time(rpc_cost_monthly_usd{provider="onfinality",kind="all",bucket="all",venue="all"}[20m]))
       series: rpc_cost_monthly_usd{provider="onfinality",kind="all",bucket="all",venue="all"}
-      sample_size: count_over_time(rpc_cost_monthly_usd{provider="onfinality",kind="all",bucket="all",venue="all"}[7d])
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="onfinality",kind="all",bucket="all",venue="all"}[20m])
 
   - slug: syndica
     name: Syndica
@@ -512,7 +487,7 @@ providers:
       ranked: rpc_cost_eligible{provider="syndica",kind="all",bucket="all"}
       mean: min(last_over_time(rpc_cost_monthly_usd{provider="syndica",kind="all",bucket="all",venue="all"}[20m]))
       series: rpc_cost_monthly_usd{provider="syndica",kind="all",bucket="all",venue="all"}
-      sample_size: count_over_time(rpc_cost_monthly_usd{provider="syndica",kind="all",bucket="all",venue="all"}[7d])
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="syndica",kind="all",bucket="all",venue="all"}[20m])
 
   - slug: triton
     name: Triton One
@@ -525,7 +500,7 @@ providers:
       ranked: rpc_cost_eligible{provider="triton",kind="all",bucket="all"}
       mean: min(last_over_time(rpc_cost_monthly_usd{provider="triton",kind="all",bucket="all",venue="all"}[20m]))
       series: rpc_cost_monthly_usd{provider="triton",kind="all",bucket="all",venue="all"}
-      sample_size: count_over_time(rpc_cost_monthly_usd{provider="triton",kind="all",bucket="all",venue="all"}[7d])
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="triton",kind="all",bucket="all",venue="all"}[20m])
 
   - slug: publicnode
     name: PublicNode (by Allnodes)
@@ -538,7 +513,7 @@ providers:
       ranked: rpc_cost_eligible{provider="publicnode",kind="all",bucket="all"}
       mean: min(last_over_time(rpc_cost_monthly_usd{provider="publicnode",kind="all",bucket="all",venue="all"}[20m]))
       series: rpc_cost_monthly_usd{provider="publicnode",kind="all",bucket="all",venue="all"}
-      sample_size: count_over_time(rpc_cost_monthly_usd{provider="publicnode",kind="all",bucket="all",venue="all"}[7d])
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="publicnode",kind="all",bucket="all",venue="all"}[20m])
 
   - slug: solana-foundation
     name: Solana Foundation / Anza public endpoints
@@ -551,7 +526,7 @@ providers:
       ranked: rpc_cost_eligible{provider="solana-foundation",kind="all",bucket="all"}
       mean: min(last_over_time(rpc_cost_monthly_usd{provider="solana-foundation",kind="all",bucket="all",venue="all"}[20m]))
       series: rpc_cost_monthly_usd{provider="solana-foundation",kind="all",bucket="all",venue="all"}
-      sample_size: count_over_time(rpc_cost_monthly_usd{provider="solana-foundation",kind="all",bucket="all",venue="all"}[7d])
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="solana-foundation",kind="all",bucket="all",venue="all"}[20m])
 
   - slug: getblock-dedicated
     name: GetBlock, Dedicated & Limitless nodes
@@ -564,7 +539,7 @@ providers:
       ranked: rpc_cost_eligible{provider="getblock-dedicated",kind="all",bucket="all"}
       mean: min(last_over_time(rpc_cost_monthly_usd{provider="getblock-dedicated",kind="all",bucket="all",venue="all"}[20m]))
       series: rpc_cost_monthly_usd{provider="getblock-dedicated",kind="all",bucket="all",venue="all"}
-      sample_size: count_over_time(rpc_cost_monthly_usd{provider="getblock-dedicated",kind="all",bucket="all",venue="all"}[7d])
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="getblock-dedicated",kind="all",bucket="all",venue="all"}[20m])
 
   - slug: chainstack-dedicated
     name: Chainstack, Dedicated Node & Unlimited Node
@@ -577,7 +552,7 @@ providers:
       ranked: rpc_cost_eligible{provider="chainstack-dedicated",kind="all",bucket="all"}
       mean: min(last_over_time(rpc_cost_monthly_usd{provider="chainstack-dedicated",kind="all",bucket="all",venue="all"}[20m]))
       series: rpc_cost_monthly_usd{provider="chainstack-dedicated",kind="all",bucket="all",venue="all"}
-      sample_size: count_over_time(rpc_cost_monthly_usd{provider="chainstack-dedicated",kind="all",bucket="all",venue="all"}[7d])
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="chainstack-dedicated",kind="all",bucket="all",venue="all"}[20m])
 
   - slug: dwellir-unlimited
     name: Dwellir, Unlimited Nodes & dedicated clusters
@@ -590,7 +565,7 @@ providers:
       ranked: rpc_cost_eligible{provider="dwellir-unlimited",kind="all",bucket="all"}
       mean: min(last_over_time(rpc_cost_monthly_usd{provider="dwellir-unlimited",kind="all",bucket="all",venue="all"}[20m]))
       series: rpc_cost_monthly_usd{provider="dwellir-unlimited",kind="all",bucket="all",venue="all"}
-      sample_size: count_over_time(rpc_cost_monthly_usd{provider="dwellir-unlimited",kind="all",bucket="all",venue="all"}[7d])
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="dwellir-unlimited",kind="all",bucket="all",venue="all"}[20m])
 
   - slug: quicknode-flat-rate
     name: QuickNode, Flat Rate RPS
@@ -603,7 +578,7 @@ providers:
       ranked: rpc_cost_eligible{provider="quicknode-flat-rate",kind="all",bucket="all"}
       mean: min(last_over_time(rpc_cost_monthly_usd{provider="quicknode-flat-rate",kind="all",bucket="all",venue="all"}[20m]))
       series: rpc_cost_monthly_usd{provider="quicknode-flat-rate",kind="all",bucket="all",venue="all"}
-      sample_size: count_over_time(rpc_cost_monthly_usd{provider="quicknode-flat-rate",kind="all",bucket="all",venue="all"}[7d])
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="quicknode-flat-rate",kind="all",bucket="all",venue="all"}[20m])
 
   - slug: helius-dedicated
     name: Helius, Dedicated Nodes
@@ -616,7 +591,7 @@ providers:
       ranked: rpc_cost_eligible{provider="helius-dedicated",kind="all",bucket="all"}
       mean: min(last_over_time(rpc_cost_monthly_usd{provider="helius-dedicated",kind="all",bucket="all",venue="all"}[20m]))
       series: rpc_cost_monthly_usd{provider="helius-dedicated",kind="all",bucket="all",venue="all"}
-      sample_size: count_over_time(rpc_cost_monthly_usd{provider="helius-dedicated",kind="all",bucket="all",venue="all"}[7d])
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="helius-dedicated",kind="all",bucket="all",venue="all"}[20m])
 
   - slug: shyft
     name: Shyft
@@ -629,7 +604,7 @@ providers:
       ranked: rpc_cost_eligible{provider="shyft",kind="all",bucket="all"}
       mean: min(last_over_time(rpc_cost_monthly_usd{provider="shyft",kind="all",bucket="all",venue="all"}[20m]))
       series: rpc_cost_monthly_usd{provider="shyft",kind="all",bucket="all",venue="all"}
-      sample_size: count_over_time(rpc_cost_monthly_usd{provider="shyft",kind="all",bucket="all",venue="all"}[7d])
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="shyft",kind="all",bucket="all",venue="all"}[20m])
 
   - slug: allnodes
     name: Allnodes
@@ -642,7 +617,7 @@ providers:
       ranked: rpc_cost_eligible{provider="allnodes",kind="all",bucket="all"}
       mean: min(last_over_time(rpc_cost_monthly_usd{provider="allnodes",kind="all",bucket="all",venue="all"}[20m]))
       series: rpc_cost_monthly_usd{provider="allnodes",kind="all",bucket="all",venue="all"}
-      sample_size: count_over_time(rpc_cost_monthly_usd{provider="allnodes",kind="all",bucket="all",venue="all"}[7d])
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="allnodes",kind="all",bucket="all",venue="all"}[20m])
 
   - slug: zeeve
     name: Zeeve
@@ -655,5 +630,5 @@ providers:
       ranked: rpc_cost_eligible{provider="zeeve",kind="all",bucket="all"}
       mean: min(last_over_time(rpc_cost_monthly_usd{provider="zeeve",kind="all",bucket="all",venue="all"}[20m]))
       series: rpc_cost_monthly_usd{provider="zeeve",kind="all",bucket="all",venue="all"}
-      sample_size: count_over_time(rpc_cost_monthly_usd{provider="zeeve",kind="all",bucket="all",venue="all"}[7d])
+      sample_size: count_over_time(rpc_cost_monthly_usd{provider="zeeve",kind="all",bucket="all",venue="all"}[20m])
 

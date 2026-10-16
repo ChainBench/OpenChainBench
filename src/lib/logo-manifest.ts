@@ -193,6 +193,12 @@ const RAW: Record<string, string> = {
   ondo: "/logos/ondo-perps.svg",
   onfinality: "/logos/onfinality.png",
   dwellir: "/logos/dwellir.png",
+  // Bench 282 flat-rate cohort, added 2026-10-16. Shyft and Zeeve are the
+  // marks cropped from their own wordmark SVGs (Zeeve on white, its dark
+  // dot vanishes on the dark theme); Allnodes is its own app icon.
+  allnodes: "/logos/allnodes.png",
+  shyft: "/logos/shyft.svg",
+  zeeve: "/logos/zeeve.svg",
   berachain: "/logos/berachain.png",
 
 
