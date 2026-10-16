@@ -105,10 +105,11 @@ func TestEveryMeteringDedicatedPlanIsHandled(t *testing.T) {
 			t.Logf("%s/%s meters $%.2f/1M beyond %.1fM included", p.Slug, pl.ID, rate, included)
 		}
 	}
-	// AWS AMB in three regions plus Shyft legacy-scale, per the comment in
-	// quote(). If this count moves, the new plan needs checking by hand.
-	if metering != 4 {
-		t.Errorf("%d metering dedicated plans, expected 4 (AWS AMB x3, Shyft legacy-scale)", metering)
+	// Shyft legacy-scale, per the comment in quote(); AWS AMB's three regions
+	// left the cohort on 2026-10-16. If this count moves, the new plan needs
+	// checking by hand.
+	if metering != 1 {
+		t.Errorf("%d metering dedicated plans, expected 1 (Shyft legacy-scale)", metering)
 	}
 }
 

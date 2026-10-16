@@ -130,27 +130,6 @@
      }
     },
     {
-     "slug": "aws-amb",
-     "name": "Amazon Managed Blockchain (AMB) Access — Ethereum",
-     "cohort": "dedicated",
-     "unit": "request",
-     "points": [
-      {
-       "r": 100000,
-       "usd": 98.12,
-       "plan": "bc-t3-large-us-east-1"
-      },
-      {
-       "r": 5000000000,
-       "usd": 15097.82,
-       "plan": "bc-t3-large-us-east-1"
-      }
-     ],
-     "planNames": {
-      "bc-t3-large-us-east-1": "bc.t3.large node, us-east-1"
-     }
-    },
-    {
      "slug": "blockdaemon",
      "name": "Blockdaemon",
      "cohort": "usage",
@@ -683,27 +662,6 @@
      "planNames": {
       "dedicated-eth-full": "Dedicated Ethereum full node (geth/nethermind/reth/reth+prysm/teku+geth)",
       "limitless-evm-full-25": "Limitless Node, EVM full, 25 RPS"
-     }
-    },
-    {
-     "slug": "google-bne",
-     "name": "Google Cloud — Blockchain Node Engine",
-     "cohort": "dedicated",
-     "unit": "request",
-     "points": [
-      {
-       "r": 100000,
-       "usd": 503.7,
-       "plan": "eth-full"
-      },
-      {
-       "r": 5000000000,
-       "usd": 503.7,
-       "plan": "eth-full"
-      }
-     ],
-     "planNames": {
-      "eth-full": "Ethereum full node (Geth)"
      }
     },
     {
@@ -2049,27 +2007,6 @@
      }
     },
     {
-     "slug": "aws-amb",
-     "name": "Amazon Managed Blockchain (AMB) Access — Ethereum",
-     "cohort": "dedicated",
-     "unit": "request",
-     "points": [
-      {
-       "r": 100000,
-       "usd": 98.12,
-       "plan": "bc-t3-large-us-east-1"
-      },
-      {
-       "r": 5000000000,
-       "usd": 15097.82,
-       "plan": "bc-t3-large-us-east-1"
-      }
-     ],
-     "planNames": {
-      "bc-t3-large-us-east-1": "bc.t3.large node, us-east-1"
-     }
-    },
-    {
      "slug": "blockdaemon",
      "name": "Blockdaemon",
      "cohort": "usage",
@@ -2602,27 +2539,6 @@
      "planNames": {
       "dedicated-eth-full": "Dedicated Ethereum full node (geth/nethermind/reth/reth+prysm/teku+geth)",
       "limitless-evm-full-25": "Limitless Node, EVM full, 25 RPS"
-     }
-    },
-    {
-     "slug": "google-bne",
-     "name": "Google Cloud — Blockchain Node Engine",
-     "cohort": "dedicated",
-     "unit": "request",
-     "points": [
-      {
-       "r": 100000,
-       "usd": 503.7,
-       "plan": "eth-full"
-      },
-      {
-       "r": 5000000000,
-       "usd": 503.7,
-       "plan": "eth-full"
-      }
-     ],
-     "planNames": {
-      "eth-full": "Ethereum full node (Geth)"
      }
     },
     {
@@ -3975,24 +3891,6 @@
      }
     },
     {
-     "slug": "aws-amb",
-     "name": "Amazon Managed Blockchain (AMB) Access — Ethereum",
-     "cohort": "dedicated",
-     "unit": "request",
-     "points": [
-      {
-       "r": 100000,
-       "usd": null,
-       "why": "archive support for this plan is not published; not ranked"
-      },
-      {
-       "r": 5000000000,
-       "usd": null,
-       "why": "archive support for this plan is not published; not ranked"
-      }
-     ]
-    },
-    {
      "slug": "blockdaemon",
      "name": "Blockdaemon",
      "cohort": "usage",
@@ -4525,27 +4423,6 @@
      "planNames": {
       "dedicated-eth-archive": "Dedicated Ethereum archive node (erigon / reth)",
       "limitless-evm-archive-15": "Limitless Node, EVM archive, 15 RPS"
-     }
-    },
-    {
-     "slug": "google-bne",
-     "name": "Google Cloud — Blockchain Node Engine",
-     "cohort": "dedicated",
-     "unit": "request",
-     "points": [
-      {
-       "r": 100000,
-       "usd": 2000.2,
-       "plan": "eth-archive"
-      },
-      {
-       "r": 5000000000,
-       "usd": 2000.2,
-       "plan": "eth-archive"
-      }
-     ],
-     "planNames": {
-      "eth-archive": "Ethereum archive node (Erigon)"
      }
     },
     {
@@ -5554,24 +5431,6 @@
      }
     },
     {
-     "slug": "aws-amb",
-     "name": "Amazon Managed Blockchain (AMB) Access — Ethereum",
-     "cohort": "dedicated",
-     "unit": "request",
-     "points": [
-      {
-       "r": 100000,
-       "usd": null,
-       "why": "archive support for this plan is not published; not ranked"
-      },
-      {
-       "r": 5000000000,
-       "usd": null,
-       "why": "archive support for this plan is not published; not ranked"
-      }
-     ]
-    },
-    {
      "slug": "blockdaemon",
      "name": "Blockdaemon",
      "cohort": "usage",
@@ -6104,27 +5963,6 @@
      "planNames": {
       "dedicated-eth-archive": "Dedicated Ethereum archive node (erigon / reth)",
       "limitless-evm-archive-15": "Limitless Node, EVM archive, 15 RPS"
-     }
-    },
-    {
-     "slug": "google-bne",
-     "name": "Google Cloud — Blockchain Node Engine",
-     "cohort": "dedicated",
-     "unit": "request",
-     "points": [
-      {
-       "r": 100000,
-       "usd": 2000.2,
-       "plan": "eth-archive"
-      },
-      {
-       "r": 5000000000,
-       "usd": 2000.2,
-       "plan": "eth-archive"
-      }
-     ],
-     "planNames": {
-      "eth-archive": "Ethereum archive node (Erigon)"
      }
     },
     {
@@ -6976,24 +6814,6 @@
      }
     },
     {
-     "slug": "aws-amb",
-     "name": "Amazon Managed Blockchain (AMB) Access — Ethereum",
-     "cohort": "dedicated",
-     "unit": "request",
-     "points": [
-      {
-       "r": 100000,
-       "usd": null,
-       "why": "plan does not serve solana"
-      },
-      {
-       "r": 5000000000,
-       "usd": null,
-       "why": "plan does not serve solana"
-      }
-     ]
-    },
-    {
      "slug": "blockdaemon",
      "name": "Blockdaemon",
      "cohort": "usage",
@@ -7440,24 +7260,6 @@
       "dedicated-sol-full": "Dedicated Solana full node",
       "limitless-sol-full-5": "Limitless Node, Solana full, 5 RPS"
      }
-    },
-    {
-     "slug": "google-bne",
-     "name": "Google Cloud — Blockchain Node Engine",
-     "cohort": "dedicated",
-     "unit": "request",
-     "points": [
-      {
-       "r": 100000,
-       "usd": null,
-       "why": "plan does not serve solana"
-      },
-      {
-       "r": 5000000000,
-       "usd": null,
-       "why": "plan does not serve solana"
-      }
-     ]
     },
     {
      "slug": "helius",
@@ -8709,24 +8511,6 @@
      }
     },
     {
-     "slug": "aws-amb",
-     "name": "Amazon Managed Blockchain (AMB) Access — Ethereum",
-     "cohort": "dedicated",
-     "unit": "request",
-     "points": [
-      {
-       "r": 100000,
-       "usd": null,
-       "why": "archive support for this plan is not published; not ranked"
-      },
-      {
-       "r": 5000000000,
-       "usd": null,
-       "why": "archive support for this plan is not published; not ranked"
-      }
-     ]
-    },
-    {
      "slug": "blockdaemon",
      "name": "Blockdaemon",
      "cohort": "usage",
@@ -9259,27 +9043,6 @@
      "planNames": {
       "dedicated-eth-archive": "Dedicated Ethereum archive node (erigon / reth)",
       "limitless-evm-archive-15": "Limitless Node, EVM archive, 15 RPS"
-     }
-    },
-    {
-     "slug": "google-bne",
-     "name": "Google Cloud — Blockchain Node Engine",
-     "cohort": "dedicated",
-     "unit": "request",
-     "points": [
-      {
-       "r": 100000,
-       "usd": 2000.2,
-       "plan": "eth-archive"
-      },
-      {
-       "r": 5000000000,
-       "usd": 2000.2,
-       "plan": "eth-archive"
-      }
-     ],
-     "planNames": {
-      "eth-archive": "Ethereum archive node (Erigon)"
      }
     },
     {
