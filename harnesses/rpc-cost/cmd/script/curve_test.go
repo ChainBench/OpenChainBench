@@ -53,7 +53,7 @@ func TestCurveAgreesWithTheModelAtPublishedVolumes(t *testing.T) {
 	checked := 0
 	for _, cp := range f.Profiles {
 		var pr Profile
-		for _, cand := range Profiles {
+		for _, cand := range append(append([]Profile{}, Profiles...), CurveOnlyProfiles...) {
 			if cand.ID == cp.ID {
 				pr = cand
 			}

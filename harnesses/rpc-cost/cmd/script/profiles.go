@@ -97,6 +97,29 @@ var Profiles = []Profile{
 	},
 }
 
+// CurveOnlyProfiles are priced into the slider's curve file and nowhere
+// else: no gauge, no tab. The page's archive checkbox needs the dapp mix
+// with every call reading state old enough to bill as archive, which is a
+// question for one reader's bill, not a fourth ranked workload.
+var CurveOnlyProfiles = []Profile{
+	{
+		ID:      "dapp-archive",
+		Label:   "Dapp frontend, archive",
+		Chain:   "ethereum",
+		Archive: true,
+		Mix:     profileByID("dapp").Mix,
+	},
+}
+
+func profileByID(id string) Profile {
+	for _, pr := range Profiles {
+		if pr.ID == id {
+			return pr
+		}
+	}
+	panic("no profile " + id)
+}
+
 // MixOrder returns this profile's methods in a fixed order.
 //
 // Summing a weighted mix by ranging over the map adds the same terms in a

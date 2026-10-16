@@ -4,7 +4,7 @@
 # Every number here traces to a wave-2-verified value, or to a wave-1 value wave 2 did not contradict.
 # Where a figure exists only as an assumption it is null and the assumption is in `note`.
 version: 1
-as_of: "2026-09-29"
+as_of: "2026-10-16"
 
 fx:
   eur_usd: 1.1355
