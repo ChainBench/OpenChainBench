@@ -45,6 +45,7 @@ dimensions:
 providers:
   - slug: gravity-official
     name: Gravity Foundation
+    endpoint: https://rpc.gravity.xyz
     tag: Gravity Foundation's official public RPC
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Gravity Foundation's no-key Gravity Alpha endpoint."
     queries:
@@ -66,26 +67,26 @@ providers:
           p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="gravity", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="gravity", region="sgp"}[1h])
 
-  - slug: ankr
-    name: Ankr
-    endpoint: https://rpc.ankr.com/gravity
-    tag: Multi-cloud RPC network
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Ankr's no-key Gravity Alpha endpoint."
+  - slug: thirdweb
+    name: Thirdweb
+    endpoint: https://1625.rpc.thirdweb.com
+    tag: Thirdweb public RPC gateway, no key
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Thirdweb's no-key Gravity Alpha endpoint."
     queries:
-      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="ankr", chain="gravity"})
-      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="ankr", chain="gravity"})
-      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="ankr", chain="gravity"})
-      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="ankr", chain="gravity"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="ankr", chain="gravity"}) / sum(ocb:rpc_call:rate_24h{provider="ankr", chain="gravity"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="ankr", chain="gravity"})
-      series: avg(avg_over_time(rpc_latency_milliseconds{provider="ankr", chain="gravity"}[1h]))
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="thirdweb", chain="gravity"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="thirdweb", chain="gravity"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="thirdweb", chain="gravity"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="thirdweb", chain="gravity"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="thirdweb", chain="gravity"}) / sum(ocb:rpc_call:rate_24h{provider="thirdweb", chain="gravity"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="thirdweb", chain="gravity"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="thirdweb", chain="gravity"}[1h]))
       regions:
         - region: us-east
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="ankr", chain="gravity", region="us-east"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="ankr", chain="gravity", region="us-east"}[1h])
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="thirdweb", chain="gravity", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="thirdweb", chain="gravity", region="us-east"}[1h])
         - region: eu-west
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="ankr", chain="gravity", region="eu-west"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="ankr", chain="gravity", region="eu-west"}[1h])
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="thirdweb", chain="gravity", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="thirdweb", chain="gravity", region="eu-west"}[1h])
         - region: ap-southeast
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="ankr", chain="gravity", region="sgp"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="ankr", chain="gravity", region="sgp"}[1h])
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="thirdweb", chain="gravity", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="thirdweb", chain="gravity", region="sgp"}[1h])
