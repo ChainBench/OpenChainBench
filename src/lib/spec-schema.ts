@@ -530,6 +530,10 @@ export const SpecSchema = z
             z.object({
               value: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/),
               label: z.string().min(1).max(64),
+              /** false = a published-but-never-ranked cohort (bench 282's
+               *  free public endpoints): its rows show their figures and
+               *  take no rank, no win and no badge anywhere. */
+              ranked: z.boolean().optional(),
             })
           )
           .min(2)
@@ -708,6 +712,24 @@ export const SpecSchema = z
            *  Used for 7d/30d gauges that power the ledger's timeframe
            *  toggle without duplicating the headline metric as tabs. */
           tab: z.boolean().default(true),
+          /** Dimension keys this panel's metric does NOT carry.
+           *
+           *  applyDimensionsToSpec appends every selected dimension to every
+           *  panel metric, which is right when the metric is dimensioned and
+           *  fatal when it is not: an appended `bucket="100m"` on a metric
+           *  with no bucket label matches nothing, and the panel renders
+           *  empty with no error anywhere.
+           *
+           *  Bench 282 is the case. `rpc_cost_units_per_request` is labelled
+           *  (provider, kind, chain) and `rpc_cost_breakeven_requests` is
+           *  labelled (provider, plan, chain); both pages append bucket and
+           *  venue, so the first filled 4 of 75 views and the second showed
+           *  1 provider of 9 — while the methodology promised units per
+           *  request is published "so the arithmetic is checkable".
+           *
+           *  Listing a key here is a claim about the metric's label set, not
+           *  a display preference: say what the harness actually emits. */
+          ignore_dimensions: z.array(z.string().min(1).max(40)).max(8).optional(),
         })
       )
       // Cap covers visible tabs plus data-only window panels (revenue,

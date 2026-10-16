@@ -14,10 +14,10 @@ import (
 // The catalogue's numbers are human-verified. What this file does is
 // keep them honest: it re-fetches every artifact those numbers came
 // from, hashes the body, and compares against the hash recorded when a
-// human last read it. When a provider edits its pricing page, the bench
-// says so on the page — `rpc_pricing_artifact_drift` goes to 1 and the
-// spec renders a "pricing changed upstream" note — instead of serving a
-// stale figure that still looks authoritative.
+// human last read it. When a provider edits its pricing page,
+// `rpc_pricing_artifact_drift` goes to 1: an alarm for the maintainers,
+// who re-read the page and re-commit the catalogue. Nothing on the bench
+// page reads this gauge; the page shows the catalogue date.
 //
 // Two upstream behaviours make the obvious implementation wrong, both
 // found by probing rather than by reading docs:
@@ -84,12 +84,14 @@ func checkArtifact(a Artifact) artifactState {
 		log.Printf("artifact %s: HTTP %d", a.URL, resp.StatusCode)
 		return st
 	}
-	st.ok = true
-
 	body, err := io.ReadAll(io.LimitReader(resp.Body, 32<<20))
 	if err != nil {
+		// A body cut off mid-read is not a healthy fetch: marking ok before
+		// the read published it as reachable and undrifted.
+		log.Printf("artifact %s: read: %v", a.URL, err)
 		return st
 	}
+	st.ok = true
 	sum := sha256.Sum256(body)
 	got := hex.EncodeToString(sum[:])
 

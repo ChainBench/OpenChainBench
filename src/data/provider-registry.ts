@@ -723,6 +723,15 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   },
 
   // ─── Perp DEX ─────────────────────────────────────────────────
+  validationcloud: {
+    url: "https://www.validationcloud.io",
+    description:
+      "Node API provider with keyed endpoints on Ethereum, Base, Arbitrum, Polygon, Robinhood Chain and Arc, plus staking and data products. Probed in the private cohort on the chain RPC pages. Its RPC product is a sliding pay-as-you-go band on monthly Compute Units with no subscription and, by policy, no rate limits.",
+    twitter: "@ValidationCloud",
+    pricing:
+      "First 50M CU/mo free, then $0.50 per million falling to $0.35 above a billion. Whether the bands are marginal or apply to the total is not published.",
+    docs: "https://docs.validationcloud.io",
+  },
   lighter: {
     url: "https://lighter.xyz",
     description:
@@ -1071,8 +1080,11 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   dwellir: {
     url: "https://www.dwellir.com",
     description:
-      "Web3 Foundation grantee running production-grade Substrate infrastructure across globally distributed bare-metal servers. Keyless public gateways on Polkadot, Kusama and every major parachain, plus dedicated node service.",
+      "Web3 Foundation grantee running production-grade Substrate infrastructure across globally distributed bare-metal servers. Keyless public gateways on Polkadot, Kusama and every major parachain, plus dedicated node service. Keyed RPC on 150+ networks billed one credit per response on every method, archive, debug and trace included.",
     twitter: "@dwellir",
+    pricing:
+      "Free 100,000 responses a day (no eth_getLogs, no trace), Developer $49 for 25M, Growth $299 for 150M, Scale $999 for 500M, overage $5, $3 and $2 per million. Unlimited Nodes from $119 a month for 25 RPS.",
+    docs: "https://www.dwellir.com/docs",
   },
   "monad-official": {
     url: "https://docs.monad.xyz",
@@ -3000,15 +3012,6 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "$10.00 per million calls plus $0.08/GB egress; DAS $50/million; Hydrant archive adds $10/million. No free tier, and a $125 prepaid deposit over 12 months.",
     docs: "https://docs.triton.one",
   },
-  "validation-cloud": {
-    url: "https://validationcloud.io",
-    description:
-      "Node and staking infrastructure provider. Its RPC product is a sliding pay-as-you-go band on monthly Compute Units with no subscription and, by policy, no rate limits.",
-    twitter: "@ValidationCloud",
-    pricing:
-      "First 50M CU/mo free, then $0.50 per million falling to $0.35 above a billion. Whether the bands are marginal or apply to the total is not published.",
-    docs: "https://docs.validationcloud.io",
-  },
   "coinbase-cdp": {
     url: "https://www.coinbase.com/developer-platform",
     description:
@@ -3018,21 +3021,6 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     pricing:
       "10M Billing Units per month free, then $0.50 per million BU. A standard call is 30 BU, eth_getLogs 100, debug and trace 500. A card has been required since January 2026.",
     docs: "https://docs.cdp.coinbase.com/node/",
-  },
-  instanodes: {
-    url: "https://instanodes.io",
-    description:
-      "Multi-chain RPC provider covering 50+ EVM and non-EVM networks, billed flat per request. Not to be confused with InstantNodes (instantnodes.io), a separate and now-defunct Solana provider.",
-    pricing:
-      "Free $0 (20,000 requests/day and 600,000/month, both caps bind), Build $29, Basic $79, Advanced $169 per month; 12% off on a 6-month commitment and 20% annually.",
-  },
-  "aws-amb": {
-    url: "https://aws.amazon.com/managed-blockchain/",
-    description:
-      "Amazon Managed Blockchain Access. Bills per 32KB of data exchanged or 500ms of response time, whichever comes first, on top of a node-hour charge, so its per-request price is not directly comparable to a per-call rate card.",
-    pricing:
-      "Ethereum from $3.00 per million requests in us-east-1, plus node-hours and storage. End of support announced: closed to new customers 29 October 2026, access ends after 30 September 2027.",
-    docs: "https://docs.aws.amazon.com/managed-blockchain/",
   },
 
   // ─── Viction providers (bench 229) ────────────────────────────

@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400" role="img" aria-label="Validation Cloud">
+  <!--
+    The square mark Validation Cloud supplied on 2026-10-16 (white rings on
+    black, 400 x 400 PNG), redrawn as a vector to the edges measured off that
+    file: three concentric stadiums, stroke 14.5, 25.5 between centerlines.
+    It replaces a silver rebuild of their 2488 x 1175 wordmark, which sat
+    letterboxed in the round chip.
+  -->
+  <rect width="400" height="400" fill="#000"/>
+  <g fill="none" stroke="#fff" stroke-width="14.5">
+    <rect x="32" y="115" width="336" height="171" rx="85.5"/>
+    <rect x="57.5" y="140.5" width="285" height="120" rx="60"/>
+    <rect x="83" y="166" width="234" height="69" rx="34.5"/>
+  </g>
+</svg>

@@ -12,6 +12,27 @@
  */
 
 const RAW: Record<string, string> = {
+  // The four bench 282 providers that still rendered as initials chips,
+  // added 2026-10-09. BlockPI is the one that mattered: it leads the cost
+  // board's default view at $29.50 and the leader was the only row without
+  // a mark.
+  //
+  // Two of the four needed no new file at all. syndica.png and triton.png
+  // have been in public/logos since the bench was built and were simply
+  // never registered here, which is a reminder that dropping the file is
+  // half the job. Both now take the vector instead: triton.svg is a ninth
+  // of the bytes and its bare orb sits better in a round chip than the
+  // favicon's black squircle, and syndica.png is 192 px, over the 160 px
+  // raster cap set in #2938.
+  //
+  // All four are the provider's own glyph lifted out of a wordmark lockup,
+  // and all four carry their own saturated fill, so none needs an opted-in
+  // light or dark chip. Syndica's viewBox was clipping the top of the glyph
+  // by a hair and is squared around it here.
+  blockpi: "/logos/blockpi.svg",
+  "coinbase-cdp": "/logos/coinbase-cdp.svg",
+  syndica: "/logos/syndica.svg",
+  triton: "/logos/triton.svg",
   // Cosmos RPC operators added with the ten-chain sweep 2026-10-07. Every
   // operator already here ships a mark, so these three need one or their row in
   // the endpoint list renders an empty chip. StakeAngle and Cumulo publish no
@@ -172,6 +193,12 @@ const RAW: Record<string, string> = {
   ondo: "/logos/ondo-perps.svg",
   onfinality: "/logos/onfinality.png",
   dwellir: "/logos/dwellir.png",
+  // Bench 282 flat-rate cohort, added 2026-10-16. Shyft and Zeeve are the
+  // marks cropped from their own wordmark SVGs (Zeeve on white, its dark
+  // dot vanishes on the dark theme); Allnodes is its own app icon.
+  allnodes: "/logos/allnodes.png",
+  shyft: "/logos/shyft.svg",
+  zeeve: "/logos/zeeve.svg",
   berachain: "/logos/berachain.png",
 
 
@@ -276,6 +303,8 @@ const RAW: Record<string, string> = {
   hyperliquid: "/logos/hyperliquid.png",
   helius: "/logos/helius.svg",
   dydx: "/logos/dydx.svg",
+  // Redrawn 2026-10-16 from the square mark Validation Cloud supplied.
+  validationcloud: "/logos/validationcloud.svg",
   moralis: "/logos/moralis.png",
   stellarexpert: "/logos/stellarexpert.png",
   jupiter: "/logos/jupiter.png",
@@ -1005,6 +1034,13 @@ const ALIASES: Record<string, string> = {
   "alchemy-cold": "alchemy",
   "chainstack-cold": "chainstack",
   "dwellir-cold": "dwellir",
+  "validationcloud-cold": "validationcloud",
+  "validation-cloud": "validationcloud",
+  "dwellir-unlimited": "dwellir",
+  "getblock-dedicated": "getblock",
+  "chainstack-dedicated": "chainstack",
+  "quicknode-flat-rate": "quicknode",
+  "helius-dedicated": "helius",
 };
 
 export function logoPath(slug: string): string | null {

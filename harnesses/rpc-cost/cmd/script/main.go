@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"math"
 	"net/http"
 	"os"
 	"os/signal"
@@ -35,6 +36,18 @@ func main() {
 		log.Fatalf("catalogue: %v", err)
 	}
 	log.Printf("loaded catalogue version %d as of %s: %d providers", cat.Version, cat.AsOf, len(cat.Providers))
+
+	// One-shot mode: write the cost curves and exit. The site reads that
+	// artifact to draw a slider over any request count, instead of the
+	// three volumes the gauges publish. It is generated from this process
+	// so the slider and the gauges cannot drift apart: both go through
+	// cheapest(). See curve.go.
+	if out := os.Getenv("RPC_COST_EMIT_CURVES"); out != "" {
+		if err := WriteCurves(cat, out); err != nil {
+			log.Fatalf("emit curves: %v", err)
+		}
+		return
+	}
 
 	go serve(port)
 
@@ -71,6 +84,8 @@ func run(cat *Catalogue) {
 	costMonthly.Reset()
 	costPerMillion.Reset()
 	freeAllowance.Reset()
+	freeFloor.Reset()
+	freeCeiling.Reset()
 	planConfidence.Reset()
 	unitsPerReq.Reset()
 	eligible.Reset()
@@ -107,9 +122,24 @@ func priceEverything(cat *Catalogue) {
 		if p.Ranked != nil && !*p.Ranked {
 			cohort = "reference"
 		}
+		// One pass over the profiles before publishing any of them: the
+		// floor and the ceiling of this plan's allowance are properties of
+		// the whole workload set, not of the profile being priced, so they
+		// cannot be computed inside the loop that publishes them.
+		envelopes := cat.FreeEnvelopes(p)
+
 		for _, pr := range Profiles {
+			// Published under the real workload id and, for the headline
+			// one, under `all` as well — the same aliasing freeAllowance
+			// below already uses. Without it the dapp mix had no series any
+			// page could reach: the unfiltered view selects kind="all", and
+			// the variant API answers "unknown kind" for kind=dapp, so the
+			// one workload most readers arrive on was the one this gauge
+			// could not be read for.
 			if upr, err := unitsPerRequest(p, pr); err == nil {
-				unitsPerReq.WithLabelValues(p.Slug, pr.ID, pr.Chain).Set(upr)
+				for _, ka := range aliasesFor(pr.ID, headlineKind) {
+					unitsPerReq.WithLabelValues(p.Slug, ka, pr.Chain).Set(upr)
+				}
 			}
 
 			// Free tiers cannot be ranked on price, so they get their own
@@ -117,7 +147,35 @@ func priceEverything(cat *Catalogue) {
 			// buys. "200M credits" is meaningless until it is divided by
 			// what a credit buys.
 			if reqs, planID, ok := cat.FreeAllowanceRequests(p, pr); ok {
-				freeAllowance.WithLabelValues(p.Slug, planID, pr.ID, pr.Chain).Set(reqs)
+				// Published under the real labels and under the `all`
+				// aliases the unfiltered view selects. Without the aliases a
+				// reader switching tabs changes nothing, because injectLabels
+				// only replaces a selector pinned to `="all"`, and the
+				// default view spans every combination instead of one slice.
+				//
+				// `all` is the headline slice, not a pooled average: an
+				// allowance in requests depends on what a request costs in
+				// units, so averaging the dapp mix with a trace mix would
+				// describe no workload at all. The dimension label says so.
+				//
+				// Only `kind` is aliased, never `chain`. A profile already
+				// belongs to one chain (simple-read, dapp, indexer and trace
+				// are Ethereum, solana-bot is Solana), so a chain axis beside
+				// the workload axis offers combinations that cannot exist and
+				// a chain alias makes `kind="all"` match two chains at once.
+				//
+				// The floor and the ceiling ride the same labels as the
+				// allowance, carrying the span of this chain's workloads
+				// under each one. A reader on the trace tab then sees that
+				// BlockPI's 368k is the bottom of a range reaching 3.1M,
+				// and a reader on the dapp tab sees that Ankr's 1M is the
+				// whole range. Neither fact is readable from one figure.
+				env := envelopes[pr.Chain]
+				for _, ka := range aliasesFor(pr.ID, headlineKind) {
+					freeAllowance.WithLabelValues(p.Slug, planID, ka, pr.Chain).Set(reqs)
+					freeFloor.WithLabelValues(p.Slug, planID, ka, pr.Chain).Set(env.Lo)
+					freeCeiling.WithLabelValues(p.Slug, planID, ka, pr.Chain).Set(env.Hi)
+				}
 			}
 
 			for _, b := range Buckets {
@@ -178,6 +236,24 @@ func priceEverything(cat *Catalogue) {
 				continue
 			}
 			monthly := cat.toUSD(*pl.MonthlyUSD, p.Currency)
+			// A plan that costs nothing has no break-even, because there is
+			// nothing to pay back. The arithmetic says 0 and 0 is the best
+			// possible score on a lower-is-better panel, so Shyft's free
+			// tier read "breaks even at zero requests" and, once the panel
+			// collapses a provider's plans to its soonest crossing, that
+			// zero became Shyft's headline. The question this cohort asks is
+			// at what volume BUYING the node beats metering; a free plan is
+			// not an answer to it.
+			if monthly <= 0 {
+				continue
+			}
+			// Four of these plans bill a base fee AND a per-request rate on
+			// top (AWS AMB in three regions, Shyft legacy-scale), so the
+			// plan's own rate and its included allowance both belong in the
+			// comparison. The dedicated cohort bills in whole requests, one
+			// unit per request, so these are directly comparable to the
+			// floor's dollars per million requests.
+			ownRate, included := dedicatedRate(cat, p, pl)
 			// One series per chain the plan actually serves, against that
 			// chain's own metered floor.
 			for _, ch := range pl.Chains {
@@ -185,7 +261,18 @@ func priceEverything(cat *Catalogue) {
 				if !ok {
 					continue
 				}
-				breakevenReqs.WithLabelValues(p.Slug, pl.ID, ch).Set(breakeven(monthly, floor))
+				v := breakeven(monthly, included, ownRate, floor)
+				if math.IsNaN(v) || math.IsInf(v, 0) {
+					// Never cheaper than metering, at any volume. Publishing
+					// nothing is the honest outcome: a reader who sees no
+					// break-even learns the right thing, and one who sees a
+					// number learns a wrong one. AWS AMB published 34,528,768
+					// requests while being dearer at every volume.
+					log.Printf("%s %s %s: no break-even (own rate $%.3f/1M vs floor $%.3f/1M)",
+						p.Slug, pl.ID, ch, ownRate, floor)
+					continue
+				}
+				breakevenReqs.WithLabelValues(p.Slug, pl.ID, ch).Set(v)
 			}
 		}
 	}
@@ -245,4 +332,3 @@ func boolGauge(b bool) float64 {
 	}
 	return 0
 }
-

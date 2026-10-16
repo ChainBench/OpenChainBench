@@ -89,8 +89,12 @@ export function specValueKind(spec: {
   let allTotal = true;
   let allMedian = true;
   for (const p of providers) {
-    const q = p.queries?.p50?.trim();
-    if (!q) continue;
+    const raw = p.queries?.p50?.trim();
+    if (!raw) continue;
+    // A cross-series min/max around the window function (bench 282 takes
+    // the cheapest of several plan series) does not change what the value
+    // is: `min(last_over_time(x[20m]))` is still the latest reading.
+    const q = raw.replace(/^(?:min|max)\s*\(([\s\S]*)\)$/, "$1").trim();
     sawQueries = true;
     if (!q.startsWith("last_over_time(")) allLatest = false;
     // "total": a window average scaled to the window's length

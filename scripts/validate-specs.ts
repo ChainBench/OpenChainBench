@@ -158,6 +158,25 @@ async function main() {
       }
     }
 
+    // A panel metric that aggregates must carry its own selector.
+    //
+    // The loader splices the provider filter at the metric's FIRST brace and,
+    // when there is none, appends `{provider="x"}` to the end. On a bare
+    // metric that is correct. On an aggregation it lands outside the closing
+    // paren, Prometheus answers `parse error: unexpected "{"`, and the panel
+    // renders empty with nothing in a log to say why. Bench 282's break-even
+    // panel shipped exactly that shape.
+    for (const panel of spec.metric_panels ?? []) {
+      const m = panel.metric.trim();
+      if (/^[a-z_][a-z0-9_]*\s*(?:by\s*\([^)]*\)\s*)?\(/i.test(m) && !m.includes("{")) {
+        issues.push({
+          file: f,
+          level: "error",
+          message: `metric_panels.${panel.id}: "${m.slice(0, 60)}" aggregates but carries no selector; the loader appends the provider filter after the closing paren and Prometheus will not parse it. Add an empty {} inside the aggregation.`,
+        });
+      }
+    }
+
     // Provider slugs unique within a spec
     const providerSlugs = new Set<string>();
     for (const p of spec.providers) {
@@ -261,6 +280,8 @@ async function main() {
     // repo-shape problem rather than a spec problem.
   }
 
+  await checkCostCurveFreshness(issues);
+
   if (issues.length === 0) {
     console.log(`✓ ${files.length} spec${files.length === 1 ? "" : "s"} valid.`);
     return;
@@ -274,6 +295,56 @@ async function main() {
   if (errors > 0) {
     console.error(`\n${errors} error${errors === 1 ? "" : "s"}.`);
     process.exit(1);
+  }
+}
+
+/**
+ * Bench 282 ships a committed cost curve so the page can offer a slider over
+ * any request count instead of the three volumes the gauges publish. The
+ * curve is generated from the pricing catalogue, and nothing at runtime
+ * notices when the catalogue moves and the curve does not: the slider would
+ * keep quoting last month's prices under this month's "as of" date, which is
+ * the one thing a pricing bench cannot do.
+ *
+ * So the artifact records which catalogue it was built from, and this
+ * compares that against the catalogue on disk. Regenerate with:
+ *
+ *   cd harnesses/rpc-cost
+ *   RPC_COST_EMIT_CURVES=../../src/data/rpc-cost-curves.json go run ./cmd/script
+ */
+async function checkCostCurveFreshness(issues: Issue[]) {
+  const CURVE = "src/data/rpc-cost-curves.json";
+  const CATALOGUE = "harnesses/rpc-cost/pricing/catalogue.yml";
+  const REGEN = `regenerate it: cd harnesses/rpc-cost && RPC_COST_EMIT_CURVES=../../${CURVE} go run ./cmd/script`;
+
+  let curve: { schema?: number; catalogueVersion?: number; catalogueAsOf?: string };
+  let catalogue: { version?: number; as_of?: string };
+  try {
+    curve = JSON.parse(await fs.readFile(path.join(ROOT, CURVE), "utf8"));
+    catalogue = yaml.load(await fs.readFile(path.join(ROOT, CATALOGUE), "utf8")) as typeof catalogue;
+  } catch {
+    // Neither file present is a repo-shape problem, not a spec problem. The
+    // reader already renders no slider rather than a wrong one.
+    return;
+  }
+
+  // Kept in step with `RPC_COST_CURVE_SCHEMA` in src/lib/rpc-cost-curve.ts and
+  // `curveSchema` in harnesses/rpc-cost/cmd/script/curve.go. A mismatch makes
+  // the reader return null, so the slider disappears with no other signal.
+  const EXPECTED_SCHEMA = 1;
+  if (curve.schema !== EXPECTED_SCHEMA) {
+    issues.push({
+      file: "rpc-cost.yml",
+      level: "error",
+      message: `${CURVE} is schema ${curve.schema}, the reader expects ${EXPECTED_SCHEMA}; the slider renders nothing at all until they agree. ${REGEN}`,
+    });
+  }
+  if (curve.catalogueVersion !== catalogue.version || curve.catalogueAsOf !== catalogue.as_of) {
+    issues.push({
+      file: "rpc-cost.yml",
+      level: "error",
+      message: `${CURVE} was built from catalogue v${curve.catalogueVersion} as of ${curve.catalogueAsOf}, and ${CATALOGUE} is now v${catalogue.version} as of ${catalogue.as_of}; the slider would quote the old prices. ${REGEN}`,
+    });
   }
 }
 

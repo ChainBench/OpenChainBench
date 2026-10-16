@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"math"
+	"sort"
 )
 
 // The cost model. Given a provider, a workload profile and a monthly
@@ -40,7 +41,7 @@ type Quote struct {
 // profile costs on this provider, or reports why it cannot be computed.
 func unitsPerRequest(p Provider, pr Profile) (float64, error) {
 	w, ok := p.Weights[pr.Chain]
-	if !ok {
+	if !ok || w.IsEmpty() {
 		return 0, fmt.Errorf("provider does not price %s", pr.Chain)
 	}
 	// A provider with a real archive price list uses it wholesale, and
@@ -86,7 +87,24 @@ func unitsPerRequest(p Provider, pr Profile) (float64, error) {
 			// documentary distinction, not a computational one, and reading
 			// it as a no-op priced the indexer profile at 1 RU per request
 			// instead of 2, publishing $3,990 for a bill of $8,990.
-			total *= p.ArchiveRule.Value
+			//
+			// It is NOT a multiplier on the total, which is how this was
+			// first written and what the 2026-09-30 audit caught. Several
+			// methods already carry the doubled figure in their own weight:
+			// debug_traceTransaction is listed at 2 RU and the empirical pass
+			// measured 2 RU even at tip-10, so the cost is method-driven
+			// there, not recency-driven. Multiplying again charged trace 3.6
+			// RU against a real 2.0, an 80 % overstatement that moved the
+			// winner in two cells.
+			//
+			// Per method, the archive weight is therefore the larger of what
+			// the provider lists and what the block-age surcharge implies:
+			// a base read goes 1 -> 2, a debug call already at 2 stays 2.
+			var err error
+			total, err = blockAgeUnits(w, pr, p.ArchiveRule.Value)
+			if err != nil {
+				return 0, err
+			}
 		case "none", "":
 			// Either already encoded in the per-method weights (GetBlock
 			// carries an independent archive column rather than a
@@ -135,9 +153,16 @@ func quote(c *Catalogue, p Provider, pl Plan, pr Profile, requests float64) Quot
 		return q
 	}
 
-	unmetered := p.Cohort == "dedicated"
-	var upr float64
-	if !unmetered {
+	// Every plan in the dedicated cohort bills in `request`, so one request
+	// is one unit and there are no per-method weights to resolve. It used to
+	// take upr = 0 and then needed = 0, which made the overage and max_units
+	// branches below unreachable for the whole cohort: AWS AMB read $97.82 at
+	// every volume against a real 1B bill of $3,097.82, and Zeeve's published
+	// ceilings bound nothing. Whether the requests are actually metered is
+	// decided further down, by the plan, not here by the cohort.
+	dedicated := p.Cohort == "dedicated"
+	upr := 1.0
+	if !dedicated {
 		var err error
 		upr, err = unitsPerRequest(p, pr)
 		if err != nil {
@@ -150,19 +175,44 @@ func quote(c *Catalogue, p Provider, pl Plan, pr Profile, requests float64) Quot
 
 	// Trace workloads on a plan that does not serve trace are not "more
 	// expensive", they are unavailable. Same for archive.
-	if pr.Archive && pl.Archive == "false" {
-		q.Reason = "plan has no archive access"
-		return q
+	//
+	// And a plan that has never SAID must not be ranked either. Both fields
+	// used to pass when null — one test looked for the string "false", the
+	// other for a non-nil pointer — so 27 of the 106 usage plans were scored
+	// on archive and trace workloads without having claimed support. NOWNodes
+	// won trace cells that way, on a capability it makes no claim about.
+	//
+	// The reason distinguishes the two cases on purpose. "Does not serve" is
+	// the provider's statement; "has not published" is ours, and it is a gap
+	// in this catalogue rather than a limit of the product. Only the second is
+	// supportable for a null, and saying which it is turns each one into a
+	// research task instead of a silent omission.
+	if pr.Archive {
+		switch pl.Archive {
+		case "false":
+			q.Reason = "plan has no archive access"
+			return q
+		case "":
+			q.Reason = "archive support for this plan is not published; not ranked"
+			return q
+		}
 	}
-	if isTraceProfile(pr) && pl.Trace != nil && !*pl.Trace {
-		q.Reason = "plan has no trace/debug access"
+	if isTraceProfile(pr) {
+		if pl.Trace == nil {
+			q.Reason = "trace/debug support for this plan is not published; not ranked"
+			return q
+		}
+		if !*pl.Trace {
+			q.Reason = "plan has no trace/debug access"
+			return q
+		}
+	}
+	if m, ok := unservedMethod(pl, pr); ok {
+		q.Reason = fmt.Sprintf("plan does not serve %s", m)
 		return q
 	}
 
 	needed := requests * upr
-	if unmetered {
-		needed = 0
-	}
 
 	// Throughput is a second, independent meter, and for several
 	// providers it binds before the bill does. Tatum and Moralis publish
@@ -239,6 +289,18 @@ func quote(c *Catalogue, p Provider, pl Plan, pr Profile, requests float64) Quot
 	included := 0.0
 	if pl.IncludedUnits != nil {
 		included = *pl.IncludedUnits * periodScale(pl.AllowancePeriod)
+	} else if dedicated && pl.OveragePer1M == nil && len(pl.OverageBands) == 0 {
+		// A missing included_units means two opposite things in this cohort,
+		// and that ambiguity is what produced blocker 2. GetBlock's dedicated
+		// node serves unlimited requests for its monthly fee; AWS AMB includes
+		// none and bills every request on top. Both write null.
+		//
+		// The plan's own overage rate decides: publishing one means it meters
+		// from the first request, publishing none means the node is flat. 33
+		// of the 37 plans here are flat and must stay so; the 4 that meter
+		// (AWS AMB in three regions, Shyft legacy-scale) now reach the branches
+		// below.
+		included = math.Inf(1)
 	}
 	// A daily cap is not a monthly pool. Infura's 15M credits/day cannot
 	// be spent as 450M on the first of the month, so the plan is eligible
@@ -350,6 +412,24 @@ func cheapest(c *Catalogue, p Provider, pr Profile, requests float64, tier strin
 	if tier == "all" {
 		tier = ""
 	}
+	// Whether the provider serves this chain at all is a PROVIDER fact, and
+	// it outranks every plan-level question about price. Asked in plan order
+	// instead, quote() reaches `confidence: unpublished` before it reaches
+	// the chain test, and cheapest() then keeps whichever ineligible plan had
+	// the largest allowance — so Helius, which publishes a $49 Developer
+	// plan and simply has no Ethereum weights, told readers its "price [is]
+	// not published (sales-gated)". That is false about the price and silent
+	// about the chain, on a panel whose whole job is telling a missing price
+	// apart from a cheap one.
+	//
+	// The dedicated cohort is exempt: it bills whole requests with no method
+	// weights, and its own chain test lives in quote().
+	if p.Cohort != "dedicated" {
+		if _, err := unitsPerRequest(p, pr); err != nil {
+			return Quote{Provider: p.Slug, Reason: err.Error()}
+		}
+	}
+
 	found := false
 	// When nothing is eligible, the useful explanation comes from the
 	// provider's most capable plan, not the first one tried. Reporting
@@ -362,6 +442,14 @@ func cheapest(c *Catalogue, p Provider, pr Profile, requests float64, tier strin
 			continue
 		}
 		if paidOnly && planTier == TierFree {
+			continue
+		}
+		// A one-month trial is not a monthly price, at any volume and in
+		// any band. Skipped for every tier rather than only the paid view:
+		// a $0 trial crowning the `entry` tab is the same wrong answer as
+		// a $0 trial crowning the default one. The free tiers that ARE
+		// recurring stay exactly where they were, which is bench 283.
+		if pl.NonRecurring {
 			continue
 		}
 		q := quote(c, p, pl, pr, requests)
@@ -385,14 +473,53 @@ func cheapest(c *Catalogue, p Provider, pr Profile, requests float64, tier strin
 	return best
 }
 
-// breakeven returns the monthly request count at which a fixed-price
-// offering (a dedicated node, a flat-rate RPS plan) undercuts a metered
-// rate. It is the question the dedicated cohort exists to answer.
-func breakeven(monthlyUSD, meteredPerMillionUSD float64) float64 {
+// breakeven returns the monthly request count at which a dedicated offering
+// undercuts a metered rate. It is the question the dedicated cohort exists to
+// answer.
+//
+// Four of the dedicated plans are not purely fixed: they charge a base fee
+// AND a per-request rate on top, so the comparison is
+//
+//	base + ownRate x V   vs   floor x V        (V in millions)
+//
+// which crosses at base / (floor - ownRate), and only when the market floor
+// is above the plan's own rate. Dividing the base by the floor alone answers
+// a different question, the one where the plan meters nothing.
+//
+// AWS AMB is why this matters. It bills $97.82 plus $3.00 per 1M requests
+// against an Ethereum floor of $2.833 per 1M, so it is dearer at every
+// volume and the gap widens rather than closes. The bare division published
+// 34,528,768 requests as its break-even; at exactly that volume AWS bills
+// $201.41 against $97.82 metered. There is no break-even, and saying so is
+// the honest answer -- a volume at which a thing becomes cheaper is a strong
+// claim, and inventing one is worse than publishing none.
+// The bill is piecewise: flat up to the plan's included allowance, then
+// base + rate x (V - included). Both regions are solved and the smaller
+// valid crossing wins; NaN means the plan is never cheaper, which is a real
+// answer and the one the page must print instead of a number.
+func breakeven(monthlyUSD, includedMillions, ownRatePerMillionUSD, meteredPerMillionUSD float64) float64 {
 	if meteredPerMillionUSD <= 0 {
 		return math.NaN()
 	}
-	return monthlyUSD / meteredPerMillionUSD * 1e6
+
+	// Inside the included allowance the dedicated bill does not move, so the
+	// crossing is the bare division -- which is the only case the old
+	// formula described, and it covers the 33 flat plans correctly.
+	if v := monthlyUSD / meteredPerMillionUSD; v <= includedMillions {
+		return v * 1e6
+	}
+
+	// Past the allowance both sides grow with volume, so the plan closes the
+	// gap only if the market's floor is above its own rate.
+	margin := meteredPerMillionUSD - ownRatePerMillionUSD
+	if margin <= 0 {
+		return math.NaN()
+	}
+	v := (monthlyUSD - ownRatePerMillionUSD*includedMillions) / margin
+	if v < includedMillions {
+		return math.NaN()
+	}
+	return v * 1e6
 }
 
 func perMillion(monthlyUSD, requests float64) float64 {
@@ -421,6 +548,22 @@ func periodScale(period string) float64 {
 	}
 }
 
+// unservedMethod reports the first method of the profile's mix that the
+// plan lists in unserved_methods, in sorted order so the reason is stable.
+func unservedMethod(pl Plan, pr Profile) (string, bool) {
+	hit := []string{}
+	for _, m := range pl.UnservedMethods {
+		if pr.Mix[m] > 0 {
+			hit = append(hit, m)
+		}
+	}
+	if len(hit) == 0 {
+		return "", false
+	}
+	sort.Strings(hit)
+	return hit[0], true
+}
+
 func isTraceProfile(pr Profile) bool {
 	for m := range pr.Mix {
 		if len(m) >= 6 && (m[:6] == "debug_" || m[:6] == "trace_") {
@@ -439,17 +582,79 @@ func isTraceProfile(pr Profile) bool {
 // allowance is exactly 1,000M, hard-stopping it and dropping a provider
 // out of a cell it wins.
 func weightedUnits(w Weights, pr Profile) (float64, error) {
+	// Fixed order, not map order: see Profile.MixOrder.
+	methods := pr.MixOrder()
+	if len(methods) == 0 {
+		return 0, fmt.Errorf("profile declares no method mix")
+	}
+	base, ok := w.Weight(methods[0])
+	if !ok {
+		return 0, fmt.Errorf("no published unit cost for %s", methods[0])
+	}
+	// Shifted mean: average the distance from the first method's weight and
+	// add that weight back. Algebraically the same as averaging the weights,
+	// and exact in the one case that has to be exact. Ankr charges a flat 200
+	// units for every method, and summing share*200 over the seven-term dapp
+	// mix returned 199.99999999999994: the free allowance then came back as
+	// 1,000,000.0000000002 on dapp and 1,000,000 on the other three mixes, so
+	// the floor and ceiling columns reported a spread on a plan that has none
+	// and called a flat-rate plan workload-sensitive. Here every term is
+	// zero when the weights are uniform, and the result is that weight to the
+	// bit.
 	total, shares := 0.0, 0.0
-	for method, share := range pr.Mix {
+	for _, method := range methods {
+		share := pr.Mix[method]
 		units, ok := w.Weight(method)
 		if !ok {
 			return 0, fmt.Errorf("no published unit cost for %s", method)
 		}
-		total += share * units
+		total += share * (units - base)
+		shares += share
+	}
+	if shares <= 0 {
+		return 0, fmt.Errorf("profile shares sum to zero")
+	}
+	return base + total/shares, nil
+}
+
+// blockAgeUnits prices a profile under a block-age archive surcharge.
+//
+// The surcharge raises the floor rather than scaling the bill: a method whose
+// own listed weight is already at or above what the surcharge implies is
+// unaffected by it. See the block_age branch in unitsPerRequest for why.
+func blockAgeUnits(w Weights, pr Profile, mult float64) (float64, error) {
+	if w.Default == nil {
+		// Without a chain default there is nothing for the surcharge to act
+		// on, and guessing one would invent the number this bench exists to
+		// report. The provider's own archive table is the supported way to
+		// price this; see ArchiveWeights.
+		return 0, fmt.Errorf("block_age archive rule needs a chain default weight")
+	}
+	floor := *w.Default * mult
+	// Fixed order, not map order: see Profile.MixOrder. Shifted mean for the
+	// same reason as weightedUnits: a mix every one of whose methods is
+	// raised to the floor must price at exactly the floor.
+	methods := pr.MixOrder()
+	if len(methods) == 0 {
+		return 0, fmt.Errorf("profile declares no method mix")
+	}
+	firstUnits, ok := w.Weight(methods[0])
+	if !ok {
+		return 0, fmt.Errorf("no published unit cost for %s", methods[0])
+	}
+	base := math.Max(firstUnits, floor)
+	total, shares := 0.0, 0.0
+	for _, method := range methods {
+		share := pr.Mix[method]
+		units, ok := w.Weight(method)
+		if !ok {
+			return 0, fmt.Errorf("no published unit cost for %s", method)
+		}
+		total += share * (math.Max(units, floor) - base)
 		shares += share
 	}
 	if shares > 0 {
-		total /= shares
+		total = base + total/shares
 	}
 	return total, nil
 }
@@ -465,4 +670,33 @@ func servesChain(pl Plan, chain string) bool {
 		}
 	}
 	return false
+}
+
+// dedicatedRate reports what a dedicated plan charges per million requests
+// beyond its included allowance, and how large that allowance is in millions.
+//
+// A flat node returns (0, +Inf): nothing is metered, so no volume escapes the
+// fixed fee. A metering plan returns its own rate and its allowance, which is
+// zero for AWS AMB (`included_units: null` with an overage rate published,
+// the pair that means "bills every request on top").
+//
+// Banded plans return the LAST band's rate, because the question a break-even
+// answers is whether the plan ever becomes cheaper, and that is decided by
+// the rate it charges at high volume rather than by its first band.
+func dedicatedRate(c *Catalogue, p Provider, pl Plan) (ratePerMillion, includedMillions float64) {
+	switch {
+	case pl.OveragePer1M != nil:
+		ratePerMillion = c.toUSD(*pl.OveragePer1M, p.Currency)
+	case len(pl.OverageBands) > 0:
+		last := pl.OverageBands[len(pl.OverageBands)-1]
+		ratePerMillion = c.toUSD(last.PricePer1M, p.Currency)
+	default:
+		// Flat: the fee buys every request the node can serve.
+		return 0, math.Inf(1)
+	}
+
+	if pl.IncludedUnits != nil {
+		includedMillions = *pl.IncludedUnits * periodScale(pl.AllowancePeriod) / 1e6
+	}
+	return ratePerMillion, includedMillions
 }

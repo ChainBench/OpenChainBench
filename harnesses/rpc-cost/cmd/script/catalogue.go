@@ -14,14 +14,13 @@ import (
 // parser that guesses is worse than a parser that does not exist. What
 // IS live is the freshness check in refresh.go: every figure carries the
 // artifact it came from, the harness re-fetches those artifacts on a
-// loop, and the bench publishes how stale each provider's numbers are.
+// loop, and exports how stale each provider's numbers are.
 //
-// Note what that check is and is not: the age is PUBLISHED, per provider
-// per artifact, as rpc_pricing_artifact_age_seconds. Nothing in this
-// harness compares it to a threshold, so there is no cutoff past which a
-// figure is withheld or relabelled. A stale number is visible as stale
-// because its age is on the board next to it, which is what the spec
-// claims ("Age is published either way"), and nothing more.
+// Note what that check is and is not: the age is exported, per provider
+// per artifact, as rpc_pricing_artifact_age_seconds, for the maintainers.
+// Nothing compares it to a threshold and the bench page does not read it:
+// the page shows the catalogue's as_of date, and each figure's own
+// verified_at stays in this file.
 
 type Catalogue struct {
 	Version   int        `yaml:"version"`
@@ -111,6 +110,20 @@ func (w Weights) Weight(method string) (float64, bool) {
 	return 0, false
 }
 
+// IsEmpty reports a chain the provider does not price at all, written in the
+// catalogue as `ethereum: null` under weights.
+//
+// The key exists, so a plain map lookup finds it and hands back a table with
+// nothing in it, and the first method then fails for want of a weight. That
+// produced the right verdict with the wrong explanation: Syndica, Triton and
+// Coinbase CDP each read "no published unit cost for eth_blockNumber", which
+// sounds like a provider being coy about one method when the catalogue in
+// fact says the chain is not served. It only mattered in a log line until the
+// cost curve started printing the reason next to the provider's name.
+func (w Weights) IsEmpty() bool {
+	return w.Default == nil && len(w.Methods) == 0
+}
+
 type Plan struct {
 	ID           string     `yaml:"id"`
 	Name         string     `yaml:"name"`
@@ -150,6 +163,22 @@ type Plan struct {
 	// the cap rather than billing extra, so it is ineligible above it
 	// instead of merely expensive.
 	OverageAllowed string `yaml:"overage_allowed"`
+	// NonRecurring marks an offer that exists once and then ends: a
+	// one-month free trial, not a plan anybody runs on. The bench measures
+	// a MONTHLY bill, so a trial's $0 is not a price on that axis, and
+	// cheapest() skips it.
+	//
+	// All three carriers are already annotated as such in the catalogue's
+	// own prose — QuickNode's "ONE-MONTH trial ... not a recurring free
+	// tier", NOWNodes' "a free Start plan for 1 month ... not recurring",
+	// Tatum's "100k credits are LIFETIME and never renew" — and all three
+	// are banded `entry` rather than `free` precisely so they would sit
+	// beside what they become. The band was right and the price was not:
+	// the model read the $0 and quoted it. That stayed invisible while the
+	// only published volumes were 10M and up, where a 10M-credit trial is
+	// already ineligible. The curve reaches 100k, where a trial would have
+	// led the board.
+	NonRecurring bool `yaml:"non_recurring"`
 	// RequiresPlan names a plan on the same provider that must be held
 	// before this one can be bought. Its price is added to the bill.
 	// Infura's $200 extra-credits add-on cannot be bought on the free
@@ -165,6 +194,13 @@ type Plan struct {
 	// Ethereum bill. Empty means "the weights table decides", which is
 	// correct for per-request plans and wrong for a dedicated node.
 	Chains []string `yaml:"chains"`
+	// UnservedMethods are methods this plan refuses although the provider's
+	// other plans serve them, so the provider-wide weights table cannot say
+	// it. Dwellir is the case: one credit per response on every method, but
+	// its Free plan excludes eth_getLogs. A workload that calls a listed
+	// method is unavailable on the plan, exactly like trace on a plan with
+	// trace: false.
+	UnservedMethods []string `yaml:"unserved_methods"`
 	Throughput     Throughput `yaml:"throughput"`
 	Archive        string     `yaml:"archive"` // true | false | gated
 	Trace          *bool      `yaml:"trace"`
@@ -287,6 +323,11 @@ func (c *Catalogue) validate() error {
 		// indexer and trace provider in the cohort at $0 per month.
 		// Providers whose archive price is an independent lookup rather
 		// than a multiple must publish an archive_weights table.
+		// block_age has the same failure: its value is the floor multiplier,
+		// and 0 would price Chainstack's archive reads at 0 RU.
+		if p.ArchiveRule.Kind == "block_age" && p.ArchiveRule.Value <= 0 {
+			return fmt.Errorf("%s: archive_rule.kind is block_age but value is %v; it is the multiplier applied past the block-age boundary and must be positive", p.Slug, p.ArchiveRule.Value)
+		}
 		if p.ArchiveRule.Kind == "multiplier" && p.ArchiveRule.Value <= 0 && len(p.ArchiveWeights) == 0 {
 			return fmt.Errorf("%s: archive_rule.kind is multiplier but value is %v; set a positive multiplier, or supply archive_weights if the archive cost is an independent table, or use kind: none", p.Slug, p.ArchiveRule.Value)
 		}
@@ -340,8 +381,35 @@ func (c *Catalogue) PlanTier(p Provider, pl Plan) string {
 // $0, so the question is what you get, and "200M credits" means nothing
 // until you know a credit buys 1/200th of a request.
 func (c *Catalogue) FreeAllowanceRequests(p Provider, pr Profile) (float64, string, bool) {
+	// A reference row has no allowance to rank, and the bench's own
+	// methodology says so: "Public endpoints with no key and no published
+	// allowance are also excluded: there is no allowance to rank."
+	//
+	// Solana Foundation is the case. Its 25.92M is 10 requests/second
+	// integrated over 30 days, which its own catalogue entry calls DERIVED,
+	// not published, and caveats as "a throughput ceiling converted at 30
+	// days, not a published allowance" on an endpoint Solana's docs say is
+	// "not intended for production applications". It was ranked first on
+	// the Solana tab at more than double OnFinality, so the page crowned a
+	// row the catalogue refuses to rank and contradicted the method printed
+	// underneath it. The cost benches can show a reference row next to the
+	// ranked ones because they have other columns; here the allowance IS the
+	// ranking, so a row that cannot be ranked has nothing to show.
+	if p.isReference() {
+		return 0, "", false
+	}
 	for _, pl := range p.Plans {
 		if c.PlanTier(p, pl) != TierFree || pl.IncludedUnits == nil {
+			continue
+		}
+		// Bench 283's methodology promises it "reads only the rows whose
+		// monthly price is zero AND whose allowance renews". Until now the
+		// second half was true only by hand: the three non-recurring offers
+		// are banded `entry` in the catalogue, so TierFree above happened to
+		// exclude them. That is a convention, not a guard, and periodScale
+		// returns 1 for `lifetime` — so a one-off grant banded `free` by
+		// anyone later would publish as a full monthly allowance.
+		if pl.NonRecurring {
 			continue
 		}
 		// An allowance the plan cannot spend on this workload is not an
@@ -352,6 +420,9 @@ func (c *Catalogue) FreeAllowanceRequests(p Provider, pr Profile) (float64, stri
 			continue
 		}
 		if isTraceProfile(pr) && pl.Trace != nil && !*pl.Trace {
+			continue
+		}
+		if _, ok := unservedMethod(pl, pr); ok {
 			continue
 		}
 		if len(pl.Chains) > 0 && !servesChain(pl, pr.Chain) {
@@ -368,6 +439,61 @@ func (c *Catalogue) FreeAllowanceRequests(p Provider, pr Profile) (float64, stri
 		return units / upr, pl.ID, true
 	}
 	return 0, "", false
+}
+
+// FreeEnvelope is the span of requests a free plan buys across the
+// workloads it actually serves on one chain. Lo is the least generous
+// workload, Hi the most generous.
+type FreeEnvelope struct {
+	Lo, Hi float64
+}
+
+// FreeEnvelopes computes one envelope per chain for a provider's free
+// plan.
+//
+// A free allowance has no single value in requests, because providers
+// meter in units and a request costs a different number of units
+// depending on the method. On the same BlockPI plan the allowance is
+// 3.1M simple reads and 368k traces, a factor of eight, and a reader who
+// lands on one workload tab has no way to learn that from the one figure
+// in front of them. Publishing the floor and the ceiling next to it
+// turns the spread into something visible without clicking, and it
+// separates the plans that meter flat (Ankr, dRPC, OnFinality: floor
+// equals ceiling, the workload does not matter) from the ones weighted
+// per method, which is the difference that decides whether a published
+// allowance is a promise or a best case.
+//
+// Scoped per chain, because an Ethereum mix and a Solana mix are not two
+// ends of one range: folding them together prints 750k to 1.9M for
+// Alchemy, a span no single application occupies. A chain with one
+// declared profile reports floor equal to ceiling, which is the honest
+// reading of having measured one mix there rather than a claim of
+// flatness.
+//
+// Only workloads the plan serves count. Alchemy's free plan does no
+// trace, so its floor is the indexer mix rather than zero; the refusal
+// is already visible in its absence from the trace slice.
+func (c *Catalogue) FreeEnvelopes(p Provider) map[string]FreeEnvelope {
+	out := map[string]FreeEnvelope{}
+	for _, pr := range Profiles {
+		reqs, _, ok := c.FreeAllowanceRequests(p, pr)
+		if !ok {
+			continue
+		}
+		e, seen := out[pr.Chain]
+		if !seen {
+			out[pr.Chain] = FreeEnvelope{Lo: reqs, Hi: reqs}
+			continue
+		}
+		if reqs < e.Lo {
+			e.Lo = reqs
+		}
+		if reqs > e.Hi {
+			e.Hi = reqs
+		}
+		out[pr.Chain] = e
+	}
+	return out
 }
 
 // toUSD converts a catalogue figure into USD. Only NOWNodes prices in

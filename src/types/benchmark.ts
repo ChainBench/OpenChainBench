@@ -296,7 +296,7 @@ export type Benchmark = {
     bucket?: { value: string; label: string }[];
     /** Access tier (public / keyed). Partitions providers instead of
      *  injecting a PromQL label; the first value is the headline cohort. */
-    tier?: { value: string; label: string }[];
+    tier?: { value: string; label: string; ranked?: boolean }[];
   };
   /** True when 0 is a real value on this bench (a free tier costing
    *  nothing) rather than a missing one (a dead latency probe). */

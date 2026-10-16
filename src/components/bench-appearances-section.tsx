@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getProviders } from "@/lib/providers";
 import { CATEGORY_COLOR } from "@/lib/category-colors";
 import { fmtUnit, valueWindowLabel } from "@/lib/format";
+import { noFigureLabel } from "@/lib/no-figure-label";
 
 interface Props {
   providerSlug: string;
@@ -101,7 +102,7 @@ export async function BenchAppearancesSection({ providerSlug }: Props) {
                     </>
                   ) : (
                     <p className="font-sans text-[10px] uppercase tracking-[0.16em] text-ink-faint italic font-medium">
-                      data warming up
+                      {noFigureLabel(a.benchmark.slug)}
                     </p>
                   )}
                 </div>

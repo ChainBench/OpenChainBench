@@ -1,5 +1,7 @@
 package main
 
+import "sort"
+
 // Workload profiles.
 //
 // The single most robust finding of the pricing audit behind this bench
@@ -40,13 +42,13 @@ var Profiles = []Profile{
 		// A wallet or dapp UI: mostly contract reads and balances, a few
 		// receipts as transactions confirm, a thin tail of writes.
 		Mix: map[string]float64{
-			"eth_call":               0.40,
-			"eth_getBalance":         0.15,
-			"eth_blockNumber":        0.15,
+			"eth_call":                  0.40,
+			"eth_getBalance":            0.15,
+			"eth_blockNumber":           0.15,
 			"eth_getTransactionReceipt": 0.15,
-			"eth_estimateGas":        0.05,
-			"eth_sendRawTransaction": 0.05,
-			"eth_getLogs":            0.05,
+			"eth_estimateGas":           0.05,
+			"eth_sendRawTransaction":    0.05,
+			"eth_getLogs":               0.05,
 		},
 	},
 	{
@@ -86,13 +88,57 @@ var Profiles = []Profile{
 		// cohort (QuickNode 1.5x, Ankr 2.5x, GetBlock 2.5x), so it needs
 		// its own column rather than a footnote.
 		Mix: map[string]float64{
-			"getAccountInfo":     0.40,
+			"getAccountInfo":      0.40,
 			"getMultipleAccounts": 0.20,
-			"getLatestBlockhash": 0.15,
-			"sendTransaction":    0.15,
+			"getLatestBlockhash":  0.15,
+			"sendTransaction":     0.15,
 			"simulateTransaction": 0.10,
 		},
 	},
+}
+
+// CurveOnlyProfiles are priced into the slider's curve file and nowhere
+// else: no gauge, no tab. The page's archive checkbox needs the dapp mix
+// with every call reading state old enough to bill as archive, which is a
+// question for one reader's bill, not a fourth ranked workload.
+var CurveOnlyProfiles = []Profile{
+	{
+		ID:      "dapp-archive",
+		Label:   "Dapp frontend, archive",
+		Chain:   "ethereum",
+		Archive: true,
+		Mix:     profileByID("dapp").Mix,
+	},
+}
+
+func profileByID(id string) Profile {
+	for _, pr := range Profiles {
+		if pr.ID == id {
+			return pr
+		}
+	}
+	panic("no profile " + id)
+}
+
+// MixOrder returns this profile's methods in a fixed order.
+//
+// Summing a weighted mix by ranging over the map adds the same terms in a
+// different order on every call, and floating-point addition is not
+// associative, so the model did not return the same number twice: the
+// Solana allowance for Alchemy came back differing in its last bits from
+// one call to the next. Nothing on the page showed it, the figures are
+// rounded several digits before display, but FreeEnvelopes computes a
+// span in a separate pass from the figures it brackets, and a floor a
+// hair above the number it was derived from is a table contradicting
+// itself. A pricing model that cannot be checked against its own output
+// is worth less than the ordering costs.
+func (pr Profile) MixOrder() []string {
+	methods := make([]string, 0, len(pr.Mix))
+	for m := range pr.Mix {
+		methods = append(methods, m)
+	}
+	sort.Strings(methods)
+	return methods
 }
 
 // Volume buckets, in requests per month. Chosen to straddle the points
