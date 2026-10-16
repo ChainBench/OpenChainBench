@@ -3938,8 +3938,12 @@ providers:
 
   - slug: google-bne
     name: Google Cloud — Blockchain Node Engine
-    cohort: dedicated
+    cohort: excluded
     status: end-of-life
+    exclusion_reason: >-
+      OUT OF SCOPE (2026-10-16): a general cloud renting a node by the hour, not an RPC service,
+      and closing: no new nodes since 2026-06-15, shutdown with every node deleted on 2026-12-15.
+      Kept here so the plans and the shutdown notice stay on record.
     # Google's own release notes: limited support from 2026-06-15 (no new
     # node creation), COMPLETE shutdown on 2026-12-15 with every existing
     # node and endpoint deleted, and customers pointed at QuickNode. The
@@ -4368,8 +4372,11 @@ providers:
 
   - slug: aws-amb
     name: Amazon Managed Blockchain (AMB) Access — Ethereum
-    cohort: dedicated
+    cohort: excluded
     status: end-of-life
+    exclusion_reason: >-
+      OUT OF SCOPE (2026-10-16): a general cloud renting a node by the hour, not an RPC service,
+      and closing to new customers on 2026-10-29. Kept here so the plans stay on record.
     unit: request
     pricing_model: flat_request
     currency: USD
