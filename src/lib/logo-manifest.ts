@@ -1031,6 +1031,10 @@ const ALIASES: Record<string, string> = {
   "validationcloud-cold": "validationcloud",
   "validation-cloud": "validationcloud",
   "dwellir-unlimited": "dwellir",
+  "getblock-dedicated": "getblock",
+  "chainstack-dedicated": "chainstack",
+  "quicknode-flat-rate": "quicknode",
+  "helius-dedicated": "helius",
 };
 
 export function logoPath(slug: string): string | null {

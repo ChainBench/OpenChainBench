@@ -1086,15 +1086,6 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "Free 100,000 responses a day (no eth_getLogs, no trace), Developer $49 for 25M, Growth $299 for 150M, Scale $999 for 500M, overage $5, $3 and $2 per million. Unlimited Nodes from $119 a month for 25 RPS.",
     docs: "https://www.dwellir.com/docs",
   },
-  "dwellir-unlimited": {
-    url: "https://www.dwellir.com/unlimited-nodes",
-    description:
-      "Dwellir's flat-rate capacity: an Unlimited Node is one shared-pool endpoint with the meter switched off, capped at the RPS bought, and a dedicated cluster is redundant archive nodes run for one customer.",
-    twitter: "@dwellir",
-    pricing:
-      "Unlimited Nodes $4.80 per RPS per month, 25 RPS for $119 up to 1,000 RPS for $4,799, plus an unpriced add-on on premium endpoints. Ethereum archive cluster listed at $12,600 a month before scoping.",
-    parent: "dwellir",
-  },
   "monad-official": {
     url: "https://docs.monad.xyz",
     description:

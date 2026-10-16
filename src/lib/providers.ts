@@ -73,6 +73,14 @@ const PRODUCT_ALIASES: Record<string, string> = {
   // slug while the RPC cohort uses the one-word one, which built two product
   // pages for one vendor: one with its latency, one with its price.
   "validation-cloud": "validationcloud",
+  // Bench 282 prices each vendor's flat-rate or dedicated offer in its own
+  // cohort under its own slug. That is a plan, not a product: each slug built
+  // a /products page beside the vendor's, with one bench appearance.
+  "getblock-dedicated": "getblock",
+  "chainstack-dedicated": "chainstack",
+  "dwellir-unlimited": "dwellir",
+  "quicknode-flat-rate": "quicknode",
+  "helius-dedicated": "helius",
   // Vertex wound down on Arbitrum; the team's venue is Nado on Ink and the
   // cohort row moved with it on 2026-09-22.
   vertex: "nado",
