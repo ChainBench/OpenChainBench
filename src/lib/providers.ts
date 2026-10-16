@@ -75,6 +75,10 @@ const PRODUCT_ALIASES: Record<string, string> = {
   "quicknode-cold": "quicknode",
   "dwellir-cold": "dwellir",
   "validationcloud-cold": "validationcloud",
+  // The cost benches 282 and 283 priced Validation Cloud under its hyphenated
+  // slug while the RPC cohort uses the one-word one, which built two product
+  // pages for one vendor: one with its latency, one with its price.
+  "validation-cloud": "validationcloud",
   // Vertex wound down on Arbitrum; the team's venue is Nado on Ink and the
   // cohort row moved with it on 2026-09-22.
   vertex: "nado",

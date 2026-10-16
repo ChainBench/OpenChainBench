@@ -1,22 +1,15 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2488 1175" width="2488" height="1175" role="img" aria-label="Validation Cloud">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400" role="img" aria-label="Validation Cloud">
   <!--
-    Validation Cloud publishes no SVG and no brand kit, so this is their mark
-    rebuilt to the geometry measured off their own 3848 x 1216 asset: three
-    concentric stadiums, stroke 91, gap 71, outer 2488 x 1175. The dark tile
-    and silver mark follow their favicon, which is the only square lockup they
-    ship, so the logo reads on a light or a dark page without a chip behind it.
+    The square mark Validation Cloud supplied on 2026-10-16 (white rings on
+    black, 400 x 400 PNG), redrawn as a vector to the edges measured off that
+    file: three concentric stadiums, stroke 14.5, 25.5 between centerlines.
+    It replaces a silver rebuild of their 2488 x 1175 wordmark, which sat
+    letterboxed in the round chip.
   -->
-  <defs>
-    <linearGradient id="vc-mark" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#E8EBEF"/>
-      <stop offset="0.5" stop-color="#AEB6C0"/>
-      <stop offset="1" stop-color="#8A929C"/>
-    </linearGradient>
-  </defs>
-
-  <g fill="none" stroke="url(#vc-mark)" stroke-width="91">
-    <rect x="45.5" y="45.5" width="2396.5" height="1083" rx="541.5"/>
-    <rect x="207.5" y="207.5" width="2072.5" height="759" rx="379.5"/>
-    <rect x="369.5" y="369.5" width="1748.5" height="435" rx="217.5"/>
+  <rect width="400" height="400" fill="#000"/>
+  <g fill="none" stroke="#fff" stroke-width="14.5">
+    <rect x="32" y="115" width="336" height="171" rx="85.5"/>
+    <rect x="57.5" y="140.5" width="285" height="120" rx="60"/>
+    <rect x="83" y="166" width="234" height="69" rx="34.5"/>
   </g>
 </svg>

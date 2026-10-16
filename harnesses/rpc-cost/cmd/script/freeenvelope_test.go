@@ -128,7 +128,7 @@ func TestFreeEnvelopeSeparatesFlatPlansFromWeightedOnes(t *testing.T) {
 		}
 	}
 	if flat == 0 {
-		t.Error("no free plan on Ethereum reports a flat allowance; one of Ankr, dRPC, OnFinality or InstaNodes should")
+		t.Error("no free plan on Ethereum reports a flat allowance; one of Ankr, dRPC, OnFinality or Dwellir should")
 	}
 	if weighted == 0 {
 		t.Error("no free plan on Ethereum reports a spread; BlockPI, Alchemy, Infura and Blockdaemon all weight per method")

@@ -69,7 +69,7 @@ $/1M column would let a volume assumption decide the ranking.
 
 `excluded` providers stay in the catalogue with a reason so the bench can
 say publicly why something is absent — including the ones that died
-(Grove, LlamaRPC, InstantNodes, Blast API) and the ones that publish no
+(Grove, LlamaRPC, Blast API) and the ones that publish no
 price at all (Tenderly).
 
 ## Metrics
