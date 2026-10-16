@@ -59,7 +59,7 @@ const COHORT_NOTE: Record<Cohort, string> = {
   "keyed-cold":
     "The same private endpoints on a connection that is never reused: DNS, TCP and the TLS handshake are paid on every call. What a serverless or one-shot client gets.",
   websocket:
-    "The same private endpoints racing to push each new block. The figure is milliseconds behind whichever provider delivered that block first, so the leader reads near zero by construction and the spread is what matters.",
+    "The same private endpoints on a persistent WebSocket, racing to push each new block. The column shows how far ahead the first provider is of the next one: a provider's own lag is measured against whichever one delivered that block first, so the winner is zero behind itself.",
 };
 
 /** How each cohort's table is named inside the summary-card tooltip. */
@@ -150,7 +150,15 @@ export function RpcHubTabs({
       ))}
     </div>
   );
-  const benchQuery = resolved === "public" ? "" : `#tier=${resolved}`;
+  // Where a row goes. The region rides as a query the bench page already
+  // serves (verified 200, variants included), so a reader scoped to
+  // Singapore lands on Singapore. The WebSocket benches are their own slugs
+  // rather than a tier of the chain page, so they take no tier hash.
+  const benchQuery =
+    (geo === "all" ? "" : `?region=${geo}`) +
+    (resolved === "public" || resolved === "websocket"
+      ? ""
+      : `#tier=${resolved}`);
   // Keyed chain pages are indexable through their public view; the
   // sitemap gate applies to the page, not to the cohort.
   const fastest = fastestOverall(view);
@@ -198,7 +206,7 @@ export function RpcHubTabs({
                 onClick={() => setCohort("websocket")}
                 count={chainCount(websocket)}
               >
-                Private, block push
+                Private, WebSocket
               </TabButton>
             )}
           </div>
@@ -269,6 +277,15 @@ export function RpcHubTabs({
                 bestLabel: `Best in ${RPC_REGION_LABELS[geo]}`,
                 bestTip: `Lowest 24h p50 measured from ${RPC_REGION_LABELS[geo]} only, and the provider serving it. A provider can lead here and lose everywhere else.`,
               })}
+          {...(resolved === "websocket"
+            ? {
+                raceMode: true,
+                bestLabel:
+                  geo === "all" ? "First to push" : `First to push from ${RPC_REGION_LABELS[geo as RpcRegionKey]}`,
+                bestTip:
+                  "Who delivers each new block first, and by how much over the runner-up. The winner's own lag is zero by construction, so the margin is the number that carries information.",
+              }
+            : {})}
         />
       )}
       {tab === "providers" && (
