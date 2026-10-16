@@ -901,6 +901,14 @@ export default async function BenchmarkPage({
           the page to a pasteable quote or a JSON endpoint. */}
       {!isDraft && <CitationBar slug={benchmark.slug} />}
 
+      {/* Bench 282 opens on its calculator instead of the generic body: one
+          volume slider and an archive checkbox answer "which plan do I buy",
+          where four rows of selectors (cohort, plan band, volume, workload)
+          over a three-volume ledger made the reader assemble the answer.
+          The slider reads a curve the same harness emits through the same
+          model as the gauges, so the two cannot drift apart. */}
+      {!isDraft && benchmark.slug === "rpc-cost" && <RpcCostSlider />}
+
       {/* Methodology - expanded by default so readers can verify the
           measurement before reading the numbers. Collapsible for repeat
           visitors who already know the harness. */}
@@ -931,7 +939,7 @@ export default async function BenchmarkPage({
       {/* Body: chain tabs + summary + chart + ledger + share. Receives every
           chain variant pre-fetched server-side. flipping a tab swaps which
           variant is rendered, instantly, no network round-trip. */}
-      {!isDraft && (
+      {!isDraft && benchmark.slug !== "rpc-cost" && (
         <Suspense
           // The served HTML is this fallback (useSearchParams in the body
           // bails out of static rendering): the endpoint URLs must be in
@@ -1012,12 +1020,6 @@ export default async function BenchmarkPage({
       {benchmark.slug === "terminal-fill-quality" && <TerminalFillAudit />}
       {benchmark.slug === "terminal-execution-quality" && <TerminalFillAudit exec />}
 
-      {/* Bench 282: the ledger prices 10M, 100M and 1B requests a month,
-          because a metric needs a fixed label, and most readers are
-          somewhere else. This prices any volume off a committed curve the
-          same harness emits through the same model, so the panel and the
-          ledger cannot drift apart. */}
-      {!isDraft && benchmark.slug === "rpc-cost" && <RpcCostSlider />}
 
       {/* SEO-friendly per-chain H2 block. Renders server-side so the
           long-tail "Ethereum finality time", "Solana finality time"

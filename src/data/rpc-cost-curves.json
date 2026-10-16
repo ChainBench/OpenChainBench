@@ -1,7 +1,7 @@
 {
  "schema": 1,
  "catalogueVersion": 1,
- "catalogueAsOf": "2026-09-29",
+ "catalogueAsOf": "2026-10-16",
  "floor": 100000,
  "ceiling": 5000000000,
  "profiles": [
@@ -56,7 +56,10 @@
        "usd": null,
        "why": "published throughput is 30000 cu_per_s, workload needs 38581 sustained"
       }
-     ]
+     ],
+     "planNames": {
+      "payg": "Pay As You Go"
+     }
     },
     {
      "slug": "allnodes",
@@ -74,7 +77,10 @@
        "usd": 320,
        "plan": "eth-advanced"
       }
-     ]
+     ],
+     "planNames": {
+      "eth-advanced": "Ethereum full node, Advanced"
+     }
     },
     {
      "slug": "ankr",
@@ -117,7 +123,11 @@
        "usd": 100000,
        "plan": "payg"
       }
-     ]
+     ],
+     "planNames": {
+      "deal": "Premium (Deal)",
+      "payg": "Premium (Pay-as-you-go)"
+     }
     },
     {
      "slug": "aws-amb",
@@ -135,7 +145,10 @@
        "usd": 15097.82,
        "plan": "bc-t3-large-us-east-1"
       }
-     ]
+     ],
+     "planNames": {
+      "bc-t3-large-us-east-1": "bc.t3.large node, us-east-1"
+     }
     },
     {
      "slug": "blockdaemon",
@@ -201,7 +214,12 @@
        "usd": 14833,
        "plan": "premium"
       }
-     ]
+     ],
+     "planNames": {
+      "elementary": "Elementary",
+      "payg": "Pay As You Go",
+      "premium": "Premium"
+     }
     },
     {
      "slug": "chainstack",
@@ -269,7 +287,13 @@
        "usd": 23990,
        "plan": "enterprise"
       }
-     ]
+     ],
+     "planNames": {
+      "business": "Business",
+      "enterprise": "Enterprise (from)",
+      "growth": "Growth",
+      "pro": "Pro"
+     }
     },
     {
      "slug": "chainstack-dedicated",
@@ -317,7 +341,13 @@
        "usd": 1841.5,
        "plan": "dedicated-eth-full-geth"
       }
-     ]
+     ],
+     "planNames": {
+      "dedicated-eth-full-geth": "Dedicated Node, Ethereum full, geth 2-C16-R64-S 2,501 GB (+ Pro $199)",
+      "unlimited-100": "Unlimited Node add-on, 100 RPS (+ Growth $49)",
+      "unlimited-25": "Unlimited Node add-on, 25 RPS (+ Growth $49)",
+      "unlimited-250": "Unlimited Node add-on, 250 RPS (+ Growth $49)"
+     }
     },
     {
      "slug": "coinbase-cdp",
@@ -353,7 +383,10 @@
        "usd": 30000,
        "plan": "growth"
       }
-     ]
+     ],
+     "planNames": {
+      "growth": "Growth (pay-as-you-go)"
+     }
     },
     {
      "slug": "dwellir",
@@ -406,7 +439,12 @@
        "usd": 9999,
        "plan": "scale"
       }
-     ]
+     ],
+     "planNames": {
+      "developer": "Developer",
+      "growth": "Growth",
+      "scale": "Scale"
+     }
     },
     {
      "slug": "dwellir-unlimited",
@@ -474,7 +512,15 @@
        "usd": 12600,
        "plan": "cluster-eth-archive"
       }
-     ]
+     ],
+     "planNames": {
+      "cluster-eth-archive": "Dedicated Ethereum archive cluster (list price)",
+      "unlimited-100": "Unlimited Node, 100 RPS",
+      "unlimited-1000": "Unlimited Node, 1,000 RPS",
+      "unlimited-25": "Unlimited Node, 25 RPS",
+      "unlimited-250": "Unlimited Node, 250 RPS",
+      "unlimited-500": "Unlimited Node, 500 RPS"
+     }
     },
     {
      "slug": "getblock",
@@ -597,7 +643,15 @@
        "usd": null,
        "why": "published throughput is 800 rps, workload needs 1930 sustained"
       }
-     ]
+     ],
+     "planNames": {
+      "advanced": "Advanced",
+      "growth": "Growth",
+      "premium": "Premium",
+      "pro": "Pro",
+      "scale": "Scale",
+      "starter": "Starter"
+     }
     },
     {
      "slug": "getblock-dedicated",
@@ -625,7 +679,11 @@
        "usd": 1100,
        "plan": "dedicated-eth-full"
       }
-     ]
+     ],
+     "planNames": {
+      "dedicated-eth-full": "Dedicated Ethereum full node (geth/nethermind/reth/reth+prysm/teku+geth)",
+      "limitless-evm-full-25": "Limitless Node, EVM full, 25 RPS"
+     }
     },
     {
      "slug": "google-bne",
@@ -643,7 +701,10 @@
        "usd": 503.7,
        "plan": "eth-full"
       }
-     ]
+     ],
+     "planNames": {
+      "eth-full": "Ethereum full node (Geth)"
+     }
     },
     {
      "slug": "helius",
@@ -812,7 +873,11 @@
        "usd": null,
        "why": "published throughput is 40000 credits_per_s, workload needs 154321 sustained"
       }
-     ]
+     ],
+     "planNames": {
+      "developer": "Developer",
+      "team": "Team"
+     }
     },
     {
      "slug": "moralis",
@@ -930,7 +995,12 @@
        "usd": null,
        "why": "published throughput is 200 rps, workload needs 1930 sustained"
       }
-     ]
+     ],
+     "planNames": {
+      "business": "Business",
+      "pro": "Pro",
+      "starter": "Starter"
+     }
     },
     {
      "slug": "nownodes",
@@ -1008,7 +1078,14 @@
        "usd": 28387.5,
        "plan": "enterprise"
       }
-     ]
+     ],
+     "planNames": {
+      "business": "Business",
+      "business-plus": "Business Plus",
+      "enterprise": "Enterprise",
+      "pro": "Pro",
+      "pro-plus": "Pro Plus"
+     }
     },
     {
      "slug": "onfinality",
@@ -1096,7 +1173,11 @@
        "usd": null,
        "why": "published throughput is 500 rps, workload needs 1930 sustained"
       }
-     ]
+     ],
+     "planNames": {
+      "accelerate": "Accelerate",
+      "growth": "Growth"
+     }
     },
     {
      "slug": "quicknode",
@@ -1259,7 +1340,16 @@
        "usd": null,
        "why": "published throughput is 500 rps, workload needs 1930 sustained"
       }
-     ]
+     ],
+     "planNames": {
+      "accelerate": "Accelerate",
+      "build": "Build",
+      "business": "Business",
+      "business-plus-t1": "Business+ Tier 1",
+      "business-plus-t2": "Business+ Tier 2",
+      "business-plus-t3": "Business+ Tier 3",
+      "scale": "Scale"
+     }
     },
     {
      "slug": "quicknode-flat-rate",
@@ -1352,7 +1442,12 @@
        "usd": null,
        "why": "published throughput is 75 rps, workload needs 1930 sustained"
       }
-     ]
+     ],
+     "planNames": {
+      "evm-150": "Flat Rate RPS, EVM 150 RPS (+ Build $49)",
+      "evm-250": "Flat Rate RPS, EVM 250 RPS (+ Build $49)",
+      "evm-75": "Flat Rate RPS, EVM 75 RPS (+ Build $49)"
+     }
     },
     {
      "slug": "shyft",
@@ -1641,7 +1736,21 @@
        "usd": null,
        "why": "published throughput is 200 rps, workload needs 1930 sustained"
       }
-     ]
+     ],
+     "planNames": {
+      "t10m": "Starter 10M",
+      "t150m": "Scale 150M",
+      "t15m": "Pro 15M",
+      "t200m": "Scale 200M",
+      "t20m": "Pro 20M",
+      "t250m": "Scale 250M",
+      "t300m": "Scale 300M",
+      "t350m": "Scale 350M",
+      "t400m": "Scale 400M",
+      "t40m": "Pro 40M",
+      "t4m": "Starter 4M",
+      "t80m": "Pro 80M"
+     }
     },
     {
      "slug": "thirdweb",
@@ -1694,7 +1803,12 @@
        "usd": 30191,
        "plan": "pro"
       }
-     ]
+     ],
+     "planNames": {
+      "growth": "Growth",
+      "pro": "Pro (from)",
+      "scale": "Scale"
+     }
     },
     {
      "slug": "triton",
@@ -1750,7 +1864,10 @@
        "usd": 70057.5,
        "plan": "scale"
       }
-     ]
+     ],
+     "planNames": {
+      "scale": "Scale (banded pay-as-you-go)"
+     }
     },
     {
      "slug": "zeeve",
@@ -1788,7 +1905,12 @@
        "usd": 599,
        "plan": "eth-enterprise"
       }
-     ]
+     ],
+     "planNames": {
+      "eth-advance": "Ethereum Advance",
+      "eth-basic": "Ethereum Basic (dedicated RPC)",
+      "eth-enterprise": "Ethereum Enterprise"
+     }
     }
    ]
   },
@@ -1853,7 +1975,10 @@
        "usd": null,
        "why": "published throughput is 30000 cu_per_s, workload needs 47068 sustained"
       }
-     ]
+     ],
+     "planNames": {
+      "payg": "Pay As You Go"
+     }
     },
     {
      "slug": "allnodes",
@@ -1871,7 +1996,10 @@
        "usd": 320,
        "plan": "eth-advanced"
       }
-     ]
+     ],
+     "planNames": {
+      "eth-advanced": "Ethereum full node, Advanced"
+     }
     },
     {
      "slug": "ankr",
@@ -1914,7 +2042,11 @@
        "usd": 100000,
        "plan": "payg"
       }
-     ]
+     ],
+     "planNames": {
+      "deal": "Premium (Deal)",
+      "payg": "Premium (Pay-as-you-go)"
+     }
     },
     {
      "slug": "aws-amb",
@@ -1932,7 +2064,10 @@
        "usd": 15097.82,
        "plan": "bc-t3-large-us-east-1"
       }
-     ]
+     ],
+     "planNames": {
+      "bc-t3-large-us-east-1": "bc.t3.large node, us-east-1"
+     }
     },
     {
      "slug": "blockdaemon",
@@ -1998,7 +2133,12 @@
        "usd": 27333,
        "plan": "premium"
       }
-     ]
+     ],
+     "planNames": {
+      "elementary": "Elementary",
+      "payg": "Pay As You Go",
+      "premium": "Premium"
+     }
     },
     {
      "slug": "chainstack",
@@ -2066,7 +2206,13 @@
        "usd": 23990,
        "plan": "enterprise"
       }
-     ]
+     ],
+     "planNames": {
+      "business": "Business",
+      "enterprise": "Enterprise (from)",
+      "growth": "Growth",
+      "pro": "Pro"
+     }
     },
     {
      "slug": "chainstack-dedicated",
@@ -2114,7 +2260,13 @@
        "usd": 1841.5,
        "plan": "dedicated-eth-full-geth"
       }
-     ]
+     ],
+     "planNames": {
+      "dedicated-eth-full-geth": "Dedicated Node, Ethereum full, geth 2-C16-R64-S 2,501 GB (+ Pro $199)",
+      "unlimited-100": "Unlimited Node add-on, 100 RPS (+ Growth $49)",
+      "unlimited-25": "Unlimited Node add-on, 25 RPS (+ Growth $49)",
+      "unlimited-250": "Unlimited Node add-on, 250 RPS (+ Growth $49)"
+     }
     },
     {
      "slug": "coinbase-cdp",
@@ -2150,7 +2302,10 @@
        "usd": 30000,
        "plan": "growth"
       }
-     ]
+     ],
+     "planNames": {
+      "growth": "Growth (pay-as-you-go)"
+     }
     },
     {
      "slug": "dwellir",
@@ -2203,7 +2358,12 @@
        "usd": 9999,
        "plan": "scale"
       }
-     ]
+     ],
+     "planNames": {
+      "developer": "Developer",
+      "growth": "Growth",
+      "scale": "Scale"
+     }
     },
     {
      "slug": "dwellir-unlimited",
@@ -2271,7 +2431,15 @@
        "usd": 12600,
        "plan": "cluster-eth-archive"
       }
-     ]
+     ],
+     "planNames": {
+      "cluster-eth-archive": "Dedicated Ethereum archive cluster (list price)",
+      "unlimited-100": "Unlimited Node, 100 RPS",
+      "unlimited-1000": "Unlimited Node, 1,000 RPS",
+      "unlimited-25": "Unlimited Node, 25 RPS",
+      "unlimited-250": "Unlimited Node, 250 RPS",
+      "unlimited-500": "Unlimited Node, 500 RPS"
+     }
     },
     {
      "slug": "getblock",
@@ -2394,7 +2562,15 @@
        "usd": null,
        "why": "published throughput is 800 rps, workload needs 1930 sustained"
       }
-     ]
+     ],
+     "planNames": {
+      "advanced": "Advanced",
+      "growth": "Growth",
+      "premium": "Premium",
+      "pro": "Pro",
+      "scale": "Scale",
+      "starter": "Starter"
+     }
     },
     {
      "slug": "getblock-dedicated",
@@ -2422,7 +2598,11 @@
        "usd": 1100,
        "plan": "dedicated-eth-full"
       }
-     ]
+     ],
+     "planNames": {
+      "dedicated-eth-full": "Dedicated Ethereum full node (geth/nethermind/reth/reth+prysm/teku+geth)",
+      "limitless-evm-full-25": "Limitless Node, EVM full, 25 RPS"
+     }
     },
     {
      "slug": "google-bne",
@@ -2440,7 +2620,10 @@
        "usd": 503.7,
        "plan": "eth-full"
       }
-     ]
+     ],
+     "planNames": {
+      "eth-full": "Ethereum full node (Geth)"
+     }
     },
     {
      "slug": "helius",
@@ -2604,7 +2787,11 @@
        "usd": null,
        "why": "published throughput is 40000 credits_per_s, workload needs 192419 sustained"
       }
-     ]
+     ],
+     "planNames": {
+      "developer": "Developer",
+      "team": "Team"
+     }
     },
     {
      "slug": "moralis",
@@ -2722,7 +2909,12 @@
        "usd": null,
        "why": "published throughput is 200 rps, workload needs 1930 sustained"
       }
-     ]
+     ],
+     "planNames": {
+      "business": "Business",
+      "pro": "Pro",
+      "starter": "Starter"
+     }
     },
     {
      "slug": "nownodes",
@@ -2800,7 +2992,14 @@
        "usd": 28387.5,
        "plan": "enterprise"
       }
-     ]
+     ],
+     "planNames": {
+      "business": "Business",
+      "business-plus": "Business Plus",
+      "enterprise": "Enterprise",
+      "pro": "Pro",
+      "pro-plus": "Pro Plus"
+     }
     },
     {
      "slug": "onfinality",
@@ -2888,7 +3087,11 @@
        "usd": null,
        "why": "published throughput is 500 rps, workload needs 1930 sustained"
       }
-     ]
+     ],
+     "planNames": {
+      "accelerate": "Accelerate",
+      "growth": "Growth"
+     }
     },
     {
      "slug": "quicknode",
@@ -3051,7 +3254,16 @@
        "usd": null,
        "why": "published throughput is 500 rps, workload needs 1930 sustained"
       }
-     ]
+     ],
+     "planNames": {
+      "accelerate": "Accelerate",
+      "build": "Build",
+      "business": "Business",
+      "business-plus-t1": "Business+ Tier 1",
+      "business-plus-t2": "Business+ Tier 2",
+      "business-plus-t3": "Business+ Tier 3",
+      "scale": "Scale"
+     }
     },
     {
      "slug": "quicknode-flat-rate",
@@ -3144,7 +3356,12 @@
        "usd": null,
        "why": "published throughput is 75 rps, workload needs 1930 sustained"
       }
-     ]
+     ],
+     "planNames": {
+      "evm-150": "Flat Rate RPS, EVM 150 RPS (+ Build $49)",
+      "evm-250": "Flat Rate RPS, EVM 250 RPS (+ Build $49)",
+      "evm-75": "Flat Rate RPS, EVM 75 RPS (+ Build $49)"
+     }
     },
     {
      "slug": "shyft",
@@ -3433,7 +3650,21 @@
        "usd": null,
        "why": "published throughput is 200 rps, workload needs 1930 sustained"
       }
-     ]
+     ],
+     "planNames": {
+      "t10m": "Starter 10M",
+      "t150m": "Scale 150M",
+      "t15m": "Pro 15M",
+      "t200m": "Scale 200M",
+      "t20m": "Pro 20M",
+      "t250m": "Scale 250M",
+      "t300m": "Scale 300M",
+      "t350m": "Scale 350M",
+      "t400m": "Scale 400M",
+      "t40m": "Pro 40M",
+      "t4m": "Starter 4M",
+      "t80m": "Pro 80M"
+     }
     },
     {
      "slug": "thirdweb",
@@ -3486,7 +3717,12 @@
        "usd": 30191,
        "plan": "pro"
       }
-     ]
+     ],
+     "planNames": {
+      "growth": "Growth",
+      "pro": "Pro (from)",
+      "scale": "Scale"
+     }
     },
     {
      "slug": "triton",
@@ -3542,7 +3778,10 @@
        "usd": 71807.5,
        "plan": "scale"
       }
-     ]
+     ],
+     "planNames": {
+      "scale": "Scale (banded pay-as-you-go)"
+     }
     },
     {
      "slug": "zeeve",
@@ -3580,7 +3819,12 @@
        "usd": 599,
        "plan": "eth-enterprise"
       }
-     ]
+     ],
+     "planNames": {
+      "eth-advance": "Ethereum Advance",
+      "eth-basic": "Ethereum Basic (dedicated RPC)",
+      "eth-enterprise": "Ethereum Enterprise"
+     }
     }
    ]
   },
@@ -3660,7 +3904,10 @@
        "usd": null,
        "why": "published throughput is 30000 cu_per_s, workload needs 308642 sustained"
       }
-     ]
+     ],
+     "planNames": {
+      "payg": "Pay As You Go"
+     }
     },
     {
      "slug": "allnodes",
@@ -3721,7 +3968,11 @@
        "usd": 100000,
        "plan": "payg"
       }
-     ]
+     ],
+     "planNames": {
+      "deal": "Premium (Deal)",
+      "payg": "Premium (Pay-as-you-go)"
+     }
     },
     {
      "slug": "aws-amb",
@@ -3805,7 +4056,12 @@
        "usd": 87583,
        "plan": "premium"
       }
-     ]
+     ],
+     "planNames": {
+      "elementary": "Elementary",
+      "payg": "Pay As You Go",
+      "premium": "Premium"
+     }
     },
     {
      "slug": "chainstack",
@@ -3873,7 +4129,13 @@
        "usd": 48990,
        "plan": "enterprise"
       }
-     ]
+     ],
+     "planNames": {
+      "business": "Business",
+      "enterprise": "Enterprise (from)",
+      "growth": "Growth",
+      "pro": "Pro"
+     }
     },
     {
      "slug": "chainstack-dedicated",
@@ -3921,7 +4183,13 @@
        "usd": 2629.9,
        "plan": "dedicated-eth-archive-erigon"
       }
-     ]
+     ],
+     "planNames": {
+      "dedicated-eth-archive-erigon": "Dedicated Node, Ethereum archive, erigon 3-C32-R128-M 3,652 GB (+ Pro $199)",
+      "unlimited-100": "Unlimited Node add-on, 100 RPS (+ Growth $49)",
+      "unlimited-25": "Unlimited Node add-on, 25 RPS (+ Growth $49)",
+      "unlimited-250": "Unlimited Node add-on, 250 RPS (+ Growth $49)"
+     }
     },
     {
      "slug": "coinbase-cdp",
@@ -3957,7 +4225,10 @@
        "usd": 30000,
        "plan": "growth"
       }
-     ]
+     ],
+     "planNames": {
+      "growth": "Growth (pay-as-you-go)"
+     }
     },
     {
      "slug": "dwellir",
@@ -4010,7 +4281,12 @@
        "usd": 9999,
        "plan": "scale"
       }
-     ]
+     ],
+     "planNames": {
+      "developer": "Developer",
+      "growth": "Growth",
+      "scale": "Scale"
+     }
     },
     {
      "slug": "dwellir-unlimited",
@@ -4078,7 +4354,15 @@
        "usd": 12600,
        "plan": "cluster-eth-archive"
       }
-     ]
+     ],
+     "planNames": {
+      "cluster-eth-archive": "Dedicated Ethereum archive cluster (list price)",
+      "unlimited-100": "Unlimited Node, 100 RPS",
+      "unlimited-1000": "Unlimited Node, 1,000 RPS",
+      "unlimited-25": "Unlimited Node, 25 RPS",
+      "unlimited-250": "Unlimited Node, 250 RPS",
+      "unlimited-500": "Unlimited Node, 500 RPS"
+     }
     },
     {
      "slug": "getblock",
@@ -4201,7 +4485,15 @@
        "usd": null,
        "why": "published throughput is 800 rps, workload needs 1930 sustained"
       }
-     ]
+     ],
+     "planNames": {
+      "advanced": "Advanced",
+      "growth": "Growth",
+      "premium": "Premium",
+      "pro": "Pro",
+      "scale": "Scale",
+      "starter": "Starter"
+     }
     },
     {
      "slug": "getblock-dedicated",
@@ -4229,7 +4521,11 @@
        "usd": 1300,
        "plan": "dedicated-eth-archive"
       }
-     ]
+     ],
+     "planNames": {
+      "dedicated-eth-archive": "Dedicated Ethereum archive node (erigon / reth)",
+      "limitless-evm-archive-15": "Limitless Node, EVM archive, 15 RPS"
+     }
     },
     {
      "slug": "google-bne",
@@ -4247,7 +4543,10 @@
        "usd": 2000.2,
        "plan": "eth-archive"
       }
-     ]
+     ],
+     "planNames": {
+      "eth-archive": "Ethereum archive node (Erigon)"
+     }
     },
     {
      "slug": "helius",
@@ -4451,7 +4750,11 @@
        "usd": null,
        "why": "published throughput is 40000 credits_per_s, workload needs 766783 sustained"
       }
-     ]
+     ],
+     "planNames": {
+      "developer": "Developer",
+      "team": "Team"
+     }
     },
     {
      "slug": "moralis",
@@ -4569,7 +4872,12 @@
        "usd": null,
        "why": "published throughput is 200 rps, workload needs 1930 sustained"
       }
-     ]
+     ],
+     "planNames": {
+      "business": "Business",
+      "pro": "Pro",
+      "starter": "Starter"
+     }
     },
     {
      "slug": "nownodes",
@@ -4675,7 +4983,11 @@
        "usd": null,
        "why": "published throughput is 500 rps, workload needs 1930 sustained"
       }
-     ]
+     ],
+     "planNames": {
+      "accelerate": "Accelerate",
+      "growth": "Growth"
+     }
     },
     {
      "slug": "quicknode",
@@ -4838,7 +5150,16 @@
        "usd": null,
        "why": "published throughput is 500 rps, workload needs 1930 sustained"
       }
-     ]
+     ],
+     "planNames": {
+      "accelerate": "Accelerate",
+      "build": "Build",
+      "business": "Business",
+      "business-plus-t1": "Business+ Tier 1",
+      "business-plus-t2": "Business+ Tier 2",
+      "business-plus-t3": "Business+ Tier 3",
+      "scale": "Scale"
+     }
     },
     {
      "slug": "quicknode-flat-rate",
@@ -4931,7 +5252,12 @@
        "usd": null,
        "why": "published throughput is 75 rps, workload needs 1930 sustained"
       }
-     ]
+     ],
+     "planNames": {
+      "evm-150": "Flat Rate RPS, EVM 150 RPS (+ Build $49)",
+      "evm-250": "Flat Rate RPS, EVM 250 RPS (+ Build $49)",
+      "evm-75": "Flat Rate RPS, EVM 75 RPS (+ Build $49)"
+     }
     },
     {
      "slug": "shyft",
@@ -5157,7 +5483,10 @@
        "usd": null,
        "why": "published throughput is 30000 cu_per_s, workload needs 1172840 sustained"
       }
-     ]
+     ],
+     "planNames": {
+      "payg": "Pay As You Go"
+     }
     },
     {
      "slug": "allnodes",
@@ -5218,7 +5547,11 @@
        "usd": 100000,
        "plan": "payg"
       }
-     ]
+     ],
+     "planNames": {
+      "deal": "Premium (Deal)",
+      "payg": "Premium (Pay-as-you-go)"
+     }
     },
     {
      "slug": "aws-amb",
@@ -5302,7 +5635,12 @@
        "usd": 127233,
        "plan": "premium"
       }
-     ]
+     ],
+     "planNames": {
+      "elementary": "Elementary",
+      "payg": "Pay As You Go",
+      "premium": "Premium"
+     }
     },
     {
      "slug": "chainstack",
@@ -5370,7 +5708,13 @@
        "usd": 48990,
        "plan": "enterprise"
       }
-     ]
+     ],
+     "planNames": {
+      "business": "Business",
+      "enterprise": "Enterprise (from)",
+      "growth": "Growth",
+      "pro": "Pro"
+     }
     },
     {
      "slug": "chainstack-dedicated",
@@ -5418,7 +5762,13 @@
        "usd": 2629.9,
        "plan": "dedicated-eth-archive-erigon"
       }
-     ]
+     ],
+     "planNames": {
+      "dedicated-eth-archive-erigon": "Dedicated Node, Ethereum archive, erigon 3-C32-R128-M 3,652 GB (+ Pro $199)",
+      "unlimited-100": "Unlimited Node add-on, 100 RPS (+ Growth $49)",
+      "unlimited-25": "Unlimited Node add-on, 25 RPS (+ Growth $49)",
+      "unlimited-250": "Unlimited Node add-on, 250 RPS (+ Growth $49)"
+     }
     },
     {
      "slug": "coinbase-cdp",
@@ -5454,7 +5804,10 @@
        "usd": 30000,
        "plan": "growth"
       }
-     ]
+     ],
+     "planNames": {
+      "growth": "Growth (pay-as-you-go)"
+     }
     },
     {
      "slug": "dwellir",
@@ -5507,7 +5860,12 @@
        "usd": 9999,
        "plan": "scale"
       }
-     ]
+     ],
+     "planNames": {
+      "developer": "Developer",
+      "growth": "Growth",
+      "scale": "Scale"
+     }
     },
     {
      "slug": "dwellir-unlimited",
@@ -5575,7 +5933,15 @@
        "usd": 12600,
        "plan": "cluster-eth-archive"
       }
-     ]
+     ],
+     "planNames": {
+      "cluster-eth-archive": "Dedicated Ethereum archive cluster (list price)",
+      "unlimited-100": "Unlimited Node, 100 RPS",
+      "unlimited-1000": "Unlimited Node, 1,000 RPS",
+      "unlimited-25": "Unlimited Node, 25 RPS",
+      "unlimited-250": "Unlimited Node, 250 RPS",
+      "unlimited-500": "Unlimited Node, 500 RPS"
+     }
     },
     {
      "slug": "getblock",
@@ -5698,7 +6064,15 @@
        "usd": null,
        "why": "published throughput is 800 rps, workload needs 1930 sustained"
       }
-     ]
+     ],
+     "planNames": {
+      "advanced": "Advanced",
+      "growth": "Growth",
+      "premium": "Premium",
+      "pro": "Pro",
+      "scale": "Scale",
+      "starter": "Starter"
+     }
     },
     {
      "slug": "getblock-dedicated",
@@ -5726,7 +6100,11 @@
        "usd": 1300,
        "plan": "dedicated-eth-archive"
       }
-     ]
+     ],
+     "planNames": {
+      "dedicated-eth-archive": "Dedicated Ethereum archive node (erigon / reth)",
+      "limitless-evm-archive-15": "Limitless Node, EVM archive, 15 RPS"
+     }
     },
     {
      "slug": "google-bne",
@@ -5744,7 +6122,10 @@
        "usd": 2000.2,
        "plan": "eth-archive"
       }
-     ]
+     ],
+     "planNames": {
+      "eth-archive": "Ethereum archive node (Erigon)"
+     }
     },
     {
      "slug": "helius",
@@ -5948,7 +6329,11 @@
        "usd": null,
        "why": "published throughput is 40000 credits_per_s, workload needs 1304013 sustained"
       }
-     ]
+     ],
+     "planNames": {
+      "developer": "Developer",
+      "team": "Team"
+     }
     },
     {
      "slug": "moralis",
@@ -6072,7 +6457,11 @@
        "usd": null,
        "why": "published throughput is 500 rps, workload needs 1930 sustained"
       }
-     ]
+     ],
+     "planNames": {
+      "accelerate": "Accelerate",
+      "growth": "Growth"
+     }
     },
     {
      "slug": "quicknode",
@@ -6235,7 +6624,16 @@
        "usd": null,
        "why": "published throughput is 500 rps, workload needs 1930 sustained"
       }
-     ]
+     ],
+     "planNames": {
+      "accelerate": "Accelerate",
+      "build": "Build",
+      "business": "Business",
+      "business-plus-t1": "Business+ Tier 1",
+      "business-plus-t2": "Business+ Tier 2",
+      "business-plus-t3": "Business+ Tier 3",
+      "scale": "Scale"
+     }
     },
     {
      "slug": "quicknode-flat-rate",
@@ -6328,7 +6726,12 @@
        "usd": null,
        "why": "published throughput is 75 rps, workload needs 1930 sustained"
       }
-     ]
+     ],
+     "planNames": {
+      "evm-150": "Flat Rate RPS, EVM 150 RPS (+ Build $49)",
+      "evm-250": "Flat Rate RPS, EVM 250 RPS (+ Build $49)",
+      "evm-75": "Flat Rate RPS, EVM 75 RPS (+ Build $49)"
+     }
     },
     {
      "slug": "shyft",
@@ -6499,7 +6902,10 @@
        "usd": null,
        "why": "published throughput is 30000 cu_per_s, workload needs 30865 sustained"
       }
-     ]
+     ],
+     "planNames": {
+      "payg": "Pay As You Go"
+     }
     },
     {
      "slug": "allnodes",
@@ -6517,7 +6923,10 @@
        "usd": 1920,
        "plan": "sol-advanced"
       }
-     ]
+     ],
+     "planNames": {
+      "sol-advanced": "Solana full node, Advanced"
+     }
     },
     {
      "slug": "ankr",
@@ -6560,7 +6969,11 @@
        "usd": 250000,
        "plan": "payg"
       }
-     ]
+     ],
+     "planNames": {
+      "deal": "Premium (Deal)",
+      "payg": "Premium (Pay-as-you-go)"
+     }
     },
     {
      "slug": "aws-amb",
@@ -6644,7 +7057,12 @@
        "usd": 64833,
        "plan": "premium"
       }
-     ]
+     ],
+     "planNames": {
+      "elementary": "Elementary",
+      "payg": "Pay As You Go",
+      "premium": "Premium"
+     }
     },
     {
      "slug": "chainstack",
@@ -6712,7 +7130,13 @@
        "usd": 23990,
        "plan": "enterprise"
       }
-     ]
+     ],
+     "planNames": {
+      "business": "Business",
+      "enterprise": "Enterprise (from)",
+      "growth": "Growth",
+      "pro": "Pro"
+     }
     },
     {
      "slug": "chainstack-dedicated",
@@ -6770,7 +7194,14 @@
        "usd": 3776,
        "plan": "dedicated-sol-full"
       }
-     ]
+     ],
+     "planNames": {
+      "dedicated-sol-full": "Dedicated Node, Solana full, 6-C128-R1024-M 3,800 GB (+ Pro $199)",
+      "unlimited-100": "Unlimited Node add-on, 100 RPS (+ Growth $49)",
+      "unlimited-25": "Unlimited Node add-on, 25 RPS (+ Growth $49)",
+      "unlimited-250": "Unlimited Node add-on, 250 RPS (+ Growth $49)",
+      "unlimited-500": "Unlimited Node add-on, 500 RPS (+ Growth $49)"
+     }
     },
     {
      "slug": "coinbase-cdp",
@@ -6806,7 +7237,10 @@
        "usd": 30000,
        "plan": "growth"
       }
-     ]
+     ],
+     "planNames": {
+      "growth": "Growth (pay-as-you-go)"
+     }
     },
     {
      "slug": "dwellir",
@@ -6965,7 +7399,15 @@
        "usd": null,
        "why": "published throughput is 800 rps, workload needs 1930 sustained"
       }
-     ]
+     ],
+     "planNames": {
+      "advanced": "Advanced",
+      "growth": "Growth",
+      "premium": "Premium",
+      "pro": "Pro",
+      "scale": "Scale",
+      "starter": "Starter"
+     }
     },
     {
      "slug": "getblock-dedicated",
@@ -6993,7 +7435,11 @@
        "usd": 2900,
        "plan": "dedicated-sol-full"
       }
-     ]
+     ],
+     "planNames": {
+      "dedicated-sol-full": "Dedicated Solana full node",
+      "limitless-sol-full-5": "Limitless Node, Solana full, 5 RPS"
+     }
     },
     {
      "slug": "google-bne",
@@ -7114,7 +7560,12 @@
        "usd": null,
        "why": "price not published (sales-gated)"
       }
-     ]
+     ],
+     "planNames": {
+      "business": "Business",
+      "developer": "Developer",
+      "professional": "Professional"
+     }
     },
     {
      "slug": "helius-dedicated",
@@ -7132,7 +7583,10 @@
        "usd": 3399,
        "plan": "mainnet-floor"
       }
-     ]
+     ],
+     "planNames": {
+      "mainnet-floor": "Dedicated Solana node, mainnet (+ Business $499)"
+     }
     },
     {
      "slug": "infura",
@@ -7260,7 +7714,11 @@
        "usd": null,
        "why": "published throughput is 40000 credits_per_s, workload needs 308642 sustained"
       }
-     ]
+     ],
+     "planNames": {
+      "developer": "Developer",
+      "team": "Team"
+     }
     },
     {
      "slug": "moralis",
@@ -7356,7 +7814,14 @@
        "usd": 28387.5,
        "plan": "enterprise"
       }
-     ]
+     ],
+     "planNames": {
+      "business": "Business",
+      "business-plus": "Business Plus",
+      "enterprise": "Enterprise",
+      "pro": "Pro",
+      "pro-plus": "Pro Plus"
+     }
     },
     {
      "slug": "onfinality",
@@ -7537,7 +8002,16 @@
        "usd": null,
        "why": "published throughput is 500 rps, workload needs 1930 sustained"
       }
-     ]
+     ],
+     "planNames": {
+      "accelerate": "Accelerate",
+      "build": "Build",
+      "business": "Business",
+      "business-plus-t1": "Business+ Tier 1",
+      "business-plus-t2": "Business+ Tier 2",
+      "business-plus-t3": "Business+ Tier 3",
+      "scale": "Scale"
+     }
     },
     {
      "slug": "quicknode-flat-rate",
@@ -7565,7 +8039,10 @@
        "usd": null,
        "why": "plan does not serve solana"
       }
-     ]
+     ],
+     "planNames": {
+      "sol-75": "Flat Rate RPS, Solana 75 RPS (+ Build $49)"
+     }
     },
     {
      "slug": "shyft",
@@ -7628,7 +8105,14 @@
        "usd": 1800,
        "plan": "dedicated"
       }
-     ]
+     ],
+     "planNames": {
+      "accelerate": "Accelerate",
+      "build": "Build",
+      "dedicated": "Dedicated Solana RPC / gRPC node",
+      "grow": "Grow",
+      "legacy-scale": "Legacy Scale (credit-based, still listed)"
+     }
     },
     {
      "slug": "syndica",
@@ -7696,7 +8180,11 @@
        "usd": null,
        "why": "published throughput is 400 rps, workload needs 1930 sustained"
       }
-     ]
+     ],
+     "planNames": {
+      "calc-1000m": "Calculator: 1,000M calls @ 400 RPS, 5 users",
+      "calc-200m": "Calculator: 200M calls @ 300 RPS, 5 users"
+     }
     },
     {
      "slug": "tatum",
@@ -7949,7 +8437,21 @@
        "usd": null,
        "why": "published throughput is 200 rps, workload needs 1930 sustained"
       }
-     ]
+     ],
+     "planNames": {
+      "t10m": "Starter 10M",
+      "t150m": "Scale 150M",
+      "t15m": "Pro 15M",
+      "t200m": "Scale 200M",
+      "t20m": "Pro 20M",
+      "t250m": "Scale 250M",
+      "t300m": "Scale 300M",
+      "t350m": "Scale 350M",
+      "t400m": "Scale 400M",
+      "t40m": "Pro 40M",
+      "t4m": "Starter 4M",
+      "t80m": "Pro 80M"
+     }
     },
     {
      "slug": "thirdweb",
@@ -7995,7 +8497,11 @@
        "usd": 50010,
        "plan": "hydrant"
       }
-     ]
+     ],
+     "planNames": {
+      "hydrant": "Hydrant deep archive",
+      "payg": "Pay-as-you-go (prepaid, no tiers)"
+     }
     },
     {
      "slug": "validation-cloud",
@@ -8033,7 +8539,10 @@
        "usd": 52557.5,
        "plan": "scale"
       }
-     ]
+     ],
+     "planNames": {
+      "scale": "Scale (banded pay-as-you-go)"
+     }
     },
     {
      "slug": "zeeve",
@@ -8060,6 +8569,1513 @@
        "r": 5000000000,
        "usd": null,
        "why": "plan does not serve solana"
+      }
+     ],
+     "planNames": {
+      "sol-basic": "Solana Basic"
+     }
+    }
+   ]
+  },
+  {
+   "id": "dapp-archive",
+   "label": "Dapp frontend, archive",
+   "chain": "ethereum",
+   "providers": [
+    {
+     "slug": "alchemy",
+     "name": "Alchemy",
+     "cohort": "usage",
+     "unit": "cu",
+     "points": [
+      {
+       "r": 100000,
+       "usd": 1.25,
+       "plan": "payg"
+      },
+      {
+       "r": 3186199600,
+       "usd": 39978.84,
+       "plan": "payg"
+      },
+      {
+       "r": 3190012223,
+       "usd": null,
+       "why": "published throughput is 30000 cu_per_s, workload needs 30030 sustained"
+      },
+      {
+       "r": 3197637469,
+       "usd": null,
+       "why": "published throughput is 30000 cu_per_s, workload needs 30102 sustained"
+      },
+      {
+       "r": 3212887961,
+       "usd": null,
+       "why": "published throughput is 30000 cu_per_s, workload needs 30245 sustained"
+      },
+      {
+       "r": 3243388946,
+       "usd": null,
+       "why": "published throughput is 30000 cu_per_s, workload needs 30532 sustained"
+      },
+      {
+       "r": 3304390914,
+       "usd": null,
+       "why": "published throughput is 30000 cu_per_s, workload needs 31107 sustained"
+      },
+      {
+       "r": 3426394850,
+       "usd": null,
+       "why": "published throughput is 30000 cu_per_s, workload needs 32255 sustained"
+      },
+      {
+       "r": 3670402724,
+       "usd": null,
+       "why": "published throughput is 30000 cu_per_s, workload needs 34552 sustained"
+      },
+      {
+       "r": 5000000000,
+       "usd": null,
+       "why": "published throughput is 30000 cu_per_s, workload needs 47068 sustained"
+      }
+     ],
+     "planNames": {
+      "payg": "Pay As You Go"
+     }
+    },
+    {
+     "slug": "allnodes",
+     "name": "Allnodes",
+     "cohort": "dedicated",
+     "unit": "request",
+     "points": [
+      {
+       "r": 100000,
+       "usd": null,
+       "why": "plan has no archive access"
+      },
+      {
+       "r": 5000000000,
+       "usd": null,
+       "why": "plan has no archive access"
+      }
+     ]
+    },
+    {
+     "slug": "ankr",
+     "name": "Ankr",
+     "cohort": "usage",
+     "unit": "credit",
+     "points": [
+      {
+       "r": 100000,
+       "usd": 2,
+       "plan": "payg"
+      },
+      {
+       "r": 24986862,
+       "usd": 499.74,
+       "plan": "payg"
+      },
+      {
+       "r": 25013971,
+       "usd": 500,
+       "plan": "deal"
+      },
+      {
+       "r": 30000000,
+       "usd": 500,
+       "plan": "deal"
+      },
+      {
+       "r": 179998807,
+       "usd": 2999.98,
+       "plan": "deal"
+      },
+      {
+       "r": 180234810,
+       "usd": 3604.7,
+       "plan": "payg"
+      },
+      {
+       "r": 5000000000,
+       "usd": 100000,
+       "plan": "payg"
+      }
+     ],
+     "planNames": {
+      "deal": "Premium (Deal)",
+      "payg": "Premium (Pay-as-you-go)"
+     }
+    },
+    {
+     "slug": "aws-amb",
+     "name": "Amazon Managed Blockchain (AMB) Access — Ethereum",
+     "cohort": "dedicated",
+     "unit": "request",
+     "points": [
+      {
+       "r": 100000,
+       "usd": null,
+       "why": "archive support for this plan is not published; not ranked"
+      },
+      {
+       "r": 5000000000,
+       "usd": null,
+       "why": "archive support for this plan is not published; not ranked"
+      }
+     ]
+    },
+    {
+     "slug": "blockdaemon",
+     "name": "Blockdaemon",
+     "cohort": "usage",
+     "unit": "cu",
+     "points": [
+      {
+       "r": 100000,
+       "usd": null,
+       "why": "price not published (sales-gated)"
+      },
+      {
+       "r": 5000000000,
+       "usd": null,
+       "why": "price not published (sales-gated)"
+      }
+     ]
+    },
+    {
+     "slug": "blockpi",
+     "name": "BlockPI",
+     "cohort": "usage",
+     "unit": "ru",
+     "points": [
+      {
+       "r": 100000,
+       "usd": 0.72,
+       "plan": "payg"
+      },
+      {
+       "r": 3426371,
+       "usd": 24.5,
+       "plan": "payg"
+      },
+      {
+       "r": 3430613,
+       "usd": 24.5,
+       "plan": "elementary"
+      },
+      {
+       "r": 6993007,
+       "usd": 24.5,
+       "plan": "elementary"
+      },
+      {
+       "r": 17486642,
+       "usd": 99.53,
+       "plan": "elementary"
+      },
+      {
+       "r": 17506542,
+       "usd": 99.67,
+       "plan": "premium"
+      },
+      {
+       "r": 37296037,
+       "usd": 99.67,
+       "plan": "premium"
+      },
+      {
+       "r": 5000000000,
+       "usd": 35583,
+       "plan": "premium"
+      }
+     ],
+     "planNames": {
+      "elementary": "Elementary",
+      "payg": "Pay As You Go",
+      "premium": "Premium"
+     }
+    },
+    {
+     "slug": "chainstack",
+     "name": "Chainstack",
+     "cohort": "usage",
+     "unit": "ru",
+     "points": [
+      {
+       "r": 100000,
+       "usd": 49,
+       "plan": "growth"
+      },
+      {
+       "r": 10000000,
+       "usd": 49,
+       "plan": "growth"
+      },
+      {
+       "r": 14999062,
+       "usd": 198.97,
+       "plan": "growth"
+      },
+      {
+       "r": 15018962,
+       "usd": 199,
+       "plan": "pro"
+      },
+      {
+       "r": 40000000,
+       "usd": 199,
+       "plan": "pro"
+      },
+      {
+       "r": 51994908,
+       "usd": 498.87,
+       "plan": "pro"
+      },
+      {
+       "r": 52063440,
+       "usd": 499,
+       "plan": "business"
+      },
+      {
+       "r": 100000000,
+       "usd": 499,
+       "plan": "business"
+      },
+      {
+       "r": 124510837,
+       "usd": 989.22,
+       "plan": "business"
+      },
+      {
+       "r": 124684082,
+       "usd": 990,
+       "plan": "enterprise"
+      },
+      {
+       "r": 200000000,
+       "usd": 990,
+       "plan": "enterprise"
+      },
+      {
+       "r": 5000000000,
+       "usd": 48990,
+       "plan": "enterprise"
+      }
+     ],
+     "planNames": {
+      "business": "Business",
+      "enterprise": "Enterprise (from)",
+      "growth": "Growth",
+      "pro": "Pro"
+     }
+    },
+    {
+     "slug": "chainstack-dedicated",
+     "name": "Chainstack — Dedicated Node \u0026 Unlimited Node",
+     "cohort": "dedicated",
+     "unit": "request",
+     "points": [
+      {
+       "r": 100000,
+       "usd": 198,
+       "plan": "unlimited-25"
+      },
+      {
+       "r": 64741823,
+       "usd": 198,
+       "plan": "unlimited-25"
+      },
+      {
+       "r": 64810355,
+       "usd": 698,
+       "plan": "unlimited-100"
+      },
+      {
+       "r": 259027340,
+       "usd": 698,
+       "plan": "unlimited-100"
+      },
+      {
+       "r": 259348834,
+       "usd": 1698,
+       "plan": "unlimited-250"
+      },
+      {
+       "r": 647494228,
+       "usd": 1698,
+       "plan": "unlimited-250"
+      },
+      {
+       "r": 648306951,
+       "usd": 2629.9,
+       "plan": "dedicated-eth-archive-erigon"
+      },
+      {
+       "r": 5000000000,
+       "usd": 2629.9,
+       "plan": "dedicated-eth-archive-erigon"
+      }
+     ],
+     "planNames": {
+      "dedicated-eth-archive-erigon": "Dedicated Node, Ethereum archive, erigon 3-C32-R128-M 3,652 GB (+ Pro $199)",
+      "unlimited-100": "Unlimited Node add-on, 100 RPS (+ Growth $49)",
+      "unlimited-25": "Unlimited Node add-on, 25 RPS (+ Growth $49)",
+      "unlimited-250": "Unlimited Node add-on, 250 RPS (+ Growth $49)"
+     }
+    },
+    {
+     "slug": "coinbase-cdp",
+     "name": "Coinbase Developer Platform — CDP Node",
+     "cohort": "usage",
+     "unit": "billing_unit",
+     "points": [
+      {
+       "r": 100000,
+       "usd": null,
+       "why": "provider does not price ethereum"
+      },
+      {
+       "r": 5000000000,
+       "usd": null,
+       "why": "provider does not price ethereum"
+      }
+     ]
+    },
+    {
+     "slug": "drpc",
+     "name": "dRPC",
+     "cohort": "usage",
+     "unit": "cu",
+     "points": [
+      {
+       "r": 100000,
+       "usd": 0.6,
+       "plan": "growth"
+      },
+      {
+       "r": 5000000000,
+       "usd": 30000,
+       "plan": "growth"
+      }
+     ],
+     "planNames": {
+      "growth": "Growth (pay-as-you-go)"
+     }
+    },
+    {
+     "slug": "dwellir",
+     "name": "Dwellir",
+     "cohort": "usage",
+     "unit": "request",
+     "points": [
+      {
+       "r": 100000,
+       "usd": 49,
+       "plan": "developer"
+      },
+      {
+       "r": 25000000,
+       "usd": 49,
+       "plan": "developer"
+      },
+      {
+       "r": 74937699,
+       "usd": 298.69,
+       "plan": "developer"
+      },
+      {
+       "r": 75031057,
+       "usd": 299,
+       "plan": "growth"
+      },
+      {
+       "r": 150000000,
+       "usd": 299,
+       "plan": "growth"
+      },
+      {
+       "r": 383078484,
+       "usd": 998.24,
+       "plan": "growth"
+      },
+      {
+       "r": 383516439,
+       "usd": 999,
+       "plan": "scale"
+      },
+      {
+       "r": 500000000,
+       "usd": 999,
+       "plan": "scale"
+      },
+      {
+       "r": 5000000000,
+       "usd": 9999,
+       "plan": "scale"
+      }
+     ],
+     "planNames": {
+      "developer": "Developer",
+      "growth": "Growth",
+      "scale": "Scale"
+     }
+    },
+    {
+     "slug": "dwellir-unlimited",
+     "name": "Dwellir, Unlimited Nodes \u0026 dedicated clusters",
+     "cohort": "dedicated",
+     "unit": "request",
+     "points": [
+      {
+       "r": 100000,
+       "usd": 119,
+       "plan": "unlimited-25"
+      },
+      {
+       "r": 64741823,
+       "usd": 119,
+       "plan": "unlimited-25"
+      },
+      {
+       "r": 64810355,
+       "usd": 479,
+       "plan": "unlimited-100"
+      },
+      {
+       "r": 259027340,
+       "usd": 479,
+       "plan": "unlimited-100"
+      },
+      {
+       "r": 259348834,
+       "usd": 1199,
+       "plan": "unlimited-250"
+      },
+      {
+       "r": 647494228,
+       "usd": 1199,
+       "plan": "unlimited-250"
+      },
+      {
+       "r": 648306951,
+       "usd": 2399,
+       "plan": "unlimited-500"
+      },
+      {
+       "r": 1295075885,
+       "usd": 2399,
+       "plan": "unlimited-500"
+      },
+      {
+       "r": 1296584071,
+       "usd": 4799,
+       "plan": "unlimited-1000"
+      },
+      {
+       "r": 2590816653,
+       "usd": 4799,
+       "plan": "unlimited-1000"
+      },
+      {
+       "r": 2593615425,
+       "usd": 12600,
+       "plan": "cluster-eth-archive"
+      },
+      {
+       "r": 5000000000,
+       "usd": 12600,
+       "plan": "cluster-eth-archive"
+      }
+     ],
+     "planNames": {
+      "cluster-eth-archive": "Dedicated Ethereum archive cluster (list price)",
+      "unlimited-100": "Unlimited Node, 100 RPS",
+      "unlimited-1000": "Unlimited Node, 1,000 RPS",
+      "unlimited-25": "Unlimited Node, 25 RPS",
+      "unlimited-250": "Unlimited Node, 250 RPS",
+      "unlimited-500": "Unlimited Node, 500 RPS"
+     }
+    },
+    {
+     "slug": "getblock",
+     "name": "GetBlock",
+     "cohort": "usage",
+     "unit": "cu",
+     "points": [
+      {
+       "r": 100000,
+       "usd": 49,
+       "plan": "starter"
+      },
+      {
+       "r": 2250000,
+       "usd": 49,
+       "plan": "starter"
+      },
+      {
+       "r": 2252922,
+       "usd": 99,
+       "plan": "growth"
+      },
+      {
+       "r": 4625000,
+       "usd": 99,
+       "plan": "growth"
+      },
+      {
+       "r": 4632330,
+       "usd": 199,
+       "plan": "advanced"
+      },
+      {
+       "r": 9625000,
+       "usd": 199,
+       "plan": "advanced"
+      },
+      {
+       "r": 9635920,
+       "usd": 349,
+       "plan": "scale"
+      },
+      {
+       "r": 17500000,
+       "usd": 349,
+       "plan": "scale"
+      },
+      {
+       "r": 17525911,
+       "usd": 499,
+       "plan": "pro"
+      },
+      {
+       "r": 25000000,
+       "usd": 499,
+       "plan": "pro"
+      },
+      {
+       "r": 37498248,
+       "usd": 698.97,
+       "plan": "pro"
+      },
+      {
+       "r": 37567741,
+       "usd": 699,
+       "plan": "premium"
+      },
+      {
+       "r": 40000000,
+       "usd": 699,
+       "plan": "premium"
+      },
+      {
+       "r": 2073043762,
+       "usd": 29161.61,
+       "plan": "premium"
+      },
+      {
+       "r": 2075842534,
+       "usd": null,
+       "why": "published throughput is 800 rps, workload needs 801 sustained"
+      },
+      {
+       "r": 2078641307,
+       "usd": null,
+       "why": "published throughput is 800 rps, workload needs 802 sustained"
+      },
+      {
+       "r": 2089836396,
+       "usd": null,
+       "why": "published throughput is 800 rps, workload needs 807 sustained"
+      },
+      {
+       "r": 2112226575,
+       "usd": null,
+       "why": "published throughput is 800 rps, workload needs 815 sustained"
+      },
+      {
+       "r": 2157006933,
+       "usd": null,
+       "why": "published throughput is 800 rps, workload needs 833 sustained"
+      },
+      {
+       "r": 2336128366,
+       "usd": null,
+       "why": "published throughput is 800 rps, workload needs 902 sustained"
+      },
+      {
+       "r": 2694371231,
+       "usd": null,
+       "why": "published throughput is 800 rps, workload needs 1040 sustained"
+      },
+      {
+       "r": 3670402724,
+       "usd": null,
+       "why": "published throughput is 800 rps, workload needs 1417 sustained"
+      },
+      {
+       "r": 5000000000,
+       "usd": null,
+       "why": "published throughput is 800 rps, workload needs 1930 sustained"
+      }
+     ],
+     "planNames": {
+      "advanced": "Advanced",
+      "growth": "Growth",
+      "premium": "Premium",
+      "pro": "Pro",
+      "scale": "Scale",
+      "starter": "Starter"
+     }
+    },
+    {
+     "slug": "getblock-dedicated",
+     "name": "GetBlock — Dedicated \u0026 Limitless nodes",
+     "cohort": "dedicated",
+     "unit": "request",
+     "points": [
+      {
+       "r": 100000,
+       "usd": 150,
+       "plan": "limitless-evm-archive-15"
+      },
+      {
+       "r": 38872760,
+       "usd": 150,
+       "plan": "limitless-evm-archive-15"
+      },
+      {
+       "r": 38923068,
+       "usd": 1300,
+       "plan": "dedicated-eth-archive"
+      },
+      {
+       "r": 5000000000,
+       "usd": 1300,
+       "plan": "dedicated-eth-archive"
+      }
+     ],
+     "planNames": {
+      "dedicated-eth-archive": "Dedicated Ethereum archive node (erigon / reth)",
+      "limitless-evm-archive-15": "Limitless Node, EVM archive, 15 RPS"
+     }
+    },
+    {
+     "slug": "google-bne",
+     "name": "Google Cloud — Blockchain Node Engine",
+     "cohort": "dedicated",
+     "unit": "request",
+     "points": [
+      {
+       "r": 100000,
+       "usd": 2000.2,
+       "plan": "eth-archive"
+      },
+      {
+       "r": 5000000000,
+       "usd": 2000.2,
+       "plan": "eth-archive"
+      }
+     ],
+     "planNames": {
+      "eth-archive": "Ethereum archive node (Erigon)"
+     }
+    },
+    {
+     "slug": "helius",
+     "name": "Helius",
+     "cohort": "usage",
+     "unit": "credit",
+     "points": [
+      {
+       "r": 100000,
+       "usd": null,
+       "why": "provider does not price ethereum"
+      },
+      {
+       "r": 5000000000,
+       "usd": null,
+       "why": "provider does not price ethereum"
+      }
+     ]
+    },
+    {
+     "slug": "helius-dedicated",
+     "name": "Helius — Dedicated Nodes",
+     "cohort": "dedicated",
+     "unit": "request",
+     "points": [
+      {
+       "r": 100000,
+       "usd": null,
+       "why": "plan does not serve ethereum"
+      },
+      {
+       "r": 5000000000,
+       "usd": null,
+       "why": "plan does not serve ethereum"
+      }
+     ]
+    },
+    {
+     "slug": "infura",
+     "name": "Infura (MetaMask Developer)",
+     "cohort": "usage",
+     "unit": "credit",
+     "points": [
+      {
+       "r": 100000,
+       "usd": 50,
+       "plan": "developer"
+      },
+      {
+       "r": 4505760,
+       "usd": 50,
+       "plan": "developer"
+      },
+      {
+       "r": 4511538,
+       "usd": 225,
+       "plan": "team"
+      },
+      {
+       "r": 22546997,
+       "usd": 225,
+       "plan": "team"
+      },
+      {
+       "r": 22574106,
+       "usd": null,
+       "why": "daily cap of 75000000 credit cannot serve 75058903/day"
+      },
+      {
+       "r": 22628325,
+       "usd": null,
+       "why": "daily cap of 75000000 credit cannot serve 75239182/day"
+      },
+      {
+       "r": 26098356,
+       "usd": null,
+       "why": "daily cap of 75000000 credit cannot serve 86777033/day"
+      },
+      {
+       "r": 35552442,
+       "usd": null,
+       "why": "daily cap of 75000000 credit cannot serve 118211868/day"
+      },
+      {
+       "r": 48431254,
+       "usd": null,
+       "why": "daily cap of 75000000 credit cannot serve 161033921/day"
+      },
+      {
+       "r": 65975396,
+       "usd": null,
+       "why": "daily cap of 75000000 credit cannot serve 219368190/day"
+      },
+      {
+       "r": 89874873,
+       "usd": null,
+       "why": "daily cap of 75000000 credit cannot serve 298833952/day"
+      },
+      {
+       "r": 122431896,
+       "usd": null,
+       "why": "daily cap of 75000000 credit cannot serve 407086053/day"
+      },
+      {
+       "r": 166782646,
+       "usd": null,
+       "why": "daily cap of 75000000 credit cannot serve 554552299/day"
+      },
+      {
+       "r": 227199382,
+       "usd": null,
+       "why": "daily cap of 75000000 credit cannot serve 755437946/day"
+      },
+      {
+       "r": 309501980,
+       "usd": null,
+       "why": "daily cap of 75000000 credit cannot serve 1029094084/day"
+      },
+      {
+       "r": 421618557,
+       "usd": null,
+       "why": "daily cap of 75000000 credit cannot serve 1401881702/day"
+      },
+      {
+       "r": 574349177,
+       "usd": null,
+       "why": "daily cap of 75000000 credit cannot serve 1909711015/day"
+      },
+      {
+       "r": 782406211,
+       "usd": null,
+       "why": "daily cap of 75000000 credit cannot serve 2601500651/day"
+      },
+      {
+       "r": 1065831558,
+       "usd": null,
+       "why": "published throughput is 40000 credits_per_s, workload needs 41018 sustained"
+      },
+      {
+       "r": 1451927266,
+       "usd": null,
+       "why": "published throughput is 40000 credits_per_s, workload needs 55876 sustained"
+      },
+      {
+       "r": 1977885501,
+       "usd": null,
+       "why": "published throughput is 40000 credits_per_s, workload needs 76117 sustained"
+      },
+      {
+       "r": 2694371231,
+       "usd": null,
+       "why": "published throughput is 40000 credits_per_s, workload needs 103690 sustained"
+      },
+      {
+       "r": 3670402724,
+       "usd": null,
+       "why": "published throughput is 40000 credits_per_s, workload needs 141252 sustained"
+      },
+      {
+       "r": 5000000000,
+       "usd": null,
+       "why": "published throughput is 40000 credits_per_s, workload needs 192419 sustained"
+      }
+     ],
+     "planNames": {
+      "developer": "Developer",
+      "team": "Team"
+     }
+    },
+    {
+     "slug": "moralis",
+     "name": "Moralis",
+     "cohort": "usage",
+     "unit": "cu",
+     "points": [
+      {
+       "r": 100000,
+       "usd": 149,
+       "plan": "starter"
+      },
+      {
+       "r": 216216,
+       "usd": 149,
+       "plan": "starter"
+      },
+      {
+       "r": 1176051,
+       "usd": 248.88,
+       "plan": "starter"
+      },
+      {
+       "r": 1177283,
+       "usd": 249,
+       "plan": "pro"
+      },
+      {
+       "r": 10810811,
+       "usd": 249,
+       "plan": "pro"
+      },
+      {
+       "r": 21598160,
+       "usd": 747.91,
+       "plan": "pro"
+      },
+      {
+       "r": 21625270,
+       "usd": 749,
+       "plan": "business"
+      },
+      {
+       "r": 54054054,
+       "usd": 749,
+       "plan": "business"
+      },
+      {
+       "r": 518268403,
+       "usd": 17924.93,
+       "plan": "business"
+      },
+      {
+       "r": 518865007,
+       "usd": null,
+       "why": "published throughput is 200 rps, workload needs 201 sustained"
+      },
+      {
+       "r": 519461611,
+       "usd": null,
+       "why": "published throughput is 200 rps, workload needs 201 sustained"
+      },
+      {
+       "r": 521848027,
+       "usd": null,
+       "why": "published throughput is 200 rps, workload needs 202 sustained"
+      },
+      {
+       "r": 526620859,
+       "usd": null,
+       "why": "published throughput is 200 rps, workload needs 204 sustained"
+      },
+      {
+       "r": 536166522,
+       "usd": null,
+       "why": "published throughput is 200 rps, workload needs 207 sustained"
+      },
+      {
+       "r": 574349177,
+       "usd": null,
+       "why": "published throughput is 200 rps, workload needs 222 sustained"
+      },
+      {
+       "r": 782406211,
+       "usd": null,
+       "why": "published throughput is 200 rps, workload needs 302 sustained"
+      },
+      {
+       "r": 1065831558,
+       "usd": null,
+       "why": "published throughput is 200 rps, workload needs 412 sustained"
+      },
+      {
+       "r": 1451927266,
+       "usd": null,
+       "why": "published throughput is 200 rps, workload needs 561 sustained"
+      },
+      {
+       "r": 1977885501,
+       "usd": null,
+       "why": "published throughput is 200 rps, workload needs 764 sustained"
+      },
+      {
+       "r": 2694371231,
+       "usd": null,
+       "why": "published throughput is 200 rps, workload needs 1040 sustained"
+      },
+      {
+       "r": 3670402724,
+       "usd": null,
+       "why": "published throughput is 200 rps, workload needs 1417 sustained"
+      },
+      {
+       "r": 5000000000,
+       "usd": null,
+       "why": "published throughput is 200 rps, workload needs 1930 sustained"
+      }
+     ],
+     "planNames": {
+      "business": "Business",
+      "pro": "Pro",
+      "starter": "Starter"
+     }
+    },
+    {
+     "slug": "nownodes",
+     "name": "NOWNodes",
+     "cohort": "usage",
+     "unit": "request",
+     "points": [
+      {
+       "r": 100000,
+       "usd": null,
+       "why": "archive support for this plan is not published; not ranked"
+      },
+      {
+       "r": 5000000000,
+       "usd": null,
+       "why": "archive support for this plan is not published; not ranked"
+      }
+     ]
+    },
+    {
+     "slug": "onfinality",
+     "name": "OnFinality",
+     "cohort": "usage",
+     "unit": "ru",
+     "points": [
+      {
+       "r": 100000,
+       "usd": 49,
+       "plan": "growth"
+      },
+      {
+       "r": 11428571,
+       "usd": 49,
+       "plan": "growth"
+      },
+      {
+       "r": 30456098,
+       "usd": 248.79,
+       "plan": "growth"
+      },
+      {
+       "r": 30493028,
+       "usd": 249,
+       "plan": "accelerate"
+      },
+      {
+       "r": 57142857,
+       "usd": 249,
+       "plan": "accelerate"
+      },
+      {
+       "r": 1295075885,
+       "usd": 8372.94,
+       "plan": "accelerate"
+      },
+      {
+       "r": 1296584071,
+       "usd": null,
+       "why": "published throughput is 500 rps, workload needs 501 sustained"
+      },
+      {
+       "r": 1298092257,
+       "usd": null,
+       "why": "published throughput is 500 rps, workload needs 501 sustained"
+      },
+      {
+       "r": 1301108630,
+       "usd": null,
+       "why": "published throughput is 500 rps, workload needs 502 sustained"
+      },
+      {
+       "r": 1307141376,
+       "usd": null,
+       "why": "published throughput is 500 rps, workload needs 505 sustained"
+      },
+      {
+       "r": 1355403339,
+       "usd": null,
+       "why": "published throughput is 500 rps, workload needs 523 sustained"
+      },
+      {
+       "r": 1451927266,
+       "usd": null,
+       "why": "published throughput is 500 rps, workload needs 561 sustained"
+      },
+      {
+       "r": 1977885501,
+       "usd": null,
+       "why": "published throughput is 500 rps, workload needs 764 sustained"
+      },
+      {
+       "r": 2694371231,
+       "usd": null,
+       "why": "published throughput is 500 rps, workload needs 1040 sustained"
+      },
+      {
+       "r": 3670402724,
+       "usd": null,
+       "why": "published throughput is 500 rps, workload needs 1417 sustained"
+      },
+      {
+       "r": 5000000000,
+       "usd": null,
+       "why": "published throughput is 500 rps, workload needs 1930 sustained"
+      }
+     ],
+     "planNames": {
+      "accelerate": "Accelerate",
+      "growth": "Growth"
+     }
+    },
+    {
+     "slug": "quicknode",
+     "name": "QuickNode",
+     "cohort": "usage",
+     "unit": "credit",
+     "points": [
+      {
+       "r": 100000,
+       "usd": 49,
+       "plan": "build"
+      },
+      {
+       "r": 3809524,
+       "usd": 49,
+       "plan": "build"
+      },
+      {
+       "r": 19158295,
+       "usd": 248.84,
+       "plan": "build"
+      },
+      {
+       "r": 19193768,
+       "usd": 249,
+       "plan": "accelerate"
+      },
+      {
+       "r": 21428571,
+       "usd": 249,
+       "plan": "accelerate"
+      },
+      {
+       "r": 42665343,
+       "usd": 498.74,
+       "plan": "accelerate"
+      },
+      {
+       "r": 42741013,
+       "usd": 499,
+       "plan": "scale"
+      },
+      {
+       "r": 45238095,
+       "usd": 499,
+       "plan": "scale"
+      },
+      {
+       "r": 90042473,
+       "usd": 997.67,
+       "plan": "scale"
+      },
+      {
+       "r": 90210074,
+       "usd": 999,
+       "plan": "business"
+      },
+      {
+       "r": 95238095,
+       "usd": 999,
+       "plan": "business"
+      },
+      {
+       "r": 142787895,
+       "usd": 1498.27,
+       "plan": "business"
+      },
+      {
+       "r": 143021872,
+       "usd": 1499,
+       "plan": "business-plus-t1"
+      },
+      {
+       "r": 152380952,
+       "usd": 1499,
+       "plan": "business-plus-t1"
+      },
+      {
+       "r": 199812123,
+       "usd": 1997.03,
+       "plan": "business-plus-t1"
+      },
+      {
+       "r": 200183241,
+       "usd": 1999,
+       "plan": "business-plus-t2"
+      },
+      {
+       "r": 214285714,
+       "usd": 1999,
+       "plan": "business-plus-t2"
+      },
+      {
+       "r": 309501980,
+       "usd": 2998.77,
+       "plan": "business-plus-t2"
+      },
+      {
+       "r": 309874345,
+       "usd": 2999,
+       "plan": "business-plus-t3"
+      },
+      {
+       "r": 333333333,
+       "usd": 2999,
+       "plan": "business-plus-t3"
+      },
+      {
+       "r": 1295075885,
+       "usd": 13097.3,
+       "plan": "business-plus-t3"
+      },
+      {
+       "r": 1296584071,
+       "usd": null,
+       "why": "published throughput is 500 rps, workload needs 501 sustained"
+      },
+      {
+       "r": 1298092257,
+       "usd": null,
+       "why": "published throughput is 500 rps, workload needs 501 sustained"
+      },
+      {
+       "r": 1301108630,
+       "usd": null,
+       "why": "published throughput is 500 rps, workload needs 502 sustained"
+      },
+      {
+       "r": 1307141376,
+       "usd": null,
+       "why": "published throughput is 500 rps, workload needs 505 sustained"
+      },
+      {
+       "r": 1355403339,
+       "usd": null,
+       "why": "published throughput is 500 rps, workload needs 523 sustained"
+      },
+      {
+       "r": 1451927266,
+       "usd": null,
+       "why": "published throughput is 500 rps, workload needs 561 sustained"
+      },
+      {
+       "r": 1977885501,
+       "usd": null,
+       "why": "published throughput is 500 rps, workload needs 764 sustained"
+      },
+      {
+       "r": 2694371231,
+       "usd": null,
+       "why": "published throughput is 500 rps, workload needs 1040 sustained"
+      },
+      {
+       "r": 3670402724,
+       "usd": null,
+       "why": "published throughput is 500 rps, workload needs 1417 sustained"
+      },
+      {
+       "r": 5000000000,
+       "usd": null,
+       "why": "published throughput is 500 rps, workload needs 1930 sustained"
+      }
+     ],
+     "planNames": {
+      "accelerate": "Accelerate",
+      "build": "Build",
+      "business": "Business",
+      "business-plus-t1": "Business+ Tier 1",
+      "business-plus-t2": "Business+ Tier 2",
+      "business-plus-t3": "Business+ Tier 3",
+      "scale": "Scale"
+     }
+    },
+    {
+     "slug": "quicknode-flat-rate",
+     "name": "QuickNode — Flat Rate RPS",
+     "cohort": "dedicated",
+     "unit": "request",
+     "points": [
+      {
+       "r": 100000,
+       "usd": 848,
+       "plan": "evm-75"
+      },
+      {
+       "r": 194394983,
+       "usd": 848,
+       "plan": "evm-75"
+      },
+      {
+       "r": 194630985,
+       "usd": 1548,
+       "plan": "evm-150"
+      },
+      {
+       "r": 388771904,
+       "usd": 1548,
+       "plan": "evm-150"
+      },
+      {
+       "r": 389209859,
+       "usd": 1998,
+       "plan": "evm-250"
+      },
+      {
+       "r": 647494228,
+       "usd": 1998,
+       "plan": "evm-250"
+      },
+      {
+       "r": 648306951,
+       "usd": null,
+       "why": "published throughput is 75 rps, workload needs 251 sustained"
+      },
+      {
+       "r": 649119674,
+       "usd": null,
+       "why": "published throughput is 75 rps, workload needs 251 sustained"
+      },
+      {
+       "r": 652370565,
+       "usd": null,
+       "why": "published throughput is 75 rps, workload needs 252 sustained"
+      },
+      {
+       "r": 678377694,
+       "usd": null,
+       "why": "published throughput is 75 rps, workload needs 262 sustained"
+      },
+      {
+       "r": 782406211,
+       "usd": null,
+       "why": "published throughput is 75 rps, workload needs 302 sustained"
+      },
+      {
+       "r": 1065831558,
+       "usd": null,
+       "why": "published throughput is 75 rps, workload needs 412 sustained"
+      },
+      {
+       "r": 1451927266,
+       "usd": null,
+       "why": "published throughput is 75 rps, workload needs 561 sustained"
+      },
+      {
+       "r": 1977885501,
+       "usd": null,
+       "why": "published throughput is 75 rps, workload needs 764 sustained"
+      },
+      {
+       "r": 2694371231,
+       "usd": null,
+       "why": "published throughput is 75 rps, workload needs 1040 sustained"
+      },
+      {
+       "r": 3670402724,
+       "usd": null,
+       "why": "published throughput is 75 rps, workload needs 1417 sustained"
+      },
+      {
+       "r": 5000000000,
+       "usd": null,
+       "why": "published throughput is 75 rps, workload needs 1930 sustained"
+      }
+     ],
+     "planNames": {
+      "evm-150": "Flat Rate RPS, EVM 150 RPS (+ Build $49)",
+      "evm-250": "Flat Rate RPS, EVM 250 RPS (+ Build $49)",
+      "evm-75": "Flat Rate RPS, EVM 75 RPS (+ Build $49)"
+     }
+    },
+    {
+     "slug": "shyft",
+     "name": "Shyft",
+     "cohort": "dedicated",
+     "unit": "request",
+     "points": [
+      {
+       "r": 100000,
+       "usd": null,
+       "why": "plan does not serve ethereum"
+      },
+      {
+       "r": 5000000000,
+       "usd": null,
+       "why": "plan does not serve ethereum"
+      }
+     ]
+    },
+    {
+     "slug": "syndica",
+     "name": "Syndica",
+     "cohort": "usage",
+     "unit": "request",
+     "points": [
+      {
+       "r": 100000,
+       "usd": null,
+       "why": "provider does not price ethereum"
+      },
+      {
+       "r": 5000000000,
+       "usd": null,
+       "why": "provider does not price ethereum"
+      }
+     ]
+    },
+    {
+     "slug": "tatum",
+     "name": "Tatum",
+     "cohort": "usage",
+     "unit": "credit",
+     "points": [
+      {
+       "r": 100000,
+       "usd": null,
+       "why": "archive surcharge not published"
+      },
+      {
+       "r": 5000000000,
+       "usd": null,
+       "why": "archive surcharge not published"
+      }
+     ]
+    },
+    {
+     "slug": "thirdweb",
+     "name": "thirdweb",
+     "cohort": "usage",
+     "unit": "request",
+     "points": [
+      {
+       "r": 100000,
+       "usd": null,
+       "why": "archive support for this plan is not published; not ranked"
+      },
+      {
+       "r": 5000000000,
+       "usd": null,
+       "why": "archive support for this plan is not published; not ranked"
+      }
+     ]
+    },
+    {
+     "slug": "triton",
+     "name": "Triton One",
+     "cohort": "usage",
+     "unit": "request",
+     "points": [
+      {
+       "r": 100000,
+       "usd": null,
+       "why": "provider does not price ethereum"
+      },
+      {
+       "r": 5000000000,
+       "usd": null,
+       "why": "provider does not price ethereum"
+      }
+     ]
+    },
+    {
+     "slug": "validation-cloud",
+     "name": "Validation Cloud",
+     "cohort": "usage",
+     "unit": "cu",
+     "points": [
+      {
+       "r": 100000,
+       "usd": null,
+       "why": "archive support for this plan is not published; not ranked"
+      },
+      {
+       "r": 5000000000,
+       "usd": null,
+       "why": "archive support for this plan is not published; not ranked"
+      }
+     ]
+    },
+    {
+     "slug": "zeeve",
+     "name": "Zeeve",
+     "cohort": "dedicated",
+     "unit": "request",
+     "points": [
+      {
+       "r": 100000,
+       "usd": null,
+       "why": "archive support for this plan is not published; not ranked"
+      },
+      {
+       "r": 5000000000,
+       "usd": null,
+       "why": "archive support for this plan is not published; not ranked"
       }
      ]
     }
