@@ -126,7 +126,11 @@ export function fmtUnit(value: number, unit: string): string {
     if (abs < 0.001) return `$${value.toFixed(6)}`;
     if (abs < 0.01) return `$${value.toFixed(5)}`;
     if (abs < 1) return `$${value.toFixed(4)}`;
-    if (abs < 1000) return `$${value.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
+    // Cents are two digits or none: "$29.5" reads as a typo for $29.50.
+    if (abs < 1000) {
+      const whole = Math.abs(value - Math.round(value)) < 0.005;
+      return `$${value.toLocaleString("en-US", whole ? { maximumFractionDigits: 0 } : { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    }
     return `$${formatCompactCount(value)}`;
   }
   // Auto-flip to minutes at 60 s and to seconds at 1 s, mirroring the
