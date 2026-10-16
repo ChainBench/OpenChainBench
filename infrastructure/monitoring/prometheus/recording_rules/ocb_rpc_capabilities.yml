@@ -20,6 +20,14 @@ groups:
         expr: quantile_over_time(0.50, rpc_latency_milliseconds[24h])
       - record: ocb:rpc_latency_milliseconds:p90_24h
         expr: quantile_over_time(0.90, rpc_latency_milliseconds[24h])
+      # p95 next to p90 and p99, added 2026-10-16 on a provider's request.
+      # It was missing for no reason beyond the conventional 50/90/99 triple:
+      # 0.95 appeared nowhere in this repo. With a 120 s probe cadence a cell
+      # holds about 720 measurements per 24 h, so the p95 rests on the 36th
+      # worst sample where the p99 we already publish rests on the 7th. The
+      # one that was skipped is the better supported of the two.
+      - record: ocb:rpc_latency_milliseconds:p95_24h
+        expr: quantile_over_time(0.95, rpc_latency_milliseconds[24h])
       - record: ocb:rpc_latency_milliseconds:p99_24h
         expr: quantile_over_time(0.99, rpc_latency_milliseconds[24h])
       - record: ocb:rpc_latency_milliseconds:mean_24h
@@ -53,6 +61,8 @@ groups:
         expr: quantile_over_time(0.50, rpc_latency_cold_milliseconds[24h])
       - record: ocb:rpc_latency_cold_milliseconds:p90_24h
         expr: quantile_over_time(0.90, rpc_latency_cold_milliseconds[24h])
+      - record: ocb:rpc_latency_cold_milliseconds:p95_24h
+        expr: quantile_over_time(0.95, rpc_latency_cold_milliseconds[24h])
       - record: ocb:rpc_latency_cold_milliseconds:p99_24h
         expr: quantile_over_time(0.99, rpc_latency_cold_milliseconds[24h])
       - record: ocb:rpc_latency_cold_milliseconds:mean_24h
