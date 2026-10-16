@@ -121,6 +121,35 @@ export function RpcHubTabs({
     [all],
   );
   const geoLabel = geo === "all" ? "all regions" : RPC_REGION_LABELS[geo];
+  // Rendered here, displayed inside whichever table is showing: the scope is
+  // a property of that table, and the caption beside it already names it.
+  const geoControl = (
+    <div
+      className="inline-flex rounded-md border border-ink/15 p-0.5 bg-paper-soft/40"
+      role="tablist"
+      aria-label="RPC probe region"
+    >
+      <GeoButton
+        active={geo === "all"}
+        onClick={() => setGeo("all")}
+        count={all.chains.length}
+        title="Every probe region: the leading column is the 3-region average and each region column holds that region's winner."
+      >
+        All regions
+      </GeoButton>
+      {RPC_REGION_KEYS.map((k) => (
+        <GeoButton
+          key={k}
+          active={geo === k}
+          onClick={() => setGeo(k)}
+          count={geoCounts[k]}
+          title={`Every number measured from ${RPC_REGION_LABELS[k]} only, tails included: each region variant carries its own p90, p95 and p99.`}
+        >
+          {RPC_REGION_LABELS[k]}
+        </GeoButton>
+      ))}
+    </div>
+  );
   const benchQuery = resolved === "public" ? "" : `#tier=${resolved}`;
   // Keyed chain pages are indexable through their public view; the
   // sitemap gate applies to the page, not to the cohort.
@@ -177,40 +206,6 @@ export function RpcHubTabs({
         </div>
       )}
 
-      <div className="flex flex-wrap items-center gap-3 mb-4">
-        <span className="font-sans text-[10px] uppercase tracking-[0.18em] text-ink-faint shrink-0 font-medium">
-          Geo
-        </span>
-        <div
-          className="inline-flex rounded-lg border border-ink/15 p-1 bg-paper-soft/40"
-          role="tablist"
-          aria-label="RPC probe region"
-        >
-          <TabButton
-            active={geo === "all"}
-            onClick={() => setGeo("all")}
-            count={all.chains.length}
-          >
-            All regions
-          </TabButton>
-          {RPC_REGION_KEYS.map((k) => (
-            <TabButton
-              key={k}
-              active={geo === k}
-              onClick={() => setGeo(k)}
-              count={geoCounts[k]}
-            >
-              {RPC_REGION_LABELS[k]}
-            </TabButton>
-          ))}
-        </div>
-        <span className="text-[12px] text-ink-faint">
-          {geo === "all"
-            ? "Each column holds that region's winner; the leading column is the 3-region average."
-            : `Every number on the board is measured from ${RPC_REGION_LABELS[geo]} only. Tail columns are empty here: the blob's p90 is computed across all three regions.`}
-        </span>
-      </div>
-
       <section className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
         <SummaryCard label="Chains benched" value={String(chainCount(view))} accent="#0ea5e9" />
         <SummaryCard label="Unique providers" value={String(view.totals.uniqueProviders)} />
@@ -265,6 +260,7 @@ export function RpcHubTabs({
           rows={view.chains}
           linkableSlugs={linkableSlugs}
           benchQuery={benchQuery}
+          geoControl={geoControl}
           {...(geo === "all"
             ? {}
             : {
@@ -280,6 +276,7 @@ export function RpcHubTabs({
           key={`${cohort}:${geo}`}
           rows={view.providersPivot}
           regionLabel={geoLabel}
+          geoControl={geoControl}
           chains={view.chains.map((c) => ({
             chain: c.chain,
             name: c.name,
@@ -335,6 +332,43 @@ function fmtMs(v: number): string {
   if (!Number.isFinite(v)) return "...";
   if (v < 1000) return `${Math.round(v)} ms`;
   return `${(v / 1000).toFixed(2)} s`;
+}
+
+/** The region pills, sized to sit inside a table header next to the caption
+ *  and the search box rather than in a selector row of their own. */
+function GeoButton({
+  children,
+  active,
+  count,
+  title,
+  onClick,
+}: {
+  children: React.ReactNode;
+  active: boolean;
+  count: number;
+  title?: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="tab"
+      aria-selected={active}
+      onClick={onClick}
+      title={title}
+      className={`px-2.5 py-1 rounded text-[11.5px] font-medium transition-colors inline-flex items-center gap-1.5 ${
+        active ? "bg-paper text-ink shadow-sm" : "text-ink-soft hover:text-ink"
+      }`}
+    >
+      {children}
+      <span
+        className="text-[10px] text-ink-faint"
+        style={{ fontFamily: "var(--font-mono, monospace)" }}
+      >
+        {count}
+      </span>
+    </button>
+  );
 }
 
 function TabButton({
