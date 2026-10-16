@@ -160,16 +160,6 @@ export const DEV_ONLY_BENCH_SLUGS = new Set([
   // the page saying plainly that a high rate on a high-leverage venue
   // reflects the leverage it offers, and an audit round on that board.
   "perp-liq-rate",
-  // 282 RPC cost: held back since the release of 2026-09-30. The three
-  // original conditions are settled: the selector whose label was wrong is
-  // gone (the page is a calculator and a fixed per-workload grid since
-  // 2026-10-16), the GetBlock comments were corrected, and Chainstack trace
-  // is confirmed at 2.0 RU, not 4, by two independent implementations.
-  // Remaining condition: a clean bench audit on the calculator page (rounds
-  // of 2026-10-16 found the free reference row ranked #1 on product pages
-  // and unverified flat-rate prices leading unmarked; both fixed) and
-  // Florent's go for production.
-  "rpc-cost",
   // Bench 284 trading-agent-alpha was gated here on 2026-10-06 and released on
   // 2026-10-07 with /trading-agents. The condition was a clean bench audit, a
   // clean SEO audit and a second weekly round observed; all three were met,
