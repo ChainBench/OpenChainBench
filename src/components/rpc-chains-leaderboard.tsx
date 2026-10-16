@@ -69,6 +69,15 @@ export function RpcChainsLeaderboard({
     () => (linkableSlugs ? new Set(linkableSlugs) : null),
     [linkableSlugs],
   );
+  /** The archive probe only runs on the public cohort: the keyed harness has
+   *  no depth probe at all, so on the three API-key cohorts every cell was a
+   *  dash and the column read as "no provider serves archive" instead of "not
+   *  measured here". Derived from `rows`, not from the search result, so
+   *  typing in the box cannot make a column appear and disappear. */
+  const hasArchive = useMemo(
+    () => rows.some((r) => r.bestArchiveDepthBlocks != null),
+    [rows],
+  );
   const router = useRouter();
   const [sortKey, setSortKey] = useState<SortKey>("bestP50");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
@@ -156,15 +165,17 @@ export function RpcChainsLeaderboard({
                   Best p90
                 </span>
               </ThSort>
-              <ThSort
-                active={sortKey === "archive"}
-                dir={sortDir}
-                onClick={() => setSort("archive")}
-              >
-                <span title="Max archive block depth supported by the leader (`eth_getBalance` at head-N returns non-pruned). Higher = better for indexers / subgraphs / backfill jobs that need historical state.">
-                  Archive
-                </span>
-              </ThSort>
+              {hasArchive && (
+                <ThSort
+                  active={sortKey === "archive"}
+                  dir={sortDir}
+                  onClick={() => setSort("archive")}
+                >
+                  <span title="Max archive block depth supported by the leader (`eth_getBalance` at head-N returns non-pruned). Higher = better for indexers / subgraphs / backfill jobs that need historical state.">
+                    Archive
+                  </span>
+                </ThSort>
+              )}
               {REGION_COLS.map((c) => (
                 <ThSort
                   key={c.key}
@@ -270,34 +281,36 @@ export function RpcChainsLeaderboard({
                     <span className="text-ink-faint">-</span>
                   )}
                 </Td>
-                <Td
-                  mono
-                  tip={
-                    r.bestArchiveDepthBlocks
-                      ? `${r.bestArchiveDepthBlocks.toLocaleString()} blocks of historical state, served by: ${
-                          r.bestArchiveProviders?.join(", ") || "(none listed)"
-                        }. Depth set = {300, 7.2k, 216k, 1.3M, 5M}: 300 is Geth default pruned; 5M is genesis-era full archive. On sub-second-block chains (Arbitrum, Sei) 5M translates to weeks not years, see the per-chain bench page for the exact wall-clock window.`
-                      : "No provider on this chain reports archive support (either the archive probe is skipped for the chain family, Solana / Substrate, or every listed provider serves only the default pruned window)."
-                  }
-                >
-                  {r.bestArchiveDepthBlocks ? (
-                    <span className="inline-flex items-baseline gap-1.5">
-                      <span className="tabular-nums">
-                        {fmtArchive(r.bestArchiveDepthBlocks)}
+                {hasArchive && (
+                  <Td
+                    mono
+                    tip={
+                      r.bestArchiveDepthBlocks
+                        ? `${r.bestArchiveDepthBlocks.toLocaleString()} blocks of historical state, served by: ${
+                            r.bestArchiveProviders?.join(", ") || "(none listed)"
+                          }. Depth set = {300, 7.2k, 216k, 1.3M, 5M}: 300 is Geth default pruned; 5M is genesis-era full archive. On sub-second-block chains (Arbitrum, Sei) 5M translates to weeks not years, see the per-chain bench page for the exact wall-clock window.`
+                        : "No provider on this chain reports archive support (either the archive probe is skipped for the chain family, Solana / Substrate, or every listed provider serves only the default pruned window)."
+                    }
+                  >
+                    {r.bestArchiveDepthBlocks ? (
+                      <span className="inline-flex items-baseline gap-1.5">
+                        <span className="tabular-nums">
+                          {fmtArchive(r.bestArchiveDepthBlocks)}
+                        </span>
+                        {r.bestArchiveProviders &&
+                          r.bestArchiveProviders.length > 0 && (
+                            <span className="text-[10.5px] text-ink-faint truncate max-w-[90px]">
+                              {r.bestArchiveProviders.length === 1
+                                ? r.bestArchiveProviders[0]
+                                : `${r.bestArchiveProviders[0]} +${r.bestArchiveProviders.length - 1}`}
+                            </span>
+                          )}
                       </span>
-                      {r.bestArchiveProviders &&
-                        r.bestArchiveProviders.length > 0 && (
-                          <span className="text-[10.5px] text-ink-faint truncate max-w-[90px]">
-                            {r.bestArchiveProviders.length === 1
-                              ? r.bestArchiveProviders[0]
-                              : `${r.bestArchiveProviders[0]} +${r.bestArchiveProviders.length - 1}`}
-                          </span>
-                        )}
-                    </span>
-                  ) : (
-                    <span className="text-ink-faint">-</span>
-                  )}
-                </Td>
+                    ) : (
+                      <span className="text-ink-faint">-</span>
+                    )}
+                  </Td>
+                )}
                 {REGION_COLS.map((c) => {
                   const b = r.regions[c.key];
                   return (
@@ -356,7 +369,7 @@ export function RpcChainsLeaderboard({
             {filtered.length === 0 && (
               <tr>
                 <td
-                  colSpan={10}
+                  colSpan={hasArchive ? 10 : 9}
                   className="px-3 py-8 text-center text-[12px] text-ink-faint"
                 >
                   No chain matches &ldquo;{q}&rdquo;.
