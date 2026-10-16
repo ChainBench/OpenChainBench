@@ -531,6 +531,11 @@ export function SpeedtestRpcClient({ mapLive = true }: { mapLive?: boolean }) {
     return () => cancelAnimationFrame(raf);
   }, []);
   const [prefillState, setPrefillState] = useState<"idle" | "validating" | "done">("idle");
+  /** Every prefilled endpoint failed the reachability check. Measured, not
+   *  guessed from the browser's name: the check POSTs eth_chainId to each
+   *  one, and all of them failing means the visitor would sit through the
+   *  whole run to be told nothing answered. */
+  const [allUnreachable, setAllUnreachable] = useState(false);
   const [skippedProviders, setSkippedProviders] = useState<string[]>([]);
   const prefillEpoch = useRef(0);
   const [durationSec, setDurationSec] = useState(30);
@@ -588,6 +593,7 @@ export function SpeedtestRpcClient({ mapLive = true }: { mapLive?: boolean }) {
       // some fail).
       if (good.length === 0) {
         setSkippedProviders([]);
+        setAllUnreachable(true);
         setPrefillState("done");
         console.warn(
           "[speedtest] reachability precheck failed for ALL endpoints; keeping the list (likely browser/network-level blocking).",
@@ -596,6 +602,7 @@ export function SpeedtestRpcClient({ mapLive = true }: { mapLive?: boolean }) {
       }
       if (skipped.length > 0) setInputs(good);
       setSkippedProviders(skipped);
+      setAllUnreachable(false);
       setPrefillState("done");
     })();
   };
@@ -877,11 +884,15 @@ export function SpeedtestRpcClient({ mapLive = true }: { mapLive?: boolean }) {
             {/* Said before the run, not after it: with Shields up every
                 endpoint fails and the visitor has spent the whole test
                 duration to be told to change a setting. */}
-            {isBrave && (
-              <BlockNotice lead="Brave Shields will block this test">
-                Shields stops requests to RPC hosts by default, which makes
-                every endpoint fail. Click the lion in the address bar and
-                turn Shields down for this site before you start.
+            {allUnreachable && (
+              <BlockNotice lead="Nothing here answered a test call from your browser">
+                Every prefilled endpoint failed a single eth_chainId request
+                just now, so the run would take its full duration to tell you
+                the same thing. Something local is stopping requests to RPC
+                hosts: a privacy or ad-blocking extension, a VPN, a corporate
+                network{isBrave ? ", or Brave Shields (the lion in the address bar)" : ""}.
+                Turning it off for this site, or pasting an endpoint of your
+                own, is what fixes it.
               </BlockNotice>
             )}
           </div>
@@ -1148,15 +1159,15 @@ export function SpeedtestRpcClient({ mapLive = true }: { mapLive?: boolean }) {
                 ranked.length === 0 ? (
                   <div className="st-row" style={{ animationDelay: "0.2s" }}>
                     <BlockNotice
-                      lead={
-                        isBrave
-                          ? "Nothing reached a provider: turn Brave Shields down"
-                          : "Nothing reached a provider: something on this machine blocked it"
-                      }
+                      lead="Nothing reached a provider: something local blocked it"
                     >
-                      {isBrave
-                        ? "Click the lion in the address bar, turn Shields down for this site, then run the test again. We cannot do it for you: the test only means anything because the requests go from your browser straight to the provider, never through us."
-                        : "A shields-up browser, a privacy or ad-blocking extension, a VPN or a corporate network will stop requests to RPC hosts. Try a normal window with extensions off, or paste your own endpoint."}{" "}
+                      A privacy or ad-blocking extension, a VPN or a corporate
+                      network will stop requests to RPC hosts
+                      {isBrave ? ", and so will Brave Shields if they are up for this site" : ""}.
+                      Try a window with extensions off, or paste your own
+                      endpoint. We cannot do it for you: the test only means
+                      anything because the requests go from your browser
+                      straight to the provider, never through us.{" "}
                       Every endpoint failed before answering, including ones
                       that do allow browser calls, so the block is on this side
                       rather than at the providers. The public benchmarks
