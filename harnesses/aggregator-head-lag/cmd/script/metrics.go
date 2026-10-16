@@ -238,7 +238,15 @@ func init() {
 	headLagPoolSeen = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "head_lag_pool_observed_total",
-			Help: "Trades observed by the bench pool subscription, per chain.",
+			// Log EVENTS, not trades, and the difference is a factor of
+			// several on EVM: eth_subscribe on a pool address delivers every
+			// event it emits (Swap, Mint, Burn, Collect), so one swap can
+			// arrive as several. Measured on the BNB pool: 49,672 events an
+			// hour against roughly 18,380 swaps. Solana logsSubscribe is per
+			// transaction, so there the two coincide. Use it to tell a live
+			// subscription from a dead one, never as a trade count.
+			Help: "Log events delivered by the bench pool subscription, per chain. " +
+				"Several per swap on EVM chains; one per transaction on Solana.",
 		},
 		[]string{"chain"},
 	)
