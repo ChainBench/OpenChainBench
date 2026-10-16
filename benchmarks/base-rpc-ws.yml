@@ -82,6 +82,7 @@ providers:
     queries:
       p50: histogram_quantile(0.50, sum by (le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{provider="chainstack",chain="base",tier="keyed"}))
       p90: histogram_quantile(0.90, sum by (le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{provider="chainstack",chain="base",tier="keyed"}))
+      p95: histogram_quantile(0.95, sum by (le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{provider="chainstack",chain="base",tier="keyed"}))
       p99: histogram_quantile(0.99, sum by (le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{provider="chainstack",chain="base",tier="keyed"}))
       mean: sum(ocb:rpc_ws_head_lead_milliseconds_sum:rate24h{provider="chainstack",chain="base",tier="keyed"}) / sum(ocb:rpc_ws_head_lead_milliseconds_count:rate24h{provider="chainstack",chain="base",tier="keyed"})
       success: clamp_max(sum(increase(rpc_ws_head_seen_total{provider="chainstack",chain="base",tier="keyed"}[24h])) / max(sum by (provider) (increase(rpc_ws_head_seen_total{chain="base",tier="keyed"}[24h]))), 1)
@@ -105,6 +106,7 @@ providers:
     queries:
       p50: histogram_quantile(0.50, sum by (le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{provider="getblock",chain="base",tier="keyed"}))
       p90: histogram_quantile(0.90, sum by (le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{provider="getblock",chain="base",tier="keyed"}))
+      p95: histogram_quantile(0.95, sum by (le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{provider="getblock",chain="base",tier="keyed"}))
       p99: histogram_quantile(0.99, sum by (le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{provider="getblock",chain="base",tier="keyed"}))
       mean: sum(ocb:rpc_ws_head_lead_milliseconds_sum:rate24h{provider="getblock",chain="base",tier="keyed"}) / sum(ocb:rpc_ws_head_lead_milliseconds_count:rate24h{provider="getblock",chain="base",tier="keyed"})
       success: clamp_max(sum(increase(rpc_ws_head_seen_total{provider="getblock",chain="base",tier="keyed"}[24h])) / max(sum by (provider) (increase(rpc_ws_head_seen_total{chain="base",tier="keyed"}[24h]))), 1)
@@ -128,6 +130,7 @@ providers:
     queries:
       p50: histogram_quantile(0.50, sum by (le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{provider="quicknode",chain="base",tier="keyed"}))
       p90: histogram_quantile(0.90, sum by (le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{provider="quicknode",chain="base",tier="keyed"}))
+      p95: histogram_quantile(0.95, sum by (le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{provider="quicknode",chain="base",tier="keyed"}))
       p99: histogram_quantile(0.99, sum by (le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{provider="quicknode",chain="base",tier="keyed"}))
       mean: sum(ocb:rpc_ws_head_lead_milliseconds_sum:rate24h{provider="quicknode",chain="base",tier="keyed"}) / sum(ocb:rpc_ws_head_lead_milliseconds_count:rate24h{provider="quicknode",chain="base",tier="keyed"})
       success: clamp_max(sum(increase(rpc_ws_head_seen_total{provider="quicknode",chain="base",tier="keyed"}[24h])) / max(sum by (provider) (increase(rpc_ws_head_seen_total{chain="base",tier="keyed"}[24h]))), 1)
@@ -151,6 +154,7 @@ providers:
     queries:
       p50: histogram_quantile(0.50, sum by (le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{provider="dwellir",chain="base",tier="keyed"}))
       p90: histogram_quantile(0.90, sum by (le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{provider="dwellir",chain="base",tier="keyed"}))
+      p95: histogram_quantile(0.95, sum by (le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{provider="dwellir",chain="base",tier="keyed"}))
       p99: histogram_quantile(0.99, sum by (le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{provider="dwellir",chain="base",tier="keyed"}))
       mean: sum(ocb:rpc_ws_head_lead_milliseconds_sum:rate24h{provider="dwellir",chain="base",tier="keyed"}) / sum(ocb:rpc_ws_head_lead_milliseconds_count:rate24h{provider="dwellir",chain="base",tier="keyed"})
       success: clamp_max(sum(increase(rpc_ws_head_seen_total{provider="dwellir",chain="base",tier="keyed"}[24h])) / max(sum by (provider) (increase(rpc_ws_head_seen_total{chain="base",tier="keyed"}[24h]))), 1)
@@ -174,6 +178,7 @@ providers:
     queries:
       p50: histogram_quantile(0.50, sum by (le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{provider="validationcloud",chain="base",tier="keyed"}))
       p90: histogram_quantile(0.90, sum by (le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{provider="validationcloud",chain="base",tier="keyed"}))
+      p95: histogram_quantile(0.95, sum by (le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{provider="validationcloud",chain="base",tier="keyed"}))
       p99: histogram_quantile(0.99, sum by (le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{provider="validationcloud",chain="base",tier="keyed"}))
       mean: sum(ocb:rpc_ws_head_lead_milliseconds_sum:rate24h{provider="validationcloud",chain="base",tier="keyed"}) / sum(ocb:rpc_ws_head_lead_milliseconds_count:rate24h{provider="validationcloud",chain="base",tier="keyed"})
       success: clamp_max(sum(increase(rpc_ws_head_seen_total{provider="validationcloud",chain="base",tier="keyed"}[24h])) / max(sum by (provider) (increase(rpc_ws_head_seen_total{chain="base",tier="keyed"}[24h]))), 1)
