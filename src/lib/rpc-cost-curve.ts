@@ -61,6 +61,8 @@ export type RpcCostCurveProvider = {
   /** What the provider meters: request, cu, credit, ru, billing_unit. */
   unit: string;
   points: RpcCostCurvePoint[];
+  /** Plan id to the catalogue's name for it. Absent in older artifacts. */
+  planNames?: Record<string, string>;
 };
 
 export type RpcCostCurveProfile = {
@@ -177,6 +179,8 @@ export type RpcCostRankedRow = {
   unit: string;
   usd: number | null;
   plan: string;
+  /** The catalogue's name for `plan`, or "" when the artifact has none. */
+  planName: string;
   reason: string;
 };
 
@@ -208,6 +212,7 @@ export function rpcCostRankAt(
       unit: provider.unit,
       usd: q.usd,
       plan: q.usd === null ? "" : q.plan,
+      planName: q.usd === null ? "" : (provider.planNames?.[q.plan] ?? ""),
       reason: q.usd === null ? q.reason : "",
     };
     (q.usd === null ? unpriced : priced).push(row);

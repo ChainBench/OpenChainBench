@@ -60,6 +60,9 @@ type CurveProvider struct {
 	Cohort string       `json:"cohort"`
 	Unit   string       `json:"unit"`
 	Points []CurvePoint `json:"points"`
+	// PlanNames maps the plan ids the points carry to the catalogue's own
+	// names: "bc-t3-large-us-east-1" is a key, not something to show.
+	PlanNames map[string]string `json:"planNames,omitempty"`
 }
 
 type CurveProfile struct {
@@ -240,7 +243,7 @@ func BuildCurves(c *Catalogue) CurveFile {
 	}
 	grid := logGrid(36)
 
-	for _, pr := range Profiles {
+	for _, pr := range append(append([]Profile{}, Profiles...), CurveOnlyProfiles...) {
 		cp := CurveProfile{ID: pr.ID, Label: pr.Label, Chain: pr.Chain}
 		for _, p := range c.Providers {
 			// The slider has to carry exactly the cohort the gauges carry,
@@ -295,8 +298,17 @@ func BuildCurves(c *Catalogue) CurveFile {
 			if len(pts) == 0 {
 				continue
 			}
+			names := map[string]string{}
+			for _, pt := range pts {
+				for _, pl := range p.Plans {
+					if pt.Plan != "" && pl.ID == pt.Plan && pl.Name != "" {
+						names[pl.ID] = pl.Name
+					}
+				}
+			}
 			cp.Providers = append(cp.Providers, CurveProvider{
 				Slug: p.Slug, Name: p.Name, Cohort: p.Cohort, Unit: p.Unit, Points: pts,
+				PlanNames: names,
 			})
 		}
 		sort.Slice(cp.Providers, func(i, j int) bool { return cp.Providers[i].Slug < cp.Providers[j].Slug })
