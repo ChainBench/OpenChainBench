@@ -2,9 +2,9 @@
 
 slug: rpc-free-tier
 number: "283"
-title: Most requests a free RPC plan buys, across 13 providers
+title: Most requests a free RPC plan buys, across 12 providers
 seo_title: "Best free RPC provider 2026: how far each free plan goes"
-seo_description: "How many requests a month each free RPC plan actually buys. Alchemy, Infura, Ankr, dRPC, Chainstack and 8 more, converted from credits into requests."
+seo_description: "How many requests a month each free RPC plan actually buys. Alchemy, Infura, Ankr, dRPC, Chainstack and 7 more, converted from credits into requests."
 subtitle: How many requests of a real workload each provider's free plan allowance buys in a month, once credits, Compute Units and Request Units are converted into the requests they actually pay for.
 
 category: RPCs
@@ -37,8 +37,8 @@ seo_intro: |
   requests against 392k, on one plan, with nothing on the pricing page saying
   so. Every row carries the two ends of that span next to its headline
   figure, so the plans a workload cannot surprise are visible without
-  reading four tabs: Ankr, dRPC and InstaNodes meter flat, and their floor is
-  their ceiling.
+  reading four tabs: Ankr and dRPC meter flat, and their floor is their
+  ceiling.
 
 abstract: |
   We take each provider's free plan allowance as published, in whatever unit
@@ -63,12 +63,14 @@ abstract: |
 
 methodology:
   - "Allowance source: each provider's published free plan, read from its own pricing page or API, with the date of reading and a confidence flag recorded in the catalogue. The same catalogue prices the paid plans on bench 282; this page reads only the rows whose monthly price is zero and whose allowance renews."
+  - "Confidence, stated rather than implied. Eight of the ten ranked allowances are verified against the provider's own published figure. Two are not, and both are named here. dRPC publishes its 210M CU allowance but nothing about what happens on exhausting it. Blockdaemon's documentation disagrees with itself: an October plan table says 1M CU a month where an April page and an archived pricing card say 3M, and 3M is what two sources carry."
   - "Unit conversion: allowance divided by the weighted cost of one request of the selected workload, in the provider's own unit. A workload is a fixed method mix with shares that sum to 1, so the weighted cost is the sum of each method's unit weight times its share. A provider that meters flat requests has a weight of 1 on every method."
   - "Periods that are not a month: Infura, GetBlock and OnFinality publish a daily allowance, multiplied by 30, the most generous reading, and OnFinality at 40 response units a second cannot reach its monthly figure in a burst. BlockPI's 50M RU package arrives on the 1st of every month and stays valid 32 days without accumulating, so a month delivers 50M and the overlap is forfeited. Every plan stays subject to its throughput ceiling, which this page does not score."
   - "What counts as free: a plan that costs nothing and renews. QuickNode's Free trial is excluded because it runs for one month and does not renew; it is priced on bench 282 as an entry plan instead. Public endpoints with no key and no published allowance are also excluded: there is no allowance to rank."
-  - "Headline slice: the unfiltered view is the dapp mix on Ethereum, published under the `all` label as the headline slice and not as a pooled average, because an allowance averaged across workloads describes none of them. Switching a tab reads a different slice, never a blend. The chain is a property of the workload rather than a second axis: the Ethereum mixes cover 11 of the 13 plans and the Solana bot mix covers 11, so a provider absent from one tab serves a chain that tab does not ask about."
+  - "Headline slice: the unfiltered view is the dapp mix on Ethereum, published under the `all` label as the headline slice and not as a pooled average, because an allowance averaged across workloads describes none of them. Switching a tab reads a different slice, never a blend. The chain is a property of the workload rather than a second axis: the Ethereum mixes cover 10 of the 12 plans and the Solana bot mix covers 11, so a provider absent from one tab serves a chain that tab does not ask about."
   - "Floor and ceiling: the two columns beside the headline are the least and the most generous of the workloads that plan serves on the selected chain, over all five priced mixes including the simple-read mix, which has no tab. They describe the plan rather than the open tab, so they read the same on every tab. A workload the plan refuses is excluded, not counted as zero: Alchemy's free tier does no trace, so its floor is its indexer mix and the refusal shows as its absence from the trace tab."
   - "Why the span is reported and not collapsed: the two ends are published separately rather than averaged into one number, and the provider's own best workload is never used as its score. Both would rank each plan on a different workload from its neighbour. Floor equal to ceiling is a measurement, not a placeholder: a plan metering one flat unit per method buys the same number of requests whatever is called, and on Solana only one mix is priced, so every row there reports a degenerate span."
+  - "A plan that refuses the workload is absent from its tab, not ranked at zero, and one plan is absent from all four. Dwellir's Free plan buys 100,000 responses a day at one credit each, 3M simple reads a month, but it excludes eth_getLogs, which the dapp and indexer mixes call, and serves no trace or debug, and Dwellir serves no Solana. Its allowance is real and spends on none of the workloads this page asks about. Its paid plans are on bench 282."
   - "Not scored here: latency, reliability, archive depth, throughput ceilings and support. A large allowance behind a 25 requests per second cap serves a different application than the same allowance behind 300. The per-chain RPC pages measure the speed of these same endpoints."
 
 faq:
@@ -93,7 +95,7 @@ dimensions:
   #
   # Four tabs, for five measured mixes. The simple-read mix is still priced
   # and still feeds the floor and ceiling columns, but it had no tab of its
-  # own to earn: it draws the same 11 plans as the dapp tab in the same
+  # own to earn: it draws the same 10 plans as the dapp tab in the same
   # order bar one mid-table swap, because it is the optimistic edge of that
   # same mix rather than a different thing to build. The ceiling column
   # reports the number a tab would have shown, on every row at once. What
@@ -112,8 +114,8 @@ dimensions:
 # BlockPI publishes one free tier that buys 3.3M simple reads and 392k
 # traces, a factor of eight, and Infura and Blockdaemon swing five; a reader
 # who landed on one tab had no way to learn that without clicking the others
-# and holding the numbers in their head. Ankr, dRPC and InstaNodes meter
-# flat and report floor equal to ceiling, so the
+# and holding the numbers in their head. Ankr and dRPC meter flat and
+# report floor equal to ceiling, so the
 # two columns also say outright which plans the workload cannot surprise,
 # which is the fact that decides whether an allowance can be budgeted.
 ledger_columns:
@@ -220,15 +222,6 @@ providers:
       p90: max(quantile_over_time(0.50, rpc_free_allowance_requests_floor{provider="infura",kind="all"}[3h]))
       p99: max(quantile_over_time(0.50, rpc_free_allowance_requests_ceiling{provider="infura",kind="all"}[3h]))
       series: max by (provider) (rpc_free_allowance_requests{provider="infura",kind="all"})
-
-  - slug: instanodes
-    name: InstaNodes
-    tag: "Free, Ethereum only"
-    queries:
-      p50: max(quantile_over_time(0.50, rpc_free_allowance_requests{provider="instanodes",kind="all"}[3h]))
-      p90: max(quantile_over_time(0.50, rpc_free_allowance_requests_floor{provider="instanodes",kind="all"}[3h]))
-      p99: max(quantile_over_time(0.50, rpc_free_allowance_requests_ceiling{provider="instanodes",kind="all"}[3h]))
-      series: max by (provider) (rpc_free_allowance_requests{provider="instanodes",kind="all"})
 
   - slug: blockdaemon
     name: Blockdaemon

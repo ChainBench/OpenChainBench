@@ -356,6 +356,127 @@
      ]
     },
     {
+     "slug": "dwellir",
+     "name": "Dwellir",
+     "cohort": "usage",
+     "unit": "request",
+     "points": [
+      {
+       "r": 100000,
+       "usd": 49,
+       "plan": "developer"
+      },
+      {
+       "r": 25000000,
+       "usd": 49,
+       "plan": "developer"
+      },
+      {
+       "r": 74937699,
+       "usd": 298.69,
+       "plan": "developer"
+      },
+      {
+       "r": 75031057,
+       "usd": 299,
+       "plan": "growth"
+      },
+      {
+       "r": 150000000,
+       "usd": 299,
+       "plan": "growth"
+      },
+      {
+       "r": 383078484,
+       "usd": 998.24,
+       "plan": "growth"
+      },
+      {
+       "r": 383516439,
+       "usd": 999,
+       "plan": "scale"
+      },
+      {
+       "r": 500000000,
+       "usd": 999,
+       "plan": "scale"
+      },
+      {
+       "r": 5000000000,
+       "usd": 9999,
+       "plan": "scale"
+      }
+     ]
+    },
+    {
+     "slug": "dwellir-unlimited",
+     "name": "Dwellir, Unlimited Nodes \u0026 dedicated clusters",
+     "cohort": "dedicated",
+     "unit": "request",
+     "points": [
+      {
+       "r": 100000,
+       "usd": 119,
+       "plan": "unlimited-25"
+      },
+      {
+       "r": 64741823,
+       "usd": 119,
+       "plan": "unlimited-25"
+      },
+      {
+       "r": 64810355,
+       "usd": 479,
+       "plan": "unlimited-100"
+      },
+      {
+       "r": 259027340,
+       "usd": 479,
+       "plan": "unlimited-100"
+      },
+      {
+       "r": 259348834,
+       "usd": 1199,
+       "plan": "unlimited-250"
+      },
+      {
+       "r": 647494228,
+       "usd": 1199,
+       "plan": "unlimited-250"
+      },
+      {
+       "r": 648306951,
+       "usd": 2399,
+       "plan": "unlimited-500"
+      },
+      {
+       "r": 1295075885,
+       "usd": 2399,
+       "plan": "unlimited-500"
+      },
+      {
+       "r": 1296584071,
+       "usd": 4799,
+       "plan": "unlimited-1000"
+      },
+      {
+       "r": 2590816653,
+       "usd": 4799,
+       "plan": "unlimited-1000"
+      },
+      {
+       "r": 2593615425,
+       "usd": 12600,
+       "plan": "cluster-eth-archive"
+      },
+      {
+       "r": 5000000000,
+       "usd": 12600,
+       "plan": "cluster-eth-archive"
+      }
+     ]
+    },
+    {
      "slug": "getblock",
      "name": "GetBlock",
      "cohort": "usage",
@@ -690,94 +811,6 @@
        "r": 5000000000,
        "usd": null,
        "why": "published throughput is 40000 credits_per_s, workload needs 154321 sustained"
-      }
-     ]
-    },
-    {
-     "slug": "instanodes",
-     "name": "Instanodes",
-     "cohort": "usage",
-     "unit": "request",
-     "points": [
-      {
-       "r": 100000,
-       "usd": 29,
-       "plan": "build"
-      },
-      {
-       "r": 1800000,
-       "usd": 29,
-       "plan": "build"
-      },
-      {
-       "r": 1803131,
-       "usd": 79,
-       "plan": "basic"
-      },
-      {
-       "r": 15000000,
-       "usd": 79,
-       "plan": "basic"
-      },
-      {
-       "r": 15016243,
-       "usd": 169,
-       "plan": "advanced"
-      },
-      {
-       "r": 48000000,
-       "usd": 169,
-       "plan": "advanced"
-      },
-      {
-       "r": 48053907,
-       "usd": null,
-       "why": "plan caps at 48000000 request and does not meter overage"
-      },
-      {
-       "r": 421618557,
-       "usd": null,
-       "why": "plan caps at 48000000 request and does not meter overage"
-      },
-      {
-       "r": 574349177,
-       "usd": null,
-       "why": "published throughput is 220 rps, workload needs 222 sustained"
-      },
-      {
-       "r": 782406211,
-       "usd": null,
-       "why": "published throughput is 220 rps, workload needs 302 sustained"
-      },
-      {
-       "r": 1065831558,
-       "usd": null,
-       "why": "published throughput is 220 rps, workload needs 412 sustained"
-      },
-      {
-       "r": 1451927266,
-       "usd": null,
-       "why": "published throughput is 220 rps, workload needs 561 sustained"
-      },
-      {
-       "r": 1977885501,
-       "usd": null,
-       "why": "published throughput is 220 rps, workload needs 764 sustained"
-      },
-      {
-       "r": 2694371231,
-       "usd": null,
-       "why": "published throughput is 220 rps, workload needs 1040 sustained"
-      },
-      {
-       "r": 3670402724,
-       "usd": null,
-       "why": "published throughput is 220 rps, workload needs 1417 sustained"
-      },
-      {
-       "r": 5000000000,
-       "usd": null,
-       "why": "published throughput is 220 rps, workload needs 1930 sustained"
       }
      ]
     },
@@ -2120,6 +2153,127 @@
      ]
     },
     {
+     "slug": "dwellir",
+     "name": "Dwellir",
+     "cohort": "usage",
+     "unit": "request",
+     "points": [
+      {
+       "r": 100000,
+       "usd": 49,
+       "plan": "developer"
+      },
+      {
+       "r": 25000000,
+       "usd": 49,
+       "plan": "developer"
+      },
+      {
+       "r": 74937699,
+       "usd": 298.69,
+       "plan": "developer"
+      },
+      {
+       "r": 75031057,
+       "usd": 299,
+       "plan": "growth"
+      },
+      {
+       "r": 150000000,
+       "usd": 299,
+       "plan": "growth"
+      },
+      {
+       "r": 383078484,
+       "usd": 998.24,
+       "plan": "growth"
+      },
+      {
+       "r": 383516439,
+       "usd": 999,
+       "plan": "scale"
+      },
+      {
+       "r": 500000000,
+       "usd": 999,
+       "plan": "scale"
+      },
+      {
+       "r": 5000000000,
+       "usd": 9999,
+       "plan": "scale"
+      }
+     ]
+    },
+    {
+     "slug": "dwellir-unlimited",
+     "name": "Dwellir, Unlimited Nodes \u0026 dedicated clusters",
+     "cohort": "dedicated",
+     "unit": "request",
+     "points": [
+      {
+       "r": 100000,
+       "usd": 119,
+       "plan": "unlimited-25"
+      },
+      {
+       "r": 64741823,
+       "usd": 119,
+       "plan": "unlimited-25"
+      },
+      {
+       "r": 64810355,
+       "usd": 479,
+       "plan": "unlimited-100"
+      },
+      {
+       "r": 259027340,
+       "usd": 479,
+       "plan": "unlimited-100"
+      },
+      {
+       "r": 259348834,
+       "usd": 1199,
+       "plan": "unlimited-250"
+      },
+      {
+       "r": 647494228,
+       "usd": 1199,
+       "plan": "unlimited-250"
+      },
+      {
+       "r": 648306951,
+       "usd": 2399,
+       "plan": "unlimited-500"
+      },
+      {
+       "r": 1295075885,
+       "usd": 2399,
+       "plan": "unlimited-500"
+      },
+      {
+       "r": 1296584071,
+       "usd": 4799,
+       "plan": "unlimited-1000"
+      },
+      {
+       "r": 2590816653,
+       "usd": 4799,
+       "plan": "unlimited-1000"
+      },
+      {
+       "r": 2593615425,
+       "usd": 12600,
+       "plan": "cluster-eth-archive"
+      },
+      {
+       "r": 5000000000,
+       "usd": 12600,
+       "plan": "cluster-eth-archive"
+      }
+     ]
+    },
+    {
      "slug": "getblock",
      "name": "GetBlock",
      "cohort": "usage",
@@ -2449,94 +2603,6 @@
        "r": 5000000000,
        "usd": null,
        "why": "published throughput is 40000 credits_per_s, workload needs 192419 sustained"
-      }
-     ]
-    },
-    {
-     "slug": "instanodes",
-     "name": "Instanodes",
-     "cohort": "usage",
-     "unit": "request",
-     "points": [
-      {
-       "r": 100000,
-       "usd": 29,
-       "plan": "build"
-      },
-      {
-       "r": 1800000,
-       "usd": 29,
-       "plan": "build"
-      },
-      {
-       "r": 1803131,
-       "usd": 79,
-       "plan": "basic"
-      },
-      {
-       "r": 15000000,
-       "usd": 79,
-       "plan": "basic"
-      },
-      {
-       "r": 15016243,
-       "usd": 169,
-       "plan": "advanced"
-      },
-      {
-       "r": 48000000,
-       "usd": 169,
-       "plan": "advanced"
-      },
-      {
-       "r": 48053907,
-       "usd": null,
-       "why": "plan caps at 48000000 request and does not meter overage"
-      },
-      {
-       "r": 421618557,
-       "usd": null,
-       "why": "plan caps at 48000000 request and does not meter overage"
-      },
-      {
-       "r": 574349177,
-       "usd": null,
-       "why": "published throughput is 220 rps, workload needs 222 sustained"
-      },
-      {
-       "r": 782406211,
-       "usd": null,
-       "why": "published throughput is 220 rps, workload needs 302 sustained"
-      },
-      {
-       "r": 1065831558,
-       "usd": null,
-       "why": "published throughput is 220 rps, workload needs 412 sustained"
-      },
-      {
-       "r": 1451927266,
-       "usd": null,
-       "why": "published throughput is 220 rps, workload needs 561 sustained"
-      },
-      {
-       "r": 1977885501,
-       "usd": null,
-       "why": "published throughput is 220 rps, workload needs 764 sustained"
-      },
-      {
-       "r": 2694371231,
-       "usd": null,
-       "why": "published throughput is 220 rps, workload needs 1040 sustained"
-      },
-      {
-       "r": 3670402724,
-       "usd": null,
-       "why": "published throughput is 220 rps, workload needs 1417 sustained"
-      },
-      {
-       "r": 5000000000,
-       "usd": null,
-       "why": "published throughput is 220 rps, workload needs 1930 sustained"
       }
      ]
     },
@@ -3894,6 +3960,127 @@
      ]
     },
     {
+     "slug": "dwellir",
+     "name": "Dwellir",
+     "cohort": "usage",
+     "unit": "request",
+     "points": [
+      {
+       "r": 100000,
+       "usd": 49,
+       "plan": "developer"
+      },
+      {
+       "r": 25000000,
+       "usd": 49,
+       "plan": "developer"
+      },
+      {
+       "r": 74937699,
+       "usd": 298.69,
+       "plan": "developer"
+      },
+      {
+       "r": 75031057,
+       "usd": 299,
+       "plan": "growth"
+      },
+      {
+       "r": 150000000,
+       "usd": 299,
+       "plan": "growth"
+      },
+      {
+       "r": 383078484,
+       "usd": 998.24,
+       "plan": "growth"
+      },
+      {
+       "r": 383516439,
+       "usd": 999,
+       "plan": "scale"
+      },
+      {
+       "r": 500000000,
+       "usd": 999,
+       "plan": "scale"
+      },
+      {
+       "r": 5000000000,
+       "usd": 9999,
+       "plan": "scale"
+      }
+     ]
+    },
+    {
+     "slug": "dwellir-unlimited",
+     "name": "Dwellir, Unlimited Nodes \u0026 dedicated clusters",
+     "cohort": "dedicated",
+     "unit": "request",
+     "points": [
+      {
+       "r": 100000,
+       "usd": 119,
+       "plan": "unlimited-25"
+      },
+      {
+       "r": 64741823,
+       "usd": 119,
+       "plan": "unlimited-25"
+      },
+      {
+       "r": 64810355,
+       "usd": 479,
+       "plan": "unlimited-100"
+      },
+      {
+       "r": 259027340,
+       "usd": 479,
+       "plan": "unlimited-100"
+      },
+      {
+       "r": 259348834,
+       "usd": 1199,
+       "plan": "unlimited-250"
+      },
+      {
+       "r": 647494228,
+       "usd": 1199,
+       "plan": "unlimited-250"
+      },
+      {
+       "r": 648306951,
+       "usd": 2399,
+       "plan": "unlimited-500"
+      },
+      {
+       "r": 1295075885,
+       "usd": 2399,
+       "plan": "unlimited-500"
+      },
+      {
+       "r": 1296584071,
+       "usd": 4799,
+       "plan": "unlimited-1000"
+      },
+      {
+       "r": 2590816653,
+       "usd": 4799,
+       "plan": "unlimited-1000"
+      },
+      {
+       "r": 2593615425,
+       "usd": 12600,
+       "plan": "cluster-eth-archive"
+      },
+      {
+       "r": 5000000000,
+       "usd": 12600,
+       "plan": "cluster-eth-archive"
+      }
+     ]
+    },
+    {
      "slug": "getblock",
      "name": "GetBlock",
      "cohort": "usage",
@@ -4263,24 +4450,6 @@
        "r": 5000000000,
        "usd": null,
        "why": "published throughput is 40000 credits_per_s, workload needs 766783 sustained"
-      }
-     ]
-    },
-    {
-     "slug": "instanodes",
-     "name": "Instanodes",
-     "cohort": "usage",
-     "unit": "request",
-     "points": [
-      {
-       "r": 100000,
-       "usd": null,
-       "why": "archive support for this plan is not published; not ranked"
-      },
-      {
-       "r": 5000000000,
-       "usd": null,
-       "why": "archive support for this plan is not published; not ranked"
       }
      ]
     },
@@ -5288,6 +5457,127 @@
      ]
     },
     {
+     "slug": "dwellir",
+     "name": "Dwellir",
+     "cohort": "usage",
+     "unit": "request",
+     "points": [
+      {
+       "r": 100000,
+       "usd": 49,
+       "plan": "developer"
+      },
+      {
+       "r": 25000000,
+       "usd": 49,
+       "plan": "developer"
+      },
+      {
+       "r": 74937699,
+       "usd": 298.69,
+       "plan": "developer"
+      },
+      {
+       "r": 75031057,
+       "usd": 299,
+       "plan": "growth"
+      },
+      {
+       "r": 150000000,
+       "usd": 299,
+       "plan": "growth"
+      },
+      {
+       "r": 383078484,
+       "usd": 998.24,
+       "plan": "growth"
+      },
+      {
+       "r": 383516439,
+       "usd": 999,
+       "plan": "scale"
+      },
+      {
+       "r": 500000000,
+       "usd": 999,
+       "plan": "scale"
+      },
+      {
+       "r": 5000000000,
+       "usd": 9999,
+       "plan": "scale"
+      }
+     ]
+    },
+    {
+     "slug": "dwellir-unlimited",
+     "name": "Dwellir, Unlimited Nodes \u0026 dedicated clusters",
+     "cohort": "dedicated",
+     "unit": "request",
+     "points": [
+      {
+       "r": 100000,
+       "usd": 119,
+       "plan": "unlimited-25"
+      },
+      {
+       "r": 64741823,
+       "usd": 119,
+       "plan": "unlimited-25"
+      },
+      {
+       "r": 64810355,
+       "usd": 479,
+       "plan": "unlimited-100"
+      },
+      {
+       "r": 259027340,
+       "usd": 479,
+       "plan": "unlimited-100"
+      },
+      {
+       "r": 259348834,
+       "usd": 1199,
+       "plan": "unlimited-250"
+      },
+      {
+       "r": 647494228,
+       "usd": 1199,
+       "plan": "unlimited-250"
+      },
+      {
+       "r": 648306951,
+       "usd": 2399,
+       "plan": "unlimited-500"
+      },
+      {
+       "r": 1295075885,
+       "usd": 2399,
+       "plan": "unlimited-500"
+      },
+      {
+       "r": 1296584071,
+       "usd": 4799,
+       "plan": "unlimited-1000"
+      },
+      {
+       "r": 2590816653,
+       "usd": 4799,
+       "plan": "unlimited-1000"
+      },
+      {
+       "r": 2593615425,
+       "usd": 12600,
+       "plan": "cluster-eth-archive"
+      },
+      {
+       "r": 5000000000,
+       "usd": 12600,
+       "plan": "cluster-eth-archive"
+      }
+     ]
+    },
+    {
      "slug": "getblock",
      "name": "GetBlock",
      "cohort": "usage",
@@ -5657,24 +5947,6 @@
        "r": 5000000000,
        "usd": null,
        "why": "published throughput is 40000 credits_per_s, workload needs 1304013 sustained"
-      }
-     ]
-    },
-    {
-     "slug": "instanodes",
-     "name": "Instanodes",
-     "cohort": "usage",
-     "unit": "request",
-     "points": [
-      {
-       "r": 100000,
-       "usd": null,
-       "why": "archive support for this plan is not published; not ranked"
-      },
-      {
-       "r": 5000000000,
-       "usd": null,
-       "why": "archive support for this plan is not published; not ranked"
       }
      ]
     },
@@ -6537,6 +6809,42 @@
      ]
     },
     {
+     "slug": "dwellir",
+     "name": "Dwellir",
+     "cohort": "usage",
+     "unit": "request",
+     "points": [
+      {
+       "r": 100000,
+       "usd": null,
+       "why": "provider does not price solana"
+      },
+      {
+       "r": 5000000000,
+       "usd": null,
+       "why": "provider does not price solana"
+      }
+     ]
+    },
+    {
+     "slug": "dwellir-unlimited",
+     "name": "Dwellir, Unlimited Nodes \u0026 dedicated clusters",
+     "cohort": "dedicated",
+     "unit": "request",
+     "points": [
+      {
+       "r": 100000,
+       "usd": null,
+       "why": "plan does not serve solana"
+      },
+      {
+       "r": 5000000000,
+       "usd": null,
+       "why": "plan does not serve solana"
+      }
+     ]
+    },
+    {
      "slug": "getblock",
      "name": "GetBlock",
      "cohort": "usage",
@@ -6951,24 +7259,6 @@
        "r": 5000000000,
        "usd": null,
        "why": "published throughput is 40000 credits_per_s, workload needs 308642 sustained"
-      }
-     ]
-    },
-    {
-     "slug": "instanodes",
-     "name": "Instanodes",
-     "cohort": "usage",
-     "unit": "request",
-     "points": [
-      {
-       "r": 100000,
-       "usd": null,
-       "why": "provider does not price solana"
-      },
-      {
-       "r": 5000000000,
-       "usd": null,
-       "why": "provider does not price solana"
       }
      ]
     },
