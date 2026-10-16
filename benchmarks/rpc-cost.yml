@@ -113,7 +113,7 @@ findings:
   - "Advertised capability is not served capability. Chainstack's own node API lists trace support on its Polygon node, and trace_block there returns method not found. Alchemy's free tier answers archive reads but refuses all four trace and debug methods outright. Both were found by calling the endpoints rather than by reading the matrix."
   - "One plan in seven has no published price at all. Sixteen providers decline to name a number somewhere above the business tier, so most of the enterprise band cannot be compared, only described."
   - "Three providers that still appear in public comparisons are gone. Grove wound down. LlamaRPC returns a Cloudflare error while its sister domain llamanodes.com now serves gambling spam. Blast API shut down in 2025 after Bware Labs was acquired, and its public endpoints still answer, served by Alchemy."
-  - "Two more are dated. AWS Managed Blockchain stops accepting new customers on 29 October 2026, and Google shuts Blockchain Node Engine down entirely on 15 December 2026, deleting every node."
+  - "Two cloud names are left out on purpose. AWS Managed Blockchain and Google's Blockchain Node Engine rent a node by the hour inside a general cloud rather than sell an RPC service, and both are closing: AWS stops taking new customers on 29 October 2026, and Google deletes every node on 15 December 2026."
 
 faq:
   - q: "Which RPC provider is cheapest?"
@@ -628,19 +628,6 @@ providers:
       series: rpc_cost_monthly_usd{provider="quicknode-flat-rate",kind="all",bucket="all",venue="all"}
       sample_size: count_over_time(rpc_cost_monthly_usd{provider="quicknode-flat-rate",kind="all",bucket="all",venue="all"}[7d])
 
-  - slug: google-bne
-    name: Google Cloud, Blockchain Node Engine
-    tier: dedicated
-    tag: request, flat per request
-    queries:
-      p50: min(last_over_time(rpc_cost_monthly_usd{provider="google-bne",kind="all",bucket="all",venue="all"}[20m]))
-      p90: min(last_over_time(rpc_cost_monthly_usd{provider="google-bne",kind="all",bucket="all",venue="all"}[20m]))
-      p99: min(last_over_time(rpc_cost_monthly_usd{provider="google-bne",kind="all",bucket="all",venue="all"}[20m]))
-      ranked: rpc_cost_eligible{provider="google-bne",kind="all",bucket="all"}
-      mean: min(last_over_time(rpc_cost_monthly_usd{provider="google-bne",kind="all",bucket="all",venue="all"}[20m]))
-      series: rpc_cost_monthly_usd{provider="google-bne",kind="all",bucket="all",venue="all"}
-      sample_size: count_over_time(rpc_cost_monthly_usd{provider="google-bne",kind="all",bucket="all",venue="all"}[7d])
-
   - slug: helius-dedicated
     name: Helius, Dedicated Nodes
     tier: dedicated
@@ -692,17 +679,4 @@ providers:
       mean: min(last_over_time(rpc_cost_monthly_usd{provider="zeeve",kind="all",bucket="all",venue="all"}[20m]))
       series: rpc_cost_monthly_usd{provider="zeeve",kind="all",bucket="all",venue="all"}
       sample_size: count_over_time(rpc_cost_monthly_usd{provider="zeeve",kind="all",bucket="all",venue="all"}[7d])
-
-  - slug: aws-amb
-    name: Amazon Managed Blockchain (AMB) Access, Ethereum
-    tier: dedicated
-    tag: request, flat per request
-    queries:
-      p50: min(last_over_time(rpc_cost_monthly_usd{provider="aws-amb",kind="all",bucket="all",venue="all"}[20m]))
-      p90: min(last_over_time(rpc_cost_monthly_usd{provider="aws-amb",kind="all",bucket="all",venue="all"}[20m]))
-      p99: min(last_over_time(rpc_cost_monthly_usd{provider="aws-amb",kind="all",bucket="all",venue="all"}[20m]))
-      ranked: rpc_cost_eligible{provider="aws-amb",kind="all",bucket="all"}
-      mean: min(last_over_time(rpc_cost_monthly_usd{provider="aws-amb",kind="all",bucket="all",venue="all"}[20m]))
-      series: rpc_cost_monthly_usd{provider="aws-amb",kind="all",bucket="all",venue="all"}
-      sample_size: count_over_time(rpc_cost_monthly_usd{provider="aws-amb",kind="all",bucket="all",venue="all"}[7d])
 
