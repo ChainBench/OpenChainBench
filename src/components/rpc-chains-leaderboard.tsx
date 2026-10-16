@@ -63,6 +63,7 @@ export function RpcChainsLeaderboard({
   bestTip = "Lowest p50 averaged across the 3 probe regions. A provider can win overall without winning any single region: consistent everywhere beats fast in one region, slow elsewhere.",
   scopeNote = "3 probe regions",
   geoControl,
+  raceMode = false,
 }: {
   rows: RpcHubChain[];
   /** Bench slugs whose page is indexable (worker sitemap). When given it
@@ -87,6 +88,11 @@ export function RpcChainsLeaderboard({
    *  state belongs to the hub (both tables are scoped by it); only the
    *  placement is ours, beside the caption that names the scope. */
   geoControl?: React.ReactNode;
+  /** The block-push cohort is a race, not a latency: every leader reads 0
+   *  because it is zero behind itself. Under this flag the leading cell
+   *  shows the margin over the runner-up, which is the figure that carries
+   *  information, instead of a zero that reads as a broken measurement. */
+  raceMode?: boolean;
 }) {
   const [showAll, setShowAll] = useState(false);
   const linkableSet = useMemo(
@@ -322,12 +328,16 @@ export function RpcChainsLeaderboard({
                       <span className="truncate text-ink">
                         {r.best.providerName}
                       </span>
-                      <span
-                        className="tabular-nums font-semibold text-sky-600 dark:text-sky-400"
-                        style={{ fontFamily: "var(--font-mono, monospace)" }}
-                      >
-                        {fmtMs(r.best.p50Ms)}
-                      </span>
+                      {raceMode ? (
+                        <RaceMargin row={r} />
+                      ) : (
+                        <span
+                          className="tabular-nums font-semibold text-sky-600 dark:text-sky-400"
+                          style={{ fontFamily: "var(--font-mono, monospace)" }}
+                        >
+                          {fmtMs(r.best.p50Ms)}
+                        </span>
+                      )}
                     </span>
                   ) : (
                     <span className="text-ink-faint">...</span>
@@ -465,6 +475,37 @@ export function RpcChainsLeaderboard({
         </div>
       )}
     </div>
+  );
+}
+
+/** The margin between the provider that pushes first and the next one.
+ *  On a race the leader's own figure is zero by construction, so the gap is
+ *  what a reader can act on: it is how much of a head start the winner
+ *  gives you over the second-best socket on that chain. */
+function RaceMargin({ row }: { row: RpcHubChain }) {
+  const field = row.providers ?? [];
+  const runnerUp = field[1];
+  const margin =
+    runnerUp && row.best ? runnerUp.p50Ms - row.best.p50Ms : null;
+  if (margin == null || !Number.isFinite(margin) || margin <= 0) {
+    return (
+      <span
+        className="text-[11px] text-ink-faint"
+        title="Only one provider has enough blocks on this chain to compare."
+        style={{ fontFamily: "var(--font-mono, monospace)" }}
+      >
+        no runner-up
+      </span>
+    );
+  }
+  return (
+    <span
+      className="tabular-nums font-semibold text-sky-600 dark:text-sky-400"
+      style={{ fontFamily: "var(--font-mono, monospace)" }}
+      title={`${fmtMs(margin)} ahead of ${runnerUp.name}, comparing each provider's median lag behind whichever one pushed the block first.`}
+    >
+      {fmtMs(margin)} ahead
+    </span>
   );
 }
 

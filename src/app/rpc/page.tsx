@@ -63,7 +63,14 @@ export default async function RpcHubPage() {
   const featured = FEATURED.map((slug) => rpcSpecs.find((s) => s.slug === slug)).filter(
     (s): s is (typeof rpcSpecs)[number] => Boolean(s),
   );
-  const linkableSlugs = rpcSpecs.map((s) => s.slug);
+  // The WebSocket benches live on their own `<chain>-rpc-ws` slugs, which
+  // the `-rpc` filter above excludes by construction. Their pages exist and
+  // answer 200, region variants included, so without them every row of the
+  // block-push cohort rendered "not yet ranked" and refused to link.
+  const wsSpecs = specs
+    .filter((s) => s.slug.endsWith("-rpc-ws"))
+    .filter((s) => !indexable || indexable.has(s.slug));
+  const linkableSlugs = [...rpcSpecs, ...wsSpecs].map((s) => s.slug);
   // Chains whose page carries the API-key cohort (tier dimension): named
   // in the intro so the "<chain> rpc provider" searcher sees Alchemy,
   // Chainstack, GetBlock and QuickNode are measured too, behind the selector.
