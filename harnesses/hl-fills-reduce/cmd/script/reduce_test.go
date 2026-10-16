@@ -1,6 +1,8 @@
 package main
 
 import (
+	"compress/gzip"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
@@ -264,6 +266,118 @@ func TestSpaceOnUnreadablePathReportsZeroNotEmpty(t *testing.T) {
 	free, total := spaceOn(filepath.Join(t.TempDir(), "no", "such", "mount"))
 	if free != 0 || total != 0 {
 		t.Fatalf("spaceOn on a missing path gave free=%d total=%d, want 0 and 0", free, total)
+	}
+}
+
+// writeRebuilt drops a rebuilt day straight into RebuiltDir, the way the
+// rebuild tool does.
+func writeRebuilt(t *testing.T, r *Reducer, day string, complete, flagged bool, fees float64) {
+	t.Helper()
+	if err := os.MkdirAll(r.RebuiltDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	d := &Day{
+		Schema: reduceSchema, Day: day, Hours: 24, Complete: complete, Rebuilt: flagged,
+		Builders: map[string]*Totals{"0xb": {FeesUSD: fees}},
+	}
+	f, err := os.Create(filepath.Join(r.RebuiltDir, day+".json.gz"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	zw := gzip.NewWriter(f)
+	if err := json.NewEncoder(zw).Encode(d); err != nil {
+		t.Fatal(err)
+	}
+	if err := zw.Close(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// A measured day outranks a rebuilt one, a partial measurement loses to a
+// rebuilt whole day, and an unflagged file in the rebuilt directory is not
+// served at all.
+//
+// The listing and the fetch have to agree on all three. An earlier version of
+// the fetch opened the reduced file whenever it existed, so a day the listing
+// announced as a rebuilt whole day was served as the partial measurement
+// instead: the consumer would have summed 11 hours while being told it held 24.
+func TestRebuiltDaysOnlyFillGapsAndNeverOutrankAMeasuredDay(t *testing.T) {
+	r := newTestReducer(t)
+	r.RebuiltDir = filepath.Join(t.TempDir(), "rebuilt")
+
+	// A whole measured day, and a rebuilt one for the same date.
+	writeHour(t, r.FillsDir, "20261001", "0", blockWithOneBuilderFill+"\n")
+	for h := 1; h < 24; h++ {
+		writeHour(t, r.FillsDir, "20261001", itoa(h), blockWithOneBuilderFill+"\n")
+	}
+	if err := r.ReduceDay("20261001"); err != nil {
+		t.Fatalf("reduce: %v", err)
+	}
+	writeRebuilt(t, r, "20261001", true, true, 999)
+
+	// A partial measured day, with a rebuilt whole day to replace it.
+	writeHour(t, r.FillsDir, "20261002", "0", blockWithOneBuilderFill+"\n")
+	if err := r.ReduceDay("20261002"); err != nil {
+		t.Fatalf("reduce: %v", err)
+	}
+	writeRebuilt(t, r, "20261002", true, true, 777)
+
+	// A rebuilt day with no measurement at all.
+	writeRebuilt(t, r, "20261003", true, true, 555)
+
+	// A file in the rebuilt directory that forgot the flag.
+	writeRebuilt(t, r, "20261004", true, false, 111)
+
+	got := map[string]dayInfo{}
+	for _, d := range r.availableDays() {
+		got[d.Day] = d
+	}
+
+	if d := got["20261001"]; d.Rebuilt || !d.Complete {
+		t.Fatalf("20261001: measured whole day must win, got rebuilt=%v complete=%v", d.Rebuilt, d.Complete)
+	}
+	if d := got["20261002"]; !d.Rebuilt || !d.Complete || d.Hours != 24 {
+		t.Fatalf("20261002: rebuilt whole day must replace the 1-hour measurement, got %+v", d)
+	}
+	if d := got["20261003"]; !d.Rebuilt {
+		t.Fatalf("20261003: rebuilt day with no measurement must be offered, got %+v", d)
+	}
+	if _, ok := got["20261004"]; ok {
+		t.Fatal("20261004: an unflagged file in the rebuilt directory must not be served")
+	}
+
+	// And what the fetch path would open has to match what the listing said.
+	if p := r.servePathFor("20261001"); p != r.outPath("20261001") {
+		t.Fatalf("20261001 should be served from the reduced dir, got %s", p)
+	}
+	if p := r.servePathFor("20261002"); p != filepath.Join(r.RebuiltDir, "20261002.json.gz") {
+		t.Fatalf("20261002 should be served from the rebuilt dir, got %s", p)
+	}
+}
+
+// A rebuilt day states how far short it is expected to fall. A file without
+// that field would otherwise report 0, which reads as a perfect reconstruction
+// and is the most flattering possible lie: the figure would be published as if
+// it were measured. Absent means "assume the worst case we have measured".
+func TestRebuiltDayWithNoStatedErrorIsNotTreatedAsPerfect(t *testing.T) {
+	stated := rebuiltInfo("20261013", &Day{
+		Hours: 24, Complete: true, Rebuilt: true,
+		RebuiltFrom: &RebuiltFrom{ExpectedErrorPct: -0.5, MorningSharePct: 68.7},
+	})
+	if stated.ExpectedErrorPct != -0.5 || stated.Extrapolated {
+		t.Fatalf("a stated error must carry through, got %+v", stated)
+	}
+
+	silent := rebuiltInfo("20261014", &Day{Hours: 24, Complete: true, Rebuilt: true})
+	if silent.ExpectedErrorPct == 0 {
+		t.Fatal("a rebuilt day with no stated error reported 0, which reads as measured")
+	}
+	if !silent.Extrapolated {
+		t.Fatal("a guessed error must be flagged as not measured")
+	}
+	if silent.ExpectedErrorPct > -28.0 {
+		t.Fatalf("the fallback should be the worst case measured, got %.1f", silent.ExpectedErrorPct)
 	}
 }
 

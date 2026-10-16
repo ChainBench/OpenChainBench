@@ -38,6 +38,10 @@ const (
 	defaultAddr     = "127.0.0.1:2115"
 	defaultFillsDir = "/mnt/hyperliquid/data/node_fills_by_block/hourly"
 	defaultOutDir   = "/mnt/hyperliquid/ocb-fills-daily"
+	// Days rebuilt from the public export plus the per-wallet info API, for
+	// outages the node cannot replay. Kept apart from the reduced days so a
+	// rebuilt day can never be mistaken for a measured one.
+	defaultRebuiltDir = "/mnt/hyperliquid/ocb-fills-rebuilt"
 	// A day is reduced only once it can no longer change. The node writes
 	// hour N's file when hour N ends, so a day is final shortly after 00:00
 	// the next day; the margin absorbs a slow flush and a restart.
@@ -46,13 +50,14 @@ const (
 
 func main() {
 	var (
-		addr     = flag.String("addr", envOr("HL_REDUCE_ADDR", defaultAddr), "metrics and data listen address")
-		fillsDir = flag.String("fills", envOr("HL_REDUCE_FILLS", defaultFillsDir), "node hourly fills directory")
-		outDir   = flag.String("out", envOr("HL_REDUCE_OUT", defaultOutDir), "where reduced days are written")
-		mount    = flag.String("mount", envOr("HL_REDUCE_MOUNT", "/mnt/hyperliquid"), "filesystem to report free space for")
-		every    = flag.Duration("every", 30*time.Minute, "how often to look for days to reduce")
-		once     = flag.Bool("once", false, "reduce everything pending and exit")
-		backfill = flag.Int("backfill", 45, "how many days back to consider")
+		addr       = flag.String("addr", envOr("HL_REDUCE_ADDR", defaultAddr), "metrics and data listen address")
+		fillsDir   = flag.String("fills", envOr("HL_REDUCE_FILLS", defaultFillsDir), "node hourly fills directory")
+		outDir     = flag.String("out", envOr("HL_REDUCE_OUT", defaultOutDir), "where reduced days are written")
+		rebuiltDir = flag.String("rebuilt", envOr("HL_REDUCE_REBUILT", defaultRebuiltDir), "where rebuilt days are read from, served only for days the node has no whole day for")
+		mount      = flag.String("mount", envOr("HL_REDUCE_MOUNT", "/mnt/hyperliquid"), "filesystem to report free space for")
+		every      = flag.Duration("every", 30*time.Minute, "how often to look for days to reduce")
+		once       = flag.Bool("once", false, "reduce everything pending and exit")
+		backfill   = flag.Int("backfill", 45, "how many days back to consider")
 	)
 	flag.Parse()
 
@@ -61,10 +66,11 @@ func main() {
 	}
 
 	r := &Reducer{
-		FillsDir: *fillsDir,
-		OutDir:   *outDir,
-		Mount:    *mount,
-		Backfill: *backfill,
+		FillsDir:   *fillsDir,
+		OutDir:     *outDir,
+		RebuiltDir: *rebuiltDir,
+		Mount:      *mount,
+		Backfill:   *backfill,
 	}
 
 	if *once {

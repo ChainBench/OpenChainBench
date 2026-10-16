@@ -53,6 +53,14 @@ var (
 		Name: "hl_frontend_node_days_window_v2",
 		Help: "Days in the 30-day window read from the Hyperliquid node's own fill stream rather than the public per-builder export. The export cuts most days off around 12:10 UTC; a day sourced here is whole. The window is only as good as this number is close to 30.",
 	})
+	hlRebuiltDaysWindow = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "hl_frontend_rebuilt_days_window_v2",
+		Help: "Days in the 30-day window served as reconstructions rather than measured: the public export's own morning spliced to an afternoon rebuilt from the per-wallet info API, for outages the node cannot replay. Validated at 0.43 per cent under the node on 2026-10-09, so these are close, but they are not measurements and are never counted in hl_frontend_node_days_window_v2.",
+	})
+	hlRebuiltWorstError = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "hl_frontend_rebuilt_worst_error_pct_v2",
+		Help: "Largest expected shortfall among the rebuilt days in the window, as a negative percent, and 0 when none are rebuilt. A rebuilt day's accuracy follows how much of it the public export's morning covered: two complete days scored against the node gave -0.43 at a 68.8 percent morning and -28.2 at 27.2. The worst rather than the mean, because averaging a -0.5 day with a -35 one describes neither.",
+	})
 	hlCoverageDaysMeasured = promauto.NewGauge(prometheus.GaugeOpts{
 		Name: "hl_frontend_coverage_days_measured_v2",
 		Help: "Days in the 30-day window whose feed coverage was actually measured. The truncated-day count is out of this, not out of 30: a day that left the mirror window before this harness first ran was never measured, and counting it as clean would understate the truncation.",
