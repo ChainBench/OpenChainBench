@@ -75,6 +75,11 @@ const queries = z
   .object({
     p50: promql.optional(),
     p90: promql.optional(),
+    /** Optional fifth quantile, added 2026-10-16. Unlike p50/p90/p99 it is
+     *  never load-bearing: a provider whose p95 query returns nothing keeps
+     *  its row and simply shows no p95, so adding it to one bench cannot
+     *  make a leaderboard shrink. */
+    p95: promql.optional(),
     p99: promql.optional(),
     mean: promql.optional(),
     success: promql.optional(),

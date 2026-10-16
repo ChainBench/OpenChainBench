@@ -186,6 +186,38 @@ describe("scopeCohortToRegion", () => {
     expect(qn?.sampleSize).toBe(700);
   });
 
+  it("substitutes the region's own tail when the variant measured one", () => {
+    // What the region variant blob supplies: its headline queries already
+    // carry region="<r>", so these are that region's p90/p95/p99 and not a
+    // 3-region figure. This is the whole point of the geo view for a provider
+    // asking "what is my p95 at this edge location".
+    const base = cohort();
+    base.chains[0]!.providers[0]!.regionTails = {
+      sgp: { p90: 7.1, p95: 9.4, p99: 21.0 },
+    };
+    const sgp = scopeCohortToRegion(base, "sgp");
+    const qn = sgp.chains[0]?.providers[0];
+    expect(qn?.provider).toBe("quicknode");
+    expect([qn?.p90Ms, qn?.p95Ms, qn?.p99Ms]).toEqual([7.1, 9.4, 21.0]);
+    // And the chain's headline tail follows the regional leader, which here
+    // is that same row.
+    expect(sgp.chains[0]?.bestP90Ms).toBe(7.1);
+    expect(sgp.chains[0]?.bestP95Ms).toBe(9.4);
+  });
+
+  it("drops the tail for a region the variant did not measure", () => {
+    const base = cohort();
+    base.chains[0]!.providers[0]!.regionTails = {
+      "us-east": { p90: 7.1, p95: 9.4 },
+    };
+    const sgp = scopeCohortToRegion(base, "sgp");
+    const qn = sgp.chains[0]?.providers[0];
+    // A us-east tail says nothing about Singapore, so nothing is shown.
+    expect(qn?.p90Ms).toBeUndefined();
+    expect(qn?.p95Ms).toBeUndefined();
+    expect(sgp.chains[0]?.bestP95Ms).toBeUndefined();
+  });
+
   it("leaves the unscoped cohort alone", () => {
     const base = cohort();
     const before = JSON.stringify(base);

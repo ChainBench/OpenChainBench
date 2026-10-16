@@ -28,6 +28,7 @@ type SortKey =
   | "name"
   | "bestP50"
   | "bestP90"
+  | "bestP95"
   | "archive"
   | "us-east"
   | "eu-west"
@@ -41,6 +42,7 @@ function sortValue(r: RpcHubChain, k: SortKey): number | string | null {
   if (k === "name") return r.name.toLowerCase();
   if (k === "bestP50") return r.best?.p50Ms ?? null;
   if (k === "bestP90") return r.bestP90Ms ?? null;
+  if (k === "bestP95") return r.bestP95Ms ?? null;
   if (k === "archive") return r.bestArchiveDepthBlocks ?? null;
   if (k === "providerCount") return r.providerCount;
   return r.regions[k]?.p50Ms ?? null;
@@ -93,10 +95,15 @@ export function RpcChainsLeaderboard({
         : ALL_REGION_COLS,
     [regions],
   );
-  /** The blob's p90 is computed over all three regions, so the geo view
-   *  clears it rather than repeat a 3-region tail under a region heading.
-   *  Same rule as archive: an empty column makes a claim of its own. */
+  /** A headline p90 is computed over all three regions, so the geo view does
+   *  not carry it over: it substitutes the region variant's own tail when
+   *  there is one and leaves the column empty when there is not. Same rule as
+   *  archive, because an empty column makes a claim of its own. */
   const hasP90 = useMemo(() => rows.some((r) => r.bestP90Ms != null), [rows]);
+  /** p95 exists only where a spec asks for it, which today is the keyed
+   *  cluster. Gated like every other optional column rather than drawn as a
+   *  row of dashes on the benches that do not declare it. */
+  const hasP95 = useMemo(() => rows.some((r) => r.bestP95Ms != null), [rows]);
   /** The archive probe only runs on the public cohort: the keyed harness has
    *  no depth probe at all, so on the three API-key cohorts every cell was a
    *  dash and the column read as "no provider serves archive" instead of "not
@@ -137,7 +144,11 @@ export function RpcChainsLeaderboard({
 
   // #, chain, best, providers, trend, plus whatever is drawn.
   const colCount =
-    5 + regionCols.length + (hasP90 ? 1 : 0) + (hasArchive ? 1 : 0);
+    5 +
+    regionCols.length +
+    (hasP90 ? 1 : 0) +
+    (hasP95 ? 1 : 0) +
+    (hasArchive ? 1 : 0);
 
   const setSort = (k: SortKey) => {
     if (k === sortKey) setSortDir((d) => (d === "desc" ? "asc" : "desc"));
@@ -193,6 +204,17 @@ export function RpcChainsLeaderboard({
                 >
                   <span title="p90 latency of the same overall-best provider, the slow-tail number users actually feel. Empty when the provider's histogram doesn't have enough samples yet.">
                     Best p90
+                  </span>
+                </ThSort>
+              )}
+              {hasP95 && (
+                <ThSort
+                  active={sortKey === "bestP95"}
+                  dir={sortDir}
+                  onClick={() => setSort("bestP95")}
+                >
+                  <span title="p95 of the same leading provider: the slow 1 call in 20. Recorded from 2026-10-16; the probe samples every 120 s, so a 24h p95 rests on about the 36th worst of 720 measurements.">
+                    Best p95
                   </span>
                 </ThSort>
               )}
@@ -308,6 +330,17 @@ export function RpcChainsLeaderboard({
                     {r.bestP90Ms != null ? (
                       <span className="tabular-nums text-ink-soft">
                         {fmtMs(r.bestP90Ms)}
+                      </span>
+                    ) : (
+                      <span className="text-ink-faint">-</span>
+                    )}
+                  </Td>
+                )}
+                {hasP95 && (
+                  <Td mono>
+                    {r.bestP95Ms != null ? (
+                      <span className="tabular-nums text-ink-soft">
+                        {fmtMs(r.bestP95Ms)}
                       </span>
                     ) : (
                       <span className="text-ink-faint">-</span>

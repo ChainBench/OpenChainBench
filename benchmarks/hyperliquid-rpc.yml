@@ -210,6 +210,7 @@ providers:
     queries:
       p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="alchemy",chain="hyperliquid",tier="keyed"})
       p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="alchemy",chain="hyperliquid",tier="keyed"})
+      p95: avg(ocb:rpc_latency_milliseconds:p95_24h{provider="alchemy",chain="hyperliquid",tier="keyed"})
       p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="alchemy",chain="hyperliquid",tier="keyed"})
       mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="alchemy",chain="hyperliquid",tier="keyed"})
       success: sum(ocb:rpc_call:ok_rate_24h{provider="alchemy",chain="hyperliquid",tier="keyed"}) / sum(ocb:rpc_call:rate_24h{provider="alchemy",chain="hyperliquid",tier="keyed"})
@@ -234,6 +235,7 @@ providers:
     queries:
       p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="chainstack",chain="hyperliquid",tier="keyed"})
       p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="chainstack",chain="hyperliquid",tier="keyed"})
+      p95: avg(ocb:rpc_latency_milliseconds:p95_24h{provider="chainstack",chain="hyperliquid",tier="keyed"})
       p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="chainstack",chain="hyperliquid",tier="keyed"})
       mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="chainstack",chain="hyperliquid",tier="keyed"})
       success: sum(ocb:rpc_call:ok_rate_24h{provider="chainstack",chain="hyperliquid",tier="keyed"}) / sum(ocb:rpc_call:rate_24h{provider="chainstack",chain="hyperliquid",tier="keyed"})
@@ -258,6 +260,7 @@ providers:
     queries:
       p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="getblock",chain="hyperliquid",tier="keyed"})
       p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="getblock",chain="hyperliquid",tier="keyed"})
+      p95: avg(ocb:rpc_latency_milliseconds:p95_24h{provider="getblock",chain="hyperliquid",tier="keyed"})
       p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="getblock",chain="hyperliquid",tier="keyed"})
       mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="getblock",chain="hyperliquid",tier="keyed"})
       success: sum(ocb:rpc_call:ok_rate_24h{provider="getblock",chain="hyperliquid",tier="keyed"}) / sum(ocb:rpc_call:rate_24h{provider="getblock",chain="hyperliquid",tier="keyed"})
@@ -282,6 +285,7 @@ providers:
     queries:
       p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="quicknode",chain="hyperliquid",tier="keyed"})
       p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="quicknode",chain="hyperliquid",tier="keyed"})
+      p95: avg(ocb:rpc_latency_milliseconds:p95_24h{provider="quicknode",chain="hyperliquid",tier="keyed"})
       p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="quicknode",chain="hyperliquid",tier="keyed"})
       mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="quicknode",chain="hyperliquid",tier="keyed"})
       success: sum(ocb:rpc_call:ok_rate_24h{provider="quicknode",chain="hyperliquid",tier="keyed"}) / sum(ocb:rpc_call:rate_24h{provider="quicknode",chain="hyperliquid",tier="keyed"})
@@ -306,6 +310,7 @@ providers:
     queries:
       p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="dwellir",chain="hyperliquid",tier="keyed"})
       p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="dwellir",chain="hyperliquid",tier="keyed"})
+      p95: avg(ocb:rpc_latency_milliseconds:p95_24h{provider="dwellir",chain="hyperliquid",tier="keyed"})
       p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="dwellir",chain="hyperliquid",tier="keyed"})
       mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="dwellir",chain="hyperliquid",tier="keyed"})
       success: sum(ocb:rpc_call:ok_rate_24h{provider="dwellir",chain="hyperliquid",tier="keyed"}) / sum(ocb:rpc_call:rate_24h{provider="dwellir",chain="hyperliquid",tier="keyed"})
@@ -330,6 +335,7 @@ providers:
     queries:
       p50: avg(ocb:rpc_latency_cold_milliseconds:p50_24h{provider="alchemy",chain="hyperliquid",tier="keyed"})
       p90: avg(ocb:rpc_latency_cold_milliseconds:p90_24h{provider="alchemy",chain="hyperliquid",tier="keyed"})
+      p95: avg(ocb:rpc_latency_cold_milliseconds:p95_24h{provider="alchemy",chain="hyperliquid",tier="keyed"})
       p99: avg(ocb:rpc_latency_cold_milliseconds:p99_24h{provider="alchemy",chain="hyperliquid",tier="keyed"})
       mean: avg(ocb:rpc_latency_cold_milliseconds:mean_24h{provider="alchemy",chain="hyperliquid",tier="keyed"})
       success: sum(ocb:rpc_call:ok_rate_24h{provider="alchemy",chain="hyperliquid",tier="keyed"}) / sum(ocb:rpc_call:rate_24h{provider="alchemy",chain="hyperliquid",tier="keyed"})
@@ -353,6 +359,7 @@ providers:
     queries:
       p50: avg(ocb:rpc_latency_cold_milliseconds:p50_24h{provider="chainstack",chain="hyperliquid",tier="keyed"})
       p90: avg(ocb:rpc_latency_cold_milliseconds:p90_24h{provider="chainstack",chain="hyperliquid",tier="keyed"})
+      p95: avg(ocb:rpc_latency_cold_milliseconds:p95_24h{provider="chainstack",chain="hyperliquid",tier="keyed"})
       p99: avg(ocb:rpc_latency_cold_milliseconds:p99_24h{provider="chainstack",chain="hyperliquid",tier="keyed"})
       mean: avg(ocb:rpc_latency_cold_milliseconds:mean_24h{provider="chainstack",chain="hyperliquid",tier="keyed"})
       success: sum(ocb:rpc_call:ok_rate_24h{provider="chainstack",chain="hyperliquid",tier="keyed"}) / sum(ocb:rpc_call:rate_24h{provider="chainstack",chain="hyperliquid",tier="keyed"})
@@ -376,6 +383,7 @@ providers:
     queries:
       p50: avg(ocb:rpc_latency_cold_milliseconds:p50_24h{provider="getblock",chain="hyperliquid",tier="keyed"})
       p90: avg(ocb:rpc_latency_cold_milliseconds:p90_24h{provider="getblock",chain="hyperliquid",tier="keyed"})
+      p95: avg(ocb:rpc_latency_cold_milliseconds:p95_24h{provider="getblock",chain="hyperliquid",tier="keyed"})
       p99: avg(ocb:rpc_latency_cold_milliseconds:p99_24h{provider="getblock",chain="hyperliquid",tier="keyed"})
       mean: avg(ocb:rpc_latency_cold_milliseconds:mean_24h{provider="getblock",chain="hyperliquid",tier="keyed"})
       success: sum(ocb:rpc_call:ok_rate_24h{provider="getblock",chain="hyperliquid",tier="keyed"}) / sum(ocb:rpc_call:rate_24h{provider="getblock",chain="hyperliquid",tier="keyed"})
@@ -399,6 +407,7 @@ providers:
     queries:
       p50: avg(ocb:rpc_latency_cold_milliseconds:p50_24h{provider="quicknode",chain="hyperliquid",tier="keyed"})
       p90: avg(ocb:rpc_latency_cold_milliseconds:p90_24h{provider="quicknode",chain="hyperliquid",tier="keyed"})
+      p95: avg(ocb:rpc_latency_cold_milliseconds:p95_24h{provider="quicknode",chain="hyperliquid",tier="keyed"})
       p99: avg(ocb:rpc_latency_cold_milliseconds:p99_24h{provider="quicknode",chain="hyperliquid",tier="keyed"})
       mean: avg(ocb:rpc_latency_cold_milliseconds:mean_24h{provider="quicknode",chain="hyperliquid",tier="keyed"})
       success: sum(ocb:rpc_call:ok_rate_24h{provider="quicknode",chain="hyperliquid",tier="keyed"}) / sum(ocb:rpc_call:rate_24h{provider="quicknode",chain="hyperliquid",tier="keyed"})
@@ -422,6 +431,7 @@ providers:
     queries:
       p50: avg(ocb:rpc_latency_cold_milliseconds:p50_24h{provider="dwellir",chain="hyperliquid",tier="keyed"})
       p90: avg(ocb:rpc_latency_cold_milliseconds:p90_24h{provider="dwellir",chain="hyperliquid",tier="keyed"})
+      p95: avg(ocb:rpc_latency_cold_milliseconds:p95_24h{provider="dwellir",chain="hyperliquid",tier="keyed"})
       p99: avg(ocb:rpc_latency_cold_milliseconds:p99_24h{provider="dwellir",chain="hyperliquid",tier="keyed"})
       mean: avg(ocb:rpc_latency_cold_milliseconds:mean_24h{provider="dwellir",chain="hyperliquid",tier="keyed"})
       success: sum(ocb:rpc_call:ok_rate_24h{provider="dwellir",chain="hyperliquid",tier="keyed"}) / sum(ocb:rpc_call:rate_24h{provider="dwellir",chain="hyperliquid",tier="keyed"})
@@ -445,6 +455,7 @@ providers:
     queries:
       p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="validationcloud",chain="hyperliquid",tier="keyed"})
       p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="validationcloud",chain="hyperliquid",tier="keyed"})
+      p95: avg(ocb:rpc_latency_milliseconds:p95_24h{provider="validationcloud",chain="hyperliquid",tier="keyed"})
       p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="validationcloud",chain="hyperliquid",tier="keyed"})
       mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="validationcloud",chain="hyperliquid",tier="keyed"})
       success: sum(ocb:rpc_call:ok_rate_24h{provider="validationcloud",chain="hyperliquid",tier="keyed"}) / sum(ocb:rpc_call:rate_24h{provider="validationcloud",chain="hyperliquid",tier="keyed"})
@@ -469,6 +480,7 @@ providers:
     queries:
       p50: avg(ocb:rpc_latency_cold_milliseconds:p50_24h{provider="validationcloud",chain="hyperliquid",tier="keyed"})
       p90: avg(ocb:rpc_latency_cold_milliseconds:p90_24h{provider="validationcloud",chain="hyperliquid",tier="keyed"})
+      p95: avg(ocb:rpc_latency_cold_milliseconds:p95_24h{provider="validationcloud",chain="hyperliquid",tier="keyed"})
       p99: avg(ocb:rpc_latency_cold_milliseconds:p99_24h{provider="validationcloud",chain="hyperliquid",tier="keyed"})
       mean: avg(ocb:rpc_latency_cold_milliseconds:mean_24h{provider="validationcloud",chain="hyperliquid",tier="keyed"})
       success: sum(ocb:rpc_call:ok_rate_24h{provider="validationcloud",chain="hyperliquid",tier="keyed"}) / sum(ocb:rpc_call:rate_24h{provider="validationcloud",chain="hyperliquid",tier="keyed"})

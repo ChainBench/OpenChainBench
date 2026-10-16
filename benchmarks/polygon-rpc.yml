@@ -155,6 +155,7 @@ providers:
     queries:
       p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="alchemy",chain="polygon",tier="keyed"})
       p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="alchemy",chain="polygon",tier="keyed"})
+      p95: avg(ocb:rpc_latency_milliseconds:p95_24h{provider="alchemy",chain="polygon",tier="keyed"})
       p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="alchemy",chain="polygon",tier="keyed"})
       mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="alchemy",chain="polygon",tier="keyed"})
       success: sum(ocb:rpc_call:ok_rate_24h{provider="alchemy",chain="polygon",tier="keyed"}) / sum(ocb:rpc_call:rate_24h{provider="alchemy",chain="polygon",tier="keyed"})
@@ -179,6 +180,7 @@ providers:
     queries:
       p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="chainstack",chain="polygon",tier="keyed"})
       p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="chainstack",chain="polygon",tier="keyed"})
+      p95: avg(ocb:rpc_latency_milliseconds:p95_24h{provider="chainstack",chain="polygon",tier="keyed"})
       p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="chainstack",chain="polygon",tier="keyed"})
       mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="chainstack",chain="polygon",tier="keyed"})
       success: sum(ocb:rpc_call:ok_rate_24h{provider="chainstack",chain="polygon",tier="keyed"}) / sum(ocb:rpc_call:rate_24h{provider="chainstack",chain="polygon",tier="keyed"})
@@ -203,6 +205,7 @@ providers:
     queries:
       p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="getblock",chain="polygon",tier="keyed"})
       p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="getblock",chain="polygon",tier="keyed"})
+      p95: avg(ocb:rpc_latency_milliseconds:p95_24h{provider="getblock",chain="polygon",tier="keyed"})
       p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="getblock",chain="polygon",tier="keyed"})
       mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="getblock",chain="polygon",tier="keyed"})
       success: sum(ocb:rpc_call:ok_rate_24h{provider="getblock",chain="polygon",tier="keyed"}) / sum(ocb:rpc_call:rate_24h{provider="getblock",chain="polygon",tier="keyed"})
@@ -227,6 +230,7 @@ providers:
     queries:
       p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="quicknode",chain="polygon",tier="keyed"})
       p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="quicknode",chain="polygon",tier="keyed"})
+      p95: avg(ocb:rpc_latency_milliseconds:p95_24h{provider="quicknode",chain="polygon",tier="keyed"})
       p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="quicknode",chain="polygon",tier="keyed"})
       mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="quicknode",chain="polygon",tier="keyed"})
       success: sum(ocb:rpc_call:ok_rate_24h{provider="quicknode",chain="polygon",tier="keyed"}) / sum(ocb:rpc_call:rate_24h{provider="quicknode",chain="polygon",tier="keyed"})
@@ -251,6 +255,7 @@ providers:
     queries:
       p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="dwellir",chain="polygon",tier="keyed"})
       p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="dwellir",chain="polygon",tier="keyed"})
+      p95: avg(ocb:rpc_latency_milliseconds:p95_24h{provider="dwellir",chain="polygon",tier="keyed"})
       p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="dwellir",chain="polygon",tier="keyed"})
       mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="dwellir",chain="polygon",tier="keyed"})
       success: sum(ocb:rpc_call:ok_rate_24h{provider="dwellir",chain="polygon",tier="keyed"}) / sum(ocb:rpc_call:rate_24h{provider="dwellir",chain="polygon",tier="keyed"})
@@ -275,6 +280,7 @@ providers:
     queries:
       p50: avg(ocb:rpc_latency_cold_milliseconds:p50_24h{provider="alchemy",chain="polygon",tier="keyed"})
       p90: avg(ocb:rpc_latency_cold_milliseconds:p90_24h{provider="alchemy",chain="polygon",tier="keyed"})
+      p95: avg(ocb:rpc_latency_cold_milliseconds:p95_24h{provider="alchemy",chain="polygon",tier="keyed"})
       p99: avg(ocb:rpc_latency_cold_milliseconds:p99_24h{provider="alchemy",chain="polygon",tier="keyed"})
       mean: avg(ocb:rpc_latency_cold_milliseconds:mean_24h{provider="alchemy",chain="polygon",tier="keyed"})
       success: sum(ocb:rpc_call:ok_rate_24h{provider="alchemy",chain="polygon",tier="keyed"}) / sum(ocb:rpc_call:rate_24h{provider="alchemy",chain="polygon",tier="keyed"})
@@ -298,6 +304,7 @@ providers:
     queries:
       p50: avg(ocb:rpc_latency_cold_milliseconds:p50_24h{provider="chainstack",chain="polygon",tier="keyed"})
       p90: avg(ocb:rpc_latency_cold_milliseconds:p90_24h{provider="chainstack",chain="polygon",tier="keyed"})
+      p95: avg(ocb:rpc_latency_cold_milliseconds:p95_24h{provider="chainstack",chain="polygon",tier="keyed"})
       p99: avg(ocb:rpc_latency_cold_milliseconds:p99_24h{provider="chainstack",chain="polygon",tier="keyed"})
       mean: avg(ocb:rpc_latency_cold_milliseconds:mean_24h{provider="chainstack",chain="polygon",tier="keyed"})
       success: sum(ocb:rpc_call:ok_rate_24h{provider="chainstack",chain="polygon",tier="keyed"}) / sum(ocb:rpc_call:rate_24h{provider="chainstack",chain="polygon",tier="keyed"})
@@ -321,6 +328,7 @@ providers:
     queries:
       p50: avg(ocb:rpc_latency_cold_milliseconds:p50_24h{provider="getblock",chain="polygon",tier="keyed"})
       p90: avg(ocb:rpc_latency_cold_milliseconds:p90_24h{provider="getblock",chain="polygon",tier="keyed"})
+      p95: avg(ocb:rpc_latency_cold_milliseconds:p95_24h{provider="getblock",chain="polygon",tier="keyed"})
       p99: avg(ocb:rpc_latency_cold_milliseconds:p99_24h{provider="getblock",chain="polygon",tier="keyed"})
       mean: avg(ocb:rpc_latency_cold_milliseconds:mean_24h{provider="getblock",chain="polygon",tier="keyed"})
       success: sum(ocb:rpc_call:ok_rate_24h{provider="getblock",chain="polygon",tier="keyed"}) / sum(ocb:rpc_call:rate_24h{provider="getblock",chain="polygon",tier="keyed"})
@@ -344,6 +352,7 @@ providers:
     queries:
       p50: avg(ocb:rpc_latency_cold_milliseconds:p50_24h{provider="quicknode",chain="polygon",tier="keyed"})
       p90: avg(ocb:rpc_latency_cold_milliseconds:p90_24h{provider="quicknode",chain="polygon",tier="keyed"})
+      p95: avg(ocb:rpc_latency_cold_milliseconds:p95_24h{provider="quicknode",chain="polygon",tier="keyed"})
       p99: avg(ocb:rpc_latency_cold_milliseconds:p99_24h{provider="quicknode",chain="polygon",tier="keyed"})
       mean: avg(ocb:rpc_latency_cold_milliseconds:mean_24h{provider="quicknode",chain="polygon",tier="keyed"})
       success: sum(ocb:rpc_call:ok_rate_24h{provider="quicknode",chain="polygon",tier="keyed"}) / sum(ocb:rpc_call:rate_24h{provider="quicknode",chain="polygon",tier="keyed"})
@@ -367,6 +376,7 @@ providers:
     queries:
       p50: avg(ocb:rpc_latency_cold_milliseconds:p50_24h{provider="dwellir",chain="polygon",tier="keyed"})
       p90: avg(ocb:rpc_latency_cold_milliseconds:p90_24h{provider="dwellir",chain="polygon",tier="keyed"})
+      p95: avg(ocb:rpc_latency_cold_milliseconds:p95_24h{provider="dwellir",chain="polygon",tier="keyed"})
       p99: avg(ocb:rpc_latency_cold_milliseconds:p99_24h{provider="dwellir",chain="polygon",tier="keyed"})
       mean: avg(ocb:rpc_latency_cold_milliseconds:mean_24h{provider="dwellir",chain="polygon",tier="keyed"})
       success: sum(ocb:rpc_call:ok_rate_24h{provider="dwellir",chain="polygon",tier="keyed"}) / sum(ocb:rpc_call:rate_24h{provider="dwellir",chain="polygon",tier="keyed"})
@@ -391,6 +401,7 @@ providers:
     queries:
       p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="validationcloud",chain="polygon",tier="keyed"})
       p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="validationcloud",chain="polygon",tier="keyed"})
+      p95: avg(ocb:rpc_latency_milliseconds:p95_24h{provider="validationcloud",chain="polygon",tier="keyed"})
       p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="validationcloud",chain="polygon",tier="keyed"})
       mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="validationcloud",chain="polygon",tier="keyed"})
       success: sum(ocb:rpc_call:ok_rate_24h{provider="validationcloud",chain="polygon",tier="keyed"}) / sum(ocb:rpc_call:rate_24h{provider="validationcloud",chain="polygon",tier="keyed"})
@@ -415,6 +426,7 @@ providers:
     queries:
       p50: avg(ocb:rpc_latency_cold_milliseconds:p50_24h{provider="validationcloud",chain="polygon",tier="keyed"})
       p90: avg(ocb:rpc_latency_cold_milliseconds:p90_24h{provider="validationcloud",chain="polygon",tier="keyed"})
+      p95: avg(ocb:rpc_latency_cold_milliseconds:p95_24h{provider="validationcloud",chain="polygon",tier="keyed"})
       p99: avg(ocb:rpc_latency_cold_milliseconds:p99_24h{provider="validationcloud",chain="polygon",tier="keyed"})
       mean: avg(ocb:rpc_latency_cold_milliseconds:mean_24h{provider="validationcloud",chain="polygon",tier="keyed"})
       success: sum(ocb:rpc_call:ok_rate_24h{provider="validationcloud",chain="polygon",tier="keyed"}) / sum(ocb:rpc_call:rate_24h{provider="validationcloud",chain="polygon",tier="keyed"})
