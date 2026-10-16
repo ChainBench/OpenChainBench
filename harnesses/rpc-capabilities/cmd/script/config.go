@@ -306,7 +306,15 @@ func chains() []Chain {
 				{Slug: "nownodes", Name: "NOWNodes", URL: envDefault("RPC_URL_ETHEREUM_NOWNODES", "https://public-eth.nownodes.io")},
 			},
 		},
-		// ─── Polygon PoS (5 providers) ──────────────────────────────
+		// ─── Polygon PoS (3 providers) ──────────────────────────────
+		//
+		// Nodies removed 2026-10-11: polygon-pokt.nodies.app now answers HTTP
+		// 403 "The network of this endpoint requires a paid subscription plan",
+		// on every call from all three regions, so it cannot produce a sample.
+		// Excluded after probing: polygon-rpc.com (the chain's own endpoint,
+		// now key-gated), blockpi (521), blastapi (jsonrpc error), llamarpc and
+		// blxrbdn (no DNS), ankr (key required), 1rpc (4 of 5, and 1RPC has
+		// twice been removed from this cluster for not sustaining probing).
 		{
 			Slug: "polygon",
 			Name: "Polygon",
@@ -314,7 +322,6 @@ func chains() []Chain {
 				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_POLYGON_PUBLICNODE", "https://polygon-bor-rpc.publicnode.com")},
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_POLYGON_DRPC", "https://polygon.drpc.org")},
 				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_POLYGON_TENDERLY", "https://gateway.tenderly.co/public/polygon")},
-				{Slug: "nodies", Name: "Nodies (POKT)", URL: envDefault("RPC_URL_POLYGON_NODIES", "https://polygon-pokt.nodies.app")},
 			},
 		},
 		// ─── Arbitrum One (8 providers) ─────────────────────────────
@@ -356,14 +363,19 @@ func chains() []Chain {
 				{Slug: "bloxroute", Name: "bloXroute", URL: envDefault("RPC_URL_BASE_BLOXROUTE", "https://base.rpc.blxrbdn.com")},
 			},
 		},
-		// ─── BNB Chain (7 providers) ────────────────────────────────
+		// ─── BNB Chain (5 providers) ────────────────────────────────
+		//
+		// Removed 2026-10-11. Nodies: bsc-pokt.nodies.app answers HTTP 403,
+		// paid plan required, 0 percent ok over 24h. dRPC: bsc.drpc.org
+		// rate-limits the probe cadence ("You reached Public endpoint rate
+		// limit"), 0 of 10 live tries and 30 percent ok over 24h, so its
+		// published p50 came from the 30 percent that got through. dRPC is
+		// healthy on every other chain here and stays in those cohorts.
 		{
 			Slug: "bnb",
 			Name: "BNB Chain",
 			Providers: []Provider{
 				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_BNB_PUBLICNODE", "https://bsc-rpc.publicnode.com")},
-				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_BNB_DRPC", "https://bsc.drpc.org")},
-				{Slug: "nodies", Name: "Nodies (POKT)", URL: envDefault("RPC_URL_BNB_NODIES", "https://bsc-pokt.nodies.app")},
 				{Slug: "binance", Name: "Binance Official", URL: envDefault("RPC_URL_BNB_OFFICIAL", "https://bsc-dataseed1.binance.org")},
 				{Slug: "bloxroute", Name: "bloXroute", URL: envDefault("RPC_URL_BNB_BLOXROUTE", "https://bsc.rpc.blxrbdn.com")},
 				{Slug: "nownodes", Name: "NOWNodes", URL: envDefault("RPC_URL_BNB_NOWNODES", "https://public-bsc.nownodes.io")},
