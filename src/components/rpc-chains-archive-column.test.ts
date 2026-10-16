@@ -53,26 +53,29 @@ describe("archive column visibility", () => {
   });
 });
 
-describe("the header and the cell are gated together", () => {
+describe("every optional column is gated in both places", () => {
   const src = readFileSync("src/components/rpc-chains-leaderboard.tsx", "utf8");
 
-  it("has exactly two JSX gates, the th and the td", () => {
-    expect(src.match(/\{hasArchive && \(/g)?.length).toBe(2);
-  });
+  // Each of these draws a header and a cell. Gating one and not the other
+  // shifts every column to its right by one position, which reads as a wrong
+  // number rather than as a broken table.
+  for (const flag of ["hasP90", "hasP95", "hasArchive"]) {
+    it(`${flag} gates exactly two pieces of JSX`, () => {
+      expect(src.match(new RegExp(`\\{${flag} && \\(`, "g"))?.length).toBe(2);
+    });
 
-  it("renders neither the header nor the cell ungated", () => {
-    // Both strings are unique to the archive column; each must occur once,
-    // and the gate count above is what keeps them behind the flag.
+    it(`${flag} is part of the column count`, () => {
+      expect(src).toContain(`(${flag} ? 1 : 0)`);
+    });
+  }
+
+  it("renders the archive header and cell exactly once each", () => {
     expect(src.match(/sortKey === "archive"/g)?.length).toBe(1);
     expect(src.match(/\{fmtArchive\(/g)?.length).toBe(1);
   });
 
-  it("spans the empty-search row over the columns actually drawn", () => {
-    // Three columns are now conditional (archive, the p90 tail, and the
-    // region set the geo view empties), so the span is counted, never typed.
+  it("counts the empty-search span instead of typing it", () => {
     expect(src).toContain("colSpan={colCount}");
-    expect(src).toContain(
-      "5 + regionCols.length + (hasP90 ? 1 : 0) + (hasArchive ? 1 : 0)",
-    );
+    expect(src).not.toMatch(/colSpan=\{\d/);
   });
 });

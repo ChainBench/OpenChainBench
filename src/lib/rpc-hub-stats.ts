@@ -159,6 +159,13 @@ async function buildChain(spec: Spec, tier?: string): Promise<RpcHubChain | null
   // tier-B region variant blobs (sig "region=<r>"), whose headline p50
   // is the region-scoped aggregate for each provider.
   const regionP50: Record<string, Partial<Record<RpcRegionKey, number>>> = {};
+  // The region variant's headline queries already carry region="<r>", so its
+  // p90/p95/p99 are that region's tails and not a 3-region figure. Read them
+  // here so the hub can publish a tail per edge location.
+  const regionTails: Record<
+    string,
+    Partial<Record<RpcRegionKey, { p90?: number; p95?: number; p99?: number }>>
+  > = {};
   for (const r of rows) {
     const points = bench.extras.regions?.[r.slug] ?? [];
     for (const pt of points) {
@@ -184,6 +191,14 @@ async function buildChain(spec: Spec, tier?: string): Promise<RpcHubChain | null
     for (const r of liveRows(vsnap.bench)) {
       const bucket = (regionP50[r.slug] ??= {});
       if (bucket[region] == null) bucket[region] = round1(r.ms.p50);
+      const tail: { p90?: number; p95?: number; p99?: number } = {};
+      // Each guarded the same way the headline tails are: a zero or a
+      // non-finite value is Prometheus saying nothing, not a 0 ms answer.
+      if (Number.isFinite(r.ms.p90) && r.ms.p90 > 0) tail.p90 = round1(r.ms.p90);
+      if (r.ms.p95 != null && Number.isFinite(r.ms.p95) && r.ms.p95 > 0)
+        tail.p95 = round1(r.ms.p95);
+      if (Number.isFinite(r.ms.p99) && r.ms.p99 > 0) tail.p99 = round1(r.ms.p99);
+      if (Object.keys(tail).length > 0) (regionTails[r.slug] ??= {})[region] = tail;
     }
   }
 
@@ -243,6 +258,10 @@ async function buildChain(spec: Spec, tier?: string): Promise<RpcHubChain | null
       : {}),
     best: { provider: leader.slug, providerName: leader.name, p50Ms: round1(leader.ms.p50) },
     bestP90Ms: Number.isFinite(leader.ms.p90) && leader.ms.p90 > 0 ? round1(leader.ms.p90) : undefined,
+    bestP95Ms:
+      leader.ms.p95 != null && Number.isFinite(leader.ms.p95) && leader.ms.p95 > 0
+        ? round1(leader.ms.p95)
+        : undefined,
     ...(() => {
       // Max archive depth across ALL providers + which providers hit it.
       // Fastest provider is often the pruned one (PublicNode etc), so
@@ -266,6 +285,10 @@ async function buildChain(spec: Spec, tier?: string): Promise<RpcHubChain | null
       name: r.name,
       p50Ms: round1(r.ms.p50),
       p90Ms: Number.isFinite(r.ms.p90) && r.ms.p90 > 0 ? round1(r.ms.p90) : undefined,
+      p95Ms:
+        r.ms.p95 != null && Number.isFinite(r.ms.p95) && r.ms.p95 > 0
+          ? round1(r.ms.p95)
+          : undefined,
       p99Ms: Number.isFinite(r.ms.p99) && r.ms.p99 > 0 ? round1(r.ms.p99) : undefined,
       archiveDepth: r.archiveDepth,
       successPct:
@@ -274,6 +297,7 @@ async function buildChain(spec: Spec, tier?: string): Promise<RpcHubChain | null
           : undefined,
       sampleSize: r.sampleSize != null ? Math.round(r.sampleSize) : undefined,
       regions: regionP50[r.slug] ?? {},
+      ...(regionTails[r.slug] ? { regionTails: regionTails[r.slug] } : {}),
     })),
     series:
       leaderSeries && leaderSeries.length > 1

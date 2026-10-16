@@ -29,11 +29,22 @@ export type RpcHubProvider = {
   name: string;
   p50Ms: number;
   p90Ms?: number;
+  /** Fifth quantile, published only where the spec asks for it. */
+  p95Ms?: number;
   p99Ms?: number;
   successPct?: number;
   sampleSize?: number;
   /** p50 per probe region, keyed by region value. */
   regions: Partial<Record<RpcRegionKey, number>>;
+  /** The tails per probe region, from each region variant's own blob (the
+   *  variant injects `region="<r>"` into the headline queries, so its
+   *  p90/p95/p99 are already region-scoped). Separate from `regions` to keep
+   *  older blobs, which carry p50 numbers there and nothing else, parseable.
+   *  This is what lets the geo view show a tail per edge location instead of
+   *  repeating a 3-region figure under a region heading. */
+  regionTails?: Partial<
+    Record<RpcRegionKey, { p90?: number; p95?: number; p99?: number }>
+  >;
   /** Archive block depths this provider supports (subset of the
    *  harness's `depthBuckets` = {300, 7200, 216000, 1296000, 5000000}).
    *  Absent = not measured (Solana / Substrate chains skip archive)
@@ -72,6 +83,8 @@ export type RpcHubChain = {
   best: RpcRegionBest | null;
   /** p90 of the overall best provider (same row as `best`). Optional so old blobs stay parseable. */
   bestP90Ms?: number;
+  /** p95 of that same row, where the spec declares one. */
+  bestP95Ms?: number;
   /** Max archive block depth supported across ALL providers on this
    *  chain (0 or absent = archive not measured / all providers pruned).
    *  Paired with bestArchiveProviders which names the providers hitting
@@ -238,9 +251,11 @@ export const RPC_REGION_LABELS: Record<RpcRegionKey, string> = {
  * under a region heading they would read as regional figures when they are
  * not:
  *
- *  - `p90Ms` / `p99Ms` / `bestP90Ms`: the blob's tails are computed over
- *    all three regions. There is no per-region histogram to read, so the
- *    tail columns go empty instead of repeating a 3-region number.
+ *  - the tails, unless the region variant supplied its own. A provider's
+ *    headline `p90Ms` is computed over all three regions, so it must not
+ *    appear under a region heading; `regionTails` holds what the variant
+ *    measured in that one region, and those substitute cleanly. A cell with
+ *    no variant tail goes empty rather than borrowing the 3-region figure.
  *  - a chain where no provider answered from this region: dropped, so a
  *    chain never appears with an empty field.
  *  - `series`: it is the all-region leader's trend. Kept only when the
@@ -257,14 +272,19 @@ export function scopeCohortToRegion(
     for (const p of c.providers) {
       const ms = p.regions?.[region];
       if (ms == null) continue;
+      const tail = p.regionTails?.[region];
       providers.push({
         provider: p.provider,
         name: p.name,
         p50Ms: ms,
+        ...(tail?.p90 != null ? { p90Ms: tail.p90 } : {}),
+        ...(tail?.p95 != null ? { p95Ms: tail.p95 } : {}),
+        ...(tail?.p99 != null ? { p99Ms: tail.p99 } : {}),
         ...(p.successPct != null ? { successPct: p.successPct } : {}),
         ...(p.sampleSize != null ? { sampleSize: p.sampleSize } : {}),
         ...(p.archiveDepth ? { archiveDepth: p.archiveDepth } : {}),
         regions: { [region]: ms },
+        ...(tail ? { regionTails: { [region]: tail } } : {}),
       });
     }
     if (providers.length === 0) continue;
@@ -282,7 +302,12 @@ export function scopeCohortToRegion(
       best,
       regions: { [region]: best },
     };
-    delete scoped.bestP90Ms;
+    // The chain's headline tails belong to the 3-region leader; under a
+    // region scope they are the regional leader's own, or nothing.
+    if (leader.p90Ms != null) scoped.bestP90Ms = leader.p90Ms;
+    else delete scoped.bestP90Ms;
+    if (leader.p95Ms != null) scoped.bestP95Ms = leader.p95Ms;
+    else delete scoped.bestP95Ms;
     if (c.best?.provider !== leader.provider) delete scoped.series;
     chains.push(scoped);
   }
