@@ -17,8 +17,8 @@ row_noun: { one: provider, many: providers }
 disclaimer: >
   Published prices, not invoices. Each figure is human-verified against the
   provider's own pricing page or API and carries the date it was read; the
-  harness re-hashes 20 of those artifacts on a loop and flags any that
-  changed. A 30-day month and flat traffic are assumed, the most generous
+  harness re-hashes 23 of those artifacts on a loop to catch an upstream
+  edit. A 30-day month and flat traffic are assumed, the most generous
   reading. NOWNodes prices in EUR. A provider absent from a cell is not
   missing data: it has no plan that can serve that workload, usually a cap
   or a throughput ceiling rather than the price.
@@ -38,18 +38,18 @@ seo_intro: |
   publishes a bill per workload.
   The comparison is only possible because each provider's own method table is
   applied first: a Compute Unit, a Request Unit, a credit and a flat request
-  are different things, and the weighted units per request are published
-  alongside the money so the arithmetic can be redone by hand. Two names worth
-  noting up front. Alchemy and QuickNode, the two largest providers in the
-  market, win no cell at any volume on any workload and sit three to four times
-  above the leaders. And at ten million requests a month the cheapest paid plan
-  in the market is $29.50, which is the figure this page ranks; several free
-  plans cover that workload outright, and bench 283 ranks those on what their
-  allowance buys.
+  are different things, and the weighted units per request are published as a
+  metric so the arithmetic can be redone by hand. Two names worth noting up
+  front. Alchemy and QuickNode, the two largest providers in the market, win
+  no cell at any volume on any workload and run 1.7 to 10.6 times the leader
+  of each cell. And at ten million dapp requests a month the cheapest paid plan
+  is $29.50; dRPC's free plan covers that volume outright, and bench 283 ranks
+  free plans on what their allowance buys.
 
 abstract: |
-  Twenty RPC providers, five workload profiles, three monthly volumes and every
-  plan tier. For each combination the harness applies the provider's own
+  Eighteen RPC providers, five workload profiles, three monthly volumes and every
+  plan tier, plus a calculator that prices any volume from 100,000 to 5 billion
+  requests a month. For each combination the harness applies the provider's own
   billing rules, its method weights, its archive rule, its allowance period,
   its overage bands, its throughput ceiling, and reports the monthly bill on
   the cheapest plan that can actually serve the workload.
@@ -62,12 +62,12 @@ abstract: |
   200 requests per second against the 386 a billion-request month requires.
   In every case the provider is marked not ranked rather than
   priced, because a blank cell and an unavailable product are different
-  claims. The volume panel names each one with its own reason, so an
-  absence reads as an absence rather than as a free plan.
+  claims. The calculator lists each one with its own reason, so an absence
+  reads as an absence rather than as a free plan.
   Pricing is human-verified rather than scraped: for most of this cohort the
   price is prose on a marketing page, and a parser that guesses is worse than
   one that does not exist. Every figure records the artifact it came from
-  and the date a human read it, and 20 of those artifacts carry a baseline
+  and the date a human read it, and 23 of those artifacts carry a baseline
   hash the harness re-checks on a loop, so an upstream edit surfaces as
   drift rather than as a stale figure that still reads as current. The
   remainder are marked for manual re-reading: a page behind a bot wall, or
@@ -75,7 +75,7 @@ abstract: |
   until everyone learned to ignore it.
 
 methodology:
-  - "Cohort. 20 providers billed per request, ranked. A separate dedicated-capacity cohort (per month or per node-hour, not per request) is ranked on its own axis with a break-even volume. Reference rows, PublicNode and the Solana Foundation endpoints, are published but never ranked: they are free, real and usable, and PublicNode publishes no rate limit of any kind, so calling it cheapest would be true and useless."
+  - "Cohort. 18 providers billed per request, ranked per workload. Blockdaemon (every paid plan behind a sales call) and Coinbase CDP (Base only) cannot fill a cell. Flat-rate nodes are priced in the calculator, not the per-workload grid. PublicNode and the Solana Foundation endpoints are published but never ranked: free and usable, and PublicNode publishes no rate limit at all, so calling it cheapest would be true and useless."
   - "Normalisation. Every provider's published method table is applied to the profile's method mix to get weighted units per request, and that figure is published as rpc_cost_units_per_request so the arithmetic is checkable."
   - "Most large providers do not price per method at all. Chainstack charges 1 Request Unit for every method and 2 at archive depth, decided by block age (EVM at 127+ blocks behind tip) rather than by method name. QuickNode weights per chain, Ethereum 20 credits and Solana 30, with x2 for advanced calls and x4 for large ones. GetBlock multiplies a chain factor spanning 10 to 300."
   - "Archive. Handled per provider rather than as a uniform surcharge, because it is not one. Chainstack doubles on block age. BlockPI adds 30% to the whole endpoint. Alchemy, dRPC and QuickNode charge no archive premium at all, and neither does Dwellir, which bills 1 credit per response on every method, archive, debug and trace included; that archive is served on its shared plans is stated in Dwellir's own Ethereum comparison post rather than its price table."
@@ -83,16 +83,16 @@ methodology:
   - "Eligibility before price. A plan is ranked only if it can serve the workload. Daily caps are compared against the daily share, not the monthly total, because Infura's credits do not roll over. Hard stops (Infura, NOWNodes Start and Pro, QuickNode's trial) make a plan unavailable above its cap rather than merely expensive. Published throughput is checked against the sustained rate the volume requires. Missing trace or archive access is unavailability, not cost."
   - "Plan tiers. Provider plan names do not line up, Chainstack calls $49 Growth and Helius calls $499 Business, so plans are banded by monthly price into free, entry (to $50), growth (to $300), business (to $1,000) and enterprise. The default view is the cheapest paid plan. Free plans are not banded here at all: every one ties at $0, so this page would order them by their overage bill, and it is bench 283 that ranks them on what their allowance buys."
   - "One-off offers are not monthly prices. QuickNode's one-month trial, NOWNodes' one-month Start and Tatum's lifetime 100,000 credits each cost $0 and never renew, so they are excluded rather than quoted. All three are banded as paid plans by what they become: $49 Build, EUR 20 Pro, $49 Starter. A plan that recurs at $0 is kept, because that is a price. Validation Cloud's Scale carries no subscription and its first 50M compute units are free."
-  - "Any volume, not only three. The ranked columns price 10M, 100M and 1B requests a month because a metric needs a fixed label. A panel on the page prices anything from 100,000 to 5B, reading a curve the same harness emits through the same model, with a point at every plan boundary and a straight line between them, which is the real shape of a metered bill. The three published volumes are marked on its track so the two can be checked against each other."
-  - "Free tiers moved to bench 283 (rpc-free-tier), ranked by what the allowance buys rather than by price. GetBlock advertises 20 requests per second and 50,000 compute units per day: at its own advertised rate the daily allowance is gone in 125 seconds. Infura's lasts 1.7 hours a day, OnFinality's 2.8 hours, Alchemy's 1.2 days a month. The panel publishes the allowance converted into requests of each profile, alongside the throughput cap that is often the real ceiling."
+  - "Any volume, not only three. The per-workload grid prices 10M, 100M and 1B requests a month because a metric needs a fixed label. The calculator prices anything from 100,000 to 5B, reading a curve the same harness emits through the same model, with a point at every plan boundary and a straight line between them, which is the real shape of a metered bill. The three grid volumes are marked on its track so the two can be checked against each other."
+  - "Free tiers moved to bench 283 (rpc-free-tier), ranked by what the allowance buys rather than by price. GetBlock advertises 20 requests per second and 50,000 compute units per day: at its own advertised rate the daily allowance is gone in 125 seconds. Infura's lasts 1.7 hours a day, OnFinality's 2.8 hours, Alchemy's 1.2 days a month. Bench 283 publishes the allowance converted into requests of each profile, alongside the throughput cap that is often the real ceiling."
   - "Add-ons are priced with their prerequisites. Infura's $200 extra-credits pack cannot be bought on the free tier, so its real entry cost is Developer at $50 plus $200, which loses to Team at $225. Helius advertises dedicated nodes from $2,900 and states that mainnet requires a Business or Professional plan, so the floor priced here is $2,900 plus the $499 Business plan, $3,399 a month."
   - "Packages are pro-rated, not treated as subscriptions. BlockPI sells 500M Request Units for $49 over 60 days and 4,000M for $299 over 90 days, and its own page says 'without monthly subscription'. Both price and allowance are scaled to 30 days ($24.50 and $99.67), and unused units are forfeited at expiry."
   - "Currency and period. A 30-day month throughout. NOWNodes prices in EUR and stays in EUR in the catalogue; the ECB reference rate sits in the catalogue header so the conversion is visible at the point of use rather than baked into a number."
   - "Verification. Every figure was collected and then independently re-verified against the primary source by a second pass, which corrected about thirty values, including two that had been computed and then presented as published. A later adversarial audit corrected a dozen more, most of them in this prose rather than in the data."
   - "Conflicts between a provider's own pages are reported rather than silently resolved. Alchemy's free-tier throughput was settled by a dated docs commit, Helius's archival credit cost by dating the documentation table, and Ankr's live model by reading its production application bundle, because its most machine-readable pricing page describes a model that is not the one being sold."
-  - "Freshness. The catalogue is committed and human-verified, not scraped, because most of this cohort publishes price as prose. 20 artifacts carry a baseline hash recorded when a human last read the numbers under them, and the harness re-fetches and re-hashes those on a loop, so an upstream edit surfaces as drift."
-  - "The rest are marked for manual re-reading and deliberately not polled: a page that churns for reasons unrelated to price would alarm every cycle and teach everyone to ignore the alarm. Age is published either way, so a figure nobody has re-read is visible as such."
-  - "Fifteen of the ranked providers expose a machine-readable pricing artifact, whether JSON or raw markdown, and four of them, GetBlock, NOWNodes, QuickNode and Tatum, expose unauthenticated pricing APIs a harness can poll directly. 20 artifacts across the cohort are re-hashed on a loop."
+  - "Freshness. The catalogue is committed and human-verified, not scraped, because most of this cohort publishes price as prose. 23 artifacts carry a baseline hash recorded when a human last read the numbers under them, and the harness re-fetches and re-hashes those on a loop, so an upstream edit surfaces as drift."
+  - "The rest are marked for manual re-reading and deliberately not polled: a page that churns for reasons unrelated to price would alarm every cycle and teach everyone to ignore the alarm. Every figure keeps the date a human last read it in the catalogue, so a figure nobody has re-read is visible as such."
+  - "Fifteen of the ranked providers expose a machine-readable pricing artifact, whether JSON or raw markdown, and four of them, GetBlock, NOWNodes, QuickNode and Tatum, expose unauthenticated pricing APIs a harness can poll directly. 23 artifacts across the cohort are re-hashed on a loop."
   - "Measured, not just read. Chainstack's rules were tested against its billing API with 291 counted calls: 1 Request Unit for a full request, archive above 2x full, debug and trace at 2 RU even ten blocks behind tip (so the surcharge is method-driven, not recency-driven), and an HTTP batch of 30 billed as 30 rather than 1. The 127-block archive boundary the indexer and trace profiles rest on is confirmed to within five blocks: it is not 64, not 256 and not absent."
   - "Two measurement traps worth publishing. Chainstack's per-node Request Unit column does not reconcile: two nodes came in at minus 66 and plus 59 against prediction, cancelling on the total, so it cannot be used for spend attribution."
   - "And that counter is not live. It stayed flat for twelve minutes while 57 calls were served, because each hourly row covers the hour ending at its label and appears about fifty minutes later. A naive read, burst, re-read measurement concludes Chainstack bills nothing at all."
@@ -117,9 +117,9 @@ findings:
 
 faq:
   - q: "Which RPC provider is cheapest?"
-    a: "It depends on the workload, by multiples rather than percent. Across five workload profiles and three volumes, three providers win a cell outright: Dwellir seven, BlockPI three and Syndica two. Three more cells are ties at $49: Dwellir and Chainstack on the indexer and trace profiles at ten million, Chainstack and Helius on Solana at ten million. Pick the profile that matches your method mix rather than reading a single number."
+    a: "It depends on the workload, by multiples rather than percent. Across five workload profiles and three volumes, three providers win a cell outright: Dwellir seven, BlockPI three and Syndica two. Three more cells are ties at $49: Dwellir and Chainstack on the indexer and trace profiles at ten million, Chainstack and Helius on Solana at ten million. Read the row of the per-workload grid that matches your method mix rather than a single number, or move the calculator to your own volume."
   - q: "Why do Alchemy and QuickNode never win?"
-    a: "Because they are three to four times more expensive than the leaders for the same work. Alchemy bills $10,500 a month for a billion simple reads where Dwellir bills $1,999, and across the fifteen cells the two run between 1.7x and 10.6x the cell leader. Both are priced as premium products and both publish their rates plainly; the bench simply applies them."
+    a: "Because they cost several times what the leaders charge for the same work. Alchemy bills $10,500 a month for a billion simple reads where Dwellir bills $1,999, and across the fifteen cells the two run between 1.7x and 10.6x the cell leader. Both are priced as premium products and both publish their rates plainly; the bench simply applies them."
   - q: "Dwellir or Chainstack, which is cheaper?"
     a: "They tie on recent-state reads and part ways on history. Both bill one flat unit per call, so a simple read costs 1 on either. Chainstack charges 2 Request Units for any read 127 or more blocks behind the tip and for every debug or trace call; Dwellir charges 1 credit for every response, archive and trace included. At ten million indexer or trace requests both land on $49. From a hundred million up Dwellir is cheaper and the gap widens with volume: $299 against $499 at a hundred million, $1,999 against $8,990 at a billion trace requests. Chainstack's rules were measured against its billing API; Dwellir's are its published price list. On Solana the comparison does not arise: Chainstack serves it and Dwellir does not."
   - q: "How can you compare a Compute Unit to a Request Unit?"
@@ -127,11 +127,11 @@ faq:
   - q: "Are these prices from real invoices?"
     a: "No. They are published prices, human-verified against each provider's own pricing page or pricing API, with the date each figure was read. No provider in this cohort was billed to confirm its rate card. Where a provider's real charge is non-deterministic, dRPC routes to third-party operators that can rewrite the price downward and exposes no cost header, the published rate is reported as an upper bound."
   - q: "Why is a provider missing from a cell?"
-    a: "Because it cannot serve that workload. The reason is recorded in the harness log; surfacing it on the page is not done yet. Infura's allowance is daily and hard-stops rather than metering overage. Alchemy's published self-serve throughput ceiling is below what a billion-request indexer workload needs. Tatum and Moralis publish 200 requests per second against the 386 that volume requires. A missing cell is a finding, not a gap in the data."
+    a: "Because it cannot serve that workload. The calculator lists every provider that quotes nothing at the chosen volume with its reason. Infura's allowance is daily and hard-stops rather than metering overage. Alchemy's published self-serve throughput ceiling is below what a billion-request indexer workload needs. Tatum and Moralis publish 200 requests per second against the 386 that volume requires. A missing cell is a finding, not a gap in the data."
   - q: "What about the free tiers?"
     a: "They have their own bench, 283 rpc-free-tier, ranked by what the allowance actually buys rather than by price, since every free plan costs the same nothing. Converted into simple reads per month they differ by 160x, from OnFinality's 12.0 million to GetBlock's 75,000. The allowance ranking is bench 283, rpc-free-tier. Several are limited by throughput rather than volume: GetBlock's daily allowance drains in 125 seconds at its own advertised 20 requests per second."
   - q: "How current are these numbers?"
-    a: "Every figure carries the date a human last verified it against the source. The harness re-fetches 20 artifacts that carry a baseline hash and flags any whose body has changed since a human last read it. Artifacts that churn for reasons unrelated to price are re-read by hand instead, and every figure publishes its age either way. Freshness varies within a provider: Chainstack's pricing markdown has not moved since April 2026 while its pricing JSON regenerates every fifteen minutes."
+    a: "Every figure carries the date a human last verified it against the source, in the catalogue. The harness re-fetches 23 artifacts that carry a baseline hash and flags, in its own metrics, any whose body has changed since a human last read it. Artifacts that churn for reasons unrelated to price are re-read by hand instead. Freshness varies within a provider: Chainstack's pricing markdown has not moved since April 2026 while its pricing JSON regenerates every fifteen minutes."
   - q: "Can I reproduce these numbers?"
     a: "Yes. The pricing catalogue, the cost model and the workload profiles are all in the harness repository linked below, and every figure carries its source URL and verification date. The weighted units per request are published as a metric so the arithmetic can be redone by hand."
 
@@ -472,19 +472,6 @@ providers:
       series: rpc_cost_monthly_usd{provider="dwellir",kind="all",bucket="all",venue="all"}
       sample_size: count_over_time(rpc_cost_monthly_usd{provider="dwellir",kind="all",bucket="all",venue="all"}[7d])
 
-  - slug: blockdaemon
-    name: Blockdaemon
-    tier: usage
-    tag: Compute Unit, weighted per method
-    queries:
-      p50: min(last_over_time(rpc_cost_monthly_usd{provider="blockdaemon",kind="all",bucket="all",venue="all"}[20m]))
-      p90: min(last_over_time(rpc_cost_monthly_usd{provider="blockdaemon",kind="all",bucket="all",venue="all"}[20m]))
-      p99: min(last_over_time(rpc_cost_monthly_usd{provider="blockdaemon",kind="all",bucket="all",venue="all"}[20m]))
-      ranked: rpc_cost_eligible{provider="blockdaemon",kind="all",bucket="all"}
-      mean: min(last_over_time(rpc_cost_monthly_usd{provider="blockdaemon",kind="all",bucket="all",venue="all"}[20m]))
-      series: rpc_cost_monthly_usd{provider="blockdaemon",kind="all",bucket="all",venue="all"}
-      sample_size: count_over_time(rpc_cost_monthly_usd{provider="blockdaemon",kind="all",bucket="all",venue="all"}[7d])
-
   - slug: thirdweb
     name: thirdweb
     tier: usage
@@ -497,19 +484,6 @@ providers:
       mean: min(last_over_time(rpc_cost_monthly_usd{provider="thirdweb",kind="all",bucket="all",venue="all"}[20m]))
       series: rpc_cost_monthly_usd{provider="thirdweb",kind="all",bucket="all",venue="all"}
       sample_size: count_over_time(rpc_cost_monthly_usd{provider="thirdweb",kind="all",bucket="all",venue="all"}[7d])
-
-  - slug: coinbase-cdp
-    name: Coinbase Developer Platform, CDP Node
-    tier: usage
-    tag: Billing Unit, weighted per method
-    queries:
-      p50: min(last_over_time(rpc_cost_monthly_usd{provider="coinbase-cdp",kind="all",bucket="all",venue="all"}[20m]))
-      p90: min(last_over_time(rpc_cost_monthly_usd{provider="coinbase-cdp",kind="all",bucket="all",venue="all"}[20m]))
-      p99: min(last_over_time(rpc_cost_monthly_usd{provider="coinbase-cdp",kind="all",bucket="all",venue="all"}[20m]))
-      ranked: rpc_cost_eligible{provider="coinbase-cdp",kind="all",bucket="all"}
-      mean: min(last_over_time(rpc_cost_monthly_usd{provider="coinbase-cdp",kind="all",bucket="all",venue="all"}[20m]))
-      series: rpc_cost_monthly_usd{provider="coinbase-cdp",kind="all",bucket="all",venue="all"}
-      sample_size: count_over_time(rpc_cost_monthly_usd{provider="coinbase-cdp",kind="all",bucket="all",venue="all"}[7d])
 
   - slug: onfinality
     name: OnFinality

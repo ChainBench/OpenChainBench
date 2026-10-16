@@ -124,10 +124,18 @@ export function mergeWithPrevious(
       }
       for (const [slug, v] of Object.entries(prevPanel.values)) {
         if (panel.values[slug] != null) continue;
+        // The same two guards as the result carry above. Without them a
+        // panel value outlived its provider: bench 282 kept serving
+        // Instanodes' per-million price hours after it left the spec, and a
+        // Solana break-even for two Ethereum-only nodes 265 h after the
+        // harness stopped emitting it (audit 2026-10-16).
+        if (declaredSlugs && !declaredSlugs.has(slug)) continue;
         const pm = prevPanel.valuesMeta?.[slug];
+        const observedAt = pm?.observedAt ?? prev?.builtAt ?? now;
+        if (now - observedAt > carryMs) continue;
         panel.values[slug] = v;
         panel.valuesMeta[slug] = {
-          observedAt: pm?.observedAt ?? prev?.builtAt ?? now,
+          observedAt,
           staleSince: pm?.staleSince ?? now,
         };
         if (prevPanel.seriesByProvider?.[slug] && panel.seriesByProvider) {
