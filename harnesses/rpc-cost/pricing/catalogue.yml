@@ -139,15 +139,15 @@ providers:
     source:
       plans:
         url: https://www.alchemy.com/docs/reference/pricing-plans.md
-        body_sha256: 141879aab5b692382d3e9d8bbedf5ed6ccc6fbbdffd5ac08f7878f82cc5ddc1c
-        verified_at: "2026-09-30"
+        body_sha256: ff1c58b4a8d99bffcc4830babb6e0e6581172867fb8c0fcc851b4d7a4ba0e2f9
+        verified_at: "2026-10-16"
         kind: markdown
         poll: body_hash
         extraction: "table under '## Feature comparison'; rows 'Compute Unit rate', 'Base Compute Units', 'Base Throughput (CUs/second)'; read col 2 (PAYG)"
       weights:
         url: https://www.alchemy.com/docs/reference/compute-unit-costs.md
-        body_sha256: 6fcfa2398263bdcdc6c889fc096de3da4c4997a97ab8f9c6c3a0210a056e899a
-        verified_at: "2026-09-30"
+        body_sha256: 9dff88de817f19b8369c7ec1115b70a6751369cf3eba1bd697797bedc2232ad4
+        verified_at: "2026-10-16"
         kind: markdown
         poll: body_hash
         extraction: "slice between {/* cu:auto product=\"evm\" */} and {/* cu:auto end */}; header '| Method | CU | Throughput CU |'; 41 product blocks"
@@ -627,8 +627,8 @@ providers:
         extraction: "table header '| Plan | Price (monthly) | Price (annual) | Included RU/mo | Extra usage per 1M RU | RPS limit | Projects |'"
       weights:
         url: https://docs.chainstack.com/docs/request-units.md
-        body_sha256: 6a0d96b791a8452a34f95eb03a13cab823f93043e6fef432ff15b5b1b6ebf082
-        verified_at: "2026-09-30"
+        body_sha256: 605a2e60937b8ff49dc93bf034ac2618781777616fa40a91b7ffeb7c24279ad9
+        verified_at: "2026-10-16"
         kind: markdown
         poll: body_hash
         extraction: "'## Cost per request' table (Full 1 RU / Archive 2 RUs) + the 'Always 2 RUs' section + the 20-method block-age list"
@@ -900,8 +900,8 @@ providers:
     source:
       plans:
         url: https://www.ankr.com/docs/rpc-service/service-plans/index.md
-        body_sha256: 3c9561dc3f16ec3dcfea1ccc4ec3415343943665a7ae85b93eacb4c6626911d0
-        verified_at: "2026-09-30"
+        body_sha256: fc57f2523b531021241060034a68983cbed20dd9cff01348179eafae673121a8
+        verified_at: "2026-10-16"
         kind: markdown
         poll: etag
         extraction: "Freemium 200M credits; PAYG minimum 10USD; Deal 500USD-3000USD at 20% extra"
@@ -1054,18 +1054,18 @@ providers:
     source:
       plans:
         url: https://docs.blockpi.io/pricing/pricing-and-rate-limit.md
-        body_sha256: 54fa52a755cfff2b8d5b7df89ea9c9af1e6f3427b36c977112d9e8e7a9289d89
-        verified_at: "2026-09-30"
+        body_sha256: 3a6297a568468adc237396e3f4993392b173f64cf25bd235a67322e47bfd769f
+        verified_at: "2026-10-16"
         kind: markdown
         poll: body_hash
         extraction: "package table | Package | Price | RUs | Expiration | Rate Limit |"
       weights:
         url: https://docs.blockpi.io/pricing/request-unit-ru/evm-ru-table.md
-        body_sha256: 652aec8507a9a16b43343b54303c887a0e0d77524d9bb3649908698105dfd017
-        verified_at: "2026-09-30"
+        body_sha256: 1edf94e13312890043216667cb7a1e941be9b5eab7d3800e4de3f9ebfd348b1c
+        verified_at: "2026-10-16"
         kind: markdown
         poll: body_hash
-        extraction: "two-column-pair markdown table; Solana at solana-eclipse-ru-table.md (Default 65)"
+        extraction: "HTML <table> of method / RU pairs (was a markdown table until 2026-10); Solana at solana-eclipse-ru-table.md (Default 65)"
     caveats:
       - "These are one-off capacity packages with a day-count validity, not monthly plans. BlockPI must not appear in a $/month table as $49/mo and $299/mo. The honest comparator is $/1M RU: Elementary $0.098, Premium $0.07475, PAYG $0.20."
       - "eth_getLogs adds +100% RU for every additional 200 KB beyond 200 KB — a ~1 MB log response is ~250 RU, not 50. Other methods add +100% per additional 1 MB beyond 1 MB."
@@ -1442,8 +1442,8 @@ providers:
     source:
       plans:
         url: https://account-api.nownodes.io/plans
-        body_sha256: 39a76a79d0bd9aae4f05ff30640970506afe11424585286256f0efd75740370d
-        verified_at: "2026-09-30"
+        body_sha256: 7370193b220648fe4cff24a39ee0f24d9f5667104d98f1a6c778e22bd994b53a
+        verified_at: "2026-10-16"
         kind: json
         poll: etag
         extraction: "$.data[*] -> .name, .api_calls_limit, .over_limit_price, .billing_intervals[*].{interval, price}"
@@ -1455,7 +1455,7 @@ providers:
     caveats:
       - "ALL PRICES ARE EUR (monthly_usd/annual_monthly_usd/overage fields carry EUR values; convert with fx.eur_usd at the point of use). The /plans JSON has NO currency field — every price is a bare integer. The EUR assertion rests on the rendered page (4 EUR signs, 0 dollar signs in 193,785 bytes) and a hardcoded EUR in the pricing JS."
       - "In the plans API, `interval` is in MONTHS and `price` is the TOTAL for the interval, not per month: pro 12-month = 216 means EUR 216/yr = EUR 18/mo. A naive read is 12x wrong."
-      - "over_limit_price is null for pro and 0 for start/enterprise. 0 here means 'no overage sold', not 'free overage'. Do not divide by it."
+      - "over_limit_price is null for pro, 0 for start, 0.5 for enterprise (EUR per 100k = EUR 5/1M, re-read 2026-10-16). 0 means 'no overage sold', not 'free overage'. Do not divide by it."
       - "The only explicit statement that every request counts as one regardless of method is on NOWNodes' marketing blog, not in the docs or on the pricing page. The conclusion is sound by structure (api_calls_limit is the whole model); the citation is weak."
       - "Pro Plus overage (EUR 50/1M) is 10x the Enterprise plan rate (EUR 5/1M) — a severe in-plan/marginal inversion."
       - "Dedicated nodes: 'View pricing' links into an authenticated dashboard. SALES-GATED."
@@ -1500,7 +1500,7 @@ providers:
         throughput: {unit: rps, value: 200}
         archive: true
         trace: true
-        confidence: verified
+        confidence: uncertain   # overage rate unpublished since 2026-10-12, see caveats
         note: 1-year total $349 (= $29.08/mo, 40.65% off); 2-year total $599 (= $24.96/mo).
       - id: t7m
         name: Starter 7M
@@ -1514,7 +1514,7 @@ providers:
         throughput: {unit: rps, value: 200}
         archive: true
         trace: true
-        confidence: verified
+        confidence: uncertain   # overage rate unpublished since 2026-10-12, see caveats
         note: 1-year total $588; 2-year total $936 (= $39.00/mo).
       - id: t10m
         name: Starter 10M
@@ -1528,7 +1528,7 @@ providers:
         throughput: {unit: rps, value: 200}
         archive: true
         trace: true
-        confidence: verified
+        confidence: uncertain   # overage rate unpublished since 2026-10-12, see caveats
         note: 1-year total $708; 2-year total $1,176 (= $49.00/mo).
       - id: t15m
         name: Pro 15M
@@ -1542,7 +1542,7 @@ providers:
         throughput: {unit: rps, value: 200}
         archive: true
         trace: true
-        confidence: verified
+        confidence: uncertain   # overage rate unpublished since 2026-10-12, see caveats
         note: 1-year total $948; 2-year total $1,656 (= $69.00/mo).
       - id: t20m
         name: Pro 20M
@@ -1556,7 +1556,7 @@ providers:
         throughput: {unit: rps, value: 200}
         archive: true
         trace: true
-        confidence: verified
+        confidence: uncertain   # overage rate unpublished since 2026-10-12, see caveats
         note: 1-year total $1,188; 2-year total $2,136 (= $89.00/mo).
       - id: t40m
         name: Pro 40M
@@ -1570,7 +1570,7 @@ providers:
         throughput: {unit: rps, value: 200}
         archive: true
         trace: true
-        confidence: verified
+        confidence: uncertain   # overage rate unpublished since 2026-10-12, see caveats
         note: 1-year total $2,268; 2-year total $4,056 (= $169.00/mo).
       - id: t80m
         name: Pro 80M
@@ -1584,7 +1584,7 @@ providers:
         throughput: {unit: rps, value: 200}
         archive: true
         trace: true
-        confidence: verified
+        confidence: uncertain   # overage rate unpublished since 2026-10-12, see caveats
         note: 1-year total $4,188; 2-year total $7,176 (= $299.00/mo).
       - id: t150m
         name: Scale 150M
@@ -1598,7 +1598,7 @@ providers:
         throughput: {unit: rps, value: 200}
         archive: true
         trace: true
-        confidence: verified
+        confidence: uncertain   # overage rate unpublished since 2026-10-12, see caveats
         note: 1-year total $8,388; 2-year total $14,376 (= $599.00/mo).
       - id: t200m
         name: Scale 200M
@@ -1612,7 +1612,7 @@ providers:
         throughput: {unit: rps, value: 200}
         archive: true
         trace: true
-        confidence: verified
+        confidence: uncertain   # overage rate unpublished since 2026-10-12, see caveats
         note: 1-year total $11,100; 2-year total $18,696 (= $779.00/mo).
       - id: t250m
         name: Scale 250M
@@ -1626,7 +1626,7 @@ providers:
         throughput: {unit: rps, value: 200}
         archive: true
         trace: true
-        confidence: verified
+        confidence: uncertain   # overage rate unpublished since 2026-10-12, see caveats
         note: 1-year total $13,188; 2-year total $22,776 (= $949.00/mo).
       - id: t300m
         name: Scale 300M
@@ -1640,7 +1640,7 @@ providers:
         throughput: {unit: rps, value: 200}
         archive: true
         trace: true
-        confidence: verified
+        confidence: uncertain   # overage rate unpublished since 2026-10-12, see caveats
         note: 1-year total $15,588; 2-year total $26,856 (= $1,119.00/mo).
       - id: t350m
         name: Scale 350M
@@ -1654,7 +1654,7 @@ providers:
         throughput: {unit: rps, value: 200}
         archive: true
         trace: true
-        confidence: verified
+        confidence: uncertain   # overage rate unpublished since 2026-10-12, see caveats
         note: 1-year total $17,988; 2-year total $29,976 (= $1,249.00/mo).
       - id: t400m
         name: Scale 400M
@@ -1668,7 +1668,7 @@ providers:
         throughput: {unit: rps, value: 200}
         archive: true
         trace: true
-        confidence: verified
+        confidence: uncertain   # overage rate unpublished since 2026-10-12, see caveats
         note: >-
           1-year total $20,388 (= $1,699.00/mo); 2-year total $33,576 => $1,399.00/mo effective
           (50.02% off), Tatum's cheapest published rate.
@@ -1725,8 +1725,8 @@ providers:
     source:
       plans:
         url: https://assets.tatum.io/pricing-widget/tiers.json
-        body_sha256: 27506ba36a630c8ae8bdeace73e4e0a2e1aa9a8ea401310e224c6df40ce4a622
-        verified_at: "2026-09-30"
+        body_sha256: d927ed20093687111956eca7b28b5cf5a60a198da38f3cf006fd04c534ff10a0
+        verified_at: "2026-10-16"
         kind: json
         poll: etag
         extraction: "$.tiers[*].{name, metadata.credits, metadata.paygoTier, id}; $.prices[<tier.id>][*].{lookup_key, unit_amount (CENTS), recurring.interval}. Use _monthly lookup keys only."
@@ -1739,7 +1739,7 @@ providers:
       - "CREDITS-PER-CALL IS UNRESOLVED AND LEADERBOARD-MOVING. Three live primaries disagree: the docs say 2 credits per standard RPC method; tiers.json glosses all 14 tiers at exactly 0.9 calls per credit (1.111 credits/call); the GitHub pricing.md says a 4,000,000-credit plan gives '4 Million API calls' (1 credit/call), corroborated by its own $39 threshold (4M x $0.00000975 = $39.00). Tatum's cheapest standard-call rate is $3.50-$6.99 per 1M — a 2x band. This catalogue uses 2 credits/call (the docs' explicit statement); any ranking must state which reading it used."
       - "'Starter / Pro / Scale' are NOT plans — they are the metadata.paygoTier band on 13 credit tiers inside a single PAYGO Stripe product."
       - "unit_amount is in CENTS; a naive read publishes 4900 dollars. The _yearly and _2year lookup keys both carry recurring.interval 'year' and are period TOTALS, not monthly."
-      - "The PAYGO overage string says '$9 per credit equating to $9 per million credits'. The companion field ($0.000009 per call) resolves it: $9.00 per 1M credits. 'per credit' is a typo."
+      - "OVERAGE RATE NO LONGER PUBLISHED. Until 2026-10-12 the PAYGO metadata said '$9 per credit equating to $9 per million credits', resolved by its companion field ($0.000009 per call) to $9.00 per 1M credits. Tatum removed both strings on 2026-10-12 (and 'Archive, Debug, Trade Methods' from rpcFeatures); the pricing widget now says only 'pay-as-you-go billing for overages', with no rate. The $9 is kept as the last published figure and every paid plan is marked uncertain until a rate is published again."
       - "Unused credits do not roll over. The free tier's 100k credits are LIFETIME, not monthly."
       - "docs.tatum.io/llms-full.txt 404s with a 383 KB HTML body; docs.tatum.io/llms.txt returns 200 with a 503 KB SPA shell. Assert Content-Type and a content sentinel, not size."
       - "Per-method credit costs below class granularity, eth_subscribe/WebSocket metering and batch treatment: NOT PUBLISHED."
@@ -1856,8 +1856,8 @@ providers:
         extraction: "^### (?P<plan>\\w+) - \\$(?P<usd>[\\d,]+)/month$ ; detail under '## Detailed Plan Comparison'"
       weights:
         url: https://www.helius.dev/docs/billing/credits.md
-        body_sha256: cfc41720a5a403880dc034c61fb059645d71194602b3e0479e15c65b18908327
-        verified_at: "2026-09-30"
+        body_sha256: f52eb781ce5ce43ef195545f84b97d7b1d44a27eff7dacf79940bd52b3b9c757
+        verified_at: "2026-10-16"
         kind: markdown
         poll: body_hash
         extraction: "MDX <table> blocks under '## Standard Credits' (Service | Credits | Notes); class-level, not per-method"
