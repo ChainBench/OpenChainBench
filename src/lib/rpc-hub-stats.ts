@@ -104,7 +104,13 @@ export const NON_CHAIN_RPC_SLUGS: ReadonlySet<string> = new Set([
 //     the pill would stay hidden for a full TTL behind a blob that can never
 //     grow it. The worker imports this constant and writes the new shape
 //     after its next rebuild.
-export const RPC_HUB_KEY = "rpc-hub-v5";
+// v6: `p95Ms` on the providers, `bestP95Ms` on the chains and `regionTails`
+//     carrying each region variant's own p90/p95/p99. Same reasoning once
+//     more: a v5 blob has none of those fields, so the p95 column and the
+//     geo view's per-region tails would stay empty behind a blob that
+//     cannot grow them, for a full TTL and then for as long as the worker
+//     kept rewriting v5.
+export const RPC_HUB_KEY = "rpc-hub-v6";
 
 /** Cap a series at `max` points so 10 chains of sparklines cannot bloat
  *  the cohort blob (Upstash + unstable_cache 2 MB ceilings). */
@@ -466,7 +472,9 @@ const fetchRpcHubCached = unstable_cache(
   // v9: the snapshot carries the cold-start cohort, so a v8 entry cached
   // before this change would hide the third pill for its whole TTL.
   // v10: the snapshot carries the WebSocket cohort.
-  ["rpc-hub-cohort-v10", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v11: the snapshot carries p95 and the per-region tails; a v10 entry would
+  // serve a shape without them for its whole TTL.
+  ["rpc-hub-cohort-v11", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["rpc-cohort"] },
 );
 
