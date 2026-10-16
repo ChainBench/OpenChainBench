@@ -68,6 +68,11 @@ describe("the header and the cell are gated together", () => {
   });
 
   it("spans the empty-search row over the columns actually drawn", () => {
-    expect(src).toContain("colSpan={hasArchive ? 10 : 9}");
+    // Three columns are now conditional (archive, the p90 tail, and the
+    // region set the geo view empties), so the span is counted, never typed.
+    expect(src).toContain("colSpan={colCount}");
+    expect(src).toContain(
+      "5 + regionCols.length + (hasP90 ? 1 : 0) + (hasArchive ? 1 : 0)",
+    );
   });
 });

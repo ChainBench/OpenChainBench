@@ -7,7 +7,12 @@ import { useRouter } from "next/navigation";
 import { ChevronRight } from "lucide-react";
 import { ProviderLogo } from "@/components/provider-logo";
 import { Sparkline } from "@/components/sparkline";
-import type { RpcHubChain, RpcRegionKey } from "@/lib/rpc-hub-stats";
+import {
+  RPC_REGION_KEYS,
+  RPC_REGION_LABELS,
+  type RpcHubChain,
+  type RpcRegionKey,
+} from "@/lib/rpc-hub-shape";
 
 /**
  * Sortable + searchable chain matrix for /rpc. One row per `-rpc`
@@ -29,11 +34,8 @@ type SortKey =
   | "sgp"
   | "providerCount";
 
-const REGION_COLS: { key: RpcRegionKey; label: string }[] = [
-  { key: "us-east", label: "US-East" },
-  { key: "eu-west", label: "EU-West" },
-  { key: "sgp", label: "Singapore" },
-];
+const ALL_REGION_COLS: { key: RpcRegionKey; label: string }[] =
+  RPC_REGION_KEYS.map((key) => ({ key, label: RPC_REGION_LABELS[key] }));
 
 function sortValue(r: RpcHubChain, k: SortKey): number | string | null {
   if (k === "name") return r.name.toLowerCase();
@@ -54,6 +56,10 @@ export function RpcChainsLeaderboard({
   rows,
   linkableSlugs,
   benchQuery = "",
+  regions,
+  bestLabel = "Best overall (3-region avg)",
+  bestTip = "Lowest p50 averaged across the 3 probe regions. A provider can win overall without winning any single region: consistent everywhere beats fast in one region, slow elsewhere.",
+  scopeNote = "3 probe regions",
 }: {
   rows: RpcHubChain[];
   /** Bench slugs whose page is indexable (worker sitemap). When given it
@@ -63,12 +69,34 @@ export function RpcChainsLeaderboard({
   /** Suffix appended to every bench link ("#tier=keyed" on the
    *  API-key view, so the row opens the cohort it ranks). */
   benchQuery?: string;
+  /** Which per-region winner columns to draw. The geo view passes an
+   *  empty list: its rows already hold one region's numbers, so the
+   *  column would repeat the Best column. Default is all three. */
+  regions?: RpcRegionKey[];
+  /** Heading and tooltip of the leading latency column, which stops
+   *  being a 3-region average once the geo view scopes the rows. */
+  bestLabel?: string;
+  bestTip?: string;
+  /** Tail of the caption above the table, which claimed three regions
+   *  whatever the rows held. */
+  scopeNote?: string;
 }) {
   const [showAll, setShowAll] = useState(false);
   const linkableSet = useMemo(
     () => (linkableSlugs ? new Set(linkableSlugs) : null),
     [linkableSlugs],
   );
+  const regionCols = useMemo(
+    () =>
+      regions
+        ? regions.map((key) => ({ key, label: RPC_REGION_LABELS[key] }))
+        : ALL_REGION_COLS,
+    [regions],
+  );
+  /** The blob's p90 is computed over all three regions, so the geo view
+   *  clears it rather than repeat a 3-region tail under a region heading.
+   *  Same rule as archive: an empty column makes a claim of its own. */
+  const hasP90 = useMemo(() => rows.some((r) => r.bestP90Ms != null), [rows]);
   /** The archive probe only runs on the public cohort: the keyed harness has
    *  no depth probe at all, so on the three API-key cohorts every cell was a
    *  dash and the column read as "no provider serves archive" instead of "not
@@ -107,6 +135,10 @@ export function RpcChainsLeaderboard({
     });
   }, [rows, sortKey, sortDir, q]);
 
+  // #, chain, best, providers, trend, plus whatever is drawn.
+  const colCount =
+    5 + regionCols.length + (hasP90 ? 1 : 0) + (hasArchive ? 1 : 0);
+
   const setSort = (k: SortKey) => {
     if (k === sortKey) setSortDir((d) => (d === "desc" ? "asc" : "desc"));
     else {
@@ -123,8 +155,7 @@ export function RpcChainsLeaderboard({
           className="text-[11px] text-ink-faint"
           style={{ fontFamily: "var(--font-mono, monospace)" }}
         >
-          {filtered.length} of {rows.length} chains · 24h p50, 3 probe
-          regions
+          {filtered.length} of {rows.length} chains · 24h p50, {scopeNote}
         </p>
         <input
           type="search" aria-label="Search chain or provider..."
@@ -152,19 +183,19 @@ export function RpcChainsLeaderboard({
                 dir={sortDir}
                 onClick={() => setSort("bestP50")}
               >
-                <span title="Lowest p50 averaged across the 3 probe regions. A provider can win overall without winning any single region: consistent everywhere beats fast in one region, slow elsewhere.">
-                  Best overall (3-region avg)
-                </span>
+                <span title={bestTip}>{bestLabel}</span>
               </ThSort>
-              <ThSort
-                active={sortKey === "bestP90"}
-                dir={sortDir}
-                onClick={() => setSort("bestP90")}
-              >
-                <span title="p90 latency of the same overall-best provider, the slow-tail number users actually feel. Empty when the provider's histogram doesn't have enough samples yet.">
-                  Best p90
-                </span>
-              </ThSort>
+              {hasP90 && (
+                <ThSort
+                  active={sortKey === "bestP90"}
+                  dir={sortDir}
+                  onClick={() => setSort("bestP90")}
+                >
+                  <span title="p90 latency of the same overall-best provider, the slow-tail number users actually feel. Empty when the provider's histogram doesn't have enough samples yet.">
+                    Best p90
+                  </span>
+                </ThSort>
+              )}
               {hasArchive && (
                 <ThSort
                   active={sortKey === "archive"}
@@ -176,7 +207,7 @@ export function RpcChainsLeaderboard({
                   </span>
                 </ThSort>
               )}
-              {REGION_COLS.map((c) => (
+              {regionCols.map((c) => (
                 <ThSort
                   key={c.key}
                   active={sortKey === c.key}
@@ -272,15 +303,17 @@ export function RpcChainsLeaderboard({
                     <span className="text-ink-faint">...</span>
                   )}
                 </Td>
-                <Td mono>
-                  {r.bestP90Ms != null ? (
-                    <span className="tabular-nums text-ink-soft">
-                      {fmtMs(r.bestP90Ms)}
-                    </span>
-                  ) : (
-                    <span className="text-ink-faint">-</span>
-                  )}
-                </Td>
+                {hasP90 && (
+                  <Td mono>
+                    {r.bestP90Ms != null ? (
+                      <span className="tabular-nums text-ink-soft">
+                        {fmtMs(r.bestP90Ms)}
+                      </span>
+                    ) : (
+                      <span className="text-ink-faint">-</span>
+                    )}
+                  </Td>
+                )}
                 {hasArchive && (
                   <Td
                     mono
@@ -311,7 +344,7 @@ export function RpcChainsLeaderboard({
                     )}
                   </Td>
                 )}
-                {REGION_COLS.map((c) => {
+                {regionCols.map((c) => {
                   const b = r.regions[c.key];
                   return (
                     <Td
@@ -369,7 +402,7 @@ export function RpcChainsLeaderboard({
             {filtered.length === 0 && (
               <tr>
                 <td
-                  colSpan={hasArchive ? 10 : 9}
+                  colSpan={colCount}
                   className="px-3 py-8 text-center text-[12px] text-ink-faint"
                 >
                   No chain matches &ldquo;{q}&rdquo;.
