@@ -117,6 +117,17 @@ var (
 		Help: "Exact execution latency (broadcast to funds received) in ms, last value per corridor",
 	}, []string{"bridge", "from_chain", "to_chain", "from_token", "to_token", "amount_usd", "region", "chain"})
 
+	// Persistent: unix time of the last completed execution per bridge and
+	// region, the site's freshness source (prometheus.freshness_timestamp_metric
+	// in bridge-execution-latency.yml and bridge-realized-cost.yml). Backed by
+	// last_execution.go so a restart does not blank it: the execution cycle
+	// runs once a day, and without the persisted copy both benches read "no
+	// run recorded" and go noindex until the next one.
+	bridgeLastExecutionTs = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "bridge_last_execution_timestamp_seconds",
+		Help: "Unix time of the last execution that reached a terminal state (settled, reverted, refunded or stuck), per bridge and region",
+	}, []string{"bridge", "region"})
+
 	// Error counter
 	bridgeErrors = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "bridge_errors_total",
@@ -139,6 +150,16 @@ var (
 		Name: "bridge_cost_percent",
 		Help: "Total cost as percentage of amount",
 	}, []string{"bridge", "from_chain", "to_chain", "from_token", "to_token", "amount_usd", "region", "chain"})
+
+	// Does the source transaction tell the source chain where the money is
+	// going? 1 when our destination address is in the payload we broadcast, 0
+	// when it is not. A route we cannot read emits nothing rather than a 0,
+	// because "not disclosed" and "not measured" must never be the same
+	// series. See disclosure.go for what a 0 does and does not prove.
+	bridgeDestinationDisclosed = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "bridge_destination_disclosed",
+		Help: "1 if the destination address appears in the source transaction payload, 0 if not. Absent when unmeasurable.",
+	}, []string{"bridge", "from_chain", "to_chain", "region"})
 
 	// Slippage in USD (output - input)
 	bridgeSlippageUSD = promauto.NewGaugeVec(prometheus.GaugeOpts{

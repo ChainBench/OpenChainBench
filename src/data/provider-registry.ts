@@ -10,6 +10,44 @@
  * factual, no marketing adjectives. Twitter handle without the URL.
  */
 
+/**
+ * Provider registry. Optional enrichment for each provider slug that
+ * appears in one or more benchmark specs.
+ *
+ * The registry is purely additive. Providers without an entry still
+ * render at /providers/<slug>, they just lack the description, URL,
+ * and Twitter handle. Add a new entry when onboarding a provider.
+ *
+ * Keep descriptions sober and technical. One or two short sentences,
+ * factual, no marketing adjectives. Twitter handle without the URL.
+ */
+
+/**
+ * A statement the provider makes about itself that no harness can measure:
+ * swap insurance, confidentiality, whether users are shielded from
+ * questionable liquidity. Aurora asked for exactly these, and they are real
+ * properties, but they are not measurements.
+ *
+ * Three fields a measurement does not need, all required: where we read it,
+ * when we last looked, and the provider's own words for it. The product page
+ * renders all three under a heading that says the provider is speaking, and
+ * flags a claim nobody has re-checked in six months. See lib/provider-claims.ts.
+ *
+ * A claim never enters a benchmark, never ranks anything, and never moves a
+ * leader. If a property can be probed, probe it and publish the measurement
+ * instead; this is only for the ones that cannot.
+ */
+export type ProviderClaim = {
+  /** What the claim is about. "Swap insurance", "Confidentiality". */
+  label: string;
+  /** The provider's position, in plain words, no superlatives. */
+  value: string;
+  /** https URL where this was read. An unsourced claim is a rumour. */
+  source: string;
+  /** YYYY-MM-DD the source was last checked by a human. */
+  verifiedAt: string;
+};
+
 export type ProviderRegistryEntry = {
   /**
    * Optional since 2026-10-09, for the opposite reason to `description`
@@ -56,6 +94,11 @@ export type ProviderRegistryEntry = {
    * Sub-products keep their own bench rankings — this is editorial
    * cross-linking, not data merging. */
   parent?: string;
+
+  /** Provider statements we cannot measure, each with a source and a date.
+   *  Rendered in their own section, never mixed with measured columns.
+   *  See lib/provider-claims.ts for the rules and the staleness window. */
+  claims?: ProviderClaim[];
 };
 
 export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {

@@ -3,8 +3,8 @@
 slug: bridge-execution-latency
 number: "261"
 title: "Fastest on-chain bridge execution: real settlement latency, Mobula vs Relay vs LI.FI vs Near Intents"
-seo_title: "Fastest bridge execution 2026: real on-chain settlement latency and success rate"
-seo_description: "Live on-chain bridge execution, not quotes: real millisecond settlement latency, success rate and realized fees for Mobula, Relay, LI.FI and Near Intents on a self-conserving USDC triangle across Solana, Base and Arbitrum."
+seo_title: "Fastest bridge 2026: real on-chain settlement latency"
+seo_description: "Real bridge executions, not quotes: settlement latency, success rate and realized fees for Mobula, Relay, LI.FI and Near Intents."
 subtitle: Real on-chain settlement latency (deposit included to credit observed, ms), success rate and realized fees for executed bridge transactions on a self-conserving USDC triangle (Solana, Base, Arbitrum), at $3 and $30, measured from EU-West.
 category: Bridges
 status: live
