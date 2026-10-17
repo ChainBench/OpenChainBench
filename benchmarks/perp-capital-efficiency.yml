@@ -20,15 +20,15 @@ seo_intro: |
   Every perp DEX comparison ranks by volume, fees or funding rates. Few ask the
   capital question: how many markets can a venue sustain per dollar it locks up?
   The answer reveals the structural gap between synthetic oracle venues and CLOB
-  order book venues. A synthetic venue like Gains needs one shared collateral
-  pool to back unlimited pairs. A CLOB like Hyperliquid needs market-maker inventory
+  order book venues. A synthetic venue needs one shared collateral pool to back
+  unlimited pairs. A CLOB like Hyperliquid needs market-maker inventory
   for every individual pair. The collateral requirements scale completely differently.
 
-  Gains supports over 40 active markets per $1M of trading TVL. Hyperliquid
-  supports less than 0.1 markets per $1M TVL. The 400x gap is not a performance
-  difference; it is an architectural one. The bench does not judge which model is
-  better: deep single-pair liquidity has real value. It measures a real dimension
-  that existing leaderboards ignore entirely.
+  {{best_name}} leads at {{best_p50}} markets per $1M of trading TVL across
+  {{count}} venues; {{name:hyperliquid}} reads {{p50:hyperliquid}}. The gap is
+  architectural, not a performance difference. The bench does not judge which
+  model is better: deep single-pair liquidity has real value. It measures a real
+  dimension that existing leaderboards ignore entirely.
 
 abstract: |
   The bench computes active_markets / (trading_tvl_usd / 1_000_000) for each
