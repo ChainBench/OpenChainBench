@@ -40,14 +40,15 @@ abstract: |
 
 methodology:
   - "Race, not latency: all providers on a chain wait for the same block, so only the spread between them belongs to them. Time from block production to first arrival is the chain's block time and is not published as a provider result."
-  - "One persistent socket per provider per region, eth_subscribe(newHeads) for EVM chains and slotSubscribe for Solana. Every frame timestamped on receipt. A provider that drops its socket misses pushes, so coverage is reported as blocks seen over the cohort maximum rather than as a success rate."
+  - "One socket per provider per region, eth_subscribe(newHeads), opened for the same ten minutes of every hour across the whole cohort and closed with the window. Every frame is timestamped on receipt. The window is aligned to the clock rather than to each connection, because a race only means something if every provider is listening to the same blocks."
+  - "Sampled rather than continuous since 2026-10-17, and the reason is ours: a permanent subscription on nine chains pushed about 138 million messages a month per provider against 583 thousand HTTP probes, and one vendor reached its monthly limit. The three fastest chains left the arm and the rest listen a sixth of the time. Racing a provider until its account is exhausted would remove it from nine other pages."
   - "Histogram buckets floor at 0.5 ms. The winner reads 0 by construction, so a coarse first bucket collapses every leader's p50 into an interpolation artifact inside it."
   - "Reconnections are a published result, not an implementation detail: a provider that drops twice in two minutes is unusable to a subscriber whatever its median says."
   - "GetBlock does not offer this chain from Singapore, so it is raced from us-east and eu-west only and its Singapore column is empty by provision rather than by failure."
   - "Alchemy is measured on the HTTP cohort but not here, and the reason is ours rather than theirs: its endpoint bills WebSocket per message, these subscriptions pushed about 116 million frames a month against the Free plan key that row discloses, and the key is shared with the HTTP probes. Racing a provider until its account is exhausted would remove it from nine other pages, so it waits for a message budget guard."
   - "Same keyed endpoints as the HTTP cohort on this chain, same keys, same three regions. Keys live in the probe environment, never in this repository. Plan tiers are disclosed on the HTTP cohort's methodology."
 
-expected_n: 7000
+expected_n: 1166
 
 prometheus:
   window: 24h

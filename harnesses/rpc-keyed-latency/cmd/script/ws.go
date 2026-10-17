@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
 	"net/http"
@@ -163,18 +164,49 @@ func wsEnvURL(provider, chain string) string {
 	return v
 }
 
+// Chains the WebSocket arm does not race, because their block rate makes
+// them most of the bill. Measured on 2026-10-17 over 24h: robinhood 40% of
+// all pushes, solana 19%, arbitrum 14%, against ethereum's 0.4%. A chain
+// producing a block every 100 ms pushes 120 times what a 12 s chain does,
+// for a race that answers the same question.
+//
+// Compiled in, not read from the environment by default: this list exists
+// because a provider's monthly limit was reached, and a lost variable must
+// not be able to restore that bill in silence. RPC_KEYED_WS_SKIP_CHAINS
+// overrides it, and the value "none" empties it.
+var wsSkipChainsDefault = []string{"robinhood", "solana", "arbitrum"}
+
+func wsSkipChains() map[string]bool {
+	list := wsSkipChainsDefault
+	if v := strings.TrimSpace(os.Getenv("RPC_KEYED_WS_SKIP_CHAINS")); v != "" {
+		if strings.EqualFold(v, "none") {
+			list = nil
+		} else {
+			list = strings.Split(v, ",")
+		}
+	}
+	out := map[string]bool{}
+	for _, c := range list {
+		if c = strings.ToLower(strings.TrimSpace(c)); c != "" {
+			out[c] = true
+		}
+	}
+	return out
+}
+
 func wsEndpoints() []wsEndpoint {
 	var out []wsEndpoint
+	skip := wsSkipChains()
 	for _, p := range providers {
 		for _, c := range chainsEVM {
-			if !chainAllowed(c) {
+			if !chainAllowed(c) || skip[c] {
 				continue
 			}
 			if url := wsEnvURL(p, c); url != "" {
 				out = append(out, wsEndpoint{Provider: p, Chain: c, Kind: "evm", URL: url})
 			}
 		}
-		if url := wsEnvURL(p, "solana"); url != "" && chainAllowed("solana") {
+		if url := wsEnvURL(p, "solana"); url != "" && chainAllowed("solana") && !skip["solana"] {
 			out = append(out, wsEndpoint{Provider: p, Chain: "solana", Kind: "solana", URL: url})
 		}
 	}
@@ -187,6 +219,44 @@ func wsEnabled() bool {
 		return false
 	}
 	return true
+}
+
+// The listening window, and how often it comes round. Ten minutes in every
+// hour keeps about a sixth of the races and a sixth of the messages.
+//
+// Both are read from the clock, not from each cell's connect time: every
+// provider in a region has to be listening to the SAME blocks or the race
+// compares nothing, and the only way to guarantee that without coordination
+// between goroutines is to derive the boundary from the wall clock.
+func wsDuty() (window, period time.Duration) {
+	window, period = 10*time.Minute, time.Hour
+	if v := strings.TrimSpace(os.Getenv("RPC_KEYED_WS_DUTY_SECONDS")); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n >= 30 {
+			window = time.Duration(n) * time.Second
+		}
+	}
+	if v := strings.TrimSpace(os.Getenv("RPC_KEYED_WS_PERIOD_SECONDS")); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n >= 60 {
+			period = time.Duration(n) * time.Second
+		}
+	}
+	if window > period {
+		window = period // continuous, the old behaviour
+	}
+	return window, period
+}
+
+// When the current or next window ends, and how long until it opens.
+func wsWindowAt(now time.Time) (wait, remaining time.Duration) {
+	window, period := wsDuty()
+	if window >= period {
+		return 0, period
+	}
+	into := time.Duration(now.UnixNano()) % period
+	if into < window {
+		return 0, window - into
+	}
+	return period - into, window
 }
 
 // How long a block stays in the race table. Long enough that a straggler on a
@@ -302,12 +372,34 @@ func headNumber(raw []byte) (*big.Int, bool) {
 func runWS(ctx context.Context, e wsEndpoint) {
 	backoff := 2 * time.Second
 	for ctx.Err() == nil {
-		if err := wsSession(ctx, e); err != nil && ctx.Err() == nil {
+		wait, remaining := wsWindowAt(time.Now())
+		if wait > 0 {
+			wsConnected.WithLabelValues(e.labels()...).Set(0)
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(wait):
+			}
+			_, remaining = wsWindowAt(time.Now())
+		}
+		// The session ends with the window. A close on that deadline is a
+		// scheduled stop, so it must not be logged as a failure nor counted
+		// as a disconnect: that counter is a published result about the
+		// provider, not about our scheduler.
+		sessCtx, cancel := context.WithTimeout(ctx, remaining)
+		err := wsSession(sessCtx, e)
+		cancel()
+		scheduled := errors.Is(err, context.DeadlineExceeded) && ctx.Err() == nil
+		if err != nil && !scheduled && ctx.Err() == nil {
 			// Redact: a dial error embeds the full URL, which carries the key.
 			fmt.Printf("[ws][%s/%s] session ended: %s\n", e.Chain, e.Provider,
 				strings.ReplaceAll(err.Error(), e.URL, hostOf(e.URL)))
 		}
 		wsConnected.WithLabelValues(e.labels()...).Set(0)
+		if scheduled {
+			backoff = 2 * time.Second // a clean stop is not a failure
+			continue
+		}
 		select {
 		case <-ctx.Done():
 			return
@@ -388,6 +480,11 @@ func wsSession(ctx context.Context, e wsEndpoint) error {
 
 		case f := <-frames:
 			if f.err != nil {
+				// Our own window closing races the read goroutine. Only
+				// count a drop the provider actually caused.
+				if ctx.Err() != nil {
+					return ctx.Err()
+				}
 				wsDisconnectTotal.WithLabelValues(e.labels()...).Inc()
 				return f.err
 			}
@@ -458,7 +555,9 @@ func StartWSLoop(ctx context.Context) {
 		fmt.Println("[ws] no RPC_KEYED_WS_* env vars set — WebSocket arm idle")
 		return
 	}
-	fmt.Printf("[ws] %d endpoints, race window %s\n", len(eps), raceWindow())
+	window, period := wsDuty()
+	fmt.Printf("[ws] %d endpoints, race window %s, listening %s every %s, skipping %v\n",
+		len(eps), raceWindow(), window, period, wsSkipChainsDefault)
 	for _, e := range eps {
 		go runWS(ctx, e)
 	}
