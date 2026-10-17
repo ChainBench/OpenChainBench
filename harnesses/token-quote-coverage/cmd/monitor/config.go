@@ -12,6 +12,7 @@ type Config struct {
 	MonitorRegion string
 	LogsToken     string
 	MobulaAPIKey string
+	RouteAPIKey  string // optional, Route (Robinhood only) is skipped without it
 }
 
 func loadEnv() (*Config, error) {
@@ -21,6 +22,7 @@ func loadEnv() (*Config, error) {
 		MonitorRegion: strings.TrimSpace(os.Getenv("MONITOR_REGION")),
 		LogsToken:     strings.TrimSpace(os.Getenv("LOGS_TOKEN")),
 		MobulaAPIKey: strings.TrimSpace(os.Getenv("MOBULA_API_KEY")),
+		RouteAPIKey:  strings.TrimSpace(os.Getenv("ROUTE_API_KEY")),
 	}
 	if c.MonitorRegion == "" {
 		c.MonitorRegion = "eu-west"

@@ -4,7 +4,7 @@
 
 **Bench**: [№ 102 · Token quote coverage](../../benchmarks/token-quote-coverage.yml)
 
-**Providers**: Mobula · Jupiter (Solana) · KyberSwap (EVM) · 1inch (EVM) · OKX DEX (multi-chain) · Odos (EVM)
+**Providers**: Mobula · Jupiter (Solana) · KyberSwap (EVM) · 1inch (EVM) · OKX DEX (multi-chain) · Odos (EVM) · Route (Robinhood)
 
 ## How it works
 
@@ -41,6 +41,7 @@ Metrics will be at `http://localhost:2112/metrics`. No transactions, no wallets 
 | --- | --- | --- |
 | `MOBULA_API_KEY` | yes | `Authorization: <key>` header |
 | `ONEINCH_API_KEY` | yes | `Authorization: Bearer <key>` header |
+| `ROUTE_API_KEY` | no | Route (Robinhood only), `Authorization: Bearer <key>`; skipped when empty |
 | `OKX_DEX_API_KEY` | no | Optional; public rate limits apply without it |
 | `MONITOR_REGION` | no | Metric label, default `eu-west` |
 | `LOGS_TOKEN` | no | Enables `/logs?tail=N` debug endpoint |

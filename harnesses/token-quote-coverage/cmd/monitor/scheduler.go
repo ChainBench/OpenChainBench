@@ -22,6 +22,9 @@ func buildProviders(cfg *Config) []Provider {
 		NewParaSwapProvider(),
 		NewRelayProvider(),
 	}
+	if cfg.RouteAPIKey != "" {
+		providers = append(providers, NewRouteProvider(cfg.RouteAPIKey))
+	}
 	return providers
 }
 
