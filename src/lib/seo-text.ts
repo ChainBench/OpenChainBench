@@ -43,7 +43,14 @@ export function capSnippet(input: string | undefined, max = 155): string {
   const abbrev = (t: string) => /(?:^|\s)(?:[A-Za-z]\.)+$/.test(t);
   let lastDot = head.lastIndexOf(". ");
   while (lastDot > 60 && abbrev(head.slice(0, lastDot + 1))) lastDot = head.lastIndexOf(". ", lastDot - 1);
-  if (lastDot > 60) return head.slice(0, lastDot + 1);
+  // A sentence end is the best cut only when it lands near the budget. Two
+  // of the WebSocket pages shipped 62 characters of a 155 allowance because
+  // their opening sentence is short and the whole text crossed the cap by a
+  // few characters: the second sentence, which named all five providers,
+  // was dropped whole. Below this floor the clause and word cuts further
+  // down produce a snippet that uses the space, so fall through to them.
+  const SENTENCE_FLOOR = Math.round(max * 0.6);
+  if (lastDot > SENTENCE_FLOOR) return head.slice(0, lastDot + 1);
   // The clause cut must not land inside a parenthesis: "(Orca pool, Jupiter
   // route)" was cut at its inner comma and shipped as "(Orca pool." (RWA
   // audit 2026-09-23). Walk back to the last ", " whose prefix has balanced
