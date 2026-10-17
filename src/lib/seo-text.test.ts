@@ -66,3 +66,36 @@ test("capSnippet: a stray closing parenthesis costs no character", () => {
   expect(out.startsWith("Alpha) beta")).toBe(true);
   expect(out.length).toBeLessThanOrEqual(155);
 });
+
+describe("capSnippet uses the budget it is given", () => {
+  // The shape that shipped 62 characters of a 155 allowance: a short
+  // opening sentence, then a longer one carrying the detail. Two of the
+  // WebSocket pages lost the second sentence whole, and with it the only
+  // mention of the five providers being compared.
+  const two =
+    "QuickNode pushes BNB Chain blocks first on the private cohort. " +
+    "Per-block WebSocket lag for Chainstack, GetBlock, QuickNode, Dwellir " +
+    "and Validation Cloud, measured from 3 regions.";
+
+  test("does not cut at a sentence end far below the cap", () => {
+    const out = capSnippet(two);
+    expect(out.length).toBeGreaterThan(100);
+    expect(out.length).toBeLessThanOrEqual(156);
+    expect(out).toContain("Chainstack");
+  });
+
+  test("still cuts at the sentence end when that lands near the cap", () => {
+    const s =
+      "Chainstack leads this chain at 2.1 ms over 24 hours across three probe regions worldwide today. " +
+      "A second sentence, long enough that keeping it would overflow the budget entirely.";
+    expect(capSnippet(s).endsWith("today.")).toBe(true);
+  });
+
+  test("never exceeds the cap and never ends on punctuation noise", () => {
+    for (const n of [160, 200, 400]) {
+      const out = capSnippet("word, ".repeat(n));
+      expect(out.length).toBeLessThanOrEqual(156);
+      expect(out).not.toMatch(/[,;:\s]\.$/);
+    }
+  });
+});
