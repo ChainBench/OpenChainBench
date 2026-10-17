@@ -263,6 +263,16 @@ func publish(samples []sample, roster []string, maxAgeDays int, now time.Time) (
 		}
 	}
 
+	// Ceiling above which a take rate is a misattribution rather than a fee.
+	//
+	// This is a statement about trading, not a tuned threshold: a terminal that
+	// kept a tenth of every ticket would have no users. Measured across the
+	// cohort on 2026-10-17, every honest cell sits between 0.39% and 2.20%, the
+	// single highest being maestro on HyperEVM at 4.87% on $1,039 of volume, so
+	// ten percent clears the real spread by more than double and still catches
+	// the broken cell by a factor of six.
+	const maxPlausibleFeeRate = 10.0
+
 	seen := map[string]bool{}   // platform|chain
 	breadth := map[string]int{} // platform -> chains with a published row
 	chainSet := map[string]bool{}
@@ -286,7 +296,16 @@ func publish(samples []sample, roster []string, maxAgeDays int, now time.Time) (
 		chainSet[s.Chain] = true
 
 		unexplainedZero := s.Fees <= 0 && platformFeesAnywhere[s.Platform]
-		feeUsable := feesSeen[s.Chain] && !unexplainedZero
+		// A cell whose fees exceed maxPlausibleFeeRate of its own volume is not
+		// reporting a take rate, it is reporting a misattribution: nobody trades
+		// through a terminal that keeps a tenth of the ticket. pump.fun's Base
+		// cell read 63.9% on 2026-10-17, $910.86 of fees against $1,424.96 of
+		// volume, and that cell was also the platform's only fee-bearing chain,
+		// so it set the all-chains headline too and reached a public compare
+		// page. The coverage gate below catches the headline; this catches the
+		// per-chain cell, which the coverage gate cannot see.
+		implausible := s.Volume > 0 && s.Fees/s.Volume*100 > maxPlausibleFeeRate
+		feeUsable := feesSeen[s.Chain] && !unexplainedZero && !implausible
 
 		// Summable metrics: written under the real chain only. Their `all` is
 		// computed from the totals after this loop, never copied from one chain.
@@ -305,7 +324,11 @@ func publish(samples []sample, roster []string, maxAgeDays int, now time.Time) (
 			feesUSD.DeleteLabelValues(s.Platform, s.Chain)
 			feeRatePct.DeleteLabelValues(s.Platform, s.Chain)
 			feeRateHealth.WithLabelValues(s.Platform, s.Chain).Set(0)
-			if unexplainedZero {
+			// An implausible cell is withheld for the same reason as an
+			// unexplained zero: the platform does charge, the source just did
+			// not hand us a figure we can divide. Both are "not measured
+			// here", and neither is "charges nothing".
+			if unexplainedZero || implausible {
 				feeWithheld.WithLabelValues(s.Platform, s.Chain).Set(1)
 			} else {
 				feeWithheld.DeleteLabelValues(s.Platform, s.Chain)
@@ -383,10 +406,17 @@ func publish(samples []sample, roster []string, maxAgeDays int, now time.Time) (
 		} else {
 			// Withheld, not zero: the platform may well charge a fee, we just
 			// cannot measure it over a denominator worth printing.
+			//
+			// The flag keys off whether the source reported a fee for this
+			// platform at all, not off whether that fee survived the gates. A
+			// platform whose only fee-bearing cell was rejected as implausible
+			// has no usable totals left, and keying off those totals would let
+			// it go silent, which reads as "no fee charged" on the page. It
+			// demonstrably charges something; we just cannot say what.
 			feesUSD.DeleteLabelValues(p, aggregateChain)
 			feeRatePct.DeleteLabelValues(p, aggregateChain)
 			feeRateHealth.WithLabelValues(p, aggregateChain).Set(0)
-			if t.feeOK && t.feeVol > 0 {
+			if platformFeesAnywhere[p] {
 				feeWithheld.WithLabelValues(p, aggregateChain).Set(1)
 			}
 		}

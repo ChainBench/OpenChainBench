@@ -385,3 +385,45 @@ func TestTakeRateIsWithheldWhenItCoversAlmostNoVolume(t *testing.T) {
 		t.Errorf("gmgn must keep its 1%% take rate, got %v", got)
 	}
 }
+
+func TestImplausibleTakeRateIsWithheldOnThePerChainCellToo(t *testing.T) {
+	resetAll()
+	now := time.Now()
+	d := day(now, 1)
+	publish([]sample{
+		// The cell that reached the compare page: $910.86 of fees against
+		// $1,424.96 of volume on Base, read and published as a 63.9% take rate.
+		mk("pumpfun", "base", d, 1424.96, 514, 910.86, 100),
+		mk("pumpfun", "solana", d, 40_640_441, 1_177_256, 0, 50000),
+		// Keeps the base and solana fee columns alive so the zero above is read
+		// as unexplained rather than as a chain that has no fees at all.
+		mk("gmgn", "base", d, 439_202, 4000, 4377, 500),
+		mk("gmgn", "solana", d, 16_368_442, 90000, 174_934, 9000),
+	}, []string{"pumpfun", "gmgn"}, 3, now)
+
+	// The per-chain cell is the one the coverage gate cannot see.
+	for _, chain := range []string{"base", "all"} {
+		if got := testutil.ToFloat64(feeRateHealth.WithLabelValues("pumpfun", chain)); got != 0 {
+			t.Errorf("pumpfun/%s take rate must read unhealthy, got %v", chain, got)
+		}
+		if got := testutil.ToFloat64(feeWithheld.WithLabelValues("pumpfun", chain)); got != 1 {
+			t.Errorf("pumpfun/%s must say withheld rather than go silent, got %v", chain, got)
+		}
+	}
+
+	// Volume and transactions are measurements and stay published; only the
+	// ratio built on an unusable numerator goes away.
+	if v := testutil.ToFloat64(volumeUSD.WithLabelValues("pumpfun", "base")); v != 1424.96 {
+		t.Errorf("base volume must survive the withheld rate, got %v", v)
+	}
+
+	// The plausible platform is untouched on every chain.
+	for _, chain := range []string{"base", "solana"} {
+		if got := testutil.ToFloat64(feeRateHealth.WithLabelValues("gmgn", chain)); got != 1 {
+			t.Errorf("gmgn/%s must keep its rate, got health %v", chain, got)
+		}
+	}
+	if got := testutil.ToFloat64(feeRatePct.WithLabelValues("gmgn", "base")); math.Abs(got-0.9966) > 1e-3 {
+		t.Errorf("gmgn base rate must be about 1%%, got %v", got)
+	}
+}
