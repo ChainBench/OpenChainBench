@@ -1,6 +1,9 @@
 package main
 
-import "testing"
+import (
+	"testing"
+	"time"
+)
 
 // TestNearIntentsTriangleSupported verifies every leg of the USDC-only triangle
 // resolves to a Near Intents assetId on both origin and destination, so the
@@ -52,5 +55,25 @@ func TestTransferERC20InvalidAmount(t *testing.T) {
 	tx := &TxExecutor{dryRun: true}
 	if _, err := tx.TransferERC20("base", baseUSDCAddr, "0x0000000000000000000000000000000000000001", "not-a-number"); err == nil {
 		t.Fatal("expected error for non-numeric raw amount")
+	}
+}
+
+// Every bridge must be polled on the same cadence, or the published latency
+// comparison records our own polling as if it were the bridges'.
+//
+// Near Intents polled at 15 s while the other three polled at 5 s, AND it
+// slept before its first check rather than after, which put a floor of one
+// whole interval under every measurement. Together those published 36.7 s for
+// a bridge whose competitors read 1.0 to 1.5 s, and the gap was mostly ours.
+func TestSettlePollIntervalIsSharedAcrossBridges(t *testing.T) {
+	if nearIntentsSettleWaitMs != settlePollInterval {
+		t.Fatalf("Near Intents polls at %v while the shared cadence is %v: "+
+			"the latency comparison would record the difference as the bridge's",
+			nearIntentsSettleWaitMs, settlePollInterval)
+	}
+	if settlePollInterval > 2*time.Second {
+		t.Fatalf("settle poll interval %v is coarser than the ~1 s the fastest "+
+			"bridges settle in, so their latency would quantise to it",
+			settlePollInterval)
 	}
 }
