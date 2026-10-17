@@ -228,7 +228,20 @@ export function headlineParts(b: Benchmark): { claim: string; rest: string } {
       rest: `${b.title}. No ${chainForFloor} endpoint answered above the ${LEADER_MIN_SUCCESS_PCT} % success floor in the last 24h.`,
     };
   }
-  if (!top) return { claim: "", rest: `${b.title}. Awaiting first run.` };
+  if (!top) {
+    // "Nobody is ranked" is not "nothing ran". perp-max-leverage-terms
+    // shows four venues and a timestamp from this morning while /api/stat,
+    // /api/citable and llms.txt said the bench had never run, and on a
+    // board that ranks nobody by design that never corrects itself.
+    const measured = liveResults(b.results).length;
+    if (measured > 0) {
+      return {
+        claim: "",
+        rest: `${b.title}. ${measured} ${nounFor(b, measured)} measured; none is ranked on this benchmark.`,
+      };
+    }
+    return { claim: "", rest: `${b.title}. Awaiting first run.` };
+  }
   const value = fmtUnit(top.value, b.unit);
   // Chain RPC pages: the sentence names the entity searchers use ("free
   // public Arbitrum RPC endpoints") and the cohort size, instead of

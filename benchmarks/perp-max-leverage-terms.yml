@@ -4,7 +4,7 @@ slug: perp-max-leverage-terms
 number: "295"
 title: "Perp DEX leverage terms: room to liquidation and what is left"
 seo_title: "Perp leverage: how far price moves before liquidation"
-seo_description: "At 500x a Gains position is liquidated on a 0.12% move and a Papertrade one on 0.15%, both keeping nothing. Room, collateral lost and collateral returned for 4 venues at every leverage setting, read on chain."
+seo_description: "How far price moves before Gains, Papertrade, dYdX or Hyperliquid liquidates a position, at each venue's maximum leverage and at shared settings, read on chain."
 subtitle: "Adverse price move that liquidates a position, read from each venue's own published parameters and checked against real liquidations. The selector sets the leverage: the default puts each venue at its own maximum, which is not a like for like reading, and the fixed settings put every venue on the same leverage. No row is ranked, because more room is not the same as better terms."
 category: Trading
 status: live
