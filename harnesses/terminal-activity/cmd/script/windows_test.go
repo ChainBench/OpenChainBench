@@ -94,3 +94,82 @@ func TestShareIsOfTheCohortTotal(t *testing.T) {
 		t.Errorf("gmgn share: got %v want 25", got)
 	}
 }
+
+// The leaderboard board reads these windows, not the daily cells, so the
+// ceiling has to apply here too. pump.fun's real shape on 2026-10-17: one
+// Base day carrying $910.86 of fees on $1,424.96 of volume, and a Solana leg
+// forty thousand times larger reporting nothing.
+func TestImplausibleDayNeverReachesAWindow(t *testing.T) {
+	resetAll()
+	pf := &botDetail{Bot: "pumpfun", FirstDay: "2026-10-16", Through: "2026-10-17",
+		Days: []string{"d1", "d2"}, Series: []chainSeries{
+			{Name: "base", VolumeUSD: []float64{1424.96, 1424.96},
+				Txns: []float64{514, 514}, FeesUSD: []float64{910.86, 910.86}},
+			{Name: "solana", VolumeUSD: []float64{40_640_441, 40_640_441},
+				Txns: []float64{1_177_256, 1_177_256}, FeesUSD: []float64{0, 0}},
+		}}
+	// A second platform keeps feesAnywhere honest and gives the cohort a
+	// plausible row to compare against.
+	gm := mkDetail("gmgn", []string{"d1", "d2"}, "solana",
+		[]float64{1_000_000, 1_000_000}, []float64{1000, 1000}, []float64{10_000, 10_000})
+
+	agg, _, chains := buildWindows([]*botDetail{pf, gm})
+
+	for _, win := range []string{"1d", "7d", "30d"} {
+		if a := agg["pumpfun|base|"+win]; a != nil && a.feeOK {
+			t.Errorf("%s: the implausible base day must not count as measurable fees", win)
+		}
+		if a := agg["pumpfun|all|"+win]; a != nil && a.feeOK {
+			t.Errorf("%s: it must not reach the all-chains window either", win)
+		}
+		// Volume is a measurement and survives.
+		if a := agg["pumpfun|all|"+win]; a == nil || a.vol <= 0 {
+			t.Errorf("%s: all-chains volume must still be published", win)
+		}
+	}
+
+	publishWindows(agg, []string{"pumpfun", "gmgn"}, chains, map[string]float64{})
+
+	for _, win := range []string{"1d", "7d", "30d"} {
+		for _, chain := range []string{"base", "all"} {
+			n := testutil.CollectAndCount(windowTakeRatePct)
+			_ = n
+			if v := testutil.ToFloat64(windowTakeRatePct.WithLabelValues("pumpfun", chain, win)); v != 0 {
+				t.Errorf("pumpfun/%s/%s must publish no take rate, got %v", chain, win, v)
+			}
+		}
+		// The plausible platform keeps its 1% on every window.
+		if v := testutil.ToFloat64(windowTakeRatePct.WithLabelValues("gmgn", "solana", win)); math.Abs(v-1) > 1e-9 {
+			t.Errorf("gmgn %s take rate must stay 1%%, got %v", win, v)
+		}
+	}
+}
+
+// Coverage floor on the windows, independent of the ceiling: fees that are
+// plausible on their own chain but sit on a sliver of the platform's volume
+// still cannot stand in for the whole.
+func TestWindowAllChainsRateNeedsCoverage(t *testing.T) {
+	resetAll()
+	thin := &botDetail{Bot: "thinbot", FirstDay: "2026-10-16", Through: "2026-10-17",
+		Days: []string{"d1", "d2"}, Series: []chainSeries{
+			// 1% on Base, entirely believable, but Base is a rounding error.
+			{Name: "base", VolumeUSD: []float64{1000, 1000},
+				Txns: []float64{10, 10}, FeesUSD: []float64{10, 10}},
+			{Name: "solana", VolumeUSD: []float64{10_000_000, 10_000_000},
+				Txns: []float64{1000, 1000}, FeesUSD: []float64{0, 0}},
+		}}
+	other := mkDetail("gmgn", []string{"d1", "d2"}, "solana",
+		[]float64{1_000_000, 1_000_000}, []float64{1000, 1000}, []float64{10_000, 10_000})
+	agg, _, chains := buildWindows([]*botDetail{thin, other})
+	publishWindows(agg, []string{"thinbot", "gmgn"}, chains, map[string]float64{})
+
+	for _, win := range []string{"1d", "7d", "30d"} {
+		if v := testutil.ToFloat64(windowTakeRatePct.WithLabelValues("thinbot", "all", win)); v != 0 {
+			t.Errorf("all-chains %s must be withheld on 0.01%% coverage, got %v", win, v)
+		}
+		// The chain that was actually measured keeps its own honest rate.
+		if v := testutil.ToFloat64(windowTakeRatePct.WithLabelValues("thinbot", "base", win)); math.Abs(v-1) > 1e-9 {
+			t.Errorf("base %s must keep its measured 1%%, got %v", win, v)
+		}
+	}
+}
