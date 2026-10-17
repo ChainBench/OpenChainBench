@@ -87,7 +87,7 @@ faq:
   - q: "Where does the asset class come from?"
     a: "From the venue itself whenever it publishes one: Extended's category and subCategory, Paradex's RWA tag, Aster's underlyingSubType, Ostium's pair group, Ondo's tags, Mobula's assetClass for Gains and Lighter. Hyperliquid HIP-3 dexes and dYdX publish none, so their symbols are matched against a fixed table of forex codes, commodity references and index names, and dYdX carries a reviewed list of its five non-crypto tickers."
   - q: "Why does Hyperliquid rank high when its own perps are crypto-only?"
-    a: "Because HIP-3 lets third-party deployers list perps on Hyperliquid's orderbook under a namespaced symbol (xyz:TSLA, mkts:US500, para:AVGO). Those markets settle on the same HyperBFT engine and are reachable from the same account, so the bench counts them as Hyperliquid markets. The core universe (BTC, ETH, SOL and the other 175 coins) contributes zero to the non-crypto count."
+    a: "Because HIP-3 lets third-party deployers list perps on Hyperliquid's orderbook under a namespaced symbol (xyz:TSLA, mkts:US500, para:AVGO). Those markets settle on the same HyperBFT engine and are reachable from the same account, so the bench counts them as Hyperliquid markets. The core universe (BTC, ETH, SOL and the other core coins) contributes zero to the non-crypto count."
   - q: "Does a market count if it only trades during exchange hours?"
     a: "Yes. Most stock and index perps on Extended, Aster and Hyperliquid HIP-3 trade 24/5 or follow the underlying exchange session; the bench counts listed markets, not open ones, so a Saturday reading equals a Tuesday reading. Execution conditions during closed sessions are outside this bench."
   - q: "How often does the count change?"

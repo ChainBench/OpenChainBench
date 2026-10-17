@@ -26,11 +26,11 @@ import { withUtm } from "@/lib/utm";
  */
 
 const DESCRIPTION =
-  "RPC providers ranked per chain from 3 regions: free public endpoints with URLs, plus Alchemy, Chainstack, GetBlock and QuickNode on private (API-key) endpoints, ranked apart.";
+  "Free public RPC endpoints with URLs per chain, and Alchemy, Chainstack, GetBlock, QuickNode, Dwellir, Validation Cloud ranked apart, from 3 regions.";
 
 export const metadata: import("next").Metadata = pageMetadata({
   path: "/rpc",
-  title: "RPC providers by chain: public and private endpoints, by latency",
+  title: "RPC providers by chain: public and private, by latency",
   description: capSnippet(DESCRIPTION),
 });
 
@@ -169,6 +169,20 @@ export default async function RpcHubPage() {
               <span className="text-ink">{chainLabelOf(s)} RPC endpoints</span>
             </Link>
           ))}
+          {/* The two families shipped with this hub as their only
+              plausible entry point, and no link from it. */}
+          <Link
+            href="/benchmarks/rpc-free-tier"
+            className="inline-flex items-center gap-1.5 rounded-full border border-ink/10 px-3 py-1 text-ink-soft hover:text-ink"
+          >
+            What each free RPC plan buys
+          </Link>
+          <Link
+            href="/benchmarks/ethereum-rpc-ws"
+            className="inline-flex items-center gap-1.5 rounded-full border border-ink/10 px-3 py-1 text-ink-soft hover:text-ink"
+          >
+            WebSocket push race
+          </Link>
           <Link
             href="/benchmarks/rpc-capabilities"
             className="inline-flex items-center gap-1.5 rounded-full border border-ink/10 px-3 py-1 text-ink-soft hover:text-ink"
