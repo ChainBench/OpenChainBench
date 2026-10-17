@@ -51,6 +51,32 @@ const headlineChain = "solana"
 // series; bench 283 spent a day with a blank headline column for exactly that.
 const aggregateChain = "all"
 
+// The two gates that decide whether a take rate is publishable. Both apply to
+// the daily cells in this file and to the 1d, 7d and 30d windows in
+// windows.go, which feed a different board off the same source and were the
+// half of the problem the first fix missed.
+const (
+	// Ceiling above which a take rate is a misattribution rather than a fee.
+	//
+	// A statement about trading, not a tuned threshold: a terminal that kept a
+	// tenth of every ticket would have no users. Measured across the cohort on
+	// 2026-10-17, every honest cell sits between 0.39% and 2.20%, the single
+	// highest being maestro on HyperEVM at 4.87% on $1,039 of volume. Ten
+	// percent clears the real spread by more than double and still catches the
+	// broken cell by a factor of six.
+	maxPlausibleFeeRate = 10.0
+
+	// Minimum share of a platform's volume that must sit on fee-reporting
+	// chains or days before an all-chains take rate is published.
+	//
+	// Measured on 2026-10-17: seven of the eight platforms report fees on
+	// chains carrying 95.9% to 100% of their volume. pump.fun reports them on
+	// 0.003% of its, and the resulting 63.9% reached a public compare page and
+	// a Community Note. Half is far below every honest platform and far above
+	// the broken one, so it separates them without being tuned to either.
+	minFeeCoverage = 0.5
+)
+
 // aliasesFor returns the labels a per-chain sample is published under. Only
 // the headline chain doubles as `all`, and only for the wallet-denominated
 // metrics; the summable ones get their `all` written once, from the totals.
@@ -263,16 +289,6 @@ func publish(samples []sample, roster []string, maxAgeDays int, now time.Time) (
 		}
 	}
 
-	// Ceiling above which a take rate is a misattribution rather than a fee.
-	//
-	// This is a statement about trading, not a tuned threshold: a terminal that
-	// kept a tenth of every ticket would have no users. Measured across the
-	// cohort on 2026-10-17, every honest cell sits between 0.39% and 2.20%, the
-	// single highest being maestro on HyperEVM at 4.87% on $1,039 of volume, so
-	// ten percent clears the real spread by more than double and still catches
-	// the broken cell by a factor of six.
-	const maxPlausibleFeeRate = 10.0
-
 	seen := map[string]bool{}   // platform|chain
 	breadth := map[string]int{} // platform -> chains with a published row
 	chainSet := map[string]bool{}
@@ -371,16 +387,6 @@ func publish(samples []sample, roster []string, maxAgeDays int, now time.Time) (
 		}
 		published++
 	}
-
-	// Minimum share of a platform's volume that must sit on chains reporting
-	// fees before an all-chains take rate is published.
-	//
-	// Measured on 2026-10-17: seven of the eight platforms report fees on chains
-	// carrying 95.9% to 100% of their volume. pump.fun reports them on 0.003% of
-	// its, and the resulting 63.9% reached a public compare page and a Community
-	// Note. Half is far below every honest platform and far above the broken one,
-	// so it separates them without being tuned to either.
-	const minFeeCoverage = 0.5
 
 	// The `all` slice for the summable metrics: a real total, volume-weighted
 	// by construction for the two ratios. A platform whose every fee cell was

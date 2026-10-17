@@ -93,7 +93,16 @@ func publishWindows(agg map[string]*windowAgg, roster []string, chains []string,
 		if t := totals[chain+"|"+win]; t > 0 {
 			windowSharePct.WithLabelValues(platform, chain, win).Set(a.vol / t * 100)
 		}
-		if a.feeOK && a.feeVol > 0 {
+		// The all-chains window carries the same coverage floor as the daily
+		// all-chains cell: a rate measured on a sliver of the volume it is
+		// printed against is not that platform's take rate. Per-chain windows
+		// are already whole by construction, so the floor would always pass
+		// and is not applied there.
+		covered := true
+		if chain == aggregateChain && a.vol > 0 {
+			covered = a.feeVol/a.vol >= minFeeCoverage
+		}
+		if a.feeOK && a.feeVol > 0 && covered {
 			windowFeesUSD.WithLabelValues(platform, chain, win).Set(a.fees)
 			windowTakeRatePct.WithLabelValues(platform, chain, win).Set(a.fees / a.feeVol * 100)
 		} else {
@@ -212,7 +221,19 @@ func buildWindows(details []*botDetail) (map[string]*windowAgg, map[string]float
 						a.txns += t
 						// A zero fee day counts only when the platform charges
 						// nothing anywhere; otherwise it is a gap.
-						if f > 0 || !feesAnywhere[p] {
+						//
+						// A day whose fee is too large a share of its own
+						// volume to be a trading fee is dropped the same way
+						// the daily cells drop it, and for the same reason: it
+						// is the source attributing a fee to the wrong
+						// denominator. pump.fun's 2026-10-17 Base day, $910.86
+						// on $1,424.96, is the case, and left in it set the
+						// 1d, 7d and 30d take rates on the leaderboard board.
+						usable := f > 0 || !feesAnywhere[p]
+						if v > 0 && f/v*100 > maxPlausibleFeeRate {
+							usable = false
+						}
+						if usable {
 							a.fees += f
 							a.feeVol += v
 							a.feeOK = true
