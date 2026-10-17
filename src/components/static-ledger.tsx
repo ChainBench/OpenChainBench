@@ -61,6 +61,21 @@ export function StaticLedger({ benchmark }: { benchmark: Benchmark }) {
     : ranked < rows.length
     ? `Results: ${countRows(benchmark, rows.length)} measured, ${ranked} ranked by ${benchmark.metric} (${qualifier})`
     : `Results: ${countRows(benchmark, rows.length)} ranked by ${benchmark.metric} (${qualifier})`;
+  // A success rate is a claim about requests this bench sent. Benches that
+  // send none set `ledger_reliability: false`, and the interactive table
+  // honours it — but this fallback is what crawlers and no-JS readers get,
+  // and it printed "Success 100.00%" for every row of bench 282, filled from
+  // the default the loader uses when a spec declares no success query. The
+  // spec's own comment says a success rate there "measures nothing".
+  const showReliability = benchmark.ledgerReliability !== false;
+  // The spec names its own value column, and the interactive table uses that
+  // name. This fallback fell back to the generic one, so bench 282's crawler
+  // view headed its money column "Value" where every reader of the real
+  // table sees "Monthly bill". Only a column bound to the headline slot can
+  // stand in for it.
+  const valueHeading =
+    benchmark.ledgerColumns?.find((c) => c.slot === "p50")?.label ??
+    valueColumnLabel(benchmark);
   const showTail = benchmark.unit === "ms" || benchmark.unit === "s";
   return (
     <section className="mt-8" aria-labelledby="results">
@@ -76,13 +91,15 @@ export function StaticLedger({ benchmark }: { benchmark: Benchmark }) {
             <tr className="border-y-2 border-ink text-left">
               <th scope="col" className="py-2 pr-3">№</th>
               <th scope="col" className="py-2 pr-3">{nounLabel(benchmark)}</th>
-              <th scope="col" className="py-2 px-3 text-right">{valueColumnLabel(benchmark)}</th>
+              <th scope="col" className="py-2 px-3 text-right">{valueHeading}</th>
               {showTail && <th scope="col" className="py-2 px-3 text-right">p90</th>}
               {showTail && <th scope="col" className="py-2 px-3 text-right">p99</th>}
               {panels.map((p) => (
                 <th key={p.id} scope="col" className="py-2 px-3 text-right">{p.label}</th>
               ))}
-              <th scope="col" className="py-2 pl-3 text-right">Success</th>
+              {showReliability && (
+                <th scope="col" className="py-2 pl-3 text-right">Success</th>
+              )}
             </tr>
           </thead>
           <tbody>
@@ -129,7 +146,9 @@ export function StaticLedger({ benchmark }: { benchmark: Benchmark }) {
                     </td>
                   );
                 })}
-                <td className="py-2 pl-3 text-right tabular-nums text-ink-soft">{r.successRate.toFixed(2)}%</td>
+                {showReliability && (
+                  <td className="py-2 pl-3 text-right tabular-nums text-ink-soft">{r.successRate.toFixed(2)}%</td>
+                )}
               </tr>
               </Fragment>
             ))}

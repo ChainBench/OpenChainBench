@@ -243,3 +243,92 @@ Payload size grows linearly with the builder count and the timeseries length. Wi
 | Failure mode if down | Live card stale, history still served | History stale, live card unaffected |
 
 The two harnesses are intentionally decoupled: live and historical views have very different freshness, infra, and disk requirements, and pinning them together would force the live card to wait on a 24 h batch or the history to be pinned to OVH disk. Each side serves what it is good at.
+
+## The trader leaderboard audit (`traders`)
+
+A second collector in the same binary, independent of the builder-fills
+pipeline above. It audits Hyperliquid's own published trader leaderboard
+rather than reproducing it.
+
+```bash
+hl-archive traders
+```
+
+### What it reads
+
+| Source | Shape | Auth |
+|---|---|---|
+| `stats-data.hyperliquid.xyz/Mainnet/leaderboard` | one JSON blob, ~39 MB, ~47k accounts with PnL / ROI / volume over day, week, month, allTime plus equity | none |
+| `api.hyperliquid.xyz/info` `{"type":"portfolio","user":"0x…"}` | per account: `pnlHistory` and `accountValueHistory` over the same four windows **plus a perp-only mirror of each** | none |
+
+### Why it exists
+
+Three published properties of the leaderboard contradict each other, and
+the venue's UI gives no way to see it:
+
+1. **`pnl` and `vlm` count different universes.** `vlm` is perp notional;
+   `pnl` also absorbs spot, vault deposits (HLP) and staking. On the
+   first full read (2026-10-03) **2,904 of 47,123 accounts published a
+   non-zero all-time PnL against exactly zero all-time volume, worth
+   $5.3 bn, 32 % of the leaderboard's aggregate PnL.**
+2. **The aggregate cannot be what it says.** The rows sum to **+$16.54 bn**
+   with **51.3 % of accounts in profit**. Perp PnL is zero-sum between
+   longs and shorts net of fees, so a positive aggregate over a majority
+   of winners is arithmetic proof the published set is not the
+   population. Spot and HLP yield genuinely are not zero-sum, which is
+   the same finding from the other side: three P&L universes summed into
+   one sortable column.
+3. **`roi` ships without its denominator.** 590 accounts publish an ROI
+   above 10,000 % in absolute value, the highest past 2,600,000 % on five
+   figures of volume.
+
+### Why no node
+
+Per-fill data for every account needs a Hyperliquid node. The public CDN
+serves `builder_fills` and nothing else: `node_fills`, `fills`,
+`node_trades`, `trades`, `asset_ctxs`, `market_data`, `liquidations` and
+`funding` all answer 403. The SGP node that used to provide it stalled on
+2026-09-23 and only the requester-pays S3 snapshot would bootstrap it.
+
+It is also unnecessary here. `portfolio` publishes per-account PnL
+directly, with the perp/non-perp split already decomposed, so a node
+would add only trade-level detail this collector does not use.
+
+### Sampling is biased on purpose
+
+`HL_TRADERS_SAMPLE_SIZE` accounts get a `portfolio` read, taken from the
+**highest-PnL** rows. Those are the rows the leaderboard showcases, so
+auditing them is the point, but ranking by PnL selects for the
+zero-volume cohort by construction: the top 8 came back **81.7 %
+non-perp** against **18 %** on a single mid-table account. Anything
+consuming `hl_traders_non_perp_pnl_pct` must say "of the top N", which is
+why `hl_traders_sampled_accounts` is published alongside it.
+
+### Configuration
+
+| Env | Default | Meaning |
+|---|---|---|
+| `HL_TRADERS_SAMPLE_SIZE` | `500` | highest-PnL accounts given a `portfolio` read. `0` disables sampling. |
+| `HL_TRADERS_RPS` | `5` | info API requests per second. The endpoint is weight-limited per IP and this is a courtesy read of a public service. |
+| `HL_TRADERS_UPSTASH_KEY` | `ocb:hl-traders:v1` | snapshot key. Separate from `HL_ARCHIVE_UPSTASH_KEY`; the two payloads never share a key. |
+
+The snapshot is capped at `tradersUpstashRowCap` (500) account rows,
+because the Upstash free-tier ceiling is 1 MB per key and the full blob
+is ~39 MB. The audit figures are aggregates over all ~47k accounts
+regardless of that cap.
+
+### Metrics
+
+`hl_traders_*` on the existing `/metrics` endpoint, so no new Prometheus
+scrape job is needed. Gauges are set from the leaderboard audit **before**
+the info API sweep begins, so a rate-limited or interrupted sweep still
+leaves the leaderboard figures published rather than nothing.
+
+### Stateless
+
+The run needs no DuckDB: every figure is an aggregate over a single
+snapshot, so a failed cycle costs nothing but the next one. The
+per-account history that a rank-persistence measurement wants already
+ships inside the `portfolio` response (`allTime` carries ~90 points back
+to the account's first deposit), so storage is a follow-up rather than a
+precondition.

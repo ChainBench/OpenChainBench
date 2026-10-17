@@ -852,6 +852,7 @@ function applyDimensionsToSpec(spec: Spec, labels: Record<string, string>): Spec
             ...p.queries,
             p50: inject(p.queries.p50),
             p90: inject(p.queries.p90),
+            p95: inject(p.queries.p95),
             p99: inject(p.queries.p99),
             mean: inject(p.queries.mean),
             success: inject(p.queries.success),
@@ -1011,7 +1012,11 @@ async function tryLoadLive(
         q.p90 ? prom.scalar(q.p90) : Promise.resolve(null),
         q.p99 ? prom.scalar(q.p99) : Promise.resolve(null),
       ]);
-      const [mean, success, sampleSize, slotP50, slotP99, liveActivity, rankGate] = await Promise.all([
+      // p95 rides with the optional batch on purpose: no retry and no
+      // skip-on-null, so a bench that declares it badly loses a column and
+      // not its providers.
+      const [p95, mean, success, sampleSize, slotP50, slotP99, liveActivity, rankGate] = await Promise.all([
+        q.p95 ? prom.scalar(q.p95) : Promise.resolve(null),
         q.mean ? prom.scalar(q.mean) : Promise.resolve(null),
         q.success ? prom.scalar(q.success) : Promise.resolve(null),
         q.sample_size ? prom.scalar(q.sample_size) : Promise.resolve(null),
@@ -1117,7 +1122,13 @@ async function tryLoadLive(
         // its quote is negative) is not dropped by the legacy `p50 > 0`
         // guard, which only applies to rows without the flag.
         availability: "live",
-        ms: { p50, p90, p99, mean: mean ?? p50 },
+        ms: {
+          p50,
+          p90,
+          p99,
+          mean: mean ?? p50,
+          ...(p95 != null && Number.isFinite(p95) ? { p95 } : {}),
+        },
         slots:
           slotP50 != null && slotP99 != null
             ? { p50: slotP50, p99: slotP99 }

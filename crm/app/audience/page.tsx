@@ -69,6 +69,9 @@ export default async function AudiencePage({ searchParams }: { searchParams: Pro
   const [snap, sp] = await Promise.all([readSnapshot(), searchParams]);
   const w = parseWindow(sp.w);
   const t = trafficFor(snap, w.key);
+  // Bot traffic is not windowed: it comes from Vercel, not from the PostHog
+  // sections the ?w= switch re-queries, and carries its own window.
+  const ag = snap.agents;
   const a = t.audience;
   const active = a?.activeVisitors ?? 0;
   const firstDay = t.daily?.[0]?.day ?? null;
@@ -190,6 +193,79 @@ export default async function AudiencePage({ searchParams }: { searchParams: Pro
         </p>
       </section>
 
+      {/* Bots and agents, measured by Vercel. Everything else on this page comes
+          from PostHog, which sees only what runs our JavaScript or reaches an
+          uncached route: an ISR-cached HTML page read by a crawler appears
+          nowhere in it. See lib/vercel-obs.ts. */}
+      <section className="mt-6">
+        <p className="label">Bots and agents, {ag?.windowDays ?? 30} d (every edge request, from Vercel)</p>
+        {ag && ag.totalRequests > 0 ? (
+          <>
+            <div className="mt-2 grid gap-3 md:grid-cols-4">
+              <Kpi label="Requests, all sources" value={fmtInt(ag.totalRequests)} sub="production, cache hits included" />
+              <Kpi label="AI crawlers and assistants" value={fmtInt(ag.aiRequests)} sub={ag.totalRequests > 0 ? `${fmtPct(ag.aiRequests / ag.totalRequests)} of all requests` : undefined} />
+              <Kpi
+                label="AI excluding the largest bot"
+                value={fmtInt(ag.aiRequestsExcludingTop)}
+                sub={ag.topAiBot ? `without ${ag.topAiBot}` : undefined}
+              />
+              <Kpi
+                label="Search engine crawlers"
+                value={fmtInt(ag.categories.filter((c) => c.category.startsWith("search_engine")).reduce((n, c) => n + c.requests, 0))}
+                sub="googlebot, bingbot, and the rest"
+              />
+            </div>
+            <div className="mt-3 grid gap-3 md:grid-cols-[3fr_2fr]">
+              <div className="panel p-4">
+                <p className="label">By bot</p>
+                <table className="data mt-2">
+                  <thead>
+                    <tr>
+                      <th>Bot</th>
+                      <th>Category</th>
+                      <th className="num">Requests</th>
+                      <th className="num">Share of bot traffic</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {ag.bots.slice(0, 25).map((b) => (
+                      <tr key={b.bot}>
+                        <td className="mono">{b.bot}</td>
+                        <td style={{ color: "var(--muted)" }}>{b.category || "unclassified"}</td>
+                        <td className="num mono">{fmtInt(b.requests)}</td>
+                        <td className="num mono" style={{ color: "var(--muted)" }}>
+                          {b.sharePct.toFixed(1)}%
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="panel p-4">
+                <p className="label">What AI crawlers read, {ag.aiPathsWindowDays} d</p>
+                {ag.aiPaths.length > 0 ? (
+                  <Bars rows={ag.aiPaths.slice(0, 12).map((r) => ({ label: r.path, value: r.requests }))} />
+                ) : (
+                  <Empty text="No AI crawler request in the window." />
+                )}
+                <p className="mt-3 text-[11px]" style={{ color: "var(--faint)" }}>
+                  A crawler that reads the same handful of pages hundreds of times is looping, not indexing. Compare the top
+                  paths with the bot table: if one bot carries most of the volume, the shape here is that bot&apos;s alone.
+                </p>
+              </div>
+            </div>
+          </>
+        ) : (
+          <Empty text="No Vercel observability data yet (set VERCEL_API_TOKEN, VERCEL_TEAM_ID and VERCEL_PROJECT_ID)." />
+        )}
+        <p className="mt-3 text-[11px]" style={{ color: "var(--faint)" }}>
+          Source: Vercel Observability, every edge request on production including cache hits, with Vercel&apos;s own bot
+          classification. This is the only section on the page that sees traffic which never runs our JavaScript, which is
+          all crawler traffic on ISR-cached pages. Retention starts when Observability was enabled on the team
+          {ag?.firstDayWithData ? ` (first day with data: ${ag.firstDayWithData})` : ""}; days before that read zero.
+        </p>
+      </section>
+
       <section className="mt-6 grid gap-3 md:grid-cols-[3fr_2fr]">
         <div className="panel p-4">
           <p className="label">{`Endpoints read by agents, ${w.label}`}</p>
@@ -236,6 +312,7 @@ export default async function AudiencePage({ searchParams }: { searchParams: Pro
           {families.length > 0 ? <Bars rows={families} /> : <Empty text="No server-side read yet on production." />}
           <p className="mt-3 text-[11px]" style={{ color: "var(--faint)" }}>
             Family is a coarse user-agent bucket (gptbot, claudebot, perplexitybot, googlebot, curl, python, browser). Distinct agents are counted per user agent per day, never per IP.
+            These two panels count reads of the three server surfaces only, and /api/stat and /api/citable behind their edge caches count cache fills. For who actually reads the site, use the Vercel section above: on 2026-09-30 these panels attributed most &quot;agent&quot; traffic to our own curl probes and Blackbox exporter, while Vercel counted 75,429 AI-crawler requests over the same three days.
           </p>
         </div>
       </section>

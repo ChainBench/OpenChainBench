@@ -68,8 +68,15 @@ railway logs
 ```
 
 Variables (Railway service settings): `CRM_PASSWORD`, `CRM_SESSION_SECRET`, `POSTHOG_PERSONAL_API_KEY`,
-`POSTHOG_PROJECT_ID`, optionally `DUNE_API_KEY`, `POSTHOG_HOURLY_BUDGET`,
-`REFRESH_MINUTES`. `SNAPSHOT_DIR=/data` and `PORT` are set on the service.
+`POSTHOG_PROJECT_ID`, `VERCEL_API_TOKEN`, `VERCEL_TEAM_ID`, `VERCEL_PROJECT_ID`, optionally
+`DUNE_API_KEY`, `POSTHOG_HOURLY_BUDGET`, `REFRESH_MINUTES`. `SNAPSHOT_DIR=/data` and `PORT`
+are set on the service.
+
+The three `VERCEL_*` variables feed the bot and agent section, which reads Vercel
+Observability rather than PostHog. PostHog cannot answer that question: its SDK is
+client-side JavaScript and the server capture covers three routes, two of them cached,
+so a crawler reading an ISR-cached page is invisible to it. Without the variables the
+section says so and every other section is unaffected. See `lib/vercel-obs.ts`.
 
 ## Sessions
 

@@ -51,6 +51,7 @@ export const PERP_VENUE_META: Record<
   standx:      { url: "https://standx.com",      chainLabel: "BNB Chain" },
   apex:        { url: "https://omni.apex.exchange", chainLabel: "Omnichain" },
   jupiter:     { url: "https://jup.ag/perps",    chainLabel: "Solana" },
+  papertrade:  { url: "https://papertrade.xyz",  chainLabel: "Hyperliquid" },
   "lighter-rh": { url: "https://rh.lighter.xyz", chainLabel: "Lighter L2, Robinhood" },
   "trade-xyz": { url: "https://trade.xyz",       chainLabel: "Hyperliquid HIP-3", productSlug: PERP_PRODUCT_SLUGS["trade-xyz"] },
   binance:     { url: "https://www.binance.com/en/futures", chainLabel: "Offchain, CEX" },

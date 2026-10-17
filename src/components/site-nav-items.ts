@@ -4,6 +4,7 @@ import {
   Bot,
   BookMarked,
   Boxes,
+  Calculator,
   ChartColumn,
   CircleHelp,
   Code,
@@ -165,6 +166,9 @@ export function navGroups(hiddenRoutes: readonly string[] = []): NavGroup[] {
     {
       label: "Explore",
       items: [
+        // A tool answers for the reader's own position, which no bench page
+        // does, so it belongs beside Compare and not under Benchmarks.
+        { href: "/tools", label: "Tools", icon: Calculator, match: section("/tools") },
         { href: "/compare", label: "Compare", icon: GitCompare, match: section("/compare") },
         { href: "/alternatives", label: "Alternatives", icon: Scale, match: section("/alternatives") },
         {

@@ -10,7 +10,7 @@ const VENUE_NAMES: Record<VenueSlug, string> = {
   hyperliquid: "Hyperliquid",
   gains: "Gains",
   dydx: "dYdX v4",
-  "gmx-v2": "GMX v2",
+  "gmx-v2": "GMX",
   paradex: "Paradex",
   edgex: "EdgeX",
 };

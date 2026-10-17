@@ -1,0 +1,177 @@
+# OpenChainBench. Bench № 296
+
+slug: ethereum-rpc-ws
+number: "296"
+title: Fastest private Ethereum WebSocket push, per-block race across keyed RPC providers
+seo_title: "Fastest Ethereum WebSocket RPC push 2026, private endpoints"
+seo_description: "{{best_name}} has the lowest median lag behind the first Ethereum block push among Chainstack, GetBlock, QuickNode and Dwellir."
+subtitle: Per-block WebSocket push lag in milliseconds versus the first provider to deliver the same Ethereum block, across API-key endpoints probed from us-east, eu-west and Singapore.
+
+category: RPCs
+status: live
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-keyed-latency
+metric: Push lag
+unit: ms
+higher_is_better: false
+
+seo_intro: |
+  A bot that subscribes to eth_subscribe(newHeads) does not care what a
+  provider's median HTTP latency is. It cares who hands it block N first,
+  and by how much the others trail. This page races the private (Ethereum)
+  cohort: one WebSocket per provider per region, open ten minutes in every
+  hour across the whole cohort, every frame
+  timestamped on arrival, each block scored against whichever provider
+  delivered it earliest. {{best_name}} currently leads at {{best_p50}}
+  (p50, 24h) across {{count}} keyed providers.
+
+  Because the measurement is relative, the leader reads near zero by
+  construction. The numbers to read are the gap to the runner-up and the
+  shape of the trailing distribution, p50 against p99, not the leader's
+  absolute figure.
+
+abstract: |
+  Private, API-key Ethereum endpoints raced on WebSocket delivery. One harness
+  holds an eth_subscribe(newHeads) subscription per provider in
+  each of three regions and timestamps every push on receipt. Per block, the
+  earliest arrival across providers in that region defines T0; each provider's
+  sample is its own arrival minus T0, in milliseconds.
+
+  The same process runs the HTTP arm of the keyed cohort, which is deliberate:
+  comparing arrival times recorded by separate processes would compare clocks
+  as much as providers, and the differences here are tens of milliseconds.
+
+methodology:
+  - "Race, not latency: all providers on a chain wait for the same block, so only the spread between them belongs to them. Time from block production to first arrival is the chain's block time and is not published as a provider result."
+  - "One socket per provider per region, eth_subscribe(newHeads), opened for the same ten minutes of every hour across the whole cohort and closed with the window. Every frame is timestamped on receipt. The window is aligned to the clock rather than to each connection, because a race only means something if every provider is listening to the same blocks."
+  - "Sampled rather than continuous since 2026-10-17, and the reason is ours: a permanent subscription on nine chains pushed about 138 million messages a month per provider against 583 thousand HTTP probes, and one vendor reached its monthly limit. The three fastest chains left the arm and the rest listen a sixth of the time. Racing a provider until its account is exhausted would remove it from nine other pages."
+  - "Histogram buckets floor at 0.5 ms. The winner reads 0 by construction, so a coarse first bucket collapses every leader's p50 into an interpolation artifact inside it."
+  - "Reconnections are a published result, not an implementation detail: a provider that drops twice in two minutes is unusable to a subscriber whatever its median says."
+  - "GetBlock issues one WebSocket token per chain per region, so its three cells are distinct endpoints rather than one URL probed from three places."
+  - "Alchemy is measured on the HTTP cohort but not here, and the reason is ours rather than theirs: its endpoint bills WebSocket per message, these subscriptions pushed about 116 million frames a month against the Free plan key that row discloses, and the key is shared with the HTTP probes. Racing a provider until its account is exhausted would remove it from nine other pages, so it waits for a message budget guard."
+  - "Validation Cloud is listed on the HTTP cohorts of this chain but not here: its WebSocket endpoint refuses the upgrade in all three regions (`websocket: bad handshake`), so there is nothing to race. Measured over 3h on 2026-10-17: 542 reconnection attempts, zero frames. The row returns when the endpoint opens."
+  - "Same keyed endpoints as the HTTP cohort on this chain, same keys, same three regions. Keys live in the probe environment, never in this repository. Plan tiers are disclosed on the HTTP cohort's methodology."
+
+expected_n: 3600
+
+prometheus:
+  window: 24h
+  freshness_metric: rpc_ws_head_seen_total
+
+# Per-cell (region) ranking matrix for scoped badge claims. Chain is fixed for
+# the whole bench, so cells key on provider and region.
+rank_matrix_query: histogram_quantile(0.50, sum by (provider, region, le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{chain="ethereum",tier="keyed"}))
+
+dimensions:
+  region:
+    - { value: all,     label: All regions }
+    - { value: us-east, label: US-East }
+    - { value: eu-west, label: EU-West }
+    - { value: sgp,     label: Singapore }
+
+faq:
+  - q: "Which private RPC provider pushes new Ethereum blocks first over WebSocket?"
+    a: "{{best_name}} has the lowest median lag behind the first arrival over 24h; a figure inside the first histogram bucket reads as zero. {{worst_name}} trails most, at {{worst_p50}} (p50, 24h). The board re-scores on every Ethereum block. Read the p99 column before wiring a latency-sensitive bot to one provider."
+  - q: "Why does the fastest provider show a lag near zero?"
+    a: "By construction. Each block is a race: the earliest arrival defines T0 and every sample is measured against it, so the provider that wins most races accumulates mostly zero samples. A single vantage point cannot measure absolute production-to-client latency without a node co-located with block producers; it can measure fairly which provider delivers the same block earlier over the same path. Read the gap to the runner-up and the trailing distribution, not the leader's absolute number."
+  - q: "Is this the same as the HTTP latency cohort on this chain?"
+    a: "Same providers, same keys, same regions, different question. The HTTP cohort measures a request you send; this measures a push you wait for, and the two orderings are not the same. GetBlock issues one WebSocket token per chain per region, so its three cells are distinct endpoints rather than one URL probed from three places."
+  - q: "Could a provider win by pushing blocks before validating them?"
+    a: "In principle, at the cost of occasionally pushing something that gets retracted. That is why coverage is published next to the lag: a provider that pushes early but wrong shows gaps, and the coverage column counts blocks seen against the cohort maximum. Hash-level cross-checking against an independent reference is not in this version."
+
+providers:
+  - slug: chainstack
+    name: Chainstack
+    tag: Private WS, same keyed endpoint as the HTTP cohort
+    formula: "Median ms behind the first provider to push each Ethereum block over eth_subscribe(newHeads), from one socket per provider per region, histogram_quantile over 24h. The per-block winner scores 0 by construction."
+    queries:
+      p50: histogram_quantile(0.50, sum by (le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{provider="chainstack",chain="ethereum",tier="keyed"}))
+      p90: histogram_quantile(0.90, sum by (le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{provider="chainstack",chain="ethereum",tier="keyed"}))
+      p95: histogram_quantile(0.95, sum by (le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{provider="chainstack",chain="ethereum",tier="keyed"}))
+      p99: histogram_quantile(0.99, sum by (le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{provider="chainstack",chain="ethereum",tier="keyed"}))
+      mean: sum(ocb:rpc_ws_head_lead_milliseconds_sum:rate24h{provider="chainstack",chain="ethereum",tier="keyed"}) / sum(ocb:rpc_ws_head_lead_milliseconds_count:rate24h{provider="chainstack",chain="ethereum",tier="keyed"})
+      success: clamp_max(sum(increase(rpc_ws_head_seen_total{provider="chainstack",chain="ethereum",tier="keyed"}[24h])) / max(sum by (provider) (increase(rpc_ws_head_seen_total{chain="ethereum",tier="keyed"}[24h]))), 1)
+      sample_size: sum(increase(rpc_ws_head_seen_total{provider="chainstack",chain="ethereum",tier="keyed"}[24h]))
+      series: histogram_quantile(0.50, sum by (le) (rate(rpc_ws_head_lead_milliseconds_histogram_bucket{provider="chainstack",chain="ethereum",tier="keyed"}[1h])))
+      regions:
+        - region: us-east
+          p50: histogram_quantile(0.50, sum by (le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{provider="chainstack",chain="ethereum",tier="keyed",region="us-east"}))
+          series: histogram_quantile(0.50, sum by (le) (rate(rpc_ws_head_lead_milliseconds_histogram_bucket{provider="chainstack",chain="ethereum",tier="keyed",region="us-east"}[1h])))
+        - region: eu-west
+          p50: histogram_quantile(0.50, sum by (le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{provider="chainstack",chain="ethereum",tier="keyed",region="eu-west"}))
+          series: histogram_quantile(0.50, sum by (le) (rate(rpc_ws_head_lead_milliseconds_histogram_bucket{provider="chainstack",chain="ethereum",tier="keyed",region="eu-west"}[1h])))
+        - region: ap-southeast
+          p50: histogram_quantile(0.50, sum by (le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{provider="chainstack",chain="ethereum",tier="keyed",region="sgp"}))
+          series: histogram_quantile(0.50, sum by (le) (rate(rpc_ws_head_lead_milliseconds_histogram_bucket{provider="chainstack",chain="ethereum",tier="keyed",region="sgp"}[1h])))
+
+  - slug: getblock
+    name: GetBlock
+    tag: Private WS, same keyed endpoint as the HTTP cohort
+    formula: "Median ms behind the first provider to push each Ethereum block over eth_subscribe(newHeads), from one socket per provider per region, histogram_quantile over 24h. The per-block winner scores 0 by construction."
+    queries:
+      p50: histogram_quantile(0.50, sum by (le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{provider="getblock",chain="ethereum",tier="keyed"}))
+      p90: histogram_quantile(0.90, sum by (le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{provider="getblock",chain="ethereum",tier="keyed"}))
+      p95: histogram_quantile(0.95, sum by (le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{provider="getblock",chain="ethereum",tier="keyed"}))
+      p99: histogram_quantile(0.99, sum by (le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{provider="getblock",chain="ethereum",tier="keyed"}))
+      mean: sum(ocb:rpc_ws_head_lead_milliseconds_sum:rate24h{provider="getblock",chain="ethereum",tier="keyed"}) / sum(ocb:rpc_ws_head_lead_milliseconds_count:rate24h{provider="getblock",chain="ethereum",tier="keyed"})
+      success: clamp_max(sum(increase(rpc_ws_head_seen_total{provider="getblock",chain="ethereum",tier="keyed"}[24h])) / max(sum by (provider) (increase(rpc_ws_head_seen_total{chain="ethereum",tier="keyed"}[24h]))), 1)
+      sample_size: sum(increase(rpc_ws_head_seen_total{provider="getblock",chain="ethereum",tier="keyed"}[24h]))
+      series: histogram_quantile(0.50, sum by (le) (rate(rpc_ws_head_lead_milliseconds_histogram_bucket{provider="getblock",chain="ethereum",tier="keyed"}[1h])))
+      regions:
+        - region: us-east
+          p50: histogram_quantile(0.50, sum by (le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{provider="getblock",chain="ethereum",tier="keyed",region="us-east"}))
+          series: histogram_quantile(0.50, sum by (le) (rate(rpc_ws_head_lead_milliseconds_histogram_bucket{provider="getblock",chain="ethereum",tier="keyed",region="us-east"}[1h])))
+        - region: eu-west
+          p50: histogram_quantile(0.50, sum by (le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{provider="getblock",chain="ethereum",tier="keyed",region="eu-west"}))
+          series: histogram_quantile(0.50, sum by (le) (rate(rpc_ws_head_lead_milliseconds_histogram_bucket{provider="getblock",chain="ethereum",tier="keyed",region="eu-west"}[1h])))
+        - region: ap-southeast
+          p50: histogram_quantile(0.50, sum by (le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{provider="getblock",chain="ethereum",tier="keyed",region="sgp"}))
+          series: histogram_quantile(0.50, sum by (le) (rate(rpc_ws_head_lead_milliseconds_histogram_bucket{provider="getblock",chain="ethereum",tier="keyed",region="sgp"}[1h])))
+
+  - slug: quicknode
+    name: QuickNode
+    tag: Private WS, same keyed endpoint as the HTTP cohort
+    formula: "Median ms behind the first provider to push each Ethereum block over eth_subscribe(newHeads), from one socket per provider per region, histogram_quantile over 24h. The per-block winner scores 0 by construction."
+    queries:
+      p50: histogram_quantile(0.50, sum by (le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{provider="quicknode",chain="ethereum",tier="keyed"}))
+      p90: histogram_quantile(0.90, sum by (le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{provider="quicknode",chain="ethereum",tier="keyed"}))
+      p95: histogram_quantile(0.95, sum by (le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{provider="quicknode",chain="ethereum",tier="keyed"}))
+      p99: histogram_quantile(0.99, sum by (le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{provider="quicknode",chain="ethereum",tier="keyed"}))
+      mean: sum(ocb:rpc_ws_head_lead_milliseconds_sum:rate24h{provider="quicknode",chain="ethereum",tier="keyed"}) / sum(ocb:rpc_ws_head_lead_milliseconds_count:rate24h{provider="quicknode",chain="ethereum",tier="keyed"})
+      success: clamp_max(sum(increase(rpc_ws_head_seen_total{provider="quicknode",chain="ethereum",tier="keyed"}[24h])) / max(sum by (provider) (increase(rpc_ws_head_seen_total{chain="ethereum",tier="keyed"}[24h]))), 1)
+      sample_size: sum(increase(rpc_ws_head_seen_total{provider="quicknode",chain="ethereum",tier="keyed"}[24h]))
+      series: histogram_quantile(0.50, sum by (le) (rate(rpc_ws_head_lead_milliseconds_histogram_bucket{provider="quicknode",chain="ethereum",tier="keyed"}[1h])))
+      regions:
+        - region: us-east
+          p50: histogram_quantile(0.50, sum by (le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{provider="quicknode",chain="ethereum",tier="keyed",region="us-east"}))
+          series: histogram_quantile(0.50, sum by (le) (rate(rpc_ws_head_lead_milliseconds_histogram_bucket{provider="quicknode",chain="ethereum",tier="keyed",region="us-east"}[1h])))
+        - region: eu-west
+          p50: histogram_quantile(0.50, sum by (le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{provider="quicknode",chain="ethereum",tier="keyed",region="eu-west"}))
+          series: histogram_quantile(0.50, sum by (le) (rate(rpc_ws_head_lead_milliseconds_histogram_bucket{provider="quicknode",chain="ethereum",tier="keyed",region="eu-west"}[1h])))
+        - region: ap-southeast
+          p50: histogram_quantile(0.50, sum by (le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{provider="quicknode",chain="ethereum",tier="keyed",region="sgp"}))
+          series: histogram_quantile(0.50, sum by (le) (rate(rpc_ws_head_lead_milliseconds_histogram_bucket{provider="quicknode",chain="ethereum",tier="keyed",region="sgp"}[1h])))
+
+  - slug: dwellir
+    name: Dwellir
+    tag: Private WS, same keyed endpoint as the HTTP cohort
+    formula: "Median ms behind the first provider to push each Ethereum block over eth_subscribe(newHeads), from one socket per provider per region, histogram_quantile over 24h. The per-block winner scores 0 by construction."
+    queries:
+      p50: histogram_quantile(0.50, sum by (le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{provider="dwellir",chain="ethereum",tier="keyed"}))
+      p90: histogram_quantile(0.90, sum by (le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{provider="dwellir",chain="ethereum",tier="keyed"}))
+      p95: histogram_quantile(0.95, sum by (le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{provider="dwellir",chain="ethereum",tier="keyed"}))
+      p99: histogram_quantile(0.99, sum by (le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{provider="dwellir",chain="ethereum",tier="keyed"}))
+      mean: sum(ocb:rpc_ws_head_lead_milliseconds_sum:rate24h{provider="dwellir",chain="ethereum",tier="keyed"}) / sum(ocb:rpc_ws_head_lead_milliseconds_count:rate24h{provider="dwellir",chain="ethereum",tier="keyed"})
+      success: clamp_max(sum(increase(rpc_ws_head_seen_total{provider="dwellir",chain="ethereum",tier="keyed"}[24h])) / max(sum by (provider) (increase(rpc_ws_head_seen_total{chain="ethereum",tier="keyed"}[24h]))), 1)
+      sample_size: sum(increase(rpc_ws_head_seen_total{provider="dwellir",chain="ethereum",tier="keyed"}[24h]))
+      series: histogram_quantile(0.50, sum by (le) (rate(rpc_ws_head_lead_milliseconds_histogram_bucket{provider="dwellir",chain="ethereum",tier="keyed"}[1h])))
+      regions:
+        - region: us-east
+          p50: histogram_quantile(0.50, sum by (le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{provider="dwellir",chain="ethereum",tier="keyed",region="us-east"}))
+          series: histogram_quantile(0.50, sum by (le) (rate(rpc_ws_head_lead_milliseconds_histogram_bucket{provider="dwellir",chain="ethereum",tier="keyed",region="us-east"}[1h])))
+        - region: eu-west
+          p50: histogram_quantile(0.50, sum by (le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{provider="dwellir",chain="ethereum",tier="keyed",region="eu-west"}))
+          series: histogram_quantile(0.50, sum by (le) (rate(rpc_ws_head_lead_milliseconds_histogram_bucket{provider="dwellir",chain="ethereum",tier="keyed",region="eu-west"}[1h])))
+        - region: ap-southeast
+          p50: histogram_quantile(0.50, sum by (le) (ocb:rpc_ws_head_lead_milliseconds_bucket:rate24h{provider="dwellir",chain="ethereum",tier="keyed",region="sgp"}))
+          series: histogram_quantile(0.50, sum by (le) (rate(rpc_ws_head_lead_milliseconds_histogram_bucket{provider="dwellir",chain="ethereum",tier="keyed",region="sgp"}[1h])))
+

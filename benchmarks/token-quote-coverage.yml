@@ -23,7 +23,7 @@ per_chain_explainer:
   - slug: robinhood
     h2: "DEX aggregator coverage on Robinhood Chain"
     body: |
-      Robinhood Chain (chainId 4663) is Robinhood's EVM-compatible Layer 2, launched in 2025. Tokens launch and graduate via the Pons launchpad to Uniswap V3-based pools, with USDG as the primary stablecoin. Virtuals Protocol has also expanded to Robinhood, so the bench now probes both Pons-graduated tokens and Virtuals agents deployed on Robinhood. Four aggregators cover this chain: Mobula, KyberSwap, ParaSwap and Relay. {{best_name:chain:robinhood}} currently leads on Robinhood at {{best_p50:chain:robinhood}} coverage (24h). The leaderboard captures improvements in real time as aggregators deepen their Robinhood integration.
+      Robinhood Chain (chainId 4663) is Robinhood's EVM-compatible Layer 2, launched in 2025. Tokens launch and graduate via the Pons launchpad to Uniswap V3-based pools, with USDG as the primary stablecoin. Virtuals Protocol has also expanded to Robinhood, so the bench now probes both Pons-graduated tokens and Virtuals agents deployed on Robinhood. Four quote sources cover this chain: the aggregators Mobula, KyberSwap and ParaSwap, plus Relay, which is a cross-chain relayer rather than a DEX aggregator and is scored on the same probe because it answers the same question. {{best_name:chain:robinhood}} currently leads on Robinhood at {{best_p50:chain:robinhood}} coverage (24h). The leaderboard captures improvements in real time as aggregators deepen their Robinhood integration.
 
 category: Aggregators
 status: live
@@ -73,6 +73,7 @@ abstract: |
 
 methodology:
   - "Token discovery: five sources in parallel. (1) Dexscreener token-boosts: pump-fun (Solana) and pons (Robinhood). (2) Virtuals Protocol API: Virtuals agents on Base and Robinhood chain (virtuals). (3) GeckoTerminal BSC new_pools: four-meme. (4) GeckoTerminal Solana moonshot/pools: moonshot. (5) GeckoTerminal Solana meteora-dbc/pools: meteora-dbc. Boosted tokens from (1) are enriched via Dexscreener batch lookup to resolve dexId to venue labels."
+  - "Cohort composition: four of the five are DEX aggregators (Jupiter on Solana, KyberSwap and ParaSwap on EVM, Mobula on both). Relay is a cross-chain relayer, scored here because it answers the same probe, not because it is an aggregator; the rest of the site types it the same way on bridge-fee and bridge-realized-cost. Read the type beside each name before the rank."
   - "Quote probe: 1 USDC → token, fired in parallel to all in-scope providers with a 10s timeout. Input token is always USDC (native USDC on Solana and Base, bridged USDC.e on BNB). A probe is a coverage hit when the HTTP response is 2xx and the parsed outAmount field is a non-zero positive integer or decimal. All other outcomes (4xx, 5xx, no-route JSON, empty outAmount, timeout) record as misses."
   - "Aggregator endpoints: Jupiter lite-api.jup.ag/swap/v1/quote (Solana), Mobula /api/2/swap/quoting (EVM + Solana, API key), Relay api.relay.link/quote (EVM + Solana, no key), KyberSwap aggregator-api.kyberswap.com/{chain}/api/v1/routes (EVM only, no key), ParaSwap apiv5.paraswap.io/prices (EVM only, no key). Each adapter normalises chain identifiers, input/output decimals, and error response shapes before recording outcome."
   - "Jupiter strictMode=false: queried without the curated-token filter so Jupiter will attempt routing for any token with a discoverable on-chain pool, matching how most wallets call the API. strictMode=true would trivially exclude new tokens and defeat the purpose of the benchmark."
@@ -140,6 +141,7 @@ rank_matrix_query: >
 providers:
   - slug: mobula
     name: Mobula
+    type: aggregator
     tag: Multi-chain, Solana + Base + BNB + Robinhood, API key required
     formula: "Rolling 24h ratio of token_quote_coverage_success_total to token_quote_coverage_attempts_total for provider=mobula, across all launchpads and chains Mobula supports."
     queries:
@@ -155,6 +157,7 @@ providers:
 
   - slug: jupiter
     name: Jupiter
+    type: aggregator
     tag: Solana only, strictMode=false
     formula: "Rolling 24h ratio of hits to attempts for provider=jupiter. Solana launchpads only (Pump.fun, Moonshot, Meteora DBC). EVM launchpad cells are null by construction."
     queries:
@@ -170,6 +173,7 @@ providers:
 
   - slug: relay
     name: Relay
+    type: relay
     tag: Multi-chain, Solana + Base + BNB + Robinhood, no key
     formula: "Rolling 24h ratio for provider=relay. Covers all 4 chains including Solana (via dFlow router). No API key required."
     queries:
@@ -185,6 +189,7 @@ providers:
 
   - slug: kyberswap
     name: KyberSwap
+    type: aggregator
     tag: EVM aggregator, Base + BNB + Robinhood, no key
     formula: "Rolling 24h ratio for provider=kyberswap. EVM-only: Base, BNB Chain, Robinhood. No Solana support (structural, not a coverage gap). No API key required."
     queries:
@@ -200,6 +205,7 @@ providers:
 
   - slug: paraswap
     name: ParaSwap
+    type: aggregator
     tag: EVM aggregator, Base + BNB + Robinhood, no key
     formula: "Rolling 24h ratio for provider=paraswap. EVM-only: Base, BNB Chain, Robinhood. No Solana support (structural). No API key required."
     queries:

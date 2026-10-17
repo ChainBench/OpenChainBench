@@ -134,6 +134,8 @@ const (
 	srcStandXNative      = "standx_native"
 	srcApexNative        = "apex_native"
 	srcJupiterNative     = "jupiter_native"
+	srcPapertradeNative  = "papertrade_native"
+	srcLeverageTerms     = "leverage_terms"
 	srcLighterRHNative   = "lighter_rh_native"
 	srcHLXyzNative       = "hl_xyz_native"
 	srcCexCoinGecko      = "cex_coingecko"
@@ -195,6 +197,11 @@ func priorityMap(venue, metric string) []string {
 			return []string{srcOrderlyNative}
 		case "backpack":
 			return []string{srcBackpackNative}
+		case "papertrade":
+			// DefiLlama's derivatives volume endpoint is paid (402), and the
+			// venue publishes everything we need itself, so the native API is
+			// the only source rather than the preferred one.
+			return []string{srcPapertradeNative}
 		case "kalshi":
 			return []string{srcKalshiNative}
 		case "vest":
@@ -288,6 +295,10 @@ func priorityMap(venue, metric string) []string {
 		case "vest":
 			// The Vest API publishes no open interest.
 			return nil
+		case "papertrade":
+			// Sum of the four side columns: every position faces the house,
+			// so long and short add rather than net off.
+			return []string{srcPapertradeNative}
 		}
 	case mFees30d:
 		switch venue {
@@ -358,6 +369,8 @@ func priorityMap(venue, metric string) []string {
 			return []string{srcHLXyzNative}
 		case "binance", "okx", "bybit", "gate", "coinbase", "bitget", "kraken", "mexc":
 			return []string{srcCexCoinGecko}
+		case "papertrade":
+			return []string{srcPapertradeNative}
 		}
 	case mTopVol24h:
 		switch venue {
@@ -416,6 +429,10 @@ func priorityMap(venue, metric string) []string {
 			"lighter", "paradex", "edgex", "aster", "nado",
 			"grvt", "extended", "aevo", "pacifica":
 			return []string{srcDefillama}
+		case "papertrade":
+			// Publishes its own TVL, and DefiLlama's derivatives endpoint is
+			// paid, so the native source is the only one.
+			return []string{srcPapertradeNative}
 		}
 	}
 	return nil
@@ -529,6 +546,8 @@ func NewRouter(cfg *Config) *Router {
 		NewKiloExNativeSource(),
 		NewOrderlyNativeSource(),
 		NewBackpackNativeSource(),
+		NewPapertradeNativeSource(),
+		NewLeverageTermsSource(),
 		NewOndoNativeSource(),
 		NewKalshiNativeSource(),
 		NewVestNativeSource(),

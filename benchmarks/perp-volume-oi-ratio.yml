@@ -261,7 +261,7 @@ providers:
       series: perp_venue_volume_24h_usd{venue="gains"} / perp_venue_oi_usd{venue="gains"}
 
   - slug: gmx-v2
-    name: GMX v2
+    name: GMX
     tag: Arbitrum and Avalanche pool perps; volume from the Subsquid indexer, OI from DefiLlama
     formula: "avg_over_time(perp_venue_volume_24h_usd{venue=\"gmx-v2\"}[24h]) / avg_over_time(perp_venue_oi_usd{venue=\"gmx-v2\"}[24h])"
     queries:
@@ -363,3 +363,16 @@ providers:
       success: avg_over_time(perp_venue_health{venue="trade-xyz"}[24h])
       sample_size: count_over_time(perp_venue_volume_24h_usd{venue="trade-xyz"}[24h])
       series: perp_venue_volume_24h_usd{venue="trade-xyz"} / perp_venue_oi_usd{venue="trade-xyz"}
+  - slug: papertrade
+    name: Papertrade
+    tag: Hyperliquid, single house LP, BTC and ETH only
+    formula: "Last complete daily volume over open interest, both from the venue's own history API. The four side columns are summed because every position faces the house."
+    queries:
+      p50: avg_over_time(perp_venue_volume_24h_usd{venue="papertrade"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="papertrade"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_volume_24h_usd{venue="papertrade"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="papertrade"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_volume_24h_usd{venue="papertrade"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="papertrade"}[24h])
+      mean: avg_over_time(perp_venue_volume_24h_usd{venue="papertrade"}[24h]) / avg_over_time(perp_venue_oi_usd{venue="papertrade"}[24h])
+      success: avg_over_time(perp_venue_health{venue="papertrade"}[24h])
+      sample_size: count_over_time(perp_venue_volume_24h_usd{venue="papertrade"}[24h])
+      series: perp_venue_volume_24h_usd{venue="papertrade"} / perp_venue_oi_usd{venue="papertrade"}
+

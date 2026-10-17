@@ -55,14 +55,20 @@ const PRODUCT_ALIASES: Record<string, string> = {
   // Arc publishes a keyless QuickNode endpoint under its own domain; the
   // product page is QuickNode's.
   "arc-quicknode": "quicknode",
-  // The cold-start cohort added on 2026-10-08 is the same four vendors on a
-  // connection that is never reused. Each `-cold` slug built its own product
-  // page: four indexable duplicates of the real provider, with no description
-  // and no official link, because the registry has no entry for them. They are
-  // a measurement arm, not a product. Folding them here collapses their bench
+  // The cold-start cohort added on 2026-10-08 is the keyed vendors measured on
+  // a connection that is never reused. Each `-cold` slug built its own product
+  // page: indexable duplicates of the real provider, with no description and
+  // no official link, because the registry has no entry for them. They are a
+  // measurement arm, not a product. Folding them here collapses their bench
   // appearances onto the vendor's page and leaves one page per vendor, which
   // also restores parity with the logo-manifest ALIASES entries they already
   // have.
+  //
+  // Every vendor in the cold tier needs a line here, and adding one to the
+  // tier without it is silent: /products/dwellir-cold shipped to production as
+  // a 200 with the same title as /products/dwellir and a sitemap entry, while
+  // the original four redirected. Keep this list in step with the
+  // `tier: keyed-cold` blocks in the `-rpc` specs.
   "alchemy-cold": "alchemy",
   "chainstack-cold": "chainstack",
   "getblock-cold": "getblock",

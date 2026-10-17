@@ -43,6 +43,18 @@ type nodeDayIndex struct {
 	Day      string `json:"day"`
 	Hours    int    `json:"hours"`
 	Complete bool   `json:"complete"`
+	// Rebuilt marks a day the reducer assembled from the public export plus
+	// the per-wallet info API instead of measuring it. Such a day is used,
+	// because it beats the export alone by a wide margin, but it is counted
+	// apart: "read from the node" and "reconstructed" are different claims
+	// and the page makes both.
+	Rebuilt bool `json:"rebuilt"`
+	// ExpectedErrorPct is how far short a rebuilt day is expected to fall,
+	// negative, and 0 on a measured day. Reported rather than averaged away:
+	// the shortfall ranges from -0.5 to -35 per cent across the rebuilt days,
+	// so a single figure for the window would be meaningless.
+	ExpectedErrorPct float64 `json:"expected_error_pct"`
+	Extrapolated     bool    `json:"expected_error_extrapolated"`
 }
 
 type nodeUserAgg struct {
@@ -67,6 +79,7 @@ type nodeDay struct {
 	Day      string                 `json:"day"`
 	Hours    int                    `json:"hours"`
 	Complete bool                   `json:"complete"`
+	Rebuilt  bool                   `json:"rebuilt"`
 	Builders map[string]*nodeTotals `json:"builders"`
 }
 
@@ -168,12 +181,51 @@ func (n *NodeSource) Refresh() error {
 }
 
 // WholeDays is the set of days the node covered end to end.
+// WorstRebuiltErrorPct is the largest expected shortfall among the rebuilt
+// days in the window, as a negative percent, and 0 when none are rebuilt. The
+// worst rather than the mean, because what a reader needs is how wrong the
+// window could be, and averaging a -0.5 per cent day with a -35 per cent one
+// describes neither.
+func (n *NodeSource) WorstRebuiltErrorPct(window map[string]bool) float64 {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+	worst := 0.0
+	for d, e := range n.index {
+		if !e.Complete || !e.Rebuilt || !window[d] {
+			continue
+		}
+		if e.ExpectedErrorPct < worst {
+			worst = e.ExpectedErrorPct
+		}
+	}
+	return worst
+}
+
+// RebuiltDays is the days served as reconstructions. Disjoint from
+// WholeDays, so a caller can report each without the other.
+func (n *NodeSource) RebuiltDays() map[string]bool {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+	out := make(map[string]bool, len(n.index))
+	for d, e := range n.index {
+		if e.Complete && e.Rebuilt {
+			out[d] = true
+		}
+	}
+	return out
+}
+
+// WholeDays is the days the node measured in full. Rebuilt days are excluded
+// deliberately: this feeds hl_frontend_node_days_window_v2, whose help text
+// promises days "read from the Hyperliquid node's own fill stream", and a
+// reconstruction counted there would quietly inflate the one number that says
+// how much of the window is real.
 func (n *NodeSource) WholeDays() map[string]bool {
 	n.mu.Lock()
 	defer n.mu.Unlock()
 	out := make(map[string]bool, len(n.index))
 	for d, e := range n.index {
-		if e.Complete {
+		if e.Complete && !e.Rebuilt {
 			out[d] = true
 		}
 	}

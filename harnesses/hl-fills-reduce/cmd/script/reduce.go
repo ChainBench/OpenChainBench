@@ -60,14 +60,35 @@ const reduceSchema = 2
 
 // Day is the reduced form of one day of the node's fill stream.
 type Day struct {
-	Schema    int                `json:"schema"`
-	Day       string             `json:"day"`
-	Hours     int                `json:"hours"`
-	Complete  bool               `json:"complete"`
-	FirstFill string             `json:"first_fill,omitempty"`
-	LastFill  string             `json:"last_fill,omitempty"`
-	ReducedAt int64              `json:"reduced_at"`
-	Builders  map[string]*Totals `json:"builders"`
+	Schema    int    `json:"schema"`
+	Day       string `json:"day"`
+	Hours     int    `json:"hours"`
+	Complete  bool   `json:"complete"`
+	FirstFill string `json:"first_fill,omitempty"`
+	LastFill  string `json:"last_fill,omitempty"`
+	ReducedAt int64  `json:"reduced_at"`
+	// Rebuilt marks a day assembled from the public export plus the
+	// per-wallet info API instead of measured by the node. Absent on every
+	// day the reducer writes itself, so a consumer that does not know the
+	// field still cannot read a reconstruction as a measurement.
+	Rebuilt bool `json:"rebuilt,omitempty"`
+	// RebuiltFrom carries a rebuilt day's provenance and, above all, how far
+	// short it is expected to fall. Accuracy depends almost entirely on how much
+	// of the day the export's morning covered, which is known before any
+	// rebuilding happens, so the figure can travel with the day instead of
+	// living in someone's head: two complete days scored against the node gave
+	// -0.43 per cent at a 68.8 per cent morning and -28.2 per cent at 27.2.
+	RebuiltFrom *RebuiltFrom       `json:"rebuilt_from,omitempty"`
+	Builders    map[string]*Totals `json:"builders"`
+}
+
+// RebuiltFrom is the subset of a rebuilt day's provenance this needs. The
+// rebuild tool writes more than these fields; unknown keys decode away, and
+// nothing here ever rewrites a rebuilt file.
+type RebuiltFrom struct {
+	ExpectedErrorPct float64 `json:"expected_error_pct"`
+	MorningSharePct  float64 `json:"morning_share_pct"`
+	Extrapolated     bool    `json:"expected_error_extrapolated"`
 }
 
 // fillEvent mirrors only the fields this reads. The node's record carries a
@@ -92,8 +113,14 @@ type blockLine struct {
 type Reducer struct {
 	FillsDir string
 	OutDir   string
-	Mount    string
-	Backfill int
+	// RebuiltDir holds days rebuilt from the public export plus the info API,
+	// for outages the node cannot replay: it fast-forwards instead of
+	// backfilling, so a gap is permanent locally. Served only for days OutDir
+	// has no whole day for, and always flagged, because a rebuilt day is not
+	// a measured one and this harness exists to keep that distinction.
+	RebuiltDir string
+	Mount      string
+	Backfill   int
 }
 
 // outPath is where a reduced day lands. Gzipped because the trader lists
@@ -168,6 +195,15 @@ func (r *Reducer) alreadyWhole(day string) (bool, error) {
 	return hours <= d.Hours, nil
 }
 
+// hoursPresent counts the hours a day actually holds.
+//
+// An empty file does not count. The node creates an hour file when the hour
+// turns and writes into it as it applies blocks, so a node that is stalled or
+// catching up leaves 0-byte files behind: on 2026-10-13 hour 12 was 0 bytes
+// while hours 13 to 16 held between 13% and 54% of a normal hour's volume.
+// Counting that file made the day report 5 hours of 24 when it held none for
+// that hour at all, and coverage is exactly what the consumer uses to decide
+// whether to trust this day over the truncated public export.
 func (r *Reducer) hoursPresent(day string) (int, error) {
 	ents, err := os.ReadDir(dayPath(r.FillsDir, day))
 	if err != nil {
@@ -175,9 +211,13 @@ func (r *Reducer) hoursPresent(day string) (int, error) {
 	}
 	n := 0
 	for _, e := range ents {
-		if !e.IsDir() {
-			n++
+		if e.IsDir() {
+			continue
 		}
+		if info, err := e.Info(); err == nil && info.Size() == 0 {
+			continue
+		}
+		n++
 	}
 	return n, nil
 }
@@ -196,6 +236,13 @@ func (r *Reducer) ReduceDay(day string) error {
 		}
 		h, err := strconv.Atoi(e.Name())
 		if err != nil {
+			continue
+		}
+		// Skip empty hours for the same reason hoursPresent does: the file
+		// exists because the hour turned, not because the node wrote
+		// anything into it. Counting it inflates the day's coverage, and the
+		// two counts must agree or alreadyWhole re-reduces for ever.
+		if info, err := e.Info(); err == nil && info.Size() == 0 {
 			continue
 		}
 		hours = append(hours, h)
@@ -340,7 +387,12 @@ func (r *Reducer) write(d *Day) error {
 
 // LoadDay reads a reduced day back.
 func (r *Reducer) LoadDay(day string) (*Day, error) {
-	f, err := os.Open(r.outPath(day))
+	return r.loadFrom(r.outPath(day))
+}
+
+// loadFrom reads one reduced or rebuilt day from an explicit path.
+func (r *Reducer) loadFrom(path string) (*Day, error) {
+	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
@@ -357,10 +409,31 @@ func (r *Reducer) LoadDay(day string) (*Day, error) {
 	return &d, nil
 }
 
-// freeSpace reports the mount's free fraction, 0..1.
+// rootMount is the filesystem holding the binaries, the journal and the
+// system temp directory. It is watched alongside the data volume because a
+// full root stops the node without touching the data volume at all: on
+// 2026-10-08 this box's root filled to 100% while /mnt/hyperliquid sat at
+// 29%, hl-visor could not stage the 106 MB node binary a hardfork required
+// through /tmp, and the node froze at the fork height for three days. Every
+// disk signal on the box pointed at the data volume, so nothing fired.
+const rootMount = "/"
+
+// freeSpace reports free and total bytes on the mount holding the node data.
 func (r *Reducer) freeSpace() (free, total uint64) {
+	return spaceOn(r.Mount)
+}
+
+// rootSpace reports free and total bytes on the root filesystem.
+func (r *Reducer) rootSpace() (free, total uint64) {
+	return spaceOn(rootMount)
+}
+
+// spaceOn returns zeroes when the path cannot be read, which callers must
+// treat as "not measured" rather than "empty": a 0% gauge on an unreadable
+// mount is the reassuring lie this whole file exists to avoid.
+func spaceOn(path string) (free, total uint64) {
 	var st syscall.Statfs_t
-	if err := syscall.Statfs(r.Mount, &st); err != nil {
+	if err := syscall.Statfs(path, &st); err != nil {
 		return 0, 0
 	}
 	return st.Bavail * uint64(st.Bsize), st.Blocks * uint64(st.Bsize)

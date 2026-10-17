@@ -196,7 +196,7 @@ providers:
       series: perp_fees_all_in_bps{venue="dydx"}
 
   - slug: gmx
-    name: GMX v2
+    name: GMX
     tag: Synthetics on Arbitrum, oracle-priced
     formula: "Average over 24h of GMX v2 `positionFeeFactorForNegativeImpact` (worst-case open) for the selected market (ETH, BTC or SOL) from the synthetics-arbitrum subgraph, in bps; oracle priced so no spread component."
     queries:

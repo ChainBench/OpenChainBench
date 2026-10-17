@@ -90,6 +90,22 @@ scrape_configs:
   # publishes perp_venue_* gauges read by the /perps hub leaderboard,
   # PerpVenueKpiStrip and per-product PerpVenueSection. Tier 1 cohort:
   # hyperliquid, lighter, gmx-v2, gains. Internal-only Railway service.
+  # OpenChainBench bench №284 trading-agent-alpha. Reads Recall Labs' public
+  # competition API hourly and publishes each frontier model's alpha net of the
+  # asset it was pointed at. The arena is WEEKLY, so a series that has not moved
+  # in days is current, not stale: judge freshness on
+  # trading_agent_last_round_end_timestamp_seconds, never on scrape age.
+  - job_name: 'trading-agent-alpha'
+    static_configs:
+      - targets:
+        - 'ocb-trading-agent-alpha:2115'
+        labels:
+          benchmark: trading-agent-alpha
+    metrics_path: /metrics
+    # One pass an hour against a third party's free API. A tighter scrape buys
+    # nothing because the gauge only changes when a round ends.
+    scrape_interval: 300s
+
   - job_name: 'perp-cohort-stats'
     static_configs:
       - targets:

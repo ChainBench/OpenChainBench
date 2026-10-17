@@ -10,10 +10,7 @@ import { unstable_cache } from "next/cache";
 import { Prometheus } from "@/lib/prometheus";
 import type { HlWindow, HlFeedCoverage } from "@/lib/hl-feed";
 import { getSpecs } from "@/lib/spec";
-import {
-  readCohortSnapshot,
-  writeCohortSnapshot,
-} from "@/lib/cohort-snapshot";
+import { readCohortSnapshot, writeCohortSnapshot } from "@/lib/cohort-snapshot";
 
 export type { HlWindow, HlFeedCoverage } from "@/lib/hl-feed";
 
@@ -108,13 +105,25 @@ function promUrl(): string | null {
  * whole" must not look the same, which is the mistake the coverage gauges
  * were added to stop making in the first place.
  */
-async function readFeedCoverage(prom: Prometheus): Promise<HlFeedCoverage | null> {
-  const [hours, truncated, inWindow, measured, nodeDays] = await Promise.all([
+async function readFeedCoverage(
+  prom: Prometheus,
+): Promise<HlFeedCoverage | null> {
+  const [
+    hours,
+    truncated,
+    inWindow,
+    measured,
+    nodeDays,
+    rebuiltDays,
+    rebuiltWorst,
+  ] = await Promise.all([
     prom.scalar(`hl_frontend_day_coverage_hours_v2`),
     prom.scalar(`hl_frontend_day_truncated_v2`),
     prom.scalar(`hl_frontend_truncated_days_window_v2`),
     prom.scalar(`hl_frontend_coverage_days_measured_v2`),
     prom.scalar(`hl_frontend_node_days_window_v2`),
+    prom.scalar(`hl_frontend_rebuilt_days_window_v2`),
+    prom.scalar(`hl_frontend_rebuilt_worst_error_pct_v2`),
   ]);
   if (hours === null && truncated === null && inWindow === null) return null;
   const windowDays = 30;
@@ -129,6 +138,14 @@ async function readFeedCoverage(prom: Prometheus): Promise<HlFeedCoverage | null
     daysMeasured: Math.round(measured ?? 0),
     windowDays,
     nodeDays: Math.round(nodeDays ?? 0),
+    // 0 when the harness predates the gauge, which reads the same as "no
+    // reconstructions in the window" and is the safe way round: it never
+    // claims a day was rebuilt when it was measured.
+    rebuiltDays: Math.round(rebuiltDays ?? 0),
+    // A missing gauge reads as 0, which would describe a rebuilt day as
+    // perfect. The component therefore treats 0 with rebuiltDays > 0 as
+    // "unstated" rather than as "no shortfall".
+    rebuiltWorstErrorPct: rebuiltWorst ?? 0,
   };
 }
 
@@ -189,34 +206,42 @@ export async function fetchHlBuilderStatsFresh(
     feed,
   ] = await Promise.all([
     prom.scalar(`hl_frontend_fees_usd_30d_v2${sel}`),
-    prom.scalar(`hl_frontend_revenue_delta_pct_v2{builder="${slug}",window="30d"}`),
+    prom.scalar(
+      `hl_frontend_revenue_delta_pct_v2{builder="${slug}",window="30d"}`,
+    ),
     prom.scalar(`hl_frontend_volume_usd_30d_v2${sel}`),
     prom.scalar(`hl_frontend_users_30d_v2${sel}`),
     prom.scalar(`hl_frontend_fees_usd_24h_v2${sel}`),
     prom.scalar(`hl_frontend_volume_usd_24h_v2${sel}`),
     prom.scalar(`hl_frontend_users_24h_v2${sel}`),
-    prom.scalar(`hl_frontend_revenue_delta_pct_v2{builder="${slug}",window="24h"}`),
+    prom.scalar(
+      `hl_frontend_revenue_delta_pct_v2{builder="${slug}",window="24h"}`,
+    ),
     prom.scalar(`hl_frontend_fees_usd_7d_v2${sel}`),
     prom.scalar(`hl_frontend_volume_usd_7d_v2${sel}`),
     prom.scalar(`hl_frontend_users_7d_v2${sel}`),
-    prom.scalar(`hl_frontend_revenue_delta_pct_v2{builder="${slug}",window="7d"}`),
+    prom.scalar(
+      `hl_frontend_revenue_delta_pct_v2{builder="${slug}",window="7d"}`,
+    ),
     prom.scalar(`hl_frontend_global_volume_share_24h_v2${sel}`),
     prom.scalar(`hl_frontend_biggest_day_revenue_usd_v2${sel}`),
     prom.scalar(`hl_frontend_biggest_day_unix_v2${sel}`),
-    prom.scalar(`hl_frontend_milestone_revenue_days_v2{builder="${slug}",threshold="10k"}`),
-    prom.scalar(`hl_frontend_milestone_revenue_days_v2{builder="${slug}",threshold="100k"}`),
-    prom.scalar(`hl_frontend_milestone_revenue_days_v2{builder="${slug}",threshold="1m"}`),
+    prom.scalar(
+      `hl_frontend_milestone_revenue_days_v2{builder="${slug}",threshold="10k"}`,
+    ),
+    prom.scalar(
+      `hl_frontend_milestone_revenue_days_v2{builder="${slug}",threshold="100k"}`,
+    ),
+    prom.scalar(
+      `hl_frontend_milestone_revenue_days_v2{builder="${slug}",threshold="1m"}`,
+    ),
     prom.scalar(`hl_frontend_profitable_user_pct_30d_v2${sel}`),
     queryVector(prom, `hl_frontend_coin_volume_share_24h_v2${sel}`),
     queryVector(prom, `hl_frontend_volume_by_percentile_30d_v2${sel}`),
     readFeedCoverage(prom),
   ]);
 
-  if (
-    revenue30d === null &&
-    volume30d === null &&
-    users30d === null
-  ) {
+  if (revenue30d === null && volume30d === null && users30d === null) {
     return null;
   }
 
@@ -239,9 +264,10 @@ export async function fetchHlBuilderStatsFresh(
     const b = s.labels.bucket;
     if (b) byBucket.set(b, s.value);
   }
-  const percentileShares30d: PercentileBucket[] = PERCENTILE_ORDER.map(
-    (b) => ({ bucket: b, share: byBucket.get(b) ?? 0 }),
-  );
+  const percentileShares30d: PercentileBucket[] = PERCENTILE_ORDER.map((b) => ({
+    bucket: b,
+    share: byBucket.get(b) ?? 0,
+  }));
 
   return {
     slug,
@@ -296,9 +322,7 @@ export async function fetchHlBuilderStatsFresh(
 async function fetchHlBuilderStatsRaw(
   slug: string,
 ): Promise<HlBuilderStats | null> {
-  const snapshot = await readCohortSnapshot<HlBuilderStats>(
-    hlBuilderKey(slug),
-  );
+  const snapshot = await readCohortSnapshot<HlBuilderStats>(hlBuilderKey(slug));
   if (snapshot) return snapshot.data;
   const fresh = await fetchHlBuilderStatsFresh(slug);
   if (fresh) {
@@ -342,7 +366,10 @@ export type HlCohortRow = {
   /** Revenue, volume and users per window. The leaderboard's timeframe
    *  control reads these; the flat `*30d` fields above stay for callers that
    *  only ever wanted the headline window. */
-  byWindow: Record<HlWindow, { revenue: number; volume: number; users: number }>;
+  byWindow: Record<
+    HlWindow,
+    { revenue: number; volume: number; users: number }
+  >;
 };
 
 export type HlCohortSummary = {
@@ -514,7 +541,10 @@ export async function fetchHlCohortFresh(): Promise<HlCohortSummary | null> {
     volume: number;
     users: number;
     share: number;
-    byWindow: Record<HlWindow, { revenue: number; volume: number; users: number }>;
+    byWindow: Record<
+      HlWindow,
+      { revenue: number; volume: number; users: number }
+    >;
   };
   const byBuilder = new Map<string, Acc>();
   const ensure = (slug: string): Acc => {
@@ -628,16 +658,17 @@ export async function fetchHlHip3CohortFresh(): Promise<HlHip3Summary | null> {
     (hip3Spec?.providers ?? []).map((p) => [p.slug, p.name]),
   );
 
-  const [vol24h, vol7d, vol30d, oi, traded, listed, sampled, sampled7] = await Promise.all([
-    queryVector(prom, `hl_hip3_deployer_volume_usd_24h`),
-    queryVector(prom, `hl_hip3_deployer_volume_usd_7d`),
-    queryVector(prom, `hl_hip3_deployer_volume_usd_30d`),
-    queryVector(prom, `hl_hip3_deployer_open_interest_usd`),
-    queryVector(prom, `hl_hip3_deployer_markets_24h`),
-    queryVector(prom, `hl_hip3_deployer_markets_listed`),
-    queryVector(prom, `hl_hip3_deployer_days_sampled`),
-    queryVector(prom, `hl_hip3_deployer_days_sampled_7d`),
-  ]);
+  const [vol24h, vol7d, vol30d, oi, traded, listed, sampled, sampled7] =
+    await Promise.all([
+      queryVector(prom, `hl_hip3_deployer_volume_usd_24h`),
+      queryVector(prom, `hl_hip3_deployer_volume_usd_7d`),
+      queryVector(prom, `hl_hip3_deployer_volume_usd_30d`),
+      queryVector(prom, `hl_hip3_deployer_open_interest_usd`),
+      queryVector(prom, `hl_hip3_deployer_markets_24h`),
+      queryVector(prom, `hl_hip3_deployer_markets_listed`),
+      queryVector(prom, `hl_hip3_deployer_days_sampled`),
+      queryVector(prom, `hl_hip3_deployer_days_sampled_7d`),
+    ]);
 
   if (vol24h === null && listed === null) return null;
 
@@ -913,7 +944,10 @@ function toCompactFrontend(
 async function fetchHlHistoryRaw(): Promise<HlHistorySummary | null> {
   // 2h: history is daily-stepped data, 10-min default is too aggressive and
   // causes unnecessary 200-query Prom rebuilds on every staleness window.
-  const snapshot = await readCohortSnapshot<HlHistorySummary>(HL_HISTORY_KEY, 2 * 60 * 60 * 1000);
+  const snapshot = await readCohortSnapshot<HlHistorySummary>(
+    HL_HISTORY_KEY,
+    2 * 60 * 60 * 1000,
+  );
   if (snapshot) return snapshot.data;
   const fresh = await fetchHlHistoryFresh();
   if (fresh) {
