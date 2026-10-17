@@ -8,32 +8,36 @@ export const metadata: Metadata = pageMetadata({
   path: "/privacy",
   title: "Privacy",
   description:
-    "What OpenChainBench collects: anonymous analytics, no accounts, no personal data, no advertising. Written from the code that runs the site.",
+    "What OpenChainBench collects, why, who processes it, how long it is kept, and what you can turn off. No accounts, no advertising, no data sold.",
 });
 
 /**
  * Privacy policy.
  *
- * Required to list the MCP server in the ChatGPT app directory (a Privacy
- * Policy URL is a mandatory submission field), and it did not exist: both
- * /privacy and /terms answered 404 on production.
+ * Required to list the MCP server in the ChatGPT app directory, and the
+ * review asks for five specific things: the categories of personal data
+ * collected, the purposes of use, the categories of recipients, retention
+ * timelines, and the controls offered to users. The sections below are
+ * ordered to match, because the first version was written as prose and the
+ * reviewer could not find them.
  *
- * Every claim below is read off the code rather than drafted from a
- * template, because a policy that overstates what we collect is as wrong as
- * one that understates it:
- *   - `src/components/posthog-provider.tsx:57-64` sets `autocapture: false`,
- *     `capture_pageview: false` (pageviews are sent manually per route) and
- *     `person_profiles: "identified_only"`. Nothing in the codebase ever
- *     calls `posthog.identify`, so no person profile is ever created.
- *   - `api_host: "/ingest"` proxies analytics through our own origin, so the
- *     browser never talks to a third-party analytics host directly.
- *   - `src/lib/analytics-server.ts:72` derives the server-side id as
- *     sha256(user-agent + UTC day) and sets `$process_person_profile: false`;
- *     no IP is stored.
- *   - `src/lib/rate-limit.ts:21` keeps rate-limit buckets in an in-memory
- *     Map keyed by IP. It is process-local, never written to disk, and lost
- *     on every deploy.
- * If any of those change, this page changes in the same commit.
+ * Every figure is read off the running system rather than drafted from a
+ * template. Two of them corrected the first version, which was wrong:
+ *
+ *   - It said no IP address is stored. That was true of the server-side
+ *     capture (src/lib/analytics-server.ts sets no IP and disables person
+ *     profiles) and false of the site as a whole: the browser SDK posts
+ *     through /ingest and PostHog records the request IP on ingestion, with
+ *     `anonymize_ips` off on this project. Checked 2026-10-01: an IP is
+ *     present on 100% of events, and PostHog derives country and city from
+ *     it. Understating collection is as wrong as overstating it.
+ *   - It gave no retention period at all. The project's configured
+ *     product-analytics retention is one year.
+ *
+ * Verified alongside: `autocapture: false` and `session_recording_opt_in:
+ * false` on the project, so there is no automatic event capture and no
+ * session replay. If any of that changes, this page changes in the same
+ * commit.
  */
 export default function PrivacyPage() {
   return (
@@ -42,90 +46,165 @@ export default function PrivacyPage() {
         <h1 className="display text-3xl sm:text-4xl tracking-tight">Privacy</h1>
         <p className="mt-3 max-w-3xl text-base sm:text-lg text-ink-soft leading-snug">
           OpenChainBench has no accounts, no sign-in and no payments. It
-          measures infrastructure, not people.
+          measures infrastructure, not people. This page says exactly what is
+          collected anyway, and what you can switch off.
         </p>
       </header>
 
-      <SectionRule label="The short version" />
+      <SectionRule label="What is collected" />
       <p className="text-base sm:text-lg leading-relaxed text-ink-soft">
-        We collect anonymous, aggregate usage statistics so we know which
-        benchmarks are read. We do not ask for your name, your email or your
-        wallet, we do not sell or share data with advertisers, and we have no
-        way to work out who you are from what we store.
+        Reading the site produces ordinary web analytics. The categories are:
       </p>
-
-      <SectionRule label="What we collect" />
-      <p className="text-base leading-relaxed text-ink-soft">
-        Page analytics run on PostHog, proxied through this site&rsquo;s own
-        origin so your browser never contacts a third-party analytics host
-        directly. Automatic event capture is switched off: we record a
-        pageview per route, a page-leave event, and three deliberate
-        interactions (an outbound link click, a copy, a search). Each visit is
-        tied to a random identifier stored in your browser, never to an
-        identity. User profiles are disabled in our configuration and the code
-        never calls the function that would create one.
-      </p>
+      <ul className="mt-4 space-y-2 text-base leading-relaxed text-ink-soft">
+        <li>
+          <strong className="text-ink">Your IP address</strong>, recorded by our
+          analytics processor when a request arrives, and the approximate
+          location it derives from that: country and city, nothing finer.
+        </li>
+        <li>
+          <strong className="text-ink">Your browser and device</strong>: the
+          user-agent string, screen size, and the page performance timings
+          behind our Core Web Vitals.
+        </li>
+        <li>
+          <strong className="text-ink">What you looked at</strong>: the pages
+          you opened, the page you arrived from, and three deliberate actions,
+          an outbound link click, a copy, and a site search.
+        </li>
+        <li>
+          <strong className="text-ink">A random device identifier</strong>{" "}
+          stored in your browser, so two pageviews can be recognised as one
+          visit. It is tied to no identity, and we never call the function that
+          would create a user profile.
+        </li>
+      </ul>
       <p className="mt-4 text-base leading-relaxed text-ink-soft">
-        A small number of machine-readable surfaces are counted on the server
-        instead, because no browser renders them: the Markdown views,{" "}
+        Three machine-readable surfaces are counted on the server instead,
+        because no browser renders them: the Markdown views,{" "}
         <code>/api/stat</code> and <code>/api/citable</code>. There the
-        identifier is a daily hash of the requesting user agent. No IP address
-        is stored.
+        identifier is a daily hash of the requesting user agent, and no profile
+        is created.
       </p>
       <p className="mt-4 text-base leading-relaxed text-ink-soft">
-        Public endpoints are rate limited per IP address. Those counters live
-        in memory in the serving process, are never written to disk, and are
-        discarded whenever the site is redeployed.
+        We never ask for and never want: your name, your email, a wallet
+        address, a private key, a seed phrase or an API key. No feature of this
+        site requires one.
+      </p>
+      <p className="mt-4 text-base leading-relaxed text-ink-soft">
+        Automatic event capture is off, so nothing is recorded except the
+        events named above. Session recording is off: no replays, no heatmaps,
+        no keystroke or form capture.
       </p>
 
-      <SectionRule label="What we do not collect" />
+      <SectionRule label="Why" />
       <ul className="space-y-2 text-base leading-relaxed text-ink-soft">
-        <li>No accounts, passwords or email addresses, because there is nothing to sign in to.</li>
-        <li>No wallet addresses, private keys or API keys. Never send us one.</li>
-        <li>No advertising or cross-site tracking identifiers, and no data sold or shared with data brokers.</li>
-        <li>No session recordings, heatmaps or form capture.</li>
+        <li>
+          To know which benchmarks are read, so we work on the ones people use.
+        </li>
+        <li>
+          To measure whether pages load well, which is what the performance
+          timings are for.
+        </li>
+        <li>
+          To rate limit the public API per address, so one caller cannot deny
+          the service to everyone else.
+        </li>
+      </ul>
+      <p className="mt-4 text-base leading-relaxed text-ink-soft">
+        Not for advertising, not for profiling, and not for building a picture
+        of you across other sites. There is no advertising on this site and no
+        cross-site tracking identifier.
+      </p>
+
+      <SectionRule label="Who else sees it" />
+      <ul className="space-y-2 text-base leading-relaxed text-ink-soft">
+        <li>
+          <strong className="text-ink">PostHog</strong>, our analytics
+          processor, hosted in the United States. Analytics are proxied through
+          this site&rsquo;s own origin, so your browser never contacts them
+          directly.
+        </li>
+        <li>
+          <strong className="text-ink">Vercel</strong>, which hosts and serves
+          the site and necessarily handles requests to it.
+        </li>
+      </ul>
+      <p className="mt-4 text-base leading-relaxed text-ink-soft">
+        Nobody else. We do not sell data, share it with advertisers or data
+        brokers, or pass it to any third party beyond those two processors.
+      </p>
+
+      <SectionRule label="How long it is kept" />
+      <ul className="space-y-2 text-base leading-relaxed text-ink-soft">
+        <li>
+          <strong className="text-ink">Analytics events: one year</strong>, the
+          retention configured on our analytics project, after which they are
+          deleted by the processor.
+        </li>
+        <li>
+          <strong className="text-ink">Rate-limit counters: minutes.</strong>{" "}
+          They live in the memory of the serving process, are never written to
+          disk, and are discarded whenever the site is redeployed.
+        </li>
+        <li>
+          <strong className="text-ink">Benchmark measurements: indefinitely</strong>,
+          because they describe infrastructure providers rather than visitors
+          and contain no personal data.
+        </li>
+      </ul>
+
+      <SectionRule label="What you can turn off" />
+      <ul className="space-y-2 text-base leading-relaxed text-ink-soft">
+        <li>
+          Analytics can be blocked in your browser, or by any content blocker,
+          or by enabling Do Not Track. Nothing on the site stops working.
+        </li>
+        <li>
+          Clearing your browser storage removes the random device identifier,
+          and the next visit starts a new one.
+        </li>
+        <li>
+          Because we hold no name, email or account, we cannot look up, export
+          or delete &ldquo;your&rdquo; records on request: there is nothing
+          tying them to you. If you believe we hold something about you, write
+          to{" "}
+          <a href={`mailto:${SITE.email}`} className="underline underline-offset-4">
+            {SITE.email}
+          </a>{" "}
+          and we will look.
+        </li>
       </ul>
 
       <SectionRule label="The MCP server and AI assistants" />
       <p className="text-base leading-relaxed text-ink-soft">
         The Model Context Protocol endpoint at{" "}
-        <code>{SITE.url}/api/mcp/mcp</code> is public, read-only and requires
-        no authentication or account. It answers questions about published
-        benchmark data. It stores nothing about the conversation that reached
-        it: requests are served and dropped, with only the same anonymous
-        aggregate counting described above.
+        <code>{SITE.url}/api/mcp/mcp</code> is public, read-only and requires no
+        authentication or account. It answers questions about published
+        benchmark data and stores nothing about the conversation that reached
+        it. A question containing something that looks like a credential is
+        redacted before it appears anywhere in the response.
       </p>
       <p className="mt-4 text-base leading-relaxed text-ink-soft">
-        When you reach this data through an AI assistant, that assistant has
-        its own privacy policy covering your conversation. We receive the
-        question your assistant chooses to send us and nothing else.
+        When you reach this data through an AI assistant, that assistant has its
+        own privacy policy covering your conversation. We receive the question
+        it chooses to send us and nothing else.
       </p>
 
-      <SectionRule label="Data we publish" />
+      <SectionRule label="Children" />
       <p className="text-base leading-relaxed text-ink-soft">
-        Benchmark measurements are published openly under CC-BY-4.0. They
-        describe infrastructure providers, not visitors, and contain no
-        personal data. Methodology and raw harness code are public in the{" "}
-        <a href={SITE.github} className="underline underline-offset-4">
-          repository
-        </a>
-        .
+        This is a technical reference for people choosing infrastructure
+        providers. It is not directed at children, and we do not knowingly
+        collect anything from them.
       </p>
 
-      <SectionRule label="Your rights, and contact" />
+      <SectionRule label="Changes, and contact" />
       <p className="text-base leading-relaxed text-ink-soft">
-        Because we hold no identifying data, we cannot look up, export or
-        delete &ldquo;your&rdquo; records. You can stop the anonymous
-        analytics at any time by blocking them in your browser or enabling Do
-        Not Track. If you believe we hold something about you, or you want
-        anything on this page clarified, write to{" "}
+        This page changes in public commits like the rest of the site, in the
+        same change that alters what is collected. Questions and corrections to{" "}
         <a href={`mailto:${SITE.email}`} className="underline underline-offset-4">
           {SITE.email}
         </a>
-        .
-      </p>
-      <p className="mt-4 text-base leading-relaxed text-ink-soft">
-        See also the{" "}
+        . See also the{" "}
         <Link href="/terms" className="underline underline-offset-4">
           terms of use
         </Link>{" "}
