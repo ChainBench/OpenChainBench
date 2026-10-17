@@ -112,12 +112,22 @@ export function scoreBenchmark(b: Benchmark, query: string): number {
   const hay = new Set(haystack(b));
   const slugTokens = new Set(tokens(b.slug));
   const titleTokens = new Set(tokens(b.title));
+  // The category is what the bench is ABOUT, as opposed to which chain it
+  // happens to cover. Without it a chain name outranks the subject: "cheapest
+  // bridge to arbitrum" put arbitrum-nova-rpc and arbitrum-rpc above
+  // bridge-fee, because "arbitrum" hit two slugs while "bridge" hit one.
+  // Matched as a prefix in both directions so the singular a user types
+  // ("bridge") reaches the plural we store ("Bridges").
+  const categoryTokens = tokens(b.category);
 
   let score = 0;
   for (const t of q) {
+    const subject = categoryTokens.some((c) => c.startsWith(t) || t.startsWith(c));
+    if (subject) score += 3;
     if (slugTokens.has(t)) score += 4;
     else if (titleTokens.has(t)) score += 2;
     else if (hay.has(t)) score += 1;
+    else if (subject) continue;
     // Prefix match catches "solana" against "solana-rpc" and "arb" against
     // "arbitrum", which exact token overlap misses.
     else if ([...hay].some((h) => h.startsWith(t) || t.startsWith(h))) score += 0.5;
@@ -125,6 +135,40 @@ export function scoreBenchmark(b: Benchmark, query: string): number {
   // Normalise by query length so a two-word query is comparable to a long
   // sentence; otherwise a rambling question beats a precise one.
   return score / q.length;
+}
+
+
+/**
+ * Minimum score for a match to be published.
+ *
+ * A slug token is worth 4 and a provider name 1, so a real question clears
+ * this easily ("solana rpc" scores 4, "helius triton" scores 1). What it cuts
+ * is prefix-only noise: "buy SOL for me" matched buyback-audit and three
+ * Solana benches at 0.5, on nothing but the first three letters. Returning
+ * those invites a model to treat them as relevant.
+ */
+const MIN_SCORE = 1;
+
+/**
+ * Redact anything secret-shaped before echoing a query back.
+ *
+ * The search echo is useful (the model should see what it searched) but it is
+ * also a reflection: asked "test my RPC with my API key abc123SECRET", the
+ * endpoint returned the secret inside its own payload. Nothing persists it,
+ * yet it still reaches the model's context and the client's logs, and the
+ * rule here is that a key never appears in any of those.
+ *
+ * Deliberately blunt. Over-redacting a benchmark query costs a reader
+ * nothing; under-redacting a live credential costs them the credential.
+ */
+export function redactSecrets(text: string): string {
+  return text
+    // key=value and bearer forms
+    .replace(/\b(api[-_ ]?key|apikey|token|secret|bearer|password|pwd)\b\s*[:=]?\s*\S+/gi, "$1 [redacted]")
+    // bare high-entropy runs: 16+ chars mixing letters and digits
+    .replace(/\b(?=[A-Za-z0-9_-]*\d)(?=[A-Za-z0-9_-]*[A-Za-z])[A-Za-z0-9_-]{16,}\b/g, "[redacted]")
+    // anything that looks like a keyed endpoint
+    .replace(/https?:\/\/\S+/gi, "[redacted-url]");
 }
 
 export type SearchResult = CompactRow & { score: number };
@@ -150,7 +194,7 @@ export function searchBenchmarks(
 
   const scored = pool
     .map((b) => ({ b, score: scoreBenchmark(b, opts.query as string) }))
-    .filter((x) => x.score > 0)
+    .filter((x) => x.score >= MIN_SCORE)
     .sort((a, b) => b.score - a.score || a.b.slug.localeCompare(b.b.slug))
     .slice(0, limit);
 
