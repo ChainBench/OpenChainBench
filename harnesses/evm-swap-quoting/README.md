@@ -3,7 +3,7 @@
 OpenChainBench bench #033 — EVM swap quote latency across major aggregators.
 
 Measures wall-clock p50/p90/p99 latency of `GET <provider>/quote` on a
-rotating 5-pair basket spanning Ethereum, Base, Arbitrum and BSC. Runs in
+rotating 6-pair basket spanning Ethereum, Base, Arbitrum, BSC and Robinhood Chain. Runs in
 3 regions (us-east, eu-west, sgp) so the leaderboard can be filtered to a
 single edge if a user only cares about one geography.
 
@@ -17,6 +17,7 @@ single edge if a user only cares about one geography.
 | LI.FI | none | ~840ms | Same-chain via `fromChain == toChain`. |
 | OpenOcean v4 | none | 0.8-1.3s | Numeric chainId in URL. Human-readable amount. |
 | CoW Protocol | none | ~3s | RFQ batch auction. Wraps native on both sides. Skips BSC (no settlement contract). |
+| Route | API key (`ROUTE_API_KEY`) | ~60-130ms | Robinhood Chain only. `Authorization: Bearer <key>`. Params `in`/`out`/`amount` (wei), native ETH = zero address. No-route is HTTP 200 with `ok: false`. |
 | Enso | none (anonymous) | ~1.5s | Global anonymous 1rps bucket. Expect ~20 percent 429 throttle. Field `amountOut`. `ENSO_API_KEY` widens the bucket when present. |
 
 ## Providers that require additional keys (off by default)
@@ -57,5 +58,6 @@ go build -o monitor ./cmd/monitor
 | Base | ETH | USDC | 0.5 |
 | Arbitrum | USDC | ETH | 100 |
 | BSC | BNB | USDT | 1 |
+| Robinhood | ETH | USDG | 0.1 |
 
-Cadence: 60s tick, one pair per tick (round-robin). Every (provider, chain) is sampled every 5 minutes = 288 samples / 24h.
+Cadence: 60s tick, one pair per tick (round-robin). Every (provider, chain) is sampled every 6 minutes = 240 samples / 24h.

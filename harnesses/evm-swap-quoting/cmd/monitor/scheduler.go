@@ -39,6 +39,9 @@ func buildProviders(cfg *Config) []Provider {
 	if cfg.OdosAPIKey != "" {
 		providers = append(providers, NewOdosProvider(cfg.MonitorRegion, cfg.OdosAPIKey))
 	}
+	if cfg.RouteAPIKey != "" {
+		providers = append(providers, NewRouteProvider(cfg.MonitorRegion, cfg.RouteAPIKey))
+	}
 	return providers
 }
 
@@ -47,8 +50,8 @@ func buildProviders(cfg *Config) []Provider {
 // (provider, pair) combo in parallel. Providers that don't Supports() the
 // pair's chain are skipped silently.
 //
-// At basket size = 5 and tick = 60s, each (provider, chain, pair) sees a
-// quote every 5 minutes = 288 samples per 24h, which is enough to land the
+// At basket size = 6 and tick = 60s, each (provider, chain, pair) sees a
+// quote every 6 minutes = 240 samples per 24h, which is enough to land the
 // p99 bucket reliably.
 func runScheduler(cfg *Config, stopChan <-chan struct{}) {
 	providers := buildProviders(cfg)

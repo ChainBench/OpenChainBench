@@ -11,7 +11,7 @@ import (
 func main() {
 	installLogCapture() // first — captures stdout into the ring buffer for /logs?tail=N
 	fmt.Println("=== EVM Swap Quoting Latency Monitor ===")
-	fmt.Println("Measures p50/p99 round-trip latency for EVM swap aggregators on a rotating 5-pair basket.")
+	fmt.Println("Measures p50/p99 round-trip latency for EVM swap aggregators on a rotating 6-pair basket.")
 	fmt.Println("Press Ctrl+C to stop")
 	fmt.Println()
 
@@ -27,6 +27,7 @@ func main() {
 	fmt.Printf("0x key set:       %v\n", cfg.ZeroExAPIKey != "")
 	fmt.Printf("Odos key set:     %v\n", cfg.OdosAPIKey != "")
 	fmt.Printf("Enso key set:     %v\n", cfg.EnsoAPIKey != "")
+	fmt.Printf("Route key set:    %v\n", cfg.RouteAPIKey != "")
 	fmt.Println("Metrics on :2112/metrics, logs on :2112/logs (LOGS_TOKEN gated)")
 	fmt.Println()
 
