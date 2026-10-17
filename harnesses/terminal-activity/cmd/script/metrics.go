@@ -142,6 +142,15 @@ var (
 		Help: "1 when this platform and chain reported exactly zero fees on material volume while the same platform reports fees on another chain, so the zero is an unexplained gap rather than a price. The take rate is not published for that cell.",
 	}, []string{"platform", "chain"})
 
+	// What share of a platform's volume the all-chains take rate was actually
+	// measured on. Published for every platform so a page can show the
+	// denominator, and gated on below: a rate over 0.003% of the volume
+	// beside it is not that platform's take rate.
+	feeCoveragePct = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "terminal_fee_coverage_pct",
+		Help: "percent of all-chains volume covered by the chains whose fees the take rate uses",
+	}, []string{"platform"})
+
 	feeColumnOK = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "terminal_fee_column_ok",
 		Help: "1 when at least one platform on this chain reported non-zero fees on the data day, 0 when the whole column was zero. A zero column is a source failure, not a market where every platform is free.",
@@ -153,6 +162,7 @@ func init() {
 		volumeUSD, txns, feesUSD, wallets,
 		avgTradeUSD, feeRatePct, tradesPerWallet, volumePerWalletUSD,
 		chainBreadth, dataDayUnix, health, lastSuccessUnix, feeColumnOK, feeWithheld, feeRateHealth,
+		feeCoveragePct,
 	)
 }
 
@@ -339,6 +349,16 @@ func publish(samples []sample, roster []string, maxAgeDays int, now time.Time) (
 		published++
 	}
 
+	// Minimum share of a platform's volume that must sit on chains reporting
+	// fees before an all-chains take rate is published.
+	//
+	// Measured on 2026-10-17: seven of the eight platforms report fees on chains
+	// carrying 95.9% to 100% of their volume. pump.fun reports them on 0.003% of
+	// its, and the resulting 63.9% reached a public compare page and a Community
+	// Note. Half is far below every honest platform and far above the broken one,
+	// so it separates them without being tuned to either.
+	const minFeeCoverage = 0.5
+
 	// The `all` slice for the summable metrics: a real total, volume-weighted
 	// by construction for the two ratios. A platform whose every fee cell was
 	// withheld gets no all-chains take rate either, rather than one computed
@@ -350,14 +370,25 @@ func publish(samples []sample, roster []string, maxAgeDays int, now time.Time) (
 		volumeUSD.WithLabelValues(p, aggregateChain).Set(t.vol)
 		txns.WithLabelValues(p, aggregateChain).Set(t.tx)
 		avgTradeUSD.WithLabelValues(p, aggregateChain).Set(t.vol / t.tx)
-		if t.feeOK && t.feeVol > 0 {
+		coverage := 0.0
+		if t.vol > 0 {
+			coverage = t.feeVol / t.vol
+		}
+		feeCoveragePct.WithLabelValues(p).Set(coverage * 100)
+		if t.feeOK && t.feeVol > 0 && coverage >= minFeeCoverage {
 			feesUSD.WithLabelValues(p, aggregateChain).Set(t.fee)
 			feeRatePct.WithLabelValues(p, aggregateChain).Set(t.fee / t.feeVol * 100)
 			feeRateHealth.WithLabelValues(p, aggregateChain).Set(1)
+			feeWithheld.DeleteLabelValues(p, aggregateChain)
 		} else {
+			// Withheld, not zero: the platform may well charge a fee, we just
+			// cannot measure it over a denominator worth printing.
 			feesUSD.DeleteLabelValues(p, aggregateChain)
 			feeRatePct.DeleteLabelValues(p, aggregateChain)
 			feeRateHealth.WithLabelValues(p, aggregateChain).Set(0)
+			if t.feeOK && t.feeVol > 0 {
+				feeWithheld.WithLabelValues(p, aggregateChain).Set(1)
+			}
 		}
 		health.WithLabelValues(p, aggregateChain).Set(1)
 	}
