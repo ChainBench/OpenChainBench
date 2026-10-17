@@ -215,7 +215,7 @@ providers:
   - slug: pump-fun
     name: pump.fun
     tag: "Launchpad's own app, no terminal fee"
-    formula: "A day's fee revenue divided by that day's routed volume for the pump.fun app. It reports fees on four chains and exactly zero on Solana, where it routes $252M a week, so the Solana cell is withheld rather than ranked as the market floor."
+    formula: "A day's fee revenue divided by that day's routed volume for the pump.fun app. It reports fees on Base alone, 0.003% of the volume it routes, so every cell is withheld: a rate measured on a sliver is not this app's take rate."
     queries:
       p50: max(terminal_fee_rate_pct{platform="pump-fun",chain="all"})
       p90: max(terminal_fee_rate_pct{platform="pump-fun",chain="all"})

@@ -340,3 +340,48 @@ func TestWithheldCellIsUnhealthyOnTheFeeGateOnly(t *testing.T) {
 		t.Errorf("axiom has a real take rate on solana, fee gate must read 1, got %v", got)
 	}
 }
+
+// A take rate measured on a sliver of a platform's volume is not that
+// platform's take rate.
+//
+// The live case on 2026-10-17: pump.fun reported fees on Base alone, $910.86
+// on $1,424.96, a real 63.9%. Its all-chains volume was $41,089,797, so the
+// rate covered 0.003% of it. The compare page printed all three side by side
+// and declared a winner on the fee column, and a Community Note seen 11.4k
+// times cited the page. Every other platform that day sat between 95.9% and
+// 100% coverage.
+func TestTakeRateIsWithheldWhenItCoversAlmostNoVolume(t *testing.T) {
+	resetAll()
+	now := time.Now()
+	d := day(now, 1)
+	publish([]sample{
+		// The sliver that reports fees, and the volume that does not.
+		mk("pumpfun", "base", d, 1425, 10, 911, 5),
+		mk("pumpfun", "solana", d, 41_000_000, 10000, 0, 500),
+		// Another platform keeps the solana fee column alive, so the zero
+		// above is read as "unexplained" rather than "this chain has no fees".
+		mk("gmgn", "solana", d, 1000, 10, 10, 5),
+	}, []string{"pumpfun", "gmgn"}, 3, now)
+
+	if got := testutil.ToFloat64(feeCoveragePct.WithLabelValues("pumpfun")); got > 1 {
+		t.Fatalf("precondition: coverage should be a fraction of a percent, got %v", got)
+	}
+	if got := testutil.ToFloat64(feeRateHealth.WithLabelValues("pumpfun", "all")); got != 0 {
+		t.Errorf("all-chains take rate must read unhealthy, got %v", got)
+	}
+	if got := testutil.ToFloat64(feeWithheld.WithLabelValues("pumpfun", "all")); got != 1 {
+		t.Errorf("the row must say withheld rather than go silent, got %v", got)
+	}
+	// The volume is a total and stays published; only the ratio is withheld.
+	if v := testutil.ToFloat64(volumeUSD.WithLabelValues("pumpfun", "all")); v != 41_001_425 {
+		t.Errorf("all-chains volume must still total both chains, got %v", v)
+	}
+
+	// A platform whose fees cover its volume keeps its rate.
+	if got := testutil.ToFloat64(feeCoveragePct.WithLabelValues("gmgn")); got != 100 {
+		t.Errorf("gmgn coverage must be 100, got %v", got)
+	}
+	if got := testutil.ToFloat64(feeRatePct.WithLabelValues("gmgn", "all")); math.Abs(got-1) > 1e-9 {
+		t.Errorf("gmgn must keep its 1%% take rate, got %v", got)
+	}
+}
