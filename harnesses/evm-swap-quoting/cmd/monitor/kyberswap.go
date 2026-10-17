@@ -27,7 +27,7 @@ func (p *KyberSwapProvider) Slug() string { return "kyberswap" }
 
 func (p *KyberSwapProvider) Supports(chainId int) bool {
 	switch chainId {
-	case 1, 10, 56, 137, 8453, 42161, 43114, 250, 5000, 59144:
+	case 1, 10, 56, 137, 8453, 42161, 43114, 250, 5000, 59144, 4663:
 		return true
 	}
 	return false

@@ -5,7 +5,7 @@ number: "033"
 title: Fastest EVM swap quote API
 seo_title: "Fastest EVM swap quote API 2026"
 seo_description: "Live p50/p90/p99 latency for major EVM swap quote APIs measured every minute on a rotating token basket."
-subtitle: Wall clock p50 latency of GET /quote per provider, measured every minute on a 5 pair basket across 4 chains.
+subtitle: Wall clock p50 latency of GET /quote per provider, measured every minute on a 6 pair basket across 5 chains.
 
 per_chain_explainer:
   - slug: ethereum
@@ -24,6 +24,10 @@ per_chain_explainer:
     h2: "Fastest BSC swap quote API"
     body: |
       {{best_name:chain:bsc}} currently leads the BSC swap-quote field at {{best_p50:chain:bsc}} (p50, 24h). BSC liquidity is concentrated in PancakeSwap v2 and v3, with a long memecoin tail that pushes aggregators toward exhaustive route enumeration. CoW Protocol is absent because CoW Settlement does not deploy on BSC. Probes fire every 60 seconds on a 1 BNB to USDT pair from us-east, eu-west and Singapore against the public sequencer RPC.
+  - slug: robinhood
+    h2: "Fastest Robinhood Chain swap quote API"
+    body: |
+      {{best_name:chain:robinhood}} currently leads the Robinhood Chain swap-quote field at {{best_p50:chain:robinhood}} (p50, 24h). Robinhood Chain (chainId 4663) is an Arbitrum Orbit L2 with USDG as its main stablecoin; liquidity is spread across Uniswap v3 and v4 pools (many with hooks), Pons launchpad pools and oracle-priced prop AMMs. Route, KyberSwap and LI.FI are measured here. Probes run every 60 seconds on a 0.1 ETH to USDG pair from us-east, eu-west and Singapore.
 
 category: Aggregators
 status: live
@@ -34,7 +38,7 @@ higher_is_better: false
 seo_intro: |
   EVM swap aggregator APIs all promise sub second quotes. This benchmark
   measures how often they actually deliver one. The harness rotates a 5
-  pair basket across Ethereum, Base, Arbitrum and BSC, fires a quote
+  pair basket across Ethereum, Base, Arbitrum, BSC and Robinhood Chain, fires a quote
   request at every supported provider in parallel every 60 seconds, and
   records the wall clock round trip. The leaderboard sorts by p50 latency
   over the last 24 hours, lower is better. A geographic split is also
@@ -43,21 +47,21 @@ seo_intro: |
   edge gateway is closest to their backend.
 
 abstract: |
-  Each provider's public quote endpoint is hit on five fixed pairs
+  Each provider's public quote endpoint is hit on six fixed pairs
   (1 ETH to USDT on Ethereum, 1000 USDC to USDT on Ethereum, 0.5 ETH to
-  USDC on Base, 100 USDC to ETH on Arbitrum, 1 BNB to USDT on BSC),
-  rotating one pair per 60 second tick. Per (provider, chain) we land
-  roughly 288 samples in 24 hours, enough to put p90 and p99 buckets on a
+  USDC on Base, 100 USDC to ETH on Arbitrum, 1 BNB to USDT on BSC,
+  0.1 ETH to USDG on Robinhood Chain), rotating one pair per 60 second
+  tick. Per (provider, chain) we land roughly 240 samples in 24 hours, enough to put p90 and p99 buckets on a
   solid base. Quote quality (output amount, net of gas) is not scored,
   only latency.
 
 methodology:
-  - "Five fixed pairs across four chains. Polygon and Optimism will be added in v2 once they reach a comparable sample volume."
-  - "60 second tick, one pair per tick, round robin. Every (provider, chain) sees a quote every 5 minutes."
+  - "Six fixed pairs across five chains. Polygon and Optimism will be added in v2 once they reach a comparable sample volume."
+  - "60 second tick, one pair per tick, round robin. Every (provider, chain) sees a quote every 6 minutes."
   - "Three regions (us east, eu west, sgp). Each is a separate Railway service writing the same metric family with a region label, so the page can filter to a single edge or aggregate across all three."
   - "Latency is wall clock from request dispatch to last byte received, observed only on the happy path (HTTP 2xx and a parseable output amount). Failures land on dedicated counters (auth, throttle, no route, other) and pull the success gauge to 0."
   - "Native asset sentinel is the canonical 0xEeeeeEeee form. Odos uses 0x0000... and Bebop substitutes the wrapped equivalent on the sell side. The adapter normalises per provider."
-  - "Provider auth: Mobula requires the sponsor key in an Authorization header. KyberSwap, Bebop, LI.FI and OpenOcean accept anonymous traffic."
+  - "Provider auth: Mobula requires the sponsor key in an Authorization header. Route requires a quote-only key as a Bearer token. KyberSwap, Bebop, LI.FI and OpenOcean accept anonymous traffic."
 
 findings:
   - "{{best_name}} currently leads at {{best_p50}} on the active chain tab, across {{count}} measured providers. Rankings shift per chain tab: a provider's edge placement and per-chain engine split matter more than its global average."
@@ -91,6 +95,7 @@ dimensions:
     - { value: base,     label: Base }
     - { value: arbitrum, label: Arbitrum }
     - { value: bsc,      label: BSC }
+    - { value: robinhood, label: Robinhood }
   region:
     - { value: all,      label: All regions }
     - { value: us-east,  label: US East }
@@ -192,3 +197,16 @@ providers:
       success: avg(ocb:evm_swap_quote_success:avg_24h{provider="enso"})
       sample_size: sum(ocb:evm_swap_quote_latency_ms:count_increase_24h{provider="enso"})
       series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="enso"}[1h])) by (le))
+
+  - slug: route
+    name: Route
+    tag: Robinhood Chain only, quote-only key
+    formula: "Avg of per-(chain, region) 24h medians of evm_swap_quote_latency_ms{provider=route} over the last 24 hours. Robinhood Chain only."
+    queries:
+      p50: avg(ocb:evm_swap_quote_latency_ms:p50_24h{provider="route"})
+      p90: avg(ocb:evm_swap_quote_latency_ms:p90_24h{provider="route"})
+      p99: avg(ocb:evm_swap_quote_latency_ms:p99_24h{provider="route"})
+      mean: sum(ocb:evm_swap_quote_latency_ms:sum_rate_24h{provider="route"}) / sum(ocb:evm_swap_quote_latency_ms:count_rate_24h{provider="route"})
+      success: avg(ocb:evm_swap_quote_success:avg_24h{provider="route"})
+      sample_size: sum(ocb:evm_swap_quote_latency_ms:count_increase_24h{provider="route"})
+      series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="route"}[1h])) by (le))
