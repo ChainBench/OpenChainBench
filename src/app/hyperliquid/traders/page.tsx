@@ -33,11 +33,25 @@ import type { HlTraderRow, HlTradersSnapshot } from "@/types/hl-traders";
 const DESCRIPTION =
   "Hyperliquid publishes a PnL leaderboard for tens of thousands of accounts. We audit it daily: profit on zero volume, ROI without a denominator, the perp split.";
 
-export const metadata = pageMetadata({
-  path: "/hyperliquid/traders",
-  title: "Hyperliquid trader leaderboard, audited",
-  description: DESCRIPTION,
-});
+/** noindex until there is a snapshot to read.
+ *
+ *  The page renders "Awaiting the first run" when the collector has not
+ *  published yet, and an empty page that invites indexing is how a URL ends
+ *  up in "crawled, currently not indexed": the crawl is spent, the
+ *  impression never comes, and the rule has to be lifted by hand later.
+ *  follow stays on, so the links out keep carrying. */
+export async function generateMetadata() {
+  const read = await fetchHlTraders().catch(() => null);
+  const hasData = Boolean(read?.snapshot);
+  return {
+    ...pageMetadata({
+      path: "/hyperliquid/traders",
+      title: "Hyperliquid trader leaderboard, audited",
+      description: DESCRIPTION,
+    }),
+    robots: { index: hasData, follow: true },
+  };
+}
 
 /** The snapshot refreshes once a day; an hourly window keeps the page
  *  cheap while still picking up a late collector run. */

@@ -4,7 +4,7 @@ slug: polygon-rpc-ws
 number: "300"
 title: Fastest private Polygon WebSocket push, per-block race across keyed RPC providers
 seo_title: "Fastest Polygon WebSocket RPC push 2026, private endpoints"
-seo_description: "{{best_name}} pushes Polygon blocks first on the private cohort. Per-block WebSocket lag for Chainstack, GetBlock, QuickNode and Dwellir, measured from 3 regions."
+seo_description: "{{best_name}} has the lowest median lag behind the first Polygon block push among Chainstack, GetBlock, QuickNode and Dwellir."
 subtitle: Per-block WebSocket push lag in milliseconds versus the first provider to deliver the same Polygon block, across API-key endpoints probed from us-east, eu-west and Singapore.
 
 category: RPCs
@@ -25,8 +25,9 @@ seo_intro: |
   (p50, 24h) across {{count}} keyed providers.
 
   Because the measurement is relative, the leader reads near zero by
-  construction. The numbers to read are the win rate and the shape of the
-  trailing distribution, p50 against p99, not the leader's absolute figure.
+  construction. The numbers to read are the gap to the runner-up and the
+  shape of the trailing distribution, p50 against p99, not the leader's
+  absolute figure.
 
 abstract: |
   Private, API-key Polygon endpoints raced on WebSocket delivery. One harness
@@ -69,9 +70,9 @@ dimensions:
 
 faq:
   - q: "Which private RPC provider pushes new Polygon blocks first over WebSocket?"
-    a: "{{best_name}} wins most per-block races, with a median lag of {{best_p50}} behind the first arrival (p50, 24h) across {{count}} keyed providers. The board re-scores on every Polygon block. Read the win rate and the trailers' p99 before wiring a latency-sensitive bot to one provider."
+    a: "{{best_name}} has the lowest median lag behind the first arrival over 24h; a figure inside the first histogram bucket reads as zero. {{worst_name}} trails most, at {{worst_p50}} (p50, 24h). The board re-scores on every Polygon block. Read the p99 column before wiring a latency-sensitive bot to one provider."
   - q: "Why does the fastest provider show a lag near zero?"
-    a: "By construction. Each block is a race: the earliest arrival defines T0 and every sample is measured against it, so the provider that wins most races accumulates mostly zero samples. A single vantage point cannot measure absolute production-to-client latency without a node co-located with block producers; it can measure fairly which provider delivers the same block earlier over the same path. Read the win rate and the trailing distribution, not the leader's absolute number."
+    a: "By construction. Each block is a race: the earliest arrival defines T0 and every sample is measured against it, so the provider that wins most races accumulates mostly zero samples. A single vantage point cannot measure absolute production-to-client latency without a node co-located with block producers; it can measure fairly which provider delivers the same block earlier over the same path. Read the gap to the runner-up and the trailing distribution, not the leader's absolute number."
   - q: "Is this the same as the HTTP latency cohort on this chain?"
     a: "Same providers, same keys, same regions, different question. The HTTP cohort measures a request you send; this measures a push you wait for, and the two orderings are not the same. GetBlock issues one WebSocket token per chain per region, so its three cells are distinct endpoints rather than one URL probed from three places."
   - q: "Could a provider win by pushing blocks before validating them?"

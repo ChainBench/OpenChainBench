@@ -228,8 +228,43 @@ export function headlineParts(b: Benchmark): { claim: string; rest: string } {
       rest: `${b.title}. No ${chainForFloor} endpoint answered above the ${LEADER_MIN_SUCCESS_PCT} % success floor in the last 24h.`,
     };
   }
-  if (!top) return { claim: "", rest: `${b.title}. Awaiting first run.` };
+  if (!top) {
+    // "Nobody is ranked" is not "nothing ran". perp-max-leverage-terms
+    // shows four venues and a timestamp from this morning while /api/stat,
+    // /api/citable and llms.txt said the bench had never run, and on a
+    // board that ranks nobody by design that never corrects itself.
+    const measured = liveResults(b.results).length;
+    if (measured > 0) {
+      return {
+        claim: "",
+        rest: `${b.title}. ${measured} ${nounFor(b, measured)} measured; none is ranked on this benchmark.`,
+      };
+    }
+    return { claim: "", rest: `${b.title}. Awaiting first run.` };
+  }
   const value = fmtUnit(top.value, b.unit);
+  // Block-push races. The leader is zero behind itself by construction, so
+  // quoting its figure publishes an artifact the page's own methodology
+  // disowns, and on a chain where the leader reads tens of milliseconds it
+  // publishes a falsehood: a provider that actually arrived first would sit
+  // inside the first histogram bucket. The gap to the runner-up is the
+  // number that carries information, so the sentence is built from it.
+  if (b.slug.endsWith("-rpc-ws")) {
+    const m = b.title.match(/private ([A-Za-z0-9 .-]+?) WebSocket/i);
+    const wsChain = m ? m[1] : "chain";
+    const field = rankedCandidates(b);
+    const second = field[1];
+    const inBucket = top.value < 0.5;
+    const lead = inBucket
+      ? `${top.name} has the lowest median lag behind the first ${wsChain} block push, inside the first histogram bucket`
+      : `${top.name} has the lowest median lag behind the first ${wsChain} block push, ${value}`;
+    return {
+      claim: second
+        ? `${lead}; ${second.name} trails at ${fmtUnit(second.ms.p50, b.unit)}`
+        : lead,
+      rest: `(p50, 24h) across ${field.length} ranked providers.`,
+    };
+  }
   // Chain RPC pages: the sentence names the entity searchers use ("free
   // public Arbitrum RPC endpoints") and the cohort size, instead of
   // jamming the H1 in as the object. Same string feeds the TL;DR,

@@ -33,8 +33,8 @@ seo_intro: |
   published per workload rather than as one number. A dapp frontend calling
   eth_call and eth_getBalance drains an allowance at a different rate than a
   log indexer calling eth_getLogs, and on BlockPI's free plan the gap between
-  the cheapest workload and the most expensive is a factor of eight: 3.3M
-  requests against 392k, on one plan, with nothing on the pricing page saying
+  the cheapest workload and the most expensive is large on a single plan,
+  with nothing on the pricing page saying
   so. Every row carries the two ends of that span next to its headline
   figure, so the plans a workload cannot surprise are visible without
   reading four tabs: Ankr and dRPC meter flat, and their floor is their
