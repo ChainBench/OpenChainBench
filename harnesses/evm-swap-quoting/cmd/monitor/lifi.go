@@ -27,7 +27,7 @@ func (p *LiFiProvider) Slug() string { return "lifi" }
 func (p *LiFiProvider) Supports(chainId int) bool {
 	// LI.FI supports 30+ EVM chains, the full V1 basket is covered.
 	switch chainId {
-	case 1, 10, 56, 137, 8453, 42161, 43114, 250, 100, 324, 59144, 81457:
+	case 1, 10, 56, 137, 8453, 42161, 43114, 250, 100, 324, 59144, 81457, 4663:
 		return true
 	}
 	return false

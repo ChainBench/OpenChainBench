@@ -20,6 +20,7 @@ type Config struct {
 	ZeroExAPIKey  string // optional, future
 	OdosAPIKey    string // optional, future
 	EnsoAPIKey    string // optional, widens the anonymous 1rps bucket when set
+	RouteAPIKey   string // optional, Route (Robinhood Chain) is skipped without it
 }
 
 func loadEnv() (*Config, error) {
@@ -33,6 +34,7 @@ func loadEnv() (*Config, error) {
 		ZeroExAPIKey:  strings.TrimSpace(os.Getenv("ZEROX_API_KEY")),
 		OdosAPIKey:    strings.TrimSpace(os.Getenv("ODOS_API_KEY")),
 		EnsoAPIKey:    strings.TrimSpace(os.Getenv("ENSO_API_KEY")),
+		RouteAPIKey:   strings.TrimSpace(os.Getenv("ROUTE_API_KEY")),
 	}
 	if c.MonitorRegion == "" {
 		c.MonitorRegion = "eu-west"

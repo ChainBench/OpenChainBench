@@ -28,7 +28,7 @@ const (
 	ZeroAddress    = "0x0000000000000000000000000000000000000000" // Odos convention
 )
 
-// V1 basket: 5 pairs across 4 chains. Hardcoded — EVM gas costs make
+// V1 basket: 6 pairs across 5 chains. Hardcoded — EVM gas costs make
 // trending-token rotation expensive. Once Mobula's swap router has stable
 // route caching we can revisit.
 var Basket = []TestPair{
@@ -92,6 +92,18 @@ var Basket = []TestPair{
 		TokenInDec:  18,
 		TokenOutDec: 18,
 	},
+	{
+		Chain:       "robinhood",
+		ChainId:     4663,
+		TokenIn:     NativeSentinel, // ETH on Robinhood Chain
+		TokenOut:    "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168", // USDG (Paxos Global Dollar), Robinhood Chain's main stablecoin
+		TokenInSym:  "ETH",
+		TokenOutSym: "USDG",
+		AmountHuman: "0.1",
+		AmountWei:   "100000000000000000", // 0.1e18
+		TokenInDec:  18,
+		TokenOutDec: 6,
+	},
 }
 
 // ChainSlugFor returns the canonical chain slug for a chainId. Adapters that
@@ -110,6 +122,8 @@ func ChainSlugFor(chainId int) string {
 		return "polygon"
 	case 10:
 		return "optimism"
+	case 4663:
+		return "robinhood"
 	}
 	return ""
 }
