@@ -119,6 +119,16 @@ providers:
       success: avg(ocb:evm_swap_quote_success:avg_24h{provider="mobula"})
       sample_size: sum(ocb:evm_swap_quote_latency_ms:count_increase_24h{provider="mobula"})
       series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="mobula"}[1h])) by (le))
+      regions:
+        - region: us-east
+          p50: avg(ocb:evm_swap_quote_latency_ms:p50_24h{provider="mobula", region="us-east"})
+          series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="mobula", region="us-east"}[1h])) by (le))
+        - region: eu-west
+          p50: avg(ocb:evm_swap_quote_latency_ms:p50_24h{provider="mobula", region="eu-west"})
+          series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="mobula", region="eu-west"}[1h])) by (le))
+        - region: ap-southeast
+          p50: avg(ocb:evm_swap_quote_latency_ms:p50_24h{provider="mobula", region="sgp"})
+          series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="mobula", region="sgp"}[1h])) by (le))
 
   - slug: kyberswap
     name: KyberSwap
@@ -132,6 +142,16 @@ providers:
       success: avg(ocb:evm_swap_quote_success:avg_24h{provider="kyberswap"})
       sample_size: sum(ocb:evm_swap_quote_latency_ms:count_increase_24h{provider="kyberswap"})
       series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="kyberswap"}[1h])) by (le))
+      regions:
+        - region: us-east
+          p50: avg(ocb:evm_swap_quote_latency_ms:p50_24h{provider="kyberswap", region="us-east"})
+          series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="kyberswap", region="us-east"}[1h])) by (le))
+        - region: eu-west
+          p50: avg(ocb:evm_swap_quote_latency_ms:p50_24h{provider="kyberswap", region="eu-west"})
+          series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="kyberswap", region="eu-west"}[1h])) by (le))
+        - region: ap-southeast
+          p50: avg(ocb:evm_swap_quote_latency_ms:p50_24h{provider="kyberswap", region="sgp"})
+          series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="kyberswap", region="sgp"}[1h])) by (le))
 
   - slug: bebop
     name: Bebop
@@ -145,6 +165,16 @@ providers:
       success: avg(ocb:evm_swap_quote_success:avg_24h{provider="bebop"})
       sample_size: sum(ocb:evm_swap_quote_latency_ms:count_increase_24h{provider="bebop"})
       series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="bebop"}[1h])) by (le))
+      regions:
+        - region: us-east
+          p50: avg(ocb:evm_swap_quote_latency_ms:p50_24h{provider="bebop", region="us-east"})
+          series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="bebop", region="us-east"}[1h])) by (le))
+        - region: eu-west
+          p50: avg(ocb:evm_swap_quote_latency_ms:p50_24h{provider="bebop", region="eu-west"})
+          series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="bebop", region="eu-west"}[1h])) by (le))
+        - region: ap-southeast
+          p50: avg(ocb:evm_swap_quote_latency_ms:p50_24h{provider="bebop", region="sgp"})
+          series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="bebop", region="sgp"}[1h])) by (le))
 
   - slug: lifi
     name: LI.FI
@@ -158,6 +188,16 @@ providers:
       success: avg(ocb:evm_swap_quote_success:avg_24h{provider="lifi"})
       sample_size: sum(ocb:evm_swap_quote_latency_ms:count_increase_24h{provider="lifi"})
       series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="lifi"}[1h])) by (le))
+      regions:
+        - region: us-east
+          p50: avg(ocb:evm_swap_quote_latency_ms:p50_24h{provider="lifi", region="us-east"})
+          series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="lifi", region="us-east"}[1h])) by (le))
+        - region: eu-west
+          p50: avg(ocb:evm_swap_quote_latency_ms:p50_24h{provider="lifi", region="eu-west"})
+          series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="lifi", region="eu-west"}[1h])) by (le))
+        - region: ap-southeast
+          p50: avg(ocb:evm_swap_quote_latency_ms:p50_24h{provider="lifi", region="sgp"})
+          series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="lifi", region="sgp"}[1h])) by (le))
 
   - slug: openocean
     name: OpenOcean
@@ -171,6 +211,16 @@ providers:
       success: avg(ocb:evm_swap_quote_success:avg_24h{provider="openocean"})
       sample_size: sum(ocb:evm_swap_quote_latency_ms:count_increase_24h{provider="openocean"})
       series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="openocean"}[1h])) by (le))
+      regions:
+        - region: us-east
+          p50: avg(ocb:evm_swap_quote_latency_ms:p50_24h{provider="openocean", region="us-east"})
+          series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="openocean", region="us-east"}[1h])) by (le))
+        - region: eu-west
+          p50: avg(ocb:evm_swap_quote_latency_ms:p50_24h{provider="openocean", region="eu-west"})
+          series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="openocean", region="eu-west"}[1h])) by (le))
+        - region: ap-southeast
+          p50: avg(ocb:evm_swap_quote_latency_ms:p50_24h{provider="openocean", region="sgp"})
+          series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="openocean", region="sgp"}[1h])) by (le))
 
   - slug: cow
     name: CoW Protocol
@@ -184,6 +234,16 @@ providers:
       success: avg(ocb:evm_swap_quote_success:avg_24h{provider="cow"})
       sample_size: sum(ocb:evm_swap_quote_latency_ms:count_increase_24h{provider="cow"})
       series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="cow"}[1h])) by (le))
+      regions:
+        - region: us-east
+          p50: avg(ocb:evm_swap_quote_latency_ms:p50_24h{provider="cow", region="us-east"})
+          series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="cow", region="us-east"}[1h])) by (le))
+        - region: eu-west
+          p50: avg(ocb:evm_swap_quote_latency_ms:p50_24h{provider="cow", region="eu-west"})
+          series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="cow", region="eu-west"}[1h])) by (le))
+        - region: ap-southeast
+          p50: avg(ocb:evm_swap_quote_latency_ms:p50_24h{provider="cow", region="sgp"})
+          series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="cow", region="sgp"}[1h])) by (le))
 
   - slug: enso
     name: Enso
@@ -197,6 +257,16 @@ providers:
       success: avg(ocb:evm_swap_quote_success:avg_24h{provider="enso"})
       sample_size: sum(ocb:evm_swap_quote_latency_ms:count_increase_24h{provider="enso"})
       series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="enso"}[1h])) by (le))
+      regions:
+        - region: us-east
+          p50: avg(ocb:evm_swap_quote_latency_ms:p50_24h{provider="enso", region="us-east"})
+          series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="enso", region="us-east"}[1h])) by (le))
+        - region: eu-west
+          p50: avg(ocb:evm_swap_quote_latency_ms:p50_24h{provider="enso", region="eu-west"})
+          series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="enso", region="eu-west"}[1h])) by (le))
+        - region: ap-southeast
+          p50: avg(ocb:evm_swap_quote_latency_ms:p50_24h{provider="enso", region="sgp"})
+          series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="enso", region="sgp"}[1h])) by (le))
 
   - slug: route
     name: Route
@@ -210,3 +280,13 @@ providers:
       success: avg(ocb:evm_swap_quote_success:avg_24h{provider="route"})
       sample_size: sum(ocb:evm_swap_quote_latency_ms:count_increase_24h{provider="route"})
       series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="route"}[1h])) by (le))
+      regions:
+        - region: us-east
+          p50: avg(ocb:evm_swap_quote_latency_ms:p50_24h{provider="route", region="us-east"})
+          series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="route", region="us-east"}[1h])) by (le))
+        - region: eu-west
+          p50: avg(ocb:evm_swap_quote_latency_ms:p50_24h{provider="route", region="eu-west"})
+          series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="route", region="eu-west"}[1h])) by (le))
+        - region: ap-southeast
+          p50: avg(ocb:evm_swap_quote_latency_ms:p50_24h{provider="route", region="sgp"})
+          series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="route", region="sgp"}[1h])) by (le))
