@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"math"
 	"testing"
 	"time"
@@ -44,5 +45,57 @@ func TestGainsVolume24hFromDays_Degenerate(t *testing.T) {
 	}
 	if v := gainsVolume24hFromDays(-5, -5, true, now); v != 0 {
 		t.Fatalf("negative: %v", v)
+	}
+}
+
+func TestGainsMarkets_DelistedAndClasses(t *testing.T) {
+	var tv gainsTradingVariables
+	body := `{
+	  "groups": [{"name":"crypto"},{"name":"forex"},{"name":"stocks-2"},{"name":"indices"},{"name":"commodities-1"},{"name":"altcoins"},{"name":"forex-exotic"}],
+	  "pairs": [
+	    {"from":"BTC","to":"USD","groupIndex":"0"},
+	    {"from":"EUR","to":"USD","groupIndex":"1"},
+	    {"from":"USD","to":"JPY","groupIndex":"1"},
+	    {"from":"AAPL","to":"USD","groupIndex":"2"},
+	    {"from":"SPY","to":"USD","groupIndex":"3"},
+	    {"from":"XAU","to":"USD","groupIndex":"4"},
+	    {"from":"MATIC","to":"USD","groupIndex":"5"},
+	    {"from":"USD","to":"ZAR","groupIndex":"6"}
+	  ],
+	  "pairInfos": {"maxLeverages": [0, 0, 0, 5000, 0, 0, 1, 1]}
+	}`
+	if err := json.Unmarshal([]byte(body), &tv); err != nil {
+		t.Fatal(err)
+	}
+	markets, unknown := gainsMarkets(tv)
+	if len(unknown) != 0 {
+		t.Fatalf("unknown groups: %v", unknown)
+	}
+	if len(markets) != 6 {
+		t.Fatalf("a max leverage of 1 (0.001x) is a delisted pair: got %d markets, want 6", len(markets))
+	}
+	got := map[string]string{}
+	for _, m := range markets {
+		got[m.base] = m.class
+	}
+	want := map[string]string{"BTC": classCrypto, "EUR": classForex, "JPY": classForex, "AAPL": classStocks, "SPY": classIndices, "XAU": classCommodities}
+	for k, v := range want {
+		if got[k] != v {
+			t.Fatalf("%s: got %q want %q (all: %v)", k, got[k], v, got)
+		}
+	}
+}
+
+func TestGainsMarkets_UnknownGroupWithholdsNothingSilently(t *testing.T) {
+	var tv gainsTradingVariables
+	body := `{"groups":[{"name":"crypto"},{"name":"prediction"}],
+	  "pairs":[{"from":"BTC","to":"USD","groupIndex":"0"},{"from":"X","to":"USD","groupIndex":"1"}],
+	  "pairInfos":{"maxLeverages":[0,0]}}`
+	if err := json.Unmarshal([]byte(body), &tv); err != nil {
+		t.Fatal(err)
+	}
+	markets, unknown := gainsMarkets(tv)
+	if len(markets) != 1 || len(unknown) != 1 || unknown[0] != "prediction" {
+		t.Fatalf("markets=%v unknown=%v", markets, unknown)
 	}
 }

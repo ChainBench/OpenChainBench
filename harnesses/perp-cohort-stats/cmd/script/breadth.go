@@ -13,8 +13,8 @@ import (
 // perp_venue_noncore_markets_total{venue} (bench perp-asset-breadth).
 //
 // Class names match the Mobula perp catalog taxonomy the bench started
-// with (Gains and Lighter still come from Mobula), so a Mobula row and a
-// native row are comparable:
+// with (Mobula deprecated that catalog in 2026-10; Gains now reads its
+// own pair groups and Lighter goes through the symbol path below):
 //
 //	crypto       tokens and crypto indices (TOTAL2, BTC dominance)
 //	forex        fiat pairs (EUR/USD, USD/JPY)
@@ -28,8 +28,8 @@ import (
 // own metadata decides when it exists (Extended category, Paradex tags,
 // Aster underlyingSubType, Ostium group, Ondo tags); the symbol tables
 // below only split a venue-tagged RWA bucket into forex, indices and
-// commodities, and cover the two venues with no metadata at all
-// (Hyperliquid HIP-3 dexes, dYdX).
+// commodities, and cover the venues with no metadata at all
+// (Hyperliquid HIP-3 dexes, dYdX, Lighter).
 const (
 	classCrypto      = "crypto"
 	classForex       = "forex"

@@ -29,10 +29,6 @@ type LighterNativeSource struct {
 	venue  string
 	base   string
 	name   string
-	// classify hands the perp symbols to the router's cross-venue
-	// classification (the Robinhood deployment lists equities next to
-	// tokens and has no asset class); mainnet keeps Mobula's taxonomy.
-	classify bool
 }
 
 func NewLighterNativeSource() *LighterNativeSource {
@@ -45,11 +41,10 @@ func NewLighterNativeSource() *LighterNativeSource {
 // order books and volume.
 func NewLighterDeploymentSource(venue, base, name string) *LighterNativeSource {
 	return &LighterNativeSource{
-		client:   &http.Client{Timeout: 15 * time.Second},
-		venue:    venue,
-		base:     base,
-		name:     name,
-		classify: venue != "lighter",
+		client: &http.Client{Timeout: 15 * time.Second},
+		venue:  venue,
+		base:   base,
+		name:   name,
 	}
 }
 
@@ -135,9 +130,11 @@ func (s *LighterNativeSource) Fetch() (*SourceResult, error) {
 			}
 			res.SetIfPositive(venue, mOI, oiSum)
 			res.SetIfPositive(venue, mActiveMarkets, float64(active))
-			if s.classify {
-				res.SetUnclassified(venue, syms)
-			}
+			// Lighter publishes no asset class, so the perp symbols go to
+			// the router's cross-venue classification (breadth.go). Until
+			// 2026-10-12 mainnet used Mobula's perp pairs taxonomy, which
+			// Mobula deprecated.
+			res.SetUnclassified(venue, syms)
 			fmt.Printf("[perp-cohort][%s][%s] ok orderBookDetails: active=%d oi=%.0f\n",
 				venue, s.name, active, oiSum)
 		}

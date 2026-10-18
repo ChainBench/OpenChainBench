@@ -6,6 +6,8 @@ import (
 	"math/big"
 	"os"
 	"testing"
+
+	"github.com/prometheus/client_golang/prometheus/testutil"
 )
 
 // Fixtures captured live on 2026-10-12.
@@ -174,6 +176,82 @@ func TestGainsRoomScalesWithLeverage(t *testing.T) {
 		approx(t, "gains room", room, c.room, 1e-9)
 		approx(t, "gains collateral lost", lost, c.lost, 1e-9)
 		approx(t, "gains collateral kept", kept, 0, 0)
+	}
+}
+
+// TestGainsDegenPairIsFixedLeverage is the test for a bug that shipped.
+//
+// pairMinLeverage and pairMaxLeverage both read 500x on pairs 300 and 313, so
+// the degen cohort is a fixed-leverage product and 500x is its only legal
+// value. The publisher originally refused only a leverage ABOVE the maximum, so
+// the 10x, 25x, 50x, 100x and 200x tabs carried a Gains row for a position that
+// cannot be opened.
+func TestGainsDegenPairIsFixedLeverage(t *testing.T) {
+	degen := gainsVenue(t, degenLiqParams, 500, 0.02)
+	degen.minLev = 500
+
+	for _, lev := range []float64{10, 25, 50, 100, 200, 499} {
+		if _, _, _, ok := termsAt(degen, lev); ok {
+			t.Errorf("degen pair accepted %.0fx, but its minimum is 500x", lev)
+		}
+	}
+	room, lost, _, ok := termsAt(degen, 500)
+	if !ok {
+		t.Fatal("degen pair refused its only legal leverage")
+	}
+	approx(t, "degen room at 500x", room, 0.12, 1e-9)
+	approx(t, "degen collateral lost", lost, 60, 1e-9)
+}
+
+// TestGainsPicksTheOpenableProduct: with the degen pair fixed at 500x, a
+// trader wanting less leverage uses the standard pair, which runs 1.1x to 200x
+// on a 90 percent threshold that interpolates to 75 between 25x and 60x. The
+// venue must therefore publish the standard pair below 500x and the degen one
+// at 500x, and neither where the leverage is offered by neither.
+func TestGainsPicksTheOpenableProduct(t *testing.T) {
+	std := gainsVenue(t, stdLiqParams, 200, 0.035)
+	std.minLev = 1.1
+	degen := gainsVenue(t, degenLiqParams, 500, 0.02)
+	degen.minLev = 500
+
+	pick := func(lev float64) (float64, string, bool) {
+		best, name, found := -1.0, "", false
+		for _, v := range []struct {
+			t    venueTerms
+			name string
+		}{{std, "standard"}, {degen, "degen"}} {
+			room, _, _, ok := termsAt(v.t, lev)
+			if ok && room > best {
+				best, name, found = room, v.name, true
+			}
+		}
+		return best, name, found
+	}
+
+	for _, c := range []struct {
+		lev  float64
+		want string
+		room float64
+	}{
+		{10, "standard", 8.93},   // (90 - 2*0.035*10) / 10
+		{25, "standard", 3.53},   // threshold still 90 at the floor
+		{100, "standard", 0.68},  // threshold 75 above 60x
+		{200, "standard", 0.305}, // the standard pair's own ceiling
+		{500, "degen", 0.12},     // only the degen pair reaches here
+	} {
+		room, name, ok := pick(c.lev)
+		if !ok {
+			t.Fatalf("no gains product at %.0fx", c.lev)
+		}
+		if name != c.want {
+			t.Errorf("at %.0fx picked the %s pair, want %s", c.lev, name, c.want)
+		}
+		approx(t, "gains room", room, c.room, 1e-9)
+	}
+
+	// 1000x is offered by neither, so the venue is absent from that tab.
+	if _, _, ok := pick(1000); ok {
+		t.Error("gains published a row at 1000x, which neither pair offers")
 	}
 }
 
@@ -499,4 +577,21 @@ func TestLeverageTermsLive(t *testing.T) {
 	if _, err := s.Fetch(); err != nil {
 		t.Fatalf("full fetch: %v", err)
 	}
+}
+
+// TestAllTabReadsTheCeilingProduct pins the "Each venue at its max" tab to the
+// product that reaches the ceiling. The standard pair at its own 200x leaves
+// 0.305% against the degen pair's 0.12% at 500x; letting the larger room win
+// published 500x in the max leverage column beside the 200x room.
+func TestAllTabReadsTheCeilingProduct(t *testing.T) {
+	std := gainsVenue(t, stdLiqParams, 200, 0.035)
+	std.minLev = 1.1
+	degen := gainsVenue(t, degenLiqParams, 500, 0.02)
+	degen.minLev = 500
+
+	publishLeverageTerms([]venueTerms{std, degen})
+	if got := testutil.ToFloat64(perpLeverageMax.WithLabelValues("gains", "BTC", "all")); got != 500 {
+		t.Fatalf("max leverage on the all tab = %v, want 500", got)
+	}
+	approx(t, "all tab room", testutil.ToFloat64(perpLiqPriceMovePct.WithLabelValues("gains", "BTC", "all")), 0.12, 1e-9)
 }

@@ -42,7 +42,7 @@ import (
 func main() {
 	installLogCapture()
 	fmt.Println("=== perp-cohort-stats harness ===")
-	fmt.Println("Multi-source per-venue perp cohort stats (HL native, Lighter native, DefiLlama, Mobula funding + pairs).")
+	fmt.Println("Multi-source per-venue perp cohort stats (HL native, Lighter native, DefiLlama, Mobula funding).")
 	fmt.Println("Exposes /metrics, /health, /logs on :2112.")
 
 	cfg := loadConfig()
