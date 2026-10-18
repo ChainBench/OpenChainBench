@@ -23,13 +23,19 @@ import (
 // 02:45 to 03:30 UTC). A missing file answers 403, which is also what a
 // builder with no fills that day gets, so "not published yet" and "no
 // fills" are told apart at cohort level (see availability.go).
-const feedURLTemplate = "https://stats-data.hyperliquid.xyz/Mainnet/builder_fills/%s/%s.csv.lz4"
+// feedURLTemplate is a var, not a const, so the revalidation path can be
+// exercised against a local server in tests. Never reassigned in production.
+var feedURLTemplate = "https://stats-data.hyperliquid.xyz/Mainnet/builder_fills/%s/%s.csv.lz4"
 
 const dayFormat = "20060102"
 
 var feedHTTP = &http.Client{Timeout: 120 * time.Second}
 
 var errFeedAbsent = errors.New("feed: no file for that builder and day")
+
+// errFeedUnchanged is the CDN answering 304 to a revalidation: the mirrored
+// copy is still the newest one published. Not a failure.
+var errFeedUnchanged = errors.New("feed: not modified")
 
 // Mirror keeps a local copy of every fetched CSV under
 // <root>/builder_fills/<address>/<YYYYMMDD>.csv.lz4, plus a
@@ -129,6 +135,15 @@ func (m *Mirror) fetch(ctx context.Context, addr string, day time.Time) error {
 			return err
 		}
 		req.Header.Set("User-Agent", "openchainbench-hl-frontends/2 (+https://openchainbench.com)")
+		// Revalidate rather than re-download. The mirrored file already
+		// carries the CDN's own Last-Modified as its mtime (stamped below),
+		// so it is the conditional token and no extra state is needed. The
+		// CDN answers 304, which is what makes it affordable to re-check
+		// every recent day on every pass instead of trusting the first copy
+		// for ever.
+		if st, err := os.Stat(m.filePath(addr, day)); err == nil && st.Size() > 0 {
+			req.Header.Set("If-Modified-Since", st.ModTime().UTC().Format(http.TimeFormat))
+		}
 		resp, err := feedHTTP.Do(req)
 		if err != nil {
 			lastErr = err
@@ -136,6 +151,10 @@ func (m *Mirror) fetch(ctx context.Context, addr string, day time.Time) error {
 			continue
 		}
 		switch {
+		case resp.StatusCode == http.StatusNotModified:
+			resp.Body.Close()
+			feedFetchTotal.WithLabelValues("unchanged").Inc()
+			return errFeedUnchanged
 		case resp.StatusCode == http.StatusForbidden || resp.StatusCode == http.StatusNotFound:
 			resp.Body.Close()
 			feedFetchTotal.WithLabelValues("absent").Inc()
