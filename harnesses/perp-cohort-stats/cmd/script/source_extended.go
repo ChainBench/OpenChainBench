@@ -40,7 +40,9 @@ type ExtendedNativeSource struct {
 
 func NewExtendedNativeSource() *ExtendedNativeSource {
 	return &ExtendedNativeSource{
-		client: &http.Client{Timeout: 15 * time.Second},
+		// /info/markets is about 1 MB and takes 4 to 15 s from the VPS; a
+		// 15 s budget cut the body mid-read and published a parse error.
+		client: &http.Client{Timeout: 45 * time.Second},
 	}
 }
 
@@ -160,7 +162,10 @@ func (s *ExtendedNativeSource) get(url string) ([]byte, error) {
 		return nil, fmt.Errorf("request_error: %w", err)
 	}
 	defer resp.Body.Close()
-	body, _ := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("read_error: %w", err)
+	}
 	if resp.StatusCode != 200 {
 		return nil, fmt.Errorf("status_%d: %s", resp.StatusCode, truncate(string(body), 200))
 	}
