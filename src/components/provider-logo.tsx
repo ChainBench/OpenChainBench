@@ -120,6 +120,9 @@ const NEEDS_LIGHT_CHIP = new Set([
   "gpt-52-vision",
   "opus-45-chart",
   "sonnet-45-vision",
+  // Route (bench 002, 219). A single black lowercase "r" on transparent,
+  // same shape of problem as the two above.
+  "route",
 ]);
 
 // White-on-transparent logos — invisible on a white chip. They get a

@@ -371,6 +371,15 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "DeFi shared engine that maps onchain interactions into composable actions. The Route API computes optimal multi-step paths across protocols and chains, abstracting approvals, swaps, vault entries, and bridges into a single call.",
     twitter: "@EnsoBuild",
   },
+  route: {
+    url: "https://route.fun",
+    description:
+      "Swap router for Robinhood Chain, chain ID 4663, and no other chain. route.fun is the swap interface; the partner API quotes and builds a swap in one request and is key-gated.",
+    twitter: "@routedotfun",
+    longDescription:
+      "Route routes swaps across Robinhood Chain liquidity, which spans Uniswap v3 and v4 pools including hooked ones, Pons launchpad pools and oracle-priced prop AMMs. It serves one chain, so it has no cross-chain path selection to do and its quote endpoint answers from a single network. The partner API at partners.route.fun takes a Bearer key and returns a quote and a built transaction together, rather than quoting and building in two calls. Route publishes that swap fees and token creator fees fund ROUTE buybacks, ROUTE/USDG liquidity and its treasury; that is the project's own statement about its economics and nothing here measures it.",
+    docs: "https://docs.route.fun",
+  },
 
   // ─── Prediction markets (bench 028) ───────────────────────────
   polymarket: {

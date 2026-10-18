@@ -296,6 +296,14 @@ const RAW: Record<string, string> = {
   paraswap: "/logos/paraswap.png",
   relay: "/logos/relay.svg",
   lifi: "/logos/lifi.png",
+  // Route, added with the Robinhood Chain pair (#3025). The mark Route
+  // supplied is a black "r" sitting in a 400px square that is 91% white,
+  // so it is cropped to the glyph and the white is dropped to alpha: left
+  // as delivered it rendered as a pale tile with a dot in it next to
+  // tightly cropped neighbours, and could not sit on a dark page at all.
+  // Being monochrome on transparent, the slug is opted into the light chip
+  // in <ProviderLogo>.
+  route: "/logos/route.png",
   geckoterminal: "/logos/geckoterminal.png",
   gains: "/logos/gains.svg",
   blockscout: "/logos/blockscout.svg",
