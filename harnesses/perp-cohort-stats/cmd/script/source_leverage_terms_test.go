@@ -6,6 +6,8 @@ import (
 	"math/big"
 	"os"
 	"testing"
+
+	"github.com/prometheus/client_golang/prometheus/testutil"
 )
 
 // Fixtures captured live on 2026-10-12.
@@ -575,4 +577,21 @@ func TestLeverageTermsLive(t *testing.T) {
 	if _, err := s.Fetch(); err != nil {
 		t.Fatalf("full fetch: %v", err)
 	}
+}
+
+// TestAllTabReadsTheCeilingProduct pins the "Each venue at its max" tab to the
+// product that reaches the ceiling. The standard pair at its own 200x leaves
+// 0.305% against the degen pair's 0.12% at 500x; letting the larger room win
+// published 500x in the max leverage column beside the 200x room.
+func TestAllTabReadsTheCeilingProduct(t *testing.T) {
+	std := gainsVenue(t, stdLiqParams, 200, 0.035)
+	std.minLev = 1.1
+	degen := gainsVenue(t, degenLiqParams, 500, 0.02)
+	degen.minLev = 500
+
+	publishLeverageTerms([]venueTerms{std, degen})
+	if got := testutil.ToFloat64(perpLeverageMax.WithLabelValues("gains", "BTC", "all")); got != 500 {
+		t.Fatalf("max leverage on the all tab = %v, want 500", got)
+	}
+	approx(t, "all tab room", testutil.ToFloat64(perpLiqPriceMovePct.WithLabelValues("gains", "BTC", "all")), 0.12, 1e-9)
 }
