@@ -44,12 +44,12 @@ abstract: |
   on that total. The class comes from the venue's own metadata when it
   exists: Extended's category and subCategory, Paradex's RWA tag, Aster's
   underlyingSubType (STOCK, ETF, Commodities, USD1-RWA), Ostium's pair
-  group, Ondo's tags, and the Mobula perp catalog assetClass for Gains and
-  Lighter. Hyperliquid's HIP-3 dexes (xyz, para, mkts, io and the others
-  returned by the perpDexs call) and dYdX publish no class, so their
-  symbols go through a fixed table of forex codes, commodity references
-  and index names; a symbol not in the table counts as a stock on a
-  HIP-3 dex and as crypto on dYdX, which carries an explicit list of its
+  group, Ondo's tags, and Gains' pair groups. Lighter, Hyperliquid's
+  HIP-3 dexes (xyz, para, mkts, io and the others returned by the
+  perpDexs call) and dYdX publish no class, so their symbols go through
+  a fixed table of forex codes, commodity references and index names; a
+  symbol not in the table counts as a stock on a HIP-3 dex and as crypto
+  on Lighter and on dYdX, which carries an explicit list of its
   non-crypto tickers (EUR, TRY, WTI, XAG, TSLAX). GMX v2 is read from its
   synthetic token list, where gold, silver, WTI, Brent, natural gas, SPY,
   QQQ and a SpaceX pre-IPO synthetic sit next to the crypto markets.
@@ -67,14 +67,15 @@ methodology:
   - "Ostium: pair group from the Ormi subgraph (crypto, forex, stocks, etf, indices, commodities); etf is split per symbol (URA, XLE, TLT count as stocks). Pairs with a last trade price only."
   - "Ondo Perps: GET /v1/perps/contracts tags (Crypto, Stock, ETF, Commodity, Index, FX), enabled perpetual contracts only; ETF is split per symbol (SPY and QQQ count as indices, EWY, SOXL, URNM as stocks)."
   - "dYdX v4: GET /v4/perpetualMarkets, ACTIVE markets. The indexer publishes no asset class and its tickers collide with the table (SPX-USD is the SPX6900 token, GME-USD a token), so a reviewed list marks EUR-USD and TRY-USD as forex, WTI-USD and XAG-USD as commodities, TSLAX-USD (xStocks TSLA) as a stock; everything else is crypto."
-  - "Gains and Lighter: Mobula GET /api/2/perp/pairs assetClass (forex, stocks, indices, commodities count; crypto, degen and new are crypto). Mainnet chains only, arbitrum-sepolia excluded."
+  - "Gains: the pair groups of its Arbitrum trading variables (forex, forex-minor and forex-exotic are forex; stocks-1 to 3 are stocks; indices; commodities-1 and 2; the three crypto groups are crypto), delisted pairs (max leverage 0.001x) left out. Read from Mobula's perp catalog until Mobula deprecated it on 2026-10-12."
+  - "Lighter publishes no class, so its symbols take the class another venue tags them with, then the fixed tables; a symbol no venue tags counts as crypto, so a pre-IPO synthetic only Lighter lists is undercounted, never invented. Read from Mobula's perp catalog until 2026-10-12."
   - "GMX v2: GET arbitrum-api.gmxinfra.io/tokens, synthetic tokens matched against the table (GOLD, SILVER, WTIOIL, BRENTOIL, NATGAS are commodities, SPY and QQQ indices) plus a reviewed list for the equity synthetics the table cannot recognise (SPCX, SpaceX pre-IPO). MEGA (MegaETH) and SPX6900 stay crypto."
   - "A venue whose catalog call fails on a tick keeps its previous count; the per-source error counter records the failure. Counts are not sampled, so p50, p90 and p99 read the same live value."
 findings:
   - "{{best_name}} leads non-crypto perp breadth with {{best_p50}} live markets across stocks, indices, forex and commodities, {{worst_name}} lists {{worst_p50}}."
   - "Hyperliquid reaches {{p50:hyperliquid}} non-crypto markets through HIP-3 deployer dexes (xyz, para, mkts, io): US and Asian equities, ETFs, gold, silver, oil, copper, JPY and EUR, S&P 500 and Nasdaq 100 style indices. The core Hyperliquid universe is still crypto-only."
   - "Extended lists {{p50:extended}} and Aster {{p50:aster}} non-crypto markets, both dominated by US stock perps, with a handful of commodities, indices and forex pairs on the side."
-  - "Gains lists {{p50:gains}} non-crypto markets, the broadest forex catalog of the cohort (18 pairs) next to 68 stocks, 14 indices and 10 commodities. Ostium lists {{p50:ostium}} with forex, indices and commodities as its core catalog rather than an add-on."
+  - "Gains lists {{p50:gains}} non-crypto markets, stocks first, then forex, indices and metals. Ostium lists {{p50:ostium}} with forex, indices and commodities as its core catalog rather than an add-on."
   - "Ondo Perps lists {{p50:ondo}}, Lighter {{p50:lighter}}, Paradex {{p50:paradex}}. GMX v2 lists {{p50:gmx-v2}} (gold, silver, WTI, Brent, natural gas, SPY, QQQ, a SpaceX synthetic) and dYdX v4 {{p50:dydx}} live markets from its reviewed list (EUR, TRY, WTI, XAG, TSLAX, whichever are ACTIVE): the two older venues have added a handful of non-crypto markets, not a catalog."
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/perp-cohort-stats
 prometheus:
@@ -85,7 +86,7 @@ faq:
   - q: "What counts as a non-crypto market?"
     a: "A perpetual whose underlying is not a crypto token: a stock or ETF (AAPL, TSLA, NVDA, EWY), an equity or rates index or the ETF that tracks one (S&P 500, SPY, Nasdaq 100, QQQ, KOSPI 200, US Treasuries), a forex pair (EUR/USD, USD/JPY) or a commodity (gold, silver, platinum, copper, WTI, Brent, natural gas). Tokenized gold such as PAXG or XAUT is an onchain token and stays in the crypto class."
   - q: "Where does the asset class come from?"
-    a: "From the venue itself whenever it publishes one: Extended's category and subCategory, Paradex's RWA tag, Aster's underlyingSubType, Ostium's pair group, Ondo's tags, Mobula's assetClass for Gains and Lighter. Hyperliquid HIP-3 dexes and dYdX publish none, so their symbols are matched against a fixed table of forex codes, commodity references and index names, and dYdX carries a reviewed list of its five non-crypto tickers."
+    a: "From the venue itself whenever it publishes one: Extended's category and subCategory, Paradex's RWA tag, Aster's underlyingSubType, Ostium's pair group, Ondo's tags, Gains' pair groups. Lighter, Hyperliquid HIP-3 dexes and dYdX publish none, so their symbols are matched against a fixed table of forex codes, commodity references and index names, and dYdX carries a reviewed list of its five non-crypto tickers."
   - q: "Why does Hyperliquid rank high when its own perps are crypto-only?"
     a: "Because HIP-3 lets third-party deployers list perps on Hyperliquid's orderbook under a namespaced symbol (xyz:TSLA, mkts:US500, para:AVGO). Those markets settle on the same HyperBFT engine and are reachable from the same account, so the bench counts them as Hyperliquid markets. The core universe (BTC, ETH, SOL and the other core coins) contributes zero to the non-crypto count."
   - q: "Does a market count if it only trades during exchange hours?"
@@ -134,8 +135,8 @@ providers:
 
   - slug: gains
     name: Gains
-    tag: Synthetic perps on Arbitrum, Base, Polygon and ApeChain, Mobula catalog
-    formula: "Count of mainnet Mobula catalog pairs for dex=gains where assetClass in {forex, stocks, indices, commodities}. Live."
+    tag: Synthetic perps on Arbitrum, Base, Polygon and ApeChain, native pair groups
+    formula: "Count of live Arbitrum pairs whose Gains group is forex, stocks, indices or commodities; delisted pairs (max leverage 0.001x) excluded. Live."
     queries:
       p50: perp_venue_noncore_markets_total{venue="gains"}
       p90: perp_venue_noncore_markets_total{venue="gains"}
@@ -170,8 +171,8 @@ providers:
 
   - slug: lighter
     name: Lighter
-    tag: zk-rollup orderbook perps, Mobula catalog
-    formula: "Count of mainnet Mobula catalog pairs for dex=lighter where assetClass in {forex, stocks, indices, commodities}. Live."
+    tag: zk-rollup orderbook perps, cross-venue symbol classification
+    formula: "Count of active perp markets in orderBookDetails classified forex, stocks, indices or commodities: a symbol another venue tags as non-crypto takes that class, then the forex, commodity and index tables; any other symbol is crypto. Live."
     queries:
       p50: perp_venue_noncore_markets_total{venue="lighter"}
       p90: perp_venue_noncore_markets_total{venue="lighter"}

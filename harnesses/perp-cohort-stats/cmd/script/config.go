@@ -58,7 +58,7 @@ func loadConfig() *Config {
 	}
 
 	if c.MobulaAPIKey == "" {
-		fmt.Println("[config] WARN: MOBULA_API_KEY is unset; Mobula funding + Mobula pairs sources will be skipped this run.")
+		fmt.Println("[config] WARN: MOBULA_API_KEY is unset; the Mobula funding source will be skipped this run.")
 	}
 
 	fmt.Printf("Config: venues=%d, tick=%v, mobula_venues=%q, mobula_key=%s\n",

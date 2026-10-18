@@ -140,7 +140,6 @@ const (
 	srcHLXyzNative       = "hl_xyz_native"
 	srcCexCoinGecko      = "cex_coingecko"
 	srcDefillama         = "defillama"
-	srcMobulaPairs       = "mobula_pairs"
 	srcMobulaFund        = "mobula_funding"
 )
 
@@ -317,13 +316,13 @@ func priorityMap(venue, metric string) []string {
 			return []string{srcHLNative}
 		case "lighter":
 			// Lighter native is the authoritative count: it filters
-			// market_type=="perp" + status=="active". Mobula pairs
-			// counts the whole catalog and diverges constantly here,
-			// so we keep it for `gains` (where Lighter does not
-			// publish) but drop it from the lighter priority list.
+			// market_type=="perp" + status=="active".
 			return []string{srcLighterNative}
 		case "gains":
-			return []string{srcMobulaPairs}
+			// The Arbitrum trading variables minus delisted pairs. Mobula's
+			// perp pairs catalog served this until Mobula deprecated it
+			// (404 since 2026-10-12).
+			return []string{srcGainsNative}
 		case "gmx-v2":
 			return []string{srcGMXNative, srcDefillama}
 		case "dydx":
@@ -438,6 +437,13 @@ func priorityMap(venue, metric string) []string {
 	return nil
 }
 
+// cryptoDefaultVenues are the venues whose unclassified symbols default
+// to crypto: mainnet Lighter lists a few hundred tokens and a minority of
+// stocks, forex and metals, the opposite of a HIP-3 RWA dex. A pre-IPO
+// synthetic only Lighter lists therefore counts as crypto there, an
+// undercount of its non-crypto catalog, never an overcount.
+var cryptoDefaultVenues = map[string]bool{"lighter": true}
+
 // Router orchestrates one sweep across all registered sources.
 // classifyUnclassified turns every SourceResult.Unclassified list into a
 // Breadth entry. Two sets accumulate across ticks (a source that failed
@@ -445,8 +451,9 @@ func priorityMap(venue, metric string) []string {
 // lists as a non-crypto market and the symbols some venue lists as a
 // crypto market. On a HIP-3 dex the RWA reading wins, then the crypto
 // one (xyz:BOT is a token also listed on Lighter), then the fixed
-// tables, and a symbol nobody knows counts as a stock. The Hyperliquid
-// core universe arrives through the crypto map.
+// tables, and a symbol nobody knows counts as a stock, except on a
+// crypto-first venue (cryptoDefaultVenues) where it counts as crypto.
+// The Hyperliquid core universe arrives through the crypto map.
 func (r *Router) classifyUnclassified(byName map[string]*SourceResult) {
 	r.cryptoMu.Lock()
 	defer r.cryptoMu.Unlock()
@@ -479,7 +486,7 @@ func (r *Router) classifyUnclassified(byName map[string]*SourceResult) {
 					// that reading wins over a same-named token elsewhere.
 					class = rwaClass(sym)
 				} else {
-					class = symbolClass(sym, true, r.knownCrypto)
+					class = symbolClass(sym, !cryptoDefaultVenues[venue], r.knownCrypto)
 				}
 				b.add(class)
 				if class == classCrypto {
@@ -562,7 +569,6 @@ func NewRouter(cfg *Config) *Router {
 	if cfg.MobulaAPIKey != "" {
 		sources = append(sources,
 			NewMobulaFundingSource(cfg.MobulaAPIKey, cfg.MobulaFundingVenues),
-			NewMobulaPairsSource(cfg.MobulaAPIKey),
 		)
 	} else {
 		fmt.Println("[router] Mobula sources disabled (MOBULA_API_KEY unset)")

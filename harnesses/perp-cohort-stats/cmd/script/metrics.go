@@ -48,14 +48,14 @@ var (
 	perpVenueActiveMarkets = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "perp_venue_active_markets",
-			Help: "Number of perp markets actively trading, per venue. Source: HL native (len(ctxs)), Lighter native (len(orderBookDetails)), Mobula pairs (cross-check). For GMX, derived from DefiLlama protocol breakdown.",
+			Help: "Number of perp markets actively trading, per venue. Source: HL native (len(ctxs)), Lighter native (len(orderBookDetails)), Gains trading variables minus delisted pairs. For GMX, derived from DefiLlama protocol breakdown.",
 		},
 		[]string{"venue"},
 	)
 	perpVenueMarketsByClass = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "perp_venue_markets_by_class",
-			Help: "Number of active markets per venue per asset class (crypto/forex/stocks/indices/commodities). Source: each venue's native catalog and asset tags (breadth.go); Mobula perp pairs for Gains and Lighter.",
+			Help: "Number of active markets per venue per asset class (crypto/forex/stocks/indices/commodities). Source: each venue's native catalog and asset tags, or the cross-venue symbol classification for venues without tags (breadth.go).",
 		},
 		[]string{"venue", "class"},
 	)
