@@ -62,6 +62,7 @@ const (
 	// First four bytes of the keccak-256 of the signature, hardcoded so the
 	// harness needs no hashing dependency.
 	selPairMaxLev   = "0x281b693c" // pairMaxLeverage(uint256), 1e3
+	selPairMinLev   = "0x59a992d0" // pairMinLeverage(uint256), 1e3
 	selPairLiqParam = "0x6633ced6" // getPairLiquidationParams(uint256)
 	selPairs        = "0xb91ac788" // pairs(uint256), word 9 is the fee index
 	selFees         = "0x4acc79ed" // fees(uint256), word 0 is the size fee at 1e10
@@ -69,10 +70,15 @@ const (
 	leverageTermsUA = "OpenChainBench-PerpCohort/1.0 contact@openchainbench.com"
 )
 
-// gainsDegenPairs maps the market label to its pair index on the diamond. These
-// are the x500 cohort, deliberately not the standard BTC/USD and ETH/USD pairs
-// which cap at 200x.
-var gainsDegenPairs = map[string]int64{"BTC": 300, "ETH": 313}
+// gainsPairs maps each market to the pair indices Gains offers on it. The two
+// are different products, not a ceiling and a floor of one: the standard pair
+// runs 1.1x to 200x, and the degen pair has pairMinLeverage equal to
+// pairMaxLeverage at 500x, so 500x is its only legal value. A trader who wants
+// 50x uses the standard pair; one who wants 500x has only the degen one.
+var gainsPairs = map[string][]int64{
+	"BTC": {0, 300},
+	"ETH": {1, 313},
+}
 
 // leverageTermsMarkets are the only two assets all four venues list, which is
 // what makes the rows comparable at all.
@@ -104,6 +110,12 @@ type venueTerms struct {
 	venue  string
 	market string
 	maxLev float64
+	// minLev is the lowest leverage the venue will open this market at. It is
+	// usually 1 and irrelevant, and on Gains' degen pairs it equals maxLev:
+	// pairMinLeverage and pairMaxLeverage both read 500x on pairs 300 and 313,
+	// so those are a fixed-leverage product rather than a ceiling, and a row
+	// for them on a 10x tab describes a position that cannot be opened.
+	minLev float64
 	// maintenance is the requirement as a share of notional at that leverage.
 	maintenance func(lev float64) float64
 	// costPerLeg is the venue's fee as a share of notional, charged on the way
@@ -121,8 +133,8 @@ func (s *LeverageTermsSource) Fetch() (*SourceResult, error) {
 	// Each venue is independent and publishes its own gauges, so a venue that
 	// is down costs its own rows and nothing else. The result is empty on
 	// purpose: the router's value map is keyed by (venue, metric) and cannot
-	// express a per-market, per-leverage figure, so these three gauges are
-	// written directly. Nothing here feeds a bench the router serves.
+	// express a per-market, per-leverage figure, so these gauges are written
+	// directly. Nothing here feeds a bench the router serves.
 	res := newSourceResult()
 	// Clear every series before republishing. A gauge keeps its last value
 	// forever, so a venue that lowered its maximum leverage would keep a row
@@ -138,37 +150,77 @@ func (s *LeverageTermsSource) Fetch() (*SourceResult, error) {
 	all = append(all, s.fetchPapertrade()...)
 	all = append(all, s.fetchHyperliquid()...)
 	all = append(all, s.fetchDydx()...)
+
+	// A venue can offer several products on the same market, and Gains does:
+	// its standard pair runs 1.1x to 200x while its degen pair is fixed at
+	// 500x. Group by (venue, market) so each leverage publishes the product a
+	// trader could actually open at it, and where both qualify, the one that
+	// leaves more room, which is the choice a trader would make.
+	byKey := map[[2]string][]venueTerms{}
+	var order [][2]string
 	for _, t := range all {
-		publishLeverageTerms(t)
+		k := [2]string{t.venue, t.market}
+		if _, seen := byKey[k]; !seen {
+			order = append(order, k)
+		}
+		byKey[k] = append(byKey[k], t)
+	}
+	for _, k := range order {
+		publishLeverageTerms(byKey[k])
 	}
 	return res, nil
 }
 
-// publishLeverageTerms writes one venue's three gauges at every leverage the
-// venue allows. A single write path, so the three are always set together: a
-// venue that published a max leverage but no room would read as the safest row
-// on the board.
-func publishLeverageTerms(t venueTerms) {
+// publishLeverageTerms writes one venue's gauges on a market, at every leverage
+// any of its products allows. A single write path, so the figures are always
+// set together: a venue that published a max leverage but no room would read as
+// the safest row on the board.
+func publishLeverageTerms(variants []venueTerms) {
+	if len(variants) == 0 {
+		return
+	}
+	venue, market := variants[0].venue, variants[0].market
+	// The venue's ceiling across every product it offers on this market, which
+	// is what the max leverage column means.
+	ceiling := 0.0
+	for _, v := range variants {
+		if v.maxLev > ceiling {
+			ceiling = v.maxLev
+		}
+	}
+
 	for _, b := range leverageBuckets {
-		lev := b.lev
-		if lev == 0 {
-			lev = t.maxLev
+		best := -1.0
+		var bestLost, bestKept float64
+		found := false
+		for _, v := range variants {
+			lev := b.lev
+			if lev == 0 {
+				// "all" is the venue's own maximum, so each product is asked
+				// at its own ceiling and the best of them wins.
+				lev = v.maxLev
+			}
+			room, lost, kept, ok := termsAt(v, lev)
+			if !ok {
+				continue
+			}
+			if room > best {
+				best, bestLost, bestKept, found = room, lost, kept, true
+			}
 		}
-		if lev > t.maxLev {
-			continue // the venue does not offer this setting
-		}
-		room, lost, kept, ok := termsAt(t, lev)
-		if !ok {
-			perpCohortFetchErrors.WithLabelValues(t.venue, srcLeverageTerms, "parse").Inc()
+		if !found {
+			// No product on this venue can be opened at this leverage. Publish
+			// nothing: the bench's rule is that such a venue is absent from the
+			// tab rather than shown at a setting it does not offer.
 			continue
 		}
-		perpLeverageMax.WithLabelValues(t.venue, t.market, b.label).Set(t.maxLev)
-		perpLiqPriceMovePct.WithLabelValues(t.venue, t.market, b.label).Set(room)
-		perpLiqCollateralLostPct.WithLabelValues(t.venue, t.market, b.label).Set(lost)
-		perpLiqCollateralKeptPct.WithLabelValues(t.venue, t.market, b.label).Set(kept)
+		perpLeverageMax.WithLabelValues(venue, market, b.label).Set(ceiling)
+		perpLiqPriceMovePct.WithLabelValues(venue, market, b.label).Set(best)
+		perpLiqCollateralLostPct.WithLabelValues(venue, market, b.label).Set(bestLost)
+		perpLiqCollateralKeptPct.WithLabelValues(venue, market, b.label).Set(bestKept)
 		if b.label == "all" {
 			fmt.Printf("[perp-cohort][%s][%s] %s at max %.0fx: room=%.4f%% lost=%.1f%% kept=%.1f%%\n",
-				t.venue, srcLeverageTerms, t.market, t.maxLev, room, lost, kept)
+				venue, srcLeverageTerms, market, ceiling, best, bestLost, bestKept)
 		}
 	}
 }
@@ -189,7 +241,7 @@ func publishLeverageTerms(t venueTerms) {
 // measured median of 59.4% of collateral. The remaining gap is the borrowing
 // fee, which accrues with holding time and is not a term at open.
 func termsAt(t venueTerms, lev float64) (roomPct, lostPct, keptPct float64, ok bool) {
-	if lev <= 0 || lev > t.maxLev {
+	if lev <= 0 || lev > t.maxLev || (t.minLev > 0 && lev < t.minLev) {
 		return 0, 0, 0, false
 	}
 	m := t.maintenance(lev)
@@ -217,58 +269,87 @@ func termsAt(t venueTerms, lev float64) (roomPct, lostPct, keptPct float64, ok b
 
 func (s *LeverageTermsSource) fetchGains() []venueTerms {
 	var out []venueTerms
-	for market, idx := range gainsDegenPairs {
-		lw, err := s.gainsCall(selPairMaxLev, idx)
-		if err != nil || len(lw) < 1 {
-			perpCohortFetchErrors.WithLabelValues("gains", srcLeverageTerms, classifyError(fmt.Sprint(err))).Inc()
-			fmt.Printf("[perp-cohort][gains][%s] maxLeverage %s: %v\n", srcLeverageTerms, market, err)
-			continue
+	for market, idxs := range gainsPairs {
+		for _, idx := range idxs {
+			t, ok := s.gainsPair(market, idx)
+			if ok {
+				out = append(out, t)
+			}
 		}
-		maxLev := bigToFloat(lw[0], 1e3)
-		if maxLev <= 0 {
-			continue
-		}
-		p, err := s.gainsCall(selPairLiqParam, idx)
-		if err != nil || len(p) < 5 {
-			perpCohortFetchErrors.WithLabelValues("gains", srcLeverageTerms, "parse").Inc()
-			fmt.Printf("[perp-cohort][gains][%s] liqParams %s: %v\n", srcLeverageTerms, market, err)
-			continue
-		}
-		startTh := bigToFloat(p[1], 1e10)
-		endTh := bigToFloat(p[2], 1e10)
-		startLev := bigToFloat(p[3], 1e3)
-		endLev := bigToFloat(p[4], 1e3)
-		// A threshold at or past the whole collateral is a decode error, not
-		// a term: it would describe a position liquidated before it opens.
-		if startTh <= 0 || startTh >= 100 || endTh <= 0 || endTh >= 100 {
-			perpCohortFetchErrors.WithLabelValues("gains", srcLeverageTerms, "parse").Inc()
-			continue
-		}
-		fee, err := s.gainsPairFee(idx)
-		if err != nil {
-			perpCohortFetchErrors.WithLabelValues("gains", srcLeverageTerms, "parse").Inc()
-			fmt.Printf("[perp-cohort][gains][%s] fee %s: %v\n", srcLeverageTerms, market, err)
-			continue
-		}
-		out = append(out, venueTerms{
-			venue:  "gains",
-			market: market,
-			maxLev: maxLev,
-			// The threshold is a share of collateral, so as a share of
-			// notional it is the complement divided by the leverage.
-			maintenance: func(lev float64) float64 {
-				th := interpolateThreshold(startTh, endTh, startLev, endLev, lev)
-				return (100 - th) / 100 / lev
-			},
-			costPerLeg: fee,
-			// Measured, not assumed: amountSentToTrader is 0 on all 27
-			// liquidations found across every pair and every leverage from
-			// 7.5x to 500x. The threshold says when the position closes, not
-			// what comes back, and what comes back is nothing.
-			forfeitsAll: true,
-		})
 	}
 	return out
+}
+
+// gainsPair reads one pair's terms. A pair that fails any read is skipped
+// rather than published with a guessed value: the other pair on the same market
+// still publishes, so the venue keeps the leverages it can actually serve.
+func (s *LeverageTermsSource) gainsPair(market string, idx int64) (venueTerms, bool) {
+	lw, err := s.gainsCall(selPairMaxLev, idx)
+	if err != nil || len(lw) < 1 {
+		perpCohortFetchErrors.WithLabelValues("gains", srcLeverageTerms, classifyError(fmt.Sprint(err))).Inc()
+		fmt.Printf("[perp-cohort][gains][%s] maxLeverage %s pair %d: %v\n", srcLeverageTerms, market, idx, err)
+		return venueTerms{}, false
+	}
+	maxLev := bigToFloat(lw[0], 1e3)
+	if maxLev <= 0 {
+		return venueTerms{}, false
+	}
+
+	// A minimum above 1 is the thing that makes the degen pairs a fixed
+	// leverage product. A read failure leaves it at zero, which termsAt treats
+	// as "no minimum", so a missing selector degrades to the old behaviour
+	// rather than hiding the row.
+	var minLev float64
+	if mw, err := s.gainsCall(selPairMinLev, idx); err == nil && len(mw) > 0 {
+		minLev = bigToFloat(mw[0], 1e3)
+	}
+	if minLev > maxLev {
+		perpCohortFetchErrors.WithLabelValues("gains", srcLeverageTerms, "parse").Inc()
+		return venueTerms{}, false
+	}
+
+	p, err := s.gainsCall(selPairLiqParam, idx)
+	if err != nil || len(p) < 5 {
+		perpCohortFetchErrors.WithLabelValues("gains", srcLeverageTerms, "parse").Inc()
+		fmt.Printf("[perp-cohort][gains][%s] liqParams %s pair %d: %v\n", srcLeverageTerms, market, idx, err)
+		return venueTerms{}, false
+	}
+	startTh := bigToFloat(p[1], 1e10)
+	endTh := bigToFloat(p[2], 1e10)
+	startLev := bigToFloat(p[3], 1e3)
+	endLev := bigToFloat(p[4], 1e3)
+	// A threshold at or past the whole collateral is a decode error, not a
+	// term: it would describe a position liquidated before it opens.
+	if startTh <= 0 || startTh >= 100 || endTh <= 0 || endTh >= 100 {
+		perpCohortFetchErrors.WithLabelValues("gains", srcLeverageTerms, "parse").Inc()
+		return venueTerms{}, false
+	}
+
+	fee, err := s.gainsPairFee(idx)
+	if err != nil {
+		perpCohortFetchErrors.WithLabelValues("gains", srcLeverageTerms, "parse").Inc()
+		fmt.Printf("[perp-cohort][gains][%s] fee %s pair %d: %v\n", srcLeverageTerms, market, idx, err)
+		return venueTerms{}, false
+	}
+
+	return venueTerms{
+		venue:  "gains",
+		market: market,
+		maxLev: maxLev,
+		minLev: minLev,
+		// The threshold is a share of collateral, so as a share of notional it
+		// is the complement divided by the leverage.
+		maintenance: func(lev float64) float64 {
+			th := interpolateThreshold(startTh, endTh, startLev, endLev, lev)
+			return (100 - th) / 100 / lev
+		},
+		costPerLeg: fee,
+		// Measured, not assumed: amountSentToTrader is 0 on all 27
+		// liquidations found across every pair and every leverage from 7.5x to
+		// 500x. The threshold says when the position closes, not what comes
+		// back, and what comes back is nothing.
+		forfeitsAll: true,
+	}, true
 }
 
 // gainsPairFee reads the pair's position-size fee as a percentage of notional.
