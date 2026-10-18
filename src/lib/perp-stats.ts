@@ -94,7 +94,7 @@ type VenueSeed = {
 export const PERP_VENUES: VenueSeed[] = [
   { slug: "hyperliquid", name: "Hyperliquid", chain: "Hyperliquid L1", venueType: "onchain" },
   { slug: "lighter",     name: "Lighter",     chain: "Lighter L2",    venueType: "onchain" },
-  { slug: "gmx-v2",      name: "GMX v2",      chain: "Arbitrum",      venueType: "onchain" },
+  { slug: "gmx-v2",      name: "GMX",         chain: "Arbitrum",      venueType: "onchain" },
   { slug: "gains",       name: "Gains",         chain: "Arbitrum",    venueType: "onchain" },
   { slug: "dydx",        name: "dYdX v4",     chain: "Cosmos",        venueType: "onchain" },
   { slug: "nado",        name: "Nado",        chain: "Ink",           venueType: "onchain" },
@@ -116,6 +116,7 @@ export const PERP_VENUES: VenueSeed[] = [
   { slug: "standx",     name: "StandX",     chain: "BNB Chain",     venueType: "onchain" },
   { slug: "apex",       name: "ApeX Omni",  chain: "Omnichain",     venueType: "onchain" },
   { slug: "jupiter",    name: "Jupiter Perps", chain: "Solana",     venueType: "onchain" },
+  { slug: "papertrade", name: "Papertrade", chain: "Hyperliquid",   venueType: "onchain" },
   { slug: "lighter-rh", name: "Lighter RH", chain: "Lighter L2, Robinhood", venueType: "onchain" },
   { slug: "trade-xyz",  name: "trade.xyz",  chain: "Hyperliquid HIP-3", venueType: "onchain" },
   // Ondo Perps, live since June 2026: matching runs off-chain in Intel SGX

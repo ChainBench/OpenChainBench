@@ -3,9 +3,9 @@
 slug: ethereum-rpc
 number: "044"
 title: "Ethereum RPC endpoints: free public URLs and private API-key providers by latency"
-seo_title: "Ethereum RPC endpoints: public and private, ranked by latency"
+seo_title: "Ethereum RPC endpoints: public and private, by latency"
 seo_description: "{{best_name}} leads free Ethereum RPC at {{best_p50}} (p50, 24h); URLs for all {{count}} no-key endpoints. {{best_name:tier:keyed}} leads the private (API-key) cohort at {{best_p50:tier:keyed}}."
-subtitle: HTTP round-trip latency for eth_getBlockByNumber against every free, no-key public Ethereum RPC endpoint (probed every 60 seconds) and, under the Access selector (Private), against the API-key endpoints of Alchemy, Chainstack, GetBlock and QuickNode (every 120 seconds), from 3 regions. The two cohorts are ranked separately, never against each other.
+subtitle: HTTP round-trip latency for eth_getBlockByNumber against every free, no-key public Ethereum RPC endpoint (probed every 60 seconds) and, under the Access selector (Private), against the API-key endpoints of Alchemy, Chainstack, GetBlock, QuickNode and Dwellir (every 120 seconds), from 3 regions. The two cohorts are ranked separately, never against each other.
 
 category: RPCs
 status: live
@@ -17,7 +17,7 @@ seo_intro: |
   Ethereum carries one of the largest free-RPC cohorts we measure: {{count}} no-key public-read providers answering the same `eth_getBlockByNumber` probe every 60 seconds from three regions. This bench is scoped to public, read-optimised gateways only; MEV-protection RPCs (Flashbots, MEV Blocker, Blink, bloXroute) share the JSON-RPC surface but serve a fundamentally different SLA (send-tx privacy, not read speed) and live in their own cluster on [mev-protect-rpc](/benchmarks/mev-protect-rpc). Cloudflare-eth has been removed from this bench after persistent JSON-RPC error -32603, and Merkle is excluded outright after recurring Cloudflare lockouts that froze our probes for 20 minutes after a single request. If you paste a free RPC URL into an Ethereum dapp's read path, this page is the live answer to which one deserves it.
 
 abstract: |
-  Ethereum: {{count}} free public RPC endpoints answering `eth_getBlockByNumber` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}. The same page carries the private cohort (API key), Alchemy, Chainstack, GetBlock and QuickNode on their keyed Ethereum endpoints every 120 seconds: switch the Access selector; {{best_name:tier:keyed}} leads it at {{best_p50:tier:keyed}}.
+  Ethereum: {{count}} free public RPC endpoints answering `eth_getBlockByNumber` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}. The same page carries the private cohort (API key), Alchemy, Chainstack, GetBlock, QuickNode and Dwellir on their keyed Ethereum endpoints every 120 seconds: switch the Access selector; {{best_name:tier:keyed}} leads it at {{best_p50:tier:keyed}}.
   We measure the round-trip latency of a single, identical RPC call (`eth_getBlockByNumber`) against every no-key public-read Ethereum endpoint that sustains continuous probing, {{count}} providers, every 60 seconds, from us-east, eu-west and Singapore. MEV-protection endpoints (private-mempool, anti-sandwich, PBS relays) are measured on the same probe but scored separately on [mev-protect-rpc](/benchmarks/mev-protect-rpc) because their SLA optimises for send-tx privacy rather than read latency, and mixing them here would flatter or penalise them on the wrong axis. The harness also classifies every response (ok / http_err / jsonrpc_err / stale / timeout) and audits archive depth every 5 minutes, so the leaderboard rewards sustained, honest availability rather than a fast error message. The cross-chain view lives on the parent rpc-capabilities benchmark; this page is the Ethereum-scoped answer with per-region breakdowns as a first-class dimension.
 
 methodology:
@@ -25,7 +25,7 @@ methodology:
   - "Payload: `{\"jsonrpc\":\"2.0\",\"id\":<rotating>,\"method\":\"eth_getBlockByNumber\",\"params\":[\"latest\",false]}`. Plain HTTP POST, identical for every endpoint, no API key in any request. The request id rotates, but that does not guarantee a cache miss: many caches normalise `id` away. Measured 2026-10-08, fixed and rotating ids answer within 2 to 4 percent of each other."
   - "Latency measurement, call-result classification (`ok`, `http_err`, `jsonrpc_err`, `stale`, `timeout`) and the archive-depth audit follow the cluster method documented on [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities#methodology); this page is the Ethereum-scoped view of the same harness, with the same exclusion rules."
   - "Chain scope: every query on this page is pinned to chain=\"ethereum\". Provider coverage: {{count}} no-key public-read endpoints live today, each listed with its URL in the endpoints table on this page. Cloudflare removed (persistent JSON-RPC -32603). MEV-protection RPCs (Flashbots, MEV Blocker, Blink, bloXroute) share this probe methodology but score on [mev-protect-rpc](/benchmarks/mev-protect-rpc), because their SLA optimises for send-tx privacy, not read speed."
-  - "Private cohort (Access selector, Private): Alchemy, Chainstack, GetBlock and QuickNode probed on their keyed Ethereum endpoints every 120 seconds from the same 3 regions, same call (eth_getBlockByNumber, rotating id), same ok / http_err / jsonrpc_err / stale / timeout classification."
+  - "Private cohort (Access selector, Private): Alchemy, Chainstack, GetBlock, QuickNode and Dwellir probed on their keyed Ethereum endpoints every 120 seconds from the same 3 regions, same call (eth_getBlockByNumber, rotating id), same ok / http_err / jsonrpc_err / stale / timeout classification."
   - "Keys live in the probe environment, never in the repo. Plan tiers, disclosed: Alchemy: a Free plan key (30M CU per month, 300 compute units per second), the tier any reader gets; Alchemy states free and paid keys share one routing; Chainstack: a Global Node on the Growth plan; QuickNode: an endpoint on a Build plan ($49 per month), shared fleet; GetBlock: an endpoint on the Enterprise plan, shared by the three probe regions. Chainstack, GetBlock and QuickNode provided their endpoints."
   - "Dwellir plan tier, disclosed: a Developer plan key ($49 per month, 25 million API responses, 100 responses per second; 1 RPC response = 1 API credit, no compute units). Shared nodes, the same product a reader buys. Dwellir publishes no Solana endpoint, so it is absent from that page rather than shown as unavailable."
   - "GetBlock regional pairing: each probe region uses GetBlock's nearest endpoint, us-east to New York, eu-west to Frankfurt, sgp to Singapore. Alchemy, Chainstack and QuickNode publish one routed entry point per chain instead, which in the general case does land a probe on a nearby node. Some of any gap between the two arrangements is deployment topology rather than node speed, and a deployment in one of these regions would see the same benefit GetBlock's endpoint gives the probe."
@@ -252,6 +252,7 @@ providers:
     queries:
       p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="alchemy",chain="ethereum",tier="keyed"})
       p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="alchemy",chain="ethereum",tier="keyed"})
+      p95: avg(ocb:rpc_latency_milliseconds:p95_24h{provider="alchemy",chain="ethereum",tier="keyed"})
       p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="alchemy",chain="ethereum",tier="keyed"})
       mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="alchemy",chain="ethereum",tier="keyed"})
       success: sum(ocb:rpc_call:ok_rate_24h{provider="alchemy",chain="ethereum",tier="keyed"}) / sum(ocb:rpc_call:rate_24h{provider="alchemy",chain="ethereum",tier="keyed"})
@@ -276,6 +277,7 @@ providers:
     queries:
       p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="chainstack",chain="ethereum",tier="keyed"})
       p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="chainstack",chain="ethereum",tier="keyed"})
+      p95: avg(ocb:rpc_latency_milliseconds:p95_24h{provider="chainstack",chain="ethereum",tier="keyed"})
       p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="chainstack",chain="ethereum",tier="keyed"})
       mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="chainstack",chain="ethereum",tier="keyed"})
       success: sum(ocb:rpc_call:ok_rate_24h{provider="chainstack",chain="ethereum",tier="keyed"}) / sum(ocb:rpc_call:rate_24h{provider="chainstack",chain="ethereum",tier="keyed"})
@@ -300,6 +302,7 @@ providers:
     queries:
       p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="getblock",chain="ethereum",tier="keyed"})
       p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="getblock",chain="ethereum",tier="keyed"})
+      p95: avg(ocb:rpc_latency_milliseconds:p95_24h{provider="getblock",chain="ethereum",tier="keyed"})
       p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="getblock",chain="ethereum",tier="keyed"})
       mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="getblock",chain="ethereum",tier="keyed"})
       success: sum(ocb:rpc_call:ok_rate_24h{provider="getblock",chain="ethereum",tier="keyed"}) / sum(ocb:rpc_call:rate_24h{provider="getblock",chain="ethereum",tier="keyed"})
@@ -324,6 +327,7 @@ providers:
     queries:
       p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="quicknode",chain="ethereum",tier="keyed"})
       p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="quicknode",chain="ethereum",tier="keyed"})
+      p95: avg(ocb:rpc_latency_milliseconds:p95_24h{provider="quicknode",chain="ethereum",tier="keyed"})
       p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="quicknode",chain="ethereum",tier="keyed"})
       mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="quicknode",chain="ethereum",tier="keyed"})
       success: sum(ocb:rpc_call:ok_rate_24h{provider="quicknode",chain="ethereum",tier="keyed"}) / sum(ocb:rpc_call:rate_24h{provider="quicknode",chain="ethereum",tier="keyed"})
@@ -348,6 +352,7 @@ providers:
     queries:
       p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="dwellir",chain="ethereum",tier="keyed"})
       p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="dwellir",chain="ethereum",tier="keyed"})
+      p95: avg(ocb:rpc_latency_milliseconds:p95_24h{provider="dwellir",chain="ethereum",tier="keyed"})
       p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="dwellir",chain="ethereum",tier="keyed"})
       mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="dwellir",chain="ethereum",tier="keyed"})
       success: sum(ocb:rpc_call:ok_rate_24h{provider="dwellir",chain="ethereum",tier="keyed"}) / sum(ocb:rpc_call:rate_24h{provider="dwellir",chain="ethereum",tier="keyed"})
@@ -372,6 +377,7 @@ providers:
     queries:
       p50: avg(ocb:rpc_latency_cold_milliseconds:p50_24h{provider="alchemy",chain="ethereum",tier="keyed"})
       p90: avg(ocb:rpc_latency_cold_milliseconds:p90_24h{provider="alchemy",chain="ethereum",tier="keyed"})
+      p95: avg(ocb:rpc_latency_cold_milliseconds:p95_24h{provider="alchemy",chain="ethereum",tier="keyed"})
       p99: avg(ocb:rpc_latency_cold_milliseconds:p99_24h{provider="alchemy",chain="ethereum",tier="keyed"})
       mean: avg(ocb:rpc_latency_cold_milliseconds:mean_24h{provider="alchemy",chain="ethereum",tier="keyed"})
       success: sum(ocb:rpc_call:ok_rate_24h{provider="alchemy",chain="ethereum",tier="keyed"}) / sum(ocb:rpc_call:rate_24h{provider="alchemy",chain="ethereum",tier="keyed"})
@@ -395,6 +401,7 @@ providers:
     queries:
       p50: avg(ocb:rpc_latency_cold_milliseconds:p50_24h{provider="chainstack",chain="ethereum",tier="keyed"})
       p90: avg(ocb:rpc_latency_cold_milliseconds:p90_24h{provider="chainstack",chain="ethereum",tier="keyed"})
+      p95: avg(ocb:rpc_latency_cold_milliseconds:p95_24h{provider="chainstack",chain="ethereum",tier="keyed"})
       p99: avg(ocb:rpc_latency_cold_milliseconds:p99_24h{provider="chainstack",chain="ethereum",tier="keyed"})
       mean: avg(ocb:rpc_latency_cold_milliseconds:mean_24h{provider="chainstack",chain="ethereum",tier="keyed"})
       success: sum(ocb:rpc_call:ok_rate_24h{provider="chainstack",chain="ethereum",tier="keyed"}) / sum(ocb:rpc_call:rate_24h{provider="chainstack",chain="ethereum",tier="keyed"})
@@ -418,6 +425,7 @@ providers:
     queries:
       p50: avg(ocb:rpc_latency_cold_milliseconds:p50_24h{provider="getblock",chain="ethereum",tier="keyed"})
       p90: avg(ocb:rpc_latency_cold_milliseconds:p90_24h{provider="getblock",chain="ethereum",tier="keyed"})
+      p95: avg(ocb:rpc_latency_cold_milliseconds:p95_24h{provider="getblock",chain="ethereum",tier="keyed"})
       p99: avg(ocb:rpc_latency_cold_milliseconds:p99_24h{provider="getblock",chain="ethereum",tier="keyed"})
       mean: avg(ocb:rpc_latency_cold_milliseconds:mean_24h{provider="getblock",chain="ethereum",tier="keyed"})
       success: sum(ocb:rpc_call:ok_rate_24h{provider="getblock",chain="ethereum",tier="keyed"}) / sum(ocb:rpc_call:rate_24h{provider="getblock",chain="ethereum",tier="keyed"})
@@ -441,6 +449,7 @@ providers:
     queries:
       p50: avg(ocb:rpc_latency_cold_milliseconds:p50_24h{provider="quicknode",chain="ethereum",tier="keyed"})
       p90: avg(ocb:rpc_latency_cold_milliseconds:p90_24h{provider="quicknode",chain="ethereum",tier="keyed"})
+      p95: avg(ocb:rpc_latency_cold_milliseconds:p95_24h{provider="quicknode",chain="ethereum",tier="keyed"})
       p99: avg(ocb:rpc_latency_cold_milliseconds:p99_24h{provider="quicknode",chain="ethereum",tier="keyed"})
       mean: avg(ocb:rpc_latency_cold_milliseconds:mean_24h{provider="quicknode",chain="ethereum",tier="keyed"})
       success: sum(ocb:rpc_call:ok_rate_24h{provider="quicknode",chain="ethereum",tier="keyed"}) / sum(ocb:rpc_call:rate_24h{provider="quicknode",chain="ethereum",tier="keyed"})
@@ -464,6 +473,7 @@ providers:
     queries:
       p50: avg(ocb:rpc_latency_cold_milliseconds:p50_24h{provider="dwellir",chain="ethereum",tier="keyed"})
       p90: avg(ocb:rpc_latency_cold_milliseconds:p90_24h{provider="dwellir",chain="ethereum",tier="keyed"})
+      p95: avg(ocb:rpc_latency_cold_milliseconds:p95_24h{provider="dwellir",chain="ethereum",tier="keyed"})
       p99: avg(ocb:rpc_latency_cold_milliseconds:p99_24h{provider="dwellir",chain="ethereum",tier="keyed"})
       mean: avg(ocb:rpc_latency_cold_milliseconds:mean_24h{provider="dwellir",chain="ethereum",tier="keyed"})
       success: sum(ocb:rpc_call:ok_rate_24h{provider="dwellir",chain="ethereum",tier="keyed"}) / sum(ocb:rpc_call:rate_24h{provider="dwellir",chain="ethereum",tier="keyed"})
@@ -479,3 +489,4 @@ providers:
         - region: ap-southeast
           p50: avg(ocb:rpc_latency_cold_milliseconds:p50_24h{provider="dwellir",chain="ethereum",tier="keyed",region="sgp"})
           series: avg(avg_over_time(rpc_latency_cold_milliseconds{provider="dwellir",chain="ethereum",tier="keyed",region="sgp"}[1h]))
+

@@ -30,6 +30,41 @@ groups:
           summary: "HL node box disk at {{ $value | printf \"%.0f\" }}%, above the cleanup ceiling"
           description: "hl-cleanup enforces 85% and is not succeeding. A full disk stops hl-node. Check `journalctl -u hl-cleanup.service` first: in the 2026-10-07 incident it had been exiting non-zero every 15 minutes."
 
+      # The root filesystem, which the two rules above do not cover: they read
+      # the data volume. On 2026-10-08 this box's root filled to 100% while
+      # /mnt/hyperliquid sat at 29%, held by a 185 GB deleted-but-open trace
+      # file a container had kept open since August. hl-visor stages new node
+      # binaries through /tmp, which lives on the root, so it could not write
+      # the 106 MB binary a hardfork required and the node froze at the fork
+      # height for three days. Every disk signal on this box pointed at the
+      # data volume, so none of them moved.
+      - alert: HlNodeRootDiskFilling
+        expr: hl_reduce_root_disk_used_pct > 85
+        for: 30m
+        labels: { severity: warning }
+        annotations:
+          summary: "HL node box root filesystem at {{ $value | printf \"%.0f\" }}%"
+          description: "The root holds the node binaries, the journal and /tmp. Nothing prunes it, unlike the data volume. Deleted-but-open files are invisible to du and are the usual cause: `sudo lsof -nP +L1 | sort -k8 -rn | head`, then truncate the descriptor rather than restarting the holder."
+
+      - alert: HlNodeRootDiskCritical
+        expr: hl_reduce_root_disk_used_pct > 93
+        for: 10m
+        labels: { severity: critical }
+        annotations:
+          summary: "HL node box root filesystem at {{ $value | printf \"%.0f\" }}%, node upgrades will fail"
+          description: "At 100% hl-visor cannot stage a new node binary through /tmp and the node freezes at the next hardfork while systemd still calls it active. This is the 2026-10-08 failure."
+
+      # -1 is the gauge's \"could not read the mount\" value. A disk that is
+      # not being measured must not look like a disk that is empty, which is
+      # the mistake every other rule in this file was written against.
+      - alert: HlNodeRootDiskUnmeasured
+        expr: hl_reduce_root_disk_used_pct < 0
+        for: 1h
+        labels: { severity: warning }
+        annotations:
+          summary: "HL node box root filesystem is not being measured"
+          description: "statfs on / failed in hl-fills-reduce, so the root disk is unmonitored. The node can fill its root and freeze with no signal."
+
       # systemd can report hyperliquid.service active while the node has
       # stopped applying blocks, so liveness is read from the data it writes.
       # Hours land on the hour, so 2h is one missed file plus slack.

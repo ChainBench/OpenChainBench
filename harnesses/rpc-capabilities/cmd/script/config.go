@@ -163,7 +163,7 @@ func chains() []Chain {
 				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_COSMOSHUB_PUBLICNODE", "https://cosmos-rpc.publicnode.com")},
 				{Slug: "polkachu", Name: "Polkachu", URL: envDefault("RPC_URL_COSMOSHUB_POLKACHU", "https://cosmos-rpc.polkachu.com")},
 				{Slug: "lavenderfive", Name: "LavenderFive", URL: envDefault("RPC_URL_COSMOSHUB_LAVENDERFIVE", "https://rpc.lavenderfive.com:443/cosmoshub")},
-				{Slug: "lava", Name: "Lava Network", URL: envDefault("RPC_URL_COSMOSHUB_LAVA", "https://cosmoshub.tendermintrpc.lava.build")},
+				{Slug: "ecostake", Name: "ecostake", URL: envDefault("RPC_URL_COSMOSHUB_ECOSTAKE", "https://rpc-cosmoshub.ecostake.com")},
 			},
 		},
 		// ─── Injective (bench 095) — added 2026-07-24. Cosmos SDK L1
@@ -306,7 +306,15 @@ func chains() []Chain {
 				{Slug: "nownodes", Name: "NOWNodes", URL: envDefault("RPC_URL_ETHEREUM_NOWNODES", "https://public-eth.nownodes.io")},
 			},
 		},
-		// ─── Polygon PoS (5 providers) ──────────────────────────────
+		// ─── Polygon PoS (3 providers) ──────────────────────────────
+		//
+		// Nodies removed 2026-10-11: polygon-pokt.nodies.app now answers HTTP
+		// 403 "The network of this endpoint requires a paid subscription plan",
+		// on every call from all three regions, so it cannot produce a sample.
+		// Excluded after probing: polygon-rpc.com (the chain's own endpoint,
+		// now key-gated), blockpi (521), blastapi (jsonrpc error), llamarpc and
+		// blxrbdn (no DNS), ankr (key required), 1rpc (4 of 5, and 1RPC has
+		// twice been removed from this cluster for not sustaining probing).
 		{
 			Slug: "polygon",
 			Name: "Polygon",
@@ -314,7 +322,6 @@ func chains() []Chain {
 				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_POLYGON_PUBLICNODE", "https://polygon-bor-rpc.publicnode.com")},
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_POLYGON_DRPC", "https://polygon.drpc.org")},
 				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_POLYGON_TENDERLY", "https://gateway.tenderly.co/public/polygon")},
-				{Slug: "nodies", Name: "Nodies (POKT)", URL: envDefault("RPC_URL_POLYGON_NODIES", "https://polygon-pokt.nodies.app")},
 			},
 		},
 		// ─── Arbitrum One (8 providers) ─────────────────────────────
@@ -356,14 +363,19 @@ func chains() []Chain {
 				{Slug: "bloxroute", Name: "bloXroute", URL: envDefault("RPC_URL_BASE_BLOXROUTE", "https://base.rpc.blxrbdn.com")},
 			},
 		},
-		// ─── BNB Chain (7 providers) ────────────────────────────────
+		// ─── BNB Chain (5 providers) ────────────────────────────────
+		//
+		// Removed 2026-10-11. Nodies: bsc-pokt.nodies.app answers HTTP 403,
+		// paid plan required, 0 percent ok over 24h. dRPC: bsc.drpc.org
+		// rate-limits the probe cadence ("You reached Public endpoint rate
+		// limit"), 0 of 10 live tries and 30 percent ok over 24h, so its
+		// published p50 came from the 30 percent that got through. dRPC is
+		// healthy on every other chain here and stays in those cohorts.
 		{
 			Slug: "bnb",
 			Name: "BNB Chain",
 			Providers: []Provider{
 				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_BNB_PUBLICNODE", "https://bsc-rpc.publicnode.com")},
-				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_BNB_DRPC", "https://bsc.drpc.org")},
-				{Slug: "nodies", Name: "Nodies (POKT)", URL: envDefault("RPC_URL_BNB_NODIES", "https://bsc-pokt.nodies.app")},
 				{Slug: "binance", Name: "Binance Official", URL: envDefault("RPC_URL_BNB_OFFICIAL", "https://bsc-dataseed1.binance.org")},
 				{Slug: "bloxroute", Name: "bloXroute", URL: envDefault("RPC_URL_BNB_BLOXROUTE", "https://bsc.rpc.blxrbdn.com")},
 				{Slug: "nownodes", Name: "NOWNodes", URL: envDefault("RPC_URL_BNB_NOWNODES", "https://public-bsc.nownodes.io")},
@@ -465,10 +477,9 @@ func chains() []Chain {
 			Slug: "moonbeam",
 			Name: "Moonbeam",
 			Providers: []Provider{
-				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_MOONBEAM_PUBLICNODE", "https://moonbeam-rpc.publicnode.com")},
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_MOONBEAM_DRPC", "https://moonbeam.drpc.org")},
-				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_MOONBEAM_TENDERLY", "https://gateway.tenderly.co/public/moonbeam")},
-				{Slug: "moonbeam-official", Name: "Moonbeam Official", URL: envDefault("RPC_URL_MOONBEAM_OFFICIAL", "https://rpc.api.moonbeam.network")},
+				{Slug: "onfinality", Name: "OnFinality", URL: envDefault("RPC_URL_MOONBEAM_ONFINALITY", "https://moonbeam.api.onfinality.io/public")},
+				{Slug: "unitedbloc", Name: "UnitedBloc", URL: envDefault("RPC_URL_MOONBEAM_UNITEDBLOC", "https://moonbeam.unitedbloc.com")},
 			},
 		},
 		// ─── Berachain (4 providers) ────────────────────────────────
@@ -910,9 +921,9 @@ func chains() []Chain {
 			Slug: "moonriver",
 			Name: "Moonriver",
 			Providers: []Provider{
-				{Slug: "moonriver-official", Name: "Moonbeam Foundation", URL: envDefault("RPC_URL_MOONRIVER_OFFICIAL", "https://rpc.api.moonriver.moonbeam.network")},
-				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_MOONRIVER_PUBLICNODE", "https://moonriver-rpc.publicnode.com")},
 				{Slug: "onfinality", Name: "OnFinality", URL: envDefault("RPC_URL_MOONRIVER_ONFINALITY", "https://moonriver.api.onfinality.io/public")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_MOONRIVER_DRPC", "https://moonriver.drpc.org")},
+				{Slug: "unitedbloc", Name: "UnitedBloc", URL: envDefault("RPC_URL_MOONRIVER_UNITEDBLOC", "https://moonriver.unitedbloc.com")},
 			},
 		},
 		// 2026-08-03 audit. Hemi BTC+ETH hybrid OP Stack L2 (chain 43111). 3 clean
@@ -1117,7 +1128,8 @@ func chains() []Chain {
 			Name: "Astar",
 			Providers: []Provider{
 				{Slug: "onfinality", Name: "OnFinality", URL: envDefault("RPC_URL_ASTAR_ONFINALITY", "https://astar.api.onfinality.io/public")},
-				{Slug: "1rpc", Name: "1RPC", URL: envDefault("RPC_URL_ASTAR_1RPC", "https://1rpc.io/astr")},
+				{Slug: "astar-official", Name: "Astar", URL: envDefault("RPC_URL_ASTAR_OFFICIAL", "https://evm.astar.network")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_ASTAR_DRPC", "https://astar.drpc.org")},
 			},
 		},
 		// Oasis Sapphire — Confidential EVM paratime (chain 23294). 1 keyless provider.
@@ -1189,7 +1201,7 @@ func chains() []Chain {
 			Name: "Gravity",
 			Providers: []Provider{
 				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_GRAVITY_PUBLICNODE", "https://rpc.gravity.xyz")},
-				{Slug: "ankr", Name: "Ankr", URL: envDefault("RPC_URL_GRAVITY_ANKR", "https://rpc.ankr.com/gravity")},
+				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_GRAVITY_THIRDWEB", "https://1625.rpc.thirdweb.com")},
 			},
 		},
 		// Reya Network — Trading EVM L2 (chain 1729). 2 keyless providers.
@@ -1930,6 +1942,7 @@ func chains() []Chain {
 				{Slug: "tenderly", Name: "Tenderly", URL: envDefault("RPC_URL_KATANA_TENDERLY", "https://katana.gateway.tenderly.co")},
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_KATANA_DRPC", "https://katana.drpc.org")},
 				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_KATANA_THIRDWEB", "https://747474.rpc.thirdweb.com")},
+				{Slug: "conduit", Name: "Conduit", URL: envDefault("RPC_URL_KATANA_CONDUIT", "https://rpc.katanarpc.com")},
 			},
 		},
 		// 2026-10-07 chain-hunt sweep. Superseed (chain 5330), OP Stack L2. 3 clean keyless providers; publicnode has no superseed route.
@@ -2028,6 +2041,7 @@ func chains() []Chain {
 				{Slug: "xrplevm-official", Name: "Peersyst", URL: envDefault("RPC_URL_XRPLEVM_XRPLEVM_OFFICIAL", "https://cosmos-rpc.xrplevm.org")},
 				{Slug: "cumulo", Name: "Cumulo", URL: envDefault("RPC_URL_XRPLEVM_CUMULO", "https://rpc.xrpl.cumulo.org.es")},
 				{Slug: "polkachu", Name: "Polkachu", URL: envDefault("RPC_URL_XRPLEVM_POLKACHU", "https://xrp-rpc.polkachu.com")},
+				{Slug: "itrocket", Name: "ITRocket", URL: envDefault("RPC_URL_XRPLEVM_ITROCKET", "https://xrplevm-mainnet-rpc.itrocket.net")},
 			},
 		},
 	}

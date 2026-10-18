@@ -1,0 +1,211 @@
+# OpenChainBench. Bench 295
+
+slug: perp-max-leverage-terms
+number: "295"
+title: "Perp DEX leverage terms: room to liquidation and what is left"
+seo_title: "Perp leverage: how far price moves before liquidation"
+seo_description: "How far price moves before Gains, Papertrade, dYdX or Hyperliquid liquidates a position, at each venue's maximum leverage and at shared settings, read on chain."
+subtitle: "Adverse price move that liquidates a position, read from each venue's own published parameters and checked against real liquidations. The selector sets the leverage: the default puts each venue at its own maximum, which is not a like for like reading, and the fixed settings put every venue on the same leverage. No row is ranked, because more room is not the same as better terms."
+category: Trading
+status: live
+metric: Room to liquidation
+unit: pct
+higher_is_better: true
+row_noun: { one: venue, many: venues }
+zero_is_a_value: true
+ledger_reliability: false
+
+dimensions:
+  kind:
+    - { value: BTC, label: BTC }
+    - { value: ETH, label: ETH }
+  bucket:
+    - { value: all, label: "Each venue at its max" }
+    - { value: 10x, label: 10x }
+    - { value: 25x, label: 25x }
+    - { value: 50x, label: 50x }
+    - { value: 100x, label: 100x }
+    - { value: 500x, label: 500x }
+    - { value: 1000x, label: 1000x }
+
+dimension_labels:
+  kind: Market
+  bucket: Leverage
+
+aggregate_filters:
+  kind: BTC
+
+disclaimer: |
+  Parameters each venue publishes, converted to one model and checked against liquidations that happened. Gains: threshold, max leverage and the pair fee by eth_call on the Arbitrum diamond, checked against 11 liquidations. Papertrade: the instrument tuple on /state/trading, checked as a ceiling on 384 adverse closes. dYdX: both margin fractions on the indexer. Hyperliquid publishes no maintenance requirement, so that row is derived from its documented halving rule.
+
+seo_intro: |
+  Four figure leverage is the headline every perp venue leads with, and it says
+  almost nothing on its own. Leverage is a denominator. What a trader needs is
+  the numerator: how far the price can move against the position before the
+  venue closes it, and how much of the collateral comes back when it does.
+
+  Each venue reduces to one parameter, the maintenance requirement it holds back
+  as a share of the position's notional, plus whatever fees come out of the same
+  collateral. What separates them is what sets that requirement. Gains ties it
+  to the collateral, so its room falls close to proportionally with leverage.
+  Papertrade fixes it in price at about five basis points, so it costs almost
+  nothing at 10x and roughly half the margin at 1000x. The ranking inverts
+  depending on which leverage you ask about, which is why the leverage selector
+  is part of the measurement rather than a convenience.
+
+  Three of the four venues publish every input. Hyperliquid publishes its
+  maximum leverage but not its maintenance requirement, which its documentation
+  fixes at half the initial requirement, so that row alone is derived.
+
+abstract: |
+  For each venue the bench computes the adverse price move, in percent, that
+  liquidates a position opened at the selected leverage on the market shown,
+  the same figure in the unit venues quote among themselves, the venue's maximum
+  leverage, and the share of collateral returned on liquidation. Everything is
+  re-read every 5 minutes by the perp-cohort-stats harness.
+
+  One model covers all four. A position at leverage L posts 1/L of notional as
+  margin and is liquidated when its equity reaches the maintenance requirement
+  m, also a share of notional. Any fee charged on the way in and out comes out
+  of that same collateral, so the price has that much less distance to travel:
+
+      room = 1/L - m - 2 x fee          collateral lost = room x L
+
+  dYdX publishes m directly. Hyperliquid's is half its initial requirement at
+  maximum leverage. Gains publishes a liquidation threshold as a share of
+  collateral, which makes m the complement divided by the leverage, and it
+  charges a position size fee on both legs. Papertrade publishes a bust buffer
+  already expressed as a share of price, and charges nothing on either leg.
+
+  The fee term is not a modelling choice. Gains' threshold is 80 percent of
+  collateral on the x500 pairs, which without fees would put the room at 0.1600
+  percent of price. Eleven real liquidations fired at a median 59.4 percent of
+  collateral, 0.1189 percent of price, and two legs of the 0.02 percent fee at
+  500x are exactly the 20 point gap.
+
+methodology:
+  - "Cadence: every 5 minutes, on the perp-cohort-stats sweep. These are governance parameters, so they are read fresh rather than averaged, and every series is cleared each tick so a venue that lowers its maximum stops publishing the settings it no longer offers."
+  - "Leverage selector: the default view puts each venue at its own maximum, which compares four different leverages and is not like for like. The fixed settings put every venue on the same leverage; a venue whose maximum is below the selected setting is absent from that view rather than shown at a leverage it does not offer."
+  - "Markets: BTC and ETH only. They are the only two markets all four venues list, and the comparison means nothing across different assets."
+  - "Room formula, every venue: (1/leverage - maintenance requirement - 2 x fee) x 100, every term a share of notional. Collateral lost is that room times the leverage, which is the same measurement in the unit venues quote among themselves."
+  - "Gains, parameters: pairMaxLeverage and getPairLiquidationParams on the Arbitrum diamond 0xFF162c694eAA571f685030649814282eA457f169, pairs 300 and 313, the x500 cohort rather than the standard pairs which cap at 200x. The fee comes from the pair's fee group, word 9 of pairs() then word 0 of fees() at 1e10, the same read the perp-fees harness runs in production."
+  - "Gains, checked against liquidations: percentProfit on the LimitExecuted log is the price move times leverage and nothing else, and our liquidation harness reproduces it on 120 of 120 real liquidations. Eleven liquidations on the two degen pairs give a median of 59.4 percent of collateral against the 60.0 percent this model predicts. The remaining gap is the borrowing fee, which accrues with holding time and is not a term at open."
+  - "Gains, collateral returned: zero at every leverage. amountSentToTrader is 0 on all 27 liquidations found across every pair from 7.5x to 500x. The threshold says when a position closes, not what comes back."
+  - "Papertrade: max leverage and the bust buffer from the instrument tuple on exchange.papertrade.xyz/state/trading. The buffer is a share of price and is an offset before the zero equity price, not the room itself: their documentation works the 1000x case and gives a move of about 0.052 percent, which is one tenth of a percent minus the buffer."
+  - "Papertrade, checked against closes: its contract is unverified, so the event fields were identified against external truth rather than an ABI. The price field matches the live Hyperliquid mid under the per instrument factor; the leverage field caps at exactly 1000, the documented maximum; and under the resulting reading the predicted bust distance is never crossed on 384 adverse closes, the closest reaching 92 percent of it."
+  - "Papertrade, collateral returned: zero. Their documentation calls crossing the bust price a hard bust that forfeits the full isolated margin even where a voluntary close immediately beforehand could return some equity. At 1000x that forgone equity is close to half the margin."
+  - "dYdX: initialMarginFraction and maintenanceMarginFraction from indexer.dydx.trade/v4/perpetualMarkets, both published per market, with the maximum leverage the reciprocal of the initial fraction. Neither venue's payload carries a fee we can read, so the dYdX and Hyperliquid rows carry no fee legs and their room is the parameter ceiling rather than a fee inclusive figure."
+  - "Hyperliquid: maxLeverage from the info meta endpoint. The maintenance requirement is not in the payload; its documentation fixes it at half the initial requirement at maximum leverage, so this row alone has a derived input and its share returned reads 50 percent at its maximum on every market by construction."
+  - "No row is ranked. More room before liquidation comes from holding back less maintenance margin, and the venue that holds back least is the one that keeps everything when it fires. A single ranking on this metric would reward that, whichever venue came out on top, so every row publishes without a rank."
+  - "Excluded: funding, borrowing, and the liquidation spread. All three move the real trigger closer than the figures here. A position held for days is liquidated by carry long before the price reaches these levels."
+  - "Cohort: perp venues in the harness that publish enough to compute the figures on BTC and ETH, 4 as of 2026-10-12. Venues that advertise high leverage but publish no maintenance parameter we can read are absent rather than estimated."
+
+findings:
+  - "At 500x, the only setting Gains and Papertrade both offer, a Gains position is closed on a 0.12 percent move against it and a Papertrade one on 0.15 percent. Neither returns anything. Gains' figure is the one 11 real liquidations show, not the 0.16 percent its threshold alone would imply."
+  - "The fee is what separates the threshold from the outcome on Gains. Its contract liquidates at 80 percent of collateral, but the position pays its 0.02 percent fee on the way in and again on the way out, and at 500x those two legs are 20 points of collateral. Liquidations fire at a median 59.4 percent, so the room is a fifth smaller than the parameter suggests."
+  - "The order changes with the leverage, which is why the selector is part of the measurement. At each venue's own maximum, room shrinks as leverage grows. At 10x, which all four offer, Papertrade leaves the most room and Gains the least, because Gains liquidates at a share of collateral whatever the leverage while Papertrade's buffer is five basis points of price."
+  - "Neither high leverage venue gives anything back. Gains returns nothing on all 27 liquidations measured from 7.5x to 500x, and Papertrade forfeits the whole margin by rule. The two margin fraction venues do return collateral: dYdX 60 percent and Hyperliquid 50 percent at their own maxima."
+  - "Read the same rows in collateral terms and the picture changes again. At 1000x Papertrade busts after losing 52 percent of the margin, leaving 48 percent that the hard bust then takes. At 500x it busts at 76 percent against Gains at 60 percent, so the venue that closes you later in price closes you later in collateral too."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/perp-cohort-stats
+
+prometheus:
+  window: 24h
+  expected_freshness_seconds: 1800
+
+metric_panels:
+  - id: collateral_lost
+    label: Collateral lost
+    metric: perp_liq_collateral_lost_pct{bucket="all"}
+    label_key: venue
+    unit: pct
+    higher_is_better: true
+    tab: false
+    description: "The same measurement as the room, in the unit venues quote among themselves: how much of the margin is already gone when the position is closed. Room times leverage."
+  - id: max_leverage
+    label: Max leverage
+    metric: perp_leverage_max{bucket="all"}
+    label_key: venue
+    unit: x
+    higher_is_better: true
+    tab: false
+    description: "The venue's highest leverage setting on this market, shown whatever leverage is selected so you can see how far the selected setting sits from the venue's ceiling."
+  - id: collateral_kept
+    label: Collateral returned
+    metric: perp_liq_collateral_kept_pct{bucket="all"}
+    label_key: venue
+    unit: pct
+    higher_is_better: true
+    tab: false
+    description: "Share of the collateral that comes back when the position is liquidated. Zero on Gains, measured on 27 liquidations, and zero on Papertrade, which forfeits the whole margin by rule."
+
+ledger_columns:
+  - { label: "Room to liq", slot: p50 }
+  - { label: "Collateral lost", panel: collateral_lost }
+  - { label: "Max leverage", panel: max_leverage }
+  - { label: "Collateral returned", panel: collateral_kept }
+
+faq:
+  - q: "What does room to liquidation mean?"
+    a: "It is the percentage the price has to move against a position before the venue closes it, for a position opened at the selected leverage with no margin added beyond the minimum. It is measured at the moment the position opens and excludes funding and borrowing, which push the real trigger closer every hour the position is held."
+  - q: "Why does the order change when I change the leverage?"
+    a: "Because venues set their maintenance requirement against different quantities. Gains ties it to collateral, so its room falls close to proportionally with leverage. Papertrade fixes it in price at about five basis points, so it barely matters at 10x and consumes roughly half the margin at 1000x. At low leverage Papertrade leaves the most room of the four; at its own maximum it leaves the least."
+  - q: "Why is nothing ranked?"
+    a: "Because more room is not the same as better terms. Room comes from holding back less maintenance margin, and the venue that holds back least is the one that keeps everything when it fires. A single ranking would reward that, whichever venue came out on top. The rows publish their figures and the reader picks the leverage that matches the question."
+  - q: "Why does Gains show less room than its own threshold implies?"
+    a: "Because the fee comes out of the same collateral the threshold is measured against. Its contract liquidates at 80 percent of collateral, which alone would be 0.16 percent of price at 500x, but the position pays 0.02 percent of notional on the way in and again on the way out, and at 500x those two legs are 20 points. Eleven real liquidations fired at a median 59.4 percent of collateral, which is 0.1189 percent of price, against the 0.12 percent this model predicts."
+  - q: "Does any venue give collateral back on a liquidation?"
+    a: "The two margin fraction venues do: dYdX returns 60 percent and Hyperliquid 50 percent at their own maxima. Neither high leverage venue does. Gains returned nothing on all 27 liquidations measured across every pair from 7.5x to 500x, and Papertrade's documentation calls crossing the bust price a hard bust that forfeits the full isolated margin."
+  - q: "How is the Papertrade row checked when its contract is unverified?"
+    a: "Against external truth rather than an ABI. Its price field matches the live Hyperliquid mid under the per instrument factor from its own instrument tuple, its leverage field caps at exactly the 1000 its documentation states, and under the resulting reading the predicted bust distance is never crossed on 384 adverse closes, the closest reaching 92 percent of it. A ceiling respected 384 times is a measurement, not a decode that happened to look right."
+  - q: "Why only BTC and ETH?"
+    a: "They are the only two markets all four venues list. Papertrade lists exactly two instruments; the other three list hundreds, but comparing one venue's BTC terms against another's altcoin terms would not mean anything."
+
+providers:
+  - slug: hyperliquid
+    name: Hyperliquid
+    tag: Custom L1 CLOB, maintenance requirement derived from the documented halving rule
+    confidence_tier: estimate
+    formula: "Room = (1/leverage - 1/(2*maxLeverage)) x 100, with maxLeverage from the info meta endpoint. The maintenance requirement is not published per market; the halving rule is documented. No fee is read from this payload."
+    queries:
+      p50: perp_liq_price_move_pct{venue="hyperliquid",bucket="all"}
+      success: clamp_max(perp_leverage_max{venue="hyperliquid",bucket="all"}, 1)
+      sample_size: count_over_time(perp_leverage_max{venue="hyperliquid",bucket="all"}[24h])
+      series: perp_liq_price_move_pct{venue="hyperliquid",bucket="all"}
+      ranked: vector(0)
+
+  - slug: dydx
+    name: dYdX v4
+    tag: Cosmos appchain orderbook, both margin fractions published per market
+    confidence_tier: published
+    formula: "Room = (1/leverage - maintenanceMarginFraction) x 100, collateral returned = maintenanceMarginFraction x leverage, both fractions from indexer.dydx.trade/v4/perpetualMarkets. No fee is read from this payload."
+    queries:
+      p50: perp_liq_price_move_pct{venue="dydx",bucket="all"}
+      success: clamp_max(perp_leverage_max{venue="dydx",bucket="all"}, 1)
+      sample_size: count_over_time(perp_leverage_max{venue="dydx",bucket="all"}[24h])
+      series: perp_liq_price_move_pct{venue="dydx",bucket="all"}
+      ranked: vector(0)
+
+  - slug: gains
+    name: Gains
+    tag: Synthetic perps on Arbitrum, x500 cohort, threshold and fee read on chain
+    confidence_tier: onchain
+    formula: "Room = (threshold - 2 x fee x leverage) / leverage, all read by eth_call on the Arbitrum diamond for pairs 300 and 313. Checked against 11 liquidations: median 59.4% of collateral against 60.0% predicted."
+    queries:
+      p50: perp_liq_price_move_pct{venue="gains",bucket="all"}
+      success: clamp_max(perp_leverage_max{venue="gains",bucket="all"}, 1)
+      sample_size: count_over_time(perp_leverage_max{venue="gains",bucket="all"}[24h])
+      series: perp_liq_price_move_pct{venue="gains",bucket="all"}
+      ranked: vector(0)
+
+  - slug: papertrade
+    name: Papertrade
+    tag: House sided perps on Hyperliquid, bust buffer fixed in price, hard bust
+    confidence_tier: onchain
+    formula: "Room = (1/leverage - bust buffer) x 100, the buffer from the /state/trading instrument tuple as a share of price. Verified as a ceiling on 384 adverse closes with no exceedance. Collateral returned = 0, a hard bust."
+    queries:
+      p50: perp_liq_price_move_pct{venue="papertrade",bucket="all"}
+      success: clamp_max(perp_leverage_max{venue="papertrade",bucket="all"}, 1)
+      sample_size: count_over_time(perp_leverage_max{venue="papertrade",bucket="all"}[24h])
+      series: perp_liq_price_move_pct{venue="papertrade",bucket="all"}
+      ranked: vector(0)

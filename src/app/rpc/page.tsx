@@ -26,11 +26,11 @@ import { withUtm } from "@/lib/utm";
  */
 
 const DESCRIPTION =
-  "RPC providers ranked per chain from 3 regions: free public endpoints with URLs, plus Alchemy, Chainstack, GetBlock and QuickNode on private (API-key) endpoints, ranked apart.";
+  "Free public RPC endpoints with URLs per chain, and Alchemy, Chainstack, GetBlock, QuickNode, Dwellir, Validation Cloud ranked apart, from 3 regions.";
 
 export const metadata: import("next").Metadata = pageMetadata({
   path: "/rpc",
-  title: "RPC providers by chain: public and private endpoints, by latency",
+  title: "RPC providers by chain: public and private, by latency",
   description: capSnippet(DESCRIPTION),
 });
 
@@ -63,7 +63,14 @@ export default async function RpcHubPage() {
   const featured = FEATURED.map((slug) => rpcSpecs.find((s) => s.slug === slug)).filter(
     (s): s is (typeof rpcSpecs)[number] => Boolean(s),
   );
-  const linkableSlugs = rpcSpecs.map((s) => s.slug);
+  // The WebSocket benches live on their own `<chain>-rpc-ws` slugs, which
+  // the `-rpc` filter above excludes by construction. Their pages exist and
+  // answer 200, region variants included, so without them every row of the
+  // block-push cohort rendered "not yet ranked" and refused to link.
+  const wsSpecs = specs
+    .filter((s) => s.slug.endsWith("-rpc-ws"))
+    .filter((s) => !indexable || indexable.has(s.slug));
+  const linkableSlugs = [...rpcSpecs, ...wsSpecs].map((s) => s.slug);
   // Chains whose page carries the API-key cohort (tier dimension): named
   // in the intro so the "<chain> rpc provider" searcher sees Alchemy,
   // Chainstack, GetBlock and QuickNode are measured too, behind the selector.
@@ -162,6 +169,20 @@ export default async function RpcHubPage() {
               <span className="text-ink">{chainLabelOf(s)} RPC endpoints</span>
             </Link>
           ))}
+          {/* The two families shipped with this hub as their only
+              plausible entry point, and no link from it. */}
+          <Link
+            href="/benchmarks/rpc-free-tier"
+            className="inline-flex items-center gap-1.5 rounded-full border border-ink/10 px-3 py-1 text-ink-soft hover:text-ink"
+          >
+            What each free RPC plan buys
+          </Link>
+          <Link
+            href="/benchmarks/ethereum-rpc-ws"
+            className="inline-flex items-center gap-1.5 rounded-full border border-ink/10 px-3 py-1 text-ink-soft hover:text-ink"
+          >
+            WebSocket push race
+          </Link>
           <Link
             href="/benchmarks/rpc-capabilities"
             className="inline-flex items-center gap-1.5 rounded-full border border-ink/10 px-3 py-1 text-ink-soft hover:text-ink"

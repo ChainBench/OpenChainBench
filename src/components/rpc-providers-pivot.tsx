@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronRight } from "lucide-react";
 import { ProviderLogo } from "@/components/provider-logo";
-import type { RpcHubPivotRow } from "@/lib/rpc-hub-stats";
+import type { RpcHubPivotRow } from "@/lib/rpc-hub-shape";
 
 /**
  * Provider pivot for /rpc: one row per free RPC gateway across every
@@ -38,9 +38,24 @@ function sortValue(r: RpcHubPivotRow, k: SortKey): number | null {
 export function RpcProvidersPivot({
   rows,
   chains,
+  regionLabel = "all regions",
+  geoControl,
+  raceMode = false,
 }: {
   rows: RpcHubPivotRow[];
   chains: ChainRef[];
+  /** Which probe scope the cells were measured in, named in the footnote.
+   *  The hub's geo selector re-scopes the rows to one region, and a cell
+   *  that reads "all regions" when it holds Singapore only is a wrong
+   *  caption on a right number. */
+  regionLabel?: string;
+  /** The hub's region selector, rendered in this table's header bar so the
+   *  control sits with the caption it changes. */
+  geoControl?: React.ReactNode;
+  /** The block-push cohort is a race: this column is a median lag behind
+   *  whichever provider pushed the block first, not a latency, and the
+   *  winner sits near zero because it is zero behind itself. */
+  raceMode?: boolean;
 }) {
   const router = useRouter();
   const [sortKey, setSortKey] = useState<SortKey>("chainsCovered");
@@ -79,6 +94,19 @@ export function RpcProvidersPivot({
     });
   }, [rows, sortKey, sortDir, q]);
 
+  /** Both are optional on the row and absent whenever the cohort's specs
+   *  have no success or sample-size query that resolves. A column of dashes
+   *  states "no failures counted", which is a claim about the providers
+   *  rather than about the measurement. */
+  const hasSuccess = useMemo(
+    () => rows.some((r) => r.medianSuccessPct != null),
+    [rows],
+  );
+  const hasErrors = useMemo(
+    () => rows.some((r) => r.errors24h != null),
+    [rows],
+  );
+
   const setSort = (k: SortKey) => {
     if (k === sortKey) setSortDir((d) => (d === "desc" ? "asc" : "desc"));
     else {
@@ -94,13 +122,16 @@ export function RpcProvidersPivot({
   return (
     <div className="mt-6 card-soft rounded-xl border border-ink/10">
       <div className="p-3 sm:p-4 border-b border-ink/8 flex items-center justify-between gap-3 flex-wrap">
-        <p
-          className="text-[11px] text-ink-faint"
-          style={{ fontFamily: "var(--font-mono, monospace)" }}
-        >
-          {filtered.length} of {rows.length} providers · rank + median
-          p50 across {chains.length} chains
-        </p>
+        <div className="flex items-center gap-3 flex-wrap min-w-0">
+          <p
+            className="text-[11px] text-ink-faint"
+            style={{ fontFamily: "var(--font-mono, monospace)" }}
+          >
+            {filtered.length} of {rows.length} providers · rank + median
+            p50 across {chains.length} chains, {regionLabel}
+          </p>
+          {geoControl}
+        </div>
         <input
           type="search" aria-label="Search provider..."
           value={q}
@@ -135,22 +166,34 @@ export function RpcProvidersPivot({
                 dir={sortDir}
                 onClick={() => setSort("medianP50Ms")}
               >
-                Median p50
+                <span
+                  title={
+                    raceMode
+                      ? "Median milliseconds behind whichever provider pushed the block first, across covered chains. The leader sits near zero because it is zero behind itself; read the trailers' distance from it."
+                      : "Median 24h p50 across the chains this provider covers."
+                  }
+                >
+                  {raceMode ? "Median lag" : "Median p50"}
+                </span>
               </ThSort>
-              <ThSort
-                active={sortKey === "medianSuccessPct"}
-                dir={sortDir}
-                onClick={() => setSort("medianSuccessPct")}
-              >
-                Success
-              </ThSort>
-              <ThSort
-                active={sortKey === "errors24h"}
-                dir={sortDir}
-                onClick={() => setSort("errors24h")}
-              >
-                Errors (24h)
-              </ThSort>
+              {hasSuccess && (
+                <ThSort
+                  active={sortKey === "medianSuccessPct"}
+                  dir={sortDir}
+                  onClick={() => setSort("medianSuccessPct")}
+                >
+                  Success
+                </ThSort>
+              )}
+              {hasErrors && (
+                <ThSort
+                  active={sortKey === "errors24h"}
+                  dir={sortDir}
+                  onClick={() => setSort("errors24h")}
+                >
+                  Errors (24h)
+                </ThSort>
+              )}
               {/* Chain logos double as column headers for the rank
                   strip below: same 22px slots + gap as the cells, so
                   each rank square reads under its chain mark. */}
@@ -223,16 +266,20 @@ export function RpcProvidersPivot({
                 </Td>
                 <Td mono>#{fmtRank(r.medianRank)}</Td>
                 <Td mono>{fmtMs(r.medianP50Ms)}</Td>
-                <Td mono>
-                  {r.medianSuccessPct != null
-                    ? `${r.medianSuccessPct.toFixed(2)}%`
-                    : "—"}
-                </Td>
-                <Td mono muted>
-                  {r.errors24h != null
-                    ? r.errors24h.toLocaleString("en-US")
-                    : "—"}
-                </Td>
+                {hasSuccess && (
+                  <Td mono>
+                    {r.medianSuccessPct != null
+                      ? `${r.medianSuccessPct.toFixed(2)}%`
+                      : "—"}
+                  </Td>
+                )}
+                {hasErrors && (
+                  <Td mono muted>
+                    {r.errors24h != null
+                      ? r.errors24h.toLocaleString("en-US")
+                      : "—"}
+                  </Td>
+                )}
                 <Td>
                   <span className="inline-flex items-center gap-1">
                     {chains.map((c) => {
@@ -263,7 +310,7 @@ export function RpcProvidersPivot({
             {filtered.length === 0 && (
               <tr>
                 <td
-                  colSpan={8}
+                  colSpan={6 + (hasSuccess ? 1 : 0) + (hasErrors ? 1 : 0)}
                   className="px-3 py-8 text-center text-[12px] text-ink-faint"
                 >
                   No provider matches &ldquo;{q}&rdquo;.
@@ -276,9 +323,13 @@ export function RpcProvidersPivot({
 
       <p className="px-3 sm:px-4 py-2.5 border-t border-ink/8 text-[10.5px] text-ink-faint">
         Per-chain cells show the provider&apos;s leaderboard rank on the
-        chain marked by the logo above (24h p50, all regions). Success is
-        the median 24h success rate across covered chains; Errors (24h) is
-        the summed failed-probe count (sample size × failure rate).
+        chain marked by the logo above (24h p50, {regionLabel}).
+        {hasSuccess
+          ? " Success is the median 24h success rate across covered chains."
+          : ""}
+        {hasErrors
+          ? " Errors (24h) is the summed failed-probe count (sample size × failure rate)."
+          : ""}
       </p>
     </div>
   );
@@ -358,6 +409,11 @@ function Td({
 
 function fmtMs(v: number | null | undefined): string {
   if (v == null || !Number.isFinite(v)) return "...";
+  // One decimal below 10 ms. Rounding to the nearest millisecond printed a
+  // 0.3 ms median as "0 ms", which reads as a broken measurement rather than
+  // as a provider that is a third of a millisecond behind, and it flattened
+  // 2.1 against 5.8 into 2 against 6 on the HTTP cohorts.
+  if (v < 10) return `${v.toFixed(1)} ms`;
   if (v < 1000) return `${Math.round(v)} ms`;
   return `${(v / 1000).toFixed(2)} s`;
 }

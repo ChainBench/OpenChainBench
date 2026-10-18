@@ -34,15 +34,35 @@ import { loadSnapshotFromBlob } from "@/lib/bench-blob";
 import { chainLabelForSlug } from "@/lib/chains";
 import { matchesChainSlug } from "@/lib/chain-aliases";
 import type { Benchmark, ProviderResult } from "@/types/benchmark";
+import {
+  RPC_REGION_KEYS,
+  buildPivot,
+  round1,
+  round2,
+  type RpcHubChain,
+  type RpcHubCohort,
+  type RpcHubSnapshot,
+  type RpcRegionBest,
+  type RpcRegionKey,
+} from "@/lib/rpc-hub-shape";
+
+export { RPC_REGION_KEYS };
+export {
+  RPC_REGION_LABELS,
+  buildPivot,
+  scopeCohortToRegion,
+} from "@/lib/rpc-hub-shape";
+export type {
+  RpcHubChain,
+  RpcHubCohort,
+  RpcHubPivotRow,
+  RpcHubProvider,
+  RpcHubSnapshot,
+  RpcHubUnresponsiveProvider,
+  RpcRegionBest,
+  RpcRegionKey,
+} from "@/lib/rpc-hub-shape";
 import type { Spec } from "@/lib/spec-schema";
-
-export type RpcRegionKey = "us-east" | "eu-west" | "sgp";
-
-export const RPC_REGION_KEYS: readonly RpcRegionKey[] = [
-  "us-east",
-  "eu-west",
-  "sgp",
-] as const;
 
 /** `-rpc`-suffixed bench slugs that are NOT chain leaderboards and must
  *  never be pivoted into the /rpc cross-chain matrix. Right now this is
@@ -56,113 +76,6 @@ export const RPC_REGION_KEYS: readonly RpcRegionKey[] = [
 export const NON_CHAIN_RPC_SLUGS: ReadonlySet<string> = new Set([
   "mev-protect-rpc",
 ]);
-
-export type RpcRegionBest = {
-  provider: string;
-  providerName: string;
-  p50Ms: number;
-};
-
-export type RpcHubProvider = {
-  provider: string;
-  name: string;
-  p50Ms: number;
-  p90Ms?: number;
-  p99Ms?: number;
-  successPct?: number;
-  sampleSize?: number;
-  /** p50 per probe region, keyed by region value. */
-  regions: Partial<Record<RpcRegionKey, number>>;
-  /** Archive block depths this provider supports (subset of the
-   *  harness's `depthBuckets` = {300, 7200, 216000, 1296000, 5000000}).
-   *  Absent = not measured (Solana / Substrate chains skip archive)
-   *  or not yet propagated by the worker. */
-  archiveDepth?: { supportedBlocks: number[] };
-};
-
-export type RpcHubUnresponsiveProvider = {
-  provider: string;
-  name: string;
-  /** Success rate over 24h (%, 2 decimals). Call counters keep
-   *  recording through an outage, so this stays meaningful. */
-  successPct?: number;
-  sampleSize?: number;
-};
-
-export type RpcHubChain = {
-  /** Chain slug, e.g. "ethereum". */
-  chain: string;
-  /** Bench slug, e.g. "ethereum-rpc". */
-  slug: string;
-  /** Chain display label from the chain registry ("Ethereum"). */
-  name: string;
-  /** Bench display title (spec.title). */
-  benchTitle: string;
-  providerCount: number;
-  /** Declared results in the spec (live or not); drives the hub link gate. */
-  declaredCount?: number;
-  /** Cohort providers currently flagged unresponsive on this chain
-   *  (probed, all calls failing, no latency). Never part of
-   *  best/fastest computations — display-only context. */
-  unresponsiveCount?: number;
-  /** The unresponsive rows themselves (never ranked). Additive optional
-   *  field: old blobs without it still parse. */
-  unresponsive?: RpcHubUnresponsiveProvider[];
-  best: RpcRegionBest | null;
-  /** p90 of the overall best provider (same row as `best`). Optional so old blobs stay parseable. */
-  bestP90Ms?: number;
-  /** Max archive block depth supported across ALL providers on this
-   *  chain (0 or absent = archive not measured / all providers pruned).
-   *  Paired with bestArchiveProviders which names the providers hitting
-   *  that max depth — the tooltip in the /rpc hub reads both. */
-  bestArchiveDepthBlocks?: number;
-  /** Providers whose supported set includes bestArchiveDepthBlocks
-   *  (i.e. the ones actually offering the max archive on this chain).
-   *  Empty when bestArchiveDepthBlocks is undefined. */
-  bestArchiveProviders?: string[];
-  /** Best provider per probe region. */
-  regions: Partial<Record<RpcRegionKey, RpcRegionBest>>;
-  /** Full live provider field, sorted fastest first. */
-  providers: RpcHubProvider[];
-  /** Leader's 24h latency series, downsampled to <=48 points. */
-  series?: number[];
-  dataConfidence?: string;
-  updatedAt: string;
-};
-
-export type RpcHubPivotRow = {
-  provider: string;
-  name: string;
-  chainsCovered: number;
-  medianRank: number;
-  medianP50Ms: number;
-  /** Median 24h success rate across covered chains (%, 2 decimals).
-   *  Optional: absent from older blobs and success-less rows. */
-  medianSuccessPct?: number;
-  /** Failed probes over 24h summed across covered chains:
-   *  Σ round(sampleSize × (1 − successPct/100)). Optional (needs
-   *  sampleSize; absent from older blobs). */
-  errors24h?: number;
-  chains: Record<
-    string,
-    { p50Ms: number; rank: number; successPct?: number; sampleSize?: number }
-  >;
-};
-
-export type RpcHubCohort = {
-  chains: RpcHubChain[];
-  providersPivot: RpcHubPivotRow[];
-  totals: { chains: number; uniqueProviders: number; regions: number };
-};
-
-export type RpcHubSnapshot = RpcHubCohort & {
-  /** The API-key cohort (bench blobs at sig `tier=keyed`): the chains
-   *  whose spec declares a keyed tier, ranked on their own. Absent on
-   *  blobs written before the tier dimension existed and when no keyed
-   *  blob resolves yet; the hub then shows the public view alone. */
-  keyed?: RpcHubCohort;
-  generatedAt: string;
-};
 
 /** Upstash key for the rpc-hub cohort blob, written by the materialize
  *  worker after every tier sweep. The cohort-snapshot module appends
@@ -181,18 +94,23 @@ export type RpcHubSnapshot = RpcHubCohort & {
 //     site reads the worker's snapshot again instead of rebuilding on
 //     every cache miss: the two had drifted apart at v2 ("rpc-hub" on
 //     the worker side, "rpc-hub-v2" here).
-export const RPC_HUB_KEY = "rpc-hub-v3";
-
-const round1 = (v: number) => Math.round(v * 10) / 10;
-const round2 = (v: number) => Math.round(v * 100) / 100;
-
-function median(values: number[]): number {
-  const sorted = [...values].sort((a, b) => a - b);
-  const mid = Math.floor(sorted.length / 2);
-  return sorted.length % 2 === 0
-    ? (sorted[mid - 1] + sorted[mid]) / 2
-    : sorted[mid];
-}
+// v4: `keyedCold` cohort (the cold-start arm reaches the hub). Same reasoning
+//     as v3: a v3 blob from an older worker has no keyedCold field, so the
+//     third pill would stay hidden until the worker rebuild lands. A fresh key
+//     makes Vercel rebuild from the bench blobs, which already carry the
+//     `tier=keyed-cold` variants, and the worker writes this same constant.
+// v5: `websocket` cohort (benches 296-304 reach the hub). Same reasoning as
+//     v3 and v4: a v4 blob from an older worker has no websocket field, so
+//     the pill would stay hidden for a full TTL behind a blob that can never
+//     grow it. The worker imports this constant and writes the new shape
+//     after its next rebuild.
+// v6: `p95Ms` on the providers, `bestP95Ms` on the chains and `regionTails`
+//     carrying each region variant's own p90/p95/p99. Same reasoning once
+//     more: a v5 blob has none of those fields, so the p95 column and the
+//     geo view's per-region tails would stay empty behind a blob that
+//     cannot grow them, for a full TTL and then for as long as the worker
+//     kept rewriting v5.
+export const RPC_HUB_KEY = "rpc-hub-v6";
 
 /** Cap a series at `max` points so 10 chains of sparklines cannot bloat
  *  the cohort blob (Upstash + unstable_cache 2 MB ceilings). */
@@ -247,6 +165,13 @@ async function buildChain(spec: Spec, tier?: string): Promise<RpcHubChain | null
   // tier-B region variant blobs (sig "region=<r>"), whose headline p50
   // is the region-scoped aggregate for each provider.
   const regionP50: Record<string, Partial<Record<RpcRegionKey, number>>> = {};
+  // The region variant's headline queries already carry region="<r>", so its
+  // p90/p95/p99 are that region's tails and not a 3-region figure. Read them
+  // here so the hub can publish a tail per edge location.
+  const regionTails: Record<
+    string,
+    Partial<Record<RpcRegionKey, { p90?: number; p95?: number; p99?: number }>>
+  > = {};
   for (const r of rows) {
     const points = bench.extras.regions?.[r.slug] ?? [];
     for (const pt of points) {
@@ -272,6 +197,14 @@ async function buildChain(spec: Spec, tier?: string): Promise<RpcHubChain | null
     for (const r of liveRows(vsnap.bench)) {
       const bucket = (regionP50[r.slug] ??= {});
       if (bucket[region] == null) bucket[region] = round1(r.ms.p50);
+      const tail: { p90?: number; p95?: number; p99?: number } = {};
+      // Each guarded the same way the headline tails are: a zero or a
+      // non-finite value is Prometheus saying nothing, not a 0 ms answer.
+      if (Number.isFinite(r.ms.p90) && r.ms.p90 > 0) tail.p90 = round1(r.ms.p90);
+      if (r.ms.p95 != null && Number.isFinite(r.ms.p95) && r.ms.p95 > 0)
+        tail.p95 = round1(r.ms.p95);
+      if (Number.isFinite(r.ms.p99) && r.ms.p99 > 0) tail.p99 = round1(r.ms.p99);
+      if (Object.keys(tail).length > 0) (regionTails[r.slug] ??= {})[region] = tail;
     }
   }
 
@@ -290,7 +223,10 @@ async function buildChain(spec: Spec, tier?: string): Promise<RpcHubChain | null
   }
 
   const leader = rows[0];
-  const chain = spec.slug.replace(/-rpc$/, "");
+  // "-rpc-ws" before "-rpc": the WebSocket benches live on their own slugs and
+  // a trailing-only strip would leave the chain named "ethereum-rpc-ws", which
+  // no chain registry resolves, so the hub would label the row by its slug.
+  const chain = spec.slug.replace(/-rpc-ws$/, "").replace(/-rpc$/, "");
   // Dense series carry nulls for empty Prom buckets; the hub sparkline
   // blob stays numbers-only (48-pt cap, gap fidelity irrelevant there).
   const leaderSeries = bench.extras.series24h?.[leader.slug]?.filter(
@@ -328,6 +264,10 @@ async function buildChain(spec: Spec, tier?: string): Promise<RpcHubChain | null
       : {}),
     best: { provider: leader.slug, providerName: leader.name, p50Ms: round1(leader.ms.p50) },
     bestP90Ms: Number.isFinite(leader.ms.p90) && leader.ms.p90 > 0 ? round1(leader.ms.p90) : undefined,
+    bestP95Ms:
+      leader.ms.p95 != null && Number.isFinite(leader.ms.p95) && leader.ms.p95 > 0
+        ? round1(leader.ms.p95)
+        : undefined,
     ...(() => {
       // Max archive depth across ALL providers + which providers hit it.
       // Fastest provider is often the pruned one (PublicNode etc), so
@@ -351,6 +291,10 @@ async function buildChain(spec: Spec, tier?: string): Promise<RpcHubChain | null
       name: r.name,
       p50Ms: round1(r.ms.p50),
       p90Ms: Number.isFinite(r.ms.p90) && r.ms.p90 > 0 ? round1(r.ms.p90) : undefined,
+      p95Ms:
+        r.ms.p95 != null && Number.isFinite(r.ms.p95) && r.ms.p95 > 0
+          ? round1(r.ms.p95)
+          : undefined,
       p99Ms: Number.isFinite(r.ms.p99) && r.ms.p99 > 0 ? round1(r.ms.p99) : undefined,
       archiveDepth: r.archiveDepth,
       successPct:
@@ -359,6 +303,7 @@ async function buildChain(spec: Spec, tier?: string): Promise<RpcHubChain | null
           : undefined,
       sampleSize: r.sampleSize != null ? Math.round(r.sampleSize) : undefined,
       regions: regionP50[r.slug] ?? {},
+      ...(regionTails[r.slug] ? { regionTails: regionTails[r.slug] } : {}),
     })),
     series:
       leaderSeries && leaderSeries.length > 1
@@ -367,64 +312,6 @@ async function buildChain(spec: Spec, tier?: string): Promise<RpcHubChain | null
     dataConfidence: bench.dataConfidence,
     updatedAt: new Date(bench.dataAsOf ?? snap.builtAt).toISOString(),
   };
-}
-
-function buildPivot(chains: RpcHubChain[]): RpcHubPivotRow[] {
-  const acc = new Map<
-    string,
-    { name: string; chains: RpcHubPivotRow["chains"] }
-  >();
-  for (const c of chains) {
-    c.providers.forEach((p, i) => {
-      const entry =
-        acc.get(p.provider) ?? { name: p.name, chains: {} };
-      entry.chains[c.chain] = {
-        p50Ms: p.p50Ms,
-        rank: i + 1,
-        ...(p.successPct != null ? { successPct: p.successPct } : {}),
-        ...(p.sampleSize != null ? { sampleSize: p.sampleSize } : {}),
-      };
-      acc.set(p.provider, entry);
-    });
-  }
-  const rows: RpcHubPivotRow[] = [...acc.entries()].map(
-    ([provider, { name, chains: perChain }]) => {
-      const cells = Object.values(perChain);
-      // Reliability aggregates over covered chains only. Success is a
-      // median (robust to one bad chain); errors are an absolute sum of
-      // failed probes, same derivation as the ledger's Errors column.
-      const successes = cells
-        .map((c) => c.successPct)
-        .filter((v): v is number => v != null);
-      const errorCells = cells.filter(
-        (c) => c.sampleSize != null && c.successPct != null,
-      );
-      const errors24h = errorCells.reduce(
-        (sum, c) =>
-          sum + Math.round((c.sampleSize as number) * (1 - (c.successPct as number) / 100)),
-        0,
-      );
-      return {
-        provider,
-        name,
-        chainsCovered: cells.length,
-        medianRank: round1(median(cells.map((c) => c.rank))),
-        medianP50Ms: round1(median(cells.map((c) => c.p50Ms))),
-        ...(successes.length > 0
-          ? { medianSuccessPct: round2(median(successes)) }
-          : {}),
-        ...(errorCells.length > 0 ? { errors24h } : {}),
-        chains: perChain,
-      };
-    },
-  );
-  // Coverage first (the pivot's whole point), then rank quality.
-  return rows.sort(
-    (a, b) =>
-      b.chainsCovered - a.chainsCovered ||
-      a.medianRank - b.medianRank ||
-      a.medianP50Ms - b.medianP50Ms,
-  );
 }
 
 /**
@@ -478,10 +365,29 @@ export async function buildRpcHubSnapshotFresh(): Promise<RpcHubSnapshot | null>
     (s.dimensions?.tier ?? []).some((t) => t.value === "keyed"),
   );
   const keyed = keyedSpecs.length > 0 ? await cohortFor(keyedSpecs, "keyed") : null;
+  // The cold-start arm, same shape, read from the `tier=keyed-cold` variant
+  // blobs. Selected on its own tier value rather than reusing keyedSpecs: a
+  // spec can declare the keyed tier without declaring the cold one, which is
+  // exactly the state the six Validation Cloud chains were in.
+  const keyedColdSpecs = rpcSpecs.filter((s) =>
+    (s.dimensions?.tier ?? []).some((t) => t.value === "keyed-cold"),
+  );
+  const keyedCold =
+    keyedColdSpecs.length > 0 ? await cohortFor(keyedColdSpecs, "keyed-cold") : null;
+
+  // The WebSocket race. Its own bench family, so it is selected from the spec
+  // list directly rather than from rpcSpecs, which only holds slugs ending in
+  // "-rpc" and therefore excludes these by construction.
+  const wsSpecs = specs
+    .filter((s) => s.slug.endsWith("-rpc-ws"))
+    .sort((a, b) => a.slug.localeCompare(b.slug));
+  const websocket = wsSpecs.length > 0 ? await cohortFor(wsSpecs) : null;
 
   return {
     ...publicCohort,
     ...(keyed ? { keyed } : {}),
+    ...(keyedCold ? { keyedCold } : {}),
+    ...(websocket ? { websocket } : {}),
     generatedAt: new Date().toISOString(),
   };
 }
@@ -515,7 +421,12 @@ function gateSnapshotForProd(snap: RpcHubSnapshot): RpcHubSnapshot {
     };
   };
   const gated = gateCohort(snap);
-  return snap.keyed ? { ...gated, keyed: gateCohort(snap.keyed) } : gated;
+  return {
+    ...gated,
+    ...(snap.keyed ? { keyed: gateCohort(snap.keyed) } : {}),
+    ...(snap.keyedCold ? { keyedCold: gateCohort(snap.keyedCold) } : {}),
+    ...(snap.websocket ? { websocket: gateCohort(snap.websocket) } : {}),
+  };
 }
 
 async function fetchRpcHubRaw(): Promise<RpcHubSnapshot | null> {
@@ -558,7 +469,12 @@ const fetchRpcHubCached = unstable_cache(
   // v8 (2026-09-30): lockstep with bench-unfiltered-v88. The keyed cohort on
   // the nine chain RPC benches gains GetBlock, and this snapshot holds the
   // per-chain keyed provider list the hub and /products read.
-  ["rpc-hub-cohort-v8", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v9: the snapshot carries the cold-start cohort, so a v8 entry cached
+  // before this change would hide the third pill for its whole TTL.
+  // v10: the snapshot carries the WebSocket cohort.
+  // v11: the snapshot carries p95 and the per-region tails; a v10 entry would
+  // serve a shape without them for its whole TTL.
+  ["rpc-hub-cohort-v11", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["rpc-cohort"] },
 );
 
@@ -599,5 +515,9 @@ export async function hasRpcProviderData(slug: string): Promise<boolean> {
   const inCohort = (c: RpcHubChain) =>
     c.providers.some((p) => p.provider === slug) ||
     c.unresponsive?.some((u) => u.provider === slug);
+  // Deliberately not keyedCold: it carries the same vendors on the same
+  // chains under `<vendor>-cold` slugs, which providers.ts folds onto the
+  // vendor. Counting it would add no (provider, chain) pair that `keyed`
+  // does not already have, and would hand a KPI pill to a measurement arm.
   return snapshot.chains.some(inCohort) || (snapshot.keyed?.chains.some(inCohort) ?? false);
 }

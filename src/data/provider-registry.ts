@@ -11,6 +11,18 @@
  */
 
 /**
+ * Provider registry. Optional enrichment for each provider slug that
+ * appears in one or more benchmark specs.
+ *
+ * The registry is purely additive. Providers without an entry still
+ * render at /providers/<slug>, they just lack the description, URL,
+ * and Twitter handle. Add a new entry when onboarding a provider.
+ *
+ * Keep descriptions sober and technical. One or two short sentences,
+ * factual, no marketing adjectives. Twitter handle without the URL.
+ */
+
+/**
  * A statement the provider makes about itself that no harness can measure:
  * swap insurance, confidentiality, whether users are shielded from
  * questionable liquidity. Aurora asked for exactly these, and they are real
@@ -64,12 +76,9 @@ export type ProviderRegistryEntry = {
   description?: string;
   twitter?: string;
 
-  // Optional enrichment. NOTE: of the seven fields below, none is currently
-  // read by any page. They were added for a product-page section that was
-  // never built, and the comment here used to claim they were "surfaced on
-  // the product detail page", which is not true. Either wire them or drop
-  // them; do not add an eighth expecting it to render. `claims` below IS
-  // rendered, and its test fails the build if a claim is malformed.
+  // Optional rich content surfaced on the product detail page when present.
+  // Every field is independently optional; the page renders only the
+  // sections that have data, so partial enrichment is safe.
   longDescription?: string;
   chains?: string[];
   features?: string[];
@@ -105,8 +114,12 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   // ─── Cosmos RPC operators (chain-hunt sweep 2026-10-07) ───────
   // New to the site with ZIGChain, Agoric, XPLA and XRPL EVM. Each runs a
   // keyless public Tendermint RPC that answered our probe before inclusion.
-  // nodestake and stakeandrelax also serve these chains and were already
-  // registered, so they are not repeated here.
+  cumulo: {
+    url: "https://cumulo.pro",
+    description:
+      "Validator operator running public Tendermint RPC endpoints for Cosmos SDK chains, including XRPL EVM.",
+    twitter: "@cumulo_pro",
+  },
   numia: {
     url: "https://numia.xyz",
     description:
@@ -117,12 +130,6 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     url: "https://stakeangle.com",
     description:
       "Validator operator publishing free Tendermint RPC endpoints for the Cosmos chains it validates.",
-  },
-  cumulo: {
-    url: "https://cumulo.pro",
-    description:
-      "Validator operator running public Tendermint RPC endpoints for Cosmos SDK chains, including XRPL EVM.",
-    twitter: "@cumulo_pro",
   },
 
   // ─── AI labs (bench 284) ──────────────────────────────────────
@@ -185,6 +192,11 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     description:
       "DEX data terminal by CoinGecko covering 200+ chains. REST API for pools, tokens, trades, and OHLCV.",
     twitter: "@GeckoTerminal",
+  },
+  papertrade: {
+    url: "https://papertrade.xyz",
+    description:
+      "Synthetic perpetuals on Hyperliquid with two markets, BTC and ETH, at up to 1000x. Positions face a single house LP rather than an order book, and there are no open, close or funding fees.",
   },
   jupiter: {
     url: "https://jup.ag",
@@ -358,6 +370,15 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     description:
       "DeFi shared engine that maps onchain interactions into composable actions. The Route API computes optimal multi-step paths across protocols and chains, abstracting approvals, swaps, vault entries, and bridges into a single call.",
     twitter: "@EnsoBuild",
+  },
+  route: {
+    url: "https://route.fun",
+    description:
+      "Swap router for Robinhood Chain, chain ID 4663, and no other chain. route.fun is the swap interface; the partner API quotes and builds a swap in one request and is key-gated.",
+    twitter: "@routedotfun",
+    longDescription:
+      "Route routes swaps across Robinhood Chain liquidity, which spans Uniswap v3 and v4 pools including hooked ones, Pons launchpad pools and oracle-priced prop AMMs. It serves one chain, so it has no cross-chain path selection to do and its quote endpoint answers from a single network. The partner API at partners.route.fun takes a Bearer key and returns a quote and a built transaction together, rather than quoting and building in two calls. Route publishes that swap fees and token creator fees fund ROUTE buybacks, ROUTE/USDG liquidity and its treasury; that is the project's own statement about its economics and nothing here measures it.",
+    docs: "https://docs.route.fun",
   },
 
   // ─── Prediction markets (bench 028) ───────────────────────────

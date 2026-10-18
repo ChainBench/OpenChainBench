@@ -19,6 +19,8 @@ describe("feedNeedsDisclosure", () => {
         daysMeasured: 24,
         windowDays: 30,
         nodeDays: 0,
+        rebuiltDays: 0,
+        rebuiltWorstErrorPct: 0,
       }),
     ).toBe(true);
   });
@@ -32,6 +34,8 @@ describe("feedNeedsDisclosure", () => {
         daysMeasured: 30,
         windowDays: 30,
         nodeDays: 30,
+        rebuiltDays: 0,
+        rebuiltWorstErrorPct: 0,
       }),
     ).toBe(false);
   });
@@ -47,6 +51,8 @@ describe("feedNeedsDisclosure", () => {
         daysMeasured: 30,
         windowDays: 30,
         nodeDays: 29,
+        rebuiltDays: 0,
+        rebuiltWorstErrorPct: 0,
       }),
     ).toBe(true);
   });
@@ -82,6 +88,8 @@ describe("feedIsMostlyWhole", () => {
     daysMeasured: 30,
     windowDays: 30,
     nodeDays: 30,
+    rebuiltDays: 0,
+    rebuiltWorstErrorPct: 0,
   };
 
   // The live state on 2026-10-07 once the node source landed: 26 of 30 days
@@ -89,20 +97,60 @@ describe("feedIsMostlyWhole", () => {
   // down. The figures went from 0.53x of CoinMarketMan's to 0.89x, so the
   // page should footnote the gap rather than lead with it.
   it("treats a window that is nearly all node days as whole", () => {
-    expect(feedIsMostlyWhole({ ...base, nodeDays: 26, truncatedDaysWindow: 3 })).toBe(true);
+    expect(
+      feedIsMostlyWhole({ ...base, nodeDays: 26, truncatedDaysWindow: 3 }),
+    ).toBe(true);
   });
 
   // The state before the node source: every day off the truncated export.
   it("does not soften a window built from the export", () => {
-    expect(feedIsMostlyWhole({ ...base, nodeDays: 0, truncatedDaysWindow: 18 })).toBe(false);
+    expect(
+      feedIsMostlyWhole({ ...base, nodeDays: 0, truncatedDaysWindow: 18 }),
+    ).toBe(false);
   });
 
   // Half the window missing is not a footnote.
   it("does not soften a half-sourced window", () => {
-    expect(feedIsMostlyWhole({ ...base, nodeDays: 15, truncatedDaysWindow: 9 })).toBe(false);
+    expect(
+      feedIsMostlyWhole({ ...base, nodeDays: 15, truncatedDaysWindow: 9 }),
+    ).toBe(false);
   });
 
   it("never softens an unmeasured feed", () => {
     expect(feedIsMostlyWhole(null)).toBe(false);
+  });
+});
+
+// The disclosure's own trigger does not know about rebuilt days: a window whose
+// every day is nominally whole passes feedNeedsDisclosure quietly, and that is
+// precisely the window that may be carrying reconstructions. If the note keyed
+// only on truncation it would print nothing and publish a rebuilt day as a
+// measured one, which is the single failure the note exists to prevent.
+//
+// The component therefore renders on `truncation || rebuiltDays > 0`. This pins
+// the half that is testable here: truncation alone goes quiet.
+describe("rebuilt days are not covered by the truncation trigger", () => {
+  const whole = {
+    coverageHours: 24,
+    latestDayTruncated: false,
+    truncatedDaysWindow: 0,
+    daysMeasured: 30,
+    windowDays: 30,
+    nodeDays: 25,
+    rebuiltDays: 5,
+    rebuiltWorstErrorPct: 0,
+  };
+
+  it("says nothing about a window of whole days, rebuilt or not", () => {
+    expect(feedNeedsDisclosure(whole)).toBe(false);
+    expect(feedNeedsDisclosure({ ...whole, rebuiltDays: 0 })).toBe(false);
+  });
+
+  // So the count has to survive the read, or the component has nothing to key
+  // on. A rebuilt day is never folded into nodeDays either: 25 + 5 = 30 here,
+  // and nodeDays alone must not claim the window is measured.
+  it("keeps rebuilt days out of the node-day count", () => {
+    expect(whole.nodeDays).toBe(25);
+    expect(whole.nodeDays + whole.rebuiltDays).toBe(whole.windowDays);
   });
 });

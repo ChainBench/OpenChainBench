@@ -15,12 +15,13 @@ row_noun: { one: venue, many: venues }
 
 seo_intro: |
   This benchmark ranks the major onchain perp venues by total active markets.
-  Market count is the fastest proxy for breadth: a venue with hundreds of pairs gives
+  Market count is the simplest proxy for breadth: a venue with hundreds of pairs gives
   traders access to crypto, forex (EUR/USD, GBP/USD), tokenized stocks, commodities
   and stock indices alongside BTC and ETH. We poll each venue's public API every
   5 minutes and publish one gauge per venue. {{best_name}} lists the most today at
   {{best_p50}}; Gains at {{p50:gains}} spans crypto, forex, stocks and commodities,
-  Ondo Perps at {{p50:ondo}} is mostly stocks and ETFs, Hyperliquid at {{p50:hyperliquid}} is crypto only.
+  Ondo Perps at {{p50:ondo}} is mostly stocks and ETFs, Hyperliquid's core universe at {{p50:hyperliquid}} is crypto only; its
+  HIP-3 deployer markets are counted on perp-asset-breadth.
 
 abstract: |
   The bench polls the perp DEX cohort every 5 minutes and publishes a live count
@@ -56,7 +57,7 @@ methodology:
 
 findings:
   - "{{best_name}} leads the cohort with {{best_p50}} active markets across the {{count}} measured perp DEX venues."
-  - "{{name:gains}} lists {{p50:gains}} active markets, spanning crypto, forex, stocks, indices and commodities. The widest multi-asset catalog among EVM perp DEXes."
+  - "{{name:gains}} lists {{p50:gains}} active markets, spanning crypto, forex, stocks, indices and commodities. Crypto, forex, stocks, indices and commodities in one catalog."
   - "{{name:aster}} lists {{p50:aster}} active markets. BNB Chain perps with a Binance-compatible API."
   - "{{name:edgex}} lists {{p50:edgex}} active markets. StarkEx-settled offchain CLOB."
   - "{{name:extended}} lists {{p50:extended}} active markets. StarkEx-based perps venue."
@@ -83,9 +84,9 @@ faq:
   - q: "Why does Gains use Mobula as a source instead of its native API?"
     a: "The perp-cohort-stats harness uses the Mobula perp pairs catalog for gains because Mobula curates the full market taxonomy with asset-class tags. The count is mainnet-only (testnet chains excluded) and matches the inventory Gains exposes on its interface."
   - q: "Is market count a good proxy for venue breadth?"
-    a: "It is the fastest proxy. A venue with {{p50:gains}} markets covering crypto, forex, stocks and commodities (Gains) gives traders far more choice than one with {{p50:hyperliquid}} crypto-only markets (Hyperliquid). Depth per market is a separate signal; pair this bench with perp-volume-share and perp-fees for the full picture."
+    a: "It is the simplest proxy. A venue with {{p50:gains}} markets covering crypto, forex, stocks and commodities (Gains) gives traders far more choice than one with {{p50:hyperliquid}} crypto-only markets (Hyperliquid). Depth per market is a separate signal; pair this bench with perp-volume-share and perp-fees for the full picture."
   - q: "Can a venue with more asset classes rank below one with more instruments?"
-    a: "Yes. Aster, for example, lists more raw instruments (all USDT-margined pairs on BNB Chain including many micro-cap crypto assets). Gains lists fewer instruments but across a broader set of asset classes. The bench ranks by raw count; the findings text calls out gains as the widest multi-asset catalog among EVM DEXes."
+    a: "Yes. Aster, for example, lists more raw instruments (all USDT-margined pairs on BNB Chain including many micro-cap crypto assets). Gains lists fewer instruments but across a broader set of asset classes. The bench ranks by raw count, so a venue with many micro-cap crypto pairs can outrank one spanning more asset classes."
 
 providers:
   - slug: aster
@@ -365,3 +366,15 @@ providers:
       success: avg_over_time(perp_venue_health{venue="trade-xyz"}[24h])
       sample_size: count_over_time(perp_venue_active_markets{venue="trade-xyz"}[24h])
       series: perp_venue_active_markets{venue="trade-xyz"}
+  - slug: papertrade
+    name: Papertrade
+    tag: Hyperliquid, single house LP, BTC and ETH only
+    formula: "Instruments listed by GET /state/trading."
+    queries:
+      p50: avg_over_time(perp_venue_active_markets{venue="papertrade"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_active_markets{venue="papertrade"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_active_markets{venue="papertrade"}[24h])
+      mean: avg_over_time(perp_venue_active_markets{venue="papertrade"}[24h])
+      success: avg_over_time(perp_venue_health{venue="papertrade"}[24h])
+      sample_size: count_over_time(perp_venue_active_markets{venue="papertrade"}[24h])
+      series: perp_venue_active_markets{venue="papertrade"}

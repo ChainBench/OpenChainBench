@@ -34,7 +34,10 @@ export type ProviderResult = {
    *  a bench, the bench page renders an L1/L2/All toggle pill above the
    *  ledger that filters rows by this field. */
   layer?: ProviderLayer;
-  ms: { p50: number; p90: number; p99: number; mean: number };
+  /** p95 is optional where the other four are not: it was added after
+   *  hundreds of specs were written, and a bench that does not declare it
+   *  must keep rendering exactly as before. */
+  ms: { p50: number; p90: number; p99: number; mean: number; p95?: number };
   /** Optional slot-level companion to ms. Used by Solana-native benches
    *  where confirmation is a slot-level event (~400 ms granularity).
    *  When present, the providers table renders a "Slot delta" column

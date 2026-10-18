@@ -296,6 +296,14 @@ const RAW: Record<string, string> = {
   paraswap: "/logos/paraswap.png",
   relay: "/logos/relay.svg",
   lifi: "/logos/lifi.png",
+  // Route, added with the Robinhood Chain pair (#3025). The mark Route
+  // supplied is a black "r" sitting in a 400px square that is 91% white,
+  // so it is cropped to the glyph and the white is dropped to alpha: left
+  // as delivered it rendered as a pale tile with a dot in it next to
+  // tightly cropped neighbours, and could not sit on a dark page at all.
+  // Being monochrome on transparent, the slug is opted into the light chip
+  // in <ProviderLogo>.
+  route: "/logos/route.png",
   geckoterminal: "/logos/geckoterminal.png",
   gains: "/logos/gains.svg",
   blockscout: "/logos/blockscout.svg",
@@ -308,6 +316,7 @@ const RAW: Record<string, string> = {
   moralis: "/logos/moralis.png",
   stellarexpert: "/logos/stellarexpert.png",
   jupiter: "/logos/jupiter.png",
+  papertrade: "/logos/papertrade.svg",
   raydium: "/logos/raydium.svg",
   openocean: "/logos/openocean.png",
   cow: "/logos/cow.png",
@@ -827,6 +836,11 @@ const ALIASES: Record<string, string> = {
   hypercore: "hyperliquid", // HyperCore is the Hyperliquid trading engine, same brand
   hyperevm: "hyperliquid", // HyperEVM is Hyperliquid's EVM execution layer, same brand
   "hyperliquid-hip3": "hyperliquid", // bench 266 row for builder-deployed HIP-3 dexs
+  // The perp cohort keys this venue `gmx-v2` while the brand, the logo file
+  // and the product page are all `gmx`; PERP_PRODUCT_SLUGS carries the same
+  // mapping for the link. Without this alias logoPath returns null and the
+  // row renders with no mark, which is how it shipped.
+  "gmx-v2": "gmx",
   "publicnode-feehistory": "publicnode",
   "binance-wallet": "binance", // bench 268 per-chain rows (binance-wallet-bnb…); the spec row is `binance`
   // Same brand split across two HL builder addresses; one logo is enough.
@@ -857,6 +871,7 @@ const ALIASES: Record<string, string> = {
   "optimism-official": "optimism",
   // Long-tail RPC cluster (055-066).
   "sonic-official": "sonic",
+  "astar-official": "astar",
   "monad-official": "monad",
   "solana-official": "solana",
   "solana-labs": "solana",
@@ -1023,12 +1038,13 @@ const ALIASES: Record<string, string> = {
   "agoric-official": "agoric",
   "xpla-official": "xpla",
   "xrplevm-official": "xrplevm",
-  // Cold-start cohort on the nine keyed RPC pages (2026-10-08). Same four
-  // providers, same endpoints, measured on a connection that is never
-  // reused, so they need a `-cold` slug to stay distinct from the pooled
-  // rows. Without these aliases the rows render initials instead of marks:
-  // nothing strips a suffix, this table is explicit. Same mistake as the
-  // "-official" slugs earlier today.
+  // Cold-start cohort on the nine keyed RPC pages (2026-10-08). The same
+  // providers and endpoints as the keyed tier, measured on a connection that
+  // is never reused, so they need a `-cold` slug to stay distinct from the
+  // pooled rows. Without these aliases the rows render initials instead of
+  // marks: nothing strips a suffix, this table is explicit. Same mistake as
+  // the "-official" slugs earlier today. The twin list lives in
+  // providers.ts ALIASES, which also needs a line per cold vendor.
   "getblock-cold": "getblock",
   "quicknode-cold": "quicknode",
   "alchemy-cold": "alchemy",

@@ -7,6 +7,7 @@ import Link from "next/link";
 import type { Benchmark } from "@/types/benchmark";
 import { fmtValue } from "@/lib/format";
 import { rankResults } from "@/lib/ranking";
+import { displayResults } from "@/lib/provider-filters";
 import { buildProviderColors } from "@/lib/series-colors";
 import { ProviderLogo } from "@/components/provider-logo";
 
@@ -24,7 +25,20 @@ export function CountLeaderboard({
   benchmark: Benchmark;
   headerActions?: ReactNode;
 }) {
-  const ranked = rankResults(benchmark.results, benchmark.higherIsBetter);
+  // displayResults, not the raw list, which is what its own doc comment asks
+  // for: "use for ranked surfaces (ledger, bar chart, per-chain pages)".
+  //
+  // Without it an unavailable provider arrives carrying ms.p50 = 0 and a
+  // successRate of 0, and a cost board sorts it to the top as free. Bench 282
+  // showed Helius, Blockdaemon, Coinbase CDP, Syndica and Triton One at $0 in
+  // positions 01-05 above its real leader at $29.50 — none of them publishes
+  // an Ethereum plan, so the loader had already marked them unavailable and
+  // the header already ignored them. Only this list did not, so the page
+  // contradicted itself: "LEADER $29.5 BlockPI" above five cheaper rows.
+  const ranked = rankResults(
+    displayResults(benchmark.results),
+    benchmark.higherIsBetter,
+  );
   // Exclude +Inf from max so finite bars render at meaningful widths
   // instead of collapsing to 0% (Inf/Inf = NaN).
   const finiteVals = ranked.map((r) => r.ms.p50).filter(Number.isFinite);

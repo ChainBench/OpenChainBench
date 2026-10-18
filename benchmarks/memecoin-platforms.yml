@@ -58,10 +58,11 @@ methodology:
   - "Two freshness layers, because they fail differently: terminal_activity_last_success_unix says the harness is still running, and terminal_activity_health says this terminal and chain published a day inside the window. A harness that runs while its source freezes trips the second, not the first."
   - "Chains: five are offered as tabs, the ones with at least five terminals and meaningful volume. Arc, HyperEVM, Monad, X Layer and Avalanche are measured but not offered, because one or two terminals on a chain is a list rather than a comparison."
   - "Not the cost of a swap: this is the terminal's cut only. Slippage, priority fees and pool fees are not in it, and a low take rate can sit on top of a worse total execution. Benches 268 and 279 measure the all-in figure."
+  - "Plausibility ceiling: a cell whose fees exceed 10% of the volume they sit on is withheld, not published. Across this cohort every measured take rate falls between 0.39% and 2.2%, so a cell many times above that is the source attributing a fee to the wrong denominator rather than a terminal keeping a tenth of the ticket. The volume and transaction counts for that cell are still published; only the ratio is dropped."
 
 findings:
   - "{{best_name}} keeps the least per dollar routed at {{best_p50}} on this chain."
-  - "Two cells are withheld rather than ranked, and the reason is the same for both: Axiom reports no fee on Robinhood and BNB while charging 0.92% on Solana, and pump.fun reports no fee on Solana while charging on four other chains. A zero from a platform that charges elsewhere is a gap, not the cheapest price in the market."
+  - "A cell is withheld rather than ranked in two cases, and both are gaps in the source rather than prices in the market: a platform reporting no fee on one chain while charging on another, and a platform whose reported fee is too large a share of the volume it sits on to be a trading fee at all. The second case is a misattribution in the feed, not a terminal that keeps most of the ticket."
   - "Observed take rate is a lower bound on the published fee. Waivers, referral rebates and promotional periods all reduce what a terminal keeps without changing what its schedule says."
   - "Take rates differ by chain on the same terminal, which is why this page has a chain axis rather than one pooled number."
 
@@ -215,7 +216,7 @@ providers:
   - slug: pump-fun
     name: pump.fun
     tag: "Launchpad's own app, no terminal fee"
-    formula: "A day's fee revenue divided by that day's routed volume for the pump.fun app. It reports fees on four chains and exactly zero on Solana, where it routes $252M a week, so the Solana cell is withheld rather than ranked as the market floor."
+    formula: "A day's fee revenue divided by that day's routed volume for the pump.fun app. It reports fees on Base alone, 0.003% of the volume it routes, so every cell is withheld: a rate measured on a sliver is not this app's take rate."
     queries:
       p50: max(terminal_fee_rate_pct{platform="pump-fun",chain="all"})
       p90: max(terminal_fee_rate_pct{platform="pump-fun",chain="all"})

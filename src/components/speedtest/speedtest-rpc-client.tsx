@@ -471,6 +471,25 @@ function contributeToMap(chainSlug: string | null, endpoints: Endpoint[]) {
  * through us to dodge the block would measure our server instead of their
  * connection and would send their API keys to us.
  */
+/** A blocking condition the reader has to act on, told at body size inside
+ *  a bordered box. Deliberately not the page's caption style: these two
+ *  messages are the difference between "this tool is broken" and "two
+ *  clicks and it runs", and they were previously set as 10px footnotes. */
+function BlockNotice({
+  lead,
+  children,
+}: {
+  lead: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2.5 text-[12.5px] leading-relaxed text-ink">
+      <p className="font-semibold text-amber-700 dark:text-amber-400">{lead}</p>
+      <p className="mt-1 text-ink-soft">{children}</p>
+    </div>
+  );
+}
+
 function useIsBrave(): boolean {
   const [brave, setBrave] = useState(false);
   useEffect(() => {
@@ -512,6 +531,11 @@ export function SpeedtestRpcClient({ mapLive = true }: { mapLive?: boolean }) {
     return () => cancelAnimationFrame(raf);
   }, []);
   const [prefillState, setPrefillState] = useState<"idle" | "validating" | "done">("idle");
+  /** Every prefilled endpoint failed the reachability check. Measured, not
+   *  guessed from the browser's name: the check POSTs eth_chainId to each
+   *  one, and all of them failing means the visitor would sit through the
+   *  whole run to be told nothing answered. */
+  const [allUnreachable, setAllUnreachable] = useState(false);
   const [skippedProviders, setSkippedProviders] = useState<string[]>([]);
   const prefillEpoch = useRef(0);
   const [durationSec, setDurationSec] = useState(30);
@@ -569,6 +593,7 @@ export function SpeedtestRpcClient({ mapLive = true }: { mapLive?: boolean }) {
       // some fail).
       if (good.length === 0) {
         setSkippedProviders([]);
+        setAllUnreachable(true);
         setPrefillState("done");
         console.warn(
           "[speedtest] reachability precheck failed for ALL endpoints; keeping the list (likely browser/network-level blocking).",
@@ -577,6 +602,7 @@ export function SpeedtestRpcClient({ mapLive = true }: { mapLive?: boolean }) {
       }
       if (skipped.length > 0) setInputs(good);
       setSkippedProviders(skipped);
+      setAllUnreachable(false);
       setPrefillState("done");
     })();
   };
@@ -858,10 +884,16 @@ export function SpeedtestRpcClient({ mapLive = true }: { mapLive?: boolean }) {
             {/* Said before the run, not after it: with Shields up every
                 endpoint fails and the visitor has spent the whole test
                 duration to be told to change a setting. */}
-            {isBrave && (
-              <p className="mt-2 label-mono text-[10px] text-ink-faint">
-                Brave detected. Shields blocks requests to RPC hosts by default, which makes every endpoint fail. Turn Shields down for this site (the lion in the address bar) before you start.
-              </p>
+            {allUnreachable && (
+              <BlockNotice lead="Nothing here answered a test call from your browser">
+                Every prefilled endpoint failed a single eth_chainId request
+                just now, so the run would take its full duration to tell you
+                the same thing. Something local is stopping requests to RPC
+                hosts: a privacy or ad-blocking extension, a VPN, a corporate
+                network{isBrave ? ", or Brave Shields (the lion in the address bar)" : ""}.
+                Turning it off for this site, or pasting an endpoint of your
+                own, is what fixes it.
+              </BlockNotice>
             )}
           </div>
           <div className="space-y-2">
@@ -1125,13 +1157,23 @@ export function SpeedtestRpcClient({ mapLive = true }: { mapLive?: boolean }) {
                 // at once, and the reader is left with a dead end instead
                 // of the one thing that would fix it.
                 ranked.length === 0 ? (
-                  <p className="st-row label-mono text-[10px] text-ink-faint text-center pt-1" style={{ animationDelay: "0.2s" }}>
-                    Every endpoint was blocked before it answered, including ones that do allow browser calls, so the block is on this side rather than at the providers.{" "}
-                    {isBrave
-                      ? "Brave Shields blocks requests to RPC hosts by default. Click the lion in the address bar and turn Shields down for this site, then run the test again. We cannot do this for you: the test only means anything because the requests go from your browser straight to the provider, never through us."
-                      : "A shields-up browser, a privacy or ad-blocking extension, a VPN or a corporate network will stop requests to RPC hosts. Try a normal window with extensions off, or paste your own endpoint."}{" "}
-                    The public benchmarks measure all of these server-side.
-                  </p>
+                  <div className="st-row" style={{ animationDelay: "0.2s" }}>
+                    <BlockNotice
+                      lead="Nothing reached a provider: something local blocked it"
+                    >
+                      A privacy or ad-blocking extension, a VPN or a corporate
+                      network will stop requests to RPC hosts
+                      {isBrave ? ", and so will Brave Shields if they are up for this site" : ""}.
+                      Try a window with extensions off, or paste your own
+                      endpoint. We cannot do it for you: the test only means
+                      anything because the requests go from your browser
+                      straight to the provider, never through us.{" "}
+                      Every endpoint failed before answering, including ones
+                      that do allow browser calls, so the block is on this side
+                      rather than at the providers. The public benchmarks
+                      measure all of them server-side.
+                    </BlockNotice>
+                  </div>
                 ) : (
                 <p className="st-row label-mono text-[10px] text-ink-faint text-center pt-1" style={{ animationDelay: `${0.2 + ranked.length * 0.12}s` }}>
                   Not testable from a browser (skipped): {blockedDir.map((e) => epLabel(e)).join(", ")}. The public bench covers {blockedDir.length > 1 ? "them" : "it"} server-side.

@@ -51,6 +51,32 @@ const headlineChain = "solana"
 // series; bench 283 spent a day with a blank headline column for exactly that.
 const aggregateChain = "all"
 
+// The two gates that decide whether a take rate is publishable. Both apply to
+// the daily cells in this file and to the 1d, 7d and 30d windows in
+// windows.go, which feed a different board off the same source and were the
+// half of the problem the first fix missed.
+const (
+	// Ceiling above which a take rate is a misattribution rather than a fee.
+	//
+	// A statement about trading, not a tuned threshold: a terminal that kept a
+	// tenth of every ticket would have no users. Measured across the cohort on
+	// 2026-10-17, every honest cell sits between 0.39% and 2.20%, the single
+	// highest being maestro on HyperEVM at 4.87% on $1,039 of volume. Ten
+	// percent clears the real spread by more than double and still catches the
+	// broken cell by a factor of six.
+	maxPlausibleFeeRate = 10.0
+
+	// Minimum share of a platform's volume that must sit on fee-reporting
+	// chains or days before an all-chains take rate is published.
+	//
+	// Measured on 2026-10-17: seven of the eight platforms report fees on
+	// chains carrying 95.9% to 100% of their volume. pump.fun reports them on
+	// 0.003% of its, and the resulting 63.9% reached a public compare page and
+	// a Community Note. Half is far below every honest platform and far above
+	// the broken one, so it separates them without being tuned to either.
+	minFeeCoverage = 0.5
+)
+
 // aliasesFor returns the labels a per-chain sample is published under. Only
 // the headline chain doubles as `all`, and only for the wallet-denominated
 // metrics; the summable ones get their `all` written once, from the totals.
@@ -142,6 +168,15 @@ var (
 		Help: "1 when this platform and chain reported exactly zero fees on material volume while the same platform reports fees on another chain, so the zero is an unexplained gap rather than a price. The take rate is not published for that cell.",
 	}, []string{"platform", "chain"})
 
+	// What share of a platform's volume the all-chains take rate was actually
+	// measured on. Published for every platform so a page can show the
+	// denominator, and gated on below: a rate over 0.003% of the volume
+	// beside it is not that platform's take rate.
+	feeCoveragePct = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "terminal_fee_coverage_pct",
+		Help: "percent of all-chains volume covered by the chains whose fees the take rate uses",
+	}, []string{"platform"})
+
 	feeColumnOK = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "terminal_fee_column_ok",
 		Help: "1 when at least one platform on this chain reported non-zero fees on the data day, 0 when the whole column was zero. A zero column is a source failure, not a market where every platform is free.",
@@ -153,6 +188,7 @@ func init() {
 		volumeUSD, txns, feesUSD, wallets,
 		avgTradeUSD, feeRatePct, tradesPerWallet, volumePerWalletUSD,
 		chainBreadth, dataDayUnix, health, lastSuccessUnix, feeColumnOK, feeWithheld, feeRateHealth,
+		feeCoveragePct,
 	)
 }
 
@@ -276,7 +312,16 @@ func publish(samples []sample, roster []string, maxAgeDays int, now time.Time) (
 		chainSet[s.Chain] = true
 
 		unexplainedZero := s.Fees <= 0 && platformFeesAnywhere[s.Platform]
-		feeUsable := feesSeen[s.Chain] && !unexplainedZero
+		// A cell whose fees exceed maxPlausibleFeeRate of its own volume is not
+		// reporting a take rate, it is reporting a misattribution: nobody trades
+		// through a terminal that keeps a tenth of the ticket. pump.fun's Base
+		// cell read 63.9% on 2026-10-17, $910.86 of fees against $1,424.96 of
+		// volume, and that cell was also the platform's only fee-bearing chain,
+		// so it set the all-chains headline too and reached a public compare
+		// page. The coverage gate below catches the headline; this catches the
+		// per-chain cell, which the coverage gate cannot see.
+		implausible := s.Volume > 0 && s.Fees/s.Volume*100 > maxPlausibleFeeRate
+		feeUsable := feesSeen[s.Chain] && !unexplainedZero && !implausible
 
 		// Summable metrics: written under the real chain only. Their `all` is
 		// computed from the totals after this loop, never copied from one chain.
@@ -295,7 +340,11 @@ func publish(samples []sample, roster []string, maxAgeDays int, now time.Time) (
 			feesUSD.DeleteLabelValues(s.Platform, s.Chain)
 			feeRatePct.DeleteLabelValues(s.Platform, s.Chain)
 			feeRateHealth.WithLabelValues(s.Platform, s.Chain).Set(0)
-			if unexplainedZero {
+			// An implausible cell is withheld for the same reason as an
+			// unexplained zero: the platform does charge, the source just did
+			// not hand us a figure we can divide. Both are "not measured
+			// here", and neither is "charges nothing".
+			if unexplainedZero || implausible {
 				feeWithheld.WithLabelValues(s.Platform, s.Chain).Set(1)
 			} else {
 				feeWithheld.DeleteLabelValues(s.Platform, s.Chain)
@@ -350,14 +399,32 @@ func publish(samples []sample, roster []string, maxAgeDays int, now time.Time) (
 		volumeUSD.WithLabelValues(p, aggregateChain).Set(t.vol)
 		txns.WithLabelValues(p, aggregateChain).Set(t.tx)
 		avgTradeUSD.WithLabelValues(p, aggregateChain).Set(t.vol / t.tx)
-		if t.feeOK && t.feeVol > 0 {
+		coverage := 0.0
+		if t.vol > 0 {
+			coverage = t.feeVol / t.vol
+		}
+		feeCoveragePct.WithLabelValues(p).Set(coverage * 100)
+		if t.feeOK && t.feeVol > 0 && coverage >= minFeeCoverage {
 			feesUSD.WithLabelValues(p, aggregateChain).Set(t.fee)
 			feeRatePct.WithLabelValues(p, aggregateChain).Set(t.fee / t.feeVol * 100)
 			feeRateHealth.WithLabelValues(p, aggregateChain).Set(1)
+			feeWithheld.DeleteLabelValues(p, aggregateChain)
 		} else {
+			// Withheld, not zero: the platform may well charge a fee, we just
+			// cannot measure it over a denominator worth printing.
+			//
+			// The flag keys off whether the source reported a fee for this
+			// platform at all, not off whether that fee survived the gates. A
+			// platform whose only fee-bearing cell was rejected as implausible
+			// has no usable totals left, and keying off those totals would let
+			// it go silent, which reads as "no fee charged" on the page. It
+			// demonstrably charges something; we just cannot say what.
 			feesUSD.DeleteLabelValues(p, aggregateChain)
 			feeRatePct.DeleteLabelValues(p, aggregateChain)
 			feeRateHealth.WithLabelValues(p, aggregateChain).Set(0)
+			if platformFeesAnywhere[p] {
+				feeWithheld.WithLabelValues(p, aggregateChain).Set(1)
+			}
 		}
 		health.WithLabelValues(p, aggregateChain).Set(1)
 	}

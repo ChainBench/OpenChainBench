@@ -207,6 +207,34 @@ const nextConfig: NextConfig = {
           },
         ],
       },
+      {
+        // Provider marks are static files under `public/`, which Next
+        // serves as `max-age=0, must-revalidate` unless told otherwise.
+        // That means a browser holding every logo in its disk cache still
+        // asks the server about each one before it may paint it.
+        //
+        // It was harmless while a page carried a few dozen. /capital now
+        // references 158 distinct marks, so an ordinary visit opens 158
+        // conditional requests; measured from a machine next to the cdg1
+        // edge each 304 costs about 95 ms, and the marks render as empty
+        // circles until they land. 72 of those files arrived in September
+        // alone, which is why this turned slow recently rather than
+        // gradually.
+        //
+        // A day of silence, then a month of serving the cached copy while
+        // a fresh one is fetched behind it. Not `immutable`: these
+        // filenames are stable and their CONTENTS get replaced (Chainstack
+        // sent a new mark in #2910), so a year-long immutable cache would
+        // pin an old logo on every returning reader. A day is short enough
+        // that a swapped mark appears on its own.
+        source: "/logos/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=86400, stale-while-revalidate=2592000",
+          },
+        ],
+      },
     ];
   },
   async rewrites() {
@@ -342,7 +370,11 @@ const nextConfig: NextConfig = {
       // as views behind the pill bar; the hash opens the matching view.
       // The /hyperliquid and /perps hubs (no slug) are untouched.
       // The hub's own image routes (/hyperliquid/opengraph-image) must
-      // not match: a bare :slug would 308 them to a 404.
+      // not match: a bare :slug would 308 them to a 404. Same for the
+      // hub's own sub-pages: /hyperliquid/traders is the leaderboard
+      // audit, not a builder slug, and without the exclusion it 308s to
+      // /products/traders#hl, which does not exist. Any future sub-page
+      // of the hub has to be added here too.
       // Unlabeled builder addresses have no product page (hex slugs 404
       // by design); their old detail URLs land on the bench that lists them.
       {
@@ -351,7 +383,8 @@ const nextConfig: NextConfig = {
         permanent: true,
       },
       {
-        source: "/hyperliquid/:slug((?!opengraph-image|twitter-image|icon|apple-icon|0x).*)",
+        source:
+          "/hyperliquid/:slug((?!opengraph-image|twitter-image|icon|apple-icon|traders|0x).*)",
         destination: "/products/:slug#hl",
         permanent: true,
       },

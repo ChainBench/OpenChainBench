@@ -304,6 +304,61 @@ export function isDiverging(r: DivergenceCandidate): boolean {
   return signalOf(r) === "fees-up-token-down";
 }
 
+/**
+ * The denominator behind the divergence list.
+ *
+ * Without it a short list reads as a surveyed field that produced one
+ * answer, when the usual cause is that the screen had almost nothing to
+ * test. On 2026-10-04 the board carried 67 protocols: 33 of the 62
+ * testable ones grew fees past the threshold and 38 sat under their
+ * category median, both roughly half the field, while only 4 saw their
+ * token fall more than 10% against 39 that rose more than 10%. One row
+ * survived, and the binding clause was the market's direction, not the
+ * filter's strictness.
+ *
+ * Every count is over the same rows the table shows, so a reader can
+ * recompute all of them from it. Same lesson as the spec tokens: a count
+ * published without the set it was taken from is not a reading.
+ */
+export type DivergenceFunnel = {
+  /** Every protocol on the board. */
+  board: number;
+  /** Rows with all three readings present and a usable category median. */
+  testable: number;
+  /** Rows a sub-floor category disqualifies before any clause is tested. */
+  thinCategory: number;
+  /** Category names behind `thinCategory`, so the page can name them. */
+  thinCategoryNames: string[];
+  feesUp: number;
+  feesDown: number;
+  tokenDown: number;
+  tokenUp: number;
+  pfBelowMedian: number;
+  pfAboveMedian: number;
+};
+
+export function divergenceFunnel<T extends DivergenceCandidate & { category?: string | null }>(
+  rows: readonly T[],
+): DivergenceFunnel {
+  const complete = (r: T) =>
+    r.feeGrowth30dPct != null && r.priceChange30dPct != null && r.pfVsCategory != null;
+  const thin = rows.filter((r) => complete(r) && !categoryMedianUsable(r.categorySize));
+  const testable = rows.filter((r) => complete(r) && categoryMedianUsable(r.categorySize));
+  const n = (f: (r: T) => boolean) => testable.filter(f).length;
+  return {
+    board: rows.length,
+    testable: testable.length,
+    thinCategory: thin.length,
+    thinCategoryNames: [...new Set(thin.map((r) => r.category).filter((c): c is string => !!c))].sort(),
+    feesUp: n((r) => (r.feeGrowth30dPct as number) > SIGNAL_FEE_GROWTH_MIN_PCT),
+    feesDown: n((r) => (r.feeGrowth30dPct as number) < -SIGNAL_FEE_GROWTH_MIN_PCT),
+    tokenDown: n((r) => (r.priceChange30dPct as number) < -SIGNAL_PRICE_MOVE_MIN_PCT),
+    tokenUp: n((r) => (r.priceChange30dPct as number) > SIGNAL_PRICE_MOVE_MIN_PCT),
+    pfBelowMedian: n((r) => (r.pfVsCategory as number) < 1),
+    pfAboveMedian: n((r) => (r.pfVsCategory as number) > 1),
+  };
+}
+
 export function selectDivergences<T extends DivergenceCandidate>(rows: T[], limit = 5): T[] {
   return rows
     .filter(isDiverging)

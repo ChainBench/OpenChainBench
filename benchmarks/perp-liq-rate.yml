@@ -461,7 +461,7 @@ providers:
       series: perp_liq_rate_24h_pct{venue="gains"}
 
   - slug: gmx
-    name: GMX v2
+    name: GMX
     tag: Arbitrum synthetics; on-chain liquidation orders via the public squid
     formula: "24h sum of sizeDeltaUsd over executed tradeActions with orderType 7 (30-decimal USD, already priced at execution) over peak 24h OI from gmxinfra markets/info, as a percentage."
     queries:

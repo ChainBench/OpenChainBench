@@ -80,8 +80,14 @@ export async function POST(req: Request) {
   const gl = globalLimit("report", 60, 60);
   if (!gl.ok) return tooManyRequests(gl.retryAfterSec);
 
+  // Telegram first, Slack as the fallback it used to be. A report is one
+  // person telling us a number looks wrong, and it should land where someone
+  // actually reads it rather than in a channel nobody opens.
+  const tgToken = process.env.TELEGRAM_BOT_TOKEN;
+  const tgChat = process.env.TELEGRAM_CHAT_ID;
   const webhook = process.env.SLACK_REPORT_WEBHOOK_URL;
-  if (!webhook) {
+  const telegram = tgToken && tgChat ? { token: tgToken, chat: tgChat } : null;
+  if (!telegram && !webhook) {
     return NextResponse.json(
       { error: "Reporting is not configured." },
       { status: 503 }
@@ -176,8 +182,55 @@ export async function POST(req: Request) {
     ],
   };
 
+  if (telegram) {
+    // HTML, not Markdown: every interpolated value already went through
+    // slackSafe, which escapes &, < and > — exactly what Telegram's HTML
+    // mode needs. Markdown would need a different escape set and the two
+    // would drift.
+    const text =
+      `\u{1F41E} <b>New OpenChainBench report</b>\n\n` +
+      `<b>Bench</b> <code>${titleLine}</code>\n` +
+      `<b>Page</b> ${referer}\n\n` +
+      `${safeMessage}\n\n` +
+      `<i>Contact: ${safeContact ?? "not provided"}</i>\n` +
+      `<i>IP: ${ip}</i>\n` +
+      `<i>UA: ${ua}</i>`;
+    try {
+      const res = await fetch(
+        `https://api.telegram.org/bot${telegram.token}/sendMessage`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chat_id: telegram.chat,
+            text: text.slice(0, 4096), // Telegram's own message ceiling
+            parse_mode: "HTML",
+            disable_web_page_preview: true,
+          }),
+          signal: AbortSignal.timeout(5_000),
+        },
+      );
+      if (!res.ok) {
+        // Never log the body: it echoes the request, and the token is in
+        // the URL of the request we just made.
+        console.error("Telegram rejected report", res.status);
+        return NextResponse.json(
+          { error: "Could not deliver the report. Try again in a moment." },
+          { status: 502 }
+        );
+      }
+      return NextResponse.json({ ok: true });
+    } catch {
+      console.error("Telegram sendMessage failed");
+      return NextResponse.json(
+        { error: "Could not deliver the report. Try again in a moment." },
+        { status: 502 }
+      );
+    }
+  }
+
   try {
-    const slackRes = await fetch(webhook, {
+    const slackRes = await fetch(webhook!, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(slackPayload),

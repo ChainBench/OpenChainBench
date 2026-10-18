@@ -87,7 +87,7 @@ faq:
   - q: "Where does the asset class come from?"
     a: "From the venue itself whenever it publishes one: Extended's category and subCategory, Paradex's RWA tag, Aster's underlyingSubType, Ostium's pair group, Ondo's tags, Mobula's assetClass for Gains and Lighter. Hyperliquid HIP-3 dexes and dYdX publish none, so their symbols are matched against a fixed table of forex codes, commodity references and index names, and dYdX carries a reviewed list of its five non-crypto tickers."
   - q: "Why does Hyperliquid rank high when its own perps are crypto-only?"
-    a: "Because HIP-3 lets third-party deployers list perps on Hyperliquid's orderbook under a namespaced symbol (xyz:TSLA, mkts:US500, para:AVGO). Those markets settle on the same HyperBFT engine and are reachable from the same account, so the bench counts them as Hyperliquid markets. The core universe (BTC, ETH, SOL and the other 175 coins) contributes zero to the non-crypto count."
+    a: "Because HIP-3 lets third-party deployers list perps on Hyperliquid's orderbook under a namespaced symbol (xyz:TSLA, mkts:US500, para:AVGO). Those markets settle on the same HyperBFT engine and are reachable from the same account, so the bench counts them as Hyperliquid markets. The core universe (BTC, ETH, SOL and the other core coins) contributes zero to the non-crypto count."
   - q: "Does a market count if it only trades during exchange hours?"
     a: "Yes. Most stock and index perps on Extended, Aster and Hyperliquid HIP-3 trade 24/5 or follow the underlying exchange session; the bench counts listed markets, not open ones, so a Saturday reading equals a Tuesday reading. Execution conditions during closed sessions are outside this bench."
   - q: "How often does the count change?"
@@ -205,7 +205,7 @@ providers:
       series: perp_venue_noncore_markets_total{venue="dydx"}
 
   - slug: gmx-v2
-    name: GMX v2
+    name: GMX
     tag: Arbitrum and Avalanche pool perps, gold, silver, oil, gas, SPY, QQQ next to crypto
     formula: "Count of synthetic tokens in GET arbitrum-api.gmxinfra.io/tokens matched as commodity or index by the symbol table, plus the reviewed equity synthetics (SPCX). Live."
     queries:
@@ -270,3 +270,14 @@ providers:
       mean: avg_over_time(perp_venue_noncore_markets_total{venue="trade-xyz"}[24h])
       sample_size: count_over_time(perp_venue_noncore_markets_total{venue="trade-xyz"}[24h])
       series: perp_venue_noncore_markets_total{venue="trade-xyz"}
+  - slug: papertrade
+    name: Papertrade
+    tag: Hyperliquid, single house LP, BTC and ETH only
+    formula: "Non-crypto markets among the instruments listed by GET /state/trading."
+    queries:
+      p50: perp_venue_noncore_markets_total{venue="papertrade"}
+      p90: perp_venue_noncore_markets_total{venue="papertrade"}
+      p99: perp_venue_noncore_markets_total{venue="papertrade"}
+      mean: avg_over_time(perp_venue_noncore_markets_total{venue="papertrade"}[24h])
+      sample_size: count_over_time(perp_venue_noncore_markets_total{venue="papertrade"}[24h])
+      series: perp_venue_noncore_markets_total{venue="papertrade"}

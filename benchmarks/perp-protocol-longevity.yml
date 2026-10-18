@@ -162,7 +162,7 @@ providers:
       series: perp_protocol_days_clean{venue="paradex"}
 
   - slug: gmx
-    name: GMX v2
+    name: GMX
     tag: "Synthetics on Arbitrum, launched 2023-08-01, exploit 2025-07-09"
     formula: "Live counter: (current_unix - 2025-07-09T00:00:00Z) / 86400. Incident: reentrancy in vault and order-flow logic, est. USD 42 000 000, source coinperps.xyz post-mortem 2025-07-09. Counter restarts from incident date."
     queries:

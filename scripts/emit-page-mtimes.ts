@@ -48,6 +48,8 @@ const PAGES: string[] = [
   "products/[slug]/page.tsx",
   "compare/[slug]/page.tsx",
   "benchmarks/[slug]/page.tsx",
+  "tools/page.tsx",
+  "tools/perp-cost/page.tsx",
 ];
 
 function gitMtimeSeconds(rel: string): number | null {
