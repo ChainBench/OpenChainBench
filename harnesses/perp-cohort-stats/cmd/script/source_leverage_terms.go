@@ -196,8 +196,14 @@ func publishLeverageTerms(variants []venueTerms) {
 		for _, v := range variants {
 			lev := b.lev
 			if lev == 0 {
-				// "all" is the venue's own maximum, so each product is asked
-				// at its own ceiling and the best of them wins.
+				// "all" is the venue's own maximum: only the product that
+				// reaches the ceiling answers it, so the room sits next to the
+				// leverage the max leverage column prints. Gains' standard pair
+				// at 200x leaves more room than the degen pair at 500x, and
+				// letting it win printed 500x beside the 200x room.
+				if v.maxLev != ceiling {
+					continue
+				}
 				lev = v.maxLev
 			}
 			room, lost, kept, ok := termsAt(v, lev)

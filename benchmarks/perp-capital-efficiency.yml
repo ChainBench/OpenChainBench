@@ -42,7 +42,7 @@ abstract: |
 
 methodology:
   - "Cadence: every 5 minutes. Both active_markets and TVL are re-read on the same sweep cycle."
-  - "Active markets: native venue API per the perp-active-markets bench methodology. Gains: Mobula perp pairs catalog (mainnet only). Hyperliquid: info metaAndAssetCtxs. dYdX: indexer perpetualMarkets. Others: native endpoints."
+  - "Active markets: native venue API per the perp-active-markets bench methodology. Gains: its Arbitrum trading variables minus delisted pairs. Hyperliquid: info metaAndAssetCtxs. dYdX: indexer perpetualMarkets. Others: native endpoints."
   - "TVL: DefiLlama /protocol/{slug} currentChainTvls. Staking and pool2 keys excluded. Multi-chain TVL summed across all deployment chains."
   - "Gains TVL: GToken vault across Arbitrum, Base, Polygon and ApeChain. This is the shared liquidity pool that backs all synthetic pairs simultaneously."
   - "Hyperliquid TVL: total user deposits (USDC). Funds serve as both margin and implicit market-maker collateral; every listed pair draws from this pool for maker fills."
