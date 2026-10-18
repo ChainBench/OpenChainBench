@@ -19,7 +19,7 @@ reads on every SSR render of the perp pages.
 | `perp_venue_volume_30d_usd{venue}` | DefiLlama HTML | (none) |
 | `perp_venue_oi_usd{venue}` | HL native / Lighter native | DefiLlama HTML |
 | `perp_venue_fees_30d_usd{venue}` | DefiLlama HTML | (none) |
-| `perp_venue_active_markets{venue}` | HL native / Lighter native | DefiLlama HTML |
+| `perp_venue_active_markets{venue}` | HL native / Lighter native / Gains trading variables (delisted pairs excluded) | DefiLlama HTML |
 | `perp_venue_top_market_volume_24h_usd{venue}` | HL native / Lighter native | (none) |
 | `perp_venue_health{venue}` | derived per tick | n/a |
 | `perp_venue_funding_24h_bps{venue, asset}` | Mobula funding-rate | (none) |
