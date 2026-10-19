@@ -1124,6 +1124,15 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     description:
       "Web3 node service from Ant Digital Technologies (zan.top). Its keyless public Starknet endpoint is the one measured on the Starknet RPC page.",
   },
+  au: {
+    url: "https://au.cc",
+    description:
+      "Flare and Songbird FTSO data provider and delegation service. Runs a keyless public Songbird RPC, measured on the Songbird RPC page.",
+  },
+  "iotex-official": {
+    url: "https://iotex.io",
+    description: "IoTeX's own Babel EVM gateway (babel-api.mainnet.iotex.io), measured on the IoTeX RPC page beside its .one mirror.",
+  },
   onfinality: {
     url: "https://onfinality.io",
     description:

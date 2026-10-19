@@ -255,6 +255,22 @@ export function isDevOnlyRoute(path: string): boolean {
 }
 
 export const REMOVED_BENCH_SLUGS = new Set([
+  // Two chain RPC benches retired 2026-10-19: no keyless endpoint answers
+  // any more, re-tested by hand on the day.
+  //
+  //   swellchain   1 of 4 alive: Ankr now requires a key (403), Sentio 404,
+  //                Thirdweb refuses; only dRPC answers. Expired since 08-23.
+  //   superseed    0 of 3: the official RPC and Thirdweb both front Conduit,
+  //                which now demands a key (-32403); dRPC no longer serves
+  //                the chain (-32601). Stale since 10-14.
+  //
+  // A second keyless provider was searched for on both (PublicNode,
+  // Tenderly, OnFinality, Alchemy public, the chains' own hosts) and none
+  // answered. Specs, harness entries and /chains pages go; the slugs stay
+  // here so indexed URLs answer 410 Gone. Un-gate condition: two public
+  // endpoints on the chain that answer us.
+  "swellchain-rpc",
+  "superseed-rpc",
   // Blast (the L2) is being shut down, 2026-10-13. Its RPC bench goes,
   // and so does every row the chain held elsewhere: l2-block-time,
   // network-fees and chain-bridged-tvl, the /chains/blast page, the

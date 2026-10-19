@@ -17,7 +17,7 @@ seo_intro: |
   Injective is a Cosmos SDK L1 tuned for orderbook DEXs and DeFi, with native CosmWasm and EVM execution modules. Same Tendermint `status` probe used on the rest of the Cosmos cluster; every provider live-verified with 4 consecutive keyless probes at launch. Injective's `~0.65 s` block time is much faster than the Cosmos Hub / Osmosis norm, so the block-based staleness gap is deliberately wider (40 blocks = ~26 s) to avoid false-positive `stale` classifications during a fast leader turnover.
 
 abstract: |
-  Injective: {{count}} free public RPC endpoints answering `status` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}; the chain-official endpoint measures {{p50:injective-official}}.
+  Injective: {{count}} free public RPC endpoints answering `status` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}. The chain's own endpoint (tm.injective.network) answers 502 and left the cohort on 2026-10-19.
   We measure the round-trip latency of a single, identical JSON-RPC call (Tendermint `status`) against every no-key public Injective endpoint that sustains continuous probing, {{count}} providers live today, every 60 seconds, from us-east, eu-west and Singapore. The harness classifies every response (ok / http_err / jsonrpc_err / stale / timeout) with a Injective-scaled staleness gap (40 blocks at Injective's ~0.65 s block time). The cross-chain view lives on the parent `rpc-capabilities` benchmark; this page is the Injective-scoped answer with per-region breakdowns as a first-class dimension.
 
 methodology:
@@ -43,30 +43,6 @@ dimensions:
     - { value: sgp,     label: Singapore }
 
 providers:
-  - slug: injective-official
-    name: Injective Foundation
-    endpoint: https://tm.injective.network
-    tag: Injective Foundation's official public Tendermint RPC
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single Tendermint `status` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Injective Foundation's no-key injective RPC endpoint."
-    queries:
-      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="injective-official", chain="injective"})
-      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="injective-official", chain="injective"})
-      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="injective-official", chain="injective"})
-      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="injective-official", chain="injective"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="injective-official", chain="injective"}) / sum(ocb:rpc_call:rate_24h{provider="injective-official", chain="injective"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="injective-official", chain="injective"})
-      series: avg(avg_over_time(rpc_latency_milliseconds{provider="injective-official", chain="injective"}[1h]))
-      regions:
-        - region: us-east
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="injective-official", chain="injective", region="us-east"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="injective-official", chain="injective", region="us-east"}[1h])
-        - region: eu-west
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="injective-official", chain="injective", region="eu-west"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="injective-official", chain="injective", region="eu-west"}[1h])
-        - region: ap-southeast
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="injective-official", chain="injective", region="sgp"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="injective-official", chain="injective", region="sgp"}[1h])
-
   - slug: publicnode
     name: PublicNode
     endpoint: https://injective-rpc.publicnode.com

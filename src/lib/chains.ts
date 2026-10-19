@@ -79,15 +79,6 @@ export const CHAINS: ChainEntry[] = [
       "Neo's EVM-compatible sidechain (chain 47763). Two of its three keyless endpoints are hostnames of one operator, Bane Labs, so they do not fail independently.",
   },
   {
-    slug: "superseed",
-    label: "Superseed",
-    category: "L2",
-    nativeSymbol: "SUPR",
-    website: "https://www.superseed.xyz",
-    description:
-      "OP Stack Layer 2 (chain 5330). Standard Ethereum JSON-RPC surface; PublicNode carries no route, so the keyless roster is official plus two gateways.",
-  },
-  {
     slug: "tac",
     label: "TAC",
     category: "L1",
@@ -623,14 +614,6 @@ export const CHAINS: ChainEntry[] = [
     nativeSymbol: "ETH",
     description:
       "OP Stack L2 (chain 1135) operated by Onchain Foundation (formerly Lisk Foundation), focused on emerging-market Web3 adoption, ETH gas token, ~2 s block cadence, blob calldata settlement on Ethereum.",
-  },
-  {
-    slug: "swellchain",
-    label: "Swellchain",
-    category: "L2",
-    nativeSymbol: "ETH",
-    description:
-      "OP Stack L2 (chain 1923) operated by Swell Network, the restaking-native rollup built on EigenLayer, ETH gas token, ~2 s block cadence, blob calldata settlement on Ethereum.",
   },
   {
     slug: "cyber",

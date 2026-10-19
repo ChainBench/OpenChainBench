@@ -14,7 +14,7 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  Union is a trust-minimised, zero-knowledge cross-chain protocol built on a custom Cosmos SDK chain (chain ID union-1). It enables secure interoperability between Cosmos, EVM, and other ecosystems via ZK proof-based consensus verification, with no external validators or multisigs required. The chain uses the standard Tendermint RPC interface; block height is fetched via the /status endpoint. Public keyless RPC nodes are provided by Nodes.Guru, Stake And Relax, and High Stakes. Every provider was live-verified with consecutive block-height probes at launch.
+  Union is a trust-minimised, zero-knowledge cross-chain protocol built on a custom Cosmos SDK chain (chain ID union-1). It enables secure interoperability between Cosmos, EVM, and other ecosystems via ZK proof-based consensus verification, with no external validators or multisigs required. The chain uses the standard Tendermint RPC interface; block height is fetched via the /status endpoint. Public keyless RPC nodes are provided by Nodes.Guru and Stake And Relax. Every provider was live-verified with consecutive block-height probes at launch.
 
 abstract: |
   Union: {{count}} free public RPC endpoints answering `GET /status` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}.
@@ -28,7 +28,7 @@ methodology:
 
 faq:
   - q: "Which Union RPC endpoints work without an API key?"
-    a: "{{declared_count}} endpoints are probed on this chain: Nodes.Guru (rpc-1.union.nodes.guru), Stake And Relax (union-rpc.stakeandrelax.net), and High Stakes (union-rpc.highstakes.ch). Every listed endpoint was live-verified before inclusion."
+    a: "{{declared_count}} endpoints are probed on this chain: Nodes.Guru (rpc-1.union.nodes.guru) and Stake And Relax (union-rpc.stakeandrelax.net). Every listed endpoint was live-verified before inclusion."
   - q: "What is Union and why does its RPC latency matter?"
     a: "Union is a ZK-based cross-chain interoperability protocol with a native Cosmos SDK chain (union-1). It connects blockchains without widely used intermediaries by verifying consensus proofs on-chain. Developers building cross-chain applications, bridges, or omnichain protocols on Union need reliable low-latency RPC access to query transactions, proofs, and chain state."
   - q: "What makes Union different from other cross-chain protocols?"
@@ -98,26 +98,3 @@ providers:
           p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="stakeandrelax", chain="union", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="stakeandrelax", chain="union", region="sgp"}[1h])
 
-  - slug: highstakes
-    name: High Stakes
-    endpoint: https://union-rpc.highstakes.ch
-    tag: High Stakes public Union RPC, no API key required
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a GET /status sent every 60s from 3 regions to union-rpc.highstakes.ch."
-    queries:
-      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="highstakes", chain="union"})
-      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="highstakes", chain="union"})
-      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="highstakes", chain="union"})
-      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="highstakes", chain="union"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="highstakes", chain="union"}) / sum(ocb:rpc_call:rate_24h{provider="highstakes", chain="union"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="highstakes", chain="union"})
-      series: avg(avg_over_time(rpc_latency_milliseconds{provider="highstakes", chain="union"}[1h]))
-      regions:
-        - region: us-east
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="highstakes", chain="union", region="us-east"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="highstakes", chain="union", region="us-east"}[1h])
-        - region: eu-west
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="highstakes", chain="union", region="eu-west"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="highstakes", chain="union", region="eu-west"}[1h])
-        - region: ap-southeast
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="highstakes", chain="union", region="sgp"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="highstakes", chain="union", region="sgp"}[1h])

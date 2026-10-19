@@ -115,26 +115,3 @@ providers:
           p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="lavenderfive", chain="axelar", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="lavenderfive", chain="axelar", region="sgp"}[1h])
 
-  - slug: autostake
-    name: AutoStake
-    endpoint: https://axelar-mainnet-rpc.autostake.com:443
-    tag: AutoStake community Cosmos RPC operator
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single Tendermint status POST sent every 60s from 3 regions (us-east + eu-west + sgp) to AutoStake's no-key Axelar RPC endpoint."
-    queries:
-      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="autostake", chain="axelar"})
-      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="autostake", chain="axelar"})
-      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="autostake", chain="axelar"})
-      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="autostake", chain="axelar"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="autostake", chain="axelar"}) / sum(ocb:rpc_call:rate_24h{provider="autostake", chain="axelar"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="autostake", chain="axelar"})
-      series: avg(avg_over_time(rpc_latency_milliseconds{provider="autostake", chain="axelar"}[1h]))
-      regions:
-        - region: us-east
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="autostake", chain="axelar", region="us-east"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="autostake", chain="axelar", region="us-east"}[1h])
-        - region: eu-west
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="autostake", chain="axelar", region="eu-west"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="autostake", chain="axelar", region="eu-west"}[1h])
-        - region: ap-southeast
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="autostake", chain="axelar", region="sgp"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="autostake", chain="axelar", region="sgp"}[1h])

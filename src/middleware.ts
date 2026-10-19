@@ -85,6 +85,8 @@ export function middleware(req: NextRequest) {
 export const config = {
   matcher: [
     "/benchmarks/blast-rpc",
+    "/benchmarks/swellchain-rpc",
+    "/benchmarks/superseed-rpc",
     "/benchmarks/quicksilver-rpc",
     "/benchmarks/thundercore-rpc",
     "/benchmarks/canto-rpc",
