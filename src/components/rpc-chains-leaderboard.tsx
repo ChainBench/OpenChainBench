@@ -178,7 +178,7 @@ export function RpcChainsLeaderboard({
             className="text-[11px] text-ink-faint"
             style={{ fontFamily: "var(--font-mono, monospace)" }}
           >
-            {filtered.length} of {rows.length} chains · 24h p50, {scopeNote}
+            {filtered.length} of {rows.length} chains measured · 24h p50, {scopeNote}
           </p>
           {geoControl}
         </div>

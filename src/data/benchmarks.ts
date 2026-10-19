@@ -10,6 +10,7 @@ import path from "node:path";
 import yaml from "js-yaml";
 import { cache } from "react";
 import { leader } from "@/lib/citation";
+import { valueQualifier } from "@/lib/value-window";
 import { downsample, MINI_CHART_MAX_LINES, MINI_CHART_POINTS } from "@/lib/downsample";
 import type { Benchmark, BenchIndexEntry } from "@/types/benchmark";
 import { loadBenchIndexFromBlob } from "@/lib/bench-blob";
@@ -61,6 +62,22 @@ export type BenchmarkCardData = {
    *  insufficient, or every provider below the reliability floor with
    *  an empty live pool). */
   leaderSlug: string | null;
+  /** Display name of that leader, so the card can say whose number it is
+   *  showing. The card rendered `leader.ms.p50` under the label "Field
+   *  composite · P50" on all 200 tiles: on bridge-quote-latency that printed
+   *  Mobula's 47 ms as the field's median while the field's real median, from
+   *  the eight rows the bench page serves, is 315 ms. An engine quoting the
+   *  catalogue overstated the field by 6.6 times. */
+  leaderName: string | null;
+  /** How to describe the headline number, from valueQualifier: "p50, 24h",
+   *  "latest value", "7d avg". Never assumed. */
+  qualifier: string;
+  /** The bench's own window, for the chip and the sample-count footer. The
+   *  card hard-coded "24H" and "samples in the last 24 hours", which was
+   *  wrong on every 7d bench: bridge-execution-latency reads 1.44 s over 7
+   *  days and 89 samples, and the sr-only text, the copy written for
+   *  machines, said 24 hours. */
+  win: string;
   results: {
     slug: string;
     name: string;
@@ -93,6 +110,9 @@ export function toBenchmarkCardData(b: Benchmark): BenchmarkCardData {
     lastRunAt: b.lastRunAt,
     metric: b.metric,
     leaderSlug: leader(b)?.slug ?? null,
+    leaderName: leader(b)?.name ?? null,
+    qualifier: valueQualifier(b),
+    win: b.chart?.windowLabel ?? b.window ?? "24h",
     results: b.results.map((r) => ({
       slug: r.slug,
       name: r.name,

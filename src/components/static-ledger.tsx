@@ -17,6 +17,7 @@ import { rankedCandidates, rpcChainLabel } from "@/lib/citation";
 import { countRows, nounFor, nounLabel } from "@/lib/row-noun";
 import { valueColumnLabel, valueQualifier } from "@/lib/value-window";
 import type { Benchmark } from "@/types/benchmark";
+import { rateDecimals } from "@/lib/sample-precision";
 
 /** How many metric panels the server table carries. Three keeps the row
  *  readable at phone width next to the rank, name, headline and success
@@ -161,8 +162,19 @@ export function StaticLedger({ benchmark }: { benchmark: Benchmark }) {
                     </td>
                   );
                 })}
+                {/* Same precision rule as the interactive table. This column
+                    printed two decimals regardless of sample size, so
+                    bridge-execution-latency served "100.00 %" on 17 to 27
+                    executions, where a single failure moves the rate by 3.7 to
+                    5.9 points. This is the table a crawler reads, so it was
+                    the copy claiming the certainty. */}
                 {showReliability && (
-                  <td className="py-2 pl-3 text-right tabular-nums text-ink-soft">{r.successRate.toFixed(2)}%</td>
+                  <td className="py-2 pl-3 text-right tabular-nums text-ink-soft">
+                    {r.successRate.toFixed(rateDecimals(r.sampleSize))}%
+                    {r.sampleSize != null && (
+                      <span className="text-ink-faint"> (n={Math.round(r.sampleSize)})</span>
+                    )}
+                  </td>
                 )}
               </tr>
               </Fragment>
