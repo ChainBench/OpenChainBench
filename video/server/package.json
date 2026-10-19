@@ -1,0 +1,10 @@
+{
+  "name": "openchainbench-video-renderer",
+  "type": "module",
+  "version": "1.0.0",
+  "private": true,
+  "main": "server.mjs",
+  "dependencies": {
+    "express": "^5.2.1"
+  }
+}
