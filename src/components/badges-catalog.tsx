@@ -116,6 +116,7 @@ export function BadgesCatalog({ pairs }: { pairs: BadgePair[] }) {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search provider or benchmark"
+            aria-label="Search provider or benchmark"
             className="w-full pl-8 pr-3 py-2 text-sm bg-surface border border-rule rounded-md focus:outline-none focus:border-ink/40 placeholder:text-ink-faint transition-colors"
           />
         </label>
