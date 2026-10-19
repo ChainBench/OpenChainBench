@@ -92,14 +92,15 @@ groups:
           kind: all
           scope: all
       # Served ratio: per-asset polls that came back with a usable price, over
-      # every poll not lost to our own reference. A rate limit or an HTTP error
-      # counts against the provider; a missing exchange mid does not.
+      # every poll not lost on our side. A rate limit or an HTTP error counts
+      # against the provider; a missing exchange mid or an answer lost in our
+      # proxy before any HTTP status does not.
       - record: ocb:price_api_success:ratio_24h
-        expr: sum by (provider, kind) (label_replace(increase(price_api_asset_polls_total{status="ok"}[24h]), "kind", "$1", "asset", "(.*)")) / sum by (provider, kind) (label_replace(increase(price_api_asset_polls_total{status!="no_reference"}[24h]), "kind", "$1", "asset", "(.*)"))
+        expr: sum by (provider, kind) (label_replace(increase(price_api_asset_polls_total{status="ok"}[24h]), "kind", "$1", "asset", "(.*)")) / sum by (provider, kind) (label_replace(increase(price_api_asset_polls_total{status!~"no_reference|probe_error"}[24h]), "kind", "$1", "asset", "(.*)"))
         labels:
           scope: asset
       - record: ocb:price_api_success:ratio_24h
-        expr: sum by (provider) (increase(price_api_asset_polls_total{status="ok"}[24h])) / sum by (provider) (increase(price_api_asset_polls_total{status!="no_reference"}[24h]))
+        expr: sum by (provider) (increase(price_api_asset_polls_total{status="ok"}[24h])) / sum by (provider) (increase(price_api_asset_polls_total{status!~"no_reference|probe_error"}[24h]))
         labels:
           kind: all
           scope: all

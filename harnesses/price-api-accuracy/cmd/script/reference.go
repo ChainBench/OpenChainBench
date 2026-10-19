@@ -103,33 +103,62 @@ func (r *reference) poll(ctx context.Context) {
 		}(asset, product)
 	}
 
-	var usdt float64
+	// USDT/USD comes from two venues in their own requests, so losing
+	// Kraken's USD pairs does not also drop Binance from the median.
+	usdts := []float64{}
+	addUSDT := func(m float64) {
+		if m > 0.9 && m < 1.1 {
+			mu.Lock()
+			usdts = append(usdts, m)
+			mu.Unlock()
+		}
+	}
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		pairs := []string{"USDTZUSD"}
+		var t struct{ Bid, Ask string }
+		if err := getJSON(cctx, nil, "https://api.exchange.coinbase.com/products/USDT-USD/ticker", nil, &t); err == nil {
+			addUSDT(midOf(t.Bid, t.Ask))
+		}
+	}()
+	type krakenTicker struct {
+		Error  []string
+		Result map[string]struct {
+			A []string `json:"a"`
+			B []string `json:"b"`
+		}
+	}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		var k krakenTicker
+		if err := getJSON(cctx, nil, "https://api.kraken.com/0/public/Ticker?pair=USDTZUSD", nil, &k); err == nil && len(k.Error) == 0 {
+			if v, ok := k.Result["USDTZUSD"]; ok && len(v.A) > 0 && len(v.B) > 0 {
+				addUSDT(midOf(v.B[0], v.A[0]))
+			}
+		}
+	}()
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		pairs := make([]string, 0, len(krakenPair))
 		for _, p := range krakenPair {
 			pairs = append(pairs, p)
 		}
-		var k struct {
-			Error  []string
-			Result map[string]struct {
-				A []string `json:"a"`
-				B []string `json:"b"`
-			}
-		}
+		sort.Strings(pairs)
+		var k krakenTicker
 		if err := getJSON(cctx, nil, "https://api.kraken.com/0/public/Ticker?pair="+strings.Join(pairs, ","), nil, &k); err != nil {
 			return
+		}
+		// Kraken answers 200 with an error array when it rejects a pair;
+		// the result is then partial or empty, and the log says why.
+		if len(k.Error) > 0 {
+			log.Printf("reference: kraken: %v", k.Error)
 		}
 		for asset, pair := range krakenPair {
 			if v, ok := k.Result[pair]; ok && len(v.A) > 0 && len(v.B) > 0 {
 				add(asset, midOf(v.B[0], v.A[0]))
 			}
-		}
-		if v, ok := k.Result["USDTZUSD"]; ok && len(v.A) > 0 && len(v.B) > 0 {
-			mu.Lock()
-			usdt = midOf(v.B[0], v.A[0])
-			mu.Unlock()
 		}
 	}()
 
@@ -155,7 +184,8 @@ func (r *reference) poll(ctx context.Context) {
 
 	// Binance enters only once USDT is priced: a USDT book without the
 	// conversion is the 12 bps bias this reference exists to remove.
-	if usdt > 0.9 && usdt < 1.1 {
+	if len(usdts) > 0 {
+		usdt := median(usdts)
 		usdtUSD.Set(usdt)
 		for _, b := range binance {
 			asset := strings.TrimSuffix(b.Symbol, "USDT")

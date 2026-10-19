@@ -39,7 +39,7 @@ var (
 
 	assetPolls = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "price_api_asset_polls_total",
-		Help: "Per-asset outcome of each poll: ok (scored), missing (no usable price in the answer), failed (request failed), no_reference (exchange mid unavailable, not the provider's fault).",
+		Help: "Per-asset outcome of each poll: ok (scored), missing (no usable price in the answer), failed (request failed), no_reference (exchange mid unavailable) and probe_error (lost in our proxy before any HTTP status). The last two are ours, not the provider's.",
 	}, []string{"provider", "asset", "status"})
 
 	referenceMid = promauto.NewGaugeVec(prometheus.GaugeOpts{
@@ -54,7 +54,7 @@ var (
 
 	usdtUSD = promauto.NewGauge(prometheus.GaugeOpts{
 		Name: "price_api_usdt_usd",
-		Help: "USDT/USD mid on Kraken, used to convert Binance's USDT books to USD.",
+		Help: "USDT/USD mid (median of Coinbase and Kraken), used to convert Binance's USDT books to USD.",
 	})
 
 	pollInterval = promauto.NewGaugeVec(prometheus.GaugeOpts{

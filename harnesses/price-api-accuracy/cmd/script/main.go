@@ -15,6 +15,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log"
 	"net/http"
 	"os"
@@ -86,31 +87,49 @@ func pollOnce(ctx context.Context, p provider, ref *reference) {
 	got := time.Now()
 	if err != nil {
 		status := classify(err)
-		requests.WithLabelValues(p.slug, status).Inc()
+		var counted countedError
+		if !errors.As(err, &counted) {
+			requests.WithLabelValues(p.slug, status).Inc()
+		}
+		// Through the proxy, an answer that never arrived (no HTTP status)
+		// is lost on our side of the wire and must not read as the
+		// provider failing. An HTTP status, 429 included, is the provider's.
+		pollStatus := "failed"
+		var hs httpStatusError
+		if p.viaProxy && !errors.As(err, &hs) {
+			pollStatus = "probe_error"
+		}
 		for _, a := range p.assets {
-			assetPolls.WithLabelValues(p.slug, strings.ToLower(a), "failed").Inc()
+			al := strings.ToLower(a)
+			assetPolls.WithLabelValues(p.slug, al, pollStatus).Inc()
+			forgetLast(p.slug, al)
 		}
 		log.Printf("%s: %s: %v", p.slug, status, err)
 		return
 	}
 	requests.WithLabelValues(p.slug, "ok").Inc()
 
-	snap, ok := ref.at(got)
 	for _, a := range p.assets {
 		q, served := quotes[a]
 		al := strings.ToLower(a)
 		if !served || !(q.price > 0) {
 			assetPolls.WithLabelValues(p.slug, al, "missing").Inc()
+			forgetLast(p.slug, al)
 			continue
+		}
+		arrived := got
+		if !q.at.IsZero() {
+			arrived = q.at
 		}
 		price.WithLabelValues(p.slug, al).Set(q.price)
 		if !q.ts.IsZero() {
-			age := got.Sub(q.ts).Seconds()
+			age := arrived.Sub(q.ts).Seconds()
 			if age < 0 {
 				age = 0
 			}
 			priceAge.WithLabelValues(p.slug, al).Set(age)
 		}
+		snap, ok := ref.at(arrived)
 		mid, haveMid := snap.mids[a]
 		if !ok || !haveMid {
 			// No reference close enough in time to score against. Counted
@@ -123,6 +142,16 @@ func pollOnce(ctx context.Context, p provider, ref *reference) {
 		signedDeviation.WithLabelValues(p.slug, al).Set(bps)
 		assetPolls.WithLabelValues(p.slug, al, "ok").Inc()
 	}
+}
+
+// forgetLast drops the last-value gauges of a (provider, asset) the moment a
+// poll yields no price for it. A gauge otherwise keeps its last value for as
+// long as the process lives, and a provider whose key was revoked would go
+// on printing a bias and a price age on the page for a whole 24h window.
+func forgetLast(provider, asset string) {
+	signedDeviation.DeleteLabelValues(provider, asset)
+	priceAge.DeleteLabelValues(provider, asset)
+	price.DeleteLabelValues(provider, asset)
 }
 
 func abs(x float64) float64 {

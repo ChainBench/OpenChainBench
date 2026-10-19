@@ -32,6 +32,13 @@ type httpStatusError struct{ code int }
 
 func (e httpStatusError) Error() string { return fmt.Sprintf("http %d", e.code) }
 
+// countedError wraps an error whose request was already counted in
+// requests_total by a fetcher that makes several calls per round.
+type countedError struct{ err error }
+
+func (e countedError) Error() string { return e.err.Error() }
+func (e countedError) Unwrap() error { return e.err }
+
 type decodeError struct{ err error }
 
 func (e decodeError) Error() string { return "decode: " + e.err.Error() }

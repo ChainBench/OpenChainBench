@@ -40,7 +40,9 @@ hour. Polling less often gives fewer samples of the same distribution, not a
 different score.
 
 CoinGecko's keyless API answers 429 to the VPS's shared address, so it is
-reached through a proxy. That is why the bench publishes no latency.
+reached through a proxy. That is why the bench publishes no latency, and why
+a CoinGecko request that dies without an HTTP status is counted as
+`probe_error` (ours) rather than `failed` (theirs). A 429 is still theirs.
 
 Mobula is addressed by numeric asset id. By name, "Bitcoin" resolved to a
 different token priced at 9e-14 USD in 3 of 66 internal polls.
@@ -59,7 +61,7 @@ price_api_signed_deviation_bps{provider, asset}     gauge, last signed gap
 price_api_price_usd{provider, asset}                gauge
 price_api_price_age_seconds{provider, asset}        gauge, from the provider's own stamp
 price_api_requests_total{provider, status}          counter
-price_api_asset_polls_total{provider, asset, status} counter: ok, missing, failed, no_reference
+price_api_asset_polls_total{provider, asset, status} counter: ok, missing, failed, no_reference, probe_error
 price_api_reference_mid_usd{asset}                  gauge
 price_api_reference_sources{asset}                  gauge
 price_api_usdt_usd                                  gauge

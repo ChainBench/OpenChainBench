@@ -45,7 +45,7 @@ abstract: |
   address, and a latency column would publish the proxy.
 
 methodology:
-  - "Reference: the median of three exchange mids, Coinbase (USD), Kraken (USD) and Binance (USDT converted at Kraken's USDT/USD mid), refreshed every five seconds. An asset enters a snapshot only when two venues priced it, and an answer is scored against the snapshot nearest the moment it arrived, within six seconds. A poll with no reference that close is counted apart and never against the provider."
+  - "Reference: the median of three exchange mids, Coinbase (USD), Kraken (USD) and Binance (USDT converted at Kraken's USDT/USD mid), refreshed every five seconds. An asset enters a snapshot only when two venues priced it, and an answer is scored against the snapshot nearest the moment it arrived, within six seconds. A poll with no reference that close, or lost in our proxy before any HTTP status, is counted apart and never against the provider."
   - "The headline is the median absolute gap over 24 hours, pooled across the assets a provider serves, in basis points. The asset tabs give the same figure per coin, which is the like for like comparison. The bias column is the mean signed gap: positive means the API prints above the market."
   - "Each provider is polled on the cadence its quota allows: every 30 seconds to every 20 minutes. Fewer polls give fewer samples of the same distribution, not a different score, and the sample column shows how many answers each row rests on."
   - "Price age comes from the provider's own last-updated stamp, read at the moment the answer arrived. A provider that publishes no stamp shows a dash, which does not mean its price is fresh."

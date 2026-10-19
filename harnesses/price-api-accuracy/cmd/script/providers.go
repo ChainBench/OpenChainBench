@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -17,14 +18,18 @@ var majors = []string{"BTC", "ETH", "SOL", "BNB", "XRP", "ADA", "DOGE", "AVAX", 
 type quote struct {
 	price float64
 	ts    time.Time // provider's own last-updated stamp; zero when it publishes none
+	at    time.Time // when this answer arrived; zero means the end of the fetch
 }
 
 type provider struct {
-	slug           string
-	interval       time.Duration
-	startDelay     time.Duration
-	assets         []string
-	fetch          func(ctx context.Context) (map[string]quote, error)
+	slug       string
+	interval   time.Duration
+	startDelay time.Duration
+	assets     []string
+	fetch      func(ctx context.Context) (map[string]quote, error)
+	// viaProxy marks a provider reached through our proxy: a transport error
+	// there is the proxy's, not the provider's, and is counted apart.
+	viaProxy       bool
 	enabled        bool
 	disabledReason string
 }
@@ -55,6 +60,7 @@ func providers(cfg config) []provider {
 		if cfg.coingeckoKey == "" {
 			if c, err := proxyClient(cfg.coingeckoProxy); err == nil {
 				client = c
+				cg.viaProxy = true
 			} else {
 				cg.disabledReason = "COINGECKO_PROXY_URL invalid"
 			}
@@ -216,21 +222,28 @@ func fetchCoinPaprika(ctx context.Context) (map[string]quote, error) {
 		}
 		if err := getJSON(ctx, nil, "https://api.coinpaprika.com/v1/tickers/"+paprikaID[a], nil, &r); err != nil {
 			lastErr = err
-			// A rate limit stops the round: the next calls would only
-			// deepen it.
-			if classify(err) == "rate_limited" {
+			// The round is nine calls; a failed one is counted on its own,
+			// so a rate limit half-way shows in requests_total instead of
+			// hiding behind the round's partial success.
+			status := classify(err)
+			requests.WithLabelValues("coinpaprika", status).Inc()
+			log.Printf("coinpaprika %s: %s: %v", a, status, err)
+			if status == "rate_limited" {
 				break
 			}
 			continue
 		}
-		q := quote{price: r.Quotes.USD.Price}
+		// Each answer carries its own arrival time: the round spans nine
+		// sequential calls and the first must not be scored against the
+		// reference of the last.
+		q := quote{price: r.Quotes.USD.Price, at: time.Now()}
 		if t, err := time.Parse(time.RFC3339, r.LastUpdated); err == nil {
 			q.ts = t
 		}
 		out[a] = q
 	}
 	if len(out) == 0 && lastErr != nil {
-		return nil, lastErr
+		return nil, countedError{lastErr}
 	}
 	return out, nil
 }
@@ -335,29 +348,58 @@ func fetchCodex(ctx context.Context, key string) (map[string]quote, error) {
 	}
 	q := fmt.Sprintf(`{getTokenPrices(inputs:[%s]){address networkId priceUsd timestamp}}`, strings.Join(inputs, ","))
 	var r struct {
-		Data struct {
+		Data *struct {
 			GetTokenPrices []*struct {
+				Address   string  `json:"address"`
+				NetworkID int     `json:"networkId"`
 				PriceUsd  float64 `json:"priceUsd"`
 				Timestamp int64   `json:"timestamp"`
 			} `json:"getTokenPrices"`
 		} `json:"data"`
+		Errors []struct {
+			Message string `json:"message"`
+		} `json:"errors"`
 	}
 	if err := postJSON(ctx, nil, "https://graph.codex.io/graphql", map[string]string{"Authorization": key},
 		map[string]string{"query": q}, &r); err != nil {
 		return nil, err
 	}
+	// GraphQL reports auth and quota failures as 200 with an errors array.
+	if len(r.Errors) > 0 || r.Data == nil {
+		msg := "no data"
+		if len(r.Errors) > 0 {
+			msg = r.Errors[0].Message
+		}
+		return nil, fmt.Errorf("graphql: %s", msg)
+	}
 	out := map[string]quote{}
-	for i, p := range r.Data.GetTokenPrices {
-		if p == nil || i >= len(assets) {
+	for _, p := range r.Data.GetTokenPrices {
+		if p == nil {
+			continue
+		}
+		a, ok := twinAsset(fmt.Sprint(p.NetworkID), p.Address, func(t onchainToken) string { return fmt.Sprint(t.codexNetwork) })
+		if !ok {
 			continue
 		}
 		qq := quote{price: p.PriceUsd}
 		if p.Timestamp > 0 {
 			qq.ts = time.Unix(p.Timestamp, 0)
 		}
-		out[assets[i]] = qq
+		out[a] = qq
 	}
 	return out, nil
+}
+
+// twinAsset maps an answer back to its asset by network and address, never
+// by position: a response that drops or reorders an entry would otherwise
+// score one coin's price against another coin's mid.
+func twinAsset(network, address string, netOf func(onchainToken) string) (string, bool) {
+	for a, t := range onchainTwin {
+		if netOf(t) == network && strings.EqualFold(t.address, address) {
+			return a, true
+		}
+	}
+	return "", false
 }
 
 func fetchSerialized(ctx context.Context, key string) (map[string]quote, error) {
@@ -370,6 +412,8 @@ func fetchSerialized(ctx context.Context, key string) (map[string]quote, error) 
 	var r struct {
 		Data []struct {
 			Data *struct {
+				Chain    string  `json:"chain"`
+				Address  string  `json:"address"`
 				PriceUsd float64 `json:"priceUsd"`
 			} `json:"data"`
 		} `json:"data"`
@@ -379,11 +423,15 @@ func fetchSerialized(ctx context.Context, key string) (map[string]quote, error) 
 		return nil, err
 	}
 	out := map[string]quote{}
-	for i, slot := range r.Data {
-		if slot.Data == nil || i >= len(assets) {
+	for _, slot := range r.Data {
+		if slot.Data == nil {
 			continue
 		}
-		out[assets[i]] = quote{price: slot.Data.PriceUsd}
+		a, ok := twinAsset(strings.ToLower(slot.Data.Chain), slot.Data.Address, func(t onchainToken) string { return t.serializedChain })
+		if !ok {
+			continue
+		}
+		out[a] = quote{price: slot.Data.PriceUsd}
 	}
 	return out, nil
 }
