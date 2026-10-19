@@ -341,6 +341,7 @@ export function RpcMapClient() {
           <input
             value={chainQuery}
             onChange={(e) => setChainQuery(e.target.value)}
+            aria-label="Search benchmarked chains"
             placeholder={
               FEATURED.includes(chain)
                 ? `Search ${RPC_DIRECTORY.length} chains…`
