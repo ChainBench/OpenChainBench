@@ -448,7 +448,7 @@ export async function specToBenchmark(
       if (spec.score_scope === "full_coverage") {
         const labels: Record<string, string> = {};
         for (const d of fullSpec.dimensions?.chain ?? []) labels[d.value] = d.label;
-        applyFullCoverageScope(live.results, providers, labels);
+        applyFullCoverageScope(live.results, providers, labels, valuesByChain);
       }
     }
 
@@ -615,27 +615,61 @@ export function applyFullCoverageScope(
   results: ProviderResult[],
   providersPerChain: Record<string, string[]>,
   chainLabels: Record<string, string>,
+  valuesByChain: Record<string, Record<string, number>>,
 ): void {
   const chains = Object.keys(providersPerChain).filter(
     (c) => (providersPerChain[c]?.length ?? 0) > 0,
   );
   if (chains.length < 2) return;
+  const live = results.filter((r) => r.availability !== "unavailable");
+  if (live.length < 2) return;
+
+  // The common basket: chains at least half the live providers cover.
+  //
+  // Demanding every chain is too blunt. Robinhood joined bench 033 on
+  // 2026-10-17 with three providers, and requiring it unranked Mobula,
+  // Bebop and CoW as well, each covering four of five and each exactly
+  // the comparison a reader wants, leaving two names on the board. A
+  // chain that most of the field does not reach is not the ground the
+  // comparison stands on; it is a tab of its own.
+  // Strictly more than half, not at least half: Robinhood carries exactly
+  // three of this bench's six live providers, and "at least" let it back
+  // into the basket, which made the whole rule a no-op.
+  const common = chains.filter(
+    (c) => (providersPerChain[c]?.length ?? 0) * 2 > live.length,
+  );
+  // Nothing to narrow: every chain is shared, or none is. Either way
+  // rescoring would say nothing the headline does not already say.
+  if (common.length === 0 || common.length === chains.length) return;
+
   for (const r of results) {
     if (r.availability === "unavailable" || r.unrankedLabel) continue;
     const slug = r.slug.toLowerCase();
-    const covered = chains.filter((c) =>
+    const inBasket = common.filter((c) =>
       (providersPerChain[c] ?? []).some((s) => s.toLowerCase() === slug),
     );
-    if (covered.length === 0 || covered.length === chains.length) continue;
-    const label =
-      covered.length === 1
-        ? `${chainLabels[covered[0]] ?? covered[0]} only`
-        : `${covered.length} of ${chains.length} chains`;
-    // The 20-char ceiling is enforced on the spec field; this one is
-    // generated, so clamp rather than trust the chain's display name.
-    r.unrankedLabel =
-      label.length > 20 ? `${covered.length}/${chains.length} chains` : label;
-    r.ms = { p50: 0, p90: 0, p99: 0, mean: 0 };
+    if (inBasket.length === 0) {
+      // Measured, but on no chain the field shares: it cannot be ranked
+      // against them. Name what it does cover so the row still informs.
+      const own = chains.filter((c) =>
+        (providersPerChain[c] ?? []).some((s) => s.toLowerCase() === slug),
+      );
+      const label =
+        own.length === 1
+          ? `${chainLabels[own[0]] ?? own[0]} only`
+          : `${own.length} of ${chains.length} chains`;
+      r.unrankedLabel = label.length > 20 ? `${own.length}/${chains.length} chains` : label;
+      r.ms = { p50: 0, p90: 0, p99: 0, mean: 0 };
+      continue;
+    }
+    // Rescore over the basket so the published number is the one the
+    // ranking follows, the same rule contested_chains states.
+    const vals = inBasket
+      .map((c) => valuesByChain[c]?.[slug])
+      .filter((v): v is number => typeof v === "number" && v > 0);
+    if (vals.length === 0) continue;
+    const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
+    r.ms = { p50: mean, p90: mean, p99: mean, mean };
   }
 }
 
