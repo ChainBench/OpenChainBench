@@ -1119,6 +1119,11 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "MegaETH's official public RPC (mainnet.megaeth.com). Compute-unit and bandwidth limited; WebSocket endpoint exposes the 10 ms mini-block realtime API.",
     twitter: "@megaeth_labs",
   },
+  zan: {
+    url: "https://zan.top",
+    description:
+      "Web3 node service from Ant Digital Technologies (zan.top). Its keyless public Starknet endpoint is the one measured on the Starknet RPC page.",
+  },
   onfinality: {
     url: "https://onfinality.io",
     description:

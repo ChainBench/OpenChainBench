@@ -335,6 +335,9 @@ const RAW: Record<string, string> = {
 
   // ─── Public RPC providers ───
   publicnode: "/logos/publicnode.png",
+  // ZAN (Ant Digital Technologies): the icon cut from the wordmark on zan.top,
+  // which publishes no standalone square mark (favicon is a 42px PNG).
+  zan: "/logos/zan.svg",
   // ─── Sui providers (bench 211) ───
   fullnode: "/logos/mysten.svg",
   blockvision: "/logos/blockvision.svg",
