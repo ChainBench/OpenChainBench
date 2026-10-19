@@ -50,7 +50,9 @@ const KEY_PREFIX = "ocb:cmp:v1:";
 // it does not declare, so every cache hit handed the card an object without
 // the field it renders first — `bench.panelScopes.length` on undefined. The
 // bump retires every entry written under the old shape in one go.
-const SCHEMA_VERSION = 2 as const;
+// 3: `headlineScope` added; zod strips undeclared fields, so entries written
+// before it would render without the perimeter label until their TTL ran out.
+const SCHEMA_VERSION = 3 as const;
 
 /** TTL chosen relative to the underlying bench freshness: each bench
  *  page revalidates every 60 s, so a 15 min compare cache lags by at
@@ -108,6 +110,7 @@ const SharedBenchSchema = z.object({
   chainRegionMatrix: z.array(ChainRegionEntrySchema),
   panelScopes: z.array(PanelScopeSchema),
   note: z.string().optional(),
+  headlineScope: z.string().optional(),
 });
 
 const EnvelopeSchema = z.object({

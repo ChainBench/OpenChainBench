@@ -352,6 +352,18 @@ type ChainRegionEntry = BreakdownRow & {
 
 type SharedBench = CompareBench;
 
+/** The perimeter of a bench's headline when it has a chain dimension: the
+ *  label its spec gives the `all` value. Undefined when there is no chain
+ *  selector, since the headline is then the only perimeter there is. */
+function headlineScopeOf(
+  chainOpts: { value: string; label: string }[],
+): string | undefined {
+  if (chainOpts.filter((c) => c.value.toLowerCase() !== "all").length === 0) {
+    return undefined;
+  }
+  return chainOpts.find((c) => c.value.toLowerCase() === "all")?.label;
+}
+
 /** Short display titles for compare verdict/FAQ prose.
  *  Overrides shortBenchTitle() for benches whose YAML title is written
  *  for the bench page (long, SEO-optimised) rather than inline prose. */
@@ -790,6 +802,7 @@ async function buildSharedBenches(
         regionBreakdown,
         panelScopes,
         note: fullBench.disclaimer ?? undefined,
+        headlineScope: headlineScopeOf(chainOpts),
       } as SharedBench;
     }),
   );
