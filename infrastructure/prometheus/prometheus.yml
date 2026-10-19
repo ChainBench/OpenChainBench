@@ -250,6 +250,21 @@ scrape_configs:
           benchmark: rpc-cost
           host: openchainbench
 
+  # Container ocb-price-api-accuracy. How far the USD price each market-data
+  # API publishes sits from the Coinbase/Kraken/Binance mid of the same
+  # moment (bench 305). Keys in /run/ocb/.env.price-api-accuracy; CoinGecko
+  # goes through the metadata-coverage proxy. Recording rules in
+  # infrastructure/monitoring/prometheus/recording_rules/ocb_price_api_accuracy.yml.
+  - job_name: price-api-accuracy
+    metrics_path: /metrics
+    scheme: http
+    static_configs:
+      - targets:
+          - ocb-price-api-accuracy:2112
+        labels:
+          benchmark: price-api-accuracy
+          host: openchainbench
+
   # ─ Self-scrape ────────────────────────────────────────────────────────
   # Surfaces Prometheus's own health (scrape error rates, target up/down)
   # in the same UI used to debug harnesses.

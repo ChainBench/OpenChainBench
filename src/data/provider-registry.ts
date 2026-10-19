@@ -3326,7 +3326,12 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   cetus: { url: "https://cetus.zone" },
   chainflip: { url: "https://chainflip.io" },
   "chiliz-official": { url: "https://chiliz.com" },
-  coingecko: { url: "https://coingecko.com" },
+  coingecko: {
+    url: "https://coingecko.com",
+    description:
+      "Crypto price and market data API built around a curated coin list, with exchange and on-chain DEX data. Keyless public tier, demo key and paid plans over REST.",
+    twitter: "@coingecko",
+  },
   "compound-finance": { url: "https://compound.xyz" },
   "conflux-global": { url: "https://confluxnetwork.org" },
   "conflux-official": { url: "https://confluxnetwork.org" },
