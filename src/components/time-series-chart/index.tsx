@@ -36,6 +36,17 @@ type Props = {
    *  the chain tab kept the 7d/30d chart on the previously loaded chain's
    *  data because the fetch URL had no chain param. */
   chain?: string;
+  /** Optional externally-controlled access tier, forwarded to `/api/series`
+   *  for exactly the reason the chain prop above exists.
+   *
+   *  Without it the tier tabs were broken on every range the chart fetches.
+   *  1H, 6H and 24H are rendered on the server with the right cohort and
+   *  looked fine; 7D, 30D, 90D and 1Y go through /api/series, which accepts
+   *  a tier but was never sent one. The route returned the headline cohort,
+   *  the chart looked its own providers up in that response by slug, matched
+   *  none of them, and reported "no time-series data emitted for this range
+   *  yet" while the data sat in Prometheus the whole time. */
+  tier?: string;
   /** Optional controlled exclusion set shared with the other chart views
    *  (ranked-bar, distribution, donut). Lets the reader hide a dominant
    *  outlier here too — Y-axis re-zooms smoothly to fit the rest. */
@@ -99,6 +110,7 @@ export function TimeSeriesChart({
   benchmark,
   region: regionProp,
   chain: chainProp,
+  tier: tierProp,
   excluded: controlledExcluded,
   onToggleExclude,
   seriesOverride,
@@ -205,6 +217,9 @@ export function TimeSeriesChart({
       const qs = new URLSearchParams({ range, raw: "1" });
       if (regionProp && regionProp !== "all") qs.set("region", regionProp);
       if (chainProp && chainProp !== "all") qs.set("chain", chainProp);
+      // No "all" sentinel here: the headline tier arrives as undefined and
+      // the route's own default picks it, so anything set is a real choice.
+      if (tierProp) qs.set("tier", tierProp);
       return qs.toString();
     };
     const fetchOne = (range: "7d" | "30d", attempt = 0) => {
@@ -239,7 +254,7 @@ export function TimeSeriesChart({
     return () => {
       cancelled = true;
     };
-  }, [regionProp, chainProp, benchmark.slug]);
+  }, [regionProp, chainProp, tierProp, benchmark.slug]);
 
   // Probe 90d after 30d confirms data. Uses a slug ref so a benchmark change
   // resets the probe even if lazySeries30d stays non-null briefly.
@@ -254,6 +269,7 @@ export function TimeSeriesChart({
     const qs = new URLSearchParams({ range: "90d", raw: "1" });
     if (regionProp && regionProp !== "all") qs.set("region", regionProp);
     if (chainProp && chainProp !== "all") qs.set("chain", chainProp);
+    if (tierProp) qs.set("tier", tierProp);
     fetch(`/api/series/${benchmark.slug}?${qs.toString()}`)
       .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
       .then((data: { providers: { slug: string; values: (number | null)[] }[] }) => {
@@ -267,7 +283,7 @@ export function TimeSeriesChart({
         setLazySeries90d({});
       });
     return () => { cancelled = true; };
-  }, [panelActive, lazySeries30d, lazySeries90d, benchmark.slug, regionProp, chainProp]);
+  }, [panelActive, lazySeries30d, lazySeries90d, benchmark.slug, regionProp, chainProp, tierProp]);
 
   // Probe 1y after 90d confirms data.
   const probed1ySlugRef = useRef<string | null>(null);
@@ -281,6 +297,7 @@ export function TimeSeriesChart({
     const qs = new URLSearchParams({ range: "1y", raw: "1" });
     if (regionProp && regionProp !== "all") qs.set("region", regionProp);
     if (chainProp && chainProp !== "all") qs.set("chain", chainProp);
+    if (tierProp) qs.set("tier", tierProp);
     fetch(`/api/series/${benchmark.slug}?${qs.toString()}`)
       .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
       .then((data: { providers: { slug: string; values: (number | null)[] }[] }) => {
@@ -294,7 +311,7 @@ export function TimeSeriesChart({
         setLazySeries1y({});
       });
     return () => { cancelled = true; };
-  }, [panelActive, lazySeries90d, lazySeries1y, benchmark.slug, regionProp, chainProp]);
+  }, [panelActive, lazySeries90d, lazySeries1y, benchmark.slug, regionProp, chainProp, tierProp]);
 
   // Panel-scoped lazy fetch. Runs when the active panel id changes and the
   // parent did NOT ship the panel's own 7d/30d series inline (the common
@@ -317,6 +334,9 @@ export function TimeSeriesChart({
       const qs = new URLSearchParams({ range, panel: activePanelId, raw: "1" });
       if (regionProp && regionProp !== "all") qs.set("region", regionProp);
       if (chainProp && chainProp !== "all") qs.set("chain", chainProp);
+      // No "all" sentinel here: the headline tier arrives as undefined and
+      // the route's own default picks it, so anything set is a real choice.
+      if (tierProp) qs.set("tier", tierProp);
       return qs.toString();
     };
     const fetchOne = (range: "7d" | "30d", attempt = 0) => {
@@ -357,7 +377,7 @@ export function TimeSeriesChart({
     // them for its "already cached?" guard, but re-triggering when the
     // maps mutate would deadloop with the setState calls inside.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activePanelId, regionProp, chainProp, benchmark.slug, seriesOverride7d, seriesOverride30d]);
+  }, [activePanelId, regionProp, chainProp, tierProp, benchmark.slug, seriesOverride7d, seriesOverride30d]);
 
   // Lazy fetch for 90d / 1y panel series. These are Prom-backed (not
   // archive-backed) so the fetch goes to /api/series?panel=<id>&range=90d.
@@ -373,6 +393,9 @@ export function TimeSeriesChart({
       const qs = new URLSearchParams({ range: r, panel: activePanelId, raw: "1" });
       if (regionProp && regionProp !== "all") qs.set("region", regionProp);
       if (chainProp && chainProp !== "all") qs.set("chain", chainProp);
+      // No "all" sentinel here: the headline tier arrives as undefined and
+      // the route's own default picks it, so anything set is a real choice.
+      if (tierProp) qs.set("tier", tierProp);
       return qs.toString();
     };
     const fetchOne = (r: "90d" | "1y") => {
@@ -396,7 +419,7 @@ export function TimeSeriesChart({
     if (need1y) fetchOne("1y");
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activePanelId, regionProp, chainProp, benchmark.slug]);
+  }, [activePanelId, regionProp, chainProp, tierProp, benchmark.slug]);
 
   const panelLazy7d = activePanelId ? lazyPanel7d[activePanelId] : undefined;
   const panelLazy30d = activePanelId ? lazyPanel30d[activePanelId] : undefined;
