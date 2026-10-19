@@ -3,8 +3,8 @@
 slug: price-api-accuracy
 number: "305"
 title: "Crypto price API accuracy: how far each feed sits from the exchange price"
-seo_title: "Most accurate crypto price API 2026: CoinGecko, CoinStats, Mobula, Bitculator compared"
-seo_description: "{{best_name}} prints closest to the exchange price, {{best_p50}} median gap on nine majors. Each price API scored against the Coinbase, Kraken and Binance mid of the same moment."
+seo_title: "Most accurate crypto price API 2026, live ranking"
+seo_description: "{{best_name}} prints closest to the exchange price: {{best_p50}} median gap on nine majors, each answer scored live against the exchange mid of the same moment."
 subtitle: Basis points between the USD price a market-data API publishes and the exchange mid of the same moment, on BTC, ETH, SOL, BNB, XRP, ADA, DOGE, AVAX and LINK.
 
 category: Aggregators
@@ -33,23 +33,23 @@ abstract: |
   Coinbase, Kraken and Binance mids taken within six seconds of it.
   Binance quotes these coins against USDT, so its books are converted
   at the USDT/USD mid before entering the median: read as dollars they
-  sit about twelve basis points high whenever USDT trades under par.
+  sat about twelve basis points high on 2026-10-19, with USDT at 0.9988.
 
-  The ranked rows are APIs that publish a coin's market price. Codex
-  and Serialized are listed beside them without a rank: they price the
+  The ranked rows are APIs that publish a coin's market price.
+  Serialized is listed beside them without a rank: it prices the
   wrapped token in its on-chain pools, which is a different product,
-  and they cover the majors that have a canonical on-chain twin.
+  and it covers the majors that have a canonical on-chain twin.
 
   What this page does not measure is latency. One provider is reached
   through a proxy because its keyless tier refuses the host's shared
   address, and a latency column would publish the proxy.
 
 methodology:
-  - "Reference: the median of three exchange mids, Coinbase (USD), Kraken (USD) and Binance (USDT converted at Kraken's USDT/USD mid), refreshed every five seconds. An asset enters a snapshot only when two venues priced it, and an answer is scored against the snapshot nearest the moment it arrived, within six seconds. A poll with no reference that close, or lost in our proxy before any HTTP status, is counted apart and never against the provider."
-  - "The headline is the median absolute gap over 24 hours, pooled across the assets a provider serves, in basis points. The asset tabs give the same figure per coin, which is the like for like comparison. The bias column is the mean signed gap: positive means the API prints above the market."
-  - "Each provider is polled on the cadence its quota allows: every 30 seconds to every 20 minutes. Fewer polls give fewer samples of the same distribution, not a different score, and the sample column shows how many answers each row rests on."
+  - "Reference: the median of the Coinbase (USD), Kraken (USD) and Binance mids, refreshed every five seconds, Binance's USDT books converted at the Coinbase and Kraken USDT/USD mid. An asset is scored only when two venues priced it (the median of two is their mean), against the snapshot nearest the answer's arrival, within six seconds. A poll with no reference that close, or lost in our proxy before any HTTP status, is counted apart and never against the provider."
+  - "The headline is the median absolute gap over 24 hours, pooled across the assets a provider serves, in basis points. Percentiles are read from a histogram with half basis point buckets up to 15, so a median is exact to within half a basis point. The asset tabs give the same figure per coin, which is the like for like comparison. The bias column is the mean signed gap: positive means the API prints above the market."
+  - "Each provider is polled on the cadence its quota allows: every 30 seconds to every 20 minutes. Fewer polls give fewer samples of the same distribution, not a different score, and the Samples column shows how many answers each row rests on."
   - "Price age comes from the provider's own last-updated stamp, read at the moment the answer arrived. A provider that publishes no stamp shows a dash, which does not mean its price is fresh."
-  - "Codex and Serialized are on-chain DEX price feeds and are listed unranked. They price WETH, wSOL, WBNB, LINK and WAVAX in their pools. BTC is left out for them because WBTC trades 15 to 20 bps under BTC, measured on Binance's WBTC/BTC book and on a KyberSwap quote, and scoring it against BTC would charge them for the wrapper's discount. Serialized does not index Avalanche."
+  - "Serialized is an on-chain DEX price feed and is listed unranked. It prices WETH, wSOL, WBNB and LINK in their pools. BTC is left out because WBTC trades 15 to 20 bps under BTC, measured on Binance's WBTC/BTC book and on a KyberSwap quote, and scoring it against BTC would charge it for the wrapper's discount. Serialized does not index Avalanche."
   - "Mobula is addressed by its numeric asset id. Looked up by name, Bitcoin resolved to a different token priced at 9e-14 USD in three of 66 internal polls, a lookup artefact this page does not charge to anyone."
   - "CoinGecko is read through its keyless public API, reached through a proxy because it answers 429 to the host's shared address. Paid CoinGecko plans may refresh faster than the keyless tier measured here. CoinPaprika is read keyless at 27 calls an hour, under its 60 an hour and 25,000 a month limits. POL was measured internally and left out: one ranked provider does not list it."
   - "Absent and why: CoinMarketCap and CoinDesk (formerly CryptoCompare) require an API key we have not been issued. Neither is excluded on performance."
@@ -59,6 +59,18 @@ findings:
   - "{{best_name}} prints closest to the exchange mid, a median gap of {{best_p50}} across the majors it serves."
   - "A constant positive bias across every asset is the signature of a USDT book read as dollars. The bias column shows which rows carry one."
   - "Read the asset tabs before the headline when two rows are close: the pooled figure weighs every asset a provider serves, and the tabs compare the same coin."
+
+faq:
+  - q: "Which crypto price API is closest to the market price?"
+    a: "On the nine majors measured here, {{best_name}} sits closest to the exchange mid, a {{best_p50}} median gap over 24 hours. The asset tabs compare the same coin side by side and are the better read when two rows are close."
+  - q: "Why do price APIs print different prices for the same coin?"
+    a: "They weigh different venues and pairs, some count USDT books as dollars, and they refresh at different speeds. The USDT effect shows as a steady positive bias on every asset: when USDT trades at 0.9988, a price built from USDT books reads about twelve basis points high. The bias column shows which rows carry one."
+  - q: "What is the reference price?"
+    a: "The median of the Coinbase, Kraken and Binance mids, refreshed every five seconds, with Binance's USDT books converted at the USDT/USD mid of Coinbase and Kraken. Each answer is scored against the snapshot taken within six seconds of its arrival, and an asset is only scored when at least two venues priced it."
+  - q: "Why is Serialized not ranked?"
+    a: "It is an on-chain DEX price feed: it prices the wrapped token in its pools (WETH, wSOL, WBNB, LINK) rather than the coin's market, and covers four of the nine majors. Its numbers are published beside the ranked APIs so the two kinds of feed can be compared, without ranking them on ground they do not share."
+  - q: "Does a slower refresh make a price API less accurate here?"
+    a: "Yes, by design. The gap is what a reader of the API receives, and a price rebuilt every minute carries up to a minute of market drift. The price age column, read from each provider's own last-updated stamp, shows how much of a gap comes from age rather than from how the price is built."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/dev/harnesses/price-api-accuracy
 
@@ -90,6 +102,7 @@ ledger_columns:
   - { label: "Bias", panel: bias }
   - { label: "Price age", panel: price_age }
   - { label: "Assets", panel: assets_served }
+  - { label: "Samples", panel: samples }
 
 metric_panels:
   - id: bias
@@ -112,6 +125,15 @@ metric_panels:
     label: Assets served
     description: How many of the nine majors the provider returned a usable price for at least once in 24h.
     metric: max by (provider) (ocb:price_api_assets_served:count_24h{kind="all"})
+    label_key: provider
+    unit: count
+    higher_is_better: true
+    tab: false
+
+  - id: samples
+    label: Samples
+    description: Answers scored in the last 24h. Providers are polled on the cadence their quota allows, from every 30 seconds to every 20 minutes, so the counts differ by design.
+    metric: max by (provider) (ocb:price_api_deviation_bps:count_increase_24h{kind="all"})
     label_key: provider
     unit: count
     higher_is_better: true
@@ -182,20 +204,6 @@ providers:
       success: ocb:price_api_success:ratio_24h{provider="mobula",kind="all"}
       sample_size: ocb:price_api_deviation_bps:count_increase_24h{provider="mobula",kind="all"}
       series: ocb:price_api_deviation_bps:p50_1h{provider="mobula",kind="all"}
-
-  - slug: codex
-    name: Codex
-    tag: On-chain DEX price of the wrapped token, five majors
-    unranked: "On-chain DEX price"
-    formula: "Median absolute gap in basis points between Codex's on-chain USD price for the wrapped token and the exchange mid of the same moment, over 24h, pooled across the majors it covers."
-    queries:
-      p50: ocb:price_api_deviation_bps:p50_24h{provider="codex",kind="all"}
-      p90: ocb:price_api_deviation_bps:p90_24h{provider="codex",kind="all"}
-      p99: ocb:price_api_deviation_bps:p99_24h{provider="codex",kind="all"}
-      mean: ocb:price_api_deviation_bps:mean_24h{provider="codex",kind="all"}
-      success: ocb:price_api_success:ratio_24h{provider="codex",kind="all"}
-      sample_size: ocb:price_api_deviation_bps:count_increase_24h{provider="codex",kind="all"}
-      series: ocb:price_api_deviation_bps:p50_1h{provider="codex",kind="all"}
 
   - slug: serialized
     name: Serialized

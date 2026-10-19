@@ -62,6 +62,14 @@ describe("specValueKind, derived from the spec", () => {
     expect(valueQualifier({ unit: "bp", window: "7d" })).toBe("7d avg");
   });
 
+  it("calls a recorded p50 rule and a histogram median a median", () => {
+    // Benches 304 and 305 read "24h avg" while their methodology says median.
+    expect(specValueKind(one('ocb:price_api_deviation_bps:p50_24h{provider="bitculator",kind="all"}'))).toBe("median");
+    expect(specValueKind(one('avg(ocb:evm_swap_quote_shortfall_bps:p50_24h{provider="kyberswap"})'))).toBe("median");
+    expect(specValueKind(one("histogram_quantile(0.5, sum by (le) (rate(x_bucket[24h])))"))).toBe("median");
+    expect(specValueKind(one('ocb:price_api_deviation_bps:p90_24h{provider="x"}'))).toBeUndefined();
+  });
+
   it("recognises a point read", () => {
     expect(specValueKind(one('last_over_time(chain_bridged_tvl_usd{chain="base"}[1h])')))
       .toBe("latest");
