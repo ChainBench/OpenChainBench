@@ -140,6 +140,11 @@ metric_panels:
     unit: pct
     higher_is_better: false
 
+# The tehcscreener source publishes one complete UTC day, not a rolling
+# 24 hours; the ledger and compare cards say so.
+chart:
+  window_label: last complete UTC day
+
 faq:
   - q: "Is this the same as the volume on bench 200?"
     a: "No, and the two should not be added. This counts what each terminal routed through its own interface. Bench 200 counts trading on each launchpad's tokens whoever routed it. One swap can appear on both, under a terminal here and under a launchpad there."

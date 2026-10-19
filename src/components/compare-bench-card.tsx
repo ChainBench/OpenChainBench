@@ -61,6 +61,11 @@ export type CompareBench = {
    *  wallets do not add up across chains). Shown beside the headline so two
    *  cards on one page are never read as the same perimeter. */
   headlineScope?: string;
+  /** What window the headline covers, for the footer: "Rolling 24h",
+   *  "Latest value", or the spec's chart.window_label ("Last complete UTC
+   *  day") on daily-cadence benches. Absent on entries cached before it
+   *  existed, which fall back to the old fixed wording. */
+  windowText?: string;
 };
 
 function decideWinner(
@@ -193,7 +198,7 @@ export function CompareBenchCard({
       )}
 
       <footer className="mt-4 border-t border-rule pt-3 flex flex-wrap items-center justify-between gap-2 text-[10px] uppercase tracking-[0.16em] text-ink-faint">
-        <span>Rolling 24h · {bench.metric}</span>
+        <span>{bench.windowText ?? "Rolling 24h"} · {bench.metric}</span>
         <Link
           href={`/api/stat/${bench.slug}`}
           className="hover:text-ink-soft normal-case tracking-normal"

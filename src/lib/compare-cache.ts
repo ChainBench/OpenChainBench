@@ -52,7 +52,8 @@ const KEY_PREFIX = "ocb:cmp:v1:";
 // bump retires every entry written under the old shape in one go.
 // 3: `headlineScope` added; zod strips undeclared fields, so entries written
 // before it would render without the perimeter label until their TTL ran out.
-const SCHEMA_VERSION = 3 as const;
+// 4: `windowText` added, same reason.
+const SCHEMA_VERSION = 4 as const;
 
 /** TTL chosen relative to the underlying bench freshness: each bench
  *  page revalidates every 60 s, so a 15 min compare cache lags by at
@@ -111,6 +112,7 @@ const SharedBenchSchema = z.object({
   panelScopes: z.array(PanelScopeSchema),
   note: z.string().optional(),
   headlineScope: z.string().optional(),
+  windowText: z.string().optional(),
 });
 
 const EnvelopeSchema = z.object({
