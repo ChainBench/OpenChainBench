@@ -327,8 +327,11 @@ export function PerpCostClient() {
         <p className="font-sans text-[10px] uppercase tracking-[0.18em] text-ink-faint">
           Why the order flips
         </p>
+        {/* Not "a fee on the gain is a curve": a constant share of the gain
+            draws a line through the origin, same as a flat fee draws a level
+            one. It is the rate climbing with the move that bends it. */}
         <h2 className="display mt-1 text-xl text-ink">
-          A flat fee is a line, a fee on the gain is a curve
+          A flat fee is a line, a rate that climbs is a curve
         </h2>
         <div className="mt-4 overflow-x-auto">
           <div className="min-w-[560px]">
@@ -581,9 +584,20 @@ export function PerpCostClient() {
                         </span>
                       </>
                     ) : (
-                      <span className="rounded bg-bad/10 px-2 py-0.5 text-[11px] text-bad">
-                        nothing comes back
-                      </span>
+                      <>
+                        <span className="rounded bg-bad/10 px-2 py-0.5 text-[11px] text-bad">
+                          nothing comes back
+                        </span>
+                        {/* Still "nothing comes back": no margin returns, and
+                            the token cannot be sold at launch. But a venue
+                            that mints to the loser is not the same as one that
+                            keeps everything, so the row says so. */}
+                        {row.venue.mintsOnLoss ? (
+                          <span className="mt-1 block text-[10px] text-ink-faint">
+                            {row.venue.mintsOnLoss}
+                          </span>
+                        ) : null}
+                      </>
                     )}
                   </td>
                 </tr>
@@ -604,6 +618,23 @@ export function PerpCostClient() {
           <strong className="font-semibold text-ink">Papertrade&apos;s</strong> documentation calls
           its liquidation a hard bust that forfeits the full isolated margin. For the others this is
           the parameter, which we have not checked against a realised payout.
+        </p>
+
+        <p className="mt-3 text-[13px] leading-relaxed text-ink-faint">
+          One thing does come back on{" "}
+          <strong className="font-semibold text-ink">Papertrade</strong>, and it is not margin.
+          Losing is the only event that mints its token: the docs state that{" "}
+          <em>PAPER mints to your account whenever you close a trade at a loss or get liquidated,
+          and nothing else mints PAPER</em>. Below $2M of tracked LP the rate is a flat 100 PAPER
+          per dollar of loss basis and it decays above that, so the flat rate does not apply today:
+          tracked LP read $65.1M. The published curve does not give the decay, so the figure in the
+          row is measured rather than derived, from the venue&apos;s own daily series of token
+          supply against trader losses: 54 to 99 PAPER a dollar across the six days to 19 October,
+          against 134 averaged since launch. Treat it as an observation with a range, not a rate.
+          Two things stop it being a rebate: at launch PAPER cannot be transferred, only staked and
+          unstaked, and what staking pays is a pro-rata share of future protocol revenue that
+          dilutes as later losers mint more. The row says both that no margin returns and that
+          something is minted, because either sentence alone is misleading.
         </p>
       </section>
     </div>

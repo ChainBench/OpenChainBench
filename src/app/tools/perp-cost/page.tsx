@@ -82,7 +82,16 @@ export default function PerpCostToolPage() {
           <strong className="font-semibold text-ink">Fees and spreads</strong> come from our own
           perp-fees measurements, read on {MEASURED_AT}. Each spread is one quoted book at a single
           tick rather than an average over a window, and half of it is charged per leg because a
-          taker crosses half the book. Two rows carry no spread, for different reasons:{" "}
+          taker crosses half the book. Read that caveat with its weight: a top-of-book spread can
+          move several-fold inside a minute, so it carries far less confidence than the taker fee
+          beside it, and it decides the whole figure on the two rows whose taker fee is zero,{" "}
+          <strong className="font-semibold text-ink">Lighter</strong> and{" "}
+          <strong className="font-semibold text-ink">Paradex</strong>.{" "}
+          <strong className="font-semibold text-ink">Paradex</strong> also publishes two taker
+          tiers on the same market: its <code className="font-mono text-xs">fee_config</code> reads
+          zero for an interactive order and 0.0200% a leg for an API or RPI one. The interactive
+          tier is shown, because this page prices one trade for a person rather than for a
+          programme. Two rows carry no spread, for different reasons:{" "}
           <strong className="font-semibold text-ink">Papertrade</strong> quotes one price and
           charges nothing to cross it, and <strong className="font-semibold text-ink">GMX v2</strong>{" "}
           has no book at all, so what a taker pays there is price impact against the pool, which
