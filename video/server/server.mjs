@@ -42,7 +42,7 @@ const TOKEN = process.env.RENDER_API_TOKEN;
 const PORT = Number(process.env.PORT ?? 4200);
 const HOST = process.env.HOST ?? "127.0.0.1";
 
-const COMP_VERSION = "v23-roll-carry";
+const COMP_VERSION = "v24-units-logos";
 
 const VIEWS = new Set([
   "BarChartRace",
