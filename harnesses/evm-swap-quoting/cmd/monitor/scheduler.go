@@ -45,6 +45,12 @@ func buildProviders(cfg *Config) []Provider {
 		NewOpenOceanProvider(cfg.MonitorRegion),
 		NewCoWProvider(cfg.MonitorRegion),
 		NewEnsoProvider(cfg.MonitorRegion, cfg.EnsoAPIKey),
+		// Both keyless, both verified answering a bare GET on 2026-10-19.
+		// ParaSwap trades as Velora and is twelfth by 30d volume; Nordstern
+		// is fourteenth, reaches 121 chains, and returns the simulation
+		// block that makes a quote provably contemporaneous.
+		NewParaSwapProvider(cfg.MonitorRegion),
+		NewNordsternProvider(cfg.MonitorRegion),
 	}
 	if cfg.ZeroExAPIKey != "" {
 		providers = append(providers, NewZeroExProvider(cfg.MonitorRegion, cfg.ZeroExAPIKey))
