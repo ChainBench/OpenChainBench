@@ -445,6 +445,11 @@ export async function specToBenchmark(
       if (spec.score_scope === "contested_chains") {
         applyContestedChainScope(live.results, providers, valuesByChain);
       }
+      if (spec.score_scope === "full_coverage") {
+        const labels: Record<string, string> = {};
+        for (const d of fullSpec.dimensions?.chain ?? []) labels[d.value] = d.label;
+        applyFullCoverageScope(live.results, providers, labels);
+      }
     }
 
     // Other tier cohorts, live rows only, on the headline (unfiltered,
@@ -584,6 +589,53 @@ export function applyContestedChainScope(
     }
     const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
     r.ms = { p50: mean, p90: mean, p99: mean, mean };
+  }
+}
+
+/**
+ * Mark as unranked every provider that does not cover every chain with
+ * data, on the unfiltered view of a chain-dimensioned bench.
+ *
+ * A cross-chain mean compares providers over the ground each happens to
+ * stand on. Measured on bench 033: Route quotes Robinhood Chain alone and
+ * its all-chains figure was the mean of 3 cells, 215 ms, placing it above
+ * KyberSwap's mean of 15 cells over 5 chains, 225 ms. Route does lead
+ * Robinhood, and KyberSwap leads the four chains Route never enters, so
+ * the headline said the opposite of the evidence under it.
+ *
+ * This is the rule the cell-rank marginals already apply further down,
+ * where the comment calls it Simpson's bias. It was never applied to the
+ * ledger or to the product-page rank, which is where the claim is read.
+ *
+ * Unranked rather than unavailable: the provider answered, and hiding it
+ * would lose a real measurement. The label names the coverage so a reader
+ * can see why it sits outside the order.
+ */
+export function applyFullCoverageScope(
+  results: ProviderResult[],
+  providersPerChain: Record<string, string[]>,
+  chainLabels: Record<string, string>,
+): void {
+  const chains = Object.keys(providersPerChain).filter(
+    (c) => (providersPerChain[c]?.length ?? 0) > 0,
+  );
+  if (chains.length < 2) return;
+  for (const r of results) {
+    if (r.availability === "unavailable" || r.unrankedLabel) continue;
+    const slug = r.slug.toLowerCase();
+    const covered = chains.filter((c) =>
+      (providersPerChain[c] ?? []).some((s) => s.toLowerCase() === slug),
+    );
+    if (covered.length === 0 || covered.length === chains.length) continue;
+    const label =
+      covered.length === 1
+        ? `${chainLabels[covered[0]] ?? covered[0]} only`
+        : `${covered.length} of ${chains.length} chains`;
+    // The 20-char ceiling is enforced on the spec field; this one is
+    // generated, so clamp rather than trust the chain's display name.
+    r.unrankedLabel =
+      label.length > 20 ? `${covered.length}/${chains.length} chains` : label;
+    r.ms = { p50: 0, p90: 0, p99: 0, mean: 0 };
   }
 }
 

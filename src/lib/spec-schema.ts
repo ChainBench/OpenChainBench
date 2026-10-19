@@ -596,8 +596,23 @@ export const SpecSchema = z
      * Opt-in per bench, and it describes a property rather than naming a
      * bench: any bench whose chain set contains uncontested chains is a
      * candidate. Excluded providers stay visible on their own chain tab.
+     *
+     * `full_coverage` answers a different bias with the same shape.
+     * contested_chains asks whether a chain was contested; it does not ask
+     * whether the providers being compared cover the same ground. On bench
+     * 033 Route quotes Robinhood Chain alone, where it is genuinely fast,
+     * and its all-chains figure was the mean of three Robinhood cells
+     * (215 ms) against KyberSwap's mean of fifteen cells over five chains
+     * (225 ms). That published Route as the fastest EVM swap quote API
+     * overall, on a field it does not enter. Robinhood is contested, so
+     * contested_chains leaves it untouched.
+     *
+     * Under `full_coverage` a provider missing from any chain that has
+     * data is carried as unranked with a label naming what it covers,
+     * instead of being ranked against providers that answer everywhere.
+     * It keeps its own chain tab, where the comparison is like for like.
      */
-    score_scope: z.enum(["contested_chains"]).optional(),
+    score_scope: z.enum(["contested_chains", "full_coverage"]).optional(),
 
     aggregate_filters: z
       .object({
