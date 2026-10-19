@@ -233,7 +233,11 @@ providers:
   - slug: route
     name: Route
     tag: Robinhood Chain only
-    unranked: "Robinhood only"
+    # No `unranked:` here on purpose. score_scope: full_coverage computes the
+    # same label from the coverage it measures, and only on the all-chains
+    # view, which is the only view where Route's figure is incomparable. A
+    # spec-declared label applies to every tab, so it would have pulled Route
+    # out of the ranking on the one chain it actually quotes.
     formula: "Median basis points of output given up against the best quote of the same tick, over 24h, averaged across the chains this provider covers."
     queries:
       p50: avg(ocb:evm_swap_quote_shortfall_bps:p50_24h{provider="route"})
