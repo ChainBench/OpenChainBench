@@ -625,15 +625,20 @@ export function PerpCostClient() {
           <strong className="font-semibold text-ink">Papertrade</strong>, and it is not margin.
           Losing is the only event that mints its token: the docs state that{" "}
           <em>PAPER mints to your account whenever you close a trade at a loss or get liquidated,
-          and nothing else mints PAPER</em>. Below $2M of tracked LP the rate is a flat 100 PAPER
-          per dollar of loss basis and it decays above that, so the flat rate does not apply today:
-          tracked LP read $65.1M. The published curve does not give the decay, so the figure in the
-          row is measured rather than derived, from the venue&apos;s own daily series of token
-          supply against trader losses: 54 to 99 PAPER a dollar across the six days to 19 October,
-          against 134 averaged since launch. Treat it as an observation with a range, not a rate.
-          Two things stop it being a rebate: at launch PAPER cannot be transferred, only staked and
-          unstaked, and what staking pays is a pro-rata share of future protocol revenue that
-          dilutes as later losers mint more. The row says both that no margin returns and that
+          and nothing else mints PAPER</em>. The rate is published in full. Below $2M of tracked LP
+          it is a flat 100 PAPER per dollar of mint basis; at or above it the rate is{" "}
+          <code className="font-mono text-xs">100 × (S ÷ (S + H))²</code>, where S is the $120M
+          decay scale and H a high-water-mark of cumulative LP gain past the threshold that never
+          falls back. H is not published as a field, so it is read off the peak of the
+          venue&apos;s own daily tracked-LP series, $104.89M, which puts the rate near{" "}
+          <strong className="font-semibold text-ink">29 PAPER per dollar of loss</strong>; the
+          venue&apos;s own worked example, 29.8 at a $100M high-water-mark, lands beside it. Because
+          H only ratchets upward, that rate falls for later traders and never recovers. A
+          liquidation mints on the full lost margin; an ordinary losing close mints on the loss
+          after the 2% fee, which is carved from the LP&apos;s side rather than added to the loss.
+          Two things stop any of it being a rebate: at launch PAPER cannot be transferred, only
+          staked and unstaked, and what staking pays is a pro-rata share of future protocol revenue
+          that dilutes as later losers mint more. The row says both that no margin returns and that
           something is minted, because either sentence alone is misleading.
         </p>
       </section>
