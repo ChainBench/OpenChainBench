@@ -7,12 +7,56 @@ import "context"
 // (provider, pair) combos that would always fail. Mobula supports the full
 // V1 basket; some providers like Bebop don't ship every chain.
 //
-// Probe MUST return ok=true ONLY when the response was parsed AND a usable
-// output amount was extracted. ok=false on any failure where the latency is
+// Probe MUST set OK=true ONLY when the response was parsed AND a usable
+// output amount was extracted. OK=false on any failure where the latency is
 // not representative — the adapter is responsible for recording the right
 // counter (auth / throttle / no-route / other) before returning.
 type Provider interface {
 	Slug() string
 	Supports(chainId int) bool
-	Probe(ctx context.Context, pair TestPair) (latencyMs int64, ok bool, err error)
+	Probe(ctx context.Context, pair TestPair) (Quote, error)
+}
+
+// Quote is one probe's result.
+//
+// Until 2026-10-19 this was a bare (latencyMs, ok, err) and every adapter
+// parsed the output amount only to decide ok, then threw it away. Measuring
+// how fast an aggregator answers says nothing about what it gives you, which
+// is the question readers actually ask, so the amount now comes back.
+type Quote struct {
+	LatencyMs int64
+	OK        bool
+
+	// OutAmount is the output in the destination token's smallest unit,
+	// exactly as the provider returned it, as a string because several
+	// return values beyond int64 and parsing is the caller's business.
+	// Empty when the probe failed.
+	OutAmount string
+
+	// FeeBps is the fee the provider itself declares on this quote, and -1
+	// when it declares nothing. The distinction matters: an undeclared fee
+	// is not the same as no fee, and conflating them would publish the
+	// quieter provider as the cheaper one.
+	//
+	// Measured on 2026-10-19, two of five declare: LI.FI returns a
+	// "LIFI Fixed Fee" of 0.0025 marked included, and 0x a zeroExFee of
+	// 15.0 bps. Both matched the shortfall observed against the other
+	// providers to within 1.3 bps, so the declaration is trustworthy where
+	// it exists.
+	FeeBps float64
+
+	// Block the provider says it quoted against, 0 when it does not say.
+	// Three of five report it. It is the only way to prove two quotes saw
+	// the same market, which matters because the market drifts 30 to 37 bps
+	// over five minutes while providers sit within 25 bps of each other.
+	Block uint64
+}
+
+// failed builds the Quote for a probe that produced no usable amount.
+func failed() Quote { return Quote{OK: false, FeeBps: -1} }
+
+// ok builds the Quote for a successful probe that reported no fee and no
+// block. Adapters whose API returns either set the fields themselves.
+func okQuote(ms int64, outAmount string) Quote {
+	return Quote{LatencyMs: ms, OK: true, OutAmount: outAmount, FeeBps: -1}
 }

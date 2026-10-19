@@ -34,7 +34,7 @@ func (p *OpenOceanProvider) Supports(chainId int) bool {
 	return false
 }
 
-func (p *OpenOceanProvider) Probe(ctx context.Context, pair TestPair) (int64, bool, error) {
+func (p *OpenOceanProvider) Probe(ctx context.Context, pair TestPair) (Quote, error) {
 	q := url.Values{}
 	q.Set("inTokenAddress", pair.TokenIn)
 	q.Set("outTokenAddress", pair.TokenOut)
@@ -50,19 +50,19 @@ func (p *OpenOceanProvider) Probe(ctx context.Context, pair TestPair) (int64, bo
 	resp, err := p.client.Do(req)
 	if err != nil {
 		RecordOtherError(p.Slug(), pair.Chain, p.region, classifyNetErr(err))
-		return 0, false, err
+		return failed(), err
 	}
 	defer resp.Body.Close()
 	ms := time.Since(t0).Milliseconds()
 
 	if resp.StatusCode == 429 {
 		RecordThrottled(p.Slug(), pair.Chain, p.region)
-		return 0, false, fmt.Errorf("429")
+		return failed(), fmt.Errorf("429")
 	}
 	body, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode != 200 {
 		RecordOtherError(p.Slug(), pair.Chain, p.region, fmt.Sprintf("http_%d", resp.StatusCode))
-		return 0, false, fmt.Errorf("status=%d body=%s", resp.StatusCode, snippet(body))
+		return failed(), fmt.Errorf("status=%d body=%s", resp.StatusCode, snippet(body))
 	}
 	var r struct {
 		Code int `json:"code"`
@@ -72,15 +72,15 @@ func (p *OpenOceanProvider) Probe(ctx context.Context, pair TestPair) (int64, bo
 	}
 	if err := json.Unmarshal(body, &r); err != nil {
 		RecordOtherError(p.Slug(), pair.Chain, p.region, "parse")
-		return 0, false, err
+		return failed(), err
 	}
 	if r.Code != 200 && r.Code != 0 {
 		RecordOtherError(p.Slug(), pair.Chain, p.region, fmt.Sprintf("api_code_%d", r.Code))
-		return 0, false, fmt.Errorf("api_code=%d", r.Code)
+		return failed(), fmt.Errorf("api_code=%d", r.Code)
 	}
 	if r.Data.OutAmount == "" || r.Data.OutAmount == "0" {
 		RecordNoRoute(p.Slug(), pair.Chain, p.region)
-		return 0, false, fmt.Errorf("no_route")
+		return failed(), fmt.Errorf("no_route")
 	}
-	return ms, true, nil
+	return okQuote(ms, r.Data.OutAmount), nil
 }

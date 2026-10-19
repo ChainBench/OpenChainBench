@@ -50,17 +50,17 @@ func cowNetwork(chainId int) string {
 	return ""
 }
 
-func (p *CoWProvider) Probe(ctx context.Context, pair TestPair) (int64, bool, error) {
+func (p *CoWProvider) Probe(ctx context.Context, pair TestPair) (Quote, error) {
 	net := cowNetwork(pair.ChainId)
 	if net == "" {
-		return 0, false, fmt.Errorf("unsupported chain")
+		return failed(), fmt.Errorf("unsupported chain")
 	}
 	// CoW Settlement only swaps ERC20s; wrap native on either side.
 	tokenIn := pair.TokenIn
 	if strings.EqualFold(tokenIn, NativeSentinel) {
 		w, ok := wrappedNative[pair.ChainId]
 		if !ok {
-			return 0, false, fmt.Errorf("no wrapped-native for chain %d", pair.ChainId)
+			return failed(), fmt.Errorf("no wrapped-native for chain %d", pair.ChainId)
 		}
 		tokenIn = w
 	}
@@ -68,7 +68,7 @@ func (p *CoWProvider) Probe(ctx context.Context, pair TestPair) (int64, bool, er
 	if strings.EqualFold(tokenOut, NativeSentinel) {
 		w, ok := wrappedNative[pair.ChainId]
 		if !ok {
-			return 0, false, fmt.Errorf("no wrapped-native for chain %d", pair.ChainId)
+			return failed(), fmt.Errorf("no wrapped-native for chain %d", pair.ChainId)
 		}
 		tokenOut = w
 	}
@@ -91,18 +91,18 @@ func (p *CoWProvider) Probe(ctx context.Context, pair TestPair) (int64, bool, er
 	resp, err := p.client.Do(req)
 	if err != nil {
 		RecordOtherError(p.Slug(), pair.Chain, p.region, classifyNetErr(err))
-		return 0, false, err
+		return failed(), err
 	}
 	defer resp.Body.Close()
 	ms := time.Since(t0).Milliseconds()
 
 	if resp.StatusCode == 429 {
 		RecordThrottled(p.Slug(), pair.Chain, p.region)
-		return 0, false, fmt.Errorf("429")
+		return failed(), fmt.Errorf("429")
 	}
 	if resp.StatusCode == 401 || resp.StatusCode == 403 {
 		RecordAuthError(p.Slug(), pair.Chain, p.region)
-		return 0, false, fmt.Errorf("%d", resp.StatusCode)
+		return failed(), fmt.Errorf("%d", resp.StatusCode)
 	}
 	rb, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode != 200 {
@@ -110,10 +110,10 @@ func (p *CoWProvider) Probe(ctx context.Context, pair TestPair) (int64, bool, er
 		// when it can't price — count those as no_route.
 		if resp.StatusCode == 400 && bytes.Contains(rb, []byte("NoLiquidity")) {
 			RecordNoRoute(p.Slug(), pair.Chain, p.region)
-			return 0, false, fmt.Errorf("no_liquidity")
+			return failed(), fmt.Errorf("no_liquidity")
 		}
 		RecordOtherError(p.Slug(), pair.Chain, p.region, fmt.Sprintf("http_%d", resp.StatusCode))
-		return 0, false, fmt.Errorf("status=%d body=%s", resp.StatusCode, snippet(rb))
+		return failed(), fmt.Errorf("status=%d body=%s", resp.StatusCode, snippet(rb))
 	}
 	var r struct {
 		Quote struct {
@@ -122,11 +122,11 @@ func (p *CoWProvider) Probe(ctx context.Context, pair TestPair) (int64, bool, er
 	}
 	if err := json.Unmarshal(rb, &r); err != nil {
 		RecordOtherError(p.Slug(), pair.Chain, p.region, "parse")
-		return 0, false, err
+		return failed(), err
 	}
 	if r.Quote.BuyAmount == "" || r.Quote.BuyAmount == "0" {
 		RecordNoRoute(p.Slug(), pair.Chain, p.region)
-		return 0, false, fmt.Errorf("no_route")
+		return failed(), fmt.Errorf("no_route")
 	}
-	return ms, true, nil
+	return okQuote(ms, r.Quote.BuyAmount), nil
 }

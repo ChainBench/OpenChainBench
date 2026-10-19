@@ -97,11 +97,13 @@ func doTick(ctx context.Context, providers []Provider, pair TestPair, region str
 			defer wg.Done()
 			probeCtx, cancel := context.WithTimeout(ctx, probeTimeout)
 			defer cancel()
-			ms, ok, err := p.Probe(probeCtx, pair)
-			if ok {
-				RecordLatency(p.Slug(), pair.Chain, region, ms)
-				fmt.Printf("[%s] %s %s/%s -> %s/%s : %dms\n",
-					region, p.Slug(), pair.TokenInSym, pair.TokenOutSym, pair.Chain, pair.TokenOutSym, ms)
+			q, err := p.Probe(probeCtx, pair)
+			if q.OK {
+				RecordLatency(p.Slug(), pair.Chain, region, q.LatencyMs)
+				RecordQuote(p.Slug(), pair, region, q)
+				fmt.Printf("[%s] %s %s/%s -> %s/%s : %dms out=%s\n",
+					region, p.Slug(), pair.TokenInSym, pair.TokenOutSym, pair.Chain,
+					pair.TokenOutSym, q.LatencyMs, q.OutAmount)
 			} else if err != nil {
 				// Most adapters already recorded the correct counter — this
 				// line is just for the log ring buffer so /logs?tail=N is

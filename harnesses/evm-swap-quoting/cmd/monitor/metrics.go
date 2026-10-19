@@ -1,7 +1,10 @@
 package main
 
 import (
+	"math"
+	"math/big"
 	"net/http"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -75,6 +78,8 @@ func init() {
 		[]string{"provider", "chain", "region", "error_type"},
 	)
 	prometheus.MustRegister(quoteOtherError)
+
+	initQuoteOutput()
 }
 
 func RecordLatency(provider, chain, region string, latencyMs int64) {
@@ -110,3 +115,88 @@ func StartMetricsServer(addr string) error {
 	return http.ListenAndServe(addr, mux)
 }
 
+// ─── quote output ────────────────────────────────────────────────────
+//
+// What an aggregator returns, not how fast it returns it.
+//
+// Published as a gauge of the output in whole destination-token units,
+// alongside the provider's own declared fee. No ranking is computed here
+// and none should be computed from a single sample: measured on
+// 2026-10-19, the market drifted 30 to 37 bps across five probes a minute
+// apart while the providers sat within 25 bps of each other, so three
+// different names "won" in five runs. The comparison that survives is the
+// gap to the best quote of the SAME tick, which is why the tick's
+// timestamp is carried as a label-free gauge the query layer can align on.
+var (
+	quoteOutAmount *prometheus.GaugeVec
+	quoteFeeBps    *prometheus.GaugeVec
+	quoteBlock     *prometheus.GaugeVec
+	quoteTickUnix  *prometheus.GaugeVec
+)
+
+func initQuoteOutput() {
+	quoteOutAmount = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "evm_swap_quote_out_amount",
+			Help: "Quoted output in whole destination-token units for the latest probe of this (provider, chain, pair). Not comparable across ticks: the market moves between them. Compare within one tick.",
+		},
+		[]string{"provider", "chain", "region", "pair"},
+	)
+	prometheus.MustRegister(quoteOutAmount)
+
+	quoteFeeBps = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "evm_swap_quote_fee_bps",
+			Help: "Fee the provider itself declares on the quote, in basis points. Absent when the provider declares nothing, which is not the same as charging nothing.",
+		},
+		[]string{"provider", "chain", "region", "pair"},
+	)
+	prometheus.MustRegister(quoteFeeBps)
+
+	quoteBlock = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "evm_swap_quote_block",
+			Help: "Block the provider says it quoted against. Absent when it does not say; only then can two quotes be proven to have seen the same market.",
+		},
+		[]string{"provider", "chain", "region", "pair"},
+	)
+	prometheus.MustRegister(quoteBlock)
+
+	quoteTickUnix = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "evm_swap_quote_tick_unix",
+			Help: "Unix seconds of the scheduler tick this quote belongs to. Quotes sharing a tick saw the same market and are the only ones worth comparing.",
+		},
+		[]string{"provider", "chain", "region", "pair"},
+	)
+	prometheus.MustRegister(quoteTickUnix)
+}
+
+// RecordQuote publishes what the provider returned.
+//
+// The amount is converted to whole units using the pair's declared output
+// decimals rather than published raw: a gauge holding 2.4e9 for USDT and
+// 1e18 for an 18-decimal token cannot be read on one axis, and Prometheus
+// float64 loses precision above 2^53 anyway.
+func RecordQuote(provider string, pair TestPair, region string, q Quote) {
+	pairLabel := pair.TokenInSym + "/" + pair.TokenOutSym
+	if q.OutAmount != "" {
+		if v, ok := new(big.Float).SetString(q.OutAmount); ok {
+			scale := new(big.Float).SetFloat64(math.Pow10(pair.TokenOutDec))
+			whole, _ := new(big.Float).Quo(v, scale).Float64()
+			quoteOutAmount.WithLabelValues(provider, pair.Chain, region, pairLabel).Set(whole)
+		}
+	}
+	if q.FeeBps >= 0 {
+		quoteFeeBps.WithLabelValues(provider, pair.Chain, region, pairLabel).Set(q.FeeBps)
+	} else {
+		quoteFeeBps.DeleteLabelValues(provider, pair.Chain, region, pairLabel)
+	}
+	if q.Block > 0 {
+		quoteBlock.WithLabelValues(provider, pair.Chain, region, pairLabel).Set(float64(q.Block))
+	} else {
+		quoteBlock.DeleteLabelValues(provider, pair.Chain, region, pairLabel)
+	}
+	quoteTickUnix.WithLabelValues(provider, pair.Chain, region, pairLabel).
+		Set(float64(time.Now().Unix()))
+}

@@ -35,7 +35,7 @@ func (p *OdosProvider) Supports(chainId int) bool {
 	return false
 }
 
-func (p *OdosProvider) Probe(ctx context.Context, pair TestPair) (int64, bool, error) {
+func (p *OdosProvider) Probe(ctx context.Context, pair TestPair) (Quote, error) {
 	tokenIn := pair.TokenIn
 	tokenOut := pair.TokenOut
 	if strings.EqualFold(tokenIn, NativeSentinel) {
@@ -67,34 +67,34 @@ func (p *OdosProvider) Probe(ctx context.Context, pair TestPair) (int64, bool, e
 	resp, err := p.client.Do(req)
 	if err != nil {
 		RecordOtherError(p.Slug(), pair.Chain, p.region, classifyNetErr(err))
-		return 0, false, err
+		return failed(), err
 	}
 	defer resp.Body.Close()
 	ms := time.Since(t0).Milliseconds()
 
 	if resp.StatusCode == 429 {
 		RecordThrottled(p.Slug(), pair.Chain, p.region)
-		return 0, false, fmt.Errorf("429")
+		return failed(), fmt.Errorf("429")
 	}
 	if resp.StatusCode == 401 || resp.StatusCode == 403 {
 		RecordAuthError(p.Slug(), pair.Chain, p.region)
-		return 0, false, fmt.Errorf("%d", resp.StatusCode)
+		return failed(), fmt.Errorf("%d", resp.StatusCode)
 	}
 	rb, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode != 200 {
 		RecordOtherError(p.Slug(), pair.Chain, p.region, fmt.Sprintf("http_%d", resp.StatusCode))
-		return 0, false, fmt.Errorf("status=%d body=%s", resp.StatusCode, snippet(rb))
+		return failed(), fmt.Errorf("status=%d body=%s", resp.StatusCode, snippet(rb))
 	}
 	var r struct {
 		OutAmounts []string `json:"outAmounts"`
 	}
 	if err := json.Unmarshal(rb, &r); err != nil {
 		RecordOtherError(p.Slug(), pair.Chain, p.region, "parse")
-		return 0, false, err
+		return failed(), err
 	}
 	if len(r.OutAmounts) == 0 || r.OutAmounts[0] == "" || r.OutAmounts[0] == "0" {
 		RecordNoRoute(p.Slug(), pair.Chain, p.region)
-		return 0, false, fmt.Errorf("no_route")
+		return failed(), fmt.Errorf("no_route")
 	}
-	return ms, true, nil
+	return okQuote(ms, r.OutAmounts[0]), nil
 }

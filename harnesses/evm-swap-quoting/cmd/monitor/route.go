@@ -29,7 +29,7 @@ func (p *RouteProvider) Slug() string { return "route" }
 
 func (p *RouteProvider) Supports(chainId int) bool { return chainId == 4663 }
 
-func (p *RouteProvider) Probe(ctx context.Context, pair TestPair) (int64, bool, error) {
+func (p *RouteProvider) Probe(ctx context.Context, pair TestPair) (Quote, error) {
 	q := url.Values{}
 	q.Set("in", strings.ToLower(mapNative(pair.TokenIn, ZeroAddress)))
 	q.Set("out", strings.ToLower(mapNative(pair.TokenOut, ZeroAddress)))
@@ -43,7 +43,7 @@ func (p *RouteProvider) Probe(ctx context.Context, pair TestPair) (int64, bool, 
 	resp, err := p.client.Do(req)
 	if err != nil {
 		RecordOtherError(p.Slug(), pair.Chain, p.region, classifyNetErr(err))
-		return 0, false, err
+		return failed(), err
 	}
 	defer resp.Body.Close()
 	body, _ := io.ReadAll(resp.Body)
@@ -52,16 +52,16 @@ func (p *RouteProvider) Probe(ctx context.Context, pair TestPair) (int64, bool, 
 	switch {
 	case resp.StatusCode == 429:
 		RecordThrottled(p.Slug(), pair.Chain, p.region)
-		return 0, false, fmt.Errorf("429")
+		return failed(), fmt.Errorf("429")
 	case resp.StatusCode == 401 || resp.StatusCode == 403:
 		RecordAuthError(p.Slug(), pair.Chain, p.region)
-		return 0, false, fmt.Errorf("auth status=%d", resp.StatusCode)
+		return failed(), fmt.Errorf("auth status=%d", resp.StatusCode)
 	case resp.StatusCode == 404 || resp.StatusCode == 422:
 		RecordNoRoute(p.Slug(), pair.Chain, p.region)
-		return 0, false, fmt.Errorf("no_route status=%d", resp.StatusCode)
+		return failed(), fmt.Errorf("no_route status=%d", resp.StatusCode)
 	case resp.StatusCode != 200:
 		RecordOtherError(p.Slug(), pair.Chain, p.region, fmt.Sprintf("http_%d", resp.StatusCode))
-		return 0, false, fmt.Errorf("status=%d body=%s", resp.StatusCode, snippet(body))
+		return failed(), fmt.Errorf("status=%d body=%s", resp.StatusCode, snippet(body))
 	}
 	var r struct {
 		OK        bool   `json:"ok"`
@@ -69,11 +69,11 @@ func (p *RouteProvider) Probe(ctx context.Context, pair TestPair) (int64, bool, 
 	}
 	if err := json.Unmarshal(body, &r); err != nil {
 		RecordOtherError(p.Slug(), pair.Chain, p.region, "parse")
-		return 0, false, err
+		return failed(), err
 	}
 	if !r.OK || r.AmountOut == "" || r.AmountOut == "0" {
 		RecordNoRoute(p.Slug(), pair.Chain, p.region)
-		return 0, false, fmt.Errorf("no_route")
+		return failed(), fmt.Errorf("no_route")
 	}
-	return ms, true, nil
+	return okQuote(ms, r.AmountOut), nil
 }
