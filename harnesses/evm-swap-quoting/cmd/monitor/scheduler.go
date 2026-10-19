@@ -52,6 +52,9 @@ func buildProviders(cfg *Config) []Provider {
 	if cfg.OdosAPIKey != "" {
 		providers = append(providers, NewOdosProvider(cfg.MonitorRegion, cfg.OdosAPIKey))
 	}
+	if cfg.UniswapAPIKey != "" {
+		providers = append(providers, NewUniswapProvider(cfg.MonitorRegion, cfg.UniswapAPIKey))
+	}
 	if cfg.RouteAPIKey != "" {
 		providers = append(providers, NewRouteProvider(cfg.MonitorRegion, cfg.RouteAPIKey))
 	}

@@ -178,8 +178,8 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   mobula: {
     url: "https://mobula.io",
     description:
-      "Onchain data aggregator covering 80+ chains. WebSocket fast-trade feed, REST market and metadata, wallet portfolio APIs.",
-    twitter: "@ChainBench",
+      "Onchain data aggregator covering 80+ chains. WebSocket fast-trade feed, REST market and metadata, wallet portfolio APIs. Its swap endpoint routes multi-hop across named pools, so it is typed as an aggregator on the quote benches.",
+    twitter: "@MobulaIO",
   },
   codex: {
     url: "https://www.codex.io",
