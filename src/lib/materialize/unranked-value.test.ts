@@ -49,13 +49,31 @@ describe("an unranked row keeps its measured value", () => {
     const rows = (spec("evm-quote-output").providers ?? []).filter(
       (p) => p.unranked,
     );
-    expect(rows.map((p) => p.slug).sort()).toEqual([
-      "bebop",
-      "cow",
-      "lifi",
-      "route",
-    ]);
+    expect(rows.map((p) => p.slug).sort()).toEqual(["bebop", "cow", "lifi"]);
     for (const p of rows) expect(p.unranked_hides_value ?? false).toBe(false);
+  });
+
+  test("Route is labelled by the coverage rule, not by the spec", () => {
+    // A spec-declared label applies to every tab. Route quotes one chain, so
+    // declaring it would pull Route out of the ranking on the one chain it
+    // actually quotes. score_scope: full_coverage computes the same label,
+    // and only where the figure is incomparable: the all-chains view.
+    const route = (spec("evm-quote-output").providers ?? []).find(
+      (p) => p.slug === "route",
+    );
+    expect(route).toBeDefined();
+    expect(route?.unranked).toBeUndefined();
+  });
+
+  test("the label applies on a chain tab too, not only the all view", () => {
+    // "Never ranked, never a leader" is a property of the provider, not of
+    // the view. The block had been swept inside the `if (!isFiltered)` guard
+    // that gates augmenting missing providers, so every chain tab lost the
+    // labels: bench 304's BSC tab ranked Bebop and LI.FI inside the router
+    // order its own methodology says they are kept out of. Pinned by indent,
+    // which is what moving it back under the guard would change.
+    expect(SRC).toContain("\n    const unrankedBySlug = new Map(");
+    expect(SRC).not.toContain("\n      const unrankedBySlug = new Map(");
   });
 
   test("Paradex still asks to be blanked", () => {

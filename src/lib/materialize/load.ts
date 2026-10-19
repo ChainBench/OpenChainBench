@@ -343,40 +343,48 @@ export async function specToBenchmark(
           if (hasPanelData) r.availability = "live";
         }
       }
-      // Spec-declared unranked members (provider.unranked). They carry the
-      // label so the ledger lists them in their own block instead of
-      // dropping them, and never read as unresponsive: the absence from
-      // the order is intended.
-      //
-      // The measured value stays, which is the same call applyFullCoverageScope
-      // makes below and for the same reason. This path used to zero the
-      // percentiles for every labelled row, on the assumption the label
-      // always meant "no value exists" (a perp DEX pre-TGE). Bench 304
-      // broke that: CoW, Bebop and LI.FI are measured and merely not
-      // comparable to a router, and the zeroing published "0.00 bps" for a
-      // venue giving up a hundred. Of the eleven labelled rows on the four
-      // specs that shipped the field first, ten return nothing from
-      // Prometheus and are dropped upstream before this loop, so the zero
-      // reached exactly one: perp-pf-ratio's Paradex, whose adapter the
-      // spec itself calls incomplete. That row now asks for the blanking
-      // with `unranked_hides_value`.
-      const unrankedBySlug = new Map(
-        spec.providers
-          .filter((p) => p.unranked)
-          .map((p) => [
-            p.slug.toLowerCase(),
-            { label: p.unranked as string, hide: p.unranked_hides_value },
-          ]),
-      );
-      if (unrankedBySlug.size > 0) {
-        for (const r of live.results) {
-          const entry = unrankedBySlug.get(r.slug.toLowerCase());
-          if (!entry) continue;
-          r.unrankedLabel = entry.label;
-          r.unresponsive = undefined;
-          r.availability = "live";
-          if (entry.hide) r.ms = { p50: 0, p90: 0, p99: 0, mean: 0 };
-        }
+    }
+    // Spec-declared unranked members (provider.unranked). They carry the
+    // label so the ledger lists them in their own block instead of
+    // dropping them, and never read as unresponsive: the absence from the
+    // order is intended.
+    //
+    // Outside the !isFiltered block, because "never ranked, never a leader"
+    // is a property of the provider and not of the view. It had been swept
+    // in with the augmentation of missing providers, which really is
+    // unfiltered-only, and so every chain tab lost the labels: bench 304's
+    // BSC tab ranked Bebop and LI.FI, an RFQ venue and a relayer, inside
+    // the router order the page's own methodology says they are kept out
+    // of. They sat last, so no leader was wrong yet.
+    //
+    // The measured value stays, which is the same call applyFullCoverageScope
+    // makes below and for the same reason. This path used to zero the
+    // percentiles for every labelled row, on the assumption the label
+    // always meant "no value exists" (a perp DEX pre-TGE). Bench 304
+    // broke that: CoW, Bebop and LI.FI are measured and merely not
+    // comparable to a router, and the zeroing published "0.00 bps" for a
+    // venue giving up a hundred. Of the eleven labelled rows on the four
+    // specs that shipped the field first, ten return nothing from
+    // Prometheus and are dropped upstream before this loop, so the zero
+    // reached exactly one: perp-pf-ratio's Paradex, whose adapter the
+    // spec itself calls incomplete. That row now asks for the blanking
+    // with `unranked_hides_value`.
+    const unrankedBySlug = new Map(
+      spec.providers
+        .filter((p) => p.unranked)
+        .map((p) => [
+          p.slug.toLowerCase(),
+          { label: p.unranked as string, hide: p.unranked_hides_value },
+        ]),
+    );
+    if (unrankedBySlug.size > 0) {
+      for (const r of live.results) {
+        const entry = unrankedBySlug.get(r.slug.toLowerCase());
+        if (!entry) continue;
+        r.unrankedLabel = entry.label;
+        r.unresponsive = undefined;
+        r.availability = "live";
+        if (entry.hide) r.ms = { p50: 0, p90: 0, p99: 0, mean: 0 };
       }
     }
     // Per-chain leaders/trailers: computed only on the unfiltered "All"
