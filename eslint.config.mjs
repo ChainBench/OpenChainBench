@@ -21,6 +21,7 @@ const eslintConfig = defineConfig([
     "infrastructure/**",
     "worker/**",
     "crm/**",
+    "video/**",
     // Background agents check the repo out into .claude/worktrees, so a
     // local `pnpm lint` walked every copy as if it were source. On
     // 2026-09-30 that turned 0 errors and 9 warnings into 5,085 errors and

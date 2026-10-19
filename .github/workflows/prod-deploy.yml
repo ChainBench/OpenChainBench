@@ -27,6 +27,8 @@ on:
       - 'crm/**'
       - 'infrastructure/**'
       - 'worker/**'
+      # The video engine ships to its own renderer (video/deploy).
+      - 'video/**'
       - 'outreach/**'
       - 'packages/**'
   workflow_dispatch:
