@@ -812,22 +812,6 @@ func chains() []Chain {
 				{Slug: "tenderly", Name: "Tenderly", URL: envDefault("RPC_URL_LISK_TENDERLY", "https://gateway.tenderly.co/public/lisk")},
 			},
 		},
-		// 2026-08-03: added drpc (swell.drpc.org). 4 total.
-		// 2026-08-02 audit. Swellchain OP Stack L2 (chain 1923). 3 clean
-		// keyless providers. Live-verified: ankr (rpc.ankr.com/swell), sentio
-		// (swell-mainnet.rpc.sentio.xyz), thirdweb (1923.rpc.thirdweb.com).
-		// Excluded: official alt.technology endpoint (401 without key),
-		// Alchemy (key required).
-		{
-			Slug: "swellchain",
-			Name: "Swellchain",
-			Providers: []Provider{
-				{Slug: "ankr", Name: "Ankr", URL: envDefault("RPC_URL_SWELLCHAIN_ANKR", "https://rpc.ankr.com/swell")},
-				{Slug: "sentio", Name: "Sentio", URL: envDefault("RPC_URL_SWELLCHAIN_SENTIO", "https://swell-mainnet.rpc.sentio.xyz")},
-				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_SWELLCHAIN_THIRDWEB", "https://1923.rpc.thirdweb.com")},
-				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_SWELLCHAIN_DRPC", "https://swell.drpc.org")},
-			},
-		},
 		// 2026-08-02 audit. Cyber Network OP Stack L2 (chain 7560). 3 clean
 		// keyless providers. Live-verified: cyber-official (rpc.cyber.co),
 		// altlayer (cyber.alt.technology), thirdweb (7560.rpc.thirdweb.com).
@@ -1945,16 +1929,6 @@ func chains() []Chain {
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_KATANA_DRPC", "https://katana.drpc.org")},
 				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_KATANA_THIRDWEB", "https://747474.rpc.thirdweb.com")},
 				{Slug: "conduit", Name: "Conduit", URL: envDefault("RPC_URL_KATANA_CONDUIT", "https://rpc.katanarpc.com")},
-			},
-		},
-		// 2026-10-07 chain-hunt sweep. Superseed (chain 5330), OP Stack L2. 3 clean keyless providers; publicnode has no superseed route.
-		{
-			Slug: "superseed",
-			Name: "Superseed",
-			Providers: []Provider{
-				{Slug: "superseed-official", Name: "Superseed", URL: envDefault("RPC_URL_SUPERSEED_SUPERSEED_OFFICIAL", "https://mainnet.superseed.xyz")},
-				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_SUPERSEED_DRPC", "https://superseed.drpc.org")},
-				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_SUPERSEED_THIRDWEB", "https://5330.rpc.thirdweb.com")},
 			},
 		},
 		// 2026-10-07 chain-hunt sweep. Tempo (chain 4217). 3 clean keyless providers; thirdweb returns no route for 4217 so the roster is official, drpc and publicnode.
