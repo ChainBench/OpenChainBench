@@ -659,7 +659,15 @@ export function applyFullCoverageScope(
           ? `${chainLabels[own[0]] ?? own[0]} only`
           : `${own.length} of ${chains.length} chains`;
       r.unrankedLabel = label.length > 20 ? `${own.length}/${chains.length} chains` : label;
-      r.ms = { p50: 0, p90: 0, p99: 0, mean: 0 };
+      // The measured value stays. Zeroing it, which is what the
+      // spec-declared unranked path does, rendered Route as "0 ms" in
+      // every percentile column: a wall-clock round trip of zero is
+      // impossible and reads either as a broken row or as Route being
+      // instant. Nothing needs the zero. citation.ts filters the leader
+      // on the label, the ledger pins labelled rows below the ranked
+      // field and excludes them from ranks and the field mean, and
+      // capital-hub filters on the label too. So the row keeps its real
+      // 215 ms and sits outside the order where it belongs.
       continue;
     }
     // Rescore over the basket so the published number is the one the
