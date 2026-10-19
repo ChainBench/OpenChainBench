@@ -3,7 +3,7 @@
 slug: price-api-accuracy
 number: "305"
 title: "Crypto price API accuracy: how far each feed sits from the exchange price"
-seo_title: "Most accurate crypto price API 2026, live ranking"
+seo_title: "Crypto price API accuracy 2026: gap to the exchange price"
 seo_description: "{{best_name}} prints closest to the exchange price: {{best_p50}} median gap on nine majors, each answer scored live against the exchange mid of the same moment."
 subtitle: Basis points between the USD price a market-data API publishes and the exchange mid of the same moment, on BTC, ETH, SOL, BNB, XRP, ADA, DOGE, AVAX and LINK.
 
@@ -73,6 +73,12 @@ faq:
     a: "Yes, by design. The gap is what a reader of the API receives, and a price rebuilt every minute carries up to a minute of market drift. The price age column, read from each provider's own last-updated stamp, shows how much of a gap comes from age rather than from how the price is built."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/dev/harnesses/price-api-accuracy
+
+# A full day of CoinPaprika, the sparsest poll: nine coins every 20 minutes.
+# A row under a tenth of it (65 answers) is shown as insufficient and never
+# ranked, which keeps a fresh restart from ranking a row on a handful of
+# polls; Mobula, polled every 30 s, clears it in about four minutes.
+expected_n: 648
 
 prometheus:
   window: 24h

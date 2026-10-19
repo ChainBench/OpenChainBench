@@ -35,12 +35,17 @@ func main() {
 	ref := newReference(cfg)
 	go ref.run(ctx)
 
+	enabled := []provider{}
 	for _, p := range providers(cfg) {
 		if !p.enabled {
 			log.Printf("provider %s disabled: %s", p.slug, p.disabledReason)
 			continue
 		}
 		pollInterval.WithLabelValues(p.slug).Set(p.interval.Seconds())
+		initSeries(p)
+		enabled = append(enabled, p)
+	}
+	for _, p := range enabled {
 		go runProvider(ctx, p, ref)
 	}
 
@@ -60,13 +65,34 @@ func main() {
 	}
 }
 
+// firstPollAfter holds every first poll past one scrape interval (30 s on
+// the OCB Prometheus). The counters and histograms are created at zero in
+// initSeries, so Prometheus scrapes the zero first and the first answer
+// after a restart reads as an increase from it. Without both, a series born
+// with its first observation shows no increase until the second, and a
+// restart that lands a bucket back on its old value hides a reset: the
+// first deploys published a CoinPaprika median resting on zero samples.
+const firstPollAfter = 45 * time.Second
+
+// initSeries creates every (provider, asset) child at zero before any poll.
+func initSeries(p provider) {
+	requests.WithLabelValues(p.slug, "ok").Add(0)
+	for _, a := range p.assets {
+		al := strings.ToLower(a)
+		deviation.WithLabelValues(p.slug, al)
+		for _, st := range []string{"ok", "missing", "failed", "no_reference", "probe_error"} {
+			assetPolls.WithLabelValues(p.slug, al, st).Add(0)
+		}
+	}
+}
+
 func runProvider(ctx context.Context, p provider, ref *reference) {
-	// Stagger the first poll so seven providers do not fire on the same
-	// reference tick at boot.
+	// Past the first scrape, then staggered so the providers do not fire
+	// on the same reference tick.
 	select {
 	case <-ctx.Done():
 		return
-	case <-time.After(p.startDelay):
+	case <-time.After(firstPollAfter + p.startDelay):
 	}
 	t := time.NewTicker(p.interval)
 	defer t.Stop()
