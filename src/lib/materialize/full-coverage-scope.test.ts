@@ -43,21 +43,37 @@ function fixture() {
     bsc: "BSC",
     robinhood: "Robinhood",
   };
-  // Per-chain values, used to rescore over the common basket.
-  const valuesByChain: Record<string, Record<string, number>> = {
-    ethereum: { kyberswap: 199, mobula: 470, lifi: 700, bebop: 650, cow: 1800 },
-    base: { kyberswap: 185, mobula: 480, lifi: 720, bebop: 660, cow: 1850 },
-    arbitrum: { kyberswap: 246, mobula: 490, lifi: 740, bebop: 700, cow: 1900 },
-    bsc: { kyberswap: 250, mobula: 500, lifi: 760, bebop: 720 },
-    robinhood: { route: 215, kyberswap: 244, lifi: 648 },
+  // Per-chain percentiles, used to rescore over the common basket. The
+  // tail is deliberately far from the median so a regression that copies
+  // the p50 into p90 and p99 fails loudly: that is what shipped on
+  // 2026-10-19 and hid CoW's 4,961 ms Arbitrum p99 behind 1,658.
+  const m = (p50: number, p99: number) => ({ p50, p90: p50 * 1.5, p99, mean: p50 });
+  const spreadsByChain = {
+    ethereum: {
+      kyberswap: m(199, 900), mobula: m(470, 1500), lifi: m(700, 2000),
+      bebop: m(650, 1800), cow: m(1800, 4000),
+    },
+    base: {
+      kyberswap: m(185, 800), mobula: m(480, 1400), lifi: m(720, 2100),
+      bebop: m(660, 1900), cow: m(1850, 4200),
+    },
+    arbitrum: {
+      kyberswap: m(246, 610), mobula: m(490, 1600), lifi: m(740, 2200),
+      bebop: m(700, 2000), cow: m(1900, 4961),
+    },
+    bsc: {
+      kyberswap: m(250, 1000), mobula: m(500, 1700), lifi: m(760, 2300),
+      bebop: m(720, 2100),
+    },
+    robinhood: { route: m(215, 932), kyberswap: m(244, 1100), lifi: m(648, 1900) },
   };
-  return { results, providersPerChain, labels, valuesByChain };
+  return { results, providersPerChain, labels, spreadsByChain };
 }
 
 describe("applyFullCoverageScope", () => {
   test("a provider with nothing in the common basket leaves the ranking", () => {
-    const { results, providersPerChain, labels, valuesByChain } = fixture();
-    applyFullCoverageScope(results, providersPerChain, labels, valuesByChain);
+    const { results, providersPerChain, labels, spreadsByChain } = fixture();
+    applyFullCoverageScope(results, providersPerChain, labels, spreadsByChain);
     const route = results.find((x) => x.slug === "route")!;
     expect(route.unrankedLabel).toBe("Robinhood only");
     // The measured value stays: a 0 ms round trip is impossible and
@@ -72,8 +88,8 @@ describe("applyFullCoverageScope", () => {
   // The over-correction this rule exists to avoid: demanding every chain
   // unranked Mobula, Bebop and CoW too and left a two-name board.
   test("a provider missing only the thin chain stays ranked", () => {
-    const { results, providersPerChain, labels, valuesByChain } = fixture();
-    applyFullCoverageScope(results, providersPerChain, labels, valuesByChain);
+    const { results, providersPerChain, labels, spreadsByChain } = fixture();
+    applyFullCoverageScope(results, providersPerChain, labels, spreadsByChain);
     for (const slug of ["mobula", "bebop", "cow"]) {
       const row = results.find((x) => x.slug === slug)!;
       expect(row.unrankedLabel).toBeUndefined();
@@ -82,8 +98,8 @@ describe("applyFullCoverageScope", () => {
   });
 
   test("the published value is the mean over the basket, not over everything", () => {
-    const { results, providersPerChain, labels, valuesByChain } = fixture();
-    applyFullCoverageScope(results, providersPerChain, labels, valuesByChain);
+    const { results, providersPerChain, labels, spreadsByChain } = fixture();
+    applyFullCoverageScope(results, providersPerChain, labels, spreadsByChain);
     // KyberSwap over ethereum, base, arbitrum, bsc: Robinhood is out.
     const kyber = results.find((x) => x.slug === "kyberswap")!;
     expect(kyber.ms.p50).toBeCloseTo((199 + 185 + 246 + 250) / 4, 6);
@@ -92,9 +108,21 @@ describe("applyFullCoverageScope", () => {
     expect(cow.ms.p50).toBeCloseTo((1800 + 1850 + 1900) / 3, 6);
   });
 
+  test("each percentile is averaged on its own, not copied from the p50", () => {
+    const { results, providersPerChain, labels, spreadsByChain } = fixture();
+    applyFullCoverageScope(results, providersPerChain, labels, spreadsByChain);
+    const kyber = results.find((x) => x.slug === "kyberswap")!;
+    expect(kyber.ms.p50).toBeCloseTo((199 + 185 + 246 + 250) / 4, 6);
+    expect(kyber.ms.p99).toBeCloseTo((900 + 800 + 610 + 1000) / 4, 6);
+    // The whole point: the tail must not collapse onto the median.
+    expect(kyber.ms.p99).toBeGreaterThan(kyber.ms.p50 * 2);
+    const cow = results.find((x) => x.slug === "cow")!;
+    expect(cow.ms.p99).toBeCloseTo((4000 + 4200 + 4961) / 3, 6);
+  });
+
   test("the leader after the fix is the provider that leads the shared chains", () => {
-    const { results, providersPerChain, labels, valuesByChain } = fixture();
-    applyFullCoverageScope(results, providersPerChain, labels, valuesByChain);
+    const { results, providersPerChain, labels, spreadsByChain } = fixture();
+    applyFullCoverageScope(results, providersPerChain, labels, spreadsByChain);
     const ranked = results
       .filter((x) => !x.unrankedLabel && x.ms.p50 > 0)
       .sort((a, b) => a.ms.p50 - b.ms.p50);
@@ -103,23 +131,24 @@ describe("applyFullCoverageScope", () => {
   });
 
   test("one chain is not a cross-chain comparison, so nothing changes", () => {
+    const m0 = (p50: number) => ({ p50, p90: p50, p99: p50, mean: p50 });
     const results = [r("route", 214.96), r("kyberswap", 224.74)];
     applyFullCoverageScope(
       results,
       { robinhood: ["route", "kyberswap"] },
       { robinhood: "Robinhood" },
-      { robinhood: { route: 215, kyberswap: 244 } },
+      { robinhood: { route: m0(215), kyberswap: m0(244) } },
     );
     expect(results.every((x) => x.unrankedLabel === undefined)).toBe(true);
     expect(results[0].ms.p50).toBe(214.96);
   });
 
   test("an unavailable provider is left alone", () => {
-    const { results, providersPerChain, labels, valuesByChain } = fixture();
+    const { results, providersPerChain, labels, spreadsByChain } = fixture();
     const dead = r("openocean", 0);
     dead.availability = "unavailable";
     results.push(dead);
-    applyFullCoverageScope(results, providersPerChain, labels, valuesByChain);
+    applyFullCoverageScope(results, providersPerChain, labels, spreadsByChain);
     expect(results.find((x) => x.slug === "openocean")!.unrankedLabel).toBeUndefined();
   });
 });

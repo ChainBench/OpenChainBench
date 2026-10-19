@@ -386,7 +386,19 @@ export async function specToBenchmark(
     // filtered variants now inherit findings/faq/seoIntro from the
     // aggregate via the page-level fetch in app/benchmarks/[slug]/page.tsx,
     // so per-chain compute on filtered variants is no longer needed.
-    if (!isFiltered && spec.dimensions?.chain && spec.dimensions.chain.length > 0) {
+    // The fan-out also runs on a view filtered by something OTHER than
+    // chain when the bench opted into a score_scope. Without it the rule
+    // had no per-chain data on the region tabs, so Route kept ranking
+    // first on US East and EU West, which is the exact claim #3052 was
+    // written to remove. A chain tab needs nothing: it is already one
+    // chain, so there is no cross-chain mix to correct. The extra loads
+    // are paid only by a bench that asked for the scope.
+    const chainFilterActive = Boolean(
+      activeFilterLabels(labelFilters(options)).chain,
+    );
+    const needsChainFanOut =
+      !isFiltered || (!!spec.score_scope && !chainFilterActive);
+    if (needsChainFanOut && spec.dimensions?.chain && spec.dimensions.chain.length > 0) {
       const chainValues = spec.dimensions.chain
         .map((c) => c.value)
         .filter((v) => v !== "all");
@@ -413,8 +425,16 @@ export async function specToBenchmark(
           // the chains a provider was actually compared on.
           const values: Record<string, number> = {};
           for (const r of liveForChain) values[r.slug.toLowerCase()] = r.ms.p50;
+          // Every percentile, not just the median. Rescoring over a basket
+          // wrote the p50 mean into p90, p99 and mean alike, so the tail
+          // columns became copies of the median: KyberSwap read 220 ms in
+          // all four while its measured p99 is 931, and CoW's 4,961 ms
+          // Arbitrum tail hid behind 1,658. A desk reads the p99 column
+          // precisely because it is not the median.
+          const spreads: Record<string, ProviderResult["ms"]> = {};
+          for (const r of liveForChain) spreads[r.slug.toLowerCase()] = r.ms;
           if (liveForChain.length === 0) {
-            return [chain, undefined, undefined, slugs, values] as const;
+            return [chain, undefined, undefined, slugs, values, spreads] as const;
           }
           const sorted = [...liveForChain].sort((a, b) =>
             spec.higher_is_better ? b.ms.p50 - a.ms.p50 : a.ms.p50 - b.ms.p50,
@@ -425,6 +445,7 @@ export async function specToBenchmark(
             sorted[sorted.length - 1],
             slugs,
             values,
+            spreads,
           ] as const;
         }),
       );
@@ -432,11 +453,13 @@ export async function specToBenchmark(
       const worsts: Record<string, ProviderResult> = {};
       const providers: Record<string, string[]> = {};
       const valuesByChain: Record<string, Record<string, number>> = {};
-      for (const [chain, leader, trailer, slugs, values] of perChainEntries) {
+      const spreadsByChain: Record<string, Record<string, ProviderResult["ms"]>> = {};
+      for (const [chain, leader, trailer, slugs, values, spreads] of perChainEntries) {
         if (leader) bests[chain] = leader;
         if (trailer) worsts[chain] = trailer;
         if (slugs.length > 0) providers[chain] = slugs;
         valuesByChain[chain] = values;
+        spreadsByChain[chain] = spreads ?? {};
       }
       if (Object.keys(bests).length > 0) bestPerChain = bests;
       if (Object.keys(worsts).length > 0) worstPerChain = worsts;
@@ -448,7 +471,7 @@ export async function specToBenchmark(
       if (spec.score_scope === "full_coverage") {
         const labels: Record<string, string> = {};
         for (const d of fullSpec.dimensions?.chain ?? []) labels[d.value] = d.label;
-        applyFullCoverageScope(live.results, providers, labels, valuesByChain);
+        applyFullCoverageScope(live.results, providers, labels, spreadsByChain);
       }
     }
 
@@ -615,7 +638,7 @@ export function applyFullCoverageScope(
   results: ProviderResult[],
   providersPerChain: Record<string, string[]>,
   chainLabels: Record<string, string>,
-  valuesByChain: Record<string, Record<string, number>>,
+  spreadsByChain: Record<string, Record<string, ProviderResult["ms"]>>,
 ): void {
   const chains = Object.keys(providersPerChain).filter(
     (c) => (providersPerChain[c]?.length ?? 0) > 0,
@@ -671,13 +694,27 @@ export function applyFullCoverageScope(
       continue;
     }
     // Rescore over the basket so the published number is the one the
-    // ranking follows, the same rule contested_chains states.
-    const vals = inBasket
-      .map((c) => valuesByChain[c]?.[slug])
-      .filter((v): v is number => typeof v === "number" && v > 0);
-    if (vals.length === 0) continue;
-    const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
-    r.ms = { p50: mean, p90: mean, p99: mean, mean };
+    // ranking follows, the same rule contested_chains states. Each
+    // percentile is averaged over its own per-chain values: writing the
+    // p50 mean into all four turned the tail columns into copies of the
+    // median and hid a 4,961 ms Arbitrum p99 behind a 1,658 ms figure.
+    const cells = inBasket
+      .map((c) => spreadsByChain[c]?.[slug])
+      .filter((m): m is ProviderResult["ms"] => !!m && m.p50 > 0);
+    if (cells.length === 0) continue;
+    const avg = (pick: (m: ProviderResult["ms"]) => number | undefined) => {
+      const xs = cells
+        .map(pick)
+        .filter((v): v is number => typeof v === "number" && v > 0);
+      return xs.length > 0 ? xs.reduce((a, b) => a + b, 0) / xs.length : 0;
+    };
+    const p50 = avg((m) => m.p50);
+    r.ms = {
+      p50,
+      p90: avg((m) => m.p90) || p50,
+      p99: avg((m) => m.p99) || p50,
+      mean: avg((m) => m.mean) || p50,
+    };
   }
 }
 
