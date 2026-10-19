@@ -60,7 +60,11 @@ describe("applyFullCoverageScope", () => {
     applyFullCoverageScope(results, providersPerChain, labels, valuesByChain);
     const route = results.find((x) => x.slug === "route")!;
     expect(route.unrankedLabel).toBe("Robinhood only");
-    expect(route.ms.p50).toBe(0);
+    // The measured value stays: a 0 ms round trip is impossible and
+    // rendered as "0 ms" in every percentile column. The label is what
+    // takes the row out of the order; citation.ts and the ledger both
+    // key on it.
+    expect(route.ms.p50).toBe(214.96);
     // It answered, so it must not read as a dead endpoint.
     expect(route.availability).toBe("live");
   });
