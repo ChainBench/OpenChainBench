@@ -97,3 +97,31 @@ func TestBlockIsPublishedOnlyWhenTheProviderReportsIt(t *testing.T) {
 		t.Errorf("a provider that reports no block must have no series, got %v", v)
 	}
 }
+
+// Mobula returns `amountOutTokens`, already divided. Scaling it again by
+// the output token's decimals published 0.00238 USDT against everyone
+// else's 2389, which is the bug this flag exists to prevent. The synthetic
+// tests above could not catch it because they invented the input; this one
+// pins the real shape.
+func TestAlreadyScaledAmountIsNotDividedTwice(t *testing.T) {
+	pair := usdtPair()
+	RecordQuote("mobula", pair, "us-east", Quote{
+		LatencyMs: 853, OK: true, OutAmount: "2389.665942",
+		FeeBps: -1, OutAlreadyScaled: true,
+	})
+	got := testutil.ToFloat64(
+		quoteOutAmount.WithLabelValues("mobula", "ethereum", "us-east", "ETH/USDT"))
+	if math.Abs(got-2389.665942) > 1e-6 {
+		t.Errorf("expected 2389.665942 whole USDT, got %v", got)
+	}
+	// And the same number flagged the other way must land four orders of
+	// magnitude apart, so the flag is doing the work rather than the value.
+	RecordQuote("other", pair, "us-east", Quote{
+		LatencyMs: 100, OK: true, OutAmount: "2389665942", FeeBps: -1,
+	})
+	raw := testutil.ToFloat64(
+		quoteOutAmount.WithLabelValues("other", "ethereum", "us-east", "ETH/USDT"))
+	if math.Abs(raw-2389.665942) > 1e-6 {
+		t.Errorf("a raw smallest-unit amount must still scale, got %v", raw)
+	}
+}
