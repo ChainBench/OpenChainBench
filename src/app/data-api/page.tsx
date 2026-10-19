@@ -47,6 +47,7 @@ export const revalidate = 3600;
  */
 const CURATED_BENCH_SLUGS = [
   "aggregator-head-lag",
+  "price-api-accuracy",
   "metadata-coverage",
   "asset-registry-coverage",
   "token-quote-coverage",

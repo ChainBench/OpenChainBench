@@ -322,6 +322,12 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "Portfolio tracker and market data API. REST endpoints for prices, exchanges, NFTs, and wallet balances across 100+ blockchains. Consumer app + paid API tiers.",
     twitter: "@CoinStats",
   },
+  bitculator: {
+    url: "https://bitculator.com",
+    description:
+      "Crypto market data API. Coin prices are volume-weighted averages across 16 exchange adapters, served over REST with markets, exchanges, liquidations and historical candles.",
+    twitter: "@bitculator",
+  },
 
   // ─── NFT data APIs (bench 040) ────────────────────────────────
   alchemy: {
