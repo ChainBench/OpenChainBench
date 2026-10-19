@@ -72,7 +72,9 @@ function compactProviderName(name: string): string {
  *  - Coverage / count (higher is better): a covers more, b "covers less".
  */
 function compareLabel(b: Benchmark, delta: number): string {
-  const isCost = b.unit === "pct" || b.unit === "bps";
+  // "bp" is the basis-point unit that prints basis points; "bps" is the
+  // legacy one that converts to percent. Both are costs.
+  const isCost = b.unit === "pct" || b.unit === "bps" || b.unit === "bp";
   const isLatency = b.unit === "ms" || b.unit === "s";
   if (b.higherIsBetter) {
     return delta >= 0 ? "Covers less by" : "Covers more by";
