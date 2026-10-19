@@ -48,17 +48,17 @@ var wrappedNative = map[int]string{
 	42161: "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1", // WETH on Arbitrum
 }
 
-func (p *BebopProvider) Probe(ctx context.Context, pair TestPair) (int64, bool, error) {
+func (p *BebopProvider) Probe(ctx context.Context, pair TestPair) (Quote, error) {
 	slug := ChainSlugFor(pair.ChainId)
 	if slug == "" {
-		return 0, false, fmt.Errorf("unsupported chain")
+		return failed(), fmt.Errorf("unsupported chain")
 	}
 	// Substitute native sentinel with the wrapped equivalent on sell side.
 	tokenIn := pair.TokenIn
 	if strings.EqualFold(tokenIn, NativeSentinel) {
 		wrapped, ok := wrappedNative[pair.ChainId]
 		if !ok {
-			return 0, false, fmt.Errorf("no wrapped-native for chain %d", pair.ChainId)
+			return failed(), fmt.Errorf("no wrapped-native for chain %d", pair.ChainId)
 		}
 		tokenIn = wrapped
 	}
@@ -66,7 +66,7 @@ func (p *BebopProvider) Probe(ctx context.Context, pair TestPair) (int64, bool, 
 	if strings.EqualFold(tokenOut, NativeSentinel) {
 		wrapped, ok := wrappedNative[pair.ChainId]
 		if !ok {
-			return 0, false, fmt.Errorf("no wrapped-native for chain %d", pair.ChainId)
+			return failed(), fmt.Errorf("no wrapped-native for chain %d", pair.ChainId)
 		}
 		tokenOut = wrapped
 	}
@@ -85,14 +85,14 @@ func (p *BebopProvider) Probe(ctx context.Context, pair TestPair) (int64, bool, 
 	resp, err := p.client.Do(req)
 	if err != nil {
 		RecordOtherError(p.Slug(), pair.Chain, p.region, classifyNetErr(err))
-		return 0, false, err
+		return failed(), err
 	}
 	defer resp.Body.Close()
 	ms := time.Since(t0).Milliseconds()
 
 	if resp.StatusCode == 429 {
 		RecordThrottled(p.Slug(), pair.Chain, p.region)
-		return 0, false, fmt.Errorf("429")
+		return failed(), fmt.Errorf("429")
 	}
 	body, _ := io.ReadAll(resp.Body)
 	// Bebop returns 200 even on error — check the body shape.
@@ -110,11 +110,11 @@ func (p *BebopProvider) Probe(ctx context.Context, pair TestPair) (int64, bool, 
 	}
 	if err := json.Unmarshal(body, &r); err != nil {
 		RecordOtherError(p.Slug(), pair.Chain, p.region, "parse")
-		return 0, false, err
+		return failed(), err
 	}
 	if len(r.Routes) == 0 {
 		RecordNoRoute(p.Slug(), pair.Chain, p.region)
-		return 0, false, fmt.Errorf("no_routes")
+		return failed(), fmt.Errorf("no_routes")
 	}
 	// Read amount from the first route's buyTokens map (the actual addr key
 	// may differ in case from our request — Bebop checksums it).
@@ -125,7 +125,7 @@ func (p *BebopProvider) Probe(ctx context.Context, pair TestPair) (int64, bool, 
 	}
 	if amount == "" || amount == "0" {
 		RecordNoRoute(p.Slug(), pair.Chain, p.region)
-		return 0, false, fmt.Errorf("zero_out")
+		return failed(), fmt.Errorf("zero_out")
 	}
-	return ms, true, nil
+	return okQuote(ms, amount), nil
 }
