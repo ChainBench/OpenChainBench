@@ -14,7 +14,7 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  Nibiru (cataclysm-1) is a high-throughput Cosmos SDK blockchain supporting both CosmWasm and EVM smart contracts, NIBI staking token, using CometBFT consensus with sub-second block times. This bench covers the Tendermint RPC path. Polkachu, PublicNode, and the Nibiru Foundation provide keyless Tendermint RPC endpoints probed every 60 seconds from three regions.
+  Nibiru (cataclysm-1) is a high-throughput Cosmos SDK blockchain supporting both CosmWasm and EVM smart contracts, NIBI staking token, using CometBFT consensus with sub-second block times. This bench covers the Tendermint RPC path. Polkachu and the Nibiru Foundation provide keyless Tendermint RPC endpoints probed every 60 seconds from three regions.
 
 abstract: |
   Nibiru: {{count}} free public RPC endpoints answering `status` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}; the chain-official endpoint measures {{p50:nibiru-official}}.
@@ -66,29 +66,6 @@ providers:
         - region: ap-southeast
           p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="polkachu", chain="nibiru", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="polkachu", chain="nibiru", region="sgp"}[1h])
-  - slug: publicnode
-    name: PublicNode
-    endpoint: https://nibiru-rpc.publicnode.com:443
-    tag: Non-profit public RPC by Allnodes
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single Tendermint `status` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to PublicNode's no-key Nibiru endpoint."
-    queries:
-      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="nibiru"})
-      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="publicnode", chain="nibiru"})
-      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="publicnode", chain="nibiru"})
-      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="publicnode", chain="nibiru"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="publicnode", chain="nibiru"}) / sum(ocb:rpc_call:rate_24h{provider="publicnode", chain="nibiru"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="publicnode", chain="nibiru"})
-      series: avg(avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="nibiru"}[1h]))
-      regions:
-        - region: us-east
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="nibiru", region="us-east"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="nibiru", region="us-east"}[1h])
-        - region: eu-west
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="nibiru", region="eu-west"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="nibiru", region="eu-west"}[1h])
-        - region: ap-southeast
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="nibiru", region="sgp"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="nibiru", region="sgp"}[1h])
   - slug: nibiru-official
     name: Nibiru Foundation
     endpoint: https://rpc.nibiru.fi:443

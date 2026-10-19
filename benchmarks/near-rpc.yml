@@ -14,7 +14,7 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  NEAR Protocol is a sharded Proof-of-Stake L1 blockchain using Nightshade sharding and Doomslug consensus, targeting roughly one block per second with near-instant practical finality. Public JSON-RPC endpoints are available without an API key from the NEAR Foundation, FastNEAR, Lava Network and dRPC. Every provider was live-verified with consecutive block/finality:final probes at launch.
+  NEAR Protocol is a sharded Proof-of-Stake L1 blockchain using Nightshade sharding and Doomslug consensus, targeting roughly one block per second with near-instant practical finality. Public JSON-RPC endpoints are available without an API key from the NEAR Foundation, FastNEAR and dRPC. Every provider was live-verified with consecutive block/finality:final probes at launch.
 
 abstract: |
   NEAR: {{count}} free public RPC endpoints answering `block` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}.
@@ -28,7 +28,7 @@ methodology:
 
 faq:
   - q: "Which NEAR RPC endpoints work without an API key?"
-    a: "{{declared_count}} endpoints are probed on this chain: NEAR Foundation (rpc.mainnet.near.org), FastNEAR (free.rpc.fastnear.com), Lava (near.lava.build) and dRPC (near.drpc.org). Every listed endpoint was live-verified with a block/finality:final call returning a parsable height before inclusion."
+    a: "{{declared_count}} endpoints are probed on this chain: NEAR Foundation (rpc.mainnet.near.org), FastNEAR (free.rpc.fastnear.com) and dRPC (near.drpc.org). Every listed endpoint was live-verified with a block/finality:final call returning a parsable height before inclusion."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
 
@@ -93,30 +93,6 @@ providers:
         - region: ap-southeast
           p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="fastnear", chain="near", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="fastnear", chain="near", region="sgp"}[1h])
-
-  - slug: lava
-    name: Lava
-    endpoint: https://near.lava.build
-    tag: Lava Network decentralised RPC, public NEAR endpoint, no key required
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a block/finality:final POST sent every 60s from 3 regions to near.lava.build."
-    queries:
-      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="lava", chain="near"})
-      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="lava", chain="near"})
-      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="lava", chain="near"})
-      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="lava", chain="near"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="lava", chain="near"}) / sum(ocb:rpc_call:rate_24h{provider="lava", chain="near"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="lava", chain="near"})
-      series: avg(avg_over_time(rpc_latency_milliseconds{provider="lava", chain="near"}[1h]))
-      regions:
-        - region: us-east
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="lava", chain="near", region="us-east"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="lava", chain="near", region="us-east"}[1h])
-        - region: eu-west
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="lava", chain="near", region="eu-west"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="lava", chain="near", region="eu-west"}[1h])
-        - region: ap-southeast
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="lava", chain="near", region="sgp"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="lava", chain="near", region="sgp"}[1h])
 
   - slug: drpc
     name: dRPC

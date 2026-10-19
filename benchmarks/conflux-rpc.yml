@@ -14,7 +14,7 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  Conflux eSpace (chain 1030) is the EVM-compatible execution space of the Conflux tree-graph consensus network, CFX gas token, targeting high-throughput DeFi and RWA applications with sub-second block production. The Conflux Foundation maintains evm.confluxrpc.com and evmmain-global.confluxrpc.com; Unifra provides an additional keyless endpoint. All three are probed every 60 seconds from three regions.
+  Conflux eSpace (chain 1030) is the EVM-compatible execution space of the Conflux tree-graph consensus network, CFX gas token, targeting high-throughput DeFi and RWA applications with sub-second block production. The Conflux Foundation maintains evm.confluxrpc.com and evmmain-global.confluxrpc.com; both are probed (Unifra's NodeReal host stopped resolving and left on 2026-10-19). They are probed every 60 seconds from three regions.
 
 abstract: |
   Conflux eSpace: {{count}} free public RPC endpoints answering `eth_getBlockByNumber` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}; the chain-official endpoint measures {{p50:conflux-official}}.
@@ -91,26 +91,3 @@ providers:
           p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="conflux-global", chain="conflux", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="conflux-global", chain="conflux", region="sgp"}[1h])
 
-  - slug: unifra
-    name: Unifra
-    endpoint: https://conflux-espace.nodereal.io/v1/pub
-    tag: Unifra public Conflux eSpace node
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Unifra's no-key Conflux eSpace endpoint."
-    queries:
-      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="unifra", chain="conflux"})
-      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="unifra", chain="conflux"})
-      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="unifra", chain="conflux"})
-      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="unifra", chain="conflux"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="unifra", chain="conflux"}) / sum(ocb:rpc_call:rate_24h{provider="unifra", chain="conflux"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="unifra", chain="conflux"})
-      series: avg(avg_over_time(rpc_latency_milliseconds{provider="unifra", chain="conflux"}[1h]))
-      regions:
-        - region: us-east
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="unifra", chain="conflux", region="us-east"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="unifra", chain="conflux", region="us-east"}[1h])
-        - region: eu-west
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="unifra", chain="conflux", region="eu-west"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="unifra", chain="conflux", region="eu-west"}[1h])
-        - region: ap-southeast
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="unifra", chain="conflux", region="sgp"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="unifra", chain="conflux", region="sgp"}[1h])

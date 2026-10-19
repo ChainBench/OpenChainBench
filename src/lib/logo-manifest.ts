@@ -521,6 +521,10 @@ const RAW: Record<string, string> = {
   bandchain: "/logos/bandchain.svg",
   cheqd: "/logos/cheqd.svg",
   stakewolle: "/logos/stakewolle.svg",
+  // ECO Stake: the atom-and-leaf mark, 192px PNG from ecostake.com (no SVG published).
+  ecostake: "/logos/ecostake.png",
+  // AU (au.cc), Flare and Songbird FTSO provider: the flame cut from its inline header SVG.
+  au: "/logos/au.svg",
   nodestake: "/logos/nodestake.svg",
   icon: "/logos/icon.svg",
   iconblockchain: "/logos/iconblockchain.svg",
@@ -956,6 +960,7 @@ const ALIASES: Record<string, string> = {
   "xdc-erpc": "xdc",
   "xdc-org": "xdc",
   "iotex-mirror": "iotex",
+  "iotex-official": "iotex",
   "harmony-s0": "harmony",
 
   // Wave-7 RPC official-endpoint aliases (2026-08-05, benches 184-199)
