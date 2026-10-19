@@ -4,7 +4,9 @@ import (
 	"math"
 	"testing"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
+	dto "github.com/prometheus/client_model/go"
 )
 
 func usdtPair() TestPair {
@@ -123,5 +125,134 @@ func TestAlreadyScaledAmountIsNotDividedTwice(t *testing.T) {
 		quoteOutAmount.WithLabelValues("other", "ethereum", "us-east", "ETH/USDT"))
 	if math.Abs(raw-2389.665942) > 1e-6 {
 		t.Errorf("a raw smallest-unit amount must still scale, got %v", raw)
+	}
+}
+
+// The real five-provider tick from 2026-10-19, 1 ETH to USDT. ParaSwap
+// won it; LI.FI's 25.0 bps gap is its declared fee rather than its
+// routing. These are the numbers the design rests on, so the test pins
+// them instead of inventing round ones.
+func realTick() map[string]Quote {
+	q := func(out string) Quote {
+		return Quote{OK: true, OutAmount: out, FeeBps: -1}
+	}
+	return map[string]Quote{
+		"paraswap":  q("2394300000"),
+		"kyberswap": q("2394150000"),
+		"nordstern": q("2392600000"),
+		"zerox":     q("2390710000"),
+		"lifi":      q("2388320000"),
+	}
+}
+
+func bucketCount(t *testing.T, provider, chain, pair string) uint64 {
+	t.Helper()
+	// The histogram has no direct value accessor, so read the metric out.
+	ch := make(chan prometheus.Metric, 64)
+	quoteShortfallBps.Collect(ch)
+	close(ch)
+	for m := range ch {
+		var pb dto.Metric
+		if err := m.Write(&pb); err != nil {
+			continue
+		}
+		match := 0
+		for _, l := range pb.GetLabel() {
+			if l.GetName() == "provider" && l.GetValue() == provider {
+				match++
+			}
+			if l.GetName() == "chain" && l.GetValue() == chain {
+				match++
+			}
+			if l.GetName() == "pair" && l.GetValue() == pair {
+				match++
+			}
+		}
+		if match == 3 {
+			return pb.GetHistogram().GetSampleCount()
+		}
+	}
+	return 0
+}
+
+func histSum(t *testing.T, provider string) float64 {
+	t.Helper()
+	ch := make(chan prometheus.Metric, 64)
+	quoteShortfallBps.Collect(ch)
+	close(ch)
+	for m := range ch {
+		var pb dto.Metric
+		if err := m.Write(&pb); err != nil {
+			continue
+		}
+		for _, l := range pb.GetLabel() {
+			if l.GetName() == "provider" && l.GetValue() == provider {
+				return pb.GetHistogram().GetSampleSum()
+			}
+		}
+	}
+	return -1
+}
+
+func TestShortfallIsMeasuredAgainstTheBestOfTheSameTick(t *testing.T) {
+	quoteShortfallBps.Reset()
+	pair := usdtPair()
+	RecordShortfall(pair, "us-east", realTick())
+
+	// The winner gave up nothing.
+	if got := histSum(t, "paraswap"); got != 0 {
+		t.Errorf("the best quote of the tick must record 0 bps, got %v", got)
+	}
+	// LI.FI: (2394300000 - 2388320000) / 2394300000 = 24.98 bps, which is
+	// the 0.25%% fee it declares.
+	got := histSum(t, "lifi")
+	if math.Abs(got-24.98) > 0.05 {
+		t.Errorf("LI.FI should give up about 25 bps, got %v", got)
+	}
+	// 0x: (2394300000 - 2390710000) / 2394300000 = 14.99 bps.
+	if g := histSum(t, "zerox"); math.Abs(g-14.99) > 0.05 {
+		t.Errorf("0x should give up about 15 bps, got %v", g)
+	}
+	// Every provider in the tick is recorded once.
+	for _, slug := range []string{"paraswap", "kyberswap", "nordstern", "zerox", "lifi"} {
+		if n := bucketCount(t, slug, "ethereum", "ETH/USDT"); n != 1 {
+			t.Errorf("%s should have one observation, got %d", slug, n)
+		}
+	}
+}
+
+// A provider answering alone has no best to miss. Recording 0 would hand
+// it a perfect score for being the only one that replied.
+func TestAFieldOfOneRecordsNothing(t *testing.T) {
+	quoteShortfallBps.Reset()
+	pair := usdtPair()
+	RecordShortfall(pair, "us-east", map[string]Quote{
+		"route": {OK: true, OutAmount: "2394300000", FeeBps: -1},
+	})
+	if n := bucketCount(t, "route", "ethereum", "ETH/USDT"); n != 0 {
+		t.Errorf("a field of one must record nothing, got %d observations", n)
+	}
+	if v := testutil.ToFloat64(
+		quoteTickField.WithLabelValues("ethereum", "ETH/USDT")); v != 1 {
+		t.Errorf("the field size must still be published, got %v", v)
+	}
+}
+
+// Mobula returns whole tokens while everyone else returns the smallest
+// unit. Comparing them unconverted would read Mobula as 10^6 times worse
+// and hand every tick to someone else.
+func TestAlreadyScaledQuoteIsComparedOnTheSameScale(t *testing.T) {
+	quoteShortfallBps.Reset()
+	pair := usdtPair()
+	RecordShortfall(pair, "us-east", map[string]Quote{
+		"kyberswap": {OK: true, OutAmount: "2394150000", FeeBps: -1},
+		"mobula":    {OK: true, OutAmount: "2394.30", FeeBps: -1, OutAlreadyScaled: true},
+	})
+	// Mobula is the higher of the two, so it wins and gives up nothing.
+	if got := histSum(t, "mobula"); got != 0 {
+		t.Errorf("Mobula held the best quote and should record 0, got %v", got)
+	}
+	if got := histSum(t, "kyberswap"); !(got > 0 && got < 10) {
+		t.Errorf("KyberSwap should trail by a fraction of a bp, got %v", got)
 	}
 }
