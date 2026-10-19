@@ -1269,7 +1269,7 @@ func chains() []Chain {
 			Kind: "cosmos",
 			Providers: []Provider{
 				{Slug: "polkachu", Name: "Polkachu", URL: envDefault("RPC_URL_NOLUS_POLKACHU", "https://nolus-rpc.polkachu.com")},
-				{Slug: "stakewolle", Name: "Stakewolle", URL: envDefault("RPC_URL_NOLUS_STAKEWOLLE", "https://public.stakewolle.com/cosmos/nolus/rpc")}, // 2026-10-19 replacement sweep
+				{Slug: "stakewolle", Name: "Stakewolle", URL: envDefault("RPC_URL_NOLUS_STAKEWOLLE", "https://public.stakewolle.com/cosmos/nolus/rpc/")}, // 2026-10-19 replacement sweep
 			},
 		},
 		// Archway — developer-rewards CosmWasm (archway-1). 4 keyless providers.
@@ -1729,7 +1729,7 @@ func chains() []Chain {
 			Providers: []Provider{
 				{Slug: "band-official", Name: "Band Protocol", URL: envDefault("RPC_URL_BAND_OFFICIAL", "http://rpc.laozi1.bandchain.org:80")},
 				{Slug: "highstakes", Name: "High Stakes", URL: envDefault("RPC_URL_BAND_HIGHSTAKES", "https://bandprotocol-rpc.highstakes.ch")},
-				{Slug: "stakewolle", Name: "Stakewolle", URL: envDefault("RPC_URL_BAND_STAKEWOLLE", "https://public.stakewolle.com/cosmos/bandchain/rpc")},
+				{Slug: "stakewolle", Name: "Stakewolle", URL: envDefault("RPC_URL_BAND_STAKEWOLLE", "https://public.stakewolle.com/cosmos/bandchain/rpc/")}, // trailing slash: the proxy 404s a POST without it,
 			},
 		},
 		// 2026-08-29 wave-13. cheqd — Cosmos SDK (cheqd-mainnet-1), Tendermint /status. Official + PublicNode + NodeStake.

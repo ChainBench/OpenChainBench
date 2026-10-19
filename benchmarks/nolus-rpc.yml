@@ -69,7 +69,7 @@ providers:
 
   - slug: stakewolle
     name: Stakewolle
-    endpoint: https://public.stakewolle.com/cosmos/nolus/rpc
+    endpoint: https://public.stakewolle.com/cosmos/nolus/rpc/
     tag: Validator-run public Tendermint RPC
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single Tendermint `status` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Stakewolle's no-key Nolus endpoint."
     queries:
