@@ -14,58 +14,58 @@ groups:
     interval: 60s
     rules:
       - record: ocb:price_api_deviation_bps:p50_24h
-        expr: histogram_quantile(0.50, sum by (provider, kind, le) (label_replace(rate(price_api_gap_bps_bucket[24h]), "kind", "$1", "asset", "(.*)")))
+        expr: histogram_quantile(0.50, sum by (provider, kind, le) (label_replace(rate(price_api_gap_bps_bucket{benchmark="price-api-accuracy"}[24h]), "kind", "$1", "asset", "(.*)")))
         labels:
           scope: asset
       - record: ocb:price_api_deviation_bps:p50_24h
-        expr: histogram_quantile(0.50, sum by (provider, le) (rate(price_api_gap_bps_bucket[24h])))
+        expr: histogram_quantile(0.50, sum by (provider, le) (rate(price_api_gap_bps_bucket{benchmark="price-api-accuracy"}[24h])))
         labels:
           kind: all
           scope: all
       - record: ocb:price_api_deviation_bps:p90_24h
-        expr: histogram_quantile(0.90, sum by (provider, kind, le) (label_replace(rate(price_api_gap_bps_bucket[24h]), "kind", "$1", "asset", "(.*)")))
+        expr: histogram_quantile(0.90, sum by (provider, kind, le) (label_replace(rate(price_api_gap_bps_bucket{benchmark="price-api-accuracy"}[24h]), "kind", "$1", "asset", "(.*)")))
         labels:
           scope: asset
       - record: ocb:price_api_deviation_bps:p90_24h
-        expr: histogram_quantile(0.90, sum by (provider, le) (rate(price_api_gap_bps_bucket[24h])))
+        expr: histogram_quantile(0.90, sum by (provider, le) (rate(price_api_gap_bps_bucket{benchmark="price-api-accuracy"}[24h])))
         labels:
           kind: all
           scope: all
       - record: ocb:price_api_deviation_bps:p99_24h
-        expr: histogram_quantile(0.99, sum by (provider, kind, le) (label_replace(rate(price_api_gap_bps_bucket[24h]), "kind", "$1", "asset", "(.*)")))
+        expr: histogram_quantile(0.99, sum by (provider, kind, le) (label_replace(rate(price_api_gap_bps_bucket{benchmark="price-api-accuracy"}[24h]), "kind", "$1", "asset", "(.*)")))
         labels:
           scope: asset
       - record: ocb:price_api_deviation_bps:p99_24h
-        expr: histogram_quantile(0.99, sum by (provider, le) (rate(price_api_gap_bps_bucket[24h])))
+        expr: histogram_quantile(0.99, sum by (provider, le) (rate(price_api_gap_bps_bucket{benchmark="price-api-accuracy"}[24h])))
         labels:
           kind: all
           scope: all
       # Mean from sum over count, exact rather than bucket-interpolated.
       - record: ocb:price_api_deviation_bps:mean_24h
-        expr: sum by (provider, kind) (label_replace(rate(price_api_gap_bps_sum[24h]), "kind", "$1", "asset", "(.*)")) / sum by (provider, kind) (label_replace(rate(price_api_gap_bps_count[24h]), "kind", "$1", "asset", "(.*)"))
+        expr: sum by (provider, kind) (label_replace(rate(price_api_gap_bps_sum{benchmark="price-api-accuracy"}[24h]), "kind", "$1", "asset", "(.*)")) / sum by (provider, kind) (label_replace(rate(price_api_gap_bps_count{benchmark="price-api-accuracy"}[24h]), "kind", "$1", "asset", "(.*)"))
         labels:
           scope: asset
       - record: ocb:price_api_deviation_bps:mean_24h
-        expr: sum by (provider) (rate(price_api_gap_bps_sum[24h])) / sum by (provider) (rate(price_api_gap_bps_count[24h]))
+        expr: sum by (provider) (rate(price_api_gap_bps_sum{benchmark="price-api-accuracy"}[24h])) / sum by (provider) (rate(price_api_gap_bps_count{benchmark="price-api-accuracy"}[24h]))
         labels:
           kind: all
           scope: all
       - record: ocb:price_api_deviation_bps:count_increase_24h
-        expr: sum by (provider, kind) (label_replace(increase(price_api_gap_bps_count[24h]), "kind", "$1", "asset", "(.*)"))
+        expr: sum by (provider, kind) (label_replace(increase(price_api_gap_bps_count{benchmark="price-api-accuracy"}[24h]), "kind", "$1", "asset", "(.*)"))
         labels:
           scope: asset
       - record: ocb:price_api_deviation_bps:count_increase_24h
-        expr: sum by (provider) (increase(price_api_gap_bps_count[24h]))
+        expr: sum by (provider) (increase(price_api_gap_bps_count{benchmark="price-api-accuracy"}[24h]))
         labels:
           kind: all
           scope: all
       # The chart series: hourly median, per asset and pooled.
       - record: ocb:price_api_deviation_bps:p50_1h
-        expr: histogram_quantile(0.50, sum by (provider, kind, le) (label_replace(rate(price_api_gap_bps_bucket[1h]), "kind", "$1", "asset", "(.*)")))
+        expr: histogram_quantile(0.50, sum by (provider, kind, le) (label_replace(rate(price_api_gap_bps_bucket{benchmark="price-api-accuracy"}[1h]), "kind", "$1", "asset", "(.*)")))
         labels:
           scope: asset
       - record: ocb:price_api_deviation_bps:p50_1h
-        expr: histogram_quantile(0.50, sum by (provider, le) (rate(price_api_gap_bps_bucket[1h])))
+        expr: histogram_quantile(0.50, sum by (provider, le) (rate(price_api_gap_bps_bucket{benchmark="price-api-accuracy"}[1h])))
         labels:
           kind: all
           scope: all
@@ -73,22 +73,22 @@ groups:
       # The headline is the mean of the per-asset means, so an asset polled
       # more often does not weigh more.
       - record: ocb:price_api_signed_bps:avg_24h
-        expr: avg by (provider, kind) (label_replace(avg_over_time(price_api_signed_deviation_bps[24h]), "kind", "$1", "asset", "(.*)"))
+        expr: avg by (provider, kind) (label_replace(avg_over_time(price_api_signed_deviation_bps{benchmark="price-api-accuracy"}[24h]), "kind", "$1", "asset", "(.*)"))
         labels:
           scope: asset
       - record: ocb:price_api_signed_bps:avg_24h
-        expr: avg by (provider) (avg_over_time(price_api_signed_deviation_bps[24h]))
+        expr: avg by (provider) (avg_over_time(price_api_signed_deviation_bps{benchmark="price-api-accuracy"}[24h]))
         labels:
           kind: all
           scope: all
       # Price age from the provider's own last-updated stamp, median over 24h.
       # Providers that publish no stamp have no series and print a dash.
       - record: ocb:price_api_price_age_seconds:p50_24h
-        expr: avg by (provider, kind) (label_replace(quantile_over_time(0.50, price_api_price_age_seconds[24h]), "kind", "$1", "asset", "(.*)"))
+        expr: avg by (provider, kind) (label_replace(quantile_over_time(0.50, price_api_price_age_seconds{benchmark="price-api-accuracy"}[24h]), "kind", "$1", "asset", "(.*)"))
         labels:
           scope: asset
       - record: ocb:price_api_price_age_seconds:p50_24h
-        expr: avg by (provider) (quantile_over_time(0.50, price_api_price_age_seconds[24h]))
+        expr: avg by (provider) (quantile_over_time(0.50, price_api_price_age_seconds{benchmark="price-api-accuracy"}[24h]))
         labels:
           kind: all
           scope: all
@@ -97,20 +97,20 @@ groups:
       # against the provider; a missing exchange mid or an answer lost in our
       # proxy before any HTTP status does not.
       - record: ocb:price_api_success:ratio_24h
-        expr: sum by (provider, kind) (label_replace(increase(price_api_asset_polls_total{status="ok"}[24h]), "kind", "$1", "asset", "(.*)")) / sum by (provider, kind) (label_replace(increase(price_api_asset_polls_total{status!~"no_reference|probe_error"}[24h]), "kind", "$1", "asset", "(.*)"))
+        expr: sum by (provider, kind) (label_replace(increase(price_api_asset_polls_total{benchmark="price-api-accuracy",status="ok"}[24h]), "kind", "$1", "asset", "(.*)")) / sum by (provider, kind) (label_replace(increase(price_api_asset_polls_total{benchmark="price-api-accuracy",status!~"no_reference|probe_error"}[24h]), "kind", "$1", "asset", "(.*)"))
         labels:
           scope: asset
       - record: ocb:price_api_success:ratio_24h
-        expr: sum by (provider) (increase(price_api_asset_polls_total{status="ok"}[24h])) / sum by (provider) (increase(price_api_asset_polls_total{status!~"no_reference|probe_error"}[24h]))
+        expr: sum by (provider) (increase(price_api_asset_polls_total{benchmark="price-api-accuracy",status="ok"}[24h])) / sum by (provider) (increase(price_api_asset_polls_total{benchmark="price-api-accuracy",status!~"no_reference|probe_error"}[24h]))
         labels:
           kind: all
           scope: all
-      # Assets scored at least once in 24h, out of the nine: the presence of
-      # a histogram series, which exists from the first scored answer. An
-      # increase() needs two samples in the window and read zero for a
-      # provider polled every 20 minutes.
+      # Assets scored at least once in 24h, out of the nine. The histogram
+      # children exist from boot at zero, so presence is not enough: an
+      # asset counts when its observation count was above zero at some
+      # point in the window (a restart resets it, the max keeps it).
       - record: ocb:price_api_assets_served:count_24h
-        expr: count by (provider) (count by (provider, asset) (count_over_time(price_api_gap_bps_count[24h])))
+        expr: count by (provider) (max by (provider, asset) (max_over_time(price_api_gap_bps_count{benchmark="price-api-accuracy"}[24h])) > 0)
         labels:
           kind: all
           scope: all
