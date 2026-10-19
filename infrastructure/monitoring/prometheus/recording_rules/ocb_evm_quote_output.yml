@@ -25,8 +25,11 @@ groups:
         expr: sum by (provider, chain) (rate(evm_swap_quote_shortfall_bps_sum[24h])) / sum by (provider, chain) (rate(evm_swap_quote_shortfall_bps_count[24h]))
       - record: ocb:evm_swap_quote_shortfall_bps:count_increase_24h
         expr: sum by (provider, chain) (increase(evm_swap_quote_shortfall_bps_count[24h]))
-      # Share of ticks where the provider held the best quote. The top of
-      # this board is tight enough that a median alone cannot separate it,
-      # and "won the tick" is the tiebreaker a reader understands.
+      # Share of ticks where the provider came within half a basis point of
+      # the best quote. It is the le="0.5" bucket, not a strict win, so two
+      # providers inside half a bp of each other both count and the shares
+      # do not sum to 100. The top of this board is tight enough that a
+      # median alone cannot separate it, and "came within half a basis point"
+      # is the tiebreaker a reader understands.
       - record: ocb:evm_swap_quote_best:rate_24h
         expr: sum by (provider, chain) (rate(evm_swap_quote_shortfall_bps_bucket{le="0.5"}[24h])) / sum by (provider, chain) (rate(evm_swap_quote_shortfall_bps_count[24h]))
