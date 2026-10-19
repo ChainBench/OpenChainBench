@@ -19,13 +19,23 @@ const (
 // Odos requires its free-tier API key — anonymous traffic gets rate-
 // limited too aggressively for sustained probes.
 //
-// 0x was previously in the list, gated by ZEROX_API_KEY. Their team
-// suspended our account because a benchmark issues quote requests
-// without ever submitting fills — that ratio is their TOS-defined
-// abuse signal and re-enabling requires a custom plan negotiation.
-// Until/unless that contract exists, calling 0x just burns ticks on
-// guaranteed auth errors that bloat the error counters; safer to
-// drop the provider entirely.
+// 0x is back, gated by ZEROX_API_KEY.
+//
+// It was dropped in #508 under a comment claiming their team had
+// suspended the account because benchmarking without filling is a
+// TOS-defined abuse signal. Nothing in this repo backs that: no mail,
+// no ticket, no log, no mention in the harness README, and the commit
+// carries only the code removal. The key that was on the services
+// answered 403 "You cannot consume this service", which names a
+// service and not an account, and a key issued on 2026-10-19 under the
+// same 0x account with the Swap API service ticked works immediately
+// on Ethereum and Base. The earlier claim looks like an inference that
+// hardened into a fact.
+//
+// The general concern it raised is still worth watching, so the error
+// counters are the place to find out: a 403 returning here would be
+// evidence, dated and with the message attached, which is what the
+// original claim lacked.
 func buildProviders(cfg *Config) []Provider {
 	providers := []Provider{
 		NewMobulaProvider(cfg.MonitorRegion, cfg.MobulaAPIKey),
@@ -35,6 +45,9 @@ func buildProviders(cfg *Config) []Provider {
 		NewOpenOceanProvider(cfg.MonitorRegion),
 		NewCoWProvider(cfg.MonitorRegion),
 		NewEnsoProvider(cfg.MonitorRegion, cfg.EnsoAPIKey),
+	}
+	if cfg.ZeroExAPIKey != "" {
+		providers = append(providers, NewZeroExProvider(cfg.MonitorRegion, cfg.ZeroExAPIKey))
 	}
 	if cfg.OdosAPIKey != "" {
 		providers = append(providers, NewOdosProvider(cfg.MonitorRegion, cfg.OdosAPIKey))
