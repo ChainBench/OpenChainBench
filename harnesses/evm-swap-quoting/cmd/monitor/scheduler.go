@@ -104,6 +104,12 @@ func runScheduler(cfg *Config, stopChan <-chan struct{}) {
 // tick — the scheduler still moves on after probeTimeout.
 func doTick(ctx context.Context, providers []Provider, pair TestPair, region string) {
 	var wg sync.WaitGroup
+	// Quotes from this tick, kept so the shortfall can be measured against
+	// the best of them. The market moves 30 to 37 bps over five minutes
+	// while providers sit within 25 of each other, so a quote is only
+	// comparable to the ones fired beside it.
+	var mu sync.Mutex
+	tickQuotes := map[string]Quote{}
 	for _, p := range providers {
 		if !p.Supports(pair.ChainId) {
 			continue
@@ -115,6 +121,9 @@ func doTick(ctx context.Context, providers []Provider, pair TestPair, region str
 			defer cancel()
 			q, err := p.Probe(probeCtx, pair)
 			if q.OK {
+				mu.Lock()
+				tickQuotes[p.Slug()] = q
+				mu.Unlock()
 				RecordLatency(p.Slug(), pair.Chain, region, q.LatencyMs)
 				RecordQuote(p.Slug(), pair, region, q)
 				fmt.Printf("[%s] %s %s/%s -> %s/%s : %dms out=%s\n",
@@ -130,4 +139,5 @@ func doTick(ctx context.Context, providers []Provider, pair TestPair, region str
 		}(p)
 	}
 	wg.Wait()
+	RecordShortfall(pair, region, tickQuotes)
 }
