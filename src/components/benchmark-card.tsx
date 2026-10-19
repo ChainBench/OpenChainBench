@@ -8,7 +8,8 @@ import { fmtValue, unitSuffix } from "@/lib/format";
 
 /**
  * Card tile for the All Benchmarks grid. Self-contained - renders the
- * category badge, title, headline KPI (field-composite p50), a compact
+ * category badge, title, the citation leader's headline value with that
+ * leader named and the bench's own qualifier, a compact
  * MiniChart preview, and a 3-column footer (providers / samples / updated).
  *
  * Three visual states:
@@ -87,8 +88,18 @@ export function BenchmarkCard({ benchmark }: { benchmark: BenchmarkCardData }) {
       {/* Title */}
       <h3 className="display text-xl text-ink leading-tight">{b.title}</h3>
 
-      {/* Label */}
-      <p className="label-mono text-ink-faint">Field composite · P50</p>
+      {/* Label. The number below is ONE provider's, the citation leader's, so
+          the label names it. It used to read "Field composite · P50" on every
+          tile: on bridge-quote-latency that published Mobula's 47 ms as the
+          field's median, against a real field median of 315 ms from the eight
+          rows the bench page serves. The qualifier comes from the bench
+          instead of being assumed, because a third of these headlines are a
+          latest value or a 7d average rather than a 24h p50. */}
+      <p className="label-mono text-ink-faint">
+        {b.leaderName
+          ? `Leader · ${b.leaderName} (${b.qualifier})`
+          : `Best measured (${b.qualifier})`}
+      </p>
 
       {/* Big number row */}
       <div className="flex items-baseline justify-between gap-3">
@@ -104,7 +115,7 @@ export function BenchmarkCard({ benchmark }: { benchmark: BenchmarkCardData }) {
             <span className="text-xl text-ink-muted tabular">{headlineUnit}</span>
           )}
         </div>
-        <span className="label-mono text-ink-faint shrink-0">24H</span>
+        <span className="label-mono text-ink-faint shrink-0">{b.win.toUpperCase()}</span>
       </div>
 
       {/* Chart preview - or draft / insufficient placeholder */}
@@ -126,9 +137,9 @@ export function BenchmarkCard({ benchmark }: { benchmark: BenchmarkCardData }) {
           srSuffix={`${b.results.length === 1 ? "provider" : "providers"} tracked.`}
         />
         <Footer
-          label="N · 24H"
+          label={`N · ${b.win}`}
           value={b.sampleSize.toLocaleString()}
-          srSuffix="samples in the last 24 hours."
+          srSuffix={`samples over the ${b.win} window.`}
         />
         <Footer
           label="Updated"

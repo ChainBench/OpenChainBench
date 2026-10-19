@@ -215,7 +215,20 @@ export function RpcHubTabs({
       )}
 
       <section className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-        <SummaryCard label="Chains benched" value={String(chainCount(view))} accent="#0ea5e9" />
+        {/* 113 chains have an indexable page; 155 are measured. Saying
+            "Chains benched 113" next to a leaderboard reading "155 of 155
+            chains" put two counts of the same word on one screen, which is
+            the defect the comment above chainCount was written to prevent and
+            which the leaderboard brought back. Neither number is wrong, so
+            each one names its set rather than one of them being hidden: a
+            thin chain is a real measurement and dropping it from the table
+            would lose it. */}
+        <SummaryCard
+          label="Chains with a page"
+          value={String(chainCount(view))}
+          tip={`${view.chains.length} chains are measured; ${chainCount(view)} have an indexable page of their own. The rest appear in the table below without a link.`}
+          accent="#0ea5e9"
+        />
         <SummaryCard label="Unique providers" value={String(view.totals.uniqueProviders)} />
         <SummaryCard
           label={geo === "all" ? "Probe regions" : "Probe region"}

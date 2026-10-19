@@ -17,6 +17,21 @@ export const REGIONS: { value: RegionKey; label: string; short: string }[] = [
   { value: "sgp", label: "Singapore", short: "SGP" },
 ];
 
+/**
+ * "one region (EU-West)" or "3 regions (EU-West, US-East, Singapore)".
+ *
+ * The hub's prose said "three regions" twice while its own table showed a dash
+ * in the US and SGP columns for all eight providers and its pill read
+ * "eu-west". A crawler reads the sentence, not the table. The phrase is built
+ * from liveRegions so the claim cannot outlive the data behind it.
+ */
+export function regionPhrase(live: RegionKey[]): string {
+  const labels = REGIONS.filter((r) => live.includes(r.value)).map((r) => r.label);
+  if (labels.length === 0) return "no region reporting";
+  if (labels.length === 1) return `one region (${labels[0]})`;
+  return `${labels.length} regions (${labels.join(", ")})`;
+}
+
 export type CorridorFee = {
   corridor: CorridorKey;
   feep50: number | null;

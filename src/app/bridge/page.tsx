@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { fetchBridgeHub } from "@/lib/bridge-hub-stats";
+import { fetchBridgeHub, regionPhrase } from "@/lib/bridge-hub-stats";
 import { BridgeHubTable, BridgeCorridorMatrix } from "@/components/bridge-hub-table";
 import { AnswersForBench } from "@/components/answers-for-bench";
 import { pageMetadata } from "@/lib/page-metadata";
@@ -71,8 +71,8 @@ export default async function BridgeHubPage() {
           Cross-chain bridge benchmarks, live.
         </h1>
         <p className="mt-4 max-w-2xl text-base sm:text-lg text-ink-soft leading-snug">
-          Two live benches, sampled every five minutes from three regions
-          (EU-West, US-East, Singapore). One measures the all-in cost of
+          Two live benches, sampled every five minutes from{" "}
+          {hub ? regionPhrase(hub.liveRegions) : "three regions (EU-West, US-East, Singapore)"}. One measures the all-in cost of
           bridging $300 USDC across four Solana/Base/Arbitrum/HyperCore
           corridors. The other measures how fast each bridge returns a
           usable quote from each origin. Same corridors, same notional.
@@ -103,9 +103,18 @@ export default async function BridgeHubPage() {
             <span className="text-ink">bridge-quote-latency</span>
           </Link>
           <span className="inline-flex items-center rounded-full border border-ink/10 px-3 py-1 text-ink-muted">
-            {hub && hub.regionCount > 1 ? `${hub.regionCount} regions` : "eu-west"}
+            {hub ? regionPhrase(hub.liveRegions) : "regions loading"}
           </span>
         </div>
+        {hub?.asOf && (
+          <p className="mt-3 label-mono text-ink-faint">
+            As of{" "}
+            <time dateTime={hub.asOf}>
+              {hub.asOf.slice(0, 16).replace("T", " ")} UTC
+            </time>
+            , trailing 24h. Both benches were last read by then.
+          </p>
+        )}
       </header>
 
       {hub ? (
@@ -286,7 +295,8 @@ export default async function BridgeHubPage() {
             histogram_quantile(0.50, sum by (le)
             (rate(bridge_quote_latency_ms_bucket[24h])))
           </code>
-          . Benches run from three regions (EU-West Amsterdam, US-East, Singapore); regional breakdown on individual bench pages. Failures (quote_failed,
+          . Benches run from{" "}
+          {hub ? regionPhrase(hub.liveRegions) : "three regions (EU-West, US-East, Singapore)"}; regional breakdown on individual bench pages. Failures (quote_failed,
           unsupported route, timeout) excluded from aggregates, counted
           toward success rate.
         </p>
