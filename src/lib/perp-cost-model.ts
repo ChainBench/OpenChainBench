@@ -199,14 +199,25 @@ export const VENUES: readonly Venue[] = [
     returnsEquity: false,
     // Losing is the only thing that mints PAPER: its docs are explicit that
     // "PAPER mints to your account whenever you close a trade at a loss or get
-    // liquidated. Nothing else mints PAPER." Below $2M of tracked LP the rate
-    // is a flat 100 PAPER per dollar of loss basis, and it decays above that;
-    // tracked LP read $65.1M on 2026-10-19, so the flat rate does not apply
-    // and the published curve does not give the decay. The figure quoted is
-    // measured instead, from the venue's own daily series: paperSupply over
-    // traderPnl gave 54 to 99 PAPER a dollar across the six days to
-    // 2026-10-19. It is a range and not a rate because it is an observation.
-    mintsOnLoss: "mints PAPER, 54-99 per $1 lost",
+    // liquidated. Nothing else mints PAPER."
+    //
+    // The rate is published in full, in PaperTokenomics. Below a $2M tracked
+    // LP it is a flat 100 PAPER per dollar of mint basis; at or above it the
+    // rate is flatRate * (S / (S + H))^2 with S = tailDecayScaleUsd = $120M
+    // and H = tailProgressUsd, a high-water-mark of cumulative LP gain past
+    // the threshold that never decreases. H is not published as a field, so
+    // it is taken from the peak of the venue's own daily tracked-LP series,
+    // $104.89M, giving H = $102.89M and a rate of 100 * (120/222.9)^2 = 29.0.
+    // Their own worked example, H = $100M giving 29.8, lands beside it.
+    //
+    // An earlier version of this line said 54 to 99, read as the daily change
+    // in paperSupply over the daily change in traderPnl. That is an upper
+    // bound and not the rate: the mint basis is gross realised loss, while
+    // traderPnl is net of everything the winners took, so the denominator was
+    // too small. At 29 a dollar the last day's mint implies $4.12M of gross
+    // losses against a $2.20M net move, a ratio of 1.87, which is the shape
+    // you would expect.
+    mintsOnLoss: "mints PAPER, about 29 per $1 of loss basis",
   },
   {
     id: "lighter",
