@@ -12,8 +12,8 @@ import { fmtUnit } from "@/lib/format";
 import {
   RANGE_IDS,
   RANGE_LABEL,
-  VIEW_IDS,
   VIEW_LABEL,
+  viewsForMetric,
   type BenchPayload,
   type RangeId,
   type RenderState,
@@ -316,6 +316,15 @@ function ModalBody({
     return benchmark;
   }, [activeMetricPanel, benchmark, variant, hasDims]);
 
+  // Views that fit the metric on screen (no Donut for a latency or a fee).
+  // A view chosen earlier that no longer fits falls back to ranked bars
+  // instead of rendering a chart that misreads the numbers.
+  const availableViews = useMemo(
+    () => viewsForMetric(effectiveBench?.unit ?? benchmark.unit, effectiveBench?.higherIsBetter ?? benchmark.higherIsBetter),
+    [effectiveBench, benchmark.unit, benchmark.higherIsBetter],
+  );
+  const activeView: ViewId = availableViews.includes(view) ? view : "BarChartRace";
+
   // Live rows ranked by headline value (video order), dead rows last.
   const rankedResults = useMemo(() => {
     if (!effectiveBench) return [];
@@ -422,7 +431,7 @@ function ModalBody({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           datasetId: slug,
-          viewId: view,
+          viewId: activeView,
           raceSeconds,
           skipIntro,
           format,
@@ -527,10 +536,10 @@ function ModalBody({
           <div>
             <Label>View</Label>
             <Segment>
-              {VIEW_IDS.map((id) => (
+              {availableViews.map((id) => (
                 <SegmentButton
                   key={id}
-                  active={view === id}
+                  active={activeView === id}
                   onClick={() => setView(id)}
                   disabled={isBusy}
                 >
