@@ -66,7 +66,11 @@ export const AI_CRAWLERS: AiCrawler[] = [
   { ua: "ShapBot", operator: "Shap, answer engine", family: "shapbot", reqs7d: 696, source: "vercel-label" },
   { ua: "ChatGPT-User", operator: "OpenAI, fetch on a user's behalf", family: "chatgpt-user", reqs7d: 542, source: "docs" },
   { ua: "ClaudeBot", operator: "Anthropic model training", family: "claudebot", reqs7d: 510, source: "docs" },
-  { ua: "DuckAssistBot", operator: "DuckDuckGo AI answers", family: "duckduckgo", reqs7d: 284, source: "docs" },
+  // Its own family, not "duckduckgo": DuckAssistBot answers questions and
+  // DuckDuckBot indexes pages, and the generic table still maps
+  // DuckDuckBot. Sharing one family made 284 AI fetches and 355 search
+  // crawls indistinguishable in our own numbers.
+  { ua: "DuckAssistBot", operator: "DuckDuckGo AI answers", family: "duckassistbot", reqs7d: 284, source: "docs" },
   { ua: "MistralAI-User", operator: "Mistral, fetch on a user's behalf", family: "mistral", reqs7d: 109, source: "docs" },
   { ua: "Meta-ExternalAgent", operator: "Meta model training", family: "meta", reqs7d: 103, source: "docs" },
   { ua: "ChatGPT-Operator", operator: "OpenAI, agent driving a browser", family: "chatgpt-operator", reqs7d: 8, source: "vercel-label" },
@@ -74,7 +78,10 @@ export const AI_CRAWLERS: AiCrawler[] = [
 
   // Not seen in the last window, kept allowed. Each was allowed before this
   // file existed and removing an allow is a decision, not a cleanup.
-  { ua: "Claude-SearchBot", operator: "Anthropic search index", family: "claude-user", reqs7d: 0, source: "docs" },
+
+  // Its own family too, for the reason above: a search index is not a fetch
+  // on a user's behalf.
+  { ua: "Claude-SearchBot", operator: "Anthropic search index", family: "claude-searchbot", reqs7d: 0, source: "docs" },
   { ua: "Claude-Web", operator: "Anthropic, legacy token", family: "claudebot", reqs7d: 0, source: "docs" },
   { ua: "anthropic-ai", operator: "Anthropic, legacy token", family: "claudebot", reqs7d: 0, source: "docs" },
   { ua: "Perplexity-User", operator: "Perplexity, fetch on a user's behalf", family: "perplexity-user", reqs7d: 0, source: "docs" },
