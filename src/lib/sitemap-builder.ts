@@ -460,14 +460,23 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
   );
   const canonicalProfileSlugs = new Set(profiles.map((p) => p.slug));
   const redirectingSlugs = new Set<string>();
+  // Slugs the product page cannot serve: getProvider() resolves nothing,
+  // so /products/<slug> answers 404. cohortProviderSlugs comes from the
+  // specs, not from the profiles, so a provider declared on a secondary
+  // tier with no rows of its own (shyft on rpc-cost, solana-foundation on
+  // rpc-free-tier) was listed while 404ing, and the deploy smoke rolled
+  // prod back on 2026-10-19 the day its sample drew them.
+  const unservableSlugs = new Set<string>();
   for (const slug of candidateSlugs) {
     if (canonicalProfileSlugs.has(slug)) continue;
     const resolved = await getProvider(slug).catch(() => undefined);
-    if (resolved && resolved.slug.toLowerCase() !== slug.toLowerCase()) redirectingSlugs.add(slug);
+    if (!resolved) unservableSlugs.add(slug);
+    else if (resolved.slug.toLowerCase() !== slug.toLowerCase()) redirectingSlugs.add(slug);
   }
   const validatedSlugs = candidateSlugs.filter((slug) => {
     if (!declaredProviderSlugs.has(slug)) return false;
     if (redirectingSlugs.has(slug)) return false;
+    if (unservableSlugs.has(slug)) return false;
     // Same blacklist as the product index: hex builder addresses and dead
     // composite slugs 404 on /products/<slug> (nine 0x... URLs in the
     // production sitemap failed the deploy smoke on 2026-09-21; they are
