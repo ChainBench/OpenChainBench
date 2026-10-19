@@ -130,6 +130,11 @@ metric_panels:
     unit: count
     higher_is_better: true
 
+# The tehcscreener source publishes one complete UTC day, not a rolling
+# 24 hours; the ledger and compare cards say so.
+chart:
+  window_label: last complete UTC day
+
 faq:
   - q: "Why did six apps disappear?"
     a: "BonkBot, Banana Gun, Bloom, Sol Trading Bot, PepeBoost and o1.exchange are not covered by the source this page now reads. They were removed rather than left in the table at zero, which would have ranked them last on a figure nobody measured."

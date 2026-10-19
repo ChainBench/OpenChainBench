@@ -104,6 +104,11 @@ dimensions:
     - { value: ethereum,  label: Ethereum }
     - { value: hyperevm,  label: HyperEVM }
 
+# The tehcscreener source publishes one complete UTC day, not a rolling
+# 24 hours; the ledger and compare cards say so.
+chart:
+  window_label: last complete UTC day
+
 faq:
   - q: "What is an observed take rate?"
     a: "A day's fee revenue divided by the volume routed that day, as a percentage. It is what the terminal kept, which is not the same as what its fee page says it charges: waived fees, referral rebates and promotions all reduce the first without touching the second."
