@@ -132,6 +132,16 @@ export type Venue = {
   feeInTrigger: boolean;
   /** True when the trigger is documented to leave equity behind. */
   returnsEquity: boolean;
+  /**
+   * Set when losing on this venue mints the venue's own token to the loser.
+   *
+   * It is kept apart from returnsEquity because it is not equity: no margin
+   * comes back, and at launch the token cannot even be transferred, only
+   * staked. But "nothing comes back" is still the wrong sentence for a venue
+   * that hands the liquidated trader a claim on its revenue, so the row says
+   * both things rather than one.
+   */
+  mintsOnLoss?: string;
 };
 
 export const VENUES: readonly Venue[] = [
@@ -187,6 +197,16 @@ export const VENUES: readonly Venue[] = [
     maintenance: (_lev, _mx, market) => PAPERTRADE.perMarket[market].bustBuffer,
     feeInTrigger: false,
     returnsEquity: false,
+    // Losing is the only thing that mints PAPER: its docs are explicit that
+    // "PAPER mints to your account whenever you close a trade at a loss or get
+    // liquidated. Nothing else mints PAPER." Below $2M of tracked LP the rate
+    // is a flat 100 PAPER per dollar of loss basis, and it decays above that;
+    // tracked LP read $65.1M on 2026-10-19, so the flat rate does not apply
+    // and the published curve does not give the decay. The figure quoted is
+    // measured instead, from the venue's own daily series: paperSupply over
+    // traderPnl gave 54 to 99 PAPER a dollar across the six days to
+    // 2026-10-19. It is a range and not a rate because it is an observation.
+    mintsOnLoss: "mints PAPER, 54-99 per $1 lost",
   },
   {
     id: "lighter",
@@ -206,6 +226,16 @@ export const VENUES: readonly Venue[] = [
     returnsEquity: true,
   },
   {
+    // Paradex publishes two taker tiers on the same market, and this row takes
+    // the cheaper one on purpose. /v1/markets fee_config reads
+    // interactive_fee.taker 0 and both api_fee.taker and rpi_fee.taker 0.0002,
+    // so a person clicking in the interface pays nothing to cross and a
+    // programmatic order pays 2 bps a leg. A page that prices one leveraged
+    // trade for a reader is pricing the interactive path, so that is the one
+    // shown. It is stated in the footer because an undeclared choice between
+    // two published numbers is the kind of thing that quietly decides a
+    // ranking: at 2 bps a leg Paradex costs 4 bps round trip instead of the
+    // 1.49 its spread alone gives it.
     id: "paradex",
     logoKey: "paradex",
     chain: "Starknet",
