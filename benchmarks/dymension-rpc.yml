@@ -14,7 +14,7 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  Dymension (dymension_1100-1) is a Cosmos SDK blockchain serving as the settlement and liquidity hub for RollApps, which are application-specific rollups launched on the Dymension ecosystem, DYM staking token, CometBFT consensus. Polkachu, PublicNode, and LavenderFive provide keyless Tendermint RPC endpoints probed every 60 seconds from three regions.
+  Dymension (dymension_1100-1) is a Cosmos SDK blockchain serving as the settlement and liquidity hub for RollApps, which are application-specific rollups launched on the Dymension ecosystem, DYM staking token, CometBFT consensus. Polkachu and LavenderFive provide keyless Tendermint RPC endpoints probed every 60 seconds from three regions.
 
 abstract: |
   Dymension: {{count}} free public RPC endpoints answering `status` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}.
@@ -66,30 +66,6 @@ providers:
         - region: ap-southeast
           p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="polkachu", chain="dymension", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="polkachu", chain="dymension", region="sgp"}[1h])
-
-  - slug: publicnode
-    name: PublicNode
-    endpoint: https://dymension-rpc.publicnode.com
-    tag: Allnodes-operated, 70+ chains
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single Tendermint `status` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to PublicNode's no-key Dymension endpoint."
-    queries:
-      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="dymension"})
-      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="publicnode", chain="dymension"})
-      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="publicnode", chain="dymension"})
-      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="publicnode", chain="dymension"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="publicnode", chain="dymension"}) / sum(ocb:rpc_call:rate_24h{provider="publicnode", chain="dymension"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="publicnode", chain="dymension"})
-      series: avg(avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="dymension"}[1h]))
-      regions:
-        - region: us-east
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="dymension", region="us-east"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="dymension", region="us-east"}[1h])
-        - region: eu-west
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="dymension", region="eu-west"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="dymension", region="eu-west"}[1h])
-        - region: ap-southeast
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="dymension", region="sgp"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="dymension", region="sgp"}[1h])
 
   - slug: lavenderfive
     name: LavenderFive

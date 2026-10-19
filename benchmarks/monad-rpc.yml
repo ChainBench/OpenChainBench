@@ -20,8 +20,8 @@ seo_intro: |
   Foundation runs five official mirrors behind different infra
   vendors (QuickNode, Alchemy, Goldsky, Ankr and its own nodes), and
   the multi-chain gateways followed within weeks. We probe the
-  primary official endpoint plus dRPC, Tenderly Gateway, bloXroute
-  and OnFinality, every 60 seconds from three regions, with the same
+  primary official endpoint plus dRPC, Tenderly Gateway and
+  OnFinality (bloXroute's public host stopped resolving and left on 2026-10-19), every 60 seconds from three regions, with the same
   anti-cache payload as every chain in the cluster. If you are
   building on Monad and pasting a free RPC URL into your dapp, this
   page is the live answer to which one deserves it.
@@ -129,30 +129,6 @@ providers:
         - region: ap-southeast
           p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="tenderly", chain="monad", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="tenderly", chain="monad", region="sgp"}[1h])
-
-  - slug: bloxroute
-    name: bloXroute
-    endpoint: https://monad.rpc.blxrbdn.com
-    tag: BDN operator's public Monad endpoint
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to bloXroute's no-key Monad endpoint."
-    queries:
-      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="bloxroute", chain="monad"})
-      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="bloxroute", chain="monad"})
-      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="bloxroute", chain="monad"})
-      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="bloxroute", chain="monad"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="bloxroute", chain="monad"}) / sum(ocb:rpc_call:rate_24h{provider="bloxroute", chain="monad"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="bloxroute", chain="monad"})
-      series: avg(avg_over_time(rpc_latency_milliseconds{provider="bloxroute", chain="monad"}[1h]))
-      regions:
-        - region: us-east
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="bloxroute", chain="monad", region="us-east"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="bloxroute", chain="monad", region="us-east"}[1h])
-        - region: eu-west
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="bloxroute", chain="monad", region="eu-west"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="bloxroute", chain="monad", region="eu-west"}[1h])
-        - region: ap-southeast
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="bloxroute", chain="monad", region="sgp"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="bloxroute", chain="monad", region="sgp"}[1h])
 
   - slug: onfinality
     name: OnFinality

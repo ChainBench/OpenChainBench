@@ -15,7 +15,7 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  Sonic ties Gnosis for the largest cohort in the long-tail expansion: {{count}} no-key providers, including Sonic Labs' own `rpc.soniclabs.com` and the only keyless Lava endpoint outside Ethereum and Arbitrum, `sonic.lava.build` answers no-key while every other Lava subdomain 403s without an API key. Every provider gets the identical `eth_getBlockByNumber` probe every 60 seconds from us-east, eu-west and Singapore, with stale-head detection against the cross-provider tip.
+  Sonic ties Gnosis for the largest cohort in the long-tail expansion: {{count}} no-key providers, including Sonic Labs' own `rpc.soniclabs.com`. Lava's keyless `sonic.lava.build` answered until 2026; it returns 410 Gone and left the cohort on 2026-10-19. Every provider gets the identical `eth_getBlockByNumber` probe every 60 seconds from us-east, eu-west and Singapore, with stale-head detection against the cross-provider tip.
 
 abstract: |
   Sonic: {{count}} free public RPC endpoints answering `eth_getBlockByNumber` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}; the chain-official endpoint measures {{p50:sonic-official}}.
@@ -30,8 +30,6 @@ methodology:
 faq:
   - q: "Which Sonic RPCs work without an API key?"
     a: "The {{count}} providers on this page are listed with their URLs in the endpoints table above. Every (provider, chain) pair was live-verified no-key before inclusion, and anything that key-gates, region-blocks or rate-limits below our 60-second cadence is excluded rather than listed with an asterisk."
-  - q: "Why does Lava appear on Sonic but on no other long-tail chain?"
-    a: "Lava publishes `*.lava.build` subdomains for many chains, but nearly all of them return 403 without an API key. `sonic.lava.build` is the exception: it passed our no-key verification (eth_chainId match plus sustained probing) and has held the 60-second cadence since. Every (provider, chain) pair in this cluster is admitted on measured behavior, not on a provider's published chain list."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
 
@@ -123,30 +121,6 @@ providers:
         - region: ap-southeast
           p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="tenderly", chain="sonic", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="tenderly", chain="sonic", region="sgp"}[1h])
-
-  - slug: lava
-    name: Lava
-    endpoint: https://sonic.lava.build
-    tag: Decentralized permissionless RPC mesh (sonic.lava.build, open no-key)
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Lava's no-key Sonic endpoint."
-    queries:
-      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="lava", chain="sonic"})
-      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="lava", chain="sonic"})
-      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="lava", chain="sonic"})
-      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="lava", chain="sonic"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="lava", chain="sonic"}) / sum(ocb:rpc_call:rate_24h{provider="lava", chain="sonic"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="lava", chain="sonic"})
-      series: avg(avg_over_time(rpc_latency_milliseconds{provider="lava", chain="sonic"}[1h]))
-      regions:
-        - region: us-east
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="lava", chain="sonic", region="us-east"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="lava", chain="sonic", region="us-east"}[1h])
-        - region: eu-west
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="lava", chain="sonic", region="eu-west"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="lava", chain="sonic", region="eu-west"}[1h])
-        - region: ap-southeast
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="lava", chain="sonic", region="sgp"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="lava", chain="sonic", region="sgp"}[1h])
 
   - slug: sonic-official
     name: Sonic Labs

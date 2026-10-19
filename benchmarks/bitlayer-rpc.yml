@@ -14,7 +14,7 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  Bitlayer is the first EVM-compatible Bitcoin L2 (chain 200901) secured by a BitVM-based fraud-proof scheme with BTC as the gas token. The official endpoint (`rpc.bitlayer.org`) is operated by Bitlayer Labs, with dRPC and Ankr providing additional keyless alternatives probed every 60 seconds from three regions.
+  Bitlayer is the first EVM-compatible Bitcoin L2 (chain 200901) secured by a BitVM-based fraud-proof scheme with BTC as the gas token. The official endpoint (`rpc.bitlayer.org`) is operated by Bitlayer Labs, with dRPC providing a keyless alternative (Ankr now requires a key and left on 2026-10-19) probed every 60 seconds from three regions.
 
 abstract: |
   Bitlayer: {{count}} free public RPC endpoints answering `eth_getBlockByNumber` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}; the chain-official endpoint measures {{p50:bitlayer-official}}.
@@ -91,26 +91,3 @@ providers:
           p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="bitlayer", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="bitlayer", region="sgp"}[1h])
 
-  - slug: ankr
-    name: Ankr
-    endpoint: https://rpc.ankr.com/bitlayer
-    tag: Multi-cloud RPC network, 40+ chains, keyless tier
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Ankr's no-key Bitlayer endpoint."
-    queries:
-      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="ankr", chain="bitlayer"})
-      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="ankr", chain="bitlayer"})
-      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="ankr", chain="bitlayer"})
-      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="ankr", chain="bitlayer"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="ankr", chain="bitlayer"}) / sum(ocb:rpc_call:rate_24h{provider="ankr", chain="bitlayer"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="ankr", chain="bitlayer"})
-      series: avg(avg_over_time(rpc_latency_milliseconds{provider="ankr", chain="bitlayer"}[1h]))
-      regions:
-        - region: us-east
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="ankr", chain="bitlayer", region="us-east"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="ankr", chain="bitlayer", region="us-east"}[1h])
-        - region: eu-west
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="ankr", chain="bitlayer", region="eu-west"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="ankr", chain="bitlayer", region="eu-west"}[1h])
-        - region: ap-southeast
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="ankr", chain="bitlayer", region="sgp"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="ankr", chain="bitlayer", region="sgp"}[1h])

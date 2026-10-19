@@ -14,7 +14,7 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  IoTeX (chain 4689) is an EVM-compatible Layer 1 designed for decentralized physical infrastructure networks (DePIN), IOTX gas token, combining IoT device identity, data streams, and on-chain settlement. IoTeX Mirror, Ankr, and Thirdweb provide keyless eth_ JSON-RPC access probed every 60 seconds from three regions.
+  IoTeX (chain 4689) is an EVM-compatible Layer 1 designed for decentralized physical infrastructure networks (DePIN), IOTX gas token, combining IoT device identity, data streams, and on-chain settlement. The IoTeX Foundation's Babel gateway, its .one mirror and Thirdweb provide keyless eth_ JSON-RPC access (Ankr now requires a key and left on 2026-10-19) probed every 60 seconds from three regions.
 
 abstract: |
   IoTeX: {{count}} free public RPC endpoints answering `eth_getBlockByNumber` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}.
@@ -66,29 +66,6 @@ providers:
         - region: ap-southeast
           p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="iotex-mirror", chain="iotex", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="iotex-mirror", chain="iotex", region="sgp"}[1h])
-  - slug: ankr
-    name: Ankr
-    endpoint: https://rpc.ankr.com/iotex
-    tag: Multi-chain public RPC network
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Ankr's no-key IoTeX endpoint."
-    queries:
-      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="ankr", chain="iotex"})
-      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="ankr", chain="iotex"})
-      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="ankr", chain="iotex"})
-      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="ankr", chain="iotex"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="ankr", chain="iotex"}) / sum(ocb:rpc_call:rate_24h{provider="ankr", chain="iotex"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="ankr", chain="iotex"})
-      series: avg(avg_over_time(rpc_latency_milliseconds{provider="ankr", chain="iotex"}[1h]))
-      regions:
-        - region: us-east
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="ankr", chain="iotex", region="us-east"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="ankr", chain="iotex", region="us-east"}[1h])
-        - region: eu-west
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="ankr", chain="iotex", region="eu-west"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="ankr", chain="iotex", region="eu-west"}[1h])
-        - region: ap-southeast
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="ankr", chain="iotex", region="sgp"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="ankr", chain="iotex", region="sgp"}[1h])
   - slug: thirdweb
     name: Thirdweb
     endpoint: https://4689.rpc.thirdweb.com
@@ -112,3 +89,27 @@ providers:
         - region: ap-southeast
           p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="thirdweb", chain="iotex", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="thirdweb", chain="iotex", region="sgp"}[1h])
+
+  - slug: iotex-official
+    name: IoTeX Foundation
+    endpoint: https://babel-api.mainnet.iotex.io
+    tag: IoTeX's own Babel EVM gateway (.io), the primary host beside the .one mirror
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to IoTeX Foundation's no-key Babel endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="iotex-official", chain="iotex"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="iotex-official", chain="iotex"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="iotex-official", chain="iotex"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="iotex-official", chain="iotex"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="iotex-official", chain="iotex"}) / sum(ocb:rpc_call:rate_24h{provider="iotex-official", chain="iotex"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="iotex-official", chain="iotex"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="iotex-official", chain="iotex"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="iotex-official", chain="iotex", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="iotex-official", chain="iotex", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="iotex-official", chain="iotex", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="iotex-official", chain="iotex", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="iotex-official", chain="iotex", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="iotex-official", chain="iotex", region="sgp"}[1h])

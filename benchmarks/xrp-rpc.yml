@@ -14,7 +14,7 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  The XRP Ledger is a decentralized payment network using a federated consensus protocol (RPCA) that closes a new ledger every 3 to 4 seconds with instant, deterministic finality. Free public JSON-RPC endpoints are available without an API key from Ripple, XRPL Labs and PublicNode. Every provider was live-verified with consecutive keyless ledger_current probes at launch.
+  The XRP Ledger is a decentralized payment network using a federated consensus protocol (RPCA) that closes a new ledger every 3 to 4 seconds with instant, deterministic finality. Free public JSON-RPC endpoints are available without an API key from Ripple and XRPL Labs. Every provider was live-verified with consecutive keyless ledger_current probes at launch.
 
 abstract: |
   XRP Ledger: {{count}} free public RPC endpoints answering `ledger_current` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}.
@@ -94,26 +94,3 @@ providers:
           p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="xrpl-labs", chain="xrp", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="xrpl-labs", chain="xrp", region="sgp"}[1h])
 
-  - slug: publicnode
-    name: PublicNode
-    endpoint: https://xrp-rpc.publicnode.com
-    tag: High-uptime community RPC provider, 25+ chains, no key required, operated by Allnodes
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a ledger_current POST sent every 60s from 3 regions to PublicNode's XRP Ledger endpoint."
-    queries:
-      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="xrp"})
-      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="publicnode", chain="xrp"})
-      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="publicnode", chain="xrp"})
-      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="publicnode", chain="xrp"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="publicnode", chain="xrp"}) / sum(ocb:rpc_call:rate_24h{provider="publicnode", chain="xrp"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="publicnode", chain="xrp"})
-      series: avg(avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="xrp"}[1h]))
-      regions:
-        - region: us-east
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="xrp", region="us-east"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="xrp", region="us-east"}[1h])
-        - region: eu-west
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="xrp", region="eu-west"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="xrp", region="eu-west"}[1h])
-        - region: ap-southeast
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="xrp", region="sgp"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="xrp", region="sgp"}[1h])

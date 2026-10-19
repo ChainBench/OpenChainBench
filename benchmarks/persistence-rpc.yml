@@ -14,7 +14,7 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  Persistence (core-1) is a Cosmos SDK blockchain specializing in liquid staking with stkATOM, stkDYDX, and other IBC-connected staked assets, XPRT staking token, using CometBFT consensus. It was among the first Cosmos liquid staking protocols. Polkachu, PublicNode, and the Persistence Foundation provide keyless Tendermint RPC endpoints probed every 60 seconds from three regions.
+  Persistence (core-1) is a Cosmos SDK blockchain specializing in liquid staking with stkATOM, stkDYDX, and other IBC-connected staked assets, XPRT staking token, using CometBFT consensus. It was among the first Cosmos liquid staking protocols. Polkachu and the Persistence Foundation provide keyless Tendermint RPC endpoints probed every 60 seconds from three regions.
 
 abstract: |
   Persistence: {{count}} free public RPC endpoints answering `status` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}; the chain-official endpoint measures {{p50:persistence-official}}.
@@ -66,29 +66,6 @@ providers:
         - region: ap-southeast
           p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="polkachu", chain="persistence", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="polkachu", chain="persistence", region="sgp"}[1h])
-  - slug: publicnode
-    name: PublicNode
-    endpoint: https://persistence-rpc.publicnode.com:443
-    tag: Non-profit public RPC by Allnodes
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single Tendermint `status` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to PublicNode's no-key Persistence endpoint."
-    queries:
-      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="persistence"})
-      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="publicnode", chain="persistence"})
-      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="publicnode", chain="persistence"})
-      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="publicnode", chain="persistence"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="publicnode", chain="persistence"}) / sum(ocb:rpc_call:rate_24h{provider="publicnode", chain="persistence"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="publicnode", chain="persistence"})
-      series: avg(avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="persistence"}[1h]))
-      regions:
-        - region: us-east
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="persistence", region="us-east"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="persistence", region="us-east"}[1h])
-        - region: eu-west
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="persistence", region="eu-west"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="persistence", region="eu-west"}[1h])
-        - region: ap-southeast
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="persistence", region="sgp"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="persistence", region="sgp"}[1h])
   - slug: persistence-official
     name: Persistence Foundation
     endpoint: https://rpc.core.persistence.one
