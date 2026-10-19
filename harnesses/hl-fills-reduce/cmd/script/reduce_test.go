@@ -361,9 +361,11 @@ func TestRebuiltDaysOnlyFillGapsAndNeverOutrankAMeasuredDay(t *testing.T) {
 // and is the most flattering possible lie: the figure would be published as if
 // it were measured. Absent means "assume the worst case we have measured".
 func TestRebuiltDayWithNoStatedErrorIsNotTreatedAsPerfect(t *testing.T) {
+	pct := func(v float64) *float64 { return &v }
+
 	stated := rebuiltInfo("20261013", &Day{
 		Hours: 24, Complete: true, Rebuilt: true,
-		RebuiltFrom: &RebuiltFrom{ExpectedErrorPct: -0.5, MorningSharePct: 68.7},
+		RebuiltFrom: &RebuiltFrom{ExpectedErrorPct: pct(-0.5), MorningSharePct: 68.7},
 	})
 	if stated.ExpectedErrorPct != -0.5 || stated.Extrapolated {
 		t.Fatalf("a stated error must carry through, got %+v", stated)
@@ -378,6 +380,22 @@ func TestRebuiltDayWithNoStatedErrorIsNotTreatedAsPerfect(t *testing.T) {
 	}
 	if silent.ExpectedErrorPct > -28.0 {
 		t.Fatalf("the fallback should be the worst case measured, got %.1f", silent.ExpectedErrorPct)
+	}
+
+	// A day that states zero means zero, and must not be lumped in with the
+	// silent ones. Days replayed from node_fills_by_block read the builder
+	// address off the fill record, so there is no attribution to infer and
+	// nothing to fall short by. Treating their zero as "unstated" published
+	// an exact day as 28.2 per cent short.
+	exact := rebuiltInfo("20261018", &Day{
+		Hours: 24, Complete: true, Rebuilt: true,
+		RebuiltFrom: &RebuiltFrom{ExpectedErrorPct: pct(0), MorningSharePct: 100},
+	})
+	if exact.ExpectedErrorPct != 0 {
+		t.Fatalf("a day stating zero error must report zero, got %.1f", exact.ExpectedErrorPct)
+	}
+	if exact.Extrapolated {
+		t.Fatal("a stated zero is measured, not extrapolated")
 	}
 }
 
