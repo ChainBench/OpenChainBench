@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { headers } from "next/headers";
+import { AI_CRAWLER_UAS } from "@/data/ai-crawlers";
 import { SITE } from "@/data/site";
 
 /**
@@ -10,25 +11,9 @@ import { SITE } from "@/data/site";
  *  - documents intent (we WANT to be in their training / retrieval corpus)
  *  - bypasses any future opt-out default by reaffirming consent
  */
-const AI_CRAWLERS = [
-  "GPTBot", // OpenAI
-  "ChatGPT-User", // OpenAI fetch for ChatGPT
-  "OAI-SearchBot", // OpenAI search crawler
-  "ClaudeBot", // Anthropic
-  "Claude-Web", // Anthropic
-  "anthropic-ai", // legacy Anthropic UA
-  "Google-Extended", // Google Gemini / Vertex AI
-  "GoogleOther", // Google research crawlers
-  "PerplexityBot", // Perplexity
-  "Perplexity-User", // Perplexity fetch
-  "Bytespider", // ByteDance
-  "Applebot-Extended", // Apple Intelligence
-  "Meta-ExternalAgent", // Meta AI
-  "CCBot", // Common Crawl (training data backbone)
-  "cohere-ai", // Cohere
-  "DuckAssistBot", // DuckDuckGo AI
-  "Diffbot", // generic LLM crawler
-];
+// The list lives in src/data/ai-crawlers.ts, with the request counts that
+// justify each entry. Three files consume it and ai-crawlers.test.ts fails if
+// one of them stops agreeing.
 
 const canonicalHost = new URL(SITE.url).hostname.toLowerCase();
 
@@ -66,7 +51,7 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
       { userAgent: "*", allow: "/" },
       // Explicit allow for AI crawlers - they should index llms.txt and the
       // /api/ surface so they can cite us at answer time.
-      ...AI_CRAWLERS.map((userAgent) => ({ userAgent, allow: "/" })),
+      ...AI_CRAWLER_UAS.map((userAgent) => ({ userAgent, allow: "/" })),
     ],
     sitemap: `${SITE.url}/sitemap.xml`,
     host: SITE.url,
