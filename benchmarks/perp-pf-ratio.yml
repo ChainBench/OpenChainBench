@@ -393,6 +393,10 @@ providers:
     name: DIME
     tag: "Paradex; DeFiLlama's fee adapter reports very low fees for this venue"
     unranked: "Adapter incomplete"
+    # The series exists and reads 29.85, off the very adapter this row is
+    # labelled for. An unranked row keeps its measured value by default now,
+    # so this one asks to be blanked explicitly.
+    unranked_hides_value: true
     formula: "P/F = CoinGecko circulating market cap / (DeFiLlama 30d fees x 365/30), parent scope"
     queries:
       p50: perp_protocol_pf_ratio{protocol="paradex"}
