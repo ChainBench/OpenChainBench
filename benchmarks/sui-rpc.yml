@@ -14,7 +14,7 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  Sui is a Move-based L1 blockchain using the Mysticeti DAG-BFT consensus protocol, producing checkpoints every roughly 3 seconds with deterministic sub-second finality. Free public RPC endpoints are available without an API key from Mysten Labs, PublicNode, BlockVision, Suiet and OnFinality. Every provider was live-verified with consecutive keyless sui_getLatestCheckpointSequenceNumber probes at launch.
+  Sui is a Move-based L1 blockchain using the Mysticeti DAG-BFT consensus protocol, producing checkpoints every roughly 3 seconds with deterministic sub-second finality. Free public RPC endpoints are available without an API key from PublicNode, BlockVision, Suiet and OnFinality. Mysten Labs' public fullnode retired JSON-RPC and left on 2026-10-19. Every provider was live-verified with consecutive keyless sui_getLatestCheckpointSequenceNumber probes at launch.
 
 abstract: |
   Sui: {{count}} free public RPC endpoints answering `sui_getLatestCheckpointSequenceNumber` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}.
@@ -43,30 +43,6 @@ dimensions:
     - { value: sgp,     label: Singapore }
 
 providers:
-  - slug: fullnode
-    name: Mysten Labs
-    endpoint: https://fullnode.mainnet.sui.io
-    tag: Official Mysten Labs public Sui fullnode, no key required
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single sui_getLatestCheckpointSequenceNumber POST sent every 60s from 3 regions to the Mysten Labs fullnode."
-    queries:
-      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="fullnode", chain="sui"})
-      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="fullnode", chain="sui"})
-      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="fullnode", chain="sui"})
-      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="fullnode", chain="sui"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="fullnode", chain="sui"}) / sum(ocb:rpc_call:rate_24h{provider="fullnode", chain="sui"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="fullnode", chain="sui"})
-      series: avg(avg_over_time(rpc_latency_milliseconds{provider="fullnode", chain="sui"}[1h]))
-      regions:
-        - region: us-east
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="fullnode", chain="sui", region="us-east"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="fullnode", chain="sui", region="us-east"}[1h])
-        - region: eu-west
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="fullnode", chain="sui", region="eu-west"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="fullnode", chain="sui", region="eu-west"}[1h])
-        - region: ap-southeast
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="fullnode", chain="sui", region="sgp"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="fullnode", chain="sui", region="sgp"}[1h])
-
   - slug: publicnode
     name: PublicNode
     endpoint: https://sui-rpc.publicnode.com

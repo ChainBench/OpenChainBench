@@ -14,7 +14,7 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  Merlin Chain is an EVM-compatible Bitcoin Layer 2 network (chain ID 4200) that uses ZK-Rollup technology to inherit Bitcoin security while enabling smart contracts and DeFi. It exposes a standard Ethereum JSON-RPC interface. Public EVM endpoints are available without an API key from Merlin Official, dRPC and BlockPI. Every provider was live-verified with consecutive eth_getBlockByNumber probes at launch.
+  Merlin Chain is an EVM-compatible Bitcoin Layer 2 network (chain ID 4200) that uses ZK-Rollup technology to inherit Bitcoin security while enabling smart contracts and DeFi. It exposes a standard Ethereum JSON-RPC interface. Public EVM endpoints are available without an API key from Merlin Official and dRPC. Every provider was live-verified with consecutive eth_getBlockByNumber probes at launch.
 
 abstract: |
   Merlin Chain: {{count}} free public RPC endpoints answering `eth_getBlockByNumber` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}; the chain-official endpoint measures {{p50:merlin-official}}.
@@ -28,7 +28,7 @@ methodology:
 
 faq:
   - q: "Which Merlin Chain RPC endpoints work without an API key?"
-    a: "{{declared_count}} endpoints are probed on this chain: Merlin Official (rpc.merlinchain.io), dRPC (merlin.drpc.org) and BlockPI (merlin.blockpi.network). Every listed endpoint was live-verified with an eth_getBlockByNumber call returning a parsable block number before inclusion."
+    a: "{{declared_count}} endpoints are probed on this chain: Merlin Official (rpc.merlinchain.io) and dRPC (merlin.drpc.org). Every listed endpoint was live-verified with an eth_getBlockByNumber call returning a parsable block number before inclusion."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
 
@@ -94,26 +94,3 @@ providers:
           p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="merlin", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="merlin", region="sgp"}[1h])
 
-  - slug: blockpi
-    name: BlockPI
-    endpoint: https://merlin.blockpi.network/v1/rpc/public
-    tag: BlockPI public Merlin Chain RPC, keyless
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for an eth_getBlockByNumber POST sent every 60s from 3 regions to merlin.blockpi.network/v1/rpc/public."
-    queries:
-      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="blockpi", chain="merlin"})
-      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="blockpi", chain="merlin"})
-      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="blockpi", chain="merlin"})
-      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="blockpi", chain="merlin"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="blockpi", chain="merlin"}) / sum(ocb:rpc_call:rate_24h{provider="blockpi", chain="merlin"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="blockpi", chain="merlin"})
-      series: avg(avg_over_time(rpc_latency_milliseconds{provider="blockpi", chain="merlin"}[1h]))
-      regions:
-        - region: us-east
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="blockpi", chain="merlin", region="us-east"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="blockpi", chain="merlin", region="us-east"}[1h])
-        - region: eu-west
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="blockpi", chain="merlin", region="eu-west"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="blockpi", chain="merlin", region="eu-west"}[1h])
-        - region: ap-southeast
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="blockpi", chain="merlin", region="sgp"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="blockpi", chain="merlin", region="sgp"}[1h])

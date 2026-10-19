@@ -19,8 +19,9 @@ seo_intro: |
   rebuilt on 2026-10-09: PublicNode stopped serving the chain and
   answers 404 on every hostname it published, Tenderly's public gateway
   answers 404, and the Foundation endpoint refuses the TLS handshake
-  from two independent client stacks. OnFinality and UnitedBloc take
-  their place, each verified on the same head as dRPC before inclusion.
+  from two independent client stacks. OnFinality and UnitedBloc took
+  their place, each verified on the same head as dRPC before inclusion;
+  UnitedBloc's host has answered 502 since and left on 2026-10-19.
   Probes every 60 seconds from three regions with the cluster's
   anti-cache payload.
 
@@ -101,28 +102,4 @@ providers:
         - region: ap-southeast
           p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="onfinality", chain="moonbeam", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="onfinality", chain="moonbeam", region="sgp"}[1h])
-
-  - slug: unitedbloc
-    name: UnitedBloc
-    endpoint: https://moonbeam.unitedbloc.com
-    tag: UnitedBloc community-operated public RPC
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to UnitedBloc's no-key Moonbeam endpoint."
-    queries:
-      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="unitedbloc", chain="moonbeam"})
-      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="unitedbloc", chain="moonbeam"})
-      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="unitedbloc", chain="moonbeam"})
-      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="unitedbloc", chain="moonbeam"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="unitedbloc", chain="moonbeam"}) / sum(ocb:rpc_call:rate_24h{provider="unitedbloc", chain="moonbeam"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="unitedbloc", chain="moonbeam"})
-      series: avg(avg_over_time(rpc_latency_milliseconds{provider="unitedbloc", chain="moonbeam"}[1h]))
-      regions:
-        - region: us-east
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="unitedbloc", chain="moonbeam", region="us-east"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="unitedbloc", chain="moonbeam", region="us-east"}[1h])
-        - region: eu-west
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="unitedbloc", chain="moonbeam", region="eu-west"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="unitedbloc", chain="moonbeam", region="eu-west"}[1h])
-        - region: ap-southeast
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="unitedbloc", chain="moonbeam", region="sgp"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="unitedbloc", chain="moonbeam", region="sgp"}[1h])
 

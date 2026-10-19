@@ -14,7 +14,7 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  Arbitrum is the second-largest cohort in the cluster: {{count}} no-key providers including the Arbitrum Foundation's own `arb1.arbitrum.io/rpc`, and one of the few chains where Lava and MeowRPC still compete on a free tier. Foundation endpoints are documented best-effort, and our data shows what that means in practice: a median of {{p50:arbitrum-official}} with a p99 of {{p99:arbitrum-official}} over the last 24 hours. Every provider answers the identical `eth_getBlockByNumber` probe every 60 seconds from us-east, eu-west and Singapore.
+  Arbitrum is the second-largest cohort in the cluster: {{count}} no-key providers including the Arbitrum Foundation's own `arb1.arbitrum.io/rpc`, and one of the few chains where MeowRPC still competes on a free tier (Lava left on 2026-10-19: its public hosts answer 410 Gone). Foundation endpoints are documented best-effort, and our data shows what that means in practice: a median of {{p50:arbitrum-official}} with a p99 of {{p99:arbitrum-official}} over the last 24 hours. Every provider answers the identical `eth_getBlockByNumber` probe every 60 seconds from us-east, eu-west and Singapore.
 
 abstract: |
   Arbitrum: {{count}} free public RPC endpoints answering `eth_getBlockByNumber` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}; the chain-official endpoint measures {{p50:arbitrum-official}}. The same page carries the private cohort (API key), Alchemy, Chainstack, GetBlock, QuickNode and Dwellir on their keyed Arbitrum endpoints every 120 seconds: switch the Access selector; {{best_name:tier:keyed}} leads it at {{best_p50:tier:keyed}}.
@@ -169,30 +169,6 @@ providers:
         - region: ap-southeast
           p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="nodies", chain="arbitrum", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="nodies", chain="arbitrum", region="sgp"}[1h])
-
-  - slug: lava
-    name: Lava
-    endpoint: https://arb1.lava.build
-    tag: Decentralized permissionless RPC mesh (ETH + Arbitrum no-key)
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Lava's no-key Arbitrum endpoint."
-    queries:
-      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="lava", chain="arbitrum"})
-      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="lava", chain="arbitrum"})
-      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="lava", chain="arbitrum"})
-      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="lava", chain="arbitrum"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="lava", chain="arbitrum"}) / sum(ocb:rpc_call:rate_24h{provider="lava", chain="arbitrum"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="lava", chain="arbitrum"})
-      series: avg(avg_over_time(rpc_latency_milliseconds{provider="lava", chain="arbitrum"}[1h]))
-      regions:
-        - region: us-east
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="lava", chain="arbitrum", region="us-east"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="lava", chain="arbitrum", region="us-east"}[1h])
-        - region: eu-west
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="lava", chain="arbitrum", region="eu-west"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="lava", chain="arbitrum", region="eu-west"}[1h])
-        - region: ap-southeast
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="lava", chain="arbitrum", region="sgp"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="lava", chain="arbitrum", region="sgp"}[1h])
 
   - slug: meowrpc
     name: MeowRPC

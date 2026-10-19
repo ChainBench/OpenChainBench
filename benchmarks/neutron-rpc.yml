@@ -43,30 +43,6 @@ dimensions:
     - { value: sgp,     label: Singapore }
 
 providers:
-  - slug: publicnode
-    name: PublicNode
-    endpoint: https://neutron-rpc.publicnode.com
-    tag: Allnodes-operated, 70+ chains, includes Cosmos SDK
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single Tendermint `status` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to PublicNode's no-key neutron RPC endpoint."
-    queries:
-      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="neutron"})
-      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="publicnode", chain="neutron"})
-      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="publicnode", chain="neutron"})
-      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="publicnode", chain="neutron"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="publicnode", chain="neutron"}) / sum(ocb:rpc_call:rate_24h{provider="publicnode", chain="neutron"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="publicnode", chain="neutron"})
-      series: avg(avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="neutron"}[1h]))
-      regions:
-        - region: us-east
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="neutron", region="us-east"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="neutron", region="us-east"}[1h])
-        - region: eu-west
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="neutron", region="eu-west"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="neutron", region="eu-west"}[1h])
-        - region: ap-southeast
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="neutron", region="sgp"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="neutron", region="sgp"}[1h])
-
   - slug: polkachu
     name: Polkachu
     endpoint: https://neutron-rpc.polkachu.com
@@ -114,3 +90,27 @@ providers:
         - region: ap-southeast
           p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="lavenderfive", chain="neutron", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="lavenderfive", chain="neutron", region="sgp"}[1h])
+
+  - slug: stakeandrelax
+    name: Stake&Relax
+    endpoint: https://neutron-rpc.stakeandrelax.net
+    tag: Validator-run public Tendermint RPC
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single Tendermint `status` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Stake&Relax's no-key neutron RPC endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="stakeandrelax", chain="neutron"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="stakeandrelax", chain="neutron"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="stakeandrelax", chain="neutron"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="stakeandrelax", chain="neutron"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="stakeandrelax", chain="neutron"}) / sum(ocb:rpc_call:rate_24h{provider="stakeandrelax", chain="neutron"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="stakeandrelax", chain="neutron"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="stakeandrelax", chain="neutron"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="stakeandrelax", chain="neutron", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="stakeandrelax", chain="neutron", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="stakeandrelax", chain="neutron", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="stakeandrelax", chain="neutron", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="stakeandrelax", chain="neutron", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="stakeandrelax", chain="neutron", region="sgp"}[1h])

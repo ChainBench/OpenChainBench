@@ -118,30 +118,6 @@ providers:
           p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="solana", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="solana", region="sgp"}[1h])
 
-  - slug: lava
-    name: Lava
-    endpoint: https://solana.lava.build
-    tag: Gateway mesh, pooled per-IP quota
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `getSlot` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to solana.lava.build."
-    queries:
-      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="lava", chain="solana"})
-      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="lava", chain="solana"})
-      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="lava", chain="solana"})
-      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="lava", chain="solana"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="lava", chain="solana"}) / sum(ocb:rpc_call:rate_24h{provider="lava", chain="solana"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="lava", chain="solana"})
-      series: avg(avg_over_time(rpc_latency_milliseconds{provider="lava", chain="solana"}[1h]))
-      regions:
-        - region: us-east
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="lava", chain="solana", region="us-east"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="lava", chain="solana", region="us-east"}[1h])
-        - region: eu-west
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="lava", chain="solana", region="eu-west"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="lava", chain="solana", region="eu-west"}[1h])
-        - region: ap-southeast
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="lava", chain="solana", region="sgp"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="lava", chain="solana", region="sgp"}[1h])
-
   - slug: leorpc
     name: LeoRPC
     endpoint: https://solana.leorpc.com/?api_key=FREE
