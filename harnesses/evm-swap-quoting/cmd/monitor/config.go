@@ -21,6 +21,7 @@ type Config struct {
 	OdosAPIKey    string // optional, future
 	EnsoAPIKey    string // optional, widens the anonymous 1rps bucket when set
 	RouteAPIKey   string // optional, Route (Robinhood Chain) is skipped without it
+	UniswapAPIKey string // optional, self-service key from developers.uniswap.org
 }
 
 func loadEnv() (*Config, error) {
@@ -35,6 +36,7 @@ func loadEnv() (*Config, error) {
 		OdosAPIKey:    strings.TrimSpace(os.Getenv("ODOS_API_KEY")),
 		EnsoAPIKey:    strings.TrimSpace(os.Getenv("ENSO_API_KEY")),
 		RouteAPIKey:   strings.TrimSpace(os.Getenv("ROUTE_API_KEY")),
+		UniswapAPIKey: strings.TrimSpace(os.Getenv("UNISWAP_API_KEY")),
 	}
 	if c.MonitorRegion == "" {
 		c.MonitorRegion = "eu-west"
