@@ -165,6 +165,7 @@ export function BenchmarkGrid({
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search benchmarks"
+              aria-label="Search benchmarks"
               className="w-full pl-7 pr-10 py-1.5 text-xs bg-surface border border-rule rounded-md focus:outline-none focus:border-ink/40 placeholder:text-ink-faint transition-colors"
             />
             <kbd className="absolute right-1.5 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded border border-rule font-mono text-[9px] text-ink-faint bg-surface pointer-events-none">
