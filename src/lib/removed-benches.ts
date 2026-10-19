@@ -145,6 +145,11 @@ export const REMOVED_ANSWER_SLUGS = new Set([
  * Moving a bench to production = remove its slug here.
  */
 export const DEV_ONLY_BENCH_SLUGS = new Set([
+  // 305 price-api-accuracy: built 2026-10-19 and live on staging; the spec
+  // is on dev only, and the worker (which runs from dev) would otherwise put
+  // a page production 404s into the production sitemap. Un-gate with the
+  // release that carries benchmarks/price-api-accuracy.yml to main.
+  "price-api-accuracy",
   // 208 perp liquidation rate: gated 2026-09-28 while the metric is rebuilt.
   // The sources are right (the Gains decode reproduces to 0.02% against an
   // independent scan, Lighter, GMX, Aster, Ostium, Nado and Orderly read

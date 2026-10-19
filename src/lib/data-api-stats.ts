@@ -17,7 +17,7 @@
 
 import { unstable_cache } from "next/cache";
 import { loadBenchFromBlob } from "@/lib/bench-blob";
-import { DEV_ONLY_BENCH_SLUGS, REMOVED_BENCH_SLUGS } from "@/lib/removed-benches";
+import { isDevOnlyBench, REMOVED_BENCH_SLUGS } from "@/lib/removed-benches";
 import type { Benchmark, ProviderResult } from "@/types/benchmark";
 
 export type DataApiGroup =
@@ -101,7 +101,7 @@ const BENCH_GROUP: Record<string, DataApiGroup> = {
  * Names stay in BENCH_GROUP so an un-retirement restores the bench on its own.
  */
 const BENCH_SLUGS = Object.keys(BENCH_GROUP).filter(
-  (slug) => !REMOVED_BENCH_SLUGS.has(slug) && !DEV_ONLY_BENCH_SLUGS.has(slug),
+  (slug) => !REMOVED_BENCH_SLUGS.has(slug) && !isDevOnlyBench(slug),
 );
 
 /** Short display titles for table rows (trimmed from the full spec title). */
@@ -233,7 +233,7 @@ export type DataApiSnapshot = {
 
 // An unranked row (spec `unranked`) keeps its number on the bench page but
 // never leads or places: the hub naming it the leader would contradict the
-// page it links to. Bench 305 lists two on-chain feeds this way.
+// page it links to. Bench 305 lists its on-chain feed this way.
 function liveResults(bench: Benchmark): ProviderResult[] {
   return bench.results.filter(
     (r) =>

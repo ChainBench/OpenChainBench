@@ -12,7 +12,7 @@ Median of three exchange mids, refreshed every 5 s:
 | -------- | ------------------------------------------ | ----- |
 | Coinbase | `GET /products/<A>-USD/ticker` (bid, ask)  | USD   |
 | Kraken   | `GET /0/public/Ticker` (bid, ask)          | USD   |
-| Binance  | `GET /api/v3/ticker/bookTicker`            | USDT, converted at Kraken's USDT/USD mid |
+| Binance  | `GET /api/v3/ticker/bookTicker`            | USDT, converted at the USDT/USD mid (median of Coinbase and Kraken) |
 
 An asset enters a snapshot only when two venues priced it. A provider's
 answer is scored against the snapshot nearest the moment it arrived, within
@@ -31,7 +31,6 @@ on 2026-10-19, which put every USDT book about 12 bps above the USD ones.
 | coinpaprika | `GET /v1/tickers/<id>` (nine calls)               | none            | 20 min | yes |
 | coinstats   | `GET /coins?limit=100`                            | `X-API-KEY`     | 2 min  | yes |
 | mobula      | `GET /api/1/market/multi-data?ids=` (batch)       | `Authorization` | 30 s   | yes |
-| codex       | GraphQL `getTokenPrices`                          | `Authorization` | 60 s   | no, on-chain |
 | serialized  | `POST /v1/token/price` (batch)                    | `Authorization` | 60 s   | no, on-chain |
 
 Poll cadences follow each provider's quota: Bitculator's assigned key allows
@@ -47,16 +46,15 @@ a CoinGecko request that dies without an HTTP status is counted as
 Mobula is addressed by numeric asset id. By name, "Bitcoin" resolved to a
 different token priced at 9e-14 USD in 3 of 66 internal polls.
 
-Codex and Serialized price the wrapped token in its DEX pools (WETH, wSOL,
-WBNB, LINK, WAVAX), not the coin's market. They are listed unranked. BTC is
-left out for them: WBTC trades 15 to 20 bps under BTC, so scoring it against
-BTC would charge the provider for the wrapper's discount. Serialized does not
-index Avalanche.
+Serialized prices the wrapped token in its DEX pools (WETH, wSOL, WBNB,
+LINK), not the coin's market. It is listed unranked. BTC is left out for it:
+WBTC trades 15 to 20 bps under BTC, so scoring it against BTC would charge
+the provider for the wrapper's discount. Serialized does not index Avalanche.
 
 ## Metrics
 
 ```
-price_api_deviation_bps{provider, asset}            histogram, |gap| in bps
+price_api_gap_bps{provider, asset}                  histogram, |gap| in bps, 0.5 bp buckets to 15
 price_api_signed_deviation_bps{provider, asset}     gauge, last signed gap
 price_api_price_usd{provider, asset}                gauge
 price_api_price_age_seconds{provider, asset}        gauge, from the provider's own stamp
