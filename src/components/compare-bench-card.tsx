@@ -56,6 +56,11 @@ export type CompareBench = {
   panelScopes: PanelScope[];
   /** Optional in-panel note shown below the metric cards (e.g. scope clarification). */
   note?: string;
+  /** What the headline figures cover on a bench with a chain dimension: the
+   *  label of its `all` tab ("All chains", or "Solana" on bench 232, whose
+   *  wallets do not add up across chains). Shown beside the headline so two
+   *  cards on one page are never read as the same perimeter. */
+  headlineScope?: string;
 };
 
 function decideWinner(
@@ -103,6 +108,16 @@ export function CompareBenchCard({
         <span className="text-[10px] uppercase tracking-[0.16em] text-ink-faint shrink-0">
           {bench.category}
         </span>
+        {bench.headlineScope && (
+          <p className="basis-full text-[11px] text-ink-muted">
+            Headline:{" "}
+            <span className="text-ink-soft font-medium">
+              {/^all\b/i.test(bench.headlineScope)
+                ? bench.headlineScope
+                : `${bench.headlineScope} only`}
+            </span>
+          </p>
+        )}
       </header>
 
       {hasScopes ? (
