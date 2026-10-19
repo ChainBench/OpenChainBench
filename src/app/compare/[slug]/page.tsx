@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowLeft, ArrowUpRight } from "lucide-react";
 import { getProvider, canonicalize } from "@/lib/providers";
 import { loadBenchmark } from "@/lib/spec";
+import type { Benchmark } from "@/types/benchmark";
 import {
   COMPARE_PAIRS,
   getComparePair,
@@ -351,6 +352,17 @@ type ChainRegionEntry = BreakdownRow & {
 };
 
 type SharedBench = CompareBench;
+
+/** The footer's window wording. A daily-cadence bench (the terminal benches
+ *  read one complete UTC day from their source) names it through
+ *  chart.window_label; "Rolling 24h" there was quoted back by a public
+ *  fact-check as if the figures were a rolling window. */
+function windowTextOf(b: Benchmark): string {
+  const label = b.chart?.windowLabel;
+  if (label) return label.charAt(0).toUpperCase() + label.slice(1);
+  if (b.valueKind === "latest") return "Latest value";
+  return `Rolling ${b.window ?? "24h"}`;
+}
 
 /** The perimeter of a bench's headline when it has a chain dimension: the
  *  label its spec gives the `all` value. Undefined when there is no chain
@@ -803,6 +815,7 @@ async function buildSharedBenches(
         panelScopes,
         note: fullBench.disclaimer ?? undefined,
         headlineScope: headlineScopeOf(chainOpts),
+        windowText: windowTextOf(fullBench),
       } as SharedBench;
     }),
   );
