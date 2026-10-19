@@ -1,0 +1,212 @@
+# OpenChainBench. Bench № 305
+
+slug: price-api-accuracy
+number: "305"
+title: "Crypto price API accuracy: how far each feed sits from the exchange price"
+seo_title: "Most accurate crypto price API 2026: CoinGecko, CoinStats, Mobula, Bitculator compared"
+seo_description: "{{best_name}} prints closest to the exchange price, {{best_p50}} median gap on nine majors. Each price API scored against the Coinbase, Kraken and Binance mid of the same moment."
+subtitle: Basis points between the USD price a market-data API publishes and the exchange mid of the same moment, on BTC, ETH, SOL, BNB, XRP, ADA, DOGE, AVAX and LINK.
+
+category: Aggregators
+status: live
+metric: Price gap
+unit: bp
+higher_is_better: false
+row_noun: { one: price API, many: price APIs }
+
+disclaimer: |
+  The figure is the gap between what a price API printed and what the exchanges were quoting when the answer arrived, so it bundles two things: how the API builds its price and how old that price is. A feed refreshed every minute carries up to a minute of market drift into its gap, and that is intended, because it is what a reader of the API receives. The signed bias column separates a constant offset from noise.
+
+seo_intro: |
+  Every market-data API publishes a price for Bitcoin. Few say how
+  close that price sits to the market at the moment you read it. This
+  page asks each API for the same majors and scores every answer
+  against the mid of three exchanges taken at the same second, so the
+  figure is a distance rather than a price. Two things drive the
+  distance: how the API builds its number, and how long ago it built
+  it. A constant offset usually means the first, scatter around zero
+  the second, which is why the bias sits beside the gap.
+
+abstract: |
+  The harness polls each price API for nine majors on the cadence its
+  quota allows, and scores every answer against the median of the
+  Coinbase, Kraken and Binance mids taken within six seconds of it.
+  Binance quotes these coins against USDT, so its books are converted
+  at the USDT/USD mid before entering the median: read as dollars they
+  sit about twelve basis points high whenever USDT trades under par.
+
+  The ranked rows are APIs that publish a coin's market price. Codex
+  and Serialized are listed beside them without a rank: they price the
+  wrapped token in its on-chain pools, which is a different product,
+  and they cover the majors that have a canonical on-chain twin.
+
+  What this page does not measure is latency. One provider is reached
+  through a proxy because its keyless tier refuses the host's shared
+  address, and a latency column would publish the proxy.
+
+methodology:
+  - "Reference: the median of three exchange mids, Coinbase (USD), Kraken (USD) and Binance (USDT converted at Kraken's USDT/USD mid), refreshed every five seconds. An asset enters a snapshot only when two venues priced it, and an answer is scored against the snapshot nearest the moment it arrived, within six seconds. A poll with no reference that close, or lost in our proxy before any HTTP status, is counted apart and never against the provider."
+  - "The headline is the median absolute gap over 24 hours, pooled across the assets a provider serves, in basis points. The asset tabs give the same figure per coin, which is the like for like comparison. The bias column is the mean signed gap: positive means the API prints above the market."
+  - "Each provider is polled on the cadence its quota allows: every 30 seconds to every 20 minutes. Fewer polls give fewer samples of the same distribution, not a different score, and the sample column shows how many answers each row rests on."
+  - "Price age comes from the provider's own last-updated stamp, read at the moment the answer arrived. A provider that publishes no stamp shows a dash, which does not mean its price is fresh."
+  - "Codex and Serialized are on-chain DEX price feeds and are listed unranked. They price WETH, wSOL, WBNB, LINK and WAVAX in their pools. BTC is left out for them because WBTC trades 15 to 20 bps under BTC, measured on Binance's WBTC/BTC book and on a KyberSwap quote, and scoring it against BTC would charge them for the wrapper's discount. Serialized does not index Avalanche."
+  - "Mobula is addressed by its numeric asset id. Looked up by name, Bitcoin resolved to a different token priced at 9e-14 USD in three of 66 internal polls, a lookup artefact this page does not charge to anyone."
+  - "CoinGecko is read through its keyless public API, reached through a proxy because it answers 429 to the host's shared address. Paid CoinGecko plans may refresh faster than the keyless tier measured here. CoinPaprika is read keyless at 27 calls an hour, under its 60 an hour and 25,000 a month limits. POL was measured internally and left out: one ranked provider does not list it."
+  - "Absent and why: CoinMarketCap and CoinDesk (formerly CryptoCompare) require an API key we have not been issued. Neither is excluded on performance."
+  - "One probe region, the OpenChainBench host in France. The gap does not depend on where the request comes from the way latency does, but the reference and the answer are both read from there."
+
+findings:
+  - "{{best_name}} prints closest to the exchange mid, a median gap of {{best_p50}} across the majors it serves."
+  - "A constant positive bias across every asset is the signature of a USDT book read as dollars. The bias column shows which rows carry one."
+  - "Read the asset tabs before the headline when two rows are close: the pooled figure weighs every asset a provider serves, and the tabs compare the same coin."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/dev/harnesses/price-api-accuracy
+
+prometheus:
+  window: 24h
+  url: https://prom.openchainbench.com
+  expected_freshness_seconds: 1500
+
+dimension_labels:
+  kind: Asset
+
+dimensions:
+  kind:
+    - { value: all,  label: All majors }
+    - { value: btc,  label: BTC }
+    - { value: eth,  label: ETH }
+    - { value: sol,  label: SOL }
+    - { value: bnb,  label: BNB }
+    - { value: xrp,  label: XRP }
+    - { value: ada,  label: ADA }
+    - { value: doge, label: DOGE }
+    - { value: avax, label: AVAX }
+    - { value: link, label: LINK }
+
+ledger_columns:
+  - { label: "Median gap", slot: p50 }
+  - { label: "p90", slot: p90 }
+  - { label: "p99", slot: p99 }
+  - { label: "Bias", panel: bias }
+  - { label: "Price age", panel: price_age }
+  - { label: "Assets", panel: assets_served }
+
+metric_panels:
+  - id: bias
+    label: Signed bias
+    description: Mean signed gap over 24h in basis points. Positive means the API prints above the exchange mid. A steady offset on every asset points at how the price is built, scatter around zero at how old it is.
+    metric: avg by (provider) (ocb:price_api_signed_bps:avg_24h{kind="all"})
+    label_key: provider
+    unit: bp
+    higher_is_better: false
+    tab: false
+  - id: price_age
+    label: Price age
+    description: Median age of the price at the moment it arrived, from the provider's own last-updated stamp, over 24h. A dash means the provider publishes no stamp, not that its price is fresh.
+    metric: avg by (provider) (ocb:price_api_price_age_seconds:p50_24h{kind="all"})
+    label_key: provider
+    unit: sec
+    higher_is_better: false
+    tab: false
+  - id: assets_served
+    label: Assets served
+    description: How many of the nine majors the provider returned a usable price for at least once in 24h.
+    metric: max by (provider) (ocb:price_api_assets_served:count_24h{kind="all"})
+    label_key: provider
+    unit: count
+    higher_is_better: true
+    tab: false
+
+providers:
+  - slug: bitculator
+    name: Bitculator
+    tag: Volume-weighted across 16 exchange adapters, API key
+    formula: "Median absolute gap in basis points between Bitculator's USD price and the exchange mid of the same moment, over 24h, pooled across the majors it serves."
+    queries:
+      p50: ocb:price_api_deviation_bps:p50_24h{provider="bitculator",kind="all"}
+      p90: ocb:price_api_deviation_bps:p90_24h{provider="bitculator",kind="all"}
+      p99: ocb:price_api_deviation_bps:p99_24h{provider="bitculator",kind="all"}
+      mean: ocb:price_api_deviation_bps:mean_24h{provider="bitculator",kind="all"}
+      success: ocb:price_api_success:ratio_24h{provider="bitculator",kind="all"}
+      sample_size: ocb:price_api_deviation_bps:count_increase_24h{provider="bitculator",kind="all"}
+      series: ocb:price_api_deviation_bps:p50_1h{provider="bitculator",kind="all"}
+
+  - slug: coingecko
+    name: CoinGecko
+    tag: Keyless public API, simple/price endpoint
+    formula: "Median absolute gap in basis points between CoinGecko's USD price and the exchange mid of the same moment, over 24h, pooled across the majors it serves."
+    queries:
+      p50: ocb:price_api_deviation_bps:p50_24h{provider="coingecko",kind="all"}
+      p90: ocb:price_api_deviation_bps:p90_24h{provider="coingecko",kind="all"}
+      p99: ocb:price_api_deviation_bps:p99_24h{provider="coingecko",kind="all"}
+      mean: ocb:price_api_deviation_bps:mean_24h{provider="coingecko",kind="all"}
+      success: ocb:price_api_success:ratio_24h{provider="coingecko",kind="all"}
+      sample_size: ocb:price_api_deviation_bps:count_increase_24h{provider="coingecko",kind="all"}
+      series: ocb:price_api_deviation_bps:p50_1h{provider="coingecko",kind="all"}
+
+  - slug: coinpaprika
+    name: CoinPaprika
+    tag: Keyless ticker endpoint
+    formula: "Median absolute gap in basis points between CoinPaprika's USD price and the exchange mid of the same moment, over 24h, pooled across the majors it serves."
+    queries:
+      p50: ocb:price_api_deviation_bps:p50_24h{provider="coinpaprika",kind="all"}
+      p90: ocb:price_api_deviation_bps:p90_24h{provider="coinpaprika",kind="all"}
+      p99: ocb:price_api_deviation_bps:p99_24h{provider="coinpaprika",kind="all"}
+      mean: ocb:price_api_deviation_bps:mean_24h{provider="coinpaprika",kind="all"}
+      success: ocb:price_api_success:ratio_24h{provider="coinpaprika",kind="all"}
+      sample_size: ocb:price_api_deviation_bps:count_increase_24h{provider="coinpaprika",kind="all"}
+      series: ocb:price_api_deviation_bps:p50_1h{provider="coinpaprika",kind="all"}
+
+  - slug: coinstats
+    name: CoinStats
+    tag: API key, coins list endpoint
+    formula: "Median absolute gap in basis points between CoinStats' USD price and the exchange mid of the same moment, over 24h, pooled across the majors it serves."
+    queries:
+      p50: ocb:price_api_deviation_bps:p50_24h{provider="coinstats",kind="all"}
+      p90: ocb:price_api_deviation_bps:p90_24h{provider="coinstats",kind="all"}
+      p99: ocb:price_api_deviation_bps:p99_24h{provider="coinstats",kind="all"}
+      mean: ocb:price_api_deviation_bps:mean_24h{provider="coinstats",kind="all"}
+      success: ocb:price_api_success:ratio_24h{provider="coinstats",kind="all"}
+      sample_size: ocb:price_api_deviation_bps:count_increase_24h{provider="coinstats",kind="all"}
+      series: ocb:price_api_deviation_bps:p50_1h{provider="coinstats",kind="all"}
+
+  - slug: mobula
+    name: Mobula
+    tag: API key, multi-data endpoint by asset id
+    formula: "Median absolute gap in basis points between Mobula's USD price and the exchange mid of the same moment, over 24h, pooled across the majors it serves."
+    queries:
+      p50: ocb:price_api_deviation_bps:p50_24h{provider="mobula",kind="all"}
+      p90: ocb:price_api_deviation_bps:p90_24h{provider="mobula",kind="all"}
+      p99: ocb:price_api_deviation_bps:p99_24h{provider="mobula",kind="all"}
+      mean: ocb:price_api_deviation_bps:mean_24h{provider="mobula",kind="all"}
+      success: ocb:price_api_success:ratio_24h{provider="mobula",kind="all"}
+      sample_size: ocb:price_api_deviation_bps:count_increase_24h{provider="mobula",kind="all"}
+      series: ocb:price_api_deviation_bps:p50_1h{provider="mobula",kind="all"}
+
+  - slug: codex
+    name: Codex
+    tag: On-chain DEX price of the wrapped token, five majors
+    unranked: "On-chain DEX price"
+    formula: "Median absolute gap in basis points between Codex's on-chain USD price for the wrapped token and the exchange mid of the same moment, over 24h, pooled across the majors it covers."
+    queries:
+      p50: ocb:price_api_deviation_bps:p50_24h{provider="codex",kind="all"}
+      p90: ocb:price_api_deviation_bps:p90_24h{provider="codex",kind="all"}
+      p99: ocb:price_api_deviation_bps:p99_24h{provider="codex",kind="all"}
+      mean: ocb:price_api_deviation_bps:mean_24h{provider="codex",kind="all"}
+      success: ocb:price_api_success:ratio_24h{provider="codex",kind="all"}
+      sample_size: ocb:price_api_deviation_bps:count_increase_24h{provider="codex",kind="all"}
+      series: ocb:price_api_deviation_bps:p50_1h{provider="codex",kind="all"}
+
+  - slug: serialized
+    name: Serialized
+    tag: On-chain DEX price of the wrapped token, four majors
+    unranked: "On-chain DEX price"
+    formula: "Median absolute gap in basis points between Serialized's on-chain USD price for the wrapped token and the exchange mid of the same moment, over 24h, pooled across the majors it covers."
+    queries:
+      p50: ocb:price_api_deviation_bps:p50_24h{provider="serialized",kind="all"}
+      p90: ocb:price_api_deviation_bps:p90_24h{provider="serialized",kind="all"}
+      p99: ocb:price_api_deviation_bps:p99_24h{provider="serialized",kind="all"}
+      mean: ocb:price_api_deviation_bps:mean_24h{provider="serialized",kind="all"}
+      success: ocb:price_api_success:ratio_24h{provider="serialized",kind="all"}
+      sample_size: ocb:price_api_deviation_bps:count_increase_24h{provider="serialized",kind="all"}
+      series: ocb:price_api_deviation_bps:p50_1h{provider="serialized",kind="all"}
