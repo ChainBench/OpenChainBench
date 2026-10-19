@@ -42,6 +42,16 @@ export function StaticLedger({ benchmark }: { benchmark: Benchmark }) {
   const rankedRows = rows.filter((r) => rankedSlugs.has(r.slug));
   const provisionalRows = rows.filter((r) => !rankedSlugs.has(r.slug));
   const ordered = [...rankedRows, ...provisionalRows];
+  // Rows outside the ranking are there for different reasons. A spec-declared
+  // label ("On-chain DEX price", "RFQ or batch") names its own, and is printed
+  // beside the row; only rows without one are below the sample floor. The
+  // caption used to give the floor as the reason for every one of them, which
+  // told crawlers that bench 305's on-chain feed lacked samples.
+  const declaredReason = (r: (typeof rows)[number]) =>
+    r.unrankedLabel && r.unrankedLabel !== "Provisional" ? r.unrankedLabel : null;
+  const unrankedCaption = provisionalRows.some((r) => !declaredReason(r))
+    ? "Measured, not ranked: sample below the ranking floor"
+    : "Measured, not ranked";
   const rowNounOne = nounFor(benchmark, 1);
   const qualifier = valueQualifier(benchmark);
   // Metric panels are tabs in the interactive body, so the served HTML
@@ -108,7 +118,7 @@ export function StaticLedger({ benchmark }: { benchmark: Benchmark }) {
                 {i === rankedRows.length && provisionalRows.length > 0 ? (
                   <tr className="border-b border-ink/10">
                     <td colSpan={99} className="py-2 pr-3 text-[11px] uppercase tracking-[0.14em] text-ink-faint">
-                      Measured, not ranked: sample below the ranking floor
+                      {unrankedCaption}
                     </td>
                   </tr>
                 ) : null}
@@ -134,6 +144,11 @@ export function StaticLedger({ benchmark }: { benchmark: Benchmark }) {
                       </a>
                     );
                   })()}
+                  {declaredReason(r) && (
+                    <span className="ml-2 text-[11px] uppercase tracking-[0.14em] text-ink-faint">
+                      {declaredReason(r)}
+                    </span>
+                  )}
                 </td>
                 <td className="py-2 px-3 text-right tabular-nums">{fmtUnit(r.ms.p50, benchmark.unit)}</td>
                 {showTail && <td className="py-2 px-3 text-right tabular-nums text-ink-soft">{fmtUnit(r.ms.p90, benchmark.unit)}</td>}

@@ -16,8 +16,9 @@ import (
 //
 // Binance quotes these majors against USDT only. A USDT book read as USD
 // sits about 12 bps high whenever USDT trades at 0.9988, which it did on
-// 2026-10-19, so Binance's mid is converted at Kraken's USDT/USD mid before
-// it enters the median. Coinbase and Kraken quote USD directly.
+// 2026-10-19, so Binance's mid is converted at the USDT/USD mid (median of
+// Coinbase and Kraken) before it enters the median. Coinbase and Kraken
+// quote USD directly.
 
 type snapshot struct {
 	at   time.Time
@@ -27,7 +28,7 @@ type snapshot struct {
 type reference struct {
 	cfg  config
 	mu   sync.RWMutex
-	last []snapshot // the two most recent, newest last
+	last []snapshot // the six most recent, newest last
 }
 
 func newReference(cfg config) *reference { return &reference{cfg: cfg} }
@@ -209,8 +210,11 @@ func (r *reference) poll(ctx context.Context) {
 	}
 	r.mu.Lock()
 	r.last = append(r.last, snap)
-	if len(r.last) > 2 {
-		r.last = r.last[len(r.last)-2:]
+	// Thirty seconds of snapshots: a multi-call round (CoinPaprika's nine)
+	// is scored per answer, and its first answer must still find the
+	// snapshot taken when it arrived.
+	if len(r.last) > 6 {
+		r.last = r.last[len(r.last)-6:]
 	}
 	r.mu.Unlock()
 }

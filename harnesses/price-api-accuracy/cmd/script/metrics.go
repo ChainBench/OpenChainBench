@@ -5,14 +5,24 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
-// Absolute gap buckets, in basis points. Dense below 20 where the field
-// sits, wide above so a broken price (a scam token answering for "BTC",
-// a frozen feed during a move) lands in a bucket rather than in +Inf only.
-var deviationBuckets = []float64{0.5, 1, 2, 3, 4, 5, 6, 8, 10, 12, 15, 20, 25, 30, 40, 50, 75, 100, 200, 500, 1000}
+// Absolute gap buckets, in basis points. Half a basis point wide up to 15,
+// where the field sits and where neighbouring rows differ by about one
+// basis point: histogram_quantile interpolates inside a bucket, so a wider
+// bucket would blur the order it is meant to publish. Wide above 15 so a
+// broken price (a token answering for the wrong coin, a frozen feed in a
+// move) still lands in a bucket.
+//
+// The metric is price_api_gap_bps rather than the first name,
+// price_api_deviation_bps, because the first deploy used 2 bp buckets and a
+// 24h histogram_quantile over two bucket layouts mixes them.
+var deviationBuckets = []float64{
+	0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5, 6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10,
+	11, 12, 13, 14, 15, 17.5, 20, 25, 30, 40, 50, 75, 100, 200, 500, 1000,
+}
 
 var (
 	deviation = promauto.NewHistogramVec(prometheus.HistogramOpts{
-		Name:    "price_api_deviation_bps",
+		Name:    "price_api_gap_bps",
 		Help:    "Absolute gap between the provider's published USD price and the exchange mid of the same moment, in basis points.",
 		Buckets: deviationBuckets,
 	}, []string{"provider", "asset"})

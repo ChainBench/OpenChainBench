@@ -3,7 +3,7 @@
 // Polls the USD price that crypto market-data APIs publish for the same
 // majors, and scores every answer against the exchange mid of the same
 // moment: the median of Coinbase (USD), Kraken (USD) and Binance (USDT,
-// converted to USD at Kraken's USDT/USD mid). The published figure is the
+// converted to USD at the Coinbase/Kraken USDT/USD mid). The published figure is the
 // absolute gap in basis points.
 //
 // Each provider is polled on its own cadence, set by what its free or

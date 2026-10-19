@@ -35,7 +35,9 @@ describe("the /data-api hub's bench list", () => {
   test("is filtered through the retirement sets before it is rendered", () => {
     // Without this the page links straight at 410s.
     expect(SRC).toContain("REMOVED_BENCH_SLUGS.has(slug)");
-    expect(SRC).toContain("DEV_ONLY_BENCH_SLUGS.has(slug)");
+    // Dev-only benches go through the deployment-aware check: hidden on
+    // production, listed on staging where the bench itself is served.
+    expect(SRC).toContain("isDevOnlyBench(slug)");
   });
 
   test("renders no bench that is retired or dev-gated", () => {

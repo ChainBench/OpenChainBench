@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -93,20 +92,13 @@ func providers(cfg config) []provider {
 	}
 	add(mob)
 
-	// On-chain DEX prices, listed unranked: they price the wrapped token in
-	// its pools rather than the coin's market, and cover the majors that
+	// On-chain DEX price, listed unranked: it prices the wrapped token in
+	// its pools rather than the coin's market, and covers the majors that
 	// have a canonical on-chain twin. BTC is left out on purpose: WBTC
 	// trades 15 to 20 bps under BTC, measured 2026-10-19 on Binance's
 	// WBTC/BTC book and on a KyberSwap quote, so scoring WBTC against BTC
 	// would charge the provider for the wrapper's discount.
-	codex := provider{slug: "codex", interval: time.Minute, startDelay: 11 * time.Second, assets: onchainAssets("codex")}
-	codex.fetch = func(ctx context.Context) (map[string]quote, error) { return fetchCodex(ctx, cfg.codexKey) }
-	if cfg.codexKey == "" {
-		codex.disabledReason = "CODEX_API_KEY unset"
-	}
-	add(codex)
-
-	ser := provider{slug: "serialized", interval: time.Minute, startDelay: 13 * time.Second, assets: onchainAssets("serialized")}
+	ser := provider{slug: "serialized", interval: time.Minute, startDelay: 13 * time.Second, assets: onchainAssets()}
 	ser.fetch = func(ctx context.Context) (map[string]quote, error) { return fetchSerialized(ctx, cfg.serializedKey) }
 	if cfg.serializedKey == "" {
 		ser.disabledReason = "SERIALIZED_API_KEY unset"
@@ -314,80 +306,25 @@ func fetchMobula(ctx context.Context, key string) (map[string]quote, error) {
 	return out, nil
 }
 
-// ---- On-chain twins (Codex, Serialized) ---------------------------------
+// ---- On-chain twin (Serialized) -------------------------------------------
 
 type onchainToken struct {
 	serializedChain string
-	codexNetwork    int
 	address         string
 }
 
 var onchainTwin = map[string]onchainToken{
-	"ETH":  {"evm:1", 1, "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"},            // WETH
-	"SOL":  {"solana", 1399811149, "So11111111111111111111111111111111111111112"}, // wSOL
-	"BNB":  {"evm:56", 56, "0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c"},          // WBNB
-	"LINK": {"evm:1", 1, "0x514910771af9ca656af840dff83e8264ecf986ca"},            // LINK
-	"AVAX": {"evm:43114", 43114, "0xb31f66aa3c1e785363f0875a1b74e27b85fd66c7"},    // WAVAX
+	"ETH":  {"evm:1", "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"},   // WETH
+	"SOL":  {"solana", "So11111111111111111111111111111111111111112"}, // wSOL
+	"BNB":  {"evm:56", "0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c"},  // WBNB
+	"LINK": {"evm:1", "0x514910771af9ca656af840dff83e8264ecf986ca"},   // LINK
 }
 
 // Serialized does not index Avalanche (its token endpoint answers NOT_FOUND
-// for WAVAX), so its basket is four assets and Codex's five.
-func onchainAssets(slug string) []string {
-	if slug == "serialized" {
-		return []string{"ETH", "SOL", "BNB", "LINK"}
-	}
-	return []string{"ETH", "SOL", "BNB", "LINK", "AVAX"}
-}
-
-func fetchCodex(ctx context.Context, key string) (map[string]quote, error) {
-	assets := onchainAssets("codex")
-	inputs := make([]string, 0, len(assets))
-	for _, a := range assets {
-		t := onchainTwin[a]
-		inputs = append(inputs, fmt.Sprintf(`{address:"%s",networkId:%d}`, t.address, t.codexNetwork))
-	}
-	q := fmt.Sprintf(`{getTokenPrices(inputs:[%s]){address networkId priceUsd timestamp}}`, strings.Join(inputs, ","))
-	var r struct {
-		Data *struct {
-			GetTokenPrices []*struct {
-				Address   string  `json:"address"`
-				NetworkID int     `json:"networkId"`
-				PriceUsd  float64 `json:"priceUsd"`
-				Timestamp int64   `json:"timestamp"`
-			} `json:"getTokenPrices"`
-		} `json:"data"`
-		Errors []struct {
-			Message string `json:"message"`
-		} `json:"errors"`
-	}
-	if err := postJSON(ctx, nil, "https://graph.codex.io/graphql", map[string]string{"Authorization": key},
-		map[string]string{"query": q}, &r); err != nil {
-		return nil, err
-	}
-	// GraphQL reports auth and quota failures as 200 with an errors array.
-	if len(r.Errors) > 0 || r.Data == nil {
-		msg := "no data"
-		if len(r.Errors) > 0 {
-			msg = r.Errors[0].Message
-		}
-		return nil, fmt.Errorf("graphql: %s", msg)
-	}
-	out := map[string]quote{}
-	for _, p := range r.Data.GetTokenPrices {
-		if p == nil {
-			continue
-		}
-		a, ok := twinAsset(fmt.Sprint(p.NetworkID), p.Address, func(t onchainToken) string { return fmt.Sprint(t.codexNetwork) })
-		if !ok {
-			continue
-		}
-		qq := quote{price: p.PriceUsd}
-		if p.Timestamp > 0 {
-			qq.ts = time.Unix(p.Timestamp, 0)
-		}
-		out[a] = qq
-	}
-	return out, nil
+// for WAVAX), so its basket is the four majors with an on-chain twin it
+// prices.
+func onchainAssets() []string {
+	return []string{"ETH", "SOL", "BNB", "LINK"}
 }
 
 // twinAsset maps an answer back to its asset by network and address, never
@@ -403,7 +340,7 @@ func twinAsset(network, address string, netOf func(onchainToken) string) (string
 }
 
 func fetchSerialized(ctx context.Context, key string) (map[string]quote, error) {
-	assets := onchainAssets("serialized")
+	assets := onchainAssets()
 	items := make([]map[string]string, 0, len(assets))
 	for _, a := range assets {
 		t := onchainTwin[a]

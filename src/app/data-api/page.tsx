@@ -5,7 +5,7 @@ import { pageMetadata } from "@/lib/page-metadata";
 import { safeJsonLd, buildBreadcrumbJsonLd } from "@/lib/jsonld";
 import { SITE } from "@/data/site";
 import { withUtm } from "@/lib/utm";
-import { DEV_ONLY_BENCH_SLUGS, REMOVED_BENCH_SLUGS } from "@/lib/removed-benches";
+import { isDevOnlyBench, REMOVED_BENCH_SLUGS } from "@/lib/removed-benches";
 
 /**
  * Hub landing page for the data API vertical: price feeds, token metadata,
@@ -18,7 +18,7 @@ import { DEV_ONLY_BENCH_SLUGS, REMOVED_BENCH_SLUGS } from "@/lib/removed-benches
  */
 
 const DESCRIPTION =
-  "Live benchmark rankings for crypto data APIs: price feed latency, token metadata coverage, wallet indexing freshness, DEX chain coverage, and NFT data quality.";
+  "Live benchmark rankings for crypto data APIs: price feed latency and accuracy, token metadata coverage, wallet labels, DEX chain coverage, and NFT data quality.";
 
 export const metadata: import("next").Metadata = pageMetadata({
   path: "/data-api",
@@ -59,8 +59,13 @@ const CURATED_BENCH_SLUGS = [
 ] as const;
 
 const BENCH_SLUGS = CURATED_BENCH_SLUGS.filter(
-  (slug) => !REMOVED_BENCH_SLUGS.has(slug) && !DEV_ONLY_BENCH_SLUGS.has(slug),
+  (slug) => !REMOVED_BENCH_SLUGS.has(slug) && !isDevOnlyBench(slug),
 );
+
+// The intro used to type "Nine" and name wallet indexing freshness, retired
+// on 2026-08-05; the count and the list now follow what this deployment
+// actually serves.
+const HAS_PRICE_ACCURACY = (BENCH_SLUGS as readonly string[]).includes("price-api-accuracy");
 
 export default async function DataApiHubPage() {
   const snapshot = await fetchDataApiSnapshot();
@@ -115,11 +120,11 @@ export default async function DataApiHubPage() {
           Crypto data API benchmarks
         </h1>
         <p className="mt-4 max-w-2xl text-base sm:text-lg text-ink-soft leading-snug">
-          Nine independent benchmarks across five categories: price feed head
-          lag, token metadata coverage, wallet indexing freshness, DEX network
-          coverage, and NFT data quality. Every number is measured live from
-          the same harness on the same schedule. No marketing claims, just probe
-          data.
+          {BENCH_SLUGS.length} independent benchmarks across five categories:
+          price feed head lag{HAS_PRICE_ACCURACY ? " and price accuracy" : ""},
+          token metadata coverage, wallet labels, DEX network coverage, and
+          NFT data quality. Every number is measured live by an open harness.
+          No marketing claims, just probe data.
         </p>
 
         {/* Bench spec badges */}
