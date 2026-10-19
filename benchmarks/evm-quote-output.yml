@@ -4,7 +4,7 @@ slug: evm-quote-output
 number: "304"
 title: "Best DEX aggregator by quote output: who actually gives you more"
 seo_title: "Best DEX aggregator 2026: quote output compared"
-seo_description: "{{best_name}} gives up the least output of any DEX aggregator, {{best_p50}} against the best quote of the same moment. Nine quote sources measured side by side."
+seo_description: "{{best_name}} gives up the least output of any DEX aggregator, {{best_p50}} against the best quote of the same moment. {{declared_count}} quote sources measured side by side."
 subtitle: Basis points of output a DEX aggregator gives up against the best quote fired at the same moment, on the same pair, from the same place.
 
 category: Aggregators
@@ -19,7 +19,7 @@ row_noun: { one: quote source, many: quote sources }
 ledger_reliability: false
 zero_is_a_value: true
 
-# Only three of the nine reach Robinhood Chain, so it is not the ground
+# Only three of the ten reach Robinhood Chain, so it is not the ground
 # the field shares. It keeps its own tab where the comparison is like for
 # like, and stays out of the all-chains figure.
 score_scope: full_coverage
@@ -57,7 +57,7 @@ abstract: |
 methodology:
   - "The comparison is within a tick, never across them. Every provider that supports the pair is fired in parallel on the same 60 second tick, and each is scored against the best output of that tick. Measured 2026-10-19 across five probes a minute apart, the market drifted 30 to 37 bps while the field sat inside 25, so a cross-tick comparison would measure the market rather than the provider."
   - "Zero means the provider held the best quote of that tick. The published figure is the median over 24 hours, not the mean, so one outlying round cannot move a row. The near-best column counts the ticks a provider came within half a basis point of the best, which is the tiebreaker when medians sit within a basis point of each other. Several providers can clear it in the same tick, so the column does not sum to 100."
-  - "Declared fees get their own column and are measured, not quoted: the figure is read out of the provider's own quote response on every tick. Two of the nine declare one. Compare it against the shortfall beside it rather than assuming they match, because they need not: a declared fee is what the provider takes, the shortfall is what the route and the fee together cost. A provider that declares nothing publishes no fee, which is not the same as charging nothing."
+  - "Declared fees get their own column and are measured, not quoted: the figure is read out of the provider's own quote response on every tick. Only some declare one, and the column is blank for the rest. Compare it against the shortfall beside it rather than assuming they match, because they need not: a declared fee is what the provider takes, the shortfall is what the route and the fee together cost. A provider that declares nothing publishes no fee, which is not the same as charging nothing."
   - "Not every row is an aggregator. CoW and Bebop are RFQ or batch-auction venues and LI.FI is a cross-chain relayer, so all three are listed with their numbers and kept out of the ranking. Route quotes Robinhood Chain alone and is kept out of the all-chains order for the same reason; its own tab carries the comparison."
   - "An RFQ quote is not a router quote. A market maker prices its own spread and its settlement into the number it returns, and a small clip pays for both in full: Bebop gives up around a hundred basis points on a $1,200 swap, and the figure barely moves between chains whose gas differs by orders of magnitude, so it is the spread and not the gas. Both RFQ rows are listed and neither is ranked."
   - "Gas is not subtracted yet. KyberSwap reports it in USD, 0x in wei, Nordstern in gas units, and the USD figures of three providers on the same pair at the same block differ by a factor of 3.5. Until gas is computed on our side rather than theirs, this page measures gross output."
