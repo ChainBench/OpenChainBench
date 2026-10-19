@@ -1504,17 +1504,19 @@ func chains() []Chain {
 				{Slug: "onfinality", Name: "OnFinality", URL: envDefault("RPC_URL_PEAQ_ONFINALITY", "https://peaq.api.onfinality.io/public")},
 			},
 		},
-		// Starknet — ZK-Rollup on Ethereum, STARK proofs, starknet_blockNumber probe. 5 keyless providers.
+		// Starknet — ZK-Rollup on Ethereum, STARK proofs, starknet_blockNumber probe.
+		// 2026-10-19: Lava and 1RPC answer "This endpoint has been discontinued",
+		// Nethermind's free-rpc times out and dRPC no longer serves
+		// starknet_blockNumber keyless (-32601), so only OnFinality was left and
+		// the page expired. PublicNode and ZAN answer without a key.
 		{
 			Slug: "starknet",
 			Name: "Starknet",
 			Kind: "starknet",
 			Providers: []Provider{
-				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_STARKNET_DRPC", "https://starknet.drpc.org")},
-				{Slug: "lava", Name: "Lava Network", URL: envDefault("RPC_URL_STARKNET_LAVA", "https://rpc.starknet.lava.build")},
-				{Slug: "nethermind", Name: "Nethermind", URL: envDefault("RPC_URL_STARKNET_NETHERMIND", "https://free-rpc.nethermind.io/mainnet-juno/")},
 				{Slug: "onfinality", Name: "OnFinality", URL: envDefault("RPC_URL_STARKNET_ONFINALITY", "https://starknet.api.onfinality.io/public")},
-				{Slug: "1rpc", Name: "1RPC", URL: envDefault("RPC_URL_STARKNET_1RPC", "https://public.1rpc.io/starknet")},
+				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_STARKNET_PUBLICNODE", "https://starknet-rpc.publicnode.com")},
+				{Slug: "zan", Name: "ZAN", URL: envDefault("RPC_URL_STARKNET_ZAN", "https://api.zan.top/public/starknet-mainnet")},
 			},
 		},
 		// Stellar — Soroban RPC, getLatestLedger probe, ~5 s ledger close. 5 keyless providers.
