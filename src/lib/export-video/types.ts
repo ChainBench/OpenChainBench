@@ -49,6 +49,17 @@ export const VIEW_IDS: ViewId[] = [
   "DonutRace",
   "CountPodium",
 ];
+/**
+ * Views that tell the truth for a metric. The Donut draws each provider's
+ * share of the sum, so it only means something when the values add up:
+ * counts, and dollar volumes where more is better. A latency, a fee or a
+ * percentage summed into "12.5% of total" is a number nobody measured.
+ */
+export function viewsForMetric(unit: string, higherIsBetter: boolean): ViewId[] {
+  const additive = unit === "count" || (unit === "usd" && higherIsBetter);
+  return VIEW_IDS.filter((id) => id !== "DonutRace" || additive);
+}
+
 export const VIEW_LABEL: Record<ViewId, string> = {
   BarChartRace: "Ranked bars",
   TimeSeriesRace: "Time series",
