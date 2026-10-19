@@ -204,18 +204,30 @@ const provider = z.object({
    *  provider list; each cohort is ranked on its own and never against
    *  the other. Absent = the first declared tier value. */
   tier: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/).optional(),
-  /** Declares a cohort member that has no headline value by design
-   *  (a perp DEX with no token yet on a valuation bench). The ledger
-   *  lists it in an "Unranked · <label>" block below the field with
-   *  its companion-panel values, instead of dropping it or badging it
+  /** Declares a cohort member the ranking must not order. The ledger
+   *  lists it in an "Unranked · <label>" block below the field with its
+   *  companion-panel values, instead of dropping it or badging it
    *  unresponsive. Never ranked, never a leader. Short label, e.g.
-   *  "Pre-TGE". */
+   *  "Pre-TGE".
+   *
+   *  The label covers two different situations and the measured value
+   *  survives by default, which is the safe one: on bench 304 CoW, Bebop
+   *  and LI.FI are RFQ or relayer rows whose shortfall is measured and
+   *  merely not comparable to a router's, and zeroing them published
+   *  "0.00 bps" for a venue giving up a hundred. Set
+   *  `unranked_hides_value` for the other situation, where no publishable
+   *  value exists even though the series does. */
   unranked: z
     .string()
     .min(1)
     .max(20)
     .regex(/^[A-Za-z0-9 -]+$/, "unranked label: letters, digits, spaces, hyphens")
     .optional(),
+  /** Blanks this row's percentiles instead of publishing them. For an
+   *  unranked row whose series exists but whose number must not be read:
+   *  perp-pf-ratio's Paradex reads 29.85 off an adapter the spec itself
+   *  labels incomplete. Only meaningful alongside `unranked`. */
+  unranked_hides_value: z.boolean().default(false),
   /** Optional secondary metric (e.g. "Chains covered") shown in the table. */
   secondary: z
     .object({ label: z.string(), value: z.string() })

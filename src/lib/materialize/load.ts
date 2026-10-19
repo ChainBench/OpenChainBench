@@ -343,25 +343,39 @@ export async function specToBenchmark(
           if (hasPanelData) r.availability = "live";
         }
       }
-      // Spec-declared unranked members (provider.unranked, e.g. a perp
-      // DEX with no token yet on a valuation bench). They have no
-      // headline value by design, so leave ms at zero (every ranking
-      // helper skips zero rows) but carry the label so the ledger can
-      // list them in their own block instead of dropping them, and
-      // never let them read as unresponsive: the absence is intended.
+      // Spec-declared unranked members (provider.unranked). They carry the
+      // label so the ledger lists them in their own block instead of
+      // dropping them, and never read as unresponsive: the absence from
+      // the order is intended.
+      //
+      // The measured value stays, which is the same call applyFullCoverageScope
+      // makes below and for the same reason. This path used to zero the
+      // percentiles for every labelled row, on the assumption the label
+      // always meant "no value exists" (a perp DEX pre-TGE). Bench 304
+      // broke that: CoW, Bebop and LI.FI are measured and merely not
+      // comparable to a router, and the zeroing published "0.00 bps" for a
+      // venue giving up a hundred. Of the eleven labelled rows on the four
+      // specs that shipped the field first, ten return nothing from
+      // Prometheus and are dropped upstream before this loop, so the zero
+      // reached exactly one: perp-pf-ratio's Paradex, whose adapter the
+      // spec itself calls incomplete. That row now asks for the blanking
+      // with `unranked_hides_value`.
       const unrankedBySlug = new Map(
         spec.providers
           .filter((p) => p.unranked)
-          .map((p) => [p.slug.toLowerCase(), p.unranked as string]),
+          .map((p) => [
+            p.slug.toLowerCase(),
+            { label: p.unranked as string, hide: p.unranked_hides_value },
+          ]),
       );
       if (unrankedBySlug.size > 0) {
         for (const r of live.results) {
-          const label = unrankedBySlug.get(r.slug.toLowerCase());
-          if (!label) continue;
-          r.unrankedLabel = label;
+          const entry = unrankedBySlug.get(r.slug.toLowerCase());
+          if (!entry) continue;
+          r.unrankedLabel = entry.label;
           r.unresponsive = undefined;
           r.availability = "live";
-          r.ms = { p50: 0, p90: 0, p99: 0, mean: 0 };
+          if (entry.hide) r.ms = { p50: 0, p90: 0, p99: 0, mean: 0 };
         }
       }
     }
