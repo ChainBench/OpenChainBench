@@ -93,6 +93,11 @@ prometheus:
   expected_freshness_seconds: 172800
   freshness_timestamp_metric: terminal_activity_last_success_unix
 
+# The tehcscreener source publishes one complete UTC day, not a rolling
+# 24 hours; the ledger and compare cards say so.
+chart:
+  window_label: last complete UTC day
+
 faq:
   - q: "Is a larger average swap better?"
     a: "Not in any product sense. It describes who the terminal serves: larger tickets usually mean more professional or automated flow, smaller ones a broader retail base. Read it next to volume and wallet count rather than as a ranking of quality."

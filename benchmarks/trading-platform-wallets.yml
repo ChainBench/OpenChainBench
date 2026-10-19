@@ -120,6 +120,11 @@ metric_panels:
     unit: usd
     higher_is_better: true
 
+# The tehcscreener source publishes one complete UTC day, not a rolling
+# 24 hours; the ledger and compare cards say so.
+chart:
+  window_label: last complete UTC day
+
 faq:
   - q: "What does active wallet count measure?"
     a: "The number of distinct addresses that executed at least one swap through the terminal on the day, on the chain the tab names. It is a proxy for daily active users, with two caveats that cut in opposite directions: one person can control many wallets, and bots count as wallets."

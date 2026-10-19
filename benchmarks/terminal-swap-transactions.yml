@@ -93,6 +93,11 @@ prometheus:
   expected_freshness_seconds: 172800
   freshness_timestamp_metric: terminal_activity_last_success_unix
 
+# The tehcscreener source publishes one complete UTC day, not a rolling
+# 24 hours; the ledger and compare cards say so.
+chart:
+  window_label: last complete UTC day
+
 faq:
   - q: "What counts as a swap transaction here?"
     a: "One on-chain transaction that routed a swap through the terminal on the selected chain, counted once however many hops or pools it touched. A wallet sending fifty swaps in the day contributes fifty."
