@@ -43,7 +43,7 @@ export const GROUP_META: Record<
     label: "Price & Market Data",
     shortLabel: "Price Feeds",
     accent: "#f59e0b",
-    description: "Real-time price feed latency from on-chain event to API emission.",
+    description: "Price feed latency from on-chain event to API emission, and how far each API's price sits from the exchange price.",
   },
   "token-metadata": {
     label: "Token Metadata",
@@ -74,6 +74,7 @@ export const GROUP_META: Record<
 /** Each bench's group. Adding a bench to the hub = one line here. */
 const BENCH_GROUP: Record<string, DataApiGroup> = {
   "aggregator-head-lag": "price-feeds",
+  "price-api-accuracy": "price-feeds",
   "metadata-coverage": "token-metadata",
   "asset-registry-coverage": "token-metadata",
   "token-quote-coverage": "token-metadata",
@@ -106,6 +107,7 @@ const BENCH_SLUGS = Object.keys(BENCH_GROUP).filter(
 /** Short display titles for table rows (trimmed from the full spec title). */
 const BENCH_SHORT_TITLE: Record<string, string> = {
   "aggregator-head-lag": "Price feed head lag",
+  "price-api-accuracy": "Price gap to the exchange",
   "metadata-coverage": "Token metadata coverage",
   "asset-registry-coverage": "Asset registry chains",
   "token-quote-coverage": "Token quote coverage",
@@ -229,11 +231,15 @@ export type DataApiSnapshot = {
   generatedAt: string;
 };
 
+// An unranked row (spec `unranked`) keeps its number on the bench page but
+// never leads or places: the hub naming it the leader would contradict the
+// page it links to. Bench 305 lists two on-chain feeds this way.
 function liveResults(bench: Benchmark): ProviderResult[] {
   return bench.results.filter(
     (r) =>
       r.availability !== "unavailable" &&
       !r.unresponsive &&
+      !r.unrankedLabel &&
       r.ms.p50 > 0 &&
       r.dataConfidence !== "insufficient",
   );
@@ -415,7 +421,9 @@ export function fmtDataValue(v: number, unit: Benchmark["unit"]): string {
       return `${Math.round(v)} ms`;
     case "bps":
     case "bp":
-      return `${v.toFixed(0)} bps`;
+      // One decimal under 10: bench 305's field sits between 2 and 10 bps,
+      // where a rounded "5 bps" hides the gap the bench exists to show.
+      return `${v < 10 ? v.toFixed(1) : v.toFixed(0)} bps`;
     default:
       return String(Math.round(v));
   }

@@ -83,6 +83,11 @@ const BRANDS: Record<string, Brand> = {
   serialized: { color: "#3D74FF" },    // serialized logo blue - was falling back to the
                                        //   palette and drew the same orange as mobula
   codex: { color: "#84cc16" },         // saturated lime - readable on white + dark
+  // Price API cohort (bench 305). CoinGecko is taken a shade darker than its
+  // brand green so it does not read as codex lime on the same chart.
+  bitculator: { color: "#D4A20B" },    // the gold of its mark, darkened to read on white
+  coingecko: { color: "#2E9E5B" },
+  coinpaprika: { color: "#D9373A" },   // paprika red
   geckoterminal: { color: "#8B5CF6" }, // vivid violet (gecko brand)
   jupiter: { color: "#C7F284" },       // jupiter matrix green (secondary brand) - keeps it
   papertrade: { color: "#8B2020" },    // the red underscore in their own favicon

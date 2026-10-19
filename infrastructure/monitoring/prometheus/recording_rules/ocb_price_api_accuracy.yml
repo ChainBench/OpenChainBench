@@ -1,0 +1,111 @@
+# Recording rules for OCB bench 305 (price-api-accuracy).
+#
+# The raw metrics carry the coin under `asset`. The site's dimension
+# machinery only knows a fixed set of filter keys (load.ts FILTER_KEYS), so
+# every series the page reads is re-labelled here to `kind`, which the spec
+# displays as "Asset". The headline collapses the assets and carries
+# kind="all"; the asset tabs read the per-asset series. Both live under one
+# record name (told apart by a static `scope` label for promtool), so a
+# spec query pinned to kind="all" is rewritten to
+# kind="eth" by the tab injection and finds its series either way.
+groups:
+  - name: ocb_price_api_accuracy
+    interval: 60s
+    rules:
+      - record: ocb:price_api_deviation_bps:p50_24h
+        expr: histogram_quantile(0.50, sum by (provider, kind, le) (label_replace(rate(price_api_deviation_bps_bucket[24h]), "kind", "$1", "asset", "(.*)")))
+        labels:
+          scope: asset
+      - record: ocb:price_api_deviation_bps:p50_24h
+        expr: histogram_quantile(0.50, sum by (provider, le) (rate(price_api_deviation_bps_bucket[24h])))
+        labels:
+          kind: all
+          scope: all
+      - record: ocb:price_api_deviation_bps:p90_24h
+        expr: histogram_quantile(0.90, sum by (provider, kind, le) (label_replace(rate(price_api_deviation_bps_bucket[24h]), "kind", "$1", "asset", "(.*)")))
+        labels:
+          scope: asset
+      - record: ocb:price_api_deviation_bps:p90_24h
+        expr: histogram_quantile(0.90, sum by (provider, le) (rate(price_api_deviation_bps_bucket[24h])))
+        labels:
+          kind: all
+          scope: all
+      - record: ocb:price_api_deviation_bps:p99_24h
+        expr: histogram_quantile(0.99, sum by (provider, kind, le) (label_replace(rate(price_api_deviation_bps_bucket[24h]), "kind", "$1", "asset", "(.*)")))
+        labels:
+          scope: asset
+      - record: ocb:price_api_deviation_bps:p99_24h
+        expr: histogram_quantile(0.99, sum by (provider, le) (rate(price_api_deviation_bps_bucket[24h])))
+        labels:
+          kind: all
+          scope: all
+      # Mean from sum over count, exact rather than bucket-interpolated.
+      - record: ocb:price_api_deviation_bps:mean_24h
+        expr: sum by (provider, kind) (label_replace(rate(price_api_deviation_bps_sum[24h]), "kind", "$1", "asset", "(.*)")) / sum by (provider, kind) (label_replace(rate(price_api_deviation_bps_count[24h]), "kind", "$1", "asset", "(.*)"))
+        labels:
+          scope: asset
+      - record: ocb:price_api_deviation_bps:mean_24h
+        expr: sum by (provider) (rate(price_api_deviation_bps_sum[24h])) / sum by (provider) (rate(price_api_deviation_bps_count[24h]))
+        labels:
+          kind: all
+          scope: all
+      - record: ocb:price_api_deviation_bps:count_increase_24h
+        expr: sum by (provider, kind) (label_replace(increase(price_api_deviation_bps_count[24h]), "kind", "$1", "asset", "(.*)"))
+        labels:
+          scope: asset
+      - record: ocb:price_api_deviation_bps:count_increase_24h
+        expr: sum by (provider) (increase(price_api_deviation_bps_count[24h]))
+        labels:
+          kind: all
+          scope: all
+      # The chart series: hourly median, per asset and pooled.
+      - record: ocb:price_api_deviation_bps:p50_1h
+        expr: histogram_quantile(0.50, sum by (provider, kind, le) (label_replace(rate(price_api_deviation_bps_bucket[1h]), "kind", "$1", "asset", "(.*)")))
+        labels:
+          scope: asset
+      - record: ocb:price_api_deviation_bps:p50_1h
+        expr: histogram_quantile(0.50, sum by (provider, le) (rate(price_api_deviation_bps_bucket[1h])))
+        labels:
+          kind: all
+          scope: all
+      # Signed bias: where the provider prints against the market on average.
+      # The headline is the mean of the per-asset means, so an asset polled
+      # more often does not weigh more.
+      - record: ocb:price_api_signed_bps:avg_24h
+        expr: avg by (provider, kind) (label_replace(avg_over_time(price_api_signed_deviation_bps[24h]), "kind", "$1", "asset", "(.*)"))
+        labels:
+          scope: asset
+      - record: ocb:price_api_signed_bps:avg_24h
+        expr: avg by (provider) (avg_over_time(price_api_signed_deviation_bps[24h]))
+        labels:
+          kind: all
+          scope: all
+      # Price age from the provider's own last-updated stamp, median over 24h.
+      # Providers that publish no stamp have no series and print a dash.
+      - record: ocb:price_api_price_age_seconds:p50_24h
+        expr: avg by (provider, kind) (label_replace(quantile_over_time(0.50, price_api_price_age_seconds[24h]), "kind", "$1", "asset", "(.*)"))
+        labels:
+          scope: asset
+      - record: ocb:price_api_price_age_seconds:p50_24h
+        expr: avg by (provider) (quantile_over_time(0.50, price_api_price_age_seconds[24h]))
+        labels:
+          kind: all
+          scope: all
+      # Served ratio: per-asset polls that came back with a usable price, over
+      # every poll not lost to our own reference. A rate limit or an HTTP error
+      # counts against the provider; a missing exchange mid does not.
+      - record: ocb:price_api_success:ratio_24h
+        expr: sum by (provider, kind) (label_replace(increase(price_api_asset_polls_total{status="ok"}[24h]), "kind", "$1", "asset", "(.*)")) / sum by (provider, kind) (label_replace(increase(price_api_asset_polls_total{status!="no_reference"}[24h]), "kind", "$1", "asset", "(.*)"))
+        labels:
+          scope: asset
+      - record: ocb:price_api_success:ratio_24h
+        expr: sum by (provider) (increase(price_api_asset_polls_total{status="ok"}[24h])) / sum by (provider) (increase(price_api_asset_polls_total{status!="no_reference"}[24h]))
+        labels:
+          kind: all
+          scope: all
+      # Assets scored at least once in 24h, out of the nine.
+      - record: ocb:price_api_assets_served:count_24h
+        expr: count by (provider) (ocb:price_api_deviation_bps:count_increase_24h{kind!="all"} > 0)
+        labels:
+          kind: all
+          scope: all

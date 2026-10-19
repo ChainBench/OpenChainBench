@@ -557,6 +557,9 @@ const RAW: Record<string, string> = {
   dexpaprika: "/logos/dexpaprika.svg",
   coinstats: "/logos/coinstats.svg",
 
+  // ─── price-api-accuracy bench providers (bench № 305) ───
+  bitculator: "/logos/bitculator.svg",
+
   // ─── portfolio-chain-coverage bench providers (bench № 067) ───
   zerion: "/logos/zerion.svg",
   allium: "/logos/allium.png",
