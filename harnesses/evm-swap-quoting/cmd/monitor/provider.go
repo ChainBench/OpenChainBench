@@ -45,6 +45,16 @@ type Quote struct {
 	// it exists.
 	FeeBps float64
 
+	// OutAlreadyScaled marks an OutAmount that is already in whole tokens
+	// rather than the token's smallest unit.
+	//
+	// Every adapter but one returns smallest units. Mobula's field is
+	// `amountOutTokens` and it arrives pre-divided, so scaling it again by
+	// the token's decimals published 0.00238 USDT where the others
+	// published 2389. The flag is explicit because the difference is
+	// invisible on a stablecoin pair until someone reads the axis.
+	OutAlreadyScaled bool
+
 	// Block the provider says it quoted against, 0 when it does not say.
 	// Three of five report it. It is the only way to prove two quotes saw
 	// the same market, which matters because the market drifts 30 to 37 bps

@@ -182,8 +182,11 @@ func RecordQuote(provider string, pair TestPair, region string, q Quote) {
 	pairLabel := pair.TokenInSym + "/" + pair.TokenOutSym
 	if q.OutAmount != "" {
 		if v, ok := new(big.Float).SetString(q.OutAmount); ok {
-			scale := new(big.Float).SetFloat64(math.Pow10(pair.TokenOutDec))
-			whole, _ := new(big.Float).Quo(v, scale).Float64()
+			if !q.OutAlreadyScaled {
+				scale := new(big.Float).SetFloat64(math.Pow10(pair.TokenOutDec))
+				v = new(big.Float).Quo(v, scale)
+			}
+			whole, _ := v.Float64()
 			quoteOutAmount.WithLabelValues(provider, pair.Chain, region, pairLabel).Set(whole)
 		}
 	}

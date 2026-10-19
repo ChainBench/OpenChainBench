@@ -82,5 +82,8 @@ func (p *MobulaProvider) Probe(ctx context.Context, pair TestPair) (Quote, error
 		RecordNoRoute(p.Slug(), pair.Chain, p.region)
 		return failed(), fmt.Errorf("no_route")
 	}
-	return okQuote(ms, r.Data.AmountOutTokens), nil
+	quote := okQuote(ms, r.Data.AmountOutTokens)
+	// `amountOutTokens`, not the smallest unit: Mobula divides for us.
+	quote.OutAlreadyScaled = true
+	return quote, nil
 }
