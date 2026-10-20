@@ -4,7 +4,7 @@ slug: trading-platform-wars
 number: "201"
 title: "Trading terminal leaderboard: what GMGN, Axiom, Fomo and Terminal route and what they charge"
 seo_title: "Trading terminal volume and fees 2026: GMGN vs Axiom vs Fomo"
-seo_description: "{{best_name}} leads trading terminals with {{best_p50}} routed in a day. Volume, fee revenue and observed take rate for eight terminals, per chain or across all."
+seo_description: "{{best_name}} leads trading terminals with {{best_p50}} routed in a day. Volume, fee revenue and observed take rate for {{count}} terminals, per chain or across all."
 subtitle: Routed volume, fee revenue and observed take rate per trading terminal, over one day, seven days or thirty, on one chain or across every chain.
 
 category: Trading
@@ -21,7 +21,7 @@ disclaimer: |
 seo_intro: |
   A trading terminal makes money on flow, so the two figures that describe one
   are how much it routes and what it keeps per dollar. This page puts them side
-  by side for eight terminals, over a day, a week or a month, on one chain or
+  by side for {{count}} terminals, over a day, a week or a month, on one chain or
   across all of them. The spread is wide in both directions: the largest
   terminal routes more than a hundred times the smallest, and take rates run
   from nothing at all to above one percent.

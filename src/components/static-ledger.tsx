@@ -25,7 +25,15 @@ import { rateDecimals } from "@/lib/sample-precision";
  *  table nobody can scan. The rest stay in the interactive tabs. */
 const MAX_STATIC_PANELS = 3;
 
-export function StaticLedger({ benchmark }: { benchmark: Benchmark }) {
+export function StaticLedger({
+  benchmark,
+  regionCount,
+}: {
+  benchmark: Benchmark;
+  /** Regions with data on this view, from the page's own
+   *  declared-and-present filter. Omitted means no claim. */
+  regionCount?: number;
+}) {
   const rows = rankResults(displayResults(benchmark.results), benchmark.higherIsBetter);
   if (rows.length === 0) return null;
   const chain = rpcChainLabel(benchmark);
@@ -63,12 +71,17 @@ export function StaticLedger({ benchmark }: { benchmark: Benchmark }) {
   const panels = (benchmark.metricPanels ?? [])
     .filter((p) => p.values && Object.keys(p.values).length > 0)
     .slice(0, MAX_STATIC_PANELS);
+  // The region count comes from the page, which already worked out which
+  // declared regions actually have data: the heading a crawler reads said
+  // three on every bench, including those measured from fewer. Falls
+  // back to no claim rather than to a number.
+  const regionNote = regionCount && regionCount > 0 ? `, ${regionCount} region${regionCount === 1 ? "" : "s"}` : "";
   const heading = chain && pausedOn
     ? `Results: measurement paused since ${pausedOn}, last ranking of ${rows.length} free public ${chain} RPC endpoint${rows.length === 1 ? "" : "s"}`
     : chain && ranked < rows.length
-    ? `Results: ${rows.length} free public ${chain} RPC endpoint${rows.length === 1 ? "" : "s"} measured, ${ranked} ranked by p50 latency (24h, 3 regions)`
+    ? `Results: ${rows.length} free public ${chain} RPC endpoint${rows.length === 1 ? "" : "s"} measured, ${ranked} ranked by p50 latency (24h${regionNote})`
     : chain
-    ? `Results: ${rows.length} free public ${chain} RPC endpoint${rows.length === 1 ? "" : "s"} ranked by p50 latency (24h, 3 regions)`
+    ? `Results: ${rows.length} free public ${chain} RPC endpoint${rows.length === 1 ? "" : "s"} ranked by p50 latency (24h${regionNote})`
     : ranked < rows.length
     ? `Results: ${countRows(benchmark, rows.length)} measured, ${ranked} ranked by ${benchmark.metric} (${qualifier})`
     : `Results: ${countRows(benchmark, rows.length)} ranked by ${benchmark.metric} (${qualifier})`;

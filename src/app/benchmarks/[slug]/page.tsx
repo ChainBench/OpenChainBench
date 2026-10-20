@@ -170,7 +170,11 @@ export async function generateMetadata({
     const pausedOn = b.lastRunAt ? new Date(b.lastRunAt).toISOString().slice(0, 10) : "an earlier date";
     const n = displayResults(b.results).length;
     description = `${metaChain} RPC measurement paused since ${pausedOn}.${
-      lastLeader ? ` Last ranked leader: ${lastLeader.name} at ${fmtUnit(lastLeader.value, b.unit)} (p50, 24h, 3 regions).` : ""
+      // No region count here: generateMetadata runs before the
+      // declared-and-present filter exists in this file, and a paused
+      // bench's last leader does not need one. Claiming three was the
+      // same hand-typed number the ledger heading carried.
+      lastLeader ? ` Last ranked leader: ${lastLeader.name} at ${fmtUnit(lastLeader.value, b.unit)} (p50, 24h).` : ""
     }${n >= 2 ? ` URLs for the ${n} no-key endpoints stay listed.` : ""}`;
   }
   if (description) description = stripInlineMarkdown(description);
@@ -290,6 +294,9 @@ export default async function BenchmarkPage({
       : declaredRegions.filter(
           (r) => r.value === "all" || regionsWithData.has(r.value),
         );
+  // One count, from the regions that actually reported, for every surface
+  // that mentions regions.
+  const liveRegionCount = regionOptions.filter((r) => r.value !== "all").length;
   const kindOptions = aggregate.dimensions?.kind ?? [];
   const venuesWithData = new Set<string>(aggregate.extras?.venuesWithData ?? []);
   const venueOptions =
@@ -952,7 +959,7 @@ export default async function BenchmarkPage({
           // after hydration.
           fallback={
             <>
-              <StaticLedger benchmark={benchmark} />
+              <StaticLedger benchmark={benchmark} regionCount={liveRegionCount} />
               <PublicEndpointsSection benchmark={benchmark} />
             </>
           }

@@ -26,7 +26,9 @@ export default function PressPage() {
       <header className="border-b-2 border-ink pb-6">
         <h1 className="display text-3xl sm:text-4xl tracking-tight">Press kit</h1>
         <p className="mt-3 max-w-3xl text-base sm:text-lg text-ink-soft leading-snug">
-          For journalists, podcasters and analysts covering crypto-infra performance.
+          Logos, boilerplate, quick facts and a contact address for journalists,
+          podcasters and analysts covering crypto infrastructure performance.
+          Every figure quoted here is live on the benchmark it comes from.
         </p>
       </header>
 
