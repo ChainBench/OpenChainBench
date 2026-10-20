@@ -31,7 +31,7 @@ import { safeJsonLd } from "@/lib/jsonld";
  */
 
 const HUB_DESCRIPTION =
-  "Revenue, volume and users for every Hyperliquid frontend, plus volume, markets and open interest for every HIP-3 dex. Built from Hyperliquid's public builder fills feed and info API.";
+  "Revenue, volume and users per Hyperliquid frontend, and volume, markets and open interest per HIP-3 dex, from the public builder fills feed.";
 
 function fmtUsdShort(v: number): string {
   if (!Number.isFinite(v) || v <= 0) return "$0";

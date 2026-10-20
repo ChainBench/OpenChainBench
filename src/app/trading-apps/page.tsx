@@ -19,7 +19,7 @@ import { withUtm } from "@/lib/utm";
 import { hubDateModified, datedCollectionLd } from "@/lib/hub-dates";
 
 const DESCRIPTION =
-  "Cross-chain daily volume, what each app charges on it, fill quality and app ratings for trading apps and Telegram bots (GMGN, Axiom, FOMO, Photon, Trojan), measured on closed UTC days.";
+  "Daily volume, what each app charges on it, fill quality and store ratings for trading apps and Telegram bots, measured on closed UTC days.";
 
 export const metadata: import("next").Metadata = pageMetadata({
   path: "/trading-apps",

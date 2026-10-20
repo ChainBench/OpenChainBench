@@ -8,7 +8,7 @@ export const metadata: import("next").Metadata = pageMetadata({
   path: "/methodology",
   title: "Methodology",
   description:
-    "How OpenChainBench measures: design principles, statistical conventions, and reproduction guidelines.",
+    "How OpenChainBench measures: identical inputs per provider, the aggregates we publish and why, the sample floors, and how to reproduce any number.",
 });
 
 const PRINCIPLES = [
