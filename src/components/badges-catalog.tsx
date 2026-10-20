@@ -55,7 +55,13 @@ export function BadgesCatalog({ pairs }: { pairs: BadgePair[] }) {
   const [query, setQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [open, setOpen] = useState<BadgePair | null>(null);
-  const [shown, setShown] = useState(CARDS_PER_PAGE);
+  // Depth is stored WITH the filter it belongs to, so a changed filter resets
+  // it during render. An effect that called setShown on every filter change
+  // was the obvious version and lint refuses it, correctly: setting state
+  // inside an effect renders twice for a value that can simply be derived.
+  const filterSig = `${query.trim().toLowerCase()}|${activeCategory ?? ""}`;
+  const [page, setPage] = useState({ sig: filterSig, shown: CARDS_PER_PAGE });
+  const shown = page.sig === filterSig ? page.shown : CARDS_PER_PAGE;
 
   const categories = useMemo(() => {
     const seen = new Set<string>();
@@ -68,12 +74,6 @@ export function BadgesCatalog({ pairs }: { pairs: BadgePair[] }) {
     }
     return list.sort();
   }, [pairs]);
-
-  // Reset the depth when the result set changes: without this, scrolling deep
-  // into one search would show the next search sixty-plus cards in.
-  useEffect(() => {
-    setShown(CARDS_PER_PAGE);
-  }, [query, activeCategory]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -162,7 +162,7 @@ export function BadgesCatalog({ pairs }: { pairs: BadgePair[] }) {
             <div className="mt-6 flex justify-center">
               <button
                 type="button"
-                onClick={() => setShown((n) => n + CARDS_PER_PAGE)}
+                onClick={() => setPage({ sig: filterSig, shown: shown + CARDS_PER_PAGE })}
                 className="inline-flex items-center gap-2 rounded border border-rule px-4 py-2 text-[12px] uppercase tracking-[0.14em] text-ink-muted hover:text-ink hover:border-ink transition-colors font-medium"
               >
                 Show {Math.min(CARDS_PER_PAGE, filtered.length - shown)} more
