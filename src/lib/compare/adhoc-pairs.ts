@@ -39,6 +39,9 @@ export function adHocPairs(profiles: ProviderProfile[]): AdHocPair[] {
   // pair counted across cohorts here would be advertised and 404
   // (10 such URLs in the staging sitemap on 2026-09-21).
   const liveBenchesBySlug = new Map<string, Map<string, string | null>>();
+  // Category per live bench, so the RWA-only test below can run here rather
+  // than only in the sitemap.
+  const categoryByBench = new Map<string, string>();
   for (const p of profiles) {
     if (HEX_SLUG_RE.test(p.slug)) continue;
     if (CHAIN_BY_SLUG.has(p.slug)) continue;
@@ -47,6 +50,7 @@ export function adHocPairs(profiles: ProviderProfile[]): AdHocPair[] {
       if (a.result.availability === "unavailable") continue;
       if (a.result.ms.p50 <= 0) continue;
       live.set(a.benchmark.slug, a.tier ?? null);
+      categoryByBench.set(a.benchmark.slug, a.benchmark.category);
     }
     if (live.size >= 1) liveBenchesBySlug.set(p.slug, live);
   }
@@ -60,9 +64,19 @@ export function adHocPairs(profiles: ProviderProfile[]): AdHocPair[] {
       const bSlug = slugList[j];
       const bBenches = liveBenchesBySlug.get(bSlug)!;
       let sharedLive = 0;
+      let sharedRwa = 0;
       for (const [s, tier] of aBenches) {
-        if (bBenches.has(s) && bBenches.get(s) === tier) sharedLive += 1;
+        if (bBenches.has(s) && bBenches.get(s) === tier) {
+          sharedLive += 1;
+          if (categoryByBench.get(s) === "RWA") sharedRwa += 1;
+        }
       }
+      // A pair whose shared benches are ALL RWA is not a comparison a reader
+      // makes: those rows are assets (AAPL, NVDA, USDY), not providers. The
+      // sitemap already refused these through isPairLinkable while /compare
+      // linked them anyway, so six pages were advertised and told not to be
+      // indexed at the same time. One place, both surfaces.
+      if (sharedLive > 0 && sharedRwa === sharedLive) continue;
       // Buffer above the render-time noindex gate (< 2 live shared). The
       // page recomputes on its own ISR clock, so a single bench flapping
       // unavailable/back can drop `liveSharedCount` under 2 for one render
