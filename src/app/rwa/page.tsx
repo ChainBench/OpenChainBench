@@ -21,6 +21,7 @@ import {
   type StockRow,
 } from "@/lib/rwa-matrix";
 import type { Benchmark } from "@/types/benchmark";
+import { HUB_PUBLISHED } from "@/lib/hub-dates";
 
 /**
  * /rwa: the tokenized real-world asset hub. RWA dashboards rank issuers
@@ -376,6 +377,7 @@ export default async function RwaHubPage() {
               creator: CREATOR_PUBLISHER,
               publisher: CREATOR_PUBLISHER,
               isAccessibleForFree: true,
+              datePublished: HUB_PUBLISHED["/rwa"],
               ...(asOfIso ? { dateModified: asOfIso } : {}),
               distribution: live.map((b) => ({ "@type": "DataDownload", encodingFormat: "application/json", contentUrl: `${SITE.url}/api/stat/${b.slug}` })),
               variableMeasured: [
