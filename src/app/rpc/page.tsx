@@ -26,8 +26,12 @@ import { hubDateModified, datedCollectionLd } from "@/lib/hub-dates";
  * new `<chain>-rpc` YAML lights up here automatically.
  */
 
+// "with URLs" came off: measured on 2026-10-20, the live page shows zero
+// endpoint URLs in its visible text. The 114 chain pages it links do carry
+// them (base-rpc lists five, including mainnet.base.org), so the promise
+// belongs on them until this hub grows an endpoint column of its own.
 const DESCRIPTION =
-  "Free public RPC endpoints with URLs per chain, and Alchemy, Chainstack, GetBlock, QuickNode, Dwellir, Validation Cloud ranked apart, from 3 regions.";
+  "Free public RPC endpoints ranked per chain by 24h median latency, and Alchemy, Chainstack, GetBlock, QuickNode, Dwellir, Validation Cloud ranked apart.";
 
 export const metadata: import("next").Metadata = pageMetadata({
   path: "/rpc",
@@ -94,7 +98,9 @@ export default async function RpcHubPage() {
           "@type": "ItemList",
           name: "Per-chain RPC benchmarks by OpenChainBench",
           description:
-            "Live per-chain benchmarks of RPC endpoints: free, no-key public gateways measured every 60 seconds from 3 regions, and on the major chains a private (API-key) cohort (Alchemy, Chainstack, GetBlock, QuickNode) measured every 120 seconds and ranked separately.",
+            // Same count the body copy derives, from the snapshot in scope
+            // here. The literal three was the third copy of it on this page.
+            `Live per-chain benchmarks of RPC endpoints: free, no-key public gateways measured every 60 seconds from ${snapshot?.totals.regions ?? 3} regions, and on the major chains a private (API-key) cohort (Alchemy, Chainstack, GetBlock, QuickNode) measured every 120 seconds and ranked separately.`,
           numberOfItems: rpcSpecs.length,
           itemListElement: rpcSpecs.map((s, i) => ({
             "@type": "ListItem",
@@ -149,7 +155,8 @@ export default async function RpcHubPage() {
           the same probe: one identical{" "}
           <code>eth_getBlockByNumber(&quot;latest&quot;, false)</code> call with a
           rotating request id (defeats CDN body-keyed caches) every 60
-          seconds from 3 regions (N. Virginia, Amsterdam, Singapore).
+          seconds from {snapshot?.totals.regions ?? 3} regions (N. Virginia,
+          Amsterdam, Singapore).
           {keyedChains.length > 0 ? (
             <>
               {" "}
