@@ -351,7 +351,7 @@ function VenueDropdown({
         >
           {COMPARABLE_VENUES.filter((v) => v.slug !== exclude).map((v) => (
             <option key={v.slug} value={v.slug}>
-              {v.name} — {v.chain}
+              {v.name}, {v.chain}
             </option>
           ))}
         </select>

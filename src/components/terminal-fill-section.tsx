@@ -139,7 +139,7 @@ export async function TerminalFillSection({
                         {fmtBps(t.loss!.median)} <span className="text-[10px] font-normal text-ink-faint">{fmtPct(t.loss!.median)}</span>
                         {t.loss!.ciLo !== undefined && t.loss!.ciHi !== undefined ? (
                           <span className="block text-[10px] font-normal text-ink-faint tabular-nums">
-                            {Math.round(t.loss!.ciLo)}–{Math.round(t.loss!.ciHi)}
+                            {Math.round(t.loss!.ciLo)} to {Math.round(t.loss!.ciHi)}
                           </span>
                         ) : null}
                       </>
