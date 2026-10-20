@@ -23,7 +23,7 @@ const DESCRIPTION =
 
 export const metadata: import("next").Metadata = pageMetadata({
   path: "/trading-apps",
-  title: "Trading app benchmarks 2026: volume, commission, fill quality",
+  title: "Trading app benchmarks 2026: volume, fees, fill quality",
   description: DESCRIPTION,
 });
 
