@@ -139,11 +139,26 @@ export const ProviderType = z.enum([
  *  by execution layer without leaving the page. */
 export const ProviderLayer = z.enum(["l1", "l2"]);
 
+// Em-dash (—) and en-dash (–) are the classic "AI tells" that hurt our brand
+// voice. The site is hand-authored, the YAMLs must read that way too. Plain
+// hyphens stay legal because compound words ("head-lag", "L1-finality") need
+// them. This refine runs on every copy field below.
+const noAiDashes = (s: string) =>
+  !s.includes("—") && !s.includes("–");
+const noAiDashesMsg =
+  "Avoid em or en dashes; use a comma, semicolon, or period instead";
+
 const provider = z.object({
   /** Stable identifier. also used as the metric label. */
   slug,
-  /** Display name. */
-  name: z.string().min(1),
+  /** Display name.
+   *
+   *  The dash rule applies here too. It was documented as running on "every
+   *  copy field" and did not run on this one, so pm-resolution-delay shipped
+   *  nine names like "Polymarket — All". A provider name travels to every
+   *  surface that lists the provider, which is how one spec put em dashes on
+   *  four hub pages. */
+  name: z.string().min(1).refine(noAiDashes, noAiDashesMsg),
   /** Optional one-liner shown under the name. */
   /**
    * What this row IS: its architecture, its venue, its scope. Not what it
@@ -167,7 +182,9 @@ const provider = z.object({
   /** Single-line explanation of how THIS provider's headline value is
    *  computed. Shown as a hover tooltip on the leaderboard row. Keep
    *  short: one sentence, plain English, no PromQL. */
-  formula: z.string().min(1).max(240).optional(),
+  // Published copy: it is the row's hover tooltip, so the dash rule applies.
+  // Six dashes sat in formulas across two specs while validate passed.
+  formula: z.string().min(1).max(240).refine(noAiDashes, noAiDashesMsg).optional(),
   /** Public, no-key endpoint URL the harness probes for this provider.
    *  Rendered on the bench page ("Public endpoints measured") because
    *  the searchers who land on the RPC pages want the URL as much as the
@@ -252,14 +269,6 @@ export const Category = z.enum([
   "On-ramps",
 ]);
 
-// Em-dash (—) and en-dash (–) are the classic "AI tells" that hurt our brand
-// voice. The site is hand-authored, the YAMLs must read that way too. Plain
-// hyphens stay legal because compound words ("head-lag", "L1-finality") need
-// them. This refine runs on every copy field below.
-const noAiDashes = (s: string) =>
-  !s.includes("—") && !s.includes("–");
-const noAiDashesMsg =
-  "Avoid em or en dashes; use a comma, semicolon, or period instead";
 // Marketing adjectives the editorial rules forbid in copy; a measured claim
 // ("fastest ... measured") is fine, these words never are.
 // "trusted" and "powerful" are left out on purpose: both occur as plain
@@ -352,8 +361,8 @@ export const SpecSchema = z
       .array(
         z.object({
           slug: z.string().min(1).max(50),
-          h2: z.string().min(1).max(200),
-          body: z.string().min(1).max(1000),
+          h2: z.string().min(1).max(200).refine(noAiDashes, noAiDashesMsg),
+          body: z.string().min(1).max(1000).refine(noAiDashes, noAiDashesMsg),
         })
       )
       .max(30)
