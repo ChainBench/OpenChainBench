@@ -11,10 +11,12 @@ type Config struct {
 	CoinGeckoAPIKey      string
 	MobulaAPIKey         string
 	SerializedAPIKey     string
+	CodexAPIKey          string
 	DefinedSessionCookie string
 	MonitorRegion        string // Deployment region: us-west, us-east, singapore, etc.
 	MobulaWSURL          string // Mobula fast-trade WebSocket endpoint (allows staging to use EU-specific cluster)
 	SerializedWSURL      string // Serialized stream endpoint (override to roll back to the legacy engine)
+	CodexSolanaWSURL     string // Codex endpoint for the Solana subscription (edge node by default)
 }
 
 func loadEnv() (*Config, error) {
@@ -24,10 +26,12 @@ func loadEnv() (*Config, error) {
 	config.CoinGeckoAPIKey = strings.TrimSpace(os.Getenv("COINGECKO_API_KEY"))
 	config.MobulaAPIKey = strings.TrimSpace(os.Getenv("MOBULA_API_KEY"))
 	config.SerializedAPIKey = strings.TrimSpace(os.Getenv("SERIALIZED_API_KEY"))
+	config.CodexAPIKey = strings.TrimSpace(os.Getenv("CODEX_API_KEY"))
 	config.DefinedSessionCookie = strings.TrimSpace(os.Getenv("DEFINED_SESSION_COOKIE"))
 	config.MonitorRegion = strings.TrimSpace(os.Getenv("MONITOR_REGION"))
 	config.MobulaWSURL = strings.TrimSpace(os.Getenv("MOBULA_WS_URL"))
 	config.SerializedWSURL = strings.TrimSpace(os.Getenv("SERIALIZED_WS_URL"))
+	config.CodexSolanaWSURL = strings.TrimSpace(os.Getenv("CODEX_SOLANA_WS_URL"))
 
 	// Default to "unknown" if not set
 	if config.MonitorRegion == "" {
@@ -47,8 +51,15 @@ func loadEnv() (*Config, error) {
 		config.SerializedWSURL = "wss://ws.serialized.xyz/v1/stream"
 	}
 
+	// Codex's Frankfurt edge node serves the Solana subscription from every
+	// region; the other chains read the standard endpoint (codexWSURL). Set
+	// CODEX_SOLANA_WS_URL to wss://graph.codex.io/graphql to roll back.
+	if config.CodexSolanaWSURL == "" {
+		config.CodexSolanaWSURL = "wss://fra.edge.codex.io/graphql"
+	}
+
 	// If all env vars are set, return early (production mode)
-	if config.CoinGeckoAPIKey != "" || config.MobulaAPIKey != "" || config.DefinedSessionCookie != "" {
+	if config.CoinGeckoAPIKey != "" || config.MobulaAPIKey != "" || config.CodexAPIKey != "" || config.DefinedSessionCookie != "" {
 		return config, nil
 	}
 
@@ -81,6 +92,10 @@ func loadEnv() (*Config, error) {
 		case "MOBULA_API_KEY":
 			if config.MobulaAPIKey == "" {
 				config.MobulaAPIKey = value
+			}
+		case "CODEX_API_KEY":
+			if config.CodexAPIKey == "" {
+				config.CodexAPIKey = value
 			}
 		case "DEFINED_SESSION_COOKIE":
 			if config.DefinedSessionCookie == "" {
