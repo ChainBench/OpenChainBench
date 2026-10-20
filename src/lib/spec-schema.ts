@@ -405,6 +405,17 @@ export const SpecSchema = z
       .positive()
       .optional()
       .describe("Expected sample count per provider over the bench's measurement window. Used to badge undersized samples on the page. Roughly cadence_per_minute * window_minutes * routes_per_provider."),
+    /* expected_n on a dimension tab. expected_n counts what a provider
+     * gathers across every value of the dimension, so a tab that keeps one
+     * value (one asset of nine) holds a fraction of it, and a provider on
+     * a slow quota dropped below the 10 percent floor and out of the tab
+     * while it was healthy on the main view. Falls back to expected_n. */
+    expected_n_per_tab: z
+      .number()
+      .int()
+      .positive()
+      .optional()
+      .describe("Expected sample count per provider on a single dimension tab. Defaults to expected_n."),
 
     /* Data source. OpenChainBench is a federation: every contributor
      * declares the Prometheus their harness publishes to. Schema-time

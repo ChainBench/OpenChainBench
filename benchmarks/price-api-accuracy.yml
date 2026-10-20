@@ -79,6 +79,8 @@ source: https://github.com/ChainBench/OpenChainBench/tree/dev/harnesses/price-ap
 # ranked, which keeps a fresh restart from ranking a row on a handful of
 # polls; Mobula, polled every 30 s, clears it in about four minutes.
 expected_n: 648
+# One asset tab holds a ninth of expected_n.
+expected_n_per_tab: 72
 
 prometheus:
   window: 24h
