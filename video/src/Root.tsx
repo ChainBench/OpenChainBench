@@ -12,6 +12,7 @@ import { DonutRace, DONUT_DURATION_FRAMES, DonutRaceSchema } from "./DonutRace/D
 import { CountPodium, COUNT_PODIUM_DURATION_FRAMES, CountPodiumSchema } from "./CountPodium/CountPodium";
 import { ResultsBoard, RESULTS_BOARD_DURATION_FRAMES, ResultsBoardSchema } from "./ResultsBoard/ResultsBoard";
 import { Outro, OUTRO_DURATION_FRAMES, OutroSchema } from "./Outro/Outro";
+import { withLabProbe } from "./lib/lab-probe";
 
 /**
  * Remotion composition registry. Each entry is a stand-alone video.
@@ -27,7 +28,7 @@ export const Root: React.FC = () => {
     <>
       <Composition
         id="Intro"
-        component={Intro}
+        component={withLabProbe(Intro)}
         durationInFrames={INTRO_DURATION_FRAMES}
         fps={30}
         width={1920}
@@ -39,7 +40,7 @@ export const Root: React.FC = () => {
       />
       <Composition
         id="BarChartRace"
-        component={BarChartRace}
+        component={withLabProbe(BarChartRace)}
         durationInFrames={BAR_RACE_DURATION_FRAMES}
         fps={30}
         width={1920}
@@ -52,7 +53,7 @@ export const Root: React.FC = () => {
       />
       <Composition
         id="TimeSeriesRace"
-        component={TimeSeriesRace}
+        component={withLabProbe(TimeSeriesRace)}
         durationInFrames={TIME_SERIES_DURATION_FRAMES}
         fps={30}
         width={1920}
@@ -62,7 +63,7 @@ export const Root: React.FC = () => {
       />
       <Composition
         id="DistributionRace"
-        component={DistributionRace}
+        component={withLabProbe(DistributionRace)}
         durationInFrames={DISTRIBUTION_DURATION_FRAMES}
         fps={30}
         width={1920}
@@ -72,7 +73,7 @@ export const Root: React.FC = () => {
       />
       <Composition
         id="DonutRace"
-        component={DonutRace}
+        component={withLabProbe(DonutRace)}
         durationInFrames={DONUT_DURATION_FRAMES}
         fps={30}
         width={1920}
@@ -82,7 +83,7 @@ export const Root: React.FC = () => {
       />
       <Composition
         id="CountPodium"
-        component={CountPodium}
+        component={withLabProbe(CountPodium)}
         durationInFrames={COUNT_PODIUM_DURATION_FRAMES}
         fps={30}
         width={1920}
@@ -92,7 +93,7 @@ export const Root: React.FC = () => {
       />
       <Composition
         id="ResultsBoard"
-        component={ResultsBoard}
+        component={withLabProbe(ResultsBoard)}
         durationInFrames={RESULTS_BOARD_DURATION_FRAMES}
         fps={30}
         width={1920}
@@ -102,7 +103,7 @@ export const Root: React.FC = () => {
       />
       <Composition
         id="Outro"
-        component={Outro}
+        component={withLabProbe(Outro)}
         durationInFrames={OUTRO_DURATION_FRAMES}
         fps={30}
         width={1920}

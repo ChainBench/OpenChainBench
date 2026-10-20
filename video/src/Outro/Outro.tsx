@@ -123,6 +123,7 @@ export const Outro: React.FC<OutroProps> = ({ theme: mode, bench }) => {
 
       {/* Big metric value */}
       <div
+        data-lab-value={formatValue(leader.value, bench.unit)}
         style={{
           opacity: leaderOpacity,
           transform: `translateY(${leaderLift}px)`,

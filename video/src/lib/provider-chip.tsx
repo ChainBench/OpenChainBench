@@ -24,6 +24,8 @@ export const ProviderChip: React.FC<{
   if (logo && !logoFailed) {
     return (
       <div
+        data-lab-chip="logo"
+        data-lab-name={name}
         style={{
           width: size,
           height: size,
@@ -67,6 +69,8 @@ export const ProviderChip: React.FC<{
     .toUpperCase();
   return (
     <div
+      data-lab-chip={logo ? "fallback" : "initials"}
+      data-lab-name={name}
       style={{
         width: size,
         height: size,

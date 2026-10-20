@@ -52,6 +52,7 @@ export const RollingNumber: React.FC<{
 
   return (
     <span
+      data-lab-value={text}
       style={{
         display: "inline-flex",
         alignItems: "center",

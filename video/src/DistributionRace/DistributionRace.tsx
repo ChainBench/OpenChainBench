@@ -239,6 +239,7 @@ export const DistributionRace: React.FC<DistributionRaceProps> = ({
 
             {/* p50 / p99 numeric labels */}
             <div
+              data-lab-value={formatValue(p.p50, bench.unit)}
               style={{
                 position: "absolute",
                 top: y + 8,
