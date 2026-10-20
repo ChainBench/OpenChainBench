@@ -4,30 +4,23 @@ import { isThinRpcBench, isExpiredRpcPage } from "@/lib/provider-filters";
 import { BenchmarkGrid } from "@/components/benchmark-grid";
 import { safeJsonLd } from "@/lib/jsonld";
 import { hubDateModified, datedCollectionLd } from "@/lib/hub-dates";
+import { pageMetadata } from "@/lib/page-metadata";
 
 export const revalidate = 3600;
 
 const DESCRIPTION =
   "Live benchmarks on RPC latency, perp DEX fees and volume, bridge cost, L1 finality and oracle deviation, measured continuously with an open methodology.";
 
-export const metadata: Metadata = {
+// Through pageMetadata rather than a hand-written Metadata object. The helper
+// ships a title absolute past 43 characters, because the layout template
+// appends " · OpenChainBench" and the SERP cuts the tail. Writing the object
+// by hand skipped that rule and rendered 75 characters, and set the social
+// title to "All benchmarks", which says less than the page's own title.
+export const metadata: Metadata = pageMetadata({
+  path: "/benchmarks",
   title: "Crypto infrastructure benchmarks 2026: RPC, perps, bridges",
   description: DESCRIPTION,
-  alternates: { canonical: "https://openchainbench.com/benchmarks" },
-  openGraph: {
-    title: "All benchmarks · OpenChainBench",
-    description: DESCRIPTION,
-    url: "https://openchainbench.com/benchmarks",
-    type: "website",
-    siteName: "OpenChainBench",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "All benchmarks · OpenChainBench",
-    description: DESCRIPTION,
-    site: "@OpenChainBench",
-  },
-};
+});
 
 export default async function BenchmarksPage() {
   // Thin chain RPC benches (< 3 providers) are noindex on their own page;

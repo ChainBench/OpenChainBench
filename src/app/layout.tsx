@@ -121,9 +121,11 @@ export const metadata: Metadata = {
   // The <link rel="alternate" type="application/rss+xml"> is emitted
   // directly in the <head> JSX (layout render) because Next Metadata
   // .alternates.types silently drops the entry in App Router.
-  alternates: {
-    canonical: SITE.url,
-  },
+  // No canonical here. In the root layout it points every route at the site
+  // root unless the route overrides it, and a new route that forgets would
+  // canonicalise itself away in silence. Every page family overrides it
+  // today, so this was latent rather than live. The home page declares its
+  // own, below in src/app/page.tsx.
 };
 
 const ORG_JSONLD = {

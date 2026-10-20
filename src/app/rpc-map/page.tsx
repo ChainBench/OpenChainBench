@@ -9,7 +9,7 @@ import { SITE } from "@/data/site";
 
 export const metadata: Metadata = pageMetadata({
   path: "/rpc-map",
-  title: "Global RPC Latency Map: real measurements from real connections",
+  title: "Global RPC latency map, measured from real connections",
   description:
     "World map of RPC latency from anonymous browser speed tests run by real visitors: which provider is fastest near you, per chain. Open data, CC BY 4.0.",
 });
