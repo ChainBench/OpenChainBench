@@ -182,6 +182,7 @@ export const CountPodium: React.FC<CountPodiumProps> = ({
                 {p.name}
               </div>
               <div
+                data-lab-value={formatValue(displayValue, bench.unit)}
                 style={{
                   fontSize: 38,
                   fontWeight: 800,
@@ -314,6 +315,7 @@ export const CountPodium: React.FC<CountPodiumProps> = ({
                 {p.name}
               </span>
               <span
+                data-lab-value={formatValue(p.value, bench.unit)}
                 style={{
                   fontSize: 22,
                   color: t.inkMuted,

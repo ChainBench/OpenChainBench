@@ -211,6 +211,7 @@ export const DonutRace: React.FC<DonutRaceProps> = ({ theme: mode, bench }) => {
           {spotlight?.name}
         </div>
         <div
+          data-lab-value={spotlight ? formatValue(spotlight.raw, bench.unit) : ""}
           style={{
             marginTop: 12,
             fontSize: 34,
@@ -289,6 +290,7 @@ export const DonutRace: React.FC<DonutRaceProps> = ({ theme: mode, bench }) => {
               {s.name}
             </span>
             <span
+              data-lab-value={formatValue(s.raw, bench.unit)}
               style={{
                 fontSize: 22,
                 color: t.ink,
