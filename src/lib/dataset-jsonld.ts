@@ -110,11 +110,17 @@ export function buildCitationMeta(input: {
  * bench lastRunAt so the home Dataset carries the same freshness signal
  * the per-bench Dataset nodes already emit.
  */
+/** Site launch, the same date /benchmarks and /methodology carry. The
+ *  site-wide Dataset had a dateModified and no datePublished, so the record
+ *  said when it last changed and never when it began. */
+export const DATASET_PUBLISHED = "2026-04-28";
+
 export function buildGlobalDatasetJsonLd(
   dateModified?: string,
 ): Record<string, unknown> {
   return {
     ...GLOBAL_DATASET_JSONLD,
+    datePublished: DATASET_PUBLISHED,
     ...(dateModified ? { dateModified } : {}),
   };
 }

@@ -113,6 +113,23 @@ describe("a hub states when its numbers were true", () => {
     }
   });
 
+  test("the Dataset hubs carry a publication date too", () => {
+    // E2 after the first round: 3 of 9 numeric pages still had none, and they
+    // were the three that emit a Dataset node instead of an ItemList, so the
+    // CollectionPage wrapper never reached them. /capital shows 858 values.
+    for (const [route, key] of [["capital", "/capital"], ["rwa", "/rwa"]]) {
+      const src = readFileSync(
+        join(import.meta.dir, "..", "app", route, "page.tsx"),
+        "utf8",
+      );
+      expect(src, route + " has no datePublished").toContain(
+        'datePublished: HUB_PUBLISHED["' + key + '"]',
+      );
+    }
+    const ds = readFileSync(join(import.meta.dir, "dataset-jsonld.ts"), "utf8");
+    expect(ds).toContain("datePublished: DATASET_PUBLISHED");
+  });
+
   test("the six wired hubs derive the date instead of hard-coding one", () => {
     for (const route of [
       "rpc",
