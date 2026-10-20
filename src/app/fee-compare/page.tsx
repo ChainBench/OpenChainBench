@@ -7,9 +7,9 @@ import { SITE } from "@/data/site";
 
 export const metadata: Metadata = pageMetadata({
   path: "/fee-compare",
-  title: "Perp DEX fee comparison — any venue",
+  title: "Perp DEX fee comparison: taker rates for any two venues",
   description:
-    "Compare taker fees between any two perp DEXs. Paste a wallet to see what was actually paid on Hyperliquid or Gains and what it would have cost elsewhere. Live on-chain data, no API key.",
+    "Taker fees between any two perp DEXs; paste a wallet to see what Hyperliquid or Gains trades cost and what they would have cost elsewhere.",
 });
 
 const VALID_VENUES = new Set(["hyperliquid", "gains", "dydx", "gmx-v2", "paradex", "edgex"]);
