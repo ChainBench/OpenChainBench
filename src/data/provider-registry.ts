@@ -322,6 +322,12 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "Portfolio tracker and market data API. REST endpoints for prices, exchanges, NFTs, and wallet balances across 100+ blockchains. Consumer app + paid API tiers.",
     twitter: "@CoinStats",
   },
+  bitculator: {
+    url: "https://bitculator.com",
+    description:
+      "Crypto market data API. Coin prices are volume-weighted averages across 16 exchange adapters, served over REST with markets, exchanges, liquidations and historical candles.",
+    twitter: "@bitculator",
+  },
 
   // ─── NFT data APIs (bench 040) ────────────────────────────────
   alchemy: {
@@ -3320,7 +3326,12 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   cetus: { url: "https://cetus.zone" },
   chainflip: { url: "https://chainflip.io" },
   "chiliz-official": { url: "https://chiliz.com" },
-  coingecko: { url: "https://coingecko.com" },
+  coingecko: {
+    url: "https://coingecko.com",
+    description:
+      "Crypto price and market data API built around a curated coin list, with exchange and on-chain DEX data. Keyless public tier, demo key and paid plans over REST.",
+    twitter: "@coingecko",
+  },
   "compound-finance": { url: "https://compound.xyz" },
   "conflux-global": { url: "https://confluxnetwork.org" },
   "conflux-official": { url: "https://confluxnetwork.org" },

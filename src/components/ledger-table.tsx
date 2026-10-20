@@ -109,6 +109,21 @@ function embedTierOf(b: Benchmark, r: ProviderResult): string | null {
  * to recognition; sort order remains mechanical (ascending p50) and no
  * row is highlighted as the "winner".
  */
+// The tooltip on an unranked row. "Provisional" and "Pre-TGE" have reasons
+// of their own; every other label is a spec's statement that the row does
+// not compete on the same ground (an on-chain feed beside market-data APIs,
+// an RFQ venue beside routers). That tooltip used to say every such row had
+// "no headline value by design", which is false for most of them.
+function unrankedHint(label: string | undefined): string {
+  if (label === "Provisional") {
+    return "Published, not ranked: the figure stands on a sample the bench's own gate finds too small to rank yet (one chain's few swaps carrying most of a pooled median, for example). It takes a rank as soon as the gate opens.";
+  }
+  if (label === "Pre-TGE") {
+    return "Listed for its measured activity only. This member has no headline value by design (for example a perp DEX with no token yet cannot have a price to fees ratio), so it is never ranked and never named a leader.";
+  }
+  return "Measured and published with its own numbers, but kept out of the ranking and never named a leader: the label says what sets it apart from the ranked rows, and the methodology explains it.";
+}
+
 export function LedgerTable({
   benchmark,
   activePanel,
@@ -936,7 +951,7 @@ function Row({
               </Hint>
             )}
             {isUnranked && (
-              <Hint label={r.unrankedLabel === "Provisional" ? "Published, not ranked: the figure stands on a sample the bench's own gate finds too small to rank yet (one chain's few swaps carrying most of a pooled median, for example). It takes a rank as soon as the gate opens." : "Listed for its measured activity only. This member has no headline value by design (for example a perp DEX with no token yet cannot have a price to fees ratio), so it is never ranked and never named a leader."}>
+              <Hint label={unrankedHint(r.unrankedLabel)}>
                 <span className="inline-flex items-center gap-1 shrink-0 font-sans text-[10px] uppercase tracking-[0.14em] text-ink-muted">
                   <span className="inline-block w-1.5 h-1.5 rounded-full bg-ink-faint" aria-hidden />
                   {r.unrankedLabel}
@@ -959,7 +974,7 @@ function Row({
                 </span>
               </Hint>
             )}
-            {!isMuted && r.dataConfidence === "low" && (
+            {!isMuted && !isUnranked && r.dataConfidence === "low" && (
               <Hint
                 label={
                   r.sampleHealth != null

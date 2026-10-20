@@ -557,6 +557,9 @@ const RAW: Record<string, string> = {
   dexpaprika: "/logos/dexpaprika.svg",
   coinstats: "/logos/coinstats.svg",
 
+  // ─── price-api-accuracy bench providers (bench № 305) ───
+  bitculator: "/logos/bitculator.svg",
+
   // ─── portfolio-chain-coverage bench providers (bench № 067) ───
   zerion: "/logos/zerion.svg",
   allium: "/logos/allium.png",
@@ -840,6 +843,11 @@ const ALIASES: Record<string, string> = {
   btc: "bitcoin",
   sol: "solana",
   bsc: "bnb",
+  // Asset tabs on bench 305 (price-api-accuracy) key the coin by ticker.
+  ada: "cardano",
+  doge: "dogecoin",
+  avax: "avalanche",
+  link: "chainlink",
   hypercore: "hyperliquid", // HyperCore is the Hyperliquid trading engine, same brand
   hyperevm: "hyperliquid", // HyperEVM is Hyperliquid's EVM execution layer, same brand
   "hyperliquid-hip3": "hyperliquid", // bench 266 row for builder-deployed HIP-3 dexs

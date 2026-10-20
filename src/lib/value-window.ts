@@ -109,7 +109,16 @@ export function specValueKind(spec: {
     // through to the average rule, and the headline read "24h avg" in
     // seven places including the JSON-LD and llms.txt. On the bench whose
     // whole argument is that a median is not an average.
-    if (!/^quantile_over_time\(0\.50?,/.test(q) && !/\bstat\s*=\s*"median"/.test(q)) allMedian = false;
+    // Recorded medians count too: a rule named `ocb:<metric>:p50_<window>`
+    // (benches 304 and 305) or a histogram_quantile(0.5, ...) is the same
+    // statistic computed earlier, and missing it printed "24h avg" on two
+    // benches whose methodology calls the figure a median.
+    if (
+      !/^quantile_over_time\(0\.50?,/.test(q) &&
+      !/\bstat\s*=\s*"median"/.test(q) &&
+      !/\bhistogram_quantile\(\s*0\.50?\s*,/.test(q) &&
+      !/:p50_\d+[smhd]\b/.test(q)
+    ) allMedian = false;
   }
   if (!sawQueries) return undefined;
   if (allLatest) return "latest";

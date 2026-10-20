@@ -499,7 +499,9 @@ export async function specToBenchmark(
     // can badge undersized rows and so citable APIs can refuse to crown
     // a leader drawn from a degraded sample. Bench-wide aggregate is
     // the median of the per-provider classifications.
-    const expectedN = spec.expected_n;
+    const expectedN = isFiltered
+      ? spec.expected_n_per_tab ?? spec.expected_n
+      : spec.expected_n;
     if (expectedN) {
       for (const r of live.results) {
         // Unresponsive rows carry a full probe count (the calls run,

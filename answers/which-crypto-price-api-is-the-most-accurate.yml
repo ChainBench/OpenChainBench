@@ -1,0 +1,45 @@
+slug: which-crypto-price-api-is-the-most-accurate
+question: "Which crypto price API is the most accurate in 2026?"
+short_answer: |
+  {{best_name}} currently prints closest to the exchange price, a median gap of {{best_p50}} over 24h on BTC, ETH, SOL, BNB, XRP, ADA, DOGE, AVAX and LINK, scored by OpenChainBench against the Coinbase, Kraken and Binance mid of the same moment.
+
+benchmark: price-api-accuracy
+
+intro: |
+  A price API is a number you trust without checking. A portfolio app, a tax report or a liquidation alert reads it and acts on it, so the question that matters is how far that number sits from the market at the moment it is read. Vendor pages say "real-time" and "aggregated from hundreds of exchanges" without saying how close the result lands. This page answers with a distance. OpenChainBench asks each market-data API for the same majors on its own quota and scores every answer against the median of three exchange mids taken within six seconds of it, so the figure is a gap in basis points rather than a price. The leader today is {{best_name}} at {{best_p50}}.
+
+methodology: |
+  The reference is the median of the Coinbase (USD), Kraken (USD) and Binance mids, refreshed every five seconds. Binance quotes these coins against USDT, so its mid is converted at the USDT/USD mid of Coinbase and Kraken before entering the median; read as dollars, a USDT book sits about twelve basis points high whenever USDT trades under par. Each API is polled on the cadence its quota allows, from every 30 seconds to every 20 minutes, and every answer is scored against the reference snapshot nearest the moment it arrived. The headline is the median absolute gap over 24 hours, pooled across the majors a provider serves. The bias column is the mean signed gap, and the price age column comes from the provider's own last-updated stamp where it publishes one.
+
+limitations:
+  - "The gap bundles two things: how the API builds its price and how old the price is. A feed refreshed every minute carries up to a minute of market drift into its gap. That is what a reader of the API receives, so it is counted, and the bias column separates a constant offset from that scatter."
+  - "One probe host in France. Accuracy does not depend on the reader's location the way latency does, but the reference and the answers are both read from there."
+  - "CoinGecko is measured on its keyless public API. Paid plans may refresh faster than the tier measured here."
+  - "Serialized is an on-chain DEX price feed. It prices the wrapped token in its pools and is listed beside the ranked APIs without a rank. BTC is left out for it because WBTC trades 15 to 20 bps under BTC."
+  - "CoinMarketCap and CoinDesk (formerly CryptoCompare) require an API key that has not been issued to the bench, so they are not on the board. Neither is excluded on performance."
+
+faq:
+  - q: "Which crypto price API is closest to the real market price?"
+    a: "On the nine majors measured, {{best_name}} sits closest to the exchange mid at a {{best_p50}} median gap over 24h. Read the asset tabs on the bench page before choosing on a narrow lead: the pooled figure weighs every coin a provider serves, and the tabs compare the same coin side by side."
+  - q: "Why do crypto price APIs disagree with each other?"
+    a: "Three reasons. They weigh different venues and different pairs, some count USDT pairs as dollars, and they refresh at different speeds. The USDT effect is the easiest to see: when USDT trades at 0.9988, a price built from USDT books reads about twelve basis points high, and it does so on every asset at once. A constant positive bias in the bias column is that signature."
+  - q: "How accurate is CoinGecko's price API?"
+    a: "{{name:coingecko}} measures a {{p50:coingecko}} median gap to the exchange mid on this benchmark, read through its keyless public API. Its prices carry their own last-updated stamp, which the price age column reports."
+  - q: "Is an on-chain DEX price more accurate than an aggregated one?"
+    a: "For the majors with a deep on-chain market it can sit very close, because a DEX pool for WETH or wSOL is arbitraged against the exchanges continuously. It is a different product, though: it prices the wrapped token in its pools, it covers only the coins that have a canonical on-chain twin, and a wrapper can trade at a discount, as WBTC does against BTC. That is why the bench lists Serialized beside the ranked APIs without a rank."
+  - q: "How is the gap measured?"
+    a: "Each answer is compared with the median of the Coinbase, Kraken and Binance mids taken within six seconds of it, and the absolute difference is recorded in basis points in a Prometheus histogram per provider and asset. The page publishes the 24h median, p90 and p99 of that histogram, the mean signed gap, and the share of polls that returned a usable price."
+
+related:
+  - which-crypto-price-api-is-the-fastest
+  - which-crypto-oracle-is-the-most-accurate
+  - which-crypto-data-api-covers-the-most-blockchains
+
+seo_title: "Which crypto price API is the most accurate in 2026?"
+seo_description: "{{best_name}} prints closest to the exchange price: {{best_p50}} median gap over 24h on nine majors, each answer scored live against the exchange mid."
+status: live
+
+expert_take: |
+  Price accuracy is two questions measured as one. The first is construction: which venues and pairs feed the number and how they are weighed. A provider that counts USDT books as dollars prints a few basis points high on every asset whenever USDT trades under par, and no amount of refresh speed removes that offset. The second is age: a price rebuilt every minute is, on average, half a minute old when it is read, and in a fast market half a minute is worth more basis points than any construction choice. The bias column isolates the first, the price age column the second, and the gap is what a reader actually receives. Choosing on the headline alone hides which of the two a provider is paying for, and the cure differs: a construction bias is permanent, while age is a plan or a cadence away.
+
+expert_take_reviewed: "2026-10-19"
