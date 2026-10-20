@@ -5,6 +5,7 @@ import { NextResponse, type NextRequest } from "next/server";
 // can import it without pulling next/server. Re-exported for the
 // sitemap, which historically imports it from "@/middleware".
 import {
+  REMOVED_ALTERNATIVE_SLUGS,
   REMOVED_ANSWER_SLUGS,
   REMOVED_BENCH_SLUGS,
   REMOVED_PRODUCT_SLUGS,
@@ -46,8 +47,10 @@ export { REMOVED_BENCH_SLUGS };
 const BENCH_PATH = /^\/benchmarks\/([a-z0-9][a-z0-9-]{0,79})\/?$/;
 const ANSWER_PATH = /^\/answers\/([a-z0-9][a-z0-9-]{0,79})\/?$/;
 const PRODUCT_PATH = /^\/products\/([a-z0-9][a-z0-9-]{0,79})\/?$/;
+const ALTERNATIVE_PATH = /^\/alternatives\/([a-z0-9][a-z0-9-]{0,79})\/?$/;
 
 const GONE_BENCH = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>410 Gone</title><meta name="robots" content="noindex"></head><body><h1>410 Gone</h1><p>This benchmark has been retired. See the <a href="/benchmarks">current catalog</a>.</p></body></html>`;
+const GONE_ALTERNATIVE = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>410 Gone</title><meta name="robots" content="noindex"></head><body><h1>410 Gone</h1><p>This alternatives page has been retired because no active benchmark ranks this product against comparable providers. See the <a href="/alternatives">current list</a>.</p></body></html>`;
 const GONE_PRODUCT = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>410 Gone</title><meta name="robots" content="noindex"></head><body><h1>410 Gone</h1><p>This product page has been retired because the provider is no longer measured in any active benchmark. See the <a href="/products">current catalog</a>.</p></body></html>`;
 
 function gone(body: string): NextResponse {
@@ -76,6 +79,10 @@ export function middleware(req: NextRequest) {
   const p = pathname.match(PRODUCT_PATH);
   if (p && REMOVED_PRODUCT_SLUGS.has(p[1])) {
     return gone(GONE_PRODUCT);
+  }
+  const alt = pathname.match(ALTERNATIVE_PATH);
+  if (alt && REMOVED_ALTERNATIVE_SLUGS.has(alt[1])) {
+    return gone(GONE_ALTERNATIVE);
   }
   return NextResponse.next();
 }
@@ -115,6 +122,9 @@ export const config = {
     "/answers/which-prediction-market-data-api-is-the-freshest",
     "/answers/polymarket-fees-explained",
     "/answers/polymarket-vs-kalshi-fees",
+    "/alternatives/chainlink",
+    "/alternatives/jupiter",
+    "/alternatives/pyth",
     "/products/blast",
     "/products/bitquery",
     "/products/goldrush",
