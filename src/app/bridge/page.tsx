@@ -5,6 +5,7 @@ import { AnswersForBench } from "@/components/answers-for-bench";
 import { pageMetadata } from "@/lib/page-metadata";
 import { safeJsonLd, buildBreadcrumbJsonLd } from "@/lib/jsonld";
 import { SITE } from "@/data/site";
+import { datedCollectionLd } from "@/lib/hub-dates";
 
 const DESCRIPTION =
   "Live cross-chain bridge benchmarks: cheapest all-in fee and fastest quote API for $300 USDC across Across, deBridge, LI.FI, Mobula, Near Intents, Relay, Squid and Socket. 4 corridors, refreshed every 5 minutes.";
@@ -28,7 +29,7 @@ export default async function BridgeHubPage() {
     ]),
   };
 
-  const itemListLd = hub
+  const itemListNode = hub
     ? {
         "@context": "https://schema.org",
         "@type": "ItemList",
@@ -42,6 +43,19 @@ export default async function BridgeHubPage() {
           url: `${SITE.url}/products/${p.slug}`,
         })),
       }
+    : null;
+
+  // The hub's dates live on the CollectionPage that carries the list,
+  // because ItemList is not a CreativeWork and a date does not belong on
+  // it. Before this the page served its numbers with no date at all.
+  const itemListLd = itemListNode
+    ? datedCollectionLd({
+        path: "/bridge",
+        url: `${SITE.url}/bridge`,
+        name: "Cross-chain bridge benchmarks by OpenChainBench",
+        itemList: itemListNode,
+        dateModified: hub?.asOf ?? null,
+      })
     : null;
 
   return (

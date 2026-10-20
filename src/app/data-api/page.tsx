@@ -6,6 +6,7 @@ import { safeJsonLd, buildBreadcrumbJsonLd } from "@/lib/jsonld";
 import { SITE } from "@/data/site";
 import { withUtm } from "@/lib/utm";
 import { isDevOnlyBench, REMOVED_BENCH_SLUGS } from "@/lib/removed-benches";
+import { hubDateModified, datedCollectionLd } from "@/lib/hub-dates";
 
 /**
  * Hub landing page for the data API vertical: price feeds, token metadata,
@@ -78,7 +79,7 @@ export default async function DataApiHubPage() {
     ]),
   };
 
-  const itemListLd = {
+  const itemListNode = {
     "@context": "https://schema.org",
     "@type": "ItemList",
     name: "Crypto data API benchmarks by OpenChainBench",
@@ -91,6 +92,19 @@ export default async function DataApiHubPage() {
       url: `${SITE.url}/benchmarks/${slug}`,
     })),
   };
+
+  // The hub's dates live on the CollectionPage that carries the list,
+  // because ItemList is not a CreativeWork and a date does not belong on
+  // it. Before this the page served its numbers with no date at all.
+  const itemListLd = itemListNode
+    ? datedCollectionLd({
+        path: "/data-api",
+        url: `${SITE.url}/data-api`,
+        name: "Crypto data API benchmarks by OpenChainBench",
+        itemList: itemListNode,
+        dateModified: hubDateModified(snapshot?.groups.flatMap((g) => g.benches.map((b) => b.updatedAt)) ?? []),
+      })
+    : null;
 
   return (
     <article

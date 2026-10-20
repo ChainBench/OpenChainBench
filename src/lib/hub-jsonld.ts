@@ -67,6 +67,18 @@ export function aboutPageLd() {
   ];
 }
 
+/**
+ * Last substantive revision of the methodology page, pinned.
+ *
+ * Not the newest commit that touched the route: 07c3f8c3 (2026-09-30) only
+ * wrapped three outbound hrefs in withUtm(), which revises nothing a reader
+ * relies on. 0c300975 (2026-09-17) added the whole "Contested-chain scoring"
+ * definition to the glossary, which does. Pinned rather than derived for the
+ * same reason as HUB_PUBLISHED in hub-dates.ts: a revision date is a judgement
+ * about what changed, and no command can make it.
+ */
+export const METHODOLOGY_REVISED = "2026-09-17";
+
 export function methodologyPageLd() {
   const url = `${ORIGIN}/methodology`;
   return [
@@ -81,10 +93,13 @@ export function methodologyPageLd() {
         "How OpenChainBench measures: design principles, statistical conventions, and reproduction guidelines.",
       // Article rich results require image + datePublished. Reuse the
       // page's dedicated OG image so schema.org matches the social card.
-      // datePublished pinned to the site launch (matches Org.foundingDate)
-      // since the methodology has been stable since day one.
+      // datePublished is the site launch (matches Org.foundingDate). The
+      // comment here used to say the methodology "has been stable since day
+      // one" and leave dateModified out, which is how a page revised in
+      // September read as untouched since April.
       image: `${ORIGIN}/methodology/opengraph-image`,
       datePublished: "2026-04-28",
+      dateModified: METHODOLOGY_REVISED,
       author: { "@id": `${ORIGIN}/#org` },
       publisher: { "@id": `${ORIGIN}/#org` },
       inLanguage: "en",
