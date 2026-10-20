@@ -7,6 +7,7 @@ import { pageMetadata } from "@/lib/page-metadata";
 import { safeJsonLd, buildBreadcrumbJsonLd, buildFaqPageJsonLd } from "@/lib/jsonld";
 import { SITE } from "@/data/site";
 import { buildCitationMeta, CREATOR_PUBLISHER, DATASET_LICENSE } from "@/lib/dataset-jsonld";
+import { HUB_PUBLISHED } from "@/lib/hub-dates";
 
 /**
  * Hub for the capital cohorts: where value sits and moves between chains
@@ -103,6 +104,9 @@ export default async function CapitalHubPage() {
         creator: CREATOR_PUBLISHER,
         publisher: CREATOR_PUBLISHER,
         isAccessibleForFree: true,
+        // Pinned beside the live stamp: one says when the page began, the
+        // other when its numbers were last true.
+        datePublished: HUB_PUBLISHED["/capital"],
         dateModified: hub.asOf,
         distribution: [
           { "@type": "DataDownload", encodingFormat: "application/json", contentUrl: `${SITE.url}/api/capital` },
