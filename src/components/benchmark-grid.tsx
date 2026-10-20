@@ -77,6 +77,26 @@ export function BenchmarkGrid({
     });
   }, [benchmarks, q, activeCategory]);
 
+  // Grouped by category, but only on the unfiltered view. With a search or a
+  // category active the result is already one topic, so a heading per group
+  // would be noise; that path keeps the flat grid. Unfiltered, the page served
+  // 10,538 words with one H1, no H2 and 201 sibling H3s, which gives an engine
+  // no section to quote and a screen reader a heading-level skip.
+  const grouped = useMemo(() => {
+    if (q || activeCategory || lockedCategory) return null;
+    const by = new Map<string, BenchmarkCardData[]>();
+    for (const b of filtered) {
+      const list = by.get(b.category);
+      if (list) list.push(b);
+      else by.set(b.category, [b]);
+    }
+    // Biggest category first, so the page opens on the deepest coverage
+    // rather than on whatever the registry happened to list first.
+    return [...by.entries()].sort(
+      (a, x) => x[1].length - a[1].length || a[0].localeCompare(x[0]),
+    );
+  }, [filtered, q, activeCategory, lockedCategory]);
+
   // Pills always render. When the grid is locked to a category route,
   // pill clicks navigate (no preventDefault) so the user moves between
   // /benchmarks/category/<slug> URLs. On the unlocked /benchmarks page
@@ -189,17 +209,45 @@ export function BenchmarkGrid({
           </p>
         </div>
       ) : (
-        <div
-          className={
+        (() => {
+          const gridClass =
             view === "grid"
               ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-              : "grid grid-cols-1 gap-4"
+              : "grid grid-cols-1 gap-4";
+          if (!grouped) {
+            return (
+              <div className={gridClass}>
+                {filtered.map((b) => (
+                  <BenchmarkCard key={b.slug} benchmark={b} />
+                ))}
+              </div>
+            );
           }
-        >
-          {filtered.map((b) => (
-            <BenchmarkCard key={b.slug} benchmark={b} />
-          ))}
-        </div>
+          return (
+            <div className="flex flex-col gap-10">
+              {grouped.map(([category, items]) => (
+                <section key={category}>
+                  <h2 className="label-mono text-ink-faint mb-4 flex items-baseline gap-2">
+                    <Link
+                      href={`/benchmarks/category/${categorySlugFromLabel(category)}`}
+                      className="text-ink-muted hover:text-ink transition-colors"
+                    >
+                      {category}
+                    </Link>
+                    <span className="tabular">
+                      {items.length} {items.length === 1 ? "benchmark" : "benchmarks"}
+                    </span>
+                  </h2>
+                  <div className={gridClass}>
+                    {items.map((b) => (
+                      <BenchmarkCard key={b.slug} benchmark={b} />
+                    ))}
+                  </div>
+                </section>
+              ))}
+            </div>
+          );
+        })()
       )}
     </div>
   );
