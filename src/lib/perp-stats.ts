@@ -29,6 +29,23 @@ import {
 // venue-type selector as the reference next to the measured rows.
 export type PerpVenueType = "onchain" | "regulated" | "cex";
 
+/**
+ * Venues whose traded notional is not the same quantity as the rest of the
+ * cohort's, so they never lead a sentence that ranks the cohort on volume.
+ *
+ * Papertrade: its own spec says "single house LP, BTC and ETH only" and "the
+ * four side columns are summed because every position faces the house". On
+ * 2026-10-20 the hub published "Papertrade leads 28 tracked perp DEXes on
+ * 30-day volume at $2623.64B", about twenty times the monthly volume implied
+ * by Hyperliquid's $4.26B day, on two markets.
+ *
+ * Not a self-reporting flag: every venue here self-reports its volume, which
+ * perp-daily-volume states in its own abstract. The distinction is what the
+ * number counts, not where it comes from. The row keeps its figure in the
+ * table, next to the CEX reference that is excluded for the adjacent reason.
+ */
+export const NOTIONAL_NOT_COMPARABLE = new Set(["papertrade"]);
+
 export type PerpVenueRow = {
   slug: string;
   name: string;
@@ -85,6 +102,37 @@ type VenueSeed = {
   chain: string;
   venueType: PerpVenueType;
 };
+
+/**
+ * The venue that leads the cohort on 30-day volume, for every surface that
+ * says so in a sentence.
+ *
+ * The meta description, the page lede, the page FAQ and the Markdown view each
+ * built `sort by volume30d of everything that is not a CEX` on their own, so
+ * one exclusion had to be added in four places or in none. It was added in
+ * none.
+ */
+export function perpVolumeRanking(
+  venues: PerpVenueRow[] | undefined,
+): PerpVenueRow[] {
+  return (venues ?? [])
+    .filter((v) => v.venueType !== "cex" && !NOTIONAL_NOT_COMPARABLE.has(v.slug))
+    .filter((v) => v.volume30d != null)
+    .slice()
+    .sort(
+      (a, b) =>
+        (b.volume30d ?? -1) - (a.volume30d ?? -1) || a.name.localeCompare(b.name),
+    );
+}
+
+/** First of that ranking. Every position a sentence names comes from the same
+ *  list: taking the lead from here and the runner-up from an unfiltered index
+ *  would have printed one venue twice. */
+export function perpVolumeLead(
+  venues: PerpVenueRow[] | undefined,
+): PerpVenueRow | null {
+  return perpVolumeRanking(venues)[0] ?? null;
+}
 
 /**
  * Cohort seed. Order is the default leaderboard order before any

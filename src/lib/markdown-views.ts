@@ -23,6 +23,7 @@ import type { PerpCohortSummary, PerpVenueRow } from "@/lib/perp-stats";
 import type { ProviderProfile } from "@/lib/providers";
 import { perpProductSlug } from "@/lib/perp-product-slug";
 import { fmtPct as capPct, fmtUsdShort as capUsd, fmtX as capX, type CapitalHub } from "@/lib/capital-hub-types";
+import { perpVolumeLead } from "@/lib/perp-stats";
 import {
   CAPITAL_READING,
   NOT_APPLICABLE_LABEL,
@@ -165,7 +166,9 @@ export function perpsHubMarkdown(cohort: PerpCohortSummary | null): string {
     [...rows].sort((a, b) => (b.volume30d ?? -1) - (a.volume30d ?? -1) || a.name.localeCompare(b.name));
   const dex = byVolume(cohort.venues.filter((v) => v.venueType !== "cex"));
   const cex = byVolume(cohort.venues.filter((v) => v.venueType === "cex"));
-  const lead = dex[0];
+  // Same exclusion the HTML lede uses, from the same helper: a venue whose
+  // notional is not the cohort's quantity does not lead either surface.
+  const lead = perpVolumeLead(cohort.venues);
   if (lead && lead.volume30d != null) {
     md.push(
       `**Headline.** ${lead.name} leads ${cohort.totals.trackedVenues} tracked perp DEXes on 30-day volume at ${usd(lead.volume30d)}; cohort open interest ${usd(cohort.totals.cohortOpenInterest)}.`,
