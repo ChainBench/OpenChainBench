@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound, permanentRedirect, redirect } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, ArrowUpRight } from "lucide-react";
 import { getProvider, canonicalize } from "@/lib/providers";
@@ -167,7 +167,10 @@ export async function generateMetadata({
   // produces a real 308 / 404 response from the route layer instead
   // of a 200 wrapping a streamed loading skeleton.
   const canonicalTarget = canonicalisationTarget(slug);
-  if (canonicalTarget) redirect(`/compare/${canonicalTarget}`);
+  // permanentRedirect, not redirect: the latter answers 307, which tells a
+  // crawler the canonical may come back, so the reversed slug keeps being
+  // fetched and no signal consolidates. Both comments here already said 308.
+  if (canonicalTarget) permanentRedirect(`/compare/${canonicalTarget}`);
   const pair = getComparePair(slug) ?? (await resolveAdHocPair(slug));
   if (!pair) notFound();
   const { a, b } = await loadPairProviders(pair);
@@ -843,7 +846,7 @@ export default async function ComparePage({
   // so the selector and any backwards typed URL converge on the same
   // canonical for indexing.
   const canonicalTarget = canonicalisationTarget(slug);
-  if (canonicalTarget) redirect(`/compare/${canonicalTarget}`);
+  if (canonicalTarget) permanentRedirect(`/compare/${canonicalTarget}`);
   // Curated pairs in COMPARE_PAIRS win. Anything else falls through to
   // resolveAdHocPair which validates the providers exist and share at
   // least one bench before rendering. notFound otherwise.
