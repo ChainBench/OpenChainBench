@@ -28,8 +28,18 @@ describe("fmtUnit — sec (true seconds gauge)", () => {
   // a tie, and that published "tied at 0.3 s" for 304 ms and 327 ms.
   test("sub-second keeps two decimals", () => expect(fmtUnit(0.05, "sec")).toBe("0.05 s"));
   test("the head-lag leaders no longer format alike", () => {
+    // Unit "s" stores milliseconds by the latency-bench convention, so these
+    // are the values the bench actually holds. Both printed "0.3 s" before.
+    expect(fmtUnit(304.262, "s")).toBe("0.30 s");
+    expect(fmtUnit(327.105, "s")).toBe("0.33 s");
+    // And the same defect on a true-seconds gauge.
     expect(fmtUnit(0.304262, "sec")).toBe("0.30 s");
     expect(fmtUnit(0.327105, "sec")).toBe("0.33 s");
+  });
+  test("a second and above is untouched on the s unit", () => {
+    expect(fmtUnit(1096, "s")).toBe("1.1 s");
+    // 10 s and above drops the decimal, which this change does not touch.
+    expect(fmtUnit(15900, "s")).toBe("16 s");
   });
   test("below 5ms stays a floor", () => expect(fmtUnit(0.001, "sec")).toBe("<0.01 s"));
   test("one second and above keeps one decimal", () => expect(fmtUnit(1.25, "sec")).toBe("1.3 s"));
