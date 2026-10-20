@@ -52,6 +52,11 @@ func main() {
 		}
 	}()
 
+	// Drops any head-lag gauge whose feed has gone quiet, so a dead socket
+	// on this box stops being published as somebody else's latency. Started
+	// before the monitors so a feed that never delivers is swept too.
+	StartHeadLagStaleSweeper(stopChan)
+
 	// Head lag monitor — the only data producer for this binary.
 	// Measures the gap between an on-chain Swap event and its appearance
 	// on each aggregator's WebSocket / REST feed.
