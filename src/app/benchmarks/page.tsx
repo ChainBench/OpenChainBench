@@ -3,6 +3,7 @@ import { getBenchmarksSafe, toBenchmarkCardData } from "@/data/benchmarks";
 import { isThinRpcBench, isExpiredRpcPage } from "@/lib/provider-filters";
 import { BenchmarkGrid } from "@/components/benchmark-grid";
 import { safeJsonLd } from "@/lib/jsonld";
+import { hubDateModified, datedCollectionLd } from "@/lib/hub-dates";
 
 export const revalidate = 3600;
 
@@ -37,7 +38,7 @@ export default async function BenchmarksPage() {
   // page as a structured registry (the data is already in the DOM but
   // schema.org markup unlocks Dataset-listing rich results + grounded
   // citation by the LLM tier the rest of the site already optimises for).
-  const itemListLd = {
+  const itemListNode = {
     "@context": "https://schema.org",
     "@type": "ItemList",
     name: "OpenChainBench benchmarks",
@@ -51,6 +52,19 @@ export default async function BenchmarksPage() {
       name: b.title,
     })),
   };
+
+  // The hub's dates live on the CollectionPage that carries the list,
+  // because ItemList is not a CreativeWork and a date does not belong on
+  // it. Before this the page served its numbers with no date at all.
+  const itemListLd = itemListNode
+    ? datedCollectionLd({
+        path: "/benchmarks",
+        url: "https://openchainbench.com/benchmarks",
+        name: "OpenChainBench benchmarks",
+        itemList: itemListNode,
+        dateModified: hubDateModified(benchmarks.map((b) => b.lastRunAt)),
+      })
+    : null;
 
   const breadcrumbLd = {
     "@context": "https://schema.org",

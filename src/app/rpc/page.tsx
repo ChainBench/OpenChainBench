@@ -11,6 +11,7 @@ import { capDescription, capSnippet } from "@/lib/seo-text";
 import { safeJsonLd, buildBreadcrumbJsonLd } from "@/lib/jsonld";
 import { SITE } from "@/data/site";
 import { withUtm } from "@/lib/utm";
+import { hubDateModified, datedCollectionLd } from "@/lib/hub-dates";
 
 /**
  * Hub landing page for the per-chain RPC bench cluster (044-053). One
@@ -86,7 +87,7 @@ export default async function RpcHubPage() {
     ]),
   };
 
-  const itemListLd =
+  const itemListNode =
     rpcSpecs.length > 0
       ? {
           "@context": "https://schema.org",
@@ -103,6 +104,19 @@ export default async function RpcHubPage() {
           })),
         }
       : null;
+
+  // The hub's dates live on the CollectionPage that carries the list,
+  // because ItemList is not a CreativeWork and a date does not belong on
+  // it. Before this the page served its numbers with no date at all.
+  const itemListLd = itemListNode
+    ? datedCollectionLd({
+        path: "/rpc",
+        url: `${SITE.url}/rpc`,
+        name: "Per-chain RPC benchmarks by OpenChainBench",
+        itemList: itemListNode,
+        dateModified: hubDateModified(snapshot?.chains?.map((c) => c.updatedAt) ?? []),
+      })
+    : null;
 
   return (
     <article

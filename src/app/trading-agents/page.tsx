@@ -8,6 +8,7 @@ import { AnswersForBench } from "@/components/answers-for-bench";
 import { pageMetadata } from "@/lib/page-metadata";
 import { safeJsonLd, buildBreadcrumbJsonLd } from "@/lib/jsonld";
 import { SITE } from "@/data/site";
+import { datedCollectionLd } from "@/lib/hub-dates";
 
 const DESCRIPTION =
   "Eight frontier models from four labs trade ETH/USDC on Base under identical rules. Live results scored net of the exposure each agent actually carried.";
@@ -36,7 +37,7 @@ export default async function TradingAgentsHubPage() {
     ]),
   };
 
-  const itemListLd = hub
+  const itemListNode = hub
     ? {
         "@context": "https://schema.org",
         "@type": "ItemList",
@@ -50,6 +51,19 @@ export default async function TradingAgentsHubPage() {
           url: `${SITE.url}/products/${l.slug}`,
         })),
       }
+    : null;
+
+  // The hub's dates live on the CollectionPage that carries the list,
+  // because ItemList is not a CreativeWork and a date does not belong on
+  // it. Before this the page served its numbers with no date at all.
+  const itemListLd = itemListNode
+    ? datedCollectionLd({
+        path: "/trading-agents",
+        url: `${SITE.url}/trading-agents`,
+        name: "AI trading agent results by OpenChainBench",
+        itemList: itemListNode,
+        dateModified: hub?.asOf ?? null,
+      })
     : null;
 
   return (
