@@ -43,15 +43,15 @@ const alts: Alt[] = readdirSync(ALT)
  *  Shrink this list by repointing or by measuring the product; never grow it
  *  without reading the comment above. */
 const TARGET_ABSENT = new Set([
-  "alchemy",
+  // Each of these points at a bench whose rows ARE providers, so the ranking
+  // is a real field of competitors; the subject simply is not measured on
+  // that axis, and the page now says so. Dune's own positioning explains
+  // why: its labels live in SQL spells rather than behind a REST endpoint
+  // that there would be anything to probe.
   "birdeye",
   "bitquery",
-  "chainlink",
   "dune",
-  "jupiter",
   "pump-portal",
-  "pyth",
-  "quicknode",
   "the-graph",
 ]);
 
@@ -77,19 +77,43 @@ describe("an alternatives page ranks a field its subject belongs to", () => {
     expect(page).toContain("is not measured on this benchmark");
   });
 
+  test("the declared bench ranks providers, not asset pairs", () => {
+    // The rule that retired /alternatives/chainlink and /alternatives/pyth.
+    // Both declared oracle-deviation, which does measure them, but its rows
+    // are the ten asset pairs it compares the oracles on, so the pages served
+    // "Top 5 Chainlink alternatives: XRP/USD, POL/USD, AVAX/USD, ..." on
+    // production. A page ranks its bench's rows, so the rows have to be
+    // providers whatever the bench title says.
+    const PAIR = /^[a-z0-9]+-(usd|usdt|usdc)$/;
+    const bad: string[] = [];
+    for (const a of alts) {
+      if (!a.benchmark) continue;
+      let src: string;
+      try {
+        src = readFileSync(join(BENCH, `${a.benchmark}.yml`), "utf8");
+      } catch {
+        continue;
+      }
+      const rows = [...src.matchAll(/^\s*-\s*slug:\s*([a-z0-9-]+)\s*$/gm)].map(
+        (m) => m[1],
+      );
+      const pairs = rows.filter((r) => PAIR.test(r));
+      if (rows.length > 0 && pairs.length > rows.length / 2) {
+        bad.push(`${a.slug} -> ${a.benchmark} (${pairs.length}/${rows.length} rows are asset pairs)`);
+      }
+    }
+    expect(bad).toEqual([]);
+  });
+
   test("every page names a benchmark at all", () => {
     const none = alts.filter((a) => !a.benchmark).map((a) => a.slug);
     expect(none).toEqual([]);
   });
 
   test("no page points at a benchmark that does not exist", () => {
-    // /alternatives/jupiter declares solana-dex-quote-latency, which was
-    // dropped from the site and answers 410. The page itself already 404s, so
-    // this is dead weight rather than a live defect, and it is the one entry
-    // here that is a dangling reference rather than a mismatch.
     const dangling = alts
       .filter((a) => a.benchmark && benchHasRow(a.benchmark, a.slug) === null)
       .map((a) => `${a.slug} -> ${a.benchmark}`);
-    expect(dangling).toEqual(["jupiter -> solana-dex-quote-latency"]);
+    expect(dangling).toEqual([]);
   });
 });
