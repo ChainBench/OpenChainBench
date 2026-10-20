@@ -1673,7 +1673,7 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   maestro: {
     url: "https://maestrobots.com",
     description:
-      "Maestro is a suite of Telegram trading bots for DeFi — Sniper, Wallet, Whale and Buy — trusted by traders on Solana, Ethereum, BNB Chain and Base. It charges a 1% fee on each sniped buy.",
+      "Maestro is a suite of Telegram trading bots for DeFi (Sniper, Wallet, Whale and Buy) used on Solana, Ethereum, BNB Chain and Base. It charges a 1% fee on each sniped buy.",
     twitter: "@MaestroBots",
   },
   dextrabot: {
