@@ -11,7 +11,7 @@ export const metadata: Metadata = pageMetadata({
   path: "/rpc-map",
   title: "Global RPC Latency Map: real measurements from real connections",
   description:
-    "World map of RPC provider latency, built from anonymous browser speed tests run by real visitors. See which provider is fastest near you, per chain. Open data, CC-BY-4.0.",
+    "World map of RPC latency from anonymous browser speed tests run by real visitors: which provider is fastest near you, per chain. Open data, CC BY 4.0.",
 });
 
 export const revalidate = 3600;

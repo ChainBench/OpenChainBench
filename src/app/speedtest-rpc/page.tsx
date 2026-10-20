@@ -38,7 +38,7 @@ const baseMetadata = pageMetadata({
   path: "/speedtest-rpc",
   title: "RPC Speed Test: benchmark your endpoints from your browser",
   description:
-    "Free online RPC latency test. Paste any RPC URLs and measure their real speed from your own connection, across 87 EVM chains. No install, no signup, keys never leave your browser.",
+    "Free RPC latency test: paste any RPC URL and measure it from your own connection across 87 EVM chains. No signup, and keys never leave the tab.",
 });
 
 // pageMetadata pins the generic root card; point socials at the
