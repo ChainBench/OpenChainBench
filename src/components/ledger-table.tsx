@@ -974,7 +974,7 @@ function Row({
                 </span>
               </Hint>
             )}
-            {!isMuted && r.dataConfidence === "low" && (
+            {!isMuted && !isUnranked && r.dataConfidence === "low" && (
               <Hint
                 label={
                   r.sampleHealth != null
