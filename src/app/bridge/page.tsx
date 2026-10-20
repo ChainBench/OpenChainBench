@@ -199,7 +199,7 @@ export default async function BridgeHubPage() {
               </Link>
             </div>
             <p className="text-sm text-ink-muted mb-4">
-              All-in fee p50 per provider per route. Cross-corridor averages above can hide large per-route spreads — the cheapest bridge on Sol to Base is often not the cheapest on Arb to Sol.
+              All-in fee p50 per provider per route. Cross-corridor averages above can hide large per-route spreads: the cheapest bridge on Sol to Base is often not the cheapest on Arb to Sol.
             </p>
             <BridgeCorridorMatrix rows={hub.providers} />
           </section>

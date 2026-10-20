@@ -1632,7 +1632,7 @@ export function FeeCompareClient({
             Wallet address
             <span className="ml-2 normal-case font-normal text-ink-faint/60">
               {needsEvmWallet
-                ? "optional — for per-trade analysis"
+                ? "optional, for per-trade analysis"
                 : "select Hyperliquid, Gains, or GMX v2 to enable trade history"}
             </span>
           </label>
