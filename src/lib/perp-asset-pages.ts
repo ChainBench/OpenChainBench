@@ -21,7 +21,20 @@ export const PERP_ASSET_PAGES_KEY = "perp-asset-pages";
 
 /** Hourly samples that count as a full month behind a 30d average
  *  (24 of 30 days; the same floor ranks perp-funding-cost-30d). */
-export const FULL_MONTH_SAMPLES = 576;
+export /**
+ * Venues that price against an oracle with a fixed spread instead of an
+ * orderbook. They are ranked on perp-fees, where the fee and the spread
+ * parameter are added together, and they carry no slippage figure here.
+ *
+ * Kept as a list because it is a property of how the venue prices, not a data
+ * condition that can be measured from the series: a flat tier is
+ * indistinguishable from a genuinely deep book until you know why it is flat.
+ * It must stay in step with the exclusion in
+ * benchmarks/perp-execution-quality.yml.
+ */
+const ORACLE_PRICED = new Set(["gmx", "gains"]);
+
+const FULL_MONTH_SAMPLES = 576;
 
 export type PerpAssetCode = "ETH" | "BTC" | "SOL";
 
@@ -233,6 +246,15 @@ export async function fetchPerpAssetPagesFresh(): Promise<PerpAssetPagesSnapshot
     put(fill100k, "chain", "slippage100kFill");
     for (const r of rows.values()) {
       if (r.slippage100kBps != null && (r.slippage100kFill ?? 0) < 0.9) r.slippage100kBps = null;
+      // An oracle-priced venue has no book to walk, so this subtraction reads
+      // its fixed spread parameter as zero slippage, and zero wins a
+      // lowest-is-best comparison. The guard above cannot catch it: it drops a
+      // venue whose book failed to absorb $100k, and a venue with no book
+      // never fails that test. perp-execution-quality excludes these two for
+      // exactly this reason (its methodology: "their tiers are flat and would
+      // read as zero or constant slippage"), and the page's own FAQ already
+      // told the reader so while the lede crowned GMX at 0.00 bps.
+      if (ORACLE_PRICED.has(r.slug)) r.slippage100kBps = null;
     }
 
     const has = (r: PerpAssetVenueRow) =>
