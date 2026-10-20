@@ -8,7 +8,7 @@ import { SITE } from "@/data/site";
 import { datedCollectionLd } from "@/lib/hub-dates";
 
 const DESCRIPTION =
-  "Live cross-chain bridge benchmarks: cheapest all-in fee and fastest quote API for $300 USDC across Across, deBridge, LI.FI, Mobula, Near Intents, Relay, Squid and Socket. 4 corridors, refreshed every 5 minutes.";
+  "Cheapest all-in fee and fastest quote API for a $300 USDC bridge, eight bridges across four corridors, measured every five minutes from public endpoints.";
 
 export const metadata: import("next").Metadata = pageMetadata({
   path: "/bridge",
