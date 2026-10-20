@@ -120,7 +120,7 @@ providers:
   - slug: anchorage-by-figment
     name: "Anchorage By Figment"
     tag: "10% commission · 29.6M HYPE staked"
-    formula: "Net yield = predictedApr.day × uptimeFraction. Commission 10% (1000 bps) — highest among active non-jailed validators."
+    formula: "Net yield = predictedApr.day × uptimeFraction. Commission 10% (1000 bps), highest among active non-jailed validators."
     queries:
       p50: avg_over_time(ocb_validator_net_yield_bps{chain="hyperliquid",name="Anchorage By Figment"}[24h])
       success: clamp_max(avg_over_time(ocb_validator_uptime_pct{chain="hyperliquid",name="Anchorage By Figment"}[24h]) / 100, 1)
@@ -164,7 +164,7 @@ providers:
   - slug: infinitefield-xyz
     name: "infinitefield.xyz"
     tag: "0% commission · 18.2M HYPE staked"
-    formula: "Net yield = predictedApr.day × uptimeFraction. Commission 0% — takes no cut from delegators."
+    formula: "Net yield = predictedApr.day × uptimeFraction. Commission 0%, takes no cut from delegators."
     queries:
       p50: avg_over_time(ocb_validator_net_yield_bps{chain="hyperliquid",name="infinitefield.xyz"}[24h])
       success: clamp_max(avg_over_time(ocb_validator_uptime_pct{chain="hyperliquid",name="infinitefield.xyz"}[24h]) / 100, 1)
@@ -186,7 +186,7 @@ providers:
   - slug: hyperstake
     name: "HyperStake"
     tag: "0% commission · 9.9M HYPE staked"
-    formula: "Net yield = predictedApr.day × uptimeFraction. Commission 0% — takes no cut from delegators."
+    formula: "Net yield = predictedApr.day × uptimeFraction. Commission 0%, takes no cut from delegators."
     queries:
       p50: avg_over_time(ocb_validator_net_yield_bps{chain="hyperliquid",name="HyperStake"}[24h])
       success: clamp_max(avg_over_time(ocb_validator_uptime_pct{chain="hyperliquid",name="HyperStake"}[24h]) / 100, 1)
@@ -197,7 +197,7 @@ providers:
   - slug: cmi
     name: "CMI"
     tag: "0% commission · 9.3M HYPE staked"
-    formula: "Net yield = predictedApr.day × uptimeFraction. Commission 0% — takes no cut from delegators."
+    formula: "Net yield = predictedApr.day × uptimeFraction. Commission 0%, takes no cut from delegators."
     queries:
       p50: avg_over_time(ocb_validator_net_yield_bps{chain="hyperliquid",name="CMI"}[24h])
       success: clamp_max(avg_over_time(ocb_validator_uptime_pct{chain="hyperliquid",name="CMI"}[24h]) / 100, 1)
@@ -318,7 +318,7 @@ providers:
   - slug: flowdex
     name: "Flowdex"
     tag: "0% commission · 5.1M HYPE staked"
-    formula: "Net yield = predictedApr.day × uptimeFraction. Commission 0% — takes no cut from delegators."
+    formula: "Net yield = predictedApr.day × uptimeFraction. Commission 0%, takes no cut from delegators."
     queries:
       p50: avg_over_time(ocb_validator_net_yield_bps{chain="hyperliquid",name="Flowdex"}[24h])
       success: clamp_max(avg_over_time(ocb_validator_uptime_pct{chain="hyperliquid",name="Flowdex"}[24h]) / 100, 1)
