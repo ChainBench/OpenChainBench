@@ -32,7 +32,7 @@ unit: pct
 higher_is_better: true
 
 disclaimer: |
-  Coverage means the aggregator returned a non-zero output amount for the probed token. It says nothing about quote quality, price accuracy or transaction success rate. A high score means the routing engine found at least one valid path. Latency is measured separately on evm-quote-latency and solana-dex-quote-latency. The token universe rotates hourly so the score reflects live indexer freshness, not a curated whitelist.
+  Coverage means the aggregator returned a non-zero output amount for the probed token. It says nothing about quote quality, price accuracy or transaction success rate. A high score means the routing engine found at least one valid path. Latency is measured separately on evm-quote-latency, and what the quote is worth on evm-quote-output. The token universe rotates hourly so the score reflects live indexer freshness, not a curated whitelist.
 
 seo_intro: |
   Every DEX aggregator claims to cover "millions of tokens". This
