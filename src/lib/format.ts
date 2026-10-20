@@ -64,8 +64,16 @@ export function fmtUnit(value: number, unit: string): string {
     if (ms === 0) return "<1 s";
     // Sub-10s: render as "X.Y s" so all chains in the same ballpark
     // read with the same units (avoids "1 s" next to "1096 ms" for
-    // values 100ms apart). Sub-second precision is preserved as 0.1 s
-    // rather than ms - fine grain enough for finality comparison.
+    // values 100ms apart).
+    //
+    // Below a second, two decimals. The old rule kept one and called it
+    // "fine grain enough for finality comparison", which it is on a bench
+    // whose rows are seconds apart and is not on aggregator-head-lag, where
+    // it merged the leader at 304 ms with the runner-up at 327 ms, 34,488
+    // samples each. leaders() calls two providers tied when their FORMATTED
+    // values match, so four surfaces published "tied at 0.3 s" while
+    // /api/stat's own leader field named Mobula alone.
+    if (s < 1) return `${s.toFixed(2)} s`;
     if (s < 10) return `${s.toFixed(1)} s`;
     return `${s.toFixed(0)} s`;
   }
