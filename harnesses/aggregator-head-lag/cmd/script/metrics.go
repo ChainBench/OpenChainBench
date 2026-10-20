@@ -32,22 +32,23 @@ var (
 	metadataAPILatency      *prometheus.HistogramVec
 
 	// Head lag metrics
-	headLagBlocks      *prometheus.GaugeVec
-	headLagSeconds     *prometheus.GaugeVec
-	headLagStaleSwept  *prometheus.CounterVec
-	flashblockObserved prometheus.Counter
-	blockchainHead     *prometheus.GaugeVec
-	aggregatorHead     *prometheus.GaugeVec
-	headLagErrors      *prometheus.CounterVec
-	headLagRefSeconds  *prometheus.GaugeVec
-	headLagFirst       *prometheus.CounterVec
-	headLagRaces       *prometheus.CounterVec
-	headLagFirstShare  *prometheus.GaugeVec
-	headLagRefMatches  *prometheus.CounterVec
-	headLagPoolSeen    *prometheus.CounterVec
-	headLagPoolEntries *prometheus.GaugeVec
-	headLagRacesVoided *prometheus.CounterVec
-	refClockEntries    prometheus.Gauge
+	headLagBlocks         *prometheus.GaugeVec
+	headLagSeconds        *prometheus.GaugeVec
+	headLagStaleSwept     *prometheus.CounterVec
+	headLagSweeperLastRun prometheus.Gauge
+	flashblockObserved    prometheus.Counter
+	blockchainHead        *prometheus.GaugeVec
+	aggregatorHead        *prometheus.GaugeVec
+	headLagErrors         *prometheus.CounterVec
+	headLagRefSeconds     *prometheus.GaugeVec
+	headLagFirst          *prometheus.CounterVec
+	headLagRaces          *prometheus.CounterVec
+	headLagFirstShare     *prometheus.GaugeVec
+	headLagRefMatches     *prometheus.CounterVec
+	headLagPoolSeen       *prometheus.CounterVec
+	headLagPoolEntries    *prometheus.GaugeVec
+	headLagRacesVoided    *prometheus.CounterVec
+	refClockEntries       prometheus.Gauge
 
 	// Fast-trade latency (for comparison with Pulse V2)
 	fastTradeLatency *prometheus.GaugeVec
@@ -213,6 +214,17 @@ func init() {
 		[]string{"aggregator", "chain", "region"},
 	)
 	prometheus.MustRegister(headLagStaleSwept)
+
+	// Proof the sweeper is alive, which the counter above cannot give: it
+	// only appears once something has been dropped, so a sweeper that never
+	// started and a sweeper with nothing to do look identical. That is the
+	// same shape as the bug it was written for. This advances every tick
+	// whether or not anything was swept, so "armed and idle" is visible.
+	headLagSweeperLastRun = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "head_lag_sweeper_last_run_timestamp_seconds",
+		Help: "Unix time of the stale-gauge sweeper's last pass. Flat for more than a few minutes means the sweeper is not running.",
+	})
+	prometheus.MustRegister(headLagSweeperLastRun)
 
 	// Health of the Base preconfirmation reference. A flat counter means
 	// the flashblock stream is dead, which shows up as ref misses on every
@@ -599,6 +611,8 @@ func sweepStaleHeadLag(cutoff time.Time) [][3]string {
 // no-op, and the entry is forgotten so a feed that comes back is re-armed by
 // its first write.
 func StartHeadLagStaleSweeper(done <-chan struct{}) {
+	log.Printf("[HEAD-LAG][SWEEP] armed: a feed silent for >%s has its gauge dropped rather than left frozen", headLagStaleAfter)
+	headLagSweeperLastRun.SetToCurrentTime()
 	go func() {
 		t := time.NewTicker(time.Minute)
 		defer t.Stop()
@@ -608,6 +622,7 @@ func StartHeadLagStaleSweeper(done <-chan struct{}) {
 				return
 			case <-t.C:
 				sweepStaleHeadLag(time.Now().Add(-headLagStaleAfter))
+				headLagSweeperLastRun.SetToCurrentTime()
 			}
 		}
 	}()
