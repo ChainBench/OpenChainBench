@@ -9,7 +9,7 @@ import { computeLeadChanges, BeatBanner } from "../lib/beats";
 import { easeOutCubic, remap } from "../lib/easing";
 import { formatValue, formatTick, unitAxisLabel } from "../lib/formatters";
 import { ProviderChip } from "../lib/provider-chip";
-import { LeaderCrown } from "../lib/leader-crown";
+import { CrownIcon } from "../lib/leader-crown";
 
 loadFont("normal", { weights: ["500", "600", "700", "800"] });
 
@@ -47,22 +47,25 @@ export type TimeSeriesRaceProps = {
 // Chart geometry. Landscape keeps the historical 1920x1080 numbers;
 // portrait (Short 9:16) squares the plot between the title block and the
 // bottom date/source zone so the canvas has no dead band.
-function chartGeom(width: number, height: number) {
+function chartGeom(width: number, height: number, names: string[]) {
   const isPortrait = height > width;
+  // The right gutter holds the end-of-line labels (gap, 36px chip, 10px,
+  // name, value). It was a fixed 100px in landscape, so every name longer than
+  // about four letters ran off the frame at the end of the race. Inter
+  // Tight 700 at 20px averages ~0.56em per character.
+  const longest = Math.max(4, ...names.map((n) => n.length));
+  // Plus the value after the name ("1051 ms", 18px).
+  const gutter = 14 + 36 + 10 + Math.ceil(longest * 20 * 0.56) + 10 + 80 + (isPortrait ? 32 : 56);
   return isPortrait
     ? {
         CHART_LEFT: 130, // Y-axis labels gutter
-        CHART_RIGHT: width - 210, // room for head chip + name labels
+        CHART_RIGHT: width - Math.max(210, gutter),
         CHART_TOP: 430,
         CHART_BOTTOM: height - 620, // X-axis labels + date zone below
       }
-    : { CHART_LEFT: 160, CHART_RIGHT: 1820, CHART_TOP: 320, CHART_BOTTOM: 860 };
+    : { CHART_LEFT: 160, CHART_RIGHT: width - Math.max(100, gutter), CHART_TOP: 320, CHART_BOTTOM: 860 };
 }
 
-// Delta badge palette — green when the value moves in the "better"
-// direction for this bench, red otherwise.
-const DELTA_GREEN = "#4ade80";
-const DELTA_RED = "#f87171";
 
 export const TimeSeriesRace: React.FC<TimeSeriesRaceProps> = ({
   theme: mode,
@@ -72,7 +75,7 @@ export const TimeSeriesRace: React.FC<TimeSeriesRaceProps> = ({
   const frame = useCurrentFrame();
   const { durationInFrames, width, height } = useVideoConfig();
   const isPortrait = height > width;
-  const { CHART_LEFT, CHART_RIGHT, CHART_TOP, CHART_BOTTOM } = chartGeom(width, height);
+  const { CHART_LEFT, CHART_RIGHT, CHART_TOP, CHART_BOTTOM } = chartGeom(width, height, bench.providers.map((p) => p.name));
   const t = themeFor(mode);
   const idx = stepFloat(frame, bench.timestamps.length, durationInFrames);
 
@@ -169,29 +172,21 @@ export const TimeSeriesRace: React.FC<TimeSeriesRaceProps> = ({
     return segs.join(" ");
   };
 
-  // ── Delta badges (Polymarket-style) ─────────────────────────────────
-  // At each day transition, show "+12.4 / -3.2" next to the head dot:
-  // fade in + small rise over ~10 f, hold ~70% of the step, fade out.
-  // Sign = real direction of the value; colour = whether that direction
-  // is an improvement for this bench (lower-is-better flips it).
-  // Mirrors stepFloat's layout (HEAD_FRAMES=15, TAIL_FRAMES=60) so the
-  // badge clock keeps ticking during the final clamped step instead of
-  // freezing at 0 (which would either hide or never fade the last badge).
-  const bodyFrames = Math.max(1, durationInFrames - 75);
-  const framesPerStep = Math.max(2, bodyFrames / Math.max(1, bench.timestamps.length));
-  const framesIntoStep = Math.max(0, frame - 15) - intIdx * framesPerStep;
-  const badgeFadeIn = remap(framesIntoStep, 0, 10, 0, 1, easeOutCubic);
-  const holdEnd = framesPerStep * 0.7;
-  const badgeFadeOut = 1 - remap(framesIntoStep, holdEnd, holdEnd + 10, 0, 1);
-  const badgeOpacity = Math.max(0, Math.min(badgeFadeIn, badgeFadeOut)) * lineFade;
-  const badgeRise = (1 - badgeFadeIn) * 8; // small translateY on entry
-
-  const deltaFor = (p: (typeof bench.providers)[number]): number | null => {
-    if (intIdx < 1) return null;
-    const d = p.values[intIdx] - p.values[intIdx - 1];
-    if (d === 0) return null;
-    return d;
+  // Value at the cursor, interpolated like the head dot, for the label.
+  const valueAt = (p: (typeof bench.providers)[number], at: number): number => {
+    const i = Math.max(0, Math.min(Math.floor(at), bench.timestamps.length - 1));
+    const frac = at - i;
+    if (frac > 0 && i < bench.timestamps.length - 1) return p.values[i] + (p.values[i + 1] - p.values[i]) * frac;
+    return p.values[i];
   };
+
+  // Label stack: 56px pitch when there is room; tighter, with a smaller
+  // chip and name, when 10+ providers share the chart height (rpc-cluster
+  // had twelve labels on 540px and they sat on top of each other).
+  const labelRoom = CHART_BOTTOM - CHART_TOP - 16;
+  const pitch = Math.max(30, Math.min(56, labelRoom / Math.max(1, bench.providers.length - 1)));
+  const chipSize = pitch >= 48 ? 36 : 26;
+  const nameSize = pitch >= 48 ? 20 : 17;
 
   return (
     <AbsoluteFill
@@ -219,10 +214,12 @@ export const TimeSeriesRace: React.FC<TimeSeriesRaceProps> = ({
       >
         {/* Axis caption: what the tick numbers measure. Sits on top of
             the Y gutter so a viewer never has to guess the unit. */}
+        {/* Left-aligned on the frame margin: right-aligned on the gutter,
+            "MILLISECONDS" started 19px off the left edge in 9:16. */}
         <text
-          x={CHART_LEFT - 16}
+          x={isPortrait ? 56 : 80}
           y={CHART_TOP - 20}
-          textAnchor="end"
+          textAnchor="start"
           fill={t.inkFaint}
           fontFamily={fontFamily}
           fontSize={14}
@@ -342,7 +339,7 @@ export const TimeSeriesRace: React.FC<TimeSeriesRaceProps> = ({
         name readable against whichever line colour it briefly crosses.
        */}
       <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
-        {placeLabels(bench.providers, idx, headFor, CHART_TOP + 8, CHART_BOTTOM - 8).map(
+        {placeLabels(bench.providers, idx, headFor, CHART_TOP + 8, CHART_BOTTOM - 8, pitch).map(
           ({ p, x, y, anchorY }) => (
             <div
               key={p.slug}
@@ -385,10 +382,10 @@ export const TimeSeriesRace: React.FC<TimeSeriesRaceProps> = ({
                   />
                 </svg>
               )}
-              <ProviderChip name={p.name} color={p.color} logo={p.logo} size={36} theme={t} />
+              <ProviderChip name={p.name} color={p.color} logo={p.logo} size={chipSize} theme={t} />
               <span
                 style={{
-                  fontSize: 20,
+                  fontSize: nameSize,
                   fontWeight: 700,
                   color: p.color,
                   letterSpacing: "-0.01em",
@@ -397,57 +394,25 @@ export const TimeSeriesRace: React.FC<TimeSeriesRaceProps> = ({
               >
                 {p.name}
               </span>
+              <span
+                data-lab-value={formatValue(valueAt(p, idx), bench.unit)}
+                style={{
+                  fontSize: nameSize - 2,
+                  fontWeight: 600,
+                  color: t.inkMuted,
+                  fontVariantNumeric: "tabular-nums",
+                  textShadow: `0 0 8px ${t.background}, 0 0 14px ${t.background}`,
+                }}
+              >
+                {formatValue(valueAt(p, idx), bench.unit)}
+              </span>
             </div>
           ),
         )}
       </div>
 
-      {/* Polymarket-style day-over-day delta badges, riding under each
-          head dot. Discreet: no background plate, just a text-shadow so
-          they read against any line colour. */}
-      {badgeOpacity > 0.01 && (
-        <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
-          {bench.providers.map((p) => {
-            const head = headFor(p, idx);
-            const delta = deltaFor(p);
-            if (!head || delta === null) return null;
-            const improving = bench.higherIsBetter ? delta > 0 : delta < 0;
-            const sign = delta > 0 ? "+" : "−";
-            return (
-              <div
-                key={p.slug}
-                style={{
-                  position: "absolute",
-                  left: head.x + 16,
-                  top: head.y + 22 + badgeRise,
-                  fontFamily,
-                  fontSize: 17,
-                  fontWeight: 700,
-                  letterSpacing: "-0.01em",
-                  fontVariantNumeric: "tabular-nums",
-                  color: improving ? DELTA_GREEN : DELTA_RED,
-                  opacity: badgeOpacity,
-                  textShadow: "0 0 6px #000000, 0 0 12px #000000",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {sign}
-                {formatValue(Math.abs(delta), bench.unit)}
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* 👑 Crown floats above the current leader's head dot. Position
-          tweens via CSS transition inside LeaderCrown so overtakes feel
-          smooth even though the actual leader switches discretely. */}
-      {(() => {
-        const head = headFor(leader, idx);
-        if (!head) return null;
-        return <LeaderCrown frame={frame} x={head.x} y={head.y - 52} size={40} />;
-      })()}
-
+      {/* No floating crown here: the pill names the leader, and a crown
+          above the leader's head dot landed on the next label down. */}
       {/* Leader pill (top-right under wordmark) */}
       <div
         style={{
@@ -464,9 +429,13 @@ export const TimeSeriesRace: React.FC<TimeSeriesRaceProps> = ({
           textTransform: "uppercase",
           opacity: lineFade,
           fontFamily,
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
         }}
       >
-        👑 Leader · {leader.name}
+        <CrownIcon size={18} color="#000000" />
+        Leader · {leader.name}
       </div>
       {(beats ? computeLeadChanges(bench) : []).map((b) => (
         <BeatBanner key={b.step} beat={b} stepFloat={idx} isPortrait={isPortrait} />
@@ -562,12 +531,13 @@ function placeLabels<P extends { slug: string }>(
   headFor: (p: P, at: number) => { x: number; y: number } | null,
   minY: number = -Infinity,
   maxY: number = Infinity,
+  spacing: number = 56,
 ): { p: P; x: number; y: number; anchorY: number }[] {
   // Chip is 36px tall; text label sits next to it. 56px = chip + ~20px
   // breathing room so vertically stacked chips don't crowd each other
   // when 4-5 providers cluster at similar y (e.g. bottom of the chart
   // when fees / latency all converge close to zero).
-  const MIN_SPACING = 56;
+  const MIN_SPACING = spacing;
   const placed: { p: P; x: number; y: number; anchorY: number }[] = [];
   for (const p of providers) {
     const head = headFor(p, at);

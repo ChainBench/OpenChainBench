@@ -1,3 +1,4 @@
+import { CrownIcon } from "./leader-crown";
 import { fontFamily } from "@remotion/google-fonts/InterTight";
 import type { BenchPayload } from "../types/bench";
 import { easeOutCubic, remap } from "./easing";
@@ -67,9 +68,13 @@ export const BeatBanner: React.FC<{
         opacity,
         fontFamily,
         boxShadow: `0 0 28px ${beat.color}55`,
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
       }}
     >
-      👑 {beat.name} takes the lead
+      <CrownIcon size={22} color="#000000" />
+      {beat.name} takes the lead
     </div>
   );
 };

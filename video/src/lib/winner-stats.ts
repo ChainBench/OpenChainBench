@@ -77,11 +77,6 @@ export function timestampStepMs(bench: BenchPayload): number {
   return bench.timestamps[1] - bench.timestamps[0];
 }
 
-/** Human duration for `count` buckets of `stepMs` ("12 days", "3.5 hours"). */
-export function winnerLabel(count: number, stepMs: number): string {
-  return fmtSpan(count * stepMs);
-}
-
 export function fmtSpan(ms: number): string {
   const fmt = (v: number) => {
     const r = Math.round(v * 10) / 10;

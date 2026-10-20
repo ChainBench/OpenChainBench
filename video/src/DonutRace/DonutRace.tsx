@@ -7,7 +7,7 @@ import { themeFor } from "../lib/theme";
 import { FilmOverlay, kenBurnsScale } from "../lib/cinematic";
 import { easeOutCubic, remap } from "../lib/easing";
 import { ProviderChip } from "../lib/provider-chip";
-import { LeaderCrown } from "../lib/leader-crown";
+import { CrownIcon, LeaderCrown } from "../lib/leader-crown";
 import { formatValue } from "../lib/formatters";
 
 loadFont("normal", { weights: ["500", "600", "700", "800"] });
@@ -195,9 +195,12 @@ export const DonutRace: React.FC<DonutRaceProps> = ({ theme: mode, bench }) => {
             textTransform: "uppercase",
             color: spotlightIdx === 0 ? "#facc15" : t.inkFaint,
             marginBottom: 8,
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
           }}
         >
-          {spotlightIdx === 0 ? "👑 Leader" : `Rank ${spotlightIdx + 1}`}
+          {spotlightIdx === 0 ? <><CrownIcon size={18} />Leader</> : `Rank ${spotlightIdx + 1}`}
         </div>
         <div
           style={{
