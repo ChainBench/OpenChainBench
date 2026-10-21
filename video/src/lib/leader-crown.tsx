@@ -20,7 +20,7 @@ export const CrownIcon: React.FC<{ size: number; color?: string; style?: React.C
  * per frame and passes (x, y) here — the crown rides along with a small
  * spring on enter + continuous float so it never feels static.
  *
- * Used by BarChartRace, TimeSeriesRace, DistributionRace, DonutRace and
+ * Used by BarChartRace, TimeSeriesRace, DonutRace and
  * CountPodium so the visual language is consistent across the 5 views.
  */
 

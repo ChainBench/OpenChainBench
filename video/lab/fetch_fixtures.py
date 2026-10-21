@@ -21,6 +21,14 @@ def bridge(vals):
         for j in range(a,b+1): out[j]=vals[a]+(vals[b]-vals[a])*(j-a)/(b-a)
     for j in range(idx[-1],len(vals)): out[j]=vals[idx[-1]]
     return out
+def window(series):
+    # Same rule as coverageWindow in src/lib/export-video/fetch-series.ts.
+    steps=max([len(v) for v in series] or [0]); need=max(1,-(-len(series)//2))
+    ok=lambda i: sum(1 for v in series if i<len(v) and v[i] is not None)>=need
+    a=next((i for i in range(steps) if ok(i)),None)
+    if a is None: return None
+    b=next(i for i in range(steps-1,a-1,-1) if ok(i))
+    return (a,b) if b>a else None
 index=[]
 for fid,slug,flt,why in FX:
     qs="range=30d"+"".join(f"&{k}={v}" for k,v in flt.items())
@@ -28,7 +36,9 @@ for fid,slug,flt,why in FX:
         with urllib.request.urlopen(f"https://openchainbench.com/api/series/{slug}?{qs}",timeout=60) as r: w=json.load(r)
     except Exception as e:
         print(fid,"FAIL",e); continue
-    provs=[dict(p,values=bridge(p["values"])) for p in w["providers"]]
+    win=window([p["values"] for p in w["providers"]]) or (0,len(w["timestamps"])-1)
+    w["timestamps"]=w["timestamps"][win[0]:win[1]+1]
+    provs=[dict(p,values=bridge(p["values"][win[0]:win[1]+1])) for p in w["providers"]]
     provs=[p for p in provs if p["values"]]
     w["providers"]=provs
     json.dump(w,open(f"lab/fixtures/{fid}.json","w"))

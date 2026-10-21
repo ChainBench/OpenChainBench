@@ -3,10 +3,10 @@ import { loadFont, fontFamily } from "@remotion/google-fonts/InterTight";
 import { z } from "zod";
 import type { BenchPayload } from "../BarChartRace/mock-data";
 import { BenchFrame, stepFloat } from "../lib/bench-frame";
-import { rankTable, smoothRank } from "../lib/rank";
+import { stableRanks, swapRank, readingsFor, crossingFades } from "../lib/rank";
 import { themeFor } from "../lib/theme";
 import { FilmOverlay, kenBurnsScale } from "../lib/cinematic";
-import { easeOutCubic, remap } from "../lib/easing";
+import { easeOutCubic, easeInOutCubic, remap } from "../lib/easing";
 import { ProviderChip } from "../lib/provider-chip";
 import { CrownIcon, LeaderCrown } from "../lib/leader-crown";
 import { formatValue } from "../lib/formatters";
@@ -54,72 +54,72 @@ export const DonutRace: React.FC<DonutRaceProps> = ({ theme: mode, bench }) => {
   const idx = stepFloat(frame, bench.timestamps.length, durationInFrames);
   const intIdx = Math.min(Math.floor(idx), bench.timestamps.length - 1);
 
-  // Each provider's "share" at the current step. For lower-is-better metrics
-  // we invert (smaller value = bigger share) so the donut reads "leader has
-  // the largest slice". We keep the raw measurement around too so the
-  // spotlight + legend can show "47 chains · 28.4%" — % alone is abstract.
+  const last = bench.timestamps.length - 1;
+  const lo = Math.min(intIdx, last), hi = Math.min(lo + 1, last), frac = idx - lo;
+  const fps = Math.max(2, (durationInFrames - 75) / Math.max(1, bench.timestamps.length));
+  // Each provider's "share" at the current step, interpolated between
+  // readings (v26 read the integer step, so every slice jumped six times
+  // a second). For lower-is-better metrics we invert (smaller value =
+  // bigger share) so the donut reads "leader has the largest slice".
+  const shareOf = (v: number) => (bench.higherIsBetter ? v : 1000 / Math.max(1, v));
   const slices = bench.providers.map((p) => {
-    const raw = p.values[intIdx];
-    const share = bench.higherIsBetter ? raw : 1000 / Math.max(1, raw);
-    return {
-      slug: p.slug,
-      name: p.name,
-      color: p.color,
-      logo: p.logo,
-      share,
-      raw,
-    };
+    const raw = p.values[lo] + (p.values[hi] - p.values[lo]) * frac;
+    return { slug: p.slug, name: p.name, color: p.color, logo: p.logo, share: shareOf(raw), raw };
   });
   const total = slices.reduce((s, x) => s + x.share, 0);
-  const sorted = [...slices].sort((a, b) => b.share - a.share);
-  // Legend rows sit at a continuous rank: re-sorting each reading moved a
-  // row one slot (63 px) in a single frame (lab motion pass, Maestro).
-  const legendRanks = rankTable(bench.providers.map((p) => p.values), true);
-  const legendFps = Math.max(2, (durationInFrames - 75) / Math.max(1, bench.timestamps.length));
-  const legendPos = new Map(bench.providers.map((p, j) => [p.slug, smoothRank(legendRanks, j, idx, legendFps)]));
-  const legendRows = [...slices]
-    .sort((a, b) => legendPos.get(a.slug)! - legendPos.get(b.slug)!)
-    .filter((s) => legendPos.get(s.slug)! < 8);
-
-  // Fan-out timeline: each slice has a 30-frame reveal staggered by 12 frames
-  const FAN_START = 30;
-  const FAN_STEP = 18;
-  const FAN_REVEAL = 36;
-
-  // Spotlight cycle in the last ~6s: top 3 providers each get ~50 frames in
-  // the centre label.
-  const SPOTLIGHT_START = 240;
-  const SPOTLIGHT_PER = 50;
-  const spotlightIdx = Math.max(
-    0,
-    Math.min(2, Math.floor((frame - SPOTLIGHT_START) / SPOTLIGHT_PER)),
+  // Ranks change only on an overtake that holds, each change one glide.
+  const ranks = stableRanks(
+    bench.providers.map((p) => p.values.map(shareOf)),
+    true,
+    readingsFor(0.4, fps),
+    0.01,
   );
+  const legendPos = new Map(bench.providers.map((p, j) => [p.slug, swapRank(ranks, j, idx, fps)]));
+  const rankNow = (slug: string) => legendPos.get(slug)!;
+  const fades = crossingFades(ranks, idx, bench.providers.map((p) => legendPos.get(p.slug)!), fps);
+  const fadeOf = new Map(bench.providers.map((p, j) => [p.slug, fades[j]]));
+  const sorted = [...slices].sort((a, b) => rankNow(a.slug) - rankNow(b.slug));
+  const legendRows = sorted.filter((s) => rankNow(s.slug) < 8);
+
+  // Timeline scaled to the clip: the fan takes the first 18%, the centre
+  // spotlight walks the top three over the last 45%. v26 used fixed frame
+  // numbers, so a 10 s clip cut the spotlight short and a 30 s clip sat on
+  // a still donut for 15 s.
+  const D = durationInFrames;
+  const FAN_START = Math.round(D * 0.04);
+  const FAN_SPAN = Math.round(D * 0.18);
+  const SPOTLIGHT_START = Math.round(D * 0.5);
+  const SPOTLIGHT_PER = Math.max(30, Math.round((D * 0.45) / 3));
+  const spotT = (frame - SPOTLIGHT_START) / SPOTLIGHT_PER;
+  const spotlightIdx = frame < SPOTLIGHT_START ? 0 : Math.max(0, Math.min(2, Math.floor(spotT)));
   const spotlight = sorted[spotlightIdx] ?? sorted[0];
-  const spotlightFade = remap(
-    frame - SPOTLIGHT_START - spotlightIdx * SPOTLIGHT_PER,
-    0,
-    8,
-    0,
-    1,
-    easeOutCubic,
-  );
+  // Fade in at the start of each turn and out before the next one, so the
+  // centre never hard-cuts from one name to another.
+  const inTurn = frame < SPOTLIGHT_START ? remap(frame, FAN_START + FAN_SPAN * 0.6, FAN_START + FAN_SPAN, 0, 1, easeOutCubic) : spotT - spotlightIdx;
+  const spotlightFade = frame < SPOTLIGHT_START
+    ? inTurn
+    : Math.min(remap(inTurn, 0, 0.12, 0, 1, easeOutCubic), spotlightIdx === 2 ? 1 : remap(inTurn, 0.88, 1, 1, 0, easeInOutCubic));
+  const spotlightLift = (1 - spotlightFade) * 10;
 
-  // Build slice paths
+  // Slices keep one order for the whole clip (mean share), so a change of
+  // leader grows and shrinks slices instead of reshuffling the ring.
+  const meanShare = (j: number) => bench.providers[j].values.reduce((s, v) => s + shareOf(v), 0) / Math.max(1, bench.providers[j].values.length);
+  const ringOrder = bench.providers.map((_, j) => j).sort((a, b) => meanShare(b) - meanShare(a));
+  const n = Math.max(1, ringOrder.length);
+  // A slow quarter turn over the clip keeps the ring alive.
+  const spin = remap(frame, 0, D, -10, 14);
   let cursor = -Math.PI / 2;
-  const arcs = sorted.map((s, i) => {
+  const arcs = ringOrder.map((j, i) => {
+    const s = slices[j];
     const angle = (s.share / total) * Math.PI * 2;
     const a0 = cursor;
     const a1 = cursor + angle;
     cursor = a1;
-    const reveal = remap(
-      frame,
-      FAN_START + i * FAN_STEP,
-      FAN_START + i * FAN_STEP + FAN_REVEAL,
-      0,
-      1,
-      easeOutCubic,
-    );
-    return { ...s, a0, a1, reveal, idx: i };
+    const at = FAN_START + (i * FAN_SPAN * 0.5) / n;
+    const reveal = remap(frame, at, at + FAN_SPAN * 0.5, 0, 1, easeInOutCubic);
+    // The leader's slice stands out of the ring, eased with its rank.
+    const pop = Math.max(0, 1 - rankNow(s.slug));
+    return { ...s, a0, a1, reveal, pop };
   });
 
   return (
@@ -154,22 +154,31 @@ export const DonutRace: React.FC<DonutRaceProps> = ({ theme: mode, bench }) => {
         </defs>
         {/* Subtle entrance rotation of the whole donut: -8° → 0° over 30 frames */}
         <g
-          transform={`rotate(${remap(frame, 0, 30, -8, 0, easeOutCubic)} ${CENTRE_X} ${CENTRE_Y})`}
+          transform={`rotate(${spin} ${CENTRE_X} ${CENTRE_Y})`}
         >
           {arcs.map((a) => {
             const a1eff = a.a0 + (a.a1 - a.a0) * a.reveal;
             if (a.reveal <= 0.001) return null;
-            const isLeader = a.idx === 0;
+            const mid = (a.a0 + a1eff) / 2;
+            const off = 14 * easeInOutCubic(a.pop);
             return (
-              <path
-                key={a.slug}
-                d={donutPath(CENTRE_X, CENTRE_Y, R_OUTER, R_INNER, a.a0, a1eff)}
-                fill={a.color}
-                stroke={t.background}
-                strokeWidth={4}
-                strokeLinejoin="round"
-                filter={isLeader ? "url(#leader-glow)" : undefined}
-              />
+              <g key={a.slug} transform={`translate(${Math.cos(mid) * off} ${Math.sin(mid) * off})`}>
+                {a.pop > 0.01 && (
+                  <path
+                    d={donutPath(CENTRE_X, CENTRE_Y, R_OUTER, R_INNER, a.a0, a1eff)}
+                    fill={a.color}
+                    opacity={0.55 * a.pop}
+                    filter="url(#leader-glow)"
+                  />
+                )}
+                <path
+                  d={donutPath(CENTRE_X, CENTRE_Y, R_OUTER, R_INNER, a.a0, a1eff)}
+                  fill={a.color}
+                  stroke={t.background}
+                  strokeWidth={4}
+                  strokeLinejoin="round"
+                />
+              </g>
             );
           })}
         </g>
@@ -193,6 +202,7 @@ export const DonutRace: React.FC<DonutRaceProps> = ({ theme: mode, bench }) => {
           width: 400,
           textAlign: "center",
           opacity: spotlightFade,
+          transform: `translateY(${spotlightLift}px)`,
           fontFamily,
         }}
       >
@@ -263,16 +273,16 @@ export const DonutRace: React.FC<DonutRaceProps> = ({ theme: mode, bench }) => {
         {legendRows.map((s) => {
           const pos = legendPos.get(s.slug)!;
           const i = Math.round(pos);
-          // Crossing rows: the one moving down fades behind the one above.
-          let gapAbove = Infinity;
-          for (const [slug, q] of legendPos) if (slug !== s.slug && pos - q >= 0 && pos - q < gapAbove) gapAbove = pos - q;
-          const crossing = gapAbove < 1 ? 0.25 + 0.75 * gapAbove : 1;
+          // The row going down steps back while two rows pass.
+          const rise = swapRank(ranks, bench.providers.findIndex((p) => p.slug === s.slug), idx - 0.05, fps) - pos;
+          const crossing = fadeOf.get(s.slug) ?? 1;
           // Per-row staggered fade-in instead of one block opacity
-          const rowFade = remap(frame, 30 + i * 8, 70 + i * 8, 0, 1, easeOutCubic);
-          // Highlight the row of the current spotlight provider; dim the rest
+          const rowFade = remap(frame, FAN_START + i * 6, FAN_START + 30 + i * 6, 0, 1, easeOutCubic);
+          // Highlight the row of the current spotlight provider; dim the
+          // rest, eased in and out with the spotlight itself.
           const spotlightActive = frame >= SPOTLIGHT_START;
-          const isSpotlit = spotlightActive && i === spotlightIdx;
-          const dim = spotlightActive && !isSpotlit ? 0.45 : 1;
+          const isSpotlit = spotlightActive && s.slug === spotlight?.slug;
+          const dim = spotlightActive && !isSpotlit ? 1 - 0.5 * Math.min(1, (frame - SPOTLIGHT_START) / 15) : 1;
           return (
           <div
             key={s.slug}
@@ -286,7 +296,8 @@ export const DonutRace: React.FC<DonutRaceProps> = ({ theme: mode, bench }) => {
               gap: 14,
               height: 62,
               borderBottom: `1px solid ${t.rule}`,
-              opacity: rowFade * dim * Math.min(1, 8 - pos) * crossing,
+              opacity: rowFade * dim * Math.max(0, Math.min(1, (7.5 - pos) * 2)) * crossing,
+              zIndex: rise > 1e-4 ? 20 : 10,
               transform: `translateY(${(1 - rowFade) * 12}px)`,
             }}
           >

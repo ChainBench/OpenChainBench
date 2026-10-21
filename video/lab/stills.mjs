@@ -9,7 +9,7 @@ import path from "node:path";
 
 const [fxDir, outDir, raceSecArg] = process.argv.slice(2);
 const raceSeconds = Number(raceSecArg ?? 12);
-export const VIEWS = ["BarChartRace", "TimeSeriesRace", "DistributionRace", "DonutRace", "CountPodium"];
+export const VIEWS = ["BarChartRace", "TimeSeriesRace", "DonutRace", "CountPodium"];
 const CONC = Number(process.env.CONC ?? 12);
 // Same shapes production renders (server.mjs FORMATS).
 const FORMATS = { landscape: { width: 1920, height: 1080 }, short: { width: 1080, height: 1920 } };

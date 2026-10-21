@@ -13,7 +13,7 @@ import path from "node:path";
 
 const [fxDir, outDir, raceSecArg] = process.argv.slice(2);
 const raceSeconds = Number(raceSecArg ?? 12);
-const VIEWS = ["BarChartRace", "TimeSeriesRace", "DistributionRace", "DonutRace", "CountPodium"];
+const VIEWS = ["BarChartRace", "TimeSeriesRace", "DonutRace", "CountPodium"];
 const FORMATS = { landscape: { width: 1920, height: 1080 }, short: { width: 1080, height: 1920 } };
 const FORMAT = process.env.FORMAT ?? "landscape";
 const { width, height } = FORMATS[FORMAT];

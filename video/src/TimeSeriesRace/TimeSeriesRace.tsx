@@ -10,6 +10,8 @@ import { easeOutCubic, remap } from "../lib/easing";
 import { formatValue, formatTick, unitAxisLabel } from "../lib/formatters";
 import { ProviderChip } from "../lib/provider-chip";
 import { CrownIcon } from "../lib/leader-crown";
+import { stableRanks, readingsFor } from "../lib/rank";
+import { easeInOutCubic } from "../lib/easing";
 
 loadFont("normal", { weights: ["500", "600", "700", "800"] });
 
@@ -82,9 +84,15 @@ export const TimeSeriesRace: React.FC<TimeSeriesRaceProps> = ({
   // ── Y-axis scale (shared across all providers) ──────────────────────
   // Linear when values live in the same order of magnitude; log10 when
   // max/min > ~20 so slow outliers don't flatten everyone else.
-  const allValues = bench.providers.flatMap((p) => p.values);
-  const rawMin = Math.min(...allValues);
-  const rawMax = Math.max(...allValues);
+  // The domain follows the bulk of the readings (2nd to 98th percentile),
+  // not the extremes: on perp-fees two spikes (0.0002% and 0.79%) set a
+  // 3.6-decade axis and nine venues between 0.03% and 0.07% shared a
+  // 70 px band, lines on top of each other. Readings outside the domain
+  // ride the edge of the plot (clipped), labels included.
+  const allValues = bench.providers.flatMap((p) => p.values).filter(Number.isFinite).sort((a, b) => a - b);
+  const pct = (q: number) => allValues[Math.max(0, Math.min(allValues.length - 1, Math.round(q * (allValues.length - 1))))];
+  const rawMin = pct(0.02);
+  const rawMax = pct(0.98);
   // ~20× spread = mixed orders of magnitude. Threshold sits at 15 so the
   // canonical bug case (800 ms vs 15 000 ms, ratio 18.75) flips to log.
   const useLog = rawMin > 0 && rawMax / rawMin > 15;
@@ -111,24 +119,26 @@ export const TimeSeriesRace: React.FC<TimeSeriesRaceProps> = ({
   const logYMin = useLog ? Math.log10(yMin) : 0;
   const logYMax = useLog ? Math.log10(yMax) : 1;
   const yPos = (v: number): number => {
+    const c = Math.min(yMax, Math.max(yMin, v));
     if (useLog) {
-      const safe = Math.max(v, yMin);
-      const frac = (Math.log10(safe) - logYMin) / (logYMax - logYMin);
+      const frac = (Math.log10(c) - logYMin) / (logYMax - logYMin);
       return CHART_TOP + chartH * (1 - frac);
     }
-    return CHART_TOP + chartH * (1 - (v - yMin) / (yMax - yMin));
+    return CHART_TOP + chartH * (1 - (c - yMin) / (yMax - yMin));
   };
 
   const yTicks = useLog ? logNiceTicks(yMin, yMax) : niceTicks(yMin, yMax, 5);
 
   // Find current leader (lowest value for lower-is-better) at this step
   const intIdx = Math.min(Math.floor(idx), bench.timestamps.length - 1);
-  const sortedByCurrent = [...bench.providers].sort((a, c) =>
-    bench.higherIsBetter
-      ? c.values[intIdx] - a.values[intIdx]
-      : a.values[intIdx] - c.values[intIdx],
-  );
-  const leader = sortedByCurrent[0];
+  const framesPerStep = Math.max(2, (durationInFrames - 75) / Math.max(1, bench.timestamps.length));
+  const series = bench.providers.map((p) => p.values);
+  // Leader by a rank that only changes on an overtake that holds: the
+  // pill used to flip names on every near tie.
+  const leaderRanks = stableRanks(series, bench.higherIsBetter, readingsFor(0.4, framesPerStep), 0.01);
+  const leader = bench.providers[leaderRanks[intIdx].indexOf(0)] ?? bench.providers[0];
+  // Screen order of the labels (top = highest value), same stability.
+  const screenRanks = stableRanks(series, true, readingsFor(0.4, framesPerStep), 0.01);
 
   // Per-line entrance fade so lines materialise rather than blinking in
   const lineFade = remap(frame, 0, 15, 0, 1, easeOutCubic);
@@ -184,13 +194,15 @@ export const TimeSeriesRace: React.FC<TimeSeriesRaceProps> = ({
   // chip and name, when 10+ providers share the chart height (rpc-cluster
   // had twelve labels on 540px and they sat on top of each other).
   const labelRoom = CHART_BOTTOM - CHART_TOP - 16;
-  const pitch = Math.max(30, Math.min(56, labelRoom / Math.max(1, bench.providers.length - 1)));
-  const chipSize = pitch >= 48 ? 36 : 26;
+  // The stack always fits: a 30 px floor needed 570 px for 20 chains on a
+  // 524 px plot, and the overflow piled the bottom labels on each other.
+  const pitch = Math.min(56, labelRoom / Math.max(1, bench.providers.length - 1));
+  const chipSize = pitch >= 48 ? 36 : pitch >= 32 ? 26 : 20;
   // Label positions averaged over +-6 frames: the collision pass re-stacks
   // labels when two lines cross, and unsmoothed they jumped up to 475 px
   // in one frame (lab motion pass, perp-fees-bps).
   const labelHalf = 6 / Math.max(2, (durationInFrames - 75) / Math.max(1, bench.timestamps.length));
-  const nameSize = pitch >= 48 ? 20 : 17;
+  const nameSize = pitch >= 48 ? 20 : pitch >= 32 ? 17 : 16;
 
   return (
     <AbsoluteFill
@@ -304,31 +316,58 @@ export const TimeSeriesRace: React.FC<TimeSeriesRaceProps> = ({
 
         {/* Each line drawn as a polyline up to the current step. Leader
             gets a slightly heavier stroke; head dot pulses gently. */}
-        {bench.providers.map((p) => {
+        <defs>
+          <clipPath id="plot-clip">
+            <rect x={CHART_LEFT - 8} y={CHART_TOP - 8} width={chartW + 16} height={chartH + 16} />
+          </clipPath>
+          <filter id="line-glow" x="-10%" y="-10%" width="120%" height="120%">
+            <feGaussianBlur stdDeviation="6" result="b" />
+            <feMerge>
+              <feMergeNode in="b" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+          <linearGradient id="leader-area" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={leader.color} stopOpacity={0.22} />
+            <stop offset="100%" stopColor={leader.color} stopOpacity={0} />
+          </linearGradient>
+        </defs>
+        {/* The leader's area fill sits under every line. */}
+        {(() => {
+          const head = headFor(leader, idx);
+          if (!head) return null;
+          return (
+            <path
+              d={`${pathFor(leader, idx)} L ${head.x.toFixed(2)} ${CHART_BOTTOM} L ${CHART_LEFT} ${CHART_BOTTOM} Z`}
+              fill="url(#leader-area)"
+              opacity={lineFade}
+              clipPath="url(#plot-clip)"
+            />
+          );
+        })()}
+        {/* Leader drawn last, so it reads on top of the pack. */}
+        {[...bench.providers.filter((p) => p.slug !== leader.slug), leader].map((p) => {
           const head = headFor(p, idx);
           if (!head) return null;
           const path = pathFor(p, idx);
           const isLeader = p.slug === leader.slug;
-          const pulse = 1 + Math.sin(frame * 0.22) * 0.18;
+          // One expanding ring a second from the head of each line.
+          const ring = (frame % 30) / 30;
           return (
-            <g key={p.slug} opacity={lineFade}>
+            <g key={p.slug} opacity={lineFade} clipPath="url(#plot-clip)">
+              {/* Dark under-stroke: where lines cross, each keeps its edge. */}
+              <path d={path} fill="none" stroke={t.background} strokeWidth={isLeader ? 10 : 8} strokeLinecap="round" strokeLinejoin="round" opacity={0.85} />
               <path
                 d={path}
                 fill="none"
                 stroke={p.color}
-                strokeWidth={isLeader ? 4.5 : 3.5}
+                strokeWidth={isLeader ? 6 : 4}
                 strokeLinecap="round"
                 strokeLinejoin="round"
+                filter={isLeader ? "url(#line-glow)" : undefined}
               />
-              {/* Head dot — sits behind the chip but visible as a small pulse */}
-              <circle
-                cx={head.x}
-                cy={head.y}
-                r={6 * pulse}
-                fill={p.color}
-                stroke={t.background}
-                strokeWidth={2}
-              />
+              <circle cx={head.x} cy={head.y} r={8 + 16 * ring} fill="none" stroke={p.color} strokeWidth={2} opacity={(1 - ring) * (isLeader ? 0.7 : 0.4)} />
+              <circle cx={head.x} cy={head.y} r={isLeader ? 9 : 7} fill={p.color} stroke={t.background} strokeWidth={2.5} />
             </g>
           );
         })}
@@ -343,14 +382,14 @@ export const TimeSeriesRace: React.FC<TimeSeriesRaceProps> = ({
         name readable against whichever line colour it briefly crosses.
        */}
       <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
-        {smoothLabels(bench.providers, idx, headFor, CHART_TOP + 8, CHART_BOTTOM - 8, pitch, labelHalf, bench.timestamps.length - 1).map(
+        {smoothLabels(bench.providers, idx, headFor, CHART_TOP + 8, CHART_BOTTOM - 8, pitch, labelHalf, bench.timestamps.length - 1, screenRanks, framesPerStep).map(
           ({ p, x, y, anchorY, fade }) => (
             <div
               key={p.slug}
               style={{
                 position: "absolute",
                 left: x + 14,
-                top: y - 18,
+                top: y - Math.max(chipSize, nameSize * 1.2) / 2,
                 display: "flex",
                 alignItems: "center",
                 gap: 10,
@@ -538,88 +577,82 @@ function smoothLabels<P extends { slug: string }>(
   spacing: number,
   half: number,
   lastStep: number,
+  screenRanks: number[][],
+  framesPerStep: number,
 ): { p: P; x: number; y: number; anchorY: number; fade: number }[] {
-  const now = placeLabels(providers, at, headFor, minY, maxY, spacing);
-  // One sample per video frame across the +-6 frame window. Sampling every
-  // other frame aliased: labels alternated 8 px up and down (Paradex).
+  // Each label's anchor is its head averaged over +-6 frames (one sample
+  // per frame: every other frame aliased, labels bobbed 8 px).
   const N = 12;
-  const sum = new Map<string, { y: number; n: number }>();
-  for (let k = 0; k <= N; k++) {
-    // Clamped to the series: past the last reading a head has no value
-    // and the average went NaN, which stacked every label at the top.
-    const s = Math.max(0, Math.min(lastStep, at - half + (2 * half * k) / N));
-    for (const l of placeLabels(providers, s, headFor, minY, maxY, spacing)) {
-      const e = sum.get(l.p.slug) ?? { y: 0, n: 0 };
-      e.y += l.y;
-      e.n += 1;
-      sum.set(l.p.slug, e);
+  const anchors = providers.map((p) => {
+    let y = 0, n = 0;
+    for (let k = 0; k <= N; k++) {
+      // Clamped to the series: past the last reading a head has no value.
+      const h = headFor(p, Math.max(0, Math.min(lastStep, at - half + (2 * half * k) / N)));
+      if (h) { y += h.y; n++; }
+    }
+    const h = headFor(p, at);
+    return h && n ? { p, x: h.x, y: y / n, anchorY: h.y } : null;
+  });
+  // The stack keeps a stable top-to-bottom order (screenRanks only change
+  // on an overtake that holds); a change of order is one eased slide
+  // between the two stacks. v26 sorted by y every frame and faded labels
+  // that came close, which left names at 25% opacity on crowded charts.
+  const placeIn = (order: number[]) => {
+    const placed = order.map((j) => anchors[j]).filter(Boolean).map((a) => ({ ...a! }));
+    stackInOrder(placed, minY, maxY, spacing);
+    return new Map(placed.map((l) => [l.p.slug, l.y]));
+  };
+  const orderAt = (i: number) => {
+    const r = screenRanks[Math.max(0, Math.min(screenRanks.length - 1, i))];
+    return r.map((_, j) => j).sort((a, b) => r[a] - r[b]);
+  };
+  // y = stack in the first order + every later change of order as one
+  // eased step (place(new) - place(old)), all with the current heads.
+  // Each term is continuous, so overlapping changes chain smoothly; the
+  // v27 draft blended only the last two orders and jumped (Taiko, 160 px)
+  // when a change began before the previous one had landed.
+  const SWAP = 16;
+  const y = placeIn(orderAt(0));
+  let prev = y;
+  const lastI = Math.min(screenRanks.length - 1, Math.floor(at + SWAP / framesPerStep) + 1);
+  for (let c = 1; c <= lastI; c++) {
+    if (screenRanks[c].every((r, j) => r === screenRanks[c - 1][j])) continue;
+    const startF = Math.max(0, c * framesPerStep - SWAP);
+    const e = easeInOutCubic((at * framesPerStep - startF) / SWAP);
+    const next = placeIn(orderAt(c));
+    if (e > 0) for (const [slug, v] of next) y.set(slug, (y.get(slug) ?? v) + (v - (prev.get(slug) ?? v)) * e);
+    prev = next;
+  }
+  // While two labels pass each other, the one moving down the order
+  // steps back (same rule as crossing bars) so the names never read on
+  // top of each other.
+  const rankNow = screenRanks[Math.min(screenRanks.length - 1, lastI)];
+  const out = anchors.filter(Boolean).map((a) => ({ ...a!, y: y.get(a!.p.slug) ?? a!.y, fade: 1 }));
+  for (const l of out) {
+    const jl = providers.indexOf(l.p);
+    for (const o of out) {
+      if (o === l || Math.abs(o.y - l.y) >= spacing * 0.8) continue;
+      const jo = providers.indexOf(o.p);
+      // l is below o in the order it is heading to, but still level with it.
+      if (rankNow[jl] > rankNow[jo]) l.fade = Math.min(l.fade, 0.3 + 0.7 * (Math.abs(o.y - l.y) / (spacing * 0.8)));
     }
   }
-  // Not re-stacked: re-sorting nearly equal smoothed values flipped two
-  // labels back and forth every frame (one pitch, l2-blocktime). While two
-  // labels cross they sit closer than the pitch; the render fades the
-  // lower one (see `fade` below), the way crossing bars do.
-  const out = now.map((l) => {
-    const e = sum.get(l.p.slug);
-    return e ? { ...l, y: e.y / e.n } : l;
-  });
-  return out.map((l) => {
-    let gap = Infinity;
-    for (const o of out) if (o !== l && l.y - o.y >= 0 && l.y - o.y < gap) gap = l.y - o.y;
-    return { ...l, fade: gap < spacing ? 0.25 + 0.75 * (gap / spacing) : 1 };
-  });
+  return out;
 }
 
-/** Sort by y and push labels apart to at least `spacing`, inside [minY, maxY]. */
-function resolveStack(placed: { y: number }[], minY: number, maxY: number, MIN_SPACING: number) {
-  placed.sort((a, b) => a.y - b.y);
-  // Downward pass: resolve overlaps.
-  for (let i = 1; i < placed.length; i++) {
-    const prev = placed[i - 1];
-    const cur = placed[i];
-    if (cur.y < prev.y + MIN_SPACING) {
-      cur.y = prev.y + MIN_SPACING;
-    }
+/** Push labels apart to at least `spacing` keeping the given order, inside [minY, maxY]. */
+function stackInOrder(placed: { y: number }[], minY: number, maxY: number, spacing: number) {
+  for (let k = 1; k < placed.length; k++) {
+    if (placed[k].y < placed[k - 1].y + spacing) placed[k].y = placed[k - 1].y + spacing;
   }
-  // Bottom-up clamp: keep the whole stack on the canvas.
-  if (placed.length > 0) {
-    const last = placed[placed.length - 1];
-    if (last.y > maxY) last.y = maxY;
-    for (let i = placed.length - 2; i >= 0; i--) {
-      if (placed[i].y > placed[i + 1].y - MIN_SPACING) {
-        placed[i].y = placed[i + 1].y - MIN_SPACING;
-      }
-    }
-    // If the upward pass overshot the top, nudge back down within the
-    // available room (degenerate case: more labels than vertical space).
-    if (placed[0].y < minY) {
-      const shift = minY - placed[0].y;
-      const room = maxY - placed[placed.length - 1].y;
-      const apply = Math.min(shift, Math.max(0, room));
-      for (const item of placed) item.y += apply;
-    }
+  if (!placed.length) return;
+  const lastL = placed[placed.length - 1];
+  if (lastL.y > maxY) lastL.y = maxY;
+  for (let k = placed.length - 2; k >= 0; k--) {
+    if (placed[k].y > placed[k + 1].y - spacing) placed[k].y = placed[k + 1].y - spacing;
   }
-}
-
-function placeLabels<P extends { slug: string }>(
-  providers: P[],
-  at: number,
-  headFor: (p: P, at: number) => { x: number; y: number } | null,
-  minY: number = -Infinity,
-  maxY: number = Infinity,
-  spacing: number = 56,
-): { p: P; x: number; y: number; anchorY: number }[] {
-  // Chip is 36px tall; text label sits next to it. 56px = chip + ~20px
-  // breathing room so vertically stacked chips don't crowd each other
-  // when 4-5 providers cluster at similar y (e.g. bottom of the chart
-  // when fees / latency all converge close to zero).
-  const MIN_SPACING = spacing;
-  const placed: { p: P; x: number; y: number; anchorY: number }[] = [];
-  for (const p of providers) {
-    const head = headFor(p, at);
-    if (!head) continue;
-    placed.push({ p, x: head.x, y: head.y, anchorY: head.y });
+  if (placed[0].y < minY) {
+    const shift = Math.min(minY - placed[0].y, Math.max(0, maxY - lastL.y));
+    for (const l of placed) l.y += shift;
   }
-  resolveStack(placed, minY, maxY, MIN_SPACING);
-  return placed;
 }

@@ -30,7 +30,24 @@ export const BrandText: React.FC<{ theme: "light" | "dark" }> = ({ theme }) => {
   // of weight, like the letters are settling onto a baseline.
   const drift = remap(frame, TEXT_IN_START, TEXT_IN_END, 12, 0, easeOutCubic);
 
-  const color = theme === "dark" ? "#ffffff" : "#0a0b0d";
+  // Brushed steel: a cool grey gradient clipped to the letters, and a
+  // highlight band that sweeps across them once, after the mark's turn.
+  const sweep = remap(frame, 44, 76, -60, 160, easeInOutCubic);
+  const steel = theme === "dark"
+    ? "linear-gradient(180deg, #ffffff 0%, #e4e7ec 38%, #9aa1ac 52%, #c9ced6 70%, #f1f3f6 100%)"
+    : "linear-gradient(180deg, #3a3f47 0%, #15181d 50%, #4b515b 100%)";
+  const shine = `linear-gradient(100deg, transparent ${sweep - 14}%, rgba(255,255,255,0.95) ${sweep}%, transparent ${sweep + 14}%)`;
+  const letters: React.CSSProperties = {
+    fontFamily,
+    fontWeight: 800,
+    fontSize: isPortrait ? 88 : 132,
+    letterSpacing: "-0.03em",
+    textAlign: "center",
+    lineHeight: 1.1,
+    WebkitBackgroundClip: "text",
+    backgroundClip: "text",
+    color: "transparent",
+  };
 
   return (
     <div
@@ -40,26 +57,17 @@ export const BrandText: React.FC<{ theme: "light" | "dark" }> = ({ theme }) => {
         display: "flex",
         alignItems: "flex-end",
         justifyContent: "center",
-        // Portrait: the sphere sits centered; park the wordmark just under
+        // Portrait: the mark sits centered; park the wordmark just under
         // it (~21% from the bottom) instead of pinned to the very bottom.
-        paddingBottom: isPortrait ? Math.round(height * 0.21) : 180,
+        paddingBottom: isPortrait ? Math.round(height * 0.21) : 150,
         pointerEvents: "none",
       }}
     >
-      <div
-        style={{
-          opacity,
-          transform: `translateY(${drift}px)`,
-          fontFamily,
-          fontWeight: 800,
-          fontSize: isPortrait ? 88 : 132,
-          letterSpacing: "-0.03em",
-          color,
-          textAlign: "center",
-          lineHeight: 1,
-        }}
-      >
-        OpenChainBench
+      <div style={{ position: "relative", opacity, transform: `translateY(${drift}px)` }}>
+        <div style={{ ...letters, backgroundImage: steel, filter: "drop-shadow(0 6px 18px rgba(0,0,0,0.6))" }}>OpenChainBench</div>
+        <div aria-hidden style={{ ...letters, position: "absolute", inset: 0, backgroundImage: shine }}>
+          OpenChainBench
+        </div>
       </div>
     </div>
   );

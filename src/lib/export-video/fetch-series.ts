@@ -61,6 +61,23 @@ export function bridgeGaps(values: (number | null)[]): number[] {
   return out;
 }
 
+/** Window where at least half the providers report: [start, end], or null
+ *  when no bucket qualifies. A bench that began mid-range (or a daily
+ *  series whose first rollup lands 19 days in) otherwise opens the video
+ *  on a flat line copied back from the first real reading, which reads as
+ *  stale data for days. */
+export function coverageWindow(series: (number | null)[][]): [number, number] | null {
+  const steps = Math.max(0, ...series.map((v) => v.length));
+  const need = Math.max(1, Math.ceil(series.length / 2));
+  const ok = (i: number) => series.filter((v) => v[i] != null).length >= need;
+  let start = 0;
+  while (start < steps && !ok(start)) start++;
+  if (start === steps) return null;
+  let end = steps - 1;
+  while (end > start && !ok(end)) end--;
+  return [start, end];
+}
+
 export async function fetchBenchSeries(
   slug: string,
   range: RangeId,
@@ -81,11 +98,14 @@ export async function fetchBenchSeries(
     throw new Error(`/api/series failed (${res.status}): ${text || res.statusText}`);
   }
   const wire: WireBenchPayload = await res.json();
+  const win = coverageWindow(wire.providers.map((p) => p.values));
+  // Keep at least two buckets: a race needs a start and an end.
+  const [a, b] = win && win[1] > win[0] ? win : [0, wire.timestamps.length - 1];
   return {
     ...wire,
-    providers: wire.providers.map((p) => ({
-      ...p,
-      values: bridgeGaps(p.values),
-    })),
+    timestamps: wire.timestamps.slice(a, b + 1),
+    providers: wire.providers
+      .map((p) => ({ ...p, values: bridgeGaps(p.values.slice(a, b + 1)) }))
+      .filter((p) => p.values.length > 0),
   };
 }

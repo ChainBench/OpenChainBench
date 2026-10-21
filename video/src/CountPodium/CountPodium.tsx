@@ -9,16 +9,20 @@ import { easeOutCubic, remap } from "../lib/easing";
 import { ProviderChip } from "../lib/provider-chip";
 import { LeaderCrown } from "../lib/leader-crown";
 import { formatValue } from "../lib/formatters";
+import { stableRanks, swapRank, readingsFor, crossingFades } from "../lib/rank";
 
 loadFont("normal", { weights: ["500", "600", "700", "800"] });
 
 /**
- * Count podium — the final standings (latest reading) as three vertical
- * bars in podium order, landing bronze, silver, then gold with an
- * overshoot spring. Below the podium, a receipt of remaining ranks slides in.
+ * Count podium, v27. The three pedestals rise together, then the podium
+ * plays the timeline reading by reading: whoever holds 1st, 2nd and 3rd
+ * on that day stands on that step, and an overtake is a hop from one
+ * pedestal to the other. Ranks 4 and down run in a list beside it whose
+ * rows fit the provider count. The last reading holds with the crown.
  *
- * Best for higher-is-better single-count benches (network coverage, asset
- * coverage). Use MOCK_BENCH_COUNT for the cleanest read.
+ * v26 revealed the final standings bronze, silver, gold one after the
+ * other and never moved: viewers asked for the three at once and for the
+ * podium to follow the days.
  */
 
 export const COUNT_PODIUM_DURATION_FRAMES = 510;
@@ -33,217 +37,154 @@ export type CountPodiumProps = {
   bench: BenchPayload;
 };
 
-// Podium geometry
-// Portrait: podium centered on the full width with its baseline in the
-// upper-middle band; the "also tracked" receipt stacks below it instead
-// of in a right-hand column.
-function podiumGeom(width: number, height: number) {
+/** Pedestal order on screen, left to right: 2nd, 1st, 3rd. */
+const SLOT_OF_RANK = [1, 0, 2];
+const MEDAL = ["#facc15", "#cbd5e1", "#d97706"];
+const PEDESTAL_LABEL = ["1ST", "2ND", "3RD"];
+
+function podiumGeom(width: number, height: number, n: number) {
   const isPortrait = height > width;
-  return isPortrait
-    ? { BASELINE_Y: 1050, BAR_W: 200, BAR_GAP: 56,
-        PODIUM_BAND_LEFT: 0, PODIUM_BAND_W: width,
-        RECEIPT_TOP: 1190, RECEIPT_LEFT: 80, RECEIPT_W: width - 160 }
-    : { BASELINE_Y: 940, BAR_W: 220, BAR_GAP: 64,
-        PODIUM_BAND_LEFT: 80, PODIUM_BAND_W: 1200,
-        RECEIPT_TOP: 320, RECEIPT_LEFT: 1280, RECEIPT_W: 560 };
-}
-export const CountPodium: React.FC<CountPodiumProps> = ({
-  theme: mode,
-  bench,
-}) => {
-  const frame = useCurrentFrame();
-  const { fps, durationInFrames, width, height } = useVideoConfig();
-  const { BASELINE_Y, BAR_W, BAR_GAP, PODIUM_BAND_LEFT, PODIUM_BAND_W, RECEIPT_TOP, RECEIPT_LEFT, RECEIPT_W } = podiumGeom(width, height);
-  const t = themeFor(mode);
-  // A podium is a reveal of the final standings, so it reads the latest
-  // reading and the date stays on it. It used to follow the scrolling
-  // timeline: ranks changed mid-reveal and a provider jumped from one
-  // pedestal to another in a single frame (585 px, lab motion pass).
-  const idx = bench.timestamps.length - 1;
-  const latest = (v: number[]) => {
-    for (let i = v.length - 1; i >= 0; i--) if (Number.isFinite(v[i])) return v[i];
-    return NaN;
+  const withList = n > 3;
+  if (isPortrait) {
+    return {
+      isPortrait,
+      BASELINE_Y: withList ? 1060 : 1260,
+      BAR_W: 220,
+      BAR_GAP: 48,
+      BAND_LEFT: 0,
+      BAND_W: width,
+      HEIGHTS: [380, 300, 230],
+      LIST_TOP: 1200,
+      LIST_LEFT: 80,
+      LIST_W: width - 160,
+      LIST_BOTTOM: height - 280,
+    };
+  }
+  return {
+    isPortrait,
+    BASELINE_Y: 900,
+    BAR_W: 230,
+    BAR_GAP: 56,
+    // Without a list the podium takes the whole width.
+    BAND_LEFT: withList ? 80 : 0,
+    BAND_W: withList ? 1160 : width,
+    HEIGHTS: [360, 290, 220],
+    LIST_TOP: 330,
+    LIST_LEFT: 1280,
+    LIST_W: 560,
+    LIST_BOTTOM: 860,
   };
-  const enriched = bench.providers.map((p) => ({
-    ...p,
-    value: latest(p.values),
-  }));
-  const sorted = [...enriched].sort((a, b) =>
-    bench.higherIsBetter ? b.value - a.value : a.value - b.value,
+}
+
+export const CountPodium: React.FC<CountPodiumProps> = ({ theme: mode, bench }) => {
+  const frame = useCurrentFrame();
+  const { fps, durationInFrames: D, width, height } = useVideoConfig();
+  const t = themeFor(mode);
+  const n = bench.providers.length;
+  const G = podiumGeom(width, height, n);
+  const steps = bench.timestamps.length;
+  const last = Math.max(0, steps - 1);
+
+  // Timeline: pedestals rise together (4% to 16%), the days play until
+  // 82%, the last reading holds to the end with the crown.
+  const RISE = Math.round(D * 0.04);
+  const RACE_START = Math.round(D * 0.16);
+  const RACE_END = Math.round(D * 0.82);
+  const idx = remap(frame, RACE_START, RACE_END, 0, last);
+  const framesPerStep = Math.max(2, (RACE_END - RACE_START) / Math.max(1, last));
+
+  const lo = Math.floor(idx), hi = Math.min(lo + 1, last), frac = idx - lo;
+  const valueOf = (v: number[]) => {
+    const a = v[lo], b = v[hi];
+    if (Number.isFinite(a) && Number.isFinite(b)) return a + (b - a) * frac;
+    return Number.isFinite(a) ? a : b;
+  };
+  const ranks = stableRanks(
+    bench.providers.map((p) => p.values),
+    bench.higherIsBetter,
+    readingsFor(0.4, framesPerStep),
+    0.01,
   );
+  const rows = bench.providers.map((p, j) => ({
+    ...p,
+    value: valueOf(p.values),
+    pos: swapRank(ranks, j, idx, framesPerStep, 18),
+    // Positive while the row climbs.
+    rise: swapRank(ranks, j, idx - 0.05, framesPerStep, 18) - swapRank(ranks, j, idx, framesPerStep, 18),
+  }));
+  const fades = crossingFades(ranks, idx, rows.map((r) => r.pos), framesPerStep, 18);
+  const fadeOf = new Map(rows.map((r, j) => [r.slug, fades[j]]));
 
-  const podium = sorted.slice(0, 3); // [1st, 2nd, 3rd]
-  const receipt = sorted.slice(3, 8);
+  const pedestals = Math.min(3, n);
+  const totalW = pedestals * G.BAR_W + (pedestals - 1) * G.BAR_GAP;
+  const startX = G.BAND_LEFT + (G.BAND_W - totalW) / 2;
+  // With fewer than three providers the slots close up: two pedestals are
+  // [2nd, 1st], one is just the 1st.
+  const slotOf = (rank: number) => (pedestals === 3 ? SLOT_OF_RANK[rank] : pedestals === 2 ? [1, 0][rank] : 0);
+  const slotX = (rank: number) => startX + slotOf(rank) * (G.BAR_W + G.BAR_GAP);
+  // Continuous rank -> card x between two pedestals.
+  const cardX = (pos: number) => {
+    const r0 = Math.max(0, Math.min(pedestals - 1, Math.floor(pos)));
+    const r1 = Math.max(0, Math.min(pedestals - 1, r0 + 1));
+    const f = Math.max(0, Math.min(1, pos - r0));
+    return slotX(r0) + (slotX(r1) - slotX(r0)) * f;
+  };
+  const heightOf = (rank: number) => G.HEIGHTS[rank];
+  const cardTop = (pos: number) => {
+    const r0 = Math.max(0, Math.min(pedestals - 1, Math.floor(pos)));
+    const r1 = Math.max(0, Math.min(pedestals - 1, r0 + 1));
+    const f = Math.max(0, Math.min(1, pos - r0));
+    return G.BASELINE_Y - (heightOf(r0) + (heightOf(r1) - heightOf(r0)) * f);
+  };
 
-  // Landing frames: bronze first, then silver, then gold (drumroll).
-  // Proportional to the segment duration so a short race (raceSeconds*30,
-  // min 150 frames) still lands all three bars.
-  const LAND_BRONZE = Math.round(durationInFrames * 0.25);
-  const LAND_SILVER = Math.round(durationInFrames * 0.45);
-  const LAND_GOLD = Math.round(durationInFrames * 0.7); // anticipation pause before #1
-  const RECEIPT_START = Math.round(durationInFrames * 0.8);
+  // All pedestals at once, one spring.
+  const grow = spring({ frame: frame - RISE, fps, config: { damping: 14, stiffness: 120, mass: 0.9 }, durationInFrames: 36 });
+  const cardsIn = remap(frame, RISE + 16, RISE + 34, 0, 1, easeOutCubic);
+  const holdAt = RACE_END;
 
-  // Centre the three bars horizontally around 760 (left half of canvas)
-  const totalW = 3 * BAR_W + 2 * BAR_GAP;
-  const startX = PODIUM_BAND_LEFT + (PODIUM_BAND_W - totalW) / 2;
+  // List of ranks 4 and down: rows fit the band, as many as it holds.
+  const listN = Math.max(0, n - pedestals);
+  const listRoom = G.LIST_BOTTOM - G.LIST_TOP - 44;
+  const rowH = listN ? Math.max(34, Math.min(60, Math.floor(listRoom / listN))) : 0;
+  const listMax = rowH ? Math.floor(listRoom / rowH) : 0;
+  const k = rowH / 56;
 
-  // Mapping rank -> visual position. Standard podium = [2nd, 1st, 3rd] left
-  // to right (silver-gold-bronze), with gold tallest in the middle.
-  const visualOrder = [podium[1], podium[0], podium[2]]; // silver, gold, bronze
-  const visualRanks = [1, 0, 2];
-  const landFrames = [LAND_SILVER, LAND_GOLD, LAND_BRONZE];
-
-  // Medal accents — gold for #1, silver for #2, bronze for #3.
-  const MEDAL_TINT = ["#facc15", "#cbd5e1", "#d97706"]; // by rank 0..2
-  const PEDESTAL_LABEL = ["1ST", "2ND", "3RD"];
+  const gold = rows.reduce((a, b) => (b.pos < a.pos ? b : a), rows[0]);
 
   return (
-    <AbsoluteFill
-      style={{
-        background: t.background,
-        fontFamily,
-        transform: `scale(${kenBurnsScale(frame, durationInFrames)})`,
-      }}
-    >
-      <BenchFrame
-        bench={bench}
-        theme={t}
-        stepFloat={idx}
-        totalFrames={durationInFrames}
-      />
+    <AbsoluteFill style={{ background: t.background, fontFamily, transform: `scale(${kenBurnsScale(frame, D)})` }}>
+      <BenchFrame bench={bench} theme={t} stepFloat={idx} totalFrames={D} />
 
-      {/* Podium bars */}
-      {visualOrder.map((p, visualIdx) => {
-        if (!p) return null;
-        const rank = visualRanks[visualIdx];
-        const landFrame = landFrames[visualIdx];
-        const medal = MEDAL_TINT[rank];
-
-        // Spring growth on landing
-        const grow = spring({
-          frame: frame - landFrame,
-          fps,
-          config: { damping: 12, stiffness: 110, mass: 0.9 },
-          durationInFrames: 30,
-        });
-
-        const finalH = 400 - rank * 80; // gold tallest at 400, silver 320, bronze 240
-        const animH = finalH * grow;
-
-        const x = startX + visualIdx * (BAR_W + BAR_GAP);
-        const barY = BASELINE_Y - animH;
-        const isKing = rank === 0;
-
-        // Count-up of the value while the spring grows
-        const countProg = remap(frame, landFrame, landFrame + 30, 0, 1, easeOutCubic);
-        const displayValue = p.value * countProg;
-
-        // Screen-shake on landing: 6 frames of decaying 2-3px jitter
-        const shakeT = frame - landFrame;
-        const shakeActive = shakeT >= 0 && shakeT < 6;
-        const shakeDecay = shakeActive ? 1 - shakeT / 6 : 0;
-        const shakeX = shakeActive ? Math.sin(shakeT * 2.7) * 2.5 * shakeDecay : 0;
-        const shakeY = shakeActive ? Math.cos(shakeT * 3.3) * 3 * shakeDecay : 0;
-
+      {/* Pedestals: medal-tinted, the same three for the whole clip. */}
+      {Array.from({ length: pedestals }, (_, rank) => {
+        const h = heightOf(rank) * grow;
+        const x = slotX(rank);
         return (
-          <div
-            key={p.slug}
-            style={{ transform: `translate(${shakeX}px, ${shakeY}px)` }}
-          >
-            {/* Crown 👑 floating above the king's chip */}
-            {isKing && (
-              <LeaderCrown
-                frame={frame}
-                x={x + BAR_W / 2}
-                y={barY - 200}
-                revealAt={landFrame + 12}
-                size={56}
-              />
-            )}
-
-            {/* Provider chip + name + value above the bar */}
+          <div key={rank}>
             <div
               style={{
                 position: "absolute",
-                top: barY - 158,
+                top: G.BASELINE_Y - h,
                 left: x,
-                width: BAR_W,
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: 8,
-                opacity: grow,
-                fontFamily,
-              }}
-            >
-              <ProviderChip name={p.name} color={p.color} logo={p.logo} size={64} theme={t} />
-              <div
-                style={{
-                  fontSize: 26,
-                  fontWeight: 700,
-                  color: p.color,
-                  letterSpacing: "-0.01em",
-                }}
-              >
-                {p.name}
-              </div>
-              <div
-                data-lab-value={formatValue(displayValue, bench.unit)}
-                style={{
-                  fontSize: 38,
-                  fontWeight: 800,
-                  color: t.ink,
-                  fontVariantNumeric: "tabular-nums",
-                  letterSpacing: "-0.02em",
-                  lineHeight: 1,
-                }}
-              >
-                {formatValue(displayValue, bench.unit)}
-              </div>
-              <div
-                style={{
-                  fontSize: 13,
-                  fontWeight: 600,
-                  color: t.inkMuted,
-                  letterSpacing: "0.16em",
-                  textTransform: "uppercase",
-                  marginTop: 2,
-                }}
-              >
-                {bench.metric}
-              </div>
-            </div>
-
-            {/* The bar itself — medal accent on top edge for gold/silver/bronze */}
-            <div
-              style={{
-                position: "absolute",
-                top: barY,
-                left: x,
-                width: BAR_W,
-                height: animH,
-                background: `linear-gradient(180deg, ${p.color} 0%, ${p.color}cc 100%)`,
-                borderRadius: "8px 8px 0 0",
-                boxShadow: isKing
-                  ? `inset 0 6px 0 ${medal}, 0 0 60px ${medal}33`
-                  : `inset 0 4px 0 ${medal}`,
+                width: G.BAR_W,
+                height: h,
+                borderRadius: "10px 10px 0 0",
+                background: `linear-gradient(180deg, ${MEDAL[rank]}40 0%, ${MEDAL[rank]}14 60%, ${t.surface} 100%)`,
+                boxShadow: `inset 0 5px 0 ${MEDAL[rank]}, 0 0 ${rank === 0 ? 70 : 30}px ${MEDAL[rank]}${rank === 0 ? "30" : "18"}`,
               }}
             />
-
-            {/* Pedestal label (1ST / 2ND / 3RD) — medal-tinted */}
             <div
               style={{
                 position: "absolute",
-                top: BASELINE_Y + 20,
+                top: G.BASELINE_Y - h + 22,
                 left: x,
-                width: BAR_W,
+                width: G.BAR_W,
                 textAlign: "center",
                 fontSize: 44,
                 fontWeight: 800,
-                color: medal,
+                color: MEDAL[rank],
                 letterSpacing: "0.04em",
                 opacity: grow,
-                fontFamily,
               }}
             >
               {PEDESTAL_LABEL[rank]}
@@ -252,91 +193,141 @@ export const CountPodium: React.FC<CountPodiumProps> = ({
         );
       })}
 
-      {/* Receipt of remaining ranks (right side of canvas) */}
-      <div
-        style={{
-          position: "absolute",
-          top: RECEIPT_TOP,
-          left: RECEIPT_LEFT,
-          width: RECEIPT_W,
-          fontFamily,
-        }}
-      >
+      {/* Occupants: a card per provider standing on its current step. */}
+      {rows.map((r) => {
+        if (r.pos >= pedestals) return null;
+        // Between 3rd and the first list row the card flies to (or from)
+        // the row and shrinks to its size, so a provider entering the
+        // podium is seen travelling, not swapped by a cross-fade.
+        const fly = listN > 0 ? Math.max(0, Math.min(1, r.pos - (pedestals - 1))) : 0;
+        const flyE = easeOutCubic(fly);
+        const leave = listN > 0 ? Math.max(0, Math.min(1, (1 - fly) / 0.2)) : Math.max(0, Math.min(1, pedestals - r.pos));
+        // Between two pedestals the climbing card hops over, the other
+        // one ducks under, so the two never meet in the air.
+        const arc = Math.sin(Math.PI * Math.max(0, Math.min(1, r.pos - Math.floor(r.pos))));
+        // Signed by the direction of travel, smoothly: a card that turns
+        // back mid-hop used to flip from 90 px up to 50 px down in a frame.
+        const dir = Math.tanh(r.rise / 0.01);
+        const hop = r.pos < pedestals - 1 ? (dir >= 0 ? 90 : 50) * dir * arc : 0;
+        const x0 = cardX(r.pos), top0 = cardTop(r.pos) - 150 - hop;
+        // List row 0: chip at LIST_LEFT + 50, row centre LIST_TOP + 44 + rowH / 2.
+        const x1 = G.LIST_LEFT + 50 - G.BAR_W / 2 + 18, top1 = G.LIST_TOP + 44 + rowH / 2 - 30;
+        const x = x0 + (x1 - x0) * flyE;
+        const top = top0 + (top1 - top0) * flyE + (listN > 0 ? 0 : (1 - leave) * 40);
+        const cardScale = 1 - 0.45 * flyE;
+        const dim = fadeOf.get(r.slug) ?? 1;
+        return (
+          <div
+            key={r.slug}
+            style={{
+              position: "absolute",
+              top,
+              left: x,
+              width: G.BAR_W,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 8,
+              opacity: cardsIn * leave * dim,
+              transform: `scale(${cardScale})`,
+              transformOrigin: "50% 30px",
+              zIndex: r.rise > 1e-4 ? 200 : Math.round(100 - r.pos * 10),
+            }}
+          >
+            <ProviderChip name={r.name} color={r.color} logo={r.logo} size={60} theme={t} />
+            <div style={{ fontSize: 26, fontWeight: 700, color: r.color, letterSpacing: "-0.01em", whiteSpace: "nowrap", opacity: Math.max(0, 1 - fly * 2.5) }}>
+              {r.name}
+            </div>
+            <div
+              data-lab-value={formatValue(r.value, bench.unit)}
+              style={{ fontSize: 36, fontWeight: 800, color: t.ink, fontVariantNumeric: "tabular-nums", letterSpacing: "-0.02em", lineHeight: 1, opacity: Math.max(0, 1 - fly * 2.5) }}
+            >
+              {formatValue(r.value, bench.unit)}
+            </div>
+          </div>
+        );
+      })}
+
+      {gold && (
+        <LeaderCrown frame={frame} x={cardX(gold.pos) + G.BAR_W / 2} y={cardTop(gold.pos) - 200} revealAt={RISE + 24} size={52} />
+      )}
+
+      {/* Ranks 4 and down. */}
+      {listN > 0 && (
+        <div style={{ position: "absolute", top: G.LIST_TOP, left: G.LIST_LEFT, width: G.LIST_W }}>
+          <div
+            style={{
+              fontSize: 16,
+              fontWeight: 700,
+              letterSpacing: "0.18em",
+              textTransform: "uppercase",
+              color: t.inkFaint,
+              height: 44,
+              opacity: cardsIn,
+            }}
+          >
+            Also tracked
+          </div>
+          {rows.map((r) => {
+            const slot = r.pos - pedestals;
+            if (slot < -1 || slot > listMax) return null;
+            const crossing = fadeOf.get(r.slug) ?? 1;
+            // Row 0 shows once the flying card has landed on it.
+            const op = crossing * Math.max(0, Math.min(1, (slot + 0.2) / 0.2)) * Math.max(0, Math.min(1, (listMax - 0.5 - slot) * 2));
+            return (
+              <div
+                key={r.slug}
+                style={{
+                  position: "absolute",
+                  top: 44 + Math.max(0, slot) * rowH,
+                  left: 0,
+                  right: 0,
+                  height: rowH,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 14 * k,
+                  borderBottom: `1px solid ${t.rule}`,
+                  opacity: cardsIn * op,
+                  zIndex: r.rise > 1e-4 ? 20 : 10,
+                  background: t.background,
+                }}
+              >
+                <span style={{ width: 36, fontSize: 18 * k, color: t.inkFaint, fontVariantNumeric: "tabular-nums", fontWeight: 600 }}>
+                  {String(Math.round(r.pos) + 1).padStart(2, "0")}
+                </span>
+                <ProviderChip name={r.name} color={r.color} logo={r.logo} size={Math.round(36 * Math.max(0.75, k))} theme={t} />
+                <span style={{ flex: 1, fontSize: Math.max(17, 22 * k), fontWeight: 700, color: r.color, whiteSpace: "nowrap", overflow: "hidden" }}>
+                  {r.name}
+                </span>
+                <span
+                  data-lab-value={formatValue(r.value, bench.unit)}
+                  style={{ fontSize: Math.max(17, 22 * k), color: t.inkMuted, fontVariantNumeric: "tabular-nums", fontWeight: 600 }}
+                >
+                  {formatValue(r.value, bench.unit)}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* A short flash on the winner when the days stop. */}
+      {gold && frame >= holdAt && (
         <div
           style={{
-            fontSize: 16,
-            fontWeight: 700,
-            letterSpacing: "0.18em",
-            textTransform: "uppercase",
-            color: t.inkFaint,
-            marginBottom: 24,
-            opacity: remap(frame, RECEIPT_START, RECEIPT_START + 30, 0, 1, easeOutCubic),
+            position: "absolute",
+            left: cardX(gold.pos) - 40,
+            top: cardTop(gold.pos) - 170,
+            width: G.BAR_W + 80,
+            height: 190,
+            borderRadius: 24,
+            background: `radial-gradient(closest-side, ${MEDAL[0]}33, transparent)`,
+            opacity: remap(frame, holdAt, holdAt + 10, 0, 1, easeOutCubic) * remap(frame, holdAt + 10, holdAt + 40, 1, 0.35),
+            pointerEvents: "none",
           }}
-        >
-          Also tracked
-        </div>
-        {receipt.map((p, i) => {
-          const slideIn = remap(
-            frame,
-            RECEIPT_START + 20 + i * 14,
-            RECEIPT_START + 50 + i * 14,
-            0,
-            1,
-            easeOutCubic,
-          );
-          return (
-            <div
-              key={p.slug}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 16,
-                height: 56,
-                borderBottom: `1px solid ${t.rule}`,
-                opacity: slideIn,
-                transform: `translateX(${(1 - slideIn) * 20}px)`,
-              }}
-            >
-              <span
-                style={{
-                  width: 36,
-                  fontSize: 18,
-                  color: t.inkFaint,
-                  fontVariantNumeric: "tabular-nums",
-                  fontWeight: 600,
-                }}
-              >
-                {String(i + 4).padStart(2, "0")}
-              </span>
-              <ProviderChip name={p.name} color={p.color} logo={p.logo} size={36} theme={t} />
-              <span
-                style={{
-                  flex: 1,
-                  fontSize: 22,
-                  fontWeight: 700,
-                  color: p.color,
-                  letterSpacing: "-0.01em",
-                }}
-              >
-                {p.name}
-              </span>
-              <span
-                data-lab-value={formatValue(p.value, bench.unit)}
-                style={{
-                  fontSize: 22,
-                  color: t.inkMuted,
-                  fontVariantNumeric: "tabular-nums",
-                  fontWeight: 600,
-                }}
-              >
-                {formatValue(p.value, bench.unit)}
-              </span>
-            </div>
-          );
-        })}
-      </div>
+        />
+      )}
       <FilmOverlay />
     </AbsoluteFill>
   );
 };
-

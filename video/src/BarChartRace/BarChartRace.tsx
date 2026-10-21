@@ -9,7 +9,8 @@ import { FilmOverlay, kenBurnsScale } from "../lib/cinematic";
 import { computeLeadChanges, BeatBanner } from "../lib/beats";
 import { LeaderCrown } from "../lib/leader-crown";
 import { RollingNumber } from "../lib/rolling-number";
-import { rankTable, smoothRank } from "../lib/rank";
+import { stableRanks, swapRank, readingsFor, crossingFades } from "../lib/rank";
+import { formatValue } from "../lib/formatters";
 
 loadFont("normal", { weights: ["500", "600", "700", "800"] });
 
@@ -63,26 +64,43 @@ export type BarChartRaceProps = {
  * the bar stack fills the middle band instead of leaving a dead gap
  * between the bars and the bottom-pinned date ticker.
  */
-function layoutFor(width: number, height: number, barsN: number) {
+function layoutFor(width: number, height: number, barsN: number, names: string[], values: string[]) {
   const isPortrait = height > width;
   if (!isPortrait) {
+    // The stack fills the band between the title block and the date
+    // ticker (top edge 904 px) whatever the provider count: rows grow up
+    // to 120 px and the stack is centred, so three providers no longer
+    // sit in the top third with 330 px of black under them.
+    const bandTop = 320, bandBottom = 880;
+    const rowH = Math.min(120, Math.floor((bandBottom - bandTop) / Math.max(1, barsN)));
+    const k = Math.min(1.35, Math.max(0.8, rowH / 78));
+    const chipSize = Math.round(48 * k);
+    const valueSize = Math.round(32 * k);
+    // Label and value columns sized from what they hold: a fixed 320 px
+    // let "Solana Foundation" run under the bar. Inter Tight 700 averages
+    // ~0.56 em per character, tabular digits ~0.6 em.
+    let nameSize = Math.round(28 * k);
+    const longest = Math.max(4, ...names.map((n) => n.length));
+    const fixed = 32 + 14 + chipSize + 14;
+    nameSize = Math.max(18, Math.min(nameSize, Math.floor((520 - fixed) / (longest * 0.56))));
+    const labelW = fixed + Math.ceil(longest * nameSize * 0.56);
+    const widest = Math.max(4, ...values.map((v) => v.length));
+    const valueW = Math.max(120, Math.ceil(widest * valueSize * 0.6) + 12);
     return {
       isPortrait,
       pad: 80,
       titleTop: 64,
       titleSize: 64,
       metricSize: 22,
-      topOffset: 320,
-      // Eight rows at 78 px ended at 944 px, under the date ticker whose
-      // top edge is at 904 px; rows now shrink to end by 880 px.
-      rowH: Math.min(78, Math.floor((880 - 320) / Math.max(1, barsN))),
-      labelW: 320,
-      valueW: 200,
-      nameSize: 28,
-      valueSize: 32,
-      chipSize: 48,
-      barH: 44,
-      rankSize: 20,
+      topOffset: bandTop + Math.floor((bandBottom - bandTop - rowH * barsN) / 2),
+      rowH,
+      labelW,
+      valueW,
+      nameSize,
+      valueSize,
+      chipSize,
+      barH: Math.round(Math.min(rowH * 0.6, 44 * k)),
+      rankSize: Math.round(20 * k),
       dateSize: 96,
       dateBottom: 80,
       sourceBottom: 56,
@@ -96,6 +114,9 @@ function layoutFor(width: number, height: number, barsN: number) {
   const band = bandBottom - bandTop;
   const rowH = Math.min(150, Math.floor(band / Math.max(1, barsN)));
   const topOffset = bandTop + Math.floor((band - rowH * barsN) / 2);
+  const longest = Math.max(4, ...names.map((n) => n.length));
+  const nameSize = Math.max(17, Math.min(25, Math.floor((360 - 32 - 14 - 44 - 14) / (longest * 0.56))));
+  const widest = Math.max(4, ...values.map((v) => v.length));
   return {
     isPortrait,
     pad: 56,
@@ -104,9 +125,9 @@ function layoutFor(width: number, height: number, barsN: number) {
     metricSize: 20,
     topOffset,
     rowH,
-    labelW: 290,
-    valueW: 130,
-    nameSize: 25,
+    labelW: 32 + 14 + 44 + 14 + Math.ceil(longest * nameSize * 0.56),
+    valueW: Math.max(110, Math.ceil(widest * 28 * 0.6) + 10),
+    nameSize,
     valueSize: 28,
     chipSize: 44,
     barH: 50,
@@ -121,7 +142,15 @@ export const BarChartRace: React.FC<BarChartRaceProps> = ({ theme, bench, beats 
   const frame = useCurrentFrame();
   const { durationInFrames, width, height } = useVideoConfig();
   const t = themeFor(theme);
-  const L = layoutFor(width, height, Math.min(VISIBLE_BARS, bench.providers.length));
+  // Every value the odometer may show, to size the value column once.
+  const shown = bench.providers.flatMap((p) => [Math.max(...p.values), Math.min(...p.values), p.values[p.values.length - 1]]);
+  const L = layoutFor(
+    width,
+    height,
+    Math.min(VISIBLE_BARS, bench.providers.length),
+    bench.providers.map((p) => p.name),
+    shown.map((v) => formatValue(v, bench.unit)),
+  );
 
   // Derive framesPerStep from the duration set by calculateMetadata, so
   // changing the speed prop upstream lengthens / shortens each step
@@ -152,9 +181,24 @@ export const BarChartRace: React.FC<BarChartRaceProps> = ({ theme, bench, beats 
   // single frame (lab motion pass, rpc-cluster-12). Here each provider's
   // rank at every reading is fixed, the position interpolates between
   // readings, and a 0.6 s moving average turns rank flips into glides.
-  const ranks = rankTable(bench.providers.map((p) => p.values), bench.higherIsBetter);
+  // v27: ranks only change on an overtake that holds (stableRanks), and
+  // each change is one eased 16-frame glide (swapRank). The v26 moving
+  // average turned every near-tie into a long half-overlap with a fade,
+  // which read as two rows tangled together.
+  const ranks = stableRanks(
+    bench.providers.map((p) => p.values),
+    bench.higherIsBetter,
+    readingsFor(0.4, FRAMES_PER_STEP),
+    0.01,
+  );
   const posBySlug = new Map(
-    bench.providers.map((p, i) => [p.slug, smoothRank(ranks, i, stepIndex, FRAMES_PER_STEP)]),
+    bench.providers.map((p, i) => [p.slug, swapRank(ranks, i, stepIndex, FRAMES_PER_STEP)]),
+  );
+  const fades = crossingFades(ranks, stepIndex, bench.providers.map((p) => posBySlug.get(p.slug)!), FRAMES_PER_STEP);
+  const fadeBySlug = new Map(bench.providers.map((p, i) => [p.slug, fades[i]]));
+  // Direction of travel, so the row climbing passes in front.
+  const riseBySlug = new Map(
+    bench.providers.map((p, i) => [p.slug, swapRank(ranks, i, stepIndex - 0.05, FRAMES_PER_STEP) - posBySlug.get(p.slug)!]),
   );
   const sorted = [...liveProviders].sort((a, b) => posBySlug.get(a.slug)! - posBySlug.get(b.slug)!);
   // A row is drawn while any part of it is inside the top 8; it fades as
@@ -242,6 +286,8 @@ export const BarChartRace: React.FC<BarChartRaceProps> = ({ theme, bench, beats 
         theme={t}
         opacity={introFade}
         posBySlug={posBySlug}
+        riseBySlug={riseBySlug}
+        fadeBySlug={fadeBySlug}
         layout={L}
         settled={stepIndexRaw >= bench.timestamps.length - 1}
       />
@@ -323,10 +369,12 @@ const BarStack: React.FC<{
   theme: import("../lib/theme").Theme;
   opacity: number;
   posBySlug: Map<string, number>;
+  riseBySlug: Map<string, number>;
+  fadeBySlug: Map<string, number>;
   layout: ReturnType<typeof layoutFor>;
   /** The race is over: values are final, odometers rest on their digits. */
   settled: boolean;
-}> = ({ bars, maxValue, unit, theme: t, opacity, posBySlug, layout: L, settled }) => {
+}> = ({ bars, maxValue, unit, theme: t, opacity, posBySlug, riseBySlug, fadeBySlug, layout: L, settled }) => {
   const ROW_H = L.rowH;
   const TOP_OFFSET = L.topOffset;
   const LEFT_PAD = L.pad;
@@ -339,17 +387,21 @@ const BarStack: React.FC<{
       {bars.map((bar) => {
         const pos = posBySlug.get(bar.slug)!;
         const widthPct = Math.max(2, (bar.value / maxValue) * 100);
+        // A row leaving the top 8 is gone a third of a row under the last
+        // slot, before it reaches the date ticker (holding it on the last
+        // slot drew it on top of the row that took the slot).
         const y = TOP_OFFSET + pos * ROW_H;
         const rank = Math.round(pos);
-        const leaving = Math.max(0, Math.min(1, VISIBLE_BARS - pos));
-        // Distance to the nearest row above: under one row means crossing.
-        let gapAbove = Infinity;
+        const leaving = Math.max(0, Math.min(1, (VISIBLE_BARS - 0.65 - pos) / 0.35));
+        // While two rows pass, the one going down steps back a little;
+        // the one going up stays bright and on top.
+        const rise = riseBySlug.get(bar.slug) ?? 0;
+        let near = Infinity;
         for (const other of bars) {
-          if (other.slug === bar.slug) continue;
-          const d = pos - posBySlug.get(other.slug)!;
-          if (d >= 0 && d < gapAbove) gapAbove = d;
+          if (other.slug !== bar.slug) near = Math.min(near, Math.abs(pos - posBySlug.get(other.slug)!));
         }
-        const crossing = gapAbove < 1 ? 0.25 + 0.75 * gapAbove : 1;
+        const crossing = fadeBySlug.get(bar.slug) ?? 1;
+        const scale = rise > 1e-4 && near < 0.8 ? 1 + 0.03 * (1 - near / 0.8) : 1;
 
         return (
           <div
@@ -359,9 +411,11 @@ const BarStack: React.FC<{
               top: y,
               left: LEFT_PAD,
               right: RIGHT_PAD,
-              height: Math.min(ROW_H - 12, 78),
+              height: Math.min(ROW_H - 12, 108),
               opacity: opacity * leaving * crossing,
-              zIndex: 100 - rank,
+              zIndex: rise > 1e-4 ? 200 : 100 - rank,
+              transform: `scale(${scale})`,
+              transformOrigin: "left center",
               display: "flex",
               alignItems: "center",
               gap: 24,
@@ -371,6 +425,7 @@ const BarStack: React.FC<{
             <div
               style={{
                 width: LABEL_W,
+                flexShrink: 0,
                 display: "flex",
                 alignItems: "center",
                 gap: 14,
@@ -395,6 +450,7 @@ const BarStack: React.FC<{
                   fontWeight: 700,
                   color: bar.color,
                   letterSpacing: "-0.01em",
+                  whiteSpace: "nowrap",
                 }}
               >
                 {bar.name}
@@ -432,6 +488,8 @@ const BarStack: React.FC<{
             <div
               style={{
                 width: VALUE_W,
+                flexShrink: 0,
+                whiteSpace: "nowrap",
                 position: "relative",
                 textAlign: "right",
                 fontSize: L.valueSize,

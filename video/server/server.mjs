@@ -42,12 +42,11 @@ const TOKEN = process.env.RENDER_API_TOKEN;
 const PORT = Number(process.env.PORT ?? 4200);
 const HOST = process.env.HOST ?? "127.0.0.1";
 
-const COMP_VERSION = "v26-motion";
+const COMP_VERSION = "v27-review3";
 
 const VIEWS = new Set([
   "BarChartRace",
   "TimeSeriesRace",
-  "DistributionRace",
   "DonutRace",
   "CountPodium",
 ]);

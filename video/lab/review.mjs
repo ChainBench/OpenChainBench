@@ -14,7 +14,7 @@ import path from "node:path";
 const [outDir, fxDir, ...roundArgs] = process.argv.slice(2);
 const rounds = roundArgs.filter((a) => !a.startsWith("motion:")).map((a) => { const [id, dir] = a.split("="); return { id, dir }; });
 const motions = roundArgs.filter((a) => a.startsWith("motion:")).map((a) => { const [id, dir] = a.slice(7).split("="); return { id, dir }; });
-const PARTS = ["Intro", "BarChartRace", "TimeSeriesRace", "DistributionRace", "DonutRace", "CountPodium", "ResultsBoard", "Outro"];
+const PARTS = ["Intro", "BarChartRace", "TimeSeriesRace", "DonutRace", "CountPodium", "ResultsBoard", "Outro"];
 const CELL = { landscape: [640, 360], short: [270, 480] };
 const GAP = 4;
 

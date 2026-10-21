@@ -74,11 +74,20 @@ export function formatTick(value: number, unit: string): string {
     if (value >= 1000) return `$${(value / 1000).toFixed(0)}k`;
     return `$${value.toFixed(0)}`;
   }
-  if (unit === "pct" || unit === "%") return `${value.toFixed(value < 10 ? 1 : 0)}%`;
-  if (unit === "bps") return `${value.toFixed(0)}bps`;
+  // Enough decimals to tell neighbouring ticks apart: a log axis on
+  // perp-fees printed 0.01% and 0.001% both as "0.0%".
+  if (unit === "pct" || unit === "%") return `${trimZeros(value.toFixed(decimalsFor(value)))}%`;
+  if (unit === "bps") return `${trimZeros(value.toFixed(Math.max(0, decimalsFor(value) - 1)))}bps`;
   if (unit === "slots") return value.toFixed(0);
   return value.toFixed(1);
 }
+
+function decimalsFor(v: number): number {
+  const a = Math.abs(v);
+  if (a === 0 || a >= 10) return 0;
+  return Math.min(6, Math.max(1, Math.ceil(-Math.log10(a)) + 1));
+}
+const trimZeros = (s: string) => (s.includes(".") ? s.replace(/\.?0+$/, "") : s);
 
 /** What the Y-axis numbers measure — shown as a small axis caption. */
 export function unitAxisLabel(unit: string): string {
