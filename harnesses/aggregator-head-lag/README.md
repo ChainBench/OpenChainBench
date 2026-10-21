@@ -65,6 +65,29 @@ docker run --rm --env-file .env -p 2112:2112 aggregator-head-lag
 
 This service is deployed from the OpenChainBench repo, root directory `harnesses/aggregator-head-lag/`. Set the env vars listed below, and the shared Prometheus will pick it up via DNS automatically.
 
+### Deploying a change
+
+Three services run this harness, one per region. Their Railway display names, internal hostnames and the `region` label on their metrics all disagree, so check the mapping before you deploy to what you think is us-east:
+
+| Railway service | internal hostname | `region` label |
+| --- | --- | --- |
+| Aggregator east usa | `alert-reflection` | `us-east` |
+| Agg eu west | `agg-eu-west` | `eu-west` |
+| agg sgp | `aggregator-latency-benchmark` | `sgp` |
+
+Deploy with `railway up` **from the repository root**, never from this directory:
+
+```
+railway up --service "Aggregator east usa" --ci
+```
+
+Two traps, both of which cost an hour on 2026-10-20:
+
+- `railway up` uploads the **linked project directory**, not the directory you run it from. If the project is linked at a different checkout, you will build that checkout's code: the build succeeds, the container restarts, and the binary is byte-identical to the one already running. Nothing warns you. `railway link` in the tree you actually want to ship first, and confirm with `railway status`.
+- The service sets its root directory to `harnesses/aggregator-head-lag/`, so the upload has to contain that **path**. Uploading this directory as the archive root makes Railway look for the path inside itself and the deploy fails after a successful build.
+
+The cheapest confirmation that a deploy landed is `head_lag_sweeper_last_run_timestamp_seconds`: it exists only in builds that carry the stale-gauge sweeper and advances every minute, so a missing or flat series means the code you meant to ship is not running.
+
 ## Environment variables
 
 | Var | Description | Required |

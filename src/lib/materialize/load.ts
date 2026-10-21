@@ -343,26 +343,48 @@ export async function specToBenchmark(
           if (hasPanelData) r.availability = "live";
         }
       }
-      // Spec-declared unranked members (provider.unranked, e.g. a perp
-      // DEX with no token yet on a valuation bench). They have no
-      // headline value by design, so leave ms at zero (every ranking
-      // helper skips zero rows) but carry the label so the ledger can
-      // list them in their own block instead of dropping them, and
-      // never let them read as unresponsive: the absence is intended.
-      const unrankedBySlug = new Map(
-        spec.providers
-          .filter((p) => p.unranked)
-          .map((p) => [p.slug.toLowerCase(), p.unranked as string]),
-      );
-      if (unrankedBySlug.size > 0) {
-        for (const r of live.results) {
-          const label = unrankedBySlug.get(r.slug.toLowerCase());
-          if (!label) continue;
-          r.unrankedLabel = label;
-          r.unresponsive = undefined;
-          r.availability = "live";
-          r.ms = { p50: 0, p90: 0, p99: 0, mean: 0 };
-        }
+    }
+    // Spec-declared unranked members (provider.unranked). They carry the
+    // label so the ledger lists them in their own block instead of
+    // dropping them, and never read as unresponsive: the absence from the
+    // order is intended.
+    //
+    // Outside the !isFiltered block, because "never ranked, never a leader"
+    // is a property of the provider and not of the view. It had been swept
+    // in with the augmentation of missing providers, which really is
+    // unfiltered-only, and so every chain tab lost the labels: bench 304's
+    // BSC tab ranked Bebop and LI.FI, an RFQ venue and a relayer, inside
+    // the router order the page's own methodology says they are kept out
+    // of. They sat last, so no leader was wrong yet.
+    //
+    // The measured value stays, which is the same call applyFullCoverageScope
+    // makes below and for the same reason. This path used to zero the
+    // percentiles for every labelled row, on the assumption the label
+    // always meant "no value exists" (a perp DEX pre-TGE). Bench 304
+    // broke that: CoW, Bebop and LI.FI are measured and merely not
+    // comparable to a router, and the zeroing published "0.00 bps" for a
+    // venue giving up a hundred. Of the eleven labelled rows on the four
+    // specs that shipped the field first, ten return nothing from
+    // Prometheus and are dropped upstream before this loop, so the zero
+    // reached exactly one: perp-pf-ratio's Paradex, whose adapter the
+    // spec itself calls incomplete. That row now asks for the blanking
+    // with `unranked_hides_value`.
+    const unrankedBySlug = new Map(
+      spec.providers
+        .filter((p) => p.unranked)
+        .map((p) => [
+          p.slug.toLowerCase(),
+          { label: p.unranked as string, hide: p.unranked_hides_value },
+        ]),
+    );
+    if (unrankedBySlug.size > 0) {
+      for (const r of live.results) {
+        const entry = unrankedBySlug.get(r.slug.toLowerCase());
+        if (!entry) continue;
+        r.unrankedLabel = entry.label;
+        r.unresponsive = undefined;
+        r.availability = "live";
+        if (entry.hide) r.ms = { p50: 0, p90: 0, p99: 0, mean: 0 };
       }
     }
     // Per-chain leaders/trailers: computed only on the unfiltered "All"
@@ -386,7 +408,19 @@ export async function specToBenchmark(
     // filtered variants now inherit findings/faq/seoIntro from the
     // aggregate via the page-level fetch in app/benchmarks/[slug]/page.tsx,
     // so per-chain compute on filtered variants is no longer needed.
-    if (!isFiltered && spec.dimensions?.chain && spec.dimensions.chain.length > 0) {
+    // The fan-out also runs on a view filtered by something OTHER than
+    // chain when the bench opted into a score_scope. Without it the rule
+    // had no per-chain data on the region tabs, so Route kept ranking
+    // first on US East and EU West, which is the exact claim #3052 was
+    // written to remove. A chain tab needs nothing: it is already one
+    // chain, so there is no cross-chain mix to correct. The extra loads
+    // are paid only by a bench that asked for the scope.
+    const chainFilterActive = Boolean(
+      activeFilterLabels(labelFilters(options)).chain,
+    );
+    const needsChainFanOut =
+      !isFiltered || (!!spec.score_scope && !chainFilterActive);
+    if (needsChainFanOut && spec.dimensions?.chain && spec.dimensions.chain.length > 0) {
       const chainValues = spec.dimensions.chain
         .map((c) => c.value)
         .filter((v) => v !== "all");
@@ -413,8 +447,16 @@ export async function specToBenchmark(
           // the chains a provider was actually compared on.
           const values: Record<string, number> = {};
           for (const r of liveForChain) values[r.slug.toLowerCase()] = r.ms.p50;
+          // Every percentile, not just the median. Rescoring over a basket
+          // wrote the p50 mean into p90, p99 and mean alike, so the tail
+          // columns became copies of the median: KyberSwap read 220 ms in
+          // all four while its measured p99 is 931, and CoW's 4,961 ms
+          // Arbitrum tail hid behind 1,658. A desk reads the p99 column
+          // precisely because it is not the median.
+          const spreads: Record<string, ProviderResult["ms"]> = {};
+          for (const r of liveForChain) spreads[r.slug.toLowerCase()] = r.ms;
           if (liveForChain.length === 0) {
-            return [chain, undefined, undefined, slugs, values] as const;
+            return [chain, undefined, undefined, slugs, values, spreads] as const;
           }
           const sorted = [...liveForChain].sort((a, b) =>
             spec.higher_is_better ? b.ms.p50 - a.ms.p50 : a.ms.p50 - b.ms.p50,
@@ -425,6 +467,7 @@ export async function specToBenchmark(
             sorted[sorted.length - 1],
             slugs,
             values,
+            spreads,
           ] as const;
         }),
       );
@@ -432,11 +475,13 @@ export async function specToBenchmark(
       const worsts: Record<string, ProviderResult> = {};
       const providers: Record<string, string[]> = {};
       const valuesByChain: Record<string, Record<string, number>> = {};
-      for (const [chain, leader, trailer, slugs, values] of perChainEntries) {
+      const spreadsByChain: Record<string, Record<string, ProviderResult["ms"]>> = {};
+      for (const [chain, leader, trailer, slugs, values, spreads] of perChainEntries) {
         if (leader) bests[chain] = leader;
         if (trailer) worsts[chain] = trailer;
         if (slugs.length > 0) providers[chain] = slugs;
         valuesByChain[chain] = values;
+        spreadsByChain[chain] = spreads ?? {};
       }
       if (Object.keys(bests).length > 0) bestPerChain = bests;
       if (Object.keys(worsts).length > 0) worstPerChain = worsts;
@@ -444,6 +489,11 @@ export async function specToBenchmark(
 
       if (spec.score_scope === "contested_chains") {
         applyContestedChainScope(live.results, providers, valuesByChain);
+      }
+      if (spec.score_scope === "full_coverage") {
+        const labels: Record<string, string> = {};
+        for (const d of fullSpec.dimensions?.chain ?? []) labels[d.value] = d.label;
+        applyFullCoverageScope(live.results, providers, labels, spreadsByChain);
       }
     }
 
@@ -586,6 +636,109 @@ export function applyContestedChainScope(
     }
     const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
     r.ms = { p50: mean, p90: mean, p99: mean, mean };
+  }
+}
+
+/**
+ * Mark as unranked every provider that does not cover every chain with
+ * data, on the unfiltered view of a chain-dimensioned bench.
+ *
+ * A cross-chain mean compares providers over the ground each happens to
+ * stand on. Measured on bench 033: Route quotes Robinhood Chain alone and
+ * its all-chains figure was the mean of 3 cells, 215 ms, placing it above
+ * KyberSwap's mean of 15 cells over 5 chains, 225 ms. Route does lead
+ * Robinhood, and KyberSwap leads the four chains Route never enters, so
+ * the headline said the opposite of the evidence under it.
+ *
+ * This is the rule the cell-rank marginals already apply further down,
+ * where the comment calls it Simpson's bias. It was never applied to the
+ * ledger or to the product-page rank, which is where the claim is read.
+ *
+ * Unranked rather than unavailable: the provider answered, and hiding it
+ * would lose a real measurement. The label names the coverage so a reader
+ * can see why it sits outside the order.
+ */
+export function applyFullCoverageScope(
+  results: ProviderResult[],
+  providersPerChain: Record<string, string[]>,
+  chainLabels: Record<string, string>,
+  spreadsByChain: Record<string, Record<string, ProviderResult["ms"]>>,
+): void {
+  const chains = Object.keys(providersPerChain).filter(
+    (c) => (providersPerChain[c]?.length ?? 0) > 0,
+  );
+  if (chains.length < 2) return;
+  const live = results.filter((r) => r.availability !== "unavailable");
+  if (live.length < 2) return;
+
+  // The common basket: chains at least half the live providers cover.
+  //
+  // Demanding every chain is too blunt. Robinhood joined bench 033 on
+  // 2026-10-17 with three providers, and requiring it unranked Mobula,
+  // Bebop and CoW as well, each covering four of five and each exactly
+  // the comparison a reader wants, leaving two names on the board. A
+  // chain that most of the field does not reach is not the ground the
+  // comparison stands on; it is a tab of its own.
+  // Strictly more than half, not at least half: Robinhood carries exactly
+  // three of this bench's six live providers, and "at least" let it back
+  // into the basket, which made the whole rule a no-op.
+  const common = chains.filter(
+    (c) => (providersPerChain[c]?.length ?? 0) * 2 > live.length,
+  );
+  // Nothing to narrow: every chain is shared, or none is. Either way
+  // rescoring would say nothing the headline does not already say.
+  if (common.length === 0 || common.length === chains.length) return;
+
+  for (const r of results) {
+    if (r.availability === "unavailable" || r.unrankedLabel) continue;
+    const slug = r.slug.toLowerCase();
+    const inBasket = common.filter((c) =>
+      (providersPerChain[c] ?? []).some((s) => s.toLowerCase() === slug),
+    );
+    if (inBasket.length === 0) {
+      // Measured, but on no chain the field shares: it cannot be ranked
+      // against them. Name what it does cover so the row still informs.
+      const own = chains.filter((c) =>
+        (providersPerChain[c] ?? []).some((s) => s.toLowerCase() === slug),
+      );
+      const label =
+        own.length === 1
+          ? `${chainLabels[own[0]] ?? own[0]} only`
+          : `${own.length} of ${chains.length} chains`;
+      r.unrankedLabel = label.length > 20 ? `${own.length}/${chains.length} chains` : label;
+      // The measured value stays. Zeroing it, which is what the
+      // spec-declared unranked path does, rendered Route as "0 ms" in
+      // every percentile column: a wall-clock round trip of zero is
+      // impossible and reads either as a broken row or as Route being
+      // instant. Nothing needs the zero. citation.ts filters the leader
+      // on the label, the ledger pins labelled rows below the ranked
+      // field and excludes them from ranks and the field mean, and
+      // capital-hub filters on the label too. So the row keeps its real
+      // 215 ms and sits outside the order where it belongs.
+      continue;
+    }
+    // Rescore over the basket so the published number is the one the
+    // ranking follows, the same rule contested_chains states. Each
+    // percentile is averaged over its own per-chain values: writing the
+    // p50 mean into all four turned the tail columns into copies of the
+    // median and hid a 4,961 ms Arbitrum p99 behind a 1,658 ms figure.
+    const cells = inBasket
+      .map((c) => spreadsByChain[c]?.[slug])
+      .filter((m): m is ProviderResult["ms"] => !!m && m.p50 > 0);
+    if (cells.length === 0) continue;
+    const avg = (pick: (m: ProviderResult["ms"]) => number | undefined) => {
+      const xs = cells
+        .map(pick)
+        .filter((v): v is number => typeof v === "number" && v > 0);
+      return xs.length > 0 ? xs.reduce((a, b) => a + b, 0) / xs.length : 0;
+    };
+    const p50 = avg((m) => m.p50);
+    r.ms = {
+      p50,
+      p90: avg((m) => m.p90) || p50,
+      p99: avg((m) => m.p99) || p50,
+      mean: avg((m) => m.mean) || p50,
+    };
   }
 }
 

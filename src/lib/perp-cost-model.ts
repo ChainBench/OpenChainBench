@@ -21,7 +21,7 @@ export type Market = "BTC" | "ETH";
 export type Provenance = "api" | "chain" | "docs";
 
 /** The day every fee, spread and maintenance figure below was read. */
-export const MEASURED_AT = "2026-10-13";
+export const MEASURED_AT = "2026-10-21";
 
 export const MARGIN_RANGE = { min: 1, max: 1_000_000_000, default: 1000 } as const;
 export const LEVERAGE_RANGE = { min: 1, max: 1000, default: 500 } as const;
@@ -132,6 +132,16 @@ export type Venue = {
   feeInTrigger: boolean;
   /** True when the trigger is documented to leave equity behind. */
   returnsEquity: boolean;
+  /**
+   * Set when losing on this venue mints the venue's own token to the loser.
+   *
+   * It is kept apart from returnsEquity because it is not equity: no margin
+   * comes back, and at launch the token cannot even be transferred, only
+   * staked. But "nothing comes back" is still the wrong sentence for a venue
+   * that hands the liquidated trader a claim on its revenue, so the row says
+   * both things rather than one.
+   */
+  mintsOnLoss?: string;
 };
 
 export const VENUES: readonly Venue[] = [
@@ -187,6 +197,27 @@ export const VENUES: readonly Venue[] = [
     maintenance: (_lev, _mx, market) => PAPERTRADE.perMarket[market].bustBuffer,
     feeInTrigger: false,
     returnsEquity: false,
+    // Losing is the only thing that mints PAPER: its docs are explicit that
+    // "PAPER mints to your account whenever you close a trade at a loss or get
+    // liquidated. Nothing else mints PAPER."
+    //
+    // The rate is published in full, in PaperTokenomics. Below a $2M tracked
+    // LP it is a flat 100 PAPER per dollar of mint basis; at or above it the
+    // rate is flatRate * (S / (S + H))^2 with S = tailDecayScaleUsd = $120M
+    // and H = tailProgressUsd, a high-water-mark of cumulative LP gain past
+    // the threshold that never decreases. H is not published as a field, so
+    // it is taken from the peak of the venue's own daily tracked-LP series,
+    // $104.89M, giving H = $102.89M and a rate of 100 * (120/222.9)^2 = 29.0.
+    // Their own worked example, H = $100M giving 29.8, lands beside it.
+    //
+    // An earlier version of this line said 54 to 99, read as the daily change
+    // in paperSupply over the daily change in traderPnl. That is an upper
+    // bound and not the rate: the mint basis is gross realised loss, while
+    // traderPnl is net of everything the winners took, so the denominator was
+    // too small. At 29 a dollar the last day's mint implies $4.12M of gross
+    // losses against a $2.20M net move, a ratio of 1.87, which is the shape
+    // you would expect.
+    mintsOnLoss: "mints PAPER, about 29 per $1 of loss basis",
   },
   {
     id: "lighter",
@@ -198,7 +229,7 @@ export const VENUES: readonly Venue[] = [
     charges: "notional",
     src: "api",
     takerBps: 0,
-    spreadBps: { BTC: 0.3197, ETH: 0.3186 },
+    spreadBps: { BTC: 0.0316, ETH: 0.2477 },
     minLeverage: 1,
     maxLeverage: { BTC: 50, ETH: 50 },
     maintenance: () => 0.012,
@@ -206,6 +237,16 @@ export const VENUES: readonly Venue[] = [
     returnsEquity: true,
   },
   {
+    // Paradex publishes two taker tiers on the same market, and this row takes
+    // the cheaper one on purpose. /v1/markets fee_config reads
+    // interactive_fee.taker 0 and both api_fee.taker and rpi_fee.taker 0.0002,
+    // so a person clicking in the interface pays nothing to cross and a
+    // programmatic order pays 2 bps a leg. A page that prices one leveraged
+    // trade for a reader is pricing the interactive path, so that is the one
+    // shown. It is stated in the footer because an undeclared choice between
+    // two published numbers is the kind of thing that quietly decides a
+    // ranking: at 2 bps a leg Paradex costs 4 bps round trip instead of the
+    // 1.49 its spread alone gives it.
     id: "paradex",
     logoKey: "paradex",
     chain: "Starknet",
@@ -215,7 +256,7 @@ export const VENUES: readonly Venue[] = [
     charges: "notional",
     src: "api",
     takerBps: 0,
-    spreadBps: { BTC: 1.4947, ETH: 1.4335 },
+    spreadBps: { BTC: 0.8155, ETH: 1.1210 },
     minLeverage: 1,
     maxLeverage: { BTC: 50, ETH: 50 },
     maintenance: () => 0.01,
@@ -232,7 +273,7 @@ export const VENUES: readonly Venue[] = [
     charges: "notional",
     src: "docs",
     takerBps: 2.5,
-    spreadBps: { BTC: 0.0604, ETH: 0.1994 },
+    spreadBps: { BTC: 0.0612, ETH: 0.2069 },
     minLeverage: 1,
     maxLeverage: { BTC: 50, ETH: 50 },
     maintenance: () => 0.01,
@@ -249,7 +290,7 @@ export const VENUES: readonly Venue[] = [
     charges: "notional",
     src: "api",
     takerBps: 4.5,
-    spreadBps: { BTC: 0.0181, ETH: 0.2479 },
+    spreadBps: { BTC: 0.0183, ETH: 0.2062 },
     minLeverage: 1,
     maxLeverage: { BTC: 100, ETH: 100 },
     maintenance: () => 0.005,
@@ -266,7 +307,7 @@ export const VENUES: readonly Venue[] = [
     charges: "notional",
     src: "docs",
     takerBps: 4.5,
-    spreadBps: { BTC: 0.0603, ETH: 0.1991 },
+    spreadBps: { BTC: 0.0612, ETH: 0.2066 },
     minLeverage: 1,
     maxLeverage: { BTC: 40, ETH: 25 },
     maintenance: (_lev, mx) => 1 / (2 * mx),
@@ -283,7 +324,7 @@ export const VENUES: readonly Venue[] = [
     charges: "notional",
     src: "api",
     takerBps: 5,
-    spreadBps: { BTC: 8.4248, ETH: 1.7929 },
+    spreadBps: { BTC: 0.8495, ETH: 1.0255 },
     minLeverage: 1,
     maxLeverage: { BTC: 50, ETH: 50 },
     maintenance: () => 0.012,

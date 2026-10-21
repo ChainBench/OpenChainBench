@@ -844,6 +844,7 @@ export function SpeedtestRpcClient({ mapLive = true }: { mapLive?: boolean }) {
               <input
                 value={chainQuery}
                 onChange={(e) => setChainQuery(e.target.value)}
+                aria-label="Search benchmarked chains"
                 placeholder={`Search ${RPC_DIRECTORY.length} benchmarked chains… (e.g. Sonic, Linea, Scroll)`}
                 spellCheck={false}
                 autoComplete="off"
@@ -902,6 +903,7 @@ export function SpeedtestRpcClient({ mapLive = true }: { mapLive?: boolean }) {
                 <input
                   value={u}
                   onChange={(e) => setInput(i, e.target.value)}
+                  aria-label={`RPC endpoint URL ${i + 1}`}
                   placeholder={EXAMPLE_URLS[i % EXAMPLE_URLS.length]}
                   spellCheck={false}
                   autoComplete="off"

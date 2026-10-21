@@ -23,7 +23,26 @@ describe("fmtUnit — s (latency stored as ms, displayed as seconds)", () => {
 
 describe("fmtUnit — sec (true seconds gauge)", () => {
   test("sub-minute shows seconds", () => expect(fmtUnit(45, "sec")).toBe("45.0 s"));
-  test("sub-0.1s shows <0.1 s", () => expect(fmtUnit(0.05, "sec")).toBe("<0.1 s"));
+  // Two decimals below a second, so a formatted value cannot merge two
+  // providers that are 23 ms apart: leaders() treats equal formatted values as
+  // a tie, and that published "tied at 0.3 s" for 304 ms and 327 ms.
+  test("sub-second keeps two decimals", () => expect(fmtUnit(0.05, "sec")).toBe("0.05 s"));
+  test("the head-lag leaders no longer format alike", () => {
+    // Unit "s" stores milliseconds by the latency-bench convention, so these
+    // are the values the bench actually holds. Both printed "0.3 s" before.
+    expect(fmtUnit(304.262, "s")).toBe("0.30 s");
+    expect(fmtUnit(327.105, "s")).toBe("0.33 s");
+    // And the same defect on a true-seconds gauge.
+    expect(fmtUnit(0.304262, "sec")).toBe("0.30 s");
+    expect(fmtUnit(0.327105, "sec")).toBe("0.33 s");
+  });
+  test("a second and above is untouched on the s unit", () => {
+    expect(fmtUnit(1096, "s")).toBe("1.1 s");
+    // 10 s and above drops the decimal, which this change does not touch.
+    expect(fmtUnit(15900, "s")).toBe("16 s");
+  });
+  test("below 5ms stays a floor", () => expect(fmtUnit(0.001, "sec")).toBe("<0.01 s"));
+  test("one second and above keeps one decimal", () => expect(fmtUnit(1.25, "sec")).toBe("1.3 s"));
   test("flips to min at 60s", () => expect(fmtUnit(90, "sec")).toBe("1.5 min"));
   test("flips to h at 3600s", () => expect(fmtUnit(7200, "sec")).toBe("2.0 h"));
   test("flips to d at 172800s", () => expect(fmtUnit(172800, "sec")).toBe("2.0 d"));

@@ -6,9 +6,9 @@ import { safeJsonLd } from "@/lib/jsonld";
 
 export const metadata: import("next").Metadata = pageMetadata({
   path: "/products",
-  title: "Products",
+  title: "Crypto infrastructure providers ranked by benchmark wins",
   description:
-    "Every product tracked by OpenChainBench, grouped by performance. Click a name for its full benchmark record.",
+    "Every crypto infrastructure provider with a live OpenChainBench benchmark, sorted by first-place finishes across chains, then by reach across categories.",
 });
 
 export const revalidate = 3600;

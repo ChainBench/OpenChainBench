@@ -40,7 +40,7 @@ func (p *EnsoProvider) Supports(chainId int) bool {
 	return false
 }
 
-func (p *EnsoProvider) Probe(ctx context.Context, pair TestPair) (int64, bool, error) {
+func (p *EnsoProvider) Probe(ctx context.Context, pair TestPair) (Quote, error) {
 	q := url.Values{}
 	q.Set("chainId", fmt.Sprintf("%d", pair.ChainId))
 	q.Set("fromAddress", "0xbb663a119193cA68512c351b0fdfDEB9c22Dc416")
@@ -59,7 +59,7 @@ func (p *EnsoProvider) Probe(ctx context.Context, pair TestPair) (int64, bool, e
 	resp, err := p.client.Do(req)
 	if err != nil {
 		RecordOtherError(p.Slug(), pair.Chain, p.region, classifyNetErr(err))
-		return 0, false, err
+		return failed(), err
 	}
 	defer resp.Body.Close()
 	ms := time.Since(t0).Milliseconds()
@@ -70,15 +70,15 @@ func (p *EnsoProvider) Probe(ctx context.Context, pair TestPair) (int64, bool, e
 	// limit of 1rps." instead of a structured JSON. Catch both forms.
 	if resp.StatusCode == 429 || strings.Contains(string(body), "1rps") {
 		RecordThrottled(p.Slug(), pair.Chain, p.region)
-		return 0, false, fmt.Errorf("429")
+		return failed(), fmt.Errorf("429")
 	}
 	if resp.StatusCode == 401 || resp.StatusCode == 403 {
 		RecordAuthError(p.Slug(), pair.Chain, p.region)
-		return 0, false, fmt.Errorf("%d", resp.StatusCode)
+		return failed(), fmt.Errorf("%d", resp.StatusCode)
 	}
 	if resp.StatusCode != 200 {
 		RecordOtherError(p.Slug(), pair.Chain, p.region, fmt.Sprintf("http_%d", resp.StatusCode))
-		return 0, false, fmt.Errorf("status=%d body=%s", resp.StatusCode, snippet(body))
+		return failed(), fmt.Errorf("status=%d body=%s", resp.StatusCode, snippet(body))
 	}
 
 	var r struct {
@@ -86,11 +86,11 @@ func (p *EnsoProvider) Probe(ctx context.Context, pair TestPair) (int64, bool, e
 	}
 	if err := json.Unmarshal(body, &r); err != nil {
 		RecordOtherError(p.Slug(), pair.Chain, p.region, "parse")
-		return 0, false, err
+		return failed(), err
 	}
 	if r.AmountOut == "" || r.AmountOut == "0" {
 		RecordNoRoute(p.Slug(), pair.Chain, p.region)
-		return 0, false, fmt.Errorf("no_route")
+		return failed(), fmt.Errorf("no_route")
 	}
-	return ms, true, nil
+	return okQuote(ms, r.AmountOut), nil
 }

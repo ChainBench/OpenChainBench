@@ -1,0 +1,35 @@
+# Recording rules for OCB bench 304 (evm-quote-output).
+#
+# The bench ranks on how many basis points of output a provider gives up
+# against the best quote of the same tick. The raw metric is a histogram
+# per (provider, chain, pair); the page needs one number per provider per
+# chain, so the quantiles are recorded at (provider, chain) and the pair
+# is collapsed here rather than in nine spec queries.
+#
+# Robinhood Chain is excluded from the all-chains figure by the spec, not
+# here: only three providers reach it, and a chain most of the field does
+# not reach is not the ground the comparison stands on. It keeps its own
+# tab, where the comparison is like for like.
+groups:
+  - name: ocb_evm_quote_output
+    interval: 60s
+    rules:
+      - record: ocb:evm_swap_quote_shortfall_bps:p50_24h
+        expr: histogram_quantile(0.50, sum by (provider, chain, le) (rate(evm_swap_quote_shortfall_bps_bucket[24h])))
+      - record: ocb:evm_swap_quote_shortfall_bps:p90_24h
+        expr: histogram_quantile(0.90, sum by (provider, chain, le) (rate(evm_swap_quote_shortfall_bps_bucket[24h])))
+      - record: ocb:evm_swap_quote_shortfall_bps:p99_24h
+        expr: histogram_quantile(0.99, sum by (provider, chain, le) (rate(evm_swap_quote_shortfall_bps_bucket[24h])))
+      # Mean from sum over count, which is exact rather than bucket-interpolated.
+      - record: ocb:evm_swap_quote_shortfall_bps:mean_24h
+        expr: sum by (provider, chain) (rate(evm_swap_quote_shortfall_bps_sum[24h])) / sum by (provider, chain) (rate(evm_swap_quote_shortfall_bps_count[24h]))
+      - record: ocb:evm_swap_quote_shortfall_bps:count_increase_24h
+        expr: sum by (provider, chain) (increase(evm_swap_quote_shortfall_bps_count[24h]))
+      # Share of ticks where the provider came within half a basis point of
+      # the best quote. It is the le="0.5" bucket, not a strict win, so two
+      # providers inside half a bp of each other both count and the shares
+      # do not sum to 100. The top of this board is tight enough that a
+      # median alone cannot separate it, and "came within half a basis point"
+      # is the tiebreaker a reader understands.
+      - record: ocb:evm_swap_quote_best:rate_24h
+        expr: sum by (provider, chain) (rate(evm_swap_quote_shortfall_bps_bucket{le="0.5"}[24h])) / sum by (provider, chain) (rate(evm_swap_quote_shortfall_bps_count[24h]))

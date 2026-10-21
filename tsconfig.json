@@ -40,6 +40,9 @@
     "infrastructure",
     "harnesses",
     // crm/ is the internal dashboard (own package, Railway); same rule.
-    "crm"
+    "crm",
+    // video/ is the Remotion engine (own package, deployed to the Paris
+    // renderer by video/deploy/deploy-renderer.sh); same rule.
+    "video"
   ]
 }

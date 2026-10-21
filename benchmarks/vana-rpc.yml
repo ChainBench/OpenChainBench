@@ -46,25 +46,30 @@ dimensions:
     - { value: sgp,     label: Singapore }
 
 providers:
+  # This endpoint was filed under provider="publicnode" in the harness
+  # registry until 2026-10-21, though rpc.vana.org is the chain's own RPC and not a
+  # PublicNode domain. The matcher accepts both labels so the page does not
+  # blank for the 24h the recording rules keep the old series alive; narrow
+  # it to provider="vana-official" once that window has passed.
   - slug: vana-official
     name: Vana Foundation
     tag: Vana Foundation's official public RPC
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Vana Foundation's no-key Vana endpoint."
     queries:
-      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="vana"})
-      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="publicnode", chain="vana"})
-      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="publicnode", chain="vana"})
-      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="publicnode", chain="vana"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="publicnode", chain="vana"}) / sum(ocb:rpc_call:rate_24h{provider="publicnode", chain="vana"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="publicnode", chain="vana"})
-      series: avg(avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="vana"}[1h]))
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider=~"vana-official|publicnode", chain="vana"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider=~"vana-official|publicnode", chain="vana"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider=~"vana-official|publicnode", chain="vana"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider=~"vana-official|publicnode", chain="vana"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider=~"vana-official|publicnode", chain="vana"}) / sum(ocb:rpc_call:rate_24h{provider=~"vana-official|publicnode", chain="vana"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider=~"vana-official|publicnode", chain="vana"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider=~"vana-official|publicnode", chain="vana"}[1h]))
       regions:
         - region: us-east
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="vana", region="us-east"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="vana", region="us-east"}[1h])
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider=~"vana-official|publicnode", chain="vana", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider=~"vana-official|publicnode", chain="vana", region="us-east"}[1h])
         - region: eu-west
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="vana", region="eu-west"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="vana", region="eu-west"}[1h])
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider=~"vana-official|publicnode", chain="vana", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider=~"vana-official|publicnode", chain="vana", region="eu-west"}[1h])
         - region: ap-southeast
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="vana", region="sgp"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="vana", region="sgp"}[1h])
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider=~"vana-official|publicnode", chain="vana", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider=~"vana-official|publicnode", chain="vana", region="sgp"}[1h])

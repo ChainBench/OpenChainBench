@@ -19,13 +19,23 @@ const (
 // Odos requires its free-tier API key — anonymous traffic gets rate-
 // limited too aggressively for sustained probes.
 //
-// 0x was previously in the list, gated by ZEROX_API_KEY. Their team
-// suspended our account because a benchmark issues quote requests
-// without ever submitting fills — that ratio is their TOS-defined
-// abuse signal and re-enabling requires a custom plan negotiation.
-// Until/unless that contract exists, calling 0x just burns ticks on
-// guaranteed auth errors that bloat the error counters; safer to
-// drop the provider entirely.
+// 0x is back, gated by ZEROX_API_KEY.
+//
+// It was dropped in #508 under a comment claiming their team had
+// suspended the account because benchmarking without filling is a
+// TOS-defined abuse signal. Nothing in this repo backs that: no mail,
+// no ticket, no log, no mention in the harness README, and the commit
+// carries only the code removal. The key that was on the services
+// answered 403 "You cannot consume this service", which names a
+// service and not an account, and a key issued on 2026-10-19 under the
+// same 0x account with the Swap API service ticked works immediately
+// on Ethereum and Base. The earlier claim looks like an inference that
+// hardened into a fact.
+//
+// The general concern it raised is still worth watching, so the error
+// counters are the place to find out: a 403 returning here would be
+// evidence, dated and with the message attached, which is what the
+// original claim lacked.
 func buildProviders(cfg *Config) []Provider {
 	providers := []Provider{
 		NewMobulaProvider(cfg.MonitorRegion, cfg.MobulaAPIKey),
@@ -35,9 +45,21 @@ func buildProviders(cfg *Config) []Provider {
 		NewOpenOceanProvider(cfg.MonitorRegion),
 		NewCoWProvider(cfg.MonitorRegion),
 		NewEnsoProvider(cfg.MonitorRegion, cfg.EnsoAPIKey),
+		// Both keyless, both verified answering a bare GET on 2026-10-19.
+		// ParaSwap trades as Velora and is twelfth by 30d volume; Nordstern
+		// is fourteenth, reaches 121 chains, and returns the simulation
+		// block that makes a quote provably contemporaneous.
+		NewParaSwapProvider(cfg.MonitorRegion),
+		NewNordsternProvider(cfg.MonitorRegion),
+	}
+	if cfg.ZeroExAPIKey != "" {
+		providers = append(providers, NewZeroExProvider(cfg.MonitorRegion, cfg.ZeroExAPIKey))
 	}
 	if cfg.OdosAPIKey != "" {
 		providers = append(providers, NewOdosProvider(cfg.MonitorRegion, cfg.OdosAPIKey))
+	}
+	if cfg.UniswapAPIKey != "" {
+		providers = append(providers, NewUniswapProvider(cfg.MonitorRegion, cfg.UniswapAPIKey))
 	}
 	if cfg.RouteAPIKey != "" {
 		providers = append(providers, NewRouteProvider(cfg.MonitorRegion, cfg.RouteAPIKey))
@@ -88,6 +110,12 @@ func runScheduler(cfg *Config, stopChan <-chan struct{}) {
 // tick — the scheduler still moves on after probeTimeout.
 func doTick(ctx context.Context, providers []Provider, pair TestPair, region string) {
 	var wg sync.WaitGroup
+	// Quotes from this tick, kept so the shortfall can be measured against
+	// the best of them. The market moves 30 to 37 bps over five minutes
+	// while providers sit within 25 of each other, so a quote is only
+	// comparable to the ones fired beside it.
+	var mu sync.Mutex
+	tickQuotes := map[string]Quote{}
 	for _, p := range providers {
 		if !p.Supports(pair.ChainId) {
 			continue
@@ -97,11 +125,16 @@ func doTick(ctx context.Context, providers []Provider, pair TestPair, region str
 			defer wg.Done()
 			probeCtx, cancel := context.WithTimeout(ctx, probeTimeout)
 			defer cancel()
-			ms, ok, err := p.Probe(probeCtx, pair)
-			if ok {
-				RecordLatency(p.Slug(), pair.Chain, region, ms)
-				fmt.Printf("[%s] %s %s/%s -> %s/%s : %dms\n",
-					region, p.Slug(), pair.TokenInSym, pair.TokenOutSym, pair.Chain, pair.TokenOutSym, ms)
+			q, err := p.Probe(probeCtx, pair)
+			if q.OK {
+				mu.Lock()
+				tickQuotes[p.Slug()] = q
+				mu.Unlock()
+				RecordLatency(p.Slug(), pair.Chain, region, q.LatencyMs)
+				RecordQuote(p.Slug(), pair, region, q)
+				fmt.Printf("[%s] %s %s/%s -> %s/%s : %dms out=%s\n",
+					region, p.Slug(), pair.TokenInSym, pair.TokenOutSym, pair.Chain,
+					pair.TokenOutSym, q.LatencyMs, q.OutAmount)
 			} else if err != nil {
 				// Most adapters already recorded the correct counter — this
 				// line is just for the log ring buffer so /logs?tail=N is
@@ -112,4 +145,5 @@ func doTick(ctx context.Context, providers []Provider, pair TestPair, region str
 		}(p)
 	}
 	wg.Wait()
+	RecordShortfall(pair, region, tickQuotes)
 }

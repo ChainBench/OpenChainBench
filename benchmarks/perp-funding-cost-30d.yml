@@ -29,7 +29,7 @@ seo_intro: |
   the cost of holding a long for the trailing 7 and 30 days, in basis
   points of notional, for {{count}} venues: the onchain order books
   (Hyperliquid, Lighter, Paradex), the regulated Kalshi book, and the
-  large CEX books (Binance, Bybit, OKX, Coinbase, Kraken) as the
+  large CEX books (Binance, Bybit, OKX, Kraken, Gate) as the
   reference. The number a carry trader wants is here: which venue was
   cheapest to be long on over the month, and by how much.
 abstract: |
@@ -56,10 +56,11 @@ methodology:
   - "Sample health: expected_n is 720 (a month of hourly samples). A venue ranks only with 576 of them (24 days, 80 percent of the grid, which absorbs harness restarts): the figure does not move with coverage, but an average over a few days is not a month's evidence. Under the floor the row is unranked and shows its day count. A feed that stops loses its hours: the harness drops a rate nobody refreshed for five minutes rather than repeat it. Venues added on 2026-09-22 and 23 start under the floor."
   - "Interval normalisation is the venue's: Hyperliquid, Vest, StandX and ApeX settle hourly, Kalshi every 8 hours (three settlements a day), the CEX rows per their own schedule; every row is expressed as cost per 24h before integrating."
   - "This page does not replace perp-funding (bench 036), which ranks the rate right now; it ranks what the last month cost."
+  - "A dormant market reads as an expensive one over thirty days. Coinbase International settled its last funding on 1 October 2026 and reports zero notional on 24h, daily and 30 day volume, so the feed kept relaying that final rate: 9.36 bps a day on ETH for twenty of these thirty days, ranking it last at 227 bps against 91 for the next worst. It left the cohort on 21 October. Freshness checks stayed green, because they read a refresh timestamp and a repeated value advances one."
 findings:
   - "{{best_name}} was the cheapest venue to hold an ETH long over the trailing 30 days, {{best_p50}} of funding for the month at its average daily rate; {{worst_name}} cost {{worst_p50}}."
   - "{{name:hyperliquid}} at {{p50:hyperliquid}} for the month, {{name:lighter}} at {{p50:lighter}}: the two largest onchain books against the CEX reference of {{name:binance}} at {{p50:binance}} and {{name:bybit}} at {{p50:bybit}}."
-  - "{{name:okx}} {{p50:okx}}, {{name:coinbase-international}} {{p50:coinbase-international}}, {{name:kraken}} {{p50:kraken}}: the spread between CEX books over a month is itself several basis points, the carry a cross-venue position collects."
+  - "{{name:okx}} {{p50:okx}}, {{name:kraken}} {{p50:kraken}}, {{name:bitget}} {{p50:bitget}}: the spread between CEX books over a month is itself several basis points, the carry a cross-venue position collects."
   - "Rows with a low-sample badge (the venues that joined on 2026-09-22 and 2026-09-23) show a month at the average daily cost of the days measured since they joined, with the day count on the row; they take a rank once 24 days are behind the average, in mid-October."
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/perp-cohort-stats
 prometheus:
@@ -232,20 +233,6 @@ providers:
       sample_size: count_over_time(perp_venue_funding_24h_bps{venue="okx",asset="ETH"}[30d:1h])
       ranked: (count_over_time(perp_venue_funding_24h_bps{venue="okx",asset="ETH"}[30d:1h]) >= bool 576)
       series: avg_over_time(perp_venue_funding_24h_bps{venue="okx",asset="ETH"}[30d:1h]) * 30
-
-  - slug: coinbase-international
-    name: Coinbase International
-    tag: CEX reference (Coinbase International), hourly funding, via the Mobula funding feed
-    formula: "Average of perp_venue_funding_24h_bps{venue=\"coinbase\",asset=\"ETH\"} over the days measured in the trailing 30 (hourly samples) x 30: the month's funding at that average daily cost, in bps of notional; ranked with 24 days measured."
-    queries:
-      p50: avg_over_time(perp_venue_funding_24h_bps{venue="coinbase",asset="ETH"}[30d:1h]) * 30
-      p90: avg_over_time(perp_venue_funding_24h_bps{venue="coinbase",asset="BTC"}[30d:1h]) * 30
-      p99: avg_over_time(perp_venue_funding_24h_bps{venue="coinbase",asset="SOL"}[30d:1h]) * 30
-      mean: avg_over_time(perp_venue_funding_24h_bps{venue="coinbase",asset="ETH"}[7d:1h]) * 7
-      success: ((perp_venue_funding_refresh_unix{venue="coinbase",asset="ETH"} > bool (time() - 900)) or on() vector(0))
-      sample_size: count_over_time(perp_venue_funding_24h_bps{venue="coinbase",asset="ETH"}[30d:1h])
-      ranked: (count_over_time(perp_venue_funding_24h_bps{venue="coinbase",asset="ETH"}[30d:1h]) >= bool 576)
-      series: avg_over_time(perp_venue_funding_24h_bps{venue="coinbase",asset="ETH"}[30d:1h]) * 30
 
   - slug: kraken
     name: Kraken

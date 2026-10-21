@@ -1,0 +1,7 @@
+node_modules/
+remotion-bundle/
+lab/out/
+out/
+# The soundtrack lives on the renderer only (licence not established for a
+# public repository); see README.
+public/*.mp3

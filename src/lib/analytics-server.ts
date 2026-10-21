@@ -1,5 +1,6 @@
 import { after } from "next/server";
 import { createHash } from "node:crypto";
+import { AI_CRAWLER_FAMILIES } from "@/data/ai-crawlers";
 
 /**
  * Server-side PostHog capture for the surfaces a browser never renders:
@@ -25,26 +26,27 @@ import { createHash } from "node:crypto";
 const KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY;
 const HOST = "https://us.i.posthog.com";
 
+// The AI crawlers come first and come from src/data/ai-crawlers.ts, because
+// almost all of them put `Mozilla/5.0` in their own user-agent: an AI entry
+// placed after the browser catch-all below would be counted as a browser. The
+// hand-written half of this table had drifted from the allow list anyway, and
+// ExaSearchBot, the biggest crawler on the site, was landing in "other".
 const FAMILIES: [RegExp, string][] = [
-  [/GPTBot/i, "gptbot"],
-  [/ChatGPT-User/i, "chatgpt-user"],
-  [/OAI-SearchBot/i, "oai-searchbot"],
-  [/ClaudeBot|anthropic-ai/i, "claudebot"],
-  [/Claude-User|Claude-SearchBot/i, "claude-user"],
-  [/PerplexityBot/i, "perplexitybot"],
-  [/Perplexity-User/i, "perplexity-user"],
-  [/Google-Extended/i, "google-extended"],
+  ...AI_CRAWLER_FAMILIES,
+  // Search engines and plain HTTP clients. Not AI, so not in that list.
   [/Googlebot|Google-InspectionTool/i, "googlebot"],
   [/bingbot/i, "bingbot"],
   [/Applebot/i, "applebot"],
-  [/DuckAssistBot|DuckDuckBot/i, "duckduckgo"],
-  [/CCBot/i, "ccbot"],
-  [/Bytespider/i, "bytespider"],
-  [/meta-externalagent|FacebookBot/i, "meta"],
-  [/Amazonbot/i, "amazonbot"],
-  [/cohere-ai/i, "cohere"],
-  [/YouBot/i, "youbot"],
-  [/MistralAI-User|Mistral/i, "mistral"],
+  [/DuckDuckBot/i, "duckduckgo"],
+  [/PetalBot/i, "petalbot"],
+  [/Baiduspider/i, "baiduspider"],
+  [/YandexBot/i, "yandexbot"],
+  // Commercial SEO tools, deliberately not allowlisted but worth naming so
+  // they stop inflating "other".
+  [/AhrefsBot|AhrefsSiteAudit/i, "ahrefs"],
+  [/Semrush/i, "semrush"],
+  [/Barkrowler/i, "barkrowler"],
+  [/facebookexternalhit|Twitterbot/i, "unfurler"],
   [/curl\//i, "curl"],
   [/python-requests|httpx|aiohttp/i, "python"],
   [/node-fetch|undici|axios/i, "node"],

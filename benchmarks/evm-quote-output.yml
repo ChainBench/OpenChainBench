@@ -1,0 +1,249 @@
+# OpenChainBench. Bench № 304
+
+slug: evm-quote-output
+number: "304"
+title: "Best DEX aggregator by quote output: who actually gives you more"
+seo_title: "Best DEX aggregator 2026: quote output compared"
+seo_description: "{{best_name}} gives up the least output of any DEX aggregator, {{best_p50}} against the best quote of the same moment. {{declared_count}} quote sources measured side by side."
+subtitle: Basis points of output a DEX aggregator gives up against the best quote fired at the same moment, on the same pair, from the same place.
+
+category: Aggregators
+status: live
+metric: Quote shortfall
+unit: bp
+higher_is_better: false
+row_noun: { one: quote source, many: quote sources }
+# The success query is the share of ticks a provider held the best quote,
+# not a probe success rate. Declaring that keeps the Reliability column
+# off a board where it would read as uptime.
+ledger_reliability: false
+zero_is_a_value: true
+
+# Only three of the ten reach Robinhood Chain, so it is not the ground
+# the field shares. It keeps its own tab where the comparison is like for
+# like, and stays out of the all-chains figure.
+score_scope: full_coverage
+
+disclaimer: |
+  Every provider is asked for the same swap at the same second, and each answer is scored against the best of that round. The figure is how much less you would have received, in basis points. Quotes are not comparable between rounds: the market moves 30 to 37 bps in five minutes while the field sits inside 25. Two providers take a fee out of the quote and declare it, shown separately: giving up 25 bps to a toll is not routing badly.
+
+seo_intro: |
+  Everyone publishes how fast their quote API answers. Almost nobody
+  publishes what the quote is worth. This page asks every aggregator for
+  the same swap at the same second and compares what each one offers
+  against the best of them, so the number is a difference rather than a
+  price. The spread is smaller than the marketing suggests and larger
+  than it looks: the leaders sit within a couple of basis points of each
+  other, while two well-known names give up fifteen and twenty-five, and
+  that gap turns out to be their own declared fee rather than their
+  routing.
+
+abstract: |
+  The harness fires one pair a minute at every provider in parallel from
+  three regions, keeps each successful quote, and measures it against the
+  best quote of that same tick. Output is normalised to whole destination
+  tokens first, because one provider returns whole tokens where the rest
+  return the smallest unit.
+
+  A tick with a single answer records nothing: zero there would hand a
+  provider a perfect score for being the only one that replied.
+
+  What this page does not yet do is subtract gas. Providers report it in
+  four incompatible units and their USD figures disagree by a factor of
+  3.5 on the same pair at the same block, so a net-of-gas column would be
+  precise and wrong. It is the next piece of work and it is named here
+  rather than left for a reader to discover.
+
+methodology:
+  - "The comparison is within a tick, never across them. Every provider that supports the pair is fired in parallel on the same 60 second tick, and each is scored against the best output of that tick. Measured 2026-10-19 across five probes a minute apart, the market drifted 30 to 37 bps while the field sat inside 25, so a cross-tick comparison would measure the market rather than the provider."
+  - "Zero means the provider held the best quote of that tick. The published figure is the median over 24 hours, not the mean, so one outlying round cannot move a row. The near-best column counts the ticks a provider came within half a basis point of the best, which is the tiebreaker when medians sit within a basis point of each other. Several providers can clear it in the same tick, so the column does not sum to 100."
+  - "Declared fees get their own column and are measured, not quoted: the figure is read out of the provider's own quote response on every tick. Only some declare one, and the column is blank for the rest. Compare it against the shortfall beside it rather than assuming they match, because they need not: a declared fee is what the provider takes, the shortfall is what the route and the fee together cost. A provider that declares nothing publishes no fee, which is not the same as charging nothing."
+  - "Not every row is an aggregator. CoW and Bebop are RFQ or batch-auction venues and LI.FI is a cross-chain relayer, so all three are listed with their numbers and kept out of the ranking. Route quotes Robinhood Chain alone and is kept out of the all-chains order for the same reason; its own tab carries the comparison."
+  - "An RFQ quote is not a router quote. A market maker prices its own spread and its settlement into the number it returns, and a small clip pays for both in full: Bebop gives up around a hundred basis points on a $1,200 swap, and the figure barely moves between chains whose gas differs by orders of magnitude, so it is the spread and not the gas. Both RFQ rows are listed and neither is ranked."
+  - "Gas is not subtracted yet. KyberSwap reports it in USD, 0x in wei, Nordstern in gas units, and the USD figures of three providers on the same pair at the same block differ by a factor of 3.5. Until gas is computed on our side rather than theirs, this page measures gross output."
+  - "Absent and why: 1inch requires a business account we do not have, OKX requires credentials not yet issued, Odos has published no volume for 30 days and its API returns 530, OpenOcean serves our probes a Cloudflare challenge, and Enso's free-plan credits are exhausted. None of them is excluded on performance."
+  - "Six pairs across five chains, one per 60 second tick, from us-east, eu-west and Singapore. Output does not vary meaningfully by region, measured at a 4.24 bps median spread against a market that drifts 30 to 37, so the regional split is a check on the probe rather than a dimension of the result."
+
+findings:
+  - "{{best_name}} gives up the least against the best quote of the moment, {{best_p50}}."
+  - "The top of this board is tight. The leaders sit within a couple of basis points of each other, which is inside the round-to-round noise, so read the near-best column before treating the order as settled."
+  - "Two of the largest names carry most of their shortfall as a fee they declare themselves. The declared-fee column names them and says how much of the gap is a toll rather than a route."
+  - "Quote output and quote latency rank differently. The fastest answer is not the best answer, and bench 033 measures the other half."
+  - "Two rows here are built on other rows. {{name:route}} enables Kyber and Nordstern inside its own engine, and {{name:lifi}} aggregates seven of this board's providers. Choosing well among upstreams is an aggregator's job, so their figures are real, but they are an envelope over competitors rather than a like for like quote against them."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/dev/harnesses/evm-swap-quoting
+
+prometheus:
+  window: 24h
+  url: https://prom.openchainbench.com
+  expected_freshness_seconds: 900
+
+dimension_labels:
+  chain: Chain
+
+dimensions:
+  chain:
+    - { value: all,       label: All chains }
+    - { value: ethereum,  label: Ethereum }
+    - { value: base,      label: Base }
+    - { value: arbitrum,  label: Arbitrum }
+    - { value: bsc,       label: BSC }
+    - { value: robinhood, label: Robinhood }
+
+# The three slot columns declare no unit on purpose: ledger_columns' unit
+# enum has no "bp", and "bps" there is the legacy percent-converting one, so
+# inheriting the bench's own unit is the only way a basis point prints as a
+# basis point.
+ledger_columns:
+  - { label: "Shortfall", slot: p50 }
+  - { label: "p90", slot: p90 }
+  - { label: "p99", slot: p99 }
+  - { label: "Declared fee", panel: declared_fee }
+  - { label: "Within 0.5 bps of best", panel: best_rate, unit: pct }
+
+metric_panels:
+  - id: best_rate
+    label: Near-best ticks
+    description: Share of 24h ticks where this provider's quote was within half a basis point of the best quote of that same tick. Several providers can clear it in one tick, so the column does not sum to 100. Counted across every chain the provider covers, including chains outside the all-chains basket.
+    metric: avg by (provider) (ocb:evm_swap_quote_best:rate_24h{}) * 100
+    label_key: provider
+    unit: pct
+    higher_is_better: true
+    tab: false
+  - id: declared_fee
+    label: Declared fee
+    description: The fee the provider returns inside its own quote response, in basis points, averaged over 24h. Measured from the response, not read off a pricing page. A provider that declares nothing publishes no figure here, which is not the same as charging nothing.
+    metric: avg by (provider) (evm_swap_quote_fee_bps{} >= 0)
+    label_key: provider
+    unit: bp
+    higher_is_better: false
+    tab: false
+
+providers:
+  - slug: kyberswap
+    name: KyberSwap
+    tag: No auth, per chain aggregator engine
+    formula: "Median basis points of output given up against the best quote of the same tick, over 24h, averaged across the chains this provider covers."
+    queries:
+      p50: avg(ocb:evm_swap_quote_shortfall_bps:p50_24h{provider="kyberswap"})
+      p90: avg(ocb:evm_swap_quote_shortfall_bps:p90_24h{provider="kyberswap"})
+      p99: avg(ocb:evm_swap_quote_shortfall_bps:p99_24h{provider="kyberswap"})
+      mean: avg(ocb:evm_swap_quote_shortfall_bps:mean_24h{provider="kyberswap"})
+      sample_size: sum(ocb:evm_swap_quote_shortfall_bps:count_increase_24h{provider="kyberswap"})
+      series: histogram_quantile(0.50, sum by (le) (rate(evm_swap_quote_shortfall_bps_bucket{provider="kyberswap"}[1h])))
+
+  - slug: uniswap
+    name: Uniswap
+    tag: Trading API, self-service key, 7 chains here
+    formula: "Median basis points of output given up against the best quote of the same tick, over 24h, averaged across the chains this provider covers."
+    queries:
+      p50: avg(ocb:evm_swap_quote_shortfall_bps:p50_24h{provider="uniswap"})
+      p90: avg(ocb:evm_swap_quote_shortfall_bps:p90_24h{provider="uniswap"})
+      p99: avg(ocb:evm_swap_quote_shortfall_bps:p99_24h{provider="uniswap"})
+      mean: avg(ocb:evm_swap_quote_shortfall_bps:mean_24h{provider="uniswap"})
+      sample_size: sum(ocb:evm_swap_quote_shortfall_bps:count_increase_24h{provider="uniswap"})
+      series: histogram_quantile(0.50, sum by (le) (rate(evm_swap_quote_shortfall_bps_bucket{provider="uniswap"}[1h])))
+
+  - slug: nordstern
+    name: Nordstern
+    tag: No key, no registration, 121 chains
+    formula: "Median basis points of output given up against the best quote of the same tick, over 24h, averaged across the chains this provider covers."
+    queries:
+      p50: avg(ocb:evm_swap_quote_shortfall_bps:p50_24h{provider="nordstern"})
+      p90: avg(ocb:evm_swap_quote_shortfall_bps:p90_24h{provider="nordstern"})
+      p99: avg(ocb:evm_swap_quote_shortfall_bps:p99_24h{provider="nordstern"})
+      mean: avg(ocb:evm_swap_quote_shortfall_bps:mean_24h{provider="nordstern"})
+      sample_size: sum(ocb:evm_swap_quote_shortfall_bps:count_increase_24h{provider="nordstern"})
+      series: histogram_quantile(0.50, sum by (le) (rate(evm_swap_quote_shortfall_bps_bucket{provider="nordstern"}[1h])))
+
+  - slug: paraswap
+    name: ParaSwap
+    tag: Trades as Velora, no key
+    formula: "Median basis points of output given up against the best quote of the same tick, over 24h, averaged across the chains this provider covers."
+    queries:
+      p50: avg(ocb:evm_swap_quote_shortfall_bps:p50_24h{provider="paraswap"})
+      p90: avg(ocb:evm_swap_quote_shortfall_bps:p90_24h{provider="paraswap"})
+      p99: avg(ocb:evm_swap_quote_shortfall_bps:p99_24h{provider="paraswap"})
+      mean: avg(ocb:evm_swap_quote_shortfall_bps:mean_24h{provider="paraswap"})
+      sample_size: sum(ocb:evm_swap_quote_shortfall_bps:count_increase_24h{provider="paraswap"})
+      series: histogram_quantile(0.50, sum by (le) (rate(evm_swap_quote_shortfall_bps_bucket{provider="paraswap"}[1h])))
+
+  - slug: 0x
+    name: 0x
+    tag: Swap API key, declares its own fee
+    formula: "Median basis points of output given up against the best quote of the same tick, over 24h, averaged across the chains this provider covers."
+    queries:
+      p50: avg(ocb:evm_swap_quote_shortfall_bps:p50_24h{provider="0x"})
+      p90: avg(ocb:evm_swap_quote_shortfall_bps:p90_24h{provider="0x"})
+      p99: avg(ocb:evm_swap_quote_shortfall_bps:p99_24h{provider="0x"})
+      mean: avg(ocb:evm_swap_quote_shortfall_bps:mean_24h{provider="0x"})
+      sample_size: sum(ocb:evm_swap_quote_shortfall_bps:count_increase_24h{provider="0x"})
+      series: histogram_quantile(0.50, sum by (le) (rate(evm_swap_quote_shortfall_bps_bucket{provider="0x"}[1h])))
+
+  - slug: mobula
+    name: Mobula
+    tag: API key, routes multi-hop across named pools
+    formula: "Median basis points of output given up against the best quote of the same tick, over 24h, averaged across the chains this provider covers."
+    queries:
+      p50: avg(ocb:evm_swap_quote_shortfall_bps:p50_24h{provider="mobula"})
+      p90: avg(ocb:evm_swap_quote_shortfall_bps:p90_24h{provider="mobula"})
+      p99: avg(ocb:evm_swap_quote_shortfall_bps:p99_24h{provider="mobula"})
+      mean: avg(ocb:evm_swap_quote_shortfall_bps:mean_24h{provider="mobula"})
+      sample_size: sum(ocb:evm_swap_quote_shortfall_bps:count_increase_24h{provider="mobula"})
+      series: histogram_quantile(0.50, sum by (le) (rate(evm_swap_quote_shortfall_bps_bucket{provider="mobula"}[1h])))
+
+  - slug: cow
+    name: CoW Protocol
+    tag: Batch auction with solver competition, not a router
+    unranked: "RFQ or batch"
+    formula: "Median basis points of output given up against the best quote of the same tick, over 24h, averaged across the chains this provider covers."
+    queries:
+      p50: avg(ocb:evm_swap_quote_shortfall_bps:p50_24h{provider="cow"})
+      p90: avg(ocb:evm_swap_quote_shortfall_bps:p90_24h{provider="cow"})
+      p99: avg(ocb:evm_swap_quote_shortfall_bps:p99_24h{provider="cow"})
+      mean: avg(ocb:evm_swap_quote_shortfall_bps:mean_24h{provider="cow"})
+      sample_size: sum(ocb:evm_swap_quote_shortfall_bps:count_increase_24h{provider="cow"})
+      series: histogram_quantile(0.50, sum by (le) (rate(evm_swap_quote_shortfall_bps_bucket{provider="cow"}[1h])))
+
+  - slug: bebop
+    name: Bebop
+    tag: Gasless RFQ, market-maker quotes
+    unranked: "RFQ or batch"
+    formula: "Median basis points of output given up against the best quote of the same tick, over 24h, averaged across the chains this provider covers."
+    queries:
+      p50: avg(ocb:evm_swap_quote_shortfall_bps:p50_24h{provider="bebop"})
+      p90: avg(ocb:evm_swap_quote_shortfall_bps:p90_24h{provider="bebop"})
+      p99: avg(ocb:evm_swap_quote_shortfall_bps:p99_24h{provider="bebop"})
+      mean: avg(ocb:evm_swap_quote_shortfall_bps:mean_24h{provider="bebop"})
+      sample_size: sum(ocb:evm_swap_quote_shortfall_bps:count_increase_24h{provider="bebop"})
+      series: histogram_quantile(0.50, sum by (le) (rate(evm_swap_quote_shortfall_bps_bucket{provider="bebop"}[1h])))
+
+  - slug: lifi
+    name: LI.FI
+    tag: Cross-chain relayer, declares a 25 bps fee, routes through seven rows of this board
+    unranked: "Relayer"
+    formula: "Median basis points of output given up against the best quote of the same tick, over 24h, averaged across the chains this provider covers."
+    queries:
+      p50: avg(ocb:evm_swap_quote_shortfall_bps:p50_24h{provider="lifi"})
+      p90: avg(ocb:evm_swap_quote_shortfall_bps:p90_24h{provider="lifi"})
+      p99: avg(ocb:evm_swap_quote_shortfall_bps:p99_24h{provider="lifi"})
+      mean: avg(ocb:evm_swap_quote_shortfall_bps:mean_24h{provider="lifi"})
+      sample_size: sum(ocb:evm_swap_quote_shortfall_bps:count_increase_24h{provider="lifi"})
+      series: histogram_quantile(0.50, sum by (le) (rate(evm_swap_quote_shortfall_bps_bucket{provider="lifi"}[1h])))
+
+  - slug: route
+    name: Route
+    tag: Robinhood Chain only, routes through Kyber and Nordstern
+    # No `unranked:` here on purpose. score_scope: full_coverage computes the
+    # same label from the coverage it measures, and only on the all-chains
+    # view, which is the only view where Route's figure is incomparable. A
+    # spec-declared label applies to every tab, so it would have pulled Route
+    # out of the ranking on the one chain it actually quotes.
+    formula: "Median basis points of output given up against the best quote of the same tick, over 24h, averaged across the chains this provider covers."
+    queries:
+      p50: avg(ocb:evm_swap_quote_shortfall_bps:p50_24h{provider="route"})
+      p90: avg(ocb:evm_swap_quote_shortfall_bps:p90_24h{provider="route"})
+      p99: avg(ocb:evm_swap_quote_shortfall_bps:p99_24h{provider="route"})
+      mean: avg(ocb:evm_swap_quote_shortfall_bps:mean_24h{provider="route"})
+      sample_size: sum(ocb:evm_swap_quote_shortfall_bps:count_increase_24h{provider="route"})
+      series: histogram_quantile(0.50, sum by (le) (rate(evm_swap_quote_shortfall_bps_bucket{provider="route"}[1h])))

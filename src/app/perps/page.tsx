@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { fetchPerpByAssetMatrix, fetchPerpCohort } from "@/lib/perp-stats";
+import { fetchPerpByAssetMatrix, fetchPerpCohort, perpVolumeLead, perpVolumeRanking } from "@/lib/perp-stats";
 import { PerpHubTabs } from "@/components/perp-hub-tabs";
 import { pageMetadata } from "@/lib/page-metadata";
 import { safeJsonLd, buildBreadcrumbJsonLd, buildFaqPageJsonLd } from "@/lib/jsonld";
@@ -34,9 +34,7 @@ function describe(cohort: Awaited<ReturnType<typeof fetchPerpCohort>>): string {
   // Same number as the lede and the H2: tracked venues, not the cohort
   // array length (19 vs 18 on 2026-09-21).
   const n = cohort?.totals.trackedVenues ?? cohort?.venues.length ?? 0;
-  const lead = (cohort?.venues.filter((v) => v.venueType !== "cex") ?? [])
-    .slice()
-    .sort((a, b) => (b.volume30d ?? -1) - (a.volume30d ?? -1))[0];
+  const lead = perpVolumeLead(cohort?.venues);
   // 158 characters at most: the SERP truncates beyond that.
   return lead && lead.volume30d != null
     ? `${lead.name} leads ${n} perp DEXes on 30-day volume at ${fmtUSD(lead.volume30d)}. Volume, open interest, fees, all-in cost and funding, measured live, sources public.`
@@ -77,20 +75,28 @@ export default async function PerpsHubPage() {
   const measured = (cohort?.venues.filter((v) => v.venueType !== "cex") ?? [])
     .slice()
     .sort((a, b) => (b.volume30d ?? -1) - (a.volume30d ?? -1) || a.name.localeCompare(b.name));
-  const lead = measured[0] ?? null;
-  const tracked = cohort?.totals.trackedVenues ?? 0;
+  // Not measured[0]: that is whatever posted the largest notional, and on
+  // 2026-10-20 it was a two-market venue where every position faces one house
+  // LP, claiming twenty times the field's largest monthly volume.
+  const volumeRanking = perpVolumeRanking(cohort?.venues);
+  const lead = volumeRanking[0] ?? null;
+  // The count ranked ON VOLUME, not the coverage count: this sentence is
+  // about 30-day volume, and one venue is measured but excluded from it.
+  const rankedOnVolume = cohort?.totals.volumeRankedVenues ?? 0;
   const leadSentence =
     lead && lead.volume30d != null
-      ? `${lead.name} leads ${tracked} tracked perp DEXes on 30-day volume at ${fmtUSD(lead.volume30d)}; open interest, fees, all-in cost and funding are ranked below.`
+      ? `${lead.name} leads ${rankedOnVolume} perp DEXes on 30-day volume at ${fmtUSD(lead.volume30d)}; open interest, fees, all-in cost and funding are ranked below.`
       : "";
   const asOfLabel = cohort ? `${new Date(cohort.asOf * 1000).toISOString().slice(0, 16).replace("T", " ")} UTC` : null;
-  const second = measured[1] ?? null;
+  // From the same eligible ranking as `lead`, or the two sentences would name
+  // the same venue: Papertrade is measured[0] and Hyperliquid measured[1].
+  const second = volumeRanking[1] ?? null;
   const faq = cohort
     ? [
         {
           q: "Which perp DEX has the most volume right now?",
           a: lead && lead.volume30d != null
-            ? `${lead.name}, with ${fmtUSD(lead.volume30d)} of 30-day notional${second && second.volume30d != null ? `, ahead of ${second.name} at ${fmtUSD(second.volume30d)}` : ""}. The table below ranks ${tracked} tracked venues by 30-day volume as of ${asOfLabel}.`
+            ? `${lead.name}, with ${fmtUSD(lead.volume30d)} of 30-day notional${second && second.volume30d != null ? `, ahead of ${second.name} at ${fmtUSD(second.volume30d)}` : ""}. The table below ranks ${rankedOnVolume} venues by 30-day volume as of ${asOfLabel}.`
             : "The leaderboard below ranks every tracked venue by 30-day volume, read from each venue's public API.",
         },
         {
@@ -350,7 +356,7 @@ export default async function PerpsHubPage() {
       {cohort ? (
         <>
           <h2 className="display text-xl sm:text-2xl text-ink mb-3">
-            Leaderboard: {tracked} venues by 30-day volume
+            Leaderboard: {rankedOnVolume} venues by 30-day volume
           </h2>
           <section className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
             <SummaryCard

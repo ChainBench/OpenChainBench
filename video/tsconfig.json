@@ -1,0 +1,30 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "jsx": "preserve",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "allowSyntheticDefaultImports": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "lib": [
+      "DOM",
+      "ES2022"
+    ],
+    "allowJs": true
+  },
+  "include": [
+    "src/**/*",
+    "remotion.config.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "out",
+    "remotion-bundle"
+  ]
+}

@@ -284,9 +284,19 @@ export function PerpCostChart({ model, market }: { model: CostModel; market: Mar
         </text>
       </svg>
 
+      {/* The first version of this caption said the curve bends because the
+          fee grows with the gain. That does not follow: a constant share of a
+          gain that is itself linear in the move is a straight line through the
+          origin, so "grows with the gain" predicts a line, not a curve. What
+          actually bends it is that Papertrade's share is not constant. It
+          climbs with the move, from nothing at the deadband toward 11.8 per
+          cent, so the slope rises and then flattens. Saying it correctly costs
+          one sentence and is the only reason the two lines cross where they
+          do. */}
       <figcaption className="mt-1 text-xs leading-snug text-ink-faint">
-        A fee on notional does not move with the price, so it draws a flat line. A fee on the gain
-        grows with the gain, so it draws a curve out of the origin. They cross once.
+        A fee on notional does not move with the price, so it draws a flat line. The curve is not
+        simply a share of the gain, which would be a straight line too: it bends because the share
+        itself climbs with the move, from nothing at the deadband toward 11.8%. They cross once.
         {zoomed
           ? ` Framed on the region where the two are comparable, up to a ${(xMax * 100).toFixed(
               2,

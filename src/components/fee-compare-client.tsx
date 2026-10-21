@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useId } from "react";
 import Image from "next/image";
 import {
   ArrowRight,
@@ -326,9 +326,17 @@ function VenueDropdown({
   onChange: (v: VenueSlug) => void;
 }) {
   const venue = COMPARABLE_VENUES.find((v) => v.slug === value)!;
+  // The visible label sat beside the select with no `for`, so the control
+  // reached the accessibility tree unnamed: an agent driving this page saw two
+  // identical dropdowns and could not tell which one was which venue. Tying
+  // them means the accessible name IS the visible text, with nothing to drift.
+  const selectId = useId();
   return (
     <div className="flex-1 min-w-0">
-      <label className="block font-sans text-[10px] uppercase tracking-[0.16em] text-ink-faint mb-1.5">
+      <label
+        htmlFor={selectId}
+        className="block font-sans text-[10px] uppercase tracking-[0.16em] text-ink-faint mb-1.5"
+      >
         {label}
       </label>
       <div className="relative">
@@ -336,13 +344,14 @@ function VenueDropdown({
           <VenueLogo slug={value} size={18} />
         </div>
         <select
+          id={selectId}
           value={value}
           onChange={(e) => onChange(e.target.value as VenueSlug)}
           className="w-full appearance-none rounded-xl border border-ink/15 bg-paper pl-9 pr-8 py-2.5 text-sm font-semibold text-ink focus:border-ink/40 focus:outline-none transition-colors cursor-pointer"
         >
           {COMPARABLE_VENUES.filter((v) => v.slug !== exclude).map((v) => (
             <option key={v.slug} value={v.slug}>
-              {v.name} — {v.chain}
+              {v.name}, {v.chain}
             </option>
           ))}
         </select>
@@ -1623,7 +1632,7 @@ export function FeeCompareClient({
             Wallet address
             <span className="ml-2 normal-case font-normal text-ink-faint/60">
               {needsEvmWallet
-                ? "optional — for per-trade analysis"
+                ? "optional, for per-trade analysis"
                 : "select Hyperliquid, Gains, or GMX v2 to enable trade history"}
             </span>
           </label>

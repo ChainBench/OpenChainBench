@@ -327,8 +327,11 @@ export function PerpCostClient() {
         <p className="font-sans text-[10px] uppercase tracking-[0.18em] text-ink-faint">
           Why the order flips
         </p>
+        {/* Not "a fee on the gain is a curve": a constant share of the gain
+            draws a line through the origin, same as a flat fee draws a level
+            one. It is the rate climbing with the move that bends it. */}
         <h2 className="display mt-1 text-xl text-ink">
-          A flat fee is a line, a fee on the gain is a curve
+          A flat fee is a line, a rate that climbs is a curve
         </h2>
         <div className="mt-4 overflow-x-auto">
           <div className="min-w-[560px]">
@@ -581,9 +584,20 @@ export function PerpCostClient() {
                         </span>
                       </>
                     ) : (
-                      <span className="rounded bg-bad/10 px-2 py-0.5 text-[11px] text-bad">
-                        nothing comes back
-                      </span>
+                      <>
+                        <span className="rounded bg-bad/10 px-2 py-0.5 text-[11px] text-bad">
+                          nothing comes back
+                        </span>
+                        {/* Still "nothing comes back": no margin returns, and
+                            the token cannot be sold at launch. But a venue
+                            that mints to the loser is not the same as one that
+                            keeps everything, so the row says so. */}
+                        {row.venue.mintsOnLoss ? (
+                          <span className="mt-1 block text-[10px] text-ink-faint">
+                            {row.venue.mintsOnLoss}
+                          </span>
+                        ) : null}
+                      </>
                     )}
                   </td>
                 </tr>
@@ -604,6 +618,28 @@ export function PerpCostClient() {
           <strong className="font-semibold text-ink">Papertrade&apos;s</strong> documentation calls
           its liquidation a hard bust that forfeits the full isolated margin. For the others this is
           the parameter, which we have not checked against a realised payout.
+        </p>
+
+        <p className="mt-3 text-[13px] leading-relaxed text-ink-faint">
+          One thing does come back on{" "}
+          <strong className="font-semibold text-ink">Papertrade</strong>, and it is not margin.
+          Losing is the only event that mints its token: the docs state that{" "}
+          <em>PAPER mints to your account whenever you close a trade at a loss or get liquidated,
+          and nothing else mints PAPER</em>. The rate is published in full. Below $2M of tracked LP
+          it is a flat 100 PAPER per dollar of mint basis; at or above it the rate is{" "}
+          <code className="font-mono text-xs">100 × (S ÷ (S + H))²</code>, where S is the $120M
+          decay scale and H a high-water-mark of cumulative LP gain past the threshold that never
+          falls back. H is not published as a field, so it is read off the peak of the
+          venue&apos;s own daily tracked-LP series, $104.89M, which puts the rate near{" "}
+          <strong className="font-semibold text-ink">29 PAPER per dollar of loss</strong>; the
+          venue&apos;s own worked example, 29.8 at a $100M high-water-mark, lands beside it. Because
+          H only ratchets upward, that rate falls for later traders and never recovers. A
+          liquidation mints on the full lost margin; an ordinary losing close mints on the loss
+          after the 2% fee, which is carved from the LP&apos;s side rather than added to the loss.
+          Two things stop any of it being a rebate: at launch PAPER cannot be transferred, only
+          staked and unstaked, and what staking pays is a pro-rata share of future protocol revenue
+          that dilutes as later losers mint more. The row says both that no margin returns and that
+          something is minted, because either sentence alone is misleading.
         </p>
       </section>
     </div>

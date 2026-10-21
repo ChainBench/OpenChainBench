@@ -11,6 +11,8 @@
  *    bigger guarantees are needed.
  */
 
+import { AI_CRAWLER_RE } from "@/data/ai-crawlers";
+
 /** Hard cap on the in-memory bucket Map. Prevents an attacker rotating
  *  X-Forwarded-For across millions of fake IPs from growing the Map
  *  unboundedly. When the cap is hit we evict the least-recently-updated
@@ -34,12 +36,11 @@ export type RateLimitResult = {
  *  many distinct human questions, not abuse. UA spoofing is possible
  *  but the affected endpoints are read-only and explicitly designed to
  *  be cited, so the worst case of a spoofer is what we already want. */
-// Keep in sync with robots.txt (src/app/robots.ts). Any UA explicitly
-// allowed there should bypass the per IP throttle here too, otherwise
-// AI engines we want citations from will get 429s when many independent
-// user queries share their small egress IP pool.
-const AI_CRAWLER_RE =
-  /GPTBot|ChatGPT-User|OAI-SearchBot|ClaudeBot|anthropic-ai|Claude-Web|PerplexityBot|Perplexity-User|Google-Extended|GoogleOther|CCBot|Bytespider|Applebot-Extended|Meta-ExternalAgent|Meta-ExternalFetcher|cohere-ai|Amazonbot|Diffbot|YouBot|DuckAssistBot|AI2Bot|Ai2Bot-Dolma|Kagibot|FacebookBot|MistralAI-User|TimpiBot|Webzio-Extended/i;
+// Derived from src/data/ai-crawlers.ts, the same list robots.ts publishes.
+// This used to be a literal with "keep in sync with robots.txt" above it, and
+// it drifted: ExaSearchBot, the biggest crawler on the site at 13,142 requests
+// a week, and Meta-WebIndexer at 4,632 were in neither. Deriving both from one
+// array is what makes the instruction true instead of hopeful.
 
 /** True when the given User-Agent matches a known AI crawler pattern. */
 export function isAiCrawler(userAgent: string | null | undefined): boolean {

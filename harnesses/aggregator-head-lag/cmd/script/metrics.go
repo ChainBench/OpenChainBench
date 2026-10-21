@@ -2,10 +2,13 @@ package main
 
 import (
 	"fmt"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"log"
 	"net/http"
 	"sync"
+	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 var (
@@ -29,21 +32,23 @@ var (
 	metadataAPILatency      *prometheus.HistogramVec
 
 	// Head lag metrics
-	headLagBlocks      *prometheus.GaugeVec
-	headLagSeconds     *prometheus.GaugeVec
-	flashblockObserved prometheus.Counter
-	blockchainHead     *prometheus.GaugeVec
-	aggregatorHead     *prometheus.GaugeVec
-	headLagErrors      *prometheus.CounterVec
-	headLagRefSeconds  *prometheus.GaugeVec
-	headLagFirst       *prometheus.CounterVec
-	headLagRaces       *prometheus.CounterVec
-	headLagFirstShare  *prometheus.GaugeVec
-	headLagRefMatches  *prometheus.CounterVec
-	headLagPoolSeen    *prometheus.CounterVec
-	headLagPoolEntries *prometheus.GaugeVec
-	headLagRacesVoided *prometheus.CounterVec
-	refClockEntries    prometheus.Gauge
+	headLagBlocks         *prometheus.GaugeVec
+	headLagSeconds        *prometheus.GaugeVec
+	headLagStaleSwept     *prometheus.CounterVec
+	headLagSweeperLastRun prometheus.Gauge
+	flashblockObserved    prometheus.Counter
+	blockchainHead        *prometheus.GaugeVec
+	aggregatorHead        *prometheus.GaugeVec
+	headLagErrors         *prometheus.CounterVec
+	headLagRefSeconds     *prometheus.GaugeVec
+	headLagFirst          *prometheus.CounterVec
+	headLagRaces          *prometheus.CounterVec
+	headLagFirstShare     *prometheus.GaugeVec
+	headLagRefMatches     *prometheus.CounterVec
+	headLagPoolSeen       *prometheus.CounterVec
+	headLagPoolEntries    *prometheus.GaugeVec
+	headLagRacesVoided    *prometheus.CounterVec
+	refClockEntries       prometheus.Gauge
 
 	// Fast-trade latency (for comparison with Pulse V2)
 	fastTradeLatency *prometheus.GaugeVec
@@ -197,6 +202,30 @@ func init() {
 	)
 	prometheus.MustRegister(headLagSeconds)
 
+	// Counts the gauges the sweeper had to drop. A rising count on one
+	// region and not the others is the signature of a sick probe host
+	// rather than a slow provider, which is the distinction the lag
+	// series itself cannot make.
+	headLagStaleSwept = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "head_lag_stale_swept_total",
+			Help: "Head-lag gauges dropped because the feed stopped delivering, by aggregator, chain and region.",
+		},
+		[]string{"aggregator", "chain", "region"},
+	)
+	prometheus.MustRegister(headLagStaleSwept)
+
+	// Proof the sweeper is alive, which the counter above cannot give: it
+	// only appears once something has been dropped, so a sweeper that never
+	// started and a sweeper with nothing to do look identical. That is the
+	// same shape as the bug it was written for. This advances every tick
+	// whether or not anything was swept, so "armed and idle" is visible.
+	headLagSweeperLastRun = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "head_lag_sweeper_last_run_timestamp_seconds",
+		Help: "Unix time of the stale-gauge sweeper's last pass. Flat for more than a few minutes means the sweeper is not running.",
+	})
+	prometheus.MustRegister(headLagSweeperLastRun)
+
 	// Health of the Base preconfirmation reference. A flat counter means
 	// the flashblock stream is dead, which shows up as ref misses on every
 	// Base provider rather than as wrong numbers.
@@ -238,7 +267,15 @@ func init() {
 	headLagPoolSeen = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "head_lag_pool_observed_total",
-			Help: "Trades observed by the bench pool subscription, per chain.",
+			// Log EVENTS, not trades, and the difference is a factor of
+			// several on EVM: eth_subscribe on a pool address delivers every
+			// event it emits (Swap, Mint, Burn, Collect), so one swap can
+			// arrive as several. Measured on the BNB pool: 49,672 events an
+			// hour against roughly 18,380 swaps. Solana logsSubscribe is per
+			// transaction, so there the two coincide. Use it to tell a live
+			// subscription from a dead one, never as a trade count.
+			Help: "Log events delivered by the bench pool subscription, per chain. " +
+				"Several per swap on EVM chains; one per transaction on Solana.",
 		},
 		[]string{"chain"},
 	)
@@ -507,7 +544,88 @@ func RecordHeadLag(aggregator string, chain string, lagBlocks int64, lagSeconds 
 
 	headLagBlocks.WithLabelValues(aggregator, chain, region).Set(float64(lagBlocks))
 	headLagSeconds.WithLabelValues(aggregator, chain, region).Set(lagSeconds)
+	noteHeadLagWrite(aggregator, chain, region)
 	// tx_hash is logged but not stored as a metric label to avoid cardinality explosion
+}
+
+// ── Stale-gauge sweeper ───────────────────────────────────────────────────
+//
+// Every aggregator's head lag is published from the race, not from its own
+// monitor: race.go and pending_match.go are the only callers of
+// RecordHeadLag. So when one feed stops arriving the race simply stops
+// producing for it, and a Prometheus gauge that stops being written keeps
+// its last value for ever.
+//
+// Four monitors carry their own purge for exactly this, but each one only
+// knows its own name, and the aggregators without one were left publishing a
+// frozen number indefinitely. On 2026-10-20 the us-east probe held Mobula at
+// 26.6 s on Solana for 76 minutes while eu-west and sgp read 0.2 s: for an
+// hour and a quarter the page told readers Mobula was slow when the truth was
+// that our own socket was dead. A provider was named for our network.
+//
+// Sweeping centrally fixes the whole class instead of one name at a time, and
+// covers aggregators added later without anyone remembering to wire a
+// watchdog. The series disappears rather than going to zero, because absent
+// is what we actually know: a gap in the chart is honest, a zero is a claim.
+const headLagStaleAfter = 10 * time.Minute
+
+var (
+	headLagSeenMu sync.Mutex
+	headLagSeen   = map[[3]string]time.Time{}
+)
+
+func noteHeadLagWrite(aggregator, chain, region string) {
+	headLagSeenMu.Lock()
+	headLagSeen[[3]string{aggregator, chain, region}] = time.Now()
+	headLagSeenMu.Unlock()
+}
+
+// sweepStaleHeadLag drops every head-lag series last written before cutoff
+// and returns the keys it dropped. Split out from the ticker so the policy
+// can be tested without waiting on a clock.
+func sweepStaleHeadLag(cutoff time.Time) [][3]string {
+	headLagSeenMu.Lock()
+	stale := make([][3]string, 0, 4)
+	for key, at := range headLagSeen {
+		if at.Before(cutoff) {
+			stale = append(stale, key)
+			// Forgotten, not kept at zero: the next write from a feed that
+			// comes back re-arms it, and a series that never returns stops
+			// costing us a map entry.
+			delete(headLagSeen, key)
+		}
+	}
+	headLagSeenMu.Unlock()
+
+	for _, k := range stale {
+		log.Printf("[HEAD-LAG][SWEEP] %s/%s/%s silent for >%s, dropping the gauge rather than publishing its last value",
+			k[0], k[1], k[2], headLagStaleAfter)
+		DeleteHeadLagSeries(k[0], k[1], k[2])
+		headLagStaleSwept.WithLabelValues(k[0], k[1], k[2]).Inc()
+	}
+	return stale
+}
+
+// StartHeadLagStaleSweeper drops any head-lag series that has not been
+// written for headLagStaleAfter. Idempotent: deleting an absent series is a
+// no-op, and the entry is forgotten so a feed that comes back is re-armed by
+// its first write.
+func StartHeadLagStaleSweeper(done <-chan struct{}) {
+	log.Printf("[HEAD-LAG][SWEEP] armed: a feed silent for >%s has its gauge dropped rather than left frozen", headLagStaleAfter)
+	headLagSweeperLastRun.SetToCurrentTime()
+	go func() {
+		t := time.NewTicker(time.Minute)
+		defer t.Stop()
+		for {
+			select {
+			case <-done:
+				return
+			case <-t.C:
+				sweepStaleHeadLag(time.Now().Add(-headLagStaleAfter))
+				headLagSweeperLastRun.SetToCurrentTime()
+			}
+		}
+	}()
 }
 
 // RecordHeadLagRef records head lag measured against our own node

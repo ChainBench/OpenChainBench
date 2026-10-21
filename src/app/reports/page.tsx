@@ -12,7 +12,7 @@ export const metadata: Metadata = pageMetadata({
   path: "/reports",
   title: "Reports",
   description:
-    "Monthly and quarterly research reports on crypto infrastructure performance: RPC reliability, bridge fees, and prediction markets. Citable, reproducible, CC BY 4.0.",
+    "Quarterly research on crypto infrastructure performance: RPC reliability, bridge fees, prediction markets. Citable, reproducible, CC BY 4.0.",
 });
 
 const SERIF: React.CSSProperties = { fontFamily: "var(--font-serif)" };
@@ -119,7 +119,7 @@ export default function ReportsPage() {
                   Get updates
                 </p>
                 <p className="text-sm text-ink-muted leading-relaxed mb-3">
-                  New reports ship every 2–3 months. Subscribe via RSS or follow on X.
+                  New reports ship every 2 to 3 months. Subscribe via RSS or follow on X.
                 </p>
                 <div className="flex flex-col gap-2">
                   <a

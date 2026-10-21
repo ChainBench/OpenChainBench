@@ -1,0 +1,36 @@
+{
+  "name": "openchainbench-video",
+  "version": "0.1.0",
+  "description": "Remotion compositions and render server behind the OpenChainBench video exporter",
+  "private": true,
+  "scripts": {
+    "studio": "remotion studio",
+    "build:remotion": "node scripts/build-remotion-bundle.mjs",
+    "build:intro": "remotion render Intro public/intro.mp4 --codec h264 --crf 17",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "lab:fixtures": "python3 lab/fetch_fixtures.py",
+    "lab:stills": "node lab/stills.mjs lab/fixtures lab/out/$FORMAT 12"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@react-three/fiber": "^8.17.10",
+    "@remotion/bundler": "^4.0.452",
+    "@remotion/cli": "^4.0.452",
+    "@remotion/google-fonts": "^4.0.452",
+    "@remotion/player": "^4.0.452",
+    "@remotion/renderer": "^4.0.452",
+    "@remotion/three": "^4.0.452",
+    "next": "^14.2.18",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "remotion": "^4.0.452",
+    "three": "^0.169.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.10",
+    "@types/react": "^18.3.5",
+    "@types/three": "^0.169.0",
+    "typescript": "^5.5.4"
+  }
+}

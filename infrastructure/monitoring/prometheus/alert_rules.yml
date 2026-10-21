@@ -176,3 +176,59 @@ groups:
         annotations:
           summary: '{{ $labels.aggregator }} WebSocket disconnected ({{ $labels.region }})'
           description: "ws_connected has been 0 for 10 minutes; reconnect loop is running but not succeeding. Check JWT/cookie/proxy for codex, API key for mobula."
+
+  - name: funding_feed_freshness_alerts
+    interval: 60s
+    rules:
+      # A feed that answers on time with the same number forever.
+      #
+      # Every freshness check we had read a refresh timestamp, which a
+      # frozen upstream advances happily. Coinbase International returned
+      # 9.36 bps a day on ETH from 2026-10-01 to 2026-10-21 with its
+      # refresh gauge current to the second, and perp-funding-cost-30d
+      # ranked it last at 227 bps on a window two thirds of which was that
+      # one reading. Nothing fired, because nothing was asking whether the
+      # value had changed.
+      #
+      # Window chosen against the distribution rather than picked: a venue
+      # parked on the 0.01%/8h baseline (3.00 bps per 24h hold) is
+      # legitimately constant for a while, so 24h selects 14 series and 48h
+      # selects 13. At 7d it selects 5, and all five are real: the three
+      # Coinbase assets, plus edgeX and Pacifica on SOL, whose SOL columns
+      # feed the p99 of perp-funding-cost-30d off week-old readings. Pick a
+      # shorter window and the baseline sitters bury the signal.
+      - alert: FundingFeedValueFrozen
+        expr: |
+          (
+            max_over_time(perp_venue_funding_24h_bps[7d])
+            - min_over_time(perp_venue_funding_24h_bps[7d])
+          ) == 0
+          and on (venue, asset)
+          (perp_venue_funding_refresh_unix > (time() - 900))
+        for: 12h
+        labels:
+          severity: warning
+          alert_type: value_frozen
+          app: perp_benches
+        annotations:
+          summary: '{{ $labels.venue }} funding on {{ $labels.asset }} has not changed in 7 days'
+          description: "perp_venue_funding_24h_bps is identical at every sample across 7 days while the refresh gauge stays current, so the feed is answering and the answer is stale. Benches 036, 043 and perp-funding-cost-30d all read this series. Check the Mobula CEFI funding aggregator for this venue before trusting any figure built on it, and unrank the row while it lasts."
+
+      # Same defect on the natively polled feed. Nothing selects here
+      # today, which is the point of writing it before something does.
+      - alert: NativeFundingValueFrozen
+        expr: |
+          (
+            max_over_time(perp_funding_hold_24h_bps[7d])
+            - min_over_time(perp_funding_hold_24h_bps[7d])
+          ) == 0
+          and on (venue)
+          (perp_funding_venue_ok_unix > (time() - 300))
+        for: 12h
+        labels:
+          severity: warning
+          alert_type: value_frozen
+          app: perp_benches
+        annotations:
+          summary: '{{ $labels.venue }} native funding on {{ $labels.asset }} has not changed in 7 days'
+          description: "perp_funding_hold_24h_bps is constant across 7 days with perp_funding_venue_ok_unix advancing. The venue's own endpoint is being read successfully and returning one value. Check the source in the perp-cohort-stats harness."

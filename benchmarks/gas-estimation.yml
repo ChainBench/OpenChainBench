@@ -19,7 +19,7 @@ per_chain_explainer:
   - slug: arbitrum
     h2: "Most accurate Arbitrum gas oracle"
     body: |
-      {{best_name:chain:arbitrum}} currently posts the closest priority-fee estimate on Arbitrum at {{best_p50:chain:arbitrum}} (gwei, p99 absolute gap, 24h). Arbitrum One is an OP Stack-adjacent rollup with a centralised sequencer, which means there is no priority-fee auction in the usual sense — every oracle converges to a near-zero priority number close to L2 baseFee. The bench measures this empirically: differences between oracles here are basis-points, not gwei, because there is nothing to predict. The meaningful cost on an L2 is L1 data fee (what the sequencer pays Ethereum mainnet to post the batch), which is a different prediction problem and belongs in a separate bench we are scoping.
+      {{best_name:chain:arbitrum}} currently posts the closest priority-fee estimate on Arbitrum at {{best_p50:chain:arbitrum}} (gwei, p99 absolute gap, 24h). Arbitrum One is an OP Stack-adjacent rollup with a centralised sequencer, which means there is no priority-fee auction in the usual sense: every oracle converges to a near-zero priority number close to L2 baseFee. The bench measures this empirically: differences between oracles here are basis-points, not gwei, because there is nothing to predict. The meaningful cost on an L2 is L1 data fee (what the sequencer pays Ethereum mainnet to post the batch), which is a different prediction problem and belongs in a separate bench we are scoping.
 
 category: RPCs
 status: live

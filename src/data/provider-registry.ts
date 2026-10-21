@@ -178,8 +178,8 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   mobula: {
     url: "https://mobula.io",
     description:
-      "Onchain data aggregator covering 80+ chains. WebSocket fast-trade feed, REST market and metadata, wallet portfolio APIs.",
-    twitter: "@ChainBench",
+      "Onchain data aggregator covering 80+ chains. WebSocket fast-trade feed, REST market and metadata, wallet portfolio APIs. Its swap endpoint routes multi-hop across named pools, so it is typed as an aggregator on the quote benches.",
+    twitter: "@MobulaIO",
   },
   codex: {
     url: "https://www.codex.io",
@@ -1634,10 +1634,16 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "Moonshot is a mobile-first app for buying and selling Solana memecoins via debit card or Apple Pay, targeting retail users who want a CEX-like onboarding experience for onchain tokens.",
     twitter: "@moonshotapp",
   },
+  "nova-markets": {
+    url: "https://nova.markets",
+    description:
+      "Nova routes perpetual trades to Hyperliquid under its own builder code and also runs a venue on Arbitrum. The Arbitrum contract's proxy bytecode is byte-identical to the Gains Network diamond, so that side is a gTrade deployment with USDC collateral and leverage from 1.1x to 200x; its docs list one market trading, HYPE/USD. On OpenChainBench as a Hyperliquid builder row only: the fees its builder code collected on the last complete UTC day, from the same public fills feed as the other frontends.",
+    twitter: "@novadotmarkets",
+  },
   "coinbase-international": {
     url: "https://international.coinbase.com",
     description:
-      "Coinbase International Exchange, the non-US derivatives venue of Coinbase (Bermuda, BMA-licensed), with perpetual futures for institutional and eligible retail clients outside the United States. On OpenChainBench as a reference row: volume, open interest and market count as reported to CoinGecko, funding from the Mobula feed.",
+      "Coinbase International Exchange, the non-US derivatives venue of Coinbase (Bermuda, BMA-licensed), with perpetual futures for institutional and eligible retail clients outside the United States. It was a funding reference row on OpenChainBench until 21 October 2026 and is no longer benchmarked: its BTC, ETH and SOL perpetuals settled their last funding on 1 October 2026 and report zero notional volume on 24h, daily and 30 day windows, so there was no live rate left to compare.",
     twitter: "@CoinbaseIntExch",
   },
   coinbase: {
@@ -1673,7 +1679,7 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   maestro: {
     url: "https://maestrobots.com",
     description:
-      "Maestro is a suite of Telegram trading bots for DeFi — Sniper, Wallet, Whale and Buy — trusted by traders on Solana, Ethereum, BNB Chain and Base. It charges a 1% fee on each sniped buy.",
+      "Maestro is a suite of Telegram trading bots for DeFi (Sniper, Wallet, Whale and Buy) used on Solana, Ethereum, BNB Chain and Base. It charges a 1% fee on each sniped buy.",
     twitter: "@MaestroBots",
   },
   dextrabot: {

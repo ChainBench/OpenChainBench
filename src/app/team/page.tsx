@@ -11,7 +11,7 @@ export const metadata: Metadata = pageMetadata({
   path: "/team",
   title: "Team",
   description:
-    "Who maintains OpenChainBench: spec review, harness design, statistical review and editorial corrections.",
+    "Who maintains OpenChainBench, and what each role covers: spec review, harness design, statistical review and editorial corrections you can file.",
 });
 
 export default function TeamPage() {

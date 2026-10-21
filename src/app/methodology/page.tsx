@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { methodologyPageLd } from "@/lib/hub-jsonld";
+import { methodologyPageLd, METHODOLOGY_REVISED } from "@/lib/hub-jsonld";
 import { safeJsonLd } from "@/lib/jsonld";
 import { pageMetadata } from "@/lib/page-metadata";
 import { withUtm } from "@/lib/utm";
@@ -8,7 +8,7 @@ export const metadata: import("next").Metadata = pageMetadata({
   path: "/methodology",
   title: "Methodology",
   description:
-    "How OpenChainBench measures: design principles, statistical conventions, and reproduction guidelines.",
+    "How OpenChainBench measures: identical inputs per provider, the aggregates we publish and why, the sample floors, and how to reproduce any number.",
 });
 
 const PRINCIPLES = [
@@ -103,6 +103,12 @@ export default function MethodologyPage() {
           How every benchmark on OpenChainBench is measured, reported and
           reproduced. Open by design. Every claim on this page is checkable
           against the underlying spec, harness and Prometheus dataset.
+        </p>
+        {/* Visible beside the structured data, so a reader and an engine are
+            told the same thing. */}
+        <p className="mt-3 label-mono text-ink-faint">
+          Published 2026-04-28 &middot; last revised{" "}
+          <time dateTime={METHODOLOGY_REVISED}>{METHODOLOGY_REVISED}</time>
         </p>
       </header>
 

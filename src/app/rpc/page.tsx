@@ -11,6 +11,7 @@ import { capDescription, capSnippet } from "@/lib/seo-text";
 import { safeJsonLd, buildBreadcrumbJsonLd } from "@/lib/jsonld";
 import { SITE } from "@/data/site";
 import { withUtm } from "@/lib/utm";
+import { hubDateModified, datedCollectionLd } from "@/lib/hub-dates";
 
 /**
  * Hub landing page for the per-chain RPC bench cluster (044-053). One
@@ -25,8 +26,12 @@ import { withUtm } from "@/lib/utm";
  * new `<chain>-rpc` YAML lights up here automatically.
  */
 
+// "with URLs" came off: measured on 2026-10-20, the live page shows zero
+// endpoint URLs in its visible text. The 114 chain pages it links do carry
+// them (base-rpc lists five, including mainnet.base.org), so the promise
+// belongs on them until this hub grows an endpoint column of its own.
 const DESCRIPTION =
-  "Free public RPC endpoints with URLs per chain, and Alchemy, Chainstack, GetBlock, QuickNode, Dwellir, Validation Cloud ranked apart, from 3 regions.";
+  "Free public RPC endpoints ranked per chain by 24h median latency, and Alchemy, Chainstack, GetBlock, QuickNode, Dwellir, Validation Cloud ranked apart.";
 
 export const metadata: import("next").Metadata = pageMetadata({
   path: "/rpc",
@@ -86,14 +91,16 @@ export default async function RpcHubPage() {
     ]),
   };
 
-  const itemListLd =
+  const itemListNode =
     rpcSpecs.length > 0
       ? {
           "@context": "https://schema.org",
           "@type": "ItemList",
           name: "Per-chain RPC benchmarks by OpenChainBench",
           description:
-            "Live per-chain benchmarks of RPC endpoints: free, no-key public gateways measured every 60 seconds from 3 regions, and on the major chains a private (API-key) cohort (Alchemy, Chainstack, GetBlock, QuickNode) measured every 120 seconds and ranked separately.",
+            // Same count the body copy derives, from the snapshot in scope
+            // here. The literal three was the third copy of it on this page.
+            `Live per-chain benchmarks of RPC endpoints: free, no-key public gateways measured every 60 seconds from ${snapshot?.totals.regions ?? 3} regions, and on the major chains a private (API-key) cohort (Alchemy, Chainstack, GetBlock, QuickNode) measured every 120 seconds and ranked separately.`,
           numberOfItems: rpcSpecs.length,
           itemListElement: rpcSpecs.map((s, i) => ({
             "@type": "ListItem",
@@ -103,6 +110,19 @@ export default async function RpcHubPage() {
           })),
         }
       : null;
+
+  // The hub's dates live on the CollectionPage that carries the list,
+  // because ItemList is not a CreativeWork and a date does not belong on
+  // it. Before this the page served its numbers with no date at all.
+  const itemListLd = itemListNode
+    ? datedCollectionLd({
+        path: "/rpc",
+        url: `${SITE.url}/rpc`,
+        name: "Per-chain RPC benchmarks by OpenChainBench",
+        itemList: itemListNode,
+        dateModified: hubDateModified(snapshot?.chains?.map((c) => c.updatedAt) ?? []),
+      })
+    : null;
 
   return (
     <article
@@ -135,7 +155,8 @@ export default async function RpcHubPage() {
           the same probe: one identical{" "}
           <code>eth_getBlockByNumber(&quot;latest&quot;, false)</code> call with a
           rotating request id (defeats CDN body-keyed caches) every 60
-          seconds from 3 regions (N. Virginia, Amsterdam, Singapore).
+          seconds from {snapshot?.totals.regions ?? 3} regions (N. Virginia,
+          Amsterdam, Singapore).
           {keyedChains.length > 0 ? (
             <>
               {" "}

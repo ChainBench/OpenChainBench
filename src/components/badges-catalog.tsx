@@ -43,10 +43,25 @@ const FORMATS: { id: Format; label: string }[] = [
   { id: "json", label: "JSON" },
 ];
 
+/** Cards rendered before "show more".
+ *
+ *  The page served 3.06 MB, 99% of it card markup, and 1,382 cards of it: at
+ *  7,309 requests a week that is about 22 GB of egress from one URL. The first
+ *  screen holds about nine cards at three columns, so sixty is several scrolls
+ *  deep and nothing a reader reaches by accident. */
+const CARDS_PER_PAGE = 60;
+
 export function BadgesCatalog({ pairs }: { pairs: BadgePair[] }) {
   const [query, setQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [open, setOpen] = useState<BadgePair | null>(null);
+  // Depth is stored WITH the filter it belongs to, so a changed filter resets
+  // it during render. An effect that called setShown on every filter change
+  // was the obvious version and lint refuses it, correctly: setting state
+  // inside an effect renders twice for a value that can simply be derived.
+  const filterSig = `${query.trim().toLowerCase()}|${activeCategory ?? ""}`;
+  const [page, setPage] = useState({ sig: filterSig, shown: CARDS_PER_PAGE });
+  const shown = page.sig === filterSig ? page.shown : CARDS_PER_PAGE;
 
   const categories = useMemo(() => {
     const seen = new Set<string>();
@@ -116,6 +131,7 @@ export function BadgesCatalog({ pairs }: { pairs: BadgePair[] }) {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search provider or benchmark"
+            aria-label="Search provider or benchmark"
             className="w-full pl-8 pr-3 py-2 text-sm bg-surface border border-rule rounded-md focus:outline-none focus:border-ink/40 placeholder:text-ink-faint transition-colors"
           />
         </label>
@@ -134,13 +150,29 @@ export function BadgesCatalog({ pairs }: { pairs: BadgePair[] }) {
           </p>
         </div>
       ) : (
-        <ul className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {filtered.map((p) => (
-            <li key={`${p.benchSlug}|${p.providerSlug}`}>
-              <BadgeCard pair={p} onOpen={() => setOpen(p)} />
-            </li>
-          ))}
-        </ul>
+        <>
+          <ul className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {filtered.slice(0, shown).map((p) => (
+              <li key={`${p.benchSlug}|${p.providerSlug}`}>
+                <BadgeCard pair={p} onOpen={() => setOpen(p)} />
+              </li>
+            ))}
+          </ul>
+          {filtered.length > shown && (
+            <div className="mt-6 flex justify-center">
+              <button
+                type="button"
+                onClick={() => setPage({ sig: filterSig, shown: shown + CARDS_PER_PAGE })}
+                className="inline-flex items-center gap-2 rounded border border-rule px-4 py-2 text-[12px] uppercase tracking-[0.14em] text-ink-muted hover:text-ink hover:border-ink transition-colors font-medium"
+              >
+                Show {Math.min(CARDS_PER_PAGE, filtered.length - shown)} more
+                <span className="text-ink-faint tabular">
+                  ({shown} of {filtered.length})
+                </span>
+              </button>
+            </div>
+          )}
+        </>
       )}
 
       {open && (

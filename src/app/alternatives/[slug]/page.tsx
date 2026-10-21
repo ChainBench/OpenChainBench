@@ -122,6 +122,17 @@ export default async function AlternativePage({
     );
   const topAlternatives = sortedResults.slice(0, 5);
 
+  // Is the product this page is about actually measured on the bench the page
+  // ranks? On nine of the 24 pages it is not: /alternatives/alchemy ranks the
+  // field on aggregator-head-lag, which measures how fast a price API
+  // publishes and carries no Alchemy row at all. A reader looking for an
+  // Alchemy alternative then gets a table their starting point is absent
+  // from, and no way to compare. Saying it is cheaper and more honest than
+  // implying the opposite.
+  const targetInBench = bench.results.some(
+    (r) => r.slug.toLowerCase() === targetSlug,
+  );
+
   const url = `${SITE.url}/alternatives/${alt.slug}`;
   const benchUrl = `${SITE.url}/benchmarks/${bench.slug}`;
 
@@ -250,6 +261,14 @@ export default async function AlternativePage({
           Sourced from {bench.title}
         </span>
       </div>
+
+      {!targetInBench && (
+        <p className="mt-3 max-w-3xl text-[13px] text-ink-faint leading-snug">
+          {alt.target_product} is not measured on this benchmark, so it does
+          not appear in the ranking below. What follows is the field it would
+          compete in, measured on {bench.metric.toLowerCase()}.
+        </p>
+      )}
 
       <h1 className="mt-5 display text-2xl sm:text-3xl md:text-4xl tracking-tight">
         {alt.target_product} alternatives

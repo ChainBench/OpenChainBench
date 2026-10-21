@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { renderTemplate } from "./bench-template";
+import { renderBenchmarkText, renderTemplate } from "./bench-template";
 import type { Benchmark, ProviderResult } from "@/types/benchmark";
 
 function r(slug: string, name: string, p50: number, p99 = p50): ProviderResult {
@@ -276,5 +276,75 @@ describe("renderTemplate, a cohort with no citable row", () => {
     expect(
       renderTemplate("{{best_name}} leads at {{best_p50}}; {{best_name:tier:keyed}} leads the API-key cohort.", b),
     ).toBe("PublicNode leads at 44 ms.");
+  });
+});
+
+describe("renderBenchmarkText drops items that render to nothing", () => {
+  /** The shape found on production, bench 033: a finding whose only clause
+   *  quoted a provider the harness probes 3,599 times a day and that never
+   *  returns a parseable quote. The clause prune is correct; the blank <li>
+   *  it left between two real bullets is not. */
+  function withCopy(copy: Partial<Benchmark>): Benchmark {
+    const b = bench([r("alpha", "Alpha", 100), r("beta", "Beta", 250)]);
+    return Object.assign(b, copy);
+  }
+
+  test("a finding whose single clause cannot resolve is removed, not emptied", () => {
+    const b = renderBenchmarkText(
+      withCopy({
+        findings: [
+          "{{best_name}} leads at {{best_p50}}.",
+          "{{name:openocean}} ({{p50:openocean}}) trades latency for breadth.",
+          "Bebop is RFQ.",
+        ],
+      }),
+    );
+    expect(b.findings).toEqual(["Alpha leads at 100 ms.", "Bebop is RFQ."]);
+  });
+
+  test("a surviving clause keeps its bullet", () => {
+    const b = renderBenchmarkText(
+      withCopy({
+        findings: [
+          "{{best_name}} leads at {{best_p50}}; {{p50:openocean}} is the floor.",
+        ],
+      }),
+    );
+    expect(b.findings).toHaveLength(1);
+    expect(b.findings[0]).toContain("Alpha leads at 100 ms");
+    expect(b.findings[0]).not.toContain("{{");
+  });
+
+  test("an FAQ pair with an unanswerable answer is dropped whole", () => {
+    // An empty acceptedAnswer.text in the FAQPage JSON-LD asserts to a crawler
+    // that the page answers the question with nothing.
+    const b = renderBenchmarkText(
+      withCopy({
+        faq: [
+          { q: "Who leads?", a: "{{best_name}} at {{best_p50}}." },
+          { q: "What about OpenOcean?", a: "{{p50:openocean}}." },
+        ],
+      }),
+    );
+    expect(b.faq).toEqual([{ q: "Who leads?", a: "Alpha at 100 ms." }]);
+  });
+
+  test("a per-chain explainer with no body does not leave a bare H2", () => {
+    const b = renderBenchmarkText(
+      withCopy({
+        perChainExplainer: [
+          { slug: "base", h2: "Base", body: "{{best_name}} leads here." },
+          { slug: "bsc", h2: "BSC", body: "{{p50:openocean}}." },
+        ],
+      }),
+    );
+    expect(b.perChainExplainer?.map((e) => e.slug)).toEqual(["base"]);
+  });
+
+  test("methodology is covered too", () => {
+    const b = renderBenchmarkText(
+      withCopy({ methodology: ["Six fixed pairs.", "{{p50:openocean}}."] }),
+    );
+    expect(b.methodology).toEqual(["Six fixed pairs."]);
   });
 });

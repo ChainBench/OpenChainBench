@@ -29,6 +29,23 @@ import {
 // venue-type selector as the reference next to the measured rows.
 export type PerpVenueType = "onchain" | "regulated" | "cex";
 
+/**
+ * Venues whose traded notional is not the same quantity as the rest of the
+ * cohort's, so they never lead a sentence that ranks the cohort on volume.
+ *
+ * Papertrade: its own spec says "single house LP, BTC and ETH only" and "the
+ * four side columns are summed because every position faces the house". On
+ * 2026-10-20 the hub published "Papertrade leads 28 tracked perp DEXes on
+ * 30-day volume at $2623.64B", about twenty times the monthly volume implied
+ * by Hyperliquid's $4.26B day, on two markets.
+ *
+ * Not a self-reporting flag: every venue here self-reports its volume, which
+ * perp-daily-volume states in its own abstract. The distinction is what the
+ * number counts, not where it comes from. The row keeps its figure in the
+ * table, next to the CEX reference that is excluded for the adjacent reason.
+ */
+export const NOTIONAL_NOT_COMPARABLE = new Set(["papertrade"]);
+
 export type PerpVenueRow = {
   slug: string;
   name: string;
@@ -73,7 +90,12 @@ export type PerpCohortSummary = {
   totals: {
     cohortVolume30d: number;
     cohortOpenInterest: number;
+    /** Venues measured, including those whose notional is not comparable.
+     *  This is a coverage count and feeds the "N of M" card. */
     trackedVenues: number;
+    /** Venues actually summed into cohortVolume30d, which is the number a
+     *  sentence about 30-day volume means. */
+    volumeRankedVenues: number;
     avgFunding24hEth: number | null;
   };
   asOf: number;
@@ -85,6 +107,37 @@ type VenueSeed = {
   chain: string;
   venueType: PerpVenueType;
 };
+
+/**
+ * The venue that leads the cohort on 30-day volume, for every surface that
+ * says so in a sentence.
+ *
+ * The meta description, the page lede, the page FAQ and the Markdown view each
+ * built `sort by volume30d of everything that is not a CEX` on their own, so
+ * one exclusion had to be added in four places or in none. It was added in
+ * none.
+ */
+export function perpVolumeRanking(
+  venues: PerpVenueRow[] | undefined,
+): PerpVenueRow[] {
+  return (venues ?? [])
+    .filter((v) => v.venueType !== "cex" && !NOTIONAL_NOT_COMPARABLE.has(v.slug))
+    .filter((v) => v.volume30d != null)
+    .slice()
+    .sort(
+      (a, b) =>
+        (b.volume30d ?? -1) - (a.volume30d ?? -1) || a.name.localeCompare(b.name),
+    );
+}
+
+/** First of that ranking. Every position a sentence names comes from the same
+ *  list: taking the lead from here and the runner-up from an unfiltered index
+ *  would have printed one venue twice. */
+export function perpVolumeLead(
+  venues: PerpVenueRow[] | undefined,
+): PerpVenueRow | null {
+  return perpVolumeRanking(venues)[0] ?? null;
+}
 
 /**
  * Cohort seed. Order is the default leaderboard order before any
@@ -310,14 +363,29 @@ export async function fetchPerpCohortFresh(): Promise<PerpCohortSummary | null> 
   let cohortVolume30d = 0;
   let cohortOpenInterest = 0;
   let trackedVenues = 0;
+  let volumeRankedVenues = 0;
   for (const r of venues) {
     // Totals describe the measured cohort (DEX and regulated); the CEX
     // reference rows are venue-reported and sit behind the hub selector.
     if (r.venueType === "cex") continue;
     if (r.volume30d != null) {
-      cohortVolume30d += r.volume30d;
       trackedVenues += 1;
+      // The same exclusion the ranking uses. Keeping Papertrade out of the
+      // leader (#3090) and inside the sum left a card a reader could not
+      // reconcile with the leader it names. Read at 2026-10-21T19:34Z: 28
+      // rows summing 2,927.75B of which Papertrade was 2,425.93B, 82.9
+      // percent, against 501.82B for the other 27 and 175.16B for the
+      // largest of them. The card overstated the cohort by 5.8 times.
+      if (!NOTIONAL_NOT_COMPARABLE.has(r.slug)) {
+        cohortVolume30d += r.volume30d;
+        volumeRankedVenues += 1;
+      }
     }
+    // Open interest keeps every venue, deliberately. Turnover on a house LP
+    // at up to 1000x with no fees is not the cohort's quantity, but a
+    // snapshot of open positions is the same measurement everywhere. The
+    // magnitudes agree: in the same read Papertrade held 233M of the 19.92B
+    // total, 1.2 percent, where its volume was 82.9. Nothing to correct.
     if (r.openInterest != null) cohortOpenInterest += r.openInterest;
   }
   const fundingValues = venues
@@ -334,6 +402,7 @@ export async function fetchPerpCohortFresh(): Promise<PerpCohortSummary | null> 
       cohortVolume30d,
       cohortOpenInterest,
       trackedVenues,
+      volumeRankedVenues,
       avgFunding24hEth,
     },
     asOf: Math.floor(Date.now() / 1000),

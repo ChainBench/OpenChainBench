@@ -1,13 +1,14 @@
 import Link from "next/link";
-import { fetchBridgeHub } from "@/lib/bridge-hub-stats";
+import { fetchBridgeHub, regionPhrase } from "@/lib/bridge-hub-stats";
 import { BridgeHubTable, BridgeCorridorMatrix } from "@/components/bridge-hub-table";
 import { AnswersForBench } from "@/components/answers-for-bench";
 import { pageMetadata } from "@/lib/page-metadata";
 import { safeJsonLd, buildBreadcrumbJsonLd } from "@/lib/jsonld";
 import { SITE } from "@/data/site";
+import { datedCollectionLd } from "@/lib/hub-dates";
 
 const DESCRIPTION =
-  "Live cross-chain bridge benchmarks: cheapest all-in fee and fastest quote API for $300 USDC across Across, deBridge, LI.FI, Mobula, Near Intents, Relay, Squid and Socket. 4 corridors, refreshed every 5 minutes.";
+  "Cheapest all-in fee and fastest quote API for a $300 USDC bridge, eight bridges across four corridors, measured every five minutes from public endpoints.";
 
 export const metadata: import("next").Metadata = pageMetadata({
   path: "/bridge",
@@ -28,7 +29,7 @@ export default async function BridgeHubPage() {
     ]),
   };
 
-  const itemListLd = hub
+  const itemListNode = hub
     ? {
         "@context": "https://schema.org",
         "@type": "ItemList",
@@ -42,6 +43,19 @@ export default async function BridgeHubPage() {
           url: `${SITE.url}/products/${p.slug}`,
         })),
       }
+    : null;
+
+  // The hub's dates live on the CollectionPage that carries the list,
+  // because ItemList is not a CreativeWork and a date does not belong on
+  // it. Before this the page served its numbers with no date at all.
+  const itemListLd = itemListNode
+    ? datedCollectionLd({
+        path: "/bridge",
+        url: `${SITE.url}/bridge`,
+        name: "Cross-chain bridge benchmarks by OpenChainBench",
+        itemList: itemListNode,
+        dateModified: hub?.asOf ?? null,
+      })
     : null;
 
   return (
@@ -71,8 +85,8 @@ export default async function BridgeHubPage() {
           Cross-chain bridge benchmarks, live.
         </h1>
         <p className="mt-4 max-w-2xl text-base sm:text-lg text-ink-soft leading-snug">
-          Two live benches, sampled every five minutes from three regions
-          (EU-West, US-East, Singapore). One measures the all-in cost of
+          Two live benches, sampled every five minutes from{" "}
+          {hub ? regionPhrase(hub.liveRegions) : "three regions (EU-West, US-East, Singapore)"}. One measures the all-in cost of
           bridging $300 USDC across four Solana/Base/Arbitrum/HyperCore
           corridors. The other measures how fast each bridge returns a
           usable quote from each origin. Same corridors, same notional.
@@ -103,9 +117,18 @@ export default async function BridgeHubPage() {
             <span className="text-ink">bridge-quote-latency</span>
           </Link>
           <span className="inline-flex items-center rounded-full border border-ink/10 px-3 py-1 text-ink-muted">
-            {hub && hub.regionCount > 1 ? `${hub.regionCount} regions` : "eu-west"}
+            {hub ? regionPhrase(hub.liveRegions) : "regions loading"}
           </span>
         </div>
+        {hub?.asOf && (
+          <p className="mt-3 label-mono text-ink-faint">
+            As of{" "}
+            <time dateTime={hub.asOf}>
+              {hub.asOf.slice(0, 16).replace("T", " ")} UTC
+            </time>
+            , trailing 24h. Both benches were last read by then.
+          </p>
+        )}
       </header>
 
       {hub ? (
@@ -176,7 +199,7 @@ export default async function BridgeHubPage() {
               </Link>
             </div>
             <p className="text-sm text-ink-muted mb-4">
-              All-in fee p50 per provider per route. Cross-corridor averages above can hide large per-route spreads — the cheapest bridge on Sol to Base is often not the cheapest on Arb to Sol.
+              All-in fee p50 per provider per route. Cross-corridor averages above can hide large per-route spreads: the cheapest bridge on Sol to Base is often not the cheapest on Arb to Sol.
             </p>
             <BridgeCorridorMatrix rows={hub.providers} />
           </section>
@@ -286,7 +309,8 @@ export default async function BridgeHubPage() {
             histogram_quantile(0.50, sum by (le)
             (rate(bridge_quote_latency_ms_bucket[24h])))
           </code>
-          . Benches run from three regions (EU-West Amsterdam, US-East, Singapore); regional breakdown on individual bench pages. Failures (quote_failed,
+          . Benches run from{" "}
+          {hub ? regionPhrase(hub.liveRegions) : "three regions (EU-West, US-East, Singapore)"}; regional breakdown on individual bench pages. Failures (quote_failed,
           unsupported route, timeout) excluded from aggregates, counted
           toward success rate.
         </p>

@@ -1,0 +1,92 @@
+[
+ {
+  "id": "rpc-solana-many",
+  "slug": "solana-rpc",
+  "filters": {},
+  "why": "latency, many providers",
+  "providers": 4,
+  "points": 61,
+  "unit": "ms"
+ },
+ {
+  "id": "headlag-seconds",
+  "slug": "aggregator-head-lag",
+  "filters": {},
+  "why": "unit s stored as ms",
+  "providers": 6,
+  "points": 61,
+  "unit": "s"
+ },
+ {
+  "id": "bridge-fee-usd",
+  "slug": "bridge-fee",
+  "filters": {},
+  "why": "usd, small spread",
+  "providers": 8,
+  "points": 61,
+  "unit": "pct"
+ },
+ {
+  "id": "swaps-count-big",
+  "slug": "terminal-swap-transactions",
+  "filters": {},
+  "why": "count, large values, daily cadence",
+  "providers": 8,
+  "points": 29,
+  "unit": "count"
+ },
+ {
+  "id": "wallets-few",
+  "slug": "trading-platform-wallets",
+  "filters": {},
+  "why": "count, few providers, daily",
+  "providers": 8,
+  "points": 29,
+  "unit": "count"
+ },
+ {
+  "id": "l2-blocktime",
+  "slug": "l2-block-time",
+  "filters": {},
+  "why": "ms, cadence",
+  "providers": 9,
+  "points": 61,
+  "unit": "ms"
+ },
+ {
+  "id": "netfees-tiny",
+  "slug": "network-fees",
+  "filters": {},
+  "why": "tiny usd values, 20 chains",
+  "providers": 20,
+  "points": 61,
+  "unit": "usd"
+ },
+ {
+  "id": "perp-fees-bps",
+  "slug": "perp-fees",
+  "filters": {},
+  "why": "bps or pct",
+  "providers": 11,
+  "points": 61,
+  "unit": "pct"
+ },
+ {
+  "id": "hl-rpc-few",
+  "slug": "hyperliquid-rpc",
+  "filters": {},
+  "why": "latency, few providers",
+  "providers": 5,
+  "points": 61,
+  "unit": "ms"
+ },
+ {
+  "id": "rpc-cluster-12",
+  "slug": "rpc-capabilities",
+  "filters": {},
+  "why": "latency, 12 providers, cross-chain",
+  "providers": 12,
+  "points": 61,
+  "unit": "ms"
+ }
+]

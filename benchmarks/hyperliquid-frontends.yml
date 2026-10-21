@@ -1465,6 +1465,18 @@ providers:
       sample_size: hl_frontend_fills_total_24h_v2{builder="metamask-alt"}
       series: hl_frontend_fees_usd_24h_v2{builder="metamask-alt"}
 
+  - slug: nova-markets
+    name: Nova
+    tag: Hyperliquid builder code, USD revenue on the last complete UTC day
+    formula: "USD builder fees collected on the last complete UTC day, summed across every attributed fill in the daily feed file for Nova's builder address."
+    queries:
+      p50: hl_frontend_fees_usd_24h_v2{builder="nova-markets"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="nova-markets"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="nova-markets"}
+      mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="nova-markets"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 7200))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="nova-markets"}
+      series: hl_frontend_fees_usd_24h_v2{builder="nova-markets"}
 metric_panels:
   - id: volume
     label: Volume routed

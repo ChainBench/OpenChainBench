@@ -16,13 +16,14 @@ import { pageMetadata } from "@/lib/page-metadata";
 import { safeJsonLd, buildBreadcrumbJsonLd } from "@/lib/jsonld";
 import { SITE } from "@/data/site";
 import { withUtm } from "@/lib/utm";
+import { hubDateModified, datedCollectionLd } from "@/lib/hub-dates";
 
 const DESCRIPTION =
-  "Cross-chain daily volume, what each app charges on it, fill quality and app ratings for trading apps and Telegram bots (GMGN, Axiom, FOMO, Photon, Trojan), measured on closed UTC days.";
+  "Daily volume, what each app charges on it, fill quality and store ratings for trading apps and Telegram bots, measured on closed UTC days.";
 
 export const metadata: import("next").Metadata = pageMetadata({
   path: "/trading-apps",
-  title: "Trading app benchmarks 2026: volume, commission, fill quality",
+  title: "Trading app benchmarks 2026: volume, fees, fill quality",
   description: DESCRIPTION,
 });
 
@@ -154,7 +155,8 @@ export default async function TradingAppsHubPage() {
     ]),
   };
 
-  const itemListLd = {
+  const hubAsOf = hubDateModified([appMatrix.updatedAt, ratingsBench?.lastRunAt]);
+  const itemListNode = {
     "@context": "https://schema.org",
     "@type": "ItemList",
     name: "Trading app benchmarks by OpenChainBench",
@@ -167,6 +169,19 @@ export default async function TradingAppsHubPage() {
       url: `${SITE.url}/benchmarks/${slug}`,
     })),
   };
+
+  // The hub's dates live on the CollectionPage that carries the list,
+  // because ItemList is not a CreativeWork and a date does not belong on
+  // it. Before this the page served its numbers with no date at all.
+  const itemListLd = itemListNode
+    ? datedCollectionLd({
+        path: "/trading-apps",
+        url: `${SITE.url}/trading-apps`,
+        name: "Trading app benchmarks by OpenChainBench",
+        itemList: itemListNode,
+        dateModified: hubAsOf,
+      })
+    : null;
 
   return (
     <article
@@ -204,6 +219,16 @@ export default async function TradingAppsHubPage() {
           fills came out and how its users rate it. Live data, no marketing
           claims.
         </p>
+        {/* 171 values and no date anywhere in the first screen: an engine
+            quoting any of them could not say when it was true. Same stamp the
+            JSON-LD carries, so the page and the structured data agree. */}
+        {hubAsOf && (
+          <p className="mt-3 label-mono text-ink-faint">
+            As of{" "}
+            <time dateTime={hubAsOf}>{hubAsOf.slice(0, 16).replace("T", " ")} UTC</time>
+            , last closed UTC day
+          </p>
+        )}
       </header>
 
       <section className="mb-14">

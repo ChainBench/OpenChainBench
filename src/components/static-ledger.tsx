@@ -17,6 +17,7 @@ import { rankedCandidates, rpcChainLabel } from "@/lib/citation";
 import { countRows, nounFor, nounLabel } from "@/lib/row-noun";
 import { valueColumnLabel, valueQualifier } from "@/lib/value-window";
 import type { Benchmark } from "@/types/benchmark";
+import { rateDecimals } from "@/lib/sample-precision";
 
 /** How many metric panels the server table carries. Three keeps the row
  *  readable at phone width next to the rank, name, headline and success
@@ -24,7 +25,15 @@ import type { Benchmark } from "@/types/benchmark";
  *  table nobody can scan. The rest stay in the interactive tabs. */
 const MAX_STATIC_PANELS = 3;
 
-export function StaticLedger({ benchmark }: { benchmark: Benchmark }) {
+export function StaticLedger({
+  benchmark,
+  regionCount,
+}: {
+  benchmark: Benchmark;
+  /** Regions with data on this view, from the page's own
+   *  declared-and-present filter. Omitted means no claim. */
+  regionCount?: number;
+}) {
   const rows = rankResults(displayResults(benchmark.results), benchmark.higherIsBetter);
   if (rows.length === 0) return null;
   const chain = rpcChainLabel(benchmark);
@@ -62,12 +71,17 @@ export function StaticLedger({ benchmark }: { benchmark: Benchmark }) {
   const panels = (benchmark.metricPanels ?? [])
     .filter((p) => p.values && Object.keys(p.values).length > 0)
     .slice(0, MAX_STATIC_PANELS);
+  // The region count comes from the page, which already worked out which
+  // declared regions actually have data: the heading a crawler reads said
+  // three on every bench, including those measured from fewer. Falls
+  // back to no claim rather than to a number.
+  const regionNote = regionCount && regionCount > 0 ? `, ${regionCount} region${regionCount === 1 ? "" : "s"}` : "";
   const heading = chain && pausedOn
     ? `Results: measurement paused since ${pausedOn}, last ranking of ${rows.length} free public ${chain} RPC endpoint${rows.length === 1 ? "" : "s"}`
     : chain && ranked < rows.length
-    ? `Results: ${rows.length} free public ${chain} RPC endpoint${rows.length === 1 ? "" : "s"} measured, ${ranked} ranked by p50 latency (24h, 3 regions)`
+    ? `Results: ${rows.length} free public ${chain} RPC endpoint${rows.length === 1 ? "" : "s"} measured, ${ranked} ranked by p50 latency (24h${regionNote})`
     : chain
-    ? `Results: ${rows.length} free public ${chain} RPC endpoint${rows.length === 1 ? "" : "s"} ranked by p50 latency (24h, 3 regions)`
+    ? `Results: ${rows.length} free public ${chain} RPC endpoint${rows.length === 1 ? "" : "s"} ranked by p50 latency (24h${regionNote})`
     : ranked < rows.length
     ? `Results: ${countRows(benchmark, rows.length)} measured, ${ranked} ranked by ${benchmark.metric} (${qualifier})`
     : `Results: ${countRows(benchmark, rows.length)} ranked by ${benchmark.metric} (${qualifier})`;
@@ -161,8 +175,19 @@ export function StaticLedger({ benchmark }: { benchmark: Benchmark }) {
                     </td>
                   );
                 })}
+                {/* Same precision rule as the interactive table. This column
+                    printed two decimals regardless of sample size, so
+                    bridge-execution-latency served "100.00 %" on 17 to 27
+                    executions, where a single failure moves the rate by 3.7 to
+                    5.9 points. This is the table a crawler reads, so it was
+                    the copy claiming the certainty. */}
                 {showReliability && (
-                  <td className="py-2 pl-3 text-right tabular-nums text-ink-soft">{r.successRate.toFixed(2)}%</td>
+                  <td className="py-2 pl-3 text-right tabular-nums text-ink-soft">
+                    {r.successRate.toFixed(rateDecimals(r.sampleSize))}%
+                    {r.sampleSize != null && (
+                      <span className="text-ink-faint"> (n={Math.round(r.sampleSize)})</span>
+                    )}
+                  </td>
                 )}
               </tr>
               </Fragment>

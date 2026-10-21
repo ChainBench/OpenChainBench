@@ -1123,6 +1123,7 @@ export function BenchmarkBody({
                           : undefined
                     }
                     chain={effectiveChain ?? undefined}
+                    tier={effectiveTier ?? undefined}
                     excluded={excluded}
                     onToggleExclude={toggleExclude}
                     onResetExcluded={resetExcluded}

@@ -2,10 +2,11 @@ import { unstable_cache } from "next/cache";
 import { loadBenchFromBlob, loadVariantFromBlob } from "@/lib/bench-blob";
 import { filterSig } from "@/lib/materialize/load";
 import { dataAgeHours, STALE_AFTER_HOURS } from "@/lib/provider-filters";
+import { hubDateModified } from "@/lib/hub-dates";
 import { CORRIDORS, REGIONS } from "@/lib/bridge-hub-types";
 import type { CorridorFee, RegionLatency, BridgeProviderRow, BridgeHubData } from "@/lib/bridge-hub-types";
 export type { CorridorKey, RegionKey, CorridorFee, RegionLatency, BridgeProviderRow, BridgeHubData } from "@/lib/bridge-hub-types";
-export { CORRIDORS, REGIONS } from "@/lib/bridge-hub-types";
+export { CORRIDORS, REGIONS, regionPhrase } from "@/lib/bridge-hub-types";
 
 async function _fetchBridgeHub(): Promise<BridgeHubData | null> {
   const nCorridors = CORRIDORS.length;
@@ -137,12 +138,15 @@ async function _fetchBridgeHub(): Promise<BridgeHubData | null> {
 
   const regionCount = Math.max(1, liveRegions.length);
 
-  // Newest measurement across the two benches, for the "as of" line.
-  const asOf =
-    [feeBench?.lastRunAt, latencyBench?.lastRunAt]
-      .filter((t): t is string => Boolean(t) && Number.isFinite(Date.parse(t as string)))
-      .sort()
-      .at(-1) ?? null;
+  // The OLDER of the two benches, for the "as of" line. This page presents
+  // both as one board, so the honest "as of" is the moment both were true:
+  // taking the newer made the staler bench look fresher than it is
+  // (21:43:34Z presented as 21:48:59Z when the audit read it).
+  //
+  // This was an inline copy of hubDateModified, including its string sort,
+  // which only orders canonical toISOString stamps correctly. Calling the
+  // shared helper means the rule and the comparison live in one place.
+  const asOf = hubDateModified([feeBench?.lastRunAt, latencyBench?.lastRunAt]);
 
   return {
     providers: active,

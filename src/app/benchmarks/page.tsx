@@ -3,30 +3,24 @@ import { getBenchmarksSafe, toBenchmarkCardData } from "@/data/benchmarks";
 import { isThinRpcBench, isExpiredRpcPage } from "@/lib/provider-filters";
 import { BenchmarkGrid } from "@/components/benchmark-grid";
 import { safeJsonLd } from "@/lib/jsonld";
+import { hubDateModified, datedCollectionLd } from "@/lib/hub-dates";
+import { pageMetadata } from "@/lib/page-metadata";
 
 export const revalidate = 3600;
 
 const DESCRIPTION =
   "Live benchmarks on RPC latency, perp DEX fees and volume, bridge cost, L1 finality and oracle deviation, measured continuously with an open methodology.";
 
-export const metadata: Metadata = {
+// Through pageMetadata rather than a hand-written Metadata object. The helper
+// ships a title absolute past 43 characters, because the layout template
+// appends " · OpenChainBench" and the SERP cuts the tail. Writing the object
+// by hand skipped that rule and rendered 75 characters, and set the social
+// title to "All benchmarks", which says less than the page's own title.
+export const metadata: Metadata = pageMetadata({
+  path: "/benchmarks",
   title: "Crypto infrastructure benchmarks 2026: RPC, perps, bridges",
   description: DESCRIPTION,
-  alternates: { canonical: "https://openchainbench.com/benchmarks" },
-  openGraph: {
-    title: "All benchmarks · OpenChainBench",
-    description: DESCRIPTION,
-    url: "https://openchainbench.com/benchmarks",
-    type: "website",
-    siteName: "OpenChainBench",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "All benchmarks · OpenChainBench",
-    description: DESCRIPTION,
-    site: "@OpenChainBench",
-  },
-};
+});
 
 export default async function BenchmarksPage() {
   // Thin chain RPC benches (< 3 providers) are noindex on their own page;
@@ -37,7 +31,7 @@ export default async function BenchmarksPage() {
   // page as a structured registry (the data is already in the DOM but
   // schema.org markup unlocks Dataset-listing rich results + grounded
   // citation by the LLM tier the rest of the site already optimises for).
-  const itemListLd = {
+  const itemListNode = {
     "@context": "https://schema.org",
     "@type": "ItemList",
     name: "OpenChainBench benchmarks",
@@ -51,6 +45,19 @@ export default async function BenchmarksPage() {
       name: b.title,
     })),
   };
+
+  // The hub's dates live on the CollectionPage that carries the list,
+  // because ItemList is not a CreativeWork and a date does not belong on
+  // it. Before this the page served its numbers with no date at all.
+  const itemListLd = itemListNode
+    ? datedCollectionLd({
+        path: "/benchmarks",
+        url: "https://openchainbench.com/benchmarks",
+        name: "OpenChainBench benchmarks",
+        itemList: itemListNode,
+        dateModified: hubDateModified(benchmarks.map((b) => b.lastRunAt)),
+      })
+    : null;
 
   const breadcrumbLd = {
     "@context": "https://schema.org",

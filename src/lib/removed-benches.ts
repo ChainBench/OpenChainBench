@@ -396,6 +396,32 @@ export const REMOVED_BENCH_SLUGS = new Set([
  * already calls notFound() when getProvider() returns null; this set
  * exists purely to swap the resulting 404 for a 410 on prod.
  */
+/**
+ * Alternatives pages whose /alternatives/<slug> route should return 410 Gone
+ * rather than 404.
+ *
+ * An alternatives page ranks the rows of the benchmark it declares, so it can
+ * only exist where those rows are providers.
+ *
+ * Enforced only in src/middleware.ts, like the sets below: the route already
+ * 404s once the spec file is gone, and this set swaps that for a 410 on prod.
+ */
+export const REMOVED_ALTERNATIVE_SLUGS = new Set([
+  // chainlink and pyth declared oracle-deviation, which does measure them but
+  // whose rows are the ten asset pairs it compares the oracles on. Both pages
+  // served "Top 5 Chainlink alternatives: XRP/USD, POL/USD, AVAX/USD, ..." on
+  // production. No other live bench carries a row for either, so there was
+  // nothing to repoint to. Both answered 200 and sat in the sitemap, so the
+  // URLs are indexed and need the 410.
+  "chainlink",
+  "pyth",
+  // jupiter declared solana-dex-quote-latency, dropped from the site in a
+  // hotfix, so the page already 404d. Jupiter is a row in
+  // token-quote-coverage, but four of that bench's ten rows are chains, so
+  // reviving it there would have listed "Solana" as a Jupiter alternative.
+  "jupiter",
+]);
+
 export const REMOVED_PRODUCT_SLUGS = new Set([
   // Blast (the L2) left every bench on 2026-10-13. /products/blast used
   // to 308 to /chains/blast; with the chain gone it rendered an

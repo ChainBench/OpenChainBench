@@ -38,6 +38,6 @@ type TierSample struct {
 type VenueConfig struct {
 	Slug        string  // unique label for Prom metrics
 	Display     string  // human-readable name
-	Asset       string  // "ETH", "BTC", "SOL"
+	Asset       string  // "ETH", "BTC", "SOL", and "HYPE" on the six venues that list it
 	NotionalUSD float64 // trade size to simulate, e.g. 1000 for $1k
 }

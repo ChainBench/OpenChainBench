@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { config } from "./middleware";
 import {
+  REMOVED_ALTERNATIVE_SLUGS,
   REMOVED_ANSWER_SLUGS,
   REMOVED_BENCH_SLUGS,
   REMOVED_PRODUCT_SLUGS,
@@ -16,6 +17,7 @@ describe("middleware matcher", () => {
       ...[...REMOVED_BENCH_SLUGS].map((s) => `/benchmarks/${s}`),
       ...[...REMOVED_ANSWER_SLUGS].map((s) => `/answers/${s}`),
       ...[...REMOVED_PRODUCT_SLUGS].map((s) => `/products/${s}`),
+      ...[...REMOVED_ALTERNATIVE_SLUGS].map((s) => `/alternatives/${s}`),
     ].sort();
     expect([...config.matcher].sort()).toEqual(expected);
   });

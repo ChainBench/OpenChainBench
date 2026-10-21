@@ -139,11 +139,26 @@ export const ProviderType = z.enum([
  *  by execution layer without leaving the page. */
 export const ProviderLayer = z.enum(["l1", "l2"]);
 
+// Em-dash (—) and en-dash (–) are the classic "AI tells" that hurt our brand
+// voice. The site is hand-authored, the YAMLs must read that way too. Plain
+// hyphens stay legal because compound words ("head-lag", "L1-finality") need
+// them. This refine runs on every copy field below.
+const noAiDashes = (s: string) =>
+  !s.includes("—") && !s.includes("–");
+const noAiDashesMsg =
+  "Avoid em or en dashes; use a comma, semicolon, or period instead";
+
 const provider = z.object({
   /** Stable identifier. also used as the metric label. */
   slug,
-  /** Display name. */
-  name: z.string().min(1),
+  /** Display name.
+   *
+   *  The dash rule applies here too. It was documented as running on "every
+   *  copy field" and did not run on this one, so pm-resolution-delay shipped
+   *  nine names like "Polymarket — All". A provider name travels to every
+   *  surface that lists the provider, which is how one spec put em dashes on
+   *  four hub pages. */
+  name: z.string().min(1).refine(noAiDashes, noAiDashesMsg),
   /** Optional one-liner shown under the name. */
   /**
    * What this row IS: its architecture, its venue, its scope. Not what it
@@ -167,7 +182,9 @@ const provider = z.object({
   /** Single-line explanation of how THIS provider's headline value is
    *  computed. Shown as a hover tooltip on the leaderboard row. Keep
    *  short: one sentence, plain English, no PromQL. */
-  formula: z.string().min(1).max(240).optional(),
+  // Published copy: it is the row's hover tooltip, so the dash rule applies.
+  // Six dashes sat in formulas across two specs while validate passed.
+  formula: z.string().min(1).max(240).refine(noAiDashes, noAiDashesMsg).optional(),
   /** Public, no-key endpoint URL the harness probes for this provider.
    *  Rendered on the bench page ("Public endpoints measured") because
    *  the searchers who land on the RPC pages want the URL as much as the
@@ -204,18 +221,30 @@ const provider = z.object({
    *  provider list; each cohort is ranked on its own and never against
    *  the other. Absent = the first declared tier value. */
   tier: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/).optional(),
-  /** Declares a cohort member that has no headline value by design
-   *  (a perp DEX with no token yet on a valuation bench). The ledger
-   *  lists it in an "Unranked · <label>" block below the field with
-   *  its companion-panel values, instead of dropping it or badging it
+  /** Declares a cohort member the ranking must not order. The ledger
+   *  lists it in an "Unranked · <label>" block below the field with its
+   *  companion-panel values, instead of dropping it or badging it
    *  unresponsive. Never ranked, never a leader. Short label, e.g.
-   *  "Pre-TGE". */
+   *  "Pre-TGE".
+   *
+   *  The label covers two different situations and the measured value
+   *  survives by default, which is the safe one: on bench 304 CoW, Bebop
+   *  and LI.FI are RFQ or relayer rows whose shortfall is measured and
+   *  merely not comparable to a router's, and zeroing them published
+   *  "0.00 bps" for a venue giving up a hundred. Set
+   *  `unranked_hides_value` for the other situation, where no publishable
+   *  value exists even though the series does. */
   unranked: z
     .string()
     .min(1)
     .max(20)
     .regex(/^[A-Za-z0-9 -]+$/, "unranked label: letters, digits, spaces, hyphens")
     .optional(),
+  /** Blanks this row's percentiles instead of publishing them. For an
+   *  unranked row whose series exists but whose number must not be read:
+   *  perp-pf-ratio's Paradex reads 29.85 off an adapter the spec itself
+   *  labels incomplete. Only meaningful alongside `unranked`. */
+  unranked_hides_value: z.boolean().default(false),
   /** Optional secondary metric (e.g. "Chains covered") shown in the table. */
   secondary: z
     .object({ label: z.string(), value: z.string() })
@@ -240,14 +269,6 @@ export const Category = z.enum([
   "On-ramps",
 ]);
 
-// Em-dash (—) and en-dash (–) are the classic "AI tells" that hurt our brand
-// voice. The site is hand-authored, the YAMLs must read that way too. Plain
-// hyphens stay legal because compound words ("head-lag", "L1-finality") need
-// them. This refine runs on every copy field below.
-const noAiDashes = (s: string) =>
-  !s.includes("—") && !s.includes("–");
-const noAiDashesMsg =
-  "Avoid em or en dashes; use a comma, semicolon, or period instead";
 // Marketing adjectives the editorial rules forbid in copy; a measured claim
 // ("fastest ... measured") is fine, these words never are.
 // "trusted" and "powerful" are left out on purpose: both occur as plain
@@ -340,8 +361,8 @@ export const SpecSchema = z
       .array(
         z.object({
           slug: z.string().min(1).max(50),
-          h2: z.string().min(1).max(200),
-          body: z.string().min(1).max(1000),
+          h2: z.string().min(1).max(200).refine(noAiDashes, noAiDashesMsg),
+          body: z.string().min(1).max(1000).refine(noAiDashes, noAiDashesMsg),
         })
       )
       .max(30)
@@ -607,8 +628,23 @@ export const SpecSchema = z
      * Opt-in per bench, and it describes a property rather than naming a
      * bench: any bench whose chain set contains uncontested chains is a
      * candidate. Excluded providers stay visible on their own chain tab.
+     *
+     * `full_coverage` answers a different bias with the same shape.
+     * contested_chains asks whether a chain was contested; it does not ask
+     * whether the providers being compared cover the same ground. On bench
+     * 033 Route quotes Robinhood Chain alone, where it is genuinely fast,
+     * and its all-chains figure was the mean of three Robinhood cells
+     * (215 ms) against KyberSwap's mean of fifteen cells over five chains
+     * (225 ms). That published Route as the fastest EVM swap quote API
+     * overall, on a field it does not enter. Robinhood is contested, so
+     * contested_chains leaves it untouched.
+     *
+     * Under `full_coverage` a provider missing from any chain that has
+     * data is carried as unranked with a label naming what it covers,
+     * instead of being ranked against providers that answer everywhere.
+     * It keeps its own chain tab, where the comparison is like for like.
      */
-    score_scope: z.enum(["contested_chains"]).optional(),
+    score_scope: z.enum(["contested_chains", "full_coverage"]).optional(),
 
     aggregate_filters: z
       .object({
