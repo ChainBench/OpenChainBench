@@ -435,6 +435,13 @@ func main() {
 	nf := newNativeFeed(httpc, st.EvmCursor, st.FeedDown)
 	xf := newXfeed(httpc, st.RelayNewest)
 	go xf.run(context.Background(), tick)
+	// pump.fun's own bridge, the other half of its cross-chain flow since
+	// 2026-10-07. xf reads what still goes through Relay; this reads what
+	// does not. Slower than the swap tick on purpose: it publishes a size
+	// distribution, not a live price, and each pass costs one signatures
+	// call plus a transaction read per signature.
+	pbf := &pumpBridgeFeed{}
+	go pbf.run(context.Background(), rpc, 2*time.Minute)
 	var mu sync.RWMutex
 	var pub *Public
 

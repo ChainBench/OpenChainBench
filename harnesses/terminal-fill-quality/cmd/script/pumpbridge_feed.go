@@ -1,0 +1,136 @@
+package main
+
+// The poller that feeds the deposit decoder.
+//
+// It walks the bridge program's recent signatures, reads each transaction, and
+// decodes the deposit event out of the inner instruction Anchor's emit_cpi!
+// writes it into. Everything it needs already existed: rpcClient.signatures,
+// rpcClient.transaction and base58Decode.
+//
+// Why a cursor and not a window. The program's traffic is mostly AdminDebit
+// payouts, so a fixed lookback would re-read the same payouts every tick to
+// find a handful of deposits. The cursor asks only for what arrived since last
+// time, which is also what keeps the RPC cost of this flat as the bridge grows.
+//
+// Why this publishes sizes and not a fee. The deposit states its amount; what
+// pump keeps is the difference between that and what an EVM router later
+// spends, and the two legs cannot be paired because the destination is
+// encrypted. The size distribution is what the deposit itself supports, and it
+// is also what the fee schedule is read from: the spends that sit just under
+// round numbers are the calibration, and knowing the deposit sizes is what says
+// whether those round numbers are representative or a corner of the traffic.
+
+import (
+	"context"
+	"log"
+	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
+)
+
+var (
+	gPumpBridgeUp = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "tfq_pump_bridge_feed_up",
+		Help: "1 when the Pump Bridge deposit poller read the program on its last pass. Separate from tfq_relay_feed_up: pump moved its cross-chain flow off Relay on 2026-10-07, so one feed being healthy says nothing about the other",
+	})
+	cPumpBridgeDeposits = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "tfq_pump_bridge_deposits_total",
+		Help: "Deposits decoded from pump.fun's bridge program since this process started",
+	})
+	hPumpBridgeDeposit = prometheus.NewHistogram(prometheus.HistogramOpts{
+		Name:    "tfq_pump_bridge_deposit_usd",
+		Help:    "Size of each Pump Bridge deposit in USDC. The fee pump takes is NOT in here: it is deducted between this deposit and the EVM router's spend, and the two legs cannot be paired because the destination is encrypted on chain",
+		Buckets: []float64{1, 2, 5, 10, 25, 50, 100, 250, 500, 1000, 2500, 10000},
+	})
+)
+
+func init() {
+	prometheus.MustRegister(gPumpBridgeUp, cPumpBridgeDeposits, hPumpBridgeDeposit)
+}
+
+// pumpBridgeFeed walks the bridge program forward from where it stopped.
+type pumpBridgeFeed struct {
+	cursor string // newest signature already read; "" on the first pass
+}
+
+// pumpBridgePageSize caps one pass. The program runs roughly 25,000 signatures
+// a day, so a 60 second tick sees about 17; 200 leaves room for a slow tick or
+// a burst without ever walking the whole history.
+const pumpBridgePageSize = 200
+
+// poll reads what arrived since the last pass and publishes the deposits in it.
+//
+// A pass that finds no deposits is normal and is not a failure: most of this
+// program's traffic is payouts. Only an RPC error pulls the feed gauge down,
+// because that is the state where a reader must not take a quiet row for a
+// quiet bridge.
+func (f *pumpBridgeFeed) poll(ctx context.Context, rpc *rpcClient) {
+	sigs, err := rpc.signatures(ctx, pumpBridgeProgram, pumpBridgePageSize, f.cursor)
+	if err != nil {
+		gPumpBridgeUp.Set(0)
+		log.Printf("[pump-bridge] signatures: %v", err)
+		return
+	}
+	gPumpBridgeUp.Set(1)
+	if len(sigs) == 0 {
+		return
+	}
+	// signatures come back newest first; the newest becomes the next cursor
+	// even if nothing in this page decodes, or a page of pure payouts would
+	// be re-read forever.
+	newest := sigs[0].Signature
+
+	deposits, scanned := 0, 0
+	for _, s := range sigs {
+		if ctx.Err() != nil {
+			break
+		}
+		if s.failed() {
+			continue
+		}
+		tx, err := rpc.transaction(ctx, s.Signature)
+		if err != nil || tx == nil {
+			continue
+		}
+		scanned++
+		for _, grp := range tx.Meta.InnerInstructions {
+			for _, ix := range grp.Instructions {
+				if ix.ProgramID != pumpBridgeProgram || ix.Data == "" {
+					continue
+				}
+				raw, ok := base58Decode(ix.Data)
+				if !ok {
+					continue
+				}
+				d, err := decodePumpDeposit(raw)
+				if err != nil {
+					continue // a payout or an admin call, which is the norm
+				}
+				deposits++
+				cPumpBridgeDeposits.Inc()
+				hPumpBridgeDeposit.Observe(float64(d.Amount) / 1e6)
+			}
+		}
+	}
+	f.cursor = newest
+	if deposits > 0 {
+		log.Printf("[pump-bridge] %d deposits in %d transactions", deposits, scanned)
+	}
+}
+
+// run polls on its own cadence, slower than the swap tick: the bridge's
+// deposits are a size distribution rather than a live price, and every pass
+// costs one signatures call plus one transaction read per signature.
+func (f *pumpBridgeFeed) run(ctx context.Context, rpc *rpcClient, every time.Duration) {
+	t := time.NewTicker(every)
+	defer t.Stop()
+	f.poll(ctx, rpc)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-t.C:
+			f.poll(ctx, rpc)
+		}
+	}
+}
