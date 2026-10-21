@@ -125,9 +125,9 @@ function ModalBody({
     availableRanges ? new Set(RANGE_IDS.filter((r) => availableRanges.has(r))) : null,
   );
   const [view, setView] = useState<ViewId>("BarChartRace");
-  // 12s default — long enough to land the trajectory, short enough to keep
-  // the first-render wall-clock under 30-40s on the standard VPS. User can
-  // bump via the slider when they want a longer race.
+  // 12s default: long enough to land the trajectory, about 80s to render on
+  // the 2-vCPU renderer (see renderEtaSeconds). User can bump via the
+  // slider when they want a longer race.
   const [raceSeconds, setRaceSeconds] = useState(12);
   const [skipIntro, setSkipIntro] = useState(false);
   // "short" renders natively at 1080x1920 (TikTok / Reels / Shorts); the
@@ -812,7 +812,7 @@ function ModalBody({
                   : "Generate MP4"}
             </button>
             {state.status === "rendering" && (
-              <span className="text-[11px] text-ink-muted">~10-30s first run · instant on rerun</span>
+              <RenderClock startedAt={state.startedAt} etaSeconds={renderEtaSeconds(raceSeconds)} />
             )}
             {emptySelection && state.status === "idle" && (
               <span className="text-[11px] text-ink-muted">
@@ -950,5 +950,31 @@ function SmallLink({
     >
       {children}
     </button>
+  );
+}
+
+/**
+ * Expected wall time of a first render, in seconds. Measured on the
+ * production renderer (2 vCPU, v28, 2026-10-21): a 10 s race plus the
+ * results board and outro took 68 s, about 18 s fixed plus 5 s per second
+ * of race. The copy used to say "~10-30s", which no render ever met. A
+ * cached rerun is instant; a busy renderer queues exports one at a time.
+ */
+function renderEtaSeconds(raceSeconds: number): number {
+  return Math.round(18 + 5 * raceSeconds);
+}
+
+function RenderClock({ startedAt, etaSeconds }: { startedAt: number; etaSeconds: number }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  const elapsed = Math.max(0, Math.round((now - startedAt) / 1000));
+  const eta = etaSeconds >= 90 ? `~${Math.round(etaSeconds / 60)} min` : `~${Math.round(etaSeconds / 10) * 10}s`;
+  return (
+    <span className="text-[11px] tabular-nums text-ink-muted">
+      {elapsed}s · {eta} first run{elapsed > etaSeconds * 1.5 ? " · queued behind another export" : ""} · instant on rerun
+    </span>
   );
 }
