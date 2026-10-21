@@ -72,6 +72,15 @@ func (p *MobulaProvider) Probe(ctx context.Context, pair TestPair) (Quote, error
 	var r struct {
 		Data struct {
 			AmountOutTokens string `json:"amountOutTokens"`
+			// estimatedGasUsed is the expected burn; gasLimit beside it is
+			// the ceiling sent on-chain (336,913 against an estimate of
+			// 306,285 on Base), so reading the limit would overstate the
+			// cost by a tenth.
+			EVM struct {
+				Transaction struct {
+					EstimatedGasUsed any `json:"estimatedGasUsed"`
+				} `json:"transaction"`
+			} `json:"evm"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(body, &r); err != nil {
@@ -83,6 +92,7 @@ func (p *MobulaProvider) Probe(ctx context.Context, pair TestPair) (Quote, error
 		return failed(), fmt.Errorf("no_route")
 	}
 	quote := okQuote(ms, r.Data.AmountOutTokens)
+	quote.GasUnits = uintAny(r.Data.EVM.Transaction.EstimatedGasUsed)
 	// `amountOutTokens`, not the smallest unit: Mobula divides for us.
 	quote.OutAlreadyScaled = true
 	return quote, nil

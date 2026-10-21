@@ -82,8 +82,14 @@ func (p *ZeroExProvider) Probe(ctx context.Context, pair TestPair) (Quote, error
 				Token  string `json:"token"`
 			} `json:"zeroExFee"`
 		} `json:"fees"`
-		Gas      any `json:"gas"`
-		GasPrice any `json:"gasPrice"`
+		// Nested under `transaction` on /swap/permit2/quote, which is the
+		// endpoint this adapter calls. The sibling
+		// /swap/allowance-holder/price carries the same two names at the
+		// root, and reading them there parsed to zero in silence.
+		Transaction struct {
+			Gas      any `json:"gas"`
+			GasPrice any `json:"gasPrice"`
+		} `json:"transaction"`
 	}
 	if err := json.Unmarshal(body, &r); err != nil {
 		RecordOtherError(p.Slug(), pair.Chain, p.region, "parse")
@@ -94,8 +100,8 @@ func (p *ZeroExProvider) Probe(ctx context.Context, pair TestPair) (Quote, error
 		return failed(), fmt.Errorf("no_route")
 	}
 	quote := okQuote(ms, r.BuyAmount)
-	quote.GasUnits = uintAny(r.Gas)
-	quote.GasPriceWei = numAny(r.GasPrice)
+	quote.GasUnits = uintAny(r.Transaction.Gas)
+	quote.GasPriceWei = numAny(r.Transaction.GasPrice)
 	if n, err := strconv.ParseUint(r.BlockNumber, 10, 64); err == nil {
 		quote.Block = n
 	}
