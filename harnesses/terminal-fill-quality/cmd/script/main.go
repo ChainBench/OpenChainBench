@@ -442,6 +442,13 @@ func main() {
 	// call plus a transaction read per signature.
 	pbf := &pumpBridgeFeed{}
 	go pbf.run(context.Background(), rpc, 2*time.Minute)
+	// The other half of the same question, on the EVM side: the deposit feed
+	// above says what users put in, this one says what the bridge kept, read
+	// from the routers' own stable spends. Five minutes because a fee schedule
+	// changes on the scale of a product decision, and each pass is one
+	// eth_getLogs per chain.
+	ptw := newPumpTakeWatcher()
+	go ptw.run(context.Background(), httpc, 5*time.Minute)
 	var mu sync.RWMutex
 	var pub *Public
 
