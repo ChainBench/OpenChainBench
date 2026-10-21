@@ -33,6 +33,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -75,6 +76,7 @@ func main() {
 	maxFlag := flag.String("max", "0.01", "refuse amounts above this many ETH")
 	keepFlag := flag.String("keep", "0.003", "ETH the wallet must keep on the origin chain after value + gas")
 	minOut := flag.Float64("min-out", 0.9, "cross-chain only: refuse a Relay quote returning less than this share of the input")
+	tokenFlag := flag.String("token", "", "ERC-20 contract to move instead of native ETH; sweeps the whole balance")
 	yes := flag.Bool("yes", false, "broadcast (without it the tool only prints the plan)")
 	flag.Parse()
 
@@ -107,7 +109,19 @@ func main() {
 	if err != nil {
 		log.Fatalf("--keep: %v", err)
 	}
-	if value.Sign() <= 0 || value.Cmp(maxWei) > 0 {
+	tokenMode := strings.TrimSpace(*tokenFlag) != ""
+	if tokenMode {
+		// A token sweep sends no ETH, so --amount and --max describe nothing.
+		// The whole token balance moves, which is the only sensible amount
+		// when the point is to empty a wallet that may be compromised.
+		if !common.IsHexAddress(*tokenFlag) {
+			log.Fatalf("--token is not a valid address")
+		}
+		if crossChain {
+			log.Fatalf("--token and --dest cannot be combined: a token sweep is same-chain")
+		}
+		value = big.NewInt(0)
+	} else if value.Sign() <= 0 || value.Cmp(maxWei) > 0 {
 		log.Fatalf("amount %s ETH outside (0, %s]", fmtEth(value), fmtEth(maxWei))
 	}
 
@@ -144,10 +158,30 @@ func main() {
 		log.Fatalf("RPC answers chain %s, expected %s", netID, cfg.chainID)
 	}
 
-	// The transaction we sign: a plain transfer, or Relay's deposit step.
+	// The transaction we sign: a plain transfer, Relay's deposit step, or an
+	// ERC-20 transfer.
 	txTo := to
 	var txData []byte
 	txValue := value
+
+	var tokenBal *big.Int
+	if tokenMode {
+		token := common.HexToAddress(*tokenFlag)
+		var err error
+		tokenBal, err = erc20BalanceOf(ctx, client, token, from)
+		if err != nil {
+			log.Fatalf("balanceOf: %v", err)
+		}
+		if tokenBal.Sign() == 0 {
+			log.Printf("%s: token %s balance is 0, nothing to move", cfg.name, token.Hex())
+			return
+		}
+		txTo = token
+		txData = erc20TransferData(to, tokenBal)
+		txValue = big.NewInt(0)
+		log.Printf("%s: moving the whole balance of token %s, raw amount %s, to %s",
+			cfg.name, token.Hex(), tokenBal, to.Hex())
+	}
 	var checkURL string
 	if crossChain {
 		q, err := relayQuote(ctx, from, to, cfg.chainID.Int64(), destID, value)
@@ -453,4 +487,48 @@ func parseEth(s string) (*big.Int, error) {
 func fmtEth(wei *big.Int) string {
 	f := new(big.Float).SetPrec(128).Quo(new(big.Float).SetInt(wei), big.NewFloat(1e18))
 	return f.Text('f', 6)
+}
+
+// erc20ABI is only transfer and balanceOf: the two calls a sweep needs, and
+// nothing that could approve a spender.
+var erc20ABI = func() abi.ABI {
+	a, err := abi.JSON(strings.NewReader(`[
+		{"name":"transfer","type":"function","inputs":[{"name":"to","type":"address"},{"name":"amount","type":"uint256"}],"outputs":[{"type":"bool"}]},
+		{"name":"balanceOf","type":"function","inputs":[{"name":"owner","type":"address"}],"outputs":[{"type":"uint256"}]}
+	]`))
+	if err != nil {
+		panic(err)
+	}
+	return a
+}()
+
+func erc20BalanceOf(ctx context.Context, c *ethclient.Client, token, owner common.Address) (*big.Int, error) {
+	data, err := erc20ABI.Pack("balanceOf", owner)
+	if err != nil {
+		return nil, err
+	}
+	out, err := c.CallContract(ctx, ethereum.CallMsg{To: &token, Data: data}, nil)
+	if err != nil {
+		return nil, err
+	}
+	vals, err := erc20ABI.Unpack("balanceOf", out)
+	if err != nil {
+		return nil, err
+	}
+	if len(vals) != 1 {
+		return nil, fmt.Errorf("balanceOf returned %d values", len(vals))
+	}
+	v, ok := vals[0].(*big.Int)
+	if !ok {
+		return nil, fmt.Errorf("balanceOf returned %T", vals[0])
+	}
+	return v, nil
+}
+
+func erc20TransferData(to common.Address, amount *big.Int) []byte {
+	data, err := erc20ABI.Pack("transfer", to, amount)
+	if err != nil {
+		panic(err)
+	}
+	return data
 }
