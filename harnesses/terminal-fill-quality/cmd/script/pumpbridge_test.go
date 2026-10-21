@@ -13,6 +13,8 @@ func TestPumpBridgeRowsSplitIntoThePumpFunRow(t *testing.T) {
 		"pump-fun-base":      "base",
 		"pump-fun-arc":       "arc",
 		"pump-fun-robinhood": "robinhood",
+		"pump-fun-megaeth":   "megaeth",
+		"pump-fun-xlayer":    "xlayer",
 	}
 	for slug, chain := range want {
 		product, got := productOf(slug)
@@ -40,6 +42,7 @@ func TestPumpBridgeRoutersAreDeclaredOnEveryChainWeCover(t *testing.T) {
 	}
 	for chain, router := range map[string]string{
 		"bnb": generic, "base": generic, "arc": generic, "robinhood": robinhood,
+		"megaeth": generic, "xlayer": generic,
 	} {
 		got, ok := seen[chain]
 		if !ok {
@@ -50,8 +53,8 @@ func TestPumpBridgeRoutersAreDeclaredOnEveryChainWeCover(t *testing.T) {
 			t.Errorf("%s: routers = %v, want [%s]", chain, got, router)
 		}
 	}
-	if len(seen) != 4 {
-		t.Errorf("pump.fun EVM rows = %d, want 4", len(seen))
+	if len(seen) != 6 {
+		t.Errorf("pump.fun EVM rows = %d, want 6", len(seen))
 	}
 }
 

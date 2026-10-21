@@ -87,6 +87,15 @@ var evmTerminals = []evmTerminal{
 		Routers: []string{"0x836b336fca26913176efc45a5a6e5e72cd7bd13b"}},
 	{Slug: "pump-fun-robinhood", Name: "pump.fun app · Robinhood Chain", Kind: "app", Chain: "robinhood",
 		Routers: []string{"0x5399d94d2cab7c252a6034042e1917a0e5e17a18"}},
+	// Relay serves neither of these two, so Pump Bridge is the only
+	// route on them and no bridge aggregator can see them. X Layer is
+	// live but thin (relayer nonce 28); MegaETH carries the router and
+	// has never executed a transaction (nonce 0), and is declared
+	// anyway so its first trade is caught rather than noticed later.
+	{Slug: "pump-fun-megaeth", Name: "pump.fun app · MegaETH", Kind: "app", Chain: "megaeth",
+		Routers: []string{"0x836b336fca26913176efc45a5a6e5e72cd7bd13b"}},
+	{Slug: "pump-fun-xlayer", Name: "pump.fun app · X Layer", Kind: "app", Chain: "xlayer",
+		Routers: []string{"0x836b336fca26913176efc45a5a6e5e72cd7bd13b"}},
 	{Slug: "gmgn-bnb", Name: "GMGN · BNB", Kind: "app", Chain: "bnb", Routers: []string{"0x1de460f363af910f51726def188f9004276bf4bc"}, Collector: "0xb8159ba378904f803639d274cec79f788931c9c8"},
 	// GMGN's Robinhood Chain router: the emitter of GMGN's swap-end event
 	// (0x8619026a…) on that chain, 654 swaps in 300 blocks on 2026-09-18;
