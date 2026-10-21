@@ -28,6 +28,24 @@ var gmxMarkets = map[string]string{
 	"ETH": "0x70d95587d40A2caf56bd97485aB3Eec10Bee6336",
 	"BTC": "0x47c031236e19d024b42f8AE6780E44A573170703",
 	"SOL": "0x09400D9DB990D5ed3f35D7be61DfAEB900Af03C9",
+	// HYPE/USD [WBTC.b-USDC]. GMX lists two HYPE markets and this map takes
+	// one address per asset, so the choice was made on the numbers, read on
+	// 2026-10-22:
+	//
+	//   [WBTC.b-USDC]  listed 2025-03-06  OI $541,326  long liquidity $1,633,773
+	//   [USDG-USDG]    listed 2026-10-16  OI   $4,626  long liquidity   $151,263
+	//
+	// 117 times the open interest and 10.8 times the liquidity. The USDG
+	// market is six days old and a spread measured there would describe a
+	// market nobody uses. It is also the same collateral pair as the BTC
+	// market already above, BTC/USD [WBTC.b-USDC], so the pool shape and the
+	// USDC short side match what this map already reads.
+	//
+	// Synthetic: the index token is HYPE while the long collateral is WBTC.b.
+	// That shows up in borrowing, which this bench excludes by design
+	// (harnesses/perp-fees reads taker fee, spread and impact), not in the
+	// taker cost it measures.
+	"HYPE": "0xBcb8FE13d02b023e8f94f6881Cc0192fd918A5C0",
 }
 
 type gmxGqlReq struct {

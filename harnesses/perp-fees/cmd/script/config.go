@@ -35,10 +35,10 @@ func loadConfig() *Config {
 	// (HYPE-USD-22OCT26-65-C, asset_kind OPTION) and is not a HYPE perp venue.
 	// Also absent: Gains, whose diamond carries no HYPE pair at all (470 pair
 	// indices scanned, zero matches), so findGainsPair would fail every tick.
-	// Left out pending a decision rather than absent: GMX v2 lists two HYPE
-	// markets, HYPE/USD [WBTC.b-USDC] and HYPE/USD [USDG-USDG], and gmxMarkets
-	// takes one address per asset, so somebody has to choose which is the
-	// comparable one. Polymarket and Ondo are unverified: Polymarket's hosts
+	// GMX v2 joined on 2026-10-22. It lists two HYPE markets and gmxMarkets
+	// takes one address per asset; the pick and the numbers behind it are in
+	// gmx.go next to the address.
+	// Still absent: Polymarket and Ondo, both unverified. Polymarket's hosts
 	// failed TLS hostname validation from here and Ondo only matched on a
 	// substring, which is the evidence Paradex also had.
 	defs := []venueDef{
@@ -48,7 +48,7 @@ func loadConfig() *Config {
 		// GMX v2 has separate market addresses per asset; the gmx fetcher
 		// maps asset → market address (gmxMarkets in gmx.go), verified
 		// against gmxinfra /markets/info.
-		{slug: "gmx", display: "GMX v2", assets: []string{"ETH", "BTC", "SOL"}},
+		{slug: "gmx", display: "GMX v2", assets: []string{"ETH", "BTC", "SOL", "HYPE"}},
 		// Gains v8 on Base — reads fees on-chain via Base RPC. Pair index
 		// for each asset is discovered by scanning the diamond's
 		// `pairs(N)` slot for the asset/USD name match (findGainsPair in
