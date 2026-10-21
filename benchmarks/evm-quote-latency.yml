@@ -68,13 +68,13 @@ methodology:
   - "60 second tick, one pair per tick, round robin. Every (provider, chain) sees a quote every 6 minutes."
   - "Three regions (us east, eu west, sgp). Each is a separate Railway service writing the same metric family with a region label, so the page can filter to a single edge or aggregate across all three."
   - "Latency is wall clock from request dispatch to last byte received, observed only on the happy path (HTTP 2xx and a parseable output amount). Failures land on dedicated counters (auth, throttle, no route, other) and pull the success gauge to 0."
-  - "Native asset sentinel is the canonical 0xEeeeeEeee form. Odos uses 0x0000... and Bebop substitutes the wrapped equivalent on the sell side. The adapter normalises per provider."
-  - "Provider auth: Mobula requires the sponsor key in an Authorization header. Route requires a quote-only key as a Bearer token. KyberSwap, Bebop, LI.FI and OpenOcean accept anonymous traffic."
+  - "Native asset sentinel is the canonical 0xEeeeeEeee form. Uniswap uses 0x0000... and Bebop substitutes the wrapped equivalent on the sell side. The adapter normalises per provider."
+  - "Provider auth: four providers need a key (Mobula in an Authorization header, Route as a Bearer token, 0x and Uniswap in a vendor header), and KyberSwap, Bebop, LI.FI, CoW, ParaSwap, Nordstern and OpenOcean answer a bare request. Enso takes an optional key to widen its rate bucket and still reads unavailable here because every probe comes back throttled. The key is not what buys the low end of this table."
 
 findings:
   - "{{best_name}} currently leads at {{best_p50}} across all chains and regions, across {{count}} measured providers. Rankings shift per chain tab: a provider's edge placement and per-chain engine split matter more than its global average."
-  - "{{name:kyberswap}} returns {{p50:kyberswap}} (p50, 24 h). Its aggregator engine is split per chain and the no-auth path keeps the HTTP round trip lean."
-  - "{{name:openocean}} ({{p50:openocean}}) and {{name:lifi}} ({{p50:lifi}}) trade latency for breadth: both cover 30+ chains, and the route search across many underlying venues dominates their latency curve."
+  - "{{best_name}} leads at {{best_p50}} and {{worst_name}} trails at {{worst_p50}} on the identical basket. What the top of this table has in common is one HTTP round trip against a per-chain engine: no cross-chain route search, no solver auction, no maker network to poll."
+  - "{{name:lifi}} is the breadth case at {{p50:lifi}}: a cross-chain router searching many underlying venues per quote. {{name:nordstern}} reaches 121 chains and returns {{p50:nordstern}}, so coverage alone does not explain the slow end of this table."
   - "Bebop is RFQ. The output amount it quotes is already net of fees because settlement is gasless for the taker. The latency you see is the maker network resolving the price, not a public mempool route search."
 
 faq:
@@ -275,6 +275,98 @@ providers:
         - region: ap-southeast
           p50: avg(ocb:evm_swap_quote_latency_ms:p50_24h{provider="enso", region="sgp"})
           series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="enso", region="sgp"}[1h])) by (le))
+
+  - slug: 0x
+    name: 0x
+    tag: Swap API key, declares its own fee
+    formula: "Avg of per-(chain, region) 24h medians of evm_swap_quote_latency_ms{provider=0x} over the last 24 hours."
+    queries:
+      p50: avg(ocb:evm_swap_quote_latency_ms:p50_24h{provider="0x"})
+      p90: avg(ocb:evm_swap_quote_latency_ms:p90_24h{provider="0x"})
+      p99: avg(ocb:evm_swap_quote_latency_ms:p99_24h{provider="0x"})
+      mean: sum(ocb:evm_swap_quote_latency_ms:sum_rate_24h{provider="0x"}) / sum(ocb:evm_swap_quote_latency_ms:count_rate_24h{provider="0x"})
+      success: avg(ocb:evm_swap_quote_success:avg_24h{provider="0x"})
+      sample_size: sum(ocb:evm_swap_quote_latency_ms:count_increase_24h{provider="0x"})
+      series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="0x"}[1h])) by (le))
+      regions:
+        - region: us-east
+          p50: avg(ocb:evm_swap_quote_latency_ms:p50_24h{provider="0x", region="us-east"})
+          series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="0x", region="us-east"}[1h])) by (le))
+        - region: eu-west
+          p50: avg(ocb:evm_swap_quote_latency_ms:p50_24h{provider="0x", region="eu-west"})
+          series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="0x", region="eu-west"}[1h])) by (le))
+        - region: ap-southeast
+          p50: avg(ocb:evm_swap_quote_latency_ms:p50_24h{provider="0x", region="sgp"})
+          series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="0x", region="sgp"}[1h])) by (le))
+
+  - slug: paraswap
+    name: ParaSwap
+    tag: Trades as Velora, no key
+    formula: "Avg of per-(chain, region) 24h medians of evm_swap_quote_latency_ms{provider=paraswap} over the last 24 hours."
+    queries:
+      p50: avg(ocb:evm_swap_quote_latency_ms:p50_24h{provider="paraswap"})
+      p90: avg(ocb:evm_swap_quote_latency_ms:p90_24h{provider="paraswap"})
+      p99: avg(ocb:evm_swap_quote_latency_ms:p99_24h{provider="paraswap"})
+      mean: sum(ocb:evm_swap_quote_latency_ms:sum_rate_24h{provider="paraswap"}) / sum(ocb:evm_swap_quote_latency_ms:count_rate_24h{provider="paraswap"})
+      success: avg(ocb:evm_swap_quote_success:avg_24h{provider="paraswap"})
+      sample_size: sum(ocb:evm_swap_quote_latency_ms:count_increase_24h{provider="paraswap"})
+      series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="paraswap"}[1h])) by (le))
+      regions:
+        - region: us-east
+          p50: avg(ocb:evm_swap_quote_latency_ms:p50_24h{provider="paraswap", region="us-east"})
+          series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="paraswap", region="us-east"}[1h])) by (le))
+        - region: eu-west
+          p50: avg(ocb:evm_swap_quote_latency_ms:p50_24h{provider="paraswap", region="eu-west"})
+          series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="paraswap", region="eu-west"}[1h])) by (le))
+        - region: ap-southeast
+          p50: avg(ocb:evm_swap_quote_latency_ms:p50_24h{provider="paraswap", region="sgp"})
+          series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="paraswap", region="sgp"}[1h])) by (le))
+
+  - slug: nordstern
+    name: Nordstern
+    tag: No key, no registration, 121 chains
+    formula: "Avg of per-(chain, region) 24h medians of evm_swap_quote_latency_ms{provider=nordstern} over the last 24 hours."
+    queries:
+      p50: avg(ocb:evm_swap_quote_latency_ms:p50_24h{provider="nordstern"})
+      p90: avg(ocb:evm_swap_quote_latency_ms:p90_24h{provider="nordstern"})
+      p99: avg(ocb:evm_swap_quote_latency_ms:p99_24h{provider="nordstern"})
+      mean: sum(ocb:evm_swap_quote_latency_ms:sum_rate_24h{provider="nordstern"}) / sum(ocb:evm_swap_quote_latency_ms:count_rate_24h{provider="nordstern"})
+      success: avg(ocb:evm_swap_quote_success:avg_24h{provider="nordstern"})
+      sample_size: sum(ocb:evm_swap_quote_latency_ms:count_increase_24h{provider="nordstern"})
+      series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="nordstern"}[1h])) by (le))
+      regions:
+        - region: us-east
+          p50: avg(ocb:evm_swap_quote_latency_ms:p50_24h{provider="nordstern", region="us-east"})
+          series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="nordstern", region="us-east"}[1h])) by (le))
+        - region: eu-west
+          p50: avg(ocb:evm_swap_quote_latency_ms:p50_24h{provider="nordstern", region="eu-west"})
+          series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="nordstern", region="eu-west"}[1h])) by (le))
+        - region: ap-southeast
+          p50: avg(ocb:evm_swap_quote_latency_ms:p50_24h{provider="nordstern", region="sgp"})
+          series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="nordstern", region="sgp"}[1h])) by (le))
+
+  - slug: uniswap
+    name: Uniswap
+    tag: Trading API, self-service key
+    formula: "Avg of per-(chain, region) 24h medians of evm_swap_quote_latency_ms{provider=uniswap} over the last 24 hours."
+    queries:
+      p50: avg(ocb:evm_swap_quote_latency_ms:p50_24h{provider="uniswap"})
+      p90: avg(ocb:evm_swap_quote_latency_ms:p90_24h{provider="uniswap"})
+      p99: avg(ocb:evm_swap_quote_latency_ms:p99_24h{provider="uniswap"})
+      mean: sum(ocb:evm_swap_quote_latency_ms:sum_rate_24h{provider="uniswap"}) / sum(ocb:evm_swap_quote_latency_ms:count_rate_24h{provider="uniswap"})
+      success: avg(ocb:evm_swap_quote_success:avg_24h{provider="uniswap"})
+      sample_size: sum(ocb:evm_swap_quote_latency_ms:count_increase_24h{provider="uniswap"})
+      series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="uniswap"}[1h])) by (le))
+      regions:
+        - region: us-east
+          p50: avg(ocb:evm_swap_quote_latency_ms:p50_24h{provider="uniswap", region="us-east"})
+          series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="uniswap", region="us-east"}[1h])) by (le))
+        - region: eu-west
+          p50: avg(ocb:evm_swap_quote_latency_ms:p50_24h{provider="uniswap", region="eu-west"})
+          series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="uniswap", region="eu-west"}[1h])) by (le))
+        - region: ap-southeast
+          p50: avg(ocb:evm_swap_quote_latency_ms:p50_24h{provider="uniswap", region="sgp"})
+          series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="uniswap", region="sgp"}[1h])) by (le))
 
   - slug: route
     name: Route
