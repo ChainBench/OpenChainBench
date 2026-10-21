@@ -39,13 +39,11 @@ export const RANGE_LABEL: Record<RangeId, string> = {
 export type ViewId =
   | "BarChartRace"
   | "TimeSeriesRace"
-  | "DistributionRace"
   | "DonutRace"
   | "CountPodium";
 export const VIEW_IDS: ViewId[] = [
   "BarChartRace",
   "TimeSeriesRace",
-  "DistributionRace",
   "DonutRace",
   "CountPodium",
 ];
@@ -63,7 +61,6 @@ export function viewsForMetric(unit: string, higherIsBetter: boolean): ViewId[] 
 export const VIEW_LABEL: Record<ViewId, string> = {
   BarChartRace: "Ranked bars",
   TimeSeriesRace: "Time series",
-  DistributionRace: "Distribution",
   DonutRace: "Donut",
   CountPodium: "Podium",
 };

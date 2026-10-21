@@ -123,6 +123,8 @@ Approach: x-axis represents real time; lines draw from −24 h to now at 18× re
 
 ## 3. Distribution — "Whisker reveal, ranked snap"
 
+> Removed in v27 (2026-10-21): the review round marked it KO ("un peu bizarre, on peut retirer ce format"). The composition, the view id and the export option are gone; this section is kept as history.
+
 Approach: rows stack in scrambled order; each row's p99 marker fires first as a vertical bar slamming in from the right edge, then p90 ring lands, then p50 dot pops with a small overshoot. After all rows complete, the table snap-sorts by p50.
 
 **A. Motion**: per row, a 24-frame sequence — p99 slam (8 f), p90 ring fade-in (8 f), p50 pop with 1.15 overshoot then settle (8 f). Spread band (low-opacity p50–p99 fill) lerps in width during p99→p50 reveal. Final snap-sort uses same FLIP as ranked-bar.

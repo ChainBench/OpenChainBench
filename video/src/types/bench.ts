@@ -57,14 +57,12 @@ export type RangeSelection =
 export type ViewId =
   | "BarChartRace"
   | "TimeSeriesRace"
-  | "DistributionRace"
   | "DonutRace"
   | "CountPodium";
 
 export const VIEW_IDS: ViewId[] = [
   "BarChartRace",
   "TimeSeriesRace",
-  "DistributionRace",
   "DonutRace",
   "CountPodium",
 ];

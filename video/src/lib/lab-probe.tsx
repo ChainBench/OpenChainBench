@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { continueRender, delayRender, getInputProps } from "remotion";
+import { useEffect, useMemo, useRef } from "react";
+import { continueRender, delayRender, getInputProps, useCurrentFrame } from "remotion";
 
 /**
  * Lab-only layout probe. When the lab renders a still with
@@ -37,7 +37,7 @@ function clipBox(el: Element, b: Box): Box | null {
   return { x, y, w, h };
 }
 
-function measure() {
+function measure(root: HTMLElement | null) {
   const texts: unknown[] = [];
   const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
   for (let n = walker.nextNode(); n; n = walker.nextNode()) {
@@ -63,6 +63,15 @@ function measure() {
     texts.push({
       t: el.getAttribute("data-lab-value") ?? "",
       val: true,
+      // Odometer wheels caught between two digits (RollingNumber).
+      midRoll: Array.from(el.querySelectorAll<HTMLElement>("span > span[style*=translateY]")).filter((w) => {
+        const m = /translateY\((-?[\d.]+)px\)/.exec(w.style.transform);
+        // CSS height, not the box: the Ken Burns scale makes the box ~2% taller.
+        const h = parseFloat(w.parentElement?.style.height ?? "") || 0;
+        if (!m || h <= 0) return false;
+        const frac = Math.abs(Number(m[1]) / h) % 1;
+        return frac > 0.08 && frac < 0.92;
+      }).length,
       box,
       vis: clipBox(el, box),
       op: Number(effectiveOpacity(el).toFixed(2)),
@@ -83,16 +92,43 @@ function measure() {
       op: Number(effectiveOpacity(el).toFixed(2)),
     });
   });
-  return { w: window.innerWidth, h: window.innerHeight, texts, logos };
+  // Coordinates relative to the composition's own box. Measured right
+  // after React commits, Remotion sometimes still holds the tree a million
+  // pixels off screen (y = -999673); page coordinates then read as text
+  // past the frame edge on every label.
+  const R = root?.getBoundingClientRect();
+  const ox = R?.left ?? 0, oy = R?.top ?? 0;
+  const shift = (b: Box | null) => (b ? { x: b.x - ox, y: b.y - oy, w: b.w, h: b.h } : null);
+  for (const t of texts as { box: Box; vis: Box | null }[]) {
+    t.box = shift(t.box)!;
+    t.vis = shift(t.vis);
+  }
+  for (const l of logos as { box: Box }[]) l.box = shift(l.box)!;
+  return { w: R?.width || window.innerWidth, h: R?.height || window.innerHeight, texts, logos };
 }
 
 export const LabProbe: React.FC = () => {
-  const [handle] = useState(() => delayRender("lab-probe"));
+  // One measurement per rendered frame: stills render one frame, and the
+  // motion pass (lab/motion.mjs) renders whole clips through renderMedia,
+  // which forwards every console line with the frame number in it.
+  const frame = useCurrentFrame();
+  const ref = useRef<HTMLDivElement>(null);
+  const handle = useMemo(() => delayRender("lab-probe " + frame), [frame]);
   useEffect(() => {
     let tries = 0;
+    let alive = true;
+    let cleared = false;
+    const clear = () => {
+      if (!cleared) continueRender(handle);
+      cleared = true;
+    };
     const tick = () => {
+      if (!alive) return;
       // Wait for logos (Remotion's <Img> holds its own delayRender) and
-      // fonts, then two frames for layout to settle.
+      // fonts, then two animation frames. Measuring right after React's
+      // commit read an intermediate layout (titles on top of rows) that is
+      // not the frame Chrome paints; the motion pass is fast enough with
+      // one browser per clip (lab/motion.mjs).
       const pending = Array.from(document.images).some((i) => !i.complete);
       if ((pending || document.fonts.status !== "loaded") && tries++ < 60) {
         setTimeout(tick, 50);
@@ -100,14 +136,18 @@ export const LabProbe: React.FC = () => {
       }
       requestAnimationFrame(() =>
         requestAnimationFrame(() => {
-          console.log("LABPROBE " + JSON.stringify(measure()));
-          continueRender(handle);
+          if (alive) console.log("LABPROBE " + JSON.stringify({ f: frame, ...measure(ref.current?.parentElement ?? null) }));
+          clear();
         }),
       );
     };
     tick();
-  }, [handle]);
-  return <div data-lab-probe="" style={{ display: "none" }} />;
+    return () => {
+      alive = false;
+      clear();
+    };
+  }, [frame, handle]);
+  return <div ref={ref} data-lab-probe="" style={{ display: "none" }} />;
 };
 
 /** Wrap a composition so lab stills carry the probe. */

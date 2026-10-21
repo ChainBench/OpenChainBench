@@ -9,7 +9,7 @@ import path from "node:path";
 
 const [fxDir, outDir, raceSecArg] = process.argv.slice(2);
 const raceSeconds = Number(raceSecArg ?? 12);
-export const VIEWS = ["BarChartRace", "TimeSeriesRace", "DistributionRace", "DonutRace", "CountPodium"];
+export const VIEWS = ["BarChartRace", "TimeSeriesRace", "DonutRace", "CountPodium"];
 const CONC = Number(process.env.CONC ?? 12);
 // Same shapes production renders (server.mjs FORMATS).
 const FORMATS = { landscape: { width: 1920, height: 1080 }, short: { width: 1080, height: 1920 } };
@@ -57,14 +57,16 @@ async function run(job) {
   for (const [key, frame] of Object.entries(framesFor(job.comp, dur))) {
     const output = path.join(dir, `${job.comp}-${key}.png`);
     let probe = null;
+    const render = () => renderStill({
+      composition: { ...comp, durationInFrames: dur, width, height },
+      serveUrl, frame, output, inputProps: job.inputProps, puppeteerInstance: browser,
+      chromiumOptions: { gl: "swangle" },
+      logLevel: "error",
+      onBrowserLog: (l) => { if (l.text.startsWith("LABPROBE ")) probe = JSON.parse(l.text.slice(9)); },
+    });
     try {
-      await renderStill({
-        composition: { ...comp, durationInFrames: dur, width, height },
-        serveUrl, frame, output, inputProps: job.inputProps, puppeteerInstance: browser,
-        chromiumOptions: { gl: "swangle" },
-        logLevel: "error",
-        onBrowserLog: (l) => { if (l.text.startsWith("LABPROBE ")) probe = JSON.parse(l.text.slice(9)); },
-      });
+      // "Visited index.html but got no response" happens under load; retry once.
+      await render().catch(() => render());
       fs.writeFileSync(output.replace(/\.png$/, ".probe.json"), JSON.stringify({ comp: job.comp, key, frame, dur, probe }));
     } catch (e) {
       failed++; fs.writeFileSync(output + ".err.txt", String(e?.stack ?? e));

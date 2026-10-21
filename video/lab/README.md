@@ -13,6 +13,45 @@ node lab/checks.mjs lab/out/landscape lab/fixtures                              
 node lab/review.mjs lab/out/review lab/fixtures v24=<round dir> v25=<round dir>    # strips + data.json for the review page
 ```
 
+## Motion and weight
+
+Stills see three frames. `lab/motion.mjs` renders every part as a real clip
+(every frame, through `renderMedia`, one browser per clip, about 4 min for
+62 clips on the 64-core box) with the probe on, and keeps the per-frame
+measurements; `lab/motion-checks.mjs` reads them:
+
+| Code | Level | Meaning |
+|---|---|---|
+| OVERLAP_RUN | FAIL | readable texts on top of each other for more than 0.2 s |
+| OUT_RUN | FAIL | readable text past the frame edge for more than 0.1 s |
+| JUMP | FAIL | a logo moves > 48 px in one frame, 2.5x more than around it (a teleport) |
+| FLICKER | WARN | the number of readable labels goes up and down > 1.5 times a second |
+| PROBE_GLITCH | WARN | frames a browser tab measured off screen (dropped) |
+
+`lab/weight.mjs` renders race + results + outro with the server's encoder
+settings for grain/crf variants and reports MB. Remotion's bundled ffmpeg
+has no image encoders; cut clips with `-c copy` and look at them elsewhere.
+
+Speed and quality, priced on the renderer's budget (two cores, pinned):
+
+```
+taskset -c 60,61 node lab/fxcost.mjs lab/fixtures/perp-fees-bps.json /tmp/fx          # ms per frame, each effect off in turn (inputProps.labOff)
+taskset -c 60,61 node lab/perf.mjs lab/fixtures/perp-fees-bps.json TimeSeriesRace 10 /tmp/perf ref current sharedQ
+ffmpeg -i /tmp/perf/sharedQ-TimeSeriesRace.mp4 -i /tmp/perf/ref-TimeSeriesRace.mov \
+  -lavfi "[0:v]format=yuv420p[d];[1:v]format=yuv420p[r];[d][r]libvmaf" -f null -   # on a machine with libvmaf
+```
+
+`perf.mjs` reports wall time, the peak RSS of node plus every Chromium child,
+and the bytes; `ref` is a ProRes 4444 render of the race to score the others.
+2026-10-21, perp-fees TimeSeriesRace, 10 s race plus results and outro:
+
+| | wall | peak RAM | MB | VMAF |
+|---|---|---|---|---|
+| v27, server settings (3 segments in parallel, jpeg 90, crf 19) | 191 s | 2.2 GB | 5.35 | 98.8 |
+| v28 effects (no vignette, no Ken Burns, glow as strokes), same settings | 93 s | 2.3 GB | 2.46 | 98.5 |
+| v28, one shared browser, sequential, jpeg 95, crf 18, -tune animation (shipped) | 99 s | 1.3 GB | 2.67 | 99.5 |
+| v27, x264 medium, jpeg 95, crf 18 | 306 s | 1.6 GB | 7.83 | 99.8 |
+
 ## The loop
 
 1. Change one part (a composition).

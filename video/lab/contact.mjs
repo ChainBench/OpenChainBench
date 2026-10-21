@@ -6,7 +6,7 @@ const [src, out] = process.argv.slice(2);
 fs.mkdirSync(out, { recursive: true });
 const LEFT = 190, GAP = 6, TOP = 44;
 let W = 384, H = 216;
-const ORDER = ["BarChartRace", "TimeSeriesRace", "DistributionRace", "DonutRace", "CountPodium", "ResultsBoard", "Outro"];
+const ORDER = ["BarChartRace", "TimeSeriesRace", "DonutRace", "CountPodium", "ResultsBoard", "Outro"];
 const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;");
 for (const fx of fs.readdirSync(src).sort()) {
   const d = path.join(src, fx);

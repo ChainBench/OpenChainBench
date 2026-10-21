@@ -32,7 +32,7 @@
   "filters": {},
   "why": "count, large values, daily cadence",
   "providers": 8,
-  "points": 61,
+  "points": 29,
   "unit": "count"
  },
  {
@@ -41,7 +41,7 @@
   "filters": {},
   "why": "count, few providers, daily",
   "providers": 8,
-  "points": 61,
+  "points": 29,
   "unit": "count"
  },
  {

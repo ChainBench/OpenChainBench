@@ -1,3 +1,4 @@
+import { CrownIcon } from "../lib/leader-crown";
 import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring } from "remotion";
 import { loadFont, fontFamily } from "@remotion/google-fonts/InterTight";
 import { z } from "zod";
@@ -10,7 +11,6 @@ import {
   computeWinnerStats,
   fmtSpan,
   timestampStepMs,
-  winnerLabel,
 } from "../lib/winner-stats";
 
 loadFont("normal", { weights: ["500", "600", "700", "800"] });
@@ -46,6 +46,12 @@ export const ResultsBoard: React.FC<ResultsBoardProps> = ({ theme: mode, bench }
 
   const stats = computeWinnerStats(bench);
   const stepMs = timestampStepMs(bench);
+  // The window spans first to last reading. Counting every reading as a
+  // full step said "30.5 days tracked" for a 30-day series.
+  const spanMs =
+    bench.timestamps.length > 1
+      ? bench.timestamps[bench.timestamps.length - 1] - bench.timestamps[0]
+      : stepMs;
   const maxCount = stats[0]?.count ?? 1;
 
   const headerOpacity = remap(frame, 0, 18, 0, 1, easeOutCubic);
@@ -81,7 +87,7 @@ export const ResultsBoard: React.FC<ResultsBoardProps> = ({ theme: mode, bench }
           opacity: eyebrowOpacity,
         }}
       >
-        Leaderboard · {fmtSpan(bench.timestamps.length * stepMs)} tracked
+        Leaderboard · {fmtSpan(spanMs)} tracked
       </div>
 
       {/* Title */}
@@ -147,9 +153,11 @@ export const ResultsBoard: React.FC<ResultsBoardProps> = ({ theme: mode, bench }
                   textAlign: "center",
                   lineHeight: 1,
                   fontVariantNumeric: "tabular-nums",
+                  display: "flex",
+                  justifyContent: "center",
                 }}
               >
-                {isLeader ? "👑" : String(i + 1).padStart(2, "0")}
+                {isLeader ? <CrownIcon size={40} /> : String(i + 1).padStart(2, "0")}
               </div>
 
               {/* Logo */}
@@ -185,7 +193,7 @@ export const ResultsBoard: React.FC<ResultsBoardProps> = ({ theme: mode, bench }
                     fontVariantNumeric: "tabular-nums",
                   }}
                 >
-                  Winner for {winnerLabel(s.count, stepMs)}
+                  Winner for {fmtSpan(s.share * spanMs)}
                 </div>
               </div>
 
@@ -213,10 +221,11 @@ export const ResultsBoard: React.FC<ResultsBoardProps> = ({ theme: mode, bench }
                 />
               </div>
 
-              {/* Numeric count */}
+              {/* Share of the window in the lead. The raw reading count
+                  ("61") meant nothing to a viewer. */}
               <div
                 style={{
-                  width: 80,
+                  width: 110,
                   textAlign: "right",
                   fontSize: 32,
                   fontWeight: 800,
@@ -225,7 +234,7 @@ export const ResultsBoard: React.FC<ResultsBoardProps> = ({ theme: mode, bench }
                   letterSpacing: "-0.01em",
                 }}
               >
-                {s.count}
+                {Math.round(s.share * 100)}%
               </div>
             </div>
           );

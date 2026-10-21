@@ -18,7 +18,7 @@ bench page modal ──POST /api/video/render──▶ site route (src/app/api/v
 
 | Path | What it is | On the server |
 |---|---|---|
-| `src/` | compositions: BarChartRace, TimeSeriesRace, DistributionRace, DonutRace, CountPodium, ResultsBoard, Intro, Outro | `/mnt/video-renderer/poc/src` |
+| `src/` | compositions: BarChartRace, TimeSeriesRace, DonutRace, CountPodium, ResultsBoard, Intro, Outro | `/mnt/video-renderer/poc/src` |
 | `server/server.mjs` | the Express render server (auth, rate limit, queue of 2, cache) | `/mnt/video-renderer/server.mjs` |
 | `public/` | intro clips, logo texture, grain | `/mnt/video-renderer/poc/public` |
 | `lab/` | fixtures, stills, contact sheets, before/after (see below) | not deployed |
