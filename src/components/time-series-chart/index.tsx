@@ -496,6 +496,11 @@ export function TimeSeriesChart({
     // variant trailing edge. Long range tabs fall back to the 24h
     // variant when the longer one is missing (older specs).
     const pickPanel = (): Record<string, (number | null)[]> | undefined => {
+      // Every panelLazy* variant has to appear in this memo's dependency
+      // array. 7d and 30d were missing: the tab is disabled until the fetch
+      // resolves, so the usual click order hides it, but a range already
+      // selected when the series lands (a #range=7d link, or the effect that
+      // auto-picks the first available range) kept rendering the 24h fallback.
       // Prefer inline overrides (present when parent chose to ship panel
       // long-range series with the initial payload), then lazy-fetched
       // panel maps (the common path — long-range series are stripped
@@ -575,7 +580,7 @@ export function TimeSeriesChart({
       return higherIsBetter ? bv - av : av - bv;
     });
     return built;
-  }, [benchmark, range, region, colors, excluded, seriesOverride, seriesOverride7d, seriesOverride30d, higherIsBetterOverride, lazySeries7d, lazySeries30d, lazySeries90d, lazySeries1y, isLongRange, longRangeSeries, panelLazy90d, panelLazy1y]);
+  }, [benchmark, range, region, colors, excluded, seriesOverride, seriesOverride7d, seriesOverride30d, higherIsBetterOverride, lazySeries7d, lazySeries30d, lazySeries90d, lazySeries1y, isLongRange, longRangeSeries, panelLazy7d, panelLazy30d, panelLazy90d, panelLazy1y]);
 
   // Top-N selector — sized off the post-filter line count via the
   // shared `useTopN` hook so the option set agrees across every
