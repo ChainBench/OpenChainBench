@@ -97,6 +97,19 @@ var originChains = []originChain{
 	// address-filtered getLogs spans: Alchemy 100,000 blocks, Chainstack 5,000, QuickNode and the
 	// public node 1,000. Priced from Hyperliquid's mids (Coinbase does not list HYPE).
 	{999, "hyperevm", []string{"https://rpc.hyperliquid.xyz/evm"}, "HYPE-USD"},
+	// The two chains Relay does not serve, so Pump Bridge is the only route
+	// on them and no bridge aggregator's feed can see them. Both carry the
+	// same 21,998-byte Pump Bridge router as every other chain; the relayer's
+	// nonce says what that is worth today, 28 on X Layer and 0 on MegaETH.
+	// MegaETH is declared while dormant on purpose: that is what catches its
+	// first trade rather than noticing months later.
+	//
+	// Measured address-filtered getLogs spans: MegaETH 5,000 blocks,
+	// X Layer 50 on both its public endpoint and thirdweb's. The 50 is left
+	// to the feed's own adaptive span rather than hardcoded, so it recovers
+	// if the endpoint ever serves more.
+	{4326, "megaeth", []string{"https://mainnet.megaeth.com/rpc"}, "ETH-USD"},
+	{196, "xlayer", []string{"https://rpc.xlayer.tech", "https://196.rpc.thirdweb.com"}, ""},
 }
 
 const solanaChainID = 792703809
