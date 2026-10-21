@@ -46,25 +46,30 @@ dimensions:
     - { value: sgp,     label: Singapore }
 
 providers:
+  # This endpoint was filed under provider="publicnode" in the harness
+  # registry until 2026-10-21, though the oasis.io host is the chain's own RPC and not a
+  # PublicNode domain. The matcher accepts both labels so the page does not
+  # blank for the 24h the recording rules keep the old series alive; narrow
+  # it to provider="oasis-official" once that window has passed.
   - slug: oasis-official
     name: Oasis Foundation
     tag: Oasis Foundation's Sapphire public RPC
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Oasis Foundation's no-key Oasis Sapphire endpoint."
     queries:
-      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="oasis-sapphire"})
-      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="publicnode", chain="oasis-sapphire"})
-      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="publicnode", chain="oasis-sapphire"})
-      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="publicnode", chain="oasis-sapphire"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="publicnode", chain="oasis-sapphire"}) / sum(ocb:rpc_call:rate_24h{provider="publicnode", chain="oasis-sapphire"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="publicnode", chain="oasis-sapphire"})
-      series: avg(avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="oasis-sapphire"}[1h]))
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider=~"oasis-official|publicnode", chain="oasis-sapphire"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider=~"oasis-official|publicnode", chain="oasis-sapphire"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider=~"oasis-official|publicnode", chain="oasis-sapphire"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider=~"oasis-official|publicnode", chain="oasis-sapphire"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider=~"oasis-official|publicnode", chain="oasis-sapphire"}) / sum(ocb:rpc_call:rate_24h{provider=~"oasis-official|publicnode", chain="oasis-sapphire"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider=~"oasis-official|publicnode", chain="oasis-sapphire"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider=~"oasis-official|publicnode", chain="oasis-sapphire"}[1h]))
       regions:
         - region: us-east
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="oasis-sapphire", region="us-east"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="oasis-sapphire", region="us-east"}[1h])
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider=~"oasis-official|publicnode", chain="oasis-sapphire", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider=~"oasis-official|publicnode", chain="oasis-sapphire", region="us-east"}[1h])
         - region: eu-west
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="oasis-sapphire", region="eu-west"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="oasis-sapphire", region="eu-west"}[1h])
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider=~"oasis-official|publicnode", chain="oasis-sapphire", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider=~"oasis-official|publicnode", chain="oasis-sapphire", region="eu-west"}[1h])
         - region: ap-southeast
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="oasis-sapphire", region="sgp"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="oasis-sapphire", region="sgp"}[1h])
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider=~"oasis-official|publicnode", chain="oasis-sapphire", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider=~"oasis-official|publicnode", chain="oasis-sapphire", region="sgp"}[1h])

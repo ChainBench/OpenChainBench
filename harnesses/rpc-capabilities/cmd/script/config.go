@@ -1108,21 +1108,21 @@ func chains() []Chain {
 			},
 		},
 		// Oasis Sapphire — Confidential EVM paratime (chain 23294). 1 keyless provider.
-		// 1RPC dropped: ~15% ok_rate (vs 100% for publicnode), not sustaining continuous probing.
+		// 1RPC dropped: ~15% ok_rate (vs 100% for the Oasis Foundation endpoint), not sustaining continuous probing.
 		{
 			Slug: "oasis-sapphire",
 			Name: "Oasis Sapphire",
 			Providers: []Provider{
-				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_OASIS_SAPPHIRE_PUBLICNODE", "https://sapphire.oasis.io")},
+				{Slug: "oasis-official", Name: "Oasis Foundation", URL: envDefault("RPC_URL_OASIS_SAPPHIRE_OFFICIAL", "https://sapphire.oasis.io")},
 			},
 		},
 		// Oasis Emerald — EVM paratime (chain 42262). 1 keyless provider.
-		// 1RPC dropped: ~15% ok_rate (vs 100% for publicnode), not sustaining continuous probing.
+		// 1RPC dropped: ~15% ok_rate (vs 100% for the Oasis Foundation endpoint), not sustaining continuous probing.
 		{
 			Slug: "oasis-emerald",
 			Name: "Oasis Emerald",
 			Providers: []Provider{
-				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_OASIS_EMERALD_PUBLICNODE", "https://emerald.oasis.io")},
+				{Slug: "oasis-official", Name: "Oasis Foundation", URL: envDefault("RPC_URL_OASIS_EMERALD_OFFICIAL", "https://emerald.oasis.io")},
 			},
 		},
 		// Conflux eSpace — Tree-Graph EVM L1 (chain 1030). 3 keyless providers.
@@ -1167,7 +1167,7 @@ func chains() []Chain {
 			Slug: "vana",
 			Name: "Vana",
 			Providers: []Provider{
-				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_VANA_PUBLICNODE", "https://rpc.vana.org")},
+				{Slug: "vana-official", Name: "Vana Foundation", URL: envDefault("RPC_URL_VANA_OFFICIAL", "https://rpc.vana.org")},
 			},
 		},
 		// Gravity — Galxe EVM L2 (chain 1625). 2 keyless providers.
@@ -1175,7 +1175,7 @@ func chains() []Chain {
 			Slug: "gravity",
 			Name: "Gravity",
 			Providers: []Provider{
-				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_GRAVITY_PUBLICNODE", "https://rpc.gravity.xyz")},
+				{Slug: "gravity-official", Name: "Gravity Foundation", URL: envDefault("RPC_URL_GRAVITY_OFFICIAL", "https://rpc.gravity.xyz")},
 				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_GRAVITY_THIRDWEB", "https://1625.rpc.thirdweb.com")},
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_GRAVITY_DRPC", "https://gravity-alpha.drpc.org")}, // 2026-10-19 replacement sweep
 			},
@@ -1185,7 +1185,7 @@ func chains() []Chain {
 			Slug: "reya",
 			Name: "Reya Network",
 			Providers: []Provider{
-				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_REYA_PUBLICNODE", "https://rpc.reya.network")},
+				{Slug: "reya-official", Name: "Reya Foundation", URL: envDefault("RPC_URL_REYA_OFFICIAL", "https://rpc.reya.network")},
 				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_REYA_THIRDWEB", "https://1729.rpc.thirdweb.com")},
 			},
 		},

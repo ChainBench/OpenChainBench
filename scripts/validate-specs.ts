@@ -209,6 +209,90 @@ async function main() {
       ...(spec.faq ?? []).flatMap((q, i) => [[`faq[${i}].q`, q.q], [`faq[${i}].a`, q.a]] as [string, string][]),
     ];
     lintPlaceholders(issues, f, templated, providerSlugs, chainValues, tierValues);
+
+    // A provider row must read a series this bench claims to measure. Until
+    // 2026-10-21, five `<chain>-official` rows (gravity, oasis x2, reya, vana)
+    // queried provider="publicnode" because the harness registry filed the
+    // chains' own endpoints under PublicNode's slug: sapphire.oasis.io,
+    // emerald.oasis.io, rpc.vana.org, rpc.gravity.xyz and rpc.reya.network are
+    // none of them PublicNode domains. The five pages read correctly, each row
+    // named after its foundation and pinned to its own chain, but
+    // rpc-capabilities averages provider="publicnode" across chains and so
+    // credited PublicNode with 15 series of 183 that it does not operate.
+    //
+    // Which label names a row is a property of the bench, not of the label's
+    // name: `asset` names the row on xstocks-peg (asset="tsla") and qualifies a
+    // slice on perp-funding-cost-30d (asset="ETH"). So it is inferred, by
+    // scoring each key on how many of its values relate to a declared slug, and
+    // only the winning key is checked.
+    {
+      const fold = (x: string) => x.toLowerCase().replace(/[^a-z0-9]/g, "");
+      // Containment either way: a slug is often derived from the label rather
+      // than equal to it (polymarket-sports composes venue="polymarket" with
+      // category="sports"; pons-family is pad="ponsfamily.com"; chainstack-cold
+      // reads its warm twin chainstack).
+      const related = (a: string, b: string) =>
+        a === b || (a.length > 2 && b.length > 2 && (a.includes(b) || b.includes(a)));
+      const declared = [...providerSlugs].map(fold);
+
+      const labelsOf = (p: (typeof spec.providers)[number]) => {
+        const texts: string[] = [];
+        const walk = (v: unknown) => {
+          if (typeof v === "string") texts.push(v);
+          else if (Array.isArray(v)) v.forEach(walk);
+          else if (v && typeof v === "object") Object.values(v).forEach(walk);
+        };
+        walk(p.queries);
+        const out = new Map<string, Set<string>>();
+        for (const t of texts) {
+          for (const m of t.matchAll(/(\w+)\s*=~?\s*"([^"]*)"/g)) {
+            for (const alt of m[2].split("|")) {
+              if (!alt) continue;
+              if (!out.has(m[1])) out.set(m[1], new Set());
+              out.get(m[1])!.add(alt);
+            }
+          }
+        }
+        return out;
+      };
+
+      const perProvider = spec.providers.map((p) => [p, labelsOf(p)] as const);
+
+      // Score every key across the whole spec.
+      const score = new Map<string, number>();
+      const seen = new Map<string, Set<string>>();
+      for (const [, labels] of perProvider) {
+        for (const [k, vals] of labels) {
+          if (!seen.has(k)) seen.set(k, new Set());
+          for (const v of vals) seen.get(k)!.add(v);
+        }
+      }
+      for (const [k, vals] of seen) {
+        let n = 0;
+        for (const v of vals) if (declared.some((d) => related(fold(v), d))) n++;
+        score.set(k, n);
+      }
+      const key = [...score.entries()].sort((a, b) => b[1] - a[1])[0];
+
+      if (key && key[1] > 0) {
+        for (const [p, labels] of perProvider) {
+          const vals = labels.get(key[0]);
+          if (!vals || vals.size === 0) continue;
+          const slug = fold(p.slug);
+          const ok = [...vals].some(
+            (v) => related(fold(v), slug) || declared.some((d) => related(fold(v), d)),
+          );
+          if (!ok) {
+            issues.push({
+              file: f,
+              level: "error",
+              message: `provider "${p.slug}" selects ${key[0]}=${[...vals].map((v) => `"${v}"`).join(", ")}, which this bench does not declare; the row would publish a series the bench makes no claim about (declared: ${[...providerSlugs].join(", ")})`,
+            });
+          }
+        }
+      }
+    }
+
     specRefs.set(spec.slug, { providers: providerSlugs, chains: chainValues, tiers: tierValues, rpc: spec.slug.endsWith("-rpc") });
     if (spec.status === "live") liveSlugs.push({ file: f, slug: spec.slug });
   }
