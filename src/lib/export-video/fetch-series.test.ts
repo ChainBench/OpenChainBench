@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { bridgeGaps } from "./fetch-series";
+import { bridgeGaps, coverageWindow } from "./fetch-series";
 
 describe("bridgeGaps", () => {
   test("interpolates interior nulls linearly", () => {
@@ -16,5 +16,17 @@ describe("bridgeGaps", () => {
 
   test("dense numeric input passes through unchanged", () => {
     expect(bridgeGaps([1, 2, 3])).toEqual([1, 2, 3]);
+  });
+});
+
+describe("coverageWindow", () => {
+  test("drops leading buckets where under half the providers report", () => {
+    expect(coverageWindow([[null, null, 1, 2], [null, 3, 4, 5], [null, null, null, 6]])).toEqual([2, 3]);
+  });
+  test("drops trailing buckets the same way", () => {
+    expect(coverageWindow([[1, 2, null], [1, 2, null]])).toEqual([0, 1]);
+  });
+  test("null when nobody reports", () => {
+    expect(coverageWindow([[null], [null]])).toBeNull();
   });
 });
