@@ -69,7 +69,7 @@ findings:
   - "The top of this board is tight. The leaders sit within a couple of basis points of each other, which is inside the round-to-round noise, so read the near-best column before treating the order as settled."
   - "Two of the largest names carry most of their shortfall as a fee they declare themselves. The declared-fee column names them and says how much of the gap is a toll rather than a route."
   - "Quote output and quote latency rank differently. The fastest answer is not the best answer, and bench 033 measures the other half."
-  - "{{name:route}} quotes on one chain and routes through providers this board also ranks on their own: its public configuration enables Kyber and Nordstern alongside its own engines. Beating your own upstreams by choosing among them is the job, and it is also why its figure is not a like for like comparison with theirs."
+  - "Two rows here are built on other rows. {{name:route}} enables Kyber and Nordstern inside its own engine, and {{name:lifi}} aggregates seven of this board's providers. Choosing well among upstreams is an aggregator's job, so their figures are real, but they are an envelope over competitors rather than a like for like quote against them."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/dev/harnesses/evm-swap-quoting
 
@@ -220,7 +220,7 @@ providers:
 
   - slug: lifi
     name: LI.FI
-    tag: Cross-chain relayer, declares a 25 bps fee
+    tag: Cross-chain relayer, declares a 25 bps fee, routes through seven rows of this board
     unranked: "Relayer"
     formula: "Median basis points of output given up against the best quote of the same tick, over 24h, averaged across the chains this provider covers."
     queries:
