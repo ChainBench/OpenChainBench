@@ -54,11 +54,19 @@ export const HUB_PUBLISHED: Record<string, string> = {
 export function hubDateModified(
   stamps: (string | null | undefined)[],
 ): string | null {
+  // Sorted by instant, not by string. This accepts anything Date.parse
+  // accepts, and lexicographic order only agrees with chronological order
+  // for the canonical toISOString shape: "2026-10-21T12:00:00.227Z" sorts
+  // before "2026-10-21T12:00:00Z" because "." precedes "Z", and an offset
+  // form like "+02:00" sorts nowhere near its UTC equivalent. Callers feed
+  // this from more than one producer (/trading-apps passes an app-matrix
+  // stamp next to a bench stamp), so the formats are not ours to assume.
   const valid = stamps
     .filter((s): s is string => typeof s === "string" && s.length > 0)
-    .filter((s) => Number.isFinite(Date.parse(s)))
-    .sort();
-  return valid[0] ?? null;
+    .map((s) => ({ s, t: Date.parse(s) }))
+    .filter(({ t }) => Number.isFinite(t))
+    .sort((a, b) => a.t - b.t);
+  return valid[0]?.s ?? null;
 }
 
 /**
@@ -81,7 +89,11 @@ export function datedCollectionLd(params: {
   itemList: Record<string, unknown>;
   dateModified: string | null;
 }): Record<string, unknown> {
-  const { "@context": _dropped, ...itemList } = params.itemList as Record<string, unknown>;
+  // Copy and delete rather than destructure-to-omit: the omit idiom needs a
+  // binding nothing reads, and this repo's eslint config sets no
+  // varsIgnorePattern, so it cannot be silenced locally.
+  const itemList = { ...(params.itemList as Record<string, unknown>) };
+  delete itemList["@context"];
   const page: Record<string, unknown> = {
     "@type": "CollectionPage",
     "@id": `${params.url}#page`,

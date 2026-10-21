@@ -20,6 +20,55 @@ describe("a hub states when its numbers were true", () => {
     ).toBe("2026-10-19T21:43:34Z");
   });
 
+  test("milliseconds do not reorder the comparison", () => {
+    // This sorted the strings, and "." is 0x2E while "Z" is 0x5A, so a stamp
+    // carrying milliseconds sorted before a bare-second one even when it was
+    // later. The pair below is half a second apart and the shorter is older.
+    const older = "2026-10-19T12:00:00Z";
+    const newer = "2026-10-19T12:00:00.500Z";
+    expect(hubDateModified([newer, older])).toBe(older);
+    expect(hubDateModified([older, newer])).toBe(older);
+  });
+
+  test("an offset form is compared as the instant it names", () => {
+    // 10:00+02:00 is 08:00Z, so it is the older, though as a string it sorts
+    // after 09:00Z. The filter admits it (Date.parse accepts offsets), so the
+    // comparison has to understand it too.
+    const offset = "2026-10-19T10:00:00+02:00";
+    const utc = "2026-10-19T09:00:00Z";
+    expect(hubDateModified([utc, offset])).toBe(offset);
+    expect(hubDateModified([offset, utc])).toBe(offset);
+  });
+
+  test("the caller's ItemList node is not mutated", () => {
+    // The @context omit is a copy. A page that also feeds that node to
+    // another surface must not find the key gone from under it.
+    const mine: Record<string, unknown> = {
+      "@context": "https://schema.org",
+      "@type": "ItemList",
+    };
+    datedCollectionLd({
+      path: "/rpc",
+      url: "https://openchainbench.com/rpc",
+      name: "x",
+      itemList: mine,
+      dateModified: null,
+    });
+    expect(mine["@context"]).toBe("https://schema.org");
+  });
+
+  test("a path with no pinned date gets no datePublished", () => {
+    const ld = datedCollectionLd({
+      path: "/not-a-hub",
+      url: "https://openchainbench.com/not-a-hub",
+      name: "x",
+      itemList: { "@type": "ItemList" },
+      dateModified: "2026-10-19T10:00:00Z",
+    });
+    const page = (ld["@graph"] as Record<string, unknown>[])[0];
+    expect("datePublished" in page).toBe(false);
+  });
+
   test("nulls, blanks and junk are dropped rather than ordered", () => {
     expect(hubDateModified([null, undefined, "", "not a date"])).toBeNull();
     expect(hubDateModified(["not a date", "2026-10-19T10:00:00Z"])).toBe(
