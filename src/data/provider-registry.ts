@@ -1634,6 +1634,12 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "Moonshot is a mobile-first app for buying and selling Solana memecoins via debit card or Apple Pay, targeting retail users who want a CEX-like onboarding experience for onchain tokens.",
     twitter: "@moonshotapp",
   },
+  "nova-markets": {
+    url: "https://nova.markets",
+    description:
+      "Nova routes perpetual trades to Hyperliquid under its own builder code and also runs a venue on Arbitrum. The Arbitrum contract's proxy bytecode is byte-identical to the Gains Network diamond, so that side is a gTrade deployment with USDC collateral and leverage from 1.1x to 200x; its docs list one market trading, HYPE/USD. On OpenChainBench as a Hyperliquid builder row only: the fees its builder code collected on the last complete UTC day, from the same public fills feed as the other frontends.",
+    twitter: "@novadotmarkets",
+  },
   "coinbase-international": {
     url: "https://international.coinbase.com",
     description:
