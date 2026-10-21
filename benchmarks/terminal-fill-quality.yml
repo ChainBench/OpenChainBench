@@ -97,7 +97,7 @@ faq:
   - q: "Are sandwiches counted?"
     a: "Screened, not ranked. A sandwich's two legs both touch the pool, so they are the user's neighbours in the pool's own transaction sequence: another signer trading the same direction just before, and back just after, in the same slot or the next. Every hit is in the JSON with the attacker and both signatures. It is not a column because the share of swaps that can be screened depends on how busy the pool is, which differs per terminal. The victim's extra cost is not a separate line either: the front-run precedes the user's swap, so the arrival price already carries it inside the pool component."
   - q: "How is a swap attributed to a terminal?"
-    a: "By the fee it pays: every terminal transfers its fee to known wallets in the same transaction, and those wallet lists are the ones DeFiLlama's adapters use for volume, so attribution matches benches 201 and 267. Where the fee wallet is not enough: pump.fun's app and Banana Gun by their programs, Phantom by its fee token account, FOMO by the vanity account every FOMO transaction carries (its gas sponsor signs and is excluded as user), the EVM rows by the router the transaction was sent to (Binance Wallet from blocks read in full), the cross-chain rows by Relay's referrer or fee recipient (FOMO 0x9fc4…, pump.fun app 0xdab3…, verified by the Solana users behind them)."
+    a: "By the fee it pays: every terminal transfers its fee to known wallets in the same transaction, and those wallet lists are the ones DeFiLlama's adapters use for volume, so attribution matches benches 201 and 267. Where the fee wallet is not enough: pump.fun's app and Banana Gun by their programs, Phantom by its fee token account, FOMO by the vanity account every FOMO transaction carries (its gas sponsor signs and is excluded as user), the EVM rows by the router the transaction was sent to (Binance Wallet from blocks read in full), the cross-chain rows by Relay's referrer or fee recipient (FOMO 0x9fc4…, pump.fun app 0xdab3…, verified by the Solana users behind them); pump.fun moved most of its cross-chain flow onto its own bridge on 2026-10-07, which this feed does not see, so its cross-chain share is understated until that path is read on chain."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/terminal-fill-quality
 
@@ -407,8 +407,8 @@ providers:
 
   - slug: pump-fun
     name: pump.fun app
-    tag: "Terminal, Solana + Robinhood Chain + BNB + Arc (+ HyperEVM), gas sponsored on EVM"
-    formula: "Solana: random sample of the app's swaps (by its program; no app fee). Other chains: its trades through Relay (SOL in, tokens delivered there, 15 bps app fee). Valued at the pool's state before the trade; loss in bps, median over 24 h."
+    tag: "Terminal, Solana measured in full; cross-chain partial since its own bridge became the default"
+    formula: "Solana: random sample of the app's swaps by its program, no app fee. Other chains: only the share still routed through Relay, since pump made its own bridge the default on 2026-10-07 and that path is not read here yet."
     queries:
       p50: tfq_loss_bps{terminal="pump-fun",chain="all",stat="median",bucket="all"}
       p90: tfq_loss_bps{terminal="pump-fun",chain="all",stat="p90",bucket="all"}
