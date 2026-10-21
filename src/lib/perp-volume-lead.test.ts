@@ -100,3 +100,59 @@ describe("the volume leader is a venue measuring the cohort's quantity", () => {
     expect(md).not.toContain("const lead = dex[0];");
   });
 });
+
+describe("the cohort total excludes what the ranking excludes", () => {
+  /**
+   * #3090 kept the house-LP venue out of the leader sentence and left it
+   * inside the sum. On 2026-10-21 production served "Cohort volume 30d
+   * $2929.17B" while the Markdown view's row 1 was Papertrade at $2626.83B:
+   * 90 percent of the card, 5.2 times the $502B the other venues add up to,
+   * under a headline naming a different leader. A reader could not reconcile
+   * the leader's volume with the cohort it supposedly leads.
+   *
+   * Open interest is the opposite call and stays whole. Turnover on a house
+   * LP at up to 1000x with no fees is not the cohort's quantity, but a
+   * snapshot of open positions is the same measurement everywhere, and that
+   * venue's $480.9M was 2.4 percent of the $19.73B total, not 90.
+   */
+  test("the two counts differ, and each sentence takes the one it means", () => {
+    const stats = readFileSync(join(import.meta.dir, "perp-stats.ts"), "utf8");
+    // The sum skips the named set; the coverage count does not.
+    expect(stats).toContain("if (!NOTIONAL_NOT_COMPARABLE.has(r.slug)) {");
+    expect(stats).toContain("volumeRankedVenues += 1;");
+    // Open interest is summed outside that guard.
+    const loop = stats.slice(
+      stats.indexOf("let volumeRankedVenues = 0;"),
+      stats.indexOf("const fundingValues"),
+    );
+    expect(loop).toContain("if (r.openInterest != null) cohortOpenInterest += r.openInterest;");
+    expect(
+      loop.indexOf("cohortOpenInterest += r.openInterest"),
+    ).toBeGreaterThan(loop.indexOf("volumeRankedVenues += 1;"));
+  });
+
+  test("every sentence about 30-day volume counts the ranked venues", () => {
+    // trackedVenues is a coverage count and feeds the "N of M" card. Any
+    // sentence that says "by 30-day volume" means the other one.
+    const page = readFileSync(
+      join(import.meta.dir, "..", "app", "perps", "page.tsx"),
+      "utf8",
+    );
+    for (const m of page.matchAll(/[^`]{0,80}by 30-day volume/g)) {
+      expect(m[0], `"${m[0].trim()}" must not count tracked venues`).not.toContain(
+        "trackedVenues",
+      );
+    }
+    expect(page).toContain("cohort?.totals.volumeRankedVenues");
+    expect(page).not.toContain("${tracked} tracked perp DEXes on 30-day volume");
+  });
+
+  test("the Markdown view lists the excluded venue apart, not as row 1", () => {
+    const md = readFileSync(join(import.meta.dir, "markdown-views.ts"), "utf8");
+    // Answer engines fetch this view. Sorting the excluded row in put it at
+    // position 1 under a headline naming someone else.
+    expect(md).toContain("const dex = dexAll.filter((v) => !NOTIONAL_NOT_COMPARABLE.has(v.slug));");
+    expect(md).toContain("## Measured, not ranked on volume");
+    expect(md).toContain("cohort.totals.volumeRankedVenues");
+  });
+});
