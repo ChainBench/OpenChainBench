@@ -60,7 +60,7 @@ methodology:
 findings:
   - "{{best_name}} was the cheapest venue to hold an ETH long over the trailing 30 days, {{best_p50}} of funding for the month at its average daily rate; {{worst_name}} cost {{worst_p50}}."
   - "{{name:hyperliquid}} at {{p50:hyperliquid}} for the month, {{name:lighter}} at {{p50:lighter}}: the two largest onchain books against the CEX reference of {{name:binance}} at {{p50:binance}} and {{name:bybit}} at {{p50:bybit}}."
-  - "{{name:okx}} {{p50:okx}}, {{name:coinbase-international}} {{p50:coinbase-international}}, {{name:kraken}} {{p50:kraken}}: the spread between CEX books over a month is itself several basis points, the carry a cross-venue position collects."
+  - "{{name:okx}} {{p50:okx}}, {{name:kraken}} {{p50:kraken}}, {{name:bitget}} {{p50:bitget}}: the spread between CEX books over a month is itself several basis points, the carry a cross-venue position collects."
   - "Rows with a low-sample badge (the venues that joined on 2026-09-22 and 2026-09-23) show a month at the average daily cost of the days measured since they joined, with the day count on the row; they take a rank once 24 days are behind the average, in mid-October."
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/perp-cohort-stats
 prometheus:

@@ -37,6 +37,38 @@ function spec(slug: string): Spec {
   return yaml.load(readFileSync(join(BENCH, `${slug}.yml`), "utf8")) as Spec;
 }
 
+describe("a blanked row is not named in the editorial copy", () => {
+  // Unranking a row removes it from the field, the leader claim and the
+  // best/median/worst strip. It does not touch a placeholder that names the
+  // provider: `{{p50:<slug>}}` resolves that provider's figure directly.
+  //
+  // perp-funding-cost-30d had one. Coinbase International's feed froze on 1
+  // October, the row was unranked and blanked, and a findings bullet went on
+  // publishing "Coinbase International 227 bps" to the page and to the SEO
+  // description, because it asked for the figure by name. Either the frozen
+  // number survives the fix or the blanking turns it into 0 bps, which on a
+  // cost bench reads as free. Both are worse than not naming the venue.
+  test("no spec resolves a value placeholder for a provider it blanks", () => {
+    const offenders: string[] = [];
+    for (const f of readdirSync(BENCH)) {
+      if (!f.endsWith(".yml")) continue;
+      const slug = f.slice(0, -4);
+      const raw = readFileSync(join(BENCH, f), "utf8");
+      const parsed = spec(slug);
+      for (const p of parsed.providers ?? []) {
+        if (!p.unranked || !p.unranked_hides_value) continue;
+        // Value placeholders only. `{{name:<slug>}}` prints a name and is
+        // harmless on its own.
+        const re = new RegExp(
+          `\\{\\{(?:p50|p90|p99|mean|sample_size|success):${p.slug}\\}\\}`,
+        );
+        if (re.test(raw)) offenders.push(`${slug}/${p.slug}`);
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+});
+
 describe("an unranked row keeps its measured value", () => {
   test("the loader blanks the percentiles only when the spec asks", () => {
     expect(SRC).toContain("if (entry.hide) r.ms = { p50: 0, p90: 0, p99: 0, mean: 0 }");
