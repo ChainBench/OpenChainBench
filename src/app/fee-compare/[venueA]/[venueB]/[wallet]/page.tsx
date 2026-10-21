@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { pageMetadata } from "@/lib/page-metadata";
 import { FeeCompareClient } from "@/components/fee-compare-client";
+import { SITE } from "@/data/site";
 
 const VALID_SLUGS = ["hyperliquid", "gains", "dydx", "gmx-v2", "paradex", "edgex"] as const;
 type VenueSlug = (typeof VALID_SLUGS)[number];
@@ -28,11 +29,25 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
   const a = VENUE_NAMES[venueA as VenueSlug];
   const b = VENUE_NAMES[venueB as VenueSlug];
-  return pageMetadata({
-    path: `/fee-compare/${venueA}/${venueB}/${wallet}`,
-    title: `${a} vs ${b} fees — ${short(wallet)}`,
-    description: `Fee comparison for wallet ${wallet} on ${a} vs ${b}. Live on-chain data, no API key.`,
-  });
+  return {
+    ...pageMetadata({
+      path: `/fee-compare/${venueA}/${venueB}/${wallet}`,
+      title: `${a} vs ${b} fees for ${short(wallet)}`,
+      description: `Fee comparison for wallet ${wallet} on ${a} vs ${b}. Live on-chain data, no API key.`,
+    }),
+    // Never indexable. The route accepts any 40-hex address, so with six
+    // venues and thirty ordered pairs the indexable set is unbounded and
+    // every member is a near-duplicate of /fee-compare naming one wallet.
+    // Two reasons, and the second is the one that matters: these pages are
+    // crawl waste, and /privacy says this site "measures infrastructure, not
+    // people". A person's trade history is not ours to put in an index.
+    //
+    // follow stays true so the links out of the page keep their value, and
+    // the canonical points at the tool rather than at itself, because a
+    // self-canonical on a noindex page tells a crawler two things at once.
+    robots: { index: false, follow: true },
+    alternates: { canonical: `${SITE.url}/fee-compare` },
+  };
 }
 
 export default async function FeeCompareWalletPage({ params }: Props) {
