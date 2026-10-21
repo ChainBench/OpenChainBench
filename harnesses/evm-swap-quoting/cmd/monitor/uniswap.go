@@ -104,6 +104,14 @@ func (p *UniswapProvider) Probe(ctx context.Context, pair TestPair) (Quote, erro
 			// anyway so a fee introduced later is published rather than
 			// silently absorbed into the output.
 			PortionBips *int `json:"portionBips"`
+			// gasUseEstimate is the expected burn. maxFeePerGas is a
+			// EIP-1559 ceiling rather than the price paid, but it is the
+			// assumption Uniswap itself prices with: its own gasFee of
+			// 1,652,639,802,817 wei over 194,000 units implies 8,519,792,
+			// which is maxFeePerGas. Recorded as the provider's assumption,
+			// which is all this series claims to be.
+			GasUseEstimate any `json:"gasUseEstimate"`
+			MaxFeePerGas   any `json:"maxFeePerGas"`
 		} `json:"quote"`
 	}
 	if err := json.Unmarshal(raw, &r); err != nil {
@@ -121,6 +129,8 @@ func (p *UniswapProvider) Probe(ctx context.Context, pair TestPair) (Quote, erro
 	}
 
 	quote := okQuote(ms, out)
+	quote.GasUnits = uintAny(r.Quote.GasUseEstimate)
+	quote.GasPriceWei = numAny(r.Quote.MaxFeePerGas)
 	if n, err := strconv.ParseUint(r.Quote.BlockNumber, 10, 64); err == nil {
 		quote.Block = n
 	}

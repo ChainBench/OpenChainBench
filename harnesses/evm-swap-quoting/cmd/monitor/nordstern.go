@@ -85,6 +85,10 @@ func (p *NordsternProvider) Probe(ctx context.Context, pair TestPair) (Quote, er
 		ToAmount        string `json:"toAmount"`
 		SimulationBlock any    `json:"simulationBlock"`
 		Error           string `json:"error"`
+		// Nordstern reports units and no price. Its per-swap breakdown
+		// carries the same figure under swaps[].gasUnits; the top-level
+		// total is the one a trader pays.
+		GasEstimate any `json:"gasEstimate"`
 	}
 	if err := json.Unmarshal(body, &r); err != nil {
 		RecordOtherError(p.Slug(), pair.Chain, p.region, "parse")
@@ -99,6 +103,7 @@ func (p *NordsternProvider) Probe(ctx context.Context, pair TestPair) (Quote, er
 		return failed(), fmt.Errorf("no_route")
 	}
 	quote := okQuote(ms, r.ToAmount)
+	quote.GasUnits = uintAny(r.GasEstimate)
 	// simulationBlock has come back both as a number and as a string, so
 	// take either rather than lose the one field that proves simultaneity.
 	switch v := r.SimulationBlock.(type) {
