@@ -109,7 +109,16 @@ var originChains = []originChain{
 	// to the feed's own adaptive span rather than hardcoded, so it recovers
 	// if the endpoint ever serves more.
 	{4326, "megaeth", []string{"https://mainnet.megaeth.com/rpc"}, "ETH-USD"},
-	{196, "xlayer", []string{"https://rpc.xlayer.tech", "https://196.rpc.thirdweb.com"}, ""},
+	// X Layer (196) is NOT declared. Its router exists and Relay does not
+	// serve the chain, so it would be ours alone to measure, but every
+	// public endpoint caps eth_getLogs at 100 blocks or less
+	// (rpc.xlayer.tech says "block range greater than 100 max";
+	// 196.rpc.thirdweb.com and xlayerrpc.okx.com both cap near 50) and
+	// the chain produces blocks far faster than that, so the feed never
+	// leaves block 0 and its gauge reads down forever. The router has a
+	// relayer nonce of 28, i.e. 28 transactions in its whole history, so
+	// a permanently red gauge would buy nothing. Declare it the day we
+	// hold an endpoint that serves a real range.
 }
 
 const solanaChainID = 792703809
