@@ -94,7 +94,8 @@ The cheapest confirmation that a deploy landed is `head_lag_sweeper_last_run_tim
 | --- | --- | --- |
 | `MOBULA_API_KEY` | Mobula API key | optional |
 | `COINGECKO_API_KEY` | CoinGecko Pro key (for GeckoTerminal feed) | optional |
-| `DEFINED_SESSION_COOKIE` | Defined.fi session cookie (for Codex). Auto-scraped if absent. | optional |
+| `CODEX_API_KEY` | Codex API key. Solana subscribes on Codex's edge node, the other chains on `graph.codex.io` | optional |
+| `CODEX_SOLANA_WS_URL` | Override the Codex endpoint for Solana (default `wss://fra.edge.codex.io/graphql`) | optional |
 | `MOBULA_WS_URL` | Override the Mobula WS endpoint | optional |
 | `MONITOR_REGION` | Label written on every metric (e.g. `us-east`) | recommended |
 
