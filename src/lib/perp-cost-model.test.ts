@@ -8,6 +8,7 @@ import {
   LEVERAGE_RANGE,
   type Market,
   maxLeverageOn,
+  MOVE_RANGE,
   papertradeKeep,
   unavailableReason,
   VENUES,
@@ -200,13 +201,31 @@ describe("computeCostModel", () => {
     }
   });
 
-  // At the bottom of the slider the fees exceed the gain on every venue. The
-  // table used to crown the first row green regardless.
+  // The fees can exceed the gain on every venue, and the table used to crown
+  // the first row green regardless.
+  //
+  // This used to run at the slider's own minimum, 0.001%. It no longer can.
+  // Both the gain and a notional fee scale with the position, so whether
+  // anything is profitable depends only on the move, and the crossover sits
+  // at twice the cheapest venue's fee leg. Lighter charges no taker fee and
+  // its spread was re-read on 2026-10-21 as a seven-day median of 0.0316 bps
+  // against the 0.3197 single tick the model used to carry, which moves the
+  // crossover to 0.000316% and puts it below the slider. So the state is real
+  // and still worth guarding, but it is no longer reachable from the UI, and
+  // the move here is deliberately off-slider to reach it.
   test("it reports that nothing is profitable when the fees exceed the gain", () => {
-    const model = computeCostModel({ margin: 1000, leverage: 50, market: "BTC", move: 1e-5 });
+    const model = computeCostModel({ margin: 1000, leverage: 50, market: "BTC", move: 1e-6 });
     expect(model.anyProfitable).toBe(false);
     expect(model.cheapest!.net).toBeLessThanOrEqual(0);
     expect(model.live.some((r) => r.shareOfGain > 1)).toBe(true);
+  });
+
+  // The flip side of the above, pinned so a future spread edit that pushes the
+  // crossover back above 0.001% is noticed rather than discovered.
+  test("at the slider's own minimum at least one venue now clears its fees", () => {
+    const atFloor = MOVE_RANGE.min / 100_000;
+    const model = computeCostModel({ margin: 1000, leverage: 50, market: "BTC", move: atFloor });
+    expect(model.anyProfitable).toBe(true);
   });
 
   test("a sub-deadband win on Papertrade nets zero rather than a negative", () => {

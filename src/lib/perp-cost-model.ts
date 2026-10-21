@@ -21,7 +21,7 @@ export type Market = "BTC" | "ETH";
 export type Provenance = "api" | "chain" | "docs";
 
 /** The day every fee, spread and maintenance figure below was read. */
-export const MEASURED_AT = "2026-10-13";
+export const MEASURED_AT = "2026-10-21";
 
 export const MARGIN_RANGE = { min: 1, max: 1_000_000_000, default: 1000 } as const;
 export const LEVERAGE_RANGE = { min: 1, max: 1000, default: 500 } as const;
@@ -229,7 +229,7 @@ export const VENUES: readonly Venue[] = [
     charges: "notional",
     src: "api",
     takerBps: 0,
-    spreadBps: { BTC: 0.3197, ETH: 0.3186 },
+    spreadBps: { BTC: 0.0316, ETH: 0.2477 },
     minLeverage: 1,
     maxLeverage: { BTC: 50, ETH: 50 },
     maintenance: () => 0.012,
@@ -256,7 +256,7 @@ export const VENUES: readonly Venue[] = [
     charges: "notional",
     src: "api",
     takerBps: 0,
-    spreadBps: { BTC: 1.4947, ETH: 1.4335 },
+    spreadBps: { BTC: 0.8155, ETH: 1.1210 },
     minLeverage: 1,
     maxLeverage: { BTC: 50, ETH: 50 },
     maintenance: () => 0.01,
@@ -273,7 +273,7 @@ export const VENUES: readonly Venue[] = [
     charges: "notional",
     src: "docs",
     takerBps: 2.5,
-    spreadBps: { BTC: 0.0604, ETH: 0.1994 },
+    spreadBps: { BTC: 0.0612, ETH: 0.2069 },
     minLeverage: 1,
     maxLeverage: { BTC: 50, ETH: 50 },
     maintenance: () => 0.01,
@@ -290,7 +290,7 @@ export const VENUES: readonly Venue[] = [
     charges: "notional",
     src: "api",
     takerBps: 4.5,
-    spreadBps: { BTC: 0.0181, ETH: 0.2479 },
+    spreadBps: { BTC: 0.0183, ETH: 0.2062 },
     minLeverage: 1,
     maxLeverage: { BTC: 100, ETH: 100 },
     maintenance: () => 0.005,
@@ -307,7 +307,7 @@ export const VENUES: readonly Venue[] = [
     charges: "notional",
     src: "docs",
     takerBps: 4.5,
-    spreadBps: { BTC: 0.0603, ETH: 0.1991 },
+    spreadBps: { BTC: 0.0612, ETH: 0.2066 },
     minLeverage: 1,
     maxLeverage: { BTC: 40, ETH: 25 },
     maintenance: (_lev, mx) => 1 / (2 * mx),
@@ -324,7 +324,7 @@ export const VENUES: readonly Venue[] = [
     charges: "notional",
     src: "api",
     takerBps: 5,
-    spreadBps: { BTC: 8.4248, ETH: 1.7929 },
+    spreadBps: { BTC: 0.8495, ETH: 1.0255 },
     minLeverage: 1,
     maxLeverage: { BTC: 50, ETH: 50 },
     maintenance: () => 0.012,
