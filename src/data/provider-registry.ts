@@ -1637,7 +1637,7 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   "coinbase-international": {
     url: "https://international.coinbase.com",
     description:
-      "Coinbase International Exchange, the non-US derivatives venue of Coinbase (Bermuda, BMA-licensed), with perpetual futures for institutional and eligible retail clients outside the United States. On OpenChainBench as a reference row: volume, open interest and market count as reported to CoinGecko, funding from the Mobula feed.",
+      "Coinbase International Exchange, the non-US derivatives venue of Coinbase (Bermuda, BMA-licensed), with perpetual futures for institutional and eligible retail clients outside the United States. It was a funding reference row on OpenChainBench until 21 October 2026 and is no longer benchmarked: its BTC, ETH and SOL perpetuals settled their last funding on 1 October 2026 and report zero notional volume on 24h, daily and 30 day windows, so there was no live rate left to compare.",
     twitter: "@CoinbaseIntExch",
   },
   coinbase: {

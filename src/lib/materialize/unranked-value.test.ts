@@ -116,20 +116,15 @@ describe("an unranked row keeps its measured value", () => {
     expect(paradex?.unranked_hides_value).toBe(true);
   });
 
-  test("the frozen Coinbase feed stays unranked and blanked on both benches", () => {
-    // A frozen upstream passes every freshness check we have, because they
-    // all read a refresh timestamp and it keeps advancing. The only thing
-    // standing between that feed and a published figure is these two
-    // declarations, so they are worth pinning: dropping either one puts
-    // Coinbase back at 227 bps on perp-funding-cost-30d, last in the field
-    // by a factor of two and a half, on twenty days of one repeated number.
+  test("the dormant Coinbase venue is on neither funding bench", () => {
+    // Unranking it was the first fix, and this test pinned that. The venue
+    // then left both benches: Coinbase International settled its last
+    // funding on 2026-10-01 and reports zero notional on 24h, daily and 30
+    // day volume, so there is no live rate to compare and no reason to keep
+    // a row that only ever republishes the final one.
     for (const slug of ["perp-funding-cost-30d", "perp-funding-stability"]) {
-      const row = (spec(slug).providers ?? []).find(
-        (p) => p.slug === "coinbase-international",
-      );
-      expect(row, `${slug} must still declare coinbase-international`).toBeDefined();
-      expect(row?.unranked).toBe("Upstream frozen");
-      expect(row?.unranked_hides_value).toBe(true);
+      const slugs = (spec(slug).providers ?? []).map((p) => p.slug);
+      expect(slugs).not.toContain("coinbase-international");
     }
   });
 
@@ -139,22 +134,10 @@ describe("an unranked row keeps its measured value", () => {
     // new one appears, this test is the prompt to re-probe it rather than
     // assume.
     //
-    // 2026-10-21, two more were added and probed as this test asks. Both are
-    // Coinbase International, whose Mobula funding series has returned the
-    // same number since 1 October: 9.36 bps a day on ETH, 14.16 on BTC,
-    // 23.76 on SOL, min equal to max over every window out to 20.3 days
-    // while its refresh gauge stays current to the second. The series does
-    // return a value, so the zeroing is reached, and that is the point: the
-    // headline is not rendered for an unranked row, and the zero is what
-    // keeps the frozen figure out of the compare cards, which filter on
-    // `r.ms.p50 !== 0`. Without it perp-funding-cost-30d published the row
-    // last at 227 bps on a window two thirds of which was one reading.
-    const known = new Set([
-      "evm-quote-output",
-      "perp-pf-ratio",
-      "perp-funding-cost-30d",
-      "perp-funding-stability",
-    ]);
+    // perp-funding-cost-30d and perp-funding-stability were briefly on this
+    // list on 2026-10-21, for Coinbase International's frozen row. The venue
+    // then left both benches outright, so they are back under the guard.
+    const known = new Set(["evm-quote-output", "perp-pf-ratio"]);
     const offenders: string[] = [];
     for (const f of readdirSync(BENCH)) {
       if (!f.endsWith(".yml")) continue;
