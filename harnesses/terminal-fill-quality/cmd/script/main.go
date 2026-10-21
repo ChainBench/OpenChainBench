@@ -1435,7 +1435,7 @@ func implausibleSplit(sw *Swap) {
 // productChains: the chain suffixes a row slug can carry; "funding" is
 // the bridge leg of a cross-chain app, kept out of the product's pooled
 // figure (it is not a swap).
-var productChains = []string{"funding", "bnb", "robinhood", "base", "ethereum", "arc", "hyperevm", "megaeth", "xlayer"}
+var productChains = []string{"funding", "bnb", "robinhood", "base", "ethereum", "arc", "hyperevm", "megaeth"}
 
 // productOf splits a row slug into the product and its chain
 // ("fomo-bnb" → fomo, bnb; "trojan" → trojan, solana).
