@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"net/http"
-	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -321,8 +319,40 @@ func getChainNameFromBlockchain(blockchain string) string {
 }
 
 // ============================================================================
-// Codex WebSocket Monitor (using Defined.fi session auth)
+// Codex WebSocket Monitor (API key)
 // ============================================================================
+
+// Standard Codex endpoint, used for every chain except Solana. Solana reads
+// from Codex's edge node instead (Config.CodexSolanaWSURL).
+const codexWSURL = "wss://graph.codex.io/graphql"
+
+// codexSockets folds the Codex connections into the one ws_connected
+// series the spec reads: 1 only while every socket is up, so a dropped
+// Solana edge socket is not hidden by a healthy one for the other chains.
+type codexSockets struct {
+	mu     sync.Mutex
+	region string
+	up     map[string]bool
+}
+
+func newCodexSockets(region string, names ...string) *codexSockets {
+	s := &codexSockets{region: region, up: make(map[string]bool)}
+	for _, name := range names {
+		s.up[name] = false
+	}
+	return s
+}
+
+func (s *codexSockets) set(name string, connected bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.up[name] = connected
+	all := true
+	for _, up := range s.up {
+		all = all && up
+	}
+	RecordWSConnected("codex", s.region, all)
+}
 
 type CodexWSMessage struct {
 	Type    string                 `json:"type"`
@@ -358,17 +388,48 @@ type CodexEventData struct {
 func runCodexHeadLagMonitor(config *Config, stopChan <-chan struct{}, wg *sync.WaitGroup) {
 	defer wg.Done()
 
-	fmt.Println("[HEAD-LAG][CODEX] Starting WebSocket monitor (via Defined.fi auth)...")
+	if config.CodexAPIKey == "" {
+		fmt.Println("[HEAD-LAG][CODEX] CODEX_API_KEY not set — monitor disabled")
+		return
+	}
+
+	// Solana reads from Codex's edge node; every other chain stays on the
+	// standard endpoint. One socket each, both on the same API key.
+	var edgePools, graphPools []HeadLagPool
+	for _, pool := range headLagPools {
+		if pool.ChainName == "solana" {
+			edgePools = append(edgePools, pool)
+		} else {
+			graphPools = append(graphPools, pool)
+		}
+	}
+	fmt.Printf("[HEAD-LAG][CODEX] Starting WebSocket monitor (Solana: %s, others: %s)...\n", config.CodexSolanaWSURL, codexWSURL)
+
+	sockets := newCodexSockets(config.MonitorRegion, "edge", "graph")
+	var connections sync.WaitGroup
+	connections.Add(2)
+	go func() {
+		defer connections.Done()
+		runCodexSocket(config, stopChan, sockets, "edge", config.CodexSolanaWSURL, edgePools)
+	}()
+	go func() {
+		defer connections.Done()
+		runCodexSocket(config, stopChan, sockets, "graph", codexWSURL, graphPools)
+	}()
+	connections.Wait()
+}
+
+// runCodexSocket holds one Codex connection open for a set of pools,
+// reconnecting with backoff until stopChan closes.
+func runCodexSocket(config *Config, stopChan <-chan struct{}, sockets *codexSockets, name, endpoint string, pools []HeadLagPool) {
+	tag := fmt.Sprintf("[HEAD-LAG][CODEX][%s]", name)
 
 	// Backoff strategy:
-	// - 10s base delay (proxy IP rotation window)
-	// - Doubles on consecutive net errors, capped at 60s (NOT 5min — too long
-	//   for the rotating-proxy case; we want to keep probing for fresh IPs)
-	// - Every 10 consecutive failures, force-reset to 10s AND invalidate the JWT
-	//   cache (covers silent token expiry that surfaces as net errors)
+	// - 10s base delay, doubling on consecutive net errors, capped at 60s
+	// - 30s flat on auth or rate-limit errors (a bad key will not fix itself
+	//   faster than that, and hammering the endpoint does not help)
 	const baseDelay = 10 * time.Second
 	const maxReconnectDelay = 60 * time.Second
-	const forceResetEvery = 10
 
 	reconnectDelay := baseDelay
 	consecutiveFailures := 0
@@ -377,26 +438,21 @@ func runCodexHeadLagMonitor(config *Config, stopChan <-chan struct{}, wg *sync.W
 	for {
 		select {
 		case <-stopChan:
-			fmt.Println("[HEAD-LAG][CODEX] Monitor stopped")
+			fmt.Printf("%s Monitor stopped\n", tag)
 			return
 		default:
 			attemptNum++
-			log.Printf("[HEAD-LAG][CODEX] 🔄 Connection attempt #%d (proxy rotation enabled)", attemptNum)
+			log.Printf("%s 🔄 Connection attempt #%d", tag, attemptNum)
 
-			err := connectAndMonitorCodex(config, stopChan)
-			RecordWSConnected("codex", config.MonitorRegion, false)
+			err := connectAndMonitorCodex(config, stopChan, sockets, tag, name, endpoint, pools)
+			sockets.set(name, false)
 			if err != nil {
 				RecordWSReconnect("codex", config.MonitorRegion)
 				consecutiveFailures++
-				log.Printf("[HEAD-LAG][CODEX] ❌ Connection attempt #%d failed (%d consecutive): %v", attemptNum, consecutiveFailures, err)
+				log.Printf("%s ❌ Connection attempt #%d failed (%d consecutive): %v", tag, attemptNum, consecutiveFailures, err)
 
-				if strings.Contains(err.Error(), "rate limited (429)") || strings.Contains(err.Error(), "too many token requests") {
-					log.Printf("[HEAD-LAG][CODEX] ⚠️  Rate limited on JWT — invalidating cache, retrying in 30s")
-					InvalidateTokenCache()
-					reconnectDelay = 30 * time.Second
-				} else if strings.Contains(err.Error(), "authentication") || strings.Contains(err.Error(), "401") || strings.Contains(err.Error(), "4401") || strings.Contains(err.Error(), "4403") {
-					log.Printf("[HEAD-LAG][CODEX] 🔑 Auth error — invalidating JWT cache, retrying in 30s")
-					InvalidateTokenCache()
+				if strings.Contains(err.Error(), "429") || strings.Contains(err.Error(), "401") || strings.Contains(err.Error(), "4401") || strings.Contains(err.Error(), "4403") {
+					log.Printf("%s 🔑 Auth or rate-limit error, check CODEX_API_KEY; retrying in 30s", tag)
 					reconnectDelay = 30 * time.Second
 				} else {
 					// Net/IO error: exponential backoff, capped at 60s.
@@ -409,24 +465,14 @@ func runCodexHeadLagMonitor(config *Config, stopChan <-chan struct{}, wg *sync.W
 					}
 				}
 
-				// Periodic force-reset: stale JWT silently rejected can manifest
-				// as net errors (server-closed connection). Every 10 failures,
-				// invalidate the token AND drop back to base delay so we probe
-				// fast on a fresh state.
-				if consecutiveFailures%forceResetEvery == 0 {
-					log.Printf("[HEAD-LAG][CODEX] 🔁 %d consecutive failures — force-reset (invalidate JWT + base delay)", consecutiveFailures)
-					InvalidateTokenCache()
-					reconnectDelay = baseDelay
-				}
-
-				log.Printf("[HEAD-LAG][CODEX] ⏳ Reconnecting in %v... (next attempt: #%d)", reconnectDelay, attemptNum+1)
+				log.Printf("%s ⏳ Reconnecting in %v... (next attempt: #%d)", tag, reconnectDelay, attemptNum+1)
 				select {
 				case <-stopChan:
 					return
 				case <-time.After(reconnectDelay):
 				}
 			} else {
-				log.Printf("[HEAD-LAG][CODEX] ✅ Connection closed cleanly after attempt #%d", attemptNum)
+				log.Printf("%s ✅ Connection closed cleanly after attempt #%d", tag, attemptNum)
 				reconnectDelay = baseDelay
 				consecutiveFailures = 0
 				attemptNum = 0
@@ -435,26 +481,14 @@ func runCodexHeadLagMonitor(config *Config, stopChan <-chan struct{}, wg *sync.W
 	}
 }
 
-func connectAndMonitorCodex(config *Config, stopChan <-chan struct{}) error {
-	log.Printf("[HEAD-LAG][CODEX] Step 1/4: Generating JWT token...")
-	jwtToken, err := GetDefinedJWTToken(config.DefinedSessionCookie)
-	if err != nil {
-		return fmt.Errorf("failed to get JWT token: %w", err)
-	}
-
-	log.Printf("[HEAD-LAG][CODEX] Step 2/4: Creating direct dialer (no proxy — IP must match JWE origin)...")
+func connectAndMonitorCodex(config *Config, stopChan <-chan struct{}, sockets *codexSockets, tag, name, endpoint string, pools []HeadLagPool) error {
 	dialer := &websocket.Dialer{
 		Subprotocols:     []string{"graphql-transport-ws"},
 		HandshakeTimeout: 30 * time.Second,
 	}
 
-	log.Printf("[HEAD-LAG][CODEX] Step 3/4: Connecting to wss://graph.codex.io/graphql...")
-	cookieVal := url.QueryEscape(`{"token":"` + jwtToken + `"}`)
-	wsHeaders := http.Header{}
-	wsHeaders.Set("Cookie", "codex_token="+cookieVal)
-	wsHeaders.Set("Origin", "https://www.defined.fi")
-	wsHeaders.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
-	conn, resp, err := dialer.Dial("wss://graph.codex.io/graphql", wsHeaders)
+	log.Printf("%s Step 1/2: Connecting to %s...", tag, endpoint)
+	conn, resp, err := dialer.Dial(endpoint, nil)
 	if err != nil {
 		if resp != nil {
 			return fmt.Errorf("dial failed (HTTP %d): %w", resp.StatusCode, err)
@@ -463,18 +497,12 @@ func connectAndMonitorCodex(config *Config, stopChan <-chan struct{}) error {
 	}
 	defer conn.Close()
 
-	// Verify proxy IP rotation (for debugging)
-	if outboundIP, err := getOutboundIP(); err == nil {
-		log.Printf("[HEAD-LAG][CODEX] Step 3/4: ✅ WebSocket connection established via proxy IP: %s", outboundIP)
-	} else {
-		log.Printf("[HEAD-LAG][CODEX] Step 3/4: ✅ WebSocket connection established (IP check failed: %v)", err)
-	}
-
-	log.Printf("[HEAD-LAG][CODEX] Step 4/4: Sending connection_init (token len=%d)...", len(jwtToken))
+	// Codex takes the raw API key, no "Bearer" prefix.
+	log.Printf("%s Step 2/2: Sending connection_init...", tag)
 	initMsg := map[string]interface{}{
 		"type": "connection_init",
 		"payload": map[string]interface{}{
-			"Authorization": "Bearer " + jwtToken,
+			"Authorization": config.CodexAPIKey,
 		},
 	}
 	if err := conn.WriteJSON(initMsg); err != nil {
@@ -492,20 +520,21 @@ func connectAndMonitorCodex(config *Config, stopChan <-chan struct{}) error {
 	if err := json.Unmarshal(msg, &ackMsg); err != nil || ackMsg.Type != "connection_ack" {
 		return fmt.Errorf("unexpected ack: %s", string(msg))
 	}
-	log.Printf("[HEAD-LAG][CODEX] Step 4/4: ✅ Received connection_ack")
+	log.Printf("%s Step 2/2: ✅ Received connection_ack", tag)
 
-	// Subscribe to each pool (use onUnconfirmedEventsCreated for Solana, onEventsCreated for others)
-	log.Printf("[HEAD-LAG][CODEX] Subscribing to %d pools...", len(headLagPools))
-	for i, pool := range headLagPools {
+	log.Printf("%s Subscribing to %d pools...", tag, len(pools))
+	for i, pool := range pools {
 		subID := fmt.Sprintf("headlag_%d", i)
 
 		var subMsg map[string]interface{}
 
-		// Solana: commitmentLevel Processed (pre-finalized, lowest latency).
-		// This replaces onUnconfirmedEventsCreated, deprecated by Codex on
-		// 2026-04-20 and enforcement-killed for API keys ~2026-07-06 (hard
-		// WS close 1006). Verified delivering on the JWT path 2026-07-09.
-		if pool.ChainName == "solana" {
+		// Solana and Base: commitmentLevel Processed. On Solana that is the
+		// pre-confirmation stage (it replaced onUnconfirmedEventsCreated,
+		// deprecated by Codex on 2026-04-20); on Base it is the flashblock
+		// preconfirmation, the same stage the Base reference clock reads.
+		// Verified delivering with an API key on both endpoints 2026-10-20.
+		// Do not assume other EVM networks support this level.
+		if pool.ChainName == "solana" || pool.ChainName == "base" {
 			poolID := fmt.Sprintf("%s:%d", pool.Address, pool.NetworkID)
 			subMsg = map[string]interface{}{
 				"type": "subscribe",
@@ -530,7 +559,7 @@ func connectAndMonitorCodex(config *Config, stopChan <-chan struct{}) error {
 				},
 			}
 		} else {
-			// EVM chains: use onEventsCreated (confirmed events)
+			// Other EVM chains: default commitment (confirmed events)
 			subMsg = map[string]interface{}{
 				"type": "subscribe",
 				"id":   subID,
@@ -562,12 +591,12 @@ func connectAndMonitorCodex(config *Config, stopChan <-chan struct{}) error {
 		time.Sleep(100 * time.Millisecond) // Small delay between subscriptions
 	}
 
-	log.Printf("[HEAD-LAG][CODEX] ✅ Subscribed to %d pools", len(headLagPools))
-	log.Printf("[HEAD-LAG][CODEX] 🎉 Connection fully established! Waiting for events...")
-	RecordWSConnected("codex", config.MonitorRegion, true)
+	log.Printf("%s ✅ Subscribed to %d pools", tag, len(pools))
+	log.Printf("%s 🎉 Connection fully established! Waiting for events...", tag)
+	sockets.set(name, true)
 
 	// graphql-transport-ws keepalive: send {"type":"ping"} every 20s.
-	// Without this, the rotating proxy (or Codex itself) silently kills idle
+	// Without this, Codex (or a hop in between) silently kills idle
 	// TCP after ~3min, manifesting as "i/o timeout" or "1006 unexpected EOF".
 	// Writes to the websocket conn are serialized via writeMu since we now have
 	// two goroutines writing (this ping loop + the subscribe path on next reconnect).
@@ -582,7 +611,7 @@ func connectAndMonitorCodex(config *Config, stopChan <-chan struct{}) error {
 	var lastEventMu sync.Mutex
 	lastEventByChain := make(map[string]time.Time)
 	firstEventBySub := make(map[string]bool)
-	for _, pool := range headLagPools {
+	for _, pool := range pools {
 		lastEventByChain[pool.ChainName] = time.Now()
 	}
 	const flowSilence = 10 * time.Minute
@@ -605,7 +634,7 @@ func connectAndMonitorCodex(config *Config, stopChan <-chan struct{}) error {
 				}
 				lastEventMu.Unlock()
 				if tripped != "" {
-					log.Printf("[HEAD-LAG][CODEX] 🪦 %s subscription silent for >%s — purging gauges and forcing reconnect", tripped, flowSilence)
+					log.Printf("%s 🪦 %s subscription silent for >%s — purging gauges and forcing reconnect", tag, tripped, flowSilence)
 					DeleteHeadLagSeries("codex", tripped, config.MonitorRegion)
 					_ = conn.Close()
 					return
@@ -687,7 +716,7 @@ func connectAndMonitorCodex(config *Config, stopChan <-chan struct{}) error {
 			// unconfirmed sub, the Processed sub, or both deliver on this tier.
 			if !firstEventBySub[wsMsg.ID] {
 				firstEventBySub[wsMsg.ID] = true
-				log.Printf("[HEAD-LAG][CODEX] 📬 First event on subscription %q", wsMsg.ID)
+				log.Printf("%s 📬 First event on subscription %q", tag, wsMsg.ID)
 			}
 
 			// Parse event data
