@@ -59,6 +59,34 @@ type evmTerminal struct {
 }
 
 var evmTerminals = []evmTerminal{
+	// pump.fun's own bridge, live since 2026-09-28 and the default in its app
+	// since 2026-10-07. Program Dsug6Jq… on Solana takes the deposit; these
+	// routers do the EVM side. One contract serves every chain but Robinhood,
+	// which has its own; both are plain CREATE outputs of the same deployer
+	// and each holds roughly $750k of stables. The relayer that drives them,
+	// 0x329ca263…, has a per-chain nonce distribution matching pump's own
+	// published volume (Base 4,944 against BSC 56,077, a ratio of 11.3 where
+	// their rows give 10.9).
+	//
+	// No Collector on purpose. The router passes the whole purchase through:
+	// it spends a stable, buys the token and forwards every unit to the user,
+	// identical to the last digit on the fills checked. pump's take is
+	// deducted earlier, on the Solana deposit, and measures 0.05 + 45 bps
+	// (exact at four round-number levels on Robinhood Chain and seven on BNB,
+	// 73% of observed spends). These rows therefore measure the swap the
+	// bridge performs, not what the bridge charges, until the Solana deposit
+	// decoder lands.
+	//
+	// Ink, MegaETH and X Layer are absent for want of an RPC. Relay serves
+	// neither MegaETH nor X Layer, so Pump Bridge is the only route there.
+	{Slug: "pump-fun-bnb", Name: "pump.fun app · BNB", Kind: "app", Chain: "bnb",
+		Routers: []string{"0x836b336fca26913176efc45a5a6e5e72cd7bd13b"}},
+	{Slug: "pump-fun-base", Name: "pump.fun app · Base", Kind: "app", Chain: "base",
+		Routers: []string{"0x836b336fca26913176efc45a5a6e5e72cd7bd13b"}},
+	{Slug: "pump-fun-arc", Name: "pump.fun app · Arc", Kind: "app", Chain: "arc",
+		Routers: []string{"0x836b336fca26913176efc45a5a6e5e72cd7bd13b"}},
+	{Slug: "pump-fun-robinhood", Name: "pump.fun app · Robinhood Chain", Kind: "app", Chain: "robinhood",
+		Routers: []string{"0x5399d94d2cab7c252a6034042e1917a0e5e17a18"}},
 	{Slug: "gmgn-bnb", Name: "GMGN · BNB", Kind: "app", Chain: "bnb", Routers: []string{"0x1de460f363af910f51726def188f9004276bf4bc"}, Collector: "0xb8159ba378904f803639d274cec79f788931c9c8"},
 	// GMGN's Robinhood Chain router: the emitter of GMGN's swap-end event
 	// (0x8619026a…) on that chain, 654 swaps in 300 blocks on 2026-09-18;
