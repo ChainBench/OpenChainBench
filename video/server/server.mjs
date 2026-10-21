@@ -240,7 +240,10 @@ app.post("/render", async (req, res) => {
   const t0 = Date.now();
   const ip = clientIp(req);
   try {
-    const { datasetId, viewId, bench } = req.body ?? {};
+    const { datasetId, bench } = req.body ?? {};
+    // DistributionRace was removed in v27; a site build that still offers
+    // it gets the time-series view instead of a 400.
+    const viewId = req.body?.viewId === "DistributionRace" ? "TimeSeriesRace" : req.body?.viewId;
     const raceSeconds = clampSeconds(req.body?.raceSeconds ?? DEFAULT_SECONDS);
     const skipIntro = !!req.body?.skipIntro;
     const format = req.body?.format ?? "landscape";
