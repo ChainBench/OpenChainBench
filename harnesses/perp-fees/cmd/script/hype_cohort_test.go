@@ -38,7 +38,14 @@ func TestHypeCohortIsTheVenuesThatListIt(t *testing.T) {
 	// (symbol HYPE, perp, active, market_id 24), Extended's info/markets
 	// (HYPE-USD, maxLeverage 50), Aster's exchangeInfo (HYPEUSDT), and
 	// edgeX's getMetaData (HYPEUSDC, enableTrade true).
-	onHype := []string{"hyperliquid", "dydx", "lighter", "extended", "aster", "edgex"}
+	onHype := []string{
+		"hyperliquid", "dydx", "lighter", "extended", "aster", "edgex",
+		// Joined 2026-10-22 once the two-market choice was made on the
+		// numbers: HYPE/USD [WBTC.b-USDC] has 117 times the open interest of
+		// HYPE/USD [USDG-USDG] and the same collateral pair as the BTC market
+		// gmxMarkets already reads.
+		"gmx",
+	}
 	for _, slug := range onHype {
 		got, ok := assets[slug]
 		if !ok {
@@ -53,7 +60,6 @@ func TestHypeCohortIsTheVenuesThatListIt(t *testing.T) {
 	offHype := map[string]string{
 		"paradex":    "its HYPE market is an option, not a perp",
 		"gains":      "its diamond carries no HYPE pair in 470 indices",
-		"gmx":        "two HYPE markets exist and gmxMarkets takes one address",
 		"polymarket": "unverified: its hosts failed TLS hostname validation",
 		"ondo":       "unverified: substring match only, which is what Paradex also had",
 	}
@@ -121,7 +127,6 @@ func TestConfigSaysWhyAVenueIsOffHype(t *testing.T) {
 	for _, phrase := range []string{
 		"asset_kind OPTION",
 		"no HYPE pair",
-		"two HYPE",
 		"TLS hostname",
 		"substring",
 	} {
