@@ -370,7 +370,7 @@ providers:
 
   - slug: route
     name: Route
-    tag: Robinhood Chain only, quote-only key
+    tag: Robinhood Chain only, routes through Kyber and Nordstern
     formula: "Avg of per-(chain, region) 24h medians of evm_swap_quote_latency_ms{provider=route} over the last 24 hours. Robinhood Chain only."
     queries:
       p50: avg(ocb:evm_swap_quote_latency_ms:p50_24h{provider="route"})
