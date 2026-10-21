@@ -56,6 +56,7 @@ methodology:
   - "Sample health: expected_n is 720 (a month of hourly samples). A venue ranks only with 576 of them (24 days, 80 percent of the grid, which absorbs harness restarts): the figure does not move with coverage, but an average over a few days is not a month's evidence. Under the floor the row is unranked and shows its day count. A feed that stops loses its hours: the harness drops a rate nobody refreshed for five minutes rather than repeat it. Venues added on 2026-09-22 and 23 start under the floor."
   - "Interval normalisation is the venue's: Hyperliquid, Vest, StandX and ApeX settle hourly, Kalshi every 8 hours (three settlements a day), the CEX rows per their own schedule; every row is expressed as cost per 24h before integrating."
   - "This page does not replace perp-funding (bench 036), which ranks the rate right now; it ranks what the last month cost."
+  - "A frozen upstream hides well over thirty days: a feed answering on time with the same number skews the average while every freshness check stays green. Coinbase International has returned 9.36 bps a day on ETH since 1 October 2026, twenty of these thirty days, which ranked it last at 227 bps against 91 for the next worst. Its row is unranked and blanked until the series moves. No other venue on either feed has been constant beyond seven days."
 findings:
   - "{{best_name}} was the cheapest venue to hold an ETH long over the trailing 30 days, {{best_p50}} of funding for the month at its average daily rate; {{worst_name}} cost {{worst_p50}}."
   - "{{name:hyperliquid}} at {{p50:hyperliquid}} for the month, {{name:lighter}} at {{p50:lighter}}: the two largest onchain books against the CEX reference of {{name:binance}} at {{p50:binance}} and {{name:bybit}} at {{p50:bybit}}."
@@ -236,6 +237,20 @@ providers:
   - slug: coinbase-international
     name: Coinbase International
     tag: CEX reference (Coinbase International), hourly funding, via the Mobula funding feed
+    unranked: "Upstream frozen"
+    # The upstream has returned the same number since 2026-10-01: 9.36 bps a
+    # day on ETH, 14.16 on BTC, 23.76 on SOL. min equals max over every
+    # window out to 20.3 days, dated by bisecting the window length and
+    # confirmed against a 31 day range query, which holds 53 distinct values
+    # and none after 1 October. Twenty of this bench's thirty days are
+    # therefore one repeated reading, and that is what put the row last at
+    # 227 bps against 91 for the next worst.
+    #
+    # Nothing else catches this. `success` below reads the refresh gauge,
+    # which is current to the second: the feed answers, it just answers the
+    # same thing. Restore the ranking when max_over_time minus min_over_time
+    # on the ETH series is non-zero over 48h again.
+    unranked_hides_value: true
     formula: "Average of perp_venue_funding_24h_bps{venue=\"coinbase\",asset=\"ETH\"} over the days measured in the trailing 30 (hourly samples) x 30: the month's funding at that average daily cost, in bps of notional; ranked with 24 days measured."
     queries:
       p50: avg_over_time(perp_venue_funding_24h_bps{venue="coinbase",asset="ETH"}[30d:1h]) * 30
