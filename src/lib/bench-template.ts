@@ -316,10 +316,16 @@ export function renderTemplate(text: string, benchmark: Benchmark): string {
  */
 export function renderBenchmarkText(benchmark: Benchmark): Benchmark {
   benchmark.abstract = renderTemplate(benchmark.abstract, benchmark);
-  benchmark.findings = benchmark.findings.map((f) => renderTemplate(f, benchmark));
-  benchmark.methodology = benchmark.methodology.map((m) =>
-    renderTemplate(m, benchmark),
-  );
+  // A bullet whose only clause quoted an unresolvable placeholder renders
+  // to "" and shipped a blank <li> between two real ones (bench 033 found
+  // OpenOcean's finding doing exactly that on production). Same reasoning as
+  // the seoTitle guard below: the prune is correct, the empty survivor is not.
+  benchmark.findings = benchmark.findings
+    .map((f) => renderTemplate(f, benchmark).trim())
+    .filter((f) => f.length > 0);
+  benchmark.methodology = benchmark.methodology
+    .map((m) => renderTemplate(m, benchmark).trim())
+    .filter((m) => m.length > 0);
   benchmark.subtitle = renderTemplate(benchmark.subtitle, benchmark);
   // A one-clause templated title or description renders to "" when the
   // bench has no live row (every placeholder unresolved, the clause
@@ -338,17 +344,26 @@ export function renderBenchmarkText(benchmark: Benchmark): Benchmark {
     benchmark.disclaimer = renderTemplate(benchmark.disclaimer, benchmark);
   }
   if (benchmark.faq) {
-    benchmark.faq = benchmark.faq.map((item) => ({
-      q: renderTemplate(item.q, benchmark),
-      a: renderTemplate(item.a, benchmark),
-    }));
+    // An answer that prunes to "" would ship an empty acceptedAnswer.text in
+    // the FAQPage JSON-LD, asserting to a crawler that the page answers the
+    // question with nothing. Drop the pair instead.
+    benchmark.faq = benchmark.faq
+      .map((item) => ({
+        q: renderTemplate(item.q, benchmark).trim(),
+        a: renderTemplate(item.a, benchmark).trim(),
+      }))
+      .filter((item) => item.q.length > 0 && item.a.length > 0);
   }
   if (benchmark.perChainExplainer) {
-    benchmark.perChainExplainer = benchmark.perChainExplainer.map((item) => ({
-      slug: item.slug,
-      h2: renderTemplate(item.h2, benchmark),
-      body: renderTemplate(item.body, benchmark),
-    }));
+    // A heading with no body is an H2 the outline promises and the page does
+    // not deliver, which is the shape the SEO checks flag.
+    benchmark.perChainExplainer = benchmark.perChainExplainer
+      .map((item) => ({
+        slug: item.slug,
+        h2: renderTemplate(item.h2, benchmark).trim(),
+        body: renderTemplate(item.body, benchmark).trim(),
+      }))
+      .filter((item) => item.h2.length > 0 && item.body.length > 0);
   }
   return benchmark;
 }
