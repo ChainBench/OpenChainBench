@@ -23,7 +23,7 @@ import type { PerpCohortSummary, PerpVenueRow } from "@/lib/perp-stats";
 import type { ProviderProfile } from "@/lib/providers";
 import { perpProductSlug } from "@/lib/perp-product-slug";
 import { fmtPct as capPct, fmtUsdShort as capUsd, fmtX as capX, type CapitalHub } from "@/lib/capital-hub-types";
-import { perpVolumeLead } from "@/lib/perp-stats";
+import { NOTIONAL_NOT_COMPARABLE, perpVolumeLead } from "@/lib/perp-stats";
 import {
   CAPITAL_READING,
   NOT_APPLICABLE_LABEL,
@@ -164,14 +164,19 @@ export function perpsHubMarkdown(cohort: PerpCohortSummary | null): string {
   // Sort here, or the `#` column would number a registry listing.
   const byVolume = (rows: PerpVenueRow[]) =>
     [...rows].sort((a, b) => (b.volume30d ?? -1) - (a.volume30d ?? -1) || a.name.localeCompare(b.name));
-  const dex = byVolume(cohort.venues.filter((v) => v.venueType !== "cex"));
+  const dexAll = byVolume(cohort.venues.filter((v) => v.venueType !== "cex"));
+  // Split, not sorted together. Papertrade's notional put it at row 1 under a
+  // headline naming a different leader, which is the contradiction the HTML
+  // lede was fixed to avoid and this view inherited.
+  const dex = dexAll.filter((v) => !NOTIONAL_NOT_COMPARABLE.has(v.slug));
+  const dexApart = dexAll.filter((v) => NOTIONAL_NOT_COMPARABLE.has(v.slug));
   const cex = byVolume(cohort.venues.filter((v) => v.venueType === "cex"));
   // Same exclusion the HTML lede uses, from the same helper: a venue whose
   // notional is not the cohort's quantity does not lead either surface.
   const lead = perpVolumeLead(cohort.venues);
   if (lead && lead.volume30d != null) {
     md.push(
-      `**Headline.** ${lead.name} leads ${cohort.totals.trackedVenues} tracked perp DEXes on 30-day volume at ${usd(lead.volume30d)}; cohort open interest ${usd(cohort.totals.cohortOpenInterest)}.`,
+      `**Headline.** ${lead.name} leads ${cohort.totals.volumeRankedVenues} perp DEXes on 30-day volume at ${usd(lead.volume30d)}; cohort open interest ${usd(cohort.totals.cohortOpenInterest)} across ${cohort.totals.trackedVenues} measured venues.`,
     );
     md.push("");
   }
@@ -188,6 +193,16 @@ export function perpsHubMarkdown(cohort: PerpCohortSummary | null): string {
   md.push("");
   table(dex);
   md.push("");
+  if (dexApart.length > 0) {
+    md.push(`## Measured, not ranked on volume`);
+    md.push("");
+    md.push(
+      `Notional turnover on a single house LP at up to 1000x leverage with no open, close or funding fee is not the quantity the rows above measure, so these venues are excluded from the 30-day volume ranking and from the cohort volume total. Their open interest is included: a snapshot of open positions is the same measurement everywhere.`,
+    );
+    md.push("");
+    table(dexApart);
+    md.push("");
+  }
   if (cex.length > 0) {
     md.push(`## Centralised reference`);
     md.push("");

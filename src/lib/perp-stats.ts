@@ -90,7 +90,12 @@ export type PerpCohortSummary = {
   totals: {
     cohortVolume30d: number;
     cohortOpenInterest: number;
+    /** Venues measured, including those whose notional is not comparable.
+     *  This is a coverage count and feeds the "N of M" card. */
     trackedVenues: number;
+    /** Venues actually summed into cohortVolume30d, which is the number a
+     *  sentence about 30-day volume means. */
+    volumeRankedVenues: number;
     avgFunding24hEth: number | null;
   };
   asOf: number;
@@ -358,14 +363,29 @@ export async function fetchPerpCohortFresh(): Promise<PerpCohortSummary | null> 
   let cohortVolume30d = 0;
   let cohortOpenInterest = 0;
   let trackedVenues = 0;
+  let volumeRankedVenues = 0;
   for (const r of venues) {
     // Totals describe the measured cohort (DEX and regulated); the CEX
     // reference rows are venue-reported and sit behind the hub selector.
     if (r.venueType === "cex") continue;
     if (r.volume30d != null) {
-      cohortVolume30d += r.volume30d;
       trackedVenues += 1;
+      // The same exclusion the ranking uses. Keeping Papertrade out of the
+      // leader (#3090) and inside the sum left a card a reader could not
+      // reconcile with the leader it names. Read at 2026-10-21T19:34Z: 28
+      // rows summing 2,927.75B of which Papertrade was 2,425.93B, 82.9
+      // percent, against 501.82B for the other 27 and 175.16B for the
+      // largest of them. The card overstated the cohort by 5.8 times.
+      if (!NOTIONAL_NOT_COMPARABLE.has(r.slug)) {
+        cohortVolume30d += r.volume30d;
+        volumeRankedVenues += 1;
+      }
     }
+    // Open interest keeps every venue, deliberately. Turnover on a house LP
+    // at up to 1000x with no fees is not the cohort's quantity, but a
+    // snapshot of open positions is the same measurement everywhere. The
+    // magnitudes agree: in the same read Papertrade held 233M of the 19.92B
+    // total, 1.2 percent, where its volume was 82.9. Nothing to correct.
     if (r.openInterest != null) cohortOpenInterest += r.openInterest;
   }
   const fundingValues = venues
@@ -382,6 +402,7 @@ export async function fetchPerpCohortFresh(): Promise<PerpCohortSummary | null> 
       cohortVolume30d,
       cohortOpenInterest,
       trackedVenues,
+      volumeRankedVenues,
       avgFunding24hEth,
     },
     asOf: Math.floor(Date.now() / 1000),
