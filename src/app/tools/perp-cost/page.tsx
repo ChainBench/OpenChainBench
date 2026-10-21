@@ -80,13 +80,16 @@ export default function PerpCostToolPage() {
 
         <p className="mb-3">
           <strong className="font-semibold text-ink">Fees and spreads</strong> come from our own
-          perp-fees measurements, read on {MEASURED_AT}. Each spread is one quoted book at a single
-          tick rather than an average over a window, and half of it is charged per leg because a
-          taker crosses half the book. Read that caveat with its weight: a top-of-book spread can
-          move several-fold inside a minute, so it carries far less confidence than the taker fee
-          beside it, and it decides the whole figure on the two rows whose taker fee is zero,{" "}
-          <strong className="font-semibold text-ink">Lighter</strong> and{" "}
-          <strong className="font-semibold text-ink">Paradex</strong>.{" "}
+          perp-fees measurements, read on {MEASURED_AT}. Each spread is the{" "}
+          <strong className="font-semibold text-ink">median of 10,080 readings</strong>, one a
+          minute over seven days, and half of it is charged per leg because a taker crosses half
+          the book. Readings at or below zero are dropped first: a crossed or empty book is the
+          reader failing rather than a tighter market, and Paradex produced 55 of them in that
+          window. Until 21 October each spread was instead a single tick, which is a sample of
+          size one from a quantity that moves several-fold inside a minute, and it decided the
+          whole figure on the two rows whose taker fee is zero. It also went wrong quietly: dYdX
+          carried 8.4248 bps on BTC against a seven-day median of 0.8495, a value that never
+          occurred on the day the page said it was read.{" "}
           <strong className="font-semibold text-ink">Paradex</strong> also publishes two taker
           tiers on the same market: its <code className="font-mono text-xs">fee_config</code> reads
           zero for an interactive order and 0.0200% a leg for an API or RPI one. The interactive
