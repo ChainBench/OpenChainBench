@@ -481,7 +481,16 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //      two of them changed slug, so every cached bench set is stale.
   // v90: bench 205 retired into 201.
   // v91: bench 201 renamed solana-trading-platform-wars -> trading-platform-wars.
-  ["bench-unfiltered-v91", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v92: Nova joins bench 030's builder cohort, which takes it from 104 rows
+  //      to 105. Same reason as v16, which was bumped after six builders were
+  //      added to the same bench: a v91 entry holds the 104-row provider set,
+  //      so the aggregate blob published 105 results with Nova live at $5.28
+  //      while /api/stat and the page kept serving 104 and the row never
+  //      appeared. Checked rather than assumed: the blob's Nova row is
+  //      structurally identical to a row that does render (same keys, same
+  //      flags, availability live) and carries better data than it, 6 fills
+  //      against 0.
+  ["bench-unfiltered-v92", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -724,7 +733,8 @@ const loadAllBenchmarksCached = unstable_cache(
   //      renamed).
   // v83: lockstep with bench-unfiltered-v90.
   // v84: lockstep with bench-unfiltered-v91.
-  ["all-benchmarks-v84", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v85: lockstep with bench-unfiltered-v92 (Nova joins bench 030).
+  ["all-benchmarks-v85", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
