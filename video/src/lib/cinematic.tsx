@@ -7,6 +7,7 @@ import { getInputProps, staticFile, useCurrentFrame } from "remotion";
  * with contrast boosted 6x on the encoded frame. "static" costs 10 MB.
  */
 export const GRAIN_MODE: "boil" | "static" | "off" = "off";
+const VIGNETTE = false;
 
 /**
  * Subtle film treatment shared by the data views: a pre-generated noise
@@ -41,7 +42,11 @@ export const FilmOverlay: React.FC = () => {
           backgroundPosition: `${gx}px ${gy}px`,
         }}
       />}
-      <div
+      {/* Vignette: off since v28. lab/fxcost.mjs priced it at 345 ms of
+          the 672 ms a bar-race frame took on two cores (a full-frame
+          radial gradient re-rasterised on every frame), and on the #000
+          background it only dimmed the title and the source line. */}
+      {VIGNETTE && !labOff("vig") && <div
         style={{
           position: "absolute",
           inset: 0,
@@ -49,16 +54,30 @@ export const FilmOverlay: React.FC = () => {
           background:
             "radial-gradient(ellipse at center, rgba(0,0,0,0) 58%, rgba(0,0,0,0.32) 100%)",
         }}
-      />
+      />}
     </>
   );
 };
 
 /**
  * Micro Ken Burns: continuous 100% -> 102.5% zoom across the segment.
- * Slow enough to be subliminal; scale-up never reveals canvas edges.
+ * Off since v28: scaling the whole tree re-rasterised every glyph at a
+ * fractional size each frame (137 to 225 ms a frame on two cores, the
+ * text a touch soft), for a zoom nobody could see.
  */
+const KEN_BURNS = false;
 export function kenBurnsScale(frame: number, durationInFrames: number): number {
+  if (!KEN_BURNS || labOff("kb")) return 1;
   const t = Math.min(1, Math.max(0, frame / Math.max(1, durationInFrames)));
   return 1 + 0.025 * t;
+}
+
+/**
+ * Lab-only: `inputProps.labOff` lists effects to switch off ("kb", "vig",
+ * "glow", "tshadow") so lab/perf.mjs can price each one per frame.
+ * Production renders never set it.
+ */
+export function labOff(fx: string): boolean {
+  const v = (getInputProps() as { labOff?: string }).labOff;
+  return !!v && v.split(",").includes(fx);
 }

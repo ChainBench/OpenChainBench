@@ -20,7 +20,7 @@
  */
 
 import express from "express";
-import { renderMedia, selectComposition } from "@remotion/renderer";
+import { renderMedia, selectComposition, openBrowser } from "@remotion/renderer";
 import path from "node:path";
 import { mkdir, writeFile, unlink, stat, readdir } from "node:fs/promises";
 import { existsSync, statSync } from "node:fs";
@@ -42,7 +42,7 @@ const TOKEN = process.env.RENDER_API_TOKEN;
 const PORT = Number(process.env.PORT ?? 4200);
 const HOST = process.env.HOST ?? "127.0.0.1";
 
-const COMP_VERSION = "v27-review3";
+const COMP_VERSION = "v28-fast";
 
 const VIEWS = new Set([
   "BarChartRace",
@@ -72,8 +72,35 @@ const RATE_CAPACITY = 5;
 const RATE_WINDOW_MS = 60_000;
 const rateBuckets = new Map();
 
-/** 2 vCPU box → keep concurrency ≤ 2 or Chromium fights ffmpeg for CPU. */
-const CONCURRENCY = 2;
+/**
+ * One export at a time on the 2-vCPU box. Two in flight each got half the
+ * CPU, so neither finished sooner, and each held its own Chromium (peak
+ * 2.3 GB for one export when its three segments rendered in parallel,
+ * lab/perf.mjs on two pinned cores). The queue holds the rest.
+ */
+const CONCURRENCY = 1;
+
+/**
+ * One Chromium for the life of the process, shared by every segment of
+ * every export: three parallel renderMedia calls each launched their own
+ * (1.3 GB peak instead of 2.3 GB, same wall time, lab/perf.mjs), and a
+ * cold launch per segment cost seconds. Re-opened if it dies.
+ */
+let browserP = null;
+function getBrowser() {
+  if (!browserP) {
+    browserP = openBrowser("chrome", { chromiumOptions: { gl: "angle" } }).catch((e) => {
+      browserP = null;
+      throw e;
+    });
+  }
+  return browserP;
+}
+async function dropBrowser() {
+  const b = browserP;
+  browserP = null;
+  if (b) await (await b).close({ silent: true }).catch(() => {});
+}
 const QUEUE_MAX = 6;
 let inFlight = 0;
 const queue = [];
@@ -275,46 +302,47 @@ app.post("/render", async (req, res) => {
       const resultsPath = path.join(CACHE, `_results-${stamp}.mp4`);
       const outroPath = path.join(CACHE, `_outro-${stamp}.mp4`);
 
-      const [raceComp, resultsComp, outroComp] = await Promise.all([
-        selectComposition({ serveUrl: BUNDLE, id: viewId, inputProps }),
-        selectComposition({ serveUrl: BUNDLE, id: "ResultsBoard", inputProps }),
-        selectComposition({ serveUrl: BUNDLE, id: "Outro", inputProps }),
-      ]);
-
+      const puppeteerInstance = await getBrowser();
       const renderOpts = {
         serveUrl: BUNDLE,
         codec: "h264",
         inputProps,
+        puppeteerInstance,
+        // jpeg 95 / crf 18 / -tune animation: VMAF 99.5 against a ProRes
+        // 4444 reference, for the same wall time as the old jpeg 90 /
+        // crf 19 (98.5) and 9% more bytes. x264 "medium" scored 99.8 but
+        // took 55% longer on two cores. bt709 pins Chrome's colors so
+        // darks survive upload re-encodes by the platforms.
         imageFormat: "jpeg",
-        jpegQuality: 90,
+        jpegQuality: 95,
         x264Preset: "veryfast",
-        // crf 19: x264 default-ish quality; 22 banded visibly on the dark
-        // gradients. bt709 pins Chrome's colors so darks survive upload
-        // re-encodes by the platforms.
-        crf: 19,
+        crf: 18,
+        ffmpegOverride: ({ args }) => {
+          const i = args.indexOf("-crf");
+          return i < 0 ? args : [...args.slice(0, i), "-tune", "animation", ...args.slice(i)];
+        },
         colorSpace: "bt709",
         chromiumOptions: { gl: "angle" },
         concurrency: 2,
         logLevel: "warn",
       };
 
-      await Promise.all([
-        renderMedia({
-          ...renderOpts,
-          composition: { ...raceComp, durationInFrames: raceDuration, width, height },
-          outputLocation: racePath,
-        }),
-        renderMedia({
-          ...renderOpts,
-          composition: { ...resultsComp, width, height },
-          outputLocation: resultsPath,
-        }),
-        renderMedia({
-          ...renderOpts,
-          composition: { ...outroComp, width, height },
-          outputLocation: outroPath,
-        }),
-      ]);
+      // Segments one after the other on the shared browser: in parallel
+      // they only split the same two cores three ways.
+      try {
+        for (const [id, out, dur] of [[viewId, racePath, raceDuration], ["ResultsBoard", resultsPath], ["Outro", outroPath]]) {
+          const comp = await selectComposition({ serveUrl: BUNDLE, id, inputProps, puppeteerInstance });
+          await renderMedia({
+            ...renderOpts,
+            composition: { ...comp, ...(dur ? { durationInFrames: dur } : {}), width, height },
+            outputLocation: out,
+          });
+        }
+      } catch (e) {
+        // A crashed or closed browser must not poison the next export.
+        await dropBrowser();
+        throw e;
+      }
 
       const segments = [];
       const introPath = format === "short" ? INTRO_VERTICAL : INTRO;
@@ -333,7 +361,7 @@ app.post("/render", async (req, res) => {
         );
       } catch {
         execSync(
-          `ffmpeg -y -f concat -safe 0 -i ${listPath} -c:v libx264 -preset veryfast -crf 19 -tune animation -x264-params aq-mode=3:aq-strength=0.8 -pix_fmt yuv420p -movflags +faststart ${concatTarget}`,
+          `ffmpeg -y -f concat -safe 0 -i ${listPath} -c:v libx264 -preset veryfast -crf 18 -tune animation -x264-params aq-mode=3:aq-strength=0.8 -pix_fmt yuv420p -movflags +faststart ${concatTarget}`,
           { stdio: "pipe" },
         );
       }

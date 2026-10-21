@@ -5,7 +5,7 @@ import type { BenchPayload, ProviderSeries } from "./mock-data";
 import { easeOutCubic, remap, lerp } from "../lib/easing";
 import { ProviderChip } from "../lib/provider-chip";
 import { themeFor } from "../lib/theme";
-import { FilmOverlay, kenBurnsScale } from "../lib/cinematic";
+import { FilmOverlay, kenBurnsScale, labOff } from "../lib/cinematic";
 import { computeLeadChanges, BeatBanner } from "../lib/beats";
 import { LeaderCrown } from "../lib/leader-crown";
 import { RollingNumber } from "../lib/rolling-number";
@@ -478,7 +478,7 @@ const BarStack: React.FC<{
                   background: bar.color,
                   borderRadius: 8,
                   // Subtle halo on the current leader's bar (~35% alpha).
-                  boxShadow: rank === 0 ? `0 0 24px ${bar.color}59` : "none",
+                  boxShadow: rank === 0 && !labOff("glow") ? `0 0 24px ${bar.color}59` : "none",
                 }}
               />
             </div>

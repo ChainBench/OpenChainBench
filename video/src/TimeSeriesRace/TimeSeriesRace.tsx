@@ -4,7 +4,7 @@ import { z } from "zod";
 import type { BenchPayload } from "../BarChartRace/mock-data";
 import { BenchFrame, stepFloat } from "../lib/bench-frame";
 import { themeFor } from "../lib/theme";
-import { FilmOverlay, kenBurnsScale } from "../lib/cinematic";
+import { FilmOverlay, kenBurnsScale, labOff } from "../lib/cinematic";
 import { computeLeadChanges, BeatBanner } from "../lib/beats";
 import { easeOutCubic, remap } from "../lib/easing";
 import { formatValue, formatTick, unitAxisLabel } from "../lib/formatters";
@@ -320,13 +320,6 @@ export const TimeSeriesRace: React.FC<TimeSeriesRaceProps> = ({
           <clipPath id="plot-clip">
             <rect x={CHART_LEFT - 8} y={CHART_TOP - 8} width={chartW + 16} height={chartH + 16} />
           </clipPath>
-          <filter id="line-glow" x="-10%" y="-10%" width="120%" height="120%">
-            <feGaussianBlur stdDeviation="6" result="b" />
-            <feMerge>
-              <feMergeNode in="b" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
           <linearGradient id="leader-area" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor={leader.color} stopOpacity={0.22} />
             <stop offset="100%" stopColor={leader.color} stopOpacity={0} />
@@ -357,6 +350,14 @@ export const TimeSeriesRace: React.FC<TimeSeriesRaceProps> = ({
             <g key={p.slug} opacity={lineFade} clipPath="url(#plot-clip)">
               {/* Dark under-stroke: where lines cross, each keeps its edge. */}
               <path d={path} fill="none" stroke={t.background} strokeWidth={isLeader ? 10 : 8} strokeLinecap="round" strokeLinejoin="round" opacity={0.85} />
+              {/* Leader glow as two wide translucent strokes: the SVG
+                  blur filter it replaces cost 112 ms a frame. */}
+              {isLeader && !labOff("glow") && (
+                <>
+                  <path d={path} fill="none" stroke={p.color} strokeWidth={22} strokeLinecap="round" strokeLinejoin="round" opacity={0.08} />
+                  <path d={path} fill="none" stroke={p.color} strokeWidth={13} strokeLinecap="round" strokeLinejoin="round" opacity={0.16} />
+                </>
+              )}
               <path
                 d={path}
                 fill="none"
@@ -364,7 +365,6 @@ export const TimeSeriesRace: React.FC<TimeSeriesRaceProps> = ({
                 strokeWidth={isLeader ? 6 : 4}
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                filter={isLeader ? "url(#line-glow)" : undefined}
               />
               <circle cx={head.x} cy={head.y} r={8 + 16 * ring} fill="none" stroke={p.color} strokeWidth={2} opacity={(1 - ring) * (isLeader ? 0.7 : 0.4)} />
               <circle cx={head.x} cy={head.y} r={isLeader ? 9 : 7} fill={p.color} stroke={t.background} strokeWidth={2.5} />
@@ -432,7 +432,7 @@ export const TimeSeriesRace: React.FC<TimeSeriesRaceProps> = ({
                   fontWeight: 700,
                   color: p.color,
                   letterSpacing: "-0.01em",
-                  textShadow: `0 0 8px ${t.background}, 0 0 14px ${t.background}`,
+                  textShadow: labOff("tshadow") ? undefined : `0 0 8px ${t.background}, 0 0 14px ${t.background}`,
                 }}
               >
                 {p.name}
@@ -444,7 +444,7 @@ export const TimeSeriesRace: React.FC<TimeSeriesRaceProps> = ({
                   fontWeight: 600,
                   color: t.inkMuted,
                   fontVariantNumeric: "tabular-nums",
-                  textShadow: `0 0 8px ${t.background}, 0 0 14px ${t.background}`,
+                  textShadow: labOff("tshadow") ? undefined : `0 0 8px ${t.background}, 0 0 14px ${t.background}`,
                 }}
               >
                 {formatValue(valueAt(p, idx), bench.unit)}

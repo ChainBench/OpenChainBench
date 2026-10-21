@@ -58,21 +58,22 @@ const EXTRUDE: THREE.ExtrudeGeometryOptions = {
 };
 
 /**
- * A studio environment for the metal to reflect; built once per canvas.
- * Metalness stays at 0.6, not 1: the first frames render before this
- * effect runs, and a full metal with no environment renders black.
+ * A studio environment for the metal to reflect, built once per canvas
+ * and set during render: set in an effect, it landed after the first
+ * frame, so every still (one fresh page per frame) and the clip's first
+ * frame showed the metal with nothing to reflect, much darker than the
+ * rest of the clip.
  */
 const Studio: React.FC = () => {
   const { gl, scene } = useThree();
-  useEffect(() => {
+  const env = useMemo(() => {
     const pm = new THREE.PMREMGenerator(gl);
-    const env = pm.fromScene(new RoomEnvironment(), 0.04).texture;
-    scene.environment = env;
-    return () => {
-      env.dispose();
-      pm.dispose();
-    };
-  }, [gl, scene]);
+    const t = pm.fromScene(new RoomEnvironment(), 0.04).texture;
+    pm.dispose();
+    return t;
+  }, [gl]);
+  scene.environment = env;
+  useEffect(() => () => env.dispose(), [env]);
   return null;
 };
 
@@ -131,27 +132,30 @@ export const Logo3D: React.FC<{ theme: "light" | "dark" }> = () => {
       <directionalLight position={[-4, 2, 3]} intensity={1.1} color="#dfe6ff" />
       {/* Cool rim from behind, so the edges separate from the black. */}
       <directionalLight position={[-3, -1, -4]} intensity={1.6} color="#7f9cff" />
-      <pointLight position={[sweep, 0.6, 2.2]} intensity={opacity * 14} distance={7} color="#ffffff" />
+      {/* Two sweeps cross the face as the turn lands: a broad one and a
+          tight glint just behind it, the polished-steel flash. */}
+      <pointLight position={[sweep, 0.6, 2.2]} intensity={opacity * 22} distance={7} color="#ffffff" />
+      <spotLight position={[sweep * 1.2 - 0.6, 1.4, 3]} angle={0.22} penumbra={0.6} intensity={opacity * 60} distance={9} color="#ffffff" />
 
       <group position={[0.06, isPortrait ? 0.15 : 0.32, 0]} rotation={[rotX, rotY, 0]} scale={0.78 * scale}>
         <mesh geometry={ring}>
           <meshPhysicalMaterial
-            color="#d4d8de"
-            metalness={0.6}
-            roughness={0.22}
+            color="#c9ced6"
+            metalness={1}
+            roughness={0.16}
             clearcoat={1}
-            clearcoatRoughness={0.06}
-            envMapIntensity={2.2}
+            clearcoatRoughness={0.04}
+            envMapIntensity={2.6}
             transparent
             opacity={opacity}
           />
         </mesh>
         <mesh geometry={markers}>
           <meshPhysicalMaterial
-            color="#9aa0a9"
-            metalness={0.55}
-            roughness={0.32}
-            envMapIntensity={1.8}
+            color="#8b929c"
+            metalness={1}
+            roughness={0.3}
+            envMapIntensity={2.2}
             transparent
             opacity={opacity}
           />

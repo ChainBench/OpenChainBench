@@ -143,15 +143,6 @@ export const DonutRace: React.FC<DonutRaceProps> = ({ theme: mode, bench }) => {
         style={{ position: "absolute", inset: 0, pointerEvents: "none" }}
         shapeRendering="geometricPrecision"
       >
-        <defs>
-          <filter id="leader-glow" x="-30%" y="-30%" width="160%" height="160%">
-            <feGaussianBlur stdDeviation="14" result="blur" />
-            <feMerge>
-              <feMergeNode in="blur" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
-        </defs>
         {/* Subtle entrance rotation of the whole donut: -8° → 0° over 30 frames */}
         <g
           transform={`rotate(${spin} ${CENTRE_X} ${CENTRE_Y})`}
@@ -163,12 +154,13 @@ export const DonutRace: React.FC<DonutRaceProps> = ({ theme: mode, bench }) => {
             const off = 14 * easeInOutCubic(a.pop);
             return (
               <g key={a.slug} transform={`translate(${Math.cos(mid) * off} ${Math.sin(mid) * off})`}>
+                {/* Leader halo: a wider ring behind the slice at low opacity
+                    (a blur filter here was the costliest thing in the frame). */}
                 {a.pop > 0.01 && (
                   <path
-                    d={donutPath(CENTRE_X, CENTRE_Y, R_OUTER, R_INNER, a.a0, a1eff)}
+                    d={donutPath(CENTRE_X, CENTRE_Y, R_OUTER + 18, Math.max(0, R_INNER - 18), a.a0 - 0.02, a1eff + 0.02)}
                     fill={a.color}
-                    opacity={0.55 * a.pop}
-                    filter="url(#leader-glow)"
+                    opacity={0.18 * a.pop}
                   />
                 )}
                 <path
