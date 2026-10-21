@@ -21,12 +21,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Use session cookie from environment (scraping requires GUI, doesn't work on Railway)
-	if config.DefinedSessionCookie == "" {
-		fmt.Println("Warning: DEFINED_SESSION_COOKIE not set in environment")
-		fmt.Println("Codex REST and WebSocket monitors will not work")
-	} else {
-		fmt.Printf("Using DEFINED_SESSION_COOKIE from environment (length: %d)\n", len(config.DefinedSessionCookie))
+	if config.CodexAPIKey == "" {
+		fmt.Println("Warning: CODEX_API_KEY not set in environment")
+		fmt.Println("Codex WebSocket monitor will not run")
 	}
 
 	fmt.Println("Metrics will be exposed on :2112/metrics for Prometheus")
@@ -37,11 +34,6 @@ func main() {
 
 	var wg sync.WaitGroup
 	stopChan := make(chan struct{})
-
-	// In-process JWE scraper: headless Chrome inside this container scrapes defined.fi
-	// every 5 min to keep the Codex token fresh. JWE expires in ~10 min, so 5 min gives
-	// a comfortable margin. Runs only if Chrome is installed (no-op otherwise).
-	startInProcessScraper(stopChan)
 
 	wg.Add(1)
 	go func() {
