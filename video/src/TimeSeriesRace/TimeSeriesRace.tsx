@@ -186,6 +186,10 @@ export const TimeSeriesRace: React.FC<TimeSeriesRaceProps> = ({
   const labelRoom = CHART_BOTTOM - CHART_TOP - 16;
   const pitch = Math.max(30, Math.min(56, labelRoom / Math.max(1, bench.providers.length - 1)));
   const chipSize = pitch >= 48 ? 36 : 26;
+  // Label positions averaged over +-6 frames: the collision pass re-stacks
+  // labels when two lines cross, and unsmoothed they jumped up to 475 px
+  // in one frame (lab motion pass, perp-fees-bps).
+  const labelHalf = 6 / Math.max(2, (durationInFrames - 75) / Math.max(1, bench.timestamps.length));
   const nameSize = pitch >= 48 ? 20 : 17;
 
   return (
@@ -339,8 +343,8 @@ export const TimeSeriesRace: React.FC<TimeSeriesRaceProps> = ({
         name readable against whichever line colour it briefly crosses.
        */}
       <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
-        {placeLabels(bench.providers, idx, headFor, CHART_TOP + 8, CHART_BOTTOM - 8, pitch).map(
-          ({ p, x, y, anchorY }) => (
+        {smoothLabels(bench.providers, idx, headFor, CHART_TOP + 8, CHART_BOTTOM - 8, pitch, labelHalf, bench.timestamps.length - 1).map(
+          ({ p, x, y, anchorY, fade }) => (
             <div
               key={p.slug}
               style={{
@@ -350,7 +354,7 @@ export const TimeSeriesRace: React.FC<TimeSeriesRaceProps> = ({
                 display: "flex",
                 alignItems: "center",
                 gap: 10,
-                opacity: lineFade,
+                opacity: lineFade * fade,
                 fontFamily,
                 willChange: "transform",
               }}
@@ -525,25 +529,49 @@ function formatDateShort(ts: number): string {
  * subtle dashed leader line from the chip to its true head when the
  * collision pass shifted the chip away from it.
  */
-function placeLabels<P extends { slug: string }>(
+function smoothLabels<P extends { slug: string }>(
   providers: P[],
   at: number,
   headFor: (p: P, at: number) => { x: number; y: number } | null,
-  minY: number = -Infinity,
-  maxY: number = Infinity,
-  spacing: number = 56,
-): { p: P; x: number; y: number; anchorY: number }[] {
-  // Chip is 36px tall; text label sits next to it. 56px = chip + ~20px
-  // breathing room so vertically stacked chips don't crowd each other
-  // when 4-5 providers cluster at similar y (e.g. bottom of the chart
-  // when fees / latency all converge close to zero).
-  const MIN_SPACING = spacing;
-  const placed: { p: P; x: number; y: number; anchorY: number }[] = [];
-  for (const p of providers) {
-    const head = headFor(p, at);
-    if (!head) continue;
-    placed.push({ p, x: head.x, y: head.y, anchorY: head.y });
+  minY: number,
+  maxY: number,
+  spacing: number,
+  half: number,
+  lastStep: number,
+): { p: P; x: number; y: number; anchorY: number; fade: number }[] {
+  const now = placeLabels(providers, at, headFor, minY, maxY, spacing);
+  // One sample per video frame across the +-6 frame window. Sampling every
+  // other frame aliased: labels alternated 8 px up and down (Paradex).
+  const N = 12;
+  const sum = new Map<string, { y: number; n: number }>();
+  for (let k = 0; k <= N; k++) {
+    // Clamped to the series: past the last reading a head has no value
+    // and the average went NaN, which stacked every label at the top.
+    const s = Math.max(0, Math.min(lastStep, at - half + (2 * half * k) / N));
+    for (const l of placeLabels(providers, s, headFor, minY, maxY, spacing)) {
+      const e = sum.get(l.p.slug) ?? { y: 0, n: 0 };
+      e.y += l.y;
+      e.n += 1;
+      sum.set(l.p.slug, e);
+    }
   }
+  // Not re-stacked: re-sorting nearly equal smoothed values flipped two
+  // labels back and forth every frame (one pitch, l2-blocktime). While two
+  // labels cross they sit closer than the pitch; the render fades the
+  // lower one (see `fade` below), the way crossing bars do.
+  const out = now.map((l) => {
+    const e = sum.get(l.p.slug);
+    return e ? { ...l, y: e.y / e.n } : l;
+  });
+  return out.map((l) => {
+    let gap = Infinity;
+    for (const o of out) if (o !== l && l.y - o.y >= 0 && l.y - o.y < gap) gap = l.y - o.y;
+    return { ...l, fade: gap < spacing ? 0.25 + 0.75 * (gap / spacing) : 1 };
+  });
+}
+
+/** Sort by y and push labels apart to at least `spacing`, inside [minY, maxY]. */
+function resolveStack(placed: { y: number }[], minY: number, maxY: number, MIN_SPACING: number) {
   placed.sort((a, b) => a.y - b.y);
   // Downward pass: resolve overlaps.
   for (let i = 1; i < placed.length; i++) {
@@ -571,5 +599,27 @@ function placeLabels<P extends { slug: string }>(
       for (const item of placed) item.y += apply;
     }
   }
+}
+
+function placeLabels<P extends { slug: string }>(
+  providers: P[],
+  at: number,
+  headFor: (p: P, at: number) => { x: number; y: number } | null,
+  minY: number = -Infinity,
+  maxY: number = Infinity,
+  spacing: number = 56,
+): { p: P; x: number; y: number; anchorY: number }[] {
+  // Chip is 36px tall; text label sits next to it. 56px = chip + ~20px
+  // breathing room so vertically stacked chips don't crowd each other
+  // when 4-5 providers cluster at similar y (e.g. bottom of the chart
+  // when fees / latency all converge close to zero).
+  const MIN_SPACING = spacing;
+  const placed: { p: P; x: number; y: number; anchorY: number }[] = [];
+  for (const p of providers) {
+    const head = headFor(p, at);
+    if (!head) continue;
+    placed.push({ p, x: head.x, y: head.y, anchorY: head.y });
+  }
+  resolveStack(placed, minY, maxY, MIN_SPACING);
   return placed;
 }

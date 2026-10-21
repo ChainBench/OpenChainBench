@@ -11,6 +11,8 @@
 //   BAD_TEXT      NaN, undefined, Infinity, e-notation on screen     FAIL
 //   VALUE_RANGE   a value label is not a value the data can produce  FAIL
 //   EMOJI         an emoji, which the render boxes print as a box     FAIL
+//   MID_ROLL      an odometer digit caught between two digits on the    FAIL
+//                 last readable frame, when the race has stopped
 //   LOGO_EMPTY    a logo chip whose image did not load               FAIL
 //   LOGO_FALLBACK a provider with a logo shows initials instead      WARN
 //   LOGO_CONTRAST the logo barely shows on its chip                  WARN
@@ -126,6 +128,9 @@ for (const fx of fs.readdirSync(framesDir).sort()) {
     }
     const tiny = [...new Set(readable.filter((x) => x.fs < 22).map((x) => `${x.t} (${x.fs}px)`))];
     if (tiny.length) add("WARN", "TINY_TEXT", `${tiny.length} labels under 22 px, e.g. ${tiny.slice(0, 3).join(", ")}`);
+    if (key === "c") {
+      for (const x of readable) if (x.midRoll) add("FAIL", "MID_ROLL", `"${x.t}" has ${x.midRoll} digit(s) between two numbers at rest`, x.box);
+    }
     for (const x of probe.texts) {
       if (x.op < READABLE || !x.vis || x.val) continue;
       const share = area(x.vis) / area(x.box);

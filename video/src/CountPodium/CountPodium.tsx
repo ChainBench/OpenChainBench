@@ -2,7 +2,7 @@ import { AbsoluteFill, useCurrentFrame, spring, useVideoConfig } from "remotion"
 import { loadFont, fontFamily } from "@remotion/google-fonts/InterTight";
 import { z } from "zod";
 import type { BenchPayload } from "../BarChartRace/mock-data";
-import { BenchFrame, stepFloat } from "../lib/bench-frame";
+import { BenchFrame } from "../lib/bench-frame";
 import { themeFor } from "../lib/theme";
 import { FilmOverlay, kenBurnsScale } from "../lib/cinematic";
 import { easeOutCubic, remap } from "../lib/easing";
@@ -13,9 +13,9 @@ import { formatValue } from "../lib/formatters";
 loadFont("normal", { weights: ["500", "600", "700", "800"] });
 
 /**
- * Count podium — three vertical bars in podium order (bronze, silver, gold),
- * landing sequentially with an overshoot spring and confetti burst. Below
- * the podium, a receipt of remaining ranks slides in.
+ * Count podium — the final standings (latest reading) as three vertical
+ * bars in podium order, landing bronze, silver, then gold with an
+ * overshoot spring. Below the podium, a receipt of remaining ranks slides in.
  *
  * Best for higher-is-better single-count benches (network coverage, asset
  * coverage). Use MOCK_BENCH_COUNT for the cleanest read.
@@ -55,12 +55,18 @@ export const CountPodium: React.FC<CountPodiumProps> = ({
   const { fps, durationInFrames, width, height } = useVideoConfig();
   const { BASELINE_Y, BAR_W, BAR_GAP, PODIUM_BAND_LEFT, PODIUM_BAND_W, RECEIPT_TOP, RECEIPT_LEFT, RECEIPT_W } = podiumGeom(width, height);
   const t = themeFor(mode);
-  const idx = stepFloat(frame, bench.timestamps.length, durationInFrames);
-  const intIdx = Math.min(Math.floor(idx), bench.timestamps.length - 1);
-
+  // A podium is a reveal of the final standings, so it reads the latest
+  // reading and the date stays on it. It used to follow the scrolling
+  // timeline: ranks changed mid-reveal and a provider jumped from one
+  // pedestal to another in a single frame (585 px, lab motion pass).
+  const idx = bench.timestamps.length - 1;
+  const latest = (v: number[]) => {
+    for (let i = v.length - 1; i >= 0; i--) if (Number.isFinite(v[i])) return v[i];
+    return NaN;
+  };
   const enriched = bench.providers.map((p) => ({
     ...p,
-    value: p.values[intIdx],
+    value: latest(p.values),
   }));
   const sorted = [...enriched].sort((a, b) =>
     bench.higherIsBetter ? b.value - a.value : a.value - b.value,

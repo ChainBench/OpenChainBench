@@ -3,6 +3,7 @@ import { loadFont, fontFamily } from "@remotion/google-fonts/InterTight";
 import { z } from "zod";
 import type { BenchPayload } from "../BarChartRace/mock-data";
 import { BenchFrame, stepFloat } from "../lib/bench-frame";
+import { rankTable, smoothRank } from "../lib/rank";
 import { themeFor } from "../lib/theme";
 import { FilmOverlay, kenBurnsScale } from "../lib/cinematic";
 import { easeOutCubic, remap } from "../lib/easing";
@@ -71,6 +72,14 @@ export const DonutRace: React.FC<DonutRaceProps> = ({ theme: mode, bench }) => {
   });
   const total = slices.reduce((s, x) => s + x.share, 0);
   const sorted = [...slices].sort((a, b) => b.share - a.share);
+  // Legend rows sit at a continuous rank: re-sorting each reading moved a
+  // row one slot (63 px) in a single frame (lab motion pass, Maestro).
+  const legendRanks = rankTable(bench.providers.map((p) => p.values), true);
+  const legendFps = Math.max(2, (durationInFrames - 75) / Math.max(1, bench.timestamps.length));
+  const legendPos = new Map(bench.providers.map((p, j) => [p.slug, smoothRank(legendRanks, j, idx, legendFps)]));
+  const legendRows = [...slices]
+    .sort((a, b) => legendPos.get(a.slug)! - legendPos.get(b.slug)!)
+    .filter((s) => legendPos.get(s.slug)! < 8);
 
   // Fan-out timeline: each slice has a 30-frame reveal staggered by 12 frames
   const FAN_START = 30;
@@ -247,10 +256,17 @@ export const DonutRace: React.FC<DonutRaceProps> = ({ theme: mode, bench }) => {
           top: LEGEND_TOP,
           left: LEGEND_LEFT,
           width: LEGEND_W,
+          height: 8 * 62,
           fontFamily,
         }}
       >
-        {sorted.slice(0, 8).map((s, i) => {
+        {legendRows.map((s) => {
+          const pos = legendPos.get(s.slug)!;
+          const i = Math.round(pos);
+          // Crossing rows: the one moving down fades behind the one above.
+          let gapAbove = Infinity;
+          for (const [slug, q] of legendPos) if (slug !== s.slug && pos - q >= 0 && pos - q < gapAbove) gapAbove = pos - q;
+          const crossing = gapAbove < 1 ? 0.25 + 0.75 * gapAbove : 1;
           // Per-row staggered fade-in instead of one block opacity
           const rowFade = remap(frame, 30 + i * 8, 70 + i * 8, 0, 1, easeOutCubic);
           // Highlight the row of the current spotlight provider; dim the rest
@@ -261,12 +277,16 @@ export const DonutRace: React.FC<DonutRaceProps> = ({ theme: mode, bench }) => {
           <div
             key={s.slug}
             style={{
+              position: "absolute",
+              left: 0,
+              right: 0,
+              top: pos * 62,
               display: "flex",
               alignItems: "center",
               gap: 14,
               height: 62,
               borderBottom: `1px solid ${t.rule}`,
-              opacity: rowFade * dim,
+              opacity: rowFade * dim * Math.min(1, 8 - pos) * crossing,
               transform: `translateY(${(1 - rowFade) * 12}px)`,
             }}
           >

@@ -19,7 +19,11 @@ export const RollingNumber: React.FC<{
   unit: string;
   /** Wheel window height in px — pass the label's font size. */
   fontSize: number;
-}> = ({ value, unit, fontSize }) => {
+  /** The value has stopped moving: every wheel sits flat on the digit the
+   *  formatted text shows. Without it a resting 4.69 s showed its tenths
+   *  wheel caught between 6 and 7 (the carry window starts at .85). */
+  settled?: boolean;
+}> = ({ value, unit, fontSize, settled = false }) => {
   const text = formatValue(value, unit);
   const m = text.match(/\d+(?:\.\d+)?/);
   if (
@@ -76,7 +80,7 @@ export const RollingNumber: React.FC<{
         const d = Math.floor(x);
         const f = x - d;
         const carry = f > 0.85 ? (f - 0.85) / 0.15 : 0;
-        const wheel = d + carry * carry * (3 - 2 * carry); // smoothstep
+        const wheel = settled ? Number(ch) : d + carry * carry * (3 - 2 * carry); // smoothstep
         return (
           <span
             key={i}

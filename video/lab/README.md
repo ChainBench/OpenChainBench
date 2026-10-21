@@ -13,6 +13,25 @@ node lab/checks.mjs lab/out/landscape lab/fixtures                              
 node lab/review.mjs lab/out/review lab/fixtures v24=<round dir> v25=<round dir>    # strips + data.json for the review page
 ```
 
+## Motion and weight
+
+Stills see three frames. `lab/motion.mjs` renders every part as a real clip
+(every frame, through `renderMedia`, one browser per clip, about 4 min for
+62 clips on the 64-core box) with the probe on, and keeps the per-frame
+measurements; `lab/motion-checks.mjs` reads them:
+
+| Code | Level | Meaning |
+|---|---|---|
+| OVERLAP_RUN | FAIL | readable texts on top of each other for more than 0.2 s |
+| OUT_RUN | FAIL | readable text past the frame edge for more than 0.1 s |
+| JUMP | FAIL | a logo moves > 48 px in one frame, 2.5x more than around it (a teleport) |
+| FLICKER | WARN | the number of readable labels goes up and down > 1.5 times a second |
+| PROBE_GLITCH | WARN | frames a browser tab measured off screen (dropped) |
+
+`lab/weight.mjs` renders race + results + outro with the server's encoder
+settings for grain/crf variants and reports MB. Remotion's bundled ffmpeg
+has no image encoders; cut clips with `-c copy` and look at them elsewhere.
+
 ## The loop
 
 1. Change one part (a composition).

@@ -1,15 +1,19 @@
 // Build the review bundle: one strip per (format, part, fixture, round),
 // key frames side by side, with the automatic checks' FAIL boxes drawn
 // in red, plus data.json for the review page.
-// usage: node lab/review.mjs <outDir> <fixturesDir> <round>=<roundDir> [<round>=<roundDir> ...]
+// usage: node lab/review.mjs <outDir> <fixturesDir> <round>=<roundDir> [...] [motion:<round>=<motionDir>]
 //   each <roundDir> holds landscape/ and short/ from lab/stills.mjs and
-//   their checks.json from lab/checks.mjs.
+//   their checks.json from lab/checks.mjs. A motionDir holds landscape/
+//   and short/ from lab/motion.mjs with motion-checks.json: its clips are
+//   re-encoded small into <outDir>/clips (one set, the latest round's).
 import sharp from "sharp";
+import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
 const [outDir, fxDir, ...roundArgs] = process.argv.slice(2);
-const rounds = roundArgs.map((a) => { const [id, dir] = a.split("="); return { id, dir }; });
+const rounds = roundArgs.filter((a) => !a.startsWith("motion:")).map((a) => { const [id, dir] = a.split("="); return { id, dir }; });
+const motions = roundArgs.filter((a) => a.startsWith("motion:")).map((a) => { const [id, dir] = a.slice(7).split("="); return { id, dir }; });
 const PARTS = ["Intro", "BarChartRace", "TimeSeriesRace", "DistributionRace", "DonutRace", "CountPodium", "ResultsBoard", "Outro"];
 const CELL = { landscape: [640, 360], short: [270, 480] };
 const GAP = 4;
@@ -60,6 +64,30 @@ for (const r of rounds) {
     }
   }
 }
+// Motion: clips at 640 px wide for the page, plus what motion-checks found.
+for (const m of motions) {
+  for (const fmt of ["landscape", "short"]) {
+    const base = path.join(m.dir, fmt);
+    const mc = path.join(base, "motion-checks.json");
+    if (!fs.existsSync(mc)) continue;
+    for (const r of JSON.parse(fs.readFileSync(mc, "utf8"))) {
+      const src = path.join(base, r.fx, `${r.comp}.mp4`);
+      const rel = path.join("clips", fmt, r.comp, `${r.fx}.mp4`);
+      if (fs.existsSync(src)) {
+        fs.mkdirSync(path.dirname(path.join(outDir, rel)), { recursive: true });
+        // Remotion ships its own ffmpeg; the box has none.
+        execFileSync("npx", ["remotion", "ffmpeg", "-loglevel", "error", "-y", "-i", src,
+          "-vf", fmt === "short" ? "scale=360:-2" : "scale=640:-2",
+          "-c:v", "libx264", "-crf", "30", "-preset", "veryfast", "-pix_fmt", "yuv420p", "-an", "-movflags", "+faststart",
+          path.join(outDir, rel)], { stdio: "pipe" });
+      }
+      const key = `${m.id}|${fmt}|${r.comp}|${r.fx}`;
+      data.cells[key] ??= { img: null, frames: [], issues: [] };
+      data.cells[key].motion = { clip: fs.existsSync(path.join(outDir, rel)) ? rel : null, issues: r.issues, maxJumpPx: r.maxJumpPx, flickerPerSec: r.flickerPerSec };
+    }
+  }
+}
+
 // Reference frames from the brand film (#2970), copied into <outDir>/film.
 const filmDir = path.join(outDir, "film");
 data.film = fs.existsSync(filmDir) ? fs.readdirSync(filmDir).filter((f) => f.endsWith(".jpg")).sort().map((f) => `film/${f}`) : [];

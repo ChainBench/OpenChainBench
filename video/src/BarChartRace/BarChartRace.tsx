@@ -2,14 +2,14 @@ import { AbsoluteFill, useCurrentFrame, useVideoConfig } from "remotion";
 import { loadFont, fontFamily } from "@remotion/google-fonts/InterTight";
 import { z } from "zod";
 import type { BenchPayload, ProviderSeries } from "./mock-data";
-import { easeOutCubic, easeInOutCubic, remap, lerp } from "../lib/easing";
+import { easeOutCubic, remap, lerp } from "../lib/easing";
 import { ProviderChip } from "../lib/provider-chip";
 import { themeFor } from "../lib/theme";
 import { FilmOverlay, kenBurnsScale } from "../lib/cinematic";
 import { computeLeadChanges, BeatBanner } from "../lib/beats";
 import { LeaderCrown } from "../lib/leader-crown";
-import { formatValue } from "../lib/formatters";
 import { RollingNumber } from "../lib/rolling-number";
+import { rankTable, smoothRank } from "../lib/rank";
 
 loadFont("normal", { weights: ["500", "600", "700", "800"] });
 
@@ -26,7 +26,7 @@ loadFont("normal", { weights: ["500", "600", "700", "800"] });
  * Motion design choices (from the deepthink brief):
  *   - top 8 visible, smooth swap-in / swap-out
  *   - 0.5s per data point at 30 fps -> 15 frames per step
- *   - rank order eased with cubic in-out so swaps feel deliberate
+ *   - rank is continuous and smoothed over ~0.6 s, so swaps glide
  *   - bar value labels animate the number too, not just the width
  */
 
@@ -139,68 +139,36 @@ export const BarChartRace: React.FC<BarChartRaceProps> = ({ theme, bench, beats 
   const upperIdx = Math.min(lowerIdx + 1, bench.timestamps.length - 1);
   const stepFrac = stepIndex - lowerIdx;
 
-  // Interpolate each provider's value between the two adjacent steps.
-  // Using ease so bar widths feel like they're tracking, not blinking.
-  const eased = easeInOutCubic(stepFrac);
+  // Values move linearly between readings. An ease per step stopped and
+  // restarted every bar six times a second (61 readings in ~10 s).
   const liveProviders = bench.providers.map((p) => ({
     ...p,
-    value: lerp(p.values[lowerIdx], p.values[upperIdx], eased),
+    value: lerp(p.values[lowerIdx], p.values[upperIdx], stepFrac),
   }));
 
-  // Sort + rank. Top providers go to the top of the visible list. Crucially
-  // we ALSO compute the rank one step earlier so the BarStack can tween a
-  // bar's Y position when it swaps ranks — without this the bars snap from
-  // one row to the next, which is the classic "broken bar chart race" look.
-  const sorted = [...liveProviders].sort((a, b) =>
-    bench.higherIsBetter ? b.value - a.value : a.value - b.value,
+  // Row position is a continuous rank. The old FLIP interpolated from the
+  // previous step's rank to the CURRENT sorted index, which flips mid-step
+  // when two interpolated values cross: rows teleported up to 418 px in a
+  // single frame (lab motion pass, rpc-cluster-12). Here each provider's
+  // rank at every reading is fixed, the position interpolates between
+  // readings, and a 0.6 s moving average turns rank flips into glides.
+  const ranks = rankTable(bench.providers.map((p) => p.values), bench.higherIsBetter);
+  const posBySlug = new Map(
+    bench.providers.map((p, i) => [p.slug, smoothRank(ranks, i, stepIndex, FRAMES_PER_STEP)]),
   );
-  const visible = sorted.slice(0, VISIBLE_BARS);
-  const maxValue = Math.max(...visible.map((p) => p.value));
-
-  // Previous-step ranks for FLIP-style swap animation. At the timeline tail
-  // (`lowerIdx === upperIdx === N-1`) there's no remaining transition to
-  // animate AND `swapEase` collapses to 0 — without this guard the bars
-  // would be positioned at the second-to-last step's order while their
-  // values display the final step's values. That looked like the race
-  // "loops between the last two days" with no clean stop. Snap `prevIdx`
-  // to `lowerIdx` so `prevSorted == current sorted` and the rank tween is
-  // a no-op pinning bars at their final ranks.
-  const prevIdx =
-    upperIdx === lowerIdx ? lowerIdx : Math.max(0, lowerIdx - 1);
-  const prevSorted = [...bench.providers]
-    .map((p) => ({ ...p, value: p.values[prevIdx] }))
-    .sort((a, b) => (bench.higherIsBetter ? b.value - a.value : a.value - b.value))
-    .slice(0, VISIBLE_BARS);
-  const prevRankBySlug = new Map(prevSorted.map((p, i) => [p.slug, i]));
+  const sorted = [...liveProviders].sort((a, b) => posBySlug.get(a.slug)! - posBySlug.get(b.slug)!);
+  // A row is drawn while any part of it is inside the top 8; it fades as
+  // it slides under the last slot.
+  const visible = sorted.filter((p) => posBySlug.get(p.slug)! < VISIBLE_BARS);
+  // Scale: a row sliding out weighs less as it leaves, so the axis does
+  // not rescale in one frame when it disappears.
+  const maxValue = Math.max(
+    ...visible.map((p) => p.value * Math.min(1, VISIBLE_BARS - posBySlug.get(p.slug)!)),
+    ...visible.slice(0, 1).map((p) => p.value),
+  );
 
   // Title + scaffolding fade in over the first 15 frames.
   const introFade = remap(frame, 0, HEAD_FRAMES, 0, 1, easeOutCubic);
-
-  // ── Delta badges (Polymarket-style) ────────────────────────────────
-  // On each day transition, show the day-over-day change next to each
-  // bar's value: fade in over ~8 frames at the start of the step,
-  // persist, then fade out just before the next step begins. At the
-  // timeline tail (no next step) the final day's delta persists.
-  const frameInStep = stepFrame - lowerIdx * FRAMES_PER_STEP;
-  const atTail = upperIdx === lowerIdx;
-  const deltaFrom = atTail ? Math.max(0, lowerIdx - 1) : lowerIdx;
-  const deltaTo = atTail ? lowerIdx : upperIdx;
-  const deltaFadeIn = remap(
-    frameInStep,
-    0,
-    Math.min(8, FRAMES_PER_STEP * 0.4),
-    0,
-    1,
-    easeOutCubic,
-  );
-  const deltaFadeOut = atTail
-    ? 1
-    : remap(frameInStep, FRAMES_PER_STEP * 0.72, FRAMES_PER_STEP - 1, 1, 0);
-  const deltaOpacity =
-    deltaTo === deltaFrom ? 0 : Math.min(deltaFadeIn, deltaFadeOut) * introFade;
-  const deltaBySlug = new Map(
-    bench.providers.map((p) => [p.slug, p.values[deltaTo] - p.values[deltaFrom]]),
-  );
 
   // Current date display. Linear between timestamps so the ticker reads
   // continuously like a clock.
@@ -273,24 +241,16 @@ export const BarChartRace: React.FC<BarChartRaceProps> = ({ theme, bench, beats 
         unit={bench.unit}
         theme={t}
         opacity={introFade}
-        prevRankBySlug={prevRankBySlug}
-        swapEase={eased}
+        posBySlug={posBySlug}
         layout={L}
-        deltaBySlug={deltaBySlug}
-        deltaOpacity={deltaOpacity}
-        higherIsBetter={bench.higherIsBetter}
+        settled={stepIndexRaw >= bench.timestamps.length - 1}
       />
 
-      {/* 👑 Crown above the current #1 — tracks rank swaps via the same FLIP
-          tween BarStack uses, so the crown glides between providers instead
-          of teleporting on overtake. */}
+      {/* Crown above the leading row, riding the same continuous rank. */}
       {visible[0] && (() => {
-        const leader = visible[0];
-        const prev = prevRankBySlug.get(leader.slug) ?? visible.length;
-        const animatedRank = prev + (0 - prev) * eased;
         // Chip center inside the LABEL_W block: rank-num(32) + gap(14) + chip/2
         const chipCenterX = L.pad + 32 + 14 + L.chipSize / 2;
-        const y = L.topOffset + animatedRank * L.rowH;
+        const y = L.topOffset + posBySlug.get(visible[0].slug)! * L.rowH;
         return <LeaderCrown frame={frame} x={chipCenterX} y={y - 44} size={36} />;
       })()}
 
@@ -352,10 +312,9 @@ export const BarChartRace: React.FC<BarChartRaceProps> = ({ theme, bench, beats 
 };
 
 /**
- * Vertical stack of horizontal bars. Each bar's vertical position tweens
- * between its old rank and new rank as the race progresses; widths tween
- * with `value`. Both motions use the same eased step fraction so the swap
- * feels coherent.
+ * Vertical stack of horizontal bars at their continuous rank. When two
+ * rows cross, the one moving down fades behind the one moving up, so the
+ * two names and values never read on top of each other.
  */
 const BarStack: React.FC<{
   bars: (ProviderSeries & { value: number })[];
@@ -363,29 +322,11 @@ const BarStack: React.FC<{
   unit: string;
   theme: import("../lib/theme").Theme;
   opacity: number;
-  /** Where each provider sat on the previous step (for swap tween). */
-  prevRankBySlug: Map<string, number>;
-  /** 0..1 progress through the current step, used to ease swaps. */
-  swapEase: number;
+  posBySlug: Map<string, number>;
   layout: ReturnType<typeof layoutFor>;
-  /** Day-over-day delta per provider for the current step. */
-  deltaBySlug: Map<string, number>;
-  /** Shared fade for the delta badges (in → hold → out per step). */
-  deltaOpacity: number;
-  higherIsBetter: boolean;
-}> = ({
-  bars,
-  maxValue,
-  unit,
-  theme: t,
-  opacity,
-  prevRankBySlug,
-  swapEase,
-  layout: L,
-  deltaBySlug,
-  deltaOpacity,
-  higherIsBetter,
-}) => {
+  /** The race is over: values are final, odometers rest on their digits. */
+  settled: boolean;
+}> = ({ bars, maxValue, unit, theme: t, opacity, posBySlug, layout: L, settled }) => {
   const ROW_H = L.rowH;
   const TOP_OFFSET = L.topOffset;
   const LEFT_PAD = L.pad;
@@ -393,35 +334,22 @@ const BarStack: React.FC<{
   const LABEL_W = L.labelW;
   const VALUE_W = L.valueW;
 
-  // Slight back-out overshoot for bars entering the visible top-8, so
-  // they land with a touch of life instead of a dead stop. c1 kept low
-  // (~0.9) for a subtle ~5-8px overshoot at typical row heights.
-  const backOut = (x: number): number => {
-    const c1 = 0.9;
-    const c3 = c1 + 1;
-    const u = Math.min(1, Math.max(0, x)) - 1;
-    return 1 + c3 * u * u * u + c1 * u * u;
-  };
-
   return (
     <>
-      {bars.map((bar, idx) => {
+      {bars.map((bar) => {
+        const pos = posBySlug.get(bar.slug)!;
         const widthPct = Math.max(2, (bar.value / maxValue) * 100);
-        // FLIP: interpolate Y position from previous rank to current rank
-        // using the step's eased fraction so swaps glide rather than snap.
-        // Providers that just entered the visible window animate from the
-        // last visible slot (so they slide IN, not pop in) — with a fade
-        // on first appearance and a slight overshoot on the landing.
-        const isEntering = !prevRankBySlug.has(bar.slug);
-        const prevRank = prevRankBySlug.get(bar.slug) ?? bars.length;
-        const rankEase = isEntering ? backOut(swapEase) : swapEase;
-        const animatedRank = prevRank + (idx - prevRank) * rankEase;
-        const y = TOP_OFFSET + animatedRank * ROW_H;
-        const enterFade = isEntering
-          ? remap(swapEase, 0, 0.6, 0, 1, easeOutCubic)
-          : 1;
-        const delta = deltaBySlug.get(bar.slug) ?? 0;
-        const improving = higherIsBetter ? delta > 0 : delta < 0;
+        const y = TOP_OFFSET + pos * ROW_H;
+        const rank = Math.round(pos);
+        const leaving = Math.max(0, Math.min(1, VISIBLE_BARS - pos));
+        // Distance to the nearest row above: under one row means crossing.
+        let gapAbove = Infinity;
+        for (const other of bars) {
+          if (other.slug === bar.slug) continue;
+          const d = pos - posBySlug.get(other.slug)!;
+          if (d >= 0 && d < gapAbove) gapAbove = d;
+        }
+        const crossing = gapAbove < 1 ? 0.25 + 0.75 * gapAbove : 1;
 
         return (
           <div
@@ -432,8 +360,8 @@ const BarStack: React.FC<{
               left: LEFT_PAD,
               right: RIGHT_PAD,
               height: Math.min(ROW_H - 12, 78),
-              opacity: opacity * enterFade,
-              transition: "none", // Remotion drives motion via frame, not CSS
+              opacity: opacity * leaving * crossing,
+              zIndex: 100 - rank,
               display: "flex",
               alignItems: "center",
               gap: 24,
@@ -453,12 +381,12 @@ const BarStack: React.FC<{
                   width: 32,
                   fontSize: L.rankSize,
                   fontWeight: 700,
-                  color: idx === 0 ? bar.color : t.inkFaint,
+                  color: rank === 0 ? bar.color : t.inkFaint,
                   fontVariantNumeric: "tabular-nums",
                   textAlign: "right",
                 }}
               >
-                {String(idx + 1).padStart(2, "0")}
+                {String(rank + 1).padStart(2, "0")}
               </span>
               <ProviderChip name={bar.name} color={bar.color} logo={bar.logo} size={L.chipSize} theme={t} />
               <span
@@ -494,12 +422,13 @@ const BarStack: React.FC<{
                   background: bar.color,
                   borderRadius: 8,
                   // Subtle halo on the current leader's bar (~35% alpha).
-                  boxShadow: idx === 0 ? `0 0 24px ${bar.color}59` : "none",
+                  boxShadow: rank === 0 ? `0 0 24px ${bar.color}59` : "none",
                 }}
               />
             </div>
 
-            {/* Animated value label + day-over-day delta badge */}
+            {/* Animated value label. The per-reading delta badges are gone:
+                at six readings a second they flashed ten times a second. */}
             <div
               style={{
                 width: VALUE_W,
@@ -512,26 +441,7 @@ const BarStack: React.FC<{
                 letterSpacing: "-0.01em",
               }}
             >
-              <RollingNumber value={bar.value} unit={unit} fontSize={L.valueSize} />
-              {delta !== 0 && (
-                <div
-                  style={{
-                    position: "absolute",
-                    right: 0,
-                    top: -22,
-                    fontSize: 17,
-                    fontWeight: 600,
-                    color: improving ? "#4ade80" : "#f87171",
-                    opacity: deltaOpacity,
-                    fontVariantNumeric: "tabular-nums",
-                    letterSpacing: "-0.01em",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {delta > 0 ? "+" : "-"}
-                  {formatValue(Math.abs(delta), unit)}
-                </div>
-              )}
+              <RollingNumber value={bar.value} unit={unit} fontSize={L.valueSize} settled={settled} />
             </div>
           </div>
         );

@@ -3,6 +3,7 @@ import { loadFont, fontFamily } from "@remotion/google-fonts/InterTight";
 import { z } from "zod";
 import type { BenchPayload } from "../BarChartRace/mock-data";
 import { BenchFrame, stepFloat } from "../lib/bench-frame";
+import { rankTable, smoothRank } from "../lib/rank";
 import { themeFor } from "../lib/theme";
 import { FilmOverlay, kenBurnsScale } from "../lib/cinematic";
 import { easeOutCubic, easeInOutCubic, remap } from "../lib/easing";
@@ -75,9 +76,15 @@ export const DistributionRace: React.FC<DistributionRaceProps> = ({
     return { ...p, lo: quantile(seen, 0.1), med: quantile(seen, 0.5), hi: quantile(seen, 0.9) };
   });
 
-  const sorted = [...enriched].sort((a, b) =>
-    bench.higherIsBetter ? b.med - a.med : a.med - b.med,
+  // Order by median so far, on a continuous rank: re-sorting each frame
+  // made rows jump up to 148 px when two medians crossed.
+  const medSoFar = bench.providers.map((p) =>
+    p.values.map((_, i) => quantile(finite(p.values.slice(0, i + 1)).sort((a, b) => a - b), 0.5)),
   );
+  const ranks = rankTable(medSoFar, bench.higherIsBetter);
+  const framesPerStep = Math.max(2, (durationInFrames - 75) / Math.max(1, bench.timestamps.length));
+  const posBySlug = new Map(bench.providers.map((p, j) => [p.slug, smoothRank(ranks, j, idx, framesPerStep)]));
+  const sorted = [...enriched].sort((a, b) => posBySlug.get(a.slug)! - posBySlug.get(b.slug)!);
 
   // One axis for the whole race (from the full window), so rows never
   // jump as the range fills in. Log when the field spans more than 30x:
@@ -134,7 +141,14 @@ export const DistributionRace: React.FC<DistributionRaceProps> = ({
         const popProgress = remap(frame, rowStart + 12, rowStart + REVEAL_FRAMES, 0, 1, easeInOutCubic);
         if (rowProgress <= 0) return null;
 
-        const y = TOP + i * rowH + rowH / 2;
+        const pos = posBySlug.get(p.slug)!;
+        const y = TOP + pos * rowH + rowH / 2;
+        // Crossing rows: the one moving down fades behind the one above.
+        let gapAbove = Infinity;
+        for (const [slug, q] of posBySlug) {
+          if (slug !== p.slug && pos - q >= 0 && pos - q < gapAbove) gapAbove = pos - q;
+        }
+        const crossing = gapAbove < 1 ? 0.25 + 0.75 * gapAbove : 1;
         const xLo = valueToX(p.lo);
         const xMed = valueToX(p.med);
         const xHi = valueToX(p.hi);
@@ -156,7 +170,7 @@ export const DistributionRace: React.FC<DistributionRaceProps> = ({
         );
 
         return (
-          <div key={p.slug}>
+          <div key={p.slug} style={{ opacity: crossing }}>
             {/* Rank + provider chip + name */}
             <div
               style={{
@@ -181,7 +195,7 @@ export const DistributionRace: React.FC<DistributionRaceProps> = ({
                   fontWeight: 600,
                 }}
               >
-                {String(i + 1).padStart(2, "0")}
+                {String(Math.round(pos) + 1).padStart(2, "0")}
               </span>
               <ProviderChip name={p.name} color={p.color} logo={p.logo} size={chip} theme={t} />
               <span
@@ -258,6 +272,7 @@ export const DistributionRace: React.FC<DistributionRaceProps> = ({
           position: "absolute",
           top: TOP - 40,
           left: CHART_LEFT,
+          maxWidth: CHART_RIGHT - CHART_LEFT,
           fontSize: 14,
           color: t.inkFaint,
           letterSpacing: "0.16em",
@@ -266,7 +281,7 @@ export const DistributionRace: React.FC<DistributionRaceProps> = ({
           fontFamily,
         }}
       >
-        Spread of readings so far · bar = 10th to 90th percentile · dot and figure = median{useLog ? " · log scale" : ""}
+        Readings so far · bar 10th–90th pct · dot = median{useLog ? " · log scale" : ""}
       </div>
       <FilmOverlay />
     </AbsoluteFill>
