@@ -74,7 +74,7 @@ methodology:
 findings:
   - "{{best_name}} currently leads at {{best_p50}} across all chains and regions, across {{count}} measured providers. Rankings shift per chain tab: a provider's edge placement and per-chain engine split matter more than its global average."
   - "{{best_name}} leads at {{best_p50}} and {{worst_name}} trails at {{worst_p50}} on the identical basket. What the top of this table has in common is one HTTP round trip against a per-chain engine: no cross-chain route search, no solver auction, no maker network to poll."
-  - "{{name:lifi}} is the breadth case at {{p50:lifi}}: a cross-chain router searching many underlying venues per quote. {{name:nordstern}} reaches 121 chains and returns {{p50:nordstern}}, so coverage alone does not explain the slow end of this table."
+  - "{{name:lifi}} is the breadth case at {{p50:lifi}}: its published tool list carries more than forty venues, including seven providers measured separately here, and that search is what the clock catches. {{name:nordstern}} reaches 121 chains and returns {{p50:nordstern}}, so coverage alone does not explain the slow end of this table."
   - "Bebop is RFQ. The output amount it quotes is already net of fees because settlement is gasless for the taker. The latency you see is the maker network resolving the price, not a public mempool route search."
 
 faq:
