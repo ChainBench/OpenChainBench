@@ -81,6 +81,10 @@ func (p *ParaSwapProvider) Probe(ctx context.Context, pair TestPair) (Quote, err
 		PriceRoute struct {
 			DestAmount  string `json:"destAmount"`
 			BlockNumber uint64 `json:"blockNumber"`
+			// ParaSwap reports units and a USD cost but no gas price, so
+			// only the units are read; the USD figure carries ParaSwap's
+			// own price assumption and is not comparable with anyone's.
+			GasCost any `json:"gasCost"`
 		} `json:"priceRoute"`
 	}
 	if err := json.Unmarshal(body, &r); err != nil {
@@ -92,6 +96,7 @@ func (p *ParaSwapProvider) Probe(ctx context.Context, pair TestPair) (Quote, err
 		return failed(), fmt.Errorf("no_route")
 	}
 	quote := okQuote(ms, r.PriceRoute.DestAmount)
+	quote.GasUnits = uintAny(r.PriceRoute.GasCost)
 	quote.Block = r.PriceRoute.BlockNumber
 	return quote, nil
 }

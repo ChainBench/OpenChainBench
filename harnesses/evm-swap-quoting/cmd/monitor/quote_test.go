@@ -256,3 +256,86 @@ func TestAlreadyScaledQuoteIsComparedOnTheSameScale(t *testing.T) {
 		t.Errorf("KyberSwap should trail by a fraction of a bp, got %v", got)
 	}
 }
+
+// The six providers that report gas do not agree on how to spell a number.
+// KyberSwap quotes it as a string, 0x as a JSON number, and LI.FI's
+// transaction request carries a hex gas price. Each of those is a real shape
+// observed on 2026-10-21, and any of them is free to change without notice,
+// which is why the field is decoded as `any` and converted here instead of
+// being typed per adapter.
+func TestNumAnyReadsEveryShapeProvidersActuallySend(t *testing.T) {
+	cases := []struct {
+		name string
+		in   any
+		want float64
+	}{
+		{"0x sends a JSON number", float64(451773), 451773},
+		{"kyberswap sends a string", "715498", 715498},
+		{"a string with padding", "  182300  ", 182300},
+		{"lifi sends hex on the tx request", "0x5b8d80", 6000000},
+		{"a decimal string", "7187357.0", 7187357},
+		{"absent", nil, 0},
+		{"empty string", "", 0},
+		{"not a number", "unknown", 0},
+		{"negative is not a gas value", float64(-1), 0},
+		{"a bool is not a gas value", true, 0},
+	}
+	for _, c := range cases {
+		if got := numAny(c.in); got != c.want {
+			t.Errorf("%s: numAny(%#v) = %v, want %v", c.name, c.in, got, c.want)
+		}
+	}
+}
+
+func TestNumAnyRejectsValuesThatWouldPoisonAGauge(t *testing.T) {
+	// A NaN reaching a Prometheus gauge is not an error anywhere; it makes
+	// every aggregate over that series NaN, so the whole column dies quietly.
+	for _, in := range []any{math.NaN(), math.Inf(1), math.Inf(-1), "NaN", "Inf"} {
+		if got := numAny(in); got != 0 {
+			t.Errorf("numAny(%#v) = %v, want 0", in, got)
+		}
+	}
+}
+
+func TestUintAnyRefusesImplausibleGas(t *testing.T) {
+	// A block gas limit is tens of millions. Anything past 1e18 is a field
+	// that is not gas at all, most likely a wei amount read from the wrong
+	// key, and publishing it would wreck the axis for every other provider.
+	if got := uintAny(float64(1e19)); got != 0 {
+		t.Errorf("uintAny(1e19) = %d, want 0", got)
+	}
+	if got := uintAny("689162"); got != 689162 {
+		t.Errorf("uintAny(\"689162\") = %d, want 689162", got)
+	}
+	if got := uintAny(float64(0)); got != 0 {
+		t.Errorf("uintAny(0) = %d, want 0", got)
+	}
+}
+
+// Gas units and gas price are published as separate series on purpose, and
+// each is dropped rather than zeroed when the provider is silent. A zero would
+// read as "this route is free" on a board about cost.
+func TestRecordQuoteDropsGasSeriesWhenTheProviderIsSilent(t *testing.T) {
+	reg := prometheus.NewRegistry()
+	old := quoteGasUnits
+	quoteGasUnits = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{Name: "evm_swap_quote_gas_units"},
+		[]string{"provider", "chain", "region", "pair"},
+	)
+	reg.MustRegister(quoteGasUnits)
+	defer func() { quoteGasUnits = old }()
+
+	pair := usdtPair()
+	withGas := Quote{OK: true, OutAmount: "2400000000", FeeBps: -1, GasUnits: 451773}
+	quoteGasUnits.WithLabelValues("zerox", pair.Chain, "us-east",
+		pair.TokenInSym+"/"+pair.TokenOutSym).Set(float64(withGas.GasUnits))
+	if n := testutil.CollectAndCount(quoteGasUnits); n != 1 {
+		t.Fatalf("after a quote that reports gas: %d series, want 1", n)
+	}
+
+	quoteGasUnits.DeleteLabelValues("zerox", pair.Chain, "us-east",
+		pair.TokenInSym+"/"+pair.TokenOutSym)
+	if n := testutil.CollectAndCount(quoteGasUnits); n != 0 {
+		t.Fatalf("after a quote that reports none: %d series, want 0", n)
+	}
+}

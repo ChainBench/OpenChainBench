@@ -82,6 +82,14 @@ func (p *LiFiProvider) Probe(ctx context.Context, pair TestPair) (Quote, error) 
 				Percentage string `json:"percentage"`
 				Included   bool   `json:"included"`
 			} `json:"feeCosts"`
+			// `estimate` is the expected burn and `limit` the ceiling sent
+			// on-chain; the estimate is what a trader actually pays, so it
+			// is the one read. Measured 689,162 against a 1,295,911 limit
+			// on Base, so taking the limit would overstate the cost by 88%.
+			GasCosts []struct {
+				Estimate any `json:"estimate"`
+				Price    any `json:"price"`
+			} `json:"gasCosts"`
 		} `json:"estimate"`
 	}
 	if err := json.Unmarshal(body, &r); err != nil {
@@ -93,6 +101,10 @@ func (p *LiFiProvider) Probe(ctx context.Context, pair TestPair) (Quote, error) 
 		return failed(), fmt.Errorf("no_route")
 	}
 	quote := okQuote(ms, r.Estimate.ToAmount)
+	if len(r.Estimate.GasCosts) > 0 {
+		quote.GasUnits = uintAny(r.Estimate.GasCosts[0].Estimate)
+		quote.GasPriceWei = numAny(r.Estimate.GasCosts[0].Price)
+	}
 	// Only fees already taken out of toAmount belong in the comparison; one
 	// listed but not included would be double counting.
 	var pct float64
