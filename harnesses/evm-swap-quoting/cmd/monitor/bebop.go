@@ -104,6 +104,10 @@ func (p *BebopProvider) Probe(ctx context.Context, pair TestPair) (Quote, error)
 				BuyTokens map[string]struct {
 					Amount string `json:"amount"`
 				} `json:"buyTokens"`
+				Tx struct {
+					Gas      any `json:"gas"`
+					GasPrice any `json:"gasPrice"`
+				} `json:"tx"`
 			} `json:"quote"`
 		} `json:"routes"`
 		Errors map[string]any `json:"errors"`
@@ -127,5 +131,10 @@ func (p *BebopProvider) Probe(ctx context.Context, pair TestPair) (Quote, error)
 		RecordNoRoute(p.Slug(), pair.Chain, p.region)
 		return failed(), fmt.Errorf("zero_out")
 	}
-	return okQuote(ms, amount), nil
+	quote := okQuote(ms, amount)
+	// RFQ settlement, so this is the taker's cost to accept the maker's
+	// signed quote rather than the cost of a route search.
+	quote.GasUnits = uintAny(r.Routes[0].Quote.Tx.Gas)
+	quote.GasPriceWei = numAny(r.Routes[0].Quote.Tx.GasPrice)
+	return quote, nil
 }

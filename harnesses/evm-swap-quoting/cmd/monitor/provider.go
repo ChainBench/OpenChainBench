@@ -60,6 +60,34 @@ type Quote struct {
 	// the same market, which matters because the market drifts 30 to 37 bps
 	// over five minutes while providers sit within 25 bps of each other.
 	Block uint64
+
+	// GasUnits is the gas the provider estimates its own route will burn,
+	// 0 when it does not say. This is a property of the route: a longer
+	// path through more pools really does cost more to execute, and on one
+	// 0.1 ETH to USDC swap on Base the estimates ranged from ParaSwap's
+	// 182,300 to KyberSwap's 715,498, which is a real difference between
+	// the two and not noise.
+	//
+	// Self-reported, and the page says so. Ground truth would be
+	// eth_estimateGas against the provider's own calldata, which needs
+	// swap-tier credentials we do not hold everywhere.
+	GasUnits uint64
+
+	// GasPriceWei is the gas price the provider assumed, 0 when it does not
+	// say. Kept apart from GasUnits on purpose: it is a guess about the
+	// chain, not about the route. The same three providers above assumed
+	// 6,000,000, 7,187,357 and 7,294,509 wei for Base within one minute, so
+	// a cost computed with each provider's own price would rank the guesses
+	// and reward whoever assumed the cheapest chain. Any normalised cost
+	// multiplies everyone's units by one price we read ourselves; this
+	// field exists to show the spread, not to be multiplied.
+	GasPriceWei float64
+
+	// GasCostOut is the gas cost already expressed in output-token units,
+	// for the one provider that does the conversion itself (Route returns
+	// gasCostOut and netOut). 0 when absent. Not comparable across
+	// providers without knowing which gas price produced it.
+	GasCostOut string
 }
 
 // failed builds the Quote for a probe that produced no usable amount.

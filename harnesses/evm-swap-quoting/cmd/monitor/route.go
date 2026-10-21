@@ -66,6 +66,12 @@ func (p *RouteProvider) Probe(ctx context.Context, pair TestPair) (Quote, error)
 	var r struct {
 		OK        bool   `json:"ok"`
 		AmountOut string `json:"amountOut"`
+		// Route is the only provider that converts the gas cost into
+		// output-token units itself. Recorded as reported; it carries
+		// Route's own gas-price assumption, so it is not comparable with
+		// anyone else's without normalising on one price.
+		Gas        any    `json:"gas"`
+		GasCostOut string `json:"gasCostOut"`
 	}
 	if err := json.Unmarshal(body, &r); err != nil {
 		RecordOtherError(p.Slug(), pair.Chain, p.region, "parse")
@@ -75,5 +81,8 @@ func (p *RouteProvider) Probe(ctx context.Context, pair TestPair) (Quote, error)
 		RecordNoRoute(p.Slug(), pair.Chain, p.region)
 		return failed(), fmt.Errorf("no_route")
 	}
-	return okQuote(ms, r.AmountOut), nil
+	quote := okQuote(ms, r.AmountOut)
+	quote.GasUnits = uintAny(r.Gas)
+	quote.GasCostOut = r.GasCostOut
+	return quote, nil
 }

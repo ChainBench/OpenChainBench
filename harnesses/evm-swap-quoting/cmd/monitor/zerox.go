@@ -82,6 +82,8 @@ func (p *ZeroExProvider) Probe(ctx context.Context, pair TestPair) (Quote, error
 				Token  string `json:"token"`
 			} `json:"zeroExFee"`
 		} `json:"fees"`
+		Gas      any `json:"gas"`
+		GasPrice any `json:"gasPrice"`
 	}
 	if err := json.Unmarshal(body, &r); err != nil {
 		RecordOtherError(p.Slug(), pair.Chain, p.region, "parse")
@@ -92,6 +94,8 @@ func (p *ZeroExProvider) Probe(ctx context.Context, pair TestPair) (Quote, error
 		return failed(), fmt.Errorf("no_route")
 	}
 	quote := okQuote(ms, r.BuyAmount)
+	quote.GasUnits = uintAny(r.Gas)
+	quote.GasPriceWei = numAny(r.GasPrice)
 	if n, err := strconv.ParseUint(r.BlockNumber, 10, 64); err == nil {
 		quote.Block = n
 	}

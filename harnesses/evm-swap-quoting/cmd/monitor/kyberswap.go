@@ -71,6 +71,8 @@ func (p *KyberSwapProvider) Probe(ctx context.Context, pair TestPair) (Quote, er
 		Data struct {
 			RouteSummary struct {
 				AmountOut string `json:"amountOut"`
+				Gas       any    `json:"gas"`
+				GasPrice  any    `json:"gasPrice"`
 			} `json:"routeSummary"`
 		} `json:"data"`
 	}
@@ -86,5 +88,8 @@ func (p *KyberSwapProvider) Probe(ctx context.Context, pair TestPair) (Quote, er
 		RecordNoRoute(p.Slug(), pair.Chain, p.region)
 		return failed(), fmt.Errorf("no_route")
 	}
-	return okQuote(ms, r.Data.RouteSummary.AmountOut), nil
+	quote := okQuote(ms, r.Data.RouteSummary.AmountOut)
+	quote.GasUnits = uintAny(r.Data.RouteSummary.Gas)
+	quote.GasPriceWei = numAny(r.Data.RouteSummary.GasPrice)
+	return quote, nil
 }

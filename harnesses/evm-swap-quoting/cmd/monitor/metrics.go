@@ -133,6 +133,8 @@ var (
 	quoteFeeBps    *prometheus.GaugeVec
 	quoteBlock     *prometheus.GaugeVec
 	quoteTickUnix  *prometheus.GaugeVec
+	quoteGasUnits  *prometheus.GaugeVec
+	quoteGasPrice  *prometheus.GaugeVec
 )
 
 func initQuoteOutput() {
@@ -162,6 +164,24 @@ func initQuoteOutput() {
 		[]string{"provider", "chain", "region", "pair"},
 	)
 	prometheus.MustRegister(quoteBlock)
+
+	quoteGasUnits = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "evm_swap_quote_gas_units",
+			Help: "Gas the provider estimates its own route will burn. A property of the route, so comparable across providers. Self-reported: ground truth would be eth_estimateGas on the provider's calldata. Absent when the provider does not say.",
+		},
+		[]string{"provider", "chain", "region", "pair"},
+	)
+	prometheus.MustRegister(quoteGasUnits)
+
+	quoteGasPrice = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "evm_swap_quote_gas_price_wei",
+			Help: "Gas price the provider assumed, in wei. A guess about the chain and not about the route, so it must NOT be multiplied by that provider's own units to rank cost: three providers assumed 6.0M, 7.19M and 7.29M for Base within one minute. Published to show that spread.",
+		},
+		[]string{"provider", "chain", "region", "pair"},
+	)
+	prometheus.MustRegister(quoteGasPrice)
 
 	quoteTickUnix = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
@@ -200,6 +220,16 @@ func RecordQuote(provider string, pair TestPair, region string, q Quote) {
 		quoteBlock.WithLabelValues(provider, pair.Chain, region, pairLabel).Set(float64(q.Block))
 	} else {
 		quoteBlock.DeleteLabelValues(provider, pair.Chain, region, pairLabel)
+	}
+	if q.GasUnits > 0 {
+		quoteGasUnits.WithLabelValues(provider, pair.Chain, region, pairLabel).Set(float64(q.GasUnits))
+	} else {
+		quoteGasUnits.DeleteLabelValues(provider, pair.Chain, region, pairLabel)
+	}
+	if q.GasPriceWei > 0 {
+		quoteGasPrice.WithLabelValues(provider, pair.Chain, region, pairLabel).Set(q.GasPriceWei)
+	} else {
+		quoteGasPrice.DeleteLabelValues(provider, pair.Chain, region, pairLabel)
 	}
 	quoteTickUnix.WithLabelValues(provider, pair.Chain, region, pairLabel).
 		Set(float64(time.Now().Unix()))
