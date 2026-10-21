@@ -29,10 +29,22 @@ func loadConfig() *Config {
 		}
 	}
 
+	// HYPE joined on 2026-10-21, on the six venues that list it as a perp.
+	// Checked at each venue's own endpoint rather than by substring, because
+	// Paradex matches "HYPE" on an option symbol
+	// (HYPE-USD-22OCT26-65-C, asset_kind OPTION) and is not a HYPE perp venue.
+	// Also absent: Gains, whose diamond carries no HYPE pair at all (470 pair
+	// indices scanned, zero matches), so findGainsPair would fail every tick.
+	// Left out pending a decision rather than absent: GMX v2 lists two HYPE
+	// markets, HYPE/USD [WBTC.b-USDC] and HYPE/USD [USDG-USDG], and gmxMarkets
+	// takes one address per asset, so somebody has to choose which is the
+	// comparable one. Polymarket and Ondo are unverified: Polymarket's hosts
+	// failed TLS hostname validation from here and Ondo only matched on a
+	// substring, which is the evidence Paradex also had.
 	defs := []venueDef{
-		{slug: "hyperliquid", display: "Hyperliquid", assets: []string{"ETH", "BTC", "SOL"}},
-		{slug: "dydx", display: "dYdX v4", assets: []string{"ETH", "BTC", "SOL"}},
-		{slug: "lighter", display: "Lighter", assets: []string{"ETH", "BTC", "SOL"}},
+		{slug: "hyperliquid", display: "Hyperliquid", assets: []string{"ETH", "BTC", "SOL", "HYPE"}},
+		{slug: "dydx", display: "dYdX v4", assets: []string{"ETH", "BTC", "SOL", "HYPE"}},
+		{slug: "lighter", display: "Lighter", assets: []string{"ETH", "BTC", "SOL", "HYPE"}},
 		// GMX v2 has separate market addresses per asset; the gmx fetcher
 		// maps asset → market address (gmxMarkets in gmx.go), verified
 		// against gmxinfra /markets/info.
@@ -48,12 +60,12 @@ func loadConfig() *Config {
 		{slug: "paradex", display: "Paradex", assets: []string{"ETH", "BTC", "SOL"}},
 		// Extended's taker fee is documented (2.5 bps), not API-exposed;
 		// disclosed in the spec formula.
-		{slug: "extended", display: "Extended", assets: []string{"ETH", "BTC", "SOL"}},
+		{slug: "extended", display: "Extended", assets: []string{"ETH", "BTC", "SOL", "HYPE"}},
 		// Aster (BSC-based, Binance-style REST). Public depth endpoint
 		// used for the walk; taker fee (5 bps, docs.asterdex.com) is
 		// hardcoded because no fee schedule API is published — disclosed
 		// in the spec formula.
-		{slug: "aster", display: "Aster", assets: []string{"ETH", "BTC", "SOL"}},
+		{slug: "aster", display: "Aster", assets: []string{"ETH", "BTC", "SOL", "HYPE"}},
 		// Ondo Perps (SGX off-chain matching, custody on Ethereum and
 		// Arbitrum). Taker fee and hourly funding from the contract row,
 		// depth endpoint (10 levels per side) for the walk.
@@ -62,7 +74,7 @@ func loadConfig() *Config {
 		// contractId (map hardcoded after a one-time getMetaData lookup);
 		// taker fee (3.8 bps, edgex-1.gitbook.io) hardcoded because no
 		// public fee schedule API — disclosed in the spec formula.
-		{slug: "edgex", display: "edgeX", assets: []string{"ETH", "BTC", "SOL"}},
+		{slug: "edgex", display: "edgeX", assets: []string{"ETH", "BTC", "SOL", "HYPE"}},
 	}
 
 	venues := make([]VenueConfig, 0, len(defs)*3)

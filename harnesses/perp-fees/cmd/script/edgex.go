@@ -71,6 +71,9 @@ var edgexContractIDs = map[string]string{
 	"ETH": "30000002",
 	"BTC": "30000001",
 	"SOL": "30000003",
+	// HYPEUSDC, read from getMetaData on 2026-10-21: enableTrade true,
+	// defaultTakerFeeRate 0.00045, the same taker as the three above.
+	"HYPE": "30000041",
 }
 
 type edgexDepthResp struct {
