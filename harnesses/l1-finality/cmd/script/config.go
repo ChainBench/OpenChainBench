@@ -63,12 +63,9 @@ func loadConfig() *Config {
 			// The methodology only works when finality > poll interval.
 			// Re-enable with WS wall-clock measurement (observe block N
 			// as latest at T1, as finalized at T2, lag = T2 - T1).
-			{
-				Slug:   "solana",
-				Name:   "Solana",
-				Kind:   KindSolana,
-				RPCURL: getenvDefault("RPC_SOLANA", "https://api.mainnet-beta.solana.com"),
-			},
+			// Solana moved to solana_ws.go on 2026-10-22. Alpenglow put its
+			// finality under a second, below what getBlockTime's whole
+			// seconds can resolve, so this poll published 0 or 1 s.
 			{
 				Slug:   "tron",
 				Name:   "TRON",
