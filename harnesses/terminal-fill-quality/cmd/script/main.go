@@ -1522,19 +1522,27 @@ func compute(st *State, minPriced, minRank int) []TerminalStats {
 		// A native EVM row whose sample is one side only with no fee on it
 		// (Banana Gun's Ethereum buys) reads a fee-free half of the product:
 		// the fee sits on the side the feed never sees, the row waits.
-		// A Pump Bridge row measures the destination swap, and only that: the
-		// bridge deducts 0.05 plus 40 or 45 bps on the Solana deposit before the
-		// router spends anything, so value given here is the router's spend
-		// (9.905 of a $10 deposit) rather than what the user paid.
+		// A row on a Pump Bridge router carries two populations at once.
 		//
-		// Publishing it understates the loss by 95 bps at $10 and 545 at $1,
-		// under a column that promises all costs included, and puts it beside
-		// FOMO on the same chain tab, whose own bridge take IS counted as relay.
-		// The table then reads pump as cheaper than FOMO while it is dearer.
+		// Some trades arrive through the bridge: the user deposited on Solana,
+		// pump took 0.05 plus 40 or 45 bps there, and what the router spends is
+		// already net of it. Others are funded on this chain directly, with no
+		// deposit and no take. Of 63 swaps read on 2026-10-22, 40 touched the
+		// router at all and only 10 were sent by pump's relayer, so the split is
+		// real and this harness cannot yet tell which swap is which.
+		//
+		// One median over both is not a cost: for the bridged half it leaves out
+		// what was charged upstream, under a column promising all costs included
+		// and beside FOMO, whose own bridge take IS counted as relay. The row
+		// waits until the two populations can be separated.
+		//
+		// An earlier version of this comment claimed the whole row understated
+		// its loss by a fixed amount. That was wrong: it applies to a subset
+		// whose size is not established.
 		if pumpBridgeRow(t.Slug) && ts.Priced > 0 {
 			ts.Healthy, ts.Ranked = false, false
 			heldStructural[t.Slug] = true
-			ts.Note = strings.TrimSpace(ts.Note + " The bridge's own take is deducted on the Solana deposit, which this row never sees, so its loss would leave out a cost the other rows on this chain include: held until the deposit can be paired to the router's spend.")
+			ts.Note = strings.TrimSpace(ts.Note + " This row mixes trades that arrived through pump's bridge, already charged on the Solana side, with trades funded on this chain directly: one median would cover two cost bases, so it is held until the two can be told apart.")
 		}
 		if isNativeEVM(t.Slug) && ts.Parsed >= 20 && (ts.BuySharePct >= 99 || ts.BuySharePct <= 1) && ts.Components["terminal"] < 5 {
 			ts.Healthy, ts.Ranked = false, false

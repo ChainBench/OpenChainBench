@@ -413,7 +413,7 @@ providers:
   - slug: pump-fun
     name: pump.fun app
     tag: "Terminal, Solana measured in full; cross-chain partial since its own bridge became the default"
-    formula: "Solana: random sample of the app's swaps by its program. The rows on the bridge's own routers are read but held: their loss would leave out the take deducted on the Solana deposit, which the other rows on those chains include."
+    formula: "Solana: random sample of the app's swaps by its program. The EVM rows are read but held: they mix trades arriving through pump's bridge, already charged on Solana, with trades funded on the chain itself, so one median covers two cost bases."
     queries:
       p50: tfq_loss_bps{terminal="pump-fun",chain="all",stat="median",bucket="all"}
       p90: tfq_loss_bps{terminal="pump-fun",chain="all",stat="p90",bucket="all"}
