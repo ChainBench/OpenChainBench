@@ -1019,11 +1019,21 @@ func nativeRow(ctx context.Context, httpc *http.Client, t evmTerminal, hash stri
 		// the same chain tab, FOMO included, whose bridge take IS counted.
 		// The terminal component below is the residual after pool and other,
 		// so raising given moves exactly the deduction into it.
-		// Did anything arrive at the router here? Then its sender funded the
-		// trade on this chain and `given` is already what they committed.
+		// Did the sender fund this trade on THIS chain? Then `given` is already
+		// what they committed and must not be grossed up.
+		//
+		// Only the settlement stable arriving counts. A buy also sends the
+		// memecoin INTO the router on its way to the user, and an earlier
+		// version accepted any ERC20 transfer to it, so every row read as user
+		// funded and the gross-up never fired once: 16 of 16 published with no
+		// reconstruction. A guard too broad is a feature switched off in
+		// silence.
 		userFunded := valueWei.Sign() > 0
-		if !userFunded {
+		if stable := pumpStableOf(t.Slug); !userFunded && stable != "" {
 			for _, lg := range rc.Logs {
+				if !strings.EqualFold(lg.Address, stable) {
+					continue
+				}
 				if len(lg.Topics) < 3 || !strings.EqualFold(lg.Topics[0], topicERC20Transfer) {
 					continue
 				}

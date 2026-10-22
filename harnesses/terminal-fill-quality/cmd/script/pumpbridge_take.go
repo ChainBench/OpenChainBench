@@ -524,6 +524,13 @@ func pumpGrossUpFunded(slug string, spentUSD float64, userFunded bool) (float64,
 	if !pumpBridgeRow(slug) || spentUSD <= 0 || math.IsNaN(spentUSD) || math.IsInf(spentUSD, 0) {
 		return spentUSD, false
 	}
+	// No declared settlement stable means the funding test cannot run on this
+	// row, and grossing up without it would add a deduction to a trade the
+	// sender may have funded here. pumpRouters names three chains; the rows on
+	// Arc, MegaETH and X Layer wait for theirs to be read off the chain.
+	if pumpStableOf(slug) == "" {
+		return spentUSD, false
+	}
 	chain := pumpChainOf(slug)
 	gross := (spentUSD + pumpFixed(chain)) / (1 - pumpChainRate(chain))
 	if gross <= spentUSD || gross > spentUSD*pumpGrossUpCap {
@@ -608,4 +615,18 @@ func pumpBlockAt(ctx context.Context, httpc *http.Client, c originChain, chain s
 	pumpBlockTime.at[chain][block] = t
 	pumpBlockTime.Unlock()
 	return t
+}
+
+// pumpStableOf: the settlement token a pump row pays in, or "" if unknown.
+//
+// Needed to tell the user funding a trade from the pool handing the memecoin
+// back. Both are ERC20 transfers INTO the router, and treating them alike is
+// what silently switched the gross-up off on every row.
+func pumpStableOf(slug string) string {
+	for _, r := range pumpRouters {
+		if slug == "pump-fun-"+r.chain {
+			return r.token
+		}
+	}
+	return ""
 }
