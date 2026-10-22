@@ -426,24 +426,32 @@ function ModalBody({
       }
 
       setState({ status: "rendering", startedAt: Date.now() });
-      const res = await fetch("/api/video/render", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          datasetId: slug,
-          viewId: activeView,
-          raceSeconds,
-          skipIntro,
-          format,
-          audio,
-          beats,
-          bench: filtered,
-        }),
+      const payload = JSON.stringify({
+        datasetId: slug,
+        viewId: activeView,
+        raceSeconds,
+        skipIntro,
+        format,
+        audio,
+        beats,
+        bench: filtered,
       });
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(text || `Render failed (${res.status})`);
+      const post = () =>
+        fetch("/api/video/render", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: payload,
+        });
+      let res = await post();
+      // A 5xx that is not our route's JSON (a deploy swapping under the
+      // request, a platform error page) is retried once; the renderer
+      // caches by payload, so a retry after a render that did finish
+      // returns instantly.
+      if (res.status >= 500 && !isJson(res)) {
+        await new Promise((r) => setTimeout(r, 3000));
+        res = await post();
       }
+      if (!res.ok) throw new Error(await renderErrorMessage(res));
       const data = (await res.json()) as {
         url: string;
         cached?: boolean;
@@ -960,6 +968,26 @@ function SmallLink({
  * of race. The copy used to say "~10-30s", which no render ever met. A
  * cached rerun is instant; a busy renderer queues exports one at a time.
  */
+function isJson(res: Response): boolean {
+  return (res.headers.get("content-type") ?? "").includes("application/json");
+}
+
+/** One readable line for a failed render. The modal used to print the
+ *  response body verbatim, which on a platform 500 was the whole Next.js
+ *  error page as a wall of red HTML. Our route answers JSON
+ *  ({ error, detail }); anything else is summarised by its status. */
+async function renderErrorMessage(res: Response): Promise<string> {
+  if (res.status === 429) return "Too many renders right now. Wait a minute and try again.";
+  if (isJson(res)) {
+    const body = (await res.json().catch(() => null)) as { error?: string } | null;
+    const code = body?.error;
+    if (code === "upstream_unreachable" || code === "upstream_error")
+      return `The video renderer did not answer (${res.status}). Try again in a minute.`;
+    if (code) return `Render failed (${res.status}, ${code}). Try again.`;
+  }
+  return `Render failed (${res.status}). Try again.`;
+}
+
 function renderEtaSeconds(raceSeconds: number): number {
   return Math.round(18 + 5 * raceSeconds);
 }
