@@ -591,13 +591,25 @@ export function cohortViews(b: Benchmark): CohortView[] {
     }
     const rows = b.tierResults?.[t.value];
     if (!rows || rows.length === 0) continue;
+    // A cohort the spec declares `ranked: false` keeps its figures and takes
+    // no leader. Without this the bench-282 dedicated cohort, which the spec
+    // and its product pages both leave unranked, reached /api/stat, llms.txt
+    // and MCP as "Dwellir Unlimited posts the lowest monthly cost ... across
+    // 6 ranked providers". Marking every row unranked routes it through the
+    // gate citationCandidates already applies, so the sentence becomes
+    // "none is ranked" and rankings comes back empty.
+    const unranked = t.ranked === false;
     views.push({
       tier: t.value,
       label: t.label,
       headline: false,
       bench: {
         ...b,
-        results: rows.map((r) => ({ ...r, tier: t.value })),
+        results: rows.map((r) => ({
+          ...r,
+          tier: t.value,
+          ...(unranked ? { unrankedLabel: r.unrankedLabel ?? `${t.label}, not ranked` } : {}),
+        })),
         tierResults: undefined,
       },
     });
