@@ -23,6 +23,8 @@ package main
 import (
 	"context"
 	"log"
+	"math"
+	"sync"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -108,7 +110,15 @@ func (f *pumpBridgeFeed) poll(ctx context.Context, rpc *rpcClient) {
 				}
 				deposits++
 				cPumpBridgeDeposits.Inc()
-				hPumpBridgeDeposit.Observe(float64(d.Amount) / 1e6)
+				amt := float64(d.Amount) / 1e6
+				hPumpBridgeDeposit.Observe(amt)
+				// Kept so the EVM side can find this deposit again. The
+				// destination is encrypted, but the schedule inverts, so the
+				// amount is the join key and the time is what it buys: how
+				// long the bridge took to settle it.
+				if tx.BlockTime != nil {
+					pumpNoteDeposit(*tx.BlockTime, amt)
+				}
 			}
 		}
 	}
@@ -133,4 +143,79 @@ func (f *pumpBridgeFeed) run(ctx context.Context, rpc *rpcClient, every time.Dur
 			f.poll(ctx, rpc)
 		}
 	}
+}
+
+// pumpDep: one decoded deposit, kept only long enough to find its spend.
+type pumpDep struct {
+	at     int64 // unix seconds, Solana blockTime
+	amount float64
+}
+
+// pumpDepWindow: the deposits seen recently, so a router spend on the EVM side
+// can find the one that produced it.
+//
+// The feed already decodes these and then kept only a histogram. Holding the
+// amounts is what makes the two sides joinable: the destination is encrypted,
+// but the schedule inverts, so the amount is the key.
+//
+// Bounded by count and age: a spend that has not appeared within the window
+// never will, and an unbounded slice would grow for the life of the process.
+var pumpDepWindow struct {
+	sync.Mutex
+	seen []pumpDep
+}
+
+const (
+	pumpDepWindowMax = 4000
+	pumpDepWindowAge = 30 * 60 // seconds
+)
+
+// pumpNoteDeposit records a deposit for later pairing.
+func pumpNoteDeposit(at int64, amount float64) {
+	if at <= 0 || amount <= 0 {
+		return
+	}
+	pumpDepWindow.Lock()
+	defer pumpDepWindow.Unlock()
+	w := append(pumpDepWindow.seen, pumpDep{at: at, amount: amount})
+	cut := at - pumpDepWindowAge
+	i := 0
+	for i < len(w) && w[i].at < cut {
+		i++
+	}
+	w = w[i:]
+	if len(w) > pumpDepWindowMax {
+		w = w[len(w)-pumpDepWindowMax:]
+	}
+	pumpDepWindow.seen = w
+}
+
+// pumpFindDeposit returns the deposit that produced this spend, and whether
+// exactly one candidate matched.
+//
+// Ambiguity is reported as a miss rather than guessed at: two users depositing
+// the same round amount in the same minute is common, and picking one would
+// invent a latency. The share of spends that pair uniquely is published beside
+// the latency so the base is visible.
+func pumpFindDeposit(want float64, spentAt int64, maxLag int64) (pumpDep, bool) {
+	pumpDepWindow.Lock()
+	defer pumpDepWindow.Unlock()
+	var hit pumpDep
+	n := 0
+	for _, d := range pumpDepWindow.seen {
+		if d.at > spentAt || spentAt-d.at > maxLag {
+			continue
+		}
+		// Exact to the token's precision: these are integer amounts read from
+		// the chain on both sides, so a near miss is a different deposit.
+		if math.Abs(d.amount-want) > 1e-6 {
+			continue
+		}
+		n++
+		if n > 1 {
+			return pumpDep{}, false
+		}
+		hit = d
+	}
+	return hit, n == 1
 }
