@@ -23,6 +23,14 @@ var Registry = []Venue{
 	{Slug: "lighter", Name: "Lighter", Type: "perp", Chain: "zksync"},
 	{Slug: "gmx-v2", Name: "GMX V2", Type: "perp", Chain: "arbitrum"},
 	{Slug: "gains", Name: "Gains", Type: "perp", Chain: "arbitrum"},
+	// Nova runs the same gTrade software as Gains on Arbitrum: same two
+	// backend endpoints, same payload shapes, same 493-pair registry. It is
+	// a separate venue with its own book, so it is read from its own hosts
+	// (source_gains.go, NewNovaNativeSource). It has no DefiLlama entry of
+	// any kind, checked across all 8795 protocols on 2026-10-22, so the
+	// native source is the only path for its volume, OI and market count,
+	// and it carries no TVL or 30d volume at all.
+	{Slug: "nova", Name: "Nova", Type: "perp", Chain: "arbitrum"},
 	{Slug: "dydx", Name: "dYdX v4", Type: "perp", Chain: "dydx"},
 	{Slug: "paradex", Name: "Paradex", Type: "perp", Chain: "paradex"},
 	{Slug: "edgex", Name: "edgeX", Type: "perp", Chain: "edgex"},

@@ -52,6 +52,7 @@ methodology:
   - "Ostium: Arbitrum subgraph, count of active pairs. Covers FX and commodities alongside crypto."
   - "Polymarket: public perps tickers endpoint on Polygon, count of listed instruments."
   - "Gains: GET backend-arbitrum.gains.trade/trading-variables, every pair minus the ones whose max leverage override is 1 (0.001x), which is how Gains delists a pair without removing it. Covers crypto, forex, stocks, indices and commodities. Until 2026-10-12 this row read Mobula's perp pairs catalog, which listed 355 Gains pairs where 178 can be opened today, and which Mobula has since deprecated."
+  - "Nova: the same read against Nova's own trading variables, measured but carried unranked. Nova runs the same gTrade software as Gains and serves the identical 493-pair registry. Gains marks 315 of those pairs with the 0.001x delisting override and counts 178; Nova marks none, and 40 of its pairs carry no override entry at all. Its 493 is the catalog it inherited, not markets confirmed openable, so it is a different measurement from every other row (read 2026-10-22)."
   - "Headline: avg_over_time of the live market count gauge over the last 24 hours. Listings change infrequently so the 24h average is effectively the current count."
   - "Failures: a venue that errors keeps its last gauge value and its perp_venue_health gauge drops toward 0; the leaderboard tags it as stale."
 
@@ -85,6 +86,8 @@ faq:
     a: "Gains never removes a pair from its trading variables; it delists one by setting the pair's max leverage override to 1, which is 0.001x at the contract's 1e3 precision (MATIC, LUNA, FTT, FB and a long tail of forex crosses and stocks carry it). The bench counts every other pair: an override of 0 means the group maximum applies, and a real override such as 2x or 5x on the stocks is still a market a trader can open."
   - q: "Is market count a good proxy for venue breadth?"
     a: "It is the simplest proxy. A venue with {{p50:gains}} markets covering crypto, forex, stocks and commodities (Gains) gives traders far more choice than one with {{p50:hyperliquid}} crypto-only markets (Hyperliquid). Depth per market is a separate signal; pair this bench with perp-volume-share and perp-fees for the full picture."
+  - q: "Why is Nova measured but not ranked?"
+    a: "Nova runs the same gTrade software as Gains, and both serve the same 493-pair registry. The bench counts a market as live when it does not carry the 0.001x max-leverage override that gTrade uses to delist. Gains carries that override on 315 pairs and counts {{p50:gains}}; Nova carries it on none, so the filter removes nothing and the count is simply the registry size. That is not the same thing the other rows measure, so the number is published and left out of the ranking."
   - q: "Can a venue with more asset classes rank below one with more instruments?"
     a: "Yes. Aster, for example, lists more raw instruments (all USDT-margined pairs on BNB Chain including many micro-cap crypto assets). Gains lists fewer instruments but across a broader set of asset classes. The bench ranks by raw count, so a venue with many micro-cap crypto pairs can outrank one spanning more asset classes."
 
@@ -126,6 +129,20 @@ providers:
       success: avg_over_time(perp_venue_health{venue="gains"}[24h])
       sample_size: count_over_time(perp_venue_active_markets{venue="gains"}[24h])
       series: perp_venue_active_markets{venue="gains"}
+
+  - slug: nova
+    name: Nova
+    tag: Ships the gTrade registry unpruned, so the count is not comparable
+    unranked: Registry unpruned
+    formula: "The same filter on Nova's own trading variables. Nova and Gains ship the identical 493-pair gTrade registry; Gains has delisted 315, Nova none, so this count is the inherited catalog, not a curated book."
+    queries:
+      p50: avg_over_time(perp_venue_active_markets{venue="nova"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_active_markets{venue="nova"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_active_markets{venue="nova"}[24h])
+      mean: avg_over_time(perp_venue_active_markets{venue="nova"}[24h])
+      success: avg_over_time(perp_venue_health{venue="nova"}[24h])
+      sample_size: count_over_time(perp_venue_active_markets{venue="nova"}[24h])
+      series: perp_venue_active_markets{venue="nova"}
 
   - slug: edgex
     name: edgeX
