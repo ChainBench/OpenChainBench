@@ -53,6 +53,15 @@ var (
 		Name: "tfq_pump_bridge_schedule_total",
 		Help: "Spends whose fee equals 0.05 plus this many basis points of a round trade size, exactly, in integer token units. Two rates run (40 and 45) and the mix differs by chain. A new label value, or matched spends falling to zero while unmatched stays high, is pump changing the schedule",
 	}, []string{"chain", "bps"})
+	hPumpSettle = prometheus.NewHistogramVec(prometheus.HistogramOpts{
+		Name:    "tfq_pump_bridge_settle_seconds",
+		Help:    "Seconds between a Solana deposit and the EVM router spending it, for the spends whose deposit can be identified by the amount the schedule implies. This is the on-chain segment alone: pump's own figure is tap to notification and includes the app, the network and its queueing, so the two are not the same quantity. Read per chain, since block time differs (BNB 0.45 s, Robinhood Chain 0.10 s, Base 2.00 s)",
+		Buckets: []float64{0.5, 1, 1.5, 2, 3, 4, 6, 10, 20, 60, 300},
+	}, []string{"chain"})
+	cPumpPair = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "tfq_pump_bridge_pair_total",
+		Help: "Router spends by whether their deposit could be identified: unique is one candidate, ambiguous is several (two users depositing the same amount in the same minute, reported rather than guessed at), none is no deposit in the window. The settle histogram covers the unique ones only, and this counter is its base",
+	}, []string{"chain", "result"})
 	hPumpTakeBps = prometheus.NewHistogramVec(prometheus.HistogramOpts{
 		Name:    "tfq_pump_bridge_take_bps",
 		Help:    "What the bridge kept on a spend whose size could be read back, as a share of that size in basis points. Size dependent because the schedule has a fixed component, so read the distribution rather than an average: the same 45 bps schedule costs 545 bps on a $1 trade and 50 on a $100 one",
@@ -61,7 +70,7 @@ var (
 )
 
 func init() {
-	prometheus.MustRegister(cPumpSpends, cPumpSchedule, hPumpTakeBps)
+	prometheus.MustRegister(cPumpSpends, cPumpSchedule, hPumpTakeBps, hPumpSettle, cPumpPair)
 }
 
 // pumpLevels: the trade sizes a person types, in whole stable units. The grid is
@@ -267,6 +276,7 @@ func (w *pumpTakeWatcher) poll(ctx context.Context, httpc *http.Client) {
 		// transactions carry a single outgoing stable transfer, so summing the
 		// legs of the rare multi-leg route is what the user actually paid.
 		perTx := map[string]*big.Int{}
+		blockOf := map[string]int64{}
 		order := []string{}
 		for _, l := range logs {
 			v := word(l.Data, 0)
@@ -278,10 +288,12 @@ func (w *pumpTakeWatcher) poll(ctx context.Context, httpc *http.Client) {
 				continue
 			}
 			perTx[l.TxHash] = new(big.Int).Set(v)
+			blockOf[l.TxHash] = hexInt(l.BlockNumber)
 			order = append(order, l.TxHash)
 		}
 		for _, tx := range order {
 			observePumpSpend(r.chain, perTx[tx], r.decimals)
+			pumpPairSpend(ctx, httpc, c, r, perTx[tx], blockOf[tx])
 		}
 		// to+1, not to: eth_getLogs includes both bounds, so leaving the
 		// cursor on `to` reads that block again next pass and counts its
@@ -518,4 +530,82 @@ func pumpGrossUpFunded(slug string, spentUSD float64, userFunded bool) (float64,
 		return spentUSD, false
 	}
 	return gross, true
+}
+
+// pumpSettleMaxLag: how long after a deposit its spend may appear and still be
+// read as the same trade. Generous on purpose: the question is what the
+// settlement time IS, so a tight window would cut the tail it is meant to show.
+const pumpSettleMaxLag = 300
+
+// pumpBlockTime caches block timestamps, which are read once per block rather
+// than once per spend: several spends share a block on a busy router.
+var pumpBlockTime struct {
+	sync.Mutex
+	at map[string]map[int64]int64
+}
+
+// pumpPairSpend finds the deposit behind one spend and records how long it took.
+//
+// The schedule inverts, so the deposit amount is known exactly; the deposit
+// window holds what Solana saw. A spend matching several deposits is counted
+// ambiguous rather than attributed, because two users sending the same round
+// amount in the same minute is ordinary and picking one would invent a figure.
+func pumpPairSpend(ctx context.Context, httpc *http.Client, c originChain, r pumpRouter, spent *big.Int, block int64) {
+	if spent == nil || block <= 0 {
+		return
+	}
+	sf, _ := new(big.Float).SetInt(spent).Float64()
+	sf /= math.Pow10(r.decimals)
+	if sf <= 0 {
+		return
+	}
+	at := pumpBlockAt(ctx, httpc, c, r.chain, block)
+	if at <= 0 {
+		return
+	}
+	want := (sf + pumpFixed(r.chain)) / (1 - pumpChainRate(r.chain))
+	dep, ok := pumpFindDeposit(want, at, pumpSettleMaxLag)
+	if !ok {
+		// Ambiguity and absence are both "not measured", and the counter does
+		// not pretend to tell them apart here: pumpFindDeposit returns false
+		// for either, and conflating them would still be honest about the base.
+		cPumpPair.WithLabelValues(r.chain, "no").Inc()
+		return
+	}
+	cPumpPair.WithLabelValues(r.chain, "unique").Inc()
+	hPumpSettle.WithLabelValues(r.chain).Observe(float64(at - dep.at))
+}
+
+// pumpBlockAt returns a block's timestamp, cached per chain.
+func pumpBlockAt(ctx context.Context, httpc *http.Client, c originChain, chain string, block int64) int64 {
+	pumpBlockTime.Lock()
+	if pumpBlockTime.at == nil {
+		pumpBlockTime.at = map[string]map[int64]int64{}
+	}
+	if pumpBlockTime.at[chain] == nil {
+		pumpBlockTime.at[chain] = map[int64]int64{}
+	}
+	if t, ok := pumpBlockTime.at[chain][block]; ok {
+		pumpBlockTime.Unlock()
+		return t
+	}
+	// Bounded: a chain producing a block every 0.10 s would otherwise grow
+	// this map without limit.
+	if len(pumpBlockTime.at[chain]) > 5000 {
+		pumpBlockTime.at[chain] = map[int64]int64{}
+	}
+	pumpBlockTime.Unlock()
+
+	var b struct {
+		Timestamp string `json:"timestamp"`
+	}
+	if err := evmCall(ctx, httpc, c.rpc, "eth_getBlockByNumber",
+		[]any{"0x" + big.NewInt(block).Text(16), false}, &b); err != nil {
+		return 0
+	}
+	t := hexInt(b.Timestamp)
+	pumpBlockTime.Lock()
+	pumpBlockTime.at[chain][block] = t
+	pumpBlockTime.Unlock()
+	return t
 }
