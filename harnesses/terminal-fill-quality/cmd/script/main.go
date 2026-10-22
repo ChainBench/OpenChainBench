@@ -117,6 +117,10 @@ var (
 	// that never catches up still reads a lag of zero: BNB dropped a
 	// third of its blocks for half an hour with feed_up 1 and lag 0 on
 	// every dashboard. This is the gauge that shows it.
+	cCrossProducerDupes = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "tfq_cross_producer_dupes_total",
+		Help: "Relay-produced swaps dropped because the native reader had already recorded the same destination fill off a router. EXPECTED TO BE ZERO: the two producers are disjoint by construction, since only pump's relayers reach its routers. A non-zero reading means a Relay request is settling through a router we also read directly, and one trade was about to be published in two rows",
+	}, []string{"terminal"})
 	cDustSkipped = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "tfq_dust_attempts_skipped_total",
 		Help: "Router events whose own declared trade size is under MIN_TRADE_USD, not counted as attempts. They were already excluded from every median; this keeps them out of the fail-rate denominator, the pooled chain weighting and the audit-table sample too, so those describe the same population the median does. A large count here against a small published attempt count is one actor fanning dust, not a broken feed",
@@ -133,7 +137,7 @@ var (
 )
 
 func init() {
-	prometheus.MustRegister(gNativeUp, gNativeLag, gNativeSkipped, cDustSkipped, gLoss, gLossExFee, gComponent, gFail, gSamples, gTrade, gVenue, gBuy, gSandwich, gSandwichProfit, gLossSize, gLossChain, gHealth, gRanked, gFailCost, gFailOverhead, gLostUSD, gUnpriced, gRefresh, gFeed, gRelayFeed, gSol, cCalls, cErrors, cSkipped)
+	prometheus.MustRegister(gNativeUp, gNativeLag, gNativeSkipped, cDustSkipped, cCrossProducerDupes, gLoss, gLossExFee, gComponent, gFail, gSamples, gTrade, gVenue, gBuy, gSandwich, gSandwichProfit, gLossSize, gLossChain, gHealth, gRanked, gFailCost, gFailOverhead, gLostUSD, gUnpriced, gRefresh, gFeed, gRelayFeed, gSol, cCalls, cErrors, cSkipped)
 }
 
 func envInt(k string, def int) int {
@@ -1514,7 +1518,55 @@ func productTerminal(p string, rows []Terminal) Terminal {
 // compute builds one entry per row (a product on one chain, `chain` set)
 // and one pooled entry per product over every chain it trades on
 // (`chain: all`, the bench's headline, the funding legs left out).
+// dedupeAcrossProducers drops a Relay-produced swap whose destination fill is
+// also a swap the native reader recorded off a router.
+//
+// The two producers are disjoint by construction today: only pump's own
+// relayers send to its routers, and no transfer in those receipts touches
+// Relay's contracts. But nothing enforced it, and a Relay request whose
+// destination call targeted a pump router would publish ONE trade in TWO rows,
+// with no error and no failing test. That is the same class of fault as the
+// slug collision the route rename removed, one level down: there it was two
+// producers owning a name, here it is two producers owning a fill.
+//
+// Native wins because it read the router itself rather than an API's account
+// of it. Done at compute time, not at record time: the producers run on
+// different ticks, so dropping at record time would decide the winner by
+// arrival order, which is the race this exists to prevent.
+//
+// Keys are lowercased: both are EVM hashes but one comes from Relay's API and
+// one from a receipt, and nothing guarantees they agree on case.
+func dedupeAcrossProducers(swaps []Swap) (kept []Swap, dropped map[string]int) {
+	native := map[string]bool{}
+	for _, s := range swaps {
+		if s.RelayID == "" && s.Sig != "" {
+			native[strings.ToLower(s.Sig)] = true
+		}
+	}
+	kept = swaps[:0:0]
+	for _, s := range swaps {
+		if s.RelayID != "" && s.Sig != "" && native[strings.ToLower(s.Sig)] {
+			if dropped == nil {
+				dropped = map[string]int{}
+			}
+			dropped[s.Terminal]++
+			continue
+		}
+		kept = append(kept, s)
+	}
+	return kept, dropped
+}
+
 func compute(st *State, minPriced, minRank int) []TerminalStats {
+	// Before anything reads the window: one fill must not be two rows.
+	if kept, dropped := dedupeAcrossProducers(st.Swaps); len(dropped) > 0 {
+		st.Swaps = kept
+		for slug, n := range dropped {
+			cCrossProducerDupes.WithLabelValues(slug).Add(float64(n))
+			log.Printf("[dedupe] %s: %d Relay swaps dropped, the native reader "+
+				"already recorded the same fill off the router", slug, n)
+		}
+	}
 	out := make([]TerminalStats, 0, 2*(len(terminals)+len(xchainApps)))
 	byProduct := map[string][]string{}
 	byProductFirm := map[string][]string{} // the rows above their own floor
