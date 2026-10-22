@@ -123,7 +123,7 @@ export async function TerminalFillSection({
                           by chain
                         </span>
                       ) : null}
-                      {pub && !rank ? <span className="text-[9px] uppercase tracking-[0.12em] text-ink-faint border border-rule rounded px-1">provisional</span> : null}
+                      {pub && !rank ? <span title="Published but not ranked. A row is ranked from 100 priced swaps, and a product pooled over several chains must also reach 100 EFFECTIVE swaps once each chain's flow weight is applied, so a product whose trades concentrate on one chain stays provisional however many swaps it holds." className="text-[9px] uppercase tracking-[0.12em] text-ink-faint border border-rule rounded px-1">provisional</span> : null}
                     </span>
                   </td>
                   <td className="py-2.5 px-3 text-right tabular-nums text-ink-soft">{t.tradeUsd ? fmtUsd(t.tradeUsd.median) : "—"}</td>
