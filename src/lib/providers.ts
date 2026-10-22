@@ -49,6 +49,19 @@ const PRODUCT_ALIASES: Record<string, string> = {
   "grok-4-chart": "xai",
   "grok-4-vision": "xai",
 
+  // Nova was on the site as a Hyperliquid frontend under "nova-markets"
+  // (bench 030, where its logo and registry entry live) before it joined the
+  // perp cohort as "nova" (benches 041, 116, 295). Two slugs, one company, so
+  // its bench appearances were split across two pages: /products/nova-markets
+  // showed the frontend bench, /products/nova the perp ones.
+  //
+  // #3157 pointed every cohort link at nova-markets and redirected the other
+  // URL, which fixed the duplicate page and left the perp bench rows behind,
+  // attached to a slug with no page. This is the mechanism that moves them,
+  // and it also makes the generic alias-to-canonical redirect fire, so the
+  // hardcoded one in the product route comes out.
+  nova: "nova-markets",
+
   // Sub-products → parent brand
   "helius-sender": "helius",
   "publicnode-feehistory": "publicnode",
