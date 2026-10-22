@@ -68,6 +68,10 @@ var (
 		Name: "bridge_cost_percent_pump",
 		Help: "What Pump Bridge's own schedule costs at a given notional, percent: (0.05 of the stable plus the chain's measured rate times the notional) over the notional. Published for bench 003 beside the quote-based bridges, UNRANKED, because it is not the same product: those move USDC to USDC and this delivers a token, so the cost is comparable while the service is not. Gas on the destination is sponsored and the schedule is fixed, so this deduction is the whole cost of the bridging step rather than a fee with slippage omitted",
 	}, []string{"amount_usd"})
+	gSettleN = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "tfq_settle_samples",
+		Help: "Settlements held in the window for a route, the base of tfq_settle_ms. Published UNCONDITIONALLY, including below the ten-sample floor where no quantile is published, because without it a thin route and an unmeasured route are the same absent series and the difference is the whole question: 3 here means the route works and we have not seen enough of it, nothing here means we never measured it. The window is in memory and refills after a restart",
+	}, []string{"terminal", "chain"})
 	cPumpStall = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "tfq_pump_bridge_stall_total",
 		Help: "Paired spends that took longer than 60 seconds to settle. Counted apart because they are what makes the settle histogram's mean useless: about 4% of pairs, enough to move a mean by more than an order of magnitude while leaving the median where it was. A rising share here is the bridge stalling, which the median will not show",
@@ -84,7 +88,7 @@ var (
 )
 
 func init() {
-	prometheus.MustRegister(cPumpSpends, cPumpSchedule, hPumpTakeBps, hPumpSettle, cPumpPair, cPumpStall, gSettleMs, gBridgeCostPct)
+	prometheus.MustRegister(cPumpSpends, cPumpSchedule, hPumpTakeBps, hPumpSettle, cPumpPair, cPumpStall, gSettleMs, gSettleN, gBridgeCostPct)
 }
 
 // pumpLevels: the trade sizes a person types, in whole stable units. The grid is
@@ -747,6 +751,10 @@ func noteSettle(terminal, chain string, took float64) {
 	pumpSettleWindow.Unlock()
 
 	for c, v := range per {
+		// The count first and without the floor: a route sitting at 3 is a
+		// working route we have barely sampled, and that has to be legible
+		// rather than look like a route nobody measured.
+		gSettleN.WithLabelValues(terminal, c).Set(float64(len(v)))
 		if len(v) < pumpSettleMin {
 			continue
 		}
@@ -755,6 +763,7 @@ func noteSettle(terminal, chain string, took float64) {
 		gSettleMs.WithLabelValues(terminal, c, "mean").Set(meanOf(v) * 1000)
 		gSettleMs.WithLabelValues(terminal, c, "over10s_pct").Set(shareOver(v, 10))
 	}
+	gSettleN.WithLabelValues(terminal, "all").Set(float64(len(all)))
 	if len(all) >= pumpSettleMin {
 		gSettleMs.WithLabelValues(terminal, "all", "median").Set(quantileOf(all, 0.5) * 1000)
 		gSettleMs.WithLabelValues(terminal, "all", "p90").Set(quantileOf(all, 0.9) * 1000)
@@ -825,6 +834,30 @@ func quantileOf(v []float64, p float64) float64 {
 		i = len(c) - 1
 	}
 	return c[i]
+}
+
+// noteSettleTx records a settlement whose far end is known only by its
+// transaction hash, resolving that transaction's block time on `c`.
+//
+// The funding rows read the destination receipt for nothing else, so this is
+// the one extra RPC read the measurement costs there. It returns silently
+// when the receipt or the block cannot be read: a route with no settlement
+// figure is correct, a route with a guessed one is not.
+func noteSettleTx(ctx context.Context, httpc *http.Client, c originChain, product, chain, hash string, originAt int64) {
+	if product == "" || hash == "" || originAt <= 0 {
+		return
+	}
+	var rc evmReceipt
+	if err := evmCall(ctx, httpc, c.rpc, "eth_getTransactionReceipt", []any{hash}, &rc); err != nil {
+		return
+	}
+	bn := hexInt(rc.BlockNumber)
+	if bn <= 0 {
+		return
+	}
+	if at := pumpBlockAt(ctx, httpc, c, chain, bn); at > 0 {
+		noteSettle(product, chain, float64(at-originAt))
+	}
 }
 
 // pumpBlockAt returns a block's timestamp, cached per chain.
