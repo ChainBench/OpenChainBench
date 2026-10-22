@@ -112,7 +112,7 @@ metric_panels:
   - id: first_day
     label: Error rate, first whole day
     label_key: lane
-    metric: tfq_vendor_ab_period_error_rate_pct{vendor="pump-fun",period="first_full_day"}
+    metric: tfq_vendor_ab_period_error_rate_pct{vendor="pump-fun",kind="all",period="first_full_day"}
     unit: pct
     higher_is_better: false
     description: "Error rate on 2026-09-29, the export's first whole UTC day, for the direction selected above. On sells the two routes were level that day."
@@ -120,7 +120,7 @@ metric_panels:
   - id: last_days
     label: Error rate, last three whole days
     label_key: lane
-    metric: tfq_vendor_ab_period_error_rate_pct{vendor="pump-fun",period="last_3_full_days"}
+    metric: tfq_vendor_ab_period_error_rate_pct{vendor="pump-fun",kind="all",period="last_3_full_days"}
     unit: pct
     higher_is_better: false
     description: "Error rate over 2026-10-04 to 2026-10-06, the export's last three whole UTC days, for the direction selected above. Compare with the first whole day: the sell gap opened during the test."
