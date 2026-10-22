@@ -36,7 +36,7 @@ aggregate_filters:
   kind: BTC
 
 disclaimer: |
-  Parameters each venue publishes, converted to one model and checked against liquidations that happened. Gains: threshold, max leverage and the pair fee by eth_call on the Arbitrum diamond, checked against 11 liquidations. Papertrade: the instrument tuple on /state/trading, checked as a ceiling on 384 adverse closes. dYdX: both margin fractions on the indexer. Hyperliquid publishes no maintenance requirement, so that row is derived from its documented halving rule.
+  Parameters each venue publishes, converted to one model and checked against liquidations that happened. Gains and Nova: threshold, max leverage and the pair fee by eth_call on each one's Arbitrum diamond, checked against 11 Gains liquidations. Papertrade: the instrument tuple on /state/trading, checked as a ceiling on 384 adverse closes. dYdX: both margin fractions on the indexer. Hyperliquid publishes no maintenance requirement, so that row is derived from its documented halving rule.
 
 seo_intro: |
   Four figure leverage is the headline every perp venue leads with, and it says
@@ -53,7 +53,7 @@ seo_intro: |
   depending on which leverage you ask about, which is why the leverage selector
   is part of the measurement rather than a convenience.
 
-  Three of the four venues publish every input. Hyperliquid publishes its
+  Four of the five venues publish every input. Hyperliquid publishes its
   maximum leverage but not its maintenance requirement, which its documentation
   fixes at half the initial requirement, so that row alone is derived.
 
@@ -64,7 +64,7 @@ abstract: |
   leverage, and the share of collateral returned on liquidation. Everything is
   re-read every 5 minutes by the perp-cohort-stats harness.
 
-  One model covers all four. A position at leverage L posts 1/L of notional as
+  One model covers all five. A position at leverage L posts 1/L of notional as
   margin and is liquidated when its equity reaches the maintenance requirement
   m, also a share of notional. Any fee charged on the way in and out comes out
   of that same collateral, so the price has that much less distance to travel:
@@ -85,10 +85,11 @@ abstract: |
 
 methodology:
   - "Cadence: every 5 minutes, on the perp-cohort-stats sweep. These are governance parameters, so they are read fresh rather than averaged, and every series is cleared each tick so a venue that lowers its maximum stops publishing the settings it no longer offers."
-  - "Leverage selector: the default view puts each venue at its own maximum, which compares four different leverages and is not like for like. The fixed settings put every venue on the same leverage; a venue whose maximum is below the selected setting is absent from that view rather than shown at a leverage it does not offer."
-  - "Markets: BTC and ETH only. They are the only two markets all four venues list, and the comparison means nothing across different assets."
+  - "Leverage selector: the default view puts each venue at its own maximum, which compares venues at different leverages and is not like for like. The fixed settings put every venue on the same leverage; a venue whose maximum is below the selected setting is absent from that view rather than shown at a leverage it does not offer."
+  - "Markets: BTC and ETH only. They are the only two markets all five venues list, and the comparison means nothing across different assets."
   - "Room formula, every venue: (1/leverage - maintenance requirement - 2 x fee) x 100, every term a share of notional. Collateral lost is that room times the leverage, which is the same measurement in the unit venues quote among themselves."
-  - "Gains, parameters: pairMaxLeverage and getPairLiquidationParams on the Arbitrum diamond 0xFF162c694eAA571f685030649814282eA457f169, pairs 300 and 313, the x500 cohort rather than the standard pairs which cap at 200x. The fee comes from the pair's fee group, word 9 of pairs() then word 0 of fees() at 1e10, the same read the perp-fees harness runs in production."
+  - "Gains and Nova, parameters: pairMaxLeverage, pairMinLeverage and getPairLiquidationParams by eth_call on each venue's Arbitrum diamond, Gains at 0xFF162c694eAA571f685030649814282eA457f169 and Nova at 0x1410FA3F87F6A6ea221E5D2aB608C23005eC34f3. The fee comes from the pair's fee group, word 9 of pairs() then word 0 of fees() at 1e10, the same read the perp-fees harness runs in production."
+  - "Gains and Nova, pairs: four per venue. The standard BTC and ETH pairs 0 and 1 run 1.1x to 200x; the x500 degen pairs 300 and 313 have a minimum equal to their maximum, so 500x is their only legal setting, and each leverage tab shows whichever product can be opened at it. Nova serves the identical 493-pair registry, so the same indices are the same assets, checked against its own registry rather than assumed."
   - "Gains, checked against liquidations: percentProfit on the LimitExecuted log is the price move times leverage and nothing else, and our liquidation harness reproduces it on 120 of 120 real liquidations. Eleven liquidations on the two degen pairs give a median of 59.4 percent of collateral against the 60.0 percent this model predicts. The remaining gap is the borrowing fee, which accrues with holding time and is not a term at open."
   - "Gains, collateral returned: zero at every leverage. amountSentToTrader is 0 on all 27 liquidations found across every pair from 7.5x to 500x. The threshold says when a position closes, not what comes back."
   - "Papertrade: max leverage and the bust buffer from the instrument tuple on exchange.papertrade.xyz/state/trading. The buffer is a share of price and is an offset before the zero equity price, not the room itself: their documentation works the 1000x case and gives a move of about 0.052 percent, which is one tenth of a percent minus the buffer."
@@ -103,7 +104,7 @@ methodology:
 findings:
   - "At 500x, the only setting Gains and Papertrade both offer, a Gains position is closed on a 0.12 percent move against it and a Papertrade one on 0.15 percent. Neither returns anything. Gains' figure is the one 11 real liquidations show, not the 0.16 percent its threshold alone would imply."
   - "The fee is what separates the threshold from the outcome on Gains. Its contract liquidates at 80 percent of collateral, but the position pays its 0.02 percent fee on the way in and again on the way out, and at 500x those two legs are 20 points of collateral. Liquidations fire at a median 59.4 percent, so the room is a fifth smaller than the parameter suggests."
-  - "The order changes with the leverage, which is why the selector is part of the measurement. At each venue's own maximum, room shrinks as leverage grows. At 10x, which all four offer, Papertrade leaves the most room and Gains the least, because Gains liquidates at a share of collateral whatever the leverage while Papertrade's buffer is five basis points of price."
+  - "The order changes with the leverage, which is why the selector is part of the measurement. At each venue's own maximum, room shrinks as leverage grows. At 10x, which all five offer, Papertrade leaves the most room and Nova the least, because the gTrade venues liquidate at a share of collateral whatever the leverage while Papertrade's buffer is five basis points of price. Nova sits just below Gains throughout, on the same thresholds and a higher fee."
   - "Neither high leverage venue gives anything back. Gains returns nothing on all 27 liquidations measured from 7.5x to 500x, and Papertrade forfeits the whole margin by rule. The two margin fraction venues do return collateral: dYdX 60 percent and Hyperliquid 50 percent at their own maxima."
   - "Read the same rows in collateral terms and the picture changes again. At 1000x Papertrade busts after losing 52 percent of the margin, leaving 48 percent that the hard bust then takes. At 500x it busts at 76 percent against Gains at 60 percent, so the venue that closes you later in price closes you later in collateral too."
 
@@ -149,7 +150,7 @@ faq:
   - q: "What does room to liquidation mean?"
     a: "It is the percentage the price has to move against a position before the venue closes it, for a position opened at the selected leverage with no margin added beyond the minimum. It is measured at the moment the position opens and excludes funding and borrowing, which push the real trigger closer every hour the position is held."
   - q: "Why does the order change when I change the leverage?"
-    a: "Because venues set their maintenance requirement against different quantities. Gains ties it to collateral, so its room falls close to proportionally with leverage. Papertrade fixes it in price at about five basis points, so it barely matters at 10x and consumes roughly half the margin at 1000x. At low leverage Papertrade leaves the most room of the four; at its own maximum it leaves the least."
+    a: "Because venues set their maintenance requirement against different quantities. Gains ties it to collateral, so its room falls close to proportionally with leverage. Papertrade fixes it in price at about five basis points, so it barely matters at 10x and consumes roughly half the margin at 1000x. At low leverage Papertrade leaves the most room of the five; at its own maximum it leaves the least."
   - q: "Why is nothing ranked?"
     a: "Because more room is not the same as better terms. Room comes from holding back less maintenance margin, and the venue that holds back least is the one that keeps everything when it fires. A single ranking would reward that, whichever venue came out on top. The rows publish their figures and the reader picks the leverage that matches the question."
   - q: "Why does Gains show less room than its own threshold implies?"
@@ -159,7 +160,7 @@ faq:
   - q: "How is the Papertrade row checked when its contract is unverified?"
     a: "Against external truth rather than an ABI. Its price field matches the live Hyperliquid mid under the per instrument factor from its own instrument tuple, its leverage field caps at exactly the 1000 its documentation states, and under the resulting reading the predicted bust distance is never crossed on 384 adverse closes, the closest reaching 92 percent of it. A ceiling respected 384 times is a measurement, not a decode that happened to look right."
   - q: "Why only BTC and ETH?"
-    a: "They are the only two markets all four venues list. Papertrade lists exactly two instruments; the other three list hundreds, but comparing one venue's BTC terms against another's altcoin terms would not mean anything."
+    a: "They are the only two markets all five venues list. Papertrade lists exactly two instruments; the other four list hundreds, but comparing one venue's BTC terms against another's altcoin terms would not mean anything."
 
 providers:
   - slug: hyperliquid
@@ -190,12 +191,24 @@ providers:
     name: Gains
     tag: Synthetic perps on Arbitrum, x500 cohort, threshold and fee read on chain
     confidence_tier: onchain
-    formula: "Room = (threshold - 2 x fee x leverage) / leverage, all read by eth_call on the Arbitrum diamond for pairs 300 and 313. Checked against 11 liquidations: median 59.4% of collateral against 60.0% predicted."
+    formula: "Room = (threshold - 2 x fee x leverage) / leverage, by eth_call on the Arbitrum diamond for the standard pairs 0 and 1 and the x500 pairs 300 and 313. Checked against 11 liquidations: median 59.4% of collateral against 60.0% predicted."
     queries:
       p50: perp_liq_price_move_pct{venue="gains",bucket="all"}
       success: clamp_max(perp_leverage_max{venue="gains",bucket="all"}, 1)
       sample_size: count_over_time(perp_leverage_max{venue="gains",bucket="all"}[24h])
       series: perp_liq_price_move_pct{venue="gains",bucket="all"}
+      ranked: vector(0)
+
+  - slug: nova
+    name: Nova
+    tag: The same gTrade contract as Gains at a different address, priced higher
+    confidence_tier: onchain
+    formula: "The same read on Nova's own Arbitrum diamond, same pair indices. Thresholds and leverage bounds identical to Gains; the standard pair charges 0.050% a leg against Gains' 0.035%, read 2026-10-22."
+    queries:
+      p50: perp_liq_price_move_pct{venue="nova",bucket="all"}
+      success: clamp_max(perp_leverage_max{venue="nova",bucket="all"}, 1)
+      sample_size: count_over_time(perp_leverage_max{venue="nova",bucket="all"}[24h])
+      series: perp_liq_price_move_pct{venue="nova",bucket="all"}
       ranked: vector(0)
 
   - slug: papertrade

@@ -493,7 +493,9 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // v93: Nova joins bench 041 (ranked) and bench 116 (unranked). A cached
   // entry holds the provider set current when it was written, so a bench
   // gaining a row needs the key to move or the row never appears.
-  ["bench-unfiltered-v93", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v94: Nova joins bench 295. Unlike v93, that bench declares dimensions,
+  // so bench-filters moves with this one too.
+  ["bench-unfiltered-v94", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -738,7 +740,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v84: lockstep with bench-unfiltered-v91.
   // v85: lockstep with bench-unfiltered-v92 (Nova joins bench 030).
   // v86: lockstep with bench-unfiltered-v93 (Nova joins benches 041 and 116).
-  ["all-benchmarks-v86", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v87: lockstep with bench-unfiltered-v94 (Nova joins bench 295).
+  ["all-benchmarks-v87", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -845,7 +848,12 @@ const loadBenchmarkFiltered = unstable_cache(
   //      carry a chain dimension the cached filter sets do not know about.
   // v34: lockstep with bench-unfiltered-v90.
   // v35: lockstep with bench-unfiltered-v91.
-  ["bench-filters-v35", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v36: lockstep with bench-unfiltered-v94. Bench 295 declares kind and
+  // bucket dimensions, so its filtered variants are cached here as well,
+  // and a new provider is invisible on every tab until this moves. v93
+  // deliberately did not move it: none of the three benches Nova joined
+  // then had dimensions.
+  ["bench-filters-v36", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 

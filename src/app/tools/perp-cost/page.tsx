@@ -80,7 +80,8 @@ export default function PerpCostToolPage() {
 
         <p className="mb-3">
           <strong className="font-semibold text-ink">Fees and spreads</strong> come from our own
-          perp-fees measurements, read on {MEASURED_AT}. Each spread is the{" "}
+          perp-fees measurements, read on {MEASURED_AT}, except the few rows that carry a later
+          date of their own beside their provenance tag. Each spread is the{" "}
           <strong className="font-semibold text-ink">median of 10,080 readings</strong>, one a
           minute over seven days, and half of it is charged per leg because a taker crosses half
           the book. Readings at or below zero are dropped first: a crossed or empty book is the
