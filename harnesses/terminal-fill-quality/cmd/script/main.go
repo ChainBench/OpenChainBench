@@ -1262,7 +1262,8 @@ func evmSaleRow(ctx context.Context, rpc *rpcClient, httpc *http.Client, t Termi
 	// settlement figure at all while the opposite one does.
 	if s.BlockNum > 0 && recv.Time > 0 {
 		if at := pumpBlockAt(ctx, httpc, *oc, x.Chain, s.BlockNum); at > 0 {
-			noteSettle(settleTerminal(t.Slug), x.Chain, float64(recv.Time-at))
+			product, _ := settleRoute(t.Slug)
+			noteSettle(product, settleTrade, x.Chain, float64(recv.Time-at))
 		}
 	}
 	sw.UserQ = recv.Tokens // quote received on Solana
@@ -1366,7 +1367,14 @@ func evmFundingRow(ctx context.Context, rpc *rpcClient, httpc *http.Client, t Te
 		// BasedBot's whole flow is funding legs, so this is the only place
 		// its route can be timed. One receipt read per sampled row buys the
 		// destination block; the deposit's own block time is already here.
-		noteSettleTx(ctx, httpc, *dc, settleTerminal(t.Slug), x.DestChain, x.OutTx, *inTx.BlockTime)
+		//
+		// The chain comes from the SLUG, which says "funding", not from
+		// x.DestChain. The destination chain is where the transfer landed,
+		// but the bench files a funding leg under its own chain value, and
+		// using the destination would have mixed transfers into that chain's
+		// trade column while leaving the funding view empty.
+		product, chain := settleRoute(t.Slug)
+		noteSettleTx(ctx, httpc, *dc, product, settleFunding, chain, x.OutTx, *inTx.BlockTime)
 	}
 	sw.UserQ = givenUSD / price
 	sw.TerminalQ = x.AppFeeUsd / price
@@ -1422,7 +1430,8 @@ func evmRow(ctx context.Context, rpc *rpcClient, httpc *http.Client, t Terminal,
 		// unknown amount and would put two definitions under one metric.
 		if s.BlockNum > 0 {
 			if at := pumpBlockAt(ctx, httpc, *dc, x.DestChain, s.BlockNum); at > 0 {
-				noteSettle(settleTerminal(t.Slug), x.DestChain, float64(at-*inTx.BlockTime))
+				product, _ := settleRoute(t.Slug)
+				noteSettle(product, settleTrade, x.DestChain, float64(at-*inTx.BlockTime))
 			}
 		}
 	}
@@ -1495,20 +1504,25 @@ var productChains = []string{"funding", "bnb", "robinhood", "base", "ethereum", 
 
 // productOf splits a row slug into the product and its chain
 // ("fomo-bnb" → fomo, bnb; "trojan" → trojan, solana).
-// settleTerminal: the product a cross-chain row's settlement is published
-// under, which must EQUAL a provider slug or the panel renders nothing.
+// settleRoute: the product and chain a cross-chain row's settlement is
+// published under. The product must EQUAL a provider slug or the panel renders
+// nothing, which is how lane="bridge" hid 180,682 trades.
 //
-// The funding suffix is stripped on purpose. A funding leg is a bridge
-// transfer rather than a fill, which is why it stays out of the product's
-// pooled LOSS figure: averaging a transfer with a trade would describe
-// neither. Settlement time is the opposite case. It is the bridge's own
-// property and it is the same quantity at both ends, destination block time
-// minus origin block time, so a transfer and a bridged trade belong under one
-// label. For BasedBot it is the only flow there is, so without this its route
-// could never carry a settlement time at all.
-func settleTerminal(slug string) string {
-	p, _ := productOf(strings.TrimSuffix(slug, "-funding"))
-	return p
+// Both halves come from productOf, including for the funding rows:
+// productOf("basedbot-funding") is ("basedbot", "funding"), because "funding"
+// is in productChains precisely so that a transfer files under its own chain
+// value like every other metric on this bench. Taking only the product and
+// letting the caller supply a chain is what put a transfer to BNB under
+// chain="bnb" beside bridged trades, which openchainbench-07 caught.
+//
+// Why a transfer is on this metric at all: a funding leg is a bridge transfer
+// rather than a fill, which is why it stays out of the product's pooled LOSS
+// figure (averaging a transfer with a trade would describe neither).
+// Settlement is the bridge's own property and the same quantity at both ends,
+// so it belongs here, under its own chain and its own kind. For BasedBot it is
+// the only flow there is.
+func settleRoute(slug string) (string, string) {
+	return productOf(slug)
 }
 
 func productOf(slug string) (string, string) {

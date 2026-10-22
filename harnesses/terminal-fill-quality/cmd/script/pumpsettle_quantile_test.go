@@ -73,7 +73,7 @@ func TestPublishedSettleIsTheMedianNotTheMean(t *testing.T) {
 	if !settlePublished(chain) {
 		t.Fatal("no median published for 100 pairs")
 	}
-	got := metricValue(gSettleMs.WithLabelValues("pump-bridge", chain, "median"))
+	got := metricValue(gSettleMs.WithLabelValues("pump-bridge", settleTrade, chain, "median"))
 	if got != 1000 {
 		t.Fatalf("published median %v ms, want 1000 (the mean of this sample is 3320 ms)", got)
 	}
@@ -142,7 +142,7 @@ func TestStallsStayOutOfThePublishedQuantiles(t *testing.T) {
 		t.Fatal("no quantile published for 20 clean pairs: the assertion below would test nothing")
 	}
 	for _, stat := range []string{"median", "p90"} {
-		if got := metricValue(gSettleMs.WithLabelValues("pump-bridge", chain, stat)); got != 1000 {
+		if got := metricValue(gSettleMs.WithLabelValues("pump-bridge", settleTrade, chain, stat)); got != 1000 {
 			t.Errorf("%s = %v ms with stalls in the input, want 1000: stalls leaked into the published figure", stat, got)
 		}
 	}

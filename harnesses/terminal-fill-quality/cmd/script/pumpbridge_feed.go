@@ -276,6 +276,15 @@ const (
 )
 
 // pumpNoteDeposit records a deposit for later pairing.
+//
+// The age prune walks from index 0 and stops at the first entry still inside
+// the window, which reads as if the slice were ascending. It is not: poll()
+// walks signatures newest first, so each pass inserts descending. What saves
+// it is that each pass holds only signatures newer than the previous cursor,
+// so the slice is ascending BY PASS and the prune drops whole passes at a
+// time. The window therefore reaches back pumpDepWindowAge plus one pass
+// width, about a minute in steady state and about three on the first pass,
+// rather than the flat 30 minutes the constant suggests.
 func pumpNoteDeposit(at int64, amount float64) {
 	if at <= 0 || amount <= 0 {
 		return
@@ -306,7 +315,9 @@ func pumpNoteDeposit(at int64, amount float64) {
 // the lag range at all.
 //
 // inRange is what separates a miss from a blind spot. The window is in memory,
-// ages out at 30 minutes and starts EMPTY after every restart, so a search
+// ages out at 30 minutes plus one pass (see pumpNoteDeposit: pruning walks
+// whole passes, so about a minute of slack in steady state and about three
+// on the first pass) and starts EMPTY after every restart, so a search
 // against an empty range could not have succeeded whatever the bridge did.
 // Without this, that case is counted as "none" beside genuine misses and a
 // failure rate built on it would publish our own restarts as pump's

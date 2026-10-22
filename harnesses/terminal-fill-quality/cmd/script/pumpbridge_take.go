@@ -62,16 +62,16 @@ var (
 	}, []string{"chain"})
 	gSettleMs = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "tfq_settle_ms",
-		Help: "Cross-chain settlement time per route, milliseconds: the Solana deposit to the destination spend that consumed it, matched by the amount the fee schedule implies. RESOLUTION IS ONE SECOND, so values are multiples of 1000: both ends are block timestamps in whole seconds and intra-second block ordering is not used to refine them. Stalls past 60 s are excluded (counted in tfq_pump_bridge_stall_total) because a handful of them move a mean by more than an order of magnitude. stat=median|p90|mean|over10s_pct, the last being the share of settlements slower than ten seconds, published because a mean still carries everything under 60 s and two routes can differ on their tail rather than their typical speed. READ THE MEAN to compare routes: at one-second resolution a sample is 0, 1, 2 or 3 seconds, so a median can only take one of four values and two different routes sharing one carries no information. The mean is stall-free because anything past 60 s never enters the window",
-	}, []string{"terminal", "chain", "stat"})
+		Help: "Cross-chain settlement time per route, milliseconds: the Solana deposit to the destination spend that consumed it, matched by the amount the fee schedule implies. RESOLUTION IS ONE SECOND, so values are multiples of 1000: both ends are block timestamps in whole seconds and intra-second block ordering is not used to refine them. Stalls past 60 s are excluded (counted in tfq_pump_bridge_stall_total) because a handful of them move a mean by more than an order of magnitude. kind separates a bridged TRADE from a wallet-funding TRANSFER: the same quantity at both ends but not the same population, and since the figure is a per-route mean, pooling them would make a route's number move with its own mix of the two (BasedBot is all funding, Pump Bridge all trades). Pin kind in any query or a scalar read sees two series and blanks. stat=median|p90|mean|over10s_pct, the last being the share of settlements slower than ten seconds, published because a mean still carries everything under 60 s and two routes can differ on their tail rather than their typical speed. READ THE MEAN to compare routes: at one-second resolution a sample is 0, 1, 2 or 3 seconds, so a median can only take one of four values and two different routes sharing one carries no information. The mean is stall-free because anything past 60 s never enters the window",
+	}, []string{"terminal", "kind", "chain", "stat"})
 	gBridgeCostPct = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "bridge_cost_percent_pump",
 		Help: "What Pump Bridge's own schedule costs at a given notional, percent: (0.05 of the stable plus the chain's measured rate times the notional) over the notional. Published for bench 003 beside the quote-based bridges, UNRANKED, because it is not the same product: those move USDC to USDC and this delivers a token, so the cost is comparable while the service is not. Gas on the destination is sponsored and the schedule is fixed, so this deduction is the whole cost of the bridging step rather than a fee with slippage omitted",
 	}, []string{"amount_usd"})
 	gSettleN = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "tfq_settle_samples",
-		Help: "Settlements held in the window for a route, the base of tfq_settle_ms. Published UNCONDITIONALLY, including below the ten-sample floor where no quantile is published, because without it a thin route and an unmeasured route are the same absent series and the difference is the whole question: 3 here means the route works and we have not seen enough of it, nothing here means we never measured it. The window is in memory and refills after a restart",
-	}, []string{"terminal", "chain"})
+		Help: "Settlements held in the window for a route, the base of tfq_settle_ms. Published UNCONDITIONALLY, including below the ten-sample floor where no quantile is published, because without it a thin route and an unmeasured route are the same absent series and the difference is the whole question: 3 here means the route works and we have not seen enough of it, nothing here means we never measured it. Counted per leg kind, like the figure it underpins. The window is in memory and refills after a restart",
+	}, []string{"terminal", "kind", "chain"})
 	cPumpStall = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "tfq_pump_bridge_stall_total",
 		Help: "Paired spends that took longer than 60 seconds to settle. Counted apart because they are what makes the settle histogram's mean useless: about 4% of pairs, enough to move a mean by more than an order of magnitude while leaving the median where it was. A rising share here is the bridge stalling, which the median will not show",
@@ -669,7 +669,7 @@ func pumpPairSpend(ctx context.Context, httpc *http.Client, c originChain, r pum
 		}
 	}
 	// A miss against an EMPTY range is our blindness, not the bridge's: the
-	// deposit window is in memory, ages out at 30 minutes and refills from
+	// deposit window is in memory, ages out at 30 minutes plus a pass and refills from
 	// nothing after a restart. Counted apart so a failure rate can never be
 	// built on it by accident.
 	if why == "none" && sawAny == 0 {
@@ -699,8 +699,19 @@ func pumpPairSpend(ctx context.Context, httpc *http.Client, c originChain, r pum
 // inside a bucket and invents precision the data does not have.
 var pumpSettleWindow struct {
 	sync.Mutex
-	by map[string]map[string][]float64 // terminal -> chain -> seconds
+	by map[settleKey][]float64
 }
+
+// settleKey: the three things that have to stay separate.
+//
+// kind is the one that is not obvious. A wallet-funding transfer and a bridged
+// trade are the same QUANTITY (destination block time minus origin block
+// time) but they are not the same POPULATION, and the figure published is a
+// per-route mean. Pooling them would make a route's number move with its own
+// mix of transfers and trades: BasedBot is entirely funding, Pump Bridge
+// entirely trades, so a comparison between them would partly be a comparison
+// of what their legs are.
+type settleKey struct{ terminal, kind, chain string }
 
 const pumpSettleWindowMax = 2000
 
@@ -717,8 +728,15 @@ const pumpSettleMin = 10
 // magnitude while leaving the median where it was. They stay visible in
 // tfq_pump_bridge_stall_total.
 func pumpNoteSettle(chain string, took float64) {
-	noteSettle("pump-bridge", chain, took)
+	noteSettle("pump-bridge", settleTrade, chain, took)
 }
+
+// The two leg kinds a settlement can belong to. Values, not free text, because
+// a typo would silently create a third population nobody reads.
+const (
+	settleTrade   = "trade"   // a bridged trade: the destination buys a token
+	settleFunding = "funding" // a wallet-funding transfer: no trade either end
+)
 
 // noteSettle records one route's settlement and republishes its quantiles.
 //
@@ -726,26 +744,30 @@ func pumpNoteSettle(chain string, took float64) {
 // side by side under one metric and the page can compare them. Both are the
 // same quantity, destination block time minus origin block time, which is the
 // only reason putting them in one metric is honest.
-func noteSettle(terminal, chain string, took float64) {
-	if took > 60 || took < 0 || terminal == "" || chain == "" {
+//
+// kind keeps the two POPULATIONS apart inside that metric; see settleKey. The
+// chain="all" series pools a route's chains but never its kinds.
+func noteSettle(terminal, kind, chain string, took float64) {
+	if took > 60 || took < 0 || terminal == "" || kind == "" || chain == "" {
 		return
 	}
 	pumpSettleWindow.Lock()
 	if pumpSettleWindow.by == nil {
-		pumpSettleWindow.by = map[string]map[string][]float64{}
+		pumpSettleWindow.by = map[settleKey][]float64{}
 	}
-	if pumpSettleWindow.by[terminal] == nil {
-		pumpSettleWindow.by[terminal] = map[string][]float64{}
-	}
-	w := append(pumpSettleWindow.by[terminal][chain], took)
+	k := settleKey{terminal, kind, chain}
+	w := append(pumpSettleWindow.by[k], took)
 	if len(w) > pumpSettleWindowMax {
 		w = w[len(w)-pumpSettleWindowMax:]
 	}
-	pumpSettleWindow.by[terminal][chain] = w
+	pumpSettleWindow.by[k] = w
 	per := map[string][]float64{}
 	var all []float64
-	for c, v := range pumpSettleWindow.by[terminal] {
-		per[c] = append([]float64(nil), v...)
+	for key, v := range pumpSettleWindow.by {
+		if key.terminal != terminal || key.kind != kind {
+			continue
+		}
+		per[key.chain] = append([]float64(nil), v...)
 		all = append(all, v...)
 	}
 	pumpSettleWindow.Unlock()
@@ -754,21 +776,21 @@ func noteSettle(terminal, chain string, took float64) {
 		// The count first and without the floor: a route sitting at 3 is a
 		// working route we have barely sampled, and that has to be legible
 		// rather than look like a route nobody measured.
-		gSettleN.WithLabelValues(terminal, c).Set(float64(len(v)))
+		gSettleN.WithLabelValues(terminal, kind, c).Set(float64(len(v)))
 		if len(v) < pumpSettleMin {
 			continue
 		}
-		gSettleMs.WithLabelValues(terminal, c, "median").Set(quantileOf(v, 0.5) * 1000)
-		gSettleMs.WithLabelValues(terminal, c, "p90").Set(quantileOf(v, 0.9) * 1000)
-		gSettleMs.WithLabelValues(terminal, c, "mean").Set(meanOf(v) * 1000)
-		gSettleMs.WithLabelValues(terminal, c, "over10s_pct").Set(shareOver(v, 10))
+		gSettleMs.WithLabelValues(terminal, kind, c, "median").Set(quantileOf(v, 0.5) * 1000)
+		gSettleMs.WithLabelValues(terminal, kind, c, "p90").Set(quantileOf(v, 0.9) * 1000)
+		gSettleMs.WithLabelValues(terminal, kind, c, "mean").Set(meanOf(v) * 1000)
+		gSettleMs.WithLabelValues(terminal, kind, c, "over10s_pct").Set(shareOver(v, 10))
 	}
-	gSettleN.WithLabelValues(terminal, "all").Set(float64(len(all)))
+	gSettleN.WithLabelValues(terminal, kind, "all").Set(float64(len(all)))
 	if len(all) >= pumpSettleMin {
-		gSettleMs.WithLabelValues(terminal, "all", "median").Set(quantileOf(all, 0.5) * 1000)
-		gSettleMs.WithLabelValues(terminal, "all", "p90").Set(quantileOf(all, 0.9) * 1000)
-		gSettleMs.WithLabelValues(terminal, "all", "mean").Set(meanOf(all) * 1000)
-		gSettleMs.WithLabelValues(terminal, "all", "over10s_pct").Set(shareOver(all, 10))
+		gSettleMs.WithLabelValues(terminal, kind, "all", "median").Set(quantileOf(all, 0.5) * 1000)
+		gSettleMs.WithLabelValues(terminal, kind, "all", "p90").Set(quantileOf(all, 0.9) * 1000)
+		gSettleMs.WithLabelValues(terminal, kind, "all", "mean").Set(meanOf(all) * 1000)
+		gSettleMs.WithLabelValues(terminal, kind, "all", "over10s_pct").Set(shareOver(all, 10))
 	}
 }
 
@@ -843,8 +865,8 @@ func quantileOf(v []float64, p float64) float64 {
 // the one extra RPC read the measurement costs there. It returns silently
 // when the receipt or the block cannot be read: a route with no settlement
 // figure is correct, a route with a guessed one is not.
-func noteSettleTx(ctx context.Context, httpc *http.Client, c originChain, product, chain, hash string, originAt int64) {
-	if product == "" || hash == "" || originAt <= 0 {
+func noteSettleTx(ctx context.Context, httpc *http.Client, c originChain, product, kind, chain, hash string, originAt int64) {
+	if product == "" || kind == "" || hash == "" || originAt <= 0 {
 		return
 	}
 	var rc evmReceipt
@@ -856,7 +878,7 @@ func noteSettleTx(ctx context.Context, httpc *http.Client, c originChain, produc
 		return
 	}
 	if at := pumpBlockAt(ctx, httpc, c, chain, bn); at > 0 {
-		noteSettle(product, chain, float64(at-originAt))
+		noteSettle(product, kind, chain, float64(at-originAt))
 	}
 }
 
