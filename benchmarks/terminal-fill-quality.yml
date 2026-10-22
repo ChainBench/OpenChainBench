@@ -93,7 +93,7 @@ findings:
   - "The advertised 1 % fee is the smallest constant: pump.fun protocol and creator fees add about 100 to 140 bps on curve and PumpSwap trades whichever terminal routes them."
   - "Network cost separates the Telegram bots: Maestro's tips through its own relay approach a percent of a median swap, Bloom, Trojan and Photon sit in the tens of basis points, Axiom and Phantom at a few."
   - "Failed swaps are a hidden cost: on the busiest terminals several percent of swap attempts fail on-chain and still pay the priority fee (unless the app sponsors gas, as FOMO does)."
-  - "Pump Bridge deducts a fixed 0.05 of the stable plus 40 or 45 basis points, measured on chain with no API: its routers on BNB, Base and Robinhood Chain spend a round trade size less exactly that, at five levels. Read 2026-10-22; the same test against a shifted grid of trade sizes matches nothing. Being partly fixed, it costs 545 bps on a $1 trade against 50 on a $100 one."
+  - "Pump Bridge deducts a fixed 0.05 of the stable plus 40 or 45 basis points, measured on chain with no API: its routers on BNB, Base and Robinhood Chain spend a round trade size less exactly that, at five levels. Read 2026-10-22; the same test against a shifted grid of trade sizes matches nothing. Being partly fixed, it costs 545 bps on a $1 trade against 50 on a $100 one. The sell leg is not its mirror: payouts pay 45 bps of gross with no meaningful fixed part, and 38% pay nothing."
 
 faq:
   - q: "What is the reference price and why does it matter?"
