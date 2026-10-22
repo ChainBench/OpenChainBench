@@ -348,6 +348,19 @@ providers:
       sample_size: tfq_sample_size{terminal="padre",chain="all",kind="priced",bucket="all"}
       series: tfq_loss_ex_fee_bps{terminal="padre",chain="all",stat="median",bucket="all"}
 
+  - slug: pump-bridge
+    name: Pump Bridge
+    tag: "pump.fun's own bridge, its routers on BNB, Base, Arc and Robinhood Chain"
+    formula: "Swaps on pump's own routers, spend grossed back up to what the user committed, since the router is paid net of the 0.05 plus 40 or 45 bps taken on the Solana deposit. Removing the app fee removes nothing: none is attributed here."
+    queries:
+      p50: tfq_loss_ex_fee_bps{terminal="pump-bridge",chain="all",stat="median",bucket="all"}
+      p90: tfq_loss_ex_fee_bps{terminal="pump-bridge",chain="all",stat="p90",bucket="all"}
+      p99: tfq_loss_ex_fee_bps{terminal="pump-bridge",chain="all",stat="p99",bucket="all"}
+      success: tfq_health{terminal="pump-bridge",chain="all",bucket="all"}
+      ranked: tfq_ranked{terminal="pump-bridge",chain="all",bucket="all"}
+      sample_size: tfq_sample_size{terminal="pump-bridge",chain="all",kind="priced",bucket="all"}
+      series: tfq_loss_ex_fee_bps{terminal="pump-bridge",chain="all",stat="median",bucket="all"}
+
   - slug: pump-fun
     name: pump.fun app
     tag: "Terminal, Solana"
