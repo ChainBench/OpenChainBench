@@ -441,7 +441,11 @@ func main() {
 	// distribution, not a live price, and each pass costs one signatures
 	// call plus a transaction read per signature.
 	pbf := &pumpBridgeFeed{}
-	go pbf.run(context.Background(), rpc, 2*time.Minute)
+	// Every minute, not every two: the program runs about two signatures a
+	// second, so a 2-minute pass had to cover ~240 against a page of 200 and
+	// fell behind permanently. The deposits it skipped are the ones the
+	// pairing then could not find.
+	go pbf.run(context.Background(), rpc, time.Minute)
 	// The other half of the same question, on the EVM side: the deposit feed
 	// above says what users put in, this one says what the bridge kept, read
 	// from the routers' own stable spends. Five minutes because a fee schedule
