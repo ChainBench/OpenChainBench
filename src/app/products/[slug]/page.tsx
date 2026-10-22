@@ -868,8 +868,8 @@ export default async function ProviderPage({
                     {reg.url && (
                       <a
                         className="lnk inline-flex items-center gap-1 font-medium text-ink hover:text-accent transition-colors break-all"
-                        href={withUtm(reg.url)}
-                        rel="noopener"
+                        href={withUtm(reg.referralUrl || reg.url)}
+                        rel={reg.referralUrl ? "noopener sponsored" : "noopener"}
                       >
                         {reg.url.replace(/^https?:\/\//, "").replace(/\/$/, "")}
                         <ArrowUpRight size={13} strokeWidth={2} className="shrink-0" />
