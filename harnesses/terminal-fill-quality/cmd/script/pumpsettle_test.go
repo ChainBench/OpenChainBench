@@ -14,7 +14,7 @@ func TestDepositIsFoundByItsAmount(t *testing.T) {
 	defer resetPumpDepWindow()
 	pumpNoteDeposit(1000, 10.0)
 	pumpNoteDeposit(1001, 25.0)
-	got, why := pumpFindDeposit(10.0, 1003, pumpSettleMaxLag)
+	got, why, _ := pumpFindDeposit(10.0, 1003, pumpSettleMaxLag)
 	if why != "unique" {
 		t.Fatalf("a deposit of exactly 10 came back %q", why)
 	}
@@ -36,7 +36,7 @@ func TestAmbiguityIsRefusedRatherThanGuessed(t *testing.T) {
 	// And it must say WHY: ambiguous and none call for opposite fixes, a
 	// shorter window against a longer one, so folding them together hides
 	// which one the data is asking for.
-	if _, why := pumpFindDeposit(10.0, 1005, pumpSettleMaxLag); why != "ambiguous" {
+	if _, why, _ := pumpFindDeposit(10.0, 1005, pumpSettleMaxLag); why != "ambiguous" {
 		t.Errorf("two identical deposits came back %q, want ambiguous", why)
 	}
 }
@@ -46,12 +46,12 @@ func TestTimeOrderAndWindowAreRespected(t *testing.T) {
 	resetPumpDepWindow()
 	defer resetPumpDepWindow()
 	pumpNoteDeposit(2000, 10.0) // after the spend
-	if _, why := pumpFindDeposit(10.0, 1900, pumpSettleMaxLag); why != "none" {
+	if _, why, _ := pumpFindDeposit(10.0, 1900, pumpSettleMaxLag); why != "none" {
 		t.Errorf("a deposit later than the spend came back %q", why)
 	}
 	resetPumpDepWindow()
 	pumpNoteDeposit(1000, 10.0)
-	if _, why := pumpFindDeposit(10.0, 1000+pumpSettleMaxLag+1, pumpSettleMaxLag); why != "none" {
+	if _, why, _ := pumpFindDeposit(10.0, 1000+pumpSettleMaxLag+1, pumpSettleMaxLag); why != "none" {
 		t.Errorf("a deposit outside the window came back %q", why)
 	}
 }
@@ -65,7 +65,7 @@ func TestNearMissesAreNotPaired(t *testing.T) {
 	resetPumpDepWindow()
 	defer resetPumpDepWindow()
 	pumpNoteDeposit(1000, 10.01)
-	if _, why := pumpFindDeposit(10.0, 1002, pumpSettleMaxLag); why != "none" {
+	if _, why, _ := pumpFindDeposit(10.0, 1002, pumpSettleMaxLag); why != "none" {
 		t.Errorf("a deposit one cent away came back %q", why)
 	}
 }
@@ -78,7 +78,7 @@ func TestWindowDropsWhatIsTooOld(t *testing.T) {
 	pumpNoteDeposit(1000, 10.0)
 	// A much later deposit rolls the window past the first one.
 	pumpNoteDeposit(1000+pumpDepWindowAge+10, 25.0)
-	if _, why := pumpFindDeposit(10.0, 1002, pumpSettleMaxLag); why != "none" {
+	if _, why, _ := pumpFindDeposit(10.0, 1002, pumpSettleMaxLag); why != "none" {
 		t.Errorf("a deposit older than the window came back %q", why)
 	}
 	pumpDepWindow.Lock()

@@ -38,6 +38,7 @@ import (
 	"math/big"
 	"net/http"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -48,7 +49,7 @@ import (
 var (
 	cPumpSpends = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "tfq_pump_bridge_spends_total",
-		Help: "Stable spends seen leaving a pump.fun bridge router, split by whether the fee could be read back exactly. The unmatched ones are trades whose size was not a round number, not errors; the ratio is the base this measurement rests on",
+		Help: "Stable spends seen leaving a pump.fun bridge router, split by whether the implied trade size is one of the ROUND levels in pumpLevels. matched=no means the size was not round; it does NOT mean the spend is unpairable, because pairing inverts the schedule for any amount and only needs the deposit to exist. So paired can and does exceed matched=yes, by a factor of two on some chains, and neither counter bounds the other",
 	}, []string{"chain", "matched"})
 	cPumpSchedule = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "tfq_pump_bridge_schedule_total",
@@ -63,13 +64,17 @@ var (
 		Name: "tfq_settle_ms",
 		Help: "Cross-chain settlement time per route, milliseconds: the Solana deposit to the destination spend that consumed it, matched by the amount the fee schedule implies. RESOLUTION IS ONE SECOND, so values are multiples of 1000: both ends are block timestamps in whole seconds and intra-second block ordering is not used to refine them. Stalls past 60 s are excluded (counted in tfq_pump_bridge_stall_total) because a handful of them move a mean by more than an order of magnitude. stat=median|p90|mean|over10s_pct, the last being the share of settlements slower than ten seconds, published because a mean still carries everything under 60 s and two routes can differ on their tail rather than their typical speed. READ THE MEAN to compare routes: at one-second resolution a sample is 0, 1, 2 or 3 seconds, so a median can only take one of four values and two different routes sharing one carries no information. The mean is stall-free because anything past 60 s never enters the window",
 	}, []string{"terminal", "chain", "stat"})
+	gBridgeCostPct = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "bridge_cost_percent_pump",
+		Help: "What Pump Bridge's own schedule costs at a given notional, percent: (0.05 of the stable plus the chain's measured rate times the notional) over the notional. Published for bench 003 beside the quote-based bridges, UNRANKED, because it is not the same product: those move USDC to USDC and this delivers a token, so the cost is comparable while the service is not. Gas on the destination is sponsored and the schedule is fixed, so this deduction is the whole cost of the bridging step rather than a fee with slippage omitted",
+	}, []string{"amount_usd"})
 	cPumpStall = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "tfq_pump_bridge_stall_total",
 		Help: "Paired spends that took longer than 60 seconds to settle. Counted apart because they are what makes the settle histogram's mean useless: about 4% of pairs, enough to move a mean by more than an order of magnitude while leaving the median where it was. A rising share here is the bridge stalling, which the median will not show",
 	}, []string{"chain"})
 	cPumpPair = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "tfq_pump_bridge_pair_total",
-		Help: "Router spends by whether their deposit could be identified: unique is one candidate, ambiguous is several (two users depositing the same amount in the same minute, reported rather than guessed at), none is no deposit in the window. The settle histogram covers the unique ones only, and this counter is its base",
+		Help: "Router spends by whether their deposit could be identified. unique: one candidate. ambiguous: several users sent the same amount in the window. none_searched: deposits WERE in the lag range and none matched, the only outcome that can mean a failed bridge. none_blind: the window held nothing in range at all, so the search could not have succeeded whatever the bridge did, which is OUR blindness and must never be counted as a failure. The settle histogram covers unique only",
 	}, []string{"chain", "result"})
 	hPumpTakeBps = prometheus.NewHistogramVec(prometheus.HistogramOpts{
 		Name:    "tfq_pump_bridge_take_bps",
@@ -79,7 +84,7 @@ var (
 )
 
 func init() {
-	prometheus.MustRegister(cPumpSpends, cPumpSchedule, hPumpTakeBps, hPumpSettle, cPumpPair, cPumpStall, gSettleMs)
+	prometheus.MustRegister(cPumpSpends, cPumpSchedule, hPumpTakeBps, hPumpSettle, cPumpPair, cPumpStall, gSettleMs, gBridgeCostPct)
 }
 
 // pumpLevels: the trade sizes a person types, in whole stable units. The grid is
@@ -234,6 +239,10 @@ func (w *pumpTakeWatcher) run(ctx context.Context, httpc *http.Client, every tim
 }
 
 func (w *pumpTakeWatcher) poll(ctx context.Context, httpc *http.Client) {
+	// The schedule-implied cost at the notionals bench 003 samples. Published
+	// each pass so it tracks the rate the watcher derives rather than a
+	// constant frozen at startup.
+	defer pumpPublishBridgeCost()
 	for _, r := range pumpRouters {
 		var c originChain
 		found := false
@@ -588,9 +597,13 @@ func pumpPairSpend(ctx context.Context, httpc *http.Client, c originChain, r pum
 	fixed := pumpFixed(r.chain)
 	var dep pumpDep
 	why := "none"
+	sawAny := 0
 	for _, bps := range pumpRatesBps {
 		cand := (sf + fixed) / (1 - float64(bps)/10000)
-		d, w := pumpFindDeposit(cand, at, pumpSettleMaxLag)
+		d, w, inRange := pumpFindDeposit(cand, at, pumpSettleMaxLag)
+		if inRange > sawAny {
+			sawAny = inRange
+		}
 		if w == "unique" {
 			dep, why = d, "unique"
 			break
@@ -598,6 +611,15 @@ func pumpPairSpend(ctx context.Context, httpc *http.Client, c originChain, r pum
 		if w == "ambiguous" {
 			why = "ambiguous"
 		}
+	}
+	// A miss against an EMPTY range is our blindness, not the bridge's: the
+	// deposit window is in memory, ages out at 30 minutes and refills from
+	// nothing after a restart. Counted apart so a failure rate can never be
+	// built on it by accident.
+	if why == "none" && sawAny == 0 {
+		why = "none_blind"
+	} else if why == "none" {
+		why = "none_searched"
 	}
 	cPumpPair.WithLabelValues(r.chain, why).Inc()
 	if why != "unique" {
@@ -785,6 +807,35 @@ func pumpBlockAt(ctx context.Context, httpc *http.Client, c originChain, chain s
 	pumpBlockTime.at[chain][block] = t
 	pumpBlockTime.Unlock()
 	return t
+}
+
+// pumpPublishBridgeCost publishes what the schedule costs at the notionals
+// bench 003 samples, so Pump Bridge can sit beside the quote-based bridges.
+//
+// Not a model: the fixed part and the rate are both derived from that chain's
+// own spends by the watcher above. Two rates run at once, 40 and 45 bps, so
+// the rate used is the flow-weighted mean the gross-up already relies on, and
+// the spec's formula says so rather than presenting it as a single schedule.
+//
+// A notional where the fixed part dominates is exactly where this is worth
+// seeing: at $5 the 0.05 alone is 100 bps before any rate applies, which is a
+// fact about the product that an average fee figure hides.
+func pumpPublishBridgeCost() {
+	rate, n := 0.0, 0
+	for _, r := range pumpRouters {
+		if v := pumpChainRate(r.chain); v > 0 {
+			rate += v
+			n++
+		}
+	}
+	if n == 0 {
+		return
+	}
+	rate /= float64(n)
+	for _, amt := range []float64{5, 50, 300} {
+		cost := (pumpFixedUSD + rate*amt) / amt * 100
+		gBridgeCostPct.WithLabelValues(strconv.FormatFloat(amt, 'f', -1, 64)).Set(cost)
+	}
 }
 
 // pumpStableOf: the settlement token a pump row pays in, or "" if unknown.
