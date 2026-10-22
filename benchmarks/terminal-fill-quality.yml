@@ -124,7 +124,7 @@ metric_panels:
     metric: tfq_settle_ms{chain="all",stat="median"}
     unit: ms
     higher_is_better: false
-    description: "Median time from the Solana deposit to the destination spend that consumed it. Resolution is one second: both ends are whole-second block timestamps, so values are multiples of 1000 and a route under a second reads 0. Stalls over 60 s excluded."
+    description: "Median destination block time minus origin block time, per route: Pump Bridge paired by the amount its fee schedule implies, Relay from its own request legs. Resolution is one second, so values are multiples of 1000 and a route under a second reads 0. Stalls over 60 s excluded."
   - id: terminal_fee
     label: Terminal fee
     label_key: terminal

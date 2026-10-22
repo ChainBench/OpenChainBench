@@ -621,7 +621,7 @@ func pumpPairSpend(ctx context.Context, httpc *http.Client, c originChain, r pum
 // inside a bucket and invents precision the data does not have.
 var pumpSettleWindow struct {
 	sync.Mutex
-	by map[string][]float64
+	by map[string]map[string][]float64 // terminal -> chain -> seconds
 }
 
 const pumpSettleWindowMax = 2000
@@ -639,23 +639,35 @@ const pumpSettleMin = 10
 // magnitude while leaving the median where it was. They stay visible in
 // tfq_pump_bridge_stall_total.
 func pumpNoteSettle(chain string, took float64) {
-	if took > 60 || took < 0 {
+	noteSettle("pump-bridge", chain, took)
+}
+
+// noteSettle records one route's settlement and republishes its quantiles.
+//
+// Terminal is the PRODUCT, so Pump Bridge and the Relay-carried routes land
+// side by side under one metric and the page can compare them. Both are the
+// same quantity, destination block time minus origin block time, which is the
+// only reason putting them in one metric is honest.
+func noteSettle(terminal, chain string, took float64) {
+	if took > 60 || took < 0 || terminal == "" || chain == "" {
 		return
 	}
 	pumpSettleWindow.Lock()
 	if pumpSettleWindow.by == nil {
-		pumpSettleWindow.by = map[string][]float64{}
+		pumpSettleWindow.by = map[string]map[string][]float64{}
 	}
-	w := append(pumpSettleWindow.by[chain], took)
+	if pumpSettleWindow.by[terminal] == nil {
+		pumpSettleWindow.by[terminal] = map[string][]float64{}
+	}
+	w := append(pumpSettleWindow.by[terminal][chain], took)
 	if len(w) > pumpSettleWindowMax {
 		w = w[len(w)-pumpSettleWindowMax:]
 	}
-	pumpSettleWindow.by[chain] = w
-	var all []float64
+	pumpSettleWindow.by[terminal][chain] = w
 	per := map[string][]float64{}
-	for c, v := range pumpSettleWindow.by {
-		cp := append([]float64(nil), v...)
-		per[c] = cp
+	var all []float64
+	for c, v := range pumpSettleWindow.by[terminal] {
+		per[c] = append([]float64(nil), v...)
 		all = append(all, v...)
 	}
 	pumpSettleWindow.Unlock()
@@ -664,12 +676,12 @@ func pumpNoteSettle(chain string, took float64) {
 		if len(v) < pumpSettleMin {
 			continue
 		}
-		gSettleMs.WithLabelValues("pump-bridge", c, "median").Set(quantileOf(v, 0.5) * 1000)
-		gSettleMs.WithLabelValues("pump-bridge", c, "p90").Set(quantileOf(v, 0.9) * 1000)
+		gSettleMs.WithLabelValues(terminal, c, "median").Set(quantileOf(v, 0.5) * 1000)
+		gSettleMs.WithLabelValues(terminal, c, "p90").Set(quantileOf(v, 0.9) * 1000)
 	}
 	if len(all) >= pumpSettleMin {
-		gSettleMs.WithLabelValues("pump-bridge", "all", "median").Set(quantileOf(all, 0.5) * 1000)
-		gSettleMs.WithLabelValues("pump-bridge", "all", "p90").Set(quantileOf(all, 0.9) * 1000)
+		gSettleMs.WithLabelValues(terminal, "all", "median").Set(quantileOf(all, 0.5) * 1000)
+		gSettleMs.WithLabelValues(terminal, "all", "p90").Set(quantileOf(all, 0.9) * 1000)
 	}
 }
 
