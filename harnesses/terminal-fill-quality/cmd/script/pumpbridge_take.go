@@ -626,6 +626,12 @@ var pumpSettleWindow struct {
 
 const pumpSettleWindowMax = 2000
 
+// pumpSettleMin: samples required before a quantile is published at all.
+// The window is in memory and refills after a restart, so this is what stops
+// a one-sample "median" reaching a page during the warm-up. Absent reads as
+// "no data yet"; a number reads as fact.
+const pumpSettleMin = 10
+
 // pumpNoteSettle records one settlement and republishes the quantiles.
 //
 // Stalls past 60 s are left out, as Relay's own dashboard does, because they
@@ -655,11 +661,16 @@ func pumpNoteSettle(chain string, took float64) {
 	pumpSettleWindow.Unlock()
 
 	for c, v := range per {
+		if len(v) < pumpSettleMin {
+			continue
+		}
 		gSettleMs.WithLabelValues("pump-bridge", c, "median").Set(quantileOf(v, 0.5) * 1000)
 		gSettleMs.WithLabelValues("pump-bridge", c, "p90").Set(quantileOf(v, 0.9) * 1000)
 	}
-	gSettleMs.WithLabelValues("pump-bridge", "all", "median").Set(quantileOf(all, 0.5) * 1000)
-	gSettleMs.WithLabelValues("pump-bridge", "all", "p90").Set(quantileOf(all, 0.9) * 1000)
+	if len(all) >= pumpSettleMin {
+		gSettleMs.WithLabelValues("pump-bridge", "all", "median").Set(quantileOf(all, 0.5) * 1000)
+		gSettleMs.WithLabelValues("pump-bridge", "all", "p90").Set(quantileOf(all, 0.9) * 1000)
+	}
 }
 
 // quantileOf: nearest-rank on a copy, so the value returned is one that was
