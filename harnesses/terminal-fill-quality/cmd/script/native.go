@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"github.com/prometheus/client_golang/prometheus"
 	"log"
 	"math"
 	"math/big"
@@ -856,6 +857,21 @@ func sampleNative(ctx context.Context, httpc *http.Client, st *State, nf *native
 }
 
 // nativeRow reads one routed swap on its chain.
+// cRouterDirect: of the swaps read off a terminal's router events, how many
+// were sent to the router itself. The block-sampled fail rate only sees
+// transactions addressed to a router, so a low "yes" share means that rate is
+// blind on the row however many blocks are scanned. Measured on 2026-10-22:
+// 31 of 994 router-event transactions on Robinhood Chain (3.1 %) were sent to
+// Pump Bridge's router; the rest went to the user's own proxy.
+var cRouterDirect = func() *prometheus.CounterVec {
+	c := prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "tfq_router_direct_total",
+		Help: "Swaps read off a native EVM terminal's router events, by whether the transaction was sent to the router itself (direct=yes). The block-sampled fail rate only counts transactions addressed to a router, so yes/(yes+no) is the share of the row's swaps that sample can see at all",
+	}, []string{"terminal", "direct"})
+	prometheus.MustRegister(c)
+	return c
+}()
+
 func nativeRow(ctx context.Context, httpc *http.Client, t evmTerminal, hash string, gas map[string]float64, now int64) *Swap {
 	c := chainByID(0)
 	for i := range originChains {
@@ -885,6 +901,7 @@ func nativeRow(ctx context.Context, httpc *http.Client, t evmTerminal, hash stri
 			toRouter = true
 		}
 	}
+	cRouterDirect.WithLabelValues(t.Slug, map[bool]string{true: "yes", false: "no"}[toRouter]).Inc()
 	if !toRouter {
 		for _, l := range rc.Logs {
 			if len(l.Topics) > 0 && liquidityTopics[l.Topics[0]] {
