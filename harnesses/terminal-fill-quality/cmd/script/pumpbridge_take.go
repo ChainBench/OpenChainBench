@@ -74,7 +74,7 @@ var (
 	}, []string{"chain"})
 	cPumpPair = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "tfq_pump_bridge_pair_total",
-		Help: "Router spends by whether their deposit could be identified. unique: one candidate. ambiguous: several users sent the same amount in the window. none_searched: deposits WERE in the lag range and none matched, the only outcome that can mean a failed bridge. none_blind: the window held nothing in range at all, so the search could not have succeeded whatever the bridge did, which is OUR blindness and must never be counted as a failure. The settle histogram covers unique only",
+		Help: "Router spends by whether their deposit could be identified. unique: one candidate. ambiguous: several users sent the same amount in the window. none_searched: deposits WERE in the lag range and none matched, the only outcome that can mean a failed bridge. none_blind: the window held nothing in range, so the search could not have succeeded whatever the bridge did, which is OUR blindness and must never be counted as a failure. none_prewindow: the spend predates the oldest deposit we hold, which happens for up to an hour and a half after a restart because the spend watcher backfills far more chain than the deposit feed's first pass, and is a property of our startup rather than of anything. The settle histogram covers unique only",
 	}, []string{"chain", "result"})
 	hPumpTakeBps = prometheus.NewHistogramVec(prometheus.HistogramOpts{
 		Name:    "tfq_pump_bridge_take_bps",
@@ -568,9 +568,41 @@ func pumpGrossUpFunded(slug string, spentUSD float64, userFunded bool) (float64,
 // appear, so "none observed past 300 s" was true and meaningless. Same shape
 // as a 0% fail rate from an empty sample, one level up.
 //
-// 1800 costs nothing: pumpDepWindowAge already RETAINS 30 minutes of deposits,
-// so the old limit was discarding matches we were holding in memory.
-const pumpSettleMaxLag = 1800
+// 1800 was WRONG and this is the retraction. Widening the search did not
+// uncover a censored tail, it manufactured one: within hours, four pairs
+// appeared past 300 s, 7.7% of all pairs, every one unreachable under the old
+// window. The shape is the proof. Across 52 settlements on three chains there
+// is NOTHING between 3 s and 300 s, not one sample, and then a lump at roughly
+// 380 and 800 s. Real latency decays; it does not vanish for a hundredfold
+// span and reappear far out. A false pair is drawn from whatever unrelated
+// deposit sits in the window, so it is spread across the window and carries no
+// memory of the true delivery time, which is exactly that picture.
+//
+// Collision pressure, measured over attempts that found a deposit: 14.3% on
+// BNB and 12.5% on Robinhood were VISIBLE same-amount collisions, rejected as
+// ambiguous. If one in seven is visible, the invisible case, one unrelated
+// deposit of the amount with no true one in range, reading as unique, cannot
+// be rare. Widening the window buys that mechanism more room, not less.
+//
+// Back to 300, not to the 60 the evidence alone would suggest. Every clean
+// pair is at or under 3 s and the slowest of 397 settlements on an
+// independently recorded rail was 39.3 s, so 60 would have been generous. But
+// 60 collides with the stall threshold: nothing could then exceed 60 s, so the
+// stall counter and the >60 s exclusion both become unreachable, and we would
+// lose the ability to see a stall at all in exchange for a tighter window.
+// openchainbench-e9's stall test caught that; 300 keeps both and still cuts
+// the collision opportunity sixfold against 1800.
+//
+// The cost, stated because it runs the other way: a tighter window turns a
+// genuinely slow delivery into an apparent failure, and none_searched is the
+// failure signal. That is acceptable ONLY because no delivery has ever been
+// observed between 3 s and 300 s, on our rail or the reference. If one ever
+// is, this constant is the first thing to revisit.
+//
+// The censoring worry that prompted 1800 is handled where it should have been
+// all along: the BUCKETS run to 1800 so a long pair is visible if it exists,
+// while the SEARCH stops at 60.
+const pumpSettleMaxLag = 300
 
 // pumpBlockTime caches block timestamps, which are read once per block rather
 // than once per spend: several spends share a block on a busy router.
@@ -598,6 +630,16 @@ func pumpPairSpend(ctx context.Context, httpc *http.Client, c originChain, r pum
 	if at <= 0 {
 		return
 	}
+	// A spend from before our deposit window opened cannot pair, and that
+	// says nothing about the bridge: on a fresh process the spend watcher
+	// backfills up to 100 minutes of Base while the deposit feed's first
+	// pass covers about 3. Counted apart so it never reads as a failure and
+	// never inflates none_blind, which it did to 96% on Base.
+	if oldest := pumpOldestDeposit(); oldest > 0 && at < oldest {
+		cPumpPair.WithLabelValues(r.chain, "none_prewindow").Inc()
+		return
+	}
+
 	// Each rate is tried on its own, never the chain's weighted mix.
 	//
 	// That mix is right for grossing up a loss, where 2.5 bps of error is
