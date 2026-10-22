@@ -1,5 +1,6 @@
 import {
   fetchPerpCohort,
+  MARKET_COUNT_NOT_COMPARABLE,
   type PerpCohortSummary,
   type PerpVenueRow,
   type PerpVenueType,
@@ -148,8 +149,13 @@ export function benchRowsForVenue(
   const measured = cohort.venues.filter((v) => v.venueType !== "cex");
   const cohortSize = measured.length;
 
+  // The same exclusion the bench this card links to applies, for the same
+  // reason the CEX filter above exists: Nova's count is the unpruned gTrade
+  // registry, so bench 116 carries it unranked and this card must agree
+  // rather than publish a rank the bench refuses to give.
   const activeMarketsVenues = measured
     .filter((v) => v.activeMarkets != null && Number.isFinite(v.activeMarkets))
+    .filter((v) => !MARKET_COUNT_NOT_COMPARABLE.has(v.slug))
     .sort((a, b) => (b.activeMarkets as number) - (a.activeMarkets as number));
   const activeMarketsRank =
     activeMarketsVenues.findIndex((v) => v.slug === venue.slug) + 1 || null;
