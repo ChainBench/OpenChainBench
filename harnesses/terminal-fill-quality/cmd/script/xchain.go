@@ -230,13 +230,15 @@ const (
 // route is a fill and not a transfer, which is what puts it under the trade
 // kind rather than the funding kind.
 //
-// MULTI-VENUE IS THE NORM and is the real pricing risk here. Over 66 fills
-// the venue counts are v4 37, v2 22, v3 21, pancake-v3 19, summing to more
-// than the fills, so one fill routinely buys the same token across several
-// pools. A single-pool pricer attributes the whole delivered amount to one
-// pool's pre-trade state and reads a large negative pool cost, which is the
-// split_implausible shape of pump's 0x26abbc93. Count that share on a first
-// batch before trusting any median from this route.
+// MULTI-VENUE IS NOT THE RISK IT LOOKED LIKE. Venue counts over 66 fills are
+// v4 37, v2 22, v3 21, pancake-v3 19, summing past the fill count, and I read
+// that as parallel legs the single-pool pricer could not handle. Replaying
+// priceEvmSettlement on 60 real fills says otherwise: pools per fill are 1
+// pool 48, 2 pools 3, 3 pools 4, 4 pools 1, and the extra venues are
+// SEQUENTIAL HOPS (a stable to WETH on v3, then WETH to the token on v4),
+// which the pricer already handles. Implausible splits are 2 of 60, 3%,
+// against 1 to 3 of 57 on pump. So a venue count above the fill count does
+// not mean parallel legs, and this route is priceable as it stands.
 var mobulaBridge = map[string]string{
 	"base":      "0xa834e70303322d86e5dae95ee47e9c6a073d9812",
 	"bnb":       "0xa834e70303322d86e5dae95ee47e9c6a073d9812",
@@ -301,14 +303,26 @@ var mobulaBridge = map[string]string{
 // 12% of 198 rows land between 30 and 70 bps; a fee cannot be negative, so
 // that gap is two valuations of the same input disagreeing rather than a fee.
 //
-// MOBULA'S OWN TAKE, measured where nothing else is in the way: the
-// EVM -> Solana direction delivers a dollar stable, so it has no token leg
-// and its total take is almost entirely the bridge. 57 bps median over 210
-// intents, p10 31 and p90 68. That tightness is what a schedule looks like,
-// against the 131 to 537 spread of the token-delivering direction where pool
-// impact dominates, and it is the first like-for-like figure to put beside
-// Pump Bridge's measured 0.05 plus 40 to 45 bps. It still cannot be split
-// into bridge and app, which is the whole point above.
+// MOBULA'S OWN TAKE on the sell direction, 57 bps median over 210 intents
+// with p10 31 and p90 68. What that figure covers took two wrong readings to
+// pin down, so the route is written out: over 201 intents, originToken is
+// NATIVE in 201, inputToken is an EVM token in 199, and destinationToken is a
+// dollar stable on Solana in 200, with originToken never equal to inputToken.
+// So the user sells a token into the native coin, the native coin is bridged,
+// and a stable arrives.
+//
+// The 57 bps is (amountInUsd - amountOutUsd) / amountInUsd, which starts from
+// the NATIVE amount, so it excludes the sale and is bridge-only. But it is
+// native in, not stable in, so it is NOT the same pair as Pump Bridge's USDC
+// in and must not be quoted as like-for-like against its 0.05 plus 40 to 45
+// bps. Its tightness, against the 131 to 537 spread of the token-delivering
+// direction, is what a schedule looks like rather than pool impact.
+//
+// This also explains the quote gap dismissed above: every row has a sale
+// stage, so those 156 bps are the cost of THAT SALE. The verdict (not a fee)
+// was right and the reason (two valuations disagreeing) was wrong.
+//
+// It still cannot be split into bridge and app, which is the point above.
 const robinhoodTokenFee = "0xe5e702641ea86f4ae6cc3cdaed2b886f976be044"
 
 const solanaChainID = 792703809
