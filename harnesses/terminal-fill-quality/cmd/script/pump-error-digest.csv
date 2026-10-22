@@ -1,0 +1,64 @@
+# pump.fun's published Pump Bridge vs Relay A/B export, reduced to counts.
+# Source: the dataset pump linked in its 2026-10-21 thread inviting verification.
+# sha256(original) de8bc04403d1fc3da0325a58c6dc98f5ffd8919a68effad3ad4fd46f2520bd1e
+# original rows 416669, window 2026-09-28T16 to 2026-10-07T20 UTC
+# Lossless for any rate by chain, lane, direction or error class.
+chain,lane,direction,outcome,error_class,rows
+arc,bridge,buy,error,bridge_refunded,1
+arc,bridge,buy,error,other,4
+arc,bridge,buy,success,none,1485
+arc,bridge,sell,error,bridge_execute_failed,15
+arc,bridge,sell,error,other,30
+arc,bridge,sell,success,none,1030
+arc,relay,buy,error,other,19
+arc,relay,buy,error,relay_failure,147
+arc,relay,buy,error,sponsorship,71
+arc,relay,buy,success,none,937
+arc,relay,sell,error,other,72
+arc,relay,sell,error,relay_failure,9
+arc,relay,sell,success,none,2112
+base,bridge,buy,error,bridge_refunded,20
+base,bridge,buy,error,other,25
+base,bridge,buy,success,none,4348
+base,bridge,sell,error,bridge_execute_failed,317
+base,bridge,sell,error,other,30
+base,bridge,sell,success,none,2485
+base,relay,buy,error,other,34
+base,relay,buy,error,relay_failure,56
+base,relay,buy,error,sponsorship,209
+base,relay,buy,success,none,4399
+base,relay,sell,error,other,1801
+base,relay,sell,error,relay_failure,62
+base,relay,sell,success,none,12003
+bsc,bridge,buy,error,bridge_refunded,196
+bsc,bridge,buy,error,other,257
+bsc,bridge,buy,success,none,45915
+bsc,bridge,sell,error,bridge_execute_failed,271
+bsc,bridge,sell,error,other,377
+bsc,bridge,sell,success,none,31830
+bsc,relay,buy,error,other,748
+bsc,relay,buy,error,relay_failure,4805
+bsc,relay,buy,error,sponsorship,1630
+bsc,relay,buy,success,none,39053
+bsc,relay,sell,error,other,1783
+bsc,relay,sell,error,relay_failure,134
+bsc,relay,sell,success,none,34148
+ink,bridge,buy,success,none,88
+ink,bridge,sell,success,none,53
+ink,relay,buy,error,sponsorship,4
+ink,relay,buy,success,none,84
+ink,relay,sell,error,relay_failure,2
+ink,relay,sell,success,none,99
+robinhood,bridge,buy,error,bridge_refunded,84
+robinhood,bridge,buy,error,other,309
+robinhood,bridge,buy,success,none,50357
+robinhood,bridge,sell,error,bridge_execute_failed,4500
+robinhood,bridge,sell,error,other,185
+robinhood,bridge,sell,success,none,36470
+robinhood,relay,buy,error,other,478
+robinhood,relay,buy,error,relay_failure,1126
+robinhood,relay,buy,error,sponsorship,2169
+robinhood,relay,buy,success,none,46544
+robinhood,relay,sell,error,other,8558
+robinhood,relay,sell,error,relay_failure,1609
+robinhood,relay,sell,success,none,71082

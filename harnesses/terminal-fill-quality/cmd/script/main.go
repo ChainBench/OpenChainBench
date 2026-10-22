@@ -447,6 +447,9 @@ func main() {
 	// from the routers' own stable spends. Five minutes because a fee schedule
 	// changes on the scale of a product decision, and each pass is one
 	// eth_getLogs per chain.
+	// A vendor's own published comparison, recomputed from the rows it linked.
+	// Once, not on a ticker: the export is finished and does not move.
+	loadVendorAB()
 	ptw := newPumpTakeWatcher()
 	go ptw.run(context.Background(), httpc, 5*time.Minute)
 	var mu sync.RWMutex
