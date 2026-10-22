@@ -47,13 +47,32 @@ var (
 )
 
 func init() {
-	prometheus.MustRegister(gPumpBridgeUp, cPumpBridgeDeposits, hPumpBridgeDeposit, gPumpBridgeBehind)
+	prometheus.MustRegister(gPumpBridgeUp, cPumpBridgeDeposits, hPumpBridgeDeposit, gPumpBridgeBehind, cPumpBridgeRead)
 }
 
 // pumpBridgeFeed walks the bridge program forward from where it stopped.
 type pumpBridgeFeed struct {
 	cursor string // newest signature already read; "" on the first pass
+	// retry holds signatures whose transaction could not be read, with the
+	// unix time of the first failure. The cursor moves past them anyway, so
+	// without this a failed read was a deposit lost for good: 2.4 % of reads
+	// on QuickNode on 2026-10-22 (72 of 2,982), invisible to feed_behind.
+	retry map[string]int64
 }
+
+// pumpBridgeRetryMax and pumpBridgeRetryAge bound the retry queue by count and
+// by age, so a signature that is genuinely unreadable is abandoned rather than
+// retried forever. Ten minutes is well inside the 30-minute deposit window, so
+// a recovered deposit can still pair.
+const (
+	pumpBridgeRetryMax = 500
+	pumpBridgeRetryAge = 10 * 60 // seconds
+)
+
+var cPumpBridgeRead = prometheus.NewCounterVec(prometheus.CounterOpts{
+	Name: "tfq_pump_bridge_tx_read_failed_total",
+	Help: "Pump Bridge program transactions whose read failed, by what became of them: queued (kept for the next pass), recovered (read on a retry), abandoned (still unreadable after 10 minutes), dropped (retry queue full, lost at once). queued minus recovered is the deposits the pairing could not see",
+}, []string{"outcome"})
 
 // pumpBridgePageSize caps one pass. The program runs roughly 25,000 signatures
 // a day, so a 60 second tick sees about 17; 200 leaves room for a slow tick or
@@ -93,7 +112,8 @@ func (f *pumpBridgeFeed) poll(ctx context.Context, rpc *rpcClient) {
 	// be re-read forever.
 	newest := sigs[0].Signature
 
-	deposits, scanned := 0, 0
+	now := time.Now().Unix()
+	deposits, scanned, failed, dropped := 0, 0, 0, 0
 	for _, s := range sigs {
 		if ctx.Err() != nil {
 			break
@@ -101,38 +121,18 @@ func (f *pumpBridgeFeed) poll(ctx context.Context, rpc *rpcClient) {
 		if s.failed() {
 			continue
 		}
-		tx, err := rpc.transaction(ctx, s.Signature)
-		if err != nil || tx == nil {
+		d, ok := f.read(ctx, rpc, s.Signature)
+		if !ok {
+			failed++
+			if !f.queue(s.Signature, now) {
+				dropped++
+			}
 			continue
 		}
 		scanned++
-		for _, grp := range tx.Meta.InnerInstructions {
-			for _, ix := range grp.Instructions {
-				if ix.ProgramID != pumpBridgeProgram || ix.Data == "" {
-					continue
-				}
-				raw, ok := base58Decode(ix.Data)
-				if !ok {
-					continue
-				}
-				d, err := decodePumpDeposit(raw)
-				if err != nil {
-					continue // a payout or an admin call, which is the norm
-				}
-				deposits++
-				cPumpBridgeDeposits.Inc()
-				amt := float64(d.Amount) / 1e6
-				hPumpBridgeDeposit.Observe(amt)
-				// Kept so the EVM side can find this deposit again. The
-				// destination is encrypted, but the schedule inverts, so the
-				// amount is the join key and the time is what it buys: how
-				// long the bridge took to settle it.
-				if tx.BlockTime != nil {
-					pumpNoteDeposit(*tx.BlockTime, amt)
-				}
-			}
-		}
+		deposits += d
 	}
+	recovered, abandoned := f.retryPass(ctx, rpc, now)
 	f.cursor = newest
 	// A full page means the chain outran this pass, but ONLY once a cursor
 	// exists: the first pass has none and reads the most recent page by
@@ -146,9 +146,91 @@ func (f *pumpBridgeFeed) poll(ctx context.Context, rpc *rpcClient) {
 	} else {
 		gPumpBridgeBehind.Set(0)
 	}
-	if deposits > 0 {
-		log.Printf("[pump-bridge] %d deposits in %d transactions", deposits, scanned)
+	if deposits > 0 || failed > 0 || recovered > 0 || abandoned > 0 {
+		log.Printf("[pump-bridge] %d deposits in %d transactions; reads failed %d (dropped %d), retries recovered %d, abandoned %d, waiting %d",
+			deposits, scanned, failed, dropped, recovered, abandoned, len(f.retry))
 	}
+}
+
+// read fetches one transaction and publishes the deposits in it. ok is false
+// when the transaction could not be read (an RPC error, or not found at this
+// commitment), which is a gap to retry, not an empty transaction.
+func (f *pumpBridgeFeed) read(ctx context.Context, rpc *rpcClient, sig string) (deposits int, ok bool) {
+	tx, err := rpc.transaction(ctx, sig)
+	if err != nil || tx == nil {
+		return 0, false
+	}
+	for _, grp := range tx.Meta.InnerInstructions {
+		for _, ix := range grp.Instructions {
+			if ix.ProgramID != pumpBridgeProgram || ix.Data == "" {
+				continue
+			}
+			raw, ok := base58Decode(ix.Data)
+			if !ok {
+				continue
+			}
+			d, err := decodePumpDeposit(raw)
+			if err != nil {
+				continue // a payout or an admin call, which is the norm
+			}
+			deposits++
+			cPumpBridgeDeposits.Inc()
+			amt := float64(d.Amount) / 1e6
+			hPumpBridgeDeposit.Observe(amt)
+			// Kept so the EVM side can find this deposit again. The
+			// destination is encrypted, but the schedule inverts, so the
+			// amount is the join key and the time is what it buys: how
+			// long the bridge took to settle it.
+			if tx.BlockTime != nil {
+				pumpNoteDeposit(*tx.BlockTime, amt)
+			}
+		}
+	}
+	return deposits, true
+}
+
+// queue keeps a failed signature for the next pass. It returns false when the
+// queue is full and the signature is lost at once, which is counted apart so
+// a sustained outage reads as one rather than as a quiet bridge.
+func (f *pumpBridgeFeed) queue(sig string, now int64) bool {
+	if f.retry == nil {
+		f.retry = map[string]int64{}
+	}
+	if _, ok := f.retry[sig]; ok {
+		return true
+	}
+	if len(f.retry) >= pumpBridgeRetryMax {
+		cPumpBridgeRead.WithLabelValues("dropped").Inc()
+		return false
+	}
+	f.retry[sig] = now
+	cPumpBridgeRead.WithLabelValues("queued").Inc()
+	return true
+}
+
+// retryPass re-reads what earlier passes could not, skipping anything this
+// pass just queued (it failed seconds ago and gets its turn next time).
+func (f *pumpBridgeFeed) retryPass(ctx context.Context, rpc *rpcClient, now int64) (recovered, abandoned int) {
+	for sig, since := range f.retry {
+		if ctx.Err() != nil {
+			return
+		}
+		if since == now {
+			continue
+		}
+		if _, ok := f.read(ctx, rpc, sig); ok {
+			delete(f.retry, sig)
+			recovered++
+			cPumpBridgeRead.WithLabelValues("recovered").Inc()
+			continue
+		}
+		if now-since > pumpBridgeRetryAge {
+			delete(f.retry, sig)
+			abandoned++
+			cPumpBridgeRead.WithLabelValues("abandoned").Inc()
+		}
+	}
+	return
 }
 
 // run polls on its own cadence, slower than the swap tick: the bridge's
