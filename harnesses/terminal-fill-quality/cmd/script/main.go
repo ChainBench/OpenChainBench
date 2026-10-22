@@ -1179,6 +1179,13 @@ func cohort() []Terminal {
 			continue
 		}
 		for _, c := range originChains {
+			// Skip a name evmTerminals already owns. cohort is what compute
+			// walks, so this is the guard that decides the published rows:
+			// the same guard in xchainRows is not enough, and testing only
+			// that one is how six duplicated rows survived a green suite.
+			if nativeOwnsSlug(a.Slug + "-" + c.slug) {
+				continue
+			}
 			out = append(out, Terminal{Slug: a.Slug + "-" + c.slug, Name: a.Name + " · " + chainNames[c.slug], Kind: "app", Note: "Trading on " + chainNames[c.slug] + " through Relay: the user pays in USDC or SOL from the app wallet on Solana, a Relay solver buys the token on " + chainNames[c.slug] + " and delivers it. Value given = the SOL sent (tx fee inside); value received = the tokens delivered, at the pool's state before the settlement swap (v2: reserves; v3 / v4: the price left by the previous swap on the pool); terminal = the app fee; relay = what Relay kept (fees, spread, destination gas); pool = the settlement swap's impact and LP fee."})
 		}
 	}
@@ -1487,6 +1494,11 @@ func compute(st *State, minPriced, minRank int) []TerminalStats {
 	byProduct := map[string][]string{}
 	byProductFirm := map[string][]string{} // the rows above their own floor
 	attOfRow := map[string]int{}           // each row's attempts in the window (its share of the product's flow)
+	// heldStructural: rows held for a reason that will not pass with time,
+	// as opposed to a window still filling. Banana Gun's Ethereum row is
+	// held because its users sell on Uniswap directly, so the feed sees
+	// buys with no fee on them, and that will be true tomorrow too.
+	heldStructural := map[string]bool{}
 	rowsOf := map[string][]Terminal{}
 	var products []string
 	for _, t := range cohort() {
@@ -1510,8 +1522,23 @@ func compute(st *State, minPriced, minRank int) []TerminalStats {
 		// A native EVM row whose sample is one side only with no fee on it
 		// (Banana Gun's Ethereum buys) reads a fee-free half of the product:
 		// the fee sits on the side the feed never sees, the row waits.
+		// A Pump Bridge row measures the destination swap, and only that: the
+		// bridge deducts 0.05 plus 40 or 45 bps on the Solana deposit before the
+		// router spends anything, so value given here is the router's spend
+		// (9.905 of a $10 deposit) rather than what the user paid.
+		//
+		// Publishing it understates the loss by 95 bps at $10 and 545 at $1,
+		// under a column that promises all costs included, and puts it beside
+		// FOMO on the same chain tab, whose own bridge take IS counted as relay.
+		// The table then reads pump as cheaper than FOMO while it is dearer.
+		if pumpBridgeRow(t.Slug) && ts.Priced > 0 {
+			ts.Healthy, ts.Ranked = false, false
+			heldStructural[t.Slug] = true
+			ts.Note = strings.TrimSpace(ts.Note + " The bridge's own take is deducted on the Solana deposit, which this row never sees, so its loss would leave out a cost the other rows on this chain include: held until the deposit can be paired to the router's spend.")
+		}
 		if isNativeEVM(t.Slug) && ts.Parsed >= 20 && (ts.BuySharePct >= 99 || ts.BuySharePct <= 1) && ts.Components["terminal"] < 5 {
 			ts.Healthy, ts.Ranked = false, false
+			heldStructural[t.Slug] = true
 			ts.Note = strings.TrimSpace(ts.Note + " One side only in the sample with no fee on it: the fee is taken on the side this feed never sees, so the row waits until both sides are read.")
 		}
 		out = append(out, ts)
@@ -1585,9 +1612,25 @@ func compute(st *State, minPriced, minRank int) []TerminalStats {
 				outAtt += attOfRow[s]
 			}
 			outAtt -= in
+			// A row held for a structural reason never fills, so counting its
+			// flow here blocks the product for good while the note claims it is
+			// waiting. Banana Gun read Unresponsive on the default view for
+			// exactly this reason, with its Solana row published and well over
+			// the floor. Its flow is named instead of pending.
+			heldAtt := 0
+			var heldRows []string
+			for _, sl := range byProduct[p] {
+				if heldStructural[sl] {
+					heldAtt += attOfRow[sl]
+					heldRows = append(heldRows, sl)
+				}
+			}
+			outAtt -= heldAtt
 			if outAtt > in {
 				ts.Healthy, ts.Ranked = false, false
 				ts.Note = strings.TrimSpace(ts.Note + " The chain carrying most of this product's flow is still filling its window: the pooled figure waits for it.")
+			} else if len(heldRows) > 0 {
+				ts.Note = strings.TrimSpace(ts.Note + " Pooled over the measured chains; " + strings.Join(heldRows, ", ") + " held out for a reason that will not pass with time, each row stating its own, so that flow is not counted as pending.")
 			} else {
 				ts.Note = strings.TrimSpace(ts.Note + " Pooled over the chains published on their own; a chain still filling its window is left out until then.")
 			}

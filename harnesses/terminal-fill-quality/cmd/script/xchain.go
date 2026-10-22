@@ -340,6 +340,24 @@ func newXfeed(httpc *http.Client, newest map[string]int64) *xfeed {
 }
 
 // xchainRows: every bench row the cross-chain apps can produce.
+// xchainRows: the row names the Relay feed owns.
+//
+// A slug that evmTerminals also declares is NOT emitted here. Both producers
+// record into the same state under the same name, so a collision does not
+// average or sum, it lets whichever row is written last win, silently and
+// differently from one tick to the next.
+//
+// That is not hypothetical: adding the six pump.fun bridge rows in #3141 and
+// #3143 collided with the Relay rows this builds, and the published JSON
+// carried pump-fun-bnb, -base, -arc, -robinhood, -megaeth and -xlayer twice
+// each, 72 entries where 66 were intended, with nothing else in the file
+// duplicated.
+//
+// The native row wins because it reads the router the trades actually go
+// through: pump made its own bridge the default on 2026-10-07, so the Relay
+// row for those chains is the legacy path. The residual Relay flow on them
+// stops being recorded, which is a loss, but a stated one rather than a
+// coin toss between two numbers.
 func xchainRows() []string {
 	var out []string
 	for _, a := range xchainApps {
@@ -348,10 +366,24 @@ func xchainRows() []string {
 			continue
 		}
 		for _, c := range originChains {
-			out = append(out, a.Slug+"-"+c.slug)
+			slug := a.Slug + "-" + c.slug
+			if nativeOwnsSlug(slug) {
+				continue
+			}
+			out = append(out, slug)
 		}
 	}
 	return out
+}
+
+// nativeOwnsSlug: whether an evmTerminal row already publishes under this name.
+func nativeOwnsSlug(slug string) bool {
+	for _, t := range evmTerminals {
+		if t.Slug == slug {
+			return true
+		}
+	}
+	return false
 }
 
 // seedFundedFromRelay walks a funding-only app's public requests (every
