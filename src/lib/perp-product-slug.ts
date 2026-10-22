@@ -11,6 +11,12 @@ export const PERP_PRODUCT_SLUGS: Readonly<Record<string, string>> = {
   "gmx-v2": "gmx",
   "trade-xyz": "xyz",
   coinbase: "coinbase-international",
+  // Nova was on the site as a Hyperliquid frontend (bench 030) under
+  // "nova-markets" before it joined the perp cohort as "nova". Without this
+  // the company had two self-canonical product pages: /products/nova-markets
+  // carrying the logo and the frontend bench, /products/nova carrying the
+  // perp cards, and neither showing the whole venue.
+  nova: "nova-markets",
 };
 
 export function perpProductSlug(cohortSlug: string): string {
