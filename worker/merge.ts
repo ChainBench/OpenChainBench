@@ -54,6 +54,14 @@ export function mergeWithPrevious(
   now: number,
   declaredSlugs?: Set<string>,
   maxCarrySec?: number,
+  // authoritative: this load's result is the answer, so nothing is carried.
+  // Set on a filtered view, where load.ts returns an empty board on purpose
+  // when every provider fell under the floor. Carrying there re-published
+  // figures the harness had just purged, marked live, for half an hour
+  // (2026-10-22: Axiom 518.6 bps on Robinhood, Binance Wallet 220.5 on
+  // Ethereum). A total collapse returns before the merge is reached, so an
+  // empty result here is a state and not a failure.
+  authoritative?: boolean,
 ): { bench: Benchmark; state: WorkerState } {
   const carryMs = (maxCarrySec ?? DEFAULT_MAX_CARRY_SEC) * 1000;
   const state: WorkerState = { providers: {}, rings: {} };
@@ -80,7 +88,7 @@ export function mergeWithPrevious(
 
   // Carried providers: present in the previous snapshot, absent from this
   // sweep's live load. Keep values + series, set staleSince once.
-  if (prevBench) {
+  if (prevBench && !authoritative) {
     for (const pr of prevBench.results) {
       if (liveSlugs.has(pr.slug)) continue;
       // Deliberately delisted providers (removed from the spec) must NOT
@@ -112,7 +120,8 @@ export function mergeWithPrevious(
       }
     }
 
-    // Panels: carry per-provider values the same way.
+    // Panels: carry per-provider values the same way, and under the same
+    // rule: a filtered view that answered does not carry.
     for (const panel of fresh.metricPanels ?? []) {
       const prevPanel = (prevBench.metricPanels ?? []).find(
         (p: MetricPanel) => p.id === panel.id,
