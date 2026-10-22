@@ -117,6 +117,10 @@ var (
 	// that never catches up still reads a lag of zero: BNB dropped a
 	// third of its blocks for half an hour with feed_up 1 and lag 0 on
 	// every dashboard. This is the gauge that shows it.
+	cDustSkipped = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "tfq_dust_attempts_skipped_total",
+		Help: "Router events whose own declared trade size is under MIN_TRADE_USD, not counted as attempts. They were already excluded from every median; this keeps them out of the fail-rate denominator, the pooled chain weighting and the audit-table sample too, so those describe the same population the median does. A large count here against a small published attempt count is one actor fanning dust, not a broken feed",
+	}, []string{"terminal"})
 	gNativeSkipped = prometheus.NewGaugeVec(prometheus.GaugeOpts{Name: "tfq_native_skipped_last_blocks", Help: "Blocks the chain's log feed skipped on its last poll: never read, never sampled. Non-zero poll after poll means the read budget is below what the chain produces"}, []string{"chain"})
 	gUnpriced      = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "tfq_unpriced_share", Help: "Share of the window's drawn swaps that could not be valued at the pool's state (routes without a quote leg, undecoded venues); the published figure rests on the rest",
@@ -129,7 +133,7 @@ var (
 )
 
 func init() {
-	prometheus.MustRegister(gNativeUp, gNativeLag, gNativeSkipped, gLoss, gLossExFee, gComponent, gFail, gSamples, gTrade, gVenue, gBuy, gSandwich, gSandwichProfit, gLossSize, gLossChain, gHealth, gRanked, gFailCost, gFailOverhead, gLostUSD, gUnpriced, gRefresh, gFeed, gRelayFeed, gSol, cCalls, cErrors, cSkipped)
+	prometheus.MustRegister(gNativeUp, gNativeLag, gNativeSkipped, cDustSkipped, gLoss, gLossExFee, gComponent, gFail, gSamples, gTrade, gVenue, gBuy, gSandwich, gSandwichProfit, gLossSize, gLossChain, gHealth, gRanked, gFailCost, gFailOverhead, gLostUSD, gUnpriced, gRefresh, gFeed, gRelayFeed, gSol, cCalls, cErrors, cSkipped)
 }
 
 func envInt(k string, def int) int {

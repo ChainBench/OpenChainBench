@@ -51,6 +51,18 @@ type evmTerminal struct {
 	// read; the block sample filters on the transaction's from.
 	FromSet     string
 	SenderTopic map[string]int
+	// SizeWord: where this router's own event carries the trade size, as
+	// event signature -> 32-byte word index, with SizeDec the token's
+	// decimals. Declared ONLY where the layout has been checked against the
+	// stable transfer in the same transaction, because a misread word would
+	// drop real trades and say nothing.
+	//
+	// It exists so the dust floor can apply where attempts are COUNTED
+	// rather than only where swaps are priced. Without it a row whose feed
+	// is 97.5% robot publishes a fail rate, a pooled weight and an audit
+	// sample that all describe the robot while its median describes traders.
+	SizeWord map[string]int
+	SizeDec  int
 	// DropLoops: wallets trading the same token both ways four times or
 	// more in the window are farming (Binance Alpha volume on Base, fee-free
 	// round trips): their swaps stay out of the row's statistics.
@@ -94,8 +106,14 @@ var evmTerminals = []evmTerminal{
 		Routers: []string{"0x836b336fca26913176efc45a5a6e5e72cd7bd13b"}},
 	{Slug: "pump-bridge-arc", Name: "Pump Bridge · Arc", Kind: "app", Chain: "arc",
 		Routers: []string{"0x836b336fca26913176efc45a5a6e5e72cd7bd13b"}},
+	// SizeWord: word 2 of this router's own event equals the USDG amount of
+	// the transaction, checked on 25 of 25. Declared here and nowhere else:
+	// this is the one chain measured to carry dust (97.5% of transfers under
+	// $0.25 against zero on Base and BNB) and the one layout verified.
 	{Slug: "pump-bridge-robinhood", Name: "Pump Bridge · Robinhood Chain", Kind: "app", Chain: "robinhood",
-		Routers: []string{"0x5399d94d2cab7c252a6034042e1917a0e5e17a18"}},
+		Routers:  []string{"0x5399d94d2cab7c252a6034042e1917a0e5e17a18"},
+		SizeWord: map[string]int{"0xcdad023039fb3b146aa9902d31a2512a3d2c7180d901044aa17f6d69fb0683c1": 2},
+		SizeDec:  6},
 	// Relay serves neither of these two, so Pump Bridge is the only
 	// route on them and no bridge aggregator can see them. X Layer is
 	// live but thin (relayer nonce 28) and needs EVM_RPC_XLAYER to be
@@ -428,6 +446,26 @@ func (f *nativeFeed) failScan(ctx context.Context, st *State, gas map[string]flo
 	}
 }
 
+// logWordUSD reads a 32-byte word of a log's data as a token amount.
+//
+// Only sound for a stable, which is the only place it is used: the value is
+// returned as token units and treated as dollars. Returns false when the data
+// is too short, so a layout that changes stops filtering instead of filtering
+// on a word that is no longer the size.
+func logWordUSD(data string, word, dec int) (float64, bool) {
+	raw := strings.TrimPrefix(data, "0x")
+	if len(raw) < (word+1)*64 {
+		return 0, false
+	}
+	n := new(big.Int)
+	if _, ok := n.SetString(raw[word*64:(word+1)*64], 16); !ok {
+		return 0, false
+	}
+	v, _ := new(big.Float).Quo(new(big.Float).SetInt(n),
+		big.NewFloat(math.Pow10(dec))).Float64()
+	return v, true
+}
+
 type xinboxTx struct {
 	seen      int
 	reservoir []string
@@ -693,6 +731,20 @@ func (f *nativeFeed) poll(ctx context.Context) {
 				if !f.mine(t, topicAddr(l.Topics[idx])) {
 					others[slug]++
 					continue
+				}
+			}
+			// Below the floor the median already ignores it, so counting it
+			// as an attempt would describe a different population from the
+			// one every other figure on the row describes, and this bench
+			// ranks that fail rate against fifteen terminals that have no
+			// robot. Skipped entirely rather than sampled and discarded: it
+			// keeps the audit table and the sampling budget for real trades.
+			if t := termOf[slug]; len(t.SizeWord) > 0 {
+				if w, ok := t.SizeWord[l.Topics[0]]; ok {
+					if v, ok := logWordUSD(l.Data, w, t.SizeDec); ok && v < minTradeUSD {
+						cDustSkipped.WithLabelValues(slug).Inc()
+						continue
+					}
 				}
 			}
 			seen[l.TxHash] = true
