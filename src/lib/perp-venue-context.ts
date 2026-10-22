@@ -32,6 +32,7 @@ export const PERP_VENUE_META: Record<
   lighter:     { url: "https://lighter.xyz",     chainLabel: "Lighter L2" },
   "gmx-v2":    { url: "https://gmx.io",          chainLabel: "Arbitrum", productSlug: PERP_PRODUCT_SLUGS["gmx-v2"] },
   gains:       { url: "https://gains.trade",     chainLabel: "Arbitrum, Base, Polygon, ApeChain" },
+  nova:        { url: "https://nova.markets",    chainLabel: "Arbitrum", productSlug: PERP_PRODUCT_SLUGS.nova },
   dydx:        { url: "https://dydx.trade",      chainLabel: "Cosmos" },
   nado:        { url: "https://nado.xyz",        chainLabel: "Ink" },
   paradex:     { url: "https://paradex.trade",   chainLabel: "Starknet" },
@@ -55,6 +56,12 @@ export const PERP_VENUE_META: Record<
   papertrade:  { url: "https://papertrade.xyz",  chainLabel: "Hyperliquid" },
   "lighter-rh": { url: "https://rh.lighter.xyz", chainLabel: "Lighter L2, Robinhood" },
   "trade-xyz": { url: "https://trade.xyz",       chainLabel: "Hyperliquid HIP-3", productSlug: PERP_PRODUCT_SLUGS["trade-xyz"] },
+  // Ondo Perps, not Ondo Finance: the two are separate providers on this site
+  // (ondo-finance carries the protocol P/F row on bench 289), and
+  // /products/ondo is titled "Ondo Perps". It was the one cohort venue with
+  // no entry here, so its product page got the generic bench cards and no
+  // perp venue dashboard. Pre-existing, found by perp-product-slug.test.ts.
+  ondo:        { url: "https://ondoperps.xyz",   chainLabel: "Ethereum and Arbitrum custody" },
   binance:     { url: "https://www.binance.com/en/futures", chainLabel: "Offchain, CEX" },
   okx:         { url: "https://www.okx.com/trade-swap", chainLabel: "Offchain, CEX" },
   bybit:       { url: "https://www.bybit.com/trade/usdt", chainLabel: "Offchain, CEX" },

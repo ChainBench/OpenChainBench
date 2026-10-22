@@ -156,6 +156,15 @@ export async function generateMetadata({
   if (slug === "merkle") {
     permanentRedirect("/products/blinklabs");
   }
+  // Nova was already a product here as a Hyperliquid frontend under
+  // "nova-markets" when it joined the perp cohort as "nova" (benches 041 and
+  // 116). Both slugs then answered 200 with their own canonical: one page
+  // carrying the logo and the frontend bench, the other the perp cards, and
+  // neither the whole venue. PERP_PRODUCT_SLUGS points every cohort link at
+  // nova-markets; this closes the second URL.
+  if (slug === "nova") {
+    permanentRedirect("/products/nova-markets");
+  }
   // Alias → canonical, mirrored in the page component below: a
   // metadata-only redirect leaves a cached 404 behind (merkle, 2026-07-11).
   {
@@ -382,6 +391,12 @@ export default async function ProviderPage({
   // left a cached 404 behind (seen live 2026-07-11).
   if (slug === "merkle") {
     permanentRedirect("/products/blinklabs");
+  }
+  // Nova's perp cohort slug, 308 to the product page it already had as a
+  // Hyperliquid frontend. Duplicated from generateMetadata for the same
+  // reason as merkle above.
+  if (slug === "nova") {
+    permanentRedirect("/products/nova-markets");
   }
   const p = await getProvider(slug);
   if (!p) notFound();
