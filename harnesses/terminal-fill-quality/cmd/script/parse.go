@@ -113,7 +113,14 @@ type Swap struct {
 	RefAgeS  *int64   `json:"ref_age_s,omitempty"`
 	Priced   bool     `json:"priced"`
 	Flag     string   `json:"flag,omitempty"`
-	TradeUSD float64  `json:"trade_usd"` // buy: quote spent; sell: tokens × ref; plus the gas paid in another asset (quote moved when unpriced)
+	// GrossedFrom: what the router actually spent, when the value given was
+	// reconstructed from it. pump's router is paid out of pump's own
+	// liquidity, already net of what it keeps, so the trade size on these
+	// rows is derived and not read. Publishing the raw spend lets anyone
+	// reconcile the row with the transaction, and the difference is the
+	// deduction itself. Zero on every row that was read directly.
+	GrossedFrom float64 `json:"grossed_from,omitempty"`
+	TradeUSD    float64 `json:"trade_usd"` // buy: quote spent; sell: tokens × ref; plus the gas paid in another asset (quote moved when unpriced)
 	// Neighbourhood scan for a sandwich around this swap (see sandwich.go).
 	Scanned      bool      `json:"scanned"`
 	BlockPoolTxs int       `json:"block_pool_txs,omitempty"`

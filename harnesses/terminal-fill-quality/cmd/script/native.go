@@ -1037,6 +1037,7 @@ func nativeRow(ctx context.Context, httpc *http.Client, t evmTerminal, hash stri
 		}
 		grossed := false
 		if g, ok := pumpGrossUpFunded(t.Slug, given, userFunded); ok {
+			sw.GrossedFrom = given // the spend, before the schedule is undone
 			given, grossed = g, true
 		}
 		// Whoever signed paid the gas. When that is not the user, they parted

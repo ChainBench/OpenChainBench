@@ -2346,11 +2346,15 @@ type PublicSwap struct {
 	RentQ    float64 `json:"rent_q,omitempty"`
 	QuoteUSD float64 `json:"quote_usd"`
 	TradeUSD float64 `json:"trade_usd"`
-	Priced   bool    `json:"priced"`
-	Scanned  bool    `json:"scanned"`
-	Flag     string  `json:"flag,omitempty"`
-	RefSrc   string  `json:"ref_src,omitempty"`
-	RefAgeS  *int64  `json:"ref_age_s,omitempty"`
+	// GrossedFrom: the router's actual spend when trade_usd was reconstructed
+	// from it rather than read. trade_usd minus this is what the bridge kept.
+	// Absent on every row read directly, which is all of them but pump's.
+	GrossedFrom float64 `json:"grossed_from,omitempty"`
+	Priced      bool    `json:"priced"`
+	Scanned     bool    `json:"scanned"`
+	Flag        string  `json:"flag,omitempty"`
+	RefSrc      string  `json:"ref_src,omitempty"`
+	RefAgeS     *int64  `json:"ref_age_s,omitempty"`
 
 	LossBps     *float64 `json:"loss_bps,omitempty"`
 	PoolBps     *float64 `json:"pool_bps,omitempty"`
@@ -2395,7 +2399,7 @@ func publicSwaps(in []Swap, flow map[string]float64) []PublicSwap {
 			Sig: s.Sig, Terminal: s.Terminal, Product: s.Product, Time: s.Time,
 			Side: s.Side, Quote: s.Quote, Venue: s.Venue, Chain: s.Chain,
 			Hops: s.Hops, XMint: s.XMint, InTx: s.InTx, RentQ: s.RentQ,
-			QuoteUSD: s.QuoteUSD, TradeUSD: s.TradeUSD,
+			QuoteUSD: s.QuoteUSD, TradeUSD: s.TradeUSD, GrossedFrom: s.GrossedFrom,
 			Priced: s.Priced, Scanned: s.Scanned, Flag: s.Flag,
 			RefSrc: s.RefSrc, RefAgeS: s.RefAgeS,
 			LossBps: s.LossBps, PoolBps: s.PoolBps,
