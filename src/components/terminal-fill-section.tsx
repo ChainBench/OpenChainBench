@@ -202,7 +202,7 @@ export async function TerminalFillSection({
       </p>
 
       <p className="text-[11px] text-ink-faint leading-relaxed max-w-3xl">
-        Real user swaps read on-chain (Solana: each terminal&apos;s fee-wallet and program feed; EVM: the terminals&apos; routers and blocks read in full; 400 drawn at random per terminal per day, 1,000 on the EVM rows, every attempt
+        Real user swaps read on-chain (Solana: each terminal&apos;s fee-wallet and program feed; EVM: the terminals&apos; routers and blocks read in full; 150 drawn at random per terminal per day, Solana and EVM alike, every attempt
         counted for the fail rate), valued at the pool&apos;s state before the trade (exact where the pool&apos;s formula is known: PumpSwap, Raydium, Launchpad, DLMM, four.meme, the EVM pools;
         the previous trade on the same pool within 60 s elsewhere; swaps without one keep their cost split but no loss figure).
         Loss = 1 − value received / value given, in basis points of the trade; terminal, network and other are exact from balance deltas, the tx fee
