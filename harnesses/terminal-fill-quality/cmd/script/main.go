@@ -222,6 +222,14 @@ type State struct {
 	Funded      map[string]map[string]int64 `json:"funded,omitempty"`       // app -> EVM wallet it funded through Relay -> last seen (identifies its users on a shared router)
 	RelayNewest map[string]int64            `json:"relay_newest,omitempty"` // app:origin -> created of the newest Relay request counted (the walk after a restart stops there instead of re-counting a day)
 	Resampling  map[string]int64            `json:"resampling,omitempty"`   // slug -> unix time its rows were purged (the entry says it is re-sampling while its window refills)
+	// Deposits held for the Pump Bridge pairing, persisted so a deploy does
+	// not blind the settlement column. Measured on a fresh process: 174
+	// router spends, all none_blind, and no tfq_settle_ms series at all,
+	// because the spend watcher backfills about 100 minutes of Base while
+	// the deposit feed's first pass covers about 3. The deposits carry their
+	// own block time and the lag range still decides what can pair, so a
+	// long outage expires them on the existing rule rather than a new one.
+	PumpDeposits []pumpDepRecord `json:"pump_deposits,omitempty"`
 }
 
 // record adds a tick's feed counts to the terminal's current minute.
@@ -412,6 +420,13 @@ func main() {
 	st := loadState(stateFile)
 	applyLearned(st)
 	seedFunded(st)
+	// The deposit window, back from where it was. Without this the spend
+	// watcher's backfill meets an empty window and every spend reads
+	// unpairable: measured at 174 spends, all none_blind, and no settlement
+	// series at all, on a process minutes old.
+	if n := pumpLoadDeposits(st.PumpDeposits, time.Now().Unix()); n > 0 {
+		log.Printf("[pump-bridge] %d deposits restored from the state file, so the pairing is not blind while the feed catches up", n)
+	}
 	pools := &poolCache{m: map[string]poolParams{}}
 	repriced := false
 	quota := map[string]float64{}
@@ -548,6 +563,7 @@ func main() {
 		pub = p
 		mu.Unlock()
 		if stateFile != "" {
+			st.PumpDeposits = pumpSaveDeposits()
 			if err := writeAtomic(stateFile, st); err != nil {
 				log.Printf("[state] %v", err)
 			}
