@@ -264,7 +264,10 @@ func (w *pumpTakeWatcher) poll(ctx context.Context, httpc *http.Client) {
 		for _, tx := range order {
 			observePumpSpend(r.chain, perTx[tx], r.decimals)
 		}
-		w.cursor[r.chain] = to
+		// to+1, not to: eth_getLogs includes both bounds, so leaving the
+		// cursor on `to` reads that block again next pass and counts its
+		// spends twice in the schedule counter. Found by audit 2026-10-22.
+		w.cursor[r.chain] = to + 1
 		if len(order) > 0 {
 			log.Printf("[pump-take] %s: %d spends in %s over blocks %d-%d",
 				r.chain, len(order), r.symbol, from, to)
