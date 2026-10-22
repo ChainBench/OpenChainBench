@@ -72,7 +72,7 @@ prometheus:
 panel_main_description: "Share of cross-chain trades that errored, from a published randomised test. The direction tabs change the size of the gap: it is widest on buys, narrowest on sells."
 
 dimensions:
-  direction:
+  kind:
     - { value: all,  label: Buys and sells }
     - { value: buy,  label: Buys only }
     - { value: sell, label: Sells only }
@@ -83,24 +83,24 @@ providers:
     tag: "pump.fun's own bridge, the lane its announcement promotes"
     formula: "Share of Pump Bridge trades whose outcome is not success, from pump.fun's published export of 416,669 outcomes, 2026-09-28 to 2026-10-07. Recomputed, not measured by us."
     queries:
-      p50: tfq_vendor_ab_error_rate_pct{vendor="pump-fun",lane="bridge",direction="all"}
-      sample_size: tfq_vendor_ab_rows{vendor="pump-fun",lane="bridge",direction="all"}
-      series: tfq_vendor_ab_error_rate_pct{vendor="pump-fun",lane="bridge",direction="all"}
+      p50: tfq_vendor_ab_error_rate_pct{vendor="pump-fun",lane="pump-bridge",kind="all"}
+      sample_size: tfq_vendor_ab_rows{vendor="pump-fun",lane="pump-bridge",kind="all"}
+      series: tfq_vendor_ab_error_rate_pct{vendor="pump-fun",lane="pump-bridge",kind="all"}
 
   - slug: relay
     name: Relay
     tag: "the lane pump.fun compared itself against, and used until 2026-10-07"
     formula: "Share of Relay trades whose outcome is not success, from the same export and the same arms. Recomputed, not measured by us."
     queries:
-      p50: tfq_vendor_ab_error_rate_pct{vendor="pump-fun",lane="relay",direction="all"}
-      sample_size: tfq_vendor_ab_rows{vendor="pump-fun",lane="relay",direction="all"}
-      series: tfq_vendor_ab_error_rate_pct{vendor="pump-fun",lane="relay",direction="all"}
+      p50: tfq_vendor_ab_error_rate_pct{vendor="pump-fun",lane="relay",kind="all"}
+      sample_size: tfq_vendor_ab_rows{vendor="pump-fun",lane="relay",kind="all"}
+      series: tfq_vendor_ab_error_rate_pct{vendor="pump-fun",lane="relay",kind="all"}
 
 metric_panels:
   - id: rows
     label: Trades in the export
     label_key: lane
-    metric: tfq_vendor_ab_rows{vendor="pump-fun",direction="all"}
+    metric: tfq_vendor_ab_rows{vendor="pump-fun",kind="all"}
     unit: count
     higher_is_better: true
     description: "How many trades each route carries. Published beside every rate because the two arms are matched to 0.6 % on buys and not on sells, where the bridge carries 77,593 against Relay's 133,474."
