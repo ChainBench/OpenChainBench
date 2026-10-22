@@ -59,13 +59,27 @@ func TestGrossUpTouchesOnlyPumpRows(t *testing.T) {
 			t.Errorf("pumpGrossUp(%q) changed a non-pump row to %v", slug, got)
 		}
 	}
+	// A pump row is grossed up only where its settlement stable is declared.
+	// Without one the funding test cannot tell the user's money from the
+	// memecoin the pool hands back, and grossing up blind would add a
+	// deduction to a trade the sender may have funded on that chain. Arc,
+	// MegaETH and X Layer are in that state until their stable is read.
+	grossed := 0
 	for _, term := range evmTerminals {
 		if len(term.Slug) < 9 || term.Slug[:9] != "pump-fun-" {
 			continue
 		}
-		if _, ok := pumpGrossUp(term.Slug, 10); !ok {
-			t.Errorf("%s is a pump row but was not grossed up", term.Slug)
+		_, ok := pumpGrossUp(term.Slug, 10)
+		if ok != (pumpStableOf(term.Slug) != "") {
+			t.Errorf("%s: grossed=%v but stable declared=%v", term.Slug, ok,
+				pumpStableOf(term.Slug) != "")
 		}
+		if ok {
+			grossed++
+		}
+	}
+	if grossed == 0 {
+		t.Error("no pump row is grossed up at all, so the measurement is off")
 	}
 }
 
