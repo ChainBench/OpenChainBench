@@ -215,19 +215,82 @@ const (
 // on 239 of 239 Solana-origin intents measured, which is why this route
 // belongs on this bench at all.
 //
-// NOT ALL FILLS CONTAIN A SWAP. On 12 fills read on chain, 4 came out of the
-// contract's own inventory with no pool trade in the transaction. Those have
-// no in-transaction pre-trade state to price against and must fall back to the
-// pool's state at that block, or they read unpriced and a third of the row
-// disappears, which is the same shape as the two-hop bug in #3193. On such a
-// fill the user's shortfall is Mobula's quote spread rather than price impact,
-// so it belongs in the bridge's own cost and not in `pool`.
+// NOT ALL FILLS CONTAIN A SWAP, but far fewer than first thought. Over 70
+// fills read on chain, 66 carry a swap event and 4 (6%) come out of the
+// contract's own inventory; an earlier count of 4 in 12 was small-sample. All
+// four no-swap fills are on Robinhood and three deliver the same token, so it
+// looks like inventory in one or two particular tokens rather than a general
+// behaviour. They still need the pool's state at that block, since 6%
+// dropping out by TRANSACTION SHAPE is still a selection, but it is not the
+// third of the row we were braced for. On such a fill the user's shortfall is
+// Mobula's quote spread rather than price impact, so it belongs in the
+// bridge's own cost and not in `pool`.
+//
+// EVERY fill delivers a token: 0 of 70 delivered a dollar stable. So this
+// route is a fill and not a transfer, which is what puts it under the trade
+// kind rather than the funding kind.
+//
+// MULTI-VENUE IS THE NORM and is the real pricing risk here. Over 66 fills
+// the venue counts are v4 37, v2 22, v3 21, pancake-v3 19, summing to more
+// than the fills, so one fill routinely buys the same token across several
+// pools. A single-pool pricer attributes the whole delivered amount to one
+// pool's pre-trade state and reads a large negative pool cost, which is the
+// split_implausible shape of pump's 0x26abbc93. Count that share on a first
+// batch before trusting any median from this route.
 var mobulaBridge = map[string]string{
 	"base":      "0xa834e70303322d86e5dae95ee47e9c6a073d9812",
 	"bnb":       "0xa834e70303322d86e5dae95ee47e9c6a073d9812",
 	"robinhood": "0xa834e70303322d86e5dae95ee47e9c6a073d9812",
 	"ethereum":  "0xab830fcccb4f20bad23b7669d58cb35a96d57d5a",
 }
+
+// HOW THE USER AND THE TOKEN ARE FOUND IN A FILL, and how the rule was
+// checked, since the fill event carries only the intent id.
+//
+// THE SINK RULE: the user is the address that RECEIVES a token in the fill
+// and SENDS none. Pools, routers, executors and the bridge all appear on both
+// sides of some transfer because value passes through them; a user is a dead
+// end. The token is whatever that address received, SUMMED over every
+// transfer of it.
+//
+// Checked against the explorer's own recipient, token and amountOut, which is
+// an independent answer rather than a restatement of my reading: the rule
+// finds the explorer's recipient as a dead end in 48 of 50 fills, and the
+// summed amount matches amountOut exactly in 50 of 50.
+//
+// IT FAILED ITS FIRST VERSION, in two ways worth keeping:
+//   - taking the LARGEST transfer to the user instead of the sum, which is
+//     wrong whenever the fill is multi-venue, and multi-venue is the norm
+//     here. Summing took the amount agreement from 24 of 40 to 50 of 50.
+//   - demanding exactly one dead end, which failed 15 of 40 fills. The extra
+//     dead ends are fee takers, not users, and the next block names them.
+//
+// A rule that is mostly right selects the rest of the row by transaction
+// shape, which is the defect behind both #3193 and #3217, so the 2 of 50 the
+// rule does not resolve must stay unpriced rather than be guessed at.
+//
+// WHAT THE OTHER DEAD ENDS ARE, measured over 60 fills:
+//
+//	robinhoodTokenFee  a CONTRACT (15 kB of code), a dead end in 13 of 60
+//	                   fills and never the user, taking the user's own token
+//	                   at 101, 204 or 309 bps, on Robinhood only. Those tiers
+//	                   are 1%, 2% and 3%, which is a per-token creator or
+//	                   launchpad fee rather than any app's cut: an app fee
+//	                   does not come in three per-token tiers on one chain.
+//	                   Not attributed to a terminal.
+//	the token itself   5 of 60, the sink address IS the token contract, which
+//	                   is a transfer tax the token levies on every holder.
+//	                   Belongs in the pool or other cost, never in a fee.
+//
+// NO APP FEE IS OBSERVABLE IN EITHER LEG of this route. The deposit carries
+// exactly one token transfer (ComputeBudget, ComputeBudget, Token, Memo on
+// all 50 read), so nothing is skimmed on the way in, and on the way out the
+// only non-user sinks are the two above. So the terminal component on this
+// row is 0 and the whole shortfall sits in the bridge's residual. That is a
+// measurement and not a zero-filled default, which is the distinction
+// openchainbench-e9 asked for: if FOMO takes a cut on this route it does so
+// outside both legs, and it is already counted in FOMO's other rows.
+const robinhoodTokenFee = "0xe5e702641ea86f4ae6cc3cdaed2b886f976be044"
 
 const solanaChainID = 792703809
 
