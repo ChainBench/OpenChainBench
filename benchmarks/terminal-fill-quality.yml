@@ -118,6 +118,13 @@ prometheus:
 panel_main_description: "Median value lost per swap against the pool's state before the trade, all costs included, basis points of the trade. Rolling 24 h of sampled user swaps. The split columns are medians of each cost (on All chains, the chains' medians weighted by their flow): they do not sum to the median loss."
 
 metric_panels:
+  - id: settle
+    label: Settlement time
+    label_key: terminal
+    metric: tfq_settle_ms{chain="all",stat="median"}
+    unit: ms
+    higher_is_better: false
+    description: "Median time from the Solana deposit to the destination spend that consumed it. Resolution is one second: both ends are whole-second block timestamps, so values are multiples of 1000 and a route under a second reads 0. Stalls over 60 s excluded."
   - id: terminal_fee
     label: Terminal fee
     label_key: terminal
