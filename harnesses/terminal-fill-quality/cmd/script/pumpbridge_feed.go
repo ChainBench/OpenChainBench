@@ -275,6 +275,56 @@ const (
 	pumpDepWindowAge = 30 * 60 // seconds
 )
 
+// pumpSaveDeposits and pumpLoadDeposits carry the window across a restart.
+//
+// Without them every deploy empties the window, and since the spend watcher
+// backfills far more chain than the deposit feed's first pass, the pairing
+// then reads a full hour of spends it can never match: measured at 174
+// spends, all none_blind, no settlement series at all. The column Florent
+// asks about goes blank on every deploy, and this bench is deployed often.
+//
+// Load applies the same age prune as a live deposit, so a long outage expires
+// the window on the existing rule instead of resurrecting stale deposits.
+// pumpDepRecord is pumpDep with exported fields, which is the whole reason it
+// exists: encoding/json ignores unexported ones, so persisting pumpDep
+// directly would have written a list of empty objects. The window would have
+// come back with every at=0, the age filter would have dropped the lot, and
+// the result would be identical to having no fix at all while looking applied.
+type pumpDepRecord struct {
+	At     int64   `json:"at"`
+	Amount float64 `json:"amount"`
+}
+
+func pumpSaveDeposits() []pumpDepRecord {
+	pumpDepWindow.Lock()
+	defer pumpDepWindow.Unlock()
+	out := make([]pumpDepRecord, 0, len(pumpDepWindow.seen))
+	for _, d := range pumpDepWindow.seen {
+		out = append(out, pumpDepRecord{At: d.at, Amount: d.amount})
+	}
+	return out
+}
+
+func pumpLoadDeposits(seen []pumpDepRecord, now int64) int {
+	if len(seen) == 0 {
+		return 0
+	}
+	kept := make([]pumpDep, 0, len(seen))
+	for _, d := range seen {
+		if d.At <= 0 || d.Amount <= 0 || now-d.At > pumpDepWindowAge {
+			continue
+		}
+		kept = append(kept, pumpDep{at: d.At, amount: d.Amount})
+	}
+	if len(kept) > pumpDepWindowMax {
+		kept = kept[len(kept)-pumpDepWindowMax:]
+	}
+	pumpDepWindow.Lock()
+	pumpDepWindow.seen = kept
+	pumpDepWindow.Unlock()
+	return len(kept)
+}
+
 // pumpNoteDeposit records a deposit for later pairing.
 //
 // The age prune walks from index 0 and stops at the first entry still inside
