@@ -2,10 +2,10 @@
 
 slug: vendor-claim-audit
 number: "306"
-title: "Pump Bridge vs Relay cross-chain errors, recomputed from pump.fun's own export"
-seo_title: "Pump Bridge vs Relay error rate, recomputed from pump's own data"
-seo_description: "pump.fun published a Pump Bridge vs Relay comparison and invited anyone to check it. Recomputed from its own 416,669 rows: the 13x headline holds on buys and falls to 2.95x once sells are included."
-subtitle: A vendor's published benchmark, recomputed from the rows it released. pump.fun's Pump Bridge against Relay on cross-chain trade errors, split by direction, because the headline and the full export disagree.
+title: "Cross-chain trade error rate by route and direction"
+seo_title: "Cross-chain trade error rate: Pump Bridge and Relay"
+seo_description: "Share of cross-chain trades that error, for Pump Bridge and Relay, from a published randomised test of 416,669 trades. Split by direction: 12.90x apart on buys, 1.42x on sells."
+subtitle: Share of cross-chain trades that end in an error, for Pump Bridge and Relay, computed from a published randomised test of 416,669 trades and split by direction.
 
 category: Bridges
 status: live
@@ -14,50 +14,54 @@ unit: pct
 higher_is_better: false
 
 disclaimer: |
-  Not our measurement. These figures are recomputed from the export pump.fun published on 2026-10-21 alongside its comparison, over a window that ended on 2026-10-07 and does not move. The counts behind every number are in this repository with the SHA256 of the original file, so the arithmetic can be redone without trusting this page. What we do measure ourselves about this bridge is on bench 268.
+  Not our measurement. These figures come from a randomised test pump.fun ran and published on 2026-10-21, over a window that ended on 2026-10-07 and does not move. The counts are in this repository with the SHA256 of the original file, so the arithmetic can be redone without trusting this page. Our own continuous on-chain measurements of these providers are on bench 268 (cost per swap) and bench 003 (bridge cost across eight providers).
 
 seo_intro: |
-  On 2026-10-21 pump.fun published a comparison of its new bridge against Relay
-  and invited people to verify it, releasing the rows behind it. We did. The
-  headline reproduces exactly: on buys, Pump Bridge errors on 0.869 % of trades
-  against Relay's 11.214 %, which is the "almost 13x" the announcement claims
-  and the 0.9 % and 11.2 % it quotes. The same export also carries sells, which
-  the headline leaves out. There the bridge errors on 7.378 % against Relay's
-  10.511 %. Over both directions the ratio is 2.95x, not 12.90x: the bridge
-  fails 8.5 times more often on a sell than on a buy, almost entirely as
-  bridge_execute_failed.
+  pump.fun ran a randomised test assigning users to its own bridge or to Relay
+  for cross-chain trades, and published the 416,669 outcomes on 2026-10-21.
+  This page computes the error rate from those rows, per direction.
+
+  On buys, Pump Bridge errors on 0.869 % of trades against Relay's 11.214 %,
+  a ratio of 12.90x. On sells the two are much closer: 7.378 % against
+  10.511 %, a ratio of 1.42x. Over both directions together the rate is
+  3.664 % against 10.817 %, or 2.95x.
+
+  The direction matters more than the gap between the providers: the bridge
+  errors 8.5 times more often on a sell than on a buy, almost entirely as
+  bridge_execute_failed. Which figure is the right one depends on what a user
+  does, so all three are published.
 
 abstract: |
-  pump.fun released 416,669 trade outcomes from a randomised test that ran from
-  2026-09-28 to 2026-10-07, assigning users to Pump Bridge or Relay for
-  cross-chain trades on Robinhood Chain, BSC, Base, Arc and Ink. This page
-  recomputes the error rate from those rows, per direction, and publishes the
-  counts beside every rate so a figure is never read without its base.
-  The direction tabs are the point: the ranking does not change but its size
-  does, from 12.90x on buys to 1.42x on sells.
+  416,669 trade outcomes from a randomised test that ran from 2026-09-28 to
+  2026-10-07, assigning users to Pump Bridge or Relay for cross-chain trades on
+  Robinhood Chain, BSC, Base, Arc and Ink. This page computes the error rate
+  from those rows per direction and publishes the counts beside every rate.
+  Pump Bridge errors less often than Relay in both directions; the size of the
+  difference changes with the direction, from 12.90x on buys to 1.42x on
+  sells.
 
 methodology:
-  - "Source: the export pump.fun linked in its 2026-10-21 thread inviting verification. 416,669 rows, each a trade outcome with its chain, lane (bridge or relay), direction, outcome and error class. Window 2026-09-28T16 to 2026-10-07T20 UTC."
+  - "Source: the export pump.fun published on 2026-10-21. 416,669 rows, each a trade outcome with its chain, lane (bridge or relay), direction, outcome and error class. Window 2026-09-28T16 to 2026-10-07T20 UTC."
   - "Reduction: the 20 MB export is carried in this repository as 58 counts, one per chain, lane, direction, outcome and error class, which is lossless for any rate computed from it. The header holds the SHA256 of the original so the digest can be tied back to what pump published."
   - "Error rate: trades whose outcome is not success, over all trades in that cell. No weighting, no exclusion, no window of our own."
-  - "Direction: buys and sells are published apart and together. pump's headline uses buys only, which the export supports; the combined figure is the same arithmetic over the same file."
+  - "Direction: buys and sells are published apart and together, because the gap between the two providers depends on which is quoted. All three come from the same arithmetic over the same file."
   - "Arm balance: the two lanes are matched to 0.6 % on buys (103,089 against 102,513) but not on sells, where the bridge carries 77,593 against Relay's 133,474. That weakens the comparison in both directions and is published as the row counts rather than argued about."
   - "Not live: the export is finished. These gauges are loaded once at startup, because a figure that cannot move should not sit on a dashboard pretending to."
-  - "Not our measurement: this page restates a vendor's own data. What OpenChainBench measures about this bridge on chain, including the 0.05 plus 40 to 45 basis points it deducts, is on bench 268."
+  - "Not our measurement: this page restates a published test. What OpenChainBench measures itself, continuously and on chain, is the cost per swap on bench 268 and the cost of eight bridge providers on bench 003."
 
 findings:
-  - "pump.fun's headline reproduces exactly on its own rows: 0.869 % of Pump Bridge buys error against 11.214 % of Relay's, which is 12.90x."
-  - "The same export carries sells, and the headline leaves them out: there the bridge errors on 7.378 % against Relay's 10.511 %, only 1.42x apart."
-  - "Over both directions the ratio is 2.95x, not 12.90x: the bridge fails 8.5 times more often on a sell than on a buy, almost all of it bridge_execute_failed."
+  - "On buys, 0.869 % of Pump Bridge trades error against 11.214 % of Relay's, a ratio of 12.90x."
+  - "On sells the two are close: 7.378 % against 10.511 %, a ratio of 1.42x."
+  - "Over both directions the rate is 3.664 % against 10.817 %, a ratio of 2.95x. Pump Bridge errors 8.5 times more often on a sell than on a buy, almost all of it bridge_execute_failed."
   - "The arms are matched to 0.6 % on buys and not on sells, where the bridge carries 77,593 trades against Relay's 133,474."
 
 faq:
   - q: "Is this OpenChainBench's own measurement?"
-    a: "No. Every figure here is recomputed from the export pump.fun published itself, over a window that ended on 2026-10-07. We publish it because the vendor invited verification and because the headline and the full file disagree. What we measure independently about this bridge, on chain and continuously, is on bench 268: the fee it deducts, the cost per swap on six EVM chains, and the time it takes to settle."
+    a: "No. Every figure here comes from a test pump.fun ran and published, over a window that ended on 2026-10-07. It is on the site because the underlying rows are public and the arithmetic can be checked. What we measure independently, on chain and continuously, is on bench 268 (cost per swap, sixteen terminals) and bench 003 (bridge cost, eight providers)."
   - q: "Why does the ranking change with the direction tab?"
-    a: "It does not change, its size does. Pump Bridge errors less often than Relay in both directions. On buys it is 12.90 times less often, on sells 1.42, and over the whole export 2.95. A comparison quoted from one direction is not wrong, it is partial, and the tabs let you see which."
+    a: "It does not change, its size does. Pump Bridge errors less often than Relay in both directions: 12.90 times less often on buys, 1.42 on sells, 2.95 over the whole file. The tabs exist so the figure can be read against the direction it came from."
   - q: "Can I redo this myself?"
-    a: "Yes, and that is the point of carrying the counts rather than a sentence about them. The digest sits in the harness directory with the SHA256 of pump's original 20 MB file; 58 rows reproduce every rate on this page by addition."
+    a: "Yes. The digest sits in the harness directory with the SHA256 of the original 20 MB file; 58 counts reproduce every rate on this page by addition."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/terminal-fill-quality
 
@@ -65,7 +69,7 @@ prometheus:
   window: 24h
   freshness_metric: tfq_vendor_ab_error_rate_pct
 
-panel_main_description: "Share of cross-chain trades that errored, from pump.fun's own published export. Use the direction tabs: the headline uses buys only, where the gap is widest."
+panel_main_description: "Share of cross-chain trades that errored, from a published randomised test. The direction tabs change the size of the gap: it is widest on buys, narrowest on sells."
 
 dimensions:
   direction:
@@ -99,4 +103,4 @@ metric_panels:
     metric: tfq_vendor_ab_rows{vendor="pump-fun",direction="all"}
     unit: count
     higher_is_better: true
-    description: "How many trades each lane carries in pump.fun's export. Published beside every rate because the arms are matched on buys and not on sells, where the bridge carries 77,593 against Relay's 133,474."
+    description: "How many trades each route carries. Published beside every rate because the two arms are matched to 0.6 % on buys and not on sells, where the bridge carries 77,593 against Relay's 133,474."
