@@ -133,6 +133,63 @@ var originChains = []originChain{
 // from evmTerminals.
 var relaySkips = map[string]bool{"megaeth": true, "xlayer": true}
 
+// The cross-chain rails an app's Solana users can leave through, and how each
+// is recognised. Declared here rather than left in a scratchpad because the
+// addresses cost more to find than anything else in this file.
+//
+// HOW RELAY ATTRIBUTES, verified on chain 2026-10-22 and the basis for all of
+// it: the APP is the Solana transaction's FEE PAYER, its gas sponsor, and the
+// RAIL is the account the deposit credits. The app is never identified on the
+// destination chain, which is why every EVM-side marker tried on Mobula's
+// bridge failed: its fee wallet, its router address and its own events all
+// serve whoever integrates it.
+//
+//	relayDepository  Relay's Solana depository. 231 hits in 9,000 of FOMO's
+//	                 sponsor transactions (2.57%), 290 in an earlier 6,000.
+//	mobulaSolver     Mobula's solver EOA, from bridge.mobula.io's own bundle
+//	                 and then verified on chain: a system-owned wallet that
+//	                 signs and fee-pays its own transactions.
+//	mobulaSolverUSDC Its USDC token account, which is where deposits actually
+//	                 land.
+//
+// THE TRAP, and the reason 15,000 transactions were scanned for nothing: a
+// deposit credits a TOKEN ACCOUNT OWNED BY the solver, not the solver address.
+// A token account's address has no relationship to its owner's, so matching
+// account keys against the solver can never hit. Match the OWNER, or, since
+// every Solana-origin deposit measured was USDC, match the fixed ATA below and
+// pay no owner lookups at all.
+//
+// Measured split of FOMO's bridging over 398 sponsor transactions: Relay 17,
+// Mobula 6, so Mobula carries roughly a quarter of it.
+const (
+	relayDepository  = "99vQwtBwYtrqqD9YSXbdum3KBdxPAVxYTaQ3cfnJSrN2"
+	mobulaSolver     = "oMcssxWxgooErb8bsRA4QN34VHhvfeEbdDjrwF6WH45"
+	mobulaSolverUSDC = "BWocXaSJ46XRSnTUA92ffLzLriM7V8tHVLoUnS9HoWQz"
+)
+
+// mobulaBridge: Mobula's EVM settlement contract per chain. SHARED
+// infrastructure, serving whoever integrates its API, so a fill here says
+// nothing about which app it belongs to: attribution has to come from the
+// Solana origin above. Ethereum uses a different address from the rest.
+//
+// Its fills are a trade, not a transfer: the destination token was a memecoin
+// on 239 of 239 Solana-origin intents measured, which is why this route
+// belongs on this bench at all.
+//
+// NOT ALL FILLS CONTAIN A SWAP. On 12 fills read on chain, 4 came out of the
+// contract's own inventory with no pool trade in the transaction. Those have
+// no in-transaction pre-trade state to price against and must fall back to the
+// pool's state at that block, or they read unpriced and a third of the row
+// disappears, which is the same shape as the two-hop bug in #3193. On such a
+// fill the user's shortfall is Mobula's quote spread rather than price impact,
+// so it belongs in the bridge's own cost and not in `pool`.
+var mobulaBridge = map[string]string{
+	"base":      "0xa834e70303322d86e5dae95ee47e9c6a073d9812",
+	"bnb":       "0xa834e70303322d86e5dae95ee47e9c6a073d9812",
+	"robinhood": "0xa834e70303322d86e5dae95ee47e9c6a073d9812",
+	"ethereum":  "0xab830fcccb4f20bad23b7669d58cb35a96d57d5a",
+}
+
 const solanaChainID = 792703809
 
 // applyRPCOverrides prepends the endpoints of EVM_RPC_<CHAIN> (comma
