@@ -46,6 +46,24 @@ export type PerpVenueType = "onchain" | "regulated" | "cex";
  */
 export const NOTIONAL_NOT_COMPARABLE = new Set(["papertrade"]);
 
+/**
+ * Venues whose market count is measured but not comparable, so nothing on the
+ * site ranks them on it. The adjacent rule to NOTIONAL_NOT_COMPARABLE, and it
+ * exists for the same reason: the figure is real, what it counts is not the
+ * same thing.
+ *
+ * Nova: it runs the same gTrade software as Gains and serves the identical
+ * 493-pair registry. gTrade delists a pair by setting its max leverage
+ * override to 0.001x rather than removing it; Gains carries that override on
+ * 315 pairs and counts 178, Nova carries it on none, and 40 of Nova's pairs
+ * have no override entry at all (both read 2026-10-22). So Nova's 493 is the
+ * catalog it inherited, not a book anyone has confirmed is openable, and
+ * ranking it would publish "Nova lists 2.8x the markets of Gains" off the
+ * same list. bench 116 carries the row with `unranked: Registry unpruned`
+ * and this set is what keeps the product-page card agreeing with it.
+ */
+export const MARKET_COUNT_NOT_COMPARABLE = new Set(["nova"]);
+
 export type PerpVenueRow = {
   slug: string;
   name: string;
@@ -149,6 +167,9 @@ export const PERP_VENUES: VenueSeed[] = [
   { slug: "lighter",     name: "Lighter",     chain: "Lighter L2",    venueType: "onchain" },
   { slug: "gmx-v2",      name: "GMX",         chain: "Arbitrum",      venueType: "onchain" },
   { slug: "gains",       name: "Gains",         chain: "Arbitrum",    venueType: "onchain" },
+  // Nova runs the same gTrade software as Gains on Arbitrum, read from its
+  // own backend rather than from Gains'. Distinct venue, distinct numbers.
+  { slug: "nova",        name: "Nova",          chain: "Arbitrum",    venueType: "onchain" },
   { slug: "dydx",        name: "dYdX v4",     chain: "Cosmos",        venueType: "onchain" },
   { slug: "nado",        name: "Nado",        chain: "Ink",           venueType: "onchain" },
   { slug: "paradex",     name: "Paradex",     chain: "Starknet",      venueType: "onchain" },

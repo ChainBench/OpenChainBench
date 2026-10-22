@@ -43,6 +43,7 @@ methodology:
   - "Hyperliquid: info dayNtlVlm summed across all assets, published as the trailing 24 hour taker notional in USD."
   - "GMX V2: stats.gmx.io hourly-volume API (groupPeriod=3600) for Arbitrum and Avalanche; last 24 hourly buckets summed for the rolling 24h notional in USD."
   - "Gains: Gains backend volume-mix API (backend-global.gains.trade), auto + direct notional per UTC day (opens and closes at full notional, resizes at traded delta, the same perimeter as DefiLlama and bench 266) over Arbitrum, Base, Polygon and MegaETH; rolling 24h = today so far plus the remaining share of yesterday."
+  - "Nova: the same read against Nova's own backend (backend-global.nova.markets). Nova runs the same gTrade software as Gains on Arbitrum, so the two rows are the same measurement on two separate books. Nova appears on no DefiLlama page (checked across all 8795 protocols on 2026-10-22), so its own backend is the only source and there is no second opinion to cross-check it against."
   - "Aster: fapi 24h ticker per instrument, quoteVolume summed across all USDT perps."
   - "Lighter: public stats endpoint, 24h volume per market summed across markets in USD."
   - "GRVT: public markets endpoint, 24h volume per instrument summed in USD."
@@ -273,6 +274,19 @@ providers:
       success: avg_over_time(perp_venue_health{venue="gains"}[24h])
       sample_size: count_over_time(perp_venue_volume_24h_usd{venue="gains"}[24h])
       series: perp_venue_volume_24h_usd{venue="gains"}
+
+  - slug: nova
+    name: Nova
+    tag: The same gTrade software as Gains, on Arbitrum, with its own book
+    formula: "auto + direct notional from Nova's own backend volume-mix API, today plus the remaining share of yesterday as rolling 24h USD; headline is the 24h time average. Nova is on no DefiLlama page, so this is the only source for it."
+    queries:
+      p50: avg_over_time(perp_venue_volume_24h_usd{venue="nova"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_volume_24h_usd{venue="nova"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_volume_24h_usd{venue="nova"}[24h])
+      mean: avg_over_time(perp_venue_volume_24h_usd{venue="nova"}[24h])
+      success: avg_over_time(perp_venue_health{venue="nova"}[24h])
+      sample_size: count_over_time(perp_venue_volume_24h_usd{venue="nova"}[24h])
+      series: perp_venue_volume_24h_usd{venue="nova"}
 
   - slug: orderly
     name: Orderly

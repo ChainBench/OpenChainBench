@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"strconv"
 	"strings"
@@ -46,6 +47,12 @@ type GainsNativeSource struct {
 	client *http.Client
 	base   string
 	tvURL  string
+	// venue is the cohort slug the gauges carry. A gTrade deployment is
+	// the same software at a different host, so one parser serves them.
+	venue string
+	// name is the source label on the error counters, kept per venue so a
+	// fork failing does not look like Gains failing.
+	name string
 }
 
 func NewGainsNativeSource() *GainsNativeSource {
@@ -53,10 +60,28 @@ func NewGainsNativeSource() *GainsNativeSource {
 		client: &http.Client{Timeout: 15 * time.Second},
 		base:   "https://backend-global.gains.trade",
 		tvURL:  "https://backend-arbitrum.gains.trade/trading-variables",
+		venue:  "gains",
+		name:   srcGainsNative,
 	}
 }
 
-func (s *GainsNativeSource) Name() string { return srcGainsNative }
+// NewNovaNativeSource reads Nova, a gTrade deployment on Arbitrum. Its
+// trading contract 0x1410FA3F87F6A6ea221E5D2aB608C23005eC34f3 has the same
+// proxy bytecode as the Gains diamond, byte for byte, and its backend
+// answers the same two endpoints with the same shape: verified 2026-10-22,
+// volume-mix with autoVolumeUsd and directVolumeUsd, trading-variables with
+// 493 pairs and the same pairOis structure.
+func NewNovaNativeSource() *GainsNativeSource {
+	return &GainsNativeSource{
+		client: &http.Client{Timeout: 15 * time.Second},
+		base:   "https://backend-global.nova.markets",
+		tvURL:  "https://backend-arbitrum.nova.markets/trading-variables",
+		venue:  "nova",
+		name:   srcNovaNative,
+	}
+}
+
+func (s *GainsNativeSource) Name() string { return s.name }
 
 type gainsVolumeMix struct {
 	AutoVolumeUsd   float64 `json:"autoVolumeUsd"`
@@ -92,7 +117,7 @@ func gainsVolume24hFromDays(today, yesterday float64, yesterdayOK bool, now time
 
 func (s *GainsNativeSource) Fetch() (*SourceResult, error) {
 	res := newSourceResult()
-	venue := "gains"
+	venue := s.venue
 	now := time.Now().UTC()
 	today := now.Format("2006-01-02")
 	yesterday := now.AddDate(0, 0, -1).Format("2006-01-02")
@@ -101,21 +126,21 @@ func (s *GainsNativeSource) Fetch() (*SourceResult, error) {
 
 	mixToday, err := s.volumeMix(today)
 	if err != nil {
-		perpCohortFetchErrors.WithLabelValues(venue, srcGainsNative, classifyError(err.Error())).Inc()
-		fmt.Printf("[perp-cohort][%s][%s] day=%s err: %v\n", venue, srcGainsNative, today, err)
+		perpCohortFetchErrors.WithLabelValues(venue, s.name, classifyError(err.Error())).Inc()
+		fmt.Printf("[perp-cohort][%s][%s] day=%s err: %v\n", venue, s.name, today, err)
 		return res, nil
 	}
 	mixYesterday, errY := s.volumeMix(yesterday)
 	if errY != nil {
-		perpCohortFetchErrors.WithLabelValues(venue, srcGainsNative, classifyError(errY.Error())).Inc()
-		fmt.Printf("[perp-cohort][%s][%s] day=%s err: %v\n", venue, srcGainsNative, yesterday, errY)
+		perpCohortFetchErrors.WithLabelValues(venue, s.name, classifyError(errY.Error())).Inc()
+		fmt.Printf("[perp-cohort][%s][%s] day=%s err: %v\n", venue, s.name, yesterday, errY)
 	}
 
 	v := gainsVolume24hFromDays(mixToday.perp(), mixYesterday.perp(), errY == nil, now)
 	if v > 0 {
 		res.SetIfPositive(venue, mVolume24h, v)
 		fmt.Printf("[perp-cohort][%s][%s] ok: vol24h=%.0f (today=%.0f yesterday=%.0f, total-perimeter today=%.0f)\n",
-			venue, srcGainsNative, v, mixToday.perp(), mixYesterday.perp(), mixToday.TotalVolumeUsd)
+			venue, s.name, v, mixToday.perp(), mixYesterday.perp(), mixToday.TotalVolumeUsd)
 	}
 	return res, nil
 }
@@ -134,6 +159,52 @@ type gainsTradingVariables struct {
 		// group's maximum applies.
 		MaxLeverages []json.Number `json:"maxLeverages"`
 	} `json:"pairInfos"`
+	// One entry per collateral the deployment accepts, each carrying the
+	// per-pair open interest in that collateral's own units.
+	Collaterals []struct {
+		Symbol string `json:"symbol"`
+		Config struct {
+			Decimals int `json:"decimals"`
+		} `json:"collateralConfig"`
+		Prices struct {
+			CollateralPriceUsd float64 `json:"collateralPriceUsd"`
+		} `json:"prices"`
+		PairOis []struct {
+			Collateral struct {
+				Long  json.Number `json:"oiLongCollateral"`
+				Short json.Number `json:"oiShortCollateral"`
+			} `json:"collateral"`
+		} `json:"pairOis"`
+	} `json:"collaterals"`
+}
+
+// gainsOpenInterestUSD sums long plus short across every pair and every
+// collateral, each converted with its own decimals and USD price. An OI
+// held in WETH or GNS counted at face value would misstate the venue, which
+// is the same reasoning the perp-liq-rate harness documents for its read.
+//
+// ok is false when a collateral declares no decimals or no price: a zero
+// there silently divides the venue's OI to nothing, and publishing that is
+// worse than publishing none.
+func gainsOpenInterestUSD(tv gainsTradingVariables) (total float64, ok bool) {
+	if len(tv.Collaterals) == 0 {
+		return 0, false
+	}
+	for _, c := range tv.Collaterals {
+		if c.Config.Decimals <= 0 || c.Prices.CollateralPriceUsd <= 0 {
+			return 0, false
+		}
+		scale := math.Pow(10, float64(c.Config.Decimals))
+		for _, po := range c.PairOis {
+			long, errL := po.Collateral.Long.Float64()
+			short, errS := po.Collateral.Short.Float64()
+			if errL != nil || errS != nil {
+				continue
+			}
+			total += (long + short) / scale * c.Prices.CollateralPriceUsd
+		}
+	}
+	return total, true
 }
 
 // gainsGroupClass maps a Gains pair group to a breadth class. The groups
@@ -142,7 +213,12 @@ type gainsTradingVariables struct {
 // ok is false for a group this table has never seen.
 func gainsGroupClass(group string) (string, bool) {
 	switch {
-	case group == "crypto", group == "altcoins", group == "crypto-degen":
+	// hype-1000 is a Nova group holding one pair, HYPE1000/USD, which is
+	// HYPE at the 1000x tier. Without it Nova's whole breadth read is
+	// withheld for one unknown group (see the unknown-group guard in
+	// markets()), which is the right default and the wrong outcome here.
+	case group == "crypto", group == "altcoins", group == "crypto-degen",
+		group == "hype-1000":
 		return classCrypto, true
 	case strings.HasPrefix(group, "forex"):
 		return classForex, true
@@ -205,18 +281,22 @@ func gainsMarkets(tv gainsTradingVariables) (markets []gainsMarket, unknown []st
 func (s *GainsNativeSource) markets(res *SourceResult, venue string) {
 	body, err := s.get(s.tvURL)
 	if err != nil {
-		perpCohortFetchErrors.WithLabelValues(venue, srcGainsNative, classifyError(err.Error())).Inc()
-		fmt.Printf("[perp-cohort][%s][%s] err trading-variables: %v\n", venue, srcGainsNative, err)
+		perpCohortFetchErrors.WithLabelValues(venue, s.name, classifyError(err.Error())).Inc()
+		fmt.Printf("[perp-cohort][%s][%s] err trading-variables: %v\n", venue, s.name, err)
 		return
 	}
 	var tv gainsTradingVariables
 	if err := json.Unmarshal(body, &tv); err != nil {
-		perpCohortFetchErrors.WithLabelValues(venue, srcGainsNative, "parse").Inc()
-		fmt.Printf("[perp-cohort][%s][%s] err parse trading-variables: %v\n", venue, srcGainsNative, err)
+		perpCohortFetchErrors.WithLabelValues(venue, s.name, "parse").Inc()
+		fmt.Printf("[perp-cohort][%s][%s] err parse trading-variables: %v\n", venue, s.name, err)
 		return
 	}
 	markets, unknown := gainsMarkets(tv)
 	res.SetIfPositive(venue, mActiveMarkets, float64(len(markets)+len(unknown)))
+	if oi, ok := gainsOpenInterestUSD(tv); ok {
+		res.SetIfPositive(venue, mOI, oi)
+		fmt.Printf("[perp-cohort][%s][%s] ok trading-variables: oi=%.0f usd\n", venue, s.name, oi)
+	}
 	b := breadthCounter{}
 	for _, m := range markets {
 		b.add(m.class)
@@ -227,13 +307,13 @@ func (s *GainsNativeSource) markets(res *SourceResult, venue string) {
 		}
 	}
 	if len(unknown) > 0 {
-		perpCohortFetchErrors.WithLabelValues(venue, srcGainsNative, "unknown_group").Inc()
-		fmt.Printf("[perp-cohort][%s][%s] breadth withheld, unknown groups: %v\n", venue, srcGainsNative, unknown)
+		perpCohortFetchErrors.WithLabelValues(venue, s.name, "unknown_group").Inc()
+		fmt.Printf("[perp-cohort][%s][%s] breadth withheld, unknown groups: %v\n", venue, s.name, unknown)
 	} else {
 		res.SetBreadth(venue, b)
 	}
 	fmt.Printf("[perp-cohort][%s][%s] ok trading-variables: pairs=%d active=%d breadth: %s\n",
-		venue, srcGainsNative, len(tv.Pairs), len(markets), b)
+		venue, s.name, len(tv.Pairs), len(markets), b)
 }
 
 func (s *GainsNativeSource) volumeMix(day string) (gainsVolumeMix, error) {

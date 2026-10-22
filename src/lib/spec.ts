@@ -490,7 +490,10 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //      structurally identical to a row that does render (same keys, same
   //      flags, availability live) and carries better data than it, 6 fills
   //      against 0.
-  ["bench-unfiltered-v92", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v93: Nova joins bench 041 (ranked) and bench 116 (unranked). A cached
+  // entry holds the provider set current when it was written, so a bench
+  // gaining a row needs the key to move or the row never appears.
+  ["bench-unfiltered-v93", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -734,7 +737,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v83: lockstep with bench-unfiltered-v90.
   // v84: lockstep with bench-unfiltered-v91.
   // v85: lockstep with bench-unfiltered-v92 (Nova joins bench 030).
-  ["all-benchmarks-v85", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v86: lockstep with bench-unfiltered-v93 (Nova joins benches 041 and 116).
+  ["all-benchmarks-v86", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);

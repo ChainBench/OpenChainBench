@@ -124,23 +124,26 @@ const (
 	srcPolymarketNative  = "polymarket_native"
 	srcGMXNative         = "gmx_native"
 	srcGainsNative       = "gains_native"
-	srcSynFuturesNative  = "synfutures_native"
-	srcKiloExNative      = "kiloex_native"
-	srcOrderlyNative     = "orderly_native"
-	srcBackpackNative    = "backpack_native"
-	srcOndoNative        = "ondo_native"
-	srcKalshiNative      = "kalshi_native"
-	srcVestNative        = "vest_native"
-	srcStandXNative      = "standx_native"
-	srcApexNative        = "apex_native"
-	srcJupiterNative     = "jupiter_native"
-	srcPapertradeNative  = "papertrade_native"
-	srcLeverageTerms     = "leverage_terms"
-	srcLighterRHNative   = "lighter_rh_native"
-	srcHLXyzNative       = "hl_xyz_native"
-	srcCexCoinGecko      = "cex_coingecko"
-	srcDefillama         = "defillama"
-	srcMobulaFund        = "mobula_funding"
+	// Nova runs the same gTrade software; its own label keeps a fork
+	// failing from reading as Gains failing on the error counters.
+	srcNovaNative       = "nova_native"
+	srcSynFuturesNative = "synfutures_native"
+	srcKiloExNative     = "kiloex_native"
+	srcOrderlyNative    = "orderly_native"
+	srcBackpackNative   = "backpack_native"
+	srcOndoNative       = "ondo_native"
+	srcKalshiNative     = "kalshi_native"
+	srcVestNative       = "vest_native"
+	srcStandXNative     = "standx_native"
+	srcApexNative       = "apex_native"
+	srcJupiterNative    = "jupiter_native"
+	srcPapertradeNative = "papertrade_native"
+	srcLeverageTerms    = "leverage_terms"
+	srcLighterRHNative  = "lighter_rh_native"
+	srcHLXyzNative      = "hl_xyz_native"
+	srcCexCoinGecko     = "cex_coingecko"
+	srcDefillama        = "defillama"
+	srcMobulaFund       = "mobula_funding"
 )
 
 // priorityMap returns the ordered source preference for (venue, metric).
@@ -160,6 +163,10 @@ func priorityMap(venue, metric string) []string {
 			return []string{srcGMXNative, srcDefillama}
 		case "gains":
 			return []string{srcGainsNative, srcDefillama}
+		case "nova":
+			// No DefiLlama entry at all, so the gTrade backend is the only
+			// path rather than the preferred one.
+			return []string{srcNovaNative}
 		case "dydx":
 			return []string{srcDydxNative, srcDefillama}
 		case "paradex":
@@ -250,6 +257,12 @@ func priorityMap(venue, metric string) []string {
 			return []string{srcLighterNative, srcDefillama}
 		case "gmx-v2", "gains":
 			return []string{srcDefillama}
+		case "nova":
+			// Summed from collaterals[].pairOis[] in the trading variables,
+			// each collateral at its own decimals and USD price. Gains keeps
+			// DefiLlama above so its published row does not move; Nova is on
+			// no DefiLlama page, so the native read is the only one.
+			return []string{srcNovaNative}
 		case "dydx":
 			return []string{srcDydxNative, srcDefillama}
 		case "paradex":
@@ -306,6 +319,15 @@ func priorityMap(venue, metric string) []string {
 			// native archive (cumulative_taker_fees + cumulative_maker_fees
 			// diffed across 31 daily granules) is primary.
 			return []string{srcVertexNative, srcDefillama}
+		case "nova":
+			// Nova is on no DefiLlama page at all, so the fall-through below
+			// would name a source that can never answer. That is not free:
+			// a metric with a non-empty priority counts toward
+			// perp_venue_health, so it published Nova at 3/4 = 75% while
+			// every figure Nova can produce resolved on every tick. Same
+			// reasoning as the volume_30d exemption documented below, except
+			// here there is no source to attempt rather than one we hope for.
+			return nil
 		}
 		return []string{srcDefillama}
 	case mActiveMarkets:
@@ -323,6 +345,13 @@ func priorityMap(venue, metric string) []string {
 			// perp pairs catalog served this until Mobula deprecated it
 			// (404 since 2026-10-12).
 			return []string{srcGainsNative}
+		case "nova":
+			// Same filter on Nova's own trading variables. The count is
+			// published but bench 116 carries the row unranked: Nova ships
+			// the identical 493-pair gTrade registry and has delisted none
+			// of it, where Gains has delisted 315, so the two counts are not
+			// the same measurement. See perp-active-markets.yml.
+			return []string{srcNovaNative}
 		case "gmx-v2":
 			return []string{srcGMXNative, srcDefillama}
 		case "dydx":
@@ -549,6 +578,7 @@ func NewRouter(cfg *Config) *Router {
 		NewPolymarketNativeSource(),
 		NewGMXNativeSource(),
 		NewGainsNativeSource(),
+		NewNovaNativeSource(),
 		NewSynFuturesNativeSource(),
 		NewKiloExNativeSource(),
 		NewOrderlyNativeSource(),
