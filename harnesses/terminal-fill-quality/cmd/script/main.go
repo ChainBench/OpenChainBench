@@ -1534,9 +1534,47 @@ func productOf(slug string) (string, string) {
 	return slug, "solana"
 }
 
-var productNames = map[string]string{"fomo": "FOMO", "gmgn": "GMGN", "axiom": "Axiom", "banana-gun": "Banana Gun", "binance": "Binance Wallet", "basedbot": "BasedBot", "pump-fun": "pump.fun app", "pump-bridge": "Pump Bridge", "phantom": "Phantom", "maestro": "Maestro", "bloom": "Bloom"}
+var productNames = map[string]string{"fomo": "FOMO", "fomo-mobula": "FOMO · Mobula", "gmgn": "GMGN", "axiom": "Axiom", "banana-gun": "Banana Gun", "binance": "Binance Wallet", "basedbot": "BasedBot", "pump-fun": "pump.fun app", "pump-bridge": "Pump Bridge", "phantom": "Phantom", "maestro": "Maestro", "bloom": "Bloom"}
 
-// productAlias: the product a row belongs to when the bench names it
+// settleRails: which rail each cross-chain route rides, and therefore what a
+// settlement figure on that route is actually measuring.
+//
+// Settlement is the RAIL's property and not the app's. FOMO does not settle
+// anything; Relay's solver does. Two apps on one rail must therefore publish
+// the same figure at the same chain, and if they ever do not, that is a
+// finding rather than a difference to average away. Keeping both is a free
+// control, not redundancy.
+//
+// The routes stay separate rather than being folded into one row per rail
+// because an app can ride TWO rails at once: FOMO uses Relay and Mobula, with
+// different fees and different speeds, and folding them would average two
+// routes into a number describing neither. That is the same reason pump's
+// flow is published as Pump Bridge beside the pump.fun app row.
+//
+// The product slugs must be pairwise distinct, or two rails land in one
+// tfq_settle_ms series and the pooling happens silently. TestRailsCannotPool
+// enforces it, which is why a new route's slug belongs here when it is added
+// rather than after someone notices a figure that moved.
+var settleRails = map[string][]string{
+	"relay":       {"fomo", "pump-fun", "phantom", "basedbot"},
+	"mobula":      {"fomo-mobula"},
+	"pump-bridge": {"pump-bridge"},
+}
+
+// railOf: the rail a product's settlement is measured on, "" when the product
+// has no cross-chain route.
+func railOf(product string) string {
+	for rail, products := range settleRails {
+		for _, p := range products {
+			if p == product {
+				return rail
+			}
+		}
+	}
+	return ""
+}
+
+// productAlias: the product a row belongs to when the bench names it// productAlias: the product a row belongs to when the bench names it
 // differently from the row prefix (Binance Wallet's rows are the Binance
 // product on the site, one page for the exchange's wallet and RPC).
 var productAlias = map[string]string{"binance-wallet": "binance"}

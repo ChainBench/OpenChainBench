@@ -161,10 +161,49 @@ var relaySkips = map[string]bool{"megaeth": true, "xlayer": true}
 //
 // Measured split of FOMO's bridging over 398 sponsor transactions: Relay 17,
 // Mobula 6, so Mobula carries roughly a quarter of it.
+//
+// Where that quarter goes, over 29 fills read 2026-10-23: Robinhood Chain 23,
+// Base 3, BNB 2, Ethereum 1. Robinhood is about 79% of it, so a watcher that
+// covers only the chains with the most total flow would miss most of this
+// route. Direction split over 400 intents: 60% leaving Solana, 40% selling
+// back to it, and the join works both ways, so neither direction can be
+// skipped as an edge case.
 const (
 	relayDepository  = "99vQwtBwYtrqqD9YSXbdum3KBdxPAVxYTaQ3cfnJSrN2"
 	mobulaSolver     = "oMcssxWxgooErb8bsRA4QN34VHhvfeEbdDjrwF6WH45"
 	mobulaSolverUSDC = "BWocXaSJ46XRSnTUA92ffLzLriM7V8tHVLoUnS9HoWQz"
+)
+
+// THE JOIN, measured 2026-10-23 and the reason this route does not need the
+// pairing Pump Bridge needs.
+//
+// Every Mobula deposit carries a plaintext memo from mobulaMemoProgram:
+//
+//	{"intentId":"5976756-d392c16-095"}
+//
+// and the SAME id appears in the fill on the destination chain, in the data of
+// the mobulaFillTopic event emitted by the bridge contract, as right-padded
+// ascii in word 0. So the two legs join on an exact key read from chain at
+// both ends: no amount tolerance, no lag window, no ambiguous case, none of
+// what the pump pairing has to live with.
+//
+// Verified 29 of 29 Solana->EVM fills and 14 of 14 the other way, matching
+// ONLY the full dashed id (38 hex characters). That floor matters: a first
+// pass that also accepted the id's 3-character tail reported 10 of 10 where
+// the strict matcher found 4, because a short hex string appears in a 20-log
+// receipt by accident. A match criterion needs a specificity floor, not just
+// a hit.
+//
+// ATTRIBUTION IS STILL THE FEE PAYER. The memo proves a deposit belongs to a
+// fill; it says nothing about which app sent it, because any Mobula
+// integrator writes the same memo. The app test on the Solana leg stays "the
+// fee payer is the app's sponsor", exactly as for Relay.
+const (
+	mobulaMemoProgram = "Memo4c2pN8afCj432Lb7RMVKi9PbQnnW7ewFFaV3oAH"
+	// Fill(bytes32 indexed, string intentId, ...): topic0 of the event whose
+	// data word 0 holds the intent id. One eth_getLogs per chain on
+	// mobulaBridge filtered by this topic finds every fill.
+	mobulaFillTopic = "0x74647a56026fd5e5a5fdb01d686969d17f40667aeedffef44cdeb894156e35a4"
 )
 
 // mobulaBridge: Mobula's EVM settlement contract per chain. SHARED
@@ -176,19 +215,115 @@ const (
 // on 239 of 239 Solana-origin intents measured, which is why this route
 // belongs on this bench at all.
 //
-// NOT ALL FILLS CONTAIN A SWAP. On 12 fills read on chain, 4 came out of the
-// contract's own inventory with no pool trade in the transaction. Those have
-// no in-transaction pre-trade state to price against and must fall back to the
-// pool's state at that block, or they read unpriced and a third of the row
-// disappears, which is the same shape as the two-hop bug in #3193. On such a
-// fill the user's shortfall is Mobula's quote spread rather than price impact,
-// so it belongs in the bridge's own cost and not in `pool`.
+// NOT ALL FILLS CONTAIN A SWAP, but far fewer than first thought. Over 70
+// fills read on chain, 66 carry a swap event and 4 (6%) come out of the
+// contract's own inventory; an earlier count of 4 in 12 was small-sample. All
+// four no-swap fills are on Robinhood and three deliver the same token, so it
+// looks like inventory in one or two particular tokens rather than a general
+// behaviour. They still need the pool's state at that block, since 6%
+// dropping out by TRANSACTION SHAPE is still a selection, but it is not the
+// third of the row we were braced for. On such a fill the user's shortfall is
+// Mobula's quote spread rather than price impact, so it belongs in the
+// bridge's own cost and not in `pool`.
+//
+// EVERY fill delivers a token: 0 of 70 delivered a dollar stable. So this
+// route is a fill and not a transfer, which is what puts it under the trade
+// kind rather than the funding kind.
+//
+// MULTI-VENUE IS NOT THE RISK IT LOOKED LIKE. Venue counts over 66 fills are
+// v4 37, v2 22, v3 21, pancake-v3 19, summing past the fill count, and I read
+// that as parallel legs the single-pool pricer could not handle. Replaying
+// priceEvmSettlement on 60 real fills says otherwise: pools per fill are 1
+// pool 48, 2 pools 3, 3 pools 4, 4 pools 1, and the extra venues are
+// SEQUENTIAL HOPS (a stable to WETH on v3, then WETH to the token on v4),
+// which the pricer already handles. Implausible splits are 2 of 60, 3%,
+// against 1 to 3 of 57 on pump. So a venue count above the fill count does
+// not mean parallel legs, and this route is priceable as it stands.
 var mobulaBridge = map[string]string{
 	"base":      "0xa834e70303322d86e5dae95ee47e9c6a073d9812",
 	"bnb":       "0xa834e70303322d86e5dae95ee47e9c6a073d9812",
 	"robinhood": "0xa834e70303322d86e5dae95ee47e9c6a073d9812",
 	"ethereum":  "0xab830fcccb4f20bad23b7669d58cb35a96d57d5a",
 }
+
+// HOW THE USER AND THE TOKEN ARE FOUND IN A FILL, and how the rule was
+// checked, since the fill event carries only the intent id.
+//
+// THE SINK RULE: the user is the address that RECEIVES a token in the fill
+// and SENDS none. Pools, routers, executors and the bridge all appear on both
+// sides of some transfer because value passes through them; a user is a dead
+// end. The token is whatever that address received, SUMMED over every
+// transfer of it.
+//
+// Checked against the explorer's own recipient, token and amountOut, which is
+// an independent answer rather than a restatement of my reading: the rule
+// finds the explorer's recipient as a dead end in 48 of 50 fills, and the
+// summed amount matches amountOut exactly in 50 of 50.
+//
+// IT FAILED ITS FIRST VERSION, in two ways worth keeping:
+//   - taking the LARGEST transfer to the user instead of the sum, which is
+//     wrong whenever the fill is multi-venue, and multi-venue is the norm
+//     here. Summing took the amount agreement from 24 of 40 to 50 of 50.
+//   - demanding exactly one dead end, which failed 15 of 40 fills. The extra
+//     dead ends are fee takers, not users, and the next block names them.
+//
+// A rule that is mostly right selects the rest of the row by transaction
+// shape, which is the defect behind both #3193 and #3217, so the 2 of 50 the
+// rule does not resolve must stay unpriced rather than be guessed at.
+//
+// WHAT THE OTHER DEAD ENDS ARE, measured over 60 fills:
+//
+//	robinhoodTokenFee  a CONTRACT (15 kB of code), a dead end in 13 of 60
+//	                   fills and never the user, taking the user's own token
+//	                   at 101, 204 or 309 bps, on Robinhood only. Those tiers
+//	                   are 1%, 2% and 3%, which is a per-token creator or
+//	                   launchpad fee rather than any app's cut: an app fee
+//	                   does not come in three per-token tiers on one chain.
+//	                   Not attributed to a terminal.
+//	the token itself   5 of 60, the sink address IS the token contract, which
+//	                   is a transfer tax the token levies on every holder.
+//	                   Belongs in the pool or other cost, never in a fee.
+//
+// NO APP-FEE TRANSFER EXISTS ON EITHER LEG, and that is NOT the same as the
+// app taking no fee. The deposit carries exactly one token transfer
+// (ComputeBudget, ComputeBudget, Token, Memo on all 50 read), so nothing is
+// skimmed on the way in, and the only non-user sinks on the way out are the
+// two above.
+//
+// But a fee an integrator sets and the bridge takes inside its QUOTE leaves
+// no transfer to find: it would sit in the bridge residual while the column
+// read 0, and a reader comparing that against FOMO's Relay rows at about 50
+// bps would conclude this route is cheaper in app fees when the fee had only
+// moved. So the terminal component here is published as NOT MEASURED, not as
+// zero, with the note that any charge by the app is inside the bridge's price
+// and counted in the bridge column.
+//
+// The obvious signal does not resolve it. The explorer's inputAmountUsd minus
+// amountInUsd has a median of 144 bps but runs from -528 to +1188, and only
+// 12% of 198 rows land between 30 and 70 bps; a fee cannot be negative, so
+// that gap is two valuations of the same input disagreeing rather than a fee.
+//
+// MOBULA'S OWN TAKE on the sell direction, 57 bps median over 210 intents
+// with p10 31 and p90 68. What that figure covers took two wrong readings to
+// pin down, so the route is written out: over 201 intents, originToken is
+// NATIVE in 201, inputToken is an EVM token in 199, and destinationToken is a
+// dollar stable on Solana in 200, with originToken never equal to inputToken.
+// So the user sells a token into the native coin, the native coin is bridged,
+// and a stable arrives.
+//
+// The 57 bps is (amountInUsd - amountOutUsd) / amountInUsd, which starts from
+// the NATIVE amount, so it excludes the sale and is bridge-only. But it is
+// native in, not stable in, so it is NOT the same pair as Pump Bridge's USDC
+// in and must not be quoted as like-for-like against its 0.05 plus 40 to 45
+// bps. Its tightness, against the 131 to 537 spread of the token-delivering
+// direction, is what a schedule looks like rather than pool impact.
+//
+// This also explains the quote gap dismissed above: every row has a sale
+// stage, so those 156 bps are the cost of THAT SALE. The verdict (not a fee)
+// was right and the reason (two valuations disagreeing) was wrong.
+//
+// It still cannot be split into bridge and app, which is the point above.
+const robinhoodTokenFee = "0xe5e702641ea86f4ae6cc3cdaed2b886f976be044"
 
 const solanaChainID = 792703809
 
