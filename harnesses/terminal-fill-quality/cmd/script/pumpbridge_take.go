@@ -34,9 +34,11 @@ package main
 import (
 	"context"
 	"log"
+	"math"
 	"math/big"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -142,6 +144,18 @@ func observePumpSpend(chain string, spent *big.Int, dec int) {
 	cPumpSpends.WithLabelValues(chain, "yes").Inc()
 	cPumpSchedule.WithLabelValues(chain, big.NewInt(bps).String()).Inc()
 	hPumpTakeBps.WithLabelValues(chain).Observe(takeBps)
+	// Kept in process as well as in Prometheus: the gross-up needs the rate
+	// the chain actually showed, and reading it back out of a counter would
+	// make a published figure depend on a scrape.
+	pumpSeen.Lock()
+	if pumpSeen.byChain == nil {
+		pumpSeen.byChain = map[string]map[int64]int{}
+	}
+	if pumpSeen.byChain[chain] == nil {
+		pumpSeen.byChain[chain] = map[int64]int{}
+	}
+	pumpSeen.byChain[chain][bps]++
+	pumpSeen.Unlock()
 }
 
 // pumpRouter: where to read the spends, one row per chain carrying a router.
@@ -294,4 +308,85 @@ func pumpBridgeRow(slug string) bool {
 		}
 	}
 	return false
+}
+
+// The schedule, as the gross-up applies it.
+//
+// pumpRatesBps holds the two rates the chain shows, 40 and 45. Which one a
+// given swap paid is not knowable unless its size reads back to a round level,
+// which 7 of 40 do. The midpoint is used for the rest because the two rates sit
+// 5 bps apart while the deduction itself runs 45 to 545 bps: the residual is
+// 2.51 bps and symmetric, against 45 to 545 one-signed if it is ignored.
+const (
+	pumpFixedUSD = 0.05
+	// pumpFallbackRate: used only until a chain has shown enough exactly
+	// readable spends to say what it charges there. It is the midpoint of the
+	// two rates seen so far, a typed number, which is why it is a fallback
+	// rather than the figure.
+	pumpFallbackRate = 0.00425
+	// pumpRateMinSeen: exact matches a chain must show before its own mix is
+	// trusted over the fallback. Low because each match is exact equality in
+	// integer units, not a fit.
+	pumpRateMinSeen = 5
+)
+
+// pumpSeen: the rates each chain showed, from spends whose size read back to a
+// round level exactly.
+var pumpSeen struct {
+	sync.Mutex
+	byChain map[string]map[int64]int
+}
+
+// pumpChainRate: the rate to gross up with on this chain, weighted by how often
+// each rate was matched there.
+//
+// The mix is not the same everywhere: BNB leaned 45 bps (14 against 9) while
+// Robinhood Chain leaned 40 (40 against 8) on 2026-10-22, so one typed constant
+// everywhere costs up to 1.7 bps on Robinhood. A chain with too few matches
+// falls back, and the matched share is published beside the figure so a rate
+// that stops being confirmed stays visible.
+func pumpChainRate(chain string) float64 {
+	pumpSeen.Lock()
+	defer pumpSeen.Unlock()
+	total, weighted := 0, int64(0)
+	for bps, n := range pumpSeen.byChain[chain] {
+		total += n
+		weighted += bps * int64(n)
+	}
+	if total < pumpRateMinSeen {
+		return pumpFallbackRate
+	}
+	return float64(weighted) / float64(total) / 10000.0
+}
+
+// pumpChainOf: the chain a pump row reads, for looking up its observed rate.
+func pumpChainOf(slug string) string {
+	for _, t := range evmTerminals {
+		if t.Slug == slug {
+			return t.Chain
+		}
+	}
+	return ""
+}
+
+// pumpGrossUpCap bounds the correction. A spend the schedule cannot plausibly
+// explain is left alone rather than inflated: at $1 the deduction is already
+// 9.5% of the trade, so anything past 20% is not this fee.
+const pumpGrossUpCap = 1.20
+
+// pumpGrossUp returns what the user meant to spend, given what the router
+// spent, and whether the correction was applied.
+//
+// The router is pre-funded, so the user's input is not in the EVM transaction:
+// only 4 of 40 swaps read on 2026-10-22 saw a stable arrive, none of them a
+// round amount. Inverting the schedule recovers it without pairing anything.
+func pumpGrossUp(slug string, spentUSD float64) (float64, bool) {
+	if !pumpBridgeRow(slug) || spentUSD <= 0 || math.IsNaN(spentUSD) || math.IsInf(spentUSD, 0) {
+		return spentUSD, false
+	}
+	gross := (spentUSD + pumpFixedUSD) / (1 - pumpChainRate(pumpChainOf(slug)))
+	if gross <= spentUSD || gross > spentUSD*pumpGrossUpCap {
+		return spentUSD, false
+	}
+	return gross, true
 }
