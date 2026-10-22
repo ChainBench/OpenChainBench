@@ -136,6 +136,11 @@ func pumpMatch(spent *big.Int, dec int) (bps int64, takeBps float64, ok bool) {
 
 // observePumpSpend records one spend and, when the schedule explains it, the fee.
 func observePumpSpend(chain string, spent *big.Int, dec int) {
+	// Feed the derivation first, from the population rather than from the
+	// conclusions: pumpMatch applies a schedule, pumpNoteCandidate assumes none.
+	if f, _ := new(big.Float).SetInt(spent).Float64(); f > 0 && dec >= 2 {
+		pumpNoteCandidate(chain, f/math.Pow10(dec))
+	}
 	bps, takeBps, ok := pumpMatch(spent, dec)
 	if !ok {
 		cPumpSpends.WithLabelValues(chain, "no").Inc()
@@ -337,6 +342,113 @@ var pumpSeen struct {
 	byChain map[string]map[int64]int
 }
 
+// pumpLooseShare: the only bound used to pick candidates for the derivation.
+//
+// A fee is a small deduction, so a spend sitting under a round level by less
+// than a tenth might be one. This assumes no value, which is what lets the
+// fixed component be derived rather than confirmed: 0.05 never touches the
+// evidence it is derived from.
+const pumpLooseShare = 0.10
+
+// pumpDeriveMinPairs: agreeing pairs before a derived schedule is trusted.
+const pumpDeriveMinPairs = 4
+
+// pumpCand holds one candidate reading of a spend, with nothing assumed.
+type pumpCand struct{ level, take float64 }
+
+var pumpCands struct {
+	sync.Mutex
+	byChain map[string][]pumpCand
+}
+
+// pumpNoteCandidate records a spend as a possible fee reading.
+//
+// Called for every router spend, matched or not: the derivation needs the
+// population, not the conclusions drawn from it.
+func pumpNoteCandidate(chain string, spentUSD float64) {
+	if spentUSD <= 0 || math.IsNaN(spentUSD) || math.IsInf(spentUSD, 0) {
+		return
+	}
+	var level float64
+	for _, lv := range pumpLevels {
+		if float64(lv) > spentUSD {
+			level = float64(lv)
+			break
+		}
+	}
+	if level == 0 {
+		return
+	}
+	take := level - spentUSD
+	if take <= 0 || take > level*pumpLooseShare {
+		return
+	}
+	pumpCands.Lock()
+	defer pumpCands.Unlock()
+	if pumpCands.byChain == nil {
+		pumpCands.byChain = map[string][]pumpCand{}
+	}
+	c := pumpCands.byChain[chain]
+	// Bounded: the schedule is a constant, not a trend, so a few hundred
+	// readings settle it and the rest would only grow the pair loop.
+	if len(c) >= 400 {
+		c = c[1:]
+	}
+	pumpCands.byChain[chain] = append(c, pumpCand{level, take})
+}
+
+// pumpDerivedFixed returns the fixed component this chain's own spends imply.
+//
+// Pairs at different levels each solve the schedule; the real ones agree and
+// noise scatters, so the mode wins. Returns false until enough pairs agree, and
+// the caller then falls back to the constant, which is why that constant is
+// named a fallback.
+func pumpDerivedFixed(chain string) (float64, bool) {
+	pumpCands.Lock()
+	cands := append([]pumpCand(nil), pumpCands.byChain[chain]...)
+	pumpCands.Unlock()
+	if len(cands) < 2 {
+		return 0, false
+	}
+	votes := map[[2]int64]int{}
+	for i := 0; i < len(cands); i++ {
+		for j := i + 1; j < len(cands); j++ {
+			a, b := cands[i], cands[j]
+			if a.level == b.level {
+				continue
+			}
+			r := (b.take - a.take) / (b.level - a.level)
+			f := a.take - r*a.level
+			if r <= 0 || r > 0.01 || f < 0 || f > 1 {
+				continue
+			}
+			// Rounded to the precision the chain carries: a tenth of a basis
+			// point on the rate, a hundredth of a cent on the fixed part.
+			k := [2]int64{int64(math.Round(r * 100000)), int64(math.Round(f * 10000))}
+			votes[k]++
+		}
+	}
+	best, bestN := [2]int64{}, 0
+	for k, n := range votes {
+		if n > bestN {
+			best, bestN = k, n
+		}
+	}
+	if bestN < pumpDeriveMinPairs {
+		return 0, false
+	}
+	return float64(best[1]) / 10000, true
+}
+
+// pumpFixed: the fixed component to use on this chain, derived when the chain
+// has shown enough and the typed fallback until then.
+func pumpFixed(chain string) float64 {
+	if f, ok := pumpDerivedFixed(chain); ok {
+		return f
+	}
+	return pumpFixedUSD
+}
+
 // pumpChainRate: the rate to gross up with on this chain, weighted by how often
 // each rate was matched there.
 //
@@ -400,7 +512,8 @@ func pumpGrossUpFunded(slug string, spentUSD float64, userFunded bool) (float64,
 	if !pumpBridgeRow(slug) || spentUSD <= 0 || math.IsNaN(spentUSD) || math.IsInf(spentUSD, 0) {
 		return spentUSD, false
 	}
-	gross := (spentUSD + pumpFixedUSD) / (1 - pumpChainRate(pumpChainOf(slug)))
+	chain := pumpChainOf(slug)
+	gross := (spentUSD + pumpFixed(chain)) / (1 - pumpChainRate(chain))
 	if gross <= spentUSD || gross > spentUSD*pumpGrossUpCap {
 		return spentUSD, false
 	}
