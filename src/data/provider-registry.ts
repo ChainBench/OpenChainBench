@@ -75,6 +75,15 @@ export type ProviderRegistryEntry = {
    */
   description?: string;
   twitter?: string;
+  /**
+   * A referral link the provider gave us, used ONLY as the href of the
+   * product page's outbound link. `url` stays the canonical address shown
+   * as the link text and served in the API, citations and structured data,
+   * the same rule utm.ts follows for the utm tag. The rendered href still
+   * goes through withUtm, so it carries both the provider's referral code
+   * and our utm_source. Rendered with rel="sponsored".
+   */
+  referralUrl?: string;
 
   // Optional rich content surfaced on the product detail page when present.
   // Every field is independently optional; the page renders only the
@@ -1153,6 +1162,7 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   },
   quicknode: {
     url: "https://www.quicknode.com",
+    referralUrl: "https://quicknode.com/signup?via=florent",
     description:
       "Keyed RPC infrastructure across 30+ chains. Endpoint-scoped API tokens; free and paid plans are served from the same shared fleet, dedicated clusters on higher tiers.",
     twitter: "@QuickNode",
@@ -1213,6 +1223,7 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   },
   chainstack: {
     url: "https://chainstack.com",
+    referralUrl: "https://chainstack.referral-factory.com/uEaQLKh1",
     description:
       "Managed blockchain node platform. Deploys dedicated Global Nodes per chain with keyed HTTPS/WSS endpoints; free plan includes one node and 3M requests per month.",
     twitter: "@ChainstackHQ",
@@ -1575,12 +1586,14 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   },
   fomo: {
     url: "https://fomo.family",
+    referralUrl: "https://fomo.family/r/FlorentTppnr",
     description:
       "FOMO is a multi-chain trading app (Solana, Base, BNB Chain, and more) for memecoins and perps. It provides social copy-trading, onchain signals, and routes swaps through pump.fun, Raydium, and other DEX pools.",
     twitter: "@tryfomo",
   },
   "pump-fun": {
     url: "https://pump.fun",
+    referralUrl: "https://pump.fun/u/SweetNearSlicer",
     description:
       "pump.fun is the leading Solana memecoin launchpad. Tokens start on a bonding curve and graduate to PumpSwap (pump.fun's native AMM, launched March 2025) when the curve completes.",
     twitter: "@pumpdotfun",
@@ -3463,8 +3476,8 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   pons: { url: "https://ponsfamily.com" },
   "pons-family": { url: "https://ponsfamily.com" },
   "pulsechain-official": { url: "https://pulsechain.com" },
-  pump: { url: "https://pump.fun" },
-  pumpfun: { url: "https://pump.fun" },
+  pump: { url: "https://pump.fun", referralUrl: "https://pump.fun/u/SweetNearSlicer" },
+  pumpfun: { url: "https://pump.fun", referralUrl: "https://pump.fun/u/SweetNearSlicer" },
   quickswap: { url: "https://quickswap.exchange" },
 };
 
@@ -3497,6 +3510,7 @@ export function getProviderRegistry(slug: string): ProviderRegistryEntry | undef
   return {
     ...entry,
     url: safeRegistryURL(entry.url) ?? "",
+    referralUrl: safeRegistryURL(entry.referralUrl),
     docs: safeRegistryURL(entry.docs),
     github: safeRegistryURL(entry.github),
     blog: safeRegistryURL(entry.blog),

@@ -7,7 +7,7 @@ seo_title: "Fastest L1 finality 2026: {{best_name}} at {{best_p50}}, {{count}} c
 seo_description: "{{best_name}} finalizes in {{best_p50}} (p50, 24h), the lowest of {{count}} L1s measured live. Ethereum, Solana, Bitcoin, BNB, Stellar: wall-clock, not whitepaper."
 subtitle: Wall-clock seconds from latest block to the finalized block on Ethereum, Solana, Bitcoin, Gram, BNB, Stellar and 4 more chains, refreshed every 10 seconds.
 seo_intro: |
-  This page measures L1 finality time live for every major Layer-1 blockchain, with p50 / p90 / p99 refreshed every 10 seconds. Stellar finality time is ~5 seconds, the close interval the Stellar Consensus Protocol locks in via federated Byzantine agreement. Solana finality time goes from sub-second on the processed commitment to ~12.8 s on finalized after 32 confirmed slots. Ethereum finality time is about 12.8 minutes in the ideal case, the 2-epoch Casper FFG window; observed wall-clock finality runs longer, and the table below shows the live measurement. Hedera finality time clears in 3-5 seconds via Hashgraph aBFT. Gram finality time (formerly TON) sits under one second via BAG consensus. BNB and Avalanche finality time land near two seconds through fast-finality forks. Probabilistic chains (Bitcoin, Litecoin, Monero) settle on a confirmation-depth convention measured here in minutes. Bitcoin finality time is roughly one hour at the industry-standard 6 confirmations; the protocol itself never reaches absolute finality.
+  This page measures L1 finality time live for every major Layer-1 blockchain, with p50 / p90 / p99 refreshed every 10 seconds. Stellar finality time is ~5 seconds, the close interval the Stellar Consensus Protocol locks in via federated Byzantine agreement. Solana finality time dropped from about 12.8 s under Tower BFT to well under a second when Alpenglow went live on 21 October 2026, and is now measured to the millisecond. Ethereum finality time is about 12.8 minutes in the ideal case, the 2-epoch Casper FFG window; observed wall-clock finality runs longer, and the table below shows the live measurement. Hedera finality time clears in 3-5 seconds via Hashgraph aBFT. Gram finality time (formerly TON) sits under one second via BAG consensus. BNB and Avalanche finality time land near two seconds through fast-finality forks. Probabilistic chains (Bitcoin, Litecoin, Monero) settle on a confirmation-depth convention measured here in minutes. Bitcoin finality time is roughly one hour at the industry-standard 6 confirmations; the protocol itself never reaches absolute finality.
 
 faq:
   - q: "What is blockchain finality?"
@@ -17,7 +17,7 @@ faq:
   - q: "What is Ethereum finality time?"
     a: "Ethereum finality time measured live on this page is {{p50:ethereum}} (p50, 24h). Casper FFG finalizes a checkpoint two epochs after it is justified, where each epoch is 32 slots of 12 seconds, about 12.8 minutes in the ideal case. Observed wall-clock finality runs longer because a block lands mid-epoch and waits before the two-epoch countdown starts. The live table above shows the measured value. The benchmark polls eth_getBlockByNumber(\"latest\") and eth_getBlockByNumber(\"finalized\") every 10 seconds and reports the timestamp delta."
   - q: "What is Solana finality time?"
-    a: "Solana exposes two commitments. Processed is optimistic and lands sub-second, typically under 500 ms. Finalized requires 32 confirmed slots and clocks {{p50:solana}} (24h average). The leaderboard value is finalized, the stricter guarantee. Sub-second Solana finality is real but only at the processed commitment level, not finalized."
+    a: "Solana switched consensus from Tower BFT to Alpenglow on 21 October 2026 (epoch 1064). Under Tower BFT a block was finalized after 32 confirmed slots, about 12.8 seconds; Alpenglow targets about 150 ms and makes confirmed and finalized the same thing. Measured here as the wall-clock time from a slot first appearing to it being rooted, {{p50:solana}} (p50, 24h), which includes the time for the notifications to reach the measuring box."
   - q: "What is Gram finality time?"
     a: "Gram's BAG consensus (the network formerly branded TON, with native token renamed Toncoin → Gram in June 2026) pushes masterchain finality to {{p50:gram}} (p50, 24h), one of the lowest deterministic finalities measured on this leaderboard. Gram's design splits state across a masterchain and many workchains. The figure here is the masterchain commit, the canonical reference for cross-chain settlement."
   - q: "What is Stellar finality time?"
@@ -31,7 +31,7 @@ faq:
   - q: "What is Bitcoin finality time?"
     a: "Bitcoin never reaches absolute finality. Nakamoto consensus gives probabilistic finality: any block can in principle be reorganized, with a probability that falls exponentially as more blocks are mined on top. The exchange-industry deposit convention is 6 confirmations, roughly one hour at the 10-minute target block interval, and that is what this benchmark measures: {{p50:bitcoin}} (p50, 24h) wall-clock from a block first appearing at the chain tip to reaching 6 confirmations, timed with the harness clock rather than miner-set block timestamps. Variance is high because block intervals are Poisson distributed; a lucky streak settles in about 30 minutes, an unlucky one takes well over 90. Six confirmations is a risk threshold, not a protocol guarantee, and deep reorgs remain possible with vanishing probability."
   - q: "How is L1 finality time measured on this page?"
-    a: "Two methods, picked per chain. RPC pollers compare latest vs finalized block timestamps every 10 seconds, used for Ethereum, Solana, TRON, Stellar, Gram, Litecoin, Monero. WebSocket subscribers record wall-clock time T1 when a block first appears on the head stream and T2 when it crosses the finality threshold, giving millisecond-precision lag for sub-poll chains (BNB, Avalanche)."
+    a: "Two methods, picked per chain. RPC pollers compare latest vs finalized block timestamps every 10 seconds, used for Ethereum, TRON, Stellar, Gram, Litecoin, Monero. WebSocket subscribers record wall-clock time T1 when a block first appears on the head stream and T2 when it crosses the finality threshold, giving millisecond-precision lag for sub-poll chains (BNB, Avalanche)."
 
 per_chain_explainer:
   - slug: ethereum
@@ -41,7 +41,7 @@ per_chain_explainer:
   - slug: solana
     h2: "Solana finality time"
     body: |
-      Solana exposes two commitments. Processed is optimistic and lands sub-second, typically under 500 ms. Finalized requires 32 confirmed slots and clocks {{p50:solana}} (24h average) on this benchmark. The leaderboard value is finalized, the stricter guarantee. Sub-second Solana finality is real but only at the processed commitment level. Measured via `getSlot{commitment:"processed"}` and `getSlot{commitment:"finalized"}` translated through block timestamps.
+      Solana finality time is {{p50:solana}} (p50, 24h). Alpenglow replaced Tower BFT on mainnet on 21 October 2026: finality went from 32 confirmed slots, about 12.8 seconds, to a target of about 150 ms, and the confirmed and finalized commitments became one. The harness subscribes over WebSocket to slots and roots, records the wall-clock moment a slot first appears and the moment a root reaches it, and reports the difference in milliseconds. The earlier method subtracted `getBlockTime` values, which are whole seconds and cannot resolve sub-second finality; it read 0 or 1 s after the switch and was retired on 22 October.
   - slug: stellar
     h2: "Stellar finality time"
     body: |
@@ -91,8 +91,8 @@ abstract: |
   finalized block. The harness uses two complementary methods. For
   chains with finality much longer than our 10 s poll interval we read
   `latest.timestamp, finalized.timestamp` from the chain RPCs (Ethereum,
-  Solana, TRON, Litecoin, Monero). For chains whose finality
-  is faster than the poll interval (BNB, Avalanche, SUI, Gram, Stellar)
+  TRON, Litecoin, Monero). For chains whose finality
+  is faster than the poll interval (Solana, BNB, Avalanche, SUI, Gram, Stellar)
   we maintain a persistent WebSocket / SSE subscription, recording
   wall-clock time T1 when block N is first seen as `latest` and T2
   when it becomes `finalized`. lag = T2 − T1 with millisecond
@@ -114,7 +114,7 @@ methodology:
   - "Cadence: every 10 seconds for HTTP-polled chains, continuous WS for BNB and Avalanche."
   - "Ethereum: `eth_getBlockByNumber(\"latest\")` minus `eth_getBlockByNumber(\"finalized\")`."
   - "BNB / Avalanche (WS wall-clock): persistent `eth_subscribe(\"newHeads\")` records T1 = first time block N is seen as latest. Periodic `eth_getBlockByNumber(\"finalized\")` over same WS records T2 when N becomes finalized. lag = T2 − T1, ms precision, independent of chain timestamp resolution."
-  - "Solana: `getSlot{commitment:\"processed\"}` + `getBlockTime` minus `getSlot{commitment:\"finalized\"}` + `getBlockTime`."
+  - "Solana: WebSocket `slotSubscribe` and `rootSubscribe` on the public mainnet endpoint. T1 = first notification of slot S, T2 = first root at or above S; lag = T2 - T1 in ms. Replaced the `getBlockTime` difference on 2026-10-22, after Alpenglow made finality shorter than its one-second resolution."
   - "TRON: `/wallet/getnowblock` (head) minus `/walletsolidity/getnowblock` (solidity-confirmed)."
   - "Stellar (SSE wall-clock): Horizon `/ledgers?cursor=now&order=asc` event-stream records T1 on first sight of ledger N and T2 on the next ledger close (SCP-final at every close)."
   - "SUI: `sui_getLatestCheckpointSequenceNumber` minus 5 checkpoints back."
@@ -223,16 +223,16 @@ providers:
 
   - slug: solana
     name: Solana
-    tag: Tower BFT, 32-slot finalized commitment
-    formula: "Mean elapsed time (in ms) between Solana's processed and finalized commitments via `getSlot` + `getBlockTime`, covering the 32-slot Tower BFT finalization gap, over 24h."
+    tag: Alpenglow, measured via WS wall-clock
+    formula: "Median wall-clock milliseconds between a Solana slot first appearing on `slotSubscribe` and a root reaching it on `rootSubscribe`, p50 over 24h."
     queries:
-      p50: avg_over_time(l1_finality_lag_seconds{chain="solana"}[24h]) * 1000
-      p90: quantile_over_time(0.90, l1_finality_lag_seconds{chain="solana"}[24h]) * 1000
-      p99: quantile_over_time(0.99, l1_finality_lag_seconds{chain="solana"}[24h]) * 1000
-      mean: avg_over_time(l1_finality_lag_seconds{chain="solana"}[24h]) * 1000
-      success: avg_over_time(l1_finality_health{chain="solana"}[24h])
-      sample_size: count_over_time(l1_finality_lag_seconds{chain="solana"}[24h])
-      series: l1_finality_lag_seconds{chain="solana"} * 1000
+      p50: quantile_over_time(0.50, l1_finality_wallclock_lag_milliseconds{chain="solana"}[24h])
+      p90: quantile_over_time(0.90, l1_finality_wallclock_lag_milliseconds{chain="solana"}[24h])
+      p99: quantile_over_time(0.99, l1_finality_wallclock_lag_milliseconds{chain="solana"}[24h])
+      mean: avg_over_time(l1_finality_wallclock_lag_milliseconds{chain="solana"}[24h])
+      success: avg_over_time(l1_finality_wallclock_health{chain="solana"}[24h])
+      sample_size: increase(l1_finality_wallclock_samples_total{chain="solana"}[24h])
+      series: l1_finality_wallclock_lag_milliseconds{chain="solana"}
 
   - slug: tron
     name: TRON

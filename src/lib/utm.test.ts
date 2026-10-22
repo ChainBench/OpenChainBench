@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { execSync } from "node:child_process";
 import { UTM_SOURCE, withUtm } from "@/lib/utm";
+import { getProviderRegistry } from "@/data/provider-registry";
 
 describe("withUtm", () => {
   test("tags a third-party destination", () => {
@@ -119,6 +120,27 @@ describe("every outbound link is tagged", () => {
     const endpointRenderers = files.filter((f) => /rpc-directory|speedtest-rpc-client/.test(f));
     for (const f of endpointRenderers) {
       expect(readFileSync(f, "utf8")).not.toContain("withUtm");
+    }
+  });
+});
+
+// A provider's referral link replaces only the clicked href, and keeps both
+// its own code and our utm_source; the canonical url stays clean.
+describe("referral links", () => {
+  test("referral providers keep a clean canonical url and a tagged referral href", () => {
+    for (const [slug, canonical, param] of [
+      ["quicknode", "https://www.quicknode.com", ["via", "florent"]],
+      ["chainstack", "https://chainstack.com", null],
+      ["fomo", "https://fomo.family", null],
+      ["pump-fun", "https://pump.fun", null],
+    ] as const) {
+      const reg = getProviderRegistry(slug);
+      expect(reg?.url).toBe(canonical);
+      const href = new URL(withUtm(reg?.referralUrl || reg?.url));
+      expect(reg?.referralUrl).toBeTruthy();
+      expect(href.origin + href.pathname).not.toBe(new URL(canonical).origin + new URL(canonical).pathname);
+      expect(href.searchParams.get("utm_source")).toBe("openchainbench");
+      if (param) expect(href.searchParams.get(param[0])).toBe(param[1]);
     }
   });
 });

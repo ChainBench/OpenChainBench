@@ -59,7 +59,7 @@ import { fetchDataApiSnapshot } from "@/lib/data-api-stats";
 import { getTradingAppHistory } from "@/lib/trading-app-history";
 import { fetchBridgeHub } from "@/lib/bridge-hub-stats";
 import { withUtm } from "@/lib/utm";
-import { noFigureLabel } from "@/lib/no-figure-label";
+import { noFigureLabel, noRankLabel } from "@/lib/no-figure-label";
 
 export const revalidate = 3600;
 
@@ -883,8 +883,8 @@ export default async function ProviderPage({
                     {reg.url && (
                       <a
                         className="lnk inline-flex items-center gap-1 font-medium text-ink hover:text-accent transition-colors break-all"
-                        href={withUtm(reg.url)}
-                        rel="noopener"
+                        href={withUtm(reg.referralUrl || reg.url)}
+                        rel={reg.referralUrl ? "noopener sponsored" : "noopener"}
                       >
                         {reg.url.replace(/^https?:\/\//, "").replace(/\/$/, "")}
                         <ArrowUpRight size={13} strokeWidth={2} className="shrink-0" />
@@ -1237,7 +1237,7 @@ export default async function ProviderPage({
                       </>
                     ) : (
                       <span className="block text-[10px] uppercase tracking-[0.16em] text-ink-faint italic font-normal">
-                        awaiting
+                        {noRankLabel(a.benchmark.slug)}
                       </span>
                     )}
                   </span>

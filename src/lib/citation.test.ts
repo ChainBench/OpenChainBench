@@ -183,6 +183,25 @@ describe("cohortSummaries", () => {
   test("empty on a bench without tiers", () => {
     expect(cohortSummaries(bench([r("a", "A", 1)]), "https://x")).toEqual([]);
   });
+
+  // rpc-cost, 2026-10-22: the dedicated cohort is `ranked: false` in the
+  // spec and on its product pages, and /api/stat still crowned Dwellir
+  // Unlimited "across 6 ranked providers".
+  test("a cohort declared ranked: false keeps its rows and names no leader", () => {
+    const b: Benchmark = {
+      ...bench([{ ...r("blockmachine", "Blockmachine", 25), tier: "usage" }]),
+      slug: "rpc-cost",
+      title: "Cheapest RPC provider",
+      dimensions: { tier: [{ value: "usage", label: "Billed per request" }, { value: "dedicated", label: "Dedicated capacity", ranked: false }] },
+      tierResults: { dedicated: [r("dwellir-unlimited", "Dwellir Unlimited", 119), r("zeeve", "Zeeve", 149)] },
+    };
+    const [usage, dedicated] = cohortSummaries(b, "https://openchainbench.com");
+    expect(usage.leader?.slug).toBe("blockmachine");
+    expect(dedicated.leader).toBeNull();
+    expect(dedicated.rankings).toEqual([]);
+    expect(dedicated.measured).toBe(2);
+    expect(dedicated.sentence).toContain("none is ranked");
+  });
 });
 
 describe("headline ties", () => {
