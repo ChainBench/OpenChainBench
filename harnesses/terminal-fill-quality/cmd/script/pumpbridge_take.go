@@ -61,7 +61,7 @@ var (
 	}, []string{"chain"})
 	gSettleMs = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "tfq_settle_ms",
-		Help: "Cross-chain settlement time per route, milliseconds: the Solana deposit to the destination spend that consumed it, matched by the amount the fee schedule implies. RESOLUTION IS ONE SECOND, so values are multiples of 1000: both ends are block timestamps in whole seconds and intra-second block ordering is not used to refine them. Stalls past 60 s are excluded (counted in tfq_pump_bridge_stall_total) because a handful of them move a mean by more than an order of magnitude. stat=median|p90",
+		Help: "Cross-chain settlement time per route, milliseconds: the Solana deposit to the destination spend that consumed it, matched by the amount the fee schedule implies. RESOLUTION IS ONE SECOND, so values are multiples of 1000: both ends are block timestamps in whole seconds and intra-second block ordering is not used to refine them. Stalls past 60 s are excluded (counted in tfq_pump_bridge_stall_total) because a handful of them move a mean by more than an order of magnitude. stat=median|p90|mean. READ THE MEAN to compare routes: at one-second resolution a sample is 0, 1, 2 or 3 seconds, so a median can only take one of four values and two different routes sharing one carries no information. The mean is stall-free because anything past 60 s never enters the window",
 	}, []string{"terminal", "chain", "stat"})
 	cPumpStall = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "tfq_pump_bridge_stall_total",
@@ -678,11 +678,37 @@ func noteSettle(terminal, chain string, took float64) {
 		}
 		gSettleMs.WithLabelValues(terminal, c, "median").Set(quantileOf(v, 0.5) * 1000)
 		gSettleMs.WithLabelValues(terminal, c, "p90").Set(quantileOf(v, 0.9) * 1000)
+		gSettleMs.WithLabelValues(terminal, c, "mean").Set(meanOf(v) * 1000)
 	}
 	if len(all) >= pumpSettleMin {
 		gSettleMs.WithLabelValues(terminal, "all", "median").Set(quantileOf(all, 0.5) * 1000)
 		gSettleMs.WithLabelValues(terminal, "all", "p90").Set(quantileOf(all, 0.9) * 1000)
+		gSettleMs.WithLabelValues(terminal, "all", "mean").Set(meanOf(all) * 1000)
 	}
+}
+
+// meanOf: the arithmetic mean, which is the only one of the three statistics
+// published here that can separate two routes.
+//
+// Both ends of a settlement are whole-second block timestamps, so every sample
+// is 0, 1, 2 or 3 seconds and a median can only ever take one of those values.
+// Two routes sharing a median is therefore close to inevitable and carries no
+// information: Pump Bridge and the Relay routes both read exactly 1000 ms while
+// their per-chain medians and their tails plainly differ. Averaging whole
+// seconds recovers the resolution the median discards.
+//
+// Safe here and NOT safe on the raw histogram, which is the distinction that
+// matters: a stall past 60 s never enters this window, while sum/count over
+// hPumpSettle includes them and reads 19.8 s against a 0.37 s median.
+func meanOf(v []float64) float64 {
+	if len(v) == 0 {
+		return 0
+	}
+	t := 0.0
+	for _, x := range v {
+		t += x
+	}
+	return t / float64(len(v))
 }
 
 // quantileOf: nearest-rank on a copy, so the value returned is one that was

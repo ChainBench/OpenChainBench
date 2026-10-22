@@ -1797,7 +1797,27 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 		if len(rejects) == 0 {
 			ts.Rejects = nil
 		}
-		if att >= 20 && (ts.SampSeen == 0 || ts.SampSeen >= 20) {
+		// A native EVM row's failures can only come from the block sample,
+		// because a reverted transaction emits no logs for the feed to see.
+		// So SampSeen == 0 there means NOTHING WAS OBSERVED, and publishing
+		// failed/att = 0 would be an absence dressed as a measurement.
+		// maestro-robinhood and pump-bridge-robinhood both did exactly that,
+		// while bloom-robinhood (1 sampled) and pump-fun-robinhood (4) were
+		// correctly withheld: the guard was inverted where it mattered most.
+		//
+		// The exemption stays for Solana and Relay rows, whose `failed` is a
+		// real count from the feed rather than an estimate from a sample.
+		sampledEnough := ts.SampSeen >= 20
+		if ts.SampSeen == 0 {
+			sampledEnough = true
+			for _, sl := range slugs {
+				if isNativeEVM(sl) {
+					sampledEnough = false
+					break
+				}
+			}
+		}
+		if att >= 20 && sampledEnough {
 			fr := 100 * failed / att
 			ts.FailRate = &fr // percent (a native row: from 20 sampled transactions, not 20 scaled ones)
 		}

@@ -121,10 +121,10 @@ metric_panels:
   - id: settle
     label: Settlement time
     label_key: terminal
-    metric: tfq_settle_ms{chain="all",stat="median"}
+    metric: tfq_settle_ms{chain="all",stat="mean"}
     unit: ms
     higher_is_better: false
-    description: "Resolution is one second, so a route faster than a second reads 0 rather than a figure we cannot measure. Median destination block time minus origin block time, same definition for every route. A route appears once it has ten settlements; stalls over 60 s are excluded."
+    description: "Mean destination block time minus origin block time, same definition for every route. Block timestamps are whole seconds, so a median could only read 0, 1 or 2 seconds and could not separate two routes; the mean recovers that resolution. A route appears once it has ten settlements; stalls over 60 s are excluded."
   - id: terminal_fee
     label: Terminal fee
     label_key: terminal
