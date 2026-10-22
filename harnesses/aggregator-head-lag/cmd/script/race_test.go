@@ -203,3 +203,22 @@ func TestSingleProviderRaceAwardsNoFirst(t *testing.T) {
 			"sit in every other feed's denominator")
 	}
 }
+
+// A near-tie still has one winner. With the 5 ms tie window both feeds were
+// first, and Solana Singapore published shares summing to 135 %.
+func TestRaceSingleWinnerOnNearTie(t *testing.T) {
+	withPoolTrades(t, func(p *refClock) {
+		p.observe("solana", "NEARTIE", time.Now())
+	})
+	b := newTestBook()
+	now := time.Now()
+	b.observe("serialized", "solana", "sgp", "NEARTIE", now.Add(2*time.Millisecond), 0)
+	b.observe("codex", "solana", "sgp", "NEARTIE", now, 0)
+	b.observe("mobula", "solana", "sgp", "NEARTIE", now.Add(4*time.Millisecond), 0)
+	b.resolve(now.Add(raceWindow + time.Second))
+
+	h := b.history["solana|sgp"]
+	if len(h) != 1 || len(h[0].winners) != 1 || h[0].winners[0] != "codex" {
+		t.Fatalf("want exactly one winner, codex; got %+v", h)
+	}
+}

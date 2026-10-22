@@ -17,10 +17,11 @@ import (
 // the first arrival, and publishes
 //
 //   - head_lag_first_total{aggregator,chain,region}: how often each feed
-//     reported the trade before every other feed. Arrivals within raceTie
-//     of the earliest feed count as first for every feed involved: below
-//     that, the order is network jitter between our probe and two
-//     servers, not a property of the feeds. The node reference is scored
+//     reported the trade before every other feed. Exactly one feed wins
+//     each race, the earliest arrival, so the shares add up to 100. A
+//     5 ms tie window used to award both feeds, and on Solana Singapore
+//     a third of the races were such ties, which published shares
+//     summing to 135 %. The node reference is scored
 //     apart (aggregator="reference": trades where it beat every feed) and
 //     is not a competitor in the share.
 //   - head_lag_races_total{chain,region}: races closed.
@@ -48,6 +49,8 @@ import (
 
 const (
 	raceWindow    = 3 * time.Second
+	// raceTie: how far ahead of every feed our node must be to count as
+	// first on its own. The feed share has no tie window.
 	raceTie       = 5 * time.Millisecond
 	raceRetention = 10 * time.Minute
 	raceShareSpan = 24 * time.Hour
@@ -100,7 +103,7 @@ var race = &raceBook{
 // definition, but the site drops rows whose headline reads exactly zero
 // (a zero p50 means "no measurement" everywhere else), which hid the
 // leader on the Singapore tab where Mobula won every race. One
-// millisecond is below the tie window and reads as "first".
+// millisecond reads as "first".
 func raceLagSeconds(d time.Duration) float64 {
 	return math.Max(d.Seconds(), 0.001)
 }
@@ -230,20 +233,24 @@ func (b *raceBook) closeLocked(e *raceEntry, k string) {
 		}
 	}
 	// The share is a race between feeds: the earliest PROVIDER arrival is
-	// the line, and every provider within raceTie of it is first. Our
+	// the line, and only the provider that set it is first. Our
 	// node still sets t0 for the lag figures and is counted on its own
 	// (head_lag_first_total{aggregator="reference"}) when it beat every
 	// feed, but it is not a competitor in the share: on Base and BNB the
 	// flashblock / node reference precedes every feed on nearly every
 	// trade, and a share where the reference took 95 % told readers
 	// nothing about the feeds they choose between.
+	// Strictly earlier wins; on an identical timestamp the feed observed
+	// first under the lock keeps it, so there is always one winner.
 	providerT0 := time.Time{}
+	winner := ""
 	for _, o := range e.obs {
 		if o.aggregator == "reference" {
 			continue
 		}
 		if providerT0.IsZero() || o.at.Before(providerT0) {
 			providerT0 = o.at
+			winner = o.aggregator
 		}
 	}
 	winners := []string{}
@@ -257,7 +264,7 @@ func (b *raceBook) closeLocked(e *raceEntry, k string) {
 			continue
 		}
 		b.note(e.chain, e.region, o.aggregator)
-		if o.at.Sub(providerT0) <= raceTie {
+		if o.aggregator == winner {
 			winners = append(winners, o.aggregator)
 		}
 		if raceChains[e.chain] {
