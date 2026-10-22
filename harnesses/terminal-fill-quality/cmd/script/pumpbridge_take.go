@@ -58,7 +58,7 @@ var (
 	hPumpSettle = prometheus.NewHistogramVec(prometheus.HistogramOpts{
 		Name:    "tfq_pump_bridge_settle_seconds",
 		Help:    "Seconds between a Solana deposit and the EVM router spending it, for the spends whose deposit can be identified by the amount the schedule implies. Read it with histogram_quantile, NEVER as sum/count: a few percent of pairs are stalls past 60 s and they drag the mean of a day's sample from a 0.37 s median to about 20 s (see tfq_pump_bridge_stall_total). This is the on-chain segment alone: pump's own figure is tap to notification and includes the app, the network and its queueing, so the two are not the same quantity. Read per chain, since block time differs (BNB 0.45 s, Robinhood Chain 0.10 s, Base 2.00 s). Absolute values also carry a cross-chain clock offset that is NOT corrected here: each chain stamps blocks on its own clock and Solana's offset to the EVM chains changed at the Alpenglow switch, so compare a chain with itself over time, not one chain against another",
-		Buckets: []float64{0.1, 0.25, 0.5, 0.75, 1, 1.5, 2, 3, 4, 6, 10, 20, 60, 300},
+		Buckets: []float64{0.1, 0.25, 0.5, 0.75, 1, 1.5, 2, 3, 4, 6, 10, 20, 60, 300, 600, 1200, 1800},
 	}, []string{"chain"})
 	gSettleMs = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "tfq_settle_ms",
@@ -560,7 +560,17 @@ func pumpGrossUpFunded(slug string, spentUSD float64, userFunded bool) (float64,
 // pumpSettleMaxLag: how long after a deposit its spend may appear and still be
 // read as the same trade. Generous on purpose: the question is what the
 // settlement time IS, so a tight window would cut the tail it is meant to show.
-const pumpSettleMaxLag = 300
+//
+// Was 300, which CENSORED the distribution at exactly the number anyone would
+// then have cited from it. The top finite bucket was also 300 and +Inf read
+// identical to it, which looks like an upper bound on settlement and is really
+// the search window reporting its own width: a delivery at 400 s could not
+// appear, so "none observed past 300 s" was true and meaningless. Same shape
+// as a 0% fail rate from an empty sample, one level up.
+//
+// 1800 costs nothing: pumpDepWindowAge already RETAINS 30 minutes of deposits,
+// so the old limit was discarding matches we were holding in memory.
+const pumpSettleMaxLag = 1800
 
 // pumpBlockTime caches block timestamps, which are read once per block rather
 // than once per spend: several spends share a block on a busy router.
