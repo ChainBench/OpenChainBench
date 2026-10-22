@@ -49,19 +49,6 @@ const PRODUCT_ALIASES: Record<string, string> = {
   "grok-4-chart": "xai",
   "grok-4-vision": "xai",
 
-  // Nova was on the site as a Hyperliquid frontend under "nova-markets"
-  // (bench 030, where its logo and registry entry live) before it joined the
-  // perp cohort as "nova" (benches 041, 116, 295). Two slugs, one company, so
-  // its bench appearances were split across two pages: /products/nova-markets
-  // showed the frontend bench, /products/nova the perp ones.
-  //
-  // #3157 pointed every cohort link at nova-markets and redirected the other
-  // URL, which fixed the duplicate page and left the perp bench rows behind,
-  // attached to a slug with no page. This is the mechanism that moves them,
-  // and it also makes the generic alias-to-canonical redirect fire, so the
-  // hardcoded one in the product route comes out.
-  nova: "nova-markets",
-
   // Sub-products → parent brand
   "helius-sender": "helius",
   "publicnode-feehistory": "publicnode",
@@ -109,6 +96,13 @@ const PRODUCT_ALIASES: Record<string, string> = {
   // nova -> nova-markets (#3157), but without this alias getProviders still
   // listed "nova" as a product, so the sitemap published a redirecting URL
   // and the prod deploy's sitemap smoke failed on it (2026-10-22).
+  //
+  // It also moves the bench APPEARANCES: canonicalize() keys profiles by the
+  // canonical slug, so without this /products/nova-markets listed bench 030
+  // and none of the three the venue had just joined. The redirect in #3157
+  // moved the URL and left them behind, which is why the hardcoded one in the
+  // product route is gone: this does both, and the generic
+  // alias-to-canonical 308 already in that route handles the URL.
   nova: "nova-markets",
   // TON → Gram rebrand (June 2026). Stale inbound references to slug
   // "ton" resolve to canonical "gram" so older links, search hits, and
@@ -877,7 +871,15 @@ const buildProvidersCached = unstable_cache(
   // v15 (2026-09-30): lockstep with bench-unfiltered-v88. GetBlock gains nine
   // appearances (the keyed cohort on the chain RPC benches) and its first
   // registry entry, so the v14 list would keep /products/getblock without them.
-  ["providers-v16"],
+  // v17 (2026-10-22): Nova joins benches 041, 116 and 295, and folds onto
+  // nova-markets. Both halves need this key to move: the appearances are new,
+  // and the alias changes which profile they key onto, so the v16 list would
+  // keep /products/nova-markets showing bench 030 alone. This is the fourth
+  // cache key a new provider touches, after bench-unfiltered, all-benchmarks
+  // and (for a dimensioned bench) bench-filters. The live symptom was served
+  // from the worker's providers.json rather than this cache, so the blob is
+  // the first thing to re-publish; this key is the fallback path.
+  ["providers-v17"],
   // 900 s: the provider index feeds products / compare / answers, whose
   // numbers move slowly, and this revalidate is also the effective ISR
   // period of those ~500 pages (Next takes the min across a route's caches).

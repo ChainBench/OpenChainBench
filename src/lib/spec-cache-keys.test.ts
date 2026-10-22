@@ -83,6 +83,42 @@ describe("the dimension-filtered cache key", () => {
     );
   });
 
+  test("the key list in this file is the whole list", () => {
+    // This test shipped knowing two keys, then three, and there are four. The
+    // fourth, providers-vN in providers.ts, is the one a new provider needs
+    // most: it caches the per-product profile index, so /products/<slug>
+    // keeps its old bench list until it moves. Nova shipped with three of the
+    // four bumped and its product page listed one bench of four.
+    //
+    // There is no way to enumerate cache keys from here, so this asserts the
+    // count found by grep at the time of writing. A fifth key added later
+    // fails this and gets added to the list above rather than discovered the
+    // way the fourth was.
+    const KEYS = [
+      { file: "spec.ts", prefix: "bench-unfiltered" },
+      { file: "spec.ts", prefix: "all-benchmarks" },
+      { file: "spec.ts", prefix: "bench-filters" },
+      { file: "providers.ts", prefix: "providers" },
+    ];
+    for (const { file, prefix } of KEYS) {
+      const src = readFileSync(join(import.meta.dir, file), "utf8");
+      const hits = src.match(new RegExp(`\\["${prefix}-v\\d+"`, "g")) ?? [];
+      expect(hits.length, `${prefix} in ${file}: found ${hits.length}, want 1`).toBe(1);
+    }
+    // Any OTHER unstable_cache key in these two files is one this list does
+    // not know about, which is exactly how the fourth went missing.
+    const known = new Set(KEYS.map((k) => k.prefix));
+    for (const file of ["spec.ts", "providers.ts"]) {
+      const src = readFileSync(join(import.meta.dir, file), "utf8");
+      for (const m of src.matchAll(/\["([a-z-]+)-v\d+"/g)) {
+        expect(
+          known.has(m[1]),
+          `${file} has cache key "${m[1]}" that this test does not track; add it to KEYS`,
+        ).toBe(true);
+      }
+    }
+  });
+
   test("its newest note names a per-bench version that exists", () => {
     const filters = version("bench-filters");
     const bench = version("bench-unfiltered");
