@@ -381,6 +381,22 @@ const pumpGrossUpCap = 1.20
 // only 4 of 40 swaps read on 2026-10-22 saw a stable arrive, none of them a
 // round amount. Inverting the schedule recovers it without pairing anything.
 func pumpGrossUp(slug string, spentUSD float64) (float64, bool) {
+	return pumpGrossUpFunded(slug, spentUSD, false)
+}
+
+// pumpGrossUpFunded is pumpGrossUp with the funding test the caller can make.
+//
+// userFunded means something arrived at the router in this transaction, so the
+// sender paid for the trade here and the spend is already what they committed.
+// Grossing that up adds a deduction nobody charged: about 62 bps at $25 and
+// 142 bps at $5, in the direction that makes the product look dearer.
+//
+// 4 of 40 swaps read on 2026-10-22 looked like that. The other 36 saw nothing
+// arrive, which is what a pre-funded router looks like.
+func pumpGrossUpFunded(slug string, spentUSD float64, userFunded bool) (float64, bool) {
+	if userFunded {
+		return spentUSD, false
+	}
 	if !pumpBridgeRow(slug) || spentUSD <= 0 || math.IsNaN(spentUSD) || math.IsInf(spentUSD, 0) {
 		return spentUSD, false
 	}

@@ -1019,20 +1019,53 @@ func nativeRow(ctx context.Context, httpc *http.Client, t evmTerminal, hash stri
 		// the same chain tab, FOMO included, whose bridge take IS counted.
 		// The terminal component below is the residual after pool and other,
 		// so raising given moves exactly the deduction into it.
-		if g, ok := pumpGrossUp(t.Slug, given); ok {
-			given = g
+		// Did anything arrive at the router here? Then its sender funded the
+		// trade on this chain and `given` is already what they committed.
+		userFunded := valueWei.Sign() > 0
+		if !userFunded {
+			for _, lg := range rc.Logs {
+				if len(lg.Topics) < 3 || !strings.EqualFold(lg.Topics[0], topicERC20Transfer) {
+					continue
+				}
+				to := "0x" + lg.Topics[2][len(lg.Topics[2])-40:]
+				for _, r := range t.Routers {
+					if strings.EqualFold(to, r) {
+						userFunded = true
+					}
+				}
+			}
 		}
+		grossed := false
+		if g, ok := pumpGrossUpFunded(t.Slug, given, userFunded); ok {
+			given, grossed = g, true
+		}
+		// Whoever signed paid the gas. When that is not the user, they parted
+		// with none of it and pump's costs came out of the deduction already
+		// inside `given`, so adding it to the base charges it twice. That is
+		// the v4 bug methodVersion 5 exists to fix, 52 bps median there, and
+		// the gross-up walked straight back into it on these rows.
+		sponsored := grossed && !strings.EqualFold(tx.From, user)
 		if tip := tipWei(); tip != nil && valueWei.Cmp(tip) >= 0 { // a buy paid in an ERC20 sends the tip alone as value
 			tipUSD := f(tip) / 1e18 * price
 			given -= tipUSD
 			sw.NetworkQ += tipUSD
 		}
 		sw.Side, sw.Mint, sw.Tokens, sw.Venue, sw.Pools, sw.Hops, sw.PoolVault = "buy", token, s.Tokens, s.Venue, s.Pools, s.Hops, s.Pool
-		sw.UserQ = given + sw.NetworkQ
+		if sponsored {
+			sw.UserQ = given // the gas is inside the deduction, inside given
+		} else {
+			sw.UserQ = given + sw.NetworkQ
+		}
 		sw.PoolQ = s.PoolInUSD
 		other := s.OtherUSD // a launchpad's protocol fee (four.meme)
 		sw.OtherQ = &other
 		fee := given - s.PoolInUSD - s.OtherUSD
+		if sponsored {
+			// FOMO's rule, which the spec already states: a gas the terminal
+			// pays out of the user's fee reads as network cost and comes off
+			// the terminal fee. The two still sum to what was deducted.
+			fee -= sw.NetworkQ
+		}
 		if fee < 0 {
 			fee = 0
 		}
