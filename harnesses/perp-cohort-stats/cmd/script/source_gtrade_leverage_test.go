@@ -149,7 +149,11 @@ func TestGtradeLeverageTermsLive(t *testing.T) {
 			// at 1e10 gives 0.035 for 0.035%, not for 3.5%. Printing it
 			// times 100 under a % sign is the unit slip this codebase
 			// documents in gtradePairFee, so it is printed as bps.
-			t.Logf("%-6s %-4s min=%7.2f max=%7.2f fee/leg=%.4f%% (%.2f bps)",
+			//
+			// Leverage to THREE decimals, because the contract stores it at
+			// 1e3 and two decimals is exactly what hid Nova's 500.001x degen
+			// ceiling behind a "500.00" identical to Gains'.
+			t.Logf("%-6s %-4s min=%8.3f max=%8.3f fee/leg=%.4f%% (%.2f bps)",
 				g.venue, v.market, v.minLev, v.maxLev, v.costPerLeg, v.costPerLeg*100)
 		}
 	}
@@ -170,6 +174,43 @@ func TestGtradeLeverageTermsLive(t *testing.T) {
 		if n.costPerLeg <= g.costPerLeg {
 			t.Errorf("%s: nova fee %.4f%% is no longer above gains %.4f%%; the perp-cost rows say it is",
 				market, n.costPerLeg*100, g.costPerLeg*100)
+		}
+	}
+	// The degen ceilings differ by one thousandth of a multiple and the
+	// perp-cost rows carry that exact figure. Raw at 1e3: Gains reads min and
+	// max both 500000, so its product is genuinely fixed; Nova reads max
+	// 500001 against min 500000. Asserted to three decimals because two
+	// decimals is precisely what hid it: a comparison printing "500.00" for
+	// both is what let the model ship 500 for Nova until the published
+	// perp_leverage_max gauge read 500.001.
+	for _, market := range []string{"BTC", "ETH"} {
+		g, gok := byKey["gains/"+market+"/500"]
+		if !gok {
+			t.Errorf("%s: no fixed 500x Gains row; its degen pair may have been repriced", market)
+			continue
+		}
+		if g.minLev != g.maxLev {
+			t.Errorf("%s: Gains degen is no longer fixed, min %.3f max %.3f", market, g.minLev, g.maxLev)
+		}
+		var n *venueTerms
+		for k := range byKey {
+			if len(k) > 5 && k[:5] == "nova/" {
+				v := byKey[k]
+				if v.market == market && v.minLev >= 500 {
+					n = &v
+				}
+			}
+		}
+		if n == nil {
+			t.Errorf("%s: no Nova degen row", market)
+			continue
+		}
+		if n.maxLev != 500.001 {
+			t.Errorf("%s: Nova degen maximum is %.3fx, and perp-cost-model carries 500.001",
+				market, n.maxLev)
+		}
+		if n.minLev != 500 {
+			t.Errorf("%s: Nova degen minimum is %.3fx, and perp-cost-model carries 500", market, n.minLev)
 		}
 	}
 }
