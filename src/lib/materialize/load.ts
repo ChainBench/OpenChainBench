@@ -23,6 +23,7 @@ import { SpecSchema, type Spec } from "@/lib/spec-schema";
 import { DEV_ONLY_BENCH_SLUGS, REMOVED_BENCH_SLUGS } from "@/lib/removed-benches";
 import { renderBenchmarkText } from "@/lib/bench-template";
 import { liveResults as liveProviderResults } from "@/lib/provider-filters";
+import { notServedLabel } from "@/lib/no-figure-label";
 import {
   classifyHealth,
   aggregateConfidence,
@@ -293,8 +294,34 @@ export async function specToBenchmark(
     // upstream is briefly down.
     if (!isFiltered) {
       const liveSlugs = new Set(live.results.map((r) => r.slug.toLowerCase()));
+      // On the two RPC cost benches a provider with no figure on the
+      // default view sells a chain that view does not ask about (Helius,
+      // Syndica, Triton: Solana only). Backfilling them as "unavailable,
+      // 0 % success" told /api/stat, the variant API and MCP that three
+      // products that lead Solana cells were dead, on a bench that sends no
+      // traffic (audit 2026-10-22). They are listed as unranked with the
+      // reason instead, the way spec-declared unranked members are.
+      const notServed = notServedLabel(spec.slug);
       for (const p of spec.providers) {
         if (liveSlugs.has(p.slug.toLowerCase())) continue;
+        if (notServed) {
+          live.results.push({
+            name: p.name,
+            slug: p.slug,
+            tag: p.tag,
+            type: p.type,
+            layer: p.layer,
+            ms: { p50: 0, p90: 0, p99: 0, mean: 0 },
+            successRate: 100,
+            secondary: p.secondary,
+            availability: "live",
+            unrankedLabel: notServed,
+            formula: p.formula,
+            endpoint: p.endpoint,
+            ...(activeTier ? { tier: activeTier } : {}),
+          });
+          continue;
+        }
         live.results.push({
           name: p.name,
           slug: p.slug,

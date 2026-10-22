@@ -311,7 +311,8 @@ export function compareOnBenchmark(b: Benchmark, providers: string[], siteUrl: s
           slug: anywhere.slug,
           rank: null,
           value: null,
-          successRate: anywhere.successRate ?? null,
+          // A bench that sends no traffic has no success rate to report.
+          successRate: b.ledgerReliability === false ? null : anywhere.successRate ?? null,
           found: true,
         });
       } else {
@@ -325,7 +326,7 @@ export function compareOnBenchmark(b: Benchmark, providers: string[], siteUrl: s
       slug: r.slug,
       rank: idx + 1,
       value: declared(r.ms.p50, b.unit),
-      successRate: r.successRate ?? null,
+      successRate: b.ledgerReliability === false ? null : r.successRate ?? null,
       found: true,
     });
   }
