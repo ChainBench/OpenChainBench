@@ -110,3 +110,31 @@ describe("the exclusion agrees with the bench spec", () => {
     }
   });
 });
+
+describe("an unranked venue shows no card rather than a bare number", () => {
+  // perp-venue-section filters cards to `value !== null && rank !== null`, so
+  // Nova's Active markets card does not render on its product page. That is
+  // deliberate and worth pinning, because it looks like a bug: the value IS
+  // measured, and "show the number we have" is the obvious-looking fix.
+  //
+  // It would be the wrong fix. On the bench the 493 travels with its
+  // "Registry unpruned" label and an FAQ explaining that Gains delisted 315
+  // pairs of the same registry and Nova none. A card has room for neither, so
+  // a bare "493" next to Gains' "178" is exactly the comparison the unranked
+  // label exists to prevent.
+  test("the section filter is what drops it, and it still drops it", () => {
+    const SECTION = readFileSync(
+      join(import.meta.dir, "../components/perp-venue-section.tsx"),
+      "utf8",
+    );
+    expect(SECTION).toContain("r.value !== null && r.rank !== null");
+  });
+
+  test("the row itself still carries the measured value, for the bench", () => {
+    // The filter hides the card; it must not blank the underlying figure,
+    // which is what bench 116 renders beside the label.
+    const card = marketCard("nova");
+    expect(card.value).toBe("493");
+    expect(card.rank).toBeNull();
+  });
+});
