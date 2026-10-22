@@ -1013,6 +1013,15 @@ func nativeRow(ctx context.Context, httpc *http.Client, t evmTerminal, hash stri
 		if given <= 0 {
 			return &Swap{Flag: "unpriced_no_quote_in"}
 		}
+		// pump's router is paid out of its own liquidity, so what it spends is
+		// already net of the 0.05 plus 40 or 45 bps it keeps. Left alone, this
+		// row would publish a loss on a smaller base than every other row on
+		// the same chain tab, FOMO included, whose bridge take IS counted.
+		// The terminal component below is the residual after pool and other,
+		// so raising given moves exactly the deduction into it.
+		if g, ok := pumpGrossUp(t.Slug, given); ok {
+			given = g
+		}
 		if tip := tipWei(); tip != nil && valueWei.Cmp(tip) >= 0 { // a buy paid in an ERC20 sends the tip alone as value
 			tipUSD := f(tip) / 1e18 * price
 			given -= tipUSD

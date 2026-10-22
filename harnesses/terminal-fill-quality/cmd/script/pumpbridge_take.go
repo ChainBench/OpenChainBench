@@ -34,6 +34,7 @@ package main
 import (
 	"context"
 	"log"
+	"math"
 	"math/big"
 	"net/http"
 	"strings"
@@ -294,4 +295,38 @@ func pumpBridgeRow(slug string) bool {
 		}
 	}
 	return false
+}
+
+// pumpFixedUSD, pumpMidRateis: the schedule, as the gross-up applies it.
+//
+// pumpRatesBps holds the two rates the chain shows, 40 and 45. Which one a
+// given swap paid is not knowable unless its size reads back to a round level,
+// which 7 of 40 do. The midpoint is used for the rest because the two rates sit
+// 5 bps apart while the deduction itself runs 45 to 545 bps: the residual is
+// 2.51 bps and symmetric, against 45 to 545 one-signed if it is ignored.
+const (
+	pumpFixedUSD = 0.05
+	pumpMidRate  = 0.00425 // midpoint of 40 and 45 bps
+)
+
+// pumpGrossUpCap bounds the correction. A spend the schedule cannot plausibly
+// explain is left alone rather than inflated: at $1 the deduction is already
+// 9.5% of the trade, so anything past 20% is not this fee.
+const pumpGrossUpCap = 1.20
+
+// pumpGrossUp returns what the user meant to spend, given what the router
+// spent, and whether the correction was applied.
+//
+// The router is pre-funded, so the user's input is not in the EVM transaction:
+// only 4 of 40 swaps read on 2026-10-22 saw a stable arrive, none of them a
+// round amount. Inverting the schedule recovers it without pairing anything.
+func pumpGrossUp(slug string, spentUSD float64) (float64, bool) {
+	if !pumpBridgeRow(slug) || spentUSD <= 0 || math.IsNaN(spentUSD) || math.IsInf(spentUSD, 0) {
+		return spentUSD, false
+	}
+	gross := (spentUSD + pumpFixedUSD) / (1 - pumpMidRate)
+	if gross <= spentUSD || gross > spentUSD*pumpGrossUpCap {
+		return spentUSD, false
+	}
+	return gross, true
 }

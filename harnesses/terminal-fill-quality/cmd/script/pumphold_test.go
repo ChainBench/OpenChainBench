@@ -4,10 +4,11 @@ import "testing"
 
 // Every pump.fun row on a Pump Bridge router must be recognised as one.
 //
-// The hold in compute() keys off pumpBridgeRow, so a row this misses is
-// published with a loss that leaves out what the bridge took, next to rows on
-// the same chain tab that include theirs. That is not a missing number, it is
-// a wrong ordering: pump reads cheaper than FOMO while it is dearer.
+// The gross-up keys off pumpBridgeRow, so a row this misses keeps the router's
+// net spend as its value given and publishes a loss on a smaller base than
+// every other row on the same chain tab, FOMO included, whose bridge take is
+// counted. That is not a missing number, it is a wrong ordering: pump would
+// read cheaper than FOMO while it is dearer.
 func TestEveryPumpRowIsRecognisedAsABridgeRow(t *testing.T) {
 	found := 0
 	for _, term := range evmTerminals {
@@ -30,9 +31,9 @@ func TestEveryPumpRowIsRecognisedAsABridgeRow(t *testing.T) {
 
 // And no other product's row may be caught by it.
 //
-// A false positive here silently stops publishing a row that was fine, which
-// is the quiet kind of damage: the page simply shows one fewer product and
-// nothing says why.
+// A false positive here inflates another product's cost by a fee it does not
+// charge, which is the mirror of the bug being fixed and lands in the
+// direction that makes a competitor look dearer.
 func TestOnlyPumpRowsAreHeldAsBridgeRows(t *testing.T) {
 	for _, term := range evmTerminals {
 		if pumpBridgeRow(term.Slug) && (len(term.Slug) < 9 || term.Slug[:9] != "pump-fun-") {
