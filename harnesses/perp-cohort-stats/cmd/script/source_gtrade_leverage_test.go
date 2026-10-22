@@ -12,7 +12,7 @@ import (
 )
 
 // Nova is read through the Gains leverage path with a different diamond, and
-// gainsPairs hardcodes the pair INDICES. That works only because Nova serves
+// gtradePairs hardcodes the pair INDICES. That works only because Nova serves
 // the identical gTrade registry, which is the one thing a fork could change
 // without changing anything else. Reading the wrong index would publish a
 // different asset's terms under Nova's name, silently and plausibly: pair 7
@@ -43,23 +43,23 @@ func TestGtradeVenuesAreDistinctDeployments(t *testing.T) {
 }
 
 func TestGtradePairIndicesCoverTheBenchMarkets(t *testing.T) {
-	// A market in gainsPairs that the bench does not list would publish a row
-	// no tab can show; a bench market missing from gainsPairs drops the venue
+	// A market in gtradePairs that the bench does not list would publish a row
+	// no tab can show; a bench market missing from gtradePairs drops the venue
 	// from that tab without any error.
-	for market := range gainsPairs {
+	for market := range gtradePairs {
 		if !leverageTermsMarkets[market] {
-			t.Errorf("gainsPairs has %q, which is not a bench market", market)
+			t.Errorf("gtradePairs has %q, which is not a bench market", market)
 		}
 	}
 	for market := range leverageTermsMarkets {
-		idxs, ok := gainsPairs[market]
+		idxs, ok := gtradePairs[market]
 		if !ok || len(idxs) == 0 {
 			t.Errorf("bench market %q has no gTrade pair indices", market)
 		}
 	}
 }
 
-// expectedGtradeSymbols is what each index in gainsPairs must be. The standard
+// expectedGtradeSymbols is what each index in gtradePairs must be. The standard
 // pair carries the bare symbol and the degen pair the DEGEN suffix, which is
 // how the two products are told apart in the registry.
 var expectedGtradeSymbols = map[int64]string{
@@ -118,7 +118,7 @@ func TestGtradeLeveragePairIndices(t *testing.T) {
 			}
 			got := tv.Pairs[idx].From
 			if got != want {
-				t.Errorf("%s: pair %d is %s/%s, want %s. gainsPairs would publish the wrong asset's terms",
+				t.Errorf("%s: pair %d is %s/%s, want %s. gtradePairs would publish the wrong asset's terms",
 					venue, idx, got, tv.Pairs[idx].To, want)
 			}
 		}
@@ -148,7 +148,7 @@ func TestGtradeLeverageTermsLive(t *testing.T) {
 			// costPerLeg is already a percentage of notional: fees() word 0
 			// at 1e10 gives 0.035 for 0.035%, not for 3.5%. Printing it
 			// times 100 under a % sign is the unit slip this codebase
-			// documents in gainsPairFee, so it is printed as bps.
+			// documents in gtradePairFee, so it is printed as bps.
 			t.Logf("%-6s %-4s min=%7.2f max=%7.2f fee/leg=%.4f%% (%.2f bps)",
 				g.venue, v.market, v.minLev, v.maxLev, v.costPerLeg, v.costPerLeg*100)
 		}
