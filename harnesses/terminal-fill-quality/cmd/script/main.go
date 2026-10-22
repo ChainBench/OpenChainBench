@@ -230,6 +230,11 @@ type State struct {
 	// own block time and the lag range still decides what can pair, so a
 	// long outage expires them on the existing rule rather than a new one.
 	PumpDeposits []pumpDepRecord `json:"pump_deposits,omitempty"`
+	// The Mobula intent window, by intent id, persisted for the same reason
+	// as PumpDeposits and from the first version rather than after a night
+	// of blank columns. Mobula settles in seconds, so a deploy that empties
+	// this loses every fill whose deposit it held.
+	MobulaIntents map[string]mobulaIntent `json:"mobula_intents,omitempty"`
 }
 
 // record adds a tick's feed counts to the terminal's current minute.
@@ -427,6 +432,9 @@ func main() {
 	if n := pumpLoadDeposits(st.PumpDeposits, time.Now().Unix()); n > 0 {
 		log.Printf("[pump-bridge] %d deposits restored from the state file, so the pairing is not blind while the feed catches up", n)
 	}
+	if n := mobulaLoadIntents(st.MobulaIntents, time.Now().Unix()); n > 0 {
+		log.Printf("[mobula] %d intents restored from the state file", n)
+	}
 	pools := &poolCache{m: map[string]poolParams{}}
 	repriced := false
 	quota := map[string]float64{}
@@ -479,6 +487,18 @@ func main() {
 	loadVendorAB()
 	ptw := newPumpTakeWatcher()
 	go ptw.run(context.Background(), httpc, 5*time.Minute)
+	// FOMO's other rail. Relay carried 17 of 398 of its sponsor
+	// transactions and Mobula 6, so a quarter of its bridging was invisible
+	// here while the Relay feed read healthy.
+	//
+	// The deposit side runs every minute, like the pump feed, because it is
+	// one signatures call plus a read per signature. The fill side runs
+	// every two: Mobula settles in seconds, so a slower pass would hold
+	// intents longer than it needs to and widen the window for nothing.
+	mbf := newMobulaFeed()
+	go mbf.run(context.Background(), rpc, time.Minute)
+	mfw := newMobulaFillWatcher()
+	go mfw.run(context.Background(), httpc, 2*time.Minute)
 	var mu sync.RWMutex
 	var pub *Public
 
@@ -564,6 +584,7 @@ func main() {
 		mu.Unlock()
 		if stateFile != "" {
 			st.PumpDeposits = pumpSaveDeposits()
+			st.MobulaIntents = mobulaSaveIntents()
 			if err := writeAtomic(stateFile, st); err != nil {
 				log.Printf("[state] %v", err)
 			}
