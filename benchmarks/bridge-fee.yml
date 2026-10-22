@@ -69,6 +69,7 @@ methodology:
   - "Failures (quote_failed, unsupported route) excluded from cost aggregates and counted toward success rate."
   - "Provider types are surfaced as badges: direct protocols (deBridge) charge their own bridging fees; aggregators (LI.FI) route through whichever underlying bridge is cheapest, so their effective fee includes that bridge's cost plus any aggregator markup; intent / relay layers (Mobula, Relay, Across, Near Intents) bake cost into the spread of a settlement intent or optimistic fill rather than charging an explicit fee."
   - "Excluded by design: Stargate, because its keyless quote endpoint was deprecated in favor of a key-gated LayerZero API, and its on-chain quoteOFT path is same-asset EVM-only, which matches none of this bench's corridors. CCTP, because Circle's burn/mint has no quote that returns a delivered amount; standard transfers mint 1:1 and the whole cost is user-paid gas we would have to estimate ourselves, which breaks the quoted USD in minus quoted USD delivered definition used for every other row."
+  - "Also excluded, for a different reason: pump.fun's Pump Bridge is not a USDC transfer. Its only user instruction is DepositForSwap, taking a stable on Solana and delivering a token on the destination chain, so there is no USDC to USDC corridor to price and no quote endpoint to call. What it charges is read on chain in bench 268 instead."
 
 # Per-corridor leader rewrite deferred: this YAML does not yet declare
 # `dimensions:` for `from_chain`/`to_chain` / corridor. The underlying
