@@ -80,44 +80,126 @@ func TestPumpMatchOnChainFixtures(t *testing.T) {
 	}
 }
 
-// The fixed component and the rate are both recovered, not assumed: across the
-// levels seen on chain the takes must lie on one line whose slope is the rate
-// and whose intercept is 0.05, with no residual. This is the check that would
-// fail if pump moved either parameter.
-func TestPumpScheduleIsALineThroughFiveHundredths(t *testing.T) {
-	for _, rate := range pumpRatesBps {
-		var xs, ys []float64
-		for _, lv := range []int64{1, 2, 3, 5, 10, 100} {
-			// Build the spend the schedule implies, in integers, then read the
-			// take back out of it exactly as the watcher does.
-			scale := new(big.Int).Exp(big.NewInt(10), big.NewInt(6), nil)
-			level := new(big.Int).Mul(big.NewInt(lv), scale)
-			take := new(big.Int).Mul(level, big.NewInt(rate))
-			take.Quo(take, big.NewInt(10000))
-			take.Add(take, big.NewInt(50000)) // 0.05 at 6 decimals
-			spent := new(big.Int).Sub(level, take)
+// onChainSpends: spends read off the routers on 2026-10-22, with the round
+// trade size each came from. These are the only evidence in this file; every
+// assertion below is derived from them rather than from the constants.
+//
+// Grouped by the rate they imply so a line can be fitted per population.
+var onChainSpends = map[int64][]struct {
+	level int64
+	spent string
+}{
+	40: {{1, "0.946000"}, {2, "1.942000"}, {3, "2.938000"}, {5, "4.930000"}, {10, "9.910000"}},
+	45: {{1, "0.945500"}, {2, "1.941000"}, {10, "9.905000"}},
+}
 
-			bps, _, ok := pumpMatch(spent, 6)
-			if !ok || bps != rate {
-				t.Fatalf("rate %d, level %d: matched=%v bps=%d", rate, lv, ok, bps)
-			}
-			tf, _ := new(big.Float).SetInt(take).Float64()
-			xs = append(xs, float64(lv))
-			ys = append(ys, tf/1e6)
+// The schedule is recovered FROM the chain, not asserted against itself.
+//
+// The previous version of this test built each spend out of pumpFixedHundredths
+// and pumpRatesBps and then checked the matcher returned them, which passes for
+// any constants at all: mutating the rates to {41,46} left it green while the
+// on-chain fixtures failed. So the line is fitted to the real spends instead,
+// and the constants are what has to agree with it.
+func TestScheduleFittedToRealSpends(t *testing.T) {
+	for rate, obs := range onChainSpends {
+		if len(obs) < 2 {
+			t.Fatalf("rate %d: %d spends is not enough to fit a line", rate, len(obs))
 		}
-		// Slope from the two ends, then every point must sit on that line.
-		slope := (ys[len(ys)-1] - ys[0]) / (xs[len(xs)-1] - xs[0])
+		// take = level * slope + intercept, in whole stable units.
+		var xs, ys []float64
+		for _, o := range obs {
+			spent, _ := new(big.Float).SetPrec(200).SetString(o.spent)
+			take := new(big.Float).SetPrec(200).SetInt64(o.level)
+			take.Sub(take, spent)
+			tf, _ := take.Float64()
+			xs = append(xs, float64(o.level))
+			ys = append(ys, tf)
+		}
+		// Two ends give the line; every point in between must sit on it, which
+		// is what makes this a measurement and not a two-point coincidence.
+		n := len(xs) - 1
+		slope := (ys[n] - ys[0]) / (xs[n] - xs[0])
 		intercept := ys[0] - slope*xs[0]
-		if got := slope * 10000; absf(got-float64(rate)) > 1e-9 {
-			t.Errorf("rate %d: slope implies %.6f bps", rate, got)
+
+		if got := slope * 10000; absf(got-float64(rate)) > 1e-6 {
+			t.Errorf("rate %d: the chain's own spends imply %.4f bps", rate, got)
 		}
 		if absf(intercept-0.05) > 1e-9 {
-			t.Errorf("rate %d: intercept %.9f, want exactly 0.05", rate, intercept)
+			t.Errorf("rate %d: the chain implies a fixed component of %.9f, not 0.05",
+				rate, intercept)
 		}
 		for i := range xs {
 			if r := ys[i] - (slope*xs[i] + intercept); absf(r) > 1e-9 {
-				t.Errorf("rate %d: level %g is %.12f off the line", rate, xs[i], r)
+				t.Errorf("rate %d: level %g sits %.12f off the line through the others",
+					rate, xs[i], r)
 			}
+		}
+		// And the matcher must agree with the line, at the chain's precision.
+		for _, o := range obs {
+			for _, dec := range []int{6, 18} {
+				bps, _, ok := pumpMatch(raw(t, o.spent, dec), dec)
+				if !ok || bps != rate {
+					t.Errorf("rate %d level %d at %d decimals: matched=%v bps=%d",
+						rate, o.level, dec, ok, bps)
+				}
+			}
+		}
+	}
+}
+
+// Every declared rate must be witnessed on chain.
+//
+// Adding a rate costs nothing and silently widens the matcher: mutating
+// pumpRatesBps to {40, 45, 77} passed the whole suite, and a spurious rate
+// turns coincidences into matches and inflates tfq_pump_bridge_schedule_total.
+// So a rate with no spend behind it is a test failure, not a judgement call.
+func TestEveryDeclaredRateIsWitnessed(t *testing.T) {
+	for _, r := range pumpRatesBps {
+		obs, ok := onChainSpends[r]
+		if !ok || len(obs) == 0 {
+			t.Errorf("rate %d bps is declared but no on-chain spend implies it; "+
+				"add the evidence or drop the rate", r)
+		}
+	}
+	// The converse too: a rate found on chain and not declared would be read as
+	// unmatched, understating what pump takes.
+	for r := range onChainSpends {
+		found := false
+		for _, d := range pumpRatesBps {
+			if d == r {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("%d bps appears in the on-chain spends but is not declared", r)
+		}
+	}
+}
+
+// The grid must stay sparse enough to be falsifiable.
+//
+// The whole method rests on a shifted-grid null matching 0.0%, which only holds
+// because the levels are the amounts people type. A dense grid would match
+// anything, so its size is capped here: the measurement would quietly become a
+// coincidence counter otherwise.
+func TestLevelGridStaysSparse(t *testing.T) {
+	if len(pumpLevels) > 30 {
+		t.Errorf("%d levels: too dense for the shifted-grid null to mean anything",
+			len(pumpLevels))
+	}
+	for i := 1; i < len(pumpLevels); i++ {
+		if pumpLevels[i] <= pumpLevels[i-1] {
+			t.Fatalf("levels must be ascending: %d after %d",
+				pumpLevels[i], pumpLevels[i-1])
+		}
+		// pumpMatch only tries the smallest level above a spend, so two levels
+		// closer than the largest possible fee would make a spend unmatchable
+		// from the lower one. 9.5% is the widest fee share observed ($1 trades).
+		if float64(pumpLevels[i]-pumpLevels[i-1])/float64(pumpLevels[i]) < 0.095 {
+			t.Errorf("levels %d and %d are closer than the largest fee share, "+
+				"so a spend under the upper one can never be read",
+				pumpLevels[i-1], pumpLevels[i])
 		}
 	}
 }
