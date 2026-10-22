@@ -2,6 +2,7 @@ package main
 
 import (
 	"math"
+	"strings"
 	"testing"
 )
 
@@ -23,7 +24,7 @@ func TestGrossUpLandsNearTheRealAmount(t *testing.T) {
 	}
 	worst := 0.0
 	for _, c := range cases {
-		got, ok := pumpGrossUp("pump-fun-bnb", c.spent)
+		got, ok := pumpGrossUp("pump-bridge-bnb", c.spent)
 		if !ok {
 			t.Errorf("%.4f: not grossed up", c.spent)
 			continue
@@ -66,7 +67,7 @@ func TestGrossUpTouchesOnlyPumpRows(t *testing.T) {
 	// MegaETH and X Layer are in that state until their stable is read.
 	grossed := 0
 	for _, term := range evmTerminals {
-		if len(term.Slug) < 9 || term.Slug[:9] != "pump-fun-" {
+		if !strings.HasPrefix(term.Slug, "pump-bridge-") {
 			continue
 		}
 		_, ok := pumpGrossUp(term.Slug, 10)
@@ -86,13 +87,13 @@ func TestGrossUpTouchesOnlyPumpRows(t *testing.T) {
 // Implausible inputs are left alone rather than inflated.
 func TestGrossUpRefusesWhatTheScheduleCannotExplain(t *testing.T) {
 	for _, v := range []float64{0, -1, math.NaN(), math.Inf(1)} {
-		if got, ok := pumpGrossUp("pump-fun-bnb", v); ok {
+		if got, ok := pumpGrossUp("pump-bridge-bnb", v); ok {
 			t.Errorf("grossed up %v to %v", v, got)
 		}
 	}
 	// A dust trade where the fixed 0.05 would dominate: at $0.10 the correction
 	// would be over 50%, which is not this fee, so the cap must refuse it.
-	if got, ok := pumpGrossUp("pump-fun-bnb", 0.10); ok {
+	if got, ok := pumpGrossUp("pump-bridge-bnb", 0.10); ok {
 		t.Errorf("grossed $0.10 up to %.4f; the cap should have refused it", got)
 	}
 }
@@ -103,7 +104,7 @@ func TestGrossUpRefusesWhatTheScheduleCannotExplain(t *testing.T) {
 // which is the mirror of the bug being fixed and just as publishable a lie.
 func TestGrossUpNeverExceedsTheSchedule(t *testing.T) {
 	for _, spent := range []float64{1, 5, 9.905, 50, 500, 5000, 50000} {
-		got, ok := pumpGrossUp("pump-fun-bnb", spent)
+		got, ok := pumpGrossUp("pump-bridge-bnb", spent)
 		if !ok {
 			continue
 		}

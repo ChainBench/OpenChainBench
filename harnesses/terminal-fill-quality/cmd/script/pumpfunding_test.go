@@ -14,12 +14,12 @@ import (
 // in the direction that makes the product look dearer than it is.
 func TestUserFundedSpendsAreNotGrossedUp(t *testing.T) {
 	for _, spend := range []float64{5, 25, 100, 9.905} {
-		got, ok := pumpGrossUpFunded("pump-fun-bnb", spend, true)
+		got, ok := pumpGrossUpFunded("pump-bridge-bnb", spend, true)
 		if ok || got != spend {
 			t.Errorf("a user-funded %.3f was grossed to %.6f", spend, got)
 		}
 		// And the same spend without the funding evidence still is.
-		if _, ok := pumpGrossUpFunded("pump-fun-bnb", spend, false); !ok {
+		if _, ok := pumpGrossUpFunded("pump-bridge-bnb", spend, false); !ok {
 			t.Errorf("%.3f was not grossed up with no funding evidence", spend)
 		}
 	}
@@ -32,7 +32,7 @@ func TestFundingGuardPreventsAMeaningfulError(t *testing.T) {
 		spend  float64
 		minBps float64
 	}{{25, 50}, {5, 120}} {
-		grossed, ok := pumpGrossUpFunded("pump-fun-bnb", c.spend, false)
+		grossed, ok := pumpGrossUpFunded("pump-bridge-bnb", c.spend, false)
 		if !ok {
 			t.Fatalf("%.0f was not grossed", c.spend)
 		}
@@ -57,7 +57,7 @@ func TestFundingGuardPreventsAMeaningfulError(t *testing.T) {
 func TestSponsoredGasComesOffTheFeeNotOntoTheBase(t *testing.T) {
 	// The swap the audit recomputed from the chain.
 	const spend = 40.872485
-	grossed, ok := pumpGrossUpFunded("pump-fun-bnb", spend, false)
+	grossed, ok := pumpGrossUpFunded("pump-bridge-bnb", spend, false)
 	if !ok {
 		t.Fatal("not grossed up")
 	}

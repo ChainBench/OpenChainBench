@@ -17,7 +17,7 @@ func TestGrossedRowsCanBeReconciledWithTheChain(t *testing.T) {
 	defer resetPumpSeen()
 
 	const spend = 9.905
-	grossed, ok := pumpGrossUp("pump-fun-bnb", spend)
+	grossed, ok := pumpGrossUp("pump-bridge-bnb", spend)
 	if !ok {
 		t.Fatal("not grossed up")
 	}
@@ -63,7 +63,7 @@ func TestDirectlyReadRowsCarryNoReconstruction(t *testing.T) {
 
 // A user-funded spend is published as read, not as reconstructed.
 func TestUserFundedRowsAreNotMarkedReconstructed(t *testing.T) {
-	if _, ok := pumpGrossUpFunded("pump-fun-bnb", 25, true); ok {
+	if _, ok := pumpGrossUpFunded("pump-bridge-bnb", 25, true); ok {
 		t.Error("a user-funded spend was grossed, and would claim a deduction " +
 			"nobody took")
 	}

@@ -1186,6 +1186,10 @@ func cohort() []Terminal {
 			continue
 		}
 		for _, c := range originChains {
+			// Chains Relay cannot reach carry no Relay row; see relaySkips.
+			if relaySkips[c.slug] {
+				continue
+			}
 			// Skip a name evmTerminals already owns. cohort is what compute
 			// walks, so this is the guard that decides the published rows:
 			// the same guard in xchainRows is not enough, and testing only
@@ -1469,7 +1473,7 @@ func productOf(slug string) (string, string) {
 	return slug, "solana"
 }
 
-var productNames = map[string]string{"fomo": "FOMO", "gmgn": "GMGN", "axiom": "Axiom", "banana-gun": "Banana Gun", "binance": "Binance Wallet", "basedbot": "BasedBot", "pump-fun": "pump.fun app", "phantom": "Phantom", "maestro": "Maestro", "bloom": "Bloom"}
+var productNames = map[string]string{"fomo": "FOMO", "gmgn": "GMGN", "axiom": "Axiom", "banana-gun": "Banana Gun", "binance": "Binance Wallet", "basedbot": "BasedBot", "pump-fun": "pump.fun app", "pump-bridge": "Pump Bridge", "phantom": "Phantom", "maestro": "Maestro", "bloom": "Bloom"}
 
 // productAlias: the product a row belongs to when the bench names it
 // differently from the row prefix (Binance Wallet's rows are the Binance

@@ -104,7 +104,7 @@ func TestGrossUpUsesTheDerivedFixed(t *testing.T) {
 	}
 	// 10 minus its own deduction under that schedule.
 	spend := 10 - (F + R*10)
-	got, ok := pumpGrossUp("pump-fun-bnb", spend)
+	got, ok := pumpGrossUp("pump-bridge-bnb", spend)
 	if !ok {
 		t.Fatal("not grossed up")
 	}

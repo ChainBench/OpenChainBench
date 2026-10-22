@@ -43,7 +43,7 @@ func TestEveryPumpRowKnowsItsSettlementStable(t *testing.T) {
 // and the fee measurement would disagree about what the router pays with.
 func TestFundingStableMatchesTheWatchers(t *testing.T) {
 	for _, r := range pumpRouters {
-		slug := "pump-fun-" + r.chain
+		slug := "pump-bridge-" + r.chain
 		if got := pumpStableOf(slug); !strings.EqualFold(got, r.token) {
 			t.Errorf("%s: funding test uses %s, the watcher reads %s",
 				slug, got, r.token)

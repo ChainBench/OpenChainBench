@@ -234,6 +234,7 @@ const CANONICAL_NAMES: Record<string, string> = {
   sui: "Sui",
   fomo: "FOMO",
   "pump-fun": "pump.fun",
+  "pump-bridge": "Pump Bridge",
 };
 
 function titleCaseSlug(s: string): string {

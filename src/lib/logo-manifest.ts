@@ -577,6 +577,7 @@ const RAW: Record<string, string> = {
 
   // ─── Solana memecoin platforms (bench № 200 / 205) ───
   "pump-fun": "/logos/pump-fun.jpg",
+  "pump-bridge": "/logos/pump-fun.jpg",
   pumpswap: "/logos/pump-fun.jpg",
   trojan: "/logos/trojan.jpg",
   gmgn: "/logos/gmgn.jpg",

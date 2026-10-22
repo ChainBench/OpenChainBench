@@ -122,6 +122,17 @@ var originChains = []originChain{
 	{196, "xlayer", []string{"https://rpc.xlayer.tech", "https://196.rpc.thirdweb.com"}, ""},
 }
 
+// relaySkips: origin chains Relay does not serve.
+//
+// They sit in originChains because Pump Bridge's routers are deployed there and
+// the feed needs an endpoint, not because a Relay request can settle on them.
+// The row builders read originChains as the destinations a Relay user can reach,
+// so without this each app gets a row on each of them that can never fill: it
+// publishes as unresponsive and reads as a broken route rather than an absent
+// one. Pump Bridge is the only way onto these two chains, and its rows come
+// from evmTerminals.
+var relaySkips = map[string]bool{"megaeth": true, "xlayer": true}
+
 const solanaChainID = 792703809
 
 // applyRPCOverrides prepends the endpoints of EVM_RPC_<CHAIN> (comma
@@ -339,7 +350,6 @@ func newXfeed(httpc *http.Client, newest map[string]int64) *xfeed {
 	return &xfeed{http: httpc, seen: map[string]int64{}, box: map[string]*xinbox{}, ok: map[string]int{}, pending: map[string]pendingReq{}, funded: map[string]map[string]int64{}, newest: n, resume: r}
 }
 
-// xchainRows: every bench row the cross-chain apps can produce.
 // xchainRows: the row names the Relay feed owns.
 //
 // A slug that evmTerminals also declares is NOT emitted here. Both producers
@@ -353,11 +363,13 @@ func newXfeed(httpc *http.Client, newest map[string]int64) *xfeed {
 // each, 72 entries where 66 were intended, with nothing else in the file
 // duplicated.
 //
-// The native row wins because it reads the router the trades actually go
-// through: pump made its own bridge the default on 2026-10-07, so the Relay
-// row for those chains is the legacy path. The residual Relay flow on them
-// stops being recorded, which is a loss, but a stated one rather than a
-// coin toss between two numbers.
+// The first fix was to drop the Relay row on any chain the bridge covers. That
+// resolved the collision by losing a measurement: the residual Relay flow went
+// unrecorded, and with it half of the comparison pump's own announcement is
+// about. The bridge rows are now named for their route instead
+// (pump-bridge-<chain>), so nothing is contested and both routes publish. This
+// guard stays because a collision is worse than a drop, but it should never
+// fire again; a test asserts it drops nothing.
 func xchainRows() []string {
 	var out []string
 	for _, a := range xchainApps {
@@ -366,6 +378,9 @@ func xchainRows() []string {
 			continue
 		}
 		for _, c := range originChains {
+			if relaySkips[c.slug] {
+				continue
+			}
 			slug := a.Slug + "-" + c.slug
 			if nativeOwnsSlug(slug) {
 				continue
