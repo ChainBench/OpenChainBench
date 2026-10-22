@@ -311,6 +311,25 @@ func pumpNoteDeposit(at int64, amount float64) {
 // Without this, that case is counted as "none" beside genuine misses and a
 // failure rate built on it would publish our own restarts as pump's
 // reliability.
+// pumpOldestDeposit: the timestamp of the oldest deposit held, or 0 when the
+// window is empty.
+//
+// A spend older than this could never pair, whatever the bridge did, because
+// its deposit happened before anything we hold. That is the normal state for
+// the first stretch after a restart, when the spend watcher backfills far more
+// chain than the deposit feed's first pass covers.
+func pumpOldestDeposit() int64 {
+	pumpDepWindow.Lock()
+	defer pumpDepWindow.Unlock()
+	oldest := int64(0)
+	for _, d := range pumpDepWindow.seen {
+		if oldest == 0 || d.at < oldest {
+			oldest = d.at
+		}
+	}
+	return oldest
+}
+
 func pumpFindDeposit(want float64, spentAt int64, maxLag int64) (pumpDep, string, int) {
 	pumpDepWindow.Lock()
 	defer pumpDepWindow.Unlock()
