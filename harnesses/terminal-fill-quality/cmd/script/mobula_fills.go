@@ -73,15 +73,58 @@ func (w *mobulaFillWatcher) poll(ctx context.Context, httpc *http.Client) {
 	}
 }
 
-// mobulaFillSpan: blocks read per pass when no cursor exists yet.
+// mobulaFillReach: how far back the fill watcher reads, in SECONDS of chain.
 //
-// Deliberately short. The deposit window reaches back 30 minutes, so reading
-// further on a fresh start only produces fills whose intent we never held,
-// which land in unknown_intent and say nothing. The pump watcher's 3000-block
-// backfill against a 3-minute deposit feed is exactly the asymmetry that
-// emptied the settlement column, and this is that lesson applied rather than
-// repeated.
-const mobulaFillSpan = 600
+// It was a flat 600 blocks, and that lost most of Robinhood. The cold-start
+// clause discards the cursor whenever a chain advances more than the span
+// between two passes, so with a two-minute tick:
+//
+//	robinhood  0.10 s a block  ->  600 blocks = 60 s, chain moves ~1,200,
+//	                                cursor thrown away every pass, about
+//	                                half of every interval never read
+//	bnb        0.75 s          ->  7.5 min, cursor survives
+//	base       2.00 s          ->  20 min, survives
+//	ethereum  12.00 s          ->  2 h, survives
+//
+// The symptom was 12 pairs with bnb 9, ethereum 2, base 1 and NONE on
+// Robinhood, which is 57% of this route. A flat block count means a different
+// thing on every chain, which is the same error as comparing settlement
+// milliseconds across chains with different block times.
+//
+// 15 minutes: comfortably over the two-minute tick even after a slow pass or
+// a restart, and under the deposit window's 30-minute reach, so it never
+// reads fills whose intent could not still be held.
+const mobulaFillReach = 15 * 60
+
+// mobulaBlockSeconds: measured block times, used only to turn mobulaFillReach
+// into a block count. A chain absent here gets the slowest assumption, which
+// reads MORE chain rather than less: over-reading costs an unknown_intent
+// count, under-reading loses fills silently.
+var mobulaBlockSeconds = map[string]float64{
+	"robinhood": 0.10,
+	"bnb":       0.75,
+	"base":      2.00,
+	"ethereum":  12.00,
+	"arc":       1.00,
+}
+
+func mobulaSpanOf(chain string) int64 {
+	sec, ok := mobulaBlockSeconds[chain]
+	if !ok || sec <= 0 {
+		sec = 12
+	}
+	n := int64(float64(mobulaFillReach) / sec)
+	if n < 100 {
+		n = 100
+	}
+	// A cap, because a chain whose block time we have wrong must not ask an
+	// endpoint for a range it will refuse: a rejected getLogs reads as a
+	// quiet bridge.
+	if n > 20000 {
+		n = 20000
+	}
+	return n
+}
 
 func (w *mobulaFillWatcher) pollChain(ctx context.Context, httpc *http.Client, c originChain, chain, bridge string) {
 	var headHex string
@@ -93,9 +136,17 @@ func (w *mobulaFillWatcher) pollChain(ctx context.Context, httpc *http.Client, c
 	if head <= 0 {
 		return
 	}
+	span := mobulaSpanOf(chain)
 	from := w.cursor[chain]
-	if from <= 0 || head-from > mobulaFillSpan {
-		from = head - mobulaFillSpan
+	if from <= 0 || head-from > span {
+		// Losing ground: either a cold start or a pass that fell behind the
+		// chain. Logged when it is the second case, because that is the
+		// state in which fills are being skipped and nothing else says so.
+		if from > 0 {
+			log.Printf("[mobula-fill] %s: %d blocks behind, past the %d-block reach: fills in between are not read",
+				chain, head-from, span)
+		}
+		from = head - span
 	}
 	if from < 0 {
 		from = 0
