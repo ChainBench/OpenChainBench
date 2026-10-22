@@ -135,15 +135,18 @@ describe("referral links", () => {
     expect(href.searchParams.get("utm_source")).toBe("openchainbench");
   });
 
-  test("quicknode and chainstack keep a clean canonical url and a tagged referral href", () => {
+  test("referral providers keep a clean canonical url and a tagged referral href", () => {
     for (const [slug, canonical, param] of [
       ["quicknode", "https://www.quicknode.com", ["via", "florent"]],
       ["chainstack", "https://chainstack.com", null],
+      ["fomo", "https://fomo.family", null],
+      ["pump-fun", "https://pump.fun", null],
     ] as const) {
       const reg = getProviderRegistry(slug);
       expect(reg?.url).toBe(canonical);
       const href = new URL(withUtm(reg?.referralUrl || reg?.url));
-      expect(href.hostname).not.toBe(new URL(canonical).hostname);
+      expect(reg?.referralUrl).toBeTruthy();
+      expect(href.origin + href.pathname).not.toBe(new URL(canonical).origin + new URL(canonical).pathname);
       expect(href.searchParams.get("utm_source")).toBe("openchainbench");
       if (param) expect(href.searchParams.get(param[0])).toBe(param[1]);
     }
