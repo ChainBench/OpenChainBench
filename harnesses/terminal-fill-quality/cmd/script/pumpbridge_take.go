@@ -570,8 +570,26 @@ func pumpPairSpend(ctx context.Context, httpc *http.Client, c originChain, r pum
 	if at <= 0 {
 		return
 	}
-	want := (sf + pumpFixed(r.chain)) / (1 - pumpChainRate(r.chain))
-	dep, why := pumpFindDeposit(want, at, pumpSettleMaxLag)
+	// Each rate is tried on its own, never the chain's weighted mix.
+	//
+	// That mix is right for grossing up a loss, where 2.5 bps of error is
+	// nothing. It is fatal here: no trade ever paid 42.7 bps, each paid 40 or
+	// 45, so a weighted implied amount misses the real deposit by thousands of
+	// times the tolerance and NO spend can ever pair. 1014 of them did not.
+	fixed := pumpFixed(r.chain)
+	var dep pumpDep
+	why := "none"
+	for _, bps := range pumpRatesBps {
+		cand := (sf + fixed) / (1 - float64(bps)/10000)
+		d, w := pumpFindDeposit(cand, at, pumpSettleMaxLag)
+		if w == "unique" {
+			dep, why = d, "unique"
+			break
+		}
+		if w == "ambiguous" {
+			why = "ambiguous"
+		}
+	}
 	cPumpPair.WithLabelValues(r.chain, why).Inc()
 	if why != "unique" {
 		// ambiguous and none are kept apart because they mean opposite things:
