@@ -282,14 +282,33 @@ var mobulaBridge = map[string]string{
 //	                   is a transfer tax the token levies on every holder.
 //	                   Belongs in the pool or other cost, never in a fee.
 //
-// NO APP FEE IS OBSERVABLE IN EITHER LEG of this route. The deposit carries
-// exactly one token transfer (ComputeBudget, ComputeBudget, Token, Memo on
-// all 50 read), so nothing is skimmed on the way in, and on the way out the
-// only non-user sinks are the two above. So the terminal component on this
-// row is 0 and the whole shortfall sits in the bridge's residual. That is a
-// measurement and not a zero-filled default, which is the distinction
-// openchainbench-e9 asked for: if FOMO takes a cut on this route it does so
-// outside both legs, and it is already counted in FOMO's other rows.
+// NO APP-FEE TRANSFER EXISTS ON EITHER LEG, and that is NOT the same as the
+// app taking no fee. The deposit carries exactly one token transfer
+// (ComputeBudget, ComputeBudget, Token, Memo on all 50 read), so nothing is
+// skimmed on the way in, and the only non-user sinks on the way out are the
+// two above.
+//
+// But a fee an integrator sets and the bridge takes inside its QUOTE leaves
+// no transfer to find: it would sit in the bridge residual while the column
+// read 0, and a reader comparing that against FOMO's Relay rows at about 50
+// bps would conclude this route is cheaper in app fees when the fee had only
+// moved. So the terminal component here is published as NOT MEASURED, not as
+// zero, with the note that any charge by the app is inside the bridge's price
+// and counted in the bridge column.
+//
+// The obvious signal does not resolve it. The explorer's inputAmountUsd minus
+// amountInUsd has a median of 144 bps but runs from -528 to +1188, and only
+// 12% of 198 rows land between 30 and 70 bps; a fee cannot be negative, so
+// that gap is two valuations of the same input disagreeing rather than a fee.
+//
+// MOBULA'S OWN TAKE, measured where nothing else is in the way: the
+// EVM -> Solana direction delivers a dollar stable, so it has no token leg
+// and its total take is almost entirely the bridge. 57 bps median over 210
+// intents, p10 31 and p90 68. That tightness is what a schedule looks like,
+// against the 131 to 537 spread of the token-delivering direction where pool
+// impact dominates, and it is the first like-for-like figure to put beside
+// Pump Bridge's measured 0.05 plus 40 to 45 bps. It still cannot be split
+// into bridge and app, which is the whole point above.
 const robinhoodTokenFee = "0xe5e702641ea86f4ae6cc3cdaed2b886f976be044"
 
 const solanaChainID = 792703809
