@@ -90,6 +90,13 @@ const PRODUCT_ALIASES: Record<string, string> = {
   // Vertex wound down on Arbitrum; the team's venue is Nado on Ink and the
   // cohort row moved with it on 2026-09-22.
   vertex: "nado",
+  // Nova is one company with two slugs: "nova-markets" (its Hyperliquid
+  // frontend page, which has the logo) and "nova" (the perp cohort's
+  // provider slug, benches 041 and 116). The product page already 308s
+  // nova -> nova-markets (#3157), but without this alias getProviders still
+  // listed "nova" as a product, so the sitemap published a redirecting URL
+  // and the prod deploy's sitemap smoke failed on it (2026-10-22).
+  nova: "nova-markets",
   // TON → Gram rebrand (June 2026). Stale inbound references to slug
   // "ton" resolve to canonical "gram" so older links, search hits, and
   // any external citation that still says ton/Toncoin lands on the
