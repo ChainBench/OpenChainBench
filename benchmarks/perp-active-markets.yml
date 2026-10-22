@@ -134,7 +134,7 @@ providers:
     name: Nova
     tag: Ships the gTrade registry unpruned, so the count is not comparable
     unranked: Registry unpruned
-    formula: "The same filter on Nova's own trading variables. Nova and Gains ship the identical 493-pair gTrade registry; Gains has delisted 315, Nova none, so this count is the inherited catalog, not a curated book."
+    formula: "The same filter on Nova's own trading variables. Nova and Gains ship the identical gTrade registry; of its 493 pairs Gains had delisted 315 and Nova none on 2026-10-22, so this count is the inherited catalog, not a curated book."
     queries:
       p50: avg_over_time(perp_venue_active_markets{venue="nova"}[24h])
       p90: quantile_over_time(0.90, perp_venue_active_markets{venue="nova"}[24h])
