@@ -111,6 +111,9 @@ async function materializeOne(
     now,
     new Set(spec.providers.map((p) => p.slug)),
     spec.prometheus?.expected_freshness_seconds,
+    // A filtered view's load is the answer: sig is empty only for the
+    // unfiltered board, where the carry still protects a brownout.
+    sig !== "",
   );
 
   const snap: MaterializedSnapshot = {

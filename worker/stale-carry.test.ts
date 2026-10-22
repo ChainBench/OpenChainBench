@@ -173,3 +173,53 @@ describe("carrying a panel value the harness stopped publishing", () => {
     expect(Object.keys(out.metricPanels?.[0]?.values ?? {})).toEqual(["zeeve"]);
   });
 });
+
+// A filtered view's empty load is an answer, not a failure.
+//
+// On 2026-10-22 the harness purged every EVM row, deleted their series and
+// published health 0. The loader returned an empty board for the chain tabs,
+// which it does on purpose. This carry put them all back, and the tabs served
+// Axiom at 518.6 bps on Robinhood and Binance Wallet at 220.5 on Ethereum,
+// marked live, for half an hour. Every future purge would repeat it.
+test("a filtered view does not carry rows the load dropped", () => {
+  const prev = {
+    v: 1,
+    slug: "b",
+    sig: "chain=robinhood",
+    builtAt: Date.now() - 60_000,
+    bench: {
+      slug: "b",
+      status: "live",
+      results: [
+        { slug: "axiom", name: "Axiom", ms: { p50: 518.6 } },
+        { slug: "gmgn", name: "GMGN", ms: { p50: 420.4 } },
+      ],
+      extras: {},
+    },
+    state: { providers: {}, rings: {} },
+  } as never;
+  const fresh = { slug: "b", status: "live", results: [], extras: {} } as never;
+
+  // authoritative: the chain tab answered, and its answer is "nothing".
+  const { bench: filtered } = mergeWithPrevious(
+    fresh,
+    prev,
+    Date.now(),
+    new Set(["axiom", "gmgn"]),
+    900,
+    true,
+  );
+  expect(filtered.results).toHaveLength(0);
+
+  // The unfiltered board still carries, because there a total blank is more
+  // likely a brownout than a state.
+  const { bench: board } = mergeWithPrevious(
+    fresh,
+    prev,
+    Date.now(),
+    new Set(["axiom", "gmgn"]),
+    900,
+    false,
+  );
+  expect(board.results).toHaveLength(2);
+});
