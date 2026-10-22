@@ -2,7 +2,7 @@
 
 slug: rpc-cost
 number: "282"
-title: Cheapest RPC provider, priced per workload across 19 ranked providers
+title: Cheapest RPC provider, priced per workload across 19 providers
 seo_title: "Cheapest RPC provider 2026: real cost per workload"
 seo_description: "What 19 RPC providers bill for the same workload. Blockmachine, Dwellir, Chainstack, Alchemy and QuickNode priced across 5 workloads and 3 volumes."
 subtitle: The monthly bill each RPC provider would send for the same workload, normalised across Compute Units, Request Units, credits and flat requests, at three volumes and every plan tier.
@@ -79,7 +79,7 @@ abstract: |
 
 methodology:
   - "Cohort. 19 providers billed per request, ranked per workload. Blockdaemon (every paid plan behind a sales call) and Coinbase CDP (Base only) cannot fill a cell. Flat-rate nodes are priced in the calculator, not the per-workload grid. PublicNode and the Solana Foundation endpoints are published but never ranked: free and usable, and PublicNode publishes no rate limit at all, so calling it cheapest would be true and useless."
-  - "Chains. Ethereum and Solana only: they are the two chains every provider in the cohort prices, and pricing a third would mostly price which providers serve it. Several providers weight other chains differently, so a Base or Polygon bill is not this page's Ethereum bill."
+  - "Chains. Ethereum and Solana only: the two chains most of the cohort prices, and pricing a third would mostly price which providers serve it. Ethereum carries four workload profiles and Solana one, a trading-bot mix; Blockmachine, Dwellir and several others price no Solana at all. Several providers weight other chains differently, so a Base or Polygon bill is not this page's Ethereum bill."
   - "Normalisation. Every provider's published method table is applied to the profile's method mix to get weighted units per request, and that figure is published as rpc_cost_units_per_request so the arithmetic is checkable."
   - "Most large providers do not price per method at all. Chainstack charges 1 Request Unit for a read and 2 at archive depth, decided by block age (127+ blocks behind tip), while debug and trace are 2 at any depth. QuickNode weights per chain, Ethereum 20 credits and Solana 30, with x2 for advanced calls and x4 for large ones. GetBlock multiplies a chain factor spanning 10 to 300."
   - "Archive. Handled per provider rather than as a uniform surcharge, because it is not one. Chainstack doubles on block age. BlockPI adds 30% to the whole endpoint. Alchemy, dRPC, QuickNode and Blockmachine charge no archive premium at all, and neither does Dwellir, which bills 1 credit per response on every method, archive, debug and trace included; that archive is served on its shared plans is stated in Dwellir's own Ethereum comparison post rather than its price table."
@@ -162,8 +162,8 @@ prometheus:
   freshness_timestamp_metric: rpc_cost_last_run_timestamp_seconds
 
 # Metrics exposed by the rpc-cost harness:
-#   rpc_cost_monthly_usd{provider, plan, kind, bucket, chain, cohort, venue}
-#   rpc_cost_per_million_usd{provider, plan, kind, bucket, chain, cohort, venue}
+#   rpc_cost_monthly_usd{provider, plan, kind, bucket, chain, tier, venue}
+#   rpc_cost_per_million_usd{provider, plan, kind, bucket, chain, tier, venue}
 #   rpc_cost_units_per_request{provider, kind, chain}
 #   rpc_cost_eligible{provider, kind, bucket}
 #   rpc_cost_plan_confidence{provider, plan, kind, bucket}
@@ -233,7 +233,6 @@ metric_panels:
     # land in, which is the point of ranking it separately. Appending those
     # two matched nothing and left this panel blank on 70 of 75 views.
     ignore_dimensions: [bucket, venue]
-  # The question the dedicated cohort exists to answer.
 dimension_labels:
   kind: Workload
   bucket: Monthly volume
