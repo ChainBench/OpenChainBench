@@ -1162,6 +1162,7 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   },
   quicknode: {
     url: "https://www.quicknode.com",
+    referralUrl: "https://quicknode.com/signup?via=florent",
     description:
       "Keyed RPC infrastructure across 30+ chains. Endpoint-scoped API tokens; free and paid plans are served from the same shared fleet, dedicated clusters on higher tiers.",
     twitter: "@QuickNode",
@@ -1222,6 +1223,7 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   },
   chainstack: {
     url: "https://chainstack.com",
+    referralUrl: "https://chainstack.referral-factory.com/uEaQLKh1",
     description:
       "Managed blockchain node platform. Deploys dedicated Global Nodes per chain with keyed HTTPS/WSS endpoints; free plan includes one node and 3M requests per month.",
     twitter: "@ChainstackHQ",
