@@ -37,6 +37,7 @@ import (
 	"math"
 	"math/big"
 	"net/http"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -58,6 +59,10 @@ var (
 		Help:    "Seconds between a Solana deposit and the EVM router spending it, for the spends whose deposit can be identified by the amount the schedule implies. Read it with histogram_quantile, NEVER as sum/count: a few percent of pairs are stalls past 60 s and they drag the mean of a day's sample from a 0.37 s median to about 20 s (see tfq_pump_bridge_stall_total). This is the on-chain segment alone: pump's own figure is tap to notification and includes the app, the network and its queueing, so the two are not the same quantity. Read per chain, since block time differs (BNB 0.45 s, Robinhood Chain 0.10 s, Base 2.00 s). Absolute values also carry a cross-chain clock offset that is NOT corrected here: each chain stamps blocks on its own clock and Solana's offset to the EVM chains changed at the Alpenglow switch, so compare a chain with itself over time, not one chain against another",
 		Buckets: []float64{0.1, 0.25, 0.5, 0.75, 1, 1.5, 2, 3, 4, 6, 10, 20, 60, 300},
 	}, []string{"chain"})
+	gSettleMs = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "tfq_settle_ms",
+		Help: "Cross-chain settlement time per route, milliseconds: the Solana deposit to the destination spend that consumed it, matched by the amount the fee schedule implies. RESOLUTION IS ONE SECOND, so values are multiples of 1000: both ends are block timestamps in whole seconds and intra-second block ordering is not used to refine them. Stalls past 60 s are excluded (counted in tfq_pump_bridge_stall_total) because a handful of them move a mean by more than an order of magnitude. stat=median|p90",
+	}, []string{"terminal", "chain", "stat"})
 	cPumpStall = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "tfq_pump_bridge_stall_total",
 		Help: "Paired spends that took longer than 60 seconds to settle. Counted apart because they are what makes the settle histogram's mean useless: about 4% of pairs, enough to move a mean by more than an order of magnitude while leaving the median where it was. A rising share here is the bridge stalling, which the median will not show",
@@ -74,7 +79,7 @@ var (
 )
 
 func init() {
-	prometheus.MustRegister(cPumpSpends, cPumpSchedule, hPumpTakeBps, hPumpSettle, cPumpPair, cPumpStall)
+	prometheus.MustRegister(cPumpSpends, cPumpSchedule, hPumpTakeBps, hPumpSettle, cPumpPair, cPumpStall, gSettleMs)
 }
 
 // pumpLevels: the trade sizes a person types, in whole stable units. The grid is
@@ -607,6 +612,69 @@ func pumpPairSpend(ctx context.Context, httpc *http.Client, c originChain, r pum
 	if took > 60 {
 		cPumpStall.WithLabelValues(r.chain).Inc()
 	}
+	pumpNoteSettle(r.chain, took)
+}
+
+// pumpSettleWindow holds recent settlement times per chain so a median can be
+// published. A histogram cannot give one back: its buckets would have to be
+// read with histogram_quantile, and at one-second resolution that interpolates
+// inside a bucket and invents precision the data does not have.
+var pumpSettleWindow struct {
+	sync.Mutex
+	by map[string][]float64
+}
+
+const pumpSettleWindowMax = 2000
+
+// pumpNoteSettle records one settlement and republishes the quantiles.
+//
+// Stalls past 60 s are left out, as Relay's own dashboard does, because they
+// are a few percent of pairs and they move a mean by more than an order of
+// magnitude while leaving the median where it was. They stay visible in
+// tfq_pump_bridge_stall_total.
+func pumpNoteSettle(chain string, took float64) {
+	if took > 60 || took < 0 {
+		return
+	}
+	pumpSettleWindow.Lock()
+	if pumpSettleWindow.by == nil {
+		pumpSettleWindow.by = map[string][]float64{}
+	}
+	w := append(pumpSettleWindow.by[chain], took)
+	if len(w) > pumpSettleWindowMax {
+		w = w[len(w)-pumpSettleWindowMax:]
+	}
+	pumpSettleWindow.by[chain] = w
+	var all []float64
+	per := map[string][]float64{}
+	for c, v := range pumpSettleWindow.by {
+		cp := append([]float64(nil), v...)
+		per[c] = cp
+		all = append(all, v...)
+	}
+	pumpSettleWindow.Unlock()
+
+	for c, v := range per {
+		gSettleMs.WithLabelValues("pump-bridge", c, "median").Set(quantileOf(v, 0.5) * 1000)
+		gSettleMs.WithLabelValues("pump-bridge", c, "p90").Set(quantileOf(v, 0.9) * 1000)
+	}
+	gSettleMs.WithLabelValues("pump-bridge", "all", "median").Set(quantileOf(all, 0.5) * 1000)
+	gSettleMs.WithLabelValues("pump-bridge", "all", "p90").Set(quantileOf(all, 0.9) * 1000)
+}
+
+// quantileOf: nearest-rank on a copy, so the value returned is one that was
+// actually observed rather than an interpolation between two buckets.
+func quantileOf(v []float64, p float64) float64 {
+	if len(v) == 0 {
+		return 0
+	}
+	c := append([]float64(nil), v...)
+	sort.Float64s(c)
+	i := int(p * float64(len(c)))
+	if i >= len(c) {
+		i = len(c) - 1
+	}
+	return c[i]
 }
 
 // pumpBlockAt returns a block's timestamp, cached per chain.
