@@ -59,6 +59,10 @@ func (s *LeverageTermsSource) Name() string { return srcLeverageTerms }
 const (
 	gainsArbRPC     = "https://arbitrum-one-rpc.publicnode.com"
 	gainsDiamondArb = "0xFF162c694eAA571f685030649814282eA457f169"
+	// Nova runs the same gTrade software on Arbitrum: its proxy bytecode is
+	// byte-identical to the Gains diamond and all five selectors below answer
+	// on it, verified 2026-10-22 for pairs 0, 1, 300 and 313.
+	novaDiamondArb = "0x1410FA3F87F6A6ea221E5D2aB608C23005eC34f3"
 	// First four bytes of the keccak-256 of the signature, hardcoded so the
 	// harness needs no hashing dependency.
 	selPairMaxLev   = "0x281b693c" // pairMaxLeverage(uint256), 1e3
@@ -70,14 +74,32 @@ const (
 	leverageTermsUA = "OpenChainBench-PerpCohort/1.0 contact@openchainbench.com"
 )
 
-// gainsPairs maps each market to the pair indices Gains offers on it. The two
-// are different products, not a ceiling and a floor of one: the standard pair
+// gtradePairs maps each market to the pair indices every gTrade deployment
+// offers it at. The two per market are different products, not a ceiling and a
+// floor of one: the standard pair
 // runs 1.1x to 200x, and the degen pair has pairMinLeverage equal to
 // pairMaxLeverage at 500x, so 500x is its only legal value. A trader who wants
 // 50x uses the standard pair; one who wants 500x has only the degen one.
-var gainsPairs = map[string][]int64{
+var gtradePairs = map[string][]int64{
 	"BTC": {0, 300},
 	"ETH": {1, 313},
+}
+
+// gtradeVenues are the deployments read through the Gains path. Nova serves
+// the identical 493-pair registry, so the SAME indices are BTC, ETH and their
+// degen pairs on both, confirmed 2026-10-22: pair 0 BTC/USD, 1 ETH/USD, 300
+// BTCDEGEN/USD, 313 ETHDEGEN/USD on Nova's own trading variables.
+//
+// That shared numbering is the one thing a fork could change without changing
+// anything else, and reading the wrong index would publish a different asset's
+// terms under this venue's name. TestGtradeLeveragePairIndices (OCB_LIVE)
+// checks the symbols still sit where this map says.
+var gtradeVenues = []struct {
+	venue   string
+	diamond string
+}{
+	{"gains", gainsDiamondArb},
+	{"nova", novaDiamondArb},
 }
 
 // leverageTermsMarkets are the only two assets all four venues list, which is
@@ -146,7 +168,9 @@ func (s *LeverageTermsSource) Fetch() (*SourceResult, error) {
 	perpLiqCollateralKeptPct.Reset()
 
 	var all []venueTerms
-	all = append(all, s.fetchGains()...)
+	for _, g := range gtradeVenues {
+		all = append(all, s.fetchGtrade(g.venue, g.diamond)...)
+	}
 	all = append(all, s.fetchPapertrade()...)
 	all = append(all, s.fetchHyperliquid()...)
 	all = append(all, s.fetchDydx()...)
@@ -273,11 +297,13 @@ func termsAt(t venueTerms, lev float64) (roomPct, lostPct, keptPct float64, ok b
 
 // ---------------------------------------------------------------- Gains
 
-func (s *LeverageTermsSource) fetchGains() []venueTerms {
+// fetchGtrade reads one gTrade deployment. The venue label and the diamond
+// are arguments because Nova is the same contract at a different address.
+func (s *LeverageTermsSource) fetchGtrade(venue, diamond string) []venueTerms {
 	var out []venueTerms
-	for market, idxs := range gainsPairs {
+	for market, idxs := range gtradePairs {
 		for _, idx := range idxs {
-			t, ok := s.gainsPair(market, idx)
+			t, ok := s.gtradePair(venue, diamond, market, idx)
 			if ok {
 				out = append(out, t)
 			}
@@ -286,14 +312,14 @@ func (s *LeverageTermsSource) fetchGains() []venueTerms {
 	return out
 }
 
-// gainsPair reads one pair's terms. A pair that fails any read is skipped
+// gtradePair reads one pair's terms. A pair that fails any read is skipped
 // rather than published with a guessed value: the other pair on the same market
 // still publishes, so the venue keeps the leverages it can actually serve.
-func (s *LeverageTermsSource) gainsPair(market string, idx int64) (venueTerms, bool) {
-	lw, err := s.gainsCall(selPairMaxLev, idx)
+func (s *LeverageTermsSource) gtradePair(venue, diamond, market string, idx int64) (venueTerms, bool) {
+	lw, err := s.gtradeCall(diamond, selPairMaxLev, idx)
 	if err != nil || len(lw) < 1 {
-		perpCohortFetchErrors.WithLabelValues("gains", srcLeverageTerms, classifyError(fmt.Sprint(err))).Inc()
-		fmt.Printf("[perp-cohort][gains][%s] maxLeverage %s pair %d: %v\n", srcLeverageTerms, market, idx, err)
+		perpCohortFetchErrors.WithLabelValues(venue, srcLeverageTerms, classifyError(fmt.Sprint(err))).Inc()
+		fmt.Printf("[perp-cohort][%s][%s] maxLeverage %s pair %d: %v\n", venue, srcLeverageTerms, market, idx, err)
 		return venueTerms{}, false
 	}
 	maxLev := bigToFloat(lw[0], 1e3)
@@ -306,18 +332,18 @@ func (s *LeverageTermsSource) gainsPair(market string, idx int64) (venueTerms, b
 	// as "no minimum", so a missing selector degrades to the old behaviour
 	// rather than hiding the row.
 	var minLev float64
-	if mw, err := s.gainsCall(selPairMinLev, idx); err == nil && len(mw) > 0 {
+	if mw, err := s.gtradeCall(diamond, selPairMinLev, idx); err == nil && len(mw) > 0 {
 		minLev = bigToFloat(mw[0], 1e3)
 	}
 	if minLev > maxLev {
-		perpCohortFetchErrors.WithLabelValues("gains", srcLeverageTerms, "parse").Inc()
+		perpCohortFetchErrors.WithLabelValues(venue, srcLeverageTerms, "parse").Inc()
 		return venueTerms{}, false
 	}
 
-	p, err := s.gainsCall(selPairLiqParam, idx)
+	p, err := s.gtradeCall(diamond, selPairLiqParam, idx)
 	if err != nil || len(p) < 5 {
-		perpCohortFetchErrors.WithLabelValues("gains", srcLeverageTerms, "parse").Inc()
-		fmt.Printf("[perp-cohort][gains][%s] liqParams %s pair %d: %v\n", srcLeverageTerms, market, idx, err)
+		perpCohortFetchErrors.WithLabelValues(venue, srcLeverageTerms, "parse").Inc()
+		fmt.Printf("[perp-cohort][%s][%s] liqParams %s pair %d: %v\n", venue, srcLeverageTerms, market, idx, err)
 		return venueTerms{}, false
 	}
 	startTh := bigToFloat(p[1], 1e10)
@@ -327,19 +353,19 @@ func (s *LeverageTermsSource) gainsPair(market string, idx int64) (venueTerms, b
 	// A threshold at or past the whole collateral is a decode error, not a
 	// term: it would describe a position liquidated before it opens.
 	if startTh <= 0 || startTh >= 100 || endTh <= 0 || endTh >= 100 {
-		perpCohortFetchErrors.WithLabelValues("gains", srcLeverageTerms, "parse").Inc()
+		perpCohortFetchErrors.WithLabelValues(venue, srcLeverageTerms, "parse").Inc()
 		return venueTerms{}, false
 	}
 
-	fee, err := s.gainsPairFee(idx)
+	fee, err := s.gtradePairFee(diamond, idx)
 	if err != nil {
-		perpCohortFetchErrors.WithLabelValues("gains", srcLeverageTerms, "parse").Inc()
-		fmt.Printf("[perp-cohort][gains][%s] fee %s pair %d: %v\n", srcLeverageTerms, market, idx, err)
+		perpCohortFetchErrors.WithLabelValues(venue, srcLeverageTerms, "parse").Inc()
+		fmt.Printf("[perp-cohort][%s][%s] fee %s pair %d: %v\n", venue, srcLeverageTerms, market, idx, err)
 		return venueTerms{}, false
 	}
 
 	return venueTerms{
-		venue:  "gains",
+		venue:  venue,
 		market: market,
 		maxLev: maxLev,
 		minLev: minLev,
@@ -358,7 +384,7 @@ func (s *LeverageTermsSource) gainsPair(market string, idx int64) (venueTerms, b
 	}, true
 }
 
-// gainsPairFee reads the pair's position-size fee as a percentage of notional.
+// gtradePairFee reads the pair's position-size fee as a percentage of notional.
 //
 // pairs(uint256) returns the pair struct; word 9 is its fee index, the same
 // offset the perp-fees harness reads in production. fees(uint256) then returns
@@ -369,8 +395,8 @@ func (s *LeverageTermsSource) gainsPair(market string, idx int64) (venueTerms, b
 // x500 degen pairs it reads 0.02%, and two legs of it at 500x are 20 points of
 // collateral, which is exactly the gap between the 80% threshold and the 59.4%
 // median that 11 real liquidations show.
-func (s *LeverageTermsSource) gainsPairFee(pairIdx int64) (float64, error) {
-	pw, err := s.gainsCall(selPairs, pairIdx)
+func (s *LeverageTermsSource) gtradePairFee(diamond string, pairIdx int64) (float64, error) {
+	pw, err := s.gtradeCall(diamond, selPairs, pairIdx)
 	if err != nil {
 		return 0, err
 	}
@@ -378,7 +404,7 @@ func (s *LeverageTermsSource) gainsPairFee(pairIdx int64) (float64, error) {
 		return 0, fmt.Errorf("pairs(%d) returned %d words", pairIdx, len(pw))
 	}
 	feeIdx := pw[9].Int64()
-	fw, err := s.gainsCall(selFees, feeIdx)
+	fw, err := s.gtradeCall(diamond, selFees, feeIdx)
 	if err != nil {
 		return 0, err
 	}
@@ -417,11 +443,11 @@ func bigToFloat(i *big.Int, scale float64) float64 {
 	return f
 }
 
-func (s *LeverageTermsSource) gainsCall(selector string, arg int64) ([]*big.Int, error) {
+func (s *LeverageTermsSource) gtradeCall(diamond, selector string, arg int64) ([]*big.Int, error) {
 	data := fmt.Sprintf("%s%064x", selector, arg)
 	body, _ := json.Marshal(map[string]any{
 		"jsonrpc": "2.0", "id": 1, "method": "eth_call",
-		"params": []any{map[string]string{"to": gainsDiamondArb, "data": data}, "latest"},
+		"params": []any{map[string]string{"to": diamond, "data": data}, "latest"},
 	})
 	req, err := http.NewRequest("POST", gainsArbRPC, strings.NewReader(string(body)))
 	if err != nil {
