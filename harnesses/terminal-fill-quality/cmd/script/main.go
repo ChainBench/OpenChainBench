@@ -1394,6 +1394,16 @@ func evmRow(ctx context.Context, rpc *rpcClient, httpc *http.Client, t Terminal,
 		Chain: x.DestChain, RelayID: x.ID, InTx: x.InTx, QuoteUSD: q, Pools: s.Pools, Hops: s.Hops, PoolVault: s.Pool}
 	if inTx.BlockTime != nil {
 		sw.Time = *inTx.BlockTime
+		// Settlement latency on the same definition Pump Bridge is measured
+		// on: destination block time minus origin block time. Relay's own
+		// `created` is an API timestamp that precedes the deposit by an
+		// unknown amount and would put two definitions under one metric.
+		if s.BlockNum > 0 {
+			if at := pumpBlockAt(ctx, httpc, *dc, x.DestChain, s.BlockNum); at > 0 {
+				product, _ := productOf(t.Slug)
+				noteSettle(product, x.DestChain, float64(at-*inTx.BlockTime))
+			}
+		}
 	}
 	if sw.Venue == "" {
 		sw.Venue = "relay"

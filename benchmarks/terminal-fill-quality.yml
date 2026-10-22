@@ -84,7 +84,7 @@ methodology:
   - "Error rates for these two routes come from a randomised test of 416,669 cross-chain trades published on 2026-10-21: Pump Bridge errors on 0.869% of buys against Relay's 11.214%, and on 7.378% of sells against 10.511%, so 2.95x apart over both directions. Not our measurement; the counts and the arithmetic are on bench 306."
   - "One row per route, not per app: pump.fun's cross-chain trades are published twice over, as Pump Bridge (its own routers, read on chain) and as the pump.fun app (what Relay still carries). Folding them together averaged two routes into a number describing neither, and the two differ in fee, settlement time and error rate. Relay draws the same split in its own published comparison."
   - "Pump Bridge's rows are grossed up: its router is paid out of pump's own liquidity, already net of the 0.05 plus 40 to 45 bps it keeps, so the spend is raised back to what the user committed before the loss is taken. Both parameters come from that chain's own spends: the fixed part from pairs at different trade sizes, which solve it assuming no value, and the rate from exact read-backs. A chain with too few falls back. Residual about 2.5 bps, against 45 to 545 bps of ignoring the deduction."
-  - "The Terminal column on both pump rows reads 0 by construction, not by measurement: no fee wallet is listed for the app, so any fee-like leg falls into Protocol fees instead. One recipient discovery flags, KfHbT5Jr…, is Pump Bridge's own sell-side fee wallet, taking about 50 bps of the net on the Solana payout leg. A second flagged account is pump's gas sponsor, which signs and PAYS on every swap read, so read that 0 as unmeasured, not as a fee."
+  - "The Terminal column on both pump rows reads 0 by construction, not by measurement: no fee wallet is listed for the app, so any fee-like leg falls into Protocol fees. KfHbT5Jr… is Pump Bridge's sell-side fee wallet: 45 bps of gross on the Solana payout leg at size, and 38% of payouts pay it nothing. A second flagged account is pump's gas sponsor, which signs and PAYS on every swap read, so read that 0 as unmeasured, not as a fee."
   - "MegaETH and X Layer are read but not shown: Pump Bridge's router is deployed on both and no bridge aggregator covers either, so this is the only measurement of them, but MegaETH has never executed a trade (relayer nonce 0) and X Layer had one priced swap on 2026-10-22. They get a chain tab when they carry enough trades to publish one; until then a tab would answer nothing."
   - "Not in the table: BullX (suspended June 2026), Nova (no live fee wallet), Bloom on Base and Ethereum (a swap an hour), Photon on EVM. BasedBot's Relay requests are its in-app bridge between the user's Solana and EVM wallets, both ways, no app fee (a bridge leg, not a trade); its EVM rows are those wallets' swaps on its router. On Solana its fee is a separate transaction after the swap, so failed swaps are not seen: no fail rate there."
 
@@ -93,7 +93,7 @@ findings:
   - "The advertised 1 % fee is the smallest constant: pump.fun protocol and creator fees add about 100 to 140 bps on curve and PumpSwap trades whichever terminal routes them."
   - "Network cost separates the Telegram bots: Maestro's tips through its own relay approach a percent of a median swap, Bloom, Trojan and Photon sit in the tens of basis points, Axiom and Phantom at a few."
   - "Failed swaps are a hidden cost: on the busiest terminals several percent of swap attempts fail on-chain and still pay the priority fee (unless the app sponsors gas, as FOMO does)."
-  - "Pump Bridge deducts a fixed 0.05 of the stable plus 40 or 45 basis points, measured on chain with no API: its routers on BNB, Base and Robinhood Chain spend a round trade size less exactly that, at five levels. Read 2026-10-22; the same test against a shifted grid of trade sizes matches nothing. Being partly fixed, it costs 545 bps on a $1 trade against 50 on a $100 one."
+  - "Pump Bridge deducts a fixed 0.05 of the stable plus 40 or 45 basis points, measured on chain with no API: its routers on BNB, Base and Robinhood Chain spend a round trade size less exactly that, at five levels. Read 2026-10-22; the same test against a shifted grid of trade sizes matches nothing. Being partly fixed, it costs 545 bps on a $1 trade against 50 on a $100 one. The sell leg is not its mirror: payouts pay 45 bps of gross with no meaningful fixed part, and 38% pay nothing."
 
 faq:
   - q: "What is the reference price and why does it matter?"
@@ -124,7 +124,7 @@ metric_panels:
     metric: tfq_settle_ms{chain="all",stat="median"}
     unit: ms
     higher_is_better: false
-    description: "Median time from the Solana deposit to the destination spend that consumed it. Resolution is one second: both ends are whole-second block timestamps, so values are multiples of 1000 and a route under a second reads 0. Stalls over 60 s excluded."
+    description: "Median destination block time minus origin block time, per route: Pump Bridge paired by the amount its fee schedule implies, Relay from its own request legs. Resolution is one second, so values are multiples of 1000 and a route under a second reads 0. Stalls over 60 s excluded."
   - id: terminal_fee
     label: Terminal fee
     label_key: terminal
