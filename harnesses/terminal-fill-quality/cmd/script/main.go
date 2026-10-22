@@ -1630,7 +1630,7 @@ func compute(st *State, minPriced, minRank int) []TerminalStats {
 				ts.Healthy, ts.Ranked = false, false
 				ts.Note = strings.TrimSpace(ts.Note + " The chain carrying most of this product's flow is still filling its window: the pooled figure waits for it.")
 			} else if len(heldRows) > 0 {
-				ts.Note = strings.TrimSpace(ts.Note + " Pooled over the measured chains; " + strings.Join(heldRows, ", ") + " is held out for good (one side only, no fee on it) and its flow is not counted as pending.")
+				ts.Note = strings.TrimSpace(ts.Note + " Pooled over the measured chains; " + strings.Join(heldRows, ", ") + " held out for a reason that will not pass with time, each row stating its own, so that flow is not counted as pending.")
 			} else {
 				ts.Note = strings.TrimSpace(ts.Note + " Pooled over the chains published on their own; a chain still filling its window is left out until then.")
 			}
