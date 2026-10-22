@@ -31,16 +31,36 @@ const byId = (id: string) => {
 const MARKETS: Market[] = ["BTC", "ETH"];
 
 describe("the two gTrade deployments are one contract priced twice", () => {
-  test("identical leverage bounds, on both products and both markets", () => {
-    for (const [g, n] of [
-      ["gains-std", "nova-std"],
-      ["gains-degen", "nova-degen"],
-    ] as const) {
-      expect(byId(n).minLeverage).toBe(byId(g).minLeverage);
-      for (const m of MARKETS) {
-        expect(maxLeverageOn(byId(n), m)).toBe(maxLeverageOn(byId(g), m));
-      }
+  test("the standard pairs have identical bounds", () => {
+    expect(byId("nova-std").minLeverage).toBe(byId("gains-std").minLeverage);
+    for (const m of MARKETS) {
+      expect(maxLeverageOn(byId("nova-std"), m)).toBe(maxLeverageOn(byId("gains-std"), m));
+      expect(maxLeverageOn(byId("nova-std"), m)).toBe(200);
     }
+  });
+
+  test("the degen ceilings are NOT identical, and that is the measurement", () => {
+    // This test asserted they were equal, and passed, because both rows
+    // carried the 500 I had written for both. The deployed gauge said
+    // otherwise: perp_leverage_max reads 500.001 for Nova and 500 for Gains.
+    //
+    // Raw at 1e3: Gains 300/313 min 500000 max 500000, so genuinely fixed.
+    // Nova 300/313 min 500000 max 500001, a band a thousandth wide. My own
+    // comparison script had printed both as "500.00" to two decimals.
+    expect(byId("nova-degen").minLeverage).toBe(byId("gains-degen").minLeverage);
+    for (const m of MARKETS) {
+      expect(maxLeverageOn(byId("gains-degen"), m)).toBe(500);
+      expect(maxLeverageOn(byId("nova-degen"), m)).toBe(500.001);
+      expect(maxLeverageOn(byId("nova-degen"), m)).toBeGreaterThan(
+        maxLeverageOn(byId("gains-degen"), m),
+      );
+    }
+    // Gains' product is fixed because its bounds coincide; Nova's does not.
+    expect(maxLeverageOn(byId("gains-degen"), "BTC")).toBe(byId("gains-degen").minLeverage);
+    expect(maxLeverageOn(byId("nova-degen"), "BTC")).not.toBe(byId("nova-degen").minLeverage);
+    // So the row must not call itself fixed, nor claim Gains' terms outright.
+    expect(byId("nova-degen").sub).not.toContain("fixed");
+    expect(byId("nova-degen").sub).toContain("500.001");
   });
 
   test("identical maintenance curve on the standard pair", () => {
@@ -83,7 +103,8 @@ describe("the two gTrade deployments are one contract priced twice", () => {
     }
   });
 
-  test("the degen pairs are identical, which is what that row claims", () => {
+  test("the degen pairs are identically PRICED, which is what that row claims", () => {
+    // Everything except the ceiling, which the test above pins separately.
     const g = byId("gains-degen");
     const n = byId("nova-degen");
     expect(n.takerBps).toBe(g.takerBps);
@@ -92,8 +113,8 @@ describe("the two gTrade deployments are one contract priced twice", () => {
       expect(feeLegFraction(n, m)).toBeCloseTo(feeLegFraction(g, m), 12);
       expect(n.maintenance(500, 500, m)).toBeCloseTo(g.maintenance(500, 500, m), 12);
     }
-    // The row says so in words, so the words have to stay true.
-    expect(n.sub).toContain("same terms as Gains");
+    // The row credits Gains' terms in words, so the words have to stay true.
+    expect(n.sub).toContain("Gains");
   });
 
   test("Nova leaves strictly less room at every shared leverage", () => {
