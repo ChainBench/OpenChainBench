@@ -18,11 +18,12 @@ export function formatValue(value: number, unit: string): string {
     if (unit === "s") {
       const s = value;
       if (s >= 60) return `${(s / 60).toFixed(1)} min`;
-      if (s === 0) return "0 s";
-      if (s < 0.1) return `${(s * 1000).toFixed(0)} ms`;
-      // Two decimals under a second: 0.31 s and 0.32 s are a ranking,
-      // one decimal printed both as 0.3.
-      if (s < 1) return `${s.toFixed(2)} s`;
+      // Under a second, milliseconds. "0 s" read as a dead feed when
+      // Solana's finality dropped under a second with Alpenglow
+      // (2026-10-21), and "0.44 s" beside "0.42 s" is harder to rank by eye
+      // than 440 ms beside 420 ms. A value that rounds to 1000 ms is
+      // printed as 1.0 s rather than "1000 ms".
+      if (s < 0.9995) return `${Math.round(s * 1000)} ms`;
       if (s < 10) return `${s.toFixed(1)} s`;
       return `${s.toFixed(0)} s`;
     }
