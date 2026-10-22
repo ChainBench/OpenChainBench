@@ -129,6 +129,10 @@ const NEEDS_LIGHT_CHIP = new Set([
 // near-black chip so the white artwork pops. Verified via SVG fill audit
 // (fill="white" present in the brand mark).
 const NEEDS_DARK_CHIP = new Set([
+  // Nova's mark is three paths at #F3F3F3 on transparent, lifted from the
+  // inline SVG on nova.markets because they publish no logo file. Near-white
+  // on our paper ground is the second failure mode named above.
+  "nova-markets",
   // Ramp Network sign: off-white R on transparent.
   "ramp",
   "jito",
