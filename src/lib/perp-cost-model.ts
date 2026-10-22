@@ -219,22 +219,30 @@ export const VENUES: readonly Venue[] = [
     measuredAt: "2026-10-22",
   },
   {
-    // Identical to the Gains degen pair in every parameter read: 500x fixed,
-    // 0.02% a leg, no spread, 80% flat threshold. Shown rather than folded
-    // into Gains' row because a trader on Nova should be able to find their
-    // own venue, and "the terms are the same" is the answer they need.
+    // The Gains degen pair in every parameter EXCEPT its ceiling: 0.02% a
+    // leg, no spread, 80% flat threshold, minimum 500x. But where Gains reads
+    // pairMinLeverage == pairMaxLeverage == 500000 at 1e3, so genuinely fixed
+    // at 500x, Nova reads a maximum of 500001: a band one thousandth of a
+    // multiple wide, 500.000x to 500.001x.
+    //
+    // Nobody trades the difference, and it is carried anyway because the
+    // published gauge carries it. perp_leverage_max reads 500.001 for Nova,
+    // so a row saying 500 would have this page and bench 295 disagreeing
+    // about the same venue. It is also the kind of thing that turns out to
+    // mean something later: a fork that edited one digit of one parameter
+    // edited it deliberately.
     id: "nova-degen",
     logoKey: "nova-markets",
     chain: "Arbitrum",
     execution: "Oracle pool",
     name: "Nova",
-    sub: "x500 degen, fixed, same terms as Gains",
+    sub: "x500 degen, Gains' terms at 500.001x",
     charges: "notional",
     src: "chain",
     takerBps: 2.0,
     spreadBps: { BTC: 0, ETH: 0 },
     minLeverage: 500,
-    maxLeverage: { BTC: 500, ETH: 500 },
+    maxLeverage: { BTC: 500.001, ETH: 500.001 },
     maintenance: (lev) => 20 / 100 / lev,
     feeInTrigger: true,
     returnsEquity: false,

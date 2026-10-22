@@ -203,7 +203,7 @@ providers:
     name: Nova
     tag: The same gTrade contract as Gains at a different address, priced higher
     confidence_tier: onchain
-    formula: "The same read on Nova's own Arbitrum diamond, same pair indices. Thresholds and leverage bounds identical to Gains; the standard pair charges 0.050% a leg against Gains' 0.035%, read 2026-10-22."
+    formula: "The same read on Nova's own Arbitrum diamond, same pair indices and thresholds. The standard pair charges 0.050% a leg against Gains' 0.035%; the degen pair's maximum is 500.001x where Gains is fixed at 500x. Read 2026-10-22."
     queries:
       p50: perp_liq_price_move_pct{venue="nova",bucket="all"}
       success: clamp_max(perp_leverage_max{venue="nova",bucket="all"}, 1)
