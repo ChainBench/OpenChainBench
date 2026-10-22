@@ -872,6 +872,42 @@ var cRouterDirect = func() *prometheus.CounterVec {
 	return c
 }()
 
+// pumpRouterSpendUSD sums the quote assets the router itself sends out in a
+// transaction: the stable it pays the trade with, counted once, wherever the
+// money goes after that. Transfers between declared routers are internal and
+// skipped, and so is the native mirror log when the transaction carries value.
+func pumpRouterSpendUSD(ctx context.Context, httpc *http.Client, c originChain, routers []string, logs []evmLog, value *big.Int, gas map[string]float64) float64 {
+	isRouter := func(a string) bool {
+		for _, r := range routers {
+			if strings.EqualFold(a, r) {
+				return true
+			}
+		}
+		return false
+	}
+	spend := 0.0
+	for _, l := range logs {
+		if len(l.Topics) != 3 || l.Topics[0] != topicTransfer {
+			continue
+		}
+		erc, from, to := strings.ToLower(l.Address), topicAddr(l.Topics[1]), topicAddr(l.Topics[2])
+		if !isRouter(from) || isRouter(to) {
+			continue
+		}
+		if value != nil && value.Sign() > 0 && isNativeMirror(c.slug, erc) {
+			continue
+		}
+		m := erc20(ctx, httpc, c, erc)
+		q, ok := quoteUSD(m.symbol, c, gas)
+		if !ok || !m.ok {
+			continue
+		}
+		f, _ := new(big.Float).SetInt(word(l.Data, 0)).Float64()
+		spend += f * math.Pow10(-m.dec) * q
+	}
+	return spend
+}
+
 func nativeRow(ctx context.Context, httpc *http.Client, t evmTerminal, hash string, gas map[string]float64, now int64) *Swap {
 	c := chainByID(0)
 	for i := range originChains {
@@ -1150,6 +1186,20 @@ func nativeRow(ctx context.Context, httpc *http.Client, t evmTerminal, hash stri
 		// Buy: given = native value or quote ERC20 from the user, plus
 		// gas; the fixed tip inside the value is network cost.
 		given := value + quoteIn
+		// On a Pump Bridge row the trade is paid by the router, out of its own
+		// liquidity, so the router's own stable spend IS what went in. Reading
+		// it from "the user" instead counted pump's executor as the user and
+		// summed every quote leg it touches on the way to the pool: on
+		// 0x2ccb…59c2 (Robinhood) the router spent 64.223432 USDG once, and the
+		// executor's USDG to the pool plus its WETH unwrap for the v4 leg read
+		// as 128.47 given, a 5,021 bps "terminal fee". 15 of 57 pump-bridge
+		// swaps sat out_of_bounds at about 5,000 bps this way (2026-10-23), and
+		// the ones that read fine were fine only because they had one leg.
+		if pumpBridgeRow(t.Slug) {
+			if spend := pumpRouterSpendUSD(ctx, httpc, *c, t.Routers, rc.Logs, valueWei, gas); spend > 0 {
+				given = value + spend
+			}
+		}
 		if given <= 0 {
 			return &Swap{Flag: "unpriced_no_quote_in"}
 		}
