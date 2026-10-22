@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { canonicalize } from "./providers";
 import { perpProductSlug } from "./perp-product-slug";
 import { PERP_VENUES } from "./perp-stats";
 import { PERP_VENUE_META } from "./perp-venue-context";
@@ -36,24 +37,40 @@ describe("a cohort venue has exactly one product page", () => {
   // provider slug, and therefore generates its own product page, must redirect
   // to the canonical one. Nova is that case, which is how the duplicate was
   // found, so it is named rather than derived.
-  const MUST_REDIRECT: Record<string, string> = { nova: "nova-markets" };
+  const MUST_COLLAPSE: Record<string, string> = { nova: "nova-markets" };
 
-  test("a cohort slug that would generate its own page redirects", () => {
-    for (const [from, to] of Object.entries(MUST_REDIRECT)) {
+  test("a cohort slug that would generate its own page collapses onto the canonical one", () => {
+    // This asserted a hardcoded `slug === "nova"` redirect in the product
+    // route, which was the wrong thing to pin: it tested the mechanism I had
+    // reached for rather than the property that matters. The repo already has
+    // the right mechanism, PRODUCT_ALIASES, and it does strictly more. The
+    // redirect moved the URL and left the bench appearances attached to a
+    // slug with no page, so /products/nova-markets listed bench 030 and none
+    // of 041, 116 or 295. canonicalize is what moves those.
+    for (const [from, to] of Object.entries(MUST_COLLAPSE)) {
       expect(
-        PRODUCT_PAGE.includes(`slug === "${from}"`),
-        `/products/${from} does not redirect, so it answers 200 beside /products/${to}`,
-      ).toBe(true);
-      expect(PRODUCT_PAGE).toContain(`permanentRedirect("/products/${to}")`);
-      // Both call sites, or the metadata-only redirect leaves a cached 404
-      // behind. The file's own comment records that happening (merkle).
-      const sites = PRODUCT_PAGE.split(`slug === "${from}"`).length - 1;
-      expect(sites, `${from} is redirected in ${sites} place(s), want 2`).toBe(2);
-    }
-    // And the map has to agree with the redirect target.
-    for (const [from, to] of Object.entries(MUST_REDIRECT)) {
+        canonicalize(from).slug,
+        `/products/${from} must resolve to ${to}, or it is a second page and its bench rows are stranded`,
+      ).toBe(to);
+      // The canonical slug has to be a fixed point, or the redirect loops.
+      expect(canonicalize(to).slug).toBe(to);
+      // And the hub link must agree with where the page actually lives.
       expect(perpProductSlug(from)).toBe(to);
     }
+  });
+
+  test("the route still turns a non-canonical slug into a 308, in both places", () => {
+    // Generic, not Nova-specific: getProvider resolves the alias and the
+    // route 308s to the canonical slug. It has to happen in generateMetadata
+    // AND the component, because a metadata-only redirect left a cached 404
+    // behind once (merkle, recorded in that file).
+    // Matched on the shared comparison rather than a variable name: the two
+    // call sites hold the resolved provider in differently named variables
+    // (`resolved` in generateMetadata, `p` in the component).
+    const sites = (
+      PRODUCT_PAGE.match(/\.slug\.toLowerCase\(\) !== slug\.toLowerCase\(\)/g) ?? []
+    ).length;
+    expect(sites, `the alias redirect appears in ${sites} place(s), want 2`).toBe(2);
   });
 
   test("perpProductSlug and PERP_VENUE_META cannot disagree", () => {
