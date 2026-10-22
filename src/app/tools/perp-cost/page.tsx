@@ -8,7 +8,7 @@ import { SITE } from "@/data/site";
 
 const TITLE = "Perp leverage cost: fees, spread and liquidation";
 const DESCRIPTION =
-  "What ten perp venues take from the same leveraged trade: taker fee, half the quoted spread, and the move where a fee on the gain beats one on notional.";
+  "What each perp venue takes from the same leveraged trade: taker fee, half the quoted spread, and the move where a fee on the gain beats one on notional.";
 
 export const metadata: Metadata = pageMetadata({
   path: "/tools/perp-cost",
@@ -54,7 +54,7 @@ export default function PerpCostToolPage() {
         What a leveraged trade actually costs you
       </h1>
       <p className="mt-4 max-w-2xl text-base leading-snug text-ink-soft">
-        Nine of the ten products below charge a share of your <em>notional</em>, twice, whether you
+        Eleven of the twelve products below charge a share of your <em>notional</em>, twice, whether you
         win or lose. Papertrade charges a share of your <em>gain</em>, once, and nothing if there is
         no gain. No single fee rate can hold both, so this computes what each one takes from the
         same trade. Drag the price move: the order changes, and where it changes is the answer.
@@ -123,6 +123,22 @@ export default function PerpCostToolPage() {
           room shown subtracts both fee legs from it. On the degen pairs the 80% threshold models a
           room of 0.1200% at 500x, which is the figure the table renders; eleven real liquidations
           fired at a median 59.4% of collateral instead, which works out at 0.1189%.
+        </p>
+
+        <p className="mb-3">
+          <strong className="font-semibold text-ink">Nova</strong>, Arbitrum diamond{" "}
+          <code className="font-mono text-xs">0x1410FA3F…34f3</code>: the same five reads on a
+          deployment of the same gTrade contract, so the thresholds, the leverage bounds and the
+          pair indices are identical to Gains and only the pricing differs. Its standard pair reads
+          a <strong className="font-semibold text-ink">0.0500% taker a leg and no spread at all</strong>,
+          against Gains&apos; 0.0350% with a 0.0100% spread, which is 5.0 bps a leg against 4.0 once
+          the half-spread is counted on both sides. Word 7 of{" "}
+          <code className="font-mono text-xs">pairs()</code> is the pair spread at 1e10 and reads
+          zero on Nova, so the row carries zero rather than Gains&apos; value: copying the
+          neighbouring figure would have put Nova at 5.5 bps and looked right beside the identical
+          thresholds. The x500 degen pairs are the same product on both, 0.0200% a leg at a flat 80%
+          threshold, which is why that row says so. Read on 2026-10-22, a day after the rest of this
+          page, and both Nova rows carry that date beside their provenance tag.
         </p>
 
         <p className="mb-3">
