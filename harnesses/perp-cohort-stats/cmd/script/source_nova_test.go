@@ -112,6 +112,38 @@ func TestOpenInterestIsZeroNotRefusedWhenNothingIsOpen(t *testing.T) {
 	}
 }
 
+// perp_venue_health is the share of a venue's metrics that resolved this tick,
+// and the denominator is every metric whose priorityMap is non-empty. So
+// naming a source that can never answer costs a venue health points for a
+// figure it was never able to publish: Nova shipped at 3/4 = 75% because the
+// mFees30d fall-through named DefiLlama, where Nova has no page at all. The
+// site reads that gauge as the row's success rate, so it reads as a
+// reliability problem on both benches. The volume_30d exemption in adapter.go
+// exists for the same reason.
+func TestNovaDeclaresNoSourceThatCannotAnswer(t *testing.T) {
+	// The three Nova can actually produce, from its own backend.
+	for _, metric := range []string{mVolume24h, mOI, mActiveMarkets} {
+		prio := priorityMap("nova", metric)
+		if len(prio) == 0 {
+			t.Errorf("%s: no source, so the figure is never published", metric)
+			continue
+		}
+		for _, src := range prio {
+			if src != srcNovaNative {
+				t.Errorf("%s: names %q; Nova is on no DefiLlama page and has no other feed",
+					metric, src)
+			}
+		}
+	}
+	// Everything else must be silent rather than pointing at a dead source.
+	for _, metric := range []string{mVolume30d, mFees30d, mTopVol24h, mTVL} {
+		if prio := priorityMap("nova", metric); len(prio) != 0 {
+			t.Errorf("%s: names %v, which counts toward health for a figure Nova cannot publish",
+				metric, prio)
+		}
+	}
+}
+
 // TestGtradeSourcesLive hits both deployments for real and asserts the figures,
 // not just that the calls returned. Off by default so the suite stays hermetic;
 // run it with OCB_LIVE=1 when a backend's shape may have moved, which is the

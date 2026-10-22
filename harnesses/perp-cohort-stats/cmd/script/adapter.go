@@ -319,6 +319,15 @@ func priorityMap(venue, metric string) []string {
 			// native archive (cumulative_taker_fees + cumulative_maker_fees
 			// diffed across 31 daily granules) is primary.
 			return []string{srcVertexNative, srcDefillama}
+		case "nova":
+			// Nova is on no DefiLlama page at all, so the fall-through below
+			// would name a source that can never answer. That is not free:
+			// a metric with a non-empty priority counts toward
+			// perp_venue_health, so it published Nova at 3/4 = 75% while
+			// every figure Nova can produce resolved on every tick. Same
+			// reasoning as the volume_30d exemption documented below, except
+			// here there is no source to attempt rather than one we hope for.
+			return nil
 		}
 		return []string{srcDefillama}
 	case mActiveMarkets:
