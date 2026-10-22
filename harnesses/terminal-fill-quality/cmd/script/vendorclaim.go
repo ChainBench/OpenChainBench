@@ -125,7 +125,7 @@ func loadVendorAB() {
 			Set(100 * byLaneErr[lane] / n)
 	}
 	log.Printf("[vendor-ab] pump.fun export recomputed: bridge %.3f%% vs relay %.3f%% over both directions, from %.0f trades",
-		100*byLaneErr["bridge"]/byLane["bridge"],
+		100*byLaneErr["pump-bridge"]/byLane["pump-bridge"],
 		100*byLaneErr["relay"]/byLane["relay"],
-		byLane["bridge"]+byLane["relay"])
+		byLane["pump-bridge"]+byLane["relay"])
 }

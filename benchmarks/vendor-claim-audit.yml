@@ -4,8 +4,8 @@ slug: vendor-claim-audit
 number: "306"
 title: "Cross-chain trade error rate by route and direction"
 seo_title: "Cross-chain trade error rate: Pump Bridge and Relay"
-seo_description: "Share of cross-chain trades that error, for Pump Bridge and Relay, from a published randomised test of 416,669 trades. Split by direction: 12.90x apart on buys, 1.42x on sells."
-subtitle: Share of cross-chain trades that end in an error, for Pump Bridge and Relay, computed from a published randomised test of 416,669 trades and split by direction.
+seo_description: "Share of cross-chain trades that error, for Pump Bridge and Relay, from a published A/B test of 416,669 trades. Read per direction: 12.90x apart on buys, 1.42x on sells, and the sell arms are not balanced."
+subtitle: "Share of cross-chain trades that end in an error, for Pump Bridge and Relay, from a published A/B test of 416,669 trades. Read per direction, because the buy arms are balanced and the sell arms are not."
 
 category: Bridges
 status: live
@@ -14,10 +14,10 @@ unit: pct
 higher_is_better: false
 
 disclaimer: |
-  Not our measurement. These figures come from a randomised test pump.fun ran and published on 2026-10-21, over a window that ended on 2026-10-07 and does not move. The counts are in this repository with the SHA256 of the original file, so the arithmetic can be redone without trusting this page. Our own continuous on-chain measurements of these providers are on bench 268 (cost per swap) and bench 003 (bridge cost across eight providers).
+  Not our measurement. These figures come from an A/B test pump.fun ran and published on 2026-10-21, over a window that ended on 2026-10-07 and does not move. The counts are in this repository with the SHA256 of the original file, so the arithmetic can be redone without trusting this page. Our own continuous on-chain measurements of these providers are on bench 268 (cost per swap) and bench 003 (bridge cost across eight providers).
 
 seo_intro: |
-  pump.fun ran a randomised test assigning users to its own bridge or to Relay
+  pump.fun ran an A/B test assigning users to its own bridge or to Relay
   for cross-chain trades, and published the 416,669 outcomes on 2026-10-21.
   This page computes the error rate from those rows, per direction.
 
@@ -32,7 +32,7 @@ seo_intro: |
   does, so all three are published.
 
 abstract: |
-  416,669 trade outcomes from a randomised test that ran from 2026-09-28 to
+  416,669 trade outcomes from an A/B test that ran from 2026-09-28 to
   2026-10-07, assigning users to Pump Bridge or Relay for cross-chain trades on
   Robinhood Chain, BSC, Base, Arc and Ink. This page computes the error rate
   from those rows per direction and publishes the counts beside every rate.
@@ -44,15 +44,16 @@ methodology:
   - "Source: the export pump.fun published on 2026-10-21. 416,669 rows, each a trade outcome with its chain, lane (bridge or relay), direction, outcome and error class. Window 2026-09-28T16 to 2026-10-07T20 UTC."
   - "Reduction: the 20 MB export is carried in this repository as 58 counts, one per chain, lane, direction, outcome and error class, which is lossless for any rate computed from it. The header holds the SHA256 of the original so the digest can be tied back to what pump published."
   - "Error rate: trades whose outcome is not success, over all trades in that cell. No weighting, no exclusion, no window of our own."
+  - "The combined figure mixes composition with lane and should not be quoted alone: the bridge is 57.1 % buys and Relay 43.4 %, and both error far more on sells, so part of the 2.95x is the different mix rather than the route. Standardised to one mix it is 2.61x. Standardising does not repair it either, because the mix difference is itself the assignment failure."
   - "Direction: buys and sells are published apart and together, because the gap between the two providers depends on which is quoted. All three come from the same arithmetic over the same file."
-  - "Arm balance: the two lanes are matched to 0.6 % on buys (103,089 against 102,513) but not on sells, where the bridge carries 77,593 against Relay's 133,474. That weakens the comparison in both directions and is published as the row counts rather than argued about."
+  - "The sell arms are NOT balanced, and that is a property of the test, not of the bridge: the buy arms match to 0.6 % (103,089 against 102,513) while the bridge carries 77,593 sells against Relay's 133,474. The bridge runs 0.75 sells per buy and Relay 1.30, a gap of 1.73x that user-level randomisation cannot produce. The buy comparison stands; the sell comparison is between two differently composed groups."
   - "Not live: the export is finished. These gauges are loaded once at startup, because a figure that cannot move should not sit on a dashboard pretending to."
   - "Not our measurement: this page restates a published test. What OpenChainBench measures itself, continuously and on chain, is the cost per swap on bench 268 and the cost of eight bridge providers on bench 003."
 
 findings:
   - "On buys, 0.869 % of Pump Bridge trades error against 11.214 % of Relay's, a ratio of 12.90x."
   - "On sells the two are close: 7.378 % against 10.511 %, a ratio of 1.42x."
-  - "Over both directions the rate is 3.664 % against 10.817 %, a ratio of 2.95x. Pump Bridge errors 8.5 times more often on a sell than on a buy, almost all of it bridge_execute_failed."
+  - "Pump Bridge errors 8.5 times more often on a sell than on a buy, almost all of it bridge_execute_failed. Over both directions the crude rate is 3.664 % against 10.817 %, 2.95x, but that figure mixes the two lanes' different direction mixes with the lanes themselves and is 2.61x once standardised."
   - "The arms are matched to 0.6 % on buys and not on sells, where the bridge carries 77,593 trades against Relay's 133,474."
 
 faq:
@@ -69,7 +70,7 @@ prometheus:
   window: 24h
   freshness_metric: tfq_vendor_ab_error_rate_pct
 
-panel_main_description: "Share of cross-chain trades that errored, from a published randomised test. The direction tabs change the size of the gap: it is widest on buys, narrowest on sells."
+panel_main_description: "Share of cross-chain trades that errored, from a published A/B test. Use the direction tabs: the buy arms are balanced and the sell arms are not, so the two directions are not equally comparable."
 
 dimensions:
   kind:
