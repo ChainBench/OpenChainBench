@@ -1596,12 +1596,14 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   },
   fomo: {
     url: "https://fomo.family",
+    referralUrl: "https://fomo.family/r/FlorentTppnr",
     description:
       "FOMO is a multi-chain trading app (Solana, Base, BNB Chain, and more) for memecoins and perps. It provides social copy-trading, onchain signals, and routes swaps through pump.fun, Raydium, and other DEX pools.",
     twitter: "@tryfomo",
   },
   "pump-fun": {
     url: "https://pump.fun",
+    referralUrl: "https://pump.fun/u/SweetNearSlicer",
     description:
       "pump.fun is the leading Solana memecoin launchpad. Tokens start on a bonding curve and graduate to PumpSwap (pump.fun's native AMM, launched March 2025) when the curve completes.",
     twitter: "@pumpdotfun",
@@ -3484,8 +3486,8 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   pons: { url: "https://ponsfamily.com" },
   "pons-family": { url: "https://ponsfamily.com" },
   "pulsechain-official": { url: "https://pulsechain.com" },
-  pump: { url: "https://pump.fun" },
-  pumpfun: { url: "https://pump.fun" },
+  pump: { url: "https://pump.fun", referralUrl: "https://pump.fun/u/SweetNearSlicer" },
+  pumpfun: { url: "https://pump.fun", referralUrl: "https://pump.fun/u/SweetNearSlicer" },
   quickswap: { url: "https://quickswap.exchange" },
 };
 
