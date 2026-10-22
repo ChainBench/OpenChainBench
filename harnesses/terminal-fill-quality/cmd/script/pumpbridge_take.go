@@ -61,7 +61,7 @@ var (
 	}, []string{"chain"})
 	gSettleMs = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "tfq_settle_ms",
-		Help: "Cross-chain settlement time per route, milliseconds: the Solana deposit to the destination spend that consumed it, matched by the amount the fee schedule implies. RESOLUTION IS ONE SECOND, so values are multiples of 1000: both ends are block timestamps in whole seconds and intra-second block ordering is not used to refine them. Stalls past 60 s are excluded (counted in tfq_pump_bridge_stall_total) because a handful of them move a mean by more than an order of magnitude. stat=median|p90|mean. READ THE MEAN to compare routes: at one-second resolution a sample is 0, 1, 2 or 3 seconds, so a median can only take one of four values and two different routes sharing one carries no information. The mean is stall-free because anything past 60 s never enters the window",
+		Help: "Cross-chain settlement time per route, milliseconds: the Solana deposit to the destination spend that consumed it, matched by the amount the fee schedule implies. RESOLUTION IS ONE SECOND, so values are multiples of 1000: both ends are block timestamps in whole seconds and intra-second block ordering is not used to refine them. Stalls past 60 s are excluded (counted in tfq_pump_bridge_stall_total) because a handful of them move a mean by more than an order of magnitude. stat=median|p90|mean|over10s_pct, the last being the share of settlements slower than ten seconds, published because a mean still carries everything under 60 s and two routes can differ on their tail rather than their typical speed. READ THE MEAN to compare routes: at one-second resolution a sample is 0, 1, 2 or 3 seconds, so a median can only take one of four values and two different routes sharing one carries no information. The mean is stall-free because anything past 60 s never enters the window",
 	}, []string{"terminal", "chain", "stat"})
 	cPumpStall = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "tfq_pump_bridge_stall_total",
@@ -679,12 +679,39 @@ func noteSettle(terminal, chain string, took float64) {
 		gSettleMs.WithLabelValues(terminal, c, "median").Set(quantileOf(v, 0.5) * 1000)
 		gSettleMs.WithLabelValues(terminal, c, "p90").Set(quantileOf(v, 0.9) * 1000)
 		gSettleMs.WithLabelValues(terminal, c, "mean").Set(meanOf(v) * 1000)
+		gSettleMs.WithLabelValues(terminal, c, "over10s_pct").Set(shareOver(v, 10))
 	}
 	if len(all) >= pumpSettleMin {
 		gSettleMs.WithLabelValues(terminal, "all", "median").Set(quantileOf(all, 0.5) * 1000)
 		gSettleMs.WithLabelValues(terminal, "all", "p90").Set(quantileOf(all, 0.9) * 1000)
 		gSettleMs.WithLabelValues(terminal, "all", "mean").Set(meanOf(all) * 1000)
+		gSettleMs.WithLabelValues(terminal, "all", "over10s_pct").Set(shareOver(all, 10))
 	}
+}
+
+// shareOver: the percentage of settlements slower than `sec` seconds.
+//
+// Published beside the mean because "stall-free" only removes samples past
+// 60 s, and anything from 10 to 60 s still pulls a mean hard: 96 settlements
+// at 1 s with 4 at 59 s average 3.3 s against a 1 s median. Without this, two
+// routes' means can differ because of a handful of slow ones and nothing on
+// the page would say so.
+//
+// Deliberately NOT a trimmed mean, which was the alternative: discarding the
+// slow settlements would hide exactly the behaviour a bridge comparison
+// should surface. The tail belongs in the figure; what was missing is a way
+// to see how much of the figure is tail.
+func shareOver(v []float64, sec float64) float64 {
+	if len(v) == 0 {
+		return 0
+	}
+	n := 0
+	for _, x := range v {
+		if x > sec {
+			n++
+		}
+	}
+	return 100 * float64(n) / float64(len(v))
 }
 
 // meanOf: the arithmetic mean, which is the only one of the three statistics
