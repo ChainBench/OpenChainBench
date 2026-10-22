@@ -1113,6 +1113,15 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "Free 100,000 responses a day (no eth_getLogs, no trace), Developer $49 for 25M, Growth $299 for 150M, Scale $999 for 500M, overage $5, $3 and $2 per million. Unlimited Nodes from $119 a month for 25 RPS.",
     docs: "https://www.dwellir.com/docs",
   },
+  blockmachine: {
+    url: "https://blockmachine.io",
+    description:
+      "RPC gateway built on Bittensor Subnet 19: independent node operators compete to serve each request and a validator layer checks responses against reference nodes. Eleven chains (Ethereum, Arbitrum, Base, BNB Chain, Optimism, Polygon, Scroll, Mantle, Arc, Robinhood Chain, Bittensor), one Request Unit budget shared across them, and only successful responses are billed.",
+    twitter: "@blockmachine_io",
+    pricing:
+      "Free 10,000 Request Units a month with a key, plus a keyless endpoint at 60 RU a minute per IP. Standard $9 for 5M, Pro $25 for 20M, Business $125 for 100M, Business Plus $499 for 500M, Enterprise $999 for 1B, overage $5 down to $1 per million. 1 RU per call on most methods, archive included; 25 to 50 RU for debug and trace.",
+    docs: "https://blockmachine.io/docs",
+  },
   "monad-official": {
     url: "https://docs.monad.xyz",
     description:

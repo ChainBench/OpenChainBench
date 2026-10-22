@@ -193,6 +193,10 @@ const RAW: Record<string, string> = {
   ondo: "/logos/ondo-perps.svg",
   onfinality: "/logos/onfinality.png",
   dwellir: "/logos/dwellir.png",
+  // Blockmachine, bench 282 and 283 from 2026-10-22. The 92 px JPG the team
+  // sent: a black cube glyph on white, so the chip carries its own light
+  // ground in both themes.
+  blockmachine: "/logos/blockmachine.jpg",
   // Bench 282 flat-rate cohort, added 2026-10-16. Shyft and Zeeve are the
   // marks cropped from their own wordmark SVGs (Zeeve on white, its dark
   // dot vanishes on the dark theme); Allnodes is its own app icon.
