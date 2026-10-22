@@ -47,7 +47,7 @@ var (
 )
 
 func init() {
-	prometheus.MustRegister(gPumpBridgeUp, cPumpBridgeDeposits, hPumpBridgeDeposit)
+	prometheus.MustRegister(gPumpBridgeUp, cPumpBridgeDeposits, hPumpBridgeDeposit, gPumpBridgeBehind)
 }
 
 // pumpBridgeFeed walks the bridge program forward from where it stopped.
@@ -58,7 +58,17 @@ type pumpBridgeFeed struct {
 // pumpBridgePageSize caps one pass. The program runs roughly 25,000 signatures
 // a day, so a 60 second tick sees about 17; 200 leaves room for a slow tick or
 // a burst without ever walking the whole history.
-const pumpBridgePageSize = 200
+const pumpBridgePageSize = 400
+
+// pumpBridgeFull: a pass that comes back full means the page was the limit,
+// not the chain, so deposits older than it were skipped and the cursor moved
+// past them anyway. Published because that loss is otherwise invisible: the
+// pairing read 580 spends against a window missing most of its deposits and
+// reported "no deposit found" 580 times, which looks like the method failing.
+var gPumpBridgeBehind = prometheus.NewGauge(prometheus.GaugeOpts{
+	Name: "tfq_pump_bridge_feed_behind",
+	Help: "1 when the last deposit pass filled its page, meaning the program produced more signatures than one pass reads and some deposits were skipped. The pairing cannot find what the feed never saw, so this is the first thing to check when pairs go to zero",
+})
 
 // poll reads what arrived since the last pass and publishes the deposits in it.
 //
@@ -123,6 +133,13 @@ func (f *pumpBridgeFeed) poll(ctx context.Context, rpc *rpcClient) {
 		}
 	}
 	f.cursor = newest
+	// A full page is the signal that the chain outran this pass.
+	if len(sigs) >= pumpBridgePageSize {
+		gPumpBridgeBehind.Set(1)
+		log.Printf("[pump-bridge] page full (%d): the program is producing faster than one pass reads, deposits were skipped", len(sigs))
+	} else {
+		gPumpBridgeBehind.Set(0)
+	}
 	if deposits > 0 {
 		log.Printf("[pump-bridge] %d deposits in %d transactions", deposits, scanned)
 	}
