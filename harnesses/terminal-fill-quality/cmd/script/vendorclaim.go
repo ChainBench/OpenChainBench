@@ -128,4 +128,5 @@ func loadVendorAB() {
 		100*byLaneErr["pump-bridge"]/byLane["pump-bridge"],
 		100*byLaneErr["relay"]/byLane["relay"],
 		byLane["pump-bridge"]+byLane["relay"])
+	loadVendorABPeriods()
 }

@@ -44,6 +44,8 @@ methodology:
   - "Source: the export pump.fun published on 2026-10-21. 416,669 rows, each a trade outcome with its chain, lane (bridge or relay), direction, outcome and error class. Window 2026-09-28T16 to 2026-10-07T20 UTC."
   - "Reduction: the 20 MB export is carried in this repository as 58 counts, one per chain, lane, direction, outcome and error class, which is lossless for any rate computed from it. The header holds the SHA256 of the original so the digest can be tied back to what pump published."
   - "Error rate: trades whose outcome is not success, over all trades in that cell. No weighting, no exclusion, no window of our own."
+  - "Over time: the same counts are also carried per UTC day (517 cells, same SHA256; summed over the day they give the 58 above exactly). The export covers two days only in part, 2026-09-28 (8 hours, from 16:00) and 2026-10-07 (21 hours, to 20:00), and both are left out of the per-period figures, so those figures sum to fewer trades than the file: 8 whole days, 2026-09-29 to 2026-10-06. Reading a part day beside whole ones would show a level change that is only the window length."
+  - "The comparison did not hold still during the test. On the first whole day the bridge's sell error rate was level with Relay's, 11.78 % against 12.05 %; over the last three whole days it was 5.16 % against 9.88 %, 1.9x lower. Buys barely moved (bridge 0.97 % then 0.79 %, Relay 13.94 % then 12.80 %). The window figures above are averages over a relationship that changed while it was being measured."
   - "The combined figure mixes composition with lane and should not be quoted alone: the bridge is 57.1 % buys and Relay 43.4 %, and both error far more on sells, so part of the 2.95x is the different mix rather than the route. Standardised to one mix it is 2.61x. Standardising does not repair it either, because the mix difference is itself the assignment failure."
   - "Direction: buys and sells are published apart and together, because the gap between the two providers depends on which is quoted. All three come from the same arithmetic over the same file."
   - "The sell arms are NOT balanced, and that is a property of the test, not of the bridge: the buy arms match to 0.6 % (103,089 against 102,513) while the bridge carries 77,593 sells against Relay's 133,474. The bridge runs 0.75 sells per buy and Relay 1.30, a gap of 1.73x that user-level randomisation cannot produce. The buy comparison stands; the sell comparison is between two differently composed groups."
@@ -55,6 +57,7 @@ findings:
   - "On sells the two are close: 7.378 % against 10.511 %, a ratio of 1.42x."
   - "Pump Bridge errors 8.5 times more often on a sell than on a buy, almost all of it bridge_execute_failed. Over both directions the crude rate is 3.664 % against 10.817 %, 2.95x, but that figure mixes the two lanes' different direction mixes with the lanes themselves and is 2.61x once standardised."
   - "The arms are matched to 0.6 % on buys and not on sells, where the bridge carries 77,593 trades against Relay's 133,474."
+  - "On sells the gap opened during the test: level on the first whole day (11.78 % against 12.05 %), 1.9x apart over the last three (5.16 % against 9.88 %), so the published 7.378 % describes an average over a relationship that did not hold still."
 
 faq:
   - q: "Is this OpenChainBench's own measurement?"
@@ -105,3 +108,19 @@ metric_panels:
     unit: count
     higher_is_better: true
     description: "How many trades each route carries. Published beside every rate because the two arms are matched to 0.6 % on buys and not on sells, where the bridge carries 77,593 against Relay's 133,474."
+
+  - id: first_day
+    label: Error rate, first whole day
+    label_key: lane
+    metric: tfq_vendor_ab_period_error_rate_pct{vendor="pump-fun",period="first_full_day"}
+    unit: pct
+    higher_is_better: false
+    description: "Error rate on 2026-09-29, the export's first whole UTC day, for the direction selected above. On sells the two routes were level that day."
+
+  - id: last_days
+    label: Error rate, last three whole days
+    label_key: lane
+    metric: tfq_vendor_ab_period_error_rate_pct{vendor="pump-fun",period="last_3_full_days"}
+    unit: pct
+    higher_is_better: false
+    description: "Error rate over 2026-10-04 to 2026-10-06, the export's last three whole UTC days, for the direction selected above. Compare with the first whole day: the sell gap opened during the test."
