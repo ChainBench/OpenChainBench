@@ -1522,6 +1522,20 @@ func compute(st *State, minPriced, minRank int) []TerminalStats {
 		// A native EVM row whose sample is one side only with no fee on it
 		// (Banana Gun's Ethereum buys) reads a fee-free half of the product:
 		// the fee sits on the side the feed never sees, the row waits.
+		// A Pump Bridge row measures the destination swap, and only that: the
+		// bridge deducts 0.05 plus 40 or 45 bps on the Solana deposit before the
+		// router spends anything, so value given here is the router's spend
+		// (9.905 of a $10 deposit) rather than what the user paid.
+		//
+		// Publishing it understates the loss by 95 bps at $10 and 545 at $1,
+		// under a column that promises all costs included, and puts it beside
+		// FOMO on the same chain tab, whose own bridge take IS counted as relay.
+		// The table then reads pump as cheaper than FOMO while it is dearer.
+		if pumpBridgeRow(t.Slug) && ts.Priced > 0 {
+			ts.Healthy, ts.Ranked = false, false
+			heldStructural[t.Slug] = true
+			ts.Note = strings.TrimSpace(ts.Note + " The bridge's own take is deducted on the Solana deposit, which this row never sees, so its loss would leave out a cost the other rows on this chain include: held until the deposit can be paired to the router's spend.")
+		}
 		if isNativeEVM(t.Slug) && ts.Parsed >= 20 && (ts.BuySharePct >= 99 || ts.BuySharePct <= 1) && ts.Components["terminal"] < 5 {
 			ts.Healthy, ts.Ranked = false, false
 			heldStructural[t.Slug] = true
