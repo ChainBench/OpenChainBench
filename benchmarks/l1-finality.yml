@@ -232,7 +232,14 @@ providers:
       mean: avg_over_time(l1_finality_wallclock_lag_milliseconds{chain="solana"}[24h])
       success: avg_over_time(l1_finality_wallclock_health{chain="solana"}[24h])
       sample_size: increase(l1_finality_wallclock_samples_total{chain="solana"}[24h])
-      series: l1_finality_wallclock_lag_milliseconds{chain="solana"}
+      # The chart stitches the two methods. The wall-clock metric starts
+      # 2026-10-22 ~15:30 UTC; before it, the getBlockTime method (seconds,
+      # x1000) is kept up to 2026-10-21 13:50 UTC (1792590600), the last
+      # slot before Alpenglow took over (6.6 s at 13:50, 2.85 s at 14:00,
+      # ~0.2 s after). The day in between stays empty: that method read 0
+      # or 1 s there, which is not a measurement. `* 1` drops __name__ so
+      # both halves form one series.
+      series: (l1_finality_wallclock_lag_milliseconds{chain="solana"} * 1) or ((l1_finality_lag_seconds{chain="solana"} * 1000) and on() (vector(time()) < 1792590600))
 
   - slug: tron
     name: TRON
