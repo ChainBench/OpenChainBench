@@ -302,15 +302,25 @@ func pumpNoteDeposit(at int64, amount float64) {
 // the same round amount in the same minute is common, and picking one would
 // invent a latency. The share of spends that pair uniquely is published beside
 // the latency so the base is visible.
-func pumpFindDeposit(want float64, spentAt int64, maxLag int64) (pumpDep, string) {
+// pumpFindDeposit returns the match and, as inRange, how many deposits were in
+// the lag range at all.
+//
+// inRange is what separates a miss from a blind spot. The window is in memory,
+// ages out at 30 minutes and starts EMPTY after every restart, so a search
+// against an empty range could not have succeeded whatever the bridge did.
+// Without this, that case is counted as "none" beside genuine misses and a
+// failure rate built on it would publish our own restarts as pump's
+// reliability.
+func pumpFindDeposit(want float64, spentAt int64, maxLag int64) (pumpDep, string, int) {
 	pumpDepWindow.Lock()
 	defer pumpDepWindow.Unlock()
 	var hit pumpDep
-	n := 0
+	n, inRange := 0, 0
 	for _, d := range pumpDepWindow.seen {
 		if d.at > spentAt || spentAt-d.at > maxLag {
 			continue
 		}
+		inRange++
 		// Exact to the token's precision: these are integer amounts read from
 		// the chain on both sides, so a near miss is a different deposit.
 		if math.Abs(d.amount-want) > 1e-6 {
@@ -322,12 +332,12 @@ func pumpFindDeposit(want float64, spentAt int64, maxLag int64) (pumpDep, string
 			// its own outcome, not folded into "none": the two call for
 			// opposite fixes, a shorter window against a longer one, and
 			// conflating them hides which.
-			return pumpDep{}, "ambiguous"
+			return pumpDep{}, "ambiguous", inRange
 		}
 		hit = d
 	}
 	if n == 1 {
-		return hit, "unique"
+		return hit, "unique", inRange
 	}
-	return pumpDep{}, "none"
+	return pumpDep{}, "none", inRange
 }
