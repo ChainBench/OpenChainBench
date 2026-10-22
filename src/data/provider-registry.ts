@@ -75,6 +75,15 @@ export type ProviderRegistryEntry = {
    */
   description?: string;
   twitter?: string;
+  /**
+   * A referral link the provider gave us, used ONLY as the href of the
+   * product page's outbound link. `url` stays the canonical address shown
+   * as the link text and served in the API, citations and structured data,
+   * the same rule utm.ts follows for the utm tag. The rendered href still
+   * goes through withUtm, so it carries both the provider's referral code
+   * and our utm_source. Rendered with rel="sponsored".
+   */
+  referralUrl?: string;
 
   // Optional rich content surfaced on the product detail page when present.
   // Every field is independently optional; the page renders only the
@@ -3497,6 +3506,7 @@ export function getProviderRegistry(slug: string): ProviderRegistryEntry | undef
   return {
     ...entry,
     url: safeRegistryURL(entry.url) ?? "",
+    referralUrl: safeRegistryURL(entry.referralUrl),
     docs: safeRegistryURL(entry.docs),
     github: safeRegistryURL(entry.github),
     blog: safeRegistryURL(entry.blog),
