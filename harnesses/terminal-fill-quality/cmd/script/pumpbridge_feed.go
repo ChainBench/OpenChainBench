@@ -197,7 +197,7 @@ func pumpNoteDeposit(at int64, amount float64) {
 // the same round amount in the same minute is common, and picking one would
 // invent a latency. The share of spends that pair uniquely is published beside
 // the latency so the base is visible.
-func pumpFindDeposit(want float64, spentAt int64, maxLag int64) (pumpDep, bool) {
+func pumpFindDeposit(want float64, spentAt int64, maxLag int64) (pumpDep, string) {
 	pumpDepWindow.Lock()
 	defer pumpDepWindow.Unlock()
 	var hit pumpDep
@@ -213,9 +213,16 @@ func pumpFindDeposit(want float64, spentAt int64, maxLag int64) (pumpDep, bool) 
 		}
 		n++
 		if n > 1 {
-			return pumpDep{}, false
+			// Several users sent the same amount in the window. Reported as
+			// its own outcome, not folded into "none": the two call for
+			// opposite fixes, a shorter window against a longer one, and
+			// conflating them hides which.
+			return pumpDep{}, "ambiguous"
 		}
 		hit = d
 	}
-	return hit, n == 1
+	if n == 1 {
+		return hit, "unique"
+	}
+	return pumpDep{}, "none"
 }

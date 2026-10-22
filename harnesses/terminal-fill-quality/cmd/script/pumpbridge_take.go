@@ -564,15 +564,15 @@ func pumpPairSpend(ctx context.Context, httpc *http.Client, c originChain, r pum
 		return
 	}
 	want := (sf + pumpFixed(r.chain)) / (1 - pumpChainRate(r.chain))
-	dep, ok := pumpFindDeposit(want, at, pumpSettleMaxLag)
-	if !ok {
-		// Ambiguity and absence are both "not measured", and the counter does
-		// not pretend to tell them apart here: pumpFindDeposit returns false
-		// for either, and conflating them would still be honest about the base.
-		cPumpPair.WithLabelValues(r.chain, "no").Inc()
+	dep, why := pumpFindDeposit(want, at, pumpSettleMaxLag)
+	cPumpPair.WithLabelValues(r.chain, why).Inc()
+	if why != "unique" {
+		// ambiguous and none are kept apart because they mean opposite things:
+		// ambiguous says the window is too wide for how many users send the
+		// same round amount, none says the deposit is not there at all. One
+		// is tuned away, the other is the method failing.
 		return
 	}
-	cPumpPair.WithLabelValues(r.chain, "unique").Inc()
 	hPumpSettle.WithLabelValues(r.chain).Observe(float64(at - dep.at))
 }
 
