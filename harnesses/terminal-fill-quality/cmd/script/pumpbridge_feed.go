@@ -77,6 +77,7 @@ var gPumpBridgeBehind = prometheus.NewGauge(prometheus.GaugeOpts{
 // because that is the state where a reader must not take a quiet row for a
 // quiet bridge.
 func (f *pumpBridgeFeed) poll(ctx context.Context, rpc *rpcClient) {
+	hadCursor := f.cursor != ""
 	sigs, err := rpc.signatures(ctx, pumpBridgeProgram, pumpBridgePageSize, f.cursor)
 	if err != nil {
 		gPumpBridgeUp.Set(0)
@@ -133,10 +134,15 @@ func (f *pumpBridgeFeed) poll(ctx context.Context, rpc *rpcClient) {
 		}
 	}
 	f.cursor = newest
-	// A full page is the signal that the chain outran this pass.
-	if len(sigs) >= pumpBridgePageSize {
+	// A full page means the chain outran this pass, but ONLY once a cursor
+	// exists: the first pass has none and reads the most recent page by
+	// definition, so it is always full and says nothing. Flagging it anyway
+	// reported the feed as losing ground at every restart, and sent me
+	// enlarging a page that already had 2.6x the headroom it needed (the
+	// program runs about 154 signatures a minute against 400 read).
+	if hadCursor && len(sigs) >= pumpBridgePageSize {
 		gPumpBridgeBehind.Set(1)
-		log.Printf("[pump-bridge] page full (%d): the program is producing faster than one pass reads, deposits were skipped", len(sigs))
+		log.Printf("[pump-bridge] page full (%d) with a cursor set: the program is producing faster than one pass reads, deposits were skipped", len(sigs))
 	} else {
 		gPumpBridgeBehind.Set(0)
 	}
