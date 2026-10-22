@@ -136,7 +136,7 @@ func priceEverything(cat *Catalogue) {
 			// the variant API answers "unknown kind" for kind=dapp, so the
 			// one workload most readers arrive on was the one this gauge
 			// could not be read for.
-			if upr, err := unitsPerRequest(p, pr); err == nil {
+			if upr, err := publishedUnitsPerRequest(p, pr); err == nil {
 				for _, ka := range aliasesFor(pr.ID, headlineKind) {
 					unitsPerReq.WithLabelValues(p.Slug, ka, pr.Chain).Set(upr)
 				}

@@ -677,8 +677,10 @@ providers:
           50,400 CU/min under regional load. Debug/trace API is a Growth feature. 2 s max timeout,
           10,000-log cap, batch <= 3 items, filter methods disabled. Behaviour at the 210M cap is
           UNVERIFIABLE (throttle vs hard stop is published nowhere); hard_stop recorded as the
-          conservative reading. MEASURED 2026-09-29: Solana returns error code 35
-          "chain is not available on free plan" — the free tier is EVM-and-others only.
+          conservative reading. MEASURED 2026-09-29 and again 2026-10-22: Solana returns error
+          code 35 "chain is not available on free plan" — the free tier is EVM-and-others only.
+          This now contradicts dRPC's own plans.mdx (2026-10-20), whose table gives Free "~10M"
+          Solana requests; the measurement is kept until a keyed free account answers on Solana.
       - id: growth
         name: Growth (pay-as-you-go)
         tier: entry

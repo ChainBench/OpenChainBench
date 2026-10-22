@@ -6,11 +6,12 @@ import "sort"
 //
 // The single most robust finding of the pricing audit behind this bench
 // is that there is no "cheapest RPC provider" — the winner changes with
-// the method mix, and it changes by multiples, not percent. Alchemy is
-// half QuickNode's price on eth_blockNumber and three times its price on
-// eth_getLogs. Chainstack charges one flat unit for every method, which
-// makes it uncompetitive on trivial reads and the cheapest option by an
-// order of magnitude on debug_traceTransaction.
+// the method mix, and it changes by multiples, not percent. Per call,
+// Alchemy costs well under half of QuickNode for eth_blockNumber and about
+// two and a half times QuickNode for eth_getLogs. Blockmachine bills 1
+// Request Unit for an ordinary read and 25 to 50 for debug and trace, so it
+// leads the read-heavy profiles and wins no trace cell; Dwellir bills 1
+// credit for everything and leads trace from 100M up.
 //
 // So the bench publishes a cost per workload, never a single number. The
 // mixes below are deliberately boring and defensible: each one is a
