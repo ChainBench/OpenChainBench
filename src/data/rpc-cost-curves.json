@@ -448,13 +448,55 @@
        "plan": "growth"
       },
       {
-       "r": 5000000000,
-       "usd": 30000,
+       "r": 8159475,
+       "usd": 48.96,
        "plan": "growth"
+      },
+      {
+       "r": 8169666,
+       "usd": 49,
+       "plan": "pro-evm"
+      },
+      {
+       "r": 10187500,
+       "usd": 49,
+       "plan": "pro-evm"
+      },
+      {
+       "r": 35183141,
+       "usd": 198.97,
+       "plan": "pro-evm"
+      },
+      {
+       "r": 35220071,
+       "usd": 199,
+       "plan": "scale-evm"
+      },
+      {
+       "r": 47428571,
+       "usd": 199,
+       "plan": "scale-evm"
+      },
+      {
+       "r": 1554653484,
+       "usd": 9242.35,
+       "plan": "scale-evm"
+      },
+      {
+       "r": 1556708008,
+       "usd": null,
+       "why": "plan does not serve ethereum"
+      },
+      {
+       "r": 5000000000,
+       "usd": null,
+       "why": "plan does not serve ethereum"
       }
      ],
      "planNames": {
-      "growth": "Growth (pay-as-you-go)"
+      "growth": "Growth (pay-as-you-go)",
+      "pro-evm": "Pro, Multi-Chain",
+      "scale-evm": "Scale, Multi-Chain"
      }
     },
     {
@@ -2453,13 +2495,55 @@
        "plan": "growth"
       },
       {
-       "r": 5000000000,
-       "usd": 30000,
+       "r": 8159475,
+       "usd": 48.96,
        "plan": "growth"
+      },
+      {
+       "r": 8169666,
+       "usd": 49,
+       "plan": "pro-evm"
+      },
+      {
+       "r": 10187500,
+       "usd": 49,
+       "plan": "pro-evm"
+      },
+      {
+       "r": 35183141,
+       "usd": 198.97,
+       "plan": "pro-evm"
+      },
+      {
+       "r": 35220071,
+       "usd": 199,
+       "plan": "scale-evm"
+      },
+      {
+       "r": 47428571,
+       "usd": 199,
+       "plan": "scale-evm"
+      },
+      {
+       "r": 1554653484,
+       "usd": 9242.35,
+       "plan": "scale-evm"
+      },
+      {
+       "r": 1556708008,
+       "usd": null,
+       "why": "plan does not serve ethereum"
+      },
+      {
+       "r": 5000000000,
+       "usd": null,
+       "why": "plan does not serve ethereum"
       }
      ],
      "planNames": {
-      "growth": "Growth (pay-as-you-go)"
+      "growth": "Growth (pay-as-you-go)",
+      "pro-evm": "Pro, Multi-Chain",
+      "scale-evm": "Scale, Multi-Chain"
      }
     },
     {
@@ -4465,13 +4549,55 @@
        "plan": "growth"
       },
       {
-       "r": 5000000000,
-       "usd": 30000,
+       "r": 8159475,
+       "usd": 48.96,
        "plan": "growth"
+      },
+      {
+       "r": 8169666,
+       "usd": 49,
+       "plan": "pro-evm"
+      },
+      {
+       "r": 10187500,
+       "usd": 49,
+       "plan": "pro-evm"
+      },
+      {
+       "r": 35183141,
+       "usd": 198.97,
+       "plan": "pro-evm"
+      },
+      {
+       "r": 35220071,
+       "usd": 199,
+       "plan": "scale-evm"
+      },
+      {
+       "r": 47428571,
+       "usd": 199,
+       "plan": "scale-evm"
+      },
+      {
+       "r": 1554653484,
+       "usd": 9242.35,
+       "plan": "scale-evm"
+      },
+      {
+       "r": 1556708008,
+       "usd": null,
+       "why": "plan does not serve ethereum"
+      },
+      {
+       "r": 5000000000,
+       "usd": null,
+       "why": "plan does not serve ethereum"
       }
      ],
      "planNames": {
-      "growth": "Growth (pay-as-you-go)"
+      "growth": "Growth (pay-as-you-go)",
+      "pro-evm": "Pro, Multi-Chain",
+      "scale-evm": "Scale, Multi-Chain"
      }
     },
     {
@@ -6173,13 +6299,55 @@
        "plan": "growth"
       },
       {
-       "r": 5000000000,
-       "usd": 30000,
+       "r": 8159475,
+       "usd": 48.96,
        "plan": "growth"
+      },
+      {
+       "r": 8169666,
+       "usd": 49,
+       "plan": "pro-evm"
+      },
+      {
+       "r": 10187500,
+       "usd": 49,
+       "plan": "pro-evm"
+      },
+      {
+       "r": 35183141,
+       "usd": 198.97,
+       "plan": "pro-evm"
+      },
+      {
+       "r": 35220071,
+       "usd": 199,
+       "plan": "scale-evm"
+      },
+      {
+       "r": 47428571,
+       "usd": 199,
+       "plan": "scale-evm"
+      },
+      {
+       "r": 1554653484,
+       "usd": 9242.35,
+       "plan": "scale-evm"
+      },
+      {
+       "r": 1556708008,
+       "usd": null,
+       "why": "plan does not serve ethereum"
+      },
+      {
+       "r": 5000000000,
+       "usd": null,
+       "why": "plan does not serve ethereum"
       }
      ],
      "planNames": {
-      "growth": "Growth (pay-as-you-go)"
+      "growth": "Growth (pay-as-you-go)",
+      "pro-evm": "Pro, Multi-Chain",
+      "scale-evm": "Scale, Multi-Chain"
      }
     },
     {
@@ -7593,13 +7761,90 @@
        "plan": "growth"
       },
       {
-       "r": 5000000000,
-       "usd": 30000,
+       "r": 8159475,
+       "usd": 48.96,
        "plan": "growth"
+      },
+      {
+       "r": 8169666,
+       "usd": 49,
+       "plan": "pro-solana"
+      },
+      {
+       "r": 12538462,
+       "usd": 49,
+       "plan": "pro-solana"
+      },
+      {
+       "r": 50994246,
+       "usd": 198.98,
+       "plan": "pro-solana"
+      },
+      {
+       "r": 51076923,
+       "usd": 199,
+       "plan": "scale-solana"
+      },
+      {
+       "r": 51076923,
+       "usd": 199,
+       "plan": "scale-solana"
+      },
+      {
+       "r": 1554653484,
+       "usd": 6062.95,
+       "plan": "scale-solana"
+      },
+      {
+       "r": 1556708008,
+       "usd": null,
+       "why": "published throughput is 600 rps, workload needs 601 sustained"
+      },
+      {
+       "r": 1558762532,
+       "usd": null,
+       "why": "published throughput is 600 rps, workload needs 602 sustained"
+      },
+      {
+       "r": 1566980630,
+       "usd": null,
+       "why": "published throughput is 600 rps, workload needs 605 sustained"
+      },
+      {
+       "r": 1583416825,
+       "usd": null,
+       "why": "published throughput is 600 rps, workload needs 611 sustained"
+      },
+      {
+       "r": 1714906383,
+       "usd": null,
+       "why": "published throughput is 600 rps, workload needs 662 sustained"
+      },
+      {
+       "r": 1977885501,
+       "usd": null,
+       "why": "published throughput is 600 rps, workload needs 764 sustained"
+      },
+      {
+       "r": 2694371231,
+       "usd": null,
+       "why": "published throughput is 600 rps, workload needs 1040 sustained"
+      },
+      {
+       "r": 3670402724,
+       "usd": null,
+       "why": "published throughput is 600 rps, workload needs 1417 sustained"
+      },
+      {
+       "r": 5000000000,
+       "usd": null,
+       "why": "published throughput is 600 rps, workload needs 1930 sustained"
       }
      ],
      "planNames": {
-      "growth": "Growth (pay-as-you-go)"
+      "growth": "Growth (pay-as-you-go)",
+      "pro-solana": "Pro, Solana",
+      "scale-solana": "Scale, Solana"
      }
     },
     {
@@ -9398,13 +9643,55 @@
        "plan": "growth"
       },
       {
-       "r": 5000000000,
-       "usd": 30000,
+       "r": 8159475,
+       "usd": 48.96,
        "plan": "growth"
+      },
+      {
+       "r": 8169666,
+       "usd": 49,
+       "plan": "pro-evm"
+      },
+      {
+       "r": 10187500,
+       "usd": 49,
+       "plan": "pro-evm"
+      },
+      {
+       "r": 35183141,
+       "usd": 198.97,
+       "plan": "pro-evm"
+      },
+      {
+       "r": 35220071,
+       "usd": 199,
+       "plan": "scale-evm"
+      },
+      {
+       "r": 47428571,
+       "usd": 199,
+       "plan": "scale-evm"
+      },
+      {
+       "r": 1554653484,
+       "usd": 9242.35,
+       "plan": "scale-evm"
+      },
+      {
+       "r": 1556708008,
+       "usd": null,
+       "why": "plan does not serve ethereum"
+      },
+      {
+       "r": 5000000000,
+       "usd": null,
+       "why": "plan does not serve ethereum"
       }
      ],
      "planNames": {
-      "growth": "Growth (pay-as-you-go)"
+      "growth": "Growth (pay-as-you-go)",
+      "pro-evm": "Pro, Multi-Chain",
+      "scale-evm": "Scale, Multi-Chain"
      }
     },
     {

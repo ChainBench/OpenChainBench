@@ -271,8 +271,8 @@ const GRID_PROFILES = ["simple-read", "dapp", "indexer", "trace", "solana-bot"];
 /**
  * The fifteen cells the findings and the FAQ talk about: the cheapest
  * metered plan for each workload at each published volume. Metered only,
- * because that is the cohort the gauges rank and the copy counts (Dwellir
- * seven, BlockPI three, Syndica two, three ties at $49); flat-rate nodes are
+ * because that is the cohort the gauges rank and the copy counts (Blockmachine
+ * eight, Dwellir two, Syndica two, BlockPI one, two ties at $49); flat-rate nodes are
  * in the calculator above. No selectors: one glance gives every answer.
  */
 export function RpcCostWinnersGrid() {

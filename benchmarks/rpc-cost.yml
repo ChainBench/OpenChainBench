@@ -25,7 +25,7 @@ disclaimer: >
 
 seo_intro: |
   There is no cheapest RPC provider. That is the finding, not a hedge. We
-  priced the same five workloads against every major provider and six
+  priced the same five workloads against every major provider and seven
   different names lead the fifteen cells, by multiples rather than percent.
   Per call, Alchemy costs well under half of QuickNode for eth_blockNumber
   and about two and a half times QuickNode for eth_getLogs. Blockmachine,
@@ -34,7 +34,7 @@ seo_intro: |
   debug or trace call, Chainstack 2, Dwellir 1. That is why Blockmachine leads
   every Ethereum dapp and indexer cell, at $1 per million Request Units on its
   top plan, while Dwellir leads trace from a hundred million up and ties
-  Chainstack at $49 below it. So a single "cheapest
+  Chainstack and dRPC at $49 below it. So a single "cheapest
   RPC" number cannot be honest, and this page does not publish one. It
   publishes a bill per workload.
   The comparison is only possible because each provider's own method table is
@@ -102,6 +102,7 @@ methodology:
   - "And that counter is not live. It stayed flat for twelve minutes while 57 calls were served, because each hourly row covers the hour ending at its label and appears about fifty minutes later. A naive read, burst, re-read measurement concludes Chainstack bills nothing at all."
   - "Two limits come from what providers do not publish, and no amount of access would close them. QuickNode publishes its rate limits in requests per second while its own support states they are enforced in credits per second, and declines to give those numbers, so the throughput check here compares requests against a ceiling that really applies to weighted units: on a heavy method mix QuickNode reaches its real limit earlier than this page predicts."
   - "And Alchemy publishes no fallback cost for methods absent from its table, so a workload using an unlisted method cannot be priced at all. The five profiles here use only listed methods, but a reader with an unusual mix cannot extend the table without asking Alchemy."
+  - "dRPC's Pro ($49) and Scale ($199), launched 2026-10-20, spend fewer Compute Units per request from one pool shared across chains: 16 or 14 on Multi-Chain, 13 on Solana, against 20 on Pay as You Go. Each is priced here once per chain with its pool converted into requests, which is exact for a workload on one chain. Pay as You Go is now capped at 100 requests a second for new accounts, so it cannot serve a billion requests a month."
   - "Blockmachine bills only successful responses: its pricing page states that failed requests cost nothing. A per-request model cannot see that, so on a workload with failures its real bill is at or below the figure here. Its rate limit is metered in Request Units per minute rather than requests, so a 25-unit trace call spends 25 of it, and the throughput check uses billing units for that reason."
   - "Method costs are modelled once per provider, varied by chain and by archive depth but not by plan. Where a provider negotiates or varies weights per account, the figures here are its published list prices."
   - "What is still not measured. These are published prices, not invoices. Alchemy and QuickNode carry no credit, compute-unit or quota header on any response, so their billed units cannot be confirmed without dashboard credentials we do not hold. Where a provider's real charge is non-deterministic by design, dRPC routes to third-party operators that can rewrite the price downward and exposes no per-response cost header, the published rate is reported as an upper bound and labelled as one."
@@ -113,7 +114,7 @@ findings:
   - "Price is not always the binding constraint. Alchemy cannot serve the indexer or trace profile at a billion requests a month on any published self-serve plan: those need 61,728 and 234,568 Throughput Compute Units per second against a self-serve ceiling of 30,000, enforced per account rather than per app."
   - "Alchemy meters volume and rate limit in different units, and the figures above use its throughput column, not its billing one. Infura, separately, cannot serve a hundred million requests a month at any price, because its allowance is daily and hard-stops at 402."
   - "Only some of the cell winners rest on fully published, unambiguous numbers. BlockPI, Blockmachine, Chainstack and Dwellir publish complete figures. Reading OnFinality's own per-method weight table, rather than assuming its documented default of 1, moved it out of all four cells it had won. NOWNodes publishes no archive or trace availability, so it is not ranked there even where its price would lead. Syndica's pricing survives only inside a calculator that ends in a lead-capture form."
-  - "The cheapest metered answer for a billion trace requests a month is Dwellir at $1,999: its $999 Scale plan plus 500 million responses at $2, with every trace call at 1 credit. dRPC is second at $6,000 and Chainstack third at $8,990, because Chainstack bills the same calls at 2 Request Units each. Blockmachine, the cheapest on every other Ethereum workload at that volume, cannot serve it: 25.2 Request Units a request needs 9,722 a second against its 4,167 ceiling."
+  - "The cheapest metered answer for a billion trace requests a month is Dwellir at $1,999: its $999 Scale plan plus 500 million responses at $2, with every trace call at 1 credit. dRPC is second at $5,914 on its $199 Scale plan and Chainstack third at $8,990, because Chainstack bills the same calls at 2 Request Units each. Blockmachine, the cheapest on every other Ethereum workload at that volume, cannot serve it: 25.2 Request Units a request needs 9,722 a second against its 4,167 ceiling."
   - "Free tiers differ by 1,200x once the allowance is converted into requests. OnFinality's buys 12.0 million simple reads a month, GetBlock's 75,000 and Blockmachine's keyed Free plan 10,000; its keyless public endpoint has no monthly cap but is limited to 60 Request Units a minute per IP. Several free tiers are throughput-capped rather than volume-capped, and GetBlock's daily allowance drains in 125 seconds at its own advertised rate."
   - "Buying the small plan is often the most expensive choice. At a hundred million dapp requests Dwellir's own $49 Developer plan bills $424 while its $299 Growth plan covers the month outright, because the entry allowance runs out at 25 million and the $5 overage costs more than the next plan."
   - "Advertised capability is not served capability. Chainstack's own node API lists trace support on its Polygon node, and trace_block there returns method not found. Alchemy's free tier answers archive reads but refuses all four trace and debug methods outright. Both were found by calling the endpoints rather than by reading the matrix."
@@ -123,7 +124,7 @@ findings:
 
 faq:
   - q: "Which RPC provider is cheapest?"
-    a: "It depends on the workload, by multiples rather than percent. Across five workload profiles and three volumes, four providers win a cell outright: Blockmachine eight, Dwellir two, Syndica two and BlockPI one. Two more cells are ties at $49: Dwellir and Chainstack on the trace profile at ten million, Chainstack and Helius on Solana at ten million. Read the row of the per-workload grid that matches your method mix rather than a single number, or move the calculator to your own volume."
+    a: "It depends on the workload, by multiples rather than percent. Across five workload profiles and three volumes, four providers win a cell outright: Blockmachine eight, Dwellir two, Syndica two and BlockPI one. Two more cells are ties at $49: Chainstack, dRPC and Dwellir on the trace profile at ten million, Chainstack, dRPC and Helius on Solana at ten million. Read the row of the per-workload grid that matches your method mix rather than a single number, or move the calculator to your own volume."
   - q: "Why do Alchemy and QuickNode never win?"
     a: "Because they cost several times what the leaders charge for the same work. Alchemy bills $10,500 a month for a billion simple reads where Blockmachine bills $999, and across the fifteen cells the two run between 1.7x and 16.8x the cell leader. Both are priced as premium products and both publish their rates plainly; the bench simply applies them."
   - q: "Why does Blockmachine lead so many cells?"

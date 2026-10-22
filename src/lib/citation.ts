@@ -334,7 +334,7 @@ export function headlineParts(b: Benchmark): { claim: string; rest: string } {
  *  slice rather than an aggregate.
  *
  *  A bench that declares dimensions answers a different question per tab.
- *  rpc-cost's headline ("BlockPI posts the lowest monthly cost at $29.50")
+ *  rpc-cost's headline ("Blockmachine posts the lowest monthly cost at $25")
  *  holds for the dapp workload, at ten million requests a month, on the
  *  cheapest paid plan, and for none of the other fourteen cells. That
  *  sentence is what /api/stat, /api/citable and llms.txt hand to an answer
