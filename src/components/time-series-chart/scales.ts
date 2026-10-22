@@ -265,6 +265,10 @@ export function fmtTick(v: number, unit: string) {
   if (unit === "s") {
     const s = v / 1000;
     if (s >= 60) return `${(s / 60).toFixed(0)}m`;
+    // Under a second, milliseconds. One decimal of a second printed five
+    // identical "0.4s" ticks on l1-finality's Solana chart once Alpenglow put
+    // it between 360 and 440 ms (2026-10-22).
+    if (s < 1) return `${Math.round(v)}ms`;
     return `${s.toFixed(s >= 10 ? 0 : 1)}s`;
   }
   if (v >= 1000) return `${(v / 1000).toFixed(1)}s`;
