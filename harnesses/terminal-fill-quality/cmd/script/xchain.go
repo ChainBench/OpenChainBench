@@ -161,10 +161,49 @@ var relaySkips = map[string]bool{"megaeth": true, "xlayer": true}
 //
 // Measured split of FOMO's bridging over 398 sponsor transactions: Relay 17,
 // Mobula 6, so Mobula carries roughly a quarter of it.
+//
+// Where that quarter goes, over 29 fills read 2026-10-23: Robinhood Chain 23,
+// Base 3, BNB 2, Ethereum 1. Robinhood is about 79% of it, so a watcher that
+// covers only the chains with the most total flow would miss most of this
+// route. Direction split over 400 intents: 60% leaving Solana, 40% selling
+// back to it, and the join works both ways, so neither direction can be
+// skipped as an edge case.
 const (
 	relayDepository  = "99vQwtBwYtrqqD9YSXbdum3KBdxPAVxYTaQ3cfnJSrN2"
 	mobulaSolver     = "oMcssxWxgooErb8bsRA4QN34VHhvfeEbdDjrwF6WH45"
 	mobulaSolverUSDC = "BWocXaSJ46XRSnTUA92ffLzLriM7V8tHVLoUnS9HoWQz"
+)
+
+// THE JOIN, measured 2026-10-23 and the reason this route does not need the
+// pairing Pump Bridge needs.
+//
+// Every Mobula deposit carries a plaintext memo from mobulaMemoProgram:
+//
+//	{"intentId":"5976756-d392c16-095"}
+//
+// and the SAME id appears in the fill on the destination chain, in the data of
+// the mobulaFillTopic event emitted by the bridge contract, as right-padded
+// ascii in word 0. So the two legs join on an exact key read from chain at
+// both ends: no amount tolerance, no lag window, no ambiguous case, none of
+// what the pump pairing has to live with.
+//
+// Verified 29 of 29 Solana->EVM fills and 14 of 14 the other way, matching
+// ONLY the full dashed id (38 hex characters). That floor matters: a first
+// pass that also accepted the id's 3-character tail reported 10 of 10 where
+// the strict matcher found 4, because a short hex string appears in a 20-log
+// receipt by accident. A match criterion needs a specificity floor, not just
+// a hit.
+//
+// ATTRIBUTION IS STILL THE FEE PAYER. The memo proves a deposit belongs to a
+// fill; it says nothing about which app sent it, because any Mobula
+// integrator writes the same memo. The app test on the Solana leg stays "the
+// fee payer is the app's sponsor", exactly as for Relay.
+const (
+	mobulaMemoProgram = "Memo4c2pN8afCj432Lb7RMVKi9PbQnnW7ewFFaV3oAH"
+	// Fill(bytes32 indexed, string intentId, ...): topic0 of the event whose
+	// data word 0 holds the intent id. One eth_getLogs per chain on
+	// mobulaBridge filtered by this topic finds every fill.
+	mobulaFillTopic = "0x74647a56026fd5e5a5fdb01d686969d17f40667aeedffef44cdeb894156e35a4"
 )
 
 // mobulaBridge: Mobula's EVM settlement contract per chain. SHARED
