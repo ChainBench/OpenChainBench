@@ -107,7 +107,22 @@ var evmTerminals = []evmTerminal{
 	{Slug: "pump-bridge-arc", Name: "Pump Bridge · Arc", Kind: "app", Chain: "arc",
 		Routers: []string{"0x836b336fca26913176efc45a5a6e5e72cd7bd13b"}},
 	// SizeWord: word 2 of this router's own event equals the USDG amount of
-	// the transaction, checked on 25 of 25. Declared here and nowhere else:
+	// the transaction. Checked on 3,858 events over a 40-minute window with
+	// zero mismatches, zero short payloads, and zero cases where word 2 fell
+	// under the floor while the real trade was over it, which is the silent
+	// drop this could otherwise cause.
+	//
+	// The map is DELIBERATELY PARTIAL. This router emits a second signature,
+	// 0x84da3a1d…, about 2.7 times a minute against 97 for the one declared
+	// here, and it is not gated. The declared signature fires only on sells
+	// (all 3,849 classified in that window were sells), so the gate cannot
+	// drop a buy by construction rather than by luck, and the undeclared one
+	// is very probably the buy leg, which carries no dust on any chain
+	// measured. If dust ever appears under that signature it passes unseen
+	// and tfq_dust_attempts_skipped_total stays flat while the counts rot
+	// again; that is the one way this goes quietly wrong later.
+	//
+	// Declared here and nowhere else:
 	// this is the one chain measured to carry dust (97.5% of transfers under
 	// $0.25 against zero on Base and BNB) and the one layout verified.
 	{Slug: "pump-bridge-robinhood", Name: "Pump Bridge · Robinhood Chain", Kind: "app", Chain: "robinhood",
