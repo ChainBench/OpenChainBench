@@ -8,7 +8,7 @@ seo_description: "Share of cross-chain trades that error, for Pump Bridge and Re
 subtitle: "Share of cross-chain trades that end in an error, for Pump Bridge and Relay, from a published A/B test of 416,669 trades. Read per direction, because the buy arms are balanced and the sell arms are not."
 
 category: Bridges
-status: live
+status: draft
 metric: Error rate
 unit: pct
 higher_is_better: false
