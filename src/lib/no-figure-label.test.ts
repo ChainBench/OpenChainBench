@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { noFigureLabel, noRankLabel } from "./no-figure-label";
+import { noFigureLabel, noRankLabel, notServedLabel } from "./no-figure-label";
 
 describe("no-figure labels", () => {
   // Helius, Syndica and Triton sell Solana only; on the cost benches' Ethereum
@@ -13,5 +13,10 @@ describe("no-figure labels", () => {
   test("a latency bench still says awaiting", () => {
     expect(noRankLabel("aggregator-head-lag")).toBe("awaiting");
     expect(noFigureLabel("aggregator-head-lag")).toBe("data warming up");
+  });
+
+  test("notServedLabel is null where a missing figure still means a source that has not reported", () => {
+    expect(notServedLabel("rpc-cost")).toBe("no Ethereum dapp plan");
+    expect(notServedLabel("aggregator-head-lag")).toBeNull();
   });
 });

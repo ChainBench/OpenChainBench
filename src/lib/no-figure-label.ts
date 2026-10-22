@@ -14,6 +14,12 @@ const NOT_SERVED: Record<string, string> = {
   "rpc-free-tier": "no free Ethereum dapp allowance",
 };
 
+/** The label when a missing figure is a product fact on this bench, or null
+ *  when it still means a source that has not reported. */
+export function notServedLabel(benchSlug: string): string | null {
+  return NOT_SERVED[benchSlug] ?? null;
+}
+
 export function noFigureLabel(benchSlug: string): string {
   return NOT_SERVED[benchSlug] ?? "data warming up";
 }
