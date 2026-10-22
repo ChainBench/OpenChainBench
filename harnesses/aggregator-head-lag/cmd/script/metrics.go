@@ -307,7 +307,7 @@ func init() {
 	headLagFirst = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "head_lag_first_total",
-			Help: "Trades a feed reported first (ties within 5 ms count for every feed involved).",
+			Help: "Trades a feed reported first. One winner per race, the earliest arrival.",
 		},
 		[]string{"aggregator", "chain", "region"},
 	)
