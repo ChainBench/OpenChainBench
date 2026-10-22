@@ -55,8 +55,12 @@ var (
 	}, []string{"chain", "bps"})
 	hPumpSettle = prometheus.NewHistogramVec(prometheus.HistogramOpts{
 		Name:    "tfq_pump_bridge_settle_seconds",
-		Help:    "Seconds between a Solana deposit and the EVM router spending it, for the spends whose deposit can be identified by the amount the schedule implies. This is the on-chain segment alone: pump's own figure is tap to notification and includes the app, the network and its queueing, so the two are not the same quantity. Read per chain, since block time differs (BNB 0.45 s, Robinhood Chain 0.10 s, Base 2.00 s)",
-		Buckets: []float64{0.5, 1, 1.5, 2, 3, 4, 6, 10, 20, 60, 300},
+		Help:    "Seconds between a Solana deposit and the EVM router spending it, for the spends whose deposit can be identified by the amount the schedule implies. Read it with histogram_quantile, NEVER as sum/count: a few percent of pairs are stalls past 60 s and they drag the mean of a day's sample from a 0.37 s median to about 20 s (see tfq_pump_bridge_stall_total). This is the on-chain segment alone: pump's own figure is tap to notification and includes the app, the network and its queueing, so the two are not the same quantity. Read per chain, since block time differs (BNB 0.45 s, Robinhood Chain 0.10 s, Base 2.00 s). Absolute values also carry a cross-chain clock offset that is NOT corrected here: each chain stamps blocks on its own clock and Solana's offset to the EVM chains changed at the Alpenglow switch, so compare a chain with itself over time, not one chain against another",
+		Buckets: []float64{0.1, 0.25, 0.5, 0.75, 1, 1.5, 2, 3, 4, 6, 10, 20, 60, 300},
+	}, []string{"chain"})
+	cPumpStall = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "tfq_pump_bridge_stall_total",
+		Help: "Paired spends that took longer than 60 seconds to settle. Counted apart because they are what makes the settle histogram's mean useless: about 4% of pairs, enough to move a mean by more than an order of magnitude while leaving the median where it was. A rising share here is the bridge stalling, which the median will not show",
 	}, []string{"chain"})
 	cPumpPair = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "tfq_pump_bridge_pair_total",
@@ -70,7 +74,7 @@ var (
 )
 
 func init() {
-	prometheus.MustRegister(cPumpSpends, cPumpSchedule, hPumpTakeBps, hPumpSettle, cPumpPair)
+	prometheus.MustRegister(cPumpSpends, cPumpSchedule, hPumpTakeBps, hPumpSettle, cPumpPair, cPumpStall)
 }
 
 // pumpLevels: the trade sizes a person types, in whole stable units. The grid is
@@ -598,7 +602,11 @@ func pumpPairSpend(ctx context.Context, httpc *http.Client, c originChain, r pum
 		// is tuned away, the other is the method failing.
 		return
 	}
-	hPumpSettle.WithLabelValues(r.chain).Observe(float64(at - dep.at))
+	took := float64(at - dep.at)
+	hPumpSettle.WithLabelValues(r.chain).Observe(took)
+	if took > 60 {
+		cPumpStall.WithLabelValues(r.chain).Inc()
+	}
 }
 
 // pumpBlockAt returns a block's timestamp, cached per chain.
