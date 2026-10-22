@@ -37,11 +37,11 @@ var (
 	gVendorABErrorRate = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "tfq_vendor_ab_error_rate_pct",
 		Help: "Error rate recomputed from a vendor's OWN published A/B export, percent of trades. Not measured by this harness and not live: pump.fun's export covers 2026-09-28 to 2026-10-07 and does not change. Read it beside the direction label, which is where its headline and its whole dataset disagree",
-	}, []string{"vendor", "lane", "direction"})
+	}, []string{"vendor", "lane", "kind"})
 	gVendorABRows = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "tfq_vendor_ab_rows",
 		Help: "Trades behind each tfq_vendor_ab_error_rate_pct, from the vendor's own export. Published alongside because a rate without its denominator cannot be judged, and because the arms are not equally sized on every direction",
-	}, []string{"vendor", "lane", "direction"})
+	}, []string{"vendor", "lane", "kind"})
 )
 
 func init() {
@@ -52,8 +52,21 @@ func init() {
 //
 // Once, because the source is a finished export. A ticker here would suggest
 // the numbers move.
+// laneSlug maps the export's lane name to the provider slug the spec declares.
+//
+// A metric_panel matches its label value against the PROVIDER SLUG, so a lane
+// published as "bridge" beside a provider called "pump-bridge" simply never
+// renders: the panel showed Relay alone and nothing failed. Relay matched only
+// because its export name and its slug happen to be the same word.
+func laneSlug(lane string) string {
+	if lane == "bridge" {
+		return "pump-bridge"
+	}
+	return lane
+}
+
 func loadVendorAB() {
-	type cell struct{ lane, direction string }
+	type cell struct{ lane, kind string }
 	total := map[cell]float64{}
 	errs := map[cell]float64{}
 
@@ -79,7 +92,7 @@ func loadVendorAB() {
 		if err != nil {
 			continue
 		}
-		k := cell{lane: rec[1], direction: rec[2]}
+		k := cell{lane: laneSlug(rec[1]), kind: rec[2]}
 		total[k] += n
 		if rec[3] != "success" {
 			errs[k] += n
@@ -95,9 +108,9 @@ func loadVendorAB() {
 	byLane := map[string]float64{}
 	byLaneErr := map[string]float64{}
 	for k, n := range total {
-		gVendorABRows.WithLabelValues("pump-fun", k.lane, k.direction).Set(n)
+		gVendorABRows.WithLabelValues("pump-fun", k.lane, k.kind).Set(n)
 		if n > 0 {
-			gVendorABErrorRate.WithLabelValues("pump-fun", k.lane, k.direction).
+			gVendorABErrorRate.WithLabelValues("pump-fun", k.lane, k.kind).
 				Set(100 * errs[k] / n)
 		}
 		byLane[k.lane] += n

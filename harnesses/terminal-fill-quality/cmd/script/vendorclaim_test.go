@@ -28,7 +28,7 @@ func gaugeVal(t *testing.T, g *prometheus.GaugeVec, labels ...string) float64 {
 func TestVendorDigestReproducesBothFigures(t *testing.T) {
 	loadVendorAB()
 
-	bridgeBuy := gaugeVal(t, gVendorABErrorRate, "pump-fun", "bridge", "buy")
+	bridgeBuy := gaugeVal(t, gVendorABErrorRate, "pump-fun", "pump-bridge", "buy")
 	relayBuy := gaugeVal(t, gVendorABErrorRate, "pump-fun", "relay", "buy")
 	if math.Abs(bridgeBuy-0.869) > 0.002 || math.Abs(relayBuy-11.214) > 0.002 {
 		t.Errorf("buys: bridge %.3f%% relay %.3f%%, want 0.869 and 11.214 "+
@@ -38,7 +38,7 @@ func TestVendorDigestReproducesBothFigures(t *testing.T) {
 		t.Errorf("buy ratio %.2fx, want 12.90 (pump said almost 13x)", r)
 	}
 
-	bridgeAll := gaugeVal(t, gVendorABErrorRate, "pump-fun", "bridge", "all")
+	bridgeAll := gaugeVal(t, gVendorABErrorRate, "pump-fun", "pump-bridge", "all")
 	relayAll := gaugeVal(t, gVendorABErrorRate, "pump-fun", "relay", "all")
 	if math.Abs(bridgeAll-3.664) > 0.002 || math.Abs(relayAll-10.817) > 0.002 {
 		t.Errorf("both directions: bridge %.3f%% relay %.3f%%, want 3.664 and 10.817",
@@ -50,7 +50,7 @@ func TestVendorDigestReproducesBothFigures(t *testing.T) {
 
 	// The claim rests on the gap between the two directions, so assert it
 	// rather than leave it implied.
-	bridgeSell := gaugeVal(t, gVendorABErrorRate, "pump-fun", "bridge", "sell")
+	bridgeSell := gaugeVal(t, gVendorABErrorRate, "pump-fun", "pump-bridge", "sell")
 	if bridgeSell < bridgeBuy*5 {
 		t.Errorf("bridge sells %.3f%% against buys %.3f%%: the direction gap "+
 			"that makes the headline selective is not in the digest",
@@ -65,19 +65,22 @@ func TestVendorDigestReproducesBothFigures(t *testing.T) {
 // base hides that.
 func TestVendorDigestPublishesItsDenominators(t *testing.T) {
 	loadVendorAB()
-	for _, lane := range []string{"bridge", "relay"} {
+	// The lane label IS the provider slug, which is what a metric_panel
+	// matches on; publishing "bridge" beside a provider named "pump-bridge"
+	// left that half of the panel blank and nothing failed.
+	for _, lane := range []string{"pump-bridge", "relay"} {
 		for _, dir := range []string{"buy", "sell", "all"} {
 			if n := gaugeVal(t, gVendorABRows, "pump-fun", lane, dir); n <= 0 {
 				t.Errorf("%s/%s has no row count", lane, dir)
 			}
 		}
 	}
-	bb := gaugeVal(t, gVendorABRows, "pump-fun", "bridge", "buy")
+	bb := gaugeVal(t, gVendorABRows, "pump-fun", "pump-bridge", "buy")
 	rb := gaugeVal(t, gVendorABRows, "pump-fun", "relay", "buy")
 	if d := math.Abs(bb-rb) / ((bb + rb) / 2); d > 0.02 {
 		t.Errorf("buy arms differ by %.1f%%, expected them matched", 100*d)
 	}
-	bs := gaugeVal(t, gVendorABRows, "pump-fun", "bridge", "sell")
+	bs := gaugeVal(t, gVendorABRows, "pump-fun", "pump-bridge", "sell")
 	rs := gaugeVal(t, gVendorABRows, "pump-fun", "relay", "sell")
 	if bs >= rs {
 		t.Errorf("bridge sells %.0f vs relay %.0f: the arm imbalance this "+
