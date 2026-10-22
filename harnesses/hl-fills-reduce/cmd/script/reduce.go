@@ -86,9 +86,16 @@ type Day struct {
 // rebuild tool writes more than these fields; unknown keys decode away, and
 // nothing here ever rewrites a rebuilt file.
 type RebuiltFrom struct {
-	ExpectedErrorPct float64 `json:"expected_error_pct"`
-	MorningSharePct  float64 `json:"morning_share_pct"`
-	Extrapolated     bool    `json:"expected_error_extrapolated"`
+	// ExpectedErrorPct is a pointer so that a day stating zero can be told
+	// from a day stating nothing. They are not the same claim, and a plain
+	// float64 cannot hold the difference: both arrive as 0. A day whose
+	// builder attribution is read off the node record rather than inferred
+	// has genuinely no expected shortfall, and reporting the worst case
+	// measured for it, as this did, understates an exact day by 28.2 per
+	// cent.
+	ExpectedErrorPct *float64 `json:"expected_error_pct"`
+	MorningSharePct  float64  `json:"morning_share_pct"`
+	Extrapolated     bool     `json:"expected_error_extrapolated"`
 }
 
 // fillEvent mirrors only the fields this reads. The node's record carries a
