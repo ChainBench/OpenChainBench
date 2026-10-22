@@ -351,7 +351,7 @@ providers:
   - slug: pump-fun
     name: pump.fun app
     tag: "Terminal, Solana"
-    formula: "Random sample of the app's swaps on Solana, by its program, valued at the pool's state before the trade; loss in bps, median over 24 h. Its EVM rows are held: pump left Relay on 2026-10-07 and its own bridge's take is not in them."
+    formula: "Random sample of the app's swaps on Solana, by its program, valued at the pool's state before the trade; loss in bps, median over 24 h. Its own bridge is measured apart, as its own route, on bench 268."
     queries:
       p50: tfq_loss_ex_fee_bps{terminal="pump-fun",chain="all",stat="median",bucket="all"}
       p90: tfq_loss_ex_fee_bps{terminal="pump-fun",chain="all",stat="p90",bucket="all"}

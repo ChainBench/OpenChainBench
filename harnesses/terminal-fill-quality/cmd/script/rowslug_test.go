@@ -1,6 +1,9 @@
 package main
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 // No two row producers may own the same slug.
 //
@@ -49,46 +52,59 @@ func TestNoProducerSharesARowSlug(t *testing.T) {
 	}
 }
 
-// Every pump.fun bridge row must be the sole owner of its name.
+// Both of pump's routes must publish, under names that cannot collide.
 //
-// Named apart from the general test because this is the pairing that broke, and
-// because the fix is a deliberate choice rather than an accident of ordering:
-// pump made its own bridge the default on 2026-10-07, so the native row reading
-// the router wins and the legacy Relay row for that chain is dropped.
-func TestPumpBridgeRowsOwnTheirSlugs(t *testing.T) {
+// This replaces a test that asserted the opposite. When the bridge rows were
+// added they took the pump-fun-<chain> names, collided with the Relay rows,
+// and the published JSON carried each twice; the fix chosen then was to drop
+// the Relay row for any chain the bridge covers. That threw away half the
+// comparison. Relay's own published chart puts pump.fun via Relay beside
+// pump.fun via Pump Bridge, and with the Relay rows gone we could not draw it.
+//
+// Naming the bridge rows for the route instead removes the collision at the
+// source and keeps both lines, so this test pins what the page needs: on every
+// chain both routes serve, each publishes exactly once.
+func TestBothPumpRoutesPublishSeparately(t *testing.T) {
 	count := map[string]int{}
 	for _, term := range cohort() {
 		count[term.Slug]++
 	}
-	relay := map[string]bool{}
-	for _, slug := range xchainRows() {
-		relay[slug] = true
-	}
-	found := 0
+
+	bridged := 0
 	for _, term := range evmTerminals {
-		if len(term.Slug) < 9 || term.Slug[:9] != "pump-fun-" {
+		if !strings.HasPrefix(term.Slug, "pump-bridge-") {
 			continue
 		}
-		found++
-		if relay[term.Slug] {
-			t.Errorf("%q is still emitted by the Relay feed as well", term.Slug)
-		}
+		bridged++
 		if count[term.Slug] != 1 {
 			t.Errorf("cohort() yields %q %d times, want exactly 1",
 				term.Slug, count[term.Slug])
 		}
+		// The Relay row for the same chain must still be there, on every
+		// chain Relay reaches. MegaETH and X Layer it does not (relaySkips),
+		// and there Pump Bridge is the only route.
+		chain := strings.TrimPrefix(term.Slug, "pump-bridge-")
+		if relaySkips[chain] {
+			continue
+		}
+		if count["pump-fun-"+chain] != 1 {
+			t.Errorf("pump-fun-%s published %d times; the Relay route is the "+
+				"other half of the comparison and must not be dropped",
+				chain, count["pump-fun-"+chain])
+		}
 	}
-	if found == 0 {
-		t.Error("no pump.fun bridge row found in evmTerminals")
+	if bridged == 0 {
+		t.Error("no Pump Bridge row found in evmTerminals")
 	}
 }
 
-// The dedupe must remove only what it is meant to.
+// The dedupe guard must now drop nothing at all.
 //
-// Skipping a slug in xchainRows silently drops a row, so the guard has to be
-// narrow: every app that is not pump.fun keeps a row on every origin chain, and
-// each app keeps its funding row whatever else happens.
-func TestDedupeDropsOnlyThePumpBridgeChains(t *testing.T) {
+// It is kept because a collision is worse than a drop: two producers writing
+// one series let the last tick win, silently. But after the route split no name
+// is contested, so the guard should be inert. If it ever fires again this fails,
+// and the fix is to name the new row for its route, not to let a row disappear.
+func TestTheDedupeGuardDropsNothing(t *testing.T) {
 	got := map[string]bool{}
 	for _, slug := range xchainRows() {
 		got[slug] = true
@@ -101,10 +117,17 @@ func TestDedupeDropsOnlyThePumpBridgeChains(t *testing.T) {
 			continue
 		}
 		for _, c := range originChains {
+			if relaySkips[c.slug] {
+				continue
+			}
 			slug := a.Slug + "-" + c.slug
-			want := !nativeOwnsSlug(slug)
-			if got[slug] != want {
-				t.Errorf("%s: present=%v, want %v", slug, got[slug], want)
+			if nativeOwnsSlug(slug) {
+				t.Errorf("%s is claimed by evmTerminals as well; name the "+
+					"native row for its route instead of dropping this one",
+					slug)
+			}
+			if !got[slug] {
+				t.Errorf("%s lost its row", slug)
 			}
 		}
 	}

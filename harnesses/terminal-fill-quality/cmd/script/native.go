@@ -60,7 +60,17 @@ type evmTerminal struct {
 
 var evmTerminals = []evmTerminal{
 	// pump.fun's own bridge, live since 2026-09-28 and the default in its app
-	// since 2026-10-07. Program Dsug6Jq… on Solana takes the deposit; these
+	// since 2026-10-07.
+	//
+	// Published as its own product, pump-bridge, not as pump.fun's EVM rows.
+	// The route is what differs between these and pump-fun-<chain>, which are
+	// the same app's trades carried by Relay, and folding both into one product
+	// averaged two routes into a number describing neither. Relay publishes the
+	// same split in its own comparison. It also removes a name collision: both
+	// producers built <app>-<chain>, and for six chains the last tick written
+	// won.
+	//
+	// Program Dsug6Jq… on Solana takes the deposit; these
 	// routers do the EVM side. One contract serves every chain but Robinhood,
 	// which has its own; both are plain CREATE outputs of the same deployer
 	// and each holds roughly $750k of stables. The relayer that drives them,
@@ -71,21 +81,20 @@ var evmTerminals = []evmTerminal{
 	// No Collector on purpose. The router passes the whole purchase through:
 	// it spends a stable, buys the token and forwards every unit to the user,
 	// identical to the last digit on the fills checked. pump's take is
-	// deducted earlier, on the Solana deposit, and measures 0.05 + 45 bps
-	// (exact at four round-number levels on Robinhood Chain and seven on BNB,
-	// 73% of observed spends). These rows therefore measure the swap the
-	// bridge performs, not what the bridge charges, until the Solana deposit
-	// decoder lands.
+	// deducted earlier, on the Solana deposit: 0.05 fixed plus 40 or 45 bps,
+	// both rates live at once and mixed differently per chain. That deposit is
+	// decoded in pumpbridge_feed.go, so the spend on these rows is grossed
+	// back up to what the user committed and the row carries the whole cost.
 	//
 	// Ink, MegaETH and X Layer are absent for want of an RPC. Relay serves
 	// neither MegaETH nor X Layer, so Pump Bridge is the only route there.
-	{Slug: "pump-fun-bnb", Name: "pump.fun app · BNB", Kind: "app", Chain: "bnb",
+	{Slug: "pump-bridge-bnb", Name: "Pump Bridge · BNB", Kind: "app", Chain: "bnb",
 		Routers: []string{"0x836b336fca26913176efc45a5a6e5e72cd7bd13b"}},
-	{Slug: "pump-fun-base", Name: "pump.fun app · Base", Kind: "app", Chain: "base",
+	{Slug: "pump-bridge-base", Name: "Pump Bridge · Base", Kind: "app", Chain: "base",
 		Routers: []string{"0x836b336fca26913176efc45a5a6e5e72cd7bd13b"}},
-	{Slug: "pump-fun-arc", Name: "pump.fun app · Arc", Kind: "app", Chain: "arc",
+	{Slug: "pump-bridge-arc", Name: "Pump Bridge · Arc", Kind: "app", Chain: "arc",
 		Routers: []string{"0x836b336fca26913176efc45a5a6e5e72cd7bd13b"}},
-	{Slug: "pump-fun-robinhood", Name: "pump.fun app · Robinhood Chain", Kind: "app", Chain: "robinhood",
+	{Slug: "pump-bridge-robinhood", Name: "Pump Bridge · Robinhood Chain", Kind: "app", Chain: "robinhood",
 		Routers: []string{"0x5399d94d2cab7c252a6034042e1917a0e5e17a18"}},
 	// Relay serves neither of these two, so Pump Bridge is the only
 	// route on them and no bridge aggregator can see them. X Layer is
@@ -93,9 +102,9 @@ var evmTerminals = []evmTerminal{
 	// readable at all; MegaETH carries the router and has never
 	// executed a transaction (nonce 0), declared anyway so its first
 	// trade is caught rather than noticed later. See xchain.go.
-	{Slug: "pump-fun-megaeth", Name: "pump.fun app · MegaETH", Kind: "app", Chain: "megaeth",
+	{Slug: "pump-bridge-megaeth", Name: "Pump Bridge · MegaETH", Kind: "app", Chain: "megaeth",
 		Routers: []string{"0x836b336fca26913176efc45a5a6e5e72cd7bd13b"}},
-	{Slug: "pump-fun-xlayer", Name: "pump.fun app · X Layer", Kind: "app", Chain: "xlayer",
+	{Slug: "pump-bridge-xlayer", Name: "Pump Bridge · X Layer", Kind: "app", Chain: "xlayer",
 		Routers: []string{"0x836b336fca26913176efc45a5a6e5e72cd7bd13b"}},
 	{Slug: "gmgn-bnb", Name: "GMGN · BNB", Kind: "app", Chain: "bnb", Routers: []string{"0x1de460f363af910f51726def188f9004276bf4bc"}, Collector: "0xb8159ba378904f803639d274cec79f788931c9c8"},
 	// GMGN's Robinhood Chain router: the emitter of GMGN's swap-end event

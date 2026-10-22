@@ -3,23 +3,23 @@ package main
 import "testing"
 
 // Pump Bridge's EVM routers are declared as ordinary evmTerminal rows, which
-// works only because productOf splits "pump-fun-bnb" into the pump-fun row on
-// the bnb tab. If a chain ever leaves productChains, the split stops happening,
+// works only because productOf splits "pump-bridge-bnb" into the pump-bridge
+// row on the bnb tab. If a chain ever leaves productChains, the split stops,
 // the row lands under a slug the spec does not read, and the figures vanish
 // from the page with nothing failing. That is the failure this pins.
-func TestPumpBridgeRowsSplitIntoThePumpFunRow(t *testing.T) {
+func TestPumpBridgeRowsSplitIntoTheirOwnProduct(t *testing.T) {
 	want := map[string]string{
-		"pump-fun-bnb":       "bnb",
-		"pump-fun-base":      "base",
-		"pump-fun-arc":       "arc",
-		"pump-fun-robinhood": "robinhood",
-		"pump-fun-megaeth":   "megaeth",
-		"pump-fun-xlayer":    "xlayer",
+		"pump-bridge-bnb":       "bnb",
+		"pump-bridge-base":      "base",
+		"pump-bridge-arc":       "arc",
+		"pump-bridge-robinhood": "robinhood",
+		"pump-bridge-megaeth":   "megaeth",
+		"pump-bridge-xlayer":    "xlayer",
 	}
 	for slug, chain := range want {
 		product, got := productOf(slug)
-		if product != "pump-fun" {
-			t.Errorf("%s: product = %q, want pump-fun", slug, product)
+		if product != "pump-bridge" {
+			t.Errorf("%s: product = %q, want pump-bridge", slug, product)
 		}
 		if got != chain {
 			t.Errorf("%s: chain = %q, want %q", slug, got, chain)
@@ -36,7 +36,7 @@ func TestPumpBridgeRoutersAreDeclaredOnEveryChainWeCover(t *testing.T) {
 
 	seen := map[string][]string{}
 	for _, e := range evmTerminals {
-		if p, _ := productOf(e.Slug); p == "pump-fun" {
+		if p, _ := productOf(e.Slug); p == "pump-bridge" {
 			seen[e.Chain] = e.Routers
 		}
 	}
@@ -46,7 +46,7 @@ func TestPumpBridgeRoutersAreDeclaredOnEveryChainWeCover(t *testing.T) {
 	} {
 		got, ok := seen[chain]
 		if !ok {
-			t.Errorf("no pump.fun row declared on %s", chain)
+			t.Errorf("no Pump Bridge row declared on %s", chain)
 			continue
 		}
 		if len(got) != 1 || got[0] != router {
@@ -54,7 +54,7 @@ func TestPumpBridgeRoutersAreDeclaredOnEveryChainWeCover(t *testing.T) {
 		}
 	}
 	if len(seen) != 6 {
-		t.Errorf("pump.fun EVM rows = %d, want 6", len(seen))
+		t.Errorf("Pump Bridge rows = %d, want 6", len(seen))
 	}
 }
 
@@ -65,7 +65,7 @@ func TestPumpBridgeRoutersAreDeclaredOnEveryChainWeCover(t *testing.T) {
 // receives one.
 func TestPumpBridgeRowsDeclareNoCollector(t *testing.T) {
 	for _, e := range evmTerminals {
-		if p, _ := productOf(e.Slug); p != "pump-fun" {
+		if p, _ := productOf(e.Slug); p != "pump-bridge" {
 			continue
 		}
 		if e.Collector != "" {

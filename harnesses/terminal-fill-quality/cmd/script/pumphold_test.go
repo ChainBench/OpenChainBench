@@ -1,6 +1,9 @@
 package main
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 // Every pump.fun row on a Pump Bridge router must be recognised as one.
 //
@@ -12,7 +15,7 @@ import "testing"
 func TestEveryPumpRowIsRecognisedAsABridgeRow(t *testing.T) {
 	found := 0
 	for _, term := range evmTerminals {
-		if len(term.Slug) < 9 || term.Slug[:9] != "pump-fun-" {
+		if !strings.HasPrefix(term.Slug, "pump-bridge-") {
 			continue
 		}
 		found++
@@ -36,7 +39,7 @@ func TestEveryPumpRowIsRecognisedAsABridgeRow(t *testing.T) {
 // direction that makes a competitor look dearer.
 func TestOnlyPumpRowsAreHeldAsBridgeRows(t *testing.T) {
 	for _, term := range evmTerminals {
-		if pumpBridgeRow(term.Slug) && (len(term.Slug) < 9 || term.Slug[:9] != "pump-fun-") {
+		if pumpBridgeRow(term.Slug) && !strings.HasPrefix(term.Slug, "pump-bridge-") {
 			t.Errorf("%q is not a pump.fun row but pumpBridgeRow holds it", term.Slug)
 		}
 	}

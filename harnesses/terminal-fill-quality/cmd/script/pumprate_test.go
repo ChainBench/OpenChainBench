@@ -103,7 +103,7 @@ func TestGrossUpUsesTheRowsOwnChain(t *testing.T) {
 	for i := 0; i < 8; i++ {
 		observePumpSpend("robinhood", raw(t, "9.910000", 6), 6) // 40 bps
 	}
-	got, ok := pumpGrossUp("pump-fun-robinhood", 9.910)
+	got, ok := pumpGrossUp("pump-bridge-robinhood", 9.910)
 	if !ok {
 		t.Fatal("not grossed up")
 	}

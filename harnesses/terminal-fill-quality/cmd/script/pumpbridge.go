@@ -4,9 +4,12 @@ package main
 //
 // Until 2026-10-07 pump.fun's cross-chain trades went through Relay and this
 // bench read them from Relay's requests feed. pump then made its own bridge the
-// default in its app and that feed stopped carrying them. The EVM side of those
-// trades is picked up by the evmTerminal rows (pump-fun-bnb and friends in
-// native.go), which measure the swap the bridge performs. What they cannot see
+// default in its app and that feed stopped carrying them, which is why the
+// pump-fun-<chain> rows thinned out rather than stopped: the residual Relay
+// flow is still there and still published, under the route that carries it.
+//
+// The EVM side of the bridged trades is the pump-bridge-<chain> rows in
+// native.go, which measure the swap the bridge performs. What they cannot see
 // is what the bridge CHARGES, because the fee is deducted on the Solana deposit
 // before any EVM router spends anything.
 //

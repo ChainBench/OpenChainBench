@@ -82,9 +82,10 @@ methodology:
   - "Kept out of that residual: a fee the pool's own hook keeps (v4 launchpad pools on Robinhood Chain 1 %, BNB 3.8 %, paid whatever the router) is a pool cost; a native leg (BNB sent, ETH received) is valued at the mid of the route's own stable-to-gas-coin hop before that hop, so the hop's LP fee and impact stay a pool cost; Axiom's inclusion tip (0.0025 BNB fixed; on Robinhood Chain the user's setting, from the call trace) is network cost, like the Solana tip relays."
   - "BasedBot's Solana row is thin and says so: its fee is a separate transaction after the swap, so each sampled fee has to be matched to the swap that preceded it, and most cannot be (of 37,339 fee transactions seen and 47 read on 2026-10-22, 69 were not a swap, 22 had no swap before the fee and 1 was priced). The row is published only when that pairing fills; it is not a quiet zero."
   - "pump.fun published a Pump Bridge against Relay comparison on 2026-10-21 and invited anyone to check it. Its headline, almost 13x fewer buy errors, reproduces exactly on its own rows: 0.869% against 11.214%. The same export also carries sells, where the bridge errors at 7.378% against Relay's 10.511%, so over both directions the ratio is 2.95x. The counts are in the repository, not just this sentence."
-  - "pump.fun's EVM rows are grossed up: its router is paid out of pump's own liquidity, already net of the 0.05 plus 40 to 45 bps it keeps, so the spend is raised back to what the user committed before the loss is taken. Both parameters come from that chain's own spends: the fixed part from pairs at different trade sizes, which solve it assuming no value, and the rate from exact read-backs. A chain with too few falls back. Residual about 2.5 bps, against 45 to 545 bps of ignoring the deduction."
-  - "pump.fun's Terminal column reads 0 by construction, not by measurement: no fee wallet is listed for the app, so any fee-like leg falls into Protocol fees instead. One recipient discovery flags does take a fixed 44.5 bps across 65 unrelated payers and is not yet identified. A second flagged account is pump's gas sponsor, which signs and PAYS on every swap read, so read that 0 as unmeasured, not as a fee."
-  - "MegaETH and X Layer are read but not shown: pump.fun's router is deployed on both and no bridge aggregator covers either, so this is the only measurement of them, but MegaETH has never executed a trade (relayer nonce 0) and X Layer had one priced swap on 2026-10-22. They get a chain tab when they carry enough trades to publish one; until then a tab would answer nothing."
+  - "One row per route, not per app: pump.fun's cross-chain trades are published twice over, as Pump Bridge (its own routers, read on chain) and as the pump.fun app (what Relay still carries). Folding them together averaged two routes into a number describing neither, and the two differ in fee, settlement time and error rate. Relay draws the same split in its own published comparison."
+  - "Pump Bridge's rows are grossed up: its router is paid out of pump's own liquidity, already net of the 0.05 plus 40 to 45 bps it keeps, so the spend is raised back to what the user committed before the loss is taken. Both parameters come from that chain's own spends: the fixed part from pairs at different trade sizes, which solve it assuming no value, and the rate from exact read-backs. A chain with too few falls back. Residual about 2.5 bps, against 45 to 545 bps of ignoring the deduction."
+  - "The Terminal column on both pump rows reads 0 by construction, not by measurement: no fee wallet is listed for the app, so any fee-like leg falls into Protocol fees instead. One recipient discovery flags does take a fixed 44.5 bps across 65 unrelated payers and is not yet identified. A second flagged account is pump's gas sponsor, which signs and PAYS on every swap read, so read that 0 as unmeasured, not as a fee."
+  - "MegaETH and X Layer are read but not shown: Pump Bridge's router is deployed on both and no bridge aggregator covers either, so this is the only measurement of them, but MegaETH has never executed a trade (relayer nonce 0) and X Layer had one priced swap on 2026-10-22. They get a chain tab when they carry enough trades to publish one; until then a tab would answer nothing."
   - "Not in the table: BullX (suspended June 2026), Nova (no live fee wallet), Bloom on Base and Ethereum (a swap an hour), Photon on EVM. BasedBot's Relay requests are its in-app bridge between the user's Solana and EVM wallets, both ways, no app fee (a bridge leg, not a trade); its EVM rows are those wallets' swaps on its router. On Solana its fee is a separate transaction after the swap, so failed swaps are not seen: no fail rate there."
 
 findings:
@@ -104,7 +105,7 @@ faq:
   - q: "Are sandwiches counted?"
     a: "Screened, not ranked. A sandwich's two legs both touch the pool, so they are the user's neighbours in the pool's own transaction sequence: another signer trading the same direction just before, and back just after, in the same slot or the next. Every hit is in the JSON with the attacker and both signatures. It is not a column because the share of swaps that can be screened depends on how busy the pool is, which differs per terminal. The victim's extra cost is not a separate line either: the front-run precedes the user's swap, so the arrival price already carries it inside the pool component."
   - q: "How is a swap attributed to a terminal?"
-    a: "By the fee it pays: every terminal transfers its fee to known wallets in the same transaction, and those wallet lists are the ones DeFiLlama's adapters use for volume, so attribution matches benches 201 and 267. Where the fee wallet is not enough: pump.fun's app and Banana Gun by their programs, Phantom by its fee token account, FOMO by the vanity account every FOMO transaction carries (its gas sponsor signs and is excluded as user), the EVM rows by the router the transaction was sent to (Binance Wallet from blocks read in full), the cross-chain rows by Relay's referrer or fee recipient (FOMO 0x9fc4…, pump.fun app 0xdab3…, verified by the Solana users behind them); pump.fun moved most of its cross-chain flow onto its own bridge on 2026-10-07, which this feed does not see, so its cross-chain share is understated; the bridge's own deposits and the fee it deducts are read straight off Solana and the EVM routers instead."
+    a: "By the fee it pays: every terminal transfers its fee to known wallets in the same transaction, and those wallet lists are the ones DeFiLlama's adapters use for volume, so attribution matches benches 201 and 267. Where the fee wallet is not enough: pump.fun's app and Banana Gun by their programs, Phantom by its fee token account, FOMO by the vanity account every FOMO transaction carries (its gas sponsor signs and is excluded as user), the EVM rows by the router the transaction was sent to (Binance Wallet from blocks read in full), the cross-chain rows by Relay's referrer or fee recipient (FOMO 0x9fc4…, pump.fun app 0xdab3…, verified by the Solana users behind them). pump.fun moved most of its cross-chain flow onto its own bridge on 2026-10-07 and Relay's feed does not see it, so that flow is published as its own row, Pump Bridge, read straight off the Solana deposits and the EVM routers; the pump.fun app row carries what still goes through Relay."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/terminal-fill-quality
 
@@ -414,8 +415,8 @@ providers:
 
   - slug: pump-fun
     name: pump.fun app
-    tag: "Terminal, Solana + its own routers on BNB, Base, Arc and Robinhood Chain"
-    formula: "Solana: random sample of the app's swaps by its program. EVM: swaps on pump's own routers, with the spend grossed back up to what the user committed, since the router is paid net of the 0.05 plus 40 to 45 bps it keeps."
+    tag: "Terminal, Solana + its cross-chain trades carried by Relay"
+    formula: "Solana: random sample of the app's swaps by its program. Cross-chain: the trades still settling through Relay, which was pump's only route until 2026-10-07 and now carries the residue. Its own bridge is a separate row."
     queries:
       p50: tfq_loss_bps{terminal="pump-fun",chain="all",stat="median",bucket="all"}
       p90: tfq_loss_bps{terminal="pump-fun",chain="all",stat="p90",bucket="all"}
@@ -424,3 +425,16 @@ providers:
       ranked: tfq_ranked{terminal="pump-fun",chain="all",bucket="all"}
       sample_size: tfq_sample_size{terminal="pump-fun",chain="all",kind="priced",bucket="all"}
       series: tfq_loss_bps{terminal="pump-fun",chain="all",stat="median",bucket="all"}
+
+  - slug: pump-bridge
+    name: Pump Bridge
+    tag: "pump.fun's own bridge, its routers on BNB, Base, Arc, Robinhood Chain, MegaETH and X Layer"
+    formula: "Swaps on pump's own routers, with the spend grossed back up to what the user committed, since the router is paid net of the 0.05 plus 40 or 45 bps deducted on the Solana deposit. A row apart from the app's Relay route."
+    queries:
+      p50: tfq_loss_bps{terminal="pump-bridge",chain="all",stat="median",bucket="all"}
+      p90: tfq_loss_bps{terminal="pump-bridge",chain="all",stat="p90",bucket="all"}
+      p99: tfq_loss_bps{terminal="pump-bridge",chain="all",stat="p99",bucket="all"}
+      success: tfq_health{terminal="pump-bridge",chain="all",bucket="all"}
+      ranked: tfq_ranked{terminal="pump-bridge",chain="all",bucket="all"}
+      sample_size: tfq_sample_size{terminal="pump-bridge",chain="all",kind="priced",bucket="all"}
+      series: tfq_loss_bps{terminal="pump-bridge",chain="all",stat="median",bucket="all"}

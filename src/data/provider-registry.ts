@@ -1601,6 +1601,12 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "FOMO is a multi-chain trading app (Solana, Base, BNB Chain, and more) for memecoins and perps. It provides social copy-trading, onchain signals, and routes swaps through pump.fun, Raydium, and other DEX pools.",
     twitter: "@tryfomo",
   },
+  "pump-bridge": {
+    url: "https://pump.fun",
+    description:
+      "Pump Bridge is pump.fun's own cross-chain route, live since 28 September 2026 and the default in its app since 7 October 2026. A Solana program takes the deposit and routers on BNB Chain, Base, Arc, Robinhood Chain, MegaETH and X Layer buy the token and forward it to the user. It replaced Relay, which pump used before.",
+    twitter: "@pumpdotfun",
+  },
   "pump-fun": {
     url: "https://pump.fun",
     referralUrl: "https://pump.fun/u/SweetNearSlicer",

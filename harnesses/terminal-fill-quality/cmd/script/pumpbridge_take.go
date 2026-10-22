@@ -641,9 +641,22 @@ func pumpBlockAt(ctx context.Context, httpc *http.Client, c originChain, chain s
 // back. Both are ERC20 transfers INTO the router, and treating them alike is
 // what silently switched the gross-up off on every row.
 func pumpStableOf(slug string) string {
-	for _, r := range pumpRouters {
-		if slug == "pump-fun-"+r.chain {
-			return r.token
+	for _, t := range evmTerminals {
+		if t.Slug != slug {
+			continue
+		}
+		for _, known := range pumpRouters {
+			// The chain, not the address: Pump Bridge deploys the same
+			// router on BNB, Base, Arc, MegaETH and X Layer, so matching
+			// the address alone hands every one of them BNB's token.
+			if known.chain != t.Chain {
+				continue
+			}
+			for _, router := range t.Routers {
+				if strings.EqualFold(router, known.router) {
+					return known.token
+				}
+			}
 		}
 	}
 	return ""
