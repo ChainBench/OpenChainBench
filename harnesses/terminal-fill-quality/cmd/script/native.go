@@ -1090,6 +1090,18 @@ func nativeRow(ctx context.Context, httpc *http.Client, t evmTerminal, hash stri
 		return sw
 	}
 	if token := pick(sold); token != "" {
+		// A sale on a pump router is not priced, because nothing is known
+		// about how the deduction falls on this side. The buy path grosses the
+		// router's spend back up; a sale's proceeds would need the mirror of
+		// that, and no sale has ever been seen on these rows: 63 swaps read on
+		// 2026-10-22 and every one a buy, which is what a bridge whose only
+		// user instruction is DepositForSwap looks like.
+		//
+		// Publishing one on the ungrossed base would put two cost bases in one
+		// row, so it waits for a real example to be measured against.
+		if pumpBridgeRow(t.Slug) {
+			return &Swap{Flag: "unpriced_pump_sale"}
+		}
 		s, err := priceEvmOriginSale(ctx, httpc, *c, hash, user, token, gas)
 		if err != nil {
 			return nil
