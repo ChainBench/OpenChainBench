@@ -63,7 +63,7 @@ methodology:
   - "Reference price, in order: the pool's exact pre-trade mid from its balances in the transaction (PumpSwap, Raydium); the venue's swap event when it carries the pre-trade state (Launchpad, DLMM) and reconciles with the vault deltas; else the previous trade on the pool, at most 60 s old (pump.fun curve, CLMM, routed swaps), up to 2 h on the EVM launchpad curves BasedBot's router trades on. No off-chain token price; gas coins at Coinbase spot on Relay rows, at the route's hop mid on native EVM rows."
   - "Loss (headline): buy = 1 − tokens × ref / user_q; sell = 1 − user_q / (tokens × ref). Basis points of the trade (buy: quote spent; sell: tokens × ref; either plus the gas when the user paid it outside the quote asset). Pool = loss minus terminal, network and other: the components (relay on Relay rows) sum to the loss per swap; the split columns are medians (flow-weighted on All chains) and do not sum to the median loss. Losses outside −10 % to +50 % stay out. Median with its 95 % interval, p90."
   - "A product is published from 50 priced swaps in the window (a chain row, or a single-chain product, from 25) and marked as ranked from 100, a row with one side only and no fee on it waits, and a product waits while its main chain fills. The previous-trade reference carries the previous trader's direction, so terminals priced mostly that way read some tens of bps worse in buy waves than on the exact mid."
-  - "Settlement time: the destination block's timestamp minus the origin block's, one definition on every route and both directions, so Pump Bridge and the Relay routes are the same quantity. It covers a trade leaving Solana, a sale settling back on it, and the wallet-funding transfers that are a bridge-only route's whole flow. Ten settlements minimum, stalls over 60 s excluded and counted apart; the sample count is published below that floor, so a route we have barely seen is not read as unmeasured."
+  - "Settlement time: the destination block's timestamp minus the origin block's, one definition on every route and both directions. Bridged trades and wallet-funding transfers are separate columns, never pooled: the figure is a per-route mean, so a route carrying only transfers would otherwise read faster for that alone. Ten settlements minimum per column, stalls over 60 s excluded; the count is published below that floor, so a route barely seen is not read as unmeasured."
   - "Fail rate: failed over every swap attempt the feed saw on the terminal's wallets in the window, exhaustive; wallet funding, fee sweeps and marker transfers invoke no swap program and are not attempts. Error classes are in the JSON. On the EVM rows the fail rate comes from a sample of blocks read in full (every transaction sent to the routers, reverted or not)."
   - "Cost of failures: 40 failed attempts per terminal per day are read for the fee they paid (a failed transaction executes nothing but pays base + priority fee; zero when the terminal sponsors gas). Failure overhead = fail rate / (1 − fail rate) × median failed fee, in bps of the median trade: what a successful swap carries on average in wasted attempts. Published apart from the cost per swap, not added to it."
   - "PumpSwap's vault ratio alone is not the mid: pools migrated from pump.fun add a virtual quote reserve (about 17.6 SOL) that the pool account stores; with it x·y = k matches executed trades exactly. pump.fun's 2026 bonding curve fills 20 to 60 % above its stored virtual_sol / virtual_token, so the curve gets the previous-trade reference instead."
@@ -122,11 +122,20 @@ metric_panels:
   - id: settle
     label: Settlement time
     label_key: terminal
-    metric: tfq_settle_ms{chain="all",stat="mean"}
+    metric: tfq_settle_ms{kind="trade",chain="all",stat="mean"}
     ignore_dimensions: [bucket]
     unit: ms
     higher_is_better: false
-    description: "Mean destination block time minus origin block time, per route, following the chain selector. At one-second resolution a median can only read 0, 1 or 2 s and cannot separate two routes; read the mean beside the share over 10 s. Trade size does not apply to it."
+    description: "Mean destination block time minus origin block time on a bridged trade, following the chain selector. At one-second resolution a median can only read 0, 1 or 2 s and cannot separate two routes; read the mean beside the share over 10 s. Trade size does not apply."
+  - id: settle_transfer
+    label: Transfer time
+    label_key: terminal
+    metric: tfq_settle_ms{kind="funding",chain="all",stat="mean"}
+    ignore_dimensions: [bucket]
+    unit: ms
+    higher_is_better: false
+    tab: false
+    description: "Mean settlement of a wallet-funding transfer: the same measurement on a different leg, money moved between an app's Solana and EVM wallets with no trade at either end. Kept out of the trade column because a route carrying only transfers would otherwise look faster for that reason alone."
   - id: terminal_fee
     label: Terminal fee
     label_key: terminal
