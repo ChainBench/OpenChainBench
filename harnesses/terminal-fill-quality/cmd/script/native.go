@@ -937,6 +937,53 @@ func nativeRow(ctx context.Context, httpc *http.Client, t evmTerminal, hash stri
 				bought, sold = map[string]*big.Int{}, map[string]*big.Int{erc: amt}
 			}
 		}
+		// Two hops: the pool pays a router and the router forwards to the
+		// trader. Neither leg looks like the pool-to-trader transfer the pass
+		// above wants, so without this the whole swap is dropped: pump's
+		// Robinhood executor takes from the v4 PoolManager and pays the
+		// user's own proxy, and every one of those reads "no token leg"
+		// while the memecoin sits in the receipt.
+		//
+		// Only entered when the direct pass found nothing, so it can add
+		// measurements and never change one that already reads.
+		if len(bought)+len(sold) == 0 {
+			best2 := new(big.Int)
+			for _, l := range rc.Logs {
+				if len(l.Topics) != 3 || l.Topics[0] != topicTransfer {
+					continue
+				}
+				erc, from, to := strings.ToLower(l.Address), topicAddr(l.Topics[1]), topicAddr(l.Topics[2])
+				m := erc20(ctx, httpc, *c, erc)
+				if _, isQuote := quoteUSD(m.symbol, *c, gas); isQuote || !m.ok {
+					continue
+				}
+				// buy: pool -> hop -> trader. sell: trader -> hop -> pool.
+				poolOut, poolIn := emitters[from] && skip(to), emitters[to] && skip(from)
+				if !poolOut && !poolIn {
+					continue
+				}
+				hop := to
+				if poolIn {
+					hop = from
+				}
+				for _, l2 := range rc.Logs {
+					if len(l2.Topics) != 3 || l2.Topics[0] != topicTransfer {
+						continue
+					}
+					erc2, from2, to2, amt2 := strings.ToLower(l2.Address), topicAddr(l2.Topics[1]), topicAddr(l2.Topics[2]), word(l2.Data, 0)
+					if erc2 != erc || amt2.Cmp(best2) <= 0 {
+						continue
+					}
+					if poolOut && from2 == hop && !skip(to2) && !emitters[to2] {
+						user, best2 = to2, amt2
+						bought, sold = map[string]*big.Int{erc: amt2}, map[string]*big.Int{}
+					} else if poolIn && to2 == hop && !skip(from2) && !emitters[from2] {
+						user, best2 = from2, amt2
+						bought, sold = map[string]*big.Int{}, map[string]*big.Int{erc: amt2}
+					}
+				}
+			}
+		}
 		if len(bought)+len(sold) > 0 {
 			// Quote legs for that trader.
 			quoteIn, quoteOut = 0, 0
