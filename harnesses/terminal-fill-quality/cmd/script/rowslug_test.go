@@ -15,6 +15,23 @@ import "testing"
 // entries where 66 were intended, with nothing else in the file duplicated. It
 // reached production and the page served a number chosen by a race.
 func TestNoProducerSharesARowSlug(t *testing.T) {
+	// cohort() first, because it is what compute() walks and therefore what
+	// decides the published rows. The first version of this test checked
+	// xchainRows() against evmTerminals instead, passed, and the six
+	// duplicated rows went on being published: cohort builds the same
+	// <app>-<chain> names independently, so guarding only xchainRows fixed
+	// nothing while the suite said it had.
+	seen := map[string]int{}
+	for _, term := range cohort() {
+		seen[term.Slug]++
+	}
+	for slug, n := range seen {
+		if n > 1 {
+			t.Errorf("cohort() yields %q %d times; two rows write one series "+
+				"and the last one wins", slug, n)
+		}
+	}
+
 	owner := map[string]string{}
 	for _, slug := range xchainRows() {
 		if prev, ok := owner[slug]; ok {
@@ -39,6 +56,10 @@ func TestNoProducerSharesARowSlug(t *testing.T) {
 // pump made its own bridge the default on 2026-10-07, so the native row reading
 // the router wins and the legacy Relay row for that chain is dropped.
 func TestPumpBridgeRowsOwnTheirSlugs(t *testing.T) {
+	count := map[string]int{}
+	for _, term := range cohort() {
+		count[term.Slug]++
+	}
 	relay := map[string]bool{}
 	for _, slug := range xchainRows() {
 		relay[slug] = true
@@ -51,6 +72,10 @@ func TestPumpBridgeRowsOwnTheirSlugs(t *testing.T) {
 		found++
 		if relay[term.Slug] {
 			t.Errorf("%q is still emitted by the Relay feed as well", term.Slug)
+		}
+		if count[term.Slug] != 1 {
+			t.Errorf("cohort() yields %q %d times, want exactly 1",
+				term.Slug, count[term.Slug])
 		}
 	}
 	if found == 0 {

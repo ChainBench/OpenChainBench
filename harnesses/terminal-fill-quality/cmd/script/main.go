@@ -1179,6 +1179,13 @@ func cohort() []Terminal {
 			continue
 		}
 		for _, c := range originChains {
+			// Skip a name evmTerminals already owns. cohort is what compute
+			// walks, so this is the guard that decides the published rows:
+			// the same guard in xchainRows is not enough, and testing only
+			// that one is how six duplicated rows survived a green suite.
+			if nativeOwnsSlug(a.Slug + "-" + c.slug) {
+				continue
+			}
 			out = append(out, Terminal{Slug: a.Slug + "-" + c.slug, Name: a.Name + " · " + chainNames[c.slug], Kind: "app", Note: "Trading on " + chainNames[c.slug] + " through Relay: the user pays in USDC or SOL from the app wallet on Solana, a Relay solver buys the token on " + chainNames[c.slug] + " and delivers it. Value given = the SOL sent (tx fee inside); value received = the tokens delivered, at the pool's state before the settlement swap (v2: reserves; v3 / v4: the price left by the previous swap on the pool); terminal = the app fee; relay = what Relay kept (fees, spread, destination gas); pool = the settlement swap's impact and LP fee."})
 		}
 	}
@@ -1486,12 +1493,12 @@ func compute(st *State, minPriced, minRank int) []TerminalStats {
 	out := make([]TerminalStats, 0, 2*(len(terminals)+len(xchainApps)))
 	byProduct := map[string][]string{}
 	byProductFirm := map[string][]string{} // the rows above their own floor
-	attOfRow := map[string]int{}
+	attOfRow := map[string]int{}           // each row's attempts in the window (its share of the product's flow)
 	// heldStructural: rows held for a reason that will not pass with time,
 	// as opposed to a window still filling. Banana Gun's Ethereum row is
 	// held because its users sell on Uniswap directly, so the feed sees
 	// buys with no fee on them, and that will be true tomorrow too.
-	heldStructural := map[string]bool{} // each row's attempts in the window (its share of the product's flow)
+	heldStructural := map[string]bool{}
 	rowsOf := map[string][]Terminal{}
 	var products []string
 	for _, t := range cohort() {
