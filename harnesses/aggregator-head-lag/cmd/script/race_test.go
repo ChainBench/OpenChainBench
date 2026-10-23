@@ -222,3 +222,28 @@ func TestRaceSingleWinnerOnNearTie(t *testing.T) {
 		t.Fatalf("want exactly one winner, codex; got %+v", h)
 	}
 }
+
+func TestRaceMarginSkipsReferenceAndWinner(t *testing.T) {
+	t0 := time.Unix(1_700_000_000, 0)
+	obs := []raceObs{
+		{aggregator: "reference", at: t0.Add(-50 * time.Millisecond)},
+		{aggregator: "codex", at: t0},
+		{aggregator: "mobula", at: t0.Add(40 * time.Millisecond)},
+		{aggregator: "serialized", at: t0.Add(3 * time.Millisecond)},
+	}
+	ru, d, ok := raceMargin(obs, "codex", t0)
+	if !ok || ru != "serialized" || d != 3*time.Millisecond {
+		t.Fatalf("got %q %v %v, want serialized 3ms", ru, d, ok)
+	}
+	if b := marginBand(d); b != "le5ms" {
+		t.Fatalf("band %q, want le5ms", b)
+	}
+	if _, _, ok := raceMargin(obs[:2], "codex", t0); ok {
+		t.Fatal("no runner-up feed must report !ok")
+	}
+	for d, want := range map[time.Duration]string{0: "le1ms", time.Millisecond: "le1ms", 5 * time.Millisecond: "le5ms", 6 * time.Millisecond: "le20ms", 100 * time.Millisecond: "le100ms", time.Second: "gt100ms"} {
+		if got := marginBand(d); got != want {
+			t.Errorf("marginBand(%v) = %q, want %q", d, got, want)
+		}
+	}
+}
