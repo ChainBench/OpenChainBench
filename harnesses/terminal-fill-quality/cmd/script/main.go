@@ -1953,10 +1953,24 @@ func compute(st *State, minPriced, minRank int) []TerminalStats {
 		if t0, ok := st.Resampling[t.Slug]; ok && !ts.Healthy {
 			ts.Note = strings.TrimSpace(ts.Note + " Re-sampling since " + time.Unix(t0, 0).UTC().Format("15:04 UTC") + " after a method change: the figure returns when the window refills.")
 		}
-		// A native EVM row whose sample is one side only with no fee on it
-		// (Banana Gun's Ethereum buys) reads a fee-free half of the product:
-		// the fee sits on the side the feed never sees, the row waits.
-		if isNativeEVM(t.Slug) && ts.Parsed >= 20 && (ts.BuySharePct >= 99 || ts.BuySharePct <= 1) && ts.Components["terminal"] < 5 {
+		// A row whose sample is one side only with no fee on it (Banana Gun's
+		// Ethereum buys) reads a fee-free half of the product: the fee sits
+		// on the side the feed never sees, so the row waits.
+		//
+		// The isNativeEVM gate this used to carry made the hold miss the row
+		// that needed it most. FOMO · Mobula is buys only on all four of its
+		// chains and its terminal fee is not measurable at all, yet it was
+		// ranked, because it is not a native EVM row. The rule has nothing to
+		// do with how a row is read: a one-sided sample with no fee on that
+		// side is half a product whatever produced it.
+		//
+		// _, feeSeen distinguishes the two reasons the fee is not there:
+		// absent because this route's fee cannot be seen (TerminalUnknown),
+		// or present and genuinely small. Both mean the same thing here, and
+		// spelling it out stops the condition resting on a zero value.
+		_, feeSeen := ts.Components["terminal"]
+		if ts.Parsed >= 20 && (ts.BuySharePct >= 99 || ts.BuySharePct <= 1) &&
+			(!feeSeen || ts.Components["terminal"] < 5) {
 			ts.Healthy, ts.Ranked = false, false
 			heldStructural[t.Slug] = true
 			ts.Note = strings.TrimSpace(ts.Note + " One side only in the sample with no fee on it: the fee is taken on the side this feed never sees, so the row waits until both sides are read.")
@@ -2296,8 +2310,10 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 			if s.TradeUSD > 0 {
 				a := accOf(s.TradeUSD)
 				a.parsed++
-				a.term = append(a.term, s.TerminalBps)
-				a.termW = append(a.termW, w)
+				if !s.TerminalUnknown {
+					a.term = append(a.term, s.TerminalBps)
+					a.termW = append(a.termW, w)
+				}
 				a.net = append(a.net, s.NetworkBps)
 				a.netW = append(a.netW, w)
 				a.trade = append(a.trade, s.TradeUSD)
@@ -2332,8 +2348,14 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 			// below (buy share, venue and quote mix, flagged, and ts.Priced
 			// itself) must still see every parsed swap.
 			if s.Priced && s.LossBps != nil {
-				term = append(term, s.TerminalBps)
-				termW = append(termW, w)
+				// A route whose fee is unmeasurable contributes nothing
+				// here. Averaging its 0 in would pull the column toward a
+				// charge nobody was shown to pay, and the figure would get
+				// MORE confident as more of that route's swaps arrived.
+				if !s.TerminalUnknown {
+					term = append(term, s.TerminalBps)
+					termW = append(termW, w)
+				}
 				net = append(net, s.NetworkBps)
 				netW = append(netW, w)
 				// A Relay row whose cut came back empty from the API is an
@@ -3088,6 +3110,9 @@ func median(v []float64) float64 {
 func c2field(s Swap, c string) (float64, bool) {
 	switch c {
 	case "terminal":
+		if s.TerminalUnknown {
+			return 0, false
+		}
 		return s.TerminalBps, true
 	case "network":
 		return s.NetworkBps, true

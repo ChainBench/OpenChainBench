@@ -188,6 +188,12 @@ func mobulaRow(ctx context.Context, httpc *http.Client, c originChain, chain, fi
 	// than either alone. RelayID now carries the intent id, which is the
 	// rail's own request identifier and exactly what the gate wants.
 	sw.TerminalQ = 0
+	// And SAY so, rather than only writing it in a comment. The paragraph
+	// above was in this file from the day the route shipped and the column
+	// still printed 0, because nothing downstream could tell "zero" from
+	// "unmeasured". The audit read it exactly as the comment feared: a
+	// terminal fee of 0 next to FOMO's own Relay rows at 45 to 50 bps.
+	sw.TerminalUnknown = true
 	sw.NetworkQ = s.GasUSD // destination gas; the origin fee is the app's sponsor
 	sw.PoolQ = s.PoolInUSD
 	bridge := in.Amount - s.PoolInUSD - s.OtherUSD - s.GasUSD

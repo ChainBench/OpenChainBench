@@ -97,6 +97,15 @@ type Swap struct {
 	// because we were not told, not because the solver took nothing, and a
 	// residual pool component would silently absorb the bridge's take.
 	RelayUnknown bool    `json:"relay_unknown,omitempty"`
+	// TerminalUnknown: this route takes no fee we can SEE, which is not the
+	// same as taking none. Mobula's rail is the case: no app-fee transfer
+	// exists on either leg, but a fee the app sets and the bridge takes
+	// inside its quote leaves no transfer to find, so it sits in the bridge
+	// residual instead. mobula_price.go has said so in a comment since the
+	// route shipped while still writing TerminalQ = 0, and a 0 in that
+	// column reads as "this route charges nothing", which is the strongest
+	// possible claim about a fee nobody measured.
+	TerminalUnknown bool `json:"terminal_unknown,omitempty"`
 	InTx         string  `json:"in_tx,omitempty"`
 	QuoteUSD     float64 `json:"quote_usd"` // quote unit price used for sizing
 	// Quote received by accounts that are neither user, pool, terminal nor
