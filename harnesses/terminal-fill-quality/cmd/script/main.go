@@ -108,7 +108,7 @@ var (
 	// tfq_feed_up, which covers the Solana WebSocket alone.
 	gWalletPollBehind = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "tfq_wallet_poll_behind",
-		Help: "1 when a fee wallet's last polling pass filled its page while a cursor was set, meaning more signatures arrived than one pass reads and the ones between the old cursor and that page were skipped. This is the FALLBACK path, used when the WebSocket feed is unhealthy, and its count is the denominator of the published fail rate: a silent hole here understates attempts and overstates the rate",
+		Help: "1 when a fee wallet's last polling pass filled its page while a cursor was set, meaning more signatures arrived than one pass reads and the ones between the old cursor and that page were skipped. This is the FALLBACK path, used when the WebSocket feed is unhealthy. What a hole here costs is the COUNT, not the rate: the truncated slice feeds both the attempts and the failures, so dropping its tail removes them together and the ratio is untouched. It understates every sample size on this path, and because truncation only bites wallets busier than one page a tick it reweights the pooled rate toward the quiet ones, by an amount and in a direction nobody has measured",
 	}, []string{"terminal"})
 	cWalletPollSkipped = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "tfq_wallet_poll_skipped_total",
@@ -682,7 +682,7 @@ func sample(ctx context.Context, rpc *rpcClient, st *State, solUSD float64, pool
 				if cur.Last != "" && len(sigs) >= walletPollPage {
 					gWalletPollBehind.WithLabelValues(t.Slug).Set(1)
 					cWalletPollSkipped.WithLabelValues(t.Slug).Add(float64(len(sigs)))
-					log.Printf("[%s] %s: page full (%d) with a cursor set: signatures were skipped, so this terminal's attempts are understated and its fail rate overstated", t.Slug, w[:6], len(sigs))
+					log.Printf("[%s] %s: page full (%d) with a cursor set: signatures were skipped, so this terminal's attempts are understated. The rate itself is not, both sides of it coming from the same truncated slice", t.Slug, w[:6], len(sigs))
 				} else {
 					gWalletPollBehind.WithLabelValues(t.Slug).Set(0)
 				}
