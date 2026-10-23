@@ -236,11 +236,6 @@ const CANONICAL_NAMES: Record<string, string> = {
   "fomo-mobula": "FOMO \u00b7 Mobula",
   "pump-fun": "pump.fun",
   "pump-bridge": "Pump Bridge",
-  // Its rows are published under fomo-mobula and the blob carries the name,
-  // but the registry did not, so every surface that titles a product from
-  // here (the /products page, compare, answers) would have title-cased the
-  // slug into "Fomo Mobula".
-  "fomo-mobula": "FOMO · Mobula",
 };
 
 function titleCaseSlug(s: string): string {
