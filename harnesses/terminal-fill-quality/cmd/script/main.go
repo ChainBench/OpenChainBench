@@ -235,6 +235,13 @@ type State struct {
 	// of blank columns. Mobula settles in seconds, so a deploy that empties
 	// this loses every fill whose deposit it held.
 	MobulaIntents map[string]mobulaIntent `json:"mobula_intents,omitempty"`
+	// Where the Mobula fill watcher stopped, per chain. In memory it meant
+	// every restart re-read mobulaFillReach of each chain, and since those
+	// fills had already consumed their intents in the previous run, the
+	// second reading counted them as unknown_intent. With fifteen restarts
+	// in an evening that is most of the counter: 1,161 fills seen against
+	// about 14 intents a minute actually happening.
+	MobulaFillCursor map[string]int64 `json:"mobula_fill_cursor,omitempty"`
 }
 
 // record adds a tick's feed counts to the terminal's current minute.
@@ -435,6 +442,10 @@ func main() {
 	if n := mobulaLoadIntents(st.MobulaIntents, time.Now().Unix()); n > 0 {
 		log.Printf("[mobula] %d intents restored from the state file", n)
 	}
+	mfw := newMobulaFillWatcher()
+	if n := mfw.loadCursors(st.MobulaFillCursor); n > 0 {
+		log.Printf("[mobula-fill] cursors restored for %d chains, so this start does not re-read fills already paired", n)
+	}
 	pools := &poolCache{m: map[string]poolParams{}}
 	repriced := false
 	quota := map[string]float64{}
@@ -497,7 +508,6 @@ func main() {
 	// intents longer than it needs to and widen the window for nothing.
 	mbf := newMobulaFeed()
 	go mbf.run(context.Background(), rpc, time.Minute)
-	mfw := newMobulaFillWatcher()
 	go mfw.run(context.Background(), httpc, 2*time.Minute)
 	var mu sync.RWMutex
 	var pub *Public
@@ -552,7 +562,11 @@ func main() {
 		added, seen := sample(ctx, rpc, st, sol, pools, fd, quota, failQuota, activity, perTick, perTickFail)
 		gas := gasPrices(ctx, httpc)
 		added += sampleXchain(ctx, rpc, httpc, st, sol, gas, xf, pools, quota, perTickEVM)
-		added += sampleMobula(ctx, httpc, st, mfw, gas, int(math.Max(perTickEVM, 2)))
+		// The quota is perTickEVM per ROW, and this rail has one row per chain, so
+		// the rail's share is that times the chains it settles on. Passing the
+		// per-row figure gave it two fills a tick against about ten a minute
+		// paired, and the surplus used to be discarded rather than deferred.
+		added += sampleMobula(ctx, httpc, st, mfw, gas, int(math.Max(perTickEVM*float64(len(mobulaBridge)), 4)))
 		a2, s2 := sampleNative(ctx, httpc, st, nf, gas, quota, perTickEVM)
 		added += a2
 		seen += s2
@@ -586,6 +600,7 @@ func main() {
 		if stateFile != "" {
 			st.PumpDeposits = pumpSaveDeposits()
 			st.MobulaIntents = mobulaSaveIntents()
+			st.MobulaFillCursor = mfw.saveCursors()
 			if err := writeAtomic(stateFile, st); err != nil {
 				log.Printf("[state] %v", err)
 			}

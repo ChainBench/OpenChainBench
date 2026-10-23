@@ -20,6 +20,7 @@ import (
 	"encoding/hex"
 	"log"
 	"math/big"
+	"math/rand"
 	"strings"
 	"sync"
 	"time"
@@ -65,12 +66,82 @@ func (w *mobulaFillWatcher) queue(p mobulaPaired) {
 	}
 }
 
-// drain hands over everything buffered and clears it.
-func (w *mobulaFillWatcher) drain() []mobulaPaired {
+// saveCursors and loadCursors carry the per-chain read position across a
+// restart.
+//
+// Without them a restart re-reads mobulaFillReach of every chain, and those
+// fills already consumed their intents in the previous run, so the second
+// reading files them as unknown_intent. That is the same defect as the pump
+// deposit window, fixed earlier tonight by persisting it, written again here
+// in a new file the same evening.
+//
+// A cursor from an old state file is not dangerous: pollChain already resets
+// to head minus the reach whenever the gap is larger than the reach, so a
+// stale cursor behaves exactly like no cursor.
+func (w *mobulaFillWatcher) saveCursors() map[string]int64 {
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	out := w.pending
-	w.pending = nil
+	out := make(map[string]int64, len(w.cursor))
+	for k, v := range w.cursor {
+		out[k] = v
+	}
+	return out
+}
+
+func (w *mobulaFillWatcher) loadCursors(in map[string]int64) int {
+	if len(in) == 0 {
+		return 0
+	}
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	n := 0
+	for k, v := range in {
+		if v > 0 {
+			w.cursor[k] = v
+			n++
+		}
+	}
+	return n
+}
+
+// backlog: paired fills waiting to be priced. Published as
+// tfq_mobula_pending_fills and read by the tests, so the depth is never
+// something a reader has to infer.
+func (w *mobulaFillWatcher) backlog() int {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return len(w.pending)
+}
+
+// draw takes up to n paired fills AT RANDOM and leaves the rest buffered.
+//
+// Random, because arrival order is not a sample: taking the first n biases
+// toward whatever getLogs returned first, which correlates with the chain and
+// with position in a block range. The spec says "drawn at random" and every
+// other sampler here shuffles before it draws.
+//
+// And the rest STAYS. The previous version drained the whole buffer and kept
+// n, so an over-quota tick destroyed the surplus for good: 188 of 202
+// Robinhood fills, in a route where Robinhood is most of the flow. The other
+// samplers leave what they do not draw in their feed, and this now does the
+// same, bounded by mobulaPendingMax which drops the oldest.
+func (w *mobulaFillWatcher) draw(n int) []mobulaPaired {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if n <= 0 || len(w.pending) == 0 {
+		gMobulaBacklog.Set(float64(len(w.pending)))
+		return nil
+	}
+	rand.Shuffle(len(w.pending), func(i, j int) {
+		w.pending[i], w.pending[j] = w.pending[j], w.pending[i]
+	})
+	if n > len(w.pending) {
+		n = len(w.pending)
+	}
+	out := make([]mobulaPaired, n)
+	copy(out, w.pending[:n])
+	w.pending = w.pending[n:]
+	gMobulaBacklog.Set(float64(len(w.pending)))
 	return out
 }
 
@@ -176,7 +247,9 @@ func (w *mobulaFillWatcher) pollChain(ctx context.Context, httpc *http.Client, c
 		return
 	}
 	span := mobulaSpanOf(chain)
+	w.mu.Lock()
 	from := w.cursor[chain]
+	w.mu.Unlock()
 	if from <= 0 || head-from > span {
 		// Losing ground: either a cold start or a pass that fell behind the
 		// chain. Logged when it is the second case, because that is the
@@ -207,7 +280,9 @@ func (w *mobulaFillWatcher) pollChain(ctx context.Context, httpc *http.Client, c
 	}
 	// to+1: eth_getLogs includes both bounds, so leaving the cursor at head
 	// re-reads head's logs on the next pass and double-counts its fills.
+	w.mu.Lock()
 	w.cursor[chain] = head + 1
+	w.mu.Unlock()
 
 	paired := 0
 	for _, l := range logs {
