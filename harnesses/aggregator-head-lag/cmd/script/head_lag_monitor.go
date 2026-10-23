@@ -706,6 +706,13 @@ func connectAndMonitorCodex(config *Config, stopChan <-chan struct{}, sockets *c
 			if wsMsg.Type == "complete" || wsMsg.Type == "error" {
 				return fmt.Errorf("subscription %q terminated by server (type=%s)", wsMsg.ID, wsMsg.Type)
 			}
+			// The edge nodes end a subscription a third way: one "next" whose
+			// payload carries only errors (EDGE_ORIGIN_UNAVAILABLE, seen
+			// 2026-10-23 on iad), then nothing, with the socket left open.
+			// Waiting for the flow watchdog costs 10 minutes per occurrence.
+			if reason, dead := codexNextError(wsMsg); dead {
+				return fmt.Errorf("subscription %q terminated by server (next with errors: %s)", wsMsg.ID, reason)
+			}
 
 			// Skip non-data messages
 			if wsMsg.Type != "next" || wsMsg.Payload == nil {
@@ -868,4 +875,35 @@ func runHeadLagMonitor(config *Config, stopChan <-chan struct{}) {
 	// Wait for all to finish
 	wg.Wait()
 	fmt.Println("[HEAD-LAG] All monitors stopped")
+}
+
+// codexNextError reports whether a "next" message carries GraphQL errors and
+// no data, which on Codex means the subscription is over.
+func codexNextError(m CodexWSMessage) (string, bool) {
+	if m.Type != "next" || m.Payload == nil {
+		return "", false
+	}
+	errs, ok := m.Payload["errors"].([]interface{})
+	if !ok || len(errs) == 0 {
+		return "", false
+	}
+	if data, ok := m.Payload["data"].(map[string]interface{}); ok {
+		for _, v := range data {
+			if v != nil {
+				return "", false
+			}
+		}
+	}
+	reasons := make([]string, 0, len(errs))
+	for _, e := range errs {
+		em, _ := e.(map[string]interface{})
+		r, _ := em["message"].(string)
+		if ext, ok := em["extensions"].(map[string]interface{}); ok {
+			if code, ok := ext["code"].(string); ok {
+				r = code + ": " + r
+			}
+		}
+		reasons = append(reasons, r)
+	}
+	return strings.Join(reasons, "; "), true
 }
