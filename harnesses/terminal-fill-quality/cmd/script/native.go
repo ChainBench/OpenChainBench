@@ -1302,17 +1302,44 @@ func nativeRow(ctx context.Context, httpc *http.Client, t evmTerminal, hash stri
 		return sw
 	}
 	if token := pick(sold); token != "" {
-		// A sale on a pump router is not priced, because nothing is known
-		// about how the deduction falls on this side. The buy path grosses the
-		// router's spend back up; a sale's proceeds would need the mirror of
-		// that, and no sale has ever been seen on these rows: 63 swaps read on
-		// 2026-10-22 and every one a buy, which is what a bridge whose only
-		// user instruction is DepositForSwap looks like.
+		// A sale on a pump router USED to be refused outright, because the buy
+		// path recovers what the user committed by inverting pump's schedule
+		// and a sale's proceeds have no established mirror for that. The old
+		// comment also said no sale had ever been seen here, from 63 swaps read
+		// on 2026-10-22. That premise was wrong: sales are 97% of the router's
+		// events by count, and 26% of what clears the dust floor.
 		//
-		// Publishing one on the ungrossed base would put two cost bases in one
-		// row, so it waits for a real example to be measured against.
+		// The refusal was still right while the proceeds had to be MODELLED.
+		// They no longer do. Both legs of one order carry the same sixteen-byte
+		// order id, so the matching Solana delivery can be looked up and what
+		// the user received is read instead of assumed. Nothing here depends on
+		// where pump's cut falls.
+		//
+		// A miss stays unpriced. It does NOT fall back to the schedule: a row
+		// measured from the delivery and a row modelled from the rate are
+		// different figures and one column cannot show both as the same number.
+		pumpSaleRecv := 0.0
 		if pumpBridgeRow(t.Slug) {
-			return &Swap{Flag: "unpriced_pump_sale"}
+			order, side := pumpOrderOf(rc.Logs, t.Routers)
+			switch {
+			case order == "":
+				cPumpOrder.WithLabelValues(t.Chain, "sell", "no_id").Inc()
+				return &Swap{Flag: "unpriced_pump_sale_no_id"}
+			case side != "sell":
+				// The router called it a buy while the transfers read as a
+				// sale. Two readings of one direction disagreeing is not
+				// something to average: it is a decode to fix.
+				cPumpOrder.WithLabelValues(t.Chain, side, "side_mismatch").Inc()
+				return &Swap{Flag: "unpriced_pump_side_mismatch"}
+			default:
+				pay, ok := pumpFindPayout(order)
+				if !ok {
+					cPumpOrder.WithLabelValues(t.Chain, "sell", "not_held").Inc()
+					return &Swap{Flag: "unpriced_pump_sale_unjoined"}
+				}
+				cPumpOrder.WithLabelValues(t.Chain, "sell", "joined").Inc()
+				pumpSaleRecv = pay.amount
+			}
 		}
 		s, err := priceEvmOriginSale(ctx, httpc, *c, hash, user, token, gas)
 		if err != nil {
@@ -1332,6 +1359,16 @@ func nativeRow(ctx context.Context, httpc *http.Client, t evmTerminal, hash stri
 		// Received: quote ERC20 to the user, else the native balance change
 		// across the block plus the gas and the tip paid out of it.
 		recv := quoteOut
+		// On a Pump Bridge sale the user receives nothing on THIS chain: the
+		// stable stays with the router and pump delivers on Solana. So both
+		// readings below describe the wrong thing here, and quoteOut is
+		// typically zero while the native balance change is the gas refund.
+		// The delivery joined on the order id is the only correct value, and it
+		// is a measurement of the far leg rather than an inference from this
+		// one.
+		if pumpSaleRecv > 0 {
+			recv = pumpSaleRecv
+		}
 		if recv == 0 {
 			var b0, b1 string
 			if evmCall(ctx, httpc, c.rpc, "eth_getBalance", []any{user, "0x" + big.NewInt(bn-1).Text(16)}, &b0) != nil || evmCall(ctx, httpc, c.rpc, "eth_getBalance", []any{user, "0x" + big.NewInt(bn).Text(16)}, &b1) != nil {

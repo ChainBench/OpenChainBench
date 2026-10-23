@@ -217,6 +217,73 @@ var pumpRouters = []pumpRouter{
 // topicERC20Transfer: Transfer(address,address,uint256).
 const topicERC20Transfer = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
 
+// The routers' own two events, and the order id they carry.
+//
+// Both have the same shape, read off Robinhood Chain on 2026-10-23:
+//
+//	topic0  the event
+//	topic1  the ORDER ID, sixteen bytes LEFT-ALIGNED in the word
+//	topic2  the trader's address, which is also tx.to
+//	data    word0 the token, word1 the token amount (18 dec),
+//	        word2 the stable amount (1e6)
+//
+// Left-aligned is the detail that matters and the reason pumpOrderOf takes the
+// FIRST sixteen bytes rather than the last. Read from the wrong end every id
+// would be zero, every lookup would miss, and the join would look absent rather
+// than wrong.
+//
+// Per-order on both sides, which is what makes it a key: 535 distinct ids in
+// 535 sell events and 107 in 107 buys.
+const (
+	topicPumpSell = "0xcdad023039fb3b146aa9902d31a2512a3d2c7180d901044aa17f6d69fb0683c1"
+	topicPumpBuy  = "0x84da3a1d17f63dbfc5400acadf1acb0d383df817d20cd08cd2d9a16b7085b781"
+)
+
+// pumpOrderOf returns the order id a pump router's event carries in this
+// receipt, and which direction the event says it is.
+//
+// Only this chain's own router is read. One generic contract serves five
+// chains and Robinhood has its own, so matching any router would let a
+// neighbouring chain's event answer for this one.
+func pumpOrderOf(logs []evmLog, routers []string) (order, side string) {
+	for i := range logs {
+		l := &logs[i]
+		if len(l.Topics) < 3 {
+			continue
+		}
+		switch strings.ToLower(l.Topics[0]) {
+		case topicPumpSell:
+			side = "sell"
+		case topicPumpBuy:
+			side = "buy"
+		default:
+			continue
+		}
+		mine := false
+		for _, r := range routers {
+			if strings.EqualFold(l.Address, r) {
+				mine = true
+			}
+		}
+		if !mine {
+			side = ""
+			continue
+		}
+		raw := strings.TrimPrefix(strings.ToLower(l.Topics[1]), "0x")
+		if len(raw) < 2*pumpEventOrderLen {
+			side = ""
+			continue
+		}
+		id := raw[:2*pumpEventOrderLen]
+		if id == strings.Repeat("0", 2*pumpEventOrderLen) {
+			side = ""
+			continue
+		}
+		return id, side
+	}
+	return "", ""
+}
+
 // pumpTakeWatcher walks each router forward from where it stopped.
 type pumpTakeWatcher struct {
 	cursor map[string]int64

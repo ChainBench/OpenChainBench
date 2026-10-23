@@ -41,13 +41,21 @@ var (
 	})
 	hPumpBridgeDeposit = prometheus.NewHistogram(prometheus.HistogramOpts{
 		Name:    "tfq_pump_bridge_deposit_usd",
-		Help:    "Size of each Pump Bridge deposit in USDC. The fee pump takes is NOT in here: it is deducted between this deposit and the EVM router's spend, and the two legs cannot be paired because the destination is encrypted on chain",
+		Help:    "Size of each Pump Bridge deposit in USDC. The fee pump takes is NOT in here: it is deducted between this deposit and the EVM router's spend. The two legs CAN now be paired, on the order id both events carry, which is what tfq_pump_bridge_order_total measures",
 		Buckets: []float64{1, 2, 5, 10, 25, 50, 100, 250, 500, 1000, 2500, 10000},
 	})
+	cPumpPayouts = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "tfq_pump_bridge_payouts_total",
+		Help: "Payout events decoded from pump.fun's bridge program since this process started. A payout is the Solana leg of a SALE, and the feed used to drop it unread as an admin call, which is why a sale had no destination leg and was published as nothing",
+	})
+	cPumpOrder = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "tfq_pump_bridge_order_total",
+		Help: "Attempts to join an EVM leg to its Solana leg on the ORDER ID both carry, by outcome. joined = the id named a delivery we hold. no_id = the EVM event carried no id, so this leg cannot be joined at all and the fault is in our decode. not_held = the id is good but no matching Solana leg is in the window, which is the feed being behind or the delivery not having happened yet. Published so the share that cannot be joined is MEASURED rather than assumed: the id matched 23 of 23 by hand on 2026-10-23, and this is what says whether that holds in production",
+	}, []string{"chain", "side", "result"})
 )
 
 func init() {
-	prometheus.MustRegister(gPumpBridgeUp, cPumpBridgeDeposits, hPumpBridgeDeposit, gPumpBridgeBehind, cPumpBridgeRead)
+	prometheus.MustRegister(gPumpBridgeUp, cPumpBridgeDeposits, hPumpBridgeDeposit, gPumpBridgeBehind, cPumpBridgeRead, cPumpPayouts, cPumpOrder)
 }
 
 // pumpBridgeFeed walks the bridge program forward from where it stopped.
@@ -171,7 +179,17 @@ func (f *pumpBridgeFeed) read(ctx context.Context, rpc *rpcClient, sig string) (
 			}
 			d, err := decodePumpDeposit(raw)
 			if err != nil {
-				continue // a payout or an admin call, which is the norm
+				// A payout is the Solana leg of a SALE, and it carries the
+				// order id and the amount delivered. This branch used to drop
+				// it as "a payout or an admin call, which is the norm", and
+				// that is why a sale had no destination leg to price against.
+				if p, perr := decodePumpPayout(raw); perr == nil {
+					cPumpPayouts.Inc()
+					if tx.BlockTime != nil {
+						pumpNotePayout(*tx.BlockTime, p.Order, float64(p.Amount)/1e6, p.User)
+					}
+				}
+				continue // an admin call, which is the rest of the traffic
 			}
 			deposits++
 			cPumpBridgeDeposits.Inc()
@@ -352,6 +370,74 @@ func pumpNoteDeposit(at int64, amount float64) {
 		w = w[len(w)-pumpDepWindowMax:]
 	}
 	pumpDepWindow.seen = w
+}
+
+// pumpPayoutWindow: deliveries seen recently, keyed by the order id so the EVM
+// leg of a sale can read what the user actually received.
+//
+// A map, not a slice, and that difference is the point. pumpDepWindow is a
+// slice scanned for an amount within a time window, which is why it has an
+// ambiguous case, a maxLag to argue about, and a tail that grew when the window
+// widened. An order id admits exactly one answer or none.
+//
+// Bounded by age the same way, because a payout nobody claims must not be held
+// for the life of the process. The age is generous on purpose: unlike the
+// amount pairing, a wide window here costs nothing, since a wrong id cannot
+// match. The only thing age protects is memory.
+var pumpPayoutWindow struct {
+	sync.Mutex
+	by map[string]pumpPay
+}
+
+// pumpPay is one delivery: when it landed and how much arrived.
+type pumpPay struct {
+	at     int64
+	amount float64
+	user   string
+}
+
+const (
+	pumpPayWindowMax = 20000
+	pumpPayWindowAge = 2 * 60 * 60 // seconds
+)
+
+// pumpNotePayout records one delivery under its order id.
+func pumpNotePayout(at int64, order string, amount float64, user string) {
+	if at <= 0 || order == "" || amount <= 0 {
+		return
+	}
+	pumpPayoutWindow.Lock()
+	defer pumpPayoutWindow.Unlock()
+	if pumpPayoutWindow.by == nil {
+		pumpPayoutWindow.by = map[string]pumpPay{}
+	}
+	pumpPayoutWindow.by[order] = pumpPay{at: at, amount: amount, user: user}
+	// Prune only when the map has grown, so the common path is one insert.
+	if len(pumpPayoutWindow.by) <= pumpPayWindowMax {
+		return
+	}
+	cut := at - pumpPayWindowAge
+	for k, v := range pumpPayoutWindow.by {
+		if v.at < cut {
+			delete(pumpPayoutWindow.by, k)
+		}
+	}
+}
+
+// pumpFindPayout returns the delivery for an order id.
+//
+// There is no tolerance and no second candidate by construction: the id either
+// names a delivery we hold or it does not. A miss is a miss and the caller must
+// publish nothing from it, which is the difference between this and the amount
+// pairing it replaces.
+func pumpFindPayout(order string) (pumpPay, bool) {
+	if order == "" {
+		return pumpPay{}, false
+	}
+	pumpPayoutWindow.Lock()
+	defer pumpPayoutWindow.Unlock()
+	p, ok := pumpPayoutWindow.by[order]
+	return p, ok
 }
 
 // pumpFindDeposit returns the deposit that produced this spend, and whether
