@@ -251,6 +251,14 @@ type State struct {
 	// in an evening that is most of the counter: 1,161 fills seen against
 	// about 14 intents a minute actually happening.
 	MobulaFillCursor map[string]int64 `json:"mobula_fill_cursor,omitempty"`
+	// The settlement samples, and when they were written. This window was
+	// the fourth in-memory thing in this process with the same property and
+	// the only one whose loss was visible on the page: every deploy reset
+	// every route to zero samples, so routes fell back under the
+	// ten-sample floor and the panel showed whichever ones happened to be
+	// above it when the page materialised.
+	SettleWindow  []settleRecord `json:"settle_window,omitempty"`
+	SettleSavedAt int64          `json:"settle_saved_at,omitempty"`
 }
 
 // record adds a tick's feed counts to the terminal's current minute.
@@ -448,6 +456,9 @@ func main() {
 	if n := pumpLoadDeposits(st.PumpDeposits, time.Now().Unix()); n > 0 {
 		log.Printf("[pump-bridge] %d deposits restored from the state file, so the pairing is not blind while the feed catches up", n)
 	}
+	if n := loadSettleWindow(st.SettleWindow, st.SettleSavedAt, time.Now().Unix()); n > 0 {
+		log.Printf("[settle] %d settlement samples restored, so the routes do not fall back under the publication floor on every deploy", n)
+	}
 	if n := mobulaLoadIntents(st.MobulaIntents, time.Now().Unix()); n > 0 {
 		log.Printf("[mobula] %d intents restored from the state file", n)
 	}
@@ -610,6 +621,7 @@ func main() {
 			st.PumpDeposits = pumpSaveDeposits()
 			st.MobulaIntents = mobulaSaveIntents()
 			st.MobulaFillCursor = mfw.saveCursors()
+			st.SettleWindow, st.SettleSavedAt = saveSettleWindow(), time.Now().Unix()
 			if err := writeAtomic(stateFile, st); err != nil {
 				log.Printf("[state] %v", err)
 			}
