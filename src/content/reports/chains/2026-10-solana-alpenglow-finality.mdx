@@ -3,9 +3,10 @@ title: "Solana Alpenglow finality: 7 s to 0.4 s"
 category: "chains"
 slug: "2026-10-solana-alpenglow-finality"
 publishedAt: "2026-10-23"
+updatedAt: "2026-10-23"
 period: "October 2026"
 summary: "Alpenglow cut Solana's median finality from about 7 s to 404 ms on mainnet. Live wall-clock data, why it is 17x and not 85x, and how Solana ranks now."
-heroFinding: "Solana's median finality is 404 ms over the last 24 hours (p90 579 ms, p99 765 ms, 357,000 samples), down from about 7 seconds under Tower BFT."
+heroFinding: "As of 23 October 2026, Solana's median finality is 404 ms over the preceding 24 hours (p90 579 ms, p99 765 ms, 357,000 measured slots), down from about 7 seconds under Tower BFT."
 author: "OpenChainBench Research"
 readingTime: 8
 canonical: "https://openchainbench.com/reports/chains/2026-10-solana-alpenglow-finality"
@@ -26,13 +27,13 @@ faq:
 
 <Summary>
 - Alpenglow went live on Solana mainnet on 21 October 2026, at slot 459,653,000 in epoch 1064, around 13:54 UTC. It replaced Tower BFT with a new voting protocol called Votor.
-- We measure Solana finality as wall-clock time, every slot. Under Tower BFT the median was about 7 seconds. Since Alpenglow it is **404 ms** (p50, 24h), with p90 at 579 ms and p99 at 765 ms, over more than 357,000 samples.
-- That is about a 17x improvement. The headline "12.8 s to 150 ms" overstates both ends. The 12.8 s figure assumes 400 ms slots, and Solana already ran faster slots before the switch. The 150 ms is Anza's target, not yet a measured result.
+- We measure Solana finality as wall-clock time, slot by slot. Under Tower BFT the median was about 7 seconds. As of 23 October 2026 it is **404 ms** (p50 over the preceding 24 hours), with p90 at 579 ms and p99 at 765 ms, over more than 357,000 measured slots. Individual readings move minute to minute: 94% of slots finalize between 0.24 s (p5) and 0.77 s (p99), which is why the live chart's latest point jumps around the median.
+- That is about a 17x improvement (7 s to 0.404 s). The headline "12.8 s to 150 ms" would be 85x, and it overstates both ends. The 12.8 s figure assumes 400 ms slots, and Solana already ran faster slots before the switch. The 150 ms is Anza's target, not yet a measured result.
 - Solana now ties Gram for the fastest finality among the 10 chains we track (both about 0.40 s). It is ahead of BNB Chain (0.73 s) and Avalanche (5.95 s), and about 2,400x faster than Ethereum's roughly 16 minutes.
 - Votor is the first half of Alpenglow. Rotor, the new block propagation layer, is not scheduled yet.
 </Summary>
 
-<TOC sections="What Alpenglow changed | What we measured | Why 0.4 s and not 150 ms | How Solana ranks now | What changes for developers | Where the code lives | FAQ | Sources and reproducibility" />
+<TOC sections="What Alpenglow changed | What we measured | Why is it 0.4 s and not 150 ms? | How does Solana rank now? | What changes for developers | Where the code lives | FAQ | Sources and reproducibility" />
 
 ## What Alpenglow changed
 
@@ -64,20 +65,24 @@ The drop happened in the minutes after the announced activation. Our last Tower 
 
 We had to change the method because of Alpenglow itself. Our original Solana measurement subtracted `getBlockTime` values, which are whole seconds. That was fine when finality took 7 seconds. Once finality fell below one second, the method could only read 0 or 1, which is the gray band in the chart.
 
-On 22 October we moved Solana to a wall-clock measurement. The harness holds a WebSocket subscription to `slotSubscribe` and `rootSubscribe`. It records the moment a slot is first seen and the moment a root at or above it arrives, in milliseconds. That covers more than 357,000 slots in the last 24 hours, with 100% feed health.
+On 22 October we moved Solana to a wall-clock measurement. The harness holds a WebSocket subscription to `slotSubscribe` and `rootSubscribe`. It records the moment a slot is first seen and the moment a root at or above it arrives, in milliseconds. That covers more than 357,000 slots in the 24 hours to 23 October 2026, 12:30 UTC, with 100% feed health.
 
-## Why 0.4 s and not 150 ms
+## Why is it 0.4 s and not 150 ms?
 
 Anza's target is about 150 ms, and Anza's Max Resnick has said users should see confirmation in roughly 150 to 200 ms. We measure 404 ms at the median. Both can be true, because they measure different things.
 
 - **Where the clock starts and stops.** We timestamp both events on a public RPC node (`api.mainnet-beta.solana.com`), from the moment it first reports a slot to the moment it reports that slot rooted. That includes the node's own time to receive and process the certificates. A validator inside the vote exchange sees finality earlier than a client watching from the outside.
 - **What "finalized" means.** We wait for the root, the strongest commitment. A figure for the fast path, or for confirmed rather than rooted, will be lower.
 
-The "before" figure needs the same care. The often-quoted 12.8 seconds is 32 slots at 400 ms. Solana's slots were already shorter before the switch, and Galaxy put Tower BFT finality at about 6 seconds. Our measured 7 seconds is in line with that. So the real improvement on mainnet, at the point where a client actually observes it, is about **17x**, not the 85x the headline numbers imply.
+The "before" figure needs the same care. The often-quoted 12.8 seconds is 32 slots at 400 ms. Solana's slots were already shorter before the switch, and Galaxy put Tower BFT finality at about 6 seconds. Our measured 7 seconds is in line with that. So the real improvement on mainnet, at the point where a client actually observes it, is about **17x** (7 s to 0.404 s), not the 85x that 12.8 s to 150 ms implies.
 
 That is still the largest finality improvement we have recorded on any chain. Rotor should narrow the gap to the target further.
 
-## How Solana ranks now
+## How does Solana rank now?
+
+![Seven days of median finality per 30 minutes for Solana, Gram and BNB Chain on a log scale: Gram flat near 0.4 s, BNB Chain near 0.75 s, Solana at 7 s until 21 October 2026 and then near 0.4 s, level with Gram](/reports/solana-alpenglow-vs-gram-bnb.svg)
+
+Before 21 October, Solana's finality was about 9 times slower than BNB Chain's (7 s against 0.75 s) and about 17 times slower than Gram's (0.4 s). After the switch it overtook BNB Chain and joined Gram at the top.
 
 <StatTable bench="l1-finality" caption="Median wall-clock finality per chain, p50 over 24h. Lower is better. Live." />
 

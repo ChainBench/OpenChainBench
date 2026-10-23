@@ -10,6 +10,9 @@ export type ReportMeta = {
   categorySlug: string;
   slug: string;
   publishedAt: string;
+  /** Last substantive revision, when it differs from publishedAt. Drives
+   *  dateModified and the sitemap lastmod, so a correction is recrawled. */
+  updatedAt?: string;
   period: string;
   summary: string;
   heroFinding: string;
@@ -84,6 +87,7 @@ function parseReport(filePath: string): Report {
     categorySlug,
     slug: String(data.slug ?? ""),
     publishedAt: String(data.publishedAt ?? ""),
+    updatedAt: data.updatedAt ? String(data.updatedAt) : undefined,
     period: String(data.period ?? ""),
     summary: String(data.summary ?? ""),
     heroFinding: String(data.heroFinding ?? ""),
