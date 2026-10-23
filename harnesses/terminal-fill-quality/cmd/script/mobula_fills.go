@@ -66,6 +66,44 @@ func (w *mobulaFillWatcher) queue(p mobulaPaired) {
 	}
 }
 
+// saveCursors and loadCursors carry the per-chain read position across a
+// restart.
+//
+// Without them a restart re-reads mobulaFillReach of every chain, and those
+// fills already consumed their intents in the previous run, so the second
+// reading files them as unknown_intent. That is the same defect as the pump
+// deposit window, fixed earlier tonight by persisting it, written again here
+// in a new file the same evening.
+//
+// A cursor from an old state file is not dangerous: pollChain already resets
+// to head minus the reach whenever the gap is larger than the reach, so a
+// stale cursor behaves exactly like no cursor.
+func (w *mobulaFillWatcher) saveCursors() map[string]int64 {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	out := make(map[string]int64, len(w.cursor))
+	for k, v := range w.cursor {
+		out[k] = v
+	}
+	return out
+}
+
+func (w *mobulaFillWatcher) loadCursors(in map[string]int64) int {
+	if len(in) == 0 {
+		return 0
+	}
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	n := 0
+	for k, v := range in {
+		if v > 0 {
+			w.cursor[k] = v
+			n++
+		}
+	}
+	return n
+}
+
 // backlog: paired fills waiting to be priced. Published as
 // tfq_mobula_pending_fills and read by the tests, so the depth is never
 // something a reader has to infer.
@@ -209,7 +247,9 @@ func (w *mobulaFillWatcher) pollChain(ctx context.Context, httpc *http.Client, c
 		return
 	}
 	span := mobulaSpanOf(chain)
+	w.mu.Lock()
 	from := w.cursor[chain]
+	w.mu.Unlock()
 	if from <= 0 || head-from > span {
 		// Losing ground: either a cold start or a pass that fell behind the
 		// chain. Logged when it is the second case, because that is the
@@ -240,7 +280,9 @@ func (w *mobulaFillWatcher) pollChain(ctx context.Context, httpc *http.Client, c
 	}
 	// to+1: eth_getLogs includes both bounds, so leaving the cursor at head
 	// re-reads head's logs on the next pass and double-counts its fills.
+	w.mu.Lock()
 	w.cursor[chain] = head + 1
+	w.mu.Unlock()
 
 	paired := 0
 	for _, l := range logs {
