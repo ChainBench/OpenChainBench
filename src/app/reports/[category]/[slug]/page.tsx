@@ -48,6 +48,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       type: "article",
       siteName: "OpenChainBench",
       publishedTime: new Date(report.publishedAt).toISOString(),
+      modifiedTime: new Date(report.updatedAt ?? report.publishedAt).toISOString(),
       authors: [report.author],
       images: [{ url: ogImage, width: 1200, height: 630 }],
     },
@@ -57,6 +58,18 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       description: report.summary,
       site: "@OpenChainBench",
       images: [ogImage],
+    },
+    // Highwire citation_* tags, as the bench pages carry: a dated, authored
+    // report is the most citable page type on the site.
+    other: {
+      citation_title: report.title,
+      citation_author: report.author,
+      citation_publisher: "OpenChainBench",
+      citation_publication_date: report.publishedAt,
+      ...(report.updatedAt ? { citation_online_date: report.updatedAt } : {}),
+      citation_public_url: canonical,
+      citation_language: "en",
+      citation_journal_title: "OpenChainBench Reports",
     },
   };
 }
@@ -266,7 +279,7 @@ function reportJsonLd(report: ReturnType<typeof getReport>) {
       headline: report.title,
       description: report.summary,
       datePublished: new Date(report.publishedAt).toISOString(),
-      dateModified: new Date(report.publishedAt).toISOString(),
+      dateModified: new Date(report.updatedAt ?? report.publishedAt).toISOString(),
       image: report.ogImage ?? `${SITE.url}/opengraph-image`,
       author: { "@id": PERSON_ID },
       publisher: { "@id": `${SITE.url}/#org` },

@@ -3,6 +3,7 @@ import { getBenchmark } from "@/data/benchmarks";
 import { rankedCandidates } from "@/lib/citation";
 import { fmtUnit } from "@/lib/format";
 import { ProviderLogo } from "@/components/provider-logo";
+import { rowHref } from "@/lib/row-link";
 
 type Props = {
   bench: string;
@@ -107,14 +108,23 @@ export async function StatTable({
                   <td className="py-2 pr-3">
                     <div className="flex items-center gap-2.5">
                       <ProviderLogo slug={r.slug} name={r.name} size={20} />
-                      <Link
-                        href={`/products/${r.slug}`}
-                        className={`hover:text-ink transition-colors text-[13px] leading-tight ${
+                      {(() => {
+                        // Chain rows go to the chain hub and providers to their
+                        // product page, the same rule as the bench tables: a
+                        // hard-coded /products/<slug> sent every chain of the
+                        // l1-finality ranking to a 404 or a redirect.
+                        const href = rowHref(b, r);
+                        const cls = `hover:text-ink transition-colors text-[13px] leading-tight ${
                           isFastest || isReliable ? "font-semibold text-ink" : "text-ink-soft"
-                        }`}
-                      >
-                        {r.name}
-                      </Link>
+                        }`;
+                        return href ? (
+                          <Link href={href} className={cls}>
+                            {r.name}
+                          </Link>
+                        ) : (
+                          <span className={cls}>{r.name}</span>
+                        );
+                      })()}
                       {isFastest && (
                         <span className="label-mono text-[9px] bg-ink text-paper px-1.5 py-px uppercase tracking-[0.1em] shrink-0">
                           {leaderLabel}
