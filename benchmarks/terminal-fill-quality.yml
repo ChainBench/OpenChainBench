@@ -14,7 +14,7 @@ unit: bp
 higher_is_better: false
 
 disclaimer: |
-  Random sample (150 a day per row, Solana and EVM alike) of the swaps each terminal routed, every attempt counted for the fail rate. Reference = the pool's state before the swap (its reserves, or the previous trade within 60 s); swaps without one keep their split, no loss figure. Published from 50 priced swaps pooled over the product's chains at 25 or more (a single-chain product from 25), ranked from 100; the median's 95 % interval is in the JSON. Compare medians, not single swaps.
+  Random sample (1,000 a day per Solana row, 6,000 per EVM row) of the swaps each terminal routed, every attempt counted for the fail rate. Reference = the pool's state before the swap (its reserves, or the previous trade within 60 s); swaps without one keep their split, no loss figure. Published from 50 priced swaps pooled over the product's chains at 25 or more (a single-chain product from 25), ranked from 100; the median's 95 % interval is in the JSON. Compare medians, not single swaps.
 
 seo_intro: |
   Every trading terminal advertises a fee. What a swap actually costs is the
@@ -35,7 +35,8 @@ abstract: |
   Each terminal takes its fee through known wallets. A live WebSocket feed of
   every transaction mentioning those wallets, with its program logs, says which
   ones attempted a swap and whether they failed; the harness counts them all
-  (fail rate) and reads 150 successful ones per row per day, drawn at
+  (fail rate) and reads 1,000 successful ones per Solana row per
+  day and 6,000 per EVM row, drawn at
   random. From the pre/post balances of every account in the transaction it
   derives, in quote units (SOL or a $1 stable), what left the user, what the
   pool received, what reached the terminal's fee wallets (on the EVM rows: the

@@ -1972,9 +1972,41 @@ func compute(st *State, minPriced, minRank int) []TerminalStats {
 		_, feeSeen := ts.Components["terminal"]
 		if ts.Parsed >= 20 && (ts.BuySharePct >= 99 || ts.BuySharePct <= 1) &&
 			(!feeSeen || ts.Components["terminal"] < 5) {
-			ts.Healthy, ts.Ranked = false, false
-			heldStructural[t.Slug] = true
-			ts.Note = strings.TrimSpace(ts.Note + " One side only in the sample with no fee on it: the fee is taken on the side this feed never sees, so the row waits until both sides are read.")
+			// How far to hold depends on whether the LOSS is whole, which is
+			// not the same question as whether the fee is named.
+			//
+			// Banana Gun: the fee is measured and tiny on the side we see,
+			// so it is being taken on the side we do not, and the published
+			// loss is missing it. The number itself is wrong, so the row
+			// waits.
+			//
+			// FOMO · Mobula: the fee is UNMEASURABLE, which on this rail
+			// means it is taken inside the bridge's quote and therefore
+			// already inside the loss, in the bridge column. The loss is
+			// whole and describes the buys correctly; what it cannot do is
+			// stand beside two-sided products in a ranking. Holding the row
+			// entirely made it read "unresponsive" on the main view, which
+			// says a trading product is dead. That is a worse lie than the
+			// one it replaced, so the figure is published and not ranked.
+			if feeSeen {
+				ts.Healthy = false
+				heldStructural[t.Slug] = true
+				ts.Note = strings.TrimSpace(ts.Note + " One side only in the sample with no fee on it: the fee is taken on the side this feed never sees, so the row waits until both sides are read.")
+			} else {
+				ts.Note = strings.TrimSpace(ts.Note + " One side only in the sample and this route's fee cannot be seen separately: it is taken inside the bridge's quote, so it is already in the loss under Bridge. The figure is published and not ranked until both sides are read.")
+			}
+			ts.Ranked = false
+		}
+		// A row that parsed nothing while the feed kept declining senders is
+		// an ATTRIBUTION LIMIT, not an absence of trading. BasedBot reads
+		// shared routers, so only the wallets it funded through Relay are
+		// its users; six of its EVM rows are empty for that reason and the
+		// fact lived in a log line no reader of this bench will ever see.
+		if ts.Parsed == 0 {
+			if n := outsideSetSeen(t.Slug); n > 0 {
+				ts.Note = strings.TrimSpace(ts.Note + fmt.Sprintf(
+					" This row shares its router with other front ends, so only wallets the app funded through Relay count as its users: %d swaps were seen on the router and left out for that reason, which is why the row is empty.", n))
+			}
 		}
 		out = append(out, ts)
 		if ts.Chain == "funding" {

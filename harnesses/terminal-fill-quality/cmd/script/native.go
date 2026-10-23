@@ -9,6 +9,7 @@ import (
 	"math/rand"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -815,10 +816,56 @@ func (f *nativeFeed) poll(ctx context.Context) {
 		}
 		for slug, n := range others {
 			if n > 0 {
+				noteOutsideSet(slug, n)
 				log.Printf("[native] %s: %d router swaps by wallets outside the funded set this tick (not counted)", slug, n)
 			}
 		}
 	}
+}
+
+// cOutsideSet counts router swaps this bench declines to attribute because
+// the sender is not a wallet the app funded through Relay.
+//
+// BasedBot reads shared routers: a chain's own aggregator serves every front
+// end on it, so the address alone proves nothing and only the wallets the app
+// funded are its users. That filter is right and it is also why six of its
+// EVM rows are empty, which until now was visible ONLY in a log line.
+//
+// An empty row reads as "this product does not trade here". The truth is
+// "it trades here on a shared router and none of the senders this tick were
+// wallets we know it funded", and those are different facts.
+var cOutsideSet = prometheus.NewCounterVec(prometheus.CounterOpts{
+	Name: "tfq_outside_funded_set_total",
+	Help: "Router swaps not counted for a row because the sender is not a wallet the app funded through Relay. A row that is empty while this climbs is an attribution limit, not an absence of trading",
+}, []string{"terminal"})
+
+func init() { prometheus.MustRegister(cOutsideSet) }
+
+// outsideSet: the same tally, readable in-process so the publisher can put
+// the reason on the row rather than leaving the reader to find the metric.
+var outsideSet struct {
+	sync.Mutex
+	n map[string]int
+}
+
+func noteOutsideSet(slug string, n int) {
+	if slug == "" || n <= 0 {
+		return
+	}
+	cOutsideSet.WithLabelValues(slug).Add(float64(n))
+	outsideSet.Lock()
+	if outsideSet.n == nil {
+		outsideSet.n = map[string]int{}
+	}
+	outsideSet.n[slug] += n
+	outsideSet.Unlock()
+}
+
+// outsideSetSeen reports how many swaps a row has declined to attribute.
+func outsideSetSeen(slug string) int {
+	outsideSet.Lock()
+	defer outsideSet.Unlock()
+	return outsideSet.n[slug]
 }
 
 func (f *nativeFeed) drain(slug string) (seen int, sample []string, total int) {
