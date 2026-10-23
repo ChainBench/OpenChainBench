@@ -836,8 +836,20 @@ func sampleNative(ctx context.Context, httpc *http.Client, st *State, nf *native
 			if expired > 0 {
 				cPumpOrder.WithLabelValues(t.Chain, "sell", "expired").Add(float64(expired))
 			}
-			extra = readParallel(ctx, ready, sampleWorkers(), func(ctx context.Context, h string) *Swap {
-				return nativeRow(ctx, httpc, t, h, gas, now)
+			hashes := make([]string, len(ready))
+			firstSeen := make(map[string]int64, len(ready))
+			for i, r := range ready {
+				hashes[i] = r.hash
+				firstSeen[r.hash] = r.at
+			}
+			extra = readParallel(ctx, hashes, sampleWorkers(), func(ctx context.Context, h string) *Swap {
+				// Its own first-read clock, not this tick's. nativeRow stamps
+				// the tick it runs on, which is the head of the chain for the
+				// rows the feed hands it and is minutes late for one that was
+				// held. Dating a swap minutes after it happened is a small
+				// error on a table whose offer is that the reader can open the
+				// transaction and check every figure against it.
+				return nativeRow(ctx, httpc, t, h, gas, firstSeen[h])
 			})
 			for _, sw := range extra {
 				if sw != nil && sw.Priced {

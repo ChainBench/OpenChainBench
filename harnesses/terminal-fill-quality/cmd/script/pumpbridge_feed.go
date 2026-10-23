@@ -507,7 +507,21 @@ func pumpNotePendingSale(terminal, hash, order string, at int64) {
 // It also drops the ones that have waited past the age bound, counted apart,
 // because a sale whose delivery never arrived is a different fact from one
 // still in flight and the two must not look alike.
-func pumpTakePendingSales(terminal string, now int64) (hashes []string, expired int) {
+// readyAt is one re-readable sale: its transaction, and WHEN IT WAS FIRST
+// READ, which is the time the row must carry.
+//
+// nativeRow stamps a row with the tick it ran on. That is right for the rows
+// it is given, which the feed hands over at the head of the chain, and wrong
+// for one of these, which is deliberately re-read on a later tick: a sale
+// held and retried would otherwise be dated minutes after it happened, on a
+// table whose whole offer is that the reader can open the transaction and
+// check it. The first read is at the head, so its clock is the honest one.
+type readyAt struct {
+	hash string
+	at   int64
+}
+
+func pumpTakePendingSales(terminal string, now int64) (ready []readyAt, expired int) {
 	pumpPendingSales.Lock()
 	defer pumpPendingSales.Unlock()
 	cut := now - pumpPendingAge
@@ -523,11 +537,11 @@ func pumpTakePendingSales(terminal string, now int64) (hashes []string, expired 
 		// pumpFindPayout takes the payout lock. The order is always pending
 		// then payout and never the reverse, so the two cannot deadlock.
 		if _, ok := pumpFindPayout(order); ok {
-			hashes = append(hashes, v.hash)
+			ready = append(ready, readyAt{hash: v.hash, at: v.at})
 			delete(pumpPendingSales.by, order)
 		}
 	}
-	return hashes, expired
+	return ready, expired
 }
 
 // pumpFindDeposit returns the deposit that produced this spend, and whether

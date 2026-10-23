@@ -32,7 +32,7 @@ func TestAPendingSaleIsReturnedOnlyOnceItsDeliveryLands(t *testing.T) {
 	pumpNotePayout(now+2, order, 0.135031, "Abc")
 
 	ready, expired = pumpTakePendingSales("pump-bridge-robinhood", now+2)
-	if len(ready) != 1 || ready[0] != "0xdead" || expired != 0 {
+	if len(ready) != 1 || ready[0].hash != "0xdead" || expired != 0 {
 		t.Fatalf("ready = %v, expired = %d; want the one hash once the delivery landed",
 			ready, expired)
 	}
@@ -40,6 +40,33 @@ func TestAPendingSaleIsReturnedOnlyOnceItsDeliveryLands(t *testing.T) {
 	// the window would hold the row twice.
 	if again, _ := pumpTakePendingSales("pump-bridge-robinhood", now+3); len(again) != 0 {
 		t.Fatalf("the same sale came back a second time: %v", again)
+	}
+}
+
+// A held sale carries the time it was FIRST read, not the tick it is handed
+// back on. nativeRow stamps a row with the tick it runs on, which is the head
+// of the chain for the rows the feed gives it and minutes late for one that
+// waited for its delivery. Without this the audit table dates a swap after it
+// happened, on a table whose whole offer is that the reader can open the
+// transaction and check the figures against it.
+func TestAPendingSaleKeepsItsFirstReadTime(t *testing.T) {
+	resetPending(t)
+	const order = "9a7c1d2e3f4b5a6c7d8e9f0a1b2c3d4e"
+	first := int64(1_700_000_000)
+
+	pumpNotePendingSale("pump-bridge-bnb", "0xaged", order, first)
+	pumpNotePayout(first+3, order, 1.5, "Abc")
+
+	// Drained four minutes later, which is what waiting for a delivery and
+	// the next tick costs.
+	ready, _ := pumpTakePendingSales("pump-bridge-bnb", first+240)
+	if len(ready) != 1 {
+		t.Fatalf("ready = %v, want one sale", ready)
+	}
+	if ready[0].at != first {
+		t.Errorf("at = %d, want %d: the drain returned the retry tick instead "+
+			"of the first read, so the row would be dated %d s late",
+			ready[0].at, first, ready[0].at-first)
 	}
 }
 
@@ -54,11 +81,11 @@ func TestPendingSalesAreReturnedPerTerminal(t *testing.T) {
 	pumpNotePayout(now, "bb22", 1, "x")
 
 	ready, _ := pumpTakePendingSales("pump-bridge-bnb", now)
-	if len(ready) != 1 || ready[0] != "0xbnb" {
+	if len(ready) != 1 || ready[0].hash != "0xbnb" {
 		t.Fatalf("bnb got %v, want only its own hash", ready)
 	}
 	ready, _ = pumpTakePendingSales("pump-bridge-base", now)
-	if len(ready) != 1 || ready[0] != "0xbase" {
+	if len(ready) != 1 || ready[0].hash != "0xbase" {
 		t.Fatalf("base got %v, want only its own hash", ready)
 	}
 }
@@ -93,7 +120,7 @@ func TestANoteOfTheSameOrderTwiceHoldsOneSale(t *testing.T) {
 	pumpNotePayout(now, "dd44", 1, "x")
 
 	ready, _ := pumpTakePendingSales("pump-bridge-bnb", now+1)
-	if len(ready) != 1 || ready[0] != "0xfirst" {
+	if len(ready) != 1 || ready[0].hash != "0xfirst" {
 		t.Fatalf("ready = %v, want the first hash only", ready)
 	}
 }
