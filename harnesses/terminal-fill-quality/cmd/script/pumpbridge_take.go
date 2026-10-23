@@ -861,6 +861,117 @@ func noteSettle(terminal, kind, chain string, took float64) {
 	}
 }
 
+// settleRecord is one route's samples in a shape encoding/json can write.
+//
+// The window is keyed by a struct, and a map with a struct key does not
+// marshal, so the persisted form spells the key out. The samples carry no
+// timestamp of their own: the window is a rolling count rather than a time
+// window, so what is stored is the samples and when they were stored, and the
+// load drops the lot if that is too old to still describe now.
+type settleRecord struct {
+	Terminal string    `json:"terminal"`
+	Kind     string    `json:"kind"`
+	Chain    string    `json:"chain"`
+	Took     []float64 `json:"took"`
+}
+
+// settleMaxRestoreAge: how stale a saved settlement window may be and still
+// describe the present. One hour. The figures are published as "last 24
+// hours", so a window from last night is not wrong in kind, but a process
+// that has been down an hour has missed enough that resuming its old samples
+// would publish a mean about a period nobody can see any more.
+const settleMaxRestoreAge = 3600
+
+func saveSettleWindow() []settleRecord {
+	pumpSettleWindow.Lock()
+	defer pumpSettleWindow.Unlock()
+	out := make([]settleRecord, 0, len(pumpSettleWindow.by))
+	for k, v := range pumpSettleWindow.by {
+		if len(v) == 0 {
+			continue
+		}
+		cp := make([]float64, len(v))
+		copy(cp, v)
+		out = append(out, settleRecord{Terminal: k.terminal, Kind: k.kind, Chain: k.chain, Took: cp})
+	}
+	return out
+}
+
+// loadSettleWindow restores the samples and republishes every route's
+// quantiles, so a restart does not drop routes under the floor and leave the
+// panel showing whichever ones happened to be above it.
+func loadSettleWindow(in []settleRecord, savedAt, now int64) int {
+	if len(in) == 0 {
+		return 0
+	}
+	if savedAt > 0 && now-savedAt > settleMaxRestoreAge {
+		log.Printf("[settle] saved window is %d s old, past the %d s limit: starting empty rather than publishing a mean about a period nobody can see",
+			now-savedAt, settleMaxRestoreAge)
+		return 0
+	}
+	pumpSettleWindow.Lock()
+	if pumpSettleWindow.by == nil {
+		pumpSettleWindow.by = map[settleKey][]float64{}
+	}
+	n := 0
+	kinds := map[[2]string]bool{}
+	for _, r := range in {
+		if r.Terminal == "" || r.Kind == "" || r.Chain == "" || len(r.Took) == 0 {
+			continue
+		}
+		v := r.Took
+		if len(v) > pumpSettleWindowMax {
+			v = v[len(v)-pumpSettleWindowMax:]
+		}
+		pumpSettleWindow.by[settleKey{r.Terminal, r.Kind, r.Chain}] = v
+		kinds[[2]string{r.Terminal, r.Kind}] = true
+		n += len(v)
+	}
+	pumpSettleWindow.Unlock()
+
+	// Republish from the restored samples. noteSettle only publishes for the
+	// route it was called about, so without this the gauges stay empty until
+	// each route happens to settle again, which is the gap this fix exists to
+	// close.
+	for k := range kinds {
+		republishSettle(k[0], k[1])
+	}
+	return n
+}
+
+// republishSettle recomputes one route's published quantiles from the window
+// as it stands, without adding a sample.
+func republishSettle(terminal, kind string) {
+	pumpSettleWindow.Lock()
+	per := map[string][]float64{}
+	var all []float64
+	for key, v := range pumpSettleWindow.by {
+		if key.terminal != terminal || key.kind != kind {
+			continue
+		}
+		per[key.chain] = append([]float64(nil), v...)
+		all = append(all, v...)
+	}
+	pumpSettleWindow.Unlock()
+	for c, v := range per {
+		gSettleN.WithLabelValues(terminal, kind, c).Set(float64(len(v)))
+		if len(v) < pumpSettleMin {
+			continue
+		}
+		gSettleMs.WithLabelValues(terminal, kind, c, "median").Set(quantileOf(v, 0.5) * 1000)
+		gSettleMs.WithLabelValues(terminal, kind, c, "p90").Set(quantileOf(v, 0.9) * 1000)
+		gSettleMs.WithLabelValues(terminal, kind, c, "mean").Set(meanOf(v) * 1000)
+		gSettleMs.WithLabelValues(terminal, kind, c, "over10s_pct").Set(shareOver(v, 10))
+	}
+	gSettleN.WithLabelValues(terminal, kind, "all").Set(float64(len(all)))
+	if len(all) >= pumpSettleMin {
+		gSettleMs.WithLabelValues(terminal, kind, "all", "median").Set(quantileOf(all, 0.5) * 1000)
+		gSettleMs.WithLabelValues(terminal, kind, "all", "p90").Set(quantileOf(all, 0.9) * 1000)
+		gSettleMs.WithLabelValues(terminal, kind, "all", "mean").Set(meanOf(all) * 1000)
+		gSettleMs.WithLabelValues(terminal, kind, "all", "over10s_pct").Set(shareOver(all, 10))
+	}
+}
+
 // shareOver: the percentage of settlements slower than `sec` seconds.
 //
 // Published beside the mean because "stall-free" only removes samples past
