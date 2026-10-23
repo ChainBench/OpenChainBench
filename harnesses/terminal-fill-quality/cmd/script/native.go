@@ -827,8 +827,19 @@ func sampleNative(ctx context.Context, httpc *http.Client, st *State, nf *native
 		}
 		quota[t.Slug] -= float64(n)
 		rand.Shuffle(len(sample), func(i, j int) { sample[i], sample[j] = sample[j], sample[i] })
-		for _, h := range sample[:n] {
-			sw := nativeRow(ctx, httpc, t, h, gas, now)
+		// Read several at a time. Each row is a receipt plus whatever the
+		// pool's pre-trade state costs, all sequential within one row, and
+		// the native rows are about half of every tick's priced swaps. The
+		// rate limiter stays the backstop: pace() releases its lock before
+		// the HTTP round trip, so workers are paced and can never exceed
+		// RPC_RPS. The workers never touch State; every reject and append
+		// below runs afterwards in the sample's order, because a window
+		// whose contents depended on which endpoint answered first would
+		// not be reproducible.
+		rows := readParallel(ctx, sample[:n], sampleWorkers(), func(ctx context.Context, h string) *Swap {
+			return nativeRow(ctx, httpc, t, h, gas, now)
+		})
+		for _, sw := range rows {
 			if sw == nil {
 				st.reject(t.Slug, "unreadable")
 				continue
