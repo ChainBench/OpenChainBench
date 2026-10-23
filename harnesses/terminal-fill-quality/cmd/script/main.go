@@ -106,6 +106,14 @@ var (
 	// Per-chain health of the EVM log feed. This existed only inside the
 	// feed struct, so BNB's read nothing for days behind a green
 	// tfq_feed_up, which covers the Solana WebSocket alone.
+	gWalletPollBehind = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "tfq_wallet_poll_behind",
+		Help: "1 when a fee wallet's last polling pass filled its page while a cursor was set, meaning more signatures arrived than one pass reads and the ones between the old cursor and that page were skipped. This is the FALLBACK path, used when the WebSocket feed is unhealthy. What a hole here costs is the COUNT, not the rate: the truncated slice feeds both the attempts and the failures, so dropping its tail removes them together and the ratio is untouched. It understates every sample size on this path, and because truncation only bites wallets busier than one page a tick it reweights the pooled rate toward the quiet ones, by an amount and in a direction nobody has measured",
+	}, []string{"terminal"})
+	cWalletPollSkipped = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "tfq_wallet_poll_skipped_total",
+		Help: "Signatures the polling fallback could not have read, as the page size each time a page came back full with a cursor set. An estimate, the skipped ones being by definition the ones not fetched, but it is the difference between a measured hole and an unexplained one",
+	}, []string{"terminal"})
 	gNativeUp = prometheus.NewGaugeVec(prometheus.GaugeOpts{Name: "tfq_native_feed_up", Help: "1 when the chain's eth_getLogs feed answered its last poll"}, []string{"chain"})
 	// How far behind the head each chain's cursor sits. A counter of
 	// skipped blocks cannot show a stuck feed (it re-counts the same gap
@@ -137,6 +145,7 @@ var (
 )
 
 func init() {
+	prometheus.MustRegister(gWalletPollBehind, cWalletPollSkipped)
 	prometheus.MustRegister(gNativeUp, gNativeLag, gNativeSkipped, cDustSkipped, cCrossProducerDupes, gLoss, gLossExFee, gComponent, gFail, gSamples, gTrade, gVenue, gBuy, gSandwich, gSandwichProfit, gLossSize, gLossChain, gHealth, gRanked, gFailCost, gFailOverhead, gLostUSD, gUnpriced, gRefresh, gFeed, gRelayFeed, gSol, cCalls, cErrors, cSkipped)
 }
 
@@ -626,6 +635,12 @@ func main() {
 // running average, so the sample is uniform over transactions, not over
 // minutes: a burst (a pump, where fills are worst) is represented in
 // proportion to its trades. Nothing accrues on a tick without activity.
+// walletPollPage: signatures asked for per fee wallet per tick on the
+// polling fallback. Named rather than inline so the behind-check above and
+// the request cannot drift apart: a guard comparing against a different
+// number than the one requested would never fire.
+const walletPollPage = 100
+
 func sample(ctx context.Context, rpc *rpcClient, st *State, solUSD float64, pools *poolCache, fd *feed, quota, failQuota, activity map[string]float64, perTick, perTickFail float64) (added, seen int) {
 	now := time.Now().Unix()
 	live := fd != nil && fd.healthy()
@@ -652,10 +667,24 @@ func sample(ctx context.Context, rpc *rpcClient, st *State, solUSD float64, pool
 				if cur.NextScan > now {
 					continue
 				}
-				sigs, err := rpc.signatures(ctx, w, 100, cur.Last)
+				sigs, err := rpc.signatures(ctx, w, walletPollPage, cur.Last)
 				if err != nil {
 					log.Printf("[%s] %s: %v", t.Slug, w[:6], err)
 					continue
+				}
+				// A FULL page with a cursor set means more arrived than one
+				// pass reads, and since the cursor below jumps to the newest
+				// signature, everything between the old cursor and this page
+				// is gone. This fallback had no instrument for that, and the
+				// same unguarded shape has now cost this harness data twice
+				// elsewhere: the pump deposit feed before it was guarded, and
+				// the Mobula deposit feed in #3235.
+				if cur.Last != "" && len(sigs) >= walletPollPage {
+					gWalletPollBehind.WithLabelValues(t.Slug).Set(1)
+					cWalletPollSkipped.WithLabelValues(t.Slug).Add(float64(len(sigs)))
+					log.Printf("[%s] %s: page full (%d) with a cursor set: signatures were skipped, so this terminal's attempts are understated. The rate itself is not, both sides of it coming from the same truncated slice", t.Slug, w[:6], len(sigs))
+				} else {
+					gWalletPollBehind.WithLabelValues(t.Slug).Set(0)
 				}
 				if len(sigs) == 0 {
 					cur.Idle++
