@@ -1013,9 +1013,6 @@ func noteIdentifier(app, id string) {
 // recipient or referrer) and reduces it to the figures the bench needs.
 func classify(a xchainApp, c originChain, r relayRaw) (relayRequest, bool) {
 	mine := a.Referrer != "" && r.Data.Referrer == a.Referrer
-	if mine {
-		noteIdentifier(a.Slug, "referrer:"+a.Referrer)
-	}
 	appFee := 0.0
 	for _, fee := range r.Data.AppFees {
 		rec := strings.ToLower(fee.Recipient)
@@ -1028,7 +1025,13 @@ func classify(a xchainApp, c originChain, r relayRaw) (relayRequest, bool) {
 		appFee += f64(fee.AmountUsd)
 	}
 	if a.Referrer != "" {
-		mine = true // the feed itself was filtered on the referrer
+		// The feed itself was filtered on the referrer, so that filter is
+		// the match. Counted here and not on r.Data.Referrer: Relay returns
+		// the field null in this payload (200 of 200 Solana-origin requests
+		// read 2026-10-23), so a count keyed on it read every referrer app
+		// as retired while the filter kept returning its requests.
+		mine = true
+		noteIdentifier(a.Slug, "referrer:"+a.Referrer)
 	}
 	if !mine {
 		return relayRequest{}, false
