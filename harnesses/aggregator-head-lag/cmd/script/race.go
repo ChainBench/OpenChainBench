@@ -48,7 +48,7 @@ import (
 // races are kept raceRetention.
 
 const (
-	raceWindow    = 3 * time.Second
+	raceWindow = 3 * time.Second
 	// raceTie: how far ahead of every feed our node must be to count as
 	// first on its own. The feed share has no tie window.
 	raceTie       = 5 * time.Millisecond
@@ -291,6 +291,9 @@ func (b *raceBook) closeLocked(e *raceEntry, k string) {
 	for _, w := range winners {
 		headLagFirst.WithLabelValues(w, e.chain, e.region).Inc()
 	}
+	if runnerUp, margin, ok := raceMargin(e.obs, winner, providerT0); ok {
+		headLagWinMargin.WithLabelValues(winner, runnerUp, marginBand(margin), e.chain, e.region).Inc()
+	}
 
 	// Rolling 24 h share.
 	pk := e.chain + "|" + e.region
@@ -316,4 +319,37 @@ func (b *raceBook) closeLocked(e *raceEntry, k string) {
 	for _, a := range names {
 		headLagFirstShare.WithLabelValues(a, e.chain, e.region).Set(float64(wins[a]) / float64(len(hist)) * 100)
 	}
+}
+
+// raceMargin returns the runner-up feed and how far behind the winner it
+// arrived. Our node is not a feed and is skipped, as in the share.
+func raceMargin(obs []raceObs, winner string, winnerAt time.Time) (string, time.Duration, bool) {
+	runnerUp := ""
+	var at time.Time
+	for _, o := range obs {
+		if o.aggregator == "reference" || o.aggregator == winner {
+			continue
+		}
+		if runnerUp == "" || o.at.Before(at) {
+			runnerUp, at = o.aggregator, o.at
+		}
+	}
+	if runnerUp == "" {
+		return "", 0, false
+	}
+	return runnerUp, at.Sub(winnerAt), true
+}
+
+func marginBand(d time.Duration) string {
+	switch {
+	case d <= time.Millisecond:
+		return "le1ms"
+	case d <= 5*time.Millisecond:
+		return "le5ms"
+	case d <= 20*time.Millisecond:
+		return "le20ms"
+	case d <= 100*time.Millisecond:
+		return "le100ms"
+	}
+	return "gt100ms"
 }

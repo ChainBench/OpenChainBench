@@ -42,6 +42,7 @@ var (
 	headLagErrors         *prometheus.CounterVec
 	headLagRefSeconds     *prometheus.GaugeVec
 	headLagFirst          *prometheus.CounterVec
+	headLagWinMargin      *prometheus.CounterVec
 	headLagRaces          *prometheus.CounterVec
 	headLagFirstShare     *prometheus.GaugeVec
 	headLagRefMatches     *prometheus.CounterVec
@@ -312,6 +313,19 @@ func init() {
 		[]string{"aggregator", "chain", "region"},
 	)
 	prometheus.MustRegister(headLagFirst)
+	// How far ahead of the runner-up feed each race was won, in bands.
+	// Measurement only: nothing on the site reads it yet. A win by one or
+	// two milliseconds is inside network jitter between this probe and the
+	// feeds' edges, so the share of close wins says how much of a feed's
+	// "first" is noise.
+	headLagWinMargin = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "head_lag_win_margin_total",
+			Help: "Races by winning feed, runner-up feed and the winner's margin over the runner-up (band: le1ms, le5ms, le20ms, le100ms, gt100ms).",
+		},
+		[]string{"aggregator", "runner_up", "band", "chain", "region"},
+	)
+	prometheus.MustRegister(headLagWinMargin)
 	headLagRaces = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "head_lag_races_total",
