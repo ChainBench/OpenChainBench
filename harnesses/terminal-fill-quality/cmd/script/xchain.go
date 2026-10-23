@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/prometheus/client_golang/prometheus"
 	"io"
 	"log"
 	"math"
@@ -947,16 +948,62 @@ func (f *xfeed) refetchPending(ctx context.Context) (counted int) {
 	return counted
 }
 
+// Identifier liveness. An app is recognised in Relay's feed by its fee
+// recipient or referrer, and when one falls out of use nothing errors: the
+// app's rows simply stop appearing, and an absent row reads as "the app does
+// not do this" rather than "we stopped seeing it". Phantom's recipient moved
+// to 0x037da4f7… and its rows were empty until someone asked why the page
+// looked thin (2026-10-23). Every declared identifier is published from start
+// at 0 so a dead one is visible as never seen, not as a missing series.
+var (
+	cAppIdentifier = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "tfq_app_identifier_matches_total",
+		Help: "Relay requests matched to an app by each declared identifier (fee recipient address, or referrer:<name>). Every declared identifier starts at 0: one whose increase over 24 h is 0 while the app's others move is a recipient or referrer the app no longer uses, and its rows are going blind",
+	}, []string{"app", "identifier"})
+	gAppIdentifierLast = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "tfq_app_identifier_last_seen_unix",
+		Help: "Unix time an app's declared identifier last matched a Relay request; 0 = not seen since this process started",
+	}, []string{"app", "identifier"})
+)
+
+func init() {
+	prometheus.MustRegister(cAppIdentifier, gAppIdentifierLast)
+	for _, a := range xchainApps {
+		for _, id := range appIdentifiers(a) {
+			cAppIdentifier.WithLabelValues(a.Slug, id).Add(0)
+			gAppIdentifierLast.WithLabelValues(a.Slug, id).Set(0)
+		}
+	}
+}
+
+// appIdentifiers lists what an app is recognised by, as the labels above use.
+func appIdentifiers(a xchainApp) []string {
+	ids := append([]string(nil), a.FeeRecipients...)
+	if a.Referrer != "" {
+		ids = append(ids, "referrer:"+a.Referrer)
+	}
+	return ids
+}
+
+func noteIdentifier(app, id string) {
+	cAppIdentifier.WithLabelValues(app, id).Inc()
+	gAppIdentifierLast.WithLabelValues(app, id).Set(float64(time.Now().Unix()))
+}
+
 // classify decides whether a Relay request belongs to the app (its fee
 // recipient or referrer) and reduces it to the figures the bench needs.
 func classify(a xchainApp, c originChain, r relayRaw) (relayRequest, bool) {
 	mine := a.Referrer != "" && r.Data.Referrer == a.Referrer
+	if mine {
+		noteIdentifier(a.Slug, "referrer:"+a.Referrer)
+	}
 	appFee := 0.0
 	for _, fee := range r.Data.AppFees {
 		rec := strings.ToLower(fee.Recipient)
 		for _, want := range a.FeeRecipients {
 			if rec == want {
 				mine = true
+				noteIdentifier(a.Slug, want)
 			}
 		}
 		appFee += f64(fee.AmountUsd)
