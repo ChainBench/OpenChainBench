@@ -1379,6 +1379,14 @@ func nativeRow(ctx context.Context, httpc *http.Client, t evmTerminal, hash stri
 				}
 				cPumpOrder.WithLabelValues(t.Chain, "sell", "joined").Inc()
 				pumpSaleRecv = pay.amount
+				// The sale direction's settlement, which nothing published
+				// before: pay.at is the Solana delivery's block time and bn
+				// is the EVM block this sale landed in. The chain label on a
+				// settlement is the DESTINATION, so this is the one place a
+				// Pump Bridge sample carries chain="solana". Costs no extra
+				// read beyond the origin block's timestamp, which pumpBlockAt
+				// serves from its cache.
+				noteSettlePumpSale(order, pumpBlockAt(ctx, httpc, *c, t.Chain, bn), pay.at)
 			}
 		}
 		s, err := priceEvmOriginSale(ctx, httpc, *c, hash, user, token, gas)

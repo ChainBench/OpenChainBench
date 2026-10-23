@@ -533,6 +533,14 @@ func main() {
 	mbf := newMobulaFeed()
 	go mbf.run(context.Background(), rpc, time.Minute)
 	go mfw.run(context.Background(), httpc, 2*time.Minute)
+	// And the sale direction, which is where the settlement panel's Solana
+	// tab comes from: the deposit feed reads the solver's USDC token account
+	// because that is where a BUY lands, while a sale is signed and fee-paid
+	// by the solver itself and is found on the solver address. Every minute,
+	// like the deposit side, for the same reason: one signatures call plus a
+	// read per signature.
+	msf := newMobulaSaleFeed()
+	go msf.run(context.Background(), rpc, httpc, time.Minute)
 	var mu sync.RWMutex
 	var pub *Public
 
@@ -824,9 +832,18 @@ func priceSwap(ctx context.Context, rpc *rpcClient, sw *Swap, tx *parsedTx, pool
 	// account constants can be stale, and a Raydium CP-Swap vault holds
 	// protocol, fund and creator fees that the curve excludes — its event
 	// reports the reserves it actually used.
+	// refSrc names the PRODUCER, not the family. All three branches below
+	// used to write "reserves", so a row could not say which of two
+	// different computations had made its reference, and the audit table's
+	// tooltip promised the pool's exact mid for every one of them. That cost
+	// two sessions an evening on a row published at -848,570,771,090 bps
+	// whose stored reserves turned out to be correct: with one label on
+	// three producers there was no way to ask which had written it.
+	// reservePrice keeps "reserves" so the published breakdown and the
+	// tooltip stay true for it; the event path says so.
 	if sw.Venue == "pump-curve" || sw.Venue == "raydium-cpmm" {
 		if p, ok := eventMid(ctx, rpc, sw, tx, solUSD); ok {
-			sw.finalize(&p, 0, "reserves")
+			sw.finalize(&p, 0, "event")
 		}
 	}
 	if sw.RefSrc == "" && sw.PoolBasePre > 0 && sw.PoolQuotePre > 0 {
@@ -836,7 +853,7 @@ func priceSwap(ctx context.Context, rpc *rpcClient, sw *Swap, tx *parsedTx, pool
 	}
 	if sw.RefSrc == "" {
 		if p, ok := eventMid(ctx, rpc, sw, tx, solUSD); ok {
-			sw.finalize(&p, 0, "reserves")
+			sw.finalize(&p, 0, "event")
 		}
 	}
 	if sw.PoolVault == "" {
@@ -1034,6 +1051,11 @@ func sampleXchain(ctx context.Context, rpc *rpcClient, httpc *http.Client, st *S
 		// what separates a settlement count bound by the pricing quota from
 		// one bound by the flow.
 		added += settleXchain(ctx, rpc, httpc, slug, sample, xchainTimed)
+		// And the other direction. Half the bridged flow lands on Solana
+		// (19 of 39 legs in the feed on 2026-10-23) and nothing timed it,
+		// which is why the settlement panel's Solana tab held no series at
+		// all. Same dedupe map: request ids are unique across directions.
+		added += settleXchainSale(ctx, rpc, httpc, slug, sample, xchainTimed)
 		if total == 0 {
 			continue
 		}
