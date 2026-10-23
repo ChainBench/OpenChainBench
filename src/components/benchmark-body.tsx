@@ -763,6 +763,18 @@ export function BenchmarkBody({
   // return so this useMemo is called on every render (rules-of-hooks).
   const activePanel =
     benchmark?.metricPanels?.find((p) => p.id === activePanelId) ?? null;
+  // The bars show whatever the active panel's metric selects, which is not
+  // always a p50, and the footer said p50 for every view. Bench 268's
+  // Settlement time panel is stat="mean" deliberately: block timestamps are
+  // whole seconds, so a median there can only read 0, 1 or 2 s and cannot
+  // separate two routes. The panel's own description tells the reader to read
+  // the mean, and the line under the bars told them it was a median.
+  const panelStatLabel = (() => {
+    if (!activePanel) return "p50";
+    const m = activePanel.metric.match(/\bstat\s*=\s*"([^"]+)"/);
+    if (!m) return "value";
+    return m[1] === "over10s_pct" ? "share over 10 s" : m[1];
+  })();
   const panelViewBenchmark = useMemo(() => {
     if (!viewBenchmark) return null;
     if (!activePanel) return viewBenchmark;
@@ -1072,6 +1084,7 @@ export function BenchmarkBody({
                   disableTopN={hasLayerSplit}
                   topNControl={topNControl}
                   headerActions={<>{sharedHeaderActions}</>}
+                  statLabel={panelStatLabel}
                 />
                 </>
               )}
