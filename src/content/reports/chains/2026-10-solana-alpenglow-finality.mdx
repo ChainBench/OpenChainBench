@@ -1,0 +1,134 @@
+---
+title: "Solana Alpenglow finality: 7 s to 0.4 s"
+category: "chains"
+slug: "2026-10-solana-alpenglow-finality"
+publishedAt: "2026-10-23"
+updatedAt: "2026-10-23"
+period: "October 2026"
+summary: "Alpenglow cut Solana's median finality from about 7 s to 404 ms on mainnet. Live wall-clock data, why it is 17x and not 85x, and how Solana ranks now."
+heroFinding: "As of 23 October 2026, Solana's median finality is 404 ms over the preceding 24 hours (p90 579 ms, p99 765 ms, 357,000 measured slots), down from about 7 seconds under Tower BFT."
+author: "OpenChainBench Research"
+readingTime: 8
+canonical: "https://openchainbench.com/reports/chains/2026-10-solana-alpenglow-finality"
+faq:
+  - q: "What is Solana's finality time after Alpenglow?"
+    a: "About 0.4 seconds at the median: 404 ms p50, 579 ms p90, 765 ms p99 over 24 hours, measured as wall-clock time from slot to root on a public mainnet node. The live figure updates every 10 seconds."
+  - q: "Did Alpenglow reach 150 ms finality?"
+    a: "Not as observed from a public RPC node. 150 ms is Anza's target for the protocol. Clients watching from outside currently see about 0.4 s at the median, partly because the node itself adds processing time. Rotor, not yet scheduled, should bring it closer."
+  - q: "When did Alpenglow go live on Solana mainnet?"
+    a: "On 21 October 2026, at slot 459,653,000 in epoch 1064, around 13:54 UTC."
+  - q: "What is the difference between Votor and Rotor?"
+    a: "Votor is the voting and finality protocol, live since 21 October 2026. Rotor will replace Turbine for block propagation. It is the second phase of Alpenglow and has no date yet."
+  - q: "How fast was Solana finality before Alpenglow?"
+    a: "We measured about 7 seconds at the median under Tower BFT, in line with Galaxy's estimate of about 6 seconds. The 12.8 seconds often quoted assumes 400 ms slots."
+  - q: "Which blockchain has the fastest finality?"
+    a: "Solana and Gram are tied at about 0.40 s (p50, 24h) on our board of 10 chains, ahead of BNB Chain at 0.73 s. The L1 finality benchmark has the live ranking."
+---
+
+<Summary>
+- Alpenglow went live on Solana mainnet on 21 October 2026, at slot 459,653,000 in epoch 1064, around 13:54 UTC. It replaced Tower BFT with a new voting protocol called Votor.
+- We measure Solana finality as wall-clock time, slot by slot. Under Tower BFT the median was about 7 seconds. As of 23 October 2026 it is **404 ms** (p50 over the preceding 24 hours), with p90 at 579 ms and p99 at 765 ms, over more than 357,000 measured slots. Individual readings move minute to minute: 94% of slots finalize between 0.24 s (p5) and 0.77 s (p99), which is why the live chart's latest point jumps around the median.
+- That is about a 17x improvement (7 s to 0.404 s). The headline "12.8 s to 150 ms" would be 85x, and it overstates both ends. The 12.8 s figure assumes 400 ms slots, and Solana already ran faster slots before the switch. The 150 ms is Anza's target, not yet a measured result.
+- Solana now ties Gram for the fastest finality among the 10 chains we track (both about 0.40 s). It is ahead of BNB Chain (0.73 s) and Avalanche (5.95 s), and about 2,400x faster than Ethereum's roughly 16 minutes.
+- Votor is the first half of Alpenglow. Rotor, the new block propagation layer, is not scheduled yet.
+</Summary>
+
+<TOC sections="What Alpenglow changed | What we measured | Why is it 0.4 s and not 150 ms? | How does Solana rank now? | What changes for developers | Where the code lives | FAQ | Sources and reproducibility" />
+
+## What Alpenglow changed
+
+Alpenglow is Solana's new consensus protocol, built by Anza. It replaced Tower BFT, the protocol Solana had used since launch. It ships in two parts. **Votor** handles voting and finality and is live now. **Rotor** will replace Turbine for block propagation and has no date yet.
+
+Under Tower BFT, validators voted by sending on-chain transactions, and a block was final once it was buried under 32 confirmed slots. Votor works differently. Validators exchange votes directly and aggregate them into BLS certificates. A block finalizes in one round if 80% of stake votes for it (the fast path). With lower participation it finalizes in two rounds, once 60% certificates are formed (the slow path).
+
+A few consequences for the network:
+
+- **Vote transactions are gone.** In the week before the switch, votes were about 62% of all processed transactions, around 263 million a day. Raw TPS charts before and after 21 October are therefore not comparable.
+- **Vote fees became a flat ticket.** Validators now pay a Validator Admission Ticket of 0.8 SOL per epoch, deducted from the vote account (SIMD-0357).
+- **Confirmed and finalized converge.** With one- or two-round finality, the gap between the two commitment levels nearly disappears.
+
+The protocol was approved through validator governance as SIMD-0326, with roughly 98% of participating stake voting yes. The switch itself followed SIMD-0384: once the activation epoch began, Tower BFT ran for 5,000 more slots, then validators holding at least 82% of stake signed a genesis certificate and Votor took over. Validators had to run Agave 4.3.2 or a derivative (Jito-Solana, Harmonic Salsa). Firedancer and Frankendancer sat out the switch itself.
+
+## What we measured
+
+![Solana median finality per 30 minutes on a log scale: flat at about 7 seconds under Tower BFT from 17 to 21 October, then about 0.4 seconds after Alpenglow activated on 21 October 2026](/reports/solana-alpenglow-finality.svg)
+
+<Mark>Solana's median finality fell from about 7 seconds to 404 milliseconds</Mark>. We have tracked it every slot since before the switch on the [L1 finality benchmark](/benchmarks/l1-finality).
+
+| Window | p50 | p90 | p99 | Method |
+|---|---|---|---|---|
+| 14 to 21 Oct, Tower BFT | ~7 s | ~8 s | ~8 s | getBlockTime difference, 1 s resolution |
+| 21 Oct 13:54 UTC | Alpenglow activates | | | |
+| Last 24 h, Alpenglow | **404 ms** | 579 ms | 765 ms | WebSocket wall-clock, ms |
+
+The drop happened in the minutes after the announced activation. Our last Tower BFT readings at 13:54 UTC on 21 October still showed 7 to 8 seconds. By 14:00 UTC the old method read 0 seconds.
+
+We had to change the method because of Alpenglow itself. Our original Solana measurement subtracted `getBlockTime` values, which are whole seconds. That was fine when finality took 7 seconds. Once finality fell below one second, the method could only read 0 or 1, which is the gray band in the chart.
+
+On 22 October we moved Solana to a wall-clock measurement. The harness holds a WebSocket subscription to `slotSubscribe` and `rootSubscribe`. It records the moment a slot is first seen and the moment a root at or above it arrives, in milliseconds. That covers more than 357,000 slots in the 24 hours to 23 October 2026, 12:30 UTC, with 100% feed health.
+
+## Why is it 0.4 s and not 150 ms?
+
+Anza's target is about 150 ms, and Anza's Max Resnick has said users should see confirmation in roughly 150 to 200 ms. We measure 404 ms at the median. Both can be true, because they measure different things.
+
+- **Where the clock starts and stops.** We timestamp both events on a public RPC node (`api.mainnet-beta.solana.com`), from the moment it first reports a slot to the moment it reports that slot rooted. That includes the node's own time to receive and process the certificates. A validator inside the vote exchange sees finality earlier than a client watching from the outside.
+- **What "finalized" means.** We wait for the root, the strongest commitment. A figure for the fast path, or for confirmed rather than rooted, will be lower.
+
+The "before" figure needs the same care. The often-quoted 12.8 seconds is 32 slots at 400 ms. Solana's slots were already shorter before the switch, and Galaxy put Tower BFT finality at about 6 seconds. Our measured 7 seconds is in line with that. So the real improvement on mainnet, at the point where a client actually observes it, is about **17x** (7 s to 0.404 s), not the 85x that 12.8 s to 150 ms implies.
+
+That is still the largest finality improvement we have recorded on any chain. Rotor should narrow the gap to the target further.
+
+## How does Solana rank now?
+
+![Seven days of median finality per 30 minutes for Solana, Gram and BNB Chain on a log scale: Gram flat near 0.4 s, BNB Chain near 0.75 s, Solana at 7 s until 21 October 2026 and then near 0.4 s, level with Gram](/reports/solana-alpenglow-vs-gram-bnb.svg)
+
+Before 21 October, Solana's finality was about 9 times slower than BNB Chain's (7 s against 0.75 s) and about 17 times slower than Gram's (0.4 s). After the switch it overtook BNB Chain and joined Gram at the top.
+
+<StatTable bench="l1-finality" caption="Median wall-clock finality per chain, p50 over 24h. Lower is better. Live." />
+
+Solana and Gram now share the top of the board at about 0.40 s. BNB Chain follows at 0.73 s and Avalanche at about 6 s. Ethereum takes about 16 minutes for its finalized checkpoint, and Bitcoin about 55 minutes to six confirmations. For anything that waits on irreversible settlement, such as exchange deposits, bridges, or payments that cannot be reversed, Solana moved from the seconds tier into the sub-second tier in one upgrade.
+
+## What changes for developers
+
+- **Programs, transactions and fees are unchanged.** The SVM is untouched.
+- **Block-stream consumers have one new rule.** A slot can now carry more than one candidate block, so indexers must track the new `bank_id` field and keep only the bank that reaches confirmation.
+- **Waiting for `finalized` is now cheap.** Applications that used `confirmed` to avoid the multi-second finality wait can switch to `finalized` at little latency cost.
+- **Do not compare TPS across 21 October.** Vote transactions no longer exist, so total TPS fell while user activity did not.
+
+## Where the code lives
+
+- **Votor in Agave**: the consensus code is in Anza's validator repository, [`anza-xyz/agave`](https://github.com/anza-xyz/agave). The core crates are [`votor`](https://github.com/anza-xyz/agave/tree/master/votor) (the voting engine), [`votor-messages`](https://github.com/anza-xyz/agave/tree/master/votor-messages) (vote and certificate types), [`bls-sigverify`](https://github.com/anza-xyz/agave/tree/master/bls-sigverify) and [`bls-cert-verify`](https://github.com/anza-xyz/agave/tree/master/bls-cert-verify) (certificate and stake-threshold checks).
+- **Bug bounty**: [`anza-xyz/alpenglow`](https://github.com/anza-xyz/alpenglow) hosted Anza's Alpenglow bug bounty competition, with a prize pool of up to 50,000 SOL, run in August 2026.
+- **Specifications**: [SIMD-0326](https://github.com/solana-foundation/solana-improvement-documents/blob/main/proposals/0326-alpenglow.md) (the protocol), [SIMD-0384](https://github.com/solana-foundation/solana-improvement-documents/blob/main/proposals/0384-alpenglow-migration.md) (the migration) and [SIMD-0357](https://github.com/solana-foundation/solana-improvement-documents/blob/main/proposals/0357-alpenglow_validator_admission_ticket.md) (the Validator Admission Ticket).
+- **Operator guide**: [solana.com/upgrades/alpenglow](https://solana.com/upgrades/alpenglow).
+- **Our measurement**: [harnesses/l1-finality](https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/l1-finality), in `solana_ws.go`.
+
+## FAQ
+
+**What is Solana's finality time after Alpenglow?**
+About 0.4 seconds at the median: 404 ms p50, 579 ms p90, 765 ms p99 over 24 hours, measured as wall-clock time from slot to root on a public mainnet node. The [live figure](/benchmarks/l1-finality) updates every 10 seconds.
+
+**Did Alpenglow reach 150 ms finality?**
+Not as observed from a public RPC node. 150 ms is Anza's target for the protocol. Clients watching from outside currently see about 0.4 s at the median, partly because the node itself adds processing time. Rotor, not yet scheduled, should bring it closer.
+
+**When did Alpenglow go live on Solana mainnet?**
+On 21 October 2026, at slot 459,653,000 in epoch 1064, around 13:54 UTC.
+
+**What is the difference between Votor and Rotor?**
+Votor is the voting and finality protocol, live since 21 October 2026. Rotor will replace Turbine for block propagation. It is the second phase of Alpenglow and has no date yet.
+
+**How fast was Solana finality before Alpenglow?**
+We measured about 7 seconds at the median under Tower BFT, in line with Galaxy's estimate of about 6 seconds. The 12.8 seconds often quoted assumes 400 ms slots.
+
+**Which blockchain has the fastest finality?**
+Solana and Gram are tied at about 0.40 s (p50, 24h) on our board of 10 chains, ahead of BNB Chain at 0.73 s. The [L1 finality benchmark](/benchmarks/l1-finality) has the live ranking.
+
+## Sources and reproducibility
+
+- **Live bench:** [L1 finality](/benchmarks/l1-finality)
+- **Harness source:** [harnesses/l1-finality](https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/l1-finality)
+- **Activation and network facts:** Anza's announcement, the Solana Foundation [Alpenglow upgrade guide](https://solana.com/upgrades/alpenglow), and the SIMDs linked above. The vote-transaction share and Galaxy's Tower BFT estimate are as reported by [Solana Compass](https://solanacompass.com/news/solana-alpenglow-is-live-on-mainnet-as-anza-retires-towerbft-at-slot-459653000).
+- **License:** CC BY 4.0. Reproduce with attribution to OpenChainBench and a link to the canonical URL.
+- **Corrections:** file a [GitHub issue](https://github.com/ChainBench/OpenChainBench/issues/new).
+
+*Figures are as of 23 October 2026 and move as new samples land. The live page is always the current source.*

@@ -152,7 +152,7 @@ function reportsRoutes(): MetadataRoute.Sitemap {
       const newest = reports
         .filter((r) => r.categorySlug === cat)
         .reduce<Date | null>((acc, r) => {
-          const d = new Date(r.publishedAt);
+          const d = new Date(r.updatedAt ?? r.publishedAt);
           return !acc || d > acc ? d : acc;
         }, null);
       entries.push({
@@ -165,7 +165,7 @@ function reportsRoutes(): MetadataRoute.Sitemap {
     for (const r of reports) {
       entries.push({
         url: `${SITE.url}/reports/${r.categorySlug}/${r.slug}`,
-        lastModified: new Date(r.publishedAt),
+        lastModified: new Date(r.updatedAt ?? r.publishedAt),
         changeFrequency: "monthly",
         priority: 0.85,
       });

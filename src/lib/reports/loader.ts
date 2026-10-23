@@ -10,6 +10,9 @@ export type ReportMeta = {
   categorySlug: string;
   slug: string;
   publishedAt: string;
+  /** Last substantive revision, when it differs from publishedAt. Drives
+   *  dateModified and the sitemap lastmod, so a correction is recrawled. */
+  updatedAt?: string;
   period: string;
   summary: string;
   heroFinding: string;
@@ -21,6 +24,10 @@ export type ReportMeta = {
   /** True for a report rendered by its own route segment (live data,
    *  no MDX body) instead of the [category]/[slug] MDX page. */
   live?: boolean;
+  /** Question and answer pairs published as FAQPage structured data. Each
+   *  must also appear, word for word, in the report body: structured data
+   *  that says something the page does not is a guideline violation. */
+  faq?: { q: string; a: string }[];
 };
 
 export type Report = ReportMeta & {
@@ -45,6 +52,11 @@ export const REPORT_CATEGORY_META: Record<
     label: "Prediction Markets",
     description:
       "On-chain prediction markets benchmarked for quote availability, market coverage, and resolution latency.",
+  },
+  chains: {
+    label: "Chains",
+    description:
+      "Layer-1 blockchains measured for finality, block production and confirmation on mainnet, wall-clock and live.",
   },
   "data-api": {
     label: "Data API",
@@ -75,6 +87,7 @@ function parseReport(filePath: string): Report {
     categorySlug,
     slug: String(data.slug ?? ""),
     publishedAt: String(data.publishedAt ?? ""),
+    updatedAt: data.updatedAt ? String(data.updatedAt) : undefined,
     period: String(data.period ?? ""),
     summary: String(data.summary ?? ""),
     heroFinding: String(data.heroFinding ?? ""),
@@ -83,6 +96,12 @@ function parseReport(filePath: string): Report {
     ogImage: data.ogImage ? String(data.ogImage) : undefined,
     canonical: String(data.canonical ?? ""),
     draft: Boolean(data.draft ?? false),
+    faq: Array.isArray(data.faq)
+      ? data.faq
+          .filter((f: unknown): f is { q: unknown; a: unknown } => typeof f === "object" && f !== null)
+          .map((f) => ({ q: String(f.q ?? ""), a: String(f.a ?? "") }))
+          .filter((f) => f.q && f.a)
+      : undefined,
     content,
   };
 }
