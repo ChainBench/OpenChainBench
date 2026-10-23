@@ -552,6 +552,7 @@ func main() {
 		added, seen := sample(ctx, rpc, st, sol, pools, fd, quota, failQuota, activity, perTick, perTickFail)
 		gas := gasPrices(ctx, httpc)
 		added += sampleXchain(ctx, rpc, httpc, st, sol, gas, xf, pools, quota, perTickEVM)
+		added += sampleMobula(ctx, httpc, st, mfw, gas, int(math.Max(perTickEVM, 2)))
 		a2, s2 := sampleNative(ctx, httpc, st, nf, gas, quota, perTickEVM)
 		added += a2
 		seen += s2
@@ -1243,6 +1244,20 @@ func cohort() []Terminal {
 				continue
 			}
 			out = append(out, Terminal{Slug: a.Slug + "-" + c.slug, Name: a.Name + " · " + chainNames[c.slug], Kind: "app", Note: "Trading on " + chainNames[c.slug] + " through Relay: the user pays in USDC or SOL from the app wallet on Solana, a Relay solver buys the token on " + chainNames[c.slug] + " and delivers it. Value given = the SOL sent (tx fee inside); value received = the tokens delivered, at the pool's state before the settlement swap (v2: reserves; v3 / v4: the price left by the previous swap on the pool); terminal = the app fee; relay = what Relay kept (fees, spread, destination gas); pool = the settlement swap's impact and LP fee."})
+		}
+	}
+	// The Mobula rail. One row per product per chain, beside the Relay rows
+	// of the same app rather than inside them: an app can ride both, they
+	// differ in fee and in speed, and folding them would average two routes
+	// into a number describing neither. Same shape as Pump Bridge sitting
+	// beside the pump.fun app row.
+	for _, product := range settleRails["mobula"] {
+		for chain := range mobulaBridge {
+			out = append(out, Terminal{
+				Slug: product + "-" + chain, Name: productNames[product] + " · " + chainNames[chain],
+				Kind: "app",
+				Note: "Trading on " + chainNames[chain] + " through Mobula, the app's other bridge: the user deposits USDC on Solana, Mobula's solver buys the token on " + chainNames[chain] + " and delivers it. The two legs are joined on the intent id Mobula states in the clear on both of them, so the pairing is exact rather than matched by amount. Value given = the USDC credited to the solver, exact from the deposit; received = the tokens delivered at the pool's state before the settlement swap. The TERMINAL column is NOT MEASURED on this route, which is not the same as zero: no app-fee transfer exists on either leg, but a fee the app sets and the bridge takes inside its quote leaves no transfer to find, so any such charge is inside the bridge column.",
+			})
 		}
 	}
 	for _, t := range evmTerminals {

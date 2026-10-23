@@ -21,18 +21,57 @@ import (
 	"log"
 	"math/big"
 	"strings"
+	"sync"
 	"time"
 
 	"net/http"
 )
 
+// mobulaPaired: a fill joined to its deposit, waiting to be priced.
+//
+// Timing happens in the watcher because it needs nothing else. Pricing needs
+// the tick's http client, the gas prices and the state to append to, so the
+// pair is buffered and the tick drains it. Same split as the Relay feed: the
+// goroutine collects, the tick measures.
+type mobulaPaired struct {
+	chain string
+	fill  string
+	in    mobulaIntent
+}
+
 // mobulaFillWatcher walks each chain's bridge contract forward.
 type mobulaFillWatcher struct {
 	cursor map[string]int64
+
+	mu      sync.Mutex
+	pending []mobulaPaired
 }
 
 func newMobulaFillWatcher() *mobulaFillWatcher {
 	return &mobulaFillWatcher{cursor: map[string]int64{}}
+}
+
+// mobulaPendingMax caps the buffer. A tick that stops draining must not let
+// this grow without bound, and the oldest pairs are the ones whose pricing is
+// least likely to still resolve, so the cap drops from the front.
+const mobulaPendingMax = 2000
+
+func (w *mobulaFillWatcher) queue(p mobulaPaired) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.pending = append(w.pending, p)
+	if len(w.pending) > mobulaPendingMax {
+		w.pending = w.pending[len(w.pending)-mobulaPendingMax:]
+	}
+}
+
+// drain hands over everything buffered and clears it.
+func (w *mobulaFillWatcher) drain() []mobulaPaired {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	out := w.pending
+	w.pending = nil
+	return out
 }
 
 func (w *mobulaFillWatcher) run(ctx context.Context, httpc *http.Client, every time.Duration) {
@@ -196,6 +235,10 @@ func (w *mobulaFillWatcher) pollChain(ctx context.Context, httpc *http.Client, c
 		// anything over 60 s and under 0, so a clock skew between two
 		// chains cannot publish a negative figure.
 		noteSettle(in.App, settleTrade, chain, float64(at-in.At))
+		// Buffered for the tick to price. Queued AFTER the timing, so a
+		// pricing failure can never cost a settlement: the two figures are
+		// independent and the timing is the one that cannot be wrong.
+		w.queue(mobulaPaired{chain: chain, fill: l.TxHash, in: in})
 	}
 	if len(logs) > 0 {
 		log.Printf("[mobula-fill] %s: %d fills in blocks %d-%d, %d paired",
