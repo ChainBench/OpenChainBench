@@ -22,6 +22,7 @@
  *   {{best_names}}          every provider tied with the leader, joined.
  *   {{best_name}}              name of the leading provider (best p50).
  *   {{best_p50}}               p50 of the leader, formatted.
+ *   {{best_first}}             race benches: the leader's share of first pushes.
  *   {{worst_name}}             name of the trailing provider.
  *   {{worst_p50}}              p50 of the trailing provider, formatted.
  *   {{best_name:chain:<x>}}    name of the provider that leads on chain
@@ -62,7 +63,7 @@ import type { Benchmark, ProviderResult } from "@/types/benchmark";
 import { liveResults, displayResults } from "@/lib/provider-filters";
 import { citationCandidates, joinNames, leaderNames, rankedCandidates } from "@/lib/citation";
 import { rankResults } from "@/lib/ranking";
-import { fmtHeadline, fmtUnit } from "@/lib/format";
+import { fmtUnit } from "@/lib/format";
 
 // Keyword allows digits ({{p50:slug}}, {{best_p50}}, {{worst_p99}}) and
 // underscores, must start with a letter. The earlier [a-z_]+ form
@@ -193,7 +194,7 @@ export function renderTemplate(text: string, benchmark: Benchmark): string {
       }
       if (k === "best_p50") {
         const lead = bestForChain(benchmark, chain);
-        return lead ? fmtHeadline(lead.ms.p50, benchmark, lead.slug) : UNRESOLVED;
+        return lead ? fmtUnit(lead.ms.p50, benchmark.unit) : UNRESOLVED;
       }
       if (k === "worst_name") {
         const trailer = worstForChain(benchmark, chain);
@@ -216,7 +217,7 @@ export function renderTemplate(text: string, benchmark: Benchmark): string {
       const lead = rows[0];
       const trailer = rows[rows.length - 1];
       if (k === "best_name") return lead ? lead.name : UNRESOLVED;
-      if (k === "best_p50") return lead ? fmtHeadline(lead.ms.p50, benchmark, lead.slug) : UNRESOLVED;
+      if (k === "best_p50") return lead ? fmtUnit(lead.ms.p50, benchmark.unit) : UNRESOLVED;
       if (k === "worst_name") return trailer ? trailer.name : UNRESOLVED;
       if (k === "worst_p50") return trailer ? fmtUnit(trailer.ms.p50, benchmark.unit) : UNRESOLVED;
       return whole;
@@ -265,8 +266,21 @@ export function renderTemplate(text: string, benchmark: Benchmark): string {
         if (tied.length > 0) return joinNames(tied);
         return best ? best.name : UNRESOLVED;
       }
+      case "best_first": {
+        // Race benches (spec race_leader): the leader's share of the
+        // blocks it received that it pushed first, the figure that means
+        // something where its lag is 0 by construction.
+        const rl = benchmark.raceLeader;
+        const share =
+          rl && best
+            ? benchmark.metricPanels?.find((p) => p.id === rl.sharePanel)?.values?.[best.slug]
+            : undefined;
+        return typeof share === "number" && Number.isFinite(share)
+          ? `${Math.round(share)}%`
+          : UNRESOLVED;
+      }
       case "best_p50":
-        return best ? fmtHeadline(best.ms.p50, benchmark, best.slug) : UNRESOLVED;
+        return best ? fmtUnit(best.ms.p50, benchmark.unit) : UNRESOLVED;
       case "worst_name":
         return worst ? worst.name : UNRESOLVED;
       case "worst_p50":

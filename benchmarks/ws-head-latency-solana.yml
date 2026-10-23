@@ -51,7 +51,7 @@ methodology:
   - "Vantage point: a single eu-west host. Multi-region deployment is a follow-up on the parent bench roadmap; the same limitation and reasoning are documented there."
 
 findings:
-  - "{{best_name}} leads the Solana cohort at {{best_p50}} (p50, 24 h) across {{count}} measured providers. Solana's ~400ms cadence means each provider gets 30 times more samples per unit time than the Ethereum sibling; the distribution here has very little tail noise for the same 24h window."
+  - "{{best_name}} leads the Solana cohort, first on {{best_first}} of the slots it received (24 h), across {{count}} measured providers. Solana's ~400ms cadence means each provider gets 30 times more samples per unit time than the Ethereum sibling; the distribution here has very little tail noise for the same 24h window."
   - "{{name:solana}} versus {{name:publicnode}}: the Solana Foundation's public endpoint and PublicNode's Solana gateway measured on identical terms. A latency-sensitive Solana integration should read the win rate alongside p50 to see which endpoint delivers slot N first most often."
   - "The p99 column matters more on Solana than on any EVM chain in the cluster: at ~400ms slots, a p99 above 1 second means the provider is routinely 2-3 slots behind the leader. That gap is the exact window where a keeper or liquidator loses to a co-located competitor."
   - "Cross-chain comparison of absolute lag numbers is not meaningful: Solana runs at 400ms slots, Base at 2s, Ethereum at 12s. Use each per-chain leaderboard on its own terms and the parent [ws-head-latency](https://openchainbench.com/benchmarks/ws-head-latency-ethereum) page for the Ethereum reference."
@@ -91,7 +91,7 @@ dimensions:
 
 faq:
   - q: "What is the fastest free Solana RPC over WebSocket right now?"
-    a: "{{best_name}} currently wins most per-slot races on Solana with a median lag of {{best_p50}} versus the earliest arrival (p50, 24 h) across {{count}} measured keyless providers. The leaderboard re-scores on every Solana slot, roughly every 400ms, so the answer reflects sustained live measurement, not a one-off test. Check the win rate and the trailers' p99 before wiring a latency-sensitive Solana keeper or MEV integration to any single provider."
+    a: "{{best_name}} currently wins most per-slot races on Solana first on {{best_first}} of the slots it received (24 h) across {{count}} measured keyless providers. The leaderboard re-scores on every Solana slot, roughly every 400ms, so the answer reflects sustained live measurement, not a one-off test. Check the win rate and the trailers' p99 before wiring a latency-sensitive Solana keeper or MEV integration to any single provider."
   - q: "How is Solana WebSocket slot lag measured on OpenChainBench?"
     a: "One Go harness holds a persistent `slotSubscribe` WebSocket per provider from the same eu-west host. Every notification is timestamped on receipt at millisecond precision, keyed on slot number, and deduplicated. Each slot is scored as a race: earliest arrival sets T0 and every other provider's lag is arrival minus T0. The cohort closes 5 seconds after the first arrival, then p50/p90/p99 are computed via `histogram_quantile` over 24 hours."
   - q: "Why does the fastest provider read near zero?"

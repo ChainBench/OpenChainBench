@@ -28,8 +28,8 @@ seo_intro: |
   slots for cross-chain context. Because the measurement is relative,
   the leader reads near zero by construction, so the win-rate and the
   shape of the trailing distribution (p50 vs p99) are the numbers to
-  read, not the absolute magnitude. {{best_name}} currently leads at
-  {{best_p50}} (p50, 24 h) across {{count}} measured providers.
+  read, not the absolute magnitude. {{best_name}} currently leads, first on
+  {{best_first}} of the blocks it received (24 h), across {{count}} measured providers.
 
 abstract: |
   We race RPC providers on WebSocket block delivery. One harness holds a
@@ -59,7 +59,7 @@ methodology:
   - "Vantage point: a single eu-west host. Geography moves absolute arrival times but affects all providers over the same path; still, a provider whose nearest edge is far from eu-west is disadvantaged, and a us-east probe is the planned second vantage before any cross-region claim is made."
 
 findings:
-  - "{{best_name}} leads the Ethereum cohort at {{best_p50}} (p50, 24 h) across {{count}} measured providers. Remember the construction: the per-block winner defines zero, so the leader's near-zero p50 mostly says it wins most races; the informative numbers are the trailers' medians and the p99 tails."
+  - "{{best_name}} leads the Ethereum cohort, first on {{best_first}} of the blocks it received (24 h), across {{count}} measured providers. Remember the construction: the per-block winner defines zero, so the leader's near-zero p50 mostly says it wins most races; the informative numbers are the trailers' medians and the p99 tails."
   - "{{name:drpc}} trails the winner by {{p50:drpc}} at the median. That is the extra time a liquidation bot or MEV searcher on dRPC's keyless endpoint waits for block N after the fastest feed already delivered it."
   - "{{name:tenderly}} trails by {{p50:tenderly}} (p50, 24 h). Tenderly's gateway is built around simulation and developer tooling rather than raw head-push fan-out, and the push pipeline depth shows up in this race."
   - "The p99 column is the integration-grade number: {{p99:publicnode}} / {{p99:drpc}} / {{p99:tenderly}}. A provider with a tight p50 but a multi-second p99 will occasionally hand your bot a stale head exactly when the chain is busiest."
@@ -103,7 +103,7 @@ dimensions:
 
 faq:
   - q: "Which RPC provider pushes new Ethereum blocks first over WebSocket?"
-    a: "{{best_name}} currently wins most per-block races, with a median lag of {{best_p50}} versus the earliest arrival (p50, 24 h) across {{count}} measured keyless providers. The leaderboard re-scores on every Ethereum block, roughly every 12 seconds, so the answer reflects sustained live measurement, not a one-off test. Check the win rate and the trailers' p99 before wiring a latency-sensitive bot to any single provider."
+    a: "{{best_name}} currently wins most per-block races, first on {{best_first}} of the blocks it received (24 h) across {{count}} measured keyless providers. The leaderboard re-scores on every Ethereum block, roughly every 12 seconds, so the answer reflects sustained live measurement, not a one-off test. Check the win rate and the trailers' p99 before wiring a latency-sensitive bot to any single provider."
   - q: "Why does the fastest provider show a lag near zero?"
     a: "By construction. Each block is scored as a race: the earliest arrival among providers defines T0 and every sample is measured against it, so the provider that wins most races accumulates mostly zero samples. This is deliberate. A single vantage point cannot measure absolute chain-to-client latency without a reference node co-located with block producers; it can measure, fairly, which provider delivers the same block earlier over the same network path. Read the leader's win rate and the trailers' distributions, not the leader's absolute number."
   - q: "Is this absolute latency from block production to my client?"
