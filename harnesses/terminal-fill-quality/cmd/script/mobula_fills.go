@@ -255,6 +255,11 @@ func (w *mobulaFillWatcher) pollChain(ctx context.Context, httpc *http.Client, c
 		// chain. Logged when it is the second case, because that is the
 		// state in which fills are being skipped and nothing else says so.
 		if from > 0 {
+			// A log said this and nothing counted it, so it could only be
+			// found by reading container output. Same omission as the
+			// deposit feed's, one file away.
+			gMobulaBehind.Set(1)
+			cMobulaSkipped.Add(float64(head - from - span))
 			log.Printf("[mobula-fill] %s: %d blocks behind, past the %d-block reach: fills in between are not read",
 				chain, head-from, span)
 		}
