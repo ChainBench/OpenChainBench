@@ -37,7 +37,13 @@ import (
 type mobulaPaired struct {
 	chain string
 	fill  string
-	in    mobulaIntent
+	// id: the intent id both legs state in the clear. Carried because it is
+	// what makes the bridge's take collectable downstream: the component
+	// aggregations only gather a rail's cut when RelayID is set, so a row
+	// built without it computed the residual and then had it dropped by
+	// every aggregation, leaving a 75 bps median charge in no column at all.
+	id string
+	in mobulaIntent
 }
 
 // mobulaFillWatcher walks each chain's bridge contract forward.
@@ -318,7 +324,7 @@ func (w *mobulaFillWatcher) pollChain(ctx context.Context, httpc *http.Client, c
 		// Buffered for the tick to price. Queued AFTER the timing, so a
 		// pricing failure can never cost a settlement: the two figures are
 		// independent and the timing is the one that cannot be wrong.
-		w.queue(mobulaPaired{chain: chain, fill: l.TxHash, in: in})
+		w.queue(mobulaPaired{chain: chain, fill: l.TxHash, id: id, in: in})
 	}
 	if len(logs) > 0 {
 		log.Printf("[mobula-fill] %s: %d fills in blocks %d-%d, %d paired",

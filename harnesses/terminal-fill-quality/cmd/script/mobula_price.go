@@ -137,7 +137,7 @@ func mobulaSink(logs []evmLog) (user, token string, amount *big.Int, ok bool) {
 // Everything after that is the existing pricer. priceEvmSettlement is the same
 // function the Relay rows use, on the same definition, so this route's cost is
 // comparable with theirs by construction rather than by coincidence.
-func mobulaRow(ctx context.Context, httpc *http.Client, c originChain, chain, fill string, in mobulaIntent, gas map[string]float64) *Swap {
+func mobulaRow(ctx context.Context, httpc *http.Client, c originChain, chain, fill, id string, in mobulaIntent, gas map[string]float64) *Swap {
 	var rc evmReceipt
 	if err := evmCall(ctx, httpc, c.logsRPC(), "eth_getTransactionReceipt", []any{fill}, &rc); err != nil {
 		return nil
@@ -160,7 +160,7 @@ func mobulaRow(ctx context.Context, httpc *http.Client, c originChain, chain, fi
 	sw := &Swap{
 		Method: methodVersion, Sig: fill, Terminal: "", Side: "buy",
 		Quote: "USDC", QuoteUSD: 1, Venue: s.Venue, Mint: token, Tokens: s.Tokens,
-		Chain: chain, RelayID: "", InTx: in.Deposit, User: user,
+		Chain: chain, RelayID: id, InTx: in.Deposit, User: user,
 		Pools: s.Pools, Hops: s.Hops, PoolVault: s.Pool, Time: in.At,
 	}
 	if sw.Venue == "" {
@@ -176,6 +176,17 @@ func mobulaRow(ctx context.Context, httpc *http.Client, c originChain, chain, fi
 	// published as the bridge's take INCLUDING any app charge, and the row's
 	// note says so. Publishing 0 here would read as "this route is 50 bps
 	// cheaper in app fees" when the fee had only moved.
+	//
+	// THAT ONLY HOLDS IF THE RESIDUAL IS ACTUALLY PUBLISHED, and for a while
+	// it was not. The component aggregations gather a rail's cut only when
+	// RelayID is set (main.go:2289, :2325, :3079), and this row was built
+	// with RelayID empty, so the residual was computed and then dropped by
+	// every one of them. It survived in recent[].relay_bps and nowhere a
+	// reader looks: a median take of 75.2 bps, 38% of the row's median loss,
+	// appeared in no column while the terminal column read 0. The route then
+	// said its fee was zero and showed the charge nowhere, which is worse
+	// than either alone. RelayID now carries the intent id, which is the
+	// rail's own request identifier and exactly what the gate wants.
 	sw.TerminalQ = 0
 	sw.NetworkQ = s.GasUSD // destination gas; the origin fee is the app's sponsor
 	sw.PoolQ = s.PoolInUSD
@@ -217,7 +228,7 @@ func sampleMobula(ctx context.Context, httpc *http.Client, st *State, w *mobulaF
 	rows := readParallel(ctx, pairs, sampleWorkers(), func(ctx context.Context, pr mobulaPaired) *Swap {
 		for _, oc := range originChains {
 			if oc.slug == pr.chain {
-				return mobulaRow(ctx, httpc, oc, pr.chain, pr.fill, pr.in, gas)
+				return mobulaRow(ctx, httpc, oc, pr.chain, pr.fill, pr.id, pr.in, gas)
 			}
 		}
 		return nil

@@ -2174,7 +2174,23 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 				}
 			}
 		}
-		if att >= 20 && sampledEnough {
+		// A route whose failures this counter cannot see publishes no rate
+		// at any sample size. Pump Bridge does not fail by reverting on the
+		// EVM leg, so its block sample finds zero reverts however long it
+		// runs: 102 sampled transactions, 0.00 % published on three tabs,
+		// and the best reliability figure on the board belonged to the one
+		// route whose reliability was never measured. This is deliberately
+		// NOT folded into sampledEnough: that asks whether we have seen
+		// enough yet and can turn true with time, this asks whether the
+		// question applies at all and never changes.
+		cannotSee := false
+		for _, sl := range slugs {
+			if noFailRate(sl) {
+				cannotSee = true
+				break
+			}
+		}
+		if att >= 20 && sampledEnough && !cannotSee {
 			fr := 100 * failed / att
 			ts.FailRate = &fr // percent (a native row: from 20 sampled transactions, not 20 scaled ones)
 		}
