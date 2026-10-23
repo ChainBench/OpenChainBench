@@ -1,14 +1,27 @@
 ---
-title: "Solana Alpenglow finality, measured on mainnet: from 7 seconds to 0.4 seconds"
+title: "Solana Alpenglow finality: 7 s to 0.4 s"
 category: "chains"
 slug: "2026-10-solana-alpenglow-finality"
 publishedAt: "2026-10-23"
 period: "October 2026"
-summary: "Alpenglow replaced Tower BFT on Solana mainnet on 21 October 2026. We have measured Solana finality continuously since before the switch. Median finality fell from about 7 seconds to about 0.4 seconds, a roughly 17x improvement. That puts Solana level with the fastest chain on our board, though still above Anza's 150 ms target."
+summary: "Alpenglow cut Solana's median finality from about 7 s to 404 ms on mainnet. Live wall-clock data, why it is 17x and not 85x, and how Solana ranks now."
 heroFinding: "Solana's median finality is 404 ms over the last 24 hours (p90 579 ms, p99 765 ms, 357,000 samples), down from about 7 seconds under Tower BFT."
 author: "OpenChainBench Research"
 readingTime: 8
 canonical: "https://openchainbench.com/reports/chains/2026-10-solana-alpenglow-finality"
+faq:
+  - q: "What is Solana's finality time after Alpenglow?"
+    a: "About 0.4 seconds at the median: 404 ms p50, 579 ms p90, 765 ms p99 over 24 hours, measured as wall-clock time from slot to root on a public mainnet node. The live figure updates every 10 seconds."
+  - q: "Did Alpenglow reach 150 ms finality?"
+    a: "Not as observed from a public RPC node. 150 ms is Anza's target for the protocol. Clients watching from outside currently see about 0.4 s at the median, partly because the node itself adds processing time. Rotor, not yet scheduled, should bring it closer."
+  - q: "When did Alpenglow go live on Solana mainnet?"
+    a: "On 21 October 2026, at slot 459,653,000 in epoch 1064, around 13:54 UTC."
+  - q: "What is the difference between Votor and Rotor?"
+    a: "Votor is the voting and finality protocol, live since 21 October 2026. Rotor will replace Turbine for block propagation. It is the second phase of Alpenglow and has no date yet."
+  - q: "How fast was Solana finality before Alpenglow?"
+    a: "We measured about 7 seconds at the median under Tower BFT, in line with Galaxy's estimate of about 6 seconds. The 12.8 seconds often quoted assumes 400 ms slots."
+  - q: "Which blockchain has the fastest finality?"
+    a: "Solana and Gram are tied at about 0.40 s (p50, 24h) on our board of 10 chains, ahead of BNB Chain at 0.73 s. The L1 finality benchmark has the live ranking."
 ---
 
 <Summary>
