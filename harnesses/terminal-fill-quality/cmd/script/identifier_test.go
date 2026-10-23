@@ -15,7 +15,6 @@ func identifierCount(app, id string) (float64, bool) {
 	return d.Counter.GetValue(), true
 }
 
-
 // Every declared identifier is published from start, so a dead one shows as
 // never matched instead of as a series nobody notices is missing.
 func TestEveryDeclaredIdentifierIsPublished(t *testing.T) {
@@ -64,5 +63,30 @@ func TestIdentifierMatchMovesOnlyTheMatchingOne(t *testing.T) {
 		if after-before[id] != want {
 			t.Errorf("identifier %s moved by %v, want %v", id, after-before[id], want)
 		}
+	}
+}
+
+// A referrer app is matched by the feed's filter, and Relay sends the
+// response's referrer field null, so the count must not depend on it.
+func TestReferrerAppCountsWithoutTheReferrerField(t *testing.T) {
+	var app xchainApp
+	for _, a := range xchainApps {
+		if a.Referrer != "" {
+			app = a
+			break
+		}
+	}
+	if app.Slug == "" {
+		t.Skip("no referrer-identified app declared")
+	}
+	var r relayRaw
+	if err := json.Unmarshal([]byte(`{"id":"0xref","status":"success","createdAt":"2026-10-23T00:00:00Z","data":{"referrer":null}}`), &r); err != nil {
+		t.Fatal(err)
+	}
+	id := "referrer:" + app.Referrer
+	before, _ := identifierCount(app.Slug, id)
+	classify(app, originChain{slug: "base"}, r) // may reject the bare request later; the match is what is counted
+	if after, _ := identifierCount(app.Slug, id); after-before != 1 {
+		t.Fatalf("%s moved by %v with data.referrer null, want 1", id, after-before)
 	}
 }
