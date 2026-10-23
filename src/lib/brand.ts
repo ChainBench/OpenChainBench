@@ -125,6 +125,7 @@ const BRANDS: Record<string, Brand> = {
   "pump-bridge": { color: "#00C851" }, // same brand, pump's own bridge
   moonshot: { color: "#F97316" },      // moonshot orange
   fomo: { color: "#7C3AED" },          // fomo violet
+  "fomo-mobula": { color: "#7C3AED" }, // same app, its Mobula rail
   coinbase: { color: "#0052FF" },      // coinbase blue
   bybit: { color: "#F7A600" },         // bybit yellow
   kraken: { color: "#5741D9" },        // kraken purple

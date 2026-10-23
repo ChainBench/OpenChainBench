@@ -233,6 +233,7 @@ const CANONICAL_NAMES: Record<string, string> = {
   edgex: "edgeX",
   sui: "Sui",
   fomo: "FOMO",
+  "fomo-mobula": "FOMO \u00b7 Mobula",
   "pump-fun": "pump.fun",
   "pump-bridge": "Pump Bridge",
 };

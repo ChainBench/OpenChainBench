@@ -1601,6 +1601,13 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "FOMO is a multi-chain trading app (Solana, Base, BNB Chain, and more) for memecoins and perps. It provides social copy-trading, onchain signals, and routes swaps through pump.fun, Raydium, and other DEX pools.",
     twitter: "@tryfomo",
   },
+  "fomo-mobula": {
+    url: "https://fomo.family",
+    referralUrl: "https://fomo.family/r/FlorentTppnr",
+    description:
+      "FOMO \u00b7 Mobula is FOMO's cross-chain route through Mobula rather than Relay, published as its own row because the two bridges differ in fee and in speed and averaging them would describe neither. The user deposits USDC on Solana, Mobula's solver buys the token on the destination chain and delivers it, and both legs state the same intent id so the pair is exact rather than matched by amount.",
+    twitter: "@tryfomo",
+  },
   "pump-bridge": {
     url: "https://pump.fun",
     description:
