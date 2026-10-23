@@ -56,6 +56,14 @@ var (
 		Name: "tfq_mobula_pending_fills",
 		Help: "Paired fills waiting to be priced. The sampler draws a quota each tick and puts the rest back, so a steady number here is a backlog the quota is not keeping up with and a rising one is the cap about to drop its oldest. It read zero while 188 of 202 Robinhood fills were being discarded in arrival order, because the sampler emptied the buffer and kept two",
 	})
+	gMobulaBehind = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "tfq_mobula_feed_behind",
+		Help: "1 when the last deposit pass filled its page while a cursor was set, meaning more signatures arrived than one pass reads and the deposits between the old cursor and that page were skipped for good. The pairing cannot find what the feed never saw, so this is the first thing to check when the join rate falls. Its absence is why half of a 30% join rate could go unexplained for an evening",
+	})
+	cMobulaSkipped = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "tfq_mobula_deposits_skipped_total",
+		Help: "Signatures the deposit feed could not have read, counted as the excess when a page came back full with a cursor set. An estimate rather than an exact count, since the skipped ones are by definition the ones we did not fetch, but it is the difference between a measured hole and an unexplained one",
+	})
 	cMobulaFills = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "tfq_mobula_fills_total",
 		Help: "Fill events read from Mobula's bridge contract, by whether the intent id matched a deposit we hold. paired is an EXACT join on an id stated in the clear on both legs, so unlike the Pump Bridge pairing there is no ambiguous case and no amount tolerance. unknown_intent means the deposit was never seen or has aged out: our blindness, never a bridge failure, and it is the normal state for fills belonging to other integrators",
@@ -63,7 +71,7 @@ var (
 )
 
 func init() {
-	prometheus.MustRegister(gMobulaUp, gMobulaBacklog, cMobulaDeposits, cMobulaFills)
+	prometheus.MustRegister(gMobulaUp, gMobulaBacklog, gMobulaBehind, cMobulaSkipped, cMobulaDeposits, cMobulaFills)
 }
 
 // mobulaIntentAge: how long a deposit is held waiting for its fill.
@@ -242,8 +250,18 @@ func (f *mobulaFeed) run(ctx context.Context, rpc *rpcClient, every time.Duratio
 // address: a deposit credits the TOKEN ACCOUNT, whose address has no
 // relationship to its owner's, which is why 15,000 transactions were once
 // scanned against the solver address for nothing.
+// mobulaPageSize: signatures asked for per pass.
+//
+// 500, not 200. The account runs about 111 signatures a minute and a pass now
+// reads them several at a time, so the page is no longer bounded by how long
+// it takes to walk; it is bounded by how far behind a pass may fall and still
+// catch up. 200 was under five minutes of traffic and a pass that stretched
+// past that lost the difference in silence.
+const mobulaPageSize = 500
+
 func (f *mobulaFeed) poll(ctx context.Context, rpc *rpcClient) {
-	sigs, err := rpc.signatures(ctx, mobulaSolverUSDC, 200, f.cursor)
+	hadCursor := f.cursor != ""
+	sigs, err := rpc.signatures(ctx, mobulaSolverUSDC, mobulaPageSize, f.cursor)
 	if err != nil {
 		gMobulaUp.Set(0)
 		log.Printf("[mobula] signatures: %v", err)
@@ -254,16 +272,39 @@ func (f *mobulaFeed) poll(ctx context.Context, rpc *rpcClient) {
 		return
 	}
 	newest := sigs[0].Signature
-	found, scanned := 0, 0
-	for _, s := range sigs {
-		if ctx.Err() != nil {
-			break
-		}
+
+	// A FULL page with a cursor set means more arrived than one pass reads,
+	// and since the cursor jumps to `newest` the signatures between the old
+	// cursor and this page are gone. The pump feed has carried this guard
+	// since it cost it deposits; this one did not, and that absence is why
+	// half of a 30% join rate went unexplained for an evening.
+	if hadCursor && len(sigs) >= mobulaPageSize {
+		gMobulaBehind.Set(1)
+		cMobulaSkipped.Add(float64(len(sigs)))
+		log.Printf("[mobula] page full (%d) with a cursor set: the account is producing faster than one pass reads, deposits were skipped", len(sigs))
+	} else {
+		gMobulaBehind.Set(0)
+	}
+
+	// Read several at a time. One getTransaction per signature, serialised,
+	// is what made a pass outlast its own 60 s interval: at 111 signatures a
+	// minute on this account and a few hundred milliseconds a read, the pass
+	// could not finish before the next page had already moved past it.
+	txs := readParallel(ctx, sigs, sampleWorkers(), func(ctx context.Context, s sigInfo) *parsedTx {
 		if s.failed() {
-			continue
+			return nil
 		}
 		tx, err := rpc.transaction(ctx, s.Signature)
 		if err != nil || tx == nil || tx.BlockTime == nil {
+			return nil
+		}
+		return tx
+	})
+
+	found, scanned := 0, 0
+	for i, s := range sigs {
+		tx := txs[i]
+		if tx == nil {
 			continue
 		}
 		scanned++
