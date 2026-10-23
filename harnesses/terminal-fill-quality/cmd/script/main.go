@@ -106,6 +106,10 @@ var (
 	// Per-chain health of the EVM log feed. This existed only inside the
 	// feed struct, so BNB's read nothing for days behind a green
 	// tfq_feed_up, which covers the Solana WebSocket alone.
+	cXchainTimed = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "tfq_xchain_settlements_timed_total",
+		Help: "Relay requests timed for settlement, which is every successful Solana-origin request in the sample rather than only the few drawn for pricing. Timing needs two block timestamps and pricing needs a dozen reads, so binding the cheap measurement to the expensive one's quota is what left FOMO at 8 settlements while its feed saw thousands of requests",
+	}, []string{"terminal"})
 	gWalletPollBehind = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "tfq_wallet_poll_behind",
 		Help: "1 when a fee wallet's last polling pass filled its page while a cursor was set, meaning more signatures arrived than one pass reads and the ones between the old cursor and that page were skipped. This is the FALLBACK path, used when the WebSocket feed is unhealthy. What a hole here costs is the COUNT, not the rate: the truncated slice feeds both the attempts and the failures, so dropping its tail removes them together and the ratio is untouched. It understates every sample size on this path, and because truncation only bites wallets busier than one page a tick it reweights the pooled rate toward the quiet ones, by an amount and in a direction nobody has measured",
@@ -145,7 +149,7 @@ var (
 )
 
 func init() {
-	prometheus.MustRegister(gWalletPollBehind, cWalletPollSkipped)
+	prometheus.MustRegister(gWalletPollBehind, cWalletPollSkipped, cXchainTimed)
 	prometheus.MustRegister(gNativeUp, gNativeLag, gNativeSkipped, cDustSkipped, cCrossProducerDupes, gLoss, gLossExFee, gComponent, gFail, gSamples, gTrade, gVenue, gBuy, gSandwich, gSandwichProfit, gLossSize, gLossChain, gHealth, gRanked, gFailCost, gFailOverhead, gLostUSD, gUnpriced, gRefresh, gFeed, gRelayFeed, gSol, cCalls, cErrors, cSkipped)
 }
 
@@ -896,6 +900,116 @@ var sandwichOn = true
 // sampleXchain drains the Relay feed: counts every final request of each
 // cross-chain app for its fail rate, draws the tick's quota of successful
 // token settlements on Solana and measures them (see xchain.go).
+// settleXchainPerTick: how many requests are timed per row per tick, on top
+// of whatever is priced.
+//
+// Timing costs two reads and pricing costs a dozen, so this is deliberately
+// far above the pricing quota: the quota exists to bound an expensive
+// operation and binding the cheap one to it is what left FOMO at 8
+// settlements while its feed saw thousands of requests.
+const settleXchainPerTick = 40
+
+// settleXchainTodo picks the requests worth timing: Solana-origin, both
+// hashes present, on a chain we can read, and not already timed.
+//
+// Extracted so the selection can be tested without a network. The dedupe is
+// the part that matters: the Relay feed re-walks requests after a restart,
+// and a request timed twice would inflate the sample behind a published mean
+// while looking like more data.
+func settleXchainTodo(sample []relayRequest, done map[string]bool, limit int) []relayRequest {
+	var todo []relayRequest
+	for _, x := range sample {
+		if limit > 0 && len(todo) >= limit {
+			break
+		}
+		// Solana-origin only: the sale direction needs a different pair of
+		// reads and is left on the sampled path for now.
+		if x.DestChain == "" || x.InTx == "" || x.OutTx == "" || done[x.ID] {
+			continue
+		}
+		known := false
+		for i := range originChains {
+			if originChains[i].slug == x.DestChain {
+				known = true
+				break
+			}
+		}
+		if !known {
+			continue
+		}
+		todo = append(todo, x)
+	}
+	return todo
+}
+
+// settleXchain times every successful Solana-origin request in the sample,
+// priced or not, and returns how many it recorded.
+//
+// Deduplicated against the window's own settled set, because the Relay feed
+// re-walks requests after a restart and a request timed twice would inflate
+// the sample behind a published mean while looking like more data.
+func settleXchain(ctx context.Context, rpc *rpcClient, httpc *http.Client, slug string, sample []relayRequest, done map[string]bool) int {
+	product, _ := settleRoute(slug)
+	if product == "" {
+		return 0
+	}
+	todo := settleXchainTodo(sample, done, settleXchainPerTick)
+	if len(todo) == 0 {
+		return 0
+	}
+	type timed struct {
+		id    string
+		chain string
+		at    int64
+		took  float64
+		ok    bool
+	}
+	out := readParallel(ctx, todo, sampleWorkers(), func(ctx context.Context, x relayRequest) timed {
+		var dc *originChain
+		for i := range originChains {
+			if originChains[i].slug == x.DestChain {
+				dc = &originChains[i]
+			}
+		}
+		if dc == nil {
+			return timed{}
+		}
+		inTx, err := rpc.transaction(ctx, x.InTx)
+		if err != nil || inTx == nil || inTx.BlockTime == nil {
+			return timed{}
+		}
+		var rc evmReceipt
+		if err := evmCall(ctx, httpc, dc.logsRPC(), "eth_getTransactionReceipt", []any{x.OutTx}, &rc); err != nil {
+			return timed{}
+		}
+		bn := hexInt(rc.BlockNumber)
+		if bn <= 0 {
+			return timed{}
+		}
+		at := pumpBlockAt(ctx, httpc, *dc, x.DestChain, bn)
+		if at <= 0 {
+			return timed{}
+		}
+		return timed{id: x.ID, chain: x.DestChain, took: float64(at - *inTx.BlockTime), ok: true}
+	})
+	n := 0
+	for _, r := range out {
+		if !r.ok {
+			continue
+		}
+		done[r.id] = true
+		noteSettle(product, settleTrade, r.chain, r.took)
+		cXchainTimed.WithLabelValues(slug).Inc()
+		n++
+	}
+	return n
+}
+
+// xchainTimed: request ids already timed, so a request the Relay feed
+// re-walks after a restart is not counted twice. It only ever grows within a
+// process, which is bounded by the feed's own retention rather than by this.
+var xchainTimed = map[string]bool{}
+
 func sampleXchain(ctx context.Context, rpc *rpcClient, httpc *http.Client, st *State, solUSD float64, gas map[string]float64, xf *xfeed, pools *poolCache, quota map[string]float64, perTick float64) (added int) {
 	if xf == nil || !xf.healthy() {
 		return 0
@@ -916,6 +1030,10 @@ func sampleXchain(ctx context.Context, rpc *rpcClient, httpc *http.Client, st *S
 	for _, slug := range xchainRows() {
 		seen, failed, errs, sample, total := xf.drain(slug)
 		st.record(slug, now, seen, failed, 0, errs)
+		// Time every request, not only the ones about to be priced. This is
+		// what separates a settlement count bound by the pricing quota from
+		// one bound by the flow.
+		added += settleXchain(ctx, rpc, httpc, slug, sample, xchainTimed)
 		if total == 0 {
 			continue
 		}
