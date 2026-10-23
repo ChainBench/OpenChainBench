@@ -19,6 +19,19 @@ describe("fmtUnit — s (latency stored as ms, displayed as seconds)", () => {
   test("exactly 60s flips to min", () => expect(fmtUnit(60_000, "s")).toBe("1.0 min"));
   test("10s+ shows integer", () => expect(fmtUnit(15_000, "s")).toBe("15 s"));
   test("large value in minutes", () => expect(fmtUnit(600_000, "s")).toBe("10.0 min"));
+  // The head-lag harness floors a published lag at 1 ms on purpose, because
+  // the winner of a race is 0 by definition and a zero headline reads as "no
+  // measurement" everywhere on the site. Rendering that floor as "0.00 s"
+  // puts the zero straight back: bench 001's Solana tab showed BEST 0.00 s
+  // over a Codex row sitting exactly on the floor.
+  test("the harness's 1 ms floor does not render as a zero", () => {
+    expect(fmtUnit(1, "s")).toBe("<0.01 s");
+    expect(fmtUnit(4.9, "s")).toBe("<0.01 s");
+  });
+  test("and the threshold does not swallow a real sub-10ms reading", () => {
+    expect(fmtUnit(5, "s")).toBe("0.01 s");
+    expect(fmtUnit(6.95, "s")).toBe("0.01 s");
+  });
 });
 
 describe("fmtUnit — sec (true seconds gauge)", () => {
