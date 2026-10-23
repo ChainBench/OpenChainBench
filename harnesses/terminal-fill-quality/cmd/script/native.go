@@ -815,14 +815,40 @@ func sampleNative(ctx context.Context, httpc *http.Client, st *State, nf *native
 		if cap := math.Max(3*perTick, 2); quota[t.Slug] > cap {
 			quota[t.Slug] = cap
 		}
-		if total == 0 {
-			continue
+		// Sales held back because their Solana delivery had not landed when
+		// they were first read. Re-read once, now that it has, through exactly
+		// the same path: nativeRow is a pure function of the transaction, so
+		// the only thing that changed is that the lookup can answer.
+		//
+		// BEFORE the quota guards on purpose. A tick where this terminal drew
+		// no new sample is still a tick where a held sale's delivery may have
+		// arrived, and gating the retry on new traffic would strand the sale
+		// on exactly the quiet chains that need it most.
+		var extra []*Swap
+		if ready, expired := pumpTakePendingSales(t.Slug, now); len(ready) > 0 || expired > 0 {
+			if expired > 0 {
+				cPumpOrder.WithLabelValues(t.Chain, "sell", "expired").Add(float64(expired))
+			}
+			extra = readParallel(ctx, ready, sampleWorkers(), func(ctx context.Context, h string) *Swap {
+				return nativeRow(ctx, httpc, t, h, gas, now)
+			})
+			for _, sw := range extra {
+				if sw != nil && sw.Priced {
+					cPumpOrder.WithLabelValues(t.Chain, "sell", "recovered").Inc()
+				}
+			}
 		}
-		n := int(quota[t.Slug])
-		if n > len(sample) {
-			n = len(sample)
+		n := 0
+		if total > 0 {
+			n = int(quota[t.Slug])
+			if n > len(sample) {
+				n = len(sample)
+			}
+			if n < 0 {
+				n = 0
+			}
 		}
-		if n <= 0 {
+		if n == 0 && len(extra) == 0 {
 			continue
 		}
 		quota[t.Slug] -= float64(n)
@@ -839,6 +865,7 @@ func sampleNative(ctx context.Context, httpc *http.Client, st *State, nf *native
 		rows := readParallel(ctx, sample[:n], sampleWorkers(), func(ctx context.Context, h string) *Swap {
 			return nativeRow(ctx, httpc, t, h, gas, now)
 		})
+		rows = append(rows, extra...)
 		for _, sw := range rows {
 			if sw == nil {
 				st.reject(t.Slug, "unreadable")
@@ -1334,7 +1361,13 @@ func nativeRow(ctx context.Context, httpc *http.Client, t evmTerminal, hash stri
 			default:
 				pay, ok := pumpFindPayout(order)
 				if !ok {
+					// Not a miss yet: on a sale the EVM leg comes FIRST and
+					// pump delivers on Solana afterwards, so at head the
+					// delivery usually does not exist at this instant. Hold
+					// the sale and let a later tick read it once its delivery
+					// has landed. It publishes nothing in the meantime.
 					cPumpOrder.WithLabelValues(t.Chain, "sell", "not_held").Inc()
+					pumpNotePendingSale(t.Slug, hash, order, now)
 					return &Swap{Flag: "unpriced_pump_sale_unjoined"}
 				}
 				cPumpOrder.WithLabelValues(t.Chain, "sell", "joined").Inc()

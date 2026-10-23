@@ -440,6 +440,96 @@ func pumpFindPayout(order string) (pumpPay, bool) {
 	return p, ok
 }
 
+// pumpPendingSales: sales read on the EVM side before their Solana delivery
+// existed, held until it does.
+//
+// THE ORDER OF EVENTS IS THE WHOLE REASON THIS EXISTS, and the first version
+// of the join ignored it. On a sale the user gives the token on the EVM chain
+// and pump delivers on Solana AFTERWARDS. The native feed reads at the head of
+// the chain (tfq_native_lag_blocks is 0 on every chain), so at the moment a
+// sale is sampled its payout has usually not happened yet. Looking the
+// delivery up once, at sample time, therefore misses by construction: measured
+// at 7 of 8 not_held within minutes of shipping it, and getting worse rather
+// than settling, which is what a structural miss looks like next to a
+// cold-start one.
+//
+// So the sale waits. It is held by order id, and the next sampling tick
+// re-reads any whose delivery has since landed. Nothing is published from a
+// sale that never finds its delivery; it stays unpriced exactly as before.
+//
+// Bounded by age because a sale whose delivery never arrives must not be held
+// for the life of the process. Ten minutes is generous against a bridge whose
+// own histogram puts almost everything under three seconds.
+var pumpPendingSales struct {
+	sync.Mutex
+	by map[string]pumpPendingSale
+}
+
+type pumpPendingSale struct {
+	terminal string
+	hash     string
+	at       int64
+}
+
+const (
+	pumpPendingMax = 5000
+	pumpPendingAge = 10 * 60 // seconds
+)
+
+// pumpNotePendingSale records a sale whose delivery is not held yet.
+func pumpNotePendingSale(terminal, hash, order string, at int64) {
+	if terminal == "" || hash == "" || order == "" {
+		return
+	}
+	pumpPendingSales.Lock()
+	defer pumpPendingSales.Unlock()
+	if pumpPendingSales.by == nil {
+		pumpPendingSales.by = map[string]pumpPendingSale{}
+	}
+	if _, dup := pumpPendingSales.by[order]; dup {
+		return // already waiting; re-reading it twice would double the row
+	}
+	pumpPendingSales.by[order] = pumpPendingSale{terminal: terminal, hash: hash, at: at}
+	if len(pumpPendingSales.by) <= pumpPendingMax {
+		return
+	}
+	cut := at - pumpPendingAge
+	for k, v := range pumpPendingSales.by {
+		if v.at < cut {
+			delete(pumpPendingSales.by, k)
+		}
+	}
+}
+
+// pumpTakePendingSales returns the sales for one terminal whose delivery has
+// since landed, and REMOVES them: a sale is re-read once.
+//
+// It also drops the ones that have waited past the age bound, counted apart,
+// because a sale whose delivery never arrived is a different fact from one
+// still in flight and the two must not look alike.
+func pumpTakePendingSales(terminal string, now int64) (hashes []string, expired int) {
+	pumpPendingSales.Lock()
+	defer pumpPendingSales.Unlock()
+	cut := now - pumpPendingAge
+	for order, v := range pumpPendingSales.by {
+		if v.terminal != terminal {
+			continue
+		}
+		if v.at < cut {
+			delete(pumpPendingSales.by, order)
+			expired++
+			continue
+		}
+		// pumpFindPayout takes the payout lock. The order is always pending
+		// then payout and never the reverse, so the two cannot deadlock.
+		if _, ok := pumpFindPayout(order); ok {
+			hashes = append(hashes, v.hash)
+			delete(pumpPendingSales.by, order)
+		}
+	}
+	return hashes, expired
+}
+
 // pumpFindDeposit returns the deposit that produced this spend, and whether
 // exactly one candidate matched.
 //
