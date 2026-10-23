@@ -507,7 +507,9 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //   written, which is the argument for spec-provider-set.test.ts rather
   //   than for a fourth note. 268 declares chain and bucket, so
   //   bench-filters moves with it.
-  ["bench-unfiltered-v95", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v96: the nine WebSocket races' copy reads {{best_first}} (share of first
+  // pushes) instead of a leader p50 that is 0 by construction.
+  ["bench-unfiltered-v96", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -755,7 +757,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v87: lockstep with bench-unfiltered-v94 (Nova joins bench 295).
   // v88: lockstep with bench-unfiltered-v95 (raceLeader on the WebSocket
   // races, and Pump Bridge and FOMO · Mobula joining bench 268).
-  ["all-benchmarks-v88", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v89: lockstep with bench-unfiltered-v96 (WebSocket race copy).
+  ["all-benchmarks-v89", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -871,7 +874,8 @@ const loadBenchmarkFiltered = unstable_cache(
   // region dimension, so their per-region variants carry the new panel, and
   // bench 268 declares chain and bucket, so its two new providers are
   // invisible on every tab until this moves. Same reason v36 existed.
-  ["bench-filters-v37", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v38: lockstep with bench-unfiltered-v96 (WebSocket race copy).
+  ["bench-filters-v38", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 

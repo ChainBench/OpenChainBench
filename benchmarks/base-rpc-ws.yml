@@ -21,8 +21,8 @@ seo_intro: |
   cohort: one WebSocket per provider per region, open ten minutes in every
   hour across the whole cohort, every frame
   timestamped on arrival, each block scored against whichever provider
-  delivered it earliest. {{best_name}} currently leads at {{best_p50}}
-  (p50, 24h) across {{count}} keyed providers.
+  delivered it earliest. {{best_name}} currently leads, first on
+  {{best_first}} of the blocks it received (24h), across {{count}} keyed providers.
 
   Because the measurement is relative, the leader reads near zero by
   construction. The numbers to read are the gap to the runner-up and the
