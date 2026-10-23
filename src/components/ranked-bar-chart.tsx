@@ -27,6 +27,14 @@ type Props = {
   headerActions?: import("react").ReactNode;
   topNControl?: { topN: number | null; setTopN: (n: number | null) => void };
   disableTopN?: boolean;
+  /** Which statistic the bars actually show. The footer used to say "p50"
+   *  for every view, including the metric panels, which publish whatever
+   *  their own metric selects. Bench 268's Settlement time panel reads
+   *  stat="mean" BY DESIGN, because block timestamps are whole seconds and a
+   *  median there can only land on 0, 1 or 2 s and cannot separate two
+   *  routes. The panel's description says to read the mean, and the footer
+   *  underneath it said p50. */
+  statLabel?: string;
 };
 
 export function RankedBarChart({
@@ -37,6 +45,7 @@ export function RankedBarChart({
   topNControl,
   disableTopN,
   headerActions,
+  statLabel = "p50",
 }: Props) {
   const { excluded, toggle, reset } = useChartExclusion(
     controlledExcluded,
@@ -240,7 +249,7 @@ export function RankedBarChart({
         })}
       </ul>
       <p className="mt-3 text-[11px] font-sans font-medium uppercase tracking-[0.12em] text-ink-faint">
-        {useLog ? "Log scale · " : ""}p50 · last 24 h · click rows to exclude
+        {useLog ? "Log scale · " : ""}{statLabel} · last 24 h · click rows to exclude
       </p>
       <ChartWatermarkHtml />
     </figure>
