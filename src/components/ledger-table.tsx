@@ -18,7 +18,7 @@ import { Hint } from "@/components/hint";
 import { Sparkline } from "@/components/sparkline";
 import { ProviderLogo } from "@/components/provider-logo";
 import { ProviderTypeBadge } from "@/components/provider-type-badge";
-import { fmtUnit } from "@/lib/format";
+import { fmtHeadline, fmtUnit } from "@/lib/format";
 import { buildProviderColors } from "@/lib/series-colors";
 import { MIN_DISPLAY_SUCCESS_PCT } from "@/lib/provider-filters";
 import { isRegion } from "@/lib/brand";
@@ -1114,7 +1114,9 @@ function Row({
                   ? customCells[0].v != null
                     ? fmtUnit(customCells[0].v, customCells[0].unit)
                     : "-"
-                  : fmtUnit(value, unit)}
+                  : panelActive
+                    ? fmtUnit(value, unit)
+                    : fmtHeadline(value, { ...benchmark, unit }, r.slug)}
               </span>
             </span>
           </td>

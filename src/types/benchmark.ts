@@ -304,6 +304,9 @@ export type Benchmark = {
   /** True when 0 is a real value on this bench (a free tier costing
    *  nothing) rather than a missing one (a dead latency probe). */
   zeroIsAValue?: boolean;
+  /** Spec `race_leader`: a headline under `floor` is the race winner's
+   *  zero, rendered as "first" with its share from `sharePanel`. */
+  raceLeader?: { floor: number; sharePanel: string };
   /** Per-bench axis labels for the dimension selectors, from the spec's
    *  `dimension_labels`. Absent keys keep the UI's stock label. */
   dimensionLabels?: {

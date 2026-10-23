@@ -271,3 +271,28 @@ export function valueWindowLabel(bench: {
   }
   return "24h";
 }
+
+/** The headline value of one provider. On a race bench (spec
+ *  `race_leader`) a value under the floor is the winner's zero by
+ *  construction, not a latency, so it reads "first" with the provider's
+ *  share of wins when the share panel has it. Everything else is fmtUnit. */
+export function fmtHeadline(
+  value: number,
+  bench: {
+    unit: string;
+    raceLeader?: { floor: number; sharePanel: string };
+    metricPanels?: { id: string; values?: Record<string, number> }[];
+  },
+  slug?: string,
+): string {
+  const rl = bench.raceLeader;
+  if (rl && Number.isFinite(value) && value >= 0 && value < rl.floor) {
+    const share = slug
+      ? bench.metricPanels?.find((p) => p.id === rl.sharePanel)?.values?.[slug]
+      : undefined;
+    return typeof share === "number" && Number.isFinite(share)
+      ? `first · ${Math.round(share)}%`
+      : "first";
+  }
+  return fmtUnit(value, bench.unit);
+}

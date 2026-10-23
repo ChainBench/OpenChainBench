@@ -495,7 +495,9 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // gaining a row needs the key to move or the row never appears.
   // v94: Nova joins bench 295. Unlike v93, that bench declares dimensions,
   // so bench-filters moves with this one too.
-  ["bench-unfiltered-v94", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v95: Benchmark.raceLeader and a first_share panel on the nine WebSocket
+  // race benches; a cached entry has neither and keeps printing 0.3 ms.
+  ["bench-unfiltered-v95", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -741,7 +743,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v85: lockstep with bench-unfiltered-v92 (Nova joins bench 030).
   // v86: lockstep with bench-unfiltered-v93 (Nova joins benches 041 and 116).
   // v87: lockstep with bench-unfiltered-v94 (Nova joins bench 295).
-  ["all-benchmarks-v87", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v88: lockstep with bench-unfiltered-v95 (raceLeader on the WebSocket races).
+  ["all-benchmarks-v88", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -853,7 +856,9 @@ const loadBenchmarkFiltered = unstable_cache(
   // and a new provider is invisible on every tab until this moves. v93
   // deliberately did not move it: none of the three benches Nova joined
   // then had dimensions.
-  ["bench-filters-v36", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v37: lockstep with bench-unfiltered-v95. The WebSocket races declare a
+  // region dimension, so their per-region variants carry the new panel too.
+  ["bench-filters-v37", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 

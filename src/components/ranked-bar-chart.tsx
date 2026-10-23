@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import type { Benchmark } from "@/types/benchmark";
-import { fmtUnit } from "@/lib/format";
+import { fmtHeadline, fmtUnit } from "@/lib/format";
 import { buildProviderColors } from "@/lib/series-colors";
 import { MIN_DISPLAY_SUCCESS_PCT } from "@/lib/provider-filters";
 import { useChartExclusion } from "@/hooks/use-chart-exclusion";
@@ -226,7 +226,7 @@ export function RankedBarChart({
                   isOff ? "text-ink-faint" : "text-ink-soft"
                 }`}
               >
-                {fmtUnit(r.value, benchmark.unit)}
+                {statLabel === "p50" ? fmtHeadline(r.value, benchmark, r.slug) : fmtUnit(r.value, benchmark.unit)}
               </span>
               {hasFormula && isHovered && (
                 <div

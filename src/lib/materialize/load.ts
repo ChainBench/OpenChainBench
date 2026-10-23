@@ -183,6 +183,9 @@ export function buildEditorial(
     dimensions: spec.dimensions,
     dimensionLabels: spec.dimension_labels,
     zeroIsAValue: spec.zero_is_a_value,
+    raceLeader: spec.race_leader
+      ? { floor: spec.race_leader.floor, sharePanel: spec.race_leader.share_panel }
+      : undefined,
     aggregateFilters: spec.aggregate_filters,
     ledgerColumns: spec.ledger_columns,
     ledgerReliability: spec.ledger_reliability,

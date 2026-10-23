@@ -60,6 +60,22 @@ source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/ws-head
 
 expected_n: 50000
 
+# The headline is the lag behind the first provider to push each slot,
+# so the winner reads 0 by construction: under 0.5 ms the boards print
+# "first" and its share of wins instead of a histogram interpolation.
+race_leader:
+  floor: 0.5
+  share_panel: first_share
+
+metric_panels:
+  - id: first_share
+    label: First to push
+    label_key: provider
+    metric: 100 * sum by (provider) (increase(ws_head_wins_total{chain="solana"}[24h])) / scalar(sum(increase(ws_head_wins_total{chain="solana"}[24h])))
+    unit: pct
+    higher_is_better: true
+    description: "Share of the last 24 hours of slots this provider pushed before every other provider in the same region. One winner per slot, the earliest arrival, so the shares add up to 100."
+
 prometheus:
   window: 24h
   freshness_metric: ws_head_blocks_seen_total
