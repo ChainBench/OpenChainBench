@@ -64,10 +64,10 @@ metric_panels:
   - id: first_share
     label: First to push
     label_key: provider
-    metric: 100 * sum by (provider) (ocb:rpc_ws_head_first:increase_24h{chain="hyperliquid",tier="keyed"}) / scalar(sum(ocb:rpc_ws_head_first:increase_24h{chain="hyperliquid",tier="keyed"}))
+    metric: 100 * sum by (provider) (ocb:rpc_ws_head_first:increase_24h{chain="hyperliquid",tier="keyed"}) / sum by (provider) (ocb:rpc_ws_head_seen:increase_24h{chain="hyperliquid",tier="keyed"})
     unit: pct
     higher_is_better: true
-    description: "Share of the last 24 hours of blocks this provider pushed before every other provider in the same region. One winner per block, the earliest arrival, so the shares add up to 100."
+    description: "Share of the blocks this provider received in the last 24 hours that it pushed first in its region. Read per provider, so one raced from a single region is not diluted by the other two."
 
 prometheus:
   window: 24h
