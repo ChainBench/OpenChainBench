@@ -808,6 +808,17 @@ export const SpecSchema = z
      * Defaults false, so every existing bench keeps the behaviour it has.
      */
     zero_is_a_value: z.boolean().default(false),
+    /**
+     * Headline measured as the lag behind the first provider to deliver
+     * (a per-block or per-trade race). The winner reads 0 by construction,
+     * so a headline under `floor` is not a latency: it renders as "first",
+     * with the provider's share of wins from the `share_panel` metric panel.
+     * Without it the WebSocket boards printed a leader at 0.3 ms, an
+     * interpolation inside the histogram's first bucket.
+     */
+    race_leader: z
+      .object({ floor: z.number().positive(), share_panel: z.string() })
+      .optional(),
     /** false when the providers' `success` query is a publication gate
      *  (0 or 1) rather than a probe success rate: the ledger then hides
      *  the Success and Reliability columns and describes an unpublished

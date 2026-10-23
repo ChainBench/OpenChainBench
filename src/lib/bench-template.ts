@@ -62,7 +62,7 @@ import type { Benchmark, ProviderResult } from "@/types/benchmark";
 import { liveResults, displayResults } from "@/lib/provider-filters";
 import { citationCandidates, joinNames, leaderNames, rankedCandidates } from "@/lib/citation";
 import { rankResults } from "@/lib/ranking";
-import { fmtUnit } from "@/lib/format";
+import { fmtHeadline, fmtUnit } from "@/lib/format";
 
 // Keyword allows digits ({{p50:slug}}, {{best_p50}}, {{worst_p99}}) and
 // underscores, must start with a letter. The earlier [a-z_]+ form
@@ -193,7 +193,7 @@ export function renderTemplate(text: string, benchmark: Benchmark): string {
       }
       if (k === "best_p50") {
         const lead = bestForChain(benchmark, chain);
-        return lead ? fmtUnit(lead.ms.p50, benchmark.unit) : UNRESOLVED;
+        return lead ? fmtHeadline(lead.ms.p50, benchmark, lead.slug) : UNRESOLVED;
       }
       if (k === "worst_name") {
         const trailer = worstForChain(benchmark, chain);
@@ -216,7 +216,7 @@ export function renderTemplate(text: string, benchmark: Benchmark): string {
       const lead = rows[0];
       const trailer = rows[rows.length - 1];
       if (k === "best_name") return lead ? lead.name : UNRESOLVED;
-      if (k === "best_p50") return lead ? fmtUnit(lead.ms.p50, benchmark.unit) : UNRESOLVED;
+      if (k === "best_p50") return lead ? fmtHeadline(lead.ms.p50, benchmark, lead.slug) : UNRESOLVED;
       if (k === "worst_name") return trailer ? trailer.name : UNRESOLVED;
       if (k === "worst_p50") return trailer ? fmtUnit(trailer.ms.p50, benchmark.unit) : UNRESOLVED;
       return whole;
@@ -266,7 +266,7 @@ export function renderTemplate(text: string, benchmark: Benchmark): string {
         return best ? best.name : UNRESOLVED;
       }
       case "best_p50":
-        return best ? fmtUnit(best.ms.p50, benchmark.unit) : UNRESOLVED;
+        return best ? fmtHeadline(best.ms.p50, benchmark, best.slug) : UNRESOLVED;
       case "worst_name":
         return worst ? worst.name : UNRESOLVED;
       case "worst_p50":

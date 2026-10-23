@@ -53,6 +53,22 @@ methodology:
 
 expected_n: 29000
 
+# The headline is the lag behind the first provider to push each block,
+# so the winner reads 0 by construction: under 0.5 ms the boards print
+# "first" and its share of wins instead of a histogram interpolation.
+race_leader:
+  floor: 0.5
+  share_panel: first_share
+
+metric_panels:
+  - id: first_share
+    label: First to push
+    label_key: provider
+    metric: 100 * sum by (provider) (ocb:rpc_ws_head_first:increase_24h{chain="polygon",tier="keyed"}) / scalar(sum(ocb:rpc_ws_head_first:increase_24h{chain="polygon",tier="keyed"}))
+    unit: pct
+    higher_is_better: true
+    description: "Share of the last 24 hours of blocks this provider pushed before every other provider in the same region. One winner per block, the earliest arrival, so the shares add up to 100."
+
 prometheus:
   window: 24h
   freshness_metric: rpc_ws_head_seen_total

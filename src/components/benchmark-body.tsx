@@ -24,7 +24,7 @@ import type { ProviderLayer } from "@/types/benchmark";
 import { CountLeaderboard } from "@/components/count-leaderboard";
 import { SummaryStat } from "@/components/summary-stat";
 import { ViewSwitcher } from "@/components/view-switcher";
-import { fmtAsOfUtc, fmtUnit } from "@/lib/format";
+import { fmtAsOfUtc, fmtHeadline, fmtUnit } from "@/lib/format";
 import { computeFieldStats } from "@/lib/stats";
 import { defaultViewFor, viewsForBenchmark } from "@/lib/views";
 import { useViewPreference } from "@/hooks/use-view-preference";
@@ -1017,7 +1017,11 @@ export function BenchmarkBody({
           <dl className={"mt-10 card rounded-xl grid grid-cols-2 sm:flex sm:flex-wrap divide-y divide-x sm:divide-y-0 divide-rule overflow-hidden" + pendingCls}>
             <SummaryStat
               label="Best"
-              value={fmtUnit(bestValue, benchmark.unit)}
+              value={fmtHeadline(
+                bestValue,
+                viewBenchmark,
+                viewBenchmark.results.find((r) => r.ms.p50 === bestValue)?.slug,
+              )}
             />
             <SummaryStat
               label="Median"
@@ -1028,7 +1032,7 @@ export function BenchmarkBody({
               value={fmtUnit(worstValue, benchmark.unit)}
             />
             <SummaryStat
-              label="Spread"
+              label="p99 spread"
               value={tailSpread > 0 ? `${tailSpread.toFixed(1)}×` : "-"}
               hint={
                 tailSpread > 0

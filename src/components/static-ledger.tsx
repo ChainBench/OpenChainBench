@@ -11,7 +11,7 @@ import { Fragment } from "react";
  */
 import { displayResults, isStaleBench } from "@/lib/provider-filters";
 import { rankResults } from "@/lib/ranking";
-import { fmtUnit } from "@/lib/format";
+import { fmtHeadline, fmtUnit } from "@/lib/format";
 import { rowHref } from "@/lib/row-link";
 import { rankedCandidates, rpcChainLabel } from "@/lib/citation";
 import { countRows, nounFor, nounLabel } from "@/lib/row-noun";
@@ -164,7 +164,7 @@ export function StaticLedger({
                     </span>
                   )}
                 </td>
-                <td className="py-2 px-3 text-right tabular-nums">{fmtUnit(r.ms.p50, benchmark.unit)}</td>
+                <td className="py-2 px-3 text-right tabular-nums">{fmtHeadline(r.ms.p50, benchmark, r.slug)}</td>
                 {showTail && <td className="py-2 px-3 text-right tabular-nums text-ink-soft">{fmtUnit(r.ms.p90, benchmark.unit)}</td>}
                 {showTail && <td className="py-2 px-3 text-right tabular-nums text-ink-soft">{fmtUnit(r.ms.p99, benchmark.unit)}</td>}
                 {panels.map((p) => {
