@@ -274,6 +274,20 @@ function reportJsonLd(report: ReturnType<typeof getReport>) {
       license: "https://creativecommons.org/licenses/by/4.0/",
       isPartOf: { "@id": `${SITE.url}/reports/${report.categorySlug}#series` },
     },
+    ...(report.faq?.length
+      ? [
+          {
+            "@context": "https://schema.org",
+            "@type": "FAQPage",
+            "@id": `${url}#faq`,
+            mainEntity: report.faq.map((f) => ({
+              "@type": "Question",
+              name: f.q,
+              acceptedAnswer: { "@type": "Answer", text: f.a },
+            })),
+          },
+        ]
+      : []),
     {
       "@context": "https://schema.org",
       "@type": "BreadcrumbList",
