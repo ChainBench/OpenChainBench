@@ -107,6 +107,13 @@ var evmTerminals = []evmTerminal{
 		Routers: []string{"0x836b336fca26913176efc45a5a6e5e72cd7bd13b"}},
 	{Slug: "pump-bridge-arc", Name: "Pump Bridge · Arc", Kind: "app", Chain: "arc",
 		Routers: []string{"0x836b336fca26913176efc45a5a6e5e72cd7bd13b"}},
+	// Ethereum, added 2026-10-23. The router is deployed and used there (172
+	// transfers in over 600 blocks) and the chain already has a tab on this
+	// bench, so the route was measurable and simply undeclared. See
+	// pumpRouters for why the dominance threshold that nearly excluded it
+	// was wrong.
+	{Slug: "pump-bridge-ethereum", Name: "Pump Bridge · Ethereum", Kind: "app", Chain: "ethereum",
+		Routers: []string{"0x836b336fca26913176efc45a5a6e5e72cd7bd13b"}},
 	// SizeWord: word 2 of this router's own event equals the USDG amount of
 	// the transaction. Checked on 3,858 events over a 40-minute window with
 	// zero mismatches, zero short payloads, and zero cases where word 2 fell

@@ -43,6 +43,10 @@ func TestPumpBridgeRoutersAreDeclaredOnEveryChainWeCover(t *testing.T) {
 	for chain, router := range map[string]string{
 		"bnb": generic, "base": generic, "arc": generic, "robinhood": robinhood,
 		"megaeth": generic, "xlayer": generic,
+		// Ethereum added 2026-10-23: the router is deployed and used there
+		// and the chain already had a tab, so the route was measurable and
+		// simply undeclared.
+		"ethereum": generic,
 	} {
 		got, ok := seen[chain]
 		if !ok {
@@ -53,8 +57,11 @@ func TestPumpBridgeRoutersAreDeclaredOnEveryChainWeCover(t *testing.T) {
 			t.Errorf("%s: routers = %v, want [%s]", chain, got, router)
 		}
 	}
-	if len(seen) != 6 {
-		t.Errorf("Pump Bridge rows = %d, want 6", len(seen))
+	// The count is asserted so a row cannot be added or dropped unnoticed,
+	// and the map above names which chains, so a change has to be made in
+	// both places deliberately rather than by moving one number.
+	if len(seen) != 7 {
+		t.Errorf("Pump Bridge rows = %d, want 7", len(seen))
 	}
 }
 

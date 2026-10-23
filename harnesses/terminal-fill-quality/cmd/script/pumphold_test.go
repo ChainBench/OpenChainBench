@@ -27,8 +27,8 @@ func TestEveryPumpRowIsRecognisedAsABridgeRow(t *testing.T) {
 	if found == 0 {
 		t.Fatal("no pump.fun EVM row declared")
 	}
-	if found != 6 {
-		t.Errorf("%d pump.fun EVM rows, expected 6 (bnb, base, arc, robinhood, megaeth, xlayer)", found)
+	if found != 7 {
+		t.Errorf("%d pump.fun EVM rows, expected 7 (bnb, base, arc, robinhood, megaeth, xlayer, ethereum)", found)
 	}
 }
 
