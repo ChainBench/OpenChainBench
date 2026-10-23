@@ -866,7 +866,10 @@ const buildProvidersCached = unstable_cache(
   // v15 (2026-09-30): lockstep with bench-unfiltered-v88. GetBlock gains nine
   // appearances (the keyed cohort on the chain RPC benches) and its first
   // registry entry, so the v14 list would keep /products/getblock without them.
-  ["providers-v16"],
+  // v17: lockstep with bench-unfiltered-v95. Pump Bridge and FOMO · Mobula
+  // join bench 268, so the v16 list carries neither appearance, and
+  // fomo-mobula gains its first registry entry.
+  ["providers-v17"],
   // 900 s: the provider index feeds products / compare / answers, whose
   // numbers move slowly, and this revalidate is also the effective ISR
   // period of those ~500 pages (Next takes the min across a route's caches).
