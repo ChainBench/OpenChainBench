@@ -20,6 +20,7 @@ import (
 	"encoding/hex"
 	"log"
 	"math/big"
+	"math/rand"
 	"strings"
 	"sync"
 	"time"
@@ -65,12 +66,44 @@ func (w *mobulaFillWatcher) queue(p mobulaPaired) {
 	}
 }
 
-// drain hands over everything buffered and clears it.
-func (w *mobulaFillWatcher) drain() []mobulaPaired {
+// backlog: paired fills waiting to be priced. Published as
+// tfq_mobula_pending_fills and read by the tests, so the depth is never
+// something a reader has to infer.
+func (w *mobulaFillWatcher) backlog() int {
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	out := w.pending
-	w.pending = nil
+	return len(w.pending)
+}
+
+// draw takes up to n paired fills AT RANDOM and leaves the rest buffered.
+//
+// Random, because arrival order is not a sample: taking the first n biases
+// toward whatever getLogs returned first, which correlates with the chain and
+// with position in a block range. The spec says "drawn at random" and every
+// other sampler here shuffles before it draws.
+//
+// And the rest STAYS. The previous version drained the whole buffer and kept
+// n, so an over-quota tick destroyed the surplus for good: 188 of 202
+// Robinhood fills, in a route where Robinhood is most of the flow. The other
+// samplers leave what they do not draw in their feed, and this now does the
+// same, bounded by mobulaPendingMax which drops the oldest.
+func (w *mobulaFillWatcher) draw(n int) []mobulaPaired {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if n <= 0 || len(w.pending) == 0 {
+		gMobulaBacklog.Set(float64(len(w.pending)))
+		return nil
+	}
+	rand.Shuffle(len(w.pending), func(i, j int) {
+		w.pending[i], w.pending[j] = w.pending[j], w.pending[i]
+	})
+	if n > len(w.pending) {
+		n = len(w.pending)
+	}
+	out := make([]mobulaPaired, n)
+	copy(out, w.pending[:n])
+	w.pending = w.pending[n:]
+	gMobulaBacklog.Set(float64(len(w.pending)))
 	return out
 }
 

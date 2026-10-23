@@ -207,14 +207,9 @@ func sampleMobula(ctx context.Context, httpc *http.Client, st *State, w *mobulaF
 	if w == nil {
 		return 0
 	}
-	pairs := w.drain()
+	pairs := w.draw(limit)
 	if len(pairs) == 0 {
 		return 0
-	}
-	// Oldest first: a fill whose pool state is still readable prices better
-	// than one an hour older, and dropping the tail is the honest trim.
-	if limit > 0 && len(pairs) > limit {
-		pairs = pairs[:limit]
 	}
 	// Several at a time, same reasoning as sampleXchain: a fill is a receipt
 	// read plus whatever the pool's pre-trade state costs, and those are

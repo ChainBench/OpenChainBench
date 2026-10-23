@@ -52,6 +52,10 @@ var (
 		Name: "tfq_mobula_deposits_total",
 		Help: "Deposits seen crediting Mobula's solver, by the app that paid the Solana fee. app=undeclared means the fee payer is not an app declared on the Mobula rail in settleRails: counted rather than dropped, because that is how a new integrator's flow becomes visible instead of silently joining someone else's row",
 	}, []string{"app"})
+	gMobulaBacklog = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "tfq_mobula_pending_fills",
+		Help: "Paired fills waiting to be priced. The sampler draws a quota each tick and puts the rest back, so a steady number here is a backlog the quota is not keeping up with and a rising one is the cap about to drop its oldest. It read zero while 188 of 202 Robinhood fills were being discarded in arrival order, because the sampler emptied the buffer and kept two",
+	})
 	cMobulaFills = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "tfq_mobula_fills_total",
 		Help: "Fill events read from Mobula's bridge contract, by whether the intent id matched a deposit we hold. paired is an EXACT join on an id stated in the clear on both legs, so unlike the Pump Bridge pairing there is no ambiguous case and no amount tolerance. unknown_intent means the deposit was never seen or has aged out: our blindness, never a bridge failure, and it is the normal state for fills belonging to other integrators",
@@ -59,7 +63,7 @@ var (
 )
 
 func init() {
-	prometheus.MustRegister(gMobulaUp, cMobulaDeposits, cMobulaFills)
+	prometheus.MustRegister(gMobulaUp, gMobulaBacklog, cMobulaDeposits, cMobulaFills)
 }
 
 // mobulaIntentAge: how long a deposit is held waiting for its fill.

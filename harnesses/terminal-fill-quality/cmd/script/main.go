@@ -552,7 +552,11 @@ func main() {
 		added, seen := sample(ctx, rpc, st, sol, pools, fd, quota, failQuota, activity, perTick, perTickFail)
 		gas := gasPrices(ctx, httpc)
 		added += sampleXchain(ctx, rpc, httpc, st, sol, gas, xf, pools, quota, perTickEVM)
-		added += sampleMobula(ctx, httpc, st, mfw, gas, int(math.Max(perTickEVM, 2)))
+		// The quota is perTickEVM per ROW, and this rail has one row per chain, so
+		// the rail's share is that times the chains it settles on. Passing the
+		// per-row figure gave it two fills a tick against about ten a minute
+		// paired, and the surplus used to be discarded rather than deferred.
+		added += sampleMobula(ctx, httpc, st, mfw, gas, int(math.Max(perTickEVM*float64(len(mobulaBridge)), 4)))
 		a2, s2 := sampleNative(ctx, httpc, st, nf, gas, quota, perTickEVM)
 		added += a2
 		seen += s2
