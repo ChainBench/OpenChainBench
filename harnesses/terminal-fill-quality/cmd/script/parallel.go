@@ -18,10 +18,19 @@ package main
 // so throughput is one swap per (calls x latency) however much headroom the
 // limiter has.
 //
-// So the work goes several at a time, and the rate limiter stays as the
-// backstop: with W workers the ceiling is min(RPC_RPS, W / latency), and
-// RPC_RPS is still the thing that protects the endpoints. Raising workers can
-// never exceed it.
+// So the work goes several at a time. The claim this comment USED to make,
+// that RPC_RPS is the backstop, was true for the Solana client and false for
+// the EVM path, which is the path these samplers actually read: evmCall had
+// no pacing and no counter, so RPC_RPS never applied to it and
+// tfq_rpc_calls_total never saw it. Reading 3.59 calls a second and calling
+// it headroom was therefore reading the wrong number, and the tick went from
+// 1m0.6s to 1m49.6s while that number did not move.
+//
+// The backstop now exists: tfq_evm_calls_total counts them and
+// EVM_MAX_INFLIGHT bounds them process-wide, samplers and feeds together,
+// because they share the endpoints. Raising SAMPLE_WORKERS past that bound
+// buys nothing, which is the property the comment claimed before it was
+// true.
 //
 // WHAT IS NOT SAFE TO SHARE, checked before writing this rather than after:
 // poolCache and erc20Cache both hold a mutex, pumpBlockTime holds one,

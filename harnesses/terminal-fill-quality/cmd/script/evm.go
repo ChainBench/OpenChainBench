@@ -14,6 +14,8 @@ import (
 	"sort"
 	"strings"
 	"sync"
+
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 // EVM side of the cross-chain settlements: a Relay solver buys the token
@@ -88,7 +90,48 @@ type evmTx struct {
 // that still reaches it is reported as such rather than as bad JSON.
 const evmReadCap = 32 << 20
 
+// The EVM side had no call counter and no concurrency bound, which is how a
+// parallel sampler could multiply its load against endpoints with nothing in
+// between and nothing to show it. RPC_RPS paces the SOLANA client only;
+// evmCall never went through it.
+//
+// Unlabelled on purpose. Chainstack and QuickNode carry their key in the URL
+// and a QuickNode host is itself a unique identifier, so the safe thing to
+// publish is the volume, not which endpoint served it.
+var (
+	cEvmCalls = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "tfq_evm_calls_total",
+		Help: "JSON-RPC calls made to the EVM endpoints. Separate from tfq_rpc_calls_total, which counts the SOLANA client only: reading that one while changing EVM concurrency shows nothing, which is how a tick went from 1m0.6s to 1m49.6s with the only visible rate unchanged at 3.6 a second",
+	})
+	cEvmCallErrors = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "tfq_evm_call_errors_total",
+		Help: "EVM calls that failed on every endpoint in their list. More calls that fail is not more data, it is the same sample read worse, so this is the number that says whether raising concurrency bought anything",
+	})
+	// evmInflight bounds how many EVM calls are in flight across the whole
+	// process, samplers and feeds together, since they share the endpoints.
+	// 12 by default: above the 6 workers a sampler uses, so a single sampler
+	// is never throttled by it, and low enough that three samplers plus the
+	// feeds cannot stampede. EVM_MAX_INFLIGHT=0 disables it.
+	evmInflight chan struct{}
+)
+
+func init() {
+	prometheus.MustRegister(cEvmCalls, cEvmCallErrors)
+	if n := envInt("EVM_MAX_INFLIGHT", 12); n > 0 {
+		evmInflight = make(chan struct{}, n)
+	}
+}
+
 func evmCall(ctx context.Context, httpc *http.Client, urls []string, method string, params []any, out any) error {
+	if evmInflight != nil {
+		select {
+		case evmInflight <- struct{}{}:
+			defer func() { <-evmInflight }()
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+	cEvmCalls.Inc()
 	body, _ := json.Marshal(map[string]any{"jsonrpc": "2.0", "id": 1, "method": method, "params": params})
 	var last error = errors.New("no endpoint")
 	for _, url := range urls {
@@ -154,6 +197,7 @@ func evmCall(ctx context.Context, httpc *http.Client, urls []string, method stri
 		}
 		return json.Unmarshal(env.Result, out)
 	}
+	cEvmCallErrors.Inc()
 	return last
 }
 
