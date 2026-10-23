@@ -53,8 +53,16 @@ const (
 	// first on its own. The feed share has no tie window.
 	raceTie       = 5 * time.Millisecond
 	raceRetention = 10 * time.Minute
-	raceShareSpan = 24 * time.Hour
-	raceMaxOpen   = 50000
+	// offPoolRetention: an off-pool void only has to outlive the token-scoped
+	// feeds' stragglers (OKX and Birdeye land within ~1 s), so a straggler
+	// does not reopen it. Holding the ~4,800 a minute OKX and Birdeye produce
+	// on Solana for raceRetention kept ~52,000 entries per region against
+	// raceMaxOpen: the book sat full, observe dropped every new hash, pool
+	// trades included, and races were only scored in bursts as old voids
+	// expired (2026-10-23, ~70% of pool trades never raced).
+	offPoolRetention = 30 * time.Second
+	raceShareSpan    = 24 * time.Hour
+	raceMaxOpen      = 50000
 )
 
 // raceChains publishes head_lag_seconds as the lag behind the first
@@ -74,6 +82,7 @@ type raceEntry struct {
 	obs           []raceObs
 	closed        bool
 	void          bool // closed with a single participant: nothing recorded
+	offPool       bool // void because the bench pool never saw the trade
 	closedAt      time.Time
 }
 
@@ -124,6 +133,7 @@ func (b *raceBook) observe(aggregator, chain, region, hash string, at time.Time,
 	e, ok := b.entries[k]
 	if !ok {
 		if len(b.entries) >= raceMaxOpen {
+			RecordRaceVoided(chain, "book_full")
 			return
 		}
 		e = &raceEntry{chain: chain, region: region, opened: at, t0: at}
@@ -171,7 +181,11 @@ func (b *raceBook) resolve(now time.Time) {
 	defer b.mu.Unlock()
 	for k, e := range b.entries {
 		if e.closed {
-			if now.Sub(e.closedAt) > raceRetention {
+			keep := raceRetention
+			if e.offPool {
+				keep = offPoolRetention
+			}
+			if now.Sub(e.closedAt) > keep {
 				delete(b.entries, k)
 			}
 			continue
@@ -202,6 +216,7 @@ func (b *raceBook) closeLocked(e *raceEntry, k string) {
 	if benchPoolScoped(e.chain) && !poolTrades.has(e.chain, hash) {
 		e.closed = true
 		e.void = true
+		e.offPool = true
 		e.closedAt = time.Now()
 		RecordRaceVoided(e.chain, "off_pool")
 		return
