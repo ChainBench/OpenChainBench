@@ -271,7 +271,7 @@ providers:
   - slug: fomo
     name: FOMO
     tag: "Terminal, Solana + Robinhood Chain + BNB + Base + Ethereum + Arc, gas sponsored"
-    formula: "Solana: random sample of the swaps paying FOMO's USDC fee wallet. Other chains: its trades executed through Relay (SOL in, tokens delivered there). Valued at the pool's state before the trade; loss in bps, median over 24 h."
+    formula: "Solana: random sample of the swaps paying FOMO's USDC fee wallet. Other chains: its trades through Relay; its Mobula trades are a separate row, the two bridges differing in fee and speed. Priced at the pool's pre-trade state."
     queries:
       p50: tfq_loss_bps{terminal="fomo",chain="all",stat="median",bucket="all"}
       p90: tfq_loss_bps{terminal="fomo",chain="all",stat="p90",bucket="all"}
@@ -281,10 +281,23 @@ providers:
       sample_size: tfq_sample_size{terminal="fomo",chain="all",kind="priced",bucket="all"}
       series: tfq_loss_bps{terminal="fomo",chain="all",stat="median",bucket="all"}
 
+  - slug: fomo-mobula
+    name: FOMO · Mobula
+    tag: "Terminal, Robinhood Chain + BNB + Base + Ethereum, via Mobula"
+    formula: "FOMO's cross-chain trades through Mobula, apart from its Relay row because the two bridges differ in fee and speed. Both legs carry the same intent id, so they join exactly. Priced at the pool's state before the settlement swap."
+    queries:
+      p50: tfq_loss_bps{terminal="fomo-mobula",chain="all",stat="median",bucket="all"}
+      p90: tfq_loss_bps{terminal="fomo-mobula",chain="all",stat="p90",bucket="all"}
+      p99: tfq_loss_bps{terminal="fomo-mobula",chain="all",stat="p99",bucket="all"}
+      success: tfq_health{terminal="fomo-mobula",chain="all",bucket="all"}
+      ranked: tfq_ranked{terminal="fomo-mobula",chain="all",bucket="all"}
+      sample_size: tfq_sample_size{terminal="fomo-mobula",chain="all",kind="priced",bucket="all"}
+      series: tfq_loss_bps{terminal="fomo-mobula",chain="all",stat="median",bucket="all"}
+
   - slug: phantom
     name: Phantom
     tag: "Wallet, Solana"
-    formula: "Random sample of the swaps paying Phantom's in-wallet fee (0.85 %) on Solana, valued at the pool's state before the trade; median over 24 h. Its cross-chain swaps through Relay are not filling any row, so no EVM chain is shown."
+    formula: "Random sample of the swaps paying Phantom's in-wallet fee (0.85 %) on Solana, at the pool's pre-trade state. Its Relay swaps were absent until 2026-10-23: Phantom moved its app-fee address and we matched the old one."
     queries:
       p50: tfq_loss_bps{terminal="phantom",chain="all",stat="median",bucket="all"}
       p90: tfq_loss_bps{terminal="phantom",chain="all",stat="p90",bucket="all"}
