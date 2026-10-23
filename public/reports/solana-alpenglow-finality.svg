@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 400" role="img" aria-labelledby="t d" font-family="ui-monospace,SFMono-Regular,Menlo,monospace">
+<title id="t">Solana finality before and after Alpenglow</title>
+<desc id="d">Median wall-clock finality on Solana mainnet, measured by OpenChainBench: about 7 seconds under Tower BFT, about 0.4 seconds after Alpenglow activated on 21 October 2026.</desc>
+<rect width="760" height="400" fill="#fbfaf7"/>
+<text x="64" y="24" font-size="13" font-weight="700" fill="#111111">Solana finality, median per 30 min (log scale)</text>
+<text x="736" y="24" font-size="11" fill="#6b6b6b" text-anchor="end">OpenChainBench · l1-finality</text>
+<line x1="64" x2="736" y1="342.0" y2="342.0" stroke="#d9d6cf" stroke-width="1"/>
+<text x="56" y="346.0" font-size="10" fill="#6b6b6b" text-anchor="end">0.1 s</text>
+<line x1="64" x2="736" y1="299.7" y2="299.7" stroke="#d9d6cf" stroke-width="1"/>
+<text x="56" y="303.7" font-size="10" fill="#6b6b6b" text-anchor="end">0.2 s</text>
+<line x1="64" x2="736" y1="257.4" y2="257.4" stroke="#d9d6cf" stroke-width="1"/>
+<text x="56" y="261.4" font-size="10" fill="#6b6b6b" text-anchor="end">0.4 s</text>
+<line x1="64" x2="736" y1="201.5" y2="201.5" stroke="#d9d6cf" stroke-width="1"/>
+<text x="56" y="205.5" font-size="10" fill="#6b6b6b" text-anchor="end">1 s</text>
+<line x1="64" x2="736" y1="159.2" y2="159.2" stroke="#d9d6cf" stroke-width="1"/>
+<text x="56" y="163.2" font-size="10" fill="#6b6b6b" text-anchor="end">2 s</text>
+<line x1="64" x2="736" y1="117.0" y2="117.0" stroke="#d9d6cf" stroke-width="1"/>
+<text x="56" y="121.0" font-size="10" fill="#6b6b6b" text-anchor="end">4 s</text>
+<line x1="64" x2="736" y1="82.8" y2="82.8" stroke="#d9d6cf" stroke-width="1"/>
+<text x="56" y="86.8" font-size="10" fill="#6b6b6b" text-anchor="end">7 s</text>
+<line x1="64" x2="736" y1="46.0" y2="46.0" stroke="#d9d6cf" stroke-width="1"/>
+<text x="56" y="50.0" font-size="10" fill="#6b6b6b" text-anchor="end">12.8 s</text>
+<line x1="109.8" x2="109.8" y1="46" y2="342" stroke="#d9d6cf" stroke-width="1" stroke-dasharray="2 3"/>
+<text x="109.8" y="358" font-size="10" fill="#6b6b6b" text-anchor="middle">17 Oct</text>
+<line x1="205.9" x2="205.9" y1="46" y2="342" stroke="#d9d6cf" stroke-width="1" stroke-dasharray="2 3"/>
+<text x="205.9" y="358" font-size="10" fill="#6b6b6b" text-anchor="middle">18 Oct</text>
+<line x1="302.0" x2="302.0" y1="46" y2="342" stroke="#d9d6cf" stroke-width="1" stroke-dasharray="2 3"/>
+<text x="302.0" y="358" font-size="10" fill="#6b6b6b" text-anchor="middle">19 Oct</text>
+<line x1="398.2" x2="398.2" y1="46" y2="342" stroke="#d9d6cf" stroke-width="1" stroke-dasharray="2 3"/>
+<text x="398.2" y="358" font-size="10" fill="#6b6b6b" text-anchor="middle">20 Oct</text>
+<line x1="494.3" x2="494.3" y1="46" y2="342" stroke="#d9d6cf" stroke-width="1" stroke-dasharray="2 3"/>
+<text x="494.3" y="358" font-size="10" fill="#6b6b6b" text-anchor="middle">21 Oct</text>
+<line x1="590.5" x2="590.5" y1="46" y2="342" stroke="#d9d6cf" stroke-width="1" stroke-dasharray="2 3"/>
+<text x="590.5" y="358" font-size="10" fill="#6b6b6b" text-anchor="middle">22 Oct</text>
+<line x1="686.6" x2="686.6" y1="46" y2="342" stroke="#d9d6cf" stroke-width="1" stroke-dasharray="2 3"/>
+<text x="686.6" y="358" font-size="10" fill="#6b6b6b" text-anchor="middle">23 Oct</text>
+
+
+<rect x="550.1" y="46" width="103.8" height="296" fill="#ecebe6"/>
+<text x="602.0" y="60" font-size="9" fill="#6b6b6b" text-anchor="middle">old method</text><text x="602.0" y="71" font-size="9" fill="#6b6b6b" text-anchor="middle">cannot resolve</text>
+<polygon points="653.9,222.5 655.9,231.3 657.9,234.6 659.9,240.9 661.9,231.1 663.9,229.5 665.9,230.7 667.9,234.7 669.9,229.6 671.9,232.9 673.9,236.0 675.9,232.0 677.9,239.6 679.9,237.3 681.9,236.5 683.9,232.5 685.9,242.5 687.9,233.6 689.9,236.9 691.9,235.6 693.9,226.5 695.9,244.6 697.9,238.4 699.9,229.8 702.0,234.9 704.0,243.5 706.0,237.2 708.0,235.1 710.0,235.2 712.0,238.2 714.0,237.4 716.0,241.2 718.0,243.5 720.0,239.3 722.0,231.8 724.0,239.5 726.0,240.2 728.0,238.1 730.0,240.6 732.0,237.7 734.0,238.1 736.0,237.2 736.0,258.2 734.0,258.5 732.0,254.6 730.0,260.4 728.0,255.2 726.0,255.8 724.0,253.8 722.0,257.8 720.0,255.3 718.0,259.8 716.0,255.5 714.0,260.9 712.0,257.4 710.0,257.1 708.0,256.0 706.0,261.9 704.0,257.9 702.0,259.5 699.9,259.4 697.9,257.9 695.9,259.6 693.9,257.0 691.9,253.2 689.9,259.6 687.9,252.3 685.9,257.9 683.9,252.6 681.9,255.8 679.9,257.9 677.9,258.1 675.9,255.8 673.9,258.6 671.9,256.5 669.9,253.5 667.9,251.5 665.9,256.0 663.9,254.3 661.9,250.7 659.9,258.9 657.9,258.7 655.9,256.2 653.9,251.3" fill="#fdba74" opacity="0.45"/>
+<path d="M64.0,82.8 L66.0,82.8 L68.0,82.8 L70.0,82.8 L72.0,82.8 L74.0,82.8 L76.0,82.8 L78.0,82.8 L80.0,82.8 L82.0,82.8 L84.0,82.8 L86.0,82.8 L88.0,82.8 L90.0,82.8 L92.0,82.8 L94.0,82.8 L96.0,82.8 L98.0,82.8 L100.1,82.8 L102.1,82.8 L104.1,82.8 L106.1,82.8 L108.1,82.8 L110.1,82.8 L112.1,82.8 L114.1,82.8 L116.1,82.8 L118.1,82.8 L120.1,82.8 L122.1,82.8 L124.1,82.8 L126.1,82.8 L128.1,82.8 L130.1,82.8 L132.1,82.8 L134.1,82.8 L136.1,82.8 L138.1,82.8 L140.1,82.8 L142.1,82.8 L144.1,82.8 L146.1,82.8 L148.1,82.8 L150.1,82.8 L152.1,82.8 L154.1,82.8 L156.1,82.8 L158.1,82.8 L160.1,82.8 L162.1,82.8 L164.1,82.8 L166.1,82.8 L168.2,82.8 L170.2,82.8 L172.2,82.8 L174.2,82.8 L176.2,82.8 L178.2,82.8 L180.2,82.8 L182.2,82.8 L184.2,82.8 L186.2,82.8 L188.2,82.8 L190.2,82.8 L192.2,82.8 L194.2,82.8 L196.2,82.8 L198.2,82.8 L200.2,82.8 L202.2,82.8 L204.2,82.8 L206.2,82.8 L208.2,82.8 L210.2,82.8 L212.2,82.8 L214.2,82.8 L216.2,82.8 L218.2,82.8 L220.2,82.8 L222.2,82.8 L224.2,82.8 L226.2,82.8 L228.2,82.8 L230.2,82.8 L232.2,82.8 L234.2,82.8 L236.2,82.8 L238.3,82.8 L240.3,82.8 L242.3,82.8 L244.3,82.8 L246.3,82.8 L248.3,82.8 L250.3,82.8 L252.3,82.8 L254.3,82.8 L256.3,82.8 L258.3,82.8 L260.3,82.8 L262.3,82.8 L264.3,82.8 L266.3,82.8 L268.3,82.8 L270.3,82.8 L272.3,82.8 L274.3,82.8 L276.3,82.8 L278.3,82.8 L280.3,82.8 L282.3,82.8 L284.3,82.8 L286.3,82.8 L288.3,82.8 L290.3,82.8 L292.3,82.8 L294.3,82.8 L296.3,82.8 L298.3,82.8 L300.3,82.8 L302.3,82.8 L304.3,82.8 L306.4,82.8 L308.4,82.8 L310.4,82.8 L312.4,82.8 L314.4,82.8 L316.4,82.8 L318.4,82.8 L320.4,82.8 L322.4,82.8 L324.4,82.8 L326.4,82.8 L328.4,82.8 L330.4,82.8 L332.4,82.8 L334.4,82.8 L336.4,82.8 L338.4,82.8 L340.4,82.8 L342.4,82.8 L344.4,82.8 L346.4,82.8 L348.4,82.8 L350.4,82.8 L352.4,82.8 L354.4,82.8 L356.4,82.8 L358.4,82.8 L360.4,82.8 L362.4,82.8 L364.4,82.8 L366.4,82.8 L368.4,82.8 L370.4,82.8 L372.4,82.8 L374.4,82.8 L376.5,82.8 L378.5,82.8 L380.5,82.8 L382.5,82.8 L384.5,82.8 L386.5,82.8 L388.5,82.8 L390.5,82.8 L392.5,82.8 L394.5,82.8 L396.5,82.8 L398.5,82.8 L400.5,82.8 L402.5,82.8 L404.5,82.8 L406.5,82.8 L408.5,82.8 L410.5,82.8 L412.5,82.8 L414.5,82.8 L416.5,82.8 L418.5,87.3 L420.5,82.8 L422.5,82.8 L424.5,82.8 L426.5,82.8 L428.5,82.8 L430.5,82.8 L432.5,82.8 L434.5,82.8 L436.5,82.8 L438.5,82.8 L440.5,82.8 L442.5,82.8 L444.6,82.8 L446.6,82.8 L448.6,82.8 L450.6,82.8 L452.6,82.8 L454.6,82.8 L456.6,82.8 L458.6,82.8 L460.6,82.8 L462.6,82.8 L464.6,82.8 L466.6,82.8 L468.6,82.8 L470.6,82.8 L472.6,82.8 L474.6,82.8 L476.6,82.8 L478.6,82.8 L480.6,82.8 L482.6,82.8 L484.6,82.8 L486.6,82.8 L488.6,82.8 L490.6,82.8 L492.6,82.8 L494.6,82.8 L496.6,82.8 L498.6,82.8 L500.6,82.8 L502.6,82.8 L504.6,82.8 L506.6,82.8 L508.6,82.8 L510.6,82.8 L512.6,82.8 L514.7,82.8 L516.7,82.8 L518.7,82.8 L520.7,82.8 L522.7,82.8 L524.7,82.8 L526.7,82.8 L528.7,82.8 L530.7,82.8 L532.7,82.8 L534.7,87.3 L536.7,92.2 L538.7,82.8 L540.7,82.8 L542.7,82.8 L544.7,82.8 L546.7,87.3 L548.7,82.8" fill="none" stroke="#111111" stroke-width="2"/>
+<path d="M653.9,251.3 L655.9,256.2 L657.9,258.7 L659.9,258.9 L661.9,250.7 L663.9,254.3 L665.9,256.0 L667.9,251.5 L669.9,253.5 L671.9,256.5 L673.9,258.6 L675.9,255.8 L677.9,258.1 L679.9,257.9 L681.9,255.8 L683.9,252.6 L685.9,257.9 L687.9,252.3 L689.9,259.6 L691.9,253.2 L693.9,257.0 L695.9,259.6 L697.9,257.9 L699.9,259.4 L702.0,259.5 L704.0,257.9 L706.0,261.9 L708.0,256.0 L710.0,257.1 L712.0,257.4 L714.0,260.9 L716.0,255.5 L718.0,259.8 L720.0,255.3 L722.0,257.8 L724.0,253.8 L726.0,255.8 L728.0,255.2 L730.0,260.4 L732.0,254.6 L734.0,258.5 L736.0,258.2" fill="none" stroke="#ea580c" stroke-width="2.2"/>
+<line x1="550.1" x2="550.1" y1="46" y2="342" stroke="#ea580c" stroke-width="1.5"/>
+<text x="544.1" y="58.0" font-size="10" fill="#ea580c" text-anchor="end">Alpenglow live</text><text x="544.1" y="70.0" font-size="10" fill="#ea580c" text-anchor="end">21 Oct 13:54 UTC</text>
+<text x="306.4" y="74.8" font-size="11" fill="#111111" text-anchor="middle">Tower BFT ~7 s</text>
+<text x="732" y="218" font-size="11" fill="#ea580c" text-anchor="end">Alpenglow ~0.4 s</text>
+<text x="64" y="378" font-size="9.5" fill="#6b6b6b">Median of 30-min windows; orange band = p90. Until 22 Oct 16:30 UTC: getBlockTime difference (1 s resolution).</text><text x="64" y="391" font-size="9.5" fill="#6b6b6b">After: WebSocket wall-clock, slot first seen to root, ms. Source: openchainbench.com/benchmarks/l1-finality</text>
+<line x1="653.9" x2="736" y1="317.3" y2="317.3" stroke="#6b6b6b" stroke-width="1.2" stroke-dasharray="5 4"/><text x="732" y="331.3" font-size="10" fill="#6b6b6b" text-anchor="end">Anza target ~150 ms</text>
+</svg>
