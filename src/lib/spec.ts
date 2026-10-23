@@ -495,8 +495,18 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // gaining a row needs the key to move or the row never appears.
   // v94: Nova joins bench 295. Unlike v93, that bench declares dimensions,
   // so bench-filters moves with this one too.
-  // v95: Benchmark.raceLeader and a first_share panel on the nine WebSocket
-  // race benches; a cached entry has neither and keeps printing 0.3 ms.
+  // v95: two independent reasons, one bump.
+  //   Benchmark.raceLeader and a first_share panel on the nine WebSocket
+  //   race benches; a cached entry has neither and keeps printing 0.3 ms.
+  //   And bench 268 gained TWO providers whose own PRs moved nothing, Pump
+  //   Bridge (#3188) and FOMO · Mobula (#3226). Both were live in the
+  //   materialized blob, pump-bridge at p50 269.6 over 939 swaps and
+  //   fomo-mobula at 297.2 over 2,512, and neither reached the board: the
+  //   chart drew 14 rows with ALL selected while the blob held 16 ranked.
+  //   Exactly the failure v93's note describes, two PRs after it was
+  //   written, which is the argument for spec-provider-set.test.ts rather
+  //   than for a fourth note. 268 declares chain and bucket, so
+  //   bench-filters moves with it.
   ["bench-unfiltered-v95", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
@@ -743,7 +753,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v85: lockstep with bench-unfiltered-v92 (Nova joins bench 030).
   // v86: lockstep with bench-unfiltered-v93 (Nova joins benches 041 and 116).
   // v87: lockstep with bench-unfiltered-v94 (Nova joins bench 295).
-  // v88: lockstep with bench-unfiltered-v95 (raceLeader on the WebSocket races).
+  // v88: lockstep with bench-unfiltered-v95 (raceLeader on the WebSocket
+  // races, and Pump Bridge and FOMO · Mobula joining bench 268).
   ["all-benchmarks-v88", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
@@ -857,7 +868,9 @@ const loadBenchmarkFiltered = unstable_cache(
   // deliberately did not move it: none of the three benches Nova joined
   // then had dimensions.
   // v37: lockstep with bench-unfiltered-v95. The WebSocket races declare a
-  // region dimension, so their per-region variants carry the new panel too.
+  // region dimension, so their per-region variants carry the new panel, and
+  // bench 268 declares chain and bucket, so its two new providers are
+  // invisible on every tab until this moves. Same reason v36 existed.
   ["bench-filters-v37", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
