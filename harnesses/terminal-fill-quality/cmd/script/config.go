@@ -195,8 +195,21 @@ var terminals = []Terminal{
 	// the fail rate is not measured on this row.
 	{Slug: "basedbot", Name: "BasedBot", Kind: "bot", Wallets: []string{"HR6xhpJYYiTvmAtUZvpLMN7qbr6TxCw1Sgq3fab8vCoa"}, FeeTx: true,
 		Note: "BasedBot's Solana swap runs through Jupiter with no fee inside; its 1 % fee (about $0.10 minimum) is a separate transaction right after, to its wallet and per-user accounts: the whole of it is terminal fee, its transaction fee is network. The fee is charged after a successful swap only, so failed swaps are not seen: no fail rate on this row."},
-	{Slug: "pump-fun", Name: "pump.fun app", Kind: "app", Programs: []string{"6Vo3245eszAb5wuqEMw8mGdbfRUdKbHhDHP5LcaGuTAB"},
-		Note: "pump.fun's mobile app takes no fee of its own; the fixed 0.001 SOL it forwards per swap to its pfn… accounts is counted as network, and pump.fun's protocol and creator fees sit in other."},
+	// "Takes no fee of its own" was wrong, and the row read 0 in Terminal
+	// because of it: the app's fee was landing in Protocol fees instead.
+	//
+	// KfHbT5Jr… takes about 44.5 bps of the outlay, on 255 swaps from 236
+	// distinct payers. The spec filed it as one of Pump Bridge's sell-side
+	// fee routes and so did my own notes, which is what kept it out of this
+	// list. Checked on chain 2026-10-24: of 25 transactions crediting it,
+	// 23 invoke a pump SWAP venue and NONE invokes the pump BRIDGE program.
+	// It is an app fee on ordinary Solana swaps, so it belongs here, and
+	// declaring it moves that charge out of other and into Terminal where a
+	// reader compares it against the other apps' fees.
+	{Slug: "pump-fun", Name: "pump.fun app", Kind: "app",
+		Wallets:  []string{"KfHbT5Jrr5SV3CDkQVCLiSNWyVv5DmuVaCzbAHrzMFQ"},
+		Programs: []string{"6Vo3245eszAb5wuqEMw8mGdbfRUdKbHhDHP5LcaGuTAB"},
+		Note:     "pump.fun's app charges about 45 bps to KfHbT5Jr…, counted as terminal fee; the fixed 0.001 SOL it forwards per swap to its pfn… accounts is counted as network, and pump.fun's protocol and creator fees sit in other."},
 	// Not in the cohort: BullX (trading suspended 2026-06-01; its wallets
 	// only receive 1,000-lamport markers from unrelated snipers), Nova (no
 	// live fee wallet: the spellbook's last saw traffic weeks ago), BasedBot

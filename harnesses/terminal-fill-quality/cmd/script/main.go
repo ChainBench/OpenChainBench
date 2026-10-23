@@ -29,6 +29,7 @@ import (
 	"context"
 	"encoding/binary"
 	"encoding/json"
+	"fmt"
 	"log"
 	"math"
 	"math/big"
@@ -2121,6 +2122,10 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 		// by its coverage (blocks read over blocks in range), so a chain
 		// read at 5 % weighs like one read in full.
 		att, failed := 0.0, 0.0
+		// attExact: the attempts whose failures are a REAL count from the
+		// feed rather than an estimate from a block sample. Tracked so a
+		// pooled row can tell the two apart, which a sum of both cannot.
+		attExact := 0.0
 		attOf := map[string]float64{} // each row's attempts in the window (estimated on native rows)
 		for _, slug := range slugs {
 			native := isNativeEVM(slug)
@@ -2162,6 +2167,7 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 				att += float64(seen)
 				failed += float64(sfailed)
 				attOf[slug] = float64(seen)
+				attExact += float64(seen)
 			}
 		}
 		ts.Attempts, ts.AttemptsFailed = int(math.Round(att)), int(math.Round(failed))
@@ -2187,6 +2193,22 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 					break
 				}
 			}
+		}
+		// A POOLED row is held hostage by its smallest rows without this.
+		// Bloom's Solana row carries 14,926 of its 15,820 attempts, 94%,
+		// with an exhaustive 7.01% that is the worst rate on that tab. Its
+		// two EVM rows add 890 attempts and block samples under 20, and
+		// because the pooled SampSeen is the sum of those samples, the
+		// whole product published NO failed-swaps figure at all. The worst
+		// rate on the board was blank because of 6% of its own flow.
+		//
+		// So: when the attempts whose failures are counted exhaustively are
+		// at least half the total, the pooled rate stands on them. Same
+		// threshold and same reasoning as chainMeanOfMedians, which already
+		// drops bridged rows from a pooled figure when they carry under
+		// half the flow.
+		if !sampledEnough && att > 0 && attExact >= 0.5*att {
+			sampledEnough = true
 		}
 		// A route whose failures this counter cannot see publishes no rate
 		// at any sample size. Pump Bridge does not fail by reverting on the
@@ -2435,6 +2457,37 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 				}
 			}
 			ts.BuySharePct = 100 * float64(buys) / float64(ts.Parsed)
+			// THE PRICED SIDE MIX MUST RESEMBLE THE DRAWN SIDE MIX, or the
+			// published figure describes whichever side happened to join.
+			//
+			// Pump Bridge was the board's number one at 209.7 bps on a
+			// sample that is 96.2% buys, while roughly 43% of what it drew
+			// were sales: 2,123 sales were rejected unjoined and 102 more
+			// unpriced, against about 123 that reached parse. A sell join
+			// rate of 7.8% does not make the buy figure wrong, it makes it
+			// a BUY figure, published under a product name and ranked
+			// first as if it covered both directions.
+			//
+			// This cannot be caught by the one-side hold above: at 96.2%
+			// the row is not one-sided enough to trip it, and the fee on
+			// the buy side is real. What is wrong is the mix, so the mix is
+			// what this tests. The threshold is 20 points, well clear of
+			// ordinary sampling noise on thousands of draws.
+			if sold := ts.Rejects["unpriced_pump_sale_unjoined"] + ts.Rejects["unpriced_pump_sale"]; sold > 0 {
+				pricedSells := float64(ts.Parsed - buys)
+				drawnSells := pricedSells + float64(sold)
+				drawn := drawnSells + float64(buys)
+				if drawn > 0 && ts.Parsed > 0 {
+					drawnShare := 100 * drawnSells / drawn
+					pricedShare := 100 - ts.BuySharePct
+					if drawnShare-pricedShare > 20 {
+						ts.Ranked = false
+						ts.Note = strings.TrimSpace(ts.Note + fmt.Sprintf(
+							" Sales are %.0f%% of what this row draws but only %.0f%% of what it prices, so the figure describes its buys: it is published and not ranked until the sale side joins.",
+							drawnShare, pricedShare))
+					}
+				}
+			}
 			for v, c := range venues {
 				ts.Venues[v] = 100 * float64(c) / float64(ts.Parsed)
 			}
