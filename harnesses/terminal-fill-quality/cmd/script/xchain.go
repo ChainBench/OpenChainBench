@@ -63,13 +63,32 @@ var xchainApps = []xchainApp{
 	// requests to EVM tokens on 2026-09-21: Robinhood Chain 225, BNB 52,
 	// HyperEVM 10, Arc 10.
 	{Slug: "pump-fun", Name: "pump.fun app", FeeRecipients: []string{"0xdab3f5fcd43211345f1789bf734b5fc5aef1adf7"}},
-	// Phantom's cross-chain swap: one Relay app-fee recipient at 85 bps
-	// (its 0.85 % swap fee), paid from Solana in CASH (Phantom's dollar
-	// token: 40 of 57 requests on 2026-09-21), SOL or USDC, delivered on
-	// Robinhood Chain (mostly), Ethereum, Base and Arc, gas not
-	// sponsored; the Solana users behind it touch Phantom's fee account
-	// and no other terminal's.
-	{Slug: "phantom", Name: "Phantom", FeeRecipients: []string{"0x74f9cb25fd81db31b4daf97ec121c01873581a57"}},
+	// Phantom's cross-chain swap: an app fee at 85 bps (its 0.85 % swap
+	// fee), paid from Solana in CASH (Phantom's dollar token: 40 of 57
+	// requests on 2026-09-21), SOL or USDC, gas not sponsored; the Solana
+	// users behind it touch Phantom's fee account and no other terminal's.
+	//
+	// TWO recipients, because it changed and the rows went silent. On 100
+	// requests under the phantom referrer, read 2026-10-23, 0x74f9cb25…
+	// appears 0 times and 0x037da4f7… appears 83. So every phantom-<chain>
+	// row had been ABSENT rather than thin: not one request could be
+	// recognised as Phantom's.
+	//
+	// The old address stays. It costs one comparison per request, and it
+	// means a rollback on Phantom's side does not blind the rows a second
+	// time: the same reasoning as never deleting a row whose slug moved.
+	//
+	// This is the failure mode with no symptom. A fee wallet that falls out
+	// of use does not error, does not log, and does not make a published
+	// figure look wrong; the rows simply never appear, and an absent row
+	// reads as "the app does not do this" rather than "we stopped being
+	// able to see it". Its routes, same sample: Solana to Ethereum 17,
+	// Solana to Hyperliquid 15, Solana to Robinhood 13, Robinhood to Solana
+	// 12, Ethereum to Solana 11, Base and BNB both ways 15.
+	{Slug: "phantom", Name: "Phantom", FeeRecipients: []string{
+		"0x037da4f70ea2e62c3c7a962a3bce5fcc41509a02",
+		"0x74f9cb25fd81db31b4daf97ec121c01873581a57",
+	}},
 	// BasedBot's requests fund its users' wallets on Robinhood Chain, BNB, Base
 	// and Ethereum (SOL in, the gas coin out, no app fee); its trades are the
 	// funded wallets' swaps on Robinhood Chain's router (native.go).
