@@ -57,7 +57,7 @@ import (
 func mobulaSinkSkip() map[string]bool {
 	out := map[string]bool{
 		"0x0000000000000000000000000000000000000000": true,
-		robinhoodTokenFee:                            true,
+		robinhoodTokenFee: true,
 	}
 	for _, a := range mobulaBridge {
 		out[strings.ToLower(a)] = true
@@ -216,23 +216,23 @@ func sampleMobula(ctx context.Context, httpc *http.Client, st *State, w *mobulaF
 	if limit > 0 && len(pairs) > limit {
 		pairs = pairs[:limit]
 	}
-	for _, pr := range pairs {
+	// Several at a time, same reasoning as sampleXchain: a fill is a receipt
+	// read plus whatever the pool's pre-trade state costs, and those are
+	// sequential per fill. State is applied afterwards, in order.
+	rows := readParallel(ctx, pairs, sampleWorkers(), func(ctx context.Context, pr mobulaPaired) *Swap {
+		for _, oc := range originChains {
+			if oc.slug == pr.chain {
+				return mobulaRow(ctx, httpc, oc, pr.chain, pr.fill, pr.in, gas)
+			}
+		}
+		return nil
+	})
+	for i, pr := range pairs {
 		if ctx.Err() != nil {
 			return added
 		}
-		var c originChain
-		found := false
-		for _, oc := range originChains {
-			if oc.slug == pr.chain {
-				c, found = oc, true
-				break
-			}
-		}
-		if !found {
-			continue
-		}
 		slug := pr.in.App + "-" + pr.chain
-		sw := mobulaRow(ctx, httpc, c, pr.chain, pr.fill, pr.in, gas)
+		sw := rows[i]
 		if sw == nil {
 			continue
 		}

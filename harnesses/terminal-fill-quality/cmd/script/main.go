@@ -883,6 +883,39 @@ func sampleXchain(ctx context.Context, rpc *rpcClient, httpc *http.Client, st *S
 				measured[s.RelayID] = true
 			}
 		}
+		// The EVM-destination rows are priced SEVERAL AT A TIME, because each
+		// one is a handful of sequential round trips and that is what made a
+		// tick take 57.9 s of its 60 s budget once the daily targets were
+		// raised. Nothing else about the loop changes: the branch below reads
+		// its Swap from here instead of calling the pricer inline, so every
+		// st.reject and every append still happens in the sample's order.
+		//
+		// The rate limiter stays the backstop. pace() releases its lock
+		// before the HTTP round trip, so workers are paced and not
+		// serialised, and no number of workers can exceed RPC_RPS.
+		var todo []relayRequest
+		for _, x := range sample[:n] {
+			if measured[x.ID] {
+				continue
+			}
+			if x.DestChain != "" || (x.InIsToken && x.Chain != "solana") {
+				todo = append(todo, x)
+			}
+		}
+		pricedRows := readParallel(ctx, todo, sampleWorkers(), func(ctx context.Context, x relayRequest) *Swap {
+			if x.Funding {
+				return evmFundingRow(ctx, rpc, httpc, t, x, solUSD, gas)
+			}
+			if x.DestChain != "" {
+				return evmRow(ctx, rpc, httpc, t, x, solUSD, gas)
+			}
+			return evmSaleRow(ctx, rpc, httpc, t, x, solUSD, gas)
+		})
+		priced := make(map[string]*Swap, len(todo))
+		for i, x := range todo {
+			priced[x.ID] = pricedRows[i]
+		}
+
 		for _, x := range sample[:n] {
 			if measured[x.ID] {
 				continue // already in the window (re-walked after a restart)
@@ -891,14 +924,9 @@ func sampleXchain(ctx context.Context, rpc *rpcClient, httpc *http.Client, st *S
 				// Leaving Solana for a token elsewhere (the deposit is read on
 				// Solana, the delivery and the pool's state on the destination),
 				// or a token sold on the origin chain and settled on Solana.
-				var sw *Swap
-				if x.Funding {
-					sw = evmFundingRow(ctx, rpc, httpc, t, x, solUSD, gas)
-				} else if x.DestChain != "" {
-					sw = evmRow(ctx, rpc, httpc, t, x, solUSD, gas)
-				} else {
-					sw = evmSaleRow(ctx, rpc, httpc, t, x, solUSD, gas)
-				}
+				// Read in the parallel pass above; absent and nil are the same
+				// case here, "unreadable", exactly as a nil return was.
+				sw := priced[x.ID]
 				if sw != nil {
 					if sw.Flag != "" && sw.Flag != "origin_token" {
 						if sw.Flag == "out_of_bounds" || sw.Flag == "split_implausible" {
