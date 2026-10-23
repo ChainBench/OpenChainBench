@@ -46,6 +46,11 @@ export const REPORT_CATEGORY_META: Record<
     description:
       "On-chain prediction markets benchmarked for quote availability, market coverage, and resolution latency.",
   },
+  chains: {
+    label: "Chains",
+    description:
+      "Layer-1 blockchains measured for finality, block production and confirmation on mainnet, wall-clock and live.",
+  },
   "data-api": {
     label: "Data API",
     description:
