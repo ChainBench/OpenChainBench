@@ -212,6 +212,27 @@ var pumpRouters = []pumpRouter{
 		"0x833589fcd6edb6e08f4c7c32d4f71b54bda02913", "USDC", 6},
 	{"robinhood", "0x5399d94d2cab7c252a6034042e1917a0e5e17a18",
 		"0x5fc5360d0400a0fd4f2af552add042d716f1d168", "USDG", 6},
+	// Ethereum, added 2026-10-23. The router is deployed there and used,
+	// 172 transfers in over 600 blocks, and had never been declared.
+	//
+	// It was nearly left out twice. A first pass rejected it because USDC is
+	// only 31% of the tokens moving through the router, against a dominance
+	// threshold of 80% I had invented. Running the same probe against a
+	// chain whose answer is already known settled it: on BASE, which is
+	// declared USDC and works, USDC is the top at 33%. So a working chain
+	// sits at the share that ruled Ethereum out.
+	//
+	// What that share measures is how many different tokens pass through the
+	// router, which is the SELL side: users hand it whatever they are
+	// selling, 75 distinct tokens on Ethereum. The buy side spends one
+	// stable, and that is the only thing the pairing reads.
+	//
+	// Safe to declare rather than assumed correct: the pairing accepts a
+	// spend only when its implied size inverts the schedule exactly, so a
+	// wrong token yields no pairs rather than wrong ones, and
+	// tfq_pump_bridge_pair_total says which within the hour.
+	{"ethereum", "0x836b336fca26913176efc45a5a6e5e72cd7bd13b",
+		"0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", "USDC", 6},
 }
 
 // topicERC20Transfer: Transfer(address,address,uint256).
