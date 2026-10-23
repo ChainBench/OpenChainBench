@@ -247,3 +247,26 @@ func TestRaceMarginSkipsReferenceAndWinner(t *testing.T) {
 		}
 	}
 }
+
+// Off-pool voids must leave the book quickly. Kept for raceRetention, the
+// ~4,800 a minute OKX and Birdeye produce on Solana filled raceMaxOpen, and
+// observe then dropped every new hash, bench-pool trades included.
+func TestOffPoolVoidsLeaveTheBookQuickly(t *testing.T) {
+	withPoolTrades(t, func(p *refClock) { p.observe("solana", "POOLHASH", time.Now()) })
+
+	b := newTestBook()
+	now := time.Now()
+	b.observe("okx", "solana", "eu-west", "OFFPOOLHASH", now, 0)
+	b.observe("birdeye", "solana", "eu-west", "OFFPOOLHASH", now, 0)
+	b.observe("codex", "solana", "eu-west", "POOLHASH", now, 0)
+	b.observe("mobula", "solana", "eu-west", "POOLHASH", now.Add(10*time.Millisecond), 0)
+	b.resolve(now.Add(raceWindow + time.Second))
+
+	b.resolve(time.Now().Add(offPoolRetention + time.Second))
+	if b.entries[raceKey("solana", "eu-west", "OFFPOOLHASH")] != nil {
+		t.Error("an off-pool void outlived offPoolRetention and keeps a slot of raceMaxOpen")
+	}
+	if b.entries[raceKey("solana", "eu-west", "POOLHASH")] == nil {
+		t.Error("a scored race must stay for raceRetention so late feeds are measured against it")
+	}
+}
