@@ -35,6 +35,9 @@ type Props = {
    *  routes. The panel's description says to read the mean, and the footer
    *  underneath it said p50. */
   statLabel?: string;
+  /** Sentence rendered instead of an empty bar list. The caller knows WHY a
+   *  filter has no rows; the chart only knows that it has none. */
+  emptyNote?: string;
 };
 
 export function RankedBarChart({
@@ -46,6 +49,7 @@ export function RankedBarChart({
   disableTopN,
   headerActions,
   statLabel = "p50",
+  emptyNote,
 }: Props) {
   const { excluded, toggle, reset } = useChartExclusion(
     controlledExcluded,
@@ -172,6 +176,18 @@ export function RankedBarChart({
       >
         <TopNSelector value={topN} options={topNOptions} onChange={setTopN} />
       </div>
+      {rows.length === 0 ? (
+        // A blank chart with no sentence is the worst of the states a panel
+        // can be in, because it is indistinguishable from a broken one. Bench
+        // 268's Settlement time on the Solana tab rendered an empty box: there
+        // is no Solana settlement series and there never will be, since the
+        // figure is destination block time minus origin block time on a
+        // BRIDGED trade and Solana is the origin side. Correct output, read as
+        // a bug, and reported as one.
+        <p className="py-10 text-center text-[12px] text-ink-faint">
+          {emptyNote ?? "Nothing to show for this filter."}
+        </p>
+      ) : null}
       <ul className="space-y-2">
         {rows.map((r) => {
           const isOff = excluded.has(r.slug);

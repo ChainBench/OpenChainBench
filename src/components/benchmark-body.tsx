@@ -769,6 +769,30 @@ export function BenchmarkBody({
   // whole seconds, so a median there can only read 0, 1 or 2 s and cannot
   // separate two routes. The panel's own description tells the reader to read
   // the mean, and the line under the bars told them it was a median.
+  // Why a panel has no rows under the current filter. The chart cannot know,
+  // and an unexplained blank box is read as a broken page: bench 268's
+  // Settlement time on the Solana tab was reported as a bug when it was the
+  // correct answer, because that figure is destination block time minus
+  // origin block time on a bridged trade and Solana is the origin side.
+  //
+  // Distinguishes the two cases the reader cannot: the panel has values but
+  // none on this tab, versus the panel has no values anywhere.
+  const panelEmptyNote = (() => {
+    if (!activePanel) return undefined;
+    const vals = activePanel.values ?? {};
+    const anywhere = Object.values(vals).some(
+      (v) => v != null && Number.isFinite(v),
+    );
+    const where = [effectiveChain, effectiveRegion, effectiveKind]
+      .filter((v): v is string => !!v && v !== "all")
+      .join(" · ");
+    if (!anywhere) {
+      return `${activePanel.label} has no measurements yet.`;
+    }
+    return where
+      ? `${activePanel.label} is not measured on ${where}. It is published on the other tabs.`
+      : `${activePanel.label} has no measurements under this filter.`;
+  })();
   const panelStatLabel = (() => {
     if (!activePanel) return "p50";
     const m = activePanel.metric.match(/\bstat\s*=\s*"([^"]+)"/);
@@ -1089,6 +1113,7 @@ export function BenchmarkBody({
                   topNControl={topNControl}
                   headerActions={<>{sharedHeaderActions}</>}
                   statLabel={panelStatLabel}
+                  emptyNote={panelEmptyNote}
                 />
                 </>
               )}
