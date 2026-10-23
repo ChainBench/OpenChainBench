@@ -294,6 +294,8 @@ func init() {
 	// Why a race was discarded. "off_pool" is the filter doing its job;
 	// "single_participant" is the pre-existing rule. A population that stays
 	// high with off_pool near zero means the filter is not biting.
+	// "book_full" counts arrivals dropped because raceMaxOpen was reached:
+	// anything above zero means races are being lost, and not at random.
 	headLagRacesVoided = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "head_lag_races_voided_total",
