@@ -19,7 +19,7 @@ per_chain_explainer:
   - slug: ethereum
     h2: "Fastest Ethereum swap quote API"
     body: |
-      {{best_name:chain:ethereum}} currently leads the Ethereum swap-quote field at {{best_p50:chain:ethereum}} (p50, 24h) across the {{count:chain:ethereum}} measured providers. Ethereum mainnet holds the deepest EVM liquidity (Uniswap v3 tick-range pools, Curve stable pools, Maker PSM), so route-search complexity is the dominant component of quote latency: aggregators trading off depth-of-search against time-to-first-byte show their architecture here more than on any other chain. Probes run every 60 seconds on a 5-pair basket from us-east, eu-west and Singapore.
+      {{best_name:chain:ethereum}} currently leads the Ethereum swap-quote field at {{best_p50:chain:ethereum}} (p50, 24h). Ethereum mainnet holds the deepest EVM liquidity (Uniswap v3 tick-range pools, Curve stable pools, Maker PSM), so route-search complexity is the dominant component of quote latency: aggregators trading off depth-of-search against time-to-first-byte show their architecture here more than on any other chain. Probes run every 60 seconds on a 5-pair basket from us-east, eu-west and Singapore.
   - slug: base
     h2: "Fastest Base swap quote API"
     body: |

@@ -17,6 +17,9 @@ type Issue = { file: string; level: "error" | "warning"; message: string };
 
 const TOKEN_RE = /\{\{\s*([a-z][a-z0-9_]*)(?::([a-z0-9_-]+))?(?::([a-z0-9_-]+))?\s*\}\}/gi;
 const KNOWN_TOKENS = new Set(["p50", "p90", "p99", "mean", "success", "name", "best_name", "best_names", "best_p50", "best_first", "worst_name", "worst_p50", "count", "ranked_count", "declared_count"]);
+/** Chain-scoped forms the renderer actually resolves: bench-template's
+ *  CHAIN_TEMPLATE_RE, kept in step with it. */
+const CHAIN_SCOPABLE = new Set(["best_name", "best_p50", "worst_name", "worst_p50"]);
 
 /** Every `{{...}}` in `fields` names a known keyword, a provider slug of
  *  the bench for per-provider lookups, a declared chain value, or a
@@ -39,6 +42,17 @@ function lintPlaceholders(
       } else if (a === "chain") {
         if (!b || !chainValues.has(b.toLowerCase())) {
           issues.push({ file, level: "error", message: `${name}: ${whole} names a chain value the spec does not declare` });
+        } else if (!CHAIN_SCOPABLE.has(k)) {
+          // The same check the tier branch below has always had, and its
+          // absence here is how {{count:chain:ethereum}} reached prod: the
+          // chain value was declared, so this branch passed it, and
+          // bench-template's CHAIN_TEMPLATE_RE then matched nothing and
+          // left the token in the page as literal text. A renderer that
+          // passes an unknown token through unchanged needs the gate to
+          // name what it resolves, not only that the argument exists.
+          // Per-chain row counts are not in bestPerChain / worstPerChain,
+          // which is all the chain path has.
+          issues.push({ file, level: "error", message: `${name}: ${whole} cannot be chain-scoped` });
         }
       } else if (a === "tier") {
         if (!b || !tierValues.has(b.toLowerCase())) {
@@ -207,6 +221,14 @@ async function main() {
       ...(spec.findings ?? []).map((t, i) => [`findings[${i}]`, t] as [string, string]),
       ...(spec.methodology ?? []).map((t, i) => [`methodology[${i}]`, t] as [string, string]),
       ...(spec.faq ?? []).flatMap((q, i) => [[`faq[${i}].q`, q.q], [`faq[${i}].a`, q.a]] as [string, string][]),
+      // These bodies were never linted, on any spec, and they are the field
+      // most likely to carry a chain-scope mistake because they are the
+      // field written per chain: {{count:chain:ethereum}} passed validate
+      // and rendered as literal text on the Ethereum tab.
+      ...(spec.per_chain_explainer ?? []).flatMap((e, i) => [
+        [`per_chain_explainer[${i}].h2`, e.h2],
+        [`per_chain_explainer[${i}].body`, e.body],
+      ] as [string, string | undefined][]),
     ];
     lintPlaceholders(issues, f, templated, providerSlugs, chainValues, tierValues);
 
