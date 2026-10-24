@@ -53,8 +53,15 @@ describe("the provider set behind the cache keys", () => {
     const hash = createHash("sha256").update(sets.join("\n")).digest("hex").slice(0, 16);
     const count = sets.reduce((n, s) => n + s.split(":")[1].split(",").length, 0);
 
-    // Recorded on 2026-10-24 with bench-unfiltered-v98, all-benchmarks-v91,
-    // bench-filters-v39, providers-v19.
+    // Recorded on 2026-10-24 with bench-unfiltered-v99, all-benchmarks-v92,
+    // bench-filters-v40, providers-v19.
+    //
+    // The change was a DELETION, bench 306, which moves this hash the same
+    // way an addition does but for the opposite reason: a cached aggregate
+    // written before it would still list a bench that no longer exists.
+    // providers-v did NOT move, because both of its providers (pump-bridge,
+    // relay) are declared by benches that remain, so no product page gains
+    // or loses an appearance.
     expect(
       hash,
       [
@@ -73,6 +80,6 @@ describe("the provider set behind the cache keys", () => {
         "Then set EXPECTED to the hash in this failure, and add the provider",
         `to PRODUCT_NAMES if it needs a display name. Providers now: ${count}.`,
       ].join("\n"),
-    ).toBe("c6246aef10f9bd74");
+    ).toBe("9ca6a160e665dcdf");
   });
 });

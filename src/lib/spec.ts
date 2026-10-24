@@ -514,7 +514,7 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // specs declare region and tier, so bench-filters moves with this one.
   // v98: Robinhood Chain joins l1-finality. No dimensions there, so
   // bench-filters stays.
-  ["bench-unfiltered-v98", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  ["bench-unfiltered-v99", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -765,8 +765,11 @@ const loadAllBenchmarksCached = unstable_cache(
   // v89: lockstep with bench-unfiltered-v96 (WebSocket race copy).
   // v90: lockstep with bench-unfiltered-v97 (BlockMachine joins the keyed
   // cohort on seven chains).
+  // v92: lockstep with bench-unfiltered-v99 (bench 306 deleted: its two
+  // provider sets leave the hash, and a cached aggregate written before
+  // this would still list a bench that no longer exists).
   // v91: lockstep with bench-unfiltered-v98 (Robinhood Chain on l1-finality).
-  ["all-benchmarks-v91", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  ["all-benchmarks-v92", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -883,11 +886,14 @@ const loadBenchmarkFiltered = unstable_cache(
   // bench 268 declares chain and bucket, so its two new providers are
   // invisible on every tab until this moves. Same reason v36 existed.
   // v38: lockstep with bench-unfiltered-v96 (WebSocket race copy).
+  // v40: lockstep with bench-unfiltered-v99. Bench 306 declared dimensions,
+  // so its filtered variants are cached under this key too and a stale entry
+  // would keep serving them on every tab but the default.
   // v39: lockstep with bench-unfiltered-v97. The seven keyed RPC specs
   // declare region and tier, and BlockMachine's rows are on the Private
   // access tab, which is a filtered variant: without this they are invisible
   // on exactly the tab they belong to.
-  ["bench-filters-v39", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  ["bench-filters-v40", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 
