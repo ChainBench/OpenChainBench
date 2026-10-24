@@ -11,15 +11,15 @@ import (
 	"time"
 )
 
-// SUI wall-clock measurement via high-frequency HTTP polling of the
-// public fullnode. SUI's checkpoint cadence is ~250-500ms, so we poll
-// the latest checkpoint (GraphQL) every 500ms and time the
-// arrival of each new checkpoint sequence. lag(N) = T_recv(N+1) -
-// T_recv(N) — the actual wall-clock interval the next checkpoint takes
-// to land on this client. Mysticeti finalizes at checkpoint commit so
-// each arrived sequence is already final; the metric captures protocol
-// heartbeat + network propagation, the closest fair "real finality"
-// number we can get without running a validator.
+// SUI checkpoint cadence. Mysticeti checkpoints are final when committed,
+// so the interval between two checkpoints is how often finality lands.
+//
+// Until 2026-10-24 the sample was the wall-clock gap between two polls
+// that saw a new sequence number. Checkpoints come about every 0.2 s and
+// the poll every 500 ms, so 2 to 4 were skipped per poll and the series
+// read 500 or 1000 ms: our poll interval, not the chain. The sample is now
+// (timestamp(N) - timestamp(M)) / (N - M) from the checkpoints' own
+// commit timestamps (ms), over whatever the poll advanced.
 //
 // gRPC streaming (sui.rpc.v2.SubscriptionService.SubscribeCheckpoints)
 // is the lower-overhead path but adds a ~10MB protoc-generated stub
@@ -31,9 +31,9 @@ import (
 const suiGraphQLURL = "https://graphql.mainnet.sui.io/graphql"
 
 type suiWSState struct {
-	mu       sync.Mutex
-	lastSeq  int64
-	lastSeen time.Time
+	mu      sync.Mutex
+	lastSeq int64
+	lastTs  time.Time
 }
 
 // StartSUIWallClock launches a goroutine that polls the SUI fullnode at
@@ -64,7 +64,7 @@ func runSUIPoll() error {
 	defer tick.Stop()
 	consecErrors := 0
 	for range tick.C {
-		seqno, err := suiLatestCheckpoint(client)
+		seqno, ts, err := suiLatestCheckpoint(client)
 		if err != nil {
 			consecErrors++
 			if consecErrors >= 10 {
@@ -73,46 +73,55 @@ func runSUIPoll() error {
 			continue
 		}
 		consecErrors = 0
-		now := time.Now()
 		st.mu.Lock()
-		if seqno > st.lastSeq {
-			if !st.lastSeen.IsZero() && st.lastSeq > 0 {
-				lagMs := float64(now.Sub(st.lastSeen).Milliseconds())
-				if lagMs >= 0 {
-					wallClockLagGauge.WithLabelValues("sui").Set(lagMs)
-					wallClockLagSum.WithLabelValues("sui").Observe(lagMs)
-					wallClockSampleCtr.WithLabelValues("sui").Inc()
-					fmt.Printf("[L1][sui] checkpoint=%d wall-clock-lag=%.0fms\n", seqno, lagMs)
-				}
+		if ms, ok := st.advance(seqno, ts); ok {
+			wallClockLagGauge.WithLabelValues("sui").Set(ms)
+			wallClockLagSum.WithLabelValues("sui").Observe(ms)
+			wallClockSampleCtr.WithLabelValues("sui").Inc()
+			if seqno%100 == 0 {
+				fmt.Printf("[L1][sui] checkpoint=%d interval=%.0fms\n", seqno, ms)
 			}
-			st.lastSeen = now
-			st.lastSeq = seqno
 		}
 		st.mu.Unlock()
 	}
 	return nil
 }
 
-func suiLatestCheckpoint(client *http.Client) (int64, error) {
+// advance returns the mean checkpoint interval since the previous reading,
+// from commit timestamps. The first reading only anchors.
+func (st *suiWSState) advance(seq int64, ts time.Time) (float64, bool) {
+	if seq <= st.lastSeq {
+		return 0, false
+	}
+	prevSeq, prevTs := st.lastSeq, st.lastTs
+	st.lastSeq, st.lastTs = seq, ts
+	if prevSeq == 0 || !ts.After(prevTs) {
+		return 0, false
+	}
+	return float64(ts.Sub(prevTs).Milliseconds()) / float64(seq-prevSeq), true
+}
+
+func suiLatestCheckpoint(client *http.Client) (int64, time.Time, error) {
 	body, _ := json.Marshal(map[string]any{
-		"query": "{ checkpoint { sequenceNumber } }",
+		"query": "{ checkpoint { sequenceNumber timestamp } }",
 	})
 	req, _ := http.NewRequest("POST", suiGraphQLURL, bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := client.Do(req)
 	if err != nil {
-		return 0, err
+		return 0, time.Time{}, err
 	}
 	defer resp.Body.Close()
 	respBody, _ := io.ReadAll(resp.Body)
 	return parseSuiCheckpoint(respBody)
 }
 
-func parseSuiCheckpoint(respBody []byte) (int64, error) {
+func parseSuiCheckpoint(respBody []byte) (int64, time.Time, error) {
 	var r struct {
 		Data *struct {
 			Checkpoint *struct {
 				SequenceNumber json.Number `json:"sequenceNumber"`
+				Timestamp      time.Time   `json:"timestamp"`
 			} `json:"checkpoint"`
 		} `json:"data"`
 		Errors []struct {
@@ -120,17 +129,17 @@ func parseSuiCheckpoint(respBody []byte) (int64, error) {
 		} `json:"errors"`
 	}
 	if err := json.Unmarshal(respBody, &r); err != nil {
-		return 0, fmt.Errorf("parse: %w", err)
+		return 0, time.Time{}, fmt.Errorf("parse: %w", err)
 	}
 	if len(r.Errors) > 0 {
-		return 0, fmt.Errorf("graphql: %s", r.Errors[0].Message)
+		return 0, time.Time{}, fmt.Errorf("graphql: %s", r.Errors[0].Message)
 	}
 	if r.Data == nil || r.Data.Checkpoint == nil {
-		return 0, fmt.Errorf("graphql: no checkpoint")
+		return 0, time.Time{}, fmt.Errorf("graphql: no checkpoint")
 	}
 	n, err := strconv.ParseInt(r.Data.Checkpoint.SequenceNumber.String(), 10, 64)
 	if err != nil {
-		return 0, fmt.Errorf("parse_seq: %w", err)
+		return 0, time.Time{}, fmt.Errorf("parse_seq: %w", err)
 	}
-	return n, nil
+	return n, r.Data.Checkpoint.Timestamp, nil
 }

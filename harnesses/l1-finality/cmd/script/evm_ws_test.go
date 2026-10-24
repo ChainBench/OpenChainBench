@@ -35,11 +35,28 @@ func TestFirstFinalizedOnlyAnchors(t *testing.T) {
 }
 
 func TestParseSuiCheckpoint(t *testing.T) {
-	n, err := parseSuiCheckpoint([]byte(`{"data":{"checkpoint":{"sequenceNumber":337642214,"timestamp":"2026-10-24T16:09:33.768Z"}}}`))
-	if err != nil || n != 337642214 {
-		t.Fatalf("got %d %v", n, err)
+	n, ts, err := parseSuiCheckpoint([]byte(`{"data":{"checkpoint":{"sequenceNumber":337642214,"timestamp":"2026-10-24T16:09:33.768Z"}}}`))
+	if err != nil || n != 337642214 || ts.UnixMilli()%1000 != 768 {
+		t.Fatalf("got %d %v %v", n, ts, err)
 	}
-	if _, err := parseSuiCheckpoint([]byte(`{"errors":[{"message":"boom"}]}`)); err == nil {
+	if _, _, err := parseSuiCheckpoint([]byte(`{"errors":[{"message":"boom"}]}`)); err == nil {
 		t.Fatal("graphql error must surface")
+	}
+}
+
+// Three checkpoints 450 ms apart in commit time, seen in one poll, are a
+// 150 ms cadence, whatever the poll interval.
+func TestSuiIntervalFromTimestamps(t *testing.T) {
+	st := &suiWSState{}
+	t0 := time.Now()
+	if _, ok := st.advance(100, t0); ok {
+		t.Fatal("first reading must only anchor")
+	}
+	ms, ok := st.advance(103, t0.Add(450*time.Millisecond))
+	if !ok || ms != 150 {
+		t.Fatalf("got %v %v, want 150", ms, ok)
+	}
+	if _, ok := st.advance(103, t0.Add(time.Second)); ok {
+		t.Fatal("no new checkpoint, no sample")
 	}
 }

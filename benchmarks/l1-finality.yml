@@ -126,7 +126,7 @@ methodology:
   - "Solana: WebSocket `slotSubscribe` and `rootSubscribe` on the public mainnet endpoint. T1 = first notification of slot S, T2 = first root at or above S; lag = T2 - T1 in ms. Replaced the `getBlockTime` difference on 2026-10-22, after Alpenglow made finality shorter than its one-second resolution."
   - "TRON: `/wallet/getnowblock` (head) minus `/walletsolidity/getnowblock` (solidity-confirmed)."
   - "Stellar (SSE wall-clock): Horizon `/ledgers?cursor=now&order=asc` event-stream records T1 on first sight of ledger N and T2 on the next ledger close (SCP-final at every close)."
-  - "SUI: latest checkpoint from the official GraphQL service (`graphql.mainnet.sui.io`), polled every 500 ms; lag = wall-clock interval between two successive new checkpoints. Moved off `sui_getLatestCheckpointSequenceNumber` on 2026-10-24, after JSON-RPC was retired on the public fullnodes."
+  - "SUI: latest checkpoint from the official GraphQL service (`graphql.mainnet.sui.io`), polled every 500 ms; sample = (timestamp N − timestamp M) / (N − M) over the checkpoints committed between two polls, from the checkpoints' own millisecond commit timestamps. Before 2026-10-24 the sample was the gap between two polls that saw a new checkpoint, which only measured our 500 ms poll; that day it also moved off `sui_getLatestCheckpointSequenceNumber`, retired with JSON-RPC on the public fullnodes."
   - "Gram: wall-clock lag of the tonapi.io masterchain head. Masterchain blocks are BFT-final at production, so head commit lag is the finality figure; the chain produces a block about every 0.4s since the accelerated upgrade."
   - "Bitcoin (probabilistic, own-clock): mempool.space `/blocks/tip/height` polled every 30 s. T1 = first poll where block N is the tip, T2 = first poll where tip − N ≥ 6 (the exchange deposit convention). lag = T2 − T1 on the harness clock; miner-set block timestamps (consensus allows 2h skew) are never used. The startup tip is not timed. On a tip regression, pending timers above the new tip are dropped; same-height reorgs are invisible to height polling, bounding error to about one block interval."
   - "Litecoin (probabilistic): blockchair `/stats.best_block_height` minus 6 confirmations via `/dashboards/block/{height}.block.time`."
@@ -207,7 +207,7 @@ providers:
   - slug: sui
     name: SUI
     tag: Mysticeti DAG, measured via wall-clock checkpoint cadence
-    formula: "Median wall-clock milliseconds between two successive new SUI checkpoints, read from the official GraphQL service every 500 ms, p50 over 24h. Checkpoints are final when committed."
+    formula: "Median interval between successive SUI checkpoints, from their own commit timestamps (official GraphQL, polled every 500 ms), p50 over 24h. Checkpoints are final when committed."
     queries:
       p50: quantile_over_time(0.50, l1_finality_wallclock_lag_milliseconds{chain="sui"}[24h])
       p90: quantile_over_time(0.90, l1_finality_wallclock_lag_milliseconds{chain="sui"}[24h])
