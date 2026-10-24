@@ -84,6 +84,7 @@ type wsState struct {
 	url       string
 	mu        sync.Mutex
 	firstSeen map[int64]time.Time
+	frozen    map[int64]time.Time // Solana only: slot fully received and replayed
 	lastFinal int64
 	idCtr     int
 	conn      *websocket.Conn
