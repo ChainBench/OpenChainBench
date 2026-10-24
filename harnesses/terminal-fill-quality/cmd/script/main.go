@@ -2145,6 +2145,11 @@ func compute(st *State, minPriced, minRank int) []TerminalStats {
 func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (TerminalStats, bool) {
 	member := set(slugs...)
 	rejects := map[string]int{} // the window's rejected draws by reason (from the minute buckets)
+	// rankWithheld: a rule decided this row must not be ranked, whatever its
+	// counts say. It has to be a flag rather than an assignment because
+	// ts.Ranked is written unconditionally near the end of this function,
+	// so anything set earlier is silently undone.
+	rankWithheld := false
 	{
 		ts := TerminalStats{Slug: t.Slug, Name: t.Name, Kind: t.Kind, Note: t.Note, Components: map[string]float64{}, Venues: map[string]float64{}, Quotes: map[string]float64{}, Rejects: rejects}
 		errs := map[string]int{}
@@ -2469,7 +2474,18 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 			// chain's flow (a weighted median over a bimodal mix, pump.fun's
 			// fee on the Solana swaps and none on the EVM ones, would land on
 			// one chain's mode and print a 0 that describes no user).
-			ts.Components["terminal"] = wmedian(term, termW, pooled)
+			// Guarded like other and relay below, and for the same reason.
+			// Assigning unconditionally writes a 0 whenever the slice is
+			// empty, and an empty slice is exactly what TerminalUnknown
+			// produces: the whole point of withholding the component was
+			// that the cell should be ABSENT, and this line put it back as
+			// a charge of nothing. It also made every downstream test of
+			// "is the fee known" read true, so the one-side hold took its
+			// strict branch and held FOMO Mobula as unhealthy, which is how
+			// a trading product came to read unresponsive.
+			if len(term) > 0 {
+				ts.Components["terminal"] = wmedian(term, termW, pooled)
+			}
 			ts.Components["network"] = wmedian(net, netW, pooled)
 			if len(other) > 0 {
 				ts.Components["other"] = wmedian(other, otherW, pooled)
@@ -2513,7 +2529,12 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 					drawnShare := 100 * drawnSells / drawn
 					pricedShare := 100 - ts.BuySharePct
 					if drawnShare-pricedShare > 20 {
-						ts.Ranked = false
+						// Recorded rather than assigned: ts.Ranked is
+						// rewritten unconditionally further down, so setting
+						// it here looked like it worked and did nothing.
+						// Pump Bridge carried this very note while reading
+						// ranked true on the published file.
+						rankWithheld = true
 						ts.Note = strings.TrimSpace(ts.Note + fmt.Sprintf(
 							" Sales are %.0f%% of what this row draws but only %.0f%% of what it prices, so the figure describes its buys: it is published and not ranked until the sale side joins.",
 							drawnShare, pricedShare))
@@ -2645,6 +2666,11 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 		ts.Ranked = ts.Priced >= minRank
 		if pooled && ts.NEff > 0 && ts.NEff < float64(minRank) {
 			ts.Ranked = false // one chain's few swaps carry most of the weight: the median is not stable enough to rank
+		}
+		// Applied AFTER the line above, which assigns unconditionally. Any
+		// rule that withholds a rank has to land here or be silently undone.
+		if rankWithheld {
+			ts.Ranked = false
 		}
 		if len(slugs) == 1 && strings.Contains(t.Slug, "-") && isXchainRow(t.Slug) && ts.Seen == 0 && ts.Parsed == 0 {
 			// Nobody used it, or we could not read the chain. Those are not
