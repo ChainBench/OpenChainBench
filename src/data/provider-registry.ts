@@ -353,6 +353,11 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   },
 
   // ─── EVM swap aggregators / RFQ / routers (bench 002) ─────────
+  nordstern: {
+    url: "https://nordstern.finance",
+    description:
+      "EVM DEX aggregator. Routes across major DEXs on 121 chains from a single integration, quoted without a key or registration. Described by its own site as integrate once, access all major DEXs.",
+  },
   kyberswap: {
     url: "https://kyberswap.com",
     description:
