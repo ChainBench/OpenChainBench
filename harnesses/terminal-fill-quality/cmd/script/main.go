@@ -424,6 +424,7 @@ func main() {
 	perTickEVM := float64(evmDailyTarget) * tick.Seconds() / 86400
 	perTickFail := float64(envInt("FAIL_DAILY_TARGET", 40)) * tick.Seconds() / 86400 // failed attempts read per terminal per day
 	windowHours := envInt("WINDOW_HOURS", 24)
+	publishedWindowHours = windowHours
 	minPriced := envInt("MIN_PRICED", 50)
 	minRank := envInt("MIN_RANK", 100)
 	// A size bucket holds roughly a third of a terminal's sample, so it
@@ -1924,6 +1925,13 @@ func dedupeAcrossProducers(swaps []Swap) (kept []Swap, dropped map[string]int) {
 	return kept, dropped
 }
 
+// publishedWindowHours: the span the PAGE advertises, set from WINDOW_HOURS
+// at start-up. compute() needs it to tell a full window from a refilling
+// one, and cannot reach main()'s local. Defaulted to the 24 the spec states,
+// so a build that forgets to set it still compares against the number a
+// reader sees rather than against zero.
+var publishedWindowHours = 24
+
 func compute(st *State, minPriced, minRank int) []TerminalStats {
 	// Before anything reads the window: one fill must not be two rows.
 	if kept, dropped := dedupeAcrossProducers(st.Swaps); len(dropped) > 0 {
@@ -1960,9 +1968,7 @@ func compute(st *State, minPriced, minRank int) []TerminalStats {
 		if minChain := max(20, minPriced/2); ts.Priced >= minChain {
 			ts.Healthy = true
 		}
-		if t0, ok := st.Resampling[t.Slug]; ok && !ts.Healthy {
-			ts.Note = strings.TrimSpace(ts.Note + " Re-sampling since " + time.Unix(t0, 0).UTC().Format("15:04 UTC") + " after a method change: the figure returns when the window refills.")
-		}
+
 		// A row whose sample is one side only with no fee on it (Banana Gun's
 		// Ethereum buys) reads a fee-free half of the product: the fee sits
 		// on the side the feed never sees, so the row waits.
@@ -2113,6 +2119,33 @@ func compute(st *State, minPriced, minRank int) []TerminalStats {
 		}
 		out = append(out, ts)
 	}
+	// A WINDOW THAT DOES NOT COVER ITS ADVERTISED SPAN SAYS SO, AND IS NOT
+	// RANKED ON.
+	//
+	// Applied here, last, because Ranked is written unconditionally in
+	// several places above and anything set earlier is undone. That is the
+	// third time today a withholding was written and silently overwritten,
+	// so this one goes where nothing follows it.
+	//
+	// The v6 bump dropped every row priced under v5 and the board went on
+	// ranking five products on about 3.2 h of samples under a label reading
+	// rolling 24 h, with the headline's name picked from them. A rank is a
+	// comparison between products, and products refilling at different
+	// rates are not comparable.
+	for i := range out {
+		t0, ok := st.Resampling[out[i].Slug]
+		if !ok {
+			continue
+		}
+		hrs := float64(time.Now().Unix()-t0) / 3600
+		if hrs >= float64(publishedWindowHours) {
+			continue
+		}
+		out[i].Ranked = false
+		out[i].Note = strings.TrimSpace(out[i].Note + fmt.Sprintf(
+			" Re-sampling since %s: this figure covers about %.1f h, not the %d h the page states, so it is published and not ranked until the window refills.",
+			time.Unix(t0, 0).UTC().Format("15:04 UTC"), hrs, publishedWindowHours))
+	}
 	// A hold on the row is a hold on its buckets. sizeSplit judges each
 	// bucket by its own count inside statsFor, before the holds above are
 	// decided, so a product re-sampling its dominant chain read
@@ -2186,6 +2219,21 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 				sp += b.SpanBlocks
 				for k, v := range b.Errs {
 					errs[k] += v
+				}
+				// REJECTS ARE COUNTED ONLY FROM THE WINDOW THE ROWS COVER.
+				//
+				// A drop removes swaps and leaves the minute buckets, so
+				// unpriced_share divided a full day of rejects by whatever
+				// hours of rows survived. No pricing changed and Axiom BNB
+				// went 0.574 to 0.870, FOMO Robinhood 0.187 to 0.539, while
+				// yml:80 points readers at exactly that field.
+				//
+				// Counting from the drop rather than clearing the buckets,
+				// because the buckets also carry attempts and failures that
+				// are still true: only the ratio against the surviving rows
+				// is wrong.
+				if t0, ok := st.Resampling[slug]; ok && b.T < t0 {
+					continue
 				}
 				for k, v := range b.Rej {
 					rejects[k] += v
@@ -3487,6 +3535,12 @@ func loadState(path string) *State {
 	for _, s := range st.Swaps {
 		if s.Method != methodVersion {
 			dropped++
+			// A version drop re-samples a row exactly as a purge does, and
+			// until now only the purge branch said so. Every product on the
+			// board was version-dropped by the v6 bump and none of them
+			// disclosed it, so the page ranked five products on a few hours
+			// of samples under a label promising a rolling day.
+			st.Resampling[s.Terminal] = now
 			continue
 		}
 		if (purgeBefore > 0 && s.Chain != "" && s.Time < purgeBefore) || purgeSlugs[s.Terminal] || purgeSigs[s.Sig] {
