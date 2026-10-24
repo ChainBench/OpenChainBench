@@ -496,7 +496,7 @@ providers:
   - slug: blockmachine
     name: BlockMachine
     tier: keyed
-    tag: Paid plan key, endpoint provided, plan not disclosed
+    tag: Standard plan key, 5M Request Units per month, plan disclosed
     formula: "p50 over 24h of round-trip latency (ms) for eth_getBlockByNumber probed every 120 s from us-east, eu-west and Singapore on BlockMachine's keyed Arc endpoint."
     queries:
       p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="blockmachine",chain="arc",tier="keyed"})
