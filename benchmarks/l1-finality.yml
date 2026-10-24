@@ -31,7 +31,7 @@ faq:
   - q: "What is Bitcoin finality time?"
     a: "Bitcoin never reaches absolute finality. Nakamoto consensus gives probabilistic finality: any block can in principle be reorganized, with a probability that falls exponentially as more blocks are mined on top. The exchange-industry deposit convention is 6 confirmations, roughly one hour at the 10-minute target block interval, and that is what this benchmark measures: {{p50:bitcoin}} (p50, 24h) wall-clock from a block first appearing at the chain tip to reaching 6 confirmations, timed with the harness clock rather than miner-set block timestamps. Variance is high because block intervals are Poisson distributed; a lucky streak settles in about 30 minutes, an unlucky one takes well over 90. Six confirmations is a risk threshold, not a protocol guarantee, and deep reorgs remain possible with vanishing probability."
   - q: "How is L1 finality time measured on this page?"
-    a: "Three methods, picked per chain. RPC pollers compare latest vs finalized block timestamps every 10 seconds, used for Ethereum, TRON and Monero. Stream subscribers (WebSocket or SSE) record wall-clock time T1 when a block first appears on the head stream and T2 when it crosses the finality threshold, giving millisecond-precision lag for Solana, BNB, Avalanche, Robinhood Chain, Gram and Stellar; SUI reads checkpoint commit timestamps. Bitcoin and Litecoin are timed on our own clock from the tip height, T1 when a block becomes the tip and T2 when it has the conventional confirmations."
+    a: "Three methods, picked per chain. RPC pollers compare latest vs finalized block timestamps every 10 seconds, used for Ethereum, TRON and Monero. Stream subscribers (WebSocket or SSE) record wall-clock time T1 when a block first appears on the head stream and T2 when it crosses the finality threshold, giving millisecond-precision lag for Solana, BNB, Robinhood Chain, Gram and Stellar; Avalanche is timed from the block's own millisecond production timestamp to its arrival, already final; SUI reads checkpoint commit timestamps. Bitcoin and Litecoin are timed on our own clock from the tip height, T1 when a block becomes the tip and T2 when it has the conventional confirmations."
 
 per_chain_explainer:
   - slug: ethereum
@@ -61,7 +61,7 @@ per_chain_explainer:
   - slug: avalanche
     h2: "Avalanche finality time"
     body: |
-      Avalanche C-Chain uses Snowman++ consensus and reaches finality at {{p50:avalanche}} (p50, 24h). The Avalanche family targets sub-second finality through a sampled-voting protocol that converges with high probability after a few rounds of random validator queries. Measured via persistent WebSocket subscription on the C-Chain, recording wall-clock between latest and finalized block emission.
+      Avalanche C-Chain uses Snowman++ consensus and reaches finality at {{p50:avalanche}} (p50, 24h). The Avalanche family targets sub-second finality through a sampled-voting protocol that converges with high probability after a few rounds of random validator queries. Measured from the block's own millisecond production timestamp to the moment it reaches us as `latest` over WebSocket. Since the 22 September 2026 upgrade the C-Chain runs Streaming Asynchronous Execution (ACP-194): a block is final when consensus accepts it, and the `finalized` RPC tag now means settled, a fixed 5 seconds later. Timing `latest` to `finalized` read about 6 s from that afternoon and was measuring the settlement delay, not finality; this figure replaced it on 24 October 2026.
   - slug: robinhood
     h2: "Robinhood Chain finality time"
     body: |
@@ -69,7 +69,7 @@ per_chain_explainer:
   - slug: tron
     h2: "TRON finality time"
     body: |
-      TRON's solidity confirmation hovers around {{p50:tron}} (24h average), matching the documented 20-block delay at 3-second block intervals. The solidity flag in TRON consensus is the chain's equivalent of finalized: a block survives until 20 confirmations before being considered irreversible. Measured via `/wallet/getnowblock` (head) minus `/walletsolidity/getnowblock` (solidity-confirmed).
+      TRON's solidity confirmation hovers around {{p50:tron}} (p50, 24h), matching the documented 20-block delay at 3-second block intervals. The solidity flag in TRON consensus is the chain's equivalent of finalized: a block survives until 20 confirmations before being considered irreversible. Measured via `/wallet/getnowblock` (head) minus `/walletsolidity/getnowblock` (solidity-confirmed).
   - slug: bitcoin
     h2: "Bitcoin finality time"
     body: |
@@ -122,7 +122,8 @@ abstract: |
 methodology:
   - "Cadence: every 10 seconds for HTTP-polled chains, continuous WS for BNB, Avalanche and Robinhood Chain."
   - "Ethereum: `eth_getBlockByNumber(\"latest\")` minus `eth_getBlockByNumber(\"finalized\")`."
-  - "BNB / Avalanche (WS wall-clock): persistent `eth_subscribe(\"newHeads\")` records T1 = first time block N is seen as latest. Periodic `eth_getBlockByNumber(\"finalized\")` over same WS records T2 when N becomes finalized. lag = T2 − T1, ms precision, independent of chain timestamp resolution."
+  - "Avalanche (WS, from production): since Streaming Asynchronous Execution went live on 2026-09-22, `latest` is an accepted (Snowman-final) and executed block and `finalized` is the settled block, 5 s later by design. The figure is therefore arrival over `newHeads` minus the header's `timestampMilliseconds` (proposer clock); readings outside 0 to 60 s are dropped as skew. From 2026-09-22 to 2026-10-24 the row timed latest to finalized and published the settlement delay, about 6 s."
+  - "BNB (WS wall-clock): persistent `eth_subscribe(\"newHeads\")` records T1 = first time block N is seen as latest. Periodic `eth_getBlockByNumber(\"finalized\")` over same WS records T2 when N becomes finalized. lag = T2 − T1, ms precision, independent of chain timestamp resolution."
   - "Robinhood Chain (rollup, WS wall-clock): same subscription as BNB / Avalanche on `wss://robinhood-rpc.publicnode.com`. `finalized` advances by whole batches once they are finalized on the parent chain (about 10,000 blocks at about 100 ms each), so every block of a batch is timed, all of them enter the histogram, and the published series carries the batch median: the last block of a batch always has the smallest lag and would understate finality."
   - "Solana: WebSocket `slotSubscribe` and `rootSubscribe` on the public mainnet endpoint. T1 = first notification of slot S, T2 = first root at or above S; lag = T2 - T1 in ms. Replaced the `getBlockTime` difference on 2026-10-22, after Alpenglow made finality shorter than its one-second resolution."
   - "TRON: `/wallet/getnowblock` (head) minus `/walletsolidity/getnowblock` (solidity-confirmed)."
@@ -138,9 +139,9 @@ methodology:
   - "Failures (5xx, timeouts, rate limits) leave the previous gauge in place and increment a per-chain `fetch_errors_total` counter; the page falls back to the last successful sample."
 
 findings:
-  - "{{name:ethereum}} sits at {{p50:ethereum}} (24 h average), consistent with the 2-epoch Casper FFG design (32 slots × 12 s × 2 = 12.8 min ideal) plus the mid-epoch wait before the countdown starts."
+  - "{{name:ethereum}} sits at {{p50:ethereum}} (p50, 24 h), consistent with the 2-epoch Casper FFG design (32 slots × 12 s × 2 = 12.8 min ideal) plus the mid-epoch wait before the countdown starts."
   - "{{name:tron}}'s solidity confirmation hovers around {{p50:tron}}, exactly the documented 20-block delay at 3 s blocks."
-  - "{{name:litecoin}} and {{name:monero}} sit at {{p50:litecoin}} (p50, 24 h) and {{p50:monero}} (24 h average) by construction, set by the chosen confirmation depth."
+  - "{{name:litecoin}} and {{name:monero}} sit at {{p50:litecoin}} and {{p50:monero}} (p50, 24 h) by construction, set by the chosen confirmation depth."
   - "{{name:bitcoin}} reaches the 6-confirmation deposit convention in {{p50:bitcoin}} (p50, 24 h). This is a convention, not protocol finality: Bitcoin is probabilistic, never finalizes absolutely, and the reorg probability only vanishes with depth."
   - "{{best_name}} currently leads the leaderboard at {{best_p50}} (p50, 24 h) across {{count}} measured chains. {{worst_name}} trails at {{worst_p50}}."
   - "Hedera's Hashgraph aBFT is designed to finalize in 3-5 s but is excluded from the live leaderboard because the mirror node only exposes finalized blocks, wall-clock measurement requires the Block Node service (HIP-1056), still in private preview."
@@ -181,8 +182,8 @@ providers:
 
   - slug: avalanche
     name: Avalanche
-    tag: Snowman++ consensus, measured via WS wall-clock
-    formula: "Median wall-clock milliseconds between a C-Chain block emitting as `latest` and as `finalized` on a persistent WebSocket, p50 over 24h."
+    tag: Snowman consensus, block production to accepted
+    formula: "Median milliseconds from a C-Chain block's production timestamp (ms) to its arrival as `latest` over WebSocket, where it is already accepted and final, p50 over 24h."
     queries:
       p50: quantile_over_time(0.50, l1_finality_wallclock_lag_milliseconds{chain="avalanche"}[24h])
       p90: quantile_over_time(0.90, l1_finality_wallclock_lag_milliseconds{chain="avalanche"}[24h])
@@ -269,7 +270,7 @@ providers:
     tag: 20-block solidity confirmation
     formula: "Mean elapsed time (in ms) between TRON head and solidity-confirmed block via `/wallet/getnowblock` vs `/walletsolidity/getnowblock`, the 20-block irreversibility delay, over 24h."
     queries:
-      p50: avg_over_time(l1_finality_lag_seconds{chain="tron"}[24h]) * 1000
+      p50: quantile_over_time(0.50, l1_finality_lag_seconds{chain="tron"}[24h]) * 1000
       p90: quantile_over_time(0.90, l1_finality_lag_seconds{chain="tron"}[24h]) * 1000
       p99: quantile_over_time(0.99, l1_finality_lag_seconds{chain="tron"}[24h]) * 1000
       mean: avg_over_time(l1_finality_lag_seconds{chain="tron"}[24h]) * 1000
@@ -282,7 +283,7 @@ providers:
     tag: Casper FFG, 2-epoch finalization
     formula: "Mean elapsed time (in ms) between `eth_getBlockByNumber(\"latest\")` and `eth_getBlockByNumber(\"finalized\")` timestamps, the 2-epoch Casper FFG window plus intra-epoch wait, over 24h."
     queries:
-      p50: avg_over_time(l1_finality_lag_seconds{chain="ethereum"}[24h]) * 1000
+      p50: quantile_over_time(0.50, l1_finality_lag_seconds{chain="ethereum"}[24h]) * 1000
       p90: quantile_over_time(0.90, l1_finality_lag_seconds{chain="ethereum"}[24h]) * 1000
       p99: quantile_over_time(0.99, l1_finality_lag_seconds{chain="ethereum"}[24h]) * 1000
       mean: avg_over_time(l1_finality_lag_seconds{chain="ethereum"}[24h]) * 1000
@@ -308,7 +309,7 @@ providers:
     tag: Probabilistic, 10 confirmations
     formula: "Mean elapsed time (in ms) to accumulate 10 Monero confirmations via monero-rpc `get_info` and `get_block_header_by_height` lookback, the conservative probabilistic depth, over 24h."
     queries:
-      p50: avg_over_time(l1_finality_lag_seconds{chain="monero"}[24h]) * 1000
+      p50: quantile_over_time(0.50, l1_finality_lag_seconds{chain="monero"}[24h]) * 1000
       p90: quantile_over_time(0.90, l1_finality_lag_seconds{chain="monero"}[24h]) * 1000
       p99: quantile_over_time(0.99, l1_finality_lag_seconds{chain="monero"}[24h]) * 1000
       mean: avg_over_time(l1_finality_lag_seconds{chain="monero"}[24h]) * 1000
