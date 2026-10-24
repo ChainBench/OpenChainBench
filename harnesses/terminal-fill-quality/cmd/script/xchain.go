@@ -406,6 +406,19 @@ func chainByID(id int64) *originChain {
 	return nil
 }
 
+// cXchainSaleSeen: EVM-origin legs admitted to a reservoir, by the row they
+// land in, their origin chain, and whether their input was a token.
+//
+// It exists to answer one question with data instead of a fourth theory:
+// settleXchainSale sees no candidates while the raw feed carries plenty, so
+// the legs are landing somewhere this bench is not looking.
+var cXchainSaleSeen = prometheus.NewCounterVec(prometheus.CounterOpts{
+	Name: "tfq_xchain_sale_seen_total",
+	Help: "Relay requests leaving an EVM chain for Solana, counted at the attribution gate: verdict=kept means the request was recognised as this app's, not_mine means nothing in it matched the app's declared fee recipients or referrer and it was discarded",
+}, []string{"app", "chain", "verdict"})
+
+func init() { prometheus.MustRegister(cXchainSaleSeen) }
+
 // rowSlug: the bench row a request belongs to. Requests settling on
 // Solana are the app's funding leg (`<app>-funding`); requests leaving
 // Solana for a token on another chain are the app's trading on that
@@ -699,6 +712,20 @@ func (f *xfeed) drainFunded() map[string]map[string]int64 {
 	return out
 }
 
+// cRelayPoll counts what each origin chain's poll actually did.
+//
+// It did not exist, and that is why seven chains could go unread for 24
+// days: on a non-200 the loop returned with no log, no counter and no
+// gauge, while the feed's health gauge stayed up because the Solana poll
+// answered. A refusal with no symptom is the failure this bench keeps
+// finding in itself.
+var cRelayPoll = prometheus.NewCounterVec(prometheus.CounterOpts{
+	Name: "tfq_relay_poll_total",
+	Help: "Relay request-feed polls by origin chain and outcome. refused means a non-200, which until 2026-10-24 returned silently and left that chain's watermark frozen while the feed still reported healthy",
+}, []string{"chain", "outcome"})
+
+func init() { prometheus.MustRegister(cRelayPoll) }
+
 // solanaOrigin is the feed of requests leaving Solana (not an origin
 // chain for gas purposes: the deposit is read from the Solana transaction).
 var solanaOrigin = originChain{solanaChainID, "solana", nil, ""}
@@ -708,11 +735,39 @@ var solanaOrigin = originChain{solanaChainID, "solana", nil, ""}
 // runs out of pages; every new request of a cohort app is counted and,
 // when it settled a token on Solana, offered to the reservoir.
 func (f *xfeed) run(ctx context.Context, interval time.Duration) {
+	// Solana every round, then ONE EVM chain, rotating.
+	//
+	// Nine queries a round is what Relay refuses: measured, it answers the
+	// first two and returns 429 from the third onward. Polling every chain
+	// every round therefore read Solana and Robinhood and silently lost the
+	// rest, which is why their watermarks sat 24 days stale.
+	//
+	// Two a round is inside the limit and still visits each EVM chain every
+	// eight minutes at a 60 s tick, well inside the fifteen minutes of chain
+	// the fill watcher already reaches back over.
+	turn := 0
 	for ctx.Err() == nil {
-		n := f.poll(ctx, solanaOrigin)
-		for _, c := range originChains {
-			n += f.poll(ctx, c)
+		// THE ROTATING CHAIN GOES FIRST, and that ordering is the fix.
+		//
+		// Pacing the number of CHAINS was not enough, because a poll is not
+		// one request: it paginates up to `pages`, and on a cold start
+		// nothing is known so it walks the lot. Solana going first therefore
+		// spent the whole allowance before the EVM chain asked for its first
+		// page, and Relay refused it. Every deploy restarts the container
+		// and reopens exactly that gap, which is why seven chains sat 24
+		// days stale while Solana stayed current.
+		//
+		// Solana still gets polled every round and still carries the bulk of
+		// the flow; it simply no longer starves the one chain whose turn it
+		// is by going first.
+		if len(originChains) > 0 {
+			c := originChains[turn%len(originChains)]
+			turn++
+			cRelayPoll.WithLabelValues(c.slug, "polled").Inc()
+			f.poll(ctx, c)
 		}
+		n := f.poll(ctx, solanaOrigin)
+		cRelayPoll.WithLabelValues("solana", "polled").Inc()
 		n += f.refetchPending(ctx)
 		f.mu.Lock()
 		// Up only when Relay answered at least one poll this round: a dead
@@ -788,6 +843,11 @@ func (f *xfeed) poll(ctx context.Context, c originChain) int {
 			body, _ := io.ReadAll(io.LimitReader(resp.Body, 16<<20))
 			resp.Body.Close()
 			if resp.StatusCode != 200 {
+				// Counted, because returning here with nothing said is what
+				// hid seven chains for 24 days. Relay refuses from the third
+				// request of a round, so this fires on exactly the chains a
+				// nine-query round never reaches.
+				cRelayPoll.WithLabelValues(c.slug, "refused").Inc()
 				return added
 			}
 			var rr relayResp
@@ -901,6 +961,7 @@ func (f *xfeed) count(a xchainApp, c originChain, r relayRaw) bool {
 		b.errs[x.Status]++
 	} else if x.OutTx != "" {
 		b.total++
+
 		if len(b.reservoir) < reservoirSize {
 			b.reservoir = append(b.reservoir, x)
 		} else if j := rand.Intn(b.total); j < reservoirSize {
@@ -1032,6 +1093,20 @@ func classify(a xchainApp, c originChain, r relayRaw) (relayRequest, bool) {
 		// as retired while the filter kept returning its requests.
 		mine = true
 		noteIdentifier(a.Slug, "referrer:"+a.Referrer)
+	}
+	// Every EVM-origin request bound for Solana, counted at the gate that
+	// decides whether it is ours at all.
+	//
+	// The first placement of this sat after the reservoir's status and
+	// OutTx branches, so a zero could mean "never classified" or
+	// "classified and lost afterwards", which are different problems. Here
+	// the label separates them outright.
+	if r.Data.Metadata.CurrencyOut.Currency.ChainID == solanaChainID && c.id != solanaChainID {
+		verdict := "kept"
+		if !mine {
+			verdict = "not_mine"
+		}
+		cXchainSaleSeen.WithLabelValues(a.Slug, c.slug, verdict).Inc()
 	}
 	if !mine {
 		return relayRequest{}, false
