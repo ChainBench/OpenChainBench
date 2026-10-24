@@ -74,6 +74,7 @@ const PRODUCT_ALIASES: Record<string, string> = {
   "getblock-cold": "getblock",
   "quicknode-cold": "quicknode",
   "dwellir-cold": "dwellir",
+  "blockmachine-cold": "blockmachine",
   "validationcloud-cold": "validationcloud",
   // The cost benches 282 and 283 priced Validation Cloud under its hyphenated
   // slug while the RPC cohort uses the one-word one, which built two product
@@ -872,7 +873,10 @@ const buildProvidersCached = unstable_cache(
   // v17: lockstep with bench-unfiltered-v95. Pump Bridge and FOMO · Mobula
   // join bench 268, so the v16 list carries neither appearance, and
   // fomo-mobula gains its first registry entry.
-  ["providers-v17"],
+  // v18: lockstep with bench-unfiltered-v97. BlockMachine gains fourteen
+  // appearances across the seven keyed RPC benches, so the v17 list carries
+  // none of them on /products/blockmachine.
+  ["providers-v18"],
   // 900 s: the provider index feeds products / compare / answers, whose
   // numbers move slowly, and this revalidate is also the effective ISR
   // period of those ~500 pages (Next takes the min across a route's caches).
