@@ -60,3 +60,16 @@ func TestSuiIntervalFromTimestamps(t *testing.T) {
 		t.Fatal("no new checkpoint, no sample")
 	}
 }
+
+func TestProposalLag(t *testing.T) {
+	now := time.UnixMilli(1792865561488)
+	if lag, ok := proposalLag("0x1a16f1d6703", now); !ok || lag != 1165 { // header 1792865560323
+		t.Fatalf("got %v %v, want 1165", lag, ok)
+	}
+	if _, ok := proposalLag("", now); ok {
+		t.Error("no ms timestamp, no sample")
+	}
+	if _, ok := proposalLag("0x1a16f1d6703", now.Add(-2*time.Second)); ok {
+		t.Error("header from the future is skew, not a sample")
+	}
+}

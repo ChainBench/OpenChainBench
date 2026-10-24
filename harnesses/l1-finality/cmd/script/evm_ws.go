@@ -31,11 +31,21 @@ type wsChain struct {
 	// gauge then carries the batch median, not the last block's lag, which
 	// is always the smallest of the batch, and one log line per batch.
 	batch bool
+	// fromProposal: the chain's `latest` is already final, so time it from
+	// the header's millisecond production timestamp to its arrival here.
+	fromProposal bool
 }
 
 var wallClockChains = []wsChain{
 	{slug: "bnb", url: "wss://bsc-rpc.publicnode.com"},
-	{slug: "avalanche", url: "wss://avalanche-c-chain-rpc.publicnode.com/ext/bc/C/ws"},
+	// Avalanche C-Chain runs Streaming Asynchronous Execution (ACP-194)
+	// since the 2026-09-22 ~15:00 UTC upgrade: `latest` is the last executed
+	// block, already accepted and so final under Snowman, while `finalized`
+	// is the last SETTLED block, tau = 5 s later. latest -> finalized jumped
+	// from ~1.4 s to ~6 s that afternoon and measured the settlement delay,
+	// a config constant. The figure is now block production
+	// (timestampMilliseconds, proposer clock) -> first seen as latest.
+	{slug: "avalanche", url: "wss://avalanche-c-chain-rpc.publicnode.com/ext/bc/C/ws", fromProposal: true},
 	// Robinhood Chain (Arbitrum Orbit, ~100 ms blocks): `finalized` moves
 	// when a posted batch is finalized on the parent chain, ~10,000 blocks
 	// at a time. The official wss endpoint delivered no heads on 2026-10-24.
@@ -114,8 +124,9 @@ type evmSubEvent struct {
 	Params  *struct {
 		Subscription string `json:"subscription"`
 		Result       struct {
-			Number    string `json:"number"`
-			Timestamp string `json:"timestamp"`
+			Number      string `json:"number"`
+			Timestamp   string `json:"timestamp"`
+			TimestampMs string `json:"timestampMilliseconds"`
 		} `json:"result"`
 	} `json:"params,omitempty"`
 	Result *struct {
@@ -184,6 +195,9 @@ func runWSChain(ch wsChain) error {
 	stopPoll := make(chan struct{})
 	defer close(stopPoll)
 	go func() {
+		if ch.fromProposal {
+			return // `finalized` is not the figure on these chains
+		}
 		t := time.NewTicker(1 * time.Second)
 		defer t.Stop()
 		for {
@@ -218,6 +232,12 @@ func runWSChain(ch wsChain) error {
 			continue
 		}
 		if ev.Method == "eth_subscription" && ev.Params != nil {
+			if ch.fromProposal {
+				if lag, ok := proposalLag(ev.Params.Result.TimestampMs, time.Now()); ok {
+					recordWallClock(ch.slug, lag)
+				}
+				continue
+			}
 			n := parseHexInt(ev.Params.Result.Number)
 			if n > 0 {
 				st.recordLatest(n)
@@ -290,4 +310,24 @@ func (st *wsState) recordFinal(blockNum int64, now time.Time) {
 			delete(st.firstSeen, h)
 		}
 	}
+}
+
+// proposalLag is arrival minus the header's millisecond timestamp. Readings
+// outside 0..60 s are clock skew or a stale replay, not finality.
+func proposalLag(tsMsHex string, now time.Time) (float64, bool) {
+	ms := parseHexInt(tsMsHex)
+	if ms <= 0 {
+		return 0, false
+	}
+	lag := float64(now.UnixMilli() - ms)
+	if lag < 0 || lag > 60000 {
+		return 0, false
+	}
+	return lag, true
+}
+
+func recordWallClock(slug string, lagMs float64) {
+	wallClockLagGauge.WithLabelValues(slug).Set(lagMs)
+	wallClockLagSum.WithLabelValues(slug).Observe(lagMs)
+	wallClockSampleCtr.WithLabelValues(slug).Inc()
 }
