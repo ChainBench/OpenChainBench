@@ -236,6 +236,9 @@ const CANONICAL_NAMES: Record<string, string> = {
   "fomo-mobula": "FOMO \u00b7 Mobula",
   "pump-fun": "pump.fun",
   "pump-bridge": "Pump Bridge",
+  // Camel-cased by its own site and docs. titleCaseSlug would render it
+  // "Blockmachine" on every surface that titles a product from this table.
+  blockmachine: "BlockMachine",
 };
 
 function titleCaseSlug(s: string): string {

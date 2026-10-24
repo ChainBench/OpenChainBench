@@ -23,7 +23,17 @@ type Endpoint struct {
 
 // matrix declares which (provider, chain) cells we look for in env.
 // Kind is derived from the chain.
-var providers = []string{"infura", "alchemy", "chainstack", "ankr", "helius", "quicknode", "getblock", "dwellir", "validationcloud"}
+// BlockMachine (2026-10-24) carries its key in a query parameter rather than
+// in the path, which every other provider here uses. Nothing in this harness
+// changes for it: a whole URL still comes from env and no custom header is
+// sent. Their docs offer Authorization: Bearer and X-API-Key as well, and are
+// explicit that the header wins when set, so the query form is the one that
+// works through a URL-only config. Verified against each chain before it was
+// declared: eth_chainId returned the right id on all seven, and
+// eth_blockNumber answered with the key in the query and no header at all.
+// They serve neither Solana nor HyperEVM, so those two cells stay empty and
+// the matrix skips them on its own.
+var providers = []string{"infura", "alchemy", "chainstack", "ankr", "helius", "quicknode", "getblock", "dwellir", "validationcloud", "blockmachine"}
 
 // Per-provider probe-interval multiplier. Infura's free tier 402'd daily
 // at the old 60 s cadence (its real daily credit budget is below the
