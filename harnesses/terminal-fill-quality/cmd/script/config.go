@@ -202,8 +202,20 @@ var terminals = []Terminal{
 	// split between this wallet (12 to 85 %, ~2,600 transactions an hour) and
 	// per-user or referrer accounts. Failed swaps leave no fee transaction:
 	// the fail rate is not measured on this row.
-	{Slug: "basedbot", Name: "BasedBot", Kind: "bot", Wallets: []string{"HR6xhpJYYiTvmAtUZvpLMN7qbr6TxCw1Sgq3fab8vCoa"}, FeeTx: true,
-		Note: "BasedBot's Solana swap runs through Jupiter with no fee inside; its 1 % fee (about $0.10 minimum) is a separate transaction right after, to its wallet and per-user accounts: the whole of it is terminal fee, its transaction fee is network. The fee is charged after a successful swap only, so failed swaps are not seen: no fail rate on this row."},
+	// FeeTx was true until 2026-10-24 and described a charge BasedBot no
+	// longer makes. Read on chain that day: of 30 transactions crediting
+	// HR6x, 30 invoke a swap program in the SAME transaction (Jupiter v6
+	// on all of them, over the pump.fun curve, PumpSwap, Meteora DLMM and
+	// Whirlpool) and NONE is a standalone fee transfer.
+	//
+	// Under FeeTx the harness took the payer's PREVIOUS transaction as the
+	// swap and added the sampled one's whole SOL outflow to both the fee
+	// and user_q, so the row read 41 parsed and 0 priced, with a terminal
+	// component between 1,479 and 70,142 bps against a 1 % fee and 27 of
+	// 42 rows dropped out_of_bounds. The wallet was already declared, so
+	// the ordinary path needs nothing else.
+	{Slug: "basedbot", Name: "BasedBot", Kind: "bot", Wallets: []string{"HR6xhpJYYiTvmAtUZvpLMN7qbr6TxCw1Sgq3fab8vCoa"},
+		Note: "BasedBot's Solana swap runs through Jupiter and takes its 1 % fee (about $0.10 minimum) inside the same transaction, to its wallet and per-user accounts: the whole of it is terminal fee, its transaction fee is network. Failed swaps are visible on this path, so the row carries a fail rate."},
 	// "Takes no fee of its own" was wrong, and the row read 0 in Terminal
 	// because of it: the app's fee was landing in Protocol fees instead.
 	//
