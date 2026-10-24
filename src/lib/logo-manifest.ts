@@ -297,6 +297,7 @@ const RAW: Record<string, string> = {
   other: "/logos/other.svg",
   bebop: "/logos/bebop.svg",
   kyberswap: "/logos/kyberswap.svg",
+  nordstern: "/logos/nordstern.svg",
   paraswap: "/logos/paraswap.png",
   relay: "/logos/relay.svg",
   lifi: "/logos/lifi.png",

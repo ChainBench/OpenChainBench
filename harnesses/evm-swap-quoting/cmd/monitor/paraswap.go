@@ -35,9 +35,18 @@ func NewParaSwapProvider(region string) *ParaSwapProvider {
 
 func (p *ParaSwapProvider) Slug() string { return "paraswap" }
 
+// 4663 is Robinhood Chain, added 2026-10-25 after asking rather than
+// assuming: the board showed three of nine aggregators there, and the six
+// absences were THIS list, not a measurement. ParaSwap answers the
+// harness's own Robinhood pair (0.1 ETH to USDG) with a full priceRoute at
+// network 4663, so the row was empty because we never asked.
+//
+// Checked at the same time and NOT added: CoW serves mainnet, base and
+// arbitrum_one and answers 404 on robinhood, so its empty row is correct
+// and belongs there.
 func (p *ParaSwapProvider) Supports(chainId int) bool {
 	switch chainId {
-	case 1, 10, 56, 137, 8453, 42161, 43114:
+	case 1, 10, 56, 137, 8453, 42161, 43114, 4663:
 		return true
 	}
 	return false
