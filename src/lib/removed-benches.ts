@@ -436,6 +436,14 @@ export const REMOVED_PRODUCT_SLUGS = new Set([
   // the provider in getProviders() output while the page 404s; 410 guard
   // + sitemap exclusion stop the smoke-gate rollback until Redis flushes.
   "goldrush",
+  // 0x left benches 304 and 033 on 2026-10-25, so it is measured nowhere
+  // and getProvider("0x") returns nothing: the page 404s instead of 410ing,
+  // and /products/0x was a 200 listed in the sitemap. Same shape as the
+  // goldrush note above and the reason it matters twice: the worker's blob
+  // keeps the provider in its product list for a sweep or two after the
+  // spec changes, so without this the sitemap keeps advertising a URL that
+  // has started 404ing, which is what rolled the Blast deploy back.
+  "0x",
   // zerion and routescan appear in stale Redis results from retired benches
   // (indexing-freshness for zerion, explorer-chain-coverage for routescan)
   // but have no /products/<slug> page. 410 guard prevents smoke-gate failures.
