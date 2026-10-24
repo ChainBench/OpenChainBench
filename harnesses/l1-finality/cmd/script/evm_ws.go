@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -26,11 +27,19 @@ import (
 type wsChain struct {
 	slug string
 	url  string
+	// batch: finality lands thousands of blocks at a time (rollups). The
+	// gauge then carries the batch median, not the last block's lag, which
+	// is always the smallest of the batch, and one log line per batch.
+	batch bool
 }
 
 var wallClockChains = []wsChain{
 	{slug: "bnb", url: "wss://bsc-rpc.publicnode.com"},
 	{slug: "avalanche", url: "wss://avalanche-c-chain-rpc.publicnode.com/ext/bc/C/ws"},
+	// Robinhood Chain (Arbitrum Orbit, ~100 ms blocks): `finalized` moves
+	// when a posted batch is finalized on the parent chain, ~10,000 blocks
+	// at a time. The official wss endpoint delivered no heads on 2026-10-24.
+	{slug: "robinhood", url: "wss://robinhood-rpc.publicnode.com", batch: true},
 }
 
 var (
@@ -84,6 +93,7 @@ type wsState struct {
 	url       string
 	mu        sync.Mutex
 	firstSeen map[int64]time.Time
+	batch     bool
 	frozen    map[int64]time.Time // Solana only: slot fully received and replayed
 	lastFinal int64
 	idCtr     int
@@ -156,6 +166,7 @@ func runWSChain(ch wsChain) error {
 		slug:      ch.slug,
 		url:       ch.url,
 		firstSeen: map[int64]time.Time{},
+		batch:     ch.batch,
 		conn:      conn,
 	}
 
@@ -242,16 +253,35 @@ func (st *wsState) recordFinal(blockNum int64, now time.Time) {
 	if blockNum <= st.lastFinal {
 		return
 	}
+	// First finalized reading after a (re)connect: nothing seen since the
+	// connect can be at or below it, and walking from block 1 to the head
+	// is ~100M map lookups under the lock.
+	if st.lastFinal == 0 {
+		st.lastFinal = blockNum
+		return
+	}
+	var lags []float64
 	for h := st.lastFinal + 1; h <= blockNum; h++ {
 		if t, ok := st.firstSeen[h]; ok {
 			lagMs := float64(now.Sub(t).Milliseconds())
 			if lagMs >= 0 {
-				wallClockLagGauge.WithLabelValues(st.slug).Set(lagMs)
 				wallClockLagSum.WithLabelValues(st.slug).Observe(lagMs)
 				wallClockSampleCtr.WithLabelValues(st.slug).Inc()
+				if st.batch {
+					lags = append(lags, lagMs)
+					continue
+				}
+				wallClockLagGauge.WithLabelValues(st.slug).Set(lagMs)
 				fmt.Fprintf(os.Stdout, "[L1][%s] block=%d wall-clock-lag=%.0fms\n", st.slug, h, lagMs)
 			}
 		}
+	}
+	if len(lags) > 0 {
+		sort.Float64s(lags)
+		med := lags[len(lags)/2]
+		wallClockLagGauge.WithLabelValues(st.slug).Set(med)
+		fmt.Fprintf(os.Stdout, "[L1][%s] finalized=%d batch=%d blocks median-lag=%.0fms range=%.0f-%.0fms\n",
+			st.slug, blockNum, len(lags), med, lags[0], lags[len(lags)-1])
 	}
 	st.lastFinal = blockNum
 

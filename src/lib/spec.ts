@@ -512,7 +512,9 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // v97: BlockMachine joins the keyed cohort on the seven chains it serves,
   // warm and cold, so fourteen provider rows appear across seven specs. Those
   // specs declare region and tier, so bench-filters moves with this one.
-  ["bench-unfiltered-v97", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v98: Robinhood Chain joins l1-finality. No dimensions there, so
+  // bench-filters stays.
+  ["bench-unfiltered-v98", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -763,7 +765,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v89: lockstep with bench-unfiltered-v96 (WebSocket race copy).
   // v90: lockstep with bench-unfiltered-v97 (BlockMachine joins the keyed
   // cohort on seven chains).
-  ["all-benchmarks-v90", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v91: lockstep with bench-unfiltered-v98 (Robinhood Chain on l1-finality).
+  ["all-benchmarks-v91", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
