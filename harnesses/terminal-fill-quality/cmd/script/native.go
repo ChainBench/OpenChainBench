@@ -9,6 +9,7 @@ import (
 	"math/rand"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -68,7 +69,24 @@ type evmTerminal struct {
 	// more in the window are farming (Binance Alpha volume on Base, fee-free
 	// round trips): their swaps stay out of the row's statistics.
 	DropLoops bool
-	Note      string
+	// NoFailRate: this route's failures are INVISIBLE to the counter, so no
+	// fail rate may be published for it at any size of sample.
+	//
+	// Pump Bridge is the case. A native EVM row's failures are reverts found
+	// in the block sample, and pump's bridge does not fail by reverting: the
+	// EVM leg succeeds and the cross-chain delivery is what does or does not
+	// arrive. So the sample finds zero reverts however long it runs, 102
+	// transactions clears sampledEnough, and the row published 0.00 % on
+	// All chains, BNB and Base, next to a methodology bullet saying this
+	// route publishes no fail rate. Both halves were live at once.
+	//
+	// A zero here is not a small error. It is the strongest possible claim
+	// about reliability, made about the one route whose reliability this
+	// counter cannot see, and it beat every other product on the board.
+	// Absence dressed as a measurement, which is the failure the guard above
+	// this field's use was written to stop and did not.
+	NoFailRate bool
+	Note       string
 }
 
 var evmTerminals = []evmTerminal{
@@ -101,18 +119,18 @@ var evmTerminals = []evmTerminal{
 	//
 	// Ink, MegaETH and X Layer are absent for want of an RPC. Relay serves
 	// neither MegaETH nor X Layer, so Pump Bridge is the only route there.
-	{Slug: "pump-bridge-bnb", Name: "Pump Bridge · BNB", Kind: "app", Chain: "bnb",
+	{Slug: "pump-bridge-bnb", Name: "Pump Bridge · BNB", Kind: "app", NoFailRate: true, Chain: "bnb",
 		Routers: []string{"0x836b336fca26913176efc45a5a6e5e72cd7bd13b"}},
-	{Slug: "pump-bridge-base", Name: "Pump Bridge · Base", Kind: "app", Chain: "base",
+	{Slug: "pump-bridge-base", Name: "Pump Bridge · Base", Kind: "app", NoFailRate: true, Chain: "base",
 		Routers: []string{"0x836b336fca26913176efc45a5a6e5e72cd7bd13b"}},
-	{Slug: "pump-bridge-arc", Name: "Pump Bridge · Arc", Kind: "app", Chain: "arc",
+	{Slug: "pump-bridge-arc", Name: "Pump Bridge · Arc", Kind: "app", NoFailRate: true, Chain: "arc",
 		Routers: []string{"0x836b336fca26913176efc45a5a6e5e72cd7bd13b"}},
 	// Ethereum, added 2026-10-23. The router is deployed and used there (172
 	// transfers in over 600 blocks) and the chain already has a tab on this
 	// bench, so the route was measurable and simply undeclared. See
 	// pumpRouters for why the dominance threshold that nearly excluded it
 	// was wrong.
-	{Slug: "pump-bridge-ethereum", Name: "Pump Bridge · Ethereum", Kind: "app", Chain: "ethereum",
+	{Slug: "pump-bridge-ethereum", Name: "Pump Bridge · Ethereum", Kind: "app", NoFailRate: true, Chain: "ethereum",
 		Routers: []string{"0x836b336fca26913176efc45a5a6e5e72cd7bd13b"}},
 	// SizeWord: word 2 of this router's own event equals the USDG amount of
 	// the transaction. Checked on 3,858 events over a 40-minute window with
@@ -133,7 +151,7 @@ var evmTerminals = []evmTerminal{
 	// Declared here and nowhere else:
 	// this is the one chain measured to carry dust (97.5% of transfers under
 	// $0.25 against zero on Base and BNB) and the one layout verified.
-	{Slug: "pump-bridge-robinhood", Name: "Pump Bridge · Robinhood Chain", Kind: "app", Chain: "robinhood",
+	{Slug: "pump-bridge-robinhood", Name: "Pump Bridge · Robinhood Chain", Kind: "app", NoFailRate: true, Chain: "robinhood",
 		Routers:  []string{"0x5399d94d2cab7c252a6034042e1917a0e5e17a18"},
 		SizeWord: map[string]int{"0xcdad023039fb3b146aa9902d31a2512a3d2c7180d901044aa17f6d69fb0683c1": 2},
 		SizeDec:  6},
@@ -143,9 +161,9 @@ var evmTerminals = []evmTerminal{
 	// readable at all; MegaETH carries the router and has never
 	// executed a transaction (nonce 0), declared anyway so its first
 	// trade is caught rather than noticed later. See xchain.go.
-	{Slug: "pump-bridge-megaeth", Name: "Pump Bridge · MegaETH", Kind: "app", Chain: "megaeth",
+	{Slug: "pump-bridge-megaeth", Name: "Pump Bridge · MegaETH", Kind: "app", NoFailRate: true, Chain: "megaeth",
 		Routers: []string{"0x836b336fca26913176efc45a5a6e5e72cd7bd13b"}},
-	{Slug: "pump-bridge-xlayer", Name: "Pump Bridge · X Layer", Kind: "app", Chain: "xlayer",
+	{Slug: "pump-bridge-xlayer", Name: "Pump Bridge · X Layer", Kind: "app", NoFailRate: true, Chain: "xlayer",
 		Routers: []string{"0x836b336fca26913176efc45a5a6e5e72cd7bd13b"}},
 	{Slug: "gmgn-bnb", Name: "GMGN · BNB", Kind: "app", Chain: "bnb", Routers: []string{"0x1de460f363af910f51726def188f9004276bf4bc"}, Collector: "0xb8159ba378904f803639d274cec79f788931c9c8"},
 	// GMGN's Robinhood Chain router: the emitter of GMGN's swap-end event
@@ -360,6 +378,24 @@ func isNativeEVM(slug string) bool {
 	for _, t := range evmTerminals {
 		if t.Slug == slug {
 			return true
+		}
+	}
+	return false
+}
+
+// noFailRate reports whether a row's failures are invisible to the fail-rate
+// counter, so no rate may be published for it at any sample size.
+//
+// Separate from sampledEnough on purpose. sampledEnough asks "have we seen
+// enough to measure", and the answer can become yes with time; this asks
+// "can this counter see this route's failures at all", and the answer never
+// changes. Conflating them is what let Pump Bridge publish 0.00 %: it had
+// 102 sampled transactions, which is plenty, of a kind of failure that does
+// not exist on that route.
+func noFailRate(slug string) bool {
+	for _, t := range evmTerminals {
+		if t.Slug == slug {
+			return t.NoFailRate
 		}
 	}
 	return false
@@ -780,10 +816,56 @@ func (f *nativeFeed) poll(ctx context.Context) {
 		}
 		for slug, n := range others {
 			if n > 0 {
+				noteOutsideSet(slug, n)
 				log.Printf("[native] %s: %d router swaps by wallets outside the funded set this tick (not counted)", slug, n)
 			}
 		}
 	}
+}
+
+// cOutsideSet counts router swaps this bench declines to attribute because
+// the sender is not a wallet the app funded through Relay.
+//
+// BasedBot reads shared routers: a chain's own aggregator serves every front
+// end on it, so the address alone proves nothing and only the wallets the app
+// funded are its users. That filter is right and it is also why six of its
+// EVM rows are empty, which until now was visible ONLY in a log line.
+//
+// An empty row reads as "this product does not trade here". The truth is
+// "it trades here on a shared router and none of the senders this tick were
+// wallets we know it funded", and those are different facts.
+var cOutsideSet = prometheus.NewCounterVec(prometheus.CounterOpts{
+	Name: "tfq_outside_funded_set_total",
+	Help: "Router swaps not counted for a row because the sender is not a wallet the app funded through Relay. A row that is empty while this climbs is an attribution limit, not an absence of trading",
+}, []string{"terminal"})
+
+func init() { prometheus.MustRegister(cOutsideSet) }
+
+// outsideSet: the same tally, readable in-process so the publisher can put
+// the reason on the row rather than leaving the reader to find the metric.
+var outsideSet struct {
+	sync.Mutex
+	n map[string]int
+}
+
+func noteOutsideSet(slug string, n int) {
+	if slug == "" || n <= 0 {
+		return
+	}
+	cOutsideSet.WithLabelValues(slug).Add(float64(n))
+	outsideSet.Lock()
+	if outsideSet.n == nil {
+		outsideSet.n = map[string]int{}
+	}
+	outsideSet.n[slug] += n
+	outsideSet.Unlock()
+}
+
+// outsideSetSeen reports how many swaps a row has declined to attribute.
+func outsideSetSeen(slug string) int {
+	outsideSet.Lock()
+	defer outsideSet.Unlock()
+	return outsideSet.n[slug]
 }
 
 func (f *nativeFeed) drain(slug string) (seen int, sample []string, total int) {
@@ -1391,6 +1473,14 @@ func nativeRow(ctx context.Context, httpc *http.Client, t evmTerminal, hash stri
 				}
 				cPumpOrder.WithLabelValues(t.Chain, "sell", "joined").Inc()
 				pumpSaleRecv = pay.amount
+				// The sale direction's settlement, which nothing published
+				// before: pay.at is the Solana delivery's block time and bn
+				// is the EVM block this sale landed in. The chain label on a
+				// settlement is the DESTINATION, so this is the one place a
+				// Pump Bridge sample carries chain="solana". Costs no extra
+				// read beyond the origin block's timestamp, which pumpBlockAt
+				// serves from its cache.
+				noteSettlePumpSale(order, pumpBlockAt(ctx, httpc, *c, t.Chain, bn), pay.at)
 			}
 		}
 		s, err := priceEvmOriginSale(ctx, httpc, *c, hash, user, token, gas)

@@ -37,6 +37,7 @@ import (
 	"math"
 	"math/big"
 	"net/http"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -934,10 +935,30 @@ func loadSettleWindow(in []settleRecord, savedAt, now int64) int {
 	if pumpSettleWindow.by == nil {
 		pumpSettleWindow.by = map[settleKey][]float64{}
 	}
-	n := 0
+	// PURGE_SETTLE (comma-separated "<product>:<kind>" or bare "<product>")
+	// drops saved settlement samples once, for the same reason
+	// PURGE_TERMINALS exists: a fix at write time leaves the already-stored
+	// records wrong until the window turns, and a settlement window turns
+	// slowly.
+	//
+	// The case it was added for: both timing paths ran on <app>-funding
+	// rows and labelled transfers as trades, so BasedBot published 689
+	// trade settlements and a 1,423 ms figure for bridged trades it never
+	// makes. The guard now stops new ones; these drop the old.
+	purge := map[string]bool{}
+	for _, p := range strings.Split(os.Getenv("PURGE_SETTLE"), ",") {
+		if p = strings.TrimSpace(p); p != "" {
+			purge[p] = true
+		}
+	}
+	n, dropped := 0, 0
 	kinds := map[[2]string]bool{}
 	for _, r := range in {
 		if r.Terminal == "" || r.Kind == "" || r.Chain == "" || len(r.Took) == 0 {
+			continue
+		}
+		if purge[r.Terminal] || purge[r.Terminal+":"+r.Kind] {
+			dropped += len(r.Took)
 			continue
 		}
 		v := r.Took
@@ -949,6 +970,9 @@ func loadSettleWindow(in []settleRecord, savedAt, now int64) int {
 		n += len(v)
 	}
 	pumpSettleWindow.Unlock()
+	if dropped > 0 {
+		log.Printf("[settle] dropped %d saved samples named by PURGE_SETTLE=%q", dropped, os.Getenv("PURGE_SETTLE"))
+	}
 
 	// Republish from the restored samples. noteSettle only publishes for the
 	// route it was called about, so without this the gauges stay empty until

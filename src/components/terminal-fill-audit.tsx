@@ -27,7 +27,7 @@ export async function TerminalFillAudit({ exec }: { exec?: boolean } = {}) {
             hash to open it on Solscan and check every figure against the transaction&apos;s balances: Loss = 1 − value received / value
             given; Fee + Net + Protocol + Pool (+ Relay on the cross-chain rows) = Loss.{" "}
             {exec ? "Exec is the figure this bench ranks on: the same loss with the app's own fee taken out, on each swap, before any median is taken. " : ""}Ref says what the tokens were valued at
-            (reserves: the pool&apos;s exact mid before the swap; pool: the previous trade on the same pool, age in seconds). A{" "}
+            (reserves: the pool&apos;s exact mid before the swap, from its balances; event: the venue&apos;s own swap event; pool: the previous trade on the same pool, age in seconds). A{" "}
             <span className="font-mono">!</span> marks a row outside the plausible bounds, kept out of the statistics.
           </p>
         </div>

@@ -29,6 +29,7 @@ import (
 	"context"
 	"encoding/binary"
 	"encoding/json"
+	"fmt"
 	"log"
 	"math"
 	"math/big"
@@ -307,6 +308,13 @@ type TerminalStats struct {
 	/** Native EVM terminals: the fail rate comes from a block sample (transactions sent to the routers, reverted or not), these are its counts. */
 	SampSeen   int `json:"sampled_attempts,omitempty"`
 	SampFailed int `json:"sampled_failed,omitempty"`
+	/** Hours of trading this row's surviving swaps actually span, oldest to now.
+	 *  The window the page advertises is a ceiling, not a promise: after a method
+	 *  drop, a purge or a cold start the rows cover less, and a figure built on
+	 *  four hours under a label reading twenty-four is the kind of claim this
+	 *  bench exists not to make. Derived from the rows rather than from an event
+	 *  flag, because a flag can only mark an event it was present for. */
+	CoversHours float64 `json:"covers_hours,omitempty"`
 	/** The base of the fail rate: the feed's attempts (Solana), the block sample's (native EVM), both on a pooled product. */
 	Attempts       int `json:"attempts"`
 	AttemptsFailed int `json:"attempts_failed"`
@@ -423,6 +431,7 @@ func main() {
 	perTickEVM := float64(evmDailyTarget) * tick.Seconds() / 86400
 	perTickFail := float64(envInt("FAIL_DAILY_TARGET", 40)) * tick.Seconds() / 86400 // failed attempts read per terminal per day
 	windowHours := envInt("WINDOW_HOURS", 24)
+	publishedWindowHours = windowHours
 	minPriced := envInt("MIN_PRICED", 50)
 	minRank := envInt("MIN_RANK", 100)
 	// A size bucket holds roughly a third of a terminal's sample, so it
@@ -533,6 +542,14 @@ func main() {
 	mbf := newMobulaFeed()
 	go mbf.run(context.Background(), rpc, time.Minute)
 	go mfw.run(context.Background(), httpc, 2*time.Minute)
+	// And the sale direction, which is where the settlement panel's Solana
+	// tab comes from: the deposit feed reads the solver's USDC token account
+	// because that is where a BUY lands, while a sale is signed and fee-paid
+	// by the solver itself and is found on the solver address. Every minute,
+	// like the deposit side, for the same reason: one signatures call plus a
+	// read per signature.
+	msf := newMobulaSaleFeed()
+	go msf.run(context.Background(), rpc, httpc, time.Minute)
 	var mu sync.RWMutex
 	var pub *Public
 
@@ -824,9 +841,18 @@ func priceSwap(ctx context.Context, rpc *rpcClient, sw *Swap, tx *parsedTx, pool
 	// account constants can be stale, and a Raydium CP-Swap vault holds
 	// protocol, fund and creator fees that the curve excludes — its event
 	// reports the reserves it actually used.
+	// refSrc names the PRODUCER, not the family. All three branches below
+	// used to write "reserves", so a row could not say which of two
+	// different computations had made its reference, and the audit table's
+	// tooltip promised the pool's exact mid for every one of them. That cost
+	// two sessions an evening on a row published at -848,570,771,090 bps
+	// whose stored reserves turned out to be correct: with one label on
+	// three producers there was no way to ask which had written it.
+	// reservePrice keeps "reserves" so the published breakdown and the
+	// tooltip stay true for it; the event path says so.
 	if sw.Venue == "pump-curve" || sw.Venue == "raydium-cpmm" {
 		if p, ok := eventMid(ctx, rpc, sw, tx, solUSD); ok {
-			sw.finalize(&p, 0, "reserves")
+			sw.finalize(&p, 0, "event")
 		}
 	}
 	if sw.RefSrc == "" && sw.PoolBasePre > 0 && sw.PoolQuotePre > 0 {
@@ -836,7 +862,7 @@ func priceSwap(ctx context.Context, rpc *rpcClient, sw *Swap, tx *parsedTx, pool
 	}
 	if sw.RefSrc == "" {
 		if p, ok := eventMid(ctx, rpc, sw, tx, solUSD); ok {
-			sw.finalize(&p, 0, "reserves")
+			sw.finalize(&p, 0, "event")
 		}
 	}
 	if sw.PoolVault == "" {
@@ -949,8 +975,17 @@ func settleXchainTodo(sample []relayRequest, done map[string]bool, limit int) []
 // re-walks requests after a restart and a request timed twice would inflate
 // the sample behind a published mean while looking like more data.
 func settleXchain(ctx context.Context, rpc *rpcClient, httpc *http.Client, slug string, sample []relayRequest, done map[string]bool) int {
-	product, _ := settleRoute(slug)
+	product, chain := settleRoute(slug)
 	if product == "" {
+		return 0
+	}
+	// A funding row's legs are TRANSFERS, not bridged trades, and they are
+	// already timed as funding at main.go's funding path. Timing them here
+	// as well labels the same leg a trade and pools two populations the
+	// settleKey exists to keep apart: BasedBot, which makes no bridged
+	// trade at all, published 689 trade settlements and a 1,423 ms figure
+	// next to a methodology line saying these legs are not trades.
+	if chain == "funding" {
 		return 0
 	}
 	todo := settleXchainTodo(sample, done, settleXchainPerTick)
@@ -1034,6 +1069,11 @@ func sampleXchain(ctx context.Context, rpc *rpcClient, httpc *http.Client, st *S
 		// what separates a settlement count bound by the pricing quota from
 		// one bound by the flow.
 		added += settleXchain(ctx, rpc, httpc, slug, sample, xchainTimed)
+		// And the other direction. Half the bridged flow lands on Solana
+		// (19 of 39 legs in the feed on 2026-10-23) and nothing timed it,
+		// which is why the settlement panel's Solana tab held no series at
+		// all. Same dedupe map: request ids are unique across directions.
+		added += settleXchainSale(ctx, rpc, httpc, slug, sample, xchainTimed)
 		if total == 0 {
 			continue
 		}
@@ -1892,6 +1932,13 @@ func dedupeAcrossProducers(swaps []Swap) (kept []Swap, dropped map[string]int) {
 	return kept, dropped
 }
 
+// publishedWindowHours: the span the PAGE advertises, set from WINDOW_HOURS
+// at start-up. compute() needs it to tell a full window from a refilling
+// one, and cannot reach main()'s local. Defaulted to the 24 the spec states,
+// so a build that forgets to set it still compares against the number a
+// reader sees rather than against zero.
+var publishedWindowHours = 24
+
 func compute(st *State, minPriced, minRank int) []TerminalStats {
 	// Before anything reads the window: one fill must not be two rows.
 	if kept, dropped := dedupeAcrossProducers(st.Swaps); len(dropped) > 0 {
@@ -1928,16 +1975,60 @@ func compute(st *State, minPriced, minRank int) []TerminalStats {
 		if minChain := max(20, minPriced/2); ts.Priced >= minChain {
 			ts.Healthy = true
 		}
-		if t0, ok := st.Resampling[t.Slug]; ok && !ts.Healthy {
-			ts.Note = strings.TrimSpace(ts.Note + " Re-sampling since " + time.Unix(t0, 0).UTC().Format("15:04 UTC") + " after a method change: the figure returns when the window refills.")
+
+		// A row whose sample is one side only with no fee on it (Banana Gun's
+		// Ethereum buys) reads a fee-free half of the product: the fee sits
+		// on the side the feed never sees, so the row waits.
+		//
+		// The isNativeEVM gate this used to carry made the hold miss the row
+		// that needed it most. FOMO · Mobula is buys only on all four of its
+		// chains and its terminal fee is not measurable at all, yet it was
+		// ranked, because it is not a native EVM row. The rule has nothing to
+		// do with how a row is read: a one-sided sample with no fee on that
+		// side is half a product whatever produced it.
+		//
+		// _, feeSeen distinguishes the two reasons the fee is not there:
+		// absent because this route's fee cannot be seen (TerminalUnknown),
+		// or present and genuinely small. Both mean the same thing here, and
+		// spelling it out stops the condition resting on a zero value.
+		_, feeSeen := ts.Components["terminal"]
+		if ts.Parsed >= 20 && (ts.BuySharePct >= 99 || ts.BuySharePct <= 1) &&
+			(!feeSeen || ts.Components["terminal"] < 5) {
+			// How far to hold depends on whether the LOSS is whole, which is
+			// not the same question as whether the fee is named.
+			//
+			// Banana Gun: the fee is measured and tiny on the side we see,
+			// so it is being taken on the side we do not, and the published
+			// loss is missing it. The number itself is wrong, so the row
+			// waits.
+			//
+			// FOMO · Mobula: the fee is UNMEASURABLE, which on this rail
+			// means it is taken inside the bridge's quote and therefore
+			// already inside the loss, in the bridge column. The loss is
+			// whole and describes the buys correctly; what it cannot do is
+			// stand beside two-sided products in a ranking. Holding the row
+			// entirely made it read "unresponsive" on the main view, which
+			// says a trading product is dead. That is a worse lie than the
+			// one it replaced, so the figure is published and not ranked.
+			if feeSeen {
+				ts.Healthy = false
+				heldStructural[t.Slug] = true
+				ts.Note = strings.TrimSpace(ts.Note + " One side only in the sample with no fee on it: the fee is taken on the side this feed never sees, so the row waits until both sides are read.")
+			} else {
+				ts.Note = strings.TrimSpace(ts.Note + " One side only in the sample and this route's fee cannot be seen separately: it is taken inside the bridge's quote, so it is already in the loss under Bridge. The figure is published and not ranked until both sides are read.")
+			}
+			ts.Ranked = false
 		}
-		// A native EVM row whose sample is one side only with no fee on it
-		// (Banana Gun's Ethereum buys) reads a fee-free half of the product:
-		// the fee sits on the side the feed never sees, the row waits.
-		if isNativeEVM(t.Slug) && ts.Parsed >= 20 && (ts.BuySharePct >= 99 || ts.BuySharePct <= 1) && ts.Components["terminal"] < 5 {
-			ts.Healthy, ts.Ranked = false, false
-			heldStructural[t.Slug] = true
-			ts.Note = strings.TrimSpace(ts.Note + " One side only in the sample with no fee on it: the fee is taken on the side this feed never sees, so the row waits until both sides are read.")
+		// A row that parsed nothing while the feed kept declining senders is
+		// an ATTRIBUTION LIMIT, not an absence of trading. BasedBot reads
+		// shared routers, so only the wallets it funded through Relay are
+		// its users; six of its EVM rows are empty for that reason and the
+		// fact lived in a log line no reader of this bench will ever see.
+		if ts.Parsed == 0 {
+			if n := outsideSetSeen(t.Slug); n > 0 {
+				ts.Note = strings.TrimSpace(ts.Note + fmt.Sprintf(
+					" This row shares its router with other front ends, so only wallets the app funded through Relay count as its users: %d swaps were seen on the router and left out for that reason, which is why the row is empty.", n))
+			}
 		}
 		out = append(out, ts)
 		if ts.Chain == "funding" {
@@ -2035,6 +2126,35 @@ func compute(st *State, minPriced, minRank int) []TerminalStats {
 		}
 		out = append(out, ts)
 	}
+	// A WINDOW THAT DOES NOT COVER ITS ADVERTISED SPAN SAYS SO, AND IS NOT
+	// RANKED ON.
+	//
+	// Applied here, last, because Ranked is written unconditionally in
+	// several places above and anything set earlier is undone. That is the
+	// third time today a withholding was written and silently overwritten,
+	// so this one goes where nothing follows it.
+	//
+	// The v6 bump dropped every row priced under v5 and the board went on
+	// ranking five products on about 3.2 h of samples under a label reading
+	// rolling 24 h, with the headline's name picked from them. A rank is a
+	// comparison between products, and products refilling at different
+	// rates are not comparable.
+	for i := range out {
+		hrs := out[i].CoversHours
+		// A row with no swaps at all has nothing to disclose: it is empty,
+		// which every other signal already says.
+		if hrs <= 0 || hrs >= float64(publishedWindowHours) {
+			continue
+		}
+		why := ""
+		if t0, ok := st.Resampling[out[i].Slug]; ok {
+			why = " after re-sampling from " + time.Unix(t0, 0).UTC().Format("15:04 UTC")
+		}
+		out[i].Ranked = false
+		out[i].Note = strings.TrimSpace(out[i].Note + fmt.Sprintf(
+			" This figure covers about %.1f h%s, not the %d h the page states, so it is published and not ranked until the window fills.",
+			hrs, why, publishedWindowHours))
+	}
 	// A hold on the row is a hold on its buckets. sizeSplit judges each
 	// bucket by its own count inside statsFor, before the holds above are
 	// decided, so a product re-sampling its dominant chain read
@@ -2076,15 +2196,44 @@ func compute(st *State, minPriced, minRank int) []TerminalStats {
 func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (TerminalStats, bool) {
 	member := set(slugs...)
 	rejects := map[string]int{} // the window's rejected draws by reason (from the minute buckets)
+	// rankWithheld: a rule decided this row must not be ranked, whatever its
+	// counts say. It has to be a flag rather than an assignment because
+	// ts.Ranked is written unconditionally near the end of this function,
+	// so anything set earlier is silently undone.
+	rankWithheld := false
 	{
 		ts := TerminalStats{Slug: t.Slug, Name: t.Name, Kind: t.Kind, Note: t.Note, Components: map[string]float64{}, Venues: map[string]float64{}, Quotes: map[string]float64{}, Rejects: rejects}
 		errs := map[string]int{}
 		pooled := len(slugs) > 1
+		// THE REJECT WINDOW, per slug, from the swaps themselves.
+		//
+		// The first version of this keyed on the Resampling stamp and so
+		// missed every row dropped before the stamp existed, which was all
+		// of them: the board kept dividing a full day of rejects by four
+		// hours of rows, and T11 read 65 to 92 % rejected across products
+		// whose pricing had not changed at all.
+		//
+		// Same lesson as CoversHours, in the second place it applies: a
+		// flag only marks an event it was present for, and the oldest row a
+		// slug still holds IS its window whatever caused the gap.
+		oldestOf := map[string]int64{}
+		for _, sw := range st.Swaps {
+			if sw.Method != methodVersion || sw.Time <= 0 || !member[sw.Terminal] {
+				continue
+			}
+			if t, ok := oldestOf[sw.Terminal]; !ok || sw.Time < t {
+				oldestOf[sw.Terminal] = sw.Time
+			}
+		}
 		// Fail-rate base: the feed's attempts, or the block sample's on a
 		// native EVM row. In a pooled entry the sample's counts are scaled
 		// by its coverage (blocks read over blocks in range), so a chain
 		// read at 5 % weighs like one read in full.
 		att, failed := 0.0, 0.0
+		// attExact: the attempts whose failures are a REAL count from the
+		// feed rather than an estimate from a block sample. Tracked so a
+		// pooled row can tell the two apart, which a sum of both cannot.
+		attExact := 0.0
 		attOf := map[string]float64{} // each row's attempts in the window (estimated on native rows)
 		for _, slug := range slugs {
 			native := isNativeEVM(slug)
@@ -2099,6 +2248,21 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 				sp += b.SpanBlocks
 				for k, v := range b.Errs {
 					errs[k] += v
+				}
+				// REJECTS ARE COUNTED ONLY FROM THE WINDOW THE ROWS COVER.
+				//
+				// A drop removes swaps and leaves the minute buckets, so
+				// unpriced_share divided a full day of rejects by whatever
+				// hours of rows survived. No pricing changed and Axiom BNB
+				// went 0.574 to 0.870, FOMO Robinhood 0.187 to 0.539, while
+				// yml:80 points readers at exactly that field.
+				//
+				// Counting from the drop rather than clearing the buckets,
+				// because the buckets also carry attempts and failures that
+				// are still true: only the ratio against the surviving rows
+				// is wrong.
+				if t0, ok := oldestOf[slug]; ok && b.T < t0 {
+					continue
 				}
 				for k, v := range b.Rej {
 					rejects[k] += v
@@ -2126,6 +2290,7 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 				att += float64(seen)
 				failed += float64(sfailed)
 				attOf[slug] = float64(seen)
+				attExact += float64(seen)
 			}
 		}
 		ts.Attempts, ts.AttemptsFailed = int(math.Round(att)), int(math.Round(failed))
@@ -2152,7 +2317,39 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 				}
 			}
 		}
-		if att >= 20 && sampledEnough {
+		// A POOLED row is held hostage by its smallest rows without this.
+		// Bloom's Solana row carries 14,926 of its 15,820 attempts, 94%,
+		// with an exhaustive 7.01% that is the worst rate on that tab. Its
+		// two EVM rows add 890 attempts and block samples under 20, and
+		// because the pooled SampSeen is the sum of those samples, the
+		// whole product published NO failed-swaps figure at all. The worst
+		// rate on the board was blank because of 6% of its own flow.
+		//
+		// So: when the attempts whose failures are counted exhaustively are
+		// at least half the total, the pooled rate stands on them. Same
+		// threshold and same reasoning as chainMeanOfMedians, which already
+		// drops bridged rows from a pooled figure when they carry under
+		// half the flow.
+		if !sampledEnough && att > 0 && attExact >= 0.5*att {
+			sampledEnough = true
+		}
+		// A route whose failures this counter cannot see publishes no rate
+		// at any sample size. Pump Bridge does not fail by reverting on the
+		// EVM leg, so its block sample finds zero reverts however long it
+		// runs: 102 sampled transactions, 0.00 % published on three tabs,
+		// and the best reliability figure on the board belonged to the one
+		// route whose reliability was never measured. This is deliberately
+		// NOT folded into sampledEnough: that asks whether we have seen
+		// enough yet and can turn true with time, this asks whether the
+		// question applies at all and never changes.
+		cannotSee := false
+		for _, sl := range slugs {
+			if noFailRate(sl) {
+				cannotSee = true
+				break
+			}
+		}
+		if att >= 20 && sampledEnough && !cannotSee {
 			fr := 100 * failed / att
 			ts.FailRate = &fr // percent (a native row: from 20 sampled transactions, not 20 scaled ones)
 		}
@@ -2223,9 +2420,14 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 		quotes := map[string]int{}
 		otherAgg := map[string]*OtherRecipient{}
 		looped := 0
+		oldest := int64(0)
 		for _, s := range st.Swaps {
 			if !member[s.Terminal] || s.Method != methodVersion {
 				continue
+			}
+			// The span of what survived, which is the row's real coverage.
+			if s.Time > 0 && (oldest == 0 || s.Time < oldest) {
+				oldest = s.Time
 			}
 			if loopers[s.Terminal+":"+s.User] {
 				looped++
@@ -2258,8 +2460,10 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 			if s.TradeUSD > 0 {
 				a := accOf(s.TradeUSD)
 				a.parsed++
-				a.term = append(a.term, s.TerminalBps)
-				a.termW = append(a.termW, w)
+				if !s.TerminalUnknown {
+					a.term = append(a.term, s.TerminalBps)
+					a.termW = append(a.termW, w)
+				}
 				a.net = append(a.net, s.NetworkBps)
 				a.netW = append(a.netW, w)
 				a.trade = append(a.trade, s.TradeUSD)
@@ -2294,8 +2498,14 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 			// below (buy share, venue and quote mix, flagged, and ts.Priced
 			// itself) must still see every parsed swap.
 			if s.Priced && s.LossBps != nil {
-				term = append(term, s.TerminalBps)
-				termW = append(termW, w)
+				// A route whose fee is unmeasurable contributes nothing
+				// here. Averaging its 0 in would pull the column toward a
+				// charge nobody was shown to pay, and the figure would get
+				// MORE confident as more of that route's swaps arrived.
+				if !s.TerminalUnknown {
+					term = append(term, s.TerminalBps)
+					termW = append(termW, w)
+				}
 				net = append(net, s.NetworkBps)
 				netW = append(netW, w)
 				// A Relay row whose cut came back empty from the API is an
@@ -2355,7 +2565,18 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 			// chain's flow (a weighted median over a bimodal mix, pump.fun's
 			// fee on the Solana swaps and none on the EVM ones, would land on
 			// one chain's mode and print a 0 that describes no user).
-			ts.Components["terminal"] = wmedian(term, termW, pooled)
+			// Guarded like other and relay below, and for the same reason.
+			// Assigning unconditionally writes a 0 whenever the slice is
+			// empty, and an empty slice is exactly what TerminalUnknown
+			// produces: the whole point of withholding the component was
+			// that the cell should be ABSENT, and this line put it back as
+			// a charge of nothing. It also made every downstream test of
+			// "is the fee known" read true, so the one-side hold took its
+			// strict branch and held FOMO Mobula as unhealthy, which is how
+			// a trading product came to read unresponsive.
+			if len(term) > 0 {
+				ts.Components["terminal"] = wmedian(term, termW, pooled)
+			}
 			ts.Components["network"] = wmedian(net, netW, pooled)
 			if len(other) > 0 {
 				ts.Components["other"] = wmedian(other, otherW, pooled)
@@ -2375,6 +2596,42 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 				}
 			}
 			ts.BuySharePct = 100 * float64(buys) / float64(ts.Parsed)
+			// THE PRICED SIDE MIX MUST RESEMBLE THE DRAWN SIDE MIX, or the
+			// published figure describes whichever side happened to join.
+			//
+			// Pump Bridge was the board's number one at 209.7 bps on a
+			// sample that is 96.2% buys, while roughly 43% of what it drew
+			// were sales: 2,123 sales were rejected unjoined and 102 more
+			// unpriced, against about 123 that reached parse. A sell join
+			// rate of 7.8% does not make the buy figure wrong, it makes it
+			// a BUY figure, published under a product name and ranked
+			// first as if it covered both directions.
+			//
+			// This cannot be caught by the one-side hold above: at 96.2%
+			// the row is not one-sided enough to trip it, and the fee on
+			// the buy side is real. What is wrong is the mix, so the mix is
+			// what this tests. The threshold is 20 points, well clear of
+			// ordinary sampling noise on thousands of draws.
+			if sold := ts.Rejects["unpriced_pump_sale_unjoined"] + ts.Rejects["unpriced_pump_sale"]; sold > 0 {
+				pricedSells := float64(ts.Parsed - buys)
+				drawnSells := pricedSells + float64(sold)
+				drawn := drawnSells + float64(buys)
+				if drawn > 0 && ts.Parsed > 0 {
+					drawnShare := 100 * drawnSells / drawn
+					pricedShare := 100 - ts.BuySharePct
+					if drawnShare-pricedShare > 20 {
+						// Recorded rather than assigned: ts.Ranked is
+						// rewritten unconditionally further down, so setting
+						// it here looked like it worked and did nothing.
+						// Pump Bridge carried this very note while reading
+						// ranked true on the published file.
+						rankWithheld = true
+						ts.Note = strings.TrimSpace(ts.Note + fmt.Sprintf(
+							" Sales are %.0f%% of what this row draws but only %.0f%% of what it prices, so the figure describes its buys: it is published and not ranked until the sale side joins.",
+							drawnShare, pricedShare))
+					}
+				}
+			}
 			for v, c := range venues {
 				ts.Venues[v] = 100 * float64(c) / float64(ts.Parsed)
 			}
@@ -2493,6 +2750,9 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 				ts.UnpricedShare = float64(unpriced) / float64(ts.Parsed+total)
 			}
 		}
+		if oldest > 0 {
+			ts.CoversHours = float64(time.Now().Unix()-oldest) / 3600
+		}
 		ts.Healthy = ts.Priced >= minPriced
 		if pooled && ts.NEff > 0 && ts.NEff < float64(max(20, minPriced/2)) {
 			ts.Healthy = false // the pooled median rests on too few effective swaps
@@ -2500,6 +2760,11 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 		ts.Ranked = ts.Priced >= minRank
 		if pooled && ts.NEff > 0 && ts.NEff < float64(minRank) {
 			ts.Ranked = false // one chain's few swaps carry most of the weight: the median is not stable enough to rank
+		}
+		// Applied AFTER the line above, which assigns unconditionally. Any
+		// rule that withholds a rank has to land here or be silently undone.
+		if rankWithheld {
+			ts.Ranked = false
 		}
 		if len(slugs) == 1 && strings.Contains(t.Slug, "-") && isXchainRow(t.Slug) && ts.Seen == 0 && ts.Parsed == 0 {
 			// Nobody used it, or we could not read the chain. Those are not
@@ -3050,6 +3315,9 @@ func median(v []float64) float64 {
 func c2field(s Swap, c string) (float64, bool) {
 	switch c {
 	case "terminal":
+		if s.TerminalUnknown {
+			return 0, false
+		}
 		return s.TerminalBps, true
 	case "network":
 		return s.NetworkBps, true
@@ -3304,6 +3572,12 @@ func loadState(path string) *State {
 	for _, s := range st.Swaps {
 		if s.Method != methodVersion {
 			dropped++
+			// A version drop re-samples a row exactly as a purge does, and
+			// until now only the purge branch said so. Every product on the
+			// board was version-dropped by the v6 bump and none of them
+			// disclosed it, so the page ranked five products on a few hours
+			// of samples under a label promising a rolling day.
+			st.Resampling[s.Terminal] = now
 			continue
 		}
 		if (purgeBefore > 0 && s.Chain != "" && s.Time < purgeBefore) || purgeSlugs[s.Terminal] || purgeSigs[s.Sig] {

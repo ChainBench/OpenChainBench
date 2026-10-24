@@ -649,6 +649,12 @@ function RefCell({ s }: { s: FillSample }) {
         <Layers className="h-3.5 w-3.5 text-ink-faint" /> exact mid
       </span>
     );
+  if (s.refSrc === "event")
+    return (
+      <span className="inline-flex items-center gap-1.5 text-ink-soft" title="the venue's own swap event, which reports the reserves the curve actually used">
+        <Layers className="h-3.5 w-3.5 text-ink-faint" /> venue event
+      </span>
+    );
   if (s.refSrc === "pool")
     return (
       <span className="inline-flex items-center gap-1.5 text-ink-soft" title="effective price of the previous trade on the same pool">

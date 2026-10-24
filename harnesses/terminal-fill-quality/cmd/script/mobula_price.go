@@ -39,6 +39,7 @@ import (
 	"math/big"
 	"net/http"
 	"strings"
+	"time"
 )
 
 // mobulaSinkSkip: dead ends that are not the user, measured over 60 fills.
@@ -137,7 +138,7 @@ func mobulaSink(logs []evmLog) (user, token string, amount *big.Int, ok bool) {
 // Everything after that is the existing pricer. priceEvmSettlement is the same
 // function the Relay rows use, on the same definition, so this route's cost is
 // comparable with theirs by construction rather than by coincidence.
-func mobulaRow(ctx context.Context, httpc *http.Client, c originChain, chain, fill string, in mobulaIntent, gas map[string]float64) *Swap {
+func mobulaRow(ctx context.Context, httpc *http.Client, c originChain, chain, fill, id string, in mobulaIntent, gas map[string]float64) *Swap {
 	var rc evmReceipt
 	if err := evmCall(ctx, httpc, c.logsRPC(), "eth_getTransactionReceipt", []any{fill}, &rc); err != nil {
 		return nil
@@ -160,7 +161,7 @@ func mobulaRow(ctx context.Context, httpc *http.Client, c originChain, chain, fi
 	sw := &Swap{
 		Method: methodVersion, Sig: fill, Terminal: "", Side: "buy",
 		Quote: "USDC", QuoteUSD: 1, Venue: s.Venue, Mint: token, Tokens: s.Tokens,
-		Chain: chain, RelayID: "", InTx: in.Deposit, User: user,
+		Chain: chain, RelayID: id, InTx: in.Deposit, User: user,
 		Pools: s.Pools, Hops: s.Hops, PoolVault: s.Pool, Time: in.At,
 	}
 	if sw.Venue == "" {
@@ -176,7 +177,24 @@ func mobulaRow(ctx context.Context, httpc *http.Client, c originChain, chain, fi
 	// published as the bridge's take INCLUDING any app charge, and the row's
 	// note says so. Publishing 0 here would read as "this route is 50 bps
 	// cheaper in app fees" when the fee had only moved.
+	//
+	// THAT ONLY HOLDS IF THE RESIDUAL IS ACTUALLY PUBLISHED, and for a while
+	// it was not. The component aggregations gather a rail's cut only when
+	// RelayID is set (main.go:2289, :2325, :3079), and this row was built
+	// with RelayID empty, so the residual was computed and then dropped by
+	// every one of them. It survived in recent[].relay_bps and nowhere a
+	// reader looks: a median take of 75.2 bps, 38% of the row's median loss,
+	// appeared in no column while the terminal column read 0. The route then
+	// said its fee was zero and showed the charge nowhere, which is worse
+	// than either alone. RelayID now carries the intent id, which is the
+	// rail's own request identifier and exactly what the gate wants.
 	sw.TerminalQ = 0
+	// And SAY so, rather than only writing it in a comment. The paragraph
+	// above was in this file from the day the route shipped and the column
+	// still printed 0, because nothing downstream could tell "zero" from
+	// "unmeasured". The audit read it exactly as the comment feared: a
+	// terminal fee of 0 next to FOMO's own Relay rows at 45 to 50 bps.
+	sw.TerminalUnknown = true
 	sw.NetworkQ = s.GasUSD // destination gas; the origin fee is the app's sponsor
 	sw.PoolQ = s.PoolInUSD
 	bridge := in.Amount - s.PoolInUSD - s.OtherUSD - s.GasUSD
@@ -207,6 +225,16 @@ func sampleMobula(ctx context.Context, httpc *http.Client, st *State, w *mobulaF
 	if w == nil {
 		return 0
 	}
+	// Record the flow BEFORE drawing, and whether or not anything is drawn.
+	// These are the row's attempts, and a tick that prices nothing still saw
+	// trades: tying the count to the draw would make the denominator the
+	// sampler's quota all over again.
+	now := time.Now().Unix()
+	for k, n := range mobulaDrainSeen() {
+		if n > 0 {
+			st.record(k[0]+"-"+k[1], now, n, 0, 0, nil)
+		}
+	}
 	pairs := w.draw(limit)
 	if len(pairs) == 0 {
 		return 0
@@ -217,7 +245,7 @@ func sampleMobula(ctx context.Context, httpc *http.Client, st *State, w *mobulaF
 	rows := readParallel(ctx, pairs, sampleWorkers(), func(ctx context.Context, pr mobulaPaired) *Swap {
 		for _, oc := range originChains {
 			if oc.slug == pr.chain {
-				return mobulaRow(ctx, httpc, oc, pr.chain, pr.fill, pr.in, gas)
+				return mobulaRow(ctx, httpc, oc, pr.chain, pr.fill, pr.id, pr.in, gas)
 			}
 		}
 		return nil
