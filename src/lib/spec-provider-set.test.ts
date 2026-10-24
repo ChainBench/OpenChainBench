@@ -53,8 +53,8 @@ describe("the provider set behind the cache keys", () => {
     const hash = createHash("sha256").update(sets.join("\n")).digest("hex").slice(0, 16);
     const count = sets.reduce((n, s) => n + s.split(":")[1].split(",").length, 0);
 
-    // Recorded on 2026-10-24 with bench-unfiltered-v97, all-benchmarks-v90,
-    // bench-filters-v39, providers-v18.
+    // Recorded on 2026-10-24 with bench-unfiltered-v98, all-benchmarks-v91,
+    // bench-filters-v39, providers-v19.
     expect(
       hash,
       [
@@ -73,6 +73,6 @@ describe("the provider set behind the cache keys", () => {
         "Then set EXPECTED to the hash in this failure, and add the provider",
         `to PRODUCT_NAMES if it needs a display name. Providers now: ${count}.`,
       ].join("\n"),
-    ).toBe("eaa2fb7277c76bbb");
+    ).toBe("c6246aef10f9bd74");
   });
 });

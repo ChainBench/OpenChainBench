@@ -876,7 +876,9 @@ const buildProvidersCached = unstable_cache(
   // v18: lockstep with bench-unfiltered-v97. BlockMachine gains fourteen
   // appearances across the seven keyed RPC benches, so the v17 list carries
   // none of them on /products/blockmachine.
-  ["providers-v18"],
+  // v19: lockstep with bench-unfiltered-v98. Robinhood Chain gains its
+  // l1-finality appearance.
+  ["providers-v19"],
   // 900 s: the provider index feeds products / compare / answers, whose
   // numbers move slowly, and this revalidate is also the effective ISR
   // period of those ~500 pages (Next takes the min across a route's caches).
