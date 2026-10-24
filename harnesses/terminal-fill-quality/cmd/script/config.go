@@ -24,7 +24,16 @@ import "strings"
 //	   before v5 carry no record of who paid, and are recomputed as if the
 //	   user paid nothing: right for the sponsored majority, and the window
 //	   turns over within the day.
-const methodVersion = 5
+// methodVersion 6 (2026-10-24): gas an app sends back to the user is value
+// received. Before it, only a NEGATIVE lamport delta was read, so a top-up
+// was dropped and the swap read as a pure loss: 151.8 bps of one audited
+// pump.fun swap's published 351.45.
+//
+// A drop, not a replay. The in-place recompute below covers 4 and 5 because
+// every input those needed was already on the stored row; this one needs
+// UserSolRecv, which rows written earlier never recorded, so replaying them
+// would credit zero and quietly restate the old figure as a new one.
+const methodVersion = 6
 
 // Evidence published behind the board, per row rather than overall.
 //
