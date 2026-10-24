@@ -91,19 +91,8 @@ func loadConfig() *Config {
 			// (masterchain blocks finalize in ~0.5s, polling 10s = wrong
 			// methodology). Now measured via SSE wall-clock subscriber on
 			// tonapi.io's /v2/sse/blocks stream.
-			{
-				Slug: "litecoin",
-				Name: "Litecoin",
-				Kind: KindBitcoinLike,
-				// Switched from blockchair (free-tier IP blacklist hit on
-				// 2026-05-31, 100% 430 responses) to litecoinspace.org's
-				// Esplora-compatible API. Fewer calls per tick (1 vs 2) and
-				// no auth required.
-				RPCURL: getenvDefault("RPC_LITECOIN", "https://litecoinspace.org/api"),
-				// Coinbase deposit standard for LTC. The April 2026 13-block
-				// MWEB reorg made 6 unsafe; 12 is the post-incident floor.
-				Confirmations: 12,
-			},
+			// Litecoin moved to the own-clock poller (bitcoin_ws.go) on
+			// 2026-10-24: litecoinspace.org's index had fallen behind the chain.
 			{
 				Slug:          "monero",
 				Name:          "Monero",
