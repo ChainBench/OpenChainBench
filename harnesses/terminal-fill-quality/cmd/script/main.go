@@ -308,6 +308,13 @@ type TerminalStats struct {
 	/** Native EVM terminals: the fail rate comes from a block sample (transactions sent to the routers, reverted or not), these are its counts. */
 	SampSeen   int `json:"sampled_attempts,omitempty"`
 	SampFailed int `json:"sampled_failed,omitempty"`
+	/** Hours of trading this row's surviving swaps actually span, oldest to now.
+	 *  The window the page advertises is a ceiling, not a promise: after a method
+	 *  drop, a purge or a cold start the rows cover less, and a figure built on
+	 *  four hours under a label reading twenty-four is the kind of claim this
+	 *  bench exists not to make. Derived from the rows rather than from an event
+	 *  flag, because a flag can only mark an event it was present for. */
+	CoversHours float64 `json:"covers_hours,omitempty"`
 	/** The base of the fail rate: the feed's attempts (Solana), the block sample's (native EVM), both on a pooled product. */
 	Attempts       int `json:"attempts"`
 	AttemptsFailed int `json:"attempts_failed"`
@@ -2133,18 +2140,20 @@ func compute(st *State, minPriced, minRank int) []TerminalStats {
 	// comparison between products, and products refilling at different
 	// rates are not comparable.
 	for i := range out {
-		t0, ok := st.Resampling[out[i].Slug]
-		if !ok {
+		hrs := out[i].CoversHours
+		// A row with no swaps at all has nothing to disclose: it is empty,
+		// which every other signal already says.
+		if hrs <= 0 || hrs >= float64(publishedWindowHours) {
 			continue
 		}
-		hrs := float64(time.Now().Unix()-t0) / 3600
-		if hrs >= float64(publishedWindowHours) {
-			continue
+		why := ""
+		if t0, ok := st.Resampling[out[i].Slug]; ok {
+			why = " after re-sampling from " + time.Unix(t0, 0).UTC().Format("15:04 UTC")
 		}
 		out[i].Ranked = false
 		out[i].Note = strings.TrimSpace(out[i].Note + fmt.Sprintf(
-			" Re-sampling since %s: this figure covers about %.1f h, not the %d h the page states, so it is published and not ranked until the window refills.",
-			time.Unix(t0, 0).UTC().Format("15:04 UTC"), hrs, publishedWindowHours))
+			" This figure covers about %.1f h%s, not the %d h the page states, so it is published and not ranked until the window fills.",
+			hrs, why, publishedWindowHours))
 	}
 	// A hold on the row is a hold on its buckets. sizeSplit judges each
 	// bucket by its own count inside statsFor, before the holds above are
@@ -2391,9 +2400,14 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 		quotes := map[string]int{}
 		otherAgg := map[string]*OtherRecipient{}
 		looped := 0
+		oldest := int64(0)
 		for _, s := range st.Swaps {
 			if !member[s.Terminal] || s.Method != methodVersion {
 				continue
+			}
+			// The span of what survived, which is the row's real coverage.
+			if s.Time > 0 && (oldest == 0 || s.Time < oldest) {
+				oldest = s.Time
 			}
 			if loopers[s.Terminal+":"+s.User] {
 				looped++
@@ -2715,6 +2729,9 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 			if ts.Parsed+total > 0 && unpriced > 0 {
 				ts.UnpricedShare = float64(unpriced) / float64(ts.Parsed+total)
 			}
+		}
+		if oldest > 0 {
+			ts.CoversHours = float64(time.Now().Unix()-oldest) / 3600
 		}
 		ts.Healthy = ts.Priced >= minPriced
 		if pooled && ts.NEff > 0 && ts.NEff < float64(max(20, minPriced/2)) {
