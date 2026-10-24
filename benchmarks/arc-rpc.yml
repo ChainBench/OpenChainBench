@@ -40,7 +40,7 @@ methodology:
   - "Chain scope: every query on this page is pinned to chain=\"arc\" (chain id 5042). Provider coverage: {{count}} no-key public-read endpoints live today, each listed with its URL in the endpoints table on this page. Exclusions follow the cluster-wide rules documented on the parent benchmark."
   - "Endpoints published by the chain: the RPC endpoints page of the Arc docs lists Circle's primary endpoint plus Alchemy, Blockdaemon, dRPC and QuickNode. The Blockdaemon and QuickNode rows are Arc-branded URLs (rpc.blockdaemon.mainnet.arc.io, rpc.quicknode.mainnet.arc.io) that answer without a key, verified before inclusion, and are measured here as such."
   - "The dRPC row of that table (rpc.drpc.mainnet.arc.io) serves the same free tier as arc.drpc.org, identical x-drpc-owner-id, and is measured once under dRPC; the Alchemy row needs a key and sits in the private cohort."
-  - "Private cohort (Access selector, Private): Alchemy, Chainstack, GetBlock, QuickNode and Dwellir probed on their keyed Arc endpoints every 120 seconds from all 3 probe regions, same call (eth_getBlockByNumber, rotating id), same ok / http_err / jsonrpc_err / stale / timeout classification."
+  - "Private cohort (Access selector, Private): Alchemy, Chainstack, GetBlock, QuickNode, Dwellir and BlockMachine probed on their keyed Arc endpoints every 120 seconds from all 3 probe regions, same call (eth_getBlockByNumber, rotating id), same ok / http_err / jsonrpc_err / stale / timeout classification."
   - "Keys live in the probe environment, never in the repo. Plan tiers, disclosed: Chainstack: a Global Node on the Growth plan; QuickNode: an endpoint on a Build plan ($49 per month), shared fleet; Alchemy: a Free plan key (30M CU per month, 300 compute units per second), the tier any reader gets; Alchemy states free and paid keys share one routing; GetBlock: an endpoint on the Enterprise plan, shared by the two probe regions. Chainstack, GetBlock and QuickNode provided their endpoints."
   - "Dwellir plan tier, disclosed: a Developer plan key ($49 per month, 25 million API responses, 100 responses per second; 1 RPC response = 1 API credit, no compute units). Shared nodes, the same product a reader buys. Dwellir publishes no Solana endpoint, so it is absent from that page rather than shown as unavailable."
   - "GetBlock regional pairing: us-east uses GetBlock's New York endpoint and eu-west its Frankfurt endpoint. Alchemy, Chainstack and QuickNode publish one routed entry point per chain instead, which in the general case does land a probe on a nearby node. Some of any gap between the two arrangements is deployment topology rather than node speed, and a deployment in one of these regions would see the same benefit GetBlock's endpoint gives the probe."
@@ -493,3 +493,52 @@ providers:
           p50: avg(ocb:rpc_latency_cold_milliseconds:p50_24h{provider="dwellir",chain="arc",tier="keyed",region="sgp"})
           series: avg(avg_over_time(rpc_latency_cold_milliseconds{provider="dwellir",chain="arc",tier="keyed",region="sgp"}[1h]))
 
+  - slug: blockmachine
+    name: BlockMachine
+    tier: keyed
+    tag: Paid plan key, endpoint provided, plan not disclosed
+    formula: "p50 over 24h of round-trip latency (ms) for eth_getBlockByNumber probed every 120 s from us-east, eu-west and Singapore on BlockMachine's keyed Arc endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="blockmachine",chain="arc",tier="keyed"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="blockmachine",chain="arc",tier="keyed"})
+      p95: avg(ocb:rpc_latency_milliseconds:p95_24h{provider="blockmachine",chain="arc",tier="keyed"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="blockmachine",chain="arc",tier="keyed"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="blockmachine",chain="arc",tier="keyed"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="blockmachine",chain="arc",tier="keyed"}) / sum(ocb:rpc_call:rate_24h{provider="blockmachine",chain="arc",tier="keyed"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="blockmachine",chain="arc",tier="keyed"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="blockmachine",chain="arc",tier="keyed"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="blockmachine",chain="arc",tier="keyed",region="us-east"})
+          series: avg(avg_over_time(rpc_latency_milliseconds{provider="blockmachine",chain="arc",tier="keyed",region="us-east"}[1h]))
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="blockmachine",chain="arc",tier="keyed",region="eu-west"})
+          series: avg(avg_over_time(rpc_latency_milliseconds{provider="blockmachine",chain="arc",tier="keyed",region="eu-west"}[1h]))
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="blockmachine",chain="arc",tier="keyed",region="sgp"})
+          series: avg(avg_over_time(rpc_latency_milliseconds{provider="blockmachine",chain="arc",tier="keyed",region="sgp"}[1h]))
+
+  - slug: blockmachine-cold
+    name: BlockMachine
+    tier: keyed-cold
+    tag: Same endpoint, measured on a connection that is never reused
+    formula: "p50 over 24h of round-trip latency (ms) for the same call on a connection that is never reused: DNS, TCP and the TLS handshake are paid every time. What a serverless or one-shot client gets."
+    queries:
+      p50: avg(ocb:rpc_latency_cold_milliseconds:p50_24h{provider="blockmachine",chain="arc",tier="keyed"})
+      p90: avg(ocb:rpc_latency_cold_milliseconds:p90_24h{provider="blockmachine",chain="arc",tier="keyed"})
+      p95: avg(ocb:rpc_latency_cold_milliseconds:p95_24h{provider="blockmachine",chain="arc",tier="keyed"})
+      p99: avg(ocb:rpc_latency_cold_milliseconds:p99_24h{provider="blockmachine",chain="arc",tier="keyed"})
+      mean: avg(ocb:rpc_latency_cold_milliseconds:mean_24h{provider="blockmachine",chain="arc",tier="keyed"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="blockmachine",chain="arc",tier="keyed"}) / sum(ocb:rpc_call:rate_24h{provider="blockmachine",chain="arc",tier="keyed"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="blockmachine",chain="arc",tier="keyed"})
+      series: avg(avg_over_time(rpc_latency_cold_milliseconds{provider="blockmachine",chain="arc",tier="keyed"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_cold_milliseconds:p50_24h{provider="blockmachine",chain="arc",tier="keyed",region="us-east"})
+          series: avg(avg_over_time(rpc_latency_cold_milliseconds{provider="blockmachine",chain="arc",tier="keyed",region="us-east"}[1h]))
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_cold_milliseconds:p50_24h{provider="blockmachine",chain="arc",tier="keyed",region="eu-west"})
+          series: avg(avg_over_time(rpc_latency_cold_milliseconds{provider="blockmachine",chain="arc",tier="keyed",region="eu-west"}[1h]))
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_cold_milliseconds:p50_24h{provider="blockmachine",chain="arc",tier="keyed",region="sgp"})
+          series: avg(avg_over_time(rpc_latency_cold_milliseconds{provider="blockmachine",chain="arc",tier="keyed",region="sgp"}[1h]))

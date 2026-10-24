@@ -1071,6 +1071,7 @@ const ALIASES: Record<string, string> = {
   "getblock-cold": "getblock",
   "quicknode-cold": "quicknode",
   "alchemy-cold": "alchemy",
+  "blockmachine-cold": "blockmachine",
   "chainstack-cold": "chainstack",
   "dwellir-cold": "dwellir",
   "validationcloud-cold": "validationcloud",

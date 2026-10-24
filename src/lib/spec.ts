@@ -509,7 +509,10 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //   bench-filters moves with it.
   // v96: the nine WebSocket races' copy reads {{best_first}} (share of first
   // pushes) instead of a leader p50 that is 0 by construction.
-  ["bench-unfiltered-v96", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v97: BlockMachine joins the keyed cohort on the seven chains it serves,
+  // warm and cold, so fourteen provider rows appear across seven specs. Those
+  // specs declare region and tier, so bench-filters moves with this one.
+  ["bench-unfiltered-v97", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -758,7 +761,9 @@ const loadAllBenchmarksCached = unstable_cache(
   // v88: lockstep with bench-unfiltered-v95 (raceLeader on the WebSocket
   // races, and Pump Bridge and FOMO · Mobula joining bench 268).
   // v89: lockstep with bench-unfiltered-v96 (WebSocket race copy).
-  ["all-benchmarks-v89", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v90: lockstep with bench-unfiltered-v97 (BlockMachine joins the keyed
+  // cohort on seven chains).
+  ["all-benchmarks-v90", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -875,7 +880,11 @@ const loadBenchmarkFiltered = unstable_cache(
   // bench 268 declares chain and bucket, so its two new providers are
   // invisible on every tab until this moves. Same reason v36 existed.
   // v38: lockstep with bench-unfiltered-v96 (WebSocket race copy).
-  ["bench-filters-v38", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v39: lockstep with bench-unfiltered-v97. The seven keyed RPC specs
+  // declare region and tier, and BlockMachine's rows are on the Private
+  // access tab, which is a filtered variant: without this they are invisible
+  // on exactly the tab they belong to.
+  ["bench-filters-v39", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 
