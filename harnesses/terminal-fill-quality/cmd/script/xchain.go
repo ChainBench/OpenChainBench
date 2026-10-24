@@ -414,17 +414,10 @@ func chainByID(id int64) *originChain {
 // the legs are landing somewhere this bench is not looking.
 var cXchainSaleSeen = prometheus.NewCounterVec(prometheus.CounterOpts{
 	Name: "tfq_xchain_sale_seen_total",
-	Help: "Relay legs leaving an EVM chain for Solana, by the row they were filed under, the origin chain, and whether the input was a token. A sale filed under <app>-funding is skipped by the settlement paths on purpose, so this says whether that is where they go",
-}, []string{"row", "chain", "in_is_token"})
+	Help: "Relay requests leaving an EVM chain for Solana, counted at the attribution gate: verdict=kept means the request was recognised as this app's, not_mine means nothing in it matched the app's declared fee recipients or referrer and it was discarded",
+}, []string{"app", "chain", "verdict"})
 
 func init() { prometheus.MustRegister(cXchainSaleSeen) }
-
-func b2s(b bool) string {
-	if b {
-		return "token"
-	}
-	return "not_token"
-}
 
 // rowSlug: the bench row a request belongs to. Requests settling on
 // Solana are the app's funding leg (`<app>-funding`); requests leaving
@@ -921,21 +914,7 @@ func (f *xfeed) count(a xchainApp, c originChain, r relayRaw) bool {
 		b.errs[x.Status]++
 	} else if x.OutTx != "" {
 		b.total++
-		// WHICH ROW DOES A SALE LAND IN?
-		//
-		// settleXchainSale reports no_candidates on every Relay route, yet
-		// reading api.relay.link directly gives 34 of 34 EVM-origin legs
-		// bound for Solana that pass saleLeg. So the legs exist and the
-		// filter accepts them; what is unknown is which row's reservoir
-		// they reach, and rowSlug sends a sale to <app>-<chain> only when
-		// InIsToken, otherwise to <app>-funding, which the settlement paths
-		// now skip by design.
-		//
-		// Counted here rather than reasoned about, because three
-		// explanations have already died on this question.
-		if x.DestChain == "" && x.Chain != "" && x.Chain != "solana" {
-			cXchainSaleSeen.WithLabelValues(x.rowSlug(), x.Chain, b2s(x.InIsToken)).Inc()
-		}
+
 		if len(b.reservoir) < reservoirSize {
 			b.reservoir = append(b.reservoir, x)
 		} else if j := rand.Intn(b.total); j < reservoirSize {
@@ -1067,6 +1046,20 @@ func classify(a xchainApp, c originChain, r relayRaw) (relayRequest, bool) {
 		// as retired while the filter kept returning its requests.
 		mine = true
 		noteIdentifier(a.Slug, "referrer:"+a.Referrer)
+	}
+	// Every EVM-origin request bound for Solana, counted at the gate that
+	// decides whether it is ours at all.
+	//
+	// The first placement of this sat after the reservoir's status and
+	// OutTx branches, so a zero could mean "never classified" or
+	// "classified and lost afterwards", which are different problems. Here
+	// the label separates them outright.
+	if r.Data.Metadata.CurrencyOut.Currency.ChainID == solanaChainID && c.id != solanaChainID {
+		verdict := "kept"
+		if !mine {
+			verdict = "not_mine"
+		}
+		cXchainSaleSeen.WithLabelValues(a.Slug, c.slug, verdict).Inc()
 	}
 	if !mine {
 		return relayRequest{}, false
