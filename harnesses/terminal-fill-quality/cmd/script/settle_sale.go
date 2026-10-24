@@ -124,8 +124,17 @@ func settleXchainSaleTodo(sample []relayRequest, done map[string]bool, limit int
 // population genuinely grew, but it means the headline numbers change on the
 // deploy that ships this.
 func settleXchainSale(ctx context.Context, rpc *rpcClient, httpc *http.Client, slug string, sample []relayRequest, done map[string]bool) int {
-	product, _ := settleRoute(slug)
+	product, chain := settleRoute(slug)
 	if product == "" {
+		return 0
+	}
+	// A funding row's legs are TRANSFERS, not bridged trades, and they are
+	// already timed as funding at main.go's funding path. Timing them here
+	// as well labels the same leg a trade and pools two populations the
+	// settleKey exists to keep apart: BasedBot, which makes no bridged
+	// trade at all, published 689 trade settlements and a 1,423 ms figure
+	// next to a methodology line saying these legs are not trades.
+	if chain == "funding" {
 		return 0
 	}
 	todo := settleXchainSaleTodo(sample, done, settleXchainPerTick)
