@@ -747,14 +747,27 @@ func (f *xfeed) run(ctx context.Context, interval time.Duration) {
 	// the fill watcher already reaches back over.
 	turn := 0
 	for ctx.Err() == nil {
-		n := f.poll(ctx, solanaOrigin)
-		cRelayPoll.WithLabelValues("solana", "polled").Inc()
+		// THE ROTATING CHAIN GOES FIRST, and that ordering is the fix.
+		//
+		// Pacing the number of CHAINS was not enough, because a poll is not
+		// one request: it paginates up to `pages`, and on a cold start
+		// nothing is known so it walks the lot. Solana going first therefore
+		// spent the whole allowance before the EVM chain asked for its first
+		// page, and Relay refused it. Every deploy restarts the container
+		// and reopens exactly that gap, which is why seven chains sat 24
+		// days stale while Solana stayed current.
+		//
+		// Solana still gets polled every round and still carries the bulk of
+		// the flow; it simply no longer starves the one chain whose turn it
+		// is by going first.
 		if len(originChains) > 0 {
 			c := originChains[turn%len(originChains)]
 			turn++
-			n += f.poll(ctx, c)
 			cRelayPoll.WithLabelValues(c.slug, "polled").Inc()
+			f.poll(ctx, c)
 		}
+		n := f.poll(ctx, solanaOrigin)
+		cRelayPoll.WithLabelValues("solana", "polled").Inc()
 		n += f.refetchPending(ctx)
 		f.mu.Lock()
 		// Up only when Relay answered at least one poll this round: a dead
