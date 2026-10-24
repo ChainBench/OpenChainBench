@@ -514,7 +514,13 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // specs declare region and tier, so bench-filters moves with this one.
   // v98: Robinhood Chain joins l1-finality. No dimensions there, so
   // bench-filters stays.
-  ["bench-unfiltered-v99", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v100: 0x leaves benches 304 and 033. A cached entry holds the provider
+  // set current when it was written, and the direction matters as much as
+  // the fact: v92's note covers a bench GAINING a row, this is a bench
+  // LOSING one, and a stale entry would keep drawing a declared provider
+  // that no longer exists in the spec. Both benches declare a chain
+  // dimension, so bench-filters moves with this one.
+  ["bench-unfiltered-v100", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -769,7 +775,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // provider sets leave the hash, and a cached aggregate written before
   // this would still list a bench that no longer exists).
   // v91: lockstep with bench-unfiltered-v98 (Robinhood Chain on l1-finality).
-  ["all-benchmarks-v92", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v93: lockstep with bench-unfiltered-v100 (0x leaves benches 304 and 033).
+  ["all-benchmarks-v93", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -893,7 +900,10 @@ const loadBenchmarkFiltered = unstable_cache(
   // declare region and tier, and BlockMachine's rows are on the Private
   // access tab, which is a filtered variant: without this they are invisible
   // on exactly the tab they belong to.
-  ["bench-filters-v40", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v41: lockstep with bench-unfiltered-v100. Benches 304 and 033 both
+  // declare a chain dimension, so every per-chain variant caches its own
+  // copy of the provider set and a stale entry keeps 0x on each tab.
+  ["bench-filters-v41", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 
