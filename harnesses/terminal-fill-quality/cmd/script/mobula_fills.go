@@ -46,6 +46,45 @@ type mobulaPaired struct {
 	in mobulaIntent
 }
 
+// mobulaSeen: fills paired to a declared app, by app and chain, waiting to
+// be recorded as that row's attempts.
+//
+// It exists because sampleMobula never recorded any, so attOf stayed 0 on
+// every Mobula row and the pooled split fell back to one weight per swap.
+// That weights a product by how much of each chain we sampled rather than by
+// how much of it its users traded: the sample runs BNB 54% and Robinhood
+// 40% while the rail's own fills run Robinhood 23 of 29.
+//
+// Counted at PAIRING, not at pricing. Pricing is bounded by the per-tick
+// quota, so counting there would feed the sampler's own limit back in as if
+// it were the flow, which is the defect being fixed.
+var mobulaSeen struct {
+	sync.Mutex
+	n map[[2]string]int // {app, chain} -> fills since the last drain
+}
+
+func mobulaNoteSeen(app, chain string) {
+	if app == "" || chain == "" {
+		return
+	}
+	mobulaSeen.Lock()
+	if mobulaSeen.n == nil {
+		mobulaSeen.n = map[[2]string]int{}
+	}
+	mobulaSeen.n[[2]string{app, chain}]++
+	mobulaSeen.Unlock()
+}
+
+// mobulaDrainSeen returns the counts since the last call and resets them, so
+// each tick records its own interval rather than a running total.
+func mobulaDrainSeen() map[[2]string]int {
+	mobulaSeen.Lock()
+	defer mobulaSeen.Unlock()
+	out := mobulaSeen.n
+	mobulaSeen.n = map[[2]string]int{}
+	return out
+}
+
 // mobulaFillWatcher walks each chain's bridge contract forward.
 type mobulaFillWatcher struct {
 	cursor map[string]int64
@@ -307,6 +346,7 @@ func (w *mobulaFillWatcher) pollChain(ctx context.Context, httpc *http.Client, c
 			continue
 		}
 		cMobulaFills.WithLabelValues(chain, "paired").Inc()
+		mobulaNoteSeen(in.App, chain)
 		paired++
 		bn := hexInt(l.BlockNumber)
 		if bn <= 0 {

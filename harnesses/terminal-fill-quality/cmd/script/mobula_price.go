@@ -39,6 +39,7 @@ import (
 	"math/big"
 	"net/http"
 	"strings"
+	"time"
 )
 
 // mobulaSinkSkip: dead ends that are not the user, measured over 60 fills.
@@ -223,6 +224,16 @@ func mobulaRow(ctx context.Context, httpc *http.Client, c originChain, chain, fi
 func sampleMobula(ctx context.Context, httpc *http.Client, st *State, w *mobulaFillWatcher, gas map[string]float64, limit int) (added int) {
 	if w == nil {
 		return 0
+	}
+	// Record the flow BEFORE drawing, and whether or not anything is drawn.
+	// These are the row's attempts, and a tick that prices nothing still saw
+	// trades: tying the count to the draw would make the denominator the
+	// sampler's quota all over again.
+	now := time.Now().Unix()
+	for k, n := range mobulaDrainSeen() {
+		if n > 0 {
+			st.record(k[0]+"-"+k[1], now, n, 0, 0, nil)
+		}
 	}
 	pairs := w.draw(limit)
 	if len(pairs) == 0 {
