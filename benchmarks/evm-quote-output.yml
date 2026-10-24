@@ -60,7 +60,7 @@ methodology:
   - "Declared fees get their own column and are measured, not quoted: the figure is read out of the provider's own quote response on every tick. Only some declare one, and the column is blank for the rest. Compare it against the shortfall beside it rather than assuming they match, because they need not: a declared fee is what the provider takes, the shortfall is what the route and the fee together cost. A provider that declares nothing publishes no fee, which is not the same as charging nothing."
   - "Not every row is an aggregator. CoW and Bebop are RFQ or batch-auction venues and LI.FI is a cross-chain relayer, so all three are listed with their numbers and kept out of the ranking. Route quotes Robinhood Chain alone and is kept out of the all-chains order for the same reason; its own tab carries the comparison."
   - "An RFQ quote is not a router quote. A market maker prices its own spread and its settlement into the number it returns, and a small clip pays for both in full: Bebop gives up around a hundred basis points on a $1,200 swap, and the figure barely moves between chains whose gas differs by orders of magnitude, so it is the spread and not the gas. Both RFQ rows are listed and neither is ranked."
-  - "Gas is not subtracted yet. KyberSwap reports it in USD, 0x in wei, Nordstern in gas units, and the USD figures of three providers on the same pair at the same block differ by a factor of 3.5. Until gas is computed on our side rather than theirs, this page measures gross output."
+  - "Gas is not subtracted yet. KyberSwap reports it in USD, ParaSwap in wei, Nordstern in gas units, and the USD figures of three providers on the same pair at the same block differ by a factor of 3.5. Until gas is computed on our side rather than theirs, this page measures gross output."
   - "Absent and why: 1inch requires a business account we do not have, OKX requires credentials not yet issued, Odos has published no volume for 30 days and its API returns 530, OpenOcean serves our probes a Cloudflare challenge, and Enso's free-plan credits are exhausted. None of them is excluded on performance."
   - "Six pairs across five chains, one per 60 second tick, from us-east, eu-west and Singapore. Output does not vary meaningfully by region, measured at a 4.24 bps median spread against a market that drifts 30 to 37, so the regional split is a check on the probe rather than a dimension of the result."
 
@@ -167,18 +167,6 @@ providers:
       mean: avg(ocb:evm_swap_quote_shortfall_bps:mean_24h{provider="paraswap"})
       sample_size: sum(ocb:evm_swap_quote_shortfall_bps:count_increase_24h{provider="paraswap"})
       series: histogram_quantile(0.50, sum by (le) (rate(evm_swap_quote_shortfall_bps_bucket{provider="paraswap"}[1h])))
-
-  - slug: 0x
-    name: 0x
-    tag: Swap API key, declares its own fee
-    formula: "Median basis points of output given up against the best quote of the same tick, over 24h, averaged across the chains this provider covers."
-    queries:
-      p50: avg(ocb:evm_swap_quote_shortfall_bps:p50_24h{provider="0x"})
-      p90: avg(ocb:evm_swap_quote_shortfall_bps:p90_24h{provider="0x"})
-      p99: avg(ocb:evm_swap_quote_shortfall_bps:p99_24h{provider="0x"})
-      mean: avg(ocb:evm_swap_quote_shortfall_bps:mean_24h{provider="0x"})
-      sample_size: sum(ocb:evm_swap_quote_shortfall_bps:count_increase_24h{provider="0x"})
-      series: histogram_quantile(0.50, sum by (le) (rate(evm_swap_quote_shortfall_bps_bucket{provider="0x"}[1h])))
 
   - slug: mobula
     name: Mobula

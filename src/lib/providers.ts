@@ -878,7 +878,12 @@ const buildProvidersCached = unstable_cache(
   // none of them on /products/blockmachine.
   // v19: lockstep with bench-unfiltered-v98. Robinhood Chain gains its
   // l1-finality appearance.
-  ["providers-v19"],
+  // v20: 0x leaves benches 304 and 033, so it is measured nowhere. Two
+  // things move, not one: /products/0x stops existing (it is in
+  // REMOVED_PRODUCT_SLUGS now), and every aggregator that shares those two
+  // boards is ranked against a cohort one smaller, which is printed on its
+  // own product page and in its compare and answers copy.
+  ["providers-v20"],
   // 900 s: the provider index feeds products / compare / answers, whose
   // numbers move slowly, and this revalidate is also the effective ISR
   // period of those ~500 pages (Next takes the min across a route's caches).
