@@ -4,7 +4,7 @@
 # Every number here traces to a wave-2-verified value, or to a wave-1 value wave 2 did not contradict.
 # Where a figure exists only as an assumption it is null and the assumption is in `note`.
 version: 1
-as_of: "2026-10-16"
+as_of: "2026-10-22"
 
 fx:
   eur_usd: 1.1355
@@ -332,11 +332,11 @@ providers:
         extraction: "embedded RSC plan objects: monthly, specs.{credits,effectiveMonthly,effectiveAnnual,overage,rps}; key on b6_* column ids, never 'build'/'scale'"
       weights:
         url: https://www.quicknode.com/api/v1/dev_portal/api_credits/eth
-        body_sha256: 96cff99e046db95d7ee9720b9f2f30b1307596137e923fcf67a5803819b6dfdf
-        verified_at: "2026-09-30"
+        body_sha256: 7ae1d8191e269303367c413655b9e2542ff48fc826289ea3332165cf99e85fca
+        verified_at: "2026-10-22"
         kind: json
         poll: etag
-        extraction: "$[*].method / $[*].credits; 218 rows for eth, 147 for sol; unknown slug returns a clean 404"
+        extraction: "$[*].method / $[*].credits; 219 rows for eth, 147 for sol; unknown slug returns a clean 404"
     caveats:
       - "The pricing payload carries two generations of column keys. Legacy discover/discoverPlus/build/scale columns still hold a retired price list (build = 75M credits, $0.35/1M). Keying on 'build' is 43% wrong on the overage rate."
       - "The credits JSON is User-Agent filtered: curl gets 200, Python-urllib gets 403. Send a browser UA."
@@ -627,8 +627,8 @@ providers:
         extraction: "table header '| Plan | Price (monthly) | Price (annual) | Included RU/mo | Extra usage per 1M RU | RPS limit | Projects |'"
       weights:
         url: https://docs.chainstack.com/docs/request-units.md
-        body_sha256: 605a2e60937b8ff49dc93bf034ac2618781777616fa40a91b7ffeb7c24279ad9
-        verified_at: "2026-10-16"
+        body_sha256: f8dba444191161b935ab080649394b9dea82bd3d22475a2ca42d888f9347658d
+        verified_at: "2026-10-22"
         kind: markdown
         poll: body_hash
         extraction: "'## Cost per request' table (Full 1 RU / Archive 2 RUs) + the 'Always 2 RUs' section + the 20-method block-age list"
@@ -677,8 +677,10 @@ providers:
           50,400 CU/min under regional load. Debug/trace API is a Growth feature. 2 s max timeout,
           10,000-log cap, batch <= 3 items, filter methods disabled. Behaviour at the 210M cap is
           UNVERIFIABLE (throttle vs hard stop is published nowhere); hard_stop recorded as the
-          conservative reading. MEASURED 2026-09-29: Solana returns error code 35
-          "chain is not available on free plan" — the free tier is EVM-and-others only.
+          conservative reading. MEASURED 2026-09-29 and again 2026-10-22: Solana returns error
+          code 35 "chain is not available on free plan" — the free tier is EVM-and-others only.
+          This now contradicts dRPC's own plans.mdx (2026-10-20), whose table gives Free "~10M"
+          Solana requests; the measurement is kept until a keyed free account answers on Solana.
       - id: growth
         name: Growth (pay-as-you-go)
         tier: entry
@@ -689,17 +691,96 @@ providers:
         allowance_period: month
         overage_per_1m_units_usd: 0.30
         overage_allowed: true
-        throughput: {unit: rps, value: null}
+        throughput: {unit: rps, value: 100}
         archive: true
         trace: true
         confidence: verified
         note: >-
           Purely prepaid PAYG; "$6 / 1M requests" on the card is the unit price, not a monthly fee.
-          Paid-tier RPS is UNRESOLVED: the pricing card says "5К requests per second" (Cyrillic К)
-          with a tooltip "~5000 eth_call requests/sec", while the ratelimiting doc says
-          "no rate limiting for the paid tier". Do not publish a paid RPS cap.
+          Rate limit RESOLVED 2026-10-22: pages/pricing/plans.mdx gives Pay as You Go "100 RPS" for
+          accounts created on or after 2026-10-20, and the "no rate limiting for the paid tier" line
+          was deleted from the ratelimiting doc. Older accounts keep their previous terms until they
+          buy a plan; a new buyer gets 100, which is the figure priced here.
           Minimum top-up is UNVERIFIABLE (dashboard-gated). The widely-circulated "$125 minimum
           deposit" belongs to Triton One, not dRPC.
+      # Pro and Scale, launched 2026-10-20 (pages/pricing/plans.mdx). One CU pool shared across
+      # chains, but a request spends a different number of CU from it per chain: Pro 16 CU
+      # Multi-Chain / 13 CU Solana, Scale 14 / 13. The provider weights below are the Pay as You
+      # Go 20 CU, so each plan is entered once per chain with its pool converted into 20-CU
+      # request equivalents. A workload here runs on one chain, so per-chain rows are exact for
+      # it; a mixed-chain buyer shares one pool between them. Overage beyond the pool is 20 CU
+      # Multi-Chain ($6 per 1M requests, $0.30 per 1M units) and 13 CU Solana ($3.9 per 1M
+      # requests, $0.195 per 1M of these 20-unit equivalents).
+      - id: pro-evm
+        name: Pro, Multi-Chain
+        tier: entry
+        monthly_usd: 49
+        annual_monthly_usd: null
+        included_units: 203750000
+        allowance_period: month
+        overage_per_1m_units_usd: 0.30
+        overage_allowed: true
+        throughput: {unit: rps, value: 300}
+        archive: true
+        trace: true
+        chains: [ethereum]
+        confidence: verified
+        note: >-
+          "$49/mo", 163M CU pool, "~10.2M, $4.8 per 1M" Multi-Chain requests at 16 CU each, 300 RPS,
+          archive, debug and trace included. 163M / 16 = 10,187,500 requests = 203,750,000 units at
+          the 20-CU weights. First month is prorated; unused CU reset on the 1st.
+      - id: pro-solana
+        name: Pro, Solana
+        tier: entry
+        monthly_usd: 49
+        annual_monthly_usd: null
+        included_units: 250769231
+        allowance_period: month
+        overage_per_1m_units_usd: 0.195
+        overage_allowed: true
+        throughput: {unit: rps, value: 300}
+        archive: true
+        trace: true
+        chains: [solana]
+        confidence: verified
+        note: >-
+          The same $49 Pro pool spent on Solana at 13 CU a request: "~12.5M, $3.9 per 1M".
+          163M / 13 = 12,538,462 requests = 250,769,231 units at the 20-CU weights. Overage 13 CU
+          = $3.9 per 1M requests.
+      - id: scale-evm
+        name: Scale, Multi-Chain
+        tier: growth
+        monthly_usd: 199
+        annual_monthly_usd: null
+        included_units: 948571429
+        allowance_period: month
+        overage_per_1m_units_usd: 0.30
+        overage_allowed: true
+        throughput: {unit: rps, value: 600}
+        archive: true
+        trace: true
+        chains: [ethereum]
+        confidence: verified
+        note: >-
+          "$199/mo", 664M CU pool, "~47M, $4.2 per 1M" Multi-Chain requests at 14 CU each, 600 RPS.
+          664M / 14 = 47,428,571 requests = 948,571,429 units at the 20-CU weights.
+      - id: scale-solana
+        name: Scale, Solana
+        tier: growth
+        monthly_usd: 199
+        annual_monthly_usd: null
+        included_units: 1021538462
+        allowance_period: month
+        overage_per_1m_units_usd: 0.195
+        overage_allowed: true
+        throughput: {unit: rps, value: 600}
+        archive: true
+        trace: true
+        chains: [solana]
+        confidence: verified
+        note: >-
+          The same $199 Scale pool on Solana at 13 CU: "~51M, $3.9 per 1M". 664M / 13 = 51,076,923
+          requests = 1,021,538,462 units at the 20-CU weights.
       - id: enterprise
         name: For Enterprise
         tier: enterprise
@@ -713,7 +794,7 @@ providers:
         archive: true
         trace: true
         confidence: unpublished
-        note: '"Personalized pricing", "From 300 million requests per month", volume discounts. SALES-GATED.'
+        note: '"Personalized pricing", "From 300 million requests per month", volume discounts; the pricing page now reads "From $990/mo" as a floor. SALES-GATED.'
     weights:
       ethereum:
         default: 20
@@ -745,20 +826,21 @@ providers:
         availability, not price: "The 'Archive' label does not always guarantee full history from block 0."
     source:
       plans:
-        url: https://drpc.org/pricing
-        verified_at: "2026-09-30"
-        kind: html
-        poll: manual   # churns independently of price; hashed re-reads would alarm every cycle
-        extraction: "SSR HTML plan cards; the headline price is computed in /_next/static/chunks/pages/pricing-*.js from the constant 3.34e6 CU per USD"
-      weights:
-        url: https://raw.githubusercontent.com/drpcorg/drpc-nextra/main/pages/pricing/compute-units.mdx
-        body_sha256: b70cd284a3ab98cedbb34d9cf91d3429c27a129927dc18db66e3589129e69f77
-        verified_at: "2026-09-30"
+        url: https://raw.githubusercontent.com/drpcorg/drpc-nextra/main/pages/pricing/plans.mdx
+        body_sha256: 560655ee641b2282bd5e895e8e629ff7bd91579681682ba575648be394b3625a
+        verified_at: "2026-10-22"
         kind: markdown
         poll: body_hash
-        extraction: "14 chain sections, 421 priced rows; every row is 20 CU except 21 zero rows. Pin blob SHA f03e321f9c04209e002d412831e30bcb5e0b594b (unchanged since 2026-03-14)."
+        extraction: "plan table (Price, Multi-Chain requests, Solana requests, Rate limit, Archive/Debug/Trace) and the per-plan CU table; cross-read against drpc.org/pricing, whose HTML churns and is read by hand"
+      weights:
+        url: https://raw.githubusercontent.com/drpcorg/drpc-nextra/main/pages/pricing/compute-units.mdx
+        body_sha256: ff938ae4ac57a7ff2eb52def1c2b909b86e84fbd311141866c87b07e2617c75f
+        verified_at: "2026-10-22"
+        kind: markdown
+        poll: body_hash
+        extraction: "14 chain sections, 421 priced rows; every row is 20 CU except 21 zero rows. Pin blob SHA 7d85bcb36dcc62735bf4a97c53936a5835c6c06d: the table is unchanged; the 2026-10-20 commit 629d0521 only added the Pro/Scale paragraph."
     caveats:
-      - "SCOPE: dRPC is a router over 60+ third-party operators, by its own count and would fall under the aggregator exclusion on a mechanical reading. RETAINED BY EXPLICIT DECISION (user, 2026-09-29) because its $6.00/1M is a published, pinnable, chain-independent upper bound that no operator-run provider matches for transparency. The routing non-determinism is carried as the caveats below rather than as an exclusion."
+      - "SCOPE: dRPC is a router over 60+ third-party operators, by its own count and would fall under the aggregator exclusion on a mechanical reading. RETAINED BY EXPLICIT DECISION (user, 2026-09-29) because its $6.00/1M Pay as You Go and overage rate is a published, pinnable upper bound (Pro and Scale price lower per request, and Solana lower than Multi-Chain) that no operator-run provider matches for transparency. The routing non-determinism is carried as the caveats below rather than as an exclusion."
       - "20 CU is a CEILING, not a bill. dRPC is a router; operators may discount the base price per method/chain/archive/region via a `mul` multiplier constrained to 0..1 ('base price is currently price ceiling'). Those multipliers are not published, no response header reports CU charged, and calls routed to public providers are billed at zero."
       - "Provider selection is random with probability proportional to a rating recomputed every 5 seconds that takes operator price as an input — two identical requests a second apart can bill differently."
       - "The charge is provisional and settled after the fact against the providers that did meaningful work; dRPC's cost-model doc allows it to 'deduct more'."
@@ -1856,8 +1938,8 @@ providers:
         extraction: "^### (?P<plan>\\w+) - \\$(?P<usd>[\\d,]+)/month$ ; detail under '## Detailed Plan Comparison'"
       weights:
         url: https://www.helius.dev/docs/billing/credits.md
-        body_sha256: f52eb781ce5ce43ef195545f84b97d7b1d44a27eff7dacf79940bd52b3b9c757
-        verified_at: "2026-10-16"
+        body_sha256: c54afa6d4a11ed85afa353c4eff0f535765d0f86b6d43515422d01c05f411550
+        verified_at: "2026-10-22"
         kind: markdown
         poll: body_hash
         extraction: "MDX <table> blocks under '## Standard Credits' (Service | Credits | Notes); class-level, not per-method"
@@ -2245,6 +2327,152 @@ providers:
       - "The archive claim comes from Dwellir's own comparison post, not from the pricing table, which says nothing about archive on shared plans."
       - "Dwellir is also in the keyed RPC latency cohort on the chain pages (slug dwellir); this entry is its price, not its speed."
 
+  - slug: blockmachine
+    name: Blockmachine
+    cohort: usage
+    status: live
+    unit: ru
+    pricing_model: per_method
+    currency: USD
+    plans:
+      - id: free
+        name: Free
+        tier: free
+        monthly_usd: 0
+        annual_monthly_usd: null
+        included_units: 10000
+        allowance_period: month
+        overage_per_1m_units_usd: 10.0
+        overage_allowed: true
+        throughput: {unit: ru_per_s, value: 1.667}
+        archive: true
+        trace: true
+        confidence: uncertain
+        note: >-
+          10,000 RU a month with an API key, extra RUs at $10 per 1M. Two primaries disagree on two
+          fields. Rate limit: llms.txt's plan table gives 100 RU/min (used here, 1.667 RU/s) while
+          the pricing card prints "300 requests/min"; llms.txt also states the limit is metered in RU,
+          not requests. Archive: the pricing card ticks "Archive node access" and "Trace API" on Free
+          and the keyless note says the Free plan "includes one [an API key], with archive access",
+          while llms.txt says "Archive data is available on Standard plans and above". Recorded as the
+          pricing card reads, flagged uncertain until Blockmachine confirms.
+      - id: standard
+        name: Standard
+        tier: entry
+        monthly_usd: 9
+        annual_monthly_usd: 7.5
+        included_units: 5000000
+        allowance_period: month
+        overage_per_1m_units_usd: 5.0
+        overage_allowed: true
+        throughput: {unit: ru_per_s, value: 16.667}
+        archive: true
+        trace: true
+        confidence: verified
+        note: 1,000 RU/min. $90 a year.
+      - id: pro
+        name: Pro
+        tier: entry
+        monthly_usd: 25
+        annual_monthly_usd: 20.83
+        included_units: 20000000
+        allowance_period: month
+        overage_per_1m_units_usd: 3.0
+        overage_allowed: true
+        throughput: {unit: ru_per_s, value: 200}
+        archive: true
+        trace: true
+        confidence: verified
+        note: 12,000 RU/min. $250 a year.
+      - id: business
+        name: Business
+        tier: growth
+        monthly_usd: 125
+        annual_monthly_usd: 104.17
+        included_units: 100000000
+        allowance_period: month
+        overage_per_1m_units_usd: 2.0
+        overage_allowed: true
+        throughput: {unit: ru_per_s, value: 500}
+        archive: true
+        trace: true
+        confidence: verified
+        note: 30,000 RU/min. $1,250 a year.
+      - id: business-plus
+        name: Business Plus
+        tier: business
+        monthly_usd: 499
+        annual_monthly_usd: 415.83
+        included_units: 500000000
+        allowance_period: month
+        overage_per_1m_units_usd: 1.5
+        overage_allowed: true
+        throughput: {unit: ru_per_s, value: 1666.667}
+        archive: true
+        trace: true
+        confidence: verified
+        note: 100,000 RU/min. $4,990 a year.
+      - id: enterprise
+        name: Enterprise
+        tier: business
+        monthly_usd: 999
+        annual_monthly_usd: 832.5
+        included_units: 1000000000
+        allowance_period: month
+        overage_per_1m_units_usd: 1.0
+        overage_allowed: true
+        throughput: {unit: ru_per_s, value: 4166.667}
+        archive: true
+        trace: true
+        confidence: verified
+        note: >-
+          250,000 RU/min. $9,990 a year. A self-serve list price, not sales-gated; the pricing page's
+          "$1 per 1M requests at scale" headline is this plan's overage rate.
+    weights:
+      ethereum:
+        default: 1
+        eth_call: 1
+        eth_getLogs: 1
+        eth_getBlockByNumber: 1
+        eth_getBlockReceipts: 1
+        eth_getBalance: 1
+        eth_blockNumber: 1
+        eth_getTransactionReceipt: 1
+        eth_estimateGas: 1
+        eth_sendRawTransaction: 1
+        debug_traceTransaction: 25
+        trace_block: 50
+      solana: null
+    archive_rule:
+      kind: none
+      value: 1
+      note: >-
+        Archive is not priced separately: every method in the Ethereum gateway table is "1 RU Base
+        cost", historic reads included, and Blockmachine confirmed it directly on 2026-10-22: "We do
+        1 RU except for trace and debug". The exceptions are per method and already in the weights:
+        debug_traceTransaction, debug_traceCall, trace_transaction and trace_replayTransaction 25 RU,
+        trace_block and debug_traceBlockByNumber 50 RU, trace_filter variable from 3 RU.
+    source:
+      plans:
+        url: https://blockmachine.io/llms.txt
+        body_sha256: 91e07f344503d0e24dbe432b2ae332356b66c653c325dd2f58995d7c6e5d841a
+        verified_at: "2026-10-22"
+        kind: markdown
+        poll: body_hash
+        extraction: "'### Plan comparison' table: | Plan | Price/mo | Price/yr | RU included | RU/min | Max keys | Overage per 1M RU |, cross-read against the plan cards on blockmachine.io/pricing"
+      weights:
+        url: https://blockmachine.io/docs/gateway-methods/ethereum
+        verified_at: "2026-10-22"
+        kind: html
+        poll: manual
+        extraction: "per-method 'N RU Base cost' lines; the page embeds a build id, so its hash changes on every deploy and is read by hand"
+    caveats:
+      - "A keyless public endpoint also exists, outside any plan: 60 RU/min per IP, no monthly cap, no archive. It is a public endpoint, not a plan with an allowance, so it is not ranked here, the same treatment as other keyless public RPCs."
+      - "Only successful responses are billed: 'Failed requests cost you nothing'. A per-request model cannot show that, so on a flaky workload the real bill is at or below the figure here."
+      - "The rate limit is metered in RU per minute, not requests: a 25-RU trace call spends 25 of it. The throughput check uses billing RU for that reason."
+      - "eth_getLogs accepts at most 10,000 blocks and trace_filter 100 blocks per call; a backfill pays for more, narrower calls."
+      - "No Solana. Eleven chains: Bittensor, Ethereum, Arbitrum, Arc, Base, BNB Chain, Mantle, Optimism, Polygon, Robinhood Chain, Scroll; one RU budget shared across them."
+
   - slug: blockdaemon
     name: Blockdaemon
     cohort: usage
@@ -2535,16 +2763,16 @@ providers:
       note: No archive surcharge published; archive availability itself is NOT PUBLISHED.
     source:
       plans:
-        url: https://docs.cdp.coinbase.com/node/pricing.md
-        body_sha256: 247aac8b0336c0b9efd053249f62c3bb644821e9c4b99c6486eb5327345d2162
-        verified_at: "2026-09-30"
+        url: https://docs.cdp.coinbase.com/data/node/pricing.md
+        body_sha256: cfcd9cc3d1e2ac2289254f1b38b057e0f317f51937f357f2e38d8c91388360fc
+        verified_at: "2026-10-22"
         kind: markdown
         poll: body_hash
-        extraction: "3,668 bytes of raw markdown carrying both price figures and the complete BU-per-method lists"
+        extraction: "3,639 bytes of raw markdown carrying both price figures and the complete BU-per-method lists"
       weights:
-        url: https://docs.cdp.coinbase.com/node/pricing.md
-        body_sha256: 247aac8b0336c0b9efd053249f62c3bb644821e9c4b99c6486eb5327345d2162
-        verified_at: "2026-09-30"
+        url: https://docs.cdp.coinbase.com/data/node/pricing.md
+        body_sha256: cfcd9cc3d1e2ac2289254f1b38b057e0f317f51937f357f2e38d8c91388360fc
+        verified_at: "2026-10-22"
         kind: markdown
         poll: body_hash
         extraction: "three tier lists: 30 BU / 100 BU / 500 BU"

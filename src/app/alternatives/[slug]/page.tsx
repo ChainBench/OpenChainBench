@@ -386,7 +386,7 @@ export default async function AlternativePage({
               value={`${fmtValue(bench.higherIsBetter ? fieldMin : fieldMax, bench.unit)}${unitSuffix(bench.unit, bench.higherIsBetter ? fieldMin : fieldMax)}`}
             />
             <SummaryStat
-              label="Spread"
+              label="p99 spread"
               value={tailSpread > 0 ? `${tailSpread.toFixed(1)}×` : "-"}
               hint={
                 tailSpread > 0

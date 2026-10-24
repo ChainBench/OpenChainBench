@@ -382,7 +382,18 @@ export function TerminalFillSwaps({
             {rows.length === 0 ? (
               <tr>
                 <td colSpan={exec ? 14 : 13} className="py-8 text-center text-ink-faint">
-                  No swap matches these filters.
+                  {/* The page embeds only the most recent rows and fetches the
+                      rest after hydration, so an empty table before that lands
+                      means NOT YET, not none. Saying "no swap matches" there is
+                      a false negative the reader has no way to see through:
+                      FOMO · Mobula read "No swap matches these filters" over a
+                      sample that held 144 of its swaps, because they were not
+                      among the embedded recent ones. A row whose figure is
+                      published and whose swaps appear to be absent reads as the
+                      figure being made up. */}
+                  {pending
+                    ? `Still loading the full sample of ${total} swaps.`
+                    : "No swap matches these filters."}
                 </td>
               </tr>
             ) : null}
@@ -391,7 +402,12 @@ export function TerminalFillSwaps({
       </div>
       <div className="mt-2 flex items-center justify-between gap-3 text-[11px] text-ink-faint">
         <span>
-          Showing {Math.min(limit, rows.length)} of {pending ? total : rows.length}
+          {/* While the rest of the sample is in flight the denominator was the
+              TARGET, so a filter matching nothing yet read "0 of 3000" and
+              looked like 3000 rows had been searched. Name what is loaded. */}
+          {pending
+            ? `Showing ${Math.min(limit, rows.length)} of ${rows.length} matched so far, ${swaps.length} of ${total} loaded`
+            : `Showing ${Math.min(limit, rows.length)} of ${rows.length}`}
         </span>
         <div className="flex items-center gap-2">
           {/* Every row on screen, filters and sort included, not the fifty
@@ -631,6 +647,12 @@ function RefCell({ s }: { s: FillSample }) {
     return (
       <span className="inline-flex items-center gap-1.5 text-ink-soft" title="the pool's exact mid before the swap, from its reserves in the transaction">
         <Layers className="h-3.5 w-3.5 text-ink-faint" /> exact mid
+      </span>
+    );
+  if (s.refSrc === "event")
+    return (
+      <span className="inline-flex items-center gap-1.5 text-ink-soft" title="the venue's own swap event, which reports the reserves the curve actually used">
+        <Layers className="h-3.5 w-3.5 text-ink-faint" /> venue event
       </span>
     );
   if (s.refSrc === "pool")

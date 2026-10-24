@@ -1,0 +1,405 @@
+package main
+
+// The EVM half of the Mobula route: the fills, and the join.
+//
+// One eth_getLogs per chain per pass, filtered on the bridge contract and the
+// fill event, then the intent id is read straight out of word 0 of the log's
+// data as right-padded ascii. That is the whole decode: the event carries the
+// id and nothing else, no recipient and no token, which is why pricing a fill
+// needs the receipt and the sink rule (see xchain.go) while TIMING one needs
+// only this.
+//
+// Settlement is published here and pricing is not, on purpose. The timing is
+// exact as soon as the two legs are joined, and the join is exact. Pricing
+// goes through the audited evmRow path and the row it produces is a separate
+// change; shipping the timing first means the route appears with a figure that
+// cannot be wrong rather than waiting on one that can.
+
+import (
+	"context"
+	"encoding/hex"
+	"log"
+	"math/big"
+	"math/rand"
+	"strings"
+	"sync"
+	"time"
+
+	"net/http"
+)
+
+// mobulaPaired: a fill joined to its deposit, waiting to be priced.
+//
+// Timing happens in the watcher because it needs nothing else. Pricing needs
+// the tick's http client, the gas prices and the state to append to, so the
+// pair is buffered and the tick drains it. Same split as the Relay feed: the
+// goroutine collects, the tick measures.
+type mobulaPaired struct {
+	chain string
+	fill  string
+	// id: the intent id both legs state in the clear. Carried because it is
+	// what makes the bridge's take collectable downstream: the component
+	// aggregations only gather a rail's cut when RelayID is set, so a row
+	// built without it computed the residual and then had it dropped by
+	// every aggregation, leaving a 75 bps median charge in no column at all.
+	id string
+	in mobulaIntent
+}
+
+// mobulaSeen: fills paired to a declared app, by app and chain, waiting to
+// be recorded as that row's attempts.
+//
+// It exists because sampleMobula never recorded any, so attOf stayed 0 on
+// every Mobula row and the pooled split fell back to one weight per swap.
+// That weights a product by how much of each chain we sampled rather than by
+// how much of it its users traded: the sample runs BNB 54% and Robinhood
+// 40% while the rail's own fills run Robinhood 23 of 29.
+//
+// Counted at PAIRING, not at pricing. Pricing is bounded by the per-tick
+// quota, so counting there would feed the sampler's own limit back in as if
+// it were the flow, which is the defect being fixed.
+var mobulaSeen struct {
+	sync.Mutex
+	n map[[2]string]int // {app, chain} -> fills since the last drain
+}
+
+func mobulaNoteSeen(app, chain string) {
+	if app == "" || chain == "" {
+		return
+	}
+	mobulaSeen.Lock()
+	if mobulaSeen.n == nil {
+		mobulaSeen.n = map[[2]string]int{}
+	}
+	mobulaSeen.n[[2]string{app, chain}]++
+	mobulaSeen.Unlock()
+}
+
+// mobulaDrainSeen returns the counts since the last call and resets them, so
+// each tick records its own interval rather than a running total.
+func mobulaDrainSeen() map[[2]string]int {
+	mobulaSeen.Lock()
+	defer mobulaSeen.Unlock()
+	out := mobulaSeen.n
+	mobulaSeen.n = map[[2]string]int{}
+	return out
+}
+
+// mobulaFillWatcher walks each chain's bridge contract forward.
+type mobulaFillWatcher struct {
+	cursor map[string]int64
+
+	mu      sync.Mutex
+	pending []mobulaPaired
+}
+
+func newMobulaFillWatcher() *mobulaFillWatcher {
+	return &mobulaFillWatcher{cursor: map[string]int64{}}
+}
+
+// mobulaPendingMax caps the buffer. A tick that stops draining must not let
+// this grow without bound, and the oldest pairs are the ones whose pricing is
+// least likely to still resolve, so the cap drops from the front.
+const mobulaPendingMax = 2000
+
+func (w *mobulaFillWatcher) queue(p mobulaPaired) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.pending = append(w.pending, p)
+	if len(w.pending) > mobulaPendingMax {
+		w.pending = w.pending[len(w.pending)-mobulaPendingMax:]
+	}
+}
+
+// saveCursors and loadCursors carry the per-chain read position across a
+// restart.
+//
+// Without them a restart re-reads mobulaFillReach of every chain, and those
+// fills already consumed their intents in the previous run, so the second
+// reading files them as unknown_intent. That is the same defect as the pump
+// deposit window, fixed earlier tonight by persisting it, written again here
+// in a new file the same evening.
+//
+// A cursor from an old state file is not dangerous: pollChain already resets
+// to head minus the reach whenever the gap is larger than the reach, so a
+// stale cursor behaves exactly like no cursor.
+func (w *mobulaFillWatcher) saveCursors() map[string]int64 {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	out := make(map[string]int64, len(w.cursor))
+	for k, v := range w.cursor {
+		out[k] = v
+	}
+	return out
+}
+
+func (w *mobulaFillWatcher) loadCursors(in map[string]int64) int {
+	if len(in) == 0 {
+		return 0
+	}
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	n := 0
+	for k, v := range in {
+		if v > 0 {
+			w.cursor[k] = v
+			n++
+		}
+	}
+	return n
+}
+
+// backlog: paired fills waiting to be priced. Published as
+// tfq_mobula_pending_fills and read by the tests, so the depth is never
+// something a reader has to infer.
+func (w *mobulaFillWatcher) backlog() int {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return len(w.pending)
+}
+
+// draw takes up to n paired fills AT RANDOM and leaves the rest buffered.
+//
+// Random, because arrival order is not a sample: taking the first n biases
+// toward whatever getLogs returned first, which correlates with the chain and
+// with position in a block range. The spec says "drawn at random" and every
+// other sampler here shuffles before it draws.
+//
+// And the rest STAYS. The previous version drained the whole buffer and kept
+// n, so an over-quota tick destroyed the surplus for good: 188 of 202
+// Robinhood fills, in a route where Robinhood is most of the flow. The other
+// samplers leave what they do not draw in their feed, and this now does the
+// same, bounded by mobulaPendingMax which drops the oldest.
+func (w *mobulaFillWatcher) draw(n int) []mobulaPaired {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if n <= 0 || len(w.pending) == 0 {
+		gMobulaBacklog.Set(float64(len(w.pending)))
+		return nil
+	}
+	rand.Shuffle(len(w.pending), func(i, j int) {
+		w.pending[i], w.pending[j] = w.pending[j], w.pending[i]
+	})
+	if n > len(w.pending) {
+		n = len(w.pending)
+	}
+	out := make([]mobulaPaired, n)
+	copy(out, w.pending[:n])
+	w.pending = w.pending[n:]
+	gMobulaBacklog.Set(float64(len(w.pending)))
+	return out
+}
+
+func (w *mobulaFillWatcher) run(ctx context.Context, httpc *http.Client, every time.Duration) {
+	t := time.NewTicker(every)
+	defer t.Stop()
+	w.poll(ctx, httpc)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-t.C:
+			w.poll(ctx, httpc)
+		}
+	}
+}
+
+func (w *mobulaFillWatcher) poll(ctx context.Context, httpc *http.Client) {
+	for chain, bridge := range mobulaBridge {
+		if ctx.Err() != nil {
+			return
+		}
+		var c originChain
+		found := false
+		for _, oc := range originChains {
+			if oc.slug == chain {
+				c, found = oc, true
+				break
+			}
+		}
+		if !found {
+			// A chain Mobula settles on that this bench has no endpoint
+			// for. Logged once a pass rather than skipped silently: an
+			// absent chain is 79% of this route if it is Robinhood.
+			log.Printf("[mobula-fill] %s: no originChain declared, fills on it are not read", chain)
+			continue
+		}
+		w.pollChain(ctx, httpc, c, chain, bridge)
+	}
+}
+
+// mobulaFillReach: how far back the fill watcher reads, in SECONDS of chain.
+//
+// It was a flat 600 blocks, and that lost most of Robinhood. The cold-start
+// clause discards the cursor whenever a chain advances more than the span
+// between two passes, so with a two-minute tick:
+//
+//	robinhood  0.10 s a block  ->  600 blocks = 60 s, chain moves ~1,200,
+//	                                cursor thrown away every pass, about
+//	                                half of every interval never read
+//	bnb        0.75 s          ->  7.5 min, cursor survives
+//	base       2.00 s          ->  20 min, survives
+//	ethereum  12.00 s          ->  2 h, survives
+//
+// The symptom was 12 pairs with bnb 9, ethereum 2, base 1 and NONE on
+// Robinhood, which is 57% of this route. A flat block count means a different
+// thing on every chain, which is the same error as comparing settlement
+// milliseconds across chains with different block times.
+//
+// 15 minutes: comfortably over the two-minute tick even after a slow pass or
+// a restart, and under the deposit window's 30-minute reach, so it never
+// reads fills whose intent could not still be held.
+const mobulaFillReach = 15 * 60
+
+// mobulaBlockSeconds: measured block times, used only to turn mobulaFillReach
+// into a block count. A chain absent here gets the slowest assumption, which
+// reads MORE chain rather than less: over-reading costs an unknown_intent
+// count, under-reading loses fills silently.
+var mobulaBlockSeconds = map[string]float64{
+	"robinhood": 0.10,
+	"bnb":       0.75,
+	"base":      2.00,
+	"ethereum":  12.00,
+	"arc":       1.00,
+}
+
+func mobulaSpanOf(chain string) int64 {
+	sec, ok := mobulaBlockSeconds[chain]
+	if !ok || sec <= 0 {
+		sec = 12
+	}
+	n := int64(float64(mobulaFillReach) / sec)
+	if n < 100 {
+		n = 100
+	}
+	// A cap, because a chain whose block time we have wrong must not ask an
+	// endpoint for a range it will refuse: a rejected getLogs reads as a
+	// quiet bridge.
+	if n > 20000 {
+		n = 20000
+	}
+	return n
+}
+
+func (w *mobulaFillWatcher) pollChain(ctx context.Context, httpc *http.Client, c originChain, chain, bridge string) {
+	var headHex string
+	if err := evmCall(ctx, httpc, c.logsRPC(), "eth_blockNumber", []any{}, &headHex); err != nil {
+		log.Printf("[mobula-fill] %s: head: %v", chain, err)
+		return
+	}
+	head := hexInt(headHex)
+	if head <= 0 {
+		return
+	}
+	span := mobulaSpanOf(chain)
+	w.mu.Lock()
+	from := w.cursor[chain]
+	w.mu.Unlock()
+	if from <= 0 || head-from > span {
+		// Losing ground: either a cold start or a pass that fell behind the
+		// chain. Logged when it is the second case, because that is the
+		// state in which fills are being skipped and nothing else says so.
+		if from > 0 {
+			// A log said this and nothing counted it, so it could only be
+			// found by reading container output. Same omission as the
+			// deposit feed's, one file away.
+			gMobulaBehind.Set(1)
+			cMobulaSkipped.Add(float64(head - from - span))
+			log.Printf("[mobula-fill] %s: %d blocks behind, past the %d-block reach: fills in between are not read",
+				chain, head-from, span)
+		}
+		from = head - span
+	}
+	if from < 0 {
+		from = 0
+	}
+	if from > head {
+		return
+	}
+
+	var logs []evmLog
+	err := evmCall(ctx, httpc, c.logsRPC(), "eth_getLogs", []any{map[string]any{
+		"fromBlock": "0x" + big.NewInt(from).Text(16),
+		"toBlock":   "0x" + big.NewInt(head).Text(16),
+		"address":   bridge,
+		"topics":    []any{mobulaFillTopic},
+	}}, &logs)
+	if err != nil {
+		log.Printf("[mobula-fill] %s: getLogs %d-%d: %v", chain, from, head, err)
+		return
+	}
+	// to+1: eth_getLogs includes both bounds, so leaving the cursor at head
+	// re-reads head's logs on the next pass and double-counts its fills.
+	w.mu.Lock()
+	w.cursor[chain] = head + 1
+	w.mu.Unlock()
+
+	paired := 0
+	for _, l := range logs {
+		id := mobulaIDFromData(l.Data)
+		if id == "" {
+			continue
+		}
+		in, ok := mobulaTakeIntent(id)
+		if !ok {
+			cMobulaFills.WithLabelValues(chain, "unknown_intent").Inc()
+			continue
+		}
+		cMobulaFills.WithLabelValues(chain, "paired").Inc()
+		mobulaNoteSeen(in.App, chain)
+		paired++
+		bn := hexInt(l.BlockNumber)
+		if bn <= 0 {
+			continue
+		}
+		at := pumpBlockAt(ctx, httpc, c, chain, bn)
+		if at <= 0 || in.At <= 0 {
+			continue
+		}
+		// Same definition as every other settlement on this bench:
+		// destination block time minus origin block time. noteSettle drops
+		// anything over 60 s and under 0, so a clock skew between two
+		// chains cannot publish a negative figure.
+		noteSettle(in.App, settleTrade, chain, float64(at-in.At))
+		// Buffered for the tick to price. Queued AFTER the timing, so a
+		// pricing failure can never cost a settlement: the two figures are
+		// independent and the timing is the one that cannot be wrong.
+		w.queue(mobulaPaired{chain: chain, fill: l.TxHash, id: id, in: in})
+	}
+	if len(logs) > 0 {
+		log.Printf("[mobula-fill] %s: %d fills in blocks %d-%d, %d paired",
+			chain, len(logs), from, head, paired)
+	}
+}
+
+// mobulaIDFromData reads the intent id out of word 0 of the event's data.
+//
+// The id is a 19-character ascii string right-padded with zero bytes inside a
+// 32-byte word, e.g.
+//
+//	0x323637373935382d303937376331322d35376400...  "2677958-0977c12-57d"
+//
+// Returns "" on anything that does not decode to printable ascii, so a
+// changed event layout stops the join instead of pairing on rubbish. That is
+// the same choice as logWordUSD refusing short data on the pump dust gate: a
+// decoder that guesses is worse than one that stops.
+func mobulaIDFromData(data string) string {
+	s := strings.TrimPrefix(data, "0x")
+	if len(s) < 64 {
+		return ""
+	}
+	raw, err := hex.DecodeString(s[:64])
+	if err != nil {
+		return ""
+	}
+	id := strings.TrimRight(string(raw), "\x00")
+	if len(id) < 8 {
+		return ""
+	}
+	for i := 0; i < len(id); i++ {
+		if id[i] < 0x20 || id[i] > 0x7e {
+			return ""
+		}
+	}
+	return id
+}

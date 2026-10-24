@@ -73,6 +73,23 @@ export function fmtUnit(value: number, unit: string): string {
     // samples each. leaders() calls two providers tied when their FORMATTED
     // values match, so four surfaces published "tied at 0.3 s" while
     // /api/stat's own leader field named Mobula alone.
+    // Below the two decimals this scale prints, say so rather than printing
+    // a zero. The harness FLOORS a head-lag at 1 ms for exactly this reason,
+    // and its own comment says why: "the first feed is 0 by definition, but
+    // the site drops rows whose headline reads exactly zero (a zero p50 means
+    // no measurement everywhere else), which hid the leader on the Singapore
+    // tab where Mobula won every race. One millisecond reads as first."
+    //
+    // toFixed(2) then rendered that 1 ms back as "0.00 s", which is the
+    // appearance the floor exists to prevent. Bench 001's Solana tab read
+    // BEST 0.00 s while Codex sat on the floor: p10, p50 and min all exactly
+    // 1.00 ms across three regions and ~2,750 samples each, which is what
+    // winning the race more than half the time looks like.
+    //
+    // "<0.01 s" is the honest string: it does not claim a measured
+    // millisecond, which we did not measure. The "sec" branch above has
+    // carried the same guard all along.
+    if (s > 0 && s < 0.005) return "<0.01 s";
     if (s < 1) return `${s.toFixed(2)} s`;
     if (s < 10) return `${s.toFixed(1)} s`;
     return `${s.toFixed(0)} s`;
@@ -270,4 +287,29 @@ export function valueWindowLabel(bench: {
     return "24h avg";
   }
   return "24h";
+}
+
+/** The headline value of one provider. On a race bench (spec
+ *  `race_leader`) a value under the floor is the winner's zero by
+ *  construction, not a latency, so it reads "first" with the provider's
+ *  share of wins when the share panel has it. Everything else is fmtUnit. */
+export function fmtHeadline(
+  value: number,
+  bench: {
+    unit: string;
+    raceLeader?: { floor: number; sharePanel: string };
+    metricPanels?: { id: string; values?: Record<string, number> }[];
+  },
+  slug?: string,
+): string {
+  const rl = bench.raceLeader;
+  if (rl && Number.isFinite(value) && value >= 0 && value < rl.floor) {
+    const share = slug
+      ? bench.metricPanels?.find((p) => p.id === rl.sharePanel)?.values?.[slug]
+      : undefined;
+    return typeof share === "number" && Number.isFinite(share)
+      ? `first · ${Math.round(share)}%`
+      : "first";
+  }
+  return fmtUnit(value, bench.unit);
 }

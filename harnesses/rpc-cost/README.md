@@ -24,10 +24,10 @@ page reads the committed curve (`src/data/rpc-cost-curves.json`) and shows
 the catalogue date, and it changes only when a human re-reads the page and
 the catalogue and curve are re-committed.
 
-Eleven of the twelve ranked providers do publish a machine-readable
+Sixteen of the nineteen ranked providers publish a machine-readable
 artifact (JSON API or raw markdown), listed per provider under `source:`
-in the catalogue. Live parsing of the three true JSON pricing APIs
-(GetBlock, NOWNodes, QuickNode) is the obvious next step and deliberately
+in the catalogue. Live parsing of the four unauthenticated JSON pricing
+APIs (GetBlock, NOWNodes, QuickNode, Tatum) is the obvious next step and deliberately
 not in this first version: drift detection has to be trustworthy before
 auto-ingestion is.
 
@@ -45,7 +45,9 @@ profile, volume) the harness:
    These differ structurally: Chainstack doubles by *block age* rather
    than by method, BlockPI adds 30% to the whole endpoint, GetBlock
    carries an independent archive column that is not a multiplier at all,
-   and Alchemy, dRPC and QuickNode charge no archive premium.
+   and Alchemy, dRPC, QuickNode, Dwellir and Blockmachine charge no
+   archive premium (Blockmachine bills debug and trace at 25 to 50 Request
+   Units instead, a per-method weight rather than an archive rule).
 3. Picks the provider's cheapest plan that can actually serve the
    workload, and reports the bill on that plan.
 
@@ -63,11 +65,14 @@ produce that, all real:
 
 ## Cohorts
 
-`usage` providers bill per request. `dedicated` providers sell capacity
-per month or per node-hour and are ranked on their own axis, with
-`rpc_cost_breakeven_requests` giving the monthly volume at which the
-fixed price undercuts the cheapest metered rate. Mixing the two into one
-$/1M column would let a volume assumption decide the ranking.
+`usage` providers bill per request and are the ranked cohort. `dedicated`
+providers sell capacity per month or per node-hour; the spec declares that
+tier `ranked: false`, and the bench page prices them in the calculator,
+on the same curve as the metered plans, rather than in the per-workload
+grid. `rpc_cost_breakeven_requests` is still emitted (the monthly volume at
+which a fixed price undercuts the cheapest metered rate) but no panel reads
+it yet. Mixing the two into one $/1M column would let a volume assumption
+decide the ranking.
 
 `excluded` providers stay in the catalogue with a reason so the bench can
 say publicly why something is absent — including the ones that died
@@ -77,10 +82,12 @@ price at all (Tenderly).
 ## Metrics
 
 ```
-rpc_cost_monthly_usd{provider,plan,profile,bucket,chain,cohort}
-rpc_cost_per_million_usd{provider,plan,profile,bucket,chain,cohort}
-rpc_cost_units_per_request{provider,profile,chain}
-rpc_cost_eligible{provider,profile,bucket}
+rpc_cost_monthly_usd{provider,plan,kind,bucket,chain,tier,venue}
+rpc_cost_per_million_usd{provider,plan,kind,bucket,chain,tier,venue}
+rpc_cost_units_per_request{provider,kind,chain}
+rpc_cost_eligible{provider,kind,bucket}
+rpc_cost_plan_confidence{provider,plan,kind,bucket}
+rpc_free_allowance_requests{provider,plan,kind,chain}   (+ _floor, _ceiling)
 rpc_cost_breakeven_requests{provider,plan,chain}
 rpc_pricing_artifact_ok{provider,artifact}
 rpc_pricing_artifact_age_seconds{provider,artifact}

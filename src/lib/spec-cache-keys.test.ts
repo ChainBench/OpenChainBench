@@ -58,3 +58,43 @@ describe("the two bench cache keys move together", () => {
     expect(scoped.length).toBe(2);
   });
 });
+
+/**
+ * There is a THIRD key, and this test did not know about it.
+ *
+ * `bench-filters-vK` caches a bench's dimension-filtered variants. It only
+ * matters for a bench that declares `dimensions`, which is why it legitimately
+ * lags the other two: it sat at v35 while bench-unfiltered went to v93,
+ * because none of the benches Nova joined then had dimensions. Bench 295 does
+ * (kind and bucket), so adding Nova there needed all three to move, and a
+ * provider missing from this key is invisible on every tab.
+ *
+ * So the rule is conditional and cannot be checked statically. What can be
+ * checked is that the key exists, is unique, is environment-scoped like the
+ * others, and never runs ahead of the per-bench key it is pinned to, which is
+ * the shape every mistake here would take.
+ */
+describe("the dimension-filtered cache key", () => {
+  test("it is defined once and scoped by environment like the other two", () => {
+    const hits = SRC.match(/\["bench-filters-v\d+"/g) ?? [];
+    expect(hits.length, `bench-filters should be defined once, found ${hits.length}`).toBe(1);
+    expect(SRC).toMatch(
+      /\["bench-filters-v\d+",\s*process\.env\.VERCEL_ENV === "production" \? "prod" : "all"\]/,
+    );
+  });
+
+  test("its newest note names a per-bench version that exists", () => {
+    const filters = version("bench-filters");
+    const bench = version("bench-unfiltered");
+    const note = SRC.match(
+      new RegExp(`// v${filters}: lockstep with bench-unfiltered-v(\\d+)`),
+    );
+    expect(
+      note,
+      `bench-filters is at v${filters} and should carry a note naming the bench-unfiltered version it was bumped with`,
+    ).not.toBeNull();
+    // Pinned to a future version means the note was written against a bump
+    // that never happened.
+    expect(Number(note![1])).toBeLessThanOrEqual(bench);
+  });
+});

@@ -21,8 +21,8 @@ seo_intro: |
   cohort: one WebSocket per provider per region, open ten minutes in every
   hour across the whole cohort, every frame
   timestamped on arrival, each block scored against whichever provider
-  delivered it earliest. {{best_name}} currently leads at {{best_p50}}
-  (p50, 24h) across {{count}} keyed providers.
+  delivered it earliest. {{best_name}} currently leads, first on
+  {{best_first}} of the blocks it received (24h), across {{count}} keyed providers.
 
   Because the measurement is relative, the leader reads near zero by
   construction. The numbers to read are the gap to the runner-up and the
@@ -52,6 +52,22 @@ methodology:
   - "Same keyed endpoints as the HTTP cohort on this chain, same keys, same three regions. Keys live in the probe environment, never in this repository. Plan tiers are disclosed on the HTTP cohort's methodology."
 
 expected_n: 22000
+
+# The headline is the lag behind the first provider to push each block,
+# so the winner reads 0 by construction: under 0.5 ms the boards print
+# "first" and its share of wins instead of a histogram interpolation.
+race_leader:
+  floor: 0.5
+  share_panel: first_share
+
+metric_panels:
+  - id: first_share
+    label: First to push
+    label_key: provider
+    metric: 100 * sum by (provider) (ocb:rpc_ws_head_first:increase_24h{chain="base",tier="keyed"}) / sum by (provider) (ocb:rpc_ws_head_seen:increase_24h{chain="base",tier="keyed"})
+    unit: pct
+    higher_is_better: true
+    description: "Share of the blocks this provider received in the last 24 hours that it pushed first in its region. Read per provider, so one raced from a single region is not diluted by the other two."
 
 prometheus:
   window: 24h

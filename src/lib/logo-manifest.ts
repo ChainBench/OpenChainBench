@@ -193,6 +193,10 @@ const RAW: Record<string, string> = {
   ondo: "/logos/ondo-perps.svg",
   onfinality: "/logos/onfinality.png",
   dwellir: "/logos/dwellir.png",
+  // Blockmachine, bench 282 and 283 from 2026-10-22. The 92 px JPG the team
+  // sent: a black cube glyph on white, so the chip carries its own light
+  // ground in both themes.
+  blockmachine: "/logos/blockmachine.jpg",
   // Bench 282 flat-rate cohort, added 2026-10-16. Shyft and Zeeve are the
   // marks cropped from their own wordmark SVGs (Zeeve on white, its dark
   // dot vanishes on the dark theme); Allnodes is its own app icon.
@@ -573,6 +577,7 @@ const RAW: Record<string, string> = {
 
   // ─── Solana memecoin platforms (bench № 200 / 205) ───
   "pump-fun": "/logos/pump-fun.jpg",
+  "pump-bridge": "/logos/pump-fun.jpg",
   pumpswap: "/logos/pump-fun.jpg",
   trojan: "/logos/trojan.jpg",
   gmgn: "/logos/gmgn.jpg",
@@ -647,6 +652,7 @@ const RAW: Record<string, string> = {
   coinpilot: "/logos/coinpilot.png",
   echosync: "/logos/echosync.png",
   fomo: "/logos/fomo.png",
+  "fomo-mobula": "/logos/fomo.png",
   slash: "/logos/slash.png",
   topdog: "/logos/topdog.jpg",
   "markets-mobile": "/logos/markets-mobile.svg",
@@ -1065,6 +1071,7 @@ const ALIASES: Record<string, string> = {
   "getblock-cold": "getblock",
   "quicknode-cold": "quicknode",
   "alchemy-cold": "alchemy",
+  "blockmachine-cold": "blockmachine",
   "chainstack-cold": "chainstack",
   "dwellir-cold": "dwellir",
   "validationcloud-cold": "validationcloud",

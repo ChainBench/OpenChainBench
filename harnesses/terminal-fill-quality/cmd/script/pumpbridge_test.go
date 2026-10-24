@@ -3,21 +3,23 @@ package main
 import "testing"
 
 // Pump Bridge's EVM routers are declared as ordinary evmTerminal rows, which
-// works only because productOf splits "pump-fun-bnb" into the pump-fun row on
-// the bnb tab. If a chain ever leaves productChains, the split stops happening,
+// works only because productOf splits "pump-bridge-bnb" into the pump-bridge
+// row on the bnb tab. If a chain ever leaves productChains, the split stops,
 // the row lands under a slug the spec does not read, and the figures vanish
 // from the page with nothing failing. That is the failure this pins.
-func TestPumpBridgeRowsSplitIntoThePumpFunRow(t *testing.T) {
+func TestPumpBridgeRowsSplitIntoTheirOwnProduct(t *testing.T) {
 	want := map[string]string{
-		"pump-fun-bnb":       "bnb",
-		"pump-fun-base":      "base",
-		"pump-fun-arc":       "arc",
-		"pump-fun-robinhood": "robinhood",
+		"pump-bridge-bnb":       "bnb",
+		"pump-bridge-base":      "base",
+		"pump-bridge-arc":       "arc",
+		"pump-bridge-robinhood": "robinhood",
+		"pump-bridge-megaeth":   "megaeth",
+		"pump-bridge-xlayer":    "xlayer",
 	}
 	for slug, chain := range want {
 		product, got := productOf(slug)
-		if product != "pump-fun" {
-			t.Errorf("%s: product = %q, want pump-fun", slug, product)
+		if product != "pump-bridge" {
+			t.Errorf("%s: product = %q, want pump-bridge", slug, product)
 		}
 		if got != chain {
 			t.Errorf("%s: chain = %q, want %q", slug, got, chain)
@@ -34,24 +36,32 @@ func TestPumpBridgeRoutersAreDeclaredOnEveryChainWeCover(t *testing.T) {
 
 	seen := map[string][]string{}
 	for _, e := range evmTerminals {
-		if p, _ := productOf(e.Slug); p == "pump-fun" {
+		if p, _ := productOf(e.Slug); p == "pump-bridge" {
 			seen[e.Chain] = e.Routers
 		}
 	}
 	for chain, router := range map[string]string{
 		"bnb": generic, "base": generic, "arc": generic, "robinhood": robinhood,
+		"megaeth": generic, "xlayer": generic,
+		// Ethereum added 2026-10-23: the router is deployed and used there
+		// and the chain already had a tab, so the route was measurable and
+		// simply undeclared.
+		"ethereum": generic,
 	} {
 		got, ok := seen[chain]
 		if !ok {
-			t.Errorf("no pump.fun row declared on %s", chain)
+			t.Errorf("no Pump Bridge row declared on %s", chain)
 			continue
 		}
 		if len(got) != 1 || got[0] != router {
 			t.Errorf("%s: routers = %v, want [%s]", chain, got, router)
 		}
 	}
-	if len(seen) != 4 {
-		t.Errorf("pump.fun EVM rows = %d, want 4", len(seen))
+	// The count is asserted so a row cannot be added or dropped unnoticed,
+	// and the map above names which chains, so a change has to be made in
+	// both places deliberately rather than by moving one number.
+	if len(seen) != 7 {
+		t.Errorf("Pump Bridge rows = %d, want 7", len(seen))
 	}
 }
 
@@ -62,7 +72,7 @@ func TestPumpBridgeRoutersAreDeclaredOnEveryChainWeCover(t *testing.T) {
 // receives one.
 func TestPumpBridgeRowsDeclareNoCollector(t *testing.T) {
 	for _, e := range evmTerminals {
-		if p, _ := productOf(e.Slug); p != "pump-fun" {
+		if p, _ := productOf(e.Slug); p != "pump-bridge" {
 			continue
 		}
 		if e.Collector != "" {

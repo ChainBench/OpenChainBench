@@ -663,6 +663,26 @@ func blockAgeUnits(w Weights, pr Profile, mult float64) (float64, error) {
 // list means the weights table decides, which is right for a per-request
 // plan and wrong for a dedicated node, so validate() requires the list on
 // the dedicated cohort.
+// publishedUnitsPerRequest is the figure the units_per_request gauge carries:
+// what the model actually bills one request of the profile at. For the
+// dedicated cohort that is 1, because every dedicated plan bills in
+// `request` (see the cohort note in priceAt), but unitsPerRequest errors on
+// those providers because they publish no method table, so the gauge was
+// never set for them and the panel read blank beside a bill it had priced
+// (audit 2026-10-22). A dedicated provider gets 1 on a chain at least one of
+// its plans serves, and nothing on a chain none does.
+func publishedUnitsPerRequest(p Provider, pr Profile) (float64, error) {
+	if p.Cohort != "dedicated" {
+		return unitsPerRequest(p, pr)
+	}
+	for _, pl := range p.Plans {
+		if servesChain(pl, pr.Chain) {
+			return 1, nil
+		}
+	}
+	return 0, fmt.Errorf("no plan serves %s", pr.Chain)
+}
+
 func servesChain(pl Plan, chain string) bool {
 	for _, c := range pl.Chains {
 		if c == chain {

@@ -36,9 +36,9 @@ type FX struct {
 }
 
 type Provider struct {
-	Slug            string              `yaml:"slug"`
-	Name            string              `yaml:"name"`
-	Cohort          string              `yaml:"cohort"` // usage | dedicated | excluded
+	Slug   string `yaml:"slug"`
+	Name   string `yaml:"name"`
+	Cohort string `yaml:"cohort"` // usage | dedicated | excluded
 	// Ranked false marks a reference row: a real, usable endpoint that is
 	// not a purchasable product and must never be called the winner.
 	// PublicNode and the chain foundations' public RPCs are $0 with no
@@ -46,14 +46,14 @@ type Provider struct {
 	// "cheapest" would be both true and useless. They are emitted under
 	// cohort="reference" so the leaderboard can show them without ranking
 	// them. Absent means ranked.
-	Ranked          *bool               `yaml:"ranked"`
-	Status          string              `yaml:"status"` // live | end-of-life | dead | no-price-published
-	ExclusionReason string              `yaml:"exclusion_reason"`
-	Unit            string              `yaml:"unit"`
-	PricingModel    string              `yaml:"pricing_model"` // per_method | per_chain | flat_request | depth_based
-	Currency        string              `yaml:"currency"`
-	Plans           []Plan              `yaml:"plans"`
-	Weights         map[string]Weights  `yaml:"weights"` // chain -> method weights
+	Ranked          *bool              `yaml:"ranked"`
+	Status          string             `yaml:"status"` // live | end-of-life | dead | no-price-published
+	ExclusionReason string             `yaml:"exclusion_reason"`
+	Unit            string             `yaml:"unit"`
+	PricingModel    string             `yaml:"pricing_model"` // per_method | per_chain | flat_request | depth_based
+	Currency        string             `yaml:"currency"`
+	Plans           []Plan             `yaml:"plans"`
+	Weights         map[string]Weights `yaml:"weights"` // chain -> method weights
 	// ArchiveWeights is a full second table for providers whose archive
 	// cost is an independent lookup rather than a multiple of the
 	// standard cost. GetBlock is the case that forced it: its API returns
@@ -71,10 +71,10 @@ type Provider struct {
 	// honest weighted average: when a profile uses a method the table does
 	// not price, the throughput check is skipped and said to be skipped,
 	// rather than quietly falling back to the wrong unit.
-	ThroughputWeights map[string]Weights `yaml:"throughput_weights"`
-	ArchiveRule    ArchiveRule        `yaml:"archive_rule"`
-	Source          map[string]Artifact `yaml:"source"` // "plans" | "weights"
-	Caveats         []string            `yaml:"caveats"`
+	ThroughputWeights map[string]Weights  `yaml:"throughput_weights"`
+	ArchiveRule       ArchiveRule         `yaml:"archive_rule"`
+	Source            map[string]Artifact `yaml:"source"` // "plans" | "weights"
+	Caveats           []string            `yaml:"caveats"`
 }
 
 // Weights carries a per-method unit cost plus the catch-all every
@@ -125,16 +125,16 @@ func (w Weights) IsEmpty() bool {
 }
 
 type Plan struct {
-	ID           string     `yaml:"id"`
-	Name         string     `yaml:"name"`
+	ID   string `yaml:"id"`
+	Name string `yaml:"name"`
 	// Tier buckets plans across providers so "the cheapest entry plan" is
 	// answerable: free | entry | growth | business | enterprise. Derived
 	// from the monthly price when absent (see PlanTier), because provider
 	// plan names are marketing and do not line up — Chainstack "Growth"
 	// is $49 while Helius "Business" is $499.
-	Tier          string    `yaml:"tier"`
-	MonthlyUSD    *float64  `yaml:"monthly_usd"`
-	AnnualMonthly *float64  `yaml:"annual_monthly_usd"`
+	Tier          string   `yaml:"tier"`
+	MonthlyUSD    *float64 `yaml:"monthly_usd"`
+	AnnualMonthly *float64 `yaml:"annual_monthly_usd"`
 	// PackagePriceUSD is the sticker price of a plan sold as an expiring
 	// package rather than a monthly subscription — BlockPI's $49/60d and
 	// $299/90d. It is pro-rated onto a 30-day month by AllowancePeriod.
@@ -200,12 +200,12 @@ type Plan struct {
 	// its Free plan excludes eth_getLogs. A workload that calls a listed
 	// method is unavailable on the plan, exactly like trace on a plan with
 	// trace: false.
-	UnservedMethods []string `yaml:"unserved_methods"`
-	Throughput     Throughput `yaml:"throughput"`
-	Archive        string     `yaml:"archive"` // true | false | gated
-	Trace          *bool      `yaml:"trace"`
-	Confidence     string     `yaml:"confidence"` // verified | uncertain | unpublished
-	Note           string     `yaml:"note"`
+	UnservedMethods []string   `yaml:"unserved_methods"`
+	Throughput      Throughput `yaml:"throughput"`
+	Archive         string     `yaml:"archive"` // true | false | gated
+	Trace           *bool      `yaml:"trace"`
+	Confidence      string     `yaml:"confidence"` // verified | uncertain | unpublished
+	Note            string     `yaml:"note"`
 }
 
 type Throughput struct {

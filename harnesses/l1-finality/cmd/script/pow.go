@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sync"
 	"time"
 )
 
@@ -42,9 +43,24 @@ func fetchBitcoinLike(ch ChainConfig) FinalitySample {
 	}
 
 	tip := blocks[0]
-	// If the returned window is shorter than the desired confirmations
-	// depth, paginate one more call using /api/blocks/<height>. Litecoin
-	// (12 conf) is satisfied by the default 15-block window.
+	esploraSeen.remember(ch.Slug, blocks)
+	// litecoinspace's /api/blocks returns 10 blocks, short of 12
+	// confirmations, and its historical lookups (/blocks/<h>,
+	// /block-height/<h>) time out: on 2026-10-24 every one of them did,
+	// which was ~10% of Litecoin ticks failing. Every block passes through
+	// the top 10 on its way down, so the timestamp at tip-N is already in
+	// memory after the first ~N blocks; the paginated call is only the
+	// cold-start fallback.
+	if ts, ok := esploraSeen.lookup(ch.Slug, tip.Height-int64(ch.Confirmations)); ok {
+		s.LatestBlock = tip.Height
+		s.FinalizedBlock = tip.Height - int64(ch.Confirmations)
+		s.BlockLag = int64(ch.Confirmations)
+		s.LagSeconds = float64(tip.Timestamp - ts)
+		if s.LagSeconds < 0 {
+			s.LagSeconds = 0
+		}
+		return s
+	}
 	finalIdx := ch.Confirmations
 	if finalIdx >= len(blocks) {
 		more, err := esploraBlocksFrom(client, ch.RPCURL, tip.Height-int64(ch.Confirmations))
@@ -78,6 +94,46 @@ func fetchBitcoinLike(ch ChainConfig) FinalitySample {
 		s.LagSeconds = 0
 	}
 	return s
+}
+
+// esploraSeen keeps the timestamp of every block seen in /api/blocks, per
+// chain, for the last esploraKeep heights.
+var esploraSeen = &blockTimes{byChain: map[string]map[int64]int64{}}
+
+const esploraKeep = 200
+
+type blockTimes struct {
+	mu      sync.Mutex
+	byChain map[string]map[int64]int64
+}
+
+func (b *blockTimes) remember(chain string, blocks []esploraBlock) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	m := b.byChain[chain]
+	if m == nil {
+		m = map[int64]int64{}
+		b.byChain[chain] = m
+	}
+	var top int64
+	for _, bl := range blocks {
+		m[bl.Height] = bl.Timestamp
+		if bl.Height > top {
+			top = bl.Height
+		}
+	}
+	for h := range m {
+		if h < top-esploraKeep {
+			delete(m, h)
+		}
+	}
+}
+
+func (b *blockTimes) lookup(chain string, height int64) (int64, bool) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	ts, ok := b.byChain[chain][height]
+	return ts, ok
 }
 
 // esploraRecentBlocks calls GET /api/blocks — returns the most recent ~15

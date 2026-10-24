@@ -3,7 +3,7 @@ import { nounLabel } from "@/lib/row-noun";
 import { valueQualifier } from "@/lib/value-window";
 import { displayResults } from "@/lib/provider-filters";
 import { leader } from "@/lib/citation";
-import { fmtUnit } from "@/lib/format";
+import { fmtHeadline } from "@/lib/format";
 import { SITE } from "@/data/site";
 
 /**
@@ -83,7 +83,7 @@ export function BenchInfobox({ benchmark }: { benchmark: Benchmark }) {
                 <span className="text-ink-faint">·</span>{" "}
                 <span className="text-ink font-medium">{top.name}</span>{" "}
                 <span className="text-ink-faint">
-                  {fmtUnit(top.value, benchmark.unit)}
+                  {fmtHeadline(top.value, benchmark, top.slug)}
                 </span>
               </span>
             )}
@@ -128,7 +128,7 @@ export function BenchInfobox({ benchmark }: { benchmark: Benchmark }) {
               <span className="font-medium text-ink">{top.name}</span>
               <span className="text-ink-faint">
                 {" "}
-                · {fmtUnit(top.value, benchmark.unit)}
+                · {fmtHeadline(top.value, benchmark, top.slug)}
               </span>
             </InfoPair>
           )}

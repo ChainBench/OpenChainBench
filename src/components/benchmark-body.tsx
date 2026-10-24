@@ -24,7 +24,7 @@ import type { ProviderLayer } from "@/types/benchmark";
 import { CountLeaderboard } from "@/components/count-leaderboard";
 import { SummaryStat } from "@/components/summary-stat";
 import { ViewSwitcher } from "@/components/view-switcher";
-import { fmtAsOfUtc, fmtUnit } from "@/lib/format";
+import { fmtAsOfUtc, fmtHeadline, fmtUnit } from "@/lib/format";
 import { computeFieldStats } from "@/lib/stats";
 import { defaultViewFor, viewsForBenchmark } from "@/lib/views";
 import { useViewPreference } from "@/hooks/use-view-preference";
@@ -763,6 +763,42 @@ export function BenchmarkBody({
   // return so this useMemo is called on every render (rules-of-hooks).
   const activePanel =
     benchmark?.metricPanels?.find((p) => p.id === activePanelId) ?? null;
+  // The bars show whatever the active panel's metric selects, which is not
+  // always a p50, and the footer said p50 for every view. Bench 268's
+  // Settlement time panel is stat="mean" deliberately: block timestamps are
+  // whole seconds, so a median there can only read 0, 1 or 2 s and cannot
+  // separate two routes. The panel's own description tells the reader to read
+  // the mean, and the line under the bars told them it was a median.
+  // Why a panel has no rows under the current filter. The chart cannot know,
+  // and an unexplained blank box is read as a broken page: bench 268's
+  // Settlement time on the Solana tab was reported as a bug when it was the
+  // correct answer, because that figure is destination block time minus
+  // origin block time on a bridged trade and Solana is the origin side.
+  //
+  // Distinguishes the two cases the reader cannot: the panel has values but
+  // none on this tab, versus the panel has no values anywhere.
+  const panelEmptyNote = (() => {
+    if (!activePanel) return undefined;
+    const vals = activePanel.values ?? {};
+    const anywhere = Object.values(vals).some(
+      (v) => v != null && Number.isFinite(v),
+    );
+    const where = [effectiveChain, effectiveRegion, effectiveKind]
+      .filter((v): v is string => !!v && v !== "all")
+      .join(" · ");
+    if (!anywhere) {
+      return `${activePanel.label} has no measurements yet.`;
+    }
+    return where
+      ? `${activePanel.label} is not measured on ${where}. It is published on the other tabs.`
+      : `${activePanel.label} has no measurements under this filter.`;
+  })();
+  const panelStatLabel = (() => {
+    if (!activePanel) return "p50";
+    const m = activePanel.metric.match(/\bstat\s*=\s*"([^"]+)"/);
+    if (!m) return "value";
+    return m[1] === "over10s_pct" ? "share over 10 s" : m[1];
+  })();
   const panelViewBenchmark = useMemo(() => {
     if (!viewBenchmark) return null;
     if (!activePanel) return viewBenchmark;
@@ -1005,7 +1041,11 @@ export function BenchmarkBody({
           <dl className={"mt-10 card rounded-xl grid grid-cols-2 sm:flex sm:flex-wrap divide-y divide-x sm:divide-y-0 divide-rule overflow-hidden" + pendingCls}>
             <SummaryStat
               label="Best"
-              value={fmtUnit(bestValue, benchmark.unit)}
+              value={fmtHeadline(
+                bestValue,
+                viewBenchmark,
+                viewBenchmark.results.find((r) => r.ms.p50 === bestValue)?.slug,
+              )}
             />
             <SummaryStat
               label="Median"
@@ -1016,7 +1056,7 @@ export function BenchmarkBody({
               value={fmtUnit(worstValue, benchmark.unit)}
             />
             <SummaryStat
-              label="Spread"
+              label="p99 spread"
               value={tailSpread > 0 ? `${tailSpread.toFixed(1)}×` : "-"}
               hint={
                 tailSpread > 0
@@ -1072,6 +1112,8 @@ export function BenchmarkBody({
                   disableTopN={hasLayerSplit}
                   topNControl={topNControl}
                   headerActions={<>{sharedHeaderActions}</>}
+                  statLabel={panelStatLabel}
+                  emptyNote={panelEmptyNote}
                 />
                 </>
               )}

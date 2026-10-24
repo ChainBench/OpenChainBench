@@ -23,7 +23,17 @@ type Endpoint struct {
 
 // matrix declares which (provider, chain) cells we look for in env.
 // Kind is derived from the chain.
-var providers = []string{"infura", "alchemy", "chainstack", "ankr", "helius", "quicknode", "getblock", "dwellir", "validationcloud"}
+// BlockMachine (2026-10-24) carries its key in a query parameter rather than
+// in the path, which every other provider here uses. Nothing in this harness
+// changes for it: a whole URL still comes from env and no custom header is
+// sent. Their docs offer Authorization: Bearer and X-API-Key as well, and are
+// explicit that the header wins when set, so the query form is the one that
+// works through a URL-only config. Verified against each chain before it was
+// declared: eth_chainId returned the right id on all seven, and
+// eth_blockNumber answered with the key in the query and no header at all.
+// They serve neither Solana nor HyperEVM, so those two cells stay empty and
+// the matrix skips them on its own.
+var providers = []string{"infura", "alchemy", "chainstack", "ankr", "helius", "quicknode", "getblock", "dwellir", "validationcloud", "blockmachine"}
 
 // Per-provider probe-interval multiplier. Infura's free tier 402'd daily
 // at the old 60 s cadence (its real daily credit budget is below the
@@ -126,6 +136,18 @@ var defaultBudgets = map[string]int64{
 	"getblock":   600_000,
 	"ankr":       300_000,
 	"helius":     300_000,
+	// blockmachine: 5M Request Units a month, one RU per call on
+	// eth_getBlockByNumber, shared by the three regions. Seven chains at the
+	// 120 s cadence cost 151k per region per month, so 454k of the plan, 9%
+	// of it. 600k per region is four times what it spends and leaves the
+	// plan two thirds unused.
+	//
+	// Declaring it is not cosmetic: an undeclared provider falls to the 100k
+	// default below, which seven chains exhaust in twenty days. BlockMachine
+	// would have stopped probing before the first month was out, and a
+	// budget that runs out looks exactly like a provider that stopped
+	// answering.
+	"blockmachine": 600_000,
 	// dwellir: Developer plan, $49/month, 25M API responses and 100
 	// responses/sec, 1 RPC response = 1 API credit with no compute units.
 	// Three regions share the key, so 8.3M per region is what the plan

@@ -117,10 +117,18 @@ type dayInfo struct {
 // included. A rebuilt day with no stated error reads as a perfect one, so a
 // file missing the field is reported as the worst case measured rather than as
 // zero.
+//
+// Missing, not zero. The first version tested the value and so could not tell
+// the two apart, which was fine while every rebuilt day came from the export
+// plus the info API and none of them could honestly claim zero. Days now also
+// arrive from Dwellir's node_fills_by_block replay, where the builder address
+// is a field on the fill instead of something inferred from the morning
+// overlap. Those state zero and mean it, and the old test reported them as
+// 28.2 per cent short.
 func rebuiltInfo(day string, d *Day) dayInfo {
 	info := dayInfo{Day: day, Hours: d.Hours, Complete: d.Complete, Rebuilt: true}
-	if d.RebuiltFrom != nil && d.RebuiltFrom.ExpectedErrorPct != 0 {
-		info.ExpectedErrorPct = d.RebuiltFrom.ExpectedErrorPct
+	if d.RebuiltFrom != nil && d.RebuiltFrom.ExpectedErrorPct != nil {
+		info.ExpectedErrorPct = *d.RebuiltFrom.ExpectedErrorPct
 		info.Extrapolated = d.RebuiltFrom.Extrapolated
 	} else {
 		info.ExpectedErrorPct = -28.2

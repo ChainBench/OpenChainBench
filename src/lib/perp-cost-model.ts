@@ -1,7 +1,7 @@
 /**
  * What a leveraged perp trade costs, per venue, on one trade.
  *
- * Nine of the ten products here charge a share of NOTIONAL, twice, whether the
+ * Eleven of the twelve products here charge a share of NOTIONAL, twice, whether
  * trade wins or loses. Papertrade charges a share of the GAIN, once, and
  * nothing when there is no gain. No single fee rate can express both, which is
  * why this is a model and not a column: the ranking depends on how far the
@@ -20,7 +20,10 @@
 export type Market = "BTC" | "ETH";
 export type Provenance = "api" | "chain" | "docs";
 
-/** The day every fee, spread and maintenance figure below was read. */
+/**
+ * The day the fee, spread and maintenance figures below were read, for every
+ * row that does not carry its own `measuredAt`.
+ */
 export const MEASURED_AT = "2026-10-21";
 
 export const MARGIN_RANGE = { min: 1, max: 1_000_000_000, default: 1000 } as const;
@@ -142,6 +145,12 @@ export type Venue = {
    * both things rather than one.
    */
   mintsOnLoss?: string;
+  /**
+   * When this row's figures were read, if not MEASURED_AT. Nova's were read a
+   * day later, and claiming one date for figures gathered on two is the kind
+   * of small untruth this file's provenance fields exist to avoid.
+   */
+  measuredAt?: string;
 };
 
 export const VENUES: readonly Venue[] = [
@@ -180,6 +189,56 @@ export const VENUES: readonly Venue[] = [
     maintenance: (lev) => 20 / 100 / lev,
     feeInTrigger: true,
     returnsEquity: false,
+  },
+  {
+    // Nova runs the same gTrade contract as Gains at a different address, so
+    // the thresholds, the leverage bounds and the degen pair's fee are
+    // identical and only the standard pair's pricing differs. Read on chain
+    // 2026-10-22: pairMaxLeverage 200000, pairMinLeverage 1100, liquidation
+    // params 90/75 between 25x and 60x, fee index 11 giving 0.050% a leg.
+    //
+    // The spread is 0 and NOT Gains' 1.0: word 7 of pairs() is the pair
+    // spread at 1e10 and reads 100000000 on Gains, 0 on Nova. Copying Gains'
+    // value would have overstated Nova's cost per leg by 10%, and the point
+    // of this file is that nothing in it is copied.
+    id: "nova-std",
+    logoKey: "nova-markets",
+    chain: "Arbitrum",
+    execution: "Oracle pool",
+    name: "Nova",
+    sub: "standard pair",
+    charges: "notional",
+    src: "chain",
+    takerBps: 5.0,
+    spreadBps: { BTC: 0, ETH: 0 },
+    minLeverage: 1.1,
+    maxLeverage: { BTC: 200, ETH: 200 },
+    maintenance: (lev) => (100 - gainsStandardThresholdPct(lev)) / 100 / lev,
+    feeInTrigger: true,
+    returnsEquity: false,
+    measuredAt: "2026-10-22",
+  },
+  {
+    // Identical to the Gains degen pair in every parameter read: 500x fixed,
+    // 0.02% a leg, no spread, 80% flat threshold. Shown rather than folded
+    // into Gains' row because a trader on Nova should be able to find their
+    // own venue, and "the terms are the same" is the answer they need.
+    id: "nova-degen",
+    logoKey: "nova-markets",
+    chain: "Arbitrum",
+    execution: "Oracle pool",
+    name: "Nova",
+    sub: "x500 degen, fixed, same terms as Gains",
+    charges: "notional",
+    src: "chain",
+    takerBps: 2.0,
+    spreadBps: { BTC: 0, ETH: 0 },
+    minLeverage: 500,
+    maxLeverage: { BTC: 500, ETH: 500 },
+    maintenance: (lev) => 20 / 100 / lev,
+    feeInTrigger: true,
+    returnsEquity: false,
+    measuredAt: "2026-10-22",
   },
   {
     id: "papertrade",

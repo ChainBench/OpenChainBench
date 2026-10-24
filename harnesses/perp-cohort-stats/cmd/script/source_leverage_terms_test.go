@@ -528,10 +528,12 @@ func TestLeverageTermsLive(t *testing.T) {
 	}
 	s := NewLeverageTermsSource()
 	groups := map[string][]venueTerms{
-		"gains":       s.fetchGains(),
 		"papertrade":  s.fetchPapertrade(),
 		"hyperliquid": s.fetchHyperliquid(),
 		"dydx":        s.fetchDydx(),
+	}
+	for _, g := range gtradeVenues {
+		groups[g.venue] = s.fetchGtrade(g.venue, g.diamond)
 	}
 	for venue, ts := range groups {
 		if len(ts) == 0 {

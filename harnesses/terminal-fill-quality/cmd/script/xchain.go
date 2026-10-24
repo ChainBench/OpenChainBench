@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/prometheus/client_golang/prometheus"
 	"io"
 	"log"
 	"math"
@@ -63,13 +64,32 @@ var xchainApps = []xchainApp{
 	// requests to EVM tokens on 2026-09-21: Robinhood Chain 225, BNB 52,
 	// HyperEVM 10, Arc 10.
 	{Slug: "pump-fun", Name: "pump.fun app", FeeRecipients: []string{"0xdab3f5fcd43211345f1789bf734b5fc5aef1adf7"}},
-	// Phantom's cross-chain swap: one Relay app-fee recipient at 85 bps
-	// (its 0.85 % swap fee), paid from Solana in CASH (Phantom's dollar
-	// token: 40 of 57 requests on 2026-09-21), SOL or USDC, delivered on
-	// Robinhood Chain (mostly), Ethereum, Base and Arc, gas not
-	// sponsored; the Solana users behind it touch Phantom's fee account
-	// and no other terminal's.
-	{Slug: "phantom", Name: "Phantom", FeeRecipients: []string{"0x74f9cb25fd81db31b4daf97ec121c01873581a57"}},
+	// Phantom's cross-chain swap: an app fee at 85 bps (its 0.85 % swap
+	// fee), paid from Solana in CASH (Phantom's dollar token: 40 of 57
+	// requests on 2026-09-21), SOL or USDC, gas not sponsored; the Solana
+	// users behind it touch Phantom's fee account and no other terminal's.
+	//
+	// TWO recipients, because it changed and the rows went silent. On 100
+	// requests under the phantom referrer, read 2026-10-23, 0x74f9cb25…
+	// appears 0 times and 0x037da4f7… appears 83. So every phantom-<chain>
+	// row had been ABSENT rather than thin: not one request could be
+	// recognised as Phantom's.
+	//
+	// The old address stays. It costs one comparison per request, and it
+	// means a rollback on Phantom's side does not blind the rows a second
+	// time: the same reasoning as never deleting a row whose slug moved.
+	//
+	// This is the failure mode with no symptom. A fee wallet that falls out
+	// of use does not error, does not log, and does not make a published
+	// figure look wrong; the rows simply never appear, and an absent row
+	// reads as "the app does not do this" rather than "we stopped being
+	// able to see it". Its routes, same sample: Solana to Ethereum 17,
+	// Solana to Hyperliquid 15, Solana to Robinhood 13, Robinhood to Solana
+	// 12, Ethereum to Solana 11, Base and BNB both ways 15.
+	{Slug: "phantom", Name: "Phantom", FeeRecipients: []string{
+		"0x037da4f70ea2e62c3c7a962a3bce5fcc41509a02",
+		"0x74f9cb25fd81db31b4daf97ec121c01873581a57",
+	}},
 	// BasedBot's requests fund its users' wallets on Robinhood Chain, BNB, Base
 	// and Ethereum (SOL in, the gas coin out, no app fee); its trades are the
 	// funded wallets' swaps on Robinhood Chain's router (native.go).
@@ -97,7 +117,233 @@ var originChains = []originChain{
 	// address-filtered getLogs spans: Alchemy 100,000 blocks, Chainstack 5,000, QuickNode and the
 	// public node 1,000. Priced from Hyperliquid's mids (Coinbase does not list HYPE).
 	{999, "hyperevm", []string{"https://rpc.hyperliquid.xyz/evm"}, "HYPE-USD"},
+	// The two chains Relay does not serve, so Pump Bridge is the only route
+	// on them and no bridge aggregator's feed can see them. Both carry the
+	// same 21,998-byte Pump Bridge router as every other chain; the relayer's
+	// nonce says what that is worth today, 28 on X Layer and 0 on MegaETH.
+	// MegaETH is declared while dormant on purpose: that is what catches its
+	// first trade rather than noticing months later.
+	//
+	// Measured address-filtered getLogs spans: MegaETH 5,000 blocks,
+	// X Layer 50 on both its public endpoint and thirdweb's. The 50 is left
+	// to the feed's own adaptive span rather than hardcoded, so it recovers
+	// if the endpoint ever serves more.
+	// MegaETH: the public node serves 5,000 block spans and the QuickNode
+	// one in EVM_RPC_MEGAETH serves 10,000 (413 above that).
+	{4326, "megaeth", []string{"https://mainnet.megaeth.com/rpc"}, "ETH-USD"},
+	// X Layer NEEDS EVM_RPC_XLAYER. Every public endpoint caps eth_getLogs
+	// at 100 blocks or less (rpc.xlayer.tech says "block range greater
+	// than 100 max"; thirdweb and OKX cap near 50) and the chain produces
+	// blocks far faster, so on the public list alone the cursor never
+	// leaves block 0 and the gauge reads down forever. That is not
+	// theoretical: it was declared, deployed and removed again within the
+	// hour on 2026-10-21. The Chainstack node serves 10,000 blocks, which
+	// keeps up. The public ones stay as fallback for the lighter calls.
+	{196, "xlayer", []string{"https://rpc.xlayer.tech", "https://196.rpc.thirdweb.com"}, ""},
 }
+
+// relaySkips: origin chains Relay does not serve.
+//
+// They sit in originChains because Pump Bridge's routers are deployed there and
+// the feed needs an endpoint, not because a Relay request can settle on them.
+// The row builders read originChains as the destinations a Relay user can reach,
+// so without this each app gets a row on each of them that can never fill: it
+// publishes as unresponsive and reads as a broken route rather than an absent
+// one. Pump Bridge is the only way onto these two chains, and its rows come
+// from evmTerminals.
+var relaySkips = map[string]bool{"megaeth": true, "xlayer": true}
+
+// The cross-chain rails an app's Solana users can leave through, and how each
+// is recognised. Declared here rather than left in a scratchpad because the
+// addresses cost more to find than anything else in this file.
+//
+// HOW RELAY ATTRIBUTES, verified on chain 2026-10-22 and the basis for all of
+// it: the APP is the Solana transaction's FEE PAYER, its gas sponsor, and the
+// RAIL is the account the deposit credits. The app is never identified on the
+// destination chain, which is why every EVM-side marker tried on Mobula's
+// bridge failed: its fee wallet, its router address and its own events all
+// serve whoever integrates it.
+//
+//	relayDepository  Relay's Solana depository. 231 hits in 9,000 of FOMO's
+//	                 sponsor transactions (2.57%), 290 in an earlier 6,000.
+//	mobulaSolver     Mobula's solver EOA, from bridge.mobula.io's own bundle
+//	                 and then verified on chain: a system-owned wallet that
+//	                 signs and fee-pays its own transactions.
+//	mobulaSolverUSDC Its USDC token account, which is where deposits actually
+//	                 land.
+//
+// THE TRAP, and the reason 15,000 transactions were scanned for nothing: a
+// deposit credits a TOKEN ACCOUNT OWNED BY the solver, not the solver address.
+// A token account's address has no relationship to its owner's, so matching
+// account keys against the solver can never hit. Match the OWNER, or, since
+// every Solana-origin deposit measured was USDC, match the fixed ATA below and
+// pay no owner lookups at all.
+//
+// Measured split of FOMO's bridging over 398 sponsor transactions: Relay 17,
+// Mobula 6, so Mobula carries roughly a quarter of it.
+//
+// Where that quarter goes, over 29 fills read 2026-10-23: Robinhood Chain 23,
+// Base 3, BNB 2, Ethereum 1. Robinhood is about 79% of it, so a watcher that
+// covers only the chains with the most total flow would miss most of this
+// route. Direction split over 400 intents: 60% leaving Solana, 40% selling
+// back to it, and the join works both ways, so neither direction can be
+// skipped as an edge case.
+const (
+	relayDepository  = "99vQwtBwYtrqqD9YSXbdum3KBdxPAVxYTaQ3cfnJSrN2"
+	mobulaSolver     = "oMcssxWxgooErb8bsRA4QN34VHhvfeEbdDjrwF6WH45"
+	mobulaSolverUSDC = "BWocXaSJ46XRSnTUA92ffLzLriM7V8tHVLoUnS9HoWQz"
+)
+
+// THE JOIN, measured 2026-10-23 and the reason this route does not need the
+// pairing Pump Bridge needs.
+//
+// Every Mobula deposit carries a plaintext memo from mobulaMemoProgram:
+//
+//	{"intentId":"5976756-d392c16-095"}
+//
+// and the SAME id appears in the fill on the destination chain, in the data of
+// the mobulaFillTopic event emitted by the bridge contract, as right-padded
+// ascii in word 0. So the two legs join on an exact key read from chain at
+// both ends: no amount tolerance, no lag window, no ambiguous case, none of
+// what the pump pairing has to live with.
+//
+// Verified 29 of 29 Solana->EVM fills and 14 of 14 the other way, matching
+// ONLY the full dashed id (38 hex characters). That floor matters: a first
+// pass that also accepted the id's 3-character tail reported 10 of 10 where
+// the strict matcher found 4, because a short hex string appears in a 20-log
+// receipt by accident. A match criterion needs a specificity floor, not just
+// a hit.
+//
+// ATTRIBUTION IS STILL THE FEE PAYER. The memo proves a deposit belongs to a
+// fill; it says nothing about which app sent it, because any Mobula
+// integrator writes the same memo. The app test on the Solana leg stays "the
+// fee payer is the app's sponsor", exactly as for Relay.
+const (
+	mobulaMemoProgram = "Memo4c2pN8afCj432Lb7RMVKi9PbQnnW7ewFFaV3oAH"
+	// Fill(bytes32 indexed, string intentId, ...): topic0 of the event whose
+	// data word 0 holds the intent id. One eth_getLogs per chain on
+	// mobulaBridge filtered by this topic finds every fill.
+	mobulaFillTopic = "0x74647a56026fd5e5a5fdb01d686969d17f40667aeedffef44cdeb894156e35a4"
+)
+
+// mobulaBridge: Mobula's EVM settlement contract per chain. SHARED
+// infrastructure, serving whoever integrates its API, so a fill here says
+// nothing about which app it belongs to: attribution has to come from the
+// Solana origin above. Ethereum uses a different address from the rest.
+//
+// Its fills are a trade, not a transfer: the destination token was a memecoin
+// on 239 of 239 Solana-origin intents measured, which is why this route
+// belongs on this bench at all.
+//
+// NOT ALL FILLS CONTAIN A SWAP, but far fewer than first thought. Over 70
+// fills read on chain, 66 carry a swap event and 4 (6%) come out of the
+// contract's own inventory; an earlier count of 4 in 12 was small-sample. All
+// four no-swap fills are on Robinhood and three deliver the same token, so it
+// looks like inventory in one or two particular tokens rather than a general
+// behaviour. They still need the pool's state at that block, since 6%
+// dropping out by TRANSACTION SHAPE is still a selection, but it is not the
+// third of the row we were braced for. On such a fill the user's shortfall is
+// Mobula's quote spread rather than price impact, so it belongs in the
+// bridge's own cost and not in `pool`.
+//
+// EVERY fill delivers a token: 0 of 70 delivered a dollar stable. So this
+// route is a fill and not a transfer, which is what puts it under the trade
+// kind rather than the funding kind.
+//
+// MULTI-VENUE IS NOT THE RISK IT LOOKED LIKE. Venue counts over 66 fills are
+// v4 37, v2 22, v3 21, pancake-v3 19, summing past the fill count, and I read
+// that as parallel legs the single-pool pricer could not handle. Replaying
+// priceEvmSettlement on 60 real fills says otherwise: pools per fill are 1
+// pool 48, 2 pools 3, 3 pools 4, 4 pools 1, and the extra venues are
+// SEQUENTIAL HOPS (a stable to WETH on v3, then WETH to the token on v4),
+// which the pricer already handles. Implausible splits are 2 of 60, 3%,
+// against 1 to 3 of 57 on pump. So a venue count above the fill count does
+// not mean parallel legs, and this route is priceable as it stands.
+var mobulaBridge = map[string]string{
+	"base":      "0xa834e70303322d86e5dae95ee47e9c6a073d9812",
+	"bnb":       "0xa834e70303322d86e5dae95ee47e9c6a073d9812",
+	"robinhood": "0xa834e70303322d86e5dae95ee47e9c6a073d9812",
+	"ethereum":  "0xab830fcccb4f20bad23b7669d58cb35a96d57d5a",
+}
+
+// HOW THE USER AND THE TOKEN ARE FOUND IN A FILL, and how the rule was
+// checked, since the fill event carries only the intent id.
+//
+// THE SINK RULE: the user is the address that RECEIVES a token in the fill
+// and SENDS none. Pools, routers, executors and the bridge all appear on both
+// sides of some transfer because value passes through them; a user is a dead
+// end. The token is whatever that address received, SUMMED over every
+// transfer of it.
+//
+// Checked against the explorer's own recipient, token and amountOut, which is
+// an independent answer rather than a restatement of my reading: the rule
+// finds the explorer's recipient as a dead end in 48 of 50 fills, and the
+// summed amount matches amountOut exactly in 50 of 50.
+//
+// IT FAILED ITS FIRST VERSION, in two ways worth keeping:
+//   - taking the LARGEST transfer to the user instead of the sum, which is
+//     wrong whenever the fill is multi-venue, and multi-venue is the norm
+//     here. Summing took the amount agreement from 24 of 40 to 50 of 50.
+//   - demanding exactly one dead end, which failed 15 of 40 fills. The extra
+//     dead ends are fee takers, not users, and the next block names them.
+//
+// A rule that is mostly right selects the rest of the row by transaction
+// shape, which is the defect behind both #3193 and #3217, so the 2 of 50 the
+// rule does not resolve must stay unpriced rather than be guessed at.
+//
+// WHAT THE OTHER DEAD ENDS ARE, measured over 60 fills:
+//
+//	robinhoodTokenFee  a CONTRACT (15 kB of code), a dead end in 13 of 60
+//	                   fills and never the user, taking the user's own token
+//	                   at 101, 204 or 309 bps, on Robinhood only. Those tiers
+//	                   are 1%, 2% and 3%, which is a per-token creator or
+//	                   launchpad fee rather than any app's cut: an app fee
+//	                   does not come in three per-token tiers on one chain.
+//	                   Not attributed to a terminal.
+//	the token itself   5 of 60, the sink address IS the token contract, which
+//	                   is a transfer tax the token levies on every holder.
+//	                   Belongs in the pool or other cost, never in a fee.
+//
+// NO APP-FEE TRANSFER EXISTS ON EITHER LEG, and that is NOT the same as the
+// app taking no fee. The deposit carries exactly one token transfer
+// (ComputeBudget, ComputeBudget, Token, Memo on all 50 read), so nothing is
+// skimmed on the way in, and the only non-user sinks on the way out are the
+// two above.
+//
+// But a fee an integrator sets and the bridge takes inside its QUOTE leaves
+// no transfer to find: it would sit in the bridge residual while the column
+// read 0, and a reader comparing that against FOMO's Relay rows at about 50
+// bps would conclude this route is cheaper in app fees when the fee had only
+// moved. So the terminal component here is published as NOT MEASURED, not as
+// zero, with the note that any charge by the app is inside the bridge's price
+// and counted in the bridge column.
+//
+// The obvious signal does not resolve it. The explorer's inputAmountUsd minus
+// amountInUsd has a median of 144 bps but runs from -528 to +1188, and only
+// 12% of 198 rows land between 30 and 70 bps; a fee cannot be negative, so
+// that gap is two valuations of the same input disagreeing rather than a fee.
+//
+// MOBULA'S OWN TAKE on the sell direction, 57 bps median over 210 intents
+// with p10 31 and p90 68. What that figure covers took two wrong readings to
+// pin down, so the route is written out: over 201 intents, originToken is
+// NATIVE in 201, inputToken is an EVM token in 199, and destinationToken is a
+// dollar stable on Solana in 200, with originToken never equal to inputToken.
+// So the user sells a token into the native coin, the native coin is bridged,
+// and a stable arrives.
+//
+// The 57 bps is (amountInUsd - amountOutUsd) / amountInUsd, which starts from
+// the NATIVE amount, so it excludes the sale and is bridge-only. But it is
+// native in, not stable in, so it is NOT the same pair as Pump Bridge's USDC
+// in and must not be quoted as like-for-like against its 0.05 plus 40 to 45
+// bps. Its tightness, against the 131 to 537 spread of the token-delivering
+// direction, is what a schedule looks like rather than pool impact.
+//
+// This also explains the quote gap dismissed above: every row has a sale
+// stage, so those 156 bps are the cost of THAT SALE. The verdict (not a fee)
+// was right and the reason (two valuations disagreeing) was wrong.
+//
+// It still cannot be split into bridge and app, which is the point above.
+const robinhoodTokenFee = "0xe5e702641ea86f4ae6cc3cdaed2b886f976be044"
 
 const solanaChainID = 792703809
 
@@ -159,6 +405,19 @@ func chainByID(id int64) *originChain {
 	}
 	return nil
 }
+
+// cXchainSaleSeen: EVM-origin legs admitted to a reservoir, by the row they
+// land in, their origin chain, and whether their input was a token.
+//
+// It exists to answer one question with data instead of a fourth theory:
+// settleXchainSale sees no candidates while the raw feed carries plenty, so
+// the legs are landing somewhere this bench is not looking.
+var cXchainSaleSeen = prometheus.NewCounterVec(prometheus.CounterOpts{
+	Name: "tfq_xchain_sale_seen_total",
+	Help: "Relay requests leaving an EVM chain for Solana, counted at the attribution gate: verdict=kept means the request was recognised as this app's, not_mine means nothing in it matched the app's declared fee recipients or referrer and it was discarded",
+}, []string{"app", "chain", "verdict"})
+
+func init() { prometheus.MustRegister(cXchainSaleSeen) }
 
 // rowSlug: the bench row a request belongs to. Requests settling on
 // Solana are the app's funding leg (`<app>-funding`); requests leaving
@@ -316,7 +575,26 @@ func newXfeed(httpc *http.Client, newest map[string]int64) *xfeed {
 	return &xfeed{http: httpc, seen: map[string]int64{}, box: map[string]*xinbox{}, ok: map[string]int{}, pending: map[string]pendingReq{}, funded: map[string]map[string]int64{}, newest: n, resume: r}
 }
 
-// xchainRows: every bench row the cross-chain apps can produce.
+// xchainRows: the row names the Relay feed owns.
+//
+// A slug that evmTerminals also declares is NOT emitted here. Both producers
+// record into the same state under the same name, so a collision does not
+// average or sum, it lets whichever row is written last win, silently and
+// differently from one tick to the next.
+//
+// That is not hypothetical: adding the six pump.fun bridge rows in #3141 and
+// #3143 collided with the Relay rows this builds, and the published JSON
+// carried pump-fun-bnb, -base, -arc, -robinhood, -megaeth and -xlayer twice
+// each, 72 entries where 66 were intended, with nothing else in the file
+// duplicated.
+//
+// The first fix was to drop the Relay row on any chain the bridge covers. That
+// resolved the collision by losing a measurement: the residual Relay flow went
+// unrecorded, and with it half of the comparison pump's own announcement is
+// about. The bridge rows are now named for their route instead
+// (pump-bridge-<chain>), so nothing is contested and both routes publish. This
+// guard stays because a collision is worse than a drop, but it should never
+// fire again; a test asserts it drops nothing.
 func xchainRows() []string {
 	var out []string
 	for _, a := range xchainApps {
@@ -325,10 +603,27 @@ func xchainRows() []string {
 			continue
 		}
 		for _, c := range originChains {
-			out = append(out, a.Slug+"-"+c.slug)
+			if relaySkips[c.slug] {
+				continue
+			}
+			slug := a.Slug + "-" + c.slug
+			if nativeOwnsSlug(slug) {
+				continue
+			}
+			out = append(out, slug)
 		}
 	}
 	return out
+}
+
+// nativeOwnsSlug: whether an evmTerminal row already publishes under this name.
+func nativeOwnsSlug(slug string) bool {
+	for _, t := range evmTerminals {
+		if t.Slug == slug {
+			return true
+		}
+	}
+	return false
 }
 
 // seedFundedFromRelay walks a funding-only app's public requests (every
@@ -417,6 +712,20 @@ func (f *xfeed) drainFunded() map[string]map[string]int64 {
 	return out
 }
 
+// cRelayPoll counts what each origin chain's poll actually did.
+//
+// It did not exist, and that is why seven chains could go unread for 24
+// days: on a non-200 the loop returned with no log, no counter and no
+// gauge, while the feed's health gauge stayed up because the Solana poll
+// answered. A refusal with no symptom is the failure this bench keeps
+// finding in itself.
+var cRelayPoll = prometheus.NewCounterVec(prometheus.CounterOpts{
+	Name: "tfq_relay_poll_total",
+	Help: "Relay request-feed polls by origin chain and outcome. refused means a non-200, which until 2026-10-24 returned silently and left that chain's watermark frozen while the feed still reported healthy",
+}, []string{"chain", "outcome"})
+
+func init() { prometheus.MustRegister(cRelayPoll) }
+
 // solanaOrigin is the feed of requests leaving Solana (not an origin
 // chain for gas purposes: the deposit is read from the Solana transaction).
 var solanaOrigin = originChain{solanaChainID, "solana", nil, ""}
@@ -426,11 +735,39 @@ var solanaOrigin = originChain{solanaChainID, "solana", nil, ""}
 // runs out of pages; every new request of a cohort app is counted and,
 // when it settled a token on Solana, offered to the reservoir.
 func (f *xfeed) run(ctx context.Context, interval time.Duration) {
+	// Solana every round, then ONE EVM chain, rotating.
+	//
+	// Nine queries a round is what Relay refuses: measured, it answers the
+	// first two and returns 429 from the third onward. Polling every chain
+	// every round therefore read Solana and Robinhood and silently lost the
+	// rest, which is why their watermarks sat 24 days stale.
+	//
+	// Two a round is inside the limit and still visits each EVM chain every
+	// eight minutes at a 60 s tick, well inside the fifteen minutes of chain
+	// the fill watcher already reaches back over.
+	turn := 0
 	for ctx.Err() == nil {
-		n := f.poll(ctx, solanaOrigin)
-		for _, c := range originChains {
-			n += f.poll(ctx, c)
+		// THE ROTATING CHAIN GOES FIRST, and that ordering is the fix.
+		//
+		// Pacing the number of CHAINS was not enough, because a poll is not
+		// one request: it paginates up to `pages`, and on a cold start
+		// nothing is known so it walks the lot. Solana going first therefore
+		// spent the whole allowance before the EVM chain asked for its first
+		// page, and Relay refused it. Every deploy restarts the container
+		// and reopens exactly that gap, which is why seven chains sat 24
+		// days stale while Solana stayed current.
+		//
+		// Solana still gets polled every round and still carries the bulk of
+		// the flow; it simply no longer starves the one chain whose turn it
+		// is by going first.
+		if len(originChains) > 0 {
+			c := originChains[turn%len(originChains)]
+			turn++
+			cRelayPoll.WithLabelValues(c.slug, "polled").Inc()
+			f.poll(ctx, c)
 		}
+		n := f.poll(ctx, solanaOrigin)
+		cRelayPoll.WithLabelValues("solana", "polled").Inc()
 		n += f.refetchPending(ctx)
 		f.mu.Lock()
 		// Up only when Relay answered at least one poll this round: a dead
@@ -506,6 +843,11 @@ func (f *xfeed) poll(ctx context.Context, c originChain) int {
 			body, _ := io.ReadAll(io.LimitReader(resp.Body, 16<<20))
 			resp.Body.Close()
 			if resp.StatusCode != 200 {
+				// Counted, because returning here with nothing said is what
+				// hid seven chains for 24 days. Relay refuses from the third
+				// request of a round, so this fires on exactly the chains a
+				// nine-query round never reaches.
+				cRelayPoll.WithLabelValues(c.slug, "refused").Inc()
 				return added
 			}
 			var rr relayResp
@@ -619,6 +961,7 @@ func (f *xfeed) count(a xchainApp, c originChain, r relayRaw) bool {
 		b.errs[x.Status]++
 	} else if x.OutTx != "" {
 		b.total++
+
 		if len(b.reservoir) < reservoirSize {
 			b.reservoir = append(b.reservoir, x)
 		} else if j := rand.Intn(b.total); j < reservoirSize {
@@ -685,6 +1028,48 @@ func (f *xfeed) refetchPending(ctx context.Context) (counted int) {
 	return counted
 }
 
+// Identifier liveness. An app is recognised in Relay's feed by its fee
+// recipient or referrer, and when one falls out of use nothing errors: the
+// app's rows simply stop appearing, and an absent row reads as "the app does
+// not do this" rather than "we stopped seeing it". Phantom's recipient moved
+// to 0x037da4f7… and its rows were empty until someone asked why the page
+// looked thin (2026-10-23). Every declared identifier is published from start
+// at 0 so a dead one is visible as never seen, not as a missing series.
+var (
+	cAppIdentifier = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "tfq_app_identifier_matches_total",
+		Help: "Relay requests matched to an app by each declared identifier (fee recipient address, or referrer:<name>). Every declared identifier starts at 0: one whose increase over 24 h is 0 while the app's others move is a recipient or referrer the app no longer uses, and its rows are going blind",
+	}, []string{"app", "identifier"})
+	gAppIdentifierLast = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "tfq_app_identifier_last_seen_unix",
+		Help: "Unix time an app's declared identifier last matched a Relay request; 0 = not seen since this process started",
+	}, []string{"app", "identifier"})
+)
+
+func init() {
+	prometheus.MustRegister(cAppIdentifier, gAppIdentifierLast)
+	for _, a := range xchainApps {
+		for _, id := range appIdentifiers(a) {
+			cAppIdentifier.WithLabelValues(a.Slug, id).Add(0)
+			gAppIdentifierLast.WithLabelValues(a.Slug, id).Set(0)
+		}
+	}
+}
+
+// appIdentifiers lists what an app is recognised by, as the labels above use.
+func appIdentifiers(a xchainApp) []string {
+	ids := append([]string(nil), a.FeeRecipients...)
+	if a.Referrer != "" {
+		ids = append(ids, "referrer:"+a.Referrer)
+	}
+	return ids
+}
+
+func noteIdentifier(app, id string) {
+	cAppIdentifier.WithLabelValues(app, id).Inc()
+	gAppIdentifierLast.WithLabelValues(app, id).Set(float64(time.Now().Unix()))
+}
+
 // classify decides whether a Relay request belongs to the app (its fee
 // recipient or referrer) and reduces it to the figures the bench needs.
 func classify(a xchainApp, c originChain, r relayRaw) (relayRequest, bool) {
@@ -695,12 +1080,33 @@ func classify(a xchainApp, c originChain, r relayRaw) (relayRequest, bool) {
 		for _, want := range a.FeeRecipients {
 			if rec == want {
 				mine = true
+				noteIdentifier(a.Slug, want)
 			}
 		}
 		appFee += f64(fee.AmountUsd)
 	}
 	if a.Referrer != "" {
-		mine = true // the feed itself was filtered on the referrer
+		// The feed itself was filtered on the referrer, so that filter is
+		// the match. Counted here and not on r.Data.Referrer: Relay returns
+		// the field null in this payload (200 of 200 Solana-origin requests
+		// read 2026-10-23), so a count keyed on it read every referrer app
+		// as retired while the filter kept returning its requests.
+		mine = true
+		noteIdentifier(a.Slug, "referrer:"+a.Referrer)
+	}
+	// Every EVM-origin request bound for Solana, counted at the gate that
+	// decides whether it is ours at all.
+	//
+	// The first placement of this sat after the reservoir's status and
+	// OutTx branches, so a zero could mean "never classified" or
+	// "classified and lost afterwards", which are different problems. Here
+	// the label separates them outright.
+	if r.Data.Metadata.CurrencyOut.Currency.ChainID == solanaChainID && c.id != solanaChainID {
+		verdict := "kept"
+		if !mine {
+			verdict = "not_mine"
+		}
+		cXchainSaleSeen.WithLabelValues(a.Slug, c.slug, verdict).Inc()
 	}
 	if !mine {
 		return relayRequest{}, false

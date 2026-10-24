@@ -493,7 +493,28 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // v93: Nova joins bench 041 (ranked) and bench 116 (unranked). A cached
   // entry holds the provider set current when it was written, so a bench
   // gaining a row needs the key to move or the row never appears.
-  ["bench-unfiltered-v93", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v94: Nova joins bench 295. Unlike v93, that bench declares dimensions,
+  // so bench-filters moves with this one too.
+  // v95: two independent reasons, one bump.
+  //   Benchmark.raceLeader and a first_share panel on the nine WebSocket
+  //   race benches; a cached entry has neither and keeps printing 0.3 ms.
+  //   And bench 268 gained TWO providers whose own PRs moved nothing, Pump
+  //   Bridge (#3188) and FOMO · Mobula (#3226). Both were live in the
+  //   materialized blob, pump-bridge at p50 269.6 over 939 swaps and
+  //   fomo-mobula at 297.2 over 2,512, and neither reached the board: the
+  //   chart drew 14 rows with ALL selected while the blob held 16 ranked.
+  //   Exactly the failure v93's note describes, two PRs after it was
+  //   written, which is the argument for spec-provider-set.test.ts rather
+  //   than for a fourth note. 268 declares chain and bucket, so
+  //   bench-filters moves with it.
+  // v96: the nine WebSocket races' copy reads {{best_first}} (share of first
+  // pushes) instead of a leader p50 that is 0 by construction.
+  // v97: BlockMachine joins the keyed cohort on the seven chains it serves,
+  // warm and cold, so fourteen provider rows appear across seven specs. Those
+  // specs declare region and tier, so bench-filters moves with this one.
+  // v98: Robinhood Chain joins l1-finality. No dimensions there, so
+  // bench-filters stays.
+  ["bench-unfiltered-v99", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -738,7 +759,17 @@ const loadAllBenchmarksCached = unstable_cache(
   // v84: lockstep with bench-unfiltered-v91.
   // v85: lockstep with bench-unfiltered-v92 (Nova joins bench 030).
   // v86: lockstep with bench-unfiltered-v93 (Nova joins benches 041 and 116).
-  ["all-benchmarks-v86", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v87: lockstep with bench-unfiltered-v94 (Nova joins bench 295).
+  // v88: lockstep with bench-unfiltered-v95 (raceLeader on the WebSocket
+  // races, and Pump Bridge and FOMO · Mobula joining bench 268).
+  // v89: lockstep with bench-unfiltered-v96 (WebSocket race copy).
+  // v90: lockstep with bench-unfiltered-v97 (BlockMachine joins the keyed
+  // cohort on seven chains).
+  // v92: lockstep with bench-unfiltered-v99 (bench 306 deleted: its two
+  // provider sets leave the hash, and a cached aggregate written before
+  // this would still list a bench that no longer exists).
+  // v91: lockstep with bench-unfiltered-v98 (Robinhood Chain on l1-finality).
+  ["all-benchmarks-v92", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -845,7 +876,24 @@ const loadBenchmarkFiltered = unstable_cache(
   //      carry a chain dimension the cached filter sets do not know about.
   // v34: lockstep with bench-unfiltered-v90.
   // v35: lockstep with bench-unfiltered-v91.
-  ["bench-filters-v35", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v36: lockstep with bench-unfiltered-v94. Bench 295 declares kind and
+  // bucket dimensions, so its filtered variants are cached here as well,
+  // and a new provider is invisible on every tab until this moves. v93
+  // deliberately did not move it: none of the three benches Nova joined
+  // then had dimensions.
+  // v37: lockstep with bench-unfiltered-v95. The WebSocket races declare a
+  // region dimension, so their per-region variants carry the new panel, and
+  // bench 268 declares chain and bucket, so its two new providers are
+  // invisible on every tab until this moves. Same reason v36 existed.
+  // v38: lockstep with bench-unfiltered-v96 (WebSocket race copy).
+  // v40: lockstep with bench-unfiltered-v99. Bench 306 declared dimensions,
+  // so its filtered variants are cached under this key too and a stale entry
+  // would keep serving them on every tab but the default.
+  // v39: lockstep with bench-unfiltered-v97. The seven keyed RPC specs
+  // declare region and tier, and BlockMachine's rows are on the Private
+  // access tab, which is a filtered variant: without this they are invisible
+  // on exactly the tab they belong to.
+  ["bench-filters-v40", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 

@@ -83,6 +83,9 @@ type Swap struct {
 	// opposed to a relayer's. Zero on a sponsored transaction, where the
 	// gas is already inside what the user gave in the quote.
 	UserSolQ float64  `json:"user_sol_q,omitempty"`
+	// UserSolRecv: gas the app sent the user, in quote units. Value
+	// received on a stable-quoted swap, not a reduction of the cost.
+	UserSolRecv float64 `json:"user_sol_recv,omitempty"`
 	OtherQ   *float64 `json:"other_q,omitempty"`
 	// Cross-chain settlements (see xchain.go): the origin chain, Relay's
 	// own fees the user paid (quote units), the Relay request id and the
@@ -97,6 +100,15 @@ type Swap struct {
 	// because we were not told, not because the solver took nothing, and a
 	// residual pool component would silently absorb the bridge's take.
 	RelayUnknown bool    `json:"relay_unknown,omitempty"`
+	// TerminalUnknown: this route takes no fee we can SEE, which is not the
+	// same as taking none. Mobula's rail is the case: no app-fee transfer
+	// exists on either leg, but a fee the app sets and the bridge takes
+	// inside its quote leaves no transfer to find, so it sits in the bridge
+	// residual instead. mobula_price.go has said so in a comment since the
+	// route shipped while still writing TerminalQ = 0, and a 0 in that
+	// column reads as "this route charges nothing", which is the strongest
+	// possible claim about a fee nobody measured.
+	TerminalUnknown bool `json:"terminal_unknown,omitempty"`
 	InTx         string  `json:"in_tx,omitempty"`
 	QuoteUSD     float64 `json:"quote_usd"` // quote unit price used for sizing
 	// Quote received by accounts that are neither user, pool, terminal nor
@@ -113,7 +125,14 @@ type Swap struct {
 	RefAgeS  *int64   `json:"ref_age_s,omitempty"`
 	Priced   bool     `json:"priced"`
 	Flag     string   `json:"flag,omitempty"`
-	TradeUSD float64  `json:"trade_usd"` // buy: quote spent; sell: tokens × ref; plus the gas paid in another asset (quote moved when unpriced)
+	// GrossedFrom: what the router actually spent, when the value given was
+	// reconstructed from it. pump's router is paid out of pump's own
+	// liquidity, already net of what it keeps, so the trade size on these
+	// rows is derived and not read. Publishing the raw spend lets anyone
+	// reconcile the row with the transaction, and the difference is the
+	// deduction itself. Zero on every row that was read directly.
+	GrossedFrom float64 `json:"grossed_from,omitempty"`
+	TradeUSD    float64 `json:"trade_usd"` // buy: quote spent; sell: tokens × ref; plus the gas paid in another asset (quote moved when unpriced)
 	// Neighbourhood scan for a sandwich around this swap (see sandwich.go).
 	Scanned      bool      `json:"scanned"`
 	BlockPoolTxs int       `json:"block_pool_txs,omitempty"`
@@ -569,6 +588,28 @@ func parseSwap(t Terminal, sig string, tx *parsedTx, solUSD float64, forceUser s
 	if d := quoteDelta["SOL"]; d < 0 {
 		userSolQ = toQuote("SOL", -d)
 	}
+	// And the other direction, which was missing: the app can send the user
+	// gas, so on a stable-quoted swap their lamports can go UP. That SOL is
+	// value received and was being dropped, so the swap read as a pure loss.
+	//
+	// Credited by SOURCE, not by sign. Crediting any positive delta would
+	// also credit rent refunded when a token account closes, and the method
+	// says a refund on close is not credited so that a round trip reads the
+	// deposit once. Only lamports the app's own sponsor paid out count, and
+	// the sponsor's transaction fee is excluded because that is network
+	// cost and is already counted as such.
+	userSolRecv := 0.0
+	if d := quoteDelta["SOL"]; d > 0 && quote != "SOL" {
+		paidOut := 0.0
+		for k, v := range lam {
+			if internal[k] && v < 0 {
+				paidOut += float64(-v) / 1e9
+			}
+		}
+		if paidOut -= sponsoredFee; paidOut > 0 {
+			userSolRecv = toQuote("SOL", math.Min(d, paidOut))
+		}
+	}
 
 	// Pools: the counterparties of the token leg, one per token vault
 	// that moved against the user. Each pool's quote vaults are the token
@@ -920,7 +961,7 @@ func parseSwap(t Terminal, sig string, tx *parsedTx, solUSD float64, forceUser s
 		Method: methodVersion, Sig: sig, Terminal: t.Slug, Slot: tx.Slot, User: user, Side: side, Quote: quote, Venue: venue, Mint: best.mint, Tokens: tokens,
 		PoolVault: main.base, PoolOwner: main.owner, PoolQuoteVaults: append(append([]string{}, main.quoteVaults...), main.xVaults...),
 		Pools: len(pools), Hops: hops, PoolBasePre: basePre, PoolQuotePre: quotePre, XMint: xMint, XRate: xRate,
-		UserQ: math.Abs(userQ), PoolQ: poolQ, TerminalQ: terminalQ, NetworkQ: networkQ, UserSolQ: userSolQ, QuoteUSD: quoteUSD,
+		UserQ: math.Abs(userQ), PoolQ: poolQ, TerminalQ: terminalQ, NetworkQ: networkQ, UserSolQ: userSolQ, UserSolRecv: userSolRecv, QuoteUSD: quoteUSD,
 		Others: others,
 	}
 	if tx.BlockTime != nil {
@@ -970,6 +1011,10 @@ func (s *Swap) finalize(ref *float64, refAge int64, src string) {
 	s.LossBps, s.PoolBps, s.RefPrice, s.RefAgeS, s.RefSrc = nil, nil, nil, nil, ""
 	if ref != nil && *ref > 0 && s.QuoteUSD > 0 {
 		value := s.Tokens * *ref // token leg in quote units
+		// Gas the app sent back is part of what the user received. Without
+		// it a top-up read as a loss: 151.8 bps of one audited pump.fun
+		// swap's published 351.45.
+		value += s.UserSolRecv
 		// The gas counts in what the user gave whenever it was paid in
 		// something other than the quote asset. On Solana the quote
 		// movement is the user's own lamport balance, so a SOL-quoted swap

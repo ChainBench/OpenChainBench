@@ -74,6 +74,7 @@ const PRODUCT_ALIASES: Record<string, string> = {
   "getblock-cold": "getblock",
   "quicknode-cold": "quicknode",
   "dwellir-cold": "dwellir",
+  "blockmachine-cold": "blockmachine",
   "validationcloud-cold": "validationcloud",
   // The cost benches 282 and 283 priced Validation Cloud under its hyphenated
   // slug while the RPC cohort uses the one-word one, which built two product
@@ -233,7 +234,12 @@ const CANONICAL_NAMES: Record<string, string> = {
   edgex: "edgeX",
   sui: "Sui",
   fomo: "FOMO",
+  "fomo-mobula": "FOMO \u00b7 Mobula",
   "pump-fun": "pump.fun",
+  "pump-bridge": "Pump Bridge",
+  // Camel-cased by its own site and docs. titleCaseSlug would render it
+  // "Blockmachine" on every surface that titles a product from this table.
+  blockmachine: "BlockMachine",
 };
 
 function titleCaseSlug(s: string): string {
@@ -864,7 +870,15 @@ const buildProvidersCached = unstable_cache(
   // v15 (2026-09-30): lockstep with bench-unfiltered-v88. GetBlock gains nine
   // appearances (the keyed cohort on the chain RPC benches) and its first
   // registry entry, so the v14 list would keep /products/getblock without them.
-  ["providers-v16"],
+  // v17: lockstep with bench-unfiltered-v95. Pump Bridge and FOMO · Mobula
+  // join bench 268, so the v16 list carries neither appearance, and
+  // fomo-mobula gains its first registry entry.
+  // v18: lockstep with bench-unfiltered-v97. BlockMachine gains fourteen
+  // appearances across the seven keyed RPC benches, so the v17 list carries
+  // none of them on /products/blockmachine.
+  // v19: lockstep with bench-unfiltered-v98. Robinhood Chain gains its
+  // l1-finality appearance.
+  ["providers-v19"],
   // 900 s: the provider index feeds products / compare / answers, whose
   // numbers move slowly, and this revalidate is also the effective ISR
   // period of those ~500 pages (Next takes the min across a route's caches).

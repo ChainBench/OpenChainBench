@@ -22,6 +22,7 @@
  *   {{best_names}}          every provider tied with the leader, joined.
  *   {{best_name}}              name of the leading provider (best p50).
  *   {{best_p50}}               p50 of the leader, formatted.
+ *   {{best_first}}             race benches: the leader's share of first pushes.
  *   {{worst_name}}             name of the trailing provider.
  *   {{worst_p50}}              p50 of the trailing provider, formatted.
  *   {{best_name:chain:<x>}}    name of the provider that leads on chain
@@ -264,6 +265,19 @@ export function renderTemplate(text: string, benchmark: Benchmark): string {
         const tied = leaderNames(benchmark);
         if (tied.length > 0) return joinNames(tied);
         return best ? best.name : UNRESOLVED;
+      }
+      case "best_first": {
+        // Race benches (spec race_leader): the leader's share of the
+        // blocks it received that it pushed first, the figure that means
+        // something where its lag is 0 by construction.
+        const rl = benchmark.raceLeader;
+        const share =
+          rl && best
+            ? benchmark.metricPanels?.find((p) => p.id === rl.sharePanel)?.values?.[best.slug]
+            : undefined;
+        return typeof share === "number" && Number.isFinite(share)
+          ? `${Math.round(share)}%`
+          : UNRESOLVED;
       }
       case "best_p50":
         return best ? fmtUnit(best.ms.p50, benchmark.unit) : UNRESOLVED;

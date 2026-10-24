@@ -1122,6 +1122,16 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "Free 100,000 responses a day (no eth_getLogs, no trace), Developer $49 for 25M, Growth $299 for 150M, Scale $999 for 500M, overage $5, $3 and $2 per million. Unlimited Nodes from $119 a month for 25 RPS.",
     docs: "https://www.dwellir.com/docs",
   },
+  blockmachine: {
+    url: "https://blockmachine.io",
+    referralUrl: "https://blockmachine.io/?referral=openchainbench",
+    description:
+      "RPC gateway built on Bittensor Subnet 19: independent node operators compete to serve each request and a validator layer checks responses against reference nodes. Eleven chains (Ethereum, Arbitrum, Base, BNB Chain, Optimism, Polygon, Scroll, Mantle, Arc, Robinhood Chain, Bittensor), one Request Unit budget shared across them, and only successful responses are billed.",
+    twitter: "@blockmachine_io",
+    pricing:
+      "Free 10,000 Request Units a month with a key, plus a keyless endpoint at 60 RU a minute per IP. Standard $9 for 5M, Pro $25 for 20M, Business $125 for 100M, Business Plus $499 for 500M, Enterprise $999 for 1B, overage $5 down to $1 per million. 1 RU per call on most methods, archive included; 25 to 50 RU for debug and trace.",
+    docs: "https://blockmachine.io/docs",
+  },
   "monad-official": {
     url: "https://docs.monad.xyz",
     description:
@@ -1590,6 +1600,19 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     description:
       "FOMO is a multi-chain trading app (Solana, Base, BNB Chain, and more) for memecoins and perps. It provides social copy-trading, onchain signals, and routes swaps through pump.fun, Raydium, and other DEX pools.",
     twitter: "@tryfomo",
+  },
+  "fomo-mobula": {
+    url: "https://fomo.family",
+    referralUrl: "https://fomo.family/r/FlorentTppnr",
+    description:
+      "FOMO \u00b7 Mobula is FOMO's cross-chain route through Mobula rather than Relay, published as its own row because the two bridges differ in fee and in speed and averaging them would describe neither. The user deposits USDC on Solana, Mobula's solver buys the token on the destination chain and delivers it, and both legs state the same intent id so the pair is exact rather than matched by amount.",
+    twitter: "@tryfomo",
+  },
+  "pump-bridge": {
+    url: "https://pump.fun",
+    description:
+      "Pump Bridge is pump.fun's own cross-chain route, live since 28 September 2026 and the default in its app since 7 October 2026. A Solana program takes the deposit and routers on BNB Chain, Base, Arc, Robinhood Chain, MegaETH and X Layer buy the token and forward it to the user. It replaced Relay, which pump used before.",
+    twitter: "@pumpdotfun",
   },
   "pump-fun": {
     url: "https://pump.fun",

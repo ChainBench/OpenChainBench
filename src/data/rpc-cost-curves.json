@@ -1,7 +1,7 @@
 {
  "schema": 1,
  "catalogueVersion": 1,
- "catalogueAsOf": "2026-10-16",
+ "catalogueAsOf": "2026-10-22",
  "floor": 100000,
  "ceiling": 5000000000,
  "profiles": [
@@ -146,6 +146,96 @@
        "why": "price not published (sales-gated)"
       }
      ]
+    },
+    {
+     "slug": "blockmachine",
+     "name": "Blockmachine",
+     "cohort": "usage",
+     "unit": "ru",
+     "points": [
+      {
+       "r": 100000,
+       "usd": 9,
+       "plan": "standard"
+      },
+      {
+       "r": 5000000,
+       "usd": 9,
+       "plan": "standard"
+      },
+      {
+       "r": 8189847,
+       "usd": 24.95,
+       "plan": "standard"
+      },
+      {
+       "r": 8200571,
+       "usd": 25,
+       "plan": "pro"
+      },
+      {
+       "r": 20000000,
+       "usd": 25,
+       "plan": "pro"
+      },
+      {
+       "r": 53297012,
+       "usd": 124.89,
+       "plan": "pro"
+      },
+      {
+       "r": 53365544,
+       "usd": 125,
+       "plan": "business"
+      },
+      {
+       "r": 100000000,
+       "usd": 125,
+       "plan": "business"
+      },
+      {
+       "r": 286997363,
+       "usd": 498.99,
+       "plan": "business"
+      },
+      {
+       "r": 287318858,
+       "usd": 499,
+       "plan": "business-plus"
+      },
+      {
+       "r": 500000000,
+       "usd": 499,
+       "plan": "business-plus"
+      },
+      {
+       "r": 832554779,
+       "usd": 997.83,
+       "plan": "business-plus"
+      },
+      {
+       "r": 833404755,
+       "usd": 999,
+       "plan": "enterprise"
+      },
+      {
+       "r": 1000000000,
+       "usd": 999,
+       "plan": "enterprise"
+      },
+      {
+       "r": 5000000000,
+       "usd": 4999,
+       "plan": "enterprise"
+      }
+     ],
+     "planNames": {
+      "business": "Business",
+      "business-plus": "Business Plus",
+      "enterprise": "Enterprise",
+      "pro": "Pro",
+      "standard": "Standard"
+     }
     },
     {
      "slug": "blockpi",
@@ -358,13 +448,55 @@
        "plan": "growth"
       },
       {
-       "r": 5000000000,
-       "usd": 30000,
+       "r": 8159475,
+       "usd": 48.96,
        "plan": "growth"
+      },
+      {
+       "r": 8169666,
+       "usd": 49,
+       "plan": "pro-evm"
+      },
+      {
+       "r": 10187500,
+       "usd": 49,
+       "plan": "pro-evm"
+      },
+      {
+       "r": 35183141,
+       "usd": 198.97,
+       "plan": "pro-evm"
+      },
+      {
+       "r": 35220071,
+       "usd": 199,
+       "plan": "scale-evm"
+      },
+      {
+       "r": 47428571,
+       "usd": 199,
+       "plan": "scale-evm"
+      },
+      {
+       "r": 1554653484,
+       "usd": 9242.35,
+       "plan": "scale-evm"
+      },
+      {
+       "r": 1556708008,
+       "usd": null,
+       "why": "plan does not serve ethereum"
+      },
+      {
+       "r": 5000000000,
+       "usd": null,
+       "why": "plan does not serve ethereum"
       }
      ],
      "planNames": {
-      "growth": "Growth (pay-as-you-go)"
+      "growth": "Growth (pay-as-you-go)",
+      "pro-evm": "Pro, Multi-Chain",
+      "scale-evm": "Scale, Multi-Chain"
      }
     },
     {
@@ -2063,6 +2195,96 @@
      ]
     },
     {
+     "slug": "blockmachine",
+     "name": "Blockmachine",
+     "cohort": "usage",
+     "unit": "ru",
+     "points": [
+      {
+       "r": 100000,
+       "usd": 9,
+       "plan": "standard"
+      },
+      {
+       "r": 5000000,
+       "usd": 9,
+       "plan": "standard"
+      },
+      {
+       "r": 8189847,
+       "usd": 24.95,
+       "plan": "standard"
+      },
+      {
+       "r": 8200571,
+       "usd": 25,
+       "plan": "pro"
+      },
+      {
+       "r": 20000000,
+       "usd": 25,
+       "plan": "pro"
+      },
+      {
+       "r": 53297012,
+       "usd": 124.89,
+       "plan": "pro"
+      },
+      {
+       "r": 53365544,
+       "usd": 125,
+       "plan": "business"
+      },
+      {
+       "r": 100000000,
+       "usd": 125,
+       "plan": "business"
+      },
+      {
+       "r": 286997363,
+       "usd": 498.99,
+       "plan": "business"
+      },
+      {
+       "r": 287318858,
+       "usd": 499,
+       "plan": "business-plus"
+      },
+      {
+       "r": 500000000,
+       "usd": 499,
+       "plan": "business-plus"
+      },
+      {
+       "r": 832554779,
+       "usd": 997.83,
+       "plan": "business-plus"
+      },
+      {
+       "r": 833404755,
+       "usd": 999,
+       "plan": "enterprise"
+      },
+      {
+       "r": 1000000000,
+       "usd": 999,
+       "plan": "enterprise"
+      },
+      {
+       "r": 5000000000,
+       "usd": 4999,
+       "plan": "enterprise"
+      }
+     ],
+     "planNames": {
+      "business": "Business",
+      "business-plus": "Business Plus",
+      "enterprise": "Enterprise",
+      "pro": "Pro",
+      "standard": "Standard"
+     }
+    },
+    {
      "slug": "blockpi",
      "name": "BlockPI",
      "cohort": "usage",
@@ -2273,13 +2495,55 @@
        "plan": "growth"
       },
       {
-       "r": 5000000000,
-       "usd": 30000,
+       "r": 8159475,
+       "usd": 48.96,
        "plan": "growth"
+      },
+      {
+       "r": 8169666,
+       "usd": 49,
+       "plan": "pro-evm"
+      },
+      {
+       "r": 10187500,
+       "usd": 49,
+       "plan": "pro-evm"
+      },
+      {
+       "r": 35183141,
+       "usd": 198.97,
+       "plan": "pro-evm"
+      },
+      {
+       "r": 35220071,
+       "usd": 199,
+       "plan": "scale-evm"
+      },
+      {
+       "r": 47428571,
+       "usd": 199,
+       "plan": "scale-evm"
+      },
+      {
+       "r": 1554653484,
+       "usd": 9242.35,
+       "plan": "scale-evm"
+      },
+      {
+       "r": 1556708008,
+       "usd": null,
+       "why": "plan does not serve ethereum"
+      },
+      {
+       "r": 5000000000,
+       "usd": null,
+       "why": "plan does not serve ethereum"
       }
      ],
      "planNames": {
-      "growth": "Growth (pay-as-you-go)"
+      "growth": "Growth (pay-as-you-go)",
+      "pro-evm": "Pro, Multi-Chain",
+      "scale-evm": "Scale, Multi-Chain"
      }
     },
     {
@@ -3985,6 +4249,96 @@
      ]
     },
     {
+     "slug": "blockmachine",
+     "name": "Blockmachine",
+     "cohort": "usage",
+     "unit": "ru",
+     "points": [
+      {
+       "r": 100000,
+       "usd": 9,
+       "plan": "standard"
+      },
+      {
+       "r": 5000000,
+       "usd": 9,
+       "plan": "standard"
+      },
+      {
+       "r": 8189847,
+       "usd": 24.95,
+       "plan": "standard"
+      },
+      {
+       "r": 8200571,
+       "usd": 25,
+       "plan": "pro"
+      },
+      {
+       "r": 20000000,
+       "usd": 25,
+       "plan": "pro"
+      },
+      {
+       "r": 53297012,
+       "usd": 124.89,
+       "plan": "pro"
+      },
+      {
+       "r": 53365544,
+       "usd": 125,
+       "plan": "business"
+      },
+      {
+       "r": 100000000,
+       "usd": 125,
+       "plan": "business"
+      },
+      {
+       "r": 286997363,
+       "usd": 498.99,
+       "plan": "business"
+      },
+      {
+       "r": 287318858,
+       "usd": 499,
+       "plan": "business-plus"
+      },
+      {
+       "r": 500000000,
+       "usd": 499,
+       "plan": "business-plus"
+      },
+      {
+       "r": 832554779,
+       "usd": 997.83,
+       "plan": "business-plus"
+      },
+      {
+       "r": 833404755,
+       "usd": 999,
+       "plan": "enterprise"
+      },
+      {
+       "r": 1000000000,
+       "usd": 999,
+       "plan": "enterprise"
+      },
+      {
+       "r": 5000000000,
+       "usd": 4999,
+       "plan": "enterprise"
+      }
+     ],
+     "planNames": {
+      "business": "Business",
+      "business-plus": "Business Plus",
+      "enterprise": "Enterprise",
+      "pro": "Pro",
+      "standard": "Standard"
+     }
+    },
+    {
      "slug": "blockpi",
      "name": "BlockPI",
      "cohort": "usage",
@@ -4195,13 +4549,55 @@
        "plan": "growth"
       },
       {
-       "r": 5000000000,
-       "usd": 30000,
+       "r": 8159475,
+       "usd": 48.96,
        "plan": "growth"
+      },
+      {
+       "r": 8169666,
+       "usd": 49,
+       "plan": "pro-evm"
+      },
+      {
+       "r": 10187500,
+       "usd": 49,
+       "plan": "pro-evm"
+      },
+      {
+       "r": 35183141,
+       "usd": 198.97,
+       "plan": "pro-evm"
+      },
+      {
+       "r": 35220071,
+       "usd": 199,
+       "plan": "scale-evm"
+      },
+      {
+       "r": 47428571,
+       "usd": 199,
+       "plan": "scale-evm"
+      },
+      {
+       "r": 1554653484,
+       "usd": 9242.35,
+       "plan": "scale-evm"
+      },
+      {
+       "r": 1556708008,
+       "usd": null,
+       "why": "plan does not serve ethereum"
+      },
+      {
+       "r": 5000000000,
+       "usd": null,
+       "why": "plan does not serve ethereum"
       }
      ],
      "planNames": {
-      "growth": "Growth (pay-as-you-go)"
+      "growth": "Growth (pay-as-you-go)",
+      "pro-evm": "Pro, Multi-Chain",
+      "scale-evm": "Scale, Multi-Chain"
      }
     },
     {
@@ -5538,6 +5934,161 @@
      ]
     },
     {
+     "slug": "blockmachine",
+     "name": "Blockmachine",
+     "cohort": "usage",
+     "unit": "ru",
+     "points": [
+      {
+       "r": 100000,
+       "usd": 9,
+       "plan": "standard"
+      },
+      {
+       "r": 198413,
+       "usd": 9,
+       "plan": "standard"
+      },
+      {
+       "r": 325053,
+       "usd": 24.96,
+       "plan": "standard"
+      },
+      {
+       "r": 325411,
+       "usd": 25,
+       "plan": "pro"
+      },
+      {
+       "r": 793651,
+       "usd": 25,
+       "plan": "pro"
+      },
+      {
+       "r": 2116129,
+       "usd": 124.98,
+       "plan": "pro"
+      },
+      {
+       "r": 2118415,
+       "usd": 125,
+       "plan": "business"
+      },
+      {
+       "r": 3968254,
+       "usd": 125,
+       "plan": "business"
+      },
+      {
+       "r": 11375736,
+       "usd": 498.34,
+       "plan": "business"
+      },
+      {
+       "r": 11390345,
+       "usd": 499,
+       "plan": "business-plus"
+      },
+      {
+       "r": 19841270,
+       "usd": 499,
+       "plan": "business-plus"
+      },
+      {
+       "r": 33041200,
+       "usd": 997.96,
+       "plan": "business-plus"
+      },
+      {
+       "r": 33078130,
+       "usd": 999,
+       "plan": "enterprise"
+      },
+      {
+       "r": 39682540,
+       "usd": 999,
+       "plan": "enterprise"
+      },
+      {
+       "r": 428181201,
+       "usd": 10789.17,
+       "plan": "enterprise"
+      },
+      {
+       "r": 428777805,
+       "usd": null,
+       "why": "published throughput is 4167 ru_per_s, workload needs 4169 sustained"
+      },
+      {
+       "r": 431164221,
+       "usd": null,
+       "why": "published throughput is 4167 ru_per_s, workload needs 4192 sustained"
+      },
+      {
+       "r": 440709885,
+       "usd": null,
+       "why": "published throughput is 4167 ru_per_s, workload needs 4285 sustained"
+      },
+      {
+       "r": 459801212,
+       "usd": null,
+       "why": "published throughput is 4167 ru_per_s, workload needs 4471 sustained"
+      },
+      {
+       "r": 497983867,
+       "usd": null,
+       "why": "published throughput is 4167 ru_per_s, workload needs 4842 sustained"
+      },
+      {
+       "r": 574349177,
+       "usd": null,
+       "why": "published throughput is 4167 ru_per_s, workload needs 5584 sustained"
+      },
+      {
+       "r": 782406211,
+       "usd": null,
+       "why": "published throughput is 4167 ru_per_s, workload needs 7607 sustained"
+      },
+      {
+       "r": 1065831558,
+       "usd": null,
+       "why": "published throughput is 4167 ru_per_s, workload needs 10363 sustained"
+      },
+      {
+       "r": 1451927266,
+       "usd": null,
+       "why": "published throughput is 4167 ru_per_s, workload needs 14116 sustained"
+      },
+      {
+       "r": 1977885501,
+       "usd": null,
+       "why": "published throughput is 4167 ru_per_s, workload needs 19230 sustained"
+      },
+      {
+       "r": 2694371231,
+       "usd": null,
+       "why": "published throughput is 4167 ru_per_s, workload needs 26196 sustained"
+      },
+      {
+       "r": 3670402724,
+       "usd": null,
+       "why": "published throughput is 4167 ru_per_s, workload needs 35685 sustained"
+      },
+      {
+       "r": 5000000000,
+       "usd": null,
+       "why": "published throughput is 4167 ru_per_s, workload needs 48612 sustained"
+      }
+     ],
+     "planNames": {
+      "business": "Business",
+      "business-plus": "Business Plus",
+      "enterprise": "Enterprise",
+      "pro": "Pro",
+      "standard": "Standard"
+     }
+    },
+    {
      "slug": "blockpi",
      "name": "BlockPI",
      "cohort": "usage",
@@ -5748,13 +6299,55 @@
        "plan": "growth"
       },
       {
-       "r": 5000000000,
-       "usd": 30000,
+       "r": 8159475,
+       "usd": 48.96,
        "plan": "growth"
+      },
+      {
+       "r": 8169666,
+       "usd": 49,
+       "plan": "pro-evm"
+      },
+      {
+       "r": 10187500,
+       "usd": 49,
+       "plan": "pro-evm"
+      },
+      {
+       "r": 35183141,
+       "usd": 198.97,
+       "plan": "pro-evm"
+      },
+      {
+       "r": 35220071,
+       "usd": 199,
+       "plan": "scale-evm"
+      },
+      {
+       "r": 47428571,
+       "usd": 199,
+       "plan": "scale-evm"
+      },
+      {
+       "r": 1554653484,
+       "usd": 9242.35,
+       "plan": "scale-evm"
+      },
+      {
+       "r": 1556708008,
+       "usd": null,
+       "why": "plan does not serve ethereum"
+      },
+      {
+       "r": 5000000000,
+       "usd": null,
+       "why": "plan does not serve ethereum"
       }
      ],
      "planNames": {
-      "growth": "Growth (pay-as-you-go)"
+      "growth": "Growth (pay-as-you-go)",
+      "pro-evm": "Pro, Multi-Chain",
+      "scale-evm": "Scale, Multi-Chain"
      }
     },
     {
@@ -6929,6 +7522,24 @@
      ]
     },
     {
+     "slug": "blockmachine",
+     "name": "Blockmachine",
+     "cohort": "usage",
+     "unit": "ru",
+     "points": [
+      {
+       "r": 100000,
+       "usd": null,
+       "why": "provider does not price solana"
+      },
+      {
+       "r": 5000000000,
+       "usd": null,
+       "why": "provider does not price solana"
+      }
+     ]
+    },
+    {
      "slug": "blockpi",
      "name": "BlockPI",
      "cohort": "usage",
@@ -7150,13 +7761,90 @@
        "plan": "growth"
       },
       {
-       "r": 5000000000,
-       "usd": 30000,
+       "r": 8159475,
+       "usd": 48.96,
        "plan": "growth"
+      },
+      {
+       "r": 8169666,
+       "usd": 49,
+       "plan": "pro-solana"
+      },
+      {
+       "r": 12538462,
+       "usd": 49,
+       "plan": "pro-solana"
+      },
+      {
+       "r": 50994246,
+       "usd": 198.98,
+       "plan": "pro-solana"
+      },
+      {
+       "r": 51076923,
+       "usd": 199,
+       "plan": "scale-solana"
+      },
+      {
+       "r": 51076923,
+       "usd": 199,
+       "plan": "scale-solana"
+      },
+      {
+       "r": 1554653484,
+       "usd": 6062.95,
+       "plan": "scale-solana"
+      },
+      {
+       "r": 1556708008,
+       "usd": null,
+       "why": "published throughput is 600 rps, workload needs 601 sustained"
+      },
+      {
+       "r": 1558762532,
+       "usd": null,
+       "why": "published throughput is 600 rps, workload needs 602 sustained"
+      },
+      {
+       "r": 1566980630,
+       "usd": null,
+       "why": "published throughput is 600 rps, workload needs 605 sustained"
+      },
+      {
+       "r": 1583416825,
+       "usd": null,
+       "why": "published throughput is 600 rps, workload needs 611 sustained"
+      },
+      {
+       "r": 1714906383,
+       "usd": null,
+       "why": "published throughput is 600 rps, workload needs 662 sustained"
+      },
+      {
+       "r": 1977885501,
+       "usd": null,
+       "why": "published throughput is 600 rps, workload needs 764 sustained"
+      },
+      {
+       "r": 2694371231,
+       "usd": null,
+       "why": "published throughput is 600 rps, workload needs 1040 sustained"
+      },
+      {
+       "r": 3670402724,
+       "usd": null,
+       "why": "published throughput is 600 rps, workload needs 1417 sustained"
+      },
+      {
+       "r": 5000000000,
+       "usd": null,
+       "why": "published throughput is 600 rps, workload needs 1930 sustained"
       }
      ],
      "planNames": {
-      "growth": "Growth (pay-as-you-go)"
+      "growth": "Growth (pay-as-you-go)",
+      "pro-solana": "Pro, Solana",
+      "scale-solana": "Scale, Solana"
      }
     },
     {
@@ -8655,6 +9343,96 @@
      ]
     },
     {
+     "slug": "blockmachine",
+     "name": "Blockmachine",
+     "cohort": "usage",
+     "unit": "ru",
+     "points": [
+      {
+       "r": 100000,
+       "usd": 9,
+       "plan": "standard"
+      },
+      {
+       "r": 5000000,
+       "usd": 9,
+       "plan": "standard"
+      },
+      {
+       "r": 8189847,
+       "usd": 24.95,
+       "plan": "standard"
+      },
+      {
+       "r": 8200571,
+       "usd": 25,
+       "plan": "pro"
+      },
+      {
+       "r": 20000000,
+       "usd": 25,
+       "plan": "pro"
+      },
+      {
+       "r": 53297012,
+       "usd": 124.89,
+       "plan": "pro"
+      },
+      {
+       "r": 53365544,
+       "usd": 125,
+       "plan": "business"
+      },
+      {
+       "r": 100000000,
+       "usd": 125,
+       "plan": "business"
+      },
+      {
+       "r": 286997363,
+       "usd": 498.99,
+       "plan": "business"
+      },
+      {
+       "r": 287318858,
+       "usd": 499,
+       "plan": "business-plus"
+      },
+      {
+       "r": 500000000,
+       "usd": 499,
+       "plan": "business-plus"
+      },
+      {
+       "r": 832554779,
+       "usd": 997.83,
+       "plan": "business-plus"
+      },
+      {
+       "r": 833404755,
+       "usd": 999,
+       "plan": "enterprise"
+      },
+      {
+       "r": 1000000000,
+       "usd": 999,
+       "plan": "enterprise"
+      },
+      {
+       "r": 5000000000,
+       "usd": 4999,
+       "plan": "enterprise"
+      }
+     ],
+     "planNames": {
+      "business": "Business",
+      "business-plus": "Business Plus",
+      "enterprise": "Enterprise",
+      "pro": "Pro",
+      "standard": "Standard"
+     }
+    },
+    {
      "slug": "blockpi",
      "name": "BlockPI",
      "cohort": "usage",
@@ -8865,13 +9643,55 @@
        "plan": "growth"
       },
       {
-       "r": 5000000000,
-       "usd": 30000,
+       "r": 8159475,
+       "usd": 48.96,
        "plan": "growth"
+      },
+      {
+       "r": 8169666,
+       "usd": 49,
+       "plan": "pro-evm"
+      },
+      {
+       "r": 10187500,
+       "usd": 49,
+       "plan": "pro-evm"
+      },
+      {
+       "r": 35183141,
+       "usd": 198.97,
+       "plan": "pro-evm"
+      },
+      {
+       "r": 35220071,
+       "usd": 199,
+       "plan": "scale-evm"
+      },
+      {
+       "r": 47428571,
+       "usd": 199,
+       "plan": "scale-evm"
+      },
+      {
+       "r": 1554653484,
+       "usd": 9242.35,
+       "plan": "scale-evm"
+      },
+      {
+       "r": 1556708008,
+       "usd": null,
+       "why": "plan does not serve ethereum"
+      },
+      {
+       "r": 5000000000,
+       "usd": null,
+       "why": "plan does not serve ethereum"
       }
      ],
      "planNames": {
-      "growth": "Growth (pay-as-you-go)"
+      "growth": "Growth (pay-as-you-go)",
+      "pro-evm": "Pro, Multi-Chain",
+      "scale-evm": "Scale, Multi-Chain"
      }
     },
     {

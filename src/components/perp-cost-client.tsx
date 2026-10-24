@@ -468,6 +468,10 @@ export function PerpCostClient() {
                       {row.roomPct === null ? "n/a" : pct(row.roomPct, row.roomPct < 1 ? 3 : 2)}
                       <span className="block whitespace-nowrap text-[10px] text-ink-faint">
                         of price · {row.venue.src}
+                        {/* Rows read on a different day than the rest carry
+                            their own date, so the footer's single date is not
+                            quietly claimed for them. */}
+                        {row.venue.measuredAt ? ` · ${row.venue.measuredAt}` : ""}
                       </span>
                     </td>
                   </tr>

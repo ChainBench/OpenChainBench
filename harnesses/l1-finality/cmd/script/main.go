@@ -45,6 +45,7 @@ func main() {
 	StartSUIWallClock()
 	StartStellarWallClock()
 	StartBitcoinWallClock()
+	StartLitecoinWallClock()
 	StartSolanaWallClock()
 
 	<-sigChan

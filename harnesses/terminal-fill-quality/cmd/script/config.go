@@ -24,7 +24,16 @@ import "strings"
 //	   before v5 carry no record of who paid, and are recomputed as if the
 //	   user paid nothing: right for the sponsored majority, and the window
 //	   turns over within the day.
-const methodVersion = 5
+// methodVersion 6 (2026-10-24): gas an app sends back to the user is value
+// received. Before it, only a NEGATIVE lamport delta was read, so a top-up
+// was dropped and the swap read as a pure loss: 151.8 bps of one audited
+// pump.fun swap's published 351.45.
+//
+// A drop, not a replay. The in-place recompute below covers 4 and 5 because
+// every input those needed was already on the stored row; this one needs
+// UserSolRecv, which rows written earlier never recorded, so replaying them
+// would credit zero and quietly restate the old figure as a new one.
+const methodVersion = 6
 
 // Evidence published behind the board, per row rather than overall.
 //
@@ -193,10 +202,35 @@ var terminals = []Terminal{
 	// split between this wallet (12 to 85 %, ~2,600 transactions an hour) and
 	// per-user or referrer accounts. Failed swaps leave no fee transaction:
 	// the fail rate is not measured on this row.
-	{Slug: "basedbot", Name: "BasedBot", Kind: "bot", Wallets: []string{"HR6xhpJYYiTvmAtUZvpLMN7qbr6TxCw1Sgq3fab8vCoa"}, FeeTx: true,
-		Note: "BasedBot's Solana swap runs through Jupiter with no fee inside; its 1 % fee (about $0.10 minimum) is a separate transaction right after, to its wallet and per-user accounts: the whole of it is terminal fee, its transaction fee is network. The fee is charged after a successful swap only, so failed swaps are not seen: no fail rate on this row."},
-	{Slug: "pump-fun", Name: "pump.fun app", Kind: "app", Programs: []string{"6Vo3245eszAb5wuqEMw8mGdbfRUdKbHhDHP5LcaGuTAB"},
-		Note: "pump.fun's mobile app takes no fee of its own; the fixed 0.001 SOL it forwards per swap to its pfn… accounts is counted as network, and pump.fun's protocol and creator fees sit in other."},
+	// FeeTx was true until 2026-10-24 and described a charge BasedBot no
+	// longer makes. Read on chain that day: of 30 transactions crediting
+	// HR6x, 30 invoke a swap program in the SAME transaction (Jupiter v6
+	// on all of them, over the pump.fun curve, PumpSwap, Meteora DLMM and
+	// Whirlpool) and NONE is a standalone fee transfer.
+	//
+	// Under FeeTx the harness took the payer's PREVIOUS transaction as the
+	// swap and added the sampled one's whole SOL outflow to both the fee
+	// and user_q, so the row read 41 parsed and 0 priced, with a terminal
+	// component between 1,479 and 70,142 bps against a 1 % fee and 27 of
+	// 42 rows dropped out_of_bounds. The wallet was already declared, so
+	// the ordinary path needs nothing else.
+	{Slug: "basedbot", Name: "BasedBot", Kind: "bot", Wallets: []string{"HR6xhpJYYiTvmAtUZvpLMN7qbr6TxCw1Sgq3fab8vCoa"},
+		Note: "BasedBot's Solana swap runs through Jupiter and takes its 1 % fee (about $0.10 minimum) inside the same transaction, to its wallet and per-user accounts: the whole of it is terminal fee, its transaction fee is network. Failed swaps are visible on this path, so the row carries a fail rate."},
+	// "Takes no fee of its own" was wrong, and the row read 0 in Terminal
+	// because of it: the app's fee was landing in Protocol fees instead.
+	//
+	// KfHbT5Jr… takes about 44.5 bps of the outlay, on 255 swaps from 236
+	// distinct payers. The spec filed it as one of Pump Bridge's sell-side
+	// fee routes and so did my own notes, which is what kept it out of this
+	// list. Checked on chain 2026-10-24: of 25 transactions crediting it,
+	// 23 invoke a pump SWAP venue and NONE invokes the pump BRIDGE program.
+	// It is an app fee on ordinary Solana swaps, so it belongs here, and
+	// declaring it moves that charge out of other and into Terminal where a
+	// reader compares it against the other apps' fees.
+	{Slug: "pump-fun", Name: "pump.fun app", Kind: "app",
+		Wallets:  []string{"KfHbT5Jrr5SV3CDkQVCLiSNWyVv5DmuVaCzbAHrzMFQ"},
+		Programs: []string{"6Vo3245eszAb5wuqEMw8mGdbfRUdKbHhDHP5LcaGuTAB"},
+		Note:     "pump.fun's app charges about 45 bps to KfHbT5Jr…, counted as terminal fee; the fixed 0.001 SOL it forwards per swap to its pfn… accounts is counted as network, and pump.fun's protocol and creator fees sit in other."},
 	// Not in the cohort: BullX (trading suspended 2026-06-01; its wallets
 	// only receive 1,000-lamport markers from unrelated snipers), Nova (no
 	// live fee wallet: the spellbook's last saw traffic weeks ago), BasedBot

@@ -127,6 +127,14 @@ describe("every outbound link is tagged", () => {
 // A provider's referral link replaces only the clicked href, and keeps both
 // its own code and our utm_source; the canonical url stays clean.
 describe("referral links", () => {
+  test("blockmachine's href carries its referral code and our utm_source", () => {
+    const reg = getProviderRegistry("blockmachine");
+    expect(reg?.url).toBe("https://blockmachine.io");
+    const href = new URL(withUtm(reg?.referralUrl || reg?.url));
+    expect(href.searchParams.get("referral")).toBe("openchainbench");
+    expect(href.searchParams.get("utm_source")).toBe("openchainbench");
+  });
+
   test("referral providers keep a clean canonical url and a tagged referral href", () => {
     for (const [slug, canonical, param] of [
       ["quicknode", "https://www.quicknode.com", ["via", "florent"]],

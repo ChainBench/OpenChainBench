@@ -123,7 +123,7 @@ export async function TerminalFillSection({
                           by chain
                         </span>
                       ) : null}
-                      {pub && !rank ? <span className="text-[9px] uppercase tracking-[0.12em] text-ink-faint border border-rule rounded px-1">provisional</span> : null}
+                      {pub && !rank ? <span title="Published but not ranked. A row is ranked from 100 priced swaps, and a product pooled over several chains must also reach 100 EFFECTIVE swaps once each chain's flow weight is applied, so a product whose trades concentrate on one chain stays provisional however many swaps it holds." className="text-[9px] uppercase tracking-[0.12em] text-ink-faint border border-rule rounded px-1">provisional</span> : null}
                     </span>
                   </td>
                   <td className="py-2.5 px-3 text-right tabular-nums text-ink-soft">{t.tradeUsd ? fmtUsd(t.tradeUsd.median) : "—"}</td>
@@ -202,7 +202,7 @@ export async function TerminalFillSection({
       </p>
 
       <p className="text-[11px] text-ink-faint leading-relaxed max-w-3xl">
-        Real user swaps read on-chain (Solana: each terminal&apos;s fee-wallet and program feed; EVM: the terminals&apos; routers and blocks read in full; 400 drawn at random per terminal per day, 1,000 on the EVM rows, every attempt
+        Real user swaps read on-chain (Solana: each terminal&apos;s fee-wallet and program feed; EVM: the terminals&apos; routers and blocks read in full; 150 drawn at random per terminal per day, Solana and EVM alike, every attempt
         counted for the fail rate), valued at the pool&apos;s state before the trade (exact where the pool&apos;s formula is known: PumpSwap, Raydium, Launchpad, DLMM, four.meme, the EVM pools;
         the previous trade on the same pool within 60 s elsewhere; swaps without one keep their cost split but no loss figure).
         Loss = 1 − value received / value given, in basis points of the trade; terminal, network and other are exact from balance deltas, the tx fee

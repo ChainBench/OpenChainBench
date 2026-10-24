@@ -29,6 +29,7 @@ import (
 	"context"
 	"encoding/binary"
 	"encoding/json"
+	"fmt"
 	"log"
 	"math"
 	"math/big"
@@ -106,6 +107,18 @@ var (
 	// Per-chain health of the EVM log feed. This existed only inside the
 	// feed struct, so BNB's read nothing for days behind a green
 	// tfq_feed_up, which covers the Solana WebSocket alone.
+	cXchainTimed = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "tfq_xchain_settlements_timed_total",
+		Help: "Relay requests timed for settlement, which is every successful Solana-origin request in the sample rather than only the few drawn for pricing. Timing needs two block timestamps and pricing needs a dozen reads, so binding the cheap measurement to the expensive one's quota is what left FOMO at 8 settlements while its feed saw thousands of requests",
+	}, []string{"terminal"})
+	gWalletPollBehind = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "tfq_wallet_poll_behind",
+		Help: "1 when a fee wallet's last polling pass filled its page while a cursor was set, meaning more signatures arrived than one pass reads and the ones between the old cursor and that page were skipped. This is the FALLBACK path, used when the WebSocket feed is unhealthy. What a hole here costs is the COUNT, not the rate: the truncated slice feeds both the attempts and the failures, so dropping its tail removes them together and the ratio is untouched. It understates every sample size on this path, and because truncation only bites wallets busier than one page a tick it reweights the pooled rate toward the quiet ones, by an amount and in a direction nobody has measured",
+	}, []string{"terminal"})
+	cWalletPollSkipped = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "tfq_wallet_poll_skipped_total",
+		Help: "Signatures the polling fallback could not have read, as the page size each time a page came back full with a cursor set. An estimate, the skipped ones being by definition the ones not fetched, but it is the difference between a measured hole and an unexplained one",
+	}, []string{"terminal"})
 	gNativeUp = prometheus.NewGaugeVec(prometheus.GaugeOpts{Name: "tfq_native_feed_up", Help: "1 when the chain's eth_getLogs feed answered its last poll"}, []string{"chain"})
 	// How far behind the head each chain's cursor sits. A counter of
 	// skipped blocks cannot show a stuck feed (it re-counts the same gap
@@ -117,6 +130,14 @@ var (
 	// that never catches up still reads a lag of zero: BNB dropped a
 	// third of its blocks for half an hour with feed_up 1 and lag 0 on
 	// every dashboard. This is the gauge that shows it.
+	cCrossProducerDupes = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "tfq_cross_producer_dupes_total",
+		Help: "Relay-produced swaps dropped because the native reader had already recorded the same destination fill off a router. EXPECTED TO BE ZERO: the two producers are disjoint by construction, since only pump's relayers reach its routers. A non-zero reading means a Relay request is settling through a router we also read directly, and one trade was about to be published in two rows",
+	}, []string{"terminal"})
+	cDustSkipped = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "tfq_dust_attempts_skipped_total",
+		Help: "Router events whose own declared trade size is under MIN_TRADE_USD, not counted as attempts. They were already excluded from every median; this keeps them out of the fail-rate denominator, the pooled chain weighting and the audit-table sample too, so those describe the same population the median does. A large count here against a small published attempt count is one actor fanning dust, not a broken feed",
+	}, []string{"terminal"})
 	gNativeSkipped = prometheus.NewGaugeVec(prometheus.GaugeOpts{Name: "tfq_native_skipped_last_blocks", Help: "Blocks the chain's log feed skipped on its last poll: never read, never sampled. Non-zero poll after poll means the read budget is below what the chain produces"}, []string{"chain"})
 	gUnpriced      = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "tfq_unpriced_share", Help: "Share of the window's drawn swaps that could not be valued at the pool's state (routes without a quote leg, undecoded venues); the published figure rests on the rest",
@@ -129,7 +150,8 @@ var (
 )
 
 func init() {
-	prometheus.MustRegister(gNativeUp, gNativeLag, gNativeSkipped, gLoss, gLossExFee, gComponent, gFail, gSamples, gTrade, gVenue, gBuy, gSandwich, gSandwichProfit, gLossSize, gLossChain, gHealth, gRanked, gFailCost, gFailOverhead, gLostUSD, gUnpriced, gRefresh, gFeed, gRelayFeed, gSol, cCalls, cErrors, cSkipped)
+	prometheus.MustRegister(gWalletPollBehind, cWalletPollSkipped, cXchainTimed)
+	prometheus.MustRegister(gNativeUp, gNativeLag, gNativeSkipped, cDustSkipped, cCrossProducerDupes, gLoss, gLossExFee, gComponent, gFail, gSamples, gTrade, gVenue, gBuy, gSandwich, gSandwichProfit, gLossSize, gLossChain, gHealth, gRanked, gFailCost, gFailOverhead, gLostUSD, gUnpriced, gRefresh, gFeed, gRelayFeed, gSol, cCalls, cErrors, cSkipped)
 }
 
 func envInt(k string, def int) int {
@@ -214,6 +236,34 @@ type State struct {
 	Funded      map[string]map[string]int64 `json:"funded,omitempty"`       // app -> EVM wallet it funded through Relay -> last seen (identifies its users on a shared router)
 	RelayNewest map[string]int64            `json:"relay_newest,omitempty"` // app:origin -> created of the newest Relay request counted (the walk after a restart stops there instead of re-counting a day)
 	Resampling  map[string]int64            `json:"resampling,omitempty"`   // slug -> unix time its rows were purged (the entry says it is re-sampling while its window refills)
+	// Deposits held for the Pump Bridge pairing, persisted so a deploy does
+	// not blind the settlement column. Measured on a fresh process: 174
+	// router spends, all none_blind, and no tfq_settle_ms series at all,
+	// because the spend watcher backfills about 100 minutes of Base while
+	// the deposit feed's first pass covers about 3. The deposits carry their
+	// own block time and the lag range still decides what can pair, so a
+	// long outage expires them on the existing rule rather than a new one.
+	PumpDeposits []pumpDepRecord `json:"pump_deposits,omitempty"`
+	// The Mobula intent window, by intent id, persisted for the same reason
+	// as PumpDeposits and from the first version rather than after a night
+	// of blank columns. Mobula settles in seconds, so a deploy that empties
+	// this loses every fill whose deposit it held.
+	MobulaIntents map[string]mobulaIntent `json:"mobula_intents,omitempty"`
+	// Where the Mobula fill watcher stopped, per chain. In memory it meant
+	// every restart re-read mobulaFillReach of each chain, and since those
+	// fills had already consumed their intents in the previous run, the
+	// second reading counted them as unknown_intent. With fifteen restarts
+	// in an evening that is most of the counter: 1,161 fills seen against
+	// about 14 intents a minute actually happening.
+	MobulaFillCursor map[string]int64 `json:"mobula_fill_cursor,omitempty"`
+	// The settlement samples, and when they were written. This window was
+	// the fourth in-memory thing in this process with the same property and
+	// the only one whose loss was visible on the page: every deploy reset
+	// every route to zero samples, so routes fell back under the
+	// ten-sample floor and the panel showed whichever ones happened to be
+	// above it when the page materialised.
+	SettleWindow  []settleRecord `json:"settle_window,omitempty"`
+	SettleSavedAt int64          `json:"settle_saved_at,omitempty"`
 }
 
 // record adds a tick's feed counts to the terminal's current minute.
@@ -258,6 +308,13 @@ type TerminalStats struct {
 	/** Native EVM terminals: the fail rate comes from a block sample (transactions sent to the routers, reverted or not), these are its counts. */
 	SampSeen   int `json:"sampled_attempts,omitempty"`
 	SampFailed int `json:"sampled_failed,omitempty"`
+	/** Hours of trading this row's surviving swaps actually span, oldest to now.
+	 *  The window the page advertises is a ceiling, not a promise: after a method
+	 *  drop, a purge or a cold start the rows cover less, and a figure built on
+	 *  four hours under a label reading twenty-four is the kind of claim this
+	 *  bench exists not to make. Derived from the rows rather than from an event
+	 *  flag, because a flag can only mark an event it was present for. */
+	CoversHours float64 `json:"covers_hours,omitempty"`
 	/** The base of the fail rate: the feed's attempts (Solana), the block sample's (native EVM), both on a pooled product. */
 	Attempts       int `json:"attempts"`
 	AttemptsFailed int `json:"attempts_failed"`
@@ -374,6 +431,7 @@ func main() {
 	perTickEVM := float64(evmDailyTarget) * tick.Seconds() / 86400
 	perTickFail := float64(envInt("FAIL_DAILY_TARGET", 40)) * tick.Seconds() / 86400 // failed attempts read per terminal per day
 	windowHours := envInt("WINDOW_HOURS", 24)
+	publishedWindowHours = windowHours
 	minPriced := envInt("MIN_PRICED", 50)
 	minRank := envInt("MIN_RANK", 100)
 	// A size bucket holds roughly a third of a terminal's sample, so it
@@ -404,6 +462,23 @@ func main() {
 	st := loadState(stateFile)
 	applyLearned(st)
 	seedFunded(st)
+	// The deposit window, back from where it was. Without this the spend
+	// watcher's backfill meets an empty window and every spend reads
+	// unpairable: measured at 174 spends, all none_blind, and no settlement
+	// series at all, on a process minutes old.
+	if n := pumpLoadDeposits(st.PumpDeposits, time.Now().Unix()); n > 0 {
+		log.Printf("[pump-bridge] %d deposits restored from the state file, so the pairing is not blind while the feed catches up", n)
+	}
+	if n := loadSettleWindow(st.SettleWindow, st.SettleSavedAt, time.Now().Unix()); n > 0 {
+		log.Printf("[settle] %d settlement samples restored, so the routes do not fall back under the publication floor on every deploy", n)
+	}
+	if n := mobulaLoadIntents(st.MobulaIntents, time.Now().Unix()); n > 0 {
+		log.Printf("[mobula] %d intents restored from the state file", n)
+	}
+	mfw := newMobulaFillWatcher()
+	if n := mfw.loadCursors(st.MobulaFillCursor); n > 0 {
+		log.Printf("[mobula-fill] cursors restored for %d chains, so this start does not re-read fills already paired", n)
+	}
 	pools := &poolCache{m: map[string]poolParams{}}
 	repriced := false
 	quota := map[string]float64{}
@@ -435,6 +510,46 @@ func main() {
 	nf := newNativeFeed(httpc, st.EvmCursor, st.FeedDown)
 	xf := newXfeed(httpc, st.RelayNewest)
 	go xf.run(context.Background(), tick)
+	// pump.fun's own bridge, the other half of its cross-chain flow since
+	// 2026-10-07. xf reads what still goes through Relay; this reads what
+	// does not. Slower than the swap tick on purpose: it publishes a size
+	// distribution, not a live price, and each pass costs one signatures
+	// call plus a transaction read per signature.
+	pbf := &pumpBridgeFeed{}
+	// Every minute, not every two: the program runs about two signatures a
+	// second, so a 2-minute pass had to cover ~240 against a page of 200 and
+	// fell behind permanently. The deposits it skipped are the ones the
+	// pairing then could not find.
+	go pbf.run(context.Background(), rpc, time.Minute)
+	// The other half of the same question, on the EVM side: the deposit feed
+	// above says what users put in, this one says what the bridge kept, read
+	// from the routers' own stable spends. Five minutes because a fee schedule
+	// changes on the scale of a product decision, and each pass is one
+	// eth_getLogs per chain.
+	// A vendor's own published comparison, recomputed from the rows it linked.
+	// Once, not on a ticker: the export is finished and does not move.
+	loadVendorAB()
+	ptw := newPumpTakeWatcher()
+	go ptw.run(context.Background(), httpc, 5*time.Minute)
+	// FOMO's other rail. Relay carried 17 of 398 of its sponsor
+	// transactions and Mobula 6, so a quarter of its bridging was invisible
+	// here while the Relay feed read healthy.
+	//
+	// The deposit side runs every minute, like the pump feed, because it is
+	// one signatures call plus a read per signature. The fill side runs
+	// every two: Mobula settles in seconds, so a slower pass would hold
+	// intents longer than it needs to and widen the window for nothing.
+	mbf := newMobulaFeed()
+	go mbf.run(context.Background(), rpc, time.Minute)
+	go mfw.run(context.Background(), httpc, 2*time.Minute)
+	// And the sale direction, which is where the settlement panel's Solana
+	// tab comes from: the deposit feed reads the solver's USDC token account
+	// because that is where a BUY lands, while a sale is signed and fee-paid
+	// by the solver itself and is found on the solver address. Every minute,
+	// like the deposit side, for the same reason: one signatures call plus a
+	// read per signature.
+	msf := newMobulaSaleFeed()
+	go msf.run(context.Background(), rpc, httpc, time.Minute)
 	var mu sync.RWMutex
 	var pub *Public
 
@@ -488,6 +603,11 @@ func main() {
 		added, seen := sample(ctx, rpc, st, sol, pools, fd, quota, failQuota, activity, perTick, perTickFail)
 		gas := gasPrices(ctx, httpc)
 		added += sampleXchain(ctx, rpc, httpc, st, sol, gas, xf, pools, quota, perTickEVM)
+		// The quota is perTickEVM per ROW, and this rail has one row per chain, so
+		// the rail's share is that times the chains it settles on. Passing the
+		// per-row figure gave it two fills a tick against about ten a minute
+		// paired, and the surplus used to be discarded rather than deferred.
+		added += sampleMobula(ctx, httpc, st, mfw, gas, int(math.Max(perTickEVM*float64(len(mobulaBridge)), 4)))
 		a2, s2 := sampleNative(ctx, httpc, st, nf, gas, quota, perTickEVM)
 		added += a2
 		seen += s2
@@ -519,6 +639,10 @@ func main() {
 		pub = p
 		mu.Unlock()
 		if stateFile != "" {
+			st.PumpDeposits = pumpSaveDeposits()
+			st.MobulaIntents = mobulaSaveIntents()
+			st.MobulaFillCursor = mfw.saveCursors()
+			st.SettleWindow, st.SettleSavedAt = saveSettleWindow(), time.Now().Unix()
 			if err := writeAtomic(stateFile, st); err != nil {
 				log.Printf("[state] %v", err)
 			}
@@ -544,6 +668,12 @@ func main() {
 // running average, so the sample is uniform over transactions, not over
 // minutes: a burst (a pump, where fills are worst) is represented in
 // proportion to its trades. Nothing accrues on a tick without activity.
+// walletPollPage: signatures asked for per fee wallet per tick on the
+// polling fallback. Named rather than inline so the behind-check above and
+// the request cannot drift apart: a guard comparing against a different
+// number than the one requested would never fire.
+const walletPollPage = 100
+
 func sample(ctx context.Context, rpc *rpcClient, st *State, solUSD float64, pools *poolCache, fd *feed, quota, failQuota, activity map[string]float64, perTick, perTickFail float64) (added, seen int) {
 	now := time.Now().Unix()
 	live := fd != nil && fd.healthy()
@@ -570,10 +700,24 @@ func sample(ctx context.Context, rpc *rpcClient, st *State, solUSD float64, pool
 				if cur.NextScan > now {
 					continue
 				}
-				sigs, err := rpc.signatures(ctx, w, 100, cur.Last)
+				sigs, err := rpc.signatures(ctx, w, walletPollPage, cur.Last)
 				if err != nil {
 					log.Printf("[%s] %s: %v", t.Slug, w[:6], err)
 					continue
+				}
+				// A FULL page with a cursor set means more arrived than one
+				// pass reads, and since the cursor below jumps to the newest
+				// signature, everything between the old cursor and this page
+				// is gone. This fallback had no instrument for that, and the
+				// same unguarded shape has now cost this harness data twice
+				// elsewhere: the pump deposit feed before it was guarded, and
+				// the Mobula deposit feed in #3235.
+				if cur.Last != "" && len(sigs) >= walletPollPage {
+					gWalletPollBehind.WithLabelValues(t.Slug).Set(1)
+					cWalletPollSkipped.WithLabelValues(t.Slug).Add(float64(len(sigs)))
+					log.Printf("[%s] %s: page full (%d) with a cursor set: signatures were skipped, so this terminal's attempts are understated. The rate itself is not, both sides of it coming from the same truncated slice", t.Slug, w[:6], len(sigs))
+				} else {
+					gWalletPollBehind.WithLabelValues(t.Slug).Set(0)
 				}
 				if len(sigs) == 0 {
 					cur.Idle++
@@ -697,9 +841,18 @@ func priceSwap(ctx context.Context, rpc *rpcClient, sw *Swap, tx *parsedTx, pool
 	// account constants can be stale, and a Raydium CP-Swap vault holds
 	// protocol, fund and creator fees that the curve excludes — its event
 	// reports the reserves it actually used.
+	// refSrc names the PRODUCER, not the family. All three branches below
+	// used to write "reserves", so a row could not say which of two
+	// different computations had made its reference, and the audit table's
+	// tooltip promised the pool's exact mid for every one of them. That cost
+	// two sessions an evening on a row published at -848,570,771,090 bps
+	// whose stored reserves turned out to be correct: with one label on
+	// three producers there was no way to ask which had written it.
+	// reservePrice keeps "reserves" so the published breakdown and the
+	// tooltip stay true for it; the event path says so.
 	if sw.Venue == "pump-curve" || sw.Venue == "raydium-cpmm" {
 		if p, ok := eventMid(ctx, rpc, sw, tx, solUSD); ok {
-			sw.finalize(&p, 0, "reserves")
+			sw.finalize(&p, 0, "event")
 		}
 	}
 	if sw.RefSrc == "" && sw.PoolBasePre > 0 && sw.PoolQuotePre > 0 {
@@ -709,7 +862,7 @@ func priceSwap(ctx context.Context, rpc *rpcClient, sw *Swap, tx *parsedTx, pool
 	}
 	if sw.RefSrc == "" {
 		if p, ok := eventMid(ctx, rpc, sw, tx, solUSD); ok {
-			sw.finalize(&p, 0, "reserves")
+			sw.finalize(&p, 0, "event")
 		}
 	}
 	if sw.PoolVault == "" {
@@ -773,6 +926,125 @@ var sandwichOn = true
 // sampleXchain drains the Relay feed: counts every final request of each
 // cross-chain app for its fail rate, draws the tick's quota of successful
 // token settlements on Solana and measures them (see xchain.go).
+// settleXchainPerTick: how many requests are timed per row per tick, on top
+// of whatever is priced.
+//
+// Timing costs two reads and pricing costs a dozen, so this is deliberately
+// far above the pricing quota: the quota exists to bound an expensive
+// operation and binding the cheap one to it is what left FOMO at 8
+// settlements while its feed saw thousands of requests.
+const settleXchainPerTick = 40
+
+// settleXchainTodo picks the requests worth timing: Solana-origin, both
+// hashes present, on a chain we can read, and not already timed.
+//
+// Extracted so the selection can be tested without a network. The dedupe is
+// the part that matters: the Relay feed re-walks requests after a restart,
+// and a request timed twice would inflate the sample behind a published mean
+// while looking like more data.
+func settleXchainTodo(sample []relayRequest, done map[string]bool, limit int) []relayRequest {
+	var todo []relayRequest
+	for _, x := range sample {
+		if limit > 0 && len(todo) >= limit {
+			break
+		}
+		// Solana-origin only: the sale direction needs a different pair of
+		// reads and is left on the sampled path for now.
+		if x.DestChain == "" || x.InTx == "" || x.OutTx == "" || done[x.ID] {
+			continue
+		}
+		known := false
+		for i := range originChains {
+			if originChains[i].slug == x.DestChain {
+				known = true
+				break
+			}
+		}
+		if !known {
+			continue
+		}
+		todo = append(todo, x)
+	}
+	return todo
+}
+
+// settleXchain times every successful Solana-origin request in the sample,
+// priced or not, and returns how many it recorded.
+//
+// Deduplicated against the window's own settled set, because the Relay feed
+// re-walks requests after a restart and a request timed twice would inflate
+// the sample behind a published mean while looking like more data.
+func settleXchain(ctx context.Context, rpc *rpcClient, httpc *http.Client, slug string, sample []relayRequest, done map[string]bool) int {
+	product, chain := settleRoute(slug)
+	if product == "" {
+		return 0
+	}
+	// A funding row's legs are TRANSFERS, not bridged trades, and they are
+	// already timed as funding at main.go's funding path. Timing them here
+	// as well labels the same leg a trade and pools two populations the
+	// settleKey exists to keep apart: BasedBot, which makes no bridged
+	// trade at all, published 689 trade settlements and a 1,423 ms figure
+	// next to a methodology line saying these legs are not trades.
+	if chain == "funding" {
+		return 0
+	}
+	todo := settleXchainTodo(sample, done, settleXchainPerTick)
+	if len(todo) == 0 {
+		return 0
+	}
+	type timed struct {
+		id    string
+		chain string
+		at    int64
+		took  float64
+		ok    bool
+	}
+	out := readParallel(ctx, todo, sampleWorkers(), func(ctx context.Context, x relayRequest) timed {
+		var dc *originChain
+		for i := range originChains {
+			if originChains[i].slug == x.DestChain {
+				dc = &originChains[i]
+			}
+		}
+		if dc == nil {
+			return timed{}
+		}
+		inTx, err := rpc.transaction(ctx, x.InTx)
+		if err != nil || inTx == nil || inTx.BlockTime == nil {
+			return timed{}
+		}
+		var rc evmReceipt
+		if err := evmCall(ctx, httpc, dc.logsRPC(), "eth_getTransactionReceipt", []any{x.OutTx}, &rc); err != nil {
+			return timed{}
+		}
+		bn := hexInt(rc.BlockNumber)
+		if bn <= 0 {
+			return timed{}
+		}
+		at := pumpBlockAt(ctx, httpc, *dc, x.DestChain, bn)
+		if at <= 0 {
+			return timed{}
+		}
+		return timed{id: x.ID, chain: x.DestChain, took: float64(at - *inTx.BlockTime), ok: true}
+	})
+	n := 0
+	for _, r := range out {
+		if !r.ok {
+			continue
+		}
+		done[r.id] = true
+		noteSettle(product, settleTrade, r.chain, r.took)
+		cXchainTimed.WithLabelValues(slug).Inc()
+		n++
+	}
+	return n
+}
+
+// xchainTimed: request ids already timed, so a request the Relay feed
+// re-walks after a restart is not counted twice. It only ever grows within a
+// process, which is bounded by the feed's own retention rather than by this.
+var xchainTimed = map[string]bool{}
+
 func sampleXchain(ctx context.Context, rpc *rpcClient, httpc *http.Client, st *State, solUSD float64, gas map[string]float64, xf *xfeed, pools *poolCache, quota map[string]float64, perTick float64) (added int) {
 	if xf == nil || !xf.healthy() {
 		return 0
@@ -793,6 +1065,15 @@ func sampleXchain(ctx context.Context, rpc *rpcClient, httpc *http.Client, st *S
 	for _, slug := range xchainRows() {
 		seen, failed, errs, sample, total := xf.drain(slug)
 		st.record(slug, now, seen, failed, 0, errs)
+		// Time every request, not only the ones about to be priced. This is
+		// what separates a settlement count bound by the pricing quota from
+		// one bound by the flow.
+		added += settleXchain(ctx, rpc, httpc, slug, sample, xchainTimed)
+		// And the other direction. Half the bridged flow lands on Solana
+		// (19 of 39 legs in the feed on 2026-10-23) and nothing timed it,
+		// which is why the settlement panel's Solana tab held no series at
+		// all. Same dedupe map: request ids are unique across directions.
+		added += settleXchainSale(ctx, rpc, httpc, slug, sample, xchainTimed)
 		if total == 0 {
 			continue
 		}
@@ -816,6 +1097,39 @@ func sampleXchain(ctx context.Context, rpc *rpcClient, httpc *http.Client, st *S
 				measured[s.RelayID] = true
 			}
 		}
+		// The EVM-destination rows are priced SEVERAL AT A TIME, because each
+		// one is a handful of sequential round trips and that is what made a
+		// tick take 57.9 s of its 60 s budget once the daily targets were
+		// raised. Nothing else about the loop changes: the branch below reads
+		// its Swap from here instead of calling the pricer inline, so every
+		// st.reject and every append still happens in the sample's order.
+		//
+		// The rate limiter stays the backstop. pace() releases its lock
+		// before the HTTP round trip, so workers are paced and not
+		// serialised, and no number of workers can exceed RPC_RPS.
+		var todo []relayRequest
+		for _, x := range sample[:n] {
+			if measured[x.ID] {
+				continue
+			}
+			if x.DestChain != "" || (x.InIsToken && x.Chain != "solana") {
+				todo = append(todo, x)
+			}
+		}
+		pricedRows := readParallel(ctx, todo, sampleWorkers(), func(ctx context.Context, x relayRequest) *Swap {
+			if x.Funding {
+				return evmFundingRow(ctx, rpc, httpc, t, x, solUSD, gas)
+			}
+			if x.DestChain != "" {
+				return evmRow(ctx, rpc, httpc, t, x, solUSD, gas)
+			}
+			return evmSaleRow(ctx, rpc, httpc, t, x, solUSD, gas)
+		})
+		priced := make(map[string]*Swap, len(todo))
+		for i, x := range todo {
+			priced[x.ID] = pricedRows[i]
+		}
+
 		for _, x := range sample[:n] {
 			if measured[x.ID] {
 				continue // already in the window (re-walked after a restart)
@@ -824,14 +1138,9 @@ func sampleXchain(ctx context.Context, rpc *rpcClient, httpc *http.Client, st *S
 				// Leaving Solana for a token elsewhere (the deposit is read on
 				// Solana, the delivery and the pool's state on the destination),
 				// or a token sold on the origin chain and settled on Solana.
-				var sw *Swap
-				if x.Funding {
-					sw = evmFundingRow(ctx, rpc, t, x, solUSD, gas)
-				} else if x.DestChain != "" {
-					sw = evmRow(ctx, rpc, httpc, t, x, solUSD, gas)
-				} else {
-					sw = evmSaleRow(ctx, rpc, httpc, t, x, solUSD, gas)
-				}
+				// Read in the parallel pass above; absent and nil are the same
+				// case here, "unreadable", exactly as a nil return was.
+				sw := priced[x.ID]
 				if sw != nil {
 					if sw.Flag != "" && sw.Flag != "origin_token" {
 						if sw.Flag == "out_of_bounds" || sw.Flag == "split_implausible" {
@@ -1165,7 +1474,32 @@ func cohort() []Terminal {
 			continue
 		}
 		for _, c := range originChains {
+			// Chains Relay cannot reach carry no Relay row; see relaySkips.
+			if relaySkips[c.slug] {
+				continue
+			}
+			// Skip a name evmTerminals already owns. cohort is what compute
+			// walks, so this is the guard that decides the published rows:
+			// the same guard in xchainRows is not enough, and testing only
+			// that one is how six duplicated rows survived a green suite.
+			if nativeOwnsSlug(a.Slug + "-" + c.slug) {
+				continue
+			}
 			out = append(out, Terminal{Slug: a.Slug + "-" + c.slug, Name: a.Name + " · " + chainNames[c.slug], Kind: "app", Note: "Trading on " + chainNames[c.slug] + " through Relay: the user pays in USDC or SOL from the app wallet on Solana, a Relay solver buys the token on " + chainNames[c.slug] + " and delivers it. Value given = the SOL sent (tx fee inside); value received = the tokens delivered, at the pool's state before the settlement swap (v2: reserves; v3 / v4: the price left by the previous swap on the pool); terminal = the app fee; relay = what Relay kept (fees, spread, destination gas); pool = the settlement swap's impact and LP fee."})
+		}
+	}
+	// The Mobula rail. One row per product per chain, beside the Relay rows
+	// of the same app rather than inside them: an app can ride both, they
+	// differ in fee and in speed, and folding them would average two routes
+	// into a number describing neither. Same shape as Pump Bridge sitting
+	// beside the pump.fun app row.
+	for _, product := range settleRails["mobula"] {
+		for chain := range mobulaBridge {
+			out = append(out, Terminal{
+				Slug: product + "-" + chain, Name: productNames[product] + " · " + chainNames[chain],
+				Kind: "app",
+				Note: "Trading on " + chainNames[chain] + " through Mobula, the app's other bridge: the user deposits USDC on Solana, Mobula's solver buys the token on " + chainNames[chain] + " and delivers it. The two legs are joined on the intent id Mobula states in the clear on both of them, so the pairing is exact rather than matched by amount. Value given = the USDC credited to the solver, exact from the deposit; received = the tokens delivered at the pool's state before the settlement swap. The TERMINAL column is NOT MEASURED on this route, which is not the same as zero: no app-fee transfer exists on either leg, but a fee the app sets and the bridge takes inside its quote leaves no transfer to find, so any such charge is inside the bridge column.",
+			})
 		}
 	}
 	for _, t := range evmTerminals {
@@ -1214,6 +1548,17 @@ func evmSaleRow(ctx context.Context, rpc *rpcClient, httpc *http.Client, t Termi
 		Chain: x.Chain, RelayID: x.ID, InTx: x.InTx, QuoteUSD: q, Pools: s.Pools, Hops: s.Hops, PoolVault: s.Pool, Time: recv.Time}
 	if sw.Venue == "" {
 		sw.Venue = "relay"
+	}
+	// The EVM -> Solana direction, on the same definition as every other
+	// settlement here: the credit's block time minus the deposit's. Both ends
+	// are already read for the pricing, so this costs nothing beyond the
+	// origin block's timestamp, and without it this direction has no
+	// settlement figure at all while the opposite one does.
+	if s.BlockNum > 0 && recv.Time > 0 {
+		if at := pumpBlockAt(ctx, httpc, *oc, x.Chain, s.BlockNum); at > 0 {
+			product, _ := settleRoute(t.Slug)
+			noteSettle(product, settleTrade, x.Chain, float64(recv.Time-at))
+		}
 	}
 	sw.UserQ = recv.Tokens // quote received on Solana
 	sw.TerminalQ = x.AppFeeUsd / q
@@ -1276,7 +1621,7 @@ func seedFunded(st *State) {
 // BNB, Base and Ethereum wallets this way, with no app fee). Value given
 // = the SOL sent, read on Solana (its fee apart); received = the native
 // amount delivered at the exchange's price; what Relay kept is the rest.
-func evmFundingRow(ctx context.Context, rpc *rpcClient, t Terminal, x relayRequest, solUSD float64, gas map[string]float64) *Swap {
+func evmFundingRow(ctx context.Context, rpc *rpcClient, httpc *http.Client, t Terminal, x relayRequest, solUSD float64, gas map[string]float64) *Swap {
 	dc := chainByID(0)
 	for i := range originChains {
 		if originChains[i].slug == x.DestChain {
@@ -1313,6 +1658,17 @@ func evmFundingRow(ctx context.Context, rpc *rpcClient, t Terminal, x relayReque
 		Chain: x.DestChain, RelayID: x.ID, InTx: x.InTx}
 	if inTx.BlockTime != nil {
 		sw.Time = *inTx.BlockTime
+		// BasedBot's whole flow is funding legs, so this is the only place
+		// its route can be timed. One receipt read per sampled row buys the
+		// destination block; the deposit's own block time is already here.
+		//
+		// The chain comes from the SLUG, which says "funding", not from
+		// x.DestChain. The destination chain is where the transfer landed,
+		// but the bench files a funding leg under its own chain value, and
+		// using the destination would have mixed transfers into that chain's
+		// trade column while leaving the funding view empty.
+		product, chain := settleRoute(t.Slug)
+		noteSettleTx(ctx, httpc, *dc, product, settleFunding, chain, x.OutTx, *inTx.BlockTime)
 	}
 	sw.UserQ = givenUSD / price
 	sw.TerminalQ = x.AppFeeUsd / price
@@ -1362,6 +1718,16 @@ func evmRow(ctx context.Context, rpc *rpcClient, httpc *http.Client, t Terminal,
 		Chain: x.DestChain, RelayID: x.ID, InTx: x.InTx, QuoteUSD: q, Pools: s.Pools, Hops: s.Hops, PoolVault: s.Pool}
 	if inTx.BlockTime != nil {
 		sw.Time = *inTx.BlockTime
+		// Settlement latency on the same definition Pump Bridge is measured
+		// on: destination block time minus origin block time. Relay's own
+		// `created` is an API timestamp that precedes the deposit by an
+		// unknown amount and would put two definitions under one metric.
+		if s.BlockNum > 0 {
+			if at := pumpBlockAt(ctx, httpc, *dc, x.DestChain, s.BlockNum); at > 0 {
+				product, _ := settleRoute(t.Slug)
+				noteSettle(product, settleTrade, x.DestChain, float64(at-*inTx.BlockTime))
+			}
+		}
 	}
 	if sw.Venue == "" {
 		sw.Venue = "relay"
@@ -1428,10 +1794,31 @@ func implausibleSplit(sw *Swap) {
 // productChains: the chain suffixes a row slug can carry; "funding" is
 // the bridge leg of a cross-chain app, kept out of the product's pooled
 // figure (it is not a swap).
-var productChains = []string{"funding", "bnb", "robinhood", "base", "ethereum", "arc", "hyperevm"}
+var productChains = []string{"funding", "bnb", "robinhood", "base", "ethereum", "arc", "hyperevm", "megaeth", "xlayer"}
 
 // productOf splits a row slug into the product and its chain
 // ("fomo-bnb" → fomo, bnb; "trojan" → trojan, solana).
+// settleRoute: the product and chain a cross-chain row's settlement is
+// published under. The product must EQUAL a provider slug or the panel renders
+// nothing, which is how lane="bridge" hid 180,682 trades.
+//
+// Both halves come from productOf, including for the funding rows:
+// productOf("basedbot-funding") is ("basedbot", "funding"), because "funding"
+// is in productChains precisely so that a transfer files under its own chain
+// value like every other metric on this bench. Taking only the product and
+// letting the caller supply a chain is what put a transfer to BNB under
+// chain="bnb" beside bridged trades, which openchainbench-07 caught.
+//
+// Why a transfer is on this metric at all: a funding leg is a bridge transfer
+// rather than a fill, which is why it stays out of the product's pooled LOSS
+// figure (averaging a transfer with a trade would describe neither).
+// Settlement is the bridge's own property and the same quantity at both ends,
+// so it belongs here, under its own chain and its own kind. For BasedBot it is
+// the only flow there is.
+func settleRoute(slug string) (string, string) {
+	return productOf(slug)
+}
+
 func productOf(slug string) (string, string) {
 	for _, c := range productChains {
 		if strings.HasSuffix(slug, "-"+c) {
@@ -1441,9 +1828,47 @@ func productOf(slug string) (string, string) {
 	return slug, "solana"
 }
 
-var productNames = map[string]string{"fomo": "FOMO", "gmgn": "GMGN", "axiom": "Axiom", "banana-gun": "Banana Gun", "binance": "Binance Wallet", "basedbot": "BasedBot", "pump-fun": "pump.fun app", "phantom": "Phantom", "maestro": "Maestro", "bloom": "Bloom"}
+var productNames = map[string]string{"fomo": "FOMO", "fomo-mobula": "FOMO · Mobula", "gmgn": "GMGN", "axiom": "Axiom", "banana-gun": "Banana Gun", "binance": "Binance Wallet", "basedbot": "BasedBot", "pump-fun": "pump.fun app", "pump-bridge": "Pump Bridge", "phantom": "Phantom", "maestro": "Maestro", "bloom": "Bloom"}
 
-// productAlias: the product a row belongs to when the bench names it
+// settleRails: which rail each cross-chain route rides, and therefore what a
+// settlement figure on that route is actually measuring.
+//
+// Settlement is the RAIL's property and not the app's. FOMO does not settle
+// anything; Relay's solver does. Two apps on one rail must therefore publish
+// the same figure at the same chain, and if they ever do not, that is a
+// finding rather than a difference to average away. Keeping both is a free
+// control, not redundancy.
+//
+// The routes stay separate rather than being folded into one row per rail
+// because an app can ride TWO rails at once: FOMO uses Relay and Mobula, with
+// different fees and different speeds, and folding them would average two
+// routes into a number describing neither. That is the same reason pump's
+// flow is published as Pump Bridge beside the pump.fun app row.
+//
+// The product slugs must be pairwise distinct, or two rails land in one
+// tfq_settle_ms series and the pooling happens silently. TestRailsCannotPool
+// enforces it, which is why a new route's slug belongs here when it is added
+// rather than after someone notices a figure that moved.
+var settleRails = map[string][]string{
+	"relay":       {"fomo", "pump-fun", "phantom", "basedbot"},
+	"mobula":      {"fomo-mobula"},
+	"pump-bridge": {"pump-bridge"},
+}
+
+// railOf: the rail a product's settlement is measured on, "" when the product
+// has no cross-chain route.
+func railOf(product string) string {
+	for rail, products := range settleRails {
+		for _, p := range products {
+			if p == product {
+				return rail
+			}
+		}
+	}
+	return ""
+}
+
+// productAlias: the product a row belongs to when the bench names it// productAlias: the product a row belongs to when the bench names it
 // differently from the row prefix (Binance Wallet's rows are the Binance
 // product on the site, one page for the exchange's wallet and RPC).
 var productAlias = map[string]string{"binance-wallet": "binance"}
@@ -1468,11 +1893,71 @@ func productTerminal(p string, rows []Terminal) Terminal {
 // compute builds one entry per row (a product on one chain, `chain` set)
 // and one pooled entry per product over every chain it trades on
 // (`chain: all`, the bench's headline, the funding legs left out).
+// dedupeAcrossProducers drops a Relay-produced swap whose destination fill is
+// also a swap the native reader recorded off a router.
+//
+// The two producers are disjoint by construction today: only pump's own
+// relayers send to its routers, and no transfer in those receipts touches
+// Relay's contracts. But nothing enforced it, and a Relay request whose
+// destination call targeted a pump router would publish ONE trade in TWO rows,
+// with no error and no failing test. That is the same class of fault as the
+// slug collision the route rename removed, one level down: there it was two
+// producers owning a name, here it is two producers owning a fill.
+//
+// Native wins because it read the router itself rather than an API's account
+// of it. Done at compute time, not at record time: the producers run on
+// different ticks, so dropping at record time would decide the winner by
+// arrival order, which is the race this exists to prevent.
+//
+// Keys are lowercased: both are EVM hashes but one comes from Relay's API and
+// one from a receipt, and nothing guarantees they agree on case.
+func dedupeAcrossProducers(swaps []Swap) (kept []Swap, dropped map[string]int) {
+	native := map[string]bool{}
+	for _, s := range swaps {
+		if s.RelayID == "" && s.Sig != "" {
+			native[strings.ToLower(s.Sig)] = true
+		}
+	}
+	kept = swaps[:0:0]
+	for _, s := range swaps {
+		if s.RelayID != "" && s.Sig != "" && native[strings.ToLower(s.Sig)] {
+			if dropped == nil {
+				dropped = map[string]int{}
+			}
+			dropped[s.Terminal]++
+			continue
+		}
+		kept = append(kept, s)
+	}
+	return kept, dropped
+}
+
+// publishedWindowHours: the span the PAGE advertises, set from WINDOW_HOURS
+// at start-up. compute() needs it to tell a full window from a refilling
+// one, and cannot reach main()'s local. Defaulted to the 24 the spec states,
+// so a build that forgets to set it still compares against the number a
+// reader sees rather than against zero.
+var publishedWindowHours = 24
+
 func compute(st *State, minPriced, minRank int) []TerminalStats {
+	// Before anything reads the window: one fill must not be two rows.
+	if kept, dropped := dedupeAcrossProducers(st.Swaps); len(dropped) > 0 {
+		st.Swaps = kept
+		for slug, n := range dropped {
+			cCrossProducerDupes.WithLabelValues(slug).Add(float64(n))
+			log.Printf("[dedupe] %s: %d Relay swaps dropped, the native reader "+
+				"already recorded the same fill off the router", slug, n)
+		}
+	}
 	out := make([]TerminalStats, 0, 2*(len(terminals)+len(xchainApps)))
 	byProduct := map[string][]string{}
 	byProductFirm := map[string][]string{} // the rows above their own floor
 	attOfRow := map[string]int{}           // each row's attempts in the window (its share of the product's flow)
+	// heldStructural: rows held for a reason that will not pass with time,
+	// as opposed to a window still filling. Banana Gun's Ethereum row is
+	// held because its users sell on Uniswap directly, so the feed sees
+	// buys with no fee on them, and that will be true tomorrow too.
+	heldStructural := map[string]bool{}
 	rowsOf := map[string][]Terminal{}
 	var products []string
 	for _, t := range cohort() {
@@ -1490,15 +1975,60 @@ func compute(st *State, minPriced, minRank int) []TerminalStats {
 		if minChain := max(20, minPriced/2); ts.Priced >= minChain {
 			ts.Healthy = true
 		}
-		if t0, ok := st.Resampling[t.Slug]; ok && !ts.Healthy {
-			ts.Note = strings.TrimSpace(ts.Note + " Re-sampling since " + time.Unix(t0, 0).UTC().Format("15:04 UTC") + " after a method change: the figure returns when the window refills.")
+
+		// A row whose sample is one side only with no fee on it (Banana Gun's
+		// Ethereum buys) reads a fee-free half of the product: the fee sits
+		// on the side the feed never sees, so the row waits.
+		//
+		// The isNativeEVM gate this used to carry made the hold miss the row
+		// that needed it most. FOMO · Mobula is buys only on all four of its
+		// chains and its terminal fee is not measurable at all, yet it was
+		// ranked, because it is not a native EVM row. The rule has nothing to
+		// do with how a row is read: a one-sided sample with no fee on that
+		// side is half a product whatever produced it.
+		//
+		// _, feeSeen distinguishes the two reasons the fee is not there:
+		// absent because this route's fee cannot be seen (TerminalUnknown),
+		// or present and genuinely small. Both mean the same thing here, and
+		// spelling it out stops the condition resting on a zero value.
+		_, feeSeen := ts.Components["terminal"]
+		if ts.Parsed >= 20 && (ts.BuySharePct >= 99 || ts.BuySharePct <= 1) &&
+			(!feeSeen || ts.Components["terminal"] < 5) {
+			// How far to hold depends on whether the LOSS is whole, which is
+			// not the same question as whether the fee is named.
+			//
+			// Banana Gun: the fee is measured and tiny on the side we see,
+			// so it is being taken on the side we do not, and the published
+			// loss is missing it. The number itself is wrong, so the row
+			// waits.
+			//
+			// FOMO · Mobula: the fee is UNMEASURABLE, which on this rail
+			// means it is taken inside the bridge's quote and therefore
+			// already inside the loss, in the bridge column. The loss is
+			// whole and describes the buys correctly; what it cannot do is
+			// stand beside two-sided products in a ranking. Holding the row
+			// entirely made it read "unresponsive" on the main view, which
+			// says a trading product is dead. That is a worse lie than the
+			// one it replaced, so the figure is published and not ranked.
+			if feeSeen {
+				ts.Healthy = false
+				heldStructural[t.Slug] = true
+				ts.Note = strings.TrimSpace(ts.Note + " One side only in the sample with no fee on it: the fee is taken on the side this feed never sees, so the row waits until both sides are read.")
+			} else {
+				ts.Note = strings.TrimSpace(ts.Note + " One side only in the sample and this route's fee cannot be seen separately: it is taken inside the bridge's quote, so it is already in the loss under Bridge. The figure is published and not ranked until both sides are read.")
+			}
+			ts.Ranked = false
 		}
-		// A native EVM row whose sample is one side only with no fee on it
-		// (Banana Gun's Ethereum buys) reads a fee-free half of the product:
-		// the fee sits on the side the feed never sees, the row waits.
-		if isNativeEVM(t.Slug) && ts.Parsed >= 20 && (ts.BuySharePct >= 99 || ts.BuySharePct <= 1) && ts.Components["terminal"] < 5 {
-			ts.Healthy, ts.Ranked = false, false
-			ts.Note = strings.TrimSpace(ts.Note + " One side only in the sample with no fee on it: the fee is taken on the side this feed never sees, so the row waits until both sides are read.")
+		// A row that parsed nothing while the feed kept declining senders is
+		// an ATTRIBUTION LIMIT, not an absence of trading. BasedBot reads
+		// shared routers, so only the wallets it funded through Relay are
+		// its users; six of its EVM rows are empty for that reason and the
+		// fact lived in a log line no reader of this bench will ever see.
+		if ts.Parsed == 0 {
+			if n := outsideSetSeen(t.Slug); n > 0 {
+				ts.Note = strings.TrimSpace(ts.Note + fmt.Sprintf(
+					" This row shares its router with other front ends, so only wallets the app funded through Relay count as its users: %d swaps were seen on the router and left out for that reason, which is why the row is empty.", n))
+			}
 		}
 		out = append(out, ts)
 		if ts.Chain == "funding" {
@@ -1571,14 +2101,59 @@ func compute(st *State, minPriced, minRank int) []TerminalStats {
 				outAtt += attOfRow[s]
 			}
 			outAtt -= in
+			// A row held for a structural reason never fills, so counting its
+			// flow here blocks the product for good while the note claims it is
+			// waiting. Banana Gun read Unresponsive on the default view for
+			// exactly this reason, with its Solana row published and well over
+			// the floor. Its flow is named instead of pending.
+			heldAtt := 0
+			var heldRows []string
+			for _, sl := range byProduct[p] {
+				if heldStructural[sl] {
+					heldAtt += attOfRow[sl]
+					heldRows = append(heldRows, sl)
+				}
+			}
+			outAtt -= heldAtt
 			if outAtt > in {
 				ts.Healthy, ts.Ranked = false, false
 				ts.Note = strings.TrimSpace(ts.Note + " The chain carrying most of this product's flow is still filling its window: the pooled figure waits for it.")
+			} else if len(heldRows) > 0 {
+				ts.Note = strings.TrimSpace(ts.Note + " Pooled over the measured chains; " + strings.Join(heldRows, ", ") + " held out for a reason that will not pass with time, each row stating its own, so that flow is not counted as pending.")
 			} else {
 				ts.Note = strings.TrimSpace(ts.Note + " Pooled over the chains published on their own; a chain still filling its window is left out until then.")
 			}
 		}
 		out = append(out, ts)
+	}
+	// A WINDOW THAT DOES NOT COVER ITS ADVERTISED SPAN SAYS SO, AND IS NOT
+	// RANKED ON.
+	//
+	// Applied here, last, because Ranked is written unconditionally in
+	// several places above and anything set earlier is undone. That is the
+	// third time today a withholding was written and silently overwritten,
+	// so this one goes where nothing follows it.
+	//
+	// The v6 bump dropped every row priced under v5 and the board went on
+	// ranking five products on about 3.2 h of samples under a label reading
+	// rolling 24 h, with the headline's name picked from them. A rank is a
+	// comparison between products, and products refilling at different
+	// rates are not comparable.
+	for i := range out {
+		hrs := out[i].CoversHours
+		// A row with no swaps at all has nothing to disclose: it is empty,
+		// which every other signal already says.
+		if hrs <= 0 || hrs >= float64(publishedWindowHours) {
+			continue
+		}
+		why := ""
+		if t0, ok := st.Resampling[out[i].Slug]; ok {
+			why = " after re-sampling from " + time.Unix(t0, 0).UTC().Format("15:04 UTC")
+		}
+		out[i].Ranked = false
+		out[i].Note = strings.TrimSpace(out[i].Note + fmt.Sprintf(
+			" This figure covers about %.1f h%s, not the %d h the page states, so it is published and not ranked until the window fills.",
+			hrs, why, publishedWindowHours))
 	}
 	// A hold on the row is a hold on its buckets. sizeSplit judges each
 	// bucket by its own count inside statsFor, before the holds above are
@@ -1621,15 +2196,44 @@ func compute(st *State, minPriced, minRank int) []TerminalStats {
 func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (TerminalStats, bool) {
 	member := set(slugs...)
 	rejects := map[string]int{} // the window's rejected draws by reason (from the minute buckets)
+	// rankWithheld: a rule decided this row must not be ranked, whatever its
+	// counts say. It has to be a flag rather than an assignment because
+	// ts.Ranked is written unconditionally near the end of this function,
+	// so anything set earlier is silently undone.
+	rankWithheld := false
 	{
 		ts := TerminalStats{Slug: t.Slug, Name: t.Name, Kind: t.Kind, Note: t.Note, Components: map[string]float64{}, Venues: map[string]float64{}, Quotes: map[string]float64{}, Rejects: rejects}
 		errs := map[string]int{}
 		pooled := len(slugs) > 1
+		// THE REJECT WINDOW, per slug, from the swaps themselves.
+		//
+		// The first version of this keyed on the Resampling stamp and so
+		// missed every row dropped before the stamp existed, which was all
+		// of them: the board kept dividing a full day of rejects by four
+		// hours of rows, and T11 read 65 to 92 % rejected across products
+		// whose pricing had not changed at all.
+		//
+		// Same lesson as CoversHours, in the second place it applies: a
+		// flag only marks an event it was present for, and the oldest row a
+		// slug still holds IS its window whatever caused the gap.
+		oldestOf := map[string]int64{}
+		for _, sw := range st.Swaps {
+			if sw.Method != methodVersion || sw.Time <= 0 || !member[sw.Terminal] {
+				continue
+			}
+			if t, ok := oldestOf[sw.Terminal]; !ok || sw.Time < t {
+				oldestOf[sw.Terminal] = sw.Time
+			}
+		}
 		// Fail-rate base: the feed's attempts, or the block sample's on a
 		// native EVM row. In a pooled entry the sample's counts are scaled
 		// by its coverage (blocks read over blocks in range), so a chain
 		// read at 5 % weighs like one read in full.
 		att, failed := 0.0, 0.0
+		// attExact: the attempts whose failures are a REAL count from the
+		// feed rather than an estimate from a block sample. Tracked so a
+		// pooled row can tell the two apart, which a sum of both cannot.
+		attExact := 0.0
 		attOf := map[string]float64{} // each row's attempts in the window (estimated on native rows)
 		for _, slug := range slugs {
 			native := isNativeEVM(slug)
@@ -1644,6 +2248,21 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 				sp += b.SpanBlocks
 				for k, v := range b.Errs {
 					errs[k] += v
+				}
+				// REJECTS ARE COUNTED ONLY FROM THE WINDOW THE ROWS COVER.
+				//
+				// A drop removes swaps and leaves the minute buckets, so
+				// unpriced_share divided a full day of rejects by whatever
+				// hours of rows survived. No pricing changed and Axiom BNB
+				// went 0.574 to 0.870, FOMO Robinhood 0.187 to 0.539, while
+				// yml:80 points readers at exactly that field.
+				//
+				// Counting from the drop rather than clearing the buckets,
+				// because the buckets also carry attempts and failures that
+				// are still true: only the ratio against the surviving rows
+				// is wrong.
+				if t0, ok := oldestOf[slug]; ok && b.T < t0 {
+					continue
 				}
 				for k, v := range b.Rej {
 					rejects[k] += v
@@ -1671,13 +2290,66 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 				att += float64(seen)
 				failed += float64(sfailed)
 				attOf[slug] = float64(seen)
+				attExact += float64(seen)
 			}
 		}
 		ts.Attempts, ts.AttemptsFailed = int(math.Round(att)), int(math.Round(failed))
 		if len(rejects) == 0 {
 			ts.Rejects = nil
 		}
-		if att >= 20 && (ts.SampSeen == 0 || ts.SampSeen >= 20) {
+		// A native EVM row's failures can only come from the block sample,
+		// because a reverted transaction emits no logs for the feed to see.
+		// So SampSeen == 0 there means NOTHING WAS OBSERVED, and publishing
+		// failed/att = 0 would be an absence dressed as a measurement.
+		// maestro-robinhood and pump-bridge-robinhood both did exactly that,
+		// while bloom-robinhood (1 sampled) and pump-fun-robinhood (4) were
+		// correctly withheld: the guard was inverted where it mattered most.
+		//
+		// The exemption stays for Solana and Relay rows, whose `failed` is a
+		// real count from the feed rather than an estimate from a sample.
+		sampledEnough := ts.SampSeen >= 20
+		if ts.SampSeen == 0 {
+			sampledEnough = true
+			for _, sl := range slugs {
+				if isNativeEVM(sl) {
+					sampledEnough = false
+					break
+				}
+			}
+		}
+		// A POOLED row is held hostage by its smallest rows without this.
+		// Bloom's Solana row carries 14,926 of its 15,820 attempts, 94%,
+		// with an exhaustive 7.01% that is the worst rate on that tab. Its
+		// two EVM rows add 890 attempts and block samples under 20, and
+		// because the pooled SampSeen is the sum of those samples, the
+		// whole product published NO failed-swaps figure at all. The worst
+		// rate on the board was blank because of 6% of its own flow.
+		//
+		// So: when the attempts whose failures are counted exhaustively are
+		// at least half the total, the pooled rate stands on them. Same
+		// threshold and same reasoning as chainMeanOfMedians, which already
+		// drops bridged rows from a pooled figure when they carry under
+		// half the flow.
+		if !sampledEnough && att > 0 && attExact >= 0.5*att {
+			sampledEnough = true
+		}
+		// A route whose failures this counter cannot see publishes no rate
+		// at any sample size. Pump Bridge does not fail by reverting on the
+		// EVM leg, so its block sample finds zero reverts however long it
+		// runs: 102 sampled transactions, 0.00 % published on three tabs,
+		// and the best reliability figure on the board belonged to the one
+		// route whose reliability was never measured. This is deliberately
+		// NOT folded into sampledEnough: that asks whether we have seen
+		// enough yet and can turn true with time, this asks whether the
+		// question applies at all and never changes.
+		cannotSee := false
+		for _, sl := range slugs {
+			if noFailRate(sl) {
+				cannotSee = true
+				break
+			}
+		}
+		if att >= 20 && sampledEnough && !cannotSee {
 			fr := 100 * failed / att
 			ts.FailRate = &fr // percent (a native row: from 20 sampled transactions, not 20 scaled ones)
 		}
@@ -1748,9 +2420,14 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 		quotes := map[string]int{}
 		otherAgg := map[string]*OtherRecipient{}
 		looped := 0
+		oldest := int64(0)
 		for _, s := range st.Swaps {
 			if !member[s.Terminal] || s.Method != methodVersion {
 				continue
+			}
+			// The span of what survived, which is the row's real coverage.
+			if s.Time > 0 && (oldest == 0 || s.Time < oldest) {
+				oldest = s.Time
 			}
 			if loopers[s.Terminal+":"+s.User] {
 				looped++
@@ -1783,8 +2460,10 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 			if s.TradeUSD > 0 {
 				a := accOf(s.TradeUSD)
 				a.parsed++
-				a.term = append(a.term, s.TerminalBps)
-				a.termW = append(a.termW, w)
+				if !s.TerminalUnknown {
+					a.term = append(a.term, s.TerminalBps)
+					a.termW = append(a.termW, w)
+				}
 				a.net = append(a.net, s.NetworkBps)
 				a.netW = append(a.netW, w)
 				a.trade = append(a.trade, s.TradeUSD)
@@ -1819,8 +2498,14 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 			// below (buy share, venue and quote mix, flagged, and ts.Priced
 			// itself) must still see every parsed swap.
 			if s.Priced && s.LossBps != nil {
-				term = append(term, s.TerminalBps)
-				termW = append(termW, w)
+				// A route whose fee is unmeasurable contributes nothing
+				// here. Averaging its 0 in would pull the column toward a
+				// charge nobody was shown to pay, and the figure would get
+				// MORE confident as more of that route's swaps arrived.
+				if !s.TerminalUnknown {
+					term = append(term, s.TerminalBps)
+					termW = append(termW, w)
+				}
 				net = append(net, s.NetworkBps)
 				netW = append(netW, w)
 				// A Relay row whose cut came back empty from the API is an
@@ -1880,7 +2565,18 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 			// chain's flow (a weighted median over a bimodal mix, pump.fun's
 			// fee on the Solana swaps and none on the EVM ones, would land on
 			// one chain's mode and print a 0 that describes no user).
-			ts.Components["terminal"] = wmedian(term, termW, pooled)
+			// Guarded like other and relay below, and for the same reason.
+			// Assigning unconditionally writes a 0 whenever the slice is
+			// empty, and an empty slice is exactly what TerminalUnknown
+			// produces: the whole point of withholding the component was
+			// that the cell should be ABSENT, and this line put it back as
+			// a charge of nothing. It also made every downstream test of
+			// "is the fee known" read true, so the one-side hold took its
+			// strict branch and held FOMO Mobula as unhealthy, which is how
+			// a trading product came to read unresponsive.
+			if len(term) > 0 {
+				ts.Components["terminal"] = wmedian(term, termW, pooled)
+			}
 			ts.Components["network"] = wmedian(net, netW, pooled)
 			if len(other) > 0 {
 				ts.Components["other"] = wmedian(other, otherW, pooled)
@@ -1900,6 +2596,42 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 				}
 			}
 			ts.BuySharePct = 100 * float64(buys) / float64(ts.Parsed)
+			// THE PRICED SIDE MIX MUST RESEMBLE THE DRAWN SIDE MIX, or the
+			// published figure describes whichever side happened to join.
+			//
+			// Pump Bridge was the board's number one at 209.7 bps on a
+			// sample that is 96.2% buys, while roughly 43% of what it drew
+			// were sales: 2,123 sales were rejected unjoined and 102 more
+			// unpriced, against about 123 that reached parse. A sell join
+			// rate of 7.8% does not make the buy figure wrong, it makes it
+			// a BUY figure, published under a product name and ranked
+			// first as if it covered both directions.
+			//
+			// This cannot be caught by the one-side hold above: at 96.2%
+			// the row is not one-sided enough to trip it, and the fee on
+			// the buy side is real. What is wrong is the mix, so the mix is
+			// what this tests. The threshold is 20 points, well clear of
+			// ordinary sampling noise on thousands of draws.
+			if sold := ts.Rejects["unpriced_pump_sale_unjoined"] + ts.Rejects["unpriced_pump_sale"]; sold > 0 {
+				pricedSells := float64(ts.Parsed - buys)
+				drawnSells := pricedSells + float64(sold)
+				drawn := drawnSells + float64(buys)
+				if drawn > 0 && ts.Parsed > 0 {
+					drawnShare := 100 * drawnSells / drawn
+					pricedShare := 100 - ts.BuySharePct
+					if drawnShare-pricedShare > 20 {
+						// Recorded rather than assigned: ts.Ranked is
+						// rewritten unconditionally further down, so setting
+						// it here looked like it worked and did nothing.
+						// Pump Bridge carried this very note while reading
+						// ranked true on the published file.
+						rankWithheld = true
+						ts.Note = strings.TrimSpace(ts.Note + fmt.Sprintf(
+							" Sales are %.0f%% of what this row draws but only %.0f%% of what it prices, so the figure describes its buys: it is published and not ranked until the sale side joins.",
+							drawnShare, pricedShare))
+					}
+				}
+			}
 			for v, c := range venues {
 				ts.Venues[v] = 100 * float64(c) / float64(ts.Parsed)
 			}
@@ -2018,6 +2750,9 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 				ts.UnpricedShare = float64(unpriced) / float64(ts.Parsed+total)
 			}
 		}
+		if oldest > 0 {
+			ts.CoversHours = float64(time.Now().Unix()-oldest) / 3600
+		}
 		ts.Healthy = ts.Priced >= minPriced
 		if pooled && ts.NEff > 0 && ts.NEff < float64(max(20, minPriced/2)) {
 			ts.Healthy = false // the pooled median rests on too few effective swaps
@@ -2025,6 +2760,11 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 		ts.Ranked = ts.Priced >= minRank
 		if pooled && ts.NEff > 0 && ts.NEff < float64(minRank) {
 			ts.Ranked = false // one chain's few swaps carry most of the weight: the median is not stable enough to rank
+		}
+		// Applied AFTER the line above, which assigns unconditionally. Any
+		// rule that withholds a rank has to land here or be silently undone.
+		if rankWithheld {
+			ts.Ranked = false
 		}
 		if len(slugs) == 1 && strings.Contains(t.Slug, "-") && isXchainRow(t.Slug) && ts.Seen == 0 && ts.Parsed == 0 {
 			// Nobody used it, or we could not read the chain. Those are not
@@ -2300,11 +3040,15 @@ type PublicSwap struct {
 	RentQ    float64 `json:"rent_q,omitempty"`
 	QuoteUSD float64 `json:"quote_usd"`
 	TradeUSD float64 `json:"trade_usd"`
-	Priced   bool    `json:"priced"`
-	Scanned  bool    `json:"scanned"`
-	Flag     string  `json:"flag,omitempty"`
-	RefSrc   string  `json:"ref_src,omitempty"`
-	RefAgeS  *int64  `json:"ref_age_s,omitempty"`
+	// GrossedFrom: the router's actual spend when trade_usd was reconstructed
+	// from it rather than read. trade_usd minus this is what the bridge kept.
+	// Absent on every row read directly, which is all of them but pump's.
+	GrossedFrom float64 `json:"grossed_from,omitempty"`
+	Priced      bool    `json:"priced"`
+	Scanned     bool    `json:"scanned"`
+	Flag        string  `json:"flag,omitempty"`
+	RefSrc      string  `json:"ref_src,omitempty"`
+	RefAgeS     *int64  `json:"ref_age_s,omitempty"`
 
 	LossBps     *float64 `json:"loss_bps,omitempty"`
 	PoolBps     *float64 `json:"pool_bps,omitempty"`
@@ -2349,7 +3093,7 @@ func publicSwaps(in []Swap, flow map[string]float64) []PublicSwap {
 			Sig: s.Sig, Terminal: s.Terminal, Product: s.Product, Time: s.Time,
 			Side: s.Side, Quote: s.Quote, Venue: s.Venue, Chain: s.Chain,
 			Hops: s.Hops, XMint: s.XMint, InTx: s.InTx, RentQ: s.RentQ,
-			QuoteUSD: s.QuoteUSD, TradeUSD: s.TradeUSD,
+			QuoteUSD: s.QuoteUSD, TradeUSD: s.TradeUSD, GrossedFrom: s.GrossedFrom,
 			Priced: s.Priced, Scanned: s.Scanned, Flag: s.Flag,
 			RefSrc: s.RefSrc, RefAgeS: s.RefAgeS,
 			LossBps: s.LossBps, PoolBps: s.PoolBps,
@@ -2571,6 +3315,9 @@ func median(v []float64) float64 {
 func c2field(s Swap, c string) (float64, bool) {
 	switch c {
 	case "terminal":
+		if s.TerminalUnknown {
+			return 0, false
+		}
 		return s.TerminalBps, true
 	case "network":
 		return s.NetworkBps, true
@@ -2825,6 +3572,12 @@ func loadState(path string) *State {
 	for _, s := range st.Swaps {
 		if s.Method != methodVersion {
 			dropped++
+			// A version drop re-samples a row exactly as a purge does, and
+			// until now only the purge branch said so. Every product on the
+			// board was version-dropped by the v6 bump and none of them
+			// disclosed it, so the page ranked five products on a few hours
+			// of samples under a label promising a rolling day.
+			st.Resampling[s.Terminal] = now
 			continue
 		}
 		if (purgeBefore > 0 && s.Chain != "" && s.Time < purgeBefore) || purgeSlugs[s.Terminal] || purgeSigs[s.Sig] {

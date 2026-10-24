@@ -2,12 +2,14 @@ package main
 
 import (
 	"context"
+	"github.com/prometheus/client_golang/prometheus"
 	"log"
 	"math"
 	"math/big"
 	"math/rand"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -51,16 +53,55 @@ type evmTerminal struct {
 	// read; the block sample filters on the transaction's from.
 	FromSet     string
 	SenderTopic map[string]int
+	// SizeWord: where this router's own event carries the trade size, as
+	// event signature -> 32-byte word index, with SizeDec the token's
+	// decimals. Declared ONLY where the layout has been checked against the
+	// stable transfer in the same transaction, because a misread word would
+	// drop real trades and say nothing.
+	//
+	// It exists so the dust floor can apply where attempts are COUNTED
+	// rather than only where swaps are priced. Without it a row whose feed
+	// is 97.5% robot publishes a fail rate, a pooled weight and an audit
+	// sample that all describe the robot while its median describes traders.
+	SizeWord map[string]int
+	SizeDec  int
 	// DropLoops: wallets trading the same token both ways four times or
 	// more in the window are farming (Binance Alpha volume on Base, fee-free
 	// round trips): their swaps stay out of the row's statistics.
 	DropLoops bool
-	Note      string
+	// NoFailRate: this route's failures are INVISIBLE to the counter, so no
+	// fail rate may be published for it at any size of sample.
+	//
+	// Pump Bridge is the case. A native EVM row's failures are reverts found
+	// in the block sample, and pump's bridge does not fail by reverting: the
+	// EVM leg succeeds and the cross-chain delivery is what does or does not
+	// arrive. So the sample finds zero reverts however long it runs, 102
+	// transactions clears sampledEnough, and the row published 0.00 % on
+	// All chains, BNB and Base, next to a methodology bullet saying this
+	// route publishes no fail rate. Both halves were live at once.
+	//
+	// A zero here is not a small error. It is the strongest possible claim
+	// about reliability, made about the one route whose reliability this
+	// counter cannot see, and it beat every other product on the board.
+	// Absence dressed as a measurement, which is the failure the guard above
+	// this field's use was written to stop and did not.
+	NoFailRate bool
+	Note       string
 }
 
 var evmTerminals = []evmTerminal{
 	// pump.fun's own bridge, live since 2026-09-28 and the default in its app
-	// since 2026-10-07. Program Dsug6Jq… on Solana takes the deposit; these
+	// since 2026-10-07.
+	//
+	// Published as its own product, pump-bridge, not as pump.fun's EVM rows.
+	// The route is what differs between these and pump-fun-<chain>, which are
+	// the same app's trades carried by Relay, and folding both into one product
+	// averaged two routes into a number describing neither. Relay publishes the
+	// same split in its own comparison. It also removes a name collision: both
+	// producers built <app>-<chain>, and for six chains the last tick written
+	// won.
+	//
+	// Program Dsug6Jq… on Solana takes the deposit; these
 	// routers do the EVM side. One contract serves every chain but Robinhood,
 	// which has its own; both are plain CREATE outputs of the same deployer
 	// and each holds roughly $750k of stables. The relayer that drives them,
@@ -71,22 +112,59 @@ var evmTerminals = []evmTerminal{
 	// No Collector on purpose. The router passes the whole purchase through:
 	// it spends a stable, buys the token and forwards every unit to the user,
 	// identical to the last digit on the fills checked. pump's take is
-	// deducted earlier, on the Solana deposit, and measures 0.05 + 45 bps
-	// (exact at four round-number levels on Robinhood Chain and seven on BNB,
-	// 73% of observed spends). These rows therefore measure the swap the
-	// bridge performs, not what the bridge charges, until the Solana deposit
-	// decoder lands.
+	// deducted earlier, on the Solana deposit: 0.05 fixed plus 40 or 45 bps,
+	// both rates live at once and mixed differently per chain. That deposit is
+	// decoded in pumpbridge_feed.go, so the spend on these rows is grossed
+	// back up to what the user committed and the row carries the whole cost.
 	//
 	// Ink, MegaETH and X Layer are absent for want of an RPC. Relay serves
 	// neither MegaETH nor X Layer, so Pump Bridge is the only route there.
-	{Slug: "pump-fun-bnb", Name: "pump.fun app · BNB", Kind: "app", Chain: "bnb",
+	{Slug: "pump-bridge-bnb", Name: "Pump Bridge · BNB", Kind: "app", NoFailRate: true, Chain: "bnb",
 		Routers: []string{"0x836b336fca26913176efc45a5a6e5e72cd7bd13b"}},
-	{Slug: "pump-fun-base", Name: "pump.fun app · Base", Kind: "app", Chain: "base",
+	{Slug: "pump-bridge-base", Name: "Pump Bridge · Base", Kind: "app", NoFailRate: true, Chain: "base",
 		Routers: []string{"0x836b336fca26913176efc45a5a6e5e72cd7bd13b"}},
-	{Slug: "pump-fun-arc", Name: "pump.fun app · Arc", Kind: "app", Chain: "arc",
+	{Slug: "pump-bridge-arc", Name: "Pump Bridge · Arc", Kind: "app", NoFailRate: true, Chain: "arc",
 		Routers: []string{"0x836b336fca26913176efc45a5a6e5e72cd7bd13b"}},
-	{Slug: "pump-fun-robinhood", Name: "pump.fun app · Robinhood Chain", Kind: "app", Chain: "robinhood",
-		Routers: []string{"0x5399d94d2cab7c252a6034042e1917a0e5e17a18"}},
+	// Ethereum, added 2026-10-23. The router is deployed and used there (172
+	// transfers in over 600 blocks) and the chain already has a tab on this
+	// bench, so the route was measurable and simply undeclared. See
+	// pumpRouters for why the dominance threshold that nearly excluded it
+	// was wrong.
+	{Slug: "pump-bridge-ethereum", Name: "Pump Bridge · Ethereum", Kind: "app", NoFailRate: true, Chain: "ethereum",
+		Routers: []string{"0x836b336fca26913176efc45a5a6e5e72cd7bd13b"}},
+	// SizeWord: word 2 of this router's own event equals the USDG amount of
+	// the transaction. Checked on 3,858 events over a 40-minute window with
+	// zero mismatches, zero short payloads, and zero cases where word 2 fell
+	// under the floor while the real trade was over it, which is the silent
+	// drop this could otherwise cause.
+	//
+	// The map is DELIBERATELY PARTIAL. This router emits a second signature,
+	// 0x84da3a1d…, about 2.7 times a minute against 97 for the one declared
+	// here, and it is not gated. The declared signature fires only on sells
+	// (all 3,849 classified in that window were sells), so the gate cannot
+	// drop a buy by construction rather than by luck, and the undeclared one
+	// is very probably the buy leg, which carries no dust on any chain
+	// measured. If dust ever appears under that signature it passes unseen
+	// and tfq_dust_attempts_skipped_total stays flat while the counts rot
+	// again; that is the one way this goes quietly wrong later.
+	//
+	// Declared here and nowhere else:
+	// this is the one chain measured to carry dust (97.5% of transfers under
+	// $0.25 against zero on Base and BNB) and the one layout verified.
+	{Slug: "pump-bridge-robinhood", Name: "Pump Bridge · Robinhood Chain", Kind: "app", NoFailRate: true, Chain: "robinhood",
+		Routers:  []string{"0x5399d94d2cab7c252a6034042e1917a0e5e17a18"},
+		SizeWord: map[string]int{"0xcdad023039fb3b146aa9902d31a2512a3d2c7180d901044aa17f6d69fb0683c1": 2},
+		SizeDec:  6},
+	// Relay serves neither of these two, so Pump Bridge is the only
+	// route on them and no bridge aggregator can see them. X Layer is
+	// live but thin (relayer nonce 28) and needs EVM_RPC_XLAYER to be
+	// readable at all; MegaETH carries the router and has never
+	// executed a transaction (nonce 0), declared anyway so its first
+	// trade is caught rather than noticed later. See xchain.go.
+	{Slug: "pump-bridge-megaeth", Name: "Pump Bridge · MegaETH", Kind: "app", NoFailRate: true, Chain: "megaeth",
+		Routers: []string{"0x836b336fca26913176efc45a5a6e5e72cd7bd13b"}},
+	{Slug: "pump-bridge-xlayer", Name: "Pump Bridge · X Layer", Kind: "app", NoFailRate: true, Chain: "xlayer",
+		Routers: []string{"0x836b336fca26913176efc45a5a6e5e72cd7bd13b"}},
 	{Slug: "gmgn-bnb", Name: "GMGN · BNB", Kind: "app", Chain: "bnb", Routers: []string{"0x1de460f363af910f51726def188f9004276bf4bc"}, Collector: "0xb8159ba378904f803639d274cec79f788931c9c8"},
 	// GMGN's Robinhood Chain router: the emitter of GMGN's swap-end event
 	// (0x8619026a…) on that chain, 654 swaps in 300 blocks on 2026-09-18;
@@ -305,6 +383,24 @@ func isNativeEVM(slug string) bool {
 	return false
 }
 
+// noFailRate reports whether a row's failures are invisible to the fail-rate
+// counter, so no rate may be published for it at any sample size.
+//
+// Separate from sampledEnough on purpose. sampledEnough asks "have we seen
+// enough to measure", and the answer can become yes with time; this asks
+// "can this counter see this route's failures at all", and the answer never
+// changes. Conflating them is what let Pump Bridge publish 0.00 %: it had
+// 102 sampled transactions, which is plenty, of a kind of failure that does
+// not exist on that route.
+func noFailRate(slug string) bool {
+	for _, t := range evmTerminals {
+		if t.Slug == slug {
+			return t.NoFailRate
+		}
+	}
+	return false
+}
+
 // failScanBlocks: blocks read in full per chain per tick for the fail
 // rate (BNB makes ~80 a minute, Robinhood Chain ~590, Base ~30, Ethereum
 // ~5), drawn at random from the range the tick polled.
@@ -407,6 +503,26 @@ func (f *nativeFeed) failScan(ctx context.Context, st *State, gas map[string]flo
 			st.recordSample(slug, now, seen[slug], failed[slug], read, n)
 		}
 	}
+}
+
+// logWordUSD reads a 32-byte word of a log's data as a token amount.
+//
+// Only sound for a stable, which is the only place it is used: the value is
+// returned as token units and treated as dollars. Returns false when the data
+// is too short, so a layout that changes stops filtering instead of filtering
+// on a word that is no longer the size.
+func logWordUSD(data string, word, dec int) (float64, bool) {
+	raw := strings.TrimPrefix(data, "0x")
+	if len(raw) < (word+1)*64 {
+		return 0, false
+	}
+	n := new(big.Int)
+	if _, ok := n.SetString(raw[word*64:(word+1)*64], 16); !ok {
+		return 0, false
+	}
+	v, _ := new(big.Float).Quo(new(big.Float).SetInt(n),
+		big.NewFloat(math.Pow10(dec))).Float64()
+	return v, true
 }
 
 type xinboxTx struct {
@@ -676,6 +792,20 @@ func (f *nativeFeed) poll(ctx context.Context) {
 					continue
 				}
 			}
+			// Below the floor the median already ignores it, so counting it
+			// as an attempt would describe a different population from the
+			// one every other figure on the row describes, and this bench
+			// ranks that fail rate against fifteen terminals that have no
+			// robot. Skipped entirely rather than sampled and discarded: it
+			// keeps the audit table and the sampling budget for real trades.
+			if t := termOf[slug]; len(t.SizeWord) > 0 {
+				if w, ok := t.SizeWord[l.Topics[0]]; ok {
+					if v, ok := logWordUSD(l.Data, w, t.SizeDec); ok && v < minTradeUSD {
+						cDustSkipped.WithLabelValues(slug).Inc()
+						continue
+					}
+				}
+			}
 			seen[l.TxHash] = true
 			b := f.box[slug]
 			if b == nil {
@@ -686,10 +816,56 @@ func (f *nativeFeed) poll(ctx context.Context) {
 		}
 		for slug, n := range others {
 			if n > 0 {
+				noteOutsideSet(slug, n)
 				log.Printf("[native] %s: %d router swaps by wallets outside the funded set this tick (not counted)", slug, n)
 			}
 		}
 	}
+}
+
+// cOutsideSet counts router swaps this bench declines to attribute because
+// the sender is not a wallet the app funded through Relay.
+//
+// BasedBot reads shared routers: a chain's own aggregator serves every front
+// end on it, so the address alone proves nothing and only the wallets the app
+// funded are its users. That filter is right and it is also why six of its
+// EVM rows are empty, which until now was visible ONLY in a log line.
+//
+// An empty row reads as "this product does not trade here". The truth is
+// "it trades here on a shared router and none of the senders this tick were
+// wallets we know it funded", and those are different facts.
+var cOutsideSet = prometheus.NewCounterVec(prometheus.CounterOpts{
+	Name: "tfq_outside_funded_set_total",
+	Help: "Router swaps not counted for a row because the sender is not a wallet the app funded through Relay. A row that is empty while this climbs is an attribution limit, not an absence of trading",
+}, []string{"terminal"})
+
+func init() { prometheus.MustRegister(cOutsideSet) }
+
+// outsideSet: the same tally, readable in-process so the publisher can put
+// the reason on the row rather than leaving the reader to find the metric.
+var outsideSet struct {
+	sync.Mutex
+	n map[string]int
+}
+
+func noteOutsideSet(slug string, n int) {
+	if slug == "" || n <= 0 {
+		return
+	}
+	cOutsideSet.WithLabelValues(slug).Add(float64(n))
+	outsideSet.Lock()
+	if outsideSet.n == nil {
+		outsideSet.n = map[string]int{}
+	}
+	outsideSet.n[slug] += n
+	outsideSet.Unlock()
+}
+
+// outsideSetSeen reports how many swaps a row has declined to attribute.
+func outsideSetSeen(slug string) int {
+	outsideSet.Lock()
+	defer outsideSet.Unlock()
+	return outsideSet.n[slug]
 }
 
 func (f *nativeFeed) drain(slug string) (seen int, sample []string, total int) {
@@ -728,20 +904,70 @@ func sampleNative(ctx context.Context, httpc *http.Client, st *State, nf *native
 		if cap := math.Max(3*perTick, 2); quota[t.Slug] > cap {
 			quota[t.Slug] = cap
 		}
-		if total == 0 {
-			continue
+		// Sales held back because their Solana delivery had not landed when
+		// they were first read. Re-read once, now that it has, through exactly
+		// the same path: nativeRow is a pure function of the transaction, so
+		// the only thing that changed is that the lookup can answer.
+		//
+		// BEFORE the quota guards on purpose. A tick where this terminal drew
+		// no new sample is still a tick where a held sale's delivery may have
+		// arrived, and gating the retry on new traffic would strand the sale
+		// on exactly the quiet chains that need it most.
+		var extra []*Swap
+		if ready, expired := pumpTakePendingSales(t.Slug, now); len(ready) > 0 || expired > 0 {
+			if expired > 0 {
+				cPumpOrder.WithLabelValues(t.Chain, "sell", "expired").Add(float64(expired))
+			}
+			hashes := make([]string, len(ready))
+			firstSeen := make(map[string]int64, len(ready))
+			for i, r := range ready {
+				hashes[i] = r.hash
+				firstSeen[r.hash] = r.at
+			}
+			extra = readParallel(ctx, hashes, sampleWorkers(), func(ctx context.Context, h string) *Swap {
+				// Its own first-read clock, not this tick's. nativeRow stamps
+				// the tick it runs on, which is the head of the chain for the
+				// rows the feed hands it and is minutes late for one that was
+				// held. Dating a swap minutes after it happened is a small
+				// error on a table whose offer is that the reader can open the
+				// transaction and check every figure against it.
+				return nativeRow(ctx, httpc, t, h, gas, firstSeen[h])
+			})
+			for _, sw := range extra {
+				if sw != nil && sw.Priced {
+					cPumpOrder.WithLabelValues(t.Chain, "sell", "recovered").Inc()
+				}
+			}
 		}
-		n := int(quota[t.Slug])
-		if n > len(sample) {
-			n = len(sample)
+		n := 0
+		if total > 0 {
+			n = int(quota[t.Slug])
+			if n > len(sample) {
+				n = len(sample)
+			}
+			if n < 0 {
+				n = 0
+			}
 		}
-		if n <= 0 {
+		if n == 0 && len(extra) == 0 {
 			continue
 		}
 		quota[t.Slug] -= float64(n)
 		rand.Shuffle(len(sample), func(i, j int) { sample[i], sample[j] = sample[j], sample[i] })
-		for _, h := range sample[:n] {
-			sw := nativeRow(ctx, httpc, t, h, gas, now)
+		// Read several at a time. Each row is a receipt plus whatever the
+		// pool's pre-trade state costs, all sequential within one row, and
+		// the native rows are about half of every tick's priced swaps. The
+		// rate limiter stays the backstop: pace() releases its lock before
+		// the HTTP round trip, so workers are paced and can never exceed
+		// RPC_RPS. The workers never touch State; every reject and append
+		// below runs afterwards in the sample's order, because a window
+		// whose contents depended on which endpoint answered first would
+		// not be reproducible.
+		rows := readParallel(ctx, sample[:n], sampleWorkers(), func(ctx context.Context, h string) *Swap {
+			return nativeRow(ctx, httpc, t, h, gas, now)
+		})
+		rows = append(rows, extra...)
+		for _, sw := range rows {
 			if sw == nil {
 				st.reject(t.Slug, "unreadable")
 				continue
@@ -770,6 +996,57 @@ func sampleNative(ctx context.Context, httpc *http.Client, st *State, nf *native
 }
 
 // nativeRow reads one routed swap on its chain.
+// cRouterDirect: of the swaps read off a terminal's router events, how many
+// were sent to the router itself. The block-sampled fail rate only sees
+// transactions addressed to a router, so a low "yes" share means that rate is
+// blind on the row however many blocks are scanned. Measured on 2026-10-22:
+// 31 of 994 router-event transactions on Robinhood Chain (3.1 %) were sent to
+// Pump Bridge's router; the rest went to the user's own proxy.
+var cRouterDirect = func() *prometheus.CounterVec {
+	c := prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "tfq_router_direct_total",
+		Help: "Swaps read off a native EVM terminal's router events, by whether the transaction was sent to the router itself (direct=yes). The block-sampled fail rate only counts transactions addressed to a router, so yes/(yes+no) is the share of the row's swaps that sample can see at all",
+	}, []string{"terminal", "direct"})
+	prometheus.MustRegister(c)
+	return c
+}()
+
+// pumpRouterSpendUSD sums the quote assets the router itself sends out in a
+// transaction: the stable it pays the trade with, counted once, wherever the
+// money goes after that. Transfers between declared routers are internal and
+// skipped, and so is the native mirror log when the transaction carries value.
+func pumpRouterSpendUSD(ctx context.Context, httpc *http.Client, c originChain, routers []string, logs []evmLog, value *big.Int, gas map[string]float64) float64 {
+	isRouter := func(a string) bool {
+		for _, r := range routers {
+			if strings.EqualFold(a, r) {
+				return true
+			}
+		}
+		return false
+	}
+	spend := 0.0
+	for _, l := range logs {
+		if len(l.Topics) != 3 || l.Topics[0] != topicTransfer {
+			continue
+		}
+		erc, from, to := strings.ToLower(l.Address), topicAddr(l.Topics[1]), topicAddr(l.Topics[2])
+		if !isRouter(from) || isRouter(to) {
+			continue
+		}
+		if value != nil && value.Sign() > 0 && isNativeMirror(c.slug, erc) {
+			continue
+		}
+		m := erc20(ctx, httpc, c, erc)
+		q, ok := quoteUSD(m.symbol, c, gas)
+		if !ok || !m.ok {
+			continue
+		}
+		f, _ := new(big.Float).SetInt(word(l.Data, 0)).Float64()
+		spend += f * math.Pow10(-m.dec) * q
+	}
+	return spend
+}
+
 func nativeRow(ctx context.Context, httpc *http.Client, t evmTerminal, hash string, gas map[string]float64, now int64) *Swap {
 	c := chainByID(0)
 	for i := range originChains {
@@ -799,6 +1076,7 @@ func nativeRow(ctx context.Context, httpc *http.Client, t evmTerminal, hash stri
 			toRouter = true
 		}
 	}
+	cRouterDirect.WithLabelValues(t.Slug, map[bool]string{true: "yes", false: "no"}[toRouter]).Inc()
 	if !toRouter {
 		for _, l := range rc.Logs {
 			if len(l.Topics) > 0 && liquidityTopics[l.Topics[0]] {
@@ -918,6 +1196,53 @@ func nativeRow(ctx context.Context, httpc *http.Client, t evmTerminal, hash stri
 				bought, sold = map[string]*big.Int{}, map[string]*big.Int{erc: amt}
 			}
 		}
+		// Two hops: the pool pays a router and the router forwards to the
+		// trader. Neither leg looks like the pool-to-trader transfer the pass
+		// above wants, so without this the whole swap is dropped: pump's
+		// Robinhood executor takes from the v4 PoolManager and pays the
+		// user's own proxy, and every one of those reads "no token leg"
+		// while the memecoin sits in the receipt.
+		//
+		// Only entered when the direct pass found nothing, so it can add
+		// measurements and never change one that already reads.
+		if len(bought)+len(sold) == 0 {
+			best2 := new(big.Int)
+			for _, l := range rc.Logs {
+				if len(l.Topics) != 3 || l.Topics[0] != topicTransfer {
+					continue
+				}
+				erc, from, to := strings.ToLower(l.Address), topicAddr(l.Topics[1]), topicAddr(l.Topics[2])
+				m := erc20(ctx, httpc, *c, erc)
+				if _, isQuote := quoteUSD(m.symbol, *c, gas); isQuote || !m.ok {
+					continue
+				}
+				// buy: pool -> hop -> trader. sell: trader -> hop -> pool.
+				poolOut, poolIn := emitters[from] && skip(to), emitters[to] && skip(from)
+				if !poolOut && !poolIn {
+					continue
+				}
+				hop := to
+				if poolIn {
+					hop = from
+				}
+				for _, l2 := range rc.Logs {
+					if len(l2.Topics) != 3 || l2.Topics[0] != topicTransfer {
+						continue
+					}
+					erc2, from2, to2, amt2 := strings.ToLower(l2.Address), topicAddr(l2.Topics[1]), topicAddr(l2.Topics[2]), word(l2.Data, 0)
+					if erc2 != erc || amt2.Cmp(best2) <= 0 {
+						continue
+					}
+					if poolOut && from2 == hop && !skip(to2) && !emitters[to2] {
+						user, best2 = to2, amt2
+						bought, sold = map[string]*big.Int{erc: amt2}, map[string]*big.Int{}
+					} else if poolIn && to2 == hop && !skip(from2) && !emitters[from2] {
+						user, best2 = from2, amt2
+						bought, sold = map[string]*big.Int{}, map[string]*big.Int{erc: amt2}
+					}
+				}
+			}
+		}
 		if len(bought)+len(sold) > 0 {
 			// Quote legs for that trader.
 			quoteIn, quoteOut = 0, 0
@@ -1000,20 +1325,87 @@ func nativeRow(ctx context.Context, httpc *http.Client, t evmTerminal, hash stri
 		// Buy: given = native value or quote ERC20 from the user, plus
 		// gas; the fixed tip inside the value is network cost.
 		given := value + quoteIn
+		// On a Pump Bridge row the trade is paid by the router, out of its own
+		// liquidity, so the router's own stable spend IS what went in. Reading
+		// it from "the user" instead counted pump's executor as the user and
+		// summed every quote leg it touches on the way to the pool: on
+		// 0x2ccb…59c2 (Robinhood) the router spent 64.223432 USDG once, and the
+		// executor's USDG to the pool plus its WETH unwrap for the v4 leg read
+		// as 128.47 given, a 5,021 bps "terminal fee". 15 of 57 pump-bridge
+		// swaps sat out_of_bounds at about 5,000 bps this way (2026-10-23), and
+		// the ones that read fine were fine only because they had one leg.
+		if pumpBridgeRow(t.Slug) {
+			if spend := pumpRouterSpendUSD(ctx, httpc, *c, t.Routers, rc.Logs, valueWei, gas); spend > 0 {
+				given = value + spend
+			}
+		}
 		if given <= 0 {
 			return &Swap{Flag: "unpriced_no_quote_in"}
 		}
+		// pump's router is paid out of its own liquidity, so what it spends is
+		// already net of the 0.05 plus 40 or 45 bps it keeps. Left alone, this
+		// row would publish a loss on a smaller base than every other row on
+		// the same chain tab, FOMO included, whose bridge take IS counted.
+		// The terminal component below is the residual after pool and other,
+		// so raising given moves exactly the deduction into it.
+		// Did the sender fund this trade on THIS chain? Then `given` is already
+		// what they committed and must not be grossed up.
+		//
+		// Only the settlement stable arriving counts. A buy also sends the
+		// memecoin INTO the router on its way to the user, and an earlier
+		// version accepted any ERC20 transfer to it, so every row read as user
+		// funded and the gross-up never fired once: 16 of 16 published with no
+		// reconstruction. A guard too broad is a feature switched off in
+		// silence.
+		userFunded := valueWei.Sign() > 0
+		if stable := pumpStableOf(t.Slug); !userFunded && stable != "" {
+			for _, lg := range rc.Logs {
+				if !strings.EqualFold(lg.Address, stable) {
+					continue
+				}
+				if len(lg.Topics) < 3 || !strings.EqualFold(lg.Topics[0], topicERC20Transfer) {
+					continue
+				}
+				to := "0x" + lg.Topics[2][len(lg.Topics[2])-40:]
+				for _, r := range t.Routers {
+					if strings.EqualFold(to, r) {
+						userFunded = true
+					}
+				}
+			}
+		}
+		grossed := false
+		if g, ok := pumpGrossUpFunded(t.Slug, given, userFunded); ok {
+			sw.GrossedFrom = given // the spend, before the schedule is undone
+			given, grossed = g, true
+		}
+		// Whoever signed paid the gas. When that is not the user, they parted
+		// with none of it and pump's costs came out of the deduction already
+		// inside `given`, so adding it to the base charges it twice. That is
+		// the v4 bug methodVersion 5 exists to fix, 52 bps median there, and
+		// the gross-up walked straight back into it on these rows.
+		sponsored := grossed && !strings.EqualFold(tx.From, user)
 		if tip := tipWei(); tip != nil && valueWei.Cmp(tip) >= 0 { // a buy paid in an ERC20 sends the tip alone as value
 			tipUSD := f(tip) / 1e18 * price
 			given -= tipUSD
 			sw.NetworkQ += tipUSD
 		}
 		sw.Side, sw.Mint, sw.Tokens, sw.Venue, sw.Pools, sw.Hops, sw.PoolVault = "buy", token, s.Tokens, s.Venue, s.Pools, s.Hops, s.Pool
-		sw.UserQ = given + sw.NetworkQ
+		if sponsored {
+			sw.UserQ = given // the gas is inside the deduction, inside given
+		} else {
+			sw.UserQ = given + sw.NetworkQ
+		}
 		sw.PoolQ = s.PoolInUSD
 		other := s.OtherUSD // a launchpad's protocol fee (four.meme)
 		sw.OtherQ = &other
 		fee := given - s.PoolInUSD - s.OtherUSD
+		if sponsored {
+			// FOMO's rule, which the spec already states: a gas the terminal
+			// pays out of the user's fee reads as network cost and comes off
+			// the terminal fee. The two still sum to what was deducted.
+			fee -= sw.NetworkQ
+		}
 		if fee < 0 {
 			fee = 0
 		}
@@ -1038,6 +1430,59 @@ func nativeRow(ctx context.Context, httpc *http.Client, t evmTerminal, hash stri
 		return sw
 	}
 	if token := pick(sold); token != "" {
+		// A sale on a pump router USED to be refused outright, because the buy
+		// path recovers what the user committed by inverting pump's schedule
+		// and a sale's proceeds have no established mirror for that. The old
+		// comment also said no sale had ever been seen here, from 63 swaps read
+		// on 2026-10-22. That premise was wrong: sales are 97% of the router's
+		// events by count, and 26% of what clears the dust floor.
+		//
+		// The refusal was still right while the proceeds had to be MODELLED.
+		// They no longer do. Both legs of one order carry the same sixteen-byte
+		// order id, so the matching Solana delivery can be looked up and what
+		// the user received is read instead of assumed. Nothing here depends on
+		// where pump's cut falls.
+		//
+		// A miss stays unpriced. It does NOT fall back to the schedule: a row
+		// measured from the delivery and a row modelled from the rate are
+		// different figures and one column cannot show both as the same number.
+		pumpSaleRecv := 0.0
+		if pumpBridgeRow(t.Slug) {
+			order, side := pumpOrderOf(rc.Logs, t.Routers)
+			switch {
+			case order == "":
+				cPumpOrder.WithLabelValues(t.Chain, "sell", "no_id").Inc()
+				return &Swap{Flag: "unpriced_pump_sale_no_id"}
+			case side != "sell":
+				// The router called it a buy while the transfers read as a
+				// sale. Two readings of one direction disagreeing is not
+				// something to average: it is a decode to fix.
+				cPumpOrder.WithLabelValues(t.Chain, side, "side_mismatch").Inc()
+				return &Swap{Flag: "unpriced_pump_side_mismatch"}
+			default:
+				pay, ok := pumpFindPayout(order)
+				if !ok {
+					// Not a miss yet: on a sale the EVM leg comes FIRST and
+					// pump delivers on Solana afterwards, so at head the
+					// delivery usually does not exist at this instant. Hold
+					// the sale and let a later tick read it once its delivery
+					// has landed. It publishes nothing in the meantime.
+					cPumpOrder.WithLabelValues(t.Chain, "sell", "not_held").Inc()
+					pumpNotePendingSale(t.Slug, hash, order, now)
+					return &Swap{Flag: "unpriced_pump_sale_unjoined"}
+				}
+				cPumpOrder.WithLabelValues(t.Chain, "sell", "joined").Inc()
+				pumpSaleRecv = pay.amount
+				// The sale direction's settlement, which nothing published
+				// before: pay.at is the Solana delivery's block time and bn
+				// is the EVM block this sale landed in. The chain label on a
+				// settlement is the DESTINATION, so this is the one place a
+				// Pump Bridge sample carries chain="solana". Costs no extra
+				// read beyond the origin block's timestamp, which pumpBlockAt
+				// serves from its cache.
+				noteSettlePumpSale(order, pumpBlockAt(ctx, httpc, *c, t.Chain, bn), pay.at)
+			}
+		}
 		s, err := priceEvmOriginSale(ctx, httpc, *c, hash, user, token, gas)
 		if err != nil {
 			return nil
@@ -1056,6 +1501,16 @@ func nativeRow(ctx context.Context, httpc *http.Client, t evmTerminal, hash stri
 		// Received: quote ERC20 to the user, else the native balance change
 		// across the block plus the gas and the tip paid out of it.
 		recv := quoteOut
+		// On a Pump Bridge sale the user receives nothing on THIS chain: the
+		// stable stays with the router and pump delivers on Solana. So both
+		// readings below describe the wrong thing here, and quoteOut is
+		// typically zero while the native balance change is the gas refund.
+		// The delivery joined on the order id is the only correct value, and it
+		// is a measurement of the far leg rather than an inference from this
+		// one.
+		if pumpSaleRecv > 0 {
+			recv = pumpSaleRecv
+		}
 		if recv == 0 {
 			var b0, b1 string
 			if evmCall(ctx, httpc, c.rpc, "eth_getBalance", []any{user, "0x" + big.NewInt(bn-1).Text(16)}, &b0) != nil || evmCall(ctx, httpc, c.rpc, "eth_getBalance", []any{user, "0x" + big.NewInt(bn).Text(16)}, &b1) != nil {
