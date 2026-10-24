@@ -13,7 +13,7 @@ import (
 
 // SUI wall-clock measurement via high-frequency HTTP polling of the
 // public fullnode. SUI's checkpoint cadence is ~250-500ms, so we poll
-// `sui_getLatestCheckpointSequenceNumber` every 500ms and time the
+// the latest checkpoint (GraphQL) every 500ms and time the
 // arrival of each new checkpoint sequence. lag(N) = T_recv(N+1) -
 // T_recv(N) — the actual wall-clock interval the next checkpoint takes
 // to land on this client. Mysticeti finalizes at checkpoint commit so
@@ -25,7 +25,10 @@ import (
 // is the lower-overhead path but adds a ~10MB protoc-generated stub
 // dependency we don't need for this resolution.
 
-const suiRPCURL = "https://fullnode.mainnet.sui.io:443"
+// JSON-RPC on the public fullnodes (Mysten, publicnode, BlockVision) was
+// retired in October 2026 and answered "Method not found"; the official
+// GraphQL service serves the same latest checkpoint.
+const suiGraphQLURL = "https://graphql.mainnet.sui.io/graphql"
 
 type suiWSState struct {
 	mu       sync.Mutex
@@ -92,11 +95,9 @@ func runSUIPoll() error {
 
 func suiLatestCheckpoint(client *http.Client) (int64, error) {
 	body, _ := json.Marshal(map[string]any{
-		"jsonrpc": "2.0", "id": 1,
-		"method": "sui_getLatestCheckpointSequenceNumber",
-		"params": []any{},
+		"query": "{ checkpoint { sequenceNumber } }",
 	})
-	req, _ := http.NewRequest("POST", suiRPCURL, bytes.NewReader(body))
+	req, _ := http.NewRequest("POST", suiGraphQLURL, bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := client.Do(req)
 	if err != nil {
@@ -104,19 +105,30 @@ func suiLatestCheckpoint(client *http.Client) (int64, error) {
 	}
 	defer resp.Body.Close()
 	respBody, _ := io.ReadAll(resp.Body)
+	return parseSuiCheckpoint(respBody)
+}
+
+func parseSuiCheckpoint(respBody []byte) (int64, error) {
 	var r struct {
-		Result string `json:"result"`
-		Error  *struct {
+		Data *struct {
+			Checkpoint *struct {
+				SequenceNumber json.Number `json:"sequenceNumber"`
+			} `json:"checkpoint"`
+		} `json:"data"`
+		Errors []struct {
 			Message string `json:"message"`
-		} `json:"error"`
+		} `json:"errors"`
 	}
 	if err := json.Unmarshal(respBody, &r); err != nil {
 		return 0, fmt.Errorf("parse: %w", err)
 	}
-	if r.Error != nil {
-		return 0, fmt.Errorf("rpc: %s", r.Error.Message)
+	if len(r.Errors) > 0 {
+		return 0, fmt.Errorf("graphql: %s", r.Errors[0].Message)
 	}
-	n, err := strconv.ParseInt(r.Result, 10, 64)
+	if r.Data == nil || r.Data.Checkpoint == nil {
+		return 0, fmt.Errorf("graphql: no checkpoint")
+	}
+	n, err := strconv.ParseInt(r.Data.Checkpoint.SequenceNumber.String(), 10, 64)
 	if err != nil {
 		return 0, fmt.Errorf("parse_seq: %w", err)
 	}

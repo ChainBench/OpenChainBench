@@ -4,8 +4,8 @@ slug: l1-finality
 number: "006"
 title: Fastest L1 blockchain finality, live wall-clock measurement per chain
 seo_title: "Fastest L1 finality 2026: {{best_name}} at {{best_p50}}, {{count}} chains"
-seo_description: "{{best_name}} finalizes in {{best_p50}} (p50, 24h), the lowest of {{count}} L1s measured live. Ethereum, Solana, Bitcoin, BNB, Stellar: wall-clock, not whitepaper."
-subtitle: Wall-clock seconds from latest block to the finalized block on Ethereum, Solana, Bitcoin, Gram, BNB, Stellar and 4 more chains, refreshed every 10 seconds.
+seo_description: "{{best_name}} finalizes in {{best_p50}} (p50, 24h), the lowest of {{count}} chains measured live. Ethereum, Solana, Bitcoin, BNB, Stellar: wall-clock, not whitepaper."
+subtitle: Wall-clock seconds from latest block to the finalized block on Ethereum, Solana, Bitcoin, Gram, BNB, Stellar and 6 more chains, refreshed every 10 seconds.
 seo_intro: |
   This page measures L1 finality time live for every major Layer-1 blockchain, with p50 / p90 / p99 refreshed every 10 seconds. Stellar finality time is ~5 seconds, the close interval the Stellar Consensus Protocol locks in via federated Byzantine agreement. Solana finality time dropped from about 12.8 s under Tower BFT to well under a second when Alpenglow went live on 21 October 2026, and is now measured to the millisecond. Ethereum finality time is about 12.8 minutes in the ideal case, the 2-epoch Casper FFG window; observed wall-clock finality runs longer, and the table below shows the live measurement. Hedera finality time clears in 3-5 seconds via Hashgraph aBFT. Gram finality time (formerly TON) sits under one second via BAG consensus. BNB and Avalanche finality time land near two seconds through fast-finality forks. Probabilistic chains (Bitcoin, Litecoin, Monero) settle on a confirmation-depth convention measured here in minutes. Bitcoin finality time is roughly one hour at the industry-standard 6 confirmations; the protocol itself never reaches absolute finality.
 
@@ -62,6 +62,10 @@ per_chain_explainer:
     h2: "Avalanche finality time"
     body: |
       Avalanche C-Chain uses Snowman++ consensus and reaches finality at {{p50:avalanche}} (p50, 24h). The Avalanche family targets sub-second finality through a sampled-voting protocol that converges with high probability after a few rounds of random validator queries. Measured via persistent WebSocket subscription on the C-Chain, recording wall-clock between latest and finalized block emission.
+  - slug: robinhood
+    h2: "Robinhood Chain finality time"
+    body: |
+      Robinhood Chain reaches the `finalized` tag in {{p50:robinhood}} (p50, 24h). It is a rollup on the Arbitrum Orbit stack, not an L1: blocks arrive about every 100 ms, but a block is only finalized once the batch carrying it is posted to and finalized on the parent chain. Finality therefore lands in batches of about 10,000 blocks, and the figure is the median lag within each batch, measured from the moment a block is first seen as `latest` on a persistent WebSocket.
   - slug: tron
     h2: "TRON finality time"
     body: |
@@ -105,19 +109,24 @@ abstract: |
   timestamps (up to 2h skew is consensus-legal) are never trusted, and
   Bitcoin never reaches absolute finality; the row reports the wall
   clock to a conventional risk threshold, not a protocol commitment.
+  Robinhood Chain is the one rollup on the board (Arbitrum Orbit): its
+  `finalized` block only moves when a posted batch is finalized on the
+  parent chain, thousands of blocks at a time, so its row reports the
+  median lag of each finalized batch.
   Hedera is mentioned in the FAQ but not currently measured, its
   mirror node only exposes already-final blocks, which makes
   wall-clock lag impossible. Re-enabling is gated on Block Nodes
   (HIP-1056) leaving private preview.
 
 methodology:
-  - "Cadence: every 10 seconds for HTTP-polled chains, continuous WS for BNB and Avalanche."
+  - "Cadence: every 10 seconds for HTTP-polled chains, continuous WS for BNB, Avalanche and Robinhood Chain."
   - "Ethereum: `eth_getBlockByNumber(\"latest\")` minus `eth_getBlockByNumber(\"finalized\")`."
   - "BNB / Avalanche (WS wall-clock): persistent `eth_subscribe(\"newHeads\")` records T1 = first time block N is seen as latest. Periodic `eth_getBlockByNumber(\"finalized\")` over same WS records T2 when N becomes finalized. lag = T2 − T1, ms precision, independent of chain timestamp resolution."
+  - "Robinhood Chain (rollup, WS wall-clock): same subscription as BNB / Avalanche on `wss://robinhood-rpc.publicnode.com`. `finalized` advances by whole batches once they are finalized on the parent chain (about 10,000 blocks at about 100 ms each), so every block of a batch is timed, all of them enter the histogram, and the published series carries the batch median: the last block of a batch always has the smallest lag and would understate finality."
   - "Solana: WebSocket `slotSubscribe` and `rootSubscribe` on the public mainnet endpoint. T1 = first notification of slot S, T2 = first root at or above S; lag = T2 - T1 in ms. Replaced the `getBlockTime` difference on 2026-10-22, after Alpenglow made finality shorter than its one-second resolution."
   - "TRON: `/wallet/getnowblock` (head) minus `/walletsolidity/getnowblock` (solidity-confirmed)."
   - "Stellar (SSE wall-clock): Horizon `/ledgers?cursor=now&order=asc` event-stream records T1 on first sight of ledger N and T2 on the next ledger close (SCP-final at every close)."
-  - "SUI: `sui_getLatestCheckpointSequenceNumber` minus 5 checkpoints back."
+  - "SUI: latest checkpoint from the official GraphQL service (`graphql.mainnet.sui.io`), polled every 500 ms; lag = wall-clock interval between two successive new checkpoints. Moved off `sui_getLatestCheckpointSequenceNumber` on 2026-10-24, after JSON-RPC was retired on the public fullnodes."
   - "Gram: wall-clock lag of the tonapi.io masterchain head. Masterchain blocks are BFT-final at production, so head commit lag is the finality figure; the chain produces a block about every 0.4s since the accelerated upgrade."
   - "Bitcoin (probabilistic, own-clock): mempool.space `/blocks/tip/height` polled every 30 s. T1 = first poll where block N is the tip, T2 = first poll where tip − N ≥ 6 (the exchange deposit convention). lag = T2 − T1 on the harness clock; miner-set block timestamps (consensus allows 2h skew) are never used. The startup tip is not timed. On a tip regression, pending timers above the new tip are dropped; same-height reorgs are invisible to height polling, bounding error to about one block interval."
   - "Litecoin (probabilistic): blockchair `/stats.best_block_height` minus 6 confirmations via `/dashboards/block/{height}.block.time`."
@@ -132,7 +141,7 @@ findings:
   - "{{name:tron}}'s solidity confirmation hovers around {{p50:tron}}, exactly the documented 20-block delay at 3 s blocks."
   - "{{name:litecoin}} and {{name:monero}} sit at {{p50:litecoin}} and {{p50:monero}} (24 h average) by construction, set by the chosen confirmation depth."
   - "{{name:bitcoin}} reaches the 6-confirmation deposit convention in {{p50:bitcoin}} (p50, 24 h). This is a convention, not protocol finality: Bitcoin is probabilistic, never finalizes absolutely, and the reorg probability only vanishes with depth."
-  - "{{best_name}} currently leads the leaderboard at {{best_p50}} (p50, 24 h) across {{count}} measured L1s. {{worst_name}} trails at {{worst_p50}}."
+  - "{{best_name}} currently leads the leaderboard at {{best_p50}} (p50, 24 h) across {{count}} measured chains. {{worst_name}} trails at {{worst_p50}}."
   - "Hedera's Hashgraph aBFT is designed to finalize in 3-5 s but is excluded from the live leaderboard because the mirror node only exposes finalized blocks, wall-clock measurement requires the Block Node service (HIP-1056), still in private preview."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/l1-finality
@@ -182,10 +191,23 @@ providers:
       sample_size: increase(l1_finality_wallclock_samples_total{chain="avalanche"}[24h])
       series: l1_finality_wallclock_lag_milliseconds{chain="avalanche"}
 
+  - slug: robinhood
+    name: Robinhood Chain
+    tag: Arbitrum Orbit rollup, finalized by batch on its parent chain
+    formula: "Median wall-clock milliseconds between a Robinhood Chain block first appearing as `latest` on WebSocket and the `finalized` tag reaching it (batch median), p50 over 24h."
+    queries:
+      p50: quantile_over_time(0.50, l1_finality_wallclock_lag_milliseconds{chain="robinhood"}[24h])
+      p90: quantile_over_time(0.90, l1_finality_wallclock_lag_milliseconds{chain="robinhood"}[24h])
+      p99: quantile_over_time(0.99, l1_finality_wallclock_lag_milliseconds{chain="robinhood"}[24h])
+      mean: avg_over_time(l1_finality_wallclock_lag_milliseconds{chain="robinhood"}[24h])
+      success: avg_over_time(l1_finality_wallclock_health{chain="robinhood"}[24h])
+      sample_size: increase(l1_finality_wallclock_samples_total{chain="robinhood"}[24h])
+      series: l1_finality_wallclock_lag_milliseconds{chain="robinhood"}
+
   - slug: sui
     name: SUI
     tag: Mysticeti DAG, measured via wall-clock checkpoint cadence
-    formula: "Median wall-clock milliseconds for a SUI Mysticeti checkpoint to reach finality, measured via `sui_getLatestCheckpointSequenceNumber` with a 5-checkpoint lookback, p50 over 24h."
+    formula: "Median wall-clock milliseconds between two successive new SUI checkpoints, read from the official GraphQL service every 500 ms, p50 over 24h. Checkpoints are final when committed."
     queries:
       p50: quantile_over_time(0.50, l1_finality_wallclock_lag_milliseconds{chain="sui"}[24h])
       p90: quantile_over_time(0.90, l1_finality_wallclock_lag_milliseconds{chain="sui"}[24h])
