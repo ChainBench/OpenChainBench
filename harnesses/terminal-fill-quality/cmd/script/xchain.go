@@ -712,6 +712,20 @@ func (f *xfeed) drainFunded() map[string]map[string]int64 {
 	return out
 }
 
+// cRelayPoll counts what each origin chain's poll actually did.
+//
+// It did not exist, and that is why seven chains could go unread for 24
+// days: on a non-200 the loop returned with no log, no counter and no
+// gauge, while the feed's health gauge stayed up because the Solana poll
+// answered. A refusal with no symptom is the failure this bench keeps
+// finding in itself.
+var cRelayPoll = prometheus.NewCounterVec(prometheus.CounterOpts{
+	Name: "tfq_relay_poll_total",
+	Help: "Relay request-feed polls by origin chain and outcome. refused means a non-200, which until 2026-10-24 returned silently and left that chain's watermark frozen while the feed still reported healthy",
+}, []string{"chain", "outcome"})
+
+func init() { prometheus.MustRegister(cRelayPoll) }
+
 // solanaOrigin is the feed of requests leaving Solana (not an origin
 // chain for gas purposes: the deposit is read from the Solana transaction).
 var solanaOrigin = originChain{solanaChainID, "solana", nil, ""}
@@ -721,10 +735,25 @@ var solanaOrigin = originChain{solanaChainID, "solana", nil, ""}
 // runs out of pages; every new request of a cohort app is counted and,
 // when it settled a token on Solana, offered to the reservoir.
 func (f *xfeed) run(ctx context.Context, interval time.Duration) {
+	// Solana every round, then ONE EVM chain, rotating.
+	//
+	// Nine queries a round is what Relay refuses: measured, it answers the
+	// first two and returns 429 from the third onward. Polling every chain
+	// every round therefore read Solana and Robinhood and silently lost the
+	// rest, which is why their watermarks sat 24 days stale.
+	//
+	// Two a round is inside the limit and still visits each EVM chain every
+	// eight minutes at a 60 s tick, well inside the fifteen minutes of chain
+	// the fill watcher already reaches back over.
+	turn := 0
 	for ctx.Err() == nil {
 		n := f.poll(ctx, solanaOrigin)
-		for _, c := range originChains {
+		cRelayPoll.WithLabelValues("solana", "polled").Inc()
+		if len(originChains) > 0 {
+			c := originChains[turn%len(originChains)]
+			turn++
 			n += f.poll(ctx, c)
+			cRelayPoll.WithLabelValues(c.slug, "polled").Inc()
 		}
 		n += f.refetchPending(ctx)
 		f.mu.Lock()
@@ -801,6 +830,11 @@ func (f *xfeed) poll(ctx context.Context, c originChain) int {
 			body, _ := io.ReadAll(io.LimitReader(resp.Body, 16<<20))
 			resp.Body.Close()
 			if resp.StatusCode != 200 {
+				// Counted, because returning here with nothing said is what
+				// hid seven chains for 24 days. Relay refuses from the third
+				// request of a round, so this fires on exactly the chains a
+				// nine-query round never reaches.
+				cRelayPoll.WithLabelValues(c.slug, "refused").Inc()
 				return added
 			}
 			var rr relayResp
