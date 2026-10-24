@@ -77,7 +77,7 @@ per_chain_explainer:
   - slug: litecoin
     h2: "Litecoin finality time"
     body: |
-      Litecoin is a probabilistic chain with a 2.5-minute target block interval. Finality is set by convention at 6 confirmations, giving p50 = {{p50:litecoin}} (24h). The exact wall-clock depends on block-time variance: a fast streak yields shorter finality, a slow streak extends it. Measured via blockchair `/stats.best_block_height` minus a 6-confirmation lookback.
+      Litecoin is a probabilistic chain with a 2.5-minute target block interval. Finality is set by convention at 12 confirmations, giving {{p50:litecoin}} (24h average). Twelve, not the older 6: the 13-block MWEB reorg of April 2026 made 6 unsafe, and 12 is the deposit floor exchanges moved to. The exact wall-clock depends on block-time variance: a fast streak yields shorter finality, a slow streak extends it. Measured via litecoinspace.org's Esplora API as the timestamp gap between the tip and the block 12 below it.
   - slug: monero
     h2: "Monero finality time"
     body: |
@@ -129,7 +129,7 @@ methodology:
   - "SUI: latest checkpoint from the official GraphQL service (`graphql.mainnet.sui.io`), polled every 500 ms; sample = (timestamp N − timestamp M) / (N − M) over the checkpoints committed between two polls, from the checkpoints' own millisecond commit timestamps. Before 2026-10-24 the sample was the gap between two polls that saw a new checkpoint, which only measured our 500 ms poll; that day it also moved off `sui_getLatestCheckpointSequenceNumber`, retired with JSON-RPC on the public fullnodes."
   - "Gram: wall-clock lag of the tonapi.io masterchain head. Masterchain blocks are BFT-final at production, so head commit lag is the finality figure; the chain produces a block about every 0.4s since the accelerated upgrade."
   - "Bitcoin (probabilistic, own-clock): mempool.space `/blocks/tip/height` polled every 30 s. T1 = first poll where block N is the tip, T2 = first poll where tip − N ≥ 6 (the exchange deposit convention). lag = T2 − T1 on the harness clock; miner-set block timestamps (consensus allows 2h skew) are never used. The startup tip is not timed. On a tip regression, pending timers above the new tip are dropped; same-height reorgs are invisible to height polling, bounding error to about one block interval."
-  - "Litecoin (probabilistic): blockchair `/stats.best_block_height` minus 6 confirmations via `/dashboards/block/{height}.block.time`."
+  - "Litecoin (probabilistic): litecoinspace.org Esplora `/blocks`, timestamp of the tip minus the timestamp of the block 12 below it (12 confirmations, the post-April-2026 MWEB reorg deposit floor). Moved off blockchair on 2026-05-31 after its free tier blocked us."
   - "Monero (probabilistic): monero-rpc `get_info` minus 10 confirmations via `get_block_header_by_height`."
   - "Hedera (planned, currently disabled): mirror-node `/api/v1/blocks` only exposes already-final blocks, so true wall-clock lag is impossible from public endpoints. Re-enables once Block Nodes (HIP-1056) leave private preview."
   - "Result: `lag_seconds = headTimestamp - finalizedTimestamp`. We also record the block-height delta and per-chain fetch latency."
@@ -291,8 +291,8 @@ providers:
 
   - slug: litecoin
     name: Litecoin
-    tag: Probabilistic, 6 confirmations
-    formula: "Mean elapsed time (in ms) to accumulate 6 Litecoin confirmations via blockchair `/stats.best_block_height` with a 6-block lookback, the standard probabilistic settlement convention, over 24h."
+    tag: Probabilistic, 12 confirmations
+    formula: "Mean time (in ms) between the Litecoin tip and the block 12 confirmations below it, from block timestamps on litecoinspace.org's Esplora API, over 24h."
     queries:
       p50: avg_over_time(l1_finality_lag_seconds{chain="litecoin"}[24h]) * 1000
       p90: quantile_over_time(0.90, l1_finality_lag_seconds{chain="litecoin"}[24h]) * 1000
