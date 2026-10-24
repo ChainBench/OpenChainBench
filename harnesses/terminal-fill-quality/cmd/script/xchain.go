@@ -406,6 +406,26 @@ func chainByID(id int64) *originChain {
 	return nil
 }
 
+// cXchainSaleSeen: EVM-origin legs admitted to a reservoir, by the row they
+// land in, their origin chain, and whether their input was a token.
+//
+// It exists to answer one question with data instead of a fourth theory:
+// settleXchainSale sees no candidates while the raw feed carries plenty, so
+// the legs are landing somewhere this bench is not looking.
+var cXchainSaleSeen = prometheus.NewCounterVec(prometheus.CounterOpts{
+	Name: "tfq_xchain_sale_seen_total",
+	Help: "Relay legs leaving an EVM chain for Solana, by the row they were filed under, the origin chain, and whether the input was a token. A sale filed under <app>-funding is skipped by the settlement paths on purpose, so this says whether that is where they go",
+}, []string{"row", "chain", "in_is_token"})
+
+func init() { prometheus.MustRegister(cXchainSaleSeen) }
+
+func b2s(b bool) string {
+	if b {
+		return "token"
+	}
+	return "not_token"
+}
+
 // rowSlug: the bench row a request belongs to. Requests settling on
 // Solana are the app's funding leg (`<app>-funding`); requests leaving
 // Solana for a token on another chain are the app's trading on that
@@ -901,6 +921,21 @@ func (f *xfeed) count(a xchainApp, c originChain, r relayRaw) bool {
 		b.errs[x.Status]++
 	} else if x.OutTx != "" {
 		b.total++
+		// WHICH ROW DOES A SALE LAND IN?
+		//
+		// settleXchainSale reports no_candidates on every Relay route, yet
+		// reading api.relay.link directly gives 34 of 34 EVM-origin legs
+		// bound for Solana that pass saleLeg. So the legs exist and the
+		// filter accepts them; what is unknown is which row's reservoir
+		// they reach, and rowSlug sends a sale to <app>-<chain> only when
+		// InIsToken, otherwise to <app>-funding, which the settlement paths
+		// now skip by design.
+		//
+		// Counted here rather than reasoned about, because three
+		// explanations have already died on this question.
+		if x.DestChain == "" && x.Chain != "" && x.Chain != "solana" {
+			cXchainSaleSeen.WithLabelValues(x.rowSlug(), x.Chain, b2s(x.InIsToken)).Inc()
+		}
 		if len(b.reservoir) < reservoirSize {
 			b.reservoir = append(b.reservoir, x)
 		} else if j := rand.Intn(b.total); j < reservoirSize {
