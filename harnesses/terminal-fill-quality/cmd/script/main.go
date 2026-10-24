@@ -2205,6 +2205,26 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 		ts := TerminalStats{Slug: t.Slug, Name: t.Name, Kind: t.Kind, Note: t.Note, Components: map[string]float64{}, Venues: map[string]float64{}, Quotes: map[string]float64{}, Rejects: rejects}
 		errs := map[string]int{}
 		pooled := len(slugs) > 1
+		// THE REJECT WINDOW, per slug, from the swaps themselves.
+		//
+		// The first version of this keyed on the Resampling stamp and so
+		// missed every row dropped before the stamp existed, which was all
+		// of them: the board kept dividing a full day of rejects by four
+		// hours of rows, and T11 read 65 to 92 % rejected across products
+		// whose pricing had not changed at all.
+		//
+		// Same lesson as CoversHours, in the second place it applies: a
+		// flag only marks an event it was present for, and the oldest row a
+		// slug still holds IS its window whatever caused the gap.
+		oldestOf := map[string]int64{}
+		for _, sw := range st.Swaps {
+			if sw.Method != methodVersion || sw.Time <= 0 || !member[sw.Terminal] {
+				continue
+			}
+			if t, ok := oldestOf[sw.Terminal]; !ok || sw.Time < t {
+				oldestOf[sw.Terminal] = sw.Time
+			}
+		}
 		// Fail-rate base: the feed's attempts, or the block sample's on a
 		// native EVM row. In a pooled entry the sample's counts are scaled
 		// by its coverage (blocks read over blocks in range), so a chain
@@ -2241,7 +2261,7 @@ func statsFor(st *State, t Terminal, slugs []string, minPriced, minRank int) (Te
 				// because the buckets also carry attempts and failures that
 				// are still true: only the ratio against the surviving rows
 				// is wrong.
-				if t0, ok := st.Resampling[slug]; ok && b.T < t0 {
+				if t0, ok := oldestOf[slug]; ok && b.T < t0 {
 					continue
 				}
 				for k, v := range b.Rej {
