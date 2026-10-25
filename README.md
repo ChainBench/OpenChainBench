@@ -107,7 +107,7 @@ A benchmark is a spec, a harness, and the surfaces generated from them. Take `ag
 | In this repository | Count |
 |---|---|
 | Benchmark spec files (`benchmarks/*.yml`) | 253 |
-| Harness directories (`harnesses/*/`, every one a Go module) | 70 |
+| Harness directories (`harnesses/*/`, every one a Go module) | 71 |
 | Answer pages (`answers/*.yml`) | 49 |
 | Alternatives pages (`alternatives/*.yml`) | 21 |
 | Distinct categories (`category:` values across the specs) | 9 |
