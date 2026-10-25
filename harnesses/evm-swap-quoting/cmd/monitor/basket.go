@@ -7,16 +7,16 @@ import "strings"
 // for USDC etc.) because most providers want wei in their query string;
 // the few that want human-readable convert at adapter level.
 type TestPair struct {
-	Chain         string // OCB chain slug — used as Prom label
-	ChainId       int    // numeric EVM chainId
-	TokenIn       string // 0x-prefixed lowercase, or ZERO_ADDRESS / NATIVE_SENTINEL
-	TokenOut      string
-	TokenInSym    string // e.g. "ETH", "USDC", "BNB" — for logs
-	TokenOutSym   string
-	AmountHuman   string // human-readable for adapters that want it (Mobula, OpenOcean)
-	AmountWei     string // smallest unit for adapters that want it (KyberSwap, Bebop, LI.FI, Odos, 0x, 1inch)
-	TokenInDec    int    // decimal count, for adapters that need it (Paraswap)
-	TokenOutDec   int
+	Chain       string // OCB chain slug — used as Prom label
+	ChainId     int    // numeric EVM chainId
+	TokenIn     string // 0x-prefixed lowercase, or ZERO_ADDRESS / NATIVE_SENTINEL
+	TokenOut    string
+	TokenInSym  string // e.g. "ETH", "USDC", "BNB" — for logs
+	TokenOutSym string
+	AmountHuman string // human-readable for adapters that want it (Mobula, OpenOcean)
+	AmountWei   string // smallest unit for adapters that want it (KyberSwap, Bebop, LI.FI, Odos, 0x, 1inch)
+	TokenInDec  int    // decimal count, for adapters that need it (Paraswap)
+	TokenOutDec int
 }
 
 // Standardized native-asset sentinels.
@@ -35,7 +35,7 @@ var Basket = []TestPair{
 	{
 		Chain:       "ethereum",
 		ChainId:     1,
-		TokenIn:     NativeSentinel, // ETH
+		TokenIn:     NativeSentinel,                               // ETH
 		TokenOut:    "0xdAC17F958D2ee523a2206206994597C13D831ec7", // USDT (EIP-55 checksum — Bebop rejects lowercase)
 		TokenInSym:  "ETH",
 		TokenOutSym: "USDT",
@@ -59,7 +59,7 @@ var Basket = []TestPair{
 	{
 		Chain:       "base",
 		ChainId:     8453,
-		TokenIn:     NativeSentinel, // ETH on Base
+		TokenIn:     NativeSentinel,                               // ETH on Base
 		TokenOut:    "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", // USDC Base
 		TokenInSym:  "ETH",
 		TokenOutSym: "USDC",
@@ -72,7 +72,7 @@ var Basket = []TestPair{
 		Chain:       "arbitrum",
 		ChainId:     42161,
 		TokenIn:     "0xaf88d065e77c8cC2239327C5EDb3A432268e5831", // USDC Arbitrum
-		TokenOut:    NativeSentinel, // ETH
+		TokenOut:    NativeSentinel,                               // ETH
 		TokenInSym:  "USDC",
 		TokenOutSym: "ETH",
 		AmountHuman: "100",
@@ -83,7 +83,7 @@ var Basket = []TestPair{
 	{
 		Chain:       "bsc",
 		ChainId:     56,
-		TokenIn:     NativeSentinel, // BNB
+		TokenIn:     NativeSentinel,                               // BNB
 		TokenOut:    "0x55d398326f99059fF775485246999027B3197955", // USDT BSC
 		TokenInSym:  "BNB",
 		TokenOutSym: "USDT",
@@ -95,7 +95,7 @@ var Basket = []TestPair{
 	{
 		Chain:       "robinhood",
 		ChainId:     4663,
-		TokenIn:     NativeSentinel, // ETH on Robinhood Chain
+		TokenIn:     NativeSentinel,                               // ETH on Robinhood Chain
 		TokenOut:    "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168", // USDG (Paxos Global Dollar), Robinhood Chain's main stablecoin
 		TokenInSym:  "ETH",
 		TokenOutSym: "USDG",
