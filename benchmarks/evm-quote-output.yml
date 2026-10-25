@@ -4,7 +4,7 @@ slug: evm-quote-output
 number: "304"
 title: "Best DEX aggregator by quote output: who actually gives you more"
 seo_title: "Best DEX aggregator 2026: quote output compared"
-seo_description: "{{best_name}} gives up the least output of any DEX aggregator, {{best_p50}} against the best quote of the same moment. {{declared_count}} quote sources measured side by side."
+seo_description: "{{best_name}} gives up the least output across all chains, {{best_p50}} against the best quote of the same moment. {{declared_count}} sources compared."
 subtitle: Basis points of output a DEX aggregator gives up against the best quote fired at the same moment, on the same pair, from the same place.
 
 category: Aggregators
@@ -65,7 +65,7 @@ methodology:
   - "Six pairs across five chains, one per 60 second tick, from us-east, eu-west and Singapore. Output does not vary meaningfully by region, measured at a 4.24 bps median spread against a market that drifts 30 to 37, so the regional split is a check on the probe rather than a dimension of the result."
 
 findings:
-  - "{{best_name}} gives up the least against the best quote of the moment, {{best_p50}}."
+  - "{{best_name}} gives up the least against the best quote of the moment across all chains, {{best_p50}}. Rankings shift per chain tab: {{best_name:chain:bsc}} leads on BNB and {{best_name:chain:robinhood}} on Robinhood Chain, so the tab you trade on is the one to read."
   - "The top of this board is tight. The leaders sit within a couple of basis points of each other, which is inside the round-to-round noise, so read the near-best column before treating the order as settled."
   - "Two of the largest names carry most of their shortfall as a fee they declare themselves. The declared-fee column names them and says how much of the gap is a toll rather than a route."
   - "Quote output and quote latency rank differently. The fastest answer is not the best answer, and bench 033 measures the other half."
