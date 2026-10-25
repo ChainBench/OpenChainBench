@@ -141,6 +141,7 @@ describe("referral links", () => {
       ["chainstack", "https://chainstack.com", null],
       ["fomo", "https://fomo.family", null],
       ["pump-fun", "https://pump.fun", null],
+      ["gains", "https://gains.trade", ["ref", "openchainbench"]],
     ] as const) {
       const reg = getProviderRegistry(slug);
       expect(reg?.url).toBe(canonical);

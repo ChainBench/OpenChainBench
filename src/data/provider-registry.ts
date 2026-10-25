@@ -539,7 +539,7 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     url: "https://trueo.com",
     description:
       "Yield-bearing prediction market on Base. Each market commits its title, resolution criteria and approved sources on-chain at launch, and resolves through an optimistic oracle with bonded disputes. No public REST or GraphQL API; the deployment, including TruthMarketManager, is published and markets are enumerable from it on-chain.",
-    twitter: "@Trueo_app",
+    twitter: "@Trueo_",
     chains: ["Base"],
     docs: "https://docs.trueo.com",
     github: "https://github.com/trueo-protocol",
@@ -802,6 +802,7 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     description:
       "Perp DEX on Polygon, Arbitrum, Base and Solana. Pool-based execution against the gToken vaults, oracle-priced trades with synthetic leverage.",
     twitter: "@GainsNetwork_io",
+    referralUrl: "https://gains.trade/trading?ref=openchainbench",
   },
 
   // ─── Wallet labels / explorers ────────────────────────────────
@@ -3406,7 +3407,7 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   "frax-finance": { url: "https://frax.com" },
   "fraxtal-official": { url: "https://frax.com" },
   g4mm4: { url: "https://www.g4mm4.io" },
-  "gains-network": { url: "https://gains.trade" },
+  "gains-network": { url: "https://gains.trade", referralUrl: "https://gains.trade/trading?ref=openchainbench" },
   galaxydigital: { url: "https://www.galaxy.com" },
   "gnosis-official": { url: "https://www.gnosis.io" },
   "gravity-official": { url: "https://gravity.xyz" },
