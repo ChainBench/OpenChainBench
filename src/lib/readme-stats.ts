@@ -89,7 +89,7 @@ export function renderBlock(s: ReadmeStats, date: string): string {
     `| Alternatives pages (\`alternatives/*.yml\`) | ${s.alternatives} |`,
     `| Distinct categories (\`category:\` values across the specs) | ${s.categories} |`,
     `| Held on staging until a release condition is met (\`DEV_ONLY_BENCH_SLUGS\`) | ${s.devOnly} |`,
-    `| Retired, served as \`410 Gone\` (\`REMOVED_BENCH_SLUGS\`) | ${s.removed} |`,
+    `| Retired, answering \`410 Gone\` or redirecting to a successor (\`REMOVED_BENCH_SLUGS\`) | ${s.removed} |`,
     "",
     `${s.specs} specs, minus ${s.devOnlyWithSpec} held on staging, minus ${s.retiredWithSpec} retired ${plural(s.retiredWithSpec, "bench that keeps its", "benches that keep their")} spec, leaves ${s.published} ${plural(s.published, "benchmark that this commit publishes", "benchmarks that this commit publishes")}. Counts derived from the repository at ${date}.`,
     END_MARKER,
