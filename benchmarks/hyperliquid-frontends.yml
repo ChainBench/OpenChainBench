@@ -5,7 +5,7 @@ number: "030"
 title: Hyperliquid frontends builder revenue leaderboard
 seo_title: "Hyperliquid frontends: {{count}} apps ranked by builder fees"
 seo_description: "{{best_name}} collected {{best_p50}} in builder fees on the last complete UTC day. Tracked Hyperliquid frontends ranked by fees, volume, users and fee bps."
-subtitle: How much USD builder fee revenue each Hyperliquid frontend collected on the last complete UTC day, and over the 7 and 30 days ending on it. Source is the per-builder daily fills feed Hyperliquid publishes, no node and no API key.
+subtitle: How much USD builder fee revenue each Hyperliquid frontend collected on the last complete UTC day, and over the 7 and 30 days ending on it. A day comes from our own Hyperliquid node where it holds that day end to end, and from Hyperliquid's public per-builder feed otherwise.
 category: Trading
 status: live
 metric: Builder fees collected
@@ -17,7 +17,7 @@ disclaimer: |
 
 
 seo_intro: |
-  This page answers one question. Which Hyperliquid frontend collected the most builder fee revenue in USD over the last 24 hours, 7 days and 30 days. Every Hyperliquid order can attach an optional on-chain builder field. Frontends like Phantom Perps, MetaMask, Rabby, Insilico, based.app, OneKey, Axiom and pvp.trade write their wallet address into this field on every fill they route, then collect a share of the taker fee as their own rebate (capped at 100 basis points on perps, 1000 on spot). The bench ranks {{count}} frontends by the dollar amount each one collected through this mechanism, surfacing the real revenue scale of the Hyperliquid frontend ecosystem rather than a percentage ratio that hides the actual numbers. Data comes from the per-builder fills CSV that Hyperliquid publishes for every UTC day on its public stats feed. A Go harness on OCB infrastructure downloads each builder's file once the day is published, sums fees, notional and distinct wallets per builder, keeps 30 days of files for the 7 day and 30 day windows, and exposes Prometheus gauges that this page consumes. Day D lands on the feed early on D+1, so every number here describes the last complete UTC day and every builder is measured on the same day. Companion tabs surface volume routed, unique users and the trader perspective effective fee in basis points.
+  This page answers one question. Which Hyperliquid frontend collected the most builder fee revenue in USD over the last 24 hours, 7 days and 30 days. Every Hyperliquid order can attach an optional on-chain builder field. Frontends like Phantom Perps, MetaMask, Rabby, Insilico, based.app, OneKey, Axiom and pvp.trade write their wallet address into this field on every fill they route, then collect a share of the taker fee as their own rebate (capped at 100 basis points on perps, 1000 on spot). The bench ranks {{count}} frontends by the dollar amount each one collected through this mechanism, surfacing the real revenue scale of the Hyperliquid frontend ecosystem rather than a percentage ratio that hides the actual numbers. Data comes from the per-builder fills CSV that Hyperliquid publishes for every UTC day on its public stats feed, and from our own Hyperliquid node where it holds a day end to end: that export stops around 12:10 UTC on most days, so a day the node carries in full replaces the export's copy of it. A Go harness on OCB infrastructure downloads each builder's file once the day is published, sums fees, notional and distinct wallets per builder, keeps 30 days of files for the 7 day and 30 day windows, and exposes Prometheus gauges that this page consumes, including a count of how many days of the window were measured by the node rather than read from the export. Day D lands on the feed early on D+1, so every number here describes the last complete UTC day and every builder is measured on the same day. Companion tabs surface volume routed, unique users and the trader perspective effective fee in basis points.
 
 
 abstract: |
@@ -36,8 +36,21 @@ abstract: |
   lives at `harnesses/hyperliquid-frontends/builders.json` in this
   repo, seeded from DefiLlama dimension adapters and HyperTracker plus a
   cross reference pass on the top unidentified addresses. New builders
-  ship via public PR. The bench does not place trades, does not touch
-  private keys, and does not depend on any node or internal service.
+  ship via public PR. The bench does not place trades and does not touch
+  private keys.
+
+  Two sources supply the days. Hyperliquid's public export has been cutting
+  most days off around 12:10 UTC since 2026-09-08, and on a day it did carry
+  in full the hours before 13:00 hold roughly 43 per cent of the notional, so
+  a window summed from it alone lands near half of itself. Our own Hyperliquid
+  node writes every hour of a day it was up, and where it holds a day end to
+  end that day replaces the export's copy outright. The two are never averaged:
+  two readings of one quantity that differ by a factor of two are not two
+  readings. A day the node cannot replay may instead be reconstructed from the
+  export's own morning spliced to an afternoon rebuilt wallet by wallet from
+  the info API, and a reconstruction is counted and reported apart from a
+  measurement. The coverage note on the Hyperliquid hub states how the current
+  window divides between the three.
 
 
 methodology:
@@ -49,7 +62,8 @@ methodology:
   - "Effective fee bps. Builder fees divided by notional, times ten thousand, on day D. The trader perspective on what a representative dollar of flow paid the frontend."
   - "Builder registry. builders.json in the harness tree is a hand-curated array of slug, name and address for every tracked frontend. A frontend routing through several builder addresses can list them all under one entry and they are merged into one row; MetaMask's documented secondary address stays its own row (MetaMask alt) for continuity with the recorded history. New addresses ship via public PR. Addresses outside the registry are not fetched."
   - "Exclusions. Native Hyperliquid UI orders carry no builder code and are not attributable; roughly 95 percent of Hyperliquid fills land without one. HIP-3 market fills routed through a frontend count toward that frontend; deployer fees are not part of this feed."
-  - "Reproducibility. Harness source is open in the OCB harness tree. Anyone can run it against the same public feed with the same registry and reproduce every number, no node required."
+  - "Node substitution. Hyperliquid's public export cuts most days off around 12:10 UTC, so where our own Hyperliquid node holds a day end to end that day replaces the export's copy of it outright, never an average of the two. A day the node cannot replay may be reconstructed from the export's morning plus an afternoon rebuilt per wallet from the info API; reconstructions are counted and published apart from measured days, because close is not measured."
+  - "Reproducibility. Harness source is open in the OCB harness tree. Anyone can run it against the same public feed with the same registry, which reproduces every number for the days that rest on the export. The days our node measured cannot be reproduced from the public feed alone, and the coverage gauges say which days those are."
   - "Failures. A transport error leaves the previous file and gauge values in place and is retried on the next pass. The cohort never switches to a day before its batch has settled, and the choice of day only moves forward. Restarts re-read the local mirror before touching the feed."
 
 findings:
@@ -68,7 +82,7 @@ faq:
   - q: "Why USD revenue instead of effective fee in basis points?"
     a: "The previous version of this bench ranked frontends by effective fee in basis points, which answered the trader question of cost per dollar routed. The dollar revenue framing answers the operator question of size and revenue scale, the same way CoinMarketMan and ASXN dashboards present builder leaderboards. Both views are useful. The effective fee bps view is still available as a companion tab."
   - q: "Where does the data come from?"
-    a: "From the per-builder daily fills feed Hyperliquid publishes on its public stats CDN: one CSV per builder address and UTC day, with every fill that carried that builder code. A Go harness on OCB infrastructure downloads each file once the day is published and aggregates it locally. No node, no API key, no third party indexer, no internal Mobula service. Source code is in `harnesses/hyperliquid-frontends` in this repo."
+    a: "From two sources. The first is the per-builder daily fills feed Hyperliquid publishes on its public stats CDN: one CSV per builder address and UTC day, with every fill that carried that builder code. The second is our own Hyperliquid node, whose fill stream carries every hour of a day it was up; the public export has been stopping around 12:10 UTC on most days since 2026-09-08, so where the node holds a day end to end that day replaces the export's copy of it. A Go harness on OCB infrastructure aggregates both locally. No API key, no third party indexer. Source code is in `harnesses/hyperliquid-frontends` in this repo."
   - q: "How are the 7 day and 30 day numbers built?"
     a: "The harness keeps the last 30 daily files per builder in a local mirror. The 7 day figure sums builder fees over the files of the 7 UTC days ending on the current feed day, the 30 day figure over 30 days. Wallet counts for those windows are unions of the daily wallet sets. Files older than the window are deleted; a small ledger of daily totals is kept for the revenue history on the product pages."
   - q: "Why does the page say 24h when the data is a full UTC day?"

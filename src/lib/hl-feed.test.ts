@@ -4,6 +4,7 @@ import {
   feedNeedsDisclosure,
   HL_WINDOWS,
   HL_WINDOW_LABEL,
+  hlDaySources,
 } from "@/lib/hl-feed";
 
 describe("feedNeedsDisclosure", () => {
@@ -152,5 +153,61 @@ describe("rebuilt days are not covered by the truncation trigger", () => {
   it("keeps rebuilt days out of the node-day count", () => {
     expect(whole.nodeDays).toBe(25);
     expect(whole.nodeDays + whole.rebuiltDays).toBe(whole.windowDays);
+  });
+});
+
+describe("hlDaySources", () => {
+  // The live shape at 12:40 UTC on 2026-10-25, the first pass of a harness
+  // binary that actually carried the node substitution. The note's old
+  // sentence took the export's share as windowDays - nodeDays, which is 12
+  // here, and then described 11 truncated days as a subset of it. Two days
+  // rest on the export. Ten are reconstructions, which the note reports on
+  // their own line precisely so they are not read as measurements.
+  const live = {
+    coverageHours: 23.9,
+    latestDayTruncated: false,
+    truncatedDaysWindow: 11,
+    daysMeasured: 30,
+    windowDays: 30,
+    nodeDays: 18,
+    rebuiltDays: 10,
+    rebuiltWorstErrorPct: -35.2,
+  };
+
+  it("keeps rebuilt days out of the export's share", () => {
+    expect(hlDaySources(live)).toEqual({
+      nodeDays: 18,
+      rebuiltDays: 10,
+      exportDays: 2,
+    });
+  });
+
+  it("splits the whole window and nothing more", () => {
+    const s = hlDaySources(live);
+    expect(s.nodeDays + s.rebuiltDays + s.exportDays).toBe(live.windowDays);
+  });
+
+  // A scrape landing mid-pass can pair a node count from the new window with
+  // a rebuilt count from the old. The remainder is clamped rather than
+  // allowed to go negative, because "-3 days are left on the export" is a
+  // worse thing to publish than a conservative zero.
+  it("never returns a negative remainder", () => {
+    const s = hlDaySources({ ...live, nodeDays: 28, rebuiltDays: 9 });
+    expect(s.exportDays).toBe(0);
+    expect(s.rebuiltDays).toBe(2);
+    expect(s.nodeDays + s.rebuiltDays + s.exportDays).toBe(30);
+  });
+
+  // The state the page was in from 2026-10-07 to 2026-10-25: the harness
+  // image was rebuilt from a source tree frozen before the node code landed,
+  // so the deployed binary never set the gauge and every day did rest on the
+  // export. That reading has to stay describable, because a rollback or a
+  // node outage reproduces it.
+  it("hands the whole window to the export when the node reports nothing", () => {
+    expect(hlDaySources({ ...live, nodeDays: 0, rebuiltDays: 0 })).toEqual({
+      nodeDays: 0,
+      rebuiltDays: 0,
+      exportDays: 30,
+    });
   });
 });

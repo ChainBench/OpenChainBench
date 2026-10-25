@@ -105,3 +105,40 @@ export function feedIsMostlyWhole(feed: HlFeedCoverage | null): boolean {
   if (feed.windowDays <= 0) return false;
   return feed.nodeDays >= feed.windowDays - 5;
 }
+
+/**
+ * How the window's days divide between the three sources the page can name.
+ *
+ * The disclosure note used to describe the whole window as the public
+ * export's. That was true for as long as it was written, because the node
+ * substitution never reached the running binary: the harness image was
+ * rebuilt on 2026-10-21 from a source tree frozen on 2026-10-07, hours
+ * before the substitution merged, so the deployed process had no node code
+ * at all. Once a current binary shipped on 2026-10-25 the same sentence
+ * became wrong in two directions at once. It named the export as the source
+ * of days the node had measured, and it described a window reading 43% low
+ * when most of it no longer did, which understates our own figures.
+ *
+ * exportDays is the remainder, floored at 0 and clamped so the three counts
+ * sum to windowDays. The gauges are set in one pass of one process, but a
+ * scrape that lands mid-pass can pair a node count from the new window with
+ * a rebuilt count from the old, and a negative day count in prose is a
+ * worse failure than a conservative zero.
+ */
+export function hlDaySources(feed: HlFeedCoverage): {
+  nodeDays: number;
+  rebuiltDays: number;
+  exportDays: number;
+} {
+  const windowDays = Math.max(0, feed.windowDays);
+  const nodeDays = Math.max(0, Math.min(windowDays, feed.nodeDays));
+  const rebuiltDays = Math.max(
+    0,
+    Math.min(windowDays - nodeDays, feed.rebuiltDays),
+  );
+  return {
+    nodeDays,
+    rebuiltDays,
+    exportDays: windowDays - nodeDays - rebuiltDays,
+  };
+}

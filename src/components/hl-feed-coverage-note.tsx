@@ -1,4 +1,8 @@
-import { feedIsMostlyWhole, feedNeedsDisclosure } from "@/lib/hl-feed";
+import {
+  feedIsMostlyWhole,
+  feedNeedsDisclosure,
+  hlDaySources,
+} from "@/lib/hl-feed";
 import type { HlFeedCoverage } from "@/lib/hl-feed";
 
 /**
@@ -47,6 +51,29 @@ export function HlFeedCoverageNote({
   if (!truncation && rebuilt === 0) return null;
 
   const mostlyWhole = feedIsMostlyWhole(feed);
+  // Which source each day of the window came from. Until 2026-10-25 the
+  // deployed harness carried no node code, so nodeDays was 0 and the only
+  // honest lead was the export's. Both leads are kept: a node outage, or a
+  // rollback to an older image, puts the page back in that state and the
+  // note has to describe it correctly too.
+  const src = feed ? hlDaySources(feed) : null;
+  const nodeLead =
+    feed && src && src.nodeDays > 0
+      ? [
+          `${src.nodeDays} of the last ${feed.windowDays} days are read from`,
+          "our own Hyperliquid node, which publishes every hour of the day.",
+          src.exportDays > 0
+            ? [
+                `${src.exportDays} ${src.exportDays === 1 ? "day is" : "days are"} left on Hyperliquid's`,
+                "public per-builder export, which stopped before midnight UTC",
+                feed.truncatedDaysWindow > 0
+                  ? `on ${feed.truncatedDaysWindow} of the window's days`
+                  : "on part of the window",
+                "and sums such a day at roughly 43% of its real size.",
+              ].join(" ")
+            : "No day in the window rests on that export alone.",
+        ].join(" ")
+      : null;
   const tone = mostlyWhole
     ? "border-ink/15 bg-paper-soft/40 text-ink-soft"
     : "border-amber-500/30 bg-amber-500/5 text-ink-soft";
@@ -63,7 +90,14 @@ export function HlFeedCoverageNote({
           ? "Some days are rebuilt, not measured"
           : mostlyWhole
             ? "A few days come from a partial upstream feed"
-            : "Upstream feed is publishing partial days"}
+            : // A window the node supplies most of still earns the amber
+              // tone while a tenth of it is reconstruction, but the label
+              // may not hand the whole window to the upstream feed: on
+              // 2026-10-25 that read "upstream feed is publishing partial
+              // days" over a window with two such days in thirty.
+              nodeLead
+              ? "Part of this window is rebuilt or partial"
+              : "Upstream feed is publishing partial days"}
       </p>
       {!truncation ? null : !feed ? (
         <p>
@@ -80,18 +114,32 @@ export function HlFeedCoverageNote({
               text after it is trimmed by the transform, which is how this
               first shipped reading "The remaining 4fall back to". */}
           {[
-            `${feed.nodeDays} of the last ${feed.windowDays} days are read from`,
-            "our own Hyperliquid node, which publishes every hour of the day.",
-            `The remaining ${feed.windowDays - feed.nodeDays} fall back to`,
-            "Hyperliquid's public per-builder export because the node was down",
-            "for part of them, and",
-            feed.truncatedDaysWindow > 0
-              ? `${feed.truncatedDaysWindow} of those stop around 12:10 UTC.`
-              : "some of those stop before midnight UTC.",
-            "Those days are summed at roughly 43% of their real size, so the",
-            "window totals read a few per cent low. Figures are published as",
-            "measured rather than scaled to an estimate.",
-          ].join(" ")}
+            // The old sentence took the remainder as windowDays - nodeDays
+            // and then said the truncated count was "of those", which the
+            // gauges cannot support: a rebuilt day is in that remainder, and
+            // truncatedDaysWindow counts every day the export cut short
+            // including the ones the node replaced. On 2026-10-25 that read
+            // "the remaining 12 fall back to the export, and 11 of those
+            // stop around 12:10", where only 2 days rested on the export.
+            nodeLead,
+            "Window totals read a few per cent low as a result. Figures are",
+            "published as measured rather than scaled to an estimate.",
+          ]
+            .filter(Boolean)
+            .join(" ")}
+        </p>
+      ) : nodeLead ? (
+        <p>
+          {[
+            nodeLead,
+            feed.coverageHours > 0
+              ? `The latest day carries ${feed.coverageHours.toFixed(1)} of 24 hours.`
+              : "",
+            "Figures are published as measured rather than scaled to an",
+            "estimate.",
+          ]
+            .filter(Boolean)
+            .join(" ")}
         </p>
       ) : (
         <p>
@@ -118,7 +166,11 @@ export function HlFeedCoverageNote({
       {rebuilt > 0 && (
         <p className="mt-2">
           {[
-            truncation
+            // "Of those" only has a referent when the paragraph above it
+            // ended on the export's short days. Once the lead names node
+            // days and export days separately, "those" points at the export
+            // remainder, which is the one set the rebuilt days are not in.
+            truncation && !nodeLead
               ? `${rebuilt} of those ${rebuilt === 1 ? "days is" : "days are"} rebuilt rather than measured:`
               : `${rebuilt} ${rebuilt === 1 ? "day in this window is" : "days in this window are"} rebuilt rather than measured:`,
             "the export's own hours up to its cutoff, spliced to an afternoon",
