@@ -29,7 +29,7 @@ export type ReadmeStats = {
   devOnlyWithSpec: number;
   /** Retired slugs whose spec is still in benchmarks/ (and not dev-only). */
   retiredWithSpec: number;
-  /** Specs that are neither dev-only nor retired: what a release publishes. */
+  /** Specs that are neither dev-only nor retired: what this commit publishes. */
   published: number;
 };
 
@@ -91,7 +91,7 @@ export function renderBlock(s: ReadmeStats, date: string): string {
     `| Held on staging until a release condition is met (\`DEV_ONLY_BENCH_SLUGS\`) | ${s.devOnly} |`,
     `| Retired, served as \`410 Gone\` (\`REMOVED_BENCH_SLUGS\`) | ${s.removed} |`,
     "",
-    `${s.specs} specs, minus ${s.devOnlyWithSpec} held on staging, minus ${s.retiredWithSpec} retired ${plural(s.retiredWithSpec, "bench that keeps its", "benches that keep their")} spec, is ${s.published} published on openchainbench.com. Counts derived from the repository at ${date}.`,
+    `${s.specs} specs, minus ${s.devOnlyWithSpec} held on staging, minus ${s.retiredWithSpec} retired ${plural(s.retiredWithSpec, "bench that keeps its", "benches that keep their")} spec, leaves ${s.published} ${plural(s.published, "benchmark that this commit publishes", "benchmarks that this commit publishes")}. Counts derived from the repository at ${date}.`,
     END_MARKER,
   ].join("\n");
 }
@@ -106,7 +106,7 @@ export function parseBlock(readme: string): ParsedBlock | null {
   const block = readme.slice(start, end + END_MARKER.length);
   const date = block.match(/at (\d{4}-\d{2}-\d{2})\.\n/)?.[1] ?? "";
   const rows = [...block.matchAll(/\| (\d+) \|$/gm)].map((m) => Number(m[1]));
-  const sentence = block.match(/(\d+) specs, minus (\d+) held on staging, minus (\d+) retired .* is (\d+) published/);
+  const sentence = block.match(/(\d+) specs, minus (\d+) held on staging, minus (\d+) retired .* leaves (\d+) benchmarks? that this commit publishes/);
   const counts = sentence ? [...rows, Number(sentence[2]), Number(sentence[3]), Number(sentence[4])] : rows;
   return { block, date, counts };
 }
