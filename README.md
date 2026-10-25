@@ -2,6 +2,8 @@
 
 **OpenChainBench measures crypto infrastructure the same way for every provider, publishes the number, and ships the code that produced it.** RPC endpoints, data APIs, bridges, perp DEXes, prediction markets, oracles, cross-chain messaging. Live at **[openchainbench.com](https://openchainbench.com)**.
 
+It answers questions like which free Ethereum RPC answers fastest, or which bridge charges least to move USDC, with figures recomputed around the clock rather than written down once.
+
 [![live benchmarks](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fopenchainbench.com%2Fapi%2Fcitable&query=%24.count&label=live%20benchmarks&color=success)](https://openchainbench.com/benchmarks)
 [![code: MIT](https://img.shields.io/badge/code-MIT-blue.svg)](./LICENSE)
 [![data: CC--BY--4.0](https://img.shields.io/badge/data-CC--BY--4.0-lightgrey.svg)](https://creativecommons.org/licenses/by/4.0/)
@@ -9,18 +11,20 @@
 [![MCP](https://img.shields.io/badge/MCP-server-purple.svg)](https://openchainbench.com/mcp)
 [![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.20800311-informational.svg)](https://doi.org/10.5281/zenodo.20800311)
 
-Every benchmark ships with the harness that produces its data. Harness code is MIT, the dataset is CC-BY-4.0, and pull requests are open to anyone including the providers being measured.
+[![a live benchmark card](https://openchainbench.com/api/og/aggregator-head-lag)](https://openchainbench.com/benchmarks/aggregator-head-lag)
+
+Every benchmark ships with the harness that produces its data, under MIT, with the dataset under CC-BY-4.0, and pull requests are open to any party including the providers being measured. The card above is live, and GitHub caches it, so it can lag the page it links to.
 
 ## What this is
 
-- A public registry of benchmarks, one YAML spec per benchmark, each naming its metric, its methodology and the exact PromQL behind every published figure.
+- A public registry of benchmarks, one YAML spec per benchmark, each naming its metric, its methodology and the exact PromQL behind every figure it publishes.
 - A set of self-contained Go harnesses that probe providers on a schedule and expose Prometheus metrics. One shared Prometheus scrapes them, one worker materializes snapshots, the site reads those snapshots.
-- A citable data surface. Every JSON figure carries an `asOf` timestamp, a source URL and a licence, in JSON, Markdown, RSS and an MCP server. Exported citations carry the page URL and the date you retrieved it.
+- A citable data surface. Every figure is available as JSON, as Markdown, over RSS and through an MCP server. JSON responses carry an `asOf` timestamp, a source URL and a licence; exported citations carry the page URL and the date you retrieved it.
 
 ## What this is not
 
 - Not a token, a fund, or an RPC vendor. We do not sell placement in a ranking, and a provider cannot change a conclusion or a figure. See Funding and links below for what we do earn from.
-- Not a preview service. A provider can be shown the facts behind a report before it is published, and the staging site is public, so numbers are visible before a release. What a provider cannot do is alter them.
+- Not editable by the measured. A provider may be shown the facts behind a report before it is published, and the staging site is public, so figures are visible before a release. Nobody outside the method can change a number.
 - Not a single-vendor view. Providers that cannot be measured under identical conditions are split into separate benchmarks, or filtered to the same scope, and the spec says which.
 
 ## Get the data in 30 seconds
@@ -65,7 +69,7 @@ It exposes `list_benchmarks`, `get_benchmark`, `search_benchmarks`, `compare_pro
 
 A benchmark is a spec, a harness, and the surfaces generated from them. Take `aggregator-head-lag`, which measures how long a data API takes to emit a swap that is already on chain.
 
-**The spec** ([`benchmarks/aggregator-head-lag.yml`](./benchmarks/aggregator-head-lag.yml)) declares the metric, the unit, whether higher is better, the written methodology, and one PromQL query per provider per percentile. Nothing on the page is typed by hand.
+**The spec** ([`benchmarks/aggregator-head-lag.yml`](./benchmarks/aggregator-head-lag.yml)) declares the metric, the unit, whether higher is better, the written methodology, and one PromQL query per provider per percentile. No number on the page is typed by hand.
 
 **The harness** ([`harnesses/aggregator-head-lag/`](./harnesses/aggregator-head-lag)) subscribes to chain events and to each provider's feed, races them per transaction, and exposes the result at `/metrics`.
 
@@ -173,7 +177,7 @@ flowchart LR
 - **Harnesses** run as containers on one VPS in Paris. A few that must measure from more than one place run on Railway and federate into the same Prometheus, because a latency number is meaningless without saying where it was measured from.
 - **The worker** sweeps Prometheus on a timer and publishes atomic snapshots to Redis and to CDN blobs at `kv.openchainbench.com/aggregate/...`. The site reads the blob first, falls back to Redis, and falls back again to the last known good snapshot rather than rendering an empty page.
 - **The site** is Next.js 16 on Vercel. `main` deploys to production automatically, with a warm-up pass, a sitemap indexability smoke test, an automatic rollback if that test fails, and an IndexNow ping once it passes. `dev` deploys to a staging preview.
-- **Routing rules** are in [`src/middleware.ts`](./src/middleware.ts) and `next.config`: a retired benchmark answers `410 Gone` with a link to the catalogue, or redirects permanently when it has a successor, and a renamed one redirects permanently to its new slug, and `/compare/<b>-vs-<a>` redirects to the canonical alphabetical order so one comparison has one URL.
+- **Routing rules** are in [`src/middleware.ts`](./src/middleware.ts) and `next.config`. A retired benchmark answers `410 Gone` with a link to the catalogue, or redirects permanently where it has a successor. A renamed one redirects permanently to its new slug. And `/compare/<b>-vs-<a>` redirects to the canonical alphabetical order, so one comparison has one URL.
 - **The live dashboard** reads a WebSocket relay at `wss://stream.openchainbench.com/ws`, which the maintainers run separately because it holds upstream API keys. The browser talks to it directly.
 
 Depth, including a clone-and-run-it-yourself walkthrough, is in [`docs/architecture.md`](./docs/architecture.md).
@@ -222,18 +226,18 @@ pnpm check            # validate, typecheck, lint, test
 
 - **Same metric, same conditions.** Where providers cannot be measured identically they are split apart or filtered to a common scope, and the benchmark says so rather than comparing them anyway.
 - **Marketing does not shape a number.** The published methodology and the harness are the only inputs.
-- **A benchmark earns its page.** New ones are held on staging until a written condition is met, usually a full measurement window and an audit round. The conditions are in [`src/lib/removed-benches.ts`](./src/lib/removed-benches.ts), one comment per benchmark, including the ones still waiting.
+- **A benchmark earns its page.** New ones are held on staging until a written condition is met, for example a full measurement window, an audit round, or a minimum number of providers. The conditions are in [`src/lib/removed-benches.ts`](./src/lib/removed-benches.ts), one comment per benchmark, including the ones still waiting.
 - **Retirement, not deletion.** A retired benchmark answers `410 Gone` and keeps its entry, or redirects to its successor where one exists, so an indexed URL decays honestly instead of disappearing.
 - **No number without a timestamp.** Every JSON surface carries `asOf`, and `/api/freshness` returns the whole map as epoch milliseconds, so a reader can tell fresh from stale without asking us.
 - **A draft never quotes a figure.** If too few providers report, the page says it is awaiting samples instead of crowning a leader on thin data.
 
 ## Funding and links
 
-No sponsor and no grant pays for this project. What it earns is affiliate commission: some product pages link out to the provider they describe through an affiliate link, declared as `referralUrl` in [`src/data/provider-registry.ts`](./src/data/provider-registry.ts) and rendered with `rel="sponsored"` so a crawler sees what it is. The repository also declares an Optimism Retro Funding project in [`funding.json`](./funding.json).
+What this project earns is affiliate commission: some product pages link out to the provider they describe through an affiliate link, declared as `referralUrl` in [`src/data/provider-registry.ts`](./src/data/provider-registry.ts) and rendered with `rel="sponsored"` so a crawler sees what it is. The repository also registers the project for Optimism Retro Funding in [`funding.json`](./funding.json).
 
 Separately, and already written into the methodology of every keyed RPC benchmark: some providers in that cohort supplied the endpoints they are measured on. The spec names which providers and which plan, next to the figures.
 
-None of it reaches a measurement. An affiliate link is a display field, read in exactly one place, the outbound link on a product page. Every benchmark figure, which is to say every number on a leaderboard, comes from the PromQL in that benchmark's spec evaluated against metrics a harness in this repository produced. So a provider cannot buy a rank, and deleting every affiliate link would not change a value on a leaderboard.
+None of it reaches a measurement. An affiliate link is a display field, read in exactly one place, the outbound link on a product page. Every benchmark figure, which is to say every number on a leaderboard, comes from the PromQL in that benchmark's spec, evaluated against metrics produced by the harnesses in this repository. So a provider cannot buy a rank, and deleting every affiliate link would not change a value on a leaderboard.
 
 ## Cite this
 
@@ -256,9 +260,9 @@ The DOI resolves to the latest version of the dataset record, which is v1.0.1 pu
 
 **Is the data free to use?** Yes. The dataset is CC-BY-4.0, so quote it, chart it, or ship it in a product, with attribution to OpenChainBench and a link to the page you took it from. Harness code is MIT.
 
-**Can I add my own product?** Yes, including if we already measure you. Providers open PRs here. What a PR cannot do is change a number without changing the method that produced it, and a method change applies to every provider in that benchmark at once.
+**Can I add my own product?** Yes, including if we already measure you. Providers can open PRs here. What a PR cannot do is change a number without changing the method that produced it, and a method change applies to every provider in that benchmark at once.
 
-**A figure about my product looks wrong. What now?** Open a [provider correction issue](https://github.com/ChainBench/OpenChainBench/issues/new?template=provider-correction.yml) with the page, the figure and what you measured instead. Every published value traces to a PromQL query in a spec and a harness in this repo, so a disagreement is usually resolvable by reading both.
+**A figure about my product looks wrong. What now?** Open a [provider correction issue](https://github.com/ChainBench/OpenChainBench/issues/new?template=provider-correction.yml) with the page, the figure and what you measured instead. Every benchmark value traces to a PromQL query in a spec and a harness in this repo, so a disagreement is usually resolvable by reading both.
 
 **How current is a number?** Each benchmark carries its own `asOf`. `/api/freshness` returns the whole map in one request, and a page that has gone stale says so rather than showing an old figure as current.
 
@@ -270,4 +274,4 @@ The DOI resolves to the latest version of the dataset record, which is v1.0.1 pu
 
 [Discussions](https://github.com/ChainBench/OpenChainBench/discussions) · [@OpenChainBench](https://x.com/OpenChainBench) · [PyPI](https://pypi.org/project/openchainbench/) · [Hugging Face](https://huggingface.co/datasets/OpenChainBench/benchmarks) · [Zenodo](https://doi.org/10.5281/zenodo.20800311) · [Wikidata](https://www.wikidata.org/wiki/Q140756438)
 
-Harness code and site code MIT. Dataset CC-BY-4.0, attribution required. See [LICENSE](./LICENSE).
+Harness and site code: MIT, see [LICENSE](./LICENSE). Dataset: CC-BY-4.0 with attribution required, published as the `license` field on every API response.
