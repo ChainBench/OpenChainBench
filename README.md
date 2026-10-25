@@ -233,7 +233,7 @@ pnpm check            # validate, typecheck, lint, test
 
 ## Funding and links
 
-What this project earns is affiliate commission: some product pages link out to the provider they describe through an affiliate link, declared as `referralUrl` in [`src/data/provider-registry.ts`](./src/data/provider-registry.ts) and rendered with `rel="sponsored"` so a crawler sees what it is. The repository also registers the project for Optimism Retro Funding in [`funding.json`](./funding.json).
+No sponsor, investor or grant funds this project. What it earns is affiliate commission: some product pages link out to the provider they describe through an affiliate link, declared as `referralUrl` in [`src/data/provider-registry.ts`](./src/data/provider-registry.ts) and rendered with `rel="sponsored"` so a crawler sees what it is. The repository also registers the project for Optimism Retro Funding in [`funding.json`](./funding.json), which is a registration and not a payment received.
 
 Separately, and already written into the methodology of every keyed RPC benchmark: some providers in that cohort supplied the endpoints they are measured on. The spec names which providers and which plan, next to the figures.
 
