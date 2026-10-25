@@ -15,7 +15,7 @@ Every benchmark ships with the harness that produces its data. Harness code is M
 
 - A public registry of benchmarks, one YAML spec per benchmark, each naming its metric, its methodology and the exact PromQL behind every published figure.
 - A set of self-contained Go harnesses that probe providers on a schedule and expose Prometheus metrics. One shared Prometheus scrapes them, one worker materializes snapshots, the site reads those snapshots.
-- A citable data surface. Every figure carries an `asOf` timestamp, a source URL, and a licence, in JSON, Markdown, RSS, BibTeX and an MCP server.
+- A citable data surface. Every JSON figure carries an `asOf` timestamp, a source URL and a licence, in JSON, Markdown, RSS and an MCP server. Exported citations carry the page URL and the date you retrieved it.
 
 ## What this is not
 
@@ -107,10 +107,13 @@ A benchmark is a spec, a harness, and the surfaces generated from them. Take `ag
 | Answer pages (`answers/*.yml`) | 49 |
 | Alternatives pages (`alternatives/*.yml`) | 21 |
 | Distinct categories (`category:` values across the specs) | 9 |
+| Categories with a published benchmark | 7 |
 | Held on staging until a release condition is met (`DEV_ONLY_BENCH_SLUGS`) | 5 |
 | Retired, answering `410 Gone` or redirecting to a successor (`REMOVED_BENCH_SLUGS`) | 25 |
 
 253 specs, minus 5 held on staging, minus 2 retired benches that keep their spec, leaves 246 benchmarks that this commit publishes. Counts derived from the repository at 2026-10-25.
+
+Published by category: RPCs 170, Trading 43, Aggregators 9, Bridges 9, Blockchains 8, RWA 6, NFT APIs 1.
 <!-- stats:end -->
 
 The badge at the top reads the live count from `/api/citable`, which is what production serves. The table is derived from the commit you are reading. The two agree once a change has been released, and differ while a benchmark is merged and waiting, so comparing them tells you something instead of requiring you to trust either.
@@ -130,7 +133,7 @@ Every benchmark is CC-BY-4.0 and reachable without a key.
 | [`/api/mcp/mcp`](https://openchainbench.com/mcp) | MCP server over streamable HTTP. Six tools and one resource template. |
 | [`/api/llm-context`](https://openchainbench.com/api/llm-context) | Every benchmark with rankings and methodology as one Markdown document. |
 | [`/llms.txt`](https://openchainbench.com/llms.txt) · [`/llms-full.txt`](https://openchainbench.com/llms-full.txt) | Index and full context per the [llmstxt.org](https://llmstxt.org) convention. `llms-full.txt` and `/api/llm-context` serve the same document. |
-| `Accept: text/markdown` | Returns Markdown instead of HTML at the page's own URL, on `/benchmarks/<slug>`, `/products/<slug>`, `/perps`, `/rwa` and `/capital`. Browsers are unaffected because they ask for HTML first. |
+| `Accept: text/markdown` | Returns Markdown instead of HTML at the page's own URL, on `/benchmarks/<slug>`, `/products/<slug>`, `/perps`, `/rwa` and `/capital`. Browsers are unaffected because their `Accept` header includes `text/html`. |
 | [`/api/freshness`](https://openchainbench.com/api/freshness) | `{slug: asOf}` in epoch milliseconds for every benchmark, plus the server's `now`. Cached 30 s. |
 | [`/api/og/<slug>`](https://openchainbench.com/api/og/aggregator-head-lag) | The 1200x630 card with the current value, leader and sparkline, at a stable URL. |
 | [`/benchmarks/<slug>/share-card`](https://openchainbench.com/benchmarks/aggregator-head-lag/share-card) | Export card in five templates (`ranking`, `snapshot`, `headline`, `compare`, `leaderboard`), with `?theme=dark`. |
@@ -193,7 +196,7 @@ video/             the renderer behind the Export video button on every benchmar
 .github/           CI, production deploy, staging preview, dataset publishing
 ```
 
-`data/` holds one generated build artifact. `crm/` and `outreach/` are internal tooling and not part of the published benchmark surface.
+`crm/` and `outreach/` are internal tooling and not part of the published benchmark surface.
 
 ## Contributing
 
@@ -226,9 +229,11 @@ pnpm check            # validate, typecheck, lint, test
 
 ## Funding and links
 
-Some product pages link out to the provider they describe through a referral link, which can earn a commission on a signup. They are declared as `referralUrl` in [`src/data/provider-registry.ts`](./src/data/provider-registry.ts), ten of them today, and rendered with `rel="sponsored"` so a crawler sees what they are. The repository also declares an Optimism Retro Funding project in [`funding.json`](./funding.json).
+No sponsor and no grant pays for this project. What it earns is affiliate commission: some product pages link out to the provider they describe through an affiliate link, declared as `referralUrl` in [`src/data/provider-registry.ts`](./src/data/provider-registry.ts) and rendered with `rel="sponsored"` so a crawler sees what it is. The repository also declares an Optimism Retro Funding project in [`funding.json`](./funding.json).
 
-A referral link is a display field on a product page and is not an input to anything measured. Every published figure comes from the PromQL in a benchmark's spec, evaluated against metrics a harness in this repository produced, so a link cannot move a rank and deleting every one of them would not change a value on the site.
+Separately, and already written into the methodology of every keyed RPC benchmark: some providers in that cohort supplied the endpoints they are measured on. The spec names which providers and which plan, next to the figures.
+
+None of it reaches a measurement. An affiliate link is a display field, read in exactly one place, the outbound link on a product page. Every benchmark figure, which is to say every number on a leaderboard, comes from the PromQL in that benchmark's spec evaluated against metrics a harness in this repository produced. So a provider cannot buy a rank, and deleting every affiliate link would not change a value on a leaderboard.
 
 ## Cite this
 
@@ -243,7 +248,9 @@ A referral link is a display field on a product page and is not an input to anyt
 }
 ```
 
-For one benchmark, `GET /api/cite/<slug>/bib` returns the same shape for that page, and `ris`, `apa` and `txt` are also available. The DOI above always resolves to the latest version of the dataset record.
+For one benchmark, `GET /api/cite/<slug>/bib` returns the same shape for that page, and `ris`, `apa` and `txt` are also available.
+
+The DOI resolves to the latest version of the dataset record, which is v1.0.1 published 2026-06-22. Cite it for the dataset, and cite a page with its `asOf` for a figure you read today.
 
 ## Questions
 
