@@ -23,6 +23,9 @@ export type ReadmeStats = {
   answers: number;
   alternatives: number;
   categories: number;
+  /** Published benchmarks per category, largest first, ties alphabetical.
+   *  Derived from the specs, so it is the commit's view, not production's. */
+  publishedByCategory: [string, number][];
   devOnly: number;
   removed: number;
   /** DEV_ONLY slugs that have a spec, so subtracting them is meaningful. */
@@ -45,15 +48,21 @@ export function computeReadmeStats(root: string): ReadmeStats {
   const harnessDirs = readdirSync(harnessDir).filter((d) => statSync(path.join(harnessDir, d)).isDirectory());
   const harnessesWithoutGoMod = harnessDirs.filter((d) => !existsSync(path.join(harnessDir, d, "go.mod")));
 
+  const isPublished = (slug: string) => !DEV_ONLY_BENCH_SLUGS.has(slug) && !REMOVED_BENCH_SLUGS.has(slug);
   const categories = new Set<string>();
+  const perCategory = new Map<string, number>();
   for (const f of specFiles) {
     const m = readFileSync(path.join(root, "benchmarks", f), "utf8").match(/^category:\s*(.+?)\s*$/m);
-    if (m) categories.add(m[1].replace(/^["']|["']$/g, ""));
+    if (!m) continue;
+    const cat = m[1].replace(/^["']|["']$/g, "");
+    categories.add(cat);
+    if (isPublished(f.slice(0, -".yml".length))) perCategory.set(cat, (perCategory.get(cat) ?? 0) + 1);
   }
+  const publishedByCategory = [...perCategory.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
 
   const devOnlyWithSpec = [...DEV_ONLY_BENCH_SLUGS].filter((s) => specSlugs.has(s)).length;
   const retiredWithSpec = [...REMOVED_BENCH_SLUGS].filter((s) => specSlugs.has(s) && !DEV_ONLY_BENCH_SLUGS.has(s)).length;
-  const published = [...specSlugs].filter((s) => !DEV_ONLY_BENCH_SLUGS.has(s) && !REMOVED_BENCH_SLUGS.has(s)).length;
+  const published = [...specSlugs].filter(isPublished).length;
 
   return {
     specs: specSlugs.size,
@@ -62,18 +71,13 @@ export function computeReadmeStats(root: string): ReadmeStats {
     answers: yamlFiles(path.join(root, "answers")).length,
     alternatives: yamlFiles(path.join(root, "alternatives")).length,
     categories: categories.size,
+    publishedByCategory,
     devOnly: DEV_ONLY_BENCH_SLUGS.size,
     removed: REMOVED_BENCH_SLUGS.size,
     devOnlyWithSpec,
     retiredWithSpec,
     published,
   };
-}
-
-/** The numbers the block prints, in print order. Two blocks with the same
- *  tuple are the same block apart from the date. */
-export function printedCounts(s: ReadmeStats): number[] {
-  return [s.specs, s.harnesses, s.answers, s.alternatives, s.categories, s.devOnly, s.removed, s.devOnlyWithSpec, s.retiredWithSpec, s.published];
 }
 
 const plural = (n: number, one: string, many: string) => (n === 1 ? one : many);
@@ -88,15 +92,18 @@ export function renderBlock(s: ReadmeStats, date: string): string {
     `| Answer pages (\`answers/*.yml\`) | ${s.answers} |`,
     `| Alternatives pages (\`alternatives/*.yml\`) | ${s.alternatives} |`,
     `| Distinct categories (\`category:\` values across the specs) | ${s.categories} |`,
+    `| Categories with a published benchmark | ${s.publishedByCategory.length} |`,
     `| Held on staging until a release condition is met (\`DEV_ONLY_BENCH_SLUGS\`) | ${s.devOnly} |`,
     `| Retired, answering \`410 Gone\` or redirecting to a successor (\`REMOVED_BENCH_SLUGS\`) | ${s.removed} |`,
     "",
     `${s.specs} specs, minus ${s.devOnlyWithSpec} held on staging, minus ${s.retiredWithSpec} retired ${plural(s.retiredWithSpec, "bench that keeps its", "benches that keep their")} spec, leaves ${s.published} ${plural(s.published, "benchmark that this commit publishes", "benchmarks that this commit publishes")}. Counts derived from the repository at ${date}.`,
+    "",
+    `Published by category: ${s.publishedByCategory.map(([c, n]) => `${c} ${n}`).join(", ")}.`,
     END_MARKER,
   ].join("\n");
 }
 
-export type ParsedBlock = { block: string; date: string; counts: number[] };
+export type ParsedBlock = { block: string; date: string };
 
 /** The block currently in the README, or null when the markers are absent. */
 export function parseBlock(readme: string): ParsedBlock | null {
@@ -105,10 +112,7 @@ export function parseBlock(readme: string): ParsedBlock | null {
   if (start === -1 || end === -1) return null;
   const block = readme.slice(start, end + END_MARKER.length);
   const date = block.match(/at (\d{4}-\d{2}-\d{2})\.\n/)?.[1] ?? "";
-  const rows = [...block.matchAll(/\| (\d+) \|$/gm)].map((m) => Number(m[1]));
-  const sentence = block.match(/(\d+) specs, minus (\d+) held on staging, minus (\d+) retired .* leaves (\d+) benchmarks? that this commit publishes/);
-  const counts = sentence ? [...rows, Number(sentence[2]), Number(sentence[3]), Number(sentence[4])] : rows;
-  return { block, date, counts };
+  return { block, date };
 }
 
 /**
@@ -124,7 +128,9 @@ export function parseBlock(readme: string): ParsedBlock | null {
 export function syncReadme(readme: string, s: ReadmeStats, today: string): string {
   const current = parseBlock(readme);
   if (!current) throw new Error(`README has no stats block: add the line "${START_MARKER}" and "${END_MARKER}" where it belongs`);
-  const unchanged = current.date !== "" && current.counts.join(",") === printedCounts(s).join(",");
+  // Same counts means the block rendered with its own date is byte-equal to
+  // what is there; comparing renders covers every row, present and future.
+  const unchanged = current.date !== "" && current.block === renderBlock(s, current.date);
   const next = renderBlock(s, unchanged ? current.date : today);
   return readme.replace(current.block, () => next);
 }

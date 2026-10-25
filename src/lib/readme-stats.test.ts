@@ -27,6 +27,10 @@ describe("README stats block", () => {
     expect(stats.specs - stats.devOnlyWithSpec - stats.retiredWithSpec).toBe(stats.published);
   });
 
+  test("published-by-category adds up to the published total", () => {
+    expect(stats.publishedByCategory.reduce((n, [, c]) => n + c, 0)).toBe(stats.published);
+  });
+
   test("every harness directory is a Go module, as the block says", () => {
     expect(stats.harnessesWithoutGoMod, "harnesses without go.mod: the block's label would be false").toEqual([]);
   });
