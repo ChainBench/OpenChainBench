@@ -19,7 +19,7 @@ Every benchmark ships with the harness that produces its data, under MIT, with t
 
 - A public registry of benchmarks, one YAML spec per benchmark, each naming its metric, its methodology and the exact PromQL behind every figure it publishes.
 - A set of self-contained Go harnesses that probe providers on a schedule and expose Prometheus metrics. One shared Prometheus scrapes them, one worker materializes snapshots, the site reads those snapshots.
-- A citable data surface. Every figure is available as JSON, as Markdown, over RSS and through an MCP server. JSON responses carry an `asOf` timestamp, a source URL and a licence; exported citations carry the page URL and the date you retrieved it.
+- A citable data surface. Every benchmark figure is available as JSON, as Markdown, over RSS and through an MCP server. JSON responses carry an `asOf` timestamp, a source URL and a licence; exported citations carry the page URL and the date you retrieved it.
 
 ## What this is not
 
