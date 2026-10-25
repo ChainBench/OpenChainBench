@@ -15,13 +15,13 @@ Every benchmark ships with the harness that produces its data. Harness code is M
 
 - A public registry of benchmarks, one YAML spec per benchmark, each naming its metric, its methodology and the exact PromQL behind every published figure.
 - A set of self-contained Go harnesses that probe providers on a schedule and expose Prometheus metrics. One shared Prometheus scrapes them, one worker materializes snapshots, the site reads those snapshots.
-- A citable data surface. Every figure carries an `asOf` timestamp, a source URL, and a licence, in JSON, Markdown, RSS, BibTeX, an MCP server and a dated historical snapshot.
+- A citable data surface. Every figure carries an `asOf` timestamp, a source URL, and a licence, in JSON, Markdown, RSS, BibTeX and an MCP server.
 
 ## What this is not
 
-- Not a paid ranking. No provider pays for placement, and no provider sees a number before it is public.
-- Not a token, a fund, or an RPC vendor. Nothing here is for sale.
-- Not a single-vendor view. If two providers cannot be measured under identical conditions, they do not share a benchmark.
+- Not a token, a fund, or an RPC vendor. We do not sell placement in a ranking, and a provider cannot change a conclusion or a figure. See Funding and links below for what we do earn from.
+- Not a preview service. A provider can be shown the facts behind a report before it is published, and the staging site is public, so numbers are visible before a release. What a provider cannot do is alter them.
+- Not a single-vendor view. Providers that cannot be measured under identical conditions are split into separate benchmarks, or filtered to the same scope, and the spec says which.
 
 ## Get the data in 30 seconds
 
@@ -40,7 +40,7 @@ with OpenChainBench() as ocb:
     print(head_lag.headline)
 ```
 
-No key, no account, no rate-limit tier. The same data over plain HTTP:
+No key and no account. Read endpoints allow 60 requests a minute per IP, and the AI crawlers named in `robots.txt` are exempt. The same data over plain HTTP:
 
 ```bash
 # every benchmark with its current value, leader and citation
@@ -49,7 +49,7 @@ curl https://openchainbench.com/api/citable
 # one benchmark: rankings, 24h sparkline, methodology, paste-ready quote
 curl https://openchainbench.com/api/stat/aggregator-head-lag
 
-# any page as Markdown instead of HTML, same URL
+# a benchmark as Markdown instead of HTML, at the same URL
 curl -H "Accept: text/markdown" https://openchainbench.com/benchmarks/bridge-fee
 ```
 
@@ -79,6 +79,8 @@ A benchmark is a spec, a harness, and the surfaces generated from them. Take `ag
   "higherIsBetter": false,
   "value": 0.240038,                  // example reading, 2026-10-25
   "leader":   { "name": "Codex", "slug": "codex", "value": 0.240038 },
+  // ms holds the raw series value in the benchmark's stored unit, which is
+  // not always milliseconds: on a percent benchmark it holds a percent.
   "rankings": [ { "name": "Codex", "ms": { "p50": 240.038, "p90": 399.49 } } ],
   "sparkline": [ /* 73 points, last 24h */ ],
   "sampleSize": 184980,
@@ -106,14 +108,12 @@ A benchmark is a spec, a harness, and the surfaces generated from them. Take `ag
 | Alternatives pages (`alternatives/*.yml`) | 21 |
 | Distinct categories (`category:` values across the specs) | 9 |
 | Held on staging until a release condition is met (`DEV_ONLY_BENCH_SLUGS`) | 5 |
-| Retired, served as `410 Gone` (`REMOVED_BENCH_SLUGS`) | 25 |
+| Retired, answering `410 Gone` or redirecting to a successor (`REMOVED_BENCH_SLUGS`) | 25 |
 
 253 specs, minus 5 held on staging, minus 2 retired benches that keep their spec, leaves 246 benchmarks that this commit publishes. Counts derived from the repository at 2026-10-25.
 <!-- stats:end -->
 
 The badge at the top reads the live count from `/api/citable`, which is what production serves. The table is derived from the commit you are reading. The two agree once a change has been released, and differ while a benchmark is merged and waiting, so comparing them tells you something instead of requiring you to trust either.
-
-Categories, largest first: RPCs, Trading, Blockchains, Aggregators, Bridges, RWA, On-ramps, NFT APIs, Explorers.
 
 ## Machine-readable surfaces
 
@@ -122,7 +122,6 @@ Every benchmark is CC-BY-4.0 and reachable without a key.
 | Endpoint | What it returns |
 |---|---|
 | [`/api/citable`](https://openchainbench.com/api/citable) | Every benchmark with its current value, leader, headline sentence, citation and `asOf`. Start here. |
-| [`/api/citable/<date>`](https://openchainbench.com/api/citable/2026-10-24) | The same index as published on a past date. |
 | [`/api/stat/<slug>`](https://openchainbench.com/api/stat/aggregator-head-lag) | One benchmark: rankings, 24h sparkline, methodology, quote, source, freshness. |
 | [`/api/series/<slug>`](https://openchainbench.com/api/series/aggregator-head-lag?range=24h) | Per-provider time series. `?range=24h`. |
 | [`/api/compare/<a>/<b>`](https://openchainbench.com/api/compare/codex/mobula) | Two providers across every benchmark they share. |
@@ -131,9 +130,9 @@ Every benchmark is CC-BY-4.0 and reachable without a key.
 | [`/api/mcp/mcp`](https://openchainbench.com/mcp) | MCP server over streamable HTTP. Six tools and one resource template. |
 | [`/api/llm-context`](https://openchainbench.com/api/llm-context) | Every benchmark with rankings and methodology as one Markdown document. |
 | [`/llms.txt`](https://openchainbench.com/llms.txt) · [`/llms-full.txt`](https://openchainbench.com/llms-full.txt) | Index and full context per the [llmstxt.org](https://llmstxt.org) convention. `llms-full.txt` and `/api/llm-context` serve the same document. |
-| `Accept: text/markdown` | Any `/benchmarks/<slug>`, `/products/<slug>` or hub URL returns Markdown instead of HTML. Same URL, no separate API to learn. |
-| [`/api/freshness`](https://openchainbench.com/api/freshness) | `{slug: asOf}` for every benchmark, plus server `now`. Cached 30 s. |
-| [`/api/og/<slug>`](https://openchainbench.com/api/og/aggregator-head-lag) | 1200x630 PNG with the current value, leader and sparkline. Used on link unfurl. |
+| `Accept: text/markdown` | Returns Markdown instead of HTML at the page's own URL, on `/benchmarks/<slug>`, `/products/<slug>`, `/perps`, `/rwa` and `/capital`. Browsers are unaffected because they ask for HTML first. |
+| [`/api/freshness`](https://openchainbench.com/api/freshness) | `{slug: asOf}` in epoch milliseconds for every benchmark, plus the server's `now`. Cached 30 s. |
+| [`/api/og/<slug>`](https://openchainbench.com/api/og/aggregator-head-lag) | The 1200x630 card with the current value, leader and sparkline, at a stable URL. |
 | [`/benchmarks/<slug>/share-card`](https://openchainbench.com/benchmarks/aggregator-head-lag/share-card) | Export card in five templates (`ranking`, `snapshot`, `headline`, `compare`, `leaderboard`), with `?theme=dark`. |
 | [`/api/badge/<bench>/<provider>`](https://openchainbench.com/api/badge/aggregator-head-lag/mobula) | Embeddable SVG with that provider's rank and figure. Add `/snippet` for paste-ready Markdown. |
 | [`/rss.xml`](https://openchainbench.com/rss.xml) · [`/feed.json`](https://openchainbench.com/feed.json) | RSS 2.0 and JSON Feed 1.1, one entry per live benchmark. |
@@ -171,7 +170,7 @@ flowchart LR
 - **Harnesses** run as containers on one VPS in Paris. A few that must measure from more than one place run on Railway and federate into the same Prometheus, because a latency number is meaningless without saying where it was measured from.
 - **The worker** sweeps Prometheus on a timer and publishes atomic snapshots to Redis and to CDN blobs at `kv.openchainbench.com/aggregate/...`. The site reads the blob first, falls back to Redis, and falls back again to the last known good snapshot rather than rendering an empty page.
 - **The site** is Next.js 16 on Vercel. `main` deploys to production automatically, with a warm-up pass, a sitemap indexability smoke test, an automatic rollback if that test fails, and an IndexNow ping once it passes. `dev` deploys to a staging preview.
-- **Routing rules** are in [`src/middleware.ts`](./src/middleware.ts) and `next.config`: a retired benchmark answers `410 Gone` with a link to the catalogue, a renamed one redirects permanently to its new slug, and `/compare/<b>-vs-<a>` redirects to the canonical alphabetical order so one comparison has one URL.
+- **Routing rules** are in [`src/middleware.ts`](./src/middleware.ts) and `next.config`: a retired benchmark answers `410 Gone` with a link to the catalogue, or redirects permanently when it has a successor, and a renamed one redirects permanently to its new slug, and `/compare/<b>-vs-<a>` redirects to the canonical alphabetical order so one comparison has one URL.
 - **The live dashboard** reads a WebSocket relay at `wss://stream.openchainbench.com/ws`, which the maintainers run separately because it holds upstream API keys. The browser talks to it directly.
 
 Depth, including a clone-and-run-it-yourself walkthrough, is in [`docs/architecture.md`](./docs/architecture.md).
@@ -189,11 +188,12 @@ infrastructure/    shared Prometheus config
 src/               the Next.js site, App Router, TypeScript, Tailwind, Zod
 scripts/           spec validators, prebuild manifests, sitemap smoke test
 docs/              architecture.md, methodology, walkthrough.md
-data/ public/      static datasets and assets served by the site
+public/            static assets served by the site
+video/             the renderer behind the Export video button on every benchmark page
 .github/           CI, production deploy, staging preview, dataset publishing
 ```
 
-`crm/`, `outreach/` and `video/` are operational tooling, not part of the published benchmark surface.
+`data/` holds one generated build artifact. `crm/` and `outreach/` are internal tooling and not part of the published benchmark surface.
 
 ## Contributing
 
@@ -217,12 +217,18 @@ pnpm check            # validate, typecheck, lint, test
 
 ## How we decide what to publish
 
-- **Same metric, same conditions.** Providers that cannot be measured identically do not share a benchmark.
+- **Same metric, same conditions.** Where providers cannot be measured identically they are split apart or filtered to a common scope, and the benchmark says so rather than comparing them anyway.
 - **Marketing does not shape a number.** The published methodology and the harness are the only inputs.
 - **A benchmark earns its page.** New ones are held on staging until a written condition is met, usually a full measurement window and an audit round. The conditions are in [`src/lib/removed-benches.ts`](./src/lib/removed-benches.ts), one comment per benchmark, including the ones still waiting.
-- **Retirement, not deletion.** A retired benchmark answers `410 Gone` and keeps its entry, so an indexed URL decays honestly instead of disappearing.
-- **No number without a timestamp.** Every citable surface carries `asOf` and `dateModified`, so a reader can tell fresh from stale without asking us.
+- **Retirement, not deletion.** A retired benchmark answers `410 Gone` and keeps its entry, or redirects to its successor where one exists, so an indexed URL decays honestly instead of disappearing.
+- **No number without a timestamp.** Every JSON surface carries `asOf`, and `/api/freshness` returns the whole map as epoch milliseconds, so a reader can tell fresh from stale without asking us.
 - **A draft never quotes a figure.** If too few providers report, the page says it is awaiting samples instead of crowning a leader on thin data.
+
+## Funding and links
+
+Some product pages link out to the provider they describe through a referral link, which can earn a commission on a signup. They are declared as `referralUrl` in [`src/data/provider-registry.ts`](./src/data/provider-registry.ts), ten of them today, and rendered with `rel="sponsored"` so a crawler sees what they are. The repository also declares an Optimism Retro Funding project in [`funding.json`](./funding.json).
+
+A referral link is a display field on a product page and is not an input to anything measured. Every published figure comes from the PromQL in a benchmark's spec, evaluated against metrics a harness in this repository produced, so a link cannot move a rank and deleting every one of them would not change a value on the site.
 
 ## Cite this
 
@@ -245,13 +251,13 @@ For one benchmark, `GET /api/cite/<slug>/bib` returns the same shape for that pa
 
 **Can I add my own product?** Yes, including if we already measure you. Providers open PRs here. What a PR cannot do is change a number without changing the method that produced it, and a method change applies to every provider in that benchmark at once.
 
-**A figure about my product looks wrong. What now?** Open an issue with the page, the figure and what you measured instead. Every published value traces to a PromQL query in a spec and a harness in this repo, so a disagreement is usually resolvable by reading both. Corrections are documented rather than quietly edited.
+**A figure about my product looks wrong. What now?** Open a [provider correction issue](https://github.com/ChainBench/OpenChainBench/issues/new?template=provider-correction.yml) with the page, the figure and what you measured instead. Every published value traces to a PromQL query in a spec and a harness in this repo, so a disagreement is usually resolvable by reading both.
 
 **How current is a number?** Each benchmark carries its own `asOf`. `/api/freshness` returns the whole map in one request, and a page that has gone stale says so rather than showing an old figure as current.
 
 **Why does a benchmark exist in this repo but not on the site?** Because it has not met its release condition yet. Those are listed with a reason in `src/lib/removed-benches.ts`, and the arithmetic in the numbers table above accounts for every one of them.
 
-**Do you measure providers who do not want to be measured?** We measure public endpoints under their published terms. A provider can ask for its methodology to be corrected and that is usually a good PR, but not for its result to be removed because the result is unflattering.
+**Do you measure providers who do not want to be measured?** We measure endpoints any customer can reach under their published terms, free ones and paid ones, and the keyed benchmarks say which plan was used. A provider can ask for its methodology to be corrected and that is usually a good PR, but not for its result to be removed because the result is unflattering.
 
 ## Community and licence
 
