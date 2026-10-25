@@ -69,12 +69,13 @@ methodology:
   - "Three regions (us east, eu west, sgp). Each is a separate Railway service writing the same metric family with a region label, so the page can filter to a single edge or aggregate across all three."
   - "Latency is wall clock from request dispatch to last byte received, observed only on the happy path (HTTP 2xx and a parseable output amount). Failures land on dedicated counters (auth, throttle, no route, other) and pull the success gauge to 0."
   - "Native asset sentinel is the canonical 0xEeeeeEeee form. Uniswap uses 0x0000... and Bebop substitutes the wrapped equivalent on the sell side. The adapter normalises per provider."
-  - "Provider auth: three providers need a key (Mobula in an Authorization header, Route as a Bearer token, Uniswap in a vendor header), and KyberSwap, Bebop, LI.FI, CoW, ParaSwap, Nordstern and OpenOcean answer a bare request. Enso takes an optional key to widen its rate bucket and still reads unavailable here because every probe comes back throttled. The key is not what buys the low end of this table."
+  - "Provider auth: three providers need a key (Mobula in an Authorization header, Route as a Bearer token, Uniswap in a vendor header), and KyberSwap, Bebop, LI.FI, CoW, ParaSwap, Nordstern and OpenOcean answer a bare request. The key is not what buys the low end of this table."
 
 findings:
   - "{{best_name}} currently leads at {{best_p50}} across all chains and regions, across {{count}} measured providers. Rankings shift per chain tab: a provider's edge placement and per-chain engine split matter more than its global average."
   - "{{best_name}} leads at {{best_p50}} and {{worst_name}} trails at {{worst_p50}} on the identical basket. What the top of this table has in common is one HTTP round trip against a per-chain engine: no cross-chain route search, no solver auction, no maker network to poll."
   - "{{name:lifi}} is the breadth case at {{p50:lifi}}: its published tool list carries more than forty venues, including seven providers measured separately here, and that search is what the clock catches. {{name:nordstern}} reaches 121 chains and returns {{p50:nordstern}}, so coverage alone does not explain the slow end of this table."
+  - "Absent and why: 0x answers 403 You cannot consume this service, and Enso's free-plan credits are exhausted so every probe returns 429. Both were measured here until 2026-10-25 and both published a zero: the failure is our access, not their service, so neither is excluded on performance and neither is ranked last."
   - "Bebop is RFQ. The output amount it quotes is already net of fees because settlement is gasless for the taker. The latency you see is the maker network resolving the price, not a public mempool route search."
 
 faq:
@@ -252,29 +253,6 @@ providers:
         - region: ap-southeast
           p50: avg(ocb:evm_swap_quote_latency_ms:p50_24h{provider="cow", region="sgp"})
           series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="cow", region="sgp"}[1h])) by (le))
-
-  - slug: enso
-    name: Enso
-    tag: Anonymous shared bucket, success rate capped near 80 percent
-    formula: "Avg of per-(chain, region) 24h medians of evm_swap_quote_latency_ms{provider=enso}. Our free-plan key is out of credits, so every probe returns 429 and no latency is recorded. The row is unmeasured: our access, not their service."
-    queries:
-      p50: avg(ocb:evm_swap_quote_latency_ms:p50_24h{provider="enso"})
-      p90: avg(ocb:evm_swap_quote_latency_ms:p90_24h{provider="enso"})
-      p99: avg(ocb:evm_swap_quote_latency_ms:p99_24h{provider="enso"})
-      mean: sum(ocb:evm_swap_quote_latency_ms:sum_rate_24h{provider="enso"}) / sum(ocb:evm_swap_quote_latency_ms:count_rate_24h{provider="enso"})
-      success: avg(ocb:evm_swap_quote_success:avg_24h{provider="enso"})
-      sample_size: sum(ocb:evm_swap_quote_latency_ms:count_increase_24h{provider="enso"})
-      series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="enso"}[1h])) by (le))
-      regions:
-        - region: us-east
-          p50: avg(ocb:evm_swap_quote_latency_ms:p50_24h{provider="enso", region="us-east"})
-          series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="enso", region="us-east"}[1h])) by (le))
-        - region: eu-west
-          p50: avg(ocb:evm_swap_quote_latency_ms:p50_24h{provider="enso", region="eu-west"})
-          series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="enso", region="eu-west"}[1h])) by (le))
-        - region: ap-southeast
-          p50: avg(ocb:evm_swap_quote_latency_ms:p50_24h{provider="enso", region="sgp"})
-          series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="enso", region="sgp"}[1h])) by (le))
 
   - slug: paraswap
     name: ParaSwap

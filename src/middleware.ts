@@ -125,6 +125,7 @@ export const config = {
     "/alternatives/chainlink",
     "/alternatives/jupiter",
     "/alternatives/pyth",
+    "/products/enso",
     "/products/0x",
     "/products/blast",
     "/products/bitquery",

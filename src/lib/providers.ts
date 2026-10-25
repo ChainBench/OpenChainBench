@@ -883,7 +883,10 @@ const buildProvidersCached = unstable_cache(
   // REMOVED_PRODUCT_SLUGS now), and every aggregator that shares those two
   // boards is ranked against a cohort one smaller, which is printed on its
   // own product page and in its compare and answers copy.
-  ["providers-v20"],
+  // v21: Enso leaves bench 033 and so is measured nowhere, same as 0x at
+  // v20. /products/enso retires and the nine aggregators left on that
+  // board are ranked against a cohort one smaller again.
+  ["providers-v21"],
   // 900 s: the provider index feeds products / compare / answers, whose
   // numbers move slowly, and this revalidate is also the effective ISR
   // period of those ~500 pages (Next takes the min across a route's caches).
