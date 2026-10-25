@@ -23,7 +23,7 @@ Every benchmark ships with the harness that produces its data, under MIT, with t
 
 ## What this is not
 
-- Not a token, a fund, or an RPC vendor. We do not sell placement in a ranking, and a provider cannot change a conclusion or a figure. See Funding and links below for what we do earn from.
+- Not a token, a fund, or an RPC vendor.
 - Not editable by the measured. A provider may be shown the facts behind a report before it is published, and the staging site is public, so figures are visible before a release. Nobody outside the method can change a number.
 - Not a single-vendor view. Providers that cannot be measured under identical conditions are split into separate benchmarks, or filtered to the same scope, and the spec says which.
 
@@ -230,14 +230,6 @@ pnpm check            # validate, typecheck, lint, test
 - **Retirement, not deletion.** A retired benchmark answers `410 Gone` and keeps its entry, or redirects to its successor where one exists, so an indexed URL decays honestly instead of disappearing.
 - **No number without a timestamp.** Every JSON surface carries `asOf`, and `/api/freshness` returns the whole map as epoch milliseconds, so a reader can tell fresh from stale without asking us.
 - **A draft never quotes a figure.** If too few providers report, the page says it is awaiting samples instead of crowning a leader on thin data.
-
-## Funding and links
-
-No sponsor, investor or grant funds this project. What it earns is affiliate commission: some product pages link out to the provider they describe through an affiliate link, declared as `referralUrl` in [`src/data/provider-registry.ts`](./src/data/provider-registry.ts) and rendered with `rel="sponsored"` so a crawler sees what it is. The repository also registers the project for Optimism Retro Funding in [`funding.json`](./funding.json), which is a registration and not a payment received.
-
-Separately, and already written into the methodology of every keyed RPC benchmark: some providers in that cohort supplied the endpoints they are measured on. The spec names which providers and which plan, next to the figures.
-
-None of it reaches a measurement. An affiliate link is a display field, read in exactly one place, the outbound link on a product page. Every benchmark figure, which is to say every number on a leaderboard, comes from the PromQL in that benchmark's spec, evaluated against metrics produced by the harnesses in this repository. So a provider cannot buy a rank, and deleting every affiliate link would not change a value on a leaderboard.
 
 ## Cite this
 
