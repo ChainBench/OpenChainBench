@@ -436,6 +436,13 @@ export const REMOVED_PRODUCT_SLUGS = new Set([
   // the provider in getProviders() output while the page 404s; 410 guard
   // + sitemap exclusion stop the smoke-gate rollback until Redis flushes.
   "goldrush",
+  // enso left bench 033 on 2026-10-25, its only board, for the same reason
+  // as 0x below: a free-plan key out of credits (429 credit_quota_exceeded).
+  // It is measured nowhere now, so getProvider returns nothing and
+  // /products/enso 404s; it was a 200 in the sitemap. A registry entry is
+  // NOT enough to keep a product page alive: only PERP_VENUE_SEED and
+  // REGISTRY_STUB_SEED do that, and enso is in neither.
+  "enso",
   // 0x left benches 304 and 033 on 2026-10-25, so it is measured nowhere
   // and getProvider("0x") returns nothing: the page 404s instead of 410ing,
   // and /products/0x was a 200 listed in the sitemap. Same shape as the

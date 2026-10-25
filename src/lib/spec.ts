@@ -520,7 +520,10 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // LOSING one, and a stale entry would keep drawing a declared provider
   // that no longer exists in the spec. Both benches declare a chain
   // dimension, so bench-filters moves with this one.
-  ["bench-unfiltered-v100", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v101: Enso leaves bench 033, the second provider in two days off that
+  // board for a dead credential (0x at v100). 033 declares a chain
+  // dimension, so bench-filters moves with this one.
+  ["bench-unfiltered-v101", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -776,7 +779,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // this would still list a bench that no longer exists).
   // v91: lockstep with bench-unfiltered-v98 (Robinhood Chain on l1-finality).
   // v93: lockstep with bench-unfiltered-v100 (0x leaves benches 304 and 033).
-  ["all-benchmarks-v93", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v94: lockstep with bench-unfiltered-v101 (Enso leaves bench 033).
+  ["all-benchmarks-v94", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -903,7 +907,10 @@ const loadBenchmarkFiltered = unstable_cache(
   // v41: lockstep with bench-unfiltered-v100. Benches 304 and 033 both
   // declare a chain dimension, so every per-chain variant caches its own
   // copy of the provider set and a stale entry keeps 0x on each tab.
-  ["bench-filters-v41", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v42: lockstep with bench-unfiltered-v101. 033 declares a chain
+  // dimension, so each per-chain variant caches its own provider set and a
+  // stale entry keeps Enso on all four tabs it published on.
+  ["bench-filters-v42", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 
