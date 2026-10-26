@@ -53,7 +53,8 @@ methodology:
   - "Time is the sum of the two legs' own quoted durations, which is what each rail says the swap will take, not a measured settlement."
   - "A negative round trip is counted and not published. It means the two pool prices disagree in the user's favour on that tick, which is a real reading but not a cost."
   - "Rails are included only when their asset list, read from the venue itself, actually carries the asset. Chainflip is absent because it carries no privacy asset: its own endpoint refuses ZEC, XMR and DASH while quoting Solana and Bitcoin normally, so the absence is measured rather than assumed."
-  - "THORChain is absent because it was unreachable on twelve public hosts, including one whose TLS certificate expired on 2024-02-07. It is a gap in our access, not a judgement of the venue, and it will be added when a live endpoint exists."
+  - "THORChain was absent from the first version of this board because twelve hostnames were tried and none existed. The working endpoint came from the Cosmos chain-registry, which the chain's own operators maintain, and the absence was ours rather than the venue's. It is measured here now."
+  - "THORChain streams large swaps, splitting them into hundreds of sub-swaps across many blocks to cut slippage, so its cost and its time have to be read together. At the largest size measured it quoted a fifth of Maya's cost and spent about nineteen minutes streaming to get there, while Maya streams nothing. The streaming seconds are published beside the cost for that reason."
 
 findings:
   - "{{best_name}} loses the least at the selected size, {{best_p50}}, while {{worst_name}} loses {{worst_p50}}. The leader is not the same at every size: a rail with a thin pool can win on a small trade and lose badly on a large one, so the tab you pick changes the answer rather than just the numbers."
@@ -68,7 +69,7 @@ faq:
   - q: "Is a quoted cost the same as what I would actually pay?"
     a: "No, and the difference matters. These are quotes, not settled swaps: the harness has no wallet and signs nothing. A rail that quotes better than it settles would look good here. The quoted duration is published next to the cost for that reason, so a rail promising a fast cheap swap can at least be held to its own estimate."
   - q: "Which rails are missing and why?"
-    a: "Chainflip carries no privacy asset at all, confirmed against its own endpoint while control requests for Solana and Bitcoin succeed. THORChain was unreachable on twelve public hosts when this board was built. Monero is absent from every quoting rail measured, so it is covered separately rather than forced into this comparison."
+    a: "Chainflip carries no privacy asset at all, confirmed against its own endpoint while control requests for Solana and Bitcoin succeed. THORChain is measured here; it was missing from the first version of the board because the hostnames tried did not exist, which was our failure and not the venue's. Monero is absent from every quoting rail measured, so it is covered separately rather than forced into this comparison."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/privacy-rails
 
@@ -113,6 +114,19 @@ providers:
       sample_size: count_over_time(privacy_round_trip_bps{rail="maya",asset="ZEC.ZEC",bucket="all"}[24h])
       series: privacy_round_trip_bps{rail="maya",asset="ZEC.ZEC",bucket="all"}
       success: 100 * sum(rate(privacy_probe_total{rail="maya",probe="round_trip",outcome="ok"}[24h])) / sum(rate(privacy_probe_total{rail="maya",probe="round_trip"}[24h]))
+
+  - slug: thorchain
+    name: THORChain
+    tag: "No key, carries ZEC, streams large swaps to cut slippage"
+    formula: "24h median of the basis points lost on a chained BTC to ZEC to BTC quote at the selected size, from THORChain's own quote endpoint."
+    queries:
+      p50: quantile_over_time(0.50, privacy_round_trip_bps{rail="thorchain",asset="ZEC.ZEC",bucket="all"}[24h])
+      p90: quantile_over_time(0.90, privacy_round_trip_bps{rail="thorchain",asset="ZEC.ZEC",bucket="all"}[24h])
+      p99: quantile_over_time(0.99, privacy_round_trip_bps{rail="thorchain",asset="ZEC.ZEC",bucket="all"}[24h])
+      mean: avg_over_time(privacy_round_trip_bps{rail="thorchain",asset="ZEC.ZEC",bucket="all"}[24h])
+      sample_size: count_over_time(privacy_round_trip_bps{rail="thorchain",asset="ZEC.ZEC",bucket="all"}[24h])
+      series: privacy_round_trip_bps{rail="thorchain",asset="ZEC.ZEC",bucket="all"}
+      success: 100 * sum(rate(privacy_probe_total{rail="thorchain",probe="round_trip",outcome="ok"}[24h])) / sum(rate(privacy_probe_total{rail="thorchain",probe="round_trip"}[24h]))
 
   - slug: near-intents
     name: NEAR Intents
