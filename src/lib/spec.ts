@@ -538,7 +538,11 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // v105: bench 306 gains THORChain, a rail its harness had been measuring
   // for hours while the spec declared two. 306 declares a bucket dimension,
   // so bench-filters moves with this one.
-  ["bench-unfiltered-v105", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v106: bench 307 gains THORChain and, more importantly, zero_is_a_value.
+  // Its rows for every rail that REFUSES a shielded address were being
+  // dropped as no-value, so the board published only the rail that accepts,
+  // which is the opposite of what it measured.
+  ["bench-unfiltered-v106", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -799,7 +803,9 @@ const loadAllBenchmarksCached = unstable_cache(
   // v96: lockstep with bench-unfiltered-v103 (benches 307 and 301 arrive).
   // v97: lockstep with bench-unfiltered-v104 (bench 308 arrives).
   // v98: lockstep with bench-unfiltered-v105 (bench 306 gains a third rail).
-  ["all-benchmarks-v98", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v99: lockstep with bench-unfiltered-v106 (bench 307 gains a row and
+  // stops dropping its zeros).
+  ["all-benchmarks-v99", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);

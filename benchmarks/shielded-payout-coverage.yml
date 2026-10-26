@@ -10,6 +10,11 @@ metric: Shielded payouts accepted
 unit: pct
 row_noun: { one: rail, many: rails }
 higher_is_better: true
+# A zero here is the finding, not a missing reading. Without this the rows
+# for every rail that REFUSES a shielded address disappear, and the board
+# publishes only the one that accepts, which says the opposite of what it
+# measured.
+zero_is_a_value: true
 
 seo_intro: |
   A swap into Zcash is only private if the coins land somewhere private. Most
@@ -52,7 +57,7 @@ methodology:
 
 findings:
   - "{{best_name}} accepts a shielded destination on {{best_p50}} of the source chains measured, {{worst_name}} on {{worst_p50}}. The split is not about which rail cares more about privacy."
-  - "The refusal is mechanical. A rail that carries the destination in the deposit memo is bounded by the source chain's data field: Bitcoin's OP_RETURN holds 80 bytes and a unified address is 141 characters before the memo's own prefix, so it cannot fit by arithmetic. A rail that takes the recipient in a request body has no such limit."
+  - "Two of the three rails measured refuse, and both carry the destination in the deposit memo. The refusal is mechanical rather than a policy: such a rail is bounded by the source chain's data field: Bitcoin's OP_RETURN holds 80 bytes and a unified address is 141 characters before the memo's own prefix, so it cannot fit by arithmetic. A rail that takes the recipient in a request body has no such limit."
   - "This is the step most guides skip. A rail that pays only to a transparent address has not made your swap private, it has moved the problem to a shielding transaction you still have to make."
 
 faq:
@@ -98,6 +103,18 @@ providers:
       mean: 100 * sum(privacy_shielded_payout_accepted{rail="near-intents"}) / sum(privacy_transparent_payout_accepted{rail="near-intents"})
       sample_size: sum(privacy_transparent_payout_accepted{rail="near-intents"})
       success: 100 * sum(rate(privacy_probe_total{rail="near-intents",probe="delivery",outcome="ok"}[24h])) / sum(rate(privacy_probe_total{rail="near-intents",probe="delivery"}[24h]))
+
+  - slug: thorchain
+    name: THORChain
+    tag: "Destination rides in the deposit memo, the same ceiling as Maya"
+    formula: "Share of source chains, among those where the transparent control was accepted, on which a checksum-valid shielded unified address was also accepted."
+    queries:
+      p50: 100 * sum(privacy_shielded_payout_accepted{rail="thorchain"}) / sum(privacy_transparent_payout_accepted{rail="thorchain"})
+      p90: 100 * sum(privacy_shielded_payout_accepted{rail="thorchain"}) / sum(privacy_transparent_payout_accepted{rail="thorchain"})
+      p99: 100 * sum(privacy_shielded_payout_accepted{rail="thorchain"}) / sum(privacy_transparent_payout_accepted{rail="thorchain"})
+      mean: 100 * sum(privacy_shielded_payout_accepted{rail="thorchain"}) / sum(privacy_transparent_payout_accepted{rail="thorchain"})
+      sample_size: sum(privacy_transparent_payout_accepted{rail="thorchain"})
+      success: 100 * sum(rate(privacy_probe_total{rail="thorchain",probe="delivery",outcome="ok"}[24h])) / sum(rate(privacy_probe_total{rail="thorchain",probe="delivery"}[24h]))
 
   - slug: maya
     name: Maya Protocol

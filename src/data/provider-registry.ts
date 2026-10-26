@@ -111,6 +111,37 @@ export type ProviderRegistryEntry = {
 };
 
 export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
+  xmr: {
+    url: "https://www.getmonero.org",
+    description:
+      "Privacy chain using ring signatures, stealth addresses and confidential amounts, where every transaction is private by default rather than by choice.",
+  },
+  firo: {
+    url: "https://firo.org",
+    description:
+      "Privacy chain built on the Lelantus Spark protocol, offering direct anonymous payments without a trusted setup.",
+  },
+  pivx: {
+    url: "https://pivx.org",
+    description:
+      "Proof-of-stake chain with optional shielded transactions based on the Sapling protocol.",
+  },
+  wow: {
+    url: "https://wownero.org",
+    description:
+      "A Monero fork with no premine and a fixed supply, sharing Monero's ring signature and stealth address privacy.",
+  },
+  part: {
+    url: "https://particl.io",
+    description:
+      "Privacy-focused chain and marketplace offering transparent, blind and anonymous transaction modes on the same ledger.",
+  },
+  "part-blind": {
+    url: "https://particl.io",
+    description:
+      "Particl's blind transaction mode, which hides amounts using Confidential Transactions on the same chain as its transparent mode.",
+  },
+
   maya: {
     url: "https://www.mayaprotocol.com",
     description:
