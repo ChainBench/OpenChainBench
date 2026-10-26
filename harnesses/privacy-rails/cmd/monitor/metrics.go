@@ -58,12 +58,13 @@ var (
 	// Health. A board that cannot tell "the rail is slow" from "our prober
 	// failed" publishes the prober's health as the provider's, which this
 	// repo has also shipped before.
-	probeTotal   *prometheus.CounterVec
-	lastSuccess  *prometheus.GaugeVec
-	poolDepth    *prometheus.GaugeVec
-	quoteOut     *prometheus.GaugeVec
-	quoteEta     *prometheus.GaugeVec
-	registerOnce bool
+	probeTotal    *prometheus.CounterVec
+	lastSuccess   *prometheus.GaugeVec
+	poolDepth     *prometheus.GaugeVec
+	quoteOut      *prometheus.GaugeVec
+	streamSeconds *prometheus.GaugeVec
+	quoteEta      *prometheus.GaugeVec
+	registerOnce  bool
 )
 
 func initMetrics() {
@@ -145,6 +146,17 @@ func initMetrics() {
 		Name: "privacy_last_success_timestamp_seconds",
 		Help: "Unix time of the last successful probe per rail and probe kind. A board reading a 24h median with a stale stamp here is reading a frozen feed.",
 	}, []string{"rail", "probe"})
+
+	// A rail can buy a cheap price with time, and the board must say so or
+	// it compares two different trades. THORChain quoted a size worth about
+	// a third of its ZEC pool at 61.7 bps round trip, which no AMM does at
+	// that fraction: the response carries streaming_swap_blocks 96 and
+	// max_streaming_quantity 286, so the swap is split into hundreds of
+	// sub-swaps. The slippage is real and it was paid in seconds.
+	streamSeconds = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "privacy_streaming_swap_seconds",
+		Help: "Seconds the rail will spend streaming the swap in sub-swaps to cut slippage. 0 means the swap is not streamed.",
+	}, []string{"rail", "asset", "bucket", "region"})
 
 	quoteOut = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "privacy_quote_out_asset",

@@ -101,15 +101,31 @@ func publishPooled(rail, asset, region string, costs, secs []float64) {
 		probeTotal.WithLabelValues(rail, "round_trip", "too_few_tiers_to_pool").Inc()
 		return
 	}
-	med := func(xs []float64) float64 {
-		c := append([]float64(nil), xs...)
-		sort.Float64s(c)
-		return c[len(c)/2]
-	}
+	med := medianOf
 	roundTripBps.WithLabelValues(rail, asset, "all", region).Set(med(costs))
 	if len(secs) >= 2 {
 		roundTripSec.WithLabelValues(rail, asset, "all", region).Set(med(secs))
 	}
+}
+
+// medianOf is a true median, including on an even count.
+//
+// The first version of the pooled series returned c[len(c)/2], which on two
+// values is the LARGER one. The exit-cost probe publishes exactly two tiers,
+// so its "All sizes" row was the $10k figure wearing a pooled label: 2,055
+// bps where the median of 223 and 2,055 is 1,139. One rail, one asset, and
+// the headline of a board was the worst case relabelled as typical.
+func medianOf(xs []float64) float64 {
+	c := append([]float64(nil), xs...)
+	sort.Float64s(c)
+	n := len(c)
+	if n == 0 {
+		return 0
+	}
+	if n%2 == 1 {
+		return c[n/2]
+	}
+	return (c[n/2-1] + c[n/2]) / 2
 }
 
 const evmRefund = "0x0000000000000000000000000000000000000001"
