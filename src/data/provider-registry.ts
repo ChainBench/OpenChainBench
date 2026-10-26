@@ -111,6 +111,22 @@ export type ProviderRegistryEntry = {
 };
 
 export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
+  maya: {
+    url: "https://www.mayaprotocol.com",
+    description:
+      "Cross-chain liquidity protocol forked from THORChain, settling native swaps between Bitcoin, Ethereum, Dash, Zcash and others without wrapped assets. Its ZEC pool carried about half the protocol's volume in October 2026.",
+  },
+  dash: {
+    url: "https://www.dash.org",
+    description:
+      "Payments-focused fork of Bitcoin with a masternode layer, offering optional coin mixing through CoinJoin and near-instant settlement via InstantSend.",
+  },
+  zec: {
+    url: "https://z.cash",
+    description:
+      "Privacy chain using zk-SNARKs, where balances can be held transparently or in a shielded pool. Shielded addresses and amounts never appear on the public ledger.",
+  },
+
   // Rollup-as-a-service operator. Runs the Katana public RPC that Katana's own
   // network documentation lists alongside the official and Tenderly endpoints.
   conduit: {
