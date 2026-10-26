@@ -17,6 +17,7 @@ type mayaQuote struct {
 	ExpectedAmountOut string `json:"expected_amount_out"`
 	TotalSwapSeconds  int    `json:"total_swap_seconds"`
 	OutboundDelay     int    `json:"outbound_delay_seconds"`
+	StreamingSeconds  int    `json:"streaming_swap_seconds"`
 	InboundAddress    string `json:"inbound_address"`
 	Error             string `json:"error"`
 	Fees              struct {
@@ -92,6 +93,10 @@ func probeMayaRoundTrip(cfg *Config, asset string) {
 		roundTripBps.WithLabelValues(lbl...).Set(lost)
 		eta := float64(in.TotalSwapSeconds + back.TotalSwapSeconds)
 		roundTripSec.WithLabelValues(lbl...).Set(eta)
+		// Published for Maya too, where it reads 0. A zero here is the
+		// statement that this rail did NOT stream, which is what makes the
+		// other rail's low cost readable instead of suspicious.
+		streamSeconds.WithLabelValues(lbl...).Set(float64(in.StreamingSeconds + back.StreamingSeconds))
 		costs = append(costs, lost)
 		secs = append(secs, eta)
 		probeTotal.WithLabelValues("maya", "round_trip", "ok").Inc()

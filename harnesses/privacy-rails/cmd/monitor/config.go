@@ -19,6 +19,7 @@ type Config struct {
 	MayaBase     string
 	MayaMidgard  string
 	OneClickBase string
+	ThorBase     string
 	XmrListURL   string
 
 	// Destinations used for the delivery test. Both are checksum-verified
@@ -52,7 +53,12 @@ func loadEnv() (*Config, error) {
 		MayaBase:     envStr("MAYA_BASE", "https://mayanode.mayachain.info"),
 		MayaMidgard:  envStr("MAYA_MIDGARD", "https://midgard.mayachain.info"),
 		OneClickBase: envStr("ONECLICK_BASE", "https://1click.chaindefuser.com"),
-		XmrListURL:   envStr("XMR_LIST_URL", "https://api.unstoppableswap.net/api/list"),
+		// From the Cosmos chain-registry, which THORChain's own operators
+		// maintain. Twelve invented hostnames failed DNS before this one was
+		// read from a registry; the override exists so the next operator
+		// change costs a variable rather than another round of guessing.
+		ThorBase:   envStr("THOR_BASE", "https://gateway.liquify.com/chain/thorchain_api"),
+		XmrListURL: envStr("XMR_LIST_URL", "https://api.unstoppableswap.net/api/list"),
 
 		// Maya's own ZEC inbound address, handed over by its quote endpoint
 		// and base58check-verified. Using an address the rail itself uses
