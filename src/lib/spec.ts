@@ -535,7 +535,10 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // moves too.
   // v104: bench 308 arrives with seven providers. No dimensions, so
   // bench-filters stays put this time.
-  ["bench-unfiltered-v104", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v105: bench 306 gains THORChain, a rail its harness had been measuring
+  // for hours while the spec declared two. 306 declares a bucket dimension,
+  // so bench-filters moves with this one.
+  ["bench-unfiltered-v105", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -795,7 +798,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v95: lockstep with bench-unfiltered-v102 (bench 306 arrives).
   // v96: lockstep with bench-unfiltered-v103 (benches 307 and 301 arrive).
   // v97: lockstep with bench-unfiltered-v104 (bench 308 arrives).
-  ["all-benchmarks-v97", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v98: lockstep with bench-unfiltered-v105 (bench 306 gains a third rail).
+  ["all-benchmarks-v98", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -930,7 +934,9 @@ const loadBenchmarkFiltered = unstable_cache(
   // default tab.
   // v44: lockstep with bench-unfiltered-v103. Bench 301 declares a bucket
   // dimension, so its two size tabs are filtered variants.
-  ["bench-filters-v44", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v45: lockstep with bench-unfiltered-v105. Without it the new row is
+  // invisible on every size tab but the default.
+  ["bench-filters-v45", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 
