@@ -465,6 +465,21 @@ scrape_configs:
   # and BSC. Three regions write the same metric family with a `region`
   # label - honor_labels keeps each replica's region intact so the bench
   # page filter on region works.
+  # OpenChainBench bench 306 - privacy rails. Quote-only probe: cost and
+  # time of going into a privacy asset and back, and which rails accept a
+  # shielded Zcash destination. One region for now; the service builds from
+  # dev because the bench it feeds is deliberately held out of production
+  # until it has a day of data, so there is nothing on prod for a dev build
+  # to get ahead of.
+  - job_name: 'privacy-rails'
+    honor_labels: true
+    static_configs:
+      - targets:
+        - 'privacy-rails-us.railway.internal:2112'
+        labels:
+          benchmark: privacy-round-trip
+    metrics_path: /metrics
+
   - job_name: 'evm-quote-latency'
     honor_labels: true
     static_configs:
