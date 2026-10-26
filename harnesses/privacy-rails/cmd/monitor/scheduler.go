@@ -33,6 +33,10 @@ func runScheduler(cfg *Config, stop <-chan struct{}) {
 		}
 		probeMayaDepth(cfg, mayaAssets)
 
+		// NEAR Intents round trip: USDC in, ZEC, USDC back. Both legs
+		// quote, verified on 2026-10-26 at 63 bps and 607 s for $1k.
+		probeNearRoundTrip(cfg)
+
 		if shieldedReady {
 			probeOneClick(cfg)
 			// Maya's refusal is the other half of the finding, so it is

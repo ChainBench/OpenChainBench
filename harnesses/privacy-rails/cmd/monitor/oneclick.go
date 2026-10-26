@@ -46,6 +46,29 @@ type oneClickResp struct {
 	Message string `json:"message"`
 }
 
+// oneClickLeg is the general form: either direction, with the recipient and
+// the refund address given explicitly. refundTo must be on the ORIGIN chain,
+// which is the detail that makes the return leg work.
+func oneClickLeg(cfg *Config, origin, dest, amount, recipient, refundTo string) (*oneClickResp, int, error) {
+	body := oneClickReq{
+		Dry:               true,
+		SwapType:          "EXACT_INPUT",
+		Deadline:          time.Now().UTC().Add(30 * time.Minute).Format("2006-01-02T15:04:05.000Z"),
+		SlippageTolerance: 100,
+		OriginAsset:       origin,
+		DestinationAsset:  dest,
+		Amount:            amount,
+		Recipient:         recipient,
+		RefundTo:          refundTo,
+		RefundType:        "ORIGIN_CHAIN",
+		DepositType:       "ORIGIN_CHAIN",
+		RecipientType:     "DESTINATION_CHAIN",
+	}
+	var out oneClickResp
+	code, err := postJSON(cfg.OneClickBase+"/v0/quote", body, &out)
+	return &out, code, err
+}
+
 func oneClickQuote(cfg *Config, recipient, amount string) (*oneClickResp, int, error) {
 	body := oneClickReq{
 		Dry:               true,
