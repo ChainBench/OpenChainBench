@@ -21,6 +21,7 @@ type Config struct {
 	OneClickBase string
 	ThorBase     string
 	XmrListURL   string
+	BasicSwapURL string
 
 	// Destinations used for the delivery test. Both are checksum-verified
 	// before use, in addresses.go, and the harness refuses to publish a
@@ -59,6 +60,9 @@ func loadEnv() (*Config, error) {
 		// change costs a variable rather than another round of guessing.
 		ThorBase:   envStr("THOR_BASE", "https://gateway.liquify.com/chain/thorchain_api"),
 		XmrListURL: envStr("XMR_LIST_URL", "https://api.unstoppableswap.net/api/list"),
+		// Not on basicswapdex.com: the book lives on a separate markets
+		// host, which is why probing the project domain found nothing.
+		BasicSwapURL: envStr("BASICSWAP_URL", "https://markets.basicswapdex.com/orderbook.json"),
 
 		// Maya's own ZEC inbound address, handed over by its quote endpoint
 		// and base58check-verified. Using an address the rail itself uses

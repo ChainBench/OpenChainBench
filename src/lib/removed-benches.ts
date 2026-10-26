@@ -145,6 +145,16 @@ export const REMOVED_ANSWER_SLUGS = new Set([
  * Moving a bench to production = remove its slug here.
  */
 export const DEV_ONLY_BENCH_SLUGS = new Set([
+  // 308 privacy coin books: same gate, and one extra reason. Four of its
+  // seven rows had exactly ONE maker when it was written (dash, firo, pivx,
+  // part-blind), so the board is one person's decision away from changing
+  // shape. That is the finding, but it needs more than a few hours of
+  // samples before a 24h figure means anything.
+  //
+  // Un-gate condition: a day of data, and the maker counts holding their
+  // order of magnitude across it. Measured 2026-10-26: Monero 51 makers
+  // across two venues, everything else 1 to 6.
+  "privacy-coin-books",
   // 307 shielded payout coverage and 301 privacy exit cost: same gate and
   // the same reason as 306 below. Both read series the probe only started
   // publishing today, so a 24h window is a window over a few hours.

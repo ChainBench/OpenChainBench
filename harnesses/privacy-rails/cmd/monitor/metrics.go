@@ -42,11 +42,18 @@ var (
 	// The Monero maker book is an over-the-counter order book, not a quote
 	// rail, so it gets its own family and must never share a ranking with
 	// the three above.
-	xmrMakers     prometheus.Gauge
-	xmrDispersion prometheus.Gauge
-	xmrBestPrice  prometheus.Gauge
-	xmrMinSize    prometheus.Gauge
-	xmrMaxSize    prometheus.Gauge
+	// One family for every peer-to-peer book, keyed by venue and coin.
+	// These were unlabelled singletons, which is exactly why a board could
+	// not be built on them: a bench needs rows keyed by a label, and an
+	// unlabelled gauge is one row at best.
+	bookMakers     *prometheus.GaugeVec
+	bookOffers     *prometheus.GaugeVec
+	bookPairs      *prometheus.GaugeVec
+	bookSize       *prometheus.GaugeVec
+	bookDispersion *prometheus.GaugeVec
+	bookBestPrice  *prometheus.GaugeVec
+	bookMinSize    *prometheus.GaugeVec
+	bookMaxSize    *prometheus.GaugeVec
 
 	// Health. A board that cannot tell "the rail is slow" from "our prober
 	// failed" publishes the prober's health as the provider's, which this
@@ -96,26 +103,39 @@ func initMetrics() {
 		Help: "Refusals of a shielded destination, by the reason the rail gave.",
 	}, []string{"rail", "source_chain", "reason"})
 
-	xmrMakers = promauto.NewGauge(prometheus.GaugeOpts{
-		Name: "privacy_xmr_maker_count",
-		Help: "Makers currently quoting BTC to XMR atomic swaps.",
-	})
-	xmrDispersion = promauto.NewGauge(prometheus.GaugeOpts{
-		Name: "privacy_xmr_price_dispersion_pct",
-		Help: "Spread between the best and worst maker quote, as a percent of the median.",
-	})
-	xmrBestPrice = promauto.NewGauge(prometheus.GaugeOpts{
-		Name: "privacy_xmr_best_sat_per_xmr",
-		Help: "Best maker price in satoshi per XMR.",
-	})
-	xmrMinSize = promauto.NewGauge(prometheus.GaugeOpts{
-		Name: "privacy_xmr_min_swap_sat",
-		Help: "Smallest swap any maker will take, in satoshi.",
-	})
-	xmrMaxSize = promauto.NewGauge(prometheus.GaugeOpts{
-		Name: "privacy_xmr_max_swap_sat",
-		Help: "Largest swap any maker will take, in satoshi.",
-	})
+	lbl := []string{"venue", "coin"}
+	bookMakers = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "privacy_book_maker_count",
+		Help: "Distinct makers with a live offer for this coin. The column that separates a market from one person's standing order.",
+	}, lbl)
+	bookOffers = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "privacy_book_live_offers",
+		Help: "Live, unexpired offers touching this coin.",
+	}, lbl)
+	bookPairs = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "privacy_book_pairs",
+		Help: "Distinct trading pairs this coin appears in.",
+	}, lbl)
+	bookSize = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "privacy_book_size_offered",
+		Help: "Whole coins on offer, summed from the feed's own formatted amounts rather than from raw units, because these coins do not share a decimal count.",
+	}, lbl)
+	bookDispersion = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "privacy_book_price_dispersion_pct",
+		Help: "Spread between the best and worst maker price, as a percent of the median. Needs at least two makers.",
+	}, lbl)
+	bookBestPrice = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "privacy_book_best_price",
+		Help: "Best maker price, in the venue's own unit.",
+	}, lbl)
+	bookMinSize = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "privacy_book_min_swap",
+		Help: "Smallest swap any maker will take, in the venue's own unit.",
+	}, lbl)
+	bookMaxSize = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "privacy_book_max_swap",
+		Help: "Largest swap any maker will take, in the venue's own unit.",
+	}, lbl)
 
 	probeTotal = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "privacy_probe_total",

@@ -53,6 +53,7 @@ func runScheduler(cfg *Config, stop <-chan struct{}) {
 		}
 
 		probeXmr(cfg)
+		probeBasicSwap(cfg)
 	}
 
 	tick()

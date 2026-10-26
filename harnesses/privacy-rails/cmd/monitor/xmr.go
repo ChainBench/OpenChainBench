@@ -68,7 +68,8 @@ func probeXmr(cfg *Config) {
 		}
 	}
 
-	xmrMakers.Set(float64(live))
+	bookMakers.WithLabelValues("unstoppableswap", "XMR").Set(float64(live))
+	bookOffers.WithLabelValues("unstoppableswap", "XMR").Set(float64(live))
 	if live == 0 {
 		probeTotal.WithLabelValues("unstoppableswap", "maker_book", "empty").Inc()
 		return
@@ -78,20 +79,20 @@ func probeXmr(cfg *Config) {
 		sort.Float64s(prices)
 		med := prices[len(prices)/2]
 		if med > 0 {
-			xmrDispersion.Set((prices[len(prices)-1] - prices[0]) / med * 100)
+			bookDispersion.WithLabelValues("unstoppableswap", "XMR").Set((prices[len(prices)-1] - prices[0]) / med * 100)
 		}
 		// "Best" for a buyer of XMR is the lowest satoshi-per-XMR price.
-		xmrBestPrice.Set(prices[0])
+		bookBestPrice.WithLabelValues("unstoppableswap", "XMR").Set(prices[0])
 	} else {
 		probeTotal.WithLabelValues("unstoppableswap", "maker_book", "too_few_for_dispersion").Inc()
 	}
 	if len(mins) > 0 {
 		sort.Float64s(mins)
-		xmrMinSize.Set(mins[0])
+		bookMinSize.WithLabelValues("unstoppableswap", "XMR").Set(mins[0])
 	}
 	if len(maxs) > 0 {
 		sort.Float64s(maxs)
-		xmrMaxSize.Set(maxs[len(maxs)-1])
+		bookMaxSize.WithLabelValues("unstoppableswap", "XMR").Set(maxs[len(maxs)-1])
 	}
 	probeTotal.WithLabelValues("unstoppableswap", "maker_book", "ok").Inc()
 	lastSuccess.WithLabelValues("unstoppableswap", "maker_book").Set(float64(time.Now().Unix()))
