@@ -1,7 +1,7 @@
 slug: privacy-round-trip
 number: "306"
 title: Privacy round trip cost, what going into Zcash and back loses
-seo_title: "Privacy round trip cost: Zcash and Dash entry and exit in 2026"
+seo_title: "Privacy round trip cost: Zcash and Dash in and out"
 seo_description: "{{best_name}} loses the least on a round trip into a privacy asset and back, {{best_p50}} at the measured size. {{declared_count}} rails compared."
 subtitle: "Basis points and minutes lost converting a liquid asset into a privacy asset and back out, on non-custodial rails, at three sizes."
 category: Bridges
@@ -48,6 +48,7 @@ abstract: |
 
 methodology:
   - "The two rails do not start from the same asset, because forcing one on both would mean quoting a pair one of them serves badly. The size tier is the shared axis and each rail sends its own: Maya sends 0.001, 0.01 and 0.1 BTC, NEAR Intents sends 100, 1,000 and 10,000 USDC on Base. The published figure is basis points of round-trip loss, which is unit-free and therefore comparable across both."
+  - "The All sizes tab is the median of the tiers measured on the same tick, not a fourth size and not an average: it is the one summary that does not privilege a trade size. Nothing is pooled from fewer than two tiers."
   - "A tier label is an approximation. The BTC amounts are fixed in BTC rather than re-derived from a price each tick, so the dollar value of Maya's rungs drifts with the BTC price while the tier name does not. The exact amounts are above and in the harness."
   - "Time is the sum of the two legs' own quoted durations, which is what each rail says the swap will take, not a measured settlement."
   - "A negative round trip is counted and not published. It means the two pool prices disagree in the user's favour on that tick, which is a real reading but not a cost."
@@ -78,6 +79,7 @@ prometheus:
 
 dimensions:
   bucket:
+    - { value: all, label: All sizes }
     - { value: usd100, label: About $100 }
     - { value: usd1k, label: About $1k }
     - { value: usd10k, label: About $10k }
@@ -85,11 +87,11 @@ dimensions:
 metric_panels:
   - id: trip_seconds
     label: Round trip time
-    metric: quantile_over_time(0.50, privacy_round_trip_seconds{bucket="usd1k"}[24h])
+    metric: quantile_over_time(0.50, privacy_round_trip_seconds{bucket="all"}[24h])
     label_key: rail
     unit: s
     higher_is_better: false
-    description: "Both legs' quoted duration added together, 24h median, at the $1k tier."
+    description: "Both legs' quoted duration added together, 24h median of the median across the measured sizes."
   - id: pool_depth
     label: Pool depth
     metric: avg_over_time(privacy_pool_depth_asset{}[24h])
@@ -104,12 +106,12 @@ providers:
     tag: "No key, carries ZEC and DASH, destination rides in the deposit memo"
     formula: "24h median of the basis points lost on a chained BTC to ZEC to BTC quote at the selected size, from Maya's own quote endpoint."
     queries:
-      p50: quantile_over_time(0.50, privacy_round_trip_bps{rail="maya",asset="ZEC.ZEC"}[24h])
-      p90: quantile_over_time(0.90, privacy_round_trip_bps{rail="maya",asset="ZEC.ZEC"}[24h])
-      p99: quantile_over_time(0.99, privacy_round_trip_bps{rail="maya",asset="ZEC.ZEC"}[24h])
-      mean: avg_over_time(privacy_round_trip_bps{rail="maya",asset="ZEC.ZEC"}[24h])
-      sample_size: count_over_time(privacy_round_trip_bps{rail="maya",asset="ZEC.ZEC"}[24h])
-      series: privacy_round_trip_bps{rail="maya",asset="ZEC.ZEC"}
+      p50: quantile_over_time(0.50, privacy_round_trip_bps{rail="maya",asset="ZEC.ZEC",bucket="all"}[24h])
+      p90: quantile_over_time(0.90, privacy_round_trip_bps{rail="maya",asset="ZEC.ZEC",bucket="all"}[24h])
+      p99: quantile_over_time(0.99, privacy_round_trip_bps{rail="maya",asset="ZEC.ZEC",bucket="all"}[24h])
+      mean: avg_over_time(privacy_round_trip_bps{rail="maya",asset="ZEC.ZEC",bucket="all"}[24h])
+      sample_size: count_over_time(privacy_round_trip_bps{rail="maya",asset="ZEC.ZEC",bucket="all"}[24h])
+      series: privacy_round_trip_bps{rail="maya",asset="ZEC.ZEC",bucket="all"}
       success: 100 * sum(rate(privacy_probe_total{rail="maya",probe="round_trip",outcome="ok"}[24h])) / sum(rate(privacy_probe_total{rail="maya",probe="round_trip"}[24h]))
 
   - slug: near-intents
@@ -117,10 +119,10 @@ providers:
     tag: "No key, carries ZEC, recipient travels in the request body"
     formula: "24h median of the basis points lost on a chained quote into ZEC and back, from the 1Click quote endpoint."
     queries:
-      p50: quantile_over_time(0.50, privacy_round_trip_bps{rail="near-intents",asset="ZEC.ZEC"}[24h])
-      p90: quantile_over_time(0.90, privacy_round_trip_bps{rail="near-intents",asset="ZEC.ZEC"}[24h])
-      p99: quantile_over_time(0.99, privacy_round_trip_bps{rail="near-intents",asset="ZEC.ZEC"}[24h])
-      mean: avg_over_time(privacy_round_trip_bps{rail="near-intents",asset="ZEC.ZEC"}[24h])
-      sample_size: count_over_time(privacy_round_trip_bps{rail="near-intents",asset="ZEC.ZEC"}[24h])
-      series: privacy_round_trip_bps{rail="near-intents",asset="ZEC.ZEC"}
+      p50: quantile_over_time(0.50, privacy_round_trip_bps{rail="near-intents",asset="ZEC.ZEC",bucket="all"}[24h])
+      p90: quantile_over_time(0.90, privacy_round_trip_bps{rail="near-intents",asset="ZEC.ZEC",bucket="all"}[24h])
+      p99: quantile_over_time(0.99, privacy_round_trip_bps{rail="near-intents",asset="ZEC.ZEC",bucket="all"}[24h])
+      mean: avg_over_time(privacy_round_trip_bps{rail="near-intents",asset="ZEC.ZEC",bucket="all"}[24h])
+      sample_size: count_over_time(privacy_round_trip_bps{rail="near-intents",asset="ZEC.ZEC",bucket="all"}[24h])
+      series: privacy_round_trip_bps{rail="near-intents",asset="ZEC.ZEC",bucket="all"}
       success: 100 * sum(rate(privacy_probe_total{rail="near-intents",probe="round_trip",outcome="ok"}[24h])) / sum(rate(privacy_probe_total{rail="near-intents",probe="round_trip"}[24h]))
