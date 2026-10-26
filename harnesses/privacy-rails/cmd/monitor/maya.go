@@ -55,6 +55,7 @@ func mayaQuoteSwap(cfg *Config, from, to string, amount int64, dest string) (*ma
 // Both legs must succeed or nothing is published. A half-measured round trip
 // is worse than a gap, because it looks like a cheap one.
 func probeMayaRoundTrip(cfg *Config, asset string) {
+	var costs, secs []float64
 	for _, r := range tiers {
 		lbl := []string{"maya", asset, r.Bucket, cfg.MonitorRegion}
 
@@ -89,10 +90,14 @@ func probeMayaRoundTrip(cfg *Config, asset string) {
 			continue
 		}
 		roundTripBps.WithLabelValues(lbl...).Set(lost)
-		roundTripSec.WithLabelValues(lbl...).Set(float64(in.TotalSwapSeconds + back.TotalSwapSeconds))
+		eta := float64(in.TotalSwapSeconds + back.TotalSwapSeconds)
+		roundTripSec.WithLabelValues(lbl...).Set(eta)
+		costs = append(costs, lost)
+		secs = append(secs, eta)
 		probeTotal.WithLabelValues("maya", "round_trip", "ok").Inc()
 		lastSuccess.WithLabelValues("maya", "round_trip").Set(float64(time.Now().Unix()))
 	}
+	publishPooled("maya", asset, cfg.MonitorRegion, costs, secs)
 }
 
 // probeMayaExitCost asks the narrower question: what does it cost to get OUT,

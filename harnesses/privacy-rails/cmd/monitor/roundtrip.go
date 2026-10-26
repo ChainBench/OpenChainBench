@@ -1,6 +1,7 @@
 package main
 
 import (
+	"sort"
 	"strconv"
 	"time"
 )
@@ -43,6 +44,7 @@ var tiers = []sizeTier{
 // ZEC, so it needs the Zcash address, and passing the EVM one fails with
 // "refundTo is not valid" rather than anything about the direction.
 func probeNearRoundTrip(cfg *Config) {
+	var costs, secs []float64
 	for _, t := range tiers {
 		lbl := []string{"near-intents", "ZEC.ZEC", t.Bucket, cfg.MonitorRegion}
 
@@ -76,9 +78,37 @@ func probeNearRoundTrip(cfg *Config) {
 			continue
 		}
 		roundTripBps.WithLabelValues(lbl...).Set(lost)
-		roundTripSec.WithLabelValues(lbl...).Set(float64(in.Quote.TimeEstimate + back.Quote.TimeEstimate))
+		eta := float64(in.Quote.TimeEstimate + back.Quote.TimeEstimate)
+		roundTripSec.WithLabelValues(lbl...).Set(eta)
+		costs = append(costs, lost)
+		secs = append(secs, eta)
 		probeTotal.WithLabelValues("near-intents", "round_trip", "ok").Inc()
 		lastSuccess.WithLabelValues("near-intents", "round_trip").Set(float64(time.Now().Unix()))
+	}
+	publishPooled("near-intents", "ZEC.ZEC", cfg.MonitorRegion, costs, secs)
+}
+
+// publishPooled writes the "all sizes" series the dimension's default tab
+// reads. It is the MEDIAN of the tiers measured this tick, not a tier in
+// disguise: injectLabels replaces a bucket="all" selector per tab, so the
+// pooled value must mean something on its own, and a median across the
+// ladder is the one summary that does not privilege a size.
+//
+// Nothing is published from fewer than two tiers. A single tier's value
+// relabelled "all sizes" would be a tier wearing another name.
+func publishPooled(rail, asset, region string, costs, secs []float64) {
+	if len(costs) < 2 {
+		probeTotal.WithLabelValues(rail, "round_trip", "too_few_tiers_to_pool").Inc()
+		return
+	}
+	med := func(xs []float64) float64 {
+		c := append([]float64(nil), xs...)
+		sort.Float64s(c)
+		return c[len(c)/2]
+	}
+	roundTripBps.WithLabelValues(rail, asset, "all", region).Set(med(costs))
+	if len(secs) >= 2 {
+		roundTripSec.WithLabelValues(rail, asset, "all", region).Set(med(secs))
 	}
 }
 
