@@ -14,19 +14,21 @@ import (
 // or a public list; this harness never signs or sends anything, holds no
 // key and has no wallet, so nothing it does can spend money.
 //
-// Costs are histograms rather than gauges because the question a board
-// asks is "what does this usually cost over a day", and a gauge holds only
-// the last tick. Buckets are chosen around the costs actually measured on
-// 2026-10-25: a BTC round trip through Zcash on Maya came back at 325 bps
-// with a 0.02 % spread over five samples, so the interesting range is tens
-// to low hundreds of bps and the tail needs room for a thin pool. A single
-// populated bucket makes a percentile a constant of the bucket layout
-// rather than a measurement, which is a defect this repo has shipped
-// before, so the grid is fine where the mass is.
+// Costs are gauges, not histograms, and the choice is not cosmetic: a
+// Histogram exposes _bucket, _sum and _count and never a series under its
+// own name, so a quantile_over_time on the metric name matches nothing and
+// every row renders empty. That is how the first version of this file would
+// have published a board with a title and no numbers.
+//
+// A gauge sampled each tick and quantiled over 24h is the pattern the
+// sibling cost bench already uses (rwa_depth_cost_100k_bps), and it keeps
+// the published percentile a property of the samples instead of a property
+// of a bucket grid chosen by hand. Each (rail, asset, bucket, region) tuple
+// is its own series, so one gauge per tuple loses nothing.
 var (
-	roundTripBps *prometheus.HistogramVec
-	roundTripSec *prometheus.HistogramVec
-	exitCostBps  *prometheus.HistogramVec
+	roundTripBps *prometheus.GaugeVec
+	roundTripSec *prometheus.GaugeVec
+	exitCostBps  *prometheus.GaugeVec
 
 	// Delivery capability is not a cost, it is a yes or no with a reason.
 	// 1 means a valid shielded destination was accepted for that rail and
@@ -63,25 +65,19 @@ func initMetrics() {
 	}
 	registerOnce = true
 
-	bpsBuckets := []float64{5, 10, 25, 50, 100, 150, 200, 300, 400, 600, 900, 1500, 3000}
-	secBuckets := []float64{30, 60, 120, 300, 600, 900, 1800, 3600, 7200}
-
-	roundTripBps = promauto.NewHistogramVec(prometheus.HistogramOpts{
-		Name:    "privacy_round_trip_bps",
-		Help:    "Basis points lost going from a liquid asset into a privacy asset and back, from two chained quotes.",
-		Buckets: bpsBuckets,
+	roundTripBps = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "privacy_round_trip_bps",
+		Help: "Basis points lost going from a liquid asset into a privacy asset and back, from two chained quotes.",
 	}, []string{"rail", "asset", "bucket", "region"})
 
-	roundTripSec = promauto.NewHistogramVec(prometheus.HistogramOpts{
-		Name:    "privacy_round_trip_seconds",
-		Help:    "Wall-clock seconds the two legs of the round trip are quoted to take, in plus out.",
-		Buckets: secBuckets,
+	roundTripSec = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "privacy_round_trip_seconds",
+		Help: "Seconds the two legs of the round trip are quoted to take, in plus out.",
 	}, []string{"rail", "asset", "bucket", "region"})
 
-	exitCostBps = promauto.NewHistogramVec(prometheus.HistogramOpts{
-		Name:    "privacy_exit_cost_bps",
-		Help:    "Basis points lost selling a fixed notional of a privacy asset back into a liquid one.",
-		Buckets: bpsBuckets,
+	exitCostBps = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "privacy_exit_cost_bps",
+		Help: "Basis points lost selling a fixed notional of a privacy asset back into a liquid one.",
 	}, []string{"rail", "asset", "bucket", "region"})
 
 	shieldedAccepted = promauto.NewGaugeVec(prometheus.GaugeOpts{
