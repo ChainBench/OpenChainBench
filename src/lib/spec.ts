@@ -533,7 +533,9 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // there would show the boards without their rows, which is the state we
   // are trying to review. 301 declares a bucket dimension, so bench-filters
   // moves too.
-  ["bench-unfiltered-v103", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v104: bench 308 arrives with seven providers. No dimensions, so
+  // bench-filters stays put this time.
+  ["bench-unfiltered-v104", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -792,7 +794,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v94: lockstep with bench-unfiltered-v101 (Enso leaves bench 033).
   // v95: lockstep with bench-unfiltered-v102 (bench 306 arrives).
   // v96: lockstep with bench-unfiltered-v103 (benches 307 and 301 arrive).
-  ["all-benchmarks-v96", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v97: lockstep with bench-unfiltered-v104 (bench 308 arrives).
+  ["all-benchmarks-v97", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
