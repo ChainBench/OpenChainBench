@@ -61,9 +61,9 @@ type notionalRung struct {
 }
 
 var rungs = []notionalRung{
-	{Label: "0.001btc", SatIn: 100_000, ZatIn: 100_000_000},
-	{Label: "0.01btc", SatIn: 1_000_000, ZatIn: 1_000_000_000},
-	{Label: "0.1btc", SatIn: 10_000_000, ZatIn: 10_000_000_000},
+	{Label: "sat100k", SatIn: 100_000, ZatIn: 100_000_000},
+	{Label: "sat1m", SatIn: 1_000_000, ZatIn: 1_000_000_000},
+	{Label: "sat10m", SatIn: 10_000_000, ZatIn: 10_000_000_000},
 }
 
 // probeMayaRoundTrip measures the thing a user actually experiences: in and

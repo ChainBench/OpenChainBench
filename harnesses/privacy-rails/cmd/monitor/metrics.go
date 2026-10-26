@@ -70,19 +70,19 @@ func initMetrics() {
 		Name:    "privacy_round_trip_bps",
 		Help:    "Basis points lost going from a liquid asset into a privacy asset and back, from two chained quotes.",
 		Buckets: bpsBuckets,
-	}, []string{"rail", "asset", "notional", "region"})
+	}, []string{"rail", "asset", "bucket", "region"})
 
 	roundTripSec = promauto.NewHistogramVec(prometheus.HistogramOpts{
 		Name:    "privacy_round_trip_seconds",
 		Help:    "Wall-clock seconds the two legs of the round trip are quoted to take, in plus out.",
 		Buckets: secBuckets,
-	}, []string{"rail", "asset", "notional", "region"})
+	}, []string{"rail", "asset", "bucket", "region"})
 
 	exitCostBps = promauto.NewHistogramVec(prometheus.HistogramOpts{
 		Name:    "privacy_exit_cost_bps",
 		Help:    "Basis points lost selling a fixed notional of a privacy asset back into a liquid one.",
 		Buckets: bpsBuckets,
-	}, []string{"rail", "asset", "size", "region"})
+	}, []string{"rail", "asset", "bucket", "region"})
 
 	shieldedAccepted = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "privacy_shielded_payout_accepted",
