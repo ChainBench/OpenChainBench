@@ -1,0 +1,110 @@
+slug: privacy-exit-cost
+number: "301"
+title: Privacy asset exit cost, what size does to the price you get
+seo_title: "Zcash and Dash exit cost: what selling at size really loses"
+seo_description: "Selling {{best_name}} at size loses {{best_p50}} against the same pool's small-trade rate, while {{worst_name}} loses {{worst_p50}}. Size impact only, same tick."
+subtitle: "Basis points given up selling a privacy asset back into Bitcoin, measured against the same pool's rate on a small trade, at two sizes."
+category: Bridges
+status: live
+metric: Exit cost at size
+unit: bp
+row_noun: { one: asset, many: assets }
+higher_is_better: false
+
+seo_intro: |
+  Entering a privacy asset is optional. Leaving is not, and on a thin pool
+  the exit is where the cost lives. This board isolates one thing: what the
+  size of your sale does to the price you get.
+
+  The reference is the same pool's own rate on the smallest trade that it
+  will quote, so the number is size impact rather than the spread every
+  trade pays. Measured against an outside market price it would also carry
+  the gap between the pool and that market, which is a different question
+  and would hide the one being asked here.
+
+abstract: |
+  Per tick and per asset, the harness asks the rail to sell three sizes back
+  into Bitcoin. The smallest size that answers becomes the reference rate,
+  and each larger size is published as the basis points it loses against
+  that rate extended to its own notional.
+
+  The reference size itself is not published. Measured against itself it is
+  zero by construction, and a row reading 0 bps would be read as a
+  frictionless exit rather than as the baseline the other sizes are measured
+  from.
+
+  Rows are assets rather than rails, because only one rail measured here
+  carries more than one privacy asset. The comparison on offer is therefore
+  between Zcash and Dash on the same venue and the same tick, which is a
+  fair comparison, rather than between venues quoting different assets.
+
+  Quote-only: no key, no wallet, no signing path.
+
+methodology:
+  - "Three sell quotes per asset per tick, at roughly $100, $1,000 and $10,000 of notional. The smallest one that the rail answers becomes the reference; the others are measured against its rate extended to their size."
+  - "The reference rung is not published, because against itself it is zero and would read as a free exit."
+  - "An earlier version derived the reference by dividing each size by a thousand, which falls below the rail's own minimum on the small rungs: four probes in six came back refused and the two that answered produced a figure with no meaning. Measuring against the smallest rung that actually quotes costs no extra call."
+  - "The All sizes tab is the median of the sizes measured on the same tick, not a fourth size and not an average. Nothing is pooled from fewer than two sizes."
+  - "Only Maya Protocol is measured here, because it is the one rail among those tested that carries two privacy assets. That makes this a comparison of assets on one venue, which is stated rather than implied."
+
+findings:
+  - "Selling {{best_name}} at size costs {{best_p50}} while {{worst_name}} costs {{worst_p50}}, on the same venue and the same tick, so the gap is the depth behind each asset rather than the venue's pricing."
+  - "The cost rises faster than the size. Ten times the notional costs far more than ten times the basis points, which is what a thin pool looks like from the outside and is the single most useful thing to know before planning an exit."
+  - "The pool depth behind each figure is published beside it, because a few hundred basis points on a pool of a couple of thousand coins is a statement about liquidity and not about the venue."
+
+faq:
+  - q: "What does it cost to sell Zcash at size?"
+    a: "At the sizes measured here, {{best_name}} gives up {{best_p50}} and {{worst_name}} gives up {{worst_p50}} against the same pool's rate on a small trade. The figure is size impact only: it excludes the spread every trade pays and excludes any gap between the pool's price and an outside market, so it answers what your size costs you rather than what the venue costs you."
+  - q: "Why measure against the pool instead of a market price?"
+    a: "Because they answer different questions. Against an outside price the number would mix size impact with the pool's own mispricing, and you could not tell which one moved. Against the pool's small-trade rate on the same tick, what is left is the cost of being bigger."
+  - q: "Why are the rows assets rather than venues?"
+    a: "Because only one of the rails measured carries more than one privacy asset. Comparing venues here would mean comparing venues quoting different assets, which is not a comparison. Zcash against Dash on the same venue and the same tick is."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/privacy-rails
+
+prometheus:
+  window: 24h
+  freshness_timestamp_metric: privacy_last_success_timestamp_seconds
+  expected_freshness_seconds: 1800
+
+dimensions:
+  bucket:
+    - { value: all, label: All sizes }
+    - { value: usd1k, label: About $1k }
+    - { value: usd10k, label: About $10k }
+
+metric_panels:
+  - id: pool_depth
+    label: Pool depth
+    metric: avg_over_time(privacy_pool_depth_asset{}[24h])
+    label_key: asset
+    unit: count
+    higher_is_better: true
+    description: "Whole coins on the asset's side of the pool, 24h average. The liquidity the cost came out of."
+
+providers:
+  - slug: zec
+    name: Zcash
+    tag: "ZEC.ZEC on Maya, the venue's largest pool by volume"
+    formula: "24h median of the basis points lost selling the selected size of ZEC into BTC, against the same pool's rate on the smallest size it quotes."
+    queries:
+      p50: quantile_over_time(0.50, privacy_exit_cost_bps{rail="maya",asset="ZEC.ZEC",bucket="all"}[24h])
+      p90: quantile_over_time(0.90, privacy_exit_cost_bps{rail="maya",asset="ZEC.ZEC",bucket="all"}[24h])
+      p99: quantile_over_time(0.99, privacy_exit_cost_bps{rail="maya",asset="ZEC.ZEC",bucket="all"}[24h])
+      mean: avg_over_time(privacy_exit_cost_bps{rail="maya",asset="ZEC.ZEC",bucket="all"}[24h])
+      sample_size: count_over_time(privacy_exit_cost_bps{rail="maya",asset="ZEC.ZEC",bucket="all"}[24h])
+      series: privacy_exit_cost_bps{rail="maya",asset="ZEC.ZEC",bucket="all"}
+      success: 100 * sum(rate(privacy_probe_total{rail="maya",probe="exit_cost",outcome="ok"}[24h])) / sum(rate(privacy_probe_total{rail="maya",probe="exit_cost"}[24h]))
+
+  - slug: dash
+    name: Dash
+    tag: "DASH.DASH on Maya, the other privacy asset the venue carries"
+    formula: "24h median of the basis points lost selling the selected size of DASH into BTC, against the same pool's rate on the smallest size it quotes."
+    queries:
+      p50: quantile_over_time(0.50, privacy_exit_cost_bps{rail="maya",asset="DASH.DASH",bucket="all"}[24h])
+      p90: quantile_over_time(0.90, privacy_exit_cost_bps{rail="maya",asset="DASH.DASH",bucket="all"}[24h])
+      p99: quantile_over_time(0.99, privacy_exit_cost_bps{rail="maya",asset="DASH.DASH",bucket="all"}[24h])
+      mean: avg_over_time(privacy_exit_cost_bps{rail="maya",asset="DASH.DASH",bucket="all"}[24h])
+      sample_size: count_over_time(privacy_exit_cost_bps{rail="maya",asset="DASH.DASH",bucket="all"}[24h])
+      series: privacy_exit_cost_bps{rail="maya",asset="DASH.DASH",bucket="all"}
+      success: 100 * sum(rate(privacy_probe_total{rail="maya",probe="exit_cost",outcome="ok"}[24h])) / sum(rate(privacy_probe_total{rail="maya",probe="exit_cost"}[24h]))

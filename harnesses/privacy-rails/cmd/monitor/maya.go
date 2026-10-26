@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"sort"
 	"strconv"
 	"time"
 )
@@ -141,6 +142,7 @@ func probeMayaExitCost(cfg *Config, asset string) {
 	// The reference rung is NOT published. Measured against itself it is 0 by
 	// construction, and a row reading 0 bps would be read as a frictionless
 	// exit rather than as the baseline the other sizes are measured from.
+	var impacts []float64
 	for _, l := range legs[1:] {
 		expected := baseRate * float64(l.in)
 		impact := (expected - float64(l.out)) / expected * 10000
@@ -148,6 +150,16 @@ func probeMayaExitCost(cfg *Config, asset string) {
 			impact = 0
 		}
 		exitCostBps.WithLabelValues("maya", asset, l.label, cfg.MonitorRegion).Set(impact)
+		impacts = append(impacts, impact)
+	}
+	// The pooled series the default tab reads, for the same reason the round
+	// trip needs one: an unpinned selector matches every tier at once and the
+	// board cannot pick a value, while pinning a real tier would survive into
+	// every filtered tab because injectLabels only replaces bucket="all".
+	if len(impacts) >= 2 {
+		c := append([]float64(nil), impacts...)
+		sort.Float64s(c)
+		exitCostBps.WithLabelValues("maya", asset, "all", cfg.MonitorRegion).Set(c[len(c)/2])
 	}
 	probeTotal.WithLabelValues("maya", "exit_cost", "ok").Inc()
 	lastSuccess.WithLabelValues("maya", "exit_cost").Set(float64(time.Now().Unix()))
