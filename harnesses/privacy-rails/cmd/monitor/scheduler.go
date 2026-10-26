@@ -33,6 +33,11 @@ func runScheduler(cfg *Config, stop <-chan struct{}) {
 		}
 		probeMayaDepth(cfg, mayaAssets)
 
+		for _, a := range thorAssets {
+			probeThorRoundTrip(cfg, a)
+		}
+		probeThorDepth(cfg)
+
 		// NEAR Intents round trip: USDC in, ZEC, USDC back. Both legs
 		// quote, verified on 2026-10-26 at 63 bps and 607 s for $1k.
 		probeNearRoundTrip(cfg)
@@ -44,6 +49,7 @@ func runScheduler(cfg *Config, stop <-chan struct{}) {
 			// deposit memo there, and the probe records which reason the
 			// rail gives rather than assuming the memo one still holds.
 			probeMayaDelivery(cfg)
+			probeThorDelivery(cfg)
 		}
 
 		probeXmr(cfg)
