@@ -1,0 +1,112 @@
+slug: shielded-payout-coverage
+number: "307"
+title: Which swap rails can pay you in shielded Zcash
+seo_title: "Shielded Zcash payouts: which swap rails accept a u1 address"
+seo_description: "{{best_name}} accepts a shielded Zcash destination on {{best_p50}} of the source chains measured, {{worst_name}} on {{worst_p50}}. {{declared_count}} non-custodial rails tested."
+subtitle: "Share of source chains on which a rail accepts a checksum-valid shielded Zcash address, with the reason it gives when it refuses."
+category: Bridges
+status: live
+metric: Shielded payouts accepted
+unit: pct
+row_noun: { one: rail, many: rails }
+higher_is_better: true
+
+seo_intro: |
+  A swap into Zcash is only private if the coins land somewhere private. Most
+  non-custodial rails will happily sell you ZEC and then pay it to a
+  transparent address, which puts the amount and the destination in a public
+  ledger and leaves the privacy for a second step you have to take yourself.
+
+  This board asks whether the rail can pay a shielded address at all, and
+  when it cannot, publishes the reason the rail itself gave. The answer is
+  mixed, and the reason is mechanical rather than ideological: a rail that
+  carries the destination inside a deposit memo cannot fit a 141 character
+  unified address into an 80 byte field, while a rail that takes the
+  recipient in an HTTP request body has no such ceiling.
+
+abstract: |
+  Every tick, for each rail and each source chain it routes, the harness asks
+  for a quote paying out to two destinations: a transparent Zcash address and
+  a shielded unified address. Both are checksum-verified before the harness
+  starts, and the published figure is the share of source chains where the
+  shielded destination was accepted.
+
+  The transparent address is the control and it is tried first. If the control
+  is refused, the shielded result for that source chain is discarded rather
+  than published, because a rail that cannot pay transparent today tells us
+  nothing about whether it can pay shielded. That rule exists because three
+  earlier attempts at this measurement were voided by address strings that
+  were remembered rather than read: a bad checksum makes both probes refuse,
+  which looks exactly like a finding and is not one.
+
+  A share rather than a count, because the rails are not tested on the same
+  number of source chains and a count would reward whichever rail we happen
+  to probe more widely.
+
+methodology:
+  - "Two dry quotes per rail per source chain per tick, one to a transparent t-address and one to a shielded unified address. Nothing is ever signed or sent; the harness holds no key and no wallet."
+  - "The transparent quote is the control and runs first. A shielded refusal is recorded only when the control was accepted on the same source chain, so a rail that is down or out of liquidity never reads as refusing privacy."
+  - "The shielded address is a mainnet unified address from Zcash's own published test vectors, bech32m verified at startup, and the transparent one is an address the rail itself handed over. Shielded addresses never appear on chain by design, so a published test vector is the only sound source for one."
+  - "The denominator is the source chains where the control passed, not the chains we attempted. A rail tested on one chain and a rail tested on five are therefore comparable."
+  - "Refusal reasons are published as a small set of labels rather than the rail's raw message, which embeds the address and would create one time series per probe."
+
+findings:
+  - "{{best_name}} accepts a shielded destination on {{best_p50}} of the source chains measured, {{worst_name}} on {{worst_p50}}. The split is not about which rail cares more about privacy."
+  - "The refusal is mechanical. A rail that carries the destination in the deposit memo is bounded by the source chain's data field: Bitcoin's OP_RETURN holds 80 bytes and a unified address is 141 characters before the memo's own prefix, so it cannot fit by arithmetic. A rail that takes the recipient in a request body has no such limit."
+  - "This is the step most guides skip. A rail that pays only to a transparent address has not made your swap private, it has moved the problem to a shielding transaction you still have to make."
+
+faq:
+  - q: "Can you swap into shielded Zcash directly?"
+    a: "On some rails yes. {{best_name}} accepts a checksum-valid shielded unified address on {{best_p50}} of the source chains measured here, and quotes it at the same price as a transparent one. Other rails refuse, and the reason is the shape of the rail rather than a policy: when the destination address travels inside the deposit memo it cannot fit, because a unified address is longer than the memo field a chain like Bitcoin provides."
+  - q: "Why does the transparent address matter if the question is about shielded?"
+    a: "Because without it a refusal means nothing. If a rail is out of liquidity, or the address string is malformed, both the shielded and the transparent probe fail and the result looks like a rail refusing privacy. Three earlier attempts at this measurement were thrown away for exactly that reason, so the transparent quote runs first and a shielded refusal is only recorded when the control passed."
+  - q: "Does paying to a shielded address cost more?"
+    a: "Not measurably on the rail that accepts one. The two quotes came back within the same range that either one moves between consecutive calls, so there is no shielding premium worth publishing. The cost of going private is in the swap itself, which is a different board."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/privacy-rails
+
+prometheus:
+  window: 24h
+  freshness_timestamp_metric: privacy_last_success_timestamp_seconds
+  expected_freshness_seconds: 1800
+
+metric_panels:
+  - id: chains_tested
+    label: Source chains tested
+    metric: sum(privacy_transparent_payout_accepted{}) by (rail)
+    label_key: rail
+    unit: count
+    higher_is_better: true
+    description: "Source chains where the transparent control was accepted, which is the denominator of the share."
+  - id: memo_refusals
+    label: Memo too long
+    metric: sum(increase(privacy_shielded_refusal_total{reason="memo_too_long"}[24h])) by (rail)
+    label_key: rail
+    unit: count
+    higher_is_better: false
+    description: "Refusals in 24h whose stated reason is that the generated memo exceeds the source chain's field."
+
+providers:
+  - slug: near-intents
+    name: NEAR Intents
+    tag: "Recipient travels in the request body, so no memo ceiling applies"
+    formula: "Share of source chains, among those where the transparent control was accepted, on which a checksum-valid shielded unified address was also accepted."
+    queries:
+      p50: 100 * sum(privacy_shielded_payout_accepted{rail="near-intents"}) / sum(privacy_transparent_payout_accepted{rail="near-intents"})
+      p90: 100 * sum(privacy_shielded_payout_accepted{rail="near-intents"}) / sum(privacy_transparent_payout_accepted{rail="near-intents"})
+      p99: 100 * sum(privacy_shielded_payout_accepted{rail="near-intents"}) / sum(privacy_transparent_payout_accepted{rail="near-intents"})
+      mean: 100 * sum(privacy_shielded_payout_accepted{rail="near-intents"}) / sum(privacy_transparent_payout_accepted{rail="near-intents"})
+      sample_size: sum(privacy_transparent_payout_accepted{rail="near-intents"})
+      success: 100 * sum(rate(privacy_probe_total{rail="near-intents",probe="delivery",outcome="ok"}[24h])) / sum(rate(privacy_probe_total{rail="near-intents",probe="delivery"}[24h]))
+
+  - slug: maya
+    name: Maya Protocol
+    tag: "Destination rides in the deposit memo, which bounds the address length"
+    formula: "Share of source chains, among those where the transparent control was accepted, on which a checksum-valid shielded unified address was also accepted."
+    queries:
+      p50: 100 * sum(privacy_shielded_payout_accepted{rail="maya"}) / sum(privacy_transparent_payout_accepted{rail="maya"})
+      p90: 100 * sum(privacy_shielded_payout_accepted{rail="maya"}) / sum(privacy_transparent_payout_accepted{rail="maya"})
+      p99: 100 * sum(privacy_shielded_payout_accepted{rail="maya"}) / sum(privacy_transparent_payout_accepted{rail="maya"})
+      mean: 100 * sum(privacy_shielded_payout_accepted{rail="maya"}) / sum(privacy_transparent_payout_accepted{rail="maya"})
+      sample_size: sum(privacy_transparent_payout_accepted{rail="maya"})
+      success: 100 * sum(rate(privacy_probe_total{rail="maya",probe="delivery",outcome="ok"}[24h])) / sum(rate(privacy_probe_total{rail="maya",probe="delivery"}[24h]))
