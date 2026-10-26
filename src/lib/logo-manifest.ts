@@ -539,6 +539,15 @@ const RAW: Record<string, string> = {
   chainlink: "/logos/chainlink.svg",
   dogecoin: "/logos/dogecoin.png",
   blockcypher: "/logos/blockcypher.svg",
+  xmr: "/logos/xmr.png",
+  firo: "/logos/firo.png",
+  pivx: "/logos/pivx.png",
+  wow: "/logos/wow.svg",
+  part: "/logos/part.png",
+  // Particl's blind mode is the same chain with the privacy mode on, so it
+  // shares the mark. A separate logo would invent a project that does not
+  // exist; the row name carries the distinction the board compares.
+  "part-blind": "/logos/part.png",
   maya: "/logos/maya.png",
   zec: "/logos/zcash.svg",
   dash: "/logos/dash.png",

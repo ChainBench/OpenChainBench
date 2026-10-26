@@ -891,7 +891,9 @@ const buildProvidersCached = unstable_cache(
   // provider with a mark but no registry entry still gets a product page
   // with no official link and no description, which is the gap nordstern
   // sat in until #3273.
-  ["providers-v22"],
+  // v23: six coin marks and six registry entries for bench 308, whose rows
+  // were all rendering as initials.
+  ["providers-v23"],
   // 900 s: the provider index feeds products / compare / answers, whose
   // numbers move slowly, and this revalidate is also the effective ISR
   // period of those ~500 pages (Next takes the min across a route's caches).
