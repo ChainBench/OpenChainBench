@@ -523,7 +523,12 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // v101: Enso leaves bench 033, the second provider in two days off that
   // board for a dead credential (0x at v100). 033 declares a chain
   // dimension, so bench-filters moves with this one.
-  ["bench-unfiltered-v101", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v102: bench 306 privacy-round-trip arrives with two providers. It is
+  // held out of production in DEV_ONLY_BENCH_SLUGS until its harness is
+  // deployed, but staging renders it and a stale entry there would show the
+  // board without its rows, which is the state we are trying to avoid
+  // reviewing. It declares a bucket dimension, so bench-filters moves too.
+  ["bench-unfiltered-v102", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -780,7 +785,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v91: lockstep with bench-unfiltered-v98 (Robinhood Chain on l1-finality).
   // v93: lockstep with bench-unfiltered-v100 (0x leaves benches 304 and 033).
   // v94: lockstep with bench-unfiltered-v101 (Enso leaves bench 033).
-  ["all-benchmarks-v94", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v95: lockstep with bench-unfiltered-v102 (bench 306 arrives).
+  ["all-benchmarks-v95", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -910,7 +916,10 @@ const loadBenchmarkFiltered = unstable_cache(
   // v42: lockstep with bench-unfiltered-v101. 033 declares a chain
   // dimension, so each per-chain variant caches its own provider set and a
   // stale entry keeps Enso on all four tabs it published on.
-  ["bench-filters-v42", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v43: lockstep with bench-unfiltered-v102. Bench 306's three size rungs
+  // are filtered variants, so without this the selector renders only its
+  // default tab.
+  ["bench-filters-v43", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 
