@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"sort"
 	"strconv"
 	"time"
 )
@@ -162,9 +161,7 @@ func probeMayaExitCost(cfg *Config, asset string) {
 	// board cannot pick a value, while pinning a real tier would survive into
 	// every filtered tab because injectLabels only replaces bucket="all".
 	if len(impacts) >= 2 {
-		c := append([]float64(nil), impacts...)
-		sort.Float64s(c)
-		exitCostBps.WithLabelValues("maya", asset, "all", cfg.MonitorRegion).Set(c[len(c)/2])
+		exitCostBps.WithLabelValues("maya", asset, "all", cfg.MonitorRegion).Set(medianOf(impacts))
 	}
 	probeTotal.WithLabelValues("maya", "exit_cost", "ok").Inc()
 	lastSuccess.WithLabelValues("maya", "exit_cost").Set(float64(time.Now().Unix()))
