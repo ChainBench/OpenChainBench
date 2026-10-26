@@ -12,6 +12,7 @@
     "test": "bun test src/",
     "typecheck": "tsc --noEmit",
     "validate": "tsx scripts/validate-specs.ts",
+    "readme:sync": "tsx scripts/sync-readme-stats.ts",
     "check:scalars": "tsx scripts/check-scalar-cardinality.ts",
     "spec:dry-run": "tsx scripts/dry-run-spec.ts",
     "rpc-hub:dry-run": "tsx scripts/dry-run-rpc-hub.ts",

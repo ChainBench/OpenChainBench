@@ -145,6 +145,19 @@ export const REMOVED_ANSWER_SLUGS = new Set([
  * Moving a bench to production = remove its slug here.
  */
 export const DEV_ONLY_BENCH_SLUGS = new Set([
+  // 306 privacy round trip: the spec exists and the harness exists, but the
+  // harness is not deployed, so Prometheus holds no privacy_round_trip_bps
+  // series yet. A metric_panel with no value DELETES its row rather than
+  // marking it, so shipping this to production today would publish an empty
+  // table under a confident title. Staging still renders it, which is the
+  // point of this set: the copy, the JSON-LD and the size selector can be
+  // reviewed there before any reader sees the board.
+  //
+  // Un-gate condition: the harness running in at least one region with 24h
+  // of data, both rails answering, and the bucket selector returning rows on
+  // all three rungs. Verified on 2026-10-26 by hand at 325.0 bps and 759 s
+  // for ZEC at 0.1 BTC, so the numbers are known, just not collected.
+  "privacy-round-trip",
   // 208 perp liquidation rate: gated 2026-09-28 while the metric is rebuilt.
   // The sources are right (the Gains decode reproduces to 0.02% against an
   // independent scan, Lighter, GMX, Aster, Ostium, Nado and Orderly read

@@ -1,0 +1,121 @@
+slug: privacy-round-trip
+number: "306"
+title: Privacy round trip cost, what going into Zcash and back loses
+seo_title: "Privacy round trip cost: Zcash and Dash entry and exit in 2026"
+seo_description: "{{best_name}} loses the least on a round trip into a privacy asset and back, {{best_p50}} at the measured size. {{declared_count}} rails compared."
+subtitle: "Basis points and minutes lost converting a liquid asset into a privacy asset and back out, on non-custodial rails, at three sizes."
+category: Bridges
+status: live
+metric: Round trip cost
+unit: bp
+row_noun: { one: rail, many: rails }
+higher_is_better: false
+
+seo_intro: |
+  Nobody holds Zcash to hold Zcash. The question is what it costs to go
+  private and come back, and that is two swaps rather than one, so a single
+  quote answers half of it. This board chains both legs on the same tick:
+  it quotes a liquid asset into the privacy asset, then quotes the amount
+  that came out back the other way, and publishes the difference.
+
+  The cost is not what most people expect, and it is not flat in size. The
+  fixed outbound fee dominates small trades while pool depth dominates large
+  ones, so the cheapest size sits in the middle rather than at either end.
+  That is why the size selector exists: a board showing one notional would
+  report the shape of its own choice instead of the market's.
+
+abstract: |
+  Two chained quotes per tick, per rail, per asset and per size. The first
+  leg quotes BTC into the privacy asset; the second quotes the first leg's
+  own output back into BTC. The published figure is the basis points that
+  did not come back, and the published time is the sum of both legs' quoted
+  durations.
+
+  Both legs must answer or nothing is recorded for that size. A half
+  measured round trip is worse than a gap because it looks like a cheap one.
+
+  Sizes are fixed in BTC rather than in dollars so that the rungs stay
+  comparable from one day to the next: a dollar rung would move with the BTC
+  price and make last week's board incomparable with this week's.
+
+  Quote-only. The harness holds no key and no wallet and has no signing
+  path, so these numbers are what the rails advertise, not fills. A rail that
+  quotes better than it settles would read well here, which is the honest
+  limit of a quote-based board and the reason the quoted duration is
+  published beside the cost rather than instead of it.
+
+methodology:
+  - "Every tick, for each rail and each privacy asset, the harness quotes BTC into the asset at 0.001, 0.01 and 0.1 BTC, then quotes the exact output of each leg back into BTC. Cost is (input minus returned) over input, in basis points."
+  - "Time is the sum of the two legs' own quoted durations, which is what each rail says the swap will take, not a measured settlement."
+  - "A negative round trip is counted and not published. It means the two pool prices disagree in the user's favour on that tick, which is a real reading but not a cost."
+  - "Rails are included only when their asset list, read from the venue itself, actually carries the asset. Chainflip is absent because it carries no privacy asset: its own endpoint refuses ZEC, XMR and DASH while quoting Solana and Bitcoin normally, so the absence is measured rather than assumed."
+  - "THORChain is absent because it was unreachable on twelve public hosts, including one whose TLS certificate expired on 2024-02-07. It is a gap in our access, not a judgement of the venue, and it will be added when a live endpoint exists."
+
+findings:
+  - "{{best_name}} loses the least at the measured size, {{best_p50}}, while {{worst_name}} loses {{worst_p50}}. The gap between rails is smaller than the gap between sizes on the same rail, which is the finding most readers will not expect."
+  - "Cost is not monotonic in size. On the rails measured here the middle rung is the cheapest: a fixed withdrawal fee is most of the cost on a small trade and almost none of it on a large one, while depth works the other way. Read the size you actually trade."
+  - "The pool depth behind each figure is published beside it. A cost of a few hundred basis points on a pool of a couple of thousand coins is a statement about liquidity, not about the venue's pricing engine."
+
+faq:
+  - q: "What does it cost to convert Bitcoin into Zcash and back?"
+    a: "At the sizes measured here, {{best_name}} is the cheapest round trip at {{best_p50}} and {{worst_name}} the most expensive at {{worst_p50}}, both as 24 hour medians of chained quotes. The cost depends more on the size you trade than on which rail you pick, and the cheapest size is the middle rung rather than the smallest, because a fixed withdrawal fee is most of the cost on a small trade."
+  - q: "Why measure a round trip instead of one swap?"
+    a: "Because almost nobody wants to end up holding the privacy asset permanently. A one way quote tells you the entry price and says nothing about whether you can leave, and on a thin pool the exit is where the cost lives. Chaining the legs also removes the market's drift from the number: both quotes are taken on the same tick, so what is left is the round trip's own friction."
+  - q: "Is a quoted cost the same as what I would actually pay?"
+    a: "No, and the difference matters. These are quotes, not settled swaps: the harness has no wallet and signs nothing. A rail that quotes better than it settles would look good here. The quoted duration is published next to the cost for that reason, so a rail promising a fast cheap swap can at least be held to its own estimate."
+  - q: "Which rails are missing and why?"
+    a: "Chainflip carries no privacy asset at all, confirmed against its own endpoint while control requests for Solana and Bitcoin succeed. THORChain was unreachable on twelve public hosts when this board was built. Monero is absent from every quoting rail measured, so it is covered separately rather than forced into this comparison."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/privacy-rails
+
+prometheus:
+  window: 24h
+  freshness_timestamp_metric: privacy_last_success_timestamp_seconds
+  expected_freshness_seconds: 1800
+
+dimensions:
+  bucket:
+    - { value: sat100k, label: 0.001 BTC }
+    - { value: sat1m, label: 0.01 BTC }
+    - { value: sat10m, label: 0.1 BTC }
+
+metric_panels:
+  - id: trip_seconds
+    label: Round trip time
+    metric: quantile_over_time(0.50, privacy_round_trip_seconds{bucket="sat1m"}[24h])
+    label_key: rail
+    unit: s
+    higher_is_better: false
+    description: "Both legs' quoted duration added together, 24h median, at the 0.01 BTC rung."
+  - id: pool_depth
+    label: Pool depth
+    metric: avg_over_time(privacy_pool_depth_asset{}[24h])
+    label_key: rail
+    unit: count
+    higher_is_better: true
+    description: "Whole coins on the privacy-asset side of the rail's pool, 24h average. The liquidity the cost came out of."
+
+providers:
+  - slug: maya
+    name: Maya Protocol
+    tag: "No key, carries ZEC and DASH, destination rides in the deposit memo"
+    formula: "24h median of the basis points lost on a chained BTC to ZEC to BTC quote at the selected size, from Maya's own quote endpoint."
+    queries:
+      p50: quantile_over_time(0.50, privacy_round_trip_bps{rail="maya",asset="ZEC.ZEC"}[24h])
+      p90: quantile_over_time(0.90, privacy_round_trip_bps{rail="maya",asset="ZEC.ZEC"}[24h])
+      p99: quantile_over_time(0.99, privacy_round_trip_bps{rail="maya",asset="ZEC.ZEC"}[24h])
+      mean: avg_over_time(privacy_round_trip_bps_sum{rail="maya",asset="ZEC.ZEC"}[24h]) / avg_over_time(privacy_round_trip_bps_count{rail="maya",asset="ZEC.ZEC"}[24h])
+      sample_size: increase(privacy_round_trip_bps_count{rail="maya",asset="ZEC.ZEC"}[24h])
+      success: 100 * sum(rate(privacy_probe_total{rail="maya",probe="round_trip",outcome="ok"}[24h])) / sum(rate(privacy_probe_total{rail="maya",probe="round_trip"}[24h]))
+
+  - slug: near-intents
+    name: NEAR Intents
+    tag: "No key, carries ZEC, recipient travels in the request body"
+    formula: "24h median of the basis points lost on a chained quote into ZEC and back, from the 1Click quote endpoint."
+    queries:
+      p50: quantile_over_time(0.50, privacy_round_trip_bps{rail="near-intents",asset="ZEC.ZEC"}[24h])
+      p90: quantile_over_time(0.90, privacy_round_trip_bps{rail="near-intents",asset="ZEC.ZEC"}[24h])
+      p99: quantile_over_time(0.99, privacy_round_trip_bps{rail="near-intents",asset="ZEC.ZEC"}[24h])
+      mean: avg_over_time(privacy_round_trip_bps_sum{rail="near-intents",asset="ZEC.ZEC"}[24h]) / avg_over_time(privacy_round_trip_bps_count{rail="near-intents",asset="ZEC.ZEC"}[24h])
+      sample_size: increase(privacy_round_trip_bps_count{rail="near-intents",asset="ZEC.ZEC"}[24h])
+      success: 100 * sum(rate(privacy_probe_total{rail="near-intents",probe="round_trip",outcome="ok"}[24h])) / sum(rate(privacy_probe_total{rail="near-intents",probe="round_trip"}[24h]))
