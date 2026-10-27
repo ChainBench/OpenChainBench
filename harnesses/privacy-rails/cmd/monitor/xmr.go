@@ -51,12 +51,20 @@ func probeXmr(cfg *Config) {
 
 	var prices []float64
 	var mins, maxs []float64
-	live := 0
+	// One peer is one maker. The directory lists an entry per advertised
+	// quote, so a peer that advertises twice would otherwise be counted as
+	// two participants, which is the one thing the headline column must not
+	// do. The list held 9 entries and 9 distinct peers on 2026-10-27; this
+	// is the guard that keeps that true rather than an observation about it.
+	seen := map[string]bool{}
 	for _, m := range makers {
 		if m.Testnet {
 			continue // a testnet maker quotes play money
 		}
-		live++
+		if m.PeerID == "" || seen[m.PeerID] {
+			continue
+		}
+		seen[m.PeerID] = true
 		if p, ok := num(m.Price); ok {
 			prices = append(prices, p)
 		}
@@ -68,8 +76,9 @@ func probeXmr(cfg *Config) {
 		}
 	}
 
-	bookMakers.WithLabelValues("unstoppableswap", "XMR").Set(float64(live))
-	bookOffers.WithLabelValues("unstoppableswap", "XMR").Set(float64(live))
+	live := len(seen)
+	bookMakers.WithLabelValues("unstoppableswap", "xmr").Set(float64(live))
+	bookOffers.WithLabelValues("unstoppableswap", "xmr").Set(float64(live))
 	if live == 0 {
 		probeTotal.WithLabelValues("unstoppableswap", "maker_book", "empty").Inc()
 		return
@@ -79,20 +88,20 @@ func probeXmr(cfg *Config) {
 		sort.Float64s(prices)
 		med := prices[len(prices)/2]
 		if med > 0 {
-			bookDispersion.WithLabelValues("unstoppableswap", "XMR").Set((prices[len(prices)-1] - prices[0]) / med * 100)
+			bookDispersion.WithLabelValues("unstoppableswap", "xmr").Set((prices[len(prices)-1] - prices[0]) / med * 100)
 		}
 		// "Best" for a buyer of XMR is the lowest satoshi-per-XMR price.
-		bookBestPrice.WithLabelValues("unstoppableswap", "XMR").Set(prices[0])
+		bookBestPrice.WithLabelValues("unstoppableswap", "xmr").Set(prices[0])
 	} else {
 		probeTotal.WithLabelValues("unstoppableswap", "maker_book", "too_few_for_dispersion").Inc()
 	}
 	if len(mins) > 0 {
 		sort.Float64s(mins)
-		bookMinSize.WithLabelValues("unstoppableswap", "XMR").Set(mins[0])
+		bookMinSize.WithLabelValues("unstoppableswap", "xmr").Set(mins[0])
 	}
 	if len(maxs) > 0 {
 		sort.Float64s(maxs)
-		bookMaxSize.WithLabelValues("unstoppableswap", "XMR").Set(maxs[len(maxs)-1])
+		bookMaxSize.WithLabelValues("unstoppableswap", "xmr").Set(maxs[len(maxs)-1])
 	}
 	probeTotal.WithLabelValues("unstoppableswap", "maker_book", "ok").Inc()
 	lastSuccess.WithLabelValues("unstoppableswap", "maker_book").Set(float64(time.Now().Unix()))
