@@ -61,7 +61,7 @@ func (p *OdosProvider) Quote(ctx context.Context, token Token) (ok bool) {
 	payload := map[string]any{
 		"chainId": chainId,
 		"inputTokens": []map[string]any{
-			{"tokenAddress": usdcAddr, "amount": "1000000"},
+			{"tokenAddress": usdcAddr, "amount": oneStableUnit(token.Chain)},
 		},
 		"outputTokens": []map[string]any{
 			{"tokenAddress": token.Address, "proportion": 1},
