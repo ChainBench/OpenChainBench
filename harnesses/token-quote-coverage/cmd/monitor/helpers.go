@@ -52,3 +52,20 @@ func snippet(b []byte) string {
 	}
 	return string(b)
 }
+
+// stableDecimals is the decimal count of the stablecoin each chain's probe
+// spends: USDC on Base and Solana and USDG on Robinhood Chain have 6, while
+// USDC on BNB Chain (0x8AC76a51...580d, Binance-Peg) has 18.
+func stableDecimals(chain string) int {
+	if chain == "bsc" {
+		return 18
+	}
+	return 6
+}
+
+// oneStableUnit is one whole stablecoin in base units, the "1 USDC" every
+// probe quotes. A flat 1000000 is one unit at 6 decimals but 1e-12 USDC on
+// BNB Chain.
+func oneStableUnit(chain string) string {
+	return "1" + strings.Repeat("0", stableDecimals(chain))
+}

@@ -50,7 +50,7 @@ func (p *KyberSwapProvider) Quote(ctx context.Context, token Token) (ok bool) {
 	q := url.Values{}
 	q.Set("tokenIn", usdcAddr)
 	q.Set("tokenOut", token.Address)
-	q.Set("amountIn", "1000000")
+	q.Set("amountIn", oneStableUnit(token.Chain))
 	q.Set("saveGas", "false")
 	endpoint := fmt.Sprintf("https://aggregator-api.kyberswap.com/%s/api/v1/routes?%s", slug, q.Encode())
 
