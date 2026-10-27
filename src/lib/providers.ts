@@ -893,7 +893,9 @@ const buildProvidersCached = unstable_cache(
   // sat in until #3273.
   // v23: six coin marks and six registry entries for bench 308, whose rows
   // were all rendering as initials.
-  ["providers-v23"],
+  // v24: thorchain gains a mark and a registry entry; it was the last row on
+  // the privacy boards still rendering as initials.
+  ["providers-v24"],
   // 900 s: the provider index feeds products / compare / answers, whose
   // numbers move slowly, and this revalidate is also the effective ISR
   // period of those ~500 pages (Next takes the min across a route's caches).

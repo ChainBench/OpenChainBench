@@ -111,6 +111,12 @@ export type ProviderRegistryEntry = {
 };
 
 export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
+  thorchain: {
+    url: "https://thorchain.org",
+    description:
+      "Cross-chain liquidity protocol settling native swaps between Bitcoin, Ethereum, Zcash and others without wrapped assets. Streams large swaps into hundreds of sub-swaps to cut slippage, trading time for price.",
+  },
+
   xmr: {
     url: "https://www.getmonero.org",
     description:

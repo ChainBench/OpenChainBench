@@ -49,6 +49,7 @@ abstract: |
   to probe more widely.
 
 methodology:
+  - "Zcash is the asset here because it is the only one measured that HAS a shielded address format. Monero is private by default, with no transparent variant to choose between, and Dash offers optional mixing over ordinary addresses rather than a second address type. The question this board asks only exists for Zcash."
   - "Two dry quotes per rail per source chain per tick, one to a transparent t-address and one to a shielded unified address. Nothing is ever signed or sent; the harness holds no key and no wallet."
   - "The transparent quote is the control and runs first. A shielded refusal is recorded only when the control was accepted on the same source chain, so a rail that is down or out of liquidity never reads as refusing privacy."
   - "The shielded address is a mainnet unified address from Zcash's own published test vectors, bech32m verified at startup, and the transparent one is an address the rail itself handed over. Shielded addresses never appear on chain by design, so a published test vector is the only sound source for one."
