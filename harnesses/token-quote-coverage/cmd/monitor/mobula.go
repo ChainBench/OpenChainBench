@@ -36,7 +36,12 @@ func (p *MobulaProvider) Slug() string { return "mobula" }
 
 func (p *MobulaProvider) SupportsChain(chain string) bool {
 	switch chain {
-	case "base", "bsc", "robinhood", "solana":
+	// Solana is off: since 2026-10-08 ~22:00 UTC every Solana quote returns
+	// 400 "Swap quoting is not available for solana:solana" (any pair, amount
+	// or amountRaw), while EVM works with the same key. Add "solana" back
+	// here, and drop the chain!="solana" filter on mobula in
+	// benchmarks/token-quote-coverage.yml, once Mobula quotes Solana again.
+	case "base", "bsc", "robinhood":
 		return true
 	}
 	return false
@@ -58,10 +63,9 @@ func (p *MobulaProvider) Quote(ctx context.Context, token Token) (ok bool) {
 		return false
 	}
 
+	// amount is in human units on every chain (amountRaw takes base units),
+	// so "1" is one USDC; "1000000" on Solana asked for a million.
 	amount := "1"
-	if token.Chain == "solana" {
-		amount = "1000000"
-	}
 	q := url.Values{}
 	q.Set("tokenIn", tokenIn)
 	q.Set("tokenOut", token.Address)
