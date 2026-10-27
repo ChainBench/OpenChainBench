@@ -3,13 +3,14 @@ number: "308"
 title: Privacy coins on peer-to-peer swap books, who is actually there
 seo_title: "Monero, Dash, Firo atomic swaps: how many makers are really there"
 seo_description: "{{best_name}} has {{best_p50}} distinct makers standing on non-custodial atomic swap books, {{worst_name}} has {{worst_p50}}. {{declared_count}} privacy coins counted."
-subtitle: "Distinct makers with a live offer for each privacy coin on non-custodial atomic swap order books, with the offers and pairs behind the count."
+subtitle: "Distinct makers with a live offer for each privacy coin on non-custodial atomic swap order books, with the offers, markets and coins on offer behind the count."
 category: Bridges
 status: live
 metric: Distinct makers
 unit: count
 row_noun: { one: coin, many: coins }
 higher_is_better: true
+zero_is_a_value: true
 
 seo_intro: |
   A coin can be listed everywhere and tradeable nowhere. These are
@@ -47,6 +48,8 @@ methodology:
   - "An offer is live when its own timestamp plus its stated validity has not passed. Expired offers stay in the feeds and are excluded here."
   - "A coin appearing on more than one venue has its makers summed across them. Monero is the only coin measured that appears on two."
   - "Sizes are read from the feed's formatted amount fields, never from raw units, because the coins on this board carry different decimal counts."
+  - "A coin with nothing live on the book reads 0, not its last value. Prometheus keeps a gauge at whatever it was last given, so a coin that is simply skipped keeps republishing the market it used to have: Firo held one maker for a full day while the feed carried no Firo offer at all."
+  - "Markets are counted without direction. The feed carries an offer as an ordered pair, so the same market listed both ways would otherwise count twice, which it did for Monero, Dash and Wownero."
   - "Books are measured, not quotes. Nothing here says what a swap would cost, only whether a counterparty exists."
 
 findings:
@@ -78,12 +81,19 @@ metric_panels:
     higher_is_better: true
     description: "Unexpired offers touching the coin, across every venue measured."
   - id: pairs
-    label: Pairs
+    label: Markets
     metric: sum(privacy_book_pairs{}) by (coin)
     label_key: coin
     unit: count
     higher_is_better: true
-    description: "Distinct trading pairs the coin appears in."
+    description: "Markets the coin trades in on BasicSwap's book, counted without direction: an offer both ways is one market, not two. The Monero maker directory is not counted here because its only market, Monero against Bitcoin, is already on that book."
+  - id: offered
+    label: Coins on offer
+    metric: sum(privacy_book_size_offered{}) by (coin)
+    label_key: coin
+    unit: count
+    higher_is_better: true
+    description: "Whole coins standing on the book, in the row's own coin, so the figures are not comparable across rows. Read it against the maker count: the rows with one maker are the ones where a large number here describes one person's standing order."
 
 providers:
   - slug: xmr
@@ -91,81 +101,81 @@ providers:
     tag: "The only coin here on two books, and the only real market"
     formula: "Distinct maker addresses with a live offer touching XMR, summed across the venues measured."
     queries:
-      p50: sum(privacy_book_maker_count{coin="XMR"})
-      p90: sum(privacy_book_maker_count{coin="XMR"})
-      p99: sum(privacy_book_maker_count{coin="XMR"})
-      mean: sum(privacy_book_maker_count{coin="XMR"})
-      sample_size: sum(privacy_book_live_offers{coin="XMR"})
-      series: sum(privacy_book_maker_count{coin="XMR"})
+      p50: sum(privacy_book_maker_count{coin="xmr"})
+      p90: sum(privacy_book_maker_count{coin="xmr"})
+      p99: sum(privacy_book_maker_count{coin="xmr"})
+      mean: sum(privacy_book_maker_count{coin="xmr"})
+      sample_size: max(count_over_time(privacy_book_maker_count{coin="xmr"}[24h]))
+      series: sum(privacy_book_maker_count{coin="xmr"})
 
   - slug: wow
     name: Wownero
     tag: "A Monero fork, and the only other coin with more than two makers"
     formula: "Distinct maker addresses with a live offer touching WOW."
     queries:
-      p50: sum(privacy_book_maker_count{coin="WOW"})
-      p90: sum(privacy_book_maker_count{coin="WOW"})
-      p99: sum(privacy_book_maker_count{coin="WOW"})
-      mean: sum(privacy_book_maker_count{coin="WOW"})
-      sample_size: sum(privacy_book_live_offers{coin="WOW"})
-      series: sum(privacy_book_maker_count{coin="WOW"})
+      p50: sum(privacy_book_maker_count{coin="wow"})
+      p90: sum(privacy_book_maker_count{coin="wow"})
+      p99: sum(privacy_book_maker_count{coin="wow"})
+      mean: sum(privacy_book_maker_count{coin="wow"})
+      sample_size: max(count_over_time(privacy_book_maker_count{coin="wow"}[24h]))
+      series: sum(privacy_book_maker_count{coin="wow"})
 
   - slug: part
     name: Particl
     tag: "Transparent mode, the control for the blind row below"
     formula: "Distinct maker addresses with a live offer touching PART in its transparent form."
     queries:
-      p50: sum(privacy_book_maker_count{coin="PART"})
-      p90: sum(privacy_book_maker_count{coin="PART"})
-      p99: sum(privacy_book_maker_count{coin="PART"})
-      mean: sum(privacy_book_maker_count{coin="PART"})
-      sample_size: sum(privacy_book_live_offers{coin="PART"})
-      series: sum(privacy_book_maker_count{coin="PART"})
+      p50: sum(privacy_book_maker_count{coin="part"})
+      p90: sum(privacy_book_maker_count{coin="part"})
+      p99: sum(privacy_book_maker_count{coin="part"})
+      mean: sum(privacy_book_maker_count{coin="part"})
+      sample_size: max(count_over_time(privacy_book_maker_count{coin="part"}[24h]))
+      series: sum(privacy_book_maker_count{coin="part"})
 
   - slug: part-blind
     name: Particl blind
     tag: "The same chain as the row above, with the privacy mode on"
     formula: "Distinct maker addresses with a live offer touching PART_BLIND, the blind form of Particl."
     queries:
-      p50: sum(privacy_book_maker_count{coin="PART_BLIND"})
-      p90: sum(privacy_book_maker_count{coin="PART_BLIND"})
-      p99: sum(privacy_book_maker_count{coin="PART_BLIND"})
-      mean: sum(privacy_book_maker_count{coin="PART_BLIND"})
-      sample_size: sum(privacy_book_live_offers{coin="PART_BLIND"})
-      series: sum(privacy_book_maker_count{coin="PART_BLIND"})
+      p50: sum(privacy_book_maker_count{coin="part-blind"})
+      p90: sum(privacy_book_maker_count{coin="part-blind"})
+      p99: sum(privacy_book_maker_count{coin="part-blind"})
+      mean: sum(privacy_book_maker_count{coin="part-blind"})
+      sample_size: max(count_over_time(privacy_book_maker_count{coin="part-blind"}[24h]))
+      series: sum(privacy_book_maker_count{coin="part-blind"})
 
   - slug: dash
     name: Dash
     tag: "Also quoted on Maya, where the price is measured instead"
     formula: "Distinct maker addresses with a live offer touching DASH."
     queries:
-      p50: sum(privacy_book_maker_count{coin="DASH"})
-      p90: sum(privacy_book_maker_count{coin="DASH"})
-      p99: sum(privacy_book_maker_count{coin="DASH"})
-      mean: sum(privacy_book_maker_count{coin="DASH"})
-      sample_size: sum(privacy_book_live_offers{coin="DASH"})
-      series: sum(privacy_book_maker_count{coin="DASH"})
+      p50: sum(privacy_book_maker_count{coin="dash"})
+      p90: sum(privacy_book_maker_count{coin="dash"})
+      p99: sum(privacy_book_maker_count{coin="dash"})
+      mean: sum(privacy_book_maker_count{coin="dash"})
+      sample_size: max(count_over_time(privacy_book_maker_count{coin="dash"}[24h]))
+      series: sum(privacy_book_maker_count{coin="dash"})
 
   - slug: pivx
     name: PIVX
     tag: "Three offers across three pairs, all from one address"
     formula: "Distinct maker addresses with a live offer touching PIVX."
     queries:
-      p50: sum(privacy_book_maker_count{coin="PIVX"})
-      p90: sum(privacy_book_maker_count{coin="PIVX"})
-      p99: sum(privacy_book_maker_count{coin="PIVX"})
-      mean: sum(privacy_book_maker_count{coin="PIVX"})
-      sample_size: sum(privacy_book_live_offers{coin="PIVX"})
-      series: sum(privacy_book_maker_count{coin="PIVX"})
+      p50: sum(privacy_book_maker_count{coin="pivx"})
+      p90: sum(privacy_book_maker_count{coin="pivx"})
+      p99: sum(privacy_book_maker_count{coin="pivx"})
+      mean: sum(privacy_book_maker_count{coin="pivx"})
+      sample_size: max(count_over_time(privacy_book_maker_count{coin="pivx"}[24h]))
+      series: sum(privacy_book_maker_count{coin="pivx"})
 
   - slug: firo
     name: Firo
     tag: "One offer, one pair, one maker"
     formula: "Distinct maker addresses with a live offer touching FIRO."
     queries:
-      p50: sum(privacy_book_maker_count{coin="FIRO"})
-      p90: sum(privacy_book_maker_count{coin="FIRO"})
-      p99: sum(privacy_book_maker_count{coin="FIRO"})
-      mean: sum(privacy_book_maker_count{coin="FIRO"})
-      sample_size: sum(privacy_book_live_offers{coin="FIRO"})
-      series: sum(privacy_book_maker_count{coin="FIRO"})
+      p50: sum(privacy_book_maker_count{coin="firo"})
+      p90: sum(privacy_book_maker_count{coin="firo"})
+      p99: sum(privacy_book_maker_count{coin="firo"})
+      mean: sum(privacy_book_maker_count{coin="firo"})
+      sample_size: max(count_over_time(privacy_book_maker_count{coin="firo"}[24h]))
+      series: sum(privacy_book_maker_count{coin="firo"})

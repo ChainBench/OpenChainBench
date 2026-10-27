@@ -21,12 +21,28 @@ import (
 // looks like a market and is one person's standing offer, so the maker
 // count is published beside every size rather than left for a footnote.
 
-// privacyCoins is the cohort this board claims. Particl is listed in both
-// its transparent and blind forms deliberately: they are the same chain
-// with and without the privacy mode, which is a comparison worth having.
-var privacyCoins = map[string]bool{
-	"XMR": true, "DASH": true, "FIRO": true, "PIVX": true,
-	"WOW": true, "PART": true, "PART_BLIND": true, "PART_ANON": true,
+// coinSlug is the cohort this board claims, mapping the feed's own symbol
+// to the row slug on the board.
+//
+// The label value has to BE the slug. A metric panel is queried as
+// `<metric>{coin="<provider slug>"}`, built from the spec's provider list
+// with no normalisation, so a gauge labelled "XMR" is invisible to a row
+// called "xmr" and the panel renders empty with no error anywhere. That is
+// how this board shipped with both of its companion columns blank while the
+// subtitle promised "the offers and pairs behind the count".
+//
+// Particl is listed in both its transparent and blind forms deliberately:
+// they are the same chain with and without the privacy mode, which is a
+// comparison worth having.
+var coinSlug = map[string]string{
+	"XMR":        "xmr",
+	"DASH":       "dash",
+	"FIRO":       "firo",
+	"PIVX":       "pivx",
+	"WOW":        "wow",
+	"PART":       "part",
+	"PART_BLIND": "part-blind",
+	"PART_ANON":  "part-anon",
 }
 
 type bsxOffer struct {
@@ -56,6 +72,64 @@ type coinSide struct {
 	bids   int
 }
 
+func newCoinSide() *coinSide {
+	return &coinSide{makers: map[string]bool{}, pairs: map[string]bool{}}
+}
+
+// marketKey names a market without a direction. The feed carries an offer as
+// an ordered (from, to) pair, so XMR->BTC and BTC->XMR are two entries for
+// one market. Keying on the ordered pair published 8 "distinct pairs" for
+// Monero on 2026-10-27 where the book held 5 markets, and over-counted Dash
+// and Wownero the same way.
+func marketKey(a, b string) string {
+	if a > b {
+		a, b = b, a
+	}
+	return a + "/" + b
+}
+
+// foldBook reduces the raw offer list to one entry per coin in the cohort.
+//
+// Every coin is present in the result, including the ones with nothing on
+// the book, because the caller publishes what this returns and a Prometheus
+// gauge that is simply not Set keeps its last value for as long as the
+// process lives. Skipping an empty coin republishes the market it used to
+// have: Firo sat at one maker for a full day on 2026-10-27 with zero Firo
+// offers anywhere in the feed, which is the exact row this bench exists to
+// refuse.
+func foldBook(offers []bsxOffer, now int64) map[string]*coinSide {
+	per := map[string]*coinSide{}
+	for _, slug := range coinSlug {
+		per[slug] = newCoinSide()
+	}
+	for _, o := range offers {
+		// An expired offer is not a market. The feed keeps them in the list,
+		// and counting them would let a coin whose last maker left months ago
+		// keep a row.
+		if o.Timestamp+o.TimeValid <= now {
+			continue
+		}
+		for _, side := range []struct{ coin, amount string }{
+			{o.CoinFrom, o.AmountFromSt},
+			{o.CoinTo, o.AmountToSt},
+		} {
+			slug, ok := coinSlug[side.coin]
+			if !ok {
+				continue
+			}
+			c := per[slug]
+			c.live++
+			c.makers[o.AddrFrom] = true
+			c.pairs[marketKey(o.CoinFrom, o.CoinTo)] = true
+			c.bids += o.BidCount
+			if v, err := strconv.ParseFloat(side.amount, 64); err == nil {
+				c.size += v
+			}
+		}
+	}
+	return per
+}
+
 // probeBasicSwap reads the book and publishes one row per privacy coin.
 //
 // Amounts come from the pre-formatted *_str fields on purpose. The raw
@@ -69,47 +143,18 @@ func probeBasicSwap(cfg *Config) {
 		probeTotal.WithLabelValues("basicswap", "order_book", "transport_error").Inc()
 		return
 	}
+	// An empty list is a feed failure, not an empty market, and publishing
+	// zeros from it would wipe every row on one bad read.
 	if len(book.Offers) == 0 {
 		probeTotal.WithLabelValues("basicswap", "order_book", "empty").Inc()
 		return
 	}
 
-	now := time.Now().Unix()
-	per := map[string]*coinSide{}
-	for _, o := range book.Offers {
-		// An expired offer is not a market. The feed keeps them in the list,
-		// and counting them would let a coin whose last maker left months ago
-		// keep a row.
-		if o.Timestamp+o.TimeValid <= now {
-			continue
-		}
-		for _, side := range []struct{ coin, amount string }{
-			{o.CoinFrom, o.AmountFromSt},
-			{o.CoinTo, o.AmountToSt},
-		} {
-			if !privacyCoins[side.coin] {
-				continue
-			}
-			c := per[side.coin]
-			if c == nil {
-				c = &coinSide{makers: map[string]bool{}, pairs: map[string]bool{}}
-				per[side.coin] = c
-			}
-			c.live++
-			c.makers[o.AddrFrom] = true
-			c.pairs[o.CoinFrom+"/"+o.CoinTo] = true
-			c.bids += o.BidCount
-			if v, err := strconv.ParseFloat(side.amount, 64); err == nil {
-				c.size += v
-			}
-		}
-	}
-
-	for coin, c := range per {
-		bookMakers.WithLabelValues("basicswap", coin).Set(float64(len(c.makers)))
-		bookOffers.WithLabelValues("basicswap", coin).Set(float64(c.live))
-		bookPairs.WithLabelValues("basicswap", coin).Set(float64(len(c.pairs)))
-		bookSize.WithLabelValues("basicswap", coin).Set(c.size)
+	for slug, c := range foldBook(book.Offers, time.Now().Unix()) {
+		bookMakers.WithLabelValues("basicswap", slug).Set(float64(len(c.makers)))
+		bookOffers.WithLabelValues("basicswap", slug).Set(float64(c.live))
+		bookPairs.WithLabelValues("basicswap", slug).Set(float64(len(c.pairs)))
+		bookSize.WithLabelValues("basicswap", slug).Set(c.size)
 	}
 	probeTotal.WithLabelValues("basicswap", "order_book", "ok").Inc()
 	lastSuccess.WithLabelValues("basicswap", "order_book").Set(float64(time.Now().Unix()))
