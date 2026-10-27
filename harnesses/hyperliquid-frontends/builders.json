@@ -737,5 +737,12 @@
     "address": "0x3f950b0a5221048097057af9fd162c3cdf81e9dd",
     "valid_from": "2026-09-25",
     "notes": "Builder address from Nova's own docs (docs.nova.markets). valid_from is the first day the public fills bucket returns a file, checked day by day over 46 days on 2026-10-21: 17 days have one, the earliest 2026-09-25, for 156 fills, $27,729 of notional and $9.71 of builder fees in total. Nova also runs its own venue on Arbitrum at 0x1410FA3F87F6A6ea221E5D2aB608C23005eC34f3, whose proxy bytecode is byte-identical to the Gains Network diamond (same sha256, different implementation slot), so that side is a gTrade deployment and is not what this builder row measures."
+  },
+  {
+    "slug": "perpex",
+    "name": "Perpex",
+    "address": "0x495a2c91b4173d979150ba108e2d80ce0145a7de",
+    "valid_from": "2026-03-14",
+    "notes": "Perpex (perpex.co, by Celebit Ltd), a Hyperliquid trading front-end on web, iOS and Android. Builder address and fee from the operator: 0.10% of eligible filled notional, including copied orders, published at perpex.co/fees. valid_from is the first day the public fills bucket returns a file, checked day by day from 2025-01-01 on 2026-10-23: 139 days have one, the earliest 2026-03-14. Hyperliquid's referral info for the address reports about $788 of builderRewards."
   }
 ]
