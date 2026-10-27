@@ -94,9 +94,10 @@ The cheapest confirmation that a deploy landed is `head_lag_sweeper_last_run_tim
 | --- | --- | --- |
 | `MOBULA_API_KEY` | Mobula API key | optional |
 | `COINGECKO_API_KEY` | CoinGecko Pro key (for GeckoTerminal feed) | optional |
-| `CODEX_API_KEY` | Codex API key. Solana and Base subscribe on Codex's edge nodes, the other chains on `graph.codex.io` | optional |
+| `CODEX_API_KEY` | Codex API key. Solana, Base and Robinhood subscribe on Codex's edge nodes, BNB on `graph.codex.io` | optional |
 | `CODEX_SOLANA_WS_URL` | Override the Codex endpoint for Solana (default `wss://fra.edge.codex.io/graphql`) | optional |
 | `CODEX_BASE_WS_URL` | Override the Codex endpoint for Base (default `wss://iad.edge.codex.io/graphql`) | optional |
+| `CODEX_ROBINHOOD_WS_URL` | Override the Codex endpoint for Robinhood (default `wss://iad.edge.codex.io/graphql`). Robinhood reads Processed on an edge node and the default level on `graph.codex.io` | optional |
 | `MOBULA_WS_URL` | Override the Mobula WS endpoint | optional |
 | `MONITOR_REGION` | Label written on every metric (e.g. `us-east`) | recommended |
 

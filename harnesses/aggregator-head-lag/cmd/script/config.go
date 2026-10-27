@@ -18,6 +18,7 @@ type Config struct {
 	SerializedWSURL      string // Serialized stream endpoint (override to roll back to the legacy engine)
 	CodexSolanaWSURL     string // Codex endpoint for the Solana subscription (edge node by default)
 	CodexBaseWSURL       string // Codex endpoint for the Base subscription (edge node by default)
+	CodexRobinhoodWSURL  string // Codex endpoint for the Robinhood subscription (edge node by default)
 }
 
 func loadEnv() (*Config, error) {
@@ -34,6 +35,7 @@ func loadEnv() (*Config, error) {
 	config.SerializedWSURL = strings.TrimSpace(os.Getenv("SERIALIZED_WS_URL"))
 	config.CodexSolanaWSURL = strings.TrimSpace(os.Getenv("CODEX_SOLANA_WS_URL"))
 	config.CodexBaseWSURL = strings.TrimSpace(os.Getenv("CODEX_BASE_WS_URL"))
+	config.CodexRobinhoodWSURL = strings.TrimSpace(os.Getenv("CODEX_ROBINHOOD_WS_URL"))
 
 	// Default to "unknown" if not set
 	if config.MonitorRegion == "" {
@@ -53,15 +55,19 @@ func loadEnv() (*Config, error) {
 		config.SerializedWSURL = "wss://ws.serialized.xyz/v1/stream"
 	}
 
-	// Codex's edge nodes serve two chains from every region: Solana from
-	// fra.edge, Base from iad.edge. The other chains read the standard
-	// endpoint (codexWSURL). Set CODEX_SOLANA_WS_URL or CODEX_BASE_WS_URL to
+	// Codex's edge nodes serve three chains from every region: Solana from
+	// fra.edge, Base and Robinhood from iad.edge. The other chains read the
+	// standard endpoint (codexWSURL). Set CODEX_SOLANA_WS_URL,
+	// CODEX_BASE_WS_URL or CODEX_ROBINHOOD_WS_URL to
 	// wss://graph.codex.io/graphql to roll that chain back.
 	if config.CodexSolanaWSURL == "" {
 		config.CodexSolanaWSURL = "wss://fra.edge.codex.io/graphql"
 	}
 	if config.CodexBaseWSURL == "" {
 		config.CodexBaseWSURL = "wss://iad.edge.codex.io/graphql"
+	}
+	if config.CodexRobinhoodWSURL == "" {
+		config.CodexRobinhoodWSURL = "wss://iad.edge.codex.io/graphql"
 	}
 
 	// If all env vars are set, return early (production mode)
