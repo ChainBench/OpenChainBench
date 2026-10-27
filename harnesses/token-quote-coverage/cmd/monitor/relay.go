@@ -59,7 +59,7 @@ func (p *RelayProvider) Quote(ctx context.Context, token Token) (ok bool) {
 		"destinationChainId":  chainId,
 		"originCurrency":      tokenIn,
 		"destinationCurrency": token.Address,
-		"amount":              "1000000",
+		"amount":              oneStableUnit(token.Chain),
 		"tradeType":           "EXACT_INPUT",
 	})
 

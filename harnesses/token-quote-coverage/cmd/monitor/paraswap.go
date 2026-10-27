@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 )
 
 const (
@@ -49,10 +50,12 @@ func (p *ParaSwapProvider) Quote(ctx context.Context, token Token) (ok bool) {
 	q := url.Values{}
 	q.Set("srcToken", usdcAddr)
 	q.Set("destToken", token.Address)
-	q.Set("amount", "1000000")
+	q.Set("amount", oneStableUnit(token.Chain))
 	q.Set("network", network)
-	q.Set("srcDecimals", "6")
-	q.Set("destDecimals", "18")
+	q.Set("srcDecimals", strconv.Itoa(stableDecimals(token.Chain)))
+	// No destDecimals: ParaSwap reads the token's own and answers
+	// "Destination Decimals Mismatch" to any other value, so a flat 18 failed
+	// every 6- or 9-decimal token.
 	q.Set("side", "SELL")
 	endpoint := "https://apiv5.paraswap.io/prices?" + q.Encode()
 
