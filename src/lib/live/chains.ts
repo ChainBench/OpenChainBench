@@ -12,6 +12,11 @@ export type ChainMeta = {
   color: string;
 };
 
+// zkSync Era was removed on 2026-10-27: it held a legend slot and a
+// polyline while the relay sent it no volume at all, so the dashboard
+// listed a chain whose only published figure was a dash. A swap on a
+// chain that is not in this list is dropped by the dashboard, which is
+// the intended behaviour here.
 export const CHAIN_LIST: ChainMeta[] = [
   { key: "ethereum", slug: "ethereum", display: "Ethereum", color: "#627EEA" },
   { key: "solana", slug: "solana", display: "Solana", color: "#9945FF" },
@@ -24,7 +29,6 @@ export const CHAIN_LIST: ChainMeta[] = [
   { key: "linea", slug: "linea", display: "Linea", color: "#61DFFF" },
   { key: "mantle", slug: "mantle", display: "Mantle", color: "#79EAA1" },
   { key: "scroll", slug: "scroll", display: "Scroll", color: "#C78F50" },
-  { key: "zksync", slug: "zksync", display: "zkSync Era", color: "#8C8DFC" },
   { key: "sonic", slug: "sonic", display: "Sonic", color: "#FE9933" },
   { key: "berachain", slug: "berachain", display: "Berachain", color: "#814625" },
 ];
