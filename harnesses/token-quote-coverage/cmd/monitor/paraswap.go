@@ -53,7 +53,9 @@ func (p *ParaSwapProvider) Quote(ctx context.Context, token Token) (ok bool) {
 	q.Set("amount", oneStableUnit(token.Chain))
 	q.Set("network", network)
 	q.Set("srcDecimals", strconv.Itoa(stableDecimals(token.Chain)))
-	q.Set("destDecimals", "18")
+	// No destDecimals: ParaSwap reads the token's own and answers
+	// "Destination Decimals Mismatch" to any other value, so a flat 18 failed
+	// every 6- or 9-decimal token.
 	q.Set("side", "SELL")
 	endpoint := "https://apiv5.paraswap.io/prices?" + q.Encode()
 

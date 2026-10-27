@@ -95,5 +95,8 @@ func TestParaSwapSendsTheStablesDecimals(t *testing.T) {
 		if got := rt.query.Get("srcDecimals"); got != want {
 			t.Errorf("paraswap on %s: srcDecimals=%q, want %q", chain, got, want)
 		}
+		if rt.query.Has("destDecimals") {
+			t.Errorf("paraswap on %s sent destDecimals=%q; the destination's decimals are unknown here", chain, rt.query.Get("destDecimals"))
+		}
 	}
 }
