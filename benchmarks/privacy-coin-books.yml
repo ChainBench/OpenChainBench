@@ -19,9 +19,10 @@ seo_intro: |
   honest measure of a market than counting the pairs.
 
   The result is lopsided enough to be the whole finding. One coin has
-  dozens of makers; several have exactly one. A row showing hundreds of
-  coins on offer can be a single person's standing order, which is why the
-  maker count sits in the headline column rather than in a footnote.
+  dozens of makers, some have one, and some have none at all. A row showing
+  hundreds of coins on offer can be a single person's standing order, which
+  is why the maker count sits in the headline column rather than in a
+  footnote.
 
 abstract: |
   Every tick, the harness reads each venue's public order book and counts,
@@ -54,12 +55,12 @@ methodology:
 
 findings:
   - "{{best_name}} has {{best_p50}} distinct makers while {{worst_name}} has {{worst_p50}}. The peer-to-peer atomic swap market for privacy coins is, in practice, one coin."
-  - "Several coins on this board have exactly one maker. Their offered size can still read in the hundreds or thousands, which is why size alone would describe a market that does not exist."
+  - "Coins on this board reach zero. A coin with no live offer anywhere reads 0 rather than keeping the market it had last week, and a coin at zero or one is a market that is one person away from not existing."
   - "Particl appears twice, in its transparent and blind forms, because it is the same chain with and without the privacy mode. The gap between those two rows is the clearest available answer to how much demand the privacy mode itself carries."
 
 faq:
   - q: "Which privacy coin can you actually atomic swap?"
-    a: "{{best_name}}, by a wide margin: it has {{best_p50}} distinct makers standing on the books measured here while {{worst_name}} has {{worst_p50}}. Several coins on this board have exactly one maker, which means their market is one person and will disappear when that person stops posting."
+    a: "{{best_name}}, by a wide margin: it has {{best_p50}} distinct makers standing on the books measured here while {{worst_name}} has {{worst_p50}}. The coins at zero have no counterparty at all right now, and the ones at one have a market that is a single person who can stop posting at any time."
   - q: "Why count makers instead of volume or liquidity?"
     a: "Because on a peer-to-peer book nothing executes without a counterparty, and offered size can be posted by anybody. One maker can show a large number and represent no market at all. Counting the distinct people behind live offers is the measure that cannot be inflated by a single participant."
   - q: "Does this tell me what a swap costs?"
