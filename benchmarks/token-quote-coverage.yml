@@ -69,15 +69,16 @@ abstract: |
   (it lags new Raydium pairs by a few minutes). The chain dimension
   narrows to a single chain for providers that are chain-specific
   (Jupiter is Solana-only; KyberSwap and ParaSwap are EVM-only on
-  Base + BNB + Robinhood; Mobula and Relay cover all four chains).
+  Base + BNB + Robinhood; Relay covers all four chains; Mobula covers
+  the three EVM chains, its Solana quoting has been off since 2026-10-08).
 
 methodology:
   - "Token discovery: five sources in parallel. (1) Dexscreener token-boosts: pump-fun (Solana) and pons (Robinhood). (2) Virtuals Protocol API: Virtuals agents on Base and Robinhood chain (virtuals). (3) GeckoTerminal BSC new_pools: four-meme. (4) GeckoTerminal Solana moonshot/pools: moonshot. (5) GeckoTerminal Solana meteora-dbc/pools: meteora-dbc. Boosted tokens from (1) are enriched via Dexscreener batch lookup to resolve dexId to venue labels."
-  - "Cohort composition: four of the five are DEX aggregators (Jupiter on Solana, KyberSwap and ParaSwap on EVM, Mobula on both). Relay is a cross-chain relayer, scored here because it answers the same probe, not because it is an aggregator; the rest of the site types it the same way on bridge-fee and bridge-realized-cost. Read the type beside each name before the rank."
+  - "Cohort composition: four of the five are DEX aggregators (Jupiter on Solana, KyberSwap, ParaSwap and Mobula on EVM). Relay is a cross-chain relayer, scored here because it answers the same probe, not because it is an aggregator; the rest of the site types it the same way on bridge-fee and bridge-realized-cost. Read the type beside each name before the rank."
   - "Quote probe: 1 USDC → token, fired in parallel to all in-scope providers with a 10s timeout. Input token is always USDC (native USDC on Solana and Base, bridged USDC.e on BNB). A probe is a coverage hit when the HTTP response is 2xx and the parsed outAmount field is a non-zero positive integer or decimal. All other outcomes (4xx, 5xx, no-route JSON, empty outAmount, timeout) record as misses."
-  - "Aggregator endpoints: Jupiter lite-api.jup.ag/swap/v1/quote (Solana), Mobula /api/2/swap/quoting (EVM + Solana, API key), Relay api.relay.link/quote (EVM + Solana, no key), KyberSwap aggregator-api.kyberswap.com/{chain}/api/v1/routes (EVM only, no key), ParaSwap apiv5.paraswap.io/prices (EVM only, no key). Each adapter normalises chain identifiers, input/output decimals, and error response shapes before recording outcome."
+  - "Aggregator endpoints: Jupiter lite-api.jup.ag/swap/v1/quote (Solana), Mobula /api/2/swap/quoting (EVM only, API key), Relay api.relay.link/quote (EVM + Solana, no key), KyberSwap aggregator-api.kyberswap.com/{chain}/api/v1/routes (EVM only, no key), ParaSwap apiv5.paraswap.io/prices (EVM only, no key). Each adapter normalises chain identifiers, input/output decimals, and error response shapes before recording outcome."
   - "Jupiter strictMode=false: queried without the curated-token filter so Jupiter will attempt routing for any token with a discoverable on-chain pool, matching how most wallets call the API. strictMode=true would trivially exclude new tokens and defeat the purpose of the benchmark."
-  - "Chain-scope enforcement: Jupiter probes Solana-only. KyberSwap and ParaSwap probe EVM only (Base, BNB, Robinhood). Mobula and Relay probe all four chains including Solana. Providers are never penalised for chains they do not support: null cells are excluded from cross-chain aggregates."
+  - "Chain-scope enforcement: Jupiter probes Solana-only. KyberSwap and ParaSwap probe EVM only (Base, BNB, Robinhood). Relay probes all four chains including Solana. Mobula probes the three EVM chains: since 2026-10-08 its API answers every Solana quote with 'Swap quoting is not available for solana:solana', so Solana is left out rather than scored at 0% until it comes back. Providers are never penalised for chains they do not support: null cells are excluded from cross-chain aggregates."
   - "Coverage metric: three counters per probe: attempts_total (every probe), api_ok_total (HTTP 200 received), success_total (HTTP 200 + outAmount > 0). Headline rate = success / attempts. Two derived slots: availability = api_ok / attempts; coverage_given_available = success / api_ok."
   - "Probe cadence and deduplication: each batch cycles through the current Dexscreener token-boosts feed. Tokens are not deduplicated across batches; the same token may appear in multiple 30-minute windows if it remains boosted. The score therefore reflects freshness of the aggregator's current routing graph, not historical coverage depth."
   - "Single origin: all probes originate from the eu-west OCB VPS. Regional latency is not a factor in this bench (the outcome is binary hit/miss, not latency). No region dimension in v1."
@@ -104,7 +105,7 @@ faq:
   - q: "Why is Jupiter queried with strictMode=false?"
     a: "Jupiter's strictMode=true restricts quotes to verified tokens on its curated list, which defeats the purpose of a coverage bench targeting newly-launched tokens. strictMode=false instructs Jupiter to attempt routing for any token with an existing pool, matching how wallets typically call the API when displaying all tradeable tokens."
   - q: "What happens when a provider is chain-specific?"
-    a: "Jupiter is Solana-only and appears as null on EVM rows. KyberSwap and ParaSwap are EVM-only and appear as null on Solana rows. Mobula and Relay cover all four chains including Solana. Null cells are excluded from cross-chain aggregates so chain-restricted providers are not penalized."
+    a: "Jupiter is Solana-only and appears as null on EVM rows. KyberSwap and ParaSwap are EVM-only and appear as null on Solana rows. Relay covers all four chains including Solana. Mobula is EVM-only for now: its Solana quoting has been unavailable since 2026-10-08, so it is not probed there. Null cells are excluded from cross-chain aggregates so chain-restricted providers are not penalized."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/token-quote-coverage
 
@@ -142,18 +143,18 @@ providers:
   - slug: mobula
     name: Mobula
     type: aggregator
-    tag: Multi-chain, Solana + Base + BNB + Robinhood, API key required
-    formula: "Rolling 24h ratio of token_quote_coverage_success_total to token_quote_coverage_attempts_total for provider=mobula, across all launchpads and chains Mobula supports."
+    tag: EVM aggregator, Base + BNB + Robinhood, API key required
+    formula: "Rolling 24h ratio of hits to attempts for provider=mobula, EVM chains only (Base, BNB, Robinhood). Solana is excluded: Mobula has answered every Solana quote with not available since 2026-10-08."
     queries:
-      p50: sum(increase(token_quote_coverage_success_total{provider="mobula"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="mobula"}[24h])) * 100
-      p90: sum(increase(token_quote_coverage_attempts_total{provider="mobula"}[24h]))
-      p99: sum(increase(token_quote_coverage_success_total{provider="mobula"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="mobula"}[24h])) * 100
-      mean: sum(increase(token_quote_coverage_success_total{provider="mobula"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="mobula"}[24h])) * 100
-      success: clamp_max(sum(increase(token_quote_coverage_success_total{provider="mobula"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="mobula"}[24h])), 1)
-      sample_size: sum(increase(token_quote_coverage_attempts_total{provider="mobula"}[24h]))
-      series: sum(rate(token_quote_coverage_success_total{provider="mobula"}[1h])) / sum(rate(token_quote_coverage_attempts_total{provider="mobula"}[1h])) * 100
-      availability: clamp_max(sum(increase(token_quote_api_ok_total{provider="mobula"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="mobula"}[24h])), 1) * 100
-      coverage_given_available: sum(increase(token_quote_coverage_success_total{provider="mobula"}[24h])) / sum(increase(token_quote_api_ok_total{provider="mobula"}[24h])) * 100
+      p50: sum(increase(token_quote_coverage_success_total{provider="mobula",chain!="solana"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="mobula",chain!="solana"}[24h])) * 100
+      p90: sum(increase(token_quote_coverage_attempts_total{provider="mobula",chain!="solana"}[24h]))
+      p99: sum(increase(token_quote_coverage_success_total{provider="mobula",chain!="solana"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="mobula",chain!="solana"}[24h])) * 100
+      mean: sum(increase(token_quote_coverage_success_total{provider="mobula",chain!="solana"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="mobula",chain!="solana"}[24h])) * 100
+      success: clamp_max(sum(increase(token_quote_coverage_success_total{provider="mobula",chain!="solana"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="mobula",chain!="solana"}[24h])), 1)
+      sample_size: sum(increase(token_quote_coverage_attempts_total{provider="mobula",chain!="solana"}[24h]))
+      series: sum(rate(token_quote_coverage_success_total{provider="mobula",chain!="solana"}[1h])) / sum(rate(token_quote_coverage_attempts_total{provider="mobula",chain!="solana"}[1h])) * 100
+      availability: clamp_max(sum(increase(token_quote_api_ok_total{provider="mobula",chain!="solana"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="mobula",chain!="solana"}[24h])), 1) * 100
+      coverage_given_available: sum(increase(token_quote_coverage_success_total{provider="mobula",chain!="solana"}[24h])) / sum(increase(token_quote_api_ok_total{provider="mobula",chain!="solana"}[24h])) * 100
 
   - slug: jupiter
     name: Jupiter
