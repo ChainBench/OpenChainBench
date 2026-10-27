@@ -2197,6 +2197,11 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "Bitget Wallet is the self-custodial wallet by Bitget; its Hyperliquid perps integration launched Dec 2025 and routes orders through a registered builder code (Hyperliquid referral code BITGETWALLET, 3.6k+ referrals).",
     twitter: "@BitgetWallet",
   },
+  perpex: {
+    url: "https://perpex.co",
+    description:
+      "Perpex is a third-party Hyperliquid trading front-end by Celebit Ltd on web, iOS and Android, covering perps, spot, HIP-3 and HIP-4 outcome markets and copy trading of public wallets, with a 0.10% builder fee on eligible fills.",
+  },
 
   // ─── Perp funding venues (bench № 036) ─────────────────────────────
   bybit: {
