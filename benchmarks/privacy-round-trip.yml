@@ -1,7 +1,7 @@
 slug: privacy-round-trip
 number: "306"
 title: Privacy round trip cost, what going into Zcash and back loses
-seo_title: "Privacy round trip cost: Zcash and Dash in and out"
+seo_title: "Privacy round trip cost: what Zcash in and out loses"
 seo_description: "{{best_name}} loses the least on a round trip into a privacy asset and back, {{best_p50}} at the measured size. {{declared_count}} rails compared."
 subtitle: "Basis points and minutes lost converting a liquid asset into a privacy asset and back out, on non-custodial rails, at three sizes."
 category: Bridges
@@ -48,6 +48,7 @@ abstract: |
 
 methodology:
   - "The two rails do not start from the same asset, because forcing one on both would mean quoting a pair one of them serves badly. The size tier is the shared axis and each rail sends its own: Maya sends 0.001, 0.01 and 0.1 BTC, NEAR Intents sends 100, 1,000 and 10,000 USDC on Base. The published figure is basis points of round-trip loss, which is unit-free and therefore comparable across both."
+  - "Rows are rails and the asset is Zcash, because it is the only privacy asset all three rails carry. Maya also quotes Dash and is measured on it, but a Dash row here would be one rail wide and would compare a venue against nothing. The asset comparison lives on the exit cost board."
   - "The All sizes tab is the median of the tiers measured on the same tick, not a fourth size and not an average: it is the one summary that does not privilege a trade size. Nothing is pooled from fewer than two tiers."
   - "A tier label is an approximation. The BTC amounts are fixed in BTC rather than re-derived from a price each tick, so the dollar value of Maya's rungs drifts with the BTC price while the tier name does not. The exact amounts are above and in the harness."
   - "Time is the sum of the two legs' own quoted durations, which is what each rail says the swap will take, not a measured settlement."

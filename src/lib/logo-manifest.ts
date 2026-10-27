@@ -548,6 +548,7 @@ const RAW: Record<string, string> = {
   // shares the mark. A separate logo would invent a project that does not
   // exist; the row name carries the distinction the board compares.
   "part-blind": "/logos/part.png",
+  thorchain: "/logos/thorchain.png",
   maya: "/logos/maya.png",
   zec: "/logos/zcash.svg",
   dash: "/logos/dash.png",
