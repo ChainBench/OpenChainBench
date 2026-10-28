@@ -306,6 +306,14 @@ function reportJsonLd(report: ReturnType<typeof getReport>) {
       publisher: { "@id": `${SITE.url}/#org` },
       inLanguage: "en",
       license: "https://creativecommons.org/licenses/by/4.0/",
+      // An engine that quotes a figure from a report should be able to walk
+      // to the data behind it. Each report category has a subject hub at the
+      // same slug (/perps, /rpc, /bridge, /chains, /data-api,
+      // /prediction-markets) carrying the live boards the report is built
+      // on, which is what isBasedOn is for. Pointing it at the reports index
+      // would have said the report is based on the list of reports.
+      mainEntityOfPage: { "@type": "WebPage", "@id": url },
+      isBasedOn: `${SITE.url}/${report.categorySlug}`,
       isPartOf: { "@id": `${SITE.url}/reports/${report.categorySlug}#series` },
     },
     ...(report.faq?.length

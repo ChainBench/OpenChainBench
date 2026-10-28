@@ -8,6 +8,7 @@ import { perpProductSlug } from "@/lib/perp-product-slug";
 import { buildCitationMeta, CREATOR_PUBLISHER, DATASET_LICENSE } from "@/lib/dataset-jsonld";
 import { AnswersForBench } from "@/components/answers-for-bench";
 import { perpHeadToHead } from "@/lib/perp-head-to-head";
+import { getReportsByCategory } from "@/lib/reports/loader";
 
 /**
  * Hub landing page for the perpetual DEX cohort. SSR'd against the
@@ -67,6 +68,11 @@ export default async function PerpsHubPage() {
     fetchPerpByAssetMatrix(),
     perpHeadToHead().catch(() => []),
   ]);
+
+  // Research about perps, discoverable from the perps hub rather than only
+  // from the reports archive. Same loader as the index and the sitemap, so
+  // a draft never appears.
+  const perpReports = getReportsByCategory("perps").filter((r) => !r.draft);
 
   // Measured rows only: the CEX reference (venue-reported) sits behind the
   // selector and never leads the hub's own sentences.
@@ -419,6 +425,30 @@ export default async function PerpsHubPage() {
           </Link>
           .
         </p>
+      )}
+
+      {perpReports.length > 0 && (
+        <section className="mt-12 max-w-3xl">
+          <h2 className="display text-xl sm:text-2xl text-ink mb-3">Reports</h2>
+          <p className="text-sm text-ink-soft mb-3">
+            Long-form analysis built on the boards above, each stating its
+            measurement window and linking the data behind every figure.
+          </p>
+          <ul className="space-y-3 text-sm">
+            {perpReports.map((r) => (
+              <li key={r.slug}>
+                <Link
+                  href={`/reports/perps/${r.slug}`}
+                  className="text-ink underline underline-offset-2 hover:text-teal-700"
+                >
+                  {r.title}
+                </Link>
+                <span className="text-ink-faint">, {r.period}</span>
+                <p className="text-ink-soft mt-1">{r.summary}</p>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
       {headToHead.length > 0 && (
