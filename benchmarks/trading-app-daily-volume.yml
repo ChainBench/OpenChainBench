@@ -37,7 +37,7 @@ abstract: |
   covers eight of those fourteen. The six it does not cover were removed.
 
 methodology:
-  - "Source: the public tehcscreener API (https://tehcscreener.com/api), Allium-backed, no key, synced once a day. The single source behind every bench on the /trading-apps hub."
+  - "Source: the public API of tehcscreener (https://tehcscreener.com), served at https://tehcscreener.com/api, Allium-backed, no key, synced once a day. The single source behind every bench on the /trading-apps hub."
   - "Cohort change on 2026-10-07: BonkBot, Banana Gun, Bloom, Sol Trading Bot, PepeBoost and o1.exchange were removed because this source does not cover them. A row that cannot be measured is removed, not published as zero, because a zero would rank it last on a figure nobody took."
   - "Share: this app's volume over the cohort's total for the same window and chain. It is a share of the eight measured here, not of the whole market, and it moved when the cohort shrank."
   - "Chains: how many chains the app routed measurable volume on during the latest day. Reach, not quality."
