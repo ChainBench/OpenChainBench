@@ -40,7 +40,7 @@ abstract: |
   two on the same terminal.
 
 methodology:
-  - "Source: the public tehcscreener API (https://tehcscreener.com/api), Allium-backed, no key, synced once a day. The single source behind every bench on the /trading-apps hub, so no two columns on one page can disagree about the same product."
+  - "Source: the public API of tehcscreener (https://tehcscreener.com), served at https://tehcscreener.com/api, Allium-backed, no key, synced once a day. The single source behind every bench on the /trading-apps hub, so no two columns on one page can disagree about the same product."
   - "Volume: what the terminal routed through its own interface on the selected chain, or summed across every chain on the all-chains tab. Not volume on the tokens it trades, which is bench 200."
   - "Fee revenue: what this source reports as fees. It is demonstrably more than the terminal's own commission, measured against published fee schedules: Trojan advertises 0.9% and this source reads 1.12%. The exact composition is not documented by the source."
   - "Windows are sums over days, never averages of daily rates. Volume, fees and transactions add over days the same way they add over chains, and the take rate built on them is volume-weighted by construction: total fees over the volume of the days whose fees could be measured."

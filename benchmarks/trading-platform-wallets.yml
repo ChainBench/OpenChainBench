@@ -51,7 +51,7 @@ abstract: |
   Solana-only.
 
 methodology:
-  - "Source: the public tehcscreener API (https://tehcscreener.com/api), Allium-backed, no key, synced once a day. The harness reads /bots over the full history for the roster and /bots/{bot} for each terminal's per-chain daily series, and publishes one day: the latest the source names."
+  - "Source: the public API of tehcscreener (https://tehcscreener.com), served at https://tehcscreener.com/api, Allium-backed, no key, synced once a day. The harness reads /bots over the full history for the roster and /bots/{bot} for each terminal's per-chain daily series, and publishes one day: the latest the source names."
   - "Wallets: the source's distinct wallet count for that terminal on that chain on that day. Counted per chain. The source also publishes a cross-chain deduplicated count, but only for 2 of the 9 terminals, so this bench uses the per-chain figure everywhere rather than mixing two definitions in one column."
   - "Why the counts are not summed across chains: measured on Fomo, the deduplicated cross-chain count is about 0.6 of the sum of its per-chain counts, because a wallet trading on two chains is one wallet. Adding the tabs together would overstate every multi-chain terminal, so each tab is read on its own."
   - "The two ratios: swaps per wallet is that day's transactions divided by that day's wallets, and volume per wallet is that day's volume divided by the same denominator. Both come from the same row as the count, so all three describe one terminal on one chain on one day."
