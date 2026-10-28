@@ -985,15 +985,15 @@ providers:
     source:
       plans:
         url: https://www.ankr.com/docs/rpc-service/service-plans/index.md
-        body_sha256: fc57f2523b531021241060034a68983cbed20dd9cff01348179eafae673121a8
-        verified_at: "2026-10-16"
+        body_sha256: da3c5b08a7c973fd2db939bd3283dfcfc8866b08ec8f7ad6a09abe4c3e3f31b1
+        verified_at: "2026-10-28"
         kind: markdown
         poll: etag
         extraction: "Freemium 200M credits; PAYG minimum 10USD; Deal 500USD-3000USD at 20% extra"
       weights:
         url: https://www.ankr.com/docs/rpc-service/pricing/index.md
-        body_sha256: ba4f0c914cf35535be435cb034954403ca551cb5f65815e81e95c381c9e9e506
-        verified_at: "2026-09-30"
+        body_sha256: c0af5a522f91c868398bba554327b285465c2d53caf09077d072314a3e12bf45
+        verified_at: "2026-10-28"
         kind: markdown
         poll: etag
         extraction: "'## Pricing per request: RPC over HTTPS' table '| API Type | Method | API Credits | in USD |', 5 rows. Forward-fill col 0 on the WSS table."
