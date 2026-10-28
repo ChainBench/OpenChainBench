@@ -528,7 +528,14 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // deployed, but staging renders it and a stale entry there would show the
   // board without its rows, which is the state we are trying to avoid
   // reviewing. It declares a bucket dimension, so bench-filters moves too.
-  ["bench-unfiltered-v102", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v103: the methodology array renders on the bench page for the first
+  //       time, and seven specs reworded their tehcscreener citation to
+  //       credit the project rather than only its endpoint. overlayEditorial
+  //       prefers the spec over the stored copy, but an entry cached before
+  //       the edit still carries the old prose, so the new wording stayed
+  //       invisible on production after the deploy. An editorial change
+  //       needs this bump exactly as a provider change does.
+  ["bench-unfiltered-v103", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -786,7 +793,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v93: lockstep with bench-unfiltered-v100 (0x leaves benches 304 and 033).
   // v94: lockstep with bench-unfiltered-v101 (Enso leaves bench 033).
   // v95: lockstep with bench-unfiltered-v102 (bench 306 arrives).
-  ["all-benchmarks-v95", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v96: lockstep with bench-unfiltered-v103 (methodology renders).
+  ["all-benchmarks-v96", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
