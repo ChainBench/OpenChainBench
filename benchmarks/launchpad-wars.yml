@@ -41,7 +41,7 @@ abstract: |
   does not carry is removed rather than published as zero.
 
 methodology:
-  - "Source: the public tehcscreener API (https://tehcscreener.com/api), Allium-backed, no key, synced once a day. One read of /launchpads per cycle, taking the window=1d totals, so every figure is a single day's and never a window sum."
+  - "Source: the public API of tehcscreener (https://tehcscreener.com), served at https://tehcscreener.com/api, Allium-backed, no key, synced once a day. One read of /launchpads per cycle, taking the window=1d totals, so every figure is a single day's and never a window sum."
   - "What is counted: trading volume on the tokens that launched on that pad, whoever routed the trade. A swap executed through Axiom on a pump.fun token counts here for pump.fun and on bench 267 for Axiom. The two benches are not double counting; they are answering different questions."
   - "Known divergence from other indexers, unresolved and stated rather than smoothed. On 2026-10-07 this source reported pump.fun at $688.4M for the day against $185.0M from DeFiLlama and $188.4M from Mobula, two indexers that share no code and landed 1.8% apart. On `flap` the comparison runs the other way, $0.5M here against $21.4M from Mobula."
   - "Why that divergence is not a counting convention: at chain level this source reads 2.08x DeFiLlama on Solana, 1.16x on Base and 0.27x on HyperEVM. The three differ in which venues they index, not in whether they count both legs of a swap."

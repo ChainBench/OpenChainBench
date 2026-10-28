@@ -49,7 +49,7 @@ abstract: |
   and the take rate it sat next to is unaffected.
 
 methodology:
-  - "Source: the public tehcscreener API (https://tehcscreener.com/api), Allium-backed, no key, synced once a day. The harness reads /bots over the full history for the roster and /bots/{bot} for each terminal's per-chain daily series, and publishes one day: the latest the source names."
+  - "Source: the public API of tehcscreener (https://tehcscreener.com), served at https://tehcscreener.com/api, Allium-backed, no key, synced once a day. The harness reads /bots over the full history for the roster and /bots/{bot} for each terminal's per-chain daily series, and publishes one day: the latest the source names."
   - "The ratio: that day's fee revenue in USD divided by that day's routed volume in USD, times 100, both read from the same row of the same series. A lower bound on what the terminal charges, because waivers, rebates and promotions reduce what it keeps without changing its schedule."
   - "Zeros are not ranked unless they are consistent, guarded at two levels. Per chain: when no terminal on a chain reports any fee, the column has failed and no take rate publishes there. Per cell: a terminal reporting fees on one chain and exactly zero on another, on material volume, has that cell withheld, because a waived fee and an unmeasured one look identical here. Axiom charges 0.92% on Solana and reported $0.00 on $29.8M of Robinhood volume."
   - "Removed on 2026-10-07: the fee-paying rate panel, the share of transactions that paid a fee. The current source publishes fee totals, not that share, and nothing here reconstructs it. Approximating it from the fields that do exist would have put a derived number where a measured one used to be."
