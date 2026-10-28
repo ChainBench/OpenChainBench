@@ -7,6 +7,14 @@ import { StatTable } from "@/components/reports/stat-table";
 import { RegionWinners } from "@/components/reports/region-winners";
 import { PerpCostClient } from "@/components/perp-cost-client";
 import {
+  SpeedCostChart,
+  RegionSpreadChart,
+  WsFirstChart,
+  FreeTierChart,
+  Scorecard,
+} from "@/components/reports/private-rpc/charts";
+import { LatencyHeatmap, CostCurves } from "@/components/reports/private-rpc/interactive";
+import {
   getAllReports,
   getReport,
   REPORT_CATEGORY_META,
@@ -86,6 +94,14 @@ const MDX_COMPONENTS = {
   // explains a cost structure and then makes the reader leave to try it on
   // their own numbers has stopped one step short.
   PerpCostClient,
+  // Exhibits of the October 2026 private RPC report.
+  SpeedCostChart,
+  RegionSpreadChart,
+  LatencyHeatmap,
+  WsFirstChart,
+  CostCurves,
+  FreeTierChart,
+  Scorecard,
 
   // Table of contents — pipe-separated section names, auto-generates anchor hrefs
   TOC: ({ sections }: { sections: string }) => {
