@@ -93,7 +93,13 @@ const MDX_COMPONENTS = {
   // The interactive tools are embeddable in a report body. A report that
   // explains a cost structure and then makes the reader leave to try it on
   // their own numbers has stopped one step short.
-  PerpCostClient,
+  //
+  // Bound to h3 here rather than through an MDX attribute: inside a report
+  // the tool is always a subsection of the article, and MDXRemote did not
+  // pass `headingLevel={3}` through (the component logged the default).
+  // Setting it in the map also means an author cannot forget it, which is
+  // what left the page outlining eleven sections against a TOC of eight.
+  PerpCostClient: () => <PerpCostClient headingLevel={3} />,
   // Exhibits of the October 2026 private RPC report.
   SpeedCostChart,
   RegionSpreadChart,
@@ -301,7 +307,9 @@ function reportJsonLd(report: ReturnType<typeof getReport>) {
       description: report.summary,
       datePublished: new Date(report.publishedAt).toISOString(),
       dateModified: new Date(report.updatedAt ?? report.publishedAt).toISOString(),
-      image: report.ogImage ?? `${SITE.url}/opengraph-image`,
+      // The per-report card, the same one og:image points at. Pointing
+      // the Article at the site-wide image made the two disagree.
+      image: report.ogImage ?? `${url}/opengraph-image`,
       author: { "@id": PERSON_ID },
       publisher: { "@id": `${SITE.url}/#org` },
       inLanguage: "en",
@@ -314,7 +322,10 @@ function reportJsonLd(report: ReturnType<typeof getReport>) {
       // would have said the report is based on the list of reports.
       mainEntityOfPage: { "@type": "WebPage", "@id": url },
       isBasedOn: `${SITE.url}/${report.categorySlug}`,
-      isPartOf: { "@id": `${SITE.url}/reports/${report.categorySlug}#series` },
+      // #collection is the @id the category page actually defines
+      // (src/app/reports/[category]/page.tsx:52). #series was a dangling
+      // reference that resolved to nothing.
+      isPartOf: { "@id": `${SITE.url}/reports/${report.categorySlug}#collection` },
     },
     ...(report.faq?.length
       ? [
