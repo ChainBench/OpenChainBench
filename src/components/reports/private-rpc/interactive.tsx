@@ -12,6 +12,7 @@ import {
   CHAINS,
   Figure,
   Legend,
+  SvgLogo,
   logScale,
   costAt,
   heatColor,
@@ -68,7 +69,7 @@ export function LatencyHeatmap() {
   const [region, setRegion] = useState<Region>("us-east");
   const [metric, setMetric] = useState<Metric>("p50");
   const W = 700;
-  const m = { l: 96, t: 30 };
+  const m = { l: 118, t: 50 };
   const cw = (W - m.l) / PROVIDERS.length;
   const ch = 34;
   const H = m.t + CHAINS.length * ch + 4;
@@ -87,9 +88,12 @@ export function LatencyHeatmap() {
       <div className="overflow-x-auto">
         <svg viewBox={`0 0 ${W} ${H}`} className="w-full min-w-[560px] h-auto" role="img" aria-label={`Latency heat map, ${REGIONS.find((r) => r.slug === region)!.name}, ${METRICS.find((mm) => mm.value === metric)!.label}`}>
           {PROVIDERS.map((p, j) => (
-            <text key={p.slug} x={m.l + j * cw + cw / 2} y={18} fontSize={12} fontWeight={600} textAnchor="middle" style={{ fill: INK }}>
-              {p.name}
-            </text>
+            <g key={p.slug}>
+              <SvgLogo slug={p.slug} x={m.l + j * cw + cw / 2} y={12} r={10} id={`hm-${p.slug}`} />
+              <text x={m.l + j * cw + cw / 2} y={40} fontSize={12} fontWeight={600} textAnchor="middle" style={{ fill: INK }}>
+                {p.name}
+              </text>
+            </g>
           ))}
           {CHAINS.map((c, i) => {
             const yy = m.t + i * ch;
@@ -98,7 +102,8 @@ export function LatencyHeatmap() {
             const best = present.length ? Math.min(...present) : undefined;
             return (
               <g key={c.slug}>
-                <text x={m.l - 10} y={yy + ch / 2 + 4} fontSize={12} textAnchor="end" style={{ fill: INK_MUTED }}>
+                <SvgLogo slug={c.slug} x={m.l - 14} y={yy + ch / 2} r={8} id={`hmc-${c.slug}`} />
+                <text x={m.l - 28} y={yy + ch / 2 + 4} fontSize={12} textAnchor="end" style={{ fill: INK_MUTED }}>
                   {c.name}
                 </text>
                 {PROVIDERS.map((p, j) => {
@@ -156,7 +161,7 @@ export function CostCurves() {
   const [profile, setProfile] = useState<Profile>("dapp");
   const W = 700;
   const H = 380;
-  const m = { l: 56, r: 140, t: 16, b: 44 };
+  const m = { l: 56, r: 152, t: 16, b: 44 };
   const x = logScale(1e6, 1e9, m.l, W - m.r);
   const y = logScale(5, 40000, H - m.b, m.t);
   const curves = REPORT.cost[profile];
@@ -256,8 +261,9 @@ export function CostCurves() {
             </g>
           ) : (
             <g key={e.slug}>
-              <line x1={W - m.r + 6} x2={W - m.r + 16} y1={e.y} y2={e.y} stroke={PROVIDER[e.slug].color} strokeWidth={3} />
-              <text x={W - m.r + 20} y={e.y + 4} fontSize={11} fontWeight={600} style={{ fill: INK }}>
+              <line x1={W - m.r + 6} x2={W - m.r + 14} y1={e.y} y2={e.y} stroke={PROVIDER[e.slug].color} strokeWidth={3} />
+              <SvgLogo slug={e.slug} x={W - m.r + 22} y={e.y} r={6} id={`cc-${e.slug}`} />
+              <text x={W - m.r + 31} y={e.y + 4} fontSize={11} fontWeight={600} style={{ fill: INK }}>
                 {PROVIDER[e.slug].name} ${Math.round(e.v).toLocaleString("en-US")}
               </text>
             </g>

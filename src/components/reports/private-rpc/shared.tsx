@@ -2,6 +2,8 @@
 // Every figure the charts draw comes from one snapshot file, so a chart and
 // the prose beside it cannot drift apart.
 import data from "@/data/reports/private-rpc-2026-10.json";
+import { logoPath, resolveLogoSlug } from "@/lib/logo-manifest";
+import { ProviderLogo } from "@/components/provider-logo";
 
 export const REPORT = data as unknown as ReportData;
 
@@ -228,9 +230,62 @@ export function Legend({ slugs }: { slugs: string[] }) {
       {slugs.map((s) => (
         <span key={s} className="inline-flex items-center gap-1.5 text-[12px] text-ink-soft">
           <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: PROVIDER[s].color }} />
+          <ProviderLogo slug={s} name={PROVIDER[s].name} size={16} />
           {PROVIDER[s].name}
         </span>
       ))}
     </div>
+  );
+}
+
+// Marks that are white on transparent and vanish on a white disc; the same
+// opt-in the site's <ProviderLogo> keeps for its chips.
+const DARK_DISC = new Set(["validationcloud"]);
+
+/** A provider or chain logo drawn inside an SVG chart: the registered file
+ *  clipped to a disc, on a backing disc so transparent marks read in both
+ *  themes. Falls back to a plain dot in the provider colour. `id` must be
+ *  unique in the document (clipPath ids are global). */
+export function SvgLogo({
+  slug,
+  x,
+  y,
+  r,
+  id,
+  ring,
+}: {
+  slug: string;
+  x: number;
+  y: number;
+  r: number;
+  id: string;
+  ring?: string;
+}) {
+  const src = logoPath(slug);
+  if (!src) return <circle cx={x} cy={y} r={r} fill={ring ?? PROVIDER[slug]?.color ?? INK_FAINT} />;
+  const clip = `lg-${id}`;
+  const dark = DARK_DISC.has(resolveLogoSlug(slug));
+  return (
+    <g>
+      <defs>
+        <clipPath id={clip}>
+          <circle cx={x} cy={y} r={r} />
+        </clipPath>
+      </defs>
+      <circle cx={x} cy={y} r={r + (ring ? 2.5 : 0.75)} fill={ring ?? RULE} />
+      <circle cx={x} cy={y} r={r} fill={dark ? "#0f172a" : "#ffffff"} />
+      <image href={src} x={x - r} y={y - r} width={2 * r} height={2 * r} clipPath={`url(#${clip})`} preserveAspectRatio="xMidYMid meet" />
+    </g>
+  );
+}
+
+/** Inline logo for prose and tables in the MDX body, kept on one line with
+ *  the name it labels: <L s="quicknode">QuickNode</L>. */
+export function L({ s, n, children }: { s: string; n?: string; children?: React.ReactNode }) {
+  return (
+    <span className="inline-flex items-center gap-1.5 whitespace-nowrap align-[-3px]">
+      <ProviderLogo slug={s} name={n ?? PROVIDER[s]?.name ?? CHAIN_NAME[s] ?? s} size={15} />
+      {children}
+    </span>
   );
 }

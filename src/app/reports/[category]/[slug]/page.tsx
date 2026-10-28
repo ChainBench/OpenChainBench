@@ -14,6 +14,7 @@ import {
   Scorecard,
 } from "@/components/reports/private-rpc/charts";
 import { LatencyHeatmap, CostCurves } from "@/components/reports/private-rpc/interactive";
+import { L } from "@/components/reports/private-rpc/shared";
 import {
   getAllReports,
   getReport,
@@ -108,6 +109,8 @@ const MDX_COMPONENTS = {
   CostCurves,
   FreeTierChart,
   Scorecard,
+  // Inline provider or chain logo: <L s="quicknode" />
+  L,
 
   // Table of contents — pipe-separated section names, auto-generates anchor hrefs
   TOC: ({ sections }: { sections: string }) => {

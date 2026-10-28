@@ -1,5 +1,6 @@
 // Static charts for the October 2026 private RPC report. Plain SVG drawn
 // on the server: no chart library, and they render the same with JS off.
+import { ProviderLogo } from "@/components/provider-logo";
 import {
   REPORT,
   PROVIDERS,
@@ -8,6 +9,7 @@ import {
   CHAIN_NAME,
   Figure,
   Legend,
+  SvgLogo,
   logScale,
   costAt,
   chainsServed,
@@ -30,12 +32,12 @@ const SOURCE_HTTP =
 /* ------------------------------------------------------------------ */
 
 const SCATTER_LABEL: Record<string, { dx: number; dy: number; anchor: "start" | "middle" | "end" }> = {
-  quicknode: { dx: 0, dy: -16, anchor: "middle" },
-  chainstack: { dx: -12, dy: 0, anchor: "end" },
-  getblock: { dx: -12, dy: 20, anchor: "end" },
-  alchemy: { dx: 12, dy: 0, anchor: "start" },
-  dwellir: { dx: -12, dy: 0, anchor: "end" },
-  blockmachine: { dx: 12, dy: 0, anchor: "start" },
+  quicknode: { dx: 0, dy: -20, anchor: "middle" },
+  chainstack: { dx: -18, dy: 0, anchor: "end" },
+  getblock: { dx: -16, dy: 24, anchor: "end" },
+  alchemy: { dx: 18, dy: 0, anchor: "start" },
+  dwellir: { dx: -18, dy: 0, anchor: "end" },
+  blockmachine: { dx: 18, dy: 0, anchor: "start" },
 };
 
 export function SpeedCostChart() {
@@ -85,7 +87,7 @@ export function SpeedCostChart() {
           return (
             <g key={p.slug}>
               <line x1={x(p.cost)} x2={x(p.cost)} y1={y(p.p50)} y2={y(p.p99)} stroke={p.color} strokeWidth={3} opacity={0.35} strokeLinecap="round" />
-              <circle cx={x(p.cost)} cy={y(p.p50)} r={7} fill={p.color} stroke="var(--color-surface)" strokeWidth={2} />
+              <SvgLogo slug={p.slug} x={x(p.cost)} y={y(p.p50)} r={10} ring={p.color} id={`sc-${p.slug}`} />
               <text x={x(p.cost) + L.dx} y={y(p.p50) + L.dy + (L.dy < 0 ? -14 : 0) + 4} fontSize={12.5} fontWeight={600} textAnchor={L.anchor} style={{ fill: INK }}>
                 {p.name}
               </text>
@@ -146,8 +148,8 @@ export function RegionSpreadChart() {
           return (
             <g key={p.slug}>
               {i > 0 ? <line x1={0} x2={W - m.r} y1={y0} y2={y0} stroke={RULE} /> : null}
-              <circle cx={10} cy={y0 + rowH / 2} r={4} fill={p.color} />
-              <text x={20} y={y0 + rowH / 2 + 4} fontSize={12.5} fontWeight={600} style={{ fill: INK }}>
+              <SvgLogo slug={p.slug} x={12} y={y0 + rowH / 2} r={9} id={`rs-${p.slug}`} />
+              <text x={27} y={y0 + rowH / 2 + 4} fontSize={12.5} fontWeight={600} style={{ fill: INK }}>
                 {p.name}
               </text>
               {REGIONS.map((r, j) => {
@@ -214,9 +216,12 @@ export function WsFirstChart() {
           return (
             <g key={`${row.chain}-${row.region}`}>
               {row.region === "us-east" ? (
-                <text x={0} y={yy + 15} fontSize={12.5} fontWeight={600} style={{ fill: INK }}>
-                  {CHAIN_NAME[row.chain]}
-                </text>
+                <g>
+                  <SvgLogo slug={row.chain} x={8} y={yy + 11} r={8} id={`ws-${row.chain}`} />
+                  <text x={22} y={yy + 15} fontSize={12.5} fontWeight={600} style={{ fill: INK }}>
+                    {CHAIN_NAME[row.chain]}
+                  </text>
+                </g>
               ) : null}
               <text x={m.l - 8} y={yy + 15} fontSize={11} textAnchor="end" style={{ fill: INK_MUTED }}>
                 {row.label}
@@ -255,7 +260,7 @@ export function WsFirstChart() {
 export function FreeTierChart() {
   const W = 700;
   const rowH = 30;
-  const m = { l: 130, r: 70, t: 8, b: 40 };
+  const m = { l: 150, r: 70, t: 8, b: 40 };
   const rows = REPORT.free;
   const H = m.t + rows.length * rowH + m.b;
   const x = logScale(1e3, 2e7, m.l, W - m.r);
@@ -280,7 +285,8 @@ export function FreeTierChart() {
           const color = r.cohort ? PROVIDER[r.provider].color : "var(--color-ink-faint)";
           return (
             <g key={r.provider}>
-              <text x={m.l - 10} y={yy + 19} fontSize={12} textAnchor="end" fontWeight={r.cohort ? 600 : 400} style={{ fill: r.cohort ? INK : INK_SOFT }}>
+              <SvgLogo slug={r.provider} x={m.l - 16} y={yy + 15} r={9} id={`ft-${r.provider}`} />
+              <text x={m.l - 32} y={yy + 19} fontSize={12} textAnchor="end" fontWeight={r.cohort ? 600 : 400} style={{ fill: r.cohort ? INK : INK_SOFT }}>
                 {r.name}
                 {r.verified ? "" : " *"}
               </text>
@@ -395,8 +401,11 @@ export function Scorecard() {
             <th className="px-2.5 py-2.5 text-left label-mono text-[10px] uppercase tracking-[0.16em] text-ink-faint font-normal" />
             {PROVIDERS.map((p) => (
               <th key={p.slug} className="px-2.5 py-2.5 text-left text-[11.5px] font-semibold text-ink whitespace-nowrap">
-                <span className="inline-block h-2 w-2 rounded-full mr-1.5 align-middle" style={{ background: p.color }} />
-                {p.name}
+                <span className="inline-flex items-center gap-1.5">
+                  <ProviderLogo slug={p.slug} name={p.name} size={16} />
+                  {p.name}
+                </span>
+                <span className="block mt-1 h-0.5 w-8 rounded" style={{ background: p.color }} />
               </th>
             ))}
           </tr>
