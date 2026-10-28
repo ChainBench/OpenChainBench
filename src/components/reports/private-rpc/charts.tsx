@@ -412,7 +412,7 @@ export function Scorecard() {
         </tbody>
       </table>
       <p className="mt-2 label-mono text-[10px] tracking-[0.08em] text-ink-faint">
-        Green is best in the row, red worst. Latency: medians over every chain and region served, 7 days. Costs: list prices, Ethereum unless stated. * Alchemy's Free key on seven chains capped on 24 Oct; its enterprise-key chains answered 100%.
+        Green is best in the row, red worst. Latency: medians over every chain and region served, 7 days. Costs: list prices, Ethereum unless stated. * Alchemy&rsquo;s Free key on seven chains capped on 24 Oct; its enterprise-key chains answered 100%.
       </p>
     </div>
   );
