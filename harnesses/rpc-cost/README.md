@@ -42,8 +42,10 @@ profile, volume) the harness:
    is published as `rpc_cost_units_per_request` so the arithmetic can be
    redone by hand.
 2. Applies the archive rule where the profile reads historical state.
-   These differ structurally: Chainstack doubles by *block age* rather
-   than by method, BlockPI adds 30% to the whole endpoint, GetBlock
+   These differ structurally: Chainstack bills 2 Request Units for a read
+   127 or more blocks behind the tip and 2 for every `debug_*` and
+   `trace_*` call at any depth (measured: 2 RU even ten blocks behind tip),
+   BlockPI adds 30% to the whole endpoint, GetBlock
    carries an independent archive column that is not a multiplier at all,
    and Alchemy, dRPC, QuickNode, Dwellir and Blockmachine charge no
    archive premium (Blockmachine bills debug and trace at 25 to 50 Request
@@ -52,16 +54,25 @@ profile, volume) the harness:
    workload, and reports the bill on that plan.
 
 A plan that cannot serve the workload is not priced at infinity, it is
-reported ineligible with a reason (`rpc_cost_eligible` = 0). Three cases
-produce that, all real:
+reported ineligible with a reason (`rpc_cost_eligible` = 0, and the reason
+in the log and the calculator). The reasons, all real, fall into five
+groups (`quote()` in `model.go`):
 
+- **Not priced.** The provider prices no plan for the chain, the price is
+  sales-gated, or a method in the mix has no published unit cost.
+- **Not served.** The plan does not serve the chain or a method the mix
+  calls (Dwellir's Free plan has no `eth_getLogs`), or it has no archive
+  or trace access. Where the provider has not said either way, the plan
+  is not ranked rather than assumed capable.
 - **Daily caps.** Infura's allowance is per day and does not roll over,
   so 450M credits of monthly demand cannot be served by a 15M/day plan
   even though the monthly totals match.
-- **Hard stops.** Infura, NOWNodes Start/Pro and QuickNode's trial stop
-  serving at the cap rather than metering overage.
-- **Missing capability.** A trace workload on a plan without debug
-  access is unavailable, not expensive.
+- **Hard stops and ceilings.** Infura, NOWNodes Start/Pro and QuickNode's
+  trial stop at the cap rather than metering overage; some plans publish
+  a maximum, or an allowance with no overage rate.
+- **Throughput.** The sustained rate the volume needs exceeds the plan's
+  published ceiling (Alchemy's 30,000 CU/s, counted in throughput CU, ends
+  its trace curve at about 128M requests a month).
 
 ## Cohorts
 
