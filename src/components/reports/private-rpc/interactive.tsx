@@ -85,7 +85,7 @@ export function LatencyHeatmap() {
         <Tabs options={METRICS} value={metric} onChange={setMetric} />
       </div>
       <div className="overflow-x-auto">
-        <svg viewBox={`0 0 ${W} ${H}`} className="w-full min-w-[560px] h-auto" role="img" aria-label={`Latency heat map, ${region}`}>
+        <svg viewBox={`0 0 ${W} ${H}`} className="w-full min-w-[560px] h-auto" role="img" aria-label={`Latency heat map, ${REGIONS.find((r) => r.slug === region)!.name}, ${METRICS.find((mm) => mm.value === metric)!.label}`}>
           {PROVIDERS.map((p, j) => (
             <text key={p.slug} x={m.l + j * cw + cw / 2} y={18} fontSize={12} fontWeight={600} textAnchor="middle" style={{ fill: INK }}>
               {p.name}
@@ -156,7 +156,7 @@ export function CostCurves() {
   const [profile, setProfile] = useState<Profile>("dapp");
   const W = 700;
   const H = 380;
-  const m = { l: 56, r: 130, t: 16, b: 44 };
+  const m = { l: 56, r: 140, t: 16, b: 44 };
   const x = logScale(1e6, 1e9, m.l, W - m.r);
   const y = logScale(5, 40000, H - m.b, m.t);
   const curves = REPORT.cost[profile];
@@ -187,7 +187,7 @@ export function CostCurves() {
       </div>
       <p className="px-2 pb-2 text-[12px] text-ink-muted">{note}</p>
       <Legend slugs={present.map((p) => p.slug)} />
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" role="img" aria-label={`Monthly bill by volume, ${profile}`}>
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full min-w-[560px] h-auto" role="img" aria-label={`Monthly bill by volume, ${PROFILES.find((pp) => pp.value === profile)!.label}`}>
         {xt.map((v) => (
           <g key={`x${v}`}>
             <line x1={x(v)} x2={x(v)} y1={m.t} y2={H - m.b} stroke={RULE} strokeDasharray={marks.includes(v) ? "0" : "2 4"} opacity={marks.includes(v) ? 0.9 : 1} />
@@ -210,11 +210,23 @@ export function CostCurves() {
         {present.map((p) => {
           const segs: string[] = [];
           let cur = "";
-          for (const [r, usd] of curves[p.slug]) {
+          const pts = curves[p.slug];
+          for (let i = 0; i < pts.length; i++) {
+            const [r, usd] = pts[i];
             if (usd === null) {
               if (cur) segs.push(cur);
               cur = "";
               continue;
+            }
+            const prev = pts[i - 1];
+            // The bill is affine in requests between two plan corners, which is a
+            // curve on log-log axes: sample it instead of drawing a straight chord.
+            if (cur && prev && prev[1] !== null) {
+              for (let k = 1; k < 16; k++) {
+                const rr = prev[0] + ((r - prev[0]) * k) / 16;
+                const uu = prev[1] + ((usd - prev[1]) * k) / 16;
+                cur += `L${x(rr).toFixed(1)},${y(uu).toFixed(1)}`;
+              }
             }
             cur += `${cur ? "L" : "M"}${x(r).toFixed(1)},${y(usd).toFixed(1)}`;
           }
@@ -243,9 +255,12 @@ export function CostCurves() {
               <title>{`${PROVIDER[e.slug].name} cannot serve more than about ${fmtCount(e.r)} requests a month on this workload`}</title>
             </g>
           ) : (
-            <text key={e.slug} x={W - m.r + 8} y={e.y + 4} fontSize={11.5} fontWeight={600} style={{ fill: PROVIDER[e.slug].color }}>
-              {PROVIDER[e.slug].name} ${Math.round(e.v).toLocaleString("en-US")}
-            </text>
+            <g key={e.slug}>
+              <line x1={W - m.r + 6} x2={W - m.r + 16} y1={e.y} y2={e.y} stroke={PROVIDER[e.slug].color} strokeWidth={3} />
+              <text x={W - m.r + 20} y={e.y + 4} fontSize={11} fontWeight={600} style={{ fill: INK }}>
+                {PROVIDER[e.slug].name} ${Math.round(e.v).toLocaleString("en-US")}
+              </text>
+            </g>
           ),
         )}
       </svg>

@@ -10,6 +10,8 @@ import {
   Legend,
   logScale,
   costAt,
+  chainsServed,
+  httpWins,
   fmtMs,
   fmtUsd,
   fmtCount,
@@ -32,7 +34,7 @@ const SCATTER_LABEL: Record<string, { dx: number; dy: number; anchor: "start" | 
   chainstack: { dx: -12, dy: 0, anchor: "end" },
   getblock: { dx: -12, dy: 20, anchor: "end" },
   alchemy: { dx: 12, dy: 0, anchor: "start" },
-  dwellir: { dx: 12, dy: 0, anchor: "start" },
+  dwellir: { dx: -12, dy: 0, anchor: "end" },
   blockmachine: { dx: 12, dy: 0, anchor: "start" },
 };
 
@@ -55,7 +57,7 @@ export function SpeedCostChart() {
       subtitle="Median HTTP latency across every chain and region a provider serves (dot = p50, bar up to p99), against the monthly bill for 100M dapp requests on Ethereum. Faster is higher, cheaper is further left."
       source={`${SOURCE_HTTP} Prices: rpc-cost bench 282, catalogue of 22 Oct 2026.`}
     >
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" role="img" aria-label="Scatter of median latency against monthly cost per provider">
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full min-w-[560px] h-auto" role="img" aria-label="Scatter of median latency against monthly cost per provider">
         {xt.map((v) => (
           <g key={`x${v}`}>
             <line x1={x(v)} x2={x(v)} y1={m.t} y2={H - m.b} stroke={RULE} strokeDasharray="2 4" />
@@ -104,7 +106,7 @@ export function SpeedCostChart() {
 
 const REGION_COLOR: Record<string, string> = {
   "us-east": "#0EA5E9",
-  "eu-west": "#84CC16",
+  "eu-west": "#65A30D",
   sgp: "#F43F5E",
 };
 
@@ -129,7 +131,7 @@ export function RegionSpreadChart() {
           </span>
         ))}
       </div>
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" role="img" aria-label="Latency per provider and region">
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full min-w-[560px] h-auto" role="img" aria-label="Latency per provider and region">
         {xt.map((v) => (
           <g key={v}>
             <line x1={x(v)} x2={x(v)} y1={m.t} y2={H - m.b} stroke={RULE} strokeDasharray="2 4" />
@@ -153,6 +155,9 @@ export function RegionSpreadChart() {
                 const yy = y0 + 11 + j * 12;
                 return (
                   <g key={r.slug}>
+                    <text x={m.l - 8} y={yy + 3.5} fontSize={9.5} textAnchor="end" style={{ fill: INK_FAINT }}>
+                      {r.short}
+                    </text>
                     <line x1={x(st.p50)} x2={x(st.p99)} y1={yy} y2={yy} stroke={REGION_COLOR[r.slug]} strokeWidth={2} opacity={0.45} />
                     <circle cx={x(st.p50)} cy={yy} r={4.5} fill={REGION_COLOR[r.slug]} />
                   </g>
@@ -200,7 +205,7 @@ export function WsFirstChart() {
       source="Source: OpenChainBench WebSocket race, rpc-keyed-latency harness, 7 days to 28 Oct 2026. GetBlock has no Singapore socket on HyperEVM and Arc, nor US East on HyperEVM."
     >
       <Legend slugs={WS_PROVIDERS} />
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" role="img" aria-label="Share of blocks pushed first per provider">
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full min-w-[560px] h-auto" role="img" aria-label="Share of blocks pushed first per provider">
         {rows.map((row, i) => {
           if (i > 0 && row.region === "us-east") yCursor += gap;
           const yy = yCursor;
@@ -218,7 +223,9 @@ export function WsFirstChart() {
               </text>
               <rect x={m.l} y={yy + 3} width={bw} height={rowH - 6} fill={RULE} opacity={0.4} />
               {row.cells.map((c) => {
-                const w = (c.v / 100) * bw;
+                // Shares can sum to 100.7% when two providers tie on a block; scale to the track.
+                const total = Math.max(100, row.cells.reduce((a, b) => a + b.v, 0));
+                const w = (c.v / total) * bw;
                 const x0 = m.l + acc;
                 acc += w;
                 if (w <= 0) return null;
@@ -226,7 +233,7 @@ export function WsFirstChart() {
                   <g key={c.p}>
                     <rect x={x0} y={yy + 3} width={w} height={rowH - 6} fill={PROVIDER[c.p].color} />
                     {c.v >= 9 ? (
-                      <text x={x0 + 5} y={yy + 15} fontSize={10.5} fontWeight={600} style={{ fill: "#ffffff" }}>
+                      <text x={x0 + 5} y={yy + 15} fontSize={10.5} fontWeight={700} style={{ fill: "#0b1220" }}>
                         {Math.round(c.v)}%
                       </text>
                     ) : null}
@@ -259,7 +266,7 @@ export function FreeTierChart() {
       subtitle="Requests a month of the dapp mix on Ethereum that each renewing free allowance converts into. The thin line spans the least to the most generous workload the plan serves. Coloured rows are in our latency cohort."
       source="Source: OpenChainBench rpc-free-tier, bench 283. * allowance not verified against a published figure."
     >
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" role="img" aria-label="Free plan allowance per provider">
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full min-w-[560px] h-auto" role="img" aria-label="Free plan allowance per provider">
         {xt.map((v) => (
           <g key={v}>
             <line x1={x(v)} x2={x(v)} y1={m.t} y2={H - m.b} stroke={RULE} strokeDasharray="2 4" />
@@ -334,14 +341,7 @@ export function Scorecard() {
   };
   const slugs = PROVIDERS.map((p) => p.slug);
   const cost = (profile: string, r: number) => slugs.map((s) => costAt(REPORT.cost[profile]?.[s], r));
-  const free: Record<string, number | null> = {
-    quicknode: null,
-    chainstack: 3_000_000,
-    getblock: 75_000,
-    alchemy: 1_255_230,
-    dwellir: null,
-    blockmachine: 10_000,
-  };
+  const free = (slug: string) => REPORT.free.find((f) => f.provider === slug)?.value ?? null;
   const ms = (v: number) => `${fmtMs(v)} ms`;
   const usd = (v: number) => `$${Math.round(v).toLocaleString("en-US")}`;
   const rows: ScoreRow[] = [
@@ -374,12 +374,18 @@ export function Scorecard() {
     },
     {
       label: "Free plan, dapp req/month",
-      values: slugs.map((s) => free[s]),
+      values: slugs.map((s) => free(s)),
       fmt: fmtCount,
       better: "high",
       na: slugs.map((s) => (s === "quicknode" ? "trial only" : s === "dwellir" ? "no getLogs" : null)),
     },
-    { label: "Chains served, of 9", values: [9, 9, 9, 9, 8, 7], fmt: (v) => String(v), better: "high" },
+    {
+      label: "Fastest HTTP cells, of 27",
+      values: slugs.map((s) => httpWins(s).won),
+      fmt: (v) => String(v),
+      better: "high",
+    },
+    { label: "Chains served, of 9", values: slugs.map((s) => chainsServed(s)), fmt: (v) => String(v), better: "high" },
   ];
   return (
     <div className="not-prose my-10 overflow-x-auto">

@@ -142,21 +142,51 @@ export function heatColor(ms: number): string {
 }
 
 export function fmtMs(v: number): string {
-  if (v >= 1000) return `${(v / 1000).toFixed(1)} s`;
-  if (v >= 100) return `${Math.round(v)}`;
-  return v.toFixed(1);
+  // Round first, so 99.96 reads "100" and 999.6 reads "1.0 s", never "100.0" or "1000".
+  const r1 = Math.round(v * 10) / 10;
+  if (Math.round(v) >= 1000) return `${(v / 1000).toFixed(1)} s`;
+  if (r1 >= 100) return `${Math.round(v)}`;
+  return r1.toFixed(1);
+}
+
+function trimZeros(x: string): string {
+  return x.includes(".") ? x.replace(/\.?0+$/, "") : x;
 }
 
 export function fmtUsd(v: number): string {
-  if (v >= 1000) return `$${(v / 1000).toFixed(v >= 10000 ? 1 : 2).replace(/\.?0+$/, "")}k`;
+  if (Math.round(v) >= 1000) return `$${trimZeros((v / 1000).toFixed(v >= 9995 ? 1 : 2))}k`;
   return `$${Math.round(v)}`;
 }
 
 export function fmtCount(v: number): string {
-  if (v >= 1e9) return `${(v / 1e9).toFixed(v % 1e9 ? 1 : 0)}B`;
-  if (v >= 1e6) return `${(v / 1e6).toFixed(v % 1e6 ? 1 : 0).replace(/\.0$/, "")}M`;
+  if (v >= 999.5e6) return `${trimZeros((v / 1e9).toFixed(1))}B`;
+  if (v >= 999.5e3) return `${trimZeros((v / 1e6).toFixed(1))}M`;
   if (v >= 1e3) return `${Math.round(v / 1e3)}k`;
   return `${Math.round(v)}`;
+}
+
+/** Chains a provider is measured on, read from the data rather than typed. */
+export function chainsServed(slug: string): number {
+  return new Set(REPORT.http.filter((h) => h.provider === slug).map((h) => h.chain)).size;
+}
+
+/** Cells where a provider has the lowest p50. Two providers that read the
+ *  same at the published 0.1 ms precision share the win: Arbitrum from US
+ *  East is 7.208 against 7.217 ms, which the page cannot tell apart. */
+export function httpWins(slug: string): { won: number; shared: number } {
+  let won = 0;
+  let shared = 0;
+  const keys = new Set(REPORT.http.map((h) => `${h.chain}|${h.region}`));
+  for (const k of keys) {
+    const cells = REPORT.http.filter((h) => `${h.chain}|${h.region}` === k);
+    const best = Math.min(...cells.map((c) => c.p50));
+    const winners = cells.filter((c) => c.p50 === best).map((c) => c.provider);
+    if (winners.includes(slug)) {
+      won += 1;
+      if (winners.length > 1) shared += 1;
+    }
+  }
+  return { won, shared };
 }
 
 export const INK = "var(--color-ink)";
@@ -182,7 +212,7 @@ export function Figure({
         <p className="label-mono text-[10px] uppercase tracking-[0.22em] text-ink">{title}</p>
         {subtitle ? <p className="mt-1.5 text-[13px] leading-snug text-ink-muted">{subtitle}</p> : null}
       </div>
-      <div className="px-2 sm:px-4 py-4">{children}</div>
+      <div className="px-2 sm:px-4 py-4 overflow-x-auto">{children}</div>
       {source ? (
         <figcaption className="px-4 sm:px-5 py-2.5 border-t border-rule label-mono text-[10px] tracking-[0.08em] text-ink-faint">
           {source}
