@@ -220,6 +220,16 @@ export default async function AnswerPage({
   //     Editorial commentary, attributed to the named maintainer.
   // FAQPage still ships as a standalone script (higher Search Console
   // hit rate on standalone vs @graph-nested).
+  // Search Console reported four recommended fields missing, all of them on
+  // this Question node: author and datePublished on the question itself,
+  // upvoteCount and datePublished on the accepted answer. The QAPage
+  // wrapper below already carried an author and a date; the entity Google
+  // actually reads for the Q&A rich result did not.
+  //
+  // upvoteCount is 0 and stays 0: nothing on this site votes, and Google's
+  // guidance is to send 0 rather than omit the field. A non-zero number
+  // here would be an invented engagement figure in structured data.
+  const answerPublished = getBenchCreatedAt(bench.slug).toISOString();
   const questionNode: Record<string, unknown> = {
     "@type": "Question",
     "@id": `${url}#question`,
@@ -227,6 +237,8 @@ export default async function AnswerPage({
     text: ans.question,
     // Required by the QAPage schema; the Rich Results Test flags its absence.
     answerCount: 1,
+    author: { "@id": `${SITE.url}/#org` },
+    datePublished: answerPublished,
     acceptedAnswer: {
       "@type": "Answer",
       // Google's Rich Results validator flags Answer nodes without a
@@ -235,6 +247,11 @@ export default async function AnswerPage({
       text: capDescription(shortAnswer, 990),
       url,
       author: { "@id": `${SITE.url}/#org` },
+      upvoteCount: 0,
+      // The answer text is derived from the board, so it is published with
+      // the page and modified whenever the numbers refresh.
+      datePublished: answerPublished,
+      ...(citableAsOf(bench) ? { dateModified: bench.lastRunAt } : {}),
     },
   };
   if (expertTake) {
@@ -244,6 +261,8 @@ export default async function AnswerPage({
       text: capDescription(expertTake, 990),
       url,
       author: { "@id": PERSON_ID },
+      upvoteCount: 0,
+      datePublished: answerPublished,
       ...(ans.expert_take_reviewed
         ? { dateModified: ans.expert_take_reviewed }
         : {}),
