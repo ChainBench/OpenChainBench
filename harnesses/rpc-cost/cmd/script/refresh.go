@@ -47,7 +47,48 @@ type artifactState struct {
 	polled bool
 }
 
-func checkArtifact(a Artifact) artifactState {
+// fetchResult is one GET of an artifact URL. Several catalogue entries
+// share a URL (Dwellir's pricing.md backs three, Chainstack's two), so a
+// cycle fetches each URL once and every entry compares against that body.
+type fetchResult struct {
+	ok  bool
+	sum string
+}
+
+func fetchBody(url string) fetchResult {
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return fetchResult{}
+	}
+	// QuickNode's credit endpoint 403s on a default library UA, so every
+	// request carries an explicit, honest one.
+	req.Header.Set("User-Agent", userAgent)
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		log.Printf("artifact %s: %v", url, err)
+		return fetchResult{}
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		log.Printf("artifact %s: HTTP %d", url, resp.StatusCode)
+		return fetchResult{}
+	}
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 32<<20))
+	if err != nil {
+		// A body cut off mid-read is not a healthy fetch: marking ok before
+		// the read published it as reachable and undrifted.
+		log.Printf("artifact %s: read: %v", url, err)
+		return fetchResult{}
+	}
+	sum := sha256.Sum256(body)
+	return fetchResult{ok: true, sum: hex.EncodeToString(sum[:])}
+}
+
+// checkArtifact compares one catalogue entry against this cycle's fetch of
+// its URL. `fetch` is called at most once per URL per cycle by the caller.
+func checkArtifact(a Artifact, fetch func(string) fetchResult) artifactState {
 	st := artifactState{}
 
 	if a.VerifiedAt != "" {
@@ -65,39 +106,15 @@ func checkArtifact(a Artifact) artifactState {
 	}
 	st.polled = true
 
-	req, err := http.NewRequest(http.MethodGet, a.URL, nil)
-	if err != nil {
-		return st
-	}
-	// QuickNode's credit endpoint 403s on a default library UA, so every
-	// request carries an explicit, honest one.
-	req.Header.Set("User-Agent", userAgent)
-
-	resp, err := httpClient.Do(req)
-	if err != nil {
-		log.Printf("artifact %s: %v", a.URL, err)
-		return st
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		log.Printf("artifact %s: HTTP %d", a.URL, resp.StatusCode)
-		return st
-	}
-	body, err := io.ReadAll(io.LimitReader(resp.Body, 32<<20))
-	if err != nil {
-		// A body cut off mid-read is not a healthy fetch: marking ok before
-		// the read published it as reachable and undrifted.
-		log.Printf("artifact %s: read: %v", a.URL, err)
+	r := fetch(a.URL)
+	if !r.ok {
+		// Unknown, not undrifted: the caller keeps the last drift it saw.
 		return st
 	}
 	st.ok = true
-	sum := sha256.Sum256(body)
-	got := hex.EncodeToString(sum[:])
-
-	if a.BodySHA256 != "" && got != a.BodySHA256 {
+	if a.BodySHA256 != "" && r.sum != a.BodySHA256 {
 		st.drift = true
-		log.Printf("artifact %s: DRIFT, body sha256 %s != recorded %s", a.URL, got, a.BodySHA256)
+		log.Printf("artifact %s: DRIFT, body sha256 %s != recorded %s", a.URL, r.sum, a.BodySHA256)
 	}
 	return st
 }

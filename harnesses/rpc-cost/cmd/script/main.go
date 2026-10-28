@@ -206,7 +206,14 @@ func priceEverything(cat *Catalogue) {
 						}
 					}
 					if tier == "all" {
-						planConfidence.WithLabelValues(p.Slug, q.Plan, pr.ID, b.ID).Set(boolGauge(q.Confidence == "verified"))
+						// Under the same aliases as the cost series, so the
+						// unfiltered view (kind="all", bucket="all") can read
+						// the badge for the figure it shows.
+						for _, ka := range aliasesFor(pr.ID, headlineKind) {
+							for _, ba := range aliasesFor(b.ID, headlineBucket) {
+								planConfidence.WithLabelValues(p.Slug, q.Plan, ka, ba).Set(boolGauge(q.Confidence == "verified"))
+							}
+						}
 					}
 					// The site's unfiltered view selects `kind="all"` and
 					// `bucket="all"` and REPLACES those matchers when a reader
@@ -278,16 +285,37 @@ func priceEverything(cat *Catalogue) {
 	}
 }
 
+// lastDrift remembers each artifact's drift across cycles. A page that was
+// drifting and then fails to load must keep its alarm: publishing 0 on a
+// failed fetch cleared the alert of a drifted page the moment it started
+// erroring, which is when it most needs a human.
+var lastDrift = map[string]bool{}
+
 func checkFreshness(cat *Catalogue) {
+	fetched := map[string]fetchResult{}
+	fetch := func(url string) fetchResult {
+		if r, ok := fetched[url]; ok {
+			return r
+		}
+		r := fetchBody(url)
+		fetched[url] = r
+		return r
+	}
 	for _, p := range cat.Providers {
 		if p.Cohort == "excluded" {
 			continue
 		}
 		for name, a := range p.Source {
-			st := checkArtifact(a)
+			st := checkArtifact(a, fetch)
+			key := p.Slug + "/" + name
 			if st.polled {
 				artifactOK.WithLabelValues(p.Slug, name).Set(boolGauge(st.ok))
-				artifactDrift.WithLabelValues(p.Slug, name).Set(boolGauge(st.drift))
+				if st.ok {
+					lastDrift[key] = st.drift
+				}
+				if drift, known := lastDrift[key]; known {
+					artifactDrift.WithLabelValues(p.Slug, name).Set(boolGauge(drift))
+				}
 			}
 			if st.age > 0 {
 				artifactAge.WithLabelValues(p.Slug, name).Set(st.age.Seconds())
