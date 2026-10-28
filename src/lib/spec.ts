@@ -546,7 +546,16 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       page, it would omit the row entirely.
   // dropped as no-value, so the board published only the rail that accepts,
   // which is the opposite of what it measured.
-  ["bench-unfiltered-v107", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v108: the methodology array renders on the bench page for the first
+  //       time, and seven specs reworded their tehcscreener citation to
+  //       credit the project rather than only its endpoint. overlayEditorial
+  //       prefers the spec over the stored copy, but an entry cached before
+  //       the edit still carries the old prose. Production proved it: the
+  //       deploy went green, the bullets rendered, and the sentence was
+  //       still the old one until the key moved. An editorial change needs
+  //       this bump exactly as a provider change does, and the provider-set
+  //       hash test does not catch it because no provider moved.
+  ["bench-unfiltered-v108", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -811,7 +820,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // stops dropping its zeros).
   // v100: lockstep with bench-unfiltered-v107 (RouteMesh joins the keyed
   //        cohort on seven chain pages, warm and cold).
-  ["all-benchmarks-v100", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v101: lockstep with bench-unfiltered-v108 (methodology renders).
+  ["all-benchmarks-v101", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
