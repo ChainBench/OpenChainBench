@@ -540,9 +540,13 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // so bench-filters moves with this one.
   // v106: bench 307 gains THORChain and, more importantly, zero_is_a_value.
   // Its rows for every rail that REFUSES a shielded address were being
+  // v107: the seven keyed chain pages gain a RouteMesh row, warm and cold,
+  //       the first router in the private cohort. It is declared unranked,
+  //       so a cached set written before it would not merely misorder the
+  //       page, it would omit the row entirely.
   // dropped as no-value, so the board published only the rail that accepts,
   // which is the opposite of what it measured.
-  ["bench-unfiltered-v106", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  ["bench-unfiltered-v107", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -805,7 +809,9 @@ const loadAllBenchmarksCached = unstable_cache(
   // v98: lockstep with bench-unfiltered-v105 (bench 306 gains a third rail).
   // v99: lockstep with bench-unfiltered-v106 (bench 307 gains a row and
   // stops dropping its zeros).
-  ["all-benchmarks-v99", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v100: lockstep with bench-unfiltered-v107 (RouteMesh joins the keyed
+  //        cohort on seven chain pages, warm and cold).
+  ["all-benchmarks-v100", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -942,7 +948,10 @@ const loadBenchmarkFiltered = unstable_cache(
   // dimension, so its two size tabs are filtered variants.
   // v45: lockstep with bench-unfiltered-v105. Without it the new row is
   // invisible on every size tab but the default.
-  ["bench-filters-v45", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v46: lockstep with bench-unfiltered-v107. The chain pages declare tier
+  //      and region, so without this bump RouteMesh is missing from every
+  //      tab including the Private one it lives on.
+  ["bench-filters-v46", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 

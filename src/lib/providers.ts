@@ -72,6 +72,7 @@ const PRODUCT_ALIASES: Record<string, string> = {
   "alchemy-cold": "alchemy",
   "chainstack-cold": "chainstack",
   "getblock-cold": "getblock",
+  "routemesh-cold": "routemesh",
   "quicknode-cold": "quicknode",
   "dwellir-cold": "dwellir",
   "blockmachine-cold": "blockmachine",
@@ -895,7 +896,7 @@ const buildProvidersCached = unstable_cache(
   // were all rendering as initials.
   // v24: thorchain gains a mark and a registry entry; it was the last row on
   // the privacy boards still rendering as initials.
-  ["providers-v24"],
+  ["providers-v25"],
   // 900 s: the provider index feeds products / compare / answers, whose
   // numbers move slowly, and this revalidate is also the effective ISR
   // period of those ~500 pages (Next takes the min across a route's caches).
