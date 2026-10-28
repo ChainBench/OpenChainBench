@@ -4,49 +4,50 @@ category: "perps"
 slug: "2026-10-perp-dex-cost-at-size"
 publishedAt: "2026-10-28"
 period: "October 2026"
-summary: "Eleven perp venues spread from 0.28 to 12.6 basis points at $1,000 notional, and from 3.8 to 336 at $1,000,000. Which is cheapest depends on size."
-heroFinding: "Lighter is the cheapest venue at both sizes, 0.28 bps at $1,000 and 3.76 at $1,000,000. What changes is everything behind it: Gains climbs from fifth to second without its number moving, 4.3 bps at both, while Paradex falls from third to last, 3.3 bps to 335.9."
+summary: "On ETH, eleven perp venues cost 0.21 to 6.6 basis points at $1,000 notional and 1.3 to 24.3 at $1,000,000. The leader holds; everything behind it is rebuilt."
+heroFinding: "On ETH, read 28 October 2026, Lighter is the cheapest venue at both sizes: 0.21 bps at $1,000 and 1.34 at $1,000,000. What changes is everything behind it. Gains climbs from fourth to second without its number moving, 4.00 bps at both, and Paradex, second cheapest at $1,000, produces no $1,000,000 reading at all."
 author: "OpenChainBench Research"
 readingTime: 11
 canonical: "https://openchainbench.com/reports/perps/2026-10-perp-dex-cost-at-size"
 faq:
   - q: "What is the cheapest perp DEX?"
-    a: "It depends on size. At $1,000 notional Lighter is cheapest at 0.28 bps all-in, because it charges no taker fee. At $1,000,000 Lighter is still first at 3.76 bps, but the order behind it changes completely: Gains is second at 4.33 bps, Paradex falls from third to last at 335.89 bps. Any single ranking of perp venues is a ranking at one trade size."
+    a: "On ETH, read 28 October 2026, Lighter at both sizes: 0.21 bps all-in at $1,000, because it charges no taker fee, and 1.34 bps at $1,000,000. The order behind it is rebuilt: Gains moves from fourth to second at an unchanged 4.00 bps, and Paradex, second cheapest at $1,000, never filled a $1,000,000 probe in the window. Any single ranking of perp venues is a ranking at one trade size on one asset."
   - q: "Why does Gains cost the same at $1M as at $1k?"
     a: "Gains is oracle-priced. There is no order book to walk, so the fee is a flat percentage of notional and the cost in basis points does not change with size. This is a property of the architecture rather than a performance result, and it cuts both ways: the same design means Gains has no book depth to offer and its mark price tracks spot less closely than an order book venue's."
   - q: "Which perp DEX has the longest clean security record?"
     a: "Gains, at 1,793 days without a recorded exploit as of 28 October 2026, counted from its December 2021 launch. Lighter follows at 1,216 days, then dYdX and Paradex at 1,124, Hyperliquid at 1,093 and GMX at 477, GMX's counter having restarted after the July 2025 reentrancy that cost about $42 million."
   - q: "What is cost slope on a perp DEX?"
     a: "The ratio of all-in cost at $1,000,000 notional to all-in cost at $1,000, per venue per asset. A venue whose cost in basis points does not change with size scores 1.00. Order book venues score above 1.00 because a larger order walks deeper into the book. Oracle-priced venues score 1.00 by construction, since they have no book."
-  - q: "Does Hyperliquid always fill a $1M order?"
-    a: "Not in the visible book. Our $1,000,000 probe completed on 75% of measurement cycles over 24 hours; on the rest the visible book could not absorb it and the harness skipped the tier rather than extrapolate. Hyperliquid remains the deepest decentralised book we measure, at $3.85 billion of 24-hour notional."
+  - q: "Which perp DEX cannot fill a $1M order?"
+    a: "On ETH over 24 hours, Paradex: its $1,000,000 tier never filled, so the board shows no slope for it and this report shows no second point. Ondo missed about one cycle in sixty. Every other venue filled every probe. The picture changes by asset: on the cross-asset average Hyperliquid's $1M tier misses roughly a quarter of its cycles, which is why the boards carry chain tabs."
   - q: "How many markets does Gains run per dollar of collateral?"
     a: "25.0 active markets per $1 million of TVL, the highest of thirteen measured venues, because a single shared vault backs every synthetic pair at once. Hyperliquid, where each listed pair needs market-maker inventory, runs 0.0196 markets per $1 million."
 ---
 
 <Summary>
-- All-in cost to open a perp is a different ranking at every size. Across eleven venues, the spread at $1,000 notional is 0.28 to 12.6 basis points. At $1,000,000 it is 3.8 to 336.
+- All-in cost to open an ETH perp spans 0.21 to 6.6 basis points at $1,000 notional and 1.3 to 24.3 at $1,000,000. The leader is the same at both sizes. The order behind it is not.
 - The split is architectural, not competitive. **Oracle-priced venues charge a flat percentage of notional and have no book to walk**, so their cost in basis points is identical at both sizes. Order book venues pay for depth, and the steepness of that line is the measurement.
-- Lighter is cheapest at both sizes. Behind it the order is rebuilt: <Mark>Gains moves from fifth at $1,000 to second at $1,000,000</Mark> without its number changing, 4.33 bps at both.
+- Lighter is cheapest at both, 0.21 and 1.34 bps, though it multiplies by 6.4. <Mark>Gains moves from fourth at $1,000 to second at $1,000,000</Mark> without its number changing, 4.00 bps at both.
+- Paradex is the second cheapest venue at $1,000 and has **no $1,000,000 reading at all**: its tier never filled in the measured window, and the harness counts the skip rather than extrapolating a price nobody could have traded.
 - The same architecture that gives Gains flat cost also gives it 25.0 active markets per $1M of TVL, the highest measured, and the longest clean security record in the cohort at 1,793 days.
 - It costs Gains elsewhere, and the boards say so plainly: its mark price sits 14.2 bps from Binance spot against Hyperliquid's 3.6, and its $11.5M of daily notional is 0.3% of Hyperliquid's $3.85B.
-- The $1M tier is not always fillable. Hyperliquid's visible book absorbed the probe on 75% of cycles, Aster's on 92%. Venues that fill every time are not automatically cheap, and venues that are cheap do not automatically fill.
 </Summary>
 
 <TOC sections="Perp DEX cost at $1,000 and $1,000,000 notional | Oracle venues and order books: two cost machines | Where oracle pricing is cheaper | Where oracle pricing is dearer | Which perp DEX for which trade size | Run it on your own trade | Method and reproducibility | FAQ" />
 
 ## Perp DEX cost at $1,000 and $1,000,000 notional
 
-*Figures read on 28 October 2026. The tables below are the live boards and
-move on their own; the numbers written into the prose do not.*
+*Every figure in the prose is an ETH 24-hour mean read on 28 October 2026, the same scope the boards embedded below use. The boards are live and move on their own; the prose does not.*
 
-![All-in cost to open a perp at $1,000 and at $1,000,000 notional across eleven venues. Gains and GMX draw flat lines because they are oracle-priced; order book venues rise, Paradex from 3.3 to 335.9 basis points](/reports/perp-cost-at-size.svg)
+![All-in cost to open an ETH perp at $1,000 and at $1,000,000 notional across eleven venues. Gains and GMX draw flat lines because they are oracle-priced. Order books rise, Ondo from 4.1 to 24.3 basis points and dYdX from 6.6 to 18.6. Paradex has no $1,000,000 point because its tier never filled](/reports/perp-cost-at-size.svg)
 
-Every comparison of perpetual DEXes we have seen ranks venues on one number. That number is a price at one trade size, and the ranking it produces does not survive a change of size.
+Every comparison of perpetual DEXes we have seen ranks venues on one number. That number is a price at one trade size, and most of the ranking it produces does not survive a change of size.
 
-Measured over 24 hours on ETH, BTC and SOL, at $1,000 notional the field runs from Lighter at 0.28 basis points to dYdX at 12.6. The gap between best and worst is a factor of 45, and it is almost entirely a fee-schedule story: Lighter charges no taker fee, dYdX charges five basis points at tier zero.
+At $1,000 notional the field runs from Lighter at 0.21 basis points to dYdX at 6.62, a factor of 31, and it is almost entirely a fee-schedule story: Lighter charges no taker fee, dYdX charges five basis points at tier zero.
 
-Step the same measurement to $1,000,000 and the field runs from Lighter at 3.76 to Paradex at 335.89. The gap is now a factor of 89, and it is no longer about fee schedules at all. <Mark>Paradex's all-in cost multiplies by 102 between the two sizes</Mark>; edgeX's by 7.7; dYdX's by 3.3. Hyperliquid, which runs the deepest decentralised book we measure, still pays 1.4 times more at the larger size.
+Step the same measurement to $1,000,000 and it is no longer about fee schedules at all. <Mark>Ondo's all-in cost multiplies by 5.9 and dYdX's by 2.8</Mark>; Lighter, cheapest at both, multiplies by 6.4. Hyperliquid, which runs the deepest decentralised book we measure, pays 1.2 times more at the larger size, the smallest increase of any venue with a book.
+
+One venue simply stops. Paradex is the second cheapest place to open a $1,000 ETH perp, at 1.48 bps, and produced **no $1,000,000 reading in the window at all**: the visible book never absorbed the tier, so the harness counted the skip instead of extrapolating a price nobody could have traded. An absent number is the honest result there, and it is more useful than a cheap one at a size you cannot get.
 
 Two lines on that chart are flat. Gains and GMX charge exactly what they charged at a thousandth of the size.
 
@@ -68,11 +69,11 @@ That distinction matters for how the rest of this report should be read. The two
 
 ### Cost that does not move with size
 
-At $1,000,000, Gains is the second cheapest venue measured, at 4.33 basis points. Only Lighter is cheaper, at 3.76.
+At $1,000,000, Gains is the second cheapest venue measured, at 4.00 basis points. Only Lighter is cheaper, at 1.34.
 
-What is unusual is not the rank, it is that <Mark>the number did not move</Mark>. Gains charged 4.33 bps at a thousand dollars and 4.33 at a million. Everything between it and Lighter at $1k, five venues deep, is now above it.
+What is unusual is not the rank, it is that <Mark>the number did not move</Mark>. Gains charged 4.00 bps at a thousand dollars and 4.00 at a million. Extended, Ondo and Polymarket all sat below or beside it at $1,000 and are above it at $1,000,000, without Gains doing anything.
 
-A second column is worth reading next to the cost, though it settles nothing about price. The harness records whether the $1,000,000 probe actually completed: when the visible book cannot absorb the order it skips the tier and counts the skip, rather than extrapolating a number nobody could have traded. Over 24 hours, Hyperliquid's probe completed on 75% of cycles and Aster's on 92%. That is a real caveat on the two of them, and a reason to read a quoted price at size alongside whether it was reachable. It is not a tiebreaker: the gap between Lighter's 98% and a venue's 100% is a couple of cycles in a day, and nobody should trade on it.
+A second column is worth reading next to the cost, though it settles nothing about price. The harness records whether the $1,000,000 probe actually completed: when the visible book cannot absorb the order it skips the tier and counts the skip. On ETH over the measured day, every venue filled every probe except Ondo, which missed about one cycle in sixty, and Paradex, which never filled the tier at all. A quoted price at size is only worth reading next to whether the size was reachable.
 
 <StatTable bench="perp-fees" caption="All-in cost to open a long, live. The headline column is $1,000 notional; the tier panels carry $10k, $100k and $1M." />
 
@@ -129,15 +130,15 @@ That tension is the honest shape of the finding. The cost structure rewards larg
 ## Which perp DEX for which trade size
 
 <UseCase label="Small size, frequent">
-Lighter at 0.28 bps all-in and no taker fee. Nothing else in the cohort is close at $1,000, and its 1,216-day clean record is second only to Gains. The cost of that choice appears at size: Lighter's slope is 6.35, the steepest measured.
+Lighter at 0.21 bps all-in and no taker fee. Nothing else in the cohort is close at $1,000, and its 1,216-day clean record is second only to Gains. The cost of that choice appears at size: Lighter's slope is 6.35, the steepest measured, which still leaves it cheapest at $1,000,000.
 </UseCase>
 
 <UseCase label="Large size, cost certainty">
-Gains at 4.33 bps, unchanged from $1k to $1M, with every $1,000,000 probe filled. The quote you are shown is the quote at any size, which is worth more than a tighter headline number you cannot get filled at. Accept a mark price 14 bps from spot and a venue with 0.3% of the leader's flow.
+Gains at 4.00 bps, unchanged from $1k to $1M. The quote you are shown is the quote at any size, which is worth more than a tighter headline number you cannot get filled at, as Paradex's missing $1M reading shows. Accept a mark price 14 bps from spot and a venue with 0.3% of the leader's flow.
 </UseCase>
 
 <UseCase label="Large size, tightest execution">
-Hyperliquid, at 6.67 bps at $1,000,000 and the lowest slope of any book at 1.21, with mark price fidelity four times better than any oracle venue. Check the fill-rate column first: the visible book absorbed our $1M probe on three cycles in four.
+Hyperliquid, at 5.81 bps at $1,000,000 and the lowest slope of any book at 1.21, with mark price fidelity four times better than any oracle venue. On ETH it filled every $1M probe in the window; on the cross-asset average it misses about a quarter of them, so check the asset you actually trade.
 </UseCase>
 
 <UseCase label="Breadth">
@@ -162,7 +163,9 @@ Every figure in this report is read live from a public OpenChainBench board and 
 
 **All-in cost** is the taker fee plus half the spread plus impact, simulated as a 10x long opened on ETH, BTC and SOL, every five minutes, against each venue's own public API. The headline board column is the $1,000 tier; the $10k, $100k and $1M tiers rewalk the same book on the same cycle. A tier that the visible book cannot absorb is skipped and counted, never extrapolated.
 
-**The chart** uses 24-hour means of `perp_fees_all_in_bps_tier` at the $1,000 and $1,000,000 tiers, the same series the cost-slope board divides to produce its ratio. Those means differ slightly from the board's headline column, which is a 24-hour median at the $1,000 tier only; the two are the same measurement summarised differently, and the chart uses means so that it cannot disagree with the slope figures beside it.
+**Scope.** Both the fee board and the cost-slope board pin their headline column to ETH (`aggregate_filters: { chain: ETH }`), and the chain tabs switch it. Every figure in this report's prose and chart is therefore ETH, so the text and the tables beside it read the same scope. The first version of this report averaged ETH, BTC and SOL and printed numbers the tables underneath contradicted; that is corrected here.
+
+**The chart** uses 24-hour means of `perp_fees_all_in_bps_tier` at the $1,000 and $1,000,000 tiers, filtered to ETH, which is the same series the cost-slope board divides to produce its ratio. Dividing the chart's two columns reproduces the slope board to within 0.021 on every venue. BTC and SOL move the picture: on the cross-asset average Paradex does produce a $1M number, a very large one, and Hyperliquid's $1M tier misses a quarter of its cycles. Use the chain tabs on the boards to see each asset on its own.
 
 **Mark price deviation** compares each venue's own mark, the one it uses for P&L and liquidations, against the mid of Binance's best bid and ask, fetched in the same cycle so the comparison is time-aligned.
 
@@ -178,7 +181,7 @@ Figures stated in the text were read on 28 October 2026. The live boards are at 
 
 **What is the cheapest perp DEX?**
 
-It depends on size. At $1,000 notional Lighter is cheapest at 0.28 bps all-in, because it charges no taker fee. At $1,000,000 Lighter is still first at 3.76 bps, but the order behind it changes completely: Gains is second at 4.33 bps, Paradex falls from third to last at 335.89 bps. Any single ranking of perp venues is a ranking at one trade size.
+On ETH, read 28 October 2026, Lighter at both sizes: 0.21 bps all-in at $1,000, because it charges no taker fee, and 1.34 bps at $1,000,000. The order behind it is rebuilt: Gains moves from fourth to second at an unchanged 4.00 bps, and Paradex, second cheapest at $1,000, never filled a $1,000,000 probe in the window. Any single ranking of perp venues is a ranking at one trade size on one asset.
 
 **Why does Gains cost the same at $1M as at $1k?**
 
@@ -192,9 +195,9 @@ Gains, at 1,793 days without a recorded exploit as of 28 October 2026, counted f
 
 The ratio of all-in cost at $1,000,000 notional to all-in cost at $1,000, per venue per asset. A venue whose cost in basis points does not change with size scores 1.00. Order book venues score above 1.00 because a larger order walks deeper into the book. Oracle-priced venues score 1.00 by construction, since they have no book.
 
-**Does Hyperliquid always fill a $1M order?**
+**Which perp DEX cannot fill a $1M order?**
 
-Not in the visible book. Our $1,000,000 probe completed on 75% of measurement cycles over 24 hours; on the rest the visible book could not absorb it and the harness skipped the tier rather than extrapolate. Hyperliquid remains the deepest decentralised book we measure, at $3.85 billion of 24-hour notional.
+On ETH over 24 hours, Paradex: its $1,000,000 tier never filled, so the board shows no slope for it and this report shows no second point. Ondo missed about one cycle in sixty. Every other venue filled every probe. The picture changes by asset: on the cross-asset average Hyperliquid's $1M tier misses roughly a quarter of its cycles, which is why the boards carry chain tabs.
 
 **How many markets does Gains run per dollar of collateral?**
 
