@@ -5,6 +5,7 @@ import { MDXRemote } from "next-mdx-remote/rsc";
 import remarkGfm from "remark-gfm";
 import { StatTable } from "@/components/reports/stat-table";
 import { RegionWinners } from "@/components/reports/region-winners";
+import { PerpCostClient } from "@/components/perp-cost-client";
 import {
   getAllReports,
   getReport,
@@ -81,6 +82,10 @@ function slugify(text: string): string {
 const MDX_COMPONENTS = {
   StatTable,
   RegionWinners,
+  // The interactive tools are embeddable in a report body. A report that
+  // explains a cost structure and then makes the reader leave to try it on
+  // their own numbers has stopped one step short.
+  PerpCostClient,
 
   // Table of contents — pipe-separated section names, auto-generates anchor hrefs
   TOC: ({ sections }: { sections: string }) => {
