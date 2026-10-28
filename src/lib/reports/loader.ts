@@ -41,7 +41,7 @@ export const REPORT_CATEGORY_META: Record<
   rpc: {
     label: "RPC",
     description:
-      "Public no-key RPC endpoints benchmarked for latency, reliability, and archive depth across EVM chains.",
+      "Public no-key and private API-key RPC endpoints benchmarked for latency, reliability, WebSocket push, archive depth and cost.",
   },
   bridge: {
     label: "Bridge",
