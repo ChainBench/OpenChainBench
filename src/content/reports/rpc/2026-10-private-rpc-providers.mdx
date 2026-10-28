@@ -1,0 +1,261 @@
+---
+title: "Best private RPC provider 2026: QuickNode, Chainstack, GetBlock, Alchemy, Dwellir and BlockMachine measured on speed and cost"
+category: "rpc"
+slug: "2026-10-private-rpc-providers"
+publishedAt: "2026-10-28"
+period: "October 2026"
+summary: "Six API-key RPC providers, nine chains, three regions, seven days: HTTP latency warm and cold, WebSocket block push, error rates, the monthly bill from 1M to 1B requests and what each free plan buys. No provider wins on speed, price and reach at once."
+heroFinding: "QuickNode posts the fastest median in 18 of 27 chain and region cells and pushes new blocks first in 13 of 18. BlockMachine is the cheapest of the six at every volume on a dapp workload, and the slowest in every region. Chainstack is the only provider close to both ends."
+author: "OpenChainBench Research"
+readingTime: 14
+canonical: "https://openchainbench.com/reports/rpc/2026-10-private-rpc-providers"
+---
+
+<Summary>
+- No provider wins on speed, price and reach at once. **QuickNode is the fastest and most consistent private RPC we measure, BlockMachine the cheapest and the slowest, and Chainstack the best balance of the two.**
+- QuickNode has the fastest HTTP median in 18 of 27 chain and region cells and the best p99 in 21 of 27, with a median p99 of 9.2 ms. It pushes new blocks first over WebSocket in 13 of 18 cells.
+- <Mark>Region matters more than provider.</Mark> Chainstack is 4x slower from Singapore than from Virginia, and Dwellir answers in about 75 ms from Virginia on six of its eight chains.
+- Price spreads are wider than speed spreads: the same 100M dapp requests cost $125 to $1,255 a month across our six providers.
+- BlockMachine is cheapest on 4 of 5 Ethereum workloads at 100M and 1B requests ($125, $999). Dwellir is cheapest for trace and debug ($299 at 100M).
+- A free tier is a trial: the Alchemy Free key we probe with ran out of its 30M CU on 24 October, and every call on seven chains has failed since.
+</Summary>
+
+<TOC sections="Verdict|Scope and method|HTTP latency and reliability|WebSocket new-block push|Cost at each budget|Free plans|Scorecard|Recommendations by profile|Sources" />
+
+## Verdict
+
+| Need | Pick | Why, measured |
+|---|---|---|
+| Lowest latency, any region | **QuickNode** | Fastest HTTP p50 in 18 of 27 chain and region cells, best p99 in 21 of 27; median p99 9.2 ms. First to push new blocks over WebSocket in 13 of 18 cells. |
+| Best value under $50 a month | **Chainstack** | $49 Growth covers up to 20M requests on every workload we price. Fastest of all in US East (median p50 2.9 ms). Weaker from Singapore (median p50 11.5 ms, p99 86 ms). |
+| Lowest bill at volume (EVM) | **BlockMachine**, then **Dwellir** | BlockMachine is cheapest on 4 of 5 Ethereum workloads at 100M and 1B requests ($125, $999), and on 3 of 5 at 10M ($25). It is also the slowest: median p50 113 ms from US East against 7.2 ms for QuickNode. Dwellir is the cheapest that is also fast in two regions out of three. |
+| Trace and debug | **Dwellir** | 1 credit per response, trace included: $49 at 10M, $299 at 100M, $1,999 at 1B. Ties Chainstack and dRPC at 10M; at 100M and 1B the next cheapest is 1.7x and 3x dearer. |
+| Solana | **QuickNode** for speed, **Chainstack** or dRPC for price | QuickNode leads all three regions (1.3 to 7.3 ms). Chainstack is $49 at 10M. Syndica is cheapest from 100M; Dwellir and BlockMachine do not serve Solana. |
+| Cold start (serverless, one-shot clients) | **GetBlock**, **QuickNode** | GetBlock has the lowest median cold start over all cells (23.7 ms), thanks to region-pinned endpoints. QuickNode leads EU West and Singapore, Chainstack US East. |
+| Free plan | **dRPC**, then OnFinality and Chainstack | 10.5M dapp requests a month free, against 1.26M for Alchemy. |
+
+## Scope and method
+
+The report combines four OpenChainBench measurements of six private (API-key) providers. Speed figures cover the 7 days to 28 October 2026, 13:00 UTC. Prices are list prices from the pricing catalogue, last verified 22 October.
+
+| Bench | What it measures |
+|---|---|
+| [Chain RPC pages, private cohort](/benchmarks/ethereum-rpc?tier=keyed) | HTTP round trip for `eth_getBlockByNumber` (`getSlot` on Solana) every 120 s per chain and region. Two columns: warm (pooled connection) and cold (new DNS, TCP and TLS every call). Every answer is classed ok, http_err, jsonrpc_err, stale or timeout. |
+| [WebSocket push race](/benchmarks/base-rpc-ws) | One `eth_subscribe(newHeads)` socket per provider and region, 10 minutes in every hour. Each block is scored against the first provider to push it in that region. |
+| [rpc-cost, bench 282](/benchmarks/rpc-cost) | Monthly bill of five fixed method mixes at any volume, from each provider's published unit weights. |
+| [rpc-free-tier, bench 283](/benchmarks/rpc-free-tier) | Requests a renewing free plan buys, per workload. |
+
+**Providers and plans.** Plans are disclosed on every bench page; QuickNode, Chainstack and GetBlock supplied their endpoint.
+
+| Provider | Plan probed | Chains served of our 9 | Region handling |
+|---|---|---|---|
+| QuickNode | Build ($49), endpoint supplied | 9 | One routed URL per chain |
+| Chainstack | Growth Global Node, endpoint supplied | 9 | One routed URL per chain |
+| GetBlock | Enterprise, endpoint supplied | 9 (no Singapore node for Arc and Robinhood) | One endpoint per region: New York, Frankfurt, Singapore |
+| Alchemy | Free key (30M CU a month) on 7 chains, enterprise key on HyperEVM and Robinhood | 9 | One routed URL per chain |
+| Dwellir | Developer ($49, 25M responses) | 8 (no Solana) | One routed URL per chain |
+| BlockMachine | Standard (5M Request Units) | 7 (no Solana, no HyperEVM) | One routed URL per chain |
+
+**Chains:** Ethereum, Base, Arbitrum, BNB Chain, Polygon, Solana, HyperEVM, Robinhood Chain, Arc. **Regions:** US East (Virginia), EU West (Amsterdam), Singapore.
+
+**How to read the numbers.** Latency here is the 7-day median and 99th percentile of raw probe samples, steadier than the 24-hour figure the bench pages headline. Warm is what a long-running server sees; cold is what a serverless function or a fresh script sees. Validation Cloud left the cohort on 18 October: its key returned 401 on every call.
+
+## HTTP latency and reliability
+
+QuickNode is the only provider that stays under 10 ms at p50 and about 10 ms at p99 in all three regions. Every other provider has at least one region where it falls behind. The table gives the median across the chains each provider serves.
+
+| Provider | Warm p50, US / EU / SG (ms) | Warm p99, US / EU / SG (ms) | Cold p50, US / EU / SG (ms) | Success, 7d | Fastest p50 cells |
+|---|---|---|---|---|---|
+| QuickNode | 7.2 / 7.7 / 2.1 | 9.6 / 9.0 / 10.5 | 30.9 / 37.3 / 21.5 | 99.98% | 18 of 27 |
+| Chainstack | 2.9 / 8.7 / 11.5 | 16.6 / 29.8 / 85.7 | 16.7 / 42.3 / 133 | 99.94% | 4 of 27 |
+| GetBlock | 11.8 / 9.2 / 3.9 | 20.0 / 16.6 / 16.5 | 19.1 / 38.7 / 22.6 | 99.92% | 0 of 27 |
+| Alchemy | 7.6 / 13.3 / 5.8 | 35.3 / 51.8 / 19.0 | 21.2 / 49.5 / 27.3 | 55.22% | 2 of 27 |
+| Dwellir | 74.9 / 27.9 / 3.8 | 84.7 / 154 / 146 | 330 / 113 / 333 | 99.97% | 3 of 27 |
+| BlockMachine | 113 / 42.1 / 196 | 581 / 108 / 620 | 293 / 80.5 / 521 | 99.70% | 0 of 27 |
+
+- **QuickNode.** Its tail is the tightest: p99 is within 3 ms of p50 almost everywhere. Two exceptions: Arc and Robinhood from Singapore (163 ms and 66 ms), which QuickNode serves from outside Asia, and Ethereum from Singapore at p99 (176 ms).
+- **Chainstack.** The fastest provider from US East, at 2.4 to 3.1 ms on six chains. From Singapore it degrades on Ethereum (39 ms), Polygon (83 ms), HyperEVM (70 ms) and Robinhood (39 ms). Its HyperEVM node also answers in 63 ms from US East.
+- **GetBlock.** It never posts the fastest median, but it is close everywhere and has the most even cold start, because it gives each region its own endpoint. Two outliers: HyperEVM from US East (235 ms) and Polygon p99 from US East (1.3 s). It had 88 stale answers in 7 days, the most in the cohort.
+- **Alchemy.** Its 55% success rate reflects our plan, not its network: the Free key hit its monthly cap around 24 October and has returned HTTP errors on 7 chains since. On HyperEVM and Robinhood, where we hold an enterprise key, it scored 100% and was the fastest from Singapore on Robinhood. Its latency columns cover only the days the key worked.
+- **Dwellir.** It is fast from Singapore on five chains (3.2 to 3.9 ms) but takes about 177 ms there on Arbitrum, Polygon and Robinhood. From US East it answers in about 75 ms on six of its eight chains; Base and Robinhood are the exceptions (2.4 to 2.7 ms). From EU West its p90 jumps to 150 ms. Cold start costs 113 to 330 ms.
+- **BlockMachine.** It is the slowest in every region. Its best region is EU West (42 ms), which suggests a single European location. It had the most timeouts (153 in 7 days); its p99 reaches 2.4 s on BNB from US East.
+
+### Every cell
+
+Warm p50 / p99 in ms over 7 days; the fastest p50 in each row is in bold. A dash means the provider does not serve that chain, or that region for that chain.
+
+| Chain | Region | QuickNode | Chainstack | GetBlock | Alchemy | Dwellir | BlockMachine |
+|---|---|---|---|---|---|---|---|
+| Ethereum | US East | 7.4 / 10.2 | **2.9 / 42.9** | 6.6 / 11.8 | 8.4 / 40.0 | 74.9 / 86.2 | 115 / 418 |
+| Ethereum | EU West | **7.7 / 9.2** | 10.0 / 29.8 | 15.5 / 24.7 | 13.3 / 54.3 | 27.8 / 155 | 45.2 / 197 |
+| Ethereum | Singapore | **2.8 / 176** | 39.4 / 77.5 | 4.4 / 16.5 | 6.2 / 19.9 | 3.7 / 44.3 | 207 / 645 |
+| Base | US East | 6.4 / 9.1 | 3.1 / 7.4 | 12.9 / 46.2 | 8.5 / 35.3 | **2.7 / 4.3** | 112 / 1100 |
+| Base | EU West | **7.6 / 8.9** | 10.2 / 38.5 | 9.9 / 19.9 | 13.4 / 69.3 | 27.9 / 95.8 | 42.2 / 126 |
+| Base | Singapore | **2.1 / 8.3** | 4.9 / 178 | 4.5 / 13.6 | 6.5 / 22.7 | 3.9 / 113 | 188 / 565 |
+| Arbitrum | US East | **7.2 / 10.6** | 7.2 / 13.0 | 11.5 / 17.6 | 7.6 / 33.6 | 95.9 / 105 | 113 / 581 |
+| Arbitrum | EU West | **8.1 / 9.3** | 8.9 / 21.3 | 9.0 / 12.5 | 20.0 / 59.4 | 26.9 / 48.2 | 39.6 / 95.5 |
+| Arbitrum | Singapore | **2.2 / 15.5** | 3.9 / 40.5 | 3.8 / 13.0 | 6.2 / 19.0 | 176 / 567 | 190 / 785 |
+| BNB | US East | 7.2 / 8.3 | **2.6 / 8.4** | 11.8 / 20.0 | 9.3 / 59.8 | 75.0 / 84.0 | 119 / 2354 |
+| BNB | EU West | **7.9 / 9.4** | 8.1 / 35.4 | 9.2 / 20.7 | 13.7 / 43.5 | 27.9 / 154 | 48.6 / 199 |
+| BNB | Singapore | **1.3 / 9.4** | 11.5 / 49.8 | 4.0 / 12.9 | 6.4 / 19.0 | 3.5 / 58.8 | 203 / 836 |
+| Polygon | US East | 6.8 / 8.5 | **2.5 / 34.9** | 12.9 / 1270 | 7.1 / 36.5 | 75.1 / 85.4 | 111 / 520 |
+| Polygon | EU West | **7.7 / 8.5** | 9.8 / 23.2 | 9.1 / 12.0 | 12.8 / 51.8 | 28.5 / 155 | 42.1 / 108 |
+| Polygon | Singapore | **1.4 / 7.8** | 82.9 / 216 | 3.9 / 42.6 | 5.4 / 17.3 | 178 / 391 | 196 / 569 |
+| Solana | US East | **7.3 / 12.2** | 7.4 / 113 | 11.7 / 48.2 | 8.2 / 36.5 | — | — |
+| Solana | EU West | **1.5 / 3.2** | 8.6 / 46.8 | 9.0 / 14.6 | 13.3 / 38.0 | — | — |
+| Solana | Singapore | **1.3 / 7.5** | 3.7 / 224 | 3.7 / 25.2 | 5.8 / 19.2 | — | — |
+| HyperEVM | US East | 7.4 / 9.6 | 62.8 / 77.6 | 235 / 689 | **6.2 / 22.6** | 74.8 / 83.7 | — |
+| HyperEVM | EU West | **7.7 / 9.0** | 8.6 / 11.9 | 8.9 / 12.4 | 12.3 / 40.2 | 27.7 / 154 | — |
+| HyperEVM | Singapore | **2.0 / 10.5** | 70.0 / 85.7 | 3.9 / 100 | 4.9 / 14.8 | 3.2 / 179 | — |
+| Robinhood | US East | 6.9 / 30.4 | 2.5 / 16.6 | 11.3 / 17.8 | 6.0 / 22.5 | **2.4 / 3.9** | 111 / 675 |
+| Robinhood | EU West | **7.5 / 9.0** | 8.7 / 67.1 | 9.6 / 16.6 | 18.2 / 41.7 | 28.0 / 95.4 | 38.1 / 87.6 |
+| Robinhood | Singapore | 66.2 / 74.1 | 38.9 / 132 | — | **5.0 / 13.0** | 177 / 572 | 181 / 467 |
+| Arc | US East | 6.3 / 7.5 | **2.4 / 9.1** | 12.1 / 19.1 | 7.6 / 34.6 | 74.7 / 86.4 | 113 / 495 |
+| Arc | EU West | **7.3 / 8.2** | 8.7 / 12.4 | 15.0 / 20.9 | 12.8 / 64.9 | 27.6 / 154 | 40.4 / 95.3 |
+| Arc | Singapore | 163 / 181 | 8.1 / 47.3 | — | 5.4 / 19.3 | **3.3 / 54.2** | 200 / 620 |
+
+Sub-10 ms figures mostly measure the distance from our probe to the provider's nearest node. A reader in another city will see different absolute values; the ranking within a region is what transfers.
+
+## WebSocket new-block push
+
+QuickNode pushes new blocks first in 13 of 18 chain and region cells, usually by a wide margin. Ethereum and HyperEVM are the exceptions, where GetBlock and Dwellir win the regions closest to their nodes.
+
+Each cell gives the provider's share of blocks pushed first in that region, then its lag behind the first push at p50 / p90 in ms. The winner reads near 0 by construction. The race runs on six chains: Solana, Arbitrum and Robinhood were taken out of the WebSocket arm on 17 October, because they produced 73% of all pushes and one provider's monthly message limit had been reached.
+
+| Chain | Region | Blocks raced | QuickNode | Chainstack | GetBlock | Dwellir |
+|---|---|---|---|---|---|---|
+| Ethereum | US East | 8,384 | 2% · 109 / 159 | 1% · 133 / 247 | **97% · 0.3 / 0.5** | 0% · 714 / 1631 |
+| Ethereum | EU West | 8,384 | **58% · 0.4 / 123** | 5% · 80.9 / 221 | 28% · 58.5 / 158 | 8% · 645 / 1607 |
+| Ethereum | Singapore | 8,384 | 15% · 48.3 / 132 | 1% · 133 / 300 | **76% · 0.3 / 33.4** | 8% · 467 / 1563 |
+| Base | US East | 50,401 | **72% · 0.3 / 5.1** | 4% · 11.7 / 36.8 | 0% · 21.6 / 47.9 | 23% · 7.7 / 28.5 |
+| Base | EU West | 50,401 | **95% · 0.3 / 0.5** | 0% · 44.5 / 90.8 | 0% · 21.7 / 44.3 | 5% · 47.4 / 84.0 |
+| Base | Singapore | 50,398 | **79% · 0.3 / 4.8** | 0% · 75.7 / 301 | 19% · 16.9 / 257 | 1% · 29.6 / 125 |
+| BNB | US East | 223,945 | **92% · 0.3 / 0.5** | 5% · 49.2 / 166 | 3% · 59.4 / 382 | 0% · 104 / 227 |
+| BNB | EU West | 223,811 | **88% · 0.3 / 3.5** | 3% · 52.3 / 152 | 9% · 30.5 / 199 | 1% · 82.6 / 268 |
+| BNB | Singapore | 223,757 | **71% · 0.3 / 26.0** | 5% · 60.0 / 163 | 20% · 32.7 / 401 | 4% · 55.6 / 249 |
+| Polygon | US East | 67,209 | **87% · 0.3 / 3.0** | 0% · 864 / 1077 | 13% · 20.9 / 59.8 | 0% · 109 / 348 |
+| Polygon | EU West | 67,199 | **88% · 0.3 / 1.0** | 0% · 749 / 1043 | 12% · 13.4 / 34.8 | 0% · 155 / 493 |
+| Polygon | Singapore | 67,196 | **95% · 0.3 / 0.5** | 0% · 1019 / 1663 | 5% · 22.7 / 50.9 | 0% · 144 / 655 |
+| HyperEVM | US East | 102,481 | 25% · 65.6 / 236 | **41% · 22.9 / 173** | — | 34% · 80.0 / 416 |
+| HyperEVM | EU West | 102,481 | 9% · 229 / 418 | 7% · 245 / 472 | **64% · 0.4 / 227** | 20% · 163 / 625 |
+| HyperEVM | Singapore | 102,465 | 21% · 160 / 360 | 4% · 232 / 385 | — | **75% · 0.3 / 350** |
+| Arc | US East | 198,825 | **56% · 0.4 / 19.0** | 37% · 12.7 / 67.6 | 6% · 29.4 / 86.1 | 0% · 195 / 253 |
+| Arc | EU West | 198,808 | **100% · 0.3 / 0.5** | 0% · 55.5 / 98.1 | 0% · 47.0 / 95.3 | 0% · 89.7 / 233 |
+| Arc | Singapore | 198,694 | **100% · 0.3 / 0.5** | 0% · 77.9 / 135 | — | 0% · 79.0 / 136 |
+
+- **GetBlock owns Ethereum** from US East (97% first) and Singapore (76%), where it has a dedicated endpoint per region. It is a close second on Polygon.
+- **Chainstack's Polygon socket trails by 0.75 to 1 s** at p50 in every region, which rules it out for a Polygon bot. It drops connections most often: 23 disconnects in 7 days, against 3 for QuickNode and 2 for GetBlock.
+- **Dwellir pushes Ethereum blocks 0.5 to 0.7 s late** at p50, and up to 1.6 s at p90. It wins HyperEVM from Singapore.
+- **HyperEVM has no clear winner.** Each region has a different leader, and even the leader's p90 lag is 170 to 350 ms behind the first push.
+- **Alchemy and BlockMachine are not raced.** Alchemy bills WebSocket per message, and our Free key could not carry it. BlockMachine is measured over HTTP only so far.
+
+The WebSocket and HTTP rankings agree on QuickNode but not on the rest. Chainstack is fast over HTTP in US East yet rarely first over WebSocket; GetBlock never has the fastest HTTP median yet wins Ethereum pushes. <Mark>Pick on the transport your application uses.</Mark>
+
+## Cost at each budget
+
+At every volume, the gap between the cheapest and the dearest of our six providers is 5x to 13x. Speed does not track price: the fastest provider, QuickNode, is the second dearest from 100M requests up.
+
+**Monthly bill for the dapp mix on Ethereum** (40% `eth_call`; 15% each balances, block number and receipts; 5% each gas estimates, sends and logs), cheapest paid plan that can serve the volume, list prices:
+
+| Provider | 1M req | 10M | 50M | 100M | 1B |
+|---|---|---|---|---|---|
+| BlockMachine | $9 Standard | **$25** Pro | **$115** Pro | **$125** Business | **$999** Enterprise |
+| Dwellir | $49 Developer | $49 Developer | $174 Developer | $299 Growth | $1,999 Scale |
+| Chainstack | $49 Growth | $49 Growth | $199 Pro | $449 Pro | $3,990 Enterprise |
+| GetBlock | $49 Starter | $199 Advanced | $499 Pro | $839 Premium | $7,139 Premium |
+| QuickNode | $49 Build | $130 Build | $552 Scale | $1,049 Business | $9,999 Business+ |
+| Alchemy | $13 pay-as-you-go | $125 | $627 | $1,255 | $12,548 |
+
+Below about 1M requests a month, most free plans cover the load; see [Free plans](#free-plans).
+
+**Cheapest provider in the whole 19-provider market**, per workload:
+
+| Workload | 10M req/month | 100M | 1B |
+|---|---|---|---|
+| Simple reads (Ethereum) | BlockPI $24 | BlockMachine $125 | BlockMachine $999 |
+| Dapp frontend (Ethereum) | BlockMachine $25 | BlockMachine $125 | BlockMachine $999 |
+| Dapp frontend, archive depth | BlockMachine $25 | BlockMachine $125 | BlockMachine $999 |
+| Log indexer (`eth_getLogs` heavy) | BlockMachine $25 | BlockMachine $125 | BlockMachine $999 |
+| Trace and debug | Chainstack, dRPC, Dwellir $49 | Dwellir $299 | Dwellir $1,999 |
+| Solana trading bot | Chainstack, dRPC, Helius $49 | Syndica $199 | Syndica $1,362 |
+
+What moves these bills:
+
+- **Unit weights decide the ranking, not headline prices.** Dwellir and BlockMachine bill one unit per response, archive included. Alchemy charges 26 CU for one `eth_call`, so the dapp mix costs 23.9 CU a request. QuickNode charges 20 credits per Ethereum call and 30 on Solana.
+- **Trace breaks BlockMachine's lead.** It meters a trace call at 25 Request Units, so trace at 10M costs $429 there against $49 at Dwellir or Chainstack. GetBlock ($515) and QuickNode ($223) are also expensive for trace.
+- **Chainstack is a step function.** $49 covers 20M Request Units, which is exactly 10M archive requests at 2 RU each. At 10.1M it is $52, at 11M $79, at 15M $199. Budget with headroom.
+- **Throughput caps bite before the bill does.** Alchemy pay-as-you-go stops at 30,000 CU a second, so it cannot serve 500M indexer or trace requests a month at any price. BlockMachine's 4,167 RU a second cap stops trace at the same volume.
+- **Solana narrows the field.** Dwellir and BlockMachine do not price Solana. Among our six, Chainstack is cheapest from 10M up ($49, $449, $3,990); QuickNode costs 3.3x to 3.6x more from 100M up.
+
+All figures are published list prices, not invoices. Alchemy and QuickNode expose no usage header, so their billed units cannot be checked against our traffic. dRPC prices are an upper bound, because it routes to third-party operators who may charge less. The calculator on [rpc-cost](/benchmarks/rpc-cost) prices any volume from 100,000 to 5B requests.
+
+## Free plans
+
+A free plan is enough to prototype, not to run a product. Among our six providers, only Chainstack's free plan carries more than 1.5M dapp requests a month. dRPC, outside our latency cohort, buys the most of anyone.
+
+The table converts each renewing free allowance into requests of the dapp mix on Ethereum, with the least and the most generous of the workloads the plan serves.
+
+| Provider | Dapp requests a month | Range across workloads | In our latency cohort |
+|---|---|---|---|
+| dRPC | 10.5M | 10.5M flat | No |
+| OnFinality | 6.86M | 2.4M to 12M | No |
+| Chainstack | 3.0M | 1.5M to 3.0M | Yes |
+| BlockPI | 1.82M | 0.39M to 3.33M | No |
+| Alchemy | 1.26M | 0.75M to 1.5M | Yes |
+| Validation Cloud | 1.22M | 1.22M to 1.25M | Removed (dead key) |
+| Ankr | 1.0M | 1.0M flat | No |
+| Infura | 0.90M | 0.23M to 1.13M | No |
+| Blockdaemon | 0.19M | 0.11M to 0.60M | No |
+| GetBlock | 75,000 | 14,000 to 75,000 | Yes |
+| BlockMachine | 10,000 | 400 to 10,000 | Yes |
+
+The other two in our cohort have no ranked free plan. QuickNode's free tier is a one-month trial that does not renew. Dwellir's free plan gives 100,000 responses a day (3M simple reads a month) but excludes `eth_getLogs`, so it cannot serve the dapp or indexer mixes.
+
+- **Allowance is not throughput.** GetBlock's 50,000 CU a day lasts 125 seconds at its own advertised 20 requests a second. Infura's daily credits last 1.7 hours at full rate, OnFinality's 2.8 hours.
+- **Our own key hit the limit.** One `eth_getBlockByNumber` probe every two minutes uses well under 30M CU a month, but WebSocket pushes, billed per message, ran on the same Alchemy Free key until mid-October. The key hit its cap on 24 October and every call on seven chains has failed since.
+- **Three allowances are unverified.** dRPC publishes its 210M CU but not what happens when it runs out. Blockdaemon's own pages give 1M or 3M CU. BlockMachine's pages disagree on its rate limit and on whether archive is free.
+
+## Scorecard
+
+QuickNode leads on warm latency, tail and WebSocket; GetBlock on cold start; BlockMachine and Dwellir on every cost line. Chainstack is the only one close to both ends: 1.4 ms behind QuickNode's median, and $49 at 10M. Latency figures are medians over all chains and regions a provider serves, 7 days; costs are list prices.
+
+| | QuickNode | Chainstack | GetBlock | Alchemy | Dwellir | BlockMachine |
+|---|---|---|---|---|---|---|
+| HTTP warm p50 | **7.2 ms** | 8.6 ms | 9.2 ms | 7.6 ms | 27.9 ms | 113 ms |
+| HTTP warm p99 | **9.2 ms** | 40.5 ms | 19.1 ms | 35.3 ms | 95.6 ms | 520 ms |
+| HTTP cold p50 | 30.9 ms | 42.0 ms | **23.7 ms** | 27.3 ms | 330 ms | 293 ms |
+| WebSocket, cells won of 18 | **13** | 1 | 3 | not raced | 1 | not raced |
+| Success rate, 7 days | **99.98%** | 99.94% | 99.92% | 55.2% (Free key capped) | 99.97% | 99.70% |
+| Dapp mix, 10M req | $130 | $49 | $199 | $125 | $49 | **$25** |
+| Dapp mix, 1B req | $9,999 | $3,990 | $7,139 | $12,548 | $1,999 | **$999** |
+| Trace, 100M req | $1,699 | $499 | $3,779 | $1,680 | **$299** | $2,519 |
+| Solana bot, 100M req | $1,499 | $449 | $1,889 | $840 | not served | not served |
+| Free plan, dapp req a month | trial only | **3.0M** | 75,000 | 1.26M | no `eth_getLogs` | 10,000 |
+| Chains served, of 9 | 9 | 9 | 9 | 9 | 8 | 7 |
+| Weak spot | Arc and Robinhood from Singapore | Singapore; Polygon WebSocket | HyperEVM from US East | Free tier; per-message WebSocket billing | US East; cold start | Slow everywhere; trace pricing |
+
+On Solana at 100M, Syndica ($199) beats all six; it is not in our latency cohort.
+
+## Recommendations by profile
+
+| Profile | Primary | Fallback | Reason |
+|---|---|---|---|
+| EVM trading bot, latency first | QuickNode | GetBlock on Ethereum | Best p99 and first WebSocket push on Base, BNB, Polygon and Arc. On Ethereum, GetBlock pushes first from US East and Singapore. |
+| Solana bot | QuickNode | Chainstack | 1.3 to 7.3 ms p50 in all regions. Chainstack matches it in US East for a third of the price, but its p99 reaches 113 to 224 ms. |
+| HyperEVM | QuickNode over HTTP | Region-specific for WebSocket | QuickNode is the only provider under 10 ms in all three regions. No provider wins the push race in more than one region. |
+| Dapp backend in the US or EU, under $50 | Chainstack | QuickNode | $49 up to 20M Request Units, 2.9 ms median from US East. Dwellir costs the same but is 75 ms from US East. |
+| High-volume read API, cost first | BlockMachine | Dwellir | $125 at 100M and $999 at 1B. Expect 40 to 200 ms latency and keep a faster fallback for user-facing paths. |
+| Indexer or archive backfill | Dwellir or BlockMachine | Chainstack | One unit per response including archive. Check the block range a provider accepts on `eth_getLogs` before committing. |
+| Trace and debug | Dwellir | Chainstack | $299 at 100M against $499; both serve trace on shared plans. |
+| Serverless or one-shot clients | GetBlock | QuickNode, Alchemy | Lowest median cold start, 23.7 ms. Dwellir and BlockMachine pay 300 ms or more per new connection. |
+| Team based in Asia | QuickNode | GetBlock | Both under 4 ms p50 from Singapore on most chains. Chainstack and Dwellir are uneven there. |
+| Prototype, no budget | Chainstack free, dRPC free | Alchemy free | 3M and 10.5M dapp requests a month. Expect to outgrow any of them within weeks of real traffic. |
+
+**Caveats.** Our probes run in three cloud regions and send one cheap call; a heavy method or another city can change the order. Warm latency below about 10 ms mostly reflects distance to the nearest node. QuickNode, Chainstack and GetBlock supplied their endpoints; Alchemy, Dwellir and BlockMachine run on keys we hold, at the plans disclosed above. Prices are list prices and do not include negotiated discounts.
+
+## Sources
+
+- Private cohort pages: [Ethereum](/benchmarks/ethereum-rpc?tier=keyed), [Base](/benchmarks/base-rpc?tier=keyed), [Arbitrum](/benchmarks/arbitrum-rpc?tier=keyed), [BNB](/benchmarks/bnb-rpc?tier=keyed), [Polygon](/benchmarks/polygon-rpc?tier=keyed), [Solana](/benchmarks/solana-rpc?tier=keyed), [HyperEVM](/benchmarks/hyperliquid-rpc?tier=keyed), [Robinhood](/benchmarks/robinhood-rpc?tier=keyed), [Arc](/benchmarks/arc-rpc?tier=keyed)
+- WebSocket race: [Ethereum](/benchmarks/ethereum-rpc-ws), [Base](/benchmarks/base-rpc-ws), [BNB](/benchmarks/bnb-rpc-ws), [Polygon](/benchmarks/polygon-rpc-ws), [HyperEVM](/benchmarks/hyperliquid-rpc-ws), [Arc](/benchmarks/arc-rpc-ws)
+- [rpc-cost, bench 282](/benchmarks/rpc-cost) and [rpc-free-tier, bench 283](/benchmarks/rpc-free-tier)
+- Raw data: OpenChainBench Prometheus, [`rpc-keyed-latency` harness](https://github.com/ChainBench/OpenChainBench/tree/dev/harnesses/rpc-keyed-latency), 7 days to 2026-10-28 13:00 UTC; price curves from the [pricing catalogue](https://github.com/ChainBench/OpenChainBench/tree/dev/harnesses/rpc-cost) dated 2026-10-22.
