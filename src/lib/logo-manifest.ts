@@ -1097,10 +1097,25 @@ const ALIASES: Record<string, string> = {
   "helius-dedicated": "helius",
 };
 
-export function logoPath(slug: string): string | null {
+/** The slug whose logo file a given slug actually renders.
+ *
+ *  Callers that style a mark (the chip sets in provider-logo) must key on
+ *  this, not on the raw slug: an alias inherits the FILE, so it has to
+ *  inherit the treatment that file needs. "lighter-rh" shipped lighter.svg,
+ *  a near-black mark on transparent, with no chip behind it and therefore
+ *  invisible on a dark page. */
+/** The alias map, exposed for the guard in provider-logo.test.ts that
+ *  asserts every alias inherits its target's chip treatment. Not for
+ *  callers: use resolveLogoSlug. */
+export const LOGO_ALIASES_FOR_TEST: Readonly<Record<string, string>> = ALIASES;
+
+export function resolveLogoSlug(slug: string): string {
   const key = slug.toLowerCase();
-  const aliased = ALIASES[key] ?? key;
-  return RAW[aliased] ?? null;
+  return ALIASES[key] ?? key;
+}
+
+export function logoPath(slug: string): string | null {
+  return RAW[resolveLogoSlug(slug)] ?? null;
 }
 
 /** True when a logo file is registered. Cheap check used by the chip
