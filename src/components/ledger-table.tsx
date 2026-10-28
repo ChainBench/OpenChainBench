@@ -713,13 +713,21 @@ export function LedgerTable({
               embedKind={embedKind}
             />
           ))}
+          {/* Unranked rows carry their OWN measured value, not zero. Not
+              being ranked is a statement about comparability, not about
+              whether the number exists: Nova read 0 on perp-active-markets
+              in production while its row held 493, and CoW and Bebop read
+              0 on evm-quote-output against 3.17 and 163.75. A row that
+              genuinely has nothing to show asks for it with
+              `unranked_hides_value`, and the loader has already zeroed its
+              ms by the time it reaches here (load.ts:401). */}
           {unrankedRows.map((r) => (
             <Row
               key={r.slug}
               r={r}
               i={-1}
               unit={unit}
-              value={0}
+              value={pickValue(r)}
               fieldValue={fieldValue}
               maxValue={maxValue}
               panelActive={panelActive}
