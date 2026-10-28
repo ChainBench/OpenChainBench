@@ -17,7 +17,7 @@ row_noun: { one: provider, many: providers }
 disclaimer: >
   Published prices, not invoices. Each figure is human-verified against the
   provider's own pricing page or API and carries the date it was read; the
-  harness re-hashes 25 of those artifacts on a loop to catch an upstream
+  harness re-hashes 20 of those pages on a loop to catch an upstream
   edit. A 30-day month and flat traffic are assumed, the most generous
   reading. NOWNodes prices in EUR. A provider absent from a cell is not
   missing data: it has no plan that can serve that workload, usually a cap
@@ -61,14 +61,14 @@ abstract: |
   requests and an eighth of what the trace profile needs, the bill would be
   affordable and the service still cannot be bought. Tatum and Moralis publish
   200 requests per second against the 386 a billion-request month requires.
-  In every case the provider is marked not ranked rather than
+  In every case the provider is left out of that cell rather than
   priced, because a blank cell and an unavailable product are different
   claims. For the dapp mix the calculator lists each one with its own
   reason, so an absence reads as an absence rather than as a free plan.
   Pricing is human-verified rather than scraped: for most of this cohort the
   price is prose on a marketing page, and a parser that guesses is worse than
   one that does not exist. Every figure records the artifact it came from
-  and the date a human read it, and 25 of those artifacts carry a baseline
+  and the date a human read it, and 20 of those pages carry a baseline
   hash the harness re-checks on a loop. That check is an alarm for the
   maintainers, not a display: when it fires a human re-reads the page and
   the catalogue is corrected. This page reads a committed pricing curve,
@@ -94,9 +94,9 @@ methodology:
   - "Currency and period. A 30-day month throughout. NOWNodes prices in EUR and stays in EUR in the catalogue; the ECB reference rate sits in the catalogue header so the conversion is visible at the point of use rather than baked into a number."
   - "Verification. Every figure was collected and then independently re-verified against the primary source by a second pass, which corrected about thirty values, including two that had been computed and then presented as published. A later adversarial audit corrected a dozen more, most of them in this prose rather than in the data."
   - "Conflicts between a provider's own pages are reported rather than silently resolved. Alchemy's free-tier throughput was settled by a dated docs commit, Helius's archival credit cost by dating the documentation table, and Ankr's live model by reading its production application bundle, because its most machine-readable pricing page describes a model that is not the one being sold."
-  - "Freshness. The catalogue is committed and human-verified, not scraped, because most of this cohort publishes price as prose. 25 artifacts carry a baseline hash recorded when a human last read the numbers under them; the harness re-hashes those on a loop and alerts the maintainers on a change, and the page shows the catalogue date."
+  - "Freshness. The catalogue is committed and human-verified, not scraped, because most of this cohort publishes price as prose. 20 pages carry a baseline hash recorded when a human last read the numbers under them; the harness re-hashes each once a cycle and alerts the maintainers on a change, and the page shows the catalogue date."
   - "The rest are marked for manual re-reading and deliberately not polled: a page that churns for reasons unrelated to price would alarm every cycle and teach everyone to ignore the alarm. Every figure keeps the date a human last read it in the catalogue, so a figure nobody has re-read is visible as such."
-  - "Sixteen of the ranked providers expose a machine-readable pricing artifact, whether JSON or raw markdown, and four of them, GetBlock, NOWNodes, QuickNode and Tatum, expose unauthenticated pricing APIs a harness can poll directly. 25 artifacts across the cohort are re-hashed on a loop."
+  - "Sixteen of the ranked providers expose a machine-readable pricing artifact, whether JSON or raw markdown, and four of them, GetBlock, NOWNodes, QuickNode and Tatum, expose unauthenticated pricing APIs a harness can poll directly. 20 pages across the cohort are re-hashed on a loop."
   - "Measured, not just read. Chainstack's rules were tested against its billing API with 291 counted calls: 1 Request Unit for a full request, archive above 2x full, debug and trace at 2 RU even ten blocks behind tip (so the surcharge is method-driven, not recency-driven), and an HTTP batch of 30 billed as 30 rather than 1. The 127-block archive boundary the indexer and trace profiles rest on is confirmed to within five blocks: it is not 64, not 256 and not absent."
   - "Two measurement traps worth publishing. Chainstack's per-node Request Unit column does not reconcile: two nodes came in at minus 66 and plus 59 against prediction, cancelling on the total, so it cannot be used for spend attribution."
   - "And that counter is not live. It stayed flat for twelve minutes while 57 calls were served, because each hourly row covers the hour ending at its label and appears about fifty minutes later. A naive read, burst, re-read measurement concludes Chainstack bills nothing at all."
@@ -140,7 +140,7 @@ faq:
   - q: "What about the free tiers?"
     a: "They have their own bench, 283 rpc-free-tier, ranked by what the allowance actually buys rather than by price, since every free plan costs the same nothing. Converted into simple reads per month they differ by 1,200x, from OnFinality's 12.0 million to Blockmachine's keyed Free plan at 10,000. The allowance ranking is bench 283, rpc-free-tier. Several are limited by throughput rather than volume: GetBlock's daily allowance drains in 125 seconds at its own advertised 20 requests per second."
   - q: "How current are these numbers?"
-    a: "Every figure carries the date a human last verified it against the source, in the catalogue. The harness re-fetches 25 artifacts that carry a baseline hash and flags, in its own metrics, any whose body has changed since a human last read it. Artifacts that churn for reasons unrelated to price are re-read by hand instead. Freshness varies within a provider: Chainstack's pricing markdown has not moved since April 2026 while its pricing JSON regenerates every fifteen minutes."
+    a: "Every figure carries the date a human last verified it against the source, in the catalogue. The harness re-fetches the 20 pages that carry a baseline hash and flags, in its own metrics, any whose body has changed since a human last read it. Artifacts that churn for reasons unrelated to price are re-read by hand instead. Freshness varies within a provider: Chainstack's pricing markdown changes from time to time without its prices moving (last re-read 28 October 2026), while its pricing JSON regenerates every fifteen minutes and is not polled."
   - q: "Can I reproduce these numbers?"
     a: "Yes. The pricing catalogue, the cost model and the workload profiles are all in the harness repository linked below, and every figure carries its source URL and verification date. The weighted units per request are published as a metric so the arithmetic can be redone by hand."
 

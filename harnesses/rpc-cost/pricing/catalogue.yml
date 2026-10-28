@@ -139,8 +139,8 @@ providers:
     source:
       plans:
         url: https://www.alchemy.com/docs/reference/pricing-plans.md
-        body_sha256: ff1c58b4a8d99bffcc4830babb6e0e6581172867fb8c0fcc851b4d7a4ba0e2f9
-        verified_at: "2026-10-16"
+        body_sha256: 86cbd3291ad64d62e8712603243d5def10e35f0762f5b3567e9458233adf1ffd
+        verified_at: "2026-10-28"
         kind: markdown
         poll: body_hash
         extraction: "table under '## Feature comparison'; rows 'Compute Unit rate', 'Base Compute Units', 'Base Throughput (CUs/second)'; read col 2 (PAYG)"
@@ -199,6 +199,9 @@ providers:
         note: >-
           Annual is 30% off, not 15%: page renders $34/mo (true 34.30), $411.60/yr, badge "Save $176/yr".
           Wave 1's "$42/mo list" was an invented figure (49 x 0.85) and appears nowhere on the page.
+          Conflict, read 2026-10-28: quicknode.com/pricing.md now says "$49/mo (or $42/mo billed
+          annually)" while the rendered page still shows $34/mo, "30% off", "Save $176/yr". The
+          rendered page is what a buyer pays, so 34.30 stands. Nothing reads the annual figure.
       - id: accelerate
         name: Accelerate
         tier: growth
@@ -473,8 +476,8 @@ providers:
         extraction: "regex <script id=\"__NEXT_DATA__\">(.*?)</script>; Contentful plan cards. Only three US$ figures exist sitewide: $50, $225, $200/month. The _next/data/<buildId>/pricing.json route 404s."
       weights:
         url: https://docs.infura.io/get-started/pricing/credit-cost.md
-        body_sha256: e12a561d9b6db0e803f66b1e656ed871c500927c6d5261612c20ece7162ebe46
-        verified_at: "2026-09-30"
+        body_sha256: 7941cd91ea5aa55e701d19412b4271cf2fbd0a61ca8ded758200ef02de179a0d
+        verified_at: "2026-10-28"
         kind: markdown
         poll: etag
         extraction: "## <Network> headings, ### <Category> under Ethereum; every table header is '| RPC method | Credit cost |'. Strip Docusaurus anchor junk from the first '['."
@@ -620,15 +623,15 @@ providers:
     source:
       plans:
         url: https://chainstack.com/pricing.md
-        body_sha256: 109e9a4f5af1b12843d904a5a462cf2acd7db394f486828e60468ec9de1681a0
-        verified_at: "2026-09-30"
+        body_sha256: 4a2dbdcde45c7cd6c95a2e0cf3035d9b9d46b73b39c903d70259a38b6e970169
+        verified_at: "2026-10-28"
         kind: markdown
         poll: etag
         extraction: "table header '| Plan | Price (monthly) | Price (annual) | Included RU/mo | Extra usage per 1M RU | RPS limit | Projects |'"
       weights:
         url: https://docs.chainstack.com/docs/request-units.md
-        body_sha256: f8dba444191161b935ab080649394b9dea82bd3d22475a2ca42d888f9347658d
-        verified_at: "2026-10-22"
+        body_sha256: 0f993fde01685248c3db4398d2a8548a00de7437ae658b1073d9c8b97659b00c
+        verified_at: "2026-10-28"
         kind: markdown
         poll: body_hash
         extraction: "'## Cost per request' table (Full 1 RU / Archive 2 RUs) + the 'Always 2 RUs' section + the 20-method block-age list"
@@ -1136,8 +1139,8 @@ providers:
     source:
       plans:
         url: https://docs.blockpi.io/pricing/pricing-and-rate-limit.md
-        body_sha256: 3a6297a568468adc237396e3f4993392b173f64cf25bd235a67322e47bfd769f
-        verified_at: "2026-10-16"
+        body_sha256: 922c7466ab45c19f0f67156b2f6eb08354b40c0a9af86ec0f0c7e22827847334
+        verified_at: "2026-10-28"
         kind: markdown
         poll: body_hash
         extraction: "package table | Package | Price | RUs | Expiration | Rate Limit |"
@@ -1931,15 +1934,15 @@ providers:
     source:
       plans:
         url: https://www.helius.dev/pricing.md
-        body_sha256: d91c8fd0fbc4236dac1f4933b39be305f19fe2cf45bb6b8eadc1b15de0fde83d
-        verified_at: "2026-09-30"
+        body_sha256: 4c3ec4ef3159581fae80539f18ce86022a4312a98cd1149cf923971d2cd68a36
+        verified_at: "2026-10-28"
         kind: markdown
         poll: etag
         extraction: "^### (?P<plan>\\w+) - \\$(?P<usd>[\\d,]+)/month$ ; detail under '## Detailed Plan Comparison'"
       weights:
         url: https://www.helius.dev/docs/billing/credits.md
-        body_sha256: c54afa6d4a11ed85afa353c4eff0f535765d0f86b6d43515422d01c05f411550
-        verified_at: "2026-10-22"
+        body_sha256: e1ce21795e2b651856d41c57d1db0ff5364148ce644d4dc776b1dc381a880a19
+        verified_at: "2026-10-28"
         kind: markdown
         poll: body_hash
         extraction: "MDX <table> blocks under '## Standard Credits' (Service | Credits | Notes); class-level, not per-method"
@@ -2309,15 +2312,15 @@ providers:
     source:
       plans:
         url: https://www.dwellir.com/pricing.md
-        body_sha256: 8427bad202c0ba8da0cfc7f6d0a94afd48b2efa807d510aed7849ef7cce04b79
-        verified_at: "2026-10-16"
+        body_sha256: f114fda2ce3fe0f91ff1e7112f4e2fa0461530c55b3e7ea8bef8670b84725f53
+        verified_at: "2026-10-28"
         kind: markdown
         poll: body_hash
         extraction: "'## Plan Comparison Table': | Feature | Free | Developer | Growth | Scale | rows Price, Included responses, Overages, Responses per second, Daily response limit, Trace APIs, Debug APIs, eth_getLogs block range"
       weights:
         url: https://www.dwellir.com/pricing.md
-        body_sha256: 8427bad202c0ba8da0cfc7f6d0a94afd48b2efa807d510aed7849ef7cce04b79
-        verified_at: "2026-10-16"
+        body_sha256: f114fda2ce3fe0f91ff1e7112f4e2fa0461530c55b3e7ea8bef8670b84725f53
+        verified_at: "2026-10-28"
         kind: markdown
         poll: body_hash
         extraction: "'## Billing Philosophy' ('1 Response = 1 Credit') and the FAQ 'Do you charge compute units?'"
@@ -3925,8 +3928,8 @@ providers:
         extraction: "$.blockchains[*].total_cost_monthly keyed by slug; 293 SKUs, all money in integer cents. Add-on and prerequisite rows come from chainstack.com/pricing.md's feature matrix."
       weights:
         url: https://chainstack.com/pricing.md
-        body_sha256: 109e9a4f5af1b12843d904a5a462cf2acd7db394f486828e60468ec9de1681a0
-        verified_at: "2026-09-30"
+        body_sha256: 4a2dbdcde45c7cd6c95a2e0cf3035d9b9d46b73b39c903d70259a38b6e970169
+        verified_at: "2026-10-28"
         kind: markdown
         poll: etag
         extraction: "n/a — unmetered"
@@ -4040,8 +4043,8 @@ providers:
     source:
       plans:
         url: https://www.dwellir.com/pricing.md
-        body_sha256: 8427bad202c0ba8da0cfc7f6d0a94afd48b2efa807d510aed7849ef7cce04b79
-        verified_at: "2026-10-16"
+        body_sha256: f114fda2ce3fe0f91ff1e7112f4e2fa0461530c55b3e7ea8bef8670b84725f53
+        verified_at: "2026-10-28"
         kind: markdown
         poll: body_hash
         extraction: "'## Unlimited Nodes' table (| Tier | Monthly price | Requests per month | ...) and the '## Dedicated Node Clusters' per-chain table, row Ethereum"
