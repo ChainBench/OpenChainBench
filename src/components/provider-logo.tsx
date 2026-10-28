@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { chipBackground, chipTextColor, initials } from "@/lib/brand";
-import { logoPath } from "@/lib/logo-manifest";
+import { logoPath, resolveLogoSlug } from "@/lib/logo-manifest";
 
 /**
  * Renders an entity's logo as a small circular image. Tries the registered
@@ -38,9 +38,9 @@ export function ProviderLogo({
   // Each problematic slug is opted in to ONE of the two sets below. Logos
   // with proper colored fills (Helius orange, GeckoTerminal purple, …)
   // need neither and ride the default transparent paper background.
-  const lc = slug.toLowerCase();
-  const needsLightChip = NEEDS_LIGHT_CHIP.has(lc);
-  const needsDarkChip = NEEDS_DARK_CHIP.has(lc);
+  const treatment = chipTreatmentFor(slug);
+  const needsLightChip = treatment === "light";
+  const needsDarkChip = treatment === "dark";
   let background: string;
   let boxShadow: string | undefined;
   if (needsDarkChip) {
@@ -79,6 +79,9 @@ export function ProviderLogo({
 // Dark-tone (or dark-on-transparent) logos — get a WHITE chip with a
 // hairline shadow so they pop on both light and dark page backgrounds.
 const NEEDS_LIGHT_CHIP = new Set([
+  // Perp venues: aevo.svg is a black disc carrying a white glyph, so on a
+  // dark page the disc disappears and the glyph floats (2026-10-28).
+  "aevo",
   // Ten-chain sweep 2026-10-07: these two ship only a monochrome mask,
   // which is invisible on a dark page without a chip behind it.
   "neox",
@@ -138,6 +141,23 @@ const NEEDS_DARK_CHIP = new Set([
   // Validation Cloud's mark is a silver stadium on transparent.
   "validationcloud",
 ]);
+
+/** Which background a mark needs behind it, keyed on the slug whose FILE is
+ *  actually rendered.
+ *
+ *  An alias inherits the file, so it has to inherit the treatment: keying
+ *  on the raw slug left "lighter-rh" rendering lighter.svg, a near-black
+ *  mark on transparent, with nothing behind it and therefore invisible on a
+ *  dark page. Five other aliases had the same gap.
+ *
+ *  Exported so the invariant can be asserted rather than eyeballed on a
+ *  screenshot, which is how this one was found. */
+export function chipTreatmentFor(slug: string): "light" | "dark" | "none" {
+  const resolved = resolveLogoSlug(slug);
+  if (NEEDS_DARK_CHIP.has(resolved)) return "dark";
+  if (NEEDS_LIGHT_CHIP.has(resolved)) return "light";
+  return "none";
+}
 
 function Chip({
   slug,
