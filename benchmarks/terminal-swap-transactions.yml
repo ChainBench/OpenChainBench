@@ -45,7 +45,7 @@ abstract: |
   routed transactions directly, so the cohort is complete.
 
 methodology:
-  - "Source: the public tehcscreener API (https://tehcscreener.com/api), Allium-backed, no key, synced once a day. The harness reads /bots over the full history for the roster and /bots/{bot} for each terminal's per-chain daily series, and publishes one day: the latest the source names."
+  - "Source: the public API of tehcscreener (https://tehcscreener.com), served at https://tehcscreener.com/api, Allium-backed, no key, synced once a day. The harness reads /bots over the full history for the roster and /bots/{bot} for each terminal's per-chain daily series, and publishes one day: the latest the source names."
   - "Transactions: the source's swap transaction count for that terminal on the selected chain on the day, or the sum across every chain it serves on the all-chains tab. Transactions add up, so that sum is a real total. A transaction is counted once, so a multi-hop route is one transaction and not one per hop."
   - "Not wallets: bench 232 counts the distinct wallets behind these transactions from the same source and the same day, and publishes the division as a Swaps per wallet column. A terminal whose users average thirty swaps a day is not serving the same behaviour as one whose users average nine."
   - "Latest complete day, not a rolling 24 hours: the source publishes daily and its latest day is normally yesterday. A terminal with no activity on that day carries no figure and reads unresponsive rather than having its last live day carried forward. BasedBot is the live case, with volume on Robinhood Chain and almost none on Solana."

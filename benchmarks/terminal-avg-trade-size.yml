@@ -45,7 +45,7 @@ abstract: |
   terminal that charges no fee.
 
 methodology:
-  - "Source: the public tehcscreener API (https://tehcscreener.com/api), Allium-backed, no key, synced once a day. The harness reads /bots over the full history for the roster and /bots/{bot} for each terminal's per-chain daily series, and publishes one day: the latest the source names."
+  - "Source: the public API of tehcscreener (https://tehcscreener.com), served at https://tehcscreener.com/api, Allium-backed, no key, synced once a day. The harness reads /bots over the full history for the roster and /bots/{bot} for each terminal's per-chain daily series, and publishes one day: the latest the source names."
   - "The ratio: that day's routed volume in USD divided by that day's swap transaction count, both read from the same row of the same series. A terminal whose day carries volume but no transaction count, or the reverse, publishes nothing rather than a ratio built on a half-loaded day."
   - "A mean, not a median: the source publishes daily totals, not a trade-size distribution, so a small number of large tickets moves this figure. It describes the mix of flow a terminal carries, and it is not the size of a typical trade on it."
   - "Cohort changes on 2026-10-07: Padre, Phantom and Bloom are not covered by the current source and were removed rather than published as zero. pump.fun was added, having been invisible to fee-wallet attribution because it charges no terminal fee."

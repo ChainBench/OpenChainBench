@@ -11,6 +11,7 @@ import { StaticLedger } from "@/components/static-ledger";
 import { OraclePairMatrix } from "@/components/oracle-pair-matrix";
 import { TerminalFillAudit } from "@/components/terminal-fill-audit";
 import { RpcCostSlider, RpcCostWinnersGrid } from "@/components/rpc-cost-slider";
+import { linkifyParts } from "@/lib/linkify";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { ChainHeadingsSummary } from "@/components/chain-headings-summary";
 import { CompareThisBench } from "@/components/compare-this-bench";
@@ -944,6 +945,45 @@ export default async function BenchmarkPage({
             <p className="text-sm leading-relaxed text-ink-soft max-w-3xl break-words">
               {benchmark.abstract}
             </p>
+            {/* The methodology bullets. Every spec is required to carry
+                them and they went to JSON-LD, the API and the Markdown
+                view, but never to the page: this section rendered the
+                abstract alone, so a reader could not see how a number was
+                produced without leaving the page. Several bullets name the
+                upstream they read from and its URL, which is how seven
+                benches came to be built on tehcscreener's free API while
+                linking to it nowhere. */}
+            {benchmark.methodology.length > 0 && (
+              <ul className="mt-4 space-y-2 border-t border-ink/10 pt-4 max-w-3xl">
+                {benchmark.methodology.map((bullet, i) => (
+                  <li
+                    key={i}
+                    className="flex gap-2.5 text-sm leading-relaxed text-ink-soft break-words"
+                  >
+                    <span aria-hidden className="text-ink-faint select-none">
+                      &middot;
+                    </span>
+                    <span>
+                      {linkifyParts(bullet).map((part, j) =>
+                        part.kind === "link" ? (
+                          <a
+                            key={j}
+                            href={part.href}
+                            target="_blank"
+                            rel="noopener"
+                            className="underline decoration-ink/25 underline-offset-2 hover:decoration-ink/60"
+                          >
+                            {part.label}
+                          </a>
+                        ) : (
+                          <span key={j}>{part.value}</span>
+                        ),
+                      )}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         </details>
       )}
