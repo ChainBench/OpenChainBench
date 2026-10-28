@@ -36,12 +36,12 @@ The six are the providers we hold a key for and probe continuously: [QuickNode](
 
 | Need | Pick | Measured |
 |---|---|---|
-| Lowest latency, any region | **QuickNode** | Fastest median in 18 of 27 cells (one shared), fastest p99 in 21; median p99 9.2 ms. First to push new blocks in 13 of 18 WebSocket cells. |
-| Under $50 a month, US or EU users | **Chainstack** | $49 Growth covers 20M dapp requests, or 10M archive and trace requests. Median 2.9 ms from US East. |
-| Lowest bill at volume, EVM reads | **BlockMachine**, then **Dwellir** | BlockMachine: $125 at 100M, $999 at 1B. Dwellir costs 2 to 2.4 times as much and is faster in every region. |
+| Lowest latency, any region | **[QuickNode](/products/quicknode)** | Fastest median in 18 of 27 cells (one shared), fastest p99 in 21; median p99 9.2 ms. First to push new blocks in 13 of 18 WebSocket cells. |
+| Under $50 a month, US or EU users | **[Chainstack](/products/chainstack)** | $49 Growth covers 20M dapp requests, or 10M archive and trace requests. Median 2.9 ms from US East. |
+| Lowest bill at volume, EVM reads | **[BlockMachine](/products/blockmachine)**, then **[Dwellir](/products/dwellir)** | BlockMachine: $125 at 100M, $999 at 1B. Dwellir costs 2 to 2.4 times as much and is faster in every region. |
 | Trace and debug | **Dwellir** | One credit per response, trace included: $299 at 100M, $1,999 at 1B. Chainstack is next at $499 and $8,990. |
 | Solana | **QuickNode** | 1.3 to 7.3 ms median in the three regions. Chainstack costs a third as much at 100M ($449) but its p99 reaches 113 ms from US East and 224 ms from Singapore. |
-| Serverless or one-shot clients | **GetBlock** | Lowest median cold start, 23.7 ms, from one endpoint per region. |
+| Serverless or one-shot clients | **[GetBlock](/products/getblock)** | Lowest median cold start, 23.7 ms, from one endpoint per region. |
 | No budget | **dRPC** free, then **Chainstack** free | 10.5M and 3.0M dapp requests a month. |
 
 ## Speed against price
@@ -179,6 +179,8 @@ The allowance is rarely the binding limit. GetBlock's 50,000 CU a day lasts 125 
 | Users in Asia | QuickNode | GetBlock | Both under 4 ms median from Singapore. Chainstack and Dwellir are uneven there. |
 | Prototype | Chainstack free | dRPC free | 3M and 10.5M dapp requests a month. |
 
+Head to head, with every bench the two share: [Alchemy vs QuickNode](/compare/alchemy-vs-quicknode), [Chainstack vs QuickNode](/compare/chainstack-vs-quicknode), [GetBlock vs QuickNode](/compare/getblock-vs-quicknode), [Chainstack vs Dwellir](/compare/chainstack-vs-dwellir), [BlockMachine vs Dwellir](/compare/blockmachine-vs-dwellir).
+
 ## Questions
 
 ### Which private RPC provider is the fastest?
@@ -202,7 +204,7 @@ Rarely. The most generous free plan we price, dRPC, buys 10.5M dapp requests a m
 | Measurement | How | Window |
 |---|---|---|
 | HTTP latency | `eth_getBlockByNumber` (`getSlot` on Solana) every 120 s per provider, chain and region. Calls alternate between a pooled connection (warm) and a new DNS, TCP and TLS connection (cold). Each answer is classed ok, http_err, jsonrpc_err, stale or timeout. | 21 Oct 2026 13:00 to 28 Oct 2026 13:00 UTC |
-| WebSocket push | One `eth_subscribe(newHeads)` socket per provider and region, ten minutes in every hour. Each block is scored against the first provider to push it in that region. | Same |
+| WebSocket push | One `eth_subscribe(newHeads)` socket per provider and region, ten minutes in every hour. Each block is scored against the first provider to push it in that region. GetBlock issues one socket per chain and region and has none for HyperEVM in US East and Singapore or for Arc in Singapore. | Same |
 | Cost | Each provider's published unit weights applied to fixed method mixes, cheapest plan that can serve the volume, throughput caps enforced. | Catalogue of 22 Oct 2026 |
 | Free plans | Each renewing free allowance converted into requests of the same mixes. | Same |
 
@@ -221,7 +223,7 @@ The probes send one cheap call; a heavy method or another location can change th
 
 ## Sources
 
-- HTTP, private cohort: [Ethereum](/benchmarks/ethereum-rpc?tier=keyed), [Base](/benchmarks/base-rpc?tier=keyed), [Arbitrum](/benchmarks/arbitrum-rpc?tier=keyed), [BNB Chain](/benchmarks/bnb-rpc?tier=keyed), [Polygon](/benchmarks/polygon-rpc?tier=keyed), [Solana](/benchmarks/solana-rpc?tier=keyed), [HyperEVM](/benchmarks/hyperliquid-rpc?tier=keyed), [Robinhood](/benchmarks/robinhood-rpc?tier=keyed), [Arc](/benchmarks/arc-rpc?tier=keyed)
+- HTTP, private cohort: [Ethereum](/benchmarks/ethereum-rpc#tier=keyed), [Base](/benchmarks/base-rpc#tier=keyed), [Arbitrum](/benchmarks/arbitrum-rpc#tier=keyed), [BNB Chain](/benchmarks/bnb-rpc#tier=keyed), [Polygon](/benchmarks/polygon-rpc#tier=keyed), [Solana](/benchmarks/solana-rpc#tier=keyed), [HyperEVM](/benchmarks/hyperliquid-rpc#tier=keyed), [Robinhood](/benchmarks/robinhood-rpc#tier=keyed), [Arc](/benchmarks/arc-rpc#tier=keyed)
 - WebSocket race: [Ethereum](/benchmarks/ethereum-rpc-ws), [Base](/benchmarks/base-rpc-ws), [BNB Chain](/benchmarks/bnb-rpc-ws), [Polygon](/benchmarks/polygon-rpc-ws), [HyperEVM](/benchmarks/hyperliquid-rpc-ws), [Arc](/benchmarks/arc-rpc-ws)
 - Cost and free plans: [rpc-cost, bench 282](/benchmarks/rpc-cost), [rpc-free-tier, bench 283](/benchmarks/rpc-free-tier)
 - Harnesses: [rpc-keyed-latency](https://github.com/ChainBench/OpenChainBench/tree/dev/harnesses/rpc-keyed-latency), [rpc-cost and pricing catalogue](https://github.com/ChainBench/OpenChainBench/tree/dev/harnesses/rpc-cost)
