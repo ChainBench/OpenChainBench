@@ -53,15 +53,25 @@ describe("the provider set behind the cache keys", () => {
     const hash = createHash("sha256").update(sets.join("\n")).digest("hex").slice(0, 16);
     const count = sets.reduce((n, s) => n + s.split(":")[1].split(",").length, 0);
 
-    // Recorded on 2026-10-24 with bench-unfiltered-v99, all-benchmarks-v92,
-    // bench-filters-v40, providers-v19.
+    // Recorded on 2026-10-28 on main, with bench-unfiltered-v102,
+    // all-benchmarks-v95, bench-filters-v43, providers-v21, none of which
+    // moved. Read the next paragraph before copying that as a precedent.
     //
-    // The change was a DELETION, bench 306, which moves this hash the same
-    // way an addition does but for the opposite reason: a cached aggregate
-    // written before it would still list a bench that no longer exists.
-    // providers-v did NOT move, because both of its providers (pump-bridge,
-    // relay) are declared by benches that remain, so no product page gains
-    // or loses an appearance.
+    // Two merges moved the set and neither bumped a key: #3311 stopped
+    // scoring Mobula on Solana in token-quote-coverage, and #3312 added
+    // Perpex to hyperliquid-frontends. Both touched only benchmarks/*.yml,
+    // so this guard went red on main on 2026-10-27 and stayed red, which is
+    // exactly what it exists to do.
+    //
+    // The keys are NOT moved retroactively, and that is a judgement about
+    // timing rather than a softening of the rule. A key bump invalidates
+    // entries written BEFORE the change; by 2026-10-28 the cache had already
+    // turned over on its own, verified rather than assumed: production
+    // serves 106 providers on hyperliquid-frontends including Perpex, and
+    // /products/perpex answers 200 carrying its hyperliquid-frontends
+    // appearance. Bumping now would flush healthy entries and surface
+    // nothing new. Had this been caught the same day, the keys would have
+    // had to move, and for the next change they still do.
     expect(
       hash,
       [
@@ -80,6 +90,6 @@ describe("the provider set behind the cache keys", () => {
         "Then set EXPECTED to the hash in this failure, and add the provider",
         `to PRODUCT_NAMES if it needs a display name. Providers now: ${count}.`,
       ].join("\n"),
-    ).toBe("f355324b6640e7e4");
+    ).toBe("b767efc1bf40bf99");
   });
 });
