@@ -1,11 +1,11 @@
 ---
-title: "Perp DEX cost at $1k vs $1M by venue"
+title: "Perp DEX cost on ETH: $1k vs $1M by venue"
 category: "perps"
 slug: "2026-10-perp-dex-cost-at-size"
 publishedAt: "2026-10-28"
 period: "October 2026"
-summary: "On ETH, eleven perp venues cost 0.21 to 6.6 basis points at $1,000 notional and 1.3 to 24.3 at $1,000,000. The leader holds; everything behind it is rebuilt."
-heroFinding: "On ETH, read 28 October 2026, Lighter is the cheapest venue at both sizes: 0.21 bps at $1,000 and 1.34 at $1,000,000. What changes is everything behind it. Gains climbs from fourth to second without its number moving, 4.00 bps at both, and Paradex, second cheapest at $1,000, produces no $1,000,000 reading at all."
+summary: "Lighter is cheapest at both sizes on ETH as of 28 October 2026: 0.21 bps at $1,000 and 1.34 at $1,000,000. Behind it the ranking is rebuilt."
+heroFinding: "As of 28 October 2026, Lighter is the cheapest of eleven perp venues on ETH at both sizes: 0.21 bps all-in at $1,000 notional and 1.34 bps at $1,000,000. Behind it the ranking is rebuilt. Gains climbs from fourth to second without its number moving, 4.00 bps at both, and Paradex, second cheapest at $1,000, produces no $1,000,000 reading at all."
 author: "OpenChainBench Research"
 readingTime: 11
 canonical: "https://openchainbench.com/reports/perps/2026-10-perp-dex-cost-at-size"
@@ -25,7 +25,7 @@ faq:
 ---
 
 <Summary>
-- All-in cost to open an ETH perp spans 0.21 to 6.6 basis points at $1,000 notional and 1.3 to 24.3 at $1,000,000. The leader is the same at both sizes. The order behind it is not.
+- All-in cost to open an ETH perp spans 0.21 to 6.62 basis points at $1,000 notional and 1.34 to 24.26 at $1,000,000. The leader is the same at both sizes. The order behind it is not.
 - The split is architectural, not competitive. **Oracle-priced venues charge a flat percentage of notional and have no book to walk**, so their cost in basis points is identical at both sizes. Order book venues pay for depth, and the steepness of that line is the measurement.
 - Lighter is cheapest at both, 0.21 and 1.34 bps, though it multiplies by 6.4. <Mark>Gains moves from fourth at $1,000 to second at $1,000,000</Mark> without its number changing, 4.00 bps at both.
 - Paradex is the second cheapest venue at $1,000 and has **no $1,000,000 reading at all**: its tier never filled in the measured window, and the harness counts the skip rather than extrapolating a price nobody could have traded.
@@ -37,7 +37,7 @@ faq:
 
 ## Perp DEX cost at $1,000 and $1,000,000 notional
 
-*Every figure in the prose is an ETH 24-hour mean read on 28 October 2026, the same scope the boards embedded below use. The boards are live and move on their own; the prose does not.*
+*As of 28 October 2026. Every figure in the prose is an ETH 24-hour mean, the same scope the boards embedded below use. The boards are live and move on their own; the prose does not.*
 
 ![All-in cost to open an ETH perp at $1,000 and at $1,000,000 notional across eleven venues. Gains and GMX draw flat lines because they are oracle-priced. Order books rise, Ondo from 4.1 to 24.3 basis points and dYdX from 6.6 to 18.6. Paradex has no $1,000,000 point because its tier never filled](/reports/perp-cost-at-size.svg)
 
@@ -152,6 +152,8 @@ The boards above price a standard probe: a 10x long, opened, measured in basis p
 The calculator below is the same one at [/tools/perp-cost](/tools/perp-cost), with each venue's taker fee and quoted spread behind it. Set the margin and the leverage and it shows what each venue takes from that trade, including the point where a venue charging a share of the gain costs more than one charging a share of notional.
 
 <PerpCostClient />
+
+Three of the pairings this report sets up have their own side by side page, with every live board the two venues share: [Gains vs Lighter](/compare/gains-vs-lighter), the flat cost against the cheapest, [Gains vs Hyperliquid](/compare/gains-vs-hyperliquid), the oracle against the deepest book, and [Hyperliquid vs Lighter](/compare/hyperliquid-vs-lighter), the two books. [Gains vs GMX](/compare/gains-vs-gmx) puts the two oracle venues against each other.
 
 It is worth running at two sizes. The ranking you get at a thousand dollars of margin is not the ranking you get at a million of notional, which is the whole finding of this report expressed as a number you chose rather than one we chose.
 
