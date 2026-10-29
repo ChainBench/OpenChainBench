@@ -549,10 +549,6 @@ const RAW: Record<string, string> = {
   // exist; the row name carries the distinction the board compares.
   "part-blind": "/logos/part.png",
   thorchain: "/logos/thorchain.png",
-  // RouteMesh, the RPC router benched beside its own upstreams. Its own
-  // icon.png, 216x216, an opaque dark field carrying the mark, so it
-  // needs neither chip set.
-  routemesh: "/logos/routemesh.png",
   maya: "/logos/maya.png",
   zec: "/logos/zcash.svg",
   dash: "/logos/dash.png",
@@ -1092,7 +1088,6 @@ const ALIASES: Record<string, string> = {
   "blockmachine-cold": "blockmachine",
   "chainstack-cold": "chainstack",
   "dwellir-cold": "dwellir",
-  "routemesh-cold": "routemesh",
   "validationcloud-cold": "validationcloud",
   "validation-cloud": "validationcloud",
   "dwellir-unlimited": "dwellir",
