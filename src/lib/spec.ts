@@ -593,7 +593,16 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       `api` dimension on an existing RPC spec would inject api=... into
   //       rpc_latency_milliseconds, which carries no such label, and empty
   //       every ledger column.
-  ["bench-unfiltered-v118", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v119: bench 311's editorial, three times in one evening. The success
+  //       column became a measurement rather than the default 100, the
+  //       unranked row gained its own cause in place of the generic caption,
+  //       and two sentences that described the previous rendering were
+  //       realigned. Entries written between v118 and now carry the old
+  //       prose, and overlayEditorial prefers the spec but cannot beat an
+  //       already-cached entry (measured on prod 2026-10-28: a green deploy
+  //       serving the old sentence). providers-v31 deliberately does NOT
+  //       move: the provider set is untouched, only its copy.
+  ["bench-unfiltered-v119", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -873,7 +882,10 @@ const loadAllBenchmarksCached = unstable_cache(
   // v109: lockstep with bench-unfiltered-v116 (Quicknode spelling).
   // v110: lockstep with bench-unfiltered-v117 (bench 310 arrives).
   // v111: lockstep with bench-unfiltered-v118 (bench 311 arrives).
-  ["all-benchmarks-v111", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v112: lockstep with bench-unfiltered-v119 (bench 311's editorial:
+  //        a measured success column, the unranked row's own cause, and
+  //        two sentences realigned to the rendering they describe).
+  ["all-benchmarks-v112", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1039,7 +1051,11 @@ const loadBenchmarkFiltered = unstable_cache(
   // v56: lockstep with bench-unfiltered-v118. Bench 311 declares a chain
   //      dimension and its whole board is panel-backed columns, so every tab
   //      is a filtered variant.
-  ["bench-filters-v56", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v57: lockstep with bench-unfiltered-v119. Same editorial, and it has
+  //      to move with it: every one of this bench's eight tabs is a
+  //      filtered variant, so copy fixed only on the default view would
+  //      stay wrong on all eight.
+  ["bench-filters-v57", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 
