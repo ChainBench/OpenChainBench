@@ -75,3 +75,15 @@ describe("wallet-cost curve reader", () => {
     expect(free.length).toBe(4);
   });
 });
+
+describe("unpriced vendors on filtered views", () => {
+  test("only benches whose label holds on every tab are backfilled there", async () => {
+    const { notServedLabel, notServedOnEveryView } = await import("./no-figure-label");
+    expect(notServedOnEveryView("wallet-cost")).toBe(true);
+    // rpc-cost's label names the Ethereum dapp mix, false on its Solana tab.
+    expect(notServedOnEveryView("rpc-cost")).toBe(false);
+    // The wallet-cost label must not name a size or profile, since it is
+    // printed on every one of them.
+    expect(notServedLabel("wallet-cost")).not.toMatch(/\d|consumer|trading|active/i);
+  });
+});

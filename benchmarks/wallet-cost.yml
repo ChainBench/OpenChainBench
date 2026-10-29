@@ -46,8 +46,8 @@ abstract: |
   Pricing is read by a human from each vendor's own page, not scraped: half
   of these pages render their billing FAQ only in JavaScript. Every figure
   records the page and the date, and the harness re-hashes the pricing lines
-  of all thirteen pages each hour and sets a drift gauge when one changes,
-  for a maintainer to re-read. The calculator reads a curve the same harness
+  of all thirteen pages each hour, and a change that holds for six hours
+  raises an alert for a maintainer to re-read the page. The calculator reads a curve the same harness
   emits, with a point at every plan boundary, and a second implementation in
   another language re-prices it at a million random app sizes; `pnpm
   validate` runs that check on every change.
@@ -64,7 +64,7 @@ methodology:
   - "Left out. Gas and gas-sponsorship surcharges (thirdweb 2.5% on mainnet, Openfort 10% or 5%, ZeroDev 8%), SMS fees, extra seats, annual discounts, Circle's USDC rebate, and Privy's $1M monthly transaction volume threshold. Features a production app may need are not priced: removing thirdweb branding needs its $499 Scale plan, and custom domains are Enterprise-only at several vendors."
   - "Any size, not only three. The table prices 1,000, 10,000 and 100,000 users because a metric needs a fixed label. The calculator prices any size from 100 to 1,000,000 from a curve the same harness emits, with a point at every tier boundary, cap, quote threshold and plan crossover. Between two points every bill is a straight line, so the slider is exact, not smoothed."
   - "Verification. A second implementation, written in another language from the catalogue's prose rather than the harness code, re-prices every curve point and 1,170,000 random app sizes, and agrees on the bill to the cent and on the plan in every case. `pnpm validate` runs it on every change, and refuses a curve built from a different catalogue."
-  - "Freshness. Six of the thirteen pages return a new body on every request while their prices stand still, so the harness hashes only the visible lines that carry a dollar figure or a number beside a billing word. A change sets a drift gauge for a maintainer, who re-reads the page and corrects the catalogue. The page shows the catalogue date."
+  - "Freshness. Six of the thirteen pages return a new body on every request while their prices stand still, so the harness hashes only the visible lines that carry a dollar figure or a number beside a billing word. A change that holds for six hours raises an alert, and a maintainer re-reads the page and corrects the catalogue. The page shows the catalogue date."
 
 findings:
   - "There is no single cheapest vendor. At 1,000 users four free plans cost nothing on a consumer app (Circle, Magic, Para, Web3Auth). At 10,000 Reown leads the consumer and active profiles at $214 a month and thirdweb the trading one at $234. At 100,000 Dynamic leads all three at $724."
