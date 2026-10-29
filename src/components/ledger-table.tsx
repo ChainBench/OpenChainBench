@@ -116,7 +116,19 @@ function embedTierOf(b: Benchmark, r: ProviderResult): string | null {
 // "no headline value by design", which is false for most of them.
 function unrankedHint(label: string | undefined): string {
   if (label === "Provisional") {
-    return "Published, not ranked: the figure stands on a sample the bench's own gate finds too small to rank yet (one chain's few swaps carrying most of a pooled median, for example). It takes a rank as soon as the gate opens.";
+    // No example here on purpose. This used to end with "one chain's few
+    // swaps carrying most of a pooled median, for example", which is bench
+    // 268's situation and describes nothing on any other board: beside a
+    // capability matrix a reader is told about swaps and medians that are not
+    // on the page. The example was there to make an abstract sentence
+    // concrete, and an example that is wrong for most benches is worse than
+    // none, because it reads as the explanation and sends the reader looking
+    // for a column that does not exist.
+    //
+    // Each bench's gate measures something different, and the only place that
+    // can say what is the bench's own methodology, so this points there
+    // rather than inventing a case.
+    return "Published, not ranked: the figure stands, but it rests on a sample this bench's own gate finds too small to rank. The gate and what it counts are in the methodology. The row takes a rank as soon as the gate opens.";
   }
   if (label === "Pre-TGE") {
     return "Listed for its measured activity only. This member has no headline value by design (for example a perp DEX with no token yet cannot have a price to fees ratio), so it is never ranked and never named a leader.";
