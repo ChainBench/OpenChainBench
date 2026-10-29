@@ -111,13 +111,13 @@ A benchmark is a spec, a harness, and the surfaces generated from them. Take `ag
 | Answer pages (`answers/*.yml`) | 49 |
 | Alternatives pages (`alternatives/*.yml`) | 21 |
 | Distinct categories (`category:` values across the specs) | 10 |
-| Categories with a published benchmark | 7 |
-| Held on staging until a release condition is met (`DEV_ONLY_BENCH_SLUGS`) | 10 |
+| Categories with a published benchmark | 8 |
+| Held on staging until a release condition is met (`DEV_ONLY_BENCH_SLUGS`) | 9 |
 | Retired, answering `410 Gone` or redirecting to a successor (`REMOVED_BENCH_SLUGS`) | 25 |
 
-258 specs, minus 10 held on staging, minus 2 retired benches that keep their spec, leaves 246 benchmarks that this commit publishes. Counts derived from the repository at 2026-10-29.
+258 specs, minus 9 held on staging, minus 2 retired benches that keep their spec, leaves 247 benchmarks that this commit publishes. Counts derived from the repository at 2026-10-29.
 
-Published by category: RPCs 170, Trading 43, Aggregators 9, Bridges 9, Blockchains 8, RWA 6, NFT APIs 1.
+Published by category: RPCs 170, Trading 43, Aggregators 9, Bridges 9, Blockchains 8, RWA 6, NFT APIs 1, Wallets 1.
 <!-- stats:end -->
 
 The badge at the top reads the live count from `/api/citable`, which is what production serves. The table is derived from the commit you are reading. The two agree once a change has been released, and differ while a benchmark is merged and waiting, so comparing them tells you something instead of requiring you to trust either.
