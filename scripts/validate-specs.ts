@@ -468,10 +468,22 @@ async function checkCostCurveFreshness(issues: Issue[]) {
  *   cd harnesses/wallet-cost
  *   WALLET_COST_EMIT_CURVES=../../src/data/wallet-cost-curves.json go run ./cmd/script
  */
+type CostBench = { slug: string; harness: string; env: string };
+
+/** Benches 309 and 310 share the catalogue -> curve -> calculator design. */
+const COST_BENCHES: CostBench[] = [
+  { slug: "wallet-cost", harness: "harnesses/wallet-cost", env: "WALLET_COST" },
+  { slug: "server-wallet-cost", harness: "harnesses/server-wallet-cost", env: "SERVER_WALLET_COST" },
+];
+
 async function checkWalletCostCurveFreshness(issues: Issue[]) {
-  const CURVE = "src/data/wallet-cost-curves.json";
-  const CATALOGUE = "harnesses/wallet-cost/pricing/catalogue.yml";
-  const REGEN = `regenerate it: cd harnesses/wallet-cost && WALLET_COST_EMIT_CURVES=../../${CURVE} go run ./cmd/script`;
+  for (const b of COST_BENCHES) await checkCostBenchCurve(issues, b);
+}
+
+async function checkCostBenchCurve(issues: Issue[], b: CostBench) {
+  const CURVE = `src/data/${b.slug}-curves.json`;
+  const CATALOGUE = `${b.harness}/pricing/catalogue.yml`;
+  const REGEN = `regenerate it: cd ${b.harness} && ${b.env}_EMIT_CURVES=../../${CURVE} go run ./cmd/script`;
   let curve: { schema?: number; catalogueSha256?: string };
   let raw: Buffer;
   try {
@@ -484,7 +496,7 @@ async function checkWalletCostCurveFreshness(issues: Issue[]) {
   // and Schema in harnesses/wallet-cost/cmd/script/curve.go.
   if (curve.schema !== 1) {
     issues.push({
-      file: "wallet-cost.yml",
+      file: `${b.slug}.yml`,
       level: "error",
       message: `${CURVE} is schema ${curve.schema}, the reader expects 1; the calculator renders nothing until they agree. ${REGEN}`,
     });
@@ -492,7 +504,7 @@ async function checkWalletCostCurveFreshness(issues: Issue[]) {
   const sha = createHash("sha256").update(raw).digest("hex");
   if (curve.catalogueSha256 !== sha) {
     issues.push({
-      file: "wallet-cost.yml",
+      file: `${b.slug}.yml`,
       level: "error",
       message: `${CURVE} was built from a different ${CATALOGUE} (sha256 ${String(curve.catalogueSha256).slice(0, 12)} vs ${sha.slice(0, 12)}); the calculator would quote prices the catalogue no longer holds. ${REGEN}`,
     });
@@ -502,18 +514,18 @@ async function checkWalletCostCurveFreshness(issues: Issue[]) {
   // another language, re-prices every curve point and a sample of random app
   // sizes. The full run (30,000 sizes per cell) is the harness README's;
   // 2,000 here keeps validate fast and still lands in every segment.
-  const SCORER = "harnesses/wallet-cost/verify/scorer.mjs";
-  const tableFile = path.join(os.tmpdir(), `wallet-cost-table-${process.pid}.json`);
+  const SCORER = `${b.harness}/verify/scorer.mjs`;
+  const tableFile = path.join(os.tmpdir(), `${b.slug}-table-${process.pid}.json`);
   try {
     execFileSync(process.execPath, [path.join(ROOT, SCORER), path.join(ROOT, CATALOGUE), path.join(ROOT, CURVE), "2000"], {
       cwd: ROOT,
       stdio: "pipe",
-      env: { ...process.env, WALLET_COST_TABLE: tableFile },
+      env: { ...process.env, [`${b.env}_TABLE`]: tableFile },
     });
   } catch (e) {
     const out = String((e as { stdout?: Buffer }).stdout ?? "").slice(0, 600);
     issues.push({
-      file: "wallet-cost.yml",
+      file: `${b.slug}.yml`,
       level: "error",
       message: `${SCORER} disagrees with ${CURVE}: ${out}`,
     });
@@ -536,17 +548,21 @@ async function checkWalletCostCurveFreshness(issues: Issue[]) {
   const allowed = new Set<number>();
   for (const v of Object.values(table)) if (typeof v === "number") allowed.add(cents(v));
   const cat = yaml.load(raw.toString("utf8")) as {
-    providers?: { plans?: { monthly_usd?: number | null; tiers?: Record<string, { rate?: number }[]> }[] }[];
+    providers?: { plans?: { monthly_usd?: number | null; annual_usd?: number; tiers?: Record<string, { rate?: number }[]> }[] }[];
   };
   for (const p of cat.providers ?? []) {
     for (const pl of p.plans ?? []) {
       if (typeof pl.monthly_usd === "number") allowed.add(cents(pl.monthly_usd));
+      if (typeof pl.annual_usd === "number") {
+        allowed.add(cents(pl.annual_usd));
+        allowed.add(cents(pl.annual_usd / 12));
+      }
       for (const tiers of Object.values(pl.tiers ?? {})) {
         for (const tier of tiers) if (typeof tier.rate === "number") allowed.add(Math.round(tier.rate * 1e6) / 1e4);
       }
     }
   }
-  const spec = yaml.load(await fs.readFile(path.join(ROOT, "benchmarks/wallet-cost.yml"), "utf8")) as Record<string, unknown>;
+  const spec = yaml.load(await fs.readFile(path.join(ROOT, `benchmarks/${b.slug}.yml`), "utf8")) as Record<string, unknown>;
   const prose: string[] = [];
   for (const k of ["findings", "methodology"]) for (const s of (spec[k] as string[]) ?? []) prose.push(s);
   for (const f of (spec.faq as { q: string; a: string }[]) ?? []) prose.push(f.q, f.a);
@@ -567,7 +583,7 @@ async function checkWalletCostCurveFreshness(issues: Issue[]) {
   }
   if (bad.size > 0) {
     issues.push({
-      file: "wallet-cost.yml",
+      file: `${b.slug}.yml`,
       level: "error",
       message: `dollar figures in the prose that are neither a bill at a published volume nor a catalogue fee or rate: ${[...bad].join(", ")}. Re-read the prose against the regenerated curve.`,
     });

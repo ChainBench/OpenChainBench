@@ -61,6 +61,7 @@ import { fetchBridgeHub } from "@/lib/bridge-hub-stats";
 import { withUtm } from "@/lib/utm";
 import { noFigureLabel, noRankLabel } from "@/lib/no-figure-label";
 import { WalletVendorPricing, walletVendorHeadline, fmtWalletBill } from "@/components/wallet-vendor-pricing";
+import { ServerWalletVendorPricing, serverWalletVendorHeadline, fmtServerWalletBill } from "@/components/server-wallet-vendor-pricing";
 
 export const revalidate = 3600;
 
@@ -354,10 +355,28 @@ export async function generateMetadata({
   // the headline bill and its app size in the description. A vendor that
   // also appears on other benches (thirdweb, Coinbase CDP) keeps its
   // existing title: one wallet rank must not displace thirty RPC ones.
+  const WALLET_BENCHES = new Set(["wallet-cost", "server-wallet-cost"]);
   const walletOnly =
-    appearances.length > 0 && appearances.every((a) => a.benchmark.slug === "wallet-cost");
-  if (walletOnly) {
+    appearances.length > 0 && appearances.every((a) => WALLET_BENCHES.has(a.benchmark.slug));
+  const embeddedApp = appearances.find((a) => a.benchmark.slug === "wallet-cost");
+  if (walletOnly && !embeddedApp) {
+    // Measured only on bench 310 (Lit, Portal, Dfns): a server wallet pricing
+    // page, priced on that bench's headline cell.
     const rawSlug = appearances[0]?.result.slug ?? p.slug;
+    const head = serverWalletVendorHeadline(rawSlug);
+    const long = `${p.name} pricing ${new Date().getUTCFullYear()}: server and agent wallet bill`;
+    title = long.length <= 60 ? long : `${p.name} pricing ${new Date().getUTCFullYear()}: server wallets`;
+    if (head && "usd" in head) {
+      description = capSnippet(
+        `${p.name} bills ${fmtServerWalletBill(head.usd)} a month for ${head.label} (latest value), #${head.rank} of ${head.of} server wallet vendors priced. Its bill for a trading bot and for payouts too.`,
+      );
+    } else if (head) {
+      description = capSnippet(
+        `${p.name} publishes no self-serve price for ${head.label}, so it is not ranked there. Where it is priced, and what ${head.of} other server wallet vendors bill.`,
+      );
+    }
+  } else if (walletOnly) {
+    const rawSlug = embeddedApp?.result.slug ?? p.slug;
     const head = walletVendorHeadline(rawSlug);
     const long = `${p.name} pricing ${new Date().getUTCFullYear()}: monthly bill from 100 to 1M users`;
     title = long.length <= 60 ? long : `${p.name} pricing ${new Date().getUTCFullYear()}: bill by app size`;
@@ -1340,6 +1359,10 @@ export default async function ProviderPage({
       {(() => {
         const w = sorted.find((a) => a.benchmark.slug === "wallet-cost");
         return w ? <WalletVendorPricing slug={w.result.slug} name={p.name} /> : null;
+      })()}
+      {(() => {
+        const w = sorted.find((a) => a.benchmark.slug === "server-wallet-cost");
+        return w ? <ServerWalletVendorPricing slug={w.result.slug} name={p.name} /> : null;
       })()}
 
       <RelatedProvidersSection providerSlug={p.slug} providerName={p.name} />

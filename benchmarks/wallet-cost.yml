@@ -46,34 +46,35 @@ abstract: |
   Pricing is read by a human from each vendor's own page, not scraped: half
   of these pages render their billing FAQ only in JavaScript. Every figure
   records the page and the date, and the harness re-hashes the pricing lines
-  of all thirteen pages each hour, and a change that holds for six hours
+  of every page each hour, and a change that holds for six hours
   raises an alert for a maintainer to re-read the page. The calculator reads a curve the same harness
   emits, with a point at every plan boundary, and a second implementation in
   another language re-prices it at 1,170,000 random app sizes; `pnpm
   validate` re-runs it on a 78,000-size sample on every change.
 
 methodology:
-  - "Cohort. Thirteen vendors with a self-serve price on a public page: Privy, Dynamic, Turnkey, Web3Auth, Magic, Para, Coinbase CDP, thirdweb, Openfort, Circle, Reown, ZeroDev and Crossmint. Alchemy, Portal, Dfns, Fireblocks, Sequence and Particle Network are listed below with the reason they cannot be priced."
+  - "Cohort. {{declared_count}} vendors with a self-serve price on a public page: Privy, Dynamic, Turnkey, Web3Auth, Magic, Para, Coinbase CDP, thirdweb, Openfort, Circle, Reown, ZeroDev, Crossmint and Portal. Alchemy, Dfns, Fireblocks, Sequence and Particle Network are listed below with the reason they cannot be priced. Portal was listed as unpriceable until 2026-10-29, which was wrong: its Start-Up plan is published."
   - "Profiles. A consumer app whose users send 5 transactions a month and 20% of whom are new each month, an active app at 25 and 10%, a trading app at 100 and 5%. One wallet per user. A transaction is one signature followed by one broadcast; sign-in signatures are not counted, and Magic says they are not billed."
   - "Units. Each vendor's own meter is written as a linear function of the app: Privy and Magic bill active users plus signatures, Turnkey signatures, Coinbase CDP and Openfort wallet operations (1 per new wallet, 2 per transaction, from their own tables), ZeroDev credits (10 per signature, 20 per UserOp, so 30 per transaction), and the rest active users or active wallets."
   - "An active user is not one thing. Privy counts a user with a session in the last 30 days, Dynamic a login or a wallet created that month, Web3Auth and thirdweb a login, Magic a wallet accessed through its SDK, Para a user authenticated or created, Circle a wallet that made an on-chain transaction. Every user in these profiles transacts, so all of them count everyone."
   - "Plans. Each plan's fee, what it includes and its overage are applied as published. Graduated rates (Circle, thirdweb) bill each band at its own rate. A plan that stops at a size (Para's free 1,200 users, Reown's free 500, Turnkey's 2,000 wallets) cannot serve above it. Turnkey's limit counts every wallet an organisation holds while this model counts one month's users, so a growing app reaches it sooner than the calculator shows. A size past the last published price is a quote and is not ranked."
   - "Readings. Where a page can be read two ways the catalogue says which reading is priced and the calculator badges the plan. Privy's $2,000 pay-as-you-go base is priced alone, though its $499 Scale fee may also apply, and at exactly 10,000 users Privy is priced on Scale ($499) because pay-as-you-go starts above 10,000, though its Scale card reads 2,500 to 9,999; the other reading is $2,000. Turnkey's $99 Pro fee is priced as a floor the per-signature charges count against."
   - "Openfort's operation table gives 1 per wallet created and 2 per transaction, but its own simulator also adds 2 per active user; on that reading its bill is higher and it can drop a place, as the findings spell out for the 10,000-user consumer view. ZeroDev's 30 credits a transaction assumes each transaction is one signature and one UserOp. thirdweb's bands above 100,000 users are priced band by band."
+  - "Openfort's Free plan is priced as stopping at 2,000 operations, as its FAQ states (HTTP 402), though its plan card offers $0.01 per operation once a payment method is added. Portal's wallet overage is priced every month, and a new wallet as two operations (Generate and Backup)."
   - "Vendors' own exclusions are honoured. Reown says exchanges, custodians, payments, gaming and merchant platforms need a custom plan, so its self-serve price is not offered on the trading profile."
   - "Left out. Gas and gas-sponsorship surcharges (thirdweb 2.5% on mainnet, Openfort 10% or 5%, ZeroDev 8%), SMS fees, extra seats, annual discounts, Circle's USDC rebate, and Privy's $1M monthly transaction volume threshold. Features a production app may need are not priced: removing thirdweb branding needs its $499 Scale plan, and custom domains are Enterprise-only at several vendors."
   - "Any size, not only three. The table prices 1,000, 10,000 and 100,000 users because a metric needs a fixed label. The calculator prices any size from 100 to 1,000,000 from a curve the same harness emits, with a point at every tier boundary, cap, quote threshold and plan crossover. Between two points every bill is a straight line, so the slider is exact, not smoothed."
   - "Verification. A second implementation, written in another language from the catalogue's prose rather than the harness code, re-prices every curve point and 1,170,000 random app sizes, and agrees on the bill to the cent and on the plan in every case. `pnpm validate` re-runs it on a 78,000-size sample on every change, and refuses a curve built from a different catalogue."
-  - "Freshness. Six of the thirteen pages return a new body on every request while their prices stand still, so the harness hashes only the visible lines that carry a dollar figure or a number beside a billing word. A change that holds for six hours raises an alert, and a maintainer re-reads the page and corrects the catalogue. The page shows the catalogue date."
+  - "Freshness. Six of the first thirteen pages measured return a new body on every request while their prices stand still, so the harness hashes only the visible lines that carry a dollar figure or a number beside a billing word. A change that holds for six hours raises an alert, and a maintainer re-reads the page and corrects the catalogue. The page shows the catalogue date."
 
 findings:
   - "There is no single cheapest vendor. At 1,000 users four free plans cost nothing on a consumer app (Circle, Magic, Para, Web3Auth). At 10,000 Reown leads the consumer and active profiles at $214 a month and thirdweb the trading one at $234. At 100,000 Dynamic leads all three at $724."
   - "The billing unit decides the order. Per-user vendors cost the same whether users sign 5 or 100 transactions; per-signature and per-operation vendors scale with them. At 100,000 users, going from 5 to 100 transactions a user leaves Dynamic at $724 and takes Coinbase CDP from $5,075 to $100,000 and Magic from $6,249 to $53,749."
-  - "The spread widens with use. At 10,000 users on a consumer app the ten priced vendors span 2.3x, $214 to $500. On a trading app at 100,000 users they span 146x, Dynamic's $724 against Privy's $106,000."
-  - "Privy is the dearest priced vendor in five of the six cells from 10,000 users up. Past 10,000 users or 50,000 signatures a month it bills a $2,000 base, $0.05 per user and $0.01 per signature, and its own page says an Enterprise plan is typically cheaper at sustained volume."
+  - "The spread widens with use. At 10,000 users on a consumer app the eleven priced vendors span 31x, from Reown's $214 to Portal's $6,699, and 2.3x without Portal. On a trading app at 100,000 users Dynamic's $724 sits against Privy's $106,000 and Portal's $1,011,299."
+  - "Portal, whose plan includes 1,000 wallets and bills $0.10 for each one beyond, is the dearest in every cell; Privy is the next dearest in five of the six cells from 10,000 users up. Past 10,000 users or 50,000 signatures a month it bills a $2,000 base, $0.05 per user and $0.01 per signature, and its own page says an Enterprise plan is typically cheaper at sustained volume."
   - "Dynamic has no free production plan and the lowest per-user rate published below 10 million users: $249 covers 5,000 users and each one after costs $0.005, a tenth of Reown's $0.05 and an eighth of Web3Auth's lowest, $0.04."
   - "Three vendors publish no self-serve price for a 10,000-user app. Turnkey's Pro plan stops at 2,000 wallets, ZeroDev publishes no price past its Scale plan's 1M credits, and Crossmint has no self-serve paid plan and states two different rates beyond its free tier. Reown is not priced on the trading profile, by its own terms."
-  - "Five vendors' pages read two ways somewhere, each badged in the calculator: Privy's pay-as-you-go base and its 10,000-user band edge, Turnkey's Pro minimum, Openfort's operation count, ZeroDev's credits per transaction, thirdweb's bands above 100,000 users. None leads a cell. At 10,000 consumer-app users two move a rank: Openfort is third or fourth, Privy ninth at $499 or last at $2,000, which widens that cell's spread from 2.3x to 9.3x."
+  - "Six vendors' pages read two ways somewhere, each badged in the calculator: Privy's pay-as-you-go base and its 10,000-user band edge, Turnkey's Pro minimum, Openfort's operation count and free-plan stop, ZeroDev's credits per transaction, thirdweb's bands above 100,000 users, Portal's wallet overage. None leads a cell. At 10,000 consumer-app users two move a rank: Openfort is third or fourth, Privy ninth at $499 or tenth at $2,000."
 
 faq:
   - q: "Which embedded wallet provider is cheapest?"
@@ -95,7 +96,6 @@ faq:
 
 excluded_providers:
   - { name: Alchemy, reason: "Wallet signatures are priced in compute units only in a separate calculator that disagrees with the pricing page." }
-  - { name: Portal, reason: "The pricing page shows allowances without a readable plan price." }
   - { name: Dfns, reason: "Annual contracts only, with no overage price." }
   - { name: Fireblocks, reason: "No published price." }
   - { name: Sequence, reason: "No published price." }
@@ -313,3 +313,15 @@ providers:
       mean: min(last_over_time(wallet_cost_monthly_usd{provider="crossmint",kind="all",bucket="all"}[20m]))
       series: min by (provider) (wallet_cost_monthly_usd{provider="crossmint",kind="all",bucket="all"})
       sample_size: min by (provider) (count_over_time(wallet_cost_monthly_usd{provider="crossmint",kind="all",bucket="all"}[20m]))
+
+  - slug: portal
+    name: Portal
+    tag: Operations plus wallets
+    queries:
+      p50: min(last_over_time(wallet_cost_monthly_usd{provider="portal",kind="all",bucket="all"}[20m]))
+      p90: min(last_over_time(wallet_cost_monthly_usd{provider="portal",kind="all",bucket="all"}[20m]))
+      p99: min(last_over_time(wallet_cost_monthly_usd{provider="portal",kind="all",bucket="all"}[20m]))
+      ranked: wallet_cost_eligible{provider="portal",kind="all",bucket="all"}
+      mean: min(last_over_time(wallet_cost_monthly_usd{provider="portal",kind="all",bucket="all"}[20m]))
+      series: min by (provider) (wallet_cost_monthly_usd{provider="portal",kind="all",bucket="all"})
+      sample_size: min by (provider) (count_over_time(wallet_cost_monthly_usd{provider="portal",kind="all",bucket="all"}[20m]))

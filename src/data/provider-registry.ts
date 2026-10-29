@@ -3570,6 +3570,22 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     description: "Stablecoin infrastructure APIs for wallets, payments, onramps and compliance.",
     twitter: "@crossmint",
   },
+  // Server and agent wallet vendors, bench 310 (2026-10-29).
+  lit: {
+    url: "https://www.litprotocol.com",
+    description: "Open-source network for threshold key management and verifiable execution; signing is billed from prepaid credits.",
+    twitter: "@litprotocol",
+  },
+  portal: {
+    url: "https://www.portalhq.io",
+    description: "MPC key-management and wallet SDK used by stablecoin and fintech companies to create wallets and move funds on-chain.",
+    twitter: "@portal_hq",
+  },
+  dfns: {
+    url: "https://www.dfns.co",
+    description: "Wallet-as-a-service and key-management API for banks, fintechs and institutions, sold on annual plans.",
+    twitter: "@dfnsHQ",
+  },
 };
 
 /**

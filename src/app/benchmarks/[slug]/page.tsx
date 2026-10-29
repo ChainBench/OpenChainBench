@@ -12,6 +12,7 @@ import { OraclePairMatrix } from "@/components/oracle-pair-matrix";
 import { TerminalFillAudit } from "@/components/terminal-fill-audit";
 import { RpcCostSlider, RpcCostWinnersGrid } from "@/components/rpc-cost-slider";
 import { WalletCostCalculator, WalletCostGrid } from "@/components/wallet-cost-calculator";
+import { ServerWalletCostCalculator, ServerWalletCostGrid } from "@/components/server-wallet-cost-calculator";
 import { linkifyParts } from "@/lib/linkify";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { ChainHeadingsSummary } from "@/components/chain-headings-summary";
@@ -928,10 +929,19 @@ export default async function BenchmarkPage({
           the findings quote. Its generic body would offer a three-volume
           ledger under two rows of selectors, which is the answer assembled
           by hand. */}
-      {!isDraft && benchmark.slug === "wallet-cost" && (
+      {!isDraft && (benchmark.slug === "wallet-cost" || benchmark.slug === "server-wallet-cost") && (
         <>
-          <WalletCostCalculator />
-          <WalletCostGrid />
+          {benchmark.slug === "wallet-cost" ? (
+            <>
+              <WalletCostCalculator />
+              <WalletCostGrid />
+            </>
+          ) : (
+            <>
+              <ServerWalletCostCalculator />
+              <ServerWalletCostGrid />
+            </>
+          )}
           {/* The findings quote the grid's cells, and on this bench they are
               the only prose that reads across profiles and sizes. The
               generic body that would carry them is not rendered here, so
@@ -1025,7 +1035,7 @@ export default async function BenchmarkPage({
       {/* Body: chain tabs + summary + chart + ledger + share. Receives every
           chain variant pre-fetched server-side. flipping a tab swaps which
           variant is rendered, instantly, no network round-trip. */}
-      {!isDraft && benchmark.slug !== "rpc-cost" && benchmark.slug !== "wallet-cost" && (
+      {!isDraft && benchmark.slug !== "rpc-cost" && benchmark.slug !== "wallet-cost" && benchmark.slug !== "server-wallet-cost" && (
         <Suspense
           // The served HTML is this fallback (useSearchParams in the body
           // bails out of static rendering): the endpoint URLs must be in
