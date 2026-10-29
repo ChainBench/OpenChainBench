@@ -274,3 +274,27 @@ export function fmtTick(v: number, unit: string) {
   if (v >= 1000) return `${(v / 1000).toFixed(1)}s`;
   return `${Math.round(v)}ms`;
 }
+
+/** Cache key for a metric panel's lazily fetched long-range series.
+ *
+ * The filters belong in the key, not just the panel id. Keyed on the panel
+ * alone, the chart's own cache-hit guard returned before fetching whenever a
+ * reader switched chain, so the first chain opened was served back on every
+ * other tab. The effects DO re-run on a chain change; it is the early return
+ * that swallowed it. 1H/6H/24H never showed the fault because those render
+ * from the embedded per-filter series, which is why it presented as "only 7D
+ * and 30D are wrong". Found on bench 001 on 2026-10-29, where the First to
+ * report shares are a per-chain race, so one chain's numbers on four tabs
+ * named the wrong leader on three of them.
+ *
+ * The same class of bug was fixed once for the main series (see the `chain`
+ * prop docs in index.tsx) and left standing for panels.
+ */
+export function panelSeriesCacheKey(
+  panelId: string,
+  chain?: string,
+  region?: string,
+  tier?: string,
+): string {
+  return `${panelId}|${chain ?? ""}|${region ?? ""}|${tier ?? ""}`;
+}
