@@ -53,7 +53,11 @@ describe("the provider set behind the cache keys", () => {
     const hash = createHash("sha256").update(sets.join("\n")).digest("hex").slice(0, 16);
     const count = sets.reduce((n, s) => n + s.split(":")[1].split(",").length, 0);
 
-    // Recorded on 2026-10-28 on main, with bench-unfiltered-v102,
+    // Recorded on 2026-10-29 on main with bench-unfiltered-v106,
+    // all-benchmarks-v99, bench-filters-v46, providers-v22: bench 309
+    // wallet-cost released with thirteen embedded wallet vendors.
+    //
+    // Previously recorded on 2026-10-28 on main, with bench-unfiltered-v102,
     // all-benchmarks-v95, bench-filters-v43, providers-v21, none of which
     // moved. Read the next paragraph before copying that as a precedent.
     //
@@ -90,6 +94,6 @@ describe("the provider set behind the cache keys", () => {
         "Then set EXPECTED to the hash in this failure, and add the provider",
         `to PRODUCT_NAMES if it needs a display name. Providers now: ${count}.`,
       ].join("\n"),
-    ).toBe("b767efc1bf40bf99");
+    ).toBe("118f4375b4c020d2");
   });
 });

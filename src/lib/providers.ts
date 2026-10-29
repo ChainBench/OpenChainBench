@@ -893,7 +893,10 @@ const buildProvidersCached = unstable_cache(
   // v21: Enso leaves bench 033 and so is measured nowhere, same as 0x at
   // v20. /products/enso retires and the nine aggregators left on that
   // board are ranked against a cohort one smaller again.
-  ["providers-v21"],
+  // v22: bench 309 released: thirteen embedded wallet vendors, eleven new
+  // to production, and appearances carry `defaultView`. Numbered for THIS
+  // branch; dev carried the same change as v27 and v28.
+  ["providers-v22"],
   // 900 s: the provider index feeds products / compare / answers, whose
   // numbers move slowly, and this revalidate is also the effective ISR
   // period of those ~500 pages (Next takes the min across a route's caches).
