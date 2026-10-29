@@ -115,7 +115,7 @@ const REGION_COLOR: Record<string, string> = {
 export function RegionSpreadChart() {
   const W = 700;
   const rowH = 46;
-  const m = { l: 110, r: 20, t: 14, b: 40 };
+  const m = { l: 150, r: 20, t: 14, b: 40 };
   const H = m.t + PROVIDERS.length * rowH + m.b;
   const x = logScale(1, 1000, m.l, W - m.r);
   const xt = [1, 3, 10, 30, 100, 300, 1000];

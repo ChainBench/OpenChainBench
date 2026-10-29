@@ -161,7 +161,7 @@ export function CostCurves() {
   const [profile, setProfile] = useState<Profile>("dapp");
   const W = 700;
   const H = 380;
-  const m = { l: 56, r: 152, t: 16, b: 44 };
+  const m = { l: 56, r: 176, t: 16, b: 44 };
   const x = logScale(1e6, 1e9, m.l, W - m.r);
   const y = logScale(5, 40000, H - m.b, m.t);
   const curves = REPORT.cost[profile];
