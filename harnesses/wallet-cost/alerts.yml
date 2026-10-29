@@ -1,0 +1,33 @@
+# wallet-cost (bench 309) alert rules. Deployed to the OCB VPS as
+# /opt/ocb/prom-rules/ocb_wallet_pricing.yml (mounted at
+# /etc/prometheus/rules), reloaded with `docker kill -s HUP ocb-prom`.
+# Same shape as rpc-cost's ocb_rpc_pricing_drift.yml.
+#
+# A drift is a vendor editing the pricing lines the catalogue was verified
+# against; held for 6h it is a real edit, not a blip. The fix is a human
+# re-read and a catalogue update, never an auto-ingest. An artifact that has
+# not answered with pricing lines for 6h is a page that moved, broke or
+# started blocking us, and its drift verdict has gone blind.
+groups:
+- name: ocb-wallet-pricing
+  interval: 5m
+  rules:
+    - alert: WalletPricingArtifactDrift
+      # `for: 6h` rather than min_over_time(...[6h]) == 1: the range form is
+      # already true after 30 minutes on a series with less than 6h of
+      # history (a fresh harness container), which promtool showed.
+      expr: wallet_pricing_artifact_drift == 1
+      for: 6h
+      labels:
+        severity: warning
+      annotations:
+        summary: "wallet-cost: {{ $labels.provider }} pricing page changed"
+        description: "The pricing-lines hash differs from the one recorded when the catalogue was last verified, continuously for 6h. Re-read the page, update harnesses/wallet-cost/pricing/catalogue.yml (body_sha256 from WALLET_COST_PIN=1, verified_at, any changed figure), regenerate the curve, rebuild the wallet-cost image."
+    - alert: WalletPricingArtifactUnreachable
+      expr: wallet_pricing_artifact_ok == 0
+      for: 6h
+      labels:
+        severity: warning
+      annotations:
+        summary: "wallet-cost: {{ $labels.provider }} pricing page unreadable for 6h"
+        description: "The page has not answered with any pricing line for 6h, so a price change there would go unseen. Check the URL in harnesses/wallet-cost/pricing/catalogue.yml."

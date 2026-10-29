@@ -81,8 +81,11 @@ Six of the thirteen pages return a new body on every request while their
 prices stand still, so a raw-body hash would alarm every hour. The harness
 hashes only the visible lines carrying a dollar figure, or a number beside a
 billing word, sorted and de-duplicated. A drift sets
-`wallet_pricing_artifact_drift` for a maintainer, who re-reads the page;
-nothing on the site reads it and no alert rule fires on it yet.
+`wallet_pricing_artifact_drift`; held for 6 hours it fires
+`WalletPricingArtifactDrift` (`alerts.yml`, deployed to the VPS rules
+directory), and a page that stops answering for 6 hours fires
+`WalletPricingArtifactUnreachable`. A maintainer then re-reads the page.
+Nothing on the site reads these gauges.
 
 ## Environment
 
