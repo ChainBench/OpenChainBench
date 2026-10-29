@@ -53,8 +53,12 @@ describe("the provider set behind the cache keys", () => {
     const hash = createHash("sha256").update(sets.join("\n")).digest("hex").slice(0, 16);
     const count = sets.reduce((n, s) => n + s.split(":")[1].split(",").length, 0);
 
-    // Recorded on 2026-10-24 with bench-unfiltered-v99, all-benchmarks-v92,
-    // bench-filters-v40, providers-v19.
+    // Recorded on 2026-10-29 with bench-unfiltered-v109, all-benchmarks-v102,
+    // bench-filters-v48, providers-v27: bench 309 wallet-cost adds thirteen
+    // embedded wallet vendors.
+    //
+    // Previously recorded on 2026-10-24 with bench-unfiltered-v99,
+    // all-benchmarks-v92, bench-filters-v40, providers-v19.
     //
     // The change was a DELETION, bench 306, which moves this hash the same
     // way an addition does but for the opposite reason: a cached aggregate
@@ -80,6 +84,6 @@ describe("the provider set behind the cache keys", () => {
         "Then set EXPECTED to the hash in this failure, and add the provider",
         `to PRODUCT_NAMES if it needs a display name. Providers now: ${count}.`,
       ].join("\n"),
-    ).toBe("e1f812a907d115f2");
+    ).toBe("320bb0922071809b");
   });
 });

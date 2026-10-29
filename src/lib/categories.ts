@@ -79,7 +79,7 @@ export const CATEGORIES: readonly CategoryEntry[] = [
     label: "Wallets",
     heading: "Wallet benchmarks",
     description:
-      "Benchmarks that compare wallet infrastructure providers on label coverage, address resolution, and the data layers that power production wallet UIs.",
+      "Benchmarks that compare embedded wallet and wallet infrastructure vendors, starting with what each one bills the same app, from 100 to 1,000,000 monthly active users.",
   },
   {
     slug: "rpcs",

@@ -560,7 +560,9 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       still the old one until the key moved. An editorial change needs
   //       this bump exactly as a provider change does, and the provider-set
   //       hash test does not catch it because no provider moved.
-  ["bench-unfiltered-v108", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v109: bench 309 wallet-cost arrives with thirteen embedded wallet
+  //       vendors, the first bench in the Wallets category.
+  ["bench-unfiltered-v109", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -828,7 +830,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v101: lockstep with bench-unfiltered-v108 (RouteMesh back out, trial
   //        credits exhausted).
   // v101: lockstep with bench-unfiltered-v108 (methodology renders).
-  ["all-benchmarks-v101", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v102: lockstep with bench-unfiltered-v109 (bench 309 arrives).
+  ["all-benchmarks-v102", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -970,7 +973,10 @@ const loadBenchmarkFiltered = unstable_cache(
   //      tab including the Private one it lives on.
   // v47: lockstep with bench-unfiltered-v108. Same reason inverted: without
   //      it the paused row survives on every filtered tab.
-  ["bench-filters-v47", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v48: lockstep with bench-unfiltered-v109. Bench 309 declares kind and
+  //      bucket dimensions, so its profile and size tabs are filtered
+  //      variants that need their own entries.
+  ["bench-filters-v48", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 

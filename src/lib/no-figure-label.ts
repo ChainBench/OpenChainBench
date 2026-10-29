@@ -12,6 +12,9 @@
 const NOT_SERVED: Record<string, string> = {
   "rpc-cost": "no Ethereum dapp plan",
   "rpc-free-tier": "no free Ethereum dapp allowance",
+  // Turnkey, ZeroDev and Crossmint publish no self-serve price at 10,000
+  // users: that is the product, not a source that has not reported.
+  "wallet-cost": "no self-serve price at 10k users",
 };
 
 /** The label when a missing figure is a product fact on this bench, or null
