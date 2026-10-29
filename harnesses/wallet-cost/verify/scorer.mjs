@@ -7,11 +7,11 @@
 //      browser does) equals this scorer's bill, which proves no corner is
 //      missing from the curve.
 // Usage, from the repository root:
-//   node harnesses/wallet-cost/verify/scorer.cjs //     harnesses/wallet-cost/pricing/catalogue.yml src/data/wallet-cost-curves.json
+//   node harnesses/wallet-cost/verify/scorer.mjs //     harnesses/wallet-cost/pricing/catalogue.yml src/data/wallet-cost-curves.json
 // Exits non-zero on any disagreement. WALLET_COST_TABLE=<path> also writes
 // the bill at every gauge volume, which is what the spec's prose quotes.
-const fs = require("fs");
-const yaml = require("js-yaml");
+import fs from "node:fs";
+import yaml from "js-yaml";
 
 const [, , catPath, curvePath, samplesArg] = process.argv;
 const cat = yaml.load(fs.readFileSync(catPath, "utf8"));

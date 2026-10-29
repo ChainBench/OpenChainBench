@@ -52,7 +52,7 @@ attached to a quote, a meter no plan bounds, a misspelt key.
    30,000 random app sizes per vendor and profile, and exits non-zero on
    any disagreement:
 
-       node harnesses/wallet-cost/verify/scorer.cjs \
+       node harnesses/wallet-cost/verify/scorer.mjs \
          harnesses/wallet-cost/pricing/catalogue.yml src/data/wallet-cost-curves.json
 4. Rebuild the harness image on the VPS: the catalogue ships inside it.
 
