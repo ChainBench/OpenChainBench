@@ -99,10 +99,15 @@ export function rankGateReason(
 function coverageRankReason(row?: { successRate?: number }): string {
   const share = row?.successRate;
   // The share comes from the row, never typed: `success` on this bench is
-  // verdicts over cells asked, which is exactly the quantity the gate reads.
-  // Falls back to the bare cause rather than to a number we do not have.
+  // verdicts over cells asked, so it is the size of what we could not ask.
+  //
+  // Phrased to stay true on EVERY gated view. On the all-chains tab the cause
+  // really is a widely refused key (12 cells of 56). On a single chain tab the
+  // same provider answered 6 of 7, and the gate fires because that one unasked
+  // cell is the method the rest of the cohort refuses, so it decides the
+  // position by itself. "refused on most cells" would be false there.
   if (share == null || !Number.isFinite(share)) {
-    return "our key was refused on most cells";
+    return "not asked on every cell, so it takes no rank";
   }
-  return `our key answered only ${Math.round(share)}% of cells`;
+  return `asked on only ${Math.round(share)}% of cells`;
 }
