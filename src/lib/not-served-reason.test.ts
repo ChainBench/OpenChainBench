@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { notServedReason } from "./not-served-reason";
+import { notServedReason, rankGateReason } from "./not-served-reason";
 
 describe("notServedReason", () => {
   test("names each vendor's own reason for the view", () => {
@@ -27,5 +27,15 @@ describe("notServedReason on bench 310", () => {
     // Dfns Pro allows 10,000 signatures a month; a 100,000-transaction bot is past it.
     expect(notServedReason("server-wallet-cost", "dfns", { kind: "bot" })).toContain("on request");
     expect(notServedReason("server-wallet-cost", "thirdweb", {})).toBeNull();
+  });
+});
+
+describe("rankGateReason", () => {
+  test("names an 'at least' price that would rank first, and nothing else", () => {
+    // Payouts at 10,000 wallets: Privy's $0 is a floor.
+    expect(rankGateReason("server-wallet-cost", "privy", { kind: "payouts" })).toContain("at least");
+    // A verified price, and another bench, keep the generic label.
+    expect(rankGateReason("server-wallet-cost", "circle", { kind: "payouts" })).toBeNull();
+    expect(rankGateReason("wallet-cost", "privy", {})).toBeNull();
   });
 });

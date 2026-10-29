@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math"
 	"net/http"
 	"os"
 	"os/signal"
@@ -106,10 +107,15 @@ func run(cat *Catalogue) {
 }
 
 func priceEverything(cat *Catalogue) {
-	for _, p := range cat.Ranked() {
-		for _, s := range cat.Scenarios {
-			for _, z := range s.Sizes {
-				q := cheapest(p, s, z.X)
+	for _, s := range cat.Scenarios {
+		for _, z := range s.Sizes {
+			quotes := map[string]Quote{}
+			for _, p := range cat.Ranked() {
+				quotes[p.Slug] = cheapest(p, s, z.X)
+			}
+			floors := floorsThatWouldLead(quotes)
+			for _, p := range cat.Ranked() {
+				q := quotes[p.Slug]
 				// "all" on an axis is that axis's headline value, as on bench
 				// 309: the unfiltered view selects kind="all",bucket="all" and
 				// replaces one matcher when a reader picks a tab.
@@ -122,7 +128,10 @@ func priceEverything(cat *Catalogue) {
 							eligible.WithLabelValues(p.Slug, k, b).Set(0)
 							continue
 						}
-						eligible.WithLabelValues(p.Slug, k, b).Set(1)
+						// A price that is only a floor is published but not
+						// ranked where it would come first: its true bill
+						// may be above the next vendor's.
+						eligible.WithLabelValues(p.Slug, k, b).Set(boolGauge(!floors[p.Slug]))
 						costMonthly.WithLabelValues(p.Slug, q.Plan, k, b).Set(q.MonthlyUSD)
 						if tx > 0 {
 							costPerTx.WithLabelValues(p.Slug, q.Plan, k, b).Set(q.MonthlyUSD / tx)
@@ -136,6 +145,26 @@ func priceEverything(cat *Catalogue) {
 			}
 		}
 	}
+}
+
+// floorsThatWouldLead names the priced vendors whose bill is an "at least"
+// figure (uncertain, bound lower) and is at or under the cheapest bill that
+// holds under every reading. The calculator and the grid never name such a
+// price cheapest; the ledger must not rank it first either.
+func floorsThatWouldLead(quotes map[string]Quote) map[string]bool {
+	best := math.Inf(1)
+	for _, q := range quotes {
+		if q.Eligible && (q.Confidence == "verified" || q.Bound == "upper") && q.MonthlyUSD < best {
+			best = q.MonthlyUSD
+		}
+	}
+	out := map[string]bool{}
+	for slug, q := range quotes {
+		if q.Eligible && q.Confidence != "verified" && q.Bound == "lower" && q.MonthlyUSD <= best+0.005 {
+			out[slug] = true
+		}
+	}
+	return out
 }
 
 // lastDrift keeps each page's verdict across cycles, so a drifted page that

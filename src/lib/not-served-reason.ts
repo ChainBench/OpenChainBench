@@ -52,3 +52,27 @@ function serverReason(providerSlug: string, filters: Record<string, string | und
   );
   return row?.reason || null;
 }
+
+/**
+ * Why a priced row is published unranked, where the bench can say better
+ * than "Provisional". Bench 310: an "at least" price that would rank first.
+ */
+export function rankGateReason(
+  benchSlug: string,
+  providerSlug: string,
+  filters: Record<string, string | undefined>,
+): string | null {
+  if (benchSlug !== "server-wallet-cost") return null;
+  const f = serverWalletCurves();
+  if (!f) return null;
+  const kind = filters.kind && filters.kind !== "all" ? filters.kind : f.headline.scenario;
+  const size = filters.bucket && filters.bucket !== "all" ? filters.bucket : f.headline.size;
+  const s = f.scenarios.find((v) => v.id === kind);
+  const x = s?.sizes.find((z) => z.id === size)?.x;
+  if (!s || x === undefined) return null;
+  const row = serverWalletRankAt(s.id, x).priced.find(
+    (r) => r.slug.toLowerCase() === providerSlug.toLowerCase(),
+  );
+  if (!row || row.verified || row.bound !== "lower") return null;
+  return "at least this: its page leaves a fee unpriced, so it is not ranked";
+}
