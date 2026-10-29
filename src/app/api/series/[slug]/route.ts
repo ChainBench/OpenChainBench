@@ -2,7 +2,13 @@ import { NextResponse } from "next/server";
 import { hasSeriesHistory, loadSeriesHistory } from "@/lib/series-history";
 import { unstable_cache } from "next/cache";
 import { getBenchmark } from "@/data/benchmarks";
-import { filterSig, loadSpecsUncached, specToBenchmark } from "@/lib/materialize/load";
+import {
+  dimensionLabels,
+  filterSig,
+  loadSpecsUncached,
+  panelMetricQuery,
+  specToBenchmark,
+} from "@/lib/materialize/load";
 import { readMaterialized } from "@/lib/materialize/store";
 import { loadSnapshotFromBlob } from "@/lib/bench-blob";
 import { buildProviderColors } from "@/lib/series-colors";
@@ -95,13 +101,17 @@ const getSeriesMapCached = unstable_cache(
         const windowSec = range === "7d" ? 7 * 86_400 : 30 * 86_400;
         const numPoints = range === "7d" ? 84 : 60;
         const labelKey = panel.label_key ?? "builder";
+        // The spec here is the raw one off disk, never through
+        // applyDimensionsToSpec, so the reader's chain/region have to be
+        // injected explicitly. Omitting them pooled every chain into one
+        // line while the head-lag view beside it moved per chain.
+        const dims = dimensionLabels({ chain, region, kind, venue, tier });
+        const scoped = panelMetricQuery(panel, dims);
         const result: Record<string, (number | null)[]> = {};
         await Promise.all(
           spec.providers.map(async (p) => {
             const sel = `${labelKey}="${escapePromLabelValue(p.slug)}"`;
-            const q = panel.metric.includes("{")
-              ? panel.metric.replace("{", `{${sel},`)
-              : `${panel.metric}{${sel}}`;
+            const q = scoped.replace("{", `{${sel},`);
             const s = await prom.series(q, windowSec, numPoints);
             if (s && s.length > 0) result[p.slug] = s;
           }),
@@ -143,9 +153,9 @@ const getSeriesMapCached = unstable_cache(
           if (!panel) return;
           const labelKey = panel.label_key ?? "builder";
           const sel = `${labelKey}="${escapePromLabelValue(p.slug)}"`;
-          q = panel.metric.includes("{")
-            ? panel.metric.replace("{", `{${sel},`)
-            : `${panel.metric}{${sel}}`;
+          // Same raw spec, same reason as the 7d/30d path above.
+          const dims = dimensionLabels({ chain, region, kind, venue, tier });
+          q = panelMetricQuery(panel, dims).replace("{", `{${sel},`);
         } else {
           q = p.queries?.series;
         }
@@ -158,7 +168,9 @@ const getSeriesMapCached = unstable_cache(
     return Object.keys(result).length > 0 ? result : null;
   },
   // v8: denser 90d/1y resolution (6h / 18h step) so young benches render at full fidelity.
-  ["series-by-range-v9"],
+  // v10: panel series carry the reader's chain/region. Entries written
+  // before this hold one cross-chain average under a per-chain key.
+  ["series-by-range-v10"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
