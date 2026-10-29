@@ -16,7 +16,7 @@ limitations:
   - "Three probe origins only (Virginia, Amsterdam, Singapore). Per-region leaders regularly diverge, and a gateway that wins from Virginia can lose from Singapore by multiples."
   - "One method probed for the headline. eth_getBlockByNumber is representative of read latency but says nothing about eth_sendRawTransaction, WebSocket subscription latency or batched calls."
   - "Free public endpoints share rate-limit budgets with the entire internet and carry no SLA. The bench probes at a polite 60-second cadence; a production app hammering the same endpoint at high concurrency will see throttling this page cannot predict."
-  - "Keyed free tiers (Alchemy, Infura, QuickNode and similar) are measured separately on the rpc-keyed-latency benchmark with the identical probe."
+  - "Keyed free tiers (Alchemy, Infura, Quicknode and similar) are measured separately on the rpc-keyed-latency benchmark with the identical probe."
 
 faq:
   - q: "Which Arbitrum RPC URL works without an API key?"

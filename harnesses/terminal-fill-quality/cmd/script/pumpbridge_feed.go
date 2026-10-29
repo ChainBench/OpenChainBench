@@ -64,7 +64,7 @@ type pumpBridgeFeed struct {
 	// retry holds signatures whose transaction could not be read, with the
 	// unix time of the first failure. The cursor moves past them anyway, so
 	// without this a failed read was a deposit lost for good: 2.4 % of reads
-	// on QuickNode on 2026-10-22 (72 of 2,982), invisible to feed_behind.
+	// on Quicknode on 2026-10-22 (72 of 2,982), invisible to feed_behind.
 	retry map[string]int64
 }
 

@@ -14,7 +14,7 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  Hemi is a Bitcoin+Ethereum hybrid L2 (chain 43111) built on OP Stack with a dual-VM architecture running both EVM and Bitcoin script, ETH gas token, ~2 s block cadence, designed to unify BTC and ETH liquidity. Backed by YZi Labs (ex-Binance Labs) with $15M seed, mainnet launched March 2025 with over $440M TVL at launch. The 2026-08-03 audit confirms {{count}} clean keyless providers: the Hemi Labs official endpoint (rpc.hemi.network/rpc), dRPC (hemi.drpc.org), and Thirdweb (43111.rpc.thirdweb.com). Excluded: Ankr (no hemi route), Alchemy (key required), QuickNode (key required).
+  Hemi is a Bitcoin+Ethereum hybrid L2 (chain 43111) built on OP Stack with a dual-VM architecture running both EVM and Bitcoin script, ETH gas token, ~2 s block cadence, designed to unify BTC and ETH liquidity. Backed by YZi Labs (ex-Binance Labs) with $15M seed, mainnet launched March 2025 with over $440M TVL at launch. The 2026-08-03 audit confirms {{count}} clean keyless providers: the Hemi Labs official endpoint (rpc.hemi.network/rpc), dRPC (hemi.drpc.org), and Thirdweb (43111.rpc.thirdweb.com). Excluded: Ankr (no hemi route), Alchemy (key required), Quicknode (key required).
 
 abstract: |
   Hemi: {{count}} free public RPC endpoints answering `eth_getBlockByNumber` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}; the chain-official endpoint measures {{p50:hemi-official}}.

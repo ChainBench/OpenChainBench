@@ -27,7 +27,7 @@ the catalogue and curve are re-committed.
 Sixteen of the nineteen ranked providers publish a machine-readable
 artifact (JSON API or raw markdown), listed per provider under `source:`
 in the catalogue. Live parsing of the four unauthenticated JSON pricing
-APIs (GetBlock, NOWNodes, QuickNode, Tatum) is the obvious next step and deliberately
+APIs (GetBlock, NOWNodes, Quicknode, Tatum) is the obvious next step and deliberately
 not in this first version: drift detection has to be trustworthy before
 auto-ingestion is.
 
@@ -47,7 +47,7 @@ profile, volume) the harness:
    `trace_*` call at any depth (measured: 2 RU even ten blocks behind tip),
    BlockPI adds 30% to the whole endpoint, GetBlock
    carries an independent archive column that is not a multiplier at all,
-   and Alchemy, dRPC, QuickNode, Dwellir and Blockmachine charge no
+   and Alchemy, dRPC, Quicknode, Dwellir and Blockmachine charge no
    archive premium (Blockmachine bills debug and trace at 25 to 50 Request
    Units instead, a per-method weight rather than an archive rule).
 3. Picks the provider's cheapest plan that can actually serve the
@@ -67,7 +67,7 @@ groups (`quote()` in `model.go`):
 - **Daily caps.** Infura's allowance is per day and does not roll over,
   so 450M credits of monthly demand cannot be served by a 15M/day plan
   even though the monthly totals match.
-- **Hard stops and ceilings.** Infura, NOWNodes Start/Pro and QuickNode's
+- **Hard stops and ceilings.** Infura, NOWNodes Start/Pro and Quicknode's
   trial stop at the cap rather than metering overage; some plans publish
   a maximum, or an allowance with no overage rate.
 - **Throughput.** The sustained rate the volume needs exceeds the plan's

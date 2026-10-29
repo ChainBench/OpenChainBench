@@ -29,7 +29,7 @@ import (
 // IP and only some of Railway's blocks are registered in Asia.
 //
 // The two providers that did not move say why this matters and why it will
-// recur: GetBlock puts the region in the hostname and QuickNode uses anycast,
+// recur: GetBlock puts the region in the hostname and Quicknode uses anycast,
 // so neither consults the client IP. Everyone else must, and will keep
 // trusting the registry over our label.
 //

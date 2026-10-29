@@ -284,7 +284,7 @@ func chains() []Chain {
 				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_ARC_PUBLICNODE", "https://arc-rpc.publicnode.com")},
 				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_ARC_TENDERLY", "https://arc.gateway.tenderly.co")},
 				{Slug: "blockdaemon", Name: "Blockdaemon", URL: envDefault("RPC_URL_ARC_BLOCKDAEMON", "https://rpc.blockdaemon.mainnet.arc.io")},
-				{Slug: "arc-quicknode", Name: "QuickNode (Arc endpoint)", URL: envDefault("RPC_URL_ARC_QUICKNODE", "https://rpc.quicknode.mainnet.arc.io")},
+				{Slug: "arc-quicknode", Name: "Quicknode (Arc endpoint)", URL: envDefault("RPC_URL_ARC_QUICKNODE", "https://rpc.quicknode.mainnet.arc.io")},
 			},
 		},
 		// ─── Ethereum mainnet (9 providers) ────────────────────────
@@ -620,9 +620,9 @@ func chains() []Chain {
 		},
 		// ─── Ink (bench 099) — added 2026-07-24. OP Stack rollup
 		// (chain 57073) launched by Kraken. Two official active-active
-		// endpoints: Gelato-backed rpc-gel + QuickNode-backed rpc-qnd.
+		// endpoints: Gelato-backed rpc-gel + Quicknode-backed rpc-qnd.
 		// Providers live-verified keyless: ink-official (Gelato),
-		// ink-quicknode (QuickNode), drpc, tenderly, thirdweb.
+		// ink-quicknode (Quicknode), drpc, tenderly, thirdweb.
 		// Excluded: Alchemy public (chain not enabled on public tier),
 		// Blast API (no longer available).
 		{
@@ -630,7 +630,7 @@ func chains() []Chain {
 			Name: "Ink",
 			Providers: []Provider{
 				{Slug: "ink-official", Name: "Gelato", URL: envDefault("RPC_URL_INK_OFFICIAL", "https://rpc-gel.inkonchain.com")},
-				{Slug: "ink-quicknode", Name: "QuickNode", URL: envDefault("RPC_URL_INK_QUICKNODE", "https://rpc-qnd.inkonchain.com")},
+				{Slug: "ink-quicknode", Name: "Quicknode", URL: envDefault("RPC_URL_INK_QUICKNODE", "https://rpc-qnd.inkonchain.com")},
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_INK_DRPC", "https://ink.drpc.org")},
 				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_INK_TENDERLY", "https://ink.gateway.tenderly.co")},
 			},
@@ -765,7 +765,7 @@ func chains() []Chain {
 		// providers. Live-verified: abstract-official (api.mainnet.abs.xyz),
 		// drpc (abstract.drpc.org), thirdweb (abstract.rpc.thirdweb.com).
 		// Excluded: Ankr (no abstract route), Alchemy (key required),
-		// Infura (key required), QuickNode (key required).
+		// Infura (key required), Quicknode (key required).
 		{
 			Slug: "abstract",
 			Name: "Abstract",
@@ -779,7 +779,7 @@ func chains() []Chain {
 		// keyless providers. Live-verified: apechain-official
 		// (rpc.apechain.com/http), drpc (apechain.drpc.org), thirdweb
 		// (apechain.rpc.thirdweb.com). Excluded: Alchemy (key required),
-		// QuickNode (key required), Infura (no apechain route).
+		// Quicknode (key required), Infura (no apechain route).
 		{
 			Slug: "apechain",
 			Name: "ApeChain",
@@ -794,7 +794,7 @@ func chains() []Chain {
 		// providers. Live-verified: lisk-official (rpc.api.lisk.com),
 		// drpc (lisk.drpc.org), thirdweb (lisk.rpc.thirdweb.com). Excluded:
 		// Blast API (no lisk route), Alchemy (key required), Infura (no lisk
-		// route), QuickNode (key required).
+		// route), Quicknode (key required).
 		{
 			Slug: "lisk",
 			Name: "Lisk",
@@ -885,7 +885,7 @@ func chains() []Chain {
 				{Slug: "morph-official", Name: "Morph", URL: envDefault("RPC_URL_MORPH_OFFICIAL", "https://rpc.morphl2.io")},
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_MORPH_DRPC", "https://morph.drpc.org")},
 				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_MORPH_THIRDWEB", "https://2818.rpc.thirdweb.com")},
-				{Slug: "morph-quicknode", Name: "QuickNode", URL: envDefault("RPC_URL_MORPH_QUICKNODE", "https://rpc-quicknode.morph.network")},
+				{Slug: "morph-quicknode", Name: "Quicknode", URL: envDefault("RPC_URL_MORPH_QUICKNODE", "https://rpc-quicknode.morph.network")},
 			},
 		},
 		// 2026-08-03 audit. Moonriver Kusama parachain (chain 1285). 3 clean
@@ -969,7 +969,7 @@ func chains() []Chain {
 		// 2026-08-04 audit. Flare cross-chain data L1 (chain 14). 4 clean keyless
 		// providers: flare-official (flare-api.flare.network/ext/bc/C/rpc), drpc (flare.drpc.org),
 		// thirdweb (14.rpc.thirdweb.com), ankr (rpc.ankr.com/flare).
-		// Excluded: Alchemy (no route), QuickNode (key required).
+		// Excluded: Alchemy (no route), Quicknode (key required).
 		{
 			Slug: "flare",
 			Name: "Flare",
@@ -983,7 +983,7 @@ func chains() []Chain {
 		// 2026-08-04 audit. Core Chain Bitcoin-aligned L1 (chain 1116). 4 clean keyless
 		// providers: core-official (rpc.coredao.org), drpc (core.drpc.org),
 		// thirdweb (1116.rpc.thirdweb.com), ankr (rpc.ankr.com/core).
-		// Excluded: Alchemy (no route), QuickNode (key required).
+		// Excluded: Alchemy (no route), Quicknode (key required).
 		{
 			Slug: "core",
 			Name: "Core Chain",

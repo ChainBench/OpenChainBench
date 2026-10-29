@@ -14,7 +14,7 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  Abstract is a ZK Stack validium L2 (chain 2741) built by the Abstract Foundation, optimised for consumer applications and NFTs, ETH gas token, ~2 s block cadence, ZK proof settlement onto Ethereum. The 2026-08-02 audit confirms {{count}} clean keyless providers: the Abstract Foundation official endpoint (api.mainnet.abs.xyz), dRPC (abstract.drpc.org), and Thirdweb (abstract.rpc.thirdweb.com). Excluded: Ankr (no abstract route on public tier), Alchemy (key required), Infura (key required), QuickNode (key required).
+  Abstract is a ZK Stack validium L2 (chain 2741) built by the Abstract Foundation, optimised for consumer applications and NFTs, ETH gas token, ~2 s block cadence, ZK proof settlement onto Ethereum. The 2026-08-02 audit confirms {{count}} clean keyless providers: the Abstract Foundation official endpoint (api.mainnet.abs.xyz), dRPC (abstract.drpc.org), and Thirdweb (abstract.rpc.thirdweb.com). Excluded: Ankr (no abstract route on public tier), Alchemy (key required), Infura (key required), Quicknode (key required).
 
 abstract: |
   Abstract: {{count}} free public RPC endpoints answering `eth_getBlockByNumber` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}; the chain-official endpoint measures {{p50:abstract-official}}.

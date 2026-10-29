@@ -66,7 +66,7 @@ export async function RpcProviderChainsSection({
 
   const rows: Row[] = [];
   // Public cohort first, then the API-key cohort (Alchemy, Chainstack,
-  // QuickNode): a provider sits in one of the two per chain, each ranked
+  // Quicknode): a provider sits in one of the two per chain, each ranked
   // on its own, so the rows never mix the two fields.
   const cohorts: Array<{ chains: typeof snapshot.chains; tier?: "keyed" }> = [
     { chains: snapshot.chains },
@@ -158,7 +158,7 @@ export async function RpcProviderChainsSection({
           <>
             Where {providerName}&apos;s private (API-key) endpoint ranks among the
             private providers measured on each chain (Alchemy, Chainstack, GetBlock,
-            QuickNode, probed every 120 s): 24h p50 across 3 probe regions, success rate
+            Quicknode, probed every 120 s): 24h p50 across 3 probe regions, success rate
             and failed probes. Never ranked against the free public gateways.
           </>
         ) : (

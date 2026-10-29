@@ -14,7 +14,7 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  ApeChain is an Arbitrum Orbit L3 (chain 33139) operated by Yuga Labs / ApeDAO, dedicated to the APE ecosystem, APE gas token, ~250 ms block cadence, settlement onto Arbitrum One. 2026-08-03 re-audit brings the total to {{count}} clean keyless providers: the ApeChain official endpoint (rpc.apechain.com/http), dRPC (apechain.drpc.org), Thirdweb (apechain.rpc.thirdweb.com), and Tenderly Gateway (gateway.tenderly.co/public/apechain). Excluded: Alchemy (key required), QuickNode (key required), Infura (no apechain route).
+  ApeChain is an Arbitrum Orbit L3 (chain 33139) operated by Yuga Labs / ApeDAO, dedicated to the APE ecosystem, APE gas token, ~250 ms block cadence, settlement onto Arbitrum One. 2026-08-03 re-audit brings the total to {{count}} clean keyless providers: the ApeChain official endpoint (rpc.apechain.com/http), dRPC (apechain.drpc.org), Thirdweb (apechain.rpc.thirdweb.com), and Tenderly Gateway (gateway.tenderly.co/public/apechain). Excluded: Alchemy (key required), Quicknode (key required), Infura (no apechain route).
 
 abstract: |
   ApeChain: {{count}} free public RPC endpoints answering `eth_getBlockByNumber` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}; the chain-official endpoint measures {{p50:apechain-official}}.

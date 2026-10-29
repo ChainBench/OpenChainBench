@@ -14,7 +14,7 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  Core Chain is a Bitcoin-aligned EVM-compatible L1 blockchain (chain 1116) using a hybrid Satoshi Plus consensus that combines Bitcoin PoW mining with delegated PoS, CORE as gas token, ~3 s block cadence, BTC staking via the Self-Custodial Bitcoin Staking protocol. The 2026-08-04 audit confirms {{count}} clean keyless providers: the Core DAO official endpoint (rpc.coredao.org), dRPC (core.drpc.org), Thirdweb (1116.rpc.thirdweb.com), and Ankr (rpc.ankr.com/core). Excluded: Alchemy (no Core route), QuickNode (key required).
+  Core Chain is a Bitcoin-aligned EVM-compatible L1 blockchain (chain 1116) using a hybrid Satoshi Plus consensus that combines Bitcoin PoW mining with delegated PoS, CORE as gas token, ~3 s block cadence, BTC staking via the Self-Custodial Bitcoin Staking protocol. The 2026-08-04 audit confirms {{count}} clean keyless providers: the Core DAO official endpoint (rpc.coredao.org), dRPC (core.drpc.org), Thirdweb (1116.rpc.thirdweb.com), and Ankr (rpc.ankr.com/core). Excluded: Alchemy (no Core route), Quicknode (key required).
 
 abstract: |
   Core Chain: {{count}} free public RPC endpoints answering `eth_getBlockByNumber` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}; the chain-official endpoint measures {{p50:core-official}}.

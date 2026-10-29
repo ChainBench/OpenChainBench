@@ -14,7 +14,7 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  Polygon zkEVM is a ZK rollup L2 (chain 1101) that uses zero-knowledge proofs for Ethereum settlement, EVM-equivalent execution, ETH as gas token, ~2 s block cadence, launched March 2023. The 2026-08-04 audit confirms {{count}} clean keyless providers: the community gateway (zkevm-rpc.com), dRPC (polygon-zkevm.drpc.org), and Thirdweb (1101.rpc.thirdweb.com). Excluded: Ankr (no Polygon zkEVM route), Alchemy (key required), QuickNode (key required).
+  Polygon zkEVM is a ZK rollup L2 (chain 1101) that uses zero-knowledge proofs for Ethereum settlement, EVM-equivalent execution, ETH as gas token, ~2 s block cadence, launched March 2023. The 2026-08-04 audit confirms {{count}} clean keyless providers: the community gateway (zkevm-rpc.com), dRPC (polygon-zkevm.drpc.org), and Thirdweb (1101.rpc.thirdweb.com). Excluded: Ankr (no Polygon zkEVM route), Alchemy (key required), Quicknode (key required).
 
 abstract: |
   Polygon zkEVM: {{count}} free public RPC endpoints answering `eth_getBlockByNumber` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}; the chain-official endpoint measures {{p50:polygon-zkevm-official}}.

@@ -148,7 +148,7 @@ type blockHeader struct {
 // and its connection stays warm. Every other provider uses a hostname per
 // chain, touched once per 60 s. A handshake costs about 25 ms from these
 // containers, and 16 + 25 is 41, which is exactly what this harness was
-// publishing for QuickNode against a measured 8. Three of the four keyed
+// publishing for Quicknode against a measured 8. Three of the four keyed
 // providers were reported 4 to 6x slower than they answer.
 //
 // So measure both deliberately and publish both. Warm is what a server-side
@@ -271,10 +271,10 @@ func doPost(ctx context.Context, url string, body []byte, warm bool) (raw []byte
 	// are recorded with real precision. time.Duration.Milliseconds() is an
 	// int64 and truncates every measurement under 1 ms to zero, which
 	// systematically under-reports latency for providers whose endpoint
-	// is peer-adjacent to the harness (e.g. QuickNode via the Mobula
+	// is peer-adjacent to the harness (e.g. Quicknode via the Mobula
 	// shared fleet: sub-millisecond round-trips truncated to 0 dragged
 	// the 24h aggregate down to a nonsensical 0 ms on the BNB + US-East
-	// cell, then rendered as "QuickNode leads at 0 ms" on the UI).
+	// cell, then rendered as "Quicknode leads at 0 ms" on the UI).
 	latencyMs = float64(time.Since(start).Nanoseconds()) / 1e6
 
 	if traceConn {

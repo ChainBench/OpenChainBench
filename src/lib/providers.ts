@@ -53,8 +53,8 @@ const PRODUCT_ALIASES: Record<string, string> = {
   // Sub-products → parent brand
   "helius-sender": "helius",
   "publicnode-feehistory": "publicnode",
-  // Arc publishes a keyless QuickNode endpoint under its own domain; the
-  // product page is QuickNode's.
+  // Arc publishes a keyless Quicknode endpoint under its own domain; the
+  // product page is Quicknode's.
   "arc-quicknode": "quicknode",
   // The cold-start cohort added on 2026-10-08 is the keyed vendors measured on
   // a connection that is never reused. Each `-cold` slug built its own product
@@ -277,7 +277,7 @@ function profileDisplayName(
 }
 
 /** Number of distinct benches a provider appears on. A provider in both
- *  cohorts of one tier-dimensioned bench (QuickNode on arc-rpc: public
+ *  cohorts of one tier-dimensioned bench (Quicknode on arc-rpc: public
  *  row and keyed row) has two appearances there and must count it once
  *  (release review 2026-09-24). */
 /** Distinct benchmarks on which the provider ranks first.
@@ -906,7 +906,9 @@ const buildProvidersCached = unstable_cache(
   // new to the site, each with a mark and a registry entry.
   // v28: appearances carry `defaultView`, so the badges of benches ranked
   // per profile or volume name the slice; a cached index lacks the field.
-  ["providers-v28"],
+  // v29: the registry spells the brand Quicknode; a cached index would keep
+  // the old QuickNode name for its whole TTL.
+  ["providers-v29"],
   // 900 s: the provider index feeds products / compare / answers, whose
   // numbers move slowly, and this revalidate is also the effective ISR
   // period of those ~500 pages (Next takes the min across a route's caches).

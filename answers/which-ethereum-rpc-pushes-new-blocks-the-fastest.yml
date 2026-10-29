@@ -15,7 +15,7 @@ limitations:
   - "Relative, not absolute. The measurement is the lag between providers over the same network path, not absolute chain-to-client latency. A provider that trails by 300 ms here trails by 300 ms from your deployment if you are in the same region; the absolute numbers shift with your geography."
   - "Single vantage point (eu-west). A provider whose nearest edge is far from Amsterdam is disadvantaged; a us-east probe is planned as a second vantage before cross-region claims are made."
   - "Win rate and coverage are the robust readings. A provider can look decent on median lag while silently missing blocks; the success column (blocks seen versus cohort maximum) and ws_block_gap_total keep that visible."
-  - "Keyed providers (Alchemy, Infura, QuickNode) are not yet in the keyless cohort. They join when contributor keys are wired; expect their absolute numbers to be lower than the keyless floor shown here."
+  - "Keyed providers (Alchemy, Infura, Quicknode) are not yet in the keyless cohort. They join when contributor keys are wired; expect their absolute numbers to be lower than the keyless floor shown here."
   - "A provider could theoretically pre-announce unvalidated heads to win the race. Elevated gap counts, cohort inconsistencies and reorg noise signal this failure mode."
 
 faq:

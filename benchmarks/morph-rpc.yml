@@ -14,7 +14,7 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  Morph is a ZK Rollup L2 (chain 2818) combining optimistic execution with ZK proof settlement on Ethereum, ETH gas token, ~2 s block cadence, Decentralized Sequencer Network for censorship resistance. Mainnet launched late 2024. The 2026-08-04 audit confirms {{count}} clean keyless providers: the Morph official endpoint (rpc.morphl2.io), dRPC (morph.drpc.org), Thirdweb (2818.rpc.thirdweb.com), and Morph QuickNode public endpoint (rpc-quicknode.morph.network). Excluded: Ankr (no morph route), Alchemy (key required).
+  Morph is a ZK Rollup L2 (chain 2818) combining optimistic execution with ZK proof settlement on Ethereum, ETH gas token, ~2 s block cadence, Decentralized Sequencer Network for censorship resistance. Mainnet launched late 2024. The 2026-08-04 audit confirms {{count}} clean keyless providers: the Morph official endpoint (rpc.morphl2.io), dRPC (morph.drpc.org), Thirdweb (2818.rpc.thirdweb.com), and Morph Quicknode public endpoint (rpc-quicknode.morph.network). Excluded: Ankr (no morph route), Alchemy (key required).
 
 abstract: |
   Morph: {{count}} free public RPC endpoints answering `eth_getBlockByNumber` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}; the chain-official endpoint measures {{p50:morph-official}}.
@@ -28,7 +28,7 @@ methodology:
 
 faq:
   - q: "Which Morph RPCs work without an API key?"
-    a: "{{declared_count}} endpoints are probed on this chain: Morph official (https://rpc.morphl2.io), dRPC (https://morph.drpc.org), Thirdweb (https://2818.rpc.thirdweb.com), and QuickNode public (https://rpc-quicknode.morph.network). Every listed endpoint was live-verified with a `eth_getBlockByNumber` POST returning a parsable response before inclusion."
+    a: "{{declared_count}} endpoints are probed on this chain: Morph official (https://rpc.morphl2.io), dRPC (https://morph.drpc.org), Thirdweb (https://2818.rpc.thirdweb.com), and Quicknode public (https://rpc-quicknode.morph.network). Every listed endpoint was live-verified with a `eth_getBlockByNumber` POST returning a parsable response before inclusion."
   - q: "How is Morph RPC latency measured here, technically?"
     a: "One identical `eth_getBlockByNumber(\"latest\", false)` POST every 60 seconds against each provider from each of 3 regions, using the same plain HTTP client the rest of the RPC cluster uses. Wall-clock round-trip is recorded at millisecond precision; p50/p90/p99 are computed via Prometheus `quantile_over_time` over 24 hours. Responses are classified (`ok` / `http_err` / `jsonrpc_err` / `stale` / `timeout`) so an endpoint stuck on an old head or returning errors behind HTTP 200 is never ranked as fastest."
 
@@ -121,10 +121,10 @@ providers:
           series: avg_over_time(rpc_latency_milliseconds{provider="thirdweb", chain="morph", region="sgp"}[1h])
 
   - slug: morph-quicknode
-    name: QuickNode
+    name: Quicknode
     endpoint: https://rpc-quicknode.morph.network
-    tag: Morph Foundation public RPC powered by QuickNode
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Morph's QuickNode-powered public RPC endpoint."
+    tag: Morph Foundation public RPC powered by Quicknode
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Morph's Quicknode-powered public RPC endpoint."
     queries:
       p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="morph-quicknode", chain="morph"})
       p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="morph-quicknode", chain="morph"})

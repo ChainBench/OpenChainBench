@@ -143,7 +143,7 @@ describe("the committed artifact", () => {
   });
 
   test("never crowns a one-month trial at the floor", () => {
-    // Three catalogue plans cost $0 and do not recur: QuickNode's one-month
+    // Three catalogue plans cost $0 and do not recur: Quicknode's one-month
     // trial, NOWNodes' one-month Start, Tatum's lifetime 100k credits. All
     // three are banded as paid plans, so the model quoted the $0 and the
     // slider's own floor is where they would have led the board.

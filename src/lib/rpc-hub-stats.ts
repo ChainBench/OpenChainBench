@@ -474,7 +474,8 @@ const fetchRpcHubCached = unstable_cache(
   // v10: the snapshot carries the WebSocket cohort.
   // v11: the snapshot carries p95 and the per-region tails; a v10 entry would
   // serve a shape without them for its whole TTL.
-  ["rpc-hub-cohort-v11", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v12: provider names read Quicknode, not QuickNode.
+  ["rpc-hub-cohort-v12", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["rpc-cohort"] },
 );
 

@@ -60,7 +60,7 @@ const chain = (
   };
 };
 
-/** Arbitrum's real shape: QuickNode leads overall and from Singapore,
+/** Arbitrum's real shape: Quicknode leads overall and from Singapore,
  *  Chainstack is quicker from EU-West. Plus a vendor with no Singapore
  *  point of presence, and a chain measured from nowhere but us-east. */
 const cohort = (): RpcHubCohort => ({
@@ -107,7 +107,7 @@ describe("scopeCohortToRegion", () => {
   it("re-ranks, so a provider that only wins one region wins there", () => {
     const eu = scopeCohortToRegion(cohort(), "eu-west");
     const arb = eu.chains.find((c) => c.slug === "arbitrum-rpc");
-    // QuickNode leads the blended board at 6.2; from EU-West it is 8.2
+    // Quicknode leads the blended board at 6.2; from EU-West it is 8.2
     // against Chainstack's 6.0, and the leader has to change with it.
     expect(arb?.best).toEqual({
       provider: "chainstack",
@@ -149,12 +149,12 @@ describe("scopeCohortToRegion", () => {
 
   it("keeps the leader's sparkline only when the leader is the same row", () => {
     const sgp = scopeCohortToRegion(cohort(), "sgp");
-    // QuickNode leads both blended and from Singapore: the series is its own.
+    // Quicknode leads both blended and from Singapore: the series is its own.
     expect(sgp.chains[0]?.series).toEqual([1, 2, 3]);
 
     const eu = scopeCohortToRegion(cohort(), "eu-west");
     const arb = eu.chains.find((c) => c.slug === "arbitrum-rpc");
-    // Chainstack leads EU-West, so the stored series belongs to QuickNode.
+    // Chainstack leads EU-West, so the stored series belongs to Quicknode.
     expect(arb?.series).toBeUndefined();
   });
 

@@ -73,8 +73,8 @@ describe("capSnippet uses the budget it is given", () => {
   // WebSocket pages lost the second sentence whole, and with it the only
   // mention of the five providers being compared.
   const two =
-    "QuickNode pushes BNB Chain blocks first on the private cohort. " +
-    "Per-block WebSocket lag for Chainstack, GetBlock, QuickNode, Dwellir " +
+    "Quicknode pushes BNB Chain blocks first on the private cohort. " +
+    "Per-block WebSocket lag for Chainstack, GetBlock, Quicknode, Dwellir " +
     "and Validation Cloud, measured from 3 regions.";
 
   test("does not cut at a sentence end far below the cap", () => {

@@ -14,7 +14,7 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  X Layer is a ZK-powered L2 blockchain (chain 196) built by OKX using the Polygon CDK and Aggregation Layer, bringing OKX users and the broader crypto ecosystem together, ETH gas token, ~2 s block cadence, Ethereum settlement. Mainnet launched April 2024. The 2026-08-04 audit confirms {{count}} clean keyless providers: the X Layer official endpoint (rpc.xlayer.tech), dRPC (xlayer.drpc.org), and Thirdweb (196.rpc.thirdweb.com). Excluded: Ankr (no X Layer route), Alchemy (key required), QuickNode (key required).
+  X Layer is a ZK-powered L2 blockchain (chain 196) built by OKX using the Polygon CDK and Aggregation Layer, bringing OKX users and the broader crypto ecosystem together, ETH gas token, ~2 s block cadence, Ethereum settlement. Mainnet launched April 2024. The 2026-08-04 audit confirms {{count}} clean keyless providers: the X Layer official endpoint (rpc.xlayer.tech), dRPC (xlayer.drpc.org), and Thirdweb (196.rpc.thirdweb.com). Excluded: Ankr (no X Layer route), Alchemy (key required), Quicknode (key required).
 
 abstract: |
   X Layer: {{count}} free public RPC endpoints answering `eth_getBlockByNumber` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}; the chain-official endpoint measures {{p50:xlayer-official}}.

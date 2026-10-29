@@ -55,7 +55,7 @@ export function sharedBenchCount(
   b: ProviderAppearance[],
 ): number {
   // Keyed by (bench, cohort), not by bench: a provider on both cohorts of
-  // one bench (QuickNode on arc-rpc) collapsed to its last appearance and
+  // one bench (Quicknode on arc-rpc) collapsed to its last appearance and
   // the count depended on the argument order (release review 2026-09-24).
   const mine = new Set(a.map((x) => `${x.benchmark.slug}|${x.tier ?? ""}`));
   const counted = new Set<string>();
