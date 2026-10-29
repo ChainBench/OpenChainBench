@@ -19,3 +19,13 @@ describe("notServedReason", () => {
     expect(notServedReason("rpc-cost", "helius", {})).toBeNull();
   });
 });
+
+describe("notServedReason on bench 310", () => {
+  test("names the vendor's own limit for the scenario and size", () => {
+    // Turnkey holds at most 2,000 wallets on Pro: 10,000 agents is past it.
+    expect(notServedReason("server-wallet-cost", "turnkey", {})).toContain("2,000 wallets");
+    // Dfns Pro allows 10,000 signatures a month; a 100,000-transaction bot is past it.
+    expect(notServedReason("server-wallet-cost", "dfns", { kind: "bot" })).toContain("on request");
+    expect(notServedReason("server-wallet-cost", "thirdweb", {})).toBeNull();
+  });
+});

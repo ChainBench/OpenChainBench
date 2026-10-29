@@ -226,6 +226,9 @@ export const DEV_ONLY_BENCH_SLUGS = new Set([
   // of the eight rows have no maker rate at all. Un-gate after a 24h
   // window and an audit round.
   "perp-fee-disclosure",
+  // 310 server-wallet-cost: new 2026-10-29, server and agent wallet
+  // pricing. Un-gate after a harness cycle and its audit rounds.
+  "server-wallet-cost",
   // 309 wallet-cost left this list on 2026-10-29, after its harness had
   // run all day and three audit rounds (data and code twice, SEO once) had
   // their findings fixed (#3361, #3365, #3367, #3369). Released in #3374.

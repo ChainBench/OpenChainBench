@@ -908,7 +908,9 @@ const buildProvidersCached = unstable_cache(
   // per profile or volume name the slice; a cached index lacks the field.
   // v29: the registry spells the brand Quicknode; a cached index would keep
   // the old QuickNode name for its whole TTL.
-  ["providers-v29"],
+  // v30: bench 310 adds server wallet appearances (Lit, Portal and Dfns
+  // new to the site) and bench 309 adds Portal.
+  ["providers-v30"],
   // 900 s: the provider index feeds products / compare / answers, whose
   // numbers move slowly, and this revalidate is also the effective ISR
   // period of those ~500 pages (Next takes the min across a route's caches).

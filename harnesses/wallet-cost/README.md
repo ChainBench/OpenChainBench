@@ -78,7 +78,7 @@ on its own axis, the same convention as rpc-cost.
 
 ## Freshness
 
-Six of the thirteen pages return a new body on every request while their
+Six of the first thirteen pages return a new body on every request while their
 prices stand still, so a raw-body hash would alarm every hour. The harness
 hashes the page's pricing sentences instead: visible text split at sentence
 and clause ends, keeping each sentence that carries a dollar figure, a
@@ -89,7 +89,7 @@ the source's `pin_phrases` (Reown: "custom plan").
 `WALLET_COST_PIN=1` prints each page's current hash and every figure the
 catalogue takes from that vendor that is absent from the hashed lines. Keep
 that list empty: a figure outside it can change with no drift. On
-2026-10-29 it was empty for all thirteen.
+2026-10-29 it was empty for all fourteen, Portal included.
 
 Alerts (`alerts.yml`, deployed as `/opt/ocb/prom-rules/ocb_wallet_pricing.yml`
 and tested with `promtool test rules`):

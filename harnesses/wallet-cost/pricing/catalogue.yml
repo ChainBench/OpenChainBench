@@ -400,8 +400,11 @@ providers:
         name: Free
         monthly_usd: 0
         confidence: uncertain
-        tiers:
-          operations: [{ up_to: 2000, rate: 0 }, { rate: 0.01 }]
+        note: >-
+          The FAQ says a project without a paid subscription "stops at the
+          included limit" (HTTP 402); the plan card offers $0.01 per operation
+          once a payment method is added. Priced as stopping at 2,000.
+        caps: { operations: 2000 }
       - id: growth
         name: Growth
         monthly_usd: 99
@@ -563,6 +566,37 @@ providers:
         verified_at: "2026-10-29"
         poll: true
 
+  - slug: portal
+    name: Portal
+    url: https://www.portalhq.io
+    cohort: ranked
+    unit: Operations plus wallets
+    note: >-
+      Start-Up includes 1K monthly operations and 1K wallets, each $0.10
+      beyond. Operations are "Generate, Backup, Sign, Recover, Eject": a new
+      wallet is priced as Generate plus Backup and a transaction as one Sign.
+      Whether the wallet overage is charged once or every month is not stated
+      (priced every month, the higher reading). The Developer plan is a
+      development environment. Added 2026-10-29: an earlier version of this
+      catalogue excluded Portal as unpriceable, which was wrong.
+    meters:
+      operations: { per_tx: 1, per_new_wallet: 2 }
+      wallets: { per_user: 1 }
+    plans:
+      - id: start-up
+        name: Start-Up
+        monthly_usd: 499
+        confidence: uncertain
+        tiers:
+          operations: [{ up_to: 1000, rate: 0 }, { rate: 0.10 }]
+          wallets: [{ up_to: 1000, rate: 0 }, { rate: 0.10 }]
+    source:
+      pricing:
+        url: https://www.portalhq.io/pricing
+        body_sha256: 8666a055865b8fca8c781ca9957edb77d29a850ffe372c859c4c22e21ad99f64
+        verified_at: "2026-10-29"
+        poll: true
+
   # Listed so the methodology can name them with a reason, never priced.
   - slug: alchemy
     name: Alchemy
@@ -572,13 +606,6 @@ providers:
       Smart Wallets bill compute units, and the compute units a signature costs
       appear only in a separate calculator that still prices a compute unit at
       $0.40 per million against $0.52 on the pricing page.
-  - slug: portal
-    name: Portal
-    url: https://www.portalhq.io
-    cohort: excluded
-    excluded_reason: >-
-      The pricing page shows operation and wallet allowances without a
-      readable plan price beside them.
   - slug: dfns
     name: Dfns
     url: https://www.dfns.co

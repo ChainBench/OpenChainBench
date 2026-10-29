@@ -53,6 +53,9 @@ describe("the provider set behind the cache keys", () => {
     const hash = createHash("sha256").update(sets.join("\n")).digest("hex").slice(0, 16);
     const count = sets.reduce((n, s) => n + s.split(":")[1].split(",").length, 0);
 
+    // Re-recorded on 2026-10-29 when bench 310 arrived and bench 309 gained
+    // Portal, with the keys moved together.
+    //
     // Recorded on 2026-10-29 with bench-unfiltered-v109, all-benchmarks-v102,
     // bench-filters-v48, providers-v27: bench 309 wallet-cost adds thirteen
     // embedded wallet vendors.
@@ -84,6 +87,6 @@ describe("the provider set behind the cache keys", () => {
         "Then set EXPECTED to the hash in this failure, and add the provider",
         `to PRODUCT_NAMES if it needs a display name. Providers now: ${count}.`,
       ].join("\n"),
-    ).toBe("320bb0922071809b");
+    ).toBe("be646f159fe731ff");
   });
 });
