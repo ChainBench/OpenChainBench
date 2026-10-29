@@ -569,7 +569,11 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       in the repo selected rpc_latency_milliseconds_histogram_bucket,
   //       and the histogram is removed in the same PR. Editorial change, so
   //       it needs the bump for the v108 reason two notes above.
-  ["bench-unfiltered-v110", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v111: bench 309's copy moves after its first audit round (the
+  //       Openfort reading, validate running the scorer, six of thirteen
+  //       pages); an entry cached before the edit still carries the old
+  //       prose.
+  ["bench-unfiltered-v111", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -840,7 +844,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v102: lockstep with bench-unfiltered-v109 (bench 309 arrives).
   // v103: lockstep with bench-unfiltered-v110 (bench 010's latency
   //        methodology no longer credits a histogram that drove nothing).
-  ["all-benchmarks-v103", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v104: lockstep with bench-unfiltered-v111 (bench 309 copy round).
+  ["all-benchmarks-v104", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -989,7 +994,9 @@ const loadBenchmarkFiltered = unstable_cache(
   //      dimension, so its reworded latency methodology is cached once per
   //      chain tab; without this the correction lands on the default tab
   //      only and the other tabs keep crediting the histogram.
-  ["bench-filters-v49", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v50: lockstep with bench-unfiltered-v111. Bench 309's profile and
+  //      size tabs cache the copy alongside the rows.
+  ["bench-filters-v50", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 

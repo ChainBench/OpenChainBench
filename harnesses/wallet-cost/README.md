@@ -55,6 +55,10 @@ attached to a quote, a meter no plan bounds, a misspelt key.
        node harnesses/wallet-cost/verify/scorer.mjs \
          harnesses/wallet-cost/pricing/catalogue.yml src/data/wallet-cost-curves.json
 4. Rebuild the harness image on the VPS: the catalogue ships inside it.
+   Until then the site's calculator (built from the new curve) and the
+   bench's ledger (read from this harness) quote different prices. Check
+   that `wallet_cost_catalogue_info{sha256=...}` equals `catalogueSha256`
+   in `src/data/wallet-cost-curves.json`.
 
 ## Metrics
 
@@ -66,6 +70,7 @@ attached to a quote, a meter no plan bounds, a misspelt key.
 | `wallet_cost_plan_confidence` | provider, plan, kind, bucket |
 | `wallet_pricing_artifact_ok`, `_drift`, `_age_seconds` | provider, artifact |
 | `wallet_cost_last_run_timestamp_seconds` | |
+| `wallet_cost_catalogue_info` | sha256, as_of |
 
 `kind="all"` is the consumer profile and `bucket="all"` 10,000 users, each
 on its own axis, the same convention as rpc-cost.
@@ -75,8 +80,9 @@ on its own axis, the same convention as rpc-cost.
 Six of the thirteen pages return a new body on every request while their
 prices stand still, so a raw-body hash would alarm every hour. The harness
 hashes only the visible lines carrying a dollar figure, or a number beside a
-billing word, sorted and de-duplicated. A drift is an alarm for a human, who
-re-reads the page; nothing on the site reads it.
+billing word, sorted and de-duplicated. A drift sets
+`wallet_pricing_artifact_drift` for a maintainer, who re-reads the page;
+nothing on the site reads it and no alert rule fires on it yet.
 
 ## Environment
 

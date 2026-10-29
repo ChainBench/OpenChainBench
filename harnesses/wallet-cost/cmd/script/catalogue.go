@@ -168,6 +168,13 @@ func (c *Catalogue) validate() error {
 	if c.CurveFloor <= 0 || c.CurveCeiling <= c.CurveFloor {
 		return fmt.Errorf("curve range %v..%v is not increasing", c.CurveFloor, c.CurveCeiling)
 	}
+	for _, v := range c.Volumes {
+		// The calculator marks the gauge volumes on its track; one outside
+		// the curve would be a button the slider cannot reach.
+		if v.MAU < c.CurveFloor || v.MAU > c.CurveCeiling {
+			return fmt.Errorf("volume %s (%v) is outside the curve range %v..%v", v.ID, v.MAU, c.CurveFloor, c.CurveCeiling)
+		}
+	}
 
 	slugs := map[string]bool{}
 	ranked := 0
