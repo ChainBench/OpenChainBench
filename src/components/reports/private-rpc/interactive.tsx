@@ -79,7 +79,7 @@ export function LatencyHeatmap() {
     <Figure
       title="Every chain, every provider"
       subtitle="Round-trip latency in ms for eth_getBlockByNumber (getSlot on Solana), 7-day percentile per cell. The outlined cell is the fastest on that chain. Blank: the provider does not serve that chain from that region."
-      source="Source: OpenChainBench rpc-keyed-latency probes every 120 s, 7 days to 28 Oct 2026 13:00 UTC. BlockMachine since 24 Oct; Alchemy on 7 chains until its Free key capped on 24 Oct."
+      source="Source: OpenChainBench rpc-keyed-latency probes every 120 s, 7 days to 28 Oct 2026 13:22 UTC. BlockMachine since 24 Oct; Alchemy on 7 chains until its Free key capped on 24 Oct."
     >
       <div className="flex flex-wrap items-center gap-2 px-2 pb-3">
         <Tabs options={REGIONS.map((r) => ({ value: r.slug, label: r.name }))} value={region} onChange={setRegion} />
@@ -184,7 +184,7 @@ export function CostCurves() {
   return (
     <Figure
       title="Monthly bill by volume"
-      subtitle="Cheapest plan of each provider that can serve the volume, list prices. Each step is a plan change. A line ending in a cross stops at the volume where the provider's throughput cap is reached."
+      subtitle="Cheapest paid plan of each provider that can serve the volume, list prices. Each step is a plan change. A line ending in a cross stops at the volume where the provider's throughput cap is reached."
       source="Source: OpenChainBench rpc-cost, bench 282, catalogue of 22 Oct 2026. The calculator on the bench page prices any volume from 100k to 5B."
     >
       <div className="flex flex-wrap items-center gap-2 px-2 pb-2">
