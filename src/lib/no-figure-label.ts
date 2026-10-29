@@ -12,7 +12,28 @@
 const NOT_SERVED: Record<string, string> = {
   "rpc-cost": "no Ethereum dapp plan",
   "rpc-free-tier": "no free Ethereum dapp allowance",
+  // Turnkey, ZeroDev and Crossmint publish no self-serve price for a
+  // 10,000-user app, and Reown none for a trading app: that is the product,
+  // not a source that has not reported. Worded without the size so it
+  // holds on every profile and size tab (see NOT_SERVED_ON_EVERY_VIEW).
+  "wallet-cost": "no self-serve price for this app size",
 };
+
+/**
+ * Benches whose label above is true on every dimension tab, not only the
+ * default view. On those the loader also lists the missing providers on
+ * filtered views, with the label, instead of dropping them silently: the
+ * trading tab of bench 309 returned nine rows and no word on why Reown,
+ * Turnkey, ZeroDev and Crossmint were absent (audit 2026-10-29).
+ *
+ * rpc-cost is not here because its label names the Ethereum dapp mix, which
+ * is false on its Solana tab.
+ */
+const NOT_SERVED_ON_EVERY_VIEW = new Set(["wallet-cost"]);
+
+export function notServedOnEveryView(benchSlug: string): boolean {
+  return NOT_SERVED_ON_EVERY_VIEW.has(benchSlug);
+}
 
 /** The label when a missing figure is a product fact on this bench, or null
  *  when it still means a source that has not reported. */

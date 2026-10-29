@@ -3109,7 +3109,7 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   "coinbase-cdp": {
     url: "https://www.coinbase.com/developer-platform",
     description:
-      "Coinbase Developer Platform's Node product. Weighted Billing Units per method, serving Base mainnet and Base Sepolia only.",
+      "Coinbase Developer Platform. Its Node product bills weighted Billing Units per method on Base only; its non-custodial wallets bill per wallet operation.",
     twitter: "@CoinbaseDev",
     chains: ["Base"],
     pricing:
@@ -3513,6 +3513,63 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   pump: { url: "https://pump.fun", referralUrl: "https://pump.fun/u/SweetNearSlicer" },
   pumpfun: { url: "https://pump.fun", referralUrl: "https://pump.fun/u/SweetNearSlicer" },
   quickswap: { url: "https://quickswap.exchange" },
+  // Embedded wallet vendors, bench 309 (2026-10-29). URL and handle read
+  // from each vendor's own site footer that day.
+  privy: {
+    url: "https://www.privy.io",
+    description: "Embedded wallet and authentication SDK, billed per monthly active user plus signatures. Privy describes itself as a Stripe company.",
+    twitter: "@privy_io",
+  },
+  dynamic: {
+    url: "https://www.dynamic.xyz",
+    description: "Authentication, embedded wallet and key management SDK, billed per monthly active user.",
+    twitter: "@dynamic_xyz",
+  },
+  turnkey: {
+    url: "https://www.turnkey.com",
+    description: "Private key management API for creating wallets and signing transactions, billed per signature.",
+    twitter: "@turnkeyhq",
+  },
+  web3auth: {
+    url: "https://web3auth.io",
+    description: "Authentication and key management SDKs that create user wallets from social and email logins, billed per monthly active wallet. Part of Consensys.",
+    twitter: "@web3auth",
+  },
+  magic: {
+    url: "https://magic.link",
+    description: "Non-custodial embedded wallets with email and social login, billed per monthly active wallet plus signatures.",
+    twitter: "@magic_labs",
+  },
+  getpara: {
+    url: "https://www.getpara.com",
+    description: "Non-custodial embedded wallet SDK built on MPC, for EVM, Solana and Cosmos, billed per monthly active user.",
+    twitter: "@get_para",
+  },
+  openfort: {
+    url: "https://www.openfort.io",
+    description: "Open-source, self-hostable wallet SDK for stablecoin products, billed per wallet operation.",
+    twitter: "@openfort_hq",
+  },
+  circle: {
+    url: "https://www.circle.com",
+    description: "Issuer of USDC and EURC. Its developer platform includes Circle Wallets, an API for embedding wallets, billed per monthly active wallet.",
+    twitter: "@circle",
+  },
+  reown: {
+    url: "https://reown.com",
+    description: "Wallet connection and onboarding infrastructure, formerly WalletConnect. AppKit adds email and social login with embedded wallets, billed per monthly active user.",
+    twitter: "@reown_",
+  },
+  zerodev: {
+    url: "https://zerodev.app",
+    description: "Smart account infrastructure: embedded wallets, gas sponsorship, session keys and chain abstraction, billed in credits.",
+    twitter: "@zerodev",
+  },
+  crossmint: {
+    url: "https://www.crossmint.com",
+    description: "Stablecoin infrastructure APIs for wallets, payments, onramps and compliance.",
+    twitter: "@crossmint",
+  },
 };
 
 /**

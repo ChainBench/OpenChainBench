@@ -13,6 +13,7 @@ import { unstable_cache } from "next/cache";
 import { getBenchmarksSafe } from "@/data/benchmarks";
 import { loadProvidersFromBlob } from "@/lib/bench-blob";
 import { isHexAddressSlug } from "@/lib/slug-shape";
+import { defaultViewLabel } from "@/lib/bench-view";
 
 export { isHexAddressSlug };
 import { loadSpecsUncached } from "@/lib/materialize/load";
@@ -342,6 +343,10 @@ export type ProviderAppearance = {
     /** Region dimension values from the spec, when present. Mirrors
      *  `benchmark.dimensions.region`. */
     regionDimensions?: { value: string; label: string }[];
+    /** The default slice of a bench ranked per profile, volume or plan
+     *  band ("Consumer app, 5 transactions a user · 10,000 users"), from
+     *  defaultViewLabel. Empty or absent on every other bench. */
+    defaultView?: string;
     /** Exact per-cell rankings from the bench's `rank_matrix_query`
      *  (key = `<chain>|<region>`, "all" for an undeclared dimension or a
      *  derived marginal). When present this is the authoritative source
@@ -549,6 +554,7 @@ export function buildProvidersFromBenches(benches: Benchmark[]): ProviderProfile
           chainDimensions: b.dimensions?.chain,
           bestPerChain: benchBestPerChain,
           regionDimensions: b.dimensions?.region,
+          defaultView: defaultViewLabel(b),
           cellRanks: b.cellRanks,
         },
         result: r,
@@ -646,6 +652,7 @@ export function buildProvidersFromBenches(benches: Benchmark[]): ProviderProfile
             chainDimensions: b.dimensions?.chain,
             bestPerChain: benchBestPerChain,
             regionDimensions: b.dimensions?.region,
+            defaultView: defaultViewLabel(b),
             cellRanks: b.cellRanks,
           },
           result: r,
@@ -886,7 +893,10 @@ const buildProvidersCached = unstable_cache(
   // v21: Enso leaves bench 033 and so is measured nowhere, same as 0x at
   // v20. /products/enso retires and the nine aggregators left on that
   // board are ranked against a cohort one smaller again.
-  ["providers-v21"],
+  // v22: bench 309 released: thirteen embedded wallet vendors, eleven new
+  // to production, and appearances carry `defaultView`. Numbered for THIS
+  // branch; dev carried the same change as v27 and v28.
+  ["providers-v22"],
   // 900 s: the provider index feeds products / compare / answers, whose
   // numbers move slowly, and this revalidate is also the effective ISR
   // period of those ~500 pages (Next takes the min across a route's caches).

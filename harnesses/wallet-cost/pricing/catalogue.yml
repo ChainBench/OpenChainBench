@@ -1,0 +1,601 @@
+# Embedded wallet pricing catalogue, the input of record for bench wallet-cost.
+#
+# Every figure was read by a human from the vendor's own pricing page on the
+# date in `verified_at`, and every plan says which page. Nothing here is
+# scraped: half of these pages render their FAQ only in JavaScript and a
+# parser that guesses is worse than one that does not exist.
+#
+# How a bill is built (harness model.go, and the independent scorer that
+# checks it):
+#
+#   workload  = MAU (monthly active users), transactions per user per month,
+#               and the share of MAU that are new users creating a wallet.
+#   meter     = a quantity the vendor bills, written as a linear function of
+#               the workload: per_user x MAU + per_tx x transactions +
+#               per_new_wallet x new wallets.
+#   plan      = monthly_usd, then for each meter a list of graduated tiers on
+#               the TOTAL quantity (the first tier at rate 0 is what the plan
+#               includes), a hard `cap` (the plan cannot serve more; the vendor
+#               cuts off or forces an upgrade) and a `quote_above` (beyond it
+#               the vendor publishes no price; not ranked).
+#   bill      = monthly_usd + sum of tier charges; when `minimum: true` the
+#               fee is a spending floor instead: max(monthly_usd, charges).
+#   cheapest  = the lowest bill among the vendor's eligible plans.
+#
+# Null and zero are opposite claims. `monthly_usd: null` means no published
+# price (a quote), never free. A meter a plan does not list is a meter the
+# plan does not bill, so leaving one out is a statement; the validator refuses
+# a plan that bills a meter the vendor does not define.
+#
+# Gas is excluded everywhere. Several vendors sponsor gas for a surcharge
+# (thirdweb 2.5% on mainnet, Openfort 10% or 5%, ZeroDev 8%); that is a
+# percentage of the user's gas, not a price of the wallet, and it is the same
+# gas whichever wallet signs.
+
+version: 1
+as_of: "2026-10-29"
+
+# Workload profiles. Shared input, never retyped: the harness and the
+# independent scorer both read them from here. One wallet per user, and every
+# transaction is one signature followed by one broadcast.
+profiles:
+  - id: consumer
+    label: Consumer app
+    tx_per_user: 5
+    new_user_share: 0.20
+  - id: active
+    label: Active app
+    tx_per_user: 25
+    new_user_share: 0.10
+  - id: trading
+    label: Trading app
+    tx_per_user: 100
+    new_user_share: 0.05
+
+# The three volumes the gauges publish. The calculator prices any count from
+# `curve_floor` to `curve_ceiling` monthly active users.
+volumes:
+  - { id: 1k, mau: 1000 }
+  - { id: 10k, mau: 10000 }
+  - { id: 100k, mau: 100000 }
+headline: { profile: consumer, volume: 10k }
+curve_floor: 100
+curve_ceiling: 1000000
+
+providers:
+  - slug: privy
+    name: Privy
+    url: https://www.privy.io
+    cohort: ranked
+    unit: Monthly active users plus signatures
+    note: >-
+      Plan bounds are the cards' "Up to" figures (500, 2,500, and 10,000 for
+      Scale, whose band reads 2,500 to 9,999), because pay-as-you-go starts
+      only when usage "exceeds 10,000 MAU or 50,000 signatures". A Privy MAU is
+      a user with an active session in the last 30 days.
+    meters:
+      mau: { per_user: 1 }
+      signatures: { per_tx: 1 }
+    plans:
+      - id: free
+        name: Free
+        monthly_usd: 0
+        confidence: verified
+        caps: { mau: 500, signatures: 50000 }
+      - id: core
+        name: Core
+        monthly_usd: 299
+        confidence: verified
+        caps: { mau: 2500, signatures: 50000 }
+      - id: scale
+        name: Scale
+        monthly_usd: 499
+        confidence: verified
+        # Unambiguous below 10,000 users. At exactly 10,000 the card's band
+        # (2,500 to 9,999) and the pay-as-you-go trigger (exceeds 10,000)
+        # disagree, and the cap above takes the trigger's side.
+        uncertain_above: { mau: 9999 }
+        note: >-
+          The card bands Scale at 2,500 to 9,999 users, while pay-as-you-go
+          applies only when usage exceeds 10,000. At exactly 10,000 users
+          Scale is priced at $499; on the card's reading the bill is $2,000.
+        caps: { mau: 10000, signatures: 50000 }
+      - id: payg
+        name: Pay as you go
+        monthly_usd: 2000
+        confidence: uncertain
+        note: >-
+          Applies above 10,000 MAU or 50,000 signatures a month: "a volume PAYG
+          base fee of $2,000; $0.05 per MAU above 10,000 MAUs; and $0.01 per
+          signature above 50,000 signatures". The page does not say whether the
+          $499 Scale fee is charged on top, so the $2,000 base is priced alone,
+          the lower reading. The free allowance also stops at $1M of monthly
+          transaction volume, which this model does not track. Privy's own page
+          says an Enterprise plan is "typically cheaper" at sustained volume.
+        tiers:
+          mau: [{ up_to: 10000, rate: 0 }, { rate: 0.05 }]
+          signatures: [{ up_to: 50000, rate: 0 }, { rate: 0.01 }]
+    source:
+      pricing:
+        url: https://www.privy.io/pricing
+        body_sha256: 5cee07da8b21944d68ac6706cdffb8f124eb91d70641e82f468e5535540c34b3
+        verified_at: "2026-10-29"
+        poll: true
+
+  - slug: dynamic
+    name: Dynamic
+    url: https://www.dynamic.xyz
+    cohort: ranked
+    unit: Monthly active users
+    note: >-
+      No free production plan: the sandbox is free, live mode needs Growth.
+      An MAU is a user who logs in that month or for whom an embedded wallet,
+      pre-generated ones included, is created.
+    meters:
+      mau: { per_user: 1 }
+    plans:
+      - id: growth
+        name: Growth
+        monthly_usd: 249
+        confidence: verified
+        tiers:
+          mau: [{ up_to: 5000, rate: 0 }, { rate: 0.005 }]
+    source:
+      pricing:
+        url: https://www.dynamic.xyz/pricing
+        body_sha256: c5e228a7a8b728dfe6d742738cc82c7c20fc2494aad6458c44e828029857ceb4
+        verified_at: "2026-10-29"
+        poll: true
+
+  - slug: turnkey
+    name: Turnkey
+    url: https://www.turnkey.com
+    cohort: ranked
+    unit: Signatures, with a cap on total wallets
+    note: >-
+      Billed per signature; the wallet limit (1K on Pay as You Go, 2K on Pro)
+      caps how many wallets an organisation holds, so an app with more users
+      than that needs Enterprise, which has no published price. Wallets are
+      taken as one per active user, a lower bound since wallets accumulate
+      across months.
+    meters:
+      signatures: { per_tx: 1 }
+      wallets: { per_user: 1 }
+    plans:
+      - id: payg
+        name: Pay as You Go
+        monthly_usd: 0
+        confidence: verified
+        caps: { wallets: 1000 }
+        tiers:
+          signatures: [{ up_to: 25, rate: 0 }, { rate: 0.10 }]
+      - id: pro
+        name: Pro
+        monthly_usd: 99
+        minimum: true
+        confidence: uncertain
+        note: >-
+          "$99/mo." beside "$0.05 / signature", and the FAQ calls it "a minimum
+          monthly fee". Read as a spending floor, max($99, $0.05 per signature);
+          read as a fee on top, the bill is $99 higher. Per-transaction fees for
+          Turnkey's own broadcasting are quote-only and not included.
+        caps: { wallets: 2000 }
+        tiers:
+          signatures: [{ rate: 0.05 }]
+      - id: enterprise
+        name: Enterprise
+        monthly_usd: null
+        confidence: verified
+    source:
+      pricing:
+        url: https://www.turnkey.com/pricing
+        body_sha256: eb91b7dd5113d9e3797c23a44d250d5c82b29a15ef70a7ef7ca962018767a665
+        verified_at: "2026-10-29"
+        poll: true
+
+  - slug: web3auth
+    name: Web3Auth
+    url: https://web3auth.io
+    cohort: ranked
+    unit: Monthly active wallets
+    note: >-
+      A monthly active wallet is "a user who logs in or has an active session
+      at least once in a given calendar month".
+    meters:
+      mau: { per_user: 1 }
+    plans:
+      - id: base
+        name: Base
+        monthly_usd: 0
+        confidence: verified
+        tiers:
+          mau: [{ up_to: 1000, rate: 0 }, { rate: 0.05 }]
+      - id: growth
+        name: Growth
+        monthly_usd: 69
+        confidence: verified
+        tiers:
+          mau: [{ up_to: 3000, rate: 0 }, { rate: 0.045 }]
+      - id: scale
+        name: Scale
+        monthly_usd: 399
+        confidence: verified
+        tiers:
+          mau: [{ up_to: 10000, rate: 0 }, { rate: 0.04 }]
+    source:
+      pricing:
+        url: https://web3auth.io/pricing.html
+        body_sha256: 93835867e3d78e02248f4d55f457dee48cd2fee1e08fd862c38a7ae63a8e42ee
+        verified_at: "2026-10-29"
+        poll: true
+
+  - slug: magic
+    name: Magic
+    url: https://magic.link
+    cohort: ranked
+    unit: Monthly active wallets plus signatures
+    note: >-
+      A wallet counts once a month when a user accesses it through the SDK.
+      Every successful signing request counts, except the signatures needed to
+      log in; 50,000 a month are included per team on every non-Enterprise plan.
+    meters:
+      mau: { per_user: 1 }
+      signatures: { per_tx: 1 }
+    plans:
+      - id: developer
+        name: Developer
+        monthly_usd: 0
+        confidence: verified
+        tiers:
+          mau: [{ up_to: 1000, rate: 0 }, { rate: 0.045 }]
+          signatures: [{ up_to: 50000, rate: 0 }, { rate: 0.005 }]
+      - id: startup
+        name: Startup
+        monthly_usd: 99
+        confidence: verified
+        tiers:
+          mau: [{ up_to: 2500, rate: 0 }, { rate: 0.04 }]
+          signatures: [{ up_to: 50000, rate: 0 }, { rate: 0.005 }]
+    source:
+      pricing:
+        url: https://magic.link/pricing
+        body_sha256: a8194db2eabb982af7eb2405fdbfadef4598c3b711b9a806018a3da3ee6c2f87
+        verified_at: "2026-10-29"
+        poll: true
+
+  - slug: getpara
+    name: Para
+    url: https://www.getpara.com
+    cohort: ranked
+    unit: Monthly active users
+    note: >-
+      No signature or transaction fee. The page says that at 100,000 MAU "most
+      teams move to" an Enterprise plan; the published Scale overage still
+      prices that volume, so it is used.
+    meters:
+      mau: { per_user: 1 }
+    plans:
+      - id: free
+        name: Free
+        monthly_usd: 0
+        confidence: verified
+        caps: { mau: 1200 }
+      - id: starter
+        name: Starter
+        monthly_usd: 200
+        confidence: verified
+        tiers:
+          mau: [{ up_to: 2500, rate: 0 }, { rate: 0.06 }]
+      - id: growth
+        name: Growth
+        monthly_usd: 500
+        confidence: verified
+        tiers:
+          mau: [{ up_to: 10000, rate: 0 }, { rate: 0.05 }]
+      - id: scale
+        name: Scale
+        monthly_usd: 1000
+        confidence: verified
+        tiers:
+          mau: [{ up_to: 25000, rate: 0 }, { rate: 0.04 }]
+    source:
+      pricing:
+        url: https://www.getpara.com/pricing
+        body_sha256: fa0fb3db2e2e98cd4eb9d42e10d0a24b7f50f77abcea0cc376f95c7fd7e9f4a5
+        verified_at: "2026-10-29"
+        poll: true
+
+  - slug: coinbase-cdp
+    name: Coinbase CDP
+    url: https://www.coinbase.com/developer-platform
+    cohort: ranked
+    unit: Wallet operations
+    note: >-
+      Creating an account is 1 operation and sending a transaction (sign and
+      broadcast) is 2. Reads are free. The same price applies to embedded and
+      server wallets.
+    meters:
+      operations: { per_new_wallet: 1, per_tx: 2 }
+    plans:
+      - id: payg
+        name: Pay as you go
+        monthly_usd: 0
+        confidence: verified
+        tiers:
+          operations: [{ up_to: 5000, rate: 0 }, { rate: 0.005 }]
+    source:
+      pricing:
+        url: https://docs.cdp.coinbase.com/server-wallets/v2/introduction/pricing.md
+        body_sha256: 8276ec67b1699b1133abe997d3b8aa7d237ac882b55f73f2367f6948eb7a3d18
+        verified_at: "2026-10-29"
+        poll: true
+
+  - slug: thirdweb
+    name: thirdweb
+    url: https://thirdweb.com
+    cohort: ranked
+    unit: Monthly active wallets
+    note: >-
+      A monthly active wallet is one "where a user logs in during the billing
+      period". The first 1,000 are free and the per-wallet rate falls at 100k,
+      1M and 10M. The page draws these as bands without saying whether each
+      rate applies to its own band or to the whole count; priced graduated,
+      band by band, which is the higher reading above 100,000. Removing
+      thirdweb branding needs Scale ($499).
+    meters:
+      mau: { per_user: 1 }
+    plans:
+      - id: growth
+        name: Growth
+        monthly_usd: 99
+        confidence: verified
+        uncertain_above: { mau: 100000 }
+        note: >-
+          Up to 100,000 wallets every reading gives $0.015 each after the first
+          1,000. Above that the page does not say whether $0.01 applies to the
+          wallets past 100,000 (priced here, band by band) or to all of them.
+        tiers:
+          mau:
+            - { up_to: 1000, rate: 0 }
+            - { up_to: 100000, rate: 0.015 }
+            - { up_to: 1000000, rate: 0.01 }
+            - { up_to: 10000000, rate: 0.0075 }
+            - { rate: 0.005 }
+      - id: scale
+        name: Scale
+        monthly_usd: 499
+        confidence: verified
+        uncertain_above: { mau: 100000 }
+        note: Same bands as Growth; the plan adds branding removal and support.
+        tiers:
+          mau:
+            - { up_to: 1000, rate: 0 }
+            - { up_to: 100000, rate: 0.015 }
+            - { up_to: 1000000, rate: 0.01 }
+            - { up_to: 10000000, rate: 0.0075 }
+            - { rate: 0.005 }
+    source:
+      pricing:
+        url: https://thirdweb.com/pricing
+        body_sha256: d9056af82567c1451d8887384fda974138bf30f98bb45b059f63ad892ed10738
+        verified_at: "2026-10-29"
+        poll: true
+
+  - slug: openfort
+    name: Openfort
+    url: https://www.openfort.io
+    cohort: ranked
+    unit: Wallet operations
+    note: >-
+      An operation is "creating a wallet, signing, broadcasting, evaluating a
+      policy, firing a webhook, or landing a funding deposit"; a payment is two
+      (sign, then broadcast) and sign-ins are free. Priced from that table:
+      1 per new wallet, 2 per transaction. Openfort's own simulator on the same
+      page also charges 2 operations per active user, which would raise these
+      bills.
+    meters:
+      operations: { per_new_wallet: 1, per_tx: 2 }
+    plans:
+      - id: free
+        name: Free
+        monthly_usd: 0
+        confidence: uncertain
+        tiers:
+          operations: [{ up_to: 2000, rate: 0 }, { rate: 0.01 }]
+      - id: growth
+        name: Growth
+        monthly_usd: 99
+        confidence: uncertain
+        tiers:
+          operations: [{ up_to: 25000, rate: 0 }, { rate: 0.008 }]
+      - id: pro
+        name: Pro
+        monthly_usd: 249
+        confidence: uncertain
+        tiers:
+          operations: [{ up_to: 100000, rate: 0 }, { rate: 0.006 }]
+      - id: scale
+        name: Scale
+        monthly_usd: 599
+        confidence: uncertain
+        tiers:
+          operations: [{ up_to: 500000, rate: 0 }, { rate: 0.004 }]
+    source:
+      pricing:
+        url: https://www.openfort.io/pricing
+        body_sha256: 3275b5fb44180e305ea2b17ec63b9be9627f694555beafd89ed20f8bc0326074
+        verified_at: "2026-10-29"
+        poll: true
+
+  - slug: circle
+    name: Circle
+    url: https://www.circle.com/wallets
+    cohort: ranked
+    unit: Monthly active wallets
+    note: >-
+      A monthly active wallet is one that "has conducted an on-chain
+      transaction within the month period, such as initial wallet creation or
+      sending or receiving funds", so every user of these profiles counts.
+      Priced on the All-included plan (signing, indexing and broadcasting);
+      "for each tier that you fill, earn deeper discounts on the next batch".
+      The $0.01 rebate for wallets holding 10 USDC is left out.
+    meters:
+      mau: { per_user: 1 }
+    plans:
+      - id: all-included
+        name: All-included
+        monthly_usd: 0
+        confidence: verified
+        tiers:
+          mau:
+            - { up_to: 1000, rate: 0 }
+            - { up_to: 5000, rate: 0.050 }
+            - { up_to: 10000, rate: 0.047 }
+            - { up_to: 25000, rate: 0.040 }
+            - { up_to: 50000, rate: 0.035 }
+            - { up_to: 100000, rate: 0.030 }
+            - { up_to: 250000, rate: 0.025 }
+            - { rate: 0.020 }
+    source:
+      pricing:
+        url: https://www.circle.com/wallets
+        body_sha256: e1d3f810e9b33eb8154fe744f48c7b8030315d92ab15cb4f8a3c23a3e3fbad6f
+        verified_at: "2026-10-29"
+        poll: true
+
+  - slug: reown
+    name: Reown
+    url: https://reown.com
+    cohort: ranked
+    unit: Monthly active users
+    note: >-
+      Counts users authenticated with Reown Auth or holding an embedded wallet.
+      The free Starter plan cuts off at 500. Reown says exchanges, custodians,
+      payments, gaming and merchant platforms need a custom plan, so its
+      self-serve price is not offered for the trading profile.
+    profile_exclusions:
+      trading: >-
+        Reown's page says exchange, custodian and payments platforms need a
+        custom plan, which has no published price
+    meters:
+      mau: { per_user: 1 }
+    plans:
+      - id: starter
+        name: Starter
+        monthly_usd: 0
+        confidence: verified
+        caps: { mau: 500 }
+      - id: pro
+        name: Pro
+        monthly_usd: 89
+        confidence: verified
+        tiers:
+          mau: [{ up_to: 7500, rate: 0 }, { rate: 0.05 }]
+      - id: growth
+        name: Growth
+        monthly_usd: 350
+        confidence: verified
+        tiers:
+          mau: [{ up_to: 15000, rate: 0 }, { rate: 0.05 }]
+    source:
+      pricing:
+        url: https://reown.com/pricing
+        body_sha256: d24342c81c9a93d1a32352f32beba8b178f7f8a59a972f81c25fb50d45be5001
+        verified_at: "2026-10-29"
+        poll: true
+        # The exclusion of exchanges and payment platforms carries no
+        # number, so it is pinned by phrase.
+        pin_phrases: ["custom plan"]
+
+  - slug: zerodev
+    name: ZeroDev
+    url: https://zerodev.app
+    cohort: ranked
+    unit: Credits
+    note: >-
+      "Wallet signature: 10 credits, UserOp (bundler): 20 credits". A
+      transaction from a ZeroDev smart account is one signed UserOp, priced
+      here at 30 credits. The free Sandbox is testnet only, and no overage price
+      is published, so a month beyond the included credits is a quote.
+    meters:
+      credits: { per_tx: 30 }
+    plans:
+      - id: launch
+        name: Launch
+        monthly_usd: 69
+        confidence: uncertain
+        quote_above: { credits: 100000 }
+      - id: scale
+        name: Scale
+        monthly_usd: 399
+        confidence: uncertain
+        quote_above: { credits: 1000000 }
+    source:
+      pricing:
+        url: https://zerodev.app/pricing
+        body_sha256: ed3b0d32ed9d786aec31295546dd2a28288a4524d7086aaa084a1a74b66812bc
+        verified_at: "2026-10-29"
+        poll: true
+
+  - slug: crossmint
+    name: Crossmint
+    url: https://www.crossmint.com
+    cohort: ranked
+    unit: Monthly active wallets
+    note: >-
+      Free up to 1,000 monthly active wallets and 2,000 transactions. Beyond
+      that the plan card says overages "start at $0.025 per MAU" while the
+      plan table says "Custom, starts at $0.02 per MAW"; with two figures and
+      no self-serve paid plan, a bill above the free tier is a quote.
+    meters:
+      mau: { per_user: 1 }
+      transactions: { per_tx: 1 }
+    plans:
+      - id: free
+        name: Free
+        monthly_usd: 0
+        confidence: verified
+        quote_above: { mau: 1000, transactions: 2000 }
+    source:
+      pricing:
+        url: https://www.crossmint.com/pricing
+        body_sha256: 5ab59425dadae17656247d9bffbf9d27d2c8a61e3aaab3d7e020d6984cc03e87
+        verified_at: "2026-10-29"
+        poll: true
+
+  # Listed so the methodology can name them with a reason, never priced.
+  - slug: alchemy
+    name: Alchemy
+    url: https://www.alchemy.com
+    cohort: excluded
+    excluded_reason: >-
+      Smart Wallets bill compute units, and the compute units a signature costs
+      appear only in a separate calculator that still prices a compute unit at
+      $0.40 per million against $0.52 on the pricing page.
+  - slug: portal
+    name: Portal
+    url: https://www.portalhq.io
+    cohort: excluded
+    excluded_reason: >-
+      The pricing page shows operation and wallet allowances without a
+      readable plan price beside them.
+  - slug: dfns
+    name: Dfns
+    url: https://www.dfns.co
+    cohort: excluded
+    excluded_reason: Annual contracts only, with no overage price.
+  - slug: fireblocks
+    name: Fireblocks
+    url: https://www.fireblocks.com
+    cohort: excluded
+    excluded_reason: No published price.
+  - slug: sequence
+    name: Sequence
+    url: https://sequence.xyz
+    cohort: excluded
+    excluded_reason: No published price.
+  - slug: particle
+    name: Particle Network
+    url: https://particle.network
+    cohort: excluded
+    excluded_reason: No published price.

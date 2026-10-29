@@ -11,6 +11,7 @@ import { StaticLedger } from "@/components/static-ledger";
 import { OraclePairMatrix } from "@/components/oracle-pair-matrix";
 import { TerminalFillAudit } from "@/components/terminal-fill-audit";
 import { RpcCostSlider, RpcCostWinnersGrid } from "@/components/rpc-cost-slider";
+import { WalletCostCalculator, WalletCostGrid } from "@/components/wallet-cost-calculator";
 import { linkifyParts } from "@/lib/linkify";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { ChainHeadingsSummary } from "@/components/chain-headings-summary";
@@ -922,6 +923,39 @@ export default async function BenchmarkPage({
         </>
       )}
 
+      {/* The wallet-cost bench takes the same shape as 282: a profile switch
+          and an app-size slider over a committed curve, then the nine cells
+          the findings quote. Its generic body would offer a three-volume
+          ledger under two rows of selectors, which is the answer assembled
+          by hand. */}
+      {!isDraft && benchmark.slug === "wallet-cost" && (
+        <>
+          <WalletCostCalculator />
+          <WalletCostGrid />
+          {/* The findings quote the grid's cells, and on this bench they are
+              the only prose that reads across profiles and sizes. The
+              generic body that would carry them is not rendered here, so
+              they had no home on the page (SEO audit 2026-10-29). Every
+              dollar figure in them is checked against the curve by
+              `pnpm validate`. */}
+          {benchmark.findings.length > 0 && (
+            <section id="findings" className="mt-8 card-soft px-5 py-5 sm:px-7">
+              <h2 className="text-xl font-semibold tracking-tight text-ink">Findings</h2>
+              <ul className="mt-4 space-y-3 max-w-3xl">
+                {benchmark.findings.map((f, i) => (
+                  <li key={i} className="flex gap-2.5 text-sm leading-relaxed text-ink-soft">
+                    <span aria-hidden className="select-none text-ink-faint">
+                      &middot;
+                    </span>
+                    <span>{f}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+        </>
+      )}
+
       {/* Methodology - expanded by default so readers can verify the
           measurement before reading the numbers. Collapsible for repeat
           visitors who already know the harness. */}
@@ -991,7 +1025,7 @@ export default async function BenchmarkPage({
       {/* Body: chain tabs + summary + chart + ledger + share. Receives every
           chain variant pre-fetched server-side. flipping a tab swaps which
           variant is rendered, instantly, no network round-trip. */}
-      {!isDraft && benchmark.slug !== "rpc-cost" && (
+      {!isDraft && benchmark.slug !== "rpc-cost" && benchmark.slug !== "wallet-cost" && (
         <Suspense
           // The served HTML is this fallback (useSearchParams in the body
           // bails out of static rendering): the endpoint URLs must be in

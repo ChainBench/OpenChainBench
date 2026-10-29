@@ -553,7 +553,10 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       Base figures from before 2026-10-29 are smaller by up to the CDN
   //       tail the second source removes. Numbered for THIS branch: dev
   //       landed the same change as v113 on its own sequence.
-  ["bench-unfiltered-v105", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v106: bench 309 wallet-cost released, thirteen embedded wallet
+  //       vendors and the first bench in the Wallets category. Numbered for
+  //       THIS branch: dev carried it through v109 to v115.
+  ["bench-unfiltered-v106", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -816,7 +819,8 @@ const loadAllBenchmarksCached = unstable_cache(
   //       methodology no longer credits a histogram that drove nothing).
   // v98: lockstep with bench-unfiltered-v105 (bench 001's Base reference
   //       gains the sequencer's pendingLogs as a second source).
-  ["all-benchmarks-v98", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v99: lockstep with bench-unfiltered-v106 (bench 309 released).
+  ["all-benchmarks-v99", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -956,7 +960,9 @@ const loadBenchmarkFiltered = unstable_cache(
   // v45: lockstep with bench-unfiltered-v105. Bench 001 declares chain and
   //      region dimensions, so its reworded Base methodology is cached once
   //      per tab and a bump of the other two alone would correct only one.
-  ["bench-filters-v45", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v46: lockstep with bench-unfiltered-v106. Bench 309 declares kind
+  //      and bucket, so its tabs are filtered variants with their own entries.
+  ["bench-filters-v46", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 

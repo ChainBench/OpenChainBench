@@ -60,6 +60,7 @@ import { getTradingAppHistory } from "@/lib/trading-app-history";
 import { fetchBridgeHub } from "@/lib/bridge-hub-stats";
 import { withUtm } from "@/lib/utm";
 import { noFigureLabel, noRankLabel } from "@/lib/no-figure-label";
+import { WalletVendorPricing, walletVendorHeadline, fmtWalletBill } from "@/components/wallet-vendor-pricing";
 
 export const revalidate = 3600;
 
@@ -198,8 +199,22 @@ export async function generateMetadata({
   // ranks highest on, so the blue line answers "what is this" before it
   // answers "how does it rank". Brand queries carried 690 impressions and
   // zero clicks against the old generic title (SEO audit 2026-09-22).
+  // A product measured in several categories leads with the one it is
+  // measured most in, then its best rank there. Ranking first by rank alone
+  // let one embedded wallet rank (#2 of 10, bench 309) displace thirty-four
+  // RPC benches in /products/thirdweb's snippet, under a title that still
+  // said RPC because this pick and the description's disagreed (SEO audit
+  // 2026-10-29). Single-category products are unaffected.
+  const categoryWeight = new Map<string, number>();
+  for (const a of appearances) {
+    categoryWeight.set(a.benchmark.category, (categoryWeight.get(a.benchmark.category) ?? 0) + 1);
+  }
+  const byLead = (a: (typeof appearances)[number], b: (typeof appearances)[number]) =>
+    (categoryWeight.get(b.benchmark.category) ?? 0) - (categoryWeight.get(a.benchmark.category) ?? 0);
   const topCategory = [...appearances]
-    .sort((a, b) => a.rank - b.rank || b.totalRanked - a.totalRanked || a.benchmark.title.localeCompare(b.benchmark.title))[0]?.benchmark.category;
+    .filter((a) => a.rank > 0)
+    .sort((a, b) => byLead(a, b) || a.rank - b.rank || b.totalRanked - a.totalRanked || a.benchmark.title.localeCompare(b.benchmark.title))[0]?.benchmark.category
+    ?? appearances[0]?.benchmark.category;
   const categoryNoun = topCategory ? (CATEGORY_NOUN[topCategory] ?? topCategory.toLowerCase()) : "";
   let title = categoryNoun
     ? `${p.name}: ${categoryNoun} benchmark ${new Date().getUTCFullYear()}, live rank`
@@ -240,7 +255,7 @@ export async function generateMetadata({
     // Tie-break on the size of the field a rank was earned in (#1 of 6
     // before #1 of 2), then the title; the alphabetical break opened
     // PublicNode's snippet with Akash and Arbitrum Nova (audit 2026-09-21).
-    .sort((a, b) => a.rank - b.rank || b.totalRanked - a.totalRanked || a.benchmark.title.localeCompare(b.benchmark.title))
+    .sort((a, b) => byLead(a, b) || a.rank - b.rank || b.totalRanked - a.totalRanked || a.benchmark.title.localeCompare(b.benchmark.title))
     .slice(0, 2)
     // Always the denominator and, on a tier-dimensioned bench, the cohort:
     // "#1 on Arc RPC" read as the page's leader while dRPC leads the public
@@ -325,6 +340,29 @@ export async function generateMetadata({
       const bps = row.volume30d > 0 ? ((row.revenue30d / row.volume30d) * 10_000).toFixed(1) : "0";
       description = capSnippet(
         `${p.name}: ${fmtUnit(row.volume30d, "usd")} Hyperliquid volume, ${row.users30d.toLocaleString("en-US")} traders and ${fmtUnit(row.revenue30d, "usd")} in builder fees over 30 days, effective fee ${bps} bps, from the public builder fills feed.`,
+      );
+    }
+  }
+
+  // Embedded wallet vendors measured only by bench 309: the page is a
+  // pricing page and the title says so ("privy pricing" is the query), with
+  // the headline bill and its app size in the description. A vendor that
+  // also appears on other benches (thirdweb, Coinbase CDP) keeps its
+  // existing title: one wallet rank must not displace thirty RPC ones.
+  const walletOnly =
+    appearances.length > 0 && appearances.every((a) => a.benchmark.slug === "wallet-cost");
+  if (walletOnly) {
+    const rawSlug = appearances[0]?.result.slug ?? p.slug;
+    const head = walletVendorHeadline(rawSlug);
+    const long = `${p.name} pricing ${new Date().getUTCFullYear()}: monthly bill from 100 to 1M users`;
+    title = long.length <= 60 ? long : `${p.name} pricing ${new Date().getUTCFullYear()}: bill by app size`;
+    if (head && "usd" in head) {
+      description = capSnippet(
+        `${p.name} bills ${fmtWalletBill(head.usd)} a month for a 10,000-user consumer app (latest value), #${head.rank} of ${head.of} embedded wallet vendors priced. Its bill at 1,000 and 100,000 users, by usage profile.`,
+      );
+    } else if (head) {
+      description = capSnippet(
+        `${p.name} publishes no self-serve price for a 10,000-user consumer app, so it is not ranked there. Where it is priced, and what ${head.of} other embedded wallet vendors bill.`,
       );
     }
   }
@@ -546,7 +584,8 @@ export default async function ProviderPage({
   for (const a of rankedAppearances.slice(0, 4)) {
     const p50Str = fmtUnit(a.result.ms.p50, a.benchmark.unit);
     const rankStr = `ranks #${a.rank} of ${a.totalRanked}${cohortWord(a)}`;
-    topLines.push(`${shortBenchLabel(a.benchmark)} (${rankStr}, ${p50Str} p50)`);
+    const valueWord = a.benchmark.valueKind === "latest" ? "latest" : "p50";
+    topLines.push(`${shortBenchLabel(a.benchmark)} (${rankStr}, ${p50Str} ${valueWord})`);
   }
   const proseParts: string[] = [];
   if (topLines.length > 0) {
@@ -592,6 +631,8 @@ export default async function ProviderPage({
     region?: { value: string; label: string };
     /** Access cohort the rank was earned in (keyed RPC providers). */
     tier?: string;
+    /** The default slice of a bench ranked per profile, volume or plan. */
+    view?: string;
     benchSlug: string;
     providerSlug: string;
   };
@@ -699,10 +740,12 @@ export default async function ProviderPage({
     const isGlobalNumberOne = a.rank === 1;
     if (chainDims.length === 0) {
       if (isGlobalNumberOne) {
+        const view = a.benchmark.defaultView ?? "";
         badgeCards.push({
           key: a.tier ? `${benchSlug}-t-${a.tier}` : benchSlug,
           title,
           ...(a.tier ? { tier: a.tier } : {}),
+          ...(view ? { view } : {}),
           benchSlug,
           providerSlug,
         });
@@ -1271,7 +1314,9 @@ export default async function ProviderPage({
                       <>
                         <p className="font-sans tabular text-base text-ink">{value}</p>
                         <p className="font-sans text-[9px] uppercase tracking-[0.16em] text-ink-faint mt-0.5 font-medium">
-                          {valueWindowLabel(a.benchmark)}
+                          {a.benchmark.valueKind === "latest"
+                            ? "latest value"
+                            : valueWindowLabel(a.benchmark)}
                         </p>
                       </>
                     ) : (
@@ -1286,6 +1331,11 @@ export default async function ProviderPage({
           })}
         </ol>
       </section>
+
+      {(() => {
+        const w = sorted.find((a) => a.benchmark.slug === "wallet-cost");
+        return w ? <WalletVendorPricing slug={w.result.slug} name={p.name} /> : null;
+      })()}
 
       <RelatedProvidersSection providerSlug={p.slug} providerName={p.name} />
 
@@ -1317,8 +1367,11 @@ export default async function ProviderPage({
               const badgeUrl = `${SITE.url}${badgePath}`;
               const targetUrl = `${SITE.url}/benchmarks/${card.benchSlug}${qs}`;
               const tierLabel = card.tier ? (card.tier === "keyed" ? "private cohort" : `${card.tier} cohort`) : null;
-              const scopeSuffix = `${card.chain ? ` on ${card.chain.label}` : ""}${card.region ? ` from ${card.region.label}` : ""}${tierLabel ? `, ${tierLabel}` : ""}`;
-              const scopeLabels = [card.chain?.label, card.region?.label, tierLabel]
+              // Benches ranked per profile, volume or plan band earn a rank
+              // on one slice; the badge says which, or "#1" reads as overall.
+              const viewLabel = card.view ?? "";
+              const scopeSuffix = `${card.chain ? ` on ${card.chain.label}` : ""}${card.region ? ` from ${card.region.label}` : ""}${tierLabel ? `, ${tierLabel}` : ""}${viewLabel ? ` (${viewLabel})` : ""}`;
+              const scopeLabels = [card.chain?.label, card.region?.label, tierLabel, viewLabel || null]
                 .filter(Boolean)
                 .join(" · ");
               const cardTitle = scopeLabels

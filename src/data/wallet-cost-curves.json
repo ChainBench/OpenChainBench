@@ -1,0 +1,2543 @@
+{
+ "schema": 1,
+ "catalogueVersion": 1,
+ "catalogueAsOf": "2026-10-29",
+ "catalogueSha256": "adc789d32ddd88ad4cfbe4512f1b6a319511c0fb55173af755895aa61ca9e466",
+ "floor": 100,
+ "ceiling": 1000000,
+ "volumes": [
+  {
+   "id": "1k",
+   "mau": 1000
+  },
+  {
+   "id": "10k",
+   "mau": 10000
+  },
+  {
+   "id": "100k",
+   "mau": 100000
+  }
+ ],
+ "headline": {
+  "profile": "consumer",
+  "volume": "10k"
+ },
+ "planNames": {
+  "circle": {
+   "all-included": "All-included"
+  },
+  "coinbase-cdp": {
+   "payg": "Pay as you go"
+  },
+  "crossmint": {
+   "free": "Free"
+  },
+  "dynamic": {
+   "growth": "Growth"
+  },
+  "getpara": {
+   "free": "Free",
+   "growth": "Growth",
+   "scale": "Scale",
+   "starter": "Starter"
+  },
+  "magic": {
+   "developer": "Developer",
+   "startup": "Startup"
+  },
+  "openfort": {
+   "free": "Free",
+   "growth": "Growth",
+   "pro": "Pro",
+   "scale": "Scale"
+  },
+  "privy": {
+   "core": "Core",
+   "free": "Free",
+   "payg": "Pay as you go",
+   "scale": "Scale"
+  },
+  "reown": {
+   "growth": "Growth",
+   "pro": "Pro",
+   "starter": "Starter"
+  },
+  "thirdweb": {
+   "growth": "Growth",
+   "scale": "Scale"
+  },
+  "turnkey": {
+   "enterprise": "Enterprise",
+   "payg": "Pay as You Go",
+   "pro": "Pro"
+  },
+  "web3auth": {
+   "base": "Base",
+   "growth": "Growth",
+   "scale": "Scale"
+  },
+  "zerodev": {
+   "launch": "Launch",
+   "scale": "Scale"
+  }
+ },
+ "notes": {
+  "circle": "A monthly active wallet is one that \"has conducted an on-chain transaction within the month period, such as initial wallet creation or sending or receiving funds\", so every user of these profiles counts. Priced on the All-included plan (signing, indexing and broadcasting); \"for each tier that you fill, earn deeper discounts on the next batch\". The $0.01 rebate for wallets holding 10 USDC is left out.",
+  "coinbase-cdp": "Creating an account is 1 operation and sending a transaction (sign and broadcast) is 2. Reads are free. The same price applies to embedded and server wallets.",
+  "crossmint": "Free up to 1,000 monthly active wallets and 2,000 transactions. Beyond that the plan card says overages \"start at $0.025 per MAU\" while the plan table says \"Custom, starts at $0.02 per MAW\"; with two figures and no self-serve paid plan, a bill above the free tier is a quote.",
+  "dynamic": "No free production plan: the sandbox is free, live mode needs Growth. An MAU is a user who logs in that month or for whom an embedded wallet, pre-generated ones included, is created.",
+  "getpara": "No signature or transaction fee. The page says that at 100,000 MAU \"most teams move to\" an Enterprise plan; the published Scale overage still prices that volume, so it is used.",
+  "magic": "A wallet counts once a month when a user accesses it through the SDK. Every successful signing request counts, except the signatures needed to log in; 50,000 a month are included per team on every non-Enterprise plan.",
+  "openfort": "An operation is \"creating a wallet, signing, broadcasting, evaluating a policy, firing a webhook, or landing a funding deposit\"; a payment is two (sign, then broadcast) and sign-ins are free. Priced from that table: 1 per new wallet, 2 per transaction. Openfort's own simulator on the same page also charges 2 operations per active user, which would raise these bills.",
+  "privy": "Plan bounds are the cards' \"Up to\" figures (500, 2,500, and 10,000 for Scale, whose band reads 2,500 to 9,999), because pay-as-you-go starts only when usage \"exceeds 10,000 MAU or 50,000 signatures\". A Privy MAU is a user with an active session in the last 30 days.",
+  "reown": "Counts users authenticated with Reown Auth or holding an embedded wallet. The free Starter plan cuts off at 500. Reown says exchanges, custodians, payments, gaming and merchant platforms need a custom plan, so its self-serve price is not offered for the trading profile.",
+  "thirdweb": "A monthly active wallet is one \"where a user logs in during the billing period\". The first 1,000 are free and the per-wallet rate falls at 100k, 1M and 10M. The page draws these as bands without saying whether each rate applies to its own band or to the whole count; priced graduated, band by band, which is the higher reading above 100,000. Removing thirdweb branding needs Scale ($499).",
+  "turnkey": "Billed per signature; the wallet limit (1K on Pay as You Go, 2K on Pro) caps how many wallets an organisation holds, so an app with more users than that needs Enterprise, which has no published price. Wallets are taken as one per active user, a lower bound since wallets accumulate across months.",
+  "web3auth": "A monthly active wallet is \"a user who logs in or has an active session at least once in a given calendar month\".",
+  "zerodev": "\"Wallet signature: 10 credits, UserOp (bundler): 20 credits\". A transaction from a ZeroDev smart account is one signed UserOp, priced here at 30 credits. The free Sandbox is testnet only, and no overage price is published, so a month beyond the included credits is a quote."
+ },
+ "excluded": [
+  {
+   "slug": "alchemy",
+   "name": "Alchemy",
+   "reason": "Smart Wallets bill compute units, and the compute units a signature costs appear only in a separate calculator that still prices a compute unit at $0.40 per million against $0.52 on the pricing page."
+  },
+  {
+   "slug": "portal",
+   "name": "Portal",
+   "reason": "The pricing page shows operation and wallet allowances without a readable plan price beside them."
+  },
+  {
+   "slug": "dfns",
+   "name": "Dfns",
+   "reason": "Annual contracts only, with no overage price."
+  },
+  {
+   "slug": "fireblocks",
+   "name": "Fireblocks",
+   "reason": "No published price."
+  },
+  {
+   "slug": "sequence",
+   "name": "Sequence",
+   "reason": "No published price."
+  },
+  {
+   "slug": "particle",
+   "name": "Particle Network",
+   "reason": "No published price."
+  }
+ ],
+ "profiles": [
+  {
+   "id": "consumer",
+   "label": "Consumer app",
+   "txPerUser": 5,
+   "newUserShare": 0.2,
+   "providers": [
+    {
+     "slug": "privy",
+     "name": "Privy",
+     "unit": "Monthly active users plus signatures",
+     "points": [
+      {
+       "u": 100,
+       "usd": 0,
+       "plan": "free",
+       "next": "free"
+      },
+      {
+       "u": 500,
+       "usd": 0,
+       "plan": "free",
+       "next": "free"
+      },
+      {
+       "u": 500.000001,
+       "usd": 299,
+       "plan": "core",
+       "next": "core"
+      },
+      {
+       "u": 1000,
+       "usd": 299,
+       "plan": "core",
+       "next": "core"
+      },
+      {
+       "u": 2500,
+       "usd": 299,
+       "plan": "core",
+       "next": "core"
+      },
+      {
+       "u": 2500.000005,
+       "usd": 499,
+       "plan": "scale",
+       "next": "scale"
+      },
+      {
+       "u": 10000,
+       "usd": 499,
+       "plan": "scale",
+       "next": "scale",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 10000.00002,
+       "usd": 2000,
+       "plan": "payg",
+       "next": "payg",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 100000,
+       "usd": 11000,
+       "plan": "payg",
+       "next": "payg",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 1000000,
+       "usd": 101000,
+       "plan": "payg",
+       "unc": true
+      }
+     ]
+    },
+    {
+     "slug": "dynamic",
+     "name": "Dynamic",
+     "unit": "Monthly active users",
+     "points": [
+      {
+       "u": 100,
+       "usd": 249,
+       "plan": "growth",
+       "next": "growth"
+      },
+      {
+       "u": 1000,
+       "usd": 249,
+       "plan": "growth",
+       "next": "growth"
+      },
+      {
+       "u": 5000,
+       "usd": 249,
+       "plan": "growth",
+       "next": "growth"
+      },
+      {
+       "u": 10000,
+       "usd": 274,
+       "plan": "growth",
+       "next": "growth"
+      },
+      {
+       "u": 100000,
+       "usd": 724,
+       "plan": "growth",
+       "next": "growth"
+      },
+      {
+       "u": 1000000,
+       "usd": 5224,
+       "plan": "growth"
+      }
+     ]
+    },
+    {
+     "slug": "turnkey",
+     "name": "Turnkey",
+     "unit": "Signatures, with a cap on total wallets",
+     "points": [
+      {
+       "u": 100,
+       "usd": 47.5,
+       "plan": "payg",
+       "next": "payg"
+      },
+      {
+       "u": 202.99999999999997,
+       "usd": 99,
+       "plan": "payg",
+       "next": "pro",
+       "nextUnc": true
+      },
+      {
+       "u": 395.99999999999994,
+       "usd": 99,
+       "plan": "pro",
+       "next": "pro",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 1000,
+       "usd": 250,
+       "plan": "pro",
+       "next": "pro",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 1000.000002,
+       "usd": 250,
+       "plan": "pro",
+       "next": "pro",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 2000,
+       "usd": 500,
+       "plan": "pro",
+       "next": "pro",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 2000.000004,
+       "usd": null,
+       "why": "Pro stops at 2,000 wallets; Enterprise has no published price"
+      },
+      {
+       "u": 10000,
+       "usd": null,
+       "why": "Pro stops at 2,000 wallets; Enterprise has no published price"
+      },
+      {
+       "u": 100000,
+       "usd": null,
+       "why": "Pro stops at 2,000 wallets; Enterprise has no published price"
+      },
+      {
+       "u": 1000000,
+       "usd": null,
+       "why": "Pro stops at 2,000 wallets; Enterprise has no published price"
+      }
+     ]
+    },
+    {
+     "slug": "web3auth",
+     "name": "Web3Auth",
+     "unit": "Monthly active wallets",
+     "points": [
+      {
+       "u": 100,
+       "usd": 0,
+       "plan": "base",
+       "next": "base"
+      },
+      {
+       "u": 1000,
+       "usd": 0,
+       "plan": "base",
+       "next": "base"
+      },
+      {
+       "u": 2380,
+       "usd": 69,
+       "plan": "base",
+       "next": "growth"
+      },
+      {
+       "u": 3000,
+       "usd": 69,
+       "plan": "growth",
+       "next": "growth"
+      },
+      {
+       "u": 8980,
+       "usd": 338.1,
+       "plan": "growth",
+       "next": "growth"
+      },
+      {
+       "u": 10000,
+       "usd": 384,
+       "plan": "growth",
+       "next": "growth"
+      },
+      {
+       "u": 13000,
+       "usd": 519,
+       "plan": "growth",
+       "next": "scale"
+      },
+      {
+       "u": 100000,
+       "usd": 3999,
+       "plan": "scale",
+       "next": "scale"
+      },
+      {
+       "u": 1000000,
+       "usd": 39999,
+       "plan": "scale"
+      }
+     ]
+    },
+    {
+     "slug": "magic",
+     "name": "Magic",
+     "unit": "Monthly active wallets plus signatures",
+     "points": [
+      {
+       "u": 100,
+       "usd": 0,
+       "plan": "developer",
+       "next": "developer"
+      },
+      {
+       "u": 1000,
+       "usd": 0,
+       "plan": "developer",
+       "next": "developer"
+      },
+      {
+       "u": 2500,
+       "usd": 67.5,
+       "plan": "developer",
+       "next": "developer"
+      },
+      {
+       "u": 8800,
+       "usd": 351,
+       "plan": "developer",
+       "next": "startup"
+      },
+      {
+       "u": 10000,
+       "usd": 399,
+       "plan": "startup",
+       "next": "startup"
+      },
+      {
+       "u": 100000,
+       "usd": 6249,
+       "plan": "startup",
+       "next": "startup"
+      },
+      {
+       "u": 1000000,
+       "usd": 64749,
+       "plan": "startup"
+      }
+     ]
+    },
+    {
+     "slug": "getpara",
+     "name": "Para",
+     "unit": "Monthly active users",
+     "points": [
+      {
+       "u": 100,
+       "usd": 0,
+       "plan": "free",
+       "next": "free"
+      },
+      {
+       "u": 1000,
+       "usd": 0,
+       "plan": "free",
+       "next": "free"
+      },
+      {
+       "u": 1200,
+       "usd": 0,
+       "plan": "free",
+       "next": "free"
+      },
+      {
+       "u": 1200.0000023999999,
+       "usd": 200,
+       "plan": "starter",
+       "next": "starter"
+      },
+      {
+       "u": 2500,
+       "usd": 200,
+       "plan": "starter",
+       "next": "starter"
+      },
+      {
+       "u": 7500,
+       "usd": 500,
+       "plan": "starter",
+       "next": "growth"
+      },
+      {
+       "u": 10000,
+       "usd": 500,
+       "plan": "growth",
+       "next": "growth"
+      },
+      {
+       "u": 15833.333333333334,
+       "usd": 791.67,
+       "plan": "growth",
+       "next": "growth"
+      },
+      {
+       "u": 20000,
+       "usd": 1000,
+       "plan": "growth",
+       "next": "scale"
+      },
+      {
+       "u": 25000,
+       "usd": 1000,
+       "plan": "scale",
+       "next": "scale"
+      },
+      {
+       "u": 100000,
+       "usd": 4000,
+       "plan": "scale",
+       "next": "scale"
+      },
+      {
+       "u": 1000000,
+       "usd": 40000,
+       "plan": "scale"
+      }
+     ]
+    },
+    {
+     "slug": "coinbase-cdp",
+     "name": "Coinbase CDP",
+     "unit": "Wallet operations",
+     "points": [
+      {
+       "u": 100,
+       "usd": 0,
+       "plan": "payg",
+       "next": "payg"
+      },
+      {
+       "u": 490.1960784313726,
+       "usd": 0,
+       "plan": "payg",
+       "next": "payg"
+      },
+      {
+       "u": 1000,
+       "usd": 26,
+       "plan": "payg",
+       "next": "payg"
+      },
+      {
+       "u": 10000,
+       "usd": 485,
+       "plan": "payg",
+       "next": "payg"
+      },
+      {
+       "u": 100000,
+       "usd": 5075,
+       "plan": "payg",
+       "next": "payg"
+      },
+      {
+       "u": 1000000,
+       "usd": 50975,
+       "plan": "payg"
+      }
+     ]
+    },
+    {
+     "slug": "thirdweb",
+     "name": "thirdweb",
+     "unit": "Monthly active wallets",
+     "points": [
+      {
+       "u": 100,
+       "usd": 99,
+       "plan": "growth",
+       "next": "growth"
+      },
+      {
+       "u": 1000,
+       "usd": 99,
+       "plan": "growth",
+       "next": "growth"
+      },
+      {
+       "u": 10000,
+       "usd": 234,
+       "plan": "growth",
+       "next": "growth"
+      },
+      {
+       "u": 100000,
+       "usd": 1584,
+       "plan": "growth",
+       "next": "growth",
+       "nextUnc": true
+      },
+      {
+       "u": 1000000,
+       "usd": 10584,
+       "plan": "growth",
+       "unc": true
+      }
+     ]
+    },
+    {
+     "slug": "openfort",
+     "name": "Openfort",
+     "unit": "Wallet operations",
+     "points": [
+      {
+       "u": 100,
+       "usd": 0,
+       "plan": "free",
+       "next": "free",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 196.07843137254903,
+       "usd": 0,
+       "plan": "free",
+       "next": "free",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 1000,
+       "usd": 82,
+       "plan": "free",
+       "next": "free",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 1166.6666666666667,
+       "usd": 99,
+       "plan": "free",
+       "next": "growth",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 2450.9803921568628,
+       "usd": 99,
+       "plan": "growth",
+       "next": "growth",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 2637.2549019607845,
+       "usd": 114.2,
+       "plan": "growth",
+       "next": "growth",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 4289.21568627451,
+       "usd": 249,
+       "plan": "growth",
+       "next": "pro",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 6068.6274509803925,
+       "usd": 249,
+       "plan": "pro",
+       "next": "pro",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 8578.43137254902,
+       "usd": 249,
+       "plan": "pro",
+       "next": "pro",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 9803.921568627451,
+       "usd": 249,
+       "plan": "pro",
+       "next": "pro",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 10000,
+       "usd": 261,
+       "plan": "pro",
+       "next": "pro",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 15522.875816993464,
+       "usd": 599,
+       "plan": "pro",
+       "next": "scale",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 49019.60784313726,
+       "usd": 599,
+       "plan": "scale",
+       "next": "scale",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 100000,
+       "usd": 2679,
+       "plan": "scale",
+       "next": "scale",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 1000000,
+       "usd": 39399,
+       "plan": "scale",
+       "unc": true
+      }
+     ]
+    },
+    {
+     "slug": "circle",
+     "name": "Circle",
+     "unit": "Monthly active wallets",
+     "points": [
+      {
+       "u": 100,
+       "usd": 0,
+       "plan": "all-included",
+       "next": "all-included"
+      },
+      {
+       "u": 1000,
+       "usd": 0,
+       "plan": "all-included",
+       "next": "all-included"
+      },
+      {
+       "u": 5000,
+       "usd": 200,
+       "plan": "all-included",
+       "next": "all-included"
+      },
+      {
+       "u": 10000,
+       "usd": 435,
+       "plan": "all-included",
+       "next": "all-included"
+      },
+      {
+       "u": 25000,
+       "usd": 1035,
+       "plan": "all-included",
+       "next": "all-included"
+      },
+      {
+       "u": 50000,
+       "usd": 1910,
+       "plan": "all-included",
+       "next": "all-included"
+      },
+      {
+       "u": 100000,
+       "usd": 3410,
+       "plan": "all-included",
+       "next": "all-included"
+      },
+      {
+       "u": 250000,
+       "usd": 7160,
+       "plan": "all-included",
+       "next": "all-included"
+      },
+      {
+       "u": 1000000,
+       "usd": 22160,
+       "plan": "all-included"
+      }
+     ]
+    },
+    {
+     "slug": "reown",
+     "name": "Reown",
+     "unit": "Monthly active users",
+     "points": [
+      {
+       "u": 100,
+       "usd": 0,
+       "plan": "starter",
+       "next": "starter"
+      },
+      {
+       "u": 500,
+       "usd": 0,
+       "plan": "starter",
+       "next": "starter"
+      },
+      {
+       "u": 500.000001,
+       "usd": 89,
+       "plan": "pro",
+       "next": "pro"
+      },
+      {
+       "u": 1000,
+       "usd": 89,
+       "plan": "pro",
+       "next": "pro"
+      },
+      {
+       "u": 7500,
+       "usd": 89,
+       "plan": "pro",
+       "next": "pro"
+      },
+      {
+       "u": 10000,
+       "usd": 214,
+       "plan": "pro",
+       "next": "pro"
+      },
+      {
+       "u": 12720,
+       "usd": 350,
+       "plan": "pro",
+       "next": "growth"
+      },
+      {
+       "u": 15000,
+       "usd": 350,
+       "plan": "growth",
+       "next": "growth"
+      },
+      {
+       "u": 100000,
+       "usd": 4600,
+       "plan": "growth",
+       "next": "growth"
+      },
+      {
+       "u": 1000000,
+       "usd": 49600,
+       "plan": "growth"
+      }
+     ]
+    },
+    {
+     "slug": "zerodev",
+     "name": "ZeroDev",
+     "unit": "Credits",
+     "points": [
+      {
+       "u": 100,
+       "usd": 69,
+       "plan": "launch",
+       "next": "launch",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 666.6666666666666,
+       "usd": 69,
+       "plan": "launch",
+       "next": "launch",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 666.666668,
+       "usd": 399,
+       "plan": "scale",
+       "next": "scale",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 1000,
+       "usd": 399,
+       "plan": "scale",
+       "next": "scale",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 6666.666666666667,
+       "usd": 399,
+       "plan": "scale",
+       "next": "scale",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 6666.66668,
+       "usd": null,
+       "why": "above 1,000,000 credits a month on Scale the price is on request"
+      },
+      {
+       "u": 10000,
+       "usd": null,
+       "why": "above 1,000,000 credits a month on Scale the price is on request"
+      },
+      {
+       "u": 100000,
+       "usd": null,
+       "why": "above 1,000,000 credits a month on Scale the price is on request"
+      },
+      {
+       "u": 1000000,
+       "usd": null,
+       "why": "above 1,000,000 credits a month on Scale the price is on request"
+      }
+     ]
+    },
+    {
+     "slug": "crossmint",
+     "name": "Crossmint",
+     "unit": "Monthly active wallets",
+     "points": [
+      {
+       "u": 100,
+       "usd": 0,
+       "plan": "free",
+       "next": "free"
+      },
+      {
+       "u": 400,
+       "usd": 0,
+       "plan": "free",
+       "next": "free"
+      },
+      {
+       "u": 400.00000079999995,
+       "usd": null,
+       "why": "above 2,000 transactions a month on Free the price is on request"
+      },
+      {
+       "u": 1000,
+       "usd": null,
+       "why": "above 2,000 transactions a month on Free the price is on request"
+      },
+      {
+       "u": 1000.000002,
+       "usd": null,
+       "why": "above 1,000 monthly active users on Free the price is on request"
+      },
+      {
+       "u": 10000,
+       "usd": null,
+       "why": "above 1,000 monthly active users on Free the price is on request"
+      },
+      {
+       "u": 100000,
+       "usd": null,
+       "why": "above 1,000 monthly active users on Free the price is on request"
+      },
+      {
+       "u": 1000000,
+       "usd": null,
+       "why": "above 1,000 monthly active users on Free the price is on request"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "active",
+   "label": "Active app",
+   "txPerUser": 25,
+   "newUserShare": 0.1,
+   "providers": [
+    {
+     "slug": "privy",
+     "name": "Privy",
+     "unit": "Monthly active users plus signatures",
+     "points": [
+      {
+       "u": 100,
+       "usd": 0,
+       "plan": "free",
+       "next": "free"
+      },
+      {
+       "u": 500,
+       "usd": 0,
+       "plan": "free",
+       "next": "free"
+      },
+      {
+       "u": 500.000001,
+       "usd": 299,
+       "plan": "core",
+       "next": "core"
+      },
+      {
+       "u": 1000,
+       "usd": 299,
+       "plan": "core",
+       "next": "core"
+      },
+      {
+       "u": 2000,
+       "usd": 299,
+       "plan": "core",
+       "next": "core"
+      },
+      {
+       "u": 2000.000004,
+       "usd": 2000,
+       "plan": "payg",
+       "next": "payg",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 2500,
+       "usd": 2125,
+       "plan": "payg",
+       "next": "payg",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 2500.000005,
+       "usd": 2125,
+       "plan": "payg",
+       "next": "payg",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 10000,
+       "usd": 4000,
+       "plan": "payg",
+       "next": "payg",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 10000.00002,
+       "usd": 4000,
+       "plan": "payg",
+       "next": "payg",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 100000,
+       "usd": 31000,
+       "plan": "payg",
+       "next": "payg",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 1000000,
+       "usd": 301000,
+       "plan": "payg",
+       "unc": true
+      }
+     ]
+    },
+    {
+     "slug": "dynamic",
+     "name": "Dynamic",
+     "unit": "Monthly active users",
+     "points": [
+      {
+       "u": 100,
+       "usd": 249,
+       "plan": "growth",
+       "next": "growth"
+      },
+      {
+       "u": 1000,
+       "usd": 249,
+       "plan": "growth",
+       "next": "growth"
+      },
+      {
+       "u": 5000,
+       "usd": 249,
+       "plan": "growth",
+       "next": "growth"
+      },
+      {
+       "u": 10000,
+       "usd": 274,
+       "plan": "growth",
+       "next": "growth"
+      },
+      {
+       "u": 100000,
+       "usd": 724,
+       "plan": "growth",
+       "next": "growth"
+      },
+      {
+       "u": 1000000,
+       "usd": 5224,
+       "plan": "growth"
+      }
+     ]
+    },
+    {
+     "slug": "turnkey",
+     "name": "Turnkey",
+     "unit": "Signatures, with a cap on total wallets",
+     "points": [
+      {
+       "u": 100,
+       "usd": 125,
+       "plan": "pro",
+       "next": "pro",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 1000,
+       "usd": 1250,
+       "plan": "pro",
+       "next": "pro",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 1000.000002,
+       "usd": 1250,
+       "plan": "pro",
+       "next": "pro",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 2000,
+       "usd": 2500,
+       "plan": "pro",
+       "next": "pro",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 2000.000004,
+       "usd": null,
+       "why": "Pro stops at 2,000 wallets; Enterprise has no published price"
+      },
+      {
+       "u": 10000,
+       "usd": null,
+       "why": "Pro stops at 2,000 wallets; Enterprise has no published price"
+      },
+      {
+       "u": 100000,
+       "usd": null,
+       "why": "Pro stops at 2,000 wallets; Enterprise has no published price"
+      },
+      {
+       "u": 1000000,
+       "usd": null,
+       "why": "Pro stops at 2,000 wallets; Enterprise has no published price"
+      }
+     ]
+    },
+    {
+     "slug": "web3auth",
+     "name": "Web3Auth",
+     "unit": "Monthly active wallets",
+     "points": [
+      {
+       "u": 100,
+       "usd": 0,
+       "plan": "base",
+       "next": "base"
+      },
+      {
+       "u": 1000,
+       "usd": 0,
+       "plan": "base",
+       "next": "base"
+      },
+      {
+       "u": 2380,
+       "usd": 69,
+       "plan": "base",
+       "next": "growth"
+      },
+      {
+       "u": 3000,
+       "usd": 69,
+       "plan": "growth",
+       "next": "growth"
+      },
+      {
+       "u": 8980,
+       "usd": 338.1,
+       "plan": "growth",
+       "next": "growth"
+      },
+      {
+       "u": 10000,
+       "usd": 384,
+       "plan": "growth",
+       "next": "growth"
+      },
+      {
+       "u": 13000,
+       "usd": 519,
+       "plan": "growth",
+       "next": "scale"
+      },
+      {
+       "u": 100000,
+       "usd": 3999,
+       "plan": "scale",
+       "next": "scale"
+      },
+      {
+       "u": 1000000,
+       "usd": 39999,
+       "plan": "scale"
+      }
+     ]
+    },
+    {
+     "slug": "magic",
+     "name": "Magic",
+     "unit": "Monthly active wallets plus signatures",
+     "points": [
+      {
+       "u": 100,
+       "usd": 0,
+       "plan": "developer",
+       "next": "developer"
+      },
+      {
+       "u": 1000,
+       "usd": 0,
+       "plan": "developer",
+       "next": "developer"
+      },
+      {
+       "u": 2000,
+       "usd": 45,
+       "plan": "developer",
+       "next": "developer"
+      },
+      {
+       "u": 2500,
+       "usd": 130,
+       "plan": "developer",
+       "next": "developer"
+      },
+      {
+       "u": 8800,
+       "usd": 1201,
+       "plan": "developer",
+       "next": "startup"
+      },
+      {
+       "u": 10000,
+       "usd": 1399,
+       "plan": "startup",
+       "next": "startup"
+      },
+      {
+       "u": 100000,
+       "usd": 16249,
+       "plan": "startup",
+       "next": "startup"
+      },
+      {
+       "u": 1000000,
+       "usd": 164749,
+       "plan": "startup"
+      }
+     ]
+    },
+    {
+     "slug": "getpara",
+     "name": "Para",
+     "unit": "Monthly active users",
+     "points": [
+      {
+       "u": 100,
+       "usd": 0,
+       "plan": "free",
+       "next": "free"
+      },
+      {
+       "u": 1000,
+       "usd": 0,
+       "plan": "free",
+       "next": "free"
+      },
+      {
+       "u": 1200,
+       "usd": 0,
+       "plan": "free",
+       "next": "free"
+      },
+      {
+       "u": 1200.0000023999999,
+       "usd": 200,
+       "plan": "starter",
+       "next": "starter"
+      },
+      {
+       "u": 2500,
+       "usd": 200,
+       "plan": "starter",
+       "next": "starter"
+      },
+      {
+       "u": 7500,
+       "usd": 500,
+       "plan": "starter",
+       "next": "growth"
+      },
+      {
+       "u": 10000,
+       "usd": 500,
+       "plan": "growth",
+       "next": "growth"
+      },
+      {
+       "u": 15833.333333333334,
+       "usd": 791.67,
+       "plan": "growth",
+       "next": "growth"
+      },
+      {
+       "u": 20000,
+       "usd": 1000,
+       "plan": "growth",
+       "next": "scale"
+      },
+      {
+       "u": 25000,
+       "usd": 1000,
+       "plan": "scale",
+       "next": "scale"
+      },
+      {
+       "u": 100000,
+       "usd": 4000,
+       "plan": "scale",
+       "next": "scale"
+      },
+      {
+       "u": 1000000,
+       "usd": 40000,
+       "plan": "scale"
+      }
+     ]
+    },
+    {
+     "slug": "coinbase-cdp",
+     "name": "Coinbase CDP",
+     "unit": "Wallet operations",
+     "points": [
+      {
+       "u": 100,
+       "usd": 0.05,
+       "plan": "payg",
+       "next": "payg"
+      },
+      {
+       "u": 1000,
+       "usd": 225.5,
+       "plan": "payg",
+       "next": "payg"
+      },
+      {
+       "u": 10000,
+       "usd": 2480,
+       "plan": "payg",
+       "next": "payg"
+      },
+      {
+       "u": 100000,
+       "usd": 25025,
+       "plan": "payg",
+       "next": "payg"
+      },
+      {
+       "u": 1000000,
+       "usd": 250475,
+       "plan": "payg"
+      }
+     ]
+    },
+    {
+     "slug": "thirdweb",
+     "name": "thirdweb",
+     "unit": "Monthly active wallets",
+     "points": [
+      {
+       "u": 100,
+       "usd": 99,
+       "plan": "growth",
+       "next": "growth"
+      },
+      {
+       "u": 1000,
+       "usd": 99,
+       "plan": "growth",
+       "next": "growth"
+      },
+      {
+       "u": 10000,
+       "usd": 234,
+       "plan": "growth",
+       "next": "growth"
+      },
+      {
+       "u": 100000,
+       "usd": 1584,
+       "plan": "growth",
+       "next": "growth",
+       "nextUnc": true
+      },
+      {
+       "u": 1000000,
+       "usd": 10584,
+       "plan": "growth",
+       "unc": true
+      }
+     ]
+    },
+    {
+     "slug": "openfort",
+     "name": "Openfort",
+     "unit": "Wallet operations",
+     "points": [
+      {
+       "u": 100,
+       "usd": 30.1,
+       "plan": "free",
+       "next": "free",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 237.5249500998004,
+       "usd": 99,
+       "plan": "free",
+       "next": "growth",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 499.001996007984,
+       "usd": 99,
+       "plan": "growth",
+       "next": "growth",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 536.9261477045908,
+       "usd": 114.2,
+       "plan": "growth",
+       "next": "growth",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 873.253493013972,
+       "usd": 249,
+       "plan": "growth",
+       "next": "pro",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 1000,
+       "usd": 249,
+       "plan": "pro",
+       "next": "pro",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 1235.5289421157684,
+       "usd": 249,
+       "plan": "pro",
+       "next": "pro",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 1746.506986027944,
+       "usd": 249,
+       "plan": "pro",
+       "next": "pro",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 1996.007984031936,
+       "usd": 249,
+       "plan": "pro",
+       "next": "pro",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 3160.3459747172324,
+       "usd": 599,
+       "plan": "pro",
+       "next": "scale",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 9980.039920159681,
+       "usd": 599,
+       "plan": "scale",
+       "next": "scale",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 10000,
+       "usd": 603,
+       "plan": "scale",
+       "next": "scale",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 100000,
+       "usd": 18639,
+       "plan": "scale",
+       "next": "scale",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 1000000,
+       "usd": 198999,
+       "plan": "scale",
+       "unc": true
+      }
+     ]
+    },
+    {
+     "slug": "circle",
+     "name": "Circle",
+     "unit": "Monthly active wallets",
+     "points": [
+      {
+       "u": 100,
+       "usd": 0,
+       "plan": "all-included",
+       "next": "all-included"
+      },
+      {
+       "u": 1000,
+       "usd": 0,
+       "plan": "all-included",
+       "next": "all-included"
+      },
+      {
+       "u": 5000,
+       "usd": 200,
+       "plan": "all-included",
+       "next": "all-included"
+      },
+      {
+       "u": 10000,
+       "usd": 435,
+       "plan": "all-included",
+       "next": "all-included"
+      },
+      {
+       "u": 25000,
+       "usd": 1035,
+       "plan": "all-included",
+       "next": "all-included"
+      },
+      {
+       "u": 50000,
+       "usd": 1910,
+       "plan": "all-included",
+       "next": "all-included"
+      },
+      {
+       "u": 100000,
+       "usd": 3410,
+       "plan": "all-included",
+       "next": "all-included"
+      },
+      {
+       "u": 250000,
+       "usd": 7160,
+       "plan": "all-included",
+       "next": "all-included"
+      },
+      {
+       "u": 1000000,
+       "usd": 22160,
+       "plan": "all-included"
+      }
+     ]
+    },
+    {
+     "slug": "reown",
+     "name": "Reown",
+     "unit": "Monthly active users",
+     "points": [
+      {
+       "u": 100,
+       "usd": 0,
+       "plan": "starter",
+       "next": "starter"
+      },
+      {
+       "u": 500,
+       "usd": 0,
+       "plan": "starter",
+       "next": "starter"
+      },
+      {
+       "u": 500.000001,
+       "usd": 89,
+       "plan": "pro",
+       "next": "pro"
+      },
+      {
+       "u": 1000,
+       "usd": 89,
+       "plan": "pro",
+       "next": "pro"
+      },
+      {
+       "u": 7500,
+       "usd": 89,
+       "plan": "pro",
+       "next": "pro"
+      },
+      {
+       "u": 10000,
+       "usd": 214,
+       "plan": "pro",
+       "next": "pro"
+      },
+      {
+       "u": 12720,
+       "usd": 350,
+       "plan": "pro",
+       "next": "growth"
+      },
+      {
+       "u": 15000,
+       "usd": 350,
+       "plan": "growth",
+       "next": "growth"
+      },
+      {
+       "u": 100000,
+       "usd": 4600,
+       "plan": "growth",
+       "next": "growth"
+      },
+      {
+       "u": 1000000,
+       "usd": 49600,
+       "plan": "growth"
+      }
+     ]
+    },
+    {
+     "slug": "zerodev",
+     "name": "ZeroDev",
+     "unit": "Credits",
+     "points": [
+      {
+       "u": 100,
+       "usd": 69,
+       "plan": "launch",
+       "next": "launch",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 133.33333333333334,
+       "usd": 69,
+       "plan": "launch",
+       "next": "launch",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 133.3333336,
+       "usd": 399,
+       "plan": "scale",
+       "next": "scale",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 1000,
+       "usd": 399,
+       "plan": "scale",
+       "next": "scale",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 1333.3333333333333,
+       "usd": 399,
+       "plan": "scale",
+       "next": "scale",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 1333.333336,
+       "usd": null,
+       "why": "above 1,000,000 credits a month on Scale the price is on request"
+      },
+      {
+       "u": 10000,
+       "usd": null,
+       "why": "above 1,000,000 credits a month on Scale the price is on request"
+      },
+      {
+       "u": 100000,
+       "usd": null,
+       "why": "above 1,000,000 credits a month on Scale the price is on request"
+      },
+      {
+       "u": 1000000,
+       "usd": null,
+       "why": "above 1,000,000 credits a month on Scale the price is on request"
+      }
+     ]
+    },
+    {
+     "slug": "crossmint",
+     "name": "Crossmint",
+     "unit": "Monthly active wallets",
+     "points": [
+      {
+       "u": 100,
+       "usd": null,
+       "why": "above 2,000 transactions a month on Free the price is on request"
+      },
+      {
+       "u": 1000,
+       "usd": null,
+       "why": "above 2,000 transactions a month on Free the price is on request"
+      },
+      {
+       "u": 1000.000002,
+       "usd": null,
+       "why": "above 1,000 monthly active users on Free the price is on request"
+      },
+      {
+       "u": 10000,
+       "usd": null,
+       "why": "above 1,000 monthly active users on Free the price is on request"
+      },
+      {
+       "u": 100000,
+       "usd": null,
+       "why": "above 1,000 monthly active users on Free the price is on request"
+      },
+      {
+       "u": 1000000,
+       "usd": null,
+       "why": "above 1,000 monthly active users on Free the price is on request"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "trading",
+   "label": "Trading app",
+   "txPerUser": 100,
+   "newUserShare": 0.05,
+   "providers": [
+    {
+     "slug": "privy",
+     "name": "Privy",
+     "unit": "Monthly active users plus signatures",
+     "points": [
+      {
+       "u": 100,
+       "usd": 0,
+       "plan": "free",
+       "next": "free"
+      },
+      {
+       "u": 500,
+       "usd": 0,
+       "plan": "free",
+       "next": "free"
+      },
+      {
+       "u": 500.000001,
+       "usd": 2000,
+       "plan": "payg",
+       "next": "payg",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 1000,
+       "usd": 2500,
+       "plan": "payg",
+       "next": "payg",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 2500,
+       "usd": 4000,
+       "plan": "payg",
+       "next": "payg",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 2500.000005,
+       "usd": 4000,
+       "plan": "payg",
+       "next": "payg",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 10000,
+       "usd": 11500,
+       "plan": "payg",
+       "next": "payg",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 10000.00002,
+       "usd": 11500,
+       "plan": "payg",
+       "next": "payg",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 100000,
+       "usd": 106000,
+       "plan": "payg",
+       "next": "payg",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 1000000,
+       "usd": 1051000,
+       "plan": "payg",
+       "unc": true
+      }
+     ]
+    },
+    {
+     "slug": "dynamic",
+     "name": "Dynamic",
+     "unit": "Monthly active users",
+     "points": [
+      {
+       "u": 100,
+       "usd": 249,
+       "plan": "growth",
+       "next": "growth"
+      },
+      {
+       "u": 1000,
+       "usd": 249,
+       "plan": "growth",
+       "next": "growth"
+      },
+      {
+       "u": 5000,
+       "usd": 249,
+       "plan": "growth",
+       "next": "growth"
+      },
+      {
+       "u": 10000,
+       "usd": 274,
+       "plan": "growth",
+       "next": "growth"
+      },
+      {
+       "u": 100000,
+       "usd": 724,
+       "plan": "growth",
+       "next": "growth"
+      },
+      {
+       "u": 1000000,
+       "usd": 5224,
+       "plan": "growth"
+      }
+     ]
+    },
+    {
+     "slug": "turnkey",
+     "name": "Turnkey",
+     "unit": "Signatures, with a cap on total wallets",
+     "points": [
+      {
+       "u": 100,
+       "usd": 500,
+       "plan": "pro",
+       "next": "pro",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 1000,
+       "usd": 5000,
+       "plan": "pro",
+       "next": "pro",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 1000.000002,
+       "usd": 5000,
+       "plan": "pro",
+       "next": "pro",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 2000,
+       "usd": 10000,
+       "plan": "pro",
+       "next": "pro",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 2000.000004,
+       "usd": null,
+       "why": "Pro stops at 2,000 wallets; Enterprise has no published price"
+      },
+      {
+       "u": 10000,
+       "usd": null,
+       "why": "Pro stops at 2,000 wallets; Enterprise has no published price"
+      },
+      {
+       "u": 100000,
+       "usd": null,
+       "why": "Pro stops at 2,000 wallets; Enterprise has no published price"
+      },
+      {
+       "u": 1000000,
+       "usd": null,
+       "why": "Pro stops at 2,000 wallets; Enterprise has no published price"
+      }
+     ]
+    },
+    {
+     "slug": "web3auth",
+     "name": "Web3Auth",
+     "unit": "Monthly active wallets",
+     "points": [
+      {
+       "u": 100,
+       "usd": 0,
+       "plan": "base",
+       "next": "base"
+      },
+      {
+       "u": 1000,
+       "usd": 0,
+       "plan": "base",
+       "next": "base"
+      },
+      {
+       "u": 2380,
+       "usd": 69,
+       "plan": "base",
+       "next": "growth"
+      },
+      {
+       "u": 3000,
+       "usd": 69,
+       "plan": "growth",
+       "next": "growth"
+      },
+      {
+       "u": 8980,
+       "usd": 338.1,
+       "plan": "growth",
+       "next": "growth"
+      },
+      {
+       "u": 10000,
+       "usd": 384,
+       "plan": "growth",
+       "next": "growth"
+      },
+      {
+       "u": 13000,
+       "usd": 519,
+       "plan": "growth",
+       "next": "scale"
+      },
+      {
+       "u": 100000,
+       "usd": 3999,
+       "plan": "scale",
+       "next": "scale"
+      },
+      {
+       "u": 1000000,
+       "usd": 39999,
+       "plan": "scale"
+      }
+     ]
+    },
+    {
+     "slug": "magic",
+     "name": "Magic",
+     "unit": "Monthly active wallets plus signatures",
+     "points": [
+      {
+       "u": 100,
+       "usd": 0,
+       "plan": "developer",
+       "next": "developer"
+      },
+      {
+       "u": 500,
+       "usd": 0,
+       "plan": "developer",
+       "next": "developer"
+      },
+      {
+       "u": 1000,
+       "usd": 250,
+       "plan": "developer",
+       "next": "developer"
+      },
+      {
+       "u": 2500,
+       "usd": 1067.5,
+       "plan": "developer",
+       "next": "developer"
+      },
+      {
+       "u": 8800,
+       "usd": 4501,
+       "plan": "developer",
+       "next": "startup"
+      },
+      {
+       "u": 10000,
+       "usd": 5149,
+       "plan": "startup",
+       "next": "startup"
+      },
+      {
+       "u": 100000,
+       "usd": 53749,
+       "plan": "startup",
+       "next": "startup"
+      },
+      {
+       "u": 1000000,
+       "usd": 539749,
+       "plan": "startup"
+      }
+     ]
+    },
+    {
+     "slug": "getpara",
+     "name": "Para",
+     "unit": "Monthly active users",
+     "points": [
+      {
+       "u": 100,
+       "usd": 0,
+       "plan": "free",
+       "next": "free"
+      },
+      {
+       "u": 1000,
+       "usd": 0,
+       "plan": "free",
+       "next": "free"
+      },
+      {
+       "u": 1200,
+       "usd": 0,
+       "plan": "free",
+       "next": "free"
+      },
+      {
+       "u": 1200.0000023999999,
+       "usd": 200,
+       "plan": "starter",
+       "next": "starter"
+      },
+      {
+       "u": 2500,
+       "usd": 200,
+       "plan": "starter",
+       "next": "starter"
+      },
+      {
+       "u": 7500,
+       "usd": 500,
+       "plan": "starter",
+       "next": "growth"
+      },
+      {
+       "u": 10000,
+       "usd": 500,
+       "plan": "growth",
+       "next": "growth"
+      },
+      {
+       "u": 15833.333333333334,
+       "usd": 791.67,
+       "plan": "growth",
+       "next": "growth"
+      },
+      {
+       "u": 20000,
+       "usd": 1000,
+       "plan": "growth",
+       "next": "scale"
+      },
+      {
+       "u": 25000,
+       "usd": 1000,
+       "plan": "scale",
+       "next": "scale"
+      },
+      {
+       "u": 100000,
+       "usd": 4000,
+       "plan": "scale",
+       "next": "scale"
+      },
+      {
+       "u": 1000000,
+       "usd": 40000,
+       "plan": "scale"
+      }
+     ]
+    },
+    {
+     "slug": "coinbase-cdp",
+     "name": "Coinbase CDP",
+     "unit": "Wallet operations",
+     "points": [
+      {
+       "u": 100,
+       "usd": 75.03,
+       "plan": "payg",
+       "next": "payg"
+      },
+      {
+       "u": 1000,
+       "usd": 975.25,
+       "plan": "payg",
+       "next": "payg"
+      },
+      {
+       "u": 10000,
+       "usd": 9977.5,
+       "plan": "payg",
+       "next": "payg"
+      },
+      {
+       "u": 100000,
+       "usd": 100000,
+       "plan": "payg",
+       "next": "payg"
+      },
+      {
+       "u": 1000000,
+       "usd": 1000225,
+       "plan": "payg"
+      }
+     ]
+    },
+    {
+     "slug": "thirdweb",
+     "name": "thirdweb",
+     "unit": "Monthly active wallets",
+     "points": [
+      {
+       "u": 100,
+       "usd": 99,
+       "plan": "growth",
+       "next": "growth"
+      },
+      {
+       "u": 1000,
+       "usd": 99,
+       "plan": "growth",
+       "next": "growth"
+      },
+      {
+       "u": 10000,
+       "usd": 234,
+       "plan": "growth",
+       "next": "growth"
+      },
+      {
+       "u": 100000,
+       "usd": 1584,
+       "plan": "growth",
+       "next": "growth",
+       "nextUnc": true
+      },
+      {
+       "u": 1000000,
+       "usd": 10584,
+       "plan": "growth",
+       "unc": true
+      }
+     ]
+    },
+    {
+     "slug": "openfort",
+     "name": "Openfort",
+     "unit": "Wallet operations",
+     "points": [
+      {
+       "u": 100,
+       "usd": 99,
+       "plan": "growth",
+       "next": "growth",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 124.96875781054736,
+       "usd": 99,
+       "plan": "growth",
+       "next": "growth",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 134.46638340414896,
+       "usd": 114.2,
+       "plan": "growth",
+       "next": "growth",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 218.69532616845788,
+       "usd": 249,
+       "plan": "growth",
+       "next": "pro",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 309.4226443389153,
+       "usd": 249,
+       "plan": "pro",
+       "next": "pro",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 437.39065233691576,
+       "usd": 249,
+       "plan": "pro",
+       "next": "pro",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 499.87503124218944,
+       "usd": 249,
+       "plan": "pro",
+       "next": "pro",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 791.4687994668,
+       "usd": 599,
+       "plan": "pro",
+       "next": "scale",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 1000,
+       "usd": 599,
+       "plan": "scale",
+       "next": "scale",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 2499.375156210947,
+       "usd": 599,
+       "plan": "scale",
+       "next": "scale",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 10000,
+       "usd": 6601,
+       "plan": "scale",
+       "next": "scale",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 100000,
+       "usd": 78619,
+       "plan": "scale",
+       "next": "scale",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 1000000,
+       "usd": 798799,
+       "plan": "scale",
+       "unc": true
+      }
+     ]
+    },
+    {
+     "slug": "circle",
+     "name": "Circle",
+     "unit": "Monthly active wallets",
+     "points": [
+      {
+       "u": 100,
+       "usd": 0,
+       "plan": "all-included",
+       "next": "all-included"
+      },
+      {
+       "u": 1000,
+       "usd": 0,
+       "plan": "all-included",
+       "next": "all-included"
+      },
+      {
+       "u": 5000,
+       "usd": 200,
+       "plan": "all-included",
+       "next": "all-included"
+      },
+      {
+       "u": 10000,
+       "usd": 435,
+       "plan": "all-included",
+       "next": "all-included"
+      },
+      {
+       "u": 25000,
+       "usd": 1035,
+       "plan": "all-included",
+       "next": "all-included"
+      },
+      {
+       "u": 50000,
+       "usd": 1910,
+       "plan": "all-included",
+       "next": "all-included"
+      },
+      {
+       "u": 100000,
+       "usd": 3410,
+       "plan": "all-included",
+       "next": "all-included"
+      },
+      {
+       "u": 250000,
+       "usd": 7160,
+       "plan": "all-included",
+       "next": "all-included"
+      },
+      {
+       "u": 1000000,
+       "usd": 22160,
+       "plan": "all-included"
+      }
+     ]
+    },
+    {
+     "slug": "reown",
+     "name": "Reown",
+     "unit": "Monthly active users",
+     "points": [
+      {
+       "u": 100,
+       "usd": null,
+       "why": "Reown's page says exchange, custodian and payments platforms need a custom plan, which has no published price"
+      },
+      {
+       "u": 500,
+       "usd": null,
+       "why": "Reown's page says exchange, custodian and payments platforms need a custom plan, which has no published price"
+      },
+      {
+       "u": 500.000001,
+       "usd": null,
+       "why": "Reown's page says exchange, custodian and payments platforms need a custom plan, which has no published price"
+      },
+      {
+       "u": 1000,
+       "usd": null,
+       "why": "Reown's page says exchange, custodian and payments platforms need a custom plan, which has no published price"
+      },
+      {
+       "u": 7500,
+       "usd": null,
+       "why": "Reown's page says exchange, custodian and payments platforms need a custom plan, which has no published price"
+      },
+      {
+       "u": 10000,
+       "usd": null,
+       "why": "Reown's page says exchange, custodian and payments platforms need a custom plan, which has no published price"
+      },
+      {
+       "u": 12720,
+       "usd": null,
+       "why": "Reown's page says exchange, custodian and payments platforms need a custom plan, which has no published price"
+      },
+      {
+       "u": 15000,
+       "usd": null,
+       "why": "Reown's page says exchange, custodian and payments platforms need a custom plan, which has no published price"
+      },
+      {
+       "u": 100000,
+       "usd": null,
+       "why": "Reown's page says exchange, custodian and payments platforms need a custom plan, which has no published price"
+      },
+      {
+       "u": 1000000,
+       "usd": null,
+       "why": "Reown's page says exchange, custodian and payments platforms need a custom plan, which has no published price"
+      }
+     ]
+    },
+    {
+     "slug": "zerodev",
+     "name": "ZeroDev",
+     "unit": "Credits",
+     "points": [
+      {
+       "u": 100,
+       "usd": 399,
+       "plan": "scale",
+       "next": "scale",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 333.3333333333333,
+       "usd": 399,
+       "plan": "scale",
+       "next": "scale",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 333.333334,
+       "usd": null,
+       "why": "above 1,000,000 credits a month on Scale the price is on request"
+      },
+      {
+       "u": 1000,
+       "usd": null,
+       "why": "above 1,000,000 credits a month on Scale the price is on request"
+      },
+      {
+       "u": 10000,
+       "usd": null,
+       "why": "above 1,000,000 credits a month on Scale the price is on request"
+      },
+      {
+       "u": 100000,
+       "usd": null,
+       "why": "above 1,000,000 credits a month on Scale the price is on request"
+      },
+      {
+       "u": 1000000,
+       "usd": null,
+       "why": "above 1,000,000 credits a month on Scale the price is on request"
+      }
+     ]
+    },
+    {
+     "slug": "crossmint",
+     "name": "Crossmint",
+     "unit": "Monthly active wallets",
+     "points": [
+      {
+       "u": 100,
+       "usd": null,
+       "why": "above 2,000 transactions a month on Free the price is on request"
+      },
+      {
+       "u": 1000,
+       "usd": null,
+       "why": "above 2,000 transactions a month on Free the price is on request"
+      },
+      {
+       "u": 1000.000002,
+       "usd": null,
+       "why": "above 1,000 monthly active users on Free the price is on request"
+      },
+      {
+       "u": 10000,
+       "usd": null,
+       "why": "above 1,000 monthly active users on Free the price is on request"
+      },
+      {
+       "u": 100000,
+       "usd": null,
+       "why": "above 1,000 monthly active users on Free the price is on request"
+      },
+      {
+       "u": 1000000,
+       "usd": null,
+       "why": "above 1,000 monthly active users on Free the price is on request"
+      }
+     ]
+    }
+   ]
+  }
+ ],
+ "generatedBy": "harnesses/wallet-cost, WALLET_COST_EMIT_CURVES"
+}
