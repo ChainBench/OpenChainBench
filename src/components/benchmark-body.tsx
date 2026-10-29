@@ -102,9 +102,27 @@ function summarize(b: Benchmark | undefined): ChainMeta | null {
 
 /**
  * Client wrapper that renders the dynamic body of a bench detail page.
- * Receives every chain variant pre-fetched server-side, so flipping a
- * chain tab is a pure client state swap. No network round-trip, no RSC
- * payload, no Prom round-trip - instant.
+ *
+ * Receives the AGGREGATE view server-side. Filtered variants are fetched
+ * on demand from /variant, because embedding every one of them made ISR
+ * regenerations take 30 to 60 s; see the longer note at the variantMap
+ * state below, which is the authority on this. While a variant loads the
+ * aggregate keeps rendering, so a tab flip never blanks the page.
+ *
+ * This used to read "receives every chain variant pre-fetched
+ * server-side, no network round-trip", which was true before that change
+ * and then described the opposite of what the file does 350 lines down.
+ * It cost two of us a wrong diagnosis on 2026-10-29: a chain tab showing
+ * last cycle's board was explained as the page having baked stale numbers
+ * in, and the generalisation drawn from that ("a tab is a snapshot and
+ * nothing can force it") was published to a third party before anyone
+ * read the code under the comment. The tab is a live fetch; what was
+ * actually stale was the measuring browser's own disk cache, because
+ * /variant sends `cache-control: public` with no max-age and a client may
+ * then apply heuristic freshness.
+ *
+ * A comment that describes the previous design is worse than no comment:
+ * it reads as understanding, so nobody checks it.
  *
  * URL is kept in sync via `history.replaceState` so the active tab is
  * shareable, but we never trigger Next.js navigation (which would defeat
