@@ -318,12 +318,17 @@ export async function generateMetadata({
       : metaRanked.length > 0
         ? `${p.name}: ${benchCount} live ${benchWord}${winSuffix}. Ranks ${metaRanked[0]}.`
         : fallbackDescription;
+  // The registry clause trails the ranks only when it fits whole: capSnippet
+  // otherwise cut it at the last space and closed it with a period, and
+  // production shipped "thirdweb ... ranks ... ThirdWeb operates a keyless
+  // public RPC gateway at." (SEO audit 2026-10-29).
+  const withClause = registryClause ? `${measuredLead} ${registryClause}.` : measuredLead;
   let description = capSnippet(
     !registryLine
       ? measuredLead
       : prefix
         ? `${prefix} ${measuredLead}`.trim()
-        : `${measuredLead} ${registryClause}${registryClause ? "." : ""}`.trim(),
+        : (withClause.length <= 155 ? withClause : measuredLead).trim(),
   );
 
   // Hyperliquid frontends: brand queries (tuleep, invo, apexliquid,
