@@ -77,6 +77,10 @@ func main() {
 	// for the ninety minutes of Singapore numbers served from California.
 	StartEgressWatch(ctx)
 	StartProbeLoop(ctx)
+	// Bench 310, API coverage. Gated to one region by RPC_KEYED_COVERAGE
+	// because capability is a property of the plan, not of where the caller
+	// sits, so three regions would pay three times for one answer.
+	StartCoverageLoop(ctx)
 	// The WebSocket arm shares this process on purpose: its headline metric is
 	// a race between providers on the same block, and arrival times from
 	// separate processes would compare clocks. See ws.go.
