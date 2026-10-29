@@ -588,7 +588,12 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // v116: the brand is Quicknode, not QuickNode, in every spec.
   // v117: bench 310 server-wallet-cost arrives (eleven vendors), and
   //       bench 309 gains Portal and re-prices Openfort's free plan.
-  ["bench-unfiltered-v117", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v118: bench 311 rpc-api-coverage arrives, a support matrix for the keyed
+  //       RPC cohort. New slug, new metric family, nothing existing moves: an
+  //       `api` dimension on an existing RPC spec would inject api=... into
+  //       rpc_latency_milliseconds, which carries no such label, and empty
+  //       every ledger column.
+  ["bench-unfiltered-v118", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -867,7 +872,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v108: lockstep with bench-unfiltered-v115 (bench 309 SEO round).
   // v109: lockstep with bench-unfiltered-v116 (Quicknode spelling).
   // v110: lockstep with bench-unfiltered-v117 (bench 310 arrives).
-  ["all-benchmarks-v110", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v111: lockstep with bench-unfiltered-v118 (bench 311 arrives).
+  ["all-benchmarks-v111", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1030,7 +1036,10 @@ const loadBenchmarkFiltered = unstable_cache(
   //      the title and metric with the rows.
   // v55: lockstep with bench-unfiltered-v117. Bench 310 declares kind
   //      and bucket, and bench 309's tabs gain a row.
-  ["bench-filters-v55", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v56: lockstep with bench-unfiltered-v118. Bench 311 declares a chain
+  //      dimension and its whole board is panel-backed columns, so every tab
+  //      is a filtered variant.
+  ["bench-filters-v56", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 

@@ -53,22 +53,14 @@ describe("the provider set behind the cache keys", () => {
     const hash = createHash("sha256").update(sets.join("\n")).digest("hex").slice(0, 16);
     const count = sets.reduce((n, s) => n + s.split(":")[1].split(",").length, 0);
 
-    // Re-recorded on 2026-10-29 when bench 310 arrived and bench 309 gained
-    // Portal, with the keys moved together.
+    // Re-recorded on 2026-10-29 with bench-unfiltered-v118,
+    // all-benchmarks-v111, bench-filters-v56, providers-v31.
     //
-    // Recorded on 2026-10-29 with bench-unfiltered-v109, all-benchmarks-v102,
-    // bench-filters-v48, providers-v27: bench 309 wallet-cost adds thirteen
-    // embedded wallet vendors.
-    //
-    // Previously recorded on 2026-10-24 with bench-unfiltered-v99,
-    // all-benchmarks-v92, bench-filters-v40, providers-v19.
-    //
-    // The change was a DELETION, bench 306, which moves this hash the same
-    // way an addition does but for the opposite reason: a cached aggregate
-    // written before it would still list a bench that no longer exists.
-    // providers-v did NOT move, because both of its providers (pump-bridge,
-    // relay) are declared by benches that remain, so no product page gains
-    // or loses an appearance.
+    // The change is an ADDITION, bench 311 rpc-api-coverage. All four keys
+    // moved: it declares a chain dimension, so bench-filters is not optional,
+    // and its six providers gain an appearance in the RPCs category, so
+    // providers-v moves too or /products, compare and answers keep listing
+    // them one bench short.
     expect(
       hash,
       [
@@ -87,6 +79,6 @@ describe("the provider set behind the cache keys", () => {
         "Then set EXPECTED to the hash in this failure, and add the provider",
         `to PRODUCT_NAMES if it needs a display name. Providers now: ${count}.`,
       ].join("\n"),
-    ).toBe("be646f159fe731ff");
+    ).toBe("9abf98f80d8d255e");
   });
 });
