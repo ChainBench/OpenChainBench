@@ -144,7 +144,13 @@ export async function GET(
       name: r.name,
       slug: r.slug,
       ms: r.ms,
-      successRate: r.successRate,
+      // A bench that sends no traffic has no success rate to report, and
+      // load.ts defaults successRate to 100 when a spec declares no `success`
+      // query. Both ledger renderers and mcp-tools honour ledger_reliability;
+      // this route did not, so /api/stat/rpc-cost published successRate 100 on
+      // production for a bench whose own spec says a success rate there
+      // "measures nothing". Same guard as mcp-tools.ts:315, same reason.
+      successRate: b.ledgerReliability === false ? null : r.successRate,
       sampleSize: r.sampleSize,
       sampleHealth: r.sampleHealth,
       dataConfidence: r.dataConfidence,
