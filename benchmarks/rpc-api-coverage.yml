@@ -44,6 +44,7 @@ methodology:
   - "Each method is asked once per provider per chain, every six hours, from a single region. The probe is deliberately not the latency probe: that one sends a single eth_getBlockByNumber and is kept light so the keyed and no-key cohorts stay comparable. Capability is a different question and gets its own pass."
   - "A cell has three outcomes, and only two of them are published as a verdict. The provider served the method, the provider answered and refused it, or we could not ask. The first two are the 100 and the 0 you see. The third writes nothing, so the cell is blank."
   - "A 100 means the method is routed, not that it will answer whatever you send it. Several probes ask with parameters that cannot be satisfied on purpose, so a server that parses the method and then complains about the arguments has proved it serves the method. A provider can therefore read 100 here and still cap the response size or the block range. Those caps are real and separate properties, and the honest place for them is their own measurement rather than a boolean."
+  - "The capability figures are published as columns and not as selectable chart views, deliberately. In a chart view the board renders one metric for every row, and a provider with no reading for it is shown as a zero rather than left out, which would state a refusal we never received. As columns, a missing reading renders as a dash and keeps the distinction this whole board rests on."
   - "A blank is never a refusal. If our key is out of credit, rate limited, or not entitled to a chain, the failure is ours and saying 0 would publish our billing state as the provider's product. That case is counted separately in the probe ledger and left blank on the board."
   - "A 401 or a 403 cannot be read on its own, because the same status covers a method that is not on our plan and a key that no longer works. Those are held back and resolved per endpoint at the end of the pass: if any other method on that same provider and chain served, the key works and the refusal is about the method, so the cell reads 0. If nothing on that endpoint served, the key is the suspect and the cell stays blank."
   - "The headline is the share of asked cells that served, not a count of methods. A count would rank a provider last for the questions we never asked it, which is the same error as publishing a refusal we never received."
@@ -81,6 +82,7 @@ metric_panels:
     metric: 100 * avg by (provider) (rpc_api_supported{api="eth_getlogs_address"})
     unit: pct
     higher_is_better: true
+    tab: false
     description: "Share of asked cells where a log query filtered by contract address was served. This is the shape most indexers issue."
   - id: api_getlogs_topics
     label: "eth_getLogs, topic filter"
@@ -88,6 +90,7 @@ metric_panels:
     metric: 100 * avg by (provider) (rpc_api_supported{api="eth_getlogs_topics"})
     unit: pct
     higher_is_better: true
+    tab: false
     description: "Share of asked cells where a log query filtered by topic was served."
   - id: api_getlogs_nofilter
     label: "eth_getLogs, no filter"
@@ -95,6 +98,7 @@ metric_panels:
     metric: 100 * avg by (provider) (rpc_api_supported{api="eth_getlogs_nofilter"})
     unit: pct
     higher_is_better: true
+    tab: false
     description: "Share of asked cells where an unfiltered log query over a block range was served. The harshest of the three shapes and the first a provider restricts."
   - id: api_debug_tracetransaction
     label: "debug_traceTransaction"
@@ -102,6 +106,7 @@ metric_panels:
     metric: 100 * avg by (provider) (rpc_api_supported{api="debug_tracetransaction"})
     unit: pct
     higher_is_better: true
+    tab: false
     description: "Share of asked cells where a single transaction trace was served."
   - id: api_trace_block
     label: "trace_block"
@@ -109,6 +114,7 @@ metric_panels:
     metric: 100 * avg by (provider) (rpc_api_supported{api="trace_block"})
     unit: pct
     higher_is_better: true
+    tab: false
     description: "Share of asked cells where a whole-block trace was served. Served by a different client namespace than debug_traceTransaction, so a provider can have one and not the other."
   - id: api_getblockreceipts
     label: "eth_getBlockReceipts"
@@ -116,6 +122,7 @@ metric_panels:
     metric: 100 * avg by (provider) (rpc_api_supported{api="eth_getblockreceipts"})
     unit: pct
     higher_is_better: true
+    tab: false
     description: "Share of asked cells where every receipt in a block was served in one call, instead of one call per transaction."
   - id: api_archive_5m
     label: "Archive at 5M blocks"
@@ -123,6 +130,7 @@ metric_panels:
     metric: 100 * avg by (provider) (rpc_api_supported{api="archive_5m"})
     unit: pct
     higher_is_better: true
+    tab: false
     description: "Share of asked cells where a read five million blocks behind the head returned non-pruned state."
   - id: probe_age_hours
     label: "Hours since check"
@@ -130,6 +138,7 @@ metric_panels:
     metric: (time() - max by (provider) (rpc_api_last_probe_timestamp{})) / 3600
     unit: count
     higher_is_better: false
+    tab: false
     description: "Age of the published verdict. The stamp advances only when a verdict is written, so a provider that starts failing keeps its last answer here and this number climbs."
 
 ledger_columns:
