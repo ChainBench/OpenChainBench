@@ -32,12 +32,25 @@ export function LiveIndicator({
   lastRunAt: string;
   slug?: string;
 }) {
-  const [now, setNow] = useState(() => Date.now());
+  // `now` is null until the component has mounted. The server renders this
+  // from an ISR cache that can be minutes old, so a clock read during the
+  // first render gave the server "updated 3m ago" and the browser "4m ago":
+  // React error #418, a hydration text mismatch on every bench page that
+  // happened to straddle a minute (audit 2026-10-29). The first render is
+  // the deterministic absolute time instead, the same on both sides, and
+  // the relative age and the Live/Stale verdict appear once mounted.
+  const [now, setNow] = useState<number | null>(null);
   const [canonical, setCanonical] = useState(lastRunAt);
 
   useEffect(() => {
+    // First tick on the next macrotask rather than synchronously in the
+    // effect, so the mount commits once before the clock starts.
+    const first = setTimeout(() => setNow(Date.now()), 0);
     const id = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(id);
+    return () => {
+      clearTimeout(first);
+      clearInterval(id);
+    };
   }, []);
 
   useEffect(() => {
@@ -80,25 +93,27 @@ export function LiveIndicator({
     };
   }, [slug]);
 
-  const ageSec = Math.max(0, Math.floor((now - new Date(canonical).getTime()) / 1000));
-  const stale = ageSec > staleAfterSec;
+  const mounted = now !== null;
+  const ageSec = mounted ? Math.max(0, Math.floor((now - new Date(canonical).getTime()) / 1000)) : 0;
+  const stale = mounted && ageSec > staleAfterSec;
+  const live = mounted && !stale;
 
   return (
     <span className="inline-flex items-center gap-2 normal-case tracking-normal text-xs tabular text-ink-muted">
       <span className="relative flex h-2 w-2 items-center justify-center">
-        {!stale && (
+        {live && (
           <span
             className="absolute inset-0 rounded-full bg-good opacity-60 animate-ping"
             aria-hidden
           />
         )}
         <span
-          className={`relative h-2 w-2 rounded-full ${stale ? "bg-ink-faint" : "bg-good"}`}
+          className={`relative h-2 w-2 rounded-full ${live ? "bg-good" : "bg-ink-faint"}`}
           aria-hidden
         />
       </span>
-      <span className="font-medium" style={{ color: stale ? undefined : "var(--color-good)" }}>
-        {stale ? "Stale" : "Live"}
+      <span className="font-medium" style={{ color: live ? "var(--color-good)" : undefined }}>
+        {!mounted ? "Updated" : stale ? "Stale" : "Live"}
       </span>
       <span className="text-ink-faint hidden sm:inline">·</span>
       {/* Wrap the human "updated Ns ago" in a <time datetime> so LLM
@@ -112,10 +127,17 @@ export function LiveIndicator({
         title={new Date(canonical).toISOString()}
         className="hidden sm:inline"
       >
-        updated {formatAge(ageSec)} ago
+        {mounted ? `updated ${formatAge(ageSec)} ago` : utcClock(canonical)}
       </time>
     </span>
   );
+}
+
+/** "16:29 UTC", identical on server and client for the same timestamp. */
+function utcClock(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return `${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")} UTC`;
 }
 
 function formatAge(sec: number): string {
