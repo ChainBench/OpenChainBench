@@ -1,6 +1,6 @@
 package main
 
-// coverage.go — bench 310 rpc-api-coverage: which APIs each keyed provider
+// coverage.go — bench 311 rpc-api-coverage: which APIs each keyed provider
 // actually serves.
 //
 // Why this lives in the latency harness rather than its own service: the
