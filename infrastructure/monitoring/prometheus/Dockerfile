@@ -20,14 +20,18 @@ EXPOSE 9090
 ENTRYPOINT ["/entrypoint.sh"]
 
 # --enable-feature=expand-external-labels: lets global.external_labels read ${ENVIRONMENT} from env
-# --storage.tsdb.retention.time=180d: keep historical samples 6 months so
-#   sponsor pitches + bench pages can show multi-month trends. Default is
-#   15d which is too short for our use case.
-# --storage.tsdb.retention.size=10GB: hard ceiling on disk to prevent the
-#   Railway volume filling up if cardinality spikes. With ~500 active
-#   series at 10s scrape the projected footprint is ~2-3 GB over 180d, so
-#   10 GB is a comfortable safety margin. Prom evicts oldest data on
-#   whichever cap (time or size) trips first.
+# --storage.tsdb.retention.time=7d: this instance is a scrape hub, not an
+#   archive. Everything it collects is federated to the VPS Prometheus every
+#   30s, the VPS keeps 90d, and the site only ever queries the VPS. The 180d
+#   that used to be here was also fiction: measured 2026-10-29, the oldest
+#   sample was 24 to 27 days old because the size cap below trips first, while
+#   the VPS held the same series past 60 days and had zero metric names this
+#   instance did not. So retention here only needs to cover a federation
+#   outage, and a week is already generous for that.
+# --storage.tsdb.retention.size=2GB: hard ceiling on disk in case cardinality
+#   spikes. Prom evicts oldest data on whichever cap (time or size) trips
+#   first. Note this does not bound MEMORY: the head block holds the active
+#   series whatever the retention, so cardinality is the only lever on RAM.
 # --query.lookback-delta=1h: extends Prom's stale window from the 5min
 #   default to 1h. Instant queries against gauges that haven't been
 #   re-scraped in <1h still return the last value instead of empty.
@@ -51,8 +55,8 @@ ENTRYPOINT ["/entrypoint.sh"]
 #   upstream by Caddy.
 CMD ["--config.file=/etc/prometheus/prometheus.yml", \
      "--storage.tsdb.path=/prometheus", \
-     "--storage.tsdb.retention.time=180d", \
-     "--storage.tsdb.retention.size=10GB", \
+     "--storage.tsdb.retention.time=7d", \
+     "--storage.tsdb.retention.size=2GB", \
      "--enable-feature=expand-external-labels", \
      "--query.lookback-delta=1h", \
      "--web.listen-address=0.0.0.0:9090", \

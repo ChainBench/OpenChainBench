@@ -6,9 +6,17 @@
 # matching, pending a harness-side matched counter). Subquery at 1m
 # steps over 24h; labels keep (oracle, chain, tier) so the site's
 # chain tab label-injection works against the recorded metric.
+#
+# Lives in the loose directory, not recording_rules/, because the gas harness
+# runs on the VPS: recording_rules/ is COPYed into the Railway image, and this
+# rule sitting there is why benchmarks/gas-estimation.yml published a panel
+# whose series existed on neither instance. See ../README.md.
 groups:
   - name: ocb_gas_estimation
-    interval: 60s
+    # 300s. The expression is a [24h:1m] subquery, so one evaluation walks
+    # 1440 steps for every matching series; a 24 hour average does not move
+    # in a minute. The VPS runs --query.lookback-delta=20m, far wider.
+    interval: 300s
     rules:
       - record: ocb:gas_p50_covered:pct_24h
         expr: 100 * avg_over_time((gas_predicted_priority_gwei{tier="p50"} >= bool on(chain, tier) group_left() gas_realized_priority_gwei{tier="p50"})[24h:1m])
