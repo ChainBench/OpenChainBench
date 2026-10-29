@@ -23,7 +23,7 @@ import { SpecSchema, type Spec } from "@/lib/spec-schema";
 import { DEV_ONLY_BENCH_SLUGS, REMOVED_BENCH_SLUGS } from "@/lib/removed-benches";
 import { renderBenchmarkText } from "@/lib/bench-template";
 import { liveResults as liveProviderResults } from "@/lib/provider-filters";
-import { notServedLabel } from "@/lib/no-figure-label";
+import { notServedLabel, notServedOnEveryView } from "@/lib/no-figure-label";
 import {
   classifyHealth,
   aggregateConfidence,
@@ -295,6 +295,31 @@ export async function specToBenchmark(
     // result really does mean "harness lost this provider"; product
     // pages also rely on the augmentation to stay reachable when the
     // upstream is briefly down.
+    // A bench whose not-served label holds on every tab lists its missing
+    // providers on filtered views too, unranked and with the label, rather
+    // than dropping them with no reason (see notServedOnEveryView).
+    if (isFiltered && notServedOnEveryView(spec.slug)) {
+      const label = notServedLabel(spec.slug);
+      const present = new Set(live.results.map((r) => r.slug.toLowerCase()));
+      for (const p of spec.providers) {
+        if (!label || present.has(p.slug.toLowerCase())) continue;
+        live.results.push({
+          name: p.name,
+          slug: p.slug,
+          tag: p.tag,
+          type: p.type,
+          layer: p.layer,
+          ms: { p50: 0, p90: 0, p99: 0, mean: 0 },
+          successRate: 100,
+          secondary: p.secondary,
+          availability: "live",
+          unrankedLabel: label,
+          formula: p.formula,
+          endpoint: p.endpoint,
+          ...(activeTier ? { tier: activeTier } : {}),
+        });
+      }
+    }
     if (!isFiltered) {
       const liveSlugs = new Set(live.results.map((r) => r.slug.toLowerCase()));
       // On the two RPC cost benches a provider with no figure on the

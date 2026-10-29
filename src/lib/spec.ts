@@ -573,7 +573,9 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       Openfort reading, validate running the scorer, six of thirteen
   //       pages); an entry cached before the edit still carries the old
   //       prose.
-  ["bench-unfiltered-v111", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v112: bench 309 lists its unpriced vendors on every tab, and its
+  //       freshness copy names the new alert.
+  ["bench-unfiltered-v112", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -845,7 +847,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v103: lockstep with bench-unfiltered-v110 (bench 010's latency
   //        methodology no longer credits a histogram that drove nothing).
   // v104: lockstep with bench-unfiltered-v111 (bench 309 copy round).
-  ["all-benchmarks-v104", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v105: lockstep with bench-unfiltered-v112 (bench 309 round two).
+  ["all-benchmarks-v105", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -996,7 +999,10 @@ const loadBenchmarkFiltered = unstable_cache(
   //      only and the other tabs keep crediting the histogram.
   // v50: lockstep with bench-unfiltered-v111. Bench 309's profile and
   //      size tabs cache the copy alongside the rows.
-  ["bench-filters-v50", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v51: lockstep with bench-unfiltered-v112. Bench 309's filtered
+  //      tabs gain rows (unpriced vendors with their label), and a cached
+  //      variant would keep the old, shorter set.
+  ["bench-filters-v51", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 
