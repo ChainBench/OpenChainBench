@@ -81,6 +81,53 @@ var (
 		},
 		[]string{"provider", "region"},
 	)
+
+	// ---- bench 310, API coverage. See coverage.go. ----
+	//
+	// A separate metric family rather than an `api` label on rpc_latency_*,
+	// for the reason written above about the cold arm: adding a dimension to
+	// a metric nine specs already query splits a published column into two
+	// series and blanks it.
+	//
+	// The 0 is load-bearing and it is a claim about the provider: it means
+	// they were asked and refused. When we could not ask, nothing is written
+	// at all, so the cell renders blank and reads as "not probed". A panel
+	// column resolves a missing provider to null for that cell alone
+	// (ledger-table.tsx colValue), so absence is a usable third state; only
+	// the HEADLINE metric drops a row when it does not resolve.
+	rpcAPISupported = promauto.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "rpc_api_supported",
+			Help: "1 when the provider served this API, 0 when it was asked and refused. Absent when no verdict was reached (timeout, paused quota, exhausted credits, unusable key) - never 0 for our own failures.",
+		},
+		[]string{"provider", "chain", "api", "region", "tier"},
+	)
+
+	// The witness that the probe ran. A capability gauge answering every six
+	// hours with the same value is indistinguishable from a frozen one, which
+	// is how a Coinbase feed sat still for 20 days and passed every check we
+	// had. This counter is the only thing that separates a live 1 from a
+	// stale 1, which is why the page spends one of its nine columns on it.
+	rpcAPIProbeTotal = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "rpc_api_probe_total",
+			Help: "API coverage probe outcomes: ok | unsupported | forbidden | key_unusable | credits_exhausted | quota_paused | not_applicable | unclassified | http_err | timeout.",
+		},
+		[]string{"provider", "chain", "api", "result", "region", "tier"},
+	)
+
+	// The largest block span the provider accepted for each eth_getLogs
+	// filter shape. 0 means it refused even the smallest span tried. This is
+	// a number rather than a boolean because a refusal freezes an indexer's
+	// cursor, so the usable range is the thing a reader has to plan around,
+	// not merely whether the method answers.
+	rpcGetLogsMaxRange = promauto.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "rpc_getlogs_max_range_blocks",
+			Help: "Largest eth_getLogs block span accepted, per filter shape (nofilter | address | topics).",
+		},
+		[]string{"provider", "chain", "filter_shape", "region", "tier"},
+	)
 )
 
 func StartMetricsServer(addr string) error {
