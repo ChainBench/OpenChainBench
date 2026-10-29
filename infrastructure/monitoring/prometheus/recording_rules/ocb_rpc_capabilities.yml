@@ -14,7 +14,15 @@
 # keep ratio-of-sums semantics.
 groups:
   - name: ocb_rpc_capabilities
-    interval: 60s
+    # 300s, not 60s. Every rule in this group is a [24h] window, and a 24 hour
+    # aggregate does not move in a minute: re-evaluating it 5 times more often
+    # buys no freshness, it just reloads and re-sorts the same day of samples.
+    # Measured 2026-10-29: this group was the single heaviest thing on the
+    # Railway Prom at 8.29s of evaluation every 60s, 14% duty cycle, of which
+    # 5.07s was four quantile_over_time calls over the same window. Safe at
+    # 300s because Railway runs --query.lookback-delta=1h and the VPS that
+    # federates these outputs runs 20m, both far wider than the interval.
+    interval: 300s
     rules:
       - record: ocb:rpc_latency_milliseconds:p50_24h
         expr: quantile_over_time(0.50, rpc_latency_milliseconds[24h])
