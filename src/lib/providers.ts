@@ -910,7 +910,9 @@ const buildProvidersCached = unstable_cache(
   // the old QuickNode name for its whole TTL.
   // v30: bench 310 adds server wallet appearances (Lit, Portal and Dfns
   // new to the site) and bench 309 adds Portal.
-  ["providers-v30"],
+  // v31: lockstep with bench-unfiltered-v118. Bench 311 adds six providers to
+  //      the RPCs category's appearance set.
+  ["providers-v31"],
   // 900 s: the provider index feeds products / compare / answers, whose
   // numbers move slowly, and this revalidate is also the effective ISR
   // period of those ~500 pages (Next takes the min across a route's caches).

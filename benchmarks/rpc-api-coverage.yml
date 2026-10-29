@@ -1,0 +1,182 @@
+slug: rpc-api-coverage
+number: "311"
+category: RPCs
+title: "Which private RPC providers serve trace, archive and eth_getLogs"
+seo_title: "Private RPC API support matrix: trace, archive, getLogs"
+seo_description: "Which keyed RPC providers actually serve debug_traceTransaction, trace_block, archive reads and each shape of eth_getLogs, probed on eight EVM chains."
+seo_intro: >
+  Latency tells you how fast a provider answers the one call you already know works.
+  It does not tell you whether the call you need exists. A provider can be first on
+  every head-lag board and still refuse debug_traceTransaction, cap eth_getLogs at a
+  handful of blocks, or decline an unfiltered log query that your indexer depends on.
+  This board asks each keyed provider, on each chain, whether it serves the method,
+  and publishes the answer next to the latency it already publishes. A blank cell
+  means we could not ask, never that the provider said no.
+
+status: draft
+
+subtitle: "Which methods each keyed RPC provider actually serves, per chain"
+
+metric: "APIs served"
+unit: pct
+higher_is_better: true
+
+abstract: >
+  A support matrix for the private RPC cohort. Each cell is one method asked of one
+  provider on one chain, and the answer is whether it served, refused, or could not
+  be asked. The headline is the share of the methods we asked that the provider
+  served, so a provider we could ask less is compared on what it was asked rather
+  than penalised for the questions we never put to it.
+
+dimensions:
+  chain:
+    - { value: all,         label: All chains }
+    - { value: ethereum,    label: Ethereum }
+    - { value: base,        label: Base }
+    - { value: arbitrum,    label: Arbitrum }
+    - { value: polygon,     label: Polygon }
+    - { value: bnb,         label: BNB Chain }
+    - { value: arc,         label: Arc }
+    - { value: hyperliquid, label: Hyperliquid }
+    - { value: robinhood,   label: Robinhood Chain }
+
+methodology:
+  - "Each method is asked once per provider per chain, every six hours, from a single region. The probe is deliberately not the latency probe: that one sends a single eth_getBlockByNumber and is kept light so the keyed and no-key cohorts stay comparable. Capability is a different question and gets its own pass."
+  - "A cell has three outcomes, and only two of them are published as a verdict. The provider served the method, the provider answered and refused it, or we could not ask. The first two are the 100 and the 0 you see. The third writes nothing, so the cell is blank."
+  - "A 100 means the method is routed, not that it will answer whatever you send it. Several probes ask with parameters that cannot be satisfied on purpose, so a server that parses the method and then complains about the arguments has proved it serves the method. A provider can therefore read 100 here and still cap the response size or the block range. Those caps are real and separate properties, and the honest place for them is their own measurement rather than a boolean."
+  - "A blank is never a refusal. If our key is out of credit, rate limited, or not entitled to a chain, the failure is ours and saying 0 would publish our billing state as the provider's product. That case is counted separately in the probe ledger and left blank on the board."
+  - "A 401 or a 403 cannot be read on its own, because the same status covers a method that is not on our plan and a key that no longer works. Those are held back and resolved per endpoint at the end of the pass: if any other method on that same provider and chain served, the key works and the refusal is about the method, so the cell reads 0. If nothing on that endpoint served, the key is the suspect and the cell stays blank."
+  - "The headline is the share of asked cells that served, not a count of methods. A count would rank a provider last for the questions we never asked it, which is the same error as publishing a refusal we never received."
+  - "On a single chain tab a cell reads 0 or 100. On the all-chains tab it reads the share of chains that served, so a provider serving a method on seven chains of eight reads 87.5 rather than a tick that could mean either one or all of them."
+  - "Hours since check is the age of the published verdict, not of our last attempt. The timestamp advances only when a verdict is written, so a provider that starts failing keeps its last answer on the board and the age starts climbing. A capability gauge that answers every hour with the same value is otherwise indistinguishable from a frozen one."
+  - "The log queries are asked over a five block window, which is deliberately narrow: this column answers whether the method is routed at all, and a narrow window is the question every provider should be able to answer. It is not the question an indexer asks. A manual test in October found that over two thousand blocks most of this cohort refused, so expect these columns to read alike and expect the range measurement, when it lands, to disagree with them."
+  - "The Beacon API is not answered here. Beacon endpoints live on a different base URL from the JSON-RPC endpoint and our configuration carries only the latter, so the question was never put. Publishing 0 would state that no provider in this cohort serves it, which is false. It needs its own credentials before it can be measured."
+  - "Solana is not on this board. Every method here is an EVM concept, the Solana keyed cohort is three providers, and a grid whose columns are all blank on one tab is not a matrix. Solana belongs in its own bench against Solana-native providers, measured on Solana methods."
+  - "eth_getLogs is asked in three shapes because they are three different questions: an unfiltered range, a range filtered by address, and a range filtered by topics. A provider that serves an address-filtered query and refuses an unfiltered one is the common case, and one merged flag would erase exactly the distinction an indexer needs."
+
+findings:
+  - "Coverage is not the same question as latency, and the two boards can disagree. A provider can lead the head-lag ranking and still decline the method your pipeline is built on."
+  - "The widest coverage in the cohort right now is {{best_name}} at {{best_p50}} of the methods asked. Read it next to Hours since check and the probe count, because a high share over few questions is not the same claim as a high share over many."
+  - "Tracing is where this cohort separates. The three log-query shapes and block receipts are served nearly everywhere we asked, while trace_block is the column carrying real disagreement, and some providers that refuse it serve debug_traceTransaction on the same chain. The two sit in different client namespaces, so a provider can have one and not the other, and a documentation page saying tracing is supported does not tell you which one you get."
+  - "Our Alchemy key is refused on most of the chains it is configured for, so Alchemy is absent from most chain tabs here while appearing on the latency boards. That is our free-tier plan rather than Alchemy's API surface, and a missing row is this board saying it could not ask, never that the provider declined."
+
+faq:
+  - q: "Which RPC providers support debug_traceTransaction?"
+    a: "The trace column on this board answers it per provider and per chain, measured rather than taken from a documentation page. Tracing is the method most often absent on a shared plan, because it is the most expensive one a provider can serve, so it is worth checking on the exact chain you need rather than assuming a provider either has it everywhere or nowhere."
+  - q: "Why is a cell blank instead of showing no?"
+    a: "Because blank and no are different facts. A 0 means the provider answered and declined the method. A blank means we could not ask: our key was out of credit, rate limited, or not entitled to that chain. Printing 0 for the second case would publish our own billing state as a property of the provider's product, which would be false and unfair."
+  - q: "Does this measure whether eth_getLogs works over a wide block range?"
+    a: "Not yet. This pass asks whether the method is served at all, in three filter shapes. The maximum block range a provider accepts is a separate measurement, because a provider can serve eth_getLogs and still cap it at a range too narrow to backfill with. That column is planned and is deliberately absent rather than shown empty."
+  - q: "Why only one region when the latency benchmarks use three?"
+    a: "Because a capability should not depend on where you ask from, while latency entirely does. Running the capability pass in three regions would triple its cost for an answer that is expected to be identical, so it runs in one. If we ever see evidence that entitlement varies by region, that assumption becomes a measurement instead."
+  - q: "How often does this run?"
+    a: "Every six hours. A capability changes when a provider changes a plan or ships an endpoint, which is a matter of weeks, not seconds. The latency boards run on a two-minute cadence because the thing they measure moves; running this one as often would spend credit to re-confirm an answer that has not changed."
+  - q: "Is the Beacon API covered?"
+    a: "No, and the board says so rather than leaving the column out quietly. Beacon endpoints sit on a different base URL from the JSON-RPC endpoint, and our configuration holds only the RPC URL, so the question was never asked of anyone. Adding it needs separate credentials, and until then a 0 in that column would be a claim we have no measurement for."
+
+metric_panels:
+  - id: api_getlogs_address
+    label: "eth_getLogs, address filter"
+    label_key: provider
+    metric: 100 * avg by (provider) (rpc_api_supported{api="eth_getlogs_address"})
+    unit: pct
+    higher_is_better: true
+    description: "Share of asked cells where a log query filtered by contract address was served. This is the shape most indexers issue."
+  - id: api_getlogs_topics
+    label: "eth_getLogs, topic filter"
+    label_key: provider
+    metric: 100 * avg by (provider) (rpc_api_supported{api="eth_getlogs_topics"})
+    unit: pct
+    higher_is_better: true
+    description: "Share of asked cells where a log query filtered by topic was served."
+  - id: api_getlogs_nofilter
+    label: "eth_getLogs, no filter"
+    label_key: provider
+    metric: 100 * avg by (provider) (rpc_api_supported{api="eth_getlogs_nofilter"})
+    unit: pct
+    higher_is_better: true
+    description: "Share of asked cells where an unfiltered log query over a block range was served. The harshest of the three shapes and the first a provider restricts."
+  - id: api_debug_tracetransaction
+    label: "debug_traceTransaction"
+    label_key: provider
+    metric: 100 * avg by (provider) (rpc_api_supported{api="debug_tracetransaction"})
+    unit: pct
+    higher_is_better: true
+    description: "Share of asked cells where a single transaction trace was served."
+  - id: api_trace_block
+    label: "trace_block"
+    label_key: provider
+    metric: 100 * avg by (provider) (rpc_api_supported{api="trace_block"})
+    unit: pct
+    higher_is_better: true
+    description: "Share of asked cells where a whole-block trace was served. Served by a different client namespace than debug_traceTransaction, so a provider can have one and not the other."
+  - id: api_getblockreceipts
+    label: "eth_getBlockReceipts"
+    label_key: provider
+    metric: 100 * avg by (provider) (rpc_api_supported{api="eth_getblockreceipts"})
+    unit: pct
+    higher_is_better: true
+    description: "Share of asked cells where every receipt in a block was served in one call, instead of one call per transaction."
+  - id: api_archive_5m
+    label: "Archive at 5M blocks"
+    label_key: provider
+    metric: 100 * avg by (provider) (rpc_api_supported{api="archive_5m"})
+    unit: pct
+    higher_is_better: true
+    description: "Share of asked cells where a read five million blocks behind the head returned non-pruned state."
+  - id: probe_age_hours
+    label: "Hours since check"
+    label_key: provider
+    metric: (time() - max by (provider) (rpc_api_last_probe_timestamp{})) / 3600
+    unit: count
+    higher_is_better: false
+    description: "Age of the published verdict. The stamp advances only when a verdict is written, so a provider that starts failing keeps its last answer here and this number climbs."
+
+ledger_columns:
+  - { label: "APIs served", slot: p50 }
+  - { label: "getLogs addr", panel: api_getlogs_address }
+  - { label: "getLogs topic", panel: api_getlogs_topics }
+  - { label: "getLogs raw", panel: api_getlogs_nofilter }
+  - { label: "debug_trace", panel: api_debug_tracetransaction }
+  - { label: "trace_block", panel: api_trace_block }
+  - { label: "Receipts", panel: api_getblockreceipts }
+  - { label: "Archive 5M", panel: api_archive_5m }
+  - { label: "Hours since check", panel: probe_age_hours }
+
+prometheus:
+  window: 24h
+  expected_freshness_seconds: 86400
+
+providers:
+  - slug: quicknode
+    name: Quicknode
+    queries:
+      p50: 100 * sum by (provider) (rpc_api_supported{provider="quicknode"}) / count by (provider) (rpc_api_supported{provider="quicknode"})
+      sample_size: sum by (provider) (increase(rpc_api_probe_total{provider="quicknode"}[24h]))
+  - slug: chainstack
+    name: Chainstack
+    queries:
+      p50: 100 * sum by (provider) (rpc_api_supported{provider="chainstack"}) / count by (provider) (rpc_api_supported{provider="chainstack"})
+      sample_size: sum by (provider) (increase(rpc_api_probe_total{provider="chainstack"}[24h]))
+  - slug: getblock
+    name: GetBlock
+    queries:
+      p50: 100 * sum by (provider) (rpc_api_supported{provider="getblock"}) / count by (provider) (rpc_api_supported{provider="getblock"})
+      sample_size: sum by (provider) (increase(rpc_api_probe_total{provider="getblock"}[24h]))
+  - slug: dwellir
+    name: Dwellir
+    queries:
+      p50: 100 * sum by (provider) (rpc_api_supported{provider="dwellir"}) / count by (provider) (rpc_api_supported{provider="dwellir"})
+      sample_size: sum by (provider) (increase(rpc_api_probe_total{provider="dwellir"}[24h]))
+  - slug: blockmachine
+    name: BlockMachine
+    queries:
+      p50: 100 * sum by (provider) (rpc_api_supported{provider="blockmachine"}) / count by (provider) (rpc_api_supported{provider="blockmachine"})
+      sample_size: sum by (provider) (increase(rpc_api_probe_total{provider="blockmachine"}[24h]))
+  - slug: alchemy
+    name: Alchemy
+    queries:
+      p50: 100 * sum by (provider) (rpc_api_supported{provider="alchemy"}) / count by (provider) (rpc_api_supported{provider="alchemy"})
+      sample_size: sum by (provider) (increase(rpc_api_probe_total{provider="alchemy"}[24h]))
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-keyed-latency
