@@ -170,12 +170,34 @@ func servedUnlessMethodMissing(raw []byte) (string, error) {
 	return v, nil
 }
 
+// looksLikeLookupFailure recognises a complaint about the ARGUMENTS rather
+// than about the method. It is the positive signal: a server that parsed the
+// method, went looking, and failed on what it found has routed the method,
+// which is the capability question.
+//
+// The size-refusal family at the bottom was added after running the probe
+// against a real Helius free key on 2026-10-29. A bounded getProgramAccounts
+// against the SPL Token program came back `-32600 Too many accounts requested
+// (Large number of pubkeys)`. That is the server counting accounts and
+// declining on response size, so the method is plainly routed; a provider
+// that did not route it answers "method not found". Before this the message
+// matched nothing, the probe reached no verdict, and the Solana cell would
+// have stayed empty forever behind an unclassified log line.
+//
+// Worth knowing when reading the matrix: routed is not "will answer a big
+// one". A size limit is a real and separate property, and the only honest
+// place for it is its own measurement, the way eth_getLogs gets a max-range
+// gauge rather than a boolean.
 func looksLikeLookupFailure(msg string) bool {
 	m := strings.ToLower(msg)
 	for _, s := range []string{
 		"not found", "transaction not found", "no trace", "missing",
 		"could not be found", "does not have", "unknown block",
 		"historical state", "required historical state",
+		// argument-size refusals: the method ran and declined the request
+		"too many accounts", "large number of pubkeys", "response too large",
+		"result too large", "query exceeds", "too many results",
+		"exceeds the maximum", "range too large",
 	} {
 		if strings.Contains(m, s) {
 			return true
@@ -376,7 +398,12 @@ var coverageProbes = []coverageProbe{
 			// megabytes.
 			return `{"jsonrpc":"2.0","id":1,"method":"getProgramAccounts","params":["TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",{"encoding":"base64","dataSlice":{"offset":0,"length":0},"filters":[{"dataSize":165}],"withContext":true}]}`, true
 		},
-		supported: resultOrError,
+		// Not resultOrError: measured against a real Helius free key, a
+		// bounded query on the token program is refused on response size
+		// (`-32600 Too many accounts requested`). The method is routed, the
+		// request is too big, and only the first of those is the capability
+		// question. Same rule as the trace probes, for the same reason.
+		supported: servedUnlessMethodMissing,
 	},
 }
 

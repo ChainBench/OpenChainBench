@@ -421,3 +421,57 @@ func TestFreshnessStampAndVerdictAlwaysMoveTogether(t *testing.T) {
 		t.Fatalf("setCoverage published a verdict without stamping it (%d -> %d)", stamped, got)
 	}
 }
+
+
+// A refusal on RESPONSE SIZE proves the method is routed, which is the
+// capability question. The strings here were measured against real providers,
+// not invented: the Helius one came back from a free key on 2026-10-29 when a
+// bounded getProgramAccounts hit the SPL Token program.
+//
+// Getting this wrong is not a false accusation, it is a permanent blank: the
+// probe reaches no verdict, logs "unclassified", and the cell never fills.
+func TestSizeRefusalProvesTheMethodIsRouted(t *testing.T) {
+	cases := []struct {
+		name string
+		body string
+	}{
+		{
+			"helius getProgramAccounts, measured",
+			`{"jsonrpc":"2.0","id":1,"error":{"code":-32600,"message":"Too many accounts requested (Large number of pubkeys), Please use getProgramAccountsV2"}}`,
+		},
+		{
+			"generic response size cap",
+			`{"jsonrpc":"2.0","id":1,"error":{"code":-32000,"message":"response too large, reduce the range"}}`,
+		},
+		{
+			"log range cap",
+			`{"jsonrpc":"2.0","id":1,"error":{"code":-32000,"message":"query exceeds max block range 2000"}}`,
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			got, err := servedUnlessMethodMissing([]byte(c.body))
+			if err != nil {
+				t.Fatalf("reached no verdict, so the cell would stay blank forever: %v", err)
+			}
+			if got != verdictServed {
+				t.Fatalf("got %q, want %q: a size refusal is the server declining the "+
+					"request, not the method being absent", got, verdictServed)
+			}
+		})
+	}
+}
+
+// And the inverse, so the widened family cannot swallow a real absence: a
+// method-not-found must still read as unsupported even though it mentions the
+// method by name.
+func TestWidenedSizeFamilyDoesNotSwallowRealAbsence(t *testing.T) {
+	got, err := servedUnlessMethodMissing([]byte(
+		`{"jsonrpc":"2.0","id":1,"error":{"code":-32601,"message":"the method getProgramAccounts does not exist/is not available"}}`))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got != verdictUnsupported {
+		t.Fatalf("got %q, want %q", got, verdictUnsupported)
+	}
+}
