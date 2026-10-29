@@ -25,14 +25,13 @@ var (
 		[]string{"provider", "chain", "region", "tier"},
 	)
 
-	rpcLatencyHist = promauto.NewHistogramVec(
-		prometheus.HistogramOpts{
-			Name:    "rpc_latency_milliseconds_histogram",
-			Help:    "Histogram of keyed free-tier RPC probe latencies — drives p50/p90/p99 via `quantile_over_time`.",
-			Buckets: []float64{50, 100, 150, 200, 300, 500, 750, 1000, 1500, 2000, 3000, 5000, 10000},
-		},
-		[]string{"provider", "chain", "region", "tier"},
-	)
+	// No latency histogram, warm or cold, since 2026-10-29. Both existed and
+	// both claimed to drive p50/p90/p99 via quantile_over_time, which is not
+	// even a function you can apply to bucket series. The percentiles come
+	// from quantile_over_time over the two gauges, and no spec ever selected
+	// rpc_latency_milliseconds_histogram_bucket or its cold twin. Together
+	// they were 3640 series per Prometheus for no query. See the same note in
+	// ../../../rpc-capabilities/cmd/script/metrics.go.
 
 	// Cold arm. The existing rpc_latency_milliseconds series becomes the WARM
 	// one from 2026-10-08: a probe on a pooled connection, which is what a
@@ -55,15 +54,6 @@ var (
 		prometheus.GaugeOpts{
 			Name: "rpc_latency_cold_milliseconds",
 			Help: "Latest observed HTTP round-trip in milliseconds on a connection that is NEVER reused (DNS + TCP + TLS paid every call), for `eth_getBlockByNumber(latest)` (EVM) / `getSlot` (Solana) against a keyed RPC endpoint.",
-		},
-		[]string{"provider", "chain", "region", "tier"},
-	)
-
-	rpcLatencyColdHist = promauto.NewHistogramVec(
-		prometheus.HistogramOpts{
-			Name:    "rpc_latency_cold_milliseconds_histogram",
-			Help:    "Histogram of cold-connection keyed RPC probe latencies — drives p50/p90/p99 via `quantile_over_time`.",
-			Buckets: []float64{50, 100, 150, 200, 300, 500, 750, 1000, 1500, 2000, 3000, 5000, 10000},
 		},
 		[]string{"provider", "chain", "region", "tier"},
 	)

@@ -562,7 +562,14 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       hash test does not catch it because no provider moved.
   // v109: bench 309 wallet-cost arrives with thirteen embedded wallet
   //       vendors, the first bench in the Wallets category.
-  ["bench-unfiltered-v109", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v110: bench 010's latency methodology said percentiles were computed
+  //       "via histogram_quantile / quantile_over_time" over a gauge AND a
+  //       histogram. Only half of that was ever true. Every published
+  //       percentile comes from quantile_over_time over the gauge, nothing
+  //       in the repo selected rpc_latency_milliseconds_histogram_bucket,
+  //       and the histogram is removed in the same PR. Editorial change, so
+  //       it needs the bump for the v108 reason two notes above.
+  ["bench-unfiltered-v110", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -831,7 +838,9 @@ const loadAllBenchmarksCached = unstable_cache(
   //        credits exhausted).
   // v101: lockstep with bench-unfiltered-v108 (methodology renders).
   // v102: lockstep with bench-unfiltered-v109 (bench 309 arrives).
-  ["all-benchmarks-v102", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v103: lockstep with bench-unfiltered-v110 (bench 010's latency
+  //        methodology no longer credits a histogram that drove nothing).
+  ["all-benchmarks-v103", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -976,7 +985,11 @@ const loadBenchmarkFiltered = unstable_cache(
   // v48: lockstep with bench-unfiltered-v109. Bench 309 declares kind and
   //      bucket dimensions, so its profile and size tabs are filtered
   //      variants that need their own entries.
-  ["bench-filters-v48", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v49: lockstep with bench-unfiltered-v110. Bench 010 declares a chain
+  //      dimension, so its reworded latency methodology is cached once per
+  //      chain tab; without this the correction lands on the default tab
+  //      only and the other tabs keep crediting the histogram.
+  ["bench-filters-v49", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 
