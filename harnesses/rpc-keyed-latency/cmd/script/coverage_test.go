@@ -311,7 +311,6 @@ func TestAuthStatusDetection(t *testing.T) {
 	}
 }
 
-
 // The Alchemy case, which is why the deferral is scoped to an ENDPOINT and
 // not to a provider.
 //
@@ -422,7 +421,6 @@ func TestFreshnessStampAndVerdictAlwaysMoveTogether(t *testing.T) {
 	}
 }
 
-
 // A refusal on RESPONSE SIZE proves the method is routed, which is the
 // capability question. The strings here were measured against real providers,
 // not invented: the Helius one came back from a free key on 2026-10-29 when a
@@ -473,5 +471,48 @@ func TestWidenedSizeFamilyDoesNotSwallowRealAbsence(t *testing.T) {
 	}
 	if got != verdictUnsupported {
 		t.Fatalf("got %q, want %q", got, verdictUnsupported)
+	}
+}
+
+// The three families the first live pass could not classify, pinned exactly
+// as the providers wrote them.
+//
+// Each one was a blank cell until it was added, and each is a different
+// lesson. The pruned-state pair must read UNSUPPORTED through the archive
+// probe and SERVED through a trace probe, from the same string, because the
+// question differs: a node that lost the state is not an archive, but it
+// plainly routed the method. The Solana one names the account rather than the
+// method, so the method is routed and the missing thing is an index.
+func TestFamiliesFromTheFirstLivePass(t *testing.T) {
+	const pruned = `{"jsonrpc":"2.0","id":1,"error":{"code":-32603,"message":"state at block #48253969 is pruned"}}`
+	const noIndex = `{"jsonrpc":"2.0","id":1,"error":{"code":-32010,"message":"TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA excluded from account secondary indexes; this RPC method unavailable for key"}}`
+
+	// through a trace-style probe: the method ran, so it is served
+	for name, body := range map[string]string{"pruned": pruned, "no index": noIndex} {
+		got, err := servedUnlessMethodMissing([]byte(body))
+		if err != nil {
+			t.Fatalf("%s reached no verdict, so the cell stays blank: %v", name, err)
+		}
+		if got != verdictServed {
+			t.Fatalf("%s read as %q through a trace probe, want %q", name, got, verdictServed)
+		}
+	}
+
+	// through the archive probe: the same pruned string must mean NOT an archive
+	var archive *coverageProbe
+	for i := range coverageProbes {
+		if coverageProbes[i].API == "archive_5m" {
+			archive = &coverageProbes[i]
+		}
+	}
+	if archive == nil {
+		t.Fatal("no archive_5m probe")
+	}
+	got, err := archive.supported([]byte(pruned))
+	if err != nil {
+		t.Fatalf("the archive probe reached no verdict on a pruned node: %v", err)
+	}
+	if got != verdictUnsupported {
+		t.Fatalf("a pruned node read as %q for archive support, want %q", got, verdictUnsupported)
 	}
 }

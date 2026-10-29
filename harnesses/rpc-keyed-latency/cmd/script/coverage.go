@@ -95,11 +95,11 @@ const tierKeyed = "keyed"
 // value alone, because a gauge is a claim about the PROVIDER and we may only
 // make it when the provider actually answered.
 const (
-	verdictServed       = "served"       // gauge 1
-	verdictUnsupported  = "unsupported"  // gauge 0, the method is not routed
-	verdictForbidden    = "forbidden"    // gauge 0, routed but withheld from our plan
-	verdictAuthDeferred = "auth"         // undecidable alone, resolved per provider
-	verdictUnknown      = "unknown"      // gauge untouched
+	verdictServed       = "served"      // gauge 1
+	verdictUnsupported  = "unsupported" // gauge 0, the method is not routed
+	verdictForbidden    = "forbidden"   // gauge 0, routed but withheld from our plan
+	verdictAuthDeferred = "auth"        // undecidable alone, resolved per provider
+	verdictUnknown      = "unknown"     // gauge untouched
 )
 
 // jsonRPCReply is the envelope every probe inspects.
@@ -198,6 +198,19 @@ func looksLikeLookupFailure(msg string) bool {
 		"too many accounts", "large number of pubkeys", "response too large",
 		"result too large", "query exceeds", "too many results",
 		"exceeds the maximum", "range too large",
+		// state the node no longer holds. Measured from GetBlock on the first
+		// live pass: `-32603 state at block #48253969 is pruned`. The method
+		// ran and the state is gone, which archive_5m must read as not an
+		// archive and a trace probe must read as routed. Both fall out of
+		// this one family, see the comment above.
+		"is pruned", "state is not available", "pruned state",
+		// an index the node chose not to build. GetBlock on Solana:
+		// `-32010 Tokenkeg... excluded from account secondary indexes; this
+		// RPC method unavailable for key`. The error names the ACCOUNT, so
+		// the method is routed; what is missing is the index for that
+		// program. Exactly the case the methodology bullet covers: routed is
+		// not "will answer whatever you send it".
+		"secondary indexes", "excluded from account",
 	} {
 		if strings.Contains(m, s) {
 			return true
