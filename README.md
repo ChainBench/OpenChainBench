@@ -110,7 +110,7 @@ A benchmark is a spec, a harness, and the surfaces generated from them. Take `ag
 | Harness directories (`harnesses/*/`, every one a Go module) | 71 |
 | Answer pages (`answers/*.yml`) | 49 |
 | Alternatives pages (`alternatives/*.yml`) | 21 |
-| Distinct categories (`category:` values across the specs) | 9 |
+| Distinct categories (`category:` values across the specs) | 10 |
 | Categories with a published benchmark | 7 |
 | Held on staging until a release condition is met (`DEV_ONLY_BENCH_SLUGS`) | 6 |
 | Retired, answering `410 Gone` or redirecting to a successor (`REMOVED_BENCH_SLUGS`) | 25 |

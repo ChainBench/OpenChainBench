@@ -79,6 +79,11 @@ export function ProviderLogo({
 // Dark-tone (or dark-on-transparent) logos — get a WHITE chip with a
 // hairline shadow so they pop on both light and dark page backgrounds.
 const NEEDS_LIGHT_CHIP = new Set([
+  // Embedded wallet vendors (bench 309): near-black marks that vanish on a
+  // dark page without a chip behind them (2026-10-29).
+  "privy",
+  "turnkey",
+  "reown",
   // Ten-chain sweep 2026-10-07: these two ship only a monochrome mask,
   // which is invisible on a dark page without a chip behind it.
   "neox",

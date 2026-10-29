@@ -4,6 +4,7 @@
  * schema. Exits non-zero on any error. Run in CI on every PR.
  */
 
+import { createHash } from "node:crypto";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import yaml from "js-yaml";
@@ -387,6 +388,7 @@ async function main() {
   }
 
   await checkCostCurveFreshness(issues);
+  await checkWalletCostCurveFreshness(issues);
 
   if (issues.length === 0) {
     console.log(`✓ ${files.length} spec${files.length === 1 ? "" : "s"} valid.`);
@@ -450,6 +452,47 @@ async function checkCostCurveFreshness(issues: Issue[]) {
       file: "rpc-cost.yml",
       level: "error",
       message: `${CURVE} was built from catalogue v${curve.catalogueVersion} as of ${curve.catalogueAsOf}, and ${CATALOGUE} is now v${catalogue.version} as of ${catalogue.as_of}; the slider would quote the old prices. ${REGEN}`,
+    });
+  }
+}
+
+/**
+ * The wallet-cost curve records the SHA256 of the catalogue bytes it was
+ * built from, not just a version and a date: bench 282's check only fires
+ * when someone remembers to bump `as_of`, and a price edited without that
+ * bump would ship a slider quoting the old figure. Any byte changed in the
+ * catalogue without regenerating the curve fails here. Regenerate with:
+ *
+ *   cd harnesses/wallet-cost
+ *   WALLET_COST_EMIT_CURVES=../../src/data/wallet-cost-curves.json go run ./cmd/script
+ */
+async function checkWalletCostCurveFreshness(issues: Issue[]) {
+  const CURVE = "src/data/wallet-cost-curves.json";
+  const CATALOGUE = "harnesses/wallet-cost/pricing/catalogue.yml";
+  const REGEN = `regenerate it: cd harnesses/wallet-cost && WALLET_COST_EMIT_CURVES=../../${CURVE} go run ./cmd/script`;
+  let curve: { schema?: number; catalogueSha256?: string };
+  let raw: Buffer;
+  try {
+    curve = JSON.parse(await fs.readFile(path.join(ROOT, CURVE), "utf8"));
+    raw = await fs.readFile(path.join(ROOT, CATALOGUE));
+  } catch {
+    return;
+  }
+  // Kept in step with WALLET_COST_CURVE_SCHEMA in src/lib/wallet-cost-curve.ts
+  // and Schema in harnesses/wallet-cost/cmd/script/curve.go.
+  if (curve.schema !== 1) {
+    issues.push({
+      file: "wallet-cost.yml",
+      level: "error",
+      message: `${CURVE} is schema ${curve.schema}, the reader expects 1; the calculator renders nothing until they agree. ${REGEN}`,
+    });
+  }
+  const sha = createHash("sha256").update(raw).digest("hex");
+  if (curve.catalogueSha256 !== sha) {
+    issues.push({
+      file: "wallet-cost.yml",
+      level: "error",
+      message: `${CURVE} was built from a different ${CATALOGUE} (sha256 ${String(curve.catalogueSha256).slice(0, 12)} vs ${sha.slice(0, 12)}); the calculator would quote prices the catalogue no longer holds. ${REGEN}`,
     });
   }
 }
