@@ -13,7 +13,7 @@ seo_intro: >
   and publishes the answer next to the latency it already publishes. A blank cell
   means we could not ask, never that the provider said no.
 
-status: draft
+status: live
 
 subtitle: "Which methods each keyed RPC provider actually serves, per chain"
 
@@ -53,11 +53,13 @@ methodology:
   - "The log queries are asked over a five block window, which is deliberately narrow: this column answers whether the method is routed at all, and a narrow window is the question every provider should be able to answer. It is not the question an indexer asks. A manual test in October found that over two thousand blocks most of this cohort refused, so expect these columns to read alike and expect the range measurement, when it lands, to disagree with them."
   - "The Beacon API is not answered here. Beacon endpoints live on a different base URL from the JSON-RPC endpoint and our configuration carries only the latter, so the question was never put. Publishing 0 would state that no provider in this cohort serves it, which is false. It needs its own credentials before it can be measured."
   - "Solana is not on this board. Every method here is an EVM concept, the Solana keyed cohort is three providers, and a grid whose columns are all blank on one tab is not a matrix. Solana belongs in its own bench against Solana-native providers, measured on Solana methods."
+  - "The harness probes one Solana method already, for that future bench, so every query on this board excludes that chain by name rather than relying on the column list. Leaving it in counted a method we declare out of scope toward the all-chains share, and it helped only the two providers that answer it."
+  - "A provider is ranked here only if we obtained a verdict on at least half the cells we asked of it. Below that it keeps its row and its figures and is listed as provisional, because the headline is a share and a share over a fifth of the questions is not comparable to the same share over all of them. This is the reason a provider can read 100 on this board without leading it: our key, not their API, is what limited the sample."
   - "eth_getLogs is asked in three shapes because they are three different questions: an unfiltered range, a range filtered by address, and a range filtered by topics. A provider that serves an address-filtered query and refuses an unfiltered one is the common case, and one merged flag would erase exactly the distinction an indexer needs."
 
 findings:
   - "Coverage is not the same question as latency, and the two boards can disagree. A provider can lead the head-lag ranking and still decline the method your pipeline is built on."
-  - "The widest coverage in the cohort right now is {{best_name}} at {{best_p50}} of the methods asked. Read it next to Hours since check and the probe count, because a high share over few questions is not the same claim as a high share over many."
+  - "The widest coverage in the cohort right now is {{best_name}} at {{best_p50}} of the methods asked. A provider we could ask on fewer than half its cells is published with its figures and listed as provisional instead of ranked, so a perfect share over a handful of questions cannot lead this board."
   - "Tracing is where this cohort separates. The three log-query shapes and block receipts are served nearly everywhere we asked, while trace_block is the column carrying real disagreement, and some providers that refuse it serve debug_traceTransaction on the same chain. The two sit in different client namespaces, so a provider can have one and not the other, and a documentation page saying tracing is supported does not tell you which one you get."
   - "Our Alchemy key is refused on most of the chains it is configured for, so Alchemy is absent from most chain tabs here while appearing on the latency boards. That is our free-tier plan rather than Alchemy's API surface, and a missing row is this board saying it could not ask, never that the provider declined."
 
@@ -135,7 +137,7 @@ metric_panels:
   - id: probe_age_hours
     label: "Hours since check"
     label_key: provider
-    metric: (time() - max by (provider) (rpc_api_last_probe_timestamp{})) / 3600
+    metric: (time() - max by (provider) (rpc_api_last_probe_timestamp{chain!="solana"})) / 3600
     unit: count
     higher_is_better: false
     tab: false
@@ -160,32 +162,38 @@ providers:
   - slug: quicknode
     name: Quicknode
     queries:
-      p50: 100 * sum by (provider) (rpc_api_supported{provider="quicknode"}) / count by (provider) (rpc_api_supported{provider="quicknode"})
-      sample_size: sum by (provider) (increase(rpc_api_probe_total{provider="quicknode"}[24h]))
+      p50: 100 * sum by (provider) (rpc_api_supported{provider="quicknode",chain!="solana"}) / count by (provider) (rpc_api_supported{provider="quicknode",chain!="solana"})
+      sample_size: sum by (provider) (increase(rpc_api_probe_total{provider="quicknode",chain!="solana"}[24h]))
+      ranked: count by (provider) (rpc_api_supported{provider="quicknode",chain!="solana"}) >= bool (0.5 * count by (provider) (count by (provider, chain, api) (rpc_api_probe_total{provider="quicknode",chain!="solana"})))
   - slug: chainstack
     name: Chainstack
     queries:
-      p50: 100 * sum by (provider) (rpc_api_supported{provider="chainstack"}) / count by (provider) (rpc_api_supported{provider="chainstack"})
-      sample_size: sum by (provider) (increase(rpc_api_probe_total{provider="chainstack"}[24h]))
+      p50: 100 * sum by (provider) (rpc_api_supported{provider="chainstack",chain!="solana"}) / count by (provider) (rpc_api_supported{provider="chainstack",chain!="solana"})
+      sample_size: sum by (provider) (increase(rpc_api_probe_total{provider="chainstack",chain!="solana"}[24h]))
+      ranked: count by (provider) (rpc_api_supported{provider="chainstack",chain!="solana"}) >= bool (0.5 * count by (provider) (count by (provider, chain, api) (rpc_api_probe_total{provider="chainstack",chain!="solana"})))
   - slug: getblock
     name: GetBlock
     queries:
-      p50: 100 * sum by (provider) (rpc_api_supported{provider="getblock"}) / count by (provider) (rpc_api_supported{provider="getblock"})
-      sample_size: sum by (provider) (increase(rpc_api_probe_total{provider="getblock"}[24h]))
+      p50: 100 * sum by (provider) (rpc_api_supported{provider="getblock",chain!="solana"}) / count by (provider) (rpc_api_supported{provider="getblock",chain!="solana"})
+      sample_size: sum by (provider) (increase(rpc_api_probe_total{provider="getblock",chain!="solana"}[24h]))
+      ranked: count by (provider) (rpc_api_supported{provider="getblock",chain!="solana"}) >= bool (0.5 * count by (provider) (count by (provider, chain, api) (rpc_api_probe_total{provider="getblock",chain!="solana"})))
   - slug: dwellir
     name: Dwellir
     queries:
-      p50: 100 * sum by (provider) (rpc_api_supported{provider="dwellir"}) / count by (provider) (rpc_api_supported{provider="dwellir"})
-      sample_size: sum by (provider) (increase(rpc_api_probe_total{provider="dwellir"}[24h]))
+      p50: 100 * sum by (provider) (rpc_api_supported{provider="dwellir",chain!="solana"}) / count by (provider) (rpc_api_supported{provider="dwellir",chain!="solana"})
+      sample_size: sum by (provider) (increase(rpc_api_probe_total{provider="dwellir",chain!="solana"}[24h]))
+      ranked: count by (provider) (rpc_api_supported{provider="dwellir",chain!="solana"}) >= bool (0.5 * count by (provider) (count by (provider, chain, api) (rpc_api_probe_total{provider="dwellir",chain!="solana"})))
   - slug: blockmachine
     name: BlockMachine
     queries:
-      p50: 100 * sum by (provider) (rpc_api_supported{provider="blockmachine"}) / count by (provider) (rpc_api_supported{provider="blockmachine"})
-      sample_size: sum by (provider) (increase(rpc_api_probe_total{provider="blockmachine"}[24h]))
+      p50: 100 * sum by (provider) (rpc_api_supported{provider="blockmachine",chain!="solana"}) / count by (provider) (rpc_api_supported{provider="blockmachine",chain!="solana"})
+      sample_size: sum by (provider) (increase(rpc_api_probe_total{provider="blockmachine",chain!="solana"}[24h]))
+      ranked: count by (provider) (rpc_api_supported{provider="blockmachine",chain!="solana"}) >= bool (0.5 * count by (provider) (count by (provider, chain, api) (rpc_api_probe_total{provider="blockmachine",chain!="solana"})))
   - slug: alchemy
     name: Alchemy
     queries:
-      p50: 100 * sum by (provider) (rpc_api_supported{provider="alchemy"}) / count by (provider) (rpc_api_supported{provider="alchemy"})
-      sample_size: sum by (provider) (increase(rpc_api_probe_total{provider="alchemy"}[24h]))
+      p50: 100 * sum by (provider) (rpc_api_supported{provider="alchemy",chain!="solana"}) / count by (provider) (rpc_api_supported{provider="alchemy",chain!="solana"})
+      sample_size: sum by (provider) (increase(rpc_api_probe_total{provider="alchemy",chain!="solana"}[24h]))
+      ranked: count by (provider) (rpc_api_supported{provider="alchemy",chain!="solana"}) >= bool (0.5 * count by (provider) (count by (provider, chain, api) (rpc_api_probe_total{provider="alchemy",chain!="solana"})))
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-keyed-latency
