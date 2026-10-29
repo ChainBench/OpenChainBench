@@ -226,6 +226,11 @@ export const DEV_ONLY_BENCH_SLUGS = new Set([
   // of the eight rows have no maker rate at all. Un-gate after a 24h
   // window and an audit round.
   "perp-fee-disclosure",
+  // 309 wallet-cost: new 2026-10-29, the first bench in the Wallets
+  // category. Its harness and Prometheus job go live with this commit, so
+  // the bench pages need a materialize sweep and an audit round before
+  // production. Un-gate after both.
+  "wallet-cost",
   // Benches 203, 206, 207 and 232 left this list on 2026-10-07.
   //
   // They were gated on 2026-10-02 when the Dune trial ended, under a note

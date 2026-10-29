@@ -12,6 +12,24 @@
  */
 
 const RAW: Record<string, string> = {
+  // Embedded wallet vendors, bench 309 (2026-10-29). Each is the vendor's
+  // own glyph: Circle and ZeroDev their favicon.svg, Magic its brand kit,
+  // Dynamic its icon.svg without the white disc, Privy, Turnkey, Openfort,
+  // Crossmint and Reown cropped from their header wordmark to the icon. Para
+  // and Web3Auth publish no SVG mark, so they take their apple-touch icon at
+  // 160 px. Para is `getpara` because `para` is already a Hyperliquid HIP-3
+  // deployer on bench 035, a different company.
+  privy: "/logos/privy.svg",
+  dynamic: "/logos/dynamic.svg",
+  turnkey: "/logos/turnkey.svg",
+  web3auth: "/logos/web3auth.png",
+  magic: "/logos/magic.svg",
+  getpara: "/logos/getpara.png",
+  openfort: "/logos/openfort.svg",
+  circle: "/logos/circle.svg",
+  reown: "/logos/reown.svg",
+  zerodev: "/logos/zerodev.svg",
+  crossmint: "/logos/crossmint.svg",
   // The four bench 282 providers that still rendered as initials chips,
   // added 2026-10-09. BlockPI is the one that mattered: it leads the cost
   // board's default view at $29.50 and the leader was the only row without

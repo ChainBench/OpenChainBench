@@ -895,7 +895,9 @@ const buildProvidersCached = unstable_cache(
   // were all rendering as initials.
   // v24: thorchain gains a mark and a registry entry; it was the last row on
   // the privacy boards still rendering as initials.
-  ["providers-v26"],
+  // v27: bench 309 adds thirteen embedded wallet vendors, eleven of them
+  // new to the site, each with a mark and a registry entry.
+  ["providers-v27"],
   // 900 s: the provider index feeds products / compare / answers, whose
   // numbers move slowly, and this revalidate is also the effective ISR
   // period of those ~500 pages (Next takes the min across a route's caches).
