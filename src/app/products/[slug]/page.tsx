@@ -546,7 +546,8 @@ export default async function ProviderPage({
   for (const a of rankedAppearances.slice(0, 4)) {
     const p50Str = fmtUnit(a.result.ms.p50, a.benchmark.unit);
     const rankStr = `ranks #${a.rank} of ${a.totalRanked}${cohortWord(a)}`;
-    topLines.push(`${shortBenchLabel(a.benchmark)} (${rankStr}, ${p50Str} p50)`);
+    const valueWord = a.benchmark.valueKind === "latest" ? "latest" : "p50";
+    topLines.push(`${shortBenchLabel(a.benchmark)} (${rankStr}, ${p50Str} ${valueWord})`);
   }
   const proseParts: string[] = [];
   if (topLines.length > 0) {
@@ -592,6 +593,8 @@ export default async function ProviderPage({
     region?: { value: string; label: string };
     /** Access cohort the rank was earned in (keyed RPC providers). */
     tier?: string;
+    /** The default slice of a bench ranked per profile, volume or plan. */
+    view?: string;
     benchSlug: string;
     providerSlug: string;
   };
@@ -699,10 +702,12 @@ export default async function ProviderPage({
     const isGlobalNumberOne = a.rank === 1;
     if (chainDims.length === 0) {
       if (isGlobalNumberOne) {
+        const view = a.benchmark.defaultView ?? "";
         badgeCards.push({
           key: a.tier ? `${benchSlug}-t-${a.tier}` : benchSlug,
           title,
           ...(a.tier ? { tier: a.tier } : {}),
+          ...(view ? { view } : {}),
           benchSlug,
           providerSlug,
         });
@@ -1271,7 +1276,9 @@ export default async function ProviderPage({
                       <>
                         <p className="font-sans tabular text-base text-ink">{value}</p>
                         <p className="font-sans text-[9px] uppercase tracking-[0.16em] text-ink-faint mt-0.5 font-medium">
-                          {valueWindowLabel(a.benchmark)}
+                          {a.benchmark.valueKind === "latest"
+                            ? "latest value"
+                            : valueWindowLabel(a.benchmark)}
                         </p>
                       </>
                     ) : (
@@ -1317,8 +1324,11 @@ export default async function ProviderPage({
               const badgeUrl = `${SITE.url}${badgePath}`;
               const targetUrl = `${SITE.url}/benchmarks/${card.benchSlug}${qs}`;
               const tierLabel = card.tier ? (card.tier === "keyed" ? "private cohort" : `${card.tier} cohort`) : null;
-              const scopeSuffix = `${card.chain ? ` on ${card.chain.label}` : ""}${card.region ? ` from ${card.region.label}` : ""}${tierLabel ? `, ${tierLabel}` : ""}`;
-              const scopeLabels = [card.chain?.label, card.region?.label, tierLabel]
+              // Benches ranked per profile, volume or plan band earn a rank
+              // on one slice; the badge says which, or "#1" reads as overall.
+              const viewLabel = card.view ?? "";
+              const scopeSuffix = `${card.chain ? ` on ${card.chain.label}` : ""}${card.region ? ` from ${card.region.label}` : ""}${tierLabel ? `, ${tierLabel}` : ""}${viewLabel ? ` (${viewLabel})` : ""}`;
+              const scopeLabels = [card.chain?.label, card.region?.label, tierLabel, viewLabel || null]
                 .filter(Boolean)
                 .join(" · ");
               const cardTitle = scopeLabels

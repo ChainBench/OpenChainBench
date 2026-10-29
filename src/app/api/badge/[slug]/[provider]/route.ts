@@ -30,6 +30,7 @@
 
 import { type NextRequest, NextResponse } from "next/server";
 import { getBenchmark } from "@/data/benchmarks";
+import { defaultViewLabel } from "@/lib/bench-view";
 import { fmtUnit } from "@/lib/format";
 import { readBestPerChain } from "@/lib/per-chain-contract";
 import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
@@ -138,9 +139,12 @@ function rankOfCell(
   return { rank: idx + 1, total: cell.length, value: cell[idx].p50 };
 }
 
-function valueSuffix(unit: string): string {
-  if (unit === "count") return "(24h)";
-  if (unit === "pct" || unit === "bps") return "(24h avg)";
+function valueSuffix(b: Pick<Benchmark, "unit" | "valueKind">): string {
+  // A price read from a catalogue is the latest value, not a median of a
+  // day: bench 282 and 309 badges said "(p50, 24h)" for a monthly bill.
+  if (b.valueKind === "latest") return "(latest value)";
+  if (b.unit === "count") return "(24h)";
+  if (b.unit === "pct" || b.unit === "bps") return "(24h avg)";
   return "(p50, 24h)";
 }
 
@@ -274,6 +278,9 @@ export async function GET(
         ? "all regions"
         : null,
       cohortOption ? cohortOption.label : null,
+      // The slice the unfiltered rank was earned on, for benches ranked
+      // per profile, volume or plan band: "#1" alone reads as overall.
+      defaultViewLabel(b) || null,
     ]
       .filter(Boolean)
       .join(" · ");
@@ -283,7 +290,7 @@ export async function GET(
   const accent = r.rank === 1 ? "#3F7B47" : "#22272F";
   const rankLabel = `#${r.rank}/${r.total}`;
   const value = fmtUnit(r.value, b.unit);
-  const suffix = valueSuffix(b.unit);
+  const suffix = valueSuffix(b);
   // Full title by default; ellipsis only kicks in past the W_MAX bound
   // (schema allows 200-char titles, the canvas does not).
   const titleBudget = Math.floor(

@@ -88,10 +88,8 @@ func run(cat *Catalogue) {
 	costPerUser.Reset()
 	eligible.Reset()
 	planConfidence.Reset()
-	artifactOK.Reset()
-	artifactAge.Reset()
-	// artifactDrift is not reset: lastDrift re-publishes every known
-	// verdict below, including through a failed fetch.
+	catalogueInfo.Reset()
+	catalogueInfo.WithLabelValues(cat.SHA256, cat.AsOf).Set(1)
 	priceEverything(cat)
 	checkFreshness(cat)
 	lastRun.SetToCurrentTime()
@@ -136,6 +134,14 @@ func priceEverything(cat *Catalogue) {
 var lastDrift = map[string]bool{}
 
 func checkFreshness(cat *Catalogue) {
+	// Fetch everything first and publish afterwards: resetting the gauges
+	// before thirteen page loads left a scrape landing in that window with
+	// no artifact series at all, which reads as "not monitored".
+	type reading struct {
+		slug, name string
+		st         artifactState
+	}
+	var readings []reading
 	fetched := map[string]fetchResult{}
 	fetch := func(url string) fetchResult {
 		if r, ok := fetched[url]; ok {
@@ -147,20 +153,26 @@ func checkFreshness(cat *Catalogue) {
 	}
 	for _, p := range cat.Ranked() {
 		for _, name := range sortedKeys(p.Source) {
-			st := checkArtifact(p.Source[name], fetch)
-			key := p.Slug + "/" + name
-			if st.polled {
-				artifactOK.WithLabelValues(p.Slug, name).Set(boolGauge(st.ok))
-				if st.ok {
-					lastDrift[key] = st.drift
-				}
-				if d, known := lastDrift[key]; known {
-					artifactDrift.WithLabelValues(p.Slug, name).Set(boolGauge(d))
-				}
+			readings = append(readings, reading{p.Slug, name, checkArtifact(p.Source[name], fetch)})
+		}
+	}
+	artifactOK.Reset()
+	artifactAge.Reset()
+	// artifactDrift is not reset: lastDrift re-publishes every known
+	// verdict, including through a failed fetch.
+	for _, r := range readings {
+		key := r.slug + "/" + r.name
+		if r.st.polled {
+			artifactOK.WithLabelValues(r.slug, r.name).Set(boolGauge(r.st.ok))
+			if r.st.ok {
+				lastDrift[key] = r.st.drift
 			}
-			if st.age > 0 {
-				artifactAge.WithLabelValues(p.Slug, name).Set(st.age.Seconds())
+			if d, known := lastDrift[key]; known {
+				artifactDrift.WithLabelValues(r.slug, r.name).Set(boolGauge(d))
 			}
+		}
+		if r.st.age > 0 {
+			artifactAge.WithLabelValues(r.slug, r.name).Set(r.st.age.Seconds())
 		}
 	}
 }

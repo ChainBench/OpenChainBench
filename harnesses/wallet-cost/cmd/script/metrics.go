@@ -22,11 +22,19 @@ import "github.com/prometheus/client_golang/prometheus"
 //
 //   wallet_cost_plan_confidence{provider, plan, kind, bucket}
 //     1 when the winning plan's price rests on unambiguous published
-//     figures, 0 when it carries a stated caveat. A 0 is ranked but badged.
+//     figures, 0 when it carries a stated caveat. A 0 is ranked; the calculator
+//     badges it and the methodology names the alternative reading.
 //
 //   wallet_pricing_artifact_ok / _drift / _age_seconds{provider, artifact}
 //     Source page reachable, pricing lines changed since a human read them,
 //     and seconds since that reading. Maintainer signals.
+//
+//   wallet_cost_catalogue_info{sha256, as_of} 1
+//     Which catalogue this process is pricing from. The site's calculator
+//     reads a curve that records the sha256 of the catalogue it was built
+//     from; the catalogue ships inside this image, so a merged price change
+//     reaches the site at once and this harness only after a rebuild. When
+//     the two hashes differ the bench page shows two prices for one vendor.
 
 var (
 	costMonthly    *prometheus.GaugeVec
@@ -37,6 +45,7 @@ var (
 	artifactDrift  *prometheus.GaugeVec
 	artifactAge    *prometheus.GaugeVec
 	lastRun        prometheus.Gauge
+	catalogueInfo  *prometheus.GaugeVec
 )
 
 func init() {
@@ -72,6 +81,10 @@ func init() {
 		Name: "wallet_cost_last_run_timestamp_seconds",
 		Help: "Unix time of the last completed harness cycle.",
 	})
+	catalogueInfo = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "wallet_cost_catalogue_info",
+		Help: "1, labelled with the sha256 and as_of of the catalogue this process prices from. Compare with catalogueSha256 in src/data/wallet-cost-curves.json.",
+	}, []string{"sha256", "as_of"})
 	prometheus.MustRegister(costMonthly, costPerUser, eligible, planConfidence,
-		artifactOK, artifactDrift, artifactAge, lastRun)
+		artifactOK, artifactDrift, artifactAge, lastRun, catalogueInfo)
 }
