@@ -459,10 +459,8 @@ func probeOne(ctx context.Context, e Endpoint) {
 			// than real work and would poison the p50).
 			if warm {
 				rpcLatency.WithLabelValues(e.Provider, e.Chain, currentRegion, "keyed").Set(latency)
-				rpcLatencyHist.WithLabelValues(e.Provider, e.Chain, currentRegion, "keyed").Observe(latency)
 			} else {
 				rpcLatencyCold.WithLabelValues(e.Provider, e.Chain, currentRegion, "keyed").Set(latency)
-				rpcLatencyColdHist.WithLabelValues(e.Provider, e.Chain, currentRegion, "keyed").Observe(latency)
 			}
 			rpcHealth.WithLabelValues(e.Provider, e.Chain, currentRegion, "keyed").Set(1)
 			mode := "cold"

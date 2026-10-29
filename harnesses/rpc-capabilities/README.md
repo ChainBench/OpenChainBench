@@ -67,7 +67,6 @@ The default Geth state cap is 128 blocks, so the **300 bucket is the canonical p
 | Name | Type | Labels | Help |
 |---|---|---|---|
 | `rpc_latency_milliseconds` | gauge | provider, chain | Latest observed round-trip. |
-| `rpc_latency_milliseconds_histogram` | histogram | provider, chain | Drives p50/p90/p99 via `quantile_over_time`. |
 | `rpc_call_total` | counter | provider, chain, result | One increment per probe, labeled by classification. |
 | `rpc_health` | gauge | provider, chain | 1 when last probe returned a fresh valid block, 0 otherwise. |
 | `rpc_archive_depth_supported` | gauge | provider, chain, depth | 1 if `eth_getBalance` at (head - depth) succeeds, 0 otherwise. |

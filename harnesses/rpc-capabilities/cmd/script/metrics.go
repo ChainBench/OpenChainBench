@@ -25,15 +25,15 @@ var (
 		[]string{"provider", "chain", "region"},
 	)
 
-	rpcLatencyHist = promauto.NewHistogramVec(
-		prometheus.HistogramOpts{
-			Name:    "rpc_latency_milliseconds_histogram",
-			Help:    "Histogram of public RPC `eth_getBlockByNumber(latest)` latencies — drives the p50/p90/p99 leaderboard via `histogram_quantile` / `quantile_over_time`.",
-			Buckets: []float64{50, 100, 150, 200, 300, 500, 750, 1000, 1500, 2000, 3000, 5000, 10000},
-		},
-		[]string{"provider", "chain", "region"},
-	)
-
+	// There is no latency histogram here, and that is deliberate. One existed
+	// until 2026-10-29, claiming in its own Help string to drive the p50/p90/
+	// p99 leaderboard. It never did: every published percentile comes from
+	// quantile_over_time over the gauge above, which is the correct shape for
+	// a last-value gauge, and nothing in benchmarks/ or src/ ever selected
+	// rpc_latency_milliseconds_histogram_bucket. It cost 20104 series on the
+	// Railway Prometheus and the same again on the VPS, 22% of the former's
+	// head, to answer no query. The WebSocket histograms below are different:
+	// those are real observation streams and their bucket rates are read.
 	rpcCallTotal = promauto.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "rpc_call_total",
