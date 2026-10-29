@@ -27,7 +27,11 @@ export type BadgePair = {
   rank: number;
   /** Number of live providers ranked on this bench. */
   total: number;
-  /** Optional scope dimensions surfaced by the modal as dropdowns. */
+  /** Scope dimensions surfaced by the modal as dropdowns. These are the
+   *  dimensions the BADGE can scope, not every dimension the bench
+   *  declares: a picker whose value the badge answers with the unfiltered
+   *  figure is a control that does nothing. The server decides (see
+   *  `scopableDimensions` in src/app/badges/page.tsx). */
   dimensions?: {
     chain?: { value: string; label: string }[];
     region?: { value: string; label: string }[];
