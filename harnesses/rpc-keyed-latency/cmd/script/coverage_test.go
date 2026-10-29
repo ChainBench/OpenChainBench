@@ -3,6 +3,8 @@ package main
 import (
 	"strings"
 	"testing"
+
+	"github.com/prometheus/client_golang/prometheus/testutil"
 )
 
 // The rule every test here defends: a gauge value is a claim about the
@@ -306,5 +308,116 @@ func TestAuthStatusDetection(t *testing.T) {
 		if isAuthStatus(s) {
 			t.Errorf("%q wrongly detected as an auth status", s)
 		}
+	}
+}
+
+
+// The Alchemy case, which is why the deferral is scoped to an ENDPOINT and
+// not to a provider.
+//
+// Measured 2026-10-29: Alchemy is probed on 27 cells and healthy on 6, with
+// http_err 3779 against ok 1082, which is 22.2 percent, which is 6/27 to the
+// decimal. Our free-tier key has been capped since 24 October everywhere
+// except HyperEVM and Robinhood Chain. Grouped by PROVIDER, Alchemy serves
+// something, so a 401 on Ethereum would resolve as a plan refusal and publish
+// a 0 claiming Alchemy declines eth_getLogs. Grouped by ENDPOINT, the
+// Ethereum cell has no successes of its own, so it publishes nothing.
+func TestDeferredAuthIsScopedToTheEndpointNotTheProvider(t *testing.T) {
+	evm := Endpoint{Provider: "testprov", Chain: "testchain", Kind: "evm", URL: "http://x"}
+
+	// Endpoint where our access is gone: every probe returns an auth status.
+	before := testutil.CollectAndCount(rpcAPISupported)
+	tally := coverEndpoint(evm, func(coverageProbe) string {
+		return verdictAuthDeferred
+	}, nil)
+	after := testutil.CollectAndCount(rpcAPISupported)
+	if after != before {
+		t.Fatalf("published %d series for an endpoint that never answered; "+
+			"a capped key would be shown as the provider refusing", after-before)
+	}
+	if tally.unusable == 0 || tally.forbidden != 0 {
+		t.Fatalf("tally = %+v, want every deferral counted unusable and none forbidden", tally)
+	}
+
+	// Endpoint where the credential works: one probe serves, so the refusals
+	// are about those methods and do publish a 0.
+	evm2 := Endpoint{Provider: "testprov", Chain: "workingchain", Kind: "evm", URL: "http://y"}
+	first := true
+	before = testutil.CollectAndCount(rpcAPISupported)
+	tally = coverEndpoint(evm2, func(coverageProbe) string {
+		if first {
+			first = false
+			return verdictServed
+		}
+		return verdictAuthDeferred
+	}, nil)
+	after = testutil.CollectAndCount(rpcAPISupported)
+	if after <= before {
+		t.Fatal("an endpoint whose credential works published nothing for its refusals")
+	}
+	if tally.forbidden == 0 {
+		t.Fatalf("tally = %+v, want the refusals counted forbidden", tally)
+	}
+	if tally.unusable != 0 {
+		t.Fatalf("tally = %+v, want nothing counted unusable when the endpoint served", tally)
+	}
+}
+
+// The freshness stamp and the verdict must move together, always.
+//
+// `time() - rpc_api_last_probe_timestamp` is only the age of the published
+// ANSWER while every stamp has a verdict beside it and vice versa. If a
+// future edit stamps on a failed attempt, a frozen cell reads as fresh, which
+// is the single thing the column exists to catch; if it writes a verdict
+// without stamping, the column reads the cell as ancient forever. One series
+// count each, compared after a mixed run, catches both directions.
+//
+// Expressed as an invariant rather than as a before-and-after, because an
+// injected prober replaces probeCoverage, which is where the non-deferred
+// verdicts are written. The first version of this test asserted through
+// coverEndpoint and was measuring a seam the injection had removed.
+func TestFreshnessStampAndVerdictAlwaysMoveTogether(t *testing.T) {
+	seq := []struct {
+		chain   string
+		verdict string
+	}{
+		{"stamp-served", verdictAuthDeferred}, // resolves to unusable: no write
+		{"stamp-unknown", verdictUnknown},     // no write
+	}
+	for _, s := range seq {
+		coverEndpoint(Endpoint{
+			Provider: "stampprov", Chain: s.chain, Kind: "evm", URL: "http://z",
+		}, func(coverageProbe) string { return s.verdict }, nil)
+	}
+	// And one endpoint whose credential works, so its deferrals DO write.
+	first := true
+	coverEndpoint(Endpoint{
+		Provider: "stampprov", Chain: "stamp-mixed", Kind: "evm", URL: "http://y",
+	}, func(coverageProbe) string {
+		if first {
+			first = false
+			return verdictServed
+		}
+		return verdictAuthDeferred
+	}, nil)
+
+	supported := testutil.CollectAndCount(rpcAPISupported)
+	stamped := testutil.CollectAndCount(rpcAPILastProbe)
+	if supported != stamped {
+		t.Fatalf("%d verdicts published but %d stamped: a cell can now read "+
+			"fresh while frozen, or ancient while current", supported, stamped)
+	}
+	if supported == 0 {
+		t.Fatal("nothing was published, so the invariant proved nothing")
+	}
+
+	// setCoverage is the only writer, so it must do both.
+	e := Endpoint{Provider: "stampprov", Chain: "stamp-direct", Kind: "evm"}
+	setCoverage(e, "probe_api", 1)
+	if got := testutil.CollectAndCount(rpcAPISupported); got != supported+1 {
+		t.Fatalf("setCoverage did not publish a verdict (%d -> %d)", supported, got)
+	}
+	if got := testutil.CollectAndCount(rpcAPILastProbe); got != stamped+1 {
+		t.Fatalf("setCoverage published a verdict without stamping it (%d -> %d)", stamped, got)
 	}
 }

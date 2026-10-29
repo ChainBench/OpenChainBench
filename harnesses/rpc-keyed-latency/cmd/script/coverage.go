@@ -442,99 +442,115 @@ func StartCoverageLoop(ctx context.Context) {
 	}()
 }
 
-// deferredAuth is a probe that came back 401 or 403 and cannot be judged on
-// its own.
+// runCoveragePass asks every question once, resolving the ambiguous answers
+// per ENDPOINT rather than per call.
 //
-// A status code alone does not separate "this method is not on our plan",
-// which is a fact about the provider and belongs in the matrix as a 0, from
-// "our key is dead", which is a fact about us and belongs nowhere near it.
-// The tell is the rest of the pass: if some other probe to the same provider
-// served, the key works and the refusal is about that method. If every probe
-// to that provider failed the same way, the key is the problem and we publish
-// nothing.
+// A 401 or 403 cannot be judged alone: the status does not separate "this
+// method is not on our plan", which is a fact about the provider and belongs
+// in the matrix as a 0, from "our access to this endpoint is gone", which is
+// a fact about us and belongs nowhere near it. The tell is the rest of that
+// endpoint's probes. If anything there served, the credential works and the
+// refusal is about the method. If nothing served, the endpoint is the
+// problem and we publish nothing at all.
 //
-// This exists because openchainbench-21 pushed back on the first version,
-// which wrote a 0 on any auth status. We have shipped that mistake before:
-// RouteMesh's exhausted trial credits were published as a 78 percent error
-// rate presented as their reliability.
-type deferredAuth struct {
-	endpoint Endpoint
-	api      string
-}
-
+// The granularity is (provider, chain) and not provider, which is the whole
+// point. The first version grouped by provider, and Alchemy is the case that
+// breaks it: measured right now it is probed on 27 cells and healthy on 6,
+// with http_err 3779 against ok 1082, which is 22.2 percent, which is 6/27 to
+// the decimal. Our free-tier key has been capped since 24 October on
+// everything except HyperEVM and Robinhood Chain. Grouped by provider,
+// Alchemy "serves something", so a refusal on Ethereum would have resolved as
+// a plan refusal and published a 0 claiming Alchemy declines eth_getLogs.
+// Grouped by endpoint, the Ethereum cell has no successes, so it publishes
+// nothing and reads as not probed, which is the truth.
+//
+// openchainbench-21 found this by counting rpc_health where I had counted
+// rpc_latency_milliseconds, which probe.go deletes on a failed probe and
+// which therefore only ever exists where the probe succeeds.
 func runCoveragePass(ctx context.Context, eps []Endpoint) {
 	start := time.Now()
-	var served, unsupported, forbidden, unknown, keyDead int
+	var served, unsupported, forbidden, unknown, unusable int
 
-	// Group by provider: the auth verdict is decided per provider, so a
-	// provider's probes have to be resolved together.
-	byProvider := map[string][]Endpoint{}
-	order := []string{}
 	for _, e := range eps {
-		if _, seen := byProvider[e.Provider]; !seen {
-			order = append(order, e.Provider)
-		}
-		byProvider[e.Provider] = append(byProvider[e.Provider], e)
-	}
-
-	for _, provider := range order {
-		anyServed := false
-		var deferred []deferredAuth
-
-		for _, e := range byProvider[provider] {
-			head := tips.get(e.Chain)
-			for _, pr := range coverageProbes {
-				if pr.Kind != e.Kind {
-					continue
-				}
-				if ctx.Err() != nil {
-					return
-				}
-				v := probeCoverage(ctx, e, pr, head)
-				switch v {
-				case verdictServed:
-					served++
-					anyServed = true
-				case verdictUnsupported:
-					unsupported++
-				case verdictAuthDeferred:
-					deferred = append(deferred, deferredAuth{endpoint: e, api: pr.API})
-				default:
-					unknown++
-				}
-				select {
-				case <-ctx.Done():
-					return
-				case <-time.After(coveragePerCallSpacing):
-				}
+		head := tips.get(e.Chain)
+		run := func(pr coverageProbe) string {
+			v := probeCoverage(ctx, e, pr, head)
+			select {
+			case <-ctx.Done():
+			case <-time.After(coveragePerCallSpacing):
 			}
+			return v
 		}
-
-		// Resolve the deferred refusals now that the pass is in.
-		for _, d := range deferred {
-			if anyServed {
-				setCoverage(d.endpoint, d.api, 0)
-				labelProbe(d.endpoint, d.api, "forbidden")
-				forbidden++
-			} else {
-				// Nothing from this provider answered. The key, not the
-				// method, is what failed. No gauge is written, so the cell
-				// stays blank and reads as "not probed" rather than claiming
-				// the provider refuses an API it may well serve.
-				labelProbe(d.endpoint, d.api, "key_unusable")
-				keyDead++
-			}
-		}
-		if len(deferred) > 0 && !anyServed {
-			fmt.Printf("[coverage] %s: every probe returned an auth status and none served. "+
-				"Treating the key as unusable, publishing nothing for it.\n", provider)
-		}
+		tally := coverEndpoint(e, run, ctx.Err)
+		served += tally.served
+		unsupported += tally.unsupported
+		forbidden += tally.forbidden
+		unknown += tally.unknown
+		unusable += tally.unusable
 	}
 
 	fmt.Printf("[coverage] pass done in %s: served=%d unsupported=%d forbidden=%d "+
-		"unknown=%d key_unusable=%d\n",
+		"unknown=%d endpoint_unusable=%d\n",
 		time.Since(start).Truncate(time.Second),
-		served, unsupported, forbidden, unknown, keyDead)
+		served, unsupported, forbidden, unknown, unusable)
+}
+
+// coverTally counts one endpoint's outcomes.
+type coverTally struct {
+	served, unsupported, forbidden, unknown, unusable int
+}
+
+// coverEndpoint walks one endpoint's probes and resolves its deferred auth
+// answers. The prober is injected so the resolution rule can be tested
+// without a network: the rule is the part that was wrong, not the HTTP.
+func coverEndpoint(e Endpoint, probe func(coverageProbe) string, canceled func() error) coverTally {
+	var t coverTally
+	anyServed := false
+	var deferred []string
+
+	for _, pr := range coverageProbes {
+		if pr.Kind != e.Kind {
+			continue
+		}
+		if canceled != nil && canceled() != nil {
+			return t
+		}
+		switch probe(pr) {
+		case verdictServed:
+			t.served++
+			anyServed = true
+		case verdictUnsupported:
+			t.unsupported++
+		case verdictForbidden:
+			t.forbidden++
+		case verdictAuthDeferred:
+			deferred = append(deferred, pr.API)
+		default:
+			t.unknown++
+		}
+	}
+
+	for _, api := range deferred {
+		if anyServed {
+			// The credential works on this endpoint, so the refusal is about
+			// this method: a fact about the provider, hence a 0.
+			setCoverage(e, api, 0)
+			labelProbe(e, api, "forbidden")
+			t.forbidden++
+		} else {
+			// Nothing on this endpoint answered. Our access failed, not their
+			// API surface. Nothing is written, so the cell stays blank and
+			// reads as not probed.
+			labelProbe(e, api, "endpoint_unusable")
+			t.unusable++
+		}
+	}
+	if len(deferred) > 0 && !anyServed {
+		fmt.Printf("[coverage] %s/%s: every probe returned an auth status and none "+
+			"served. Our access to this endpoint, not their API surface. "+
+			"Publishing nothing.\n", e.Provider, e.Chain)
+	}
+	return t
 }
 
 func labelProbe(e Endpoint, api, result string) {
@@ -611,9 +627,21 @@ func probeCoverage(ctx context.Context, e Endpoint, pr coverageProbe, head uint6
 	return verdict
 }
 
+// setCoverage publishes a verdict, and stamps when it was established.
+//
+// The timestamp is written here and nowhere else, so it is impossible to
+// advance it without also publishing an answer. That is what makes
+// `time() - rpc_api_last_probe_timestamp` the age of the VALUE rather than
+// the age of the last attempt: when a provider starts failing, the gauge
+// keeps its last reading and the stamp stops moving, so a frozen cell
+// announces itself. A freshness column built on the probe counter would keep
+// counting failures and report a stale tick as fresh.
 func setCoverage(e Endpoint, api string, v float64) {
 	rpcAPISupported.WithLabelValues(
 		e.Provider, e.Chain, api, currentRegion, tierKeyed).Set(v)
+	rpcAPILastProbe.WithLabelValues(
+		e.Provider, e.Chain, api, currentRegion, tierKeyed).
+		Set(float64(time.Now().Unix()))
 }
 
 func isAuthStatus(msg string) bool {

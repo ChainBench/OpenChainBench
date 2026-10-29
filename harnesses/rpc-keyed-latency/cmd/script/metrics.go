@@ -116,6 +116,23 @@ var (
 		[]string{"provider", "chain", "api", "result", "region", "tier"},
 	)
 
+	// When the published value for this cell was last established.
+	//
+	// Set only when a verdict was reached and the gauge was written, which is
+	// the point: if a provider starts timing out, the capability gauge keeps
+	// its last value and this timestamp deliberately stops advancing, so
+	// `time() - rpc_api_last_probe_timestamp` is the AGE OF THE PUBLISHED
+	// ANSWER rather than the age of our last attempt. A column built on the
+	// probe counter instead would keep incrementing on failures and report a
+	// stale tick as fresh.
+	rpcAPILastProbe = promauto.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "rpc_api_last_probe_timestamp",
+			Help: "Unix seconds when this API verdict was last established. Does not advance while probes fail, so time() minus this is the age of the published answer.",
+		},
+		[]string{"provider", "chain", "api", "region", "tier"},
+	)
+
 	// The largest block span the provider accepted for each eth_getLogs
 	// filter shape. 0 means it refused even the smallest span tried. This is
 	// a number rather than a boolean because a refusal freezes an indexer's
