@@ -82,7 +82,12 @@ var (
 		[]string{"provider", "region"},
 	)
 
-	// ---- bench 310, API coverage. See coverage.go. ----
+	// ---- bench 311, API coverage. See coverage.go. ----
+	//
+	// Numbered 310 while it was written. Another session shipped
+	// server-wallet-cost as 310 the same evening, so this one moved to 311
+	// and the cross-reference had to move with it: a stale number sends
+	// whoever follows it to a different bench entirely.
 	//
 	// A separate metric family rather than an `api` label on rpc_latency_*,
 	// for the reason written above about the cold arm: adding a dimension to
