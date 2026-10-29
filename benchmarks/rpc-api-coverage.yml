@@ -124,7 +124,7 @@ metric_panels:
   - id: probe_age_hours
     label: "Hours since check"
     label_key: provider
-    metric: (time() - max by (provider) (rpc_api_last_probe_timestamp)) / 3600
+    metric: (time() - max by (provider) (rpc_api_last_probe_timestamp{})) / 3600
     unit: count
     higher_is_better: false
     description: "Age of the published verdict. The stamp advances only when a verdict is written, so a provider that starts failing keeps its last answer here and this number climbs."
