@@ -432,9 +432,9 @@ export async function fetchPerpCohortFresh(): Promise<PerpCohortSummary | null> 
 
 /**
  * Snapshot-first cohort reader. Order of preference:
- *   1. Upstash blob written by the /api/cron/snapshot-perp-cohort writer.
+ *   1. Upstash blob written by the materialize worker after every sweep.
  *      A live blob (asOf within the 10 min window) is the fast path; this
- *      is the common case once the cron is running.
+ *      is the common case whenever the worker is running.
  *   2. Live Prom fetch via fetchPerpCohortFresh(). Used when the blob is
  *      missing (first deploy, blob expired, creds unconfigured) or stale
  *      (writer dead for > 10 min). On a successful live fetch we also
