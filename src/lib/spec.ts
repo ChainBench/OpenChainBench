@@ -583,7 +583,9 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // v114: bench 309 round three. Each unpriced vendor carries its own
   //       reason per view, Privy's 10,000-user band edge is badged, and
   //       the copy states validate's sample size.
-  ["bench-unfiltered-v114", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v115: bench 309 SEO round: title, metric, intro and description
+  //       move to placeholders and a plainer wording.
+  ["bench-unfiltered-v115", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -859,7 +861,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v106: lockstep with bench-unfiltered-v113 (bench 001's Base reference
   //        gains the sequencer's pendingLogs as a second source).
   // v107: lockstep with bench-unfiltered-v114 (bench 309 round three).
-  ["all-benchmarks-v107", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v108: lockstep with bench-unfiltered-v115 (bench 309 SEO round).
+  ["all-benchmarks-v108", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1018,7 +1021,9 @@ const loadBenchmarkFiltered = unstable_cache(
   //      per tab and a bump of the other two alone would correct only one.
   // v53: lockstep with bench-unfiltered-v114. Bench 309's filtered
   //      tabs now carry per-vendor reasons; a cached variant keeps the old.
-  ["bench-filters-v53", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v54: lockstep with bench-unfiltered-v115. Bench 309's tabs cache
+  //      the title and metric with the rows.
+  ["bench-filters-v54", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 
