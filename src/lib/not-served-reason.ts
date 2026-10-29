@@ -61,8 +61,9 @@ export function rankGateReason(
   benchSlug: string,
   providerSlug: string,
   filters: Record<string, string | undefined>,
+  gated?: { successRate?: number; sampleSize?: number },
 ): string | null {
-  if (benchSlug === "rpc-api-coverage") return coverageRankReason();
+  if (benchSlug === "rpc-api-coverage") return coverageRankReason(gated);
   if (benchSlug !== "server-wallet-cost") return null;
   const f = serverWalletCurves();
   if (!f) return null;
@@ -95,6 +96,13 @@ export function rankGateReason(
  * success column beside it carries the size (21.43 % of cells answered against
  * 100 % for the ranked rows), and the methodology carries the argument.
  */
-function coverageRankReason(): string {
-  return "our key was refused on most cells";
+function coverageRankReason(row?: { successRate?: number }): string {
+  const share = row?.successRate;
+  // The share comes from the row, never typed: `success` on this bench is
+  // verdicts over cells asked, which is exactly the quantity the gate reads.
+  // Falls back to the bare cause rather than to a number we do not have.
+  if (share == null || !Number.isFinite(share)) {
+    return "our key was refused on most cells";
+  }
+  return `our key answered only ${Math.round(share)}% of cells`;
 }

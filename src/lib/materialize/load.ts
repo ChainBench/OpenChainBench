@@ -305,7 +305,12 @@ export async function specToBenchmark(
       const view = activeFilterLabels(labelFilters(options));
       for (const r of live.results) {
         if (r.unrankedLabel !== "Provisional") continue;
-        r.unrankedLabel = rankGateReason(spec.slug, r.slug, view) ?? r.unrankedLabel;
+        // The row goes in because the interactive table dashes the success
+        // cell for every unranked row (ledger-table.tsx:1175) while the
+        // served HTML renders it (static-ledger.tsx:186). A bench whose
+        // reason NEEDS its size has to carry it in the label, which both
+        // surfaces render.
+        r.unrankedLabel = rankGateReason(spec.slug, r.slug, view, r) ?? r.unrankedLabel;
       }
     }
     if (isFiltered && notServedOnEveryView(spec.slug)) {
