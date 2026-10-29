@@ -94,6 +94,14 @@ export const WorkerStateSchema = z.object({
     z.string(),
     z.record(z.string(), SeriesRingSchema),
   ),
+  /** stash name (cellRanks, bestPerChain, ...) → when a live query last
+   *  produced it. The per-cell and per-chain stashes are carried like a
+   *  provider row, so they need their own observation time: `builtAt` is
+   *  restamped every sweep, so a stash dated from it would be re-dated
+   *  fresh on every pass and never expire. Optional because blobs written
+   *  before this field exists carry none; the merge falls back to the
+   *  previous blob's `builtAt` once, then records the real time. */
+  stashes: z.record(z.string(), StalenessMetaSchema).optional(),
 });
 export type WorkerState = z.infer<typeof WorkerStateSchema>;
 

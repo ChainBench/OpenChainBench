@@ -223,3 +223,216 @@ test("a filtered view does not carry rows the load dropped", () => {
   );
   expect(board.results).toHaveLength(2);
 });
+
+/**
+ * The per-chain and per-cell stashes carry on their own clock.
+ *
+ * Each is produced by a separate Prom query that load.ts lets fail, leaving
+ * the field undefined. Nothing carried them on the blob the site reads, so one
+ * failed matrix query took a chain-scoped badge's figure and the /badges
+ * picker that asks for it off eight benches for a cycle. Two of those publish
+ * two cells, so "the query degraded" and "the query failed" look the same.
+ *
+ * The ceiling is why the observation time is stored. `builtAt` is restamped on
+ * every sweep, so a carried stash dated from it would be re-dated fresh each
+ * pass and live forever: the "unbounded carry" in this file's subject, in the
+ * function it warns about. The repeated-sweep test below is the one that
+ * separates a bounded carry from that, and a carry that merely "looks right"
+ * passes every other test here.
+ */
+describe("carrying a per-cell stash through a failed matrix query", () => {
+  const now = Date.now();
+  const CELLS = { "base|all": [{ slug: "drpc", p50: 91 }] };
+  const BEST = { base: result("drpc", 91) };
+
+  type Stash = Partial<
+    Pick<
+      Benchmark,
+      "cellRanks" | "bestPerChain" | "worstPerChain" | "providersPerChain"
+    >
+  >;
+
+  const withStash = (b: Benchmark, s: Stash): Benchmark =>
+    ({ ...b, ...s }) as unknown as Benchmark;
+
+  function prevWithStash(
+    s: Stash,
+    stashes: Record<string, { observedAt: number; staleSince?: number }> | undefined,
+    builtAt: number,
+  ): MaterializedSnapshot {
+    return {
+      bench: withStash(bench([["drpc", 91]]), s),
+      builtAt,
+      state: { providers: {}, rings: {}, stashes },
+      sweepMs: 60_000,
+    } as unknown as MaterializedSnapshot;
+  }
+
+  test("keeps the cells when this sweep's matrix query produced none", () => {
+    const prev = prevWithStash({ cellRanks: CELLS }, { cellRanks: { observedAt: now - 5 * 60_000 } }, now - 60_000);
+    const { bench: out, state } = mergeWithPrevious(
+      bench([["drpc", 91]]),
+      prev,
+      now,
+      new Set(["drpc"]),
+      3 * 3600,
+    );
+    expect(out.cellRanks).toEqual(CELLS);
+    // The carry keeps the original observation and records when it went stale,
+    // which is what the next sweep measures the ceiling against.
+    expect(state.stashes?.cellRanks.observedAt).toBe(now - 5 * 60_000);
+    expect(state.stashes?.cellRanks.staleSince).toBe(now);
+  });
+
+  test("drops cells older than the bench's own freshness window", () => {
+    const prev = prevWithStash({ cellRanks: CELLS }, { cellRanks: { observedAt: now - 4 * HOUR } }, now - 60_000);
+    const { bench: out, state } = mergeWithPrevious(
+      bench([["drpc", 91]]),
+      prev,
+      now,
+      new Set(["drpc"]),
+      3 * 3600, // expected_freshness_seconds: 3 h, and the stash is 4 h old
+    );
+    expect(out.cellRanks).toBeUndefined();
+    expect(state.stashes?.cellRanks).toBeUndefined();
+  });
+
+  test("a stash carried across sweeps expires instead of being re-dated", () => {
+    // The whole point of storing the time. Three sweeps, one minute apart on
+    // the clock the worker actually runs at, with the previous sweep's own
+    // state fed back in: a carry dated from builtAt reads as fresh forever
+    // here, because builtAt moves with every sweep.
+    const t0 = now - 4 * HOUR;
+    let prev = prevWithStash({ cellRanks: CELLS }, { cellRanks: { observedAt: t0 } }, t0);
+    let sweeps = 0;
+    for (let t = t0 + 60_000; t <= t0 + 3 * HOUR; t += 60_000) {
+      const { bench: out, state } = mergeWithPrevious(
+        bench([["drpc", 91]]),
+        prev,
+        t,
+        new Set(["drpc"]),
+        3 * 3600,
+      );
+      expect(state.stashes?.cellRanks.observedAt).toBe(t0);
+      prev = {
+        bench: out,
+        builtAt: t,
+        state,
+        sweepMs: 60_000,
+      } as unknown as MaterializedSnapshot;
+      sweeps++;
+    }
+    expect(sweeps).toBeGreaterThan(100);
+    // One more minute puts it past the three-hour window, and it goes.
+    const { bench: expired } = mergeWithPrevious(
+      bench([["drpc", 91]]),
+      prev,
+      t0 + 3 * HOUR + 2 * 60_000,
+      new Set(["drpc"]),
+      3 * 3600,
+    );
+    expect(expired.cellRanks).toBeUndefined();
+  });
+
+  test("a fresh stash wins and is dated now, never carried", () => {
+    const fresher = { "solana|all": [{ slug: "helius", p50: 44 }] };
+    const prev = prevWithStash({ cellRanks: CELLS }, { cellRanks: { observedAt: now - 5 * 60_000 } }, now - 60_000);
+    const { bench: out, state } = mergeWithPrevious(
+      withStash(bench([["drpc", 91]]), { cellRanks: fresher }),
+      prev,
+      now,
+      new Set(["drpc"]),
+      3 * 3600,
+    );
+    expect(out.cellRanks).toEqual(fresher);
+    expect(state.stashes?.cellRanks.observedAt).toBe(now);
+    expect(state.stashes?.cellRanks.staleSince).toBeUndefined();
+  });
+
+  test("an empty stash is a failure, not an answer", () => {
+    // tryLoadCellRanks returning {} must not displace a populated carry and
+    // then be stamped fresh: that is how a blank outlives the gap that made
+    // it, with a timestamp saying it was just measured.
+    const prev = prevWithStash({ cellRanks: CELLS }, { cellRanks: { observedAt: now - 5 * 60_000 } }, now - 60_000);
+    const { bench: out, state } = mergeWithPrevious(
+      withStash(bench([["drpc", 91]]), { cellRanks: {} }),
+      prev,
+      now,
+      new Set(["drpc"]),
+      3 * 3600,
+    );
+    expect(out.cellRanks).toEqual(CELLS);
+    expect(state.stashes?.cellRanks.observedAt).toBe(now - 5 * 60_000);
+  });
+
+  test("carries the per-chain stashes on the same rule", () => {
+    // worstPerChain and providersPerChain share bestPerChain's key set and
+    // population conditions, so they fail together and carry together.
+    const prev = prevWithStash(
+      {
+        bestPerChain: BEST,
+        worstPerChain: BEST,
+        providersPerChain: { base: ["drpc"] },
+      },
+      {
+        bestPerChain: { observedAt: now - 60_000 },
+        worstPerChain: { observedAt: now - 60_000 },
+        providersPerChain: { observedAt: now - 4 * HOUR },
+      },
+      now - 60_000,
+    );
+    const { bench: out } = mergeWithPrevious(
+      bench([["drpc", 91]]),
+      prev,
+      now,
+      new Set(["drpc"]),
+      3 * 3600,
+    );
+    expect(out.bestPerChain).toEqual(BEST);
+    expect(out.worstPerChain).toEqual(BEST);
+    // Past the ceiling on its own clock, independent of the other two.
+    expect(out.providersPerChain).toBeUndefined();
+  });
+
+  test("a filtered view carries no stash", () => {
+    // load.ts computes cellRanks only on the unfiltered load, so a stash on a
+    // filtered view could only have come from somewhere it does not describe.
+    const prev = prevWithStash({ cellRanks: CELLS }, { cellRanks: { observedAt: now - 60_000 } }, now - 60_000);
+    const { bench: out } = mergeWithPrevious(
+      bench([["drpc", 91]]),
+      prev,
+      now,
+      new Set(["drpc"]),
+      3 * 3600,
+      true,
+    );
+    expect(out.cellRanks).toBeUndefined();
+  });
+
+  test("a first sweep after deploy dates the carry from the previous blob", () => {
+    // Blobs written before state.stashes existed carry no time. Falling back
+    // to that blob's builtAt dates it once, conservatively, and the next sweep
+    // stores the real time, so this cannot become the unbounded path.
+    const prev = prevWithStash({ cellRanks: CELLS }, undefined, now - 90 * 60_000);
+    const { bench: out, state } = mergeWithPrevious(
+      bench([["drpc", 91]]),
+      prev,
+      now,
+      new Set(["drpc"]),
+      3 * 3600,
+    );
+    expect(out.cellRanks).toEqual(CELLS);
+    expect(state.stashes?.cellRanks.observedAt).toBe(now - 90 * 60_000);
+
+    // And a legacy blob already past the ceiling is dropped, not adopted.
+    const old = prevWithStash({ cellRanks: CELLS }, undefined, now - 4 * HOUR);
+    const { bench: dropped } = mergeWithPrevious(
+      bench([["drpc", 91]]),
+      old,
+      now,
+      new Set(["drpc"]),
+      3 * 3600,
+    );
+    expect(dropped.cellRanks).toBeUndefined();
+  });
+});
