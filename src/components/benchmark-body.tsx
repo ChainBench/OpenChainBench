@@ -27,6 +27,7 @@ import { ViewSwitcher } from "@/components/view-switcher";
 import { fmtAsOfUtc, fmtHeadline, fmtUnit } from "@/lib/format";
 import { computeFieldStats } from "@/lib/stats";
 import { defaultViewFor, viewsForBenchmark } from "@/lib/views";
+import { isSelectablePanelView, resolvePanelView } from "@/lib/panel-view";
 import { useViewPreference } from "@/hooks/use-view-preference";
 import type { ChainMeta } from "@/components/chain-tabs";
 import { FileText, Check } from "lucide-react";
@@ -332,13 +333,23 @@ export function BenchmarkBody({
   // Validity is checked against the initial variant map; a stale ?view=
   // (e.g. panel dropped from the spec between deploys) falls back to
   // null instead of pinning an invalid id.
+  // A panel declaring `tab: false` is data-only: the type says so, it renders
+  // no chart tab, and it must not be reachable as a view either. It was: this
+  // check only asked whether the id existed, so `?view=<data-only panel>`
+  // switched the board to the panel view, where pickValue coerces a provider
+  // with no reading to 0 (ledger-table.tsx:222). On the coverage bench that
+  // published "this provider declines tracing" for a provider whose key we
+  // were refused on and never asked, which is the one thing the harness is
+  // built to refuse to invent. The columns handle absence correctly as a
+  // dash, so the fault was invisible on the default board.
+  //
+  // The same type comment that declares `tab` also promises providers with no
+  // data "render as no data instead of zero". Honouring the flag here is what
+  // makes that true for every route into the view.
   const urlView = searchParams.get("view");
-  const [activePanelId, setActivePanelId] = useState<string | null>(() => {
-    if (!urlView) return null;
-    const seedPanels =
-      Object.values(variants)[0]?.metricPanels ?? [];
-    return seedPanels.some((p) => p.id === urlView) ? urlView : null;
-  });
+  const [activePanelId, setActivePanelId] = useState<string | null>(() =>
+    resolvePanelView(urlView, Object.values(variants)[0]?.metricPanels ?? []),
+  );
 
   useEffect(() => {
     const url = new URL(window.location.href);
@@ -761,8 +772,14 @@ export function BenchmarkBody({
   //
   // Kept ABOVE the `if (!benchmark || !viewBenchmark) return null` early
   // return so this useMemo is called on every render (rules-of-hooks).
+  // `tab: false` means data-only, so such a panel must not become the active
+  // view by ANY route. The `?view=` seed applies the same rule through
+  // resolvePanelView; this is the belt to that braces, because a future entry
+  // point into setActivePanelId would otherwise reopen the hole in silence.
   const activePanel =
-    benchmark?.metricPanels?.find((p) => p.id === activePanelId) ?? null;
+    benchmark?.metricPanels?.find(
+      (p) => p.id === activePanelId && isSelectablePanelView(p),
+    ) ?? null;
   // The bars show whatever the active panel's metric selects, which is not
   // always a p50, and the footer said p50 for every view. Bench 268's
   // Settlement time panel is stat="mean" deliberately: block timestamps are
