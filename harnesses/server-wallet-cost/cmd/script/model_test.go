@@ -198,3 +198,30 @@ func TestCurveHasMinimumKink(t *testing.T) {
 	}
 	t.Fatalf("turnkey bot curve missing")
 }
+
+// Payouts at 10,000 wallets: Privy's $0 is an "at least" figure (its $1M
+// volume clause has no published rate) under every price that holds, so it
+// is published but not ranked. Where a floor price is not the cheapest
+// (Privy on agents at 10,000), it stays ranked.
+func TestFloorsThatWouldLead(t *testing.T) {
+	cat := loadReal(t)
+	at := func(scenario string, x float64) map[string]bool {
+		var s Scenario
+		for _, v := range cat.Scenarios {
+			if v.ID == scenario {
+				s = v
+			}
+		}
+		qs := map[string]Quote{}
+		for _, p := range cat.Ranked() {
+			qs[p.Slug] = cheapest(p, s, x)
+		}
+		return floorsThatWouldLead(qs)
+	}
+	if got := at("payouts", 10000); !got["privy"] || len(got) != 1 {
+		t.Errorf("payouts@10k: floors that would lead = %v, want only privy", got)
+	}
+	if got := at("agents", 10000); len(got) != 0 {
+		t.Errorf("agents@10k: floors that would lead = %v, want none", got)
+	}
+}

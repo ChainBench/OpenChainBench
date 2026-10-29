@@ -24,7 +24,7 @@ import { DEV_ONLY_BENCH_SLUGS, REMOVED_BENCH_SLUGS } from "@/lib/removed-benches
 import { renderBenchmarkText } from "@/lib/bench-template";
 import { liveResults as liveProviderResults } from "@/lib/provider-filters";
 import { notServedLabel, notServedOnEveryView } from "@/lib/no-figure-label";
-import { notServedReason } from "@/lib/not-served-reason";
+import { notServedReason, rankGateReason } from "@/lib/not-served-reason";
 import {
   classifyHealth,
   aggregateConfidence,
@@ -299,6 +299,15 @@ export async function specToBenchmark(
     // A bench whose not-served label holds on every tab lists its missing
     // providers on filtered views too, unranked and with the label, rather
     // than dropping them with no reason (see notServedOnEveryView).
+    // A row the spec's rank gate left unranked reads "Provisional"; a bench
+    // that knows why says so instead (bench 310: an "at least" price).
+    {
+      const view = activeFilterLabels(labelFilters(options));
+      for (const r of live.results) {
+        if (r.unrankedLabel !== "Provisional") continue;
+        r.unrankedLabel = rankGateReason(spec.slug, r.slug, view) ?? r.unrankedLabel;
+      }
+    }
     if (isFiltered && notServedOnEveryView(spec.slug)) {
       const label = notServedLabel(spec.slug);
       const present = new Set(live.results.map((r) => r.slug.toLowerCase()));
