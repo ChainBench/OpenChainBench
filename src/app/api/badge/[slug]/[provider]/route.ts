@@ -209,7 +209,18 @@ export async function GET(
   const providerRow = b.results.find(
     (row) => row.slug.toLowerCase() === provider.toLowerCase(),
   );
-  if (providerRow?.unrankedLabel) return placeholderSvg(b.title);
+  if (providerRow?.unrankedLabel) {
+    // The figure exists and the board publishes it; only the rank is
+    // withheld. Saying "measurement pending" here would replace a false
+    // rank with a false status, which is the same fault facing the other way.
+    //
+    // No figure in the badge, deliberately: `b` is the unfiltered bench, so
+    // printing providerRow.ms.p50 under a ?chain= request would put a
+    // cross-chain value behind a scoped label, which is the exact fault the
+    // scope fix removed from rankOfChain. "Not ranked" is true on every
+    // scope and asserts no number; the board carries the figure.
+    return placeholderSvg(b.title, "Not ranked");
+  }
 
   // The figure and the scope printed next to it come out of one decision,
   // so neither can be chosen without the other. Everything the rule needs
@@ -365,17 +376,22 @@ export async function GET(
  *  on partner sites during transient data gaps and keeps Ahrefs from
  *  flagging inbound links as broken. Short CDN TTL (60s) so a resolved
  *  gap surfaces quickly. */
-function placeholderSvg(benchTitle: string): NextResponse {
+/** `status` overrides the second line, the aria-label tail and the <title>.
+ *  Default "Measurement pending" is accurate for the three callers that mean
+ *  it: a transient scoped miss, an unknown cell, a bench with no cell data.
+ *  It is NOT accurate for a row we measured and chose not to rank, which is
+ *  what the unranked guard passes instead. */
+function placeholderSvg(benchTitle: string, status?: string): NextResponse {
   const title = truncate(benchTitle, 60);
-  const line1 = "Measurement pending";
+  const line1 = status ?? "Measurement pending";
   const line2 = "OpenChainBench";
   const W = Math.min(
     W_MAX,
     Math.max(W_MIN, TEXT_X + title.length * CH_11 + 30),
   );
   const svg = `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="OpenChainBench: ${escapeXml(title)}, measurement pending">
-  <title>OpenChainBench. ${escapeXml(title)}. Measurement pending.</title>
+<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="OpenChainBench: ${escapeXml(title)}, ${escapeXml(line1.toLowerCase())}">
+  <title>OpenChainBench. ${escapeXml(title)}. ${escapeXml(line1)}.</title>
   <rect width="${W}" height="${H}" rx="6" fill="#F5F1E8"/>
   <rect x="0.5" y="0.5" width="${W - 1}" height="${H - 1}" rx="5.5" fill="none" stroke="#22272F" stroke-opacity="0.12"/>
   <circle cx="24" cy="22" r="10" fill="none" stroke="#22272F" stroke-opacity="0.35" stroke-dasharray="2 2"/>
