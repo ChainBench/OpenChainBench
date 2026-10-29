@@ -94,7 +94,15 @@ function numberInputClass(valid: boolean): string {
 
 // ── Component ─────────────────────────────────────────────────────────────
 
-export function PerpCostClient() {
+/** `headingLevel` exists for embedding: dropped inside a report the tool's
+ *  three section headings have to sit under the article's own H2s, or the
+ *  page outlines more sections than its table of contents lists. Default 2
+ *  keeps the standalone tool page unchanged. */
+export function PerpCostClient({ headingLevel = 2 }: { headingLevel?: 2 | 3 } = {}) {
+  // Compared numerically on purpose: MDX hands the attribute through as
+  // written and a strict === 3 silently fell back to h2, which is how the
+  // report ended up outlining eleven sections against a TOC of eight.
+  const H = Number(headingLevel) === 3 ? "h3" : "h2";
   const [marginRaw, setMarginRaw] = useState(String(MARGIN_RANGE.default));
   const [leverageRaw, setLeverageRaw] = useState(String(LEVERAGE_RANGE.default));
   const [moveSlider, setMoveSlider] = useState<number>(MOVE_RANGE.default);
@@ -330,9 +338,9 @@ export function PerpCostClient() {
         {/* Not "a fee on the gain is a curve": a constant share of the gain
             draws a line through the origin, same as a flat fee draws a level
             one. It is the rate climbing with the move that bends it. */}
-        <h2 className="display mt-1 text-xl text-ink">
+        <H className="display mt-1 text-xl text-ink">
           A flat fee is a line, a rate that climbs is a curve
-        </h2>
+        </H>
         <div className="mt-4 overflow-x-auto">
           <div className="min-w-[560px]">
             <PerpCostChart model={model} market={market} />
@@ -375,7 +383,7 @@ export function PerpCostClient() {
           <p className="font-sans text-[10px] uppercase tracking-[0.18em] text-ink-faint">
             The winning path
           </p>
-          <h2 className="display mt-1 text-xl text-ink">What each venue keeps from your gain</h2>
+          <H className="display mt-1 text-xl text-ink">What each venue keeps from your gain</H>
         </header>
 
         <div
@@ -540,7 +548,7 @@ export function PerpCostClient() {
           <p className="font-sans text-[10px] uppercase tracking-[0.18em] text-ink-faint">
             The other two paths
           </p>
-          <h2 className="display mt-1 text-xl text-ink">What happens when it does not work</h2>
+          <H className="display mt-1 text-xl text-ink">What happens when it does not work</H>
         </header>
 
         <div

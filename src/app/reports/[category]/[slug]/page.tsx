@@ -5,6 +5,7 @@ import { MDXRemote } from "next-mdx-remote/rsc";
 import remarkGfm from "remark-gfm";
 import { StatTable } from "@/components/reports/stat-table";
 import { RegionWinners } from "@/components/reports/region-winners";
+import { PerpCostClient } from "@/components/perp-cost-client";
 import {
   getAllReports,
   getReport,
@@ -81,6 +82,16 @@ function slugify(text: string): string {
 const MDX_COMPONENTS = {
   StatTable,
   RegionWinners,
+  // The interactive tools are embeddable in a report body. A report that
+  // explains a cost structure and then makes the reader leave to try it on
+  // their own numbers has stopped one step short.
+  //
+  // Bound to h3 here rather than through an MDX attribute: inside a report
+  // the tool is always a subsection of the article, and MDXRemote did not
+  // pass `headingLevel={3}` through (the component logged the default).
+  // Setting it in the map also means an author cannot forget it, which is
+  // what left the page outlining eleven sections against a TOC of eight.
+  PerpCostClient: () => <PerpCostClient headingLevel={3} />,
 
   // Table of contents — pipe-separated section names, auto-generates anchor hrefs
   TOC: ({ sections }: { sections: string }) => {
@@ -280,12 +291,17 @@ function reportJsonLd(report: ReturnType<typeof getReport>) {
       description: report.summary,
       datePublished: new Date(report.publishedAt).toISOString(),
       dateModified: new Date(report.updatedAt ?? report.publishedAt).toISOString(),
-      image: report.ogImage ?? `${SITE.url}/opengraph-image`,
+      // The per-report card, the same one og:image points at. Pointing
+      // the Article at the site-wide image made the two disagree.
+      image: report.ogImage ?? `${url}/opengraph-image`,
       author: { "@id": PERSON_ID },
       publisher: { "@id": `${SITE.url}/#org` },
       inLanguage: "en",
       license: "https://creativecommons.org/licenses/by/4.0/",
-      isPartOf: { "@id": `${SITE.url}/reports/${report.categorySlug}#series` },
+      // #collection is the @id the category page actually defines
+      // (src/app/reports/[category]/page.tsx:52). #series was a dangling
+      // reference that resolved to nothing.
+      isPartOf: { "@id": `${SITE.url}/reports/${report.categorySlug}#collection` },
     },
     ...(report.faq?.length
       ? [

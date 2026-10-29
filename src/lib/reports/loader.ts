@@ -63,6 +63,11 @@ export const REPORT_CATEGORY_META: Record<
     description:
       "Crypto data APIs benchmarked for price feed latency, token metadata coverage, wallet indexing freshness, DEX chain coverage, and NFT data quality.",
   },
+  perps: {
+    label: "Perps",
+    description:
+      "Decentralised perpetual futures venues measured for all-in cost at size, book depth, mark price fidelity, capital efficiency and security track record.",
+  },
 };
 
 /**

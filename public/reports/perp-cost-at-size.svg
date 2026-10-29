@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1066 540" width="1066" height="540" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Helvetica, Arial, sans-serif" role="img" aria-labelledby="t d">
+<title id="t">All-in cost to open an ETH perp at $1,000 and at $1,000,000 notional, eleven venues, 24 hour means</title>
+<desc id="d">Gains and GMX are flat because they are oracle-priced. Order books rise: Ondo from 4.1 to 24.3 basis points, dYdX from 6.6 to 18.6, Hyperliquid from 4.8 to 5.8. Paradex is second cheapest at $1,000 and produced no reading at $1,000,000 because its tier never filled.</desc>
+<rect width="1066" height="540" fill="#ffffff"/>
+<line x1="218" y1="400.5" x2="658" y2="400.5" stroke="#d6d3d1" stroke-width="1"/>
+<text x="26" y="403.5" font-size="10" fill="#78716c">0.3 bps</text>
+<line x1="218" y1="312.2" x2="658" y2="312.2" stroke="#d6d3d1" stroke-width="1"/>
+<text x="26" y="315.2" font-size="10" fill="#78716c">1 bps</text>
+<line x1="218" y1="231.6" x2="658" y2="231.6" stroke="#d6d3d1" stroke-width="1"/>
+<text x="26" y="234.6" font-size="10" fill="#78716c">3 bps</text>
+<line x1="218" y1="143.3" x2="658" y2="143.3" stroke="#d6d3d1" stroke-width="1"/>
+<text x="26" y="146.3" font-size="10" fill="#78716c">10 bps</text>
+<line x1="218" y1="62.7" x2="658" y2="62.7" stroke="#d6d3d1" stroke-width="1"/>
+<text x="26" y="65.7" font-size="10" fill="#78716c">30 bps</text>
+<text x="236" y="32" font-size="12" font-weight="600" fill="#1c1917" text-anchor="middle">$1,000</text>
+<text x="640" y="32" font-size="12" font-weight="600" fill="#1c1917" text-anchor="middle">$1,000,000</text>
+<line x1="236" y1="42" x2="236" y2="448" stroke="#d6d3d1" stroke-width="1"/>
+<line x1="640" y1="42" x2="640" y2="448" stroke="#d6d3d1" stroke-width="1"/>
+<line x1="236" y1="426.4" x2="640" y2="290.8" stroke="#a8a29e" stroke-width="1.4" opacity="0.85" stroke-linecap="round"/>
+<circle cx="640" cy="290.8" r="2.6" fill="#a8a29e" opacity="0.85"/>
+<circle cx="236" cy="426.4" r="2.6" fill="#a8a29e" opacity="0.85"/>
+<line x1="236" y1="283.6" x2="346" y2="283.6" stroke="#a8a29e" stroke-width="1.4" opacity="0.5" stroke-dasharray="3 4"/>
+<text x="354" y="286.6" font-size="10" fill="#78716c">no $1M reading, tier never filled</text>
+<circle cx="236" cy="283.6" r="2.6" fill="#a8a29e" opacity="0.85"/>
+<line x1="236" y1="238.5" x2="640" y2="198.6" stroke="#a8a29e" stroke-width="1.4" opacity="0.85" stroke-linecap="round"/>
+<circle cx="640" cy="198.6" r="2.6" fill="#a8a29e" opacity="0.85"/>
+<circle cx="236" cy="238.5" r="2.6" fill="#a8a29e" opacity="0.85"/>
+<line x1="236" y1="209.2" x2="640" y2="78.3" stroke="#a8a29e" stroke-width="1.4" opacity="0.85" stroke-linecap="round"/>
+<circle cx="640" cy="78.3" r="2.6" fill="#a8a29e" opacity="0.85"/>
+<circle cx="236" cy="209.2" r="2.6" fill="#a8a29e" opacity="0.85"/>
+<line x1="236" y1="203.3" x2="640" y2="157.0" stroke="#a8a29e" stroke-width="1.4" opacity="0.85" stroke-linecap="round"/>
+<circle cx="640" cy="157.0" r="2.6" fill="#a8a29e" opacity="0.85"/>
+<circle cx="236" cy="203.3" r="2.6" fill="#a8a29e" opacity="0.85"/>
+<line x1="236" y1="197.5" x2="640" y2="183.2" stroke="#a8a29e" stroke-width="1.4" opacity="0.85" stroke-linecap="round"/>
+<circle cx="640" cy="183.2" r="2.6" fill="#a8a29e" opacity="0.85"/>
+<circle cx="236" cy="197.5" r="2.6" fill="#a8a29e" opacity="0.85"/>
+<line x1="236" y1="197.0" x2="640" y2="188.2" stroke="#a8a29e" stroke-width="1.4" opacity="0.85" stroke-linecap="round"/>
+<circle cx="640" cy="188.2" r="2.6" fill="#a8a29e" opacity="0.85"/>
+<circle cx="236" cy="197.0" r="2.6" fill="#a8a29e" opacity="0.85"/>
+<line x1="236" y1="192.3" x2="640" y2="183.7" stroke="#a8a29e" stroke-width="1.4" opacity="0.85" stroke-linecap="round"/>
+<circle cx="640" cy="183.7" r="2.6" fill="#a8a29e" opacity="0.85"/>
+<circle cx="236" cy="192.3" r="2.6" fill="#a8a29e" opacity="0.85"/>
+<line x1="236" y1="173.6" x2="640" y2="97.6" stroke="#a8a29e" stroke-width="1.4" opacity="0.85" stroke-linecap="round"/>
+<circle cx="640" cy="97.6" r="2.6" fill="#a8a29e" opacity="0.85"/>
+<circle cx="236" cy="173.6" r="2.6" fill="#a8a29e" opacity="0.85"/>
+<line x1="236" y1="180.8" x2="640" y2="180.8" stroke="#0f766e" stroke-width="2.0" opacity="1.00" stroke-linecap="round"/>
+<circle cx="640" cy="180.8" r="2.6" fill="#0f766e" opacity="1.00"/>
+<circle cx="236" cy="180.8" r="2.6" fill="#0f766e" opacity="1.00"/>
+<line x1="236" y1="210.5" x2="640" y2="210.5" stroke="#f97316" stroke-width="3.0" opacity="1.00" stroke-linecap="round"/>
+<circle cx="640" cy="210.5" r="3.4" fill="#f97316" opacity="1.00"/>
+<circle cx="236" cy="210.5" r="3.4" fill="#f97316" opacity="1.00"/>
+<text x="202" y="429.4" font-size="11" font-weight="400" fill="#78716c" text-anchor="end">Lighter 0.21</text>
+<text x="202" y="286.6" font-size="11" font-weight="400" fill="#78716c" text-anchor="end">Paradex 1.48</text>
+<text x="202" y="241.5" font-size="11" font-weight="400" fill="#78716c" text-anchor="end">Extended 2.73</text>
+<text x="202" y="213.5" font-size="11" font-weight="600" fill="#f97316" text-anchor="end">Gains 4.00</text>
+<text x="202" y="201.2" font-size="11" font-weight="400" fill="#78716c" text-anchor="end">Ondo 4.08</text>
+<text x="202" y="188.3" font-size="11" font-weight="400" fill="#78716c" text-anchor="end">Polymarket 4.41</text>
+<text x="202" y="175.5" font-size="11" font-weight="400" fill="#78716c" text-anchor="end">Hyperliquid 4.78</text>
+<text x="202" y="163.0" font-size="11" font-weight="400" fill="#78716c" text-anchor="end">edgeX 4.81</text>
+<text x="202" y="150.3" font-size="11" font-weight="400" fill="#78716c" text-anchor="end">Aster 5.13</text>
+<text x="202" y="137.8" font-size="11" font-weight="600" fill="#0f766e" text-anchor="end">GMX 6.00</text>
+<text x="202" y="125.6" font-size="11" font-weight="400" fill="#78716c" text-anchor="end">dYdX 6.62</text>
+<text x="666" y="293.8" font-size="11" font-weight="400" fill="#78716c">1.34 Lighter</text>
+<text x="666" y="213.5" font-size="11" font-weight="600" fill="#f97316">4.00 Gains</text>
+<text x="666" y="200.6" font-size="11" font-weight="400" fill="#78716c">4.70 Extended</text>
+<text x="666" y="188.2" font-size="11" font-weight="400" fill="#78716c">5.42 edgeX</text>
+<text x="666" y="175.7" font-size="11" font-weight="400" fill="#78716c">5.76 Aster</text>
+<text x="666" y="163.2" font-size="11" font-weight="400" fill="#78716c">5.81 Hyperliquid</text>
+<text x="666" y="150.8" font-size="11" font-weight="600" fill="#0f766e">6.00 GMX</text>
+<text x="666" y="138.0" font-size="11" font-weight="400" fill="#78716c">8.29 Polymarket</text>
+<text x="666" y="100.6" font-size="11" font-weight="400" fill="#78716c">18.65 dYdX</text>
+<text x="666" y="81.3" font-size="11" font-weight="400" fill="#78716c">24.26 Ondo</text>
+<text x="26" y="494" font-size="11.5" fill="#1c1917">Gains and GMX are oracle-priced: no book to walk, so the cost in basis points is the same at both sizes.</text>
+<text x="26" y="514" font-size="10" fill="#78716c">All-in cost on ETH = taker fee + half spread + impact, 24 h means, the same scope the boards in this report use.</text>
+<text x="26" y="530" font-size="10" fill="#78716c">OpenChainBench bench 007, read 28 October 2026. A venue with no $1M point never had the tier fill in the window.</text>
+</svg>
