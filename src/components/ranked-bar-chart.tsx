@@ -79,7 +79,17 @@ export function RankedBarChart({
     // the bottom (or, when lower-is-better, falsely lead the ranking).
     const scored = benchmark.results.filter(
       (r) => (r.ms.p50 > 0 || r.ms.p90 > 0 || r.ms.p99 > 0 || (r.ms.mean ?? 0) > 0) &&
-        (r.successRate ?? 100) >= MIN_DISPLAY_SUCCESS_PCT
+        (r.successRate ?? 100) >= MIN_DISPLAY_SUCCESS_PCT &&
+        // Unranked rows are excluded from the RANKING, which is what this
+        // surface is. The ledger below keeps them, in its labelled block,
+        // with their value: not being ranked is a statement about
+        // comparability, not a reason to hide the number.
+        //
+        // This chart sits above the ledger and is the first thing read, so
+        // ranking them here defeated the flag entirely: RouteMesh came out
+        // "#5" against the very providers it forwards to. distribution-chart
+        // and public-endpoints-section already filter the same way.
+        !r.unrankedLabel
     );
     const sorted = scored.sort((a, b) =>
       benchmark.higherIsBetter ? b.ms.p50 - a.ms.p50 : a.ms.p50 - b.ms.p50
