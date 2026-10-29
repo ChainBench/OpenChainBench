@@ -596,8 +596,14 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
 
   // Category hub pages. Filter to categories that have live benches.
   // Exclude REMOVED_BENCH_SLUGS so benches with stale Redis data (410 on
-  // prod) don't keep their category hub alive in the sitemap.
-  const activeBlobBenches = blobBenches.filter((b) => !REMOVED_BENCH_SLUGS.has(b.slug) && !isDevOnlyBench(b.slug));
+  // prod) don't keep their category hub alive in the sitemap, and benches
+  // this build does not serve: the blob comes from dev, so a category whose
+  // only bench is new on dev was listed on production while its hub 404'd
+  // (/benchmarks/category/wallets, bench 309, audit 2026-10-29). Same guard
+  // as the bench routes above.
+  const activeBlobBenches = blobBenches.filter(
+    (b) => !REMOVED_BENCH_SLUGS.has(b.slug) && servedSlugs.has(b.slug) && !isDevOnlyBench(b.slug),
+  );
   const liveCategoryLabels = new Set(activeBlobBenches.map((b) => b.category));
   const categoryRoutes: MetadataRoute.Sitemap = CATEGORIES
     .filter((c) => liveCategoryLabels.has(c.label))

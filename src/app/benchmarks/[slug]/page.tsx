@@ -932,6 +932,27 @@ export default async function BenchmarkPage({
         <>
           <WalletCostCalculator />
           <WalletCostGrid />
+          {/* The findings quote the grid's cells, and on this bench they are
+              the only prose that reads across profiles and sizes. The
+              generic body that would carry them is not rendered here, so
+              they had no home on the page (SEO audit 2026-10-29). Every
+              dollar figure in them is checked against the curve by
+              `pnpm validate`. */}
+          {benchmark.findings.length > 0 && (
+            <section id="findings" className="mt-8 card-soft px-5 py-5 sm:px-7">
+              <h2 className="text-xl font-semibold tracking-tight text-ink">Findings</h2>
+              <ul className="mt-4 space-y-3 max-w-3xl">
+                {benchmark.findings.map((f, i) => (
+                  <li key={i} className="flex gap-2.5 text-sm leading-relaxed text-ink-soft">
+                    <span aria-hidden className="select-none text-ink-faint">
+                      &middot;
+                    </span>
+                    <span>{f}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
         </>
       )}
 

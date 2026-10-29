@@ -2,14 +2,14 @@
 
 slug: wallet-cost
 number: "309"
-title: Cheapest embedded wallet provider, priced per app across 13 vendors
-seo_title: "Cheapest embedded wallet 2026: list price per app, 13 vendors"
-seo_description: "What Privy, Dynamic, Turnkey, Web3Auth, Magic, Para, Coinbase CDP, thirdweb and five more bill for the same app, from 100 to 1M monthly active users."
+title: Cheapest embedded wallet provider for each app size, from published prices
+seo_title: "Embedded wallet pricing 2026: cheapest vendor per app size"
+seo_description: "Embedded wallet pricing for {{declared_count}} vendors. At 10,000 consumer-app users {{best_name}} bills least of {{ranked_count}} priced, {{best_p50}} a month. Privy, Dynamic and more, at any size."
 subtitle: The monthly bill each embedded wallet vendor would send for the same app, normalised across monthly active users, signatures, operations and credits, for three usage patterns at any app size.
 
 category: Wallets
 status: live
-metric: Monthly cost, consumer app at 10,000 users
+metric: Monthly cost for a consumer app at 10,000 users
 unit: usd
 higher_is_better: false
 row_noun: { one: vendor, many: vendors }
@@ -21,12 +21,12 @@ disclaimer: >
   self-serve price for that app size or usage, which is a finding, not missing data.
 
 seo_intro: |
-  There is no cheapest embedded wallet, there is a cheapest one for an app of
-  a given size whose users transact at a given rate. About half of these
-  vendors bill per monthly active user and nothing per transaction; the other
-  half bill per signature, per operation or per credit. So the same app ranks
-  them in a different order depending on how often its users sign, and the
-  gap between first and last runs from about 2x to over 100x.
+  The cheapest embedded wallet depends on the app: for a consumer app at
+  10,000 users it is {{best_name}} at {{best_p50}} a month (latest value), and
+  the order changes at 1,000 and 100,000 users and with every transaction a
+  user signs. About half of these vendors bill per monthly active user and
+  nothing per transaction; the other half bill per signature, per operation or
+  per credit, so the spread between first and last grows with usage.
   This page applies each vendor's own published billing rules, plan by plan,
   to three usage patterns: a consumer app whose users send 5 transactions a
   month, an active app at 25 and a trading app at 100. The calculator prices
@@ -36,7 +36,7 @@ seo_intro: |
   but that is a percentage of your users' gas, not a price of the wallet.
 
 abstract: |
-  Thirteen embedded wallet vendors, three usage profiles and three app sizes,
+  {{declared_count}} embedded wallet vendors, three usage profiles and three app sizes,
   plus a calculator over any size from 100 to 1,000,000 monthly active users.
   For each combination the harness applies the vendor's own billing rules:
   what it meters (active users, signatures, wallet operations, credits), what
@@ -59,7 +59,7 @@ methodology:
   - "An active user is not one thing. Privy counts a user with a session in the last 30 days, Dynamic a login or a wallet created that month, Web3Auth and thirdweb a login, Magic a wallet accessed through its SDK, Para a user authenticated or created, Circle a wallet that made an on-chain transaction. Every user in these profiles transacts, so all of them count everyone."
   - "Plans. Each plan's fee, what it includes and its overage are applied as published. Graduated rates (Circle, thirdweb) bill each band at its own rate. A plan that stops at a size (Para's free 1,200 users, Reown's free 500, Turnkey's 2,000 wallets) cannot serve above it. Turnkey's limit counts every wallet an organisation holds while this model counts one month's users, so a growing app reaches it sooner than the calculator shows. A size past the last published price is a quote and is not ranked."
   - "Readings. Where a page can be read two ways the catalogue says which reading is priced and the calculator badges the plan. Privy's $2,000 pay-as-you-go base is priced alone, though its $499 Scale fee may also apply, and at exactly 10,000 users Privy is priced on Scale ($499) because pay-as-you-go starts above 10,000, though its Scale card reads 2,500 to 9,999; the other reading is $2,000. Turnkey's $99 Pro fee is priced as a floor the per-signature charges count against."
-  - "Openfort's operation table gives 1 per wallet created and 2 per transaction, but its own simulator also adds 2 per active user; on that reading its consumer bill at 10,000 users is $381, not $261, and it ranks fourth behind Dynamic rather than third. ZeroDev's 30 credits a transaction assumes each transaction is one signature and one UserOp. thirdweb's bands above 100,000 users are priced band by band."
+  - "Openfort's operation table gives 1 per wallet created and 2 per transaction, but its own simulator also adds 2 per active user; on that reading its bill is higher and it can drop a place, as the findings spell out for the 10,000-user consumer view. ZeroDev's 30 credits a transaction assumes each transaction is one signature and one UserOp. thirdweb's bands above 100,000 users are priced band by band."
   - "Vendors' own exclusions are honoured. Reown says exchanges, custodians, payments, gaming and merchant platforms need a custom plan, so its self-serve price is not offered on the trading profile."
   - "Left out. Gas and gas-sponsorship surcharges (thirdweb 2.5% on mainnet, Openfort 10% or 5%, ZeroDev 8%), SMS fees, extra seats, annual discounts, Circle's USDC rebate, and Privy's $1M monthly transaction volume threshold. Features a production app may need are not priced: removing thirdweb branding needs its $499 Scale plan, and custom domains are Enterprise-only at several vendors."
   - "Any size, not only three. The table prices 1,000, 10,000 and 100,000 users because a metric needs a fixed label. The calculator prices any size from 100 to 1,000,000 from a curve the same harness emits, with a point at every tier boundary, cap, quote threshold and plan crossover. Between two points every bill is a straight line, so the slider is exact, not smoothed."
