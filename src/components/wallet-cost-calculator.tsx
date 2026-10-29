@@ -313,7 +313,7 @@ export function WalletCostGrid() {
           {file.excluded.map((e, i) => (
             <span key={e.slug}>
               {i > 0 ? "; " : ""}
-              {e.name} ({lowerFirst(e.reason.replace(/\.$/, ""))})
+              {e.name} ({e.reason.replace(/\.$/, "")})
             </span>
           ))}
           .
@@ -535,8 +535,11 @@ function RankRow({ row, rank, leaderUSD, mau }: { row: WalletCostRow; rank: numb
           <Mark slug={row.slug} name={row.name} size={20} />
           <span className="min-w-0">
             <span className="block truncate font-medium text-ink group-hover:underline">{row.name}</span>
-            <span className="flex min-w-0 flex-wrap items-center gap-1.5 text-xs text-ink-faint">
-              <span className="truncate">
+            {/* The unit wraps instead of truncating: on a phone it is the
+                part that explains the order, and "monthly active ..." does
+                not. */}
+            <span className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-ink-faint">
+              <span>
                 {row.planName} · {lowerFirst(row.unit)}
               </span>
               <Uncertain row={row} />

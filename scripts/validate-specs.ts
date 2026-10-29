@@ -4,6 +4,7 @@
  * schema. Exits non-zero on any error. Run in CI on every PR.
  */
 
+import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { promises as fs } from "node:fs";
 import path from "node:path";
@@ -493,6 +494,25 @@ async function checkWalletCostCurveFreshness(issues: Issue[]) {
       file: "wallet-cost.yml",
       level: "error",
       message: `${CURVE} was built from a different ${CATALOGUE} (sha256 ${String(curve.catalogueSha256).slice(0, 12)} vs ${sha.slice(0, 12)}); the calculator would quote prices the catalogue no longer holds. ${REGEN}`,
+    });
+    return;
+  }
+  // The independent scorer, a second implementation of the billing model in
+  // another language, re-prices every curve point and a sample of random app
+  // sizes. The full run (30,000 sizes per cell) is the harness README's;
+  // 2,000 here keeps validate fast and still lands in every segment.
+  const SCORER = "harnesses/wallet-cost/verify/scorer.mjs";
+  try {
+    execFileSync(process.execPath, [path.join(ROOT, SCORER), path.join(ROOT, CATALOGUE), path.join(ROOT, CURVE), "2000"], {
+      cwd: ROOT,
+      stdio: "pipe",
+    });
+  } catch (e) {
+    const out = String((e as { stdout?: Buffer }).stdout ?? "").slice(0, 600);
+    issues.push({
+      file: "wallet-cost.yml",
+      level: "error",
+      message: `${SCORER} disagrees with ${CURVE}: ${out}`,
     });
   }
 }
