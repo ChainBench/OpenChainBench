@@ -111,4 +111,44 @@ describe("injectLabels, the provider-query path", () => {
       'avg(rpc_api_supported{chain="ethereum"})',
     );
   });
+
+  /**
+   * The presence test is `\bchain\s*=`, so it reads a REGEX matcher as "the
+   * dimension is already pinned here" and declines to add the tab's own
+   * filter, while a negative matcher is invisible to it and composes.
+   *
+   * That asymmetry inverts which shape is safe. Scoping a bench to the
+   * chains it covers with an allow-list looks more robust than excluding one
+   * chain by name, because it also excludes whatever the harness adds next.
+   * It is the shape that silently disables every chain tab: all eight would
+   * publish the all-chains figure. Found while choosing between the two for
+   * bench 311, whose harness emits one Solana cell for a future bench.
+   *
+   * This pins today's behaviour rather than endorsing it. If injectLabels
+   * ever learns to compose with a regex matcher, this test is meant to fail
+   * so the change is deliberate: update it, and then the specs that worked
+   * around the trap can drop the workaround.
+   */
+  it("a regex matcher suppresses the dimension filter, a negative matcher does not", () => {
+    const allowList = 'avg(rpc_api_supported{chain=~"ethereum|base"})';
+    expect(injectLabels(allowList, labels)).toBe(allowList);
+    expect(injectLabels(allowList, labels)).not.toContain('chain="ethereum"');
+
+    const exclusion = 'avg(rpc_api_supported{chain!="solana"})';
+    expect(injectLabels(exclusion, labels)).toBe(
+      'avg(rpc_api_supported{chain!="solana",chain="ethereum"})',
+    );
+  });
+
+  it("the same asymmetry reaches the panel path, which shares injectLabels", () => {
+    const allowList =
+      '100 * avg by (provider) (rpc_api_supported{chain=~"ethereum|base"})';
+    expect(panelMetricQuery({ metric: allowList }, labels)).toBe(allowList);
+
+    const exclusion =
+      '100 * avg by (provider) (rpc_api_supported{chain!="solana"})';
+    expect(panelMetricQuery({ metric: exclusion }, labels)).toBe(
+      '100 * avg by (provider) (rpc_api_supported{chain!="solana",chain="ethereum"})',
+    );
+  });
 });
