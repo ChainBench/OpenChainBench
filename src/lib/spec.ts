@@ -602,7 +602,14 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       already-cached entry (measured on prod 2026-10-28: a green deploy
   //       serving the old sentence). providers-v31 deliberately does NOT
   //       move: the provider set is untouched, only its copy.
-  ["bench-unfiltered-v119", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v120: four benches declared ledger_reliability: false, so the Success
+  //       column stops being filled from the loader's default of 100 where
+  //       nothing measured a success: perp-asset-breadth, privacy-coin-books,
+  //       rpc-free-tier and token-deployment-cost, none of which claims
+  //       anything about requests it sent. Moves with all-benchmarks-v113 and
+  //       bench-filters-v58. providers-v31 deliberately does NOT move: no
+  //       provider entered or left and no provider copy changed.
+  ["bench-unfiltered-v120", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -885,7 +892,11 @@ const loadAllBenchmarksCached = unstable_cache(
   // v112: lockstep with bench-unfiltered-v119 (bench 311's editorial:
   //        a measured success column, the unranked row's own cause, and
   //        two sentences realigned to the rendering they describe).
-  ["all-benchmarks-v112", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v113: lockstep with bench-unfiltered-v120, and with bench-filters-v58, for the
+  //       four specs that declared ledger_reliability: false. The aggregate
+  //       carries each bench's rendered reliability column, so an entry
+  //       written before this holds the fabricated 100 percent.
+  ["all-benchmarks-v113", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1055,7 +1066,11 @@ const loadBenchmarkFiltered = unstable_cache(
   //      to move with it: every one of this bench's eight tabs is a
   //      filtered variant, so copy fixed only on the default view would
   //      stay wrong on all eight.
-  ["bench-filters-v57", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v58: lockstep with bench-unfiltered-v120, and with all-benchmarks-v113. Filtered
+  //      views are cached per filter set and each one carries the same
+  //      column, so leaving this behind would serve the fabricated figure on
+  //      every tab of the four benches while the unfiltered view was correct.
+  ["bench-filters-v58", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 

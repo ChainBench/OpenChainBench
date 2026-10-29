@@ -12,6 +12,12 @@ row_noun: { one: coin, many: coins }
 higher_is_better: true
 zero_is_a_value: true
 
+# A success rate measures nothing here: this bench counts makers with a
+# live offer, not requests it answered. Without this the ledger fills
+# the column from the loader's default and publishes 100% for every
+# book, backed by no sample.
+ledger_reliability: false
+
 seo_intro: |
   A coin can be listed everywhere and tradeable nowhere. These are
   peer-to-peer atomic swap books, where nothing happens unless a human on

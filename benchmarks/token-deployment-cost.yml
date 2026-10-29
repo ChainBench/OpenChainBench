@@ -34,6 +34,12 @@ category: Blockchains
 status: live
 metric: Token deployment cost USD
 unit: usd
+
+# A success rate measures nothing here: this bench prices a deployment
+# from gas, and does not claim anything about requests it sent. Without
+# this the ledger fills the column from the loader's default and
+# publishes 100% for every chain, backed by no sample.
+ledger_reliability: false
 higher_is_better: false
 row_noun: { one: chain, many: chains }
 

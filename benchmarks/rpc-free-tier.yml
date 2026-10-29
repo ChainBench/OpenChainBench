@@ -11,6 +11,13 @@ category: RPCs
 status: live
 metric: Free allowance
 unit: count
+
+# A success rate measures nothing here: this bench is arithmetic on
+# published plan allowances and sends no probe traffic. Without this the
+# ledger fills the column from the loader's default and publishes 100%
+# for every plan, backed by no sample. Same reason as rpc-cost, which
+# shares this harness.
+ledger_reliability: false
 higher_is_better: true
 row_noun: { one: plan, many: plans }
 
