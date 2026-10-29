@@ -18,6 +18,7 @@ import {
   RANGE_LABEL,
   REGION_LABEL,
   pickSeries,
+  panelSeriesCacheKey,
   mean,
   type Range,
   type LineWithColor,
@@ -186,14 +187,28 @@ export function TimeSeriesChart({
   const [lazySeries1y, setLazySeries1y] = useState<Record<string, (number | null)[]> | null>(null);
   // Declared early so effects below can guard on it without TDZ issues.
   const panelActive = !!seriesOverride;
-  // Per-panel lazy series, keyed by panel id. Cached across a panel
-  // switch so flipping back to a previously-viewed panel is instant.
+  // Per-panel lazy series, keyed by panel id AND by the filters the series
+  // was fetched under. Cached across a panel switch so flipping back to a
+  // previously-viewed panel is instant.
   // 7d/30d: fetched on panel activation. 90d/1y: fetched on-demand when
   // the user clicks those tabs (Prom-backed, not archive-backed).
+  //
+  // The filters have to be in the key. Keyed on the panel alone, the first
+  // chain a reader opened was served back on every other chain tab: the
+  // effects below DO re-run on a chain change (chainProp is in their deps)
+  // and then return early on their own cache hit, so the fetch never
+  // happened. 1H/6H/24H never showed it because those render from the
+  // embedded per-filter series, which is why the bug presented as "only 7D
+  // and 30D are wrong". Lucas reported it on bench 001, where the First to
+  // report shares are a per-chain race, so one chain's numbers appearing on
+  // four tabs named the wrong leader on three of them.
   const [lazyPanel7d, setLazyPanel7d] = useState<Record<string, Record<string, (number | null)[]>>>({});
   const [lazyPanel30d, setLazyPanel30d] = useState<Record<string, Record<string, (number | null)[]>>>({});
   const [lazyPanel90d, setLazyPanel90d] = useState<Record<string, Record<string, (number | null)[]>>>({});
   const [lazyPanel1y, setLazyPanel1y] = useState<Record<string, Record<string, (number | null)[]>>>({});
+  const panelCacheKey = activePanelId
+    ? panelSeriesCacheKey(activePanelId, chainProp, regionProp, tierProp)
+    : null;
 
   // Pre-fetch 7d AND 30d in the background as soon as the chart mounts,
   // not just when the user clicks the tab. The fetches are non-blocking
@@ -318,14 +333,14 @@ export function TimeSeriesChart({
   // case since slimBenchmarkForCache drops them). Cache-keyed per panel so
   // switching between panels re-uses previously loaded data instantly.
   useEffect(() => {
-    if (!activePanelId) return;
+    if (!activePanelId || !panelCacheKey) return;
     // Inline overrides win — skip the fetch when the parent already
     // supplied panel long-range series (e.g. an unshimmed test caller).
     if (seriesOverride7d && seriesOverride30d) return;
-    if (lazyPanel7d[activePanelId] && lazyPanel30d[activePanelId]) return;
+    if (lazyPanel7d[panelCacheKey] && lazyPanel30d[panelCacheKey]) return;
     let cancelled = false;
-    const need7d = !seriesOverride7d && !lazyPanel7d[activePanelId];
-    const need30d = !seriesOverride30d && !lazyPanel30d[activePanelId];
+    const need7d = !seriesOverride7d && !lazyPanel7d[panelCacheKey];
+    const need30d = !seriesOverride30d && !lazyPanel30d[panelCacheKey];
     const done: Record<"7d" | "30d", boolean> = {
       "7d": !need7d,
       "30d": !need30d,
@@ -349,9 +364,9 @@ export function TimeSeriesChart({
           const map: Record<string, (number | null)[]> = {};
           for (const p of data.providers) map[p.slug] = p.values;
           if (range === "7d") {
-            setLazyPanel7d((prev) => ({ ...prev, [activePanelId]: map }));
+            setLazyPanel7d((prev) => ({ ...prev, [panelCacheKey]: map }));
           } else {
-            setLazyPanel30d((prev) => ({ ...prev, [activePanelId]: map }));
+            setLazyPanel30d((prev) => ({ ...prev, [panelCacheKey]: map }));
           }
         })
         .catch(() => {
@@ -361,9 +376,9 @@ export function TimeSeriesChart({
           } else {
             done[range] = true;
             if (range === "7d") {
-              setLazyPanel7d((prev) => ({ ...prev, [activePanelId]: {} }));
+              setLazyPanel7d((prev) => ({ ...prev, [panelCacheKey]: {} }));
             } else {
-              setLazyPanel30d((prev) => ({ ...prev, [activePanelId]: {} }));
+              setLazyPanel30d((prev) => ({ ...prev, [panelCacheKey]: {} }));
             }
           }
         });
@@ -384,9 +399,9 @@ export function TimeSeriesChart({
   // Triggered the first time a panel becomes active — we prefetch both
   // ranges so the user can switch between them without extra round-trips.
   useEffect(() => {
-    if (!activePanelId) return;
-    const need90d = !lazyPanel90d[activePanelId];
-    const need1y = !lazyPanel1y[activePanelId];
+    if (!activePanelId || !panelCacheKey) return;
+    const need90d = !lazyPanel90d[panelCacheKey];
+    const need1y = !lazyPanel1y[panelCacheKey];
     if (!need90d && !need1y) return;
     let cancelled = false;
     const buildQs = (r: "90d" | "1y") => {
@@ -406,13 +421,13 @@ export function TimeSeriesChart({
           if (cancelled) return;
           const map: Record<string, (number | null)[]> = {};
           for (const p of data.providers) map[p.slug] = p.values;
-          if (r === "90d") setLazyPanel90d((prev) => ({ ...prev, [activePanelId]: map }));
-          else setLazyPanel1y((prev) => ({ ...prev, [activePanelId]: map }));
+          if (r === "90d") setLazyPanel90d((prev) => ({ ...prev, [panelCacheKey]: map }));
+          else setLazyPanel1y((prev) => ({ ...prev, [panelCacheKey]: map }));
         })
         .catch(() => {
           if (cancelled) return;
-          if (r === "90d") setLazyPanel90d((prev) => ({ ...prev, [activePanelId]: {} }));
-          else setLazyPanel1y((prev) => ({ ...prev, [activePanelId]: {} }));
+          if (r === "90d") setLazyPanel90d((prev) => ({ ...prev, [panelCacheKey]: {} }));
+          else setLazyPanel1y((prev) => ({ ...prev, [panelCacheKey]: {} }));
         });
     };
     if (need90d) fetchOne("90d");
@@ -421,10 +436,10 @@ export function TimeSeriesChart({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activePanelId, regionProp, chainProp, tierProp, benchmark.slug]);
 
-  const panelLazy7d = activePanelId ? lazyPanel7d[activePanelId] : undefined;
-  const panelLazy30d = activePanelId ? lazyPanel30d[activePanelId] : undefined;
-  const panelLazy90d = activePanelId ? lazyPanel90d[activePanelId] : undefined;
-  const panelLazy1y = activePanelId ? lazyPanel1y[activePanelId] : undefined;
+  const panelLazy7d = panelCacheKey ? lazyPanel7d[panelCacheKey] : undefined;
+  const panelLazy30d = panelCacheKey ? lazyPanel30d[panelCacheKey] : undefined;
+  const panelLazy90d = panelCacheKey ? lazyPanel90d[panelCacheKey] : undefined;
+  const panelLazy1y = panelCacheKey ? lazyPanel1y[panelCacheKey] : undefined;
 
   // null = still loading → show optimistically; {} = confirmed empty → hide
   const seriesHasData = (m: Record<string, (number | null)[]> | null) =>
