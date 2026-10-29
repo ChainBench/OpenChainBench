@@ -184,7 +184,7 @@ export function CostCurves() {
   return (
     <Figure
       title="Monthly bill by volume"
-      subtitle="Cheapest paid plan of each provider that can serve the volume, list prices. Each step is a plan change. A line ending in a cross stops at the volume where the provider's throughput cap is reached."
+      subtitle="Cheapest paid plan of each provider that can serve the volume, list prices. Each step is a plan change. A line ending in a cross stops at the volume where the provider's throughput cap is reached. Lines at the same price overlap: on the dapp mix four providers start at $49."
       source="Source: OpenChainBench rpc-cost, bench 282, catalogue of 22 Oct 2026. The calculator on the bench page prices any volume from 100k to 5B."
     >
       <div className="flex flex-wrap items-center gap-2 px-2 pb-2">
