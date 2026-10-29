@@ -108,18 +108,32 @@ func refKey(chain, hash string) string {
 }
 
 func (r *refClock) observe(chain, hash string, at time.Time) {
+	r.observeFirst(chain, hash, at)
+}
+
+// observeFirst records an observation and reports whether THIS call set the
+// entry, so a chain fed by more than one source can count which one arrives
+// first without a second map.
+//
+// Base has two: the flashblocks stream and the sequencer's preconf
+// pendingLogs. Keeping the earliest of the two is what makes adding a source
+// safe, since a new source can only move the zero point earlier and a slow
+// one is simply never used.
+func (r *refClock) observeFirst(chain, hash string, at time.Time) bool {
 	if hash == "" {
-		return
+		return false
 	}
 	r.mu.Lock()
+	defer r.mu.Unlock()
 	// Keep the FIRST observation. A log subscription can redeliver on
 	// reconnect and a later duplicate would understate every provider's
 	// lag on that trade.
 	k := refKey(chain, hash)
-	if _, ok := r.seen[k]; !ok {
-		r.seen[k] = refEntry{at: at}
+	if _, ok := r.seen[k]; ok {
+		return false
 	}
-	r.mu.Unlock()
+	r.seen[k] = refEntry{at: at}
+	return true
 }
 
 // lookup returns our observation time for a trade, and whether we saw it

@@ -575,7 +575,12 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       prose.
   // v112: bench 309 lists its unpriced vendors on every tab, and its
   //       freshness copy names the new alert.
-  ["bench-unfiltered-v112", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v113: bench 001's Base reference gains a second source. The methodology
+  //       now says the zero point is the earliest of the flashblock stream
+  //       and the sequencer's pendingLogs, and warns that figures published
+  //       before today are smaller by up to the CDN tail the second source
+  //       removes. Editorial change on a live page, so the keys move.
+  ["bench-unfiltered-v113", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -848,7 +853,9 @@ const loadAllBenchmarksCached = unstable_cache(
   //        methodology no longer credits a histogram that drove nothing).
   // v104: lockstep with bench-unfiltered-v111 (bench 309 copy round).
   // v105: lockstep with bench-unfiltered-v112 (bench 309 round two).
-  ["all-benchmarks-v105", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v106: lockstep with bench-unfiltered-v113 (bench 001's Base reference
+  //        gains the sequencer's pendingLogs as a second source).
+  ["all-benchmarks-v106", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1002,7 +1009,10 @@ const loadBenchmarkFiltered = unstable_cache(
   // v51: lockstep with bench-unfiltered-v112. Bench 309's filtered
   //      tabs gain rows (unpriced vendors with their label), and a cached
   //      variant would keep the old, shorter set.
-  ["bench-filters-v51", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v52: lockstep with bench-unfiltered-v113. Bench 001 declares chain and
+  //      region dimensions, so its reworded Base methodology is cached once
+  //      per tab and a bump of the other two alone would correct only one.
+  ["bench-filters-v52", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 

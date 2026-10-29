@@ -37,6 +37,7 @@ var (
 	headLagStaleSwept     *prometheus.CounterVec
 	headLagSweeperLastRun prometheus.Gauge
 	flashblockObserved    prometheus.Counter
+	baseRefFirst          *prometheus.CounterVec
 	blockchainHead        *prometheus.GaugeVec
 	aggregatorHead        *prometheus.GaugeVec
 	headLagErrors         *prometheus.CounterVec
@@ -235,6 +236,22 @@ func init() {
 		Help: "Transactions observed on Base's flashblock preconfirmation stream and fed to the reference clock.",
 	})
 	prometheus.MustRegister(flashblockObserved)
+
+	// Which of Base's two reference sources actually set the zero point.
+	// The clock keeps the earliest observation per transaction, so this
+	// counts wins, not deliveries: a source that is always second shows 0
+	// here while still being healthy on the counter above.
+	//
+	// This exists because the change that added the preconf source has to
+	// be judged on production data, not on the residential measurement
+	// that motivated it. If preconf wins a meaningful share, the old
+	// flashblocks tail was real and is now gone. If it wins nothing, the
+	// source costs one socket and can be dropped.
+	baseRefFirst = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "head_lag_base_ref_first_total",
+		Help: "Transactions whose Base reference timestamp came from this source, i.e. it observed the transaction before the other source did.",
+	}, []string{"source"})
+	prometheus.MustRegister(baseRefFirst)
 
 	// Companion to head_lag_seconds, measured against our own node
 	// subscription instead of the timestamp each provider sends us. Same
@@ -775,3 +792,7 @@ func StartMetricsServer(addr string) error {
 // RecordFlashblockObserved counts one transaction seen on the Base
 // preconfirmation stream. See base_flashblock_ref.go.
 func RecordFlashblockObserved() { flashblockObserved.Inc() }
+
+// RecordBaseRefFirst counts one transaction whose Base reference timestamp
+// came from `source`. See base_preconf_ref.go for why Base has two.
+func RecordBaseRefFirst(source string) { baseRefFirst.WithLabelValues(source).Inc() }
