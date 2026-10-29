@@ -5,6 +5,7 @@ import { BadgesCatalog, type BadgePair } from "@/components/badges-catalog";
 import { pageMetadata } from "@/lib/page-metadata";
 import { safeJsonLd, buildBreadcrumbJsonLd } from "@/lib/jsonld";
 import { SITE } from "@/data/site";
+import type { Benchmark } from "@/types/benchmark";
 
 /**
  * Public discovery page for the per-(benchmark, provider) badge endpoints.
@@ -45,6 +46,38 @@ const PREVIEW_PAIRS: Array<{ bench: string; provider: string }> = [
   { bench: "pm-api-latency", provider: "polymarket" },
 ];
 
+/** Which dimensions the badge can actually scope for this bench.
+ *
+ *  The modal's Chain and Region pickers write `?chain=` / `?region=` onto
+ *  the badge URL, and the badge can only honour a scope it has a ranking
+ *  for: the per-cell rankings from the spec's `rank_matrix_query`. Twenty
+ *  live chain-dimensioned benches declare none, so offering the picker
+ *  there invited an embedder to produce a URL that answers with the
+ *  unfiltered figure (labelled "all chains" since the badge stopped
+ *  printing a chain over it; see src/lib/badge-scope.ts).
+ *
+ *  So the picker is offered exactly when the badge can answer. Reading
+ *  `cellRanks` rather than the spec is deliberate: it is the same signal
+ *  the badge route itself looks up, so the two cannot disagree, and if a
+ *  matrix query fails for a cycle the picker goes quiet with it instead of
+ *  promising a scope that cycle cannot serve.
+ *
+ *  Cell keys are `<chain>|<region>` with "all" standing in for an
+ *  unscoped side, so each dimension is scopable when some key names a
+ *  real value on its own side. */
+function scopableDimensions(b: Benchmark): BadgePair["dimensions"] {
+  const keys = Object.keys(b.cellRanks ?? {});
+  const sides = keys.map((k) => k.split("|"));
+  return {
+    chain: sides.some((s) => s[0] && s[0] !== "all")
+      ? b.dimensions?.chain
+      : undefined,
+    region: sides.some((s) => s[1] && s[1] !== "all")
+      ? b.dimensions?.region
+      : undefined,
+  };
+}
+
 export default async function BadgesPage() {
   const benchmarks = await getBenchmarksSafe();
 
@@ -58,6 +91,7 @@ export default async function BadgesPage() {
   for (const b of live) {
     const livePr = b.results.filter((r) => r.ms.p50 > 0);
     if (livePr.length === 0) continue;
+    const scopable = scopableDimensions(b);
     const sorted = [...livePr].sort((a, c) =>
       b.higherIsBetter ? c.ms.p50 - a.ms.p50 : a.ms.p50 - c.ms.p50,
     );
@@ -70,10 +104,7 @@ export default async function BadgesPage() {
         providerName: r.name,
         rank: idx + 1,
         total: sorted.length,
-        dimensions: {
-          chain: b.dimensions?.chain,
-          region: b.dimensions?.region,
-        },
+        dimensions: scopable,
       });
     });
   }
