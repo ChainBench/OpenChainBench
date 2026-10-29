@@ -72,7 +72,6 @@ const PRODUCT_ALIASES: Record<string, string> = {
   "alchemy-cold": "alchemy",
   "chainstack-cold": "chainstack",
   "getblock-cold": "getblock",
-  "routemesh-cold": "routemesh",
   "quicknode-cold": "quicknode",
   "dwellir-cold": "dwellir",
   "blockmachine-cold": "blockmachine",

@@ -33,17 +33,7 @@ type Endpoint struct {
 // eth_blockNumber answered with the key in the query and no header at all.
 // They serve neither Solana nor HyperEVM, so those two cells stay empty and
 // the matrix skips them on its own.
-// "routemesh" is a ROUTER, not a provider: it forwards to Alchemy,
-// QuickNode, Ankr and Chainstack, which are themselves in this list. It
-// is probed identically so the comparison is same call, same moment,
-// same region, and the bench specs mark its row `unranked: Router` so
-// the ranking never orders it against its own upstreams.
-//
-// Its keyed URL is https://lb.routeme.sh/rpc/<chain_id>/<key>, the shape
-// their docs publish. The host they document, rpc.routeme.sh, has no DNS
-// record; lb.routeme.sh serves both the public path (/rpc/evm/<id>,
-// which ignores a key) and the keyed one.
-var providers = []string{"infura", "alchemy", "chainstack", "ankr", "helius", "quicknode", "getblock", "dwellir", "validationcloud", "blockmachine", "routemesh"}
+var providers = []string{"infura", "alchemy", "chainstack", "ankr", "helius", "quicknode", "getblock", "dwellir", "validationcloud", "blockmachine"}
 
 // Per-provider probe-interval multiplier. Infura's free tier 402'd daily
 // at the old 60 s cadence (its real daily credit budget is below the

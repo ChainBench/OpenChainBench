@@ -86,9 +86,10 @@ export function RankedBarChart({
         // comparability, not a reason to hide the number.
         //
         // This chart sits above the ledger and is the first thing read, so
-        // ranking them here defeated the flag entirely: RouteMesh came out
-        // "#5" against the very providers it forwards to. distribution-chart
-        // and public-endpoints-section already filter the same way.
+        // ranking them here defeated the flag entirely: a row the table
+        // below marked unranked came out "#5" in the bars above it.
+        // distribution-chart and public-endpoints-section already filter
+        // the same way.
         !r.unrankedLabel
     );
     const sorted = scored.sort((a, b) =>

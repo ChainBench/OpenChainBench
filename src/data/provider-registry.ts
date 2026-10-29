@@ -111,12 +111,6 @@ export type ProviderRegistryEntry = {
 };
 
 export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
-  routemesh: {
-    url: "https://routeme.sh",
-    description:
-      "RPC router that forwards each call to one of fifteen upstream providers, Alchemy, QuickNode, Ankr and Chainstack among them, with automatic failover and a per-request price instead of compute units. Its row on our keyed boards sits beside the providers it routes to and is never ranked against them: a router's latency includes its own hop and buys failover the direct endpoints do not offer.",
-  },
-
   thorchain: {
     url: "https://thorchain.org",
     description:
