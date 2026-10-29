@@ -62,6 +62,7 @@ export function rankGateReason(
   providerSlug: string,
   filters: Record<string, string | undefined>,
 ): string | null {
+  if (benchSlug === "rpc-api-coverage") return coverageRankReason();
   if (benchSlug !== "server-wallet-cost") return null;
   const f = serverWalletCurves();
   if (!f) return null;
@@ -75,4 +76,25 @@ export function rankGateReason(
   );
   if (!row || row.verified || row.bound !== "lower") return null;
   return "at least this: its page leaves a fee unpriced, so it is not ranked";
+}
+
+/**
+ * Bench 311: the caption the generic path falls back to is "sample below the
+ * ranking floor", which is true in the arithmetic and wrong in the cause. The
+ * sample is small because our own key is refused on most of the chains it is
+ * configured for, not because the bench has seen little traffic, and a reader
+ * who knows other benches reads the generic wording as "this bench is young".
+ *
+ * Returned for every gated row rather than looked up per provider: the gate on
+ * this bench can only read 0 for one reason, which is that we obtained verdicts
+ * on fewer than half the cells we asked of that provider.
+ *
+ * Kept to a badge's length on purpose. static-ledger renders this inline beside
+ * the provider name at 11px uppercase with 0.14em tracking, so a sentence here
+ * would set the column width for the whole table. It names the cause; the
+ * success column beside it carries the size (21.43 % of cells answered against
+ * 100 % for the ranked rows), and the methodology carries the argument.
+ */
+function coverageRankReason(): string {
+  return "our key was refused on most cells";
 }
