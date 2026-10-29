@@ -2,7 +2,7 @@
  "schema": 1,
  "catalogueVersion": 1,
  "catalogueAsOf": "2026-10-29",
- "catalogueSha256": "adc789d32ddd88ad4cfbe4512f1b6a319511c0fb55173af755895aa61ca9e466",
+ "catalogueSha256": "96a354e4042ff73755756ab6f861f16adcca0f34be7f9b675bd45986ef63cc7d",
  "floor": 100,
  "ceiling": 1000000,
  "volumes": [
@@ -52,6 +52,9 @@
    "pro": "Pro",
    "scale": "Scale"
   },
+  "portal": {
+   "start-up": "Start-Up"
+  },
   "privy": {
    "core": "Core",
    "free": "Free",
@@ -90,6 +93,7 @@
   "getpara": "No signature or transaction fee. The page says that at 100,000 MAU \"most teams move to\" an Enterprise plan; the published Scale overage still prices that volume, so it is used.",
   "magic": "A wallet counts once a month when a user accesses it through the SDK. Every successful signing request counts, except the signatures needed to log in; 50,000 a month are included per team on every non-Enterprise plan.",
   "openfort": "An operation is \"creating a wallet, signing, broadcasting, evaluating a policy, firing a webhook, or landing a funding deposit\"; a payment is two (sign, then broadcast) and sign-ins are free. Priced from that table: 1 per new wallet, 2 per transaction. Openfort's own simulator on the same page also charges 2 operations per active user, which would raise these bills.",
+  "portal": "Start-Up includes 1K monthly operations and 1K wallets, each $0.10 beyond. Operations are \"Generate, Backup, Sign, Recover, Eject\": a new wallet is priced as Generate plus Backup and a transaction as one Sign. Whether the wallet overage is charged once or every month is not stated (priced every month, the higher reading). The Developer plan is a development environment. Added 2026-10-29: an earlier version of this catalogue excluded Portal as unpriceable, which was wrong.",
   "privy": "Plan bounds are the cards' \"Up to\" figures (500, 2,500, and 10,000 for Scale, whose band reads 2,500 to 9,999), because pay-as-you-go starts only when usage \"exceeds 10,000 MAU or 50,000 signatures\". A Privy MAU is a user with an active session in the last 30 days.",
   "reown": "Counts users authenticated with Reown Auth or holding an embedded wallet. The free Starter plan cuts off at 500. Reown says exchanges, custodians, payments, gaming and merchant platforms need a custom plan, so its self-serve price is not offered for the trading profile.",
   "thirdweb": "A monthly active wallet is one \"where a user logs in during the billing period\". The first 1,000 are free and the per-wallet rate falls at 100k, 1M and 10M. The page draws these as bands without saying whether each rate applies to its own band or to the whole count; priced graduated, band by band, which is the higher reading above 100,000. Removing thirdweb branding needs Scale ($499).",
@@ -102,11 +106,6 @@
    "slug": "alchemy",
    "name": "Alchemy",
    "reason": "Smart Wallets bill compute units, and the compute units a signature costs appear only in a separate calculator that still prices a compute unit at $0.40 per million against $0.52 on the pricing page."
-  },
-  {
-   "slug": "portal",
-   "name": "Portal",
-   "reason": "The pricing page shows operation and wallet allowances without a readable plan price beside them."
   },
   {
    "slug": "dfns",
@@ -611,17 +610,17 @@
        "nextUnc": true
       },
       {
-       "u": 1000,
-       "usd": 82,
-       "plan": "free",
-       "next": "free",
+       "u": 196.0784317647059,
+       "usd": 99,
+       "plan": "growth",
+       "next": "growth",
        "unc": true,
        "nextUnc": true
       },
       {
-       "u": 1166.6666666666667,
+       "u": 1000,
        "usd": 99,
-       "plan": "free",
+       "plan": "growth",
        "next": "growth",
        "unc": true,
        "nextUnc": true
@@ -635,25 +634,9 @@
        "nextUnc": true
       },
       {
-       "u": 2637.2549019607845,
-       "usd": 114.2,
-       "plan": "growth",
-       "next": "growth",
-       "unc": true,
-       "nextUnc": true
-      },
-      {
        "u": 4289.21568627451,
        "usd": 249,
        "plan": "growth",
-       "next": "pro",
-       "unc": true,
-       "nextUnc": true
-      },
-      {
-       "u": 6068.6274509803925,
-       "usd": 249,
-       "plan": "pro",
        "next": "pro",
        "unc": true,
        "nextUnc": true
@@ -953,6 +936,59 @@
        "u": 1000000,
        "usd": null,
        "why": "above 1,000 monthly active users on Free the price is on request"
+      }
+     ]
+    },
+    {
+     "slug": "portal",
+     "name": "Portal",
+     "unit": "Operations plus wallets",
+     "points": [
+      {
+       "u": 100,
+       "usd": 499,
+       "plan": "start-up",
+       "next": "start-up",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 185.18518518518516,
+       "usd": 499,
+       "plan": "start-up",
+       "next": "start-up",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 1000,
+       "usd": 939,
+       "plan": "start-up",
+       "next": "start-up",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 10000,
+       "usd": 6699,
+       "plan": "start-up",
+       "next": "start-up",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 100000,
+       "usd": 64299,
+       "plan": "start-up",
+       "next": "start-up",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 1000000,
+       "usd": 640299,
+       "plan": "start-up",
+       "unc": true
       }
      ]
     }
@@ -1429,22 +1465,6 @@
      "points": [
       {
        "u": 100,
-       "usd": 30.1,
-       "plan": "free",
-       "next": "free",
-       "unc": true,
-       "nextUnc": true
-      },
-      {
-       "u": 237.5249500998004,
-       "usd": 99,
-       "plan": "free",
-       "next": "growth",
-       "unc": true,
-       "nextUnc": true
-      },
-      {
-       "u": 499.001996007984,
        "usd": 99,
        "plan": "growth",
        "next": "growth",
@@ -1452,8 +1472,8 @@
        "nextUnc": true
       },
       {
-       "u": 536.9261477045908,
-       "usd": 114.2,
+       "u": 499.001996007984,
+       "usd": 99,
        "plan": "growth",
        "next": "growth",
        "unc": true,
@@ -1469,14 +1489,6 @@
       },
       {
        "u": 1000,
-       "usd": 249,
-       "plan": "pro",
-       "next": "pro",
-       "unc": true,
-       "nextUnc": true
-      },
-      {
-       "u": 1235.5289421157684,
        "usd": 249,
        "plan": "pro",
        "next": "pro",
@@ -1766,6 +1778,51 @@
        "u": 1000000,
        "usd": null,
        "why": "above 1,000 monthly active users on Free the price is on request"
+      }
+     ]
+    },
+    {
+     "slug": "portal",
+     "name": "Portal",
+     "unit": "Operations plus wallets",
+     "points": [
+      {
+       "u": 100,
+       "usd": 651,
+       "plan": "start-up",
+       "next": "start-up",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 1000,
+       "usd": 2919,
+       "plan": "start-up",
+       "next": "start-up",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 10000,
+       "usd": 26499,
+       "plan": "start-up",
+       "next": "start-up",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 100000,
+       "usd": 262299,
+       "plan": "start-up",
+       "next": "start-up",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 1000000,
+       "usd": 2620299,
+       "plan": "start-up",
+       "unc": true
       }
      ]
     }
@@ -2247,25 +2304,9 @@
        "nextUnc": true
       },
       {
-       "u": 134.46638340414896,
-       "usd": 114.2,
-       "plan": "growth",
-       "next": "growth",
-       "unc": true,
-       "nextUnc": true
-      },
-      {
        "u": 218.69532616845788,
        "usd": 249,
        "plan": "growth",
-       "next": "pro",
-       "unc": true,
-       "nextUnc": true
-      },
-      {
-       "u": 309.4226443389153,
-       "usd": 249,
-       "plan": "pro",
        "next": "pro",
        "unc": true,
        "nextUnc": true
@@ -2533,6 +2574,51 @@
        "u": 1000000,
        "usd": null,
        "why": "above 1,000 monthly active users on Free the price is on request"
+      }
+     ]
+    },
+    {
+     "slug": "portal",
+     "name": "Portal",
+     "unit": "Operations plus wallets",
+     "points": [
+      {
+       "u": 100,
+       "usd": 1400,
+       "plan": "start-up",
+       "next": "start-up",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 1000,
+       "usd": 10409,
+       "plan": "start-up",
+       "next": "start-up",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 10000,
+       "usd": 101399,
+       "plan": "start-up",
+       "next": "start-up",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 100000,
+       "usd": 1011299,
+       "plan": "start-up",
+       "next": "start-up",
+       "unc": true,
+       "nextUnc": true
+      },
+      {
+       "u": 1000000,
+       "usd": 10110299,
+       "plan": "start-up",
+       "unc": true
       }
      ]
     }

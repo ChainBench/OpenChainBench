@@ -17,6 +17,7 @@ const NOT_SERVED: Record<string, string> = {
   // not a source that has not reported. Worded without the size so it
   // holds on every profile and size tab (see NOT_SERVED_ON_EVERY_VIEW).
   "wallet-cost": "no self-serve price for this app size",
+  "server-wallet-cost": "no self-serve price for this workload",
 };
 
 /**
@@ -29,7 +30,7 @@ const NOT_SERVED: Record<string, string> = {
  * rpc-cost is not here because its label names the Ethereum dapp mix, which
  * is false on its Solana tab.
  */
-const NOT_SERVED_ON_EVERY_VIEW = new Set(["wallet-cost"]);
+const NOT_SERVED_ON_EVERY_VIEW = new Set(["wallet-cost", "server-wallet-cost"]);
 
 export function notServedOnEveryView(benchSlug: string): boolean {
   return NOT_SERVED_ON_EVERY_VIEW.has(benchSlug);

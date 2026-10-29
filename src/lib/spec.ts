@@ -586,7 +586,9 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // v115: bench 309 SEO round: title, metric, intro and description
   //       move to placeholders and a plainer wording.
   // v116: the brand is Quicknode, not QuickNode, in every spec.
-  ["bench-unfiltered-v116", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v117: bench 310 server-wallet-cost arrives (eleven vendors), and
+  //       bench 309 gains Portal and re-prices Openfort's free plan.
+  ["bench-unfiltered-v117", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -864,7 +866,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v107: lockstep with bench-unfiltered-v114 (bench 309 round three).
   // v108: lockstep with bench-unfiltered-v115 (bench 309 SEO round).
   // v109: lockstep with bench-unfiltered-v116 (Quicknode spelling).
-  ["all-benchmarks-v109", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v110: lockstep with bench-unfiltered-v117 (bench 310 arrives).
+  ["all-benchmarks-v110", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1025,7 +1028,9 @@ const loadBenchmarkFiltered = unstable_cache(
   //      tabs now carry per-vendor reasons; a cached variant keeps the old.
   // v54: lockstep with bench-unfiltered-v115. Bench 309's tabs cache
   //      the title and metric with the rows.
-  ["bench-filters-v54", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v55: lockstep with bench-unfiltered-v117. Bench 310 declares kind
+  //      and bucket, and bench 309's tabs gain a row.
+  ["bench-filters-v55", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 
