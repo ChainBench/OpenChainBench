@@ -54,7 +54,9 @@ methodology:
   - "The Beacon API is not answered here. Beacon endpoints live on a different base URL from the JSON-RPC endpoint and our configuration carries only the latter, so the question was never put. Publishing 0 would state that no provider in this cohort serves it, which is false. It needs its own credentials before it can be measured."
   - "Solana is not on this board. Every method here is an EVM concept, the Solana keyed cohort is three providers, and a grid whose columns are all blank on one tab is not a matrix. Solana belongs in its own bench against Solana-native providers, measured on Solana methods."
   - "The harness probes one Solana method already, for that future bench, so every query on this board excludes that chain by name rather than relying on the column list. Leaving it in counted a method we declare out of scope toward the all-chains share, and it helped only the two providers that answer it."
-  - "A provider is ranked here only if we obtained a verdict on at least half the cells we asked of it. Below that it keeps its row and its figures and is listed outside the ranking with the reason beside it, because the headline is a share and a share over a fifth of the questions is not comparable to the same share over all of them. This is the reason a provider can read 100 on this board without leading it: our key, not their API, is what limited the sample."
+  - "A provider takes a rank only if the cells we could not ask it could not move its position. We score it a second way, over every cell any provider answered on that view, crediting each unasked cell at the rate the rest of the cohort reached on that same cell, and if the two scores differ by a point or more the row is published with its measured figures and no rank."
+  - "That second score is never published. Crediting a cell we did not ask puts other providers endpoints inside a number carrying this provider name, which is the error this whole board exists to refuse. It decides eligibility only, and every figure on the board is a measurement."
+  - "Why the test is not a simple sample floor: on a single chain tab there are seven cells, and a provider missing one of them clears any floor while its share is computed without the hardest question. One cohort member reads 100 percent on a chain tab where the method it was never asked is the one every other provider refuses, so excluding that cell is worth more than fourteen points. A floor cannot see that; comparing the two scores can."
   - "The success column is not endpoint reliability here, it is the share of the cells we asked that reached a verdict at all, and the sample count beside it is the number of cells behind the published share. A provider reading 100 percent coverage over 12 cells and one reading 94 percent over 56 are different claims, and this is where the board says so in numbers rather than in prose."
   - "eth_getLogs is asked in three shapes because they are three different questions: an unfiltered range, a range filtered by address, and a range filtered by topics. A provider that serves an address-filtered query and refuses an unfiltered one is the common case, and one merged flag would erase exactly the distinction an indexer needs."
 
@@ -166,41 +168,41 @@ providers:
       p50: 100 * sum by (provider) (rpc_api_supported{provider="quicknode",chain!="solana"}) / count by (provider) (rpc_api_supported{provider="quicknode",chain!="solana"})
       success: 100 * count by (provider) (rpc_api_supported{provider="quicknode",chain!="solana"}) / count by (provider) (count by (provider, chain, api) (rpc_api_probe_total{provider="quicknode",chain!="solana"}))
       sample_size: count by (provider) (rpc_api_supported{provider="quicknode",chain!="solana"})
-      ranked: count by (provider) (rpc_api_supported{provider="quicknode",chain!="solana"}) >= bool (0.5 * count by (provider) (count by (provider, chain, api) (rpc_api_probe_total{provider="quicknode",chain!="solana"})))
+      ranked: abs((100 * sum(rpc_api_supported{provider="quicknode",chain!="solana"}) / count(rpc_api_supported{provider="quicknode",chain!="solana"})) - (100 * (sum(rpc_api_supported{provider="quicknode",chain!="solana"}) + (sum(avg by (chain, api) (rpc_api_supported{provider!="quicknode",chain!="solana"}) unless on(chain, api) rpc_api_supported{provider="quicknode",chain!="solana"}) or vector(0))) / count(count by (chain, api) (rpc_api_supported{chain!="solana"})))) < bool 1
   - slug: chainstack
     name: Chainstack
     queries:
       p50: 100 * sum by (provider) (rpc_api_supported{provider="chainstack",chain!="solana"}) / count by (provider) (rpc_api_supported{provider="chainstack",chain!="solana"})
       success: 100 * count by (provider) (rpc_api_supported{provider="chainstack",chain!="solana"}) / count by (provider) (count by (provider, chain, api) (rpc_api_probe_total{provider="chainstack",chain!="solana"}))
       sample_size: count by (provider) (rpc_api_supported{provider="chainstack",chain!="solana"})
-      ranked: count by (provider) (rpc_api_supported{provider="chainstack",chain!="solana"}) >= bool (0.5 * count by (provider) (count by (provider, chain, api) (rpc_api_probe_total{provider="chainstack",chain!="solana"})))
+      ranked: abs((100 * sum(rpc_api_supported{provider="chainstack",chain!="solana"}) / count(rpc_api_supported{provider="chainstack",chain!="solana"})) - (100 * (sum(rpc_api_supported{provider="chainstack",chain!="solana"}) + (sum(avg by (chain, api) (rpc_api_supported{provider!="chainstack",chain!="solana"}) unless on(chain, api) rpc_api_supported{provider="chainstack",chain!="solana"}) or vector(0))) / count(count by (chain, api) (rpc_api_supported{chain!="solana"})))) < bool 1
   - slug: getblock
     name: GetBlock
     queries:
       p50: 100 * sum by (provider) (rpc_api_supported{provider="getblock",chain!="solana"}) / count by (provider) (rpc_api_supported{provider="getblock",chain!="solana"})
       success: 100 * count by (provider) (rpc_api_supported{provider="getblock",chain!="solana"}) / count by (provider) (count by (provider, chain, api) (rpc_api_probe_total{provider="getblock",chain!="solana"}))
       sample_size: count by (provider) (rpc_api_supported{provider="getblock",chain!="solana"})
-      ranked: count by (provider) (rpc_api_supported{provider="getblock",chain!="solana"}) >= bool (0.5 * count by (provider) (count by (provider, chain, api) (rpc_api_probe_total{provider="getblock",chain!="solana"})))
+      ranked: abs((100 * sum(rpc_api_supported{provider="getblock",chain!="solana"}) / count(rpc_api_supported{provider="getblock",chain!="solana"})) - (100 * (sum(rpc_api_supported{provider="getblock",chain!="solana"}) + (sum(avg by (chain, api) (rpc_api_supported{provider!="getblock",chain!="solana"}) unless on(chain, api) rpc_api_supported{provider="getblock",chain!="solana"}) or vector(0))) / count(count by (chain, api) (rpc_api_supported{chain!="solana"})))) < bool 1
   - slug: dwellir
     name: Dwellir
     queries:
       p50: 100 * sum by (provider) (rpc_api_supported{provider="dwellir",chain!="solana"}) / count by (provider) (rpc_api_supported{provider="dwellir",chain!="solana"})
       success: 100 * count by (provider) (rpc_api_supported{provider="dwellir",chain!="solana"}) / count by (provider) (count by (provider, chain, api) (rpc_api_probe_total{provider="dwellir",chain!="solana"}))
       sample_size: count by (provider) (rpc_api_supported{provider="dwellir",chain!="solana"})
-      ranked: count by (provider) (rpc_api_supported{provider="dwellir",chain!="solana"}) >= bool (0.5 * count by (provider) (count by (provider, chain, api) (rpc_api_probe_total{provider="dwellir",chain!="solana"})))
+      ranked: abs((100 * sum(rpc_api_supported{provider="dwellir",chain!="solana"}) / count(rpc_api_supported{provider="dwellir",chain!="solana"})) - (100 * (sum(rpc_api_supported{provider="dwellir",chain!="solana"}) + (sum(avg by (chain, api) (rpc_api_supported{provider!="dwellir",chain!="solana"}) unless on(chain, api) rpc_api_supported{provider="dwellir",chain!="solana"}) or vector(0))) / count(count by (chain, api) (rpc_api_supported{chain!="solana"})))) < bool 1
   - slug: blockmachine
     name: BlockMachine
     queries:
       p50: 100 * sum by (provider) (rpc_api_supported{provider="blockmachine",chain!="solana"}) / count by (provider) (rpc_api_supported{provider="blockmachine",chain!="solana"})
       success: 100 * count by (provider) (rpc_api_supported{provider="blockmachine",chain!="solana"}) / count by (provider) (count by (provider, chain, api) (rpc_api_probe_total{provider="blockmachine",chain!="solana"}))
       sample_size: count by (provider) (rpc_api_supported{provider="blockmachine",chain!="solana"})
-      ranked: count by (provider) (rpc_api_supported{provider="blockmachine",chain!="solana"}) >= bool (0.5 * count by (provider) (count by (provider, chain, api) (rpc_api_probe_total{provider="blockmachine",chain!="solana"})))
+      ranked: abs((100 * sum(rpc_api_supported{provider="blockmachine",chain!="solana"}) / count(rpc_api_supported{provider="blockmachine",chain!="solana"})) - (100 * (sum(rpc_api_supported{provider="blockmachine",chain!="solana"}) + (sum(avg by (chain, api) (rpc_api_supported{provider!="blockmachine",chain!="solana"}) unless on(chain, api) rpc_api_supported{provider="blockmachine",chain!="solana"}) or vector(0))) / count(count by (chain, api) (rpc_api_supported{chain!="solana"})))) < bool 1
   - slug: alchemy
     name: Alchemy
     queries:
       p50: 100 * sum by (provider) (rpc_api_supported{provider="alchemy",chain!="solana"}) / count by (provider) (rpc_api_supported{provider="alchemy",chain!="solana"})
       success: 100 * count by (provider) (rpc_api_supported{provider="alchemy",chain!="solana"}) / count by (provider) (count by (provider, chain, api) (rpc_api_probe_total{provider="alchemy",chain!="solana"}))
       sample_size: count by (provider) (rpc_api_supported{provider="alchemy",chain!="solana"})
-      ranked: count by (provider) (rpc_api_supported{provider="alchemy",chain!="solana"}) >= bool (0.5 * count by (provider) (count by (provider, chain, api) (rpc_api_probe_total{provider="alchemy",chain!="solana"})))
+      ranked: abs((100 * sum(rpc_api_supported{provider="alchemy",chain!="solana"}) / count(rpc_api_supported{provider="alchemy",chain!="solana"})) - (100 * (sum(rpc_api_supported{provider="alchemy",chain!="solana"}) + (sum(avg by (chain, api) (rpc_api_supported{provider!="alchemy",chain!="solana"}) unless on(chain, api) rpc_api_supported{provider="alchemy",chain!="solana"}) or vector(0))) / count(count by (chain, api) (rpc_api_supported{chain!="solana"})))) < bool 1
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-keyed-latency
