@@ -128,7 +128,9 @@ export function ServerWalletCostCalculator() {
           className="mt-5 w-full cursor-pointer accent-[var(--color-accent)]"
         />
         <div className="relative mt-1 h-6 text-[11px] tabular-nums text-ink-faint">
-          <span className="absolute left-0 top-1">{fmtCount(s.floor)}</span>
+          {!s.sizes.some((z) => z.x === s.floor) && (
+            <span className="absolute left-0 top-1">{fmtCount(s.floor)}</span>
+          )}
           {s.sizes.map((z) => (
             <button
               key={z.id}
@@ -142,7 +144,9 @@ export function ServerWalletCostCalculator() {
               {fmtCount(z.x)}
             </button>
           ))}
-          <span className="absolute right-0 top-1">{fmtCount(s.ceiling)}</span>
+          {!s.sizes.some((z) => z.x === s.ceiling) && (
+            <span className="absolute right-0 top-1">{fmtCount(s.ceiling)}</span>
+          )}
         </div>
         <p className="mt-3 text-xs text-ink-faint">
           {s.label}: {scenarioSentence(s)} A transaction is one signature and one broadcast; creating
@@ -262,8 +266,14 @@ export function ServerWalletCostGrid() {
                 </th>
                 {s.sizes.map((z) => {
                   const { priced } = serverWalletRankAt(s.id, z.x);
-                  const best = priced[0]?.usd ?? null;
-                  const top = best === null ? [] : priced.filter((r) => Math.abs((r.usd ?? 0) - best) < 0.005);
+                  // Same rule as the calculator's card: a price that is only a
+                  // floor ("at least") is never named cheapest. One that sits
+                  // at or under the named price is cited beside it instead.
+                  const holds = priced.filter((r) => r.verified || r.bound === "upper");
+                  const best = holds[0]?.usd ?? null;
+                  const top = best === null ? [] : holds.filter((r) => Math.abs((r.usd ?? 0) - best) < 0.005);
+                  const floors =
+                    best === null ? [] : priced.filter((r) => !holds.includes(r) && (r.usd ?? 0) <= best + 0.005);
                   return (
                     <td key={z.id} className="border-t border-rule px-2 py-3 align-top">
                       <span className="block text-[11px] text-ink-faint">
@@ -297,6 +307,11 @@ export function ServerWalletCostGrid() {
                           {top.length > 1 && (
                             <span className="mt-0.5 block text-[10px] uppercase tracking-wider text-ink-faint">tie</span>
                           )}
+                          {floors.map((r) => (
+                            <span key={r.slug} className="mt-1 block text-[11px] leading-snug text-ink-faint">
+                              {r.name} {r.planName}: at least {fmtUSD(r.usd)}, not named
+                            </span>
+                          ))}
                         </>
                       )}
                     </td>
@@ -406,7 +421,9 @@ function BestCard({
             <p className="mt-0.5 truncate text-2xl font-semibold tracking-tight text-ink sm:text-3xl">{leader.name}</p>
             <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-sm text-ink-muted">
               {leader.planName}
-              <span className="text-ink-faint">· billed on {lowerFirst(leader.unit)}</span>
+              {!sameStart(leader.unit, leader.planName) && (
+                <span className="text-ink-faint">· billed on {lowerFirst(leader.unit)}</span>
+              )}
               <BoundBadge row={leader} />
             </p>
           </div>
@@ -471,9 +488,7 @@ function PodiumCard({ row, rank, leaderUSD, tx }: { row: ServerWalletRow; rank: 
         <Mark slug={row.slug} name={row.name} size={24} />
         <span className="min-w-0">
           <span className="block truncate font-semibold text-ink group-hover:underline">{row.name}</span>
-          <span className="block text-xs text-ink-faint">
-            {row.planName} · {lowerFirst(row.unit)}
-          </span>
+          <span className="block text-xs text-ink-faint">{planAndUnit(row)}</span>
         </span>
       </div>
       <div className="flex items-end justify-between gap-2">
@@ -509,9 +524,7 @@ function RankRow({ row, rank, leaderUSD, tx }: { row: ServerWalletRow; rank: num
           <span className="min-w-0">
             <span className="block truncate font-medium text-ink group-hover:underline">{row.name}</span>
             <span className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-ink-faint">
-              <span>
-                {row.planName} · {lowerFirst(row.unit)}
-              </span>
+              <span>{planAndUnit(row)}</span>
               <BoundBadge row={row} />
             </span>
           </span>
@@ -538,6 +551,15 @@ export function fmtPerTx(usd: number | null, tx: number): string {
   if (v === 0) return "$0";
   if (v >= 1) return `$${v.toFixed(2)}`;
   return `$${Number(v.toPrecision(3))}`;
+}
+
+/** "Prepaid credits · prepaid credits per execution second" says it twice. */
+function sameStart(unit: string, plan: string): boolean {
+  return Boolean(plan) && unit.toLowerCase().startsWith(plan.toLowerCase());
+}
+
+function planAndUnit(row: { planName: string; unit: string }): string {
+  return sameStart(row.unit, row.planName) ? row.unit : `${row.planName} · ${lowerFirst(row.unit)}`;
 }
 
 function lowerFirst(s: string): string {
