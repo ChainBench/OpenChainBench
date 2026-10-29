@@ -19,6 +19,31 @@ EXPOSE 9090
 # arbitrary config fields, so we materialise secrets to disk at start.
 ENTRYPOINT ["/entrypoint.sh"]
 
+# ─────────────────────────────────────────────────────────────────────────────
+# THE CMD BELOW IS NOT WHAT RUNS IN PRODUCTION.
+#
+# The Railway service (a232569e) carries its own `startCommand` that repeats
+# every one of these flags, and a startCommand replaces the image CMD outright.
+# So this block is documentation: editing a flag here changes nothing until the
+# same edit is made on the service.
+#
+# Found on 2026-10-29 the expensive way. A PR lowered retention here from 180d
+# to 7d, the service rebuilt, its scrape config changed as expected, and the
+# retention flags did not move at all, because only the config file comes from
+# the image. Verify a flag change with /api/v1/status/flags, never by reading
+# this file.
+#
+#   mutation { serviceInstanceUpdate(serviceId, environmentId,
+#              input: { startCommand: "..." }) }
+#
+# and then an explicit serviceInstanceDeployV2, because updating the field
+# restarts nothing on its own.
+#
+# Keep the two in sync, or better, clear the startCommand so this file becomes
+# the single source. That was not done at the time because it meant changing
+# how a live service starts at the end of a long change.
+# ─────────────────────────────────────────────────────────────────────────────
+
 # --enable-feature=expand-external-labels: lets global.external_labels read ${ENVIRONMENT} from env
 # --storage.tsdb.retention.time=7d: this instance is a scrape hub, not an
 #   archive. Everything it collects is federated to the VPS Prometheus every
