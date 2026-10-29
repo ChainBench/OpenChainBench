@@ -24,6 +24,7 @@ import { DEV_ONLY_BENCH_SLUGS, REMOVED_BENCH_SLUGS } from "@/lib/removed-benches
 import { renderBenchmarkText } from "@/lib/bench-template";
 import { liveResults as liveProviderResults } from "@/lib/provider-filters";
 import { notServedLabel, notServedOnEveryView } from "@/lib/no-figure-label";
+import { notServedReason } from "@/lib/not-served-reason";
 import {
   classifyHealth,
   aggregateConfidence,
@@ -301,6 +302,7 @@ export async function specToBenchmark(
     if (isFiltered && notServedOnEveryView(spec.slug)) {
       const label = notServedLabel(spec.slug);
       const present = new Set(live.results.map((r) => r.slug.toLowerCase()));
+      const view = activeFilterLabels(labelFilters(options));
       for (const p of spec.providers) {
         if (!label || present.has(p.slug.toLowerCase())) continue;
         live.results.push({
@@ -313,7 +315,7 @@ export async function specToBenchmark(
           successRate: 100,
           secondary: p.secondary,
           availability: "live",
-          unrankedLabel: label,
+          unrankedLabel: notServedReason(spec.slug, p.slug, view) ?? label,
           formula: p.formula,
           endpoint: p.endpoint,
           ...(activeTier ? { tier: activeTier } : {}),
@@ -343,7 +345,7 @@ export async function specToBenchmark(
             successRate: 100,
             secondary: p.secondary,
             availability: "live",
-            unrankedLabel: notServed,
+            unrankedLabel: notServedReason(spec.slug, p.slug, {}) ?? notServed,
             formula: p.formula,
             endpoint: p.endpoint,
             ...(activeTier ? { tier: activeTier } : {}),

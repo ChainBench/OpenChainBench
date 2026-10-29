@@ -71,6 +71,7 @@ attached to a quote, a meter no plan bounds, a misspelt key.
 | `wallet_pricing_artifact_ok`, `_drift`, `_age_seconds` | provider, artifact |
 | `wallet_cost_last_run_timestamp_seconds` | |
 | `wallet_cost_catalogue_info` | sha256, as_of |
+| `wallet_cost_site_curve_matches` | branch |
 
 `kind="all"` is the consumer profile and `bucket="all"` 10,000 users, each
 on its own axis, the same convention as rpc-cost.
@@ -79,13 +80,30 @@ on its own axis, the same convention as rpc-cost.
 
 Six of the thirteen pages return a new body on every request while their
 prices stand still, so a raw-body hash would alarm every hour. The harness
-hashes only the visible lines carrying a dollar figure, or a number beside a
-billing word, sorted and de-duplicated. A drift sets
-`wallet_pricing_artifact_drift`; held for 6 hours it fires
-`WalletPricingArtifactDrift` (`alerts.yml`, deployed to the VPS rules
-directory), and a page that stops answering for 6 hours fires
-`WalletPricingArtifactUnreachable`. A maintainer then re-reads the page.
-Nothing on the site reads these gauges.
+hashes the page's pricing sentences instead: visible text split at sentence
+and clause ends, keeping each sentence that carries a dollar figure, a
+number beside a billing word, or a bare band range ("1,001-5,000"), sorted
+and de-duplicated. A rule with no number in it is kept by naming a phrase in
+the source's `pin_phrases` (Reown: "custom plan").
+
+`WALLET_COST_PIN=1` prints each page's current hash and every figure the
+catalogue takes from that vendor that is absent from the hashed lines. Keep
+that list empty: a figure outside it can change with no drift. On
+2026-10-29 it was empty for all thirteen.
+
+Alerts (`alerts.yml`, deployed as `/opt/ocb/prom-rules/ocb_wallet_pricing.yml`
+and tested with `promtool test rules`):
+
+| Alert | Fires when |
+| --- | --- |
+| `WalletPricingArtifactDrift` | a page's pricing lines differ from the recorded hash for 6 hours |
+| `WalletPricingArtifactUnreachable` | a page has not answered with pricing lines for 6 hours |
+| `WalletCostSiteCurveMismatch` | a site branch's curve was built from another catalogue than this harness runs, for 2 hours |
+
+The last one reads `wallet_cost_site_curve_matches{branch}`: each cycle the
+harness fetches `src/data/wallet-cost-curves.json` from the dev and main
+branches on GitHub and compares its `catalogueSha256` with its own. A branch
+without the file publishes nothing.
 
 ## Environment
 
@@ -93,4 +111,5 @@ Nothing on the site reads these gauges.
 | --- | --- |
 | `WALLET_COST_CATALOGUE` | `pricing/catalogue.yml` |
 | `WALLET_COST_INTERVAL` | `1h` |
+| `WALLET_COST_SITE_CURVES` | `dev=<raw GitHub URL>,main=<raw GitHub URL>` |
 | `PORT` | `2112` |

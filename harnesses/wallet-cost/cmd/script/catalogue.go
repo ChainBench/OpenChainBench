@@ -90,6 +90,9 @@ type Artifact struct {
 	BodySHA256 string `yaml:"body_sha256"`
 	VerifiedAt string `yaml:"verified_at"`
 	Poll       bool   `yaml:"poll"`
+	// PinPhrases keeps sentences that carry a billing rule but no number in
+	// the hashed lines (Reown's "custom plan" exclusion).
+	PinPhrases []string `yaml:"pin_phrases"`
 }
 
 type Provider struct {
@@ -237,6 +240,11 @@ func (p *Provider) validate() error {
 		}
 		if _, err := time.Parse("2006-01-02", a.VerifiedAt); err != nil {
 			return fmt.Errorf("source %s: verified_at %q: %w", name, a.VerifiedAt, err)
+		}
+		if a.Poll && len(a.BodySHA256) != 64 {
+			// Polled with no recorded hash reads ok=1, drift=0 forever: an
+			// alarm armed with nothing to compare against.
+			return fmt.Errorf("source %s: poll: true needs the 64-hex body_sha256 a human recorded", name)
 		}
 	}
 	ids := map[string]bool{}

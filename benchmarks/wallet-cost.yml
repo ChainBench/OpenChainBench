@@ -18,7 +18,7 @@ disclaimer: >
   Published prices, not invoices. Every figure was read from the vendor's own
   pricing page on the date the catalogue carries, and the harness re-checks
   those pages on a loop. Gas is excluded. A vendor missing from a cell has no
-  self-serve price for that app size, which is a finding, not missing data.
+  self-serve price for that app size or usage, which is a finding, not missing data.
 
 seo_intro: |
   There is no cheapest embedded wallet, there is a cheapest one for an app of
@@ -49,8 +49,8 @@ abstract: |
   of all thirteen pages each hour, and a change that holds for six hours
   raises an alert for a maintainer to re-read the page. The calculator reads a curve the same harness
   emits, with a point at every plan boundary, and a second implementation in
-  another language re-prices it at a million random app sizes; `pnpm
-  validate` runs that check on every change.
+  another language re-prices it at 1,170,000 random app sizes; `pnpm
+  validate` re-runs it on a 78,000-size sample on every change.
 
 methodology:
   - "Cohort. Thirteen vendors with a self-serve price on a public page: Privy, Dynamic, Turnkey, Web3Auth, Magic, Para, Coinbase CDP, thirdweb, Openfort, Circle, Reown, ZeroDev and Crossmint. Alchemy, Portal, Dfns, Fireblocks, Sequence and Particle Network are listed below with the reason they cannot be priced."
@@ -58,12 +58,12 @@ methodology:
   - "Units. Each vendor's own meter is written as a linear function of the app: Privy and Magic bill active users plus signatures, Turnkey signatures, Coinbase CDP and Openfort wallet operations (1 per new wallet, 2 per transaction, from their own tables), ZeroDev credits (10 per signature, 20 per UserOp, so 30 per transaction), and the rest active users or active wallets."
   - "An active user is not one thing. Privy counts a user with a session in the last 30 days, Dynamic a login or a wallet created that month, Web3Auth and thirdweb a login, Magic a wallet accessed through its SDK, Para a user authenticated or created, Circle a wallet that made an on-chain transaction. Every user in these profiles transacts, so all of them count everyone."
   - "Plans. Each plan's fee, what it includes and its overage are applied as published. Graduated rates (Circle, thirdweb) bill each band at its own rate. A plan that stops at a size (Para's free 1,200 users, Reown's free 500, Turnkey's 2,000 wallets) cannot serve above it. Turnkey's limit counts every wallet an organisation holds while this model counts one month's users, so a growing app reaches it sooner than the calculator shows. A size past the last published price is a quote and is not ranked."
-  - "Readings. Where a page can be read two ways the catalogue says which reading is priced and the plan is badged. Privy's $2,000 pay-as-you-go base is priced alone, though its $499 Scale fee may also apply. Turnkey's $99 Pro fee is priced as a floor the per-signature charges count against."
+  - "Readings. Where a page can be read two ways the catalogue says which reading is priced and the calculator badges the plan. Privy's $2,000 pay-as-you-go base is priced alone, though its $499 Scale fee may also apply, and at exactly 10,000 users Privy is priced on Scale ($499) because pay-as-you-go starts above 10,000, though its Scale card reads 2,500 to 9,999; the other reading is $2,000. Turnkey's $99 Pro fee is priced as a floor the per-signature charges count against."
   - "Openfort's operation table gives 1 per wallet created and 2 per transaction, but its own simulator also adds 2 per active user; on that reading its consumer bill at 10,000 users is $381, not $261, and it ranks fourth behind Dynamic rather than third. ZeroDev's 30 credits a transaction assumes each transaction is one signature and one UserOp. thirdweb's bands above 100,000 users are priced band by band."
   - "Vendors' own exclusions are honoured. Reown says exchanges, custodians, payments, gaming and merchant platforms need a custom plan, so its self-serve price is not offered on the trading profile."
   - "Left out. Gas and gas-sponsorship surcharges (thirdweb 2.5% on mainnet, Openfort 10% or 5%, ZeroDev 8%), SMS fees, extra seats, annual discounts, Circle's USDC rebate, and Privy's $1M monthly transaction volume threshold. Features a production app may need are not priced: removing thirdweb branding needs its $499 Scale plan, and custom domains are Enterprise-only at several vendors."
   - "Any size, not only three. The table prices 1,000, 10,000 and 100,000 users because a metric needs a fixed label. The calculator prices any size from 100 to 1,000,000 from a curve the same harness emits, with a point at every tier boundary, cap, quote threshold and plan crossover. Between two points every bill is a straight line, so the slider is exact, not smoothed."
-  - "Verification. A second implementation, written in another language from the catalogue's prose rather than the harness code, re-prices every curve point and 1,170,000 random app sizes, and agrees on the bill to the cent and on the plan in every case. `pnpm validate` runs it on every change, and refuses a curve built from a different catalogue."
+  - "Verification. A second implementation, written in another language from the catalogue's prose rather than the harness code, re-prices every curve point and 1,170,000 random app sizes, and agrees on the bill to the cent and on the plan in every case. `pnpm validate` re-runs it on a 78,000-size sample on every change, and refuses a curve built from a different catalogue."
   - "Freshness. Six of the thirteen pages return a new body on every request while their prices stand still, so the harness hashes only the visible lines that carry a dollar figure or a number beside a billing word. A change that holds for six hours raises an alert, and a maintainer re-reads the page and corrects the catalogue. The page shows the catalogue date."
 
 findings:
@@ -73,7 +73,7 @@ findings:
   - "Privy is the dearest priced vendor in five of the six cells from 10,000 users up. Past 10,000 users or 50,000 signatures a month it bills a $2,000 base, $0.05 per user and $0.01 per signature, and its own page says an Enterprise plan is typically cheaper at sustained volume."
   - "Dynamic has no free production plan and the lowest per-user rate published below 10 million users: $249 covers 5,000 users and each one after costs $0.005, a tenth of Reown's $0.05 and an eighth of Web3Auth's lowest, $0.04."
   - "Three vendors publish no self-serve price for a 10,000-user app. Turnkey's Pro plan stops at 2,000 wallets, ZeroDev publishes no price past its Scale plan's 1M credits, and Crossmint has no self-serve paid plan and states two different rates beyond its free tier. Reown is not priced on the trading profile, by its own terms."
-  - "Five vendors' pages can be read two ways somewhere, and the calculator badges each such price: Privy's pay-as-you-go base, Turnkey's Pro minimum, Openfort's operation count, ZeroDev's credits per transaction and thirdweb's bands above 100,000 users. None of them leads a cell of the table; the one that moves a rank is Openfort, third or fourth at 10,000 consumer-app users depending on the reading."
+  - "Five vendors' pages read two ways somewhere, each badged in the calculator: Privy's pay-as-you-go base and its 10,000-user band edge, Turnkey's Pro minimum, Openfort's operation count, ZeroDev's credits per transaction, thirdweb's bands above 100,000 users. None leads a cell. At 10,000 consumer-app users two move a rank: Openfort is third or fourth, Privy ninth at $499 or last at $2,000, which widens that cell's spread from 2.3x to 9.3x."
 
 faq:
   - q: "Which embedded wallet provider is cheapest?"
@@ -89,7 +89,7 @@ faq:
   - q: "What counts as a monthly active user?"
     a: "Each vendor defines it differently: a user with a session in the last 30 days (Privy), a login or a wallet created that month (Dynamic), a login (Web3Auth, thirdweb), a wallet accessed through the SDK (Magic), a user authenticated or created (Para), or a wallet that transacted on-chain (Circle). In these profiles every user logs in and transacts, so every definition counts every user."
   - q: "Are these prices from real invoices?"
-    a: "No. They are published list prices, read by a human from each vendor's pricing page on the date the catalogue records, and applied by the harness. Where a page can be read two ways the price is badged and the methodology says which reading is used. Enterprise contracts, which several vendors steer large apps toward, are not public and are not priced."
+    a: "No. They are published list prices, read by a human from each vendor's pricing page on the date the catalogue records, and applied by the harness. Where a page can be read two ways the calculator badges the price and the methodology says which reading is used. Enterprise contracts, which several vendors steer large apps toward, are not public and are not priced."
   - q: "Can I reproduce these numbers?"
     a: "Yes. The pricing catalogue, the billing model and the usage profiles are in the harness repository linked below, every figure carries its source page and the date it was read, and the calculator's curve is committed alongside the code."
 
