@@ -238,6 +238,21 @@ export async function GET(
     });
   }
 
+  // A row the bench publishes OUTSIDE its ranking must not be ranked here.
+  // Measured on bench 311: Alchemy read "#1/6 (Robinhood Chain), 100.0%" while
+  // the board had it unranked with "asked on only 86% of cells", because it
+  // leads that chain only on a denominator missing the one method the rest of
+  // the cohort refuses. All three rank paths below would have published it, so
+  // the check sits before them rather than in each.
+  //
+  // placeholderSvg is the existing graceful answer for "no defensible
+  // position" and names the bench without claiming a rank. This can only
+  // withhold a rank, never invent one.
+  const providerRow = b.results.find(
+    (row) => row.slug.toLowerCase() === provider.toLowerCase(),
+  );
+  if (providerRow?.unrankedLabel) return placeholderSvg(b.title);
+
   let r: { rank: number; total: number; value: number } | null;
   let scopeLabel: string;
   if (chainParam || regionParam) {
