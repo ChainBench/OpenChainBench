@@ -91,7 +91,7 @@ function tokens(s: string): string[] {
 
 /**
  * Haystack for one bench: what somebody might type to mean it. Provider
- * names are in here deliberately, so "is Alchemy or QuickNode faster on
+ * names are in here deliberately, so "is Alchemy or Quicknode faster on
  * Base" finds the Base RPC bench without the user knowing its slug.
  */
 function haystack(b: Benchmark): string[] {

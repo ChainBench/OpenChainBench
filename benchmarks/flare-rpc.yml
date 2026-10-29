@@ -14,7 +14,7 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  Flare is an EVM-compatible L1 blockchain (chain 14) specialising in cross-chain data acquisition, featuring native enshrined oracles (FTSOv2 for price feeds, FDC for cross-chain attestation), no staking-for-security requirement, FLR as its gas token, and ~1.8 s block cadence. The 2026-08-04 audit confirms {{count}} clean keyless providers: the Flare Foundation official endpoint (flare-api.flare.network/ext/bc/C/rpc), dRPC (flare.drpc.org), Thirdweb (14.rpc.thirdweb.com), and Ankr (rpc.ankr.com/flare). Excluded: Alchemy (no Flare route), QuickNode (key required).
+  Flare is an EVM-compatible L1 blockchain (chain 14) specialising in cross-chain data acquisition, featuring native enshrined oracles (FTSOv2 for price feeds, FDC for cross-chain attestation), no staking-for-security requirement, FLR as its gas token, and ~1.8 s block cadence. The 2026-08-04 audit confirms {{count}} clean keyless providers: the Flare Foundation official endpoint (flare-api.flare.network/ext/bc/C/rpc), dRPC (flare.drpc.org), Thirdweb (14.rpc.thirdweb.com), and Ankr (rpc.ankr.com/flare). Excluded: Alchemy (no Flare route), Quicknode (key required).
 
 abstract: |
   Flare: {{count}} free public RPC endpoints answering `eth_getBlockByNumber` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}; the chain-official endpoint measures {{p50:flare-official}}.

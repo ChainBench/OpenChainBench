@@ -26,7 +26,7 @@ const FAQ = [
   },
   {
     q: "Which chains and endpoints can I test?",
-    a: "Any HTTPS JSON-RPC endpoint that speaks the standard eth_ methods, on any EVM chain: public gateways, your own keyed Alchemy, Chainstack or QuickNode URLs, or a self-hosted node with CORS enabled. The chain picker prefills the exact no-key cohort that the public per-chain benchmarks rank, across 87 EVM chains.",
+    a: "Any HTTPS JSON-RPC endpoint that speaks the standard eth_ methods, on any EVM chain: public gateways, your own keyed Alchemy, Chainstack or Quicknode URLs, or a self-hosted node with CORS enabled. The chain picker prefills the exact no-key cohort that the public per-chain benchmarks rank, across 87 EVM chains.",
   },
   {
     q: "Why does an endpoint show as browser-blocked?",

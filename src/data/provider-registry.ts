@@ -1127,13 +1127,13 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   "ink-quicknode": {
     url: "https://inkonchain.com",
     description:
-      "Kraken's Ink Chain second official public RPC (rpc-qnd.inkonchain.com), operated by QuickNode on behalf of Kraken. Standard EVM JSON-RPC, keyless, rate-limited per IP. Runs in parallel with the Gelato-backed endpoint as an active-active pair.",
+      "Kraken's Ink Chain second official public RPC (rpc-qnd.inkonchain.com), operated by Quicknode on behalf of Kraken. Standard EVM JSON-RPC, keyless, rate-limited per IP. Runs in parallel with the Gelato-backed endpoint as an active-active pair.",
     twitter: "@inkonchain",
   },
   "morph-quicknode": {
     url: "https://www.morphl2.io",
     description:
-      "Morph Foundation's second public RPC (rpc-quicknode.morph.network), operated by QuickNode on behalf of the Morph team. Standard EVM JSON-RPC, keyless, rate-limited per IP. Runs in parallel with the official Morph endpoint as an active-active pair.",
+      "Morph Foundation's second public RPC (rpc-quicknode.morph.network), operated by Quicknode on behalf of the Morph team. Standard EVM JSON-RPC, keyless, rate-limited per IP. Runs in parallel with the official Morph endpoint as an active-active pair.",
     twitter: "@Morphl2",
   },
   "opbnb-official": {
@@ -1194,7 +1194,7 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   "monad-official": {
     url: "https://docs.monad.xyz",
     description:
-      "Monad Foundation's primary public RPC (rpc.monad.xyz, QuickNode-backed, 25 rps). Four additional official mirrors run on Alchemy, Goldsky, Ankr and Foundation infrastructure.",
+      "Monad Foundation's primary public RPC (rpc.monad.xyz, Quicknode-backed, 25 rps). Four additional official mirrors run on Alchemy, Goldsky, Ankr and Foundation infrastructure.",
     twitter: "@monad_xyz",
   },
   "megaeth-official": {
@@ -1234,7 +1234,7 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     referralUrl: "https://quicknode.com/signup?via=florent",
     description:
       "Keyed RPC infrastructure across 30+ chains. Endpoint-scoped API tokens; free and paid plans are served from the same shared fleet, dedicated clusters on higher tiers.",
-    twitter: "@QuickNode",
+    twitter: "@Quicknode",
   },
   thirdweb: {
     url: "https://thirdweb.com",
@@ -1245,7 +1245,7 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   gelato: {
     url: "https://gelato.cloud",
     description:
-      "Gelato Network runs a rollup-as-a-service platform and operates RPC infrastructure for OP Stack + Arbitrum Orbit chains it hosts. On the RPC latency cluster it appears as the Kraken Ink chain's Gelato-backed official endpoint (`rpc-gel.inkonchain.com`), running active-active alongside the QuickNode-backed sibling.",
+      "Gelato Network runs a rollup-as-a-service platform and operates RPC infrastructure for OP Stack + Arbitrum Orbit chains it hosts. On the RPC latency cluster it appears as the Kraken Ink chain's Gelato-backed official endpoint (`rpc-gel.inkonchain.com`), running active-active alongside the Quicknode-backed sibling.",
     twitter: "@gelatonetwork",
   },
   wormhole: {
@@ -1342,7 +1342,7 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   "arc-official": {
     url: "https://docs.arc.network",
     description:
-      "Arc's public mainnet RPC (rpc.mainnet.arc.io), operated by Circle for the USDC-gas Layer 1 (chain id 5042, mainnet 2026-09-16). No-key access; production traffic is pointed at the listed node providers (Alchemy, Blockdaemon, dRPC, QuickNode).",
+      "Arc's public mainnet RPC (rpc.mainnet.arc.io), operated by Circle for the USDC-gas Layer 1 (chain id 5042, mainnet 2026-09-16). No-key access; production traffic is pointed at the listed node providers (Alchemy, Blockdaemon, dRPC, Quicknode).",
     twitter: "@arc",
   },
   "base-official": {

@@ -169,7 +169,7 @@ type Plan struct {
 	// cheapest() skips it.
 	//
 	// All three carriers are already annotated as such in the catalogue's
-	// own prose — QuickNode's "ONE-MONTH trial ... not a recurring free
+	// own prose — Quicknode's "ONE-MONTH trial ... not a recurring free
 	// tier", NOWNodes' "a free Start plan for 1 month ... not recurring",
 	// Tatum's "100k credits are LIFETIME and never renew" — and all three
 	// are banded `entry` rather than `free` precisely so they would sit

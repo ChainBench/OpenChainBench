@@ -585,7 +585,8 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       the copy states validate's sample size.
   // v115: bench 309 SEO round: title, metric, intro and description
   //       move to placeholders and a plainer wording.
-  ["bench-unfiltered-v115", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v116: the brand is Quicknode, not QuickNode, in every spec.
+  ["bench-unfiltered-v116", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -862,7 +863,8 @@ const loadAllBenchmarksCached = unstable_cache(
   //        gains the sequencer's pendingLogs as a second source).
   // v107: lockstep with bench-unfiltered-v114 (bench 309 round three).
   // v108: lockstep with bench-unfiltered-v115 (bench 309 SEO round).
-  ["all-benchmarks-v108", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v109: lockstep with bench-unfiltered-v116 (Quicknode spelling).
+  ["all-benchmarks-v109", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);

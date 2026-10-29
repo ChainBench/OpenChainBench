@@ -137,7 +137,7 @@ describe("citation, access tiers", () => {
     const b = rpc([
       { ...r("chainstack", "Chainstack", 3), tier: "keyed" },
       { ...r("alchemy", "Alchemy", 9), tier: "keyed" },
-      { ...r("quicknode", "QuickNode", 12), tier: "keyed" },
+      { ...r("quicknode", "Quicknode", 12), tier: "keyed" },
     ]);
     expect(nonHeadlineTier(b)).toBe("keyed");
     expect(benchPath(b)).toBe("/benchmarks/robinhood-rpc#tier=keyed");
@@ -162,7 +162,7 @@ describe("cohortSummaries", () => {
       tierResults: {
         keyed: [
           r("alchemy", "Alchemy", 38),
-          r("quicknode", "QuickNode", 29),
+          r("quicknode", "Quicknode", 29),
           { ...r("chainstack", "Chainstack", 20), successRate: 30 },
         ],
       },
@@ -174,7 +174,7 @@ describe("cohortSummaries", () => {
     ]);
     expect(cohorts[0].leader?.name).toBe("PublicNode");
     // Chainstack at 30 % success never leads the private cohort.
-    expect(cohorts[1].leader?.name).toBe("QuickNode");
+    expect(cohorts[1].leader?.name).toBe("Quicknode");
     expect(cohorts[1].rankings.map((x) => x.slug)).toEqual(["quicknode", "alchemy"]);
     expect(cohorts[1].sentence).toContain("private (API-key) Base RPC endpoints");
     expect(cohorts[1].api).toBe("https://openchainbench.com/api/stat/base-rpc?tier=keyed");

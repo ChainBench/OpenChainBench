@@ -160,7 +160,7 @@ providers:
       - "eth_getLogs is 60 CU. The 75 on the compute-units page is frozen legacy prose (its own worked example only balances at 75 and has had no content edit since 2026-02-23)."
 
   - slug: quicknode
-    name: QuickNode
+    name: Quicknode
     cohort: usage
     status: live
     unit: credit
@@ -4053,7 +4053,7 @@ providers:
       - "Dwellir's 'Saving' column compares against its $2.00/M Scale overage, a rate only reachable after paying $999 for Scale; it is their framing, not this bench's."
 
   - slug: quicknode-flat-rate
-    name: QuickNode — Flat Rate RPS
+    name: Quicknode — Flat Rate RPS
     cohort: dedicated
     status: live
     unit: request
@@ -4075,7 +4075,7 @@ providers:
         trace: true
         confidence: verified
         note: >-
-          TIER B, NOT a dedicated node. QuickNode's own doc: "Flat Rate RPS runs on Shared Pro
+          TIER B, NOT a dedicated node. Quicknode's own doc: "Flat Rate RPS runs on Shared Pro
           infrastructure without SLA guarantees or infrastructure isolation." $799/mo plus a
           prerequisite paid account (Build $49) => $848. "Requests are not metered and do not consume
           API credits"; excess gets 429 with no overage. EVM ladder 75/150/250 RPS at
@@ -4140,7 +4140,7 @@ providers:
         trace: true
         confidence: unpublished
         note: >-
-          The actual QuickNode dedicated product. quicknode.com/clusters advertises "predictable
+          The actual Quicknode dedicated product. quicknode.com/clusters advertises "predictable
           monthly pricing" and a "talk to our team" CTA with no number. SALES-GATED.
     weights: null
     archive_rule:
@@ -4163,9 +4163,9 @@ providers:
         poll: etag
         extraction: "n/a — unmetered"
     caveats:
-      - "THE CONCURRENCY LIMIT USUALLY BINDS BEFORE THE RPS LIMIT. The tiers give only 2 / 4 / 6 concurrent connections and QuickNode's own formula is concurrent = RPS x response_time. Hitting 75 RPS on 2 connections needs a response time <= 26.7 ms; above that, effective throughput is concurrent / response_time, not the headline RPS."
+      - "THE CONCURRENCY LIMIT USUALLY BINDS BEFORE THE RPS LIMIT. The tiers give only 2 / 4 / 6 concurrent connections and Quicknode's own formula is concurrent = RPS x response_time. Hitting 75 RPS on 2 connections needs a response time <= 26.7 ms; above that, effective throughput is concurrent / response_time, not the headline RPS."
       - "Worst capacity value in the dedicated cohort: at a $6.00/1M reference rate the 75-RPS tier must run at ~72% of its own RPS ceiling before it beats metered billing — and it is shared infra."
-      - "Wave 1 called this 'the closest thing QuickNode publishes to a dedicated/private node price'. QuickNode's own documentation contradicts that."
+      - "Wave 1 called this 'the closest thing Quicknode publishes to a dedicated/private node price'. Quicknode's own documentation contradicts that."
 
   - slug: google-bne
     name: Google Cloud — Blockchain Node Engine
@@ -4177,7 +4177,7 @@ providers:
       Kept here so the plans and the shutdown notice stay on record.
     # Google's own release notes: limited support from 2026-06-15 (no new
     # node creation), COMPLETE shutdown on 2026-12-15 with every existing
-    # node and endpoint deleted, and customers pointed at QuickNode. The
+    # node and endpoint deleted, and customers pointed at Quicknode. The
     # pricing page still shows $0.69/$2.74 per hour and carries no notice,
     # which is how this was published as live.
     unit: request

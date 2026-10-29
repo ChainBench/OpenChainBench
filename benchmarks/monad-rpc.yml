@@ -18,7 +18,7 @@ seo_intro: |
   with 400 ms blocks and MonadBFT finality around 800 ms, and its
   free RPC story is unusually rich for a chain this young. the
   Foundation runs five official mirrors behind different infra
-  vendors (QuickNode, Alchemy, Goldsky, Ankr and its own nodes), and
+  vendors (Quicknode, Alchemy, Goldsky, Ankr and its own nodes), and
   the multi-chain gateways followed within weeks. We probe the
   primary official endpoint plus dRPC, Tenderly Gateway and
   OnFinality (bloXroute's public host stopped resolving and left on 2026-10-19), every 60 seconds from three regions, with the same
@@ -61,7 +61,7 @@ providers:
   - slug: monad-official
     name: Monad
     endpoint: https://rpc.monad.xyz
-    tag: Foundation endpoint (rpc.monad.xyz, QuickNode-backed, 25 rps)
+    tag: Foundation endpoint (rpc.monad.xyz, Quicknode-backed, 25 rps)
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Monad Official's no-key Monad endpoint."
     queries:
       p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="monad-official", chain="monad"})

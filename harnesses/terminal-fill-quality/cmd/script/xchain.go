@@ -114,7 +114,7 @@ var originChains = []originChain{
 	// HyperEVM needs EVM_RPC_HYPEREVM: the public node answers two address-filtered eth_getLogs
 	// and then rate-limits (measured 2026-09-22: 10 failures in 12 calls), which is what left its
 	// swaps unpriced. drpc is gone from the fallback, it now 403s every request. Measured
-	// address-filtered getLogs spans: Alchemy 100,000 blocks, Chainstack 5,000, QuickNode and the
+	// address-filtered getLogs spans: Alchemy 100,000 blocks, Chainstack 5,000, Quicknode and the
 	// public node 1,000. Priced from Hyperliquid's mids (Coinbase does not list HYPE).
 	{999, "hyperevm", []string{"https://rpc.hyperliquid.xyz/evm"}, "HYPE-USD"},
 	// The two chains Relay does not serve, so Pump Bridge is the only route
@@ -128,7 +128,7 @@ var originChains = []originChain{
 	// X Layer 50 on both its public endpoint and thirdweb's. The 50 is left
 	// to the feed's own adaptive span rather than hardcoded, so it recovers
 	// if the endpoint ever serves more.
-	// MegaETH: the public node serves 5,000 block spans and the QuickNode
+	// MegaETH: the public node serves 5,000 block spans and the Quicknode
 	// one in EVM_RPC_MEGAETH serves 10,000 (413 above that).
 	{4326, "megaeth", []string{"https://mainnet.megaeth.com/rpc"}, "ETH-USD"},
 	// X Layer NEEDS EVM_RPC_XLAYER. Every public endpoint caps eth_getLogs
@@ -372,7 +372,7 @@ func applyRPCOverrides() {
 
 // logsRPC: the endpoints for a wide eth_getLogs, the ones that cap the
 // range (Alchemy's free tier: 10 blocks) moved last so no call is wasted
-// on them; a keyed QuickNode stays first.
+// on them; a keyed Quicknode stays first.
 func (c originChain) logsRPC() []string {
 	var first, last []string
 	for _, u := range c.rpc {

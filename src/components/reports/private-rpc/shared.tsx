@@ -64,7 +64,7 @@ export type ReportData = {
 };
 
 export const PROVIDERS: { slug: string; name: string; color: string }[] = [
-  { slug: "quicknode", name: "QuickNode", color: "#3B82F6" },
+  { slug: "quicknode", name: "Quicknode", color: "#3B82F6" },
   { slug: "chainstack", name: "Chainstack", color: "#14B8A6" },
   { slug: "getblock", name: "GetBlock", color: "#A855F7" },
   { slug: "alchemy", name: "Alchemy", color: "#EAB308" },
@@ -280,7 +280,7 @@ export function SvgLogo({
 }
 
 /** Inline logo for prose and tables in the MDX body, kept on one line with
- *  the name it labels: <L s="quicknode">QuickNode</L>. */
+ *  the name it labels: <L s="quicknode">Quicknode</L>. */
 export function L({ s, n, children }: { s: string; n?: string; children?: React.ReactNode }) {
   return (
     <span className="inline-flex items-center gap-1.5 whitespace-nowrap align-[-3px]">

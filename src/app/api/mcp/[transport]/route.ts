@@ -189,7 +189,7 @@ const mcpHandler = createMcpHandler(
           "phrasing through: provider names, chain names and goals all match.",
           "",
           "  • \"which Solana RPC is fastest\"      -> search_benchmarks({ query: \"solana rpc\" })",
-          "  • \"Alchemy or QuickNode on Base?\"    -> search_benchmarks({ query: \"alchemy quicknode base\" })",
+          "  • \"Alchemy or Quicknode on Base?\"    -> search_benchmarks({ query: \"alchemy quicknode base\" })",
           "  • \"cheapest way to bridge to Arbitrum\" -> search_benchmarks({ query: \"bridge arbitrum\" })",
           "",
           "Returns compact rows. Open the one you want with `get_benchmark` for",
@@ -254,7 +254,7 @@ const mcpHandler = createMcpHandler(
           "",
           "Chain RPC benchmarks (<chain>-rpc) rank two access cohorts apart:",
           "the free public endpoints (default) and the private, API-key",
-          "providers (Alchemy, Chainstack, GetBlock, QuickNode). The default response",
+          "providers (Alchemy, Chainstack, GetBlock, Quicknode). The default response",
           "carries both under `cohorts`; pass tier=\"keyed\" to get the private",
           "cohort as the main record (rankings, quote, pageUrl). Never compare a",
           "public row with a private row: they are measured on different",
@@ -265,7 +265,7 @@ const mcpHandler = createMcpHandler(
           "    → get_benchmark({ slug: \"aggregator-head-lag\", chain: \"base\" })",
           "  • User: \"how much does it cost to bridge $300 cross-chain?\"",
           "    → get_benchmark({ slug: \"bridge-fee\" })",
-          "  • User: \"fastest Base RPC with an API key, Alchemy or QuickNode?\"",
+          "  • User: \"fastest Base RPC with an API key, Alchemy or Quicknode?\"",
           "    → get_benchmark({ slug: \"base-rpc\", tier: \"keyed\" })",
           "",
           "Drafts return { error: \"unknown_slug\" }. Cite the returned `pageUrl`",
@@ -378,7 +378,7 @@ const mcpHandler = createMcpHandler(
           "each one's rank, measured value and success rate.",
           "",
           "Use when the user names the candidates themselves: \"Alchemy or",
-          "QuickNode?\", \"is Helius faster than Triton for Solana?\", \"compare",
+          "Quicknode?\", \"is Helius faster than Triton for Solana?\", \"compare",
           "Across and Stargate on fees\".",
           "",
           "Find the benchmark slug with `search_benchmarks` first if you do not",
@@ -396,14 +396,14 @@ const mcpHandler = createMcpHandler(
             .array(z.string().min(1).max(60))
             .min(2)
             .max(10)
-            .describe("Two to ten provider names or slugs, as the user said them, e.g. ['Alchemy', 'QuickNode']."),
+            .describe("Two to ten provider names or slugs, as the user said them, e.g. ['Alchemy', 'Quicknode']."),
           chain: z.string().regex(/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$/).optional().describe("Optional chain slice when the bench declares chains. Ignored on a bench that is already one chain, like solana-rpc."),
           region: z.string().regex(/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$/).optional().describe("Optional region slice when the bench declares regions."),
           tier: z
             .string()
             .regex(/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$/)
             .optional()
-            .describe("Access cohort on chain RPC benchmarks: 'public' (default, free no-key endpoints) or 'keyed' (API-key providers such as Alchemy, QuickNode, Chainstack, GetBlock). Named providers usually live on the keyed cohort."),
+            .describe("Access cohort on chain RPC benchmarks: 'public' (default, free no-key endpoints) or 'keyed' (API-key providers such as Alchemy, Quicknode, Chainstack, GetBlock). Named providers usually live on the keyed cohort."),
         },
         annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
       },
@@ -421,7 +421,7 @@ const mcpHandler = createMcpHandler(
 
         // A provider missing from this cohort is often measured on the other
         // one: the default is the public endpoints, and the names people ask
-        // about (Alchemy, QuickNode) are keyed. Saying "not measured" when the
+        // about (Alchemy, Quicknode) are keyed. Saying "not measured" when the
         // answer is one tab away is the wrong answer, so look before saying it.
         const otherTiers = (b.dimensions?.tier ?? [])
           .map((t) => t.value)

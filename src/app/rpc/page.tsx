@@ -31,7 +31,7 @@ import { hubDateModified, datedCollectionLd } from "@/lib/hub-dates";
 // them (base-rpc lists five, including mainnet.base.org), so the promise
 // belongs on them until this hub grows an endpoint column of its own.
 const DESCRIPTION =
-  "Free public RPC endpoints ranked per chain by 24h median latency, and Alchemy, Chainstack, GetBlock, QuickNode, Dwellir, Validation Cloud ranked apart.";
+  "Free public RPC endpoints ranked per chain by 24h median latency, and Alchemy, Chainstack, GetBlock, Quicknode, Dwellir, Validation Cloud ranked apart.";
 
 export const metadata: import("next").Metadata = pageMetadata({
   path: "/rpc",
@@ -78,7 +78,7 @@ export default async function RpcHubPage() {
   const linkableSlugs = [...rpcSpecs, ...wsSpecs].map((s) => s.slug);
   // Chains whose page carries the API-key cohort (tier dimension): named
   // in the intro so the "<chain> rpc provider" searcher sees Alchemy,
-  // Chainstack, GetBlock and QuickNode are measured too, behind the selector.
+  // Chainstack, GetBlock and Quicknode are measured too, behind the selector.
   const keyedChains = rpcSpecs
     .filter((s) => (s.dimensions?.tier ?? []).some((t) => t.value === "keyed"))
     .map(chainLabelOf);
@@ -100,7 +100,7 @@ export default async function RpcHubPage() {
           description:
             // Same count the body copy derives, from the snapshot in scope
             // here. The literal three was the third copy of it on this page.
-            `Live per-chain benchmarks of RPC endpoints: free, no-key public gateways measured every 60 seconds from ${snapshot?.totals.regions ?? 3} regions, and on the major chains a private (API-key) cohort (Alchemy, Chainstack, GetBlock, QuickNode) measured every 120 seconds and ranked separately.`,
+            `Live per-chain benchmarks of RPC endpoints: free, no-key public gateways measured every 60 seconds from ${snapshot?.totals.regions ?? 3} regions, and on the major chains a private (API-key) cohort (Alchemy, Chainstack, GetBlock, Quicknode) measured every 120 seconds and ranked separately.`,
           numberOfItems: rpcSpecs.length,
           itemListElement: rpcSpecs.map((s, i) => ({
             "@type": "ListItem",
@@ -162,7 +162,7 @@ export default async function RpcHubPage() {
               {" "}
               On {keyedChains.length} chains ({keyedChains.join(", ")}) the same
               page also ranks the private (API-key) endpoints of Alchemy,
-              Chainstack, GetBlock and QuickNode, probed every 120 seconds with plan tiers disclosed;
+              Chainstack, GetBlock and Quicknode, probed every 120 seconds with plan tiers disclosed;
               the Access selector below switches between the two cohorts,
               which are never ranked against each other.
             </>
@@ -327,7 +327,7 @@ export default async function RpcHubPage() {
         </p>
         <p className="mt-3">
           Private cohort (API key): on the chains that carry one, Alchemy, Chainstack,
-          GetBlock and QuickNode are probed on their keyed endpoints every 120
+          GetBlock and Quicknode are probed on their keyed endpoints every 120
           seconds from the same three regions with the same payload and
           classification (GetBlock from two regions on Arc and Robinhood Chain,
           which it does not offer in Singapore); keys never leave the probe environment and the

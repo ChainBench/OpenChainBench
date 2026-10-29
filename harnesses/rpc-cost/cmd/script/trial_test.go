@@ -4,7 +4,7 @@ import "testing"
 
 // A one-month trial is not a monthly price.
 //
-// Two catalogue entries carry one — QuickNode's "Free trial" (10M credits,
+// Two catalogue entries carry one — Quicknode's "Free trial" (10M credits,
 // one month, no card) and NOWNodes' "Start (free trial)" (100k requests, one
 // month) — and both are banded `entry` rather than `free`, with a tier_note
 // saying so, precisely so they would sit beside what they become ($49 Build,

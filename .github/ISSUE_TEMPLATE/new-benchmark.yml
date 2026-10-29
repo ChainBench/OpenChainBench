@@ -34,7 +34,7 @@ body:
       description: One per line. Mark "(?)" next to any you want feedback on including.
       placeholder: |
         Alchemy
-        QuickNode
+        Quicknode
         Infura
         Ankr
         Public RPCs (?)

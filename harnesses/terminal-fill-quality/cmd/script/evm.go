@@ -95,8 +95,8 @@ const evmReadCap = 32 << 20
 // between and nothing to show it. RPC_RPS paces the SOLANA client only;
 // evmCall never went through it.
 //
-// Unlabelled on purpose. Chainstack and QuickNode carry their key in the URL
-// and a QuickNode host is itself a unique identifier, so the safe thing to
+// Unlabelled on purpose. Chainstack and Quicknode carry their key in the URL
+// and a Quicknode host is itself a unique identifier, so the safe thing to
 // publish is the volume, not which endpoint served it.
 var (
 	cEvmCalls = prometheus.NewCounter(prometheus.CounterOpts{
@@ -1385,7 +1385,7 @@ type valueCall struct {
 
 // evmTrace lists the internal value transfers of a transaction
 // (debug_traceTransaction, callTracer) when an endpoint of the chain
-// serves it: QuickNode on Robinhood Chain, drpc's public BSC node; an
+// serves it: Quicknode on Robinhood Chain, drpc's public BSC node; an
 // endpoint without the method is skipped like any other error.
 func evmTrace(ctx context.Context, httpc *http.Client, c originChain, hash string) ([]valueCall, bool) {
 	type call struct {

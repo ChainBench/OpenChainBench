@@ -305,7 +305,7 @@ export function sharedBenchSlugs(
 /**
  * The two appearances of a shared bench that sit in the same access
  * cohort, the public (untiered) one first. A provider can appear twice
- * on one bench (QuickNode on arc-rpc: public row and keyed row); a map
+ * on one bench (Quicknode on arc-rpc: public row and keyed row); a map
  * keyed by bench slug kept whichever came last, so the public-vs-public
  * comparison was dropped and the two product pages disagreed about the
  * pair (release review 2026-09-24).
