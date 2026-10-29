@@ -444,7 +444,6 @@ func probeOne(ctx context.Context, c Chain, p Provider) {
 			// Prom staleness kick in so dead providers age out of the
 			// p50 rankings instead of ranking on their last error's RTT.
 			rpcLatency.WithLabelValues(p.Slug, c.Slug, currentRegion).Set(latency)
-			rpcLatencyHist.WithLabelValues(p.Slug, c.Slug, currentRegion).Observe(latency)
 			rpcHealth.WithLabelValues(p.Slug, c.Slug, currentRegion).Set(1)
 			fmt.Printf("[%s/%s] block=%d latency=%.0fms\n", c.Slug, p.Slug, block, latency)
 		} else {
