@@ -25,7 +25,7 @@ import {
 } from "./shared";
 
 const SOURCE_HTTP =
-  "Source: OpenChainBench rpc-keyed-latency probes, 7 days to 28 Oct 2026 13:00 UTC. BlockMachine since 24 Oct.";
+  "Source: OpenChainBench rpc-keyed-latency probes, 7 days to 28 Oct 2026 13:22 UTC. BlockMachine since 24 Oct.";
 
 /* ------------------------------------------------------------------ */
 /* Speed against price                                                 */
@@ -263,8 +263,8 @@ export function FreeTierChart() {
   const m = { l: 150, r: 70, t: 8, b: 40 };
   const rows = REPORT.free;
   const H = m.t + rows.length * rowH + m.b;
-  const x = logScale(1e3, 2e7, m.l, W - m.r);
-  const xt = [1e3, 1e4, 1e5, 1e6, 1e7];
+  const x = logScale(1e2, 2e7, m.l, W - m.r);
+  const xt = [1e2, 1e3, 1e4, 1e5, 1e6, 1e7];
   return (
     <Figure
       title="What a free plan buys"
