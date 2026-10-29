@@ -35,17 +35,22 @@ import "github.com/prometheus/client_golang/prometheus"
 //     from; the catalogue ships inside this image, so a merged price change
 //     reaches the site at once and this harness only after a rebuild. When
 //     the two hashes differ the bench page shows two prices for one vendor.
+//
+//   wallet_cost_site_curve_matches{branch}
+//     The same comparison done by the harness itself, against the curve on
+//     each site branch (dev = staging, main = production). Alerted on.
 
 var (
-	costMonthly    *prometheus.GaugeVec
-	costPerUser    *prometheus.GaugeVec
-	eligible       *prometheus.GaugeVec
-	planConfidence *prometheus.GaugeVec
-	artifactOK     *prometheus.GaugeVec
-	artifactDrift  *prometheus.GaugeVec
-	artifactAge    *prometheus.GaugeVec
-	lastRun        prometheus.Gauge
-	catalogueInfo  *prometheus.GaugeVec
+	costMonthly      *prometheus.GaugeVec
+	costPerUser      *prometheus.GaugeVec
+	eligible         *prometheus.GaugeVec
+	planConfidence   *prometheus.GaugeVec
+	artifactOK       *prometheus.GaugeVec
+	artifactDrift    *prometheus.GaugeVec
+	artifactAge      *prometheus.GaugeVec
+	lastRun          prometheus.Gauge
+	catalogueInfo    *prometheus.GaugeVec
+	siteCurveMatches *prometheus.GaugeVec
 )
 
 func init() {
@@ -85,6 +90,10 @@ func init() {
 		Name: "wallet_cost_catalogue_info",
 		Help: "1, labelled with the sha256 and as_of of the catalogue this process prices from. Compare with catalogueSha256 in src/data/wallet-cost-curves.json.",
 	}, []string{"sha256", "as_of"})
+	siteCurveMatches = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "wallet_cost_site_curve_matches",
+		Help: "1 when the calculator curve on this site branch was built from the catalogue this harness prices from, 0 when not. Absent when the branch has no curve or the fetch failed.",
+	}, []string{"branch"})
 	prometheus.MustRegister(costMonthly, costPerUser, eligible, planConfidence,
-		artifactOK, artifactDrift, artifactAge, lastRun, catalogueInfo)
+		artifactOK, artifactDrift, artifactAge, lastRun, catalogueInfo, siteCurveMatches)
 }

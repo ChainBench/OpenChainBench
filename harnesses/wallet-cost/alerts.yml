@@ -31,3 +31,14 @@ groups:
       annotations:
         summary: "wallet-cost: {{ $labels.provider }} pricing page unreadable for 6h"
         description: "The page has not answered with any pricing line for 6h, so a price change there would go unseen. Check the URL in harnesses/wallet-cost/pricing/catalogue.yml."
+    # The calculator's curve ships with the site on merge; this harness only
+    # on a VPS rebuild. Until both run the same catalogue the bench page
+    # shows two prices for one vendor. Two hours covers a normal deploy.
+    - alert: WalletCostSiteCurveMismatch
+      expr: wallet_cost_site_curve_matches == 0
+      for: 2h
+      labels:
+        severity: warning
+      annotations:
+        summary: "wallet-cost: the {{ $labels.branch }} site prices from a different catalogue than the harness"
+        description: "src/data/wallet-cost-curves.json on {{ $labels.branch }} records a catalogueSha256 that differs from wallet_cost_catalogue_info. Rebuild the wallet-cost image from that branch, or regenerate the curve."

@@ -2,7 +2,7 @@
  "schema": 1,
  "catalogueVersion": 1,
  "catalogueAsOf": "2026-10-29",
- "catalogueSha256": "35d3959011d50e28ab1e3a5bb63a76b18f2a5abf5e88554dc862ec16ace13d2a",
+ "catalogueSha256": "adc789d32ddd88ad4cfbe4512f1b6a319511c0fb55173af755895aa61ca9e466",
  "floor": 100,
  "ceiling": 1000000,
  "volumes": [
@@ -181,7 +181,9 @@
        "u": 10000,
        "usd": 499,
        "plan": "scale",
-       "next": "scale"
+       "next": "scale",
+       "unc": true,
+       "nextUnc": true
       },
       {
        "u": 10000.00002,
