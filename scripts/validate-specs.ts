@@ -7,6 +7,7 @@
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { promises as fs } from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import yaml from "js-yaml";
 import { SpecSchema } from "../src/lib/spec-schema";
@@ -502,10 +503,12 @@ async function checkWalletCostCurveFreshness(issues: Issue[]) {
   // sizes. The full run (30,000 sizes per cell) is the harness README's;
   // 2,000 here keeps validate fast and still lands in every segment.
   const SCORER = "harnesses/wallet-cost/verify/scorer.mjs";
+  const tableFile = path.join(os.tmpdir(), `wallet-cost-table-${process.pid}.json`);
   try {
     execFileSync(process.execPath, [path.join(ROOT, SCORER), path.join(ROOT, CATALOGUE), path.join(ROOT, CURVE), "2000"], {
       cwd: ROOT,
       stdio: "pipe",
+      env: { ...process.env, WALLET_COST_TABLE: tableFile },
     });
   } catch (e) {
     const out = String((e as { stdout?: Buffer }).stdout ?? "").slice(0, 600);
@@ -513,6 +516,60 @@ async function checkWalletCostCurveFreshness(issues: Issue[]) {
       file: "wallet-cost.yml",
       level: "error",
       message: `${SCORER} disagrees with ${CURVE}: ${out}`,
+    });
+    return;
+  }
+
+  // The prose quotes bills and prices typed by hand (findings, FAQ,
+  // methodology). Every dollar figure in it must be either a bill the model
+  // produces at a published volume or a fee or rate in the catalogue, so a
+  // price correction that moves a quoted bill fails here instead of leaving
+  // the FAQPage block naming last month's figure (SEO audit 2026-10-29).
+  let table: Record<string, number | null>;
+  try {
+    table = JSON.parse(await fs.readFile(tableFile, "utf8"));
+    await fs.unlink(tableFile);
+  } catch {
+    return;
+  }
+  const cents = (v: number) => Math.round(v * 100);
+  const allowed = new Set<number>();
+  for (const v of Object.values(table)) if (typeof v === "number") allowed.add(cents(v));
+  const cat = yaml.load(raw.toString("utf8")) as {
+    providers?: { plans?: { monthly_usd?: number | null; tiers?: Record<string, { rate?: number }[]> }[] }[];
+  };
+  for (const p of cat.providers ?? []) {
+    for (const pl of p.plans ?? []) {
+      if (typeof pl.monthly_usd === "number") allowed.add(cents(pl.monthly_usd));
+      for (const tiers of Object.values(pl.tiers ?? {})) {
+        for (const tier of tiers) if (typeof tier.rate === "number") allowed.add(Math.round(tier.rate * 1e6) / 1e4);
+      }
+    }
+  }
+  const spec = yaml.load(await fs.readFile(path.join(ROOT, "benchmarks/wallet-cost.yml"), "utf8")) as Record<string, unknown>;
+  const prose: string[] = [];
+  for (const k of ["findings", "methodology"]) for (const s of (spec[k] as string[]) ?? []) prose.push(s);
+  for (const f of (spec.faq as { q: string; a: string }[]) ?? []) prose.push(f.q, f.a);
+  for (const k of ["seo_intro", "abstract", "disclaimer", "subtitle", "seo_description"]) {
+    if (typeof spec[k] === "string") prose.push(spec[k] as string);
+  }
+  const bad = new Set<string>();
+  for (const s of prose) {
+    // "$1M of monthly transaction volume" is a threshold, not a price: a
+    // figure with a magnitude suffix is skipped.
+    for (const m of s.matchAll(/\$\s?(\d[\d,]*(?:\.\d+)?)(?![\d.,]*[kMB])/g)) {
+      const v = Number(m[1].replace(/,/g, ""));
+      // Rates carry fractions of a cent ($0.005); compare in hundredths of a
+      // cent for those, in cents for everything else.
+      const ok = allowed.has(cents(v)) || allowed.has(Math.round(v * 1e6) / 1e4);
+      if (!ok) bad.add(m[0]);
+    }
+  }
+  if (bad.size > 0) {
+    issues.push({
+      file: "wallet-cost.yml",
+      level: "error",
+      message: `dollar figures in the prose that are neither a bill at a published volume nor a catalogue fee or rate: ${[...bad].join(", ")}. Re-read the prose against the regenerated curve.`,
     });
   }
 }
