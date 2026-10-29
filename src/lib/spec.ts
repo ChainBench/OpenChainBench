@@ -544,6 +544,11 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       the first router in the private cohort. It is declared unranked,
   //       so a cached set written before it would not merely misorder the
   //       page, it would omit the row entirely.
+  // v108: and out again the next morning. The trial key ran out of credits
+  //       overnight (HTTP 402), so 78% of probes were refused and the row
+  //       published a 22% success rate that describes our balance, not
+  //       their service. A cached set still holding the row keeps serving
+  //       it, which is why a removal moves these keys too.
   // dropped as no-value, so the board published only the rail that accepts,
   // which is the opposite of what it measured.
   // v108: the methodology array renders on the bench page for the first
@@ -820,6 +825,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // stops dropping its zeros).
   // v100: lockstep with bench-unfiltered-v107 (RouteMesh joins the keyed
   //        cohort on seven chain pages, warm and cold).
+  // v101: lockstep with bench-unfiltered-v108 (RouteMesh back out, trial
+  //        credits exhausted).
   // v101: lockstep with bench-unfiltered-v108 (methodology renders).
   ["all-benchmarks-v101", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
@@ -961,7 +968,9 @@ const loadBenchmarkFiltered = unstable_cache(
   // v46: lockstep with bench-unfiltered-v107. The chain pages declare tier
   //      and region, so without this bump RouteMesh is missing from every
   //      tab including the Private one it lives on.
-  ["bench-filters-v46", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v47: lockstep with bench-unfiltered-v108. Same reason inverted: without
+  //      it the paused row survives on every filtered tab.
+  ["bench-filters-v47", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 
