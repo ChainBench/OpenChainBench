@@ -56,6 +56,12 @@ describe("the provider set behind the cache keys", () => {
     // Re-recorded on 2026-10-29 with bench-unfiltered-v118,
     // all-benchmarks-v111, bench-filters-v56, providers-v31.
     //
+    // Later the same evening the first three moved again, to v119/v112/v57,
+    // for three rounds of bench 311 editorial. This hash did NOT move and
+    // must not: it watches the provider SET, and no set changed. A hash that
+    // tracked key bumps would have to be re-recorded for every copy edit and
+    // would stop meaning anything.
+    //
     // The change is an ADDITION, bench 311 rpc-api-coverage. All four keys
     // moved: it declares a chain dimension, so bench-filters is not optional,
     // and its six providers gain an appearance in the RPCs category, so
