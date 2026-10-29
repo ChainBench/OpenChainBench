@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -250,7 +252,7 @@ func init() {
 	baseRefFirst = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "head_lag_base_ref_first_total",
 		Help: "Transactions whose Base reference timestamp came from this source, i.e. it observed the transaction before the other source did.",
-	}, []string{"source"})
+	}, []string{"source", "region"})
 	prometheus.MustRegister(baseRefFirst)
 
 	// Companion to head_lag_seconds, measured against our own node
@@ -795,4 +797,23 @@ func RecordFlashblockObserved() { flashblockObserved.Inc() }
 
 // RecordBaseRefFirst counts one transaction whose Base reference timestamp
 // came from `source`. See base_preconf_ref.go for why Base has two.
-func RecordBaseRefFirst(source string) { baseRefFirst.WithLabelValues(source).Inc() }
+//
+// The region label is not optional. The two sources are rolled out one region
+// at a time precisely so the undeployed regions act as controls, and without
+// this label every region's counts pile into one series and the comparison the
+// rollout exists to make cannot be made.
+func RecordBaseRefFirst(source string) {
+	baseRefFirst.WithLabelValues(source, monitorRegionLabel()).Inc()
+}
+
+// monitorRegionLabel mirrors how loadConfig derives MonitorRegion, read from
+// the environment rather than threaded through, because the two Base
+// reference sources are plain goroutines that carry no config. Same env var,
+// same trim, same "unknown" default, so this label can never disagree with the
+// region on every other series from the same process.
+func monitorRegionLabel() string {
+	if r := strings.TrimSpace(os.Getenv("MONITOR_REGION")); r != "" {
+		return r
+	}
+	return "unknown"
+}
