@@ -547,7 +547,13 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       v109 when this landed there as v110; production is its own
   //       sequence, and a cherry-picked literal would either conflict or
   //       land on a number production had already cached under.
-  ["bench-unfiltered-v104", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v105: bench 001's Base reference gains a second source. The published
+  //       methodology now says the zero point is the earliest of the
+  //       flashblock stream and the sequencer's pendingLogs, and warns that
+  //       Base figures from before 2026-10-29 are smaller by up to the CDN
+  //       tail the second source removes. Numbered for THIS branch: dev
+  //       landed the same change as v113 on its own sequence.
+  ["bench-unfiltered-v105", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -808,7 +814,9 @@ const loadAllBenchmarksCached = unstable_cache(
   // v96: lockstep with bench-unfiltered-v103 (methodology renders).
   // v97: lockstep with bench-unfiltered-v104 (bench 010's latency
   //       methodology no longer credits a histogram that drove nothing).
-  ["all-benchmarks-v97", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v98: lockstep with bench-unfiltered-v105 (bench 001's Base reference
+  //       gains the sequencer's pendingLogs as a second source).
+  ["all-benchmarks-v98", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -945,7 +953,10 @@ const loadBenchmarkFiltered = unstable_cache(
   //      dimension, so its reworded latency methodology is cached once per
   //      chain tab; without this the correction lands on the default tab
   //      only and every other tab keeps crediting the histogram.
-  ["bench-filters-v44", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v45: lockstep with bench-unfiltered-v105. Bench 001 declares chain and
+  //      region dimensions, so its reworded Base methodology is cached once
+  //      per tab and a bump of the other two alone would correct only one.
+  ["bench-filters-v45", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 

@@ -844,6 +844,9 @@ func runHeadLagMonitor(config *Config, stopChan <-chan struct{}) {
 	// zero point there. See base_flashblock_ref.go. Started before the
 	// providers for the same reason.
 	go runBaseFlashblockReference(stopChan)
+	// Second Base source. The clock keeps the earliest of the two, so this
+	// can only move the zero point earlier. See base_preconf_ref.go.
+	go runBasePreconfReference(stopChan)
 	// Resolves provider emissions against the reference once it catches up,
 	// so a reference that arrives after a fast provider is still matched.
 	go runPendingResolver(stopChan)

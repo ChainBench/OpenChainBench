@@ -160,7 +160,13 @@ func baseFlashblockConnect(url string, stopChan <-chan struct{}) error {
 		}
 		for _, raw := range fb.Diff.Transactions {
 			if h, ok := txHashFromRaw(raw); ok {
-				reference.observe("base", h, seen)
+				// observeFirst, not observe: Base has a second reference
+				// source since 2026-10-29 (base_preconf_ref.go) and the
+				// clock keeps the earliest. Counting which source set the
+				// zero point is how the two are judged in production.
+				if reference.observeFirst("base", h, seen) {
+					RecordBaseRefFirst("flashblocks")
+				}
 				RecordFlashblockObserved()
 			}
 		}
