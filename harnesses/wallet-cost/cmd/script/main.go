@@ -1,11 +1,13 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -43,11 +45,14 @@ func main() {
 		return
 	}
 	if os.Getenv("WALLET_COST_PIN") != "" {
-		for _, p := range cat.Providers {
+		// Prints each page's current hash and, beside it, every figure the
+		// catalogue takes from that vendor that is NOT in the hashed lines:
+		// a figure outside them can change without any drift.
+		for _, p := range cat.Ranked() {
 			for _, name := range sortedKeys(p.Source) {
 				a := p.Source[name]
-				r := fetchBody(a.URL)
-				fmt.Printf("%s\t%s\t%v\t%s\n", p.Slug, name, r.ok, r.sum)
+				r := fetchBody(a.URL, a.PinPhrases...)
+				fmt.Printf("%s\t%s\t%v\t%s\tunpinned=%v\n", p.Slug, name, r.ok, r.sum, unpinnedFigures(p, r.lines))
 			}
 		}
 		return
@@ -91,8 +96,11 @@ func run(cat *Catalogue) {
 	catalogueInfo.Reset()
 	catalogueInfo.WithLabelValues(cat.SHA256, cat.AsOf).Set(1)
 	priceEverything(cat)
-	checkFreshness(cat)
+	// The prices are current as soon as they are computed; the page fetches
+	// below take seconds and must not age them.
 	lastRun.SetToCurrentTime()
+	checkFreshness(cat)
+	checkSiteCurves(cat)
 	log.Print("cycle complete")
 }
 
@@ -143,12 +151,13 @@ func checkFreshness(cat *Catalogue) {
 	}
 	var readings []reading
 	fetched := map[string]fetchResult{}
-	fetch := func(url string) fetchResult {
-		if r, ok := fetched[url]; ok {
+	fetch := func(url string, phrases ...string) fetchResult {
+		key := url + "\x00" + strings.Join(phrases, "\x00")
+		if r, ok := fetched[key]; ok {
 			return r
 		}
-		r := fetchBody(url)
-		fetched[url] = r
+		r := fetchBody(url, phrases...)
+		fetched[key] = r
 		return r
 	}
 	for _, p := range cat.Ranked() {
@@ -176,6 +185,40 @@ func checkFreshness(cat *Catalogue) {
 		}
 	}
 }
+
+// checkSiteCurves compares the catalogue this process prices from with the
+// one each site branch's calculator was built from. The calculator ships with
+// the site on merge; this harness only on a VPS rebuild, and until then the
+// bench page shows two prices for one vendor. A failed fetch publishes
+// nothing (unknown, not mismatched); a branch without the file yet (the bench
+// unreleased on main) is a 404 and publishes nothing either.
+func checkSiteCurves(cat *Catalogue) {
+	for _, spec := range strings.Split(envDefault("WALLET_COST_SITE_CURVES", defaultSiteCurves), ",") {
+		branch, url, ok := strings.Cut(strings.TrimSpace(spec), "=")
+		if !ok || branch == "" || url == "" {
+			continue
+		}
+		resp, err := httpClient.Get(url)
+		if err != nil {
+			log.Printf("site curve %s: %v", branch, err)
+			continue
+		}
+		var f struct {
+			CatalogueSHA256 string `json:"catalogueSha256"`
+		}
+		err = json.NewDecoder(resp.Body).Decode(&f)
+		resp.Body.Close()
+		if resp.StatusCode != http.StatusOK || err != nil || f.CatalogueSHA256 == "" {
+			log.Printf("site curve %s: HTTP %d, no catalogueSha256", branch, resp.StatusCode)
+			siteCurveMatches.DeleteLabelValues(branch)
+			continue
+		}
+		siteCurveMatches.WithLabelValues(branch).Set(boolGauge(f.CatalogueSHA256 == cat.SHA256))
+	}
+}
+
+const defaultSiteCurves = "dev=https://raw.githubusercontent.com/ChainBench/OpenChainBench/dev/src/data/wallet-cost-curves.json," +
+	"main=https://raw.githubusercontent.com/ChainBench/OpenChainBench/main/src/data/wallet-cost-curves.json"
 
 func serve(port string) {
 	http.Handle("/metrics", promhttp.Handler())

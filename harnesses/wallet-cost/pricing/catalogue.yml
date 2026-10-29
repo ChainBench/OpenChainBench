@@ -91,6 +91,14 @@ providers:
         name: Scale
         monthly_usd: 499
         confidence: verified
+        # Unambiguous below 10,000 users. At exactly 10,000 the card's band
+        # (2,500 to 9,999) and the pay-as-you-go trigger (exceeds 10,000)
+        # disagree, and the cap above takes the trigger's side.
+        uncertain_above: { mau: 9999 }
+        note: >-
+          The card bands Scale at 2,500 to 9,999 users, while pay-as-you-go
+          applies only when usage exceeds 10,000. At exactly 10,000 users
+          Scale is priced at $499; on the card's reading the bill is $2,000.
         caps: { mau: 10000, signatures: 50000 }
       - id: payg
         name: Pay as you go
@@ -110,7 +118,7 @@ providers:
     source:
       pricing:
         url: https://www.privy.io/pricing
-        body_sha256: 97a060c3a9e3271ae13c8097786923d5b659243a6138a648ed250036edea2ed1
+        body_sha256: 5cee07da8b21944d68ac6706cdffb8f124eb91d70641e82f468e5535540c34b3
         verified_at: "2026-10-29"
         poll: true
 
@@ -135,7 +143,7 @@ providers:
     source:
       pricing:
         url: https://www.dynamic.xyz/pricing
-        body_sha256: 2cea9aec9670257b22c96f0af304b581ddc001ef34d62cf606601ecb07294da0
+        body_sha256: c5e228a7a8b728dfe6d742738cc82c7c20fc2494aad6458c44e828029857ceb4
         verified_at: "2026-10-29"
         poll: true
 
@@ -181,7 +189,7 @@ providers:
     source:
       pricing:
         url: https://www.turnkey.com/pricing
-        body_sha256: 8378f2c162a54494fd93cf12b6e1b208318134e111372cf5c0585baebee55df1
+        body_sha256: eb91b7dd5113d9e3797c23a44d250d5c82b29a15ef70a7ef7ca962018767a665
         verified_at: "2026-10-29"
         poll: true
 
@@ -217,7 +225,7 @@ providers:
     source:
       pricing:
         url: https://web3auth.io/pricing.html
-        body_sha256: 82c1a2780df3ede41eb761bd94aad326b6a53a242cf48692a7eb968b033eb215
+        body_sha256: 93835867e3d78e02248f4d55f457dee48cd2fee1e08fd862c38a7ae63a8e42ee
         verified_at: "2026-10-29"
         poll: true
 
@@ -251,7 +259,7 @@ providers:
     source:
       pricing:
         url: https://magic.link/pricing
-        body_sha256: 2181cb50dbea1ad6a1a1160b7be2403c7ffdb785d4ce3f2edc43f625e8e853d0
+        body_sha256: a8194db2eabb982af7eb2405fdbfadef4598c3b711b9a806018a3da3ee6c2f87
         verified_at: "2026-10-29"
         poll: true
 
@@ -293,7 +301,7 @@ providers:
     source:
       pricing:
         url: https://www.getpara.com/pricing
-        body_sha256: e02100fcb16b2c6767f390adc7730b74899b23c05c49a1827c26d2a323582883
+        body_sha256: fa0fb3db2e2e98cd4eb9d42e10d0a24b7f50f77abcea0cc376f95c7fd7e9f4a5
         verified_at: "2026-10-29"
         poll: true
 
@@ -369,7 +377,7 @@ providers:
     source:
       pricing:
         url: https://thirdweb.com/pricing
-        body_sha256: b84a0bf95382e397b186367adea971ba0e526f060342369280ab492e6ea7b1eb
+        body_sha256: d9056af82567c1451d8887384fda974138bf30f98bb45b059f63ad892ed10738
         verified_at: "2026-10-29"
         poll: true
 
@@ -415,7 +423,7 @@ providers:
     source:
       pricing:
         url: https://www.openfort.io/pricing
-        body_sha256: dfe5fd39a2f1b33b364e0ddfe1ffa5bf0cb46470c47ffa3063317cab8ddcdb06
+        body_sha256: 3275b5fb44180e305ea2b17ec63b9be9627f694555beafd89ed20f8bc0326074
         verified_at: "2026-10-29"
         poll: true
 
@@ -451,7 +459,7 @@ providers:
     source:
       pricing:
         url: https://www.circle.com/wallets
-        body_sha256: 55d9d4c47e73d9de25c58799cf135da67703b12888b0753f583da091b52b9112
+        body_sha256: e1d3f810e9b33eb8154fe744f48c7b8030315d92ab15cb4f8a3c23a3e3fbad6f
         verified_at: "2026-10-29"
         poll: true
 
@@ -492,9 +500,12 @@ providers:
     source:
       pricing:
         url: https://reown.com/pricing
-        body_sha256: d772d5fb7df09ca13ac958e695ca22638ebcd1371f8a3a84981c42fef87f2a05
+        body_sha256: d24342c81c9a93d1a32352f32beba8b178f7f8a59a972f81c25fb50d45be5001
         verified_at: "2026-10-29"
         poll: true
+        # The exclusion of exchanges and payment platforms carries no
+        # number, so it is pinned by phrase.
+        pin_phrases: ["custom plan"]
 
   - slug: zerodev
     name: ZeroDev
@@ -548,7 +559,7 @@ providers:
     source:
       pricing:
         url: https://www.crossmint.com/pricing
-        body_sha256: bb2e535bbaa5639284d5b4c8a5ecd06d6741aa1a23a7213fa6b382b2976d67ef
+        body_sha256: 5ab59425dadae17656247d9bffbf9d27d2c8a61e3aaab3d7e020d6984cc03e87
         verified_at: "2026-10-29"
         poll: true
 

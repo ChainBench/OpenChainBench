@@ -580,7 +580,10 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       and the sequencer's pendingLogs, and warns that figures published
   //       before today are smaller by up to the CDN tail the second source
   //       removes. Editorial change on a live page, so the keys move.
-  ["bench-unfiltered-v113", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v114: bench 309 round three. Each unpriced vendor carries its own
+  //       reason per view, Privy's 10,000-user band edge is badged, and
+  //       the copy states validate's sample size.
+  ["bench-unfiltered-v114", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -855,7 +858,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v105: lockstep with bench-unfiltered-v112 (bench 309 round two).
   // v106: lockstep with bench-unfiltered-v113 (bench 001's Base reference
   //        gains the sequencer's pendingLogs as a second source).
-  ["all-benchmarks-v106", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v107: lockstep with bench-unfiltered-v114 (bench 309 round three).
+  ["all-benchmarks-v107", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1012,7 +1016,9 @@ const loadBenchmarkFiltered = unstable_cache(
   // v52: lockstep with bench-unfiltered-v113. Bench 001 declares chain and
   //      region dimensions, so its reworded Base methodology is cached once
   //      per tab and a bump of the other two alone would correct only one.
-  ["bench-filters-v52", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v53: lockstep with bench-unfiltered-v114. Bench 309's filtered
+  //      tabs now carry per-vendor reasons; a cached variant keeps the old.
+  ["bench-filters-v53", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 
