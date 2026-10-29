@@ -1011,25 +1011,10 @@ function applyDimensionsToSpec(spec: Spec, labels: Record<string, string>): Spec
     // braced form so dimension labels (chain=..., region=...) reach them
     // like every provider query. Without this a panel on a chain-dimensioned
     // bench silently mixes every chain's series.
-    metric_panels: spec.metric_panels?.map((panel) => {
-      // A panel may declare the dimensions its metric does not carry.
-      // Appending one of those matches nothing and empties the panel in
-      // silence, which is how bench 282 shipped a "Billing units per
-      // request" chart that was blank on 71 of 75 views.
-      const ignored = new Set(panel.ignore_dimensions ?? []);
-      const panelLabels = ignored.size
-        ? Object.fromEntries(
-            Object.entries(labels).filter(([k]) => !ignored.has(k)),
-          )
-        : labels;
-      return {
-        ...panel,
-        metric: injectLabels(
-          panel.metric.includes("{") ? panel.metric : `${panel.metric}{}`,
-          panelLabels,
-        ),
-      };
-    }),
+    metric_panels: spec.metric_panels?.map((panel) => ({
+      ...panel,
+      metric: panelMetricQuery(panel, labels),
+    })),
     providers: spec.providers.map((p) => ({
       ...p,
       queries: p.queries
@@ -1057,6 +1042,52 @@ function applyDimensionsToSpec(spec: Spec, labels: Record<string, string>): Spec
       ? { ...spec.prometheus, probe_ok: inject(spec.prometheus.probe_ok) }
       : spec.prometheus,
   };
+}
+
+/** The dimension labels a reader's filters select, ready for injectLabels.
+ *
+ * `tier` is excluded because it picks the cohort rather than narrowing a
+ * series, and an `all` value is not a filter. Exported so a caller holding
+ * loose filter strings can build the same label set the loader uses.
+ */
+export function dimensionLabels(f: BenchmarkFilters): Record<string, string> {
+  return activeFilterLabels(labelFilters(f));
+}
+
+/** The PromQL a metric panel runs under the reader's active filters.
+ *
+ * A panel declares a bare metric name or `metric{sel}`; normalise to the
+ * braced form so the dimension labels reach it like every provider query.
+ * Without this, a panel on a chain-dimensioned bench silently pools every
+ * chain into one line.
+ *
+ * Exported because TWO paths need this exact string and had drifted. The
+ * loader builds panel values through applyDimensionsToSpec, but the 7d and
+ * 30d panel SERIES are stripped from both the cache form and the snapshot on
+ * purpose (slimBenchmarkForCache, toSnapshot) and refetched by
+ * /api/series/[slug]?panel=..., which rebuilds them from the raw spec. That
+ * route injected only the provider selector, so from the day panels got a
+ * chart, every chain tab of bench 001's "First to report" view published the
+ * same cross-chain average, while the head-lag view beside it moved per chain
+ * because it goes through specToBenchmark. Lucas spotted it on 2026-10-29.
+ *
+ * A panel may also declare dimensions its metric does not carry: appending one
+ * matches nothing and empties the panel in silence, which is how bench 282
+ * shipped a "Billing units per request" chart blank on 71 of 75 views. Hence
+ * ignore_dimensions, honoured here so both callers honour it.
+ */
+export function panelMetricQuery(
+  panel: { metric: string; ignore_dimensions?: string[] },
+  labels: Record<string, string>,
+): string {
+  const ignored = new Set(panel.ignore_dimensions ?? []);
+  const panelLabels = ignored.size
+    ? Object.fromEntries(Object.entries(labels).filter(([k]) => !ignored.has(k)))
+    : labels;
+  return injectLabels(
+    panel.metric.includes("{") ? panel.metric : `${panel.metric}{}`,
+    panelLabels,
+  );
 }
 
 export function injectLabels(query: string, labels: Record<string, string>): string {
