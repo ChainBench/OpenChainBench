@@ -660,7 +660,13 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       every EVM tab), and the FAQ no longer answers that the window
   //       measurement does not exist above the columns that publish it.
   //       Moves with all-benchmarks-v119 and bench-filters-v64.
-  ["bench-unfiltered-v126", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v127: the per-chain leader stash stops crowning a gated row and stops
+  //       breaking ties by spec order. bestPerChain lives in the cached
+  //       entry and feeds the product-page chip, so a stale one keeps
+  //       publishing "#1 of 5 on Robinhood Chain" for a row the board shows
+  //       unranked. Moves with all-benchmarks-v120, bench-filters-v65 and
+  //       providers-v34, which is the key the chip itself reads through.
+  ["bench-unfiltered-v127", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -957,7 +963,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v117: lockstep with bench-unfiltered-v124.
   // v118: lockstep with bench-unfiltered-v125 (wallet pricing audit).
   // v119: lockstep with bench-unfiltered-v126.
-  ["all-benchmarks-v119", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v120: lockstep with bench-unfiltered-v127.
+  ["all-benchmarks-v120", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1146,7 +1153,8 @@ const loadBenchmarkFiltered = unstable_cache(
   // v63: lockstep with bench-unfiltered-v125 (wallet pricing audit).
   // v64: lockstep with bench-unfiltered-v126. Every chain tab carried the
   //      same inflated headline and the same 9/11 success rate.
-  ["bench-filters-v64", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v65: lockstep with bench-unfiltered-v127.
+  ["bench-filters-v65", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 
