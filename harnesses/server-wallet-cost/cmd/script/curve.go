@@ -142,7 +142,10 @@ func curveFor(p Provider, s Scenario) []CurvePoint {
 			xs = append(xs, x)
 		}
 		if discontinuous {
-			if x2 := x * (1 + jump); inRange(x2) {
+			// Placed by quantity, not by x: with a fixed offset (a bot's 20
+			// wallets) x*(1+jump) can leave the quantity under over()'s
+			// tolerance, so both points would sit on the same side.
+			if x2 := (units*(1+jump) - offset(m, s)) / k; inRange(x2) {
 				xs = append(xs, x2)
 			}
 		}

@@ -2,14 +2,15 @@
  "schema": 1,
  "catalogueVersion": 1,
  "catalogueAsOf": "2026-10-29",
- "catalogueSha256": "30526914808a5afffa4c03ffe20c47ac0ebee84e2cb399a64579f9476a6ea12f",
+ "catalogueSha256": "ff0c7299e5e8edd11934a34a34cd4e4fff20ae82b5435d6a7e1dd6948e5011bd",
  "headline": {
   "scenario": "agents",
   "size": "medium"
  },
  "planNames": {
   "circle": {
-   "all-included": "All-included"
+   "all-included": "All-included",
+   "signing-api": "Signing API only"
   },
   "coinbase-cdp": {
    "payg": "Pay as you go"
@@ -31,6 +32,7 @@
   },
   "openfort": {
    "free": "Free",
+   "free-card": "Free with a card",
    "growth": "Growth",
    "pro": "Pro",
    "scale": "Scale"
@@ -52,13 +54,13 @@
   }
  },
  "notes": {
-  "circle": "Developer-controlled wallets bill per monthly active wallet, one that \"conducted an on-chain transaction\" that month, with no fee per transaction. All-included plan (signing, indexing, broadcasting), graduated by band. A bot's 20 wallets sit inside the free 1,000 at any volume.",
+  "circle": "Developer-controlled wallets bill per monthly active wallet, one that \"conducted an on-chain transaction\" that month, with no fee per transaction. Two plans, both graduated by band: \"Signing API only\" (Circle signs, the customer broadcasts, as at Turnkey, Magic, Lit and Portal; Circle's signing APIs are for developer-controlled wallets \"when you manage broadcasting yourself\") and All-included (signing, indexing, broadcasting). A bot's 20 wallets sit inside the free 1,000 at any volume. Added 2026-10-30: the signing-only plan was missed.",
   "coinbase-cdp": "\"Pricing is consistent across wallet types\": server wallets on API-key authentication bill the same operations as embedded ones. Sending a transaction (sign and broadcast) is 2 operations. A policy evaluation is 1 more; these scenarios configure no policy. Creating an account is 1 operation, once.",
   "crossmint": "Free up to 1,000 wallets and 2,000 transactions. Beyond, two different rates ($0.025 and \"starts at $0.02\") and no self-serve paid plan, so a larger workload is a quote.",
   "dfns": "Self-service annual or quarterly plans; monthly figures are the annual price over twelve. Each plan includes a number of wallets and of signatures a month, with no published overage: beyond, \"Talk to us\". \"No transaction fees.\"",
   "lit": "Prepaid credits, no subscription. A Lit Action is billed $0.01 per second and \"standard ECDSA signatures are effectively charged at $0.01\"; priced at $0.01 a transaction, sign only (broadcasting is the customer's, and an action that also broadcasts runs longer). Paying in LITKEY is 25% less; the card price is used.",
   "magic": "Server wallets on Express or Core \"count when they successfully sign\". Every successful signing request counts against 50,000 a month per team. Magic signs; broadcasting is the customer's.",
-  "openfort": "Backend wallets are in every plan. A payment is \"two operations: sign, then broadcast\". A project without a paid subscription \"stops at the included limit\" with HTTP 402, while the Free card offers $0.01 per operation once a payment method is added; the Free plan is priced as stopping at 2,000.",
+  "openfort": "Backend wallets are in every plan. A payment is \"two operations: sign, then broadcast\". A project without a paid subscription \"stops at the included limit\" with HTTP 402, while the Free card offers $0.01 per operation once a payment method is added. Both readings are priced: Free stops at 2,000 (exact), and \"Free with a card\" meters $0.01 an operation past it, as a lower bound since the FAQ says that plan stops instead; it is never named cheapest.",
   "portal": "Start-Up includes 1K monthly operations and 1K wallets, each $0.10 beyond. Operations are \"Generate, Backup, Sign, Recover, Eject\"; a transaction is one Sign. Whether the wallet overage is charged once or every month is not stated (priced every month, the higher reading), and the Developer plan is a development environment only.",
   "privy": "Server wallets have no Privy user, so only signatures are billed: 50,000 a month free, then pay-as-you-go at a $2,000 base and $0.01 per signature. Privy also bills apps above $1M of monthly transaction volume \"based on usage\" at a rate it does not publish; a real payout or trading flow is likely to cross it, so every Privy price here is a lower bound.",
   "thirdweb": "Server wallets bill per API request: 1,000 included, then $1, $0.60 and $0.20 per thousand at 100K and 250K. A transaction is one request that signs and sends. Priced band by band; whether the lower rate applies to the whole count is not stated.",
@@ -167,23 +169,31 @@
        "x": 10,
        "usd": 0,
        "plan": "free",
-       "next": "free",
-       "unc": true,
-       "nextUnc": true
+       "next": "free"
       },
       {
        "x": 20,
        "usd": 0,
        "plan": "free",
-       "next": "free",
-       "unc": true,
-       "nextUnc": true
+       "next": "free"
       },
       {
        "x": 20.00000004,
+       "usd": 0,
+       "plan": "free-card",
+       "next": "free-card",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "lower",
+       "nextBound": "lower"
+      },
+      {
+       "x": 119,
        "usd": 99,
-       "plan": "growth",
-       "next": "growth"
+       "plan": "free-card",
+       "next": "growth",
+       "unc": true,
+       "bound": "lower"
       },
       {
        "x": 250,
@@ -192,9 +202,21 @@
        "next": "growth"
       },
       {
+       "x": 269,
+       "usd": 114.2,
+       "plan": "growth",
+       "next": "growth"
+      },
+      {
        "x": 437.5,
        "usd": 249,
        "plan": "growth",
+       "next": "pro"
+      },
+      {
+       "x": 619,
+       "usd": 249,
+       "plan": "pro",
        "next": "pro"
       },
       {
@@ -398,43 +420,43 @@
       {
        "x": 10,
        "usd": 0,
-       "plan": "all-included",
-       "next": "all-included"
+       "plan": "signing-api",
+       "next": "signing-api"
       },
       {
        "x": 1000,
        "usd": 0,
-       "plan": "all-included",
-       "next": "all-included"
+       "plan": "signing-api",
+       "next": "signing-api"
       },
       {
        "x": 5000,
-       "usd": 200,
-       "plan": "all-included",
-       "next": "all-included"
+       "usd": 152,
+       "plan": "signing-api",
+       "next": "signing-api"
       },
       {
        "x": 10000,
-       "usd": 435,
-       "plan": "all-included",
-       "next": "all-included"
+       "usd": 327,
+       "plan": "signing-api",
+       "next": "signing-api"
       },
       {
        "x": 25000,
-       "usd": 1035,
-       "plan": "all-included",
-       "next": "all-included"
+       "usd": 777,
+       "plan": "signing-api",
+       "next": "signing-api"
       },
       {
        "x": 50000,
-       "usd": 1910,
-       "plan": "all-included",
-       "next": "all-included"
+       "usd": 1427,
+       "plan": "signing-api",
+       "next": "signing-api"
       },
       {
        "x": 100000,
-       "usd": 3410,
-       "plan": "all-included"
+       "usd": 2577,
+       "plan": "signing-api"
       }
      ]
     },
@@ -806,15 +828,25 @@
        "x": 1000,
        "usd": 0,
        "plan": "free",
-       "next": "free",
-       "unc": true,
-       "nextUnc": true
+       "next": "free"
       },
       {
        "x": 1000.000002,
+       "usd": 0,
+       "plan": "free-card",
+       "next": "free-card",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "lower",
+       "nextBound": "lower"
+      },
+      {
+       "x": 5950,
        "usd": 99,
-       "plan": "growth",
-       "next": "growth"
+       "plan": "free-card",
+       "next": "growth",
+       "unc": true,
+       "bound": "lower"
       },
       {
        "x": 10000,
@@ -829,9 +861,21 @@
        "next": "growth"
       },
       {
+       "x": 13450,
+       "usd": 114.2,
+       "plan": "growth",
+       "next": "growth"
+      },
+      {
        "x": 21875,
        "usd": 249,
        "plan": "growth",
+       "next": "pro"
+      },
+      {
+       "x": 30950,
+       "usd": 249,
+       "plan": "pro",
        "next": "pro"
       },
       {
@@ -1055,31 +1099,31 @@
       {
        "x": 1000,
        "usd": 0,
-       "plan": "all-included",
-       "next": "all-included"
+       "plan": "signing-api",
+       "next": "signing-api"
       },
       {
        "x": 10000,
        "usd": 0,
-       "plan": "all-included",
-       "next": "all-included"
+       "plan": "signing-api",
+       "next": "signing-api"
       },
       {
        "x": 100000,
        "usd": 0,
-       "plan": "all-included",
-       "next": "all-included"
+       "plan": "signing-api",
+       "next": "signing-api"
       },
       {
        "x": 1000000,
        "usd": 0,
-       "plan": "all-included",
-       "next": "all-included"
+       "plan": "signing-api",
+       "next": "signing-api"
       },
       {
        "x": 10000000,
        "usd": 0,
-       "plan": "all-included"
+       "plan": "signing-api"
       }
      ]
     },
@@ -1426,33 +1470,51 @@
        "x": 100,
        "usd": 0,
        "plan": "free",
-       "next": "free",
-       "unc": true,
-       "nextUnc": true
+       "next": "free"
       },
       {
        "x": 500,
        "usd": 0,
        "plan": "free",
-       "next": "free",
-       "unc": true,
-       "nextUnc": true
+       "next": "free"
       },
       {
        "x": 500.000001,
-       "usd": 99,
-       "plan": "growth",
-       "next": "growth"
+       "usd": 0,
+       "plan": "free-card",
+       "next": "free-card",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "lower",
+       "nextBound": "lower"
       },
       {
        "x": 1000,
+       "usd": 20,
+       "plan": "free-card",
+       "next": "free-card",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "lower",
+       "nextBound": "lower"
+      },
+      {
+       "x": 2975,
        "usd": 99,
-       "plan": "growth",
-       "next": "growth"
+       "plan": "free-card",
+       "next": "growth",
+       "unc": true,
+       "bound": "lower"
       },
       {
        "x": 6250,
        "usd": 99,
+       "plan": "growth",
+       "next": "growth"
+      },
+      {
+       "x": 6725,
+       "usd": 114.2,
        "plan": "growth",
        "next": "growth"
       },
@@ -1466,6 +1528,12 @@
        "x": 10937.5,
        "usd": 249,
        "plan": "growth",
+       "next": "pro"
+      },
+      {
+       "x": 15475,
+       "usd": 249,
+       "plan": "pro",
        "next": "pro"
       },
       {
@@ -1707,55 +1775,55 @@
       {
        "x": 100,
        "usd": 0,
-       "plan": "all-included",
-       "next": "all-included"
+       "plan": "signing-api",
+       "next": "signing-api"
       },
       {
        "x": 1000,
        "usd": 0,
-       "plan": "all-included",
-       "next": "all-included"
+       "plan": "signing-api",
+       "next": "signing-api"
       },
       {
        "x": 5000,
-       "usd": 200,
-       "plan": "all-included",
-       "next": "all-included"
+       "usd": 152,
+       "plan": "signing-api",
+       "next": "signing-api"
       },
       {
        "x": 10000,
-       "usd": 435,
-       "plan": "all-included",
-       "next": "all-included"
+       "usd": 327,
+       "plan": "signing-api",
+       "next": "signing-api"
       },
       {
        "x": 25000,
-       "usd": 1035,
-       "plan": "all-included",
-       "next": "all-included"
+       "usd": 777,
+       "plan": "signing-api",
+       "next": "signing-api"
       },
       {
        "x": 50000,
-       "usd": 1910,
-       "plan": "all-included",
-       "next": "all-included"
+       "usd": 1427,
+       "plan": "signing-api",
+       "next": "signing-api"
       },
       {
        "x": 100000,
-       "usd": 3410,
-       "plan": "all-included",
-       "next": "all-included"
+       "usd": 2577,
+       "plan": "signing-api",
+       "next": "signing-api"
       },
       {
        "x": 250000,
-       "usd": 7160,
-       "plan": "all-included",
-       "next": "all-included"
+       "usd": 4827,
+       "plan": "signing-api",
+       "next": "signing-api"
       },
       {
        "x": 1000000,
-       "usd": 22160,
-       "plan": "all-included"
+       "usd": 13827,
+       "plan": "signing-api"
       }
      ]
     },

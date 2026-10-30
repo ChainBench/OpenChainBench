@@ -642,7 +642,10 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       live in the cached entry, so the old reading would otherwise sit
   //       there for the full TTL. Moves with all-benchmarks-v117 and
   //       bench-filters-v62.
-  ["bench-unfiltered-v124", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v125: wallet pricing audit 2026-10-30: Dynamic re-priced on its card,
+  //       Circle's signing-only plan, the price-reading pill, rewritten prose.
+  //       Moves with all-benchmarks-v118 and bench-filters-v63.
+  ["bench-unfiltered-v125", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -937,7 +940,8 @@ const loadAllBenchmarksCached = unstable_cache(
   //       Solana cohort.
   // v116: lockstep with bench-unfiltered-v123, bench 311's four views.
   // v117: lockstep with bench-unfiltered-v124.
-  ["all-benchmarks-v117", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v118: lockstep with bench-unfiltered-v125 (wallet pricing audit).
+  ["all-benchmarks-v118", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1123,7 +1127,8 @@ const loadBenchmarkFiltered = unstable_cache(
   //      chain tab, so a stale filtered entry would offer the tabs without
   //      the panels behind them.
   // v62: lockstep with bench-unfiltered-v124.
-  ["bench-filters-v62", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v63: lockstep with bench-unfiltered-v125 (wallet pricing audit).
+  ["bench-filters-v63", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 

@@ -350,6 +350,12 @@ func (p *Provider) validate() error {
 		default:
 			return fmt.Errorf("plan %s: bound %q is neither upper nor lower", pl.ID, pl.Bound)
 		}
+		if (pl.Confidence == "uncertain" || len(pl.UncertainAbove) > 0) && pl.Bound == "" {
+			// The calculator, the grid and the ledger decide whether a price
+			// may lead from its bound; an unbounded one would be read three
+			// different ways.
+			return fmt.Errorf("plan %s: an uncertain price needs bound: upper or lower", pl.ID)
+		}
 		if pl.Confidence == "uncertain" && pl.Note == "" && p.Note == "" {
 			return fmt.Errorf("plan %s: uncertain without a note saying why", pl.ID)
 		}

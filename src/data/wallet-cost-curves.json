@@ -2,7 +2,7 @@
  "schema": 1,
  "catalogueVersion": 1,
  "catalogueAsOf": "2026-10-29",
- "catalogueSha256": "96a354e4042ff73755756ab6f861f16adcca0f34be7f9b675bd45986ef63cc7d",
+ "catalogueSha256": "3cd773331b6afe1e7df46cb5a3f79516554ce5db65099adc86a5d7fff28fca8c",
  "floor": 100,
  "ceiling": 1000000,
  "volumes": [
@@ -89,7 +89,7 @@
   "circle": "A monthly active wallet is one that \"has conducted an on-chain transaction within the month period, such as initial wallet creation or sending or receiving funds\", so every user of these profiles counts. Priced on the All-included plan (signing, indexing and broadcasting); \"for each tier that you fill, earn deeper discounts on the next batch\". The $0.01 rebate for wallets holding 10 USDC is left out.",
   "coinbase-cdp": "Creating an account is 1 operation and sending a transaction (sign and broadcast) is 2. Reads are free. The same price applies to embedded and server wallets.",
   "crossmint": "Free up to 1,000 monthly active wallets and 2,000 transactions. Beyond that the plan card says overages \"start at $0.025 per MAU\" while the plan table says \"Custom, starts at $0.02 per MAW\"; with two figures and no self-serve paid plan, a bill above the free tier is a quote.",
-  "dynamic": "No free production plan: the sandbox is free, live mode needs Growth. An MAU is a user who logs in that month or for whom an embedded wallet, pre-generated ones included, is created.",
+  "dynamic": "No free production plan: the sandbox is free, live mode needs Growth. An MAU is a user who logs in that month or for whom an embedded wallet, pre-generated ones included, is created. The plan card reads \"additional $0.05 per MAU\" (as it did in April 2026); the FAQ reads \"each MAU beyond the first 5,000 is billed at $0.005\". Priced on the card, the higher reading. Until 2026-10-30 this catalogue priced the FAQ's $0.005, which put Dynamic first on the large cells.",
   "getpara": "No signature or transaction fee. The page says that at 100,000 MAU \"most teams move to\" an Enterprise plan; the published Scale overage still prices that volume, so it is used.",
   "magic": "A wallet counts once a month when a user accesses it through the SDK. Every successful signing request counts, except the signatures needed to log in; 50,000 a month are included per team on every non-Enterprise plan.",
   "openfort": "An operation is \"creating a wallet, signing, broadcasting, evaluating a policy, firing a webhook, or landing a funding deposit\"; a payment is two (sign, then broadcast) and sign-ins are free. Priced from that table: 1 per new wallet, 2 per transaction. Openfort's own simulator on the same page also charges 2 operations per active user, which would raise these bills.",
@@ -115,7 +115,7 @@
   {
    "slug": "fireblocks",
    "name": "Fireblocks",
-   "reason": "No published price."
+   "reason": "Sold through sales: $999 a month for up to six months, then custom plans from $36,000 a year, plus a share of outbound volume."
   },
   {
    "slug": "sequence",
@@ -217,36 +217,47 @@
        "u": 100,
        "usd": 249,
        "plan": "growth",
-       "next": "growth"
+       "next": "growth",
+       "unc": true,
+       "nextUnc": true
       },
       {
        "u": 1000,
        "usd": 249,
        "plan": "growth",
-       "next": "growth"
+       "next": "growth",
+       "unc": true,
+       "nextUnc": true
       },
       {
        "u": 5000,
        "usd": 249,
        "plan": "growth",
-       "next": "growth"
+       "next": "growth",
+       "unc": true,
+       "nextUnc": true
       },
       {
        "u": 10000,
-       "usd": 274,
+       "usd": 499,
        "plan": "growth",
-       "next": "growth"
+       "next": "growth",
+       "unc": true,
+       "nextUnc": true
       },
       {
        "u": 100000,
-       "usd": 724,
+       "usd": 4999,
        "plan": "growth",
-       "next": "growth"
+       "next": "growth",
+       "unc": true,
+       "nextUnc": true
       },
       {
        "u": 1000000,
-       "usd": 5224,
-       "plan": "growth"
+       "usd": 49999,
+       "plan": "growth",
+       "unc": true
       }
      ]
     },
@@ -1100,36 +1111,47 @@
        "u": 100,
        "usd": 249,
        "plan": "growth",
-       "next": "growth"
+       "next": "growth",
+       "unc": true,
+       "nextUnc": true
       },
       {
        "u": 1000,
        "usd": 249,
        "plan": "growth",
-       "next": "growth"
+       "next": "growth",
+       "unc": true,
+       "nextUnc": true
       },
       {
        "u": 5000,
        "usd": 249,
        "plan": "growth",
-       "next": "growth"
+       "next": "growth",
+       "unc": true,
+       "nextUnc": true
       },
       {
        "u": 10000,
-       "usd": 274,
+       "usd": 499,
        "plan": "growth",
-       "next": "growth"
+       "next": "growth",
+       "unc": true,
+       "nextUnc": true
       },
       {
        "u": 100000,
-       "usd": 724,
+       "usd": 4999,
        "plan": "growth",
-       "next": "growth"
+       "next": "growth",
+       "unc": true,
+       "nextUnc": true
       },
       {
        "u": 1000000,
-       "usd": 5224,
-       "plan": "growth"
+       "usd": 49999,
+       "plan": "growth",
+       "unc": true
       }
      ]
     },
@@ -1924,36 +1946,47 @@
        "u": 100,
        "usd": 249,
        "plan": "growth",
-       "next": "growth"
+       "next": "growth",
+       "unc": true,
+       "nextUnc": true
       },
       {
        "u": 1000,
        "usd": 249,
        "plan": "growth",
-       "next": "growth"
+       "next": "growth",
+       "unc": true,
+       "nextUnc": true
       },
       {
        "u": 5000,
        "usd": 249,
        "plan": "growth",
-       "next": "growth"
+       "next": "growth",
+       "unc": true,
+       "nextUnc": true
       },
       {
        "u": 10000,
-       "usd": 274,
+       "usd": 499,
        "plan": "growth",
-       "next": "growth"
+       "next": "growth",
+       "unc": true,
+       "nextUnc": true
       },
       {
        "u": 100000,
-       "usd": 724,
+       "usd": 4999,
        "plan": "growth",
-       "next": "growth"
+       "next": "growth",
+       "unc": true,
+       "nextUnc": true
       },
       {
        "u": 1000000,
-       "usd": 5224,
-       "plan": "growth"
+       "usd": 49999,
+       "plan": "growth",
+       "unc": true
       }
      ]
     },

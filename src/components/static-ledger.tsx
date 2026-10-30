@@ -158,6 +158,11 @@ export function StaticLedger({
                       </a>
                     );
                   })()}
+                  {r.priceReading && (
+                    <span className="ml-2 text-[11px] uppercase tracking-[0.14em] text-ink-faint">
+                      {r.priceReading}
+                    </span>
+                  )}
                   {declaredReason(r) && (
                     <span className="ml-2 text-[11px] uppercase tracking-[0.14em] text-ink-faint">
                       {declaredReason(r)}

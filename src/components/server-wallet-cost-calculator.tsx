@@ -48,9 +48,17 @@ export function ServerWalletCostCalculator() {
   const cheaperBelow = leader
     ? priced.find((r) => r !== leader && (r.usd ?? 0) < (leader.usd ?? 0) - 0.005)
     : undefined;
-  const rest = priced.filter((r) => r !== leader);
+  // Same rule as the harness's floorsThatWouldLead: an "at least" price at
+  // or under the leader is listed, not ranked, so no podium place or rank
+  // number sits above the vendor the card names.
+  const floors = leader
+    ? priced.filter((r) => !r.verified && r.bound === "lower" && (r.usd ?? 0) <= (leader.usd ?? 0) + 0.005)
+    : [];
+  const ranked = priced.filter((r) => !floors.includes(r));
+  const rest = ranked.filter((r) => r !== leader);
   const podium = rest.slice(0, 3);
-  const tail = rest.slice(3);
+  const tail = [...rest.slice(3), ...floors];
+  const rankOfRow = (row: ServerWalletRow) => (floors.includes(row) ? 0 : rankOf(ranked, row));
   const visibleTail = showAll ? tail : tail.slice(0, SHOWN);
   const dearest = priced.at(-1)?.usd ?? null;
   const onSize = s.sizes.find((z) => z.x === x);
@@ -166,7 +174,7 @@ export function ServerWalletCostCalculator() {
         {podium.length > 0 && leader && (
           <div className="mt-4 grid gap-3 sm:grid-cols-3">
             {podium.map((row) => (
-              <PodiumCard key={row.slug} row={row} rank={rankOf(priced, row)} leaderUSD={leader.usd ?? 0} tx={tx} />
+              <PodiumCard key={row.slug} row={row} rank={rankOfRow(row)} leaderUSD={leader.usd ?? 0} tx={tx} />
             ))}
           </div>
         )}
@@ -176,7 +184,7 @@ export function ServerWalletCostCalculator() {
             <p className="label-mono text-ink-faint">Every other vendor</p>
             <ol className="mt-2 divide-y divide-rule">
               {visibleTail.map((row) => (
-                <RankRow key={row.slug} row={row} rank={rankOf(priced, row)} leaderUSD={leader.usd ?? 0} tx={tx} />
+                <RankRow key={row.slug} row={row} rank={rankOfRow(row)} leaderUSD={leader.usd ?? 0} tx={tx} />
               ))}
             </ol>
             {tail.length > SHOWN && (
@@ -484,7 +492,7 @@ function PodiumCard({ row, rank, leaderUSD, tx }: { row: ServerWalletRow; rank: 
       className="group flex flex-col justify-between gap-3 rounded-xl border border-rule bg-paper p-4 transition-colors hover:border-rule-strong hover:bg-paper-soft"
     >
       <div className="flex items-center gap-3">
-        <span className="text-xs tabular-nums text-ink-faint">#{rank}</span>
+        <span className="text-xs tabular-nums text-ink-faint">{rank > 0 ? `#${rank}` : "–"}</span>
         <Mark slug={row.slug} name={row.name} size={24} />
         <span className="min-w-0">
           <span className="block truncate font-semibold text-ink group-hover:underline">{row.name}</span>
@@ -518,7 +526,7 @@ function RankRow({ row, rank, leaderUSD, tx }: { row: ServerWalletRow; rank: num
         href={`/products/${row.slug}`}
         className="group -mx-2 grid grid-cols-[2rem_minmax(0,1fr)_auto] items-center gap-x-3 rounded-lg px-2 py-2.5 transition-colors hover:bg-paper-soft"
       >
-        <span className="text-xs tabular-nums text-ink-faint">#{rank}</span>
+        <span className="text-xs tabular-nums text-ink-faint">{rank > 0 ? `#${rank}` : "–"}</span>
         <span className="flex min-w-0 items-center gap-2.5">
           <Mark slug={row.slug} name={row.name} size={20} />
           <span className="min-w-0">

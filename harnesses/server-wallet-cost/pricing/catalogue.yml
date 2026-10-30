@@ -99,16 +99,25 @@ providers:
       Backend wallets are in every plan. A payment is "two operations: sign,
       then broadcast". A project without a paid subscription "stops at the
       included limit" with HTTP 402, while the Free card offers $0.01 per
-      operation once a payment method is added; the Free plan is priced as
-      stopping at 2,000.
+      operation once a payment method is added. Both readings are priced:
+      Free stops at 2,000 (exact), and "Free with a card" meters $0.01 an
+      operation past it, as a lower bound since the FAQ says that plan
+      stops instead; it is never named cheapest.
     meters:
       operations: { per_tx: 2 }
     plans:
       - id: free
         name: Free
         monthly_usd: 0
-        confidence: uncertain
+        confidence: verified
         caps: { operations: 2000 }
+      - id: free-card
+        name: Free with a card
+        monthly_usd: 0
+        confidence: uncertain
+        bound: lower
+        tiers:
+          operations: [{ up_to: 2000, rate: 0 }, { rate: 0.01 }]
       - id: growth
         name: Growth
         monthly_usd: 99
@@ -249,12 +258,29 @@ providers:
     note: >-
       Developer-controlled wallets bill per monthly active wallet, one that
       "conducted an on-chain transaction" that month, with no fee per
-      transaction. All-included plan (signing, indexing, broadcasting),
-      graduated by band. A bot's 20 wallets sit inside the free 1,000 at any
-      volume.
+      transaction. Two plans, both graduated by band: "Signing API only"
+      (Circle signs, the customer broadcasts, as at Turnkey, Magic, Lit and
+      Portal; Circle's signing APIs are for developer-controlled wallets
+      "when you manage broadcasting yourself") and All-included (signing,
+      indexing, broadcasting). A bot's 20 wallets sit inside the free 1,000
+      at any volume. Added 2026-10-30: the signing-only plan was missed.
     meters:
       active_wallets: { per_wallet: 1 }
     plans:
+      - id: signing-api
+        name: Signing API only
+        monthly_usd: 0
+        confidence: verified
+        tiers:
+          active_wallets:
+            - { up_to: 1000, rate: 0 }
+            - { up_to: 5000, rate: 0.038 }
+            - { up_to: 10000, rate: 0.035 }
+            - { up_to: 25000, rate: 0.030 }
+            - { up_to: 50000, rate: 0.026 }
+            - { up_to: 100000, rate: 0.023 }
+            - { up_to: 250000, rate: 0.015 }
+            - { rate: 0.012 }
       - id: all-included
         name: All-included
         monthly_usd: 0

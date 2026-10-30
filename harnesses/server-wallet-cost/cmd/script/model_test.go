@@ -49,19 +49,19 @@ func TestHandVerifiedBills(t *testing.T) {
 	}{
 		{"coinbase-cdp", "agents", 10000, (1000000 - 5000) * 0.005, "payg"},
 		{"thirdweb", "agents", 10000, 99 + 99*1 + 150*0.60 + 250*0.20, "growth"},
-		{"circle", "agents", 10000, 4000*0.05 + 5000*0.047, "all-included"},
+		{"circle", "agents", 10000, 4000*0.038 + 5000*0.035, "signing-api"},
 		{"magic", "agents", 10000, 99 + 7500*0.04 + 450000*0.005, "startup"},
 		{"openfort", "agents", 10000, 599 + 500000*0.004, "scale"},
 		{"privy", "agents", 10000, 2000 + 450000*0.01, "payg"},
 		{"lit", "agents", 10000, 500000 * 0.01, "credits"},
 		{"portal", "agents", 10000, 499 + 499000*0.10 + 9000*0.10, "start-up"},
 		// A bot's 20 wallets are inside Circle's free 1,000 at any volume.
-		{"circle", "bot", 1000000, 0, "all-included"},
+		{"circle", "bot", 1000000, 0, "signing-api"},
 		{"thirdweb", "bot", 100000, 99 + 99*1, "growth"},
 		// Turnkey Pro as a spending floor: 100,000 x $0.05 clears $99.
 		{"turnkey", "bot", 100000, 100000 * 0.05, "pro"},
 		{"thirdweb", "payouts", 100000, 99 + 99*1 + 100*0.60, "growth"},
-		{"circle", "payouts", 100000, 4000*0.05 + 5000*0.047 + 15000*0.04 + 25000*0.035 + 50000*0.03, "all-included"},
+		{"circle", "payouts", 100000, 4000*0.038 + 5000*0.035 + 15000*0.03 + 25000*0.026 + 50000*0.023, "signing-api"},
 	}
 	for _, tc := range cases {
 		q := cheapest(provider(t, c, tc.slug), scenario(t, c, tc.scenario), tc.x)

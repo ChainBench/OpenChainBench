@@ -64,7 +64,7 @@ func init() {
 	}, []string{"provider", "plan", "kind", "bucket"})
 	eligible = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "server_wallet_cost_eligible",
-		Help: "1 when a published plan serves this workload at this volume, 0 when none does.",
+		Help: "1 when a published price is ranked for this workload at this volume; 0 when no published plan serves it, or when the price is an 'at least' figure at or under the cheapest price that holds (published, not ranked).",
 	}, []string{"provider", "kind", "bucket"})
 	planConfidence = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "server_wallet_cost_plan_confidence",
