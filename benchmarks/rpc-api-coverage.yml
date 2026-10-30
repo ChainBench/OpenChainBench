@@ -53,6 +53,7 @@ methodology:
   - "The log queries are asked over a five block window, which is deliberately narrow: that answers whether the method is routed at all, and a narrow window is the question every provider should be able to answer. It is not the question an indexer asks, and the two unfiltered-shape columns still read alike for that reason."
   - "The two window columns are the question an indexer does ask. Each climbs 100, 500, 1000, 2000, 10000, 100000 and 1000000 blocks and stops at the first refusal, so the figure is the widest window accepted. The filters are built to match nothing, so what this measures is the static guard on the block span, the thing that trips before any work and freezes a cursor, and not the widest window logs will actually come from."
   - "Two limits on the window columns. The figure is a floor rather than a ceiling when every width passed, and it is in blocks, so it ranks providers within a chain tab and not across chains: a block is twelve seconds on Ethereum and two on Base."
+  - "On the all-chains tab the window columns take the narrowest window across the chains probed, not the widest. A provider that accepts a million blocks on one chain and five hundred on the other seven would otherwise read a million, which is the number you would plan around and never meet. The other columns on this board average because they are shares; these are limits, and a limit averages into something nobody is offered."
   - "The Beacon API is not answered here. Beacon endpoints live on a different base URL from the JSON-RPC endpoint and our configuration carries only the latter, so the question was never put. Publishing 0 would state that no provider in this cohort serves it, which is false. It needs its own credentials before it can be measured."
   - "Solana is not on this board. Every method here is an EVM concept, the Solana keyed cohort is three providers, and a grid whose columns are all blank on one tab is not a matrix. Solana belongs in its own bench against Solana-native providers, measured on Solana methods."
   - "The harness probes one Solana method already, for that future bench, so every query on this board excludes that chain by name rather than relying on the column list. Leaving it in counted a method we declare out of scope toward the all-chains share, and it helped only the two providers that answer it."
@@ -90,19 +91,19 @@ metric_panels:
   - id: api_getlogs_range_address
     label: "eth_getLogs window, address filter"
     label_key: provider
-    metric: max by (provider) (rpc_getlogs_max_range_blocks{filter_shape="address"})
+    metric: min by (provider) (rpc_getlogs_max_range_blocks{filter_shape="address"})
     unit: count
     higher_is_better: true
     tab: false
-    description: "Widest block window accepted for an address-filtered log query, climbing 100 to 1000000 blocks and stopping at the first refusal. 0 means the narrowest window was refused. This is the range guard, which trips before any work, not the widest window logs will actually come from."
+    description: "Widest block window accepted for an address-filtered log query, climbing 100 to 1000000 blocks and stopping at the first refusal. A chain tab shows that chain; the all-chains tab shows the narrowest across chains, never wider than what you would meet. 0 means even 100 blocks was refused."
   - id: api_getlogs_range_topics
     label: "eth_getLogs window, topic filter"
     label_key: provider
-    metric: max by (provider) (rpc_getlogs_max_range_blocks{filter_shape="topics"})
+    metric: min by (provider) (rpc_getlogs_max_range_blocks{filter_shape="topics"})
     unit: count
     higher_is_better: true
     tab: false
-    description: "Widest block window accepted for a topic-filtered log query, same ladder as the address column. A provider can serve the shape and still refuse the width, which is the distinction an indexer plans around."
+    description: "Widest block window accepted for a topic-filtered log query, same ladder and same all-chains rule as the address column. A provider can serve the shape and still refuse the width, which is the distinction an indexer plans around."
   - id: api_getlogs_address
     label: "eth_getLogs, address filter"
     label_key: provider
