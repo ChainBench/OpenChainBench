@@ -412,11 +412,27 @@ var coverageProbes = []coverageProbe{
 		API:  "sol_getprogramaccounts",
 		Kind: "solana",
 		body: func(uint64) (string, bool) {
-			// SPL Token program, with a dataSlice of length 0 and a dataSize
-			// filter. The response is bounded by construction: we are asking
-			// whether the method is routed, and an unbounded
-			// getProgramAccounts against the token program would return
-			// megabytes.
+			// SPL Token program with a dataSize filter and a dataSlice of
+			// length 0.
+			//
+			// An earlier version of this comment said the response was
+			// "bounded by construction". It is not, and the correction
+			// matters because it was the reason nobody looked. dataSlice
+			// trims each account's DATA and does nothing to the length of
+			// the array, and every SPL token account is exactly 165 bytes,
+			// so the filter selects about ten million of them. Measured on
+			// 2026-10-30 with this same shape: the stake program returned
+			// 1,384,150 accounts and 311 MB, the address lookup table
+			// program 2,318,733 and 517 MB.
+			//
+			// This probe is therefore safe only because every provider
+			// refuses it on size, which is luck. It is kept anyway, because
+			// that refusal is the informative answer here (Helius free:
+			// "Too many accounts requested (10000000 pubkeys)"), and the
+			// read is now capped in doPost so a provider that answers
+			// instead cannot hand us half a gigabyte. What it cannot give is
+			// a latency, since nothing was computed, which is why the
+			// bounded probe below exists.
 			return `{"jsonrpc":"2.0","id":1,"method":"getProgramAccounts","params":["TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",{"encoding":"base64","dataSlice":{"offset":0,"length":0},"filters":[{"dataSize":165}],"withContext":true}]}`, true
 		},
 		// Not resultOrError: measured against a real Helius free key, a
@@ -424,6 +440,49 @@ var coverageProbes = []coverageProbe{
 		// (`-32600 Too many accounts requested`). The method is routed, the
 		// request is too big, and only the first of those is the capability
 		// question. Same rule as the trace probes, for the same reason.
+		supported: servedUnlessMethodMissing,
+	},
+	{
+		// The same method against a program with a SMALL account
+		// population, which is the contrast the review asked for: "results
+		// vary a lot by account". The probe above is refused on size by
+		// everyone, so it proves the method is routed and can never produce
+		// a latency, because nothing is computed before the refusal. This
+		// one completes.
+		//
+		// Memo program, measured 2026-10-30: 21 accounts, 4.7 KB, 120 ms on
+		// a Helius free key. Bounded by the program's real population rather
+		// than by a filter we hope is honoured, which is the mistake the
+		// note above corrects. It also discriminates: the same call is
+		// refused on a public endpoint ("Indexed requests require a
+		// personal token"), so this column separates a keyed plan from a
+		// no-key one on a method both claim to serve.
+		API:  "sol_getprogramaccounts_small",
+		Kind: "solana",
+		body: func(uint64) (string, bool) {
+			return `{"jsonrpc":"2.0","id":1,"method":"getProgramAccounts","params":["MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr",{"encoding":"base64","dataSlice":{"offset":0,"length":0},"withContext":true}]}`, true
+		},
+		// A populated program that returns its accounts is served; a refusal
+		// about the request rather than the method is still served, same rule
+		// as the probe above.
+		supported: servedUnlessMethodMissing,
+	},
+	{
+		// "Solana: RPC v2 changes which methods matter" was the review's
+		// point, and it is measurable rather than a matter of opinion:
+		// getProgramAccountsV2 is the paginated form, which is the only
+		// bounded way to ask the question the two probes above have to work
+		// around.
+		//
+		// Measured 2026-10-30: served by a Helius free key (2.3 KB, 255 ms),
+		// "Method not found" on publicnode. So this is a real capability
+		// split between providers and belongs in the matrix, which is
+		// exactly what the review asked for.
+		API:  "sol_getprogramaccounts_v2",
+		Kind: "solana",
+		body: func(uint64) (string, bool) {
+			return `{"jsonrpc":"2.0","id":1,"method":"getProgramAccountsV2","params":["TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",{"encoding":"base64","dataSlice":{"offset":0,"length":0},"limit":10}]}`, true
+		},
 		supported: servedUnlessMethodMissing,
 	},
 }
