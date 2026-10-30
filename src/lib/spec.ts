@@ -635,7 +635,14 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       Moves with all-benchmarks-v116 and bench-filters-v61.
   //       providers-v32 deliberately does NOT move: no provider entered or
   //       left and no provider copy changed.
-  ["bench-unfiltered-v123", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v124: the eth_call work view withholds a non-positive difference. The
+  //       first published pass read minus 1.6 ms for one provider, which on
+  //       a lower-is-better view ranks the noisiest first, so the panel
+  //       query now drops it and the cell reads as a dash. A panel's values
+  //       live in the cached entry, so the old reading would otherwise sit
+  //       there for the full TTL. Moves with all-benchmarks-v117 and
+  //       bench-filters-v62.
+  ["bench-unfiltered-v124", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -929,7 +936,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v115: lockstep with bench-unfiltered-v122, Helius entering the keyed
   //       Solana cohort.
   // v116: lockstep with bench-unfiltered-v123, bench 311's four views.
-  ["all-benchmarks-v116", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v117: lockstep with bench-unfiltered-v124.
+  ["all-benchmarks-v117", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1114,7 +1122,8 @@ const loadBenchmarkFiltered = unstable_cache(
   // v61: lockstep with bench-unfiltered-v123. A view is selectable on every
   //      chain tab, so a stale filtered entry would offer the tabs without
   //      the panels behind them.
-  ["bench-filters-v61", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v62: lockstep with bench-unfiltered-v124.
+  ["bench-filters-v62", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 
