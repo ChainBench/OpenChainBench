@@ -96,6 +96,11 @@ func TestARealWidthRefusalStaysDefinitive(t *testing.T) {
 		"eth_getLogs range of 501 blocks exceeds the 500-block limit",
 		"Block range is too large",
 		"Block range limit exceeded",
+		// Le piege que "429" en sous-chaine nue produisait: trois chiffres
+		// dans une largeur ou un numero de bloc, dans un message qui est un
+		// refus de plage et pas un throttle.
+		"eth_getLogs range of 4291 blocks exceeds the 2000-block limit",
+		"query returned more than 10000 results from block 14290000",
 	} {
 		body := []byte(`{"jsonrpc":"2.0","id":1,"error":{"code":-32005,"message":"` + msg + `"}}`)
 		_, definitive := acceptedSpan(body)

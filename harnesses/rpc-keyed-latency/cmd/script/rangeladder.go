@@ -192,9 +192,15 @@ func rungWindow(head, span uint64) (lo, hi uint64) {
 // relevees sur cette cohorte, les suivantes sont les tournures standard.
 func looksLikeRateLimit(msg string) bool {
 	m := strings.ToLower(msg)
+	// No bare "429". The HTTP status never reaches this function, only the
+	// JSON-RPC message does, and as a substring those three digits match a
+	// block number or a width: "range of 4291 blocks exceeds the limit" and
+	// "from block 14290000" are width refusals, which is the measurement
+	// this ladder exists to take. The spelled-out forms below cover a real
+	// throttle without that risk.
 	for _, s := range []string{
 		"rate limit", "rate-limit", "ratelimit",
-		"too many requests", "429",
+		"too many requests",
 		"exceeded the quota", "quota exceeded",
 		"request limit", "throttl",
 	} {
