@@ -175,15 +175,42 @@ var (
 		[]string{"provider", "chain", "api", "region", "tier"},
 	)
 
-	// The largest block span the provider accepted for each eth_getLogs
-	// filter shape. 0 means it refused even the smallest span tried. This is
-	// a number rather than a boolean because a refusal freezes an indexer's
-	// cursor, so the usable range is the thing a reader has to plan around,
-	// not merely whether the method answers.
+	// The largest eth_getLogs block span the provider's RANGE GUARD admits,
+	// per filter shape. A number rather than a boolean because a range
+	// refusal freezes an indexer's cursor, so the usable width is the thing
+	// a reader plans around, not merely whether the method answers.
+	//
+	// Three things it is not, each measured rather than assumed. See
+	// rangeladder.go for the readings.
+	//
+	// It is not the widest window from which logs will actually be delivered.
+	// The ladder's filters match nothing on purpose, because a wide
+	// unfiltered window is megabytes per call; Alchemy accepted 1,000,000
+	// blocks in 209 ms, which is not a scan. What is left between the request
+	// and an empty reply is the static guard on toBlock minus fromBlock, and
+	// that guard is what trips before any work is done.
+	//
+	// It is not a ceiling when the top rung passes. The value is the largest
+	// span TESTED and accepted, so a provider that clears every rung
+	// publishes a floor.
+	//
+	// It is not comparable across chains. The unit is blocks, and a block is
+	// 12 seconds on Ethereum against 2 on Base, so 10,000 blocks is 33 hours
+	// on one and 5.5 on the other. Within a chain tab it ranks; across chains
+	// it does not, and a spec publishing it must stay per chain.
+	//
+	// 0 means the narrowest tested span was refused, which publicnode does
+	// for topic-only queries ("Please specify an address in your request").
+	// Nothing is written when no definitive answer was reached, same rule as
+	// the capability gauge: a timeout is our failure, and inferring a limit
+	// from it would publish our own patience as the provider's policy.
+	//
+	// The nofilter shape is deliberately absent: its reply cannot be bounded,
+	// so it keeps its five-block capability column and no range number.
 	rpcGetLogsMaxRange = promauto.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "rpc_getlogs_max_range_blocks",
-			Help: "Largest eth_getLogs block span accepted, per filter shape (nofilter | address | topics).",
+			Help: "Largest eth_getLogs block span the provider's range guard admits, per filter shape (address | topics), measured with filters that match nothing. A floor when every tested span passed. Blocks, so comparable within a chain and not across chains.",
 		},
 		[]string{"provider", "chain", "filter_shape", "region", "tier"},
 	)

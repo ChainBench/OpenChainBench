@@ -594,6 +594,15 @@ func runCoveragePass(ctx context.Context, eps []Endpoint) {
 		forbidden += tally.forbidden
 		unknown += tally.unknown
 		unusable += tally.unusable
+
+		// After the capability questions, not before: the five-block columns
+		// establish whether a filter shape is routed at all, and the ladder
+		// below only makes sense for a shape that is. See rangeladder.go.
+		select {
+		case <-ctx.Done():
+		case <-time.After(coveragePerCallSpacing):
+		}
+		probeGetLogsRange(ctx, e, head)
 	}
 
 	fmt.Printf("[coverage] pass done in %s: served=%d unsupported=%d forbidden=%d "+
