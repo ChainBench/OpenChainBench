@@ -81,6 +81,12 @@ func main() {
 	// because capability is a property of the plan, not of where the caller
 	// sits, so three regions would pay three times for one answer.
 	StartCoverageLoop(ctx)
+	// The two eth_call legs again, hourly, in the coverage region only. The
+	// capability pass answers a question that changes monthly; the work term
+	// is a measurement and needs samples, and four readings a day cannot say
+	// whether it separates providers. See heavycall.go for the arithmetic
+	// that kept this to two probes rather than all twelve.
+	StartHeavyLane(ctx)
 	// The WebSocket arm shares this process on purpose: its headline metric is
 	// a race between providers on the same block, and arrival times from
 	// separate processes would compare clocks. See ws.go.

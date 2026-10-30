@@ -53,10 +53,14 @@ package main
 // the same lookup as finding a balance.
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"os"
+	"strconv"
 	"strings"
+	"time"
 )
 
 const (
@@ -170,6 +174,101 @@ func aggregate3Verdict(n int) func(raw []byte) (string, error) {
 		}
 		return verdictServed, nil
 	}
+}
+
+// StartHeavyLane runs the two eth_call legs more often than the capability
+// pass, and nothing else.
+//
+// Why a separate cadence. Capability is a property of a plan and changes
+// monthly, so six hours is right for it. The work term is a measurement and
+// needs samples: at four readings a day a week yields 28 points, which is too
+// few to say whether the delta ranks providers at all. Measured from a laptop
+// on 2026-10-30 the deltas were 18 to 66 ms across eleven keyed cells, a
+// 48 ms spread, against 109 ms of dispersion in the measuring instrument
+// itself. The harness measures from a datacentre and aggregates over days, so
+// whether that spread survives is a question only this lane can answer, and it
+// answers it six times faster.
+//
+// Why only these two. Running all twelve probes hourly would cost a provider
+// with eight EVM cells about 69,000 requests a month in this region, which is
+// 19% of Infura's 370,000 budget on top of the 173,000 the tip probe already
+// spends there. Two probes cost 11,520 for the same footprint, about 3%. The
+// instruction was to watch the plans, and this is what watching them looks
+// like: raise the cadence of the thing being measured, not of the thing that
+// changes monthly.
+//
+// Same region as the coverage pass, deliberately. A difference between two
+// legs is the work only if both legs share a vantage point, and two regions
+// would be two different networks.
+func StartHeavyLane(ctx context.Context) {
+	if !coverageEnabled() {
+		return
+	}
+	interval := heavyLaneInterval()
+	var eps []Endpoint
+	for _, e := range endpoints() {
+		if e.Kind == "evm" {
+			eps = append(eps, e)
+		}
+	}
+	if len(eps) == 0 {
+		return
+	}
+	fmt.Printf("[heavy-lane] enabled: %d EVM endpoints x 2 probes every %s\n",
+		len(eps), interval)
+
+	go func() {
+		// Offset from the coverage pass so the two never collide on the same
+		// endpoint, which would put a capability probe between the two legs.
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(4 * time.Minute):
+		}
+		for {
+			start := time.Now()
+			var paired int
+			for _, e := range eps {
+				head := tips.get(e.Chain)
+				light := probeCoverage(ctx, e, ethCallProbe("eth_call_light", lightCallSubCalls), head)
+				select {
+				case <-ctx.Done():
+					return
+				case <-time.After(coveragePerCallSpacing):
+				}
+				heavy := probeCoverage(ctx, e, ethCallProbe("eth_call_heavy", heavyCallSubCalls), head)
+				// Only a pair is useful: a heavy reading whose light partner
+				// failed has no reference to be a difference from.
+				if light == verdictServed && heavy == verdictServed {
+					paired++
+				}
+				select {
+				case <-ctx.Done():
+					return
+				case <-time.After(coveragePerCallSpacing):
+				}
+			}
+			fmt.Printf("[heavy-lane] pass done in %s: %d/%d endpoints produced a usable pair\n",
+				time.Since(start).Truncate(time.Second), paired, len(eps))
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(interval):
+			}
+		}
+	}()
+}
+
+// heavyLaneInterval allows the cadence to be tuned from Railway without a
+// rebuild, with a floor: below five minutes this stops being a measurement of
+// the provider and starts being a load test.
+func heavyLaneInterval() time.Duration {
+	if v := strings.TrimSpace(os.Getenv("RPC_KEYED_HEAVY_LANE_SECONDS")); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n >= 300 {
+			return time.Duration(n) * time.Second
+		}
+	}
+	return time.Hour
 }
 
 func ethCallProbe(api string, n int) coverageProbe {
