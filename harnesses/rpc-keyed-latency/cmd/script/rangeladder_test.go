@@ -33,8 +33,10 @@ func TestLadderStopsAtTheProvidersGuard(t *testing.T) {
 	if !out.publish {
 		t.Fatal("a refusal is a definitive answer and must publish")
 	}
-	if out.calls != 3 {
-		t.Fatalf("spent %d calls, want 3: the ladder must stop at the first refusal", out.calls)
+	// 100, 500, 1000, 2000 and 10000 are accepted, 100000 is refused: six
+	// calls, and the ladder stops there rather than trying the top rung.
+	if out.calls != 6 {
+		t.Fatalf("spent %d calls, want 6: the ladder must stop at the first refusal", out.calls)
 	}
 }
 
@@ -100,7 +102,11 @@ func TestRungsAscendAndFitTheProbeTimeout(t *testing.T) {
 	// than probeTimeout would be recorded as a timeout and cap the published
 	// limit at our own patience, so the ladder may not grow a rung without
 	// someone timing it again.
-	if len(getLogsRungs) > 6 {
+	// The set grew from four to seven after the first production pass showed
+	// two providers capped below the old first rung. Seven is the ceiling:
+	// each rung is a call per shape per pass, and only providers that accept
+	// everything pay for all of them.
+	if len(getLogsRungs) > 8 {
 		t.Fatalf("%d rungs: each one is a call per shape per pass, and the set was chosen from measured timings", len(getLogsRungs))
 	}
 }
@@ -142,13 +148,13 @@ func TestLadderSkipsAChainYoungerThanTheRung(t *testing.T) {
 	}
 	// The guard itself lives in probeGetLogsRange's ask closure; this pins
 	// the arithmetic it protects.
-	var head uint64 = 500
+	var head uint64 = 50
 	for _, span := range getLogsRungs {
 		if head > span {
 			t.Fatalf("rung %d should be skipped for head %d", span, head)
 		}
 	}
-	if got := fmt.Sprintf("%d", getLogsRungs[0]); got != "2000" {
-		t.Fatalf("first rung %s; the skip test above assumes it exceeds 500", got)
+	if got := fmt.Sprintf("%d", getLogsRungs[0]); got != "100" {
+		t.Fatalf("first rung %s; the skip test above assumes it exceeds a head of 50", got)
 	}
 }

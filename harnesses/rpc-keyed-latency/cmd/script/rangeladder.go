@@ -56,6 +56,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 )
 
@@ -68,7 +69,21 @@ import (
 // probeTimeout. That matters more than it looks: a rung slower than our own
 // 8 s timeout would be recorded as a timeout, and the published limit would be
 // capped by our patience rather than by the provider's guard.
-var getLogsRungs = []uint64{2_000, 10_000, 100_000, 1_000_000}
+//
+// THE BOTTOM THREE RUNGS WERE ADDED AFTER THE FIRST PRODUCTION PASS. The
+// ladder started at 2,000 and two providers of five published nothing at all:
+// dwellir 0 cells of 16, getblock 2 of 14. Their limits sit below that first
+// rung, which their own errors state outright once you read them:
+//
+//	dwellir   -32005  "eth_getLogs range of 2001 blocks exceeds the 500-block limit"
+//	getblock  -32062  "Block range is too large"
+//
+// A ladder whose first rung is above a provider's limit can only ever publish
+// zero for them, and zero does not separate a 500-block limit from a 50-block
+// one. Stopping at the first refusal keeps the cheap providers cheap: dwellir
+// answers 100, answers 500, is refused at 1,000, and publishes 500 in three
+// calls rather than seven.
+var getLogsRungs = []uint64{100, 500, 1_000, 2_000, 10_000, 100_000, 1_000_000}
 
 // The two shapes whose reply can be bounded. Names match the filter_shape
 // label values the capability columns already use, so a reader can line the
@@ -98,6 +113,46 @@ var getLogsRangeShapes = []struct {
 // A 32-byte topic0 no deployed event signature can equal, so the topic index
 // is consulted and matches nothing.
 const nonexistentTopic = "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+
+// acceptedSpan reads one rung's reply: was the span accepted, and was the
+// answer definitive.
+//
+// This is NOT the capability classifier, and the first production pass is why.
+// `classifyError` recognises two families, a method that is absent and a
+// method withheld from the plan, and returns "unknown" for everything else so
+// a rate-limit message can never be mistaken for evidence about capability.
+// That caution is right there and wrong here: a range refusal belongs to
+// neither family, so the ladder read every one of them as "we did not find
+// out" and published nothing. Dwellir produced zero readings of sixteen and
+// getblock two of fourteen, while their replies said plainly:
+//
+//	-32005  "eth_getLogs range of 2001 blocks exceeds the 500-block limit"
+//	-32062  "Block range is too large"
+//
+// Inside the ladder the ambiguity those two families guard against does not
+// exist. Whether the shape is routed at all is the capability column's
+// question and it is answered separately, over five blocks. So here a
+// JSON-RPC error means the provider declined THIS WIDTH, which is the
+// measurement. The only indefinite outcome left is a body we cannot read.
+func acceptedSpan(raw []byte) (accepted bool, definitive bool) {
+	var r jsonRPCReply
+	if err := json.Unmarshal(raw, &r); err != nil {
+		return false, false
+	}
+	if r.Error != nil {
+		return false, true
+	}
+	// An empty array is the expected success: the filters match nothing by
+	// design. A result that is absent or not an array is not an answer.
+	var logs []json.RawMessage
+	if len(r.Result) == 0 {
+		return false, false
+	}
+	if err := json.Unmarshal(r.Result, &logs); err != nil {
+		return false, false
+	}
+	return true, true
+}
 
 // rangeOutcome is what one ladder learned.
 type rangeOutcome struct {
@@ -161,19 +216,16 @@ func probeGetLogsRange(ctx context.Context, e Endpoint, head uint64) {
 				sh.Filter(head-span, head))
 			raw, _, classified, err := doPost(ctx, e.URL, []byte(payload), false)
 			if err != nil {
+				// An HTTP-level failure is ours to own, not theirs to answer
+				// for. One real case is lost here and knowingly: getblock on
+				// arc delivers its range refusal as an HTTP 403 whose body
+				// says "Requested block range exceeds the limits (1500
+				// blocks)", and doPost discards a non-200 body, so that cell
+				// publishes nothing rather than a guessed limit.
 				labelProbe(e, "getlogs_range_"+sh.Shape, classified)
 				return false, false
 			}
-			v, verr := coverageProbes0EmptyOK(raw)
-			if verr != nil {
-				labelProbe(e, "getlogs_range_"+sh.Shape, "unclassified")
-				return false, false
-			}
-			// A refusal here is about the RANGE, not about the method: the
-			// same filter shape at five blocks is what the capability column
-			// already answers, so a provider that serves the shape and
-			// refuses the width has stated its guard.
-			return v == verdictServed, true
+			return acceptedSpan(raw)
 		})
 		if !out.publish {
 			// Printed, not silent. A ladder that reaches no verdict is
