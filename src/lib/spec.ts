@@ -668,7 +668,19 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // v129: bench 312 paymaster-cost arrives (nine vendors; Pimlico,
   //       Etherspot and Candide new to the site). Moves with
   //       all-benchmarks-v122 and bench-filters-v67.
-  ["bench-unfiltered-v129", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v129: the per-chain leader stash stops crowning a gated row and stops
+  //       breaking ties by spec order. bestPerChain lives in the cached
+  //       entry and feeds the product-page chip, so a stale one keeps
+  //       publishing "#1 of 5 on Robinhood Chain" for a row the board shows
+  //       unranked. Moves with all-benchmarks-v122, bench-filters-v67 and
+  //       providers-v34, which is the key the chip itself reads through.
+  // v130: the per-chain leader stash stops crowning a gated row and
+  //       stops breaking ties by spec order. bestPerChain feeds the
+  //       product-page chip, so a stale entry keeps publishing
+  //       "#1 of 5 on Robinhood Chain" for a row the board shows
+  //       unranked. Moves with all-benchmarks-v123, bench-filters-v68
+  //       and providers-v35.
+  ["bench-unfiltered-v130", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -968,7 +980,9 @@ const loadAllBenchmarksCached = unstable_cache(
   // v120: lockstep with bench-unfiltered-v127 (wallet titles).
   // v121: lockstep with bench-unfiltered-v128 (cell placeholders).
   // v122: lockstep with bench-unfiltered-v129 (bench 312).
-  ["all-benchmarks-v122", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v122: lockstep with bench-unfiltered-v129 (per-chain leader).
+  // v123: lockstep with bench-unfiltered-v130 (per-chain leader).
+  ["all-benchmarks-v123", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1160,7 +1174,8 @@ const loadBenchmarkFiltered = unstable_cache(
   // v65: lockstep with bench-unfiltered-v127.
   // v66: lockstep with bench-unfiltered-v128.
   // v67: lockstep with bench-unfiltered-v129.
-  ["bench-filters-v67", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v68: lockstep with bench-unfiltered-v130 (per-chain leader).
+  ["bench-filters-v68", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 

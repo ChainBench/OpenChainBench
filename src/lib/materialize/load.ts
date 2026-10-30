@@ -19,6 +19,7 @@ import type {
 } from "@/types/benchmark";
 import { Prometheus } from "@/lib/prometheus";
 import { specValueKind } from "@/lib/value-window";
+import { pickChainLeader, pickChainTrailer } from "@/lib/materialize/per-chain-leader";
 import { SpecSchema, type Spec } from "@/lib/spec-schema";
 import { DEV_ONLY_BENCH_SLUGS, REMOVED_BENCH_SLUGS } from "@/lib/removed-benches";
 import { renderBenchmarkText } from "@/lib/bench-template";
@@ -538,13 +539,13 @@ export async function specToBenchmark(
           if (liveForChain.length === 0) {
             return [chain, undefined, undefined, slugs, values, spreads] as const;
           }
-          const sorted = [...liveForChain].sort((a, b) =>
-            spec.higher_is_better ? b.ms.p50 - a.ms.p50 : a.ms.p50 - b.ms.p50,
-          );
+          // Not sorted[0] of everything: a row the board publishes outside
+          // its ranking cannot lead a chain, and a shared best value elects
+          // nobody. See per-chain-leader.ts for the two live cases.
           return [
             chain,
-            sorted[0],
-            sorted[sorted.length - 1],
+            pickChainLeader(liveForChain, !!spec.higher_is_better) ?? undefined,
+            pickChainTrailer(liveForChain, !!spec.higher_is_better) ?? undefined,
             slugs,
             values,
             spreads,

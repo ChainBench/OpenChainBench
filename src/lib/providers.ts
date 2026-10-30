@@ -922,7 +922,12 @@ const buildProvidersCached = unstable_cache(
   // the price reading on appearance rows).
   // v34: bench 312 adds paymaster appearances; Pimlico, Etherspot and
   //      Candide are new to the site. Lockstep with bench-unfiltered-v129.
-  ["providers-v34"],
+  // v35: the per-chain leader stash no longer crowns a row the board
+  //      publishes outside its ranking, and elects nobody on a tie. This
+  //      index embeds the "#1 of N on <chain>" chip, so a cached one keeps
+  //      claiming a rank the bench itself declines to give. Lockstep with
+  //      bench-unfiltered-v130.
+  ["providers-v35"],
   // 900 s: the provider index feeds products / compare / answers, whose
   // numbers move slowly, and this revalidate is also the effective ISR
   // period of those ~500 pages (Next takes the min across a route's caches).
