@@ -664,17 +664,31 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       2026. Moves with all-benchmarks-v120 and bench-filters-v65.
   // v128: the wallet pricing findings and FAQ read their winners and
   //       bills from the curve ({{cell:...}}). Moves with
+  //       all-benchmarks-v121 and bench-filters-v66.
+  // v129: bench 312 paymaster-cost arrives (nine vendors; Pimlico,
+  //       Etherspot and Candide new to the site). Moves with
+  //       all-benchmarks-v122 and bench-filters-v67.
   // v129: the per-chain leader stash stops crowning a gated row and stops
-  //       breaking ties by spec order. Moves with all-benchmarks-v122,
-  //       bench-filters-v67 and providers-v34.
-  // v130: the two window columns select bound=~"refused|top", so a figure
+  //       breaking ties by spec order. bestPerChain lives in the cached
+  //       entry and feeds the product-page chip, so a stale one keeps
+  //       publishing "#1 of 5 on Robinhood Chain" for a row the board shows
+  //       unranked. Moves with all-benchmarks-v122, bench-filters-v67 and
+  //       providers-v34, which is the key the chip itself reads through.
+  // v130: the per-chain leader stash stops crowning a gated row and
+  //       stops breaking ties by spec order. bestPerChain feeds the
+  //       product-page chip, so a stale entry keeps publishing
+  //       "#1 of 5 on Robinhood Chain" for a row the board shows
+  //       unranked. Moves with all-benchmarks-v123, bench-filters-v68
+  //       and providers-v35.
+  // v131: the two window columns select bound=~"refused|top", so a figure
   //       the ladder reached before one of OUR OWN calls failed is no longer
   //       printed as the provider's limit; the audit found Quicknode
   //       publishing 10,000 on seven chains after an HTTP error at the
   //       100,000 rung. The eth_call view's copy moves with it: both legs
-  //       are primed now, so the handshake is paid outside the measurement.
-  //       Moves with all-benchmarks-v123 and bench-filters-v68.
-  ["bench-unfiltered-v130", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  //       are primed now, so the handshake is paid outside the measurement
+  //       instead of inside a difference of a few milliseconds. Moves with
+  //       all-benchmarks-v124 and bench-filters-v69.
+  ["bench-unfiltered-v131", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -973,9 +987,11 @@ const loadAllBenchmarksCached = unstable_cache(
   // v119: lockstep with bench-unfiltered-v126.
   // v120: lockstep with bench-unfiltered-v127 (wallet titles).
   // v121: lockstep with bench-unfiltered-v128 (cell placeholders).
+  // v122: lockstep with bench-unfiltered-v129 (bench 312).
   // v122: lockstep with bench-unfiltered-v129 (per-chain leader).
-  // v123: lockstep with bench-unfiltered-v130 (ladder bound).
-  ["all-benchmarks-v123", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v123: lockstep with bench-unfiltered-v130 (per-chain leader).
+  // v124: lockstep with bench-unfiltered-v131 (ladder bound, primed legs).
+  ["all-benchmarks-v124", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1167,8 +1183,9 @@ const loadBenchmarkFiltered = unstable_cache(
   // v65: lockstep with bench-unfiltered-v127.
   // v66: lockstep with bench-unfiltered-v128.
   // v67: lockstep with bench-unfiltered-v129.
-  // v68: lockstep with bench-unfiltered-v130.
-  ["bench-filters-v68", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v68: lockstep with bench-unfiltered-v130 (per-chain leader).
+  // v69: lockstep with bench-unfiltered-v131.
+  ["bench-filters-v69", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 

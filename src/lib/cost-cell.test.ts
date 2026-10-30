@@ -30,6 +30,14 @@ describe("cost cells", () => {
     expect(costCell("rpc-cost", "a", "b", "best_name")).toBeNull();
   });
 
+  test("bench 312 reads its own curve, chain by chain", () => {
+    expect(costCell("paymaster-cost", "base", "medium", "best_name")).toBe("Coinbase CDP");
+    expect(costCell("paymaster-cost", "ethereum", "small", "best_name")).toBe("Etherspot");
+    // Circle's 5% leaves its wallet fee out: listed, never named.
+    expect(costCell("paymaster-cost", "base", "medium", "circle")).toBe("at least $10");
+    expect(costCell("paymaster-cost", "ethereum", "medium", "coinbase-cdp")).toBe("no self-serve price");
+  });
+
   test("renders in prose and leaves other benches alone", () => {
     const s = "{{cell:bot:large:circle}} at Circle";
     expect(renderCostCells(s, "server-wallet-cost")).toBe("$0 at Circle");

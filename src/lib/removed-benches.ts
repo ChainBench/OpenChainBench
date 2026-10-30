@@ -229,6 +229,9 @@ export const DEV_ONLY_BENCH_SLUGS = new Set([
   // 310 server-wallet-cost: new 2026-10-29, server and agent wallet
   // pricing. Un-gate after a harness cycle and its audit rounds.
   "server-wallet-cost",
+  // 312 paymaster-cost: new 2026-10-30, gas sponsorship pricing on Base,
+  // Arbitrum and Ethereum. Un-gate after a harness cycle and its audit rounds.
+  "paymaster-cost",
   // 309 wallet-cost left this list on 2026-10-29, after its harness had
   // run all day and three audit rounds (data and code twice, SEO once) had
   // their findings fixed (#3361, #3365, #3367, #3369). Released in #3374.

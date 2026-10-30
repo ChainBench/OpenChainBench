@@ -1,0 +1,476 @@
+# Paymaster pricing catalogue, the input of record for bench paymaster-cost
+# (312). Same model and rules as bench 310's catalogue
+# (harnesses/server-wallet-cost/pricing/catalogue.yml); read bench 309's
+# header (harnesses/wallet-cost/pricing/catalogue.yml) for the grammar of
+# meters, tiers, caps, quote_above, minimum and uncertain_above.
+#
+# What is billed: what a vendor charges a developer for sponsoring its users'
+# gas, ON TOP OF the gas itself. The gas a sponsored user operation burns is
+# the same whoever sponsors it, so it is left out of every bill and stated
+# beside it on the page; what differs is the plan fee, the per-operation or
+# per-request charge, and the surcharge on the gas.
+#
+# Each scenario is a chain. Its axis x is sponsored user operations a month
+# (tx = x), and `gas_usd_per_tx` is the USD of gas one sponsored operation
+# burns there, so a surcharge meter `{ per_gas_usd: 1 }` counts USD of
+# sponsored gas and its rate is the surcharge as a fraction (10% is 0.10).
+#
+# gas_usd_per_tx, measured 2026-10-30 (ETH $2,230.95, Coinbase spot): the
+# median actualGasCost of UserOperationEvent on EntryPoint v0.7 for
+# successful sponsored operations, strict profile (a bundle of exactly one
+# operation, no account deployment, one ERC-20 transfer, no other logs):
+#   Base      blocks 53,293,921-53,294,526  n=37  ~148.6k gas  $0.0020
+#   Arbitrum  blocks 519,699,712-519,731,559 n=25 ~161.4k gas  $0.0072
+#   Ethereum  blocks 26,306,702-26,306,872  n=57  ~132.1k gas  $0.150
+# actualGasCost is the base the surcharges are stated on (Pimlico's FAQ
+# bills `actualGasCost * 1.1`; CDP's uses the UserOperationEvent too). On
+# Ethereum it moves with the base fee (0.51 gwei here): a surcharge there is
+# a share of a number that can double in a busy hour.
+
+version: 1
+as_of: "2026-10-30"
+
+scenarios:
+  - id: base
+    label: Base
+    axis: sponsored user operations a month
+    wallets_fixed: 0
+    wallets_per_x: 0
+    tx_fixed: 0
+    tx_per_x: 1
+    gas_usd_per_tx: 0.0020
+    floor: 1000
+    ceiling: 10000000
+    sizes:
+      - { id: small, x: 10000 }
+      - { id: medium, x: 100000 }
+      - { id: large, x: 1000000 }
+  - id: arbitrum
+    label: Arbitrum
+    axis: sponsored user operations a month
+    wallets_fixed: 0
+    wallets_per_x: 0
+    tx_fixed: 0
+    tx_per_x: 1
+    gas_usd_per_tx: 0.0072
+    floor: 1000
+    ceiling: 10000000
+    sizes:
+      - { id: small, x: 10000 }
+      - { id: medium, x: 100000 }
+      - { id: large, x: 1000000 }
+  - id: ethereum
+    label: Ethereum
+    axis: sponsored user operations a month
+    wallets_fixed: 0
+    wallets_per_x: 0
+    tx_fixed: 0
+    tx_per_x: 1
+    gas_usd_per_tx: 0.150
+    floor: 1000
+    ceiling: 10000000
+    sizes:
+      - { id: small, x: 10000 }
+      - { id: medium, x: 100000 }
+      - { id: large, x: 1000000 }
+
+headline: { scenario: base, size: medium }
+
+providers:
+  - slug: pimlico
+    name: Pimlico
+    url: https://www.pimlico.io
+    cohort: ranked
+    unit: API credits plus a gas surcharge
+    note: >-
+      Pay-as-you-go has no monthly fee: 10,000,000 credits a month included,
+      then $1 per 100,000 credits, and a 10% surcharge on sponsored gas on
+      mainnets (`actualGasCost * 1.1`). Pimlico's own count is 1,050 credits
+      per sponsored user operation ("~9,500 if sponsored" included, then
+      "~$0.0105 if sponsored", against ~$0.0075 unsponsored). The Free plan
+      is testnet only.
+    meters:
+      credits: { per_tx: 1050 }
+      gas_surcharge: { per_gas_usd: 1 }
+    plans:
+      - id: payg
+        name: Pay-as-you-go
+        monthly_usd: 0
+        confidence: verified
+        tiers:
+          credits: [{ up_to: 10000000, rate: 0 }, { rate: 0.00001 }]
+          gas_surcharge: [{ rate: 0.10 }]
+      - id: enterprise
+        name: Enterprise
+        monthly_usd: null
+        confidence: verified
+    source:
+      pricing:
+        url: https://docs.pimlico.io/guides/pricing.md
+        body_sha256: 5e6f36c014de28225742dba63f58fb77e7116f8e9eee6a2362d6f2c28889cc20
+        verified_at: "2026-10-30"
+        poll: true
+
+  - slug: alchemy
+    name: Alchemy
+    url: https://www.alchemy.com
+    cohort: ranked
+    unit: Compute units plus an admin fee on gas
+    note: >-
+      Pay as You Go: $0.52 per million compute units for all usage and an 8%
+      fee on gas sponsored on mainnet. On mainnet a PAYG team sponsors
+      through Bundler Sponsored Operations (the onchain paymaster is
+      Enterprise only): a sponsored send costs 3,000 CU, an estimate 500 and
+      a receipt 20, so 3,520 CU an operation. BSO gas is "the onchain
+      settlement cost plus a BSO service fee" that is not published, so every
+      Alchemy price here is a lower bound and is never named cheapest.
+    meters:
+      million_compute_units: { per_tx: 0.00352 }
+      gas_surcharge: { per_gas_usd: 1 }
+    plans:
+      - id: payg
+        name: Pay as You Go
+        monthly_usd: 0
+        confidence: uncertain
+        bound: lower
+        tiers:
+          million_compute_units: [{ rate: 0.52 }]
+          gas_surcharge: [{ rate: 0.08 }]
+    source:
+      pricing:
+        url: https://www.alchemy.com/pricing
+        body_sha256: f6ba1f865cc7dfcda0551a9e39caf352628d631c31dc0a96f448d30ec0406175
+        verified_at: "2026-10-30"
+        poll: true
+      fees:
+        url: https://www.alchemy.com/docs/wallets/reference/gas-manager-faqs.md
+        body_sha256: fbcb34837fb0a0a8eb1ec899746bc5c102e4016069f01bec6db0f64116eef8da
+        verified_at: "2026-10-30"
+        poll: true
+      bso:
+        url: https://www.alchemy.com/docs/wallets/transactions/sponsor-gas/bundler-sponsored-operations.md
+        body_sha256: dda24ad2da9225cfa93f67e39420063c8be9904c86ec424f8552d3778b122607
+        verified_at: "2026-10-30"
+        poll: true
+        pin_phrases: ["bso sponsorship", "bso service fee"]
+      compute_units:
+        url: https://www.alchemy.com/docs/reference/compute-unit-costs.md
+        body_sha256: e2510ac79eb564d349dbe0faab274a2d07669798e94c167fad35fda5836990de
+        verified_at: "2026-10-30"
+        poll: true
+        pin_phrases: ["useroperation"]
+
+  - slug: zerodev
+    name: ZeroDev
+    url: https://zerodev.app
+    cohort: ranked
+    unit: Credits plus a gas premium
+    note: >-
+      A user operation is 20 credits; mainnet sponsorship starts on Launch
+      ($69, 100,000 credits) and Scale ($399, 1,000,000 credits), each with
+      an 8% gas sponsorship premium. Wallet signatures (10 credits) are
+      ZeroDev's signer and are not counted here. Overage past the included
+      credits is not published, so ZeroDev is unpriced above 50,000
+      operations a month.
+    meters:
+      credits: { per_tx: 20 }
+      gas_surcharge: { per_gas_usd: 1 }
+    plans:
+      - id: launch
+        name: Launch
+        monthly_usd: 69
+        confidence: verified
+        caps: { credits: 100000 }
+        tiers:
+          gas_surcharge: [{ rate: 0.08 }]
+      - id: scale
+        name: Scale
+        monthly_usd: 399
+        confidence: verified
+        caps: { credits: 1000000 }
+        tiers:
+          gas_surcharge: [{ rate: 0.08 }]
+      - id: enterprise
+        name: Enterprise
+        monthly_usd: null
+        confidence: verified
+    source:
+      pricing:
+        url: https://www.zerodev.app/pricing
+        body_sha256: 8f42ece562b144b9a61e15a5f46047e7aa7f80725c933e454b96b059fed47186
+        verified_at: "2026-10-30"
+        poll: true
+
+  - slug: thirdweb
+    name: thirdweb
+    url: https://thirdweb.com
+    cohort: ranked
+    unit: Sponsored transactions, banded, plus a gas surcharge
+    note: >-
+      Growth ($99) includes 1,000 sponsored transactions, then $1, $0.60 and
+      $0.20 per thousand at 100K and 250K, and a 2.5% gas surcharge on
+      mainnet. Priced band by band; whether the lower rate applies to the
+      whole count is not stated. The page lists 145+ chains without naming
+      them.
+    meters:
+      thousand_transactions: { per_tx: 0.001 }
+      gas_surcharge: { per_gas_usd: 1 }
+    plans:
+      - id: growth
+        name: Growth
+        monthly_usd: 99
+        confidence: verified
+        uncertain_above: { thousand_transactions: 100 }
+        bound: upper
+        note: >-
+          Unambiguous to 100,000 transactions. Above, priced band by band,
+          the higher reading: if a lower rate applies to the whole count the
+          bill is smaller, so this is the most thirdweb would charge.
+        tiers:
+          thousand_transactions:
+            - { up_to: 1, rate: 0 }
+            - { up_to: 100, rate: 1 }
+            - { up_to: 250, rate: 0.60 }
+            - { rate: 0.20 }
+          gas_surcharge: [{ rate: 0.025 }]
+    source:
+      pricing:
+        url: https://thirdweb.com/pricing
+        body_sha256: b1b48708af995b501f27f4f8f948f203ad11bd045a408bfaf3eb3bfea05ec3de
+        verified_at: "2026-10-30"
+        poll: true
+
+  - slug: coinbase-cdp
+    name: Coinbase CDP
+    url: https://www.coinbase.com/developer-platform
+    cohort: ranked
+    unit: Gas markup, plus node billing units
+    note: >-
+      No plan fee: "actualGasUsed × ethPriceUsd × 1.07", a 7% markup on the
+      gas, billed monthly. Gas estimation on CDP Node is 500 billing units,
+      10M free a month then $0.50 per million; one estimate per operation is
+      counted, the most it would add. Base only. Coinbase also grants up to
+      $15,000 of gas credits on application, which no bill here assumes.
+    scenario_exclusions:
+      arbitrum: The CDP paymaster runs on Base only.
+      ethereum: The CDP paymaster runs on Base only.
+    meters:
+      million_billing_units: { per_tx: 0.0005 }
+      gas_surcharge: { per_gas_usd: 1 }
+    plans:
+      - id: payg
+        name: Pay as you go
+        monthly_usd: 0
+        confidence: uncertain
+        bound: upper
+        tiers:
+          million_billing_units: [{ up_to: 10, rate: 0 }, { rate: 0.50 }]
+          gas_surcharge: [{ rate: 0.07 }]
+    source:
+      pricing:
+        url: https://docs.cdp.coinbase.com/paymaster/faqs.md
+        body_sha256: 2ba12d038cc50be87a3aad3787667cfe38831750e55c1553e0408b49400ba6f8
+        verified_at: "2026-10-30"
+        poll: true
+      node:
+        url: https://docs.cdp.coinbase.com/data/node/pricing.md
+        body_sha256: c5155170de3aaf117c66107eef2328d8998923bb8909021c968ece7426cf4cf1
+        verified_at: "2026-10-30"
+        poll: true
+        pin_phrases: ["estimateuseroperationgas"]
+
+  - slug: circle
+    name: Circle
+    url: https://www.circle.com/wallets
+    cohort: ranked
+    unit: Processing fee on gas
+    note: >-
+      Gas Station sponsors gas for Circle Wallets and invoices it with "a 5%
+      processing fee". It works only with Circle's own smart-contract
+      wallets, which bill per monthly active wallet past the first 1,000;
+      that fee depends on how many wallets send, which this axis does not
+      fix, so every Circle price here is a lower bound and is never named
+      cheapest. Circle Paymaster, where the user pays gas in USDC, is a
+      separate product and is not developer sponsorship.
+    meters:
+      gas_surcharge: { per_gas_usd: 1 }
+    plans:
+      - id: gas-station
+        name: Gas Station
+        monthly_usd: 0
+        confidence: uncertain
+        bound: lower
+        tiers:
+          gas_surcharge: [{ rate: 0.05 }]
+    source:
+      pricing:
+        url: https://developers.circle.com/wallets/gas-station/billing.md
+        body_sha256: 3570cf285e0340971c1cdb9db73497baa1b9593f83b054564278c35324745152
+        verified_at: "2026-10-30"
+        poll: true
+
+  - slug: candide
+    name: Candide
+    url: https://www.candide.dev
+    cohort: ranked
+    unit: Sponsored operations, no gas markup
+    note: >-
+      "We never mark up the gas itself." Launch ($333 a month billed yearly,
+      $399 billed monthly) includes 5,000 sponsored operations a month then
+      $0.01 each, up to 100,000 user operations; Grow ($749 billed yearly,
+      $899 monthly) includes 25,000 then $0.005, up to 500,000; Enterprise is
+      from $3,000. The page shows the yearly price by default, and it is the
+      cheaper, so it is the one priced; the monthly price sits in an attribute
+      of the page that the drift check does not read. Starter's 1,000 sponsored operations are a
+      lifetime allowance, not a monthly one, so it is not a plan here.
+    meters:
+      user_operations: { per_tx: 1 }
+    plans:
+      - id: launch
+        name: Launch, billed yearly
+        monthly_usd: 333
+        confidence: verified
+        caps: { user_operations: 100000 }
+        tiers:
+          user_operations: [{ up_to: 5000, rate: 0 }, { rate: 0.01 }]
+      - id: grow
+        name: Grow, billed yearly
+        monthly_usd: 749
+        confidence: verified
+        caps: { user_operations: 500000 }
+        tiers:
+          user_operations: [{ up_to: 25000, rate: 0 }, { rate: 0.005 }]
+      - id: enterprise
+        name: Enterprise
+        monthly_usd: null
+        confidence: verified
+    source:
+      pricing:
+        url: https://www.candide.dev/pricing
+        body_sha256: 585574f07fc45e13dbbdbf8b579c3b4cc95e7f5e75809a6dd75be7033d49a447
+        verified_at: "2026-10-30"
+        poll: true
+
+  - slug: etherspot
+    name: Etherspot
+    url: https://etherspot.io
+    cohort: ranked
+    unit: API credits, no gas markup
+    note: >-
+      Pay-As-You-Go: $1 per 250,000 credits, "Gas fees charged separately at
+      network cost (no markup)", from a prepaid deposit (a $10 minimum
+      top-up). A sponsored
+      operation is counted as estimate (300), sponsor (700), send (600) and
+      receipt (25): 1,625 credits. A client that fetches paymaster data
+      (450) instead of sponsoring spends less, so this is the most it would
+      cost.
+    meters:
+      quarter_million_credits: { per_tx: 0.0065 }
+    plans:
+      - id: payg
+        name: Pay-As-You-Go
+        monthly_usd: 0
+        confidence: uncertain
+        bound: upper
+        tiers:
+          quarter_million_credits: [{ rate: 1 }]
+      - id: enterprise
+        name: Enterprise
+        monthly_usd: null
+        confidence: verified
+    source:
+      pricing:
+        url: https://etherspot.io/pricing/
+        body_sha256: 569641e7d10a8e288df60cb37ecb18a79f2ea02fb46ade86e9414817b4b29ecd
+        verified_at: "2026-10-30"
+        poll: true
+      credits:
+        url: https://etherspot.fyi/api-credits/pricing.md
+        body_sha256: 169396b628a2e0829cdcac552af82342051fe9bbccd1fcd7ec4cfa19e7d5c7c4
+        verified_at: "2026-10-30"
+        poll: true
+        pin_phrases: ["useroperation", "getpaymasterdata"]
+
+  - slug: openfort
+    name: Openfort
+    url: https://www.openfort.io
+    cohort: ranked
+    unit: Operations plus a paymaster surcharge
+    note: >-
+      "Paymaster calls" are free and unmetered; broadcasting a transaction is
+      1 operation, so a sponsored operation sent through Openfort's bundler
+      is one. The paymaster surcharge is 10% on Free and Growth, 5% on Pro
+      and Scale. The Free card shows $0.01 an operation past 2,000, but a
+      project without a paid subscription "stops at the included limit", so
+      Free stops there. Openfort's v0.8 paymaster is not deployed on Ethereum, so
+      delegated (EIP-7702) accounts there are not sponsored; smart accounts
+      are.
+    meters:
+      operations: { per_tx: 1 }
+      gas_surcharge: { per_gas_usd: 1 }
+    plans:
+      - id: free
+        name: Free
+        monthly_usd: 0
+        confidence: verified
+        caps: { operations: 2000 }
+        tiers:
+          gas_surcharge: [{ rate: 0.10 }]
+      - id: growth
+        name: Growth
+        monthly_usd: 99
+        confidence: verified
+        tiers:
+          operations: [{ up_to: 25000, rate: 0 }, { rate: 0.008 }]
+          gas_surcharge: [{ rate: 0.10 }]
+      - id: pro
+        name: Pro
+        monthly_usd: 249
+        confidence: verified
+        tiers:
+          operations: [{ up_to: 100000, rate: 0 }, { rate: 0.006 }]
+          gas_surcharge: [{ rate: 0.05 }]
+      - id: scale
+        name: Scale
+        monthly_usd: 599
+        confidence: verified
+        tiers:
+          operations: [{ up_to: 500000, rate: 0 }, { rate: 0.004 }]
+          gas_surcharge: [{ rate: 0.05 }]
+    source:
+      pricing:
+        url: https://www.openfort.io/pricing
+        body_sha256: 1ad524f7fe11c8bed79baec6d4616c15fc6541cf5f7b956b789b6bf5ec4ff2dc
+        verified_at: "2026-10-30"
+        poll: true
+
+  - slug: biconomy
+    name: Biconomy
+    url: https://www.biconomy.io
+    cohort: excluded
+    excluded_reason: Sponsorship is invoiced monthly at a rate set on a sales call; no fee is published.
+  - slug: gelato
+    name: Gelato
+    url: https://www.gelato.network
+    cohort: excluded
+    excluded_reason: Its pricing page and docs were offline on 2026-10-30; the last published plans survive only in an archive.
+  - slug: particle-network
+    name: Particle Network
+    url: https://particle.network
+    cohort: excluded
+    excluded_reason: The paymaster runs on a USDT deposit and publishes no fee.
+  - slug: privy
+    name: Privy
+    url: https://www.privy.io
+    cohort: excluded
+    excluded_reason: Gas is billed at network cost plus a convenience fee whose rate is not published.
+  - slug: dynamic
+    name: Dynamic
+    url: https://www.dynamic.xyz
+    cohort: excluded
+    excluded_reason: Gasless transactions are sold through sales.
+  - slug: stackup
+    name: Stackup
+    url: https://www.stackup.fi
+    cohort: excluded
+    excluded_reason: No longer sells a paymaster or bundler; its customers moved to Pimlico.

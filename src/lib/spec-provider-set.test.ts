@@ -53,6 +53,10 @@ describe("the provider set behind the cache keys", () => {
     const hash = createHash("sha256").update(sets.join("\n")).digest("hex").slice(0, 16);
     const count = sets.reduce((n, s) => n + s.split(":")[1].split(",").length, 0);
 
+    // Re-recorded on 2026-10-30 with bench-unfiltered-v129,
+    // all-benchmarks-v122, bench-filters-v67, providers-v34: bench 312
+    // paymaster-cost adds nine paymaster vendors.
+    //
     // Re-recorded on 2026-10-29 with bench-unfiltered-v118,
     // all-benchmarks-v111, bench-filters-v56, providers-v31.
     //
@@ -96,6 +100,6 @@ describe("the provider set behind the cache keys", () => {
         "Then set EXPECTED to the hash in this failure, and add the provider",
         `to PRODUCT_NAMES if it needs a display name. Providers now: ${count}.`,
       ].join("\n"),
-    ).toBe("138d7050f61044ea");
+    ).toBe("51c04fa6fd3b2e64");
   });
 });

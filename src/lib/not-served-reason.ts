@@ -1,5 +1,31 @@
 import { walletCostCurves, walletCostRankAt } from "@/lib/wallet-cost-curve";
-import { serverWalletCurves, serverWalletRankAt } from "@/lib/server-wallet-cost-curve";
+import { serverWalletCurves, serverWalletRankAt, type ServerWalletRow } from "@/lib/server-wallet-cost-curve";
+import { paymasterCurves, paymasterRankAt } from "@/lib/paymaster-cost-curve";
+
+/**
+ * The cell a view names on the scenario benches (310 server wallets, 312
+ * paymasters): kind is the scenario, bucket the size id of that scenario.
+ * Both curves have the same shape, so one reader serves them.
+ */
+function scenarioCell(
+  benchSlug: string,
+  filters: Record<string, string | undefined>,
+): { priced: ServerWalletRow[]; unpriced: ServerWalletRow[] } | null {
+  const reader =
+    benchSlug === "server-wallet-cost"
+      ? { f: serverWalletCurves(), rank: serverWalletRankAt }
+      : benchSlug === "paymaster-cost"
+        ? { f: paymasterCurves(), rank: paymasterRankAt }
+        : null;
+  const f = reader?.f;
+  if (!reader || !f) return null;
+  const kind = filters.kind && filters.kind !== "all" ? filters.kind : f.headline.scenario;
+  const size = filters.bucket && filters.bucket !== "all" ? filters.bucket : f.headline.size;
+  const s = f.scenarios.find((v) => v.id === kind);
+  const x = s?.sizes.find((z) => z.id === size)?.x;
+  if (!s || x === undefined) return null;
+  return reader.rank(s.id, x);
+}
 
 /**
  * Why a provider has no figure on one view of a bench, in that provider's
@@ -24,7 +50,12 @@ export function notServedReason(
   providerSlug: string,
   filters: Record<string, string | undefined>,
 ): string | null {
-  if (benchSlug === "server-wallet-cost") return serverReason(providerSlug, filters);
+  if (benchSlug === "server-wallet-cost" || benchSlug === "paymaster-cost") {
+    const row = scenarioCell(benchSlug, filters)?.unpriced.find(
+      (r) => r.slug.toLowerCase() === providerSlug.toLowerCase(),
+    );
+    return row?.reason || null;
+  }
   if (benchSlug !== "wallet-cost") return null;
   const f = walletCostCurves();
   if (!f) return null;
@@ -38,24 +69,10 @@ export function notServedReason(
   return row?.reason || null;
 }
 
-/** Bench 310: kind is the scenario, bucket the size id of that scenario. */
-function serverReason(providerSlug: string, filters: Record<string, string | undefined>): string | null {
-  const f = serverWalletCurves();
-  if (!f) return null;
-  const kind = filters.kind && filters.kind !== "all" ? filters.kind : f.headline.scenario;
-  const size = filters.bucket && filters.bucket !== "all" ? filters.bucket : f.headline.size;
-  const s = f.scenarios.find((v) => v.id === kind);
-  const x = s?.sizes.find((z) => z.id === size)?.x;
-  if (!s || x === undefined) return null;
-  const row = serverWalletRankAt(s.id, x).unpriced.find(
-    (r) => r.slug.toLowerCase() === providerSlug.toLowerCase(),
-  );
-  return row?.reason || null;
-}
-
 /**
  * Why a priced row is published unranked, where the bench can say better
- * than "Provisional". Bench 310: an "at least" price that would rank first.
+ * than "Provisional". Benches 310 and 312: an "at least" price that would
+ * rank first.
  */
 export function rankGateReason(
   benchSlug: string,
@@ -64,15 +81,7 @@ export function rankGateReason(
   gated?: { successRate?: number; sampleSize?: number },
 ): string | null {
   if (benchSlug === "rpc-api-coverage") return coverageRankReason(gated);
-  if (benchSlug !== "server-wallet-cost") return null;
-  const f = serverWalletCurves();
-  if (!f) return null;
-  const kind = filters.kind && filters.kind !== "all" ? filters.kind : f.headline.scenario;
-  const size = filters.bucket && filters.bucket !== "all" ? filters.bucket : f.headline.size;
-  const s = f.scenarios.find((v) => v.id === kind);
-  const x = s?.sizes.find((z) => z.id === size)?.x;
-  if (!s || x === undefined) return null;
-  const row = serverWalletRankAt(s.id, x).priced.find(
+  const row = scenarioCell(benchSlug, filters)?.priced.find(
     (r) => r.slug.toLowerCase() === providerSlug.toLowerCase(),
   );
   if (!row || row.verified || row.bound !== "lower") return null;
@@ -124,15 +133,8 @@ export function priceReading(
   filters: Record<string, string | undefined>,
 ): string | null {
   const slug = providerSlug.toLowerCase();
-  if (benchSlug === "server-wallet-cost") {
-    const f = serverWalletCurves();
-    if (!f) return null;
-    const kind = filters.kind && filters.kind !== "all" ? filters.kind : f.headline.scenario;
-    const size = filters.bucket && filters.bucket !== "all" ? filters.bucket : f.headline.size;
-    const s = f.scenarios.find((v) => v.id === kind);
-    const x = s?.sizes.find((z) => z.id === size)?.x;
-    if (!s || x === undefined) return null;
-    const row = serverWalletRankAt(s.id, x).priced.find((r) => r.slug.toLowerCase() === slug);
+  if (benchSlug === "server-wallet-cost" || benchSlug === "paymaster-cost") {
+    const row = scenarioCell(benchSlug, filters)?.priced.find((r) => r.slug.toLowerCase() === slug);
     if (!row || row.verified) return null;
     return row.bound === "upper" ? "at most" : row.bound === "lower" ? "at least" : "ambiguous price";
   }
