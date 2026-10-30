@@ -138,6 +138,43 @@ var (
 		[]string{"provider", "chain", "api", "region", "tier"},
 	)
 
+	// Round-trip of the coverage probe itself, per method.
+	//
+	// The calls were already being made and the number was already being
+	// measured: probeCoverage took `raw, _, classified, err` from doPost and
+	// the discarded second value is the round trip. So a latency per method
+	// costs zero additional requests, which is the only reason it is
+	// affordable at all: the headline latency cell costs 21.6k requests per
+	// region per month at the 120 s cadence, and there are eight methods.
+	//
+	// Written ONLY when the method was served. A refusal has a round trip
+	// too, and it is usually the fastest number on the board, because
+	// "method not found" is cheap to produce. Publishing it would rank a
+	// provider fast for declining to answer, which is the same fault as
+	// publishing a refusal we never received.
+	//
+	// This is a COLD number and is not comparable with
+	// rpc_latency_milliseconds. The coverage probe passes warm=false, which
+	// selects coldTransport, which sets DisableKeepAlives, so every call
+	// pays DNS, TCP and TLS by construction rather than by luck. Compare it
+	// with rpc_latency_cold_milliseconds. Comparing it with the warm arm
+	// measures a handshake, which from this container is about 25 ms and was
+	// large enough to invert the published order of four providers in
+	// October.
+	//
+	// Sample count is the honest limit: one reading per method per endpoint
+	// per coverage pass, and the pass runs every six hours in ONE region, so
+	// a 24 h window holds four points. A spec reading this must take its
+	// percentile over a window wide enough to mean something and say how
+	// many samples that is.
+	rpcAPILatency = promauto.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "rpc_api_latency_milliseconds",
+			Help: "Cold round-trip in milliseconds (DNS + TCP + TLS paid every call) of the API coverage probe, per method. Written only when the provider served the method, never for a refusal.",
+		},
+		[]string{"provider", "chain", "api", "region", "tier"},
+	)
+
 	// The largest block span the provider accepted for each eth_getLogs
 	// filter shape. 0 means it refused even the smallest span tried. This is
 	// a number rather than a boolean because a refusal freezes an indexer's
