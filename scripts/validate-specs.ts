@@ -588,6 +588,79 @@ async function checkCostBenchCurve(issues: Issue[], b: CostBench) {
       message: `dollar figures in the prose that are neither a bill at a published volume nor a catalogue fee or rate: ${[...bad].join(", ")}. Re-read the prose against the regenerated curve.`,
     });
   }
+
+  // A figure must also belong to the vendor the sentence gives it to. The
+  // check above let "Dynamic at $724" stand after Dynamic's bill moved to
+  // $4,999, because $724 was still some other number in the model (audit
+  // 2026-10-30). The nearest vendor named before a figure, in the same
+  // sentence, owns it.
+  const named = (cat as { providers?: { slug: string; name: string }[] }).providers ?? [];
+  const perVendor = new Map<string, Set<number>>();
+  for (const [key, v] of Object.entries(table)) {
+    const slug = key.split("|")[2];
+    if (!slug || typeof v !== "number") continue;
+    if (!perVendor.has(slug)) perVendor.set(slug, new Set());
+    perVendor.get(slug)!.add(cents(v));
+  }
+  for (const p of (cat.providers ?? []) as { slug?: string; plans?: { monthly_usd?: number | null; annual_usd?: number; tiers?: Record<string, { rate?: number }[]> }[] }[]) {
+    if (!p.slug) continue;
+    const s = perVendor.get(p.slug) ?? new Set<number>();
+    for (const pl of p.plans ?? []) {
+      if (typeof pl.monthly_usd === "number") s.add(cents(pl.monthly_usd));
+      if (typeof pl.annual_usd === "number") (s.add(cents(pl.annual_usd)), s.add(cents(pl.annual_usd / 12)));
+      for (const tiers of Object.values(pl.tiers ?? {})) for (const tier of tiers) if (typeof tier.rate === "number") s.add(Math.round(tier.rate * 1e6) / 1e4);
+    }
+    // The other reading of an ambiguous page ("$0.005 in its FAQ") is quoted
+    // on purpose; it is allowed when the catalogue's note for that vendor
+    // records it.
+    const notes = [(p as { note?: string }).note ?? "", ...(p.plans ?? []).map((pl) => (pl as { note?: string }).note ?? "")].join(" ");
+    for (const m of notes.matchAll(/\$\s?(\d[\d,]*(?:\.\d+)?)/g)) {
+      const v = Number(m[1].replace(/,/g, ""));
+      s.add(cents(v));
+      s.add(Math.round(v * 1e6) / 1e4);
+    }
+    perVendor.set(p.slug, s);
+  }
+  // "Lit Protocol" is written "Lit", "Coinbase CDP" sometimes "CDP".
+  const patterns = named.flatMap((p) =>
+    [...new Set([p.name, p.name.split(" ")[0]])].map((n) => ({ slug: p.slug, re: new RegExp(`\\b${n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "g") })),
+  );
+  const misattributed = new Set<string>();
+  for (const s of prose) {
+    for (const sentence of s.split(/(?<=[.;?!])\s+/)) {
+      for (const m of sentence.matchAll(/\$\s?(\d[\d,]*(?:\.\d+)?)(?![\d.,]*[kMB])/g)) {
+        const at = m.index ?? 0;
+        let owner: string | null = null;
+        let ownerAt = -1;
+        // "$438 at most at thirdweb": a vendor right after the figure owns it.
+        const after = sentence.slice(at + m[0].length, at + m[0].length + 30);
+        for (const { slug, re } of patterns) {
+          const hit = new RegExp(`^[^,;$]*?\\bat\\s+${re.source}`).exec(after);
+          if (hit) ((owner = slug), (ownerAt = at));
+        }
+        if (!owner) {
+          for (const { slug, re } of patterns) {
+            for (const n of sentence.slice(0, at).matchAll(re)) {
+              if ((n.index ?? -1) > ownerAt) ((ownerAt = n.index ?? -1), (owner = slug));
+            }
+          }
+        }
+        if (!owner || !perVendor.has(owner)) continue;
+        const v = Number(m[1].replace(/,/g, ""));
+        const own = perVendor.get(owner)!;
+        if (!own.has(cents(v)) && !own.has(Math.round(v * 1e6) / 1e4)) {
+          misattributed.add(`${m[0]} after ${owner} ("${sentence.slice(Math.max(0, ownerAt), at + m[0].length).slice(0, 90)}")`);
+        }
+      }
+    }
+  }
+  if (misattributed.size > 0) {
+    issues.push({
+      file: `${b.slug}.yml`,
+      level: "error",
+      message: `dollar figures given to a vendor whose bills and prices do not include them: ${[...misattributed].join("; ")}. Re-read the prose against the regenerated curve.`,
+    });
+  }
 }
 
 main().catch((e) => {

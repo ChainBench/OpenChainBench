@@ -25,8 +25,9 @@ describe("wallet-cost curve reader", () => {
     const at = (profile: string, slug: string, mau: number) => walletCostQuoteAt(provider(profile, slug), mau);
     // Reown Pro: $89 with 7,500 included, then $0.05.
     expect(at("consumer", "reown", 10000)).toMatchObject({ usd: 89 + 2500 * 0.05, plan: "pro" });
-    // Dynamic Growth: $249 with 5,000 included, then $0.005.
-    expect(at("trading", "dynamic", 100000)).toMatchObject({ usd: 249 + 95000 * 0.005, plan: "growth" });
+    // Dynamic Growth: $249 with 5,000 included, then $0.05 (the plan card;
+    // the FAQ's $0.005 is the other reading, hence uncertain).
+    expect(at("trading", "dynamic", 100000)).toMatchObject({ usd: 249 + 95000 * 0.05, plan: "growth", uncertain: true });
     // Privy at exactly 10,000 users and 50,000 signatures is still Scale.
     expect(at("consumer", "privy", 10000)).toMatchObject({ usd: 499, plan: "scale" });
   });
@@ -34,7 +35,7 @@ describe("wallet-cost curve reader", () => {
   test("between two corners the bill is the straight line, and the plan is the segment's", () => {
     // Dynamic between 5,000 and 1,000,000 users is one affine piece.
     const q = walletCostQuoteAt(provider("consumer", "dynamic"), 20000);
-    expect(q.usd).toBeCloseTo(249 + 15000 * 0.005, 6);
+    expect(q.usd).toBeCloseTo(249 + 15000 * 0.05, 6);
     // Web3Auth: Growth (69 + (u - 3000) x 0.045) and Scale
     // (399 + (u - 10000) x 0.04) cross where 0.005u = 65, at 13,000 users.
     // Either side of it the segment names its own plan, not the crossing

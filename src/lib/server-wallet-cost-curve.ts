@@ -8,7 +8,7 @@ import curveFile from "@/data/server-wallet-cost-curves.json";
  * Same contract as src/lib/wallet-cost-curve.ts: the arithmetic stays in the
  * harness, this file only reads between the points it emitted, and the
  * emitter puts a point at every corner, so interpolation is exact. An
- * independent scorer re-prices every point and a million random sizes before
+ * independent scorer re-prices every point and 990,000 random sizes before
  * the file is committed, and `pnpm validate` re-runs it.
  *
  * Regenerate after any catalogue edit, from `harnesses/server-wallet-cost`:

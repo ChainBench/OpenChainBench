@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { notServedReason, rankGateReason } from "./not-served-reason";
+import { notServedReason, priceReading, rankGateReason } from "./not-served-reason";
 
 describe("notServedReason", () => {
   test("names each vendor's own reason for the view", () => {
@@ -37,5 +37,19 @@ describe("rankGateReason", () => {
     // A verified price, and another bench, keep the generic label.
     expect(rankGateReason("server-wallet-cost", "circle", { kind: "payouts" })).toBeNull();
     expect(rankGateReason("wallet-cost", "privy", {})).toBeNull();
+  });
+});
+
+describe("priceReading", () => {
+  test("carries the calculator's reading onto ledger rows", () => {
+    // Agents at 10,000: thirdweb's bands are an upper bound, Lit a floor,
+    // Circle's signing-only plan unambiguous.
+    expect(priceReading("server-wallet-cost", "thirdweb", {})).toBe("at most");
+    expect(priceReading("server-wallet-cost", "lit", {})).toBe("at least");
+    expect(priceReading("server-wallet-cost", "circle", {})).toBeNull();
+    // Bench 309 has no bound: Dynamic's two per-user rates read as ambiguous.
+    expect(priceReading("wallet-cost", "dynamic", {})).toBe("ambiguous price");
+    expect(priceReading("wallet-cost", "reown", {})).toBeNull();
+    expect(priceReading("rpc-cost", "alchemy", {})).toBeNull();
   });
 });

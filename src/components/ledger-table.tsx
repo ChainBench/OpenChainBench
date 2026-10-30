@@ -917,6 +917,11 @@ function Row({
                 {benchmark.providerNotes[r.slug]}
               </span>
             )}
+            {r.priceReading && !isMuted && (
+              <span className="inline-flex items-center shrink-0 rounded border border-amber-500/40 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.12em] text-amber-700 dark:text-amber-300">
+                {r.priceReading}
+              </span>
+            )}
             {r.tag && !isMuted && (
               <span
                 className={`${dense ? "hidden 2xl:inline-block max-w-[160px]" : "hidden sm:inline-block max-w-[140px] md:max-w-[220px]"} truncate font-sans text-[10px] uppercase tracking-[0.14em] text-ink-muted`}

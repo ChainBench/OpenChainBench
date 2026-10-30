@@ -157,6 +157,13 @@ func fetchBody(url string, phrases ...string) fetchResult {
 		return fetchResult{}
 	}
 	defer resp.Body.Close()
+	// A redirect to another site is not the page a human read: Dynamic's
+	// pricing moved to fireblocks.com and surfaced only because its lines
+	// changed (audit 2026-10-30). Fail it, so the unreachable alert names it.
+	if final := resp.Request.URL.Hostname(); siteOf(final) != siteOf(req.URL.Hostname()) {
+		log.Printf("artifact %s: redirected to another site, %s; re-read and update the catalogue URL", url, resp.Request.URL)
+		return fetchResult{}
+	}
 	if resp.StatusCode != http.StatusOK {
 		log.Printf("artifact %s: HTTP %d", url, resp.StatusCode)
 		return fetchResult{}
@@ -213,6 +220,61 @@ var reNumber = regexp.MustCompile(`\d[\d,]*(?:\.\d+)?\s*[kKmM]?\b`)
 // band edges, caps, quote thresholds) that appear nowhere in its page's
 // hashed lines. "2.5k" and "2,500" are the same figure. Used by
 // SERVER_WALLET_COST_PIN to show what a drift check could miss.
+// siteOf drops a leading "www." so www.example.com and example.com match.
+func siteOf(host string) string {
+	return strings.TrimPrefix(strings.ToLower(host), "www.")
+}
+
+var reDollar = regexp.MustCompile(`\$\s?(\d[\d,]*(?:\.\d+)?)\s*([kKmM]\b)?`)
+
+// strayFigures lists the dollar amounts on the page that no figure of the
+// vendor's catalogue entry explains (plan fees, rates, notes). unpinnedFigures
+// is a presence test, so it passed Dynamic while its card said $0.05 and
+// its FAQ still said $0.005 (audit 2026-10-30); a stray figure is what a
+// human must read before re-pinning. Expected strays (another product's
+// prices, an annual price) are fine once read.
+func strayFigures(p Provider, lines string) []string {
+	known := map[float64]bool{}
+	add := func(v float64) { known[roundFig(v)] = true }
+	for _, pl := range p.Plans {
+		if pl.MonthlyUSD != nil {
+			add(*pl.MonthlyUSD)
+		}
+		if pl.AnnualUSD != nil {
+			add(*pl.AnnualUSD)
+			add(*pl.AnnualUSD / 4) // a quarterly price of the same plan
+		}
+		for _, tiers := range pl.Tiers {
+			for _, t := range tiers {
+				add(*t.Rate)
+			}
+		}
+	}
+	notes := p.Note
+	for _, pl := range p.Plans {
+		notes += " " + pl.Note
+	}
+	for _, m := range reDollar.FindAllStringSubmatch(notes, -1) {
+		if v, err := strconv.ParseFloat(strings.ReplaceAll(m[1], ",", ""), 64); err == nil {
+			add(v)
+		}
+	}
+	seen := map[string]bool{}
+	var stray []string
+	for _, m := range reDollar.FindAllStringSubmatch(lines, -1) {
+		if m[2] != "" {
+			continue // "$1M of volume" is a threshold
+		}
+		v, err := strconv.ParseFloat(strings.ReplaceAll(m[1], ",", ""), 64)
+		if err != nil || known[roundFig(v)] || seen[m[0]] {
+			continue
+		}
+		seen[m[0]] = true
+		stray = append(stray, strings.TrimSpace(m[0]))
+	}
+	return stray
+}
+
 func unpinnedFigures(p Provider, lines string) []string {
 	have := map[float64]bool{}
 	for _, m := range reNumber.FindAllString(lines, -1) {

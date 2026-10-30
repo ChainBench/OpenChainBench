@@ -105,8 +105,10 @@ function fmtBill(usd: number | null): string {
   if (usd === null) return "-";
   const c = Math.round(usd * 100) / 100;
   if (c === 0) return "$0";
-  if (c < 100) return `$${c.toFixed(2).replace(/\.00$/, "")}`;
-  return `$${Math.round(c).toLocaleString("en-US")}`;
+  // To the cent whenever there are cents: ranks are taken on the cent.
+  return Number.isInteger(c)
+    ? `$${c.toLocaleString("en-US")}`
+    : `$${c.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 function lowerFirst(s: string): string {
@@ -114,14 +116,14 @@ function lowerFirst(s: string): string {
 }
 
 /** The vendor's bill and rank on the bench's headline cell, for metadata. */
-export function walletVendorHeadline(slug: string): { usd: number; rank: number; of: number } | { reason: string; of: number } | null {
+export function walletVendorHeadline(slug: string): { usd: number; rank: number; of: number; verified: boolean } | { reason: string; of: number } | null {
   const file = walletCostCurves();
   if (!file) return null;
   const mau = file.volumes.find((v) => v.id === file.headline.volume)?.mau;
   if (mau === undefined) return null;
   const { priced, unpriced } = walletCostRankAt(file.headline.profile, mau);
   const i = priced.findIndex((r) => r.slug === slug);
-  if (i >= 0 && priced[i].usd !== null) return { usd: priced[i].usd as number, rank: rankOf(priced, priced[i].usd), of: priced.length };
+  if (i >= 0 && priced[i].usd !== null) return { usd: priced[i].usd as number, rank: rankOf(priced, priced[i].usd), of: priced.length, verified: priced[i].verified };
   const u = unpriced.find((r) => r.slug === slug);
   return u ? { reason: u.reason, of: priced.length } : null;
 }

@@ -76,3 +76,40 @@ export function rankGateReason(
   if (!row || row.verified || row.bound !== "lower") return null;
   return "at least this: its page leaves a fee unpriced, so it is not ranked";
 }
+
+/**
+ * How to read a priced row's bill on the two pricing benches, so the ledger
+ * carries the same "at most" / "at least" the calculator shows (audit
+ * 2026-10-30: the ledger printed bounded bills as plain numbers). Bench 309
+ * has no bound, so an uncertain price there reads "ambiguous price".
+ */
+export function priceReading(
+  benchSlug: string,
+  providerSlug: string,
+  filters: Record<string, string | undefined>,
+): string | null {
+  const slug = providerSlug.toLowerCase();
+  if (benchSlug === "server-wallet-cost") {
+    const f = serverWalletCurves();
+    if (!f) return null;
+    const kind = filters.kind && filters.kind !== "all" ? filters.kind : f.headline.scenario;
+    const size = filters.bucket && filters.bucket !== "all" ? filters.bucket : f.headline.size;
+    const s = f.scenarios.find((v) => v.id === kind);
+    const x = s?.sizes.find((z) => z.id === size)?.x;
+    if (!s || x === undefined) return null;
+    const row = serverWalletRankAt(s.id, x).priced.find((r) => r.slug.toLowerCase() === slug);
+    if (!row || row.verified) return null;
+    return row.bound === "upper" ? "at most" : row.bound === "lower" ? "at least" : "ambiguous price";
+  }
+  if (benchSlug === "wallet-cost") {
+    const f = walletCostCurves();
+    if (!f) return null;
+    const kind = filters.kind && filters.kind !== "all" ? filters.kind : f.headline.profile;
+    const bucket = filters.bucket && filters.bucket !== "all" ? filters.bucket : f.headline.volume;
+    const mau = f.volumes.find((v) => v.id === bucket)?.mau;
+    if (mau === undefined) return null;
+    const row = walletCostRankAt(kind, mau).priced.find((r) => r.slug.toLowerCase() === slug);
+    return row && !row.verified ? "ambiguous price" : null;
+  }
+  return null;
+}

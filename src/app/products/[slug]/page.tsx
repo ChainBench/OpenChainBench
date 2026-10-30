@@ -368,7 +368,7 @@ export async function generateMetadata({
     title = long.length <= 60 ? long : `${p.name} pricing ${new Date().getUTCFullYear()}: server wallets`;
     if (head && "usd" in head) {
       description = capSnippet(
-        `${p.name} bills ${fmtServerWalletBill(head.usd)} a month for ${head.label} (latest value), #${head.rank} of ${head.of} server wallet vendors priced. Its bill for a trading bot and for payouts too.`,
+        `${p.name} bills ${head.reading ? `${head.reading} ` : ""}${fmtServerWalletBill(head.usd)} a month for ${head.label} (latest value), ${head.rank > 0 ? `#${head.rank} of ${head.of}` : `not ranked among ${head.of}`} server wallet vendors priced. Its bill for a trading bot and for payouts too.`,
       );
     } else if (head) {
       description = capSnippet(
@@ -382,7 +382,7 @@ export async function generateMetadata({
     title = long.length <= 60 ? long : `${p.name} pricing ${new Date().getUTCFullYear()}: bill by app size`;
     if (head && "usd" in head) {
       description = capSnippet(
-        `${p.name} bills ${fmtWalletBill(head.usd)} a month for a 10,000-user consumer app (latest value), #${head.rank} of ${head.of} embedded wallet vendors priced. Its bill at 1,000 and 100,000 users, by usage profile.`,
+        `${p.name} bills ${fmtWalletBill(head.usd)} a month for a 10,000-user consumer app (${head.verified ? "" : "ambiguous price, "}latest value), #${head.rank} of ${head.of} embedded wallet vendors priced. Its bill at 1,000 and 100,000 users, by usage profile.`,
       );
     } else if (head) {
       description = capSnippet(
@@ -1341,6 +1341,7 @@ export default async function ProviderPage({
                           {a.benchmark.valueKind === "latest"
                             ? "latest value"
                             : valueWindowLabel(a.benchmark)}
+                          {a.result.priceReading ? ` · ${a.result.priceReading}` : ""}
                         </p>
                       </>
                     ) : (

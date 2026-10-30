@@ -54,7 +54,7 @@ func main() {
 			for _, name := range sortedKeys(p.Source) {
 				a := p.Source[name]
 				r := fetchBody(a.URL, a.PinPhrases...)
-				fmt.Printf("%s\t%s\t%v\t%s\tunpinned=%v\n", p.Slug, name, r.ok, r.sum, unpinnedFigures(p, r.lines))
+				fmt.Printf("%s\t%s\t%v\t%s\tunpinned=%v\tstray=%v\n", p.Slug, name, r.ok, r.sum, unpinnedFigures(p, r.lines), strayFigures(p, r.lines))
 			}
 		}
 		return
@@ -214,6 +214,22 @@ func checkFreshness(cat *Catalogue) {
 			artifactAge.WithLabelValues(r.slug, r.name).Set(r.st.age.Seconds())
 		}
 	}
+	// A page the catalogue no longer polls (a vendor removed, a source
+	// renamed or poll turned off) must not keep its last drift verdict, or
+	// its alert would fire forever for a page nobody prices from.
+	polled := map[string]bool{}
+	for _, r := range readings {
+		if r.st.polled {
+			polled[r.slug+"/"+r.name] = true
+		}
+	}
+	for key := range lastDrift {
+		if !polled[key] {
+			slug, name, _ := strings.Cut(key, "/")
+			artifactDrift.DeleteLabelValues(slug, name)
+			delete(lastDrift, key)
+		}
+	}
 }
 
 // checkSiteCurves compares the catalogue this process prices from with the
@@ -230,7 +246,10 @@ func checkSiteCurves(cat *Catalogue) {
 		}
 		resp, err := httpClient.Get(url)
 		if err != nil {
+			// Publish nothing rather than last cycle's verdict: a stale 1
+			// would keep the mismatch alert quiet through an outage.
 			log.Printf("site curve %s: %v", branch, err)
+			siteCurveMatches.DeleteLabelValues(branch)
 			continue
 		}
 		var f struct {

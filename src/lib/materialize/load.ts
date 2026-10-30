@@ -24,7 +24,7 @@ import { DEV_ONLY_BENCH_SLUGS, REMOVED_BENCH_SLUGS } from "@/lib/removed-benches
 import { renderBenchmarkText } from "@/lib/bench-template";
 import { liveResults as liveProviderResults } from "@/lib/provider-filters";
 import { notServedLabel, notServedOnEveryView } from "@/lib/no-figure-label";
-import { notServedReason, rankGateReason } from "@/lib/not-served-reason";
+import { notServedReason, priceReading, rankGateReason } from "@/lib/not-served-reason";
 import {
   classifyHealth,
   aggregateConfidence,
@@ -306,6 +306,15 @@ export async function specToBenchmark(
       for (const r of live.results) {
         if (r.unrankedLabel !== "Provisional") continue;
         r.unrankedLabel = rankGateReason(spec.slug, r.slug, view) ?? r.unrankedLabel;
+      }
+    }
+    // Pricing benches: carry the calculator's reading of a two-way price
+    // onto the ledger row.
+    {
+      const view = activeFilterLabels(labelFilters(options));
+      for (const r of live.results) {
+        const reading = priceReading(spec.slug, r.slug, view);
+        if (reading) r.priceReading = reading;
       }
     }
     if (isFiltered && notServedOnEveryView(spec.slug)) {

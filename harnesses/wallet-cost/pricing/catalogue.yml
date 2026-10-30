@@ -130,21 +130,25 @@ providers:
     note: >-
       No free production plan: the sandbox is free, live mode needs Growth.
       An MAU is a user who logs in that month or for whom an embedded wallet,
-      pre-generated ones included, is created.
+      pre-generated ones included, is created. The plan card reads "additional
+      $0.05 per MAU" (as it did in April 2026); the FAQ reads "each MAU beyond
+      the first 5,000 is billed at $0.005". Priced on the card, the higher
+      reading. Until 2026-10-30 this catalogue priced the FAQ's $0.005, which
+      put Dynamic first on the large cells.
     meters:
       mau: { per_user: 1 }
     plans:
       - id: growth
         name: Growth
         monthly_usd: 249
-        confidence: verified
+        confidence: uncertain
         tiers:
-          mau: [{ up_to: 5000, rate: 0 }, { rate: 0.005 }]
+          mau: [{ up_to: 5000, rate: 0 }, { rate: 0.05 }]
     source:
       pricing:
-        url: https://www.dynamic.xyz/pricing
-        body_sha256: c5e228a7a8b728dfe6d742738cc82c7c20fc2494aad6458c44e828029857ceb4
-        verified_at: "2026-10-29"
+        url: https://www.fireblocks.com/dynamic-pricing
+        body_sha256: af009d6a2c3bd62552527a6eec64c94ea82243905feca69aa585014e0203c04c
+        verified_at: "2026-10-30"
         poll: true
 
   - slug: turnkey
@@ -615,7 +619,8 @@ providers:
     name: Fireblocks
     url: https://www.fireblocks.com
     cohort: excluded
-    excluded_reason: No published price.
+    excluded_reason: >-
+      Sold through sales: $999 a month for up to six months, then custom plans from $36,000 a year, plus a share of outbound volume.
   - slug: sequence
     name: Sequence
     url: https://sequence.xyz

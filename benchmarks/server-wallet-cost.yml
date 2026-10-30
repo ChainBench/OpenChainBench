@@ -4,7 +4,7 @@ slug: server-wallet-cost
 number: "310"
 title: Cheapest server and agent wallet provider, by workload
 seo_title: "Agent and server wallet pricing 2026: cheapest vendor"
-seo_description: "Server and agent wallet pricing for {{declared_count}} vendors. For 10,000 AI agents {{best_name}} bills least of {{ranked_count}} priced, {{best_p50}} a month. Bots and payouts too."
+seo_description: "Server and agent wallet pricing for {{declared_count}} vendors. For 10,000 AI agents {{best_name}} bills least of {{ranked_count}} priced, {{best_p50}} a month. Bot and payout workloads priced too."
 subtitle: The monthly bill each vendor would send for wallets a backend or an AI agent holds and signs with, for a fleet of agents, a trading bot and a payout platform, at any size.
 
 category: Wallets
@@ -23,8 +23,10 @@ disclaimer: >
 seo_intro: |
   The cheapest server wallet depends on the workload: for 10,000 AI agents
   sending 50 transactions a month each it is {{best_name}} at {{best_p50}} a
-  month (latest value), while a trading bot's few wallets or a payout
-  platform's many rank the vendors in a different order. Some vendors bill
+  month (latest value). {{ranked_count}} of the {{declared_count}} vendors
+  publish a price that reaches that size; the others are shown where their
+  published price ends. A trading bot's few wallets or a payout platform's
+  many rank the vendors in a different order. Some vendors bill
   per active wallet and nothing per transaction, others per signature, per
   operation or per request, so the same vendor is first on one workload and
   near last on another.
@@ -47,7 +49,7 @@ abstract: |
   the cheapest plan that can serve the workload.
   Every figure is read by a human from the vendor's own page and records the
   page and the date; the harness re-hashes each page's pricing sentences every
-  hour and alerts on a change. The calculator reads a curve the same harness
+  hour and alerts on a change that holds for six hours. The calculator reads a curve the same harness
   emits, and a second implementation in another language re-prices it at
   990,000 random sizes before it is committed.
 
@@ -55,34 +57,35 @@ methodology:
   - "Cohort. {{declared_count}} vendors with a self-serve price for wallets a backend or an agent holds: Coinbase CDP, Openfort, Magic, Privy, thirdweb, Circle, Lit Protocol, Turnkey, Portal, Dfns and Crossmint. Dynamic, Fireblocks, Para, Alchemy, BitGo and Fordefi are listed below with the reason they cannot be priced."
   - "Workloads. AI agents: each agent holds one wallet and sends 50 transactions a month; sizes 1,000, 10,000 and 100,000 agents. Trading bot: 20 wallets; 10,000, 100,000 and 1,000,000 transactions a month. Payouts: each wallet sends 2 transactions a month; 1,000, 10,000 and 100,000 wallets. Every wallet transacts every month. Creating a wallet is a one-time cost and is left out."
   - "Units. A transaction is one signature followed by one broadcast: 2 operations at Coinbase CDP and Openfort (their own tables), 1 request at thirdweb, 1 signature at Magic, Privy, Turnkey and Lit, 1 Sign operation at Portal. Circle bills each wallet that transacted in the month and nothing per transaction, so a bot's 20 wallets sit in its free 1,000 at any volume."
-  - "What a price includes differs. Coinbase CDP, Openfort, thirdweb and Circle's All-included plan sign and broadcast. Magic, Turnkey, Lit and Portal sign; broadcasting is the customer's. Circle's developer-controlled wallets are custodied by Circle; the others are non-custodial key infrastructure."
+  - "What a price includes differs. Coinbase CDP, Openfort and thirdweb sign and broadcast. Magic, Turnkey, Lit, Portal and Circle's cheaper Signing API plan sign; broadcasting is the customer's (Circle's All-included plan, which broadcasts, is never the cheaper of its two). Circle's developer-controlled wallets are custodied by Circle; the others are non-custodial key infrastructure."
   - "Plans. Each plan's fee, inclusions, graduated overage, caps and quote thresholds are applied as published. Dfns sells annual plans with fixed wallet and signature allowances and no published overage; its monthly figure is the annual price over twelve. Lit sells prepaid credits with no subscription."
   - "Readings. Where a page reads two ways the calculator says which way the other reading goes. thirdweb's bands above 100,000 requests and Portal's wallet charge are priced on the higher reading, so the bill is at most the figure. Privy's $1M monthly volume clause has no published rate, Turnkey's $99 is priced as a floor, and Lit bills execution seconds, so those bills are at least the figure."
-  - "Openfort's Free plan is priced as stopping at 2,000 operations, as its FAQ states (HTTP 402); its plan card also offers $0.01 per operation once a payment method is added. The calculator names a price as cheapest only when it holds under every reading: an 'at most' price can lead, an 'at least' one cannot."
+  - "Both readings of Openfort's Free plan are priced: it stops at 2,000 operations, as its FAQ states (HTTP 402), and the plan card's $0.01 per operation past them, once a payment method is added, is an 'at least' price. Lit bills $0.01 per second of a Lit Action and states that standard ECDSA signatures are effectively charged at $0.01, so a transaction is $0.01, a floor. A verified or 'at most' price can be named cheapest; an 'at least' one cannot."
   - "Left out. Gas and gas-sponsorship surcharges, policy evaluations (Coinbase CDP bills 1 operation each; none are configured here), webhooks, Turnkey's own broadcasting (priced on request) and the 25% discount Lit gives for payment in its token."
+  - "Throughput is not priced. Vendors cap API calls a second, which bounds a month's transactions before price does: Circle's documented default is 5 POST requests a second, near 13M transactions in an evenly spread month, so a bursty bot at the top of the slider needs a raised limit from Circle. Check each vendor's API limits against your peak rate."
   - "Any size, not only three. The table prices three sizes per workload because a metric needs a fixed label. The calculator prices any size from a curve the same harness emits, with a point at every tier boundary, cap, quote threshold, minimum-fee kink and plan crossover, so the slider is exact, not smoothed."
   - "Verification. A second implementation in another language, written from the catalogue's prose, re-prices every curve point and 990,000 random sizes and agrees with the harness on the bill to the cent, on the plan and on the reading. `pnpm validate` re-runs it on a 66,000-size sample on every change, refuses a curve built from a different catalogue, and checks every dollar figure in this page's prose against the model."
   - "Freshness. The harness hashes the pricing sentences of every page each hour, not the page body, which changes on every request for several of them. Every figure the catalogue takes from a page is inside the hashed sentences. A change that holds for six hours raises an alert for a maintainer to re-read the page."
 
 findings:
-  - "No vendor wins every workload. For 10,000 AI agents thirdweb is cheapest at $338 a month at most, then Circle at $435. A trading bot's 20 wallets cost nothing at Circle at any volume. Payouts from 100,000 wallets cost $258 at most at thirdweb."
-  - "The billing unit decides the order. A bot at 1,000,000 transactions a month costs $0 at Circle, which bills per active wallet, $438 at most at thirdweb, $9,975 at Coinbase CDP, $50,000 at Turnkey and $100,399 at Portal."
-  - "The spread is wide. For 10,000 AI agents the eight priced vendors span 152x, from thirdweb's $338 to Portal's $51,299; for 100,000 agents thirdweb's $1,238 against Portal's $510,299."
-  - "Small workloads are often free, because of included allowances rather than low rates: Circle's first 1,000 active wallets, Magic's 1,000 wallets and 50,000 signatures, Privy's 50,000 signatures, Coinbase CDP's 5,000 operations. For 1,000 payout wallets five vendors cost nothing."
+  - "No vendor wins every workload. For 10,000 AI agents Circle is cheapest at $327 a month, then thirdweb at $338 at most; for 100,000 agents thirdweb leads at $1,238 at most. A trading bot's 20 wallets cost nothing at Circle at any volume. Payouts from 100,000 wallets cost $258 at most at thirdweb."
+  - "The billing unit decides the order. A bot at 1,000,000 transactions a month costs $0 at Circle, which bills per active wallet, $438 at most at thirdweb, $9,975 at Coinbase CDP, at least $50,000 at Turnkey and at most $100,399 at Portal."
+  - "The spread is wide. For 10,000 AI agents the eight priced vendors span 157x, from Circle's $327 to Portal's $51,299 at most; for 100,000 agents thirdweb's $1,238 at most against Portal's $510,299 at most."
+  - "Small workloads are often free, because of included allowances rather than low rates: Circle's first 1,000 active wallets, Magic's 1,000 wallets and 50,000 signatures, Privy's 50,000 signatures, Coinbase CDP's 5,000 operations. For 1,000 payout wallets four vendors cost nothing (Circle, Coinbase CDP, Crossmint, Magic), and Privy's $0 there is a floor."
   - "Three vendors stop publishing a price early. Turnkey holds at most 2,000 wallets on its self-serve plans, Dfns' largest self-serve plan allows 10,000 signatures a month, and Crossmint publishes only a free tier."
   - "Privy's free and pay-as-you-go prices are a floor: past $1M of monthly transaction volume it bills at a rate it does not publish, which a payout or trading flow is likely to cross. Its $0 for 10,000 payout wallets is therefore not named as the cheapest."
 
 faq:
   - q: "Which wallet provider is cheapest for AI agents?"
-    a: "For 10,000 agents sending 50 transactions a month each, thirdweb at $338 a month at most, then Circle at $435. thirdweb bills per API request in falling bands; Circle bills per wallet that transacted, with no fee per transaction. At 1,000 agents Circle, Magic and Privy cost nothing on their free allowances. Move the calculator to your own fleet size."
+    a: "For 10,000 agents sending 50 transactions a month each, Circle at $327 a month on its signing-only plan, then thirdweb at $338 at most. Circle bills per wallet that transacted, with no fee per transaction; thirdweb bills per API request in falling bands and leads at 100,000 agents. At 1,000 agents Circle and Magic cost nothing on their free allowances, and Privy's $0 is a floor. Move the calculator to your own fleet size."
   - q: "Which is cheapest for a trading bot?"
     a: "Circle, at $0 for 20 wallets at any volume, because it bills per active wallet (the first 1,000 are free) and nothing per transaction. Its developer-controlled wallets are custodied by Circle. Among non-custodial signers, thirdweb bills $438 at most for 1,000,000 transactions a month and Coinbase CDP $9,975."
   - q: "What does Turnkey cost for server wallets?"
-    a: "$0.05 per signature on Pro, read as a spending floor of $99 a month, or $0.10 on Pay as You Go after 25 free; a bot at 100,000 transactions a month is $5,000. Pro holds at most 2,000 wallets, so a fleet of 10,000 agents needs Enterprise, which has no published price, and Turnkey's own broadcasting is priced on request."
+    a: "$0.05 per signature on Pro, read as a spending floor of $99 a month, or $0.10 on Pay as You Go after 25 free; a bot at 100,000 transactions a month is at least $5,000. Pro holds at most 2,000 wallets, so a fleet of 10,000 agents needs Enterprise, which has no published price, and Turnkey's own broadcasting is priced on request."
   - q: "Is gas included?"
     a: "No. Gas is the same whichever wallet signs, and gas sponsorship is a percentage of it on top, so it is left out of every figure."
   - q: "What do 'at most' and 'at least' mean?"
-    a: "The vendor's page can be read two ways. 'At most' marks a price computed on the higher reading, so the real bill is no larger (thirdweb above 100,000 requests, Portal's wallet charge). 'At least' marks the lower reading or an unpublished extra fee (Privy's $1M volume clause, Turnkey's floor, Lit's execution time). Only an 'at most' price can be named the cheapest."
+    a: "The vendor's page can be read two ways. 'At most' marks a price computed on the higher reading, so the real bill is no larger (thirdweb above 100,000 requests, Portal's wallet charge). 'At least' marks the lower reading or an unpublished extra fee (Privy's $1M volume clause, Turnkey's floor, Lit's execution time, Openfort's card reading). A verified or 'at most' price can be named the cheapest; an 'at least' one cannot."
   - q: "Are these prices from real invoices?"
     a: "No. They are published list prices, read by a human from each vendor's pricing page on the date the catalogue records, and applied by the harness. Enterprise contracts are not public and are not priced."
   - q: "Can I reproduce these numbers?"
