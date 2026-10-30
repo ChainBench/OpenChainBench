@@ -50,7 +50,9 @@ methodology:
   - "The headline is the share of asked cells that served, not a count of methods. A count would rank a provider last for the questions we never asked it, which is the same error as publishing a refusal we never received."
   - "On a single chain tab a cell reads 0 or 100. On the all-chains tab it reads the share of chains that served, so a provider serving a method on seven chains of eight reads 87.5 rather than a tick that could mean either one or all of them."
   - "Hours since check is the age of the published verdict, not of our last attempt. The timestamp advances only when a verdict is written, so a provider that starts failing keeps its last answer on the board and the age starts climbing. A capability gauge that answers every hour with the same value is otherwise indistinguishable from a frozen one."
-  - "The log queries are asked over a five block window, which is deliberately narrow: this column answers whether the method is routed at all, and a narrow window is the question every provider should be able to answer. It is not the question an indexer asks. A manual test in October found that over two thousand blocks most of this cohort refused, so expect these columns to read alike and expect the range measurement, when it lands, to disagree with them."
+  - "The log queries are asked over a five block window, which is deliberately narrow: that answers whether the method is routed at all, and a narrow window is the question every provider should be able to answer. It is not the question an indexer asks, and the two unfiltered-shape columns still read alike for that reason."
+  - "The two window columns are the question an indexer does ask. Each climbs 100, 500, 1000, 2000, 10000, 100000 and 1000000 blocks and stops at the first refusal, so the figure is the widest window accepted. The filters are built to match nothing, so what this measures is the static guard on the block span, the thing that trips before any work and freezes a cursor, and not the widest window logs will actually come from."
+  - "Two limits on the window columns. The figure is a floor rather than a ceiling when every width passed, and it is in blocks, so it ranks providers within a chain tab and not across chains: a block is twelve seconds on Ethereum and two on Base."
   - "The Beacon API is not answered here. Beacon endpoints live on a different base URL from the JSON-RPC endpoint and our configuration carries only the latter, so the question was never put. Publishing 0 would state that no provider in this cohort serves it, which is false. It needs its own credentials before it can be measured."
   - "Solana is not on this board. Every method here is an EVM concept, the Solana keyed cohort is three providers, and a grid whose columns are all blank on one tab is not a matrix. Solana belongs in its own bench against Solana-native providers, measured on Solana methods."
   - "The harness probes one Solana method already, for that future bench, so every query on this board excludes that chain by name rather than relying on the column list. Leaving it in counted a method we declare out of scope toward the all-chains share, and it helped only the two providers that answer it."
@@ -81,6 +83,26 @@ faq:
     a: "No, and the board says so rather than leaving the column out quietly. Beacon endpoints sit on a different base URL from the JSON-RPC endpoint, and our configuration holds only the RPC URL, so the question was never asked of anyone. Adding it needs separate credentials, and until then a 0 in that column would be a claim we have no measurement for."
 
 metric_panels:
+  # The two range columns. A boolean over five blocks is the same answer for
+  # nearly everyone on a single chain tab, which is what made that tab read
+  # as a four-way tie; the width each provider accepts is where the cohort
+  # actually separates, by a factor of two thousand.
+  - id: api_getlogs_range_address
+    label: "eth_getLogs window, address filter"
+    label_key: provider
+    metric: max by (provider) (rpc_getlogs_max_range_blocks{filter_shape="address"})
+    unit: count
+    higher_is_better: true
+    tab: false
+    description: "Widest block window accepted for an address-filtered log query, climbing 100 to 1000000 blocks and stopping at the first refusal. 0 means the narrowest window was refused. This is the range guard, which trips before any work, not the widest window logs will actually come from."
+  - id: api_getlogs_range_topics
+    label: "eth_getLogs window, topic filter"
+    label_key: provider
+    metric: max by (provider) (rpc_getlogs_max_range_blocks{filter_shape="topics"})
+    unit: count
+    higher_is_better: true
+    tab: false
+    description: "Widest block window accepted for a topic-filtered log query, same ladder as the address column. A provider can serve the shape and still refuse the width, which is the distinction an indexer plans around."
   - id: api_getlogs_address
     label: "eth_getLogs, address filter"
     label_key: provider
@@ -148,8 +170,11 @@ metric_panels:
 
 ledger_columns:
   - { label: "APIs served", slot: p50 }
-  - { label: "getLogs addr", panel: api_getlogs_address }
-  - { label: "getLogs topic", panel: api_getlogs_topics }
+  # The window columns replace the two booleans they subsume: a width of 0 is
+  # the refusal the boolean carried, and every other value says something the
+  # boolean could not.
+  - { label: "getLogs addr, blocks", panel: api_getlogs_range_address }
+  - { label: "getLogs topic, blocks", panel: api_getlogs_range_topics }
   - { label: "getLogs raw", panel: api_getlogs_nofilter }
   - { label: "debug_trace", panel: api_debug_tracetransaction }
   - { label: "trace_block", panel: api_trace_block }
