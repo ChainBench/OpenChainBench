@@ -304,7 +304,7 @@ func TestAuthStatusDetection(t *testing.T) {
 			t.Errorf("%q not detected as an auth status", s)
 		}
 	}
-	for _, s := range []string{"status 500", "status 429", "status 200", "connection refused"} {
+	for _, s := range []string{"status 500", "status 429", "status 200", "connection refused", "status 402"} {
 		if isAuthStatus(s) {
 			t.Errorf("%q wrongly detected as an auth status", s)
 		}

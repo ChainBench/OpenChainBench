@@ -18,12 +18,7 @@ import { countRows, nounFor, nounLabel } from "@/lib/row-noun";
 import { valueColumnLabel, valueQualifier } from "@/lib/value-window";
 import type { Benchmark } from "@/types/benchmark";
 import { rateDecimals } from "@/lib/sample-precision";
-
-/** How many metric panels the server table carries. Three keeps the row
- *  readable at phone width next to the rank, name, headline and success
- *  columns; a bench with ten panels (perp-pf-ratio) would otherwise ship a
- *  table nobody can scan. The rest stay in the interactive tabs. */
-const MAX_STATIC_PANELS = 3;
+import { panelsForStaticLedger } from "@/lib/static-panels";
 
 export function StaticLedger({
   benchmark,
@@ -66,11 +61,10 @@ export function StaticLedger({
   // Metric panels are tabs in the interactive body, so the served HTML
   // carried the headline and nothing else: bench 273's origin split and
   // its two weekly columns existed for a reader and not for a crawler
-  // (SEO audit 2026-09-23). Render the first few here, inside the same
-  // horizontal scroller, so the table stays readable on a phone.
-  const panels = (benchmark.metricPanels ?? [])
-    .filter((p) => p.values && Object.keys(p.values).length > 0)
-    .slice(0, MAX_STATIC_PANELS);
+  // (SEO audit 2026-09-23). They render here inside the same horizontal
+  // scroller. WHICH of them, and why it is not simply the first three,
+  // lives in panelsForStaticLedger with its own tests.
+  const panels = panelsForStaticLedger(benchmark);
   // The region count comes from the page, which already worked out which
   // declared regions actually have data: the heading a crawler reads said
   // three on every bench, including those measured from fewer. Falls

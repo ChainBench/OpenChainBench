@@ -26,6 +26,7 @@ import { renderBenchmarkText } from "@/lib/bench-template";
 import { liveResults as liveProviderResults } from "@/lib/provider-filters";
 import { notServedLabel, notServedOnEveryView } from "@/lib/no-figure-label";
 import { notServedReason, priceReading, rankGateReason } from "@/lib/not-served-reason";
+import { rankGateLabel } from "@/lib/rank-gate";
 import {
   classifyHealth,
   aggregateConfidence,
@@ -1283,7 +1284,7 @@ async function tryLoadLive(
       // p95 rides with the optional batch on purpose: no retry and no
       // skip-on-null, so a bench that declares it badly loses a column and
       // not its providers.
-      const [p95, mean, success, sampleSize, slotP50, slotP99, liveActivity, rankGate] = await Promise.all([
+      const [p95, mean, success, sampleSize, slotP50, slotP99, liveActivity, firstRankGate] = await Promise.all([
         q.p95 ? prom.scalar(q.p95) : Promise.resolve(null),
         q.mean ? prom.scalar(q.mean) : Promise.resolve(null),
         q.success ? prom.scalar(q.success) : Promise.resolve(null),
@@ -1293,6 +1294,15 @@ async function tryLoadLive(
         q.live_activity ? prom.scalar(q.live_activity) : Promise.resolve(null),
         q.ranked ? prom.scalar(q.ranked) : Promise.resolve(null),
       ]);
+      // The rank gate gets the same one retry as the percentiles, and for a
+      // stronger reason: it decides whether a row may LEAD. `prom.scalar`
+      // returns null for an error and for an empty result alike, so one
+      // timed-out query used to promote the row it was meant to hold back.
+      // Retry first, so a transient null does not gate an eligible provider,
+      // then fail closed below, so a persistent one cannot crown an
+      // ineligible one.
+      const rankGate =
+        q.ranked && firstRankGate == null ? await prom.scalar(q.ranked) : firstRankGate;
 
       // One retry on the load-bearing percentiles. A null here is either
       // "provider has no data" (retry returns null again, harmless) or a
@@ -1403,9 +1413,10 @@ async function tryLoadLive(
             : undefined,
         successRate: success != null ? (success > 1 ? success : success * 100) : 100,
         sampleSize: sampleSize ?? undefined,
-        // The rank gate read 0: published (its figures stand), listed
-        // as provisional below the ranked field, never a leader.
-        unrankedLabel: q.ranked && rankGate != null && rankGate <= 0 ? "Provisional" : undefined,
+        // Published either way (its figures stand); listed as provisional
+        // below the ranked rows, never a leader. The three outcomes and why
+        // a null is one of them are in rankGateLabel.
+        unrankedLabel: rankGateLabel(q.ranked, rankGate),
         secondary: p.secondary,
         query: q.p50,
         formula: p.formula,

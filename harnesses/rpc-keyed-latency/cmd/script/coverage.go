@@ -272,8 +272,8 @@ var coverageProbes = []coverageProbe{
 	// network conditions. See heavycall.go for the measurements that
 	// settled the size and for why the absolute number answers a different
 	// question than the review asked.
-	ethCallProbe("eth_call_light", lightCallSubCalls),
-	ethCallProbe("eth_call_heavy", heavyCallSubCalls),
+	ethCallProbe(lightCallAPI, lightCallSubCalls),
+	ethCallProbe(heavyCallAPI, heavyCallSubCalls),
 	{
 		API:  "eth_getlogs_nofilter",
 		Kind: "evm",
@@ -794,8 +794,14 @@ func setCoverage(e Endpoint, api string, v float64) {
 		Set(float64(time.Now().Unix()))
 }
 
+// Un 402 n'est PAS ici, et le test le verifie maintenant.
+//
+// Il etait dans la liste et inatteignable: probeCoverage traite le 402 avant
+// d'appeler cette fonction, parce qu'un credit epuise est notre panne et
+// jamais une affirmation sur leur API. Le commentaire du test disait deja
+// « 402 doit etre exclu » pendant que le code l'incluait, et le test passait
+// parce qu'il ne l'essayait dans aucun des deux sens.
 func isAuthStatus(msg string) bool {
 	return strings.Contains(msg, "status 401") ||
-		strings.Contains(msg, "status 403") ||
-		strings.Contains(msg, "status 402")
+		strings.Contains(msg, "status 403")
 }

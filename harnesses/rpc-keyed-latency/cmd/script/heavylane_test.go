@@ -65,8 +65,8 @@ func TestHeavyLaneProbesAreTheSameTwoAsTheCapabilityPass(t *testing.T) {
 	// the capability pass uses, so the verdict rule and the latency rule
 	// cannot drift between the two cadences. If they did, the delta would be
 	// computed across two different definitions of "served".
-	light := ethCallProbe("eth_call_light", lightCallSubCalls)
-	heavy := ethCallProbe("eth_call_heavy", heavyCallSubCalls)
+	light := ethCallProbe(lightCallAPI, lightCallSubCalls)
+	heavy := ethCallProbe(heavyCallAPI, heavyCallSubCalls)
 	var laneLight, laneHeavy bool
 	for _, pr := range coverageProbes {
 		switch pr.API {

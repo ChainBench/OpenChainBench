@@ -48,6 +48,12 @@ const (
 	// cores and no swap. Eight megabytes is two orders of magnitude above
 	// anything a probe here legitimately returns.
 	maxProbeResponseBytes int64 = 8 << 20
+
+	// Ceiling on the body of a non-200. Those bodies are read because a few
+	// providers put a range refusal in one, and the longest seen is 101
+	// bytes. Eight kilobytes keeps a provider's HTML error page from
+	// becoming a read we did not ask for.
+	maxErrorBodyBytes int64 = 8 << 10
 )
 
 func probeInterval() time.Duration {
@@ -298,8 +304,27 @@ func doPost(ctx context.Context, url string, body []byte, warm bool) (raw []byte
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
-		_, _ = io.Copy(io.Discard, resp.Body)
-		return nil, latencyMs, "http_err", fmt.Errorf("status %d", resp.StatusCode)
+		// The body of a non-200 is returned, not discarded, because some
+		// providers answer a question there.
+		//
+		// Measured 2026-10-30: QuickNode refuses a 100,000-block eth_getLogs
+		// with an HTTP 413 whose body is "eth_getLogs is limited to a 10,000
+		// range", and getblock on arc refuses with a 403 saying "Requested
+		// block range exceeds the limits (1500 blocks)". Discarding those
+		// bodies made the range ladder read its own 10,000-block success as
+		// a failure to find out, so QuickNode published no window on seven
+		// of eight chains and the board showed a dash, which it defines as
+		// "we could not ask". We asked, and they answered.
+		//
+		// The error and the "http_err" class are unchanged, so every caller
+		// that only checks err behaves exactly as before. A caller that
+		// wants the answer has to read the body AND decide that it says
+		// something definitive, which is what acceptedSpanStatus does.
+		//
+		// A small cap: a refusal message is a line, and an error body we do
+		// not control has no business being larger than one.
+		raw, _ = io.ReadAll(io.LimitReader(resp.Body, maxErrorBodyBytes))
+		return raw, latencyMs, "http_err", fmt.Errorf("status %d", resp.StatusCode)
 	}
 	// Capped read. Found 2026-10-30 while measuring Solana programs for the
 	// coverage probe: getProgramAccounts on the stake program returned

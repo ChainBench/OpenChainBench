@@ -76,6 +76,31 @@ const (
 	// The light leg exists only to carry the same network cost, so it is the
 	// smallest well-formed version of the identical call.
 	lightCallSubCalls = 1
+
+	// The api label carries the method, because the method changed once and
+	// the label did not.
+	//
+	// The legs shipped cold, then became primed (`warm` below). The series
+	// kept these names, so the spec's `[24h]` window averaged twenty-three
+	// hours of the old method with one of the new one, and published a
+	// number belonging to neither. Measured 2026-10-30, 1.1 h after the
+	// change, heavy minus light per provider:
+	//
+	//	            [24h] published   [1h] stated method
+	//	dwellir            44.00 ms             2.97 ms
+	//	getblock          103.86 ms            29.82 ms
+	//	chainstack         -2.75 ms             2.64 ms
+	//
+	// Dwellir was published fifteen times its own figure, and chainstack
+	// was withheld by the sign guard while the stated method puts it first.
+	// A range selector cannot be told to start at a deploy, so the only
+	// thing that can keep a window inside one method is the series name.
+	//
+	// Changing these strings retires the old series and starts a new one,
+	// which is the point: the view reads only primed readings from its
+	// first sample, and the mixed series ages out unread.
+	heavyCallAPI = "eth_call_heavy_warm"
+	lightCallAPI = "eth_call_light_warm"
 )
 
 // heavyCallAddr is the i-th probe address: deterministic, distinct, and
@@ -230,13 +255,13 @@ func StartHeavyLane(ctx context.Context) {
 			var paired int
 			for _, e := range eps {
 				head := tips.get(e.Chain)
-				light := probeCoverage(ctx, e, ethCallProbe("eth_call_light", lightCallSubCalls), head)
+				light := probeCoverage(ctx, e, ethCallProbe(lightCallAPI, lightCallSubCalls), head)
 				select {
 				case <-ctx.Done():
 					return
 				case <-time.After(coveragePerCallSpacing):
 				}
-				heavy := probeCoverage(ctx, e, ethCallProbe("eth_call_heavy", heavyCallSubCalls), head)
+				heavy := probeCoverage(ctx, e, ethCallProbe(heavyCallAPI, heavyCallSubCalls), head)
 				// Only a pair is useful: a heavy reading whose light partner
 				// failed has no reference to be a difference from.
 				if light == verdictServed && heavy == verdictServed {

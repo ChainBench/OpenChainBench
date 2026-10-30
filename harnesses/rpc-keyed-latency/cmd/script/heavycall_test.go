@@ -138,9 +138,9 @@ func TestBothLegsAreProbedAndAdjacent(t *testing.T) {
 	var light, heavy = -1, -1
 	for i, pr := range coverageProbes {
 		switch pr.API {
-		case "eth_call_light":
+		case lightCallAPI:
 			light = i
-		case "eth_call_heavy":
+		case heavyCallAPI:
 			heavy = i
 		}
 	}
@@ -163,5 +163,27 @@ func TestHeavyLegIsActuallyHeavier(t *testing.T) {
 	heavyLen := len(encodeAggregate3(heavyCallSubCalls))
 	if heavyLen <= lightLen {
 		t.Fatalf("heavy calldata %d is not larger than light %d", heavyLen, lightLen)
+	}
+}
+
+// Le nom de serie est une decision, pas un detail.
+//
+// Ce test ne peut pas deviner qu'une methode a change. Ce qu'il peut faire,
+// c'est obliger un changement de nom a passer par une ligne de diff que
+// quelqu'un lit, parce que l'oubli inverse a deja coute une mesure publiee:
+// les deux jambes sont passees de froides a amorcees en gardant ces noms, et
+// la fenetre [24h] du spec a moyenne les deux methodes. Dwellir a ete publie a
+// 44,00 ms la ou la methode annoncee donne 2,97.
+//
+// Donc la regle: le nom porte la methode. S'il faut changer le comportement
+// d'une jambe, il faut changer sa chaine ici, et le spec avec.
+func TestCallLegAPINamesArePinnedToTheMethod(t *testing.T) {
+	if heavyCallAPI != "eth_call_heavy_warm" || lightCallAPI != "eth_call_light_warm" {
+		t.Fatalf("renommer une jambe retire sa serie et en demarre une autre: "+
+			"le selecteur de benchmarks/rpc-api-coverage.yml doit bouger dans le "+
+			"meme changement (heavy=%q light=%q)", heavyCallAPI, lightCallAPI)
+	}
+	if heavyCallAPI == lightCallAPI {
+		t.Fatal("les deux jambes partageraient une serie et leur difference serait zero")
 	}
 }
