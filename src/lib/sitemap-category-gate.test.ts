@@ -27,3 +27,15 @@ describe("sitemap category hubs", () => {
     expect(src).toMatch(/liveCategoryLabels = new Set\(activeBlobBenches\.map/);
   });
 });
+
+describe("bench index for navigation", () => {
+  // The related-benches rail reads getBenchIndexSafe; on production it
+  // linked /benchmarks/wallet-cost to the gated bench 310, a 404 (SEO audit
+  // 2026-10-30).
+  test("drops benches this build does not serve", () => {
+    const src = readFileSync(join(import.meta.dir, "../data/benchmarks.ts"), "utf8");
+    const decl = src.match(/export const getBenchIndexSafe = cache\(async \(\)[\s\S]*?\n\}\);/);
+    expect(decl).not.toBeNull();
+    expect(decl![0]).toContain("isDevOnlyBench(b.slug)");
+  });
+});
