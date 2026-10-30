@@ -573,8 +573,10 @@ func coverEndpoint(e Endpoint, probe func(coverageProbe) string, canceled func()
 	for _, api := range deferred {
 		if anyServed {
 			// The credential works on this endpoint, so the refusal is about
-			// this method: a fact about the provider, hence a 0.
-			setCoverage(e, api, 0)
+			// this method: a fact about the provider, hence a 0. Through
+			// recordVerdict like every other write, so this path cannot
+			// grow a latency: the round trip it has is a 403's.
+			recordVerdict(e, api, verdictForbidden, 0)
 			labelProbe(e, api, "forbidden")
 			t.forbidden++
 		} else {
@@ -621,7 +623,7 @@ func probeCoverage(ctx context.Context, e Endpoint, pr coverageProbe, head uint6
 	// request first, which doubles the spend to buy a comparable latency
 	// number. A capability answer does not care whether the socket was
 	// reused, so one request is the whole cost.
-	raw, _, classified, err := doPost(ctx, e.URL, []byte(payload), false)
+	raw, latencyMs, classified, err := doPost(ctx, e.URL, []byte(payload), false)
 	if err != nil {
 		// 402 is never a statement about the provider: it means our own
 		// credits ran out. It can only be our failure, so it never writes a
@@ -652,19 +654,42 @@ func probeCoverage(ctx context.Context, e Endpoint, pr coverageProbe, head uint6
 
 	switch verdict {
 	case verdictServed:
-		setCoverage(e, pr.API, 1)
+		recordVerdict(e, pr.API, verdict, latencyMs)
 		label("ok")
 	case verdictUnsupported:
-		setCoverage(e, pr.API, 0)
+		recordVerdict(e, pr.API, verdict, latencyMs)
 		label("unsupported")
 	case verdictForbidden:
-		setCoverage(e, pr.API, 0)
+		recordVerdict(e, pr.API, verdict, latencyMs)
 		label("forbidden")
 	default:
 		label("unclassified")
 		return verdictUnknown
 	}
 	return verdict
+}
+
+// recordVerdict publishes what one definitive probe established: the
+// capability always, the latency only when the method was served.
+//
+// Both writes live here rather than at each call site so the pairing cannot
+// drift. A refused method still has a round trip, and it is typically the
+// fastest reading of the pass because "method not found" is cheap to
+// produce; publishing it would rank a provider fast for declining to answer.
+// Same rule as the gauge itself: a number here is a claim about the
+// provider's handling of that method, and a refusal is not that.
+//
+// A verdict this does not recognise writes nothing at all, which is the
+// behaviour the unknown cases depend on.
+func recordVerdict(e Endpoint, api, verdict string, latencyMs float64) {
+	switch verdict {
+	case verdictServed:
+		setCoverage(e, api, 1)
+		rpcAPILatency.WithLabelValues(
+			e.Provider, e.Chain, api, currentRegion, tierKeyed).Set(latencyMs)
+	case verdictUnsupported, verdictForbidden:
+		setCoverage(e, api, 0)
+	}
 }
 
 // setCoverage publishes a verdict, and stamps when it was established.
