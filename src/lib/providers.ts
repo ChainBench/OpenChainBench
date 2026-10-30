@@ -75,6 +75,7 @@ const PRODUCT_ALIASES: Record<string, string> = {
   "getblock-cold": "getblock",
   "quicknode-cold": "quicknode",
   "dwellir-cold": "dwellir",
+  "helius-cold": "helius",
   "blockmachine-cold": "blockmachine",
   "validationcloud-cold": "validationcloud",
   // The cost benches 282 and 283 priced Validation Cloud under its hyphenated
@@ -912,7 +913,12 @@ const buildProvidersCached = unstable_cache(
   // new to the site) and bench 309 adds Portal.
   // v31: lockstep with bench-unfiltered-v118. Bench 311 adds six providers to
   //      the RPCs category's appearance set.
-  ["providers-v31"],
+  // v32: Helius enters the keyed Solana cohort, warm and cold. A provider
+  //      ENTERING is exactly what this key exists for: the index drives
+  //      /products/helius, the compare pages and the answers, and a cached
+  //      one would keep a Helius with no Solana appearance for its whole
+  //      900 s TTL. Lockstep with bench-unfiltered-v122.
+  ["providers-v32"],
   // 900 s: the provider index feeds products / compare / answers, whose
   // numbers move slowly, and this revalidate is also the effective ISR
   // period of those ~500 pages (Next takes the min across a route's caches).
