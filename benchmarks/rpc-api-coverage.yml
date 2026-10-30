@@ -55,6 +55,7 @@ methodology:
   - "Two limits on the window columns. The figure is a floor rather than a ceiling when every width passed, and it is in blocks, so it ranks providers within a chain tab and not across chains: a block is twelve seconds on Ethereum and two on Base."
   - "On the all-chains tab the window columns take the narrowest window across the chains probed, not the widest. A provider that accepts a million blocks on one chain and five hundred on the other seven would otherwise read a million, which is the number you would plan around and never meet. The other columns on this board average because they are shares; these are limits, and a limit averages into something nobody is offered."
   - "Four selectable views sit above the board and are measurements rather than shares: the eth_call work term, the archive read, the address-filtered log query and Solana's paginated getProgramAccountsV2. They read the round trip of calls this pass already makes, so they cost no extra request. Every one of them is a COLD number, since the coverage probe never reuses a connection, which makes the cold latency arm their comparable and not the warm one."
+  - "The work term withholds a non-positive difference instead of printing it. The heavy leg cannot answer faster than the light one, so a negative reading is the two legs' noise crossing rather than a measurement, and on a lower-is-better view it would rank the noisiest provider first. Measured on the first pass: one provider read minus 1.6 ms. A withheld cell reads as a dash and says the pair has not separated yet."
   - "A view can show an absent reading as absent since 2026-10-30. Before that the ledger read a missing panel value as zero, which on a higher-is-better board is a refusal nobody gave, and it is why this bench published its capability as columns. The columns stay, because they fit nine answers on one screen; the views carry what a column cannot, a number with a unit."
   - "The Beacon API is not answered here. Beacon endpoints live on a different base URL from the JSON-RPC endpoint and our configuration carries only the latter, so the question was never put. Publishing 0 would state that no provider in this cohort serves it, which is false. It needs its own credentials before it can be measured."
   - "Solana is not on this board. Every method here is an EVM concept, the Solana keyed cohort is three providers, and a grid whose columns are all blank on one tab is not a matrix. Solana belongs in its own bench against Solana-native providers, measured on Solana methods."
@@ -175,10 +176,10 @@ metric_panels:
   - id: eth_call_work_ms
     label: "eth_call work"
     label_key: provider
-    metric: avg by (provider) (avg_over_time(rpc_api_latency_milliseconds{api="eth_call_heavy"}[24h])) - avg by (provider) (avg_over_time(rpc_api_latency_milliseconds{api="eth_call_light"}[24h]))
+    metric: (avg by (provider) (avg_over_time(rpc_api_latency_milliseconds{api="eth_call_heavy"}[24h])) - avg by (provider) (avg_over_time(rpc_api_latency_milliseconds{api="eth_call_light"}[24h]))) > 0
     unit: ms
     higher_is_better: false
-    description: "The compute term, isolated. Both legs are the same eth_call through Multicall3, one aggregating 50 state reads and one a single read, run back to back on the same cold connection, so the difference is work and not distance."
+    description: "The compute term, isolated: the same eth_call through Multicall3, 50 state reads minus a single read, run back to back on one cold connection, so the difference is work and not distance. A difference at or below zero is withheld rather than shown, since the heavy leg cannot be the faster one."
   - id: archive_read_ms
     label: "Archive read"
     label_key: provider
