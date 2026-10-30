@@ -364,8 +364,8 @@ export async function generateMetadata({
     // page, priced on that bench's headline cell.
     const rawSlug = appearances[0]?.result.slug ?? p.slug;
     const head = serverWalletVendorHeadline(rawSlug);
-    const long = `${p.name} pricing ${new Date().getUTCFullYear()}: server and agent wallet bill`;
-    title = long.length <= 60 ? long : `${p.name} pricing ${new Date().getUTCFullYear()}: server wallets`;
+    const long = `${p.name} server wallet pricing ${new Date().getUTCFullYear()}: agents, bots, payouts`;
+    title = long.length <= 60 ? long : `${p.name} server wallet pricing ${new Date().getUTCFullYear()}`;
     if (head && "usd" in head) {
       description = capSnippet(
         `${p.name} bills ${head.reading ? `${head.reading} ` : ""}${fmtServerWalletBill(head.usd)} a month for ${head.label} (latest value), ${head.rank > 0 ? `#${head.rank} of ${head.of}` : `not ranked among ${head.of}`} server wallet vendors priced. Its bill for a trading bot and for payouts too.`,
@@ -378,8 +378,10 @@ export async function generateMetadata({
   } else if (walletOnly) {
     const rawSlug = embeddedApp?.result.slug ?? p.slug;
     const head = walletVendorHeadline(rawSlug);
-    const long = `${p.name} pricing ${new Date().getUTCFullYear()}: monthly bill from 100 to 1M users`;
-    title = long.length <= 60 ? long : `${p.name} pricing ${new Date().getUTCFullYear()}: bill by app size`;
+    // "wallet" in the title: a search for "privy pricing" returns other
+    // Privys (SEO audit 2026-10-30).
+    const long = `${p.name} wallet pricing ${new Date().getUTCFullYear()}: bill from 100 to 1M users`;
+    title = long.length <= 60 ? long : `${p.name} wallet pricing ${new Date().getUTCFullYear()}`;
     if (head && "usd" in head) {
       description = capSnippet(
         `${p.name} bills ${fmtWalletBill(head.usd)} a month for a 10,000-user consumer app (${head.verified ? "" : "ambiguous price, "}latest value), #${head.rank} of ${head.of} embedded wallet vendors priced. Its bill at 1,000 and 100,000 users, by usage profile.`,
