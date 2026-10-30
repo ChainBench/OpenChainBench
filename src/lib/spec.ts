@@ -556,7 +556,10 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // v106: bench 309 wallet-cost released, thirteen embedded wallet
   //       vendors and the first bench in the Wallets category. Numbered for
   //       THIS branch: dev carried it through v109 to v115.
-  ["bench-unfiltered-v106", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v107: wallet pricing release (main) 2026-10-30. Bench 309 re-priced
+  //       (Dynamic on its card, Portal in, Openfort Free stops), the
+  //       price-reading pill, {{year}} titles; bench 310 code ships gated.
+  ["bench-unfiltered-v107", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -820,7 +823,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v98: lockstep with bench-unfiltered-v105 (bench 001's Base reference
   //       gains the sequencer's pendingLogs as a second source).
   // v99: lockstep with bench-unfiltered-v106 (bench 309 released).
-  ["all-benchmarks-v99", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v100: lockstep with bench-unfiltered-v107 (main release).
+  ["all-benchmarks-v100", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -962,7 +966,8 @@ const loadBenchmarkFiltered = unstable_cache(
   //      per tab and a bump of the other two alone would correct only one.
   // v46: lockstep with bench-unfiltered-v106. Bench 309 declares kind
   //      and bucket, so its tabs are filtered variants with their own entries.
-  ["bench-filters-v46", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v47: lockstep with bench-unfiltered-v107 (main release).
+  ["bench-filters-v47", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 

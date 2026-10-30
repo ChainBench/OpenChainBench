@@ -896,7 +896,9 @@ const buildProvidersCached = unstable_cache(
   // v22: bench 309 released: thirteen embedded wallet vendors, eleven new
   // to production, and appearances carry `defaultView`. Numbered for THIS
   // branch; dev carried the same change as v27 and v28.
-  ["providers-v22"],
+  // v23 (main): wallet pricing release 2026-10-30 (Portal, Lit and Dfns
+  // marks, re-priced appearances).
+  ["providers-v23"],
   // 900 s: the provider index feeds products / compare / answers, whose
   // numbers move slowly, and this revalidate is also the effective ISR
   // period of those ~500 pages (Next takes the min across a route's caches).
