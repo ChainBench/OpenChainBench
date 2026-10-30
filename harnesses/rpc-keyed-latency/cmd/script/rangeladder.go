@@ -176,11 +176,27 @@ func probeGetLogsRange(ctx context.Context, e Endpoint, head uint64) {
 			return v == verdictServed, true
 		})
 		if !out.publish {
+			// Printed, not silent. A ladder that reaches no verdict is
+			// indistinguishable from one that never ran, and every other
+			// part of this harness was verified today by reading what it
+			// printed: the coverage line's probe count is what proved the
+			// new binary was deployed, because a green build proves nothing.
+			fmt.Printf("[getlogs-range] %-16s %-12s %-8s no verdict after %d call(s)\n",
+				e.Provider, e.Chain, sh.Shape, out.calls)
 			continue
 		}
 		rpcGetLogsMaxRange.WithLabelValues(
 			e.Provider, e.Chain, sh.Shape, currentRegion, tierKeyed).
 			Set(float64(out.best))
 		labelProbe(e, "getlogs_range_"+sh.Shape, "ok")
+		// The floor case is worth distinguishing in the log, because the
+		// published number means something different there: the guard is
+		// somewhere above the top rung rather than at it.
+		note := ""
+		if out.best == getLogsRungs[len(getLogsRungs)-1] {
+			note = " (top rung, so a floor)"
+		}
+		fmt.Printf("[getlogs-range] %-16s %-12s %-8s max %d blocks in %d call(s)%s\n",
+			e.Provider, e.Chain, sh.Shape, out.best, out.calls, note)
 	}
 }
