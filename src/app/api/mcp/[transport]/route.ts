@@ -10,6 +10,8 @@ import {
   cohortSummaries,
   fieldValue,
   headlineSentence,
+  viewHeadlineSentence,
+  viewLabels,
   isInsufficient,
   leader,
   rankedCandidates,
@@ -381,7 +383,8 @@ const mcpHandler = createMcpHandler(
           leader: top == null ? null : { ...top, value: valueInDeclaredUnit(top.value, b.unit) },
           rankings,
           sparkline: insufficient ? [] : sparklineFor(b, top?.slug),
-          headline: headlineSentence(b),
+          // A kind or bucket view names itself, as /api/stat does.
+          headline: viewLabels(b, viewFilters).length > 0 ? viewHeadlineSentence(b, viewLabels(b, viewFilters)) : headlineSentence(b),
           quote: citationQuote(b, SITE.url),
           pageUrl: `${SITE.url}${benchPath(b)}`,
           ogImage: `${SITE.url}/api/og/${b.slug}`,
