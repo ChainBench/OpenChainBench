@@ -188,7 +188,7 @@ export const getBenchIndexSafe = cache(async (): Promise<BenchIndexEntry[]> => {
 
 export async function getBenchmark(
   slug: string,
-  options: { chain?: string; region?: string; kind?: string; venue?: string; tier?: string } = {}
+  options: { chain?: string; region?: string; kind?: string; venue?: string; bucket?: string; tier?: string } = {}
 ): Promise<Benchmark | undefined> {
   return loadBenchmark(slug, options);
 }
