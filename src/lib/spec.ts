@@ -660,7 +660,9 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       every EVM tab), and the FAQ no longer answers that the window
   //       measurement does not exist above the columns that publish it.
   //       Moves with all-benchmarks-v119 and bench-filters-v64.
-  ["bench-unfiltered-v126", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v127: the two wallet pricing titles say {{year}} instead of a typed
+  //       2026. Moves with all-benchmarks-v120 and bench-filters-v65.
+  ["bench-unfiltered-v127", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -957,7 +959,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v117: lockstep with bench-unfiltered-v124.
   // v118: lockstep with bench-unfiltered-v125 (wallet pricing audit).
   // v119: lockstep with bench-unfiltered-v126.
-  ["all-benchmarks-v119", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v120: lockstep with bench-unfiltered-v127 (wallet titles).
+  ["all-benchmarks-v120", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1146,7 +1149,8 @@ const loadBenchmarkFiltered = unstable_cache(
   // v63: lockstep with bench-unfiltered-v125 (wallet pricing audit).
   // v64: lockstep with bench-unfiltered-v126. Every chain tab carried the
   //      same inflated headline and the same 9/11 success rate.
-  ["bench-filters-v64", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v65: lockstep with bench-unfiltered-v127.
+  ["bench-filters-v65", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 

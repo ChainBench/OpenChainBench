@@ -231,6 +231,10 @@ export function renderTemplate(text: string, benchmark: Benchmark): string {
   const rendered = withTier.replace(TEMPLATE_RE, (whole, keyword: string, arg?: string) => {
     const k = keyword.toLowerCase();
     switch (k) {
+      // A title that says "pricing 2026" goes stale on 1 January; the
+      // render clock does not (SEO audit 2026-10-30).
+      case "year":
+        return String(new Date().getUTCFullYear());
       case "p50":
       case "p90":
       case "p99":

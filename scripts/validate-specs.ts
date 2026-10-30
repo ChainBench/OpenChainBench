@@ -19,7 +19,7 @@ const ANSWERS_DIR = path.join(ROOT, "answers");
 type Issue = { file: string; level: "error" | "warning"; message: string };
 
 const TOKEN_RE = /\{\{\s*([a-z][a-z0-9_]*)(?::([a-z0-9_-]+))?(?::([a-z0-9_-]+))?\s*\}\}/gi;
-const KNOWN_TOKENS = new Set(["p50", "p90", "p99", "mean", "success", "name", "best_name", "best_names", "best_p50", "best_first", "worst_name", "worst_p50", "count", "ranked_count", "declared_count"]);
+const KNOWN_TOKENS = new Set(["p50", "p90", "p99", "mean", "success", "name", "best_name", "best_names", "best_p50", "best_first", "worst_name", "worst_p50", "count", "ranked_count", "declared_count", "year"]);
 /** Chain-scoped forms the renderer actually resolves: bench-template's
  *  CHAIN_TEMPLATE_RE, kept in step with it. */
 const CHAIN_SCOPABLE = new Set(["best_name", "best_p50", "worst_name", "worst_p50"]);

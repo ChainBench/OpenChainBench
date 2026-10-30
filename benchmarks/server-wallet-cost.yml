@@ -3,7 +3,7 @@
 slug: server-wallet-cost
 number: "310"
 title: Cheapest server and agent wallet provider, by workload
-seo_title: "Agent and server wallet pricing 2026: cheapest vendor"
+seo_title: "Agent and server wallet pricing {{year}}: cheapest vendor"
 seo_description: "Server and agent wallet pricing for {{declared_count}} vendors. For 10,000 AI agents {{best_name}} bills least of {{ranked_count}} priced, {{best_p50}} a month. Bot and payout workloads priced too."
 subtitle: The monthly bill each vendor would send for wallets a backend or an AI agent holds and signs with, for a fleet of agents, a trading bot and a payout platform, at any size.
 
