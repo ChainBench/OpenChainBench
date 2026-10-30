@@ -59,6 +59,7 @@
  * "X leads at 44 ms." during the outage and recovers on its own.
  */
 
+import { renderCostCells } from "@/lib/cost-cell";
 import type { Benchmark, ProviderResult } from "@/types/benchmark";
 import { liveResults, displayResults } from "@/lib/provider-filters";
 import { citationCandidates, joinNames, leaderNames, rankedCandidates } from "@/lib/citation";
@@ -167,6 +168,9 @@ function worstForChain(b: Benchmark, chain: string): ProviderResult | undefined 
 
 export function renderTemplate(text: string, benchmark: Benchmark): string {
   if (!text || text.indexOf("{{") === -1) return text;
+  // Pricing benches: {{cell:...}} reads the calculator's curve (cost-cell.ts).
+  text = renderCostCells(text, benchmark.slug);
+  if (text.indexOf("{{") === -1) return text;
   // `live` still drives per-slug lookups so callers of {{p50:some-slug}}
   // can still address unreliable providers by name (the token is
   // explicit). `bestPool` applies the same reliability floor as
@@ -231,6 +235,10 @@ export function renderTemplate(text: string, benchmark: Benchmark): string {
   const rendered = withTier.replace(TEMPLATE_RE, (whole, keyword: string, arg?: string) => {
     const k = keyword.toLowerCase();
     switch (k) {
+      // A title that says "pricing 2026" goes stale on 1 January; the
+      // render clock does not (SEO audit 2026-10-30).
+      case "year":
+        return String(new Date().getUTCFullYear());
       case "p50":
       case "p90":
       case "p99":

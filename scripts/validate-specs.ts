@@ -11,6 +11,7 @@ import os from "node:os";
 import path from "node:path";
 import yaml from "js-yaml";
 import { SpecSchema } from "../src/lib/spec-schema";
+import { COST_CELL_RE, costCell } from "../src/lib/cost-cell";
 
 const ROOT = path.resolve(__dirname, "..");
 const SPECS_DIR = path.join(ROOT, "benchmarks");
@@ -19,7 +20,7 @@ const ANSWERS_DIR = path.join(ROOT, "answers");
 type Issue = { file: string; level: "error" | "warning"; message: string };
 
 const TOKEN_RE = /\{\{\s*([a-z][a-z0-9_]*)(?::([a-z0-9_-]+))?(?::([a-z0-9_-]+))?\s*\}\}/gi;
-const KNOWN_TOKENS = new Set(["p50", "p90", "p99", "mean", "success", "name", "best_name", "best_names", "best_p50", "best_first", "worst_name", "worst_p50", "count", "ranked_count", "declared_count"]);
+const KNOWN_TOKENS = new Set(["p50", "p90", "p99", "mean", "success", "name", "best_name", "best_names", "best_p50", "best_first", "worst_name", "worst_p50", "count", "ranked_count", "declared_count", "year"]);
 /** Chain-scoped forms the renderer actually resolves: bench-template's
  *  CHAIN_TEMPLATE_RE, kept in step with it. */
 const CHAIN_SCOPABLE = new Set(["best_name", "best_p50", "worst_name", "worst_p50"]);
@@ -568,6 +569,42 @@ async function checkCostBenchCurve(issues: Issue[], b: CostBench) {
   for (const f of (spec.faq as { q: string; a: string }[]) ?? []) prose.push(f.q, f.a);
   for (const k of ["seo_intro", "abstract", "disclaimer", "subtitle", "seo_description"]) {
     if (typeof spec[k] === "string") prose.push(spec[k] as string);
+  }
+  // {{cell:<kind>:<size>:<field>}} must resolve against this bench's curve.
+  const badCells = new Set<string>();
+  for (const s of prose) {
+    for (const m of s.matchAll(COST_CELL_RE)) {
+      if (costCell(b.slug, m[1].toLowerCase(), m[2].toLowerCase(), m[3].toLowerCase()) === null) badCells.add(m[0]);
+    }
+  }
+  if (badCells.size > 0) {
+    issues.push({
+      file: `${b.slug}.yml`,
+      level: "error",
+      message: `cell placeholders that name no profile, size, field or vendor of the curve: ${[...badCells].join(", ")}`,
+    });
+  }
+  // A winner, a rank or a spread in the findings or the FAQ comes from the
+  // curve, not from the keyboard: "Reown is cheapest" carries no dollar
+  // figure for the check below, and "Dynamic leads all three at $724"
+  // outlived the price that made it true (SEO audit 2026-10-30).
+  const claims: string[] = [...((spec.findings as string[]) ?? []), ...((spec.faq as { a: string }[]) ?? []).map((f) => f.a)];
+  const WINNER =
+    /\b(?:is|are) (?:the )?(?:cheapest|dearest|next dearest)\b|\bleads?\b|\b\d+(?:\.\d+)?x\b|\b(?:third|fourth|fifth|sixth|seventh|eighth|ninth|tenth)\b/i;
+  const typed = new Set<string>();
+  for (const c of claims) {
+    for (const sentence of c.split(/(?<=[.;?!])\s+/)) {
+      if (!WINNER.test(sentence)) continue;
+      if (/\{\{\s*cell:/i.test(sentence)) continue;
+      typed.add(sentence.slice(0, 110));
+    }
+  }
+  if (typed.size > 0) {
+    issues.push({
+      file: `${b.slug}.yml`,
+      level: "error",
+      message: `a winner, rank or spread typed by hand in the findings or FAQ; read it from the curve with {{cell:<kind>:<size>:<field>}}: ${[...typed].map((s) => `"${s}"`).join("; ")}`,
+    });
   }
   const bad = new Set<string>();
   for (const s of prose) {
