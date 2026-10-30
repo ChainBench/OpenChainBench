@@ -154,6 +154,28 @@ func acceptedSpan(raw []byte) (accepted bool, definitive bool) {
 	return true, true
 }
 
+// rungWindow is the block window a rung of n blocks asks for, inclusive at
+// both ends because that is how providers count it.
+//
+// Extracted so the arithmetic can be tested where it is USED. The first
+// version of this computed head-span inline at the call site, which is span+1
+// blocks, and a test that checked the filter builder with hand-passed bounds
+// passed happily while the caller was wrong. The fault was never in the
+// filter.
+//
+// Why one block matters here. Providers pick round limits and count
+// inclusively, so an off-by-one lands exactly on a rung rather than between
+// two. Measured against dwellir on arbitrum, 2026-10-30:
+//
+//	500 blocks  accepted
+//	501 blocks  refused, "range of 501 blocks exceeds the 500-block limit"
+//
+// Their limit is 500 and the ladder published 100, a factor of five, and it
+// would have done the same to any provider whose limit landed on a rung.
+func rungWindow(head, span uint64) (lo, hi uint64) {
+	return head - span + 1, head
+}
+
 // rangeOutcome is what one ladder learned.
 type rangeOutcome struct {
 	// best is the largest rung accepted; 0 means even the first was refused.
@@ -203,7 +225,7 @@ func probeGetLogsRange(ctx context.Context, e Endpoint, head uint64) {
 	}
 	for _, sh := range getLogsRangeShapes {
 		out := climb(func(span uint64) (bool, bool) {
-			if head <= span {
+			if head < span {
 				// The chain is younger than this rung. Not askable, and not a
 				// refusal either.
 				return false, false
@@ -211,9 +233,25 @@ func probeGetLogsRange(ctx context.Context, e Endpoint, head uint64) {
 			if !quota.allow(e.Provider, currentRegion) {
 				return false, false
 			}
+			// A rung of N asks for N BLOCKS, so the window starts at
+			// head-N+1. Providers count the range inclusively and pick round
+			// limits, which makes an off-by-one here systematically harmful
+			// rather than cosmetic: the first version asked head-N to head,
+			// which is N+1 blocks, so a provider whose limit was exactly N
+			// refused the rung labelled N and published the rung below it.
+			//
+			// Measured against dwellir on arbitrum, 2026-10-30:
+			//
+			//	500 blocks  accepted
+			//	501 blocks  refused, "range of 501 blocks exceeds the 500-block limit"
+			//
+			// Their limit is 500 and the ladder was publishing 100, a factor
+			// of five, and it would have done the same to every provider
+			// whose limit landed on a rung.
+			lo, hi := rungWindow(head, span)
 			payload := fmt.Sprintf(
 				`{"jsonrpc":"2.0","id":1,"method":"eth_getLogs","params":[%s]}`,
-				sh.Filter(head-span, head))
+				sh.Filter(lo, hi))
 			raw, _, classified, err := doPost(ctx, e.URL, []byte(payload), false)
 			if err != nil {
 				// An HTTP-level failure is ours to own, not theirs to answer
