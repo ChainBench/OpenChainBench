@@ -19,7 +19,7 @@ const ANSWERS_DIR = path.join(ROOT, "answers");
 type Issue = { file: string; level: "error" | "warning"; message: string };
 
 const TOKEN_RE = /\{\{\s*([a-z][a-z0-9_]*)(?::([a-z0-9_-]+))?(?::([a-z0-9_-]+))?\s*\}\}/gi;
-const KNOWN_TOKENS = new Set(["p50", "p90", "p99", "mean", "success", "name", "best_name", "best_names", "best_p50", "best_first", "worst_name", "worst_p50", "count", "ranked_count", "declared_count"]);
+const KNOWN_TOKENS = new Set(["p50", "p90", "p99", "mean", "success", "name", "best_name", "best_names", "best_p50", "best_first", "worst_name", "worst_p50", "count", "ranked_count", "declared_count", "year"]);
 /** Chain-scoped forms the renderer actually resolves: bench-template's
  *  CHAIN_TEMPLATE_RE, kept in step with it. */
 const CHAIN_SCOPABLE = new Set(["best_name", "best_p50", "worst_name", "worst_p50"]);
@@ -468,10 +468,22 @@ async function checkCostCurveFreshness(issues: Issue[]) {
  *   cd harnesses/wallet-cost
  *   WALLET_COST_EMIT_CURVES=../../src/data/wallet-cost-curves.json go run ./cmd/script
  */
+type CostBench = { slug: string; harness: string; env: string };
+
+/** Benches 309 and 310 share the catalogue -> curve -> calculator design. */
+const COST_BENCHES: CostBench[] = [
+  { slug: "wallet-cost", harness: "harnesses/wallet-cost", env: "WALLET_COST" },
+  { slug: "server-wallet-cost", harness: "harnesses/server-wallet-cost", env: "SERVER_WALLET_COST" },
+];
+
 async function checkWalletCostCurveFreshness(issues: Issue[]) {
-  const CURVE = "src/data/wallet-cost-curves.json";
-  const CATALOGUE = "harnesses/wallet-cost/pricing/catalogue.yml";
-  const REGEN = `regenerate it: cd harnesses/wallet-cost && WALLET_COST_EMIT_CURVES=../../${CURVE} go run ./cmd/script`;
+  for (const b of COST_BENCHES) await checkCostBenchCurve(issues, b);
+}
+
+async function checkCostBenchCurve(issues: Issue[], b: CostBench) {
+  const CURVE = `src/data/${b.slug}-curves.json`;
+  const CATALOGUE = `${b.harness}/pricing/catalogue.yml`;
+  const REGEN = `regenerate it: cd ${b.harness} && ${b.env}_EMIT_CURVES=../../${CURVE} go run ./cmd/script`;
   let curve: { schema?: number; catalogueSha256?: string };
   let raw: Buffer;
   try {
@@ -484,7 +496,7 @@ async function checkWalletCostCurveFreshness(issues: Issue[]) {
   // and Schema in harnesses/wallet-cost/cmd/script/curve.go.
   if (curve.schema !== 1) {
     issues.push({
-      file: "wallet-cost.yml",
+      file: `${b.slug}.yml`,
       level: "error",
       message: `${CURVE} is schema ${curve.schema}, the reader expects 1; the calculator renders nothing until they agree. ${REGEN}`,
     });
@@ -492,7 +504,7 @@ async function checkWalletCostCurveFreshness(issues: Issue[]) {
   const sha = createHash("sha256").update(raw).digest("hex");
   if (curve.catalogueSha256 !== sha) {
     issues.push({
-      file: "wallet-cost.yml",
+      file: `${b.slug}.yml`,
       level: "error",
       message: `${CURVE} was built from a different ${CATALOGUE} (sha256 ${String(curve.catalogueSha256).slice(0, 12)} vs ${sha.slice(0, 12)}); the calculator would quote prices the catalogue no longer holds. ${REGEN}`,
     });
@@ -502,18 +514,18 @@ async function checkWalletCostCurveFreshness(issues: Issue[]) {
   // another language, re-prices every curve point and a sample of random app
   // sizes. The full run (30,000 sizes per cell) is the harness README's;
   // 2,000 here keeps validate fast and still lands in every segment.
-  const SCORER = "harnesses/wallet-cost/verify/scorer.mjs";
-  const tableFile = path.join(os.tmpdir(), `wallet-cost-table-${process.pid}.json`);
+  const SCORER = `${b.harness}/verify/scorer.mjs`;
+  const tableFile = path.join(os.tmpdir(), `${b.slug}-table-${process.pid}.json`);
   try {
     execFileSync(process.execPath, [path.join(ROOT, SCORER), path.join(ROOT, CATALOGUE), path.join(ROOT, CURVE), "2000"], {
       cwd: ROOT,
       stdio: "pipe",
-      env: { ...process.env, WALLET_COST_TABLE: tableFile },
+      env: { ...process.env, [`${b.env}_TABLE`]: tableFile },
     });
   } catch (e) {
     const out = String((e as { stdout?: Buffer }).stdout ?? "").slice(0, 600);
     issues.push({
-      file: "wallet-cost.yml",
+      file: `${b.slug}.yml`,
       level: "error",
       message: `${SCORER} disagrees with ${CURVE}: ${out}`,
     });
@@ -536,17 +548,21 @@ async function checkWalletCostCurveFreshness(issues: Issue[]) {
   const allowed = new Set<number>();
   for (const v of Object.values(table)) if (typeof v === "number") allowed.add(cents(v));
   const cat = yaml.load(raw.toString("utf8")) as {
-    providers?: { plans?: { monthly_usd?: number | null; tiers?: Record<string, { rate?: number }[]> }[] }[];
+    providers?: { plans?: { monthly_usd?: number | null; annual_usd?: number; tiers?: Record<string, { rate?: number }[]> }[] }[];
   };
   for (const p of cat.providers ?? []) {
     for (const pl of p.plans ?? []) {
       if (typeof pl.monthly_usd === "number") allowed.add(cents(pl.monthly_usd));
+      if (typeof pl.annual_usd === "number") {
+        allowed.add(cents(pl.annual_usd));
+        allowed.add(cents(pl.annual_usd / 12));
+      }
       for (const tiers of Object.values(pl.tiers ?? {})) {
         for (const tier of tiers) if (typeof tier.rate === "number") allowed.add(Math.round(tier.rate * 1e6) / 1e4);
       }
     }
   }
-  const spec = yaml.load(await fs.readFile(path.join(ROOT, "benchmarks/wallet-cost.yml"), "utf8")) as Record<string, unknown>;
+  const spec = yaml.load(await fs.readFile(path.join(ROOT, `benchmarks/${b.slug}.yml`), "utf8")) as Record<string, unknown>;
   const prose: string[] = [];
   for (const k of ["findings", "methodology"]) for (const s of (spec[k] as string[]) ?? []) prose.push(s);
   for (const f of (spec.faq as { q: string; a: string }[]) ?? []) prose.push(f.q, f.a);
@@ -567,9 +583,82 @@ async function checkWalletCostCurveFreshness(issues: Issue[]) {
   }
   if (bad.size > 0) {
     issues.push({
-      file: "wallet-cost.yml",
+      file: `${b.slug}.yml`,
       level: "error",
       message: `dollar figures in the prose that are neither a bill at a published volume nor a catalogue fee or rate: ${[...bad].join(", ")}. Re-read the prose against the regenerated curve.`,
+    });
+  }
+
+  // A figure must also belong to the vendor the sentence gives it to. The
+  // check above let "Dynamic at $724" stand after Dynamic's bill moved to
+  // $4,999, because $724 was still some other number in the model (audit
+  // 2026-10-30). The nearest vendor named before a figure, in the same
+  // sentence, owns it.
+  const named = (cat as { providers?: { slug: string; name: string }[] }).providers ?? [];
+  const perVendor = new Map<string, Set<number>>();
+  for (const [key, v] of Object.entries(table)) {
+    const slug = key.split("|")[2];
+    if (!slug || typeof v !== "number") continue;
+    if (!perVendor.has(slug)) perVendor.set(slug, new Set());
+    perVendor.get(slug)!.add(cents(v));
+  }
+  for (const p of (cat.providers ?? []) as { slug?: string; plans?: { monthly_usd?: number | null; annual_usd?: number; tiers?: Record<string, { rate?: number }[]> }[] }[]) {
+    if (!p.slug) continue;
+    const s = perVendor.get(p.slug) ?? new Set<number>();
+    for (const pl of p.plans ?? []) {
+      if (typeof pl.monthly_usd === "number") s.add(cents(pl.monthly_usd));
+      if (typeof pl.annual_usd === "number") (s.add(cents(pl.annual_usd)), s.add(cents(pl.annual_usd / 12)));
+      for (const tiers of Object.values(pl.tiers ?? {})) for (const tier of tiers) if (typeof tier.rate === "number") s.add(Math.round(tier.rate * 1e6) / 1e4);
+    }
+    // The other reading of an ambiguous page ("$0.005 in its FAQ") is quoted
+    // on purpose; it is allowed when the catalogue's note for that vendor
+    // records it.
+    const notes = [(p as { note?: string }).note ?? "", ...(p.plans ?? []).map((pl) => (pl as { note?: string }).note ?? "")].join(" ");
+    for (const m of notes.matchAll(/\$\s?(\d[\d,]*(?:\.\d+)?)/g)) {
+      const v = Number(m[1].replace(/,/g, ""));
+      s.add(cents(v));
+      s.add(Math.round(v * 1e6) / 1e4);
+    }
+    perVendor.set(p.slug, s);
+  }
+  // "Lit Protocol" is written "Lit", "Coinbase CDP" sometimes "CDP".
+  const patterns = named.flatMap((p) =>
+    [...new Set([p.name, p.name.split(" ")[0]])].map((n) => ({ slug: p.slug, re: new RegExp(`\\b${n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "g") })),
+  );
+  const misattributed = new Set<string>();
+  for (const s of prose) {
+    for (const sentence of s.split(/(?<=[.;?!])\s+/)) {
+      for (const m of sentence.matchAll(/\$\s?(\d[\d,]*(?:\.\d+)?)(?![\d.,]*[kMB])/g)) {
+        const at = m.index ?? 0;
+        let owner: string | null = null;
+        let ownerAt = -1;
+        // "$438 at most at thirdweb": a vendor right after the figure owns it.
+        const after = sentence.slice(at + m[0].length, at + m[0].length + 30);
+        for (const { slug, re } of patterns) {
+          const hit = new RegExp(`^[^,;$]*?\\bat\\s+${re.source}`).exec(after);
+          if (hit) ((owner = slug), (ownerAt = at));
+        }
+        if (!owner) {
+          for (const { slug, re } of patterns) {
+            for (const n of sentence.slice(0, at).matchAll(re)) {
+              if ((n.index ?? -1) > ownerAt) ((ownerAt = n.index ?? -1), (owner = slug));
+            }
+          }
+        }
+        if (!owner || !perVendor.has(owner)) continue;
+        const v = Number(m[1].replace(/,/g, ""));
+        const own = perVendor.get(owner)!;
+        if (!own.has(cents(v)) && !own.has(Math.round(v * 1e6) / 1e4)) {
+          misattributed.add(`${m[0]} after ${owner} ("${sentence.slice(Math.max(0, ownerAt), at + m[0].length).slice(0, 90)}")`);
+        }
+      }
+    }
+  }
+  if (misattributed.size > 0) {
+    issues.push({
+      file: `${b.slug}.yml`,
+      level: "error",
+      message: `dollar figures given to a vendor whose bills and prices do not include them: ${[...misattributed].join("; ")}. Re-read the prose against the regenerated curve.`,
     });
   }
 }

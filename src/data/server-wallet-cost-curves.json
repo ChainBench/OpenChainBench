@@ -1,0 +1,2144 @@
+{
+ "schema": 1,
+ "catalogueVersion": 1,
+ "catalogueAsOf": "2026-10-29",
+ "catalogueSha256": "ff0c7299e5e8edd11934a34a34cd4e4fff20ae82b5435d6a7e1dd6948e5011bd",
+ "headline": {
+  "scenario": "agents",
+  "size": "medium"
+ },
+ "planNames": {
+  "circle": {
+   "all-included": "All-included",
+   "signing-api": "Signing API only"
+  },
+  "coinbase-cdp": {
+   "payg": "Pay as you go"
+  },
+  "crossmint": {
+   "free": "Free"
+  },
+  "dfns": {
+   "basic": "Basic",
+   "pro": "Pro",
+   "starter": "Starter"
+  },
+  "lit": {
+   "credits": "Prepaid credits"
+  },
+  "magic": {
+   "developer": "Developer",
+   "startup": "Startup"
+  },
+  "openfort": {
+   "free": "Free",
+   "free-card": "Free with a card",
+   "growth": "Growth",
+   "pro": "Pro",
+   "scale": "Scale"
+  },
+  "portal": {
+   "start-up": "Start-Up"
+  },
+  "privy": {
+   "free": "Free",
+   "payg": "Pay as you go"
+  },
+  "thirdweb": {
+   "growth": "Growth"
+  },
+  "turnkey": {
+   "enterprise": "Enterprise",
+   "payg": "Pay as You Go",
+   "pro": "Pro"
+  }
+ },
+ "notes": {
+  "circle": "Developer-controlled wallets bill per monthly active wallet, one that \"conducted an on-chain transaction\" that month, with no fee per transaction. Two plans, both graduated by band: \"Signing API only\" (Circle signs, the customer broadcasts, as at Turnkey, Magic, Lit and Portal; Circle's signing APIs are for developer-controlled wallets \"when you manage broadcasting yourself\") and All-included (signing, indexing, broadcasting). A bot's 20 wallets sit inside the free 1,000 at any volume. Added 2026-10-30: the signing-only plan was missed.",
+  "coinbase-cdp": "\"Pricing is consistent across wallet types\": server wallets on API-key authentication bill the same operations as embedded ones. Sending a transaction (sign and broadcast) is 2 operations. A policy evaluation is 1 more; these scenarios configure no policy. Creating an account is 1 operation, once.",
+  "crossmint": "Free up to 1,000 wallets and 2,000 transactions. Beyond, two different rates ($0.025 and \"starts at $0.02\") and no self-serve paid plan, so a larger workload is a quote.",
+  "dfns": "Self-service annual or quarterly plans; monthly figures are the annual price over twelve. Each plan includes a number of wallets and of signatures a month, with no published overage: beyond, \"Talk to us\". \"No transaction fees.\"",
+  "lit": "Prepaid credits, no subscription. A Lit Action is billed $0.01 per second and \"standard ECDSA signatures are effectively charged at $0.01\"; priced at $0.01 a transaction, sign only (broadcasting is the customer's, and an action that also broadcasts runs longer). Paying in LITKEY is 25% less; the card price is used.",
+  "magic": "Server wallets on Express or Core \"count when they successfully sign\". Every successful signing request counts against 50,000 a month per team. Magic signs; broadcasting is the customer's.",
+  "openfort": "Backend wallets are in every plan. A payment is \"two operations: sign, then broadcast\". A project without a paid subscription \"stops at the included limit\" with HTTP 402, while the Free card offers $0.01 per operation once a payment method is added. Both readings are priced: Free stops at 2,000 (exact), and \"Free with a card\" meters $0.01 an operation past it, as a lower bound since the FAQ says that plan stops instead; it is never named cheapest.",
+  "portal": "Start-Up includes 1K monthly operations and 1K wallets, each $0.10 beyond. Operations are \"Generate, Backup, Sign, Recover, Eject\"; a transaction is one Sign. Whether the wallet overage is charged once or every month is not stated (priced every month, the higher reading), and the Developer plan is a development environment only.",
+  "privy": "Server wallets have no Privy user, so only signatures are billed: 50,000 a month free, then pay-as-you-go at a $2,000 base and $0.01 per signature. Privy also bills apps above $1M of monthly transaction volume \"based on usage\" at a rate it does not publish; a real payout or trading flow is likely to cross it, so every Privy price here is a lower bound.",
+  "thirdweb": "Server wallets bill per API request: 1,000 included, then $1, $0.60 and $0.20 per thousand at 100K and 250K. A transaction is one request that signs and sends. Priced band by band; whether the lower rate applies to the whole count is not stated.",
+  "turnkey": "Billed per signature; Turnkey's own broadcasting is priced on request and not included. Pay as You Go holds up to 1,000 wallets and Pro 2,000; beyond, Enterprise has no published price."
+ },
+ "excluded": [
+  {
+   "slug": "dynamic",
+   "name": "Dynamic",
+   "reason": "Prices per monthly active user; server wallets have no Dynamic user and no published price of their own."
+  },
+  {
+   "slug": "fireblocks",
+   "name": "Fireblocks",
+   "reason": "Plans are sold through sales and bill a share of transaction volume."
+  },
+  {
+   "slug": "para",
+   "name": "Para",
+   "reason": "Server-side REST signing is available on request, not self-serve."
+  },
+  {
+   "slug": "alchemy",
+   "name": "Alchemy",
+   "reason": "Its smart wallets use another vendor's signer and publish no signing price of their own."
+  },
+  {
+   "slug": "bitgo",
+   "name": "BitGo",
+   "reason": "No published price."
+  },
+  {
+   "slug": "fordefi",
+   "name": "Fordefi",
+   "reason": "No published price."
+  }
+ ],
+ "scenarios": [
+  {
+   "id": "agents",
+   "label": "AI agents",
+   "axis": "agents",
+   "walletsFixed": 0,
+   "walletsPerX": 1,
+   "txFixed": 0,
+   "txPerX": 50,
+   "floor": 10,
+   "ceiling": 100000,
+   "sizes": [
+    {
+     "id": "small",
+     "x": 1000
+    },
+    {
+     "id": "medium",
+     "x": 10000
+    },
+    {
+     "id": "large",
+     "x": 100000
+    }
+   ],
+   "providers": [
+    {
+     "slug": "coinbase-cdp",
+     "name": "Coinbase CDP",
+     "unit": "Wallet operations",
+     "points": [
+      {
+       "x": 10,
+       "usd": 0,
+       "plan": "payg",
+       "next": "payg"
+      },
+      {
+       "x": 50,
+       "usd": 0,
+       "plan": "payg",
+       "next": "payg"
+      },
+      {
+       "x": 1000,
+       "usd": 475,
+       "plan": "payg",
+       "next": "payg"
+      },
+      {
+       "x": 10000,
+       "usd": 4975,
+       "plan": "payg",
+       "next": "payg"
+      },
+      {
+       "x": 100000,
+       "usd": 49975,
+       "plan": "payg"
+      }
+     ]
+    },
+    {
+     "slug": "openfort",
+     "name": "Openfort",
+     "unit": "Wallet operations",
+     "points": [
+      {
+       "x": 10,
+       "usd": 0,
+       "plan": "free",
+       "next": "free"
+      },
+      {
+       "x": 20,
+       "usd": 0,
+       "plan": "free",
+       "next": "free"
+      },
+      {
+       "x": 20.00000004,
+       "usd": 0,
+       "plan": "free-card",
+       "next": "free-card",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "lower",
+       "nextBound": "lower"
+      },
+      {
+       "x": 119,
+       "usd": 99,
+       "plan": "free-card",
+       "next": "growth",
+       "unc": true,
+       "bound": "lower"
+      },
+      {
+       "x": 250,
+       "usd": 99,
+       "plan": "growth",
+       "next": "growth"
+      },
+      {
+       "x": 269,
+       "usd": 114.2,
+       "plan": "growth",
+       "next": "growth"
+      },
+      {
+       "x": 437.5,
+       "usd": 249,
+       "plan": "growth",
+       "next": "pro"
+      },
+      {
+       "x": 619,
+       "usd": 249,
+       "plan": "pro",
+       "next": "pro"
+      },
+      {
+       "x": 875,
+       "usd": 249,
+       "plan": "pro",
+       "next": "pro"
+      },
+      {
+       "x": 1000,
+       "usd": 249,
+       "plan": "pro",
+       "next": "pro"
+      },
+      {
+       "x": 1583.3333333333333,
+       "usd": 599,
+       "plan": "pro",
+       "next": "scale"
+      },
+      {
+       "x": 5000,
+       "usd": 599,
+       "plan": "scale",
+       "next": "scale"
+      },
+      {
+       "x": 10000,
+       "usd": 2599,
+       "plan": "scale",
+       "next": "scale"
+      },
+      {
+       "x": 100000,
+       "usd": 38599,
+       "plan": "scale"
+      }
+     ]
+    },
+    {
+     "slug": "magic",
+     "name": "Magic",
+     "unit": "Monthly active wallets plus signatures",
+     "points": [
+      {
+       "x": 10,
+       "usd": 0,
+       "plan": "developer",
+       "next": "developer"
+      },
+      {
+       "x": 1000,
+       "usd": 0,
+       "plan": "developer",
+       "next": "developer"
+      },
+      {
+       "x": 2500,
+       "usd": 442.5,
+       "plan": "developer",
+       "next": "developer"
+      },
+      {
+       "x": 8800,
+       "usd": 2301,
+       "plan": "developer",
+       "next": "startup"
+      },
+      {
+       "x": 10000,
+       "usd": 2649,
+       "plan": "startup",
+       "next": "startup"
+      },
+      {
+       "x": 100000,
+       "usd": 28749,
+       "plan": "startup"
+      }
+     ]
+    },
+    {
+     "slug": "privy",
+     "name": "Privy",
+     "unit": "Signatures",
+     "points": [
+      {
+       "x": 10,
+       "usd": 0,
+       "plan": "free",
+       "next": "free",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "lower",
+       "nextBound": "lower"
+      },
+      {
+       "x": 1000,
+       "usd": 0,
+       "plan": "free",
+       "next": "free",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "lower",
+       "nextBound": "lower"
+      },
+      {
+       "x": 1000.000002,
+       "usd": 2000,
+       "plan": "payg",
+       "next": "payg",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "lower",
+       "nextBound": "lower"
+      },
+      {
+       "x": 10000,
+       "usd": 6500,
+       "plan": "payg",
+       "next": "payg",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "lower",
+       "nextBound": "lower"
+      },
+      {
+       "x": 100000,
+       "usd": 51500,
+       "plan": "payg",
+       "unc": true,
+       "bound": "lower"
+      }
+     ]
+    },
+    {
+     "slug": "thirdweb",
+     "name": "thirdweb",
+     "unit": "Server wallet requests, banded",
+     "points": [
+      {
+       "x": 10,
+       "usd": 99,
+       "plan": "growth",
+       "next": "growth"
+      },
+      {
+       "x": 20,
+       "usd": 99,
+       "plan": "growth",
+       "next": "growth"
+      },
+      {
+       "x": 1000,
+       "usd": 148,
+       "plan": "growth",
+       "next": "growth"
+      },
+      {
+       "x": 2000,
+       "usd": 198,
+       "plan": "growth",
+       "next": "growth",
+       "nextUnc": true,
+       "nextBound": "upper"
+      },
+      {
+       "x": 5000,
+       "usd": 288,
+       "plan": "growth",
+       "next": "growth",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "upper",
+       "nextBound": "upper"
+      },
+      {
+       "x": 10000,
+       "usd": 338,
+       "plan": "growth",
+       "next": "growth",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "upper",
+       "nextBound": "upper"
+      },
+      {
+       "x": 100000,
+       "usd": 1238,
+       "plan": "growth",
+       "unc": true,
+       "bound": "upper"
+      }
+     ]
+    },
+    {
+     "slug": "circle",
+     "name": "Circle",
+     "unit": "Monthly active wallets, banded",
+     "points": [
+      {
+       "x": 10,
+       "usd": 0,
+       "plan": "signing-api",
+       "next": "signing-api"
+      },
+      {
+       "x": 1000,
+       "usd": 0,
+       "plan": "signing-api",
+       "next": "signing-api"
+      },
+      {
+       "x": 5000,
+       "usd": 152,
+       "plan": "signing-api",
+       "next": "signing-api"
+      },
+      {
+       "x": 10000,
+       "usd": 327,
+       "plan": "signing-api",
+       "next": "signing-api"
+      },
+      {
+       "x": 25000,
+       "usd": 777,
+       "plan": "signing-api",
+       "next": "signing-api"
+      },
+      {
+       "x": 50000,
+       "usd": 1427,
+       "plan": "signing-api",
+       "next": "signing-api"
+      },
+      {
+       "x": 100000,
+       "usd": 2577,
+       "plan": "signing-api"
+      }
+     ]
+    },
+    {
+     "slug": "lit",
+     "name": "Lit Protocol",
+     "unit": "Prepaid credits per execution second",
+     "points": [
+      {
+       "x": 10,
+       "usd": 5,
+       "plan": "credits",
+       "next": "credits",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "lower",
+       "nextBound": "lower"
+      },
+      {
+       "x": 1000,
+       "usd": 500,
+       "plan": "credits",
+       "next": "credits",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "lower",
+       "nextBound": "lower"
+      },
+      {
+       "x": 10000,
+       "usd": 5000,
+       "plan": "credits",
+       "next": "credits",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "lower",
+       "nextBound": "lower"
+      },
+      {
+       "x": 100000,
+       "usd": 50000,
+       "plan": "credits",
+       "unc": true,
+       "bound": "lower"
+      }
+     ]
+    },
+    {
+     "slug": "turnkey",
+     "name": "Turnkey",
+     "unit": "Signatures, with a cap on wallets",
+     "points": [
+      {
+       "x": 10,
+       "usd": 47.5,
+       "plan": "payg",
+       "next": "payg"
+      },
+      {
+       "x": 20.299999999999997,
+       "usd": 99,
+       "plan": "payg",
+       "next": "pro",
+       "nextUnc": true,
+       "nextBound": "lower"
+      },
+      {
+       "x": 39.599999999999994,
+       "usd": 99,
+       "plan": "pro",
+       "next": "pro",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "lower",
+       "nextBound": "lower"
+      },
+      {
+       "x": 1000,
+       "usd": 2500,
+       "plan": "pro",
+       "next": "pro",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "lower",
+       "nextBound": "lower"
+      },
+      {
+       "x": 1000.000002,
+       "usd": 2500,
+       "plan": "pro",
+       "next": "pro",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "lower",
+       "nextBound": "lower"
+      },
+      {
+       "x": 2000,
+       "usd": 5000,
+       "plan": "pro",
+       "next": "pro",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "lower",
+       "nextBound": "lower"
+      },
+      {
+       "x": 2000.000004,
+       "usd": null,
+       "why": "Pro stops at 2,000 wallets; Enterprise has no published price"
+      },
+      {
+       "x": 10000,
+       "usd": null,
+       "why": "Pro stops at 2,000 wallets; Enterprise has no published price"
+      },
+      {
+       "x": 100000,
+       "usd": null,
+       "why": "Pro stops at 2,000 wallets; Enterprise has no published price"
+      }
+     ]
+    },
+    {
+     "slug": "portal",
+     "name": "Portal",
+     "unit": "Operations plus wallets",
+     "points": [
+      {
+       "x": 10,
+       "usd": 499,
+       "plan": "start-up",
+       "next": "start-up",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "upper",
+       "nextBound": "upper"
+      },
+      {
+       "x": 20,
+       "usd": 499,
+       "plan": "start-up",
+       "next": "start-up",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "upper",
+       "nextBound": "upper"
+      },
+      {
+       "x": 1000,
+       "usd": 5399,
+       "plan": "start-up",
+       "next": "start-up",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "upper",
+       "nextBound": "upper"
+      },
+      {
+       "x": 10000,
+       "usd": 51299,
+       "plan": "start-up",
+       "next": "start-up",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "upper",
+       "nextBound": "upper"
+      },
+      {
+       "x": 100000,
+       "usd": 510299,
+       "plan": "start-up",
+       "unc": true,
+       "bound": "upper"
+      }
+     ]
+    },
+    {
+     "slug": "dfns",
+     "name": "Dfns",
+     "unit": "Annual plan with wallet and signature allowances",
+     "points": [
+      {
+       "x": 10,
+       "usd": 666.67,
+       "plan": "basic",
+       "next": "basic"
+      },
+      {
+       "x": 10.00000002,
+       "usd": 666.67,
+       "plan": "basic",
+       "next": "basic"
+      },
+      {
+       "x": 20,
+       "usd": 666.67,
+       "plan": "basic",
+       "next": "basic"
+      },
+      {
+       "x": 20.00000004,
+       "usd": 2916.67,
+       "plan": "pro",
+       "next": "pro"
+      },
+      {
+       "x": 200,
+       "usd": 2916.67,
+       "plan": "pro",
+       "next": "pro"
+      },
+      {
+       "x": 200.00000039999998,
+       "usd": null,
+       "why": "above 10,000 signatures a month on Pro the price is on request"
+      },
+      {
+       "x": 1000,
+       "usd": null,
+       "why": "above 10,000 signatures a month on Pro the price is on request"
+      },
+      {
+       "x": 10000,
+       "usd": null,
+       "why": "above 10,000 signatures a month on Pro the price is on request"
+      },
+      {
+       "x": 10000.00002,
+       "usd": null,
+       "why": "above 10,000 signatures a month on Pro the price is on request"
+      },
+      {
+       "x": 50000,
+       "usd": null,
+       "why": "above 10,000 signatures a month on Pro the price is on request"
+      },
+      {
+       "x": 50000.0001,
+       "usd": null,
+       "why": "above 10,000 signatures a month on Pro the price is on request"
+      },
+      {
+       "x": 100000,
+       "usd": null,
+       "why": "above 10,000 signatures a month on Pro the price is on request"
+      }
+     ]
+    },
+    {
+     "slug": "crossmint",
+     "name": "Crossmint",
+     "unit": "Monthly active wallets, free tier only",
+     "points": [
+      {
+       "x": 10,
+       "usd": 0,
+       "plan": "free",
+       "next": "free"
+      },
+      {
+       "x": 40,
+       "usd": 0,
+       "plan": "free",
+       "next": "free"
+      },
+      {
+       "x": 40.00000008,
+       "usd": null,
+       "why": "above 2,000 transactions a month on Free the price is on request"
+      },
+      {
+       "x": 1000,
+       "usd": null,
+       "why": "above 2,000 transactions a month on Free the price is on request"
+      },
+      {
+       "x": 1000.000002,
+       "usd": null,
+       "why": "above 1,000 active wallets a month on Free the price is on request"
+      },
+      {
+       "x": 10000,
+       "usd": null,
+       "why": "above 1,000 active wallets a month on Free the price is on request"
+      },
+      {
+       "x": 100000,
+       "usd": null,
+       "why": "above 1,000 active wallets a month on Free the price is on request"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "bot",
+   "label": "Trading bot",
+   "axis": "transactions a month",
+   "walletsFixed": 20,
+   "walletsPerX": 0,
+   "txFixed": 0,
+   "txPerX": 1,
+   "floor": 1000,
+   "ceiling": 10000000,
+   "sizes": [
+    {
+     "id": "small",
+     "x": 10000
+    },
+    {
+     "id": "medium",
+     "x": 100000
+    },
+    {
+     "id": "large",
+     "x": 1000000
+    }
+   ],
+   "providers": [
+    {
+     "slug": "coinbase-cdp",
+     "name": "Coinbase CDP",
+     "unit": "Wallet operations",
+     "points": [
+      {
+       "x": 1000,
+       "usd": 0,
+       "plan": "payg",
+       "next": "payg"
+      },
+      {
+       "x": 2500,
+       "usd": 0,
+       "plan": "payg",
+       "next": "payg"
+      },
+      {
+       "x": 10000,
+       "usd": 75,
+       "plan": "payg",
+       "next": "payg"
+      },
+      {
+       "x": 100000,
+       "usd": 975,
+       "plan": "payg",
+       "next": "payg"
+      },
+      {
+       "x": 1000000,
+       "usd": 9975,
+       "plan": "payg",
+       "next": "payg"
+      },
+      {
+       "x": 10000000,
+       "usd": 99975,
+       "plan": "payg"
+      }
+     ]
+    },
+    {
+     "slug": "openfort",
+     "name": "Openfort",
+     "unit": "Wallet operations",
+     "points": [
+      {
+       "x": 1000,
+       "usd": 0,
+       "plan": "free",
+       "next": "free"
+      },
+      {
+       "x": 1000.000002,
+       "usd": 0,
+       "plan": "free-card",
+       "next": "free-card",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "lower",
+       "nextBound": "lower"
+      },
+      {
+       "x": 5950,
+       "usd": 99,
+       "plan": "free-card",
+       "next": "growth",
+       "unc": true,
+       "bound": "lower"
+      },
+      {
+       "x": 10000,
+       "usd": 99,
+       "plan": "growth",
+       "next": "growth"
+      },
+      {
+       "x": 12500,
+       "usd": 99,
+       "plan": "growth",
+       "next": "growth"
+      },
+      {
+       "x": 13450,
+       "usd": 114.2,
+       "plan": "growth",
+       "next": "growth"
+      },
+      {
+       "x": 21875,
+       "usd": 249,
+       "plan": "growth",
+       "next": "pro"
+      },
+      {
+       "x": 30950,
+       "usd": 249,
+       "plan": "pro",
+       "next": "pro"
+      },
+      {
+       "x": 43750,
+       "usd": 249,
+       "plan": "pro",
+       "next": "pro"
+      },
+      {
+       "x": 50000,
+       "usd": 249,
+       "plan": "pro",
+       "next": "pro"
+      },
+      {
+       "x": 79166.66666666667,
+       "usd": 599,
+       "plan": "pro",
+       "next": "scale"
+      },
+      {
+       "x": 100000,
+       "usd": 599,
+       "plan": "scale",
+       "next": "scale"
+      },
+      {
+       "x": 250000,
+       "usd": 599,
+       "plan": "scale",
+       "next": "scale"
+      },
+      {
+       "x": 1000000,
+       "usd": 6599,
+       "plan": "scale",
+       "next": "scale"
+      },
+      {
+       "x": 10000000,
+       "usd": 78599,
+       "plan": "scale"
+      }
+     ]
+    },
+    {
+     "slug": "magic",
+     "name": "Magic",
+     "unit": "Monthly active wallets plus signatures",
+     "points": [
+      {
+       "x": 1000,
+       "usd": 0,
+       "plan": "developer",
+       "next": "developer"
+      },
+      {
+       "x": 10000,
+       "usd": 0,
+       "plan": "developer",
+       "next": "developer"
+      },
+      {
+       "x": 50000,
+       "usd": 0,
+       "plan": "developer",
+       "next": "developer"
+      },
+      {
+       "x": 100000,
+       "usd": 250,
+       "plan": "developer",
+       "next": "developer"
+      },
+      {
+       "x": 1000000,
+       "usd": 4750,
+       "plan": "developer",
+       "next": "developer"
+      },
+      {
+       "x": 10000000,
+       "usd": 49750,
+       "plan": "developer"
+      }
+     ]
+    },
+    {
+     "slug": "privy",
+     "name": "Privy",
+     "unit": "Signatures",
+     "points": [
+      {
+       "x": 1000,
+       "usd": 0,
+       "plan": "free",
+       "next": "free",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "lower",
+       "nextBound": "lower"
+      },
+      {
+       "x": 10000,
+       "usd": 0,
+       "plan": "free",
+       "next": "free",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "lower",
+       "nextBound": "lower"
+      },
+      {
+       "x": 50000,
+       "usd": 0,
+       "plan": "free",
+       "next": "free",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "lower",
+       "nextBound": "lower"
+      },
+      {
+       "x": 50000.0001,
+       "usd": 2000,
+       "plan": "payg",
+       "next": "payg",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "lower",
+       "nextBound": "lower"
+      },
+      {
+       "x": 100000,
+       "usd": 2500,
+       "plan": "payg",
+       "next": "payg",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "lower",
+       "nextBound": "lower"
+      },
+      {
+       "x": 1000000,
+       "usd": 11500,
+       "plan": "payg",
+       "next": "payg",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "lower",
+       "nextBound": "lower"
+      },
+      {
+       "x": 10000000,
+       "usd": 101500,
+       "plan": "payg",
+       "unc": true,
+       "bound": "lower"
+      }
+     ]
+    },
+    {
+     "slug": "thirdweb",
+     "name": "thirdweb",
+     "unit": "Server wallet requests, banded",
+     "points": [
+      {
+       "x": 1000,
+       "usd": 99,
+       "plan": "growth",
+       "next": "growth"
+      },
+      {
+       "x": 10000,
+       "usd": 108,
+       "plan": "growth",
+       "next": "growth"
+      },
+      {
+       "x": 100000,
+       "usd": 198,
+       "plan": "growth",
+       "next": "growth",
+       "nextUnc": true,
+       "nextBound": "upper"
+      },
+      {
+       "x": 250000,
+       "usd": 288,
+       "plan": "growth",
+       "next": "growth",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "upper",
+       "nextBound": "upper"
+      },
+      {
+       "x": 1000000,
+       "usd": 438,
+       "plan": "growth",
+       "next": "growth",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "upper",
+       "nextBound": "upper"
+      },
+      {
+       "x": 10000000,
+       "usd": 2238,
+       "plan": "growth",
+       "unc": true,
+       "bound": "upper"
+      }
+     ]
+    },
+    {
+     "slug": "circle",
+     "name": "Circle",
+     "unit": "Monthly active wallets, banded",
+     "points": [
+      {
+       "x": 1000,
+       "usd": 0,
+       "plan": "signing-api",
+       "next": "signing-api"
+      },
+      {
+       "x": 10000,
+       "usd": 0,
+       "plan": "signing-api",
+       "next": "signing-api"
+      },
+      {
+       "x": 100000,
+       "usd": 0,
+       "plan": "signing-api",
+       "next": "signing-api"
+      },
+      {
+       "x": 1000000,
+       "usd": 0,
+       "plan": "signing-api",
+       "next": "signing-api"
+      },
+      {
+       "x": 10000000,
+       "usd": 0,
+       "plan": "signing-api"
+      }
+     ]
+    },
+    {
+     "slug": "lit",
+     "name": "Lit Protocol",
+     "unit": "Prepaid credits per execution second",
+     "points": [
+      {
+       "x": 1000,
+       "usd": 10,
+       "plan": "credits",
+       "next": "credits",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "lower",
+       "nextBound": "lower"
+      },
+      {
+       "x": 10000,
+       "usd": 100,
+       "plan": "credits",
+       "next": "credits",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "lower",
+       "nextBound": "lower"
+      },
+      {
+       "x": 100000,
+       "usd": 1000,
+       "plan": "credits",
+       "next": "credits",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "lower",
+       "nextBound": "lower"
+      },
+      {
+       "x": 1000000,
+       "usd": 10000,
+       "plan": "credits",
+       "next": "credits",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "lower",
+       "nextBound": "lower"
+      },
+      {
+       "x": 10000000,
+       "usd": 100000,
+       "plan": "credits",
+       "unc": true,
+       "bound": "lower"
+      }
+     ]
+    },
+    {
+     "slug": "turnkey",
+     "name": "Turnkey",
+     "unit": "Signatures, with a cap on wallets",
+     "points": [
+      {
+       "x": 1000,
+       "usd": 97.5,
+       "plan": "payg",
+       "next": "payg"
+      },
+      {
+       "x": 1015,
+       "usd": 99,
+       "plan": "payg",
+       "next": "pro",
+       "nextUnc": true,
+       "nextBound": "lower"
+      },
+      {
+       "x": 1979.9999999999998,
+       "usd": 99,
+       "plan": "pro",
+       "next": "pro",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "lower",
+       "nextBound": "lower"
+      },
+      {
+       "x": 10000,
+       "usd": 500,
+       "plan": "pro",
+       "next": "pro",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "lower",
+       "nextBound": "lower"
+      },
+      {
+       "x": 100000,
+       "usd": 5000,
+       "plan": "pro",
+       "next": "pro",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "lower",
+       "nextBound": "lower"
+      },
+      {
+       "x": 1000000,
+       "usd": 50000,
+       "plan": "pro",
+       "next": "pro",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "lower",
+       "nextBound": "lower"
+      },
+      {
+       "x": 10000000,
+       "usd": 500000,
+       "plan": "pro",
+       "unc": true,
+       "bound": "lower"
+      }
+     ]
+    },
+    {
+     "slug": "portal",
+     "name": "Portal",
+     "unit": "Operations plus wallets",
+     "points": [
+      {
+       "x": 1000,
+       "usd": 499,
+       "plan": "start-up",
+       "next": "start-up",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "upper",
+       "nextBound": "upper"
+      },
+      {
+       "x": 10000,
+       "usd": 1399,
+       "plan": "start-up",
+       "next": "start-up",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "upper",
+       "nextBound": "upper"
+      },
+      {
+       "x": 100000,
+       "usd": 10399,
+       "plan": "start-up",
+       "next": "start-up",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "upper",
+       "nextBound": "upper"
+      },
+      {
+       "x": 1000000,
+       "usd": 100399,
+       "plan": "start-up",
+       "next": "start-up",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "upper",
+       "nextBound": "upper"
+      },
+      {
+       "x": 10000000,
+       "usd": 1000399,
+       "plan": "start-up",
+       "unc": true,
+       "bound": "upper"
+      }
+     ]
+    },
+    {
+     "slug": "dfns",
+     "name": "Dfns",
+     "unit": "Annual plan with wallet and signature allowances",
+     "points": [
+      {
+       "x": 1000,
+       "usd": 666.67,
+       "plan": "basic",
+       "next": "basic"
+      },
+      {
+       "x": 1000.000002,
+       "usd": 2916.67,
+       "plan": "pro",
+       "next": "pro"
+      },
+      {
+       "x": 10000,
+       "usd": 2916.67,
+       "plan": "pro",
+       "next": "pro"
+      },
+      {
+       "x": 10000.00002,
+       "usd": null,
+       "why": "above 10,000 signatures a month on Pro the price is on request"
+      },
+      {
+       "x": 100000,
+       "usd": null,
+       "why": "above 10,000 signatures a month on Pro the price is on request"
+      },
+      {
+       "x": 1000000,
+       "usd": null,
+       "why": "above 10,000 signatures a month on Pro the price is on request"
+      },
+      {
+       "x": 10000000,
+       "usd": null,
+       "why": "above 10,000 signatures a month on Pro the price is on request"
+      }
+     ]
+    },
+    {
+     "slug": "crossmint",
+     "name": "Crossmint",
+     "unit": "Monthly active wallets, free tier only",
+     "points": [
+      {
+       "x": 1000,
+       "usd": 0,
+       "plan": "free",
+       "next": "free"
+      },
+      {
+       "x": 2000,
+       "usd": 0,
+       "plan": "free",
+       "next": "free"
+      },
+      {
+       "x": 2000.000004,
+       "usd": null,
+       "why": "above 2,000 transactions a month on Free the price is on request"
+      },
+      {
+       "x": 10000,
+       "usd": null,
+       "why": "above 2,000 transactions a month on Free the price is on request"
+      },
+      {
+       "x": 100000,
+       "usd": null,
+       "why": "above 2,000 transactions a month on Free the price is on request"
+      },
+      {
+       "x": 1000000,
+       "usd": null,
+       "why": "above 2,000 transactions a month on Free the price is on request"
+      },
+      {
+       "x": 10000000,
+       "usd": null,
+       "why": "above 2,000 transactions a month on Free the price is on request"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "payouts",
+   "label": "Payouts",
+   "axis": "payout wallets",
+   "walletsFixed": 0,
+   "walletsPerX": 1,
+   "txFixed": 0,
+   "txPerX": 2,
+   "floor": 100,
+   "ceiling": 1000000,
+   "sizes": [
+    {
+     "id": "small",
+     "x": 1000
+    },
+    {
+     "id": "medium",
+     "x": 10000
+    },
+    {
+     "id": "large",
+     "x": 100000
+    }
+   ],
+   "providers": [
+    {
+     "slug": "coinbase-cdp",
+     "name": "Coinbase CDP",
+     "unit": "Wallet operations",
+     "points": [
+      {
+       "x": 100,
+       "usd": 0,
+       "plan": "payg",
+       "next": "payg"
+      },
+      {
+       "x": 1000,
+       "usd": 0,
+       "plan": "payg",
+       "next": "payg"
+      },
+      {
+       "x": 1250,
+       "usd": 0,
+       "plan": "payg",
+       "next": "payg"
+      },
+      {
+       "x": 10000,
+       "usd": 175,
+       "plan": "payg",
+       "next": "payg"
+      },
+      {
+       "x": 100000,
+       "usd": 1975,
+       "plan": "payg",
+       "next": "payg"
+      },
+      {
+       "x": 1000000,
+       "usd": 19975,
+       "plan": "payg"
+      }
+     ]
+    },
+    {
+     "slug": "openfort",
+     "name": "Openfort",
+     "unit": "Wallet operations",
+     "points": [
+      {
+       "x": 100,
+       "usd": 0,
+       "plan": "free",
+       "next": "free"
+      },
+      {
+       "x": 500,
+       "usd": 0,
+       "plan": "free",
+       "next": "free"
+      },
+      {
+       "x": 500.000001,
+       "usd": 0,
+       "plan": "free-card",
+       "next": "free-card",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "lower",
+       "nextBound": "lower"
+      },
+      {
+       "x": 1000,
+       "usd": 20,
+       "plan": "free-card",
+       "next": "free-card",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "lower",
+       "nextBound": "lower"
+      },
+      {
+       "x": 2975,
+       "usd": 99,
+       "plan": "free-card",
+       "next": "growth",
+       "unc": true,
+       "bound": "lower"
+      },
+      {
+       "x": 6250,
+       "usd": 99,
+       "plan": "growth",
+       "next": "growth"
+      },
+      {
+       "x": 6725,
+       "usd": 114.2,
+       "plan": "growth",
+       "next": "growth"
+      },
+      {
+       "x": 10000,
+       "usd": 219,
+       "plan": "growth",
+       "next": "growth"
+      },
+      {
+       "x": 10937.5,
+       "usd": 249,
+       "plan": "growth",
+       "next": "pro"
+      },
+      {
+       "x": 15475,
+       "usd": 249,
+       "plan": "pro",
+       "next": "pro"
+      },
+      {
+       "x": 21875,
+       "usd": 249,
+       "plan": "pro",
+       "next": "pro"
+      },
+      {
+       "x": 25000,
+       "usd": 249,
+       "plan": "pro",
+       "next": "pro"
+      },
+      {
+       "x": 39583.333333333336,
+       "usd": 599,
+       "plan": "pro",
+       "next": "scale"
+      },
+      {
+       "x": 100000,
+       "usd": 599,
+       "plan": "scale",
+       "next": "scale"
+      },
+      {
+       "x": 125000,
+       "usd": 599,
+       "plan": "scale",
+       "next": "scale"
+      },
+      {
+       "x": 1000000,
+       "usd": 14599,
+       "plan": "scale"
+      }
+     ]
+    },
+    {
+     "slug": "magic",
+     "name": "Magic",
+     "unit": "Monthly active wallets plus signatures",
+     "points": [
+      {
+       "x": 100,
+       "usd": 0,
+       "plan": "developer",
+       "next": "developer"
+      },
+      {
+       "x": 1000,
+       "usd": 0,
+       "plan": "developer",
+       "next": "developer"
+      },
+      {
+       "x": 2500,
+       "usd": 67.5,
+       "plan": "developer",
+       "next": "developer"
+      },
+      {
+       "x": 8800,
+       "usd": 351,
+       "plan": "developer",
+       "next": "startup"
+      },
+      {
+       "x": 10000,
+       "usd": 399,
+       "plan": "startup",
+       "next": "startup"
+      },
+      {
+       "x": 25000,
+       "usd": 999,
+       "plan": "startup",
+       "next": "startup"
+      },
+      {
+       "x": 100000,
+       "usd": 4749,
+       "plan": "startup",
+       "next": "startup"
+      },
+      {
+       "x": 1000000,
+       "usd": 49749,
+       "plan": "startup"
+      }
+     ]
+    },
+    {
+     "slug": "privy",
+     "name": "Privy",
+     "unit": "Signatures",
+     "points": [
+      {
+       "x": 100,
+       "usd": 0,
+       "plan": "free",
+       "next": "free",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "lower",
+       "nextBound": "lower"
+      },
+      {
+       "x": 1000,
+       "usd": 0,
+       "plan": "free",
+       "next": "free",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "lower",
+       "nextBound": "lower"
+      },
+      {
+       "x": 10000,
+       "usd": 0,
+       "plan": "free",
+       "next": "free",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "lower",
+       "nextBound": "lower"
+      },
+      {
+       "x": 25000,
+       "usd": 0,
+       "plan": "free",
+       "next": "free",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "lower",
+       "nextBound": "lower"
+      },
+      {
+       "x": 25000.00005,
+       "usd": 2000,
+       "plan": "payg",
+       "next": "payg",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "lower",
+       "nextBound": "lower"
+      },
+      {
+       "x": 100000,
+       "usd": 3500,
+       "plan": "payg",
+       "next": "payg",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "lower",
+       "nextBound": "lower"
+      },
+      {
+       "x": 1000000,
+       "usd": 21500,
+       "plan": "payg",
+       "unc": true,
+       "bound": "lower"
+      }
+     ]
+    },
+    {
+     "slug": "thirdweb",
+     "name": "thirdweb",
+     "unit": "Server wallet requests, banded",
+     "points": [
+      {
+       "x": 100,
+       "usd": 99,
+       "plan": "growth",
+       "next": "growth"
+      },
+      {
+       "x": 500,
+       "usd": 99,
+       "plan": "growth",
+       "next": "growth"
+      },
+      {
+       "x": 1000,
+       "usd": 100,
+       "plan": "growth",
+       "next": "growth"
+      },
+      {
+       "x": 10000,
+       "usd": 118,
+       "plan": "growth",
+       "next": "growth"
+      },
+      {
+       "x": 50000,
+       "usd": 198,
+       "plan": "growth",
+       "next": "growth",
+       "nextUnc": true,
+       "nextBound": "upper"
+      },
+      {
+       "x": 100000,
+       "usd": 258,
+       "plan": "growth",
+       "next": "growth",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "upper",
+       "nextBound": "upper"
+      },
+      {
+       "x": 125000,
+       "usd": 288,
+       "plan": "growth",
+       "next": "growth",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "upper",
+       "nextBound": "upper"
+      },
+      {
+       "x": 1000000,
+       "usd": 638,
+       "plan": "growth",
+       "unc": true,
+       "bound": "upper"
+      }
+     ]
+    },
+    {
+     "slug": "circle",
+     "name": "Circle",
+     "unit": "Monthly active wallets, banded",
+     "points": [
+      {
+       "x": 100,
+       "usd": 0,
+       "plan": "signing-api",
+       "next": "signing-api"
+      },
+      {
+       "x": 1000,
+       "usd": 0,
+       "plan": "signing-api",
+       "next": "signing-api"
+      },
+      {
+       "x": 5000,
+       "usd": 152,
+       "plan": "signing-api",
+       "next": "signing-api"
+      },
+      {
+       "x": 10000,
+       "usd": 327,
+       "plan": "signing-api",
+       "next": "signing-api"
+      },
+      {
+       "x": 25000,
+       "usd": 777,
+       "plan": "signing-api",
+       "next": "signing-api"
+      },
+      {
+       "x": 50000,
+       "usd": 1427,
+       "plan": "signing-api",
+       "next": "signing-api"
+      },
+      {
+       "x": 100000,
+       "usd": 2577,
+       "plan": "signing-api",
+       "next": "signing-api"
+      },
+      {
+       "x": 250000,
+       "usd": 4827,
+       "plan": "signing-api",
+       "next": "signing-api"
+      },
+      {
+       "x": 1000000,
+       "usd": 13827,
+       "plan": "signing-api"
+      }
+     ]
+    },
+    {
+     "slug": "lit",
+     "name": "Lit Protocol",
+     "unit": "Prepaid credits per execution second",
+     "points": [
+      {
+       "x": 100,
+       "usd": 2,
+       "plan": "credits",
+       "next": "credits",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "lower",
+       "nextBound": "lower"
+      },
+      {
+       "x": 1000,
+       "usd": 20,
+       "plan": "credits",
+       "next": "credits",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "lower",
+       "nextBound": "lower"
+      },
+      {
+       "x": 10000,
+       "usd": 200,
+       "plan": "credits",
+       "next": "credits",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "lower",
+       "nextBound": "lower"
+      },
+      {
+       "x": 100000,
+       "usd": 2000,
+       "plan": "credits",
+       "next": "credits",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "lower",
+       "nextBound": "lower"
+      },
+      {
+       "x": 1000000,
+       "usd": 20000,
+       "plan": "credits",
+       "unc": true,
+       "bound": "lower"
+      }
+     ]
+    },
+    {
+     "slug": "turnkey",
+     "name": "Turnkey",
+     "unit": "Signatures, with a cap on wallets",
+     "points": [
+      {
+       "x": 100,
+       "usd": 17.5,
+       "plan": "payg",
+       "next": "payg"
+      },
+      {
+       "x": 507.49999999999994,
+       "usd": 99,
+       "plan": "payg",
+       "next": "pro",
+       "nextUnc": true,
+       "nextBound": "lower"
+      },
+      {
+       "x": 989.9999999999999,
+       "usd": 99,
+       "plan": "pro",
+       "next": "pro",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "lower",
+       "nextBound": "lower"
+      },
+      {
+       "x": 1000,
+       "usd": 100,
+       "plan": "pro",
+       "next": "pro",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "lower",
+       "nextBound": "lower"
+      },
+      {
+       "x": 1000.000002,
+       "usd": 100,
+       "plan": "pro",
+       "next": "pro",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "lower",
+       "nextBound": "lower"
+      },
+      {
+       "x": 2000,
+       "usd": 200,
+       "plan": "pro",
+       "next": "pro",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "lower",
+       "nextBound": "lower"
+      },
+      {
+       "x": 2000.000004,
+       "usd": null,
+       "why": "Pro stops at 2,000 wallets; Enterprise has no published price"
+      },
+      {
+       "x": 10000,
+       "usd": null,
+       "why": "Pro stops at 2,000 wallets; Enterprise has no published price"
+      },
+      {
+       "x": 100000,
+       "usd": null,
+       "why": "Pro stops at 2,000 wallets; Enterprise has no published price"
+      },
+      {
+       "x": 1000000,
+       "usd": null,
+       "why": "Pro stops at 2,000 wallets; Enterprise has no published price"
+      }
+     ]
+    },
+    {
+     "slug": "portal",
+     "name": "Portal",
+     "unit": "Operations plus wallets",
+     "points": [
+      {
+       "x": 100,
+       "usd": 499,
+       "plan": "start-up",
+       "next": "start-up",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "upper",
+       "nextBound": "upper"
+      },
+      {
+       "x": 500,
+       "usd": 499,
+       "plan": "start-up",
+       "next": "start-up",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "upper",
+       "nextBound": "upper"
+      },
+      {
+       "x": 1000,
+       "usd": 599,
+       "plan": "start-up",
+       "next": "start-up",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "upper",
+       "nextBound": "upper"
+      },
+      {
+       "x": 10000,
+       "usd": 3299,
+       "plan": "start-up",
+       "next": "start-up",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "upper",
+       "nextBound": "upper"
+      },
+      {
+       "x": 100000,
+       "usd": 30299,
+       "plan": "start-up",
+       "next": "start-up",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "upper",
+       "nextBound": "upper"
+      },
+      {
+       "x": 1000000,
+       "usd": 300299,
+       "plan": "start-up",
+       "unc": true,
+       "bound": "upper"
+      }
+     ]
+    },
+    {
+     "slug": "dfns",
+     "name": "Dfns",
+     "unit": "Annual plan with wallet and signature allowances",
+     "points": [
+      {
+       "x": 100,
+       "usd": 666.67,
+       "plan": "basic",
+       "next": "basic"
+      },
+      {
+       "x": 500,
+       "usd": 666.67,
+       "plan": "basic",
+       "next": "basic"
+      },
+      {
+       "x": 500.000001,
+       "usd": 2916.67,
+       "plan": "pro",
+       "next": "pro"
+      },
+      {
+       "x": 1000,
+       "usd": 2916.67,
+       "plan": "pro",
+       "next": "pro"
+      },
+      {
+       "x": 5000,
+       "usd": 2916.67,
+       "plan": "pro",
+       "next": "pro"
+      },
+      {
+       "x": 5000.00001,
+       "usd": null,
+       "why": "above 10,000 signatures a month on Pro the price is on request"
+      },
+      {
+       "x": 10000,
+       "usd": null,
+       "why": "above 10,000 signatures a month on Pro the price is on request"
+      },
+      {
+       "x": 10000.00002,
+       "usd": null,
+       "why": "above 10,000 signatures a month on Pro the price is on request"
+      },
+      {
+       "x": 50000,
+       "usd": null,
+       "why": "above 10,000 signatures a month on Pro the price is on request"
+      },
+      {
+       "x": 50000.0001,
+       "usd": null,
+       "why": "above 10,000 signatures a month on Pro the price is on request"
+      },
+      {
+       "x": 100000,
+       "usd": null,
+       "why": "above 10,000 signatures a month on Pro the price is on request"
+      },
+      {
+       "x": 1000000,
+       "usd": null,
+       "why": "above 10,000 signatures a month on Pro the price is on request"
+      }
+     ]
+    },
+    {
+     "slug": "crossmint",
+     "name": "Crossmint",
+     "unit": "Monthly active wallets, free tier only",
+     "points": [
+      {
+       "x": 100,
+       "usd": 0,
+       "plan": "free",
+       "next": "free"
+      },
+      {
+       "x": 1000,
+       "usd": 0,
+       "plan": "free",
+       "next": "free"
+      },
+      {
+       "x": 1000.000002,
+       "usd": null,
+       "why": "above 1,000 active wallets a month on Free the price is on request"
+      },
+      {
+       "x": 10000,
+       "usd": null,
+       "why": "above 1,000 active wallets a month on Free the price is on request"
+      },
+      {
+       "x": 100000,
+       "usd": null,
+       "why": "above 1,000 active wallets a month on Free the price is on request"
+      },
+      {
+       "x": 1000000,
+       "usd": null,
+       "why": "above 1,000 active wallets a month on Free the price is on request"
+      }
+     ]
+    }
+   ]
+  }
+ ],
+ "generatedBy": "harnesses/server-wallet-cost, SERVER_WALLET_COST_EMIT_CURVES"
+}

@@ -61,6 +61,7 @@ import { fetchBridgeHub } from "@/lib/bridge-hub-stats";
 import { withUtm } from "@/lib/utm";
 import { noFigureLabel, noRankLabel } from "@/lib/no-figure-label";
 import { WalletVendorPricing, walletVendorHeadline, fmtWalletBill } from "@/components/wallet-vendor-pricing";
+import { ServerWalletVendorPricing, serverWalletVendorHeadline, fmtServerWalletBill } from "@/components/server-wallet-vendor-pricing";
 
 export const revalidate = 3600;
 
@@ -354,16 +355,36 @@ export async function generateMetadata({
   // the headline bill and its app size in the description. A vendor that
   // also appears on other benches (thirdweb, Coinbase CDP) keeps its
   // existing title: one wallet rank must not displace thirty RPC ones.
+  const WALLET_BENCHES = new Set(["wallet-cost", "server-wallet-cost"]);
   const walletOnly =
-    appearances.length > 0 && appearances.every((a) => a.benchmark.slug === "wallet-cost");
-  if (walletOnly) {
+    appearances.length > 0 && appearances.every((a) => WALLET_BENCHES.has(a.benchmark.slug));
+  const embeddedApp = appearances.find((a) => a.benchmark.slug === "wallet-cost");
+  if (walletOnly && !embeddedApp) {
+    // Measured only on bench 310 (Lit, Portal, Dfns): a server wallet pricing
+    // page, priced on that bench's headline cell.
     const rawSlug = appearances[0]?.result.slug ?? p.slug;
-    const head = walletVendorHeadline(rawSlug);
-    const long = `${p.name} pricing ${new Date().getUTCFullYear()}: monthly bill from 100 to 1M users`;
-    title = long.length <= 60 ? long : `${p.name} pricing ${new Date().getUTCFullYear()}: bill by app size`;
+    const head = serverWalletVendorHeadline(rawSlug);
+    const long = `${p.name} server wallet pricing ${new Date().getUTCFullYear()}: agents, bots, payouts`;
+    title = long.length <= 60 ? long : `${p.name} server wallet pricing ${new Date().getUTCFullYear()}`;
     if (head && "usd" in head) {
       description = capSnippet(
-        `${p.name} bills ${fmtWalletBill(head.usd)} a month for a 10,000-user consumer app (latest value), #${head.rank} of ${head.of} embedded wallet vendors priced. Its bill at 1,000 and 100,000 users, by usage profile.`,
+        `${p.name} bills ${head.reading ? `${head.reading} ` : ""}${fmtServerWalletBill(head.usd)} a month for ${head.label} (latest value), ${head.rank > 0 ? `#${head.rank} of ${head.of}` : `not ranked among ${head.of}`} server wallet vendors priced. Its bill for a trading bot and for payouts too.`,
+      );
+    } else if (head) {
+      description = capSnippet(
+        `${p.name} publishes no self-serve price for ${head.label}, so it is not ranked there. Where it is priced, and what ${head.of} other server wallet vendors bill.`,
+      );
+    }
+  } else if (walletOnly) {
+    const rawSlug = embeddedApp?.result.slug ?? p.slug;
+    const head = walletVendorHeadline(rawSlug);
+    // "wallet" in the title: a search for "privy pricing" returns other
+    // Privys (SEO audit 2026-10-30).
+    const long = `${p.name} wallet pricing ${new Date().getUTCFullYear()}: bill from 100 to 1M users`;
+    title = long.length <= 60 ? long : `${p.name} wallet pricing ${new Date().getUTCFullYear()}`;
+    if (head && "usd" in head) {
+      description = capSnippet(
+        `${p.name} bills ${fmtWalletBill(head.usd)} a month for a 10,000-user consumer app (${head.verified ? "" : "ambiguous price, "}latest value), #${head.rank} of ${head.of} embedded wallet vendors priced. Its bill at 1,000 and 100,000 users, by usage profile.`,
       );
     } else if (head) {
       description = capSnippet(
@@ -1322,6 +1343,7 @@ export default async function ProviderPage({
                           {a.benchmark.valueKind === "latest"
                             ? "latest value"
                             : valueWindowLabel(a.benchmark)}
+                          {a.result.priceReading ? ` · ${a.result.priceReading}` : ""}
                         </p>
                       </>
                     ) : (
@@ -1340,6 +1362,10 @@ export default async function ProviderPage({
       {(() => {
         const w = sorted.find((a) => a.benchmark.slug === "wallet-cost");
         return w ? <WalletVendorPricing slug={w.result.slug} name={p.name} /> : null;
+      })()}
+      {(() => {
+        const w = sorted.find((a) => a.benchmark.slug === "server-wallet-cost");
+        return w ? <ServerWalletVendorPricing slug={w.result.slug} name={p.name} /> : null;
       })()}
 
       <RelatedProvidersSection providerSlug={p.slug} providerName={p.name} />

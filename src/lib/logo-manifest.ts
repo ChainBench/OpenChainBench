@@ -12,6 +12,12 @@
  */
 
 const RAW: Record<string, string> = {
+  // Server and agent wallet vendors new with bench 310 (2026-10-29): Lit's
+  // header lettermark in its brand orange, Portal's glyph cut from its header
+  // SVG in the blue of its own app icon, Dfns' symbol from its brand page.
+  lit: "/logos/lit.svg",
+  portal: "/logos/portal.svg",
+  dfns: "/logos/dfns.svg",
   // Embedded wallet vendors, bench 309 (2026-10-29). Each is the vendor's
   // own glyph: Circle and ZeroDev their favicon.svg, Magic its brand kit,
   // Dynamic its icon.svg without the white disc, Privy, Turnkey, Openfort,

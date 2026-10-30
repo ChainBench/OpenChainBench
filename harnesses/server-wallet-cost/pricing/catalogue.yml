@@ -1,0 +1,501 @@
+# Server and agent wallet pricing catalogue, the input of record for bench
+# server-wallet-cost (310). Same model and rules as bench 309's catalogue
+# (harnesses/wallet-cost/pricing/catalogue.yml); read its header for the
+# grammar of meters, tiers, caps, quote_above, minimum and uncertain_above.
+#
+# What differs: there is no end user. A company's backend or an AI agent
+# holds the wallets and signs. Each scenario has its own axis x, and the
+# month's ACTIVE wallets and TRANSACTIONS are affine in it:
+#
+#   wallets = wallets_fixed + wallets_per_x * x
+#   tx      = tx_fixed      + tx_per_x      * x
+#
+# A meter is per_wallet x wallets + per_tx x tx. Every wallet in a scenario
+# transacts every month, so "active wallets" and "wallets held" are the same
+# number here; for a vendor that caps wallets HELD this is a lower bound.
+# Creating a wallet is a one-time cost and is left out of the monthly bill.
+# A transaction is one signature followed by one broadcast. Gas is excluded.
+
+version: 1
+as_of: "2026-10-29"
+
+scenarios:
+  - id: agents
+    label: AI agents
+    axis: agents
+    wallets_fixed: 0
+    wallets_per_x: 1
+    tx_fixed: 0
+    tx_per_x: 50
+    floor: 10
+    ceiling: 100000
+    sizes:
+      - { id: small, x: 1000 }
+      - { id: medium, x: 10000 }
+      - { id: large, x: 100000 }
+  - id: bot
+    label: Trading bot
+    axis: transactions a month
+    wallets_fixed: 20
+    wallets_per_x: 0
+    tx_fixed: 0
+    tx_per_x: 1
+    floor: 1000
+    ceiling: 10000000
+    sizes:
+      - { id: small, x: 10000 }
+      - { id: medium, x: 100000 }
+      - { id: large, x: 1000000 }
+  - id: payouts
+    label: Payouts
+    axis: payout wallets
+    wallets_fixed: 0
+    wallets_per_x: 1
+    tx_fixed: 0
+    tx_per_x: 2
+    floor: 100
+    ceiling: 1000000
+    sizes:
+      - { id: small, x: 1000 }
+      - { id: medium, x: 10000 }
+      - { id: large, x: 100000 }
+
+headline: { scenario: agents, size: medium }
+
+providers:
+  - slug: coinbase-cdp
+    name: Coinbase CDP
+    url: https://www.coinbase.com/developer-platform
+    cohort: ranked
+    unit: Wallet operations
+    note: >-
+      "Pricing is consistent across wallet types": server wallets on API-key
+      authentication bill the same operations as embedded ones. Sending a
+      transaction (sign and broadcast) is 2 operations. A policy evaluation
+      is 1 more; these scenarios configure no policy. Creating an account is
+      1 operation, once.
+    meters:
+      operations: { per_tx: 2 }
+    plans:
+      - id: payg
+        name: Pay as you go
+        monthly_usd: 0
+        confidence: verified
+        tiers:
+          operations: [{ up_to: 5000, rate: 0 }, { rate: 0.005 }]
+    source:
+      pricing:
+        url: https://docs.cdp.coinbase.com/wallets/pricing.md
+        body_sha256: 8276ec67b1699b1133abe997d3b8aa7d237ac882b55f73f2367f6948eb7a3d18
+        verified_at: "2026-10-29"
+        poll: true
+
+  - slug: openfort
+    name: Openfort
+    url: https://www.openfort.io
+    cohort: ranked
+    unit: Wallet operations
+    note: >-
+      Backend wallets are in every plan. A payment is "two operations: sign,
+      then broadcast". A project without a paid subscription "stops at the
+      included limit" with HTTP 402, while the Free card offers $0.01 per
+      operation once a payment method is added. Both readings are priced:
+      Free stops at 2,000 (exact), and "Free with a card" meters $0.01 an
+      operation past it, as a lower bound since the FAQ says that plan
+      stops instead; it is never named cheapest.
+    meters:
+      operations: { per_tx: 2 }
+    plans:
+      - id: free
+        name: Free
+        monthly_usd: 0
+        confidence: verified
+        caps: { operations: 2000 }
+      - id: free-card
+        name: Free with a card
+        monthly_usd: 0
+        confidence: uncertain
+        bound: lower
+        tiers:
+          operations: [{ up_to: 2000, rate: 0 }, { rate: 0.01 }]
+      - id: growth
+        name: Growth
+        monthly_usd: 99
+        confidence: verified
+        tiers:
+          operations: [{ up_to: 25000, rate: 0 }, { rate: 0.008 }]
+      - id: pro
+        name: Pro
+        monthly_usd: 249
+        confidence: verified
+        tiers:
+          operations: [{ up_to: 100000, rate: 0 }, { rate: 0.006 }]
+      - id: scale
+        name: Scale
+        monthly_usd: 599
+        confidence: verified
+        tiers:
+          operations: [{ up_to: 500000, rate: 0 }, { rate: 0.004 }]
+    source:
+      pricing:
+        url: https://www.openfort.io/pricing
+        body_sha256: 3275b5fb44180e305ea2b17ec63b9be9627f694555beafd89ed20f8bc0326074
+        verified_at: "2026-10-29"
+        poll: true
+
+  - slug: magic
+    name: Magic
+    url: https://magic.link
+    cohort: ranked
+    unit: Monthly active wallets plus signatures
+    note: >-
+      Server wallets on Express or Core "count when they successfully sign".
+      Every successful signing request counts against 50,000 a month per
+      team. Magic signs; broadcasting is the customer's.
+    meters:
+      active_wallets: { per_wallet: 1 }
+      signatures: { per_tx: 1 }
+    plans:
+      - id: developer
+        name: Developer
+        monthly_usd: 0
+        confidence: verified
+        tiers:
+          active_wallets: [{ up_to: 1000, rate: 0 }, { rate: 0.045 }]
+          signatures: [{ up_to: 50000, rate: 0 }, { rate: 0.005 }]
+      - id: startup
+        name: Startup
+        monthly_usd: 99
+        confidence: verified
+        tiers:
+          active_wallets: [{ up_to: 2500, rate: 0 }, { rate: 0.04 }]
+          signatures: [{ up_to: 50000, rate: 0 }, { rate: 0.005 }]
+    source:
+      pricing:
+        url: https://magic.link/pricing
+        body_sha256: a8194db2eabb982af7eb2405fdbfadef4598c3b711b9a806018a3da3ee6c2f87
+        verified_at: "2026-10-29"
+        poll: true
+
+  - slug: privy
+    name: Privy
+    url: https://www.privy.io
+    cohort: ranked
+    unit: Signatures
+    note: >-
+      Server wallets have no Privy user, so only signatures are billed: 50,000
+      a month free, then pay-as-you-go at a $2,000 base and $0.01 per
+      signature. Privy also bills apps above $1M of monthly transaction
+      volume "based on usage" at a rate it does not publish; a real payout or
+      trading flow is likely to cross it, so every Privy price here is a
+      lower bound.
+    meters:
+      signatures: { per_tx: 1 }
+    plans:
+      - id: free
+        name: Free
+        monthly_usd: 0
+        confidence: uncertain
+        bound: lower
+        caps: { signatures: 50000 }
+      - id: payg
+        name: Pay as you go
+        monthly_usd: 2000
+        confidence: uncertain
+        bound: lower
+        tiers:
+          signatures: [{ up_to: 50000, rate: 0 }, { rate: 0.01 }]
+    source:
+      pricing:
+        url: https://www.privy.io/pricing
+        body_sha256: 5cee07da8b21944d68ac6706cdffb8f124eb91d70641e82f468e5535540c34b3
+        verified_at: "2026-10-29"
+        poll: true
+
+  - slug: thirdweb
+    name: thirdweb
+    url: https://thirdweb.com
+    cohort: ranked
+    unit: Server wallet requests, banded
+    note: >-
+      Server wallets bill per API request: 1,000 included, then $1, $0.60
+      and $0.20 per thousand at 100K and 250K. A transaction is one request
+      that signs and sends. Priced band by band; whether the lower rate
+      applies to the whole count is not stated.
+    # Metered in thousands of requests, the unit the page prices in, so the
+    # drift check finds every rate on the page as written.
+    meters:
+      thousand_requests: { per_tx: 0.001 }
+    plans:
+      - id: growth
+        name: Growth
+        monthly_usd: 99
+        confidence: verified
+        uncertain_above: { thousand_requests: 100 }
+        bound: upper
+        note: >-
+          Unambiguous to 100,000 requests. Above, priced band by band, the
+          higher reading: if a lower rate applies to the whole count the bill
+          is smaller, so this is the most thirdweb would charge.
+        tiers:
+          thousand_requests:
+            - { up_to: 1, rate: 0 }
+            - { up_to: 100, rate: 1 }
+            - { up_to: 250, rate: 0.60 }
+            - { rate: 0.20 }
+    source:
+      pricing:
+        url: https://thirdweb.com/pricing
+        body_sha256: d9056af82567c1451d8887384fda974138bf30f98bb45b059f63ad892ed10738
+        verified_at: "2026-10-29"
+        poll: true
+
+  - slug: circle
+    name: Circle
+    url: https://www.circle.com/wallets
+    cohort: ranked
+    unit: Monthly active wallets, banded
+    note: >-
+      Developer-controlled wallets bill per monthly active wallet, one that
+      "conducted an on-chain transaction" that month, with no fee per
+      transaction. Two plans, both graduated by band: "Signing API only"
+      (Circle signs, the customer broadcasts, as at Turnkey, Magic, Lit and
+      Portal; Circle's signing APIs are for developer-controlled wallets
+      "when you manage broadcasting yourself") and All-included (signing,
+      indexing, broadcasting). A bot's 20 wallets sit inside the free 1,000
+      at any volume. Added 2026-10-30: the signing-only plan was missed.
+    meters:
+      active_wallets: { per_wallet: 1 }
+    plans:
+      - id: signing-api
+        name: Signing API only
+        monthly_usd: 0
+        confidence: verified
+        tiers:
+          active_wallets:
+            - { up_to: 1000, rate: 0 }
+            - { up_to: 5000, rate: 0.038 }
+            - { up_to: 10000, rate: 0.035 }
+            - { up_to: 25000, rate: 0.030 }
+            - { up_to: 50000, rate: 0.026 }
+            - { up_to: 100000, rate: 0.023 }
+            - { up_to: 250000, rate: 0.015 }
+            - { rate: 0.012 }
+      - id: all-included
+        name: All-included
+        monthly_usd: 0
+        confidence: verified
+        tiers:
+          active_wallets:
+            - { up_to: 1000, rate: 0 }
+            - { up_to: 5000, rate: 0.050 }
+            - { up_to: 10000, rate: 0.047 }
+            - { up_to: 25000, rate: 0.040 }
+            - { up_to: 50000, rate: 0.035 }
+            - { up_to: 100000, rate: 0.030 }
+            - { up_to: 250000, rate: 0.025 }
+            - { rate: 0.020 }
+    source:
+      pricing:
+        url: https://www.circle.com/wallets
+        body_sha256: e1d3f810e9b33eb8154fe744f48c7b8030315d92ab15cb4f8a3c23a3e3fbad6f
+        verified_at: "2026-10-29"
+        poll: true
+
+  - slug: lit
+    name: Lit Protocol
+    url: https://www.litprotocol.com
+    cohort: ranked
+    unit: Prepaid credits per execution second
+    note: >-
+      Prepaid credits, no subscription. A Lit Action is billed $0.01 per
+      second and "standard ECDSA signatures are effectively charged at
+      $0.01"; priced at $0.01 a transaction, sign only (broadcasting is the
+      customer's, and an action that also broadcasts runs longer). Paying in
+      LITKEY is 25% less; the card price is used.
+    meters:
+      signatures: { per_tx: 1 }
+    plans:
+      - id: credits
+        name: Prepaid credits
+        monthly_usd: 0
+        confidence: uncertain
+        bound: lower
+        tiers:
+          signatures: [{ rate: 0.01 }]
+    source:
+      pricing:
+        url: https://developer.litprotocol.com/management/pricing.md
+        body_sha256: 44d7a035dcc321c080bc90e8c0130da4eb140fa78c606e70db1efdbb9d44a1e7
+        verified_at: "2026-10-29"
+        poll: true
+
+  - slug: turnkey
+    name: Turnkey
+    url: https://www.turnkey.com
+    cohort: ranked
+    unit: Signatures, with a cap on wallets
+    note: >-
+      Billed per signature; Turnkey's own broadcasting is priced on request
+      and not included. Pay as You Go holds up to 1,000 wallets and Pro
+      2,000; beyond, Enterprise has no published price.
+    meters:
+      signatures: { per_tx: 1 }
+      wallets: { per_wallet: 1 }
+    plans:
+      - id: payg
+        name: Pay as You Go
+        monthly_usd: 0
+        confidence: verified
+        caps: { wallets: 1000 }
+        tiers:
+          signatures: [{ up_to: 25, rate: 0 }, { rate: 0.10 }]
+      - id: pro
+        name: Pro
+        monthly_usd: 99
+        minimum: true
+        confidence: uncertain
+        bound: lower
+        note: >-
+          "$99/mo." beside "$0.05 / signature", and the FAQ calls it "a
+          minimum monthly fee". Read as a spending floor; read as a fee on top
+          the bill is $99 higher.
+        caps: { wallets: 2000 }
+        tiers:
+          signatures: [{ rate: 0.05 }]
+      - id: enterprise
+        name: Enterprise
+        monthly_usd: null
+        confidence: verified
+    source:
+      pricing:
+        url: https://www.turnkey.com/pricing
+        body_sha256: eb91b7dd5113d9e3797c23a44d250d5c82b29a15ef70a7ef7ca962018767a665
+        verified_at: "2026-10-29"
+        poll: true
+
+  - slug: portal
+    name: Portal
+    url: https://www.portalhq.io
+    cohort: ranked
+    unit: Operations plus wallets
+    note: >-
+      Start-Up includes 1K monthly operations and 1K wallets, each $0.10
+      beyond. Operations are "Generate, Backup, Sign, Recover, Eject"; a
+      transaction is one Sign. Whether the wallet overage is charged once or
+      every month is not stated (priced every month, the higher reading), and
+      the Developer plan
+      is a development environment only.
+    meters:
+      operations: { per_tx: 1 }
+      wallets: { per_wallet: 1 }
+    plans:
+      - id: start-up
+        name: Start-Up
+        monthly_usd: 499
+        confidence: uncertain
+        bound: upper
+        tiers:
+          operations: [{ up_to: 1000, rate: 0 }, { rate: 0.10 }]
+          wallets: [{ up_to: 1000, rate: 0 }, { rate: 0.10 }]
+    source:
+      pricing:
+        url: https://www.portalhq.io/pricing
+        body_sha256: 8666a055865b8fca8c781ca9957edb77d29a850ffe372c859c4c22e21ad99f64
+        verified_at: "2026-10-29"
+        poll: true
+
+  - slug: dfns
+    name: Dfns
+    url: https://www.dfns.co
+    cohort: ranked
+    unit: Annual plan with wallet and signature allowances
+    note: >-
+      Self-service annual or quarterly plans; monthly figures are the annual
+      price over twelve. Each plan includes a number of wallets and of
+      signatures a month, with no published overage: beyond, "Talk to us".
+      "No transaction fees."
+    meters:
+      wallets: { per_wallet: 1 }
+      signatures: { per_tx: 1 }
+    plans:
+      - id: starter
+        name: Starter
+        annual_usd: 800
+        confidence: verified
+        quote_above: { wallets: 10, signatures: 100 }
+      - id: basic
+        name: Basic
+        annual_usd: 8000
+        confidence: verified
+        quote_above: { wallets: 10000, signatures: 1000 }
+      - id: pro
+        name: Pro
+        annual_usd: 35000
+        confidence: verified
+        quote_above: { wallets: 50000, signatures: 10000 }
+    source:
+      pricing:
+        url: https://www.dfns.co/pricing
+        body_sha256: 260887d11c99e18a92da9943bc2310b4146c410cfe22172c0811a1d122118361
+        verified_at: "2026-10-29"
+        poll: true
+
+  - slug: crossmint
+    name: Crossmint
+    url: https://www.crossmint.com
+    cohort: ranked
+    unit: Monthly active wallets, free tier only
+    note: >-
+      Free up to 1,000 wallets and 2,000 transactions. Beyond, two different
+      rates ($0.025 and "starts at $0.02") and no self-serve paid plan, so a
+      larger workload is a quote.
+    meters:
+      active_wallets: { per_wallet: 1 }
+      transactions: { per_tx: 1 }
+    plans:
+      - id: free
+        name: Free
+        monthly_usd: 0
+        confidence: verified
+        quote_above: { active_wallets: 1000, transactions: 2000 }
+    source:
+      pricing:
+        url: https://www.crossmint.com/pricing
+        body_sha256: 5ab59425dadae17656247d9bffbf9d27d2c8a61e3aaab3d7e020d6984cc03e87
+        verified_at: "2026-10-29"
+        poll: true
+
+  # Named so the methodology can say why, never priced.
+  - slug: dynamic
+    name: Dynamic
+    url: https://www.dynamic.xyz
+    cohort: excluded
+    excluded_reason: >-
+      Prices per monthly active user; server wallets have no Dynamic user and
+      no published price of their own.
+  - slug: fireblocks
+    name: Fireblocks
+    url: https://www.fireblocks.com
+    cohort: excluded
+    excluded_reason: Plans are sold through sales and bill a share of transaction volume.
+  - slug: para
+    name: Para
+    url: https://www.getpara.com
+    cohort: excluded
+    excluded_reason: Server-side REST signing is available on request, not self-serve.
+  - slug: alchemy
+    name: Alchemy
+    url: https://www.alchemy.com
+    cohort: excluded
+    excluded_reason: Its smart wallets use another vendor's signer and publish no signing price of their own.
+  - slug: bitgo
+    name: BitGo
+    url: https://www.bitgo.com
+    cohort: excluded
+    excluded_reason: No published price.
+  - slug: fordefi
+    name: Fordefi
+    url: https://www.fordefi.com
+    cohort: excluded
+    excluded_reason: No published price.
