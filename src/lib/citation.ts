@@ -362,6 +362,34 @@ function sliceClause(b: Benchmark): string {
   return `, measured on ${parts.join(", ")}`;
 }
 
+/**
+ * The headline sentence for a view picked by `kind` or `bucket` (a tab of a
+ * dimensioned bench). The metric names the HEADLINE cell ("Monthly cost for
+ * 10,000 AI agents"), so headlineSentence on a filtered view put the bot's
+ * $0 under "10,000 AI agents" in /api/stat?kind=bot&bucket=large. This one
+ * names the view instead, from the dimension labels the page's tabs show.
+ */
+export function viewHeadlineSentence(b: Benchmark, view: string[]): string {
+  const top = leader(b);
+  if (!top || b.dataConfidence === "insufficient" || view.length === 0) return headlineSentence(b);
+  const ranked = rankedCandidates(b).length;
+  const verb = b.higherIsBetter ? "leads" : "posts the lowest figure";
+  const priced = b.ledgerReliability === false ? ", from published list prices" : "";
+  return `${top.name} ${verb} on the ${view.join(", ")} view at ${fmtUnit(top.value, b.unit)}${windowSuffix(b) ? ` ${windowSuffix(b)}` : ""} across ${ranked} ranked ${nounFor(b, ranked)}${priced}.`;
+}
+
+/** View labels for the kind / bucket filters of a request, as the tabs read. */
+export function viewLabels(b: Benchmark, filters: { kind?: string; bucket?: string }): string[] {
+  const out: string[] = [];
+  for (const key of ["kind", "bucket"] as const) {
+    const v = filters[key];
+    if (!v) continue;
+    const label = b.dimensions?.[key]?.find((d) => d.value === v)?.label;
+    out.push(label ?? v);
+  }
+  return out;
+}
+
 /** Pasteable attribution string. Standard convention: "<sentence> Source: OpenChainBench (url)". */
 export function citationQuote(b: Benchmark, origin: string): string {
   const sentence = headlineSentence(b);

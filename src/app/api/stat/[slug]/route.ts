@@ -11,6 +11,8 @@ import {
   fieldValue,
   headlineSentence,
   leader,
+  viewHeadlineSentence,
+  viewLabels,
   leaders,
   rankedCandidates,
   sparklineFor,
@@ -105,6 +107,7 @@ export async function GET(
 
   const top = leader(b);
   const insufficient = b.dataConfidence === "insufficient";
+  const view = viewLabels(b, filters);
   // Publish value + leader.value in the declared unit. Unit "s" benches
   // store ms internally (fmtUnit convention); do not leak that here.
   const raw = insufficient ? null : fieldValue(b);
@@ -189,8 +192,14 @@ export async function GET(
     // The cohort `rankings` and `leader` describe (50 % success floor,
     // rank and sample gates); `measured` is the wider display cohort.
     ranked: rankedCandidates(b).length,
-    headline: headlineSentence(b),
-    quote: citationQuote(b, SITE.url),
+    // A kind or bucket tab names its own view: the metric names the
+    // headline cell, so the generic sentence would put this view's leader
+    // under the headline's label.
+    headline: view.length > 0 ? viewHeadlineSentence(b, view) : headlineSentence(b),
+    quote:
+      view.length > 0
+        ? `${viewHeadlineSentence(b, view)} Source: OpenChainBench (${SITE.url}${benchPath(b)}).`
+        : citationQuote(b, SITE.url),
     cite: citeBundle(b, SITE.url),
     pageUrl: `${SITE.url}${benchPath(b)}`,
     ogImage: `${SITE.url}/api/og/${b.slug}`,

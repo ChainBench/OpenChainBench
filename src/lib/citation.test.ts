@@ -288,3 +288,39 @@ describe("citation, a headline measured on a slice", () => {
     expect(headlineSentence(b)).not.toContain("measured on");
   });
 });
+
+import { viewHeadlineSentence, viewLabels } from "./citation";
+
+describe("a kind or bucket view names itself", () => {
+  // /api/stat/server-wallet-cost?kind=bot&bucket=large said "Circle posts
+  // the lowest monthly cost for 10,000 AI agents at $0": the bot's figure
+  // under the headline cell's metric (2026-10-30).
+  const b: Benchmark = {
+    ...bench([r("circle", "Circle", 0), r("thirdweb", "thirdweb", 438)]),
+    metric: "Monthly cost for 10,000 AI agents",
+    unit: "usd",
+    ledgerReliability: false,
+    dimensions: {
+      kind: [
+        { value: "all", label: "AI agents, 50 transactions each" },
+        { value: "bot", label: "Trading bot, 20 wallets" },
+      ],
+      bucket: [
+        { value: "all", label: "Medium size" },
+        { value: "large", label: "Large size" },
+      ],
+    },
+  } as Benchmark;
+
+  test("the labels come from the tabs", () => {
+    expect(viewLabels(b, { kind: "bot", bucket: "large" })).toEqual(["Trading bot, 20 wallets", "Large size"]);
+    expect(viewLabels(b, {})).toEqual([]);
+  });
+
+  test("the sentence names the view, not the headline metric", () => {
+    const s = viewHeadlineSentence(b, viewLabels(b, { kind: "bot", bucket: "large" }));
+    expect(s).toContain("Trading bot, 20 wallets, Large size view");
+    expect(s).not.toContain("10,000 AI agents");
+    expect(s).toContain("from published list prices");
+  });
+});
