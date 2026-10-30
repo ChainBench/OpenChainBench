@@ -1,0 +1,243 @@
+# OpenChainBench. Bench № 312
+
+slug: paymaster-cost
+number: "312"
+title: Cheapest paymaster for gas sponsorship, by chain
+seo_title: "Paymaster pricing {{year}}: cheapest gas sponsorship"
+seo_description: "Paymaster pricing for {{declared_count}} vendors on Base, Arbitrum and Ethereum. For 100,000 sponsored operations on Base {{best_name}} charges least of {{ranked_count}} priced, {{best_p50}} a month on top of the gas."
+subtitle: What each vendor charges a developer each month to sponsor its users' gas through an ERC-4337 paymaster, on top of the gas itself, on Base, Arbitrum and Ethereum, at any volume.
+
+category: Wallets
+status: live
+metric: Monthly cost to sponsor 100,000 operations on Base
+unit: usd
+higher_is_better: false
+row_noun: { one: vendor, many: vendors }
+
+disclaimer: >
+  Published prices, not invoices. Every figure was read from the vendor's own
+  pricing page on the date the catalogue records, and the harness re-checks
+  those pages on a loop. The gas itself is not in any bill: it is the same
+  whoever sponsors it. A vendor missing from a cell has no self-serve price on
+  that chain at that volume, which is a finding, not missing data.
+
+seo_intro: |
+  The cheapest paymaster depends on the chain: for 100,000 sponsored user
+  operations a month on Base it is {{best_name}}, which charges {{best_p50}}
+  a month on top of the gas (latest value). {{ranked_count}} of the
+  {{declared_count}} vendors publish a price that reaches that volume. Most
+  vendors take a percentage of the gas they sponsor, some a fee per
+  operation or per API call, some both, and the gas of one operation is
+  dozens of times dearer on Ethereum than on Base, so a vendor that is cheap
+  on one chain is dear on another.
+  This page applies each vendor's own published billing rules to sponsored
+  user operations on Base, Arbitrum and Ethereum. The calculator prices any
+  volume; the table under it gives the cheapest vendor on each chain at three
+  volumes. The gas itself is measured on-chain and shown beside each bill,
+  not inside it.
+
+abstract: |
+  {{declared_count}} paymaster and bundler vendors priced for sponsoring gas on
+  Base, Arbitrum and Ethereum. The harness applies each vendor's own billing
+  rules (plan fees, API credits per call, compute units, operations, surcharges
+  on the gas sponsored), its included units, graduated overage, caps and where
+  its published price stops, and reports the monthly charge on the cheapest
+  plan that can serve the volume, beyond the gas. The gas one sponsored
+  operation burns on each chain is measured from EntryPoint v0.7 logs.
+  Every figure is read by a human from the vendor's own page and records the
+  page and the date; the harness re-hashes each page's pricing sentences every
+  hour and alerts on a change that holds for six hours. The calculator reads a
+  curve the same harness emits, and a second implementation in another
+  language re-prices it at random volumes before it is committed.
+
+methodology:
+  - "Cohort. {{declared_count}} vendors with a self-serve price for sponsoring gas: Pimlico, Alchemy, ZeroDev, thirdweb, Coinbase CDP, Circle (Gas Station), Candide, Etherspot and Openfort. Biconomy, Gelato, Particle Network, Privy, Dynamic and Stackup are listed below with the reason they cannot be priced. Circle Paymaster, where the user pays the gas plus 10% in USDC, is not developer sponsorship and is not priced."
+  - "What a bill is. The charge the vendor adds to the gas it sponsors in a month: plan fee, per-operation or per-call charge, and its surcharge on the gas. The gas itself is the same whoever sponsors it, so it is left out of every bill and shown beside it."
+  - "Gas per operation. The median actualGasCost of successful sponsored user operations on EntryPoint v0.7 on 2026-10-30, keeping bundles of a single operation with no account deployment and one ERC-20 transfer: about $0.0020 on Base, $0.0072 on Arbitrum and $0.15 on Ethereum, at an ETH price of 2,230.95 dollars. actualGasCost is the base the surcharges are stated on. On Ethereum it follows the base fee, so a surcharge there moves with congestion."
+  - "Units. A sponsored operation is 1,050 Pimlico credits (Pimlico's own count), 3,520 Alchemy compute units (a sponsored send, an estimate and a receipt), 20 ZeroDev credits, one thirdweb sponsored transaction, one Openfort operation (the broadcast; paymaster calls are free), one Candide operation, 1,625 Etherspot credits (estimate, sponsor, send and receipt) and one CDP gas estimate of 500 billing units."
+  - "Plans. Each plan's fee, inclusions, graduated overage, caps and surcharges are applied as published. ZeroDev publishes no overage past its included credits, so it stops at 50,000 operations a month; Candide's largest self-serve plan stops at 500,000. Candide's Starter allowance is lifetime, not monthly, and is not a plan here; its paid plans are priced billed yearly, the price its page shows, and cost a fifth more billed monthly. Openfort's Free plan stops at 2,000 operations."
+  - "Readings. thirdweb's bands above 100,000 transactions, Etherspot's call count and CDP's billing units are priced on the higher reading, so the bill is at most the figure. Alchemy adds a BSO service fee it does not publish, and Circle's Gas Station needs Circle's own wallets, billed per active wallet, so those bills are at least the figure. A verified or 'at most' price can be named cheapest; an 'at least' one cannot."
+  - "Left out. Testnet sponsorship (free nearly everywhere), ERC-20 gas payment by the user, account deployment, gas credits granted on application (Coinbase offers up to 15,000 dollars of them) and Enterprise contracts."
+  - "Any volume, not only three. The table prices three volumes per chain because a metric needs a fixed label. The calculator prices any volume from a curve the same harness emits, with a point at every tier boundary, cap and plan crossover, so the slider is exact, not smoothed."
+  - "Verification. A second implementation in another language, written from the catalogue's prose, re-prices every curve point and random volumes and agrees with the harness on the bill to the cent, on the plan and on the reading. `pnpm validate` re-runs it on every change, refuses a curve built from a different catalogue, and checks every dollar figure in this page's prose against the model."
+  - "Freshness. The harness hashes the pricing sentences of every page each hour, including the method tables the per-operation counts come from. A change that holds for six hours raises an alert for a maintainer to re-read the page."
+
+findings:
+  - "The cheapest paymaster depends on the chain. For 100,000 sponsored operations a month {{cell:base:medium:best_name}} charges least on Base, {{cell:base:medium:best_usd}} on top of the gas; on Arbitrum {{cell:arbitrum:medium:best_name}}, {{cell:arbitrum:medium:best_usd}}; on Ethereum {{cell:ethereum:medium:best_name}}, {{cell:ethereum:medium:best_usd}}."
+  - "A surcharge on the gas costs little where the gas is cheap. 100,000 operations burn about $200 of gas on Base and $15,000 on Ethereum, so the same percentage weighs 75 times more on Ethereum, while a charge per operation is the same on every chain."
+  - "Charges per operation decide on Base. At 100,000 operations Pimlico, which bills credits per call, comes to {{cell:base:medium:pimlico}} and Candide, which bills a plan fee and a price per operation, {{cell:base:medium:candide}}, against {{cell:base:medium:best_usd}} for {{cell:base:medium:best_name}}."
+  - "The spread is wide. On Base the {{cell:base:medium:priced_count}} priced vendors span {{cell:base:medium:spread}}, from {{cell:base:medium:best_name}} at {{cell:base:medium:best_usd}} to {{cell:base:medium:worst_name}} at {{cell:base:medium:worst_usd}}; on Ethereum they span {{cell:ethereum:medium:spread}}."
+  - "Two vendors add nothing to the gas: Etherspot bills API credits and Candide a plan fee with a price per operation. For 10,000 operations on Ethereum the cheapest is {{cell:ethereum:small:best_name}} at {{cell:ethereum:small:best_usd}}."
+  - "Coverage stops early for three vendors. Coinbase CDP's paymaster runs on Base only, ZeroDev publishes no price past 50,000 operations a month, and Candide none past 500,000."
+  - "Two prices are floors and are never named cheapest. Alchemy's sponsored sends carry a BSO service fee it does not publish, and Circle's Gas Station runs only on Circle's own wallets, billed per active wallet; Circle's 5% alone is {{cell:base:medium:circle}} for 100,000 operations on Base."
+
+faq:
+  - q: "Which paymaster is cheapest on Base?"
+    a: "For 100,000 sponsored operations a month, {{cell:base:medium:best_name}} at {{cell:base:medium:best_usd}} on top of the gas, then {{cell:base:medium:second_name}} at {{cell:base:medium:second_usd}}. At 1,000,000 operations {{cell:base:large:best_name}} is cheapest, at {{cell:base:large:best_usd}}. Move the calculator to your own volume."
+  - q: "Which paymaster is cheapest on Ethereum?"
+    a: "For 100,000 sponsored operations a month, {{cell:ethereum:medium:best_name}} at {{cell:ethereum:medium:best_usd}} on top of the gas, then {{cell:ethereum:medium:second_name}} at {{cell:ethereum:medium:second_usd}}. At 10,000 operations {{cell:ethereum:small:best_name}} is cheapest, at {{cell:ethereum:small:best_usd}}. On Ethereum the gas itself dwarfs every bill: 100,000 operations burn about $15,000."
+  - q: "Is the gas included?"
+    a: "No. The gas a sponsored operation burns is the same whoever sponsors it: about $0.0020 on Base, $0.0072 on Arbitrum and $0.15 on Ethereum, measured on-chain on 2026-10-30. Every bill here is what the vendor adds: plan fee, per-operation charge and its surcharge, which is a percentage of that gas."
+  - q: "What does Pimlico charge?"
+    a: "No monthly fee on pay-as-you-go: 10,000,000 credits a month included, then a dollar per 100,000 credits at about 1,050 credits per sponsored operation, plus 10% of the gas on mainnet. 100,000 operations come to {{cell:base:medium:pimlico}} on Base and {{cell:ethereum:medium:pimlico}} on Ethereum."
+  - q: "What do 'at most' and 'at least' mean?"
+    a: "The vendor's page can be read two ways. 'At most' marks a price computed on the higher reading, so the real bill is no larger (thirdweb above 100,000 transactions, Etherspot's call count, CDP's billing units). 'At least' marks an unpublished extra fee (Alchemy's BSO service fee, the per-wallet fee Circle's Gas Station needs). A verified or 'at most' price can be named the cheapest; an 'at least' one cannot."
+  - q: "Are these prices from real invoices?"
+    a: "No. They are published list prices, read by a human from each vendor's pricing page on the date the catalogue records, and applied by the harness. Enterprise contracts and gas credits granted on application are not priced."
+  - q: "Can I reproduce these numbers?"
+    a: "Yes. The pricing catalogue, the billing model, the gas measurement and its blocks are in the harness repository linked below, every figure carries its source page and date, and the calculator's curve is committed alongside the code."
+
+excluded_providers:
+  - { name: Biconomy, reason: "Sponsorship is invoiced monthly at a rate set on a sales call; no fee is published." }
+  - { name: Gelato, reason: "Its pricing page and docs were offline on 2026-10-30; its last plans survive only in an archive." }
+  - { name: Particle Network, reason: "The paymaster runs on a USDT deposit and publishes no fee." }
+  - { name: Privy, reason: "Gas is billed at network cost plus a convenience fee whose rate is not published." }
+  - { name: Dynamic, reason: "Gasless transactions are sold through sales." }
+  - { name: Stackup, reason: "No longer sells a paymaster or bundler; its customers moved to Pimlico." }
+
+source: https://github.com/ChainBench/OpenChainBench/tree/dev/harnesses/paymaster-cost
+
+prometheus:
+  window: 24h
+  expected_freshness_seconds: 10800
+  freshness_timestamp_metric: paymaster_cost_last_run_timestamp_seconds
+
+# kind="all" is Base and bucket="all" its medium volume (100,000 sponsored
+# operations a month); see bench 309 for the convention.
+zero_is_a_value: true
+ledger_reliability: false
+ledger_columns:
+  - { label: Monthly charge, slot: p50, unit: usd }
+  - { label: Per operation, panel: per_tx, unit: usd }
+
+metric_panels:
+  - id: per_tx
+    label: Cost per sponsored operation
+    description: The monthly charge divided by the month's sponsored operations, gas excluded. Derived, not a published rate.
+    metric: paymaster_cost_per_tx_usd{kind="all",bucket="all"}
+    label_key: provider
+    unit: usd
+    higher_is_better: false
+
+dimension_labels:
+  kind: Chain
+  bucket: Volume
+
+dimensions:
+  kind:
+    - { value: all,      label: "Base" }
+    - { value: arbitrum, label: "Arbitrum" }
+    - { value: ethereum, label: "Ethereum" }
+  bucket:
+    - { value: all,   label: "100,000 operations a month" }
+    - { value: small, label: "10,000 operations a month" }
+    - { value: large, label: "1,000,000 operations a month" }
+
+providers:
+  - slug: pimlico
+    name: Pimlico
+    tag: API credits plus a gas surcharge
+    queries:
+      p50: min(last_over_time(paymaster_cost_monthly_usd{provider="pimlico",kind="all",bucket="all"}[20m]))
+      p90: min(last_over_time(paymaster_cost_monthly_usd{provider="pimlico",kind="all",bucket="all"}[20m]))
+      p99: min(last_over_time(paymaster_cost_monthly_usd{provider="pimlico",kind="all",bucket="all"}[20m]))
+      ranked: paymaster_cost_eligible{provider="pimlico",kind="all",bucket="all"}
+      mean: min(last_over_time(paymaster_cost_monthly_usd{provider="pimlico",kind="all",bucket="all"}[20m]))
+      series: min by (provider) (paymaster_cost_monthly_usd{provider="pimlico",kind="all",bucket="all"})
+      sample_size: min by (provider) (count_over_time(paymaster_cost_monthly_usd{provider="pimlico",kind="all",bucket="all"}[20m]))
+
+  - slug: coinbase-cdp
+    name: Coinbase CDP
+    tag: Gas markup, Base only
+    queries:
+      p50: min(last_over_time(paymaster_cost_monthly_usd{provider="coinbase-cdp",kind="all",bucket="all"}[20m]))
+      p90: min(last_over_time(paymaster_cost_monthly_usd{provider="coinbase-cdp",kind="all",bucket="all"}[20m]))
+      p99: min(last_over_time(paymaster_cost_monthly_usd{provider="coinbase-cdp",kind="all",bucket="all"}[20m]))
+      ranked: paymaster_cost_eligible{provider="coinbase-cdp",kind="all",bucket="all"}
+      mean: min(last_over_time(paymaster_cost_monthly_usd{provider="coinbase-cdp",kind="all",bucket="all"}[20m]))
+      series: min by (provider) (paymaster_cost_monthly_usd{provider="coinbase-cdp",kind="all",bucket="all"})
+      sample_size: min by (provider) (count_over_time(paymaster_cost_monthly_usd{provider="coinbase-cdp",kind="all",bucket="all"}[20m]))
+
+  - slug: thirdweb
+    name: thirdweb
+    tag: Sponsored transactions, banded
+    queries:
+      p50: min(last_over_time(paymaster_cost_monthly_usd{provider="thirdweb",kind="all",bucket="all"}[20m]))
+      p90: min(last_over_time(paymaster_cost_monthly_usd{provider="thirdweb",kind="all",bucket="all"}[20m]))
+      p99: min(last_over_time(paymaster_cost_monthly_usd{provider="thirdweb",kind="all",bucket="all"}[20m]))
+      ranked: paymaster_cost_eligible{provider="thirdweb",kind="all",bucket="all"}
+      mean: min(last_over_time(paymaster_cost_monthly_usd{provider="thirdweb",kind="all",bucket="all"}[20m]))
+      series: min by (provider) (paymaster_cost_monthly_usd{provider="thirdweb",kind="all",bucket="all"})
+      sample_size: min by (provider) (count_over_time(paymaster_cost_monthly_usd{provider="thirdweb",kind="all",bucket="all"}[20m]))
+
+  - slug: openfort
+    name: Openfort
+    tag: Operations plus a surcharge
+    queries:
+      p50: min(last_over_time(paymaster_cost_monthly_usd{provider="openfort",kind="all",bucket="all"}[20m]))
+      p90: min(last_over_time(paymaster_cost_monthly_usd{provider="openfort",kind="all",bucket="all"}[20m]))
+      p99: min(last_over_time(paymaster_cost_monthly_usd{provider="openfort",kind="all",bucket="all"}[20m]))
+      ranked: paymaster_cost_eligible{provider="openfort",kind="all",bucket="all"}
+      mean: min(last_over_time(paymaster_cost_monthly_usd{provider="openfort",kind="all",bucket="all"}[20m]))
+      series: min by (provider) (paymaster_cost_monthly_usd{provider="openfort",kind="all",bucket="all"})
+      sample_size: min by (provider) (count_over_time(paymaster_cost_monthly_usd{provider="openfort",kind="all",bucket="all"}[20m]))
+
+  - slug: etherspot
+    name: Etherspot
+    tag: API credits, no gas markup
+    queries:
+      p50: min(last_over_time(paymaster_cost_monthly_usd{provider="etherspot",kind="all",bucket="all"}[20m]))
+      p90: min(last_over_time(paymaster_cost_monthly_usd{provider="etherspot",kind="all",bucket="all"}[20m]))
+      p99: min(last_over_time(paymaster_cost_monthly_usd{provider="etherspot",kind="all",bucket="all"}[20m]))
+      ranked: paymaster_cost_eligible{provider="etherspot",kind="all",bucket="all"}
+      mean: min(last_over_time(paymaster_cost_monthly_usd{provider="etherspot",kind="all",bucket="all"}[20m]))
+      series: min by (provider) (paymaster_cost_monthly_usd{provider="etherspot",kind="all",bucket="all"})
+      sample_size: min by (provider) (count_over_time(paymaster_cost_monthly_usd{provider="etherspot",kind="all",bucket="all"}[20m]))
+
+  - slug: candide
+    name: Candide
+    tag: Plan fee per operation, no markup
+    queries:
+      p50: min(last_over_time(paymaster_cost_monthly_usd{provider="candide",kind="all",bucket="all"}[20m]))
+      p90: min(last_over_time(paymaster_cost_monthly_usd{provider="candide",kind="all",bucket="all"}[20m]))
+      p99: min(last_over_time(paymaster_cost_monthly_usd{provider="candide",kind="all",bucket="all"}[20m]))
+      ranked: paymaster_cost_eligible{provider="candide",kind="all",bucket="all"}
+      mean: min(last_over_time(paymaster_cost_monthly_usd{provider="candide",kind="all",bucket="all"}[20m]))
+      series: min by (provider) (paymaster_cost_monthly_usd{provider="candide",kind="all",bucket="all"})
+      sample_size: min by (provider) (count_over_time(paymaster_cost_monthly_usd{provider="candide",kind="all",bucket="all"}[20m]))
+
+  - slug: zerodev
+    name: ZeroDev
+    tag: Credits plus a gas premium
+    queries:
+      p50: min(last_over_time(paymaster_cost_monthly_usd{provider="zerodev",kind="all",bucket="all"}[20m]))
+      p90: min(last_over_time(paymaster_cost_monthly_usd{provider="zerodev",kind="all",bucket="all"}[20m]))
+      p99: min(last_over_time(paymaster_cost_monthly_usd{provider="zerodev",kind="all",bucket="all"}[20m]))
+      ranked: paymaster_cost_eligible{provider="zerodev",kind="all",bucket="all"}
+      mean: min(last_over_time(paymaster_cost_monthly_usd{provider="zerodev",kind="all",bucket="all"}[20m]))
+      series: min by (provider) (paymaster_cost_monthly_usd{provider="zerodev",kind="all",bucket="all"})
+      sample_size: min by (provider) (count_over_time(paymaster_cost_monthly_usd{provider="zerodev",kind="all",bucket="all"}[20m]))
+
+  - slug: alchemy
+    name: Alchemy
+    tag: Compute units plus a gas fee
+    queries:
+      p50: min(last_over_time(paymaster_cost_monthly_usd{provider="alchemy",kind="all",bucket="all"}[20m]))
+      p90: min(last_over_time(paymaster_cost_monthly_usd{provider="alchemy",kind="all",bucket="all"}[20m]))
+      p99: min(last_over_time(paymaster_cost_monthly_usd{provider="alchemy",kind="all",bucket="all"}[20m]))
+      ranked: paymaster_cost_eligible{provider="alchemy",kind="all",bucket="all"}
+      mean: min(last_over_time(paymaster_cost_monthly_usd{provider="alchemy",kind="all",bucket="all"}[20m]))
+      series: min by (provider) (paymaster_cost_monthly_usd{provider="alchemy",kind="all",bucket="all"})
+      sample_size: min by (provider) (count_over_time(paymaster_cost_monthly_usd{provider="alchemy",kind="all",bucket="all"}[20m]))
+
+  - slug: circle
+    name: Circle
+    tag: Processing fee on gas
+    queries:
+      p50: min(last_over_time(paymaster_cost_monthly_usd{provider="circle",kind="all",bucket="all"}[20m]))
+      p90: min(last_over_time(paymaster_cost_monthly_usd{provider="circle",kind="all",bucket="all"}[20m]))
+      p99: min(last_over_time(paymaster_cost_monthly_usd{provider="circle",kind="all",bucket="all"}[20m]))
+      ranked: paymaster_cost_eligible{provider="circle",kind="all",bucket="all"}
+      mean: min(last_over_time(paymaster_cost_monthly_usd{provider="circle",kind="all",bucket="all"}[20m]))
+      series: min by (provider) (paymaster_cost_monthly_usd{provider="circle",kind="all",bucket="all"})
+      sample_size: min by (provider) (count_over_time(paymaster_cost_monthly_usd{provider="circle",kind="all",bucket="all"}[20m]))

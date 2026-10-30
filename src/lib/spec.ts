@@ -665,7 +665,10 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // v128: the wallet pricing findings and FAQ read their winners and
   //       bills from the curve ({{cell:...}}). Moves with
   //       all-benchmarks-v121 and bench-filters-v66.
-  ["bench-unfiltered-v128", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v129: bench 312 paymaster-cost arrives (nine vendors; Pimlico,
+  //       Etherspot and Candide new to the site). Moves with
+  //       all-benchmarks-v122 and bench-filters-v67.
+  ["bench-unfiltered-v129", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -964,7 +967,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v119: lockstep with bench-unfiltered-v126.
   // v120: lockstep with bench-unfiltered-v127 (wallet titles).
   // v121: lockstep with bench-unfiltered-v128 (cell placeholders).
-  ["all-benchmarks-v121", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v122: lockstep with bench-unfiltered-v129 (bench 312).
+  ["all-benchmarks-v122", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1155,7 +1159,8 @@ const loadBenchmarkFiltered = unstable_cache(
   //      same inflated headline and the same 9/11 success rate.
   // v65: lockstep with bench-unfiltered-v127.
   // v66: lockstep with bench-unfiltered-v128.
-  ["bench-filters-v66", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v67: lockstep with bench-unfiltered-v129.
+  ["bench-filters-v67", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 

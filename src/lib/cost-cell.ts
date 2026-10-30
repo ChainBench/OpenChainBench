@@ -1,8 +1,9 @@
 import { walletCostCurves, walletCostRankAt } from "@/lib/wallet-cost-curve";
 import { serverWalletCurves, serverWalletRankAt } from "@/lib/server-wallet-cost-curve";
+import { paymasterCurves, paymasterRankAt } from "@/lib/paymaster-cost-curve";
 
 /**
- * `{{cell:<kind>:<size>:<field>}}` for the two pricing benches (309, 310):
+ * `{{cell:<kind>:<size>:<field>}}` for the pricing benches (309, 310, 312):
  * a winner, a bill or a count in the findings and FAQ, read from the same
  * curve the calculator reads instead of typed by hand.
  *
@@ -12,7 +13,8 @@ import { serverWalletCurves, serverWalletRankAt } from "@/lib/server-wallet-cost
  *
  * kind and size are the curve's own ids: bench 309 a profile (consumer,
  * active, trading) and a volume (1k, 10k, 100k); bench 310 a scenario
- * (agents, bot, payouts) and a size (small, medium, large).
+ * (agents, bot, payouts) and a size (small, medium, large); bench 312 a
+ * chain (base, arbitrum, ethereum) and a size (small, medium, large).
  *
  * Fields:
  *   best_name, best_usd      the vendor the calculator names cheapest, and its
@@ -41,7 +43,7 @@ type Row = {
 
 type Cell = { priced: Row[]; unpriced: { slug: string; name: string }[] };
 
-export const COST_CELL_BENCHES = new Set(["wallet-cost", "server-wallet-cost"]);
+export const COST_CELL_BENCHES = new Set(["wallet-cost", "server-wallet-cost", "paymaster-cost"]);
 
 export const COST_CELL_FIELDS = new Set([
   "best_name",
@@ -73,12 +75,13 @@ function cellOf(bench: string, kind: string, size: string): Cell | null {
       unpriced: unpriced.map((r) => ({ slug: r.slug, name: r.name })),
     };
   }
-  if (bench === "server-wallet-cost") {
-    const f = serverWalletCurves();
+  if (bench === "server-wallet-cost" || bench === "paymaster-cost") {
+    // Same curve shape: a scenario per kind, its own sizes.
+    const f = bench === "paymaster-cost" ? paymasterCurves() : serverWalletCurves();
     const s = f?.scenarios.find((v) => v.id === kind);
     const x = s?.sizes.find((z) => z.id === size)?.x;
     if (!s || x === undefined) return null;
-    const { priced, unpriced } = serverWalletRankAt(s.id, x);
+    const { priced, unpriced } = bench === "paymaster-cost" ? paymasterRankAt(s.id, x) : serverWalletRankAt(s.id, x);
     return {
       priced: priced.map((r) => ({
         slug: r.slug,
