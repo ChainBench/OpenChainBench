@@ -692,7 +692,13 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // v132: cost bench audit round (309, 310, 312): headline_slice, copy
   //       read from the curve, the bot FAQ. Moves with all-benchmarks-v125
   //       and bench-filters-v70.
-  ["bench-unfiltered-v132", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v133: the eth_call work panel declares carry: false. Measured on the
+  //       published blob: chainstack read minus 1.84 ms with staleSince in
+  //       its valuesMeta, so the `> 0` guard was working and the panel carry
+  //       was resurrecting the value it had refused, for the length of this
+  //       bench's 24 h ceiling, first on a lower-is-better view. The cached
+  //       entry holds panel values, so the old one stays without this.
+  ["bench-unfiltered-v133", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -996,7 +1002,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v123: lockstep with bench-unfiltered-v130 (per-chain leader).
   // v124: lockstep with bench-unfiltered-v131 (ladder bound, primed legs).
   // v125: lockstep with bench-unfiltered-v132 (cost bench audit round).
-  ["all-benchmarks-v125", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v126: lockstep with bench-unfiltered-v133 (panel carry).
+  ["all-benchmarks-v126", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1191,7 +1198,8 @@ const loadBenchmarkFiltered = unstable_cache(
   // v68: lockstep with bench-unfiltered-v130 (per-chain leader).
   // v69: lockstep with bench-unfiltered-v131 (ladder bound).
   // v70: lockstep with bench-unfiltered-v132 (cost bench audit round).
-  ["bench-filters-v70", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v71: lockstep with bench-unfiltered-v133 (panel carry).
+  ["bench-filters-v71", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 

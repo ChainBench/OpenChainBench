@@ -191,6 +191,14 @@ export function mergeWithPrevious(
         (p: MetricPanel) => p.id === panel.id,
       );
       if (!prevPanel) continue;
+      // A panel can declare that a missing value is a STATEMENT, not a gap.
+      // The carry exists for a query that failed, and a query that filters
+      // deliberately is indistinguishable from one that failed when seen
+      // from here. Bench 311's eth_call work term drops a non-positive
+      // difference, because the heavy leg cannot be the faster one, and the
+      // carry put minus 1.84 ms back on the board for the length of the
+      // ceiling, where a lower-is-better view ranks it first.
+      if (panel.carry === false) continue;
       panel.valuesMeta ??= {};
       for (const slug of Object.keys(panel.values)) {
         panel.valuesMeta[slug] = { observedAt: now };

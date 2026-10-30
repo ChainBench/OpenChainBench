@@ -1558,6 +1558,7 @@ async function tryLoadLive(
         unit: panel.unit,
         higherIsBetter: panel.higher_is_better,
         tab: panel.tab,
+        carry: panel.carry,
         values,
         seriesByProvider,
         seriesByProvider7d:

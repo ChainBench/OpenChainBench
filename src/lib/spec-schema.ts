@@ -792,6 +792,18 @@ export const SpecSchema = z
            *  Listing a key here is a claim about the metric's label set, not
            *  a display preference: say what the harness actually emits. */
           ignore_dimensions: z.array(z.string().min(1).max(40)).max(8).optional(),
+          /** False when a missing value is a STATEMENT rather than a gap, so
+           *  the worker must not carry the previous one forward.
+           *
+           *  The carry exists for a query that failed. A query that filters
+           *  deliberately looks identical to it from the merge's side, and
+           *  the result is a value the panel refused being republished for
+           *  the length of the carry ceiling. Measured on bench 311: the
+           *  eth_call work term drops a non-positive difference because the
+           *  heavy leg cannot be the faster one, and the carry put minus
+           *  1.84 ms back on the board, where a lower-is-better view ranks
+           *  it first. */
+          carry: z.boolean().optional(),
         })
       )
       // Cap covers visible tabs plus data-only window panels (revenue,
