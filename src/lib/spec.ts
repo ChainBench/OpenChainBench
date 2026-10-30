@@ -609,7 +609,19 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       anything about requests it sent. Moves with all-benchmarks-v113 and
   //       bench-filters-v58. providers-v31 deliberately does NOT move: no
   //       provider entered or left and no provider copy changed.
-  ["bench-unfiltered-v120", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v121: bench 311 gained two panels and swapped two ledger columns. On a
+  //       single chain tab the boolean columns read alike for nearly the
+  //       whole cohort, which is why the robinhood tab showed four providers
+  //       tied at 88.9: a five-block window is a question everyone can
+  //       answer. The widest window each one accepts is where they separate,
+  //       from 500 blocks to a million, so the two filtered-shape booleans
+  //       are now the windows that subsume them (0 is the refusal the
+  //       boolean carried). Panels are computed by the loader and live in
+  //       the cached entry, so a new panel cannot reach a page without this.
+  //       Moves in lockstep with all-benchmarks-v114 and bench-filters-v59.
+  //       providers-v31 deliberately does NOT move: no provider entered or
+  //       left and no provider copy changed.
+  ["bench-unfiltered-v121", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -896,7 +908,11 @@ const loadAllBenchmarksCached = unstable_cache(
   //       four specs that declared ledger_reliability: false. The aggregate
   //       carries each bench's rendered reliability column, so an entry
   //       written before this holds the fabricated 100 percent.
-  ["all-benchmarks-v113", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v114: lockstep with bench-unfiltered-v121, and with bench-filters-v59, for
+  //       bench 311's two window panels. The aggregate carries each bench's
+  //       rendered columns, so an entry written before this holds the two
+  //       booleans the windows replaced.
+  ["all-benchmarks-v114", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1070,7 +1086,12 @@ const loadBenchmarkFiltered = unstable_cache(
   //      views are cached per filter set and each one carries the same
   //      column, so leaving this behind would serve the fabricated figure on
   //      every tab of the four benches while the unfiltered view was correct.
-  ["bench-filters-v58", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v59: lockstep with bench-unfiltered-v121, and with all-benchmarks-v114.
+  //      The chain tabs are exactly where this matters: the window columns
+  //      exist because the per-chain view was the one reading as a four-way
+  //      tie, so a stale filtered entry would keep serving the tie on every
+  //      tab while the unfiltered view carried the fix.
+  ["bench-filters-v59", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 
