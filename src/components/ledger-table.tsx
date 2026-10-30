@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { rateDecimals, successTitle } from "@/lib/sample-precision";
 import { rowHref } from "@/lib/row-link";
+import { barScale, fieldMean, sortableValue } from "@/lib/ledger-value";
 
 import Link from "next/link";
 import { ChevronDown, ChevronUp } from "lucide-react";
@@ -230,11 +231,25 @@ export function LedgerTable({
   // window's first custom column, or `panel.values[slug]` when a panel
   // tab is active. Used for sort, filter, the inline data bar, and the
   // displayed value in the headline column.
-  const pickValue = (r: ProviderResult): number => {
-    if (activePanel) return activePanel.values[r.slug] ?? 0;
-    if (customCols) return colValueW(r, customCols[0]) ?? 0;
+  // The honest value, which can be absent. A panel holds one figure per
+  // provider and a provider we could not ask has none; coercing that to 0
+  // publishes a refusal nobody gave. Bench 311 renders its capability
+  // figures as columns for exactly this reason, and said so in its
+  // methodology rather than fixing it here.
+  //
+  // Columns already distinguish the two: a custom cell renders "-" when its
+  // value is null. This brings the panel path to the same convention.
+  const pickValueOrNull = (r: ProviderResult): number | null => {
+    if (activePanel) return activePanel.values[r.slug] ?? null;
+    if (customCols) return colValueW(r, customCols[0]) ?? null;
     return r.ms.p50;
   };
+  // Numeric form for the places that need a scalar and have no way to
+  // express absence: sort position, the data-bar scale. Missing sorts as
+  // the worst value rather than the best, which is what 0 was doing on a
+  // higher-is-better board.
+  const pickValue = (r: ProviderResult): number =>
+    sortableValue(pickValueOrNull(r), higherIsBetter);
   // Detected from the first provider's results — if ANY provider declares
   // slot_p50/slot_p99 in its YAML queries, every row gets the column (with
   // "-" for providers that don't declare it). Used by Solana-native benches
@@ -263,9 +278,9 @@ export function LedgerTable({
   // Field-mean Δ — duplicated here so the sort comparator can rank by it
   // without waiting on per-Row computation. Kept aligned with the same
   // formula the Row uses for the displayed Δ% (see deltaPct below).
-  const fieldMeanRaw =
-    results.reduce((s, r) => s + pickValue(r), 0) /
-    Math.max(1, results.length);
+  // Rows with no value are excluded rather than counted as zero: a mean
+  // dragged down by absences makes every other row's delta wrong too.
+  const fieldMeanRaw = fieldMean(results.map((r) => pickValueOrNull(r)));
   const deltaForSort = (r: ProviderResult): number => {
     if (fieldMeanRaw === 0) return 0;
     return (pickValue(r) - fieldMeanRaw) / fieldMeanRaw;
@@ -416,7 +431,7 @@ export function LedgerTable({
   // Max + field-mean of the active column. Computed off `sorted` (the
   // scored set) so the field mean isn't pulled to zero by augmented
   // unavailable rows, which would flatten every delta to +999%.
-  const maxValue = Math.max(...sorted.map((r) => pickValue(r))) || 1;
+  const maxValue = barScale(sorted.map((r) => pickValueOrNull(r)));
   const fieldValue =
     sorted.reduce((s, r) => s + pickValue(r), 0) / Math.max(1, sorted.length);
 
@@ -698,7 +713,7 @@ export function LedgerTable({
               r={r}
               i={i}
               unit={unit}
-              value={pickValue(r)}
+              value={pickValueOrNull(r)}
               fieldValue={fieldValue}
               maxValue={maxValue}
               panelActive={panelActive}
@@ -739,7 +754,7 @@ export function LedgerTable({
               r={r}
               i={-1}
               unit={unit}
-              value={pickValue(r)}
+              value={pickValueOrNull(r)}
               fieldValue={fieldValue}
               maxValue={maxValue}
               panelActive={panelActive}
@@ -825,7 +840,7 @@ function Row({
   r: ProviderResult;
   i: number;
   unit: string;
-  value: number;
+  value: number | null;
   fieldValue: number;
   maxValue: number;
   panelActive: boolean;
@@ -858,9 +873,10 @@ function Row({
   const isUnranked = !isUnresponsive && !!r.unrankedLabel;
   const isOffline = !isUnresponsive && !isUnranked && r.availability === "unavailable";
   const isMuted = isOffline || isUnresponsive;
-  const deltaPct = fieldValue > 0 ? ((value - fieldValue) / fieldValue) * 100 : 0;
+  const deltaPct =
+    value != null && fieldValue > 0 ? ((value - fieldValue) / fieldValue) * 100 : 0;
   const deltaSign = deltaPct > 0 ? "+" : deltaPct < 0 ? "−" : "±";
-  const barPct = Math.max(2, (value / maxValue) * 100);
+  const barPct = value == null ? 0 : Math.max(2, (value / maxValue) * 100);
 
   return (
     <tr className={`border-b border-rule transition-colors hover:bg-paper-soft/50 ${isMuted ? "opacity-65" : ""}`}>
@@ -1134,9 +1150,11 @@ function Row({
                   ? customCells[0].v != null
                     ? fmtUnit(customCells[0].v, customCells[0].unit)
                     : "-"
-                  : panelActive
-                    ? fmtUnit(value, unit)
-                    : fmtHeadline(value, { ...benchmark, unit }, r.slug)}
+                  : value == null
+                    ? "-"
+                    : panelActive
+                      ? fmtUnit(value, unit)
+                      : fmtHeadline(value, { ...benchmark, unit }, r.slug)}
               </span>
             </span>
           </td>
