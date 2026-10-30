@@ -33,11 +33,16 @@ describe("server wallet curve reader", () => {
   });
 
   test("an upper-bound price may lead, a lower-bound one may not", () => {
-    // Agents at 10,000: thirdweb is cheapest and its ambiguity only lowers
+    // Agents at 100,000: thirdweb is cheapest and its ambiguity only lowers
     // its bill, so it leads.
-    const { priced } = serverWalletRankAt("agents", 10000);
+    const { priced } = serverWalletRankAt("agents", 100000);
     expect(priced[0]?.slug).toBe("thirdweb");
+    expect(priced[0]?.bound).toBe("upper");
     expect(serverWalletLeader(priced)?.slug).toBe("thirdweb");
+    // Agents at 10,000: Circle's signing-only plan, verified, at $327.
+    const ten = serverWalletRankAt("agents", 10000).priced;
+    expect(ten[0]).toMatchObject({ slug: "circle", plan: "signing-api", verified: true });
+    expect(ten[0]?.usd).toBeCloseTo(4000 * 0.038 + 5000 * 0.035, 6);
     // Payouts at 10,000: Privy's $0 is a lower bound (its unpriced $1M
     // volume clause), so the named leader is the next price that holds.
     const pay = serverWalletRankAt("payouts", 10000).priced;

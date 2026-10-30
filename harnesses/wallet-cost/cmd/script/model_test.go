@@ -46,8 +46,8 @@ func TestHandVerifiedBills(t *testing.T) {
 		plan          string
 	}{
 		// Dynamic Growth: $249 includes 5,000 MAU, then $0.005.
-		{"dynamic", "consumer", 10000, 249 + 5000*0.005, "growth"},
-		{"dynamic", "trading", 100000, 249 + 95000*0.005, "growth"},
+		{"dynamic", "consumer", 10000, 249 + 5000*0.05, "growth"},
+		{"dynamic", "trading", 100000, 249 + 95000*0.05, "growth"},
 		// Circle, graduated band by band from 1,001.
 		{"circle", "consumer", 100000, 4000*0.05 + 5000*0.047 + 15000*0.04 + 25000*0.035 + 50000*0.03, "all-included"},
 		// Privy at exactly 10,000 MAU and 50,000 signatures is still Scale:

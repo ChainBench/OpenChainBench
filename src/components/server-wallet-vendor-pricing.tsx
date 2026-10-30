@@ -63,8 +63,12 @@ export function ServerWalletVendorPricing({ slug, name }: { slug: string; name: 
                       </td>
                     );
                   }
+                  // Ranked against the prices that hold under every reading,
+                  // as the ledger and the grid rank; a floor is not ranked.
+                  const holds = priced.filter((r) => r.verified || r.bound === "upper");
                   const c = Math.round((row.usd ?? 0) * 100);
-                  const rank = 1 + priced.filter((r) => Math.round((r.usd ?? 0) * 100) < c).length;
+                  const isHeld = holds.includes(row);
+                  const rank = 1 + holds.filter((r) => Math.round((r.usd ?? 0) * 100) < c).length;
                   const bound = row.verified ? "" : row.bound === "upper" ? " · at most" : row.bound === "lower" ? " · at least" : " · ambiguous price";
                   return (
                     <td key={z.id} className="border-t border-rule px-2 py-3 align-top" title={detail}>
@@ -74,7 +78,7 @@ export function ServerWalletVendorPricing({ slug, name }: { slug: string; name: 
                         <span className="text-xs font-normal text-ink-faint">/mo</span>
                       </span>
                       <span className="block text-[11px] text-ink-faint">
-                        {row.planName} · #{rank} of {priced.length}
+                        {row.planName} · {isHeld ? `#${rank} of ${holds.length}` : "not ranked"}
                         {bound}
                       </span>
                     </td>
@@ -90,7 +94,7 @@ export function ServerWalletVendorPricing({ slug, name }: { slug: string; name: 
 }
 
 /** The vendor's bill and rank on bench 310's headline cell, for metadata. */
-export function serverWalletVendorHeadline(slug: string): { usd: number; rank: number; of: number; label: string } | { reason: string; of: number; label: string } | null {
+export function serverWalletVendorHeadline(slug: string): { usd: number; rank: number; of: number; label: string; reading: string } | { reason: string; of: number; label: string } | null {
   const file = serverWalletCurves();
   if (!file) return null;
   const s = file.scenarios.find((v) => v.id === file.headline.scenario);
@@ -99,9 +103,14 @@ export function serverWalletVendorHeadline(slug: string): { usd: number; rank: n
   const label = `${z.x.toLocaleString("en-US")} ${s.axis}`;
   const { priced, unpriced } = serverWalletRankAt(s.id, z.x);
   const row = priced.find((r) => r.slug === slug);
-  if (row && row.usd !== null) {
+  const holds = priced.filter((r) => r.verified || r.bound === "upper");
+  if (row && row.usd !== null && holds.includes(row)) {
     const c = Math.round(row.usd * 100);
-    return { usd: row.usd, rank: 1 + priced.filter((r) => Math.round((r.usd ?? 0) * 100) < c).length, of: priced.length, label };
+    return { usd: row.usd, rank: 1 + holds.filter((r) => Math.round((r.usd ?? 0) * 100) < c).length, of: holds.length, label, reading: row.verified ? "" : "at most" };
+  }
+  if (row && row.usd !== null) {
+    // An "at least" price: published, not ranked (rank 0).
+    return { usd: row.usd, rank: 0, of: holds.length, label, reading: "at least" };
   }
   const u = unpriced.find((r) => r.slug === slug);
   return u ? { reason: u.reason, of: priced.length, label } : null;
@@ -111,8 +120,10 @@ function fmtBill(usd: number | null): string {
   if (usd === null) return "-";
   const c = Math.round(usd * 100) / 100;
   if (c === 0) return "$0";
-  if (c < 100) return `$${c.toFixed(2).replace(/\.00$/, "")}`;
-  return `$${Math.round(c).toLocaleString("en-US")}`;
+  // To the cent whenever there are cents: ranks are taken on the cent.
+  return Number.isInteger(c)
+    ? `$${c.toLocaleString("en-US")}`
+    : `$${c.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 function lowerFirst(s: string): string {

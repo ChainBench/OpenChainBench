@@ -49,8 +49,8 @@ abstract: |
   of every page each hour, and a change that holds for six hours
   raises an alert for a maintainer to re-read the page. The calculator reads a curve the same harness
   emits, with a point at every plan boundary, and a second implementation in
-  another language re-prices it at 1,170,000 random app sizes; `pnpm
-  validate` re-runs it on a 78,000-size sample on every change.
+  another language re-prices it at 1,260,000 random app sizes; `pnpm
+  validate` re-runs it on an 84,000-size sample on every change.
 
 methodology:
   - "Cohort. {{declared_count}} vendors with a self-serve price on a public page: Privy, Dynamic, Turnkey, Web3Auth, Magic, Para, Coinbase CDP, thirdweb, Openfort, Circle, Reown, ZeroDev, Crossmint and Portal. Alchemy, Dfns, Fireblocks, Sequence and Particle Network are listed below with the reason they cannot be priced. Portal was listed as unpriceable until 2026-10-29, which was wrong: its Start-Up plan is published."
@@ -64,21 +64,21 @@ methodology:
   - "Vendors' own exclusions are honoured. Reown says exchanges, custodians, payments, gaming and merchant platforms need a custom plan, so its self-serve price is not offered on the trading profile."
   - "Left out. Gas and gas-sponsorship surcharges (thirdweb 2.5% on mainnet, Openfort 10% or 5%, ZeroDev 8%), SMS fees, extra seats, annual discounts, Circle's USDC rebate, and Privy's $1M monthly transaction volume threshold. Features a production app may need are not priced: removing thirdweb branding needs its $499 Scale plan, and custom domains are Enterprise-only at several vendors."
   - "Any size, not only three. The table prices 1,000, 10,000 and 100,000 users because a metric needs a fixed label. The calculator prices any size from 100 to 1,000,000 from a curve the same harness emits, with a point at every tier boundary, cap, quote threshold and plan crossover. Between two points every bill is a straight line, so the slider is exact, not smoothed."
-  - "Verification. A second implementation, written in another language from the catalogue's prose rather than the harness code, re-prices every curve point and 1,170,000 random app sizes, and agrees on the bill to the cent and on the plan in every case. `pnpm validate` re-runs it on a 78,000-size sample on every change, and refuses a curve built from a different catalogue."
+  - "Verification. A second implementation, written in another language from the catalogue's prose rather than the harness code, re-prices every curve point and 1,260,000 random app sizes, and agrees on the bill to the cent and on the plan in every case. `pnpm validate` re-runs it on an 84,000-size sample on every change, and refuses a curve built from a different catalogue."
   - "Freshness. Six of the first thirteen pages measured return a new body on every request while their prices stand still, so the harness hashes only the visible lines that carry a dollar figure or a number beside a billing word. A change that holds for six hours raises an alert, and a maintainer re-reads the page and corrects the catalogue. The page shows the catalogue date."
 
 findings:
-  - "There is no single cheapest vendor. At 1,000 users four free plans cost nothing on a consumer app (Circle, Magic, Para, Web3Auth). At 10,000 Reown leads the consumer and active profiles at $214 a month and thirdweb the trading one at $234. At 100,000 Dynamic leads all three at $724."
-  - "The billing unit decides the order. Per-user vendors cost the same whether users sign 5 or 100 transactions; per-signature and per-operation vendors scale with them. At 100,000 users, going from 5 to 100 transactions a user leaves Dynamic at $724 and takes Coinbase CDP from $5,075 to $100,000 and Magic from $6,249 to $53,749."
-  - "The spread widens with use. At 10,000 users on a consumer app the eleven priced vendors span 31x, from Reown's $214 to Portal's $6,699, and 2.3x without Portal. On a trading app at 100,000 users Dynamic's $724 sits against Privy's $106,000 and Portal's $1,011,299."
-  - "Portal, whose plan includes 1,000 wallets and bills $0.10 for each one beyond, is the dearest in every cell; Privy is the next dearest in five of the six cells from 10,000 users up. Past 10,000 users or 50,000 signatures a month it bills a $2,000 base, $0.05 per user and $0.01 per signature, and its own page says an Enterprise plan is typically cheaper at sustained volume."
-  - "Dynamic has no free production plan and the lowest per-user rate published below 10 million users: $249 covers 5,000 users and each one after costs $0.005, a tenth of Reown's $0.05 and an eighth of Web3Auth's lowest, $0.04."
+  - "There is no single cheapest vendor. At 1,000 users four free plans cost nothing on a consumer app (Circle, Magic, Para, Web3Auth). At 10,000 Reown leads the consumer and active profiles at $214 a month and thirdweb the trading one at $234. At 100,000 thirdweb leads all three at $1,584."
+  - "The billing unit decides the order. Per-user vendors cost the same whether users sign 5 or 100 transactions; per-signature and per-operation vendors scale with them. At 100,000 users, going from 5 to 100 transactions a user leaves thirdweb at $1,584 and takes Coinbase CDP from $5,075 to $100,000 and Magic from $6,249 to $53,749."
+  - "The spread widens with use. At 10,000 users on a consumer app the eleven priced vendors span 31x, from Reown's $214 to Portal's $6,699, and 2.3x without Portal. On a trading app at 100,000 users thirdweb's $1,584 sits against Privy's $106,000 and Portal's $1,011,299."
+  - "Portal, whose $499 plan includes 1,000 operations and 1,000 wallets and bills $0.10 for each operation beyond, the larger charge, and each wallet beyond, is the dearest in every cell; Privy is the next dearest in five of the six cells from 10,000 users up. Past 10,000 users or 50,000 signatures a month it bills a $2,000 base, $0.05 per user and $0.01 per signature, and its own page says an Enterprise plan is typically cheaper at sustained volume."
+  - "Dynamic's page states two rates for each user beyond the 5,000 its $249 plan covers: $0.05 on the plan card and $0.005 in its FAQ, a tenfold gap. Priced on the card, as the card read in April 2026 too, Dynamic is $4,999 a month at 100,000 users; on the FAQ's rate it would be the cheapest vendor on every profile at that size. Until 2026-10-30 this page priced the FAQ's rate."
   - "Three vendors publish no self-serve price for a 10,000-user app. Turnkey's Pro plan stops at 2,000 wallets, ZeroDev publishes no price past its Scale plan's 1M credits, and Crossmint has no self-serve paid plan and states two different rates beyond its free tier. Reown is not priced on the trading profile, by its own terms."
-  - "Six vendors' pages read two ways somewhere, each badged in the calculator: Privy's pay-as-you-go base and its 10,000-user band edge, Turnkey's Pro minimum, Openfort's operation count and free-plan stop, ZeroDev's credits per transaction, thirdweb's bands above 100,000 users, Portal's wallet overage. None leads a cell. At 10,000 consumer-app users two move a rank: Openfort is third or fourth, Privy ninth at $499 or tenth at $2,000."
+  - "Seven vendors' pages read two ways somewhere, each badged in the calculator: Dynamic's per-user rate, Privy's base and band edge, Turnkey's Pro minimum, Openfort's operation count and free-plan stop, ZeroDev's credits per transaction, thirdweb's bands above 100,000 users, Portal's wallet overage. None leads a cell. At 10,000 consumer-app users three move a rank: Openfort is third or fourth, and Dynamic and Privy, eighth at $499, would be fourth and tenth."
 
 faq:
   - q: "Which embedded wallet provider is cheapest?"
-    a: "It depends on how many users your app has and how often they transact. At 1,000 users Circle, Magic, Para and Web3Auth are free on a consumer app. At 10,000 users Reown is cheapest at $214 a month for a consumer or active app, and thirdweb at $234 for a trading app. At 100,000 users Dynamic is cheapest on every profile at $724. Move the calculator to your own size and usage."
+    a: "It depends on how many users your app has and how often they transact. At 1,000 users Circle, Magic, Para and Web3Auth are free on a consumer app. At 10,000 users Reown is cheapest at $214 a month for a consumer or active app, and thirdweb at $234 for a trading app. At 100,000 users thirdweb is cheapest on every profile at $1,584. Move the calculator to your own size and usage."
   - q: "Why does the ranking change with transactions per user?"
     a: "Because the vendors bill different things. Dynamic, Web3Auth, Para, thirdweb, Circle and Reown bill per active user, so a user who signs 100 transactions costs the same as one who signs 5. Turnkey bills per signature, Coinbase CDP and Openfort per wallet operation, ZeroDev per credit, and Privy and Magic per user plus per signature, so their bills rise with every transaction."
   - q: "What does Privy cost at 100,000 users?"
@@ -97,7 +97,7 @@ faq:
 excluded_providers:
   - { name: Alchemy, reason: "Wallet signatures are priced in compute units only in a separate calculator that disagrees with the pricing page." }
   - { name: Dfns, reason: "Annual contracts only, with no overage price." }
-  - { name: Fireblocks, reason: "No published price." }
+  - { name: Fireblocks, reason: "Sold through sales: $999 a month for up to six months, then custom plans from $36,000 a year, plus a share of outbound volume." }
   - { name: Sequence, reason: "No published price." }
   - { name: Particle Network, reason: "No published price." }
 

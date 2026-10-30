@@ -918,7 +918,9 @@ const buildProvidersCached = unstable_cache(
   //      /products/helius, the compare pages and the answers, and a cached
   //      one would keep a Helius with no Solana appearance for its whole
   //      900 s TTL. Lockstep with bench-unfiltered-v122.
-  ["providers-v32"],
+  // v33: wallet pricing audit 2026-10-30 (Dynamic and Circle re-priced,
+  // the price reading on appearance rows).
+  ["providers-v33"],
   // 900 s: the provider index feeds products / compare / answers, whose
   // numbers move slowly, and this revalidate is also the effective ISR
   // period of those ~500 pages (Next takes the min across a route's caches).

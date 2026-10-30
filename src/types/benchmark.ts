@@ -99,6 +99,10 @@ export type ProviderResult = {
    *  labelled block under the ranked field with its companion-panel
    *  values instead of dropping or badging it. */
   unrankedLabel?: string;
+  /** Pricing benches (309, 310): how to read a bill whose vendor page reads
+   *  two ways, "at most", "at least" or "ambiguous price", from the same
+   *  curve the calculator reads. Absent when the price is unambiguous. */
+  priceReading?: string;
   /** Carry-forward bookkeeping written by the materialization worker:
    *  observedAt = epoch ms of the last successful Prom read behind these
    *  numbers; staleSince = first failed cycle after it. Absent on data

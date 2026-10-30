@@ -79,3 +79,12 @@ Alerts are in `alerts.yml`, deployed as
 | `SERVER_WALLET_COST_INTERVAL` | `1h` |
 | `SERVER_WALLET_COST_SITE_CURVES` | `dev=<raw GitHub URL>,main=<raw GitHub URL>` |
 | `PORT` | `2112` |
+
+## What the drift check does not see
+
+The hourly check hashes each page's pricing sentences and the PIN report
+lists catalogue figures missing from them: plan fees, tier rates and
+bounds, caps and quote thresholds. It does not cover meter coefficients
+(operations per transaction, credits per signature, operations per new
+wallet). Those come from vendors' tables or docs that are often on other
+pages; re-read them by hand whenever a vendor's page drifts.
