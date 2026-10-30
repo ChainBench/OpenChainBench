@@ -920,7 +920,12 @@ const buildProvidersCached = unstable_cache(
   //      900 s TTL. Lockstep with bench-unfiltered-v122.
   // v33: wallet pricing audit 2026-10-30 (Dynamic and Circle re-priced,
   // the price reading on appearance rows).
-  ["providers-v33"],
+  // v34: the per-chain leader stash no longer crowns a row the board
+  //      publishes outside its ranking, and elects nobody on a tie. This
+  //      index embeds the "#1 of N on <chain>" chip, so a cached one keeps
+  //      claiming a rank the bench itself declines to give. Lockstep with
+  //      bench-unfiltered-v127.
+  ["providers-v34"],
   // 900 s: the provider index feeds products / compare / answers, whose
   // numbers move slowly, and this revalidate is also the effective ISR
   // period of those ~500 pages (Next takes the min across a route's caches).
