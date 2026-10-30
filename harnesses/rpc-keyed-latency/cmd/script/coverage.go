@@ -258,6 +258,14 @@ func hexNum(v uint64) string { return "0x" + strconv.FormatUint(v, 16) }
 // the RPC URL. Emitting 0 for them would state that no provider serves the
 // Beacon API, which is false. They need their own env variables first.
 var coverageProbes = []coverageProbe{
+	// The compute-bound call and the reference it is only meaningful
+	// against, first in the list because they have to run adjacent in the
+	// pass: their difference is the work only if they share the same
+	// network conditions. See heavycall.go for the measurements that
+	// settled the size and for why the absolute number answers a different
+	// question than the review asked.
+	ethCallProbe("eth_call_light", lightCallSubCalls),
+	ethCallProbe("eth_call_heavy", heavyCallSubCalls),
 	{
 		API:  "eth_getlogs_nofilter",
 		Kind: "evm",
