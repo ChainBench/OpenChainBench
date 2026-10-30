@@ -363,6 +363,8 @@ const mcpHandler = createMcpHandler(
               ms: r.ms,
               value: r.ms.p50 == null ? null : valueInDeclaredUnit(r.ms.p50, b.unit),
               successRate: r.successRate,
+              // The pricing benches' "at most" / "at least", as /api/stat.
+              ...(r.priceReading ? { priceReading: r.priceReading } : {}),
             }));
         // Latency benches declaring unit "s" store milliseconds (the fmtUnit
         // convention in format.ts). /api/stat has converted on the way out

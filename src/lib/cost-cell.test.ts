@@ -19,7 +19,7 @@ describe("cost cells", () => {
   test("a floor is never named, and its bill says so", () => {
     // Payouts at 10,000 wallets: Privy's $0 is a lower bound.
     expect(costCell("server-wallet-cost", "payouts", "medium", "best_name")).not.toContain("Privy");
-    expect(costCell("server-wallet-cost", "payouts", "medium", "privy")).toBe("at least $0");
+    expect(costCell("server-wallet-cost", "payouts", "medium", "privy")).toBe("$0 on its published rates");
     expect(costCell("server-wallet-cost", "payouts", "small", "free_names")).not.toContain("Privy");
   });
 

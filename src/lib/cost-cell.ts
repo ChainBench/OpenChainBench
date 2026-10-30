@@ -109,7 +109,9 @@ export function fmtCostUSD(v: number): string {
 function bill(r: Row): string {
   const usd = fmtCostUSD(r.usd);
   if (r.reading === "at most") return `${usd} at most`;
-  if (r.reading === "at least") return `at least ${usd}`;
+  // "at least $0" says nothing (SEO audit 2026-10-30): a $0 floor is $0 on
+  // the vendor's published rates, with a fee it does not publish on top.
+  if (r.reading === "at least") return cents(r.usd) === 0 ? "$0 on its published rates" : `at least ${usd}`;
   return usd;
 }
 

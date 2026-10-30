@@ -177,6 +177,7 @@ export function buildEditorial(
     unit: spec.unit,
     higherIsBetter: spec.higher_is_better,
     rowNoun: spec.row_noun,
+    headlineSlice: spec.headline_slice,
     valueKind: specValueKind(spec),
     abstract: spec.abstract,
     methodology: spec.methodology,

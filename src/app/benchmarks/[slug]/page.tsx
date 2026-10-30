@@ -10,10 +10,17 @@ import { BenchInfobox } from "@/components/bench-infobox";
 import { StaticLedger } from "@/components/static-ledger";
 import { OraclePairMatrix } from "@/components/oracle-pair-matrix";
 import { TerminalFillAudit } from "@/components/terminal-fill-audit";
-import { RpcCostSlider, RpcCostWinnersGrid } from "@/components/rpc-cost-slider";
-import { WalletCostCalculator, WalletCostGrid } from "@/components/wallet-cost-calculator";
-import { ServerWalletCostCalculator, ServerWalletCostGrid } from "@/components/server-wallet-cost-calculator";
-import { PaymasterCostCalculator, PaymasterCostGrid } from "@/components/paymaster-cost-calculator";
+// Lazy: each calculator is its own client chunk, loaded only by its bench.
+import {
+  RpcCostSlider,
+  RpcCostWinnersGrid,
+  WalletCostCalculator,
+  WalletCostGrid,
+  ServerWalletCostCalculator,
+  ServerWalletCostGrid,
+  PaymasterCostCalculator,
+  PaymasterCostGrid,
+} from "@/components/cost-calculators-lazy";
 import { linkifyParts } from "@/lib/linkify";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { ChainHeadingsSummary } from "@/components/chain-headings-summary";
@@ -408,6 +415,7 @@ export default async function BenchmarkPage({
     metric: benchmark.metric,
     unit: benchmark.unit,
     ledgerColumns: benchmark.ledgerColumns,
+    ledgerReliability: benchmark.ledgerReliability,
     leader:
       currentLeader && leaderResult
         ? {

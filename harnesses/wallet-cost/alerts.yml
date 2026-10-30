@@ -36,7 +36,7 @@ groups:
     # shows two prices for one vendor. Two hours covers a normal deploy.
     - alert: WalletCostSiteCurveMismatch
       expr: wallet_cost_site_curve_matches == 0
-      for: 2h
+      for: 15m
       labels:
         severity: warning
       annotations:

@@ -134,6 +134,7 @@ export function overlayEditorial(stored: Benchmark, spec: Spec): Benchmark {
     seoTitle: spec.seo_title ?? stored.seoTitle,
     seoDescription: spec.seo_description ?? stored.seoDescription,
     seoIntro: spec.seo_intro ?? stored.seoIntro,
+    headlineSlice: spec.headline_slice ?? stored.headlineSlice,
     faq: spec.faq ?? stored.faq,
     excludedProviders: spec.excluded_providers ?? stored.excludedProviders,
     window: spec.prometheus?.window ?? stored.window,
@@ -688,7 +689,10 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       are primed now, so the handshake is paid outside the measurement
   //       instead of inside a difference of a few milliseconds. Moves with
   //       all-benchmarks-v124 and bench-filters-v69.
-  ["bench-unfiltered-v131", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v132: cost bench audit round (309, 310, 312): headline_slice, copy
+  //       read from the curve, the bot FAQ. Moves with all-benchmarks-v125
+  //       and bench-filters-v70.
+  ["bench-unfiltered-v132", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -991,7 +995,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v122: lockstep with bench-unfiltered-v129 (per-chain leader).
   // v123: lockstep with bench-unfiltered-v130 (per-chain leader).
   // v124: lockstep with bench-unfiltered-v131 (ladder bound, primed legs).
-  ["all-benchmarks-v124", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v125: lockstep with bench-unfiltered-v132 (cost bench audit round).
+  ["all-benchmarks-v125", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1184,8 +1189,9 @@ const loadBenchmarkFiltered = unstable_cache(
   // v66: lockstep with bench-unfiltered-v128.
   // v67: lockstep with bench-unfiltered-v129.
   // v68: lockstep with bench-unfiltered-v130 (per-chain leader).
-  // v69: lockstep with bench-unfiltered-v131.
-  ["bench-filters-v69", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v69: lockstep with bench-unfiltered-v131 (ladder bound).
+  // v70: lockstep with bench-unfiltered-v132 (cost bench audit round).
+  ["bench-filters-v70", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 

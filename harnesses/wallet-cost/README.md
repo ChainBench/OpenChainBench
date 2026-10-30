@@ -60,6 +60,17 @@ attached to a quote, a meter no plan bounds, a misspelt key.
    that `wallet_cost_catalogue_info{sha256=...}` equals `catalogueSha256`
    in `src/data/wallet-cost-curves.json`.
 
+One harness feeds both sites, so a catalogue change released to `dev`
+and `main` at different times leaves one of them pricing from a different
+catalogue between the two (production spent about 30 minutes that way on
+2026-10-30). Release order: merge to `dev`, release the same curve to
+`main` (cherry-pick PR), then rebuild the image once both are deployed.
+The site curves are re-read every 5 minutes
+(`WALLET_COST_SITE_CURVES_INTERVAL`) and `WalletCostSiteCurveMismatch`
+fires after 15, so a window left open is caught within the hour. A
+correction that moves a bill also leaves the old figure in the 7d and 30d
+history: say so on the page, or delete the series' old samples.
+
 ## Metrics
 
 | Metric | Labels |
