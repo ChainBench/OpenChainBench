@@ -621,7 +621,13 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       Moves in lockstep with all-benchmarks-v114 and bench-filters-v59.
   //       providers-v31 deliberately does NOT move: no provider entered or
   //       left and no provider copy changed.
-  ["bench-unfiltered-v121", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v122: Helius enters the keyed Solana cohort, warm and cold. A new
+  //       provider changes the ranked set, the count placeholders and the
+  //       disclosure prose, none of which overlayEditorial can repair on an
+  //       entry already cached. Moves with all-benchmarks-v115,
+  //       bench-filters-v60 and, unusually, providers-v32: a provider
+  //       entering is the case that key exists for.
+  ["bench-unfiltered-v122", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -912,7 +918,9 @@ const loadAllBenchmarksCached = unstable_cache(
   //       bench 311's two window panels. The aggregate carries each bench's
   //       rendered columns, so an entry written before this holds the two
   //       booleans the windows replaced.
-  ["all-benchmarks-v114", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v115: lockstep with bench-unfiltered-v122, Helius entering the keyed
+  //       Solana cohort.
+  ["all-benchmarks-v115", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1091,7 +1099,10 @@ const loadBenchmarkFiltered = unstable_cache(
   //      exist because the per-chain view was the one reading as a four-way
   //      tie, so a stale filtered entry would keep serving the tie on every
   //      tab while the unfiltered view carried the fix.
-  ["bench-filters-v59", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v60: lockstep with bench-unfiltered-v122. The Access selector is a
+  //      filtered view, so the keyed and cold cohorts are exactly the
+  //      entries that would otherwise keep a four-provider Solana board.
+  ["bench-filters-v60", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 

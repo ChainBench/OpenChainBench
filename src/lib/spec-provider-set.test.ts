@@ -67,6 +67,17 @@ describe("the provider set behind the cache keys", () => {
     // and its six providers gain an appearance in the RPCs category, so
     // providers-v moves too or /products, compare and answers keep listing
     // them one bench short.
+    //
+    // Second ADDITION: Helius enters the keyed Solana cohort of
+    // solana-rpc, warm and cold, on 2026-10-30. It is the one
+    // Solana-native provider the review named that we can actually use,
+    // Triton being paid only, and it had never been probed: the harness
+    // listed it and budgeted it, the Railway URL variable was simply never
+    // set, so the published cohort was Alchemy, Chainstack, GetBlock and
+    // Quicknode. All four keys moved again, providers-v32 included, since a
+    // provider ENTERING is the case that key exists for. The `-cold` twin
+    // needed its alias in BOTH tables, logo-manifest and providers, which
+    // three sibling tests caught before this one did.
     expect(
       hash,
       [
@@ -85,6 +96,6 @@ describe("the provider set behind the cache keys", () => {
         "Then set EXPECTED to the hash in this failure, and add the provider",
         `to PRODUCT_NAMES if it needs a display name. Providers now: ${count}.`,
       ].join("\n"),
-    ).toBe("9abf98f80d8d255e");
+    ).toBe("138d7050f61044ea");
   });
 });

@@ -1112,6 +1112,7 @@ const ALIASES: Record<string, string> = {
   "blockmachine-cold": "blockmachine",
   "chainstack-cold": "chainstack",
   "dwellir-cold": "dwellir",
+  "helius-cold": "helius",
   "validationcloud-cold": "validationcloud",
   "validation-cloud": "validationcloud",
   "dwellir-unlimited": "dwellir",
