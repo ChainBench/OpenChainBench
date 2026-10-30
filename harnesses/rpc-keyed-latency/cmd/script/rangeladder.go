@@ -58,6 +58,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 )
 
 // Rungs ascend, the ladder stops at the first refusal, and the published value
@@ -140,6 +141,13 @@ func acceptedSpan(raw []byte) (accepted bool, definitive bool) {
 		return false, false
 	}
 	if r.Error != nil {
+		// Un refus de plage est la mesure. Un throttle ne l'est pas: il dit
+		// qu'on a demande trop souvent, pas que la fenetre est trop large,
+		// et le lire comme une limite publierait notre cadence comme leur
+		// politique. Meme raison que le refus de classer un timeout.
+		if looksLikeRateLimit(r.Error.Message) {
+			return false, false
+		}
 		return false, true
 	}
 	// An empty array is the expected success: the filters match nothing by
@@ -176,7 +184,52 @@ func rungWindow(head, span uint64) (lo, hi uint64) {
 	return head - span + 1, head
 }
 
+// looksLikeRateLimit reconnait un throttle plutot qu'un refus de largeur.
+//
+// La liste est volontairement etroite: tout ce qui n'est pas reconnu reste un
+// refus de plage, parce que c'est le cas courant et que l'elargir ferait
+// disparaitre des mesures vraies. Les deux premieres formes sont celles
+// relevees sur cette cohorte, les suivantes sont les tournures standard.
+func looksLikeRateLimit(msg string) bool {
+	m := strings.ToLower(msg)
+	// No bare "429". The HTTP status never reaches this function, only the
+	// JSON-RPC message does, and as a substring those three digits match a
+	// block number or a width: "range of 4291 blocks exceeds the limit" and
+	// "from block 14290000" are width refusals, which is the measurement
+	// this ladder exists to take. The spelled-out forms below cover a real
+	// throttle without that risk.
+	for _, s := range []string{
+		"rate limit", "rate-limit", "ratelimit",
+		"too many requests",
+		"exceeded the quota", "quota exceeded",
+		"request limit", "throttl",
+	} {
+		if strings.Contains(m, s) {
+			return true
+		}
+	}
+	return false
+}
+
 // rangeOutcome is what one ladder learned.
+// What ended the climb, and therefore what the number means. Published as a
+// label, because the three are not interchangeable and a reader cannot tell
+// them apart from the figure alone.
+//
+// The audit found the cost of not saying: Quicknode publishes 10,000 on seven
+// chains after an HTTP error at the 100,000 rung, and GetBlock 1,000 on Arc
+// after one at 2,000. Both read as the provider's limit. Either may be, and
+// nothing in the number says we never asked higher.
+const (
+	// A provider refused the next rung. The figure is its guard.
+	boundRefused = "refused"
+	// Our own call failed before the next rung could answer. The figure is a
+	// floor we reached, not a limit they set.
+	boundFailed = "failed"
+	// Every rung passed. The guard is somewhere above the top one.
+	boundTop = "top"
+)
+
 type rangeOutcome struct {
 	// best is the largest rung accepted; 0 means even the first was refused.
 	best uint64
@@ -184,6 +237,9 @@ type rangeOutcome struct {
 	// or a timeout on the first rung is our failure, and bench 311's rule is
 	// that only a definitive answer about the PROVIDER writes a gauge.
 	publish bool
+	// bound says what stopped the climb: boundRefused, boundFailed or
+	// boundTop.
+	bound string
 	// calls spent, for the log line.
 	calls int
 }
@@ -205,16 +261,20 @@ func climb(ask func(span uint64) (accepted bool, definitive bool)) rangeOutcome 
 		accepted, definitive := ask(span)
 		out.calls++
 		if !definitive {
-			// Our failure. Keep whatever was already established.
+			// Our failure. Keep whatever was already established, and say so:
+			// the figure is a floor we reached rather than a limit they set.
+			out.bound = boundFailed
 			return out
 		}
 		if !accepted {
 			out.publish = true
+			out.bound = boundRefused
 			return out
 		}
 		out.best = span
 		out.publish = true
 	}
+	out.bound = boundTop
 	return out
 }
 
@@ -265,6 +325,12 @@ func probeGetLogsRange(ctx context.Context, e Endpoint, head uint64) {
 			}
 			return acceptedSpan(raw)
 		})
+		if out.bound == boundFailed && out.publish {
+			// Un plancher, pas une limite. Publie sous son propre label pour
+			// que le spec puisse le retenir, et dit dans le log.
+			fmt.Printf("[getlogs-range] %-16s %-12s %-8s floor %d blocks after our own failure in %d call(s)\n",
+				e.Provider, e.Chain, sh.Shape, out.best, out.calls)
+		}
 		if !out.publish {
 			// Printed, not silent. A ladder that reaches no verdict is
 			// indistinguishable from one that never ran, and every other
@@ -276,15 +342,17 @@ func probeGetLogsRange(ctx context.Context, e Endpoint, head uint64) {
 			continue
 		}
 		rpcGetLogsMaxRange.WithLabelValues(
-			e.Provider, e.Chain, sh.Shape, currentRegion, tierKeyed).
+			e.Provider, e.Chain, sh.Shape, out.bound, currentRegion, tierKeyed).
 			Set(float64(out.best))
 		labelProbe(e, "getlogs_range_"+sh.Shape, "ok")
 		// The floor case is worth distinguishing in the log, because the
 		// published number means something different there: the guard is
 		// somewhere above the top rung rather than at it.
 		note := ""
-		if out.best == getLogsRungs[len(getLogsRungs)-1] {
+		if out.bound == boundTop {
 			note = " (top rung, so a floor)"
+		} else if out.bound == boundFailed {
+			note = " (floor: our call failed above it)"
 		}
 		fmt.Printf("[getlogs-range] %-16s %-12s %-8s max %d blocks in %d call(s)%s\n",
 			e.Provider, e.Chain, sh.Shape, out.best, out.calls, note)

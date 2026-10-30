@@ -680,7 +680,15 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       "#1 of 5 on Robinhood Chain" for a row the board shows
   //       unranked. Moves with all-benchmarks-v123, bench-filters-v68
   //       and providers-v35.
-  ["bench-unfiltered-v130", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v131: the two window columns select bound=~"refused|top", so a figure
+  //       the ladder reached before one of OUR OWN calls failed is no longer
+  //       printed as the provider's limit; the audit found Quicknode
+  //       publishing 10,000 on seven chains after an HTTP error at the
+  //       100,000 rung. The eth_call view's copy moves with it: both legs
+  //       are primed now, so the handshake is paid outside the measurement
+  //       instead of inside a difference of a few milliseconds. Moves with
+  //       all-benchmarks-v124 and bench-filters-v69.
+  ["bench-unfiltered-v131", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -982,7 +990,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v122: lockstep with bench-unfiltered-v129 (bench 312).
   // v122: lockstep with bench-unfiltered-v129 (per-chain leader).
   // v123: lockstep with bench-unfiltered-v130 (per-chain leader).
-  ["all-benchmarks-v123", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v124: lockstep with bench-unfiltered-v131 (ladder bound, primed legs).
+  ["all-benchmarks-v124", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1175,7 +1184,8 @@ const loadBenchmarkFiltered = unstable_cache(
   // v66: lockstep with bench-unfiltered-v128.
   // v67: lockstep with bench-unfiltered-v129.
   // v68: lockstep with bench-unfiltered-v130 (per-chain leader).
-  ["bench-filters-v68", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v69: lockstep with bench-unfiltered-v131.
+  ["bench-filters-v69", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 
