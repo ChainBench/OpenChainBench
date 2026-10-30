@@ -645,7 +645,22 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // v125: wallet pricing audit 2026-10-30: Dynamic re-priced on its card,
   //       Circle's signing-only plan, the price-reading pill, rewritten prose.
   //       Moves with all-benchmarks-v118 and bench-filters-v63.
-  ["bench-unfiltered-v125", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v126: the audit's root cause. Every selector on bench 311 aggregated
+  //       rpc_api_supported and rpc_api_probe_total with no `api` filter, so
+  //       each probe added today silently joined the headline, the success
+  //       rate, the sample size, the rank gate and the freshness column. The
+  //       two eth_call legs made each chain contribute 9 cells where the copy
+  //       describes 7, putting every ranked headline 0.9 to 5.2 points high;
+  //       the range ladder writes a probe counter without a capability gauge,
+  //       so the success denominator grew by two APIs and every ranked row
+  //       read 81.8 percent where the spec's own definition gives 100. All 67
+  //       selectors now carry the capability allowlist, the freshness column
+  //       reads the OLDEST stamp rather than the newest, the Solana view is
+  //       gone (its chain pin survived injection and showed Solana values on
+  //       every EVM tab), and the FAQ no longer answers that the window
+  //       measurement does not exist above the columns that publish it.
+  //       Moves with all-benchmarks-v119 and bench-filters-v64.
+  ["bench-unfiltered-v126", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -941,7 +956,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v116: lockstep with bench-unfiltered-v123, bench 311's four views.
   // v117: lockstep with bench-unfiltered-v124.
   // v118: lockstep with bench-unfiltered-v125 (wallet pricing audit).
-  ["all-benchmarks-v118", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v119: lockstep with bench-unfiltered-v126.
+  ["all-benchmarks-v119", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1128,7 +1144,9 @@ const loadBenchmarkFiltered = unstable_cache(
   //      the panels behind them.
   // v62: lockstep with bench-unfiltered-v124.
   // v63: lockstep with bench-unfiltered-v125 (wallet pricing audit).
-  ["bench-filters-v63", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v64: lockstep with bench-unfiltered-v126. Every chain tab carried the
+  //      same inflated headline and the same 9/11 success rate.
+  ["bench-filters-v64", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 
