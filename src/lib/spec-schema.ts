@@ -391,6 +391,16 @@ export const SpecSchema = z
      * board of chains, which is the one sentence the page marks for an
      * answer engine to quote (SEO audit 2026-09-23).
      */
+    /**
+     * The clause the citable headline appends for the headline cell, in place
+     * of the dimension labels. The pricing benches label their default size
+     * "Medium size", which is a picker label, and "measured on" misdescribes
+     * a calculation from list prices (SEO audit 2026-10-30): "measured on AI
+     * agents, 50 transactions each, Medium size" reached /api/stat, citable
+     * and llms.txt. Starts with a comma-free phrase; rendered as ", <slice>".
+     */
+    headline_slice: z.string().min(8).max(140).optional(),
+
     row_noun: z
       .object({
         one: z.string().min(1).max(24),

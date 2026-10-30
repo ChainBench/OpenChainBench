@@ -347,6 +347,7 @@ export function headlineParts(b: Benchmark): { claim: string; rest: string } {
  *  measurement, and the cohort size is already in the sentence.
  */
 function sliceClause(b: Benchmark): string {
+  if (b.headlineSlice) return `, ${b.headlineSlice}`;
   const dims = b.dimensions;
   if (!dims) return "";
   const parts: string[] = [];

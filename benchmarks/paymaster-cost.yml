@@ -13,6 +13,7 @@ metric: Monthly cost to sponsor 100,000 operations on Base
 unit: usd
 higher_is_better: false
 row_noun: { one: vendor, many: vendors }
+headline_slice: "100,000 sponsored operations a month on Base, priced from published list prices, gas excluded"
 
 disclaimer: >
   Published prices, not invoices. Every figure was read from the vendor's own

@@ -85,6 +85,12 @@ export async function GET(
           findings: aggregate.findings,
           faq: aggregate.faq,
           seoIntro: aggregate.seoIntro,
+          // The title and description name the headline cell ("At 10,000
+          // consumer-app users ..."); resolved on a filtered view they put
+          // that view's leader under the headline's label (audit
+          // 2026-10-30: thirdweb $1,584 for "10,000 consumer-app users").
+          seoTitle: aggregate.seoTitle,
+          seoDescription: aggregate.seoDescription,
           abstract: aggregate.abstract,
           methodology: aggregate.methodology,
           perChainExplainer: aggregate.perChainExplainer,

@@ -601,13 +601,27 @@ async function checkCostBenchCurve(issues: Issue[], b: CostBench) {
   const claims: string[] = [...((spec.findings as string[]) ?? []), ...((spec.faq as { a: string }[]) ?? []).map((f) => f.a)];
   const WINNER =
     /\b(?:is|are) (?:the )?(?:cheapest|dearest|next dearest)\b|\bleads?\b|\b\d+(?:\.\d+)?x\b|\b(?:third|fourth|fifth|sixth|seventh|eighth|ninth|tenth)\b/i;
+  // Only a cell that names a rank exempts a sentence. Any cell used to:
+  // "Circle, at {{cell:bot:large:circle}} ... at any volume" passed as the
+  // answer to "Which is cheapest for a trading bot?" while Magic tied at
+  // 10,000 transactions, because a vendor's own bill is a cell too (SEO
+  // audit 2026-10-30).
+  const RANK_CELL = /\{\{\s*cell:[a-z0-9-]+:[a-z0-9-]+:(?:best_name|second_name|worst_name|free_names|spread)\s*\}\}/i;
   const typed = new Set<string>();
   for (const c of claims) {
     for (const sentence of c.split(/(?<=[.;?!])\s+/)) {
       if (!WINNER.test(sentence)) continue;
-      if (/\{\{\s*cell:/i.test(sentence)) continue;
+      if (RANK_CELL.test(sentence)) continue;
       typed.add(sentence.slice(0, 110));
     }
+  }
+  // A question that asks for the winner is answered by the curve: the
+  // verb "cheapest" sits in the question, which the check above never read,
+  // and the answer can name its vendor without one.
+  for (const f of (spec.faq as { q: string; a: string }[]) ?? []) {
+    if (!/\b(?:cheapest|dearest|lowest)\b|\bleast (?:expensive|costly)\b/i.test(f.q)) continue;
+    const first = f.a.split(/(?<=[.;?!])\s+/)[0] ?? "";
+    if (!RANK_CELL.test(first)) typed.add(`${f.q} -> ${first.slice(0, 80)}`);
   }
   if (typed.size > 0) {
     issues.push({

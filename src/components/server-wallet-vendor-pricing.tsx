@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { costRanks } from "@/lib/cost-rank";
 import {
   serverWalletCurves,
   serverWalletRankAt,
@@ -63,12 +64,10 @@ export function ServerWalletVendorPricing({ slug, name }: { slug: string; name: 
                       </td>
                     );
                   }
-                  // Ranked against the prices that hold under every reading,
-                  // as the ledger and the grid rank; a floor is not ranked.
-                  const holds = priced.filter((r) => r.verified || r.bound === "upper");
-                  const c = Math.round((row.usd ?? 0) * 100);
-                  const isHeld = holds.includes(row);
-                  const rank = 1 + holds.filter((r) => Math.round((r.usd ?? 0) * 100) < c).length;
+                  // The calculator's rule (src/lib/cost-rank.ts): every
+                  // priced row ranks except a floor at or under the leader.
+                  const { ranked, rankOf } = costRanks(priced);
+                  const rank = rankOf(row);
                   const bound = row.verified ? "" : row.bound === "upper" ? " · at most" : row.bound === "lower" ? " · at least" : " · ambiguous price";
                   return (
                     <td key={z.id} className="border-t border-rule px-2 py-3 align-top" title={detail}>
@@ -78,7 +77,7 @@ export function ServerWalletVendorPricing({ slug, name }: { slug: string; name: 
                         <span className="text-xs font-normal text-ink-faint">/mo</span>
                       </span>
                       <span className="block text-[11px] text-ink-faint">
-                        {row.planName} · {isHeld ? `#${rank} of ${holds.length}` : "not ranked"}
+                        {row.planName} · {rank > 0 ? `#${rank} of ${ranked.length}` : "not ranked"}
                         {bound}
                       </span>
                     </td>
@@ -103,17 +102,34 @@ export function serverWalletVendorHeadline(slug: string): { usd: number; rank: n
   const label = `${z.x.toLocaleString("en-US")} ${s.axis}`;
   const { priced, unpriced } = serverWalletRankAt(s.id, z.x);
   const row = priced.find((r) => r.slug === slug);
-  const holds = priced.filter((r) => r.verified || r.bound === "upper");
-  if (row && row.usd !== null && holds.includes(row)) {
-    const c = Math.round(row.usd * 100);
-    return { usd: row.usd, rank: 1 + holds.filter((r) => Math.round((r.usd ?? 0) * 100) < c).length, of: holds.length, label, reading: row.verified ? "" : "at most" };
-  }
+  // Same rule and denominator as the table above and the calculator; a
+  // floor at or under the leader has rank 0, "not ranked".
+  const { ranked, rankOf } = costRanks(priced);
   if (row && row.usd !== null) {
-    // An "at least" price: published, not ranked (rank 0).
-    return { usd: row.usd, rank: 0, of: holds.length, label, reading: "at least" };
+    const reading = row.verified ? "" : row.bound === "upper" ? "at most" : row.bound === "lower" ? "at least" : "ambiguous price";
+    return { usd: row.usd, rank: rankOf(row), of: ranked.length, label, reading };
   }
   const u = unpriced.find((r) => r.slug === slug);
-  return u ? { reason: u.reason, of: priced.length, label } : null;
+  return u ? { reason: u.reason, of: ranked.length, label } : null;
+}
+
+/**
+ * The vendor's first priced cell, scenario by scenario and smallest size
+ * first, for a product page whose vendor has no price at the headline cell
+ * (Turnkey holds at most 2,000 wallets, so 10,000 agents is beyond it).
+ */
+export function serverWalletVendorFirstPriced(slug: string): { usd: number; label: string; reading: string } | null {
+  const file = serverWalletCurves();
+  if (!file) return null;
+  for (const s of file.scenarios) {
+    for (const z of s.sizes) {
+      const row = serverWalletRankAt(s.id, z.x).priced.find((r) => r.slug === slug);
+      if (!row || row.usd === null) continue;
+      const reading = row.verified ? "" : row.bound === "upper" ? "at most" : row.bound === "lower" ? "at least" : "ambiguous price";
+      return { usd: row.usd, label: `${z.x.toLocaleString("en-US")} ${s.axis} (${s.label.toLowerCase()})`, reading };
+    }
+  }
+  return null;
 }
 
 function fmtBill(usd: number | null): string {

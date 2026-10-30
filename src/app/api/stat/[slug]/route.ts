@@ -57,12 +57,19 @@ export async function GET(
     kind?: string;
     venue?: string;
     tier?: string;
+    bucket?: string;
   } = {};
   const chainParam = url.searchParams.get("chain");
   const regionParam = url.searchParams.get("region");
   const kindParam = url.searchParams.get("kind");
   const venueParam = url.searchParams.get("venue");
   const tierParam = url.searchParams.get("tier");
+  // The size on the pricing benches (309, 310, 312). Ignored before
+  // 2026-10-30, so ?kind=trading&bucket=100k answered with the 10k cell
+  // while echoing only the kind (SEO audit): the silent substitution the
+  // comment above forbids.
+  const bucketParam = url.searchParams.get("bucket");
+  if (bucketParam && bucketParam !== "all") filters.bucket = bucketParam;
   if (chainParam && chainParam !== "all") filters.chain = chainParam;
   if (regionParam && regionParam !== "all") filters.region = regionParam;
   if (kindParam && kindParam !== "all") filters.kind = kindParam;
@@ -158,6 +165,10 @@ export async function GET(
       sampleSize: r.sampleSize,
       sampleHealth: r.sampleHealth,
       dataConfidence: r.dataConfidence,
+      // "at most" / "at least" / "ambiguous price" on the pricing benches:
+      // the page badges these bills, and a reader of the JSON must not get
+      // Privy's floor as a plain $6,500 (audit 2026-10-30).
+      ...(r.priceReading ? { priceReading: r.priceReading } : {}),
     })),
     sparkline: sparklineFor(b, top?.slug),
     sampleSize: b.sampleSize,
