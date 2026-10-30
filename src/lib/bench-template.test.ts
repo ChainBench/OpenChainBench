@@ -348,3 +348,10 @@ describe("renderBenchmarkText drops items that render to nothing", () => {
     expect(b.methodology).toEqual(["Six fixed pairs."]);
   });
 });
+
+describe("{{year}}", () => {
+  test("renders the current UTC year", () => {
+    const b = { slug: "x", results: [] } as unknown as Parameters<typeof renderTemplate>[1];
+    expect(renderTemplate("pricing {{year}}", b)).toBe(`pricing ${new Date().getUTCFullYear()}`);
+  });
+});
