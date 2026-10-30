@@ -143,6 +143,10 @@ export async function GET(
     rankings: rankedCandidates(b).map((r) => ({
       name: r.name,
       slug: r.slug,
+      // The figure in the bench's own unit, beside the legacy `ms` block,
+      // so a reader of one row cannot cite a $338 bill as "338 ms".
+      value: valueInDeclaredUnit(r.ms.p50, b.unit),
+      unit: b.unit,
       ms: r.ms,
       // A bench that sends no traffic has no success rate to report, and
       // load.ts defaults successRate to 100 when a spec declares no `success`
