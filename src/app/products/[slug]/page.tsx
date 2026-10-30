@@ -662,12 +662,18 @@ export default async function ProviderPage({
   // and made every /products/* page look near-duplicate to Bing (SEO audit
   // 2026-07-05: only 2 of ~5000 pages indexed). Each sentence is derived
   // from live measurements — no editorial claim.
+  // A published price of $0 is a value (Circle bills a 20-wallet bot
+  // nothing), not a missing measurement.
   const rankedAppearances = sorted.filter(
-    (a) => a.rank > 0 && a.result.ms.p50 !== 0,
+    (a) => a.rank > 0 && (a.result.ms.p50 !== 0 || PRICING_BENCHES.includes(a.benchmark.slug)),
   );
   const topLines: string[] = [];
   for (const a of rankedAppearances.slice(0, 4)) {
-    const p50Str = fmtUnit(a.result.ms.p50, a.benchmark.unit);
+    // A published price whole, as the rows below print it ($51,299, not
+    // "$51.3K").
+    const p50Str = PRICING_BENCHES.includes(a.benchmark.slug)
+      ? fmtCostUSD(a.result.ms.p50)
+      : fmtUnit(a.result.ms.p50, a.benchmark.unit);
     const rankStr = `ranks #${a.rank} of ${a.totalRanked}${cohortWord(a)}`;
     const valueWord = a.benchmark.valueKind === "latest" ? "latest" : "p50";
     topLines.push(`${shortBenchLabel(a.benchmark)} (${rankStr}, ${p50Str} ${valueWord})`);
@@ -675,7 +681,7 @@ export default async function ProviderPage({
   const proseParts: string[] = [];
   if (topLines.length > 0) {
     proseParts.push(
-      `${p.name} ${topLines.length === 1 ? "is measured on" : "is measured across"} ${living.length} live OpenChainBench ${living.length === 1 ? "benchmark" : "benchmarks"}${p.wins > 0 ? `, with ${p.wins} #1 ${p.wins === 1 ? "finish" : "finishes across chains"}` : ""}:`,
+      `${p.name} ${pricingPage ? (topLines.length === 1 ? "is priced on" : "is priced across") : topLines.length === 1 ? "is measured on" : "is measured across"} ${living.length} live OpenChainBench ${living.length === 1 ? "benchmark" : "benchmarks"}${p.wins > 0 ? `, with ${p.wins} #1 ${p.wins === 1 ? "finish" : "finishes across chains"}` : ""}:`,
     );
     proseParts.push(`${topLines.join(", ")}.`);
   } else {
