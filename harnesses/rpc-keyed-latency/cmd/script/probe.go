@@ -42,6 +42,12 @@ const (
 
 	staleBlockGapEVM    uint64 = 20  // ~4 min on Ethereum
 	staleSlotGapSolana  uint64 = 300 // ~2 min of slots
+
+	// Ceiling on a single probe response. See the note at the read itself:
+	// one measured getProgramAccounts reply was 517 MB, on a box with four
+	// cores and no swap. Eight megabytes is two orders of magnitude above
+	// anything a probe here legitimately returns.
+	maxProbeResponseBytes int64 = 8 << 20
 )
 
 func probeInterval() time.Duration {
@@ -295,7 +301,22 @@ func doPost(ctx context.Context, url string, body []byte, warm bool) (raw []byte
 		_, _ = io.Copy(io.Discard, resp.Body)
 		return nil, latencyMs, "http_err", fmt.Errorf("status %d", resp.StatusCode)
 	}
-	raw, err = io.ReadAll(resp.Body)
+	// Capped read. Found 2026-10-30 while measuring Solana programs for the
+	// coverage probe: getProgramAccounts on the stake program returned
+	// 1,384,150 accounts and 311 MB, and the address lookup table program
+	// 2,318,733 accounts and 517 MB, with the SAME request shape bench 311
+	// already sends to the SPL Token program. A dataSlice of length 0 trims
+	// each account's data and does nothing to the length of the array, so
+	// that probe is bounded only by providers refusing it on size.
+	//
+	// An unbounded ReadAll on a reply we do not control is the kind of thing
+	// that works until it does not: the container has 4 cores and no swap,
+	// and one 517 MB read is enough. The cap is far above any legitimate
+	// reply here (the heavy eth_call returns 24 KB, the widest log probe a
+	// couple of MB), so hitting it means something is wrong rather than
+	// large, and a truncated body fails to parse and reaches no verdict,
+	// which is the honest outcome for "we did not find out".
+	raw, err = io.ReadAll(io.LimitReader(resp.Body, maxProbeResponseBytes))
 	if err != nil {
 		return nil, latencyMs, "http_err", err
 	}
