@@ -11,7 +11,7 @@ It answers questions like which free Ethereum RPC answers fastest, or which brid
 [![MCP](https://img.shields.io/badge/MCP-server-purple.svg)](https://openchainbench.com/mcp)
 [![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.20800311-informational.svg)](https://doi.org/10.5281/zenodo.20800311)
 
-[![a live benchmark card](https://openchainbench.com/api/og/aggregator-head-lag)](https://openchainbench.com/benchmarks/aggregator-head-lag)
+[![a live benchmark card](https://openchainbench.com/api/og/rpc-cost)](https://openchainbench.com/benchmarks/rpc-cost)
 
 Every benchmark ships with the harness that produces its data, under MIT, with the dataset under CC-BY-4.0, and pull requests are open to any party including the providers being measured. The card above is live, and GitHub caches it, so it can lag the page it links to.
 
