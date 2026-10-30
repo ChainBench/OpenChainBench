@@ -283,7 +283,7 @@ func integrityPost(ctx context.Context, url, body string) ([]byte, error) {
 		_, _ = io.Copy(io.Discard, resp.Body)
 		return nil, fmt.Errorf("http %d", resp.StatusCode)
 	}
-	return io.ReadAll(resp.Body)
+	return io.ReadAll(io.LimitReader(resp.Body, maxProbeResponseBytes))
 }
 
 // initIntegrityMetrics zero-initializes every counter in the vector
