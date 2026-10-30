@@ -627,7 +627,15 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       entry already cached. Moves with all-benchmarks-v115,
   //       bench-filters-v60 and, unusually, providers-v32: a provider
   //       entering is the case that key exists for.
-  ["bench-unfiltered-v122", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v123: bench 311 gains four selectable views, the first measurements on a
+  //       board that was all booleans and shares: the eth_call work term, the
+  //       archive read, the address-filtered log query and Solana's v2
+  //       getProgramAccounts. Panels are computed by the loader and live in
+  //       the cached entry, so a new one cannot reach a page without this.
+  //       Moves with all-benchmarks-v116 and bench-filters-v61.
+  //       providers-v32 deliberately does NOT move: no provider entered or
+  //       left and no provider copy changed.
+  ["bench-unfiltered-v123", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -920,7 +928,8 @@ const loadAllBenchmarksCached = unstable_cache(
   //       booleans the windows replaced.
   // v115: lockstep with bench-unfiltered-v122, Helius entering the keyed
   //       Solana cohort.
-  ["all-benchmarks-v115", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v116: lockstep with bench-unfiltered-v123, bench 311's four views.
+  ["all-benchmarks-v116", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1102,7 +1111,10 @@ const loadBenchmarkFiltered = unstable_cache(
   // v60: lockstep with bench-unfiltered-v122. The Access selector is a
   //      filtered view, so the keyed and cold cohorts are exactly the
   //      entries that would otherwise keep a four-provider Solana board.
-  ["bench-filters-v60", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v61: lockstep with bench-unfiltered-v123. A view is selectable on every
+  //      chain tab, so a stale filtered entry would offer the tabs without
+  //      the panels behind them.
+  ["bench-filters-v61", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 
