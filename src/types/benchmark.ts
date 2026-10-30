@@ -166,6 +166,9 @@ export type MetricPanel = {
   /** When false the panel is data-only (feeds ledger column window
    *  variants) and renders no chart tab. */
   tab?: boolean;
+  /** When false a missing value is a statement rather than a gap, and the
+   *  worker must not carry the previous one forward. See spec-schema. */
+  carry?: boolean;
   /** Per-provider scalar values, keyed by provider slug. Providers with no
    *  live data for this metric are omitted; the renderer renders them as
    *  "no data" instead of zero. */

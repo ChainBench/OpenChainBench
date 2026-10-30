@@ -436,3 +436,94 @@ describe("carrying a per-cell stash through a failed matrix query", () => {
     expect(dropped.cellRanks).toBeUndefined();
   });
 });
+
+// Un panneau qui declare carry: false n'est pas reporte.
+//
+// Mesure sur le blob publie le 2026-10-30: la vue du terme de travail lisait
+// chainstack a -1,84 ms avec `staleSince` dans son valuesMeta. La garde `> 0`
+// du spec fonctionnait, chainstack sortait bien de la requete fraiche, et le
+// carry de panneaux la ressuscitait. Sur une vue ou le plus bas gagne, cette
+// valeur impossible se classait PREMIERE, et le plafond de carry de ce bench
+// est son expected_freshness_seconds, soit vingt-quatre heures.
+//
+// Le carry existe pour une requete qui a echoue. Une requete qui filtre
+// volontairement lui ressemble exactement, vue d'ici, donc c'est au spec de
+// dire laquelle des deux il est.
+describe("un panneau peut refuser d'etre reporte", () => {
+  const panel = (id: string, values: Record<string, number>, carry?: boolean) =>
+    ({
+      id,
+      label: id,
+      metric: "x",
+      unit: "ms",
+      higherIsBetter: false,
+      values,
+      ...(carry === undefined ? {} : { carry }),
+    }) as unknown as NonNullable<Benchmark["metricPanels"]>[number];
+
+  const withPanels = (
+    b: Benchmark,
+    panels: NonNullable<Benchmark["metricPanels"]>,
+    meta?: Record<string, { observedAt: number }>,
+  ) =>
+    ({
+      ...b,
+      metricPanels: panels.map((p) => ({ ...p, valuesMeta: meta })),
+    }) as unknown as Benchmark;
+
+  test("carry: false laisse la valeur absente", () => {
+    const now = Date.now();
+    const prev = prevSnapshot([["chainstack", 1]], {}, now);
+    prev.bench = withPanels(
+      prev.bench,
+      [panel("work", { chainstack: -1.84 }, false)],
+      { chainstack: { observedAt: now - 60_000 } },
+    );
+    const { bench: out } = mergeWithPrevious(
+      withPanels(bench([["chainstack", 1]]), [panel("work", {}, false)]),
+      prev,
+      now,
+      new Set(["chainstack"]),
+      86_400,
+    );
+    expect(out.metricPanels?.[0]?.values).toEqual({});
+  });
+
+  test("sans le drapeau, la valeur est reportee comme avant", () => {
+    // Le comportement par defaut ne change pas: le carry reste la protection
+    // contre une requete qui a echoue, qui est la raison de son existence.
+    const now = Date.now();
+    const prev = prevSnapshot([["chainstack", 1]], {}, now);
+    prev.bench = withPanels(
+      prev.bench,
+      [panel("other", { chainstack: 42 })],
+      { chainstack: { observedAt: now - 60_000 } },
+    );
+    const { bench: out } = mergeWithPrevious(
+      withPanels(bench([["chainstack", 1]]), [panel("other", {})]),
+      prev,
+      now,
+      new Set(["chainstack"]),
+      86_400,
+    );
+    expect(out.metricPanels?.[0]?.values).toEqual({ chainstack: 42 });
+  });
+
+  test("carry: true se comporte comme l'absence du drapeau", () => {
+    const now = Date.now();
+    const prev = prevSnapshot([["chainstack", 1]], {}, now);
+    prev.bench = withPanels(
+      prev.bench,
+      [panel("other", { chainstack: 7 }, true)],
+      { chainstack: { observedAt: now - 60_000 } },
+    );
+    const { bench: out } = mergeWithPrevious(
+      withPanels(bench([["chainstack", 1]]), [panel("other", {}, true)]),
+      prev,
+      now,
+      new Set(["chainstack"]),
+      86_400,
+    );
+    expect(out.metricPanels?.[0]?.values).toEqual({ chainstack: 7 });
+  });
+});

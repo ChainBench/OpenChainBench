@@ -180,6 +180,11 @@ metric_panels:
     metric: (avg by (provider) (avg_over_time(rpc_api_latency_milliseconds{api="eth_call_heavy"}[24h])) - avg by (provider) (avg_over_time(rpc_api_latency_milliseconds{api="eth_call_light"}[24h]))) > 0
     unit: ms
     higher_is_better: false
+    # Une valeur absente ici est une affirmation, pas une panne: la requete
+    # retire une difference non positive. Sans ce drapeau le worker la
+    # reporte, et le board a republie -1,84 ms pendant que la garde
+    # fonctionnait.
+    carry: false
     description: "The compute term: the same eth_call through Multicall3, 50 state reads minus one, asked back to back on pooled connections. Each leg is primed first, so the handshake is paid outside the measurement and the difference is work. A value at or below zero is withheld."
   - id: archive_read_ms
     label: "Archive read"
