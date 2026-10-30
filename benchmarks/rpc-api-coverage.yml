@@ -52,9 +52,10 @@ methodology:
   - "Hours since check is the age of the published verdict, not of our last attempt. The timestamp advances only when a verdict is written, so a provider that starts failing keeps its last answer on the board and the age starts climbing. A capability gauge that answers every hour with the same value is otherwise indistinguishable from a frozen one."
   - "The log queries are asked over a five block window, which is deliberately narrow: that answers whether the method is routed at all, and a narrow window is the question every provider should be able to answer. It is not the question an indexer asks, and the two unfiltered-shape columns still read alike for that reason."
   - "The two window columns are the question an indexer does ask. Each climbs 100, 500, 1000, 2000, 10000, 100000 and 1000000 blocks and stops at the first refusal, so the figure is the widest window accepted. The filters are built to match nothing, so what this measures is the static guard on the block span, the thing that trips before any work and freezes a cursor, and not the widest window logs will actually come from."
+  - "A window figure is published only when a provider refused the next rung, or when it cleared every rung. If one of our own calls failed above a rung that passed, the number we hold is a floor we reached rather than a limit they set, and the column stays blank rather than printing it as a limit. The ladder also treats a rate-limit reply as our problem and not a width refusal, since it says we asked too often rather than that the window is too wide."
   - "Two limits on the window columns. The figure is a floor rather than a ceiling when every width passed, and it is in blocks, so it ranks providers within a chain tab and not across chains: a block is twelve seconds on Ethereum and two on Base."
   - "On the all-chains tab the window columns take the narrowest window across the chains probed, not the widest. A provider that accepts a million blocks on one chain and five hundred on the other seven would otherwise read a million, which is the number you would plan around and never meet. The other columns on this board average because they are shares; these are limits, and a limit averages into something nobody is offered."
-  - "Three selectable views sit above the board and are measurements rather than shares: the eth_call work term, the archive read, and the address-filtered log query. They read the round trip of calls this pass already makes, so they cost no extra request. Every one is a COLD number: the probe never reuses a connection, so the cold latency arm is the comparable. That also means each eth_call leg pays its own handshake, and a few milliseconds of difference is noise rather than a ranking."
+  - "Three selectable views sit above the board and are measurements rather than shares: the eth_call work term, the archive read, and the address-filtered log query. The archive read and the log query are COLD numbers, so the cold latency arm is their comparable. The two eth_call legs are primed first instead: a handshake costs about 25 ms from the probe and their difference is a few milliseconds, so paying it inside the measurement made the noise larger than the signal."
   - "The work term withholds a non-positive difference instead of printing it. The heavy leg cannot answer faster than the light one, so a negative reading is the two legs' noise crossing rather than a measurement, and on a lower-is-better view it would rank the noisiest provider first. Measured on the first pass: one provider read minus 1.6 ms. A withheld cell reads as a dash and says the pair has not separated yet."
   - "A view can show an absent reading as absent since 2026-10-30. Before that the ledger read a missing panel value as zero, which on a higher-is-better board is a refusal nobody gave, and it is why this bench published its capability as columns. The columns stay, because they fit nine answers on one screen; the views carry what a column cannot, a number with a unit."
   - "The Beacon API is not answered here. Beacon endpoints live on a different base URL from the JSON-RPC endpoint and our configuration carries only the latter, so the question was never put. Publishing 0 would state that no provider in this cohort serves it, which is false. It needs its own credentials before it can be measured."
@@ -94,7 +95,7 @@ metric_panels:
   - id: api_getlogs_range_address
     label: "eth_getLogs window, address filter"
     label_key: provider
-    metric: min by (provider) (rpc_getlogs_max_range_blocks{filter_shape="address"})
+    metric: min by (provider) (rpc_getlogs_max_range_blocks{filter_shape="address",bound=~"refused|top"})
     unit: count
     higher_is_better: true
     tab: false
@@ -102,7 +103,7 @@ metric_panels:
   - id: api_getlogs_range_topics
     label: "eth_getLogs window, topic filter"
     label_key: provider
-    metric: min by (provider) (rpc_getlogs_max_range_blocks{filter_shape="topics"})
+    metric: min by (provider) (rpc_getlogs_max_range_blocks{filter_shape="topics",bound=~"refused|top"})
     unit: count
     higher_is_better: true
     tab: false
@@ -179,7 +180,7 @@ metric_panels:
     metric: (avg by (provider) (avg_over_time(rpc_api_latency_milliseconds{api="eth_call_heavy"}[24h])) - avg by (provider) (avg_over_time(rpc_api_latency_milliseconds{api="eth_call_light"}[24h]))) > 0
     unit: ms
     higher_is_better: false
-    description: "The compute term: the same eth_call through Multicall3, 50 state reads minus one, asked back to back. Each leg dials its own connection, so each pays its own handshake and the difference carries that noise. A value at or below zero is withheld; a small positive one is not yet a ranking."
+    description: "The compute term: the same eth_call through Multicall3, 50 state reads minus one, asked back to back on pooled connections. Each leg is primed first, so the handshake is paid outside the measurement and the difference is work. A value at or below zero is withheld."
   - id: archive_read_ms
     label: "Archive read"
     label_key: provider

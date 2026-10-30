@@ -666,7 +666,16 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       publishing "#1 of 5 on Robinhood Chain" for a row the board shows
   //       unranked. Moves with all-benchmarks-v120, bench-filters-v65 and
   //       providers-v34, which is the key the chip itself reads through.
-  ["bench-unfiltered-v127", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v128: the two window columns now select bound=~"refused|top", so a
+  //       figure the ladder reached before one of OUR calls failed is no
+  //       longer printed as the provider's limit. The audit found Quicknode
+  //       publishing 10,000 on seven chains after an HTTP error at the
+  //       100,000 rung. Panel values live in the cached entry, so the old
+  //       unqualified figure would otherwise sit there for the full TTL.
+  //       The eth_call view's copy moves with it: the legs are primed now,
+  //       so the handshake is paid outside the measurement. Moves with
+  //       all-benchmarks-v121 and bench-filters-v66.
+  ["bench-unfiltered-v128", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -964,7 +973,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v118: lockstep with bench-unfiltered-v125 (wallet pricing audit).
   // v119: lockstep with bench-unfiltered-v126.
   // v120: lockstep with bench-unfiltered-v127.
-  ["all-benchmarks-v120", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v121: lockstep with bench-unfiltered-v128.
+  ["all-benchmarks-v121", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1154,7 +1164,8 @@ const loadBenchmarkFiltered = unstable_cache(
   // v64: lockstep with bench-unfiltered-v126. Every chain tab carried the
   //      same inflated headline and the same 9/11 success rate.
   // v65: lockstep with bench-unfiltered-v127.
-  ["bench-filters-v65", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v66: lockstep with bench-unfiltered-v128.
+  ["bench-filters-v66", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 

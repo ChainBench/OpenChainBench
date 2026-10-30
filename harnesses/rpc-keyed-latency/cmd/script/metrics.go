@@ -210,9 +210,9 @@ var (
 	rpcGetLogsMaxRange = promauto.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "rpc_getlogs_max_range_blocks",
-			Help: "Largest eth_getLogs block span the provider's range guard admits, per filter shape (address | topics), measured with filters that match nothing. A floor when every tested span passed. Blocks, so comparable within a chain and not across chains.",
+			Help: "Largest eth_getLogs block span accepted, per filter shape (address | topics), measured with filters that match nothing. `bound` says what the figure is: refused = the provider declined the next rung, so this is its guard; failed = our own call failed above it, so this is a floor; top = every rung passed. Blocks, so comparable within a chain and not across chains.",
 		},
-		[]string{"provider", "chain", "filter_shape", "region", "tier"},
+		[]string{"provider", "chain", "filter_shape", "bound", "region", "tier"},
 	)
 )
 

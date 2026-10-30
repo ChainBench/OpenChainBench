@@ -84,6 +84,14 @@ type coverageProbe struct {
 	// supported decides the verdict from a successful HTTP 200 body.
 	// Returning ("", err) means no verdict was reached.
 	supported func(raw []byte) (verdict string, err error)
+	// Warm sends an unmeasured priming request first, so the measured call
+	// rides a pooled connection. Off for a capability question, where the
+	// answer does not depend on the socket and the prime would double the
+	// spend for nothing. On for the eth_call pair, where the handshake is
+	// the noise the measurement is trying to see past: each leg otherwise
+	// dials its own connection and pays its own DNS, TCP and TLS, and that
+	// cost lands inside a difference of a few milliseconds.
+	warm bool
 }
 
 // tierKeyed matches the label every other metric in this harness carries.
@@ -695,11 +703,12 @@ func probeCoverage(ctx context.Context, e Endpoint, pr coverageProbe, head uint6
 		return verdictUnknown
 	}
 
-	// Cold path on purpose: warm=true makes doPost send an unmeasured priming
-	// request first, which doubles the spend to buy a comparable latency
-	// number. A capability answer does not care whether the socket was
-	// reused, so one request is the whole cost.
-	raw, latencyMs, classified, err := doPost(ctx, e.URL, []byte(payload), false)
+	// Cold unless the probe asks otherwise. warm=true makes doPost send an
+	// unmeasured priming request first, which doubles that probe's spend to
+	// buy a comparable latency number. A capability answer does not care
+	// whether the socket was reused, so it stays cold and costs one request.
+	// The eth_call pair does care: see the `warm` field on coverageProbe.
+	raw, latencyMs, classified, err := doPost(ctx, e.URL, []byte(payload), pr.warm)
 	if err != nil {
 		// 402 is never a statement about the provider: it means our own
 		// credits ran out. It can only be our failure, so it never writes a

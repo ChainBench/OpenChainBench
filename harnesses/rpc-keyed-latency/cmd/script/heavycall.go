@@ -277,9 +277,27 @@ func ethCallProbe(api string, n int) coverageProbe {
 		`{"jsonrpc":"2.0","id":1,"method":"eth_call","params":[{"to":"%s","data":"%s"},"latest"]}`,
 		multicall3Addr, data)
 	return coverageProbe{
-		API:       api,
-		Kind:      "evm",
-		body:      func(uint64) (string, bool) { return payload, true },
+		API:  api,
+		Kind: "evm",
+		body: func(uint64) (string, bool) { return payload, true },
+		// Both legs ride a pooled connection, so the handshake is paid by
+		// the prime and not by the measurement.
+		//
+		// The first version measured both cold, and the spec said they
+		// shared one socket. They did not: coldTransport sets
+		// DisableKeepAlives, so each leg dialled its own and paid its own
+		// DNS, TCP and TLS. That handshake is around 25 ms from this
+		// container and the difference being measured is a few
+		// milliseconds, so the noise was larger than the signal and it
+		// crossed zero in both directions. A sign guard removes only the
+		// half that falls below zero; an audit found GetBlock at plus 0.57
+		// ms on Ethereum, which would have sorted it first on a
+		// lower-is-better view for the same reason a negative would.
+		//
+		// Priming costs one extra unmeasured call per leg per pass. On the
+		// hourly lane that is 1,440 requests a month per endpoint, against
+		// budgets of 300,000 upward.
+		warm:      true,
 		supported: aggregate3Verdict(n),
 	}
 }
