@@ -3639,6 +3639,22 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     description: "Wallet-as-a-service and key-management API for banks, fintechs and institutions, sold on annual plans.",
     twitter: "@dfnsHQ",
   },
+  // Paymaster and bundler vendors, bench 312 (2026-10-30).
+  pimlico: {
+    url: "https://www.pimlico.io",
+    description: "ERC-4337 bundler and paymaster infrastructure: sponsored gas and ERC-20 gas payment on 100+ EVM chains.",
+    twitter: "@pimlicoHQ",
+  },
+  etherspot: {
+    url: "https://etherspot.io",
+    description: "Account abstraction stack with the Skandha bundler and the Arka paymaster, billed in prepaid API credits.",
+    twitter: "@etherspot",
+  },
+  candide: {
+    url: "https://www.candide.dev",
+    description: "Open-source ERC-4337 bundler, paymaster and Safe-based smart account SDK.",
+    twitter: "@candidelabs",
+  },
 };
 
 /**

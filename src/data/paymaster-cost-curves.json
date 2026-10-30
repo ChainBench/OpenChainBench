@@ -1,0 +1,1705 @@
+{
+ "schema": 1,
+ "catalogueVersion": 1,
+ "catalogueAsOf": "2026-10-30",
+ "catalogueSha256": "93828b1a44f9ef06ee40092e2f09e5d333c4af9c504cd4aac37f5cd7193ef5be",
+ "headline": {
+  "scenario": "base",
+  "size": "medium"
+ },
+ "planNames": {
+  "alchemy": {
+   "payg": "Pay as You Go"
+  },
+  "candide": {
+   "enterprise": "Enterprise",
+   "grow": "Grow, billed yearly",
+   "launch": "Launch, billed yearly"
+  },
+  "circle": {
+   "gas-station": "Gas Station"
+  },
+  "coinbase-cdp": {
+   "payg": "Pay as you go"
+  },
+  "etherspot": {
+   "enterprise": "Enterprise",
+   "payg": "Pay-As-You-Go"
+  },
+  "openfort": {
+   "free": "Free",
+   "growth": "Growth",
+   "pro": "Pro",
+   "scale": "Scale"
+  },
+  "pimlico": {
+   "enterprise": "Enterprise",
+   "payg": "Pay-as-you-go"
+  },
+  "thirdweb": {
+   "growth": "Growth"
+  },
+  "zerodev": {
+   "enterprise": "Enterprise",
+   "launch": "Launch",
+   "scale": "Scale"
+  }
+ },
+ "notes": {
+  "alchemy": "Pay as You Go: $0.52 per million compute units for all usage and an 8% fee on gas sponsored on mainnet. On mainnet a PAYG team sponsors through Bundler Sponsored Operations (the onchain paymaster is Enterprise only): a sponsored send costs 3,000 CU, an estimate 500 and a receipt 20, so 3,520 CU an operation. BSO gas is \"the onchain settlement cost plus a BSO service fee\" that is not published, so every Alchemy price here is a lower bound and is never named cheapest.",
+  "candide": "\"We never mark up the gas itself.\" Launch ($333 a month billed yearly, $399 billed monthly) includes 5,000 sponsored operations a month then $0.01 each, up to 100,000 user operations; Grow ($749 billed yearly, $899 monthly) includes 25,000 then $0.005, up to 500,000; Enterprise is from $3,000. The page shows the yearly price by default, and it is the cheaper, so it is the one priced; the monthly price sits in an attribute of the page that the drift check does not read. Starter's 1,000 sponsored operations are a lifetime allowance, not a monthly one, so it is not a plan here.",
+  "circle": "Gas Station sponsors gas for Circle Wallets and invoices it with \"a 5% processing fee\". It works only with Circle's own smart-contract wallets, which bill per monthly active wallet past the first 1,000; that fee depends on how many wallets send, which this axis does not fix, so every Circle price here is a lower bound and is never named cheapest. Circle Paymaster, where the user pays gas in USDC, is a separate product and is not developer sponsorship.",
+  "coinbase-cdp": "No plan fee: \"actualGasUsed × ethPriceUsd × 1.07\", a 7% markup on the gas, billed monthly. Gas estimation on CDP Node is 500 billing units, 10M free a month then $0.50 per million; one estimate per operation is counted, the most it would add. Base only. Coinbase also grants up to $15,000 of gas credits on application, which no bill here assumes.",
+  "etherspot": "Pay-As-You-Go: $1 per 250,000 credits, \"Gas fees charged separately at network cost (no markup)\", from a prepaid deposit (a $10 minimum top-up). A sponsored operation is counted as estimate (300), sponsor (700), send (600) and receipt (25): 1,625 credits. A client that fetches paymaster data (450) instead of sponsoring spends less, so this is the most it would cost.",
+  "openfort": "\"Paymaster calls\" are free and unmetered; broadcasting a transaction is 1 operation, so a sponsored operation sent through Openfort's bundler is one. The paymaster surcharge is 10% on Free and Growth, 5% on Pro and Scale. The Free card shows $0.01 an operation past 2,000, but a project without a paid subscription \"stops at the included limit\", so Free stops there. Openfort's v0.8 paymaster is not deployed on Ethereum, so delegated (EIP-7702) accounts there are not sponsored; smart accounts are.",
+  "pimlico": "Pay-as-you-go has no monthly fee: 10,000,000 credits a month included, then $1 per 100,000 credits, and a 10% surcharge on sponsored gas on mainnets (`actualGasCost * 1.1`). Pimlico's own count is 1,050 credits per sponsored user operation (\"~9,500 if sponsored\" included, then \"~$0.0105 if sponsored\", against ~$0.0075 unsponsored). The Free plan is testnet only.",
+  "thirdweb": "Growth ($99) includes 1,000 sponsored transactions, then $1, $0.60 and $0.20 per thousand at 100K and 250K, and a 2.5% gas surcharge on mainnet. Priced band by band; whether the lower rate applies to the whole count is not stated. The page lists 145+ chains without naming them.",
+  "zerodev": "A user operation is 20 credits; mainnet sponsorship starts on Launch ($69, 100,000 credits) and Scale ($399, 1,000,000 credits), each with an 8% gas sponsorship premium. Wallet signatures (10 credits) are ZeroDev's signer and are not counted here. Overage past the included credits is not published, so ZeroDev is unpriced above 50,000 operations a month."
+ },
+ "excluded": [
+  {
+   "slug": "biconomy",
+   "name": "Biconomy",
+   "reason": "Sponsorship is invoiced monthly at a rate set on a sales call; no fee is published."
+  },
+  {
+   "slug": "gelato",
+   "name": "Gelato",
+   "reason": "Its pricing page and docs were offline on 2026-10-30; the last published plans survive only in an archive."
+  },
+  {
+   "slug": "particle-network",
+   "name": "Particle Network",
+   "reason": "The paymaster runs on a USDT deposit and publishes no fee."
+  },
+  {
+   "slug": "privy",
+   "name": "Privy",
+   "reason": "Gas is billed at network cost plus a convenience fee whose rate is not published."
+  },
+  {
+   "slug": "dynamic",
+   "name": "Dynamic",
+   "reason": "Gasless transactions are sold through sales."
+  },
+  {
+   "slug": "stackup",
+   "name": "Stackup",
+   "reason": "No longer sells a paymaster or bundler; its customers moved to Pimlico."
+  }
+ ],
+ "scenarios": [
+  {
+   "id": "base",
+   "label": "Base",
+   "axis": "sponsored user operations a month",
+   "walletsFixed": 0,
+   "walletsPerX": 0,
+   "txFixed": 0,
+   "txPerX": 1,
+   "gasUsdPerTx": 0.002,
+   "floor": 1000,
+   "ceiling": 10000000,
+   "sizes": [
+    {
+     "id": "small",
+     "x": 10000
+    },
+    {
+     "id": "medium",
+     "x": 100000
+    },
+    {
+     "id": "large",
+     "x": 1000000
+    }
+   ],
+   "providers": [
+    {
+     "slug": "pimlico",
+     "name": "Pimlico",
+     "unit": "API credits plus a gas surcharge",
+     "points": [
+      {
+       "x": 1000,
+       "usd": 0.2,
+       "plan": "payg",
+       "next": "payg"
+      },
+      {
+       "x": 9523.809523809523,
+       "usd": 1.9,
+       "plan": "payg",
+       "next": "payg"
+      },
+      {
+       "x": 10000,
+       "usd": 7,
+       "plan": "payg",
+       "next": "payg"
+      },
+      {
+       "x": 100000,
+       "usd": 970,
+       "plan": "payg",
+       "next": "payg"
+      },
+      {
+       "x": 1000000,
+       "usd": 10600,
+       "plan": "payg",
+       "next": "payg"
+      },
+      {
+       "x": 10000000,
+       "usd": 106900,
+       "plan": "payg"
+      }
+     ]
+    },
+    {
+     "slug": "alchemy",
+     "name": "Alchemy",
+     "unit": "Compute units plus an admin fee on gas",
+     "points": [
+      {
+       "x": 1000,
+       "usd": 1.99,
+       "plan": "payg",
+       "next": "payg",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "lower",
+       "nextBound": "lower"
+      },
+      {
+       "x": 10000,
+       "usd": 19.9,
+       "plan": "payg",
+       "next": "payg",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "lower",
+       "nextBound": "lower"
+      },
+      {
+       "x": 100000,
+       "usd": 199.04,
+       "plan": "payg",
+       "next": "payg",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "lower",
+       "nextBound": "lower"
+      },
+      {
+       "x": 1000000,
+       "usd": 1990.4,
+       "plan": "payg",
+       "next": "payg",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "lower",
+       "nextBound": "lower"
+      },
+      {
+       "x": 10000000,
+       "usd": 19904,
+       "plan": "payg",
+       "unc": true,
+       "bound": "lower"
+      }
+     ]
+    },
+    {
+     "slug": "zerodev",
+     "name": "ZeroDev",
+     "unit": "Credits plus a gas premium",
+     "points": [
+      {
+       "x": 1000,
+       "usd": 69.16,
+       "plan": "launch",
+       "next": "launch"
+      },
+      {
+       "x": 5000,
+       "usd": 69.8,
+       "plan": "launch",
+       "next": "launch"
+      },
+      {
+       "x": 5000.00001,
+       "usd": 399.8,
+       "plan": "scale",
+       "next": "scale"
+      },
+      {
+       "x": 10000,
+       "usd": 400.6,
+       "plan": "scale",
+       "next": "scale"
+      },
+      {
+       "x": 50000,
+       "usd": 407,
+       "plan": "scale",
+       "next": "scale"
+      },
+      {
+       "x": 50000.0001,
+       "usd": null,
+       "why": "Scale stops at 1,000,000 credits a month; Enterprise has no published price"
+      },
+      {
+       "x": 100000,
+       "usd": null,
+       "why": "Scale stops at 1,000,000 credits a month; Enterprise has no published price"
+      },
+      {
+       "x": 1000000,
+       "usd": null,
+       "why": "Scale stops at 1,000,000 credits a month; Enterprise has no published price"
+      },
+      {
+       "x": 10000000,
+       "usd": null,
+       "why": "Scale stops at 1,000,000 credits a month; Enterprise has no published price"
+      }
+     ]
+    },
+    {
+     "slug": "thirdweb",
+     "name": "thirdweb",
+     "unit": "Sponsored transactions, banded, plus a gas surcharge",
+     "points": [
+      {
+       "x": 1000,
+       "usd": 99.05,
+       "plan": "growth",
+       "next": "growth"
+      },
+      {
+       "x": 10000,
+       "usd": 108.5,
+       "plan": "growth",
+       "next": "growth"
+      },
+      {
+       "x": 100000,
+       "usd": 203,
+       "plan": "growth",
+       "next": "growth",
+       "nextUnc": true,
+       "nextBound": "upper"
+      },
+      {
+       "x": 250000,
+       "usd": 300.5,
+       "plan": "growth",
+       "next": "growth",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "upper",
+       "nextBound": "upper"
+      },
+      {
+       "x": 1000000,
+       "usd": 488,
+       "plan": "growth",
+       "next": "growth",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "upper",
+       "nextBound": "upper"
+      },
+      {
+       "x": 10000000,
+       "usd": 2738,
+       "plan": "growth",
+       "unc": true,
+       "bound": "upper"
+      }
+     ]
+    },
+    {
+     "slug": "coinbase-cdp",
+     "name": "Coinbase CDP",
+     "unit": "Gas markup, plus node billing units",
+     "points": [
+      {
+       "x": 1000,
+       "usd": 0.14,
+       "plan": "payg",
+       "next": "payg",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "upper",
+       "nextBound": "upper"
+      },
+      {
+       "x": 10000,
+       "usd": 1.4,
+       "plan": "payg",
+       "next": "payg",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "upper",
+       "nextBound": "upper"
+      },
+      {
+       "x": 20000,
+       "usd": 2.8,
+       "plan": "payg",
+       "next": "payg",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "upper",
+       "nextBound": "upper"
+      },
+      {
+       "x": 100000,
+       "usd": 34,
+       "plan": "payg",
+       "next": "payg",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "upper",
+       "nextBound": "upper"
+      },
+      {
+       "x": 1000000,
+       "usd": 385,
+       "plan": "payg",
+       "next": "payg",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "upper",
+       "nextBound": "upper"
+      },
+      {
+       "x": 10000000,
+       "usd": 3895,
+       "plan": "payg",
+       "unc": true,
+       "bound": "upper"
+      }
+     ]
+    },
+    {
+     "slug": "circle",
+     "name": "Circle",
+     "unit": "Processing fee on gas",
+     "points": [
+      {
+       "x": 1000,
+       "usd": 0.1,
+       "plan": "gas-station",
+       "next": "gas-station",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "lower",
+       "nextBound": "lower"
+      },
+      {
+       "x": 10000,
+       "usd": 1,
+       "plan": "gas-station",
+       "next": "gas-station",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "lower",
+       "nextBound": "lower"
+      },
+      {
+       "x": 100000,
+       "usd": 10,
+       "plan": "gas-station",
+       "next": "gas-station",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "lower",
+       "nextBound": "lower"
+      },
+      {
+       "x": 1000000,
+       "usd": 100,
+       "plan": "gas-station",
+       "next": "gas-station",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "lower",
+       "nextBound": "lower"
+      },
+      {
+       "x": 10000000,
+       "usd": 1000,
+       "plan": "gas-station",
+       "unc": true,
+       "bound": "lower"
+      }
+     ]
+    },
+    {
+     "slug": "candide",
+     "name": "Candide",
+     "unit": "Sponsored operations, no gas markup",
+     "points": [
+      {
+       "x": 1000,
+       "usd": 333,
+       "plan": "launch",
+       "next": "launch"
+      },
+      {
+       "x": 5000,
+       "usd": 333,
+       "plan": "launch",
+       "next": "launch"
+      },
+      {
+       "x": 10000,
+       "usd": 383,
+       "plan": "launch",
+       "next": "launch"
+      },
+      {
+       "x": 25000,
+       "usd": 533,
+       "plan": "launch",
+       "next": "launch"
+      },
+      {
+       "x": 68200,
+       "usd": 965,
+       "plan": "launch",
+       "next": "grow"
+      },
+      {
+       "x": 100000,
+       "usd": 1124,
+       "plan": "grow",
+       "next": "grow"
+      },
+      {
+       "x": 100000.0002,
+       "usd": 1124,
+       "plan": "grow",
+       "next": "grow"
+      },
+      {
+       "x": 500000,
+       "usd": 3124,
+       "plan": "grow",
+       "next": "grow"
+      },
+      {
+       "x": 500000.001,
+       "usd": null,
+       "why": "Grow, billed yearly stops at 500,000 user operations a month; Enterprise has no published price"
+      },
+      {
+       "x": 1000000,
+       "usd": null,
+       "why": "Grow, billed yearly stops at 500,000 user operations a month; Enterprise has no published price"
+      },
+      {
+       "x": 10000000,
+       "usd": null,
+       "why": "Grow, billed yearly stops at 500,000 user operations a month; Enterprise has no published price"
+      }
+     ]
+    },
+    {
+     "slug": "etherspot",
+     "name": "Etherspot",
+     "unit": "API credits, no gas markup",
+     "points": [
+      {
+       "x": 1000,
+       "usd": 6.5,
+       "plan": "payg",
+       "next": "payg",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "upper",
+       "nextBound": "upper"
+      },
+      {
+       "x": 10000,
+       "usd": 65,
+       "plan": "payg",
+       "next": "payg",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "upper",
+       "nextBound": "upper"
+      },
+      {
+       "x": 100000,
+       "usd": 650,
+       "plan": "payg",
+       "next": "payg",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "upper",
+       "nextBound": "upper"
+      },
+      {
+       "x": 1000000,
+       "usd": 6500,
+       "plan": "payg",
+       "next": "payg",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "upper",
+       "nextBound": "upper"
+      },
+      {
+       "x": 10000000,
+       "usd": 65000,
+       "plan": "payg",
+       "unc": true,
+       "bound": "upper"
+      }
+     ]
+    },
+    {
+     "slug": "openfort",
+     "name": "Openfort",
+     "unit": "Operations plus a paymaster surcharge",
+     "points": [
+      {
+       "x": 1000,
+       "usd": 0.2,
+       "plan": "free",
+       "next": "free"
+      },
+      {
+       "x": 2000,
+       "usd": 0.4,
+       "plan": "free",
+       "next": "free"
+      },
+      {
+       "x": 2000.000004,
+       "usd": 99.4,
+       "plan": "growth",
+       "next": "growth"
+      },
+      {
+       "x": 10000,
+       "usd": 101,
+       "plan": "growth",
+       "next": "growth"
+      },
+      {
+       "x": 25000,
+       "usd": 104,
+       "plan": "growth",
+       "next": "growth"
+      },
+      {
+       "x": 43209.87654320987,
+       "usd": 253.32,
+       "plan": "growth",
+       "next": "pro"
+      },
+      {
+       "x": 86419.75308641976,
+       "usd": 257.64,
+       "plan": "pro",
+       "next": "pro"
+      },
+      {
+       "x": 100000,
+       "usd": 259,
+       "plan": "pro",
+       "next": "pro"
+      },
+      {
+       "x": 158333.33333333334,
+       "usd": 614.83,
+       "plan": "pro",
+       "next": "scale"
+      },
+      {
+       "x": 500000,
+       "usd": 649,
+       "plan": "scale",
+       "next": "scale"
+      },
+      {
+       "x": 1000000,
+       "usd": 2699,
+       "plan": "scale",
+       "next": "scale"
+      },
+      {
+       "x": 10000000,
+       "usd": 39599,
+       "plan": "scale"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "arbitrum",
+   "label": "Arbitrum",
+   "axis": "sponsored user operations a month",
+   "walletsFixed": 0,
+   "walletsPerX": 0,
+   "txFixed": 0,
+   "txPerX": 1,
+   "gasUsdPerTx": 0.0072,
+   "floor": 1000,
+   "ceiling": 10000000,
+   "sizes": [
+    {
+     "id": "small",
+     "x": 10000
+    },
+    {
+     "id": "medium",
+     "x": 100000
+    },
+    {
+     "id": "large",
+     "x": 1000000
+    }
+   ],
+   "providers": [
+    {
+     "slug": "pimlico",
+     "name": "Pimlico",
+     "unit": "API credits plus a gas surcharge",
+     "points": [
+      {
+       "x": 1000,
+       "usd": 0.72,
+       "plan": "payg",
+       "next": "payg"
+      },
+      {
+       "x": 9523.809523809523,
+       "usd": 6.86,
+       "plan": "payg",
+       "next": "payg"
+      },
+      {
+       "x": 10000,
+       "usd": 12.2,
+       "plan": "payg",
+       "next": "payg"
+      },
+      {
+       "x": 100000,
+       "usd": 1022,
+       "plan": "payg",
+       "next": "payg"
+      },
+      {
+       "x": 1000000,
+       "usd": 11120,
+       "plan": "payg",
+       "next": "payg"
+      },
+      {
+       "x": 10000000,
+       "usd": 112100,
+       "plan": "payg"
+      }
+     ]
+    },
+    {
+     "slug": "alchemy",
+     "name": "Alchemy",
+     "unit": "Compute units plus an admin fee on gas",
+     "points": [
+      {
+       "x": 1000,
+       "usd": 2.41,
+       "plan": "payg",
+       "next": "payg",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "lower",
+       "nextBound": "lower"
+      },
+      {
+       "x": 10000,
+       "usd": 24.06,
+       "plan": "payg",
+       "next": "payg",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "lower",
+       "nextBound": "lower"
+      },
+      {
+       "x": 100000,
+       "usd": 240.64,
+       "plan": "payg",
+       "next": "payg",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "lower",
+       "nextBound": "lower"
+      },
+      {
+       "x": 1000000,
+       "usd": 2406.4,
+       "plan": "payg",
+       "next": "payg",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "lower",
+       "nextBound": "lower"
+      },
+      {
+       "x": 10000000,
+       "usd": 24064,
+       "plan": "payg",
+       "unc": true,
+       "bound": "lower"
+      }
+     ]
+    },
+    {
+     "slug": "zerodev",
+     "name": "ZeroDev",
+     "unit": "Credits plus a gas premium",
+     "points": [
+      {
+       "x": 1000,
+       "usd": 69.58,
+       "plan": "launch",
+       "next": "launch"
+      },
+      {
+       "x": 5000,
+       "usd": 71.88,
+       "plan": "launch",
+       "next": "launch"
+      },
+      {
+       "x": 5000.00001,
+       "usd": 401.88,
+       "plan": "scale",
+       "next": "scale"
+      },
+      {
+       "x": 10000,
+       "usd": 404.76,
+       "plan": "scale",
+       "next": "scale"
+      },
+      {
+       "x": 50000,
+       "usd": 427.8,
+       "plan": "scale",
+       "next": "scale"
+      },
+      {
+       "x": 50000.0001,
+       "usd": null,
+       "why": "Scale stops at 1,000,000 credits a month; Enterprise has no published price"
+      },
+      {
+       "x": 100000,
+       "usd": null,
+       "why": "Scale stops at 1,000,000 credits a month; Enterprise has no published price"
+      },
+      {
+       "x": 1000000,
+       "usd": null,
+       "why": "Scale stops at 1,000,000 credits a month; Enterprise has no published price"
+      },
+      {
+       "x": 10000000,
+       "usd": null,
+       "why": "Scale stops at 1,000,000 credits a month; Enterprise has no published price"
+      }
+     ]
+    },
+    {
+     "slug": "thirdweb",
+     "name": "thirdweb",
+     "unit": "Sponsored transactions, banded, plus a gas surcharge",
+     "points": [
+      {
+       "x": 1000,
+       "usd": 99.18,
+       "plan": "growth",
+       "next": "growth"
+      },
+      {
+       "x": 10000,
+       "usd": 109.8,
+       "plan": "growth",
+       "next": "growth"
+      },
+      {
+       "x": 100000,
+       "usd": 216,
+       "plan": "growth",
+       "next": "growth",
+       "nextUnc": true,
+       "nextBound": "upper"
+      },
+      {
+       "x": 250000,
+       "usd": 333,
+       "plan": "growth",
+       "next": "growth",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "upper",
+       "nextBound": "upper"
+      },
+      {
+       "x": 1000000,
+       "usd": 618,
+       "plan": "growth",
+       "next": "growth",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "upper",
+       "nextBound": "upper"
+      },
+      {
+       "x": 10000000,
+       "usd": 4038,
+       "plan": "growth",
+       "unc": true,
+       "bound": "upper"
+      }
+     ]
+    },
+    {
+     "slug": "coinbase-cdp",
+     "name": "Coinbase CDP",
+     "unit": "Gas markup, plus node billing units",
+     "points": [
+      {
+       "x": 1000,
+       "usd": null,
+       "why": "The CDP paymaster runs on Base only."
+      },
+      {
+       "x": 10000,
+       "usd": null,
+       "why": "The CDP paymaster runs on Base only."
+      },
+      {
+       "x": 20000,
+       "usd": null,
+       "why": "The CDP paymaster runs on Base only."
+      },
+      {
+       "x": 100000,
+       "usd": null,
+       "why": "The CDP paymaster runs on Base only."
+      },
+      {
+       "x": 1000000,
+       "usd": null,
+       "why": "The CDP paymaster runs on Base only."
+      },
+      {
+       "x": 10000000,
+       "usd": null,
+       "why": "The CDP paymaster runs on Base only."
+      }
+     ]
+    },
+    {
+     "slug": "circle",
+     "name": "Circle",
+     "unit": "Processing fee on gas",
+     "points": [
+      {
+       "x": 1000,
+       "usd": 0.36,
+       "plan": "gas-station",
+       "next": "gas-station",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "lower",
+       "nextBound": "lower"
+      },
+      {
+       "x": 10000,
+       "usd": 3.6,
+       "plan": "gas-station",
+       "next": "gas-station",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "lower",
+       "nextBound": "lower"
+      },
+      {
+       "x": 100000,
+       "usd": 36,
+       "plan": "gas-station",
+       "next": "gas-station",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "lower",
+       "nextBound": "lower"
+      },
+      {
+       "x": 1000000,
+       "usd": 360,
+       "plan": "gas-station",
+       "next": "gas-station",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "lower",
+       "nextBound": "lower"
+      },
+      {
+       "x": 10000000,
+       "usd": 3600,
+       "plan": "gas-station",
+       "unc": true,
+       "bound": "lower"
+      }
+     ]
+    },
+    {
+     "slug": "candide",
+     "name": "Candide",
+     "unit": "Sponsored operations, no gas markup",
+     "points": [
+      {
+       "x": 1000,
+       "usd": 333,
+       "plan": "launch",
+       "next": "launch"
+      },
+      {
+       "x": 5000,
+       "usd": 333,
+       "plan": "launch",
+       "next": "launch"
+      },
+      {
+       "x": 10000,
+       "usd": 383,
+       "plan": "launch",
+       "next": "launch"
+      },
+      {
+       "x": 25000,
+       "usd": 533,
+       "plan": "launch",
+       "next": "launch"
+      },
+      {
+       "x": 68200,
+       "usd": 965,
+       "plan": "launch",
+       "next": "grow"
+      },
+      {
+       "x": 100000,
+       "usd": 1124,
+       "plan": "grow",
+       "next": "grow"
+      },
+      {
+       "x": 100000.0002,
+       "usd": 1124,
+       "plan": "grow",
+       "next": "grow"
+      },
+      {
+       "x": 500000,
+       "usd": 3124,
+       "plan": "grow",
+       "next": "grow"
+      },
+      {
+       "x": 500000.001,
+       "usd": null,
+       "why": "Grow, billed yearly stops at 500,000 user operations a month; Enterprise has no published price"
+      },
+      {
+       "x": 1000000,
+       "usd": null,
+       "why": "Grow, billed yearly stops at 500,000 user operations a month; Enterprise has no published price"
+      },
+      {
+       "x": 10000000,
+       "usd": null,
+       "why": "Grow, billed yearly stops at 500,000 user operations a month; Enterprise has no published price"
+      }
+     ]
+    },
+    {
+     "slug": "etherspot",
+     "name": "Etherspot",
+     "unit": "API credits, no gas markup",
+     "points": [
+      {
+       "x": 1000,
+       "usd": 6.5,
+       "plan": "payg",
+       "next": "payg",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "upper",
+       "nextBound": "upper"
+      },
+      {
+       "x": 10000,
+       "usd": 65,
+       "plan": "payg",
+       "next": "payg",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "upper",
+       "nextBound": "upper"
+      },
+      {
+       "x": 100000,
+       "usd": 650,
+       "plan": "payg",
+       "next": "payg",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "upper",
+       "nextBound": "upper"
+      },
+      {
+       "x": 1000000,
+       "usd": 6500,
+       "plan": "payg",
+       "next": "payg",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "upper",
+       "nextBound": "upper"
+      },
+      {
+       "x": 10000000,
+       "usd": 65000,
+       "plan": "payg",
+       "unc": true,
+       "bound": "upper"
+      }
+     ]
+    },
+    {
+     "slug": "openfort",
+     "name": "Openfort",
+     "unit": "Operations plus a paymaster surcharge",
+     "points": [
+      {
+       "x": 1000,
+       "usd": 0.72,
+       "plan": "free",
+       "next": "free"
+      },
+      {
+       "x": 2000,
+       "usd": 1.44,
+       "plan": "free",
+       "next": "free"
+      },
+      {
+       "x": 2000.000004,
+       "usd": 100.44,
+       "plan": "growth",
+       "next": "growth"
+      },
+      {
+       "x": 10000,
+       "usd": 106.2,
+       "plan": "growth",
+       "next": "growth"
+      },
+      {
+       "x": 25000,
+       "usd": 117,
+       "plan": "growth",
+       "next": "growth"
+      },
+      {
+       "x": 41866.02870813397,
+       "usd": 264.07,
+       "plan": "growth",
+       "next": "pro"
+      },
+      {
+       "x": 83732.05741626794,
+       "usd": 279.14,
+       "plan": "pro",
+       "next": "pro"
+      },
+      {
+       "x": 100000,
+       "usd": 285,
+       "plan": "pro",
+       "next": "pro"
+      },
+      {
+       "x": 158333.33333333334,
+       "usd": 656,
+       "plan": "pro",
+       "next": "scale"
+      },
+      {
+       "x": 500000,
+       "usd": 779,
+       "plan": "scale",
+       "next": "scale"
+      },
+      {
+       "x": 1000000,
+       "usd": 2959,
+       "plan": "scale",
+       "next": "scale"
+      },
+      {
+       "x": 10000000,
+       "usd": 42199,
+       "plan": "scale"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "ethereum",
+   "label": "Ethereum",
+   "axis": "sponsored user operations a month",
+   "walletsFixed": 0,
+   "walletsPerX": 0,
+   "txFixed": 0,
+   "txPerX": 1,
+   "gasUsdPerTx": 0.15,
+   "floor": 1000,
+   "ceiling": 10000000,
+   "sizes": [
+    {
+     "id": "small",
+     "x": 10000
+    },
+    {
+     "id": "medium",
+     "x": 100000
+    },
+    {
+     "id": "large",
+     "x": 1000000
+    }
+   ],
+   "providers": [
+    {
+     "slug": "pimlico",
+     "name": "Pimlico",
+     "unit": "API credits plus a gas surcharge",
+     "points": [
+      {
+       "x": 1000,
+       "usd": 15,
+       "plan": "payg",
+       "next": "payg"
+      },
+      {
+       "x": 9523.809523809523,
+       "usd": 142.86,
+       "plan": "payg",
+       "next": "payg"
+      },
+      {
+       "x": 10000,
+       "usd": 155,
+       "plan": "payg",
+       "next": "payg"
+      },
+      {
+       "x": 100000,
+       "usd": 2450,
+       "plan": "payg",
+       "next": "payg"
+      },
+      {
+       "x": 1000000,
+       "usd": 25400,
+       "plan": "payg",
+       "next": "payg"
+      },
+      {
+       "x": 10000000,
+       "usd": 254900,
+       "plan": "payg"
+      }
+     ]
+    },
+    {
+     "slug": "alchemy",
+     "name": "Alchemy",
+     "unit": "Compute units plus an admin fee on gas",
+     "points": [
+      {
+       "x": 1000,
+       "usd": 13.83,
+       "plan": "payg",
+       "next": "payg",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "lower",
+       "nextBound": "lower"
+      },
+      {
+       "x": 10000,
+       "usd": 138.3,
+       "plan": "payg",
+       "next": "payg",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "lower",
+       "nextBound": "lower"
+      },
+      {
+       "x": 100000,
+       "usd": 1383.04,
+       "plan": "payg",
+       "next": "payg",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "lower",
+       "nextBound": "lower"
+      },
+      {
+       "x": 1000000,
+       "usd": 13830.4,
+       "plan": "payg",
+       "next": "payg",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "lower",
+       "nextBound": "lower"
+      },
+      {
+       "x": 10000000,
+       "usd": 138304,
+       "plan": "payg",
+       "unc": true,
+       "bound": "lower"
+      }
+     ]
+    },
+    {
+     "slug": "zerodev",
+     "name": "ZeroDev",
+     "unit": "Credits plus a gas premium",
+     "points": [
+      {
+       "x": 1000,
+       "usd": 81,
+       "plan": "launch",
+       "next": "launch"
+      },
+      {
+       "x": 5000,
+       "usd": 129,
+       "plan": "launch",
+       "next": "launch"
+      },
+      {
+       "x": 5000.00001,
+       "usd": 459,
+       "plan": "scale",
+       "next": "scale"
+      },
+      {
+       "x": 10000,
+       "usd": 519,
+       "plan": "scale",
+       "next": "scale"
+      },
+      {
+       "x": 50000,
+       "usd": 999,
+       "plan": "scale",
+       "next": "scale"
+      },
+      {
+       "x": 50000.0001,
+       "usd": null,
+       "why": "Scale stops at 1,000,000 credits a month; Enterprise has no published price"
+      },
+      {
+       "x": 100000,
+       "usd": null,
+       "why": "Scale stops at 1,000,000 credits a month; Enterprise has no published price"
+      },
+      {
+       "x": 1000000,
+       "usd": null,
+       "why": "Scale stops at 1,000,000 credits a month; Enterprise has no published price"
+      },
+      {
+       "x": 10000000,
+       "usd": null,
+       "why": "Scale stops at 1,000,000 credits a month; Enterprise has no published price"
+      }
+     ]
+    },
+    {
+     "slug": "thirdweb",
+     "name": "thirdweb",
+     "unit": "Sponsored transactions, banded, plus a gas surcharge",
+     "points": [
+      {
+       "x": 1000,
+       "usd": 102.75,
+       "plan": "growth",
+       "next": "growth"
+      },
+      {
+       "x": 10000,
+       "usd": 145.5,
+       "plan": "growth",
+       "next": "growth"
+      },
+      {
+       "x": 100000,
+       "usd": 573,
+       "plan": "growth",
+       "next": "growth",
+       "nextUnc": true,
+       "nextBound": "upper"
+      },
+      {
+       "x": 250000,
+       "usd": 1225.5,
+       "plan": "growth",
+       "next": "growth",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "upper",
+       "nextBound": "upper"
+      },
+      {
+       "x": 1000000,
+       "usd": 4188,
+       "plan": "growth",
+       "next": "growth",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "upper",
+       "nextBound": "upper"
+      },
+      {
+       "x": 10000000,
+       "usd": 39738,
+       "plan": "growth",
+       "unc": true,
+       "bound": "upper"
+      }
+     ]
+    },
+    {
+     "slug": "coinbase-cdp",
+     "name": "Coinbase CDP",
+     "unit": "Gas markup, plus node billing units",
+     "points": [
+      {
+       "x": 1000,
+       "usd": null,
+       "why": "The CDP paymaster runs on Base only."
+      },
+      {
+       "x": 10000,
+       "usd": null,
+       "why": "The CDP paymaster runs on Base only."
+      },
+      {
+       "x": 20000,
+       "usd": null,
+       "why": "The CDP paymaster runs on Base only."
+      },
+      {
+       "x": 100000,
+       "usd": null,
+       "why": "The CDP paymaster runs on Base only."
+      },
+      {
+       "x": 1000000,
+       "usd": null,
+       "why": "The CDP paymaster runs on Base only."
+      },
+      {
+       "x": 10000000,
+       "usd": null,
+       "why": "The CDP paymaster runs on Base only."
+      }
+     ]
+    },
+    {
+     "slug": "circle",
+     "name": "Circle",
+     "unit": "Processing fee on gas",
+     "points": [
+      {
+       "x": 1000,
+       "usd": 7.5,
+       "plan": "gas-station",
+       "next": "gas-station",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "lower",
+       "nextBound": "lower"
+      },
+      {
+       "x": 10000,
+       "usd": 75,
+       "plan": "gas-station",
+       "next": "gas-station",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "lower",
+       "nextBound": "lower"
+      },
+      {
+       "x": 100000,
+       "usd": 750,
+       "plan": "gas-station",
+       "next": "gas-station",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "lower",
+       "nextBound": "lower"
+      },
+      {
+       "x": 1000000,
+       "usd": 7500,
+       "plan": "gas-station",
+       "next": "gas-station",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "lower",
+       "nextBound": "lower"
+      },
+      {
+       "x": 10000000,
+       "usd": 75000,
+       "plan": "gas-station",
+       "unc": true,
+       "bound": "lower"
+      }
+     ]
+    },
+    {
+     "slug": "candide",
+     "name": "Candide",
+     "unit": "Sponsored operations, no gas markup",
+     "points": [
+      {
+       "x": 1000,
+       "usd": 333,
+       "plan": "launch",
+       "next": "launch"
+      },
+      {
+       "x": 5000,
+       "usd": 333,
+       "plan": "launch",
+       "next": "launch"
+      },
+      {
+       "x": 10000,
+       "usd": 383,
+       "plan": "launch",
+       "next": "launch"
+      },
+      {
+       "x": 25000,
+       "usd": 533,
+       "plan": "launch",
+       "next": "launch"
+      },
+      {
+       "x": 68200,
+       "usd": 965,
+       "plan": "launch",
+       "next": "grow"
+      },
+      {
+       "x": 100000,
+       "usd": 1124,
+       "plan": "grow",
+       "next": "grow"
+      },
+      {
+       "x": 100000.0002,
+       "usd": 1124,
+       "plan": "grow",
+       "next": "grow"
+      },
+      {
+       "x": 500000,
+       "usd": 3124,
+       "plan": "grow",
+       "next": "grow"
+      },
+      {
+       "x": 500000.001,
+       "usd": null,
+       "why": "Grow, billed yearly stops at 500,000 user operations a month; Enterprise has no published price"
+      },
+      {
+       "x": 1000000,
+       "usd": null,
+       "why": "Grow, billed yearly stops at 500,000 user operations a month; Enterprise has no published price"
+      },
+      {
+       "x": 10000000,
+       "usd": null,
+       "why": "Grow, billed yearly stops at 500,000 user operations a month; Enterprise has no published price"
+      }
+     ]
+    },
+    {
+     "slug": "etherspot",
+     "name": "Etherspot",
+     "unit": "API credits, no gas markup",
+     "points": [
+      {
+       "x": 1000,
+       "usd": 6.5,
+       "plan": "payg",
+       "next": "payg",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "upper",
+       "nextBound": "upper"
+      },
+      {
+       "x": 10000,
+       "usd": 65,
+       "plan": "payg",
+       "next": "payg",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "upper",
+       "nextBound": "upper"
+      },
+      {
+       "x": 100000,
+       "usd": 650,
+       "plan": "payg",
+       "next": "payg",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "upper",
+       "nextBound": "upper"
+      },
+      {
+       "x": 1000000,
+       "usd": 6500,
+       "plan": "payg",
+       "next": "payg",
+       "unc": true,
+       "nextUnc": true,
+       "bound": "upper",
+       "nextBound": "upper"
+      },
+      {
+       "x": 10000000,
+       "usd": 65000,
+       "plan": "payg",
+       "unc": true,
+       "bound": "upper"
+      }
+     ]
+    },
+    {
+     "slug": "openfort",
+     "name": "Openfort",
+     "unit": "Operations plus a paymaster surcharge",
+     "points": [
+      {
+       "x": 1000,
+       "usd": 15,
+       "plan": "free",
+       "next": "free"
+      },
+      {
+       "x": 2000,
+       "usd": 30,
+       "plan": "free",
+       "next": "free"
+      },
+      {
+       "x": 2000.000004,
+       "usd": 129,
+       "plan": "growth",
+       "next": "growth"
+      },
+      {
+       "x": 10000,
+       "usd": 249,
+       "plan": "growth",
+       "next": "growth"
+      },
+      {
+       "x": 20000,
+       "usd": 399,
+       "plan": "growth",
+       "next": "pro"
+      },
+      {
+       "x": 25000,
+       "usd": 436.5,
+       "plan": "pro",
+       "next": "pro"
+      },
+      {
+       "x": 45161.290322580644,
+       "usd": 587.71,
+       "plan": "pro",
+       "next": "pro"
+      },
+      {
+       "x": 100000,
+       "usd": 999,
+       "plan": "pro",
+       "next": "pro"
+      },
+      {
+       "x": 158333.33333333334,
+       "usd": 1786.5,
+       "plan": "pro",
+       "next": "scale"
+      },
+      {
+       "x": 500000,
+       "usd": 4349,
+       "plan": "scale",
+       "next": "scale"
+      },
+      {
+       "x": 1000000,
+       "usd": 10099,
+       "plan": "scale",
+       "next": "scale"
+      },
+      {
+       "x": 10000000,
+       "usd": 113599,
+       "plan": "scale"
+      }
+     ]
+    }
+   ]
+  }
+ ],
+ "generatedBy": "harnesses/paymaster-cost, PAYMASTER_COST_EMIT_CURVES"
+}

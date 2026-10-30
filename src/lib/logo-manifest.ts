@@ -12,6 +12,12 @@
  */
 
 const RAW: Record<string, string> = {
+  // Paymaster vendors new with bench 312 (2026-10-30): Pimlico's web clip
+  // (its mark on its own purple ground), Etherspot's 192 px site icon, and
+  // Candide's favicon.svg.
+  pimlico: "/logos/pimlico.png",
+  etherspot: "/logos/etherspot.png",
+  candide: "/logos/candide.svg",
   // Server and agent wallet vendors new with bench 310 (2026-10-29): Lit's
   // header lettermark in its brand orange, Portal's glyph cut from its header
   // SVG in the blue of its own app icon, Dfns' symbol from its brand page.

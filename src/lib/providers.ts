@@ -920,7 +920,9 @@ const buildProvidersCached = unstable_cache(
   //      900 s TTL. Lockstep with bench-unfiltered-v122.
   // v33: wallet pricing audit 2026-10-30 (Dynamic and Circle re-priced,
   // the price reading on appearance rows).
-  ["providers-v33"],
+  // v34: bench 312 adds paymaster appearances; Pimlico, Etherspot and
+  //      Candide are new to the site. Lockstep with bench-unfiltered-v129.
+  ["providers-v34"],
   // 900 s: the provider index feeds products / compare / answers, whose
   // numbers move slowly, and this revalidate is also the effective ISR
   // period of those ~500 pages (Next takes the min across a route's caches).

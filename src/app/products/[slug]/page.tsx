@@ -62,6 +62,7 @@ import { withUtm } from "@/lib/utm";
 import { noFigureLabel, noRankLabel } from "@/lib/no-figure-label";
 import { WalletVendorPricing, walletVendorHeadline, fmtWalletBill } from "@/components/wallet-vendor-pricing";
 import { ServerWalletVendorPricing, serverWalletVendorHeadline, fmtServerWalletBill } from "@/components/server-wallet-vendor-pricing";
+import { PaymasterVendorPricing, paymasterVendorHeadline, fmtPaymasterBill } from "@/components/paymaster-vendor-pricing";
 
 export const revalidate = 3600;
 
@@ -359,7 +360,25 @@ export async function generateMetadata({
   const walletOnly =
     appearances.length > 0 && appearances.every((a) => WALLET_BENCHES.has(a.benchmark.slug));
   const embeddedApp = appearances.find((a) => a.benchmark.slug === "wallet-cost");
-  if (walletOnly && !embeddedApp) {
+  const paymasterOnly =
+    appearances.length > 0 && appearances.every((a) => a.benchmark.slug === "paymaster-cost");
+  if (paymasterOnly) {
+    // Measured only on bench 312 (Pimlico, Candide, Etherspot): a paymaster
+    // pricing page, priced on that bench's headline cell.
+    const rawSlug = appearances[0]?.result.slug ?? p.slug;
+    const head = paymasterVendorHeadline(rawSlug);
+    const long = `${p.name} paymaster pricing ${new Date().getUTCFullYear()}: Base, Arbitrum, Ethereum`;
+    title = long.length <= 60 ? long : `${p.name} paymaster pricing ${new Date().getUTCFullYear()}`;
+    if (head && "usd" in head) {
+      description = capSnippet(
+        `${p.name} charges ${head.reading ? `${head.reading} ` : ""}${fmtPaymasterBill(head.usd)} a month on top of the gas for ${head.label} (latest value), ${head.rank > 0 ? `#${head.rank} of ${head.of}` : `not ranked among ${head.of}`} paymasters priced. Its bill on Arbitrum and Ethereum too.`,
+      );
+    } else if (head) {
+      description = capSnippet(
+        `${p.name} publishes no self-serve price for ${head.label}, so it is not ranked there. Where it is priced, and what ${head.of} other paymasters charge.`,
+      );
+    }
+  } else if (walletOnly && !embeddedApp) {
     // Measured only on bench 310 (Lit, Portal, Dfns): a server wallet pricing
     // page, priced on that bench's headline cell.
     const rawSlug = appearances[0]?.result.slug ?? p.slug;
@@ -1366,6 +1385,10 @@ export default async function ProviderPage({
       {(() => {
         const w = sorted.find((a) => a.benchmark.slug === "server-wallet-cost");
         return w ? <ServerWalletVendorPricing slug={w.result.slug} name={p.name} /> : null;
+      })()}
+      {(() => {
+        const w = sorted.find((a) => a.benchmark.slug === "paymaster-cost");
+        return w ? <PaymasterVendorPricing slug={w.result.slug} name={p.name} /> : null;
       })()}
 
       <RelatedProvidersSection providerSlug={p.slug} providerName={p.name} />

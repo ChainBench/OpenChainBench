@@ -471,10 +471,11 @@ async function checkCostCurveFreshness(issues: Issue[]) {
  */
 type CostBench = { slug: string; harness: string; env: string };
 
-/** Benches 309 and 310 share the catalogue -> curve -> calculator design. */
+/** Benches 309, 310 and 312 share the catalogue -> curve -> calculator design. */
 const COST_BENCHES: CostBench[] = [
   { slug: "wallet-cost", harness: "harnesses/wallet-cost", env: "WALLET_COST" },
   { slug: "server-wallet-cost", harness: "harnesses/server-wallet-cost", env: "SERVER_WALLET_COST" },
+  { slug: "paymaster-cost", harness: "harnesses/paymaster-cost", env: "PAYMASTER_COST" },
 ];
 
 async function checkWalletCostCurveFreshness(issues: Issue[]) {
@@ -562,6 +563,15 @@ async function checkCostBenchCurve(issues: Issue[], b: CostBench) {
         for (const tier of tiers) if (typeof tier.rate === "number") allowed.add(Math.round(tier.rate * 1e6) / 1e4);
       }
     }
+  }
+  // Bench 312 states the gas beside every bill: one operation's gas on each
+  // chain, and the gas of a published volume, are the scenario's own figures.
+  for (const sc of (cat as { scenarios?: { gas_usd_per_tx?: number; sizes?: { x: number }[] }[] }).scenarios ?? []) {
+    const g = sc.gas_usd_per_tx;
+    if (typeof g !== "number" || g <= 0) continue;
+    allowed.add(cents(g));
+    allowed.add(Math.round(g * 1e6) / 1e4);
+    for (const z of sc.sizes ?? []) allowed.add(cents(g * z.x));
   }
   const spec = yaml.load(await fs.readFile(path.join(ROOT, `benchmarks/${b.slug}.yml`), "utf8")) as Record<string, unknown>;
   const prose: string[] = [];
