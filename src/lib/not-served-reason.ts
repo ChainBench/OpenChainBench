@@ -96,8 +96,11 @@ export function rankGateReason(
  * who knows other benches reads the generic wording as "this bench is young".
  *
  * Returned for every gated row rather than looked up per provider: the gate on
- * this bench can only read 0 for one reason, which is that we obtained verdicts
- * on fewer than half the cells we asked of that provider.
+ * this bench can only read 0 for one reason, which is that recomputing the
+ * provider's share with its unanswered cells credited at what the rest of the
+ * cohort gets there moves it by more than one point. The cells were asked. The
+ * verdicts are what is missing, and one of them is enough when it is a method
+ * the cohort disagrees on.
  *
  * Kept to a badge's length on purpose. static-ledger renders this inline beside
  * the provider name at 11px uppercase with 0.14em tracking, so a sentence here
@@ -116,9 +119,13 @@ function coverageRankReason(row?: { successRate?: number }): string {
   // cell is the method the rest of the cohort refuses, so it decides the
   // position by itself. "refused on most cells" would be false there.
   if (share == null || !Number.isFinite(share)) {
-    return "not asked on every cell, so it takes no rank";
+    return "not answered on every cell, so it takes no rank";
   }
-  return `asked on only ${Math.round(share)}% of cells`;
+  // "asked on only N%" was the share answered, printed as the share asked.
+  // Alchemy was asked on 56 cells of 56 and the badge read 21%; on the
+  // HyperEVM tab it was asked on 7 of 7 and read 86%. We ask every cell,
+  // every pass; what varies is how many come back (audit 2026-10-30).
+  return `verdict on only ${Math.round(share)}% of cells`;
 }
 
 /**

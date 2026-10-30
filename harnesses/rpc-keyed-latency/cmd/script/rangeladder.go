@@ -162,6 +162,60 @@ func acceptedSpan(raw []byte) (accepted bool, definitive bool) {
 	return true, true
 }
 
+// acceptedSpanStatus reads the body of a NON-200 reply, where the question is
+// the opposite way round from acceptedSpan.
+//
+// Over an HTTP 200, a JSON-RPC error means the provider declined this width:
+// the transport worked, the request was understood, and the only thing left to
+// decline is the span. Over a non-200 that reasoning does not hold. A 401 says
+// nothing about ranges, a 502 says nothing at all, and reading either as a
+// limit would publish an outage as a policy.
+//
+// So this is a POSITIVE test: the body has to state the thing before we
+// believe it. Measured 2026-10-30, two providers do state it:
+//
+//	QuickNode    413  "eth_getLogs is limited to a 10,000 range"
+//	getblock arc 403  "Requested block range exceeds the limits (1500 blocks)"
+//
+// QuickNode's 10,000 is exactly the rung below, which is the width the ladder
+// had already been served, so the two agree and the cell stops showing a dash
+// for an answer we received.
+//
+// The rate-limit check comes first and for the same reason it does in
+// acceptedSpan: a 429 is about our cadence, not their window.
+func acceptedSpanStatus(raw []byte) (definitive bool) {
+	if len(raw) == 0 {
+		return false
+	}
+	msg := string(raw)
+	var r jsonRPCReply
+	if err := json.Unmarshal(raw, &r); err == nil && r.Error != nil {
+		msg = r.Error.Message
+	}
+	if looksLikeRateLimit(msg) {
+		return false
+	}
+	return looksLikeRangeRefusal(msg)
+}
+
+// looksLikeRangeRefusal asks whether a message names a width and a bound.
+//
+// Both halves are required, because either alone is met by text that is not
+// about ranges at all: "limit" matches a rate limit and a credit limit, while
+// "blocks" matches a message about a single block. Requiring one of each is
+// what separates the two providers above from a 401 body, an HTML gateway
+// page, and a quota notice.
+func looksLikeRangeRefusal(msg string) bool {
+	m := strings.ToLower(msg)
+	width := strings.Contains(m, "range") || strings.Contains(m, "block") || strings.Contains(m, "span")
+	bound := strings.Contains(m, "limit") || // "limited to", "the limits", "limit exceeded"
+		strings.Contains(m, "exceed") ||
+		strings.Contains(m, "too large") ||
+		strings.Contains(m, "too wide") ||
+		strings.Contains(m, "too many")
+	return width && bound
+}
+
 // rungWindow is the block window a rung of n blocks asks for, inclusive at
 // both ends because that is how providers count it.
 //
@@ -315,12 +369,23 @@ func probeGetLogsRange(ctx context.Context, e Endpoint, head uint64) {
 			raw, _, classified, err := doPost(ctx, e.URL, []byte(payload), false)
 			if err != nil {
 				// An HTTP-level failure is ours to own, not theirs to answer
-				// for. One real case is lost here and knowingly: getblock on
-				// arc delivers its range refusal as an HTTP 403 whose body
-				// says "Requested block range exceeds the limits (1500
-				// blocks)", and doPost discards a non-200 body, so that cell
-				// publishes nothing rather than a guessed limit.
+				// for, UNLESS their body answers for them.
+				//
+				// Two providers put the range refusal in the body of a
+				// non-200: getblock on arc behind a 403, QuickNode behind a
+				// 413. That used to be lost, and the loss was not neutral.
+				// QuickNode had already been served 10,000 blocks, so the
+				// ladder's own reading and their stated limit agreed, and
+				// the board still showed a dash on seven of eight chains
+				// while defining a dash as "we could not ask".
+				//
+				// acceptedSpanStatus has to find a width AND a bound in the
+				// text, so a 401, a gateway page and a quota notice all stay
+				// what they were: not definitive.
 				labelProbe(e, "getlogs_range_"+sh.Shape, classified)
+				if acceptedSpanStatus(raw) {
+					return false, true
+				}
 				return false, false
 			}
 			return acceptedSpan(raw)

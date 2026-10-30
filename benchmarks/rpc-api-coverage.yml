@@ -44,17 +44,18 @@ methodology:
   - "Each capability method is asked once per provider per chain, every six hours, from a single region, and the two eth_call legs every hour because their difference is a measurement that needs samples rather than a verdict that changes monthly. The probe is deliberately not the latency probe: that one sends a single eth_getBlockByNumber and is kept light so the keyed and no-key cohorts stay comparable. Capability is a different question and gets its own pass."
   - "A cell has three outcomes, and only two of them are published as a verdict. The provider served the method, the provider answered and refused it, or we could not ask. The first two are the 100 and the 0 you see. The third writes nothing, so the cell is blank."
   - "A 100 means the method is routed, not that it will answer whatever you send it. Several probes ask with parameters that cannot be satisfied on purpose, so a server that parses the method and then complains about the arguments has proved it serves the method. A provider can therefore read 100 here and still cap the response size or the block range. Those caps are real and separate properties, and the honest place for them is their own measurement rather than a boolean."
-  - "The capability figures are published as columns and not as selectable chart views, deliberately. In a chart view the board renders one metric for every row, and a provider with no reading for it is shown as a zero rather than left out, which would state a refusal we never received. As columns, a missing reading renders as a dash and keeps the distinction this whole board rests on."
+  - "The capability figures are published as columns and not as selectable chart views, deliberately. Nine answers fit on one screen as columns and would be nine tab switches as views. A view can now render an absent reading as absent, which it could not until 2026-10-30, and that is why the three measurements below are views while the capability verdicts stay columns."
   - "A blank is never a refusal. If our key is out of credit, rate limited, or not entitled to a chain, the failure is ours and saying 0 would publish our billing state as the provider's product. That case is counted separately in the probe ledger and left blank on the board."
   - "A 401 or a 403 cannot be read on its own, because the same status covers a method that is not on our plan and a key that no longer works. Those are held back and resolved per endpoint at the end of the pass: if any other method on that same provider and chain served, the key works and the refusal is about the method, so the cell reads 0. If nothing on that endpoint served, the key is the suspect and the cell stays blank."
   - "The headline is the share of asked cells that served, not a count of methods. A count would rank a provider last for the questions we never asked it, which is the same error as publishing a refusal we never received."
   - "On a single chain tab a cell reads 0 or 100. On the all-chains tab it reads the share of chains that served, so a provider serving a method on seven chains of eight reads 87.5 rather than a tick that could mean either one or all of them."
-  - "Hours since check is the age of the published verdict, not of our last attempt. The timestamp advances only when a verdict is written, so a provider that starts failing keeps its last answer on the board and the age starts climbing. A capability gauge that answers every hour with the same value is otherwise indistinguishable from a frozen one."
-  - "The log queries are asked over a five block window, which is deliberately narrow: that answers whether the method is routed at all, and a narrow window is the question every provider should be able to answer. It is not the question an indexer asks, and the two unfiltered-shape columns still read alike for that reason."
+  - "Hours since check is the age of the published verdict, not of our last attempt. The timestamp advances only when a verdict is written, so a provider that starts failing keeps its last answer while the probe runs, and the age climbs. If the probe itself stops, the verdict and its age are withheld rather than frozen, because a freshness column that freezes reports its own staleness as freshness."
+  - "The log queries are asked over a five block window, which is deliberately narrow: that answers whether the method is routed at all, and a narrow window is the question every provider should be able to answer. It is not the question an indexer asks, and that is why the two window columns below exist."
   - "The two window columns are the question an indexer does ask. Each climbs 100, 500, 1000, 2000, 10000, 100000 and 1000000 blocks and stops at the first refusal, so the figure is the widest window accepted. The filters are built to match nothing, so what this measures is the static guard on the block span, the thing that trips before any work and freezes a cursor, and not the widest window logs will actually come from."
   - "A window figure is published only when a provider refused the next rung, or when it cleared every rung. If one of our own calls failed above a rung that passed, the number we hold is a floor we reached rather than a limit they set, and the column stays blank rather than printing it as a limit. The ladder also treats a rate-limit reply as our problem and not a width refusal, since it says we asked too often rather than that the window is too wide."
   - "Two limits on the window columns. The figure is a floor rather than a ceiling when every width passed, and it is in blocks, so it ranks providers within a chain tab and not across chains: a block is twelve seconds on Ethereum and two on Base."
   - "On the all-chains tab the window columns take the narrowest window across the chains probed, not the widest. A provider that accepts a million blocks on one chain and five hundred on the other seven would otherwise read a million, which is the number you would plan around and never meet. The other columns on this board average because they are shares; these are limits, and a limit averages into something nobody is offered."
+  - "A series name here carries its method. A twenty-four hour window cannot be told to start at a deployment, so when the two eth_call legs stopped being measured cold and their names stayed put, the window averaged two methods and published a figure belonging to neither. They are named for the warm connection they now ride, because renaming retires the old series and starts a new one, and that is what keeps a window inside one method."
   - "Three selectable views sit above the board and are measurements rather than shares: the eth_call work term, the archive read, and the address-filtered log query. The archive read and the log query are COLD numbers, so the cold latency arm is their comparable. The two eth_call legs are primed first instead: a handshake costs about 25 ms from the probe and their difference is a few milliseconds, so paying it inside the measurement made the noise larger than the signal."
   - "The work term withholds a non-positive difference instead of printing it. The heavy leg cannot answer faster than the light one, so a negative reading is the two legs' noise crossing rather than a measurement, and on a lower-is-better view it would rank the noisiest provider first. Measured on the first pass: one provider read minus 1.6 ms. A withheld cell reads as a dash and says the pair has not separated yet."
   - "A view can show an absent reading as absent since 2026-10-30. Before that the ledger read a missing panel value as zero, which on a higher-is-better board is a refusal nobody gave, and it is why this bench published its capability as columns. The columns stay, because they fit nine answers on one screen; the views carry what a column cannot, a number with a unit."
@@ -69,7 +70,7 @@ methodology:
 
 findings:
   - "Coverage is not the same question as latency, and the two boards can disagree. A provider can lead the head-lag ranking and still decline the method your pipeline is built on."
-  - "The widest coverage in the cohort right now is {{best_name}} at {{best_p50}} of the methods asked. A provider we could ask on fewer than half its cells is published with its figures, kept out of the ranking, and labelled with why, so a perfect share over a handful of questions cannot lead this board."
+  - "The widest coverage in the cohort right now is {{best_name}} at {{best_p50}} of the methods asked. A provider is ranked only when its share would survive the cells it owes us: we recompute it crediting every unanswered cell with what the rest of the cohort gets there, and a gap of more than one point means a missing cell decides the position, so the row is published with its figures, kept out of the ranking, and labelled with why."
   - "Tracing is where this cohort separates. The three log-query shapes and block receipts are served nearly everywhere we asked, while trace_block is the column carrying real disagreement, and some providers that refuse it serve debug_traceTransaction on the same chain. The two sit in different client namespaces, so a provider can have one and not the other, and a documentation page saying tracing is supported does not tell you which one you get."
   - "Our Alchemy key is refused on most of the chains it is configured for, so Alchemy is absent from most chain tabs here while appearing on the latency boards. That is our free-tier plan rather than Alchemy's API surface, and a missing row is this board saying it could not ask, never that the provider declined."
 
@@ -83,7 +84,7 @@ faq:
   - q: "Why only one region when the latency benchmarks use three?"
     a: "Because a capability should not depend on where you ask from, while latency entirely does. Running the capability pass in three regions would triple its cost for an answer that is expected to be identical, so it runs in one. If we ever see evidence that entitlement varies by region, that assumption becomes a measurement instead."
   - q: "How often does this run?"
-    a: "Every six hours. A capability changes when a provider changes a plan or ships an endpoint, which is a matter of weeks, not seconds. The latency boards run on a two-minute cadence because the thing they measure moves; running this one as often would spend credit to re-confirm an answer that has not changed."
+    a: "Every six hours for the capability verdicts, and once after every restart of the probe. The two eth_call legs run hourly instead, because their difference is a measurement that needs samples rather than a verdict that changes monthly. A capability changes when a provider changes a plan or ships an endpoint, which is a matter of weeks, not seconds. The latency boards run on a two-minute cadence because the thing they measure moves; running this one as often would spend credit to re-confirm an answer that has not changed."
   - q: "Is the Beacon API covered?"
     a: "No, and the board says so rather than leaving the column out quietly. Beacon endpoints sit on a different base URL from the JSON-RPC endpoint, and our configuration holds only the RPC URL, so the question was never asked of anyone. Adding it needs separate credentials, and until then a 0 in that column would be a claim we have no measurement for."
 
@@ -99,6 +100,11 @@ metric_panels:
     unit: count
     higher_is_better: true
     tab: false
+    # Une absence ici est l'etat de la sonde, pas une panne de requete: ces
+    # series n'existent que si la passe a tourne. Sans ce drapeau le worker
+    # republie le dernier verdict ET son age pendant 24 h quand le processus
+    # meurt, donc la colonne de fraicheur gele en annoncant qu'elle grimpe.
+    carry: false
     description: "Widest block window accepted for an address-filtered log query, climbing 100 to 1000000 blocks and stopping at the first refusal. A chain tab shows that chain; the all-chains tab shows the narrowest across chains, never wider than what you would meet. 0 means even 100 blocks was refused."
   - id: api_getlogs_range_topics
     label: "eth_getLogs window, topic filter"
@@ -107,6 +113,11 @@ metric_panels:
     unit: count
     higher_is_better: true
     tab: false
+    # Une absence ici est l'etat de la sonde, pas une panne de requete: ces
+    # series n'existent que si la passe a tourne. Sans ce drapeau le worker
+    # republie le dernier verdict ET son age pendant 24 h quand le processus
+    # meurt, donc la colonne de fraicheur gele en annoncant qu'elle grimpe.
+    carry: false
     description: "Widest block window accepted for a topic-filtered log query, same ladder and same all-chains rule as the address column. A provider can serve the shape and still refuse the width, which is the distinction an indexer plans around."
   - id: api_getlogs_address
     label: "eth_getLogs, address filter"
@@ -115,6 +126,11 @@ metric_panels:
     unit: pct
     higher_is_better: true
     tab: false
+    # Une absence ici est l'etat de la sonde, pas une panne de requete: ces
+    # series n'existent que si la passe a tourne. Sans ce drapeau le worker
+    # republie le dernier verdict ET son age pendant 24 h quand le processus
+    # meurt, donc la colonne de fraicheur gele en annoncant qu'elle grimpe.
+    carry: false
     description: "Share of asked cells where a log query filtered by contract address was served. This is the shape most indexers issue."
   - id: api_getlogs_topics
     label: "eth_getLogs, topic filter"
@@ -123,6 +139,11 @@ metric_panels:
     unit: pct
     higher_is_better: true
     tab: false
+    # Une absence ici est l'etat de la sonde, pas une panne de requete: ces
+    # series n'existent que si la passe a tourne. Sans ce drapeau le worker
+    # republie le dernier verdict ET son age pendant 24 h quand le processus
+    # meurt, donc la colonne de fraicheur gele en annoncant qu'elle grimpe.
+    carry: false
     description: "Share of asked cells where a log query filtered by topic was served."
   - id: api_getlogs_nofilter
     label: "eth_getLogs, no filter"
@@ -131,6 +152,11 @@ metric_panels:
     unit: pct
     higher_is_better: true
     tab: false
+    # Une absence ici est l'etat de la sonde, pas une panne de requete: ces
+    # series n'existent que si la passe a tourne. Sans ce drapeau le worker
+    # republie le dernier verdict ET son age pendant 24 h quand le processus
+    # meurt, donc la colonne de fraicheur gele en annoncant qu'elle grimpe.
+    carry: false
     description: "Share of asked cells where an unfiltered log query over a block range was served. The harshest of the three shapes and the first a provider restricts."
   - id: api_debug_tracetransaction
     label: "debug_traceTransaction"
@@ -139,6 +165,11 @@ metric_panels:
     unit: pct
     higher_is_better: true
     tab: false
+    # Une absence ici est l'etat de la sonde, pas une panne de requete: ces
+    # series n'existent que si la passe a tourne. Sans ce drapeau le worker
+    # republie le dernier verdict ET son age pendant 24 h quand le processus
+    # meurt, donc la colonne de fraicheur gele en annoncant qu'elle grimpe.
+    carry: false
     description: "Share of asked cells where a single transaction trace was served."
   - id: api_trace_block
     label: "trace_block"
@@ -147,6 +178,11 @@ metric_panels:
     unit: pct
     higher_is_better: true
     tab: false
+    # Une absence ici est l'etat de la sonde, pas une panne de requete: ces
+    # series n'existent que si la passe a tourne. Sans ce drapeau le worker
+    # republie le dernier verdict ET son age pendant 24 h quand le processus
+    # meurt, donc la colonne de fraicheur gele en annoncant qu'elle grimpe.
+    carry: false
     description: "Share of asked cells where a whole-block trace was served. Served by a different client namespace than debug_traceTransaction, so a provider can have one and not the other."
   - id: api_getblockreceipts
     label: "eth_getBlockReceipts"
@@ -155,6 +191,11 @@ metric_panels:
     unit: pct
     higher_is_better: true
     tab: false
+    # Une absence ici est l'etat de la sonde, pas une panne de requete: ces
+    # series n'existent que si la passe a tourne. Sans ce drapeau le worker
+    # republie le dernier verdict ET son age pendant 24 h quand le processus
+    # meurt, donc la colonne de fraicheur gele en annoncant qu'elle grimpe.
+    carry: false
     description: "Share of asked cells where every receipt in a block was served in one call, instead of one call per transaction."
   - id: api_archive_5m
     label: "Archive at 5M blocks"
@@ -163,6 +204,11 @@ metric_panels:
     unit: pct
     higher_is_better: true
     tab: false
+    # Une absence ici est l'etat de la sonde, pas une panne de requete: ces
+    # series n'existent que si la passe a tourne. Sans ce drapeau le worker
+    # republie le dernier verdict ET son age pendant 24 h quand le processus
+    # meurt, donc la colonne de fraicheur gele en annoncant qu'elle grimpe.
+    carry: false
     description: "Share of asked cells where a read five million blocks behind the head returned non-pruned state."
   # ---- Selectable views, not columns. ----
   #
@@ -177,7 +223,7 @@ metric_panels:
   - id: eth_call_work_ms
     label: "eth_call work"
     label_key: provider
-    metric: (avg by (provider) (avg_over_time(rpc_api_latency_milliseconds{api="eth_call_heavy"}[24h])) - avg by (provider) (avg_over_time(rpc_api_latency_milliseconds{api="eth_call_light"}[24h]))) > 0
+    metric: (avg by (provider) (avg_over_time(rpc_api_latency_milliseconds{api="eth_call_heavy_warm"}[24h])) - avg by (provider) (avg_over_time(rpc_api_latency_milliseconds{api="eth_call_light_warm"}[24h]))) > 0
     unit: ms
     higher_is_better: false
     # Une valeur absente ici est une affirmation, pas une panne: la requete
@@ -207,6 +253,11 @@ metric_panels:
     unit: count
     higher_is_better: false
     tab: false
+    # Une absence ici est l'etat de la sonde, pas une panne de requete: ces
+    # series n'existent que si la passe a tourne. Sans ce drapeau le worker
+    # republie le dernier verdict ET son age pendant 24 h quand le processus
+    # meurt, donc la colonne de fraicheur gele en annoncant qu'elle grimpe.
+    carry: false
     description: "Age of the published verdict. The stamp advances only when a verdict is written, so a provider that starts failing keeps its last answer here and this number climbs."
 
 ledger_columns:

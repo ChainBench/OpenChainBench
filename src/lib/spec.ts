@@ -698,7 +698,15 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       was resurrecting the value it had refused, for the length of this
   //       bench's 24 h ceiling, first on a lower-is-better view. The cached
   //       entry holds panel values, so the old one stays without this.
-  ["bench-unfiltered-v133", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v134: audit round on bench 311. The eth_call legs are renamed
+  //       eth_call_{heavy,light}_warm, because they stopped being measured
+  //       cold and kept their names, so a 24 h window averaged two methods:
+  //       dwellir published 44.00 ms against 2.97 under the stated method.
+  //       Ten capability and age panels declare carry: false, the rank gate
+  //       fails closed on a null, the static table follows ledger_columns,
+  //       and the badge says verdict rather than asked. Moves with
+  //       all-benchmarks-v127 and bench-filters-v72.
+  ["bench-unfiltered-v134", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -1003,7 +1011,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v124: lockstep with bench-unfiltered-v131 (ladder bound, primed legs).
   // v125: lockstep with bench-unfiltered-v132 (cost bench audit round).
   // v126: lockstep with bench-unfiltered-v133 (panel carry).
-  ["all-benchmarks-v126", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v127: lockstep with bench-unfiltered-v134 (bench 311 audit round).
+  ["all-benchmarks-v127", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1199,7 +1208,8 @@ const loadBenchmarkFiltered = unstable_cache(
   // v69: lockstep with bench-unfiltered-v131 (ladder bound).
   // v70: lockstep with bench-unfiltered-v132 (cost bench audit round).
   // v71: lockstep with bench-unfiltered-v133 (panel carry).
-  ["bench-filters-v71", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v72: lockstep with bench-unfiltered-v134 (bench 311 audit round).
+  ["bench-filters-v72", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 

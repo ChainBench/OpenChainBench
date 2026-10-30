@@ -123,9 +123,14 @@ func envURL(provider, chain string) string {
 // month; nine chains are ~195k per region.
 var defaultBudgets = map[string]int64{
 	"infura":     370_000,
-	// alchemy / quicknode: Mobula enterprise-tier accounts, metered in
-	// the account's pool. 600k per region = ~28 chains at 120 s, a ceiling
-	// against a runaway loop rather than a free-tier quota.
+	// alchemy / quicknode: 600k per region = ~28 chains at 120 s. This is a
+	// ceiling against a runaway loop, not a plan quota, which is why it sits
+	// above what either plan allows. The plan itself is free tier: the
+	// Alchemy key has been capped since 24 October on everything except
+	// HyperEVM and Robinhood Chain, which is what the (provider, chain)
+	// granularity in coverage.go exists to publish honestly. An earlier
+	// version of this comment named enterprise accounts that are no longer
+	// ours, and the spec and README both say free tier.
 	"alchemy":    600_000,
 	"quicknode":  600_000,
 	// chainstack: Growth plan, 20M RU/month shared by three regions.
