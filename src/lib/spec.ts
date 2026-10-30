@@ -660,13 +660,18 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       every EVM tab), and the FAQ no longer answers that the window
   //       measurement does not exist above the columns that publish it.
   //       Moves with all-benchmarks-v119 and bench-filters-v64.
-  // v127: the per-chain leader stash stops crowning a gated row and stops
+  // v127: the two wallet pricing titles say {{year}} instead of a typed
+  //       2026. Moves with all-benchmarks-v120 and bench-filters-v65.
+  // v128: the wallet pricing findings and FAQ read their winners and
+  //       bills from the curve ({{cell:...}}). Moves with
+  //       all-benchmarks-v121 and bench-filters-v66.
+  // v129: the per-chain leader stash stops crowning a gated row and stops
   //       breaking ties by spec order. bestPerChain lives in the cached
   //       entry and feeds the product-page chip, so a stale one keeps
   //       publishing "#1 of 5 on Robinhood Chain" for a row the board shows
-  //       unranked. Moves with all-benchmarks-v120, bench-filters-v65 and
+  //       unranked. Moves with all-benchmarks-v122, bench-filters-v67 and
   //       providers-v34, which is the key the chip itself reads through.
-  ["bench-unfiltered-v127", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  ["bench-unfiltered-v129", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -963,8 +968,10 @@ const loadAllBenchmarksCached = unstable_cache(
   // v117: lockstep with bench-unfiltered-v124.
   // v118: lockstep with bench-unfiltered-v125 (wallet pricing audit).
   // v119: lockstep with bench-unfiltered-v126.
-  // v120: lockstep with bench-unfiltered-v127.
-  ["all-benchmarks-v120", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v120: lockstep with bench-unfiltered-v127 (wallet titles).
+  // v121: lockstep with bench-unfiltered-v128 (cell placeholders).
+  // v122: lockstep with bench-unfiltered-v129 (per-chain leader).
+  ["all-benchmarks-v122", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1154,7 +1161,9 @@ const loadBenchmarkFiltered = unstable_cache(
   // v64: lockstep with bench-unfiltered-v126. Every chain tab carried the
   //      same inflated headline and the same 9/11 success rate.
   // v65: lockstep with bench-unfiltered-v127.
-  ["bench-filters-v65", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v66: lockstep with bench-unfiltered-v128.
+  // v67: lockstep with bench-unfiltered-v129.
+  ["bench-filters-v67", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 

@@ -291,11 +291,37 @@ const mcpHandler = createMcpHandler(
             .regex(/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$/)
             .optional()
             .describe("Optional access cohort on chain RPC benchmarks: 'public' (default, free no-key endpoints) or 'keyed' (private, API-key providers). Only honored when the bench declares tier dimensions."),
+          kind: z
+            .string()
+            .regex(/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$/)
+            .optional()
+            .describe("Optional kind view, e.g. a usage profile or workload on the pricing benches ('trading', 'bot', 'payouts'). Only honored when the bench declares kind dimensions; list them with list_benchmarks or the bench page."),
+          bucket: z
+            .string()
+            .regex(/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$/)
+            .optional()
+            .describe("Optional bucket view, e.g. a size on the pricing benches ('1k', '100k', 'small', 'large'). Only honored when the bench declares bucket dimensions."),
         },
         annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
       },
-      async ({ slug, chain, region, tier }) => {
+      async ({ slug, chain, region, tier, kind, bucket }) => {
         const aggregate = await getBenchmark(slug);
+        // kind and bucket resolve against the declared values, as the variant
+        // API does; "all" is the headline view. Pricing benches publish every
+        // profile and size there, and MCP could only reach the headline one
+        // (bench audit 2026-10-30).
+        const viewFilters: { kind?: string; bucket?: string } = {};
+        for (const [dim, raw] of [["kind", kind], ["bucket", bucket]] as const) {
+          if (!raw || raw.toLowerCase() === "all") continue;
+          const known = aggregate?.dimensions?.[dim]?.find((d) => d.value.toLowerCase() === raw.toLowerCase());
+          if (!known) {
+            return {
+              content: [{ type: "text", text: JSON.stringify({ error: `unknown_${dim}`, slug, [dim]: raw, declared: aggregate?.dimensions?.[dim]?.map((d) => d.value) ?? [] }) }],
+              isError: true,
+            };
+          }
+          viewFilters[dim] = known.value;
+        }
         // Tier resolves against the declared values; the headline tier is
         // the aggregate itself (no separate variant).
         const tierOption = tier
@@ -309,7 +335,7 @@ const mcpHandler = createMcpHandler(
         }
         const headlineTier = aggregate?.aggregateFilters?.tier ?? aggregate?.dimensions?.tier?.[0]?.value;
         const tierFilter = tierOption && tierOption.value !== headlineTier ? tierOption.value : undefined;
-        const b = await getBenchmark(slug, { chain, region, tier: tierFilter });
+        const b = await getBenchmark(slug, { chain, region, tier: tierFilter, ...viewFilters });
         if (!b || b.editorialStatus !== "live") {
           return {
             content: [{ type: "text", text: JSON.stringify({ error: "unknown_slug", slug }) }],

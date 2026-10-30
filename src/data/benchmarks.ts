@@ -14,6 +14,7 @@ import { valueQualifier } from "@/lib/value-window";
 import { downsample, MINI_CHART_MAX_LINES, MINI_CHART_POINTS } from "@/lib/downsample";
 import type { Benchmark, BenchIndexEntry } from "@/types/benchmark";
 import { loadBenchIndexFromBlob } from "@/lib/bench-blob";
+import { isDevOnlyBench } from "@/lib/removed-benches";
 import {
   loadAllBenchmarks,
   loadAllBenchmarksSafe,
@@ -175,15 +176,19 @@ export function toBenchIndexEntry(b: Benchmark): BenchIndexEntry {
  * what every caller used to load anyway. Never throws.
  */
 export const getBenchIndexSafe = cache(async (): Promise<BenchIndexEntry[]> => {
+  // The worker publishes from dev, so the blob lists benches production
+  // does not serve; a navigation surface built from it links to a 404.
+  // The related rail on /benchmarks/wallet-cost did exactly that with bench
+  // 310 (SEO audit 2026-10-30). Gate here so every caller inherits it.
   const fromBlob = await loadBenchIndexFromBlob().catch(() => null);
-  if (fromBlob && fromBlob.length >= 40) return fromBlob;
-  const all = await loadAllBenchmarksSafe();
-  return all.map(toBenchIndexEntry);
+  const rows =
+    fromBlob && fromBlob.length >= 40 ? fromBlob : (await loadAllBenchmarksSafe()).map(toBenchIndexEntry);
+  return rows.filter((b) => !isDevOnlyBench(b.slug));
 });
 
 export async function getBenchmark(
   slug: string,
-  options: { chain?: string; region?: string; kind?: string; venue?: string; tier?: string } = {}
+  options: { chain?: string; region?: string; kind?: string; venue?: string; bucket?: string; tier?: string } = {}
 ): Promise<Benchmark | undefined> {
   return loadBenchmark(slug, options);
 }
