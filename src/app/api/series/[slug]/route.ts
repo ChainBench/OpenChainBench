@@ -7,6 +7,7 @@ import {
   filterSig,
   loadSpecsUncached,
   panelMetricQuery,
+  publishesPanelOnView,
   specToBenchmark,
 } from "@/lib/materialize/load";
 import { readMaterialized } from "@/lib/materialize/store";
@@ -95,6 +96,9 @@ const getSeriesMapCached = unstable_cache(
         // and times out on large benches like hyperliquid-frontends).
         const panel = spec.metric_panels?.find((mp) => mp.id === panelId);
         if (!panel) return null;
+        // A per-chain panel has no pooled form, and this route is reachable
+        // by URL whether or not the board offers the view.
+        if (!publishesPanelOnView(panel, { chain })) return null;
         const promUrl = spec.prometheus?.url ?? process.env.PROMETHEUS_URL;
         if (!promUrl) return null;
         const prom = new Prometheus(promUrl);
@@ -151,6 +155,7 @@ const getSeriesMapCached = unstable_cache(
         if (panelId) {
           const panel = spec.metric_panels?.find((mp) => mp.id === panelId);
           if (!panel) return;
+          if (!publishesPanelOnView(panel, { chain })) return;
           const labelKey = panel.label_key ?? "builder";
           const sel = `${labelKey}="${escapePromLabelValue(p.slug)}"`;
           // Same raw spec, same reason as the 7d/30d path above.

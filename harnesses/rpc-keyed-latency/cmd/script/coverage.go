@@ -586,17 +586,22 @@ func runCoveragePass(ctx context.Context, eps []Endpoint) {
 	start := time.Now()
 	var served, unsupported, forbidden, unknown, unusable int
 
+	// One pass, one publication. See passbuffer.go: a matrix read halfway
+	// through a pass is a share over an incomplete set of cells, and after a
+	// restart that read 95.24 % where the finished pass read 95.92 %.
+	buf := &passBuffer{}
+
 	for _, e := range eps {
 		head := tips.get(e.Chain)
 		run := func(pr coverageProbe) string {
-			v := probeCoverage(ctx, e, pr, head)
+			v := probeCoverage(ctx, buf, e, pr, head)
 			select {
 			case <-ctx.Done():
 			case <-time.After(coveragePerCallSpacing):
 			}
 			return v
 		}
-		tally := coverEndpoint(e, run, ctx.Err)
+		tally := coverEndpoint(buf, e, run, ctx.Err)
 		served += tally.served
 		unsupported += tally.unsupported
 		forbidden += tally.forbidden
@@ -610,13 +615,23 @@ func runCoveragePass(ctx context.Context, eps []Endpoint) {
 		case <-ctx.Done():
 		case <-time.After(coveragePerCallSpacing):
 		}
-		probeGetLogsRange(ctx, e, head)
+		probeGetLogsRange(ctx, buf, e, head)
 	}
 
+	// A pass cut short by shutdown publishes nothing rather than publishing
+	// the half it managed, which is the whole point of the buffer.
+	if ctx.Err() != nil {
+		fmt.Printf("[coverage] pass interrupted after %s, publishing nothing: "+
+			"a partial matrix is a share over an incomplete set of cells\n",
+			time.Since(start).Truncate(time.Second))
+		return
+	}
+	cells, bounds := buf.flush()
+
 	fmt.Printf("[coverage] pass done in %s: served=%d unsupported=%d forbidden=%d "+
-		"unknown=%d endpoint_unusable=%d\n",
+		"unknown=%d endpoint_unusable=%d published=%d cells + %d window(s)\n",
 		time.Since(start).Truncate(time.Second),
-		served, unsupported, forbidden, unknown, unusable)
+		served, unsupported, forbidden, unknown, unusable, cells, bounds)
 }
 
 // coverTally counts one endpoint's outcomes.
@@ -627,7 +642,7 @@ type coverTally struct {
 // coverEndpoint walks one endpoint's probes and resolves its deferred auth
 // answers. The prober is injected so the resolution rule can be tested
 // without a network: the rule is the part that was wrong, not the HTTP.
-func coverEndpoint(e Endpoint, probe func(coverageProbe) string, canceled func() error) coverTally {
+func coverEndpoint(sink coverageSink, e Endpoint, probe func(coverageProbe) string, canceled func() error) coverTally {
 	var t coverTally
 	anyServed := false
 	var deferred []string
@@ -660,7 +675,7 @@ func coverEndpoint(e Endpoint, probe func(coverageProbe) string, canceled func()
 			// this method: a fact about the provider, hence a 0. Through
 			// recordVerdict like every other write, so this path cannot
 			// grow a latency: the round trip it has is a 403's.
-			recordVerdict(e, api, verdictForbidden, 0)
+			recordVerdict(sink, e, api, verdictForbidden, 0)
 			labelProbe(e, api, "forbidden")
 			t.forbidden++
 		} else {
@@ -687,7 +702,7 @@ func labelProbe(e Endpoint, api, result string) {
 // probeCoverage runs one question and records it. It returns the verdict so
 // the pass can report a summary and resolve deferred auth cases; the gauge is
 // written only for a definitive one.
-func probeCoverage(ctx context.Context, e Endpoint, pr coverageProbe, head uint64) string {
+func probeCoverage(ctx context.Context, sink coverageSink, e Endpoint, pr coverageProbe, head uint64) string {
 	label := func(result string) { labelProbe(e, pr.API, result) }
 
 	payload, ok := pr.body(head)
@@ -739,13 +754,13 @@ func probeCoverage(ctx context.Context, e Endpoint, pr coverageProbe, head uint6
 
 	switch verdict {
 	case verdictServed:
-		recordVerdict(e, pr.API, verdict, latencyMs)
+		recordVerdict(sink, e, pr.API, verdict, latencyMs)
 		label("ok")
 	case verdictUnsupported:
-		recordVerdict(e, pr.API, verdict, latencyMs)
+		recordVerdict(sink, e, pr.API, verdict, latencyMs)
 		label("unsupported")
 	case verdictForbidden:
-		recordVerdict(e, pr.API, verdict, latencyMs)
+		recordVerdict(sink, e, pr.API, verdict, latencyMs)
 		label("forbidden")
 	default:
 		label("unclassified")
@@ -766,15 +781,11 @@ func probeCoverage(ctx context.Context, e Endpoint, pr coverageProbe, head uint6
 //
 // A verdict this does not recognise writes nothing at all, which is the
 // behaviour the unknown cases depend on.
-func recordVerdict(e Endpoint, api, verdict string, latencyMs float64) {
-	switch verdict {
-	case verdictServed:
-		setCoverage(e, api, 1)
-		rpcAPILatency.WithLabelValues(
-			e.Provider, e.Chain, api, currentRegion, tierKeyed).Set(latencyMs)
-	case verdictUnsupported, verdictForbidden:
-		setCoverage(e, api, 0)
-	}
+// The publishing itself now lives on the sink (see passbuffer.go), so a
+// probe cannot write a gauge without its caller having chosen when that
+// write becomes visible.
+func recordVerdict(sink coverageSink, e Endpoint, api, verdict string, latencyMs float64) {
+	sink.verdict(e, api, verdict, latencyMs, time.Now())
 }
 
 // setCoverage publishes a verdict, and stamps when it was established.
@@ -786,12 +797,15 @@ func recordVerdict(e Endpoint, api, verdict string, latencyMs float64) {
 // keeps its last reading and the stamp stops moving, so a frozen cell
 // announces itself. A freshness column built on the probe counter would keep
 // counting failures and report a stale tick as fresh.
-func setCoverage(e Endpoint, api string, v float64) {
+// `at` is the moment the probe answered, not the moment this runs. A pass
+// publishes in one step at its end, and stamping here would date every cell
+// to the flush, shortening the age by up to the length of a pass.
+func setCoverage(e Endpoint, api string, v float64, at time.Time) {
 	rpcAPISupported.WithLabelValues(
 		e.Provider, e.Chain, api, currentRegion, tierKeyed).Set(v)
 	rpcAPILastProbe.WithLabelValues(
 		e.Provider, e.Chain, api, currentRegion, tierKeyed).
-		Set(float64(time.Now().Unix()))
+		Set(float64(at.Unix()))
 }
 
 // Un 402 n'est PAS ici, et le test le verifie maintenant.

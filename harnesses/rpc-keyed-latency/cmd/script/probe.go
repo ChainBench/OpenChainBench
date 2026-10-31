@@ -40,8 +40,8 @@ const (
 	// CoinStats credits incident).
 	quotaGuardRatio = 0.90
 
-	staleBlockGapEVM    uint64 = 20  // ~4 min on Ethereum
-	staleSlotGapSolana  uint64 = 300 // ~2 min of slots
+	staleBlockGapEVM   uint64 = 20  // ~4 min on Ethereum
+	staleSlotGapSolana uint64 = 300 // ~2 min of slots
 
 	// Ceiling on a single probe response. See the note at the read itself:
 	// one measured getProgramAccounts reply was 517 MB, on a box with four

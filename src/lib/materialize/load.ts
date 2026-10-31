@@ -274,7 +274,7 @@ export async function specToBenchmark(
       ? applyDimensionsToSpec(spec, activeLabels)
       : spec;
 
-  const live = await tryLoadLive(filteredSpec, isFiltered);
+  const live = await tryLoadLive(filteredSpec, isFiltered, activeLabels);
   if (live) {
     // Mark live entries explicitly so a missing `availability` reads as
     // "unknown" everywhere else in the code. Unresponsive rows keep
@@ -1107,6 +1107,28 @@ export function dimensionLabels(f: BenchmarkFilters): Record<string, string> {
   return activeFilterLabels(labelFilters(f));
 }
 
+/**
+ * Whether a panel is published on the view the reader is on.
+ *
+ * A panel that declares `per_chain_only` measures a per-chain quantity, and
+ * the all-chains view must not pool it: averaging milliseconds across chains
+ * averages different block times, state sizes and node fleets. Bench 311's
+ * getblock reads 1.94 ms of eth_call work on Ethereum and 468.56 on
+ * HyperEVM, so the pooled figure of 61.49 was almost entirely one chain.
+ *
+ * Exported and shared for the reason panelMetricQuery is: the panel values
+ * and the 7d/30d panel series are built by different code paths, and a rule
+ * written twice is a rule that holds in one of them. The series route is
+ * reachable by URL, so a panel withheld from the board would still have
+ * served a pooled chart.
+ */
+export function publishesPanelOnView(
+  panel: { per_chain_only?: boolean },
+  dims: { chain?: string },
+): boolean {
+  return !(panel.per_chain_only && !dims.chain);
+}
+
 /** The PromQL a metric panel runs under the reader's active filters.
  *
  * A panel declares a bare metric name or `metric{sel}`; normalise to the
@@ -1239,7 +1261,12 @@ export function unresponsiveResult(
 
 async function tryLoadLive(
   spec: Spec,
-  isFiltered = false
+  isFiltered = false,
+  /** The dimension values pinned on this view. Used to tell a chain tab from
+   *  the all-chains view, which `isFiltered` cannot: a tier pin is a filter
+   *  too. `activeFilterLabels` already drops a value of "all", so a missing
+   *  `chain` key here means the reader is on the pooled view. */
+  activeLabels: Record<string, string> = {}
 ): Promise<Pick<Benchmark, "results" | "extras" | "sampleSize" | "lastRunAt" | "metricPanels"> | null> {
   const url = spec.prometheus?.url ?? process.env.PROMETHEUS_URL;
   if (!url) return null;
@@ -1539,6 +1566,12 @@ async function tryLoadLive(
     // are omitted from the values map (rendered as "no data" by the UI).
     const metricPanels: MetricPanel[] = [];
     for (const panel of spec.metric_panels ?? []) {
+      // A per-chain quantity is not published pooled. Omitted rather than
+      // blanked, so the tab strip does not offer a view onto nothing, and
+      // so the worker's panel carry cannot resurrect the pooled figure: its
+      // loop walks the FRESH panels, and a panel absent from them is never
+      // re-added.
+      if (!publishesPanelOnView(panel, activeLabels)) continue;
       const values: Record<string, number> = {};
       const seriesByProvider: Record<string, (number | null)[]> = {};
       const seriesByProvider7d: Record<string, (number | null)[]> = {};
