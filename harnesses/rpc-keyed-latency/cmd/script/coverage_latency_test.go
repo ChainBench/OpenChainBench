@@ -33,7 +33,7 @@ func seriesCount(t *testing.T) int {
 func TestServedVerdictPublishesItsLatency(t *testing.T) {
 	e := Endpoint{Provider: "test-served", Chain: "ethereum", Kind: "evm"}
 	before := seriesCount(t)
-	recordVerdict(e, "eth_getlogs_topics", verdictServed, 241.5)
+	recordVerdict(directSink{}, e, "eth_getlogs_topics", verdictServed, 241.5)
 	if got := seriesCount(t) - before; got != 1 {
 		t.Fatalf("served should add exactly one latency series, added %d", got)
 	}
@@ -62,7 +62,7 @@ func TestRefusalPublishesNoLatency(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			e := Endpoint{Provider: "test-" + tc.name, Chain: "base", Kind: "evm"}
 			before := seriesCount(t)
-			recordVerdict(e, "trace_block", tc.verdict, 11.2)
+			recordVerdict(directSink{}, e, "trace_block", tc.verdict, 11.2)
 			if got := seriesCount(t) - before; got != 0 {
 				t.Fatalf("%s wrote %d latency series, want none: a refusal's round trip is the speed of saying no", tc.verdict, got)
 			}
@@ -84,7 +84,7 @@ func TestUnknownVerdictWritesNothing(t *testing.T) {
 	e := Endpoint{Provider: "test-unknown", Chain: "polygon", Kind: "evm"}
 	beforeLat := seriesCount(t)
 	beforeCap := testutil.CollectAndCount(rpcAPISupported)
-	recordVerdict(e, "archive_5m", verdictUnknown, 7.0)
+	recordVerdict(directSink{}, e, "archive_5m", verdictUnknown, 7.0)
 	if got := seriesCount(t) - beforeLat; got != 0 {
 		t.Fatalf("unknown verdict wrote %d latency series, want none", got)
 	}
@@ -100,7 +100,7 @@ func TestDeferredAuthResolutionCarriesNoLatency(t *testing.T) {
 	// published instant answer.
 	e := Endpoint{Provider: "test-deferred", Chain: "arbitrum", Kind: "evm"}
 	before := seriesCount(t)
-	recordVerdict(e, "debug_tracetransaction", verdictForbidden, 0)
+	recordVerdict(directSink{}, e, "debug_tracetransaction", verdictForbidden, 0)
 	if got := seriesCount(t) - before; got != 0 {
 		t.Fatalf("deferred resolution wrote %d latency series, want none", got)
 	}

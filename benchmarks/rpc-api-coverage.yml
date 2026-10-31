@@ -55,6 +55,8 @@ methodology:
   - "A window figure is published only when a provider refused the next rung, or when it cleared every rung. If one of our own calls failed above a rung that passed, the number we hold is a floor we reached rather than a limit they set, and the column stays blank rather than printing it as a limit. The ladder also treats a rate-limit reply as our problem and not a width refusal, since it says we asked too often rather than that the window is too wide."
   - "Two limits on the window columns. The figure is a floor rather than a ceiling when every width passed, and it is in blocks, so it ranks providers within a chain tab and not across chains: a block is twelve seconds on Ethereum and two on Base."
   - "On the all-chains tab the window columns take the narrowest window across the chains probed, not the widest. A provider that accepts a million blocks on one chain and five hundred on the other seven would otherwise read a million, which is the number you would plan around and never meet. The other columns on this board average because they are shares; these are limits, and a limit averages into something nobody is offered."
+  - "Each row carries the plan our own key is on, because here a 0 is a statement about the provider and a blank is a statement about us, and the two are indistinguishable without it. These come from our account records, not from a measurement. Two exceptions: the Alchemy tier IS measured, since that key has been capped since 24 October and serves 12 cells of 56, and the Quicknode plan is not recorded, so the row says so rather than guess."
+  - "The three measured views are published per chain and withheld on the all chains tab, for the reason this board already gives for its window columns: pooling milliseconds across chains averages different block times, state sizes and node fleets. The spread inside one provider is larger than the spread between providers, and getblock shows it, reading 1.94 ms of work on Ethereum against 468.56 on HyperEVM."
   - "A series name here carries its method. A twenty-four hour window cannot be told to start at a deployment, so when the two eth_call legs stopped being measured cold and their names stayed put, the window averaged two methods and published a figure belonging to neither. They are named for the warm connection they now ride, because renaming retires the old series and starts a new one, and that is what keeps a window inside one method."
   - "Three selectable views sit above the board and are measurements rather than shares: the eth_call work term, the archive read, and the address-filtered log query. The archive read and the log query are COLD numbers, so the cold latency arm is their comparable. The two eth_call legs are primed first instead: a handshake costs about 25 ms from the probe and their difference is a few milliseconds, so paying it inside the measurement made the noise larger than the signal."
   - "The work term withholds a non-positive difference instead of printing it. The heavy leg cannot answer faster than the light one, so a negative reading is the two legs' noise crossing rather than a measurement, and on a lower-is-better view it would rank the noisiest provider first. Measured on the first pass: one provider read minus 1.6 ms. A withheld cell reads as a dash and says the pair has not separated yet."
@@ -231,6 +233,14 @@ metric_panels:
     # reporte, et le board a republie -1,84 ms pendant que la garde
     # fonctionnait.
     carry: false
+    # Par chaine seulement. Mettre ces millisecondes en commun entre des
+    # chaines moyenne des temps de bloc, des tailles d'etat et des parcs
+    # de noeuds differents. Mesure du 2026-10-31, l'ecart A L'INTERIEUR
+    # d'un seul provider sur le terme de travail: getblock lit 1,94 ms sur
+    # ethereum et 468,56 sur hyperliquid, un facteur 242; quicknode 98;
+    # blockmachine 70. Un plancher sur le nombre de chaines n'y change
+    # rien, les trois sont mesures sur les huit.
+    per_chain_only: true
     description: "The compute term: the same eth_call through Multicall3, 50 state reads minus one, asked back to back on pooled connections. Each leg is primed first, so the handshake is paid outside the measurement and the difference is work. A value at or below zero is withheld."
   - id: archive_read_ms
     label: "Archive read"
@@ -238,6 +248,14 @@ metric_panels:
     metric: avg by (provider) (avg_over_time(rpc_api_latency_milliseconds{api="archive_5m",chain!="solana"}[24h]))
     unit: ms
     higher_is_better: false
+    # Par chaine seulement. Mettre ces millisecondes en commun entre des
+    # chaines moyenne des temps de bloc, des tailles d'etat et des parcs
+    # de noeuds differents. Mesure du 2026-10-31, l'ecart A L'INTERIEUR
+    # d'un seul provider sur le terme de travail: getblock lit 1,94 ms sur
+    # ethereum et 468,56 sur hyperliquid, un facteur 242; quicknode 98;
+    # blockmachine 70. Un plancher sur le nombre de chaines n'y change
+    # rien, les trois sont mesures sur les huit.
+    per_chain_only: true
     description: "Round trip of a balance read 5,000,000 blocks deep, the tip-versus-archive contrast a single latest-block probe cannot show. Cold by construction: DNS, TCP and TLS are paid on every one of these calls, so compare it with the cold latency arm and not the warm one."
   - id: getlogs_address_ms
     label: "getLogs, address"
@@ -245,6 +263,14 @@ metric_panels:
     metric: avg by (provider) (avg_over_time(rpc_api_latency_milliseconds{api="eth_getlogs_address",chain!="solana"}[24h]))
     unit: ms
     higher_is_better: false
+    # Par chaine seulement. Mettre ces millisecondes en commun entre des
+    # chaines moyenne des temps de bloc, des tailles d'etat et des parcs
+    # de noeuds differents. Mesure du 2026-10-31, l'ecart A L'INTERIEUR
+    # d'un seul provider sur le terme de travail: getblock lit 1,94 ms sur
+    # ethereum et 468,56 sur hyperliquid, un facteur 242; quicknode 98;
+    # blockmachine 70. Un plancher sur le nombre de chaines n'y change
+    # rien, les trois sont mesures sur les huit.
+    per_chain_only: true
     description: "Round trip of an address-filtered log query over five blocks. The boolean column says the shape is routed; this says what answering it costs, which is where an index shows or does not."
   - id: probe_age_hours
     label: "Hours since check"
@@ -281,6 +307,7 @@ prometheus:
 providers:
   - slug: quicknode
     name: Quicknode
+    tag: Plan not recorded
     queries:
       p50: 100 * sum by (provider) (rpc_api_supported{provider="quicknode",chain!="solana",api=~"eth_getlogs_(nofilter|address|topics)|debug_tracetransaction|trace_block|eth_getblockreceipts|archive_5m"}) / count by (provider) (rpc_api_supported{provider="quicknode",chain!="solana",api=~"eth_getlogs_(nofilter|address|topics)|debug_tracetransaction|trace_block|eth_getblockreceipts|archive_5m"})
       success: 100 * count by (provider) (rpc_api_supported{provider="quicknode",chain!="solana",api=~"eth_getlogs_(nofilter|address|topics)|debug_tracetransaction|trace_block|eth_getblockreceipts|archive_5m"}) / count by (provider) (count by (provider, chain, api) (rpc_api_probe_total{provider="quicknode",chain!="solana",api=~"eth_getlogs_(nofilter|address|topics)|debug_tracetransaction|trace_block|eth_getblockreceipts|archive_5m"}))
@@ -288,6 +315,7 @@ providers:
       ranked: abs((100 * sum(rpc_api_supported{provider="quicknode",chain!="solana",api=~"eth_getlogs_(nofilter|address|topics)|debug_tracetransaction|trace_block|eth_getblockreceipts|archive_5m"}) / count(rpc_api_supported{provider="quicknode",chain!="solana",api=~"eth_getlogs_(nofilter|address|topics)|debug_tracetransaction|trace_block|eth_getblockreceipts|archive_5m"})) - (100 * (sum(rpc_api_supported{provider="quicknode",chain!="solana",api=~"eth_getlogs_(nofilter|address|topics)|debug_tracetransaction|trace_block|eth_getblockreceipts|archive_5m"}) + (sum(avg by (chain, api) (rpc_api_supported{provider!="quicknode",chain!="solana",api=~"eth_getlogs_(nofilter|address|topics)|debug_tracetransaction|trace_block|eth_getblockreceipts|archive_5m"}) unless on(chain, api) rpc_api_supported{provider="quicknode",chain!="solana",api=~"eth_getlogs_(nofilter|address|topics)|debug_tracetransaction|trace_block|eth_getblockreceipts|archive_5m"}) or vector(0))) / count(count by (chain, api) (rpc_api_supported{chain!="solana",api=~"eth_getlogs_(nofilter|address|topics)|debug_tracetransaction|trace_block|eth_getblockreceipts|archive_5m"})))) < bool 1
   - slug: chainstack
     name: Chainstack
+    tag: Growth plan
     queries:
       p50: 100 * sum by (provider) (rpc_api_supported{provider="chainstack",chain!="solana",api=~"eth_getlogs_(nofilter|address|topics)|debug_tracetransaction|trace_block|eth_getblockreceipts|archive_5m"}) / count by (provider) (rpc_api_supported{provider="chainstack",chain!="solana",api=~"eth_getlogs_(nofilter|address|topics)|debug_tracetransaction|trace_block|eth_getblockreceipts|archive_5m"})
       success: 100 * count by (provider) (rpc_api_supported{provider="chainstack",chain!="solana",api=~"eth_getlogs_(nofilter|address|topics)|debug_tracetransaction|trace_block|eth_getblockreceipts|archive_5m"}) / count by (provider) (count by (provider, chain, api) (rpc_api_probe_total{provider="chainstack",chain!="solana",api=~"eth_getlogs_(nofilter|address|topics)|debug_tracetransaction|trace_block|eth_getblockreceipts|archive_5m"}))
@@ -295,6 +323,7 @@ providers:
       ranked: abs((100 * sum(rpc_api_supported{provider="chainstack",chain!="solana",api=~"eth_getlogs_(nofilter|address|topics)|debug_tracetransaction|trace_block|eth_getblockreceipts|archive_5m"}) / count(rpc_api_supported{provider="chainstack",chain!="solana",api=~"eth_getlogs_(nofilter|address|topics)|debug_tracetransaction|trace_block|eth_getblockreceipts|archive_5m"})) - (100 * (sum(rpc_api_supported{provider="chainstack",chain!="solana",api=~"eth_getlogs_(nofilter|address|topics)|debug_tracetransaction|trace_block|eth_getblockreceipts|archive_5m"}) + (sum(avg by (chain, api) (rpc_api_supported{provider!="chainstack",chain!="solana",api=~"eth_getlogs_(nofilter|address|topics)|debug_tracetransaction|trace_block|eth_getblockreceipts|archive_5m"}) unless on(chain, api) rpc_api_supported{provider="chainstack",chain!="solana",api=~"eth_getlogs_(nofilter|address|topics)|debug_tracetransaction|trace_block|eth_getblockreceipts|archive_5m"}) or vector(0))) / count(count by (chain, api) (rpc_api_supported{chain!="solana",api=~"eth_getlogs_(nofilter|address|topics)|debug_tracetransaction|trace_block|eth_getblockreceipts|archive_5m"})))) < bool 1
   - slug: getblock
     name: GetBlock
+    tag: Starter plan
     queries:
       p50: 100 * sum by (provider) (rpc_api_supported{provider="getblock",chain!="solana",api=~"eth_getlogs_(nofilter|address|topics)|debug_tracetransaction|trace_block|eth_getblockreceipts|archive_5m"}) / count by (provider) (rpc_api_supported{provider="getblock",chain!="solana",api=~"eth_getlogs_(nofilter|address|topics)|debug_tracetransaction|trace_block|eth_getblockreceipts|archive_5m"})
       success: 100 * count by (provider) (rpc_api_supported{provider="getblock",chain!="solana",api=~"eth_getlogs_(nofilter|address|topics)|debug_tracetransaction|trace_block|eth_getblockreceipts|archive_5m"}) / count by (provider) (count by (provider, chain, api) (rpc_api_probe_total{provider="getblock",chain!="solana",api=~"eth_getlogs_(nofilter|address|topics)|debug_tracetransaction|trace_block|eth_getblockreceipts|archive_5m"}))
@@ -302,6 +331,7 @@ providers:
       ranked: abs((100 * sum(rpc_api_supported{provider="getblock",chain!="solana",api=~"eth_getlogs_(nofilter|address|topics)|debug_tracetransaction|trace_block|eth_getblockreceipts|archive_5m"}) / count(rpc_api_supported{provider="getblock",chain!="solana",api=~"eth_getlogs_(nofilter|address|topics)|debug_tracetransaction|trace_block|eth_getblockreceipts|archive_5m"})) - (100 * (sum(rpc_api_supported{provider="getblock",chain!="solana",api=~"eth_getlogs_(nofilter|address|topics)|debug_tracetransaction|trace_block|eth_getblockreceipts|archive_5m"}) + (sum(avg by (chain, api) (rpc_api_supported{provider!="getblock",chain!="solana",api=~"eth_getlogs_(nofilter|address|topics)|debug_tracetransaction|trace_block|eth_getblockreceipts|archive_5m"}) unless on(chain, api) rpc_api_supported{provider="getblock",chain!="solana",api=~"eth_getlogs_(nofilter|address|topics)|debug_tracetransaction|trace_block|eth_getblockreceipts|archive_5m"}) or vector(0))) / count(count by (chain, api) (rpc_api_supported{chain!="solana",api=~"eth_getlogs_(nofilter|address|topics)|debug_tracetransaction|trace_block|eth_getblockreceipts|archive_5m"})))) < bool 1
   - slug: dwellir
     name: Dwellir
+    tag: Developer plan
     queries:
       p50: 100 * sum by (provider) (rpc_api_supported{provider="dwellir",chain!="solana",api=~"eth_getlogs_(nofilter|address|topics)|debug_tracetransaction|trace_block|eth_getblockreceipts|archive_5m"}) / count by (provider) (rpc_api_supported{provider="dwellir",chain!="solana",api=~"eth_getlogs_(nofilter|address|topics)|debug_tracetransaction|trace_block|eth_getblockreceipts|archive_5m"})
       success: 100 * count by (provider) (rpc_api_supported{provider="dwellir",chain!="solana",api=~"eth_getlogs_(nofilter|address|topics)|debug_tracetransaction|trace_block|eth_getblockreceipts|archive_5m"}) / count by (provider) (count by (provider, chain, api) (rpc_api_probe_total{provider="dwellir",chain!="solana",api=~"eth_getlogs_(nofilter|address|topics)|debug_tracetransaction|trace_block|eth_getblockreceipts|archive_5m"}))
@@ -309,6 +339,7 @@ providers:
       ranked: abs((100 * sum(rpc_api_supported{provider="dwellir",chain!="solana",api=~"eth_getlogs_(nofilter|address|topics)|debug_tracetransaction|trace_block|eth_getblockreceipts|archive_5m"}) / count(rpc_api_supported{provider="dwellir",chain!="solana",api=~"eth_getlogs_(nofilter|address|topics)|debug_tracetransaction|trace_block|eth_getblockreceipts|archive_5m"})) - (100 * (sum(rpc_api_supported{provider="dwellir",chain!="solana",api=~"eth_getlogs_(nofilter|address|topics)|debug_tracetransaction|trace_block|eth_getblockreceipts|archive_5m"}) + (sum(avg by (chain, api) (rpc_api_supported{provider!="dwellir",chain!="solana",api=~"eth_getlogs_(nofilter|address|topics)|debug_tracetransaction|trace_block|eth_getblockreceipts|archive_5m"}) unless on(chain, api) rpc_api_supported{provider="dwellir",chain!="solana",api=~"eth_getlogs_(nofilter|address|topics)|debug_tracetransaction|trace_block|eth_getblockreceipts|archive_5m"}) or vector(0))) / count(count by (chain, api) (rpc_api_supported{chain!="solana",api=~"eth_getlogs_(nofilter|address|topics)|debug_tracetransaction|trace_block|eth_getblockreceipts|archive_5m"})))) < bool 1
   - slug: blockmachine
     name: BlockMachine
+    tag: 5M request units a month
     queries:
       p50: 100 * sum by (provider) (rpc_api_supported{provider="blockmachine",chain!="solana",api=~"eth_getlogs_(nofilter|address|topics)|debug_tracetransaction|trace_block|eth_getblockreceipts|archive_5m"}) / count by (provider) (rpc_api_supported{provider="blockmachine",chain!="solana",api=~"eth_getlogs_(nofilter|address|topics)|debug_tracetransaction|trace_block|eth_getblockreceipts|archive_5m"})
       success: 100 * count by (provider) (rpc_api_supported{provider="blockmachine",chain!="solana",api=~"eth_getlogs_(nofilter|address|topics)|debug_tracetransaction|trace_block|eth_getblockreceipts|archive_5m"}) / count by (provider) (count by (provider, chain, api) (rpc_api_probe_total{provider="blockmachine",chain!="solana",api=~"eth_getlogs_(nofilter|address|topics)|debug_tracetransaction|trace_block|eth_getblockreceipts|archive_5m"}))
@@ -316,6 +347,7 @@ providers:
       ranked: abs((100 * sum(rpc_api_supported{provider="blockmachine",chain!="solana",api=~"eth_getlogs_(nofilter|address|topics)|debug_tracetransaction|trace_block|eth_getblockreceipts|archive_5m"}) / count(rpc_api_supported{provider="blockmachine",chain!="solana",api=~"eth_getlogs_(nofilter|address|topics)|debug_tracetransaction|trace_block|eth_getblockreceipts|archive_5m"})) - (100 * (sum(rpc_api_supported{provider="blockmachine",chain!="solana",api=~"eth_getlogs_(nofilter|address|topics)|debug_tracetransaction|trace_block|eth_getblockreceipts|archive_5m"}) + (sum(avg by (chain, api) (rpc_api_supported{provider!="blockmachine",chain!="solana",api=~"eth_getlogs_(nofilter|address|topics)|debug_tracetransaction|trace_block|eth_getblockreceipts|archive_5m"}) unless on(chain, api) rpc_api_supported{provider="blockmachine",chain!="solana",api=~"eth_getlogs_(nofilter|address|topics)|debug_tracetransaction|trace_block|eth_getblockreceipts|archive_5m"}) or vector(0))) / count(count by (chain, api) (rpc_api_supported{chain!="solana",api=~"eth_getlogs_(nofilter|address|topics)|debug_tracetransaction|trace_block|eth_getblockreceipts|archive_5m"})))) < bool 1
   - slug: alchemy
     name: Alchemy
+    tag: Free tier
     queries:
       p50: 100 * sum by (provider) (rpc_api_supported{provider="alchemy",chain!="solana",api=~"eth_getlogs_(nofilter|address|topics)|debug_tracetransaction|trace_block|eth_getblockreceipts|archive_5m"}) / count by (provider) (rpc_api_supported{provider="alchemy",chain!="solana",api=~"eth_getlogs_(nofilter|address|topics)|debug_tracetransaction|trace_block|eth_getblockreceipts|archive_5m"})
       success: 100 * count by (provider) (rpc_api_supported{provider="alchemy",chain!="solana",api=~"eth_getlogs_(nofilter|address|topics)|debug_tracetransaction|trace_block|eth_getblockreceipts|archive_5m"}) / count by (provider) (count by (provider, chain, api) (rpc_api_probe_total{provider="alchemy",chain!="solana",api=~"eth_getlogs_(nofilter|address|topics)|debug_tracetransaction|trace_block|eth_getblockreceipts|archive_5m"}))

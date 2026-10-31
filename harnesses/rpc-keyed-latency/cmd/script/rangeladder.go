@@ -333,7 +333,7 @@ func climb(ask func(span uint64) (accepted bool, definitive bool)) rangeOutcome 
 }
 
 // probeGetLogsRange ladders both shapes for one endpoint.
-func probeGetLogsRange(ctx context.Context, e Endpoint, head uint64) {
+func probeGetLogsRange(ctx context.Context, sink coverageSink, e Endpoint, head uint64) {
 	if e.Kind != "evm" || head == 0 {
 		return
 	}
@@ -406,9 +406,7 @@ func probeGetLogsRange(ctx context.Context, e Endpoint, head uint64) {
 				e.Provider, e.Chain, sh.Shape, out.calls)
 			continue
 		}
-		rpcGetLogsMaxRange.WithLabelValues(
-			e.Provider, e.Chain, sh.Shape, out.bound, currentRegion, tierKeyed).
-			Set(float64(out.best))
+		sink.rangeBound(e, sh.Shape, out.bound, float64(out.best))
 		labelProbe(e, "getlogs_range_"+sh.Shape, "ok")
 		// The floor case is worth distinguishing in the log, because the
 		// published number means something different there: the guard is

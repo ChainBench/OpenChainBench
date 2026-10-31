@@ -48,6 +48,7 @@ func intervalMultFor(provider string) int {
 	}
 	return 1
 }
+
 // "hyperliquid" is HyperEVM (chain slug shared with the no-key
 // hyperliquid-rpc bench); "arc" is Circle's Arc L1.
 var chainsEVM = []string{"ethereum", "base", "arbitrum", "bnb", "polygon", "robinhood", "hyperliquid", "arc"}
@@ -113,34 +114,44 @@ func envURL(provider, chain string) string {
 // region gets 1/3 of the provider's effective monthly quota).
 // Defaults derive from the 2026-07 free-tier audit, converted to
 // eth_getBlockByNumber-equivalent requests:
-//   infura     ~1.1M/mo total → 370k per region
-//   alchemy    ~1.5M/mo       → 450k
-//   chainstack  3M/mo         → 900k
-//   ankr       ~1M/mo         → 300k
-//   helius      1M/mo         → 300k
+//
+//	infura     ~1.1M/mo total → 370k per region
+//	alchemy    ~1.5M/mo       → 450k
+//	chainstack  3M/mo         → 900k
+//	ankr       ~1M/mo         → 300k
+//	helius      1M/mo         → 300k
+//
 // Override per provider with RPC_KEYED_BUDGET_<PROVIDER>.
 // At 120 s a (provider, chain) cell costs 21.6k requests per region per
 // month; nine chains are ~195k per region.
 var defaultBudgets = map[string]int64{
-	"infura":     370_000,
-	// alchemy / quicknode: 600k per region = ~28 chains at 120 s. This is a
-	// ceiling against a runaway loop, not a plan quota, which is why it sits
-	// above what either plan allows. The plan itself is free tier: the
-	// Alchemy key has been capped since 24 October on everything except
-	// HyperEVM and Robinhood Chain, which is what the (provider, chain)
-	// granularity in coverage.go exists to publish honestly. An earlier
-	// version of this comment named enterprise accounts that are no longer
-	// ours, and the spec and README both say free tier.
-	"alchemy":    600_000,
-	"quicknode":  600_000,
+	"infura": 370_000,
+	// Both 600k per region = ~28 chains at 120 s, a ceiling against a runaway
+	// loop rather than a quota. The two plans are NOT the same and an earlier
+	// version of this comment got that wrong in both directions: it first
+	// named enterprise accounts that are no longer ours, then called both
+	// free tier on evidence that covers only one.
+	//
+	// alchemy: free tier. Measured, not recorded: the key has been capped
+	// since 24 October on everything except HyperEVM and Robinhood Chain,
+	// which is 12 served cells of 56, and the (provider, chain) granularity
+	// in coverage.go exists to publish that honestly.
+	"alchemy": 600_000,
+	// quicknode: plan NOT recorded. The previous record named a Mobula
+	// account that is no longer ours, and nothing here establishes what
+	// replaced it. It serves 56 cells of 56 and a 10,000-block getLogs
+	// window, which is not what a free tier usually gives, but that is an
+	// inference and this file states records. Same handling as
+	// validationcloud below: say it is unknown rather than guess a tier.
+	"quicknode": 600_000,
 	// chainstack: Growth plan, 20M RU/month shared by three regions.
 	"chainstack": 2_000_000,
 	// getblock: Starter plan, 50M CU/month; eth_getBlockByNumber is 20 CU
 	// on the main EVM chains and 50 on Solana, so ~2.5M requests/month
 	// total is the real ceiling. 600k per region keeps a third in hand.
-	"getblock":   600_000,
-	"ankr":       300_000,
-	"helius":     300_000,
+	"getblock": 600_000,
+	"ankr":     300_000,
+	"helius":   300_000,
 	// blockmachine: 5M Request Units a month, one RU per call on
 	// eth_getBlockByNumber, shared by the three regions. Seven chains at the
 	// 120 s cadence cost 151k per region per month, so 454k of the plan, 9%
@@ -161,7 +172,7 @@ var defaultBudgets = map[string]int64{
 	// runaway guard, not a quota, and sits well inside the plan.
 	// Dwellir does not serve Solana, and a cell with no URL is simply
 	// skipped, so that chain stays at four providers with no special casing.
-	"dwellir":    1_000_000,
+	"dwellir": 1_000_000,
 	// validationcloud: plan not yet disclosed by the account holder, so this
 	// is a runaway guard rather than a quota. Six chains at the 120 s cadence
 	// cost 130k per region per month; raise or lower it once the plan is

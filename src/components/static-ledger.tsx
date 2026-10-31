@@ -162,6 +162,18 @@ export function StaticLedger({
                       {declaredReason(r)}
                     </span>
                   )}
+                  {/* The spec's per-provider qualifier. The interactive row
+                      has shown it since the ledger existed (ledger-table.tsx)
+                      and this table never did, so 1,710 tagged rows across
+                      256 specs carried it for a reader and not for a crawler:
+                      "On-chain DEX price", "RFQ or batch", and on bench 311
+                      the plan each key is on, which is what separates a 0
+                      (their product) from a blank (our access). */}
+                  {r.tag && (
+                    <span className="ml-2 text-[11px] uppercase tracking-[0.14em] text-ink-faint">
+                      {r.tag}
+                    </span>
+                  )}
                 </td>
                 <td className="py-2 px-3 text-right tabular-nums">{fmtHeadline(r.ms.p50, benchmark, r.slug)}</td>
                 {showTail && <td className="py-2 px-3 text-right tabular-nums text-ink-soft">{fmtUnit(r.ms.p90, benchmark.unit)}</td>}

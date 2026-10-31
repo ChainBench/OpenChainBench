@@ -40,3 +40,25 @@ describe("the crawler-facing ledger", () => {
     expect(SRC).toContain("valueColumnLabel(benchmark)");
   });
 });
+
+describe("the per-provider qualifier", () => {
+  // The interactive row has rendered `tag` since the ledger existed; this
+  // table never did. 1,710 tagged rows across 256 specs therefore carried
+  // their qualifier for a reader and not for a crawler, including the plan
+  // each key is on, which on bench 311 is what separates a 0 (the provider
+  // declined) from a blank (our own access failed).
+  test("renders in the crawler-facing table too", () => {
+    expect(SRC).toContain("{r.tag && (");
+  });
+
+  test("sits in the provider cell, beside the name", () => {
+    // From the provider link to the end of that cell. Sliced on the link
+    // rather than on a column name: fmtHeadline appears in the imports
+    // first, so searching for it produced an empty slice and a test that
+    // measured nothing.
+    const from = SRC.indexOf("const href = rowHref");
+    const cell = SRC.slice(from, SRC.indexOf("</td>", from));
+    expect(from).toBeGreaterThan(0);
+    expect(cell).toContain("r.tag");
+  });
+});
