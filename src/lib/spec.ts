@@ -706,7 +706,12 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       fails closed on a null, the static table follows ledger_columns,
   //       and the badge says verdict rather than asked. Moves with
   //       all-benchmarks-v127 and bench-filters-v72.
-  ["bench-unfiltered-v134", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v135: the three measured views are per-chain (per_chain_only), the plan
+  //       each key is on is published as a provider tag, the crawler-facing
+  //       table renders tags at all, and a long methodology is split so the
+  //       board is not buried under it. The cached entry holds panel values
+  //       and provider tags, so the old one keeps the pooled views.
+  ["bench-unfiltered-v135", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -1012,7 +1017,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v125: lockstep with bench-unfiltered-v132 (cost bench audit round).
   // v126: lockstep with bench-unfiltered-v133 (panel carry).
   // v127: lockstep with bench-unfiltered-v134 (bench 311 audit round).
-  ["all-benchmarks-v127", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v128: lockstep with bench-unfiltered-v135 (per-chain views, plans).
+  ["all-benchmarks-v128", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1209,7 +1215,8 @@ const loadBenchmarkFiltered = unstable_cache(
   // v70: lockstep with bench-unfiltered-v132 (cost bench audit round).
   // v71: lockstep with bench-unfiltered-v133 (panel carry).
   // v72: lockstep with bench-unfiltered-v134 (bench 311 audit round).
-  ["bench-filters-v72", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v73: lockstep with bench-unfiltered-v135 (per-chain views, plans).
+  ["bench-filters-v73", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 

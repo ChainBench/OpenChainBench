@@ -255,13 +255,17 @@ func StartHeavyLane(ctx context.Context) {
 			var paired int
 			for _, e := range eps {
 				head := tips.get(e.Chain)
-				light := probeCoverage(ctx, e, ethCallProbe(lightCallAPI, lightCallSubCalls), head)
+				// directSink, not the pass buffer: these readings are a
+				// measurement on its own cadence rather than matrix cells,
+				// and this lane is a separate goroutine, so sharing the
+				// pass's buffer would be a data race.
+				light := probeCoverage(ctx, directSink{}, e, ethCallProbe(lightCallAPI, lightCallSubCalls), head)
 				select {
 				case <-ctx.Done():
 					return
 				case <-time.After(coveragePerCallSpacing):
 				}
-				heavy := probeCoverage(ctx, e, ethCallProbe(heavyCallAPI, heavyCallSubCalls), head)
+				heavy := probeCoverage(ctx, directSink{}, e, ethCallProbe(heavyCallAPI, heavyCallSubCalls), head)
 				// Only a pair is useful: a heavy reading whose light partner
 				// failed has no reference to be a difference from.
 				if light == verdictServed && heavy == verdictServed {

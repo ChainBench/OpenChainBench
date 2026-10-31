@@ -22,6 +22,7 @@ import {
   PaymasterCostGrid,
 } from "@/components/cost-calculators-lazy";
 import { linkifyParts } from "@/lib/linkify";
+import { splitMethodology } from "@/lib/methodology-split";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { ChainHeadingsSummary } from "@/components/chain-headings-summary";
 import { CompareThisBench } from "@/components/compare-this-bench";
@@ -247,6 +248,45 @@ export async function generateMetadata({
   };
 }
 
+/** The methodology bullets, rendered the same way wherever they appear.
+ *
+ *  Extracted because they now appear twice: the lead bullets above the board
+ *  and the remainder below it. See METHODOLOGY_SPLIT_WORDS. */
+function MethodologyBullets({ bullets }: { bullets: string[] }) {
+  if (bullets.length === 0) return null;
+  return (
+    <ul className="mt-4 space-y-2 border-t border-ink/10 pt-4 max-w-3xl">
+      {bullets.map((bullet, i) => (
+        <li
+          key={i}
+          className="flex gap-2.5 text-sm leading-relaxed text-ink-soft break-words"
+        >
+          <span aria-hidden className="text-ink-faint select-none">
+            &middot;
+          </span>
+          <span>
+            {linkifyParts(bullet).map((part, j) =>
+              part.kind === "link" ? (
+                <a
+                  key={j}
+                  href={part.href}
+                  target="_blank"
+                  rel="noopener"
+                  className="underline decoration-ink/25 underline-offset-2 hover:decoration-ink/60"
+                >
+                  {part.label}
+                </a>
+              ) : (
+                <span key={j}>{part.value}</span>
+              ),
+            )}
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export default async function BenchmarkPage({
   params,
 }: {
@@ -365,6 +405,11 @@ export default async function BenchmarkPage({
   const benchmark = aggregate;
 
   const isDraft = benchmark.status === "draft";
+  // A long methodology is split so the board is not buried under it in
+  // DOM order. See splitMethodology for the measurement that motivated it.
+  const { lead: leadBullets, notes: methodologyNotes } = splitMethodology(
+    benchmark.methodology,
+  );
   const isAwaiting = isDraft && benchmark.editorialStatus === "live";
   // Insufficient: editorially live, runtime might say "live" too, but the
   // shared predicate decided no provider has a usable p50. Drives the
@@ -982,7 +1027,12 @@ export default async function BenchmarkPage({
 
       {/* Methodology - expanded by default so readers can verify the
           measurement before reading the numbers. Collapsible for repeat
-          visitors who already know the harness. */}
+          visitors who already know the harness.
+
+          A long methodology is SPLIT rather than shortened: the lead bullets
+          stay here and the remainder moves below the board, because a text
+          extractor reads in DOM order and bench 311's Results heading sat at
+          word 1,986 of 2,898 (SEO audit 2026-10-30). */}
       {!isDraft && (
         <details
           open
@@ -1011,37 +1061,7 @@ export default async function BenchmarkPage({
                 upstream they read from and its URL, which is how seven
                 benches came to be built on tehcscreener's free API while
                 linking to it nowhere. */}
-            {benchmark.methodology.length > 0 && (
-              <ul className="mt-4 space-y-2 border-t border-ink/10 pt-4 max-w-3xl">
-                {benchmark.methodology.map((bullet, i) => (
-                  <li
-                    key={i}
-                    className="flex gap-2.5 text-sm leading-relaxed text-ink-soft break-words"
-                  >
-                    <span aria-hidden className="text-ink-faint select-none">
-                      &middot;
-                    </span>
-                    <span>
-                      {linkifyParts(bullet).map((part, j) =>
-                        part.kind === "link" ? (
-                          <a
-                            key={j}
-                            href={part.href}
-                            target="_blank"
-                            rel="noopener"
-                            className="underline decoration-ink/25 underline-offset-2 hover:decoration-ink/60"
-                          >
-                            {part.label}
-                          </a>
-                        ) : (
-                          <span key={j}>{part.value}</span>
-                        ),
-                      )}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
+            <MethodologyBullets bullets={leadBullets} />
           </div>
         </details>
       )}
@@ -1178,6 +1198,29 @@ export default async function BenchmarkPage({
             ))}
           </div>
         </section>
+      )}
+
+      {/* The rest of a long methodology, below the board rather than above
+          it. Closed by default: a reader who wanted the method has already
+          read the lead bullets, and a reader who wants the detail is
+          deliberately looking for it. The heading says how much is in
+          here, so it does not read as a hidden section. */}
+      {!isDraft && methodologyNotes.length > 0 && (
+        <details id="methodology-notes" className="mt-8 group card-soft px-5 py-1">
+          <summary className="flex cursor-pointer items-center justify-between py-3 list-none">
+            <h2 className="label-mono text-ink">
+              Methodology notes ({methodologyNotes.length} more)
+            </h2>
+            <ChevronDown
+              size={16}
+              strokeWidth={2}
+              className="text-ink-muted transition-transform group-open:rotate-180"
+            />
+          </summary>
+          <div className="pb-4 pt-1">
+            <MethodologyBullets bullets={methodologyNotes} />
+          </div>
+        </details>
       )}
 
       {/* Source code link. bottom of page. The URL goes 'github.com/Org/Repo/tree/main/harnesses/<slug>'

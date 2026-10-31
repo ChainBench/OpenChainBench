@@ -58,7 +58,7 @@ func TestLadderReadsARefusalCarriedByAStatus(t *testing.T) {
 	defer srv.Close()
 
 	e := Endpoint{Provider: "wiretest", Chain: "wirechain", Kind: "evm", URL: srv.URL}
-	probeGetLogsRange(context.Background(), e, 30_000_000)
+	probeGetLogsRange(context.Background(), directSink{}, e, 30_000_000)
 
 	for _, shape := range []string{"address", "topics"} {
 		got := testutil.ToFloat64(rpcGetLogsMaxRange.WithLabelValues(

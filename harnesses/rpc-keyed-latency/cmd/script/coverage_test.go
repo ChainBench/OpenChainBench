@@ -3,6 +3,7 @@ package main
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus/testutil"
 )
@@ -326,7 +327,7 @@ func TestDeferredAuthIsScopedToTheEndpointNotTheProvider(t *testing.T) {
 
 	// Endpoint where our access is gone: every probe returns an auth status.
 	before := testutil.CollectAndCount(rpcAPISupported)
-	tally := coverEndpoint(evm, func(coverageProbe) string {
+	tally := coverEndpoint(directSink{}, evm, func(coverageProbe) string {
 		return verdictAuthDeferred
 	}, nil)
 	after := testutil.CollectAndCount(rpcAPISupported)
@@ -343,7 +344,7 @@ func TestDeferredAuthIsScopedToTheEndpointNotTheProvider(t *testing.T) {
 	evm2 := Endpoint{Provider: "testprov", Chain: "workingchain", Kind: "evm", URL: "http://y"}
 	first := true
 	before = testutil.CollectAndCount(rpcAPISupported)
-	tally = coverEndpoint(evm2, func(coverageProbe) string {
+	tally = coverEndpoint(directSink{}, evm2, func(coverageProbe) string {
 		if first {
 			first = false
 			return verdictServed
@@ -384,13 +385,13 @@ func TestFreshnessStampAndVerdictAlwaysMoveTogether(t *testing.T) {
 		{"stamp-unknown", verdictUnknown},     // no write
 	}
 	for _, s := range seq {
-		coverEndpoint(Endpoint{
+		coverEndpoint(directSink{}, Endpoint{
 			Provider: "stampprov", Chain: s.chain, Kind: "evm", URL: "http://z",
 		}, func(coverageProbe) string { return s.verdict }, nil)
 	}
 	// And one endpoint whose credential works, so its deferrals DO write.
 	first := true
-	coverEndpoint(Endpoint{
+	coverEndpoint(directSink{}, Endpoint{
 		Provider: "stampprov", Chain: "stamp-mixed", Kind: "evm", URL: "http://y",
 	}, func(coverageProbe) string {
 		if first {
@@ -412,7 +413,7 @@ func TestFreshnessStampAndVerdictAlwaysMoveTogether(t *testing.T) {
 
 	// setCoverage is the only writer, so it must do both.
 	e := Endpoint{Provider: "stampprov", Chain: "stamp-direct", Kind: "evm"}
-	setCoverage(e, "probe_api", 1)
+	setCoverage(e, "probe_api", 1, time.Now())
 	if got := testutil.CollectAndCount(rpcAPISupported); got != supported+1 {
 		t.Fatalf("setCoverage did not publish a verdict (%d -> %d)", supported, got)
 	}

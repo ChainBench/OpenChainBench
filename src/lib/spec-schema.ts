@@ -804,6 +804,22 @@ export const SpecSchema = z
            *  1.84 ms back on the board, where a lower-is-better view ranks
            *  it first. */
           carry: z.boolean().optional(),
+          /** True when the panel measures a per-chain quantity, so the
+           *  all-chains view must not publish a pooled version of it.
+           *
+           *  Pooling a latency across chains averages different block
+           *  times, state sizes and node fleets into one number. Bench 311's
+           *  methodology already says this of its window columns ("providers
+           *  are comparable within a chain tab, across chains they are
+           *  not"), and the three measured views were publishing exactly
+           *  that pooled figure. Measured 2026-10-31, per-chain spread
+           *  INSIDE one provider on the eth_call work term: getblock 1.94 ms
+           *  on ethereum against 468.56 on hyperliquid, a factor of 242;
+           *  quicknode a factor of 98; blockmachine 70. A chain-count floor
+           *  does not help, because all three are measured on all 8 chains.
+           *  The panel is omitted from the unfiltered view rather than
+           *  blanked, so no tab opens onto nothing. */
+          per_chain_only: z.boolean().optional(),
         })
       )
       // Cap covers visible tabs plus data-only window panels (revenue,
