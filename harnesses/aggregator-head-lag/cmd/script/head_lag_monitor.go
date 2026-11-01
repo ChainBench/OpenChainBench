@@ -322,13 +322,61 @@ func getChainNameFromBlockchain(blockchain string) string {
 // Codex WebSocket Monitor (API key)
 // ============================================================================
 
-// Standard Codex endpoint, used for every chain except Solana. Solana reads
-// from Codex's edge node instead (Config.CodexSolanaWSURL).
+// Standard Codex endpoint, used for every chain except Solana, Base and
+// Robinhood. Those read from Codex's edge nodes instead
+// (Config.CodexSolanaWSURL, Config.CodexBaseWSURL, Config.CodexRobinhoodWSURL).
 const codexWSURL = "wss://graph.codex.io/graphql"
+
+// codexSocket is one Codex connection and the pools it subscribes.
+type codexSocket struct {
+	name     string
+	endpoint string
+	pools    []HeadLagPool
+}
+
+// codexSocketPlan splits the pools across Codex endpoints: each edge chain on
+// a socket of its own, every other chain on the standard endpoint. Base and
+// Robinhood share the iad node but not a socket, because an edge error ends
+// the whole socket and a silent pool trips the watchdog for all of it.
+func codexSocketPlan(config *Config, pools []HeadLagPool) []codexSocket {
+	solana := codexSocket{name: "solana", endpoint: config.CodexSolanaWSURL}
+	base := codexSocket{name: "base", endpoint: config.CodexBaseWSURL}
+	robinhood := codexSocket{name: "robinhood", endpoint: config.CodexRobinhoodWSURL}
+	graph := codexSocket{name: "graph", endpoint: codexWSURL}
+	for _, pool := range pools {
+		switch pool.ChainName {
+		case "solana":
+			solana.pools = append(solana.pools, pool)
+		case "base":
+			base.pools = append(base.pools, pool)
+		case "robinhood":
+			robinhood.pools = append(robinhood.pools, pool)
+		default:
+			graph.pools = append(graph.pools, pool)
+		}
+	}
+	return []codexSocket{solana, base, robinhood, graph}
+}
+
+// codexProcessed reports whether a chain subscribes at Codex's Processed
+// commitment level on an endpoint. Robinhood reads it only on an edge node:
+// graph.codex.io accepts a Processed subscription there and delivers nothing
+// (0 events in 150 s, 2026-10-27), so rolling Robinhood back to graph also
+// rolls it back to the default level.
+func codexProcessed(chain, endpoint string) bool {
+	switch chain {
+	case "solana", "base":
+		return true
+	case "robinhood":
+		return endpoint != codexWSURL
+	default:
+		return false
+	}
+}
 
 // codexSockets folds the Codex connections into the one ws_connected
 // series the spec reads: 1 only while every socket is up, so a dropped
-// Solana edge socket is not hidden by a healthy one for the other chains.
+// edge socket is not hidden by a healthy one for the other chains.
 type codexSockets struct {
 	mu     sync.Mutex
 	region string
@@ -393,29 +441,23 @@ func runCodexHeadLagMonitor(config *Config, stopChan <-chan struct{}, wg *sync.W
 		return
 	}
 
-	// Solana reads from Codex's edge node; every other chain stays on the
-	// standard endpoint. One socket each, both on the same API key.
-	var edgePools, graphPools []HeadLagPool
-	for _, pool := range headLagPools {
-		if pool.ChainName == "solana" {
-			edgePools = append(edgePools, pool)
-		} else {
-			graphPools = append(graphPools, pool)
-		}
-	}
-	fmt.Printf("[HEAD-LAG][CODEX] Starting WebSocket monitor (Solana: %s, others: %s)...\n", config.CodexSolanaWSURL, codexWSURL)
+	// One socket per endpoint, all on the same API key.
+	plan := codexSocketPlan(config, headLagPools)
+	fmt.Printf("[HEAD-LAG][CODEX] Starting WebSocket monitor (Solana: %s, Base: %s, Robinhood: %s, others: %s)...\n", config.CodexSolanaWSURL, config.CodexBaseWSURL, config.CodexRobinhoodWSURL, codexWSURL)
 
-	sockets := newCodexSockets(config.MonitorRegion, "edge", "graph")
+	names := make([]string, len(plan))
+	for i, socket := range plan {
+		names[i] = socket.name
+	}
+	sockets := newCodexSockets(config.MonitorRegion, names...)
 	var connections sync.WaitGroup
-	connections.Add(2)
-	go func() {
-		defer connections.Done()
-		runCodexSocket(config, stopChan, sockets, "edge", config.CodexSolanaWSURL, edgePools)
-	}()
-	go func() {
-		defer connections.Done()
-		runCodexSocket(config, stopChan, sockets, "graph", codexWSURL, graphPools)
-	}()
+	for _, socket := range plan {
+		connections.Add(1)
+		go func() {
+			defer connections.Done()
+			runCodexSocket(config, stopChan, sockets, socket.name, socket.endpoint, socket.pools)
+		}()
+	}
 	connections.Wait()
 }
 
@@ -528,13 +570,15 @@ func connectAndMonitorCodex(config *Config, stopChan <-chan struct{}, sockets *c
 
 		var subMsg map[string]interface{}
 
-		// Solana and Base: commitmentLevel Processed. On Solana that is the
-		// pre-confirmation stage (it replaced onUnconfirmedEventsCreated,
-		// deprecated by Codex on 2026-04-20); on Base it is the flashblock
-		// preconfirmation, the same stage the Base reference clock reads.
-		// Verified delivering with an API key on both endpoints 2026-10-20.
+		// Solana, Base and (on the edge node) Robinhood: commitmentLevel
+		// Processed. On Solana that is the pre-confirmation stage (it
+		// replaced onUnconfirmedEventsCreated, deprecated by Codex on
+		// 2026-04-20); on Base it is the flashblock preconfirmation, the
+		// same stage the Base reference clock reads. Verified delivering
+		// with an API key on both endpoints 2026-10-20, Base on the iad
+		// edge node 2026-10-22 and Robinhood there 2026-10-27.
 		// Do not assume other EVM networks support this level.
-		if pool.ChainName == "solana" || pool.ChainName == "base" {
+		if codexProcessed(pool.ChainName, endpoint) {
 			poolID := fmt.Sprintf("%s:%d", pool.Address, pool.NetworkID)
 			subMsg = map[string]interface{}{
 				"type": "subscribe",
