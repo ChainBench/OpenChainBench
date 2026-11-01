@@ -29,22 +29,14 @@ import {
 // venue-type selector as the reference next to the measured rows.
 export type PerpVenueType = "onchain" | "regulated" | "cex";
 
-/**
- * Venues whose traded notional is not the same quantity as the rest of the
- * cohort's, so they never lead a sentence that ranks the cohort on volume.
- *
- * Papertrade: its own spec says "single house LP, BTC and ETH only" and "the
- * four side columns are summed because every position faces the house". On
- * 2026-10-20 the hub published "Papertrade leads 28 tracked perp DEXes on
- * 30-day volume at $2623.64B", about twenty times the monthly volume implied
- * by Hyperliquid's $4.26B day, on two markets.
- *
- * Not a self-reporting flag: every venue here self-reports its volume, which
- * perp-daily-volume states in its own abstract. The distinction is what the
- * number counts, not where it comes from. The row keeps its figure in the
- * table, next to the CEX reference that is excluded for the adjacent reason.
- */
-export const NOTIONAL_NOT_COMPARABLE = new Set(["papertrade"]);
+// Re-exported so server callers keep one import, and so the client can
+// take it from perp-notional-scope without pulling this module's
+// Prometheus client (and its node:dns guard) into the browser bundle.
+import { NOTIONAL_NOT_COMPARABLE } from "@/lib/perp-notional-scope";
+// Re-exported too: callers of this module should not have to know the
+// constant moved, and a bare `export ... from` would not put it in this
+// module's own scope, which two call sites below need.
+export { NOTIONAL_NOT_COMPARABLE };
 
 /**
  * Venues whose market count is measured but not comparable, so nothing on the

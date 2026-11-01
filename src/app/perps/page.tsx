@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { fetchPerpByAssetMatrix, fetchPerpCohort, perpVolumeLead, perpVolumeRanking } from "@/lib/perp-stats";
+import { fetchPerpByAssetMatrix, fetchPerpCohort, NOTIONAL_NOT_COMPARABLE, perpVolumeLead, perpVolumeRanking } from "@/lib/perp-stats";
 import { PerpHubTabs } from "@/components/perp-hub-tabs";
 import { pageMetadata } from "@/lib/page-metadata";
 import { safeJsonLd, buildBreadcrumbJsonLd, buildFaqPageJsonLd } from "@/lib/jsonld";
@@ -158,7 +158,12 @@ export default async function PerpsHubPage() {
         ],
       }
     : null;
-  const top15 = measured.slice(0, 15);
+  // Same exclusion as the table and the lede: this list is published as
+  // structured data, so a venue at position 1 here is a machine-readable
+  // ranking claim, and it named the venue the page's own headline does not.
+  const top15 = measured
+    .filter((v) => !NOTIONAL_NOT_COMPARABLE.has(v.slug))
+    .slice(0, 15);
   const itemListLd = cohort
     ? {
         "@context": "https://schema.org",
