@@ -29,6 +29,12 @@ type SortKey =
   | "activeMarkets"
   | "health";
 
+/** Open interest under which a volume-over-OI ratio says more about the
+ *  denominator than about the venue. Matches the floor /prediction-markets
+ *  uses on the same column, deliberately: two hubs publishing the same
+ *  quantity should not disagree about when it is readable. */
+const VOL_OI_FLOOR_USD = 500_000;
+
 export function PerpVenuesLeaderboard({ rows }: { rows: PerpVenueRow[] }) {
   const router = useRouter();
   const [sortKey, setSortKey] = useState<SortKey>("volume30d");
@@ -39,8 +45,22 @@ export function PerpVenuesLeaderboard({ rows }: { rows: PerpVenueRow[] }) {
   // bench ranks (0.3x to 3x is the order-book band, 8x and above the flag).
   // The column read 30-day volume over OI until 2026-09-23, thirty times
   // the bench's number under the same label.
+  //
+  // The floor is the same one /prediction-markets applies, for the same
+  // reason it states: below it a single position moves the ratio by tens of
+  // percent, and that hub's FAQ had been quoting a $38.6k book as the
+  // cohort's turnover leader. Here the column was sortable and put Nova
+  // first at 300.7x on $3,792 of open interest, against a cohort median of
+  // 0.58x, while perp-volume-oi-ratio, the bench this column mirrors, does
+  // not rank Nova at all. Measured before being written: it silences that
+  // one row and nothing else.
+  //
+  // Null, not zero: no reading rather than a small one, so the row sorts to
+  // the bottom under either direction instead of claiming a flat book.
   const ratio = (r: PerpVenueRow) =>
-    r.volume24h != null && r.openInterest != null && r.openInterest > 0
+    r.volume24h != null &&
+    r.openInterest != null &&
+    r.openInterest >= VOL_OI_FLOOR_USD
       ? r.volume24h / r.openInterest
       : null;
 

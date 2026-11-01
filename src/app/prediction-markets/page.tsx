@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { fetchPmCohort, type PmCohortSummary } from "@/lib/pm-stats";
+import { fetchPmCohort, PM_TURNOVER_FLOOR_USD, type PmCohortSummary } from "@/lib/pm-stats";
 import { AnswersForBench } from "@/components/answers-for-bench";
 import { PmHubTabs } from "@/components/pm-hub-tabs";
 import { pageMetadata } from "@/lib/page-metadata";
@@ -94,7 +94,10 @@ export default async function PredictionMarketsHubPage() {
   // Ranked venues only, matching the bench's own $500k floor: below it a
   // single position moves a venue by tens of percent, and the FAQ was
   // quoting Myriad's $38.6k book as the cohort's turnover leader.
-  const RANK_FLOOR_USD = 500_000;
+  // The same constant the computation uses, imported rather than retyped:
+  // this page prints the floor to the reader as a promise, and a second
+  // copy of the number is how the promise and the behaviour drift apart.
+  const RANK_FLOOR_USD = PM_TURNOVER_FLOOR_USD;
   const byTurnover = (cohort?.venues ?? [])
     .filter(
       (v) =>

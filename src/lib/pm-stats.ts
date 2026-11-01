@@ -20,6 +20,11 @@ import {
   writeCohortSnapshot,
 } from "@/lib/cohort-snapshot";
 
+/** Open interest under which 24h volume over open interest says more about
+ *  the denominator than about the venue. Exported so the page's own sentence
+ *  about the floor and the computation that applies it cannot drift apart. */
+export const PM_TURNOVER_FLOOR_USD = 500_000;
+
 export type PmVenueType = "onchain" | "offchain";
 
 export type PmVenueRow = {
@@ -308,7 +313,22 @@ export async function fetchPmCohortFresh(): Promise<PmCohortSummary | null> {
     // Turnover needs both legs from the same venue. Rain and Augur
     // publish an open interest with no volume; they get a dash, not a
     // zero, because a venue that reports nothing has not reported none.
-    if (r.volume24h != null && r.openInterest != null && r.openInterest > 0) {
+    // The floor, applied here rather than at a render site, so every consumer
+    // of turnover24h inherits it. /prediction-markets prints the rule for the
+    // reader ("venues below the $500k open-interest floor keep their figures
+    // but are not ranked") and only the two sentences honoured it: the table
+    // exposes turnover as a sortable column and was ranking Myriad at 22.19x
+    // on $9,784 of open interest, which is the venue that rule was written
+    // for. Below the floor a single position moves the ratio by tens of
+    // percent, so the honest reading is no reading.
+    //
+    // Only the ratio is withheld. Volume, open interest and market counts are
+    // untouched, which is the "keep their figures" half of the promise.
+    if (
+      r.volume24h != null &&
+      r.openInterest != null &&
+      r.openInterest >= PM_TURNOVER_FLOOR_USD
+    ) {
       r.turnover24h = r.volume24h / r.openInterest;
     }
     if (
