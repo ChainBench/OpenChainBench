@@ -78,7 +78,11 @@ var pending = &pendingQueue{}
 // The spec said BNB's chain-supplied timestamps sat "within roughly 60 ms
 // of the moment a trade is observable". The gap between the two series is
 // exactly that quantity, and it is 569 ms.
-var referenceChains = map[string]bool{"base": true, "bnb": true}
+// Base only. BNB moved to the race on 2026-11-01: its reference won 2.99%
+// of races and 91% of the fastest feeds' samples were discarded for
+// beating it. Base's reference wins 49.96% and discards 0.14%, which is
+// what a zero point that bounds the field looks like.
+var referenceChains = map[string]bool{"base": true}
 
 // tokenScopedAggregators cannot scope their subscription to a pool, so they
 // push every pool on a token and most of what they send is off-bench.

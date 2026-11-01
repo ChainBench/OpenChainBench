@@ -65,9 +65,18 @@ const (
 	raceMaxOpen      = 50000
 )
 
-// raceChains publishes head_lag_seconds as the lag behind the first
-// observation instead of the provider-timestamp figure.
-var raceChains = map[string]bool{"solana": true}
+// Chains whose headline is the lag behind the first feed to report, not
+// behind our node. Solana has always been here because no RPC WebSocket
+// we tested is fast enough to be a ruler. BNB joined on 2026-11-01 for
+// the measured reason above referenceChains; Robinhood joined the same
+// day because it was in NEITHER map, so each provider was being scored
+// against its own block timestamp while the methodology claimed archive
+// nodes (67,956 unmatched reference lookups, zero matched).
+//
+// raceLagSeconds floors at 1 ms rather than discarding, so a feed that
+// beats the ruler keeps its sample. That asymmetry with the reference
+// path is what produced the bias.
+var raceChains = map[string]bool{"solana": true, "bnb": true, "robinhood": true}
 
 type raceObs struct {
 	aggregator string
