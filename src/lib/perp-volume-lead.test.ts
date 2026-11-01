@@ -115,6 +115,35 @@ describe("the cohort total excludes what the ranking excludes", () => {
    * snapshot of open positions is the same measurement everywhere, and that
    * venue's $480.9M was 2.4 percent of the $19.73B total, not 90.
    */
+  /**
+   * A sentence naming the right leader does not help if the table under it
+   * sorts by the same number and puts a different venue at rank 1. That is
+   * what a reader screenshotted on 2026-11-01: Papertrade at rank 1 with
+   * $1267.73B against Hyperliquid's $161.8B, on two markets and $106M of open
+   * interest, under a headline naming Hyperliquid.
+   *
+   * Source assertions rather than a render: both surfaces are React trees fed
+   * from a cohort object, and what has to hold is that neither feeds a
+   * volume-sorted list the excluded slugs.
+   */
+  test("the surfaces that RANK by volume exclude the set, not only the ones that narrate", () => {
+    const tabs = readFileSync(
+      join(import.meta.dir, "..", "components", "perp-hub-tabs.tsx"), "utf8");
+    // The leaderboard sorts by volume30d by default, so its rows must be the
+    // filtered list and not the venue-type filter alone.
+    expect(tabs).toContain("NOTIONAL_NOT_COMPARABLE");
+    expect(tabs).toContain("const ranked = shown.filter((v) => !NOTIONAL_NOT_COMPARABLE.has(v.slug));");
+    expect(tabs).toContain("<PerpVenuesLeaderboard rows={ranked} />");
+    expect(tabs).not.toContain("<PerpVenuesLeaderboard rows={shown} />");
+
+    // The ItemList is published as structured data: a position there is a
+    // machine-readable ranking claim.
+    const page = readFileSync(
+      join(import.meta.dir, "..", "app", "perps", "page.tsx"), "utf8");
+    const top15 = page.slice(page.indexOf("const top15"), page.indexOf("const itemListLd"));
+    expect(top15).toContain("NOTIONAL_NOT_COMPARABLE");
+  });
+
   test("the two counts differ, and each sentence takes the one it means", () => {
     const stats = readFileSync(join(import.meta.dir, "perp-stats.ts"), "utf8");
     // The sum skips the named set; the coverage count does not.
