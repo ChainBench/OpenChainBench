@@ -85,6 +85,7 @@ methodology:
   - "Metric: gauge `head_lag_seconds`, scraped every 30 seconds. Aggregated over the 24-hour window using `quantile_over_time`."
   - "Success rate: presence ratio. Share of expected sampling slots where a value was actually emitted (2,880 expected per provider per day at the 30 s scrape). 100% means the aggregator's feed was reachable for the full window."
   - "Coverage is not the same as presence. Birdeye's stream carries part of the bench pool's flow rather than all of it: 106 of 442 and 13 of 44 pool swaps over two Base windows, about a quarter. Its percentiles therefore describe the trades it does report, and the presence ratio above measures whether the feed was reachable, not how much of the pool it covered."
+  - "There is no combined view across chains, and the headline is Base. Base is scored against our own node, so its figure is a latency; Solana, BNB Chain and Robinhood Chain are scored as a race, where the winner reads 1 ms because it is zero behind itself. A mean of the four moved when a feed won more races, not when it got faster. Read one chain at a time, and the raced chains through First to report."
   - "Cardinality: four aggregators on four chains plus two on three (OKX, Birdeye) is 22 aggregator-chain pairs × 3 regions = 66 active series."
   - "Probe placement: the three probes run in their named regions on Railway (europe-west4, us-east4, asia-southeast1). Until 2026-09-15 all three ran in asia-southeast1 under regional labels; region columns before that date are three Singapore vantage points."
   - "Codex endpoints: Solana reads Codex's Frankfurt edge node (`fra.edge.codex.io`), Base and Robinhood Chain `iad.edge.codex.io`, from all three regions; BNB Chain reads the standard `graph.codex.io` endpoint. Base and Robinhood Chain figures before the move to `iad.edge.codex.io` read `graph.codex.io`."
@@ -163,9 +164,15 @@ faq:
 # single cross-chain mean before prom.scalar reads result[0]. When a
 # chain filter is injected (e.g. chain="base"), avg by (aggregator)
 # collapses the 3 region series instead — so the fix works both ways.
+# The headline is pinned to Base because Base is the only chain here whose
+# figure is a latency. Solana, BNB Chain and Robinhood Chain are scored as a
+# race between feeds, where the winner reads 1 ms by construction, so a mean
+# taken across all four averages a lag against our node with three lags
+# against whichever feed happened to arrive first. That mean is not a
+# quantity, which is why the All chains view is gone rather than filtered.
+aggregate_filters: { chain: base }
 dimensions:
   chain:
-    - { value: all,       label: All chains }
     - { value: base,      label: Base }
     - { value: bnb,       label: BNB Chain }
     - { value: solana,    label: Solana }
