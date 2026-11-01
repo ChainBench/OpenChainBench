@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { PerpVenuesLeaderboard } from "@/components/perp-venues-leaderboard";
-import { NOTIONAL_NOT_COMPARABLE } from "@/lib/perp-stats";
+import { NOTIONAL_NOT_COMPARABLE } from "@/lib/perp-notional-scope";
 import { PerpByAssetTable } from "@/components/perp-by-asset-table";
 import type { PerpAssetRow, PerpCohortSummary } from "@/lib/perp-stats";
 
