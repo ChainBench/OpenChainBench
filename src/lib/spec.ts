@@ -711,7 +711,11 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       table renders tags at all, and a long methodology is split so the
   //       board is not buried under it. The cached entry holds panel values
   //       and provider tags, so the old one keeps the pooled views.
-  ["bench-unfiltered-v135", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v136: Quicknode's plan is Build, confirmed by the account holder. The
+  //       row said "Plan not recorded" for three days, because the record it
+  //       replaced named an account that is no longer ours. A provider tag
+  //       lives in the cached entry, so the old one keeps the old text.
+  ["bench-unfiltered-v136", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -1018,7 +1022,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v126: lockstep with bench-unfiltered-v133 (panel carry).
   // v127: lockstep with bench-unfiltered-v134 (bench 311 audit round).
   // v128: lockstep with bench-unfiltered-v135 (per-chain views, plans).
-  ["all-benchmarks-v128", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v129: lockstep with bench-unfiltered-v136 (Quicknode Build plan).
+  ["all-benchmarks-v129", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1216,7 +1221,8 @@ const loadBenchmarkFiltered = unstable_cache(
   // v71: lockstep with bench-unfiltered-v133 (panel carry).
   // v72: lockstep with bench-unfiltered-v134 (bench 311 audit round).
   // v73: lockstep with bench-unfiltered-v135 (per-chain views, plans).
-  ["bench-filters-v73", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v74: lockstep with bench-unfiltered-v136 (Quicknode Build plan).
+  ["bench-filters-v74", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 

@@ -137,12 +137,12 @@ var defaultBudgets = map[string]int64{
 	// which is 12 served cells of 56, and the (provider, chain) granularity
 	// in coverage.go exists to publish that honestly.
 	"alchemy": 600_000,
-	// quicknode: plan NOT recorded. The previous record named a Mobula
-	// account that is no longer ours, and nothing here establishes what
-	// replaced it. It serves 56 cells of 56 and a 10,000-block getLogs
-	// window, which is not what a free tier usually gives, but that is an
-	// inference and this file states records. Same handling as
-	// validationcloud below: say it is unknown rather than guess a tier.
+	// quicknode: Build plan, confirmed by the account holder 2026-11-01. The
+	// record this replaces named a Mobula account that is no longer ours, and
+	// for three days the page said the plan was unrecorded rather than guess
+	// one. Build is a paid tier, which is consistent with what we measure (56
+	// cells of 56 and a 10,000-block getLogs window), though the measurement
+	// is what agrees with the record and not what established it.
 	"quicknode": 600_000,
 	// chainstack: Growth plan, 20M RU/month shared by three regions.
 	"chainstack": 2_000_000,
