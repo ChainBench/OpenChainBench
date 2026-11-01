@@ -1,0 +1,15 @@
+<svg width="400" height="400" viewBox="0 0 400 400" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="OKX">
+<!-- Vector replacement for okx.jpg, same mark and the same black ground so the
+     identity does not change: the JPEG is opaque, which put a white box around
+     the mark wherever the page is dark. Five rounded squares on a 3x3 grid,
+     the four corners and the centre. Geometry read off the 400x400 original:
+     76 px squares on an 84 px pitch starting at 78, which centres the group. -->
+<rect width="400" height="400" fill="#000000"/>
+<g fill="#FFFFFF">
+  <rect x="78" y="78" width="76" height="76" rx="10"/>
+  <rect x="246" y="78" width="76" height="76" rx="10"/>
+  <rect x="162" y="162" width="76" height="76" rx="10"/>
+  <rect x="78" y="246" width="76" height="76" rx="10"/>
+  <rect x="246" y="246" width="76" height="76" rx="10"/>
+</g>
+</svg>
