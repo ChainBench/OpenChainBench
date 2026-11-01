@@ -371,9 +371,33 @@ export async function fetchPmCohortFresh(): Promise<PmCohortSummary | null> {
  * requests; the worker keeps the Upstash blob fresh so the typical
  * render never touches Prom.
  */
+/**
+ * Re-apply the turnover floor to a cohort from any source.
+ *
+ * The computation in fetchPmCohortFresh is not enough: the KV snapshot is
+ * returned verbatim when one exists, and a blob written before the floor
+ * existed (or by a worker image that predates it) carries the old ratio. The
+ * page kept ranking Myriad at 22.19x on $9,784 while the fresh path was
+ * already clean.
+ *
+ * Idempotent and cheap, so it runs on every path rather than on the one that
+ * happened to be broken.
+ */
+function applyTurnoverFloor(c: PmCohortSummary): PmCohortSummary {
+  for (const v of c.venues) {
+    if (
+      v.turnover24h != null &&
+      (v.openInterest == null || v.openInterest < PM_TURNOVER_FLOOR_USD)
+    ) {
+      v.turnover24h = null;
+    }
+  }
+  return c;
+}
+
 async function fetchPmCohortRaw(): Promise<PmCohortSummary | null> {
   const snapshot = await readCohortSnapshot<PmCohortSummary>(PM_HUB_KEY);
-  if (snapshot) return snapshot.data;
+  if (snapshot) return applyTurnoverFloor(snapshot.data);
   const fresh = await fetchPmCohortFresh();
   if (fresh) {
     try {
@@ -386,7 +410,7 @@ async function fetchPmCohortRaw(): Promise<PmCohortSummary | null> {
       );
     }
   }
-  return fresh;
+  return fresh ? applyTurnoverFloor(fresh) : fresh;
 }
 
 const fetchPmCohortCached = unstable_cache(
