@@ -49,7 +49,7 @@ const ROUTES = [
   },
   {
     title: "You think our independence has been compromised",
-    body: "No paid tier, no sold ranking slots, no provider sponsorship in exchange for inclusion. If you spot a deviation from that, it is an integrity incident and it should not be filed in public first.",
+    body: "Rankings are not for sale: no provider can pay to enter a cohort, to change how it is measured, or to move in a table, and no methodology decision is taken for a commercial reason. If you spot a deviation from that, it is an integrity incident and it should not be filed in public first.",
     href: "https://github.com/ChainBench/OpenChainBench/security/advisories/new",
     cta: "File a private advisory",
   },
