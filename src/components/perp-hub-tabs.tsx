@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { PerpVenuesLeaderboard } from "@/components/perp-venues-leaderboard";
+import { NOTIONAL_NOT_COMPARABLE } from "@/lib/perp-stats";
 import { PerpByAssetTable } from "@/components/perp-by-asset-table";
 import type { PerpAssetRow, PerpCohortSummary } from "@/lib/perp-stats";
 
@@ -35,6 +36,13 @@ export function PerpHubTabs({
   const shown = cohort.venues.filter((v) =>
     kind === "all" ? true : kind === "cex" ? v.venueType === "cex" : v.venueType !== "cex",
   );
+  // The table sorts by 30-day volume, so a venue whose notional is not the
+  // cohort's quantity takes rank 1 simply by being leveraged. That is what put
+  // Papertrade above Hyperliquid at $1267B against $161B, on two markets, under
+  // a headline naming Hyperliquid. The lede and the Markdown view already
+  // exclude it; this is the surface that did not.
+  const ranked = shown.filter((v) => !NOTIONAL_NOT_COMPARABLE.has(v.slug));
+  const apart = shown.filter((v) => NOTIONAL_NOT_COMPARABLE.has(v.slug));
   const measuredCount = cohort.venues.filter((v) => v.venueType !== "cex").length;
   const cexCount = cohort.venues.length - measuredCount;
 
@@ -92,7 +100,28 @@ export function PerpHubTabs({
           )}
         </div>
       )}
-      {tab === "venues" && <PerpVenuesLeaderboard rows={shown} />}
+      {tab === "venues" && (
+        <>
+          <PerpVenuesLeaderboard rows={ranked} />
+          {apart.length > 0 && (
+            <section className="mt-8">
+              <h3 className="text-[11px] uppercase tracking-[0.14em] text-ink-faint">
+                Measured, not ranked on volume
+              </h3>
+              <p className="mt-2 max-w-3xl text-sm text-ink-muted">
+                Notional turnover on a single house LP at up to 1000x leverage
+                is not the quantity the rows above measure, so these venues are
+                excluded from the 30-day volume ranking and from the cohort
+                volume total. Their open interest is included: a snapshot of
+                open positions is the same measurement everywhere.
+              </p>
+              <div className="mt-3">
+                <PerpVenuesLeaderboard rows={apart} />
+              </div>
+            </section>
+          )}
+        </>
+      )}
       {tab === "by-asset" && <PerpByAssetTable rows={byAsset} />}
     </>
   );
