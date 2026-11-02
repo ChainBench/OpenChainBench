@@ -719,7 +719,11 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       asked on 2026-11-02 that answers on Robinhood Chain. A cached
   //       entry holds the provider set current when it was written, so
   //       without this the row never appears however good the data is.
-  ["bench-unfiltered-v137", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v138: bench 304 gains a Routing only column, the shortfall with each
+  //       provider's own declared fee removed. Panel values live in the
+  //       cached entry, so without this the column renders empty on every
+  //       bench already cached.
+  ["bench-unfiltered-v138", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -1028,7 +1032,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v128: lockstep with bench-unfiltered-v135 (per-chain views, plans).
   // v129: lockstep with bench-unfiltered-v136 (Quicknode Build plan).
   // v130: lockstep with bench-unfiltered-v137 (SushiSwap joins quote benches).
-  ["all-benchmarks-v130", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v131: lockstep with bench-unfiltered-v138 (Routing only column).
+  ["all-benchmarks-v131", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1227,7 +1232,7 @@ const loadBenchmarkFiltered = unstable_cache(
   // v72: lockstep with bench-unfiltered-v134 (bench 311 audit round).
   // v73: lockstep with bench-unfiltered-v135 (per-chain views, plans).
   // v74: lockstep with bench-unfiltered-v136 (Quicknode Build plan).
-  ["bench-filters-v75", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  ["bench-filters-v76", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 
