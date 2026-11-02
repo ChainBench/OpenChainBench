@@ -261,10 +261,46 @@ func hexNum(v uint64) string { return "0x" + strconv.FormatUint(v, 16) }
 // every pass.
 //
 // Deliberately NOT here, and the spec must render it as "not probed" rather
-// than as a zero: the Beacon API and archive blob sidecars. Those live on a
-// different base URL from the JSON-RPC endpoint, and our env carries only
-// the RPC URL. Emitting 0 for them would state that no provider serves the
-// Beacon API, which is false. They need their own env variables first.
+// than as a zero: the Beacon API and archive blob sidecars. The Beacon API is
+// the consensus layer's REST surface, not JSON-RPC, so it answers on a
+// different base URL and our env carries only the RPC URL.
+//
+// WHY THE REVIEW ASKED. A blob sidecar is kept by a consensus node for about
+// eighteen days (MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS). Past that the data is
+// gone unless the provider keeps it on purpose, so "archive beacon blobs" is a
+// real product difference for anyone indexing rollup data, and nothing on the
+// JSON-RPC side reveals it.
+//
+// WHERE EACH PROVIDER STANDS, measured or stated on 2026-11-02. Four of six
+// cannot be asked on the credential we hold, and the REASONS are not the same
+// kind of fact, which is exactly why none of them may be published as a 0:
+//
+//	quicknode     SERVES it on our own URL. Lighthouse/v8.2.3. Blob sidecars
+//	              answered at head-100, -216k, -1.3M, -2.6M, -3.9M and -5.3M
+//	              slots, so roughly two years, far past the retention window.
+//	chainstack    SERVES it on our own URL. Lighthouse/v8.3.1. Same depths,
+//	              with 1 to 2.9 MB bodies.
+//	getblock      Offered only as an add-on to a DEDICATED node, and they
+//	              decline to give a URL. Stated by their support, so this is
+//	              a fact about our plan and not about their product.
+//	alchemy       Their router answers "/eth/v1/node/version is not available
+//	              on the ETH_MAINNET". A refusal they state, on this endpoint.
+//	dwellir       Not found: the RPC host routes everything to JSON-RPC (a
+//	              POST to a Beacon path returns a JSON-RPC parse error) and
+//	              twelve plausible Beacon hostnames do not resolve. Their
+//	              public list of 110 networks has no Beacon entry, but that
+//	              list does not model endpoint variants either (it omits the
+//	              -archive and -full suffixes we already use), so this is
+//	              suggestive and not settled.
+//	blockmachine  Not found: Cloudflare answers 403 on every non-RPC path, so
+//	              their edge refuses before any provider logic runs, and no
+//	              derived hostname resolves. Not settled either.
+//
+// So two of six are measurable today with no new credential. Building the
+// column needs a Beacon base URL per provider, which only the account holder
+// can obtain, and the two "not settled" rows want a support answer the way
+// getblock's did. Emitting 0 for any of the four would state that they do not
+// serve the Beacon API, which is false for at least getblock and alchemy.
 var coverageProbes = []coverageProbe{
 	// The compute-bound call and the reference it is only meaningful
 	// against, first in the list because they have to run adjacent in the
