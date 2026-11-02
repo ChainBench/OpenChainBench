@@ -275,26 +275,45 @@ func hexNum(v uint64) string { return "0x" + strconv.FormatUint(v, 16) }
 // cannot be asked on the credential we hold, and the REASONS are not the same
 // kind of fact, which is exactly why none of them may be published as a 0:
 //
-//	quicknode     SERVES it on our own URL. Lighthouse/v8.2.3. Blob sidecars
-//	              answered at head-100, -216k, -1.3M, -2.6M, -3.9M and -5.3M
-//	              slots, so roughly two years, far past the retention window.
-//	chainstack    SERVES it on our own URL. Lighthouse/v8.3.1. Same depths,
-//	              with 1 to 2.9 MB bodies.
+//	quicknode     SERVES it on our own URL. Lighthouse/v8.2.3, and it delivers
+//	              the whole body: 5 of 5 complete reads at every depth tried.
+//	dwellir       SERVES it, on an UNLISTED host their support gave us, which
+//	              takes the same API key. Caplin/3.8.1. Complete bodies, 5 of
+//	              5, down to two years. The host segment is named after the
+//	              consensus CLIENT rather than the network, which is why
+//	              twelve guessed hostnames all failed to resolve: an unlisted
+//	              endpoint is asked for, not derived.
+//	chainstack    ANSWERS but does not deliver. Lighthouse/v8.3.1 replies 200
+//	              with a content-length and then closes the connection
+//	              mid-body: zero complete reads of fifteen, at three depths,
+//	              8 to 22 s before the drop. An earlier version of this note
+//	              recorded it as serving, because a 3 KB prefix of its reply
+//	              looks exactly like a good one. The status and the first
+//	              kilobytes are not the measurement here; the received length
+//	              against the declared length is.
 //	getblock      Offered only as an add-on to a DEDICATED node, and they
 //	              decline to give a URL. Stated by their support, so this is
 //	              a fact about our plan and not about their product.
 //	alchemy       Their router answers "/eth/v1/node/version is not available
 //	              on the ETH_MAINNET". A refusal they state, on this endpoint.
-//	dwellir       Not found: the RPC host routes everything to JSON-RPC (a
-//	              POST to a Beacon path returns a JSON-RPC parse error) and
-//	              twelve plausible Beacon hostnames do not resolve. Their
-//	              public list of 110 networks has no Beacon entry, but that
-//	              list does not model endpoint variants either (it omits the
-//	              -archive and -full suffixes we already use), so this is
-//	              suggestive and not settled.
 //	blockmachine  Not found: Cloudflare answers 403 on every non-RPC path, so
 //	              their edge refuses before any provider logic runs, and no
-//	              derived hostname resolves. Not settled either.
+//	              derived hostname resolves. Not settled, and after dwellir
+//	              the honest next step is to ask them rather than guess.
+//
+// WHAT A COLUMN WOULD MEASURE, from the three that answer, on one slot of
+// 1.76 MB about a year deep, five reads each:
+//
+//	dwellir      5/5   3143 ms   0.56 MB/s   complete
+//	quicknode    5/5   4488 ms   0.39 MB/s   complete
+//	chainstack   0/5        -           -    truncated every time
+//
+// So the useful quantity is NOT a boolean. It is whether the whole body
+// arrives, and how long megabytes take: every other probe in this file is
+// kilobytes and measures a round trip, while this one measures bulk delivery,
+// which nothing else on the board does. Note the budget: probeTimeout is 8 s
+// and the healthy providers sit at 3 to 6 s with samples past 8, so this probe
+// needs its own deadline or it would publish "nobody serves blobs".
 //
 // So two of six are measurable today with no new credential. Building the
 // column needs a Beacon base URL per provider, which only the account holder
