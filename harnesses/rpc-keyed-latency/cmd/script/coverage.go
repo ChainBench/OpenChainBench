@@ -279,18 +279,21 @@ func hexNum(v uint64) string { return "0x" + strconv.FormatUint(v, 16) }
 //	              the whole body: 5 of 5 complete reads at every depth tried.
 //	dwellir       SERVES it, on an UNLISTED host their support gave us, which
 //	              takes the same API key. Caplin/3.8.1. Complete bodies, 5 of
-//	              5, down to two years. The host segment is named after the
+//	              5, down to two years, and then 403 on four reads of four
+//	              after a few dozen multi-megabyte pulls on that key: a limit
+//	              I tripped, not a fault of theirs. The host segment is named after the
 //	              consensus CLIENT rather than the network, which is why
 //	              twelve guessed hostnames all failed to resolve: an unlisted
 //	              endpoint is asked for, not derived.
-//	chainstack    ANSWERS but does not deliver. Lighthouse/v8.3.1 replies 200
-//	              with a content-length and then closes the connection
-//	              mid-body: zero complete reads of fifteen, at three depths,
-//	              8 to 22 s before the drop. An earlier version of this note
-//	              recorded it as serving, because a 3 KB prefix of its reply
-//	              looks exactly like a good one. The status and the first
-//	              kilobytes are not the measurement here; the received length
-//	              against the declared length is.
+//	chainstack    SERVES it, and the note that said otherwise was wrong.
+//	              Lighthouse/v8.3.1 behind envoy over HTTP/2. curl reads
+//	              1,849,084 bytes against 1,849,084 declared, exit 0, JSON
+//	              closed, and 4 of 4 complete on spaced reads. The earlier
+//	              "does not deliver" came from urllib returning IncompleteRead
+//	              fifteen times out of fifteen, which was my client speaking
+//	              HTTP/1.1, not their endpoint truncating. Two wrong verdicts
+//	              on this one cell in an hour: first served on the strength of
+//	              a 3 KB prefix, then refused on the strength of one client.
 //	getblock      Offered only as an add-on to a DEDICATED node, and they
 //	              decline to give a URL. Stated by their support, so this is
 //	              a fact about our plan and not about their product.
@@ -301,19 +304,31 @@ func hexNum(v uint64) string { return "0x" + strconv.FormatUint(v, 16) }
 //	              derived hostname resolves. Not settled, and after dwellir
 //	              the honest next step is to ask them rather than guess.
 //
-// WHAT A COLUMN WOULD MEASURE, from the three that answer, on one slot of
-// 1.76 MB about a year deep, five reads each:
+// WHAT A COLUMN WOULD MEASURE, and why it cannot be measured from a laptop.
 //
-//	dwellir      5/5   3143 ms   0.56 MB/s   complete
-//	quicknode    5/5   4488 ms   0.39 MB/s   complete
-//	chainstack   0/5        -           -    truncated every time
+// The useful quantity is not a boolean: it is whether the WHOLE body arrives,
+// checked as received length against declared length, and how long megabytes
+// take. Every other probe in this file is kilobytes and measures a round trip;
+// this one would measure bulk delivery, which nothing else on the board does.
 //
-// So the useful quantity is NOT a boolean. It is whether the whole body
-// arrives, and how long megabytes take: every other probe in this file is
-// kilobytes and measures a round trip, while this one measures bulk delivery,
-// which nothing else on the board does. Note the budget: probeTimeout is 8 s
-// and the healthy providers sit at 3 to 6 s with samples past 8, so this probe
-// needs its own deadline or it would publish "nobody serves blobs".
+// But the same slot, read from one laptop minutes apart, gave this:
+//
+//	quicknode    2.3 s, then 7.7 to 14.0 s
+//	chainstack   3.2 s, then 4.1 to 31.2 s
+//
+// A spread of six to one INSIDE a provider, larger than any gap between
+// providers, so those readings rank the measuring link and not the endpoint.
+// Compression is a second term of the same size: the same body is 1.85 MB
+// plain and 1.35 MB gzipped, and one plain read took 19.3 s against 2.5 s
+// compressed, so the probe has to fix its Accept-Encoding or it measures a
+// negotiation.
+//
+// Hence this belongs in the container, on the fixed cadence, with the quota
+// guard, like every other number here. Two budget notes for whoever wires it:
+// probeTimeout is 8 s and healthy reads run past that, so this probe needs its
+// own deadline; and a few dozen multi-megabyte reads were enough to make
+// dwellir answer 403 on four reads out of four, having answered 5 of 5 an hour
+// earlier, so the call budget is part of the design and not an afterthought.
 //
 // So two of six are measurable today with no new credential. Building the
 // column needs a Beacon base URL per provider, which only the account holder
