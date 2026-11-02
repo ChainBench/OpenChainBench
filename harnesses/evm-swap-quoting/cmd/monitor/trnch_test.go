@@ -71,6 +71,22 @@ func TestTrnchIgnoresRoutesItDidNotChoose(t *testing.T) {
 	}
 }
 
+// The first production probe published everything but the fee, because the
+// chosen route's name matched nothing that time. Every successful route
+// carries the same feeUsd, so a fee reported anywhere is the quote's fee.
+func TestTrnchFeeSurvivesAChosenRouteThatIsNotListed(t *testing.T) {
+	body := `{"best": {"router": "pons", "amountOut": "1000", "inUsd": 100},
+	          "routes": [{"router": "kyberswap", "status": "ok", "feeUsd": 0.5},
+	                     {"router": "sushi", "status": "ok", "feeUsd": 0.5}]}`
+	q, err := trnchAt(t, 200, body)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	if math.Abs(q.FeeBps-50.0) > 0.1 {
+		t.Errorf("a fee reported by any route is the quote's fee, got %v", q.FeeBps)
+	}
+}
+
 func TestTrnchUndeclaredFeeStaysMinusOne(t *testing.T) {
 	body := `{"best": {"router": "kyberswap", "amountOut": "225281418", "inUsd": 226.6},
 	          "routes": [{"router": "kyberswap", "status": "ok", "feeUsd": null}]}`
