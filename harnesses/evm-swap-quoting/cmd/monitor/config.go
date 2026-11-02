@@ -21,6 +21,10 @@ type Config struct {
 	OdosAPIKey    string // optional, future
 	EnsoAPIKey    string // optional, widens the anonymous 1rps bucket when set
 	RouteAPIKey   string // optional, Route (Robinhood Chain) is skipped without it
+	// Optional. Trnch quotes Robinhood Chain only and is skipped without a
+	// key, which is also how the row is withdrawn: unset the variable and
+	// the provider stops being built, no redeploy of anything else needed.
+	TrnchAPIKey   string
 	UniswapAPIKey string // optional, self-service key from developers.uniswap.org
 }
 
@@ -36,6 +40,7 @@ func loadEnv() (*Config, error) {
 		OdosAPIKey:    strings.TrimSpace(os.Getenv("ODOS_API_KEY")),
 		EnsoAPIKey:    strings.TrimSpace(os.Getenv("ENSO_API_KEY")),
 		RouteAPIKey:   strings.TrimSpace(os.Getenv("ROUTE_API_KEY")),
+		TrnchAPIKey:   strings.TrimSpace(os.Getenv("TRNCH_API_KEY")),
 		UniswapAPIKey: strings.TrimSpace(os.Getenv("UNISWAP_API_KEY")),
 	}
 	if c.MonitorRegion == "" {

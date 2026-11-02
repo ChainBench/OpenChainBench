@@ -248,6 +248,22 @@ providers:
       sample_size: sum(ocb:evm_swap_quote_shortfall_bps:count_increase_24h{provider="route"})
       series: histogram_quantile(0.50, sum by (le) (rate(evm_swap_quote_shortfall_bps_bucket{provider="route"}[1h])))
 
+  - slug: trnch
+    name: Trnch
+    tag: Robinhood Chain only, quote is net of a declared 0.5% fee
+    # No `unranked:` for the same reason Route carries none: score_scope
+    # full_coverage already keeps a single-chain provider out of the
+    # all-chains order, and a spec-declared label would also pull it from
+    # the one tab where the comparison is like for like.
+    formula: "Median basis points of output given up against the best quote of the same tick, over 24h. Robinhood Chain only, and the amount is net of Trnch's own fee, so the Routing only column is where its route is judged without the toll."
+    queries:
+      p50: avg(ocb:evm_swap_quote_shortfall_bps:p50_24h{provider="trnch"})
+      p90: avg(ocb:evm_swap_quote_shortfall_bps:p90_24h{provider="trnch"})
+      p99: avg(ocb:evm_swap_quote_shortfall_bps:p99_24h{provider="trnch"})
+      mean: avg(ocb:evm_swap_quote_shortfall_bps:mean_24h{provider="trnch"})
+      sample_size: sum(ocb:evm_swap_quote_shortfall_bps:count_increase_24h{provider="trnch"})
+      series: histogram_quantile(0.50, sum by (le) (rate(evm_swap_quote_shortfall_bps_bucket{provider="trnch"}[1h])))
+
   - slug: sushi
     name: SushiSwap
     tag: No auth, the fourth quote on Robinhood Chain

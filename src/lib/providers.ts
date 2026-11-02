@@ -932,7 +932,10 @@ const buildProvidersCached = unstable_cache(
   //      description rides in this index, and a text change that never
   //      appeared despite a green deploy is on the record here, so the key
   //      moves rather than trusting the 900 s TTL to carry it.
-  ["providers-v37"],
+  // v38: Trnch is new to the site, not just new to a bench, so it needs a
+  //      product page and two bench appearances that this index carries.
+  //      Lockstep with bench-unfiltered-v139.
+  ["providers-v38"],
   // 900 s: the provider index feeds products / compare / answers, whose
   // numbers move slowly, and this revalidate is also the effective ISR
   // period of those ~500 pages (Next takes the min across a route's caches).

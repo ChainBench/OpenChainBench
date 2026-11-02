@@ -723,7 +723,10 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       provider's own declared fee removed. Panel values live in the
   //       cached entry, so without this the column renders empty on every
   //       bench already cached.
-  ["bench-unfiltered-v138", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v139: Trnch joins benches 033 and 304 on Robinhood Chain. An ADDITION,
+  //       so the cached entry holds a provider set without it and the row
+  //       would never appear.
+  ["bench-unfiltered-v139", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -1033,7 +1036,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v129: lockstep with bench-unfiltered-v136 (Quicknode Build plan).
   // v130: lockstep with bench-unfiltered-v137 (SushiSwap joins quote benches).
   // v131: lockstep with bench-unfiltered-v138 (Routing only column).
-  ["all-benchmarks-v131", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v132: lockstep with bench-unfiltered-v139 (Trnch joins the quote benches).
+  ["all-benchmarks-v132", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1232,7 +1236,12 @@ const loadBenchmarkFiltered = unstable_cache(
   // v72: lockstep with bench-unfiltered-v134 (bench 311 audit round).
   // v73: lockstep with bench-unfiltered-v135 (per-chain views, plans).
   // v74: lockstep with bench-unfiltered-v136 (Quicknode Build plan).
-  ["bench-filters-v76", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v75: lockstep with bench-unfiltered-v137 (SushiSwap joins the quote
+  //      benches, which both declare a chain dimension).
+  // v76: lockstep with bench-unfiltered-v138 (Routing only column).
+  // v77: lockstep with bench-unfiltered-v139 (Trnch, Robinhood tab only,
+  //      so without this the row is missing from the one tab it belongs to).
+  ["bench-filters-v77", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 

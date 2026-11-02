@@ -53,6 +53,14 @@ describe("the provider set behind the cache keys", () => {
     const hash = createHash("sha256").update(sets.join("\n")).digest("hex").slice(0, 16);
     const count = sets.reduce((n, s) => n + s.split(":")[1].split(",").length, 0);
 
+    // Re-recorded on 2026-11-02 with bench-unfiltered-v139,
+    // all-benchmarks-v132, bench-filters-v77, providers-v38: Trnch joins
+    // benches 033 and 304 on Robinhood Chain. An ADDITION, and a provider
+    // new to the site rather than to one bench, so providers-v moves for a
+    // product page as well as for the appearances. It is key-gated: without
+    // TRNCH_API_KEY the harness never builds it, which is how the row is
+    // withdrawn if their terms are settled the other way.
+    //
     // Re-recorded on 2026-11-02 with bench-unfiltered-v137,
     // all-benchmarks-v130, bench-filters-v75, providers-v36: SushiSwap
     // joins the two EVM quote benches, 033 and 304. An ADDITION, and the
@@ -108,6 +116,6 @@ describe("the provider set behind the cache keys", () => {
         "Then set EXPECTED to the hash in this failure, and add the provider",
         `to PRODUCT_NAMES if it needs a display name. Providers now: ${count}.`,
       ].join("\n"),
-    ).toBe("ed33bad2a41df097");
+    ).toBe("4d1589c8dbe9bbc7");
   });
 });
