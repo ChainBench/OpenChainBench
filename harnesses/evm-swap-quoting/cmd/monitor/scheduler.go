@@ -68,6 +68,9 @@ func buildProviders(cfg *Config) []Provider {
 	if cfg.RouteAPIKey != "" {
 		providers = append(providers, NewRouteProvider(cfg.MonitorRegion, cfg.RouteAPIKey))
 	}
+	if cfg.TrnchAPIKey != "" {
+		providers = append(providers, NewTrnchProvider(cfg.MonitorRegion, cfg.TrnchAPIKey))
+	}
 	return providers
 }
 
