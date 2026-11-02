@@ -4,6 +4,7 @@ import { rankedCandidates } from "@/lib/citation";
 import { fmtUnit } from "@/lib/format";
 import { ProviderLogo } from "@/components/provider-logo";
 import { rowHref } from "@/lib/row-link";
+import { valueColumnLabel } from "@/lib/value-window";
 
 type Props = {
   bench: string;
@@ -45,7 +46,8 @@ export async function StatTable({
   // Leader = #1 by p50. Most reliable = best success rate (only when hasSuccess).
   // Label is "FASTEST" for latency benches (ms/s/sec), "LEADER" for count/rate/other.
   const leaderSlug = ranked[0].slug;
-  const leaderLabel = ["ms", "s", "sec"].includes(b.unit ?? "") ? "FASTEST" : "LEADER";
+  const isLatency = ["ms", "s", "sec"].includes(b.unit ?? "");
+  const leaderLabel = isLatency ? "FASTEST" : "LEADER";
   const reliableSlug = hasSuccess
     ? [...ranked].sort((a, c) => (c.successRate ?? 0) - (a.successRate ?? 0))[0].slug
     : null;
@@ -54,6 +56,17 @@ export async function StatTable({
   // coincide, one row shows both badges, surfacing the "double winner" case
   // instead of hiding the reliability signal entirely.
   const fastestSlug = leaderSlug;
+
+  // The value column says what the number is. A median is worth naming on
+  // a latency bench, where the tail is the story; on a count or a ratio
+  // the "p50" slot holds a gauge reading, and "p50 (count)" over a column
+  // of days since an exploit described a statistic nobody computed.
+  const unitSuffix =
+    b.unit && !["count", "usd"].includes(b.unit) && !b.metric.includes("(")
+      ? b.unit === "pct" ? "%" : b.unit
+      : null;
+  const valueHeader =
+    isLatency && valueColumnLabel(b) === "p50" ? "p50" : b.metric;
 
   return (
     <figure className="my-10 not-prose">
@@ -68,7 +81,7 @@ export async function StatTable({
                 Provider
               </th>
               <th className="text-right py-2.5 pr-3 label-mono text-[10px] uppercase tracking-[0.15em] text-ink-muted font-medium">
-                p50 {b.unit && <span className="normal-case">({b.unit})</span>}
+                {valueHeader} {unitSuffix && <span className="normal-case">({unitSuffix})</span>}
               </th>
               {hasSuccess && (
                 <th className="text-right py-2.5 label-mono text-[10px] uppercase tracking-[0.15em] text-ink-muted font-medium">
