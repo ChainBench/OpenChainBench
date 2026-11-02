@@ -115,15 +115,36 @@ func (p *TrnchProvider) Probe(ctx context.Context, pair TestPair) (Quote, error)
 	quote := okQuote(ms, r.Best.AmountOut)
 
 	// The fee is reported per route in dollars, so it becomes basis points
-	// against the input value they priced. Read from the route they actually
-	// chose: the figure is the same across routes today, and reading the
-	// chosen one keeps it right if that ever stops being true. Left at -1
-	// when they report nothing, because "said nothing" and "said zero" are
-	// different and the board treats them differently.
-	for _, rt := range r.Routes {
-		if rt.Router == r.Best.Router && rt.FeeUsd != nil && r.Best.InUsd > 0 {
-			quote.FeeBps = 10000 * (*rt.FeeUsd) / r.Best.InUsd
-			break
+	// against the input value they priced. Prefer the route they chose, then
+	// fall back to any route that reports one.
+	//
+	// The fallback is not defensive padding. The first production probe
+	// published an out amount, a tick and a 51.4 bps shortfall but no fee,
+	// because matching on the chosen route's name found nothing that time.
+	// Reading four live responses showed why the match was the wrong idea:
+	// every successful route carries the SAME feeUsd (1.1216 across
+	// kyberswap, sushi and lifi on one call), so the figure is a property of
+	// the quote rather than of the route, and insisting on one name made a
+	// uniform value conditional on a lookup that can miss.
+	//
+	// Left at -1 when no route reports one, because "said nothing" and "said
+	// zero" are different and the board treats them differently.
+	if r.Best.InUsd > 0 {
+		var fee *float64
+		for _, rt := range r.Routes {
+			if rt.FeeUsd == nil {
+				continue
+			}
+			if rt.Router == r.Best.Router {
+				fee = rt.FeeUsd
+				break
+			}
+			if fee == nil {
+				fee = rt.FeeUsd
+			}
+		}
+		if fee != nil {
+			quote.FeeBps = 10000 * (*fee) / r.Best.InUsd
 		}
 	}
 	return quote, nil
