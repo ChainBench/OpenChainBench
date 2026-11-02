@@ -98,6 +98,15 @@ describe("the provider set behind the cache keys", () => {
     // provider ENTERING is the case that key exists for. The `-cold` twin
     // needed its alias in BOTH tables, logo-manifest and providers, which
     // three sibling tests caught before this one did.
+    // A REMOVAL this time, on 2026-11-02: bench 311 rpc-api-coverage is
+    // retired and its API capability matrix moves onto the eight chain RPC
+    // pages, under the Private tab. The data is per (provider, chain), which
+    // is the granularity of a chain page, so a cross-chain board was the
+    // wrong home for it and its all-chains view had to average a provider
+    // over whichever chains it served. Six providers therefore LOSE an
+    // appearance in the RPCs category, which is the case providers-v exists
+    // for as much as an arrival is: v38 to v39, with the other three at
+    // v140/v133/v78.
     expect(
       hash,
       [
@@ -116,6 +125,6 @@ describe("the provider set behind the cache keys", () => {
         "Then set EXPECTED to the hash in this failure, and add the provider",
         `to PRODUCT_NAMES if it needs a display name. Providers now: ${count}.`,
       ].join("\n"),
-    ).toBe("4d1589c8dbe9bbc7");
+    ).toBe("5b2e7a20e6b8bac4");
   });
 });

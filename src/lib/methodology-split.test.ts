@@ -73,8 +73,13 @@ describe("how many specs this touches", () => {
     expect(split.length).toBeLessThan(counts.length / 10);
   });
 
-  test("bench 311, the spec that found this, is one of them", () => {
-    expect(counts.find((c) => c.slug === "rpc-api-coverage")?.split).toBe(true);
+  test("the longest specs are among them", () => {
+    // Bench 311, the spec that found this, was retired on 2026-11-02 when its
+    // capability matrix moved to the chain RPC pages. The rule it exposed was
+    // never about that spec: any methodology past the threshold is split.
+    const split = counts.filter((c) => c.split).map((c) => c.slug);
+    expect(split).toContain("perp-liq-rate");
+    expect(split).toContain("terminal-fill-quality");
   });
 
   test("the threshold is the documented one", () => {
