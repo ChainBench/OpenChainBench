@@ -444,14 +444,6 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "DeFi shared engine that maps onchain interactions into composable actions. The Route API computes optimal multi-step paths across protocols and chains, abstracting approvals, swaps, vault entries, and bridges into a single call.",
     twitter: "@EnsoBuild",
   },
-  trnch: {
-    url: "https://trnch.fun",
-    description:
-      "Aggregator for Robinhood Chain, chain ID 4663, and no other chain. Its bot API quotes across routers measured separately on this site, and the amount it returns is net of a 0.5% integrator fee it declares in the same response.",
-    twitter: "@trnchfun",
-    longDescription:
-      "Trnch quotes Robinhood Chain by polling several routers and returning the best, naming each one it asked and whether that route was usable. The 0.5% it takes is reported per route in the quote response, and measured against a direct KyberSwap quote on the same pair at the same moment on 2026-11-02 the gap was 49.3 to 51.2 basis points, so the declaration matches what it costs. Its own selection is not merely passive: on two of those four comparisons the route it chose beat the one its best upstream returned. It also declines to quote tokens its TIA agent classifies as rugs, honeypots or imitations, which this site does not currently measure.",
-  },
   route: {
     url: "https://route.fun",
     description:

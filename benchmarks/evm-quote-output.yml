@@ -72,7 +72,7 @@ findings:
   - "The top of this board is tight. The leaders sit within a couple of basis points of each other, which is inside the round-to-round noise, so read the near-best column before treating the order as settled."
   - "Two of the largest names carry most of their shortfall as a fee they declare themselves. The declared-fee column names them and says how much of the gap is a toll rather than a route."
   - "Quote output and quote latency rank differently. The fastest answer is not the best answer, and bench 033 measures the other half."
-  - "Three rows here are built on other rows. {{name:route}} enables Kyber and Nordstern inside its own engine, {{name:lifi}} aggregates seven of this board's providers, and {{name:trnch}} names the five it polled in every response: Kyber, Sushi, LI.FI, 0x and Uniswap. Choosing well among upstreams is an aggregator's job, so their figures are real, but none of the three can beat the best of the set it polls, and that set is measured here row by row."
+  - "Two rows here are built on other rows. {{name:route}} enables Kyber and Nordstern inside its own engine, and {{name:lifi}} aggregates seven of this board's providers. Choosing well among upstreams is an aggregator's job, so their figures are real, but neither can beat the best of the set it polls, and that set is measured here row by row."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/dev/harnesses/evm-swap-quoting
 
@@ -247,22 +247,6 @@ providers:
       mean: avg(ocb:evm_swap_quote_shortfall_bps:mean_24h{provider="route"})
       sample_size: sum(ocb:evm_swap_quote_shortfall_bps:count_increase_24h{provider="route"})
       series: histogram_quantile(0.50, sum by (le) (rate(evm_swap_quote_shortfall_bps_bucket{provider="route"}[1h])))
-
-  - slug: trnch
-    name: Trnch
-    tag: Robinhood Chain only, quote is net of a declared 0.5% fee
-    # No `unranked:` for the same reason Route carries none: score_scope
-    # full_coverage already keeps a single-chain provider out of the
-    # all-chains order, and a spec-declared label would also pull it from
-    # the one tab where the comparison is like for like.
-    formula: "Median basis points of output given up against the best quote of the same tick, over 24h. Robinhood Chain only, and the amount is net of Trnch's own fee, so the Routing only column is where its route is judged without the toll."
-    queries:
-      p50: avg(ocb:evm_swap_quote_shortfall_bps:p50_24h{provider="trnch"})
-      p90: avg(ocb:evm_swap_quote_shortfall_bps:p90_24h{provider="trnch"})
-      p99: avg(ocb:evm_swap_quote_shortfall_bps:p99_24h{provider="trnch"})
-      mean: avg(ocb:evm_swap_quote_shortfall_bps:mean_24h{provider="trnch"})
-      sample_size: sum(ocb:evm_swap_quote_shortfall_bps:count_increase_24h{provider="trnch"})
-      series: histogram_quantile(0.50, sum by (le) (rate(evm_swap_quote_shortfall_bps_bucket{provider="trnch"}[1h])))
 
   - slug: sushi
     name: SushiSwap
