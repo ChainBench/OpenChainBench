@@ -60,6 +60,7 @@ methodology:
   - "The comparison is within a tick, never across them. Every provider that supports the pair is fired in parallel on the same 60 second tick, and each is scored against the best output of that tick. Measured 2026-10-19 across five probes a minute apart, the market drifted 30 to 37 bps while the field sat inside 25, so a cross-tick comparison would measure the market rather than the provider."
   - "Zero means the provider held the best quote of that tick. The published figure is the median over 24 hours, not the mean, so one outlying round cannot move a row. The near-best column counts the ticks a provider came within half a basis point of the best, which is the tiebreaker when medians sit within a basis point of each other. Several providers can clear it in the same tick, so the column does not sum to 100."
   - "Declared fees get their own column and are measured, not quoted: the figure is read out of the provider's own quote response on every tick. Only some declare one, and the column is blank for the rest. Compare it against the shortfall beside it rather than assuming they match, because they need not: a declared fee is what the provider takes, the shortfall is what the route and the fee together cost. A provider that declares nothing publishes no fee, which is not the same as charging nothing."
+  - "The routing-only column is the shortfall with the provider's own declared fee taken back out, which is the comparison a provider that charges one is entitled to: on 2026-11-02 LI.FI gave up 26.2 bps of which 25.0 were its declared fee, so its route cost 1.2. The column is blank wherever nothing is declared, and the blank is the honest answer rather than a clean score, because this board cannot see a cut a provider does not declare."
   - "Not every row is an aggregator. CoW and Bebop are RFQ or batch-auction venues and LI.FI is a cross-chain relayer, so all three are listed with their numbers and kept out of the ranking. Route quotes Robinhood Chain alone and is kept out of the all-chains order for the same reason; its own tab carries the comparison."
   - "An RFQ quote is not a router quote. A market maker prices its own spread and its settlement into the number it returns, and a small clip pays for both in full: Bebop gives up around a hundred basis points on a $1,200 swap, and the figure barely moves between chains whose gas differs by orders of magnitude, so it is the spread and not the gas. Both RFQ rows are listed and neither is ranked."
   - "Gas is not subtracted yet. KyberSwap reports it in USD, ParaSwap in wei, Nordstern in gas units, and the USD figures of three providers on the same pair at the same block differ by a factor of 3.5. Until gas is computed on our side rather than theirs, this page measures gross output."
@@ -101,6 +102,7 @@ ledger_columns:
   - { label: "p90", slot: p90 }
   - { label: "p99", slot: p99 }
   - { label: "Declared fee", panel: declared_fee }
+  - { label: "Routing only", panel: routing_only }
   - { label: "Within 0.5 bps of best", panel: best_rate, unit: pct }
 
 metric_panels:
@@ -116,6 +118,14 @@ metric_panels:
     label: Declared fee
     description: The fee the provider returns inside its own quote response, in basis points, averaged over 24h. Measured from the response, not read off a pricing page. A provider that declares nothing publishes no figure here, which is not the same as charging nothing.
     metric: avg by (provider) (evm_swap_quote_fee_bps{} >= 0)
+    label_key: provider
+    unit: bp
+    higher_is_better: false
+    tab: false
+  - id: routing_only
+    label: Routing only
+    description: The shortfall with the provider's own declared fee taken back out, so it describes the route and not the toll. Blank where no fee is declared, because subtracting nothing would read as a clean route. Negative means the route beat the tick's best quote once the fee was removed.
+    metric: avg by (provider) (ocb:evm_swap_quote_shortfall_bps:p50_24h{}) - on(provider) avg by (provider) (evm_swap_quote_fee_bps{} >= 0)
     label_key: provider
     unit: bp
     higher_is_better: false
