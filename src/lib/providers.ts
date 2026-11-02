@@ -949,23 +949,46 @@ async function loadProvidersMemoized(): Promise<ProviderProfile[]> {
  *  wins from what is left, and drop a profile that has nothing left. On
  *  dev every bench exists and this is a no-op. Falls open (no filtering)
  *  when the spec directory cannot be read. */
-async function confineToThisDeploy(
+export async function confineToThisDeploy(
   profiles: ProviderProfile[],
 ): Promise<ProviderProfile[]> {
   const specs = await loadSpecsUncached().catch(() => []);
   if (specs.length === 0) return profiles;
   const here = new Set(specs.map((s) => s.slug));
+  // Which providers each bench declares HERE. Bench existence alone is not
+  // enough: a bench can exist on both branches while only dev's copy
+  // declares a given provider, which is the normal state while a provider
+  // is being trialled on staging. Without this the worker's blob, built
+  // from dev, hands that provider a product page on production crediting
+  // appearances on benches whose published table does not list it. Bench
+  // pages already prune results to the spec's providers (spec.ts); this is
+  // the same rule applied to the product index.
+  const declaredBy = new Map<string, Set<string>>();
+  for (const sp of specs) {
+    const slugs = (sp.providers ?? [])
+      .map((x) => x?.slug?.toLowerCase())
+      .filter((x): x is string => Boolean(x));
+    if (slugs.length > 0) declaredBy.set(sp.slug, new Set(slugs));
+  }
   const keep = (slug: string) =>
     here.has(slug) && !REMOVED_BENCH_SLUGS.has(slug);
   const out: ProviderProfile[] = [];
   for (const p of profiles) {
-    if (p.appearances.every((a) => keep(a.benchmark.slug))) {
+    const self = p.slug.toLowerCase();
+    // A bench this deployment serves, that also declares this provider.
+    // A spec with no providers block (data-driven cohorts) falls open.
+    const keepFor = (benchSlug: string) => {
+      if (!keep(benchSlug)) return false;
+      const declared = declaredBy.get(benchSlug);
+      return !declared || declared.has(self);
+    };
+    if (p.appearances.every((a) => keepFor(a.benchmark.slug))) {
       out.push(p);
       continue;
     }
-    const appearances = p.appearances.filter((a) => keep(a.benchmark.slug));
+    const appearances = p.appearances.filter((a) => keepFor(a.benchmark.slug));
     if (appearances.length === 0) continue;
-    const dropped = p.appearances.filter((a) => !keep(a.benchmark.slug));
+    const dropped = p.appearances.filter((a) => !keepFor(a.benchmark.slug));
     // Wins: 1 per aggregate #1 without chain dimensions, 1 per chain led
     // with them (the rule in buildProvidersFromBenches). Subtract what the
     // dropped appearances contributed rather than recomputing from scratch.
