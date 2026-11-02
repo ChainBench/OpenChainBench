@@ -715,7 +715,11 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       row said "Plan not recorded" for three days, because the record it
   //       replaced named an account that is no longer ours. A provider tag
   //       lives in the cached entry, so the old one keeps the old text.
-  ["bench-unfiltered-v136", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v137: SushiSwap joins benches 033 and 304, the only one of seven names
+  //       asked on 2026-11-02 that answers on Robinhood Chain. A cached
+  //       entry holds the provider set current when it was written, so
+  //       without this the row never appears however good the data is.
+  ["bench-unfiltered-v137", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -1023,7 +1027,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v127: lockstep with bench-unfiltered-v134 (bench 311 audit round).
   // v128: lockstep with bench-unfiltered-v135 (per-chain views, plans).
   // v129: lockstep with bench-unfiltered-v136 (Quicknode Build plan).
-  ["all-benchmarks-v129", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v130: lockstep with bench-unfiltered-v137 (SushiSwap joins quote benches).
+  ["all-benchmarks-v130", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1222,7 +1227,7 @@ const loadBenchmarkFiltered = unstable_cache(
   // v72: lockstep with bench-unfiltered-v134 (bench 311 audit round).
   // v73: lockstep with bench-unfiltered-v135 (per-chain views, plans).
   // v74: lockstep with bench-unfiltered-v136 (Quicknode Build plan).
-  ["bench-filters-v74", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  ["bench-filters-v75", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 

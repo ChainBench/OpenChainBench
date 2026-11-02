@@ -53,6 +53,14 @@ describe("the provider set behind the cache keys", () => {
     const hash = createHash("sha256").update(sets.join("\n")).digest("hex").slice(0, 16);
     const count = sets.reduce((n, s) => n + s.split(":")[1].split(",").length, 0);
 
+    // Re-recorded on 2026-11-02 with bench-unfiltered-v137,
+    // all-benchmarks-v130, bench-filters-v75, providers-v36: SushiSwap
+    // joins the two EVM quote benches, 033 and 304. An ADDITION, and the
+    // case this test exists for. Both benches declare a chain dimension so
+    // bench-filters moves, and the row gains two bench appearances under
+    // the registry's existing `sushi` slug, so providers moves too or
+    // /products, compare and answers keep listing it two benches short.
+    //
     // Re-recorded on 2026-10-30 with bench-unfiltered-v129,
     // all-benchmarks-v122, bench-filters-v67, providers-v34: bench 312
     // paymaster-cost adds nine paymaster vendors.
@@ -100,6 +108,6 @@ describe("the provider set behind the cache keys", () => {
         "Then set EXPECTED to the hash in this failure, and add the provider",
         `to PRODUCT_NAMES if it needs a display name. Providers now: ${count}.`,
       ].join("\n"),
-    ).toBe("51c04fa6fd3b2e64");
+    ).toBe("ed33bad2a41df097");
   });
 });

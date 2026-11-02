@@ -927,7 +927,7 @@ const buildProvidersCached = unstable_cache(
   //      index embeds the "#1 of N on <chain>" chip, so a cached one keeps
   //      claiming a rank the bench itself declines to give. Lockstep with
   //      bench-unfiltered-v130.
-  ["providers-v35"],
+  ["providers-v36"],
   // 900 s: the provider index feeds products / compare / answers, whose
   // numbers move slowly, and this revalidate is also the effective ISR
   // period of those ~500 pages (Next takes the min across a route's caches).
