@@ -101,6 +101,7 @@ func (p *TrnchProvider) Probe(ctx context.Context, pair TestPair) (Quote, error)
 			Router string   `json:"router"`
 			Status string   `json:"status"`
 			FeeUsd *float64 `json:"feeUsd"`
+			InUsd  *float64 `json:"inUsd"`
 		} `json:"routes"`
 	}
 	if err := json.Unmarshal(raw, &r); err != nil {
@@ -129,7 +130,26 @@ func (p *TrnchProvider) Probe(ctx context.Context, pair TestPair) (Quote, error)
 	//
 	// Left at -1 when no route reports one, because "said nothing" and "said
 	// zero" are different and the board treats them differently.
-	if r.Best.InUsd > 0 {
+	// The denominator comes from best.inUsd when it is there and from any
+	// route that reports one when it is not.
+	//
+	// Both are intermittent: ten calls on 2026-11-02 had best.inUsd missing
+	// once, and a route's own inUsd came back null on another. Taking only
+	// the first made the gauge FLICKER, which is worse than never publishing
+	// it, because RecordQuote deletes the series when FeeBps is negative. One
+	// incomplete response therefore erased a real 50.00 bps measurement, and
+	// the board showed Trnch's fee cell empty roughly a tenth of the time
+	// with no way to tell that from a provider declaring nothing.
+	denom := r.Best.InUsd
+	if denom <= 0 {
+		for _, rt := range r.Routes {
+			if rt.InUsd != nil && *rt.InUsd > 0 {
+				denom = *rt.InUsd
+				break
+			}
+		}
+	}
+	if denom > 0 {
 		var fee *float64
 		for _, rt := range r.Routes {
 			if rt.FeeUsd == nil {
@@ -144,7 +164,7 @@ func (p *TrnchProvider) Probe(ctx context.Context, pair TestPair) (Quote, error)
 			}
 		}
 		if fee != nil {
-			quote.FeeBps = 10000 * (*fee) / r.Best.InUsd
+			quote.FeeBps = 10000 * (*fee) / denom
 		}
 	}
 	return quote, nil

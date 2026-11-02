@@ -87,6 +87,37 @@ func TestTrnchFeeSurvivesAChosenRouteThatIsNotListed(t *testing.T) {
 	}
 }
 
+// best.inUsd came back missing on one call in ten. Taking only that field
+// made the gauge flicker, and RecordQuote deletes the series on a negative
+// fee, so one incomplete response erased a real measurement and the cell
+// read the same as a provider that declares nothing.
+func TestTrnchFeeSurvivesAMissingBestInUsd(t *testing.T) {
+	body := `{"best": {"router": "kyberswap", "amountOut": "1000"},
+	          "routes": [{"router": "kyberswap", "status": "ok",
+	                      "feeUsd": 0.5, "inUsd": 100}]}`
+	q, err := trnchAt(t, 200, body)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	if math.Abs(q.FeeBps-50.0) > 0.1 {
+		t.Errorf("a route's own inUsd must carry the fee, got %v", q.FeeBps)
+	}
+}
+
+// Neither field present: there is nothing to denominate with, and guessing
+// one would publish a fee nobody declared.
+func TestTrnchFeeNeedsADenominator(t *testing.T) {
+	body := `{"best": {"router": "kyberswap", "amountOut": "1000"},
+	          "routes": [{"router": "kyberswap", "status": "ok", "feeUsd": 0.5}]}`
+	q, err := trnchAt(t, 200, body)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	if q.FeeBps != -1 {
+		t.Errorf("with no input value the fee is unknown, got %v", q.FeeBps)
+	}
+}
+
 func TestTrnchUndeclaredFeeStaysMinusOne(t *testing.T) {
 	body := `{"best": {"router": "kyberswap", "amountOut": "225281418", "inUsd": 226.6},
 	          "routes": [{"router": "kyberswap", "status": "ok", "feeUsd": null}]}`
