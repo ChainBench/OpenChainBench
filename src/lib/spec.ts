@@ -732,7 +732,11 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       already is. Bench 311 is retired, so the provider set changes. A
   //       panel can now declare `tiers`, and a ledger column whose panel was
   //       not published is dropped rather than drawing a column of dashes.
-  ["bench-unfiltered-v140", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v141: bench 304 names Trnch as the third row built on other rows, and
+  //       says none of the three can beat the best of the set it polls.
+  //       Findings live in the cached entry, so the old one keeps the
+  //       sentence that counted two.
+  ["bench-unfiltered-v141", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -1044,7 +1048,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v131: lockstep with bench-unfiltered-v138 (Routing only column).
   // v132: lockstep with bench-unfiltered-v139 (Trnch joins the quote benches).
   // v133: lockstep with bench-unfiltered-v140 (capability on chain pages).
-  ["all-benchmarks-v133", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v134: lockstep with bench-unfiltered-v141 (envelope rows named).
+  ["all-benchmarks-v134", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1249,7 +1254,8 @@ const loadBenchmarkFiltered = unstable_cache(
   // v77: lockstep with bench-unfiltered-v139 (Trnch, Robinhood tab only,
   // v78: lockstep with bench-unfiltered-v140 (capability on chain pages).
   //      so without this the row is missing from the one tab it belongs to).
-  ["bench-filters-v78", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v79: lockstep with bench-unfiltered-v141 (envelope rows named).
+  ["bench-filters-v79", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 
