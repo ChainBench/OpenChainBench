@@ -19,9 +19,11 @@ row_noun: { one: quote source, many: quote sources }
 ledger_reliability: false
 zero_is_a_value: true
 
-# Only three of the ten reach Robinhood Chain, so it is not the ground
-# the field shares. It keeps its own tab where the comparison is like for
-# like, and stays out of the all-chains figure.
+# Five of the ten reach Robinhood Chain, so it is not the ground the field
+# shares. It keeps its own tab where the comparison is like for like, and
+# stays out of the all-chains figure. SushiSwap joined that tab on
+# 2026-11-02; 0x, 1inch, Uniswap, Odos, OpenOcean and Enso were each asked
+# on chain 4663 the same day and none of them serves it.
 score_scope: full_coverage
 
 disclaimer: |
@@ -235,3 +237,15 @@ providers:
       mean: avg(ocb:evm_swap_quote_shortfall_bps:mean_24h{provider="route"})
       sample_size: sum(ocb:evm_swap_quote_shortfall_bps:count_increase_24h{provider="route"})
       series: histogram_quantile(0.50, sum by (le) (rate(evm_swap_quote_shortfall_bps_bucket{provider="route"}[1h])))
+
+  - slug: sushi
+    name: SushiSwap
+    tag: No auth, the fourth quote on Robinhood Chain
+    formula: "Median basis points of output given up against the best quote of the same tick, over 24h, averaged across the chains this provider covers."
+    queries:
+      p50: avg(ocb:evm_swap_quote_shortfall_bps:p50_24h{provider="sushi"})
+      p90: avg(ocb:evm_swap_quote_shortfall_bps:p90_24h{provider="sushi"})
+      p99: avg(ocb:evm_swap_quote_shortfall_bps:p99_24h{provider="sushi"})
+      mean: avg(ocb:evm_swap_quote_shortfall_bps:mean_24h{provider="sushi"})
+      sample_size: sum(ocb:evm_swap_quote_shortfall_bps:count_increase_24h{provider="sushi"})
+      series: histogram_quantile(0.50, sum by (le) (rate(evm_swap_quote_shortfall_bps_bucket{provider="sushi"}[1h])))
