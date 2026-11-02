@@ -72,7 +72,7 @@ findings:
   - "The top of this board is tight. The leaders sit within a couple of basis points of each other, which is inside the round-to-round noise, so read the near-best column before treating the order as settled."
   - "Two of the largest names carry most of their shortfall as a fee they declare themselves. The declared-fee column names them and says how much of the gap is a toll rather than a route."
   - "Quote output and quote latency rank differently. The fastest answer is not the best answer, and bench 033 measures the other half."
-  - "Two rows here are built on other rows. {{name:route}} enables Kyber and Nordstern inside its own engine, and {{name:lifi}} aggregates seven of this board's providers. Choosing well among upstreams is an aggregator's job, so their figures are real, but they are an envelope over competitors rather than a like for like quote against them."
+  - "Three rows here are built on other rows. {{name:route}} enables Kyber and Nordstern inside its own engine, {{name:lifi}} aggregates seven of this board's providers, and {{name:trnch}} names the five it polled in every response: Kyber, Sushi, LI.FI, 0x and Uniswap. Choosing well among upstreams is an aggregator's job, so their figures are real, but none of the three can beat the best of the set it polls, and that set is measured here row by row."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/dev/harnesses/evm-swap-quoting
 
