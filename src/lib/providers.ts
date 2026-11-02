@@ -927,7 +927,12 @@ const buildProvidersCached = unstable_cache(
   //      index embeds the "#1 of N on <chain>" chip, so a cached one keeps
   //      claiming a rank the bench itself declines to give. Lockstep with
   //      bench-unfiltered-v130.
-  ["providers-v36"],
+  // v37: Sushi's description described only its Hyperliquid perps frontend,
+  //      which is not the product the two quote benches now rank it on. The
+  //      description rides in this index, and a text change that never
+  //      appeared despite a green deploy is on the record here, so the key
+  //      moves rather than trusting the 900 s TTL to carry it.
+  ["providers-v37"],
   // 900 s: the provider index feeds products / compare / answers, whose
   // numbers move slowly, and this revalidate is also the effective ISR
   // period of those ~500 pages (Next takes the min across a route's caches).
