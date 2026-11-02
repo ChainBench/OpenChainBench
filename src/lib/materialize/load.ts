@@ -274,7 +274,13 @@ export async function specToBenchmark(
       ? applyDimensionsToSpec(spec, activeLabels)
       : spec;
 
-  const live = await tryLoadLive(filteredSpec, isFiltered, activeLabels);
+  // activeTier is NOT in activeLabels: labelFilters strips it, because a
+  // tier is a cohort switch rather than a slice. The panel gate needs it
+  // all the same, so it travels alongside.
+  const live = await tryLoadLive(filteredSpec, isFiltered, {
+    ...activeLabels,
+    ...(activeTier ? { tier: activeTier } : {}),
+  });
   if (live) {
     // Mark live entries explicitly so a missing `availability` reads as
     // "unknown" everywhere else in the code. Unresponsive rows keep
@@ -313,7 +319,7 @@ export async function specToBenchmark(
         // served HTML renders it (static-ledger.tsx:186). A bench whose
         // reason NEEDS its size has to carry it in the label, which both
         // surfaces render.
-        r.unrankedLabel = rankGateReason(spec.slug, r.slug, view, r) ?? r.unrankedLabel;
+        r.unrankedLabel = rankGateReason(spec.slug, r.slug, view) ?? r.unrankedLabel;
       }
     }
     // Pricing benches: carry the calculator's reading of a two-way price
@@ -656,9 +662,21 @@ export async function specToBenchmark(
     // Resolve {{p50:slug}} / {{best_name}} / {{count}} etc. placeholders
     // against the freshly loaded numbers so editorial text (findings,
     // seo_intro, faq) never drifts from the displayed data.
+    // A column whose panel was not published this view would draw a column
+    // of dashes under a header promising a reading, because colValue
+    // resolves a missing panel to null and the table still renders it. Drop
+    // it instead. Slot columns (p50/p90/p99/mean) are never affected.
+    const publishedPanelIds = new Set((live.metricPanels ?? []).map((p) => p.id));
+    const keptColumns = editorial.ledgerColumns?.filter(
+      (c) => !c.panel || publishedPanelIds.has(c.panel),
+    );
+
     const rendered = renderBenchmarkText({
       ...editorial,
       ...live,
+      ...(editorial.ledgerColumns
+        ? { ledgerColumns: keptColumns && keptColumns.length > 0 ? keptColumns : undefined }
+        : {}),
       bestPerChain,
       worstPerChain,
       providersPerChain,
@@ -1123,10 +1141,17 @@ export function dimensionLabels(f: BenchmarkFilters): Record<string, string> {
  * served a pooled chart.
  */
 export function publishesPanelOnView(
-  panel: { per_chain_only?: boolean },
-  dims: { chain?: string },
+  panel: { per_chain_only?: boolean; tiers?: string[] },
+  dims: { chain?: string; tier?: string },
 ): boolean {
-  return !(panel.per_chain_only && !dims.chain);
+  if (panel.per_chain_only && !dims.chain) return false;
+  // A panel scoped to a cohort says nothing about the others. Capability
+  // is probed on the keyed endpoints only, so under a chain page's public
+  // tab these panels are absent rather than empty.
+  if (panel.tiers && panel.tiers.length > 0) {
+    if (!dims.tier || !panel.tiers.includes(dims.tier)) return false;
+  }
+  return true;
 }
 
 /** The PromQL a metric panel runs under the reader's active filters.

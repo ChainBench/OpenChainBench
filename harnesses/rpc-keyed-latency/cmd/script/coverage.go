@@ -271,70 +271,59 @@ func hexNum(v uint64) string { return "0x" + strconv.FormatUint(v, 16) }
 // real product difference for anyone indexing rollup data, and nothing on the
 // JSON-RPC side reveals it.
 //
-// WHERE EACH PROVIDER STANDS, measured or stated on 2026-11-02. Four of six
-// cannot be asked on the credential we hold, and the REASONS are not the same
-// kind of fact, which is exactly why none of them may be published as a 0:
+// WHERE EACH PROVIDER STANDS, measured 2026-11-02 and cross-read against each
+// vendor's own documentation. FOUR of six serve it, and the two that do not
+// are two different facts:
 //
-//	quicknode     SERVES it on our own URL. Lighthouse/v8.2.3, and it delivers
-//	              the whole body: 5 of 5 complete reads at every depth tried.
-//	dwellir       SERVES it, on an UNLISTED host their support gave us, which
-//	              takes the same API key. Caplin/3.8.1. Complete bodies, 5 of
-//	              5, down to two years, and then 403 on four reads of four
-//	              after a few dozen multi-megabyte pulls on that key: a limit
-//	              I tripped, not a fault of theirs. The host segment is named after the
-//	              consensus CLIENT rather than the network, which is why
-//	              twelve guessed hostnames all failed to resolve: an unlisted
-//	              endpoint is asked for, not derived.
-//	chainstack    SERVES it, and the note that said otherwise was wrong.
-//	              Lighthouse/v8.3.1 behind envoy over HTTP/2. curl reads
-//	              1,849,084 bytes against 1,849,084 declared, exit 0, JSON
-//	              closed, and 4 of 4 complete on spaced reads. The earlier
-//	              "does not deliver" came from urllib returning IncompleteRead
-//	              fifteen times out of fifteen, which was my client speaking
-//	              HTTP/1.1, not their endpoint truncating. Two wrong verdicts
-//	              on this one cell in an hour: first served on the strength of
-//	              a 3 KB prefix, then refused on the strength of one client.
-//	getblock      Offered only as an add-on to a DEDICATED node, and they
-//	              decline to give a URL. Stated by their support, so this is
-//	              a fact about our plan and not about their product.
-//	alchemy       Their router answers "/eth/v1/node/version is not available
-//	              on the ETH_MAINNET". A refusal they state, on this endpoint.
-//	blockmachine  Not found: Cloudflare answers 403 on every non-RPC path, so
-//	              their edge refuses before any provider logic runs, and no
-//	              derived hostname resolves. Not settled, and after dwellir
-//	              the honest next step is to ask them rather than guess.
+//	quicknode     SERVES, on the same host as the RPC. Lighthouse/v8.2.3.
+//	              Their docs say "the complete history of blob data is
+//	              supported" and the measurement agrees: blobs answered down
+//	              to roughly two years.
+//	chainstack    SERVES, same host. Lighthouse/v8.3.1, 31 beacon endpoints
+//	              documented. They deliver MORE than they document: their own
+//	              guide pins blob retention at the ~18 day Lighthouse default,
+//	              while a one-year-old slot returns 2,113,236 bytes with a
+//	              blob field present. Publish the measurement, but know the
+//	              vendor disclaims it.
+//	alchemy       SERVES, on a SEPARATE host, eth-mainnetbeacon.g.alchemy.com,
+//	              with the same key path. Lighthouse/v8.2.2, and it works on
+//	              the free tier. An earlier version of this note recorded a
+//	              refusal, because the execution host answers
+//	              "/eth/v1/node/version is not available on the ETH_MAINNET"
+//	              and I read that as a denial instead of as the accurate
+//	              statement it was: not on THAT host.
+//	dwellir       SERVES, on an UNLISTED host their support gave us,
+//	              api-ethereum-mainnet-caplin.n.dwellir.com, same key. Caplin
+//	              is Erigon's consensus client, which is why no guessed
+//	              hostname containing "beacon" ever resolved. Absent from
+//	              their docs, their 110-network list and their endpoint JSON:
+//	              a documentation gap, not an absence.
+//	getblock      NOT on any shared plan. Their docs are explicit that the
+//	              Beacon API is an add-on to a DEDICATED node, which matches
+//	              what their support told us, and no public URL exists.
+//	              Blob sidecars are not mentioned anywhere in their docs.
+//	blockmachine  NOT offered. Their machine-readable reference enumerates
+//	              every namespace and every host and contains no consensus
+//	              layer at all: JSON-RPC over HTTP and WebSocket only. They do
+//	              expose eth_getBlobSidecars, which is an EXECUTION-layer
+//	              method and must not be counted as the Beacon API.
 //
-// WHAT A COLUMN WOULD MEASURE, and why it cannot be measured from a laptop.
+// THE DIFFERENTIATOR IS REAL, and it only appeared once four providers could
+// be asked. Blob sidecars by depth:
 //
-// The useful quantity is not a boolean: it is whether the WHOLE body arrives,
-// checked as received length against declared length, and how long megabytes
-// take. Every other probe in this file is kilobytes and measures a round trip;
-// this one would measure bulk delivery, which nothing else on the board does.
+//	                ~30 days   ~1 year   ~2 years
+//	quicknode       served     served    served
+//	alchemy         served     served    404 "no blobs stored for block"
 //
-// But the same slot, read from one laptop minutes apart, gave this:
+// A consensus node keeps blobs about eighteen days by default, so everything
+// past that is a product decision, and the providers do not make the same
+// one. That is the column worth publishing, and a boolean "serves blobs"
+// would hide all of it.
 //
-//	quicknode    2.3 s, then 7.7 to 14.0 s
-//	chainstack   3.2 s, then 4.1 to 31.2 s
-//
-// A spread of six to one INSIDE a provider, larger than any gap between
-// providers, so those readings rank the measuring link and not the endpoint.
-// Compression is a second term of the same size: the same body is 1.85 MB
-// plain and 1.35 MB gzipped, and one plain read took 19.3 s against 2.5 s
-// compressed, so the probe has to fix its Accept-Encoding or it measures a
-// negotiation.
-//
-// Hence this belongs in the container, on the fixed cadence, with the quota
-// guard, like every other number here. Two budget notes for whoever wires it:
-// probeTimeout is 8 s and healthy reads run past that, so this probe needs its
-// own deadline; and a few dozen multi-megabyte reads were enough to make
-// dwellir answer 403 on four reads out of four, having answered 5 of 5 an hour
-// earlier, so the call budget is part of the design and not an afterthought.
-//
-// So two of six are measurable today with no new credential. Building the
-// column needs a Beacon base URL per provider, which only the account holder
-// can obtain, and the two "not settled" rows want a support answer the way
-// getblock's did. Emitting 0 for any of the four would state that they do not
-// serve the Beacon API, which is false for at least getblock and alchemy.
+// WHAT IS STILL NEEDED to publish it: a beacon base URL per provider in the
+// env, since two of the four answer on a host that is not the RPC host and
+// one of those two is unlisted. Nothing here can derive them.
+
 var coverageProbes = []coverageProbe{
 	// The compute-bound call and the reference it is only meaningful
 	// against, first in the list because they have to run adjacent in the

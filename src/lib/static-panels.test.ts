@@ -62,23 +62,34 @@ describe("the panels the served table shows", () => {
   });
 });
 
-describe("bench 311, the spec that found this", () => {
+describe("a chain RPC page, where this now lives", () => {
   // Read from the real spec, so this fails if someone reorders its columns
   // away from what the page's title promises.
   const spec = load(
-    readFileSync(join(import.meta.dir, "../../benchmarks/rpc-api-coverage.yml"), "utf8"),
+    readFileSync(join(import.meta.dir, "../../benchmarks/ethereum-rpc.yml"), "utf8"),
   ) as { metric_panels: { id: string }[]; ledger_columns: { panel?: string }[] };
 
-  test("declares trace, receipts and archive columns that the first three panels do not reach", () => {
+  test("declares the trace, receipts and archive columns", () => {
     const declared = spec.ledger_columns.map((c) => c.panel).filter(Boolean) as string[];
-    for (const id of ["api_debug_tracetransaction", "api_trace_block", "api_getblockreceipts", "api_archive_5m"]) {
+    for (const id of ["cap_debug_trace", "cap_trace_block", "cap_receipts", "cap_archive"]) {
       expect(declared).toContain(id);
     }
-    // The point of the fix: those ids are NOT in the first three panels, so
-    // the old rule could not have shown them.
-    const firstThree = spec.metric_panels.slice(0, MAX_STATIC_PANELS).map((p) => p.id);
-    expect(firstThree).not.toContain("api_trace_block");
-    expect(firstThree).not.toContain("api_archive_5m");
+  });
+
+  test("the served table carries all eight, not the first three", () => {
+    // This is the property the bug was about. The old rule took the first
+    // three panels in spec order and a crawler got whatever happened to be
+    // there; the declared list is what the page promises, and all of it has
+    // to render.
+    const panels = spec.metric_panels
+      .filter((p) => p.id.startsWith("cap_"))
+      .map((p) => ({ ...p, values: { alchemy: 1 } })) as unknown as MetricPanel[];
+    const cols = spec.ledger_columns as unknown as LedgerColumn[];
+    const got = staticLedgerPanels(panels, cols);
+    expect(got.length).toBe(8);
+    expect(got.length).toBeGreaterThan(MAX_STATIC_PANELS);
+    expect(got.map((p) => p.id)).toContain("cap_trace_block");
+    expect(got.map((p) => p.id)).toContain("cap_archive");
   });
 
   test("the declared columns resolve against the spec's own panel ids", () => {

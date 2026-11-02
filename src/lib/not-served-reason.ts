@@ -78,54 +78,24 @@ export function rankGateReason(
   benchSlug: string,
   providerSlug: string,
   filters: Record<string, string | undefined>,
-  gated?: { successRate?: number; sampleSize?: number },
 ): string | null {
-  if (benchSlug === "rpc-api-coverage") return coverageRankReason(gated);
+  // The `gated` row argument and the coverage reason that read it left with
+  // bench 311 on 2026-11-02, when its capability matrix moved onto the eight
+  // chain RPC pages. Those pages rank on latency and publish capability as
+  // columns, so no rank gate asks this function about coverage any more.
+  //
+  // The lesson is worth keeping even though the code is not. That badge read
+  // "asked on only 21% of cells" for a provider asked on 56 cells of 56 and
+  // answered on 12: it printed the share ANSWERED as the share ASKED. We ask
+  // every cell every pass; what varies is how many come back. If a reason
+  // string is ever added here again, make it name the quantity it actually
+  // holds.
+
   const row = scenarioCell(benchSlug, filters)?.priced.find(
     (r) => r.slug.toLowerCase() === providerSlug.toLowerCase(),
   );
   if (!row || row.verified || row.bound !== "lower") return null;
   return "at least this: its page leaves a fee unpriced, so it is not ranked";
-}
-
-/**
- * Bench 311: the caption the generic path falls back to is "sample below the
- * ranking floor", which is true in the arithmetic and wrong in the cause. The
- * sample is small because our own key is refused on most of the chains it is
- * configured for, not because the bench has seen little traffic, and a reader
- * who knows other benches reads the generic wording as "this bench is young".
- *
- * Returned for every gated row rather than looked up per provider: the gate on
- * this bench can only read 0 for one reason, which is that recomputing the
- * provider's share with its unanswered cells credited at what the rest of the
- * cohort gets there moves it by more than one point. The cells were asked. The
- * verdicts are what is missing, and one of them is enough when it is a method
- * the cohort disagrees on.
- *
- * Kept to a badge's length on purpose. static-ledger renders this inline beside
- * the provider name at 11px uppercase with 0.14em tracking, so a sentence here
- * would set the column width for the whole table. It names the cause; the
- * success column beside it carries the size (21.43 % of cells answered against
- * 100 % for the ranked rows), and the methodology carries the argument.
- */
-function coverageRankReason(row?: { successRate?: number }): string {
-  const share = row?.successRate;
-  // The share comes from the row, never typed: `success` on this bench is
-  // verdicts over cells asked, so it is the size of what we could not ask.
-  //
-  // Phrased to stay true on EVERY gated view. On the all-chains tab the cause
-  // really is a widely refused key (12 cells of 56). On a single chain tab the
-  // same provider answered 6 of 7, and the gate fires because that one unasked
-  // cell is the method the rest of the cohort refuses, so it decides the
-  // position by itself. "refused on most cells" would be false there.
-  if (share == null || !Number.isFinite(share)) {
-    return "not answered on every cell, so it takes no rank";
-  }
-  // "asked on only N%" was the share answered, printed as the share asked.
-  // Alchemy was asked on 56 cells of 56 and the badge read 21%; on the
-  // HyperEVM tab it was asked on 7 of 7 and read 86%. We ask every cell,
-  // every pass; what varies is how many come back (audit 2026-10-30).
-  return `verdict on only ${Math.round(share)}% of cells`;
 }
 
 /**

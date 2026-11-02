@@ -935,7 +935,7 @@ const buildProvidersCached = unstable_cache(
   // v38: Trnch is new to the site, not just new to a bench, so it needs a
   //      product page and two bench appearances that this index carries.
   //      Lockstep with bench-unfiltered-v139.
-  ["providers-v38"],
+  ["providers-v39"],
   // 900 s: the provider index feeds products / compare / answers, whose
   // numbers move slowly, and this revalidate is also the effective ISR
   // period of those ~500 pages (Next takes the min across a route's caches).

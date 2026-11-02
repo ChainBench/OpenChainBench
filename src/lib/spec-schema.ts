@@ -820,6 +820,15 @@ export const SpecSchema = z
            *  The panel is omitted from the unfiltered view rather than
            *  blanked, so no tab opens onto nothing. */
           per_chain_only: z.boolean().optional(),
+          /** Tiers this panel belongs to. Omitted means every tier.
+           *
+           *  API capability is probed on the keyed cohort only, so on a
+           *  chain page's public tab these panels have nothing to say. A
+           *  panel listed here is dropped on any other tier, and the
+           *  ledger column that points at it is dropped with it, rather
+           *  than drawing a column of dashes under a header that promises
+           *  a reading. */
+          tiers: z.array(z.string().min(1).max(40)).max(6).optional(),
         })
       )
       // Cap covers visible tabs plus data-only window panels (revenue,
@@ -899,7 +908,14 @@ export const SpecSchema = z
       // Nine covers a cost sheet (bench 268: value lost, trade size,
       // dollars lost, five cost components, fail rate); the ledger
       // scrolls sideways past that width.
-      .max(9)
+      // Twelve, not nine, since 2026-11-02. A latency page that adds an API
+      // capability matrix has to RE-DECLARE its p50/p90/p99 first, because
+      // declaring any column switches the table out of its default layout,
+      // so three of the slots are spent before the matrix starts. The cap
+      // protects phone readability and the table already scrolls
+      // horizontally in its own container; the capability columns are also
+      // tier-gated, so the default public view still renders three.
+      .max(12)
       .optional(),
   })
   .strict()
