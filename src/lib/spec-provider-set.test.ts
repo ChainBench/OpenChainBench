@@ -53,6 +53,14 @@ describe("the provider set behind the cache keys", () => {
     const hash = createHash("sha256").update(sets.join("\n")).digest("hex").slice(0, 16);
     const count = sets.reduce((n, s) => n + s.split(":")[1].split(",").length, 0);
 
+    // A REMOVAL on 2026-11-03, one day after the arrival below: Trnch asked
+    // not to be published on quote or latency for now, so both rows go and
+    // the registry entry with them. The withdrawal happened in two steps and
+    // the order mattered: the Railway key was deleted FIRST, which stops the
+    // provider being constructed at all, so we stopped spending their rate
+    // limit when they asked rather than when this merged. v142/v135/v80 and
+    // providers-v40, which moves because a product page leaves too.
+    //
     // Re-recorded on 2026-11-02 with bench-unfiltered-v139,
     // all-benchmarks-v132, bench-filters-v77, providers-v38: Trnch joins
     // benches 033 and 304 on Robinhood Chain. An ADDITION, and a provider
@@ -125,6 +133,6 @@ describe("the provider set behind the cache keys", () => {
         "Then set EXPECTED to the hash in this failure, and add the provider",
         `to PRODUCT_NAMES if it needs a display name. Providers now: ${count}.`,
       ].join("\n"),
-    ).toBe("5b2e7a20e6b8bac4");
+    ).toBe("749e89e6f6169cea");
   });
 });

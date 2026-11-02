@@ -13,6 +13,16 @@ import (
 // TrnchProvider hits trnch.fun/api/bot/v1/quote. Robinhood Chain only: the
 // request carries no chain id because the API serves that one chain.
 //
+// WITHDRAWN 2026-11-03 at Trnch's request, one day after it arrived: they
+// prefer not to be published on quote or latency for now. TRNCH_API_KEY is
+// deleted on all three probes, so buildProviders never constructs this and
+// nothing is called. Their rows are gone from both specs and from the
+// registry, so nothing renders either.
+//
+// Kept rather than deleted because the key IS the gate: setting the variable
+// again is the whole re-enable, and the measurements written up below took a
+// night to establish and would have to be redone.
+//
 // Added 2026-11-02 after Trnch asked to be measured. Two things about them
 // are worth stating because they decide how the row reads.
 //
