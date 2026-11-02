@@ -1591,7 +1591,7 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   sushi: {
     url: "https://www.sushi.com",
     description:
-      "Sushi is a multichain DEX whose Sushi Perps v2 frontend routes orders into the Hyperliquid orderbook via a builder code, layering Sushi points incentives on top.",
+      "Sushi is a multichain DEX and router. Its keyless swap API quotes across the chains measured here, Robinhood Chain included, where it is one of five sources that answer. Separately, the Sushi Perps v2 frontend routes orders into the Hyperliquid orderbook via a builder code, layering Sushi points incentives on top.",
     twitter: "@SushiSwap",
   },
   dreamcash: {
