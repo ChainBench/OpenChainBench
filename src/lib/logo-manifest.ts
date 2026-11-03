@@ -231,7 +231,8 @@ const RAW: Record<string, string> = {
 
 
   // Vague-1 chains (2026-07-26, benches 108-111)
-  sei: "/logos/sei.png",
+  // Sei: the official mark served as sei.io/icon.svg.
+  sei: "/logos/sei.svg",
   mode: "/logos/mode.png",
   ronin: "/logos/ronin.png",
   immutable: "/logos/immutable.png",
@@ -503,7 +504,13 @@ const RAW: Record<string, string> = {
   gnosis: "/logos/gnosis.png",
   moonbeam: "/logos/moonbeam.png",
   unichain: "/logos/unichain.png",
-  cronos: "/logos/cronos.png",
+  // Cronos: the official square mark served as cronos.org/favicon.svg.
+  cronos: "/logos/cronos.svg",
+  // Internet Computer: the infinity mark served as internetcomputer.org/favicon.svg.
+  icp: "/logos/icp.svg",
+  // Somnia: the square brand mark from their site CDN (Mark.png, 256 px);
+  // no vector mark is published.
+  somnia: "/logos/somnia.png",
   fraxtal: "/logos/fraxtal.png",
   soneium: "/logos/soneium.png",
 
