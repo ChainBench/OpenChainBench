@@ -1243,6 +1243,7 @@ export const CHAINS: ChainEntry[] = [
     description:
       "Enterprise-grade public distributed ledger governed by the Hedera Governing Council using the Hashgraph consensus algorithm, targeting high throughput with deterministic finality under 3 seconds.",
   },
+
   {
     slug: "ckb",
     label: "Nervos CKB",

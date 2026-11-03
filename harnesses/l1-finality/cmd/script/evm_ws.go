@@ -220,18 +220,25 @@ func runWSChain(ch wsChain) error {
 	}()
 
 	conn.SetReadDeadline(time.Now().Add(30 * time.Second))
+	lastHead, lastFinalMove := time.Now(), time.Now()
+	var lastFinalN int64
 	for {
 		_, msg, err := conn.ReadMessage()
 		if err != nil {
 			return fmt.Errorf("read: %w", err)
 		}
-		conn.SetReadDeadline(time.Now().Add(30 * time.Second))
+		now := time.Now()
+		conn.SetReadDeadline(now.Add(30 * time.Second))
+		if err := wsStalled(ch, lastHead, lastFinalMove, now); err != nil {
+			return err
+		}
 
 		var ev evmSubEvent
 		if err := json.Unmarshal(msg, &ev); err != nil {
 			continue
 		}
 		if ev.Method == "eth_subscription" && ev.Params != nil {
+			lastHead = now
 			if ch.fromProposal {
 				if lag, ok := proposalLag(ev.Params.Result.TimestampMs, time.Now()); ok {
 					recordWallClock(ch.slug, lag)
@@ -247,10 +254,32 @@ func runWSChain(ch wsChain) error {
 		if ev.Result != nil {
 			n := parseHexInt(ev.Result.Number)
 			if n > 0 {
+				if n > lastFinalN {
+					lastFinalN, lastFinalMove = n, now
+				}
 				st.recordFinal(n, time.Now())
 			}
 		}
 	}
+}
+
+// wsStalled ends a connection that is open but no longer measuring. The
+// read deadline only fires when the socket goes fully quiet. From
+// 2026-11-02 the BNB row produced no sample for hours at a time (14:45 to
+// 20:25, 03:15 to 08:43, 11:53 to 14:34 UTC, read off
+// rate(l1_finality_wallclock_samples_total)) while health stayed at 1 and
+// the gauge held its last value, which quantile_over_time then counted as
+// a fresh reading at every scrape. No head for 20 s, or (where `finalized`
+// is the figure and moves every second or so) no finalized advance for
+// 30 s, now forces a reconnect.
+func wsStalled(ch wsChain, lastHead, lastFinalMove, now time.Time) error {
+	if now.Sub(lastHead) > 20*time.Second {
+		return fmt.Errorf("no newHeads for %v", now.Sub(lastHead).Round(time.Second))
+	}
+	if !ch.fromProposal && !ch.batch && now.Sub(lastFinalMove) > 30*time.Second {
+		return fmt.Errorf("finalized stuck for %v", now.Sub(lastFinalMove).Round(time.Second))
+	}
+	return nil
 }
 
 func (st *wsState) writeJSON(v any) error {
