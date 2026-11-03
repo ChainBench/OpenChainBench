@@ -564,7 +564,9 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // v109: discussion #2270 release. Benches 006, 031, 034 and 026 gain
   //       the requested chains (Algorand, Aptos, NEAR, Somnia, ICP, Sei,
   //       Cronos, Kaia, Gram), with their audit fixes and new copy.
-  ["bench-unfiltered-v109", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v110: BlockVectra joins the Katana RPC page. An ARRIVAL: a cached
+  //       entry holds the old provider set, so the row would never render.
+  ["bench-unfiltered-v110", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -831,7 +833,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v100: lockstep with bench-unfiltered-v107 (main release).
   // v101: lockstep with bench-unfiltered-v108 (BlockVectra joins 3 RPC pages).
   // v102: lockstep with bench-unfiltered-v109 (discussion #2270 release).
-  ["all-benchmarks-v102", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v103: lockstep with bench-unfiltered-v110 (BlockVectra on Katana).
+  ["all-benchmarks-v103", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -977,7 +980,8 @@ const loadBenchmarkFiltered = unstable_cache(
   // v48: lockstep with bench-unfiltered-v108 (BlockVectra on the region tabs
   //      of three chain RPC pages).
   // v49: lockstep with bench-unfiltered-v109 (discussion #2270 release).
-  ["bench-filters-v49", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v50: lockstep with bench-unfiltered-v110 (BlockVectra on Katana).
+  ["bench-filters-v50", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 
