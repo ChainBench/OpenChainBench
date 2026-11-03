@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	_ "embed"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -13,28 +14,22 @@ import (
 	"time"
 )
 
-// Canonical OpenZeppelin v5 ERC20 init bytecode used as the standard
-// deployment reference. Same bytes shipped to every EVM chain so the
-// cross-chain comparison is on identical contract code.
+// The init code every EVM chain is asked to deploy: the OpenZeppelin
+// Contracts Wizard default ERC20 (name, symbol, 18 decimals, whole supply
+// minted to the deployer), OpenZeppelin Contracts 5.0.2, solc 0.8.24,
+// optimizer 200 runs, evmVersion paris, no metadata hash. Source and the
+// compile script sit next to it in contracts/; `node compile.mjs` rebuilds
+// these exact bytes (3096 bytes of init code, 1784 bytes of runtime code).
+// The same bytes go to every chain, so the gas difference between chains
+// is their gas schedule, never a different contract.
 //
-// Source: compiled from contracts/Token.sol (OpenZeppelin v5.0.2, solc
-// 0.8.24, optimizer runs=200) — see harnesses/token-deployment-cost
-// artifacts in the public OCB repo for the input/output JSON.
-//
-// NOTE: this is a placeholder small ERC20 init for harness validation.
-// Replace with the real OZ-v5 artifact bytecode once compiled. The bench
-// methodology requires the same bytecode on every chain, so a single
-// update here propagates everywhere atomically.
-const canonicalERC20InitHex = "0x608060405234801561001057600080fd5b50610150806100206000396000f3fe60806040" +
-	"5260043610610022575f3560e01c80636057361d1461002e578063b09a261614610059" +
-	"575b3661002b57005b34801561003957600080fd5b5061004d6004803603810190610048" +
-	"91906100c9565b610077565b005b610061610081565b60405161006e91906100f9565b6040" +
-	"5180910390f35b8060008190555050565b60005481565b5f80fd5b5f819050919050565b" +
-	"6100a68161009a565b81146100b057005b50565b5f813590506100c18161009d565b" +
-	"92915050565b5f602082840312156100dc575f80fd5b5f6100e9848285016100b3565b" +
-	"91505092915050565b6100f88161009a565b82525050565b5f6020820190506101115f" +
-	"8301846100ef565b9291505056fea2646970667358221220deadbeefdeadbeefdeadbe" +
-	"efdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef64736f6c63430008180033"
+//go:embed contracts/Token.initcode.hex
+var erc20InitHex string
+
+// canonicalERC20Init returns the init code as a 0x-prefixed hex string.
+func canonicalERC20Init() string {
+	return "0x" + strings.TrimSpace(erc20InitHex)
+}
 
 type evmSampler struct {
 	http     *http.Client
@@ -44,8 +39,8 @@ type evmSampler struct {
 
 func init() {
 	httpClient := &http.Client{Timeout: 10 * time.Second}
-	registerSampler(KindEVM, &evmSampler{http: httpClient, bytecode: canonicalERC20InitHex})
-	registerSampler(KindOPStack, &evmSampler{http: httpClient, opStack: true, bytecode: canonicalERC20InitHex})
+	registerSampler(KindEVM, &evmSampler{http: httpClient, bytecode: canonicalERC20Init()})
+	registerSampler(KindOPStack, &evmSampler{http: httpClient, opStack: true, bytecode: canonicalERC20Init()})
 }
 
 type rpcReq struct {
@@ -128,7 +123,7 @@ func (s *evmSampler) Sample(ch ChainConfig) (Sample, error) {
 		return Sample{}, fmt.Errorf("parse gasPrice hex %q", priceHex)
 	}
 
-	feeWei := new(big.Int).Mul(gas, gasPrice)
+	feeWei := evmDeployFeeWei(gas, gasPrice)
 
 	// OP Stack chains: eth_estimateGas only covers L2 execution cost.
 	// The actual deployment also pays an L1 data fee, queryable from
@@ -151,6 +146,13 @@ func (s *evmSampler) Sample(ch ChainConfig) (Sample, error) {
 		NativeUnit: "wei",
 		GasUnits:   gasFloat,
 	}, nil
+}
+
+// evmDeployFeeWei is the execution fee of the deployment: the gas
+// eth_estimateGas returns for the init code times the chain's current
+// eth_gasPrice (base fee plus the node's suggested tip on EIP-1559 chains).
+func evmDeployFeeWei(gas, gasPrice *big.Int) *big.Int {
+	return new(big.Int).Mul(gas, gasPrice)
 }
 
 // opStackL1Fee calls OVM_GasPriceOracle.getL1Fee(_data) at 0x42..000F

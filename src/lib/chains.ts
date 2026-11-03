@@ -446,6 +446,7 @@ export const CHAINS: ChainEntry[] = [
     nativeSymbol: "CRO",
     description:
       "Crypto.com EVM chain built on Cosmos SDK + Ethermint, ~1 s blocks, IBC connectivity, CRO-denominated gas.",
+    website: "https://cronos.org",
   },
   {
     slug: "fraxtal",
@@ -526,6 +527,25 @@ export const CHAINS: ChainEntry[] = [
     nativeSymbol: "KAIA",
     description:
       "EVM L1 formed by the Klaytn + Finschia merger in Aug 2024. Istanbul BFT consensus with a fixed validator set, 1 s block target, KAIA gas token, dominant footprint in Korea + Japan through LINE / Kakao integrations.",
+    website: "https://kaia.io",
+  },
+  {
+    slug: "somnia",
+    label: "Somnia",
+    category: "L1",
+    nativeSymbol: "SOMI",
+    description:
+      "EVM-compatible proof-of-stake L1 (mainnet September 2025) built for high throughput: each validator produces its own data chain and a BFT consensus chain orders them, with sub-second blocks and SOMI as the gas token.",
+    website: "https://somnia.network",
+  },
+  {
+    slug: "icp",
+    label: "Internet Computer",
+    category: "L1",
+    nativeSymbol: "ICP",
+    description:
+      "Subnets of nodes run canister smart contracts and sign state with chain-key cryptography, so a finalized block needs no further confirmations. ICP pays ledger fees and is burned into cycles that fund compute.",
+    website: "https://internetcomputer.org",
   },
   {
     slug: "ink",
@@ -550,6 +570,7 @@ export const CHAINS: ChainEntry[] = [
     nativeSymbol: "SEI",
     description:
       "Cosmos SDK L1 (chain 1329) with a parallel-execution EVM layer bolted onto Tendermint consensus, launched by Sei Labs. SEI gas token for both sides, sub-second finality, positioned as a high-throughput trading chain.",
+    website: "https://sei.io",
   },
   {
     slug: "mode",
@@ -1222,6 +1243,7 @@ export const CHAINS: ChainEntry[] = [
     description:
       "Enterprise-grade public distributed ledger governed by the Hedera Governing Council using the Hashgraph consensus algorithm, targeting high throughput with deterministic finality under 3 seconds.",
   },
+
   {
     slug: "ckb",
     label: "Nervos CKB",

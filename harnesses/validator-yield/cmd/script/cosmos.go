@@ -2,269 +2,231 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
-	"sort"
+	"strconv"
 	"time"
 )
 
-const (
-	cosmosChain              = "cosmos-hub"
-	cosmosInflationTag       = "cosmos_lcd_inflation"
-	cosmosPoolTag            = "cosmos_lcd_pool"
-	cosmosValidatorsTag      = "cosmos_lcd_validators"
-	coingeckoAtomSourceTag   = "coingecko_atom"
+// Cosmos-SDK chains: Cosmos Hub, Sei, Cronos (the Cronos POS chain,
+// where CRO is staked; the Cronos EVM chain has no public staking).
+// Source: each chain's public LCD REST (PublicNode / crypto.org, no key).
+//
+// Network gross APR is the standard staking APR every Cosmos explorer
+// computes, from live chain state:
+//
+//	gross = annual_issuance × (1 − community_tax) / bonded_tokens
+//
+// annual_issuance:
+//   - x/mint chains (Hub, Cronos): annual_provisions × actual blocks
+//     per year / the mint module's blocks_per_year param. The module
+//     mints annual_provisions / blocks_per_year PER BLOCK, so when real
+//     blocks are faster than the param assumes, real issuance is
+//     higher (Hub: ~6 s blocks against a 7.2 s param).
+//   - Sei (custom seichain mint, fixed token release schedule): the
+//     current period's total_mint_amount annualized over the period.
+// community_tax from x/distribution params (live, not hard-coded).
+// Fees are excluded (inflation-only, like Cardano and Sui).
+//
+// Per validator: net = gross × (1 − commission), jailed → 0. Uptime is
+// published as 100: missed blocks are not fetched (signing info would
+// be one more paginated call per chain).
+//
+// History: until 2026-11 this file computed
+// inflation × (1 − 0.02) / (bonded / (bonded + not_bonded)). That
+// denominator is not the bonded ratio (not_bonded_tokens is only the
+// unbonding queue, not the liquid supply), so the Hub figure read
+// ~10.3% gross against a real ~15.5%.
 
-	// Cosmos Hub community_tax has been ~2% for years; hard-coding
-	// avoids a third LCD round-trip per scrape. If governance changes
-	// it materially, update here (grep this constant).
-	cosmosCommunityTax = 0.02
-
-	// Cap: Cosmos Hub has ~180 active validators (top 180 in bond
-	// order). We publish all of them — the tail is small enough to
-	// not blow up cardinality.
-	cosmosTopN = 200
-)
-
-var (
-	cosmosLCDBase = envDefault("VAL_ECON_COSMOS_LCD_URL", "https://cosmos-rest.publicnode.com")
-	coingeckoAtomURL = envDefault("VAL_ECON_COINGECKO_ATOM_URL", "https://api.coingecko.com/api/v3/simple/price?ids=cosmos&vs_currencies=usd")
-)
-
-// cosmosInflationResponse mirrors /cosmos/mint/v1beta1/inflation.
-// `inflation` is a decimal string in [0,1] (0.1 = 10%).
-type cosmosInflationResponse struct {
-	Inflation string `json:"inflation"`
+type cosmosChainCfg struct {
+	Chain    string
+	LCD      string
+	Decimals float64 // base units per token
+	PriceID  string
+	SeiMint  bool // custom seichain mint module
+	TopN     int
 }
 
-// cosmosPoolResponse mirrors /cosmos/staking/v1beta1/pool. Token amounts
-// are stringified integer uatom (1 ATOM = 1e6 uatom).
-type cosmosPoolResponse struct {
-	Pool struct {
-		BondedTokens    string `json:"bonded_tokens"`
-		NotBondedTokens string `json:"not_bonded_tokens"`
-	} `json:"pool"`
+var cosmosChains = []cosmosChainCfg{
+	{Chain: "cosmos-hub", LCD: envDefault("VAL_ECON_COSMOS_LCD_URL", "https://cosmos-rest.publicnode.com"), Decimals: 1e6, PriceID: "cosmos", TopN: 200},
+	{Chain: "sei", LCD: envDefault("VAL_ECON_SEI_LCD_URL", "https://sei-rest.publicnode.com"), Decimals: 1e6, PriceID: "sei-network", SeiMint: true, TopN: 200},
+	{Chain: "cronos", LCD: envDefault("VAL_ECON_CRONOS_LCD_URL", "https://rest.mainnet.crypto.org"), Decimals: 1e8, PriceID: "crypto-com-chain", TopN: 200},
 }
 
-// cosmosValidator mirrors items in /cosmos/staking/v1beta1/validators.
+const cosmosBlockGap = 20000
+
 type cosmosValidator struct {
 	OperatorAddress string `json:"operator_address"`
-	Status          string `json:"status"`
 	Tokens          string `json:"tokens"`
+	Jailed          bool   `json:"jailed"`
 	Description     struct {
-		Moniker  string `json:"moniker"`
-		Identity string `json:"identity"`
+		Moniker string `json:"moniker"`
 	} `json:"description"`
 	Commission struct {
 		CommissionRates struct {
-			Rate          string `json:"rate"`
-			MaxRate       string `json:"max_rate"`
-			MaxChangeRate string `json:"max_change_rate"`
+			Rate string `json:"rate"`
 		} `json:"commission_rates"`
 	} `json:"commission"`
-	Jailed bool `json:"jailed"`
 }
 
-type cosmosValidatorsResponse struct {
-	Validators []cosmosValidator `json:"validators"`
-	Pagination struct {
-		NextKey *string `json:"next_key"`
-		Total   string  `json:"total"`
-	} `json:"pagination"`
-}
-
-func lcdGet(ctx context.Context, client *http.Client, url string, out any) error {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err != nil {
-		return err
-	}
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("User-Agent", "OpenChainBench-harness/1.0")
-	resp, err := client.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("lcd http %d: %s", resp.StatusCode, url)
-	}
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-	return json.Unmarshal(body, out)
-}
-
-func fetchCosmosInflation(ctx context.Context, client *http.Client) (float64, error) {
-	var out cosmosInflationResponse
-	if err := lcdGet(ctx, client, cosmosLCDBase+"/cosmos/mint/v1beta1/inflation", &out); err != nil {
-		return 0, err
-	}
-	v := parseFloat(out.Inflation)
-	if v <= 0 || v > 1 {
-		return 0, fmt.Errorf("cosmos inflation implausible: %s", out.Inflation)
-	}
-	return v, nil
-}
-
-func fetchCosmosPool(ctx context.Context, client *http.Client) (bonded, notBonded float64, err error) {
-	var out cosmosPoolResponse
-	if err = lcdGet(ctx, client, cosmosLCDBase+"/cosmos/staking/v1beta1/pool", &out); err != nil {
-		return 0, 0, err
-	}
-	bonded = parseFloat(out.Pool.BondedTokens)
-	notBonded = parseFloat(out.Pool.NotBondedTokens)
+// cosmosGrossAPR = issuance × (1 − tax) / bonded.
+func cosmosGrossAPR(annualIssuance, communityTax, bonded float64) float64 {
 	if bonded <= 0 {
-		return 0, 0, fmt.Errorf("cosmos pool: bonded_tokens=0")
+		return 0
 	}
-	return bonded, notBonded, nil
+	return annualIssuance * (1 - communityTax) / bonded
 }
 
-func fetchCosmosValidators(ctx context.Context, client *http.Client) ([]cosmosValidator, error) {
-	url := cosmosLCDBase + "/cosmos/staking/v1beta1/validators?status=BOND_STATUS_BONDED&pagination.limit=250"
-	var out cosmosValidatorsResponse
-	if err := lcdGet(ctx, client, url, &out); err != nil {
-		return nil, err
+// mintAnnualIssuance corrects x/mint annual_provisions for real block
+// speed. blockSeconds <= 0 or paramBlocksPerYear <= 0 → uncorrected.
+func mintAnnualIssuance(annualProvisions, paramBlocksPerYear, blockSeconds float64) float64 {
+	if paramBlocksPerYear <= 0 || blockSeconds <= 0 {
+		return annualProvisions
 	}
-	return out.Validators, nil
+	return annualProvisions * (secondsPerYear / blockSeconds) / paramBlocksPerYear
 }
 
-func fetchCosmosPrice(ctx context.Context, client *http.Client) (float64, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, coingeckoAtomURL, nil)
-	if err != nil {
-		return 0, err
+// seiAnnualIssuance annualizes the active release period.
+func seiAnnualIssuance(totalMint float64, start, end string) (float64, error) {
+	s, err1 := time.Parse("2006-01-02", start)
+	e, err2 := time.Parse("2006-01-02", end)
+	if err1 != nil || err2 != nil || !e.After(s) {
+		return 0, fmt.Errorf("sei release period %q..%q", start, end)
 	}
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("User-Agent", "OpenChainBench-harness/1.0")
-	resp, err := client.Do(req)
-	if err != nil {
-		return 0, err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return 0, fmt.Errorf("coingecko atom http %d", resp.StatusCode)
-	}
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return 0, err
-	}
-	var payload map[string]map[string]float64
-	if err := json.Unmarshal(body, &payload); err != nil {
-		return 0, fmt.Errorf("coingecko atom parse: %w", err)
-	}
-	v, ok := payload["cosmos"]
-	if !ok {
-		return 0, fmt.Errorf("coingecko missing cosmos key")
-	}
-	price := v["usd"]
-	if price <= 0 {
-		return 0, fmt.Errorf("coingecko invalid atom price %f", price)
-	}
-	return price, nil
+	days := e.Sub(s).Hours()/24 + 1 // end date inclusive
+	return totalMint * 365.25 / days, nil
 }
 
-// scrapeCosmos computes Cosmos Hub validator yield from LCD REST:
-//
-//	network_apr = inflation × (1 - community_tax) / bonded_ratio
-//	net_apr     = network_apr × (1 - commission_rate)
-//
-// Uptime is set to 100% — Cosmos Hub does surface missed_blocks via
-// /cosmos/slashing/v1beta1/signing_infos but we skip that in v1 to
-// keep the scrape to a single validators-pagination call.
-func scrapeCosmos(ctx context.Context, client *http.Client) {
-	inflation, err := fetchCosmosInflation(ctx, client)
+func cosmosBlockSeconds(ctx context.Context, client *http.Client, lcd string) (float64, error) {
+	type blk struct {
+		Block struct {
+			Header struct {
+				Height string    `json:"height"`
+				Time   time.Time `json:"time"`
+			} `json:"header"`
+		} `json:"block"`
+	}
+	var head, old blk
+	if err := getJSON(ctx, client, lcd+"/cosmos/base/tendermint/v1beta1/blocks/latest", &head); err != nil {
+		return 0, err
+	}
+	h, err := strconv.ParseInt(head.Block.Header.Height, 10, 64)
+	if err != nil || h <= cosmosBlockGap {
+		return 0, fmt.Errorf("bad head height %q", head.Block.Header.Height)
+	}
+	if err := getJSON(ctx, client, fmt.Sprintf("%s/cosmos/base/tendermint/v1beta1/blocks/%d", lcd, h-cosmosBlockGap), &old); err != nil {
+		return 0, err
+	}
+	dt := head.Block.Header.Time.Sub(old.Block.Header.Time).Seconds()
+	if dt <= 0 {
+		return 0, fmt.Errorf("non-increasing block times")
+	}
+	return dt / cosmosBlockGap, nil
+}
+
+func cosmosAnnualIssuance(ctx context.Context, client *http.Client, c cosmosChainCfg) (float64, string, error) {
+	if c.SeiMint {
+		var m struct {
+			StartDate       string `json:"start_date"`
+			EndDate         string `json:"end_date"`
+			TotalMintAmount string `json:"total_mint_amount"`
+		}
+		if err := getJSON(ctx, client, c.LCD+"/seichain/mint/v1beta1/minter", &m); err != nil {
+			return 0, "", err
+		}
+		v, err := seiAnnualIssuance(parseFloat(m.TotalMintAmount), m.StartDate, m.EndDate)
+		return v, fmt.Sprintf("release %s..%s", m.StartDate, m.EndDate), err
+	}
+	var ap struct {
+		AnnualProvisions string `json:"annual_provisions"`
+	}
+	if err := getJSON(ctx, client, c.LCD+"/cosmos/mint/v1beta1/annual_provisions", &ap); err != nil {
+		return 0, "", err
+	}
+	var mp struct {
+		Params struct {
+			BlocksPerYear string `json:"blocks_per_year"`
+		} `json:"params"`
+	}
+	if err := getJSON(ctx, client, c.LCD+"/cosmos/mint/v1beta1/params", &mp); err != nil {
+		return 0, "", err
+	}
+	bt, err := cosmosBlockSeconds(ctx, client, c.LCD)
 	if err != nil {
-		scrapeErrorsTotal.WithLabelValues(cosmosChain, cosmosInflationTag).Inc()
-		fmt.Printf("[cosmos-hub] inflation err: %v\n", err)
-		return
+		// Fall back to the uncorrected provisions rather than drop
+		// the chain; the log says so.
+		fmt.Printf("[%s] block time err (issuance uncorrected): %v\n", c.Chain, err)
+		bt = 0
 	}
+	param := parseFloat(mp.Params.BlocksPerYear)
+	return mintAnnualIssuance(parseFloat(ap.AnnualProvisions), param, bt),
+		fmt.Sprintf("block %.2fs vs param %.0f/yr", bt, param), nil
+}
 
-	bonded, notBonded, err := fetchCosmosPool(ctx, client)
-	if err != nil {
-		scrapeErrorsTotal.WithLabelValues(cosmosChain, cosmosPoolTag).Inc()
-		fmt.Printf("[cosmos-hub] pool err: %v\n", err)
-		return
-	}
-	bondedRatio := bonded / (bonded + notBonded)
-	if bondedRatio <= 0 || bondedRatio > 1 {
-		fmt.Printf("[cosmos-hub] implausible bonded_ratio %.4f, aborting\n", bondedRatio)
-		return
-	}
-
-	validators, err := fetchCosmosValidators(ctx, client)
-	if err != nil {
-		scrapeErrorsTotal.WithLabelValues(cosmosChain, cosmosValidatorsTag).Inc()
-		fmt.Printf("[cosmos-hub] validators err: %v\n", err)
-		return
-	}
-
-	atomPrice, err := fetchCosmosPrice(ctx, client)
-	if err != nil {
-		scrapeErrorsTotal.WithLabelValues(cosmosChain, coingeckoAtomSourceTag).Inc()
-		fmt.Printf("[cosmos-hub] coingecko err (stake_usd will be skipped): %v\n", err)
-		atomPrice = 0
-	}
-
-	// Sort by tokens desc, cap top-N.
-	sort.Slice(validators, func(i, j int) bool {
-		return parseFloat(validators[i].Tokens) > parseFloat(validators[j].Tokens)
-	})
-	if len(validators) > cosmosTopN {
-		validators = validators[:cosmosTopN]
-	}
-
-	networkAPR := inflation * (1 - cosmosCommunityTax) / bondedRatio
-	grossBps := pctToBps(networkAPR)
-
-	const uatomPerAtom = 1e6
-
-	netYields := make([]float64, 0, len(validators))
-	for _, v := range validators {
-		name := shortenName(v.Description.Moniker)
-		id := v.OperatorAddress
-
-		commissionRate := parseFloat(v.Commission.CommissionRates.Rate) // 0..1
-		if commissionRate < 0 {
-			commissionRate = 0
+func scrapeCosmosChain(c cosmosChainCfg) func(context.Context, *http.Client) {
+	return func(ctx context.Context, client *http.Client) {
+		fail := func(tag string, err error) {
+			scrapeErrorsTotal.WithLabelValues(c.Chain, tag).Inc()
+			fmt.Printf("[%s] %s err: %v\n", c.Chain, tag, err)
 		}
-		if commissionRate > 1 {
-			commissionRate = 1
+		issuance, note, err := cosmosAnnualIssuance(ctx, client, c)
+		if err != nil {
+			fail("lcd_mint", err)
+			return
 		}
-		commissionBps := commissionRate * 10000
-
-		uptimePct := 100.0
-		netBps := grossBps * (1 - commissionRate) * (uptimePct / 100)
-		if v.Jailed {
-			netBps = 0
+		var pool struct {
+			Pool struct {
+				BondedTokens string `json:"bonded_tokens"`
+			} `json:"pool"`
 		}
-
-		stakeAtom := parseFloat(v.Tokens) / uatomPerAtom
-		stakeUSD := stakeAtom * atomPrice
-
-		jailed := 0.0
-		if v.Jailed {
-			jailed = 1
+		if err := getJSON(ctx, client, c.LCD+"/cosmos/staking/v1beta1/pool", &pool); err != nil {
+			fail("lcd_pool", err)
+			return
 		}
-
-		validatorNetYieldBps.WithLabelValues(cosmosChain, id, name).Set(netBps)
-		validatorGrossYieldBps.WithLabelValues(cosmosChain, id, name).Set(grossBps)
-		validatorMevShareBps.WithLabelValues(cosmosChain, id, name).Set(0)
-		validatorCommissionBps.WithLabelValues(cosmosChain, id, name).Set(commissionBps)
-		validatorUptimePct.WithLabelValues(cosmosChain, id, name).Set(uptimePct)
-		if atomPrice > 0 {
-			validatorStakeUSD.WithLabelValues(cosmosChain, id, name).Set(stakeUSD)
+		var dist struct {
+			Params struct {
+				CommunityTax string `json:"community_tax"`
+			} `json:"params"`
 		}
-		validatorJailed.WithLabelValues(cosmosChain, id, name).Set(jailed)
-
-		netYields = append(netYields, netBps)
+		if err := getJSON(ctx, client, c.LCD+"/cosmos/distribution/v1beta1/params", &dist); err != nil {
+			fail("lcd_distribution", err)
+			return
+		}
+		var vals struct {
+			Validators []cosmosValidator `json:"validators"`
+		}
+		if err := getJSON(ctx, client, c.LCD+"/cosmos/staking/v1beta1/validators?status=BOND_STATUS_BONDED&pagination.limit=500", &vals); err != nil {
+			fail("lcd_validators", err)
+			return
+		}
+		bonded := parseFloat(pool.Pool.BondedTokens)
+		tax := parseFloat(dist.Params.CommunityTax)
+		apr := cosmosGrossAPR(issuance, tax, bonded)
+		if apr <= 0 || apr > 1 {
+			fail("lcd_mint", fmt.Errorf("implausible gross APR %.4f (issuance %.0f, bonded %.0f)", apr, issuance, bonded))
+			return
+		}
+		gross := pctToBps(apr)
+		rows := make([]valRow, 0, len(vals.Validators))
+		for _, v := range vals.Validators {
+			comm := clamp(parseFloat(v.Commission.CommissionRates.Rate), 0, 1)
+			net := gross * (1 - comm)
+			if v.Jailed {
+				net = 0
+			}
+			rows = append(rows, valRow{
+				ID: v.OperatorAddress, Name: v.Description.Moniker,
+				GrossBps: gross, NetBps: net, CommissionBps: comm * 10000, UptimePct: 100,
+				StakeNative: parseFloat(v.Tokens) / c.Decimals, Jailed: v.Jailed,
+			})
+		}
+		rows = topNByStake(rows, c.TopN)
+		if len(rows) == 0 {
+			fail("lcd_validators", fmt.Errorf("no bonded validator"))
+			return
+		}
+		med := publishRows(c.Chain, rows, priceUSD(ctx, client, c.Chain, c.PriceID))
+		fmt.Printf("[%s] published %d validators, gross %.0f bps (issuance %.0fM, bonded %.0fM, tax %.2f, %s), median net %.0f bps\n",
+			c.Chain, len(rows), gross, issuance/c.Decimals/1e6, bonded/c.Decimals/1e6, tax, note, med)
 	}
-
-	chainTotalValidators.WithLabelValues(cosmosChain).Set(float64(len(netYields)))
-	chainMedianNetYieldBps.WithLabelValues(cosmosChain).Set(medianBps(netYields))
-	lastScrapeTimestamp.WithLabelValues(cosmosChain).Set(float64(time.Now().Unix()))
-
-	fmt.Printf("[cosmos-hub] published %d validators, median net yield %.0f bps, inflation=%.2f%%, bonded=%.1f%%, ATOM=$%.4f\n",
-		len(netYields), medianBps(netYields), inflation*100, bondedRatio*100, atomPrice)
 }

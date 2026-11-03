@@ -9,12 +9,22 @@ import (
 	"time"
 )
 
-// Stellar wall-clock measurement via Horizon SSE.
+// Stellar ledger close interval, from the ledgers' own close times.
 //
-// The public Horizon `/ledgers?cursor=now` SSE stream emits one event
-// per externalized ledger (~5-7s SCP cadence). We record T_recv when
-// each ledger arrives and report lag = T_recv(N+1) - T_recv(N) — the
-// actual wall-clock close interval as observed by a public client.
+// SCP finalizes at every ledger close, so the interval between two closes is
+// how often finality lands (the SUI checkpoint row's method). The public
+// Horizon `/ledgers?cursor=now` SSE stream emits one event per closed ledger
+// with its `closed_at`.
+//
+// Until 2026-11-03 the sample was the gap between two ledgers ARRIVING on the
+// stream, on our clock. Horizon delivers them unevenly: on 3 November 2026
+// arrival gaps read 3.1, 4.0 and 7.1 s on ledgers whose closed_at were all
+// exactly 5 s apart (199 of the last 200), so the published p50 of 4.0 s was
+// a delivery artifact, not the chain, and p90 reached 11 s. closed_at is whole
+// seconds, so the sample is now the mean over the last ten closes:
+// (closed_at(N) - closed_at(N-10)) / 10, with 0.1 s resolution, emitted once
+// per new ledger. Replayed ledgers count: their close time is the chain's,
+// whenever they reach us.
 //
 // Quirks:
 //   - Public Horizon force-closes the SSE every ~10s with `event: close`,
@@ -25,7 +35,10 @@ import (
 //     With ledgers every ~5s + reconnects every ~10s we use ~1100/hr,
 //     well under the cap.
 
-const stellarHorizonSSEURL = "https://horizon.stellar.org/ledgers?order=asc&cursor=%s"
+const (
+	stellarHorizonSSEURL = "https://horizon.stellar.org/ledgers?order=asc&cursor=%s"
+	stellarWindow        = 10
+)
 
 type stellarLedgerEvent struct {
 	Sequence int64  `json:"sequence"`
@@ -33,15 +46,50 @@ type stellarLedgerEvent struct {
 	ID       string `json:"paging_token"`
 }
 
+type stellarCloses struct {
+	closes   map[int64]time.Time
+	lastEmit int64
+}
+
+func newStellarCloses() *stellarCloses {
+	return &stellarCloses{closes: map[int64]time.Time{}}
+}
+
+// add records a ledger close and returns the mean close interval (ms) over
+// the last stellarWindow ledgers, once per new ledger.
+func (st *stellarCloses) add(seq int64, closedAt time.Time) (float64, bool) {
+	if seq <= 0 || closedAt.IsZero() {
+		return 0, false
+	}
+	st.closes[seq] = closedAt
+	for s := range st.closes {
+		if s < seq-5*stellarWindow {
+			delete(st.closes, s)
+		}
+	}
+	if seq <= st.lastEmit {
+		return 0, false
+	}
+	from, ok := st.closes[seq-stellarWindow]
+	if !ok {
+		return 0, false
+	}
+	ms := float64(closedAt.Sub(from).Milliseconds()) / stellarWindow
+	if ms <= 0 || ms >= 30_000 {
+		return 0, false
+	}
+	st.lastEmit = seq
+	return ms, true
+}
+
 func StartStellarWallClock() {
 	go func() {
 		const baseBackoff = 1 * time.Second
 		backoff := baseBackoff
 		cursor := "now"
-		var lastSeen time.Time
-		var lastSeq int64
+		st := newStellarCloses()
 		for {
-			nextCursor, err := runStellarSSE(cursor, &lastSeen, &lastSeq)
+			nextCursor, err := runStellarSSE(cursor, st)
 			if nextCursor != "" {
 				cursor = nextCursor
 			}
@@ -50,17 +98,9 @@ func StartStellarWallClock() {
 				// connection after ~10s with `event: close` and expects
 				// the client to reconnect using cursor=<last_id>. That is
 				// the protocol working as designed, not a failure.
-				// Reconnect quickly and keep the backoff at its floor.
-				//
-				// BUG HISTORY (why the Stellar row went dead): the
-				// previous loop treated every stream end as an error and
-				// doubled the backoff without ever resetting it, so
-				// within a minute of startup it slept 64s between ~10s
-				// connection windows. During each window the replayed
-				// ledgers failed the 6s liveness filter and the first
-				// live event exceeded the 30s sanity bound, so the gauge
-				// almost never received a sample and last_over_time on
-				// the page eventually returned nothing.
+				// Reconnect quickly and keep the backoff at its floor
+				// (an earlier loop doubled it on every close and left the
+				// row nearly empty).
 				backoff = baseBackoff
 				time.Sleep(baseBackoff)
 				continue
@@ -77,7 +117,7 @@ func StartStellarWallClock() {
 
 // runStellarSSE opens one SSE connection. Returns the last seen cursor
 // so the caller can resume from there on reconnect.
-func runStellarSSE(cursor string, lastSeen *time.Time, lastSeq *int64) (string, error) {
+func runStellarSSE(cursor string, st *stellarCloses) (string, error) {
 	url := fmt.Sprintf(stellarHorizonSSEURL, cursor)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
@@ -120,51 +160,18 @@ func runStellarSSE(cursor string, lastSeen *time.Time, lastSeq *int64) (string, 
 					continue
 				}
 				lastID = ev.ID
-
-				// Skip replays. Horizon force-closes the SSE every ~10s
-				// and on reconnect (cursor=last_id) replays the ledgers
-				// we missed back-to-back, microseconds apart. Recording
-				// those polluted p50/p90 down to 0ms even though the
-				// real SCP cadence is 5-7s. Compare event `closed_at`
-				// against now: if it's older than ~6s the event is
-				// historical and we drop it.
-				//
-				// We DO NOT reset lastSeen here. The previous version
-				// did `*lastSeen = time.Time{}`, which combined with the
-				// `!lastSeen.IsZero()` guard below caused the first
-				// live event after every reconnect to be silently
-				// skipped. Since Horizon force-closes every ~10s and the
-				// SCP cadence is ~5-7s, we'd typically see only 1-2 live
-				// events between reconnects — losing the first one left
-				// the gauge mostly empty (Prom dashboard showed Stellar
-				// as silent). With the reset removed, the first live
-				// event after each reconnect contributes a sample using
-				// the lastSeen baseline that survived from the previous
-				// connection cycle. The 30 s sanity bound below filters
-				// the natural reconnect outlier so it doesn't skew p50.
 				closedAt, perr := time.Parse(time.RFC3339, ev.ClosedAt)
-				isLive := perr == nil && time.Since(closedAt) < 6*time.Second
-				if !isLive {
-					*lastSeq = ev.Sequence
+				if perr != nil {
 					continue
 				}
-
-				now := time.Now()
-				if !lastSeen.IsZero() && *lastSeq > 0 && ev.Sequence > *lastSeq {
-					lagMs := float64(now.Sub(*lastSeen).Milliseconds())
-					// Real SCP cadence is 5-7 s; anything > 30 s is a
-					// reconnect artifact (we crossed a 10 s SSE close +
-					// a few seconds of replay catch-up) and should not
-					// pollute the distribution.
-					if lagMs >= 0 && lagMs < 30_000 {
-						wallClockLagGauge.WithLabelValues("stellar").Set(lagMs)
-						wallClockLagSum.WithLabelValues("stellar").Observe(lagMs)
-						wallClockSampleCtr.WithLabelValues("stellar").Inc()
-						fmt.Printf("[L1][stellar] ledger=%d wall-clock-lag=%.0fms\n", ev.Sequence, lagMs)
+				if ms, ok := st.add(ev.Sequence, closedAt); ok {
+					wallClockLagGauge.WithLabelValues("stellar").Set(ms)
+					wallClockLagSum.WithLabelValues("stellar").Observe(ms)
+					wallClockSampleCtr.WithLabelValues("stellar").Inc()
+					if ev.Sequence%20 == 0 {
+						fmt.Printf("[L1][stellar] ledger=%d close-interval=%.0fms\n", ev.Sequence, ms)
 					}
 				}
-				*lastSeen = now
-				*lastSeq = ev.Sequence
 			}
 			continue
 		}

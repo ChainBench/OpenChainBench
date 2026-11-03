@@ -2,33 +2,33 @@
 
 slug: token-deployment-cost
 number: "034"
-title: Cheapest blockchain to deploy a token, live USD cost across 7 non-EVM L1 chains
-seo_title: "Token deployment cost 2026: cheapest chain"
-seo_description: "Live USD cost to create a fungible token on 7 non-EVM L1 chains via each chain's canonical method (SPL, Move, TokenFactory, native asset, Stellar 2-account)."
-subtitle: "Live USD cost to bring a fungible token into existence on each chain, using that chain's canonical method. 7 non-EVM L1 chains, 5 minute refresh, no transactions broadcast."
+title: Cheapest blockchain to deploy a token, live USD cost per L1 chain
+seo_title: "Token deployment cost {{year}}: cheapest chain"
+seo_description: "Live USD cost to create a fungible token on {{count}} L1 chains, EVM and non-EVM: an ERC20 deploy, an SPL mint, a jetton, an ASA, a NEAR or ICP token."
+subtitle: "Live USD cost to bring a fungible token into existence on each L1, using that chain's canonical method. {{count}} chains, 5 minute refresh, no transactions broadcast."
 
 seo_intro: |
-  This page answers a question every memecoin founder, RWA issuer and non-EVM L1 marketing team asks. How much does it actually cost in dollars to create a token on each non-EVM chain right now. We track 7 non-EVM L1 chains in parallel and refresh the number every 5 minutes. Solana uses the SPL mint plus the Associated Token Account plus the Metaplex metadata account so the comparison is fair against ERC20 which embeds name and symbol natively. Sui and Aptos use Move publish gas budgets. Cardano reads coins_per_utxo_size from koios and applies the Conway minUTxO formula. Stellar uses the canonical issuer plus distribution plus trustline two account flow at protocol-minimum reserves. Cosmos TokenFactory chains (Osmosis, Injective) read denom_creation_fee from the LCD. Every number is reproducible from source. No transactions are broadcast. EVM chains are excluded from this leaderboard for now while we finalise the canonical OpenZeppelin v5 ERC20 artifact bytecode used in eth_estimateGas.
+  This page answers a question every token issuer asks before launch: how much does it cost in dollars to create a token on each chain right now. {{best_name}} is the cheapest of {{count}} L1 chains at {{best_p50}}, refreshed every 5 minutes. EVM chains deploy the same OpenZeppelin ERC20, priced as eth_estimateGas on that contract times the live gas price, so the gap between two EVM chains is their gas schedule and their coin, never a different contract. Non-EVM chains use their own canonical method: an SPL mint with its Metaplex metadata on Solana, a Move publish on Sui and Aptos, TokenFactory on Osmosis and Injective, a native asset on Cardano, Stellar and Algorand, a jetton on Gram (TON), the tkn.near factory on NEAR, a ledger canister on the Internet Computer. Deposits the chain locks for as long as the token exists (rent, reserves, minimum balance, storage stake) are counted, because the token cannot exist without them. Every number is reproducible from source and no transaction is broadcast.
 
 faq:
   - q: "What does this benchmark measure?"
-    a: "The live USD cost to create a fungible token on each of the 7 tracked non-EVM L1 chains, refreshed every 5 minutes, using each chain's canonical and most used method. SPL mint plus ATA plus Metaplex metadata account for Solana, Move publish for Sui and Aptos, TokenFactory MsgCreateDenom for Osmosis and Injective, native asset minting policy for Cardano, two account asset issuance for Stellar."
+    a: "The live USD cost to create a standard fungible token on each tracked L1 chain, refreshed every 5 minutes, using the chain's canonical method: an OpenZeppelin ERC20 deploy on EVM chains, an SPL mint with an Associated Token Account and Metaplex metadata on Solana, a Move publish on Sui and Aptos, TokenFactory on Osmosis and Injective, a native asset on Cardano, Stellar and Algorand, a jetton on Gram, a tkn.near token on NEAR and a ledger canister on the Internet Computer."
   - q: "Which chains are tracked?"
-    a: "7 non-EVM L1 chains: Solana, Sui, Aptos, Osmosis, Injective, Cardano, Stellar."
-  - q: "Why are EVM chains not tracked here?"
-    a: "The harness path for EVM chains currently ships a placeholder ERC20 init bytecode to eth_estimateGas, which understates the real deploy cost of the canonical OpenZeppelin v5 ERC20 by roughly 30 to 500x depending on chain. Rather than publish misleading numbers, we removed the EVM leg until we finalise the real OZ v5 artifact and re-enable it in a follow-up."
+    a: "{{count}} L1 chains with live data. EVM: Ethereum, BNB Chain, Avalanche, Polygon PoS, Sei, Cronos, Kaia and Somnia. Non-EVM: Solana, Sui, Aptos, Osmosis, Injective, Cardano, Stellar, Algorand, Gram (TON), NEAR and the Internet Computer."
+  - q: "How are EVM chains priced?"
+    a: "Every EVM chain receives the same init code: the OpenZeppelin Contracts Wizard default ERC20 (OpenZeppelin 5.0.2, solc 0.8.24, 200 optimizer runs), whose source and compile script are in the harness. The harness calls eth_estimateGas on it and multiplies by eth_gasPrice. Most chains report about 550,000 gas; Sei and Somnia charge more gas for the same contract because their storage costs differ, which is why gas is measured per chain rather than assumed."
+  - q: "Why are rollups and L2s not on the leaderboard?"
+    a: "A deploy on a rollup also pays an L1 data fee for posting the contract bytes, and eth_estimateGas does not report that fee the same way on every stack. Pricing it needs a per-stack oracle read, so L2s stay out until that is measured like-for-like rather than approximated."
   - q: "Is the comparison fair across chains?"
-    a: "As fair as the underlying chains allow. Token creation means structurally different things in each ecosystem. We do not pretend the numbers are perfectly equivalent. Instead we publish exactly what the canonical and most used method costs in dollars on each chain, plus the formula and inputs for every value so readers can adjust. The methodology field lists the precise method per chain."
-  - q: "Why is Osmosis showing near zero?"
-    a: "Osmosis TokenFactory has set its denom_creation_fee parameter to an empty list, meaning the only cost is the gas to execute MsgCreateDenom (roughly one tenth of a cent at current gas prices, well below our display precision). We render this as less than zero point zero zero one dollar with a tooltip explaining no protocol level creation fee. Injective by contrast charges a flat zero point one INJ for a tokenfactory denom."
-  - q: "Is the Solana number really fair compared to ERC20?"
-    a: "Yes. Earlier versions of the benchmark only counted the bare 82 byte mint account rent, which understated the realistic cost by about 2.5 times. The current methodology also includes the 165 byte Associated Token Account for the initial holder and the 679 byte Metaplex Token Metadata account that holds name, symbol and URI. EVM ERC20 deployments embed name and symbol in the contract storage natively, so adding the Solana metadata account is the apples to apples adjustment. A bare mint without metadata would not be discoverable in Phantom, Jupiter or any wallet UI."
-  - q: "Why is Cardano always similar?"
-    a: "The Cardano min UTxO formula is deterministic. The coins_per_utxo_size protocol parameter is set by governance and moves rarely. A standard native asset bundle (32 byte policy hash plus short asset name) sits around 70 bytes, and the on chain mint transaction fee is a few cents of ADA. The USD figure on the leaderboard moves with ADA price, not with congestion."
+    a: "As fair as the chains allow. Creating a token means structurally different things in each ecosystem, so the bench prices the method issuers actually use on each chain and publishes the formula and inputs for every row. Locked deposits (Solana rent, Stellar reserves, the Algorand minimum balance, the NEAR storage stake) are included and the methodology says which part is refundable."
+  - q: "Why is NEAR so much more expensive than the rest?"
+    a: "NEAR charges storage staking for every byte an account holds, 1 NEAR per 100 kB. A NEP-141 token is its own contract account, and the tkn.near factory deploys a 213 kB contract into it, so most of the {{p50:near}} is that stake. It is locked in the token account for as long as the token exists rather than burned; the transaction fee itself is about a hundredth of a NEAR."
+  - q: "Is the Solana number fair compared to an ERC20?"
+    a: "Yes. The bench counts the 82 byte mint account, the 165 byte Associated Token Account for the first holder and the 679 byte Metaplex metadata account that holds the name, symbol and URI. An ERC20 stores its name and symbol in its own contract, so the metadata account is the like-for-like addition; a bare mint without it does not show up in wallets or DEX interfaces."
+  - q: "What does the Internet Computer row include?"
+    a: "The 500 billion cycle fee to create the ledger canister on a 13 node subnet, converted to ICP at the cycles minting canister's live ICP/XDR rate. It does not include the cycles a running ledger must keep in reserve, which are not consumed at creation, so the row is the floor rather than a typical top-up."
   - q: "Can I cite a value from this page?"
-    a: "Yes. Every number is a live Prometheus query against the OpenChainBench gateway. The harness source is open at the link in the source field below. Cite the value, the chain and the timestamp at the top of the page."
-  - q: "Why publish a live cost when most readers will see a one off snapshot?"
-    a: "Because deploying a token is a one off decision and the operator wants the cost at the time of decision, not last quarter's average. The bench is the only public source that publishes this number live with reproducible methodology. Static blog posts go stale within hours when gas prices move."
+    a: "Yes. Every number is a live Prometheus query against the OpenChainBench gateway and the harness source is linked below. Cite the value, the chain and the timestamp at the top of the page."
 
 category: Blockchains
 status: live
@@ -38,38 +38,42 @@ higher_is_better: false
 row_noun: { one: chain, many: chains }
 
 abstract: |
-  Every 5 minutes the harness asks each of 7 non-EVM L1 chains what it
-  would cost right now to create a standard fungible token. For Solana
-  it reads rent exemption for the SPL mint, the Associated Token Account
-  and the Metaplex metadata account. For Sui and Aptos it uses the
-  reference gas price multiplied by a pinned Move publish budget. For
-  Cosmos TokenFactory chains (Osmosis, Injective) it reads
-  denom_creation_fee from the LCD. For Cardano it reads
-  coins_per_utxo_size and applies the Conway min UTxO formula. For
-  Stellar it reads base_reserve_in_stroops and base_fee and prices the
-  canonical issuer plus distribution plus trustline two account flow.
-  No transaction is broadcast on any chain. The 7 numbers are published
-  as Prometheus gauges with chain and layer labels. EVM chains are
-  excluded pending a canonical OZ v5 ERC20 artifact.
+  Every 5 minutes the harness asks each tracked L1 what it would cost
+  right now to create a standard fungible token. EVM chains get the same
+  OpenZeppelin ERC20 init code through eth_estimateGas, times
+  eth_gasPrice. Solana reads rent exemption for the SPL mint, the
+  Associated Token Account and the Metaplex metadata account. Sui and
+  Aptos multiply the live gas price by a pinned Move publish budget.
+  Osmosis and Injective read denom_creation_fee from the LCD. Cardano
+  applies the min UTxO formula to coins_per_utxo_size, Stellar prices
+  the issuer plus distribution flow from the latest ledger, Algorand adds
+  the per-asset minimum balance to the live min fee. Gram prices the
+  standard jetton minter flow with the live basechain config, NEAR asks
+  the tkn.near factory for its deposit quote, and the Internet Computer
+  converts the canister creation fee at the live ICP/XDR rate. No
+  transaction is broadcast. Native costs are converted to USD with a
+  live price and published as Prometheus gauges per chain.
 
 methodology:
-  - "Refresh cadence. 5 minutes. One process samples all 7 chains in parallel goroutines and emits Prometheus gauges."
-  - "Solana SPL. getMinimumBalanceForRentExemption(82) for the mint + (165) for the Associated Token Account + (679) for the Metaplex Token Metadata account + 5000 lamports per signature. Multiply by SOL USD price. Without the metadata account the headline would understate by ~2.5x."
-  - "Sui. suix_getReferenceGasPrice times 5 million MIST gas units for a canonical coin module publish (net of storage rebate). Converted to USD via SUI price."
-  - "Aptos. /v1/estimate_gas_price.gas_estimate octas per unit times 150000 gas units for a canonical FA standard publish. Converted to USD via APT price."
-  - "Cosmos TokenFactory (Osmosis, Injective). LCD /<chain>/tokenfactory/v1beta1/params.denom_creation_fee. Empty array (Osmosis) means gas only, rendered as less than 0.001 dollar. Injective charges a flat 0.1 INJ."
-  - "Cardano. Koios /epoch_params.coins_per_utxo_size. Apply Conway minUTxO formula = (160 byte overhead + 70 byte single asset bundle) × coins_per_utxo_size + 180000 lovelace mint tx fee. Converted to USD via ADA price."
-  - "Stellar. Horizon /ledgers.base_reserve_in_stroops and base_fee_in_stroops on the latest ledger. Total cost = 5 base reserves (the protocol minimum of 2 per new account for issuer and distribution, plus 1 for the trustline) + 2 base fees (create_account + change_trust). Reserves are locked capital, refundable on account closure, counted here because bringing the asset into existence requires them upfront. Converted to USD via XLM price."
-  - "USD prices. api.mobula.io/api/1/market/multi-data?symbols=SOL,SUI,APT,OSMO,INJ,ADA,XLM polled every 5 minutes."
-  - "Failures. Any upstream error increments token_deployment_samples_total{chain,status=error} and leaves the previous gauge value in place."
-  - "EVM chains excluded. Ethereum, BNB Chain, Avalanche, Polygon, Arbitrum, Optimism, Base, Blast, Mantle, opBNB, Celo, Scroll and Linea were previously exposed but relied on a placeholder init bytecode that undercounted real ERC20 deploy cost by 30 to 500x. Removed until the canonical OZ v5 artifact is finalised."
+  - "Refresh cadence. 5 minutes. One process samples every chain in parallel goroutines and emits Prometheus gauges. A chain whose sampler or price has failed for 30 minutes stops publishing a USD cost, so a dead upstream shows as down instead of a stale number."
+  - "EVM chains (Ethereum, BNB Chain, Avalanche, Polygon PoS, Sei, Cronos, Kaia, Somnia). eth_estimateGas on the OpenZeppelin Contracts Wizard default ERC20 (OpenZeppelin 5.0.2, solc 0.8.24, 200 runs, evmVersion paris, 3096 bytes of init code) times eth_gasPrice. Same bytes on every chain; source and compile script are in the harness."
+  - "Solana SPL. getMinimumBalanceForRentExemption for the 82 byte mint, the 165 byte Associated Token Account and the 679 byte Metaplex metadata account, plus 5000 lamports for the signature. Rent is locked, refundable if the accounts are closed."
+  - "Sui. epoch.referenceGasPrice from the Sui GraphQL service times a pinned 5 million gas unit budget for a coin module publish, net of storage rebate. Aptos. /v1/estimate_gas_price gas_estimate times a pinned 150,000 gas unit budget for a fungible asset publish."
+  - "Osmosis and Injective TokenFactory. LCD tokenfactory params.denom_creation_fee (empty on Osmosis, 0.1 INJ on Injective) plus MsgCreateDenom gas (80,000 baseline plus denom_creation_gas_consume) at a pinned typical gas price per chain."
+  - "Cardano. Koios epoch_params.coins_per_utxo_size times (160 byte overhead plus a 70 byte single asset bundle), plus a 180,000 lovelace mint transaction fee."
+  - "Stellar. Latest ledger base_reserve_in_stroops and base_fee_in_stroops: 5 base reserves (2 per new account for the issuer and the distribution account, 1 for the trustline) plus 2 base fees. Reserves are locked, refundable on account closure."
+  - "Algorand ASA. algod /v2/transactions/params: max(min-fee, fee per byte times 250 bytes) for the asset config transaction, plus the 0.1 ALGO minimum balance raise per asset, refundable when the asset is destroyed."
+  - "Gram (TON) jetton. The standard minter.ton.org flow (wallet, minter with its StateInit and mint, jetton wallet deploy, notification, excess) priced with live basechain config params 21 and 25 from tonapi. Gas and message sizes are pinned from a real mainnet deploy, which the model reproduces to within 28 nanoton. Only fees are counted; the TON attached to the deploy stays in the contracts or returns as excess."
+  - "NEAR. The tkn.near factory's own get_required_deposit quote for a token with this bench's name and symbol, the storage stake of the new token account at the live storage price, plus 106 Tgas of create_token gas at the live gas_price. The stake stays locked in the token account."
+  - "Internet Computer. 500 billion cycles to create the ledger canister on a 13 node subnet, converted to ICP at the live ICP/XDR rate published from the cycles minting canister (1 trillion cycles is 1 XDR). The ledger's running cycle reserve is not counted."
+  - "USD prices. Mobula market multi-data by ticker, refreshed every 5 minutes and treated as missing after an hour. Gram is priced with GRAM, since Mobula's TON ticker resolves to a different asset."
+  - "Not tracked. L2s and rollups, whose deploy also pays an L1 data fee that eth_estimateGas does not report uniformly across stacks."
 
 findings:
-  - "{{best_name}} is the cheapest tracked chain to deploy a token at {{best_p50}} right now."
-  - "Osmosis TokenFactory is effectively free (gas only, sub one tenth of a cent). Injective charges a flat 0.1 INJ governance fee."
-  - "Solana headline includes the Metaplex metadata account for fair comparison against ERC20 which embeds name and symbol natively. The bare mint cost (no metadata) is roughly 2.5 times lower but produces a token invisible to wallets and DEXs."
-  - "Sui canonical coin publish is the most expensive tracked chain on the list, around 0.3 to 0.5 USD, because Move modules are larger than ERC20 bytecode and Sui charges per byte of storage even after the rebate."
-  - "Cardano native asset creation is deterministic and stable in ADA terms. The USD figure moves purely with ADA price, not congestion."
+  - "{{best_name}} is the cheapest tracked chain to deploy a token at {{best_p50}} right now; {{worst_name}} is the most expensive at {{worst_p50}}."
+  - "On EVM chains the same ERC20 costs about 550,000 gas almost everywhere, so the dollar gap is the gas price and the coin. Somnia is the exception, reporting about 20 times more gas for the same bytes because its gas schedule differs from Ethereum's; Sei reports about 40 percent more."
+  - "NEAR's figure is almost all storage stake for a 213 kB contract, locked in the token account rather than burned. Its transaction fee alone is about a hundredth of a NEAR."
+  - "Algorand, Stellar and Solana count a refundable deposit (minimum balance, reserves, rent) in their headline, because the token cannot exist without it."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/token-deployment-cost
 
@@ -79,7 +83,7 @@ prometheus:
 # Real metrics exposed by the token-deployment-cost harness:
 #   token_deployment_cost_usd{chain, layer, kind}            gauge (USD)
 #   token_deployment_cost_native{chain, layer, kind, unit}   gauge (smallest unit)
-#   token_deployment_gas_units{chain, layer, kind}           gauge (gas/compute)
+#   token_deployment_gas_units{chain, layer, kind}           gauge (gas/compute/cycles)
 #   token_deployment_native_price_usd{chain}                 gauge (USD per token)
 #   token_deployment_sample_duration_seconds{chain}          gauge (seconds)
 #   token_deployment_samples_total{chain, status}            counter
@@ -101,8 +105,8 @@ providers:
   - slug: sui
     name: Sui
     layer: l1
-    tag: Move coin module publish, 5M MIST budget
-    formula: "suix_getReferenceGasPrice × 5,000,000 MIST × SUI USD price."
+    tag: Move coin module publish, 5M gas budget
+    formula: "epoch.referenceGasPrice (GraphQL) × 5,000,000 gas units × SUI USD price."
     queries:
       p50: quantile_over_time(0.50, token_deployment_cost_usd{chain="sui"}[24h])
       p90: quantile_over_time(0.90, token_deployment_cost_usd{chain="sui"}[24h])
@@ -127,8 +131,8 @@ providers:
   - slug: osmosis
     name: Osmosis
     layer: l1
-    tag: TokenFactory denom_creation_fee
-    formula: "LCD denom_creation_fee × OSMO USD price. Currently empty array, gas only."
+    tag: TokenFactory, no creation fee, gas only
+    formula: "LCD denom_creation_fee (empty) + MsgCreateDenom gas at a pinned gas price, × OSMO USD price."
     queries:
       p50: quantile_over_time(0.50, token_deployment_cost_usd{chain="osmosis"}[24h])
       p90: quantile_over_time(0.90, token_deployment_cost_usd{chain="osmosis"}[24h])
@@ -141,7 +145,7 @@ providers:
     name: Injective
     layer: l1
     tag: TokenFactory denom_creation_fee, 0.1 INJ flat
-    formula: "LCD denom_creation_fee = 0.1 INJ × INJ USD price."
+    formula: "LCD denom_creation_fee (0.1 INJ) + MsgCreateDenom gas at a pinned gas price, × INJ USD price."
     queries:
       p50: quantile_over_time(0.50, token_deployment_cost_usd{chain="injective"}[24h])
       p90: quantile_over_time(0.90, token_deployment_cost_usd{chain="injective"}[24h])
@@ -167,7 +171,7 @@ providers:
     name: Stellar
     layer: l1
     tag: Issuer + distribution + trustline, 2-account flow
-    formula: "(3 × base_reserve_in_stroops + 2 × base_fee_in_stroops) × XLM USD price."
+    formula: "(5 × base_reserve_in_stroops + 2 × base_fee_in_stroops) × XLM USD price."
     queries:
       p50: quantile_over_time(0.50, token_deployment_cost_usd{chain="stellar"}[24h])
       p90: quantile_over_time(0.90, token_deployment_cost_usd{chain="stellar"}[24h])
@@ -175,3 +179,159 @@ providers:
       mean: avg_over_time(token_deployment_cost_usd{chain="stellar"}[24h])
       series: token_deployment_cost_usd{chain="stellar"}
       sample_size: count_over_time(token_deployment_cost_usd{chain="stellar"}[7d])
+
+  - slug: algorand
+    name: Algorand
+    layer: l1
+    tag: ASA creation, min fee + 0.1 ALGO min balance
+    formula: "max(min-fee, fee × 250 bytes) + 100,000 microAlgo per-asset min balance (refundable), × ALGO USD price."
+    queries:
+      p50: quantile_over_time(0.50, token_deployment_cost_usd{chain="algorand"}[24h])
+      p90: quantile_over_time(0.90, token_deployment_cost_usd{chain="algorand"}[24h])
+      p99: quantile_over_time(0.99, token_deployment_cost_usd{chain="algorand"}[24h])
+      mean: avg_over_time(token_deployment_cost_usd{chain="algorand"}[24h])
+      series: token_deployment_cost_usd{chain="algorand"}
+      sample_size: count_over_time(token_deployment_cost_usd{chain="algorand"}[7d])
+
+  - slug: gram
+    name: Gram
+    layer: l1
+    tag: Jetton minter deploy + first mint, fees only
+    formula: "Pinned gas and message sizes of the standard minter flow × live config params 21 and 25, × GRAM USD price."
+    queries:
+      p50: quantile_over_time(0.50, token_deployment_cost_usd{chain="gram"}[24h])
+      p90: quantile_over_time(0.90, token_deployment_cost_usd{chain="gram"}[24h])
+      p99: quantile_over_time(0.99, token_deployment_cost_usd{chain="gram"}[24h])
+      mean: avg_over_time(token_deployment_cost_usd{chain="gram"}[24h])
+      series: token_deployment_cost_usd{chain="gram"}
+      sample_size: count_over_time(token_deployment_cost_usd{chain="gram"}[7d])
+
+  - slug: near
+    name: NEAR
+    layer: l1
+    tag: tkn.near factory, storage stake + gas
+    formula: "tkn.near get_required_deposit + 106 Tgas × gas_price, × NEAR USD price."
+    queries:
+      p50: quantile_over_time(0.50, token_deployment_cost_usd{chain="near"}[24h])
+      p90: quantile_over_time(0.90, token_deployment_cost_usd{chain="near"}[24h])
+      p99: quantile_over_time(0.99, token_deployment_cost_usd{chain="near"}[24h])
+      mean: avg_over_time(token_deployment_cost_usd{chain="near"}[24h])
+      series: token_deployment_cost_usd{chain="near"}
+      sample_size: count_over_time(token_deployment_cost_usd{chain="near"}[7d])
+
+  - slug: icp
+    name: Internet Computer
+    layer: l1
+    tag: Ledger canister creation, 500B cycles
+    formula: "500,000,000,000 cycles ÷ (ICP/XDR rate × 1e12 cycles per XDR), × ICP USD price."
+    queries:
+      p50: quantile_over_time(0.50, token_deployment_cost_usd{chain="icp"}[24h])
+      p90: quantile_over_time(0.90, token_deployment_cost_usd{chain="icp"}[24h])
+      p99: quantile_over_time(0.99, token_deployment_cost_usd{chain="icp"}[24h])
+      mean: avg_over_time(token_deployment_cost_usd{chain="icp"}[24h])
+      series: token_deployment_cost_usd{chain="icp"}
+      sample_size: count_over_time(token_deployment_cost_usd{chain="icp"}[7d])
+
+  - slug: ethereum
+    name: Ethereum
+    layer: l1
+    tag: OpenZeppelin ERC20 deploy
+    formula: "eth_estimateGas(ERC20 init code) × eth_gasPrice × ETH USD price."
+    queries:
+      p50: quantile_over_time(0.50, token_deployment_cost_usd{chain="ethereum"}[24h])
+      p90: quantile_over_time(0.90, token_deployment_cost_usd{chain="ethereum"}[24h])
+      p99: quantile_over_time(0.99, token_deployment_cost_usd{chain="ethereum"}[24h])
+      mean: avg_over_time(token_deployment_cost_usd{chain="ethereum"}[24h])
+      series: token_deployment_cost_usd{chain="ethereum"}
+      sample_size: count_over_time(token_deployment_cost_usd{chain="ethereum"}[7d])
+
+  - slug: bnb
+    name: BNB Chain
+    layer: l1
+    tag: OpenZeppelin ERC20 deploy
+    formula: "eth_estimateGas(ERC20 init code) × eth_gasPrice × BNB USD price."
+    queries:
+      p50: quantile_over_time(0.50, token_deployment_cost_usd{chain="bnb"}[24h])
+      p90: quantile_over_time(0.90, token_deployment_cost_usd{chain="bnb"}[24h])
+      p99: quantile_over_time(0.99, token_deployment_cost_usd{chain="bnb"}[24h])
+      mean: avg_over_time(token_deployment_cost_usd{chain="bnb"}[24h])
+      series: token_deployment_cost_usd{chain="bnb"}
+      sample_size: count_over_time(token_deployment_cost_usd{chain="bnb"}[7d])
+
+  - slug: avalanche
+    name: Avalanche
+    layer: l1
+    tag: OpenZeppelin ERC20 deploy, C-Chain
+    formula: "eth_estimateGas(ERC20 init code) × eth_gasPrice × AVAX USD price."
+    queries:
+      p50: quantile_over_time(0.50, token_deployment_cost_usd{chain="avalanche"}[24h])
+      p90: quantile_over_time(0.90, token_deployment_cost_usd{chain="avalanche"}[24h])
+      p99: quantile_over_time(0.99, token_deployment_cost_usd{chain="avalanche"}[24h])
+      mean: avg_over_time(token_deployment_cost_usd{chain="avalanche"}[24h])
+      series: token_deployment_cost_usd{chain="avalanche"}
+      sample_size: count_over_time(token_deployment_cost_usd{chain="avalanche"}[7d])
+
+  - slug: polygon
+    name: Polygon PoS
+    layer: l1
+    tag: OpenZeppelin ERC20 deploy
+    formula: "eth_estimateGas(ERC20 init code) × eth_gasPrice × POL USD price."
+    queries:
+      p50: quantile_over_time(0.50, token_deployment_cost_usd{chain="polygon"}[24h])
+      p90: quantile_over_time(0.90, token_deployment_cost_usd{chain="polygon"}[24h])
+      p99: quantile_over_time(0.99, token_deployment_cost_usd{chain="polygon"}[24h])
+      mean: avg_over_time(token_deployment_cost_usd{chain="polygon"}[24h])
+      series: token_deployment_cost_usd{chain="polygon"}
+      sample_size: count_over_time(token_deployment_cost_usd{chain="polygon"}[7d])
+
+  - slug: sei
+    name: Sei
+    layer: l1
+    tag: OpenZeppelin ERC20 deploy, Sei EVM
+    formula: "eth_estimateGas(ERC20 init code) × eth_gasPrice × SEI USD price."
+    queries:
+      p50: quantile_over_time(0.50, token_deployment_cost_usd{chain="sei"}[24h])
+      p90: quantile_over_time(0.90, token_deployment_cost_usd{chain="sei"}[24h])
+      p99: quantile_over_time(0.99, token_deployment_cost_usd{chain="sei"}[24h])
+      mean: avg_over_time(token_deployment_cost_usd{chain="sei"}[24h])
+      series: token_deployment_cost_usd{chain="sei"}
+      sample_size: count_over_time(token_deployment_cost_usd{chain="sei"}[7d])
+
+  - slug: cronos
+    name: Cronos
+    layer: l1
+    tag: OpenZeppelin ERC20 deploy, Cronos EVM
+    formula: "eth_estimateGas(ERC20 init code) × eth_gasPrice × CRO USD price."
+    queries:
+      p50: quantile_over_time(0.50, token_deployment_cost_usd{chain="cronos"}[24h])
+      p90: quantile_over_time(0.90, token_deployment_cost_usd{chain="cronos"}[24h])
+      p99: quantile_over_time(0.99, token_deployment_cost_usd{chain="cronos"}[24h])
+      mean: avg_over_time(token_deployment_cost_usd{chain="cronos"}[24h])
+      series: token_deployment_cost_usd{chain="cronos"}
+      sample_size: count_over_time(token_deployment_cost_usd{chain="cronos"}[7d])
+
+  - slug: kaia
+    name: Kaia
+    layer: l1
+    tag: OpenZeppelin ERC20 deploy
+    formula: "eth_estimateGas(ERC20 init code) × eth_gasPrice × KAIA USD price."
+    queries:
+      p50: quantile_over_time(0.50, token_deployment_cost_usd{chain="kaia"}[24h])
+      p90: quantile_over_time(0.90, token_deployment_cost_usd{chain="kaia"}[24h])
+      p99: quantile_over_time(0.99, token_deployment_cost_usd{chain="kaia"}[24h])
+      mean: avg_over_time(token_deployment_cost_usd{chain="kaia"}[24h])
+      series: token_deployment_cost_usd{chain="kaia"}
+      sample_size: count_over_time(token_deployment_cost_usd{chain="kaia"}[7d])
+
+  - slug: somnia
+    name: Somnia
+    layer: l1
+    tag: OpenZeppelin ERC20 deploy
+    formula: "eth_estimateGas(ERC20 init code) × eth_gasPrice × SOMI USD price."
+    queries:
+      p50: quantile_over_time(0.50, token_deployment_cost_usd{chain="somnia"}[24h])
+      p90: quantile_over_time(0.90, token_deployment_cost_usd{chain="somnia"}[24h])
+      p99: quantile_over_time(0.99, token_deployment_cost_usd{chain="somnia"}[24h])
+      mean: avg_over_time(token_deployment_cost_usd{chain="somnia"}[24h])
+      series: token_deployment_cost_usd{chain="somnia"}
+      sample_size: count_over_time(token_deployment_cost_usd{chain="somnia"}[7d])

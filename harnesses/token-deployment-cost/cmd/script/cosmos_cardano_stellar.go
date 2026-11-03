@@ -15,9 +15,9 @@ import (
 // LCD /osmosis/tokenfactory/v1beta1/params (Osmosis path) or the
 // equivalent /injective/tokenfactory and /neutron/tokenfactory paths.
 //
-// Some chains return [] (no fee, gas only). We surface that as zero
-// native cost and let the bench page render a "<$0.0001 / no protocol
-// fee" badge.
+// Some chains return [] (no protocol fee). The cost is then the
+// MsgCreateDenom gas alone, priced with the per-chain gas price pinned in
+// cosmosGasModels below (not read live).
 
 type cosmosSampler struct {
 	http *http.Client
@@ -46,8 +46,8 @@ type tfCoin struct {
 
 type tfParamsWrap struct {
 	Params struct {
-		DenomCreationFee         []tfCoin `json:"denom_creation_fee"`
-		DenomCreationGasConsume  string   `json:"denom_creation_gas_consume"`
+		DenomCreationFee        []tfCoin `json:"denom_creation_fee"`
+		DenomCreationGasConsume string   `json:"denom_creation_gas_consume"`
 	} `json:"params"`
 }
 
@@ -57,16 +57,17 @@ type tfParamsWrap struct {
 // these requires the chain's typical gas_price (in base units per gas).
 //
 // Values calibrated against current Cosmos gas markets (2026-06):
-//   Osmosis  base fee oracle returns ~0.03 uosmo/gas
-//   Injective standard fee is ~500 inj/gas (1 INJ = 1e18 inj)
-//   Neutron  uses ~0.005 untrn/gas typical
+//
+//	Osmosis  base fee oracle returns ~0.03 uosmo/gas
+//	Injective standard fee is ~500 inj/gas (1 INJ = 1e18 inj)
+//	Neutron  uses ~0.005 untrn/gas typical
 //
 // Plus the baseline tx gas a normal MsgCreateDenom costs even without
 // the consume param.
 type cosmosGasModel struct {
-	baselineGas    uint64  // gas a MsgCreateDenom tx burns regardless of consume
-	gasPriceBase   float64 // base units of native denom per 1 gas
-	nativeUnit     string
+	baselineGas  uint64  // gas a MsgCreateDenom tx burns regardless of consume
+	gasPriceBase float64 // base units of native denom per 1 gas
+	nativeUnit   string
 }
 
 var cosmosGasModels = map[string]cosmosGasModel{
