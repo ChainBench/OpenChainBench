@@ -510,7 +510,7 @@ func chains() []Chain {
 				{Slug: "cronos-official", Name: "Cronos Official", URL: envDefault("RPC_URL_CRONOS_OFFICIAL", "https://evm.cronos.org")},
 			},
 		},
-		// ─── Fraxtal (4 providers) ──────────────────────────────────
+		// ─── Fraxtal (5 providers) ──────────────────────────────────
 		{
 			Slug: "fraxtal",
 			Name: "Fraxtal",
@@ -519,6 +519,7 @@ func chains() []Chain {
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_FRAXTAL_DRPC", "https://fraxtal.drpc.org")},
 				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_FRAXTAL_TENDERLY", "https://gateway.tenderly.co/public/fraxtal")},
 				{Slug: "fraxtal-official", Name: "Fraxtal Official", URL: envDefault("RPC_URL_FRAXTAL_OFFICIAL", "https://rpc.frax.com")},
+				{Slug: "blockvectra", Name: "BlockVectra", URL: envDefault("RPC_URL_FRAXTAL_BLOCKVECTRA", "https://api.blockvectra.com/v1/fraxtal_mainnet/public")},
 			},
 		},
 		// ─── Unichain (5 providers) ─────────────────────────────────
@@ -530,6 +531,7 @@ func chains() []Chain {
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_UNICHAIN_DRPC", "https://unichain.drpc.org")},
 				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_UNICHAIN_TENDERLY", "https://gateway.tenderly.co/public/unichain")},
 				{Slug: "unichain-official", Name: "Unichain Official", URL: envDefault("RPC_URL_UNICHAIN_OFFICIAL", "https://mainnet.unichain.org")},
+				{Slug: "blockvectra", Name: "BlockVectra", URL: envDefault("RPC_URL_UNICHAIN_BLOCKVECTRA", "https://api.blockvectra.com/v1/unichain_mainnet/public")},
 			},
 		},
 		// ─── Soneium (4 providers) ──────────────────────────────────
@@ -633,6 +635,7 @@ func chains() []Chain {
 				{Slug: "ink-quicknode", Name: "QuickNode", URL: envDefault("RPC_URL_INK_QUICKNODE", "https://rpc-qnd.inkonchain.com")},
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_INK_DRPC", "https://ink.drpc.org")},
 				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_INK_TENDERLY", "https://ink.gateway.tenderly.co")},
+				{Slug: "blockvectra", Name: "BlockVectra", URL: envDefault("RPC_URL_INK_BLOCKVECTRA", "https://api.blockvectra.com/v1/ink_mainnet/public")},
 			},
 		},
 		// ─── opBNB (bench 100) — added 2026-07-24. OP Stack rollup
