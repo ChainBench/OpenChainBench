@@ -974,7 +974,10 @@ const buildProvidersCached = unstable_cache(
   // v45: appearances on the nine race benches carry the provider's share
   //      of wins (raceShare); a cached index without it shows the ~0 ms
   //      lag behind the first arrival on product pages.
-  ["providers-v45"],
+  // v46: registry entries for Algorand, Aptos, Near, Somnia, ICP, Sei,
+  //      Cronos and Kaia (discussion #2270), whose product pages had no
+  //      link or description; the description rides in this index.
+  ["providers-v46"],
   // 900 s: the provider index feeds products / compare / answers, whose
   // numbers move slowly, and this revalidate is also the effective ISR
   // period of those ~500 pages (Next takes the min across a route's caches).
