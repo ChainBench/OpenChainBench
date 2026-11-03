@@ -753,7 +753,12 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       light reference leg. Six providers ENTER under -heavy slugs, so
   //       providers-v moves with it and both alias tables gained a line each
   //       or every slug would have built its own duplicate product page.
-  ["bench-unfiltered-v145", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v146: the Work column on the heavy tab was empty. A metric_panel is
+  //       queried as <metric>{provider="<the row slug>"}, and that tier
+  //       rows are suffixed -heavy while the recorded series is not, so the
+  //       selector matched nothing and the column rendered blank in silence.
+  //       The relabelled series is read instead.
+  ["bench-unfiltered-v146", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -1070,7 +1075,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v136: lockstep with bench-unfiltered-v143 (BlockVectra joins 3 RPC pages).
   // v137: lockstep with bench-unfiltered-v144 (tuleep.trade is Proliquid).
   // v138: lockstep with bench-unfiltered-v145 (heavy call tier).
-  ["all-benchmarks-v138", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v139: lockstep with bench-unfiltered-v146 (heavy Work column label).
+  ["all-benchmarks-v139", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1281,7 +1287,8 @@ const loadBenchmarkFiltered = unstable_cache(
   // v81: lockstep with bench-unfiltered-v143 (BlockVectra, on the region
   //      and endpoint tabs of three chain RPC pages).
   // v82: lockstep with bench-unfiltered-v145 (heavy call tier).
-  ["bench-filters-v82", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v83: lockstep with bench-unfiltered-v146 (heavy Work column label).
+  ["bench-filters-v83", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 
