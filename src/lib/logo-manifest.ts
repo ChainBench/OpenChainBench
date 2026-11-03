@@ -373,8 +373,8 @@ const RAW: Record<string, string> = {
   // ZAN (Ant Digital Technologies): the icon cut from the wordmark on zan.top,
   // which publishes no standalone square mark (favicon is a 42px PNG).
   zan: "/logos/zan.svg",
-  // BlockVectra: the square app icon from blockvectra.com (icon-192x192.png).
-  blockvectra: "/logos/blockvectra.png",
+  // BlockVectra: the square vector mark they supplied (#3464), paths only.
+  blockvectra: "/logos/blockvectra.svg",
   // ─── Sui providers (bench 211) ───
   fullnode: "/logos/mysten.svg",
   blockvision: "/logos/blockvision.svg",
