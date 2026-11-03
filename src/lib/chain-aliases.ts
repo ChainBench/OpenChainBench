@@ -16,6 +16,7 @@
  */
 
 export const CHAIN_SLUG_ALIASES: Record<string, string> = {
+  "internet-computer": "icp",
   ton: "gram",
 };
 
