@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 )
@@ -18,17 +19,20 @@ import (
 func main() {
 	installLogCapture() // capture stdout into /logs ring buffer
 	fmt.Println("=== Validator Economics Harness ===")
-	fmt.Println("OpenChainBench bench #026 — net yield = gross APR + MEV − downtime")
-	fmt.Println("Scope: Solana + Hyperliquid + Ethereum + Cardano + Sui + Cosmos Hub + Avalanche")
+	fmt.Println("OpenChainBench bench #026: net yield = gross APR x uptime, net of commission")
+	fmt.Println("Scope: Solana, Hyperliquid, Ethereum, Cardano, Sui, Cosmos Hub, Avalanche, Aptos, NEAR, Kaia, Algorand, ICP, Gram, Sei, Cronos")
 	fmt.Println()
 
+	// VAL_ECON_METRICS_ADDR exists only for local runs next to another
+	// :2112 process; deployments leave it unset.
+	addr := envDefault("VAL_ECON_METRICS_ADDR", ":2112")
 	go func() {
-		if err := StartMetricsServer(":2112"); err != nil {
+		if err := StartMetricsServer(addr); err != nil {
 			fmt.Printf("[fatal] metrics server: %v\n", err)
 			os.Exit(1)
 		}
 	}()
-	fmt.Println("Metrics server: :2112/metrics, :2112/health")
+	fmt.Printf("Metrics server: %s/metrics, %s/health\n", addr, addr)
 	fmt.Println()
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -43,8 +47,17 @@ func main() {
 	go runChainScraper(ctx, client, "ethereum", scrapeEthereum)
 	go runChainScraper(ctx, client, "cardano", scrapeCardano)
 	go runChainScraper(ctx, client, "sui", scrapeSui)
-	go runChainScraper(ctx, client, "cosmos-hub", scrapeCosmos)
 	go runChainScraper(ctx, client, "avalanche", scrapeAvalanche)
+	for _, c := range cosmosChains {
+		go runChainScraper(ctx, client, c.Chain, scrapeCosmosChain(c))
+	}
+	go runChainScraper(ctx, client, "aptos", scrapeAptos)
+	go runChainScraper(ctx, client, "near", scrapeNear)
+	go runChainScraper(ctx, client, "kaia", scrapeKaia)
+	go runChainScraper(ctx, client, "algorand", scrapeAlgorand)
+	go runChainScraper(ctx, client, "icp", scrapeICP)
+	go runChainScraper(ctx, client, "gram", scrapeGram)
+	// Somnia and Stellar are deliberately absent: see README.md.
 
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
@@ -57,6 +70,10 @@ func main() {
 // Each fn is expected to wrap its own HTTP calls in a context derived
 // from the caller's so cancel propagates cleanly on shutdown.
 func runChainScraper(ctx context.Context, client *http.Client, label string, fn func(context.Context, *http.Client)) {
+	// VAL_ECON_ONLY=near,aptos runs a subset (local debugging only).
+	if only := envDefault("VAL_ECON_ONLY", ""); only != "" && !strings.Contains(","+only+",", ","+label+",") {
+		return
+	}
 	tick := func() {
 		scrapeCtx, cancel := context.WithTimeout(ctx, httpTimeout*2)
 		defer cancel()

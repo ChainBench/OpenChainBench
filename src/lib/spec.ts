@@ -777,7 +777,11 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       the Internet Computer, Algorand) and rewrites its copy (Stellar
   //       and Gram methods, TRON 19 blocks, median not mean in formulas).
   //       New rows and editorial text both need the key to move.
-  ["bench-unfiltered-v151", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v152: bench 026 validator-yield grows from 7 chains to 15 (Aptos,
+  //       NEAR, Kaia, Algorand, ICP, Gram, Sei, Cronos) and its copy is
+  //       rewritten. An ARRIVAL plus an editorial change: a cached entry
+  //       holds the old provider set and the old copy.
+  ["bench-unfiltered-v152", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -1100,7 +1104,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v142: lockstep with bench-unfiltered-v149 (bench 031 gains 8 chains).
   // v143: lockstep with bench-unfiltered-v150 (bench 034 adds 12 chains).
   // v144: lockstep with bench-unfiltered-v151 (l1-finality six chains).
-  ["all-benchmarks-v144", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v145: lockstep with bench-unfiltered-v152 (bench 026 gains 8 chains).
+  ["all-benchmarks-v145", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
