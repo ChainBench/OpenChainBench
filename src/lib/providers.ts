@@ -938,7 +938,9 @@ const buildProvidersCached = unstable_cache(
   // v40: Trnch withdrawn. It was new to the site, so it LOSES a product
   //      page as well as two bench appearances, and this index carries
   //      both. Lockstep with bench-unfiltered-v142.
-  ["providers-v40"],
+  // v41: BlockVectra is new to the site: a product page and three bench
+  //      appearances. Lockstep with bench-unfiltered-v143.
+  ["providers-v41"],
   // 900 s: the provider index feeds products / compare / answers, whose
   // numbers move slowly, and this revalidate is also the effective ISR
   // period of those ~500 pages (Next takes the min across a route's caches).

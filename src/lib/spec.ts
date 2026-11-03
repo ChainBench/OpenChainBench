@@ -740,7 +740,10 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       request, one day after arriving. A REMOVAL, and a cached entry
   //       holds the provider set current when it was written, so without
   //       this the row keeps rendering with no data behind it.
-  ["bench-unfiltered-v142", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v143: BlockVectra joins the Ink, Unichain and Fraxtal RPC pages. An
+  //       ARRIVAL: a cached entry holds the old provider set, so the new
+  //       row would never render however good its data.
+  ["bench-unfiltered-v143", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -1054,7 +1057,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v133: lockstep with bench-unfiltered-v140 (capability on chain pages).
   // v134: lockstep with bench-unfiltered-v141 (envelope rows named).
   // v135: lockstep with bench-unfiltered-v142 (Trnch withdrawn).
-  ["all-benchmarks-v135", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v136: lockstep with bench-unfiltered-v143 (BlockVectra joins 3 RPC pages).
+  ["all-benchmarks-v136", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1262,7 +1266,9 @@ const loadBenchmarkFiltered = unstable_cache(
   // v79: lockstep with bench-unfiltered-v141 (envelope rows named).
   // v80: lockstep with bench-unfiltered-v142 (Trnch withdrawn; it was the
   //      Robinhood tab only, so the stale row would sit on that tab alone).
-  ["bench-filters-v80", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v81: lockstep with bench-unfiltered-v143 (BlockVectra, on the region
+  //      and endpoint tabs of three chain RPC pages).
+  ["bench-filters-v81", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 
