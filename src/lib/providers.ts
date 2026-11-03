@@ -919,7 +919,9 @@ const buildProvidersCached = unstable_cache(
   // v26: discussion #2270 release: new chain appearances on four benches
   //      and registry entries for the requested chains. Lockstep with
   //      bench-unfiltered-v109.
-  ["providers-v26"],
+  // v27: BlockVectra joins the Katana RPC page (issue #3462), a new
+  //      appearance. Lockstep with bench-unfiltered-v110.
+  ["providers-v27"],
   // 900 s: the provider index feeds products / compare / answers, whose
   // numbers move slowly, and this revalidate is also the effective ISR
   // period of those ~500 pages (Next takes the min across a route's caches).

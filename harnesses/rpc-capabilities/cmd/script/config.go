@@ -1906,6 +1906,7 @@ func chains() []Chain {
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_KATANA_DRPC", "https://katana.drpc.org")},
 				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_KATANA_THIRDWEB", "https://747474.rpc.thirdweb.com")},
 				{Slug: "conduit", Name: "Conduit", URL: envDefault("RPC_URL_KATANA_CONDUIT", "https://rpc.katanarpc.com")},
+				{Slug: "blockvectra", Name: "BlockVectra", URL: envDefault("RPC_URL_KATANA_BLOCKVECTRA", "https://api.blockvectra.com/v1/katana_mainnet/public")},
 			},
 		},
 		// 2026-10-07 chain-hunt sweep. Tempo (chain 4217). 3 clean keyless providers; thirdweb returns no route for 4217 so the roster is official, drpc and publicnode.
