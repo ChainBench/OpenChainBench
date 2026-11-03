@@ -898,7 +898,9 @@ const buildProvidersCached = unstable_cache(
   // branch; dev carried the same change as v27 and v28.
   // v23 (main): wallet pricing release 2026-10-30 (Portal, Lit and Dfns
   // marks, re-priced appearances).
-  ["providers-v23"],
+  // v24: BlockVectra is new to the site: a product page and three bench
+  //      appearances. Lockstep with bench-unfiltered-v108.
+  ["providers-v24"],
   // 900 s: the provider index feeds products / compare / answers, whose
   // numbers move slowly, and this revalidate is also the effective ISR
   // period of those ~500 pages (Next takes the min across a route's caches).
