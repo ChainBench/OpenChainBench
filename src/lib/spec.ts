@@ -788,7 +788,12 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       aggregators, two rows per vendor under a tier. A cached entry
   //       holds the old provider set, so without this the board keeps
   //       showing "Sold a few blocks later" as a product.
-  ["bench-unfiltered-v154", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v155: bench 313's eight row queries read only the last sweep while
+  //       their published formula said "over 24h". The queries now span
+  //       the window and the formulas say how they are weighted. Both
+  //       the numbers and the copy change, so a cached entry is wrong
+  //       twice over.
+  ["bench-unfiltered-v155", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -1114,7 +1119,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v145: lockstep with bench-unfiltered-v152 (bench 026 gains 8 chains).
   // v146: lockstep with bench-unfiltered-v153 (bench 026 description).
   // v147: lockstep with bench-unfiltered-v154 (bench 313 rebuilt).
-  ["all-benchmarks-v147", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v148: lockstep with bench-unfiltered-v155 (bench 313 window fix).
+  ["all-benchmarks-v148", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
