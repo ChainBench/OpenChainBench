@@ -982,7 +982,10 @@ const buildProvidersCached = unstable_cache(
   // v48: bench 034 token-deployment-cost gains twelve chain rows, each a new
   //      bench appearance this index carries. Lockstep with
   //      bench-unfiltered-v150.
-  ["providers-v48"],
+  // v49: l1-finality adds six chain rows (sei, cronos, kaia, near, icp,
+  //      algorand). Chains, not vendors, but the index carries the
+  //      appearances. Lockstep with bench-unfiltered-v151.
+  ["providers-v49"],
   // 900 s: the provider index feeds products / compare / answers, whose
   // numbers move slowly, and this revalidate is also the effective ISR
   // period of those ~500 pages (Next takes the min across a route's caches).

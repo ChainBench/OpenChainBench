@@ -773,7 +773,11 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       replaces the placeholder bytecode), and its copy is rewritten. An
   //       ARRIVAL plus an editorial change: a cached entry holds the old
   //       provider set and the old "7 non-EVM" copy.
-  ["bench-unfiltered-v150", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v151: bench 006 l1-finality gains six chains (Sei, Cronos, Kaia, NEAR,
+  //       the Internet Computer, Algorand) and rewrites its copy (Stellar
+  //       and Gram methods, TRON 19 blocks, median not mean in formulas).
+  //       New rows and editorial text both need the key to move.
+  ["bench-unfiltered-v151", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -1095,7 +1099,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v141: lockstep with bench-unfiltered-v148 (heavy lane in three regions).
   // v142: lockstep with bench-unfiltered-v149 (bench 031 gains 8 chains).
   // v143: lockstep with bench-unfiltered-v150 (bench 034 adds 12 chains).
-  ["all-benchmarks-v143", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v144: lockstep with bench-unfiltered-v151 (l1-finality six chains).
+  ["all-benchmarks-v144", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);

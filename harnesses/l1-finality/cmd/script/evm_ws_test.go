@@ -73,3 +73,25 @@ func TestProposalLag(t *testing.T) {
 		t.Error("header from the future is skew, not a sample")
 	}
 }
+
+func TestWSStalled(t *testing.T) {
+	now := time.Unix(10000, 0)
+	bnb := wsChain{slug: "bnb"}
+	if err := wsStalled(bnb, now.Add(-5*time.Second), now.Add(-5*time.Second), now); err != nil {
+		t.Fatalf("live socket flagged: %v", err)
+	}
+	if err := wsStalled(bnb, now.Add(-21*time.Second), now, now); err == nil {
+		t.Fatal("silent newHeads must force a reconnect")
+	}
+	if err := wsStalled(bnb, now, now.Add(-31*time.Second), now); err == nil {
+		t.Fatal("stuck finalized must force a reconnect on a finalized-tag chain")
+	}
+	rh := wsChain{slug: "robinhood", batch: true}
+	if err := wsStalled(rh, now, now.Add(-20*time.Minute), now); err != nil {
+		t.Fatalf("batch chains finalize every ~15 min, not a stall: %v", err)
+	}
+	av := wsChain{slug: "avalanche", fromProposal: true}
+	if err := wsStalled(av, now, now.Add(-time.Hour), now); err != nil {
+		t.Fatalf("fromProposal chains do not poll finalized: %v", err)
+	}
+}

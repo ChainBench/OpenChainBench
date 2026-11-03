@@ -23,11 +23,12 @@ func main() {
 	var wg sync.WaitGroup
 	stop := make(chan struct{})
 
-	wg.Add(1)
+	// Not in the WaitGroup: ListenAndServe never returns, so waiting on it
+	// left SIGTERM hanging until the runtime's SIGKILL.
 	go func() {
-		defer wg.Done()
-		fmt.Println("Starting Prometheus metrics server on :2112")
-		if err := StartMetricsServer(":2112"); err != nil {
+		addr := getenvDefault("METRICS_ADDR", ":2112")
+		fmt.Println("Starting Prometheus metrics server on " + addr)
+		if err := StartMetricsServer(addr); err != nil {
 			fmt.Printf("Metrics server error: %v\n", err)
 		}
 	}()
@@ -47,6 +48,10 @@ func main() {
 	StartBitcoinWallClock()
 	StartLitecoinWallClock()
 	StartSolanaWallClock()
+	StartAlgorandWallClock()
+	StartNearWallClock()
+	StartICPWallClock()
+	StartBFTWallClock() // Sei, Cronos, Kaia
 
 	<-sigChan
 	fmt.Println("\nShutting down...")

@@ -1,27 +1,27 @@
 slug: which-l1-has-the-fastest-finality
 question: "Which L1 blockchain has the fastest finality time?"
 short_answer: |
-  {{best_name}} reaches finality at {{best_p50}} (p50, 24h), the lowest deterministic settlement time measured across 11 L1 chains by OpenChainBench.
+  {{best_name}} reaches finality at {{best_p50}} (p50, 24h), the lowest settlement time measured across {{count}} chains by OpenChainBench, each against its own finality rule.
 
 benchmark: l1-finality
 
 intro: |
-  Finality is the point at which a confirmed transaction cannot be reversed without breaking the protocol's security assumptions. It is the right number to look at for cross-chain settlement, exchange withdrawal thresholds, bridge unlock conditions and any system that needs to know "is this real now or can it still be undone." This page answers one question with live measurement. Which L1 chain actually finalizes the fastest in wall-clock seconds, not in slot counts or in marketing claims. OpenChainBench measures every L1 against its own native finality definition: deterministic for BFT chains (Ethereum Casper FFG, Stellar SCP, Hedera Hashgraph, SUI Mysticeti, Gram BAG) and convention-based for probabilistic chains (Bitcoin and similar by confirmation depth). The leaderboard ranks by 24h p50 wall-clock seconds.
+  Finality is the point at which a confirmed transaction cannot be reversed without breaking the protocol's security assumptions. It is the right number to look at for cross-chain settlement, exchange withdrawal thresholds, bridge unlock conditions and any system that needs to know "is this real now or can it still be undone." This page answers one question with live measurement. Which L1 chain actually finalizes the fastest in wall-clock seconds, not in slot counts or in marketing claims. OpenChainBench measures every L1 against its own native finality definition: deterministic for BFT chains (Ethereum Casper FFG, Stellar SCP, SUI Mysticeti, NEAR, Sei, Algorand) and convention-based for probabilistic chains (Bitcoin and similar by confirmation depth). The leaderboard ranks by 24h p50 wall-clock seconds.
 
 methodology: |
-  Two methods are used, picked per chain. For chains whose finality is much longer than our 10 second poll interval (Ethereum, Solana, TRON, Litecoin, Monero) the harness compares `latest` and `finalized` block timestamps from the chain RPCs and takes the delta. For chains whose finality is faster than the poll interval (BNB, Avalanche, SUI, Gram, Stellar) the harness maintains a persistent WebSocket or SSE subscription, recording wall-clock time T1 when block N is first seen as `latest` and T2 when it becomes `finalized`, with millisecond precision. The WS path is the only honest way to measure sub-poll-cadence finality; comparing two pointers at a single instant collapses to zero when finalization catches up to the head. Probabilistic chains (Litecoin, Monero) are measured against their conventional confirmation depth, not against a uniform depth across all chains.
-
+  Four methods, picked per chain. Where a head and a final block coexist, the harness records T1 when block N first appears and T2 when it is final: over a persistent WebSocket for BNB, Robinhood Chain and Solana, on block timestamps polled every 10 seconds for Ethereum, TRON and Monero, on NEAR's nanosecond header timestamps, and on its own clock at the tip for Bitcoin and Litecoin. Where every block is already final when it appears (Avalanche, Sei, Cronos, Kaia, the Internet Computer), latest and finalized are the same block, so the figure is the block's own timestamp to its arrival. Stellar, Gram, SUI and Algorand report the interval between two final ledgers, masterchain blocks, checkpoints or rounds. Probabilistic chains (Bitcoin, Litecoin, Monero) are measured against their conventional confirmation depth, not against a uniform depth across all chains.
 limitations:
-  - "Hedera's documented 3 to 5 second Hashgraph aBFT finality is not on the live leaderboard. Hedera mirror nodes only expose already-final blocks, so wall-clock measurement is impossible from public endpoints; re-enables once Block Nodes (HIP-1056) leave private preview."
-  - "Probabilistic chains (Litecoin, Monero) settle on a confirmation-depth convention. The reported value is the time to that depth, which is the exchange-style settlement threshold, not a strict protocol-level finality."
+  - "Hedera's documented 3 to 5 second Hashgraph aBFT finality is not on the live leaderboard. Hedera mirror nodes only expose already-final records stamped with the consensus time itself, so nothing before finality is observable from public endpoints; re-enables once Block Nodes (HIP-1056) leave private preview."
+  - "Aptos and Somnia are not measured. Every block their RPCs serve is already final; Somnia timestamps are whole seconds on blocks about 100 ms apart, and Aptos timestamps read within one network round trip of arrival, so neither marks a block's proposal."
+  - "Probabilistic chains (Bitcoin, Litecoin, Monero) settle on a confirmation-depth convention. The reported value is the time to that depth, which is the exchange-style settlement threshold, not a strict protocol-level finality."
   - "XRP is excluded by design: ledger_current has no close-time field, so wall-clock measurement requires a WS subscription to the ledger stream which is not yet implemented."
-  - "Sub-second finalities on Gram (formerly TON) and SUI are real because both chains expose millisecond-precision timestamps. Sub-second finalities claimed by chains without millisecond timestamps would be a measurement artifact, not a protocol property."
+  - "Sub-second figures are only published where the clock behind them resolves sub-second: our own millisecond clock on a push stream, or chain timestamps in milliseconds or finer (SUI, Sei, Cronos, NEAR, the Internet Computer). A sub-second finality read off whole-second block timestamps would be a measurement artifact, not a protocol property."
 
 faq:
   - q: "What is blockchain finality?"
     a: "Blockchain finality is the point at which a confirmed transaction cannot be reversed without breaking the protocol's security assumptions. Two finality models exist. Deterministic finality (Ethereum Casper FFG, Stellar SCP, Hedera Hashgraph) reaches an explicit consensus commitment that the network treats as irreversible. Probabilistic finality (Bitcoin, Litecoin, Monero, Cardano) leaves a non-zero reorg probability that decreases exponentially with confirmation depth."
-  - q: "Is Solana finality really 400 milliseconds?"
-    a: "No. Solana exposes two commitments. Processed is optimistic and lands sub-second, typically under 500 milliseconds. Finalized requires 32 confirmed slots and clocks closer to 13 seconds in practice. The headline value here is finalized, the stricter guarantee. Sub-second Solana finality is real but only at the processed commitment level."
+  - q: "Is Solana finality really under a second?"
+    a: "Since 21 October 2026, yes. Alpenglow replaced Tower BFT on mainnet that day: finalized used to require 32 confirmed slots, about 12.8 seconds, and Alpenglow targets about 150 ms, with confirmed and finalized now the same thing. Measured here from a slot first appearing to it being rooted, {{p50:solana}} (p50, 24h), which includes the block still arriving after the slot appears as well as the vote."
   - q: "Why is Ethereum finality 12.8 minutes?"
     a: "Ethereum uses Casper FFG which finalizes a checkpoint two epochs after it is justified. Each epoch is 32 slots of 12 seconds, giving 12.8 minutes as the documented target. Reorgs of unfinalized blocks remain possible inside the two-epoch window, but a finalized block is treated as irreversible by every Ethereum client."
   - q: "How is Gram (formerly TON) able to finalize so fast?"
@@ -34,5 +34,5 @@ related:
   - which-solana-rpc-lands-the-most-transactions
 
 seo_title: "Which L1 blockchain has the fastest finality time in 2026?"
-seo_description: "{{best_name}} finalizes in {{best_p50}} (p50, 24h), the lowest deterministic finality across 11 L1 chains measured live by OpenChainBench. Methodology + limitations included."
+seo_description: "{{best_name}} finalizes in {{best_p50}} (p50, 24h), the lowest finality across {{count}} chains measured live by OpenChainBench. Methodology + limitations included."
 status: live

@@ -1,130 +1,132 @@
 # l1-finality
 
-Bench № 006 — measures the live finality time of every L1 chain we can honestly observe from public endpoints. No transactions are sent. The harness either polls two RPC endpoints per chain (for slow-finality chains) or maintains a persistent WebSocket / SSE subscription (for sub-poll-cadence chains) and exposes the time delta as a Prometheus gauge.
+Bench № 006 measures how long a block takes to become final on every chain we can observe honestly from public endpoints, each against the chain's own finality rule. No transactions are sent. The published figure is never a published block time added to a published TTF: either both ends are observed (T1 when block N is first seen, T2 when it is final) or, where a chain has no unfinalized head, the block's own timestamp is the start and its arrival, already final, the end.
 
-## Why this bench is honest
+## Four measurement methods
 
-Every L1 publishes a finalization-time figure in its docs. Those numbers are *targets* — what the protocol claims under ideal conditions. This bench measures what a public client can actually observe, refreshed every 10 s for slow chains and continuously for fast ones. The gap between docs and reality is the story.
+### 1. Head and final block, two pointers (T2 − T1)
 
-## Two measurement methods
+Where a head and a final block coexist, `lag = T2 − T1`.
 
-### 1. HTTP polling (slow-finality chains)
+- **WebSocket, our clock** (BNB, Robinhood Chain, Solana): T1 = first time block N arrives on the head stream, T2 = first time the finalized pointer reaches it. Millisecond precision, independent of block timestamp resolution.
+- **Block timestamps, polled every 10 s** (Ethereum, TRON, Monero): `latest.timestamp − finalized.timestamp`. Only valid where finality is far longer than the poll and the timestamp resolution.
+- **Block timestamps, nanoseconds** (NEAR): every header names `last_final_block`; sample = timestamp of the first block naming F − timestamp of F.
+- **Tip height, our clock** (Bitcoin 6 confirmations, Litecoin 12): T1 = first poll where N is the tip, T2 = first poll where the tip is N + depth. Miner-set timestamps are never used.
 
-For chains where finality time is much longer than our 10 s poll interval, we read `latest.timestamp - finalized.timestamp` from the chain's RPC. Because the chain is always in a steady state where the gap between latest and finalized blocks equals the finality time, polling at any cadence gives a correct snapshot.
+### 2. Already final when it appears: block timestamp to arrival
 
-This works for: **Ethereum, Solana, TRON, Stellar, Hedera, SUI, Litecoin, Monero, Cardano**.
+On Avalanche (since Streaming Asynchronous Execution), Sei, Cronos, Kaia and the Internet Computer, every block a client can see is already final, so latest → finalized is zero by construction. The figure is the block's own timestamp (the producer's clock) to the moment it reaches us. Readings outside 0 to 60 s are dropped as clock skew or replay.
 
-### 2. WebSocket / SSE wall-clock (sub-poll-cadence chains)
+### 3. Interval between two final blocks
 
-For chains where finality is faster than our poll interval, comparing two pointers at one instant doesn't measure finalization time — it measures the gap-at-instant, which collapses to zero when finalization catches up to head. The honest path is to subscribe to a push stream, record `T1 = time.Now()` when block N is first observed, and `T2 = time.Now()` when N becomes finalized. `lag = T2 − T1`, with millisecond precision, independent of chain timestamp resolution.
-
-This works for: **BNB, Avalanche, Gram**.
+Stellar (ledger close), Gram (masterchain block), SUI (checkpoint) and Algorand (round) finalize at every unit, so the interval between two units is how often finality lands, and for Algorand one round is one proposal → certification cycle.
 
 ## Per-chain methodology
 
-| Chain | Method | Endpoint(s) | Finality definition | Why this depth |
+| Chain | Method | Endpoint (default) | Finality signal | Sample |
 | --- | --- | --- | --- | --- |
-| **Ethereum** | HTTP poll | `eth_getBlockByNumber("latest" | "finalized")` | Casper FFG `finalized` tag (~64 slots) | Protocol-level. Coinbase 35, Binance 12, Circle 65 |
-| **BNB** | WS wall-clock | `wss://bsc-rpc.publicnode.com` — `eth_subscribe(["newHeads"])` + 1 s `getBlockByNumber("finalized")` poll on the same socket | Wall-clock T1→T2 between block first seen as latest and as finalized | Sub-poll-cadence finality (~1.5 s) |
-| **Avalanche** | WS wall-clock | `wss://avalanche-c-chain-rpc.publicnode.com/ext/bc/C/ws` — same as BNB | Same | Sub-poll-cadence (~1.5 s) |
-| **Solana** | HTTP poll | `getSlot{commitment:"finalized"}` + `getBlockTime` | 32 slots (`finalized` commitment) | Circle USDC standard, industry consensus |
-| **TRON** | HTTP poll | `/wallet/getnowblock` vs `/walletsolidity/getnowblock` | 19-block solidity confirmation | Protocol minimum (2/3 of 27 SRs) |
-| **Stellar** | HTTP poll | Horizon `/ledgers?order=desc&limit=2` | 1 ledger back (SCP-final) | Circle = 1, deterministic SCP |
-| **Hedera** | HTTP poll | Mirror `/api/v1/blocks?order=desc&limit=2` | 1 block back. Timestamps parsed at ns precision | Hashgraph aBFT deterministic |
-| **SUI** | HTTP poll | `sui_getLatestCheckpointSequenceNumber` + `sui_getCheckpoint` | 1 checkpoint back | Circle USDC = 1, Mysticeti finalizes in 1 |
-| **Gram** | SSE wall-clock | `tonapi.io/v2/sse/blocks?workchain=-1` (masterchain only) | Time between consecutive masterchain blocks | Gram (formerly TON) docs: a tx is final once included in a masterchain block, so block_N is final when block_N+1 commits |
-| **Bitcoin** | HTTP poll, own-clock wall-clock (probabilistic) | mempool.space `/blocks/tip/height` every 30 s, User-Agent `OpenChainBench-harness/1.0` | Wall-clock T1→T2 between block first seen at the tip and reaching 6 confirmations, harness clock only (miner timestamps allow ~2h skew) | Exchange deposit convention; Bitcoin never reaches absolute finality |
-| **Litecoin** | HTTP poll (probabilistic) | blockchair `/stats.best_block_height` and `/dashboards/block/{height}.block.time` | 12 confirmations | Coinbase deposit standard, post-April-2026 13-block MWEB reorg |
-| **Monero** | HTTP poll (probabilistic) | monero-rpc `get_info` + `get_block_header_by_height` (with cakewallet/sethforprivacy/monerujo failover) | 10 confirmations | Wallet protocol unlock period |
-| **Cardano** | HTTP poll (probabilistic) | koios `/tip` + `/blocks?block_height=eq.<height>` | 15 confirmations | Above Coinbase 10 / Kraken 15. Far below the academic k=2160 (~12 h) |
+| **Ethereum** | 10 s poll | `RPC_ETHEREUM`, publicnode | Casper FFG `finalized` tag | `latest.ts − finalized.ts` |
+| **BNB** | WS, our clock | `wss://bsc-rpc.publicnode.com` | `finalized` tag (BEP-126 fast finality), polled every 1 s on the socket | first seen latest → first seen finalized |
+| **Robinhood Chain** | WS, our clock | `wss://robinhood-rpc.publicnode.com` | `finalized` tag, moves by batch on the parent chain | batch median of first seen latest → finalized |
+| **Avalanche** | WS, from production | `wss://avalanche-c-chain-rpc.publicnode.com/ext/bc/C/ws` | `latest` is accepted (Snowman-final) under SAE | arrival − `timestampMilliseconds` |
+| **Solana** | WS, our clock | `WS_SOLANA`, `wss://api.mainnet-beta.solana.com` | `rootSubscribe` (Alpenglow) | first `slotSubscribe` of S → first root ≥ S |
+| **TRON** | 10 s poll | `RPC_TRON`, trongrid | `/walletsolidity/getnowblock` (19 SR confirmations) | head.ts − solid.ts |
+| **Monero** | 10 s poll | `RPC_MONERO`, cakewallet | 10 confirmations | tip.ts − (tip − 10).ts |
+| **NEAR** | 2 s poll, chain ns timestamps | `RPC_NEAR`, `https://near.drpc.org` | `last_final_block` (BFT finality) | ts(first block naming F) − ts(F) |
+| **Sei** | WS, from header time | `WS_SEI`, `wss://sei-rpc.publicnode.com/websocket` | commit (single-slot BFT) | arrival − header `time` (proposal) |
+| **Cronos** | WS, from header time | `WS_CRONOS`, `wss://cronos-rpc.publicnode.com/websocket` | commit (CometBFT) | arrival − header `time` (BFT time = previous commit, so one whole height) |
+| **Kaia** | WS, from block start | `WS_KAIA`, `wss://public-en.node.kaia.io/ws` | commit (Istanbul BFT) | arrival − timestamp, on-time blocks only (timestamp = parent + 1 s) |
+| **Internet Computer** | 250 ms poll | `RPC_ICP`, `https://icp-api.io`, NNS subnet | certified state | arrival (midpoint of two answers) − certified `/time` |
+| **Algorand** | long poll, our clock | `RPC_ALGORAND`, `https://mainnet-api.algonode.cloud` | certified round | arrival(r+1) − arrival(r), consecutive rounds |
+| **Stellar** | SSE, chain close times | Horizon `/ledgers?cursor=now` | SCP close | (closed_at(N) − closed_at(N−10)) / 10 |
+| **Gram** | SSE (REST fallback), our clock | tonapi.io `/v2/sse/blocks?workchain=-1` | masterchain inclusion | first sight of N+1 − first sight of N |
+| **SUI** | 500 ms poll, checkpoint timestamps | `graphql.mainnet.sui.io` | checkpoint commit (Mysticeti) | (ts(N) − ts(M)) / (N − M) |
+| **Bitcoin** | 30 s poll, our clock | mempool.space | 6 confirmations | tip first seen → tip − N ≥ 6 |
+| **Litecoin** | 30 s poll, our clock | Tatum public JSON-RPC | 12 confirmations | same as Bitcoin |
+| **Cardano** | 60 s poll | koios | 15 confirmations | measured, not published on the board |
+
+### Notes per new chain (added 2026-11-03)
+
+- **Sei**: the header time read 0.2 to 0.3 s before arrival, inside one ~0.45 s block interval, so it marks this block's proposal.
+- **Cronos**: CometBFT BFT time is the median of the validators' precommit times for the previous height; arrival − header time is therefore the previous commit → this commit + delivery (about one ~0.4 s height plus delivery).
+- **Kaia**: kaia `work/worker.go` (`waitForIdealBlockTime`) sleeps until `parent.Time + 1 s`, a whole second, then builds the block with that timestamp (`blockchain.go` `PrepareHeader`). A late block gets `Time = now` truncated and the fraction in `timestampFoS`, which `newHeads` does not carry, so only blocks with timestamp = parent + 1 are timed. `timestampFoS` on on-time blocks is inherited from the parent and is not a clock.
+- **Internet Computer**: anonymous `read_state` for the path `["time"]` on canister `ryjl3-tyaaa-aaaaa-aaaba-cai` (ICP ledger, NNS subnet). The request and the certificate tree are CBOR, encoded and decoded in `icp.go` without a dependency. The certificate's BLS signature is not verified: only the timestamp is used.
+- **NEAR**: both ends are chain timestamps, so the 2 s poll sets the sample count, not the value. Each poll fetches the head, then its parent and its final block by hash unless cached (at most 1.5 requests/s). Both FastNEAR hosts (`rpc.mainnet`, `free.rpc`) answered 429 at 1.5 to 5 requests/s; dRPC's free endpoint served 90 of 90 at 1.5 requests/s.
+- **Algorand**: block `ts` is whole seconds, too coarse for a ~3 s figure. The next round's proposal starts once a round is certified, so the commit-to-commit interval is one proposal → certification cycle.
 
 ## Excluded chains
 
 | Chain | Why |
 | --- | --- |
-| **XRP Ledger** | `ledger_current` has no `close_time`, so any HTTP-based lag formula collapses to either a hardcoded `block_lag × 4 s` (not a real measurement) or zero. Honest measurement requires WS subscribe to the validated-ledger stream — not yet implemented |
+| **Hedera** | Mirror nodes only publish already-final records, stamped with the consensus time (the moment of finality itself), so nothing before finality is observable. Re-enable once Block Nodes (HIP-1056) leave private preview |
+| **XRP Ledger** | `ledger_current` has no `close_time`; honest measurement needs a WS subscription to the validated-ledger stream, not implemented |
+| **Aptos** | A fullnode serves only committed blocks. On 2026-11-03 the latest block's microsecond `ledger_timestamp` read 0 to 200 ms before arrival, often after our request had left, so it does not mark the proposal and timestamp → arrival would publish mostly our round trip. The Aptos Labs API also answered 429 at 4 requests/s |
+| **Somnia** | `latest`, `safe` and `finalized` return the same block, and block timestamps are whole seconds on blocks about 100 ms apart: neither a head → final gap nor timestamp → arrival can resolve its sub-second finality |
+
+## Changes on 2026-11-03
+
+- **BNB** (`evm_ws.go`, `wsStalled`): from 2026-11-02 the row produced no sample for hours at a time (14:45 to 20:25, 03:15 to 08:43, 11:53 to 14:34 UTC) while health stayed 1 and the gauge held its last value, which `quantile_over_time` counted at every scrape. A socket with no head for 20 s, or no `finalized` advance for 30 s on a finalized-tag chain, is now reconnected.
+- **Stellar** (`stellar_ws.go`): the sample was the gap between two ledgers arriving on the Horizon stream. Horizon delivers unevenly (3.1, 4.0, 7.1 s gaps between ledgers whose `closed_at` were all exactly 5 s apart), so the published p50 of 4.0 s and p90 of 11 s were delivery artifacts. The sample is now the mean close interval over the last ten ledgers from `closed_at`.
 
 ## Metrics emitted
 
 ```
-# HTTP-polled chains
-l1_finality_lag_seconds{chain}                  # latest.ts - finalized.ts (chain-side resolution)
+# 10 s polled chains (Ethereum, TRON, Monero, Cardano)
+l1_finality_lag_seconds{chain}                  # latest.ts - finalized.ts
 l1_finality_block_lag{chain}                    # height delta in blocks
 l1_latest_block{chain}
 l1_finalized_block{chain}
-l1_finality_fetch_latency_milliseconds{chain}   # how long the RPC pair took
+l1_finality_fetch_latency_milliseconds{chain}
 l1_finality_last_refresh_timestamp_seconds{chain}
 l1_finality_fetch_errors_total{chain, error_type}
-l1_finality_health{chain}                       # 1 if last sample succeeded
+l1_finality_health{chain}
 
-# Wall-clock-measured chains (BNB, Avalanche, Gram)
-l1_finality_wallclock_lag_milliseconds{chain}        # ms-precise gauge
-l1_finality_wallclock_lag_milliseconds_histogram     # histogram for tail latency
-l1_finality_wallclock_health{chain}                  # 1 if WS/SSE connected
-l1_finality_wallclock_samples_total{chain}           # cumulative count
+# every other chain
+l1_finality_wallclock_lag_milliseconds{chain}        # last sample, ms
+l1_finality_wallclock_lag_milliseconds_histogram     # every sample
+l1_finality_wallclock_health{chain}                  # 1 while the stream / poll is up
+l1_finality_wallclock_samples_total{chain}
+l1_finality_solana_stage_milliseconds{stage}         # Solana block / vote split
 ```
 
-## Confidence audit
-
-| Chain | Confidence | Notes |
-| --- | --- | --- |
-| Ethereum | High | RPC returns true protocol-level `finalized` |
-| BNB | High | WS wall-clock methodology is rigorous |
-| Avalanche | High | Same WS wall-clock |
-| Solana | High | Industry-standard `finalized` commitment |
-| Hedera | High | Hashgraph aBFT + ns-precision timestamps |
-| SUI | High | 1 checkpoint = Circle USDC standard |
-| Stellar | High | SCP deterministic, Circle = 1 |
-| Gram | High (after SSE refactor) | tonapi `workchain=-1` SSE stream, ms-precise |
-| Cardano | Medium | 15-conf compromise between Coinbase 10 and Kraken 15. Academic k=2160 is theoretical; no actor uses it |
-| Litecoin | Medium | 12-conf post-April-2026 reorg; standard is evolving |
-| TRON | Medium | CEX confirmation counts vary 19–30; we use the 19-block protocol minimum |
-| Monero | Lower | XMR delisted from major regulated CEXes since 2024; no canonical confirmation count today |
+Chain labels: `ethereum bnb robinhood avalanche solana tron monero cardano near sei cronos kaia icp algorand stellar gram sui bitcoin litecoin`.
 
 ## Run locally
 
 ```bash
-cd miniapps/l1-finality
-go run ./cmd/script/
+cd harnesses/l1-finality
+go test ./... && go run ./cmd/script/
 ```
 
-`/metrics` is exposed on `:2112`. Other endpoints:
+`/metrics` is on `:2112` (`METRICS_ADDR` overrides it). Other endpoints:
 
 | Endpoint | What |
 | --- | --- |
 | `GET /metrics` | Prometheus scrape |
-| `GET /logs?tail=N` | In-memory log ring (5000 lines). `LOGS_TOKEN` env gates access if set |
-| `GET /debug/finality` | JSON snapshot per polled chain — block heights, lag, latency, last error |
+| `GET /logs?tail=N` | In-memory log ring (5000 lines). `LOGS_TOKEN` gates access if set |
+| `GET /debug/finality` | JSON snapshot per 10 s polled chain |
 | `GET /health` | `OK` |
 
-## Run on Railway
+## Environment
 
-Deploy from this directory. No required env vars — public defaults work. Optional overrides:
+No variable is required; every default is a public, keyless endpoint.
 
-| Var | What | When |
-| --- | --- | --- |
-| `RPC_<CHAIN>` | Override the public RPC URL | Recommended in production to avoid public-RPC rate limits |
-| `REFRESH_INTERVAL_SECONDS` | HTTP-poll cadence | Default 10, min 5. Doesn't affect WS-measured chains |
-| `LOGS_TOKEN` | Bearer token gating `/logs` | Optional |
-
-The WS/SSE subscribers connect with hard-coded public endpoints (publicnode for BNB/Avalanche, tonapi.io for Gram) — no auth required.
+| Var | What |
+| --- | --- |
+| `RPC_ETHEREUM`, `RPC_TRON`, `RPC_MONERO`, `RPC_CARDANO` | 10 s polled chains |
+| `RPC_NEAR`, `RPC_ICP`, `RPC_ALGORAND` | polled chains added 2026-11-03 |
+| `WS_SOLANA`, `WS_SEI`, `WS_CRONOS`, `WS_KAIA` | WebSocket overrides |
+| `TON_API_KEY` | tonapi.io SSE (anonymous requests get 401; the REST fallback runs without it) |
+| `REFRESH_INTERVAL_SECONDS` | 10 s poll cadence, min 5 |
+| `METRICS_ADDR` | listen address, default `:2112` |
+| `LOGS_TOKEN` | bearer token for `/logs` |
 
 ## Adding a chain
 
-### HTTP-polled chain
-
-1. Append a `ChainConfig` entry in `cmd/script/config.go`.
-2. If it's another EVM chain, that's it — the existing `fetchEVM` handles it.
-3. If it's a new family, add a `<chain>.go` with a `fetch<Chain>(ch ChainConfig) FinalitySample` function and wire it in `fetchOne()` in `main.go`.
-
-### Wall-clock-measured chain
-
-1. Add a goroutine that maintains the WS/SSE subscription. See `evm_ws.go` (BNB/Avalanche) or `ton_ws.go` (Gram) for the pattern. The file is still named `ton_ws.go` after the chain's pre-rebrand identifier; rename safely once the harness is redeployed.
-2. Record `firstSeen[height] = time.Now()` on each new-block event.
-3. On finality observation (either an explicit finalized-tag advance or "next block referenced this one"), emit the lag via `wallClockLagGauge.WithLabelValues(slug).Set(lagMs)`.
-4. Don't add the chain to the polled `Chains` config list — wall-clock chains run as separate goroutines.
-5. Wire the start function from `main.go` (e.g. `StartTONWallClock()`).
+1. Find the chain's own finality signal and check it live. If every block is final when it appears, find a sub-second timestamp that marks the block's start (and prove it from the client source); if there is none, the chain is excluded, not approximated.
+2. A 10 s polled chain is a `ChainConfig` in `config.go` plus a fetcher in `fetchOne()`. Anything faster is a goroutine started from `main.go` that writes `recordWallClock(slug, ms)` and sets `wallClockHealth`.
+3. Put the parsing in a pure function with a test (`new_chains_test.go`).
 
 ## License
 
-MIT — same as the rest of OpenChainBench.
+MIT, same as the rest of OpenChainBench.
