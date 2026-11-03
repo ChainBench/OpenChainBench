@@ -1150,6 +1150,11 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "MegaETH's official public RPC (mainnet.megaeth.com). Compute-unit and bandwidth limited; WebSocket endpoint exposes the 10 ms mini-block realtime API.",
     twitter: "@megaeth_labs",
   },
+  blockvectra: {
+    url: "https://blockvectra.com",
+    description:
+      "RPC gateway with keyless public endpoints (3 requests per second per IP, 1,000-block history window). Measured on the Ink, Unichain and Fraxtal RPC pages.",
+  },
   zan: {
     url: "https://zan.top",
     description:

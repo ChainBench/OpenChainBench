@@ -76,6 +76,9 @@ describe("the provider set behind the cache keys", () => {
     // appearance. Bumping now would flush healthy entries and surface
     // nothing new. Had this been caught the same day, the keys would have
     // had to move, and for the next change they still do.
+    // An ARRIVAL on 2026-11-03: BlockVectra joins the Ink, Unichain and
+    // Fraxtal RPC pages (issue #3462). New to the site, so all four keys
+    // move: v108/v101/v48 and providers-v24.
     expect(
       hash,
       [
@@ -94,6 +97,6 @@ describe("the provider set behind the cache keys", () => {
         "Then set EXPECTED to the hash in this failure, and add the provider",
         `to PRODUCT_NAMES if it needs a display name. Providers now: ${count}.`,
       ].join("\n"),
-    ).toBe("70f1d8494244006e");
+    ).toBe("f8ca978348bdb5d0");
   });
 });
