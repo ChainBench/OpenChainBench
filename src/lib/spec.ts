@@ -758,7 +758,10 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       rows are suffixed -heavy while the recorded series is not, so the
   //       selector matched nothing and the column rendered blank in silence.
   //       The relabelled series is read instead.
-  ["bench-unfiltered-v146", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v147: bench 313 token-sellability arrives as a draft. Two rows, the
+  //       two sell timings. A cached entry holds the provider set current
+  //       when it was written, so without this the rows never appear.
+  ["bench-unfiltered-v147", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -1076,7 +1079,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v137: lockstep with bench-unfiltered-v144 (tuleep.trade is Proliquid).
   // v138: lockstep with bench-unfiltered-v145 (heavy call tier).
   // v139: lockstep with bench-unfiltered-v146 (heavy Work column label).
-  ["all-benchmarks-v139", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v140: lockstep with bench-unfiltered-v147 (bench 313 arrives).
+  ["all-benchmarks-v140", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);

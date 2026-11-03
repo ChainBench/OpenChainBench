@@ -1,0 +1,101 @@
+# OpenChainBench. Bench № 313
+
+slug: token-sellability
+number: "313"
+title: "Can you sell it back? Tokens that simulate a buy but not a sale"
+seo_title: "Honeypot check on Robinhood Chain: which tokens cannot be sold"
+seo_description: "Live count of Robinhood Chain tokens that accept a simulated buy and reject the sale, measured on-chain at two timings so an anti-bot cooldown is not called a honeypot."
+subtitle: Share of routable tokens whose sale reverted in simulation, measured by buying, approving and selling in one request against a live aggregator route.
+
+category: Aggregators
+status: draft
+metric: Unsellable share
+unit: pct
+higher_is_better: false
+row_noun: { one: timing, many: timings }
+
+# The reliability column would read as uptime on a board where the figure is
+# already a share of a population.
+ledger_reliability: false
+zero_is_a_value: true
+
+disclaimer: |
+  This page reports a simulation, not an intention. A row says that a sale of the token, from an address funded for the purpose, reverted at the block stated, on the route a live aggregator returned. It does not say the token is a scam, that its authors meant harm, or that a sale would fail for you. Every figure is reproducible: the call, the block and the route are published, and anyone with a free RPC can run it again.
+
+seo_intro: |
+  An aggregator can hold the best quote on a token nobody can sell out of,
+  and a quote leaderboard would score that as quality. This page asks the
+  other question. For tokens that actually moved on Robinhood Chain in the
+  last few minutes, it buys, approves and sells in a single simulated
+  request, and reports which ones accepted the buy and refused the sale.
+
+abstract: |
+  Each sweep takes the contracts that emitted a Transfer in a recent window,
+  keeps those an aggregator will quote in both directions, and simulates the
+  round trip with eth_simulateV1. State carries between the calls, so the buy
+  funds the sale and no storage slot has to be guessed. Guessing the balances
+  slot is the usual method and it fails silently on any non-standard layout,
+  which is exactly the population under test.
+
+  Nothing here rests on a list. The ground truth is computed from the chain
+  on every sweep, including the control.
+
+methodology:
+  - "Two timings, and they mean different things. Selling in the same block as the buy is the only way to hold the market still, but it trips every anti-bot cooldown, which is a common and often honest protection. The delayed timing sells a few blocks later. A token that fails the same-block sale and passes the delayed one is NOT a honeypot, and this board never counts it as one."
+  - "A control token runs first on every sweep, not occasionally. If the control cannot be sold, the sweep measured the probe rather than the tokens and every verdict in it is discarded. This caught a broken run on 2026-11-03 that would otherwise have named two tokens as unsellable."
+  - "Inconclusive is a verdict of its own, counted and published. The node answers some requests with a well-formed block and an empty call list, no error, and reading a status out of that would publish a revert that never ran. A probe that cannot tell says so instead of falling back to a real outcome."
+  - "A failed buy is out of scope, not a failure. If no route in opens, nothing has been learned about selling, and calling that unsellable would blame the token for a market that does not exist."
+  - "The cohort is tokens that emitted a Transfer in the window, not new launches. The event that announces a new token on this chain is not identified, and guessing it would bias the sample towards whichever launchpad was guessed. Tokens that moved is a weaker claim and a true one."
+  - "The sale is sized at 98% of what the buy returned, so it can never fail on a rounding difference and be read as a refusal."
+  - "Measured against a route a user would really sign, taken from a live aggregator response rather than hand-built calldata. Simulating calldata we encoded ourselves would test the encoder, not the token."
+
+findings:
+  - "Tokens that take your money and will not give it back are rare but not absent, and a quote leaderboard cannot see them: the best price on something unsellable still reads as the best price."
+  - "The two timings are the whole method. Without the delayed sale, every token with an anti-bot cooldown looks like a trap, and that is most of a launch cohort."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/dev/harnesses/token-sellability
+
+prometheus:
+  window: 24h
+  url: https://prom.openchainbench.com
+  expected_freshness_seconds: 3600
+
+ledger_columns:
+  - { label: "Unsellable", slot: p50 }
+  - { label: "Examined", panel: examined }
+  - { label: "Inconclusive", panel: inconclusive }
+
+metric_panels:
+  - id: examined
+    label: Tokens examined
+    description: Tokens in the last sweep that an aggregator would quote in both directions and that were therefore examined. Tokens with no route are out of scope rather than failures.
+    metric: max(token_sellability_cohort{stage="examined"})
+    label_key: chain
+    unit: count
+    higher_is_better: true
+    tab: false
+  - id: inconclusive
+    label: Inconclusive
+    description: Probes that produced no answer, published rather than hidden. A board that reports how often its own instrument failed is the only kind whose other numbers can be checked.
+    metric: sum(token_sellability_verdict{verdict="inconclusive"})
+    label_key: chain
+    unit: count
+    higher_is_better: false
+    tab: false
+
+providers:
+  - slug: delayed
+    name: Sold a few blocks later
+    tag: Forgives an anti-bot cooldown
+    formula: "Share of examined tokens whose sale reverted when attempted a few blocks after the buy, over 24h. This is the strict definition of a token you cannot exit."
+    queries:
+      p50: 100 * sum(token_sellability_verdict{timing="delayed",verdict="unsellable"}) / clamp_min(sum(token_sellability_verdict{timing="delayed",verdict=~"sellable|unsellable"}), 1)
+      sample_size: sum(token_sellability_verdict{timing="delayed",verdict=~"sellable|unsellable"})
+
+  - slug: same-block
+    name: Sold in the same block
+    tag: Counts cooldowns as refusals
+    formula: "Share of examined tokens whose sale reverted when attempted in the same block as the buy, over 24h. Higher than the delayed figure by the cohort's anti-bot cooldowns, which are not traps."
+    queries:
+      p50: 100 * sum(token_sellability_verdict{timing="same_block",verdict="unsellable"}) / clamp_min(sum(token_sellability_verdict{timing="same_block",verdict=~"sellable|unsellable"}), 1)
+      sample_size: sum(token_sellability_verdict{timing="same_block",verdict=~"sellable|unsellable"})

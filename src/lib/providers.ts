@@ -955,7 +955,10 @@ const buildProvidersCached = unstable_cache(
   //      appearances. Lockstep with bench-unfiltered-v143.
   // v42: tuleep.trade is Proliquid: the product page's name, description
   //      and links ride in this index. Lockstep with bench-unfiltered-v144.
-  ["providers-v43"],
+  // v44: bench 313 adds two rows that are timings rather than vendors, so
+  //      no company gains a product page, but the index still carries the
+  //      appearances. Lockstep with bench-unfiltered-v147.
+  ["providers-v44"],
   // 900 s: the provider index feeds products / compare / answers, whose
   // numbers move slowly, and this revalidate is also the effective ISR
   // period of those ~500 pages (Next takes the min across a route's caches).

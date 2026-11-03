@@ -53,6 +53,13 @@ describe("the provider set behind the cache keys", () => {
     const hash = createHash("sha256").update(sets.join("\n")).digest("hex").slice(0, 16);
     const count = sets.reduce((n, s) => n + s.split(":")[1].split(",").length, 0);
 
+    // An ADDITION on 2026-11-03: bench 313 token-sellability, as a draft.
+    // Its two rows are the two sell timings rather than two vendors, so
+    // nobody gains a product page, but the provider index still carries the
+    // appearances: v147/v140 and providers-v44. bench-filters does NOT move,
+    // because the bench declares no dimensions and nothing is invisible on
+    // a tab it does not have.
+    //
     // A REMOVAL on 2026-11-03, one day after the arrival below: Trnch asked
     // not to be published on quote or latency for now, so both rows go and
     // the registry entry with them. The withdrawal happened in two steps and
@@ -142,6 +149,6 @@ describe("the provider set behind the cache keys", () => {
         "Then set EXPECTED to the hash in this failure, and add the provider",
         `to PRODUCT_NAMES if it needs a display name. Providers now: ${count}.`,
       ].join("\n"),
-    ).toBe("7d7745bd9b0b0d15");
+    ).toBe("cb1c9bb35b75f0e2");
   });
 });
