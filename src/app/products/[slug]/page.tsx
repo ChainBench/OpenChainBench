@@ -63,6 +63,12 @@ import { noFigureLabel, noRankLabel } from "@/lib/no-figure-label";
 import { WalletVendorPricing, walletVendorHeadline, fmtWalletBill } from "@/components/wallet-vendor-pricing";
 import { ServerWalletVendorPricing, serverWalletVendorHeadline, fmtServerWalletBill } from "@/components/server-wallet-vendor-pricing";
 
+/** "first to push on 62% of its blocks": a race bench's share of wins in
+ *  prose. The share panel's label names the race. */
+function raceShareText(rs: { share: number; label: string }): string {
+  return `${rs.label.toLowerCase()} on ${Math.round(rs.share)}% of its blocks`;
+}
+
 export const revalidate = 3600;
 
 // On-demand first render loads every bench (provider profile spans the
@@ -264,7 +270,7 @@ export async function generateMetadata({
     // Each rank carries its own bench's qualifier: a 7d session median, a
     // 30d figure and last weekend's maximum were all labelled "(p50, 24h)"
     // by one trailing suffix (RWA audit 2026-09-23).
-    .map((a) => `#${a.rank} of ${a.totalRanked}${cohortWord(a)} on ${shortBenchLabel(a.benchmark)} at ${fmtUnit(a.result.ms.p50, a.benchmark.unit)} (${valueQualifier(a.benchmark)})`);
+    .map((a) => `#${a.rank} of ${a.totalRanked}${cohortWord(a)} on ${shortBenchLabel(a.benchmark)} ${a.raceShare ? `${raceShareText(a.raceShare)} (24h)` : `at ${fmtUnit(a.result.ms.p50, a.benchmark.unit)} (${valueQualifier(a.benchmark)})`}`);
   // Count first, ranks second: the 158-character cap lands inside the
   // rank list on providers with two long bench labels, and a sentence
   // cut on a numeral ("at 4.") is what the snippet then shows (audit
@@ -611,7 +617,11 @@ export default async function ProviderPage({
     const p50Str = fmtUnit(a.result.ms.p50, a.benchmark.unit);
     const rankStr = `ranks #${a.rank} of ${a.totalRanked}${cohortWord(a)}`;
     const valueWord = a.benchmark.valueKind === "latest" ? "latest" : "p50";
-    topLines.push(`${shortBenchLabel(a.benchmark)} (${rankStr}, ${p50Str} ${valueWord})`);
+    topLines.push(
+      a.raceShare
+        ? `${shortBenchLabel(a.benchmark)} (${rankStr}, ${raceShareText(a.raceShare)} over 24h)`
+        : `${shortBenchLabel(a.benchmark)} (${rankStr}, ${p50Str} ${valueWord})`,
+    );
   }
   const proseParts: string[] = [];
   if (topLines.length > 0) {
@@ -871,12 +881,19 @@ export default async function ProviderPage({
             position: i + 1,
             name: `#${a.rank} of ${a.totalRanked} on ${a.benchmark.title}`,
             url: `${SITE.url}/benchmarks/${a.benchmark.slug}`,
-            item: {
-              "@type": "PropertyValue",
-              name: a.benchmark.metric,
-              value: a.result.ms.p50,
-              unitText: a.benchmark.unit,
-            },
+            item: a.raceShare
+              ? {
+                  "@type": "PropertyValue",
+                  name: a.raceShare.label,
+                  value: Math.round(a.raceShare.share),
+                  unitText: "percent",
+                }
+              : {
+                  "@type": "PropertyValue",
+                  name: a.benchmark.metric,
+                  value: a.result.ms.p50,
+                  unitText: a.benchmark.unit,
+                },
           })),
       },
       buildBreadcrumbJsonLd([
@@ -1256,7 +1273,13 @@ export default async function ProviderPage({
             const hasData =
               (a.rank > 0 || (a.unrankedCohort === true && a.result.availability !== "unavailable")) &&
               (a.result.ms.p50 !== 0 || a.zeroIsAValue === true);
-            const value = hasData ? fmtUnit(a.result.ms.p50, a.benchmark.unit) : null;
+            // A race bench's p50 is the lag behind the first arrival, so the
+            // winner reads ~0 ms by construction: show its share of wins.
+            const value = hasData
+              ? a.raceShare
+                ? `${Math.round(a.raceShare.share)}%`
+                : fmtUnit(a.result.ms.p50, a.benchmark.unit)
+              : null;
             // Per-chain leadership chips, rendered alongside the aggregate
             // rank when the bench declares chain dimensions. Leaders only:
             // a chip means "leads this chain", and its absence means "does
@@ -1340,9 +1363,11 @@ export default async function ProviderPage({
                       <>
                         <p className="font-sans tabular text-base text-ink">{value}</p>
                         <p className="font-sans text-[9px] uppercase tracking-[0.16em] text-ink-faint mt-0.5 font-medium">
-                          {a.benchmark.valueKind === "latest"
-                            ? "latest value"
-                            : valueWindowLabel(a.benchmark)}
+                          {a.raceShare
+                            ? `${a.raceShare.label} · 24h`
+                            : a.benchmark.valueKind === "latest"
+                              ? "latest value"
+                              : valueWindowLabel(a.benchmark)}
                           {a.result.priceReading ? ` · ${a.result.priceReading}` : ""}
                         </p>
                       </>

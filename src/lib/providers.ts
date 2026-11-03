@@ -14,6 +14,7 @@ import { getBenchmarksSafe } from "@/data/benchmarks";
 import { loadProvidersFromBlob } from "@/lib/bench-blob";
 import { isHexAddressSlug } from "@/lib/slug-shape";
 import { defaultViewLabel } from "@/lib/bench-view";
+import { raceShareOf } from "@/lib/format";
 
 export { isHexAddressSlug };
 import { loadSpecsUncached } from "@/lib/materialize/load";
@@ -367,6 +368,11 @@ export type ProviderAppearance = {
   unrankedCohort?: boolean;
   /** The bench treats 0 as a real figure ($0 for a free endpoint). */
   zeroIsAValue?: boolean;
+  /** On a race bench (spec `race_leader`) the provider's share of wins and
+   *  the share panel's label ("First to push"). The p50 there is the lag
+   *  behind the first arrival, so the winner reads ~0 ms by construction
+   *  and a product page must show this figure instead. */
+  raceShare?: { share: number; label: string };
   /** Per-chain leadership for this provider on this bench. Populated only
    *  for chains this provider *leads*, so `rank` is always 1 and an absent
    *  key means "does not lead here", never "ranked lower here". Key = chain
@@ -396,6 +402,11 @@ export type ProviderProfile = {
    *  /filter ("show all #1 on Solana") on the products index. */
   chainWins?: Record<string, number>;
 };
+
+function raceShareField(b: Benchmark, slug: string): { raceShare?: { share: number; label: string } } {
+  const rs = raceShareOf(b, slug);
+  return rs ? { raceShare: rs } : {};
+}
 
 function rankProviders(b: Benchmark): ProviderResult[] {
   // Drives the /products hub `wins` count and per-chain leadership
@@ -561,6 +572,7 @@ export function buildProvidersFromBenches(benches: Benchmark[]): ProviderProfile
         rank: isRanked ? (idx as number) + 1 : 0,
         totalRanked: total,
         ...(hasPerChain ? { rankPerChain } : {}),
+        ...raceShareField(b, r.slug),
       };
       // Collect chain-leadership tally so the profile can surface
       // "Solana leader on 3 benches" etc.
@@ -661,6 +673,7 @@ export function buildProvidersFromBenches(benches: Benchmark[]): ProviderProfile
           tier,
           ...(unrankedCohort ? { unrankedCohort: true } : {}),
           ...(b.zeroIsAValue ? { zeroIsAValue: true } : {}),
+          ...raceShareField(b, r.slug),
         };
         if (existing) {
           existing.appearances.push(appearance);
@@ -900,7 +913,10 @@ const buildProvidersCached = unstable_cache(
   // marks, re-priced appearances).
   // v24: BlockVectra is new to the site: a product page and three bench
   //      appearances. Lockstep with bench-unfiltered-v108.
-  ["providers-v24"],
+  // v25: appearances on the nine race benches carry the provider's share
+  //      of wins (raceShare); a cached index without it shows the ~0 ms
+  //      lag behind the first arrival on product pages.
+  ["providers-v25"],
   // 900 s: the provider index feeds products / compare / answers, whose
   // numbers move slowly, and this revalidate is also the effective ISR
   // period of those ~500 pages (Next takes the min across a route's caches).
