@@ -224,6 +224,7 @@ export function BenchmarkBody({
   venueOptions = [],
   bucketOptions = [],
   tierOptions = [],
+  resolvableTiers,
   dimensionLabels,
   venuesForChain,
   initialChain,
@@ -262,6 +263,14 @@ export function BenchmarkBody({
    *  the Private tab for readers (product pages, the hub and the
    *  citations link that form; `?tier=keyed` is still accepted). */
   tierOptions?: ChainOption[];
+  /** Every tier the spec declares, including the ones the Access row does
+   *  not show. `tierOptions` answers "what does the row display"; this
+   *  answers "what can a URL name", and they are not the same question.
+   *  Conflating them made ?tier=keyed-cold and #tier=keyed-cold fall back
+   *  to the public cohort in silence (checked in a browser 2026-11-03),
+   *  even though the hash mechanism exists so a reader can link a tab.
+   *  Defaults to tierOptions, so a caller that passes nothing is unchanged. */
+  resolvableTiers?: ChainOption[];
   /** Per-chain venue availability map. When present, venue tabs are filtered
    *  to only show venues that have data for the currently selected chain. */
   venuesForChain?: Record<string, string[]>;
@@ -291,6 +300,7 @@ export function BenchmarkBody({
   // every visit) so URL-driven filter state is hydrated here. Falls back
   // to the server-rendered initial when the URL has no filter or a
   // value that doesn't match the spec's dimensions.
+  const resolvable = resolvableTiers ?? tierOptions;
   const searchParams = useSearchParams();
   const urlChain = searchParams.get("chain");
   const urlRegion = searchParams.get("region");
@@ -314,7 +324,7 @@ export function BenchmarkBody({
   const resolvedInitialBucket =
     (urlBucket && bucketOptions.find((b) => b.value === urlBucket)?.value) ?? initialBucket;
   const resolvedInitialTier =
-    (urlTier && tierOptions.find((t) => t.value === urlTier)?.value) ?? initialTier;
+    (urlTier && resolvable.find((t) => t.value === urlTier)?.value) ?? initialTier;
   const resolvedInitialLayer: ProviderLayer =
     urlLayer === "l2" ? "l2" : "l1";
 
@@ -328,10 +338,10 @@ export function BenchmarkBody({
   // `#tier=<t>` is invisible to the server and to useSearchParams: read
   // it once after mount.
   useEffect(() => {
-    if (tierOptions.length === 0) return;
+    if (resolvable.length === 0) return;
     const apply = () => {
       const m = /(?:^#|[#&])tier=([A-Za-z0-9_-]+)/.exec(window.location.hash);
-      const fromHash = m ? tierOptions.find((t) => t.value === m[1])?.value : undefined;
+      const fromHash = m ? resolvable.find((t) => t.value === m[1])?.value : undefined;
       if (fromHash) setTier(fromHash);
     };
     apply();
