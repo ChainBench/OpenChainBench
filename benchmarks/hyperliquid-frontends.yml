@@ -1154,9 +1154,9 @@ providers:
       series: hl_frontend_fees_usd_24h_v2{builder="xbit"}
 
   - slug: tuleep-trade
-    name: tuleep.trade
+    name: Proliquid
     tag: Hyperliquid builder code, USD revenue on the last complete UTC day
-    formula: "USD builder fees collected on the last complete UTC day, summed across every attributed fill in the daily feed file for tuleep.trade's builder address."
+    formula: "USD builder fees collected on the last complete UTC day, summed across every attributed fill in the daily feed file for Proliquid's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="tuleep-trade"}
       p90: hl_frontend_volume_usd_24h_v2{builder="tuleep-trade"}

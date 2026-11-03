@@ -111,6 +111,9 @@ const PRODUCT_ALIASES: Record<string, string> = {
   // query on the property (273 impressions, position 8.31, zero clicks,
   // 90 days to 2026-09-19).
   tuleep: "tuleep-trade",
+  // tuleep.trade rebranded to Proliquid (tuleep.trade 301s to
+  // www.proliquid.xyz); the slug stays for its label and history.
+  proliquid: "tuleep-trade",
   "mass-money": "mass-dot-money",
   // Chain official RPC → chain brand
   "arbitrum-official": "arbitrum",
