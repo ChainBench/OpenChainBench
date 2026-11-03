@@ -979,7 +979,10 @@ const buildProvidersCached = unstable_cache(
   //      link or description; the description rides in this index.
   // v47: bench 031 network-fees gains eight chain rows, each a new bench
   //      appearance. Lockstep with bench-unfiltered-v149.
-  ["providers-v47"],
+  // v48: bench 034 token-deployment-cost gains twelve chain rows, each a new
+  //      bench appearance this index carries. Lockstep with
+  //      bench-unfiltered-v150.
+  ["providers-v48"],
   // 900 s: the provider index feeds products / compare / answers, whose
   // numbers move slowly, and this revalidate is also the effective ISR
   // period of those ~500 pages (Next takes the min across a route's caches).
