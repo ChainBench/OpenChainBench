@@ -205,6 +205,7 @@ export function BenchmarkBody({
   venueOptions = [],
   bucketOptions = [],
   tierOptions = [],
+  resolvableTiers,
   dimensionLabels,
   venuesForChain,
   initialChain,
@@ -243,6 +244,14 @@ export function BenchmarkBody({
    *  the Private tab for readers (product pages, the hub and the
    *  citations link that form; `?tier=keyed` is still accepted). */
   tierOptions?: ChainOption[];
+  /** Every tier the spec declares, including the ones the Access row does
+   *  not show. `tierOptions` answers "what does the row display"; this
+   *  answers "what can a URL name", and they are not the same question.
+   *  Conflating them made ?tier=keyed-cold and #tier=keyed-cold fall back
+   *  to the public cohort in silence (checked in a browser 2026-11-03),
+   *  even though the hash mechanism exists so a reader can link a tab.
+   *  Defaults to tierOptions, so a caller that passes nothing is unchanged. */
+  resolvableTiers?: ChainOption[];
   /** Per-chain venue availability map. When present, venue tabs are filtered
    *  to only show venues that have data for the currently selected chain. */
   venuesForChain?: Record<string, string[]>;
@@ -272,6 +281,7 @@ export function BenchmarkBody({
   // every visit) so URL-driven filter state is hydrated here. Falls back
   // to the server-rendered initial when the URL has no filter or a
   // value that doesn't match the spec's dimensions.
+  const resolvable = resolvableTiers ?? tierOptions;
   const searchParams = useSearchParams();
   const urlChain = searchParams.get("chain");
   const urlRegion = searchParams.get("region");
@@ -295,7 +305,7 @@ export function BenchmarkBody({
   const resolvedInitialBucket =
     (urlBucket && bucketOptions.find((b) => b.value === urlBucket)?.value) ?? initialBucket;
   const resolvedInitialTier =
-    (urlTier && tierOptions.find((t) => t.value === urlTier)?.value) ?? initialTier;
+    (urlTier && resolvable.find((t) => t.value === urlTier)?.value) ?? initialTier;
   const resolvedInitialLayer: ProviderLayer =
     urlLayer === "l2" ? "l2" : "l1";
 
@@ -309,10 +319,10 @@ export function BenchmarkBody({
   // `#tier=<t>` is invisible to the server and to useSearchParams: read
   // it once after mount.
   useEffect(() => {
-    if (tierOptions.length === 0) return;
+    if (resolvable.length === 0) return;
     const apply = () => {
       const m = /(?:^#|[#&])tier=([A-Za-z0-9_-]+)/.exec(window.location.hash);
-      const fromHash = m ? tierOptions.find((t) => t.value === m[1])?.value : undefined;
+      const fromHash = m ? resolvable.find((t) => t.value === m[1])?.value : undefined;
       if (fromHash) setTier(fromHash);
     };
     apply();
@@ -848,12 +858,21 @@ export function BenchmarkBody({
   // gets, and the gap between them is a TLS handshake. Until 2026-10-08 the
   // bench measured whichever happened to apply and ranked providers on that
   // accident.
-  const inKeyedCohort = tier === "keyed" || tier === "keyed-cold";
+  const inKeyedCohort =
+    tier === "keyed" || tier === "keyed-cold" || tier === "keyed-heavy";
   const connModeToggle = inKeyedCohort ? (
     <div className="inline-flex shrink-0 items-center rounded-md border border-rule bg-surface overflow-hidden">
       {([
         ["keyed", "Pooled"],
         ["keyed-cold", "Cold start"],
+        // Added 2026-11-03. Pooled and Cold start are the same light call in
+        // two connection conditions; Heavy is an EXPENSIVE call on the pooled
+        // one, a Multicall3 of fifty state reads. The review asked for it
+        // because an expensive call "depends on hardware capacity", and
+        // toggling here is what shows that: on ethereum dwellir reads 74.49 ms
+        // heavy against 74.39 light, so almost no work, while blockmachine
+        // reads 129.00 against 106.96.
+        ["keyed-heavy", "Heavy"],
       ] as const).map(([value, label]) => (
         <button
           key={value}
@@ -863,7 +882,9 @@ export function BenchmarkBody({
           title={
             value === "keyed"
               ? "Connection reused, what a long-running backend gets"
-              : "New connection every call, what a serverless invocation gets"
+              : value === "keyed-cold"
+                ? "New connection every call, what a serverless invocation gets"
+                : "A Multicall3 of 50 state reads on the pooled connection, so the number carries the node's work and not only the distance to it"
           }
           className={`h-7 px-2 text-[11px] uppercase tracking-wide transition-colors ${
             tier === value

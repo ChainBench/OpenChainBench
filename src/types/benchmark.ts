@@ -166,6 +166,9 @@ export type MetricPanel = {
   /** When false the panel is data-only (feeds ledger column window
    *  variants) and renders no chart tab. */
   tab?: boolean;
+  /** When false a missing value is a statement rather than a gap, and the
+   *  worker must not carry the previous one forward. See spec-schema. */
+  carry?: boolean;
   /** Per-provider scalar values, keyed by provider slug. Providers with no
    *  live data for this metric are omitted; the renderer renders them as
    *  "no data" instead of zero. */
@@ -290,6 +293,8 @@ export type Benchmark = {
    * `rowNoun()` in src/lib/row-noun.ts, never directly, so every surface
    * falls back the same way. */
   rowNoun?: { one: string; many: string };
+  /** Replaces the dimension-label clause of the citable headline. */
+  headlineSlice?: string;
   /** Optional drill-down dimensions exposed by the bench. When set, the
    * bench page renders one tab selector per dimension and the queries get
    * a matching `<label>="<value>"` injected. */

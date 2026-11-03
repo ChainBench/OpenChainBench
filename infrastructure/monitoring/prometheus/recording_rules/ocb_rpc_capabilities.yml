@@ -14,7 +14,15 @@
 # keep ratio-of-sums semantics.
 groups:
   - name: ocb_rpc_capabilities
-    interval: 60s
+    # 300s, not 60s. Every rule in this group is a [24h] window, and a 24 hour
+    # aggregate does not move in a minute: re-evaluating it 5 times more often
+    # buys no freshness, it just reloads and re-sorts the same day of samples.
+    # Measured 2026-10-29: this group was the single heaviest thing on the
+    # Railway Prom at 8.29s of evaluation every 60s, 14% duty cycle, of which
+    # 5.07s was four quantile_over_time calls over the same window. Safe at
+    # 300s because Railway runs --query.lookback-delta=1h and the VPS that
+    # federates these outputs runs 20m, both far wider than the interval.
+    interval: 300s
     rules:
       - record: ocb:rpc_latency_milliseconds:p50_24h
         expr: quantile_over_time(0.50, rpc_latency_milliseconds[24h])
@@ -134,3 +142,58 @@ groups:
         expr: sum by (provider, chain, region, tier) (increase(rpc_ws_disconnect_total[24h]))
       - record: ocb:rpc_ws_messages:increase_24h
         expr: sum by (provider, chain, region, tier) (increase(rpc_ws_messages_total[24h]))
+
+      # The heavy eth_call lane, added 2026-11-03 for the Heavy tab on the
+      # eight chain RPC pages.
+      #
+      # Precomputed for the usual reason and for one more. The usual: a 24h
+      # quantile over a raw gauge, fired per provider per chain per request,
+      # is what these rules exist to stop. The extra one: the work term is a
+      # DIFFERENCE of two series that differ only in their `api` label, and
+      # written inline in a spec it runs past the 200 character ceiling on a
+      # metric, at 215 to 231 depending on the chain name. Recorded here it
+      # reads as one short selector.
+      #
+      # `ignoring(api)` is what makes the subtraction match: both sides carry
+      # provider, chain, region and tier, and only `api` separates the heavy
+      # leg from its light reference. Without it the two sides share no label
+      # set and the result is empty.
+      #
+      # The light leg is the reference the heavy call is only meaningful
+      # against: both ride the same pooled connection in the same pass, so
+      # their difference is the work the node did rather than the distance to
+      # it. Measured on ethereum 2026-11-03: dwellir reads 74.39 light
+      # against 74.49 heavy, so 0.10 ms of work, while blockmachine reads
+      # 106.96 and 129.00, so 22.04. The absolute number ranks those two the
+      # same way round for the wrong reason.
+      - record: ocb:rpc_api_heavy_milliseconds:p50_24h
+        expr: quantile_over_time(0.50, rpc_api_latency_milliseconds{api="eth_call_heavy_warm"}[24h])
+      - record: ocb:rpc_api_heavy_milliseconds:p90_24h
+        expr: quantile_over_time(0.90, rpc_api_latency_milliseconds{api="eth_call_heavy_warm"}[24h])
+      - record: ocb:rpc_api_heavy_milliseconds:p99_24h
+        expr: quantile_over_time(0.99, rpc_api_latency_milliseconds{api="eth_call_heavy_warm"}[24h])
+      - record: ocb:rpc_api_heavy_milliseconds:mean_24h
+        expr: avg_over_time(rpc_api_latency_milliseconds{api="eth_call_heavy_warm"}[24h])
+      # Distinct measurements, not scrapes. The lane writes about once an
+      # hour and Prometheus scrapes every 30 s, so count_over_time would
+      # report 2,850 where there are roughly 24 readings.
+      - record: ocb:rpc_api_heavy:changes_24h
+        expr: changes(rpc_api_latency_milliseconds{api="eth_call_heavy_warm"}[24h])
+      # The same work term with the provider label carrying the `-heavy`
+      # suffix, because a metric_panel is queried as
+      # `<metric>{provider="<the row's slug>"}` and the spec cannot say
+      # otherwise. The heavy tier's rows are `chainstack-heavy` while the
+      # series above is `chainstack`, so the panel matched nothing and the
+      # column rendered empty without an error anywhere. Measured
+      # 2026-11-03: provider="chainstack-heavy" returned 0 results,
+      # provider="chainstack" returned 1.32 ms.
+      #
+      # Row queries do not need this: they are written out per provider, so
+      # they can name the real label. Only panel queries get the injection.
+      - record: ocb:rpc_api_work_heavy_milliseconds:mean_24h
+        expr: label_replace(ocb:rpc_api_work_milliseconds:mean_24h, "provider", "$1-heavy", "provider", "(.*)")
+      - record: ocb:rpc_api_work_milliseconds:mean_24h
+        expr: |
+          avg_over_time(rpc_api_latency_milliseconds{api="eth_call_heavy_warm"}[24h])
+          - ignoring(api)
+          avg_over_time(rpc_api_latency_milliseconds{api="eth_call_light_warm"}[24h])

@@ -25,6 +25,7 @@ import { renderBenchmarkText } from "@/lib/bench-template";
 import { liveResults as liveProviderResults } from "@/lib/provider-filters";
 import { notServedLabel, notServedOnEveryView } from "@/lib/no-figure-label";
 import { notServedReason, priceReading, rankGateReason } from "@/lib/not-served-reason";
+import { rankGateLabel } from "@/lib/rank-gate";
 import {
   classifyHealth,
   aggregateConfidence,
@@ -271,7 +272,10 @@ export async function specToBenchmark(
       ? applyDimensionsToSpec(spec, activeLabels)
       : spec;
 
-  const live = await tryLoadLive(filteredSpec, isFiltered);
+  const live = await tryLoadLive(filteredSpec, isFiltered, {
+    ...activeLabels,
+    ...(activeTier ? { tier: activeTier } : {}),
+  });
   if (live) {
     // Mark live entries explicitly so a missing `availability` reads as
     // "unknown" everywhere else in the code. Unresponsive rows keep
@@ -648,9 +652,21 @@ export async function specToBenchmark(
     // Resolve {{p50:slug}} / {{best_name}} / {{count}} etc. placeholders
     // against the freshly loaded numbers so editorial text (findings,
     // seo_intro, faq) never drifts from the displayed data.
+    // A column whose panel was not published this view would draw a column
+    // of dashes under a header promising a reading, because colValue
+    // resolves a missing panel to null and the table still renders it.
+    // Slot columns (p50/p90/p99/mean) are never affected.
+    const publishedPanelIds = new Set((live.metricPanels ?? []).map((p) => p.id));
+    const keptColumns = editorial.ledgerColumns?.filter(
+      (c) => !c.panel || publishedPanelIds.has(c.panel),
+    );
+
     const rendered = renderBenchmarkText({
       ...editorial,
       ...live,
+      ...(editorial.ledgerColumns
+        ? { ledgerColumns: keptColumns && keptColumns.length > 0 ? keptColumns : undefined }
+        : {}),
       bestPerChain,
       worstPerChain,
       providersPerChain,
@@ -1099,6 +1115,37 @@ export function dimensionLabels(f: BenchmarkFilters): Record<string, string> {
   return activeFilterLabels(labelFilters(f));
 }
 
+/**
+ * Whether a panel is published on the view the reader is on.
+ *
+ * Two rules, and they answer different questions.
+ *
+ * `per_chain_only` marks a per-chain quantity, which the all-chains view
+ * must not pool: averaging milliseconds across chains averages different
+ * block times, state sizes and node fleets. Measured 2026-10-31, getblock
+ * reads 1.94 ms of eth_call work on Ethereum and 468.56 on HyperEVM, so its
+ * pooled 61.49 was almost entirely one chain.
+ *
+ * `tiers` scopes a panel to a cohort. API capability is probed on the keyed
+ * endpoints only, so on a chain page's public tab those panels have nothing
+ * to say and are absent rather than empty.
+ *
+ * Exported and shared for the reason panelMetricQuery is: panel values and
+ * the 7d/30d panel series are built by different code paths, and the series
+ * route is reachable by URL, so a panel withheld from the board would
+ * otherwise still have served a pooled chart.
+ */
+export function publishesPanelOnView(
+  panel: { per_chain_only?: boolean; tiers?: string[] },
+  dims: { chain?: string; tier?: string },
+): boolean {
+  if (panel.per_chain_only && !dims.chain) return false;
+  if (panel.tiers && panel.tiers.length > 0) {
+    if (!dims.tier || !panel.tiers.includes(dims.tier)) return false;
+  }
+  return true;
+}
+
 /** The PromQL a metric panel runs under the reader's active filters.
  *
  * A panel declares a bare metric name or `metric{sel}`; normalise to the
@@ -1231,7 +1278,11 @@ export function unresponsiveResult(
 
 async function tryLoadLive(
   spec: Spec,
-  isFiltered = false
+  isFiltered = false,
+  /** The dimension values pinned on this view. A tier is NOT in
+   *  activeFilterLabels, because labelFilters strips it: a tier is a cohort
+   *  switch rather than a slice. The panel gate needs it all the same. */
+  activeLabels: Record<string, string> = {},
 ): Promise<Pick<Benchmark, "results" | "extras" | "sampleSize" | "lastRunAt" | "metricPanels"> | null> {
   const url = spec.prometheus?.url ?? process.env.PROMETHEUS_URL;
   if (!url) return null;
@@ -1276,7 +1327,7 @@ async function tryLoadLive(
       // p95 rides with the optional batch on purpose: no retry and no
       // skip-on-null, so a bench that declares it badly loses a column and
       // not its providers.
-      const [p95, mean, success, sampleSize, slotP50, slotP99, liveActivity, rankGate] = await Promise.all([
+      const [p95, mean, success, sampleSize, slotP50, slotP99, liveActivity, firstRankGate] = await Promise.all([
         q.p95 ? prom.scalar(q.p95) : Promise.resolve(null),
         q.mean ? prom.scalar(q.mean) : Promise.resolve(null),
         q.success ? prom.scalar(q.success) : Promise.resolve(null),
@@ -1286,6 +1337,12 @@ async function tryLoadLive(
         q.live_activity ? prom.scalar(q.live_activity) : Promise.resolve(null),
         q.ranked ? prom.scalar(q.ranked) : Promise.resolve(null),
       ]);
+      // The rank gate gets the same one retry as the percentiles, and for a
+      // stronger reason: it decides whether a row may LEAD. `prom.scalar`
+      // returns null for an error and for an empty result alike, so one
+      // timed-out query used to promote the row it was meant to hold back.
+      const rankGate =
+        q.ranked && firstRankGate == null ? await prom.scalar(q.ranked) : firstRankGate;
 
       // One retry on the load-bearing percentiles. A null here is either
       // "provider has no data" (retry returns null again, harmless) or a
@@ -1398,7 +1455,7 @@ async function tryLoadLive(
         sampleSize: sampleSize ?? undefined,
         // The rank gate read 0: published (its figures stand), listed
         // as provisional below the ranked field, never a leader.
-        unrankedLabel: q.ranked && rankGate != null && rankGate <= 0 ? "Provisional" : undefined,
+        unrankedLabel: rankGateLabel(q.ranked, rankGate),
         secondary: p.secondary,
         query: q.p50,
         formula: p.formula,
@@ -1521,6 +1578,10 @@ async function tryLoadLive(
     // are omitted from the values map (rendered as "no data" by the UI).
     const metricPanels: MetricPanel[] = [];
     for (const panel of spec.metric_panels ?? []) {
+      // Omitted rather than blanked, so no tab opens onto nothing, and so
+      // the worker's panel carry cannot resurrect it: that loop walks the
+      // FRESH panels and never re-adds an absent one.
+      if (!publishesPanelOnView(panel, activeLabels)) continue;
       const values: Record<string, number> = {};
       const seriesByProvider: Record<string, (number | null)[]> = {};
       const seriesByProvider7d: Record<string, (number | null)[]> = {};
@@ -1551,6 +1612,7 @@ async function tryLoadLive(
         unit: panel.unit,
         higherIsBetter: panel.higher_is_better,
         tab: panel.tab,
+        carry: panel.carry,
         values,
         seriesByProvider,
         seriesByProvider7d:

@@ -77,6 +77,16 @@ const PRODUCT_ALIASES: Record<string, string> = {
   "quicknode-cold": "quicknode",
   "dwellir-cold": "dwellir",
   "blockmachine-cold": "blockmachine",
+  // The heavy-call arm, added 2026-11-03: the same endpoints measured on a
+  // Multicall3 of fifty state reads. A measurement arm, not a product, and
+  // the same rule as the cold tier above: without a line here each slug
+  // builds its own /products page, duplicating the vendor's.
+  "alchemy-heavy": "alchemy",
+  "chainstack-heavy": "chainstack",
+  "getblock-heavy": "getblock",
+  "quicknode-heavy": "quicknode",
+  "dwellir-heavy": "dwellir",
+  "blockmachine-heavy": "blockmachine",
   "validationcloud-cold": "validationcloud",
   // The cost benches 282 and 283 priced Validation Cloud under its hyphenated
   // slug while the RPC cohort uses the one-word one, which built two product
@@ -921,7 +931,12 @@ const buildProvidersCached = unstable_cache(
   //      bench-unfiltered-v109.
   // v27: BlockVectra joins the Katana RPC page (issue #3462), a new
   //      appearance. Lockstep with bench-unfiltered-v110.
-  ["providers-v27"],
+  // v28: the keyed-heavy tier arrives on the eight chain RPC pages, six
+  //      providers each under a `-heavy` slug. An ARRIVAL: both alias
+  //      tables gain a line per vendor, because a tier slug without an
+  //      alias builds its own /products page carrying the vendor's title.
+  //      Lockstep with bench-unfiltered-v111.
+  ["providers-v28"],
   // 900 s: the provider index feeds products / compare / answers, whose
   // numbers move slowly, and this revalidate is also the effective ISR
   // period of those ~500 pages (Next takes the min across a route's caches).
