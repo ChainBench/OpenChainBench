@@ -100,12 +100,26 @@ describe("the eight chain RPC pages that gained a capability matrix", () => {
       ledger_columns?: { label: string; slot?: string; panel?: string }[];
     };
 
-  test("every capability panel is keyed-only", () => {
+  test("the eight capability panels are keyed-only", () => {
     for (const c of CHAINS) {
       const spec = read(c);
-      const caps = (spec.metric_panels ?? []).filter((p) => p.id.startsWith("cap_"));
+      const caps = (spec.metric_panels ?? []).filter(
+        (p) => p.id.startsWith("cap_") && p.id !== "cap_work_ms",
+      );
       expect(caps.length).toBe(8);
       for (const p of caps) expect(p.tiers).toEqual(["keyed"]);
+    }
+  });
+
+  test("the work term belongs to the heavy tab, not the keyed one", () => {
+    // It is the one panel that is NOT a capability verdict: a difference of
+    // two latencies, only meaningful on the tab where the heavy call is the
+    // headline. Listing it under keyed would put a milliseconds column in
+    // the middle of a matrix of yes/no cells.
+    for (const c of CHAINS) {
+      const work = (read(c).metric_panels ?? []).find((p) => p.id === "cap_work_ms");
+      expect(work).toBeDefined();
+      expect(work?.tiers).toEqual(["keyed-heavy"]);
     }
   });
 

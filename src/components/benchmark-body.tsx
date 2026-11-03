@@ -883,12 +883,21 @@ export function BenchmarkBody({
   // gets, and the gap between them is a TLS handshake. Until 2026-10-08 the
   // bench measured whichever happened to apply and ranked providers on that
   // accident.
-  const inKeyedCohort = tier === "keyed" || tier === "keyed-cold";
+  const inKeyedCohort =
+    tier === "keyed" || tier === "keyed-cold" || tier === "keyed-heavy";
   const connModeToggle = inKeyedCohort ? (
     <div className="inline-flex shrink-0 items-center rounded-md border border-rule bg-surface overflow-hidden">
       {([
         ["keyed", "Pooled"],
         ["keyed-cold", "Cold start"],
+        // Added 2026-11-03. Pooled and Cold start are the same light call in
+        // two connection conditions; Heavy is an EXPENSIVE call on the pooled
+        // one, a Multicall3 of fifty state reads. The review asked for it
+        // because an expensive call "depends on hardware capacity", and
+        // toggling here is what shows that: on ethereum dwellir reads 74.49 ms
+        // heavy against 74.39 light, so almost no work, while blockmachine
+        // reads 129.00 against 106.96.
+        ["keyed-heavy", "Heavy"],
       ] as const).map(([value, label]) => (
         <button
           key={value}
@@ -898,7 +907,9 @@ export function BenchmarkBody({
           title={
             value === "keyed"
               ? "Connection reused, what a long-running backend gets"
-              : "New connection every call, what a serverless invocation gets"
+              : value === "keyed-cold"
+                ? "New connection every call, what a serverless invocation gets"
+                : "A Multicall3 of 50 state reads on the pooled connection, so the number carries the node's work and not only the distance to it"
           }
           className={`h-7 px-2 text-[11px] uppercase tracking-wide transition-colors ${
             tier === value

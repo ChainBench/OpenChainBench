@@ -77,6 +77,7 @@ dimensions:
     - { value: public, label: "Public, no key" }
     - { value: keyed,  label: "Private, API key" }
     - { value: keyed-cold, label: "Private, cold start" }
+    - { value: keyed-heavy, label: "Private, heavy call" }
 
 metric_panels:
   # ---- API capability, keyed cohort only ----
@@ -171,6 +172,16 @@ metric_panels:
     carry: false
     description: "Age of the capability verdicts on this chain, from the oldest cell. The probe runs every six hours; if it stops, the verdicts are withheld rather than held at their last reading."
 
+  - id: cap_work_ms
+    label: "Compute work"
+    label_key: provider
+    metric: max by (provider) (ocb:rpc_api_work_milliseconds:mean_24h{chain="hyperliquid"}) > 0
+    unit: ms
+    higher_is_better: false
+    tab: false
+    tiers: [keyed-heavy]
+    carry: false
+    description: "The heavy call minus its light reference, both on a pooled connection in the same pass, so the difference is the work the node did rather than the distance to it. Withheld at or below zero: a fifty-read call cannot be the faster one, and a negative here is noise."
 ledger_columns:
   # The default latency columns, re-declared: any ledger_columns block
   # replaces the default layout rather than extending it, so leaving
@@ -212,6 +223,9 @@ ledger_columns:
     panel: cap_age_hours
     unit: count
 
+  - label: "Work, ms"
+    panel: cap_work_ms
+    unit: ms
 providers:
   - slug: hyperliquid-official
     name: Hyperliquid Labs
@@ -580,5 +594,58 @@ providers:
         - region: ap-southeast
           p50: avg(ocb:rpc_latency_cold_milliseconds:p50_24h{provider="dwellir",chain="hyperliquid",tier="keyed",region="sgp"})
           series: avg(avg_over_time(rpc_latency_cold_milliseconds{provider="dwellir",chain="hyperliquid",tier="keyed",region="sgp"}[1h]))
-
-
+  - slug: alchemy-heavy
+    name: Alchemy
+    tier: keyed-heavy
+    tag: "Multicall3, 50 state reads, on the pooled connection"
+    queries:
+      p50: max(ocb:rpc_api_heavy_milliseconds:p50_24h{provider="alchemy",chain="hyperliquid"})
+      p90: max(ocb:rpc_api_heavy_milliseconds:p90_24h{provider="alchemy",chain="hyperliquid"})
+      p99: max(ocb:rpc_api_heavy_milliseconds:p99_24h{provider="alchemy",chain="hyperliquid"})
+      mean: max(ocb:rpc_api_heavy_milliseconds:mean_24h{provider="alchemy",chain="hyperliquid"})
+      sample_size: max(ocb:rpc_api_heavy:changes_24h{provider="alchemy",chain="hyperliquid"})
+      series: max(ocb:rpc_api_heavy_milliseconds:mean_24h{provider="alchemy",chain="hyperliquid"})
+  - slug: chainstack-heavy
+    name: Chainstack
+    tier: keyed-heavy
+    tag: "Multicall3, 50 state reads, on the pooled connection"
+    queries:
+      p50: max(ocb:rpc_api_heavy_milliseconds:p50_24h{provider="chainstack",chain="hyperliquid"})
+      p90: max(ocb:rpc_api_heavy_milliseconds:p90_24h{provider="chainstack",chain="hyperliquid"})
+      p99: max(ocb:rpc_api_heavy_milliseconds:p99_24h{provider="chainstack",chain="hyperliquid"})
+      mean: max(ocb:rpc_api_heavy_milliseconds:mean_24h{provider="chainstack",chain="hyperliquid"})
+      sample_size: max(ocb:rpc_api_heavy:changes_24h{provider="chainstack",chain="hyperliquid"})
+      series: max(ocb:rpc_api_heavy_milliseconds:mean_24h{provider="chainstack",chain="hyperliquid"})
+  - slug: getblock-heavy
+    name: GetBlock
+    tier: keyed-heavy
+    tag: "Multicall3, 50 state reads, on the pooled connection"
+    queries:
+      p50: max(ocb:rpc_api_heavy_milliseconds:p50_24h{provider="getblock",chain="hyperliquid"})
+      p90: max(ocb:rpc_api_heavy_milliseconds:p90_24h{provider="getblock",chain="hyperliquid"})
+      p99: max(ocb:rpc_api_heavy_milliseconds:p99_24h{provider="getblock",chain="hyperliquid"})
+      mean: max(ocb:rpc_api_heavy_milliseconds:mean_24h{provider="getblock",chain="hyperliquid"})
+      sample_size: max(ocb:rpc_api_heavy:changes_24h{provider="getblock",chain="hyperliquid"})
+      series: max(ocb:rpc_api_heavy_milliseconds:mean_24h{provider="getblock",chain="hyperliquid"})
+  - slug: quicknode-heavy
+    name: Quicknode
+    tier: keyed-heavy
+    tag: "Multicall3, 50 state reads, on the pooled connection"
+    queries:
+      p50: max(ocb:rpc_api_heavy_milliseconds:p50_24h{provider="quicknode",chain="hyperliquid"})
+      p90: max(ocb:rpc_api_heavy_milliseconds:p90_24h{provider="quicknode",chain="hyperliquid"})
+      p99: max(ocb:rpc_api_heavy_milliseconds:p99_24h{provider="quicknode",chain="hyperliquid"})
+      mean: max(ocb:rpc_api_heavy_milliseconds:mean_24h{provider="quicknode",chain="hyperliquid"})
+      sample_size: max(ocb:rpc_api_heavy:changes_24h{provider="quicknode",chain="hyperliquid"})
+      series: max(ocb:rpc_api_heavy_milliseconds:mean_24h{provider="quicknode",chain="hyperliquid"})
+  - slug: dwellir-heavy
+    name: Dwellir
+    tier: keyed-heavy
+    tag: "Multicall3, 50 state reads, on the pooled connection"
+    queries:
+      p50: max(ocb:rpc_api_heavy_milliseconds:p50_24h{provider="dwellir",chain="hyperliquid"})
+      p90: max(ocb:rpc_api_heavy_milliseconds:p90_24h{provider="dwellir",chain="hyperliquid"})
+      p99: max(ocb:rpc_api_heavy_milliseconds:p99_24h{provider="dwellir",chain="hyperliquid"})
+      mean: max(ocb:rpc_api_heavy_milliseconds:mean_24h{provider="dwellir",chain="hyperliquid"})
+      sample_size: max(ocb:rpc_api_heavy:changes_24h{provider="dwellir",chain="hyperliquid"})
+      series: max(ocb:rpc_api_heavy_milliseconds:mean_24h{provider="dwellir",chain="hyperliquid"})

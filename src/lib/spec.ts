@@ -746,7 +746,14 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // v144: tuleep.trade is Proliquid on bench 030 (same builder address, same
   //       slug). An editorial change, which a cached entry would otherwise
   //       keep under the old name.
-  ["bench-unfiltered-v144", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v145: a third tier on the eight chain RPC pages, keyed-heavy, sitting
+  //       beside Pooled and Cold start as a Heavy button. Same endpoints on
+  //       a Multicall3 of fifty state reads, read from the recording rules
+  //       added in the previous PR, plus a Work column that subtracts the
+  //       light reference leg. Six providers ENTER under -heavy slugs, so
+  //       providers-v moves with it and both alias tables gained a line each
+  //       or every slug would have built its own duplicate product page.
+  ["bench-unfiltered-v145", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -1062,7 +1069,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v135: lockstep with bench-unfiltered-v142 (Trnch withdrawn).
   // v136: lockstep with bench-unfiltered-v143 (BlockVectra joins 3 RPC pages).
   // v137: lockstep with bench-unfiltered-v144 (tuleep.trade is Proliquid).
-  ["all-benchmarks-v137", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v138: lockstep with bench-unfiltered-v145 (heavy call tier).
+  ["all-benchmarks-v138", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1272,7 +1280,8 @@ const loadBenchmarkFiltered = unstable_cache(
   //      Robinhood tab only, so the stale row would sit on that tab alone).
   // v81: lockstep with bench-unfiltered-v143 (BlockVectra, on the region
   //      and endpoint tabs of three chain RPC pages).
-  ["bench-filters-v81", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v82: lockstep with bench-unfiltered-v145 (heavy call tier).
+  ["bench-filters-v82", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 
