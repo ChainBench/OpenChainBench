@@ -16,6 +16,8 @@ faq:
     a: "On a dapp workload, BlockMachine: $25 a month for 10M requests, $125 for 100M and $999 for 1B, against $130, $1,049 and $9,999 at Quicknode. For trace and debug calls Dwellir is cheaper, at $299 for 100M requests."
   - q: "What is the best RPC provider for under $50 a month?"
     a: "Chainstack. Its $49 Growth plan covers 20M dapp requests a month, or 10M archive and trace requests, and from US East it had the lowest median latency of all six providers, 2.9 ms."
+  - q: "Which private RPC provider supports trace_block?"
+    a: "Measured rather than read off a documentation page, over the 24 hours to 3 November 2026: BlockMachine serves trace_block on 71.4% of the chains we ask it on, Chainstack 62.5%, Quicknode and Dwellir 50.0% each, GetBlock 25.0%. trace_block and debug_traceTransaction live in different client namespaces, so a provider can serve one and refuse the other on the same chain, and several do."
   - q: "Is a free RPC plan enough for production?"
     a: "Rarely. The most generous free plan we price, dRPC, buys 10.5M dapp requests a month and Chainstack's buys 3M. Our own Alchemy Free key reached its 30M CU monthly cap on 24 October 2026 and refused every call on seven chains after that."
 ---
@@ -28,7 +30,7 @@ faq:
 - The same 100M dapp requests cost between $125 and $1,255 a month across the six. Trace is the exception to BlockMachine's lead: Dwellir is cheapest there, $299 at 100M.
 </Summary>
 
-<TOC sections="Verdict|Speed against price|HTTP latency|WebSocket push|Cost by budget|Free plans|Scorecard|Recommendations|Questions|Method|Sources" />
+<TOC sections="Verdict|Speed against price|HTTP latency|WebSocket push|What the methods show|Cost by budget|Free plans|Scorecard|Recommendations|Questions|Method|Sources" />
 
 The six are the providers we hold a key for and probe continuously: [Quicknode](/products/quicknode), [Chainstack](/products/chainstack), [GetBlock](/products/getblock), [Alchemy](/products/alchemy), [Dwellir](/products/dwellir) and [BlockMachine](/products/blockmachine). Thirteen more, among them Infura, Ankr, dRPC and Helius, are priced in the cost and free-plan sections but not latency-probed, so they appear only there.
 
@@ -122,6 +124,135 @@ Share of blocks pushed first · lag p50 / p90 in ms. n/a: GetBlock has no socket
 
 HTTP and WebSocket agree on Quicknode and on little else. Chainstack is the fastest over HTTP from US East and rarely first over WebSocket; GetBlock never has the fastest HTTP median and wins Ethereum pushes. Choose on the transport your application uses.
 
+## What the methods show
+
+The first version of this report measured one cheap call, and said so in its
+method: a heavy method or another location can change the order. A reviewer
+made the same point, and asked for four things. Here they are, measured since
+30 October 2026 on the same six keys.
+
+### The ranking on a cheap call is not the ranking on an expensive one
+
+Every provider above was ranked on `eth_getBlockByNumber`, which costs a node
+almost nothing. The compute probe is a Multicall3 `aggregate3` of fifty
+`getEthBalance` sub-calls, each a separate descent into the state trie, sent
+back to back with a one-call version of the identical request on the same
+pooled connection. The difference between the two is the work; the network
+path cancels because both legs ride the same socket in the same pass.
+
+| Provider | Compute work, US East | HTTP median, US East |
+|---|---|---|
+| <L s="quicknode">Quicknode</L> | 2.4 ms | 7.2 ms |
+| <L s="chainstack">Chainstack</L> | 1.6 ms | 2.9 ms |
+| <L s="getblock">GetBlock</L> | 1.8 ms | 9 ms |
+| <L s="dwellir">Dwellir</L> | 2.0 ms | 75 ms |
+| <L s="blockmachine">BlockMachine</L> | 25.7 ms | 113 ms |
+
+Dwellir is the case the cheap call hides. It is among the slowest to answer
+and among the fastest to compute: the distance is its problem, not the node.
+BlockMachine is slow on both counts, and the gap widens under load rather
+than closing. Figures are Ethereum, US East, 24 hours to 3 November 2026; the
+EU and Singapore arms of this probe started the same day and are not yet
+worth quoting.
+
+A value at or below zero is withheld rather than published. A fifty-read call
+cannot be faster than a one-read call, so a negative difference is noise, and
+on a lower-is-better view it would otherwise sort first.
+
+### eth_getLogs is three different questions
+
+Asked as one flag, every provider passes. Split by filter shape and by width,
+they separate. The ladder climbs 100, 500, 1,000, 2,000, 10,000, 100,000 and
+1,000,000 blocks and stops at the first refusal, so the figure is the widest
+window accepted, on Ethereum:
+
+| Provider | Address filter | Topic filter |
+|---|---|---|
+| <L s="chainstack">Chainstack</L> | 10,000 blocks | 10,000 |
+| <L s="blockmachine">BlockMachine</L> | 10,000 | 10,000 |
+| <L s="quicknode">Quicknode</L> | 10,000 | 10,000 |
+| <L s="getblock">GetBlock</L> | 1,000 | 1,000 |
+| <L s="dwellir">Dwellir</L> | 500 | 500 |
+
+That is a twentyfold spread between the widest and the narrowest, and it is
+the number that decides how fast an indexer can backfill. A provider that
+admits 500 blocks needs twenty times the round trips of one that admits
+10,000 for the same range. The filters are built to match nothing, so what
+this measures is the static guard that trips before any work, not how much
+data will actually come back.
+
+### Trace is where the cohort separates
+
+Of the seven methods we ask on every chain, five are served nearly
+everywhere. `trace_block` is the one that disagrees:
+
+| Provider | Methods served | trace_block |
+|---|---|---|
+| <L s="blockmachine">BlockMachine</L> | 95.9% | 71.4% of chains |
+| <L s="chainstack">Chainstack</L> | 94.6% | 62.5% |
+| <L s="quicknode">Quicknode</L> | 91.1% | 50.0% |
+| <L s="dwellir">Dwellir</L> | 89.3% | 50.0% |
+| <L s="getblock">GetBlock</L> | 76.8% | 25.0% |
+
+`trace_block` and `debug_traceTransaction` sit in different client
+namespaces, so a provider can serve one and refuse the other on the same
+chain, and several do. A documentation page that says tracing is supported
+does not tell you which one you get, or on which chains.
+
+Alchemy is absent from this table. Our key is a Free plan one and it is
+refused on most of the chains it is configured for, so we can ask it on 12
+cells of 56. That is our plan, not Alchemy's API surface, and a blank on
+these boards always means we could not ask rather than that the provider
+declined.
+
+### Solana: the v2 call almost nobody serves
+
+`getProgramAccounts` is the Solana call that separates providers, because the
+cost depends entirely on which program you ask about. We ask it three ways:
+against the SPL Token program with a size filter, against the Memo program
+which has a small account population, and in its paginated `getProgramAccountsV2`
+form.
+
+The first two are served by every Solana provider we hold a key for. The
+paginated v2 form is served by one in four. For anyone planning around the
+v2 surface, that is the number that matters, and it is not in any
+documentation table we could find.
+
+Helius is in the Solana cohort as of 30 October. Triton is not: it has no
+free tier, and this report only measures keys we actually hold.
+
+### What is still missing: the Beacon API
+
+The reviewer also asked about the Beacon API and archive blob sidecars, and
+they are deliberately absent from the matrix above. The Beacon API is the
+consensus layer's REST surface, not JSON-RPC, so it answers on a different
+base URL from the one a provider gives you for an RPC endpoint.
+
+Probing it directly on 2 November 2026, four of the six serve it:
+
+| Provider | Beacon API | How |
+|---|---|---|
+| <L s="quicknode">Quicknode</L> | yes | same host as the RPC endpoint |
+| <L s="chainstack">Chainstack</L> | yes | same host |
+| <L s="alchemy">Alchemy</L> | yes | a separate host, on the free key |
+| <L s="dwellir">Dwellir</L> | yes | an unlisted host, given on request |
+| <L s="getblock">GetBlock</L> | no | documented as a dedicated-node add-on |
+| <L s="blockmachine">BlockMachine</L> | no | JSON-RPC only, no consensus layer |
+
+The differentiator is retention. A consensus node keeps blob sidecars for
+about eighteen days by default, so anything past that is a product decision,
+and the providers do not make the same one: at roughly two years deep
+Quicknode still returns a blob and Alchemy answers `NOT_FOUND: no blobs
+stored for block`. Chainstack's own documentation pins retention at the
+eighteen day client default while its endpoint returned a one year old
+sidecar of 2,113,236 bytes, so it delivers more than it promises.
+
+This is not on the boards yet because it needs a Beacon base URL per
+provider, and two of the four answer on a host that is not the RPC host, one
+of them unlisted. Until those are in the probe environment, publishing a zero
+for the other two would state that they do not serve the Beacon API, which is
+false for at least GetBlock.
+
 ## Cost by budget
 
 Between the cheapest and the dearest of the six, the monthly bill differs by 5.4x at 1M requests and by 12.6x at 1B. Price and speed run in opposite directions: Quicknode is the second dearest from 100M up.
@@ -205,6 +336,9 @@ Rarely. The most generous free plan we price, dRPC, buys 10.5M dapp requests a m
 |---|---|---|
 | HTTP latency | `eth_getBlockByNumber` (`getSlot` on Solana) every 120 s per provider, chain and region. Calls alternate between a pooled connection (warm) and a new DNS, TCP and TLS connection (cold). Each answer is classed ok, http_err, jsonrpc_err, stale or timeout. | 21 Oct 2026 13:22 to 28 Oct 2026 13:22 UTC |
 | WebSocket push | One `eth_subscribe(newHeads)` socket per provider and region, ten minutes in every hour. Each block is scored against the first provider to push it in that region. GetBlock issues one socket per chain and region and has none for HyperEVM in US East and Singapore or for Arc in Singapore. | Same |
+| API capability | Seven methods asked once per provider, chain and region every six hours, from a single region: the three `eth_getLogs` filter shapes, `debug_traceTransaction`, `trace_block`, `eth_getBlockReceipts`, and a balance read five million blocks behind the head. A cell is published only when the provider answered; a blank means we could not ask. | 24 h to 3 Nov 2026 |
+| Compute work | A Multicall3 `aggregate3` of fifty `getEthBalance` sub-calls minus a one-call version of the same request, both primed and sent back to back on one pooled connection, every two hours. Values at or below zero are withheld. | Same |
+| eth_getLogs window | A ladder of 100 to 1,000,000 blocks per filter shape, stopping at the first refusal. Filters are built to match nothing, so the figure is the static width guard rather than a data volume. | Same |
 | Cost | Each provider's published unit weights applied to fixed method mixes, cheapest plan that can serve the volume, throughput caps enforced. | Catalogue of 22 Oct 2026 |
 | Free plans | Each renewing free allowance converted into requests of the same mixes. | Same |
 
@@ -219,7 +353,7 @@ Rarely. The most generous free plan we price, dRPC, buys 10.5M dapp requests a m
 
 Probes run from US East (Virginia), EU West (Amsterdam) and Singapore. Latency is the 7-day percentile of raw probe samples, steadier than the 24-hour figure on the bench pages. Validation Cloud left the cohort on 18 October after its key returned 401 on every call.
 
-The probes send one cheap call; a heavy method or another location can change the order. Prices exclude negotiated discounts, and dRPC prices are an upper bound because it routes to operators who may charge less.
+The latency ranking above is built on one cheap call. A heavy method does change the order, which is why the compute, log window and capability probes were added on 30 October 2026 and have their own section; another location still can. Prices exclude negotiated discounts, and dRPC prices are an upper bound because it routes to operators who may charge less.
 
 ## Sources
 
