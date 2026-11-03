@@ -41,6 +41,22 @@ const (
 	taker = "0xbb663a119193cA68512c351b0fdfDEB9c22Dc416"
 )
 
+// badStatus renders a non-200 with the first of its body, because the body
+// is where the reason is. A bare "http 400" cannot tell an unsupported chain
+// from a token the aggregator cannot describe, and those two call for
+// opposite fixes: one removes a row, the other corrects a request.
+func badStatus(code int, body []byte) error {
+	msg := strings.TrimSpace(string(body))
+	msg = strings.Join(strings.Fields(msg), " ")
+	if len(msg) > 180 {
+		msg = msg[:180]
+	}
+	if msg == "" {
+		return fmt.Errorf("http %d, empty body", code)
+	}
+	return fmt.Errorf("http %d: %s", code, msg)
+}
+
 func httpGet(ctx context.Context, c *http.Client, endpoint string) ([]byte, int, error) {
 	req, err := http.NewRequestWithContext(ctx, "GET", endpoint, nil)
 	if err != nil {
@@ -86,7 +102,7 @@ func (a sushiAgg) WillQuote(ctx context.Context, token, amt string) (bool, error
 		return false, err
 	}
 	if code != 200 {
-		return false, fmt.Errorf("http %d", code)
+		return false, badStatus(code, b)
 	}
 	var r struct {
 		Status           string `json:"status"`
@@ -116,7 +132,7 @@ func (a kyberAgg) WillQuote(ctx context.Context, token, amt string) (bool, error
 		return false, err
 	}
 	if code != 200 {
-		return false, fmt.Errorf("http %d", code)
+		return false, badStatus(code, b)
 	}
 	var r struct {
 		Code int `json:"code"`
@@ -154,7 +170,7 @@ func (a paraswapAgg) WillQuote(ctx context.Context, token, amt string) (bool, er
 		return false, err
 	}
 	if code != 200 {
-		return false, fmt.Errorf("http %d", code)
+		return false, badStatus(code, b)
 	}
 	var r struct {
 		PriceRoute struct {
@@ -189,7 +205,7 @@ func (a lifiAgg) WillQuote(ctx context.Context, token, amt string) (bool, error)
 		return false, nil
 	}
 	if code != 200 {
-		return false, fmt.Errorf("http %d", code)
+		return false, badStatus(code, b)
 	}
 	var r struct {
 		Estimate struct {
