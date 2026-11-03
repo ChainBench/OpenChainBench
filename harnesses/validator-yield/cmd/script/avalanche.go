@@ -9,34 +9,33 @@ import (
 	"net/http"
 	"sort"
 	"strconv"
-	"time"
 )
 
 const (
-	avalancheChain           = "avalanche"
-	avalancheValidatorsTag   = "avax_platform_getCurrentValidators"
-	coingeckoAvaxSourceTag   = "coingecko_avax"
+	avalancheChain         = "avalanche"
+	avalancheValidatorsTag = "avax_platform_getCurrentValidators"
 
 	// Cap: Avalanche has ~1500 primary-network validators. Top 100 by
 	// stake covers the vast majority of delegated AVAX and keeps
 	// Prometheus cardinality bounded.
 	avalancheTopN = 100
 
-	// Avalanche P-Chain base staking reward is a documented ~8.5% APY
-	// for a validator delegating for a full year at 100% uptime. The
-	// P-Chain API doesn't publish a per-validator realised APR — the
-	// number is deterministic given (stake, duration, uptime), and
-	// duration doesn't materially move for long-running delegators.
-	// v1 shortcut: use the documented base and adjust per-validator by
-	// uptime × (1 - delegationFee/100). Real per-validator numbers vary
-	// by ±20 bps due to duration-bonus differences; acceptable for a
-	// network-comparison bench.
-	avalancheBaseAPR = 0.085
+	// Gross APR per validator is READ from the P-Chain, not assumed:
+	// platform.getCurrentValidators returns each validator's
+	// potentialReward (nAVAX it earns at the end of its staking period
+	// if uptime stays above 80%), its stake and its start/end times:
+	//
+	//	gross = potentialReward / stake × year / (endTime − startTime)
+	//
+	// That is the protocol reward function evaluated for the validator's
+	// own stake, duration and the remaining supply at its start, so it
+	// moves with the declining issuance and longer periods earn more.
+	// Until 2026-11 the harness used a hard-coded 8.5% here; the live
+	// median of the top 100 was 5.3% (2026-11-03).
 )
 
 var (
 	avalanchePChainURL = envDefault("VAL_ECON_AVAX_PCHAIN_URL", "https://api.avax.network/ext/bc/P")
-	coingeckoAvaxURL   = envDefault("VAL_ECON_COINGECKO_AVAX_URL", "https://api.coingecko.com/api/v3/simple/price?ids=avalanche-2&vs_currencies=usd")
 )
 
 // avaxRPCEnvelope wraps the JSON-RPC 2.0 response used by the P-Chain
@@ -54,20 +53,21 @@ type avaxRPCEnvelope struct {
 // avaxValidator mirrors the shape returned by
 // platform.getCurrentValidators. Numeric fields come back as strings.
 //
-// - stakeAmount:   nAVAX (1 AVAX = 1e9 nAVAX)
-// - delegationFee: percentage string, e.g. "2.0000" = 2%
-// - uptime:        fractional string in [0,1] on newer avalanchego,
-//                  older nodes returned percent [0,100] — normalise both.
+//   - stakeAmount:   nAVAX (1 AVAX = 1e9 nAVAX)
+//   - delegationFee: percentage string, e.g. "2.0000" = 2%
+//   - uptime:        fractional string in [0,1] on newer avalanchego,
+//     older nodes returned percent [0,100] — normalise both.
 type avaxValidator struct {
-	NodeID        string `json:"nodeID"`
-	StakeAmount   string `json:"stakeAmount"`
-	Weight        string `json:"weight"` // some responses use weight instead of stakeAmount
-	StartTime     string `json:"startTime"`
-	EndTime       string `json:"endTime"`
-	DelegationFee string `json:"delegationFee"`
-	Uptime        string `json:"uptime"`
-	Connected     bool   `json:"connected"`
-	Signer        *struct {
+	NodeID          string `json:"nodeID"`
+	StakeAmount     string `json:"stakeAmount"`
+	Weight          string `json:"weight"` // some responses use weight instead of stakeAmount
+	StartTime       string `json:"startTime"`
+	EndTime         string `json:"endTime"`
+	DelegationFee   string `json:"delegationFee"`
+	PotentialReward string `json:"potentialReward"`
+	Uptime          string `json:"uptime"`
+	Connected       bool   `json:"connected"`
+	Signer          *struct {
 		PublicKey string `json:"publicKey"`
 	} `json:"signer"`
 	Delegators any `json:"delegators"` // ignored — variable shape, blobs cause parse fights
@@ -130,40 +130,6 @@ func fetchAvalancheValidators(ctx context.Context, client *http.Client) ([]avaxV
 	return out.Validators, err
 }
 
-func fetchAvalanchePrice(ctx context.Context, client *http.Client) (float64, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, coingeckoAvaxURL, nil)
-	if err != nil {
-		return 0, err
-	}
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("User-Agent", "OpenChainBench-harness/1.0")
-	resp, err := client.Do(req)
-	if err != nil {
-		return 0, err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return 0, fmt.Errorf("coingecko avax http %d", resp.StatusCode)
-	}
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return 0, err
-	}
-	var payload map[string]map[string]float64
-	if err := json.Unmarshal(body, &payload); err != nil {
-		return 0, fmt.Errorf("coingecko avax parse: %w", err)
-	}
-	v, ok := payload["avalanche-2"]
-	if !ok {
-		return 0, fmt.Errorf("coingecko missing avalanche-2 key")
-	}
-	price := v["usd"]
-	if price <= 0 {
-		return 0, fmt.Errorf("coingecko invalid avax price %f", price)
-	}
-	return price, nil
-}
-
 // parseAvaxUptime normalises the uptime field returned by
 // platform.getCurrentValidators. Newer nodes report it as a fractional
 // value in [0,1] ("0.998"); older nodes returned a percent ("99.8").
@@ -188,9 +154,19 @@ func parseAvaxUptime(s string) float64 {
 	return v
 }
 
+// avalancheGrossAPR annualizes a validator's potentialReward over its
+// staking period. Units cancel (nAVAX / nAVAX); times are unix seconds.
+func avalancheGrossAPR(potentialReward, stake, start, end float64) float64 {
+	if stake <= 0 || end <= start {
+		return 0
+	}
+	return potentialReward / stake * secondsPerYear / (end - start)
+}
+
 // scrapeAvalanche publishes per-validator gauges for the Avalanche
-// primary network (P-Chain). Yield is computed from the documented base
-// APR adjusted by per-validator uptime and delegation fee.
+// primary network (P-Chain). Yield is computed from the on-chain gross
+// APR (from potentialReward, see avalancheGrossAPR) adjusted by
+// per-validator uptime and delegation fee.
 //
 // stakeAmount / weight — we prefer stakeAmount but some node builds
 // return weight instead; fall back if needed.
@@ -202,12 +178,7 @@ func scrapeAvalanche(ctx context.Context, client *http.Client) {
 		return
 	}
 
-	avaxPrice, err := fetchAvalanchePrice(ctx, client)
-	if err != nil {
-		scrapeErrorsTotal.WithLabelValues(avalancheChain, coingeckoAvaxSourceTag).Inc()
-		fmt.Printf("[avalanche] coingecko err (stake_usd will be skipped): %v\n", err)
-		avaxPrice = 0
-	}
+	avaxPrice := priceUSD(ctx, client, avalancheChain, "avalanche-2")
 
 	// Sort by stake desc, cap top-N.
 	stakeOf := func(v avaxValidator) float64 {
@@ -224,46 +195,24 @@ func scrapeAvalanche(ctx context.Context, client *http.Client) {
 	}
 
 	const nAvaxPerAvax = 1e9
-	grossBps := pctToBps(avalancheBaseAPR)
 
-	netYields := make([]float64, 0, len(validators))
+	rows := make([]valRow, 0, len(validators))
 	for _, v := range validators {
-		id := v.NodeID
-		// Avalanche doesn't include a human name in the P-Chain
-		// response — the nodeID is the operator identity.
-		name := shortenName(id)
-
 		uptimePct := parseAvaxUptime(v.Uptime)
-		delegationFeePct := parseFloat(v.DelegationFee) // 0..100
-
-		commissionBps := delegationFeePct * 100
-		if commissionBps > 10000 {
-			commissionBps = 10000
-		}
-
-		netBps := grossBps * (uptimePct / 100) * (1 - delegationFeePct/100)
-
+		delegationFeePct := clamp(parseFloat(v.DelegationFee), 0, 100) // 0..100
 		stakeNAvax := stakeOf(v)
-		stakeAvax := stakeNAvax / nAvaxPerAvax
-		stakeUSD := stakeAvax * avaxPrice
-
-		validatorNetYieldBps.WithLabelValues(avalancheChain, id, name).Set(netBps)
-		validatorGrossYieldBps.WithLabelValues(avalancheChain, id, name).Set(grossBps)
-		validatorMevShareBps.WithLabelValues(avalancheChain, id, name).Set(0)
-		validatorCommissionBps.WithLabelValues(avalancheChain, id, name).Set(commissionBps)
-		validatorUptimePct.WithLabelValues(avalancheChain, id, name).Set(uptimePct)
-		if avaxPrice > 0 {
-			validatorStakeUSD.WithLabelValues(avalancheChain, id, name).Set(stakeUSD)
-		}
-		validatorJailed.WithLabelValues(avalancheChain, id, name).Set(0)
-
-		netYields = append(netYields, netBps)
+		grossBps := pctToBps(avalancheGrossAPR(parseFloat(v.PotentialReward), stakeNAvax, parseFloat(v.StartTime), parseFloat(v.EndTime)))
+		rows = append(rows, valRow{
+			// The P-Chain response carries no human name: the nodeID
+			// is the operator identity.
+			ID: v.NodeID, Name: v.NodeID,
+			GrossBps: grossBps, NetBps: grossBps * (uptimePct / 100) * (1 - delegationFeePct/100),
+			CommissionBps: delegationFeePct * 100, UptimePct: uptimePct,
+			StakeNative: stakeNAvax / nAvaxPerAvax,
+		})
 	}
-
-	chainTotalValidators.WithLabelValues(avalancheChain).Set(float64(len(netYields)))
-	chainMedianNetYieldBps.WithLabelValues(avalancheChain).Set(medianBps(netYields))
-	lastScrapeTimestamp.WithLabelValues(avalancheChain).Set(float64(time.Now().Unix()))
+	med := publishRows(avalancheChain, rows, avaxPrice)
 
 	fmt.Printf("[avalanche] published %d validators, median net yield %.0f bps, AVAX=$%.4f\n",
-		len(netYields), medianBps(netYields), avaxPrice)
+		len(rows), med, avaxPrice)
 }

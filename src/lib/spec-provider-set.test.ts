@@ -53,6 +53,12 @@ describe("the provider set behind the cache keys", () => {
     const hash = createHash("sha256").update(sets.join("\n")).digest("hex").slice(0, 16);
     const count = sets.reduce((n, s) => n + s.split(":")[1].split(",").length, 0);
 
+    // An ADDITION on 2026-11-03: bench 026 validator-yield goes from 7
+    // chains to 15 (aptos, near, kaia, algorand, icp, gram, sei, cronos,
+    // the slugs the coordinator's registry PR uses). Rows on a board of
+    // chains, no dimensions, so bench-filters stays; v149/v142 and
+    // providers-v46 for the appearances.
+    //
     // An ADDITION on 2026-11-03: bench 313 token-sellability, as a draft.
     // Its two rows are the two sell timings rather than two vendors, so
     // nobody gains a product page, but the provider index still carries the
@@ -149,6 +155,6 @@ describe("the provider set behind the cache keys", () => {
         "Then set EXPECTED to the hash in this failure, and add the provider",
         `to PRODUCT_NAMES if it needs a display name. Providers now: ${count}.`,
       ].join("\n"),
-    ).toBe("d531bfa594eba1b8");
+    ).toBe("b21b26bc13ebf3bd");
   });
 });

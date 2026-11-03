@@ -28,7 +28,9 @@ const (
 //     The "lamports" hint in older Stakewiz docs is wrong on the
 //     current /validators endpoint.
 //   - `uptime` is a percentage in [0,100], not a 0-1 fraction.
-//   - `commission` is an integer percentage (0..100).
+//   - `commission` WAS an integer percentage (0..100); since Solana
+//     moved vote-account commission to basis points it is bps
+//     (500 = 5%, 10000 = 100%), see stakewizCommissionBps.
 //   - `skip_rate` IS a 0-1 fraction (yes, inconsistent with uptime).
 type stakewizValidator struct {
 	VoteIdentity   string  `json:"vote_identity"`
@@ -37,7 +39,7 @@ type stakewizValidator struct {
 	APYEstimate    float64 `json:"apy_estimate"`     // percent, used as fallback
 	StakingAPY     float64 `json:"staking_apy"`      // percent base staking
 	JitoAPY        float64 `json:"jito_apy"`         // percent MEV/Jito share
-	Commission     float64 `json:"commission"`       // percent integer (e.g. 7 = 7%)
+	Commission     float64 `json:"commission"`       // bps since 2026 (500 = 5%), was percent
 	Uptime         float64 `json:"uptime"`           // percent in [0,100]
 	SkipRate       float64 `json:"skip_rate"`        // 0-1 fraction
 	Delinquent     bool    `json:"delinquent"`
@@ -178,6 +180,8 @@ func scrapeSolana(ctx context.Context, client *http.Client) {
 		solPrice = 0
 	}
 
+	commissionInBps := stakewizCommissionIsBps(validators)
+
 	// Sort descending by activated stake and truncate to top N.
 	sort.Slice(validators, func(i, j int) bool {
 		return validators[i].ActivatedStake > validators[j].ActivatedStake
@@ -186,13 +190,11 @@ func scrapeSolana(ctx context.Context, client *http.Client) {
 		validators = validators[:solanaTopN]
 	}
 
-	// Note: we do NOT call .Reset() here because the gauges are
-	// shared with the Hyperliquid scraper. Resetting would clobber
-	// HL series. The top-N validators on Solana shift only by epoch
-	// (~2 days), so stale series for dropped validators age out
-	// naturally on the next deploy / restart. For MVP that's fine.
+	// Validators that drop out of the top N are deleted by
+	// pruneLeavers below (a .Reset() would clobber the other chains).
 
 	netYields := make([]float64, 0, len(validators))
+	written := make(map[[2]string]bool, len(validators))
 	for _, v := range validators {
 		name := shortenName(v.Name)
 		voteID := v.VoteIdentity
@@ -224,8 +226,7 @@ func scrapeSolana(ctx context.Context, client *http.Client) {
 		}
 		mevBps := mevPct * 100
 
-		// Commission is a percent integer in Stakewiz (0..100).
-		commissionBps := v.Commission * 100
+		commissionBps := stakewizCommissionBps(v.Commission, commissionInBps)
 
 		// Uptime: Stakewiz `uptime` is already a percentage in [0,100].
 		// Fall back to (1 - skip_rate)*100 when uptime is missing.
@@ -277,12 +278,34 @@ func scrapeSolana(ctx context.Context, client *http.Client) {
 		validatorJailed.WithLabelValues(solanaChain, voteID, name).Set(jailed)
 
 		netYields = append(netYields, netBps)
+		written[[2]string{voteID, name}] = true
 	}
 
+	pruneLeavers(solanaChain, written)
 	chainTotalValidators.WithLabelValues(solanaChain).Set(float64(len(validators)))
 	chainMedianNetYieldBps.WithLabelValues(solanaChain).Set(medianBps(netYields))
 	lastScrapeTimestamp.WithLabelValues(solanaChain).Set(float64(time.Now().Unix()))
 
 	fmt.Printf("[solana] published %d validators, median net yield %.0f bps, SOL=$%.2f\n",
 		len(validators), medianBps(netYields), solPrice)
+}
+
+// stakewizCommissionIsBps detects the unit of Stakewiz `commission`
+// over the whole response: any value above 100 can only be basis
+// points. On 2026-11-03 the values were 0, 300, 500, 1000, 10000 and
+// the old ×100 conversion published 5% commission as 50000 bps.
+func stakewizCommissionIsBps(vs []stakewizValidator) bool {
+	for _, v := range vs {
+		if v.Commission > 100 {
+			return true
+		}
+	}
+	return false
+}
+
+func stakewizCommissionBps(c float64, inBps bool) float64 {
+	if !inBps {
+		c *= 100
+	}
+	return clamp(c, 0, 10000)
 }
