@@ -11,8 +11,8 @@ import (
 
 // MobulaClient fetches USD prices from Mobula's public market API.
 //
-// We pull all 11 native tokens in one /market/multi-data call every
-// PriceRefresh (30s) and cache them. Each chain fetcher reads the cached
+// We pull every chain's native token in one /market/multi-data call every
+// PriceRefresh (5 min) and cache them. Each chain fetcher reads the cached
 // price at sample emit time.
 type MobulaClient struct {
 	apiKey string

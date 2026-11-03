@@ -768,7 +768,12 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // v149: bench 031 network-fees gains eight Layer 1 rows (Sei, Cronos,
   //       Kaia, Somnia, Algorand, Aptos, NEAR, Internet Computer) and its
   //       copy is rewritten (Sui model, L2 data fee wording, live counts).
-  ["bench-unfiltered-v149", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v150: bench 034 token-deployment-cost adds Algorand, Gram, NEAR, the
+  //       Internet Computer and eight EVM L1s (a real OpenZeppelin ERC20 now
+  //       replaces the placeholder bytecode), and its copy is rewritten. An
+  //       ARRIVAL plus an editorial change: a cached entry holds the old
+  //       provider set and the old "7 non-EVM" copy.
+  ["bench-unfiltered-v150", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -1089,7 +1094,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v140: lockstep with bench-unfiltered-v147 (bench 313 arrives).
   // v141: lockstep with bench-unfiltered-v148 (heavy lane in three regions).
   // v142: lockstep with bench-unfiltered-v149 (bench 031 gains 8 chains).
-  ["all-benchmarks-v142", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v143: lockstep with bench-unfiltered-v150 (bench 034 adds 12 chains).
+  ["all-benchmarks-v143", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
