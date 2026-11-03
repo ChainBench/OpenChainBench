@@ -1836,10 +1836,10 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     twitter: "@XBITDEX",
   },
   "tuleep-trade": {
-    url: "https://tuleep.trade",
+    url: "https://www.proliquid.xyz",
     description:
-      "tuleep.trade is a multi exchange trading terminal focused on news trading; its Hyperliquid orders carry a registered builder code.",
-    twitter: "@tuleep_trade",
+      "Proliquid is a multi-venue crypto trading terminal for Hyperliquid, RISEx, Lighter, Extended, Binance, Bybit, OKX and BloFin, with keys kept on the user's device; its Hyperliquid orders carry a registered builder code starting at 2 bps.",
+    twitter: "@proliquid_xyz",
   },
   "aura-money": {
     url: "https://aura.money",

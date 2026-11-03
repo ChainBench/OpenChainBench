@@ -111,6 +111,9 @@ const PRODUCT_ALIASES: Record<string, string> = {
   // query on the property (273 impressions, position 8.31, zero clicks,
   // 90 days to 2026-09-19).
   tuleep: "tuleep-trade",
+  // tuleep.trade rebranded to Proliquid (tuleep.trade 301s to
+  // www.proliquid.xyz); the slug stays for its label and history.
+  proliquid: "tuleep-trade",
   "mass-money": "mass-dot-money",
   // Chain official RPC → chain brand
   "arbitrum-official": "arbitrum",
@@ -940,7 +943,9 @@ const buildProvidersCached = unstable_cache(
   //      both. Lockstep with bench-unfiltered-v142.
   // v41: BlockVectra is new to the site: a product page and three bench
   //      appearances. Lockstep with bench-unfiltered-v143.
-  ["providers-v41"],
+  // v42: tuleep.trade is Proliquid: the product page's name, description
+  //      and links ride in this index. Lockstep with bench-unfiltered-v144.
+  ["providers-v42"],
   // 900 s: the provider index feeds products / compare / answers, whose
   // numbers move slowly, and this revalidate is also the effective ISR
   // period of those ~500 pages (Next takes the min across a route's caches).

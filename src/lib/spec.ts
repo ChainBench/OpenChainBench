@@ -743,7 +743,10 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // v143: BlockVectra joins the Ink, Unichain and Fraxtal RPC pages. An
   //       ARRIVAL: a cached entry holds the old provider set, so the new
   //       row would never render however good its data.
-  ["bench-unfiltered-v143", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v144: tuleep.trade is Proliquid on bench 030 (same builder address, same
+  //       slug). An editorial change, which a cached entry would otherwise
+  //       keep under the old name.
+  ["bench-unfiltered-v144", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -1058,7 +1061,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v134: lockstep with bench-unfiltered-v141 (envelope rows named).
   // v135: lockstep with bench-unfiltered-v142 (Trnch withdrawn).
   // v136: lockstep with bench-unfiltered-v143 (BlockVectra joins 3 RPC pages).
-  ["all-benchmarks-v136", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v137: lockstep with bench-unfiltered-v144 (tuleep.trade is Proliquid).
+  ["all-benchmarks-v137", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
