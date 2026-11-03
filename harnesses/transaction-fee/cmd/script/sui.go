@@ -12,27 +12,45 @@ import (
 
 // SUI native-transfer fee sampler.
 //
-// Calls JSON-RPC `suix_getReferenceGasPrice` against the mainnet fullnode
-// to fetch the current reference gas price (MIST per gas unit). Multiplies
-// by a hardcoded typical gas budget for a basic SUI Coin::transfer.
+// A Sui transaction pays computation plus storage, minus the storage
+// rebate of the objects it rewrites:
 //
-// Gas budget choice: a Coin::transfer entry function consumes ~76_000
-// computation + storage units in mainnet conditions (verified via
-// `sui_dryRunTransactionBlock` on a known transfer). The initial value of
-// 2_000_000 was the on-chain *budget* (max gas the wallet authorises) not
-// the *actual cost* — that mismatch produced fees ~25x higher than what
-// users actually pay.
+//   fee_mist = computation_units * reference_gas_price
+//            + storage_cost - storage_rebate
 //
-// An accurate live estimate would require `sui_dryRunTransactionBlock`
-// with a real signed-ish transaction payload, which is too heavy for a
-// 30s scrape. 76_000 is the typical observed cost for a basic transfer
-// and aligns with SUI explorer (e.g. suivision.xyz) — about $0.001 at
-// current SUI prices.
+// A wallet "send X SUI" is SplitCoins(gas, X) + TransferObjects: it
+// creates one new Coin<SUI> object for the recipient and rewrites the
+// gas coin. Measured on mainnet 2026-11-03 through GraphQL gasSummary:
 //
-// Emits a single "std" tier — SUI gas pricing is effectively flat at the
-// reference price (validators rarely deviate).
+//   computation  1000 units (the minimum bucket) at the reference price
+//                (100 MIST today): 100_000 MIST
+//   storage      988_000 MIST per Coin<SUI> object (13_000 storage units
+//                at the 76 MIST storage price). The new coin costs
+//                988_000; the rewritten gas coin costs 988_000 and gets
+//                987_901 back (the 0.01 % non refundable share), so it
+//                nets 99.
+//
+// Total about 1_088_099 MIST (0.00109 SUI). The previous model
+// multiplied the reference price by a 76_000 "gas budget", which at
+// today's 100 MIST price read 7_600_000 MIST, about seven times what a
+// transfer pays.
+//
+// The reference gas price is read live every tick from the GraphQL
+// endpoint; the unit counts and the storage price are protocol constants.
+// One "std" tier: Sui gas pricing is effectively flat at the reference
+// price.
 
-const suiTransferGasBudget = 76_000
+const (
+	suiTransferComputationUnits = 1000.0
+	suiNewCoinStorageMist       = 988_000.0
+	suiGasCoinNetStorageMist    = 99.0
+)
+
+// suiTransferFeeMist is the MIST cost of a SplitCoins + TransferObjects
+// SUI transfer at the given reference gas price.
+func suiTransferFeeMist(referenceGasPrice float64) float64 {
+	return suiTransferComputationUnits*referenceGasPrice + suiNewCoinStorageMist + suiGasCoinNetStorageMist
+}
 
 type suiFetcher struct {
 	http *http.Client
@@ -76,7 +94,7 @@ func (f *suiFetcher) Sample(ch ChainConfig) ([]FeeSample, error) {
 	if err != nil || gasPrice <= 0 {
 		return nil, fmt.Errorf("bad reference gas price: %q", r.Data.Epoch.ReferenceGasPrice)
 	}
-	feeMist := float64(gasPrice * suiTransferGasBudget)
+	feeMist := suiTransferFeeMist(float64(gasPrice))
 	return []FeeSample{{
 		Chain:     ch.Slug,
 		Tier:      "std",

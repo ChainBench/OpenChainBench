@@ -765,7 +765,10 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       longer one region beside a Pooled figure averaged over three, and
   //       its spec queries aggregate the way the tip probe does. Cadence
   //       moves to two hours to pay for the extra regions.
-  ["bench-unfiltered-v148", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v149: bench 031 network-fees gains eight Layer 1 rows (Sei, Cronos,
+  //       Kaia, Somnia, Algorand, Aptos, NEAR, Internet Computer) and its
+  //       copy is rewritten (Sui model, L2 data fee wording, live counts).
+  ["bench-unfiltered-v149", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -1085,7 +1088,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v139: lockstep with bench-unfiltered-v146 (heavy Work column label).
   // v140: lockstep with bench-unfiltered-v147 (bench 313 arrives).
   // v141: lockstep with bench-unfiltered-v148 (heavy lane in three regions).
-  ["all-benchmarks-v141", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v142: lockstep with bench-unfiltered-v149 (bench 031 gains 8 chains).
+  ["all-benchmarks-v142", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1298,7 +1302,9 @@ const loadBenchmarkFiltered = unstable_cache(
   // v82: lockstep with bench-unfiltered-v145 (heavy call tier).
   // v83: lockstep with bench-unfiltered-v146 (heavy Work column label).
   // v84: lockstep with bench-unfiltered-v148 (heavy lane in three regions).
-  ["bench-filters-v84", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v85: lockstep with bench-unfiltered-v149 (bench 031 gains 8 chains on
+  //      its L1 layer tab).
+  ["bench-filters-v85", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 

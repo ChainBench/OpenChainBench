@@ -977,7 +977,9 @@ const buildProvidersCached = unstable_cache(
   // v46: registry entries for Algorand, Aptos, Near, Somnia, ICP, Sei,
   //      Cronos and Kaia (discussion #2270), whose product pages had no
   //      link or description; the description rides in this index.
-  ["providers-v46"],
+  // v47: bench 031 network-fees gains eight chain rows, each a new bench
+  //      appearance. Lockstep with bench-unfiltered-v149.
+  ["providers-v47"],
   // 900 s: the provider index feeds products / compare / answers, whose
   // numbers move slowly, and this revalidate is also the effective ISR
   // period of those ~500 pages (Next takes the min across a route's caches).

@@ -8,15 +8,19 @@ import (
 type ChainKind string
 
 const (
-	KindEVM     ChainKind = "evm"
-	KindSolana  ChainKind = "solana"
-	KindCardano ChainKind = "cardano"
-	KindStellar ChainKind = "stellar"
-	KindTron    ChainKind = "tron"
-	KindSui     ChainKind = "sui"
-	KindTon     ChainKind = "ton"
-	KindUTXO    ChainKind = "utxo"
-	KindMonero  ChainKind = "monero"
+	KindEVM      ChainKind = "evm"
+	KindSolana   ChainKind = "solana"
+	KindCardano  ChainKind = "cardano"
+	KindStellar  ChainKind = "stellar"
+	KindTron     ChainKind = "tron"
+	KindSui      ChainKind = "sui"
+	KindTon      ChainKind = "ton"
+	KindUTXO     ChainKind = "utxo"
+	KindMonero   ChainKind = "monero"
+	KindAlgorand ChainKind = "algorand"
+	KindAptos    ChainKind = "aptos"
+	KindNear     ChainKind = "near"
+	KindICP      ChainKind = "icp"
 )
 
 // ChainConfig describes one chain whose native-transfer fee we sample.
@@ -26,11 +30,17 @@ const (
 // chain's native units; the orchestrator multiplies by the USD price from
 // Mobula to get the comparable headline `tx_fee_native_transfer_usd`.
 type ChainConfig struct {
-	Slug       string    // stable label, used both for Prom + Mobula price lookup
-	Name       string    // display name
-	Kind       ChainKind // selects fetcher
-	RPCURL     string    // primary endpoint (per-kind semantics)
-	MobulaSlug string    // asset slug for Mobula price API (e.g. "ethereum", "toncoin")
+	Slug   string    // stable label, used both for Prom + Mobula price lookup
+	Name   string    // display name
+	Kind   ChainKind // selects fetcher
+	RPCURL string    // primary endpoint (per-kind semantics)
+	// MobulaSlug is the Mobula asset key for the USD price: a slug such
+	// as "ethereum", or an all-digit Mobula asset id such as "100011700".
+	// Ids survive a rename: Mobula renamed Toncoin to "Gram (prev.
+	// Toncoin)" and the "toncoin" slug stopped resolving, which left the
+	// Gram row without a price (tx_fee_health{chain="gram"} 0) until
+	// 2026-11-03. New chains use ids.
+	MobulaSlug string
 	// Tier is meaningful only for chains with a priority market.
 	// Deterministic chains (Cardano, Stellar) ignore it and emit one tier.
 	HasPriorityMarket bool
@@ -132,7 +142,7 @@ func loadConfig() *Config {
 				Name:              "Gram",
 				Kind:              KindTon,
 				RPCURL:            getenvDefault("RPC_GRAM", "https://toncenter.com/api/v2/jsonRPC"),
-				MobulaSlug:        "toncoin",
+				MobulaSlug:        "100011700", // Gram (prev. Toncoin)
 				HasPriorityMarket: false,
 				Layer:             "l1",
 			},
@@ -163,9 +173,87 @@ func loadConfig() *Config {
 				HasPriorityMarket: true,
 				Layer:             "l1",
 			},
+			// Chains added 2026-11-03 (GitHub discussion #2270).
+			// EVM L1s: same eth_feeHistory x 21000 flow as Ethereum; a
+			// native transfer estimates at exactly 21000 gas on all four
+			// (eth_estimateGas checked on each). Gas is billed in the
+			// chain's own token.
+			{
+				Slug:              "sei",
+				Name:              "Sei",
+				Kind:              KindEVM,
+				RPCURL:            getenvDefault("RPC_SEI", "https://evm-rpc.sei-apis.com"),
+				MobulaSlug:        "4313", // Sei (SEI)
+				HasPriorityMarket: true,
+				Layer:             "l1",
+			},
+			{
+				Slug:              "cronos",
+				Name:              "Cronos",
+				Kind:              KindEVM,
+				RPCURL:            getenvDefault("RPC_CRONOS", "https://evm.cronos.org"),
+				MobulaSlug:        "100003033", // Cronos (CRO)
+				HasPriorityMarket: true,
+				Layer:             "l1",
+			},
+			{
+				Slug:              "kaia",
+				Name:              "Kaia",
+				Kind:              KindEVM,
+				RPCURL:            getenvDefault("RPC_KAIA", "https://public-en.node.kaia.io"),
+				MobulaSlug:        "102484650", // Kaia (KAIA)
+				HasPriorityMarket: true,
+				Layer:             "l1",
+			},
+			{
+				Slug:              "somnia",
+				Name:              "Somnia",
+				Kind:              KindEVM,
+				RPCURL:            getenvDefault("RPC_SOMNIA", "https://api.infra.mainnet.somnia.network"),
+				MobulaSlug:        "61846", // Somnia (SOMI)
+				HasPriorityMarket: true,
+				Layer:             "l1",
+			},
+			// Non-EVM L1s added the same day, one fetcher each.
+			{
+				Slug:              "algorand",
+				Name:              "Algorand",
+				Kind:              KindAlgorand,
+				RPCURL:            getenvDefault("RPC_ALGORAND", "https://mainnet-api.algonode.cloud"),
+				MobulaSlug:        "100000598", // Algorand (ALGO)
+				HasPriorityMarket: false,
+				Layer:             "l1",
+			},
+			{
+				Slug:              "aptos",
+				Name:              "Aptos",
+				Kind:              KindAptos,
+				RPCURL:            getenvDefault("RPC_APTOS", "https://api.mainnet.aptoslabs.com/v1"),
+				MobulaSlug:        "100014606", // Aptos (APT)
+				HasPriorityMarket: true,
+				Layer:             "l1",
+			},
+			{
+				Slug:              "near",
+				Name:              "NEAR",
+				Kind:              KindNear,
+				RPCURL:            getenvDefault("RPC_NEAR", "https://rpc.mainnet.near.org"),
+				MobulaSlug:        "100008195", // NEAR Protocol (NEAR)
+				HasPriorityMarket: false,
+				Layer:             "l1",
+			},
+			{
+				Slug:              "icp",
+				Name:              "Internet Computer",
+				Kind:              KindICP,
+				RPCURL:            getenvDefault("RPC_ICP", "https://rosetta-api.internetcomputer.org"),
+				MobulaSlug:        "100006108", // Internet Computer (ICP)
+				HasPriorityMarket: false,
+				Layer:             "l1",
+			},
 			// EVM L2 — reuse the generic eth_feeHistory fetcher from evm.go.
-			// All bill gas in ETH (Mantle switched from MNT to ETH in 2026),
-			// so MobulaSlug=ethereum across the board.
+			// All bill gas in ETH except Mantle (MNT) and HyperEVM (HYPE),
+			// which carry their own MobulaSlug.
 			{
 				Slug:              "arbitrum",
 				Name:              "Arbitrum One",

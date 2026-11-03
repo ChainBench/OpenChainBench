@@ -8,29 +8,31 @@ seo_description: "Cheapest blockchain transaction fee in USD, live across {{coun
 subtitle: "Live USD cost of one native token transaction on {{count}} Layer 1 and Layer 2 chains, refreshed every 30 seconds."
 
 seo_intro: |
-  This page answers one question. How much does it cost in dollars to send one transaction on each major blockchain right now. We track {{count}} chains in parallel and refresh the number every 30 seconds: Layer 1 chains (Ethereum, Solana, BNB Chain, Avalanche, TRON, Cardano, Sui, Stellar, Gram, Litecoin, Monero) and Layer 2 rollups (Arbitrum, Optimism, Base, Scroll, zkSync Era, Linea, Mantle, Taiko, Robinhood Chain), with the L1 data fee included for the rollups that expose it. For every chain we query its own fee market directly (eth_feeHistory for the EVM family, getRecentPrioritizationFees on Solana, koios epoch params on Cardano, get_fee_estimate on Monero, the mempool oracle on Litecoin, getChainParameters on TRON, the GraphQL reference gas price on Sui), convert the result to the smallest native unit, then multiply by the live USD price of the chain's native token from Mobula. The output is the actual dollar amount a wallet user pays today. No gwei to lamport conversion, no marketing claim. Compare Ethereum gas now versus Solana fee in USD, see whether Arbitrum is still cheaper than Base today, find out which Layer 1 has the lowest transaction cost this minute.
+  This page answers one question. How much does it cost in dollars to send one transaction on each major blockchain right now. We track {{count}} chains in parallel and refresh the number every 30 seconds: Layer 1 chains (Ethereum, Solana, BNB Chain, Avalanche, TRON, Cardano, Sui, Stellar, Gram, Litecoin, Monero, Sei, Cronos, Kaia, Somnia, Algorand, Aptos, NEAR, Internet Computer) and Layer 2 rollups (Arbitrum, Optimism, Base, Scroll, zkSync Era, Linea, Mantle, Taiko, Robinhood Chain), with the L1 data fee included for the rollups that expose it. For every chain we query its own fee market directly (eth_feeHistory for the EVM family, getRecentPrioritizationFees on Solana, koios epoch params on Cardano, get_fee_estimate on Monero, the mempool oracle on Litecoin, getChainParameters on TRON, the GraphQL reference gas price on Sui, algod transaction params on Algorand, estimate_gas_price on Aptos, gas_price and the runtime fee table on NEAR, the ledger transfer fee on Internet Computer), convert the result to the smallest native unit, then multiply by the live USD price of the chain's native token from Mobula. The output is the dollar amount a wallet user pays for a plain transfer today. Compare Ethereum gas now versus Solana fee in USD, see whether Arbitrum is still cheaper than Base today, find out which Layer 1 has the lowest transaction cost this minute.
 
 faq:
   - q: "What does this benchmark measure?"
-    a: "The USD cost of one native token transaction on each of the {{count}} tracked chains, refreshed every 30 seconds. A native transaction is the simplest action on a chain. Send ETH on Ethereum, SOL on Solana, ADA on Cardano, TRX on TRON, and so on. We do not yet measure ERC 20 transfers, DEX swaps or smart contract deployments. Those will ship as companion metrics in a later phase."
+    a: "The USD cost of one native token transaction on each of the {{count}} tracked chains, refreshed every 30 seconds. A native transaction is the simplest action on a chain. Send ETH on Ethereum, SOL on Solana, ADA on Cardano, TRX on TRON, ICP on Internet Computer, and so on, to an account that already exists. We do not measure token transfers, DEX swaps, account creation or contract deployments."
   - q: "Which chains are tracked?"
-    a: "Eight Layer 1 chains on the L1 tab. Ethereum, Solana, BNB Chain, TRON, Cardano, Sui, Litecoin and Monero. Seven Layer 2 rollups on the L2 tab. Arbitrum, Base, zkSync Era, Linea, Mantle, Taiko and Robinhood Chain. The list matches the L1 finality and L2 block time benches so you can read cost and speed side by side."
+    a: "On the L1 tab: Ethereum, Solana, BNB Chain, Avalanche, TRON, Cardano, Sui, Stellar, Gram, Litecoin, Monero, Sei, Cronos, Kaia, Somnia, Algorand, Aptos, NEAR and Internet Computer. On the L2 tab: Arbitrum One, Optimism, Base, Scroll, zkSync Era, Linea, Mantle, Taiko and Robinhood Chain. A chain whose fee source is down drops off the table until it answers again, which is why the live count can sit below that list."
   - q: "Why USD instead of gas price in gwei?"
     a: "Gas price in gwei on Ethereum cannot be compared to lamports per compute unit on Solana or sun per byte on TRON. The only honest cross chain unit is the dollar cost of a user facing action, computed at scrape time using a live USD price for each native token. Mobula's market API delivers the prices we multiply by."
   - q: "What do slow, standard and fast tiers mean?"
-    a: "Tiers exist on chains with a priority market where users can pay more for faster inclusion. Slow targets the 25th percentile of recent priority bids, standard the 50th, fast the 90th. Chains with deterministic or near deterministic fees (Cardano, Stellar, Gram, TRON native transfer) emit a single tier because there is no priority market to bid into."
+    a: "Tiers exist on chains with a priority market where users can pay more for faster inclusion. On EVM chains slow, standard and fast are the 25th, 50th and 90th percentile of the priority tips paid in the last 4 blocks (median across the blocks); on Solana the same percentiles of recent priority fees; on Aptos the deprioritized, standard and prioritized gas price estimates. Chains with deterministic fees (Cardano, Stellar, Gram, TRON, Algorand, NEAR, Internet Computer) emit a single tier because there is no priority market to bid into."
   - q: "Why is the Solana fee so low?"
-    a: "Solana charges 5000 lamports per signature as a hard base, plus an optional priority fee priced in micro lamports per compute unit. A simple SOL transfer uses around 200 compute units, so the priority component is typically dwarfed by the base. At current SOL prices the headline fee sits well under one cent on non congested blocks."
+    a: "Solana charges 5000 lamports per signature as a hard base, plus an optional priority fee priced in micro lamports per compute unit. A simple SOL transfer uses around 200 compute units, so the priority component is typically dwarfed by the base. Over the last 24 hours the standard tier sat at {{p50:solana}}."
   - q: "Why is the Cardano fee always similar?"
     a: "Cardano fees are deterministic. The protocol parameters min_fee_a per byte and min_fee_b base are set by governance and updated rarely. A standard ADA transaction is roughly 250 bytes, so the lovelace cost is essentially fixed until the next parameter vote. The USD figure on the leaderboard only moves because ADA's USD price moves."
+  - q: "What does a user pay on Internet Computer?"
+    a: "The ICP ledger charges a fixed transfer fee of 0.0001 ICP (10000 e8s) to the sender, which we read live from the ledger's Rosetta node and price at the live ICP rate: {{p50:icp}} over the last 24 hours. Cycles, the gas that pays for canister computation and storage, are bought and burnt by the developer running the canister, not by the person sending ICP, so they are not part of this figure."
   - q: "Are the L2 numbers complete?"
     a: "Yes for the rollups that expose their data cost separately. On OP Stack chains (Optimism, Base, Mantle) the figure is L2 execution plus the L1 data fee the GasPriceOracle predeploy quotes for a 113 byte transfer; on Scroll the L1GasPriceOracle plays that role; on Arbitrum the L1 component arrives as extra gas in eth_estimateGas. zkSync Era, Linea, Taiko and Robinhood Chain embed the data cost in the sequencer gas price, so the plain formula is already the wallet total. The L1 data fee tracks the blob market block to block, which is why an OP Stack fee can move while its L2 base fee is flat."
-  - q: "Which Layer 1 chain has the cheapest transaction fee right now?"
-    a: "Open the page. The leaderboard refreshes every 30 seconds and is sorted by cost. As a general pattern, Litecoin, Solana and BNB Chain cluster below one cent, Ethereum and Cardano around one to five cents, and TRON and Monero in the ten cent range. Sui sits in the sub cent range. Exact ordering depends on congestion and native token price at the moment of read."
+  - q: "Which chain has the cheapest transaction fee right now?"
+    a: "The leaderboard refreshes every 30 seconds and is sorted by cost. Over the last 24 hours {{best_name}} is the cheapest tracked chain at {{best_p50}} for a standard transfer, and {{worst_name}} the most expensive at {{worst_p50}}. Exact ordering depends on congestion and on each native token's USD price at the moment of read."
   - q: "How often does the page refresh?"
     a: "Every 30 seconds. The harness re queries each chain's fee oracle and Mobula's price API on the same cadence, so headline values are at most 30 seconds stale plus chain RPC latency (typically under one second)."
   - q: "Why are some chains showing one tier instead of three?"
-    a: "Cardano fees are protocol deterministic. TRON native transfers consume bandwidth at the published rate per byte. Neither chain exposes a priority market a user can bid into for a TRX or ADA transfer, so emitting a single tier is more honest than fabricating three identical values."
+    a: "Cardano and Internet Computer fees are protocol deterministic, Algorand charges its flat minimum fee unless the transaction pool is congested, Stellar charges its base fee per operation, NEAR burns gas at the block's gas price with no tip, and TRON native transfers consume bandwidth at the published rate per byte. None of them exposes a priority market a user can bid into for a native transfer, so emitting a single tier is more honest than fabricating three identical values."
   - q: "Can I cite a value from this page?"
     a: "Yes. Every number is a Prometheus query over a 24h window. The query string is shown in the row's hover tooltip. The harness source is open at the link in the source field below. Cite the value and the timestamp at the top of the page."
 
@@ -58,11 +60,11 @@ per_chain_explainer:
   - slug: ethereum
     h2: "Ethereum transaction fee"
     body: |
-      Ethereum native transfer fee is {{p50:ethereum}} (p50, 24h). Fees follow EIP-1559: the base fee adjusts by up to 12.5 percent per block from the previous block's gas usage, plus a priority tip set by the user; a plain ETH transfer is 21000 gas. During congested periods (NFT mints, MEV bursts) standard transfers can cost several dollars, while quiet weekends drop the median under 20 cents. Computed as (base + p50 priority) times 21000 gas times live ETH price.
+      Ethereum native transfer fee is {{p50:ethereum}} (p50, 24h). Fees follow EIP-1559: the base fee adjusts by up to 12.5 percent per block from the previous block's gas usage, plus a priority tip set by the user; a plain ETH transfer is 21000 gas. Congested periods (NFT mints, MEV bursts) push it up block by block, quiet hours pull it down, which is why the p90 column can sit well above the median. Computed as (base + p50 priority) times 21000 gas times live ETH price.
   - slug: bnb
     h2: "BNB Chain transaction fee"
     body: |
-      BNB Chain native transfer fee is {{p50:bnb}} (p50, 24h). BNB Smart Chain runs a Parlia PoSA consensus with 21 active validators and a fixed 3 s block; fee market is EIP-1559-style but the base fee has historically hovered near a 1 gwei floor enforced by validators, which is why a native BNB transfer typically stays under one cent. Computed as (base + p50 priority) times 21000 gas times live BNB price.
+      BNB Chain native transfer fee is {{p50:bnb}} (p50, 24h). BNB Smart Chain runs a Parlia PoSA consensus with 21 active validators and a fixed 3 s block; fee market is EIP-1559-style with a validator-set minimum gas price that has been cut several times, which is why a native BNB transfer typically stays under one cent. Computed as (base + p50 priority) times 21000 gas times live BNB price.
   - slug: solana
     h2: "Solana transaction fee"
     body: |
@@ -78,11 +80,11 @@ per_chain_explainer:
   - slug: sui
     h2: "Sui transaction fee"
     body: |
-      Sui native transfer fee is {{p50:sui}} (p50, 24h). Sui uses a reference-gas-price model where validators agree on a per-epoch gas price via DPoS auction; a `Coin::transfer` consumes around 76000 computation units, so the per-transfer cost stays in the sub-cent range even on busy epochs. Sui has separate computation and storage fees, with the latter rebated when objects are deleted. Computed via `suix_getReferenceGasPrice` times 76000 gas times SUI price.
+      Sui native transfer fee is {{p50:sui}} (p50, 24h). Sui uses a reference-gas-price model where validators agree on a per-epoch gas price via DPoS auction; a wallet send is SplitCoins plus TransferObjects, which pays the 1000 unit minimum computation bucket at the reference price plus the storage of the new coin object the recipient receives (988000 MIST); the rewritten gas coin gets almost all of its storage back as a rebate. Computed from the GraphQL reference gas price times 1000 units, plus that storage, times SUI price.
   - slug: litecoin
     h2: "Litecoin transaction fee"
     body: |
-      Litecoin native transfer fee is {{p50:litecoin}} (p50, 24h). Litecoin inherits Bitcoin's UTXO fee market priced in litoshi per virtual byte; a SegWit P2WPKH single-input single-output transfer is around 225 vBytes, so even at fastest-tier mempool rates the headline cost stays in the low-cent range, an order of magnitude under Bitcoin. Computed from litecoinspace.org recommended fee tiers times 225 vBytes times live LTC price.
+      Litecoin native transfer fee is {{p50:litecoin}} (p50, 24h). Litecoin inherits Bitcoin's UTXO fee market priced in litoshi per virtual byte; a SegWit P2WPKH single-input single-output transfer is around 225 vBytes, so even at fastest-tier mempool rates the headline cost stays a fraction of a cent, far under Bitcoin. Computed from litecoinspace.org recommended fee tiers times 225 vBytes times live LTC price.
   - slug: monero
     h2: "Monero transaction fee"
     body: |
@@ -90,31 +92,63 @@ per_chain_explainer:
   - slug: arbitrum
     h2: "Arbitrum transaction fee"
     body: |
-      Arbitrum One native transfer fee is {{p50:arbitrum}} (p50, 24h). Arbitrum Nitro runs an EIP-1559 fee market against the sequencer at sub-second cadence; native ETH transfers are 21000 gas and sit at fractions of a cent because the sequencer's priority fee is near-zero by design. The L1 data-posting component (Ethereum blobs since Dencun) is not yet included in this figure, only L2 execution cost. Computed via `eth_feeHistory` on the Arbitrum sequencer RPC times live ETH price.
+      Arbitrum One native transfer fee is {{p50:arbitrum}} (p50, 24h). Arbitrum Nitro runs an EIP-1559 fee market against the sequencer at sub-second cadence; the sequencer's priority fee is near-zero by design. Nitro charges the L1 data-posting component as extra gas units, so `eth_estimateGas` on a native transfer returns 21000 plus that component, and this figure scales the L2 gas price by it: the result is the wallet total. Computed via `eth_feeHistory` and `eth_estimateGas` on the Arbitrum RPC times live ETH price.
   - slug: robinhood
     h2: "Robinhood Chain transaction fee"
     body: |
-      Robinhood Chain native transfer fee is {{p50:robinhood}} (p50, 24h). Robinhood's Arbitrum Orbit rollup posts a very low base fee (~0.05 gwei) and zero priority rewards, the typical Orbit pattern where the centralized sequencer needs no tip market; ETH is the gas asset and the L1 blob-posting cost is excluded from this figure like every other L2 on this page. Computed via `eth_feeHistory` on the official sequencer RPC times live ETH price.
+      Robinhood Chain native transfer fee is {{p50:robinhood}} (p50, 24h). Robinhood's Arbitrum Orbit rollup posts a very low base fee (~0.05 gwei) and zero priority rewards, the typical Orbit pattern where the centralized sequencer needs no tip market; ETH is the gas asset and the sequencer gas price already embeds the data posting cost, so the plain formula is the wallet total. Computed via `eth_feeHistory` on the official sequencer RPC times live ETH price.
   - slug: base
     h2: "Base transaction fee"
     body: |
-      Base native transfer fee is {{p50:base}} (p50, 24h). Base is Coinbase's OP Stack rollup with a priority-fee-near-zero pattern; native ETH transfers settle at fractions of a cent on L2 execution alone. Base posts batches to Ethereum via EIP-4844 blobs; the L1 data fee quoted by the GasPriceOracle predeploy is included in this figure and tracks the blob fee market. Computed via `eth_feeHistory` on the Base sequencer RPC times live ETH price.
+      Base native transfer fee is {{p50:base}} (p50, 24h). Base is Coinbase's OP Stack rollup with a priority-fee-near-zero pattern; native ETH transfers settle at fractions of a cent on L2 execution alone. Base posts batches to Ethereum via EIP-4844 blobs; the L1 data fee quoted by the GasPriceOracle predeploy is included in this figure and tracks the blob fee market. Computed via `eth_feeHistory` plus `getL1Fee` on the Base RPC times live ETH price.
   - slug: zksync
     h2: "zkSync Era transaction fee"
     body: |
-      zkSync Era native transfer fee is {{p50:zksync}} (p50, 24h). zkSync Era uses a custom fee model where the gas figure bundles execution, pubdata and prover cost into a single price published by the sequencer; native ETH transfers cost more than OP Stack chains because prover work is amortized into the per-transaction fee rather than billed separately at batch time. Computed via `eth_feeHistory` on the zkSync sequencer RPC.
+      zkSync Era native transfer fee is {{p50:zksync}} (p50, 24h). zkSync Era uses a custom fee model where the gas figure bundles execution, pubdata and prover cost into a single price published by the sequencer; prover work is amortized into the per-transaction fee rather than billed separately at batch time. Computed via `eth_feeHistory` on the zkSync sequencer RPC.
   - slug: linea
     h2: "Linea transaction fee"
     body: |
-      Linea native transfer fee is {{p50:linea}} (p50, 24h). Linea is the Consensys zkEVM and exposes a standard EIP-1559 fee surface to wallets; the sequencer's posted base fee tracks zk-prover-batch economics rather than mempool congestion, so native ETH transfers sit in the sub-cent range even when Ethereum L1 is congested. L1 data-posting cost (blob calldata) is excluded from this figure. Computed via `eth_feeHistory` on the Linea sequencer RPC.
+      Linea native transfer fee is {{p50:linea}} (p50, 24h). Linea is the Consensys zkEVM and exposes a standard EIP-1559 fee surface to wallets; the sequencer's posted base fee tracks zk-prover-batch economics rather than mempool congestion, so native ETH transfers sit in the sub-cent range even when Ethereum L1 is congested. The sequencer gas price already embeds the data posting cost, so nothing is added on top. Computed via `eth_feeHistory` on the Linea RPC times live ETH price.
   - slug: mantle
     h2: "Mantle transaction fee"
     body: |
-      Mantle native transfer fee is {{p50:mantle}} (p50, 24h). Mantle is an OP Stack fork that uses EigenDA for data availability instead of Ethereum blob calldata, which lowers the L1-posting component substantially; the L2 fee market still follows EIP-1559 against a centralized sequencer, and native ETH transfers sit in the sub-cent range. Computed via `eth_feeHistory` on the Mantle sequencer RPC times live ETH price.
+      Mantle native transfer fee is {{p50:mantle}} (p50, 24h). Mantle is an OP Stack fork that uses EigenDA for data availability instead of Ethereum blob calldata, which lowers the L1-posting component substantially; the L2 fee market still follows EIP-1559 against a centralized sequencer, gas is paid in MNT, and native MNT transfers sit in the sub-cent range. Computed via `eth_feeHistory` plus `getL1Fee` on the Mantle RPC times live MNT price.
   - slug: taiko
     h2: "Taiko transaction fee"
     body: |
-      Taiko native transfer fee is {{p50:taiko}} (p50, 24h). Taiko is a based rollup sequenced by Ethereum L1 validators, so its block cadence is bounded by Ethereum's 12 s slot and its fee market reflects the L1 priority surface; native ETH transfers cost slightly more than OP Stack peers because there is no separate cheap L2 sequencer pricing. Computed via `eth_feeHistory` on the Taiko RPC times live ETH price.
+      Taiko native transfer fee is {{p50:taiko}} (p50, 24h). Taiko is a based rollup sequenced by Ethereum L1 validators, so its block cadence is bounded by Ethereum's 12 s slot and its fee market reflects the L1 priority surface; the gas price it publishes already carries the data posting cost. Computed via `eth_feeHistory` on the Taiko RPC times live ETH price.
+  - slug: sei
+    h2: "Sei transaction fee"
+    body: |
+      Sei native transfer fee is {{p50:sei}} (p50, 24h). Sei runs a parallelized EVM on its own Layer 1 with an EIP-1559 style base fee held at a network minimum and priority tips that are usually zero; a native SEI transfer is 21000 gas, paid in SEI. Computed via `eth_feeHistory` on the Sei EVM RPC (base fee plus the median tip percentiles of the last 4 blocks) times 21000 gas times live SEI price.
+  - slug: cronos
+    h2: "Cronos transaction fee"
+    body: |
+      Cronos native transfer fee is {{p50:cronos}} (p50, 24h). Cronos EVM is a Cosmos SDK Layer 1 with an EIP-1559 base fee priced in CRO; a native CRO transfer is 21000 gas, and the base fee moves only when the chain's governance or block fullness moves it. Computed via `eth_feeHistory` on the official Cronos EVM RPC times 21000 gas times live CRO price.
+  - slug: kaia
+    h2: "Kaia transaction fee"
+    body: |
+      Kaia native transfer fee is {{p50:kaia}} (p50, 24h). Kaia, the merged Klaytn and Finschia chain, runs a dynamic base fee that rises with block usage plus a priority tip paid to validators; a native KAIA transfer is 21000 gas. Tips vary a lot from block to block, so the tiers take the median of each percentile across the last 4 blocks rather than a mean that one outlier block could swing. Computed via `eth_feeHistory` on the Kaia public endpoint times live KAIA price.
+  - slug: somnia
+    h2: "Somnia transaction fee"
+    body: |
+      Somnia native transfer fee is {{p50:somnia}} (p50, 24h). Somnia is an EVM Layer 1 that prices gas in SOMI with a flat base fee and no tip market in practice; a native SOMI transfer estimates at exactly 21000 gas on its RPC. Computed via `eth_feeHistory` on the official Somnia RPC times 21000 gas times live SOMI price.
+  - slug: algorand
+    h2: "Algorand transaction fee"
+    body: |
+      Algorand native transfer fee is {{p50:algorand}} (p50, 24h). An ALGO payment pays the larger of the minimum fee (1000 microAlgo, 0.001 ALGO) and a per byte congestion fee that algod only raises above zero when the transaction pool is full; a signed payment is about 250 bytes, so outside congestion the fee is exactly the minimum. Computed from algod `/v2/transactions/params` (min-fee and fee) times 250 bytes, floored at min-fee, times live ALGO price.
+  - slug: aptos
+    h2: "Aptos transaction fee"
+    body: |
+      Aptos native transfer fee is {{p50:aptos}} (p50, 24h). Aptos charges gas used times the gas unit price in octas; an `aptos_account::transfer` of APT to an account that already exists burns 62 to 66 gas units (measured on mainnet), and the fullnode publishes deprioritized, standard and prioritized unit prices that map to the slow, standard and fast tiers. A transfer that creates the recipient account also pays its storage and costs far more; that case is out of scope. Computed via `estimate_gas_price` times 63 gas units times live APT price.
+  - slug: near
+    h2: "NEAR transaction fee"
+    body: |
+      NEAR native transfer fee is {{p50:near}} (p50, 24h). NEAR burns gas at the block gas price with no tip; a transfer between two existing named accounts burns the receipt creation and transfer action costs once on send and once on execution, about 0.45 Tgas under the current runtime fee table. A transfer to an implicit account that does not exist yet also creates it and costs more; that is out of scope. Computed via the `gas_price` RPC times the transfer gas read from `EXPERIMENTAL_protocol_config`, times live NEAR price.
+  - slug: icp
+    h2: "Internet Computer transaction fee"
+    body: |
+      Internet Computer native transfer fee is {{p50:icp}} (p50, 24h). Sending ICP is a call to the ICP ledger, which charges the sender a fixed transfer fee of 0.0001 ICP (10000 e8s); there is no gas auction. Cycles, which pay for canister computation and storage, are burnt by the developer who runs the canister, not by the person sending ICP, so they are not in this figure. Computed from the ledger fee published by the ICP Rosetta node times live ICP price.
 
 category: Blockchains
 status: live
@@ -126,19 +160,18 @@ row_noun: { one: chain, many: chains }
 abstract: |
   Every 30 seconds we ask each of {{count}} chains for its current native
   transaction fee in the chain's smallest unit (wei, lamport, lovelace,
-  sun, MIST, litoshi, atomic), multiply by the live USD price of the
-  chain's native token from Mobula's market API and publish the
-  result. Chains with a priority market expose three tiers (slow,
-  standard, fast) mapped to roughly the 25th, 50th and 90th percentile
-  of the recent fee distribution. Deterministic fee chains emit a
-  single tier. The eight Layer 1 chains mirror the L1 finality bench
-  so users can compare cost and speed side by side. The seven Layer 2
-  rollups add the layer dimension so a wallet routing decision can be
-  made on real data instead of marketing claims.
+  sun, MIST, litoshi, atomic, microAlgo, octa, yoctoNEAR, e8s), multiply
+  by the live USD price of the chain's native token from Mobula's market
+  API and publish the result. Chains with a priority market expose three
+  tiers (slow, standard, fast) mapped to roughly the 25th, 50th and 90th
+  percentile of the recent fee distribution. Deterministic fee chains
+  emit a single tier. Layer 1 chains and Layer 2 rollups sit on separate
+  tabs, and the rollup figures include the L1 data fee, so a wallet
+  routing decision can be made on real data instead of marketing claims.
 
 methodology:
   - "Refresh cadence. 30 seconds. One process samples every chain in the table in parallel goroutines."
-  - "Ethereum, BNB Chain and Avalanche on the L1 tab. eth_feeHistory over the last 4 blocks at percentiles 25, 50 and 90. Cost = (base_fee + reward_percentile) * 21000 gas, mapped to slow, standard and fast."
+  - "Ethereum, BNB Chain, Avalanche, Sei, Cronos, Kaia and Somnia on the L1 tab. eth_feeHistory over the last 4 blocks at percentiles 25, 50 and 90, median across the 4 blocks per percentile. Cost = (base_fee + reward_percentile) * 21000 gas in the chain's own gas token, mapped to slow, standard and fast."
   - "Arbitrum, Optimism, Base, Scroll, zkSync Era, Linea, Mantle, Taiko and Robinhood Chain on the L2 tab. Same eth_feeHistory flow against each rollup's sequencer RPC. ETH is the native gas asset on every tracked rollup except Mantle, which prices gas in MNT."
   - "Layer 2 data fee. OP Stack rollups (Optimism, Base, Mantle): eth_call GasPriceOracle.getL1Fee(bytes) at 0x42..0F on a serialized 113 byte EIP 1559 transfer, added to every tier. Scroll: the same call on L1GasPriceOracle at 0x53..02. Arbitrum: eth_estimateGas on a native transfer returns 21000 plus the L1 calldata component; every tier is scaled by estimated / 21000. zkSync Era, Linea, Taiko and Robinhood Chain: none added, the sequencer gas price already includes data posting."
   - "Stellar. horizon fee_stats.last_ledger_base_fee (100 stroops outside surge) times one operation. Single tier."
@@ -146,17 +179,21 @@ methodology:
   - "Solana. getRecentPrioritizationFees percentiles 25, 50 and 90 of micro lamports per compute unit, times 200 compute units, plus 5000 lamports base. Empty fees response collapses to a single standard tier at the 5000 base."
   - "TRON. getChainParameters.getTransactionFee (currently 1000 sun per byte) times 268 bytes for a typical native transfer. Single tier because TRON native transfers do not bid into a priority market."
   - "Cardano. koios epoch_params.min_fee_a and min_fee_b, times 250 bytes for a typical native transfer. Deterministic by protocol, refreshes only when on chain parameters change."
-  - "Sui. GraphQL epoch.referenceGasPrice (the JSON RPC method was retired on public fullnodes in 2026) times 76000 gas (typical observed for a Coin::transfer call). Single standard tier."
+  - "Sui. GraphQL epoch.referenceGasPrice (the JSON RPC method was retired on public fullnodes in 2026) times the 1000 unit minimum computation bucket, plus 988000 MIST of storage for the new coin object of a SplitCoins + TransferObjects send, net of the gas coin rebate. Single standard tier."
   - "Litecoin. litecoinspace.org /api/v1/fees/recommended (hour, half hour and fastest fees in litoshi per vByte) times 225 vBytes for a typical 1 input 1 output P2WPKH transfer."
   - "Monero. monero rpc get_fee_estimate.fees[0..2] times 1500 bytes for a typical 1 input 2 output RingCT transaction."
-  - "USD prices. api.mobula.io/api/1/market/multi-data polled every 30 seconds for every native token in one call."
+  - "Algorand. algod /v2/transactions/params: max(min-fee, fee per byte times 250 bytes) for a signed payment. min-fee is 1000 microAlgo and the per byte fee is zero outside congestion. Single tier."
+  - "Aptos. /v1/estimate_gas_price (deprioritized, standard, prioritized octas per gas unit) times 63 gas units, the median measured for an aptos_account::transfer of APT to an existing account."
+  - "NEAR. gas_price (yoctoNEAR per gas) times the gas a transfer between existing named accounts burns: action receipt creation plus transfer action, send_not_sir plus execution, read from EXPERIMENTAL_protocol_config. Single tier."
+  - "Internet Computer. The ICP ledger transfer fee from the ICP Rosetta /construction/metadata suggested_fee (10000 e8s, 0.0001 ICP). Cycles are paid by canister developers and are not part of what the sender pays. Single tier."
+  - "USD prices. api.mobula.io/api/1/market/multi-data polled every 30 seconds for every native token, by asset slug or by Mobula asset id for tokens that were renamed (Gram) or added later."
   - "Failures. Any upstream error leaves the previous gauge in place, increments tx_fee_fetch_errors_total{chain, error_type}, and sets tx_fee_health{chain} to zero."
 
 findings:
   - "{{best_name}} is the cheapest tracked native transaction at {{best_p50}} over the last 24 hours."
-  - "{{name:ethereum}} sits at {{p50:ethereum}} (standard tier, 24h median), the most expensive Layer 1 transaction on the leaderboard during normal congestion."
-  - "{{name:bnb}}, {{name:solana}} and {{name:litecoin}} cluster near or below one cent for a standard transaction."
-  - "{{name:cardano}}, {{name:tron}} and {{name:monero}} use deterministic or near deterministic fee models. The USD figure on the leaderboard moves with native token price, not with network congestion."
+  - "{{worst_name}} is the most expensive tracked native transaction at {{worst_p50}}; {{name:ethereum}} sits at {{p50:ethereum}} (standard tier, 24h median)."
+  - "A standard transaction costs {{p50:bnb}} on {{name:bnb}}, {{p50:solana}} on {{name:solana}} and {{p50:litecoin}} on {{name:litecoin}} (24h medians)."
+  - "{{name:cardano}}, {{name:tron}}, {{name:algorand}} and {{name:icp}} use deterministic fee models. Their USD figure on the leaderboard moves with native token price, not with network congestion."
   - "USD costs are computed at scrape time. A 10 percent intraday move in the native token's USD price shifts the headline by 10 percent even if the chain native fee is flat. We surface that intentionally because the dollar cost is what a wallet user actually pays."
   - "Layer 2 values are the wallet total: L2 execution plus the L1 data fee where the rollup exposes it (OP Stack GasPriceOracle, Scroll L1GasPriceOracle, Arbitrum estimateGas); zkSync Era, Linea, Taiko and Robinhood Chain embed it in the gas price."
 
@@ -290,8 +327,8 @@ providers:
   - slug: sui
     name: Sui
     layer: l1
-    tag: suix_getReferenceGasPrice × 76000 gas budget
-    formula: "USD cost of a native SUI transfer: live reference gas price × 76000 gas × SUI USD price."
+    tag: 1000 units × reference gas price + one new coin object of storage
+    formula: "USD cost of a SplitCoins + TransferObjects SUI transfer: 1000 computation units × live reference gas price + 988000 MIST of storage for the recipient coin object (net of the gas coin rebate) × SUI USD price."
     queries:
       p50: quantile_over_time(0.50, tx_fee_native_transfer_usd{chain="sui",tier="std"}[24h])
       p90: quantile_over_time(0.90, tx_fee_native_transfer_usd{chain="sui",tier="std"}[24h])
@@ -328,6 +365,118 @@ providers:
       success: avg_over_time(tx_fee_health{chain="monero"}[24h])
       sample_size: count_over_time(tx_fee_native_transfer_usd{chain="monero",tier="std"}[7d])
       series: tx_fee_native_transfer_usd{chain="monero",tier="std"}
+
+  - slug: sei
+    name: Sei
+    layer: l1
+    tag: EVM fee market, 21000 gas × (base + p50 priority) in SEI
+    formula: "Median USD cost of a native SEI transfer on Sei EVM over 24h: (base_fee + p50 priority_fee) × 21000 gas × SEI USD price."
+    queries:
+      p50: quantile_over_time(0.50, tx_fee_native_transfer_usd{chain="sei",tier="std"}[24h])
+      p90: quantile_over_time(0.90, tx_fee_native_transfer_usd{chain="sei",tier="fast"}[24h])
+      p99: quantile_over_time(0.99, tx_fee_native_transfer_usd{chain="sei",tier="fast"}[24h])
+      mean: avg_over_time(tx_fee_native_transfer_usd{chain="sei",tier="std"}[24h])
+      success: avg_over_time(tx_fee_health{chain="sei"}[24h])
+      sample_size: count_over_time(tx_fee_native_transfer_usd{chain="sei",tier="std"}[7d])
+      series: tx_fee_native_transfer_usd{chain="sei",tier="std"}
+
+  - slug: cronos
+    name: Cronos
+    layer: l1
+    tag: EVM fee market, 21000 gas × (base + p50 priority) in CRO
+    formula: "Median USD cost of a native CRO transfer on Cronos EVM over 24h: (base_fee + p50 priority_fee) × 21000 gas × CRO USD price."
+    queries:
+      p50: quantile_over_time(0.50, tx_fee_native_transfer_usd{chain="cronos",tier="std"}[24h])
+      p90: quantile_over_time(0.90, tx_fee_native_transfer_usd{chain="cronos",tier="fast"}[24h])
+      p99: quantile_over_time(0.99, tx_fee_native_transfer_usd{chain="cronos",tier="fast"}[24h])
+      mean: avg_over_time(tx_fee_native_transfer_usd{chain="cronos",tier="std"}[24h])
+      success: avg_over_time(tx_fee_health{chain="cronos"}[24h])
+      sample_size: count_over_time(tx_fee_native_transfer_usd{chain="cronos",tier="std"}[7d])
+      series: tx_fee_native_transfer_usd{chain="cronos",tier="std"}
+
+  - slug: kaia
+    name: Kaia
+    layer: l1
+    tag: Dynamic base fee + priority tip, 21000 gas in KAIA
+    formula: "Median USD cost of a native KAIA transfer over 24h: (base_fee + p50 priority_fee) × 21000 gas × KAIA USD price."
+    queries:
+      p50: quantile_over_time(0.50, tx_fee_native_transfer_usd{chain="kaia",tier="std"}[24h])
+      p90: quantile_over_time(0.90, tx_fee_native_transfer_usd{chain="kaia",tier="fast"}[24h])
+      p99: quantile_over_time(0.99, tx_fee_native_transfer_usd{chain="kaia",tier="fast"}[24h])
+      mean: avg_over_time(tx_fee_native_transfer_usd{chain="kaia",tier="std"}[24h])
+      success: avg_over_time(tx_fee_health{chain="kaia"}[24h])
+      sample_size: count_over_time(tx_fee_native_transfer_usd{chain="kaia",tier="std"}[7d])
+      series: tx_fee_native_transfer_usd{chain="kaia",tier="std"}
+
+  - slug: somnia
+    name: Somnia
+    layer: l1
+    tag: EVM fee market, 21000 gas × (base + p50 priority) in SOMI
+    formula: "Median USD cost of a native SOMI transfer over 24h: (base_fee + p50 priority_fee) × 21000 gas × SOMI USD price."
+    queries:
+      p50: quantile_over_time(0.50, tx_fee_native_transfer_usd{chain="somnia",tier="std"}[24h])
+      p90: quantile_over_time(0.90, tx_fee_native_transfer_usd{chain="somnia",tier="fast"}[24h])
+      p99: quantile_over_time(0.99, tx_fee_native_transfer_usd{chain="somnia",tier="fast"}[24h])
+      mean: avg_over_time(tx_fee_native_transfer_usd{chain="somnia",tier="std"}[24h])
+      success: avg_over_time(tx_fee_health{chain="somnia"}[24h])
+      sample_size: count_over_time(tx_fee_native_transfer_usd{chain="somnia",tier="std"}[7d])
+      series: tx_fee_native_transfer_usd{chain="somnia",tier="std"}
+
+  - slug: algorand
+    name: Algorand
+    layer: l1
+    tag: max(min fee, fee per byte × 250 bytes), deterministic
+    formula: "USD cost of an ALGO payment: max(min-fee, suggested fee per byte × 250 bytes) from algod /v2/transactions/params (1000 microAlgo outside congestion) × ALGO USD price."
+    queries:
+      p50: quantile_over_time(0.50, tx_fee_native_transfer_usd{chain="algorand",tier="single"}[24h])
+      p90: quantile_over_time(0.90, tx_fee_native_transfer_usd{chain="algorand",tier="single"}[24h])
+      p99: quantile_over_time(0.99, tx_fee_native_transfer_usd{chain="algorand",tier="single"}[24h])
+      mean: avg_over_time(tx_fee_native_transfer_usd{chain="algorand",tier="single"}[24h])
+      success: avg_over_time(tx_fee_health{chain="algorand"}[24h])
+      sample_size: count_over_time(tx_fee_native_transfer_usd{chain="algorand",tier="single"}[7d])
+      series: tx_fee_native_transfer_usd{chain="algorand",tier="single"}
+
+  - slug: aptos
+    name: Aptos
+    layer: l1
+    tag: estimate_gas_price × 63 gas units (APT transfer)
+    formula: "USD cost of an APT transfer to an existing account: fullnode estimate_gas_price (octas per gas unit) × 63 gas units × APT USD price."
+    queries:
+      p50: quantile_over_time(0.50, tx_fee_native_transfer_usd{chain="aptos",tier="std"}[24h])
+      p90: quantile_over_time(0.90, tx_fee_native_transfer_usd{chain="aptos",tier="fast"}[24h])
+      p99: quantile_over_time(0.99, tx_fee_native_transfer_usd{chain="aptos",tier="fast"}[24h])
+      mean: avg_over_time(tx_fee_native_transfer_usd{chain="aptos",tier="std"}[24h])
+      success: avg_over_time(tx_fee_health{chain="aptos"}[24h])
+      sample_size: count_over_time(tx_fee_native_transfer_usd{chain="aptos",tier="std"}[7d])
+      series: tx_fee_native_transfer_usd{chain="aptos",tier="std"}
+
+  - slug: near
+    name: NEAR
+    layer: l1
+    tag: gas_price × transfer gas from the runtime fee table
+    formula: "USD cost of a NEAR transfer between existing named accounts: block gas_price × (receipt creation + transfer action, send and execution, from EXPERIMENTAL_protocol_config) × NEAR USD price."
+    queries:
+      p50: quantile_over_time(0.50, tx_fee_native_transfer_usd{chain="near",tier="single"}[24h])
+      p90: quantile_over_time(0.90, tx_fee_native_transfer_usd{chain="near",tier="single"}[24h])
+      p99: quantile_over_time(0.99, tx_fee_native_transfer_usd{chain="near",tier="single"}[24h])
+      mean: avg_over_time(tx_fee_native_transfer_usd{chain="near",tier="single"}[24h])
+      success: avg_over_time(tx_fee_health{chain="near"}[24h])
+      sample_size: count_over_time(tx_fee_native_transfer_usd{chain="near",tier="single"}[7d])
+      series: tx_fee_native_transfer_usd{chain="near",tier="single"}
+
+  - slug: icp
+    name: Internet Computer
+    layer: l1
+    tag: ICP ledger transfer fee (0.0001 ICP), read live
+    formula: "USD cost of an ICP ledger transfer: the ledger's transfer fee from the ICP Rosetta construction/metadata endpoint (10000 e8s) × ICP USD price. Cycles are paid by canister developers, not by the sender."
+    queries:
+      p50: quantile_over_time(0.50, tx_fee_native_transfer_usd{chain="icp",tier="single"}[24h])
+      p90: quantile_over_time(0.90, tx_fee_native_transfer_usd{chain="icp",tier="single"}[24h])
+      p99: quantile_over_time(0.99, tx_fee_native_transfer_usd{chain="icp",tier="single"}[24h])
+      mean: avg_over_time(tx_fee_native_transfer_usd{chain="icp",tier="single"}[24h])
+      success: avg_over_time(tx_fee_health{chain="icp"}[24h])
+      sample_size: count_over_time(tx_fee_native_transfer_usd{chain="icp",tier="single"}[7d])
+      series: tx_fee_native_transfer_usd{chain="icp",tier="single"}
 
   - slug: arbitrum
     name: Arbitrum One
@@ -399,7 +548,7 @@ providers:
   - slug: linea
     name: Linea
     layer: l2
-    tag: "ZK rollup Stark, 21000 gas"
+    tag: "ZK rollup Consensys, 21000 gas"
     formula: "Median USD cost of a native ETH transfer on Linea over 24h: (base_fee + p50 priority) × 21000 gas × ETH USD price. The sequencer gas price already embeds this rollup's data posting cost."
     queries:
       p50: quantile_over_time(0.50, tx_fee_native_transfer_usd{chain="linea",tier="std"}[24h])
@@ -428,7 +577,7 @@ providers:
     name: Mantle
     layer: l2
     tag: "OP Stack optimistic rollup Mantle, 21000 gas"
-    formula: "Median USD cost of a native ETH transfer on Mantle over 24h. L2 execution plus the L1 data fee from the GasPriceOracle predeploy (EigenDA posting), × native USD price."
+    formula: "Median USD cost of a native MNT transfer on Mantle over 24h: L2 execution plus the L1 data fee from the GasPriceOracle predeploy (EigenDA posting), × MNT USD price."
     queries:
       p50: quantile_over_time(0.50, tx_fee_native_transfer_usd{chain="mantle",tier="std"}[24h])
       p90: quantile_over_time(0.90, tx_fee_native_transfer_usd{chain="mantle",tier="fast"}[24h])
