@@ -2,10 +2,10 @@
 // eth_estimateGas. Run from a directory holding node_modules with
 // solc@0.8.24 and @openzeppelin/contracts@5.0.2:
 //   npm install solc@0.8.24 @openzeppelin/contracts@5.0.2
-//   node compile.js <path/to/Token.sol> <out.hex>
-const solc = require("solc");
-const fs = require("fs");
-const path = require("path");
+//   node compile.mjs <path/to/Token.sol> <out.hex>
+import fs from "node:fs";
+import path from "node:path";
+import solc from "solc";
 
 const src = process.argv[2] || "Token.sol";
 const outFile = process.argv[3] || "initcode.hex";
@@ -25,7 +25,7 @@ const input = {
 function findImports(p) {
   try {
     return { contents: fs.readFileSync(path.join("node_modules", p), "utf8") };
-  } catch (e) {
+  } catch {
     return { error: "not found: " + p };
   }
 }
