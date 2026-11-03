@@ -4,7 +4,7 @@ slug: validator-yield
 number: "026"
 title: Highest staking yield, live net APR by proof-of-stake chain
 seo_title: "Highest staking yield 2026: {{best_name}} at {{best_p50}} APR"
-seo_description: "{{best_name}} pays the highest staking yield today, {{best_p50}} median net APR. Live ranking of {{declared_count}} PoS chains incl. Solana, Ethereum, NEAR, ICP, Gram (TON), Aptos, Sui, Cardano, net of commission."
+seo_description: "{{best_name}} pays the highest staking yield today, {{best_p50}} median net APR, live across {{declared_count}} proof-of-stake chains, net of validator commission."
 subtitle: Median net staking yield in basis points across {{count}} proof-of-stake chains, after validator commission and, where the chain exposes it, downtime. Each chain's figure comes from its own on-chain reward data, keyless, every 5 minutes.
 category: Blockchains
 status: live
