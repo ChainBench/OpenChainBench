@@ -761,7 +761,11 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // v147: bench 313 token-sellability arrives as a draft. Two rows, the
   //       two sell timings. A cached entry holds the provider set current
   //       when it was written, so without this the rows never appear.
-  ["bench-unfiltered-v147", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v148: the heavy lane runs in all three regions, so the Heavy tab is no
+  //       longer one region beside a Pooled figure averaged over three, and
+  //       its spec queries aggregate the way the tip probe does. Cadence
+  //       moves to two hours to pay for the extra regions.
+  ["bench-unfiltered-v148", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -1080,7 +1084,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v138: lockstep with bench-unfiltered-v145 (heavy call tier).
   // v139: lockstep with bench-unfiltered-v146 (heavy Work column label).
   // v140: lockstep with bench-unfiltered-v147 (bench 313 arrives).
-  ["all-benchmarks-v140", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v141: lockstep with bench-unfiltered-v148 (heavy lane in three regions).
+  ["all-benchmarks-v141", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1292,7 +1297,8 @@ const loadBenchmarkFiltered = unstable_cache(
   //      and endpoint tabs of three chain RPC pages).
   // v82: lockstep with bench-unfiltered-v145 (heavy call tier).
   // v83: lockstep with bench-unfiltered-v146 (heavy Work column label).
-  ["bench-filters-v83", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v84: lockstep with bench-unfiltered-v148 (heavy lane in three regions).
+  ["bench-filters-v84", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 

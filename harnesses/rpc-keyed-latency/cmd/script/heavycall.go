@@ -226,9 +226,21 @@ func aggregate3Verdict(n int) func(raw []byte) (string, error) {
 // legs is the work only if both legs share a vantage point, and two regions
 // would be two different networks.
 func StartHeavyLane(ctx context.Context) {
-	if !coverageEnabled() {
-		return
-	}
+	// Runs in EVERY region, unlike the capability pass.
+	//
+	// It was gated on coverageEnabled() and therefore ran in us-east alone,
+	// which put a one-region number beside a Pooled figure averaged over
+	// three. Measured 2026-11-03, chainstack on ethereum: the tip probe
+	// reads 3.33 ms in us-east, 9.02 in eu-west and 41.97 in Singapore, so
+	// 18.1 averaged, against 4.29 for the heavy call in us-east. The page
+	// then showed a fifty-read call as four times faster than a block read.
+	// Like for like in us-east the order is the expected one: light 2.17,
+	// tip 3.33, heavy 4.29.
+	//
+	// Capability is different and stays in one region: a verdict on whether
+	// a method is routed does not change with distance, so asking it three
+	// times would spend credit to learn the same thing.
+
 	interval := heavyLaneInterval()
 	var eps []Endpoint
 	for _, e := range endpoints() {
@@ -297,7 +309,15 @@ func heavyLaneInterval() time.Duration {
 			return time.Duration(n) * time.Second
 		}
 	}
-	return time.Hour
+	// Two hours, not one, now that the lane runs in three regions.
+	//
+	// A pass costs four calls per endpoint, since each leg is primed. Three
+	// regions hourly would be 13,536 calls a day against 4,512 today; every
+	// three hours would hold today's total exactly but leave eight
+	// measurements per region per day, and a p90 over eight points is not a
+	// p90. Two hours is 1.5x today, which is 11,280 calls a month per
+	// provider per region against plans that allow 600,000 and up.
+	return 2 * time.Hour
 }
 
 func ethCallProbe(api string, n int) coverageProbe {

@@ -170,7 +170,7 @@ metric_panels:
   - id: cap_work_ms
     label: "Compute work"
     label_key: provider
-    metric: max by (provider) (ocb:rpc_api_work_heavy_milliseconds:mean_24h{chain="base"}) > 0
+    metric: avg by (provider) (ocb:rpc_api_work_heavy_milliseconds:mean_24h{chain="base"}) > 0
     unit: ms
     higher_is_better: false
     tab: false
@@ -644,64 +644,64 @@ providers:
     tier: keyed-heavy
     tag: "Multicall3, 50 state reads, on the pooled connection"
     queries:
-      p50: max(ocb:rpc_api_heavy_milliseconds:p50_24h{provider="alchemy",chain="base"})
-      p90: max(ocb:rpc_api_heavy_milliseconds:p90_24h{provider="alchemy",chain="base"})
-      p99: max(ocb:rpc_api_heavy_milliseconds:p99_24h{provider="alchemy",chain="base"})
-      mean: max(ocb:rpc_api_heavy_milliseconds:mean_24h{provider="alchemy",chain="base"})
-      sample_size: max(ocb:rpc_api_heavy:changes_24h{provider="alchemy",chain="base"})
-      series: max(ocb:rpc_api_heavy_milliseconds:mean_24h{provider="alchemy",chain="base"})
+      p50: avg(ocb:rpc_api_heavy_milliseconds:p50_24h{provider="alchemy",chain="base"})
+      p90: avg(ocb:rpc_api_heavy_milliseconds:p90_24h{provider="alchemy",chain="base"})
+      p99: avg(ocb:rpc_api_heavy_milliseconds:p99_24h{provider="alchemy",chain="base"})
+      mean: avg(ocb:rpc_api_heavy_milliseconds:mean_24h{provider="alchemy",chain="base"})
+      sample_size: sum(ocb:rpc_api_heavy:changes_24h{provider="alchemy",chain="base"})
+      series: avg(ocb:rpc_api_heavy_milliseconds:mean_24h{provider="alchemy",chain="base"})
   - slug: chainstack-heavy
     name: Chainstack
     tier: keyed-heavy
     tag: "Multicall3, 50 state reads, on the pooled connection"
     queries:
-      p50: max(ocb:rpc_api_heavy_milliseconds:p50_24h{provider="chainstack",chain="base"})
-      p90: max(ocb:rpc_api_heavy_milliseconds:p90_24h{provider="chainstack",chain="base"})
-      p99: max(ocb:rpc_api_heavy_milliseconds:p99_24h{provider="chainstack",chain="base"})
-      mean: max(ocb:rpc_api_heavy_milliseconds:mean_24h{provider="chainstack",chain="base"})
-      sample_size: max(ocb:rpc_api_heavy:changes_24h{provider="chainstack",chain="base"})
-      series: max(ocb:rpc_api_heavy_milliseconds:mean_24h{provider="chainstack",chain="base"})
+      p50: avg(ocb:rpc_api_heavy_milliseconds:p50_24h{provider="chainstack",chain="base"})
+      p90: avg(ocb:rpc_api_heavy_milliseconds:p90_24h{provider="chainstack",chain="base"})
+      p99: avg(ocb:rpc_api_heavy_milliseconds:p99_24h{provider="chainstack",chain="base"})
+      mean: avg(ocb:rpc_api_heavy_milliseconds:mean_24h{provider="chainstack",chain="base"})
+      sample_size: sum(ocb:rpc_api_heavy:changes_24h{provider="chainstack",chain="base"})
+      series: avg(ocb:rpc_api_heavy_milliseconds:mean_24h{provider="chainstack",chain="base"})
   - slug: getblock-heavy
     name: GetBlock
     tier: keyed-heavy
     tag: "Multicall3, 50 state reads, on the pooled connection"
     queries:
-      p50: max(ocb:rpc_api_heavy_milliseconds:p50_24h{provider="getblock",chain="base"})
-      p90: max(ocb:rpc_api_heavy_milliseconds:p90_24h{provider="getblock",chain="base"})
-      p99: max(ocb:rpc_api_heavy_milliseconds:p99_24h{provider="getblock",chain="base"})
-      mean: max(ocb:rpc_api_heavy_milliseconds:mean_24h{provider="getblock",chain="base"})
-      sample_size: max(ocb:rpc_api_heavy:changes_24h{provider="getblock",chain="base"})
-      series: max(ocb:rpc_api_heavy_milliseconds:mean_24h{provider="getblock",chain="base"})
+      p50: avg(ocb:rpc_api_heavy_milliseconds:p50_24h{provider="getblock",chain="base"})
+      p90: avg(ocb:rpc_api_heavy_milliseconds:p90_24h{provider="getblock",chain="base"})
+      p99: avg(ocb:rpc_api_heavy_milliseconds:p99_24h{provider="getblock",chain="base"})
+      mean: avg(ocb:rpc_api_heavy_milliseconds:mean_24h{provider="getblock",chain="base"})
+      sample_size: sum(ocb:rpc_api_heavy:changes_24h{provider="getblock",chain="base"})
+      series: avg(ocb:rpc_api_heavy_milliseconds:mean_24h{provider="getblock",chain="base"})
   - slug: quicknode-heavy
     name: Quicknode
     tier: keyed-heavy
     tag: "Multicall3, 50 state reads, on the pooled connection"
     queries:
-      p50: max(ocb:rpc_api_heavy_milliseconds:p50_24h{provider="quicknode",chain="base"})
-      p90: max(ocb:rpc_api_heavy_milliseconds:p90_24h{provider="quicknode",chain="base"})
-      p99: max(ocb:rpc_api_heavy_milliseconds:p99_24h{provider="quicknode",chain="base"})
-      mean: max(ocb:rpc_api_heavy_milliseconds:mean_24h{provider="quicknode",chain="base"})
-      sample_size: max(ocb:rpc_api_heavy:changes_24h{provider="quicknode",chain="base"})
-      series: max(ocb:rpc_api_heavy_milliseconds:mean_24h{provider="quicknode",chain="base"})
+      p50: avg(ocb:rpc_api_heavy_milliseconds:p50_24h{provider="quicknode",chain="base"})
+      p90: avg(ocb:rpc_api_heavy_milliseconds:p90_24h{provider="quicknode",chain="base"})
+      p99: avg(ocb:rpc_api_heavy_milliseconds:p99_24h{provider="quicknode",chain="base"})
+      mean: avg(ocb:rpc_api_heavy_milliseconds:mean_24h{provider="quicknode",chain="base"})
+      sample_size: sum(ocb:rpc_api_heavy:changes_24h{provider="quicknode",chain="base"})
+      series: avg(ocb:rpc_api_heavy_milliseconds:mean_24h{provider="quicknode",chain="base"})
   - slug: dwellir-heavy
     name: Dwellir
     tier: keyed-heavy
     tag: "Multicall3, 50 state reads, on the pooled connection"
     queries:
-      p50: max(ocb:rpc_api_heavy_milliseconds:p50_24h{provider="dwellir",chain="base"})
-      p90: max(ocb:rpc_api_heavy_milliseconds:p90_24h{provider="dwellir",chain="base"})
-      p99: max(ocb:rpc_api_heavy_milliseconds:p99_24h{provider="dwellir",chain="base"})
-      mean: max(ocb:rpc_api_heavy_milliseconds:mean_24h{provider="dwellir",chain="base"})
-      sample_size: max(ocb:rpc_api_heavy:changes_24h{provider="dwellir",chain="base"})
-      series: max(ocb:rpc_api_heavy_milliseconds:mean_24h{provider="dwellir",chain="base"})
+      p50: avg(ocb:rpc_api_heavy_milliseconds:p50_24h{provider="dwellir",chain="base"})
+      p90: avg(ocb:rpc_api_heavy_milliseconds:p90_24h{provider="dwellir",chain="base"})
+      p99: avg(ocb:rpc_api_heavy_milliseconds:p99_24h{provider="dwellir",chain="base"})
+      mean: avg(ocb:rpc_api_heavy_milliseconds:mean_24h{provider="dwellir",chain="base"})
+      sample_size: sum(ocb:rpc_api_heavy:changes_24h{provider="dwellir",chain="base"})
+      series: avg(ocb:rpc_api_heavy_milliseconds:mean_24h{provider="dwellir",chain="base"})
   - slug: blockmachine-heavy
     name: BlockMachine
     tier: keyed-heavy
     tag: "Multicall3, 50 state reads, on the pooled connection"
     queries:
-      p50: max(ocb:rpc_api_heavy_milliseconds:p50_24h{provider="blockmachine",chain="base"})
-      p90: max(ocb:rpc_api_heavy_milliseconds:p90_24h{provider="blockmachine",chain="base"})
-      p99: max(ocb:rpc_api_heavy_milliseconds:p99_24h{provider="blockmachine",chain="base"})
-      mean: max(ocb:rpc_api_heavy_milliseconds:mean_24h{provider="blockmachine",chain="base"})
-      sample_size: max(ocb:rpc_api_heavy:changes_24h{provider="blockmachine",chain="base"})
-      series: max(ocb:rpc_api_heavy_milliseconds:mean_24h{provider="blockmachine",chain="base"})
+      p50: avg(ocb:rpc_api_heavy_milliseconds:p50_24h{provider="blockmachine",chain="base"})
+      p90: avg(ocb:rpc_api_heavy_milliseconds:p90_24h{provider="blockmachine",chain="base"})
+      p99: avg(ocb:rpc_api_heavy_milliseconds:p99_24h{provider="blockmachine",chain="base"})
+      mean: avg(ocb:rpc_api_heavy_milliseconds:mean_24h{provider="blockmachine",chain="base"})
+      sample_size: sum(ocb:rpc_api_heavy:changes_24h{provider="blockmachine",chain="base"})
+      series: avg(ocb:rpc_api_heavy_milliseconds:mean_24h{provider="blockmachine",chain="base"})

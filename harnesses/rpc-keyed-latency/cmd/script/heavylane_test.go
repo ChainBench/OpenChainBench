@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"strings"
 	"testing"
 	"time"
 )
@@ -29,11 +30,20 @@ import (
 func TestHeavyLaneDefaultCadenceIsAffordable(t *testing.T) {
 	os.Unsetenv("RPC_KEYED_HEAVY_LANE_SECONDS")
 	got := heavyLaneInterval()
-	if got != time.Hour {
-		t.Fatalf("default cadence %s, want 1h", got)
+	if got != 2*time.Hour {
+		t.Fatalf("default cadence %s, want 2h", got)
 	}
-	// Two probes, one region, a provider with eight EVM cells.
-	perMonth := int(2 * (30 * 24 * time.Hour / got) * 8)
+	// FOUR calls per endpoint per pass, not two: each leg is primed, so a
+	// leg costs an unmeasured call plus the measured one. The first version
+	// of this guard counted two and therefore allowed twice what it meant
+	// to.
+	//
+	// Still expressed per REGION, because that is how the budgets are
+	// written, and the lane now runs in all three rather than in us-east
+	// alone. At two hours a provider's eight EVM cells cost 11,520 a month
+	// per region, which is why the cadence moved from one hour when the
+	// region count tripled.
+	perMonth := int(4 * (30 * 24 * time.Hour / got) * 8)
 	// Infura has the tightest budget that actually carries EVM cells
 	// (370,000 per region per month) and the tip probe already spends about
 	// 173,000 of it.
@@ -83,5 +93,50 @@ func TestHeavyLaneProbesAreTheSameTwoAsTheCapabilityPass(t *testing.T) {
 	hp, _ := heavy.body(0)
 	if lp == hp {
 		t.Fatal("both legs send the same payload: there is no work term to measure")
+	}
+}
+
+// La voie lourde ne doit PAS etre bornee a la region de la passe de capacite.
+//
+// Elle l'etait, et le board en a souffert d'une maniere qui ne ressemblait pas
+// a un bug: l'onglet Heavy montrait us-east seul a cote d'un Pooled moyenne
+// sur trois regions. Mesure du 2026-11-03, chainstack sur ethereum, la sonde
+// de tete lit 3,33 ms en us-east, 9,02 en eu-west et 41,97 a Singapour, soit
+// 18,1 une fois moyennee, contre 4,29 pour l'appel lourd en us-east. La page
+// affirmait donc qu'un appel de cinquante lectures etait quatre fois plus
+// rapide qu'une lecture de bloc.
+//
+// Le test ne peut pas lancer la goroutine, mais il peut verifier que la
+// fonction ne consulte plus la porte de la couverture. Une regression ici
+// serait invisible autrement: la voie tournerait, publierait, et seul le
+// rapport entre deux onglets trahirait le perimetre.
+func TestHeavyLaneIsNotGatedOnTheCoverageRegion(t *testing.T) {
+	src, err := os.ReadFile("heavycall.go")
+	if err != nil {
+		t.Fatalf("heavycall.go illisible: %v", err)
+	}
+	body := string(src)
+	i := strings.Index(body, "func StartHeavyLane(")
+	if i < 0 {
+		t.Fatal("StartHeavyLane introuvable")
+	}
+	rest := body[i:]
+	j := strings.Index(rest, "go func()")
+	if j < 0 {
+		t.Fatal("corps de StartHeavyLane introuvable")
+	}
+	// Les lignes de commentaire sont retirees avant la recherche: le
+	// commentaire qui explique le defaut NOMME coverageEnabled(), et la
+	// premiere version de ce test se declenchait sur sa propre
+	// documentation.
+	var code []string
+	for _, line := range strings.Split(rest[:j], "\n") {
+		if t := strings.TrimSpace(line); !strings.HasPrefix(t, "//") {
+			code = append(code, line)
+		}
+	}
+	if strings.Contains(strings.Join(code, "\n"), "coverageEnabled()") {
+		t.Fatal("la voie lourde est de nouveau bornee a la region de la couverture: " +
+			"l onglet Heavy afficherait une region a cote d un Pooled qui en moyenne trois")
 	}
 }
