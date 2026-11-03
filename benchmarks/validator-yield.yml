@@ -2,10 +2,10 @@
 
 slug: validator-yield
 number: "026"
-title: Highest staking yield, live validator net APR across 7 PoS chains
-seo_title: "Highest staking yield 2026: SOL, ETH, HYPE, ADA, SUI, ATOM, AVAX"
-seo_description: "Highest staking yield ranked live by net validator APR. Solana top 200 (Stakewiz total APY, MEV in), Hyperliquid active set, Ethereum consensus layer, Cardano top 50 pools, Sui validators, Cosmos Hub top 200, Avalanche P-Chain top 100. Net APR, uptime and commission included."
-subtitle: Median validator net yield (APR multiplied by uptime) in basis points across 7 PoS chains. Solana top 200 by stake, Ethereum network-average consensus APR, Hyperliquid active set, Cardano top 50 pools, Sui active validators, Cosmos Hub top 200, Avalanche P-Chain top 100.
+title: Highest staking yield, live net APR by proof-of-stake chain
+seo_title: "Highest staking yield 2026: {{best_name}} at {{best_p50}} APR"
+seo_description: "{{best_name}} pays the highest staking yield today, {{best_p50}} median net APR. Live ranking of {{declared_count}} PoS chains incl. Solana, Ethereum, NEAR, ICP, Gram (TON), Aptos, Sui, Cardano, net of commission."
+subtitle: Median net staking yield in basis points across {{count}} proof-of-stake chains, after validator commission and, where the chain exposes it, downtime. Each chain's figure comes from its own on-chain reward data, keyless, every 5 minutes.
 category: Blockchains
 status: live
 metric: Net yield
@@ -14,115 +14,185 @@ higher_is_better: true
 row_noun: { one: chain, many: chains }
 
 disclaimer: |
-  Honest scope. (1) `net_yield = gross_apr × uptime`. NOT "yield net of MEV", Stakewiz `total_apy` already folds Jito MEV into gross, MEV is INCLUDED. `mev_share_bps` exists for transparency, not subtraction. (2) Solana median is dragged by ~42 vals at 0% APY (commission 100% or zero leader slots). (3) Hyperliquid: centralised sequencer, no separate MEV layer, ~30 vals only. (4) Ethereum: one network-average consensus-layer APR from the beacon spec formula, execution tips and MEV excluded.
+  Nominal yield in the staked token, not real yield: a 19% APR on a token that inflates 12% a year is worth less than it looks, and price moves dominate both. MEV is included on Solana only and excluded on Ethereum. ICP is one neuron profile (2 year dissolve delay), Algorand one opt-in solo node, Ethereum one network average. Stellar and Somnia are not ranked, see the methodology.
 
 provider_notes:
   solana: "MEV inc."
   ethereum: "MEV excl."
   hyperliquid: "no MEV"
+  icp: "2y neuron"
+  algorand: "own node"
+  gram: "pool, fee netted"
+  cronos: "Cronos POS"
+
+excluded_providers:
+  - { name: Stellar, reason: "no staking: SCP validators are unpaid and XLM inflation was removed in protocol 12 (2019), so there is no yield to measure" }
+  - { name: Somnia, reason: "fee-only rewards paid by a protocol call that emits no event; no keyless on-chain way to isolate the inflow", since: "2026-11-03" }
 
 seo_intro: |
-  This benchmark answers the question every staker asks when
-  choosing a chain or a validator. what is the live net yield I
-  would actually earn today, after commission, after downtime,
-  including MEV where the chain has it. Marketing pages quote
-  "up to 7% APY" without specifying validator, uptime
-  assumption, or whether MEV tips are folded in. This page
-  measures the reality on-chain across three yield surfaces with
-  fundamentally different economics: Solana's competitive,
-  ~3000-validator, MEV-heavy stake market (top 200 tracked by
-  activated stake), Hyperliquid's permissioned, ~30-validator,
-  no-MEV centralised-sequencer model, and Ethereum's ~1M-validator
-  beacon chain, published as a single network-average
-  consensus-layer solo validator figure with execution tips and
-  MEV excluded. The headline number per
-  chain is the median net yield in basis points, where 1% APY =
-  100 bps. Per-validator gauges expose gross APR, commission,
-  uptime, MEV share and dollar stake so the reader can drill from
-  "Solana median 5.6%" down to "Helius at 6.0%, Figment at 5.4%,
-  these 42 validators at 0% because their commission is set to
-  100% or they have no leader slots this epoch."
+  This benchmark answers the question every staker asks when choosing
+  a chain: what yield would I actually keep today, after the
+  validator's commission and, where the chain records it, after
+  downtime. Marketing pages quote "up to X% APY" without saying which
+  validator, which lockup or whether the figure is compounded. This
+  page reads each chain's own reward data instead, for {{declared_count}}
+  proof-of-stake chains: the measured reward paid per epoch on
+  Cardano, the growth of each staking pool's exchange rate on Sui,
+  each validator's on-chain potential reward on Avalanche, the live
+  reward rate in the staking config on Aptos, the inflation and
+  stake from the protocol config on NEAR, the per-block staker reward
+  on Kaia, proposer payouts on Algorand, the daily voting reward pool
+  on ICP, issuance over bonded stake on Cosmos Hub, Sei and Cronos,
+  nominator pool returns on Gram (TON), Stakewiz on Solana, the
+  validator summaries on Hyperliquid and the consensus spec formula
+  on Ethereum. The headline per chain is the median across its
+  tracked validators, in basis points of APR (1% = 100 bps), simple
+  interest, no compounding.
 
 abstract: |
-  We compare validator net yield across chains by polling each
-  chain's canonical yield source every 5 minutes and computing
-  `net_yield_bps = gross_apr_bps × uptime_fraction`. For Solana,
-  the source is the Stakewiz validators API
-  (`api.stakewiz.com/validators`), which exposes `total_apy` that
-  already aggregates staking inflation rewards + Jito MEV tips
-  into a single APR; Jito Kobe (`kobe.mainnet.jito.network`)
-  enriches each validator with the MEV-share split for the
-  transparency gauge. For Hyperliquid, the source is
-  `/info validatorSummaries` whose `predictedApr.day` is staking
-  yield only (no MEV layer exists, Hyperliquid's centralised
-  sequencer captures order flow value upstream). For Ethereum, the
-  source is the live total beacon-chain effective balance from
-  ultrasound.money (`/api/v2/fees/effective-balance-sum`), plugged
-  into the consensus spec reward formula (base reward factor 64)
-  to give the network-average nominal APR for a 32 ETH solo
-  validator. The Ethereum figure is consensus layer only:
-  attestation, proposer and sync committee rewards in expectation.
-  Execution tips and MEV are excluded, so it understates what a
-  MEV-Boost proposer realizes, and it is not a liquid staking APY.
-  Ethereum ships as one network-average series rather than
-  per-validator gauges: the active set is ~1M validator indices,
-  and consensus rewards are uniform per 32 ETH increment, so the
-  network average equals the solo validator number. Solana is capped
-  to the top 200 validators by activated stake to keep Prometheus
-  cardinality bounded (the full set is ~3000); Hyperliquid
-  exposes all ~30 active. The per-chain leaderboard number is
-  `ocb_chain_median_net_yield_bps{chain}`, the median across the
-  per-validator gauges. p90 / p99 via an instant
-  `quantile()` across the tracked validators surface the right tail (best
-  net yield among those tracked). Caveats. (a) Solana's median is
-  dragged below the modal value by ~42 validators currently
-  emitting 0 APY, commission set to 100% or no leader slots this
-  epoch, both legitimate states that still count as "stakeable
-  but currently unproductive". (b) Stakewiz `total_apy` is itself
-  a 30-epoch trailing estimate, not a forward guarantee. (c)
-  Hyperliquid jails ~4 validators at any given time (consensus
-  fault), and those land in the dataset with `jailed=1` and
-  `predictedApr=0`. We surface them rather than filtering so the
-  honest count of active validators stays visible.
+  We compare staking yield across proof-of-stake chains by polling
+  each chain's canonical reward data every 5 minutes, keyless, and
+  publishing per-validator gauges plus a chain median. The common
+  definition is the yield a delegator keeps: gross reward rate times
+  (1 - validator commission), times uptime where the chain exposes
+  it. Gross is either measured (Cardano epoch rewards paid over
+  active stake, Sui pool exchange rate growth over 30 epochs,
+  Avalanche potentialReward over each validator's staking period,
+  Algorand proposer payouts, Gram nominator pool returns, Solana
+  Stakewiz trailing APY, Hyperliquid predictedApr) or read from the
+  protocol's own parameters (Aptos rewards_rate per 2 hour epoch,
+  NEAR supply times max inflation over total stake, Kaia per-block
+  staker reward over staked KAIA, Cosmos Hub, Sei and Cronos annual
+  issuance times one minus the community tax over bonded tokens,
+  ICP daily voting reward pool over deciding voting power, Ethereum
+  consensus spec reward on the live effective balance). On x/mint
+  chains the issuance is corrected for real block speed, because the
+  module mints a fixed amount per block sized for a block time the
+  chain no longer has: on Cosmos Hub, 5.7 second blocks against a
+  7.2 second parameter raise real issuance from 10% to about 12.6% of
+  supply, which is why the Hub reads well above the 15% that
+  explorers quote. Cohorts: Solana top 200 by stake, Cosmos Hub top
+  200 bonded, Avalanche top 100, Cardano top 50 pools, NEAR top 200
+  staking pools, all active on Hyperliquid, Sui, Sei and Cronos,
+  delegation pools on Aptos, council nodes with public delegation on
+  Kaia, verified nominator pools on Gram, and one synthetic profile
+  on Ethereum (32 ETH solo validator), Algorand (incentive-eligible
+  node) and ICP (NNS neuron at the 2 year maximum dissolve delay, no
+  age bonus). Stellar has no staking and is not ranked. Somnia pays
+  stakers half of gas fees through a protocol call that emits no
+  event, which leaves no keyless way to measure it, so it is not
+  ranked either. Caveats: nominal APR in the staked token, not real
+  yield after inflation; MEV inside Solana's figure only; fees inside
+  the measured figures and outside the formula ones.
 
 methodology:
-  - "Sources. Solana primary: `GET api.stakewiz.com/validators` (free, no key). `total_apy` already includes inflation + Jito MEV tips. Solana enrichment: `GET kobe.mainnet.jito.network/api/v1/validators` for MEV-share split. Hyperliquid: `POST api.hyperliquid.xyz/info {type:validatorSummaries}`, field `predictedApr.day` × `uptimeFraction`. Prices: CoinGecko (SOL/USD), Hyperliquid `metaAndAssetCtxs` (HYPE/USD)."
-  - "Cadence. 5-minute scrape interval per chain. Validator-level metrics (APR, commission, uptime, stake) move on epoch boundaries (~2 days on Solana, ~30 seconds on Hyperliquid), so sub-minute polling would add Prom cardinality cost without information."
-  - "Net yield formula. `net_yield_bps = gross_apr_bps × uptime_fraction`. Slashing is treated as negligible in v1, Solana has never slashed in production, and Hyperliquid's jailed-validator state is surfaced as `ocb_validator_jailed{chain, validator}=1` separately rather than amortised into the APR. Both chains report APR (simple yield), not APY (compounded); the bench reports APR-as-bps to match what the upstream APIs publish, no compounding adjustment applied."
-  - "Cap. Solana exposes ~3000 active validators across the full set; the bench caps to the top 200 by `activated_stake` (USD-weighted) to keep Prom cardinality at ~230 series total across the two chains. The top 200 represent ~90% of staked SOL by value, so the median is representative of where real stake sits, not of the long tail of <1k SOL validators. Hyperliquid exposes ~30 active validators total, all are tracked."
-  - "Median (chain-level headline). `ocb_chain_median_net_yield_bps{chain}` is computed harness-side over the per-validator gauges every scrape, not derived from Prom. This includes the ~42 Solana validators currently at 0% APY (commission 100% or no leader slots), which materially pulls the Solana median down vs the modal active-validator yield. A reader who wants 'yield I would get if I picked a sane validator' should look at p75 or higher on the Solana distribution, not the chain median."
-  - "MEV treatment. Solana: MEV tips from Jito are already folded into Stakewiz `total_apy`. `ocb_validator_mev_share_bps` is exposed for transparency (a reader sees 'Helius APR 600 bps of which 80 bps MEV') but NOT subtracted to produce a 'staking-only' figure. Hyperliquid: no separate MEV layer (centralised sequencer captures order-flow value at the protocol level), so the MEV gauge is 0 by convention."
-  - "Ethereum. Source: `GET ultrasound.money/api/v2/fees/effective-balance-sum` (free, no key), live total beacon-chain effective balance. APR = 64 × epochs_per_year / sqrt(total_gwei), the consensus spec reward formula at 100% participation (realized ~99.5%, under 2 bps of drift). One network-average series: consensus rewards are uniform per 32 ETH increment, so the average equals the solo validator nominal APR. Execution tips and MEV excluded. Price: CoinGecko (ETH/USD)."
-  - "Jailed / inactive handling. Hyperliquid: `jailed=1` validators (currently 4) land in the dataset with `predictedApr=0`, so `net_yield_bps=0`. Solana: ~42 validators report `total_apy=0`. Live data shows two causes: commission 100% (operator routes everything to themselves, delegators get 0) or zero leader slots this epoch (no block-production rewards). Both legitimate transient states, both count toward total + median."
-  - "Excluded by design. Per-validator Ethereum gauges (~1M indices; beacon-node ingestion, v2). Ethereum execution tips + MEV (per-relay MEV-Boost scraping needed; published figure is consensus only). Lido/RocketPool/Coinbase are products with fees, not validator yields (separate bench). Polkadot v2. Cosmos Hub, Avalanche, Cardano, Sui now tracked."
+  - "Definition. net_yield_bps = gross APR × (1 − commission) × uptime where the chain exposes uptime, in basis points (1% = 100 bps), simple APR. Gross is measured where the chain records realized rewards and read from protocol parameters where it does not. The chain headline is ocb_chain_median_net_yield_bps, the median over the tracked cohort, computed in the harness every scrape."
+  - "Cadence and cohort hygiene. One scrape per chain every 5 minutes. A validator that leaves a cohort has its series deleted on the next scrape, so p90, p99 and the mean never read a departed validator. Prices come from one batched CoinGecko call for the USD stake column only; the yield never depends on a price."
+  - "Solana. Stakewiz `api.stakewiz.com/validators`: total_apy, a 30 epoch trailing figure that already folds in Jito MEV tips and is net of commission, times uptime. Top 200 by activated stake. Commission is read in basis points (Stakewiz switched units when Solana moved commission to bps)."
+  - "Hyperliquid. `POST api.hyperliquid.xyz/info {type: validatorSummaries}`: predictedApr.day times stats[day].uptimeFraction, all active validators, jailed ones at 0. No MEV layer at validator level."
+  - "Ethereum. ultrasound.money live total effective balance into the consensus spec reward formula, APR = 64 × epochs per year / sqrt(total gwei): one network-average row for a 32 ETH solo validator. Execution tips and MEV excluded. Not a liquid staking APY."
+  - "Cardano. Koios epoch_info: total rewards paid for the latest computed epoch × 73 epochs / active stake, the measured network return after reserve depletion, treasury cut, pledge influence and saturation. Per pool, net = gross × (1 − margin) for the top 50 registered pools by active stake; the 340 ADA fixed fee is not subtracted."
+  - "Sui. Sui GraphQL (public JSON-RPC was retired): each validator's staking pool exchange rate (SUI per pool token) now versus 30 epochs ago, annualized over the elapsed time. Commission is paid inside the pool, so the figure is already the delegator's net."
+  - "Avalanche. P-Chain platform.getCurrentValidators: gross = potentialReward / stake × year / staking period, the protocol reward for that validator's own duration and start supply. Net = gross × uptime × (1 − delegation fee). Top 100 by stake; validators with a 100% delegation fee count at 0 for delegators."
+  - "Aptos. Fullnode REST: StakingRewardsConfig.rewards_rate (2.60% a year after the April 2026 cut) per 2 hour epoch. Cohort: active validators that are delegation pools. Net = gross × this epoch's successful / total proposals × (1 − operator commission)."
+  - "NEAR. FastNEAR RPC: total supply × max inflation (2.5%) × (1 − treasury share) / total validator stake. Net = gross × the protocol online factor (0 under 90% online, full at 99%) × (1 − pool fee). Top 200 validators by stake that are staking pool contracts. Realized previous epoch checked at 5.47% gross against 5.52% formula on 2026-11-03."
+  - "Kaia. Endpoint node RPC: kaia_getRewards per-block stakers share × blocks per year (measured over 10 000 blocks) / total staked KAIA from kaia_getStakingInfo. Cohort: council nodes with a public delegation contract, net = gross × (1 − its commissionRate)."
+  - "Algorand. algod (Nodely): blocks per year × mean proposer payout of incentive-eligible blocks / online stake. One row: the yield of running your own participating node with 30k to 70M ALGO, opted in. No delegation, no commission; holding ALGO without a node earns nothing."
+  - "ICP. ICP dashboard API (NNS governance metrics): 365.25 × daily voting reward pool × 3 / total deciding voting power. One row: a new neuron at the 2 year maximum dissolve delay (bonus 3), no age bonus, voting on everything. Shorter delays earn far less (2 weeks: about a third). Rewards accrue as maturity, subject to maturity modulation at disbursement."
+  - "Gram (TON). TonAPI staking pools: the realized nominator APY of each verified, funded, non-liquid pool (TON Whales and Tonkeeper queues), already net of the pool fee, de-compounded to APR over the 131 072 second validation cycle. Liquid staking (Tonstakers) excluded like Lido on Ethereum."
+  - "Cosmos Hub, Sei, Cronos. LCD REST: annual issuance × (1 − community tax) / bonded tokens, net = gross × (1 − commission), jailed at 0. Hub and Cronos issuance = annual_provisions × real blocks per year / the mint blocks_per_year parameter; Sei issuance = its token release schedule for the current year. Cronos here is the Cronos POS chain where CRO is staked."
+  - "Not ranked. Stellar has no staking. Somnia rewards are half of gas fees, paid by a protocol call at each 5 minute epoch that emits no event, with eth_getLogs capped at 1000 blocks; the fee inflow cannot be isolated from stakes and claims keylessly. Third parties quote Somnia's own dashboard, between 0.06% and 0.25%."
 
 findings:
-  - "{{best_name}} currently leads at {{best_p50}} (median net yield, 24 h) across {{count}} measured chains. The cross-chain gap is structural: Solana's ~5.6% median reflects PoS inflation + Jito MEV tips minus average ~24% validator commission, while Hyperliquid's ~2.2% reflects staking-only rewards on a deflationary HYPE token with no MEV layer to top it up."
-  - "{{name:solana}} median sits at {{p50:solana}} (24 h) across the top 200 validators by stake. The headline is dragged down by ~42 validators currently emitting 0% APY, commission set to 100% or no leader slots in the current epoch. The modal active Solana validator is closer to ~6.0%; reading the chain median requires understanding that ~21% of the tracked set is structurally non-yielding right now."
-  - "{{name:hyperliquid}} returns {{p50:hyperliquid}} (median, 24 h) across all 31 active validators. 4 are currently jailed (consensus fault, `jailed=1`, `predictedApr=0`) which pulls the median; the active-set median is closer to 2.25% (top operators at ~225 bps cluster very tightly because Hyperliquid's reward model distributes evenly across non-jailed validators)."
-  - "Top Solana validators by stake: Figment ($1.36B), Helius ($1.29B), Binance Staking ($1.16B), Jupiter ($1.10B), Ledger by Figment ($794M). These are the institutional and exchange validators where delegated stake concentrates; their individual net yields cluster around the chain modal, not the median."
-  - "Top Hyperliquid validators by stake: the four Hyper Foundation validators (1-4) collectively control >$12.8B in staked HYPE, with Anchorage by Figment ($1.43B) and Nansen × HypurrCollective ($1.38B) the largest non-foundation operators. The foundation concentration is much higher than on Solana, a structural difference between a permissioned ~30-validator set and a permissionless ~3000-validator one."
-  - "{{name:ethereum}} publishes {{p50:ethereum}} as a single network-average consensus-layer APR, computed from the beacon spec reward formula on the live total effective balance (~40M ETH staked). The figure moves inversely with the square root of total stake and excludes execution tips and MEV, so a proposer running MEV-Boost realizes more in practice. It is a solo validator nominal APR, not a liquid staking APY: Lido or Rocket Pool quote lower because product fees are netted out."
+  - "{{best_name}} leads at {{best_p50}} median net yield across {{count}} chains. The board spans an order of magnitude, from high-inflation chains paying stakers in new tokens to chains whose issuance has decayed or was cut by governance (Aptos in 2026, NEAR in 2025), so the ranking is a ranking of nominal yield in each chain's own token, not of real return."
+  - "{{name:cosmos-hub}} reads {{p50:cosmos-hub}}, above the ~15% explorers quote, because its mint module sizes per-block issuance for 7.2 second blocks while the chain produces one every 5.7 seconds: real issuance runs near 12.6% of supply against a nominal 10%. The same correction is applied to Cronos, where blocks are close to the parameter."
+  - "{{name:icp}} at {{p50:icp}} is the best case a new staker can pick, a neuron locked for the 2 year maximum. The same ICP at the 2 week minimum dissolve delay earns about a third of it, which makes ICP the board's clearest case of yield bought with lockup."
+  - "{{name:solana}} sits at {{p50:solana}} across the top 200 validators, MEV included. The median carries validators at 0% (commission set to 100% or no leader slots this epoch), so a delegator choosing a healthy validator lands closer to the p90 of {{p90:solana}}."
+  - "{{name:ethereum}} publishes {{p50:ethereum}} as one network-average consensus-layer APR for a 32 ETH solo validator. Execution tips and MEV are excluded, so a MEV-Boost proposer realizes more, and liquid staking products quote less after their fees."
 
 faq:
-  - q: "What is validator net yield?"
-    a: "Net yield is the actual APR a staker earns on a given validator, computed as `gross_apr × uptime_fraction`. Gross APR is what the chain's reward formula would pay if the validator never missed a slot; uptime is the fraction of slots the validator actually voted/produced in the measurement window. For Solana the bench uses Stakewiz's `total_apy` for gross (which already includes Jito MEV tips), multiplied by the validator's reported uptime. For Hyperliquid it uses `predictedApr.day` × `stats[day].uptimeFraction` from `/info validatorSummaries`. The unit is basis points (1% = 100 bps) to stay consistent with the rest of OpenChainBench."
-  - q: "Why does Solana's median look lower than the typical 6-7% I see quoted elsewhere?"
-    a: "Two reasons. (1) ~42 of the top 200 tracked Solana validators are currently emitting 0% APY, some have commission set to 100% (operator takes everything, delegator gets 0), others have zero leader slots in the current epoch (no block-production rewards earned during the measurement window). These are legitimate, transient states that count toward the chain's median by definition. (2) Average validator commission on the tracked set is ~24%, which already eats into the headline 'staking APY' number quoted by chain marketing. If you want 'yield I'd get if I picked a sane validator', look at the per-validator gauges or wait for the leaderboard to expose p75+, those numbers cluster around 5.9-6.0% net."
-  - q: "Why is Hyperliquid lower than Solana?"
-    a: "Yes, the direction is what it looks like: Solana ~5.6% > Hyperliquid ~2.2%. Three reasons. (1) Hyperliquid pays staking rewards in HYPE only, there is no inflation analogue to Solana's ~5% protocol issuance. (2) No MEV layer exists at the validator level (the centralised sequencer captures order-flow value at protocol level, not validator level), so there's no MEV-tip surcharge to add. (3) The reward pool is split across ~30 validators evenly when active, so per-validator APR is structurally flat, top operators all sit at ~225 bps with very tight spread. A staker chooses a Hyperliquid validator on uptime / jail risk / governance alignment, not on yield differentiation."
-  - q: "How is MEV treated in this benchmark?"
-    a: "MEV is INCLUDED in the gross APR figure, not subtracted from it. For Solana, Stakewiz's `total_apy` already folds Jito MEV tips into the headline APR by design, this bench inherits that aggregation rather than re-computing. The `ocb_validator_mev_share_bps` gauge is exposed separately for transparency (so you can see e.g. 'Helius's 600 bps APR is 80 bps MEV + 520 bps staking') but it does NOT get subtracted to produce a 'staking-only' number. For Hyperliquid, no separate MEV layer exists at validator level (the centralised sequencer captures value upstream), so the MEV gauge is reported as 0 by convention. This is the same `net_yield` definition every staking dashboard uses, Stakewiz, Solana Beach, Hyperliquid Stats, etc."
-  - q: "Why are some Solana validators at 0% APY?"
-    a: "Two legitimate causes, both visible in the live data. (1) Commission set to 100%: the validator operator has configured their vote account to route 100% of staking rewards to themselves, so delegators receive 0%. This is common for operators running their own treasury stake (Binance, exchange custody, etc.) where 'delegators' is a fiction, there's only the operator's own SOL. (2) Zero leader slots in the current epoch: Solana's leader schedule is stake-weighted but randomised per epoch, so a small validator can statistically draw zero slots in a given ~2-day epoch and earn zero block-production rewards. Both states are transient: commission can be lowered, leader slots cycle every epoch. The bench surfaces them as 0 rather than filtering because they ARE part of the live validator set."
+  - q: "Which proof-of-stake chain has the highest staking yield right now?"
+    a: "{{best_name}} leads at {{best_p50}} median net yield (basis points of APR, 100 bps = 1%) across {{count}} ranked chains, measured from on-chain reward data every 5 minutes. The ranking is nominal yield in each chain's own token: a high APR on a token with high issuance is partly dilution paid back to stakers, so compare it with the chain's inflation and with price risk before reading it as income."
+  - q: "What is net staking yield on this page?"
+    a: "The APR a delegator keeps: the chain's gross reward rate times (1 minus the validator's commission), times uptime where the chain records it (Solana, Hyperliquid, Avalanche, Aptos proposal success, NEAR online ratio). It is simple APR, not compounded APY, in basis points. Gross is measured where the chain records realized rewards (Cardano, Sui, Avalanche, Algorand, Gram, Solana, Hyperliquid) and read from protocol parameters elsewhere (Aptos, NEAR, Kaia, Cosmos Hub, Sei, Cronos, ICP, Ethereum)."
+  - q: "Why is Cosmos Hub higher here than on explorers?"
+    a: "Explorers compute inflation × (1 - community tax) / bonded ratio, about 15.5% today. The Hub's mint module pays annual_provisions / blocks_per_year per block, and blocks_per_year (4.36M, a 7.2 second block) no longer matches the chain's real 5.7 second blocks, so the Hub mints about 26% more per year than its nominal 10% inflation. We checked it against supply growth: 12.38 ATOM minted per block, exactly the per-block provision. The bench uses real blocks per year, which puts gross issuance yield near 19.6% and the median validator, after 5% commission, at {{p50:cosmos-hub}}."
+  - q: "How is the ICP staking yield calculated?"
+    a: "ICP holders stake into NNS neurons and earn voting rewards, not validator rewards. The NNS pays a daily pool across the deciding voting power of all eligible neurons, and a neuron's voting power is its stake times a dissolve delay bonus (up to 3 at the 2 year maximum since Mission 70) times an age bonus (up to 1.25). The page publishes one profile: a new neuron at the 2 year maximum, no age bonus, voting on everything, at {{p50:icp}}. Rewards accrue as maturity, and disbursing maturity applies the NNS maturity modulation (about plus or minus 5%)."
+  - q: "Does Algorand pay staking rewards?"
+    a: "Only to accounts that run their own participating node. Since consensus incentives (protocol v40, January 2025) each block pays its proposer a bonus plus half the block's fees, if the proposer opted in as incentive eligible (2 ALGO fee, 30k to 70M ALGO online). The page computes blocks per year × the average payout of eligible blocks / total online stake, {{p50:algorand}} today. There is no delegation and no commission, and ALGO sitting in a wallet earns nothing at protocol level."
+  - q: "How is Gram (TON) staking yield measured?"
+    a: "TON has no native delegation: holders stake through nominator pool contracts that fund an elected validator. The page takes TonAPI's realized nominator APY for the verified, funded, non-liquid pools (TON Whales and Tonkeeper queues), which is already net of the pool fee, and de-compounds it to APR over the 131 072 second validation cycle, {{p50:gram}} median. Stake is locked for a full cycle to be elected for half of it, so the per-capital figure is about half the elector's per-elected-stake rate. Liquid staking (Tonstakers) is excluded, as Lido is on Ethereum."
+  - q: "Why are Stellar and Somnia not on the board?"
+    a: "Stellar has no staking. Its consensus protocol does not pay validators and XLM inflation was removed in 2019, so there is no yield to rank. Somnia does pay stakers, half of all gas fees with no issuance, but the protocol deposits them through a call that emits no event at each 5 minute epoch, and its public RPC caps log queries at 1000 blocks. The inflow cannot be separated from stakes and claims without an indexer, and published estimates (0.06% to 0.25%) come from Somnia's own dashboard. We would rather show no row than a guessed one."
   - q: "What does the Ethereum number measure?"
-    a: "It is the network-average consensus-layer APR for a 32 ETH solo validator, computed from the beacon chain spec reward formula on the live total effective balance published by ultrasound.money. It covers attestation, proposer and sync committee rewards in expectation, at 100% participation (realized participation runs about 99.5%, a drift of under 2 bps). It EXCLUDES execution-layer tips and MEV, so a proposer running MEV-Boost earns more in practice. It is NOT a liquid staking APY: Lido or Coinbase quotes are product rates with their own fee schedules netted out. Ethereum ships as one aggregate series rather than per-validator gauges because the active set is about 1M validator indices and consensus rewards are uniform per 32 ETH increment, so the network average equals the solo validator nominal APR. Per-validator Ethereum gauges and MEV inclusion require beacon-node or relay ingestion and stay on the v2 roadmap."
-  - q: "Where can I find reliable Solana validator APY data?"
-    a: "The two sources this bench treats as canonical, both free and key-less. Stakewiz (`api.stakewiz.com`) is a community-maintained Solana validator analytics service that ingests on-chain vote-account state, commission history, leader schedule and reward distribution, then publishes a clean `/validators` JSON with `total_apy` already computed as a 30-epoch trailing estimate. Jito Kobe (`kobe.mainnet.jito.network`) is Jito Labs' public API exposing per-validator MEV-tip earnings broken down by epoch. Most Solana staking dashboards (Solana Beach, Marinade UI, etc.) consume one or both, so numbers quoted across sites usually trace back to the same upstream; this bench polls them directly every 5 minutes and republishes the per-validator gauges."
-  - q: "How many Solana validators are there, and which ones matter for staking?"
-    a: "The full active set is ~3000 validators, but stake concentrates hard: the top 200 by activated stake hold ~90% of staked SOL by USD value, which is why this bench tracks exactly that cohort (also a Prometheus cardinality budget: ~1.6k series for 200 validators vs ~21k for the full set). For a delegator the practical universe is smaller still, the long tail of <1k-SOL validators has negligible delegate base and statistically draws few leader slots per epoch. The chain median shown here reflects where real delegated stake sits; the cap is a knob that lifts to 500 or 1000 if Prom capacity grows."
-  - q: "What is the best place to stake SOL right now?"
-    a: "By delegated stake, the largest Solana validators tracked here are Figment, Helius, Binance Staking, Jupiter and Ledger by Figment, and their net yields cluster around the chain's modal ~6% rather than the median {{p50:solana}} (which is dragged by validators currently at 0% APY). This bench is neutral: it ranks measured net yield (`gross APR × uptime`, MEV included), takes no commercial placement, and does not rank custodians or liquid staking products. Pick on the per-validator gauges: sane commission (not 100%), sustained uptime, and enough stake to draw leader slots, then note that yields among healthy validators differ by tens of bps, so decentralization is a defensible tiebreaker."
+    a: "The network-average consensus-layer APR for a 32 ETH solo validator, {{p50:ethereum}}, from the beacon spec reward formula on the live total effective balance published by ultrasound.money, at 100% participation (realized runs about 99.5%, under 2 bps of drift). It excludes execution tips and MEV, so a MEV-Boost proposer earns more, and it is not a liquid staking APY: Lido or Coinbase quote product rates net of their fees."
+  - q: "Why is the Solana median lower than the 6 to 7% quoted elsewhere?"
+    a: "The median counts every validator in the top 200 by stake, including those currently paying delegators 0%: commission set to 100% (operator stake only) or no leader slots in the epoch. Those are real states of the set, so they stay in. A delegator choosing a validator with sane commission and full uptime lands near the upper part of the distribution, {{p90:solana}} at p90. Stakewiz's total_apy already includes Jito MEV tips and is net of commission."
+  - q: "Where does the data come from, and can I check it?"
+    a: "Every source is public and keyless: Stakewiz and Jito Kobe (Solana), the Hyperliquid info API, ultrasound.money (Ethereum), Koios (Cardano), Sui GraphQL, the Avalanche P-Chain API, the Aptos Labs fullnode, FastNEAR (NEAR), the Kaia public endpoint node, Nodely algod (Algorand), the ICP dashboard API, TonAPI (Gram), and PublicNode or crypto.org LCDs (Cosmos Hub, Sei, Cronos). The harness source, with the reward rule and a dated verification for each chain, is open on GitHub, and the live figure per chain is at /api/stat/validator-yield."
+
+per_chain_explainer:
+  - slug: cosmos-hub
+    h2: "Cosmos Hub (ATOM) staking APR"
+    body: |
+      Cosmos Hub median net staking yield is {{p50:cosmos-hub}} across the top 200 bonded validators. Gross = annual issuance × (1 - community tax) / bonded ATOM, read from the Hub's mint, distribution and staking modules. Issuance is annual_provisions corrected for real block speed: the mint module pays a fixed amount per block sized for 7.2 second blocks and the Hub produces one every 5.7 seconds, so real issuance runs above the nominal 10%. Net subtracts each validator's commission; jailed validators count at 0. Fees are excluded.
+  - slug: gram
+    h2: "Gram (TON) staking APR"
+    body: |
+      Gram (formerly TON) median net staking yield is {{p50:gram}} across the verified nominator pools. TON has no protocol delegation, so holders stake through pool contracts that fund an elected validator and pass back the elector's bonuses minus the pool fee. The figure is TonAPI's realized nominator APY, de-compounded to APR over the 131 072 second validation cycle. Liquid staking (Tonstakers) and the unverified single-nominator pools are excluded.
+  - slug: icp
+    h2: "Internet Computer (ICP) neuron staking APR"
+    body: |
+      An NNS neuron at the 2 year maximum dissolve delay with no age bonus earns {{p50:icp}}. The NNS distributes a daily voting reward pool across the deciding voting power of eligible neurons, and voting power is stake × dissolve delay bonus (up to 3) × age bonus (up to 1.25). The figure is 365.25 × the latest daily pool × 3 / total deciding voting power, from the NNS governance metrics. A 2 week neuron earns about a third of it. Rewards accrue as maturity.
+  - slug: near
+    h2: "NEAR staking APR"
+    body: |
+      NEAR median net staking yield is {{p50:near}} across the top 200 validators that are staking pools. Gross = total supply × max inflation (2.5% since the 2025 vote) × (1 - treasury share) / total validator stake, from the protocol config, the latest block and the validator set. Net applies the protocol's online factor (no reward under 90% online, full reward from 99%) and each pool's reward fee.
+  - slug: solana
+    h2: "Solana staking APY by validator"
+    body: |
+      Solana median net staking yield is {{p50:solana}} across the top 200 validators by activated stake, with Jito MEV tips included. The source is Stakewiz total_apy, a 30 epoch trailing figure already net of commission, multiplied by uptime. Validators with 100% commission or no leader slots this epoch count at 0, which pulls the median below what a delegator picking a healthy validator earns (p90 {{p90:solana}}).
+  - slug: algorand
+    h2: "Algorand staking rewards"
+    body: |
+      An incentive-eligible Algorand node earns {{p50:algorand}}. Since protocol v40 each block pays its proposer a protocol bonus plus half the fees, if the proposer opted in with 30k to 70M ALGO online. Proposer selection is stake-weighted over all online stake, so the expected yield is blocks per year × the average payout of eligible blocks / online stake. It is the yield of running a node yourself: there is no delegation, and the bonus decays by design.
+  - slug: avalanche
+    h2: "Avalanche (AVAX) staking APR"
+    body: |
+      Avalanche median net staking yield is {{p50:avalanche}} across the top 100 P-Chain validators by stake. Gross is read per validator: its potentialReward over its stake, annualized over its staking period, which is the protocol reward for that duration. Net = gross × uptime × (1 - delegation fee). Many of the largest validators set a 100% delegation fee and pay delegators nothing; they count at 0.
+  - slug: kaia
+    h2: "Kaia staking APR"
+    body: |
+      Kaia median net staking yield is {{p50:kaia}} across the council nodes that run a public delegation contract. Each block mints a fixed amount, and its stakers share is split across council nodes pro rata to staked KAIA. Gross = stakers reward per block × blocks per year / total staked KAIA, from kaia_getRewards and kaia_getStakingInfo. Net subtracts the public delegation contract's commission rate.
+  - slug: sei
+    h2: "Sei staking APR"
+    body: |
+      Sei median net staking yield is {{p50:sei}} across all bonded validators. Sei mints on a fixed token release schedule rather than an inflation rate, so gross = this year's scheduled release / bonded SEI, with no community tax. Net subtracts each validator's commission. Fees are excluded.
+  - slug: cronos
+    h2: "Cronos (CRO) staking APR"
+    body: |
+      Cronos POS median net staking yield is {{p50:cronos}} across all bonded validators. CRO is staked on the Cronos POS chain; the Cronos EVM chain has permissioned validators and no public staking. Gross = annual issuance × (1 - community tax of 15%) / bonded CRO, with issuance corrected for real block speed. Net subtracts each validator's commission.
+  - slug: ethereum
+    h2: "Ethereum solo staking APR"
+    body: |
+      A 32 ETH solo validator earns {{p50:ethereum}} at the consensus layer, the network average from the beacon spec reward formula on the live total effective balance. Execution tips and MEV are excluded. Consensus rewards are uniform per 32 ETH increment, so one network-average row stands for every validator.
+  - slug: aptos
+    h2: "Aptos staking APR"
+    body: |
+      Aptos median net staking yield is {{p50:aptos}} across active delegation pools. The staking config pays a fixed reward rate per 2 hour epoch, 2.60% a year since the April 2026 governance cut, scaled by each validator's share of successful proposals. Net subtracts the pool operator's commission. Private stake pools are not delegatable and are not in the cohort.
+  - slug: hyperliquid
+    h2: "Hyperliquid (HYPE) staking APR"
+    body: |
+      Hyperliquid median net staking yield is {{p50:hyperliquid}} across all active validators, from the info API's predictedApr times uptime. There is no validator MEV layer. Jailed validators stay in the set at 0, so the median sits slightly under what a non-jailed validator pays.
+  - slug: cardano
+    h2: "Cardano (ADA) staking rewards"
+    body: |
+      Cardano median net staking yield is {{p50:cardano}} across the top 50 pools by active stake. Gross is measured: the rewards actually paid for the latest computed epoch × 73 epochs a year / active stake, which already reflects reserve depletion, the treasury cut, pledge influence and saturation. Net subtracts each pool's margin; pools with a 100% margin pay delegators nothing.
+  - slug: sui
+    h2: "Sui staking APR"
+    body: |
+      Sui median net staking yield is {{p50:sui}} across active validators. Each staking pool's exchange rate (SUI per pool token) rises with rewards net of the validator's commission, so the figure is the rate now against 30 epochs ago, annualized over the elapsed time. Stake subsidies have decayed since launch, which is why Sui sits near the bottom of the board.
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/validator-yield
 
@@ -131,29 +201,27 @@ prometheus:
   expected_freshness_seconds: 1800
 
 # Real metrics emitted by the validator-yield harness:
-#   ocb_validator_net_yield_bps{chain, validator, name}        gauge (APR × uptime, bps)
-#   ocb_validator_gross_yield_bps{chain, validator, name}      gauge (APR before uptime adj)
-#   ocb_validator_mev_share_bps{chain, validator, name}        gauge (MEV portion of gross, info only)
-#   ocb_validator_commission_bps{chain, validator, name}       gauge (operator commission)
-#   ocb_validator_uptime_pct{chain, validator, name}           gauge (0-100)
-#   ocb_validator_stake_usd{chain, validator, name}            gauge (delegated stake, USD)
-#   ocb_validator_jailed{chain, validator, name}               gauge (0|1, HL only in v1)
+#   ocb_validator_net_yield_bps{chain, validator, name}        gauge (what the delegator keeps, bps)
+#   ocb_validator_gross_yield_bps{chain, validator, name}      gauge (before commission and uptime)
+#   ocb_validator_mev_share_bps{chain, validator, name}        gauge (MEV portion of gross, Solana only)
+#   ocb_validator_commission_bps{chain, validator, name}       gauge (not written for gram)
+#   ocb_validator_uptime_pct{chain, validator, name}           gauge (0-100, 100 where not exposed)
+#   ocb_validator_stake_usd{chain, validator, name}            gauge
+#   ocb_validator_jailed{chain, validator, name}               gauge (0|1)
 #   ocb_chain_median_net_yield_bps{chain}                      gauge (chain-level headline)
-#   ocb_chain_total_validators{chain}                          gauge (tracked count)
+#   ocb_chain_total_validators{chain}                          gauge (tracked count, 1 for synthetic rows)
 #   ocb_validator_scrape_errors_total{chain, source}           counter
 #   ocb_validator_last_scrape_timestamp_seconds{chain}         gauge
 #
-# Each "provider" below is one chain. The leaderboard ranks chains
-# by median net yield (higher = better gross-of-fees yield). Top
-# validators per chain are visible via the per-validator gauges
-# (`ocb_validator_net_yield_bps{chain="solana"}` etc.) and surface
-# in p90 / p99 on the 24h distribution.
+# Each "provider" below is one chain. The reward rule, source and a
+# dated verification for each chain live at the top of its scraper in
+# harnesses/validator-yield/cmd/script/<chain>.go.
 
 providers:
   - slug: solana
     name: Solana
-    tag: Top 200 by stake · Stakewiz APY (MEV in)
-    formula: "Median net yield in bps across the top 200 Solana validators by stake, where net_yield = Stakewiz total_apy (MEV folded in) × uptime_fraction."
+    tag: Top 200 by stake · Stakewiz APY, MEV in
+    formula: "Median across the top 200 Solana validators by stake of Stakewiz total_apy (Jito MEV folded in, net of commission) times uptime."
     queries:
       p50: ocb_chain_median_net_yield_bps{chain="solana"}
       p90: quantile(0.90, ocb_validator_net_yield_bps{chain="solana"})
@@ -165,8 +233,8 @@ providers:
 
   - slug: hyperliquid
     name: Hyperliquid
-    tag: All active · predictedApr.day × uptime
-    formula: "Median net yield in bps across all ~30 active Hyperliquid validators, where net_yield = predictedApr.day × stats[day].uptimeFraction from /info validatorSummaries."
+    tag: All active · predictedApr × uptime
+    formula: "Median across all active Hyperliquid validators of predictedApr.day times stats[day].uptimeFraction from /info validatorSummaries; jailed validators at 0."
     queries:
       p50: ocb_chain_median_net_yield_bps{chain="hyperliquid"}
       p90: quantile(0.90, ocb_validator_net_yield_bps{chain="hyperliquid"})
@@ -179,7 +247,7 @@ providers:
   - slug: ethereum
     name: Ethereum
     tag: Network avg · consensus spec APR, MEV excluded
-    formula: "Network-average consensus-layer APR in bps for a 32 ETH solo validator: APR = 64 × epochs_per_year / sqrt(total effective balance in gwei), with live total stake from ultrasound.money. Execution tips and MEV excluded."
+    formula: "Consensus-layer APR for a 32 ETH solo validator: 64 × epochs per year / sqrt(total effective balance in gwei), live total stake from ultrasound.money. Tips and MEV excluded."
     queries:
       p50: ocb_chain_median_net_yield_bps{chain="ethereum"}
       p90: quantile(0.90, ocb_validator_net_yield_bps{chain="ethereum"})
@@ -191,8 +259,8 @@ providers:
 
   - slug: cardano
     name: Cardano
-    tag: Top 50 pools by stake · Koios API, MEV n/a
-    formula: "Median net yield in bps across the top 50 Cardano pools by active stake, where net = ρ × (1 − τ) × (1 − margin) with ρ from Koios epoch_params (monetary_expansion) and τ (treasury_growth_rate). Simplified vs full a0/k/saturation curve."
+    tag: Top 50 pools · measured epoch rewards, Koios
+    formula: "Median across the top 50 Cardano pools of gross × (1 − margin), gross = rewards paid for the latest computed epoch × 73 / active stake (Koios epoch_info)."
     queries:
       p50: ocb_chain_median_net_yield_bps{chain="cardano"}
       p90: quantile(0.90, ocb_validator_net_yield_bps{chain="cardano"})
@@ -204,8 +272,8 @@ providers:
 
   - slug: sui
     name: Sui
-    tag: All active validators · suix_getValidatorsApy, no MEV
-    formula: "Median net APR in bps across all active Sui validators, from suix_getValidatorsApy on a public Sui RPC. apy is already net of commission per Sui docs."
+    tag: All active · pool exchange rate over 30 epochs
+    formula: "Median across active Sui validators of the staking pool exchange rate growth over 30 epochs, annualized (already net of commission), from Sui GraphQL."
     queries:
       p50: ocb_chain_median_net_yield_bps{chain="sui"}
       p90: quantile(0.90, ocb_validator_net_yield_bps{chain="sui"})
@@ -217,8 +285,8 @@ providers:
 
   - slug: cosmos-hub
     name: Cosmos Hub
-    tag: Top 200 bonded validators · LCD REST, no MEV
-    formula: "Per-validator net = network_APR × (1 − commission_rate), where network_APR = inflation × (1 − community_tax) / bonded_ratio. Inflation and bonded_ratio from Cosmos LCD staking + mint modules; community_tax hardcoded to 2%."
+    tag: Top 200 bonded · issuance over bonded, LCD
+    formula: "Median across the top 200 bonded validators of gross × (1 − commission), gross = real annual issuance × (1 − community tax) / bonded ATOM."
     queries:
       p50: ocb_chain_median_net_yield_bps{chain="cosmos-hub"}
       p90: quantile(0.90, ocb_validator_net_yield_bps{chain="cosmos-hub"})
@@ -230,8 +298,8 @@ providers:
 
   - slug: avalanche
     name: Avalanche
-    tag: Top 100 P-Chain validators, no MEV
-    formula: "Per-validator net = base 8.5% APR × uptime × (1 − delegationFee/100), from platform.getCurrentValidators on Avalanche P-Chain. Base APR is the documented protocol constant since P-Chain does not publish realised per-validator APR."
+    tag: Top 100 P-Chain · on-chain potentialReward
+    formula: "Median across the top 100 P-Chain validators of gross × uptime × (1 − delegation fee), gross = potentialReward / stake annualized over the staking period."
     queries:
       p50: ocb_chain_median_net_yield_bps{chain="avalanche"}
       p90: quantile(0.90, ocb_validator_net_yield_bps{chain="avalanche"})
@@ -241,11 +309,106 @@ providers:
       sample_size: ocb_chain_total_validators{chain="avalanche"}
       series: ocb_chain_median_net_yield_bps{chain="avalanche"}
 
-# Ethereum publishes ONE synthetic series (validator="beacon-network"),
-# the network-average consensus-layer nominal APR from the beacon spec
-# reward formula on the live total effective balance (ultrasound.money,
-# free, no key). Consensus rewards are uniform per 32 ETH increment, so
-# the network average IS the solo-validator number. Execution tips and
-# MEV are excluded; per-validator Ethereum gauges (beacon-node
-# ingestion) and MEV inclusion (per-relay MEV-Boost scraping) remain v2.
-# Source-selection notes live in harnesses/validator-yield/cmd/script/ethereum.go.
+  - slug: aptos
+    name: Aptos
+    tag: Delegation pools · staking config rewards_rate
+    formula: "Median across active Aptos delegation pools of rewards_rate per 2 h epoch annualized × proposal success × (1 − operator commission)."
+    queries:
+      p50: ocb_chain_median_net_yield_bps{chain="aptos"}
+      p90: quantile(0.90, ocb_validator_net_yield_bps{chain="aptos"})
+      p99: quantile(0.99, ocb_validator_net_yield_bps{chain="aptos"})
+      mean: avg(ocb_validator_net_yield_bps{chain="aptos"})
+      success: clamp_max(avg(avg_over_time(ocb_validator_uptime_pct{chain="aptos"}[24h])) / 100, 1)
+      sample_size: ocb_chain_total_validators{chain="aptos"}
+      series: ocb_chain_median_net_yield_bps{chain="aptos"}
+
+  - slug: near
+    name: NEAR
+    tag: Top 200 staking pools · inflation over stake
+    formula: "Median across the top 200 NEAR staking pools of supply × max inflation × (1 − treasury share) / total stake, × online factor × (1 − pool fee)."
+    queries:
+      p50: ocb_chain_median_net_yield_bps{chain="near"}
+      p90: quantile(0.90, ocb_validator_net_yield_bps{chain="near"})
+      p99: quantile(0.99, ocb_validator_net_yield_bps{chain="near"})
+      mean: avg(ocb_validator_net_yield_bps{chain="near"})
+      success: clamp_max(avg(avg_over_time(ocb_validator_uptime_pct{chain="near"}[24h])) / 100, 1)
+      sample_size: ocb_chain_total_validators{chain="near"}
+      series: ocb_chain_median_net_yield_bps{chain="near"}
+
+  - slug: kaia
+    name: Kaia
+    tag: Public delegation CNs · per-block staker reward
+    formula: "Median across Kaia council nodes with public delegation of stakers reward per block × blocks per year / staked KAIA, × (1 − delegation commission)."
+    queries:
+      p50: ocb_chain_median_net_yield_bps{chain="kaia"}
+      p90: quantile(0.90, ocb_validator_net_yield_bps{chain="kaia"})
+      p99: quantile(0.99, ocb_validator_net_yield_bps{chain="kaia"})
+      mean: avg(ocb_validator_net_yield_bps{chain="kaia"})
+      success: clamp_max(avg(avg_over_time(ocb_validator_uptime_pct{chain="kaia"}[24h])) / 100, 1)
+      sample_size: ocb_chain_total_validators{chain="kaia"}
+      series: ocb_chain_median_net_yield_bps{chain="kaia"}
+
+  - slug: algorand
+    name: Algorand
+    tag: Incentive-eligible node · proposer payouts
+    formula: "Expected APR of an opted-in Algorand node: blocks per year × mean proposer payout of eligible blocks / total online stake. No delegation, no commission."
+    queries:
+      p50: ocb_chain_median_net_yield_bps{chain="algorand"}
+      p90: quantile(0.90, ocb_validator_net_yield_bps{chain="algorand"})
+      p99: quantile(0.99, ocb_validator_net_yield_bps{chain="algorand"})
+      mean: avg(ocb_validator_net_yield_bps{chain="algorand"})
+      success: clamp_max(avg(avg_over_time(ocb_validator_uptime_pct{chain="algorand"}[24h])) / 100, 1)
+      sample_size: ocb_chain_total_validators{chain="algorand"}
+      series: ocb_chain_median_net_yield_bps{chain="algorand"}
+
+  - slug: icp
+    name: Internet Computer
+    tag: NNS neuron · 2 year dissolve delay, no age bonus
+    formula: "APR of a new NNS neuron at the 2 year maximum dissolve delay: 365.25 × daily voting reward pool × 3 / total deciding voting power."
+    queries:
+      p50: ocb_chain_median_net_yield_bps{chain="icp"}
+      p90: quantile(0.90, ocb_validator_net_yield_bps{chain="icp"})
+      p99: quantile(0.99, ocb_validator_net_yield_bps{chain="icp"})
+      mean: avg(ocb_validator_net_yield_bps{chain="icp"})
+      success: clamp_max(avg(avg_over_time(ocb_validator_uptime_pct{chain="icp"}[24h])) / 100, 1)
+      sample_size: ocb_chain_total_validators{chain="icp"}
+      series: ocb_chain_median_net_yield_bps{chain="icp"}
+
+  - slug: gram
+    name: Gram
+    tag: Verified nominator pools · TonAPI, fee netted
+    formula: "Median across verified Gram (TON) nominator pools of TonAPI's realized nominator APY, net of pool fee, de-compounded to APR over the validation cycle."
+    queries:
+      p50: ocb_chain_median_net_yield_bps{chain="gram"}
+      p90: quantile(0.90, ocb_validator_net_yield_bps{chain="gram"})
+      p99: quantile(0.99, ocb_validator_net_yield_bps{chain="gram"})
+      mean: avg(ocb_validator_net_yield_bps{chain="gram"})
+      success: clamp_max(avg(avg_over_time(ocb_validator_uptime_pct{chain="gram"}[24h])) / 100, 1)
+      sample_size: ocb_chain_total_validators{chain="gram"}
+      series: ocb_chain_median_net_yield_bps{chain="gram"}
+
+  - slug: sei
+    name: Sei
+    tag: All bonded · release schedule over bonded
+    formula: "Median across bonded Sei validators of gross × (1 − commission), gross = this year's token release schedule / bonded SEI."
+    queries:
+      p50: ocb_chain_median_net_yield_bps{chain="sei"}
+      p90: quantile(0.90, ocb_validator_net_yield_bps{chain="sei"})
+      p99: quantile(0.99, ocb_validator_net_yield_bps{chain="sei"})
+      mean: avg(ocb_validator_net_yield_bps{chain="sei"})
+      success: clamp_max(avg(avg_over_time(ocb_validator_uptime_pct{chain="sei"}[24h])) / 100, 1)
+      sample_size: ocb_chain_total_validators{chain="sei"}
+      series: ocb_chain_median_net_yield_bps{chain="sei"}
+
+  - slug: cronos
+    name: Cronos
+    tag: Cronos POS, all bonded · issuance over bonded
+    formula: "Median across bonded Cronos POS validators of gross × (1 − commission), gross = real annual issuance × (1 − community tax) / bonded CRO."
+    queries:
+      p50: ocb_chain_median_net_yield_bps{chain="cronos"}
+      p90: quantile(0.90, ocb_validator_net_yield_bps{chain="cronos"})
+      p99: quantile(0.99, ocb_validator_net_yield_bps{chain="cronos"})
+      mean: avg(ocb_validator_net_yield_bps{chain="cronos"})
+      success: clamp_max(avg(avg_over_time(ocb_validator_uptime_pct{chain="cronos"}[24h])) / 100, 1)
+      sample_size: ocb_chain_total_validators{chain="cronos"}
+      series: ocb_chain_median_net_yield_bps{chain="cronos"}

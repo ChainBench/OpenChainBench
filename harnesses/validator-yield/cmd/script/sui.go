@@ -1,249 +1,200 @@
 package main
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
-	"strconv"
 	"time"
 )
 
-const (
-	suiChain              = "sui"
-	suiApysSourceTag      = "sui_getValidatorsApy"
-	suiSystemSourceTag    = "sui_getLatestSystemState"
-	coingeckoSuiSourceTag = "coingecko_sui"
-)
-
-// Sui exposes a single JSON-RPC endpoint per fullnode. The public
-// mainnet endpoint has no key requirement and no strict rate limit for
-// low-QPS pollers.
-var (
-	suiRPCURL         = envDefault("VAL_ECON_SUI_RPC_URL", "https://fullnode.mainnet.sui.io:443")
-	coingeckoSuiURL   = envDefault("VAL_ECON_COINGECKO_SUI_URL", "https://api.coingecko.com/api/v3/simple/price?ids=sui&vs_currencies=usd")
-)
-
-// suiRPCEnvelope is the standard JSON-RPC 2.0 wrapper.
-type suiRPCEnvelope struct {
-	JSONRPC string          `json:"jsonrpc"`
-	ID      int             `json:"id"`
-	Result  json.RawMessage `json:"result"`
-	Error   *struct {
-		Code    int    `json:"code"`
-		Message string `json:"message"`
-	} `json:"error"`
-}
-
-// suiValidatorApy is one entry in `suix_getValidatorsApy.result.apys`.
-// `apy` is a decimal fraction (0.0234 = 2.34%) already net of the
-// validator's commission per Sui docs.
-type suiValidatorApy struct {
-	Address string  `json:"address"`
-	APY     float64 `json:"apy"`
-	Epoch   int64   `json:"epoch"`
-}
-
-type suiValidatorsApyResponse struct {
-	Epoch string            `json:"epoch"`
-	APYs  []suiValidatorApy `json:"apys"`
-}
-
-// suiActiveValidator mirrors the fields we care about from the
-// `activeValidators` array in `suix_getLatestSuiSystemState`. All
-// numeric-like fields come back as strings.
-type suiActiveValidator struct {
-	SuiAddress        string `json:"suiAddress"`
-	Name              string `json:"name"`
-	Description       string `json:"description"`
-	CommissionRate    string `json:"commissionRate"`    // bps, e.g. "200" = 2%
-	StakingPoolSuiBal string `json:"stakingPoolSuiBalance"` // MIST (1 SUI = 1e9 MIST)
-	NextEpochStake    string `json:"nextEpochStake"`
-}
-
-type suiSystemStateResponse struct {
-	Epoch            string               `json:"epoch"`
-	ActiveValidators []suiActiveValidator `json:"activeValidators"`
-}
-
-func suiRPC(ctx context.Context, client *http.Client, method string, out any) error {
-	payload := map[string]any{
-		"jsonrpc": "2.0",
-		"id":      1,
-		"method":  method,
-		"params":  []any{},
-	}
-	body, err := json.Marshal(payload)
-	if err != nil {
-		return err
-	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, suiRPCURL, bytes.NewReader(body))
-	if err != nil {
-		return err
-	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept", "application/json")
-	resp, err := client.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		raw, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("sui rpc %s http %d: %s", method, resp.StatusCode, string(raw))
-	}
-	raw, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-	var env suiRPCEnvelope
-	if err := json.Unmarshal(raw, &env); err != nil {
-		return fmt.Errorf("sui rpc %s envelope parse: %w", method, err)
-	}
-	if env.Error != nil {
-		return fmt.Errorf("sui rpc %s error %d: %s", method, env.Error.Code, env.Error.Message)
-	}
-	if err := json.Unmarshal(env.Result, out); err != nil {
-		return fmt.Errorf("sui rpc %s result parse: %w", method, err)
-	}
-	return nil
-}
-
-func fetchSuiValidatorsAPY(ctx context.Context, client *http.Client) (suiValidatorsApyResponse, error) {
-	var out suiValidatorsApyResponse
-	err := suiRPC(ctx, client, "suix_getValidatorsApy", &out)
-	return out, err
-}
-
-func fetchSuiSystemState(ctx context.Context, client *http.Client) (suiSystemStateResponse, error) {
-	var out suiSystemStateResponse
-	err := suiRPC(ctx, client, "suix_getLatestSuiSystemState", &out)
-	return out, err
-}
-
-func fetchSuiPrice(ctx context.Context, client *http.Client) (float64, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, coingeckoSuiURL, nil)
-	if err != nil {
-		return 0, err
-	}
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("User-Agent", "OpenChainBench-harness/1.0")
-	resp, err := client.Do(req)
-	if err != nil {
-		return 0, err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return 0, fmt.Errorf("coingecko sui http %d", resp.StatusCode)
-	}
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return 0, err
-	}
-	var payload map[string]map[string]float64
-	if err := json.Unmarshal(body, &payload); err != nil {
-		return 0, fmt.Errorf("coingecko sui parse: %w", err)
-	}
-	v, ok := payload["sui"]
-	if !ok {
-		return 0, fmt.Errorf("coingecko missing sui key")
-	}
-	price := v["usd"]
-	if price <= 0 {
-		return 0, fmt.Errorf("coingecko invalid sui price %f", price)
-	}
-	return price, nil
-}
-
-// scrapeSui publishes per-validator yield gauges for Sui. The apy field
-// from `suix_getValidatorsApy` is already net of commission per Sui
-// docs, so we use it as both gross (before uptime adjustment) and net
-// (after uptime, which we can't measure per-validator without the
-// per-epoch checkpoint history — we assume 100% for v1).
+// Sui. Source: the public Sui GraphQL RPC (graphql.mainnet.sui.io, no
+// key).
 //
-// MEV: Sui rewards are pure staking rewards (protocol emission), no
-// MEV component surfaces to validators today.
+// History: until 2026-11 this scraper called suix_getValidatorsApy on
+// fullnode.mainnet.sui.io. Sui deprecated JSON-RPC on public fullnodes
+// ("Method not found ... migrate to gRPC or GraphQL"), so every scrape
+// failed (288 errors a day on Prom) and the Sui row was blank.
+//
+// Method (the one suix_getValidatorsApy itself used): each validator's
+// staking pool has an exchange rate SUI per pool token,
+// sui_balance / pool_token_balance. Epoch rewards, already net of the
+// validator's commission (commission is paid to the validator as new
+// pool tokens), raise that rate. So the delegator's realized APR over a
+// window is
+//
+//	net_apr = (rate_now / rate_then − 1) × year / elapsed
+//
+// with rate_then read from the validator set of the epoch suiLookback
+// epochs ago (the GraphQL `epoch(epochId:)` field serves historical
+// validator sets) and elapsed from the two epochs' start timestamps.
+// Validators that joined inside the window are skipped (no baseline).
+// Gross = net / (1 − commission). Uptime is not exposed per validator
+// and is published as 100. Verified 2026-11-03 (epochs 1270 → 1300):
+// ~1.2% net APR, stake subsidies having decayed since launch.
+
+const (
+	suiChain    = "sui"
+	suiGQLTag   = "sui_graphql"
+	suiLookback = 30
+	mistPerSui  = 1e9
+	suiPageSize = 50
+)
+
+var suiGraphQLURL = envDefault("VAL_ECON_SUI_GRAPHQL_URL", "https://graphql.mainnet.sui.io/graphql")
+
+type suiValidatorContents struct {
+	Metadata struct {
+		SuiAddress string `json:"sui_address"`
+		Name       string `json:"name"`
+	} `json:"metadata"`
+	StakingPool struct {
+		SuiBalance       string `json:"sui_balance"`
+		PoolTokenBalance string `json:"pool_token_balance"`
+	} `json:"staking_pool"`
+	CommissionRate string `json:"commission_rate"` // bps
+}
+
+type suiEpochSet struct {
+	EpochID    int64
+	Start      time.Time
+	Validators []suiValidatorContents
+}
+
+const suiEpochQuery = `query($id: UInt53, $after: String) {
+  epoch(epochId: $id) {
+    epochId
+    startTimestamp
+    validatorSet {
+      activeValidators(first: 50, after: $after) {
+        pageInfo { hasNextPage endCursor }
+        nodes { contents { json } }
+      }
+    }
+  }
+}`
+
+func fetchSuiEpoch(ctx context.Context, client *http.Client, epochID *int64) (suiEpochSet, error) {
+	var set suiEpochSet
+	var after *string
+	for page := 0; page < 10; page++ {
+		vars := map[string]any{"after": after}
+		if epochID != nil {
+			vars["id"] = *epochID
+		} else {
+			vars["id"] = nil
+		}
+		var resp struct {
+			Data struct {
+				Epoch *struct {
+					EpochID        int64     `json:"epochId"`
+					StartTimestamp time.Time `json:"startTimestamp"`
+					ValidatorSet   struct {
+						ActiveValidators struct {
+							PageInfo struct {
+								HasNextPage bool   `json:"hasNextPage"`
+								EndCursor   string `json:"endCursor"`
+							} `json:"pageInfo"`
+							Nodes []struct {
+								Contents struct {
+									JSON suiValidatorContents `json:"json"`
+								} `json:"contents"`
+							} `json:"nodes"`
+						} `json:"activeValidators"`
+					} `json:"validatorSet"`
+				} `json:"epoch"`
+			} `json:"data"`
+			Errors []struct {
+				Message string `json:"message"`
+			} `json:"errors"`
+		}
+		if err := postJSON(ctx, client, suiGraphQLURL, map[string]any{"query": suiEpochQuery, "variables": vars}, &resp); err != nil {
+			return set, err
+		}
+		if len(resp.Errors) > 0 {
+			return set, fmt.Errorf("graphql: %s", resp.Errors[0].Message)
+		}
+		e := resp.Data.Epoch
+		if e == nil {
+			return set, fmt.Errorf("graphql: no epoch")
+		}
+		set.EpochID, set.Start = e.EpochID, e.StartTimestamp
+		for _, n := range e.ValidatorSet.ActiveValidators.Nodes {
+			set.Validators = append(set.Validators, n.Contents.JSON)
+		}
+		if !e.ValidatorSet.ActiveValidators.PageInfo.HasNextPage {
+			return set, nil
+		}
+		c := e.ValidatorSet.ActiveValidators.PageInfo.EndCursor
+		after = &c
+	}
+	return set, fmt.Errorf("graphql: more than 10 pages of validators")
+}
+
+func suiRate(v suiValidatorContents) float64 {
+	tok := parseFloat(v.StakingPool.PoolTokenBalance)
+	if tok <= 0 {
+		return 0
+	}
+	return parseFloat(v.StakingPool.SuiBalance) / tok
+}
+
+// suiNetAPR annualizes the pool exchange-rate growth.
+func suiNetAPR(rateNow, rateThen, elapsedSeconds float64) float64 {
+	if rateNow <= 0 || rateThen <= 0 || elapsedSeconds <= 0 {
+		return 0
+	}
+	return (rateNow/rateThen - 1) * secondsPerYear / elapsedSeconds
+}
+
 func scrapeSui(ctx context.Context, client *http.Client) {
-	apy, err := fetchSuiValidatorsAPY(ctx, client)
+	fail := func(err error) {
+		scrapeErrorsTotal.WithLabelValues(suiChain, suiGQLTag).Inc()
+		fmt.Printf("[sui] graphql err: %v\n", err)
+	}
+	now, err := fetchSuiEpoch(ctx, client, nil)
 	if err != nil {
-		scrapeErrorsTotal.WithLabelValues(suiChain, suiApysSourceTag).Inc()
-		fmt.Printf("[sui] getValidatorsApy err: %v\n", err)
+		fail(err)
 		return
 	}
-
-	state, err := fetchSuiSystemState(ctx, client)
+	thenID := now.EpochID - suiLookback
+	then, err := fetchSuiEpoch(ctx, client, &thenID)
 	if err != nil {
-		scrapeErrorsTotal.WithLabelValues(suiChain, suiSystemSourceTag).Inc()
-		fmt.Printf("[sui] getLatestSuiSystemState err (metadata only, continuing): %v\n", err)
+		fail(err)
+		return
 	}
-
-	// Index active validators by address for enrichment.
-	valMeta := make(map[string]suiActiveValidator, len(state.ActiveValidators))
-	for _, v := range state.ActiveValidators {
-		valMeta[v.SuiAddress] = v
+	elapsed := now.Start.Sub(then.Start).Seconds()
+	base := make(map[string]float64, len(then.Validators))
+	for _, v := range then.Validators {
+		base[v.Metadata.SuiAddress] = suiRate(v)
 	}
-
-	suiPrice, err := fetchSuiPrice(ctx, client)
-	if err != nil {
-		scrapeErrorsTotal.WithLabelValues(suiChain, coingeckoSuiSourceTag).Inc()
-		fmt.Printf("[sui] coingecko err (stake_usd will be skipped): %v\n", err)
-		suiPrice = 0
+	rows := make([]valRow, 0, len(now.Validators))
+	for _, v := range now.Validators {
+		r0, ok := base[v.Metadata.SuiAddress]
+		if !ok {
+			continue // joined inside the window
+		}
+		apr := suiNetAPR(suiRate(v), r0, elapsed)
+		net := pctToBps(apr)
+		comm := clamp(parseFloat(v.CommissionRate), 0, 10000)
+		gross := net
+		if comm < 10000 {
+			gross = net / (1 - comm/10000)
+		}
+		name := v.Metadata.Name
+		if name == "" {
+			name = shortAddr(v.Metadata.SuiAddress)
+		}
+		rows = append(rows, valRow{
+			ID: v.Metadata.SuiAddress, Name: name,
+			GrossBps: gross, NetBps: net, CommissionBps: comm, UptimePct: 100,
+			StakeNative: parseFloat(v.StakingPool.SuiBalance) / mistPerSui,
+		})
 	}
-
-	const mistPerSui = 1e9
-
-	netYields := make([]float64, 0, len(apy.APYs))
-	for _, entry := range apy.APYs {
-		meta := valMeta[entry.Address]
-		name := shortenName(meta.Name)
-		if name == "(unknown)" {
-			// Fall back to a truncated address so operators are
-			// distinguishable in Grafana even when metadata is missing.
-			if len(entry.Address) > 16 {
-				name = shortenName(entry.Address[:16])
-			} else {
-				name = shortenName(entry.Address)
-			}
-		}
-		id := entry.Address
-
-		grossBps := pctToBps(entry.APY)
-		// Uptime — no direct field; assume 100%.
-		uptimePct := 100.0
-		netBps := grossBps * (uptimePct / 100)
-
-		// Commission comes back as basis points already (e.g. "200" = 2%).
-		commissionBps, _ := strconv.ParseFloat(meta.CommissionRate, 64)
-		if commissionBps < 0 {
-			commissionBps = 0
-		}
-		if commissionBps > 10000 {
-			commissionBps = 10000
-		}
-
-		stakeMist, _ := strconv.ParseFloat(meta.StakingPoolSuiBal, 64)
-		stakeSUI := stakeMist / mistPerSui
-		stakeUSD := stakeSUI * suiPrice
-
-		validatorNetYieldBps.WithLabelValues(suiChain, id, name).Set(netBps)
-		validatorGrossYieldBps.WithLabelValues(suiChain, id, name).Set(grossBps)
-		validatorMevShareBps.WithLabelValues(suiChain, id, name).Set(0)
-		validatorCommissionBps.WithLabelValues(suiChain, id, name).Set(commissionBps)
-		validatorUptimePct.WithLabelValues(suiChain, id, name).Set(uptimePct)
-		if suiPrice > 0 {
-			validatorStakeUSD.WithLabelValues(suiChain, id, name).Set(stakeUSD)
-		}
-		validatorJailed.WithLabelValues(suiChain, id, name).Set(0)
-
-		netYields = append(netYields, netBps)
+	if len(rows) == 0 {
+		fail(fmt.Errorf("no validator present in both epoch %d and %d", now.EpochID, thenID))
+		return
 	}
-
-	chainTotalValidators.WithLabelValues(suiChain).Set(float64(len(netYields)))
-	chainMedianNetYieldBps.WithLabelValues(suiChain).Set(medianBps(netYields))
-	lastScrapeTimestamp.WithLabelValues(suiChain).Set(float64(time.Now().Unix()))
-
-	fmt.Printf("[sui] published %d validators, median net yield %.0f bps, SUI=$%.4f\n",
-		len(netYields), medianBps(netYields), suiPrice)
+	med := publishRows(suiChain, rows, priceUSD(ctx, client, suiChain, "sui"))
+	fmt.Printf("[sui] published %d validators, epochs %d→%d (%.1f d), median net %.0f bps\n",
+		len(rows), thenID, now.EpochID, elapsed/86400, med)
 }

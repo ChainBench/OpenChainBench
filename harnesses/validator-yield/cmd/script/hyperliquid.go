@@ -204,6 +204,7 @@ func scrapeHyperliquid(ctx context.Context, client *http.Client) {
 	// for de-listed validators are not a real cardinality concern.
 
 	netYields := make([]float64, 0, len(vals))
+	written := make(map[[2]string]bool, len(vals))
 	for _, v := range vals {
 		name := shortenName(v.Name)
 		id := v.Validator
@@ -258,8 +259,10 @@ func scrapeHyperliquid(ctx context.Context, client *http.Client) {
 		validatorJailed.WithLabelValues(hyperliquidChain, id, name).Set(jailed)
 
 		netYields = append(netYields, netBps)
+		written[[2]string{id, name}] = true
 	}
 
+	pruneLeavers(hyperliquidChain, written)
 	chainTotalValidators.WithLabelValues(hyperliquidChain).Set(float64(len(vals)))
 	chainMedianNetYieldBps.WithLabelValues(hyperliquidChain).Set(medianBps(netYields))
 	lastScrapeTimestamp.WithLabelValues(hyperliquidChain).Set(float64(time.Now().Unix()))
