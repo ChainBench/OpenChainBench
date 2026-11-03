@@ -793,7 +793,10 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       the window and the formulas say how they are weighted. Both
   //       the numbers and the copy change, so a cached entry is wrong
   //       twice over.
-  ["bench-unfiltered-v155", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v156: bench 313 goes live. A draft bench publishes no rows at all,
+  //       so the board was correct and the page was empty; the cached
+  //       entry holds that empty set and would keep serving it.
+  ["bench-unfiltered-v156", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -1120,7 +1123,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v146: lockstep with bench-unfiltered-v153 (bench 026 description).
   // v147: lockstep with bench-unfiltered-v154 (bench 313 rebuilt).
   // v148: lockstep with bench-unfiltered-v155 (bench 313 window fix).
-  ["all-benchmarks-v148", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v149: lockstep with bench-unfiltered-v156 (bench 313 live).
+  ["all-benchmarks-v149", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
