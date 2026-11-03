@@ -179,6 +179,19 @@ groups:
       # report 2,850 where there are roughly 24 readings.
       - record: ocb:rpc_api_heavy:changes_24h
         expr: changes(rpc_api_latency_milliseconds{api="eth_call_heavy_warm"}[24h])
+      # The same work term with the provider label carrying the `-heavy`
+      # suffix, because a metric_panel is queried as
+      # `<metric>{provider="<the row's slug>"}` and the spec cannot say
+      # otherwise. The heavy tier's rows are `chainstack-heavy` while the
+      # series above is `chainstack`, so the panel matched nothing and the
+      # column rendered empty without an error anywhere. Measured
+      # 2026-11-03: provider="chainstack-heavy" returned 0 results,
+      # provider="chainstack" returned 1.32 ms.
+      #
+      # Row queries do not need this: they are written out per provider, so
+      # they can name the real label. Only panel queries get the injection.
+      - record: ocb:rpc_api_work_heavy_milliseconds:mean_24h
+        expr: label_replace(ocb:rpc_api_work_milliseconds:mean_24h, "provider", "$1-heavy", "provider", "(.*)")
       - record: ocb:rpc_api_work_milliseconds:mean_24h
         expr: |
           avg_over_time(rpc_api_latency_milliseconds{api="eth_call_heavy_warm"}[24h])

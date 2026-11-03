@@ -170,7 +170,7 @@ metric_panels:
   - id: cap_work_ms
     label: "Compute work"
     label_key: provider
-    metric: max by (provider) (ocb:rpc_api_work_milliseconds:mean_24h{chain="bnb"}) > 0
+    metric: max by (provider) (ocb:rpc_api_work_heavy_milliseconds:mean_24h{chain="bnb"}) > 0
     unit: ms
     higher_is_better: false
     tab: false
