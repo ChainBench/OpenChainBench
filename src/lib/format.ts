@@ -289,6 +289,24 @@ export function valueWindowLabel(bench: {
   return "24h";
 }
 
+/** A race bench's (spec `race_leader`) share-of-wins figure for one
+ *  provider, as a percentage, or undefined on any other bench or when the
+ *  share panel has no value for it. */
+export function raceShareOf(
+  bench: {
+    raceLeader?: { floor: number; sharePanel: string };
+    metricPanels?: { id: string; label?: string; values?: Record<string, number> }[];
+  },
+  slug: string,
+): { share: number; label: string } | undefined {
+  const rl = bench.raceLeader;
+  if (!rl) return undefined;
+  const panel = bench.metricPanels?.find((p) => p.id === rl.sharePanel);
+  const share = panel?.values?.[slug];
+  if (typeof share !== "number" || !Number.isFinite(share)) return undefined;
+  return { share, label: panel?.label ?? "First" };
+}
+
 /** The headline value of one provider. On a race bench (spec
  *  `race_leader`) a value under the floor is the winner's zero by
  *  construction, not a latency, so it reads "first" with the provider's
