@@ -1208,6 +1208,11 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     description:
       "Web3 node service from Ant Digital Technologies (zan.top). Its keyless public Starknet endpoint is the one measured on the Starknet RPC page.",
   },
+  blockvectra: {
+    url: "https://blockvectra.com",
+    description:
+      "RPC gateway with keyless public endpoints (3 requests per second per IP, 1,000-block history window). Measured on the Ink, Unichain and Fraxtal RPC pages.",
+  },
   au: {
     url: "https://au.cc",
     description:

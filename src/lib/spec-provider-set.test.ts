@@ -115,6 +115,9 @@ describe("the provider set behind the cache keys", () => {
     // appearance in the RPCs category, which is the case providers-v exists
     // for as much as an arrival is: v38 to v39, with the other three at
     // v140/v133/v78.
+    // An ARRIVAL on 2026-11-03: BlockVectra's keyless endpoints join the
+    // Ink, Unichain and Fraxtal RPC pages (issue #3462). New to the site,
+    // so providers-v moves with the other three: v41, v143/v136/v81.
     expect(
       hash,
       [
@@ -133,6 +136,6 @@ describe("the provider set behind the cache keys", () => {
         "Then set EXPECTED to the hash in this failure, and add the provider",
         `to PRODUCT_NAMES if it needs a display name. Providers now: ${count}.`,
       ].join("\n"),
-    ).toBe("749e89e6f6169cea");
+    ).toBe("5c7a42ab767d8fe7");
   });
 });
