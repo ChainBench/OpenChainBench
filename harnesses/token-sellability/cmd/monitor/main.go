@@ -64,6 +64,18 @@ var (
 			"aggregator was asked to quote in the last sweep.",
 	}, []string{"chain", "aggregator", "tier"})
 
+	// Published every sweep even as a zero, unlike asked and routed. It is
+	// the only series that separates "this aggregator declined everything",
+	// which is the best record on the board, from "this aggregator could
+	// not be reached", which is no record at all.
+	errorGauge = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "token_sellability_ask_errors",
+		Help: "Requests to this aggregator that failed outright in the " +
+			"last sweep, so the question could not be put. A non-zero " +
+			"value means its asked and routed numbers cover fewer tokens " +
+			"than the cohort, and an all-failed sweep publishes neither.",
+	}, []string{"chain", "aggregator", "tier"})
+
 	routedGauge = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "token_sellability_routed",
 		Help: "Of the tokens it was asked about, how many this aggregator " +
@@ -74,7 +86,7 @@ var (
 
 func init() {
 	prometheus.MustRegister(verdictGauge, cohortGauge, sweepSeconds, controlGauge,
-		askedGauge, routedGauge)
+		askedGauge, routedGauge, errorGauge)
 }
 
 type config struct {

@@ -27,6 +27,7 @@ func run(t *testing.T, agg Aggregator, failed map[string][]string) {
 	t.Helper()
 	askedGauge.Reset()
 	routedGauge.Reset()
+	errorGauge.Reset()
 	old := aggregatorsForTest
 	aggregatorsForTest = []Aggregator{agg}
 	t.Cleanup(func() { aggregatorsForTest = old })
@@ -94,5 +95,37 @@ func TestTimingsAreKeptApart(t *testing.T) {
 	}
 	if s := testutil.ToFloat64(askedGauge.WithLabelValues("robinhood", "sushi", "same_block")); s != 2 {
 		t.Errorf("same-block cohort is two tokens, got %v", s)
+	}
+}
+
+// The one case the board could not previously tell apart from a perfect
+// record: every request failed, so nothing was established. asked and routed
+// are absent, and the error count is what says why.
+func TestAllFailedPublishesTheErrorCount(t *testing.T) {
+	agg := fakeAgg{
+		slug: "lifi",
+		errs: map[string]error{"0xa": errors.New("down"), "0xb": errors.New("down")},
+	}
+	run(t, agg, map[string][]string{"delayed": {"0xa", "0xb"}})
+
+	if n := testutil.CollectAndCount(askedGauge); n != 0 {
+		t.Errorf("asked must stay absent, got %d series", n)
+	}
+	if e := testutil.ToFloat64(errorGauge.WithLabelValues("robinhood", "lifi", "delayed")); e != 2 {
+		t.Errorf("both failures must be published, got %v", e)
+	}
+}
+
+// A clean sweep publishes a zero rather than nothing, so "no errors" and
+// "never ran" stay distinguishable on the board.
+func TestACleanSweepPublishesZeroErrors(t *testing.T) {
+	agg := fakeAgg{slug: "sushi", answers: map[string]bool{"0xa": true}}
+	run(t, agg, map[string][]string{"delayed": {"0xa"}})
+
+	if e := testutil.ToFloat64(errorGauge.WithLabelValues("robinhood", "sushi", "delayed")); e != 0 {
+		t.Errorf("a clean sweep must publish zero, got %v", e)
+	}
+	if n := testutil.CollectAndCount(errorGauge); n != 1 {
+		t.Errorf("exactly one error series, got %d", n)
 	}
 }
