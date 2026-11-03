@@ -1124,6 +1124,15 @@ const ALIASES: Record<string, string> = {
   // providers.ts ALIASES, which also needs a line per cold vendor.
   "getblock-cold": "getblock",
   "quicknode-cold": "quicknode",
+  // Bench 313 measures every aggregator at two sell timings, and the
+  // schema makes tier a partition of providers, so the second timing is
+  // a second row per vendor. Without these each `-same-block` slug
+  // builds its own /products page carrying the vendor's title, which is
+  // what the cold tier did before its aliases landed.
+  "sushi-same-block": "sushi",
+  "kyberswap-same-block": "kyberswap",
+  "paraswap-same-block": "paraswap",
+  "lifi-same-block": "lifi",
   "alchemy-cold": "alchemy",
   "blockmachine-cold": "blockmachine",
   "alchemy-heavy": "alchemy",

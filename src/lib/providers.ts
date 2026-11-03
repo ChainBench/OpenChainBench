@@ -71,6 +71,15 @@ const PRODUCT_ALIASES: Record<string, string> = {
   // a 200 with the same title as /products/dwellir and a sitemap entry, while
   // the original four redirected. Keep this list in step with the
   // `tier: keyed-cold` blocks in the `-rpc` specs.
+  // Bench 313 measures every aggregator at two sell timings, and the
+  // schema makes tier a partition of providers, so the second timing is
+  // a second row per vendor. Without these each `-same-block` slug
+  // builds its own /products page carrying the vendor's title, which is
+  // what the cold tier did before its aliases landed.
+  "sushi-same-block": "sushi",
+  "kyberswap-same-block": "kyberswap",
+  "paraswap-same-block": "paraswap",
+  "lifi-same-block": "lifi",
   "alchemy-cold": "alchemy",
   "chainstack-cold": "chainstack",
   "getblock-cold": "getblock",
@@ -988,7 +997,10 @@ const buildProvidersCached = unstable_cache(
   // v50: bench 026 gains eight chain rows (Aptos, NEAR, Kaia, Algorand,
   //      ICP, Gram, Sei, Cronos); the index carries their appearances.
   //      Lockstep with bench-unfiltered-v152.
-  ["providers-v50"],
+  // v51: bench 313 rebuilt around aggregators. Four vendors gain an
+  //      appearance and four `-same-block` aliases land in both tables.
+  //      Lockstep with bench-unfiltered-v153.
+  ["providers-v51"],
   // 900 s: the provider index feeds products / compare / answers, whose
   // numbers move slowly, and this revalidate is also the effective ISR
   // period of those ~500 pages (Next takes the min across a route's caches).

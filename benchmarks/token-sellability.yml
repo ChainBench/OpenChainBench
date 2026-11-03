@@ -2,17 +2,17 @@
 
 slug: token-sellability
 number: "313"
-title: "Can you sell it back? Tokens that simulate a buy but not a sale"
+title: "Which aggregator routes you into a token you cannot sell"
 seo_title: "Honeypot check on Robinhood Chain: which tokens cannot be sold"
 seo_description: "Live count of Robinhood Chain tokens that accept a simulated buy and reject the sale, measured on-chain at two timings so an anti-bot cooldown is not called a honeypot."
-subtitle: Share of routable tokens whose sale reverted in simulation, measured by buying, approving and selling in one request against a live aggregator route.
+subtitle: Share of the tokens our own simulation could not sell back out of that each aggregator still returns a route into.
 
 category: Aggregators
 status: draft
-metric: Unsellable share
+metric: Routed into traps
 unit: pct
 higher_is_better: false
-row_noun: { one: timing, many: timings }
+row_noun: { one: aggregator, many: aggregators }
 
 # The reliability column would read as uptime on a board where the figure is
 # already a share of a population.
@@ -60,42 +60,111 @@ prometheus:
   url: https://prom.openchainbench.com
   expected_freshness_seconds: 3600
 
+dimension_labels:
+  tier: Sell attempted
+
+# The selector decides WHICH tokens count as unsellable, and therefore what
+# each aggregator is scored against. Delayed is the default because it is the
+# fair reading: a token blocked only in the same block has an anti-bot
+# cooldown, not a trap, and counting those would inflate every row.
+aggregate_filters: { tier: delayed }
+dimensions:
+  tier:
+    - { value: delayed,    label: "A few blocks later" }
+    - { value: same_block, label: "In the same block" }
+
 ledger_columns:
-  - { label: "Unsellable", slot: p50 }
-  - { label: "Examined", panel: examined }
-  - { label: "Inconclusive", panel: inconclusive }
+  - { label: "Routed in", slot: p50 }
+  - { label: "Tokens asked", panel: asked }
+  - { label: "Cohort", panel: cohort }
 
 metric_panels:
-  - id: examined
-    label: Tokens examined
-    description: Tokens in the last sweep that an aggregator would quote in both directions and that were therefore examined. Tokens with no route are out of scope rather than failures.
-    metric: max(token_sellability_cohort{stage="examined"})
-    label_key: chain
+  - id: asked
+    label: Tokens asked
+    description: Unsellable tokens this aggregator answered about in the last sweep. An aggregator whose requests all failed is absent from the board rather than scored zero, because zero is the best score here and has to be earned by declining rather than by being unreachable.
+    metric: max by (aggregator) (token_sellability_asked{})
+    label_key: aggregator
     unit: count
     higher_is_better: true
     tab: false
-  - id: inconclusive
-    label: Inconclusive
-    description: Probes that produced no answer, published rather than hidden. A board that reports how often its own instrument failed is the only kind whose other numbers can be checked.
-    metric: sum(token_sellability_verdict{verdict="inconclusive"})
-    label_key: chain
+  - id: cohort
+    label: Examined
+    description: Tokens examined in the last sweep, the population the unsellable ones were drawn from. Tokens no aggregator would quote in either direction are out of scope rather than failures.
+    metric: max(token_sellability_cohort{stage="examined"})
+    label_key: aggregator
     unit: count
-    higher_is_better: false
+    higher_is_better: true
     tab: false
 
 providers:
-  - slug: delayed
-    name: Sold a few blocks later
-    tag: Forgives an anti-bot cooldown
-    formula: "Share of examined tokens whose sale reverted when attempted a few blocks after the buy, over 24h. This is the strict definition of a token you cannot exit."
+  - slug: sushi
+    name: SushiSwap
+    tier: delayed
+    tag: No auth, serves Robinhood Chain
+    formula: "Share of the tokens whose sale reverted when attempted a few blocks after the buy that SushiSwap still returned a route INTO, over 24h. Lower is better."
     queries:
-      p50: 100 * sum(token_sellability_verdict{timing="delayed",verdict="unsellable"}) / clamp_min(sum(token_sellability_verdict{timing="delayed",verdict=~"sellable|unsellable"}), 1)
-      sample_size: sum(token_sellability_verdict{timing="delayed",verdict=~"sellable|unsellable"})
+      p50: 100 * sum(token_sellability_routed{aggregator="sushi",tier="delayed"}) / clamp_min(sum(token_sellability_asked{aggregator="sushi",tier="delayed"}), 1)
+      sample_size: sum(token_sellability_asked{aggregator="sushi",tier="delayed"})
 
-  - slug: same-block
-    name: Sold in the same block
-    tag: Counts cooldowns as refusals
-    formula: "Share of examined tokens whose sale reverted when attempted in the same block as the buy, over 24h. Higher than the delayed figure by the cohort's anti-bot cooldowns, which are not traps."
+  - slug: kyberswap
+    name: KyberSwap
+    tier: delayed
+    tag: No auth, per chain aggregator engine
+    formula: "Share of the tokens whose sale reverted when attempted a few blocks after the buy that KyberSwap still returned a route INTO, over 24h. Lower is better."
     queries:
-      p50: 100 * sum(token_sellability_verdict{timing="same_block",verdict="unsellable"}) / clamp_min(sum(token_sellability_verdict{timing="same_block",verdict=~"sellable|unsellable"}), 1)
-      sample_size: sum(token_sellability_verdict{timing="same_block",verdict=~"sellable|unsellable"})
+      p50: 100 * sum(token_sellability_routed{aggregator="kyberswap",tier="delayed"}) / clamp_min(sum(token_sellability_asked{aggregator="kyberswap",tier="delayed"}), 1)
+      sample_size: sum(token_sellability_asked{aggregator="kyberswap",tier="delayed"})
+
+  - slug: paraswap
+    name: ParaSwap
+    tier: delayed
+    tag: Trades as Velora, no key
+    formula: "Share of the tokens whose sale reverted when attempted a few blocks after the buy that ParaSwap still returned a route INTO, over 24h. Lower is better."
+    queries:
+      p50: 100 * sum(token_sellability_routed{aggregator="paraswap",tier="delayed"}) / clamp_min(sum(token_sellability_asked{aggregator="paraswap",tier="delayed"}), 1)
+      sample_size: sum(token_sellability_asked{aggregator="paraswap",tier="delayed"})
+
+  - slug: lifi
+    name: LI.FI
+    tier: delayed
+    tag: Cross-chain relayer
+    formula: "Share of the tokens whose sale reverted when attempted a few blocks after the buy that LI.FI still returned a route INTO, over 24h. Lower is better."
+    queries:
+      p50: 100 * sum(token_sellability_routed{aggregator="lifi",tier="delayed"}) / clamp_min(sum(token_sellability_asked{aggregator="lifi",tier="delayed"}), 1)
+      sample_size: sum(token_sellability_asked{aggregator="lifi",tier="delayed"})
+
+  - slug: sushi-same-block
+    name: SushiSwap
+    tier: same_block
+    tag: No auth, serves Robinhood Chain
+    formula: "Share of the tokens whose sale reverted when attempted in the same block as the buy that SushiSwap still returned a route INTO, over 24h. Lower is better."
+    queries:
+      p50: 100 * sum(token_sellability_routed{aggregator="sushi",tier="same_block"}) / clamp_min(sum(token_sellability_asked{aggregator="sushi",tier="same_block"}), 1)
+      sample_size: sum(token_sellability_asked{aggregator="sushi",tier="same_block"})
+
+  - slug: kyberswap-same-block
+    name: KyberSwap
+    tier: same_block
+    tag: No auth, per chain aggregator engine
+    formula: "Share of the tokens whose sale reverted when attempted in the same block as the buy that KyberSwap still returned a route INTO, over 24h. Lower is better."
+    queries:
+      p50: 100 * sum(token_sellability_routed{aggregator="kyberswap",tier="same_block"}) / clamp_min(sum(token_sellability_asked{aggregator="kyberswap",tier="same_block"}), 1)
+      sample_size: sum(token_sellability_asked{aggregator="kyberswap",tier="same_block"})
+
+  - slug: paraswap-same-block
+    name: ParaSwap
+    tier: same_block
+    tag: Trades as Velora, no key
+    formula: "Share of the tokens whose sale reverted when attempted in the same block as the buy that ParaSwap still returned a route INTO, over 24h. Lower is better."
+    queries:
+      p50: 100 * sum(token_sellability_routed{aggregator="paraswap",tier="same_block"}) / clamp_min(sum(token_sellability_asked{aggregator="paraswap",tier="same_block"}), 1)
+      sample_size: sum(token_sellability_asked{aggregator="paraswap",tier="same_block"})
+
+  - slug: lifi-same-block
+    name: LI.FI
+    tier: same_block
+    tag: Cross-chain relayer
+    formula: "Share of the tokens whose sale reverted when attempted in the same block as the buy that LI.FI still returned a route INTO, over 24h. Lower is better."
+    queries:
+      p50: 100 * sum(token_sellability_routed{aggregator="lifi",tier="same_block"}) / clamp_min(sum(token_sellability_asked{aggregator="lifi",tier="same_block"}), 1)
+      sample_size: sum(token_sellability_asked{aggregator="lifi",tier="same_block"})
