@@ -30,10 +30,10 @@ const transferTopic = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4
 var (
 	verdictGauge = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "token_sellability_verdict",
-		Help: "1 for the verdict this token currently holds at this timing. " +
+		Help: "1 for the verdict this token currently holds at this tier. " +
 			"inconclusive is a verdict of its own: a probe that could not " +
 			"tell must say so rather than fall back to a real outcome.",
-	}, []string{"chain", "token", "symbol", "timing", "verdict"})
+	}, []string{"chain", "token", "symbol", "tier", "verdict"})
 
 	cohortGauge = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "token_sellability_cohort",
@@ -52,10 +52,29 @@ var (
 			"whose control fails measured the probe, not the tokens, and " +
 			"nothing from it should be read.",
 	}, []string{"chain", "token"})
+
+	// Asked and routed are separate series, and the board divides one by the
+	// other. An aggregator that cannot be reached is absent from both rather
+	// than scoring a perfect zero, because a zero here means "never routes
+	// into a token you cannot exit", which is the best score on the board
+	// and must be earned rather than inherited from an outage.
+	askedGauge = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "token_sellability_asked",
+		Help: "Tokens classified unsellable at this tier that this " +
+			"aggregator was asked to quote in the last sweep.",
+	}, []string{"chain", "aggregator", "tier"})
+
+	routedGauge = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "token_sellability_routed",
+		Help: "Of the tokens it was asked about, how many this aggregator " +
+			"returned a usable route INTO. Lower is better: these are " +
+			"tokens our own simulation could not sell back out of.",
+	}, []string{"chain", "aggregator", "tier"})
 )
 
 func init() {
-	prometheus.MustRegister(verdictGauge, cohortGauge, sweepSeconds, controlGauge)
+	prometheus.MustRegister(verdictGauge, cohortGauge, sweepSeconds, controlGauge,
+		askedGauge, routedGauge)
 }
 
 type config struct {
@@ -192,6 +211,10 @@ func sweep(ctx context.Context, cfg config, rpc *rpcClient, q *SushiQuoter) {
 	}
 	cohortGauge.WithLabelValues(cfg.chain, "seen").Set(float64(len(tokens)))
 
+	// The tokens that failed, kept per tier. These are the cohort the
+	// aggregators are then asked about, and the whole point of the board.
+	failed := map[string][]string{"same_block": {}, "delayed": {}}
+
 	routable, examined := 0, 0
 	for _, tok := range tokens {
 		if examined >= cfg.maxTokens {
@@ -203,14 +226,20 @@ func sweep(ctx context.Context, cfg config, rpc *rpcClient, q *SushiQuoter) {
 		}
 		routable++
 		examined++
+		if p.SameBlock == Unsellable {
+			failed["same_block"] = append(failed["same_block"], tok)
+		}
+		if p.Delayed == Unsellable {
+			failed["delayed"] = append(failed["delayed"], tok)
+		}
 		sym := q.Symbol(ctx, rpc, tok)
-		for timing, v := range map[string]Verdict{"same_block": p.SameBlock, "delayed": p.Delayed} {
+		for tier, v := range map[string]Verdict{"same_block": p.SameBlock, "delayed": p.Delayed} {
 			for _, candidate := range []Verdict{Sellable, Unsellable, Inconclusive} {
 				val := 0.0
 				if v == candidate {
 					val = 1
 				}
-				verdictGauge.WithLabelValues(cfg.chain, tok, sym, timing, string(candidate)).Set(val)
+				verdictGauge.WithLabelValues(cfg.chain, tok, sym, tier, string(candidate)).Set(val)
 			}
 		}
 		if p.Confirmed() {
@@ -219,6 +248,7 @@ func sweep(ctx context.Context, cfg config, rpc *rpcClient, q *SushiQuoter) {
 	}
 	cohortGauge.WithLabelValues(cfg.chain, "routable").Set(float64(routable))
 	cohortGauge.WithLabelValues(cfg.chain, "examined").Set(float64(examined))
+	askAggregators(ctx, cfg, failed)
 	sweepSeconds.WithLabelValues(cfg.chain).Set(time.Since(start).Seconds())
 	log.Printf("[sellability] sweep done: %d seen, %d examined, %.1fs",
 		len(tokens), examined, time.Since(start).Seconds())
