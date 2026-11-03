@@ -137,27 +137,37 @@ Every provider above was ranked on `eth_getBlockByNumber`, which costs a node
 almost nothing. The compute probe is a Multicall3 `aggregate3` of fifty
 `getEthBalance` sub-calls, each a separate descent into the state trie, sent
 back to back with a one-call version of the identical request on the same
-pooled connection. The difference between the two is the work; the network
-path cancels because both legs ride the same socket in the same pass.
+pooled connection. The difference between the two is what the extra
+forty-nine reads cost.
 
-| Provider | Compute work, US East | HTTP median, US East |
+| Provider | Compute work | HTTP median |
 |---|---|---|
-| <L s="quicknode">Quicknode</L> | 2.4 ms | 7.2 ms |
-| <L s="chainstack">Chainstack</L> | 1.6 ms | 2.9 ms |
-| <L s="getblock">GetBlock</L> | 1.8 ms | 9 ms |
-| <L s="dwellir">Dwellir</L> | 2.0 ms | 75 ms |
-| <L s="blockmachine">BlockMachine</L> | 25.7 ms | 113 ms |
+| <L s="dwellir">Dwellir</L> | 2.0 ms | 32.6 ms |
+| <L s="chainstack">Chainstack</L> | 2.5 ms | 18.1 ms |
+| <L s="getblock">GetBlock</L> | 4.5 ms | 8.8 ms |
+| <L s="quicknode">Quicknode</L> | 4.6 ms | 5.6 ms |
+| <L s="blockmachine">BlockMachine</L> | 20.5 ms | 108.2 ms |
 
-Dwellir is the case the cheap call hides. It is among the slowest to answer
-and among the fastest to compute: the distance is its problem, not the node.
-BlockMachine is slow on both counts, and the gap widens under load rather
-than closing. Figures are Ethereum, US East, 24 hours to 3 November 2026; the
-EU and Singapore arms of this probe started the same day and are not yet
-worth quoting.
+Read the two columns and they run in opposite directions. Dwellir is the case
+the cheap call hides: next to last on answering, first on the work. Quicknode
+is the mirror image, first to answer and next to last on the work.
+BlockMachine is last on both. Ethereum, three regions, 24 hours to 3 November
+2026, which is the same scope as the board this table is drawn from.
+
+The figure is not a clock on the node alone, and the spread between regions
+is how you can tell. GetBlock reads 1.8 ms from US East and 10.6 ms from EU
+West, Quicknode 2.5 ms from US East and 10.8 ms from Singapore. Both legs do
+ride the same socket in the same pass, so the round trip itself cancels, but
+the fifty-read response is about 16 KB against 486 bytes for the one-read
+version, and those 15 KB still cross the wire. Read it as the cost of asking
+for more work, transfer included.
 
 A value at or below zero is withheld rather than published. A fifty-read call
 cannot be faster than a one-read call, so a negative difference is noise, and
-on a lower-is-better view it would otherwise sort first.
+on a lower-is-better view it would otherwise sort first. Alchemy is the row
+withheld today: its difference lands below zero in two of the three regions,
+which is our probe failing to resolve a small number rather than a finding
+about the provider.
 
 ### eth_getLogs is three different questions
 
@@ -336,9 +346,9 @@ Rarely. The most generous free plan we price, dRPC, buys 10.5M dapp requests a m
 |---|---|---|
 | HTTP latency | `eth_getBlockByNumber` (`getSlot` on Solana) every 120 s per provider, chain and region. Calls alternate between a pooled connection (warm) and a new DNS, TCP and TLS connection (cold). Each answer is classed ok, http_err, jsonrpc_err, stale or timeout. | 21 Oct 2026 13:22 to 28 Oct 2026 13:22 UTC |
 | WebSocket push | One `eth_subscribe(newHeads)` socket per provider and region, ten minutes in every hour. Each block is scored against the first provider to push it in that region. GetBlock issues one socket per chain and region and has none for HyperEVM in US East and Singapore or for Arc in Singapore. | Same |
-| API capability | Seven methods asked once per provider, chain and region every six hours, from a single region: the three `eth_getLogs` filter shapes, `debug_traceTransaction`, `trace_block`, `eth_getBlockReceipts`, and a balance read five million blocks behind the head. A cell is published only when the provider answered; a blank means we could not ask. | 24 h to 3 Nov 2026 |
-| Compute work | A Multicall3 `aggregate3` of fifty `getEthBalance` sub-calls minus a one-call version of the same request, both primed and sent back to back on one pooled connection, every two hours. Values at or below zero are withheld. | Same |
-| eth_getLogs window | A ladder of 100 to 1,000,000 blocks per filter shape, stopping at the first refusal. Filters are built to match nothing, so the figure is the static width guard rather than a data volume. | Same |
+| API capability | Seven methods asked once per provider, chain and region every six hours from three regions: the three `eth_getLogs` filter shapes, `debug_traceTransaction`, `trace_block`, `eth_getBlockReceipts`, and a balance read five million blocks behind the head. A cell is published only when the provider answered; a blank means we could not ask. | 24 h to 3 Nov 2026 |
+| Compute work | A Multicall3 `aggregate3` of fifty `getEthBalance` sub-calls minus a one-call version of the same request, both primed and sent back to back on one pooled connection, every two hours from three regions. Values at or below zero are withheld, and the published figure averages the regions. | Same |
+| eth_getLogs window | A ladder of 100 to 1,000,000 blocks per filter shape, stopping at the first refusal. Filters are built to match nothing, so the figure is the static width guard rather than a data volume. One region, US East. | Same |
 | Cost | Each provider's published unit weights applied to fixed method mixes, cheapest plan that can serve the volume, throughput caps enforced. | Catalogue of 22 Oct 2026 |
 | Free plans | Each renewing free allowance converted into requests of the same mixes. | Same |
 
