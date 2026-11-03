@@ -796,7 +796,9 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // v156: bench 313 goes live. A draft bench publishes no rows at all,
   //       so the board was correct and the page was empty; the cached
   //       entry holds that empty set and would keep serving it.
-  ["bench-unfiltered-v156", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v157: BlockVectra joins the Katana RPC page. An ARRIVAL: a cached
+  //       entry holds the old provider set, so the row would never render.
+  ["bench-unfiltered-v157", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -1124,7 +1126,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v147: lockstep with bench-unfiltered-v154 (bench 313 rebuilt).
   // v148: lockstep with bench-unfiltered-v155 (bench 313 window fix).
   // v149: lockstep with bench-unfiltered-v156 (bench 313 live).
-  ["all-benchmarks-v149", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v150: lockstep with bench-unfiltered-v157 (BlockVectra on Katana).
+  ["all-benchmarks-v150", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1342,7 +1345,8 @@ const loadBenchmarkFiltered = unstable_cache(
   // v86: lockstep with bench-unfiltered-v154. Bench 313 now declares a
   //      tier dimension, so without this the second timing is invisible
   //      on the only tab it lives on.
-  ["bench-filters-v86", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v87: lockstep with bench-unfiltered-v157 (BlockVectra on Katana).
+  ["bench-filters-v87", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 

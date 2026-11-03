@@ -137,6 +137,8 @@ describe("the provider set behind the cache keys", () => {
     // vendor in the same change, for the reason the cold tier's comment in
     // providers.ts spells out: a tier slug without an alias builds its own
     // /products page with the vendor's title. All four keys moved.
+    // 2026-11-03: BlockVectra joins the Katana RPC page (issue #3462), one
+    // more appearance for a provider already on the site: v52, v157/v150/v87.
     expect(
       hash,
       [
@@ -155,6 +157,6 @@ describe("the provider set behind the cache keys", () => {
         "Then set EXPECTED to the hash in this failure, and add the provider",
         `to PRODUCT_NAMES if it needs a display name. Providers now: ${count}.`,
       ].join("\n"),
-    ).toBe("3a290d9a797a51df");
+    ).toBe("10af020d46e3657d");
   });
 });

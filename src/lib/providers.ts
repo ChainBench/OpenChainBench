@@ -1000,7 +1000,9 @@ const buildProvidersCached = unstable_cache(
   // v51: bench 313 rebuilt around aggregators. Four vendors gain an
   //      appearance and four `-same-block` aliases land in both tables.
   //      Lockstep with bench-unfiltered-v153.
-  ["providers-v51"],
+  // v52: BlockVectra joins the Katana RPC page (issue #3462), a new
+  //      appearance. Lockstep with bench-unfiltered-v157.
+  ["providers-v52"],
   // 900 s: the provider index feeds products / compare / answers, whose
   // numbers move slowly, and this revalidate is also the effective ISR
   // period of those ~500 pages (Next takes the min across a route's caches).

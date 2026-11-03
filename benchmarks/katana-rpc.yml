@@ -170,3 +170,27 @@ providers:
         - region: ap-southeast
           p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="conduit", chain="katana", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="conduit", chain="katana", region="sgp"}[1h])
+
+  - slug: blockvectra
+    name: BlockVectra
+    endpoint: https://api.blockvectra.com/v1/katana_mainnet/public
+    tag: BlockVectra keyless public Katana endpoint (3 req/s per IP, 1,000-block history window)
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to BlockVectra's no-key katana RPC endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="blockvectra", chain="katana"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="blockvectra", chain="katana"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="blockvectra", chain="katana"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="blockvectra", chain="katana"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="blockvectra", chain="katana"}) / sum(ocb:rpc_call:rate_24h{provider="blockvectra", chain="katana"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="blockvectra", chain="katana"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="blockvectra", chain="katana"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="blockvectra", chain="katana", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="blockvectra", chain="katana", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="blockvectra", chain="katana", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="blockvectra", chain="katana", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="blockvectra", chain="katana", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="blockvectra", chain="katana", region="sgp"}[1h])
