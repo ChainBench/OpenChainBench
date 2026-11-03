@@ -920,6 +920,54 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "Gram (formerly Toncoin, ticker renamed to GRAM in June 2026). BFT Proof-of-Stake L1 with a sharded masterchain and workchain architecture. Deterministic finality within a few seconds. Block time near 5 seconds.",
     twitter: "@ton_blockchain",
   },
+  algorand: {
+    url: "https://algorand.co",
+    description:
+      "Pure proof-of-stake L1 where a randomly selected committee agrees on each block, so a block is final as soon as it is committed, with rounds of roughly 3 seconds.",
+    twitter: "@Algorand",
+  },
+  aptos: {
+    url: "https://aptosfoundation.org",
+    description:
+      "Move-based L1 running a pipelined BFT consensus with sub-second blocks; a committed transaction is final.",
+    twitter: "@Aptos",
+  },
+  near: {
+    url: "https://near.org",
+    description:
+      "Sharded proof-of-stake L1 (Nightshade) with roughly one-second blocks; a block is final once a supermajority of stake has endorsed its successors.",
+    twitter: "@NEARProtocol",
+  },
+  somnia: {
+    url: "https://somnia.network",
+    description:
+      "EVM-compatible proof-of-stake L1 built for high throughput, where each validator produces its own data chain and a consensus chain orders them.",
+    twitter: "@Somnia_Network",
+  },
+  icp: {
+    url: "https://internetcomputer.org",
+    description:
+      "The Internet Computer: subnets of nodes run canister smart contracts and sign state with chain-key cryptography; ICP pays ledger fees and is converted into cycles for compute.",
+    twitter: "@dfinity",
+  },
+  sei: {
+    url: "https://sei.io",
+    description:
+      "Proof-of-stake L1 with a parallelized EVM, built on the Cosmos SDK with single-slot BFT finality.",
+    twitter: "@SeiNetwork",
+  },
+  cronos: {
+    url: "https://cronos.org",
+    description:
+      "EVM chain built on the Cosmos SDK with CometBFT consensus, so a committed block is final; part of the Crypto.com ecosystem.",
+    twitter: "@cronos_chain",
+  },
+  kaia: {
+    url: "https://kaia.io",
+    description:
+      "EVM-compatible L1 formed from the merger of Klaytn and Finschia, using Istanbul BFT consensus with immediate finality and one-second blocks.",
+    twitter: "@KaiaChain",
+  },
   stellar: {
     url: "https://stellar.org",
     description:
