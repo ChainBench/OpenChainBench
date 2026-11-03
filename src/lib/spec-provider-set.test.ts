@@ -149,6 +149,6 @@ describe("the provider set behind the cache keys", () => {
         "Then set EXPECTED to the hash in this failure, and add the provider",
         `to PRODUCT_NAMES if it needs a display name. Providers now: ${count}.`,
       ].join("\n"),
-    ).toBe("8342ece2bfbe164f");
+    ).toBe("d531bfa594eba1b8");
   });
 });
