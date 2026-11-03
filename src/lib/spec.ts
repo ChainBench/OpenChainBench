@@ -561,7 +561,10 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       price-reading pill, {{year}} titles; bench 310 code ships gated.
   // v108: BlockVectra joins the Ink, Unichain and Fraxtal RPC pages (dev
   //       #3463). An ARRIVAL: a cached entry holds the old provider set.
-  ["bench-unfiltered-v108", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v109: discussion #2270 release. Benches 006, 031, 034 and 026 gain
+  //       the requested chains (Algorand, Aptos, NEAR, Somnia, ICP, Sei,
+  //       Cronos, Kaia, Gram), with their audit fixes and new copy.
+  ["bench-unfiltered-v109", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -827,7 +830,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v99: lockstep with bench-unfiltered-v106 (bench 309 released).
   // v100: lockstep with bench-unfiltered-v107 (main release).
   // v101: lockstep with bench-unfiltered-v108 (BlockVectra joins 3 RPC pages).
-  ["all-benchmarks-v101", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v102: lockstep with bench-unfiltered-v109 (discussion #2270 release).
+  ["all-benchmarks-v102", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -972,7 +976,8 @@ const loadBenchmarkFiltered = unstable_cache(
   // v47: lockstep with bench-unfiltered-v107 (main release).
   // v48: lockstep with bench-unfiltered-v108 (BlockVectra on the region tabs
   //      of three chain RPC pages).
-  ["bench-filters-v48", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v49: lockstep with bench-unfiltered-v109 (discussion #2270 release).
+  ["bench-filters-v49", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 
