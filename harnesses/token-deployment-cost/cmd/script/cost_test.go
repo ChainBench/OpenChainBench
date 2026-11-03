@@ -65,7 +65,7 @@ func TestERC20InitCodeIsTheCompiledArtifact(t *testing.T) {
 	if err != nil {
 		t.Fatalf("init code is not hex: %v", err)
 	}
-	// contracts/compile.js prints 3096 bytes of init code for Token.sol.
+	// contracts/compile.mjs prints 3096 bytes of init code for Token.sol.
 	if len(raw) != 3096 {
 		t.Fatalf("init code is %d bytes, want 3096 (recompile contracts/Token.sol?)", len(raw))
 	}

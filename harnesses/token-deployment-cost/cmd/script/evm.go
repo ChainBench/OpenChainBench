@@ -18,7 +18,7 @@ import (
 // Contracts Wizard default ERC20 (name, symbol, 18 decimals, whole supply
 // minted to the deployer), OpenZeppelin Contracts 5.0.2, solc 0.8.24,
 // optimizer 200 runs, evmVersion paris, no metadata hash. Source and the
-// compile script sit next to it in contracts/; `node compile.js` rebuilds
+// compile script sit next to it in contracts/; `node compile.mjs` rebuilds
 // these exact bytes (3096 bytes of init code, 1784 bytes of runtime code).
 // The same bytes go to every chain, so the gas difference between chains
 // is their gas schedule, never a different contract.
