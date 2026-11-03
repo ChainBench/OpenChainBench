@@ -781,7 +781,9 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       NEAR, Kaia, Algorand, ICP, Gram, Sei, Cronos) and its copy is
   //       rewritten. An ARRIVAL plus an editorial change: a cached entry
   //       holds the old provider set and the old copy.
-  ["bench-unfiltered-v152", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v153: bench 026's meta description was cut at "incl." by the
+  //       snippet cap; the chain list goes and the sentence ends whole.
+  ["bench-unfiltered-v153", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -1105,7 +1107,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v143: lockstep with bench-unfiltered-v150 (bench 034 adds 12 chains).
   // v144: lockstep with bench-unfiltered-v151 (l1-finality six chains).
   // v145: lockstep with bench-unfiltered-v152 (bench 026 gains 8 chains).
-  ["all-benchmarks-v145", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v146: lockstep with bench-unfiltered-v153 (bench 026 description).
+  ["all-benchmarks-v146", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
