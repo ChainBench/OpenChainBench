@@ -11,7 +11,7 @@ import (
 
 // Bench № tbd — current native-transfer transaction fee per chain.
 //
-// One process scrapes 11 L1 chains. For each chain we compute the current
+// One process scrapes every L1 and L2 chain in config.go. For each chain we compute the current
 // USD cost of a "standard" native-token transfer (an ETH transfer, a SOL
 // transfer, an ADA transfer, etc.) every 30 s and expose it as Prometheus
 // gauges. The same list as the L1 finality bench so users can compare
@@ -27,7 +27,7 @@ import (
 func main() {
 	installLogCapture() // capture stdout into /logs ring buffer
 	fmt.Println("=== Transaction Fee Monitor ===")
-	fmt.Println("Native-transfer USD cost across 11 L1 chains.")
+	fmt.Printf("Native-transfer USD cost across %d chains.\n", len(loadConfig().Chains))
 	fmt.Println()
 
 	cfg := loadConfig()
@@ -48,7 +48,7 @@ func main() {
 
 	mobula := NewMobulaClient(cfg.MobulaAPIKey)
 
-	// Price refresher — pull all 11 prices in one Mobula call.
+	// Price refresher: every native token price, by slug and by Mobula id.
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -173,6 +173,14 @@ func nativeToUSD(ch ChainConfig, native, priceUSD float64) float64 {
 		decimals = 8 // satoshi (Litecoin)
 	case KindMonero:
 		decimals = 12 // atomic units
+	case KindAlgorand:
+		decimals = 6 // microAlgo
+	case KindAptos:
+		decimals = 8 // octa
+	case KindNear:
+		decimals = 24 // yoctoNEAR
+	case KindICP:
+		decimals = 8 // e8s
 	default:
 		decimals = 18
 	}

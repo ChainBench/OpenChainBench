@@ -7,6 +7,7 @@ import (
 	"io"
 	"math/big"
 	"net/http"
+	"sort"
 	"time"
 )
 
@@ -254,9 +255,12 @@ func (f *evmFetcher) sampleFeeHistory(ch ChainConfig) ([]FeeSample, error) {
 	if !ok {
 		return nil, fmt.Errorf("bad baseFee hex: %s", baseFeeHex)
 	}
-	// Average rewards across the 4 returned blocks per percentile so a
-	// single empty block doesn't crater an estimate.
-	rewards := avgRewards(r.Result.Reward)
+	// Median of the 4 returned blocks per percentile, so neither a single
+	// empty block nor a single outlier block moves the estimate. A mean
+	// let one Kaia block whose 90th percentile tip was 23046 gwei (the
+	// three others sat at 2.5 to 194 gwei) lift the fast tier about fifty
+	// fold on 2026-11-03.
+	rewards := medianRewards(r.Result.Reward)
 	if len(rewards) != 3 {
 		return nil, fmt.Errorf("expected 3 reward percentiles, got %d", len(rewards))
 	}
@@ -324,16 +328,16 @@ func weiToGwei(wei *big.Int) float64 {
 	return f
 }
 
-func avgRewards(rows [][]string) []*big.Int {
+// medianRewards returns, per percentile column, the median across the
+// blocks eth_feeHistory returned (the mean of the two middle values for
+// an even count). Rows whose width differs from the first row, and
+// cells that do not parse, are skipped.
+func medianRewards(rows [][]string) []*big.Int {
 	if len(rows) == 0 {
 		return nil
 	}
 	cols := len(rows[0])
-	sums := make([]*big.Int, cols)
-	for i := range sums {
-		sums[i] = new(big.Int)
-	}
-	counted := 0
+	vals := make([][]*big.Int, cols)
 	for _, row := range rows {
 		if len(row) != cols {
 			continue
@@ -343,15 +347,23 @@ func avgRewards(rows [][]string) []*big.Int {
 			if !ok {
 				continue
 			}
-			sums[i].Add(sums[i], v)
+			vals[i] = append(vals[i], v)
 		}
-		counted++
 	}
-	if counted == 0 {
-		return sums
+	out := make([]*big.Int, cols)
+	for i, col := range vals {
+		out[i] = new(big.Int)
+		n := len(col)
+		if n == 0 {
+			continue
+		}
+		sort.Slice(col, func(a, b int) bool { return col[a].Cmp(col[b]) < 0 })
+		if n%2 == 1 {
+			out[i].Set(col[n/2])
+		} else {
+			out[i].Add(col[n/2-1], col[n/2])
+			out[i].Quo(out[i], big.NewInt(2))
+		}
 	}
-	for i := range sums {
-		sums[i].Quo(sums[i], big.NewInt(int64(counted)))
-	}
-	return sums
+	return out
 }
