@@ -8,7 +8,7 @@ seo_description: "Live count of Robinhood Chain tokens that accept a simulated b
 subtitle: Share of routable tokens whose sale reverted in simulation, measured by buying, approving and selling in one request against a live aggregator route.
 
 category: Aggregators
-status: draft
+status: live
 metric: Unsellable share
 unit: pct
 higher_is_better: false
