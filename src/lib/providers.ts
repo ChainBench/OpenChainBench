@@ -77,6 +77,16 @@ const PRODUCT_ALIASES: Record<string, string> = {
   "dwellir-cold": "dwellir",
   "helius-cold": "helius",
   "blockmachine-cold": "blockmachine",
+  // The heavy-call arm, added 2026-11-03: the same endpoints measured on a
+  // Multicall3 of fifty state reads. A measurement arm, not a product, and
+  // the same rule as the cold tier above: without a line here each slug
+  // builds its own /products page, duplicating the vendor's.
+  "alchemy-heavy": "alchemy",
+  "chainstack-heavy": "chainstack",
+  "getblock-heavy": "getblock",
+  "quicknode-heavy": "quicknode",
+  "dwellir-heavy": "dwellir",
+  "blockmachine-heavy": "blockmachine",
   "validationcloud-cold": "validationcloud",
   // The cost benches 282 and 283 priced Validation Cloud under its hyphenated
   // slug while the RPC cohort uses the one-word one, which built two product
@@ -945,7 +955,7 @@ const buildProvidersCached = unstable_cache(
   //      appearances. Lockstep with bench-unfiltered-v143.
   // v42: tuleep.trade is Proliquid: the product page's name, description
   //      and links ride in this index. Lockstep with bench-unfiltered-v144.
-  ["providers-v42"],
+  ["providers-v43"],
   // 900 s: the provider index feeds products / compare / answers, whose
   // numbers move slowly, and this revalidate is also the effective ISR
   // period of those ~500 pages (Next takes the min across a route's caches).

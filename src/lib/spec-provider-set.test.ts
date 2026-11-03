@@ -118,6 +118,12 @@ describe("the provider set behind the cache keys", () => {
     // An ARRIVAL on 2026-11-03: BlockVectra's keyless endpoints join the
     // Ink, Unichain and Fraxtal RPC pages (issue #3462). New to the site,
     // so providers-v moves with the other three: v41, v143/v136/v81.
+    // An ADDITION on 2026-11-03: a keyed-heavy tier on the eight chain RPC
+    // pages, six providers each under a `-heavy` slug, measured on a
+    // Multicall3 of fifty state reads. Both alias tables gained a line per
+    // vendor in the same change, for the reason the cold tier's comment in
+    // providers.ts spells out: a tier slug without an alias builds its own
+    // /products page with the vendor's title. All four keys moved.
     expect(
       hash,
       [
@@ -136,6 +142,6 @@ describe("the provider set behind the cache keys", () => {
         "Then set EXPECTED to the hash in this failure, and add the provider",
         `to PRODUCT_NAMES if it needs a display name. Providers now: ${count}.`,
       ].join("\n"),
-    ).toBe("5c7a42ab767d8fe7");
+    ).toBe("7d7745bd9b0b0d15");
   });
 });

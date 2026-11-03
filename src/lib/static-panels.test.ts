@@ -76,7 +76,7 @@ describe("a chain RPC page, where this now lives", () => {
     }
   });
 
-  test("the served table carries all eight, not the first three", () => {
+  test("the served table carries every declared panel, not the first three", () => {
     // This is the property the bug was about. The old rule took the first
     // three panels in spec order and a crawler got whatever happened to be
     // there; the declared list is what the page promises, and all of it has
@@ -86,7 +86,8 @@ describe("a chain RPC page, where this now lives", () => {
       .map((p) => ({ ...p, values: { alchemy: 1 } })) as unknown as MetricPanel[];
     const cols = spec.ledger_columns as unknown as LedgerColumn[];
     const got = staticLedgerPanels(panels, cols);
-    expect(got.length).toBe(8);
+    // Eight capability verdicts plus the heavy tab's work term.
+    expect(got.length).toBe(9);
     expect(got.length).toBeGreaterThan(MAX_STATIC_PANELS);
     expect(got.map((p) => p.id)).toContain("cap_trace_block");
     expect(got.map((p) => p.id)).toContain("cap_archive");
