@@ -209,11 +209,19 @@ namespaces, so a provider can serve one and refuse the other on the same
 chain, and several do. A documentation page that says tracing is supported
 does not tell you which one you get, or on which chains.
 
-Alchemy is absent from this table. Our key is a Free plan one and it is
-refused on most of the chains it is configured for, so we can ask it on 12
-cells of 56. That is our plan, not Alchemy's API surface, and a blank on
-these boards always means we could not ask rather than that the provider
-declined.
+Alchemy is absent from this table for a reason worth stating plainly. Our key
+is a Free plan one, and it reaches 42 of the 56 cells in this matrix where
+four of the others reach all 56. On every cell we can ask, it answers: 100%
+of the seven methods. So the gap is reach, not refusal, and it is a fact
+about the plan we hold rather than about Alchemy's API surface.
+
+The plan showed itself once, clearly. Success on Ethereum held at 100% to 23
+October, fell to 80% on the 24th, sat at 22% from the 25th to the 31st, and
+returned to 100% on 2 November. A seven day window at a fifth of the normal
+answer rate that ends at the month boundary is a monthly quota, not an
+outage, and it is the one thing a free key will always eventually measure
+instead of the provider. A blank on these boards means we could not ask, and
+never that the provider declined.
 
 ### Solana: the v2 call almost nobody serves
 
