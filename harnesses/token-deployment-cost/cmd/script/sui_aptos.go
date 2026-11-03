@@ -48,28 +48,45 @@ func init() {
 
 // ----- Sui ---------------------------------------------------------------
 
-type suiRPCReq struct {
-	JSONRPC string `json:"jsonrpc"`
-	ID      int    `json:"id"`
-	Method  string `json:"method"`
-	Params  []any  `json:"params"`
+// The public fullnodes deprecated JSON-RPC (suix_getReferenceGasPrice now
+// answers "deprecated, use gRPC or GraphQL"), and the harness kept the last
+// good gauge while every sample failed. GraphQL serves the same number as
+// epoch.referenceGasPrice.
+const suiGasPriceQuery = `{"query":"{ epoch { epochId referenceGasPrice } }"}`
+
+type suiGraphQLResp struct {
+	Data struct {
+		Epoch struct {
+			ReferenceGasPrice string `json:"referenceGasPrice"`
+		} `json:"epoch"`
+	} `json:"data"`
+	Errors []struct {
+		Message string `json:"message"`
+	} `json:"errors"`
 }
 
-type suiRPCResp struct {
-	Result string `json:"result"`
-	Error  *struct {
-		Code    int    `json:"code"`
-		Message string `json:"message"`
-	} `json:"error,omitempty"`
+// parseSuiGasPrice reads epoch.referenceGasPrice (MIST per gas unit) from a
+// GraphQL answer. A zero or missing price is an error, never a free deploy.
+func parseSuiGasPrice(raw []byte) (uint64, error) {
+	var r suiGraphQLResp
+	if err := json.Unmarshal(raw, &r); err != nil {
+		return 0, fmt.Errorf("decode: %w (body=%.200s)", err, string(raw))
+	}
+	if len(r.Errors) > 0 {
+		return 0, fmt.Errorf("graphql error: %s", r.Errors[0].Message)
+	}
+	gp, err := strconv.ParseUint(r.Data.Epoch.ReferenceGasPrice, 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("parse gas price %q: %w", r.Data.Epoch.ReferenceGasPrice, err)
+	}
+	if gp == 0 {
+		return 0, fmt.Errorf("reference gas price is 0")
+	}
+	return gp, nil
 }
 
 func (s *suiSampler) Sample(ch ChainConfig) (Sample, error) {
-	body, _ := json.Marshal(suiRPCReq{
-		JSONRPC: "2.0", ID: 1,
-		Method: "suix_getReferenceGasPrice",
-		Params: []any{},
-	})
-	req, err := http.NewRequest("POST", ch.RPCURL, bytesNewReader(body))
+	req, err := http.NewRequest("POST", ch.RPCURL, bytesNewReader([]byte(suiGasPriceQuery)))
 	if err != nil {
 		return Sample{}, err
 	}
@@ -83,16 +100,12 @@ func (s *suiSampler) Sample(ch ChainConfig) (Sample, error) {
 	if err != nil {
 		return Sample{}, err
 	}
-	var r suiRPCResp
-	if err := json.Unmarshal(raw, &r); err != nil {
-		return Sample{}, fmt.Errorf("decode: %w (body=%s)", err, string(raw))
+	if resp.StatusCode != http.StatusOK {
+		return Sample{}, fmt.Errorf("http %d: %.200s", resp.StatusCode, string(raw))
 	}
-	if r.Error != nil {
-		return Sample{}, fmt.Errorf("rpc error %d: %s", r.Error.Code, r.Error.Message)
-	}
-	gp, err := strconv.ParseUint(r.Result, 10, 64)
+	gp, err := parseSuiGasPrice(raw)
 	if err != nil {
-		return Sample{}, fmt.Errorf("parse gas price %q: %w", r.Result, err)
+		return Sample{}, err
 	}
 	total := gp * suiReferenceGasBudget
 	return Sample{
@@ -105,9 +118,9 @@ func (s *suiSampler) Sample(ch ChainConfig) (Sample, error) {
 // ----- Aptos -------------------------------------------------------------
 
 type aptosEstimate struct {
-	GasEstimate                uint64 `json:"gas_estimate"`
-	DeprioritizedGasEstimate   uint64 `json:"deprioritized_gas_estimate"`
-	PrioritizedGasEstimate     uint64 `json:"prioritized_gas_estimate"`
+	GasEstimate              uint64 `json:"gas_estimate"`
+	DeprioritizedGasEstimate uint64 `json:"deprioritized_gas_estimate"`
+	PrioritizedGasEstimate   uint64 `json:"prioritized_gas_estimate"`
 }
 
 func (s *aptosSampler) Sample(ch ChainConfig) (Sample, error) {
@@ -123,6 +136,11 @@ func (s *aptosSampler) Sample(ch ChainConfig) (Sample, error) {
 	var est aptosEstimate
 	if err := json.Unmarshal(raw, &est); err != nil {
 		return Sample{}, fmt.Errorf("decode: %w (body=%s)", err, string(raw))
+	}
+	// An error body (rate limit, 5xx JSON) decodes to gas_estimate 0 and
+	// used to publish a free deploy. Zero is never a real Aptos gas price.
+	if resp.StatusCode != http.StatusOK || est.GasEstimate == 0 {
+		return Sample{}, fmt.Errorf("no gas estimate (http %d): %.200s", resp.StatusCode, string(raw))
 	}
 	total := est.GasEstimate * aptosReferenceGasBudget
 	return Sample{

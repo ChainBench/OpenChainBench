@@ -29,10 +29,10 @@ import (
 // Output in lamports; main.go divides by 1e9 to get SOL.
 
 const (
-	splMintBytes      = 82
-	splATABytes       = 165
-	splMetadataBytes  = 679 // Metaplex Token Metadata v1 (post-resize)
-	solanaPerSig      = 5000
+	splMintBytes     = 82
+	splATABytes      = 165
+	splMetadataBytes = 679 // Metaplex Token Metadata v1 (post-resize)
+	solanaPerSig     = 5000
 )
 
 type solanaSampler struct {
