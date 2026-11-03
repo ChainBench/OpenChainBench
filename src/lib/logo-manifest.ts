@@ -711,6 +711,7 @@ const RAW: Record<string, string> = {
   hyperx: "/logos/hyperx.png",
   miracle: "/logos/miracle.jpg",
   xbit: "/logos/xbit.png",
+  // Proliquid (formerly tuleep.trade): the shark mark from proliquid.xyz/brand.
   "tuleep-trade": "/logos/tuleep-trade.png",
   "aura-money": "/logos/aura-money.jpg",
   "cro-trade": "/logos/cro-trade.png",
