@@ -456,7 +456,27 @@ export default async function ReportPage({ params }: Props) {
         <MDXRemote
           source={report.content}
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          components={MDX_COMPONENTS as any}
+          components={
+            {
+              ...MDX_COMPONENTS,
+              // One source for the FAQ. The body used to re-type four of
+              // the five questions while the fifth lived only in the
+              // JSON-LD, so a reader never saw it and an edit to the
+              // hidden answer (Dwellir 50.0 to 42.9 per cent) shipped
+              // invisible. Rendering from `report.faq` makes the page and
+              // the structured data the same text by construction.
+              Faq: () => (
+                <>
+                  {(report.faq ?? []).map((f) => (
+                    <div key={f.q}>
+                      <h3>{f.q}</h3>
+                      <p>{f.a}</p>
+                    </div>
+                  ))}
+                </>
+              ),
+            } as any
+          }
           options={{ mdxOptions: { remarkPlugins: [remarkGfm] } }}
         />
       </div>
