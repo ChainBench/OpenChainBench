@@ -30,6 +30,9 @@ export type ChainEntry = {
   /** Mobula ticker for the same asset; undefined keeps nativeSymbol, null disables
    * native price/mcap until the live lookup AND harness series identify that asset. */
   nativePriceSymbol?: string | null;
+  /** Mobula asset id; when set it prices the native instead of any ticker.
+   * Must match NativeMobulaID in harnesses/chain-kpis registry.go. */
+  nativePriceAssetId?: number;
   /** Official project website, shown as an external link on /chains/[slug]. */
   website?: string;
 };
@@ -447,8 +450,10 @@ export const CHAINS: ChainEntry[] = [
     category: "L2",
     nativeSymbol: "FRAX",
     // https://docs.frax.com/fraxtal/gas-fees/FRAX
-    // The harness still measures FRXETH; a FRAX ticker lookup is ambiguous.
+    // Ticker FRAX resolves to the Legacy Frax Dollar stablecoin on Mobula, so
+    // never by ticker: asset 100004858 is "Frax (prev. FXS)", the gas token.
     nativePriceSymbol: null,
+    nativePriceAssetId: 100004858,
     description:
       "Frax Finance OP Stack rollup, 2 s sequencer cadence, FRAX-denominated gas with FXTL incentive points.",
   },
