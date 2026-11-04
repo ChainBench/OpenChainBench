@@ -183,6 +183,24 @@ var (
 	}
 )
 
+// The three values of the `conn` label. Constants rather than literals at
+// four call sites: a typo in one of them would publish a fourth arm that no
+// query names, and the column would read short without any error.
+const (
+	connWarm = "warm"
+	connCold = "cold"
+	connNone = "none"
+)
+
+// connLabel maps the arm this tick rode onto the label value, so the counter
+// and the latency gauges can never disagree about which arm a sample is in.
+func connLabel(warm bool) string {
+	if warm {
+		return connWarm
+	}
+	return connCold
+}
+
 func transportFor(warm bool) *http.Transport {
 	if warm {
 		return warmTransport
@@ -431,7 +449,10 @@ func probeOne(ctx context.Context, e Endpoint) {
 
 	tick := func() {
 		if !quota.allow(e.Provider, currentRegion) {
-			rpcCallTotal.WithLabelValues(e.Provider, e.Chain, currentRegion, "quota_paused", "keyed").Inc()
+			// conn="none": this tick's arm has not been chosen yet, and no
+			// call leaves. A pause is our budget, not the provider's
+			// reliability, so it sits outside both arms.
+			rpcCallTotal.WithLabelValues(e.Provider, e.Chain, currentRegion, "quota_paused", "keyed", connNone).Inc()
 			rpcHealth.WithLabelValues(e.Provider, e.Chain, currentRegion, "keyed").Set(0)
 			rpcLatency.DeleteLabelValues(e.Provider, e.Chain, currentRegion, "keyed")
 			rpcLatencyCold.DeleteLabelValues(e.Provider, e.Chain, currentRegion, "keyed")
@@ -458,7 +479,7 @@ func probeOne(ctx context.Context, e Endpoint) {
 		// measured one. Reserve the second so the monthly guard counts what we
 		// actually send rather than half of it.
 		if warm && !quota.allow(e.Provider, currentRegion) {
-			rpcCallTotal.WithLabelValues(e.Provider, e.Chain, currentRegion, "quota_paused", "keyed").Inc()
+			rpcCallTotal.WithLabelValues(e.Provider, e.Chain, currentRegion, "quota_paused", "keyed", connWarm).Inc()
 			return
 		}
 
@@ -498,7 +519,7 @@ func probeOne(ctx context.Context, e Endpoint) {
 			rpcHealth.WithLabelValues(e.Provider, e.Chain, currentRegion, "keyed").Set(0)
 			return
 		}
-		rpcCallTotal.WithLabelValues(e.Provider, e.Chain, currentRegion, result, "keyed").Inc()
+		rpcCallTotal.WithLabelValues(e.Provider, e.Chain, currentRegion, result, "keyed", connLabel(warm)).Inc()
 		if result == "ok" {
 			// Same rule as the no-key harness: latency is recorded ONLY
 			// for fresh valid responses (error responses are often faster
