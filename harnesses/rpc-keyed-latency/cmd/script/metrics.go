@@ -58,12 +58,23 @@ var (
 		[]string{"provider", "chain", "region", "tier"},
 	)
 
+	// `conn` says which arm the call rode: "warm" on the pooled connection,
+	// "cold" on a connection that pays DNS + TCP + TLS every time, "none"
+	// when no call was sent at all (the quota guard tripping before the arm
+	// for this tick was even chosen).
+	//
+	// Without it the two arms share one counter, and the cold row publishes
+	// the warm row's success rate and a sample count that is the sum of
+	// both. Measured on ethereum us-east, 24 h to 2026-11-03: the warm arm
+	// wrote 359 times, the cold arm 360, and BOTH rows showed 720. The
+	// recording rules sum by (provider, chain, region, tier) and erase
+	// everything else, so the label has to reach them too.
 	rpcCallTotal = promauto.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "rpc_call_total",
-			Help: "Keyed RPC probe outcomes: ok | http_err | jsonrpc_err | stale | timeout | quota_paused.",
+			Help: "Keyed RPC probe outcomes: ok | http_err | jsonrpc_err | stale | timeout | quota_paused, per connection arm (conn=warm|cold|none).",
 		},
-		[]string{"provider", "chain", "region", "result", "tier"},
+		[]string{"provider", "chain", "region", "result", "tier", "conn"},
 	)
 
 	rpcHealth = promauto.NewGaugeVec(
