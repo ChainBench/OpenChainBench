@@ -838,7 +838,11 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       withheld from the ranking instead of publishing a confident
   //       100%. Both the numbers and the gating change, and a cached
   //       entry holds the ungated set.
-  ["bench-unfiltered-v162", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v163: bench 313's ranking divisor was clamp_min(n, 1), which turns
+  //       no evidence into 0%, and 0% is the BEST score on this board:
+  //       every row read as a perfect record. The division is guarded
+  //       instead, so a row with no questions publishes nothing.
+  ["bench-unfiltered-v163", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -1174,7 +1178,8 @@ const loadAllBenchmarksCached = unstable_cache(
   //       Heavy tier, Solana capability board).
   // v154: lockstep with bench-unfiltered-v161 (Trnch joins bench 313).
   // v155: lockstep with bench-unfiltered-v162 (bench 313 sample gating).
-  ["all-benchmarks-v155", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v156: lockstep with bench-unfiltered-v163 (bench 313 zero divisor).
+  ["all-benchmarks-v156", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);

@@ -47,7 +47,8 @@ methodology:
   - "A failed buy is out of scope, not a failure. If no route in opens, nothing has been learned about selling, and calling that unsellable would blame the token for a market that does not exist."
   - "The cohort is tokens that emitted a Transfer in the window, not new launches. The event that announces a new token on this chain is not identified, and guessing it would bias the sample towards whichever launchpad was guessed. Tokens that moved is a weaker claim and a true one."
   - "The sale is sized at 98% of what the buy returned, so it can never fail on a rounding difference and be read as a refusal."
-  - "The figure spans 24h of sweeps and the sample column counts the token-questions behind it, so the two are read together. A row resting on under a tenth of the expected questions is withheld from the ranking rather than published as a percentage, because a share computed from one or two tokens says more about the sweep than about the aggregator."
+  - "The figure and the sample column are read together. A row resting on under a tenth of the expected token-questions is withheld from the ranking rather than published, because a share computed from one or two tokens says more about the sweep than about the aggregator."
+  - "A row with no questions at all publishes nothing rather than zero. Zero is the best score on this board and has to be earned by declining, never inherited by not being asked."
   - "Measured against a route a user would really sign, taken from a live aggregator response rather than hand-built calldata. Simulating calldata we encoded ourselves would test the encoder, not the token."
 
 findings:
@@ -98,7 +99,7 @@ providers:
     tag: No auth, serves Robinhood Chain
     formula: "Share of the tokens whose sale reverted when attempted a few blocks after the buy that SushiSwap still returned a route INTO, counted over 24h of sweeps. Lower is better."
     queries:
-      p50: 100 * sum(increase(token_sellability_routed_total{aggregator="sushi",tier="delayed"}[24h])) / clamp_min(sum(increase(token_sellability_asked_total{aggregator="sushi",tier="delayed"}[24h])), 1)
+      p50: 100 * sum(increase(token_sellability_routed_total{aggregator="sushi",tier="delayed"}[24h])) / (sum(increase(token_sellability_asked_total{aggregator="sushi",tier="delayed"}[24h])) > 0)
       sample_size: sum(increase(token_sellability_asked_total{aggregator="sushi",tier="delayed"}[24h]))
 
   - slug: kyberswap
@@ -107,7 +108,7 @@ providers:
     tag: No auth, per chain aggregator engine
     formula: "Share of the tokens whose sale reverted when attempted a few blocks after the buy that KyberSwap still returned a route INTO, counted over 24h of sweeps. Lower is better."
     queries:
-      p50: 100 * sum(increase(token_sellability_routed_total{aggregator="kyberswap",tier="delayed"}[24h])) / clamp_min(sum(increase(token_sellability_asked_total{aggregator="kyberswap",tier="delayed"}[24h])), 1)
+      p50: 100 * sum(increase(token_sellability_routed_total{aggregator="kyberswap",tier="delayed"}[24h])) / (sum(increase(token_sellability_asked_total{aggregator="kyberswap",tier="delayed"}[24h])) > 0)
       sample_size: sum(increase(token_sellability_asked_total{aggregator="kyberswap",tier="delayed"}[24h]))
 
   - slug: paraswap
@@ -116,7 +117,7 @@ providers:
     tag: Trades as Velora, no key
     formula: "Share of the tokens whose sale reverted when attempted a few blocks after the buy that ParaSwap still returned a route INTO, counted over 24h of sweeps. Lower is better."
     queries:
-      p50: 100 * sum(increase(token_sellability_routed_total{aggregator="paraswap",tier="delayed"}[24h])) / clamp_min(sum(increase(token_sellability_asked_total{aggregator="paraswap",tier="delayed"}[24h])), 1)
+      p50: 100 * sum(increase(token_sellability_routed_total{aggregator="paraswap",tier="delayed"}[24h])) / (sum(increase(token_sellability_asked_total{aggregator="paraswap",tier="delayed"}[24h])) > 0)
       sample_size: sum(increase(token_sellability_asked_total{aggregator="paraswap",tier="delayed"}[24h]))
 
   - slug: lifi
@@ -125,7 +126,7 @@ providers:
     tag: Cross-chain relayer
     formula: "Share of the tokens whose sale reverted when attempted a few blocks after the buy that LI.FI still returned a route INTO, counted over 24h of sweeps. Lower is better."
     queries:
-      p50: 100 * sum(increase(token_sellability_routed_total{aggregator="lifi",tier="delayed"}[24h])) / clamp_min(sum(increase(token_sellability_asked_total{aggregator="lifi",tier="delayed"}[24h])), 1)
+      p50: 100 * sum(increase(token_sellability_routed_total{aggregator="lifi",tier="delayed"}[24h])) / (sum(increase(token_sellability_asked_total{aggregator="lifi",tier="delayed"}[24h])) > 0)
       sample_size: sum(increase(token_sellability_asked_total{aggregator="lifi",tier="delayed"}[24h]))
 
   - slug: trnch
@@ -134,7 +135,7 @@ providers:
     tag: Screens the token with its own agent before polling routers
     formula: "Share of the tokens whose sale reverted when attempted a few blocks after the buy that Trnch still returned a route INTO, counted over 24h of sweeps. Lower is better."
     queries:
-      p50: 100 * sum(increase(token_sellability_routed_total{aggregator="trnch",tier="delayed"}[24h])) / clamp_min(sum(increase(token_sellability_asked_total{aggregator="trnch",tier="delayed"}[24h])), 1)
+      p50: 100 * sum(increase(token_sellability_routed_total{aggregator="trnch",tier="delayed"}[24h])) / (sum(increase(token_sellability_asked_total{aggregator="trnch",tier="delayed"}[24h])) > 0)
       sample_size: sum(increase(token_sellability_asked_total{aggregator="trnch",tier="delayed"}[24h]))
   - slug: sushi-same-block
     name: SushiSwap
@@ -142,7 +143,7 @@ providers:
     tag: No auth, serves Robinhood Chain
     formula: "Share of the tokens whose sale reverted when attempted in the same block as the buy that SushiSwap still returned a route INTO, counted over 24h of sweeps. Lower is better."
     queries:
-      p50: 100 * sum(increase(token_sellability_routed_total{aggregator="sushi",tier="same_block"}[24h])) / clamp_min(sum(increase(token_sellability_asked_total{aggregator="sushi",tier="same_block"}[24h])), 1)
+      p50: 100 * sum(increase(token_sellability_routed_total{aggregator="sushi",tier="same_block"}[24h])) / (sum(increase(token_sellability_asked_total{aggregator="sushi",tier="same_block"}[24h])) > 0)
       sample_size: sum(increase(token_sellability_asked_total{aggregator="sushi",tier="same_block"}[24h]))
 
   - slug: kyberswap-same-block
@@ -151,7 +152,7 @@ providers:
     tag: No auth, per chain aggregator engine
     formula: "Share of the tokens whose sale reverted when attempted in the same block as the buy that KyberSwap still returned a route INTO, counted over 24h of sweeps. Lower is better."
     queries:
-      p50: 100 * sum(increase(token_sellability_routed_total{aggregator="kyberswap",tier="same_block"}[24h])) / clamp_min(sum(increase(token_sellability_asked_total{aggregator="kyberswap",tier="same_block"}[24h])), 1)
+      p50: 100 * sum(increase(token_sellability_routed_total{aggregator="kyberswap",tier="same_block"}[24h])) / (sum(increase(token_sellability_asked_total{aggregator="kyberswap",tier="same_block"}[24h])) > 0)
       sample_size: sum(increase(token_sellability_asked_total{aggregator="kyberswap",tier="same_block"}[24h]))
 
   - slug: paraswap-same-block
@@ -160,7 +161,7 @@ providers:
     tag: Trades as Velora, no key
     formula: "Share of the tokens whose sale reverted when attempted in the same block as the buy that ParaSwap still returned a route INTO, counted over 24h of sweeps. Lower is better."
     queries:
-      p50: 100 * sum(increase(token_sellability_routed_total{aggregator="paraswap",tier="same_block"}[24h])) / clamp_min(sum(increase(token_sellability_asked_total{aggregator="paraswap",tier="same_block"}[24h])), 1)
+      p50: 100 * sum(increase(token_sellability_routed_total{aggregator="paraswap",tier="same_block"}[24h])) / (sum(increase(token_sellability_asked_total{aggregator="paraswap",tier="same_block"}[24h])) > 0)
       sample_size: sum(increase(token_sellability_asked_total{aggregator="paraswap",tier="same_block"}[24h]))
 
   - slug: lifi-same-block
@@ -169,7 +170,7 @@ providers:
     tag: Cross-chain relayer
     formula: "Share of the tokens whose sale reverted when attempted in the same block as the buy that LI.FI still returned a route INTO, counted over 24h of sweeps. Lower is better."
     queries:
-      p50: 100 * sum(increase(token_sellability_routed_total{aggregator="lifi",tier="same_block"}[24h])) / clamp_min(sum(increase(token_sellability_asked_total{aggregator="lifi",tier="same_block"}[24h])), 1)
+      p50: 100 * sum(increase(token_sellability_routed_total{aggregator="lifi",tier="same_block"}[24h])) / (sum(increase(token_sellability_asked_total{aggregator="lifi",tier="same_block"}[24h])) > 0)
       sample_size: sum(increase(token_sellability_asked_total{aggregator="lifi",tier="same_block"}[24h]))
 
   - slug: trnch-same-block
@@ -178,5 +179,5 @@ providers:
     tag: Screens the token with its own agent before polling routers
     formula: "Share of the tokens whose sale reverted when attempted in the same block as the buy that Trnch still returned a route INTO, counted over 24h of sweeps. Lower is better."
     queries:
-      p50: 100 * sum(increase(token_sellability_routed_total{aggregator="trnch",tier="same_block"}[24h])) / clamp_min(sum(increase(token_sellability_asked_total{aggregator="trnch",tier="same_block"}[24h])), 1)
+      p50: 100 * sum(increase(token_sellability_routed_total{aggregator="trnch",tier="same_block"}[24h])) / (sum(increase(token_sellability_asked_total{aggregator="trnch",tier="same_block"}[24h])) > 0)
       sample_size: sum(increase(token_sellability_asked_total{aggregator="trnch",tier="same_block"}[24h]))
