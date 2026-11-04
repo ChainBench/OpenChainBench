@@ -103,6 +103,127 @@ export function SpeedCostChart() {
 }
 
 /* ------------------------------------------------------------------ */
+/* The ranking changes with the method                                 */
+/* ------------------------------------------------------------------ */
+
+const METHOD_COLS: { key: "cheap" | "archive" | "getlogs"; label: string; note: string }[] = [
+  { key: "cheap", label: "Cheap call", note: "eth_getBlockByNumber" },
+  { key: "archive", label: "Archive read", note: "balance, 5M blocks back" },
+  { key: "getlogs", label: "eth_getLogs", note: "address filter" },
+];
+
+/** A slope chart, because the reviewer's point IS the crossing of the
+ *  lines: the order on a cheap call is not the order on an expensive one.
+ *  Grouped bars would sort by provider and hide exactly that. */
+export function MethodSpreadChart() {
+  const M = REPORT.methods;
+  const W = 700;
+  const H = 420;
+  const m = { l: 62, r: 150, t: 34, b: 52 };
+  const y = logScale(4, 500, m.t, H - m.b);
+  const colX = METHOD_COLS.map(
+    (_, i) => m.l + (i * (W - m.l - m.r)) / (METHOD_COLS.length - 1),
+  );
+  const yt = [5, 10, 30, 100, 300];
+  const rows = M.latency
+    .map((r) => ({ ...r, p: PROVIDER[r.provider] }))
+    .filter((r) => r.p && r.cheap != null);
+  // Label placement. Two providers can sit a few pixels apart on a log
+  // scale (chainstack 8.8 ms against getblock 10.2 on getLogs), and each
+  // label is two lines of text, so they would overlap. Place each at its
+  // own last point, then walk down pushing any label that is too close to
+  // the one above. A leader line keeps a nudged label attached to its dot.
+  const LABEL_GAP = 26;
+  const ends = rows
+    .map((r) => {
+      const keys = METHOD_COLS.map((c) => c.key).filter((k) => r[k] != null);
+      const lastKey = keys[keys.length - 1];
+      const i = METHOD_COLS.findIndex((c) => c.key === lastKey);
+      return { slug: r.provider, x: colX[i], y: y(r[lastKey] as number) };
+    })
+    .sort((a, b) => a.y - b.y);
+  const labelY: Record<string, number> = {};
+  let floor = -Infinity;
+  for (const e of ends) {
+    const ly = Math.max(e.y, floor + LABEL_GAP);
+    labelY[e.slug] = ly;
+    floor = ly;
+  }
+  return (
+    <Figure
+      title="The ranking changes with the method"
+      subtitle="The same key asked three ways, from cheapest call to most expensive. A line that crosses another means the two providers swap places. GetBlock has no archive point because it does not serve the call."
+      source={`Source: OpenChainBench rpc-keyed-latency probes, ${M.window} to ${M.asOf}, ${CHAIN_NAME[M.chain] ?? M.chain}, three regions averaged.`}
+    >
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full min-w-[560px] h-auto" role="img" aria-label="Latency per provider across a cheap call, an archive read and eth_getLogs">
+        {yt.map((v) => (
+          <g key={v}>
+            <line x1={m.l} x2={W - m.r} y1={y(v)} y2={y(v)} stroke={RULE} strokeDasharray="2 4" />
+            <text x={m.l - 8} y={y(v) + 4} fontSize={11} textAnchor="end" style={{ fill: INK_FAINT }}>
+              {v} ms
+            </text>
+          </g>
+        ))}
+        {METHOD_COLS.map((c, i) => (
+          <g key={c.key}>
+            <text x={colX[i]} y={m.t - 16} fontSize={12} fontWeight={600} textAnchor="middle" style={{ fill: INK }}>
+              {c.label}
+            </text>
+            <text x={colX[i]} y={m.t - 3} fontSize={10} textAnchor="middle" style={{ fill: INK_FAINT }}>
+              {c.note}
+            </text>
+          </g>
+        ))}
+        {rows.map((r) => {
+          const pts = METHOD_COLS.map((c, i) => {
+            const v = r[c.key];
+            return v == null ? null : { x: colX[i], y: y(v), v };
+          });
+          const drawn = pts.filter(Boolean) as { x: number; y: number; v: number }[];
+          const last = drawn[drawn.length - 1];
+          return (
+            <g key={r.provider}>
+              <polyline
+                points={drawn.map((d) => `${d.x},${d.y}`).join(" ")}
+                fill="none"
+                stroke={r.p.color}
+                strokeWidth={2}
+                strokeLinecap="round"
+                opacity={0.75}
+              />
+              {drawn.map((d, i) => (
+                <circle key={i} cx={d.x} cy={d.y} r={4} fill={r.p.color} />
+              ))}
+              {Math.abs(labelY[r.provider] - last.y) > 1 ? (
+                <line
+                  x1={last.x + 4}
+                  y1={last.y}
+                  x2={last.x + 14}
+                  y2={labelY[r.provider]}
+                  stroke={r.p.color}
+                  strokeWidth={1}
+                  opacity={0.5}
+                />
+              ) : null}
+              <SvgLogo slug={r.provider} x={last.x + 22} y={labelY[r.provider]} r={8} id={`ms-${r.provider}`} />
+              <text x={last.x + 35} y={labelY[r.provider] - 2} fontSize={12} fontWeight={600} style={{ fill: INK }}>
+                {r.p.name}
+              </text>
+              <text x={last.x + 35} y={labelY[r.provider] + 10} fontSize={10} style={{ fill: INK_MUTED }}>
+                {drawn.map((d) => `${fmtMs(d.v)}`).join(" · ")}
+              </text>
+            </g>
+          );
+        })}
+        <text x={(m.l + W - m.r) / 2} y={H - 10} fontSize={11} textAnchor="middle" style={{ fill: INK_MUTED }}>
+          Round trip, ms (log). Lower is faster.
+        </text>
+      </svg>
+    </Figure>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /* Region spread                                                       */
 /* ------------------------------------------------------------------ */
 

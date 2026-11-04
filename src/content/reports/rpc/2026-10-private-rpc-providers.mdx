@@ -3,6 +3,7 @@ title: "Best private RPC provider 2026: speed and cost"
 category: "rpc"
 slug: "2026-10-private-rpc-providers"
 publishedAt: "2026-10-28"
+updatedAt: "2026-11-04"
 period: "October 2026"
 summary: "Quicknode leads HTTP latency in 18 of 27 cells; BlockMachine is cheapest on a dapp workload. Six API-key RPC providers, nine chains, three regions, seven days."
 heroFinding: "Quicknode is the fastest in 18 of 27 chain and region cells. BlockMachine is the cheapest of the six on a dapp workload at every volume, and the slowest in every region."
@@ -17,7 +18,7 @@ faq:
   - q: "What is the best RPC provider for under $50 a month?"
     a: "Chainstack. Its $49 Growth plan covers 20M dapp requests a month, or 10M archive and trace requests, and from US East it had the lowest median latency of all six providers, 2.9 ms."
   - q: "Which private RPC provider supports trace_block?"
-    a: "Measured rather than read off a documentation page, over the 24 hours to 4 November 2026: BlockMachine serves trace_block on 71.4% of the chains we ask it on, Chainstack 62.5%, Quicknode and Dwellir 50.0% each, GetBlock 25.0%. trace_block and debug_traceTransaction live in different client namespaces, so a provider can serve one and refuse the other on the same chain, and several do."
+    a: "Measured rather than read off a documentation page, over the 24 hours to 4 November 2026: BlockMachine serves trace_block on 71.4% of the chains we ask it on, Chainstack 62.5%, Quicknode 50.0%, Dwellir 42.9%, GetBlock 25.0%. trace_block and debug_traceTransaction live in different client namespaces, so a provider can serve one and refuse the other on the same chain, and several do."
   - q: "Is a free RPC plan enough for production?"
     a: "Rarely. The most generous free plan we price, dRPC, buys 10.5M dapp requests a month and Chainstack's buys 3M. Our own Alchemy Free key reached its 30M CU monthly cap on 24 October 2026 and refused every call on seven chains after that."
 ---
@@ -128,34 +129,45 @@ HTTP and WebSocket agree on Quicknode and on little else. Chainstack is the fast
 
 The first version of this report measured one cheap call, and said so in its
 method: a heavy method or another location can change the order. A reviewer
-made the same point, and asked for four things. Here they are, measured since
-30 October 2026 on the same six keys.
+made the same point and asked for five things. Each has a subsection below:
+mix tip-of-chain and archive calls, add one heavy `eth_call`, split
+`eth_getLogs` into its three filter shapes, treat Solana separately against
+Solana-native providers, and put an API support matrix next to the latency.
+
+Four are answered with measurements taken since 30 October on the same six
+keys. The fifth, the Beacon API, is answered with a reason it is not on the
+boards yet, which is the honest version of that answer.
 
 ### The ranking on a cheap call is not the ranking on an expensive one
 
 Every provider above was ranked on `eth_getBlockByNumber`, which costs a node
 almost nothing. Since 30 October we also ask each key for a balance five
 million blocks behind the head and for an address-filtered `eth_getLogs`, and
-we time both. Ethereum, 24 hours to 4 November 2026:
+we time both.
+
+<MethodSpreadChart />
+
+Read the lines rather than the rows: every crossing is two providers swapping
+places when the method changes.
 
 | Provider | Cheap call | Archive read | eth_getLogs |
 |---|---|---|---|
-| <L s="quicknode">Quicknode</L> | 5.9 ms | 30.1 ms | 29.9 ms |
-| <L s="getblock">GetBlock</L> | 9.0 ms | not served | 9.9 ms |
-| <L s="alchemy">Alchemy</L> | 9.5 ms | 24.2 ms | 24.1 ms |
-| <L s="chainstack">Chainstack</L> | 19.2 ms | 30.0 ms | 8.7 ms |
-| <L s="dwellir">Dwellir</L> | 34.0 ms | 413.0 ms | 395.6 ms |
-| <L s="blockmachine">BlockMachine</L> | 108.6 ms | 184.0 ms | 213.1 ms |
+| <L s="quicknode">Quicknode</L> | 5.9 ms | 31.7 ms | 31.6 ms |
+| <L s="getblock">GetBlock</L> | 9.0 ms | not served | 10.2 ms |
+| <L s="alchemy">Alchemy</L> | 9.4 ms | 34.6 ms | 35.4 ms |
+| <L s="chainstack">Chainstack</L> | 18.7 ms | 27.9 ms | 8.8 ms |
+| <L s="dwellir">Dwellir</L> | 34.4 ms | 413.5 ms | 398.3 ms |
+| <L s="blockmachine">BlockMachine</L> | 108.8 ms | 217.0 ms | 218.9 ms |
 
 Three things in that table are invisible on the cheap call alone.
 
-Dwellir multiplies by twelve. It answers a tip-of-chain read in 34 ms and a
-five million block archive read in 413 ms, which is the difference between
+Dwellir multiplies by twelve. It answers a tip-of-chain read in 34.4 ms and a
+five million block archive read in 413.5 ms, which is the difference between
 serving from cache and reaching into history.
 
 Chainstack and Quicknode swap places. Quicknode is first on the cheap call
 and fourth on `eth_getLogs`; Chainstack is fourth on the cheap call and first
-on the logs, at 8.7 ms against Quicknode's 29.9. If you are building an
+on the logs, at 8.8 ms against Quicknode's 31.6. If you are building an
 indexer, the second column is your column and it disagrees with the
 leaderboard.
 
@@ -172,18 +184,21 @@ with a one-call version of the identical request on the same pooled
 connection. The difference between the two is what the extra forty-nine
 reads cost.
 
-It separates one provider and not the rest. BlockMachine reads 18.1 ms.
-Alchemy, GetBlock, Dwellir, Quicknode and Chainstack all land between 1.2 and
-4.2 ms, and that band is not stable: between our readings on 3 and 4 November
-Chainstack moved from 2.5 to 4.2 ms and Dwellir from 2.0 to 3.3, while
-GetBlock and Quicknode fell by about a quarter. The lane writes roughly
-thirty times a day and we have two days of it, so we publish the figure and
-decline to order the band. One provider is an order of magnitude above the
-others; the others are, on this evidence, the same.
+It separates one provider and not the rest. BlockMachine reads 19.3 ms.
+Alchemy, Quicknode, GetBlock, Dwellir and Chainstack all land between 2.0 and
+4.8 ms, and we decline to order that band, for a reason worth stating
+precisely. Across three readings, one on 3 November and two on the 4th,
+Chainstack went 2.5, 4.2, 4.8 ms and Dwellir 2.0, 3.3, 4.1. Four of the six
+moved upward. The lane
+started on 3 November and writes about thirty times a day, so the 24 hour
+window only filled yesterday, and part of that climb is the window filling
+rather than the providers changing. With four days of history we cannot
+separate the two. One provider is an order of magnitude above the others; the
+others are, on this evidence, the same.
 
 The figure is also not a clock on the node alone, and the spread between
-regions is how you can tell. GetBlock reads 1.1 ms from US East and 7.6 ms
-from EU West, Quicknode 2.7 ms from US East and 6.6 ms from Singapore. Both
+regions is how you can tell. GetBlock reads 1.2 ms from US East and 8.3 ms
+from EU West, Quicknode 3.8 ms from US East and 4.9 ms from Singapore. Both
 legs ride the same socket in the same pass, so the round trip itself cancels,
 but the fifty-read response is about 16 KB against 486 bytes for the one-read
 version, and those 15 KB still cross the wire. Read it as the cost of asking
@@ -225,7 +240,7 @@ everywhere. `trace_block` is the one that disagrees:
 | <L s="blockmachine">BlockMachine</L> | 95.9% | 71.4% of chains |
 | <L s="chainstack">Chainstack</L> | 94.6% | 62.5% |
 | <L s="quicknode">Quicknode</L> | 91.1% | 50.0% |
-| <L s="dwellir">Dwellir</L> | 89.3% | 50.0% |
+| <L s="dwellir">Dwellir</L> | 88.9% | 42.9% |
 | <L s="getblock">GetBlock</L> | 76.8% | 25.0% |
 
 `trace_block` and `debug_traceTransaction` sit in different client
@@ -262,8 +277,13 @@ verdict rather than a zero. The paginated v2 form is served by one of the
 four. For anyone planning around the v2 surface, that is the number that
 matters, and it is not in any documentation table we could find.
 
-Helius is in the Solana cohort as of 30 October. Triton is not: it has no
-free tier, and this report only measures keys we actually hold.
+The reviewer named two Solana-native providers to compare against. Helius is
+in the cohort as of 30 October, on a Free plan key, and it is the only one of
+the four that serves the v2 form. Triton is not in the cohort and cannot be:
+it has no free tier, and this report only measures keys we actually hold. So
+the Solana comparison is one native provider against three generalists today,
+which is weaker than what was asked for and worth saying rather than
+glossing.
 
 ### What is still missing: the Beacon API
 

@@ -61,6 +61,36 @@ export type ReportData = {
     cohort: boolean;
     verified: boolean;
   }[];
+  /** Added 2026-11-04 for the reviewer's five points. One probe pass per
+   *  figure, so the four latency columns are the same instant and can be
+   *  compared across a row. `archive` is null for a provider that does not
+   *  serve the call: there is no latency for a request that was refused. */
+  methods: {
+    asOf: string;
+    window: string;
+    chain: string;
+    latency: {
+      provider: string;
+      cheap: number | null;
+      archive: number | null;
+      getlogs: number | null;
+      work: number | null;
+    }[];
+    getlogsWindow: {
+      provider: string;
+      nofilter: number | null;
+      address: number | null;
+      topics: number | null;
+    }[];
+    coverage: {
+      provider: string;
+      servedPct: number | null;
+      traceBlockPct: number | null;
+      cellsAsked: number | null;
+      cellsTotal: number;
+    }[];
+    solana: { api: string; servedPct: number | null; verdicts: number; cohort: number }[];
+  };
 };
 
 export const PROVIDERS: { slug: string; name: string; color: string }[] = [
