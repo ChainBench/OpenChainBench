@@ -833,7 +833,12 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       from quote and latency on 2026-11-03 and said in the same
   //       message that the security bench interested it, which is this
   //       one. An ARRIVAL: a cached entry holds the old provider set.
-  ["bench-unfiltered-v161", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v162: bench 313 ranks on counters instead of gauges and declares
+  //       expected_n, so a row resting on one or two token-questions is
+  //       withheld from the ranking instead of publishing a confident
+  //       100%. Both the numbers and the gating change, and a cached
+  //       entry holds the ungated set.
+  ["bench-unfiltered-v162", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -1168,7 +1173,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v153: lockstep with bench-unfiltered-v160 (per-method latency on the
   //       Heavy tier, Solana capability board).
   // v154: lockstep with bench-unfiltered-v161 (Trnch joins bench 313).
-  ["all-benchmarks-v154", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v155: lockstep with bench-unfiltered-v162 (bench 313 sample gating).
+  ["all-benchmarks-v155", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
