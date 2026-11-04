@@ -8,6 +8,7 @@ import { RegionWinners } from "@/components/reports/region-winners";
 import { PerpCostClient } from "@/components/perp-cost-client";
 import {
   SpeedCostChart,
+  MethodSpreadChart,
   RegionSpreadChart,
   WsFirstChart,
   FreeTierChart,
@@ -103,6 +104,7 @@ const MDX_COMPONENTS = {
   PerpCostClient: () => <PerpCostClient headingLevel={3} />,
   // Exhibits of the October 2026 private RPC report.
   SpeedCostChart,
+  MethodSpreadChart,
   RegionSpreadChart,
   LatencyHeatmap,
   WsFirstChart,
