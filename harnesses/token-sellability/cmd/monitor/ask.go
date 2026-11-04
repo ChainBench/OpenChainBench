@@ -50,6 +50,8 @@ func askAggregators(ctx context.Context, cfg config, failed map[string][]string)
 			}
 			askedGauge.WithLabelValues(cfg.chain, agg.Slug(), tier, row).Set(float64(asked))
 			routedGauge.WithLabelValues(cfg.chain, agg.Slug(), tier, row).Set(float64(routed))
+			askedTotal.WithLabelValues(cfg.chain, agg.Slug(), tier, row).Add(float64(asked))
+			routedTotal.WithLabelValues(cfg.chain, agg.Slug(), tier, row).Add(float64(routed))
 		}
 	}
 }

@@ -70,6 +70,29 @@ var (
 			"aggregator was asked to quote in the last sweep.",
 	}, askLabels)
 
+	// The gauges above say what the LAST sweep established, which is what
+	// the absence contract needs: delete them and the row goes quiet. They
+	// are the wrong thing to rank on, because a gauge is read at every
+	// scrape, so a windowed total counts one sweep as many times as it was
+	// scraped and never tells you how much evidence a row rests on.
+	//
+	// These counters do. increase() over the window is a true count of
+	// token-questions, which is both the honest denominator and the
+	// sample the page gates on: a row that stopped being asked decays to
+	// no evidence and drops out of the ranking instead of inheriting the
+	// zero that wins this board.
+	askedTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "token_sellability_asked_total",
+		Help: "Cumulative tokens classified unsellable at this tier that " +
+			"this aggregator was asked to quote.",
+	}, askLabels)
+
+	routedTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "token_sellability_routed_total",
+		Help: "Cumulative tokens, of those it was asked about, that this " +
+			"aggregator returned a usable route INTO. Lower is better.",
+	}, askLabels)
+
 	// Published every sweep even as a zero, unlike asked and routed. It is
 	// the only series that separates "this aggregator declined everything",
 	// which is the best record on the board, from "this aggregator could
@@ -92,7 +115,7 @@ var (
 
 func init() {
 	prometheus.MustRegister(verdictGauge, cohortGauge, sweepSeconds, controlGauge,
-		askedGauge, routedGauge, errorGauge)
+		askedGauge, routedGauge, errorGauge, askedTotal, routedTotal)
 }
 
 type config struct {
