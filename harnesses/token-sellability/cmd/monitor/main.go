@@ -25,6 +25,12 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
+// askLabels is the label set of the three aggregator series AND what the
+// startup line reports. Sharing the slice is the point: a log line that is
+// written independently can describe a binary that is not running, which is
+// exactly the question that is hard to answer from outside the container.
+var askLabels = []string{"chain", "aggregator", "tier", "provider"}
+
 const transferTopic = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
 
 var (
@@ -62,7 +68,7 @@ var (
 		Name: "token_sellability_asked",
 		Help: "Tokens classified unsellable at this tier that this " +
 			"aggregator was asked to quote in the last sweep.",
-	}, []string{"chain", "aggregator", "tier"})
+	}, askLabels)
 
 	// Published every sweep even as a zero, unlike asked and routed. It is
 	// the only series that separates "this aggregator declined everything",
@@ -74,14 +80,14 @@ var (
 			"last sweep, so the question could not be put. A non-zero " +
 			"value means its asked and routed numbers cover fewer tokens " +
 			"than the cohort, and an all-failed sweep publishes neither.",
-	}, []string{"chain", "aggregator", "tier"})
+	}, askLabels)
 
 	routedGauge = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "token_sellability_routed",
 		Help: "Of the tokens it was asked about, how many this aggregator " +
 			"returned a usable route INTO. Lower is better: these are " +
 			"tokens our own simulation could not sell back out of.",
-	}, []string{"chain", "aggregator", "tier"})
+	}, askLabels)
 )
 
 func init() {
@@ -186,7 +192,8 @@ func main() {
 
 	go func() {
 		http.Handle("/metrics", promhttp.Handler())
-		log.Printf("[sellability] metrics on :%s", envOr("PORT", "2112"))
+		log.Printf("[sellability] metrics on :%s, aggregator series keyed by %s",
+			envOr("PORT", "2112"), strings.Join(askLabels, ", "))
 		log.Fatal(http.ListenAndServe(":"+envOr("PORT", "2112"), nil))
 	}()
 

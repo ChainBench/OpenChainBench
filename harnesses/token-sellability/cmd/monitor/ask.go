@@ -36,19 +36,20 @@ func askAggregators(ctx context.Context, cfg config, failed map[string][]string)
 			// stale binary), and the first time that mattered it cost an
 			// afternoon of guessing at the deployment instead of reading
 			// the measurement.
-			errorGauge.WithLabelValues(cfg.chain, agg.Slug(), tier).Set(float64(failures))
+			row := rowSlug(agg.Slug(), tier)
+			errorGauge.WithLabelValues(cfg.chain, agg.Slug(), tier, row).Set(float64(failures))
 			log.Printf("[sellability] %s %s: asked %d, routed %d, failed %d%s",
 				agg.Slug(), tier, asked, routed, failures, because(lastErr))
 			if asked == 0 {
 				// Nothing was established, so publish nothing. A zero here
 				// would render as a perfect record on the one column where
 				// perfect is the top of the board.
-				askedGauge.DeleteLabelValues(cfg.chain, agg.Slug(), tier)
-				routedGauge.DeleteLabelValues(cfg.chain, agg.Slug(), tier)
+				askedGauge.DeleteLabelValues(cfg.chain, agg.Slug(), tier, row)
+				routedGauge.DeleteLabelValues(cfg.chain, agg.Slug(), tier, row)
 				continue
 			}
-			askedGauge.WithLabelValues(cfg.chain, agg.Slug(), tier).Set(float64(asked))
-			routedGauge.WithLabelValues(cfg.chain, agg.Slug(), tier).Set(float64(routed))
+			askedGauge.WithLabelValues(cfg.chain, agg.Slug(), tier, row).Set(float64(asked))
+			routedGauge.WithLabelValues(cfg.chain, agg.Slug(), tier, row).Set(float64(routed))
 		}
 	}
 }
@@ -60,4 +61,19 @@ func because(err error) string {
 		return ""
 	}
 	return " (" + err.Error() + ")"
+}
+
+// rowSlug is the board's row identifier for one aggregator at one tier.
+//
+// A panel value is matched to a row by a label equal to the ROW SLUG, and a
+// tier partitions providers, so the same vendor appears twice under two
+// slugs. The spec cannot rebuild that spelling from the metric in under the
+// 200 characters a panel query is allowed, and a query that rebuilt it
+// would be a second place for the convention to drift from. The harness
+// publishes it instead, next to the tier it is derived from.
+func rowSlug(agg, tier string) string {
+	if tier == "same_block" {
+		return agg + "-same-block"
+	}
+	return agg
 }

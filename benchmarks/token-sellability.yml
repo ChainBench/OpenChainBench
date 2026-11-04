@@ -77,22 +77,13 @@ dimensions:
 ledger_columns:
   - { label: "Routed in", slot: p50 }
   - { label: "Tokens asked", panel: asked }
-  - { label: "Cohort", panel: cohort }
 
 metric_panels:
   - id: asked
     label: Tokens asked
-    description: Unsellable tokens this aggregator answered about in the last sweep. An aggregator whose requests all failed is absent from the board rather than scored zero, because zero is the best score here and has to be earned by declining rather than by being unreachable.
-    metric: max by (aggregator) (token_sellability_asked{})
-    label_key: aggregator
-    unit: count
-    higher_is_better: true
-    tab: false
-  - id: cohort
-    label: Examined
-    description: Tokens examined in the last sweep, the population the unsellable ones were drawn from. Tokens no aggregator would quote in either direction are out of scope rather than failures.
-    metric: max(token_sellability_cohort{stage="examined"})
-    label_key: aggregator
+    description: Unsellable tokens this aggregator answered about in the last sweep, the denominator of its score. An aggregator whose requests all failed is absent from the board rather than scored zero, because zero is the best score here and has to be earned by declining rather than by being unreachable.
+    metric: max by (provider) (token_sellability_asked{})
+    label_key: provider
     unit: count
     higher_is_better: true
     tab: false
