@@ -26,9 +26,9 @@ faq:
 <Summary>
 - **As of 28 October 2026, Quicknode is the fastest private RPC we measure:** a 7.2 ms median round trip, the lowest median in 18 of 27 chain and region cells (one shared with Chainstack) and the lowest p99 in 21. Over WebSocket it pushes new blocks first in 13 of 18 cells.
 - **BlockMachine is the cheapest and the slowest.** A dapp workload costs $25 a month for 10M requests and $999 for 1B, against $130 and $9,999 at Quicknode. Its median round trip from US East is 113 ms.
-- **Chainstack is the value pick.** $49 covers 20M dapp requests, and from US East it is the fastest provider of all (2.9 ms median). From Singapore its median rises to 11.5 ms.
+- **Chainstack is the value pick.** $49 covers 20M dapp requests, and from US East it has the lowest median of the six (2.9 ms). From Singapore its median rises to 11.5 ms.
 - <Mark>The ranking changes with the region.</Mark> Dwellir answers in 3.8 ms from Singapore and 75 ms from US East (medians); Chainstack is four times slower from Singapore than from Virginia.
-- The same 100M dapp requests cost between $125 and $1,255 a month across the six. Trace is the exception to BlockMachine's lead: Dwellir is cheapest there, $299 at 100M.
+- The same 100M dapp requests cost between $125 and $1,255 a month across the six we probe: Quicknode, Chainstack, GetBlock, Alchemy, Dwellir and BlockMachine. Trace is the exception to BlockMachine's lead: Dwellir is cheapest there, $299 at 100M.
 </Summary>
 
 <TOC sections="Verdict|Speed against price|HTTP latency|WebSocket push|What the methods show|Cost by budget|Free plans|Scorecard|Recommendations|Questions|Method|Sources" />
@@ -75,7 +75,7 @@ What the medians hide, provider by provider:
 - **[Quicknode](/products/quicknode)** reads 163 ms on Arc and 66 ms on Robinhood from Singapore, as if those two chains were served from outside Asia. Its Ethereum p99 from Singapore is 176 ms.
 - **[Chainstack](/products/chainstack)** is the fastest provider from US East, 2.4 to 3.1 ms on six chains. From Singapore it reads 39 ms on Ethereum and Robinhood, 70 ms on HyperEVM and 83 ms on Polygon.
 - **[GetBlock](/products/getblock)** never has the fastest median but is never far off, except on HyperEVM from US East (235 ms). It returned 88 stale blocks in 7 days, the most in the cohort.
-- **[Alchemy](/products/alchemy)**'s 55% success rate is our plan, not its network. The Free key on seven chains hit its 30M CU cap on 24 October and has failed every call since. On HyperEVM and Robinhood, where we hold an enterprise key, it answered 100% of calls.
+- **[Alchemy](/products/alchemy)**'s 55% success rate is our plan, not its network. The Free key on seven chains hit its 30M CU cap on 24 October and failed every call until the quota reset at the start of November. On HyperEVM and Robinhood, where we hold an enterprise key, it answered 100% of calls.
 - **[Dwellir](/products/dwellir)** answers in about 75 ms from US East on five of its eight chains and 96 ms on Arbitrum; Base and Robinhood are the exceptions at 2.4 to 2.7 ms. A new connection costs it a median of 113 to 333 ms depending on region.
 - **[BlockMachine](/products/blockmachine)** is the slowest in every region, best from EU West (42 ms median), and had the most timeouts: 153 in four days. It joined the cohort on 24 October.
 
@@ -353,7 +353,7 @@ Free plans cover a prototype, not a product. Among the six, only Chainstack's fr
 
 Quicknode offers a one-month trial that does not renew, so it has no ranked free plan. Dwellir's free plan gives 100,000 responses a day but excludes `eth_getLogs`, which the dapp mix calls.
 
-The allowance is rarely the binding limit. GetBlock's 50,000 CU a day lasts 125 seconds at its own advertised 20 requests a second; Infura's daily credits last 1.7 hours at full rate. Our own Alchemy Free key ran out on 24 October and has refused every call on seven chains since.
+The allowance is rarely the binding limit. GetBlock's 50,000 CU a day lasts 125 seconds at its own advertised 20 requests a second; Infura's daily credits last 1.7 hours at full rate. Our own Alchemy Free key ran out on 24 October and refused every call on seven chains until the quota reset at the start of November.
 
 ## Scorecard
 
@@ -378,21 +378,7 @@ Head to head, with every bench the two share: [Alchemy vs Quicknode](/compare/al
 
 ## Questions
 
-### Which private RPC provider is the fastest?
-
-Quicknode. Over the seven days to 28 October 2026 it had the lowest HTTP median in 18 of 27 chain and region cells (one shared with Chainstack) and the lowest p99 in 21, with a median round trip of 7.2 ms across nine chains and three regions. It also pushed new blocks first over WebSocket in 13 of 18 cells.
-
-### Which private RPC provider is the cheapest?
-
-On a dapp workload, BlockMachine: $25 a month for 10M requests, $125 for 100M and $999 for 1B, against $130, $1,049 and $9,999 at Quicknode. For trace and debug calls Dwellir is cheaper, at $299 for 100M requests.
-
-### What is the best RPC provider for under $50 a month?
-
-Chainstack. Its $49 Growth plan covers 20M dapp requests a month, or 10M archive and trace requests, and from US East it had the lowest median latency of all six providers, 2.9 ms.
-
-### Is a free RPC plan enough for production?
-
-Rarely. The most generous free plan we price, dRPC, buys 10.5M dapp requests a month and Chainstack's buys 3M. Our own Alchemy Free key reached its 30M CU monthly cap on 24 October 2026 and refused every call on seven chains after that.
+<Faq />
 
 ## Method
 
