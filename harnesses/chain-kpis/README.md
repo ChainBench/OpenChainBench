@@ -21,8 +21,8 @@ result is fanned out over the registry rows that carry an L2Beat id.
 | `chain_tvl_usd{chain}` | DefiLlama `/v2/historicalChainTvl/<name>` | 15 min |
 | `chain_dex_volume_24h_usd{chain}` | DefiLlama `/overview/dexs/<name>` | 15 min |
 | `chain_stables_mcap_usd{chain}` | DefiLlama `/stablecoincharts/<name>` | 15 min |
-| `chain_native_price_usd{chain, symbol}` | Mobula `/api/1/market/data?symbol=<sym>` | 5 min |
-| `chain_native_mcap_usd{chain, symbol}` | Mobula `/api/1/market/data?symbol=<sym>` | 5 min |
+| `chain_native_price_usd{chain, symbol, asset_id}` | Mobula `/api/1/market/data?id=<id>` for pinned assets, else `?symbol=<sym>` | 5 min |
+| `chain_native_mcap_usd{chain, symbol, asset_id}` | Mobula `/api/1/market/data?id=<id>` for pinned assets, else `?symbol=<sym>` | 5 min |
 | `chain_mobula_tokens_indexed{chain}` | Mobula `/api/1/market/blockchain/stats?blockchain=<name>` | 5 min |
 | `chain_tvs_usd{chain}` | L2Beat `/api/scaling/summary` | 15 min |
 | `chain_value_secured_usd{chain, origin}` | L2Beat, `origin` = native / canonical / external | 15 min |
@@ -40,6 +40,15 @@ result is fanned out over the registry rows that carry an L2Beat id.
 | `chain_kpis_health{chain, source}` | 1 if the last fetch for that source returned data (`source="fees"` for the fees loop) | per source |
 | `chain_kpis_l2beat_last_success_unix` | when our fetch last worked, no labels | 15 min |
 | `chain_kpis_l2beat_synced_until_unix` | L2Beat's own `chart.syncedUntil`: when it last computed a point | 15 min |
+
+### Native asset identity on rollout
+
+The two native price gauges carry the requested Mobula `asset_id` (empty for symbol lookups).
+For a chain with a pinned asset, the KPI reader selects that exact label and persists the id in
+its snapshot. A legacy snapshot without the id, or one for another id, keeps its other KPIs
+but hides native price and market cap. Until the updated harness is scraped and the materialize
+worker writes a matching snapshot, those two cards remain absent; an old ticker series must
+not be relabelled as the new asset. This does not migrate or certify existing production data.
 
 ### Reading the L2Beat gauges
 
