@@ -259,14 +259,14 @@ var (
 			Name: "chain_native_price_usd",
 			Help: "Current USD price of the chain's native token. Source: Mobula /market/data. Updated every 5 min.",
 		},
-		[]string{"chain", "symbol"},
+		[]string{"chain", "symbol", "asset_id"},
 	)
 	chainNativeMcapUsd = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "chain_native_mcap_usd",
 			Help: "Circulating market cap (USD) of the chain's native token. Source: Mobula /market/data. Updated every 5 min.",
 		},
-		[]string{"chain", "symbol"},
+		[]string{"chain", "symbol", "asset_id"},
 	)
 	chainMobulaTokensIndexed = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{

@@ -6,8 +6,8 @@
 //	chain_tvl_usd{chain}                       — DefiLlama TVL
 //	chain_dex_volume_24h_usd{chain}            — DefiLlama 24h DEX vol
 //	chain_stables_mcap_usd{chain}              — DefiLlama stables mcap
-//	chain_native_price_usd{chain, symbol}      — Mobula native price
-//	chain_native_mcap_usd{chain, symbol}       — Mobula native mcap
+//	chain_native_price_usd{chain, symbol, asset_id}      — Mobula native price
+//	chain_native_mcap_usd{chain, symbol, asset_id}       — Mobula native mcap
 //	chain_mobula_tokens_indexed{chain}         — Mobula tokens count
 //	chain_tvs_usd{chain}                       — L2Beat value secured
 //	chain_value_secured_usd{chain, origin}     — L2Beat native/canonical/external
