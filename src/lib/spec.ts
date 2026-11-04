@@ -566,7 +566,14 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       Cronos, Kaia, Gram), with their audit fixes and new copy.
   // v110: BlockVectra joins the Katana RPC page. An ARRIVAL: a cached
   //       entry holds the old provider set, so the row would never render.
-  ["bench-unfiltered-v110", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v111: the API capability matrix, the Heavy tab and the per-method
+  //       latency arrive on the eight chain RPC pages, with a capability
+  //       board on solana-rpc, from dev. A metric_panel can declare
+  //       `carry`, `per_chain_only` and `tiers`; a ledger column whose
+  //       panel was not published is dropped rather than drawing dashes;
+  //       the rank gate retries once then fails closed. Cached entries
+  //       hold columns, panels and provider tags.
+  ["bench-unfiltered-v111", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -834,7 +841,9 @@ const loadAllBenchmarksCached = unstable_cache(
   // v101: lockstep with bench-unfiltered-v108 (BlockVectra joins 3 RPC pages).
   // v102: lockstep with bench-unfiltered-v109 (discussion #2270 release).
   // v103: lockstep with bench-unfiltered-v110 (BlockVectra on Katana).
-  ["all-benchmarks-v103", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v104: lockstep with bench-unfiltered-v111 (capability matrix, Heavy
+  //       tab, per-method latency, Solana capability board).
+  ["all-benchmarks-v104", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -981,7 +990,9 @@ const loadBenchmarkFiltered = unstable_cache(
   //      of three chain RPC pages).
   // v49: lockstep with bench-unfiltered-v109 (discussion #2270 release).
   // v50: lockstep with bench-unfiltered-v110 (BlockVectra on Katana).
-  ["bench-filters-v50", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v51: lockstep with bench-unfiltered-v111 (capability matrix, Heavy
+  //      tab, per-method latency, Solana capability board).
+  ["bench-filters-v51", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 

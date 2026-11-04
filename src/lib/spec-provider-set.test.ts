@@ -81,6 +81,13 @@ describe("the provider set behind the cache keys", () => {
     // move: v108/v101/v48 and providers-v24.
     // 2026-11-03: BlockVectra joins the Katana RPC page (issue #3462), one
     // more appearance for a provider already on the site: v27, v110/v103/v50.
+    // An ADDITION on production, 2026-11-04: the eight chain RPC pages gain
+    // a keyed-heavy tier, six providers each under a `-heavy` slug, measured
+    // on a Multicall3 of fifty state reads. Both alias tables gained a line
+    // per vendor in the same change, for the reason the cold tier's comment
+    // in providers.ts spells out: a tier slug without an alias builds its own
+    // /products page carrying the vendor's title. All four keys moved,
+    // v110/v103/v50/v27 to v111/v104/v51/v28.
     expect(
       hash,
       [
@@ -99,6 +106,6 @@ describe("the provider set behind the cache keys", () => {
         "Then set EXPECTED to the hash in this failure, and add the provider",
         `to PRODUCT_NAMES if it needs a display name. Providers now: ${count}.`,
       ].join("\n"),
-    ).toBe("813538f7cdec5126");
+    ).toBe("b7eeeebd13839826");
   });
 });

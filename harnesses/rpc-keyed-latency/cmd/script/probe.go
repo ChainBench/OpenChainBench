@@ -40,8 +40,20 @@ const (
 	// CoinStats credits incident).
 	quotaGuardRatio = 0.90
 
-	staleBlockGapEVM    uint64 = 20  // ~4 min on Ethereum
-	staleSlotGapSolana  uint64 = 300 // ~2 min of slots
+	staleBlockGapEVM   uint64 = 20  // ~4 min on Ethereum
+	staleSlotGapSolana uint64 = 300 // ~2 min of slots
+
+	// Ceiling on a single probe response. See the note at the read itself:
+	// one measured getProgramAccounts reply was 517 MB, on a box with four
+	// cores and no swap. Eight megabytes is two orders of magnitude above
+	// anything a probe here legitimately returns.
+	maxProbeResponseBytes int64 = 8 << 20
+
+	// Ceiling on the body of a non-200. Those bodies are read because a few
+	// providers put a range refusal in one, and the longest seen is 101
+	// bytes. Eight kilobytes keeps a provider's HTML error page from
+	// becoming a read we did not ask for.
+	maxErrorBodyBytes int64 = 8 << 10
 )
 
 func probeInterval() time.Duration {
@@ -148,7 +160,7 @@ type blockHeader struct {
 // and its connection stays warm. Every other provider uses a hostname per
 // chain, touched once per 60 s. A handshake costs about 25 ms from these
 // containers, and 16 + 25 is 41, which is exactly what this harness was
-// publishing for QuickNode against a measured 8. Three of the four keyed
+// publishing for Quicknode against a measured 8. Three of the four keyed
 // providers were reported 4 to 6x slower than they answer.
 //
 // So measure both deliberately and publish both. Warm is what a server-side
@@ -271,10 +283,10 @@ func doPost(ctx context.Context, url string, body []byte, warm bool) (raw []byte
 	// are recorded with real precision. time.Duration.Milliseconds() is an
 	// int64 and truncates every measurement under 1 ms to zero, which
 	// systematically under-reports latency for providers whose endpoint
-	// is peer-adjacent to the harness (e.g. QuickNode via the Mobula
+	// is peer-adjacent to the harness (e.g. Quicknode via the Mobula
 	// shared fleet: sub-millisecond round-trips truncated to 0 dragged
 	// the 24h aggregate down to a nonsensical 0 ms on the BNB + US-East
-	// cell, then rendered as "QuickNode leads at 0 ms" on the UI).
+	// cell, then rendered as "Quicknode leads at 0 ms" on the UI).
 	latencyMs = float64(time.Since(start).Nanoseconds()) / 1e6
 
 	if traceConn {
@@ -292,10 +304,44 @@ func doPost(ctx context.Context, url string, body []byte, warm bool) (raw []byte
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
-		_, _ = io.Copy(io.Discard, resp.Body)
-		return nil, latencyMs, "http_err", fmt.Errorf("status %d", resp.StatusCode)
+		// The body of a non-200 is returned, not discarded, because some
+		// providers answer a question there.
+		//
+		// Measured 2026-10-30: QuickNode refuses a 100,000-block eth_getLogs
+		// with an HTTP 413 whose body is "eth_getLogs is limited to a 10,000
+		// range", and getblock on arc refuses with a 403 saying "Requested
+		// block range exceeds the limits (1500 blocks)". Discarding those
+		// bodies made the range ladder read its own 10,000-block success as
+		// a failure to find out, so QuickNode published no window on seven
+		// of eight chains and the board showed a dash, which it defines as
+		// "we could not ask". We asked, and they answered.
+		//
+		// The error and the "http_err" class are unchanged, so every caller
+		// that only checks err behaves exactly as before. A caller that
+		// wants the answer has to read the body AND decide that it says
+		// something definitive, which is what acceptedSpanStatus does.
+		//
+		// A small cap: a refusal message is a line, and an error body we do
+		// not control has no business being larger than one.
+		raw, _ = io.ReadAll(io.LimitReader(resp.Body, maxErrorBodyBytes))
+		return raw, latencyMs, "http_err", fmt.Errorf("status %d", resp.StatusCode)
 	}
-	raw, err = io.ReadAll(resp.Body)
+	// Capped read. Found 2026-10-30 while measuring Solana programs for the
+	// coverage probe: getProgramAccounts on the stake program returned
+	// 1,384,150 accounts and 311 MB, and the address lookup table program
+	// 2,318,733 accounts and 517 MB, with the SAME request shape bench 311
+	// already sends to the SPL Token program. A dataSlice of length 0 trims
+	// each account's data and does nothing to the length of the array, so
+	// that probe is bounded only by providers refusing it on size.
+	//
+	// An unbounded ReadAll on a reply we do not control is the kind of thing
+	// that works until it does not: the container has 4 cores and no swap,
+	// and one 517 MB read is enough. The cap is far above any legitimate
+	// reply here (the heavy eth_call returns 24 KB, the widest log probe a
+	// couple of MB), so hitting it means something is wrong rather than
+	// large, and a truncated body fails to parse and reaches no verdict,
+	// which is the honest outcome for "we did not find out".
+	raw, err = io.ReadAll(io.LimitReader(resp.Body, maxProbeResponseBytes))
 	if err != nil {
 		return nil, latencyMs, "http_err", err
 	}

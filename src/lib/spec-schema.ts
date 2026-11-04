@@ -782,6 +782,40 @@ export const SpecSchema = z
            *  Listing a key here is a claim about the metric's label set, not
            *  a display preference: say what the harness actually emits. */
           ignore_dimensions: z.array(z.string().min(1).max(40)).max(8).optional(),
+          /** False when a missing value is a STATEMENT rather than a gap, so
+           *  the worker must not carry the previous one forward.
+           *
+           *  The carry exists for a query that failed. A query that filters
+           *  deliberately looks identical to it from the merge's side, and
+           *  the result is a value the panel refused being republished for
+           *  the length of the carry ceiling. Measured on bench 311: the
+           *  eth_call work term drops a non-positive difference because the
+           *  heavy leg cannot be the faster one, and the carry put minus
+           *  1.84 ms back on the board, where a lower-is-better view ranks
+           *  it first. */
+          carry: z.boolean().optional(),
+          /** True when the panel measures a per-chain quantity, so the
+           *  all-chains view must not publish a pooled version of it.
+           *
+           *  Pooling a latency across chains averages different block
+           *  times, state sizes and node fleets. Measured 2026-10-31, the
+           *  per-chain spread INSIDE one provider on bench 311's eth_call
+           *  work term: getblock 1.94 ms on ethereum against 468.56 on
+           *  hyperliquid, a factor of 242; quicknode 98; blockmachine 70.
+           *  A chain-count floor does not help, because all three are
+           *  measured on all 8 chains. The panel is omitted from the
+           *  unfiltered view rather than blanked, so no tab opens onto
+           *  nothing. */
+          per_chain_only: z.boolean().optional(),
+          /** Tiers this panel belongs to. Omitted means every tier.
+           *
+           *  API capability is probed on the keyed cohort only, so on a
+           *  chain page's public tab these panels have nothing to say. A
+           *  panel listed here is dropped on any other tier, and the
+           *  ledger column that points at it is dropped with it, rather
+           *  than drawing a column of dashes under a header that promises
+           *  a reading. */
+          tiers: z.array(z.string().min(1).max(40)).max(6).optional(),
         })
       )
       // Cap covers visible tabs plus data-only window panels (revenue,
@@ -861,7 +895,19 @@ export const SpecSchema = z
       // Nine covers a cost sheet (bench 268: value lost, trade size,
       // dollars lost, five cost components, fail rate); the ledger
       // scrolls sideways past that width.
-      .max(9)
+      // Twelve, not nine, since 2026-11-02. A latency page that adds an API
+      // capability matrix has to RE-DECLARE its p50/p90/p99 first, because
+      // declaring any column switches the table out of its default layout,
+      // so three of the slots are spent before the matrix starts. The cap
+      // protects phone readability and the table already scrolls
+      // horizontally in its own container; the capability columns are also
+      // tier-gated, so the default public view still renders three.
+      // Fourteen, not twelve, since 2026-11-04. The reviewer asked for the
+      // heavy and archive methods as latency rather than as a yes/no
+      // verdict, which adds two columns. The cap counts every DECLARED
+      // column while readability depends on what one view RENDERS, and
+      // these are tier-gated: public renders 3, keyed 11, keyed-heavy 6.
+      .max(14)
       .optional(),
   })
   .strict()
