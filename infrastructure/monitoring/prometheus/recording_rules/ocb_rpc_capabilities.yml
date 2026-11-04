@@ -190,6 +190,24 @@ groups:
       #
       # Row queries do not need this: they are written out per provider, so
       # they can name the real label. Only panel queries get the injection.
+      # The two methods the reviewer named, published as latency rather than
+      # as a yes/no verdict. Measured on ethereum 2026-11-04 against the
+      # cheap call each provider is ranked on: dwellir reads 33.9 ms on
+      # eth_getBlockByNumber and 413.0 ms on the archive balance, twelve
+      # times its headline, and chainstack is fourth on the cheap call but
+      # first on getLogs at 8.7 ms against quicknode's 29.7. The order
+      # changes with the method, which is the whole point of asking.
+      #
+      # Mean, not a quantile: the lane writes about four readings a day, and
+      # a p50 of four samples is coarser than their mean.
+      - record: ocb:rpc_api_archive_milliseconds:mean_24h
+        expr: avg_over_time(rpc_api_latency_milliseconds{api="archive_5m"}[24h])
+      - record: ocb:rpc_api_archive_heavy_milliseconds:mean_24h
+        expr: label_replace(ocb:rpc_api_archive_milliseconds:mean_24h, "provider", "$1-heavy", "provider", "(.*)")
+      - record: ocb:rpc_api_getlogs_milliseconds:mean_24h
+        expr: avg_over_time(rpc_api_latency_milliseconds{api="eth_getlogs_address"}[24h])
+      - record: ocb:rpc_api_getlogs_heavy_milliseconds:mean_24h
+        expr: label_replace(ocb:rpc_api_getlogs_milliseconds:mean_24h, "provider", "$1-heavy", "provider", "(.*)")
       - record: ocb:rpc_api_work_heavy_milliseconds:mean_24h
         expr: label_replace(ocb:rpc_api_work_milliseconds:mean_24h, "provider", "$1-heavy", "provider", "(.*)")
       - record: ocb:rpc_api_work_milliseconds:mean_24h

@@ -100,26 +100,36 @@ describe("the eight chain RPC pages that gained a capability matrix", () => {
       ledger_columns?: { label: string; slot?: string; panel?: string }[];
     };
 
-  test("the eight capability panels are keyed-only", () => {
+  // A cap_ panel is one of two things and the two live on different tabs.
+  // A VERDICT is a yes/no cell and belongs to the keyed matrix; a LATENCY
+  // is milliseconds and belongs to the Heavy tab, where the expensive call
+  // is the headline. Naming them by id rather than counting them means
+  // this test fires on a panel filed under the wrong tier, which a count
+  // could not see.
+  const LATENCY_PANELS = ["cap_work_ms", "cap_archive_ms", "cap_getlogs_ms"];
+
+  test("every capability verdict is keyed-only", () => {
     for (const c of CHAINS) {
       const spec = read(c);
-      const caps = (spec.metric_panels ?? []).filter(
-        (p) => p.id.startsWith("cap_") && p.id !== "cap_work_ms",
+      const verdicts = (spec.metric_panels ?? []).filter(
+        (p) => p.id.startsWith("cap_") && !LATENCY_PANELS.includes(p.id),
       );
-      expect(caps.length).toBe(8);
-      for (const p of caps) expect(p.tiers).toEqual(["keyed"]);
+      expect(verdicts.length).toBe(8);
+      for (const p of verdicts) expect(p.tiers).toEqual(["keyed"]);
     }
   });
 
-  test("the work term belongs to the heavy tab, not the keyed one", () => {
-    // It is the one panel that is NOT a capability verdict: a difference of
-    // two latencies, only meaningful on the tab where the heavy call is the
-    // headline. Listing it under keyed would put a milliseconds column in
-    // the middle of a matrix of yes/no cells.
+  test("every per-method latency panel belongs to the Heavy tab", () => {
+    // The regression this guards: a milliseconds column dropped into the
+    // middle of a matrix of yes/no cells, which is what listing one under
+    // `keyed` would do.
     for (const c of CHAINS) {
-      const work = (read(c).metric_panels ?? []).find((p) => p.id === "cap_work_ms");
-      expect(work).toBeDefined();
-      expect(work?.tiers).toEqual(["keyed-heavy"]);
+      const spec = read(c);
+      for (const id of LATENCY_PANELS) {
+        const panel = (spec.metric_panels ?? []).find((p) => p.id === id);
+        expect(panel, `${c}: ${id} missing`).toBeDefined();
+        expect(panel?.tiers).toEqual(["keyed-heavy"]);
+      }
     }
   });
 
