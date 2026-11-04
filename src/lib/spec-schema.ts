@@ -915,7 +915,12 @@ export const SpecSchema = z
       // protects phone readability and the table already scrolls
       // horizontally in its own container; the capability columns are also
       // tier-gated, so the default public view still renders three.
-      .max(12)
+      // Fourteen, not twelve, since 2026-11-04. The reviewer asked for the
+      // heavy and archive methods as latency rather than as a yes/no
+      // verdict, which adds two columns. The cap counts every DECLARED
+      // column while readability depends on what one view RENDERS, and
+      // these are tier-gated: public renders 3, keyed 11, keyed-heavy 6.
+      .max(14)
       .optional(),
   })
   .strict()

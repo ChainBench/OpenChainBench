@@ -811,6 +811,17 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       match, and the Tokens asked panel named the aggregator where
   //       the same-block rows carry a suffixed slug. The first is gone,
   //       the second now reads a provider label the harness publishes.
+  // v160: the archive read and eth_getLogs are published as latency on the
+  //       Heavy tier, and solana-rpc gets a capability board at all. The
+  //       per-method latency was being measured since 30 Oct and read by
+  //       nothing: `rpc_api_latency_milliseconds` appeared in 0 of 261
+  //       specs. Measured on ethereum 2026-11-04, dwellir reads 33.9 ms on
+  //       the cheap call and 413.0 ms on the archive read, and chainstack
+  //       is fourth on the cheap call but first on getLogs. Solana's three
+  //       getProgramAccounts probes had 10 series in Prom and no column.
+  //       A cached entry holds the old column list, so the new columns
+  //       would not render. Moves with all-benchmarks-v153 and
+  //       bench-filters-v89; providers-v52 does NOT move.
   // v159: solana-rpc published Helius in the excluded list, with the
   //       reason "no key held yet, so it is not in the private cohort
   //       either", on the same page that ranks Helius fifth in that
@@ -818,7 +829,7 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       cached entry, so the contradiction would survive a green
   //       deploy. Moves with all-benchmarks-v152 and bench-filters-v88;
   //       providers-v52 does NOT move, the provider set is unchanged.
-  ["bench-unfiltered-v159", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  ["bench-unfiltered-v160", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -1150,7 +1161,9 @@ const loadAllBenchmarksCached = unstable_cache(
   // v151: lockstep with bench-unfiltered-v158 (bench 313 panel columns).
   // v152: lockstep with bench-unfiltered-v159 (Helius was listed as
   //       excluded on the page that ranks it).
-  ["all-benchmarks-v152", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v153: lockstep with bench-unfiltered-v160 (per-method latency on the
+  //       Heavy tier, Solana capability board).
+  ["all-benchmarks-v153", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1371,7 +1384,9 @@ const loadBenchmarkFiltered = unstable_cache(
   // v87: lockstep with bench-unfiltered-v157 (BlockVectra on Katana).
   // v88: lockstep with bench-unfiltered-v159 (Helius was listed as
   //       excluded on the page that ranks it).
-  ["bench-filters-v88", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v89: lockstep with bench-unfiltered-v160 (per-method latency on the
+  //       Heavy tier, Solana capability board).
+  ["bench-filters-v89", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 
