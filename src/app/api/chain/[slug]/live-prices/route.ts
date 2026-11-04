@@ -15,6 +15,7 @@
 import { NextResponse } from "next/server";
 import { unstable_cache } from "next/cache";
 import { CHAIN_BY_SLUG } from "@/lib/chains";
+import { nativePricingSymbol } from "@/lib/chain-native-pricing";
 import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
@@ -89,8 +90,15 @@ export async function GET(
     );
   }
 
-  const data = await fetchPrice(chain.nativeSymbol);
-  const body: LiveBody = { ...data, ts: Math.floor(Date.now() / 1000) };
+  const priceSymbol = nativePricingSymbol(chain);
+  const data = priceSymbol === null
+    ? { price: null, marketCap: null, volume24h: null }
+    : await fetchPrice(priceSymbol);
+  const body: LiveBody = {
+    ...data,
+    symbol: chain.nativeSymbol,
+    ts: Math.floor(Date.now() / 1000),
+  };
 
   return NextResponse.json(body, {
     headers: {
