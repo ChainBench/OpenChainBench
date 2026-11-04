@@ -8,7 +8,7 @@ seo_description: "Live count of Robinhood Chain tokens that accept a simulated b
 subtitle: Share of the tokens our own simulation could not sell back out of that each aggregator still returns a route into.
 
 category: Aggregators
-status: live
+status: draft
 metric: Routed into traps
 unit: pct
 higher_is_better: false
