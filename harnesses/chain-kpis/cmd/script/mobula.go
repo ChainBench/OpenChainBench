@@ -35,16 +35,23 @@ func fetchAllMobula(cfg *Config) {
 
 	// Dedup native symbols. The 63 chains with one flatten to about 40
 	// unique natives (every ETH gas rollup = ETH).
-	natives := map[string][]Chain{}
+	// Keyed on symbol AND asset id: a chain priced by id must not share a
+	// request with a chain priced by the same ticker.
+	type nativeKey struct {
+		symbol string
+		id     int
+	}
+	natives := map[nativeKey][]Chain{}
 	for _, c := range Registry {
 		if c.NativeSymbol == "" {
 			continue
 		}
-		natives[c.NativeSymbol] = append(natives[c.NativeSymbol], c)
+		k := nativeKey{c.NativeSymbol, c.NativeMobulaID}
+		natives[k] = append(natives[k], c)
 	}
-	for sym, chains := range natives {
-		sym, chains := sym, chains
-		go fetchMobulaNative(cfg, sym, chains)
+	for k, chains := range natives {
+		k, chains := k, chains
+		go fetchMobulaNative(cfg, k.symbol, k.id, chains)
 	}
 
 	// Chain-stats endpoint is per chain. Fire each as its own goroutine.
@@ -59,9 +66,12 @@ func fetchAllMobula(cfg *Config) {
 
 // fetchMobulaNative pulls native price + mcap for one symbol and writes
 // the value to every chain that uses this native (ETH → all rollups).
-func fetchMobulaNative(cfg *Config, symbol string, chains []Chain) {
+func fetchMobulaNative(cfg *Config, symbol string, id int, chains []Chain) {
 	start := time.Now()
 	url := fmt.Sprintf("%s/api/1/market/data?symbol=%s", mobulaBase, encodePath(symbol))
+	if id > 0 {
+		url = fmt.Sprintf("%s/api/1/market/data?id=%d", mobulaBase, id)
+	}
 	body, err := getJSONWithAuth(httpClientMobula, url, cfg.MobulaAPIKey)
 	latency := float64(time.Since(start).Milliseconds())
 	for _, c := range chains {
