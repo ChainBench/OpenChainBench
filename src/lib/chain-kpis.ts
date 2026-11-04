@@ -18,6 +18,7 @@
 import { unstable_cache } from "next/cache";
 import { Prometheus } from "@/lib/prometheus";
 import { isDevOnlyBench } from "@/lib/removed-benches";
+import { withNativePricePolicy } from "@/lib/chain-native-pricing";
 import {
   readCohortSnapshot,
   writeCohortSnapshot,
@@ -174,7 +175,7 @@ const fetchChainKpisCached = unstable_cache(
 
 export async function fetchChainKpis(slug: string): Promise<ChainKpis | null> {
   const k = await fetchChainKpisCached(slug);
-  return k ? withServedBenches(k) : null;
+  return k ? withServedBenches(withNativePricePolicy(k)) : null;
 }
 
 /**

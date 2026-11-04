@@ -37,7 +37,11 @@ type Chain struct {
 	DefiLlama    string
 	Mobula       string
 	NativeSymbol string
-	L2Beat       string
+	// NativeMobulaID prices the native by Mobula asset id instead of by
+	// symbol, for a native whose ticker resolves to another asset. The
+	// gauges keep NativeSymbol as their label.
+	NativeMobulaID int
+	L2Beat         string
 }
 
 // Registry is the canonical list of OCB-tracked chains.
@@ -94,10 +98,13 @@ var Registry = []Chain{
 	{Slug: "unichain", DefiLlama: "Unichain", Mobula: "", NativeSymbol: "ETH", L2Beat: "unichain"},
 	{Slug: "berachain", DefiLlama: "Berachain", Mobula: "Berachain", NativeSymbol: "BERA"},
 	{Slug: "cronos", DefiLlama: "Cronos", Mobula: "Cronos", NativeSymbol: "CRO"},
-	// Fraxtal gas is frxETH, so we follow the same gas-token convention as
-	// the ETH rollups. Mobula symbol FRAX resolves to the legacy Frax
-	// stablecoin (~$1), the wrong asset for a native-token card.
-	{Slug: "fraxtal", DefiLlama: "Fraxtal", Mobula: "", NativeSymbol: "FRXETH", L2Beat: "fraxtal"},
+	// Fraxtal gas is FRAX, the token formerly called FXS
+	// (docs.frax.com/fraxtal/gas-fees/FRAX; frxETH is an ERC-20 there at
+	// 0xfc00..0006). Mobula symbol FRAX resolves to the Legacy Frax Dollar
+	// stablecoin (~$1), so the native is priced by asset id: 100004858 is
+	// "Frax (prev. FXS)", Ethereum 0x3432b6a6..., within 2.4 % of DefiLlama
+	// and CoinGecko on 2026-11-04.
+	{Slug: "fraxtal", DefiLlama: "Fraxtal", Mobula: "", NativeSymbol: "FRAX", NativeMobulaID: 100004858, L2Beat: "fraxtal"},
 	{Slug: "soneium", DefiLlama: "Soneium", Mobula: "", NativeSymbol: "ETH", L2Beat: "soneium"},
 	// Polkadot relay chain. DefiLlama tracks the chain name but reports
 	// zero TVL and 500s on the DEX endpoint: relay chain has no DeFi and

@@ -15,6 +15,10 @@ import { CHAINS, CHAIN_BY_SLUG } from "@/lib/chains";
  * this test.
  */
 describe("CHAINS registry", () => {
+  test("Fraxtal identifies FRAX as its gas token independently of price data", () => {
+    expect(CHAIN_BY_SLUG.get("fraxtal")?.nativeSymbol).toBe("FRAX");
+  });
+
   test("every slug is unique", () => {
     const seen = new Map<string, number>();
     for (const c of CHAINS) seen.set(c.slug, (seen.get(c.slug) ?? 0) + 1);
