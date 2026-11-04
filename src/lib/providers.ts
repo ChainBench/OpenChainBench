@@ -77,6 +77,7 @@ const PRODUCT_ALIASES: Record<string, string> = {
   "quicknode-cold": "quicknode",
   "dwellir-cold": "dwellir",
   "blockmachine-cold": "blockmachine",
+  "helius-cold": "helius",
   // The heavy-call arm, added 2026-11-03: the same endpoints measured on a
   // Multicall3 of fifty state reads. A measurement arm, not a product, and
   // the same rule as the cold tier above: without a line here each slug
@@ -936,7 +937,11 @@ const buildProvidersCached = unstable_cache(
   //      tables gain a line per vendor, because a tier slug without an
   //      alias builds its own /products page carrying the vendor's title.
   //      Lockstep with bench-unfiltered-v111.
-  ["providers-v28"],
+  // v29: Helius joins the keyed cohort on solana-rpc, warm and cold. An
+  //      ARRIVAL: both alias tables gain a line, because a tier slug
+  //      without an alias builds its own /products page carrying the
+  //      vendor's title. Lockstep with bench-unfiltered-v112.
+  ["providers-v29"],
   // 900 s: the provider index feeds products / compare / answers, whose
   // numbers move slowly, and this revalidate is also the effective ISR
   // period of those ~500 pages (Next takes the min across a route's caches).

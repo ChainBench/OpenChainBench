@@ -27,8 +27,9 @@ methodology:
   - "No archive-depth audit on Solana: the EVM chains probe `eth_getBalance` at historical heights, which has no equivalent on public Solana endpoints. Disclosed rather than faked."
   - "LeoRPC disclosure: the endpoint uses a publicly documented FREE query key (solana.leorpc.com/?api_key=FREE). It is admitted as keyless in practice since no signup is required; flagged here for transparency."
   - "Chain scope: every query on this page is pinned to chain=\"solana\". Provider coverage: {{count}} no-key public-read endpoints live today, each listed with its URL in the endpoints table on this page. Excluded with verified refusals 2026-07-12: dRPC (Solana is paid-tier only), Ankr (403 key required), OnFinality (shared quota permanently 429), BlockPI (no public URL), Triton free.rpcpool.com (403), Blast API + ExtrNode + AllThatNode (DNS dead), OMNIA (521), Shyft + BlockEden (key-gated)."
-  - "Private cohort (Access selector, Private): Alchemy, Chainstack, GetBlock and QuickNode probed on their keyed Solana endpoints every 120 seconds from the same 3 regions, same call (getSlot, rotating id), same ok / http_err / jsonrpc_err / stale / timeout classification."
+  - "Private cohort (Access selector, Private): Alchemy, Chainstack, GetBlock, QuickNode and Helius probed on their keyed Solana endpoints every 120 seconds from the same 3 regions, same call (getSlot, rotating id), same ok / http_err / jsonrpc_err / stale / timeout classification."
   - "Keys live in the probe environment, never in the repo. Plan tiers, disclosed: Alchemy: a Free plan key (30M CU per month, 300 compute units per second), the tier any reader gets; Alchemy states free and paid keys share one routing; Chainstack: a Global Node on the Growth plan; QuickNode: an endpoint on a Build plan ($49 per month), shared fleet; GetBlock: an endpoint on the Enterprise plan, shared by the three probe regions. Chainstack, GetBlock and QuickNode provided their endpoints."
+  - "Helius plan tier, disclosed: a Free plan key, 1 million credits a month, shared by the three probe regions. Helius is the only Solana-native provider in this cohort; the others serve Solana alongside EVM chains, which is worth knowing when reading the getProgramAccounts columns."
   - "GetBlock regional pairing: each probe region uses GetBlock's nearest endpoint, us-east to New York, eu-west to Frankfurt, sgp to Singapore. Alchemy, Chainstack and QuickNode publish one routed entry point per chain instead, which in the general case does land a probe on a nearby node. Some of any gap between the two arrangements is deployment topology rather than node speed, and a deployment in one of these regions would see the same benefit GetBlock's endpoint gives the probe."
   - "Two cohorts, two rankings: the public endpoints are shared, rate-limited gateways probed every 60 seconds; the keyed endpoints are metered or dedicated and probed every 120 seconds. The selector switches the whole page (ranking, chart, region tabs, badges, citation) between them. No figure on this page compares a public endpoint with a keyed one."
 
@@ -339,6 +340,30 @@ providers:
           p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="quicknode",chain="solana",tier="keyed",region="sgp"})
           series: avg(avg_over_time(rpc_latency_milliseconds{provider="quicknode",chain="solana",tier="keyed",region="sgp"}[1h]))
 
+  - slug: helius
+    name: Helius
+    tier: keyed
+    tag: Free plan key, 1M credits a month shared by three regions
+    formula: "p50 over 24h of round-trip latency (ms) for getSlot probed every 120 s from us-east, eu-west and Singapore on Helius's keyed Solana endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="helius",chain="solana",tier="keyed"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="helius",chain="solana",tier="keyed"})
+      p95: avg(ocb:rpc_latency_milliseconds:p95_24h{provider="helius",chain="solana",tier="keyed"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="helius",chain="solana",tier="keyed"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="helius",chain="solana",tier="keyed"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="helius",chain="solana",tier="keyed"}) / sum(ocb:rpc_call:rate_24h{provider="helius",chain="solana",tier="keyed"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="helius",chain="solana",tier="keyed"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="helius",chain="solana",tier="keyed"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="helius",chain="solana",tier="keyed",region="us-east"})
+          series: avg(avg_over_time(rpc_latency_milliseconds{provider="helius",chain="solana",tier="keyed",region="us-east"}[1h]))
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="helius",chain="solana",tier="keyed",region="eu-west"})
+          series: avg(avg_over_time(rpc_latency_milliseconds{provider="helius",chain="solana",tier="keyed",region="eu-west"}[1h]))
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="helius",chain="solana",tier="keyed",region="sgp"})
+          series: avg(avg_over_time(rpc_latency_milliseconds{provider="helius",chain="solana",tier="keyed",region="sgp"}[1h]))
   - slug: alchemy-cold
     name: Alchemy
     tier: keyed-cold
@@ -435,3 +460,27 @@ providers:
         - region: ap-southeast
           p50: avg(ocb:rpc_latency_cold_milliseconds:p50_24h{provider="quicknode",chain="solana",tier="keyed",region="sgp"})
           series: avg(avg_over_time(rpc_latency_cold_milliseconds{provider="quicknode",chain="solana",tier="keyed",region="sgp"}[1h]))
+  - slug: helius-cold
+    name: Helius
+    tier: keyed-cold
+    tag: Same endpoint, measured on a connection that is never reused
+    formula: "p50 over 24h of round-trip latency (ms) for the same call on a connection that is never reused: DNS, TCP and the TLS handshake are paid every time. What a serverless or one-shot client gets."
+    queries:
+      p50: avg(ocb:rpc_latency_cold_milliseconds:p50_24h{provider="helius",chain="solana",tier="keyed"})
+      p90: avg(ocb:rpc_latency_cold_milliseconds:p90_24h{provider="helius",chain="solana",tier="keyed"})
+      p95: avg(ocb:rpc_latency_cold_milliseconds:p95_24h{provider="helius",chain="solana",tier="keyed"})
+      p99: avg(ocb:rpc_latency_cold_milliseconds:p99_24h{provider="helius",chain="solana",tier="keyed"})
+      mean: avg(ocb:rpc_latency_cold_milliseconds:mean_24h{provider="helius",chain="solana",tier="keyed"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="helius",chain="solana",tier="keyed"}) / sum(ocb:rpc_call:rate_24h{provider="helius",chain="solana",tier="keyed"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="helius",chain="solana",tier="keyed"})
+      series: avg(avg_over_time(rpc_latency_cold_milliseconds{provider="helius",chain="solana",tier="keyed"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_cold_milliseconds:p50_24h{provider="helius",chain="solana",tier="keyed",region="us-east"})
+          series: avg(avg_over_time(rpc_latency_cold_milliseconds{provider="helius",chain="solana",tier="keyed",region="us-east"}[1h]))
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_cold_milliseconds:p50_24h{provider="helius",chain="solana",tier="keyed",region="eu-west"})
+          series: avg(avg_over_time(rpc_latency_cold_milliseconds{provider="helius",chain="solana",tier="keyed",region="eu-west"}[1h]))
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_cold_milliseconds:p50_24h{provider="helius",chain="solana",tier="keyed",region="sgp"})
+          series: avg(avg_over_time(rpc_latency_cold_milliseconds{provider="helius",chain="solana",tier="keyed",region="sgp"}[1h]))

@@ -573,7 +573,15 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       panel was not published is dropped rather than drawing dashes;
   //       the rank gate retries once then fails closed. Cached entries
   //       hold columns, panels and provider tags.
-  ["bench-unfiltered-v111", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v112: Helius joins the keyed cohort on solana-rpc, warm and cold. An
+  //       ARRIVAL, and a correction: the port that removed Helius from the
+  //       excluded list left main mentioning it nowhere, while the new
+  //       cap_gpa_v2 panel published helius=100 with no row to render it.
+  //       Production therefore read as "nobody serves getProgramAccountsV2",
+  //       which is false and is the one differentiator the report names.
+  //       Moves with all-benchmarks-v105, bench-filters-v52 and
+  //       providers-v29.
+  ["bench-unfiltered-v112", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -843,7 +851,9 @@ const loadAllBenchmarksCached = unstable_cache(
   // v103: lockstep with bench-unfiltered-v110 (BlockVectra on Katana).
   // v104: lockstep with bench-unfiltered-v111 (capability matrix, Heavy
   //       tab, per-method latency, Solana capability board).
-  ["all-benchmarks-v104", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v105: lockstep with bench-unfiltered-v112 (Helius joins the keyed
+  //       cohort on solana-rpc).
+  ["all-benchmarks-v105", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -992,7 +1002,9 @@ const loadBenchmarkFiltered = unstable_cache(
   // v50: lockstep with bench-unfiltered-v110 (BlockVectra on Katana).
   // v51: lockstep with bench-unfiltered-v111 (capability matrix, Heavy
   //      tab, per-method latency, Solana capability board).
-  ["bench-filters-v51", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v52: lockstep with bench-unfiltered-v112 (Helius joins the keyed
+  //      cohort on solana-rpc).
+  ["bench-filters-v52", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 
