@@ -41,6 +41,53 @@ const (
 	taker = "0xbb663a119193cA68512c351b0fdfDEB9c22Dc416"
 )
 
+// A refusal is not a failure, and on this board the difference decides the
+// ranking. Every aggregator here answers "I will not route you into this"
+// with a 400 rather than an empty 200, and counting those as failures drops
+// them from the denominator: only the tokens it DID route into survive, so
+// an aggregator that declines half the traps scores the same as one that
+// declines none. KyberSwap and ParaSwap both read exactly 100% until this
+// was separated out.
+//
+// The matching is per aggregator and on the documented shape, never on the
+// status alone. Treating any 400 as a refusal would be the same mistake
+// mirrored: a malformed request of ours would then score as a decline, and
+// declining is the best record on this board.
+type refusal struct {
+	// code is the aggregator's own numeric code, 0 when it uses none.
+	code int
+	// needle matches the message when a code is not enough.
+	needle string
+}
+
+// errorBody is the union of the three error shapes in use. Each aggregator
+// fills one or two of these fields.
+type errorBody struct {
+	Code    int    `json:"code"`
+	Message string `json:"message"`
+	Error   string `json:"error"`
+}
+
+// isRefusal reports whether a non-200 body is this aggregator saying no,
+// rather than something that went wrong. The second return is the reason,
+// for the log.
+func isRefusal(body []byte, known []refusal) (bool, string) {
+	var e errorBody
+	if err := json.Unmarshal(body, &e); err != nil {
+		return false, ""
+	}
+	text := strings.ToLower(e.Message + " " + e.Error)
+	for _, k := range known {
+		if k.code != 0 && e.Code == k.code {
+			return true, k.needle
+		}
+		if k.needle != "" && strings.Contains(text, strings.ToLower(k.needle)) {
+			return true, k.needle
+		}
+	}
+	return false, ""
+}
+
 // badStatus renders a non-200 with the first of its body, because the body
 // is where the reason is. A bare "http 400" cannot tell an unsupported chain
 // from a token the aggregator cannot describe, and those two call for
@@ -132,6 +179,9 @@ func (a kyberAgg) WillQuote(ctx context.Context, token, amt string) (bool, error
 		return false, err
 	}
 	if code != 200 {
+		if no, _ := isRefusal(b, kyberRefusals); no {
+			return false, nil
+		}
 		return false, badStatus(code, b)
 	}
 	var r struct {
@@ -170,6 +220,9 @@ func (a paraswapAgg) WillQuote(ctx context.Context, token, amt string) (bool, er
 		return false, err
 	}
 	if code != 200 {
+		if no, _ := isRefusal(b, paraswapRefusals); no {
+			return false, nil
+		}
 		return false, badStatus(code, b)
 	}
 	var r struct {
@@ -205,6 +258,9 @@ func (a lifiAgg) WillQuote(ctx context.Context, token, amt string) (bool, error)
 		return false, nil
 	}
 	if code != 200 {
+		if no, _ := isRefusal(b, lifiRefusals); no {
+			return false, nil
+		}
 		return false, badStatus(code, b)
 	}
 	var r struct {
@@ -217,6 +273,28 @@ func (a lifiAgg) WillQuote(ctx context.Context, token, amt string) (bool, error)
 	}
 	return positive(r.Estimate.ToAmount), nil
 }
+
+// The refusals each aggregator actually sends, read off its own responses
+// on this chain rather than from documentation.
+//
+// LI.FI's 1011 is the strongest decline on the board: it names the token as
+// invalid or deny-listed, which is precisely the behaviour this bench exists
+// to reward. Scoring it as an outage was hiding the thing worth publishing.
+var (
+	kyberRefusals = []refusal{
+		{code: 4008, needle: "route not found"},
+	}
+	paraswapRefusals = []refusal{
+		{needle: "ESTIMATED_LOSS_GREATER_THAN_MAX_IMPACT"},
+		{needle: "No routes found"},
+		{needle: "Token not found"},
+	}
+	lifiRefusals = []refusal{
+		{code: 1011, needle: "invalid or in deny list"},
+		{needle: "no quote"},
+		{needle: "not supported"},
+	}
+)
 
 // aggregatorsForTest lets a test substitute the cohort. Nil in production,
 // where Aggregators builds the real one.
