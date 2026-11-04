@@ -4,7 +4,7 @@ slug: ethereum-rpc-ws
 number: "296"
 title: Fastest private Ethereum WebSocket push, per-block race across keyed RPC providers
 seo_title: "Fastest Ethereum WebSocket RPC push 2026, private endpoints"
-seo_description: "{{best_name}} has the lowest median lag behind the first Ethereum block push among Chainstack, GetBlock, QuickNode and Dwellir."
+seo_description: "{{best_name}} has the lowest median lag behind the first Ethereum block push among Chainstack, GetBlock, Quicknode and Dwellir."
 subtitle: Per-block WebSocket push lag in milliseconds versus the first provider to deliver the same Ethereum block, across API-key endpoints probed from us-east, eu-west and Singapore.
 
 category: RPCs
@@ -144,7 +144,7 @@ providers:
           series: histogram_quantile(0.50, sum by (le) (rate(rpc_ws_head_lead_milliseconds_histogram_bucket{provider="getblock",chain="ethereum",tier="keyed",region="sgp"}[1h])))
 
   - slug: quicknode
-    name: QuickNode
+    name: Quicknode
     tag: Private WS, same keyed endpoint as the HTTP cohort
     formula: "Median ms behind the first provider to push each Ethereum block over eth_subscribe(newHeads), from one socket per provider per region, histogram_quantile over 24h. The per-block winner scores 0 by construction."
     queries:

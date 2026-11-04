@@ -307,12 +307,12 @@ func doPost(ctx context.Context, url string, body []byte, warm bool) (raw []byte
 		// The body of a non-200 is returned, not discarded, because some
 		// providers answer a question there.
 		//
-		// Measured 2026-10-30: QuickNode refuses a 100,000-block eth_getLogs
+		// Measured 2026-10-30: Quicknode refuses a 100,000-block eth_getLogs
 		// with an HTTP 413 whose body is "eth_getLogs is limited to a 10,000
 		// range", and getblock on arc refuses with a 403 saying "Requested
 		// block range exceeds the limits (1500 blocks)". Discarding those
 		// bodies made the range ladder read its own 10,000-block success as
-		// a failure to find out, so QuickNode published no window on seven
+		// a failure to find out, so Quicknode published no window on seven
 		// of eight chains and the board showed a dash, which it defines as
 		// "we could not ask". We asked, and they answered.
 		//

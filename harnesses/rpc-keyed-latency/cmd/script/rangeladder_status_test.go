@@ -6,7 +6,7 @@ import "testing"
 // ressemble sans en etre.
 //
 // Les deux premiers cas sont des mesures du 2026-10-30, pas des inventions:
-// QuickNode refuse 100 000 blocs avec un 413 et getblock sur arc avec un 403.
+// Quicknode refuse 100 000 blocs avec un 413 et getblock sur arc avec un 403.
 // Les cas negatifs sont la pour la raison inverse: sur un non-200 on ne peut
 // pas raisonner comme sur un 200, ou une erreur JSON-RPC signifie forcement un
 // refus de largeur. Un 401 ne parle pas de fenetres et un 502 ne parle de

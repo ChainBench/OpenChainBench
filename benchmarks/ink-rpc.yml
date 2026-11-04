@@ -14,7 +14,7 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  Ink is an OP Stack rollup (chain 57073) launched by Kraken in late 2024, DeFi-first positioning with ETH gas and a native ecosystem incentive program. Standard EVM JSON-RPC. Kraken operates a pair of active-active official endpoints (Gelato-backed `rpc-gel` and QuickNode-backed `rpc-qnd`) so both appear on this leaderboard. Excluded by the launch audit: Alchemy public (chain not enabled on public tier), Blast API (API no longer available). Every provider live-verified with 4 consecutive keyless probes at launch.
+  Ink is an OP Stack rollup (chain 57073) launched by Kraken in late 2024, DeFi-first positioning with ETH gas and a native ecosystem incentive program. Standard EVM JSON-RPC. Kraken operates a pair of active-active official endpoints (Gelato-backed `rpc-gel` and Quicknode-backed `rpc-qnd`) so both appear on this leaderboard. Excluded by the launch audit: Alchemy public (chain not enabled on public tier), Blast API (API no longer available). Every provider live-verified with 4 consecutive keyless probes at launch.
 
 abstract: |
   Ink: {{count}} free public RPC endpoints answering `eth_getBlockByNumber` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}; the chain-official endpoint measures {{p50:ink-official}}.
@@ -73,10 +73,10 @@ providers:
           series: avg_over_time(rpc_latency_milliseconds{provider="ink-official", chain="ink", region="sgp"}[1h])
 
   - slug: ink-quicknode
-    name: QuickNode
+    name: Quicknode
     endpoint: https://rpc-qnd.inkonchain.com
-    tag: Kraken's Ink Chain second official public RPC, QuickNode-backed
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to QuickNode's no-key ink RPC endpoint."
+    tag: Kraken's Ink Chain second official public RPC, Quicknode-backed
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Quicknode's no-key ink RPC endpoint."
     queries:
       p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="ink-quicknode", chain="ink"})
       p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="ink-quicknode", chain="ink"})

@@ -7,8 +7,8 @@ import "sort"
 // The single most robust finding of the pricing audit behind this bench
 // is that there is no "cheapest RPC provider" — the winner changes with
 // the method mix, and it changes by multiples, not percent. Per call,
-// Alchemy costs well under half of QuickNode for eth_blockNumber and about
-// two and a half times QuickNode for eth_getLogs. Blockmachine bills 1
+// Alchemy costs well under half of Quicknode for eth_blockNumber and about
+// two and a half times Quicknode for eth_getLogs. Blockmachine bills 1
 // Request Unit for an ordinary read and 25 to 50 for debug and trace, so it
 // leads the read-heavy profiles and wins no trace cell; Dwellir bills 1
 // credit for everything and leads trace from 100M up.
@@ -86,7 +86,7 @@ var Profiles = []Profile{
 		Chain: "solana",
 		// Account reads to build state, blockhash to sign, then send and
 		// simulate. Solana is priced differently from EVM by most of the
-		// cohort (QuickNode 1.5x, Ankr 2.5x, GetBlock 2.5x), so it needs
+		// cohort (Quicknode 1.5x, Ankr 2.5x, GetBlock 2.5x), so it needs
 		// its own column rather than a footnote.
 		Mix: map[string]float64{
 			"getAccountInfo":      0.40,

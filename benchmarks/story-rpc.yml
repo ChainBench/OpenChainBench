@@ -14,7 +14,7 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  Story is a purpose-built L1 blockchain (chain 1514) for on-chain intellectual property, combining an EVM execution layer with CometBFT consensus, IP asset primitives (PIL licensing, royalty modules), and native IP NFT support. Backed by a16z, Polychain Capital, and Samsung NEXT, Story mainnet launched February 2025. The 2026-08-04 audit confirms {{count}} clean keyless providers: the Story Foundation official endpoint (mainnet.storyrpc.io), Ankr (rpc.ankr.com/story_mainnet), Stakely (story-json-rpc.stakely.io), and PublicNode (story-rpc.publicnode.com). Excluded: Alchemy (key required), Infura (no story route), QuickNode (key required).
+  Story is a purpose-built L1 blockchain (chain 1514) for on-chain intellectual property, combining an EVM execution layer with CometBFT consensus, IP asset primitives (PIL licensing, royalty modules), and native IP NFT support. Backed by a16z, Polychain Capital, and Samsung NEXT, Story mainnet launched February 2025. The 2026-08-04 audit confirms {{count}} clean keyless providers: the Story Foundation official endpoint (mainnet.storyrpc.io), Ankr (rpc.ankr.com/story_mainnet), Stakely (story-json-rpc.stakely.io), and PublicNode (story-rpc.publicnode.com). Excluded: Alchemy (key required), Infura (no story route), Quicknode (key required).
 
 abstract: |
   Story: {{count}} free public RPC endpoints answering `eth_getBlockByNumber` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}; the chain-official endpoint measures {{p50:story-official}}.

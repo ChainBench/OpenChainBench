@@ -14,7 +14,7 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  Lisk is an OP Stack L2 (chain 1135) operated by Onchain Foundation (formerly Lisk Foundation), focused on emerging-market Web3 adoption, ETH gas token, ~2 s block cadence, blob calldata settlement on Ethereum. 2026-08-03 re-audit brings the total to {{count}} clean keyless providers: the Lisk official endpoint (rpc.api.lisk.com), dRPC (lisk.drpc.org), Thirdweb (lisk.rpc.thirdweb.com), and Tenderly Gateway (gateway.tenderly.co/public/lisk). Excluded: Blast API (no lisk route), Alchemy (key required), Infura (no lisk route), QuickNode (key required).
+  Lisk is an OP Stack L2 (chain 1135) operated by Onchain Foundation (formerly Lisk Foundation), focused on emerging-market Web3 adoption, ETH gas token, ~2 s block cadence, blob calldata settlement on Ethereum. 2026-08-03 re-audit brings the total to {{count}} clean keyless providers: the Lisk official endpoint (rpc.api.lisk.com), dRPC (lisk.drpc.org), Thirdweb (lisk.rpc.thirdweb.com), and Tenderly Gateway (gateway.tenderly.co/public/lisk). Excluded: Blast API (no lisk route), Alchemy (key required), Infura (no lisk route), Quicknode (key required).
 
 abstract: |
   Lisk: {{count}} free public RPC endpoints answering `eth_getBlockByNumber` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}; the chain-official endpoint measures {{p50:lisk-official}}.

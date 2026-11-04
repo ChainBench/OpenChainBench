@@ -174,10 +174,10 @@ func acceptedSpan(raw []byte) (accepted bool, definitive bool) {
 // So this is a POSITIVE test: the body has to state the thing before we
 // believe it. Measured 2026-10-30, two providers do state it:
 //
-//	QuickNode    413  "eth_getLogs is limited to a 10,000 range"
+//	Quicknode    413  "eth_getLogs is limited to a 10,000 range"
 //	getblock arc 403  "Requested block range exceeds the limits (1500 blocks)"
 //
-// QuickNode's 10,000 is exactly the rung below, which is the width the ladder
+// Quicknode's 10,000 is exactly the rung below, which is the width the ladder
 // had already been served, so the two agree and the cell stops showing a dash
 // for an answer we received.
 //
@@ -372,9 +372,9 @@ func probeGetLogsRange(ctx context.Context, sink coverageSink, e Endpoint, head 
 				// for, UNLESS their body answers for them.
 				//
 				// Two providers put the range refusal in the body of a
-				// non-200: getblock on arc behind a 403, QuickNode behind a
+				// non-200: getblock on arc behind a 403, Quicknode behind a
 				// 413. That used to be lost, and the loss was not neutral.
-				// QuickNode had already been served 10,000 blocks, so the
+				// Quicknode had already been served 10,000 blocks, so the
 				// ladder's own reading and their stated limit agreed, and
 				// the board still showed a dash on seven of eight chains
 				// while defining a dash as "we could not ask".

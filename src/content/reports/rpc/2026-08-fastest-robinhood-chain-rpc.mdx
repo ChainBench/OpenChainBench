@@ -13,9 +13,9 @@ canonical: "https://openchainbench.com/reports/rpc/2026-08-fastest-robinhood-cha
 
 <Summary>
 - Robinhood Chain (chain ID 4663) is an Arbitrum Orbit L2 for tokenized equity trading, live on mainnet since July 2026 with a gas subsidy running through September 29, 2026.
-- Three providers currently expose keyed Robinhood Chain endpoints: Chainstack, Alchemy, and QuickNode. This bench probes all three.
+- Three providers currently expose keyed Robinhood Chain endpoints: Chainstack, Alchemy, and Quicknode. This bench probes all three.
 - Chainstack posts the lowest median latency in the cohort, roughly 3 ms (p50, 24h).
-- Alchemy follows at ~5.6 ms, QuickNode at ~67 ms. All three returned a usable block on 100% of probes.
+- Alchemy follows at ~5.6 ms, Quicknode at ~67 ms. All three returned a usable block on 100% of probes.
 - This is the first independent public latency benchmark for Robinhood Chain.
 </Summary>
 
@@ -35,7 +35,7 @@ Three providers offer keyed Robinhood Chain endpoints today, and all three answe
 
 <StatTable bench="robinhood-rpc" tier="keyed" caption="Keyed Robinhood Chain RPC providers, p50 latency over 24h. Lower is better." />
 
-Alchemy lands second at ~5.6 ms via its edge infrastructure. QuickNode's shared-endpoint fleet sits at ~67 ms. All three cleared 100% of probes over the window, so on availability the field is even; the separation is in how fast the typical read comes back.
+Alchemy lands second at ~5.6 ms via its edge infrastructure. Quicknode's shared-endpoint fleet sits at ~67 ms. All three cleared 100% of probes over the window, so on availability the field is even; the separation is in how fast the typical read comes back.
 
 ## Why Median Latency Matters Here
 
@@ -49,8 +49,8 @@ At ~3 ms median, Chainstack leaves the most headroom against that 100 ms cadence
 Chainstack is the median leader in this cohort, roughly 3 ms p50 over 24h. If your priority is the fastest typical read on Robinhood Chain from Singapore, it is the front-runner today. As with any single endpoint, pair it with a fallback so a provider-side incident never leaves you without a tip.
 </UseCase>
 
-<UseCase label="Already standardized on Alchemy or QuickNode">
-Both answer reliably on Robinhood Chain (100% success over the window). Alchemy at ~5.6 ms is close behind the leader; QuickNode at ~67 ms is workable for less latency-sensitive reads. The trade-off against Chainstack is median latency, not availability.
+<UseCase label="Already standardized on Alchemy or Quicknode">
+Both answer reliably on Robinhood Chain (100% success over the window). Alchemy at ~5.6 ms is close behind the leader; Quicknode at ~67 ms is workable for less latency-sensitive reads. The trade-off against Chainstack is median latency, not availability.
 </UseCase>
 
 ## What to Watch Next

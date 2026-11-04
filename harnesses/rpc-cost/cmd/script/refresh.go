@@ -60,7 +60,7 @@ func fetchBody(url string) fetchResult {
 	if err != nil {
 		return fetchResult{}
 	}
-	// QuickNode's credit endpoint 403s on a default library UA, so every
+	// Quicknode's credit endpoint 403s on a default library UA, so every
 	// request carries an explicit, honest one.
 	req.Header.Set("User-Agent", userAgent)
 
