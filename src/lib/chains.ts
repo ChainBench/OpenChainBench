@@ -25,18 +25,11 @@ export type ChainEntry = {
   label: string;
   category: ChainCategory;
   description: string;
-  /**
-   * Optional native token symbol. When set, the /chains/[slug] page surfaces
-   * the Native price + mcap KPI cards via the Mobula `/market/data?symbol=…`
-   * gauge series sourced by the chain-kpis harness. Empty / undefined =
-   * the page won't render those cards. 100% coverage today across the
-   * 21 chains in this registry; declared explicitly so a new chain that
-   * forgets to set it just hides the cards rather than rendering a wrong
-   * symbol. Long-tail chains added with the 055-066 RPC cluster
-   * (2026-07-03) set their best-known symbol; cards stay hidden until
-   * the chain-kpis harness sources the series.
-   */
+  /** Network's native gas-token symbol, independent of pricing-provider tickers. */
   nativeSymbol?: string;
+  /** Mobula ticker for the same asset; undefined keeps nativeSymbol, null disables
+   * native price/mcap until the live lookup AND harness series identify that asset. */
+  nativePriceSymbol?: string | null;
   /** Official project website, shown as an external link on /chains/[slug]. */
   website?: string;
 };
@@ -452,9 +445,12 @@ export const CHAINS: ChainEntry[] = [
     slug: "fraxtal",
     label: "Fraxtal",
     category: "L2",
-    nativeSymbol: "frxETH", // gas token; FRAX here mislabeled the frxETH price the harness measures
+    nativeSymbol: "FRAX",
+    // https://docs.frax.com/fraxtal/gas-fees/FRAX
+    // The harness still measures FRXETH; a FRAX ticker lookup is ambiguous.
+    nativePriceSymbol: null,
     description:
-      "Frax Finance OP Stack rollup, 2 s sequencer cadence, frxETH-denominated gas with FXTL incentive points.",
+      "Frax Finance OP Stack rollup, 2 s sequencer cadence, FRAX-denominated gas with FXTL incentive points.",
   },
   {
     slug: "soneium",
@@ -1359,4 +1355,3 @@ export function chainLabelForSlug(slug: string): string | null {
   const canon = canonicalChainSlug(slug);
   return CHAIN_BY_SLUG.get(canon)?.label ?? null;
 }
-
