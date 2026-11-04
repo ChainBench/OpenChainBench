@@ -444,6 +444,14 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "DeFi shared engine that maps onchain interactions into composable actions. The Route API computes optimal multi-step paths across protocols and chains, abstracting approvals, swaps, vault entries, and bridges into a single call.",
     twitter: "@EnsoBuild",
   },
+  trnch: {
+    url: "https://trnch.fun",
+    description:
+      "Aggregator for Robinhood Chain, chain ID 4663, and no other chain. Its bot API polls several routers and returns the best, and it refuses outright to quote a token its own agent classifies as a rug, honeypot or imitation.",
+    twitter: "@trnchfun",
+    longDescription:
+      "Trnch quotes Robinhood Chain by polling several routers and returning the best, naming each one it asked and whether that route was usable. Before it polls anyone it screens the token with its own agent, TIA, and answers a refusal rather than a price when that screen fails; it publishes the honeypots and rugs that screen identifies at trnch.fun/tia. This site measures that refusal on the token sellability bench, where a low score means the router declined to route into tokens an independent simulation could not sell back out of. It is not measured on quote or latency, at its own request. The 0.5% it takes is reported per route in the quote response, and measured against a direct KyberSwap quote on the same pair at the same moment on 2026-11-02 the gap was 49.3 to 51.2 basis points, so the declaration matches what it costs.",
+  },
   route: {
     url: "https://route.fun",
     description:

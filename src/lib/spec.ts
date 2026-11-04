@@ -829,7 +829,11 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       cached entry, so the contradiction would survive a green
   //       deploy. Moves with all-benchmarks-v152 and bench-filters-v88;
   //       providers-v52 does NOT move, the provider set is unchanged.
-  ["bench-unfiltered-v160", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v161: Trnch joins bench 313 with two rows. It asked to be withdrawn
+  //       from quote and latency on 2026-11-03 and said in the same
+  //       message that the security bench interested it, which is this
+  //       one. An ARRIVAL: a cached entry holds the old provider set.
+  ["bench-unfiltered-v161", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -1163,7 +1167,8 @@ const loadAllBenchmarksCached = unstable_cache(
   //       excluded on the page that ranks it).
   // v153: lockstep with bench-unfiltered-v160 (per-method latency on the
   //       Heavy tier, Solana capability board).
-  ["all-benchmarks-v153", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v154: lockstep with bench-unfiltered-v161 (Trnch joins bench 313).
+  ["all-benchmarks-v154", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1386,7 +1391,9 @@ const loadBenchmarkFiltered = unstable_cache(
   //       excluded on the page that ranks it).
   // v89: lockstep with bench-unfiltered-v160 (per-method latency on the
   //       Heavy tier, Solana capability board).
-  ["bench-filters-v89", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v90: lockstep with bench-unfiltered-v161. Bench 313 gains a vendor on
+  //      BOTH tier values, so each tab's provider set changes.
+  ["bench-filters-v90", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 

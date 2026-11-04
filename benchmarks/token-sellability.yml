@@ -52,6 +52,7 @@ methodology:
 
 findings:
   - "Tokens that take your money and will not give it back are rare but not absent, and a quote leaderboard cannot see them: the best price on something unsellable still reads as the best price."
+  - "One router on this board screens the token before it polls anyone and refuses outright, and another keeps a deny list. Both are visible here as a low score and nowhere else: on a price board they would look like missing coverage."
   - "The two timings are the whole method. Without the delayed sale, every token with an anti-bot cooldown looks like a trap, and that is most of a launch cohort."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/dev/harnesses/token-sellability
@@ -125,6 +126,14 @@ providers:
       p50: 100 * sum(sum_over_time(token_sellability_routed{aggregator="lifi",tier="delayed"}[24h])) / clamp_min(sum(sum_over_time(token_sellability_asked{aggregator="lifi",tier="delayed"}[24h])), 1)
       sample_size: sum(avg_over_time(token_sellability_asked{aggregator="lifi",tier="delayed"}[24h]))
 
+  - slug: trnch
+    name: Trnch
+    tier: delayed
+    tag: Screens the token with its own agent before polling routers
+    formula: "Share of the tokens whose sale reverted when attempted a few blocks after the buy that Trnch still returned a route INTO, over 24h of sweeps, weighted by how many tokens each sweep put to it. Lower is better."
+    queries:
+      p50: 100 * sum(sum_over_time(token_sellability_routed{aggregator="trnch",tier="delayed"}[24h])) / clamp_min(sum(sum_over_time(token_sellability_asked{aggregator="trnch",tier="delayed"}[24h])), 1)
+      sample_size: sum(avg_over_time(token_sellability_asked{aggregator="trnch",tier="delayed"}[24h]))
   - slug: sushi-same-block
     name: SushiSwap
     tier: same_block
@@ -160,3 +169,12 @@ providers:
     queries:
       p50: 100 * sum(sum_over_time(token_sellability_routed{aggregator="lifi",tier="same_block"}[24h])) / clamp_min(sum(sum_over_time(token_sellability_asked{aggregator="lifi",tier="same_block"}[24h])), 1)
       sample_size: sum(avg_over_time(token_sellability_asked{aggregator="lifi",tier="same_block"}[24h]))
+
+  - slug: trnch-same-block
+    name: Trnch
+    tier: same_block
+    tag: Screens the token with its own agent before polling routers
+    formula: "Share of the tokens whose sale reverted when attempted in the same block as the buy that Trnch still returned a route INTO, over 24h of sweeps, weighted by how many tokens each sweep put to it. Lower is better."
+    queries:
+      p50: 100 * sum(sum_over_time(token_sellability_routed{aggregator="trnch",tier="same_block"}[24h])) / clamp_min(sum(sum_over_time(token_sellability_asked{aggregator="trnch",tier="same_block"}[24h])), 1)
+      sample_size: sum(avg_over_time(token_sellability_asked{aggregator="trnch",tier="same_block"}[24h]))

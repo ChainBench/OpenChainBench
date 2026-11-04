@@ -1133,6 +1133,7 @@ const ALIASES: Record<string, string> = {
   "kyberswap-same-block": "kyberswap",
   "paraswap-same-block": "paraswap",
   "lifi-same-block": "lifi",
+  "trnch-same-block": "trnch",
   "alchemy-cold": "alchemy",
   "blockmachine-cold": "blockmachine",
   "alchemy-heavy": "alchemy",

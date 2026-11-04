@@ -1,6 +1,10 @@
 package main
 
 import (
+	"context"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 )
@@ -122,5 +126,99 @@ func TestRefusalCodesDoNotCrossAggregators(t *testing.T) {
 	lifi := `{"code":1011,"message":"Token is invalid or in deny list."}`
 	if no, _ := isRefusal([]byte(lifi), kyberRefusals); no {
 		t.Error("lifi's code must not be read against kyberswap's table")
+	}
+}
+
+// trnchNode serves one canned response so the adapter can be driven without
+// the live API or the key.
+func trnchNode(t *testing.T, status int, body string) {
+	t.Helper()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Authorization") == "" {
+			t.Error("the key must be sent")
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(status)
+		_, _ = w.Write([]byte(body))
+	}))
+	t.Cleanup(srv.Close)
+	old := trnchQuoteURL
+	trnchQuoteURL = srv.URL
+	t.Cleanup(func() { trnchQuoteURL = old })
+}
+
+// The behaviour Trnch claims and this bench exists to check: they screen the
+// token with their own agent before polling any router, and refuse. The body
+// is verbatim from their API on 2026-11-04, asked about a token this harness
+// had classified unsellable at both timings.
+func TestTrnchRefusalIsADeclineNotAFault(t *testing.T) {
+	trnchNode(t, 409, `{"error":"token not tradable through TRNCH"}`)
+	ok, err := trnchAgg{http.DefaultClient, "k"}.WillQuote(context.Background(), "0xtok", "1")
+	if err != nil {
+		t.Fatalf("a refusal must not be an error: %v", err)
+	}
+	if ok {
+		t.Error("a refusal must not count as a route")
+	}
+}
+
+func TestTrnchQuoteCountsAsRouted(t *testing.T) {
+	trnchNode(t, 200, `{"best":{"router":"kyberswap","amountOut":"46123722"},"routes":[]}`)
+	ok, err := trnchAgg{http.DefaultClient, "k"}.WillQuote(context.Background(), "0xtok", "1")
+	if err != nil || !ok {
+		t.Errorf("a real quote must count as routed, got ok=%v err=%v", ok, err)
+	}
+}
+
+// A zero amount is a refusal dressed as a quote, and reading it as a route
+// would credit them with something they declined.
+func TestTrnchZeroAmountIsNotARoute(t *testing.T) {
+	trnchNode(t, 200, `{"best":{"amountOut":"0"}}`)
+	ok, _ := trnchAgg{http.DefaultClient, "k"}.WillQuote(context.Background(), "0xtok", "1")
+	if ok {
+		t.Error("zero out must not count as a route")
+	}
+}
+
+// Their licence notice rides on every response and must not reach a log, an
+// error, or anything else we keep.
+func TestTrnchNoticeNeverReachesAnError(t *testing.T) {
+	notice := "RESTRICTED: no redistribution of this data without written consent"
+	body, _ := json.Marshal(map[string]any{
+		"error":  "internal failure",
+		"notice": notice,
+	})
+	trnchNode(t, 500, string(body))
+	_, err := trnchAgg{http.DefaultClient, "k"}.WillQuote(context.Background(), "0xtok", "1")
+	if err == nil {
+		t.Fatal("a 500 is a fault and must surface")
+	}
+	if strings.Contains(err.Error(), "RESTRICTED") || strings.Contains(err.Error(), "redistribution") {
+		t.Errorf("their notice must never be carried: %q", err)
+	}
+	if !strings.Contains(err.Error(), "internal failure") {
+		t.Errorf("their own error field should be kept: %q", err)
+	}
+}
+
+// The withdrawal switch. Without the key Trnch is not built at all, so no
+// request is made and the row is absent rather than scoring the zero that
+// wins this board.
+func TestTrnchIsAbsentWithoutItsKey(t *testing.T) {
+	t.Setenv("TRNCH_API_KEY", "")
+	for _, a := range Aggregators() {
+		if a.Slug() == "trnch" {
+			t.Fatal("no key must mean no trnch, and therefore no row")
+		}
+	}
+	t.Setenv("TRNCH_API_KEY", "something")
+	found := false
+	for _, a := range Aggregators() {
+		if a.Slug() == "trnch" {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("a key must put trnch back in the cohort")
 	}
 }
