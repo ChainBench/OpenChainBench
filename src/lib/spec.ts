@@ -798,7 +798,13 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       entry holds that empty set and would keep serving it.
   // v157: BlockVectra joins the Katana RPC page. An ARRIVAL: a cached
   //       entry holds the old provider set, so the row would never render.
-  ["bench-unfiltered-v157", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v158: bench 313's two panel columns rendered empty on every row.
+  //       A panel value is matched to a row by a label equal to the ROW
+  //       SLUG: the Examined panel had no labels at all and could never
+  //       match, and the Tokens asked panel named the aggregator where
+  //       the same-block rows carry a suffixed slug. The first is gone,
+  //       the second now reads a provider label the harness publishes.
+  ["bench-unfiltered-v158", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -1127,7 +1133,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v148: lockstep with bench-unfiltered-v155 (bench 313 window fix).
   // v149: lockstep with bench-unfiltered-v156 (bench 313 live).
   // v150: lockstep with bench-unfiltered-v157 (BlockVectra on Katana).
-  ["all-benchmarks-v150", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v151: lockstep with bench-unfiltered-v158 (bench 313 panel columns).
+  ["all-benchmarks-v151", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
