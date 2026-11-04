@@ -22,7 +22,7 @@ import (
 // bloc de trop. Ici le classifieur peut etre parfait et la mesure rester
 // perdue, puisque le corps d'un non-200 etait jete avant de l'atteindre.
 //
-// Le serveur imite QuickNode mesure le 2026-10-30: il sert jusqu'a 10 000
+// Le serveur imite Quicknode mesure le 2026-10-30: il sert jusqu'a 10 000
 // blocs et refuse au-dela par un HTTP 413 dont le corps dit la limite. Ce qui
 // est verifie est la jauge publiee, c'est-a-dire ce que le spec lit.
 func TestLadderReadsARefusalCarriedByAStatus(t *testing.T) {
@@ -46,7 +46,7 @@ func TestLadderReadsARefusalCarriedByAStatus(t *testing.T) {
 		span := hi - lo + 1
 		asked = append(asked, span)
 		if span > limit {
-			// Le refus de QuickNode, verbatim, avec son statut.
+			// Le refus de Quicknode, verbatim, avec son statut.
 			w.WriteHeader(http.StatusRequestEntityTooLarge)
 			fmt.Fprintf(w, `{"jsonrpc":"2.0","id":1,"error":{"code":-32602,`+
 				`"message":"eth_getLogs is limited to a %s range"}}`, "10,000")

@@ -14,7 +14,7 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  Manta Pacific is an OP Stack EVM L2 (chain 169) built on Celestia for data availability, optimised for zero-knowledge applications and DeFi, ETH gas token, ~2 s block cadence, settlement on Ethereum. The 2026-08-04 audit confirms {{count}} clean keyless providers: the Manta Pacific official endpoint (pacific-rpc.manta.network/http), dRPC (manta-pacific.drpc.org), Thirdweb (169.rpc.thirdweb.com), and 1RPC (1rpc.io/manta). Excluded: Ankr (no manta pacific route), Alchemy (key required), QuickNode (key required).
+  Manta Pacific is an OP Stack EVM L2 (chain 169) built on Celestia for data availability, optimised for zero-knowledge applications and DeFi, ETH gas token, ~2 s block cadence, settlement on Ethereum. The 2026-08-04 audit confirms {{count}} clean keyless providers: the Manta Pacific official endpoint (pacific-rpc.manta.network/http), dRPC (manta-pacific.drpc.org), Thirdweb (169.rpc.thirdweb.com), and 1RPC (1rpc.io/manta). Excluded: Ankr (no manta pacific route), Alchemy (key required), Quicknode (key required).
 
 abstract: |
   Manta Pacific: {{count}} free public RPC endpoints answering `eth_getBlockByNumber` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}; the chain-official endpoint measures {{p50:manta-official}}.

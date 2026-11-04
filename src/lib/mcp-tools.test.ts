@@ -63,7 +63,7 @@ describe("search ranks the catalogue against a user's words", () => {
     bench({
       slug: "base-rpc",
       title: "Fastest Base RPC",
-      results: [r("alchemy", "Alchemy", 90), r("quicknode", "QuickNode", 110)],
+      results: [r("alchemy", "Alchemy", 90), r("quicknode", "Quicknode", 110)],
     }),
     bench({
       slug: "bridge-fee",
@@ -87,7 +87,7 @@ describe("search ranks the catalogue against a user's words", () => {
   });
 
   test("matches provider names the user capitalises differently", () => {
-    const hits = searchBenchmarks(pool, { query: "Alchemy or QuickNode", limit: 5, siteUrl: SITE });
+    const hits = searchBenchmarks(pool, { query: "Alchemy or Quicknode", limit: 5, siteUrl: SITE });
     expect(hits[0].slug).toBe("base-rpc");
   });
 
@@ -165,7 +165,7 @@ describe("a query is never echoed back with a secret in it", () => {
 
   test("leaves an ordinary question alone", () => {
     expect(redactSecrets("which solana rpc is fastest")).toBe("which solana rpc is fastest");
-    expect(redactSecrets("Alchemy or QuickNode on Base")).toBe("Alchemy or QuickNode on Base");
+    expect(redactSecrets("Alchemy or Quicknode on Base")).toBe("Alchemy or Quicknode on Base");
   });
 });
 

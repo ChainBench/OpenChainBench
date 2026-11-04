@@ -292,7 +292,7 @@ than as a median of five swaps.
 lookup issues: the public node answers two calls and then rate-limits (10
 failures in 12), and `hyperliquid.drpc.org` now 403s every request, so it
 was dropped from the fallback list. Maximum span per provider: Alchemy
-100,000 blocks, Chainstack 5,000, QuickNode and the public node 1,000. The
+100,000 blocks, Chainstack 5,000, Quicknode and the public node 1,000. The
 deploy puts Chainstack first, Alchemy behind it, the public node last.
 Until then HyperEVM rows read `v3_no_prev` although every pool had a
 previous trade 1 to 795 blocks back; an RPC failure now reports
@@ -344,7 +344,7 @@ Robinhood Chain: the user's own setting, 0.00005 to 0.001 ETH, to
 `0x56931968…`), is network cost like the Solana terminals' own tip
 relays: on a sale it is the transaction's value (a sale sends nothing
 else), on a buy it is read from the call trace
-(`debug_traceTransaction`, served by QuickNode on Robinhood Chain and by
+(`debug_traceTransaction`, served by Quicknode on Robinhood Chain and by
 drpc's public BSC node) or, without a trace, the fixed amount when the
 tip account's balance rose by at least that much in the block (`Tip` /
 `TipTo` on the terminal). A hook that takes its cut through the manager
@@ -503,7 +503,7 @@ stats plus the last 400 samples (`method_version`, `min_priced`,
 | `MIN_PRICED` | `50` | priced samples before a terminal is published |
 | `MIN_RANK` | `100` | priced samples before a terminal is ranked |
 | `MIN_TRADE_USD` | `2` | dust threshold |
-| `EVM_RPC_<CHAIN>` | unset | comma-separated endpoints tried before the public ones for that chain. Production: `EVM_RPC_BNB` = Alchemy's free BNB node (the public BSC nodes refuse `eth_getBalance` at the previous block, which native sells need; ~11 M compute units a month at 400 swaps a day per row); `EVM_RPC_ROBINHOOD` = the QuickNode Robinhood Chain endpoint then Chainstack's (QuickNode reads a 1,000-block log range in 0.13 s, Chainstack 1.3 s: a fallback, not a primary; Alchemy's free app does not serve the chain) (the public one has no WebSocket, rate-limits, and its `eth_getLogs` takes 9 s for 50 blocks or times out upstream; QuickNode serves 1,000 blocks of router logs in 0.8 s and past balances; the chain makes ~590 blocks a minute) |
+| `EVM_RPC_<CHAIN>` | unset | comma-separated endpoints tried before the public ones for that chain. Production: `EVM_RPC_BNB` = Alchemy's free BNB node (the public BSC nodes refuse `eth_getBalance` at the previous block, which native sells need; ~11 M compute units a month at 400 swaps a day per row); `EVM_RPC_ROBINHOOD` = the Quicknode Robinhood Chain endpoint then Chainstack's (Quicknode reads a 1,000-block log range in 0.13 s, Chainstack 1.3 s: a fallback, not a primary; Alchemy's free app does not serve the chain) (the public one has no WebSocket, rate-limits, and its `eth_getLogs` takes 9 s for 50 blocks or times out upstream; Quicknode serves 1,000 blocks of router logs in 0.8 s and past balances; the chain makes ~590 blocks a minute) |
 | `STATE_FILE` | unset | persist the window across restarts |
 | `HISTORY_FILE_PUBLIC` | unset | public JSON mirror |
 

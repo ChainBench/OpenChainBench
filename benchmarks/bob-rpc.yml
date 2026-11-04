@@ -14,7 +14,7 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  BOB (Build on Bitcoin) is an OP Stack hybrid L2 (chain 60808) that bridges Bitcoin and Ethereum, enabling Bitcoin DeFi with EVM smart contracts and native BTC collateral, ETH gas token, ~2 s block cadence, settlement on Ethereum. Integrated with Babylon BTC staking and leading Bitcoin LSTs. The 2026-08-03 audit confirms {{count}} clean keyless providers: the BOB official endpoint (rpc.gobob.xyz), Tenderly Gateway (bob.gateway.tenderly.co), dRPC (bob.drpc.org), and Thirdweb (60808.rpc.thirdweb.com). Excluded: Ankr (no bob route), Alchemy (key required), QuickNode (key required).
+  BOB (Build on Bitcoin) is an OP Stack hybrid L2 (chain 60808) that bridges Bitcoin and Ethereum, enabling Bitcoin DeFi with EVM smart contracts and native BTC collateral, ETH gas token, ~2 s block cadence, settlement on Ethereum. Integrated with Babylon BTC staking and leading Bitcoin LSTs. The 2026-08-03 audit confirms {{count}} clean keyless providers: the BOB official endpoint (rpc.gobob.xyz), Tenderly Gateway (bob.gateway.tenderly.co), dRPC (bob.drpc.org), and Thirdweb (60808.rpc.thirdweb.com). Excluded: Ankr (no bob route), Alchemy (key required), Quicknode (key required).
 
 abstract: |
   BOB: {{count}} free public RPC endpoints answering `eth_getBlockByNumber` every 60 seconds from us-east, eu-west and Singapore, ranked by 24h median. {{best_name}} leads at {{best_p50}}; the chain-official endpoint measures {{p50:bob-official}}.

@@ -581,7 +581,15 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       which is false and is the one differentiator the report names.
   //       Moves with all-benchmarks-v105, bench-filters-v52 and
   //       providers-v29.
-  ["bench-unfiltered-v112", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v113: QuickNode becomes Quicknode, the brand's own spelling since
+  //       November 2025. dev was renamed on 29 October (#3372) and main
+  //       never received it, so production wrote one spelling and staging
+  //       the other. 312 occurrences in 81 files. Slugs are unchanged and
+  //       lowercase, so the provider set and its hash do not move, but the
+  //       display name is held in the cached entry: without this bump a
+  //       green deploy would still say QuickNode. Moves with
+  //       all-benchmarks-v106, bench-filters-v53 and providers-v30.
+  ["bench-unfiltered-v113", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -853,7 +861,8 @@ const loadAllBenchmarksCached = unstable_cache(
   //       tab, per-method latency, Solana capability board).
   // v105: lockstep with bench-unfiltered-v112 (Helius joins the keyed
   //       cohort on solana-rpc).
-  ["all-benchmarks-v105", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v106: lockstep with bench-unfiltered-v113 (Quicknode spelling).
+  ["all-benchmarks-v106", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1004,7 +1013,8 @@ const loadBenchmarkFiltered = unstable_cache(
   //      tab, per-method latency, Solana capability board).
   // v52: lockstep with bench-unfiltered-v112 (Helius joins the keyed
   //      cohort on solana-rpc).
-  ["bench-filters-v52", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v53: lockstep with bench-unfiltered-v113 (Quicknode spelling).
+  ["bench-filters-v53", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 

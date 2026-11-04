@@ -1284,7 +1284,7 @@
     },
     {
      "slug": "quicknode",
-     "name": "QuickNode",
+     "name": "Quicknode",
      "cohort": "usage",
      "unit": "credit",
      "points": [
@@ -1456,7 +1456,7 @@
     },
     {
      "slug": "quicknode-flat-rate",
-     "name": "QuickNode — Flat Rate RPS",
+     "name": "Quicknode — Flat Rate RPS",
      "cohort": "dedicated",
      "unit": "request",
      "points": [
@@ -3326,7 +3326,7 @@
     },
     {
      "slug": "quicknode",
-     "name": "QuickNode",
+     "name": "Quicknode",
      "cohort": "usage",
      "unit": "credit",
      "points": [
@@ -3498,7 +3498,7 @@
     },
     {
      "slug": "quicknode-flat-rate",
-     "name": "QuickNode — Flat Rate RPS",
+     "name": "Quicknode — Flat Rate RPS",
      "cohort": "dedicated",
      "unit": "request",
      "points": [
@@ -5353,7 +5353,7 @@
     },
     {
      "slug": "quicknode",
-     "name": "QuickNode",
+     "name": "Quicknode",
      "cohort": "usage",
      "unit": "credit",
      "points": [
@@ -5525,7 +5525,7 @@
     },
     {
      "slug": "quicknode-flat-rate",
-     "name": "QuickNode — Flat Rate RPS",
+     "name": "Quicknode — Flat Rate RPS",
      "cohort": "dedicated",
      "unit": "request",
      "points": [
@@ -6993,7 +6993,7 @@
     },
     {
      "slug": "quicknode",
-     "name": "QuickNode",
+     "name": "Quicknode",
      "cohort": "usage",
      "unit": "credit",
      "points": [
@@ -7165,7 +7165,7 @@
     },
     {
      "slug": "quicknode-flat-rate",
-     "name": "QuickNode — Flat Rate RPS",
+     "name": "Quicknode — Flat Rate RPS",
      "cohort": "dedicated",
      "unit": "request",
      "points": [
@@ -8433,7 +8433,7 @@
     },
     {
      "slug": "quicknode",
-     "name": "QuickNode",
+     "name": "Quicknode",
      "cohort": "usage",
      "unit": "credit",
      "points": [
@@ -8605,7 +8605,7 @@
     },
     {
      "slug": "quicknode-flat-rate",
-     "name": "QuickNode — Flat Rate RPS",
+     "name": "Quicknode — Flat Rate RPS",
      "cohort": "dedicated",
      "unit": "request",
      "points": [
@@ -10407,7 +10407,7 @@
     },
     {
      "slug": "quicknode",
-     "name": "QuickNode",
+     "name": "Quicknode",
      "cohort": "usage",
      "unit": "credit",
      "points": [
@@ -10579,7 +10579,7 @@
     },
     {
      "slug": "quicknode-flat-rate",
-     "name": "QuickNode — Flat Rate RPS",
+     "name": "Quicknode — Flat Rate RPS",
      "cohort": "dedicated",
      "unit": "request",
      "points": [

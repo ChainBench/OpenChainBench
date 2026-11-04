@@ -109,7 +109,7 @@ func unitsPerRequest(p Provider, pr Profile) (float64, error) {
 			// Either already encoded in the per-method weights (GetBlock
 			// carries an independent archive column rather than a
 			// multiplier, so its archive numbers live in archive_weights)
-			// or genuinely free (Alchemy, dRPC and QuickNode charge no
+			// or genuinely free (Alchemy, dRPC and Quicknode charge no
 			// archive premium at all).
 		default:
 			// An unrecognised rule must not silently price archive at par.

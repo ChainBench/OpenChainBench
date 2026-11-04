@@ -180,7 +180,7 @@ describe("renderTemplate", () => {
 });
 
 describe("renderTemplate, access tiers", () => {
-  const keyedRows = [r("alchemy", "Alchemy", 38), r("quicknode", "QuickNode", 29)];
+  const keyedRows = [r("alchemy", "Alchemy", 38), r("quicknode", "Quicknode", 29)];
   const withTiers: Benchmark = {
     ...bench([
       { ...r("publicnode", "PublicNode", 44), tier: "public" },
@@ -202,7 +202,7 @@ describe("renderTemplate, access tiers", () => {
   test("tier-scoped presets read the other cohort's stash", () => {
     expect(
       renderTemplate("{{best_name:tier:keyed}} at {{best_p50:tier:keyed}}, {{count:tier:keyed}} keyed", withTiers),
-    ).toBe("QuickNode at 29 ms, 2 keyed");
+    ).toBe("Quicknode at 29 ms, 2 keyed");
     expect(renderTemplate("{{worst_name:tier:keyed}}", withTiers)).toBe("Alchemy");
   });
 
@@ -212,7 +212,7 @@ describe("renderTemplate, access tiers", () => {
 
   test("per-slug lookups fall through to the other cohorts", () => {
     expect(renderTemplate("Alchemy: {{p50:alchemy}}", withTiers)).toBe("Alchemy: 38 ms");
-    expect(renderTemplate("{{name:quicknode}}", withTiers)).toBe("QuickNode");
+    expect(renderTemplate("{{name:quicknode}}", withTiers)).toBe("Quicknode");
   });
 
   test("an undeclared tier drops its clause instead of printing the token", () => {

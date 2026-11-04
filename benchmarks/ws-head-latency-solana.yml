@@ -40,7 +40,7 @@ abstract: |
   benchmark; this page is the Solana-scoped answer.
 
 methodology:
-  - "Providers measured (keyless WebSocket endpoints): PublicNode (wss://solana-rpc.publicnode.com) and Solana Foundation (wss://api.mainnet-beta.solana.com). Keyed providers (Alchemy, Chainstack, Helius, QuickNode) join the cohort when contributor keys are wired via WS_URL_<PROVIDER>_SOLANA env vars."
+  - "Providers measured (keyless WebSocket endpoints): PublicNode (wss://solana-rpc.publicnode.com) and Solana Foundation (wss://api.mainnet-beta.solana.com). Keyed providers (Alchemy, Chainstack, Helius, Quicknode) join the cohort when contributor keys are wired via WS_URL_<PROVIDER>_SOLANA env vars."
   - "Cohort saturation: dRPC's free Solana tier explicitly disallows slotSubscribe (\"method is not available on freetier\") and the other public Solana WSS gateways audited (Blast, BlockPI, Ankr, extrnode, Chainstack public) all reject the handshake (verified 2026-07), which is why the keyless tier stops at two."
   - "Chain scope: every query on this page is pinned to chain=\"solana\". Solana slot cadence is ~400ms, so a 24h window carries roughly 216000 samples per provider, an order of magnitude beyond the 7000 sample floor used across the head-lag cluster."
   - "RPC method: `slotSubscribe`, not `signatureSubscribe` or `logsSubscribe`. The notification payload includes the slot number and the parent slot; the harness dedupes on slot number and uses the first arrival per slot to define T0."
