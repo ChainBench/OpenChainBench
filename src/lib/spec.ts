@@ -666,6 +666,13 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // v128: the wallet pricing findings and FAQ read their winners and
   //       bills from the curve ({{cell:...}}). Moves with
   //       all-benchmarks-v121 and bench-filters-v66.
+  // v158: solana-rpc published Helius in the excluded list, with the
+  //       reason "no key held yet, so it is not in the private cohort
+  //       either", on the same page that ranks Helius fifth in that
+  //       cohort and discloses its plan. The excluded list lives in the
+  //       cached entry, so the contradiction would survive a green
+  //       deploy. Moves with all-benchmarks-v151 and bench-filters-v88;
+  //       providers-v52 does NOT move, the provider set is unchanged.
   // v129: bench 312 paymaster-cost arrives (nine vendors; Pimlico,
   //       Etherspot and Candide new to the site). Moves with
   //       all-benchmarks-v122 and bench-filters-v67.
@@ -804,7 +811,14 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       match, and the Tokens asked panel named the aggregator where
   //       the same-block rows carry a suffixed slug. The first is gone,
   //       the second now reads a provider label the harness publishes.
-  ["bench-unfiltered-v158", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v159: solana-rpc published Helius in the excluded list, with the
+  //       reason "no key held yet, so it is not in the private cohort
+  //       either", on the same page that ranks Helius fifth in that
+  //       cohort and discloses its plan. The excluded list lives in the
+  //       cached entry, so the contradiction would survive a green
+  //       deploy. Moves with all-benchmarks-v152 and bench-filters-v88;
+  //       providers-v52 does NOT move, the provider set is unchanged.
+  ["bench-unfiltered-v159", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -1134,7 +1148,9 @@ const loadAllBenchmarksCached = unstable_cache(
   // v149: lockstep with bench-unfiltered-v156 (bench 313 live).
   // v150: lockstep with bench-unfiltered-v157 (BlockVectra on Katana).
   // v151: lockstep with bench-unfiltered-v158 (bench 313 panel columns).
-  ["all-benchmarks-v151", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v152: lockstep with bench-unfiltered-v159 (Helius was listed as
+  //       excluded on the page that ranks it).
+  ["all-benchmarks-v152", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1353,7 +1369,9 @@ const loadBenchmarkFiltered = unstable_cache(
   //      tier dimension, so without this the second timing is invisible
   //      on the only tab it lives on.
   // v87: lockstep with bench-unfiltered-v157 (BlockVectra on Katana).
-  ["bench-filters-v87", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v88: lockstep with bench-unfiltered-v159 (Helius was listed as
+  //       excluded on the page that ranks it).
+  ["bench-filters-v88", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 
