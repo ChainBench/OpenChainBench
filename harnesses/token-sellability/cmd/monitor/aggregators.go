@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -8,6 +9,7 @@ import (
 	"math/big"
 	"net/http"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -289,12 +291,93 @@ var (
 		{needle: "No routes found"},
 		{needle: "Token not found"},
 	}
+	trnchRefusals = []refusal{
+		{needle: "not tradable"},
+		{needle: "unsupported token"},
+	}
 	lifiRefusals = []refusal{
 		{code: 1011, needle: "invalid or in deny list"},
 		{needle: "no quote"},
 		{needle: "not supported"},
 	}
 )
+
+// trnchAgg is Trnch, and it is on THIS board and not the quote ones on
+// purpose. They asked to be withdrawn from quote and latency on 2026-11-03
+// and said in the same breath that the security bench interested them,
+// because "avoir la meilleure quote sur quelque chose d'invendable par
+// conception c'est pas top, nous on les refuse". That is a claim about
+// behaviour, which is the kind this bench can settle.
+//
+// They refuse with 409 and {"error":"token not tradable through TRNCH"},
+// which is a decline and not a fault: their own agent (TIA) screens the
+// token before any router is polled. Measured 2026-11-04 on four tokens
+// this harness had classified unsellable at both timings, plus the control,
+// which came back 200 with four of five routers quoting.
+//
+// The key is still the withdrawal switch. Unset TRNCH_API_KEY and
+// Aggregators never builds this, so no request is made and the row is
+// absent rather than scored zero. Zero is the best score here and an
+// aggregator that cannot be reached must not inherit it.
+type trnchAgg struct {
+	c   *http.Client
+	key string
+}
+
+func (a trnchAgg) Slug() string { return "trnch" }
+
+func (a trnchAgg) WillQuote(ctx context.Context, token, amt string) (bool, error) {
+	// decimalsOut is unknown for an arbitrary token and they require it. 18
+	// is the common case; a wrong value changes the SIZE priced, not whether
+	// they will price at all, which is the only thing asked here.
+	body, _ := json.Marshal(map[string]any{
+		"tokenIn":     nativeSentinel,
+		"tokenOut":    token,
+		"amountIn":    amt,
+		"decimalsIn":  18,
+		"decimalsOut": 18,
+		"slippage":    0.01,
+	})
+	req, err := http.NewRequestWithContext(ctx, "POST", trnchQuoteURL, bytes.NewReader(body))
+	if err != nil {
+		return false, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Authorization", "Bearer "+a.key)
+	resp, err := a.c.Do(req)
+	if err != nil {
+		return false, err
+	}
+	defer resp.Body.Close()
+	b, _ := io.ReadAll(resp.Body)
+
+	// `notice` is deliberately absent from this struct and from every error
+	// built here: it is a licence text repeated on every response, and
+	// nothing downstream, logs included, should carry it.
+	var r struct {
+		Error string `json:"error"`
+		Best  struct {
+			AmountOut string `json:"amountOut"`
+		} `json:"best"`
+	}
+	_ = json.Unmarshal(b, &r)
+
+	if resp.StatusCode != 200 {
+		if no, _ := isRefusal(b, trnchRefusals); no {
+			return false, nil
+		}
+		// Their own error field only, never the whole body.
+		if r.Error != "" {
+			return false, fmt.Errorf("http %d: %s", resp.StatusCode, r.Error)
+		}
+		return false, fmt.Errorf("http %d", resp.StatusCode)
+	}
+	return positive(r.Best.AmountOut), nil
+}
+
+// trnchQuoteURL is a variable so a test can serve canned bodies against it.
+var trnchQuoteURL = "https://trnch.fun/api/bot/v1/quote"
 
 // aggregatorsForTest lets a test substitute the cohort. Nil in production,
 // where Aggregators builds the real one.
@@ -308,9 +391,16 @@ func Aggregators() []Aggregator {
 		return aggregatorsForTest
 	}
 	c := func() *http.Client { return &http.Client{Timeout: 30 * time.Second} }
-	return []Aggregator{
+	out := []Aggregator{
 		sushiAgg{c()}, kyberAgg{c()}, paraswapAgg{c()}, lifiAgg{c()},
 	}
+	// The key IS the gate, and the one withdrawal switch this repo has. An
+	// aggregator that cannot be asked is absent from the board rather than
+	// scored zero, because zero is the top of this board.
+	if k := strings.TrimSpace(os.Getenv("TRNCH_API_KEY")); k != "" {
+		out = append(out, trnchAgg{c(), k})
+	}
+	return out
 }
 
 // chainSlugFor keeps the slug and the id from drifting apart in a file that

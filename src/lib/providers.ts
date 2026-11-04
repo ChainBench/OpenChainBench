@@ -80,6 +80,7 @@ const PRODUCT_ALIASES: Record<string, string> = {
   "kyberswap-same-block": "kyberswap",
   "paraswap-same-block": "paraswap",
   "lifi-same-block": "lifi",
+  "trnch-same-block": "trnch",
   "alchemy-cold": "alchemy",
   "chainstack-cold": "chainstack",
   "getblock-cold": "getblock",
@@ -1002,7 +1003,11 @@ const buildProvidersCached = unstable_cache(
   //      Lockstep with bench-unfiltered-v153.
   // v52: BlockVectra joins the Katana RPC page (issue #3462), a new
   //      appearance. Lockstep with bench-unfiltered-v157.
-  ["providers-v52"],
+  // v53: Trnch returns, and it is new to the SITE again rather than to
+  //      one bench: it regains a product page as well as two bench
+  //      appearances, and this index carries both.
+  //      Lockstep with bench-unfiltered-v159.
+  ["providers-v53"],
   // 900 s: the provider index feeds products / compare / answers, whose
   // numbers move slowly, and this revalidate is also the effective ISR
   // period of those ~500 pages (Next takes the min across a route's caches).
