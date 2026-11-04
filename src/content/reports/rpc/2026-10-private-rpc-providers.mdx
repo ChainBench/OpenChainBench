@@ -231,10 +231,12 @@ against the SPL Token program with a size filter, against the Memo program
 which has a small account population, and in its paginated `getProgramAccountsV2`
 form.
 
-The first two are served by every Solana provider we hold a key for. The
-paginated v2 form is served by one in four. For anyone planning around the
-v2 surface, that is the number that matters, and it is not in any
-documentation table we could find.
+The small-program form is served by all four providers we hold a Solana key
+for. The SPL Token form, which is the expensive one, came back with no
+classifiable answer at all from two of the four, so those two carry no
+verdict rather than a zero. The paginated v2 form is served by one of the
+four. For anyone planning around the v2 surface, that is the number that
+matters, and it is not in any documentation table we could find.
 
 Helius is in the Solana cohort as of 30 October. Triton is not: it has no
 free tier, and this report only measures keys we actually hold.
