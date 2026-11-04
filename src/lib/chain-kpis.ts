@@ -18,7 +18,8 @@
 import { unstable_cache } from "next/cache";
 import { Prometheus } from "@/lib/prometheus";
 import { isDevOnlyBench } from "@/lib/removed-benches";
-import { withNativePricePolicy } from "@/lib/chain-native-pricing";
+import { nativePriceMetricSelector, withNativePricePolicy } from "@/lib/chain-native-pricing";
+import { CHAIN_BY_SLUG } from "@/lib/chains";
 import {
   readCohortSnapshot,
   writeCohortSnapshot,
@@ -36,6 +37,8 @@ export type ChainKpis = {
   nativePrice: number | null;
   /** Mobula native token circulating market cap in USD. */
   nativeMcap: number | null;
+  /** Pinned Mobula asset used by the native metric selector; absent in legacy snapshots. */
+  nativePriceAssetId?: number;
   /** Fees users paid on the chain over DefiLlama's trailing 30 complete
    *  UTC days (gas + tracked protocol fees), and the revenue the chain and
    *  its protocols kept. Bench 280. Absent in snapshots written before
@@ -95,6 +98,8 @@ export async function fetchChainKpisFresh(
   }
 
   const sel = `{chain="${slug}"}`;
+  const nativeSel = nativePriceMetricSelector(slug);
+  const nativePriceAssetId = CHAIN_BY_SLUG.get(slug)?.nativePriceAssetId;
   const isRobinhood = slug === "robinhood";
   const [
     tvl,
@@ -112,8 +117,8 @@ export async function fetchChainKpisFresh(
     prom.scalar(`chain_tvl_usd${sel}`),
     prom.scalar(`chain_dex_volume_24h_usd${sel}`),
     prom.scalar(`chain_stables_mcap_usd${sel}`),
-    prom.scalar(`chain_native_price_usd${sel}`),
-    prom.scalar(`chain_native_mcap_usd${sel}`),
+    prom.scalar(`chain_native_price_usd${nativeSel}`),
+    prom.scalar(`chain_native_mcap_usd${nativeSel}`),
     prom.scalar(`chain_fees_30d_usd${sel}`),
     prom.scalar(`chain_revenue_30d_usd${sel}`),
     prom.scalar(`chain_token_pf_ratio${sel}`),
@@ -131,6 +136,7 @@ export async function fetchChainKpisFresh(
     stablesMcap,
     nativePrice,
     nativeMcap,
+    ...(nativePriceAssetId === undefined ? {} : { nativePriceAssetId }),
     fees30d,
     revenue30d,
     tokenPf,

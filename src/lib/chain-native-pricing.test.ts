@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { CHAIN_BY_SLUG } from "@/lib/chains";
-import { mobulaMarketDataUrl, nativePriceQuery, nativePricingSymbol, withNativePricePolicy } from "./chain-native-pricing";
+import { mobulaMarketDataUrl, nativePriceMetricSelector, nativePriceQuery, nativePricingSymbol, withNativePricePolicy } from "./chain-native-pricing";
 
 describe("native asset pricing policy", () => {
   test("Fraxtal does not resolve FRAX through a symbol-only price lookup", () => {
@@ -37,4 +37,26 @@ describe("native asset pricing policy", () => {
     expect(nativePricingSymbol(chain)).toBe("provider-id");
     expect(chain.nativeSymbol).toBe("ETH");
   });
+
+  test("a pinned asset rejects an unversioned old snapshot without dropping DeFi KPIs", () => {
+    const old = { slug: "fraxtal", nativePrice: 2500, nativeMcap: 1000000, tvl: 123, fees30d: 7 };
+    expect(withNativePricePolicy(old)).toEqual({ ...old, nativePrice: null, nativeMcap: null });
+    expect(old.nativePrice).toBe(2500);
+  });
+
+  test("a snapshot for a different asset id cannot carry the pinned native price", () => {
+    const old = { slug: "fraxtal", nativePrice: 1, nativeMcap: 1000, nativePriceAssetId: 123 };
+    expect(withNativePricePolicy(old)).toEqual({ ...old, nativePrice: null, nativeMcap: null });
+  });
+
+  test("a snapshot carrying the exact pinned asset id retains its native values", () => {
+    const current = { slug: "fraxtal", nativePrice: 0.25, nativeMcap: 23000000, nativePriceAssetId: 100004858 };
+    expect(withNativePricePolicy(current)).toBe(current);
+  });
+
+  test("pinned native metrics require the asset label, excluding legacy series", () => {
+    expect(nativePriceMetricSelector("fraxtal")).toBe('{chain="fraxtal",asset_id="100004858"}');
+    expect(nativePriceMetricSelector("ethereum")).toBe('{chain="ethereum"}');
+  });
+
 });
