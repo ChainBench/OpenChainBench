@@ -48,12 +48,23 @@ groups:
       # exactly 100% on every row as an assumption. Public series carry no
       # tier label, and an absent label equals an empty one, so selectors
       # without `tier` keep matching them unchanged.
+      # `conn` joins the grouping on 2026-11-04. Without it these rules
+      # summed the two connection arms into one series, so a cold-start row
+      # published the warm row's success rate and a sample count that was
+      # the sum of both: measured on ethereum us-east, warm 359 and cold 360
+      # readings, both rows showing 720.
+      #
+      # The specs are NOT changed in the same step. They aggregate with a
+      # bare sum(), which erases conn and keeps today's reading, so nothing
+      # moves until a spec pins the label. Pinning it before the 24h window
+      # is full of labelled samples would make the window span a method
+      # change, which is the bench 311 incident.
       - record: ocb:rpc_call:ok_rate_24h
-        expr: sum by (provider, chain, region, tier) (rate(rpc_call_total{result="ok"}[24h]))
+        expr: sum by (provider, chain, region, tier, conn) (rate(rpc_call_total{result="ok"}[24h]))
       - record: ocb:rpc_call:rate_24h
-        expr: sum by (provider, chain, region, tier) (rate(rpc_call_total[24h]))
+        expr: sum by (provider, chain, region, tier, conn) (rate(rpc_call_total[24h]))
       - record: ocb:rpc_call:increase_24h
-        expr: sum by (provider, chain, region, tier) (increase(rpc_call_total[24h]))
+        expr: sum by (provider, chain, region, tier, conn) (increase(rpc_call_total[24h]))
 
       # Cold-connection arm, added 2026-10-08 with the keyed probe fix.
       #
