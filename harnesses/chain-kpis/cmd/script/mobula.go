@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 )
 
@@ -68,8 +69,10 @@ func fetchAllMobula(cfg *Config) {
 // the value to every chain that uses this native (ETH → all rollups).
 func fetchMobulaNative(cfg *Config, symbol string, id int, chains []Chain) {
 	start := time.Now()
+	assetID := ""
 	url := fmt.Sprintf("%s/api/1/market/data?symbol=%s", mobulaBase, encodePath(symbol))
 	if id > 0 {
+		assetID = strconv.Itoa(id)
 		url = fmt.Sprintf("%s/api/1/market/data?id=%d", mobulaBase, id)
 	}
 	body, err := getJSONWithAuth(httpClientMobula, url, cfg.MobulaAPIKey)
@@ -100,10 +103,10 @@ func fetchMobulaNative(cfg *Config, symbol string, id int, chains []Chain) {
 	}
 	for _, c := range chains {
 		if resp.Data.Price > 0 {
-			chainNativePriceUsd.WithLabelValues(c.Slug, symbol).Set(resp.Data.Price)
+			chainNativePriceUsd.WithLabelValues(c.Slug, symbol, assetID).Set(resp.Data.Price)
 		}
 		if resp.Data.MarketCap > 0 {
-			chainNativeMcapUsd.WithLabelValues(c.Slug, symbol).Set(resp.Data.MarketCap)
+			chainNativeMcapUsd.WithLabelValues(c.Slug, symbol, assetID).Set(resp.Data.MarketCap)
 		}
 		chainKpisLastRefresh.WithLabelValues(c.Slug, "mobula-native").Set(float64(time.Now().Unix()))
 		chainKpisHealth.WithLabelValues(c.Slug, "mobula-native").Set(1)
