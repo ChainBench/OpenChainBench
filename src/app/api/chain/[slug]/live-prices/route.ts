@@ -15,7 +15,7 @@
 import { NextResponse } from "next/server";
 import { unstable_cache } from "next/cache";
 import { CHAIN_BY_SLUG } from "@/lib/chains";
-import { nativePricingSymbol } from "@/lib/chain-native-pricing";
+import { mobulaMarketDataUrl, nativePriceQuery } from "@/lib/chain-native-pricing";
 import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
@@ -29,20 +29,21 @@ type LiveBody = {
   ts: number;
 };
 
-// Cache the upstream Mobula response per symbol for 1.5 s. The client
+// Cache the upstream Mobula response per query (`symbol=ETH`, or `id=<n>` for
+// a native whose ticker is ambiguous) for 1.5 s. The client
 // polls every 2 s, so worst case the user sees a value at most ~3.5 s
 // stale — well below the perceptual threshold for "live". Keyed on
-// `symbol` only because the value is the same for every chain that
+// the query only because the value is the same for every chain that
 // shares a native (ETH for all L2s, etc).
 const fetchPrice = unstable_cache(
-  async (symbol: string): Promise<Omit<LiveBody, "ts">> => {
+  async (query: string): Promise<Omit<LiveBody, "ts" | "symbol">> => {
     const key = process.env.MOBULA_API_KEY?.trim();
     if (!key) {
-      return { symbol, price: null, marketCap: null, volume24h: null };
+      return { price: null, marketCap: null, volume24h: null };
     }
     try {
       const res = await fetch(
-        `https://api.mobula.io/api/1/market/data?symbol=${encodeURIComponent(symbol)}`,
+        mobulaMarketDataUrl(query),
         {
           headers: {
             Authorization: key,
@@ -54,23 +55,22 @@ const fetchPrice = unstable_cache(
         },
       );
       if (!res.ok) {
-        return { symbol, price: null, marketCap: null, volume24h: null };
+        return { price: null, marketCap: null, volume24h: null };
       }
       const json = (await res.json()) as {
         data?: { price?: number; market_cap?: number; volume?: number };
       };
       const d = json.data ?? {};
       return {
-        symbol,
         price: d.price ?? null,
         marketCap: d.market_cap ?? null,
         volume24h: d.volume ?? null,
       };
     } catch {
-      return { symbol, price: null, marketCap: null, volume24h: null };
+      return { price: null, marketCap: null, volume24h: null };
     }
   },
-  ["chain-kpis-live-v1"],
+  ["chain-kpis-live-v2"],
   { revalidate: 5, tags: ["chain-kpis-live"] },
 );
 
@@ -90,10 +90,10 @@ export async function GET(
     );
   }
 
-  const priceSymbol = nativePricingSymbol(chain);
-  const data = priceSymbol === null
+  const priceQuery = nativePriceQuery(chain);
+  const data = priceQuery === null
     ? { price: null, marketCap: null, volume24h: null }
-    : await fetchPrice(priceSymbol);
+    : await fetchPrice(priceQuery);
   const body: LiveBody = {
     ...data,
     symbol: chain.nativeSymbol,
