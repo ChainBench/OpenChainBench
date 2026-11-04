@@ -308,21 +308,48 @@ func hexNum(v uint64) string { return "0x" + strconv.FormatUint(v, 16) }
 //	              expose eth_getBlobSidecars, which is an EXECUTION-layer
 //	              method and must not be counted as the Beacon API.
 //
-// THE DIFFERENTIATOR IS REAL, and it only appeared once four providers could
-// be asked. Blob sidecars by depth:
+// THERE IS NO RETENTION DIFFERENTIATOR, re-measured 2026-11-04. An earlier
+// version of this comment said there was, on the strength of one slot per
+// depth. Asking each provider for the SAME slot, chosen because it does
+// carry blobs:
 //
-//	                ~30 days   ~1 year   ~2 years
-//	quicknode       served     served    served
-//	alchemy         served     served    404 "no blobs stored for block"
+//	depth       slot        blobs  quicknode   chainstack  dwellir
+//	~30 days    15366938    10     2,641,514   2,641,513   2,641,514
+//	~6 months   14268938     1       264,217     264,216     264,217
+//	~1 year     12954938     9     2,377,382   2,377,381   2,377,382
+//	~2 years    10326938     3       792,507     792,506     792,507
 //
-// A consensus node keeps blobs about eighteen days by default, so everything
-// past that is a product decision, and the providers do not make the same
-// one. That is the column worth publishing, and a boolean "serves blobs"
-// would hide all of it.
+// All three keep blob data about forty times longer than the eighteen day
+// client default, within a byte of each other, and none of them advertises
+// it. So the column worth publishing is "serves the Beacon API at all",
+// which is a boolean after all, plus the depth as a dated note.
 //
-// WHAT IS STILL NEEDED to publish it: a beacon base URL per provider in the
-// env, since two of the four answer on a host that is not the RPC host and
-// one of those two is unlisted. Nothing here can derive them.
+// THE MEASUREMENT TRAP, which cost this comment its first version: not every
+// slot carries a blob transaction, so a sidecar request at an arbitrary slot
+// returns HTTP 200 with an empty list. That means THAT SLOT had none, not
+// that the provider discarded the data. Only a 404 is a refusal. Sampling
+// one slot per depth produced a retention cliff that does not exist.
+//
+// TWO CORRECTIONS to the provider notes above, same date:
+//
+//	dwellir   The stored beacon URL carries a key that no longer exists
+//	          ("API key does not exist", their words). The CURRENT RPC key
+//	          on the same caplin host answers 200: Caplin/3.8.1. So dwellir
+//	          has served all along and the credential drifted, not the
+//	          service.
+//	alchemy   Today's 403 is ours, not theirs: "ETH_MAINNETBEACON is not
+//	          enabled for this app". A dashboard toggle on our own
+//	          application, which is why the 2 November figures cannot be
+//	          reproduced until it is turned back on. Reading that as a
+//	          refusal would be the second time this provider is libelled by
+//	          a misread 403.
+//
+// NOT INSTRUMENTED, on purpose. A retention policy is a product decision and
+// does not move, so probing four hosts on a schedule to watch a number stay
+// still would spend request budget for nothing. The report publishes it as a
+// dated check. Instrumenting it would still need a beacon base URL per
+// provider in the env, since two of the four answer on a host that is not
+// the RPC host.
 
 var coverageProbes = []coverageProbe{
 	// The compute-bound call and the reference it is only meaningful
