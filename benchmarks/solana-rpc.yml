@@ -68,6 +68,78 @@ dimensions:
     - { value: keyed,  label: "Private, API key" }
     - { value: keyed-cold, label: "Private, cold start" }
 
+metric_panels:
+  # The Solana capability probe, under the Access selector (Private). The
+  # cost of getProgramAccounts depends entirely on which program you ask
+  # about, so one flag would say nothing: we ask three ways.
+  - id: cap_gpa_spl
+    label: "getProgramAccounts, SPL Token"
+    label_key: provider
+    metric: 100 * max by (provider) (rpc_api_supported{chain="solana",api="sol_getprogramaccounts"})
+    unit: pct
+    higher_is_better: true
+    tab: false
+    tiers: [keyed]
+    carry: false
+    description: "Whether getProgramAccounts was served against the SPL Token program with a size filter, the expensive form. 100 means served, 0 means declined, and a blank means we got no classifiable answer."
+  - id: cap_gpa_small
+    label: "getProgramAccounts, small program"
+    label_key: provider
+    metric: 100 * max by (provider) (rpc_api_supported{chain="solana",api="sol_getprogramaccounts_small"})
+    unit: pct
+    higher_is_better: true
+    tab: false
+    tiers: [keyed]
+    carry: false
+    description: "The same call against the Memo program, which has a small account population. A provider can serve this and refuse the SPL Token form, which is why the two are separate columns."
+  - id: cap_gpa_v2
+    label: "getProgramAccountsV2, paginated"
+    label_key: provider
+    metric: 100 * max by (provider) (rpc_api_supported{chain="solana",api="sol_getprogramaccounts_v2"})
+    unit: pct
+    higher_is_better: true
+    tab: false
+    tiers: [keyed]
+    carry: false
+    description: "The paginated v2 form. RPC v2 changed which methods count, so this is the surface to plan around, and it is the one the cohort disagrees on most."
+  - id: cap_age_hours
+    label: "Hours since check"
+    label_key: provider
+    metric: (time() - min by (provider) (rpc_api_last_probe_timestamp{chain="solana"})) / 3600
+    unit: count
+    higher_is_better: false
+    tab: false
+    tiers: [keyed]
+    carry: false
+    description: "Age of the capability verdicts on this chain, from the oldest cell. The probe runs every six hours; if it stops, the verdicts are withheld rather than held at their last reading."
+
+ledger_columns:
+  # The default latency columns, re-declared: any ledger_columns block
+  # replaces the default layout rather than extending it, so leaving
+  # these out would strip p90 and p99 from the public tab.
+  - label: "p50"
+    slot: p50
+    unit: ms
+  - label: "p90"
+    slot: p90
+    unit: ms
+  - label: "p99"
+    slot: p99
+    unit: ms
+  # The capability matrix, shown under the Private tab.
+  - label: "gPA, SPL Token"
+    panel: cap_gpa_spl
+    unit: pct
+  - label: "gPA, small program"
+    panel: cap_gpa_small
+    unit: pct
+  - label: "gPA v2, paginated"
+    panel: cap_gpa_v2
+    unit: pct
+  - label: "Checked, h"
+    panel: cap_age_hours
+    unit: count
+
 providers:
   - slug: solana
     name: Solana Labs

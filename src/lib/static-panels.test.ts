@@ -86,8 +86,9 @@ describe("a chain RPC page, where this now lives", () => {
       .map((p) => ({ ...p, values: { alchemy: 1 } })) as unknown as MetricPanel[];
     const cols = spec.ledger_columns as unknown as LedgerColumn[];
     const got = staticLedgerPanels(panels, cols);
-    // Eight capability verdicts plus the heavy tab's work term.
-    expect(got.length).toBe(9);
+    // Eight capability verdicts plus the three the Heavy tab carries in
+    // milliseconds: the work term, the archive read and eth_getLogs.
+    expect(got.length).toBe(11);
     expect(got.length).toBeGreaterThan(MAX_STATIC_PANELS);
     expect(got.map((p) => p.id)).toContain("cap_trace_block");
     expect(got.map((p) => p.id)).toContain("cap_archive");
