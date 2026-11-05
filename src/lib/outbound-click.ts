@@ -12,6 +12,15 @@ const MAX_HOSTNAME_LENGTH = 253;
 const MAX_PAGE_LENGTH = 200;
 const WHITESPACE_OR_CONTROL = /[\s\p{Cc}]/u;
 const IPV4_LITERAL = /^\d+(\.\d+){3}$/;
+const SEARCH_ENGINE_FAMILIES: ReadonlySet<string> = new Set([
+  "googlebot",
+  "bingbot",
+  "applebot",
+  "duckduckgo",
+  "petalbot",
+  "baiduspider",
+  "yandexbot",
+]);
 
 type ClientClickProps = Extract<
   SiteEvent,
@@ -26,7 +35,7 @@ type GoDecision =
   | { kind: "reject" }
   | { kind: "background" }
   | { kind: "redirect"; destination: URL; click: OutboundClick | null }
-  | { kind: "confirm"; destination: URL; click: OutboundClick };
+  | { kind: "confirm"; destination: URL; click: OutboundClick | null };
 
 type GoRequest = {
   to: string | null;
@@ -74,7 +83,8 @@ export function decideGo(request: GoRequest): GoDecision {
   }
   if (background) return { kind: "background" };
   if (family !== "browser") {
-    return { kind: "redirect", destination, click: null };
+    const kind = SEARCH_ENGINE_FAMILIES.has(family) ? "redirect" : "confirm";
+    return { kind, destination, click: null };
   }
 
   const { href, host } = destination;

@@ -164,21 +164,33 @@ describe("GET /go", () => {
   });
 
   test.each([
-    "Mozilla/5.0 (compatible; Googlebot/2.1)",
+    "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
+    "Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)",
+    "Mozilla/5.0 (Macintosh) (Applebot/0.1; +http://www.apple.com/go/applebot)",
+    "DuckDuckBot/1.1; (+http://duckduckgo.com/duckduckbot.html)",
+    "Mozilla/5.0 (compatible; PetalBot;+https://webmaster.petalsearch.com/site/petalbot)",
+    "Mozilla/5.0 (compatible; Baiduspider/2.0; +http://www.baidu.com/search/spider.html)",
+    "Mozilla/5.0 (compatible; YandexBot/3.0; +http://yandex.com/bots)",
+  ])("redirects the search engine %p without counting", (agent) => {
+    const res = get(DESTINATION, { "user-agent": agent });
+    expect(res.status).toBe(302);
+    expect(res.headers.get("location")).toBe(DESTINATION);
+    expect(capture).not.toHaveBeenCalled();
+  });
+
+  test.each([
     "Mozilla/5.0 (compatible; MJ12bot/v1.4.8; http://mj12bot.com/)",
     "Mozilla/5.0 (X11; Linux x86_64) HeadlessChrome/142.0 Safari/537.36",
     "LinkedInBot/1.0 (compatible; Mozilla/5.0)",
+    "Mozilla/5.0 (compatible; GPTBot/1.1)",
     "curl/8.4.0",
     "",
-  ])(
-    "redirects the user agent %p without counting",
-    (agent) => {
-      const res = get(DESTINATION, { "user-agent": agent });
-      expect(res.status).toBe(302);
-      expect(res.headers.get("location")).toBe(DESTINATION);
-      expect(capture).not.toHaveBeenCalled();
-    },
-  );
+  ])("shows the user agent %p a link without counting", (agent) => {
+    const res = get(DESTINATION, { ...OWN_PAGE, "user-agent": agent });
+    expect(res.status).toBe(200);
+    expect(res.headers.get("location")).toBeNull();
+    expect(capture).not.toHaveBeenCalled();
+  });
 
   test("does not count a HEAD request", () => {
     const redirect = get(DESTINATION, OWN_PAGE, "HEAD");

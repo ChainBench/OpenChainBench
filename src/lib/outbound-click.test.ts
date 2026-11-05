@@ -70,10 +70,19 @@ describe("decideGo", () => {
     expect(decideGo(request({ background: true }))).toEqual({ kind: "background" });
   });
 
-  test("redirects a non-browser without counting", () => {
+  test("redirects a search engine without counting", () => {
     const decision = decideGo(request({ family: "googlebot", referer: null }));
     expect(decision).toEqual({
       kind: "redirect",
+      destination: new URL(DESTINATION),
+      click: null,
+    });
+  });
+
+  test("asks any other non-browser to confirm, without counting", () => {
+    const decision = decideGo(request({ family: "curl" }));
+    expect(decision).toEqual({
+      kind: "confirm",
       destination: new URL(DESTINATION),
       click: null,
     });
