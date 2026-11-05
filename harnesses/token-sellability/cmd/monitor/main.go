@@ -70,6 +70,22 @@ var (
 			"aggregator was asked to quote in the last sweep.",
 	}, askLabels)
 
+	// The evidence behind every percentage on the board: which aggregator
+	// offered a route into which named token that our own simulation could
+	// not sell back out of.
+	//
+	// A rate is an accusation in aggregate; this is the list it rests on, so
+	// anyone named can check the specific contracts rather than take the
+	// share on trust. Reset with the verdicts each sweep, for the same
+	// reason: a token quoted yesterday must not be re-exported as though it
+	// were quoted now.
+	routedTokenGauge = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "token_sellability_routed_token",
+		Help: "1 when this aggregator returned a route INTO this specific " +
+			"unsellable token in the last sweep. The per-token evidence " +
+			"behind the aggregate share.",
+	}, []string{"chain", "aggregator", "tier", "provider", "token", "symbol"})
+
 	// The gauges above say what the LAST sweep established, which is what
 	// the absence contract needs: delete them and the row goes quiet. They
 	// are the wrong thing to rank on, because a gauge is read at every
@@ -115,7 +131,8 @@ var (
 
 func init() {
 	prometheus.MustRegister(verdictGauge, cohortGauge, sweepSeconds, controlGauge,
-		askedGauge, routedGauge, errorGauge, askedTotal, routedTotal)
+		askedGauge, routedGauge, errorGauge, askedTotal, routedTotal,
+		routedTokenGauge)
 }
 
 type config struct {
@@ -251,11 +268,29 @@ func sweep(ctx context.Context, cfg config, rpc *rpcClient, q *SushiQuoter) {
 		log.Printf("[sellability] cohort unavailable: %v", err)
 		return
 	}
+
+	// Forget the previous sweep's cohort before recording this one.
+	//
+	// A GaugeVec keeps every label set it has ever been given and exports
+	// all of them on every scrape, so without this the process re-publishes
+	// each token it has ever examined, for as long as it runs. Two things
+	// break. The scrape payload grows without bound, one series per token
+	// per tier per verdict. And worse, any count over a window stops meaning
+	// what it says: "tokens examined in the last 24h" would include a token
+	// last looked at a week ago, because its gauge is still being emitted
+	// now. Prometheus keeps the history either way, so a windowed query
+	// still sees past sweeps; what it must not see is the past dressed as
+	// the present.
+	verdictGauge.Reset()
+	routedTokenGauge.Reset()
 	cohortGauge.WithLabelValues(cfg.chain, "seen").Set(float64(len(tokens)))
 
 	// The tokens that failed, kept per tier. These are the cohort the
 	// aggregators are then asked about, and the whole point of the board.
 	failed := map[string][]string{"same_block": {}, "delayed": {}}
+	// Symbols of the tokens in `failed`, so the ask step can label its
+	// evidence without reading symbol() a second time per token.
+	symbols := map[string]string{}
 
 	routable, examined := 0, 0
 	for _, tok := range tokens {
@@ -275,6 +310,7 @@ func sweep(ctx context.Context, cfg config, rpc *rpcClient, q *SushiQuoter) {
 			failed["delayed"] = append(failed["delayed"], tok)
 		}
 		sym := q.Symbol(ctx, rpc, tok)
+		symbols[tok] = sym
 		for tier, v := range map[string]Verdict{"same_block": p.SameBlock, "delayed": p.Delayed} {
 			for _, candidate := range []Verdict{Sellable, Unsellable, Inconclusive} {
 				val := 0.0
@@ -290,7 +326,7 @@ func sweep(ctx context.Context, cfg config, rpc *rpcClient, q *SushiQuoter) {
 	}
 	cohortGauge.WithLabelValues(cfg.chain, "routable").Set(float64(routable))
 	cohortGauge.WithLabelValues(cfg.chain, "examined").Set(float64(examined))
-	askAggregators(ctx, cfg, failed)
+	askAggregators(ctx, cfg, failed, symbols)
 	sweepSeconds.WithLabelValues(cfg.chain).Set(time.Since(start).Seconds())
 	log.Printf("[sellability] sweep done: %d seen, %d examined, %.1fs",
 		len(tokens), examined, time.Since(start).Seconds())
