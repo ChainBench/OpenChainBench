@@ -26,7 +26,7 @@ import { Pill } from "@/components/pill";
 import { ProviderLogo } from "@/components/provider-logo";
 import { SITE } from "@/data/site";
 import { buildBreadcrumbJsonLd, safeJsonLd } from "@/lib/jsonld";
-import { capDescription, capSnippet } from "@/lib/seo-text";
+import { capSnippet } from "@/lib/seo-text";
 import { matchesChainSlug } from "@/lib/chain-aliases";
 import type { Benchmark } from "@/types/benchmark";
 import { OutboundLink } from "@/components/outbound-link";

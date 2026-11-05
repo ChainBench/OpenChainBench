@@ -15,6 +15,7 @@ import { PmTopMarketsTable } from "@/components/pm-top-markets-table";
 import { PmCategoryDonut } from "@/components/pm-category-donut";
 import { PmVolumeOiChart } from "@/components/pm-volume-oi-chart";
 import { OutboundLink } from "@/components/outbound-link";
+import { safeHost } from "@/lib/url-host";
 
 /**
  * Per-venue anchored section on /prediction-markets. URL anchor is the
@@ -32,7 +33,7 @@ import { OutboundLink } from "@/components/outbound-link";
  * Promise.all so cold renders stay under the page-level ISR budget.
  */
 
-export type PmVenueSectionProps = {
+type PmVenueSectionProps = {
   slug: string;
   /** Human-readable name shown in the heading. */
   name: string;
@@ -185,12 +186,4 @@ export async function PmVenueSection({
       </footer>
     </section>
   );
-}
-
-function safeHost(url: string): string {
-  try {
-    return new URL(url).host.replace(/^www\./, "");
-  } catch {
-    return url;
-  }
 }

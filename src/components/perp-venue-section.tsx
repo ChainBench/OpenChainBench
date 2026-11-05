@@ -15,6 +15,7 @@ import {
   type PerpVenueBenchRow,
 } from "@/components/perp-venue-bench-cards";
 import { OutboundLink } from "@/components/outbound-link";
+import { safeHost } from "@/lib/url-host";
 
 /**
  * Perp venue view on /products/<slug>, behind the "Perpetuals" pill.
@@ -42,7 +43,7 @@ import { OutboundLink } from "@/components/outbound-link";
  * the /perps hub, so cold renders stay inside the page's ISR budget.
  */
 
-export type PerpVenueSectionProps = {
+type PerpVenueSectionProps = {
   slug: string;
   /** Human-readable name shown in the heading. */
   name: string;
@@ -454,12 +455,4 @@ function fmtCount(v: number | undefined): string {
   if (v >= 1e6) return `${(v / 1e6).toFixed(1)}M`;
   if (v >= 1e3) return `${(v / 1e3).toFixed(1)}K`;
   return Math.round(v).toLocaleString("en-US");
-}
-
-function safeHost(url: string): string {
-  try {
-    return new URL(url).host.replace(/^www\./, "");
-  } catch {
-    return url;
-  }
 }

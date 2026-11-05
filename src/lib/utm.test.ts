@@ -1,18 +1,20 @@
 import { describe, expect, test } from "bun:test";
-import { UTM_SOURCE, withUtm } from "@/lib/utm";
+import { withUtm } from "@/lib/utm";
 import { getProviderRegistry } from "@/data/provider-registry";
 
 describe("withUtm", () => {
   test("tags a third-party destination", () => {
-    expect(withUtm("https://drpc.org")).toBe(`https://drpc.org/?utm_source=${UTM_SOURCE}`);
+    expect(withUtm("https://drpc.org")).toBe(
+      "https://drpc.org/?utm_source=openchainbench",
+    );
     expect(withUtm("https://github.com/ChainBench/OpenChainBench")).toBe(
-      `https://github.com/ChainBench/OpenChainBench?utm_source=${UTM_SOURCE}`,
+      "https://github.com/ChainBench/OpenChainBench?utm_source=openchainbench",
     );
   });
 
   test("keeps an existing query string and appends", () => {
     expect(withUtm("https://github.com/x/y/issues/new?template=a.yml")).toBe(
-      `https://github.com/x/y/issues/new?template=a.yml&utm_source=${UTM_SOURCE}`,
+      "https://github.com/x/y/issues/new?template=a.yml&utm_source=openchainbench",
     );
   });
 
@@ -46,9 +48,8 @@ describe("withUtm", () => {
     expect(withUtm(u)).toBe(u);
   });
 
-  test("empty and nullish are safe", () => {
+  test("empty and undefined are safe", () => {
     expect(withUtm("")).toBe("");
-    expect(withUtm(null)).toBe("");
     expect(withUtm(undefined)).toBe("");
   });
 });

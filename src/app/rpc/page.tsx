@@ -7,7 +7,7 @@ import { getSpecs } from "@/lib/spec";
 import { RpcHubTabs } from "@/components/rpc-hub-tabs";
 import { AnswersForBench } from "@/components/answers-for-bench";
 import { pageMetadata } from "@/lib/page-metadata";
-import { capDescription, capSnippet } from "@/lib/seo-text";
+import { capSnippet } from "@/lib/seo-text";
 import { safeJsonLd, buildBreadcrumbJsonLd } from "@/lib/jsonld";
 import { SITE } from "@/data/site";
 import { OutboundLink } from "@/components/outbound-link";

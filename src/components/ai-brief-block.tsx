@@ -1,7 +1,7 @@
 "use client";
 
 import { CopyButton } from "@/components/copy-button";
-import { outboundHref } from "@/lib/outbound-click";
+import { OutboundLink } from "@/components/outbound-link";
 
 /**
  * AI-assist tiles for /contribute. Two paths, same skill content.
@@ -23,7 +23,7 @@ export function AiBriefBlock() {
         desc="One-line install with the ClawHub CLI. The skill auto-loads as a slash command and applies the conventions on every reply."
         code="openclaw skills install openchainbench-contributor"
         action={<CopyButton value="openclaw skills install openchainbench-contributor" label="Copy install" mono event={{ kind: "brief", value: "install" }} />}
-        link={{ label: "ClawHub listing ↗", href: "https://clawhub.ai/skills/openchainbench-contributor", external: true }}
+        link={{ label: "ClawHub listing ↗", href: "https://clawhub.ai/skills/openchainbench-contributor" }}
       />
       <p className="text-xs text-ink-muted leading-relaxed">
         If you have already cloned the repo, Claude Code picks up the same skill
@@ -46,7 +46,7 @@ function Tile({
   desc: string;
   code?: string;
   action: React.ReactNode;
-  link?: { label: string; href: string; external?: boolean };
+  link?: { label: string; href: string };
 }) {
   return (
     <div className="border border-rule rounded-lg bg-paper p-5 flex flex-col gap-3">
@@ -63,13 +63,12 @@ function Tile({
       <div className="flex items-center gap-3 flex-wrap">
         {action}
         {link && (
-          <a
-            href={outboundHref(link.href)}
+          <OutboundLink
+            href={link.href}
             className="text-xs text-ink-muted hover:text-ink underline-offset-4 hover:underline"
-            {...(link.external ? { rel: "noopener" } : {})}
           >
             {link.label}
-          </a>
+          </OutboundLink>
         )}
       </div>
     </div>

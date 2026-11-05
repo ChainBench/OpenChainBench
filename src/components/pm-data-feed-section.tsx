@@ -5,6 +5,7 @@ import {
   type PmVenueBenchRow,
 } from "@/components/pm-venue-bench-cards";
 import { OutboundLink } from "@/components/outbound-link";
+import { safeHost } from "@/lib/url-host";
 
 /**
  * Per-data-feed anchored section on /prediction-markets. Lighter than the
@@ -17,7 +18,7 @@ import { OutboundLink } from "@/components/outbound-link";
  * cards instead.
  */
 
-export type PmDataFeedSectionProps = {
+type PmDataFeedSectionProps = {
   slug: string;
   /** Display name, e.g. "Mobula", "Codex", "Polymarket CLOB". */
   name: string;
@@ -214,14 +215,6 @@ function DataFeedKpiStrip({
       ))}
     </div>
   );
-}
-
-function safeHost(url: string): string {
-  try {
-    return new URL(url).host.replace(/^www\./, "");
-  } catch {
-    return url;
-  }
 }
 
 function fmtMs(v: number): string {

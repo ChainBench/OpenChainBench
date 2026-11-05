@@ -51,63 +51,7 @@ export default function PrivacyPage() {
         </p>
       </header>
 
-      <SectionRule label="What is collected" />
-      <p className="text-base sm:text-lg leading-relaxed text-ink-soft">
-        Reading the site produces ordinary web analytics. The categories are:
-      </p>
-      <ul className="mt-4 space-y-2 text-base leading-relaxed text-ink-soft">
-        <li>
-          <strong className="text-ink">Your IP address</strong>, recorded by our
-          analytics processor when a request arrives, and the approximate
-          location it derives from that: country and city, nothing finer.
-        </li>
-        <li>
-          <strong className="text-ink">Your browser and device</strong>: the
-          user-agent string, screen size, and the page performance timings
-          behind our Core Web Vitals.
-        </li>
-        <li>
-          <strong className="text-ink">What you looked at</strong>: the pages
-          you opened, the page you arrived from, and three deliberate actions,
-          an outbound link click, a copy, and a site search.
-        </li>
-        <li>
-          <strong className="text-ink">A random device identifier</strong>{" "}
-          stored in your browser, so two pageviews can be recognised as one
-          visit. It is tied to no identity, and we never call the function that
-          would create a user profile.
-        </li>
-      </ul>
-      <p className="mt-4 text-base leading-relaxed text-ink-soft">
-        Three machine-readable surfaces are counted on the server instead,
-        because no browser renders them: the Markdown views,{" "}
-        <code>/api/stat</code> and <code>/api/citable</code>. There the
-        identifier is a daily hash of the requesting user agent, and no profile
-        is created.
-      </p>
-      <p className="mt-4 text-base leading-relaxed text-ink-soft">
-        Opening most links to other sites is counted on the server too, because
-        those links pass through <code>/go</code> on the way out. The count
-        happens when <code>/go</code> receives the request, so a link opened
-        from another site or pasted into your browser is counted even if you
-        stop at the confirmation page. That event records the destination, the
-        full address of the page you came from, which can be on another site,
-        and your browser&rsquo;s user agent and accept header. Its identifier is
-        a daily hash of that user agent. It carries neither your IP address nor
-        a device identifier, and no profile is created. Links to a Creative
-        Commons license, a DOI or our own subdomains skip <code>/go</code> and
-        are counted in your browser, like the actions above.
-      </p>
-      <p className="mt-4 text-base leading-relaxed text-ink-soft">
-        We never ask for and never want: your name, your email, a wallet
-        address, a private key, a seed phrase or an API key. No feature of this
-        site requires one.
-      </p>
-      <p className="mt-4 text-base leading-relaxed text-ink-soft">
-        Automatic event capture is off, so nothing is recorded except the
-        events named above. Session recording is off: no replays, no heatmaps,
-        no keystroke or form capture.
-      </p>
+      <WhatIsCollected />
 
       <SectionRule label="Why" />
       <ul className="space-y-2 text-base leading-relaxed text-ink-soft">
@@ -246,5 +190,69 @@ export default function PrivacyPage() {
         .
       </p>
     </article>
+  );
+}
+
+function WhatIsCollected() {
+  return (
+    <>
+      <SectionRule label="What is collected" />
+      <p className="text-base sm:text-lg leading-relaxed text-ink-soft">
+        Reading the site produces ordinary web analytics. The categories are:
+      </p>
+      <ul className="mt-4 space-y-2 text-base leading-relaxed text-ink-soft">
+        <li>
+          <strong className="text-ink">Your IP address</strong>, recorded by our
+          analytics processor when a request arrives, and the approximate
+          location it derives from that: country and city, nothing finer.
+        </li>
+        <li>
+          <strong className="text-ink">Your browser and device</strong>: the
+          user-agent string, screen size, and the page performance timings
+          behind our Core Web Vitals.
+        </li>
+        <li>
+          <strong className="text-ink">What you looked at</strong>: the pages
+          you opened, the page you arrived from, and three deliberate actions,
+          an outbound link click, a copy, and a site search.
+        </li>
+        <li>
+          <strong className="text-ink">A random device identifier</strong>{" "}
+          stored in your browser, so two pageviews can be recognised as one
+          visit. It is tied to no identity, and we never call the function that
+          would create a user profile.
+        </li>
+      </ul>
+      <p className="mt-4 text-base leading-relaxed text-ink-soft">
+        Three machine-readable surfaces are counted on the server instead,
+        because no browser renders them: the Markdown views,{" "}
+        <code>/api/stat</code> and <code>/api/citable</code>. There the
+        identifier is a daily hash of the requesting user agent, and no profile
+        is created.
+      </p>
+      <p className="mt-4 text-base leading-relaxed text-ink-soft">
+        Opening most links to other sites is counted on the server too, because
+        those links pass through <code>/go</code> on the way out. The count
+        happens when <code>/go</code> receives the request, so a link opened
+        from another site or pasted into your browser is counted even if you
+        stop at the confirmation page. That event records the destination, the
+        full address of the page you came from, which can be on another site,
+        and your browser&rsquo;s user agent and accept header. Its identifier is
+        a daily hash of that user agent. It carries neither your IP address nor
+        a device identifier, and no profile is created. Links to a Creative
+        Commons license, a DOI or our own subdomains skip <code>/go</code> and
+        are counted in your browser, like the actions above.
+      </p>
+      <p className="mt-4 text-base leading-relaxed text-ink-soft">
+        We never ask for and never want: your name, your email, a wallet
+        address, a private key, a seed phrase or an API key. No feature of this
+        site requires one.
+      </p>
+      <p className="mt-4 text-base leading-relaxed text-ink-soft">
+        Automatic event capture is off, so nothing is recorded except the
+        events named above. Session recording is off: no replays, no heatmaps,
+        no keystroke or form capture.
+      </p>
+    </>
   );
 }

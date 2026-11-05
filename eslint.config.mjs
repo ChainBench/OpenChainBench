@@ -9,10 +9,6 @@ const OFFSITE_HREF_VALUES = [
   `JSXExpressionContainer > Literal[value=${OFFSITE_URL}]`,
   `JSXExpressionContainer > TemplateLiteral > TemplateElement:first-child[value.raw=${OFFSITE_URL}]`,
 ];
-const RPC_ENDPOINT_MESSAGE =
-  "RPC endpoints are copied into configs: they stay clean, with no tag and no /go.";
-const WITH_UTM_MESSAGE =
-  "Use OutboundLink or outboundHref: withUtm alone skips the count on /go.";
 
 const eslintConfig = defineConfig([
   ...nextVitals,
@@ -29,7 +25,8 @@ const eslintConfig = defineConfig([
         patterns: [{
           group: ["**/utm"],
           importNames: ["withUtm"],
-          message: WITH_UTM_MESSAGE,
+          message:
+            "Use OutboundLink or outboundHref: withUtm alone skips the count on /go.",
         }],
       }],
       "no-restricted-syntax": ["error",
@@ -57,7 +54,8 @@ const eslintConfig = defineConfig([
       "no-restricted-imports": ["error", {
         patterns: [{
           group: ["**/utm", "**/outbound-click", "**/outbound-link"],
-          message: RPC_ENDPOINT_MESSAGE,
+          message:
+            "RPC endpoints are copied into configs: they stay clean, with no tag and no /go.",
         }],
       }],
     },

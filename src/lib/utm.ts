@@ -35,7 +35,7 @@ const SITE_HOST = bareHost(new URL(SITE.url).hostname);
 /** Hosts whose URLs are identifiers, not destinations. */
 const IDENTIFIER_HOSTS = new Set(["doi.org", "dx.doi.org", "creativecommons.org"]);
 
-export const UTM_SOURCE = "openchainbench";
+const UTM_SOURCE = "openchainbench";
 
 export function isOwnOrIdentifierHost(hostname: string): boolean {
   return (
@@ -44,7 +44,7 @@ export function isOwnOrIdentifierHost(hostname: string): boolean {
   );
 }
 
-export function withUtm(href: string | null | undefined): string {
+export function withUtm(href: string | undefined): string {
   if (!href) return "";
   const u = parseHttpUrl(href);
   if (!u) return href;

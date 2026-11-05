@@ -48,7 +48,7 @@ export type ProviderClaim = {
   verifiedAt: string;
 };
 
-export type ProviderRegistryEntry = {
+type ProviderRegistryEntry = {
   /**
    * Optional since 2026-10-09, for the opposite reason to `description`
    * below. A sweep of all 341 published URLs found domains that had simply
