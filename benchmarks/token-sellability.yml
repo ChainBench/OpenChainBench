@@ -9,7 +9,7 @@ subtitle: Share of the tokens our own simulation could not sell back out of that
 
 category: Aggregators
 status: live
-metric: Routed into traps
+metric: Routed into unsellable
 unit: pct
 higher_is_better: false
 row_noun: { one: aggregator, many: aggregators }
@@ -20,7 +20,7 @@ ledger_reliability: false
 zero_is_a_value: true
 
 disclaimer: |
-  This page reports a simulation, not an intention. A row says that a sale of the token, from an address funded for the purpose, reverted at the block stated, on the route a live aggregator returned. It does not say the token is a scam, that its authors meant harm, or that a sale would fail for you. Every figure is reproducible: the call, the block and the route are published, and anyone with a free RPC can run it again.
+  This page reports a simulation, not an intention. A row says that a sale of the token, from an address funded for the purpose, reverted at the block stated, on the route a live aggregator returned. A reverted sale covers honeypots, but also thin liquidity, a transfer tax, or a paused contract, and this page does not separate them. It does not say the token is a scam or that its authors meant harm. Every figure is reproducible: the call, the block and the route are published.
 
 seo_intro: |
   An aggregator can hold the best quote on a token nobody can sell out of,
@@ -42,6 +42,7 @@ abstract: |
 
 methodology:
   - "Two timings, and they mean different things. Selling in the same block as the buy is the only way to hold the market still, but it trips every anti-bot cooldown, which is a common and often honest protection. The delayed timing sells a few blocks later. A token that fails the same-block sale and passes the delayed one is NOT a honeypot, and this board never counts it as one."
+  - "A token this probe has sold at any point in the window is never counted against an aggregator, even if a later sweep says its sale reverted. A token that genuinely cannot be sold does not become sellable an hour later, so a contradiction is the instrument failing rather than the token changing, and the chain's own wrapped ether was among the tokens it caught."
   - "A control token runs first on every sweep, not occasionally. If the control cannot be sold, the sweep measured the probe rather than the tokens and every verdict in it is discarded. This caught a broken run on 2026-11-03 that would otherwise have named two tokens as unsellable."
   - "Inconclusive is a verdict of its own, counted and published. The node answers some requests with a well-formed block and an empty call list, no error, and reading a status out of that would publish a revert that never ran. A probe that cannot tell says so instead of falling back to a real outcome."
   - "A failed buy is out of scope, not a failure. If no route in opens, nothing has been learned about selling, and calling that unsellable would blame the token for a market that does not exist."

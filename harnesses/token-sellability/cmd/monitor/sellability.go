@@ -22,6 +22,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -87,6 +88,11 @@ type Probe struct {
 	Delayed   Verdict
 	Reason    string
 	Bought    *big.Int
+	// Why the sell reverted, per tier, as the chain stated it. Empty when
+	// the token sold. An unsellable verdict without a reason is an
+	// accusation with nothing behind it.
+	SameBlockWhy string
+	DelayedWhy   string
 }
 
 // Cooldown reports the one pattern that must never be published as a
@@ -178,10 +184,62 @@ type simBlock struct {
 }
 
 type simResult struct {
-	Calls []struct {
-		Status  string `json:"status"`
-		GasUsed string `json:"gasUsed"`
-	} `json:"calls"`
+	Calls []simCallResult `json:"calls"`
+}
+
+// simCallResult keeps the return data, because a reverting call says why it
+// reverted and this probe used to throw that away.
+//
+// It matters more here than in most places: an unsellable verdict is a claim
+// about somebody's token, and WETH was recorded unsellable on 2026-11-05 on a
+// chain where it demonstrably sells. Without the reason there was nothing to
+// read afterwards, and the failure did not reproduce from outside across 65
+// attempts. The instrument has to carry its own evidence.
+type simCallResult struct {
+	Status     string `json:"status"`
+	GasUsed    string `json:"gasUsed"`
+	ReturnData string `json:"returnData"`
+	Error      *struct {
+		Message string `json:"message"`
+	} `json:"error"`
+}
+
+// revertReason renders why a call failed, in one short line fit for a log and
+// a label. Solidity's Error(string) is decoded; anything else is named by its
+// selector rather than guessed at.
+func (r simCallResult) revertReason() string {
+	if r.Error != nil && r.Error.Message != "" {
+		return trimReason(r.Error.Message)
+	}
+	d := strings.TrimPrefix(r.ReturnData, "0x")
+	if d == "" {
+		return "reverted with no data"
+	}
+	// Error(string): selector, offset, length, then the bytes.
+	if strings.HasPrefix(d, "08c379a0") && len(d) >= 136 {
+		n, ok := new(big.Int).SetString(d[72:136], 16)
+		if ok && n.Sign() > 0 && 136+int(n.Int64())*2 <= len(d) {
+			b, err := hex.DecodeString(d[136 : 136+int(n.Int64())*2])
+			if err == nil {
+				return trimReason(string(b))
+			}
+		}
+	}
+	if strings.HasPrefix(d, "4e487b71") {
+		return "panic 0x" + d[len(d)-2:]
+	}
+	if len(d) >= 8 {
+		return "custom error 0x" + d[:8]
+	}
+	return "reverted"
+}
+
+func trimReason(s string) string {
+	s = strings.Join(strings.Fields(s), " ")
+	if len(s) > 120 {
+		s = s[:120]
+	}
+	return s
 }
 
 // simulate runs the blocks and returns the legs of the LAST one.
@@ -189,7 +247,7 @@ type simResult struct {
 // It refuses rather than guesses when the node returns fewer legs than were
 // sent: that is the silent-empty-block case above, and reading a status out
 // of a short list would publish a revert that never happened.
-func (c *rpcClient) simulate(ctx context.Context, blocks []simBlock, wantLast int) ([]string, error) {
+func (c *rpcClient) simulate(ctx context.Context, blocks []simBlock, wantLast int) ([]simCallResult, error) {
 	raw, err := c.call(ctx, "eth_simulateV1", []any{map[string]any{
 		"blockStateCalls": blocks,
 		"validation":      false,
@@ -209,11 +267,7 @@ func (c *rpcClient) simulate(ctx context.Context, blocks []simBlock, wantLast in
 	if len(last.Calls) != wantLast {
 		return nil, fmt.Errorf("node ran %d of %d calls", len(last.Calls), wantLast)
 	}
-	out := make([]string, 0, len(last.Calls))
-	for _, c := range last.Calls {
-		out = append(out, c.Status)
-	}
-	return out, nil
+	return last.Calls, nil
 }
 
 // oneEther funds the probing address. The amount is irrelevant beyond being
@@ -245,15 +299,16 @@ func Examine(ctx context.Context, c *rpcClient, from, token string, buy, sell Qu
 		p.SameBlock, p.Delayed, p.Reason = Inconclusive, Inconclusive, err.Error()
 		return p
 	}
-	if same[0] != "0x1" {
+	if same[0].Status != "0x1" {
 		// The buy failing says nothing about sellability, and calling it
 		// unsellable would blame the token for a route that never opened.
 		p.SameBlock, p.Delayed, p.Reason = NoRoute, NoRoute, "buy leg reverted"
 		return p
 	}
 	p.SameBlock = Sellable
-	if same[2] != "0x1" {
+	if same[2].Status != "0x1" {
 		p.SameBlock = Unsellable
+		p.SameBlockWhy = same[2].revertReason()
 	}
 
 	blocks := []simBlock{{StateOverrides: over, Calls: entry}}
@@ -268,8 +323,18 @@ func Examine(ctx context.Context, c *rpcClient, from, token string, buy, sell Qu
 		return p
 	}
 	p.Delayed = Sellable
-	if later[0] != "0x1" {
+	if later[0].Status != "0x1" {
 		p.Delayed = Unsellable
+		p.DelayedWhy = later[0].revertReason()
 	}
 	return p
+}
+
+// whyAt names the reason the sale reverted at one tier, for a log line that
+// has to say which timing it is talking about.
+func (p Probe) whyAt(tier string) string {
+	if tier == "same_block" {
+		return p.SameBlockWhy
+	}
+	return p.DelayedWhy
 }
