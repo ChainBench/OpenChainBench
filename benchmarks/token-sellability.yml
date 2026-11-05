@@ -5,11 +5,11 @@ number: "313"
 title: "Which aggregator routes you into a token you cannot sell"
 seo_title: "Honeypot check on Robinhood Chain: which tokens cannot be sold"
 seo_description: "Live count of Robinhood Chain tokens that accept a simulated buy and reject the sale, measured on-chain at two timings so an anti-bot cooldown is not called a honeypot."
-subtitle: Share of the tokens our own simulation could not sell back out of that each aggregator still returns a route into.
+subtitle: Share of the tokens whose exit reverted on the route they were bought through that each aggregator still returns a route into.
 
 category: Aggregators
 status: live
-metric: Routed into unsellable
+metric: Routed into failed exits
 unit: pct
 higher_is_better: false
 row_noun: { one: aggregator, many: aggregators }
@@ -43,6 +43,8 @@ abstract: |
 methodology:
   - "Two timings, and they mean different things. Selling in the same block as the buy is the only way to hold the market still, but it trips every anti-bot cooldown, which is a common and often honest protection. The delayed timing sells a few blocks later. A token that fails the same-block sale and passes the delayed one is NOT a honeypot, and this board never counts it as one."
   - "A token this probe has sold at any point in the window is never counted against an aggregator, even if a later sweep says its sale reverted. A token that genuinely cannot be sold does not become sellable an hour later, so a contradiction is the instrument failing rather than the token changing, and the chain's own wrapped ether was among the tokens it caught."
+  - "SushiSwap supplies the routes this probe signs and is therefore not ranked. A token only enters the cohort if SushiSwap quoted a way into it, so scoring SushiSwap would score it on a population it selected: it quoted 98.6% of the cohort on 2026-11-05, which is what that construction produces."
+  - "The exit is tested on the route the token was bought through, and on that route only. A sale that succeeds proves a token can be sold; a sale that reverts does not prove no route exists, because another aggregator's path may clear where this one did not. Read a row as how often an aggregator routed into a token whose exit failed, not as proof of a trap."
   - "A control token runs first on every sweep, not occasionally. If the control cannot be sold, the sweep measured the probe rather than the tokens and every verdict in it is discarded. This caught a broken run on 2026-11-03 that would otherwise have named two tokens as unsellable."
   - "Inconclusive is a verdict of its own, counted and published. The node answers some requests with a well-formed block and an empty call list, no error, and reading a status out of that would publish a revert that never ran. A probe that cannot tell says so instead of falling back to a real outcome."
   - "A failed buy is out of scope, not a failure. If no route in opens, nothing has been learned about selling, and calling that unsellable would blame the token for a market that does not exist."
@@ -94,14 +96,6 @@ metric_panels:
     tab: false
 
 providers:
-  - slug: sushi
-    name: SushiSwap
-    tier: delayed
-    tag: No auth, serves Robinhood Chain
-    formula: "Share of the tokens whose sale reverted when attempted a few blocks after the buy that SushiSwap still returned a route INTO, counted over 24h of sweeps. Lower is better."
-    queries:
-      p50: 100 * sum(increase(token_sellability_routed_total{aggregator="sushi",tier="delayed"}[24h])) / (sum(increase(token_sellability_asked_total{aggregator="sushi",tier="delayed"}[24h])) > 0)
-      sample_size: sum(increase(token_sellability_asked_total{aggregator="sushi",tier="delayed"}[24h]))
 
   - slug: kyberswap
     name: KyberSwap
@@ -138,14 +132,6 @@ providers:
     queries:
       p50: 100 * sum(increase(token_sellability_routed_total{aggregator="trnch",tier="delayed"}[24h])) / (sum(increase(token_sellability_asked_total{aggregator="trnch",tier="delayed"}[24h])) > 0)
       sample_size: sum(increase(token_sellability_asked_total{aggregator="trnch",tier="delayed"}[24h]))
-  - slug: sushi-same-block
-    name: SushiSwap
-    tier: same_block
-    tag: No auth, serves Robinhood Chain
-    formula: "Share of the tokens whose sale reverted when attempted in the same block as the buy that SushiSwap still returned a route INTO, counted over 24h of sweeps. Lower is better."
-    queries:
-      p50: 100 * sum(increase(token_sellability_routed_total{aggregator="sushi",tier="same_block"}[24h])) / (sum(increase(token_sellability_asked_total{aggregator="sushi",tier="same_block"}[24h])) > 0)
-      sample_size: sum(increase(token_sellability_asked_total{aggregator="sushi",tier="same_block"}[24h]))
 
   - slug: kyberswap-same-block
     name: KyberSwap

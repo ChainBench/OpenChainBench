@@ -76,7 +76,6 @@ const PRODUCT_ALIASES: Record<string, string> = {
   // a second row per vendor. Without these each `-same-block` slug
   // builds its own /products page carrying the vendor's title, which is
   // what the cold tier did before its aliases landed.
-  "sushi-same-block": "sushi",
   "kyberswap-same-block": "kyberswap",
   "paraswap-same-block": "paraswap",
   "lifi-same-block": "lifi",
@@ -1012,7 +1011,9 @@ const buildProvidersCached = unstable_cache(
   //      appearance, warm and cold. Lockstep with bench-unfiltered-v166.
   // v55: bench 314 solana-rpc-ws gives four providers a Solana WebSocket
   //      appearance. Lockstep with bench-unfiltered-v168.
-  ["providers-v55"],
+  // v56: bench 313 drops SushiSwap, so Sushi loses two appearances and
+  //      this index carries them. Lockstep with bench-unfiltered-v170.
+  ["providers-v56"],
   // 900 s: the provider index feeds products / compare / answers, whose
   // numbers move slowly, and this revalidate is also the effective ISR
   // period of those ~500 pages (Next takes the min across a route's caches).

@@ -868,7 +868,13 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       computed against evidence the probe contradicted. The metric is
   //       renamed off "traps", which claimed intent the measurement does
   //       not carry. Numbers and copy both move.
-  ["bench-unfiltered-v169", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v170: bench 313 drops its SushiSwap rows. Sushi supplies the routes
+  //       the probe signs, so a token only enters the cohort if Sushi
+  //       quoted a way into it: it was being scored on a population it
+  //       selected, and quoted 98.6% of it. A REMOVAL, which needs the
+  //       keys as much as an arrival. The metric is renamed off
+  //       "unsellable", which claimed more than one tested route shows.
+  ["bench-unfiltered-v170", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -1211,7 +1217,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v160: lockstep with bench-unfiltered-v167 (FluxRPC without Singapore).
   // v161: lockstep with bench-unfiltered-v168 (bench 314 solana-rpc-ws).
   // v162: lockstep with bench-unfiltered-v169 (bench 313 cohort rule).
-  ["all-benchmarks-v162", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v163: lockstep with bench-unfiltered-v170 (bench 313 drops sushi).
+  ["all-benchmarks-v163", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1441,7 +1448,9 @@ const loadBenchmarkFiltered = unstable_cache(
   // v92: lockstep with bench-unfiltered-v167. The Singapore tab of the
   //      Private cohort loses its FluxRPC row.
   // v93: lockstep with bench-unfiltered-v168. Bench 314 declares regions.
-  ["bench-filters-v93", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v94: lockstep with bench-unfiltered-v170. A vendor leaves BOTH tier
+  //      values, so each tab's provider set changes.
+  ["bench-filters-v94", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 
