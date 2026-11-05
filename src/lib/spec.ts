@@ -882,7 +882,12 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       floor under what counts as an exit, and puts the Tokens asked
   //       column on the same 24h window as the score it sits beside.
   //       Every number on the board moves.
-  ["bench-unfiltered-v172", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v173: the queries that were supposed to move to distinct tokens in
+  //       v172 never reached the file. The script asserted on an
+  //       unrelated string after rewriting in memory and before writing,
+  //       so the commit said one thing and the spec another. They move
+  //       here, verified by reading the file back.
+  ["bench-unfiltered-v173", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -1228,7 +1233,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v163: lockstep with bench-unfiltered-v170 (bench 313 drops sushi).
   // v164: lockstep with bench-unfiltered-v171 (bench 313 copy).
   // v165: lockstep with bench-unfiltered-v172 (bench 313 distinct tokens).
-  ["all-benchmarks-v165", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v166: lockstep with bench-unfiltered-v173 (bench 313 queries land).
+  ["all-benchmarks-v166", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
