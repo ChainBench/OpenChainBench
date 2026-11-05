@@ -275,6 +275,47 @@ func (c *rpcClient) simulate(ctx context.Context, blocks []simBlock, wantLast in
 // probe can never move real value.
 const oneEther = "0xDE0B6B3A7640000"
 
+// balanceSelector is balanceOf(address), with the probing address baked in by
+// Received below.
+const balanceSelector = "0x70a08231"
+
+// Received simulates the buy and reads the balance it actually produced.
+//
+// Sizing the sale from the QUOTED amount is wrong on any token that takes a
+// cut on transfer, and those are the majority of what this bench looks at:
+// PRISM delivered 97.0% of its quote on 2026-11-05, so a sale sized at 98%
+// of the quote asked for more than the address held and reverted for lack of
+// balance. That reads as "the token refuses to be sold" and it is nothing of
+// the kind. A transfer tax is a cost, not a trap, and the two must not share
+// a verdict.
+//
+// It costs one extra simulation per token. Measuring what arrived is the only
+// way to tell a tax from a refusal, and the whole board rests on that
+// distinction.
+func (c *rpcClient) Received(ctx context.Context, from, token string, buy Quote) (*big.Int, error) {
+	addr := strings.ToLower(strings.TrimPrefix(from, "0x"))
+	calls := []simCall{
+		{From: from, To: buy.To, Value: hexAmount(buy.Value), Data: buy.Data},
+		{From: from, To: token, Value: "0x0",
+			Data: balanceSelector + strings.Repeat("0", 64-len(addr)) + addr},
+	}
+	out, err := c.simulate(ctx, []simBlock{
+		{StateOverrides: map[string]map[string]string{from: {"balance": oneEther}},
+			Calls: calls},
+	}, 2)
+	if err != nil {
+		return nil, err
+	}
+	if out[0].Status != "0x1" {
+		return nil, fmt.Errorf("buy leg reverted: %s", out[0].revertReason())
+	}
+	n, ok := new(big.Int).SetString(strings.TrimPrefix(out[1].ReturnData, "0x"), 16)
+	if !ok {
+		return nil, fmt.Errorf("unreadable balance %q", out[1].ReturnData)
+	}
+	return n, nil
+}
+
 // Examine buys the token, approves the sell router and sells, at two
 // timings. DelayBlocks is reached by appending empty blocks rather than by
 // moving the block number, for the reason recorded at the top of this file.

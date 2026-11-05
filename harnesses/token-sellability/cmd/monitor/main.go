@@ -433,9 +433,24 @@ func probeOne(ctx context.Context, cfg config, rpc *rpcClient, q *SushiQuoter, t
 	if err != nil || buy.AmountOut == nil || buy.AmountOut.Sign() == 0 {
 		return Probe{Token: token, SameBlock: NoRoute, Delayed: NoRoute, Reason: "no buy route"}
 	}
-	// Sell slightly less than was bought so the sell can never fail on a
-	// rounding difference and be read as a refusal.
-	amt := new(big.Int).Div(new(big.Int).Mul(buy.AmountOut, big.NewInt(98)), big.NewInt(100))
+	// Size the sale from what the buy actually DELIVERED, not from what it
+	// was quoted. A token that takes a cut on transfer hands over less than
+	// the quote, and selling a fraction of the quote then asks for more than
+	// the address holds. That reverts for lack of balance and reads exactly
+	// like a refusal to sell, which is how a transfer tax came to look like
+	// a trap.
+	held, err := rpc.Received(ctx, cfg.from, token, buy)
+	if err != nil {
+		return Probe{Token: token, SameBlock: Inconclusive, Delayed: Inconclusive,
+			Reason: "could not read the balance the buy produced: " + err.Error()}
+	}
+	if held.Sign() == 0 {
+		return Probe{Token: token, SameBlock: NoRoute, Delayed: NoRoute,
+			Reason: "the buy delivered nothing"}
+	}
+	// Still a touch under, so a rounding difference cannot be read as a
+	// refusal either.
+	amt := new(big.Int).Div(new(big.Int).Mul(held, big.NewInt(99)), big.NewInt(100))
 	sell, err := q.Quote(ctx, token, cfg.native, amt.String())
 	if err != nil || sell.To == "" {
 		return Probe{Token: token, SameBlock: NoRoute, Delayed: NoRoute, Reason: "no sell route"}
