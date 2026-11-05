@@ -376,6 +376,8 @@ const RAW: Record<string, string> = {
   zan: "/logos/zan.svg",
   // BlockVectra: the square vector mark they supplied (#3464), paths only.
   blockvectra: "/logos/blockvectra.svg",
+  // FluxRPC (FluxBeam): the 160px app icon from fluxrpc.com/logo.png.
+  fluxrpc: "/logos/fluxrpc.png",
   // ─── Sui providers (bench 211) ───
   fullnode: "/logos/mysten.svg",
   blockvision: "/logos/blockvision.svg",
@@ -1145,6 +1147,7 @@ const ALIASES: Record<string, string> = {
   "chainstack-cold": "chainstack",
   "dwellir-cold": "dwellir",
   "helius-cold": "helius",
+  "fluxrpc-cold": "fluxrpc",
   "validationcloud-cold": "validationcloud",
   "validation-cloud": "validationcloud",
   "dwellir-unlimited": "dwellir",

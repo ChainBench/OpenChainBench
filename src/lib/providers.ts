@@ -87,6 +87,7 @@ const PRODUCT_ALIASES: Record<string, string> = {
   "quicknode-cold": "quicknode",
   "dwellir-cold": "dwellir",
   "helius-cold": "helius",
+  "fluxrpc-cold": "fluxrpc",
   "blockmachine-cold": "blockmachine",
   // The heavy-call arm, added 2026-11-03: the same endpoints measured on a
   // Multicall3 of fifty state reads. A measurement arm, not a product, and
@@ -1007,7 +1008,9 @@ const buildProvidersCached = unstable_cache(
   //      one bench: it regains a product page as well as two bench
   //      appearances, and this index carries both.
   //      Lockstep with bench-unfiltered-v159.
-  ["providers-v53"],
+  // v54: FluxRPC is new to the site: a product page and a keyed Solana
+  //      appearance, warm and cold. Lockstep with bench-unfiltered-v166.
+  ["providers-v54"],
   // 900 s: the provider index feeds products / compare / answers, whose
   // numbers move slowly, and this revalidate is also the effective ISR
   // period of those ~500 pages (Next takes the min across a route's caches).

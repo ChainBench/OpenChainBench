@@ -851,7 +851,11 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       sample is healthy rather than a rounding error. The second
   //       tab was never a publish bug: increase() reads 0 on a counter
   //       that has not re-incremented, and both tabs were young.
-  ["bench-unfiltered-v165", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v166: FluxRPC enters the keyed Solana cohort, warm and cold. New rows,
+  //       new count and new disclosure prose, none of which overlayEditorial
+  //       repairs on a cached entry. Moves with all-benchmarks-v159,
+  //       bench-filters-v91 and providers-v54.
+  ["bench-unfiltered-v166", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -1190,7 +1194,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v156: lockstep with bench-unfiltered-v163 (bench 313 zero divisor).
   // v157: lockstep with bench-unfiltered-v164 (bench 313 to draft).
   // v158: lockstep with bench-unfiltered-v165 (bench 313 live again).
-  ["all-benchmarks-v158", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v159: lockstep with bench-unfiltered-v166 (FluxRPC, keyed Solana).
+  ["all-benchmarks-v159", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1415,7 +1420,9 @@ const loadBenchmarkFiltered = unstable_cache(
   //       Heavy tier, Solana capability board).
   // v90: lockstep with bench-unfiltered-v161. Bench 313 gains a vendor on
   //      BOTH tier values, so each tab's provider set changes.
-  ["bench-filters-v90", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v91: lockstep with bench-unfiltered-v166. The Private and Cold start
+  //      tabs are filtered views and both gain the FluxRPC row.
+  ["bench-filters-v91", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 
