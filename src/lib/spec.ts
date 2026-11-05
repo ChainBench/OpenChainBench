@@ -887,7 +887,11 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       unrelated string after rewriting in memory and before writing,
   //       so the commit said one thing and the spec another. They move
   //       here, verified by reading the file back.
-  ["bench-unfiltered-v173", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v174: bench 313's numerator is constrained to the tokens its
+  //       denominator covers. routed_token is six hours older than
+  //       asked_token, so the ratio divided six hours by one and
+  //       published 1000% as a percentage.
+  ["bench-unfiltered-v174", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -1234,7 +1238,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v164: lockstep with bench-unfiltered-v171 (bench 313 copy).
   // v165: lockstep with bench-unfiltered-v172 (bench 313 distinct tokens).
   // v166: lockstep with bench-unfiltered-v173 (bench 313 queries land).
-  ["all-benchmarks-v166", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v167: lockstep with bench-unfiltered-v174 (bench 313 subset guard).
+  ["all-benchmarks-v167", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
