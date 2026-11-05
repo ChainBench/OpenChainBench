@@ -10,7 +10,7 @@ import { pageMetadata } from "@/lib/page-metadata";
 import { capDescription, capSnippet } from "@/lib/seo-text";
 import { safeJsonLd, buildBreadcrumbJsonLd } from "@/lib/jsonld";
 import { SITE } from "@/data/site";
-import { outboundHref } from "@/lib/outbound-click";
+import { OutboundLink } from "@/components/outbound-link";
 import { hubDateModified, datedCollectionLd } from "@/lib/hub-dates";
 
 /**
@@ -260,14 +260,13 @@ export default async function RpcHubPage() {
 
           <p className="mt-4 text-[11px] text-ink-faint italic">
             Source: the open-source{" "}
-            <a
-              href={outboundHref("https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities")}
+            <OutboundLink
+              href="https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities"
               className="underline hover:text-ink"
-              rel="noopener"
               target="_blank"
             >
               rpc-capabilities harness
-            </a>
+            </OutboundLink>
             , one probe fleet per chain. Click a chain row for the full
             per-chain leaderboard with region tabs, success-rate
             classification and archive-depth audits; click a provider

@@ -8,7 +8,8 @@ import { SearchTrigger } from "@/components/search/search-trigger";
 import { SiteLogoSwitcher } from "@/components/site-logo-switcher";
 import { headerNavItems, navGroups } from "@/components/site-nav-items";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { outboundHref } from "@/lib/outbound-click";
+import { OutboundLink } from "@/components/outbound-link";
+import { SITE } from "@/data/site";
 
 function XIcon({ size = 15 }: { size?: number }) {
   return (
@@ -116,22 +117,21 @@ export function SiteHeader({ hiddenRoutes = [] }: { hiddenRoutes?: readonly stri
 
           {/* Utilities - X + GitHub + theme, gap-spaced, no pipe. */}
           <div className="hidden md:flex items-center gap-4 text-ink-muted shrink-0">
-            <a
-              href={outboundHref("https://x.com/OpenChainBench")}
+            <OutboundLink
+              href="https://x.com/OpenChainBench"
               className="inline-flex items-center hover:text-ink transition-colors"
               aria-label="Follow @OpenChainBench on X"
               target="_blank"
-              rel="noopener"
             >
               <XIcon size={14} />
-            </a>
-            <a
-              href={outboundHref("https://github.com/ChainBench/OpenChainBench")}
+            </OutboundLink>
+            <OutboundLink
+              href={SITE.github}
               className="inline-flex items-center hover:text-ink transition-colors"
               aria-label="View source on GitHub"
             >
               <GithubIcon size={16} />
-            </a>
+            </OutboundLink>
             <ThemeToggle />
           </div>
 
@@ -195,15 +195,15 @@ export function SiteHeader({ hiddenRoutes = [] }: { hiddenRoutes?: readonly stri
                 }),
               ])}
               <li className="border-t border-rule mt-1 pt-1 flex items-center gap-4">
-                <a
-                  href={outboundHref("https://github.com/ChainBench/OpenChainBench")}
+                <OutboundLink
+                  href={SITE.github}
                   className="inline-flex items-center gap-2 min-h-[44px] text-ink-muted hover:text-ink transition-colors"
                   aria-label="View source on GitHub"
                   onClick={() => setOpen(false)}
                 >
                   <GithubIcon size={15} />
                   GitHub
-                </a>
+                </OutboundLink>
                 <span className="ml-auto">
                   <ThemeToggle />
                 </span>

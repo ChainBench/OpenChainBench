@@ -15,7 +15,7 @@ import {
   unavailableReason,
   venueLabel,
 } from "@/lib/perp-cost-model";
-import { outboundHref } from "@/lib/outbound-click";
+import { OutboundLink } from "@/components/outbound-link";
 
 // ── Formatting ────────────────────────────────────────────────────────────
 
@@ -706,14 +706,13 @@ function VenueCell({
       <div className="min-w-0">
         <p className="whitespace-nowrap font-sans text-sm font-medium text-ink">
           {site ? (
-            <a
-              href={outboundHref(site)}
+            <OutboundLink
+              href={site}
               target="_blank"
-              rel="noopener"
               className="hover:underline"
             >
               {venue.name}
-            </a>
+            </OutboundLink>
           ) : (
             venue.name
           )}

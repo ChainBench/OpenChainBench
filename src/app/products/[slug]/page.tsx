@@ -58,7 +58,7 @@ import { getTerminalFills } from "@/lib/terminal-fills";
 import { fetchDataApiSnapshot } from "@/lib/data-api-stats";
 import { getTradingAppHistory } from "@/lib/trading-app-history";
 import { fetchBridgeHub } from "@/lib/bridge-hub-stats";
-import { outboundHref } from "@/lib/outbound-click";
+import { OutboundLink } from "@/components/outbound-link";
 import { noFigureLabel, noRankLabel } from "@/lib/no-figure-label";
 import { WalletVendorPricing, walletVendorHeadline, fmtWalletBill } from "@/components/wallet-vendor-pricing";
 import { ServerWalletVendorPricing, serverWalletVendorHeadline, serverWalletVendorFirstPriced, fmtServerWalletBill } from "@/components/server-wallet-vendor-pricing";
@@ -1032,24 +1032,23 @@ export default async function ProviderPage({
                 {(reg?.url || reg?.twitter) && (
                   <p className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
                     {reg.url && (
-                      <a
+                      <OutboundLink
                         className="lnk inline-flex items-center gap-1 font-medium text-ink hover:text-accent transition-colors break-all"
-                        href={outboundHref(reg.referralUrl || reg.url)}
-                        rel={reg.referralUrl ? "noopener sponsored" : "noopener"}
+                        href={reg.referralUrl || reg.url}
+                        rel={reg.referralUrl ? "sponsored" : undefined}
                       >
                         {reg.url.replace(/^https?:\/\//, "").replace(/\/$/, "")}
                         <ArrowUpRight size={13} strokeWidth={2} className="shrink-0" />
-                      </a>
+                      </OutboundLink>
                     )}
                     {reg.twitter && (
-                      <a
+                      <OutboundLink
                         className="lnk inline-flex items-center gap-1 text-ink-soft hover:text-ink transition-colors"
-                        href={outboundHref(`https://x.com/${reg.twitter.replace(/^@/, "")}`)}
-                        rel="noopener"
+                        href={`https://x.com/${reg.twitter.replace(/^@/, "")}`}
                       >
                         {reg.twitter}
                         <ArrowUpRight size={13} strokeWidth={2} className="shrink-0" />
-                      </a>
+                      </OutboundLink>
                     )}
                   </p>
                 )}
@@ -1279,13 +1278,13 @@ export default async function ProviderPage({
                     {c.value}
                   </dd>
                   <dd className="mt-1 text-xs text-ink-faint">
-                    <a
+                    <OutboundLink
                       className="lnk underline underline-offset-2 hover:text-ink"
-                      href={outboundHref(c.source)}
-                      rel="noopener nofollow"
+                      href={c.source}
+                      rel="nofollow"
                     >
                       source
-                    </a>
+                    </OutboundLink>
                     {" · "}
                     <time dateTime={c.verifiedAt}>{claimAgeLabel(c)}</time>
                     {c.stale && (
@@ -1539,15 +1538,14 @@ export default async function ProviderPage({
                         self-promo loop. Every other provider keeps the
                         share link. */}
                     {p.slug !== "mobula" && (
-                      <a
-                        href={outboundHref(tweetIntent)}
+                      <OutboundLink
+                        href={tweetIntent}
                         target="_blank"
-                        rel="noopener"
                         className="inline-flex items-center gap-1 hover:text-ink"
                       >
                         Share on X
                         <ArrowUpRight size={11} strokeWidth={2} />
-                      </a>
+                      </OutboundLink>
                     )}
                   </div>
                   <details className="mt-3">

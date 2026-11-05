@@ -7,7 +7,7 @@ import { pageMetadata } from "@/lib/page-metadata";
 import { SpeedtestRpcClient } from "@/components/speedtest/speedtest-rpc-client";
 import { buildBreadcrumbJsonLd, buildFaqPageJsonLd, safeJsonLd } from "@/lib/jsonld";
 import { SITE } from "@/data/site";
-import { outboundHref } from "@/lib/outbound-click";
+import { OutboundLink } from "@/components/outbound-link";
 
 // Long-lived branch link: the probe engine ships in the site bundle, so
 // pointing at the source file IS the full disclosure of what runs in the
@@ -124,10 +124,10 @@ export default function SpeedtestRpcPage() {
       <p className="mt-2 text-sm text-ink-faint">
         No install, no signup. Your URLs and API keys never leave this browser
         tab. Requests go straight from you to the provider.{" "}
-        <a href={outboundHref(SOURCE_URL)} className="lnk" rel="noopener" target="_blank">
+        <OutboundLink href={SOURCE_URL} className="lnk" target="_blank">
           The probe engine is open source
           <ArrowUpRight size={11} strokeWidth={2} className="inline ml-0.5 align-baseline" />
-        </a>{" "}
+        </OutboundLink>{" "}
         so you can verify exactly what runs.
       </p>
 
@@ -159,18 +159,17 @@ export default function SpeedtestRpcPage() {
         </p>
         <p className="mt-3">
           Everything on this page is open source:{" "}
-          <a href={outboundHref(SOURCE_URL)} className="lnk" rel="noopener" target="_blank">
+          <OutboundLink href={SOURCE_URL} className="lnk" target="_blank">
             browser probe engine
-          </a>{" "}
+          </OutboundLink>{" "}
           and the{" "}
-          <a
-            href={outboundHref("https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities")}
+          <OutboundLink
+            href="https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities"
             className="lnk"
-            rel="noopener"
             target="_blank"
           >
             rpc-capabilities harness
-          </a>{" "}
+          </OutboundLink>{" "}
           that runs the same probe from datacenters for the public
           leaderboards.
         </p>

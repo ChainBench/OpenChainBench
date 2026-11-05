@@ -9,8 +9,7 @@ import { track } from "@/lib/analytics";
 /**
  * Outbound clicks, delegated: one listener for the links that leave the
  * site without passing through /go (licenses, DOIs, endpoint hosts). The
- * event carries the destination host and the page it was clicked from,
- * which is the number a benchmark site lives on: visitors sent to providers.
+ * event carries the destination host and the page it was clicked from.
  */
 function OutboundClicks() {
   useEffect(() => {

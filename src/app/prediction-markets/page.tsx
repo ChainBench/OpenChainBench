@@ -14,7 +14,7 @@ import {
   CREATOR_PUBLISHER,
   DATASET_LICENSE,
 } from "@/lib/dataset-jsonld";
-import { outboundHref } from "@/lib/outbound-click";
+import { OutboundLink } from "@/components/outbound-link";
 
 /**
  * Hub landing page for the prediction markets cohort. SSR'd against
@@ -443,14 +443,13 @@ export default async function PredictionMarketsHubPage() {
 
           <p className="mt-4 text-[11px] text-ink-faint italic">
             Source:{" "}
-            <a
-              href={outboundHref("https://github.com/ChainBench/upstream-monorepo/tree/dev/miniapps/pm-cohort-stats")}
+            <OutboundLink
+              href="https://github.com/ChainBench/upstream-monorepo/tree/dev/miniapps/pm-cohort-stats"
               className="underline hover:text-ink"
-              rel="noopener"
               target="_blank"
             >
               pm-cohort-stats harness
-            </a>{" "}
+            </OutboundLink>{" "}
             (volume, OI, active markets, top market, markets &gt;$1M)
             plus the live PM bench fleet (api latency, resolution delay,
             ws latency). All gauges scraped from the public OCB Prom,

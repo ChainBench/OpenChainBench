@@ -14,7 +14,7 @@ import {
   PerpVenueBenchCards,
   type PerpVenueBenchRow,
 } from "@/components/perp-venue-bench-cards";
-import { outboundHref } from "@/lib/outbound-click";
+import { OutboundLink } from "@/components/outbound-link";
 
 /**
  * Perp venue view on /products/<slug>, behind the "Perpetuals" pill.
@@ -175,14 +175,13 @@ export async function PerpVenueSection({
           </span>
           <span className="text-sm text-ink-muted">{VENUE_TYPE_SENTENCE[venueType]}</span>
         </div>
-        <a
-          href={outboundHref(externalUrl)}
+        <OutboundLink
+          href={externalUrl}
           target="_blank"
-          rel="noopener"
           className="text-sm text-ink-faint hover:text-ink underline underline-offset-2"
         >
           Open {externalHost}
-        </a>
+        </OutboundLink>
       </header>
 
       {kpis && (
@@ -363,15 +362,14 @@ export async function PerpVenueSection({
           </>
         )}
         <span aria-hidden>·</span>
-        <a
-          href={outboundHref(externalUrl)}
+        <OutboundLink
+          href={externalUrl}
           target="_blank"
-          rel="noopener"
           className="inline-flex items-center gap-1 hover:text-ink underline underline-offset-2"
         >
           {externalHost}
           <ArrowUpRight size={11} strokeWidth={2} />
-        </a>
+        </OutboundLink>
         {slug === "hyperliquid" && (
           <>
             <span aria-hidden>·</span>

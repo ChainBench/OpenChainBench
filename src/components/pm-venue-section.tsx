@@ -14,7 +14,7 @@ import {
 import { PmTopMarketsTable } from "@/components/pm-top-markets-table";
 import { PmCategoryDonut } from "@/components/pm-category-donut";
 import { PmVolumeOiChart } from "@/components/pm-volume-oi-chart";
-import { outboundHref } from "@/lib/outbound-click";
+import { OutboundLink } from "@/components/outbound-link";
 
 /**
  * Per-venue anchored section on /prediction-markets. URL anchor is the
@@ -87,14 +87,13 @@ export async function PmVenueSection({
             {chainLabel}
           </span>
         </div>
-        <a
-          href={outboundHref(externalUrl)}
+        <OutboundLink
+          href={externalUrl}
           target="_blank"
-          rel="noopener"
           className="text-sm text-ink-faint hover:text-ink underline underline-offset-2"
         >
           Open {externalHost}
-        </a>
+        </OutboundLink>
       </header>
 
       {kpis ? (
@@ -176,14 +175,13 @@ export async function PmVenueSection({
             <span aria-hidden>·</span>
           </>
         )}
-        <a
-          href={outboundHref(externalUrl)}
+        <OutboundLink
+          href={externalUrl}
           target="_blank"
-          rel="noopener"
           className="hover:text-ink underline underline-offset-2"
         >
           View on {externalHost}
-        </a>
+        </OutboundLink>
       </footer>
     </section>
   );

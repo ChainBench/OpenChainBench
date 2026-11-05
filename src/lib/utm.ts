@@ -27,8 +27,8 @@ import { bareHost, isSameOrSubdomain, parseHttpUrl } from "@/lib/url-host";
  *
  * It is NOT applied to RPC endpoint URLs. Those are shown so a reader can
  * paste them into a config; a utm_source in one would be copied straight
- * into production. They never pass through here, and the test in
- * utm.test.ts pins that.
+ * into production. They never pass through here, and an ESLint rule on
+ * their renderers enforces that.
  */
 const SITE_HOST = bareHost(new URL(SITE.url).hostname);
 

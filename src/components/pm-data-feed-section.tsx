@@ -4,7 +4,7 @@ import {
   PmVenueBenchCards,
   type PmVenueBenchRow,
 } from "@/components/pm-venue-bench-cards";
-import { outboundHref } from "@/lib/outbound-click";
+import { OutboundLink } from "@/components/outbound-link";
 
 /**
  * Per-data-feed anchored section on /prediction-markets. Lighter than the
@@ -87,14 +87,13 @@ export async function PmDataFeedSection({
           )}
         </div>
         {externalUrl && (
-          <a
-            href={outboundHref(externalUrl)}
+          <OutboundLink
+            href={externalUrl}
             target="_blank"
-            rel="noopener"
             className="text-sm text-ink-faint hover:text-ink underline underline-offset-2"
           >
             {safeHost(externalUrl)}
-          </a>
+          </OutboundLink>
         )}
       </header>
 

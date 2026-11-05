@@ -5,7 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronRight } from "lucide-react";
 import { ProviderLogo } from "@/components/provider-logo";
-import { outboundHref } from "@/lib/outbound-click";
+import { OutboundLink } from "@/components/outbound-link";
+import { openOutbound } from "@/lib/outbound-click";
 import type { PmVenueRow } from "@/lib/pm-stats";
 
 /**
@@ -155,21 +156,22 @@ export function PmVenuesLeaderboard({ rows }: { rows: PmVenueRow[] }) {
           </thead>
           <tbody>
             {filtered.map((r, i) => {
-              const href = r.benched === false && r.externalUrl
-                ? outboundHref(r.externalUrl)
-                : `/products/${r.slug}`;
-              const isExternal = r.benched === false;
+              const externalUrl = r.benched === false ? r.externalUrl : undefined;
               return (
               <tr
                 key={r.slug}
-                onClick={() => isExternal ? window.open(href, "_blank", "noopener") : router.push(href)}
+                onClick={() =>
+                  externalUrl
+                    ? openOutbound(externalUrl)
+                    : router.push(`/products/${r.slug}`)
+                }
                 className="border-t border-ink/5 hover:bg-paper-soft/40 transition-colors cursor-pointer"
               >
                 <Td muted mono>
                   {i + 1}
                 </Td>
                 <Td>
-                  <VenueLink row={r} href={href} isExternal={isExternal} />
+                  <VenueLink row={r} externalUrl={externalUrl} />
                 </Td>
                 <Td
                   mono
@@ -233,15 +235,15 @@ export function PmVenuesLeaderboard({ rows }: { rows: PmVenueRow[] }) {
 
 function VenueLink({
   row,
-  href,
-  isExternal,
+  externalUrl,
 }: {
   row: PmVenueRow;
-  href: string;
-  isExternal: boolean;
+  externalUrl: string | undefined;
 }) {
-  const className = "flex items-center gap-2 min-w-0 group";
-  const stopRowClick = (e: React.MouseEvent) => e.stopPropagation();
+  const shared = {
+    className: "flex items-center gap-2 min-w-0 group",
+    onClick: (e: React.MouseEvent) => e.stopPropagation(),
+  };
   const content = (
     <>
       <ProviderLogo slug={row.slug} name={row.name} size={18} />
@@ -255,21 +257,12 @@ function VenueLink({
       />
     </>
   );
-  if (isExternal) {
-    return (
-      <a
-        href={href}
-        target="_blank"
-        rel="noopener"
-        className={className}
-        onClick={stopRowClick}
-      >
-        {content}
-      </a>
-    );
-  }
-  return (
-    <Link href={href} className={className} onClick={stopRowClick}>
+  return externalUrl ? (
+    <OutboundLink href={externalUrl} target="_blank" {...shared}>
+      {content}
+    </OutboundLink>
+  ) : (
+    <Link href={`/products/${row.slug}`} {...shared}>
       {content}
     </Link>
   );

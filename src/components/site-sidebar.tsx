@@ -8,7 +8,8 @@ import { SearchTrigger } from "@/components/search/search-trigger";
 import { SiteLogoSwitcher } from "@/components/site-logo-switcher";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { navGroups } from "@/components/site-nav-items";
-import { outboundHref } from "@/lib/outbound-click";
+import { OutboundLink } from "@/components/outbound-link";
+import { SITE } from "@/data/site";
 
 function XIcon({ size = 14 }: { size?: number }) {
   return (
@@ -271,24 +272,22 @@ export function SiteSidebar({ hiddenRoutes = [] }: { hiddenRoutes?: readonly str
             {pinned ? <PanelLeftClose size={15} /> : <PanelLeftOpen size={15} />}
             <span className="sr-only">{pinned ? "Unpin the sidebar" : "Keep the sidebar open"}</span>
           </button>
-          <a
-            href={outboundHref("https://x.com/OpenChainBench")}
+          <OutboundLink
+            href="https://x.com/OpenChainBench"
             className="site-rail-label inline-flex items-center hover:text-ink transition-colors"
             aria-label="Follow @OpenChainBench on X"
             target="_blank"
-            rel="noopener"
           >
             <XIcon size={13} />
-          </a>
-          <a
-            href={outboundHref("https://github.com/ChainBench/OpenChainBench")}
+          </OutboundLink>
+          <OutboundLink
+            href={SITE.github}
             className="site-rail-label inline-flex items-center hover:text-ink transition-colors"
             aria-label="View source on GitHub"
             target="_blank"
-            rel="noopener"
           >
             <GithubIcon size={15} />
-          </a>
+          </OutboundLink>
           <div className="site-rail-label ml-auto">
             <ThemeToggle />
           </div>

@@ -4,7 +4,7 @@ import { DataApiHubTabs } from "@/components/data-api-hub-tabs";
 import { pageMetadata } from "@/lib/page-metadata";
 import { safeJsonLd, buildBreadcrumbJsonLd } from "@/lib/jsonld";
 import { SITE } from "@/data/site";
-import { outboundHref } from "@/lib/outbound-click";
+import { OutboundLink } from "@/components/outbound-link";
 import { isDevOnlyBench, REMOVED_BENCH_SLUGS } from "@/lib/removed-benches";
 import { hubDateModified, datedCollectionLd } from "@/lib/hub-dates";
 
@@ -257,14 +257,13 @@ export default async function DataApiHubPage() {
           freshness measures the gap between a Base block confirmation and
           the moment each wallet API returns the transaction. All harnesses
           are open source on{" "}
-          <a
-            href={outboundHref("https://github.com/ChainBench/OpenChainBench")}
+          <OutboundLink
+            href={SITE.github}
             className="underline hover:text-ink"
-            rel="noopener"
             target="_blank"
           >
             GitHub
-          </a>
+          </OutboundLink>
           . Data released under{" "}
           <Link
             href="https://creativecommons.org/licenses/by/4.0/"

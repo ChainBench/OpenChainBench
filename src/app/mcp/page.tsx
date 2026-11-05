@@ -5,7 +5,7 @@ import { getBenchmarksSafe } from "@/data/benchmarks";
 import { mcpPageLd } from "@/lib/hub-jsonld";
 import { safeJsonLd } from "@/lib/jsonld";
 import { pageMetadata } from "@/lib/page-metadata";
-import { outboundHref } from "@/lib/outbound-click";
+import { OutboundLink } from "@/components/outbound-link";
 
 const MCP_URL = "https://openchainbench.com/api/mcp/mcp";
 
@@ -89,13 +89,12 @@ export default async function McpPage() {
       <p className="mt-5 max-w-2xl text-lg text-ink-soft leading-snug">
         OpenChainBench ships an MCP server. Point Claude Desktop, Cursor,
         ChatGPT, or any{" "}
-        <a
-          href={outboundHref("https://modelcontextprotocol.io")}
+        <OutboundLink
+          href="https://modelcontextprotocol.io"
           className="lnk"
-          rel="noopener"
         >
           MCP-capable client
-        </a>{" "}
+        </OutboundLink>{" "}
         at one URL and live crypto-infra benchmarks become a first-class
         tool for your model.
       </p>
@@ -221,9 +220,9 @@ export default async function McpPage() {
         </header>
         <p className="mt-4 text-sm text-ink-soft leading-relaxed">
           Continue, Zed, Cline, Goose, custom agents on the{" "}
-          <a href={outboundHref("https://github.com/modelcontextprotocol")} className="lnk" rel="noopener">
+          <OutboundLink href="https://github.com/modelcontextprotocol" className="lnk">
             MCP SDKs
-          </a>
+          </OutboundLink>
           : all accept the same URL with the streamable-HTTP transport. SSE
           is intentionally disabled. Anything else, raw curl works:
         </p>
@@ -321,13 +320,12 @@ export default async function McpPage() {
           public endpoint can&apos;t be used to walk the underlying Prometheus.
           Rate limits, body caps, batch rejection and SSE disable are
           enforced at the route. Source is on{" "}
-          <a
-            href={outboundHref("https://github.com/ChainBench/OpenChainBench/blob/main/src/app/api/mcp/%5Btransport%5D/route.ts")}
+          <OutboundLink
+            href="https://github.com/ChainBench/OpenChainBench/blob/main/src/app/api/mcp/%5Btransport%5D/route.ts"
             className="lnk break-all"
-            rel="noopener"
           >
             GitHub
-          </a>
+          </OutboundLink>
           .
         </p>
       </section>

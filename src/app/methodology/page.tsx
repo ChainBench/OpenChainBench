@@ -2,7 +2,8 @@ import Link from "next/link";
 import { methodologyPageLd, METHODOLOGY_REVISED } from "@/lib/hub-jsonld";
 import { safeJsonLd } from "@/lib/jsonld";
 import { pageMetadata } from "@/lib/page-metadata";
-import { outboundHref } from "@/lib/outbound-click";
+import { OutboundLink } from "@/components/outbound-link";
+import { SITE } from "@/data/site";
 
 export const metadata: import("next").Metadata = pageMetadata({
   path: "/methodology",
@@ -217,19 +218,19 @@ export default function MethodologyPage() {
           </span>
           <p className="text-base text-ink-soft leading-relaxed max-w-3xl">
             Found a number you can&apos;t reproduce? File a{" "}
-            <a
+            <OutboundLink
               className="text-ink font-medium underline-offset-4 hover:underline hover:text-accent transition-colors"
-              href={outboundHref("https://github.com/ChainBench/OpenChainBench/issues/new?template=data-quality.yml")}
+              href="https://github.com/ChainBench/OpenChainBench/issues/new?template=data-quality.yml"
             >
               data-quality issue
-            </a>{" "}
+            </OutboundLink>{" "}
             (the published figure looks wrong) or a{" "}
-            <a
+            <OutboundLink
               className="text-ink font-medium underline-offset-4 hover:underline hover:text-accent transition-colors"
-              href={outboundHref("https://github.com/ChainBench/OpenChainBench/issues/new?template=provider-correction.yml")}
+              href="https://github.com/ChainBench/OpenChainBench/issues/new?template=provider-correction.yml"
             >
               provider correction
-            </a>{" "}
+            </OutboundLink>{" "}
             (your service measures a different value). Material errors are
             corrected in place with a dated note on the affected report.
           </p>
@@ -243,12 +244,12 @@ export default function MethodologyPage() {
           About page
         </Link>{" "}
         or browse the source on{" "}
-        <a
+        <OutboundLink
           className="lnk text-ink-soft"
-          href={outboundHref("https://github.com/ChainBench/OpenChainBench")}
+          href={SITE.github}
         >
           GitHub
-        </a>
+        </OutboundLink>
         .
       </p>
     </article>

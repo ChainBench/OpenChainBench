@@ -23,7 +23,7 @@ import { PERP_VENUE_META, benchRowsForVenue } from "@/lib/perp-venue-context";
 import { fetchPerpCohort } from "@/lib/perp-stats";
 import { PerpVenueBenchCards } from "@/components/perp-venue-bench-cards";
 import { LedgerTable } from "@/components/ledger-table";
-import { outboundHref } from "@/lib/outbound-click";
+import { OutboundLink } from "@/components/outbound-link";
 
 export const revalidate = 3600;
 
@@ -293,10 +293,10 @@ export default async function AlternativePage({
       {alt.target_url && (
         <p className="mt-4 text-xs text-ink-muted break-words">
           About {alt.target_product}:{" "}
-          <a className="lnk break-all" href={outboundHref(alt.target_url)} target="_blank" rel="noopener">
+          <OutboundLink className="lnk break-all" href={alt.target_url} target="_blank">
             {alt.target_url.replace(/^https?:\/\//, "")}
             <ArrowUpRight size={11} strokeWidth={2} className="inline ml-0.5 shrink-0" />
-          </a>
+          </OutboundLink>
         </p>
       )}
 

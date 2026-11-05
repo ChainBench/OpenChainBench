@@ -9,7 +9,7 @@ import { EXPORT_VIDEO_ENABLED } from "@/lib/export-video/config";
 import { fetchBenchSeries } from "@/lib/export-video/fetch-series";
 import { ProviderLogo } from "@/components/provider-logo";
 import { fmtUnit } from "@/lib/format";
-import { outboundHref } from "@/lib/outbound-click";
+import { OutboundLink } from "@/components/outbound-link";
 import {
   RANGE_IDS,
   RANGE_LABEL,
@@ -873,14 +873,13 @@ function ModalBody({
                 >
                   <Download size={14} strokeWidth={2} /> MP4
                 </a>
-                <a
-                  href={outboundHref(tweetIntent(state.url))}
+                <OutboundLink
+                  href={tweetIntent(state.url)}
                   target="_blank"
-                  rel="noopener"
                   className="inline-flex items-center gap-2 rounded-md border border-ink px-3 py-2 text-[11px] font-medium uppercase tracking-[0.18em] text-ink hover:bg-ink hover:text-paper transition-colors"
                 >
                   <Share2 size={14} strokeWidth={2} /> Share on X
-                </a>
+                </OutboundLink>
                 <button
                   type="button"
                   onClick={() => onCopy(state.url)}

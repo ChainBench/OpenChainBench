@@ -63,7 +63,7 @@ import { renderTemplate } from "@/lib/bench-template";
 import { canonicalChainSlug } from "@/lib/chain-aliases";
 import { PERSON_ID } from "@/lib/hub-jsonld";
 import type { Benchmark } from "@/types/benchmark";
-import { outboundHref } from "@/lib/outbound-click";
+import { OutboundLink } from "@/components/outbound-link";
 
 // ISR with a 60 s revalidate window. The page is prerendered by
 // generateStaticParams below and served from the CDN until 60 s after
@@ -1232,10 +1232,10 @@ export default async function BenchmarkPage({
       {!isDraft && (
         <p className="mt-4 text-[11px] uppercase tracking-[0.16em] text-ink-muted break-all">
           Source code{" "}
-          <a className="lnk inline max-w-full" href={outboundHref(benchmark.source)}>
+          <OutboundLink className="lnk inline max-w-full" href={benchmark.source}>
             {benchmark.source.replace("https://github.com/", "github.com/")}
             <ArrowUpRight size={12} strokeWidth={2} className="inline ml-1" />
-          </a>
+          </OutboundLink>
         </p>
       )}
 
@@ -1373,13 +1373,13 @@ function DraftNotice({ source }: { source: string }) {
         The spec is published. Numbers will appear here as soon as the harness
         starts emitting metrics.
       </p>
-      <a
-        href={outboundHref(source)}
+      <OutboundLink
+        href={source}
         className="mt-4 inline-flex items-center gap-1 text-sm font-medium lnk"
       >
         Source code
         <ArrowUpRight size={12} strokeWidth={2} />
-      </a>
+      </OutboundLink>
     </div>
   );
 }

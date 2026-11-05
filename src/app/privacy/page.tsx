@@ -86,14 +86,17 @@ export default function PrivacyPage() {
         is created.
       </p>
       <p className="mt-4 text-base leading-relaxed text-ink-soft">
-        Clicks on most links to other sites are counted on the server too,
-        because those links pass through <code>/go</code> on the way out. That
-        event records the destination, the page you came from and your
-        browser&rsquo;s user agent, and its identifier is a daily hash of that
-        user agent. It carries neither your IP address nor a device identifier,
-        and no profile is created. Links to a Creative Commons license, a DOI
-        or our own subdomains skip <code>/go</code> and are counted in your
-        browser, like the actions above.
+        Opening most links to other sites is counted on the server too, because
+        those links pass through <code>/go</code> on the way out. The count
+        happens when <code>/go</code> receives the request, so a link opened
+        from another site or pasted into your browser is counted even if you
+        stop at the confirmation page. That event records the destination, the
+        full address of the page you came from, which can be on another site,
+        and your browser&rsquo;s user agent and accept header. Its identifier is
+        a daily hash of that user agent. It carries neither your IP address nor
+        a device identifier, and no profile is created. Links to a Creative
+        Commons license, a DOI or our own subdomains skip <code>/go</code> and
+        are counted in your browser, like the actions above.
       </p>
       <p className="mt-4 text-base leading-relaxed text-ink-soft">
         We never ask for and never want: your name, your email, a wallet
@@ -115,11 +118,11 @@ export default function PrivacyPage() {
           To measure whether pages load well, which is what the performance
           timings are for.
         </li>
-        <li>To count how many readers we send to each provider.</li>
+        <li>To count how many times links to each provider are opened.</li>
         <li>
-          To rate limit the public API per address, so one caller cannot deny
-          the service to everyone else, and to limit how many clicks one address
-          can add to the count on <code>/go</code>.
+          To rate limit the public API per IP address, so one caller cannot
+          deny the service to everyone else, and to limit how many clicks one
+          IP address can add to the count on <code>/go</code>.
         </li>
       </ul>
       <p className="mt-4 text-base leading-relaxed text-ink-soft">
@@ -144,9 +147,12 @@ export default function PrivacyPage() {
       <p className="mt-4 text-base leading-relaxed text-ink-soft">
         Nobody else. We do not sell data, share it with advertisers or data
         brokers, or pass it to any third party beyond those two processors.
-        The site a link takes you to learns that you came from OpenChainBench,
-        through the <code>utm_source</code> tag and your browser&rsquo;s
-        referrer header.
+      </p>
+      <p className="mt-4 text-base leading-relaxed text-ink-soft">
+        The site a link takes you to is separate from this. It sees the{" "}
+        <code>utm_source</code> tag on most links and, unless your browser
+        withholds it, our domain in the referrer header. It learns that you came
+        from OpenChainBench, not from which page.
       </p>
 
       <SectionRule label="How long it is kept" />
@@ -157,9 +163,12 @@ export default function PrivacyPage() {
           deleted by the processor.
         </li>
         <li>
-          <strong className="text-ink">Rate-limit counters: minutes.</strong>{" "}
-          They live in the memory of the serving process, are never written to
-          disk, and are discarded whenever the site is redeployed.
+          <strong className="text-ink">
+            Rate-limit counters: until the serving process ends.
+          </strong>{" "}
+          Each is keyed by IP address, lives in that process&rsquo;s memory and
+          is never written to disk. It can be dropped sooner when the table
+          fills up or the site is redeployed.
         </li>
         <li>
           <strong className="text-ink">Benchmark measurements: indefinitely</strong>,
@@ -171,12 +180,15 @@ export default function PrivacyPage() {
       <SectionRule label="What you can turn off" />
       <ul className="space-y-2 text-base leading-relaxed text-ink-soft">
         <li>
-          Analytics in your browser can be blocked by any content blocker.
-          Nothing on the site stops working.
+          Analytics in your browser stop if you turn off JavaScript. A content
+          blocker stops PostHog only if it blocks <code>/ingest</code> on this
+          site, because those events go through our own origin. Vercel&rsquo;s
+          web analytics use a separate script. Blocking either breaks nothing
+          on the site.
         </li>
         <li>
-          A content blocker does not stop the count of clicks that pass through{" "}
-          <code>/go</code>, because it happens on the server.
+          The count of clicks through <code>/go</code> cannot be turned off. It
+          happens on the server, so a content blocker does not stop it.
         </li>
         <li>
           Clearing your browser storage removes the random device identifier,
