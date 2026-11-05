@@ -858,7 +858,11 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // v167: FluxRPC leaves the Singapore probe (no Asian endpoint): its
   //       queries exclude region="sgp" and the disclosure says so. Moves
   //       with all-benchmarks-v160 and bench-filters-v92.
-  ["bench-unfiltered-v167", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v168: bench 314 solana-rpc-ws, the private Solana WebSocket race,
+  //       returns (Chainstack, FluxRPC, GetBlock, Quicknode). A new bench
+  //       and four new appearances. Moves with all-benchmarks-v161,
+  //       bench-filters-v93 and providers-v55.
+  ["bench-unfiltered-v168", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -1199,7 +1203,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v158: lockstep with bench-unfiltered-v165 (bench 313 live again).
   // v159: lockstep with bench-unfiltered-v166 (FluxRPC, keyed Solana).
   // v160: lockstep with bench-unfiltered-v167 (FluxRPC without Singapore).
-  ["all-benchmarks-v160", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v161: lockstep with bench-unfiltered-v168 (bench 314 solana-rpc-ws).
+  ["all-benchmarks-v161", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1428,7 +1433,8 @@ const loadBenchmarkFiltered = unstable_cache(
   //      tabs are filtered views and both gain the FluxRPC row.
   // v92: lockstep with bench-unfiltered-v167. The Singapore tab of the
   //      Private cohort loses its FluxRPC row.
-  ["bench-filters-v92", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v93: lockstep with bench-unfiltered-v168. Bench 314 declares regions.
+  ["bench-filters-v93", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 

@@ -78,16 +78,20 @@ func TestAWindowAsLongAsThePeriodNeverCloses(t *testing.T) {
 
 // The skip list is compiled in so a lost variable cannot restore the bill,
 // and "none" is the deliberate way to empty it.
-func TestSkipListDefaultsToTheThreeFastestChains(t *testing.T) {
+// Solana left with the other two on 2026-10-17 and came back on 2026-11-05
+// under the ten-minute window (bench 314).
+func TestSkipListDefaultsToTheTwoFastestChains(t *testing.T) {
 	t.Setenv("RPC_KEYED_WS_SKIP_CHAINS", "")
 	skip := wsSkipChains()
-	for _, c := range []string{"robinhood", "solana", "arbitrum"} {
+	for _, c := range []string{"robinhood", "arbitrum"} {
 		if !skip[c] {
 			t.Errorf("%s should be skipped by default", c)
 		}
 	}
-	if skip["ethereum"] {
-		t.Error("ethereum must not be skipped by default")
+	for _, c := range []string{"ethereum", "solana"} {
+		if skip[c] {
+			t.Errorf("%s must not be skipped by default", c)
+		}
 	}
 
 	t.Setenv("RPC_KEYED_WS_SKIP_CHAINS", "none")

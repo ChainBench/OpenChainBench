@@ -53,6 +53,11 @@ describe("the provider set behind the cache keys", () => {
     const hash = createHash("sha256").update(sets.join("\n")).digest("hex").slice(0, 16);
     const count = sets.reduce((n, s) => n + s.split(":")[1].split(",").length, 0);
 
+    // An ADDITION on 2026-11-05: bench 314 solana-rpc-ws returns, the
+    // private Solana WebSocket race (chainstack, fluxrpc, getblock,
+    // quicknode). A new bench with a region dimension: v168/v161/v93 and
+    // providers-v55.
+    //
     // An ADDITION on 2026-11-05: FluxRPC joins the keyed Solana cohort,
     // warm and cold (fluxrpc, fluxrpc-cold). New to the site, so a product
     // page too: v166/v159/v91 and providers-v54.
@@ -161,6 +166,6 @@ describe("the provider set behind the cache keys", () => {
         "Then set EXPECTED to the hash in this failure, and add the provider",
         `to PRODUCT_NAMES if it needs a display name. Providers now: ${count}.`,
       ].join("\n"),
-    ).toBe("db13863ffd069279");
+    ).toBe("e3b260e31c97ae8d");
   });
 });
