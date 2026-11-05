@@ -310,31 +310,26 @@ The first three were re-checked on 4 November 2026. Alchemy's figure is from
 application, so its 403 today is our configuration and not a refusal, and we
 cannot re-measure it until we turn it back on.
 
-Retention is where we expected to find a difference, and there is none among
-the three we can ask. A consensus node keeps blob sidecars for about eighteen
-days by default, so anything past that is a product decision. All three serve
-them at every depth we tried, within a byte of each other:
+Retention is where we expected to find a difference, and there is none.
+A consensus node keeps blob sidecars for about eighteen days by default, so
+anything past that is a product decision. We asked all three for the same
+four slots, at roughly thirty days, six months, one year and two years back,
+each chosen because it carries blobs. Every one came back served, with
+responses identical to the byte. All three therefore keep blob data about
+forty times longer than the client default, and none of them says so:
+Chainstack's own guide still pins retention at the eighteen day default while
+its endpoint returns a two year old sidecar.
 
-| Depth | Blobs in that slot | Quicknode | Chainstack | Dwellir |
-|---|---|---|---|---|
-| ~30 days | 10 | 2,641,514 bytes | 2,641,513 | 2,641,514 |
-| ~6 months | 1 | 264,217 | 264,216 | 264,217 |
-| ~1 year | 9 | 2,377,382 | 2,377,381 | 2,377,382 |
-| ~2 years | 3 | 792,507 | 792,506 | 792,507 |
-
-So all three keep blob data roughly forty times longer than the client
-default, and none of them advertises it. Chainstack's own guide still pins
-retention at the eighteen day default while its endpoint returns a two year
-old sidecar.
+If you are indexing rollup data, that is the useful answer: choose between
+these three on something else, because on blob retention they are the same.
 
 One measurement note, because getting it wrong produces a false claim about a
 provider. Not every slot carries a blob transaction, so asking for a sidecar
 at an arbitrary slot can return HTTP 200 with an empty list, which means that
 slot had none rather than that the provider discarded it. Only a 404 is a
-refusal. A first pass at this table sampled one slot per depth, read the
-empty answers as discarded data, and would have published a retention cliff
-that does not exist. The table above asks each provider for the same slot,
-chosen because it does carry blobs.
+refusal. A first pass sampled one slot per depth, read the empty answers as
+discarded data, and would have published a retention cliff that does not
+exist.
 
 This stays a dated check rather than a board column on purpose. The figures
 do not move: a retention policy is a product decision, not a latency, and
