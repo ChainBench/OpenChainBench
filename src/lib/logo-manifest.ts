@@ -1132,7 +1132,6 @@ const ALIASES: Record<string, string> = {
   // a second row per vendor. Without these each `-same-block` slug
   // builds its own /products page carrying the vendor's title, which is
   // what the cold tier did before its aliases landed.
-  "sushi-same-block": "sushi",
   "kyberswap-same-block": "kyberswap",
   "paraswap-same-block": "paraswap",
   "lifi-same-block": "lifi",
