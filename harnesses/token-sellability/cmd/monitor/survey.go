@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log"
 	"sync"
 	"time"
@@ -57,6 +58,32 @@ func paceOf(slug string) time.Duration {
 	}
 }
 
+// cooldowns remember when each aggregator asked to be left alone, across
+// sweeps, because a window longer than a sweep is the whole point of the
+// header and a per-sweep memory would forget it between attempts.
+//
+// LI.FI answered 40 of 40 with 429 on three consecutive sweeps. Its window is
+// 20 minutes and ours is 15, so every sweep walked into the same wall and
+// each blocked request pushed the wall further out. Nothing was wrong with
+// the pace; what was wrong was asking at all.
+var cooldowns sync.Map // slug -> time.Time, when it is fair to ask again
+
+func coolingDown(slug string) (time.Duration, bool) {
+	v, ok := cooldowns.Load(slug)
+	if !ok {
+		return 0, false
+	}
+	until, _ := v.(time.Time)
+	if d := time.Until(until); d > 0 {
+		return d, true
+	}
+	return 0, false
+}
+
+func coolDown(slug string, d time.Duration) {
+	cooldowns.Store(slug, time.Now().Add(d))
+}
+
 // surveyRow is what one aggregator said about one token.
 type surveyRow struct {
 	quoted bool
@@ -101,16 +128,31 @@ func runSurvey(ctx context.Context, cfg config, tokens []string,
 		wg.Add(1)
 		go func(a Aggregator) {
 			defer wg.Done()
+			if wait, cooling := coolingDown(a.Slug()); cooling {
+				// Asking now would extend the window we are waiting out and
+				// produce a column of unanswered requests that looks like an
+				// outage rather than our own impatience.
+				log.Printf("[sellability] survey %s: skipped, asked to wait %s",
+					a.Slug(), wait.Round(time.Second))
+				return
+			}
 			gap := paceOf(a.Slug())
 			errs := 0
 			var lastErr error
 			start := time.Now()
 			for _, tok := range tokens {
-				d, ok2 := decimals[tok]
-				if !ok2 {
+				d, known := decimals[tok]
+				if !known {
 					d = 18
 				}
 				ok, err := a.WillQuote(ctx, tok, d, cfg.ethIn)
+				var limited *rateLimited
+				if errors.As(err, &limited) {
+					coolDown(a.Slug(), limited.after)
+					log.Printf("[sellability] survey %s: stopped after %d of %d, %s",
+						a.Slug(), len(s.rows), len(tokens), limited.Error())
+					return
+				}
 				if err != nil {
 					errs++
 					lastErr = err

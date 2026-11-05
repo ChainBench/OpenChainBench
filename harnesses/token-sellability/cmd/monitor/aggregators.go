@@ -96,6 +96,38 @@ func isRefusal(body []byte, known []refusal) (bool, string) {
 	return false, ""
 }
 
+// rateLimited is returned when an aggregator says it will not serve us for a
+// while. It is a different thing from a failed request and has to be, because
+// the right response is to stop asking rather than to try the next token.
+//
+// Not honouring it is self-inflicted: LI.FI answered 40 of 40 with 429 on
+// three consecutive sweeps because every blocked request counted against the
+// window it was waiting out. The header says exactly how long to wait and the
+// first version of this file read the limit while ignoring the reset.
+type rateLimited struct {
+	slug  string
+	after time.Duration
+	body  string
+}
+
+func (e *rateLimited) Error() string {
+	return fmt.Sprintf("rate limited, retry in %s: %s", e.after.Round(time.Second), e.body)
+}
+
+// retryAfter reads how long to wait from whichever header the aggregator
+// uses. Falls back to a minute, which is longer than any pace here and short
+// enough to recover inside a sweep.
+func retryAfter(h http.Header) time.Duration {
+	for _, k := range []string{"Retry-After", "RateLimit-Reset", "X-RateLimit-Reset"} {
+		if v := h.Get(k); v != "" {
+			if n, err := strconv.Atoi(strings.TrimSpace(v)); err == nil && n > 0 {
+				return time.Duration(n) * time.Second
+			}
+		}
+	}
+	return time.Minute
+}
+
 // badStatus renders a non-200 with the first of its body, because the body
 // is where the reason is. A bare "http 400" cannot tell an unsupported chain
 // from a token the aggregator cannot describe, and those two call for
@@ -112,20 +144,20 @@ func badStatus(code int, body []byte) error {
 	return fmt.Errorf("http %d: %s", code, msg)
 }
 
-func httpGet(ctx context.Context, c *http.Client, endpoint string) ([]byte, int, error) {
+func httpGet(ctx context.Context, c *http.Client, endpoint string) ([]byte, int, http.Header, error) {
 	req, err := http.NewRequestWithContext(ctx, "GET", endpoint, nil)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, nil, err
 	}
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("x-client-id", "openchainbench")
 	resp, err := c.Do(req)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, nil, err
 	}
 	defer resp.Body.Close()
 	b, _ := io.ReadAll(resp.Body)
-	return b, resp.StatusCode, nil
+	return b, resp.StatusCode, resp.Header, nil
 }
 
 // positive reports whether a decimal amount string is a real route rather
@@ -151,10 +183,13 @@ func (a sushiAgg) WillQuote(ctx context.Context, token string, decimals int, amt
 	v.Set("amount", amt)
 	v.Set("maxSlippage", "0.05")
 	v.Set("sender", taker)
-	b, code, err := httpGet(ctx, a.c, "https://api.sushi.com/swap/v7/"+
+	b, code, hdr, err := httpGet(ctx, a.c, "https://api.sushi.com/swap/v7/"+
 		strconv.Itoa(chainID)+"?"+v.Encode())
 	if err != nil {
 		return false, err
+	}
+	if code == 429 {
+		return false, &rateLimited{a.Slug(), retryAfter(hdr), trimReason(string(b))}
 	}
 	if code != 200 {
 		return false, badStatus(code, b)
@@ -181,10 +216,13 @@ func (a kyberAgg) WillQuote(ctx context.Context, token string, decimals int, amt
 	v.Set("tokenOut", token)
 	v.Set("amountIn", amt)
 	v.Set("saveGas", "false")
-	b, code, err := httpGet(ctx, a.c,
+	b, code, hdr, err := httpGet(ctx, a.c,
 		"https://aggregator-api.kyberswap.com/"+chainSlug+"/api/v1/routes?"+v.Encode())
 	if err != nil {
 		return false, err
+	}
+	if code == 429 {
+		return false, &rateLimited{a.Slug(), retryAfter(hdr), trimReason(string(b))}
 	}
 	if code != 200 {
 		if no, _ := isRefusal(b, kyberRefusals); no {
@@ -221,9 +259,12 @@ func (a paraswapAgg) WillQuote(ctx context.Context, token string, decimals int, 
 	// rather than pricing a wrong size.
 	v.Set("destDecimals", strconv.Itoa(decimals))
 	v.Set("side", "SELL")
-	b, code, err := httpGet(ctx, a.c, "https://api.paraswap.io/prices?"+v.Encode())
+	b, code, hdr, err := httpGet(ctx, a.c, "https://api.paraswap.io/prices?"+v.Encode())
 	if err != nil {
 		return false, err
+	}
+	if code == 429 {
+		return false, &rateLimited{a.Slug(), retryAfter(hdr), trimReason(string(b))}
 	}
 	if code != 200 {
 		if no, _ := isRefusal(b, paraswapRefusals); no {
@@ -254,7 +295,7 @@ func (a lifiAgg) WillQuote(ctx context.Context, token string, decimals int, amt 
 	v.Set("toToken", token)
 	v.Set("fromAmount", amt)
 	v.Set("fromAddress", taker)
-	b, code, err := httpGet(ctx, a.c, "https://li.quest/v1/quote?"+v.Encode())
+	b, code, hdr, err := httpGet(ctx, a.c, "https://li.quest/v1/quote?"+v.Encode())
 	if err != nil {
 		return false, err
 	}
@@ -262,6 +303,9 @@ func (a lifiAgg) WillQuote(ctx context.Context, token string, decimals int, amt 
 	// failure to ask.
 	if code == 404 {
 		return false, nil
+	}
+	if code == 429 {
+		return false, &rateLimited{a.Slug(), retryAfter(hdr), trimReason(string(b))}
 	}
 	if code != 200 {
 		if no, _ := isRefusal(b, lifiRefusals); no {
@@ -364,6 +408,9 @@ func (a trnchAgg) WillQuote(ctx context.Context, token string, decimals int, amt
 	}
 	_ = json.Unmarshal(b, &r)
 
+	if resp.StatusCode == 429 {
+		return false, &rateLimited{a.Slug(), retryAfter(resp.Header), trimReason(string(b))}
+	}
 	if resp.StatusCode != 200 {
 		if no, _ := isRefusal(b, trnchRefusals); no {
 			return false, nil
