@@ -104,7 +104,7 @@ providers:
     tag: No auth, per chain aggregator engine
     formula: "Share of the tokens whose sale reverted when attempted a few blocks after the buy that KyberSwap still returned a route INTO, counted over 24h of sweeps. Lower is better."
     queries:
-      p50: 100 * count(count by (token) (max_over_time(token_sellability_routed_token{aggregator="kyberswap",tier="delayed"}[24h]))) / (count(count by (token) (max_over_time(token_sellability_asked_token{aggregator="kyberswap",tier="delayed"}[24h]))) > 0)
+      p50: 100 * count(count by (token) (max_over_time(token_sellability_routed_token{aggregator="kyberswap",tier="delayed"}[24h]) and on(token) max_over_time(token_sellability_asked_token{aggregator="kyberswap",tier="delayed"}[24h]))) / (count(count by (token) (max_over_time(token_sellability_asked_token{aggregator="kyberswap",tier="delayed"}[24h]))) > 0)
       sample_size: count(count by (token) (max_over_time(token_sellability_asked_token{aggregator="kyberswap",tier="delayed"}[24h])))
 
   - slug: paraswap
@@ -113,7 +113,7 @@ providers:
     tag: Trades as Velora, no key
     formula: "Share of the tokens whose sale reverted when attempted a few blocks after the buy that ParaSwap still returned a route INTO, counted over 24h of sweeps. Lower is better."
     queries:
-      p50: 100 * count(count by (token) (max_over_time(token_sellability_routed_token{aggregator="paraswap",tier="delayed"}[24h]))) / (count(count by (token) (max_over_time(token_sellability_asked_token{aggregator="paraswap",tier="delayed"}[24h]))) > 0)
+      p50: 100 * count(count by (token) (max_over_time(token_sellability_routed_token{aggregator="paraswap",tier="delayed"}[24h]) and on(token) max_over_time(token_sellability_asked_token{aggregator="paraswap",tier="delayed"}[24h]))) / (count(count by (token) (max_over_time(token_sellability_asked_token{aggregator="paraswap",tier="delayed"}[24h]))) > 0)
       sample_size: count(count by (token) (max_over_time(token_sellability_asked_token{aggregator="paraswap",tier="delayed"}[24h])))
 
   - slug: lifi
@@ -122,7 +122,7 @@ providers:
     tag: Cross-chain relayer
     formula: "Share of the tokens whose sale reverted when attempted a few blocks after the buy that LI.FI still returned a route INTO, counted over 24h of sweeps. Lower is better."
     queries:
-      p50: 100 * count(count by (token) (max_over_time(token_sellability_routed_token{aggregator="lifi",tier="delayed"}[24h]))) / (count(count by (token) (max_over_time(token_sellability_asked_token{aggregator="lifi",tier="delayed"}[24h]))) > 0)
+      p50: 100 * count(count by (token) (max_over_time(token_sellability_routed_token{aggregator="lifi",tier="delayed"}[24h]) and on(token) max_over_time(token_sellability_asked_token{aggregator="lifi",tier="delayed"}[24h]))) / (count(count by (token) (max_over_time(token_sellability_asked_token{aggregator="lifi",tier="delayed"}[24h]))) > 0)
       sample_size: count(count by (token) (max_over_time(token_sellability_asked_token{aggregator="lifi",tier="delayed"}[24h])))
 
   - slug: trnch
@@ -131,7 +131,7 @@ providers:
     tag: Screens the token with its own agent before polling routers
     formula: "Share of the tokens whose sale reverted when attempted a few blocks after the buy that Trnch still returned a route INTO, counted over 24h of sweeps. Lower is better."
     queries:
-      p50: 100 * count(count by (token) (max_over_time(token_sellability_routed_token{aggregator="trnch",tier="delayed"}[24h]))) / (count(count by (token) (max_over_time(token_sellability_asked_token{aggregator="trnch",tier="delayed"}[24h]))) > 0)
+      p50: 100 * count(count by (token) (max_over_time(token_sellability_routed_token{aggregator="trnch",tier="delayed"}[24h]) and on(token) max_over_time(token_sellability_asked_token{aggregator="trnch",tier="delayed"}[24h]))) / (count(count by (token) (max_over_time(token_sellability_asked_token{aggregator="trnch",tier="delayed"}[24h]))) > 0)
       sample_size: count(count by (token) (max_over_time(token_sellability_asked_token{aggregator="trnch",tier="delayed"}[24h])))
 
   - slug: kyberswap-same-block
@@ -140,7 +140,7 @@ providers:
     tag: No auth, per chain aggregator engine
     formula: "Share of the tokens whose sale reverted when attempted in the same block as the buy that KyberSwap still returned a route INTO, counted over 24h of sweeps. Lower is better."
     queries:
-      p50: 100 * count(count by (token) (max_over_time(token_sellability_routed_token{aggregator="kyberswap",tier="same_block"}[24h]))) / (count(count by (token) (max_over_time(token_sellability_asked_token{aggregator="kyberswap",tier="same_block"}[24h]))) > 0)
+      p50: 100 * count(count by (token) (max_over_time(token_sellability_routed_token{aggregator="kyberswap",tier="same_block"}[24h]) and on(token) max_over_time(token_sellability_asked_token{aggregator="kyberswap",tier="same_block"}[24h]))) / (count(count by (token) (max_over_time(token_sellability_asked_token{aggregator="kyberswap",tier="same_block"}[24h]))) > 0)
       sample_size: count(count by (token) (max_over_time(token_sellability_asked_token{aggregator="kyberswap",tier="same_block"}[24h])))
 
   - slug: paraswap-same-block
@@ -149,7 +149,7 @@ providers:
     tag: Trades as Velora, no key
     formula: "Share of the tokens whose sale reverted when attempted in the same block as the buy that ParaSwap still returned a route INTO, counted over 24h of sweeps. Lower is better."
     queries:
-      p50: 100 * count(count by (token) (max_over_time(token_sellability_routed_token{aggregator="paraswap",tier="same_block"}[24h]))) / (count(count by (token) (max_over_time(token_sellability_asked_token{aggregator="paraswap",tier="same_block"}[24h]))) > 0)
+      p50: 100 * count(count by (token) (max_over_time(token_sellability_routed_token{aggregator="paraswap",tier="same_block"}[24h]) and on(token) max_over_time(token_sellability_asked_token{aggregator="paraswap",tier="same_block"}[24h]))) / (count(count by (token) (max_over_time(token_sellability_asked_token{aggregator="paraswap",tier="same_block"}[24h]))) > 0)
       sample_size: count(count by (token) (max_over_time(token_sellability_asked_token{aggregator="paraswap",tier="same_block"}[24h])))
 
   - slug: lifi-same-block
@@ -158,7 +158,7 @@ providers:
     tag: Cross-chain relayer
     formula: "Share of the tokens whose sale reverted when attempted in the same block as the buy that LI.FI still returned a route INTO, counted over 24h of sweeps. Lower is better."
     queries:
-      p50: 100 * count(count by (token) (max_over_time(token_sellability_routed_token{aggregator="lifi",tier="same_block"}[24h]))) / (count(count by (token) (max_over_time(token_sellability_asked_token{aggregator="lifi",tier="same_block"}[24h]))) > 0)
+      p50: 100 * count(count by (token) (max_over_time(token_sellability_routed_token{aggregator="lifi",tier="same_block"}[24h]) and on(token) max_over_time(token_sellability_asked_token{aggregator="lifi",tier="same_block"}[24h]))) / (count(count by (token) (max_over_time(token_sellability_asked_token{aggregator="lifi",tier="same_block"}[24h]))) > 0)
       sample_size: count(count by (token) (max_over_time(token_sellability_asked_token{aggregator="lifi",tier="same_block"}[24h])))
 
   - slug: trnch-same-block
@@ -167,5 +167,5 @@ providers:
     tag: Screens the token with its own agent before polling routers
     formula: "Share of the tokens whose sale reverted when attempted in the same block as the buy that Trnch still returned a route INTO, counted over 24h of sweeps. Lower is better."
     queries:
-      p50: 100 * count(count by (token) (max_over_time(token_sellability_routed_token{aggregator="trnch",tier="same_block"}[24h]))) / (count(count by (token) (max_over_time(token_sellability_asked_token{aggregator="trnch",tier="same_block"}[24h]))) > 0)
+      p50: 100 * count(count by (token) (max_over_time(token_sellability_routed_token{aggregator="trnch",tier="same_block"}[24h]) and on(token) max_over_time(token_sellability_asked_token{aggregator="trnch",tier="same_block"}[24h]))) / (count(count by (token) (max_over_time(token_sellability_asked_token{aggregator="trnch",tier="same_block"}[24h]))) > 0)
       sample_size: count(count by (token) (max_over_time(token_sellability_asked_token{aggregator="trnch",tier="same_block"}[24h])))
