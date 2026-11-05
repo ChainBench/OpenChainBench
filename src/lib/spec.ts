@@ -878,7 +878,11 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       its disclaimer promised a reproducibility the page does not
   //       offer. Both are editorial and a cached entry keeps the old
   //       words through a green deploy.
-  ["bench-unfiltered-v171", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v172: bench 313 counts DISTINCT tokens instead of questions, adds a
+  //       floor under what counts as an exit, and puts the Tokens asked
+  //       column on the same 24h window as the score it sits beside.
+  //       Every number on the board moves.
+  ["bench-unfiltered-v172", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -1223,7 +1227,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v162: lockstep with bench-unfiltered-v169 (bench 313 cohort rule).
   // v163: lockstep with bench-unfiltered-v170 (bench 313 drops sushi).
   // v164: lockstep with bench-unfiltered-v171 (bench 313 copy).
-  ["all-benchmarks-v164", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v165: lockstep with bench-unfiltered-v172 (bench 313 distinct tokens).
+  ["all-benchmarks-v165", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);

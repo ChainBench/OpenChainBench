@@ -30,6 +30,8 @@ func scoreFromSurvey(cfg config, s *Survey, failed map[string][]string,
 					continue
 				}
 				asked++
+				askedTokenGauge.WithLabelValues(
+					cfg.chain, agg.Slug(), tier, rowSlug(agg.Slug(), tier), tok).Set(1)
 				if quoted {
 					routed++
 					routedTokenGauge.WithLabelValues(

@@ -31,6 +31,12 @@ import (
 // exactly the question that is hard to answer from outside the container.
 var askLabels = []string{"chain", "aggregator", "tier", "provider"}
 
+// exitFloorPct is the share of the amount put in that an exit must return
+// to count as an exit at all. Ten percent: a 90% round-trip loss is not a
+// sale, it is a trap with a working sell function, and the board would
+// otherwise score it as a clean exit.
+const exitFloorPct = 10
+
 const transferTopic = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
 
 var (
@@ -106,6 +112,32 @@ var (
 			"aggregator was asked to quote in the last sweep.",
 	}, askLabels)
 
+	// Asked, per token, so the board can count distinct tokens rather than
+	// questions.
+	//
+	// Three findings share one cause. A counter of questions weights a token
+	// that stays in the cohort for twenty sweeps twenty times, so the rate
+	// follows persistence rather than prevalence. increase() over a window
+	// also has to guess around every restart, and the numerator and
+	// denominator do not lose the same amount. And a window that spans a
+	// change of sampling, 25 tokens a sweep then 100 then 200 in one day,
+	// averages three different experiments: examined per sweep read 200 over
+	// the last half hour against 66 over the day.
+	//
+	// Counting distinct tokens answers all three. Sampling more tokens
+	// lowers the variance of the rate without moving it, a token counts once
+	// however long it stays, and a restart loses nothing because the series
+	// are observations rather than accumulations.
+	//
+	// Reset with the other per-token series each sweep; Prometheus keeps the
+	// history that the window reads.
+	askedTokenGauge = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "token_sellability_asked_token",
+		Help: "1 when this aggregator answered about this specific token " +
+			"from the failed-exit cohort. The denominator of the board, " +
+			"counted by token rather than by question.",
+	}, []string{"chain", "aggregator", "tier", "provider", "token"})
+
 	// The evidence behind every percentage on the board: which aggregator
 	// offered a route into which named token that our own simulation could
 	// not sell back out of.
@@ -168,7 +200,7 @@ var (
 func init() {
 	prometheus.MustRegister(verdictGauge, cohortGauge, sweepSeconds, controlGauge,
 		askedGauge, routedGauge, errorGauge, askedTotal, routedTotal,
-		routedTokenGauge, contradictedGauge,
+		routedTokenGauge, askedTokenGauge, contradictedGauge,
 		surveyedGauge, quotedGauge, surveyedTotal, quotedTotal)
 }
 
@@ -327,6 +359,7 @@ func sweep(ctx context.Context, cfg config, rpc *rpcClient, q *SushiQuoter,
 	// the present.
 	verdictGauge.Reset()
 	routedTokenGauge.Reset()
+	askedTokenGauge.Reset()
 	cohortGauge.WithLabelValues(cfg.chain, "seen").Set(float64(len(tokens)))
 
 	// The tokens that failed, kept per tier. These are the cohort the
@@ -456,6 +489,29 @@ func probeOne(ctx context.Context, cfg config, rpc *rpcClient, q *SushiQuoter, t
 	sell, err := q.Quote(ctx, token, cfg.native, amt.String())
 	if err != nil || sell.To == "" {
 		return Probe{Token: token, SameBlock: NoRoute, Delayed: NoRoute, Reason: "no sell route"}
+	}
+
+	// An exit that returns dust is not an exit. The verdict used to ask only
+	// whether the call reverted, so a token that let the sale through and
+	// handed back a thousandth of what went in counted as sellable, which is
+	// the outcome this board exists to warn about.
+	//
+	// The floor is a share of what was put in, not an absolute, because the
+	// probe size is configurable. A heavy but honest tax still clears it;
+	// what does not clear it is a sale that technically succeeds and returns
+	// nothing worth having.
+	in, ok := new(big.Int).SetString(cfg.ethIn, 10)
+	if ok && in.Sign() > 0 && sell.AmountOut != nil {
+		floor := new(big.Int).Div(new(big.Int).Mul(in, big.NewInt(exitFloorPct)), big.NewInt(100))
+		if sell.AmountOut.Cmp(floor) < 0 {
+			return Probe{Token: token, SameBlock: Unsellable, Delayed: Unsellable,
+				Bought: buy.AmountOut,
+				SameBlockWhy: fmt.Sprintf("exit returns %s of %s wei, under the %d%% floor",
+					sell.AmountOut, in, exitFloorPct),
+				DelayedWhy: fmt.Sprintf("exit returns %s of %s wei, under the %d%% floor",
+					sell.AmountOut, in, exitFloorPct),
+				Reason: "exit value under the floor"}
+		}
 	}
 	return Examine(ctx, rpc, cfg.from, token, buy, sell, cfg.delay)
 }
