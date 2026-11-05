@@ -874,7 +874,11 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       selected, and quoted 98.6% of it. A REMOVAL, which needs the
   //       keys as much as an arrival. The metric is renamed off
   //       "unsellable", which claimed more than one tested route shows.
-  ["bench-unfiltered-v170", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v171: bench 313's method described a rule the code no longer runs, and
+  //       its disclaimer promised a reproducibility the page does not
+  //       offer. Both are editorial and a cached entry keeps the old
+  //       words through a green deploy.
+  ["bench-unfiltered-v171", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -1218,7 +1222,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v161: lockstep with bench-unfiltered-v168 (bench 314 solana-rpc-ws).
   // v162: lockstep with bench-unfiltered-v169 (bench 313 cohort rule).
   // v163: lockstep with bench-unfiltered-v170 (bench 313 drops sushi).
-  ["all-benchmarks-v163", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v164: lockstep with bench-unfiltered-v171 (bench 313 copy).
+  ["all-benchmarks-v164", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);

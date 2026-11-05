@@ -271,7 +271,7 @@ func main() {
 	rpc := newRPC(cfg.rpcURL)
 	quoter := NewSushiQuoter(cfg.from)
 	// One window, the same one the board reads over.
-	cohort := newCohortMemory(24 * time.Hour)
+	cohort := newCohortMemory(24*time.Hour, cfg.ledgerDir)
 
 	go func() {
 		http.Handle("/metrics", promhttp.Handler())
@@ -355,17 +355,19 @@ func sweep(ctx context.Context, cfg config, rpc *rpcClient, q *SushiQuoter,
 		probes[tok] = p
 		// Record what this sweep saw before reading any failure off it, so
 		// the decision below is made against the token's whole history.
-		cohort.Observe(tok, p.SameBlock == Sellable || p.Delayed == Sellable)
+		for tier, v := range map[string]Verdict{"same_block": p.SameBlock, "delayed": p.Delayed} {
+			cohort.Observe(tok, tier, v == Sellable)
+		}
 		for tier, v := range map[string]Verdict{"same_block": p.SameBlock, "delayed": p.Delayed} {
 			if v != Unsellable {
 				continue
 			}
-			if !cohort.Scoreable(tok) {
+			if !cohort.Scoreable(tok, tier) {
 				held[tier]++
 				log.Printf("[sellability] %s reverted at %s and is held: %s (%s)",
 					tok, tier,
 					map[bool]string{true: "awaiting a second failure after a sale",
-						false: "first observation"}[cohort.Provisional(tok)],
+						false: "first observation"}[cohort.Provisional(tok, tier)],
 					p.whyAt(tier))
 				continue
 			}
@@ -418,7 +420,7 @@ func sweep(ctx context.Context, cfg config, rpc *rpcClient, q *SushiQuoter,
 			SameBlock: string(pr.SameBlock),
 			Delayed:   string(pr.Delayed),
 			Why:       pr.DelayedWhy,
-			Scoreable: cohort.Scoreable(tok),
+			Scoreable: cohort.Scoreable(tok, "delayed"),
 			Quoted:    quoted,
 		})
 	}
