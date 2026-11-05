@@ -873,7 +873,13 @@ export function BenchmarkBody({
         // heavy against 74.39 light, so almost no work, while blockmachine
         // reads 129.00 against 106.96.
         ["keyed-heavy", "Heavy"],
-      ] as const).map(([value, label]) => (
+      ] as const)
+        // Only the modes this spec declares. Heavy exists on the eight EVM
+        // chain pages (it is a Multicall3) and not on Solana, where the button
+        // used to render anyway: clicking it asked for a variant no harness
+        // writes, so the chart stayed greyed on the public cohort for good.
+        .filter(([value]) => resolvable.some((t) => t.value === value))
+        .map(([value, label]) => (
         <button
           key={value}
           type="button"
