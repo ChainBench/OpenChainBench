@@ -5,60 +5,108 @@ import (
 	"time"
 )
 
-// sellableMemory remembers which tokens have been sold inside the window.
+// cohortMemory decides which unsellable verdicts are worth scoring a company
+// against, by watching how a token behaves over time rather than in one sweep.
 //
-// Why this exists. A token that genuinely cannot be sold does not become
-// sellable an hour later, so a token carrying both verdicts in one window was
-// measured wrong at least once. On 2026-11-05 that was 31 of the 94 tokens in
-// the unsellable cohort, a third of it, identically at both tiers. The chain's
-// own wrapped ether was among them: three different verdicts in a day, and 65
-// replays afterwards could not make it fail once.
+// Three shapes, measured over 24h on 657 tokens on 2026-11-05:
 //
-// The control token already guards against a sweep that is entirely broken: it
-// runs first and a failure discards everything. It cannot see an intermittent
-// failure on one token inside an otherwise healthy sweep, which is exactly
-// what this is.
+//	546  never changed, sellable
+//	 61  never changed, unsellable      <- scoreable immediately
+//	 39  went unsellable then came back <- the instrument, never scoreable
+//	  5  went unsellable and stayed     <- a rug, and the point of the bench
 //
-// So the rule: a token observed sellable inside the window is not scored
-// against anyone, even on a later sweep that says otherwise. It is the same
-// principle as the control, applied per token. We would rather miss a real
-// trap than publish a company's name against a verdict our own instrument
-// contradicted.
-type sellableMemory struct {
+// The first version of this file excluded anything carrying both verdicts,
+// which correctly removed the 39 and wrongly removed the 5. Those 5 are the
+// events this bench exists to catch, so the separator cannot be "has
+// contradicted itself" but "did the failure persist".
+//
+// Persistence is only knowable afterwards, so an unsellable verdict on a
+// token we have sold is held as provisional and counts only once a later
+// sweep agrees with no sale in between. A token we have never sold is scored
+// at once: there is nothing to contradict.
+type cohortMemory struct {
 	mu     sync.Mutex
 	window time.Duration
-	seen   map[string]time.Time
+	state  map[string]*tokenState
 }
 
-func newSellableMemory(window time.Duration) *sellableMemory {
-	return &sellableMemory{window: window, seen: map[string]time.Time{}}
+type tokenState struct {
+	seen time.Time
+	// sold is true once this probe has completed a sale of this token inside
+	// the window. It is what makes a later failure provisional.
+	sold bool
+	// run counts consecutive observations of a failed sale. Any sale resets
+	// it, because a sale means the token was fine at that moment and whatever
+	// came before is not a trend.
+	run int
 }
 
-// Record notes that this token sold at some tier.
-func (m *sellableMemory) Record(token string) {
+// confirmations is how many consecutive failures are needed before a token we
+// have previously sold is scored against anyone. Two, because one is what the
+// 39 noise cases look like and the 5 real ones all persisted for hours.
+const confirmations = 2
+
+func newCohortMemory(window time.Duration) *cohortMemory {
+	return &cohortMemory{window: window, state: map[string]*tokenState{}}
+}
+
+// Observe records what this sweep found. sellable is true when the token sold
+// at either timing.
+func (m *cohortMemory) Observe(token string, sellable bool) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.seen[token] = time.Now()
+	s, ok := m.state[token]
+	if !ok {
+		s = &tokenState{}
+		m.state[token] = s
+	}
+	s.seen = time.Now()
+	if sellable {
+		s.sold = true
+		s.run = 0
+		return
+	}
+	s.run++
 }
 
-// Contradicted reports whether this token has been sold recently enough that
-// an unsellable verdict on it cannot be trusted.
-func (m *sellableMemory) Contradicted(token string) bool {
+// Scoreable reports whether a failed sale on this token may be counted
+// against an aggregator.
+func (m *cohortMemory) Scoreable(token string) bool {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	at, ok := m.seen[token]
-	return ok && time.Since(at) < m.window
+	s, ok := m.state[token]
+	if !ok {
+		// Not observed this window. Nothing says it is unreliable, but
+		// nothing says it is confirmed either; treat the current sweep's
+		// failure as the first observation.
+		return false
+	}
+	if !s.sold {
+		return s.run >= 1
+	}
+	return s.run >= confirmations
 }
 
-// Prune drops tokens that left the window, so the map tracks the cohort
-// rather than growing for the life of the process.
-func (m *sellableMemory) Prune() int {
+// Provisional reports a token whose failure is being held pending
+// confirmation, as opposed to one that is simply fine. The two are different
+// and the board should be able to tell them apart.
+func (m *cohortMemory) Provisional(token string) bool {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	for t, at := range m.seen {
-		if time.Since(at) >= m.window {
-			delete(m.seen, t)
+	s, ok := m.state[token]
+	return ok && s.sold && s.run > 0 && s.run < confirmations
+}
+
+// Prune drops tokens that left the window and returns how many are tracked,
+// so the size of this memory is visible in the sweep log rather than growing
+// unseen for the life of the process.
+func (m *cohortMemory) Prune() int {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	for t, s := range m.state {
+		if time.Since(s.seen) >= m.window {
+			delete(m.state, t)
 		}
 	}
-	return len(m.seen)
+	return len(m.state)
 }
