@@ -28,10 +28,12 @@ func run(t *testing.T, agg Aggregator, failed map[string][]string) {
 	askedGauge.Reset()
 	routedGauge.Reset()
 	errorGauge.Reset()
+	routedTokenGauge.Reset()
 	old := aggregatorsForTest
 	aggregatorsForTest = []Aggregator{agg}
 	t.Cleanup(func() { aggregatorsForTest = old })
-	askAggregators(context.Background(), config{chain: "robinhood", ethIn: "1"}, failed)
+	askAggregators(context.Background(), config{chain: "robinhood", ethIn: "1"}, failed,
+		map[string]string{})
 }
 
 // asked is the denominator, so an aggregator that times out on a token and
@@ -160,5 +162,47 @@ func TestTheProviderLabelReachesTheSeries(t *testing.T) {
 		askedGauge.WithLabelValues("robinhood", "sushi", "same_block", "sushi-same-block"))
 	if got != 1 {
 		t.Errorf("the same-block series must carry the suffixed slug, got %v", got)
+	}
+}
+
+// The per-token evidence is what lets anyone named on this board check the
+// specific contracts instead of taking a percentage on trust, so it has to
+// name the token it routed into and nothing else.
+func TestEvidenceNamesOnlyTheTokensItRoutedInto(t *testing.T) {
+	agg := fakeAgg{slug: "sushi", answers: map[string]bool{"0xa": true, "0xb": false}}
+	askedGauge.Reset()
+	routedGauge.Reset()
+	errorGauge.Reset()
+	routedTokenGauge.Reset()
+	old := aggregatorsForTest
+	aggregatorsForTest = []Aggregator{agg}
+	t.Cleanup(func() { aggregatorsForTest = old })
+	askAggregators(context.Background(), config{chain: "robinhood", ethIn: "1"},
+		map[string][]string{"delayed": {"0xa", "0xb"}},
+		map[string]string{"0xa": "AAA", "0xb": "BBB"})
+
+	if n := testutil.CollectAndCount(routedTokenGauge); n != 1 {
+		t.Fatalf("only the routed token is evidence, got %d series", n)
+	}
+	got := testutil.ToFloat64(routedTokenGauge.WithLabelValues(
+		"robinhood", "sushi", "delayed", "sushi", "0xa", "AAA"))
+	if got != 1 {
+		t.Errorf("the routed token must be named with its symbol, got %v", got)
+	}
+}
+
+// A token it declined must leave no trace, or the evidence table would
+// accuse an aggregator of the one thing it got right.
+func TestADeclinedTokenIsNotEvidence(t *testing.T) {
+	agg := fakeAgg{slug: "lifi", answers: map[string]bool{"0xa": false}}
+	routedTokenGauge.Reset()
+	old := aggregatorsForTest
+	aggregatorsForTest = []Aggregator{agg}
+	t.Cleanup(func() { aggregatorsForTest = old })
+	askAggregators(context.Background(), config{chain: "robinhood", ethIn: "1"},
+		map[string][]string{"delayed": {"0xa"}}, map[string]string{"0xa": "AAA"})
+
+	if n := testutil.CollectAndCount(routedTokenGauge); n != 0 {
+		t.Errorf("declining must leave no evidence, got %d series", n)
 	}
 }

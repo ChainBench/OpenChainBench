@@ -13,7 +13,8 @@ import (
 // timeout would quietly improve its score, and the best score on this board
 // is "never routes into a token you cannot exit". A provider earns that by
 // answering and declining, never by failing to answer.
-func askAggregators(ctx context.Context, cfg config, failed map[string][]string) {
+func askAggregators(ctx context.Context, cfg config, failed map[string][]string,
+	symbols map[string]string) {
 	for _, agg := range Aggregators() {
 		for tier, tokens := range failed {
 			asked, routed, failures := 0, 0, 0
@@ -28,6 +29,9 @@ func askAggregators(ctx context.Context, cfg config, failed map[string][]string)
 				asked++
 				if ok {
 					routed++
+					routedTokenGauge.WithLabelValues(
+						cfg.chain, agg.Slug(), tier, rowSlug(agg.Slug(), tier),
+						tok, symbols[tok]).Set(1)
 				}
 			}
 			// Published every sweep, including as a zero. Without it, a
