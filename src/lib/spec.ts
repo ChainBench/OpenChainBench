@@ -855,7 +855,10 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       new count and new disclosure prose, none of which overlayEditorial
   //       repairs on a cached entry. Moves with all-benchmarks-v159,
   //       bench-filters-v91 and providers-v54.
-  ["bench-unfiltered-v166", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v167: FluxRPC leaves the Singapore probe (no Asian endpoint): its
+  //       queries exclude region="sgp" and the disclosure says so. Moves
+  //       with all-benchmarks-v160 and bench-filters-v92.
+  ["bench-unfiltered-v167", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -1195,7 +1198,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v157: lockstep with bench-unfiltered-v164 (bench 313 to draft).
   // v158: lockstep with bench-unfiltered-v165 (bench 313 live again).
   // v159: lockstep with bench-unfiltered-v166 (FluxRPC, keyed Solana).
-  ["all-benchmarks-v159", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v160: lockstep with bench-unfiltered-v167 (FluxRPC without Singapore).
+  ["all-benchmarks-v160", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1422,7 +1426,9 @@ const loadBenchmarkFiltered = unstable_cache(
   //      BOTH tier values, so each tab's provider set changes.
   // v91: lockstep with bench-unfiltered-v166. The Private and Cold start
   //      tabs are filtered views and both gain the FluxRPC row.
-  ["bench-filters-v91", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v92: lockstep with bench-unfiltered-v167. The Singapore tab of the
+  //      Private cohort loses its FluxRPC row.
+  ["bench-filters-v92", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 
