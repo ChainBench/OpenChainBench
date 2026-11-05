@@ -106,10 +106,19 @@ export function SpeedCostChart() {
 /* The ranking changes with the method                                 */
 /* ------------------------------------------------------------------ */
 
-const METHOD_COLS: { key: "cheap" | "archive" | "getlogs"; label: string; note: string }[] = [
-  { key: "cheap", label: "Cheap call", note: "eth_getBlockByNumber" },
-  { key: "archive", label: "Archive read", note: "balance, 5M blocks back" },
-  { key: "getlogs", label: "eth_getLogs", note: "address filter" },
+// The scope differs by column and the header says so, because the capability
+// probe runs in one region while the cheap call runs in three. A reader
+// comparing a three-region median against a US East figure without being
+// told is being misled by the drawing.
+const METHOD_COLS: {
+  key: "cheap" | "archive" | "getlogs";
+  label: string;
+  note: string;
+  scope: string;
+}[] = [
+  { key: "cheap", label: "Cheap call", note: "eth_getBlockByNumber", scope: "3 regions" },
+  { key: "archive", label: "Archive read", note: "balance, 5M blocks back", scope: "US East" },
+  { key: "getlogs", label: "eth_getLogs", note: "address filter", scope: "US East" },
 ];
 
 /** A slope chart, because the reviewer's point IS the crossing of the
@@ -153,7 +162,7 @@ export function MethodSpreadChart() {
     <Figure
       title="The ranking changes with the method"
       subtitle="The same key asked three ways, from cheapest call to most expensive. A line that crosses another means the two providers swap places. GetBlock has no archive point because it does not serve the call."
-      source={`Source: OpenChainBench rpc-keyed-latency probes, ${M.window} to ${M.asOf}, ${CHAIN_NAME[M.chain] ?? M.chain}, three regions averaged.`}
+      source={`Source: OpenChainBench rpc-keyed-latency probes, ${M.window} to ${M.asOf}, ${CHAIN_NAME[M.chain] ?? M.chain}. ${M.regionScope?.note ?? ""}`}
     >
       <svg viewBox={`0 0 ${W} ${H}`} className="w-full min-w-[560px] h-auto" role="img" aria-label="Latency per provider across a cheap call, an archive read and eth_getLogs">
         {yt.map((v) => (
@@ -170,7 +179,7 @@ export function MethodSpreadChart() {
               {c.label}
             </text>
             <text x={colX[i]} y={m.t - 3} fontSize={10} textAnchor="middle" style={{ fill: INK_FAINT }}>
-              {c.note}
+              {c.note} · {c.scope}
             </text>
           </g>
         ))}

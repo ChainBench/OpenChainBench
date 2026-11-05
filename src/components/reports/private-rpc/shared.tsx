@@ -90,6 +90,17 @@ export type ReportData = {
       cellsTotal: number;
     }[];
     solana: { api: string; servedPct: number | null; verdicts: number; cohort: number }[];
+    /** Which regions each column is measured in. They are not the same:
+     *  the capability probe is gated to one region by RPC_KEYED_COVERAGE
+     *  for request budget, so the archive read and eth_getLogs come from
+     *  US East while the cheap call and the heavy eth_call run in three. */
+    regionScope?: {
+      cheap: string;
+      archive: string;
+      getlogs: string;
+      work: string;
+      note: string;
+    };
   };
 };
 

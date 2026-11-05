@@ -3724,6 +3724,13 @@
     "verdicts": 4,
     "cohort": 4
    }
-  ]
+  ],
+  "regionScope": {
+   "cheap": "three regions averaged",
+   "archive": "us-east only",
+   "getlogs": "us-east only",
+   "work": "three regions averaged",
+   "note": "The capability probe is gated to one region by RPC_KEYED_COVERAGE, so the archive read and eth_getLogs are measured from US East alone. The cheap call and the heavy eth_call run in all three."
+  }
  }
 }
