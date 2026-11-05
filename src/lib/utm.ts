@@ -36,6 +36,23 @@ const IDENTIFIER_HOSTS = new Set(["doi.org", "dx.doi.org", "creativecommons.org"
 
 export const UTM_SOURCE = "openchainbench";
 
+export function bareHost(hostname: string): string {
+  return hostname.replace(/^www\./, "").replace(/\.+$/, "");
+}
+
+export function isSameOrSubdomain(hostname: string, site: string): boolean {
+  const host = bareHost(hostname);
+  const bareSite = bareHost(site);
+  return host === bareSite || host.endsWith(`.${bareSite}`);
+}
+
+export function isOwnOrIdentifierHost(hostname: string): boolean {
+  return (
+    isSameOrSubdomain(hostname, SITE_HOST) ||
+    IDENTIFIER_HOSTS.has(bareHost(hostname))
+  );
+}
+
 export function withUtm(href: string | null | undefined): string {
   if (!href) return "";
   let u: URL;
@@ -46,9 +63,7 @@ export function withUtm(href: string | null | undefined): string {
   }
   if (u.protocol !== "https:" && u.protocol !== "http:") return href;
 
-  const host = u.hostname.replace(/^www\./, "");
-  if (host === SITE_HOST || host.endsWith(`.${SITE_HOST}`)) return href;
-  if (IDENTIFIER_HOSTS.has(host)) return href;
+  if (isOwnOrIdentifierHost(u.hostname)) return href;
   if (u.searchParams.has("utm_source")) return href;
 
   u.searchParams.set("utm_source", UTM_SOURCE);
