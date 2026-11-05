@@ -846,7 +846,12 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       every row, and 0 is the BEST score here, so five named
   //       companies carried an unearned perfect record. The sample is
   //       7 questions against an expected 120 either way.
-  ["bench-unfiltered-v164", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v165: bench 313 live again. Both tabs resolve and every row carries
+  //       about 106 token-questions against the 120 expected, so the
+  //       sample is healthy rather than a rounding error. The second
+  //       tab was never a publish bug: increase() reads 0 on a counter
+  //       that has not re-incremented, and both tabs were young.
+  ["bench-unfiltered-v165", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -1184,7 +1189,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v155: lockstep with bench-unfiltered-v162 (bench 313 sample gating).
   // v156: lockstep with bench-unfiltered-v163 (bench 313 zero divisor).
   // v157: lockstep with bench-unfiltered-v164 (bench 313 to draft).
-  ["all-benchmarks-v157", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v158: lockstep with bench-unfiltered-v165 (bench 313 live again).
+  ["all-benchmarks-v158", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
