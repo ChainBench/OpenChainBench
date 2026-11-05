@@ -213,15 +213,3 @@ scrape_configs:
           benchmark: bridge-monitor
     metrics_path: /metrics
 
-  # OpenChainBench bench №313 - token sellability on Robinhood Chain.
-  # ONE instance, not three. Sellability is a property of the token and the
-  # chain, not of where the probe sits, so a regional split would publish the
-  # same verdict three times and inflate every share this board computes.
-  - job_name: 'token-sellability'
-    honor_labels: true
-    static_configs:
-      - targets:
-        - 'token-sellability.railway.internal:2112'
-        labels:
-          benchmark: token-sellability
-    metrics_path: /metrics
