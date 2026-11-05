@@ -135,8 +135,9 @@ mix tip-of-chain and archive calls, add one heavy `eth_call`, split
 Solana-native providers, and put an API support matrix next to the latency.
 
 Four are answered with measurements taken since 30 October on the same six
-keys. The fifth, the Beacon API, is answered with a reason it is not on the
-boards yet, which is the honest version of that answer.
+keys and published as columns. The fifth, the Beacon API, is answered with a
+measurement too, taken by hand and dated rather than put on a board, for the
+reason given in its own subsection.
 
 ### The ranking on a cheap call is not the ranking on an expensive one
 
@@ -285,37 +286,55 @@ the Solana comparison is one native provider against three generalists today,
 which is weaker than what was asked for and worth saying rather than
 glossing.
 
-### What is still missing: the Beacon API
+### The Beacon API, measured off the boards
 
-The reviewer also asked about the Beacon API and archive blob sidecars, and
-they are deliberately absent from the matrix above. The Beacon API is the
-consensus layer's REST surface, not JSON-RPC, so it answers on a different
-base URL from the one a provider gives you for an RPC endpoint.
+The reviewer also asked about the Beacon API and archive blob sidecars. They
+are absent from the matrix above and present here instead, as a dated check
+rather than a live column, for a reason given at the end.
 
-Probing it directly on 2 November 2026, four of the six serve it:
+The Beacon API is the consensus layer's REST surface, not JSON-RPC, so it
+answers on a different base URL from the one a provider gives you for an RPC
+endpoint. Four of the six serve it:
 
-| Provider | Beacon API | How |
-|---|---|---|
-| <L s="quicknode">Quicknode</L> | yes | same host as the RPC endpoint |
-| <L s="chainstack">Chainstack</L> | yes | same host |
-| <L s="alchemy">Alchemy</L> | yes | a separate host, on the free key |
-| <L s="dwellir">Dwellir</L> | yes | an unlisted host, given on request |
-| <L s="getblock">GetBlock</L> | no | documented as a dedicated-node add-on |
-| <L s="blockmachine">BlockMachine</L> | no | JSON-RPC only, no consensus layer |
+| Provider | Beacon API | Consensus client | How |
+|---|---|---|---|
+| <L s="quicknode">Quicknode</L> | yes | Lighthouse v8.2.3 | same host as the RPC endpoint |
+| <L s="chainstack">Chainstack</L> | yes | Lighthouse v8.3.1 | same host |
+| <L s="dwellir">Dwellir</L> | yes | Caplin v3.8.1 | an unlisted host, given on request |
+| <L s="alchemy">Alchemy</L> | yes | Lighthouse v8.2.2 | a separate host, on the free key |
+| <L s="getblock">GetBlock</L> | no | | documented as a dedicated-node add-on |
+| <L s="blockmachine">BlockMachine</L> | no | | JSON-RPC only, no consensus layer |
 
-The differentiator is retention. A consensus node keeps blob sidecars for
-about eighteen days by default, so anything past that is a product decision,
-and the providers do not make the same one: at roughly two years deep
-Quicknode still returns a blob and Alchemy answers `NOT_FOUND: no blobs
-stored for block`. Chainstack's own documentation pins retention at the
-eighteen day client default while its endpoint returned a one year old
-sidecar of 2,113,236 bytes, so it delivers more than it promises.
+The first three were re-checked on 4 November 2026. Alchemy's figure is from
+2 November: the beacon network is currently switched off on our own
+application, so its 403 today is our configuration and not a refusal, and we
+cannot re-measure it until we turn it back on.
 
-This is not on the boards yet because it needs a Beacon base URL per
-provider, and two of the four answer on a host that is not the RPC host, one
-of them unlisted. Until those are in the probe environment, publishing a zero
-for the other two would state that they do not serve the Beacon API, which is
-false for at least GetBlock.
+Retention is where we expected to find a difference, and there is none.
+A consensus node keeps blob sidecars for about eighteen days by default, so
+anything past that is a product decision. We asked all three for the same
+four slots, at roughly thirty days, six months, one year and two years back,
+each chosen because it carries blobs. Every one came back served, with
+responses identical to the byte. All three therefore keep blob data about
+forty times longer than the client default, and none of them says so:
+Chainstack's own guide still pins retention at the eighteen day default while
+its endpoint returns a two year old sidecar.
+
+If you are indexing rollup data, that is the useful answer: choose between
+these three on something else, because on blob retention they are the same.
+
+One measurement note, because getting it wrong produces a false claim about a
+provider. Not every slot carries a blob transaction, so asking for a sidecar
+at an arbitrary slot can return HTTP 200 with an empty list, which means that
+slot had none rather than that the provider discarded it. Only a 404 is a
+refusal. A first pass sampled one slot per depth, read the empty answers as
+discarded data, and would have published a retention cliff that does not
+exist.
+
+This stays a dated check rather than a board column on purpose. The figures
+do not move: a retention policy is a product decision, not a latency, and
+probing four hosts on a schedule to watch a number stay still would spend
+request budget for nothing. We re-measure it when the report is revised.
 
 ## Cost by budget
 
