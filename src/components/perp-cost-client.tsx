@@ -15,7 +15,7 @@ import {
   unavailableReason,
   venueLabel,
 } from "@/lib/perp-cost-model";
-import { withUtm } from "@/lib/utm";
+import { outboundHref } from "@/lib/outbound-click";
 
 // ── Formatting ────────────────────────────────────────────────────────────
 
@@ -707,9 +707,9 @@ function VenueCell({
         <p className="whitespace-nowrap font-sans text-sm font-medium text-ink">
           {site ? (
             <a
-              href={withUtm(site)}
+              href={outboundHref(site)}
               target="_blank"
-              rel="noopener noreferrer"
+              rel="noopener"
               className="hover:underline"
             >
               {venue.name}

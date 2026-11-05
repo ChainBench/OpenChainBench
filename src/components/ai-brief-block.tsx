@@ -1,6 +1,7 @@
 "use client";
 
 import { CopyButton } from "@/components/copy-button";
+import { outboundHref } from "@/lib/outbound-click";
 
 /**
  * AI-assist tiles for /contribute. Two paths, same skill content.
@@ -63,7 +64,7 @@ function Tile({
         {action}
         {link && (
           <a
-            href={link.href}
+            href={outboundHref(link.href)}
             className="text-xs text-ink-muted hover:text-ink underline-offset-4 hover:underline"
             {...(link.external ? { rel: "noopener" } : {})}
           >

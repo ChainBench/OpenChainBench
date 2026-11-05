@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { ProviderLogo } from "@/components/provider-logo";
 import type { FillSample } from "@/lib/terminal-fills";
-import { withUtm } from "@/lib/utm";
+import { outboundHref } from "@/lib/outbound-click";
 
 /**
  * Audit table of the sampled swaps behind bench 268: every row is one
@@ -305,9 +305,9 @@ export function TerminalFillSwaps({
                 <td className="py-2 px-3 whitespace-nowrap">
                   {txExplorer(s) ? (
                     <a
-                      href={withUtm(`${txExplorer(s)}${s.sig}`)}
+                      href={outboundHref(`${txExplorer(s)}${s.sig}`)}
                       target="_blank"
-                      rel="noopener noreferrer"
+                      rel="noopener"
                       className="inline-flex items-center gap-1 font-mono text-[11px] text-ink-soft hover:text-ink"
                       title={hashTitle(s)}
                     >
@@ -339,9 +339,9 @@ export function TerminalFillSwaps({
                     ) : null}
                     {s.chain && s.inTx ? (
                       <a
-                        href={withUtm(`${EXPLORERS[chainOfHash(s.inTx, s.chain) ?? "solana"] ?? EXPLORERS.solana}${s.inTx}`)}
+                        href={outboundHref(`${EXPLORERS[chainOfHash(s.inTx, s.chain) ?? "solana"] ?? EXPLORERS.solana}${s.inTx}`)}
                         target="_blank"
-                        rel="noopener noreferrer"
+                        rel="noopener"
                         className="text-[10px] uppercase tracking-[0.1em] text-ink-faint underline underline-offset-2 hover:text-ink"
                         title={depositTitle(s)}
                       >
@@ -673,9 +673,9 @@ function SandwichCell({ s }: { s: FillSample }) {
   if (s.sandwich)
     return (
       <a
-        href={withUtm(`https://solscan.io/tx/${s.sandwich.frontSig}`)}
+        href={outboundHref(`https://solscan.io/tx/${s.sandwich.frontSig}`)}
         target="_blank"
-        rel="noopener noreferrer"
+        rel="noopener"
         className="inline-flex items-center gap-1.5 text-bad hover:underline underline-offset-2"
         title={`attacker ${s.sandwich.attacker}\nfront-run ${s.sandwich.frontSig}\nback-run ${s.sandwich.backSig}\nattacker profit ${Math.round(s.sandwich.profitBps)} bps of the trade`}
       >

@@ -58,7 +58,7 @@ import { getTerminalFills } from "@/lib/terminal-fills";
 import { fetchDataApiSnapshot } from "@/lib/data-api-stats";
 import { getTradingAppHistory } from "@/lib/trading-app-history";
 import { fetchBridgeHub } from "@/lib/bridge-hub-stats";
-import { withUtm } from "@/lib/utm";
+import { outboundHref } from "@/lib/outbound-click";
 import { noFigureLabel, noRankLabel } from "@/lib/no-figure-label";
 import { WalletVendorPricing, walletVendorHeadline, fmtWalletBill } from "@/components/wallet-vendor-pricing";
 import { ServerWalletVendorPricing, serverWalletVendorHeadline, serverWalletVendorFirstPriced, fmtServerWalletBill } from "@/components/server-wallet-vendor-pricing";
@@ -1034,7 +1034,7 @@ export default async function ProviderPage({
                     {reg.url && (
                       <a
                         className="lnk inline-flex items-center gap-1 font-medium text-ink hover:text-accent transition-colors break-all"
-                        href={withUtm(reg.referralUrl || reg.url)}
+                        href={outboundHref(reg.referralUrl || reg.url)}
                         rel={reg.referralUrl ? "noopener sponsored" : "noopener"}
                       >
                         {reg.url.replace(/^https?:\/\//, "").replace(/\/$/, "")}
@@ -1044,7 +1044,7 @@ export default async function ProviderPage({
                     {reg.twitter && (
                       <a
                         className="lnk inline-flex items-center gap-1 text-ink-soft hover:text-ink transition-colors"
-                        href={withUtm(`https://x.com/${reg.twitter.replace(/^@/, "")}`)}
+                        href={outboundHref(`https://x.com/${reg.twitter.replace(/^@/, "")}`)}
                         rel="noopener"
                       >
                         {reg.twitter}
@@ -1281,7 +1281,7 @@ export default async function ProviderPage({
                   <dd className="mt-1 text-xs text-ink-faint">
                     <a
                       className="lnk underline underline-offset-2 hover:text-ink"
-                      href={withUtm(c.source)}
+                      href={outboundHref(c.source)}
                       rel="noopener nofollow"
                     >
                       source
@@ -1540,7 +1540,7 @@ export default async function ProviderPage({
                         share link. */}
                     {p.slug !== "mobula" && (
                       <a
-                        href={tweetIntent}
+                        href={outboundHref(tweetIntent)}
                         target="_blank"
                         rel="noopener"
                         className="inline-flex items-center gap-1 hover:text-ink"

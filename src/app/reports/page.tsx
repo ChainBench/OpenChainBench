@@ -6,7 +6,7 @@ import { pageMetadata } from "@/lib/page-metadata";
 import { reportsLandingLd } from "@/lib/hub-jsonld";
 import { safeJsonLd } from "@/lib/jsonld";
 import { SITE } from "@/data/site";
-import { withUtm } from "@/lib/utm";
+import { outboundHref } from "@/lib/outbound-click";
 
 export const metadata: Metadata = pageMetadata({
   path: "/reports",
@@ -54,9 +54,9 @@ export default function ReportsPage() {
               RSS
             </a>
             <a
-              href={withUtm(`https://x.com/${SITE.twitter}`)}
+              href={outboundHref(`https://x.com/${SITE.twitter}`)}
               target="_blank"
-              rel="noopener noreferrer"
+              rel="noopener"
               className="label-mono text-[11px] border border-rule px-2.5 py-1.5 text-ink-muted hover:text-ink hover:border-ink transition-colors"
             >
               {SITE.twitter}
@@ -129,9 +129,9 @@ export default function ReportsPage() {
                     RSS feed
                   </a>
                   <a
-                    href={withUtm(`https://x.com/${SITE.twitter}`)}
+                    href={outboundHref(`https://x.com/${SITE.twitter}`)}
                     target="_blank"
-                    rel="noopener noreferrer"
+                    rel="noopener"
                     className="label-mono text-[11px] border border-rule px-3 py-2 text-ink-muted hover:text-ink hover:border-ink transition-colors text-center"
                   >
                     {SITE.twitter} on X

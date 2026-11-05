@@ -14,7 +14,7 @@ import {
   PerpVenueBenchCards,
   type PerpVenueBenchRow,
 } from "@/components/perp-venue-bench-cards";
-import { withUtm } from "@/lib/utm";
+import { outboundHref } from "@/lib/outbound-click";
 
 /**
  * Perp venue view on /products/<slug>, behind the "Perpetuals" pill.
@@ -176,9 +176,9 @@ export async function PerpVenueSection({
           <span className="text-sm text-ink-muted">{VENUE_TYPE_SENTENCE[venueType]}</span>
         </div>
         <a
-          href={withUtm(externalUrl)}
+          href={outboundHref(externalUrl)}
           target="_blank"
-          rel="noopener noreferrer"
+          rel="noopener"
           className="text-sm text-ink-faint hover:text-ink underline underline-offset-2"
         >
           Open {externalHost}
@@ -364,9 +364,9 @@ export async function PerpVenueSection({
         )}
         <span aria-hidden>·</span>
         <a
-          href={withUtm(externalUrl)}
+          href={outboundHref(externalUrl)}
           target="_blank"
-          rel="noopener noreferrer"
+          rel="noopener"
           className="inline-flex items-center gap-1 hover:text-ink underline underline-offset-2"
         >
           {externalHost}

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { SectionRule } from "@/components/section-rule";
 import { pageMetadata } from "@/lib/page-metadata";
 import { SITE } from "@/data/site";
-import { withUtm } from "@/lib/utm";
+import { outboundHref } from "@/lib/outbound-click";
 
 export const metadata: Metadata = pageMetadata({
   path: "/contact",
@@ -73,8 +73,8 @@ export default function ContactPage() {
             <p className="mt-1.5 text-[15px] text-ink-soft leading-relaxed">{r.body}</p>
             <a
               className="lnk mt-2 inline-block text-sm"
-              href={withUtm(r.href)}
-              rel="noopener noreferrer"
+              href={outboundHref(r.href)}
+              rel="noopener"
               target="_blank"
             >
               {r.cta}

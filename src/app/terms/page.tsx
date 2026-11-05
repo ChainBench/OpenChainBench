@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { SectionRule } from "@/components/section-rule";
 import { SITE } from "@/data/site";
+import { outboundHref } from "@/lib/outbound-click";
 import { pageMetadata } from "@/lib/page-metadata";
 
 export const metadata: Metadata = pageMetadata({
@@ -60,7 +61,7 @@ export default function TermsPage() {
         : reuse it anywhere, including commercially, as long as you credit
         OpenChainBench and link back to the benchmark page you took it from.
         The harness and site code are MIT licensed in the{" "}
-        <a href={SITE.github} className="underline underline-offset-4">
+        <a href={outboundHref(SITE.github)} className="underline underline-offset-4">
           repository
         </a>
         .

@@ -86,6 +86,16 @@ export default function PrivacyPage() {
         is created.
       </p>
       <p className="mt-4 text-base leading-relaxed text-ink-soft">
+        Clicks on most links to other sites are counted on the server too,
+        because those links pass through <code>/go</code> on the way out. That
+        event records the destination, the page you came from and your
+        browser&rsquo;s user agent, and its identifier is a daily hash of that
+        user agent. It carries neither your IP address nor a device identifier,
+        and no profile is created. Links to a Creative Commons license, a DOI
+        or our own subdomains skip <code>/go</code> and are counted in your
+        browser, like the actions above.
+      </p>
+      <p className="mt-4 text-base leading-relaxed text-ink-soft">
         We never ask for and never want: your name, your email, a wallet
         address, a private key, a seed phrase or an API key. No feature of this
         site requires one.
@@ -105,9 +115,11 @@ export default function PrivacyPage() {
           To measure whether pages load well, which is what the performance
           timings are for.
         </li>
+        <li>To count how many readers we send to each provider.</li>
         <li>
           To rate limit the public API per address, so one caller cannot deny
-          the service to everyone else.
+          the service to everyone else, and to limit how many clicks one address
+          can add to the count on <code>/go</code>.
         </li>
       </ul>
       <p className="mt-4 text-base leading-relaxed text-ink-soft">
@@ -132,6 +144,9 @@ export default function PrivacyPage() {
       <p className="mt-4 text-base leading-relaxed text-ink-soft">
         Nobody else. We do not sell data, share it with advertisers or data
         brokers, or pass it to any third party beyond those two processors.
+        The site a link takes you to learns that you came from OpenChainBench,
+        through the <code>utm_source</code> tag and your browser&rsquo;s
+        referrer header.
       </p>
 
       <SectionRule label="How long it is kept" />
@@ -156,8 +171,12 @@ export default function PrivacyPage() {
       <SectionRule label="What you can turn off" />
       <ul className="space-y-2 text-base leading-relaxed text-ink-soft">
         <li>
-          Analytics can be blocked in your browser, or by any content blocker,
-          or by enabling Do Not Track. Nothing on the site stops working.
+          Analytics in your browser can be blocked by any content blocker.
+          Nothing on the site stops working.
+        </li>
+        <li>
+          A content blocker does not stop the count of clicks that pass through{" "}
+          <code>/go</code>, because it happens on the server.
         </li>
         <li>
           Clearing your browser storage removes the random device identifier,

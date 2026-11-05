@@ -2,7 +2,7 @@ import Link from "next/link";
 import { methodologyPageLd, METHODOLOGY_REVISED } from "@/lib/hub-jsonld";
 import { safeJsonLd } from "@/lib/jsonld";
 import { pageMetadata } from "@/lib/page-metadata";
-import { withUtm } from "@/lib/utm";
+import { outboundHref } from "@/lib/outbound-click";
 
 export const metadata: import("next").Metadata = pageMetadata({
   path: "/methodology",
@@ -219,14 +219,14 @@ export default function MethodologyPage() {
             Found a number you can&apos;t reproduce? File a{" "}
             <a
               className="text-ink font-medium underline-offset-4 hover:underline hover:text-accent transition-colors"
-              href={withUtm("https://github.com/ChainBench/OpenChainBench/issues/new?template=data-quality.yml")}
+              href={outboundHref("https://github.com/ChainBench/OpenChainBench/issues/new?template=data-quality.yml")}
             >
               data-quality issue
             </a>{" "}
             (the published figure looks wrong) or a{" "}
             <a
               className="text-ink font-medium underline-offset-4 hover:underline hover:text-accent transition-colors"
-              href={withUtm("https://github.com/ChainBench/OpenChainBench/issues/new?template=provider-correction.yml")}
+              href={outboundHref("https://github.com/ChainBench/OpenChainBench/issues/new?template=provider-correction.yml")}
             >
               provider correction
             </a>{" "}
@@ -245,7 +245,7 @@ export default function MethodologyPage() {
         or browse the source on{" "}
         <a
           className="lnk text-ink-soft"
-          href={withUtm("https://github.com/ChainBench/OpenChainBench")}
+          href={outboundHref("https://github.com/ChainBench/OpenChainBench")}
         >
           GitHub
         </a>

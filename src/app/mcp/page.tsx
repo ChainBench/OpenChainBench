@@ -5,7 +5,7 @@ import { getBenchmarksSafe } from "@/data/benchmarks";
 import { mcpPageLd } from "@/lib/hub-jsonld";
 import { safeJsonLd } from "@/lib/jsonld";
 import { pageMetadata } from "@/lib/page-metadata";
-import { withUtm } from "@/lib/utm";
+import { outboundHref } from "@/lib/outbound-click";
 
 const MCP_URL = "https://openchainbench.com/api/mcp/mcp";
 
@@ -90,7 +90,7 @@ export default async function McpPage() {
         OpenChainBench ships an MCP server. Point Claude Desktop, Cursor,
         ChatGPT, or any{" "}
         <a
-          href={withUtm("https://modelcontextprotocol.io")}
+          href={outboundHref("https://modelcontextprotocol.io")}
           className="lnk"
           rel="noopener"
         >
@@ -221,7 +221,7 @@ export default async function McpPage() {
         </header>
         <p className="mt-4 text-sm text-ink-soft leading-relaxed">
           Continue, Zed, Cline, Goose, custom agents on the{" "}
-          <a href={withUtm("https://github.com/modelcontextprotocol")} className="lnk" rel="noopener">
+          <a href={outboundHref("https://github.com/modelcontextprotocol")} className="lnk" rel="noopener">
             MCP SDKs
           </a>
           : all accept the same URL with the streamable-HTTP transport. SSE
@@ -322,7 +322,7 @@ export default async function McpPage() {
           Rate limits, body caps, batch rejection and SSE disable are
           enforced at the route. Source is on{" "}
           <a
-            href={withUtm("https://github.com/ChainBench/OpenChainBench/blob/main/src/app/api/mcp/%5Btransport%5D/route.ts")}
+            href={outboundHref("https://github.com/ChainBench/OpenChainBench/blob/main/src/app/api/mcp/%5Btransport%5D/route.ts")}
             className="lnk break-all"
             rel="noopener"
           >

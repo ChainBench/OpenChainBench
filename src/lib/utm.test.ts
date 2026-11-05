@@ -120,6 +120,7 @@ describe("every outbound link is tagged", () => {
     const endpointRenderers = files.filter((f) => /rpc-directory|speedtest-rpc-client/.test(f));
     for (const f of endpointRenderers) {
       expect(readFileSync(f, "utf8")).not.toContain("withUtm");
+      expect(readFileSync(f, "utf8")).not.toContain("outboundHref");
     }
   });
 });

@@ -29,7 +29,7 @@ import { buildBreadcrumbJsonLd, safeJsonLd } from "@/lib/jsonld";
 import { capDescription, capSnippet } from "@/lib/seo-text";
 import { matchesChainSlug } from "@/lib/chain-aliases";
 import type { Benchmark } from "@/types/benchmark";
-import { withUtm } from "@/lib/utm";
+import { outboundHref } from "@/lib/outbound-click";
 
 export const revalidate = 3600;
 export const maxDuration = 60;
@@ -221,9 +221,9 @@ export default async function ChainPage({
               official link at all. */}
           {chain.website && (
             <a
-              href={withUtm(chain.website)}
+              href={outboundHref(chain.website)}
               target="_blank"
-              rel="noopener noreferrer"
+              rel="noopener"
               className="lnk mt-2 inline-flex items-center gap-1 text-sm font-medium text-ink hover:text-accent transition-colors break-all"
             >
               {chain.website.replace(/^https?:\/\//, "").replace(/\/$/, "")}

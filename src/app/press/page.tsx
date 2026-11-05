@@ -4,7 +4,7 @@ import { SectionRule } from "@/components/section-rule";
 import { pressPageLd } from "@/lib/hub-jsonld";
 import { safeJsonLd } from "@/lib/jsonld";
 import { pageMetadata } from "@/lib/page-metadata";
-import { withUtm } from "@/lib/utm";
+import { outboundHref } from "@/lib/outbound-click";
 
 export const metadata: Metadata = pageMetadata({
   path: "/press",
@@ -80,7 +80,7 @@ export default function PressPage() {
       <SectionRule label="Contact" number="v" />
       <p className="text-base leading-relaxed text-ink-soft">
         For interviews, custom benchmark requests or pre-publication embargoes. open an issue or a discussion on{" "}
-        <a className="lnk" href={withUtm("https://github.com/ChainBench/OpenChainBench")}>GitHub</a>.
+        <a className="lnk" href={outboundHref("https://github.com/ChainBench/OpenChainBench")}>GitHub</a>.
       </p>
     </article>
   );

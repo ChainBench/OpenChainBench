@@ -12,6 +12,7 @@ import {
 } from "@/lib/live/config";
 import { explorerTxUrl } from "@/lib/live/explorer";
 import { fmtLag, fmtMoney } from "@/lib/live/format";
+import { outboundHref } from "@/lib/outbound-click";
 import type { SwapEvent } from "@/lib/live/types";
 
 export function CompactFeed({
@@ -99,7 +100,7 @@ const CompactRow = memo(function CompactRow({ s }: { s: SwapEvent }) {
   return (
     <tr
       className="border-b border-rule/40 cursor-pointer hover:bg-paper-soft/60 transition-colors"
-      onClick={() => window.open(href, "_blank", "noopener,noreferrer")}
+      onClick={() => window.open(outboundHref(href), "_blank", "noopener")}
       title="View transaction on explorer"
     >
       {cells}
