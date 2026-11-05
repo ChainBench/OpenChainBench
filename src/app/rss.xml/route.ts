@@ -33,21 +33,13 @@ import { getBenchCreatedAt } from "@/lib/seo/bench-dates";
 import { headlineSentence } from "@/lib/citation";
 import { SITE } from "@/data/site";
 import type { Benchmark } from "@/types/benchmark";
+import { escapeMarkup } from "@/lib/escape-markup";
 
 export const revalidate = 3600;
 
 const FEED_TITLE = "OpenChainBench benchmark releases";
 const FEED_DESCRIPTION =
   "Live measurements for crypto infrastructure: RPCs, oracles, aggregators, bridges, prediction markets. One entry per public benchmark.";
-
-function escapeXml(input: string): string {
-  return input
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&apos;");
-}
 
 function toRfc822(d: Date): string {
   // RSS 2.0 dates are RFC 822 with a 4-digit year. Native `toUTCString`
@@ -101,9 +93,9 @@ export async function GET() {
     '<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">',
   );
   lines.push("  <channel>");
-  lines.push(`    <title>${escapeXml(FEED_TITLE)}</title>`);
+  lines.push(`    <title>${escapeMarkup(FEED_TITLE)}</title>`);
   lines.push(`    <link>${SITE.url}</link>`);
-  lines.push(`    <description>${escapeXml(FEED_DESCRIPTION)}</description>`);
+  lines.push(`    <description>${escapeMarkup(FEED_DESCRIPTION)}</description>`);
   lines.push("    <language>en</language>");
   lines.push(`    <lastBuildDate>${toRfc822(lastBuild)}</lastBuildDate>`);
   lines.push(
@@ -114,13 +106,13 @@ export async function GET() {
     const link = `${SITE.url}/benchmarks/${bench.slug}`;
     const title = bench.seoTitle ?? bench.title;
     lines.push("    <item>");
-    lines.push(`      <title>${escapeXml(title)}</title>`);
+    lines.push(`      <title>${escapeMarkup(title)}</title>`);
     lines.push(`      <link>${link}</link>`);
     lines.push(`      <guid isPermaLink="true">${link}</guid>`);
     lines.push(`      <pubDate>${toRfc822(pubDate)}</pubDate>`);
-    lines.push(`      <category>${escapeXml(bench.category)}</category>`);
+    lines.push(`      <category>${escapeMarkup(bench.category)}</category>`);
     lines.push(
-      `      <description>${escapeXml(itemDescription(bench))}</description>`,
+      `      <description>${escapeMarkup(itemDescription(bench))}</description>`,
     );
     lines.push("    </item>");
   }

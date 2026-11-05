@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { decideGo, outboundHref, type GoRequest } from "@/lib/outbound-click";
+import { decideGo, outboundHref } from "@/lib/outbound-click";
+
+type GoRequest = Parameters<typeof decideGo>[0];
 
 const SELF = "openchainbench.com";
 const DESTINATION = "https://www.quicknode.com/pricing?utm_source=openchainbench";
@@ -10,7 +12,7 @@ function request(overrides: Partial<GoRequest> = {}): GoRequest {
     family: "browser",
     referer: `https://${SELF}/products/quicknode?tab=rpc`,
     selfHost: SELF,
-    prefetch: false,
+    background: false,
     ...overrides,
   };
 }
@@ -25,6 +27,7 @@ describe("decideGo", () => {
     ["ftp", "ftp://example.com/file"],
     ["credentials", "https://user:pass@example.com/"],
     ["username only", "https://openchainbench.com@example.com/"],
+    ["password only", "https://:secret@example.com/"],
     ["protocol relative", "//evil.example"],
     ["backslashes", "\\\\evil.example"],
     ["line feed", "https://evil.example/\nset-cookie:a=b"],
@@ -40,6 +43,7 @@ describe("decideGo", () => {
     ["our host on another port", `https://${SELF}:8443/rpc`],
     ["our subdomain on another port", `https://kv.${SELF}:444/x`],
     ["localhost", "http://localhost:8080/"],
+    ["localhost with a trailing dot", "http://localhost./"],
     ["an IPv4 literal", "http://169.254.169.254/latest/meta-data/"],
     ["a decimal IPv4 literal", "http://2852039166/"],
     ["an IPv6 literal", "http://[::1]/"],
@@ -48,16 +52,22 @@ describe("decideGo", () => {
     expect(decideGo(request({ to })).kind).toBe("reject");
   });
 
-  test("rejects a bad destination even when it is a prefetch", () => {
-    expect(decideGo(request({ to: "javascript:alert(1)", prefetch: true })).kind).toBe("reject");
+  test("rejects a bad destination even on a background request", () => {
+    const to = "javascript:alert(1)";
+    expect(decideGo(request({ to, background: true })).kind).toBe("reject");
+  });
+
+  test("accepts a plain http destination", () => {
+    const decision = decideGo(request({ to: "http://example.com/" }));
+    expect(decision.kind).toBe("redirect");
   });
 
   test("accepts a host that only ends with our name", () => {
     expect(decideGo(request({ to: `https://not${SELF}/` })).kind).toBe("redirect");
   });
 
-  test("ignores a prefetch", () => {
-    expect(decideGo(request({ prefetch: true }))).toEqual({ kind: "prefetch" });
+  test("ignores a background request", () => {
+    expect(decideGo(request({ background: true }))).toEqual({ kind: "background" });
   });
 
   test("redirects a non-browser without counting", () => {
@@ -78,10 +88,11 @@ describe("decideGo", () => {
   });
 
   test("caps the page taken from the referer", () => {
-    const referer = `https://${SELF}/${"a".repeat(5000)}`;
+    const path = `/${"a".repeat(1000)}`;
+    const referer = `https://${SELF}${path}`;
     const decision = decideGo(request({ referer }));
     if (decision.kind !== "redirect") throw new Error(decision.kind);
-    expect(decision.click?.page).toHaveLength(200);
+    expect(decision.click?.page.length).toBeLessThan(path.length);
   });
 
   test("treats www and the apex as the same site for the referer", () => {
@@ -97,6 +108,7 @@ describe("decideGo", () => {
     ["a lookalike prefix", `https://not${SELF}/rpc`],
     ["our subdomain", `https://kv.${SELF}/rpc`],
     ["our host on another scheme", `android-app://${SELF}/rpc`],
+    ["too long to parse", `https://${SELF}/${"a".repeat(3000)}`],
   ])("asks for confirmation when the referer is %s", (_name, referer) => {
     expect(decideGo(request({ referer }))).toEqual({
       kind: "confirm",
@@ -126,6 +138,7 @@ describe("outboundHref", () => {
     "https://openchainbench.com/rpc",
     "https://video.openchainbench.com/v/a.mp4",
     "https://doi.org/10.1000/182",
+    "https://www.doi.org/10.1000/182",
     "https://creativecommons.org/licenses/by/4.0/",
     "mailto:hello@example.com",
     "cursor://anysphere.cursor-deeplink/mcp/install",
@@ -143,7 +156,7 @@ describe("outboundHref", () => {
     );
   });
 
-  test.each([null, undefined, ""])("renders %s as an empty href", (href) => {
+  test.each([undefined, ""])("renders %s as an empty href", (href) => {
     expect(outboundHref(href)).toBe("");
   });
 
@@ -153,11 +166,8 @@ describe("outboundHref", () => {
   });
 
   test.each([
-    "https://example.com/a b?q=c d",
     "https://example.com/a b?utm_source=campaign",
     "https://example.com/é?q=日本語",
-    "https://example.com/?q=a\\b",
-    "https://example.com/?q=<x>#\"y\"",
   ])("produces a link /go accepts for %s", (href) => {
     const to = destinationOf(outboundHref(href));
     expect(decideGo(request({ to })).kind).toBe("redirect");

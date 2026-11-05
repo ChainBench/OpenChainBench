@@ -29,7 +29,7 @@ import { SITE } from "@/data/site";
  * into production. They never pass through here, and the test in
  * utm.test.ts pins that.
  */
-const SITE_HOST = new URL(SITE.url).hostname.replace(/^www\./, "");
+const SITE_HOST = bareHost(new URL(SITE.url).hostname);
 
 /** Hosts whose URLs are identifiers, not destinations. */
 const IDENTIFIER_HOSTS = new Set(["doi.org", "dx.doi.org", "creativecommons.org"]);
@@ -53,15 +53,19 @@ export function isOwnOrIdentifierHost(hostname: string): boolean {
   );
 }
 
+export function parseHttpUrl(value: string): URL | null {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" || url.protocol === "http:" ? url : null;
+  } catch {
+    return null;
+  }
+}
+
 export function withUtm(href: string | null | undefined): string {
   if (!href) return "";
-  let u: URL;
-  try {
-    u = new URL(href);
-  } catch {
-    return href; // relative path, #anchor, or malformed: leave it alone
-  }
-  if (u.protocol !== "https:" && u.protocol !== "http:") return href;
+  const u = parseHttpUrl(href);
+  if (!u) return href;
 
   if (isOwnOrIdentifierHost(u.hostname)) return href;
   if (u.searchParams.has("utm_source")) return href;

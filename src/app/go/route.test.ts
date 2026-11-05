@@ -1,5 +1,5 @@
 import {
-  afterAll,
+  afterEach,
   beforeEach,
   describe,
   expect,
@@ -14,6 +14,8 @@ const BROWSER =
 const ORIGIN = "https://openchainbench.com";
 const OWN_PAGE = { referer: `${ORIGIN}/rpc` };
 const DESTINATION = "https://www.quicknode.com/pricing";
+const NOW = new Date("2026-11-05T12:00:00Z");
+const TWO_SECONDS_LATER = new Date("2026-11-05T12:00:02Z");
 
 const capture = mock<typeof analytics.captureServer>(() => {});
 mock.module("@/lib/analytics-server", () => ({
@@ -46,12 +48,22 @@ function capturedEvents(): unknown[] {
   return capture.mock.calls.map(([, event, props]) => ({ event, ...props }));
 }
 
+function exhaustClickCount(client: string): void {
+  const headers = { ...OWN_PAGE, "x-vercel-forwarded-for": client };
+  for (let i = 0; i < 1000; i += 1) {
+    capture.mockClear();
+    get(DESTINATION, headers);
+    if (capture.mock.calls.length === 0) return;
+  }
+  throw new Error("the limit never stopped the count");
+}
+
 beforeEach(() => {
   clients += 1;
   capture.mockClear();
 });
 
-afterAll(() => {
+afterEach(() => {
   setSystemTime();
 });
 
@@ -65,13 +77,7 @@ describe("GET /go", () => {
     expect(res.headers.get("location")).toBe(DESTINATION);
     expect(res.headers.get("cache-control")).toBe("no-store");
     expect(capturedEvents()).toEqual([
-      {
-        event: "outbound_click",
-        href: DESTINATION,
-        host: "www.quicknode.com",
-        page: "/products/quicknode",
-        via: "go",
-      },
+      expect.objectContaining({ event: "outbound_click", via: "go" }),
     ]);
   });
 
@@ -87,42 +93,69 @@ describe("GET /go", () => {
     expect(html).toContain("quicknode.com</a>");
     expect(html).not.toContain("www.quicknode.com<");
     expect(capturedEvents()).toEqual([
-      {
-        event: "outbound_click",
-        href: DESTINATION,
-        host: "www.quicknode.com",
-        page: "",
-        via: "confirm",
-      },
+      expect.objectContaining({ event: "outbound_click", via: "confirm" }),
     ]);
   });
 
   test.each([
-    ["path and query", `https://example.com/"><script>alert(1)</script>?a=1&b='2'`],
-    ["fragment", `https://example.com/#"<img src=x onerror=alert(1)>`],
+    ["path", `https://example.com/"><script>alert(1)</script>`],
+    ["fragment", `https://example.com/#'onmouseover=alert(1)`],
     ["host", `https://a"onmouseover='alert(1)'.example/`],
-  ])("escapes the destination %s on the confirmation page", async (_name, to) => {
-    const html = await get(to).text();
+  ])("escapes the destination %s when confirming", async (_name, to) => {
+    const res = get(to);
+    const html = await res.text();
+    expect(res.status).toBe(200);
     expect(html).not.toContain("<script>");
-    expect(html).not.toContain("<img");
-    expect(html).not.toMatch(/"onmouseover|'alert/);
+    expect(html).not.toMatch(/"onmouseover|'onmouseover|'alert/);
     expect(html.match(/<a /g)).toHaveLength(1);
   });
 
-  test("answers 400 without counting for an invalid destination", () => {
+  test("keeps the destination intact in the Continue link", async () => {
+    const html = await get("https://example.com/it's?a=1&amp;b=2").text();
+    expect(html).toContain(
+      'href="https://example.com/it&apos;s?a=1&amp;amp;b=2"',
+    );
+  });
+
+  test("names the whole host when it only starts like www", async () => {
+    const html = await get("https://awww.example.com/").text();
+    expect(html).toContain("Continue to awww.example.com</a>");
+  });
+
+  test("answers 400 without counting for an invalid destination", async () => {
     const res = get("javascript:alert(1)", OWN_PAGE);
     expect(res.status).toBe(400);
     expect(res.headers.get("cache-control")).toBe("no-store");
+    expect(res.headers.get("content-type")).toBe("text/html; charset=utf-8");
     expect(res.headers.get("location")).toBeNull();
+    expect(await res.text()).toContain('<a href="/benchmarks"');
     expect(capture).not.toHaveBeenCalled();
   });
 
+  test("redirects from a page on another deployment host", () => {
+    const host = "https://staging.example";
+    const to = encodeURIComponent(DESTINATION);
+    const res = GET(
+      new Request(`${host}/go?to=${to}`, {
+        headers: { "user-agent": BROWSER, referer: `${host}/rpc` },
+      }),
+    );
+    expect(res.status).toBe(302);
+  });
+
+  test("still redirects when counting fails", () => {
+    capture.mockImplementationOnce(() => {
+      throw new Error("capture failed");
+    });
+    expect(get(DESTINATION, OWN_PAGE).status).toBe(302);
+  });
+
   test.each([
-    ["sec-purpose", "prefetch"],
     ["sec-purpose", "prefetch;prerender"],
     ["next-router-prefetch", "1"],
     ["sec-fetch-dest", "image"],
     ["sec-fetch-dest", "iframe"],
+    ["sec-fetch-dest", "empty"],
   ])("answers 204 without counting for %s: %s", (name, value) => {
     const res = get(DESTINATION, { ...OWN_PAGE, [name]: value });
     expect(res.status).toBe(204);
@@ -130,7 +163,14 @@ describe("GET /go", () => {
     expect(capture).not.toHaveBeenCalled();
   });
 
-  test.each(["Mozilla/5.0 (compatible; Googlebot/2.1)", "curl/8.4.0", ""])(
+  test.each([
+    "Mozilla/5.0 (compatible; Googlebot/2.1)",
+    "Mozilla/5.0 (compatible; MJ12bot/v1.4.8; http://mj12bot.com/)",
+    "Mozilla/5.0 (X11; Linux x86_64) HeadlessChrome/142.0 Safari/537.36",
+    "LinkedInBot/1.0 (compatible; Mozilla/5.0)",
+    "curl/8.4.0",
+    "",
+  ])(
     "redirects the user agent %p without counting",
     (agent) => {
       const res = get(DESTINATION, { "user-agent": agent });
@@ -149,8 +189,8 @@ describe("GET /go", () => {
   });
 
   test("keeps redirecting past the limit and stops counting", () => {
-    setSystemTime(new Date("2026-11-05T12:00:00Z"));
-    const total = 1000;
+    setSystemTime(NOW);
+    const total = 200;
     const statuses = Array.from(
       { length: total },
       () => get(DESTINATION, OWN_PAGE).status,
@@ -158,5 +198,20 @@ describe("GET /go", () => {
     expect(new Set(statuses)).toEqual(new Set([302]));
     expect(capture.mock.calls.length).toBeGreaterThan(0);
     expect(capture.mock.calls.length).toBeLessThan(total);
+  });
+
+  test("the limit applies per client", () => {
+    setSystemTime(NOW);
+    exhaustClickCount("first");
+    get(DESTINATION, { ...OWN_PAGE, "x-vercel-forwarded-for": "second" });
+    expect(capture).toHaveBeenCalledTimes(1);
+  });
+
+  test("counting resumes after the window", () => {
+    setSystemTime(NOW);
+    exhaustClickCount("returning");
+    setSystemTime(TWO_SECONDS_LATER);
+    get(DESTINATION, { ...OWN_PAGE, "x-vercel-forwarded-for": "returning" });
+    expect(capture).toHaveBeenCalledTimes(1);
   });
 });

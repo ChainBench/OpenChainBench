@@ -4,7 +4,8 @@ import { AI_CRAWLER_FAMILIES } from "@/data/ai-crawlers";
 
 /**
  * Server-side PostHog capture for the surfaces a browser never renders:
- * the Markdown views (`Accept: text/markdown`), `/api/stat`, `/api/citable`.
+ * the Markdown views (`Accept: text/markdown`), `/api/stat`, `/api/citable`,
+ * and for `/go`, the redirect outbound links pass through.
  * The client SDK only sees pages that run JavaScript, so the answer-engine
  * and agent traffic the GEO work targets was invisible (2026-09-24).
  *
@@ -46,11 +47,12 @@ const FAMILIES: [RegExp, string][] = [
   [/AhrefsBot|AhrefsSiteAudit/i, "ahrefs"],
   [/Semrush/i, "semrush"],
   [/Barkrowler/i, "barkrowler"],
-  [/facebookexternalhit|Twitterbot/i, "unfurler"],
+  [/facebookexternalhit|Twitterbot|LinkedInBot/i, "unfurler"],
   [/curl\//i, "curl"],
   [/python-requests|httpx|aiohttp/i, "python"],
   [/node-fetch|undici|axios/i, "node"],
   [/Go-http-client/i, "go"],
+  [/Mozilla\/.*https?:\/\/|HeadlessChrome/i, "declared-bot"],
   [/Mozilla\//i, "browser"],
 ];
 

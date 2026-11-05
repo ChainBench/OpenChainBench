@@ -1,25 +1,21 @@
 import { captureServer, uaFamily } from "@/lib/analytics-server";
 import { decideGo, type OutboundClick } from "@/lib/outbound-click";
+import { escapeMarkup } from "@/lib/escape-markup";
 import { clientKey, rateLimit } from "@/lib/rate-limit";
 import { bareHost } from "@/lib/utm";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const NO_STORE = { "cache-control": "no-store" };
-const HTML = { ...NO_STORE, "content-type": "text/html; charset=utf-8" };
+const NO_STORE_HEADERS = { "cache-control": "no-store" };
+const HTML_HEADERS = {
+  ...NO_STORE_HEADERS,
+  "content-type": "text/html; charset=utf-8",
+};
 const CLICKS_PER_WINDOW = 60;
 const WINDOW_SEC = 60;
-const PAGE_STYLE = "body{overflow-wrap:anywhere}a{display:inline-block;padding:13px 0}";
-
-function escapeHtml(value: string): string {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
-}
+const PAGE_STYLE =
+  "body{overflow-wrap:anywhere}a{display:inline-block;padding:13px 0}";
 
 function htmlPage(title: string, body: string): string {
   return `<!doctype html>
@@ -41,12 +37,13 @@ ${body}
 
 const INVALID_LINK_PAGE = htmlPage(
   "Invalid link",
-  `<p>This link is not valid, so nothing was opened. See the <a href="/benchmarks">current catalog</a>.</p>`,
+  `<p>This link is not valid, so nothing was opened.
+Browse <a href="/benchmarks">all benchmarks</a>.</p>`,
 );
 
 function confirmationPage(destination: URL): string {
-  const host = escapeHtml(bareHost(destination.host));
-  const href = escapeHtml(destination.href);
+  const host = escapeMarkup(bareHost(destination.host));
+  const href = escapeMarkup(destination.href);
   return htmlPage(
     "Leaving OpenChainBench",
     `<p>This link goes to ${host}.</p>
@@ -65,9 +62,13 @@ function isBackgroundRequest(headers: Headers): boolean {
 
 function countClick(req: Request, click: OutboundClick | null): void {
   if (!click || req.method !== "GET") return;
-  const key = clientKey(req, "go");
-  if (rateLimit(key, CLICKS_PER_WINDOW, WINDOW_SEC).ok) {
-    captureServer(req, "outbound_click", click);
+  try {
+    const key = clientKey(req, "go");
+    if (rateLimit(key, CLICKS_PER_WINDOW, WINDOW_SEC).ok) {
+      captureServer(req, "outbound_click", click);
+    }
+  } catch (error) {
+    console.error("[go] click not counted", error);
   }
 }
 
@@ -78,25 +79,28 @@ export function GET(req: Request): Response {
     family: uaFamily(req.headers.get("user-agent") ?? ""),
     referer: req.headers.get("referer"),
     selfHost: url.hostname,
-    prefetch: isBackgroundRequest(req.headers),
+    background: isBackgroundRequest(req.headers),
   });
 
   switch (decision.kind) {
     case "reject":
-      return new Response(INVALID_LINK_PAGE, { status: 400, headers: HTML });
-    case "prefetch":
-      return new Response(null, { status: 204, headers: NO_STORE });
+      return new Response(INVALID_LINK_PAGE, {
+        status: 400,
+        headers: HTML_HEADERS,
+      });
+    case "background":
+      return new Response(null, { status: 204, headers: NO_STORE_HEADERS });
     case "redirect":
       countClick(req, decision.click);
       return new Response(null, {
         status: 302,
-        headers: { ...NO_STORE, location: decision.destination.href },
+        headers: { ...NO_STORE_HEADERS, location: decision.destination.href },
       });
     case "confirm":
       countClick(req, decision.click);
       return new Response(confirmationPage(decision.destination), {
         status: 200,
-        headers: HTML,
+        headers: HTML_HEADERS,
       });
     default:
       return decision satisfies never;

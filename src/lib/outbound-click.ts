@@ -3,10 +3,11 @@ import {
   bareHost,
   isOwnOrIdentifierHost,
   isSameOrSubdomain,
+  parseHttpUrl,
   withUtm,
 } from "@/lib/utm";
 
-const MAX_DESTINATION_LENGTH = 2048;
+const MAX_URL_LENGTH = 2048;
 const MAX_HOSTNAME_LENGTH = 253;
 const MAX_PAGE_LENGTH = 200;
 const WHITESPACE_OR_CONTROL = /[\s\p{Cc}]/u;
@@ -23,26 +24,17 @@ export type OutboundClick = Pick<ClientClickProps, "href" | "host" | "page"> & {
 
 type GoDecision =
   | { kind: "reject" }
-  | { kind: "prefetch" }
+  | { kind: "background" }
   | { kind: "redirect"; destination: URL; click: OutboundClick | null }
   | { kind: "confirm"; destination: URL; click: OutboundClick };
 
-export type GoRequest = {
+type GoRequest = {
   to: string | null;
   family: string;
   referer: string | null;
   selfHost: string;
-  prefetch: boolean;
+  background: boolean;
 };
-
-function parseHttpUrl(value: string): URL | null {
-  try {
-    const url = new URL(value);
-    return url.protocol === "https:" || url.protocol === "http:" ? url : null;
-  } catch {
-    return null;
-  }
-}
 
 function isPublicHostname(hostname: string): boolean {
   return (
@@ -52,27 +44,35 @@ function isPublicHostname(hostname: string): boolean {
   );
 }
 
+function isAllowedDestination(url: URL): boolean {
+  return (
+    url.href.length <= MAX_URL_LENGTH &&
+    !url.username &&
+    !url.password &&
+    isPublicHostname(url.hostname)
+  );
+}
+
 function parseDestination(to: string): URL | null {
   if (WHITESPACE_OR_CONTROL.test(to)) return null;
   const url = parseHttpUrl(to);
-  if (!url || url.href.length > MAX_DESTINATION_LENGTH) return null;
-  if (url.username || url.password) return null;
-  return isPublicHostname(url.hostname) ? url : null;
+  return url && isAllowedDestination(url) ? url : null;
 }
 
 function ownPagePath(referer: string | null, selfHost: string): string | null {
-  const url = referer ? parseHttpUrl(referer) : null;
+  if (!referer || referer.length > MAX_URL_LENGTH) return null;
+  const url = parseHttpUrl(referer);
   if (!url || bareHost(url.hostname) !== bareHost(selfHost)) return null;
   return url.pathname.slice(0, MAX_PAGE_LENGTH);
 }
 
 export function decideGo(request: GoRequest): GoDecision {
-  const { to, family, referer, selfHost, prefetch } = request;
+  const { to, family, referer, selfHost, background } = request;
   const destination = to === null ? null : parseDestination(to);
   if (!destination || isSameOrSubdomain(destination.hostname, selfHost)) {
     return { kind: "reject" };
   }
-  if (prefetch) return { kind: "prefetch" };
+  if (background) return { kind: "background" };
   if (family !== "browser") {
     return { kind: "redirect", destination, click: null };
   }
@@ -87,12 +87,15 @@ export function decideGo(request: GoRequest): GoDecision {
   return { kind: "redirect", destination, click };
 }
 
-export function outboundHref(href: string | null | undefined): string {
+export function outboundHref(href: string | undefined): string {
   const tagged = withUtm(href);
-  const normalized = parseHttpUrl(tagged)?.href ?? tagged;
-  const destination = parseDestination(normalized);
-  if (!destination || isOwnOrIdentifierHost(destination.hostname)) {
+  const url = parseHttpUrl(tagged);
+  if (
+    !url ||
+    !isAllowedDestination(url) ||
+    isOwnOrIdentifierHost(url.hostname)
+  ) {
     return tagged;
   }
-  return `/go?to=${encodeURIComponent(destination.href)}`;
+  return `/go?to=${encodeURIComponent(url.href)}`;
 }
