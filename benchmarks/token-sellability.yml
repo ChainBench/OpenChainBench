@@ -20,7 +20,7 @@ ledger_reliability: false
 zero_is_a_value: true
 
 disclaimer: |
-  This page reports a simulation, not an intention. A row says that a sale of the token, from an address funded for the purpose, reverted at the block stated, on the route a live aggregator returned. A reverted sale covers honeypots, but also thin liquidity, a transfer tax, or a paused contract, and this page does not separate them. It does not say the token is a scam or that its authors meant harm. Every figure is reproducible: the call, the block and the route are published.
+  This page reports a simulation, not an intention. A row says that a sale of the token, from an address funded for the purpose, reverted at the block stated, on the route a live aggregator returned. A reverted sale covers honeypots, thin liquidity and paused contracts alike, and this page does not separate them. It does not say the token is a scam or that its authors meant harm. The method is reproducible with a free RPC: buy, approve and sell in one eth_simulateV1 on a live aggregator route.
 
 seo_intro: |
   An aggregator can hold the best quote on a token nobody can sell out of,
@@ -42,7 +42,7 @@ abstract: |
 
 methodology:
   - "Two timings, and they mean different things. Selling in the same block as the buy is the only way to hold the market still, but it trips every anti-bot cooldown, which is a common and often honest protection. The delayed timing sells a few blocks later. A token that fails the same-block sale and passes the delayed one is NOT a honeypot, and this board never counts it as one."
-  - "A token this probe has sold at any point in the window is never counted against an aggregator, even if a later sweep says its sale reverted. A token that genuinely cannot be sold does not become sellable an hour later, so a contradiction is the instrument failing rather than the token changing, and the chain's own wrapped ether was among the tokens it caught."
+  - "A failed exit is counted against an aggregator only once a second consecutive sweep finds the same thing, with no sale in between, and that applies to a token we have never sold as much as to one we have. One observation is one sample. A failure that reverses was the instrument: 39 of 657 tokens did exactly that in a day, the chain's own wrapped ether among them."
   - "SushiSwap supplies the routes this probe signs and is therefore not ranked. A token only enters the cohort if SushiSwap quoted a way into it, so scoring SushiSwap would score it on a population it selected: it quoted 98.6% of the cohort on 2026-11-05, which is what that construction produces."
   - "The exit is tested on the route the token was bought through, and on that route only. A sale that succeeds proves a token can be sold; a sale that reverts does not prove no route exists, because another aggregator's path may clear where this one did not. Read a row as how often an aggregator routed into a token whose exit failed, not as proof of a trap."
   - "A control token runs first on every sweep, not occasionally. If the control cannot be sold, the sweep measured the probe rather than the tokens and every verdict in it is discarded. This caught a broken run on 2026-11-03 that would otherwise have named two tokens as unsellable."
