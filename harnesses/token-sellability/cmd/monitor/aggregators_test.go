@@ -153,7 +153,7 @@ func trnchNode(t *testing.T, status int, body string) {
 // had classified unsellable at both timings.
 func TestTrnchRefusalIsADeclineNotAFault(t *testing.T) {
 	trnchNode(t, 409, `{"error":"token not tradable through TRNCH"}`)
-	ok, err := trnchAgg{http.DefaultClient, "k"}.WillQuote(context.Background(), "0xtok", "1")
+	ok, err := trnchAgg{http.DefaultClient, "k"}.WillQuote(context.Background(), "0xtok", 18, "1")
 	if err != nil {
 		t.Fatalf("a refusal must not be an error: %v", err)
 	}
@@ -164,7 +164,7 @@ func TestTrnchRefusalIsADeclineNotAFault(t *testing.T) {
 
 func TestTrnchQuoteCountsAsRouted(t *testing.T) {
 	trnchNode(t, 200, `{"best":{"router":"kyberswap","amountOut":"46123722"},"routes":[]}`)
-	ok, err := trnchAgg{http.DefaultClient, "k"}.WillQuote(context.Background(), "0xtok", "1")
+	ok, err := trnchAgg{http.DefaultClient, "k"}.WillQuote(context.Background(), "0xtok", 18, "1")
 	if err != nil || !ok {
 		t.Errorf("a real quote must count as routed, got ok=%v err=%v", ok, err)
 	}
@@ -174,7 +174,7 @@ func TestTrnchQuoteCountsAsRouted(t *testing.T) {
 // would credit them with something they declined.
 func TestTrnchZeroAmountIsNotARoute(t *testing.T) {
 	trnchNode(t, 200, `{"best":{"amountOut":"0"}}`)
-	ok, _ := trnchAgg{http.DefaultClient, "k"}.WillQuote(context.Background(), "0xtok", "1")
+	ok, _ := trnchAgg{http.DefaultClient, "k"}.WillQuote(context.Background(), "0xtok", 18, "1")
 	if ok {
 		t.Error("zero out must not count as a route")
 	}
@@ -189,7 +189,7 @@ func TestTrnchNoticeNeverReachesAnError(t *testing.T) {
 		"notice": notice,
 	})
 	trnchNode(t, 500, string(body))
-	_, err := trnchAgg{http.DefaultClient, "k"}.WillQuote(context.Background(), "0xtok", "1")
+	_, err := trnchAgg{http.DefaultClient, "k"}.WillQuote(context.Background(), "0xtok", 18, "1")
 	if err == nil {
 		t.Fatal("a 500 is a fault and must surface")
 	}
