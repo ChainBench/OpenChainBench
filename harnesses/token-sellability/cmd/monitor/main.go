@@ -45,9 +45,11 @@ var (
 	// quietly drops rows is indistinguishable from a rule that never fires.
 	contradictedGauge = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "token_sellability_contradicted",
-		Help: "Tokens whose sale reverted this sweep but which were sold " +
-			"earlier in the window, so they are excluded from the cohort " +
-			"the aggregators are scored against.",
+		Help: "Tokens whose sale reverted this sweep but which are not yet " +
+			"scored against anyone: either the first failure we have seen, " +
+			"or a failure after a sale that no later sweep has confirmed. A " +
+			"failure that persists becomes scoreable; one that reverses was " +
+			"the instrument.",
 	}, []string{"chain", "tier"})
 
 	cohortGauge = prometheus.NewGaugeVec(prometheus.GaugeOpts{
@@ -239,7 +241,7 @@ func main() {
 	rpc := newRPC(cfg.rpcURL)
 	quoter := NewSushiQuoter(cfg.from)
 	// One window, the same one the board reads over.
-	sold := newSellableMemory(24 * time.Hour)
+	cohort := newCohortMemory(24 * time.Hour)
 
 	go func() {
 		http.Handle("/metrics", promhttp.Handler())
@@ -249,13 +251,13 @@ func main() {
 	}()
 
 	for {
-		sweep(context.Background(), cfg, rpc, quoter, sold)
+		sweep(context.Background(), cfg, rpc, quoter, cohort)
 		time.Sleep(cfg.sweepGap)
 	}
 }
 
 func sweep(ctx context.Context, cfg config, rpc *rpcClient, q *SushiQuoter,
-	sold *sellableMemory) {
+	cohort *cohortMemory) {
 	start := time.Now()
 
 	// The control runs FIRST and every sweep, not as an occasional check. A
@@ -300,7 +302,7 @@ func sweep(ctx context.Context, cfg config, rpc *rpcClient, q *SushiQuoter,
 	// The tokens that failed, kept per tier. These are the cohort the
 	// aggregators are then asked about, and the whole point of the board.
 	failed := map[string][]string{"same_block": {}, "delayed": {}}
-	contradicted := map[string]int{"same_block": 0, "delayed": 0}
+	held := map[string]int{"same_block": 0, "delayed": 0}
 	// Symbols of the tokens in `failed`, so the ask step can label its
 	// evidence without reading symbol() a second time per token.
 	symbols := map[string]string{}
@@ -316,20 +318,20 @@ func sweep(ctx context.Context, cfg config, rpc *rpcClient, q *SushiQuoter,
 		}
 		routable++
 		examined++
-		// Remember a sale before reading any failure, so a token that sold
-		// at one tier cannot be scored against anyone at the other.
-		if p.SameBlock == Sellable || p.Delayed == Sellable {
-			sold.Record(tok)
-		}
+		// Record what this sweep saw before reading any failure off it, so
+		// the decision below is made against the token's whole history.
+		cohort.Observe(tok, p.SameBlock == Sellable || p.Delayed == Sellable)
 		for tier, v := range map[string]Verdict{"same_block": p.SameBlock, "delayed": p.Delayed} {
 			if v != Unsellable {
 				continue
 			}
-			if sold.Contradicted(tok) {
-				contradicted[tier]++
-				log.Printf("[sellability] %s reverted at %s but sold earlier in the "+
-					"window, so it is not scored against anyone (%s)",
-					tok, tier, p.whyAt(tier))
+			if !cohort.Scoreable(tok) {
+				held[tier]++
+				log.Printf("[sellability] %s reverted at %s and is held: %s (%s)",
+					tok, tier,
+					map[bool]string{true: "awaiting a second failure after a sale",
+						false: "first observation"}[cohort.Provisional(tok)],
+					p.whyAt(tier))
 				continue
 			}
 			failed[tier] = append(failed[tier], tok)
@@ -350,15 +352,15 @@ func sweep(ctx context.Context, cfg config, rpc *rpcClient, q *SushiQuoter,
 				tok, sym, p.DelayedWhy)
 		}
 	}
-	for tier, n := range contradicted {
+	for tier, n := range held {
 		contradictedGauge.WithLabelValues(cfg.chain, tier).Set(float64(n))
 	}
 	cohortGauge.WithLabelValues(cfg.chain, "routable").Set(float64(routable))
 	cohortGauge.WithLabelValues(cfg.chain, "examined").Set(float64(examined))
 	askAggregators(ctx, cfg, failed, symbols)
 	sweepSeconds.WithLabelValues(cfg.chain).Set(time.Since(start).Seconds())
-	log.Printf("[sellability] sweep done: %d seen, %d examined, %d held sellable, %.1fs",
-		len(tokens), examined, sold.Prune(), time.Since(start).Seconds())
+	log.Printf("[sellability] sweep done: %d seen, %d examined, %d tracked, %.1fs",
+		len(tokens), examined, cohort.Prune(), time.Since(start).Seconds())
 }
 
 func probeOne(ctx context.Context, cfg config, rpc *rpcClient, q *SushiQuoter, token string) Probe {
