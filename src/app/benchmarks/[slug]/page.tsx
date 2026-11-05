@@ -267,15 +267,14 @@ function MethodologyBullets({ bullets }: { bullets: string[] }) {
           <span>
             {linkifyParts(bullet).map((part, j) =>
               part.kind === "link" ? (
-                <a
+                <OutboundLink
                   key={j}
                   href={part.href}
                   target="_blank"
-                  rel="noopener"
                   className="underline decoration-ink/25 underline-offset-2 hover:decoration-ink/60"
                 >
                   {part.label}
-                </a>
+                </OutboundLink>
               ) : (
                 <span key={j}>{part.value}</span>
               ),
