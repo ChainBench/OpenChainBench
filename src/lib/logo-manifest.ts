@@ -376,7 +376,8 @@ const RAW: Record<string, string> = {
   zan: "/logos/zan.svg",
   // BlockVectra: the square vector mark they supplied (#3464), paths only.
   blockvectra: "/logos/blockvectra.svg",
-  // FluxRPC (FluxBeam): the 160px app icon from fluxrpc.com/logo.png.
+  // FluxRPC (FluxBeam): the mark they supplied, white background cut to
+  // transparent so it sits on both themes, 256px square.
   fluxrpc: "/logos/fluxrpc.png",
   // ─── Sui providers (bench 211) ───
   fullnode: "/logos/mysten.svg",
