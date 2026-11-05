@@ -53,6 +53,10 @@ describe("the provider set behind the cache keys", () => {
     const hash = createHash("sha256").update(sets.join("\n")).digest("hex").slice(0, 16);
     const count = sets.reduce((n, s) => n + s.split(":")[1].split(",").length, 0);
 
+    // An ADDITION on 2026-11-05: FluxRPC joins the keyed Solana cohort,
+    // warm and cold (fluxrpc, fluxrpc-cold). New to the site, so a product
+    // page too: v166/v159/v91 and providers-v54.
+    //
     // An ADDITION on 2026-11-03: bench 026 validator-yield goes from 7
     // chains to 15 (aptos, near, kaia, algorand, icp, gram, sei, cronos,
     // the slugs the coordinator's registry PR uses). Rows on a board of
@@ -157,6 +161,6 @@ describe("the provider set behind the cache keys", () => {
         "Then set EXPECTED to the hash in this failure, and add the provider",
         `to PRODUCT_NAMES if it needs a display name. Providers now: ${count}.`,
       ].join("\n"),
-    ).toBe("d89e0d9d0aa6b749");
+    ).toBe("db13863ffd069279");
   });
 });

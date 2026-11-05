@@ -1264,6 +1264,11 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     description:
       "Web3 node service from Ant Digital Technologies (zan.top). Its keyless public Starknet endpoint is the one measured on the Starknet RPC page.",
   },
+  fluxrpc: {
+    url: "https://fluxrpc.com",
+    description:
+      "Solana and Fogo RPC from the FluxBeam team, billed by bandwidth rather than per call, with WebSocket and Yellowstone gRPC. Endpoints in New York and Amsterdam. Measured in the private cohort of the Solana RPC page.",
+  },
   blockvectra: {
     url: "https://blockvectra.com",
     description:

@@ -33,7 +33,7 @@ type Endpoint struct {
 // eth_blockNumber answered with the key in the query and no header at all.
 // They serve neither Solana nor HyperEVM, so those two cells stay empty and
 // the matrix skips them on its own.
-var providers = []string{"infura", "alchemy", "chainstack", "ankr", "helius", "quicknode", "getblock", "dwellir", "validationcloud", "blockmachine"}
+var providers = []string{"infura", "alchemy", "chainstack", "ankr", "helius", "quicknode", "getblock", "dwellir", "validationcloud", "blockmachine", "fluxrpc"}
 
 // Per-provider probe-interval multiplier. Infura's free tier 402'd daily
 // at the old 60 s cadence (its real daily credit budget is below the
@@ -164,6 +164,10 @@ var defaultBudgets = map[string]int64{
 	// budget that runs out looks exactly like a provider that stopped
 	// answering.
 	"blockmachine": 600_000,
+	// fluxrpc: billed by bandwidth, not per call (account provided by FluxRPC
+	// 2026-11-05). Solana only. One getSlot cell at 120 s is 21.6k requests
+	// per region per month, a few MB. 300k is a runaway guard, not a quota.
+	"fluxrpc": 300_000,
 	// dwellir: Developer plan, $49/month, 25M API responses and 100
 	// responses/sec, 1 RPC response = 1 API credit with no compute units.
 	// Three regions share the key, so 8.3M per region is what the plan
