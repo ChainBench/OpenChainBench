@@ -13,14 +13,21 @@ import (
 // node serves canned eth_simulateV1 results. Each entry is the "calls" array
 // of one simulated block, so a test can hand back a short list and prove the
 // probe refuses it.
+// revertData is what the canned node returns on every call. Tests that care
+// about the reason set it; the rest leave it empty, which is also a case the
+// decoder has to handle.
+var revertData string
+
 func node(t *testing.T, blocks ...[]string) *rpcClient {
 	t.Helper()
+	t.Cleanup(func() { revertData = "" })
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		out := make([]map[string]any, 0, len(blocks))
 		for _, statuses := range blocks {
 			calls := make([]map[string]any, 0, len(statuses))
 			for _, s := range statuses {
-				calls = append(calls, map[string]any{"status": s, "gasUsed": "0x1"})
+				calls = append(calls, map[string]any{"status": s, "gasUsed": "0x1",
+					"returnData": revertData})
 			}
 			out = append(out, map[string]any{"calls": calls})
 		}
@@ -147,5 +154,60 @@ func TestApproveTargetsTheSellRouter(t *testing.T) {
 	}
 	if !strings.HasSuffix(d, maxUint256) {
 		t.Error("allowance must be unlimited so the sell cannot fail on it")
+	}
+}
+
+// An unsellable verdict is a claim about somebody's token, so it has to carry
+// the chain's own words for why. The probe used to discard them, and when the
+// wrapped ether of the chain was recorded unsellable there was nothing left to
+// read: 65 replays afterwards could not reproduce it.
+func TestAnUnsellableVerdictCarriesTheChainsReason(t *testing.T) {
+	// Error(string) with "TRANSFER_FAILED", as a router would return.
+	revertData = "0x08c379a0" +
+		"0000000000000000000000000000000000000000000000000000000000000020" +
+		"000000000000000000000000000000000000000000000000000000000000000f" +
+		"5452414e534645525f4641494c45440000000000000000000000000000000000"
+	buy, sell := quotes()
+	p := Examine(context.Background(), node(t, []string{"0x1", "0x1", "0x0"}),
+		"0xme", "0xtok", buy, sell, 0)
+	if p.SameBlock != Unsellable {
+		t.Fatalf("expected unsellable, got %q", p.SameBlock)
+	}
+	if p.SameBlockWhy != "TRANSFER_FAILED" {
+		t.Errorf("the reason must be decoded, got %q", p.SameBlockWhy)
+	}
+}
+
+// A custom error has no string to decode, and naming it by selector is more
+// use than calling it "reverted".
+func TestACustomErrorIsNamedBySelector(t *testing.T) {
+	revertData = "0xdeadbeef"
+	buy, sell := quotes()
+	p := Examine(context.Background(), node(t, []string{"0x1", "0x1", "0x0"}),
+		"0xme", "0xtok", buy, sell, 0)
+	if p.SameBlockWhy != "custom error 0xdeadbeef" {
+		t.Errorf("got %q", p.SameBlockWhy)
+	}
+}
+
+// A revert with no data at all must still say something, or a log line reads
+// as a missing value rather than a silent contract.
+func TestAnEmptyRevertStillSaysSomething(t *testing.T) {
+	buy, sell := quotes()
+	p := Examine(context.Background(), node(t, []string{"0x1", "0x1", "0x0"}),
+		"0xme", "0xtok", buy, sell, 0)
+	if p.SameBlockWhy != "reverted with no data" {
+		t.Errorf("got %q", p.SameBlockWhy)
+	}
+}
+
+// A token that sold leaves no reason behind, because there is nothing to
+// explain and an empty field is how the board tells the two apart.
+func TestASoldTokenCarriesNoReason(t *testing.T) {
+	buy, sell := quotes()
+	p := Examine(context.Background(), node(t, []string{"0x1", "0x1", "0x1"}),
+		"0xme", "0xtok", buy, sell, 0)
+	if p.SameBlockWhy != "" || p.DelayedWhy != "" {
+		t.Errorf("a sale needs no reason, got %q / %q", p.SameBlockWhy, p.DelayedWhy)
 	}
 }

@@ -862,7 +862,13 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       returns (Chainstack, FluxRPC, GetBlock, Quicknode). A new bench
   //       and four new appearances. Moves with all-benchmarks-v161,
   //       bench-filters-v93 and providers-v55.
-  ["bench-unfiltered-v168", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v169: bench 313 stops scoring tokens it has itself sold. A third of
+  //       its unsellable cohort carried both verdicts in one window, the
+  //       chain's wrapped ether among them, so the published shares were
+  //       computed against evidence the probe contradicted. The metric is
+  //       renamed off "traps", which claimed intent the measurement does
+  //       not carry. Numbers and copy both move.
+  ["bench-unfiltered-v169", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -1204,7 +1210,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v159: lockstep with bench-unfiltered-v166 (FluxRPC, keyed Solana).
   // v160: lockstep with bench-unfiltered-v167 (FluxRPC without Singapore).
   // v161: lockstep with bench-unfiltered-v168 (bench 314 solana-rpc-ws).
-  ["all-benchmarks-v161", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v162: lockstep with bench-unfiltered-v169 (bench 313 cohort rule).
+  ["all-benchmarks-v162", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
