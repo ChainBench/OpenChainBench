@@ -32,7 +32,13 @@ type Aggregator interface {
 	// WillQuote reports whether this aggregator returns a usable route INTO
 	// the token for the given native amount. The error is the reason the
 	// question could not be put at all, which is different from a no.
-	WillQuote(ctx context.Context, token, amountWei string) (bool, error)
+	//
+	// decimals is the token's own, read from the chain. ParaSwap rejects a
+	// wrong value outright with "Destination Decimals Mismatch" rather than
+	// pricing a wrong size, which is what this file used to assume: the
+	// comment here claimed a wrong guess changed the size and not the
+	// answer, and 5 of 40 requests in one sweep proved otherwise.
+	WillQuote(ctx context.Context, token string, decimals int, amountWei string) (bool, error)
 }
 
 const (
@@ -138,7 +144,7 @@ type sushiAgg struct{ c *http.Client }
 
 func (a sushiAgg) Slug() string { return "sushi" }
 
-func (a sushiAgg) WillQuote(ctx context.Context, token, amt string) (bool, error) {
+func (a sushiAgg) WillQuote(ctx context.Context, token string, decimals int, amt string) (bool, error) {
 	v := url.Values{}
 	v.Set("tokenIn", nativeSentinel)
 	v.Set("tokenOut", token)
@@ -169,7 +175,7 @@ type kyberAgg struct{ c *http.Client }
 
 func (a kyberAgg) Slug() string { return "kyberswap" }
 
-func (a kyberAgg) WillQuote(ctx context.Context, token, amt string) (bool, error) {
+func (a kyberAgg) WillQuote(ctx context.Context, token string, decimals int, amt string) (bool, error) {
 	v := url.Values{}
 	v.Set("tokenIn", nativeSentinel)
 	v.Set("tokenOut", token)
@@ -204,18 +210,16 @@ type paraswapAgg struct{ c *http.Client }
 
 func (a paraswapAgg) Slug() string { return "paraswap" }
 
-func (a paraswapAgg) WillQuote(ctx context.Context, token, amt string) (bool, error) {
+func (a paraswapAgg) WillQuote(ctx context.Context, token string, decimals int, amt string) (bool, error) {
 	v := url.Values{}
 	v.Set("srcToken", nativeSentinel)
 	v.Set("destToken", token)
 	v.Set("amount", amt)
 	v.Set("network", strconv.Itoa(chainID))
 	v.Set("srcDecimals", "18")
-	// The destination decimals are unknown for an arbitrary token and
-	// ParaSwap wants them. 18 is the common case; a wrong value changes the
-	// SIZE it prices, not whether it will price at all, which is the only
-	// thing asked here.
-	v.Set("destDecimals", "18")
+	// Their own, read from the chain. ParaSwap refuses a mismatch outright
+	// rather than pricing a wrong size.
+	v.Set("destDecimals", strconv.Itoa(decimals))
 	v.Set("side", "SELL")
 	b, code, err := httpGet(ctx, a.c, "https://api.paraswap.io/prices?"+v.Encode())
 	if err != nil {
@@ -242,7 +246,7 @@ type lifiAgg struct{ c *http.Client }
 
 func (a lifiAgg) Slug() string { return "lifi" }
 
-func (a lifiAgg) WillQuote(ctx context.Context, token, amt string) (bool, error) {
+func (a lifiAgg) WillQuote(ctx context.Context, token string, decimals int, amt string) (bool, error) {
 	v := url.Values{}
 	v.Set("fromChain", strconv.Itoa(chainID))
 	v.Set("toChain", strconv.Itoa(chainID))
@@ -326,16 +330,13 @@ type trnchAgg struct {
 
 func (a trnchAgg) Slug() string { return "trnch" }
 
-func (a trnchAgg) WillQuote(ctx context.Context, token, amt string) (bool, error) {
-	// decimalsOut is unknown for an arbitrary token and they require it. 18
-	// is the common case; a wrong value changes the SIZE priced, not whether
-	// they will price at all, which is the only thing asked here.
+func (a trnchAgg) WillQuote(ctx context.Context, token string, decimals int, amt string) (bool, error) {
 	body, _ := json.Marshal(map[string]any{
 		"tokenIn":     nativeSentinel,
 		"tokenOut":    token,
 		"amountIn":    amt,
 		"decimalsIn":  18,
-		"decimalsOut": 18,
+		"decimalsOut": decimals,
 		"slippage":    0.01,
 	})
 	req, err := http.NewRequestWithContext(ctx, "POST", trnchQuoteURL, bytes.NewReader(body))

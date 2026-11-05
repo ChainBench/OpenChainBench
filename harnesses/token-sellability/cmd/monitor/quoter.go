@@ -113,3 +113,23 @@ func (q *SushiQuoter) Symbol(ctx context.Context, c *rpcClient, token string) st
 	}
 	return s
 }
+
+// Decimals reads decimals() for the token. Defaults to 18 when the call fails
+// or answers nonsense, because 18 is the common case and a refused read must
+// not stop the token being examined; the aggregators that care will say so.
+func (q *SushiQuoter) Decimals(ctx context.Context, c *rpcClient, token string) int {
+	raw, err := c.call(ctx, "eth_call", []any{
+		map[string]string{"to": token, "data": "0x313ce567"}, "latest"})
+	if err != nil {
+		return 18
+	}
+	var hexStr string
+	if err := json.Unmarshal(raw, &hexStr); err != nil {
+		return 18
+	}
+	n, ok := new(big.Int).SetString(strings.TrimPrefix(hexStr, "0x"), 16)
+	if !ok || n.Sign() < 0 || n.Int64() > 36 {
+		return 18
+	}
+	return int(n.Int64())
+}

@@ -41,6 +41,31 @@ var (
 			"tell must say so rather than fall back to a real outcome.",
 	}, []string{"chain", "token", "symbol", "tier", "verdict"})
 
+	// How much of the whole examined cohort each aggregator was willing to
+	// quote. The board's existing columns divide within the unsellable
+	// cohort; these divide over everything, which is the denominator every
+	// rate question needs and the one that was missing.
+	surveyedGauge = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "token_sellability_surveyed",
+		Help: "Examined tokens this aggregator answered about in the last sweep.",
+	}, []string{"chain", "aggregator"})
+
+	quotedGauge = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "token_sellability_quoted",
+		Help: "Of the examined tokens it answered about, how many this " +
+			"aggregator returned a usable route into.",
+	}, []string{"chain", "aggregator"})
+
+	surveyedTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "token_sellability_surveyed_total",
+		Help: "Cumulative examined tokens this aggregator answered about.",
+	}, []string{"chain", "aggregator"})
+
+	quotedTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "token_sellability_quoted_total",
+		Help: "Cumulative examined tokens this aggregator returned a route into.",
+	}, []string{"chain", "aggregator"})
+
 	// Published so the filtering is visible rather than silent. A rule that
 	// quietly drops rows is indistinguishable from a rule that never fires.
 	contradictedGauge = prometheus.NewGaugeVec(prometheus.GaugeOpts{
@@ -143,7 +168,8 @@ var (
 func init() {
 	prometheus.MustRegister(verdictGauge, cohortGauge, sweepSeconds, controlGauge,
 		askedGauge, routedGauge, errorGauge, askedTotal, routedTotal,
-		routedTokenGauge, contradictedGauge)
+		routedTokenGauge, contradictedGauge,
+		surveyedGauge, quotedGauge, surveyedTotal, quotedTotal)
 }
 
 type config struct {
@@ -157,6 +183,8 @@ type config struct {
 	maxTokens int
 	delay     int
 	sweepGap  time.Duration
+	ledgerDir string
+	surveyCap int
 }
 
 func load() config {
@@ -171,6 +199,8 @@ func load() config {
 		maxTokens: envInt("MAX_TOKENS_PER_SWEEP", 25),
 		delay:     envInt("DELAY_BLOCKS", 3),
 		sweepGap:  time.Duration(envInt("SWEEP_SECONDS", 900)) * time.Second,
+		ledgerDir: envOr("LEDGER_DIR", "/state/aggregate/token-sellability"),
+		surveyCap: envInt("SURVEY_CAP", 40),
 	}
 	return c
 }
@@ -306,8 +336,11 @@ func sweep(ctx context.Context, cfg config, rpc *rpcClient, q *SushiQuoter,
 	// Symbols of the tokens in `failed`, so the ask step can label its
 	// evidence without reading symbol() a second time per token.
 	symbols := map[string]string{}
+	decimals := map[string]int{}
 
 	routable, examined := 0, 0
+	var examinedTokens []string
+	probes := map[string]Probe{}
 	for _, tok := range tokens {
 		if examined >= cfg.maxTokens {
 			break
@@ -318,6 +351,8 @@ func sweep(ctx context.Context, cfg config, rpc *rpcClient, q *SushiQuoter,
 		}
 		routable++
 		examined++
+		examinedTokens = append(examinedTokens, tok)
+		probes[tok] = p
 		// Record what this sweep saw before reading any failure off it, so
 		// the decision below is made against the token's whole history.
 		cohort.Observe(tok, p.SameBlock == Sellable || p.Delayed == Sellable)
@@ -338,6 +373,7 @@ func sweep(ctx context.Context, cfg config, rpc *rpcClient, q *SushiQuoter,
 		}
 		sym := q.Symbol(ctx, rpc, tok)
 		symbols[tok] = sym
+		decimals[tok] = q.Decimals(ctx, rpc, tok)
 		for tier, v := range map[string]Verdict{"same_block": p.SameBlock, "delayed": p.Delayed} {
 			for _, candidate := range []Verdict{Sellable, Unsellable, Inconclusive} {
 				val := 0.0
@@ -357,7 +393,36 @@ func sweep(ctx context.Context, cfg config, rpc *rpcClient, q *SushiQuoter,
 	}
 	cohortGauge.WithLabelValues(cfg.chain, "routable").Set(float64(routable))
 	cohortGauge.WithLabelValues(cfg.chain, "examined").Set(float64(examined))
-	askAggregators(ctx, cfg, failed, symbols)
+	// One campaign, two consumers: the board's columns and the ledger. The
+	// survey is the slow part of a sweep by design, because it is paced to
+	// what the aggregators tolerate rather than to what we can send.
+	// Examining is our RPC and is cheap; asking is their budget and is not.
+	asked := surveyCohort(examinedTokens, failed, cfg.surveyCap)
+	survey := runSurvey(ctx, cfg, asked, decimals)
+	scoreFromSurvey(cfg, survey, failed, symbols)
+	publishCoverage(cfg, survey, asked)
+
+	entries := make([]ledgerEntry, 0, len(examinedTokens))
+	for _, tok := range examinedTokens {
+		pr := probes[tok]
+		quoted := map[string]string{}
+		for _, agg := range Aggregators() {
+			q, answered := survey.Quoted(tok, agg.Slug())
+			quoted[agg.Slug()] = answer(q, answered)
+		}
+		entries = append(entries, ledgerEntry{
+			At:        time.Now().UTC().Format(time.RFC3339),
+			Chain:     cfg.chain,
+			Token:     tok,
+			Symbol:    symbols[tok],
+			SameBlock: string(pr.SameBlock),
+			Delayed:   string(pr.Delayed),
+			Why:       pr.DelayedWhy,
+			Scoreable: cohort.Scoreable(tok),
+			Quoted:    quoted,
+		})
+	}
+	writeLedger(cfg.ledgerDir, cfg.chain, entries)
 	sweepSeconds.WithLabelValues(cfg.chain).Set(time.Since(start).Seconds())
 	log.Printf("[sellability] sweep done: %d seen, %d examined, %d tracked, %.1fs",
 		len(tokens), examined, cohort.Prune(), time.Since(start).Seconds())
