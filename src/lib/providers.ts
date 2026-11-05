@@ -1010,7 +1010,9 @@ const buildProvidersCached = unstable_cache(
   //      Lockstep with bench-unfiltered-v159.
   // v54: FluxRPC is new to the site: a product page and a keyed Solana
   //      appearance, warm and cold. Lockstep with bench-unfiltered-v166.
-  ["providers-v54"],
+  // v55: bench 314 solana-rpc-ws gives four providers a Solana WebSocket
+  //      appearance. Lockstep with bench-unfiltered-v168.
+  ["providers-v55"],
   // 900 s: the provider index feeds products / compare / answers, whose
   // numbers move slowly, and this revalidate is also the effective ISR
   // period of those ~500 pages (Next takes the min across a route's caches).
