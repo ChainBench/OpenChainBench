@@ -1,4 +1,5 @@
 import { SITE } from "@/data/site";
+import { bareHost, isSameOrSubdomain, parseHttpUrl } from "@/lib/url-host";
 
 /**
  * Tags an outbound link so the destination can see the traffic came from
@@ -36,30 +37,11 @@ const IDENTIFIER_HOSTS = new Set(["doi.org", "dx.doi.org", "creativecommons.org"
 
 export const UTM_SOURCE = "openchainbench";
 
-export function bareHost(hostname: string): string {
-  return hostname.replace(/^www\./, "").replace(/\.+$/, "");
-}
-
-export function isSameOrSubdomain(hostname: string, site: string): boolean {
-  const host = bareHost(hostname);
-  const bareSite = bareHost(site);
-  return host === bareSite || host.endsWith(`.${bareSite}`);
-}
-
 export function isOwnOrIdentifierHost(hostname: string): boolean {
   return (
     isSameOrSubdomain(hostname, SITE_HOST) ||
     IDENTIFIER_HOSTS.has(bareHost(hostname))
   );
-}
-
-export function parseHttpUrl(value: string): URL | null {
-  try {
-    const url = new URL(value);
-    return url.protocol === "https:" || url.protocol === "http:" ? url : null;
-  } catch {
-    return null;
-  }
 }
 
 export function withUtm(href: string | null | undefined): string {

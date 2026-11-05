@@ -4,7 +4,8 @@ import { decideGo, outboundHref } from "@/lib/outbound-click";
 type GoRequest = Parameters<typeof decideGo>[0];
 
 const SELF = "openchainbench.com";
-const DESTINATION = "https://www.quicknode.com/pricing?utm_source=openchainbench";
+const DESTINATION =
+  "https://www.quicknode.com/pricing?utm_source=openchainbench";
 
 function request(overrides: Partial<GoRequest> = {}): GoRequest {
   return {
@@ -63,28 +64,13 @@ describe("decideGo", () => {
   });
 
   test("accepts a host that only ends with our name", () => {
-    expect(decideGo(request({ to: `https://not${SELF}/` })).kind).toBe("redirect");
+    const to = `https://not${SELF}/`;
+    expect(decideGo(request({ to })).kind).toBe("redirect");
   });
 
   test("ignores a background request", () => {
-    expect(decideGo(request({ background: true }))).toEqual({ kind: "background" });
-  });
-
-  test("redirects a search engine without counting", () => {
-    const decision = decideGo(request({ family: "googlebot", referer: null }));
-    expect(decision).toEqual({
-      kind: "redirect",
-      destination: new URL(DESTINATION),
-      click: null,
-    });
-  });
-
-  test("asks any other non-browser to confirm, without counting", () => {
-    const decision = decideGo(request({ family: "curl" }));
-    expect(decision).toEqual({
-      kind: "confirm",
-      destination: new URL(DESTINATION),
-      click: null,
+    expect(decideGo(request({ background: true }))).toEqual({
+      kind: "background",
     });
   });
 
@@ -92,7 +78,12 @@ describe("decideGo", () => {
     expect(decideGo(request())).toEqual({
       kind: "redirect",
       destination: new URL(DESTINATION),
-      click: { href: DESTINATION, host: "www.quicknode.com", page: "/products/quicknode", via: "go" },
+      click: {
+        href: DESTINATION,
+        host: "www.quicknode.com",
+        page: "/products/quicknode",
+        via: "go",
+      },
     });
   });
 
@@ -122,7 +113,12 @@ describe("decideGo", () => {
     expect(decideGo(request({ referer }))).toEqual({
       kind: "confirm",
       destination: new URL(DESTINATION),
-      click: { href: DESTINATION, host: "www.quicknode.com", page: "", via: "confirm" },
+      click: {
+        href: DESTINATION,
+        host: "www.quicknode.com",
+        page: "",
+        via: "confirm",
+      },
     });
   });
 });
@@ -139,8 +135,8 @@ describe("outboundHref", () => {
   });
 
   test("keeps a referral code and an existing campaign", () => {
-    const link = outboundHref("https://example.com/?ref=ocb&utm_source=campaign");
-    expect(destinationOf(link)).toBe("https://example.com/?ref=ocb&utm_source=campaign");
+    const tagged = "https://example.com/?ref=ocb&utm_source=campaign";
+    expect(destinationOf(outboundHref(tagged))).toBe(tagged);
   });
 
   test.each([

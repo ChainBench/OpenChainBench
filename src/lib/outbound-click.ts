@@ -1,26 +1,16 @@
+import { SEARCH_ENGINE_FAMILIES } from "@/data/search-engine-crawlers";
 import type { SiteEvent } from "@/lib/analytics";
-import {
-  bareHost,
-  isOwnOrIdentifierHost,
-  isSameOrSubdomain,
-  parseHttpUrl,
-  withUtm,
-} from "@/lib/utm";
+import { bareHost, isSameOrSubdomain, parseHttpUrl } from "@/lib/url-host";
+import { isOwnOrIdentifierHost, withUtm } from "@/lib/utm";
 
 const MAX_URL_LENGTH = 2048;
 const MAX_HOSTNAME_LENGTH = 253;
 const MAX_PAGE_LENGTH = 200;
 const WHITESPACE_OR_CONTROL = /[\s\p{Cc}]/u;
 const IPV4_LITERAL = /^\d+(\.\d+){3}$/;
-const SEARCH_ENGINE_FAMILIES: ReadonlySet<string> = new Set([
-  "googlebot",
-  "bingbot",
-  "applebot",
-  "duckduckgo",
-  "petalbot",
-  "baiduspider",
-  "yandexbot",
-]);
+const SEARCH_ENGINES: ReadonlySet<string> = new Set(
+  SEARCH_ENGINE_FAMILIES.map(([, family]) => family),
+);
 
 type ClientClickProps = Extract<
   SiteEvent,
@@ -83,7 +73,7 @@ export function decideGo(request: GoRequest): GoDecision {
   }
   if (background) return { kind: "background" };
   if (family !== "browser") {
-    const kind = SEARCH_ENGINE_FAMILIES.has(family) ? "redirect" : "confirm";
+    const kind = SEARCH_ENGINES.has(family) ? "redirect" : "confirm";
     return { kind, destination, click: null };
   }
 

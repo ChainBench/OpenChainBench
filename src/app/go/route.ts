@@ -2,7 +2,7 @@ import { captureServer, uaFamily } from "@/lib/analytics-server";
 import { decideGo, type OutboundClick } from "@/lib/outbound-click";
 import { escapeMarkup } from "@/lib/escape-markup";
 import { clientKey, rateLimit } from "@/lib/rate-limit";
-import { bareHost } from "@/lib/utm";
+import { bareHost } from "@/lib/url-host";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

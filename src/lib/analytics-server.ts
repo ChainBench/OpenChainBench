@@ -1,6 +1,7 @@
 import { after } from "next/server";
 import { createHash } from "node:crypto";
 import { AI_CRAWLER_FAMILIES } from "@/data/ai-crawlers";
+import { SEARCH_ENGINE_FAMILIES } from "@/data/search-engine-crawlers";
 
 /**
  * Server-side PostHog capture for the surfaces a browser never renders:
@@ -35,13 +36,7 @@ const HOST = "https://us.i.posthog.com";
 const FAMILIES: [RegExp, string][] = [
   ...AI_CRAWLER_FAMILIES,
   // Search engines and plain HTTP clients. Not AI, so not in that list.
-  [/Googlebot|Google-InspectionTool/i, "googlebot"],
-  [/bingbot/i, "bingbot"],
-  [/Applebot/i, "applebot"],
-  [/DuckDuckBot/i, "duckduckgo"],
-  [/PetalBot/i, "petalbot"],
-  [/Baiduspider/i, "baiduspider"],
-  [/YandexBot/i, "yandexbot"],
+  ...SEARCH_ENGINE_FAMILIES,
   // Commercial SEO tools, deliberately not allowlisted but worth naming so
   // they stop inflating "other".
   [/AhrefsBot|AhrefsSiteAudit/i, "ahrefs"],

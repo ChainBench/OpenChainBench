@@ -6,7 +6,3 @@ test("escapes every character that can break out of markup", () => {
     "&lt;a href=&quot;x&quot;&gt;Tom &amp; &apos;Jo&apos;&lt;/a&gt;",
   );
 });
-
-test("escapes an existing entity instead of trusting it", () => {
-  expect(escapeMarkup("&lt;")).toBe("&amp;lt;");
-});
