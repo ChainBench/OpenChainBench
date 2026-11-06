@@ -891,7 +891,9 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       denominator covers. routed_token is six hours older than
   //       asked_token, so the ratio divided six hours by one and
   //       published 1000% as a percentage.
-  ["bench-unfiltered-v174", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v175: bench 001 Base methodology after Denim (sealed 200 ms blocks,
+  //       log reference instead of flashblocks).
+  ["bench-unfiltered-v175", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -1239,7 +1241,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v165: lockstep with bench-unfiltered-v172 (bench 313 distinct tokens).
   // v166: lockstep with bench-unfiltered-v173 (bench 313 queries land).
   // v167: lockstep with bench-unfiltered-v174 (bench 313 subset guard).
-  ["all-benchmarks-v167", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v168: lockstep with bench-unfiltered-v175 (bench 001 Denim copy).
+  ["all-benchmarks-v168", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);

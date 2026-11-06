@@ -39,20 +39,18 @@ func TestTxHashFromRaw(t *testing.T) {
 // Only the chains in referenceChains publish a reference-based headline;
 // the rest must keep the provider's on-chain timestamp untouched.
 //
-// BNB moved into the set on 2026-10-03 after its reference was measured
-// against the gate in pending_match.go. Robinhood and Solana stay out for
-// different reasons: Robinhood has no measurement yet, and Solana has no RPC
-// WebSocket that precedes the providers' geyser feeds, so it races instead.
+// Base is the only one. BNB, Robinhood and Solana race instead (race.go):
+// BNB's reference was beaten on 97% of trades (moved 2026-11-01), Robinhood
+// had no reference, and Solana has no RPC WebSocket that precedes the
+// providers' geyser feeds.
 func TestReferenceChainsScope(t *testing.T) {
-	for _, chain := range []string{"robinhood", "solana"} {
+	for _, chain := range []string{"bnb", "robinhood", "solana"} {
 		if referenceChains[chain] {
 			t.Errorf("%s must not be re-based on the reference", chain)
 		}
 	}
-	for _, chain := range []string{"base", "bnb"} {
-		if !referenceChains[chain] {
-			t.Errorf("%s must be re-based on the reference", chain)
-		}
+	if !referenceChains["base"] {
+		t.Error("base must be re-based on the reference")
 	}
 }
 
