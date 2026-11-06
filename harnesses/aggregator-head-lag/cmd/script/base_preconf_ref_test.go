@@ -104,3 +104,16 @@ func TestBasePreconfURLIsOverridableAndDisablable(t *testing.T) {
 		t.Fatalf("unset must fall back to the default, got %q", got)
 	}
 }
+
+func TestBasePreconfSubscribesToSealedLogsSinceDenim(t *testing.T) {
+	// pendingLogs is accepted and silent after Denim; the default must be the
+	// sealed-block stream or the Base zero point is never set.
+	os.Unsetenv("BASE_PRECONF_SUBSCRIPTION")
+	if got := basePreconfSubscription(); got != "logs" {
+		t.Fatalf("default subscription = %q, want logs", got)
+	}
+	t.Setenv("BASE_PRECONF_SUBSCRIPTION", "pendingLogs")
+	if got := basePreconfSubscription(); got != "pendingLogs" {
+		t.Fatalf("override ignored, got %q", got)
+	}
+}
