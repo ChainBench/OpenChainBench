@@ -149,6 +149,17 @@ func (m *cohortMemory) Scoreable(token, tier string) bool {
 
 // Provisional reports a failure being held pending confirmation, as opposed
 // to a token that is simply fine. The board should be able to tell them apart.
+// Sold reports whether this token has ever completed a sale at this tier
+// inside the window. The held log line branched on Provisional, which is true
+// for exactly the same runs it was meant to distinguish, so every held line
+// claimed a prior sale and the "first observation" case was unreachable.
+func (m *cohortMemory) Sold(token, tier string) bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	s, ok := m.state[token]
+	return ok && s.Sold[tier]
+}
+
 func (m *cohortMemory) Provisional(token, tier string) bool {
 	m.mu.Lock()
 	defer m.mu.Unlock()

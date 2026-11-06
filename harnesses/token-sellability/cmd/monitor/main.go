@@ -377,8 +377,21 @@ func sweep(ctx context.Context, cfg config, rpc *rpcClient, q *SushiQuoter,
 		probes[tok] = p
 		// Record what this sweep saw before reading any failure off it, so
 		// the decision below is made against the token's whole history.
+		//
+		// Only a DEFINITE outcome is recorded. Observe used to be handed
+		// `v == Sellable`, which made every non-sale advance the run toward
+		// a verdict: a node answering with an empty call list, a buy that
+		// reverted, a read that timed out. 120 tokens drew Inconclusive in
+		// 9h30m. The rule exists to require two real failures and it was
+		// accepting two non-answers, which is the opposite of what a
+		// confirmation rule is for.
 		for tier, v := range map[string]Verdict{"same_block": p.SameBlock, "delayed": p.Delayed} {
-			cohort.Observe(tok, tier, v == Sellable)
+			switch v {
+			case Sellable:
+				cohort.Observe(tok, tier, true)
+			case Unsellable:
+				cohort.Observe(tok, tier, false)
+			}
 		}
 		for tier, v := range map[string]Verdict{"same_block": p.SameBlock, "delayed": p.Delayed} {
 			if v != Unsellable {
@@ -389,7 +402,7 @@ func sweep(ctx context.Context, cfg config, rpc *rpcClient, q *SushiQuoter,
 				log.Printf("[sellability] %s reverted at %s and is held: %s (%s)",
 					tok, tier,
 					map[bool]string{true: "awaiting a second failure after a sale",
-						false: "first observation"}[cohort.Provisional(tok, tier)],
+						false: "first observation"}[cohort.Sold(tok, tier)],
 					p.whyAt(tier))
 				continue
 			}
@@ -422,7 +435,7 @@ func sweep(ctx context.Context, cfg config, rpc *rpcClient, q *SushiQuoter,
 	// what the aggregators tolerate rather than to what we can send.
 	// Examining is our RPC and is cheap; asking is their budget and is not.
 	asked := surveyCohort(examinedTokens, failed, cfg.surveyCap)
-	survey := runSurvey(ctx, cfg, asked, decimals)
+	survey := runSurvey(ctx, cfg, asked, mustCount(failed), decimals)
 	scoreFromSurvey(cfg, survey, failed, symbols)
 	publishCoverage(cfg, survey, asked)
 
@@ -538,4 +551,17 @@ func bigString(v *big.Int) string {
 		return ""
 	}
 	return v.String()
+}
+
+// mustCount is how many distinct tokens the score needs an answer about this
+// sweep. It is the floor under every aggregator's budget: a cap that cut
+// into these would shrink the denominator it is there to protect.
+func mustCount(failed map[string][]string) int {
+	seen := map[string]bool{}
+	for _, toks := range failed {
+		for _, t := range toks {
+			seen[t] = true
+		}
+	}
+	return len(seen)
 }
