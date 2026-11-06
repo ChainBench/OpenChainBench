@@ -937,7 +937,14 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       moves to reverts-v2 with it, which also restarts the same-block
   //       window: that window was 90 minutes old, so one transition beats
   //       two. The block-height blind spot is unaffected and stays stated.
-  ["bench-unfiltered-v182", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v183: LI.FI is ranked again on bench 313. It was unranked because its
+  //       row divided by 20 tokens where the others divided by 27; the
+  //       per-sweep budget in #3552 fixed that and its column now reads 9,
+  //       the same as everyone. Leaving the label in place hid the best
+  //       score on the board behind a reason that had stopped being true,
+  //       and the strip printed Best 33.3% beside a table whose first row
+  //       was 55.6%.
+  ["bench-unfiltered-v183", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -1293,7 +1300,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v173: lockstep with bench-unfiltered-v180 (bench 313 rule label).
   // v174: lockstep with bench-unfiltered-v181 (unranked is not responsive).
   // v175: lockstep with bench-unfiltered-v182 (bench 313 delay 30 min).
-  ["all-benchmarks-v175", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v176: lockstep with bench-unfiltered-v183 (bench 313 ranks LI.FI).
+  ["all-benchmarks-v176", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1537,7 +1545,9 @@ const loadBenchmarkFiltered = unstable_cache(
   //      same unranked rows, and bench 304 reaches this loop on every tab.
   // v100: lockstep with bench-unfiltered-v182. The delayed tab's own
   //       label changes from "48 seconds later" to "30 minutes later".
-  ["bench-filters-v100", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v101: lockstep with bench-unfiltered-v183. Both tier tabs gain a
+  //       ranked row.
+  ["bench-filters-v101", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 

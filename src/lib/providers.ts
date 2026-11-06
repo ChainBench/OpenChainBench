@@ -1022,7 +1022,10 @@ const buildProvidersCached = unstable_cache(
   // v58: an unranked row with no reading stays unresponsive instead of
   //      being promoted to live with zeros, so its product-page appearance
   //      changes shape. Lockstep with bench-unfiltered-v181.
-  ["providers-v58"],
+  // v59: LI.FI re-enters bench 313's leader pool (its unranked label is
+  //      gone), and Trnch gets its brand mark where it had initials.
+  //      Lockstep with bench-unfiltered-v183.
+  ["providers-v59"],
   // 900 s: the provider index feeds products / compare / answers, whose
   // numbers move slowly, and this revalidate is also the effective ISR
   // period of those ~500 pages (Next takes the min across a route's caches).

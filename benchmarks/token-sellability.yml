@@ -50,7 +50,7 @@ methodology:
   - "A control token runs first on every sweep, not occasionally. If the control cannot be sold, the sweep measured the probe rather than the tokens and every verdict in it is discarded. This caught a broken run on 2026-11-03 that would otherwise have named two tokens as unsellable."
   - "Inconclusive is a verdict of its own, counted and published. The node answers some requests with a well-formed block and an empty call list, no error, and reading a status out of that would publish a revert that never ran. A probe that cannot tell says so instead of falling back to a real outcome."
   - "What the exit is WORTH is recorded, not counted. An earlier version called a token unsellable when its only route out was quoted under a tenth of the stake, which put the chain's own stablecoin in the cohort: USDG was quoted 4.08% and the sale delivered 4.08%, exactly as promised. Every non-reverting exit measured delivered 100.0% of its quote, because the route carries its own minimum output. A thin pool priced honestly is not a failed exit."
-  - "Not every row rests on the same number of tokens, and the Tokens asked column is there to show it. LI.FI answers one request and then asks for an hour, so it is sent only the failed tokens and still sees fewer sweeps than the others. Its figure is computed the same way on a smaller cohort, which is a weaker claim rather than a different one, and the column says how much smaller."
+  - "Not every row has to rest on the same number of tokens, and the Tokens asked column is there to show it. LI.FI is the tight one: it answers a request and then asks for several minutes, so it is sent only the failed tokens rather than the whole sweep. Read any row whose column is below the others as the same calculation on less evidence, which is a weaker claim rather than a different one."
   - "A failed buy is out of scope, not a failure. If no route in opens, nothing has been learned about selling, and calling that unsellable would blame the token for a market that does not exist."
   - "The cohort is tokens that emitted a Transfer in the window, not new launches. The event that announces a new token on this chain is not identified, and guessing it would bias the sample towards whichever launchpad was guessed. Tokens that moved is a weaker claim and a true one."
   - "Every probe buys with 0.02 of the chain's native coin and sells 99% of whatever the buy actually delivered, so a rounding difference can never read as a refusal. The size is part of the result: of seven tokens whose round trip returned almost nothing at this size, four returned more than a tenth at 0.002 and six at 0.0002. A reverted sale does not move with size; what the exit is worth does."
@@ -123,13 +123,6 @@ providers:
     name: LI.FI
     tier: delayed
     tag: Cross-chain relayer
-    # Its figure is published and its rank is not, because it is not computed
-    # over the same tokens. LI.FI's keyless allowance is about 20 requests
-    # every 2h12m, so it answered in 10 of 35 sweeps and its row rests on 20
-    # tokens where the others rest on 27. On the shared set one token swaps
-    # first and second place, so a ranking that included it would be a
-    # ranking of who we managed to ask.
-    unranked: "Smaller cohort"
     formula: "Share of the tokens whose sale reverted when attempted 30 minutes after the buy that LI.FI still returned a route INTO, counted over 24h of sweeps. Lower is better."
     queries:
       p50: 100 * (count(count by (token) (max_over_time(token_sellability_routed_token{rule="reverts-v2",aggregator="lifi",tier="delayed"}[24h]) and on(token) max_over_time(token_sellability_asked_token{rule="reverts-v2",aggregator="lifi",tier="delayed"}[24h]))) or on() vector(0)) / (count(count by (token) (max_over_time(token_sellability_asked_token{rule="reverts-v2",aggregator="lifi",tier="delayed"}[24h]))) > 0)
@@ -166,7 +159,6 @@ providers:
     name: LI.FI
     tier: same_block
     tag: Cross-chain relayer
-    unranked: "Smaller cohort"
     formula: "Share of the tokens whose sale reverted when attempted in the same block as the buy that LI.FI still returned a route INTO, counted over 24h of sweeps. Lower is better."
     queries:
       p50: 100 * (count(count by (token) (max_over_time(token_sellability_routed_token{rule="reverts-v2",aggregator="lifi",tier="same_block"}[24h]) and on(token) max_over_time(token_sellability_asked_token{rule="reverts-v2",aggregator="lifi",tier="same_block"}[24h]))) or on() vector(0)) / (count(count by (token) (max_over_time(token_sellability_asked_token{rule="reverts-v2",aggregator="lifi",tier="same_block"}[24h]))) > 0)
