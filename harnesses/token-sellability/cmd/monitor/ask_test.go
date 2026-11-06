@@ -16,11 +16,14 @@ type fakeAgg struct {
 
 func (f fakeAgg) Slug() string { return f.slug }
 
-func (f fakeAgg) WillQuote(_ context.Context, token string, _ int, _ string) (bool, error) {
+func (f fakeAgg) WillQuote(_ context.Context, token string, _ int, _ string) (Answer, error) {
 	if e, ok := f.errs[token]; ok {
-		return false, e
+		return Unanswered, e
 	}
-	return f.answers[token], nil
+	if f.answers[token] {
+		return Routed, nil
+	}
+	return NoLiquidity, nil
 }
 
 // surveyOf builds the answers a survey would have collected, so the scoring
@@ -30,7 +33,11 @@ func (f fakeAgg) WillQuote(_ context.Context, token string, _ int, _ string) (bo
 func surveyOf(agg string, quoted map[string]bool, unanswered ...string) *Survey {
 	s := &Survey{rows: map[string]map[string]surveyRow{}}
 	for tok, q := range quoted {
-		s.set(tok, agg, surveyRow{quoted: q})
+		a := NoLiquidity
+		if q {
+			a = Routed
+		}
+		s.set(tok, agg, surveyRow{answer: a})
 	}
 	for _, tok := range unanswered {
 		s.set(tok, agg, surveyRow{err: errors.New("timeout")})
@@ -42,7 +49,8 @@ func useAgg(t *testing.T, slug string) {
 	t.Helper()
 	for _, g := range []interface{ Reset() }{
 		askedGauge, routedGauge, errorGauge, routedTokenGauge,
-		surveyedGauge, quotedGauge,
+		surveyedGauge, quotedGauge, askedTokenGauge,
+		screenedTokenGauge, noLiquidityTokenGauge, reservedTokenGauge,
 	} {
 		g.Reset()
 	}

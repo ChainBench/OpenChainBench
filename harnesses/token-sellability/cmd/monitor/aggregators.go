@@ -38,7 +38,57 @@ type Aggregator interface {
 	// pricing a wrong size, which is what this file used to assume: the
 	// comment here claimed a wrong guess changed the size and not the
 	// answer, and 5 of 40 requests in one sweep proved otherwise.
-	WillQuote(ctx context.Context, token string, decimals int, amountWei string) (bool, error)
+	WillQuote(ctx context.Context, token string, decimals int, amountWei string) (Answer, error)
+}
+
+// Answer is what an aggregator said about one token, graded.
+//
+// "Declined" used to carry two opposite claims. Refusing because the token is
+// screened out and refusing because there is no market are different
+// statements about a router, and a reader deciding which one to trade through
+// needs them apart: one says it protects you, the other says it has nothing
+// to sell you here.
+//
+// Reserved is a route returned WITH a reservation the API itself states. Only
+// Trnch publishes one today (guard.uncertain), so it stays out of the score
+// and is published as its own column: a board that counted it would rank the
+// talkativeness of an API rather than the quality of a route. KyberSwap
+// carries nothing of the kind across 26 keys, and SushiSwap's priceImpact is
+// a number rather than a verdict.
+type Answer uint8
+
+const (
+	// Unanswered: the question could not be put at all. Never a verdict, and
+	// never counted in the denominator, because the best score on this board
+	// is earned by declining and never by failing to answer.
+	Unanswered Answer = iota
+	// Routed: a usable route, with nothing attached to it.
+	Routed
+	// Reserved: a usable route, and the aggregator says it is not sure.
+	Reserved
+	// Screened: refused, and the stated reason is the token.
+	Screened
+	// NoLiquidity: refused, and the stated reason is the market.
+	NoLiquidity
+)
+
+// Routes reports whether this answer puts the caller into the token, which is
+// what the headline counts. A reservation is still a route.
+func (a Answer) Routes() bool { return a == Routed || a == Reserved }
+
+func (a Answer) String() string {
+	switch a {
+	case Routed:
+		return "routed"
+	case Reserved:
+		return "reserved"
+	case Screened:
+		return "screened"
+	case NoLiquidity:
+		return "no_liquidity"
+	default:
+		return "unanswered"
+	}
 }
 
 const (
@@ -66,6 +116,10 @@ type refusal struct {
 	code int
 	// needle matches the message when a code is not enough.
 	needle string
+	// kind is which of the two refusals this is, and it is a judgement that
+	// belongs in the open rather than inside a condition. Read it as: does
+	// this sentence talk about the TOKEN or about the MARKET.
+	kind Answer
 }
 
 // errorBody is the union of the three error shapes in use. Each aggregator
@@ -79,21 +133,21 @@ type errorBody struct {
 // isRefusal reports whether a non-200 body is this aggregator saying no,
 // rather than something that went wrong. The second return is the reason,
 // for the log.
-func isRefusal(body []byte, known []refusal) (bool, string) {
+func isRefusal(body []byte, known []refusal) (Answer, bool) {
 	var e errorBody
 	if err := json.Unmarshal(body, &e); err != nil {
-		return false, ""
+		return Unanswered, false
 	}
 	text := strings.ToLower(e.Message + " " + e.Error)
 	for _, k := range known {
 		if k.code != 0 && e.Code == k.code {
-			return true, k.needle
+			return k.kind, true
 		}
 		if k.needle != "" && strings.Contains(text, strings.ToLower(k.needle)) {
-			return true, k.needle
+			return k.kind, true
 		}
 	}
-	return false, ""
+	return Unanswered, false
 }
 
 // rateLimited is returned when an aggregator says it will not serve us for a
@@ -176,7 +230,7 @@ type sushiAgg struct{ c *http.Client }
 
 func (a sushiAgg) Slug() string { return "sushi" }
 
-func (a sushiAgg) WillQuote(ctx context.Context, token string, decimals int, amt string) (bool, error) {
+func (a sushiAgg) WillQuote(ctx context.Context, token string, decimals int, amt string) (Answer, error) {
 	v := url.Values{}
 	v.Set("tokenIn", nativeSentinel)
 	v.Set("tokenOut", token)
@@ -186,31 +240,31 @@ func (a sushiAgg) WillQuote(ctx context.Context, token string, decimals int, amt
 	b, code, hdr, err := httpGet(ctx, a.c, "https://api.sushi.com/swap/v7/"+
 		strconv.Itoa(chainID)+"?"+v.Encode())
 	if err != nil {
-		return false, err
+		return Unanswered, err
 	}
 	if code == 429 {
-		return false, &rateLimited{a.Slug(), retryAfter(hdr), trimReason(string(b))}
+		return Unanswered, &rateLimited{a.Slug(), retryAfter(hdr), trimReason(string(b))}
 	}
 	if code != 200 {
-		return false, badStatus(code, b)
+		return Unanswered, badStatus(code, b)
 	}
 	var r struct {
 		Status           string `json:"status"`
 		AssumedAmountOut string `json:"assumedAmountOut"`
 	}
 	if err := json.Unmarshal(b, &r); err != nil {
-		return false, err
+		return Unanswered, err
 	}
 	// Sushi answers 200 with a status field when it has no route, so the
 	// status is read before the amount.
-	return r.Status == "Success" && positive(r.AssumedAmountOut), nil
+	return routeIf(r.Status == "Success" && positive(r.AssumedAmountOut)), nil
 }
 
 type kyberAgg struct{ c *http.Client }
 
 func (a kyberAgg) Slug() string { return "kyberswap" }
 
-func (a kyberAgg) WillQuote(ctx context.Context, token string, decimals int, amt string) (bool, error) {
+func (a kyberAgg) WillQuote(ctx context.Context, token string, decimals int, amt string) (Answer, error) {
 	v := url.Values{}
 	v.Set("tokenIn", nativeSentinel)
 	v.Set("tokenOut", token)
@@ -219,16 +273,16 @@ func (a kyberAgg) WillQuote(ctx context.Context, token string, decimals int, amt
 	b, code, hdr, err := httpGet(ctx, a.c,
 		"https://aggregator-api.kyberswap.com/"+chainSlug+"/api/v1/routes?"+v.Encode())
 	if err != nil {
-		return false, err
+		return Unanswered, err
 	}
 	if code == 429 {
-		return false, &rateLimited{a.Slug(), retryAfter(hdr), trimReason(string(b))}
+		return Unanswered, &rateLimited{a.Slug(), retryAfter(hdr), trimReason(string(b))}
 	}
 	if code != 200 {
-		if no, _ := isRefusal(b, kyberRefusals); no {
-			return false, nil
+		if kind, no := isRefusal(b, kyberRefusals); no {
+			return kind, nil
 		}
-		return false, badStatus(code, b)
+		return Unanswered, badStatus(code, b)
 	}
 	var r struct {
 		Code int `json:"code"`
@@ -239,16 +293,16 @@ func (a kyberAgg) WillQuote(ctx context.Context, token string, decimals int, amt
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(b, &r); err != nil {
-		return false, err
+		return Unanswered, err
 	}
-	return r.Code == 0 && positive(r.Data.RouteSummary.AmountOut), nil
+	return routeIf(r.Code == 0 && positive(r.Data.RouteSummary.AmountOut)), nil
 }
 
 type paraswapAgg struct{ c *http.Client }
 
 func (a paraswapAgg) Slug() string { return "paraswap" }
 
-func (a paraswapAgg) WillQuote(ctx context.Context, token string, decimals int, amt string) (bool, error) {
+func (a paraswapAgg) WillQuote(ctx context.Context, token string, decimals int, amt string) (Answer, error) {
 	v := url.Values{}
 	v.Set("srcToken", nativeSentinel)
 	v.Set("destToken", token)
@@ -261,16 +315,16 @@ func (a paraswapAgg) WillQuote(ctx context.Context, token string, decimals int, 
 	v.Set("side", "SELL")
 	b, code, hdr, err := httpGet(ctx, a.c, "https://api.paraswap.io/prices?"+v.Encode())
 	if err != nil {
-		return false, err
+		return Unanswered, err
 	}
 	if code == 429 {
-		return false, &rateLimited{a.Slug(), retryAfter(hdr), trimReason(string(b))}
+		return Unanswered, &rateLimited{a.Slug(), retryAfter(hdr), trimReason(string(b))}
 	}
 	if code != 200 {
-		if no, _ := isRefusal(b, paraswapRefusals); no {
-			return false, nil
+		if kind, no := isRefusal(b, paraswapRefusals); no {
+			return kind, nil
 		}
-		return false, badStatus(code, b)
+		return Unanswered, badStatus(code, b)
 	}
 	var r struct {
 		PriceRoute struct {
@@ -278,16 +332,16 @@ func (a paraswapAgg) WillQuote(ctx context.Context, token string, decimals int, 
 		} `json:"priceRoute"`
 	}
 	if err := json.Unmarshal(b, &r); err != nil {
-		return false, err
+		return Unanswered, err
 	}
-	return positive(r.PriceRoute.DestAmount), nil
+	return routeIf(positive(r.PriceRoute.DestAmount)), nil
 }
 
 type lifiAgg struct{ c *http.Client }
 
 func (a lifiAgg) Slug() string { return "lifi" }
 
-func (a lifiAgg) WillQuote(ctx context.Context, token string, decimals int, amt string) (bool, error) {
+func (a lifiAgg) WillQuote(ctx context.Context, token string, decimals int, amt string) (Answer, error) {
 	v := url.Values{}
 	v.Set("fromChain", strconv.Itoa(chainID))
 	v.Set("toChain", strconv.Itoa(chainID))
@@ -297,21 +351,22 @@ func (a lifiAgg) WillQuote(ctx context.Context, token string, decimals int, amt 
 	v.Set("fromAddress", taker)
 	b, code, hdr, err := httpGet(ctx, a.c, "https://li.quest/v1/quote?"+v.Encode())
 	if err != nil {
-		return false, err
+		return Unanswered, err
 	}
 	// LI.FI answers 404 when it has no route, which is a no rather than a
-	// failure to ask.
+	// failure to ask. It names the market, not the token: its judgements
+	// about the token come back as 1011 and 1001 with a body.
 	if code == 404 {
-		return false, nil
+		return NoLiquidity, nil
 	}
 	if code == 429 {
-		return false, &rateLimited{a.Slug(), retryAfter(hdr), trimReason(string(b))}
+		return Unanswered, &rateLimited{a.Slug(), retryAfter(hdr), trimReason(string(b))}
 	}
 	if code != 200 {
-		if no, _ := isRefusal(b, lifiRefusals); no {
-			return false, nil
+		if kind, no := isRefusal(b, lifiRefusals); no {
+			return kind, nil
 		}
-		return false, badStatus(code, b)
+		return Unanswered, badStatus(code, b)
 	}
 	var r struct {
 		Estimate struct {
@@ -319,9 +374,9 @@ func (a lifiAgg) WillQuote(ctx context.Context, token string, decimals int, amt 
 		} `json:"estimate"`
 	}
 	if err := json.Unmarshal(b, &r); err != nil {
-		return false, err
+		return Unanswered, err
 	}
-	return positive(r.Estimate.ToAmount), nil
+	return routeIf(positive(r.Estimate.ToAmount)), nil
 }
 
 // The refusals each aggregator actually sends, read off its own responses
@@ -332,19 +387,22 @@ func (a lifiAgg) WillQuote(ctx context.Context, token string, decimals int, amt 
 // to reward. Scoring it as an outage was hiding the thing worth publishing.
 var (
 	kyberRefusals = []refusal{
-		{code: 4008, needle: "route not found"},
+		{code: 4008, needle: "route not found", kind: NoLiquidity},
 	}
 	paraswapRefusals = []refusal{
-		{needle: "ESTIMATED_LOSS_GREATER_THAN_MAX_IMPACT"},
-		{needle: "No routes found"},
-		{needle: "Token not found"},
+		// A judgement, stated here rather than buried: this one is a guard
+		// on price impact, so it talks about what the trade would do and not
+		// about whether a pool exists. The other two name the market.
+		{needle: "ESTIMATED_LOSS_GREATER_THAN_MAX_IMPACT", kind: Screened},
+		{needle: "No routes found", kind: NoLiquidity},
+		{needle: "Token not found", kind: NoLiquidity},
 	}
 	trnchRefusals = []refusal{
-		{needle: "not tradable"},
-		{needle: "unsupported token"},
+		{needle: "not tradable", kind: Screened},
+		{needle: "unsupported token", kind: Screened},
 	}
 	lifiRefusals = []refusal{
-		{code: 1011, needle: "invalid or in deny list"},
+		{code: 1011, needle: "invalid or in deny list", kind: Screened},
 		// 1001 is LI.FI simulating the route it was about to return and
 		// finding the transfer reverts. On this cohort that is the whole
 		// point: it looked, it saw the token would not move, and it refused
@@ -352,9 +410,9 @@ var (
 		// did not count as having been asked, so LI.FI earned nothing for
 		// the one thing this board measures and its sample sat at 15 where
 		// every other aggregator had 26.
-		{code: 1001, needle: "could successfully generate a tx"},
-		{needle: "no quote"},
-		{needle: "not supported"},
+		{code: 1001, needle: "could successfully generate a tx", kind: Screened},
+		{needle: "no quote", kind: NoLiquidity},
+		{needle: "not supported", kind: NoLiquidity},
 	}
 )
 
@@ -382,7 +440,7 @@ type trnchAgg struct {
 
 func (a trnchAgg) Slug() string { return "trnch" }
 
-func (a trnchAgg) WillQuote(ctx context.Context, token string, decimals int, amt string) (bool, error) {
+func (a trnchAgg) WillQuote(ctx context.Context, token string, decimals int, amt string) (Answer, error) {
 	body, _ := json.Marshal(map[string]any{
 		"tokenIn":     nativeSentinel,
 		"tokenOut":    token,
@@ -393,14 +451,14 @@ func (a trnchAgg) WillQuote(ctx context.Context, token string, decimals int, amt
 	})
 	req, err := http.NewRequestWithContext(ctx, "POST", trnchQuoteURL, bytes.NewReader(body))
 	if err != nil {
-		return false, err
+		return Unanswered, err
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Authorization", "Bearer "+a.key)
 	resp, err := a.c.Do(req)
 	if err != nil {
-		return false, err
+		return Unanswered, err
 	}
 	defer resp.Body.Close()
 	b, _ := io.ReadAll(resp.Body)
@@ -413,23 +471,39 @@ func (a trnchAgg) WillQuote(ctx context.Context, token string, decimals int, amt
 		Best  struct {
 			AmountOut string `json:"amountOut"`
 		} `json:"best"`
+		// Their own reservation, read as they state it. `uncertain` is a
+		// confidence about PRICING, its reason on this cohort being
+		// "no-price", and it is published as that rather than promoted into
+		// a verdict about a trap. Measured 2026-11-06: true on 3 of the 9
+		// tokens whose sale reverted and on 0 of 12 the same sweeps sold,
+		// so it is specific and not sensitive.
+		Guard struct {
+			Uncertain bool     `json:"uncertain"`
+			Reasons   []string `json:"reasons"`
+		} `json:"guard"`
 	}
 	_ = json.Unmarshal(b, &r)
 
 	if resp.StatusCode == 429 {
-		return false, &rateLimited{a.Slug(), retryAfter(resp.Header), trimReason(string(b))}
+		return Unanswered, &rateLimited{a.Slug(), retryAfter(resp.Header), trimReason(string(b))}
 	}
 	if resp.StatusCode != 200 {
-		if no, _ := isRefusal(b, trnchRefusals); no {
-			return false, nil
+		if kind, no := isRefusal(b, trnchRefusals); no {
+			return kind, nil
 		}
 		// Their own error field only, never the whole body.
 		if r.Error != "" {
-			return false, fmt.Errorf("http %d: %s", resp.StatusCode, r.Error)
+			return Unanswered, fmt.Errorf("http %d: %s", resp.StatusCode, r.Error)
 		}
-		return false, fmt.Errorf("http %d", resp.StatusCode)
+		return Unanswered, fmt.Errorf("http %d", resp.StatusCode)
 	}
-	return positive(r.Best.AmountOut), nil
+	if !positive(r.Best.AmountOut) {
+		return NoLiquidity, nil
+	}
+	if r.Guard.Uncertain {
+		return Reserved, nil
+	}
+	return Routed, nil
 }
 
 // trnchQuoteURL is a variable so a test can serve canned bodies against it.
@@ -466,4 +540,17 @@ func chainSlugFor(id int) string {
 		return chainSlug
 	}
 	return strings.ToLower(strconv.Itoa(id))
+}
+
+// routeIf grades the four aggregators that state nothing beyond a number.
+//
+// A positive amount is a route. An empty or zero one is NOT a refusal: these
+// APIs answer 200 with no amount when they have nothing to offer, and
+// calling that a refusal would credit them with a decision they did not
+// make. It is the market, not the router.
+func routeIf(ok bool) Answer {
+	if ok {
+		return Routed
+	}
+	return NoLiquidity
 }

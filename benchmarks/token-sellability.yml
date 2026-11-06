@@ -51,6 +51,8 @@ methodology:
   - "Inconclusive is a verdict of its own, counted and published. The node answers some requests with a well-formed block and an empty call list, no error, and reading a status out of that would publish a revert that never ran. A probe that cannot tell says so instead of falling back to a real outcome."
   - "What the exit is WORTH is recorded, not counted. An earlier version called a token unsellable when its only route out was quoted under a tenth of the stake, which put the chain's own stablecoin in the cohort: USDG was quoted 4.08% and the sale delivered 4.08%, exactly as promised. Every non-reverting exit measured delivered 100.0% of its quote, because the route carries its own minimum output. A thin pool priced honestly is not a failed exit."
   - "Not every row has to rest on the same number of tokens, and the Tokens asked column is there to show it. LI.FI is the tight one: it answers a request and then asks for several minutes, so it is sent only the failed tokens rather than the whole sweep. Read any row whose column is below the others as the same calculation on less evidence, which is a weaker claim rather than a different one."
+  - "A refusal is graded, because two opposite claims were being written as one. Screened out means the reason names the TOKEN: a deny list, a screen, an impact guard. No market means it names the market. A router that screens is protecting you; one with no pool is simply absent, and the score alone could not tell them apart."
+  - "Routed with a reservation counts answers that carry a route AND a caveat the aggregator states itself. It is a column and never the score, because only one provider publishes such a field and ranking on it would rank how talkative an API is. Measured here it is specific and not sensitive: it fired on 3 of 9 failed tokens and on 0 of 12 the same sweeps sold."
   - "A failed buy is out of scope, not a failure. If no route in opens, nothing has been learned about selling, and calling that unsellable would blame the token for a market that does not exist."
   - "The cohort is tokens that emitted a Transfer in the window, not new launches. The event that announces a new token on this chain is not identified, and guessing it would bias the sample towards whichever launchpad was guessed. Tokens that moved is a weaker claim and a true one."
   - "Every probe buys with 0.02 of the chain's native coin and sells 99% of whatever the buy actually delivered, so a rounding difference can never read as a refusal. The size is part of the result: of seven tokens whose round trip returned almost nothing at this size, four returned more than a tenth at 0.002 and six at 0.0002. A reverted sale does not move with size; what the exit is worth does."
@@ -88,6 +90,9 @@ dimensions:
 ledger_columns:
   - { label: "Routed in", slot: p50 }
   - { label: "Tokens asked", panel: asked }
+  - { label: "Screened out", panel: screened }
+  - { label: "No market", panel: no_liquidity }
+  - { label: "With a reservation", panel: reserved }
 
 metric_panels:
   - id: asked
@@ -98,6 +103,27 @@ metric_panels:
     unit: count
     higher_is_better: true
     tab: false
+  - id: screened
+    label: Screened out
+    description: "Distinct tokens from the failed-exit cohort this aggregator refused with a reason that names the TOKEN: a deny list, a screen, an impact guard. Higher is better here, unlike the score: it is the router protecting you."
+    metric: count by (provider) (count by (provider, token) (max_over_time(token_sellability_screened_token{rule="reverts-v2"}[24h])))
+    label_key: provider
+    unit: count
+    higher_is_better: true
+  - id: no_liquidity
+    label: No market
+    description: Distinct tokens it returned no route for with a reason that names the MARKET rather than the token. Not a judgement about the token and not a protection, just an absence of liquidity on this route.
+    metric: count by (provider) (count by (provider, token) (max_over_time(token_sellability_no_liquidity_token{rule="reverts-v2"}[24h])))
+    label_key: provider
+    unit: count
+    higher_is_better: false
+  - id: reserved
+    label: Routed with a reservation
+    description: Distinct tokens it routed into while attaching a reservation of its own. Only Trnch publishes one today, as a confidence about pricing rather than a verdict on the token, so read a zero as silence and not as certainty.
+    metric: count by (provider) (count by (provider, token) (max_over_time(token_sellability_reserved_token{rule="reverts-v2"}[24h])))
+    label_key: provider
+    unit: count
+    higher_is_better: false
 
 providers:
 

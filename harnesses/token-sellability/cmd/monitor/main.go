@@ -164,6 +164,40 @@ var (
 	// share on trust. Reset with the verdicts each sweep, for the same
 	// reason: a token quoted yesterday must not be re-exported as though it
 	// were quoted now.
+	// What a refusal was ABOUT, which the board used to throw away.
+	//
+	// "Declined" carried two opposite claims. A router that screens a token
+	// out is protecting its caller; one that has no pool is simply absent.
+	// Reading them as one number meant the most useful thing an aggregator
+	// does on this cohort was invisible.
+	//
+	// The split is per aggregator and on the documented shape, the same
+	// discipline the refusal table already follows, and the judgement calls
+	// live in that table where they can be read.
+	screenedTokenGauge = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "token_sellability_screened_token",
+		Help: "1 when this aggregator refused this token and the reason it " +
+			"gave names the TOKEN: a deny list, a screen, an impact guard.",
+	}, []string{"chain", "aggregator", "tier", "provider", "token", "rule"})
+
+	noLiquidityTokenGauge = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "token_sellability_no_liquidity_token",
+		Help: "1 when this aggregator returned no route and the reason it " +
+			"gave names the MARKET rather than the token.",
+	}, []string{"chain", "aggregator", "tier", "provider", "token", "rule"})
+
+	// A route returned WITH a reservation the aggregator itself states.
+	//
+	// Only Trnch publishes one (guard.uncertain, reason "no-price"), so this
+	// is a column and never the score: a ranking that counted it would rank
+	// how talkative an API is. It is a confidence about pricing and not a
+	// verdict about a trap, and the copy says so.
+	reservedTokenGauge = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "token_sellability_reserved_token",
+		Help: "1 when this aggregator returned a route into this token and " +
+			"attached a reservation of its own to the answer.",
+	}, []string{"chain", "aggregator", "tier", "provider", "token", "rule"})
+
 	routedTokenGauge = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "token_sellability_routed_token",
 		Help: "1 when this aggregator returned a route INTO this specific " +
@@ -564,6 +598,9 @@ func forgetPreviousCohort() {
 	verdictGauge.Reset()
 	routedTokenGauge.Reset()
 	askedTokenGauge.Reset()
+	screenedTokenGauge.Reset()
+	noLiquidityTokenGauge.Reset()
+	reservedTokenGauge.Reset()
 }
 
 // bigString renders a big.Int for the ledger, and an absent one as the empty
