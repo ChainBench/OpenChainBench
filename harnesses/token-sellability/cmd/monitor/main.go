@@ -31,6 +31,24 @@ import (
 // exactly the question that is hard to answer from outside the container.
 var askLabels = []string{"chain", "aggregator", "tier", "provider"}
 
+// scoringRule names the rule a per-token sample was taken under, and it is a
+// label so that changing the rule cannot contaminate a window.
+//
+// A 24h max_over_time does not care that the binary changed. When the 10%
+// exit floor was removed, the board kept counting the seven tokens the floor
+// had wrongly condemned for another 23 hours, and one of them was the
+// chain's own stablecoin. Worse, it still named a leader: without those
+// seven, ParaSwap's lead over LI.FI fell from 18.0 points to 1.7, which is
+// less than one token.
+//
+// Bumping this value is how a rule change starts a clean window. Samples
+// taken under the old rule carry a different value, or none at all, so a
+// query that pins the rule cannot see them. The spec pins it.
+//
+// reverts-v1: a failed exit is a sale that REVERTS. What the exit is worth
+// is recorded in the ledger and never scored.
+const scoringRule = "reverts-v1"
+
 const transferTopic = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
 
 var (
@@ -130,7 +148,7 @@ var (
 		Help: "1 when this aggregator answered about this specific token " +
 			"from the failed-exit cohort. The denominator of the board, " +
 			"counted by token rather than by question.",
-	}, []string{"chain", "aggregator", "tier", "provider", "token"})
+	}, []string{"chain", "aggregator", "tier", "provider", "token", "rule"})
 
 	// The evidence behind every percentage on the board: which aggregator
 	// offered a route into which named token that our own simulation could
@@ -146,7 +164,7 @@ var (
 		Help: "1 when this aggregator returned a route INTO this specific " +
 			"unsellable token in the last sweep. The per-token evidence " +
 			"behind the aggregate share.",
-	}, []string{"chain", "aggregator", "tier", "provider", "token", "symbol"})
+	}, []string{"chain", "aggregator", "tier", "provider", "token", "symbol", "rule"})
 
 	// The gauges above say what the LAST sweep established, which is what
 	// the absence contract needs: delete them and the row goes quiet. They

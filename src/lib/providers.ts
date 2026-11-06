@@ -1013,7 +1013,13 @@ const buildProvidersCached = unstable_cache(
   //      appearance. Lockstep with bench-unfiltered-v168.
   // v56: bench 313 drops SushiSwap, so Sushi loses two appearances and
   //      this index carries them. Lockstep with bench-unfiltered-v170.
-  ["providers-v56"],
+  // v57: bench 313 declares LI.FI unranked on both tiers, so it leaves the
+  //      leader pool (citationCandidates filters unrankedLabel). LI.FI loses
+  //      its rank chip for this bench and ParaSwap's card goes from #1 of 4
+  //      to #1 of 3, which is the point: LI.FI's row divides by 20 tokens
+  //      where the others divide by 27, so ranking it ranked who we managed
+  //      to ask. Lockstep with bench-unfiltered-v180.
+  ["providers-v57"],
   // 900 s: the provider index feeds products / compare / answers, whose
   // numbers move slowly, and this revalidate is also the effective ISR
   // period of those ~500 pages (Next takes the min across a route's caches).

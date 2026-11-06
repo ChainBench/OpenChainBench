@@ -133,8 +133,12 @@ func TestEvidenceNamesOnlyWhatWasRoutedInto(t *testing.T) {
 	if n := testutil.CollectAndCount(routedTokenGauge); n != 1 {
 		t.Fatalf("only the routed token is evidence, got %d series", n)
 	}
+	// scoringRule is part of the label set, not decoration: a 24h window must
+	// not be able to see samples taken under a different rule, which is how
+	// the removed exit floor kept condemning seven tokens for another day.
 	if got := testutil.ToFloat64(routedTokenGauge.WithLabelValues(
-		"robinhood", "sushi", "delayed", "sushi", "0xa", "AAA")); got != 1 {
+		"robinhood", "sushi", "delayed", "sushi", "0xa", "AAA",
+		scoringRule)); got != 1 {
 		t.Errorf("the routed token must be named with its symbol, got %v", got)
 	}
 }

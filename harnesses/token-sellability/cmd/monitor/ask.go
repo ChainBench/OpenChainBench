@@ -31,12 +31,13 @@ func scoreFromSurvey(cfg config, s *Survey, failed map[string][]string,
 				}
 				asked++
 				askedTokenGauge.WithLabelValues(
-					cfg.chain, agg.Slug(), tier, rowSlug(agg.Slug(), tier), tok).Set(1)
+					cfg.chain, agg.Slug(), tier, rowSlug(agg.Slug(), tier), tok,
+					scoringRule).Set(1)
 				if quoted {
 					routed++
 					routedTokenGauge.WithLabelValues(
 						cfg.chain, agg.Slug(), tier, rowSlug(agg.Slug(), tier),
-						tok, symbols[tok]).Set(1)
+						tok, symbols[tok], scoringRule).Set(1)
 				}
 			}
 			// Published every sweep, including as a zero. Without it, a
