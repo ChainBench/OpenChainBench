@@ -913,7 +913,16 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       tokens than the others, which the Tokens asked column already
   //       showed without explaining. LI.FI answers one request and then
   //       asks for an hour, so no pacing makes its denominator match.
-  ["bench-unfiltered-v179", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v180: bench 313 was still counting the tokens the exit floor had
+  //       wrongly condemned, for 23 hours after the floor was removed,
+  //       because max_over_time does not care that the binary changed.
+  //       7 of 27 tokens, both USDG contracts among them, and it moved
+  //       first place: without them ParaSwap's lead over LI.FI falls from
+  //       18.0 points to 1.7. A `rule` label now pins the method, so a
+  //       window cannot span two of them. LI.FI goes unranked (20 tokens
+  //       against 27), the delay is 48 seconds and not 36, and the
+  //       block-height blind spot is stated.
+  ["bench-unfiltered-v180", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -1266,7 +1275,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v170: lockstep with bench-unfiltered-v177 (bench 313 drops the floor).
   // v171: lockstep with bench-unfiltered-v178 (bench 313 false claims).
   // v172: lockstep with bench-unfiltered-v179 (bench 313 LI.FI caveat).
-  ["all-benchmarks-v172", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v173: lockstep with bench-unfiltered-v180 (bench 313 rule label).
+  ["all-benchmarks-v173", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1504,7 +1514,9 @@ const loadBenchmarkFiltered = unstable_cache(
   //      formula that now names the delay in seconds.
   // v97: lockstep with bench-unfiltered-v178. The delayed tab's own
   //      label changes from "A few blocks later" to "36 seconds later".
-  ["bench-filters-v97", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v98: lockstep with bench-unfiltered-v180. Both tier tabs change: the
+  //      delayed label reads 48 seconds and LI.FI is unranked on each.
+  ["bench-filters-v98", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 
