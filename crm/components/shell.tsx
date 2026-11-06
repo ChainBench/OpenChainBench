@@ -7,6 +7,7 @@ const NAV = [
   ["/pages", "Pages"],
   ["/audience", "Audience"],
   ["/actions", "Actions"],
+  ["/costs", "Costs"],
   ["/health", "Data health"],
 ] as const;
 
