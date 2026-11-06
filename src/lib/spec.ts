@@ -909,7 +909,11 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       "most of a launch cohort" when Prometheus has 2 in 1573 over a
   //       day. The subtitle also said the exit reverted on the route the
   //       token was bought through, and the sale is a separate quote.
-  ["bench-unfiltered-v178", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v179: bench 313 says on the page that LI.FI's row rests on fewer
+  //       tokens than the others, which the Tokens asked column already
+  //       showed without explaining. LI.FI answers one request and then
+  //       asks for an hour, so no pacing makes its denominator match.
+  ["bench-unfiltered-v179", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -1261,7 +1265,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v169: lockstep with bench-unfiltered-v176 (bench 313 publishes a zero).
   // v170: lockstep with bench-unfiltered-v177 (bench 313 drops the floor).
   // v171: lockstep with bench-unfiltered-v178 (bench 313 false claims).
-  ["all-benchmarks-v171", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v172: lockstep with bench-unfiltered-v179 (bench 313 LI.FI caveat).
+  ["all-benchmarks-v172", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
