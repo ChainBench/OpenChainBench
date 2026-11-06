@@ -922,7 +922,13 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       window cannot span two of them. LI.FI goes unranked (20 tokens
   //       against 27), the delay is 48 seconds and not 36, and the
   //       block-height blind spot is stated.
-  ["bench-unfiltered-v180", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v181: declaring a provider unranked also declared it responsive. The
+  //       loader cleared `unresponsive` and forced availability live for
+  //       every labelled row, so a row that returned nothing kept the zeros
+  //       it arrived with. Bench 313 published LI.FI at 0% with no series in
+  //       Prometheus at all, on a board where 0 is the best score. Absent
+  //       from the order and absent from the data are two absences.
+  ["bench-unfiltered-v181", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -1276,7 +1282,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v171: lockstep with bench-unfiltered-v178 (bench 313 false claims).
   // v172: lockstep with bench-unfiltered-v179 (bench 313 LI.FI caveat).
   // v173: lockstep with bench-unfiltered-v180 (bench 313 rule label).
-  ["all-benchmarks-v173", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v174: lockstep with bench-unfiltered-v181 (unranked is not responsive).
+  ["all-benchmarks-v174", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1516,7 +1523,9 @@ const loadBenchmarkFiltered = unstable_cache(
   //      label changes from "A few blocks later" to "36 seconds later".
   // v98: lockstep with bench-unfiltered-v180. Both tier tabs change: the
   //      delayed label reads 48 seconds and LI.FI is unranked on each.
-  ["bench-filters-v98", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v99: lockstep with bench-unfiltered-v181. Filtered views carry the
+  //      same unranked rows, and bench 304 reaches this loop on every tab.
+  ["bench-filters-v99", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 
