@@ -6,15 +6,20 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, Suspense } from "react";
 import { track } from "@/lib/analytics";
 
+const PRIMARY_BUTTON = 0;
+const MIDDLE_BUTTON = 1;
+const CLICK_EVENTS = ["click", "auxclick"] as const;
+
 /**
- * Outbound clicks, delegated: one listener for every link that leaves the
- * site (provider websites on /products, endpoint hosts, X, GitHub). The
- * event carries the destination host and the page it was clicked from,
- * which is the number a benchmark site lives on: visitors sent to providers.
+ * Outbound clicks, delegated: one listener for the links that leave the
+ * site without passing through /go (licenses, DOIs, endpoint hosts). The
+ * event carries the destination host and the page it was clicked from.
  */
 function OutboundClicks() {
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
+      const button = e.type === "auxclick" ? MIDDLE_BUTTON : PRIMARY_BUTTON;
+      if (e.button !== button || e.detail > 1) return;
       const a = (e.target as Element | null)?.closest?.("a[href]") as HTMLAnchorElement | null;
       if (!a) return;
       let url: URL;
@@ -40,8 +45,14 @@ function OutboundClicks() {
         page: window.location.pathname,
       });
     };
-    document.addEventListener("click", onClick, { capture: true });
-    return () => document.removeEventListener("click", onClick, { capture: true });
+    for (const type of CLICK_EVENTS) {
+      document.addEventListener(type, onClick, { capture: true });
+    }
+    return () => {
+      for (const type of CLICK_EVENTS) {
+        document.removeEventListener(type, onClick, { capture: true });
+      }
+    };
   }, []);
   return null;
 }

@@ -166,3 +166,7 @@ export function continueHref(
   }
   return continueTo === "go" ? confirmedGoHref(destination) : destination.href;
 }
+
+export function openOutbound(href: string): void {
+  window.open(outboundHref(href), "_blank", "noopener");
+}

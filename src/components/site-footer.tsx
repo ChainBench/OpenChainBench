@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { SITE } from "@/data/site";
-import { withUtm } from "@/lib/utm";
+import { OutboundLink } from "@/components/outbound-link";
 
 /**
  * Compact footer, one row of links plus the legal line.
@@ -76,12 +76,12 @@ export function SiteFooter() {
               {l.label}
             </Link>
           ))}
-          <a
-            href={withUtm("https://github.com/ChainBench/OpenChainBench/issues/new")}
+          <OutboundLink
+            href="https://github.com/ChainBench/OpenChainBench/issues/new"
             className="text-[13px] text-ink-muted hover:text-ink transition-colors"
           >
             Open an issue
-          </a>
+          </OutboundLink>
           <a
             href={`mailto:${SITE.email}`}
             className="text-[13px] text-ink-muted hover:text-ink transition-colors"

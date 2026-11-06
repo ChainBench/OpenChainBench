@@ -27,15 +27,15 @@ import { bareHost, isSameOrSubdomain, parseHttpUrl } from "@/lib/url-host";
  *
  * It is NOT applied to RPC endpoint URLs. Those are shown so a reader can
  * paste them into a config; a utm_source in one would be copied straight
- * into production. They never pass through here, and the test in
- * utm.test.ts pins that.
+ * into production. They never pass through here, and an ESLint rule on
+ * their renderers enforces that.
  */
 const SITE_HOST = bareHost(new URL(SITE.url).hostname);
 
 /** Hosts whose URLs are identifiers, not destinations. */
 const IDENTIFIER_HOSTS = new Set(["doi.org", "dx.doi.org", "creativecommons.org"]);
 
-export const UTM_SOURCE = "openchainbench";
+const UTM_SOURCE = "openchainbench";
 
 export function isOwnOrIdentifierHost(hostname: string): boolean {
   return (
@@ -44,7 +44,7 @@ export function isOwnOrIdentifierHost(hostname: string): boolean {
   );
 }
 
-export function withUtm(href: string | null | undefined): string {
+export function withUtm(href: string | undefined): string {
   if (!href) return "";
   const u = parseHttpUrl(href);
   if (!u) return href;

@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronRight } from "lucide-react";
 import { ProviderLogo } from "@/components/provider-logo";
+import { OutboundLink } from "@/components/outbound-link";
+import { openOutbound } from "@/lib/outbound-click";
 import type { PmVenueRow } from "@/lib/pm-stats";
 
 /**
@@ -154,37 +156,22 @@ export function PmVenuesLeaderboard({ rows }: { rows: PmVenueRow[] }) {
           </thead>
           <tbody>
             {filtered.map((r, i) => {
-              const href = r.benched === false && r.externalUrl
-                ? r.externalUrl
-                : `/products/${r.slug}`;
-              const isExternal = r.benched === false;
+              const externalUrl = r.benched === false ? r.externalUrl : undefined;
               return (
               <tr
                 key={r.slug}
-                onClick={() => isExternal ? window.open(href, "_blank") : router.push(href)}
+                onClick={() =>
+                  externalUrl
+                    ? openOutbound(externalUrl)
+                    : router.push(`/products/${r.slug}`)
+                }
                 className="border-t border-ink/5 hover:bg-paper-soft/40 transition-colors cursor-pointer"
               >
                 <Td muted mono>
                   {i + 1}
                 </Td>
                 <Td>
-                  <Link
-                    href={href}
-                    target={isExternal ? "_blank" : undefined}
-                    rel={isExternal ? "noopener noreferrer" : undefined}
-                    className="flex items-center gap-2 min-w-0 group"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <ProviderLogo slug={r.slug} name={r.name} size={18} />
-                    <span className="font-medium text-ink truncate group-hover:underline underline-offset-2">
-                      {r.name}
-                    </span>
-                    <TypeBadge type={r.type} />
-                    <ChevronRight
-                      size={14}
-                      className="text-ink-faint shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                    />
-                  </Link>
+                  <VenueLink row={r} externalUrl={externalUrl} />
                 </Td>
                 <Td
                   mono
@@ -243,6 +230,41 @@ export function PmVenuesLeaderboard({ rows }: { rows: PmVenueRow[] }) {
         </table>
       </div>
     </div>
+  );
+}
+
+function VenueLink({
+  row,
+  externalUrl,
+}: {
+  row: PmVenueRow;
+  externalUrl: string | undefined;
+}) {
+  const shared = {
+    className: "flex items-center gap-2 min-w-0 group",
+    onClick: (e: React.MouseEvent) => e.stopPropagation(),
+  };
+  const content = (
+    <>
+      <ProviderLogo slug={row.slug} name={row.name} size={18} />
+      <span className="font-medium text-ink truncate group-hover:underline underline-offset-2">
+        {row.name}
+      </span>
+      <TypeBadge type={row.type} />
+      <ChevronRight
+        size={14}
+        className="text-ink-faint shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+      />
+    </>
+  );
+  return externalUrl ? (
+    <OutboundLink href={externalUrl} target="_blank" {...shared}>
+      {content}
+    </OutboundLink>
+  ) : (
+    <Link href={`/products/${row.slug}`} {...shared}>
+      {content}
+    </Link>
   );
 }
 

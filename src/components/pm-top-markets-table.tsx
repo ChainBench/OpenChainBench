@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { PmTopMarket } from "@/lib/pm-venue-data";
-import { withUtm } from "@/lib/utm";
+import { OutboundLink } from "@/components/outbound-link";
 
 /**
  * Top 10 markets sortable table for the venue deep-dive section. Each row
@@ -113,14 +113,13 @@ export function PmTopMarketsTable({
                 className="border-t border-ink/8 hover:bg-paper-soft/40 transition-colors"
               >
                 <td className="px-4 py-2.5 max-w-[320px]">
-                  <a
-                    href={withUtm(m.url)}
+                  <OutboundLink
+                    href={m.url}
                     target="_blank"
-                    rel="noopener noreferrer"
                     className="text-ink hover:underline line-clamp-1"
                   >
                     {m.question}
-                  </a>
+                  </OutboundLink>
                 </td>
                 <td className="px-4 py-2.5">
                   <CategoryPill category={m.category} />

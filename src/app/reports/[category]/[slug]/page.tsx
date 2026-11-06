@@ -22,6 +22,7 @@ import {
 } from "@/lib/reports/loader";
 import { safeJsonLd } from "@/lib/jsonld";
 import { PERSON_ID } from "@/lib/hub-jsonld";
+import { outboundHref } from "@/lib/outbound-click";
 import { SITE } from "@/data/site";
 
 export const revalidate = 3600;
@@ -256,8 +257,8 @@ const MDX_COMPONENTS = {
     </div>
   ),
 
-  a: (props: React.AnchorHTMLAttributes<HTMLAnchorElement>) => (
-    <a className="lnk" {...props} />
+  a: ({ href, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement>) => (
+    <a className="lnk" {...props} href={outboundHref(href)} />
   ),
 
   strong: (props: React.HTMLAttributes<HTMLElement>) => (

@@ -48,7 +48,7 @@ export type ProviderClaim = {
   verifiedAt: string;
 };
 
-export type ProviderRegistryEntry = {
+type ProviderRegistryEntry = {
   /**
    * Optional since 2026-10-09, for the opposite reason to `description`
    * below. A sweep of all 341 published URLs found domains that had simply
@@ -80,7 +80,7 @@ export type ProviderRegistryEntry = {
    * product page's outbound link. `url` stays the canonical address shown
    * as the link text and served in the API, citations and structured data,
    * the same rule utm.ts follows for the utm tag. The rendered href still
-   * goes through withUtm, so it carries both the provider's referral code
+   * goes through outboundHref, so it carries both the provider's referral code
    * and our utm_source. Rendered with rel="sponsored".
    */
   referralUrl?: string;

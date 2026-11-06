@@ -1,5 +1,10 @@
-import { describe, expect, test } from "bun:test";
-import { decideGo, type GoRequest, outboundHref } from "@/lib/outbound-click";
+import { afterEach, describe, expect, mock, test } from "bun:test";
+import {
+  decideGo,
+  type GoRequest,
+  openOutbound,
+  outboundHref,
+} from "@/lib/outbound-click";
 
 const SELF = "openchainbench.com";
 const DESTINATION =
@@ -285,5 +290,22 @@ describe("outboundHref", () => {
   ])("produces a link /go accepts for %s", (href) => {
     const to = destinationOf(outboundHref(href));
     expect(decideGo(request({ to })).kind).toBe("redirect");
+  });
+});
+
+describe("openOutbound", () => {
+  afterEach(() => {
+    Reflect.deleteProperty(globalThis, "window");
+  });
+
+  test("opens /go in a new tab that keeps the referrer", () => {
+    const open = mock();
+    Object.assign(globalThis, { window: { open } });
+    openOutbound("https://drpc.org");
+    expect(open).toHaveBeenCalledWith(
+      outboundHref("https://drpc.org"),
+      "_blank",
+      "noopener",
+    );
   });
 });
