@@ -43,12 +43,13 @@ abstract: |
   on every sweep, including the control.
 
 methodology:
-  - "Two timings, and they mean different things. Selling in the same block as the buy is the only way to hold the market still, but it trips every anti-bot cooldown, which is a common and often honest protection. The delayed timing sells a few blocks later. A token that fails the same-block sale and passes the delayed one is NOT a honeypot, and this board never counts it as one."
+  - "Two timings. Selling in the same block as the buy holds the market still but trips every anti-bot cooldown, which is often an honest protection. The delayed timing sells 36 seconds later: three empty blocks appended to the simulation, which the node timestamps 12 seconds apart whatever the chain's own block time. A token that fails same-block and passes delayed is NOT a honeypot and is never counted as one. The two have yet to disagree about a single token."
   - "A failed exit is counted against an aggregator only once a second consecutive sweep finds the same thing, with no sale in between, and that applies to a token we have never sold as much as to one we have. One observation is one sample. A failure that reverses was the instrument: 39 of 657 tokens did exactly that in a day, the chain's own wrapped ether among them."
   - "SushiSwap supplies the routes this probe signs and is therefore not ranked. A token only enters the cohort if SushiSwap quoted a way into it, so scoring SushiSwap would score it on a population it selected: it quoted 98.6% of the cohort on 2026-11-05, which is what that construction produces."
   - "The exit is tested on the route the token was bought through, and on that route only. A sale that succeeds proves a token can be sold; a sale that reverts does not prove no route exists, because another aggregator's path may clear where this one did not. Read a row as how often an aggregator routed into a token whose exit failed, not as proof of a trap."
   - "A control token runs first on every sweep, not occasionally. If the control cannot be sold, the sweep measured the probe rather than the tokens and every verdict in it is discarded. This caught a broken run on 2026-11-03 that would otherwise have named two tokens as unsellable."
   - "Inconclusive is a verdict of its own, counted and published. The node answers some requests with a well-formed block and an empty call list, no error, and reading a status out of that would publish a revert that never ran. A probe that cannot tell says so instead of falling back to a real outcome."
+  - "What the exit is WORTH is recorded, not counted. An earlier version called a token unsellable when its only route out was quoted under a tenth of the stake, which put the chain's own stablecoin in the cohort: USDG was quoted 4.08% and the sale delivered 4.08%, exactly as promised. Every non-reverting exit measured delivered 100.0% of its quote, because the route carries its own minimum output. A thin pool priced honestly is not a failed exit."
   - "A failed buy is out of scope, not a failure. If no route in opens, nothing has been learned about selling, and calling that unsellable would blame the token for a market that does not exist."
   - "The cohort is tokens that emitted a Transfer in the window, not new launches. The event that announces a new token on this chain is not identified, and guessing it would bias the sample towards whichever launchpad was guessed. Tokens that moved is a weaker claim and a true one."
   - "The sale is sized at 98% of what the buy returned, so it can never fail on a rounding difference and be read as a refusal."
@@ -104,7 +105,7 @@ providers:
     name: KyberSwap
     tier: delayed
     tag: No auth, per chain aggregator engine
-    formula: "Share of the tokens whose sale reverted when attempted a few blocks after the buy that KyberSwap still returned a route INTO, counted over 24h of sweeps. Lower is better."
+    formula: "Share of the tokens whose sale reverted when attempted 36 seconds after the buy that KyberSwap still returned a route INTO, counted over 24h of sweeps. Lower is better."
     queries:
       p50: 100 * (count(count by (token) (max_over_time(token_sellability_routed_token{aggregator="kyberswap",tier="delayed"}[24h]) and on(token) max_over_time(token_sellability_asked_token{aggregator="kyberswap",tier="delayed"}[24h]))) or on() vector(0)) / (count(count by (token) (max_over_time(token_sellability_asked_token{aggregator="kyberswap",tier="delayed"}[24h]))) > 0)
       sample_size: count(count by (token) (max_over_time(token_sellability_asked_token{aggregator="kyberswap",tier="delayed"}[24h])))
@@ -113,7 +114,7 @@ providers:
     name: ParaSwap
     tier: delayed
     tag: Trades as Velora, no key
-    formula: "Share of the tokens whose sale reverted when attempted a few blocks after the buy that ParaSwap still returned a route INTO, counted over 24h of sweeps. Lower is better."
+    formula: "Share of the tokens whose sale reverted when attempted 36 seconds after the buy that ParaSwap still returned a route INTO, counted over 24h of sweeps. Lower is better."
     queries:
       p50: 100 * (count(count by (token) (max_over_time(token_sellability_routed_token{aggregator="paraswap",tier="delayed"}[24h]) and on(token) max_over_time(token_sellability_asked_token{aggregator="paraswap",tier="delayed"}[24h]))) or on() vector(0)) / (count(count by (token) (max_over_time(token_sellability_asked_token{aggregator="paraswap",tier="delayed"}[24h]))) > 0)
       sample_size: count(count by (token) (max_over_time(token_sellability_asked_token{aggregator="paraswap",tier="delayed"}[24h])))
@@ -122,7 +123,7 @@ providers:
     name: LI.FI
     tier: delayed
     tag: Cross-chain relayer
-    formula: "Share of the tokens whose sale reverted when attempted a few blocks after the buy that LI.FI still returned a route INTO, counted over 24h of sweeps. Lower is better."
+    formula: "Share of the tokens whose sale reverted when attempted 36 seconds after the buy that LI.FI still returned a route INTO, counted over 24h of sweeps. Lower is better."
     queries:
       p50: 100 * (count(count by (token) (max_over_time(token_sellability_routed_token{aggregator="lifi",tier="delayed"}[24h]) and on(token) max_over_time(token_sellability_asked_token{aggregator="lifi",tier="delayed"}[24h]))) or on() vector(0)) / (count(count by (token) (max_over_time(token_sellability_asked_token{aggregator="lifi",tier="delayed"}[24h]))) > 0)
       sample_size: count(count by (token) (max_over_time(token_sellability_asked_token{aggregator="lifi",tier="delayed"}[24h])))
@@ -131,7 +132,7 @@ providers:
     name: Trnch
     tier: delayed
     tag: Screens the token with its own agent before polling routers
-    formula: "Share of the tokens whose sale reverted when attempted a few blocks after the buy that Trnch still returned a route INTO, counted over 24h of sweeps. Lower is better."
+    formula: "Share of the tokens whose sale reverted when attempted 36 seconds after the buy that Trnch still returned a route INTO, counted over 24h of sweeps. Lower is better."
     queries:
       p50: 100 * (count(count by (token) (max_over_time(token_sellability_routed_token{aggregator="trnch",tier="delayed"}[24h]) and on(token) max_over_time(token_sellability_asked_token{aggregator="trnch",tier="delayed"}[24h]))) or on() vector(0)) / (count(count by (token) (max_over_time(token_sellability_asked_token{aggregator="trnch",tier="delayed"}[24h]))) > 0)
       sample_size: count(count by (token) (max_over_time(token_sellability_asked_token{aggregator="trnch",tier="delayed"}[24h])))

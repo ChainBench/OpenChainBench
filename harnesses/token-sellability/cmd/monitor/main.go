@@ -31,12 +31,6 @@ import (
 // exactly the question that is hard to answer from outside the container.
 var askLabels = []string{"chain", "aggregator", "tier", "provider"}
 
-// exitFloorPct is the share of the amount put in that an exit must return
-// to count as an exit at all. Ten percent: a 90% round-trip loss is not a
-// sale, it is a trap with a working sell function, and the board would
-// otherwise score it as a clean exit.
-const exitFloorPct = 10
-
 const transferTopic = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
 
 var (
@@ -326,15 +320,22 @@ func sweep(ctx context.Context, cfg config, rpc *rpcClient, q *SushiQuoter,
 	// sweep whose control cannot be sold measured the probe rather than the
 	// tokens, and publishing its verdicts would accuse somebody on the
 	// strength of a broken instrument.
+	// Both legs, not one. The control used to be read on its same-block
+	// verdict alone, so a control that sold in the same block and failed a
+	// few blocks later passed the gate, and every delayed verdict in that
+	// sweep was published off a probe whose delayed leg was broken. The two
+	// timings are two instruments and the gate has to clear both.
 	ctl := probeOne(ctx, cfg, rpc, q, cfg.control)
 	ok := 0.0
-	if ctl.SameBlock == Sellable {
+	if ctl.SameBlock == Sellable && ctl.Delayed == Sellable {
 		ok = 1
 	}
 	controlGauge.WithLabelValues(cfg.chain, strings.ToLower(cfg.control)).Set(ok)
 	if ok == 0 {
-		log.Printf("[sellability] control %s did not sell (%s); skipping the sweep",
-			cfg.control, ctl.Reason)
+		log.Printf("[sellability] control %s did not sell at both timings "+
+			"(same_block=%s %s, delayed=%s %s); skipping the sweep",
+			cfg.control, ctl.SameBlock, ctl.SameBlockWhy, ctl.Delayed, ctl.DelayedWhy)
+		forgetPreviousCohort()
 		sweepSeconds.WithLabelValues(cfg.chain).Set(time.Since(start).Seconds())
 		return
 	}
@@ -342,24 +343,12 @@ func sweep(ctx context.Context, cfg config, rpc *rpcClient, q *SushiQuoter,
 	tokens, err := recentTokens(ctx, rpc, cfg.window)
 	if err != nil {
 		log.Printf("[sellability] cohort unavailable: %v", err)
+		forgetPreviousCohort()
+		sweepSeconds.WithLabelValues(cfg.chain).Set(time.Since(start).Seconds())
 		return
 	}
 
-	// Forget the previous sweep's cohort before recording this one.
-	//
-	// A GaugeVec keeps every label set it has ever been given and exports
-	// all of them on every scrape, so without this the process re-publishes
-	// each token it has ever examined, for as long as it runs. Two things
-	// break. The scrape payload grows without bound, one series per token
-	// per tier per verdict. And worse, any count over a window stops meaning
-	// what it says: "tokens examined in the last 24h" would include a token
-	// last looked at a week ago, because its gauge is still being emitted
-	// now. Prometheus keeps the history either way, so a windowed query
-	// still sees past sweeps; what it must not see is the past dressed as
-	// the present.
-	verdictGauge.Reset()
-	routedTokenGauge.Reset()
-	askedTokenGauge.Reset()
+	forgetPreviousCohort()
 	cohortGauge.WithLabelValues(cfg.chain, "seen").Set(float64(len(tokens)))
 
 	// The tokens that failed, kept per tier. These are the cohort the
@@ -446,15 +435,16 @@ func sweep(ctx context.Context, cfg config, rpc *rpcClient, q *SushiQuoter,
 			quoted[agg.Slug()] = answer(q, answered)
 		}
 		entries = append(entries, ledgerEntry{
-			At:        time.Now().UTC().Format(time.RFC3339),
-			Chain:     cfg.chain,
-			Token:     tok,
-			Symbol:    symbols[tok],
-			SameBlock: string(pr.SameBlock),
-			Delayed:   string(pr.Delayed),
-			Why:       pr.DelayedWhy,
-			Scoreable: cohort.Scoreable(tok, "delayed"),
-			Quoted:    quoted,
+			At:           time.Now().UTC().Format(time.RFC3339),
+			Chain:        cfg.chain,
+			Token:        tok,
+			Symbol:       symbols[tok],
+			SameBlock:    string(pr.SameBlock),
+			Delayed:      string(pr.Delayed),
+			Why:          pr.DelayedWhy,
+			ExitQuoteWei: bigString(pr.ExitQuote),
+			Scoreable:    cohort.Scoreable(tok, "delayed"),
+			Quoted:       quoted,
 		})
 	}
 	writeLedger(cfg.ledgerDir, cfg.chain, entries)
@@ -491,27 +481,61 @@ func probeOne(ctx context.Context, cfg config, rpc *rpcClient, q *SushiQuoter, t
 		return Probe{Token: token, SameBlock: NoRoute, Delayed: NoRoute, Reason: "no sell route"}
 	}
 
-	// An exit that returns dust is not an exit. The verdict used to ask only
-	// whether the call reverted, so a token that let the sale through and
-	// handed back a thousandth of what went in counted as sellable, which is
-	// the outcome this board exists to warn about.
+	// What the exit is worth is recorded, not scored.
 	//
-	// The floor is a share of what was put in, not an absolute, because the
-	// probe size is configurable. A heavy but honest tax still clears it;
-	// what does not clear it is a sale that technically succeeds and returns
-	// nothing worth having.
-	in, ok := new(big.Int).SetString(cfg.ethIn, 10)
-	if ok && in.Sign() > 0 && sell.AmountOut != nil {
-		floor := new(big.Int).Div(new(big.Int).Mul(in, big.NewInt(exitFloorPct)), big.NewInt(100))
-		if sell.AmountOut.Cmp(floor) < 0 {
-			return Probe{Token: token, SameBlock: Unsellable, Delayed: Unsellable,
-				Bought: buy.AmountOut,
-				SameBlockWhy: fmt.Sprintf("exit returns %s of %s wei, under the %d%% floor",
-					sell.AmountOut, in, exitFloorPct),
-				DelayedWhy: fmt.Sprintf("exit returns %s of %s wei, under the %d%% floor",
-					sell.AmountOut, in, exitFloorPct),
-				Reason: "exit value under the floor"}
-		}
+	// There used to be a floor here: an exit returning under a tenth of the
+	// stake was called unsellable. It compared the aggregator's QUOTE against
+	// the stake and never looked at the proceeds, and it was wrong in both
+	// halves. Measured on every token it rejected, with transfer tracing on,
+	// each non-reverting exit delivered exactly 100.0% of what its quote
+	// promised: USDG 4.084% of stake quoted and 4.084% delivered, Harmonic
+	// 2.978 and 2.978, CDOG 0.011 and 0.011, LIQT 0.025 and 0.025. The router
+	// enforces a minimum output built from the 5% slippage the quote carries,
+	// so a sale that does not revert has already honoured its quote and there
+	// is nothing left for a floor to catch.
+	//
+	// What those four are is thin pools priced honestly. The quote said the
+	// round trip loses 96%, and it lost 96%. That is a liquidity fact, and
+	// publishing it as a failed exit put the chain's own stablecoin in a
+	// cohort of traps.
+	//
+	// The number is kept so the fact is not lost. A route out that returns a
+	// ten-thousandth of the stake deserves a column of its own; it does not
+	// deserve this one.
+	pr := Examine(ctx, rpc, cfg.from, token, buy, sell, cfg.delay)
+	pr.ExitQuote = sell.AmountOut
+	return pr
+}
+
+// forgetPreviousCohort drops every per-token series from the last sweep.
+//
+// It runs before this sweep records anything AND on every path that
+// abandons a sweep. Leaving it only on the happy path meant a sweep
+// that bailed on the control, or on a cohort the node would not serve,
+// left the previous sweep's tokens exporting as if they were current.
+//
+// A GaugeVec keeps every label set it has ever been given and exports
+// all of them on every scrape, so without this the process re-publishes
+// each token it has ever examined, for as long as it runs. Two things
+// break. The scrape payload grows without bound, one series per token
+// per tier per verdict. And worse, any count over a window stops meaning
+// what it says: "tokens examined in the last 24h" would include a token
+// last looked at a week ago, because its gauge is still being emitted
+// now. Prometheus keeps the history either way, so a windowed query
+// still sees past sweeps; what it must not see is the past dressed as
+// the present.
+func forgetPreviousCohort() {
+	verdictGauge.Reset()
+	routedTokenGauge.Reset()
+	askedTokenGauge.Reset()
+}
+
+// bigString renders a big.Int for the ledger, and an absent one as the empty
+// string so the field is omitted rather than written as a zero that would
+// read as "the exit was worth nothing".
+func bigString(v *big.Int) string {
+	if v == nil {
+		return ""
 	}
-	return Examine(ctx, rpc, cfg.from, token, buy, sell, cfg.delay)
+	return v.String()
 }

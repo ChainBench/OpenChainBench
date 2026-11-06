@@ -25,15 +25,20 @@ import (
 // Written to the host volume rather than Prometheus, which is why the harness
 // moving off Railway mattered.
 type ledgerEntry struct {
-	At        string            `json:"at"`
-	Chain     string            `json:"chain"`
-	Token     string            `json:"token"`
-	Symbol    string            `json:"symbol,omitempty"`
-	SameBlock string            `json:"sameBlock"`
-	Delayed   string            `json:"delayed"`
-	Why       string            `json:"why,omitempty"`
-	Scoreable bool              `json:"scoreable"`
-	Quoted    map[string]string `json:"quoted"`
+	At        string `json:"at"`
+	Chain     string `json:"chain"`
+	Token     string `json:"token"`
+	Symbol    string `json:"symbol,omitempty"`
+	SameBlock string `json:"sameBlock"`
+	Delayed   string `json:"delayed"`
+	Why       string `json:"why,omitempty"`
+	// ExitQuoteWei is what the sell route promised for the whole holding, in
+	// wei of native. Recorded, never scored: a route out worth 4% of the
+	// stake that delivers 4% is a thin pool honestly priced, and scoring
+	// that as a failed exit is what put USDG in a cohort of traps.
+	ExitQuoteWei string            `json:"exitQuoteWei,omitempty"`
+	Scoreable    bool              `json:"scoreable"`
+	Quoted       map[string]string `json:"quoted"`
 }
 
 // writeLedger appends this sweep's observations, one JSON object per line,
