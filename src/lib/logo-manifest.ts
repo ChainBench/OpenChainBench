@@ -12,6 +12,10 @@
  */
 
 const RAW: Record<string, string> = {
+  // Trnch's own 400 px square brand mark, from trnch.fun/brand. It sat on
+  // the initials chip until now: the alias for its same-block row existed
+  // but nothing pointed at a file, so bench 313 drew "TR".
+  trnch: "/logos/trnch.png",
   // Paymaster vendors new with bench 312 (2026-10-30): Pimlico's web clip
   // (its mark on its own purple ground), Etherspot's 192 px site icon, and
   // Candide's favicon.svg.
