@@ -29,28 +29,24 @@ func TestChainInstrumentsDoNotOverlap(t *testing.T) {
 	}
 }
 
-// BNB moved onto the reference clock on 2026-10-03. Reverting it would restore
-// a column whose dominant term is BNB's block time rather than any provider's
-// pipeline: on the old instrument the four feeds sat within 9% of each other
-// (eu-west p50 0.621 / 0.657 / 0.676 s), against the reference they spread over
-// a factor of four (0.052 / 0.102 / 0.215 s), ranking unchanged.
-//
-// It also retired a published claim: the spec said BNB's chain-supplied
-// timestamps sat "within roughly 60 ms of the moment a trade is observable".
-// The gap between the two series is that quantity, and it measured 569 ms.
-func TestBNBUsesTheReferenceClock(t *testing.T) {
-	if !referenceChains["bnb"] {
-		t.Fatal("bnb left referenceChains. That republishes the provider's own timestamp " +
-			"as the zero point, which measures BNB's block time more than any provider, " +
-			"and it re-blocks OKX on that chain because OKX sends whole-second timestamps.")
+// BNB was on the reference clock from 2026-10-03 to 2026-11-01, then moved
+// to the race (#3441): its reference won 2.99% of races and 91% of the
+// fastest feeds' samples were discarded for beating it. Putting it back
+// would score each provider only on the trades where it was slower.
+func TestBNBRacesRatherThanReferences(t *testing.T) {
+	if referenceChains["bnb"] {
+		t.Error("bnb's reference is beaten on 97% of trades; it belongs in raceChains")
+	}
+	if !raceChains["bnb"] {
+		t.Error("bnb must stay in raceChains")
 	}
 }
 
-// Base stays on the reference clock: its zero point is the flashblock
-// preconfirmation stream, which precedes the sealed block by ~1.6 s.
+// Base stays on the reference clock: its zero point is our own subscription
+// to the sequencer node (sealed 200 ms blocks since Denim, 2026-11-05).
 func TestBaseStaysOnTheReferenceClock(t *testing.T) {
 	if !referenceChains["base"] {
-		t.Fatal("base must read the flashblock reference, not the provider timestamp")
+		t.Fatal("base must read our sequencer reference, not the provider timestamp")
 	}
 }
 

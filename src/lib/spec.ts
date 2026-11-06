@@ -589,7 +589,9 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       display name is held in the cached entry: without this bump a
   //       green deploy would still say QuickNode. Moves with
   //       all-benchmarks-v106, bench-filters-v53 and providers-v30.
-  ["bench-unfiltered-v113", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v114: bench 001 Base methodology after Denim (sealed 200 ms blocks,
+  //       log reference instead of flashblocks).
+  ["bench-unfiltered-v114", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -862,7 +864,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v105: lockstep with bench-unfiltered-v112 (Helius joins the keyed
   //       cohort on solana-rpc).
   // v106: lockstep with bench-unfiltered-v113 (Quicknode spelling).
-  ["all-benchmarks-v106", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v107: lockstep with bench-unfiltered-v114 (bench 001 Denim copy).
+  ["all-benchmarks-v107", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);

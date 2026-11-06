@@ -49,6 +49,17 @@ import (
 // quiet; unfiltered it delivers about 236 logs per second, and the duplicate
 // hashes across logs of one transaction cost nothing because the clock keeps
 // the first.
+//
+// Base Denim (2026-11-05 18:00 UTC) retired flashblocks: the chain now seals a
+// canonical block every 200 ms and there is no preconfirmed state left, so
+// `pendingLogs` accepts the subscription and then never delivers anything, and
+// the flashblocks socket opens and stays silent. Both sources went to zero at
+// 18:00, the Base zero point stopped being set, and from 23:00 no Base race
+// was run at all (head_lag_base_ref_first_total flat in all three regions).
+// The sealed block is now the earliest public state, so this subscribes to
+// `logs` on the same node: same chain-wide filter, same transactionHash
+// field, about 350 logs per second. The subscription kind stays overridable
+// (BASE_PRECONF_SUBSCRIPTION) in case the node changes again.
 
 const basePreconfDefaultURL = "wss://mainnet-preconf.base.org"
 
@@ -57,6 +68,15 @@ func basePreconfURL() string {
 		return strings.TrimSpace(v)
 	}
 	return basePreconfDefaultURL
+}
+
+const basePreconfDefaultSubscription = "logs"
+
+func basePreconfSubscription() string {
+	if v := strings.TrimSpace(os.Getenv("BASE_PRECONF_SUBSCRIPTION")); v != "" {
+		return v
+	}
+	return basePreconfDefaultSubscription
 }
 
 // runBasePreconfReference feeds the shared reference clock from Base's
@@ -104,14 +124,15 @@ func basePreconfConnect(url string, stopChan <-chan struct{}) error {
 	}
 	defer conn.Close()
 
+	kind := basePreconfSubscription()
 	sub := map[string]any{
 		"jsonrpc": "2.0", "id": 1, "method": "eth_subscribe",
-		"params": []any{"pendingLogs", map[string]any{}},
+		"params": []any{kind, map[string]any{}},
 	}
 	if err := conn.WriteJSON(sub); err != nil {
 		return fmt.Errorf("subscribe: %w", err)
 	}
-	fmt.Printf("[HEAD-LAG][REF][base] preconf subscribed to pendingLogs on %s\n", url)
+	fmt.Printf("[HEAD-LAG][REF][base] preconf subscribed to %s on %s\n", kind, url)
 
 	go func() {
 		t := time.NewTicker(25 * time.Second)
@@ -163,8 +184,10 @@ func basePreconfConnect(url string, stopChan <-chan struct{}) error {
 		}
 		var lg struct {
 			TransactionHash string `json:"transactionHash"`
+			Removed         bool   `json:"removed"`
 		}
-		if json.Unmarshal(env.Params.Result, &lg) != nil || lg.TransactionHash == "" {
+		// A removed log is a reorg retracting a block, not a new sighting.
+		if json.Unmarshal(env.Params.Result, &lg) != nil || lg.TransactionHash == "" || lg.Removed {
 			continue
 		}
 		if reference.observeFirst("base", lg.TransactionHash, seen) {
