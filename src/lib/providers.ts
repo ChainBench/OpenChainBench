@@ -1029,7 +1029,9 @@ const buildProvidersCached = unstable_cache(
   //      that this index carries. Its product page never left this time: it
   //      came back with bench 313 in #3511. Lockstep with
   //      bench-unfiltered-v184.
-  ["providers-v60"],
+  // v61: thirteen chain RPC pages retire, so every provider on them loses
+  //      that appearance. Lockstep with bench-unfiltered-v187.
+  ["providers-v61"],
   // 900 s: the provider index feeds products / compare / answers, whose
   // numbers move slowly, and this revalidate is also the effective ISR
   // period of those ~500 pages (Next takes the min across a route's caches).

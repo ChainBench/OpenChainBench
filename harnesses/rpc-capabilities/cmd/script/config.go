@@ -442,29 +442,6 @@ func chains() []Chain {
 				{Slug: "gnosis-official", Name: "Gnosis Official", URL: envDefault("RPC_URL_GNOSIS_OFFICIAL", "https://rpc.gnosischain.com")},
 			},
 		},
-		// ─── Celo (5 providers) ─────────────────────────────────────
-		{
-			Slug: "celo",
-			Name: "Celo",
-			Providers: []Provider{
-				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_CELO_PUBLICNODE", "https://celo-rpc.publicnode.com")},
-				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_CELO_DRPC", "https://celo.drpc.org")},
-				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_CELO_TENDERLY", "https://gateway.tenderly.co/public/celo")},
-				{Slug: "celo-official", Name: "Celo Official (Forno)", URL: envDefault("RPC_URL_CELO_OFFICIAL", "https://forno.celo.org")},
-			},
-		},
-		// ─── Taiko (4 providers) ────────────────────────────────────
-		// Note: Tenderly uses slug `taiko-mainnet` (plain `taiko` 404s).
-		{
-			Slug: "taiko",
-			Name: "Taiko",
-			Providers: []Provider{
-				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_TAIKO_PUBLICNODE", "https://taiko-rpc.publicnode.com")},
-				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_TAIKO_DRPC", "https://taiko.drpc.org")},
-				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_TAIKO_TENDERLY", "https://gateway.tenderly.co/public/taiko-mainnet")},
-				{Slug: "taiko-official", Name: "Taiko Official", URL: envDefault("RPC_URL_TAIKO_OFFICIAL", "https://rpc.taiko.xyz")},
-			},
-		},
 		// ─── Moonbeam (5 providers) ─────────────────────────────────
 		// Note: 1RPC uses the token code `glmr` (`/moonbeam` 400s).
 		{
@@ -534,17 +511,6 @@ func chains() []Chain {
 				{Slug: "blockvectra", Name: "BlockVectra", URL: envDefault("RPC_URL_UNICHAIN_BLOCKVECTRA", "https://api.blockvectra.com/v1/unichain_mainnet/public")},
 			},
 		},
-		// ─── Soneium (4 providers) ──────────────────────────────────
-		{
-			Slug: "soneium",
-			Name: "Soneium",
-			Providers: []Provider{
-				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_SONEIUM_PUBLICNODE", "https://soneium-rpc.publicnode.com")},
-				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_SONEIUM_DRPC", "https://soneium.drpc.org")},
-				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_SONEIUM_TENDERLY", "https://gateway.tenderly.co/public/soneium")},
-				{Slug: "soneium-official", Name: "Soneium Official", URL: envDefault("RPC_URL_SONEIUM_OFFICIAL", "https://rpc.soneium.org")},
-			},
-		},
 		// ─── Hyperliquid HyperEVM (chain 999) — added 2026-07-24. Standard
 		// EVM JSON-RPC surface bolted onto the HyperCore perps engine.
 		// Providers live-verified keyless via eth_blockNumber during launch
@@ -604,20 +570,6 @@ func chains() []Chain {
 				{Slug: "worldchain-official", Name: "World Chain", URL: envDefault("RPC_URL_WORLDCHAIN_OFFICIAL", "https://worldchain-mainnet.g.alchemy.com/public")},
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_WORLDCHAIN_DRPC", "https://worldchain.drpc.org")},
 				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_WORLDCHAIN_TENDERLY", "https://worldchain-mainnet.gateway.tenderly.co")},
-			},
-		},
-		// ─── Kaia (bench 098) — added 2026-07-24. EVM L1 formed by
-		// Klaytn + Finschia merger. Providers live-verified keyless:
-		// kaia-official (public-en.node.kaia.io). Excluded: dRPC (500
-		// paid plan only), BlockPI (`Apikey not found`), Nodies (paid
-		// tier), Alchemy public (KAIA_MAINNET not enabled), AllThatNode +
-		// OnFinality + Chainstack + Tatum + NowNodes (DNS-fail or key
-		// required).
-		{
-			Slug: "kaia",
-			Name: "Kaia",
-			Providers: []Provider{
-				{Slug: "kaia-official", Name: "Kaia Foundation", URL: envDefault("RPC_URL_KAIA_OFFICIAL", "https://public-en.node.kaia.io")},
 			},
 		},
 		// ─── Ink (bench 099) — added 2026-07-24. OP Stack rollup
@@ -919,20 +871,6 @@ func chains() []Chain {
 				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_HEMI_THIRDWEB", "https://43111.rpc.thirdweb.com")},
 			},
 		},
-		// 2026-08-03 audit. BOB BTC+ETH hybrid OP Stack L2 (chain 60808). 4 clean
-		// keyless providers: bob-official (rpc.gobob.xyz), tenderly
-		// (bob.gateway.tenderly.co), drpc (bob.drpc.org), thirdweb
-		// (60808.rpc.thirdweb.com). Excluded: Ankr (no bob route).
-		{
-			Slug: "bob",
-			Name: "BOB",
-			Providers: []Provider{
-				{Slug: "bob-official", Name: "BOB", URL: envDefault("RPC_URL_BOB_OFFICIAL", "https://rpc.gobob.xyz")},
-				{Slug: "tenderly", Name: "Tenderly", URL: envDefault("RPC_URL_BOB_TENDERLY", "https://bob.gateway.tenderly.co")},
-				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_BOB_DRPC", "https://bob.drpc.org")},
-				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_BOB_THIRDWEB", "https://60808.rpc.thirdweb.com")},
-			},
-		},
 		// 2026-08-04 audit. Polygon zkEVM ZK rollup L2 (chain 1101). 3 clean keyless
 		// providers: polygon-zkevm-official (zkevm-rpc.com), drpc (polygon-zkevm.drpc.org),
 		// thirdweb (1101.rpc.thirdweb.com). Excluded: Ankr (no route), Alchemy (key required).
@@ -1030,17 +968,6 @@ func chains() []Chain {
 			Providers: []Provider{
 				{Slug: "aurora-official", Name: "Aurora Labs", URL: envDefault("RPC_URL_AURORA_OFFICIAL", "https://mainnet.aurora.dev")},
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_AURORA_DRPC", "https://aurora.drpc.org")}, // 2026-10-19 replacement sweep
-			},
-		},
-		// 2026-08-04 wave-5. Bitlayer Bitcoin L2 EVM (chain 200901). 3 keyless
-		// providers: bitlayer-official (rpc.bitlayer.org), drpc (bitlayer.drpc.org),
-		// ankr (rpc.ankr.com/bitlayer).
-		{
-			Slug: "bitlayer",
-			Name: "Bitlayer",
-			Providers: []Provider{
-				{Slug: "bitlayer-official", Name: "Bitlayer Official", URL: envDefault("RPC_URL_BITLAYER_OFFICIAL", "https://rpc.bitlayer.org")},
-				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_BITLAYER_DRPC", "https://bitlayer.drpc.org")},
 			},
 		},
 		// 2026-08-04 wave-5. B² Network Bitcoin L2 EVM (chain 223). 3 keyless
@@ -1157,30 +1084,12 @@ func chains() []Chain {
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_HARMONY_DRPC", "https://harmony-0.drpc.org")}, // 2026-10-19 replacement sweep
 			},
 		},
-		// Zircuit — ZK rollup L2 (chain 48900). 1 keyless provider.
-		{
-			Slug: "zircuit",
-			Name: "Zircuit",
-			Providers: []Provider{
-				{Slug: "zircuit-official", Name: "Zircuit Foundation", URL: envDefault("RPC_URL_ZIRCUIT_OFFICIAL", "https://mainnet.zircuit.com")},
-			},
-		},
 		// Vana — Data economy EVM L1 (chain 1480). 1 keyless provider.
 		{
 			Slug: "vana",
 			Name: "Vana",
 			Providers: []Provider{
 				{Slug: "vana-official", Name: "Vana Foundation", URL: envDefault("RPC_URL_VANA_OFFICIAL", "https://rpc.vana.org")},
-			},
-		},
-		// Gravity — Galxe EVM L2 (chain 1625). 2 keyless providers.
-		{
-			Slug: "gravity",
-			Name: "Gravity",
-			Providers: []Provider{
-				{Slug: "gravity-official", Name: "Gravity Foundation", URL: envDefault("RPC_URL_GRAVITY_OFFICIAL", "https://rpc.gravity.xyz")},
-				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_GRAVITY_THIRDWEB", "https://1625.rpc.thirdweb.com")},
-				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_GRAVITY_DRPC", "https://gravity-alpha.drpc.org")}, // 2026-10-19 replacement sweep
 			},
 		},
 		// Reya Network — Trading EVM L2 (chain 1729). 2 keyless providers.
@@ -1222,17 +1131,6 @@ func chains() []Chain {
 			Providers: []Provider{
 				{Slug: "polkachu", Name: "Polkachu", URL: envDefault("RPC_URL_JUNO_POLKACHU", "https://juno-rpc.polkachu.com")},
 				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_JUNO_PUBLICNODE", "https://juno-rpc.publicnode.com")},
-			},
-		},
-		// Axelar — cross-chain network (axelar-dojo-1). 4 keyless providers.
-		{
-			Slug: "axelar",
-			Name: "Axelar",
-			Kind: "cosmos",
-			Providers: []Provider{
-				{Slug: "polkachu", Name: "Polkachu", URL: envDefault("RPC_URL_AXELAR_POLKACHU", "https://axelar-rpc.polkachu.com")},
-				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_AXELAR_PUBLICNODE", "https://axelar-rpc.publicnode.com")},
-				{Slug: "lavenderfive", Name: "LavenderFive", URL: envDefault("RPC_URL_AXELAR_LAVENDERFIVE", "https://rpc.lavenderfive.com:443/axelar")},
 			},
 		},
 		// Dymension — modular RollApp hub (dymension_1100-1). 3 keyless providers.
@@ -1314,15 +1212,6 @@ func chains() []Chain {
 			Providers: []Provider{
 				{Slug: "polkachu", Name: "Polkachu", URL: envDefault("RPC_URL_REGEN_POLKACHU", "https://regen-rpc.polkachu.com:443")},
 				{Slug: "ecostake", Name: "ECO Stake", URL: envDefault("RPC_URL_REGEN_ECOSTAKE", "https://rpc-regen.ecostake.com")}, // 2026-10-19 replacement sweep
-			},
-		},
-		// Comdex — DeFi synthetics chain (comdex-1). 1 keyless provider.
-		{
-			Slug: "comdex",
-			Name: "Comdex",
-			Kind: "cosmos",
-			Providers: []Provider{
-				{Slug: "stavr", Name: "STAVR", URL: envDefault("RPC_URL_COMDEX_STAVR", "https://comdex.rpc.m.stavr.tech:443")},
 			},
 		},
 		// Fantom — EVM (chain 250). 3 keyless providers.
@@ -1575,16 +1464,6 @@ func chains() []Chain {
 				{Slug: "flow-access", Name: "Flow Access Node", URL: envDefault("RPC_URL_FLOW_ACCESS", "https://access.mainnet.nodes.onflow.org")},
 			},
 		},
-		// Hedera — EVM-compatible JSON-RPC (eth_getBlockByNumber), ~3 s/block. 2 keyless providers.
-		{
-			Slug: "hedera",
-			Name: "Hedera",
-			Kind: "hedera",
-			Providers: []Provider{
-				{Slug: "hashio", Name: "Hashio", URL: envDefault("RPC_URL_HEDERA_HASHIO", "https://mainnet.hashio.io/api")},
-				{Slug: "thirdweb", Name: "thirdweb", URL: envDefault("RPC_URL_HEDERA_THIRDWEB", "https://295.rpc.thirdweb.com")},
-			},
-		},
 		// Nervos CKB — get_tip_block_number JSON-RPC (hex result), ~10 s/block. 2 keyless providers.
 		{
 			Slug: "ckb",
@@ -1637,17 +1516,6 @@ func chains() []Chain {
 				{Slug: "lukso-official", Name: "LUKSO Foundation", URL: envDefault("RPC_URL_LUKSO_OFFICIAL", "https://rpc.mainnet.lukso.network")},
 				{Slug: "nownodes", Name: "NOWNodes", URL: envDefault("RPC_URL_LUKSO_NOWNODES", "https://public-lukso.nownodes.io")},
 				{Slug: "thirdweb", Name: "thirdweb", URL: envDefault("RPC_URL_LUKSO_THIRDWEB", "https://42.rpc.thirdweb.com")},
-			},
-		},
-		// 2026-08-27 wave-10. Litecoin — Tatum JSON-RPC (getblockcount) + BlockCypher REST + LitecoinSpace Esplora REST. ~150 s/block.
-		{
-			Slug: "litecoin",
-			Name: "Litecoin",
-			Kind: "litecoin",
-			Providers: []Provider{
-				{Slug: "tatum", Name: "Tatum", URL: envDefault("RPC_URL_LTC_TATUM", "https://litecoin-mainnet.gateway.tatum.io")},
-				{Slug: "blockcypher", Name: "BlockCypher", URL: envDefault("RPC_URL_LTC_BLOCKCYPHER", "https://api.blockcypher.com/v1/ltc/main")},
-				{Slug: "litecoinspace", Name: "LitecoinSpace", URL: envDefault("RPC_URL_LTC_LITECOINSPACE", "https://litecoinspace.org/api/blocks/tip/height")},
 			},
 		},
 		// 2026-08-27 wave-10. Babylon — Cosmos SDK, Tendermint /status. PublicNode + Polkachu + LavenderFive.
@@ -1865,15 +1733,6 @@ func chains() []Chain {
 				{Slug: "greymass", Name: "Greymass", URL: envDefault("RPC_URL_WAX_GREYMASS", "https://wax.greymass.com")},
 				{Slug: "eosusa", Name: "EOSUSA", URL: envDefault("RPC_URL_WAX_EOSUSA", "https://wax.eosusa.io")},
 				{Slug: "waxsweden", Name: "WAX Sweden", URL: envDefault("RPC_URL_WAX_SWEDEN", "https://api.waxsweden.org")},
-			},
-		},
-		// 2026-08-18 wave-8. Merlin Chain — Bitcoin L2 EVM (chain 4200), eth_getBlockByNumber probe. 3 keyless providers.
-		{
-			Slug: "merlin",
-			Name: "Merlin Chain",
-			Providers: []Provider{
-				{Slug: "merlin-official", Name: "Merlin Official", URL: envDefault("RPC_URL_MERLIN_OFFICIAL", "https://rpc.merlinchain.io")},
-				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_MERLIN_DRPC", "https://merlin.drpc.org")},
 			},
 		},
 		// 2026-08-18 wave-8. Viction (TomoChain) — EVM L1 (chain 88), eth_getBlockByNumber probe. 3 keyless providers.

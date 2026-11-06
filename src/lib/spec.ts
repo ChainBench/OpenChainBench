@@ -967,7 +967,13 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       router that the board was adding together. A third panel records
   //       a route returned WITH a reservation the aggregator states, which
   //       only Trnch publishes, so it is a column and never the score.
-  ["bench-unfiltered-v186", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v187: thirteen chain RPC pages retire (celo, taiko, kaia, bob,
+  //       bitlayer, gravity, axelar, hedera, litecoin, soneium, zircuit,
+  //       merlin, comdex; see removed-benches.ts), so the provider set the
+  //       guard hashes shrinks and every cached entry still carries their
+  //       rows and appearances. Moves with all-benchmarks-v180,
+  //       bench-filters-v105 and providers-v61.
+  ["bench-unfiltered-v187", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -1328,7 +1334,9 @@ const loadAllBenchmarksCached = unstable_cache(
   // v178: lockstep with bench-unfiltered-v185 (each keyed row counts its
   //       own connection arm).
   // v179: lockstep with bench-unfiltered-v186 (bench 313 grades refusals).
-  ["all-benchmarks-v179", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v180: lockstep with bench-unfiltered-v187 (thirteen chain RPC pages
+  //       retired 2026-11-06; a cached catalog would keep linking them).
+  ["all-benchmarks-v180", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1580,7 +1588,9 @@ const loadBenchmarkFiltered = unstable_cache(
   //       own connection arm).
   // v104: lockstep with bench-unfiltered-v186. Three panels arrive and each
   //       tier tab renders them as its own selector.
-  ["bench-filters-v104", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v105: lockstep with bench-unfiltered-v187 (thirteen chain RPC pages
+  //       retired, each with region and tier tabs).
+  ["bench-filters-v105", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 

@@ -302,6 +302,35 @@ export function isDevOnlyRoute(path: string): boolean {
 }
 
 export const REMOVED_BENCH_SLUGS = new Set([
+  // Thirteen chain RPC pages retired 2026-11-06. Each had no human visitor
+  // in PostHog between 2026-09-20 and 2026-11-06 (devices that clicked,
+  // viewed two pages or stayed over ten seconds; JS-running crawlers and
+  // our own device excluded), and nothing outside the site pointed at it:
+  //
+  //   refused   celo, taiko, kaia, bob, bitlayer, gravity, axelar, hedera,
+  //             litecoin: a docs PR linking the page was closed unmerged
+  //   no venue  soneium, zircuit, merlin, comdex: no public docs repo and
+  //             no issue tracker where a docs request belongs (comdex's
+  //             org has not pushed since 2025-01)
+  //
+  // The probes were healthy (gravity aside, silent since 11-05), so this is
+  // a reach decision, not a data one. Specs and harness entries go; the
+  // chains stay in the registry wherever another bench measures them
+  // (bitlayer, merlin and comdex had nothing else and leave it). The slugs
+  // stay here so indexed URLs answer 410 Gone.
+  "celo-rpc",
+  "taiko-rpc",
+  "kaia-rpc",
+  "bob-rpc",
+  "bitlayer-rpc",
+  "gravity-rpc",
+  "axelar-rpc",
+  "hedera-rpc",
+  "litecoin-rpc",
+  "soneium-rpc",
+  "zircuit-rpc",
+  "merlin-rpc",
+  "comdex-rpc",
   // Two chain RPC benches retired 2026-10-19: no keyless endpoint answers
   // any more, re-tested by hand on the day.
   //
