@@ -87,10 +87,15 @@ export default function PrivacyPage() {
           <strong className="text-ink">Vercel</strong>, which hosts and serves
           the site and necessarily handles requests to it.
         </li>
+        <li>
+          <strong className="text-ink">Upstash</strong>, which hosts the
+          database holding the repeat markers and Continue codes described
+          below.
+        </li>
       </ul>
       <p className="mt-4 text-base leading-relaxed text-ink-soft">
         Nobody else. We do not sell data, share it with advertisers or data
-        brokers, or pass it to any third party beyond those two processors.
+        brokers, or pass it to any third party beyond those three processors.
       </p>
       <p className="mt-4 text-base leading-relaxed text-ink-soft">
         The site a link takes you to is separate from this. It sees the{" "}
@@ -99,27 +104,7 @@ export default function PrivacyPage() {
         from OpenChainBench, not from which page.
       </p>
 
-      <SectionRule label="How long it is kept" />
-      <ul className="space-y-2 text-base leading-relaxed text-ink-soft">
-        <li>
-          <strong className="text-ink">Analytics events: one year</strong>, the
-          retention configured on our analytics project, after which they are
-          deleted by the processor.
-        </li>
-        <li>
-          <strong className="text-ink">
-            Rate-limit counters: until the serving process ends.
-          </strong>{" "}
-          Each is keyed by IP address, lives in that process&rsquo;s memory and
-          is never written to disk. It can be dropped sooner when the table
-          fills up or the site is redeployed.
-        </li>
-        <li>
-          <strong className="text-ink">Benchmark measurements: indefinitely</strong>,
-          because they describe infrastructure providers rather than visitors
-          and contain no personal data.
-        </li>
-      </ul>
+      <Retention />
 
       <SectionRule label="What you can turn off" />
       <ul className="space-y-2 text-base leading-relaxed text-ink-soft">
@@ -135,8 +120,8 @@ export default function PrivacyPage() {
           happens on the server, so a content blocker does not stop it.
         </li>
         <li>
-          Clearing your browser storage removes the random device identifier,
-          and the next visit starts a new one.
+          Clearing your browser storage and cookies removes the random
+          identifiers, and the next visit starts new ones.
         </li>
         <li>
           Because we hold no name, email or account, we cannot look up, export
@@ -193,6 +178,47 @@ export default function PrivacyPage() {
   );
 }
 
+function Retention() {
+  return (
+    <>
+      <SectionRule label="How long it is kept" />
+      <ul className="space-y-2 text-base leading-relaxed text-ink-soft">
+        <li>
+          <strong className="text-ink">Analytics events: one year</strong>, the
+          retention configured on our analytics project, after which they are
+          deleted by the processor.
+        </li>
+        <li>
+          <strong className="text-ink">
+            Rate-limit counters: until the serving process ends.
+          </strong>{" "}
+          Each is keyed by IP address, lives in that process&rsquo;s memory and
+          is never written to disk. It can be dropped sooner when the table
+          fills up or the site is redeployed.
+        </li>
+        <li>
+          <strong className="text-ink">Repeat markers: three seconds.</strong>{" "}
+          So that a double click counts once, <code>/go</code> stores a hash of
+          your identifier and of the destination, then lets it expire. If you
+          had no identifier yet, a hash of your IP address and user agent is
+          stored with it.
+        </li>
+        <li>
+          <strong className="text-ink">Continue codes: one hour at most.</strong>{" "}
+          So that pressing Continue on the confirmation page counts once,{" "}
+          <code>/go</code> stores a hash of a random code and of the
+          destination, and deletes it when the code is used or after an hour.
+        </li>
+        <li>
+          <strong className="text-ink">Benchmark measurements: indefinitely</strong>,
+          because they describe infrastructure providers rather than visitors
+          and contain no personal data.
+        </li>
+      </ul>
+    </>
+  );
+}
+
 function WhatIsCollected() {
   return (
     <>
@@ -232,16 +258,20 @@ function WhatIsCollected() {
       </p>
       <p className="mt-4 text-base leading-relaxed text-ink-soft">
         Opening most links to other sites is counted on the server too, because
-        those links pass through <code>/go</code> on the way out. The count
-        happens when <code>/go</code> receives the request, so a link opened
-        from another site or pasted into your browser is counted even if you
-        stop at the confirmation page. That event records the destination, the
-        full address of the page you came from, which can be on another site,
-        and your browser&rsquo;s user agent and accept header. Its identifier is
-        a daily hash of that user agent. It carries neither your IP address nor
-        a device identifier, and no profile is created. Links to a Creative
-        Commons license, a DOI or our own subdomains skip <code>/go</code> and
-        are counted in your browser, like the actions above.
+        those links pass through <code>/go</code> on the way out. A link
+        opened from another site or pasted into your browser first shows a
+        confirmation page, and is counted only if you continue. That event
+        records the destination, the address of the page of this site you came
+        from, and your browser&rsquo;s user agent and accept header. Its
+        identifiers are the random device identifier above and the current
+        visit&rsquo;s session identifier, both read from the cookie our
+        analytics set. When that cookie is absent, <code>/go</code> sets its
+        own, <code>ocb_vid</code>: another random identifier, kept for a year
+        and readable only by our server. The event carries no IP address, and
+        no profile is created.
+        Links to a Creative Commons license, a DOI or our own subdomains skip{" "}
+        <code>/go</code> and are counted in your browser, like the actions
+        above.
       </p>
       <p className="mt-4 text-base leading-relaxed text-ink-soft">
         We never ask for and never want: your name, your email, a wallet
