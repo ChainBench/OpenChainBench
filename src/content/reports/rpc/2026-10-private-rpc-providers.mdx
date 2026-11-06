@@ -160,6 +160,12 @@ places when the method changes.
 | <L s="dwellir">Dwellir</L> | 34.4 ms | 413.5 ms | 398.3 ms |
 | <L s="blockmachine">BlockMachine</L> | 108.8 ms | 217.0 ms | 218.9 ms |
 
+Ethereum, 24 hours to 4 November 2026. The scopes differ by column and it
+matters: the cheap call is a median across our three probe regions, while
+the archive read and `eth_getLogs` are measured from US East alone, because
+the capability probe runs in one region to keep its request budget down. So
+read each column against itself, not across.
+
 Three things in that table are invisible on the cheap call alone.
 
 Dwellir multiplies by twelve. It answers a tip-of-chain read in 34.4 ms and a
