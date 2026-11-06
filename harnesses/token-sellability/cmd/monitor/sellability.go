@@ -249,7 +249,12 @@ type simCallResult struct {
 // selector rather than guessed at.
 func (r simCallResult) revertReason() string {
 	if r.Error != nil && r.Error.Message != "" {
-		if d := decodeRevert(r.Error.Data); d != "" {
+		// Only when the payload says something the message does not. The node
+		// often encodes the same Error(string) it already wrote in the
+		// message, and appending it produced labels that read "insufficient
+		// balance: insufficient balance".
+		if d := decodeRevert(r.Error.Data); d != "" && !strings.Contains(
+			strings.ToLower(r.Error.Message), strings.ToLower(d)) {
 			return trimReason(r.Error.Message + ": " + d)
 		}
 		return trimReason(r.Error.Message)
