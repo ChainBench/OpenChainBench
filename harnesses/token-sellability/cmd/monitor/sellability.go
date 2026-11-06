@@ -24,10 +24,12 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"math/big"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 )
@@ -123,18 +125,41 @@ func newRPC(url string) *rpcClient {
 	return &rpcClient{url: url, client: &http.Client{Timeout: 90 * time.Second}}
 }
 
+// withoutURL strips the endpoint out of a transport error before it can be
+// logged.
+//
+// This endpoint is keyed: the key is a path segment of the URL, so there is
+// no header to redact and no way to log the URL safely. Go folds the whole
+// request URL into *url.Error, and net/http returns that from Do and from
+// NewRequest, so every `log.Printf("%v", err)` on this path was one network
+// blip away from writing a credential into the container log, which is the
+// log the audit bundles and a report quotes.
+//
+// The operation and the underlying cause are what a reader needs. The
+// address adds nothing a sweep log should carry.
+func withoutURL(err error) error {
+	var ue *url.Error
+	if errors.As(err, &ue) {
+		if ue.Err != nil {
+			return fmt.Errorf("%s: %w", ue.Op, ue.Err)
+		}
+		return fmt.Errorf("%s failed", ue.Op)
+	}
+	return err
+}
+
 func (c *rpcClient) call(ctx context.Context, method string, params any) (json.RawMessage, error) {
 	body, _ := json.Marshal(map[string]any{
 		"jsonrpc": "2.0", "id": 1, "method": method, "params": params,
 	})
 	req, err := http.NewRequestWithContext(ctx, "POST", c.url, bytes.NewReader(body))
 	if err != nil {
-		return nil, err
+		return nil, withoutURL(err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := c.client.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, withoutURL(err)
 	}
 	defer resp.Body.Close()
 	raw, _ := io.ReadAll(resp.Body)
@@ -207,6 +232,15 @@ type simCallResult struct {
 	ReturnData string `json:"returnData"`
 	Error      *struct {
 		Message string `json:"message"`
+		// Data carries the revert payload when returnData does not. Eight
+		// of 26 tokens read a bare "execution reverted" because this field
+		// was dropped: the node puts the selector here and returnData came
+		// back 0x. Recovered from it, 0x63ecb9f6 is
+		// MinimalOutputBalanceViolation and 0x5212cba1 is
+		// CurrencyNotSettled, both verified by hashing the signature. An
+		// unsellable verdict is a claim about somebody's token and it has
+		// to carry its evidence.
+		Data string `json:"data"`
 	} `json:"error"`
 }
 
@@ -215,11 +249,29 @@ type simCallResult struct {
 // selector rather than guessed at.
 func (r simCallResult) revertReason() string {
 	if r.Error != nil && r.Error.Message != "" {
+		if d := decodeRevert(r.Error.Data); d != "" {
+			return trimReason(r.Error.Message + ": " + d)
+		}
 		return trimReason(r.Error.Message)
 	}
-	d := strings.TrimPrefix(r.ReturnData, "0x")
+	if d := decodeRevert(r.ReturnData); d != "" {
+		return d
+	}
+	return "reverted with no data"
+}
+
+// decodeRevert renders a revert payload, whether it arrived in returnData or
+// in the node's error.data. It was inline in revertReason and read only
+// returnData, which came back 0x on every one of the eight tokens whose
+// reason was lost, while error.data held the selector.
+//
+// Solidity's Error(string) is decoded; anything else is named by its four
+// byte selector rather than guessed at, because a selector is something a
+// reader can hash and check and a guess is not.
+func decodeRevert(data string) string {
+	d := strings.TrimPrefix(data, "0x")
 	if d == "" {
-		return "reverted with no data"
+		return ""
 	}
 	// Error(string): selector, offset, length, then the bytes.
 	if strings.HasPrefix(d, "08c379a0") && len(d) >= 136 {
@@ -237,7 +289,7 @@ func (r simCallResult) revertReason() string {
 	if len(d) >= 8 {
 		return "custom error 0x" + d[:8]
 	}
-	return "reverted"
+	return ""
 }
 
 func trimReason(s string) string {

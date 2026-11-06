@@ -37,10 +37,14 @@ import (
 //	sushi      no header; 40/40 clean at 6.7/s
 //	paraswap   unmeasured, paced like kyberswap rather than guessed upwards
 //
-// LI.FI's budget is what binds the survey: 75 per 20 minutes is about 56 in a
-// 15 minute sweep. Everyone must be asked about the SAME tokens or the
-// comparison is between different cohorts, so the smallest budget sets the
-// sample for all five.
+// Everyone must be asked about the same tokens or the comparison is between
+// different cohorts. That holds for the tokens the SCORE divides by, which
+// surveyCohort puts at the front of the list and no budget may cut into; it
+// does not require sending all five the same forty. Letting LI.FI's 75 per 20
+// minutes set the sample for everyone was the first attempt, and it failed in
+// the other direction: forty tokens a sweep earned LI.FI a two hour cooldown,
+// so it answered one sweep in four and its row ended up dividing by 15 where
+// the others divided by 26. See budgetOf.
 //
 // The examined cohort stays large, because examining is our own RPC and it is
 // cheap. Only the asking is capped. A different sample each sweep accumulates
@@ -120,7 +124,7 @@ func (s *Survey) Quoted(token, agg string) (quoted, answered bool) {
 // runSurvey asks every aggregator about every token, each at its own pace and
 // all of them at once, since they are different hosts and one slow answer
 // should not hold up the rest.
-func runSurvey(ctx context.Context, cfg config, tokens []string,
+func runSurvey(ctx context.Context, cfg config, tokens []string, mustN int,
 	decimals map[string]int) *Survey {
 	s := &Survey{rows: map[string]map[string]surveyRow{}}
 	var wg sync.WaitGroup
@@ -137,10 +141,32 @@ func runSurvey(ctx context.Context, cfg config, tokens []string,
 				return
 			}
 			gap := paceOf(a.Slug())
+			// Ask this one no more than its own published limit allows in a
+			// sweep. LI.FI's row divided by 15 tokens where every other row
+			// divided by 26, which made its rank a cohort artifact rather
+			// than a measurement: on the same 15 tokens it ties Trnch at
+			// 66.7% and the 14.1 point gap the board showed is not there.
+			//
+			// The cause was not ordering, since surveyCohort already puts
+			// the failed tokens first. It was budget. LI.FI publishes 75
+			// requests per 20 minutes, the survey handed it 40 tokens a
+			// sweep, it earned a two hour cooldown and then skipped 22 of 30
+			// sweeps without asking anything at all, never seeing those
+			// sweeps' failed tokens.
+			//
+			// The budget can never cut into the failed tokens, which are the
+			// prefix of this list and the only part the score divides by.
+			ask := tokens
+			if b := budgetOf(a.Slug()); b > 0 && b < len(ask) {
+				if b < mustN {
+					b = mustN
+				}
+				ask = ask[:b]
+			}
 			errs := 0
 			var lastErr error
 			start := time.Now()
-			for _, tok := range tokens {
+			for _, tok := range ask {
 				d, known := decimals[tok]
 				if !known {
 					d = 18
@@ -150,7 +176,7 @@ func runSurvey(ctx context.Context, cfg config, tokens []string,
 				if errors.As(err, &limited) {
 					coolDown(a.Slug(), limited.after)
 					log.Printf("[sellability] survey %s: stopped after %d of %d, %s",
-						a.Slug(), len(s.rows), len(tokens), limited.Error())
+						a.Slug(), len(s.rows), len(ask), limited.Error())
 					return
 				}
 				if err != nil {
@@ -167,8 +193,9 @@ func runSurvey(ctx context.Context, cfg config, tokens []string,
 			// The reason, not just the count. A survey that reports "190
 			// unanswered" and nothing else is what sent me looking at pacing
 			// when the answer was a quota the API states in a header.
-			log.Printf("[sellability] survey %s: %d tokens, %d unanswered, %.0fs%s",
-				a.Slug(), len(tokens), errs, time.Since(start).Seconds(), because(lastErr))
+			log.Printf("[sellability] survey %s: %d of %d tokens, %d unanswered, %.0fs%s",
+				a.Slug(), len(ask), len(tokens), errs,
+				time.Since(start).Seconds(), because(lastErr))
 		}(agg)
 	}
 	wg.Wait()
@@ -213,4 +240,32 @@ func surveyCohort(examined []string, failed map[string][]string, cap int) []stri
 		}
 	}
 	return out
+}
+
+// budgetOf is how many tokens one aggregator may be asked about in a single
+// sweep, derived from the limit it publishes rather than from what we would
+// like to send.
+//
+// Pacing alone was not enough. Spacing LI.FI's requests 8 seconds apart kept
+// a single sweep inside the rate, and the sweep still spent 40 of its 56
+// permitted requests, so a cooldown from any one sweep carried into the next
+// two hours and it went silent for 22 of 30 sweeps. A row that answers one
+// sweep in four divides by a different cohort from the rows that answer
+// every sweep, and the comparison stops being a comparison.
+//
+// Answering every sweep about the few tokens that matter beats answering one
+// sweep in four about forty. Zero means no cap.
+func budgetOf(slug string) int {
+	switch slug {
+	case "lifi":
+		// 75 per 20 minutes, so about 56 in a 15 minute sweep. Ten leaves
+		// the cooldown well out of reach even when the failed cohort is
+		// larger than usual.
+		return 10
+	case "trnch":
+		// 30 per minute is not the binding constraint at a 2.1s pace.
+		return 0
+	default:
+		return 0
+	}
 }
