@@ -898,7 +898,12 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       every failed token that routed into none of them produced an
   //       empty expression and no row. The best score on the board was
   //       the one score it could not show.
-  ["bench-unfiltered-v176", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v177: bench 313 stops calling a thin pool a failed exit. The floor
+  //       compared the aggregator's quote against the stake and never the
+  //       proceeds, so USDG, the chain's own stablecoin, sat in a cohort of
+  //       traps at a 4% round trip it had been quoted exactly. Four rows
+  //       lose tokens from their numerator and the copy states the delay.
+  ["bench-unfiltered-v177", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -1248,7 +1253,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v167: lockstep with bench-unfiltered-v174 (bench 313 subset guard).
   // v168: lockstep with bench-unfiltered-v175 (bench 001 Denim copy).
   // v169: lockstep with bench-unfiltered-v176 (bench 313 publishes a zero).
-  ["all-benchmarks-v169", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v170: lockstep with bench-unfiltered-v177 (bench 313 drops the floor).
+  ["all-benchmarks-v170", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1482,7 +1488,9 @@ const loadBenchmarkFiltered = unstable_cache(
   //      values, so each tab's provider set changes.
   // v95: lockstep with bench-unfiltered-v176. Both tier tabs of bench 313
   //      gain the rows whose figure is zero.
-  ["bench-filters-v95", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v96: lockstep with bench-unfiltered-v177. Both tier tabs carry the
+  //      formula that now names the delay in seconds.
+  ["bench-filters-v96", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 
