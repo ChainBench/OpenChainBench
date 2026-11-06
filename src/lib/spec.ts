@@ -591,7 +591,13 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       all-benchmarks-v106, bench-filters-v53 and providers-v30.
   // v114: bench 001 Base methodology after Denim (sealed 200 ms blocks,
   //       log reference instead of flashblocks).
-  ["bench-unfiltered-v114", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v115: thirteen chain RPC pages retire (celo, taiko, kaia, bob,
+  //       bitlayer, gravity, axelar, hedera, litecoin, soneium, zircuit,
+  //       merlin, comdex; see removed-benches.ts), so the provider set the
+  //       guard hashes shrinks and every cached entry still carries their
+  //       rows and appearances. Moves with all-benchmarks-v108,
+  //       bench-filters-v54 and providers-v31.
+  ["bench-unfiltered-v115", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -865,7 +871,9 @@ const loadAllBenchmarksCached = unstable_cache(
   //       cohort on solana-rpc).
   // v106: lockstep with bench-unfiltered-v113 (Quicknode spelling).
   // v107: lockstep with bench-unfiltered-v114 (bench 001 Denim copy).
-  ["all-benchmarks-v107", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v108: lockstep with bench-unfiltered-v115 (thirteen chain RPC pages
+  //       retired 2026-11-06; a cached catalog would keep linking them).
+  ["all-benchmarks-v108", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1017,7 +1025,9 @@ const loadBenchmarkFiltered = unstable_cache(
   // v52: lockstep with bench-unfiltered-v112 (Helius joins the keyed
   //      cohort on solana-rpc).
   // v53: lockstep with bench-unfiltered-v113 (Quicknode spelling).
-  ["bench-filters-v53", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v54: lockstep with bench-unfiltered-v115 (thirteen chain RPC pages
+  //      retired, each with region and tier tabs).
+  ["bench-filters-v54", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 
