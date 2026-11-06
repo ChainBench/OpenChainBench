@@ -346,6 +346,29 @@ providers:
           p50: avg(ocb:evm_swap_quote_latency_ms:p50_24h{provider="route", region="sgp"})
           series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="route", region="sgp"}[1h])) by (le))
 
+  - slug: trnch
+    name: Trnch
+    tag: Robinhood Chain only, aggregates routers measured separately here
+    formula: "Avg of per-region 24h medians of evm_swap_quote_latency_ms{provider=trnch} over the last 24 hours. Robinhood Chain only."
+    queries:
+      p50: avg(ocb:evm_swap_quote_latency_ms:p50_24h{provider="trnch"})
+      p90: avg(ocb:evm_swap_quote_latency_ms:p90_24h{provider="trnch"})
+      p99: avg(ocb:evm_swap_quote_latency_ms:p99_24h{provider="trnch"})
+      mean: sum(ocb:evm_swap_quote_latency_ms:sum_rate_24h{provider="trnch"}) / sum(ocb:evm_swap_quote_latency_ms:count_rate_24h{provider="trnch"})
+      success: avg(ocb:evm_swap_quote_success:avg_24h{provider="trnch"})
+      sample_size: sum(ocb:evm_swap_quote_latency_ms:count_increase_24h{provider="trnch"})
+      series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="trnch"}[1h])) by (le))
+      regions:
+        - region: us-east
+          p50: avg(ocb:evm_swap_quote_latency_ms:p50_24h{provider="trnch", region="us-east"})
+          series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="trnch", region="us-east"}[1h])) by (le))
+        - region: eu-west
+          p50: avg(ocb:evm_swap_quote_latency_ms:p50_24h{provider="trnch", region="eu-west"})
+          series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="trnch", region="eu-west"}[1h])) by (le))
+        - region: ap-southeast
+          p50: avg(ocb:evm_swap_quote_latency_ms:p50_24h{provider="trnch", region="sgp"})
+          series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="trnch", region="sgp"}[1h])) by (le))
+
   - slug: sushi
     name: SushiSwap
     tag: No auth, the fourth quote on Robinhood Chain

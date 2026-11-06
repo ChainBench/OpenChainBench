@@ -944,7 +944,13 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       score on the board behind a reason that had stopped being true,
   //       and the strip printed Best 33.3% beside a table whose first row
   //       was 55.6%.
-  ["bench-unfiltered-v183", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v184: Trnch returns to benches 033 and 304, reversing the withdrawal
+  //       of 2026-11-03 at their own request and with their agreement. The
+  //       Railway key went back on all three quote probes FIRST, because
+  //       buildProviders does not construct the provider without it and the
+  //       rows would have published nothing. Same ordering as the
+  //       withdrawal, in reverse.
+  ["bench-unfiltered-v184", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -1301,7 +1307,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v174: lockstep with bench-unfiltered-v181 (unranked is not responsive).
   // v175: lockstep with bench-unfiltered-v182 (bench 313 delay 30 min).
   // v176: lockstep with bench-unfiltered-v183 (bench 313 ranks LI.FI).
-  ["all-benchmarks-v176", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v177: lockstep with bench-unfiltered-v184 (Trnch returns to 033/304).
+  ["all-benchmarks-v177", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1547,7 +1554,9 @@ const loadBenchmarkFiltered = unstable_cache(
   //       label changes from "48 seconds later" to "30 minutes later".
   // v101: lockstep with bench-unfiltered-v183. Both tier tabs gain a
   //       ranked row.
-  ["bench-filters-v101", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v102: lockstep with bench-unfiltered-v184. Bench 033 declares regions
+  //       and Trnch's row carries all three, so every region tab changes.
+  ["bench-filters-v102", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 

@@ -1025,7 +1025,11 @@ const buildProvidersCached = unstable_cache(
   // v59: LI.FI re-enters bench 313's leader pool (its unranked label is
   //      gone), and Trnch gets its brand mark where it had initials.
   //      Lockstep with bench-unfiltered-v183.
-  ["providers-v59"],
+  // v60: Trnch returns to benches 033 and 304, so it gains two appearances
+  //      that this index carries. Its product page never left this time: it
+  //      came back with bench 313 in #3511. Lockstep with
+  //      bench-unfiltered-v184.
+  ["providers-v60"],
   // 900 s: the provider index feeds products / compare / answers, whose
   // numbers move slowly, and this revalidate is also the effective ISR
   // period of those ~500 pages (Next takes the min across a route's caches).

@@ -75,6 +75,15 @@ describe("the provider set behind the cache keys", () => {
     // because the bench declares no dimensions and nothing is invisible on
     // a tab it does not have.
     //
+    // A RETURN on 2026-11-06: Trnch is back on 033 and 304, reversing the
+    // withdrawal below with their agreement. The ordering was the
+    // withdrawal's in reverse, and for the same reason: the Railway key
+    // went back on all three quote probes FIRST, because buildProviders
+    // does not construct the provider without it, so the rows would have
+    // published nothing had the spec landed first. v184/v177/v102 and
+    // providers-v60; the product page did not move this time, because it
+    // came back with bench 313 in #3511.
+    //
     // A REMOVAL on 2026-11-03, one day after the arrival below: Trnch asked
     // not to be published on quote or latency for now, so both rows go and
     // the registry entry with them. The withdrawal happened in two steps and
@@ -166,6 +175,6 @@ describe("the provider set behind the cache keys", () => {
         "Then set EXPECTED to the hash in this failure, and add the provider",
         `to PRODUCT_NAMES if it needs a display name. Providers now: ${count}.`,
       ].join("\n"),
-    ).toBe("4a635743e87e009a");
+    ).toBe("700b1db282d97487");
   });
 });
