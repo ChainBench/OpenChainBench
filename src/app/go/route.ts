@@ -139,6 +139,7 @@ function readGoRequest(req: Request, url: URL): GoRequest {
     to: url.searchParams.get("to"),
     family: uaFamily(agent),
     agent,
+    acceptsHtml: (req.headers.get("accept") ?? "").includes("text/html"),
     referer: req.headers.get("referer"),
     fetchSite: req.headers.get("sec-fetch-site"),
     confirmed: url.searchParams.has(CONFIRMED_PARAM),

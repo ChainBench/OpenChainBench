@@ -28,6 +28,7 @@ function request(overrides: Partial<GoRequest> = {}): GoRequest {
     to: DESTINATION,
     family: "browser",
     agent: CHROME,
+    acceptsHtml: true,
     referer: `https://${SELF}/products/quicknode?tab=rpc`,
     fetchSite: "same-origin",
     confirmed: false,
@@ -219,9 +220,15 @@ describe("decideGo", () => {
     expect(decision).toMatchObject({ kind: "confirm", pass: "offer" });
   });
 
-  test("offers no pass to a client that is not a browser", () => {
-    const decision = decideGo(request({ family: "declared-bot" }));
-    expect(decision).toMatchObject({ kind: "confirm", pass: "none" });
+  test.each([
+    ["a declared bot", { family: "declared-bot" }],
+    ["a browser agent that does not ask for a page", { acceptsHtml: false }],
+  ])("shows %s a direct link without a pass", (_name, overrides) => {
+    expect(decideGo(request(overrides))).toMatchObject({
+      kind: "confirm",
+      continueTo: "destination",
+      pass: "none",
+    });
   });
 });
 

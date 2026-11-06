@@ -45,6 +45,7 @@ export type GoRequest = {
   to: string | null;
   family: string;
   agent: string;
+  acceptsHtml: boolean;
   referer: string | null;
   fetchSite: string | null;
   confirmed: boolean;
@@ -108,7 +109,7 @@ export function decideGo(request: GoRequest): GoDecision {
   if (SEARCH_ENGINES.has(family)) {
     return { kind: "redirect", destination, click: null };
   }
-  if (family !== "browser") {
+  if (family !== "browser" || !request.acceptsHtml) {
     return {
       kind: "confirm",
       destination,

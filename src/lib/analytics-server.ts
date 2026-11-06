@@ -1,5 +1,6 @@
 import { after } from "next/server";
 import { createHash } from "node:crypto";
+import { setTimeout as sleep } from "node:timers/promises";
 import { AI_CRAWLER_FAMILIES } from "@/data/ai-crawlers";
 import { SEARCH_ENGINE_FAMILIES } from "@/data/search-engine-crawlers";
 import { readVisitors, type Visitor } from "@/lib/visitor";
@@ -12,7 +13,8 @@ import { readVisitors, type Visitor } from "@/lib/visitor";
  * and agent traffic the GEO work targets was invisible (2026-09-24).
  *
  * Fire and forget through `after()`: the response is sent first, the
- * event is posted once the handler is done, and a failure is only logged.
+ * event is posted once the handler is done. A network error, a 429 or a 5xx
+ * is retried once with the same event uuid, then logged.
  * No IP is stored: the distinct id is a daily hash of the user agent unless
  * a visitor is given, and the event asks PostHog not to create a person
  * profile.
@@ -29,6 +31,11 @@ import { readVisitors, type Visitor } from "@/lib/visitor";
 
 const KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY;
 const HOST = "https://us.i.posthog.com";
+const SEND_ATTEMPTS = 2;
+const SEND_TIMEOUT_MS = 3000;
+const RETRY_DELAY_MS = 300;
+const TOO_MANY_REQUESTS = 429;
+const SERVER_ERROR = 500;
 
 // The AI crawlers come first and come from src/data/ai-crawlers.ts, because
 // almost all of them put `Mozilla/5.0` in their own user-agent: an AI entry
@@ -84,6 +91,7 @@ export function captureServer(
   const distinctId = visitor?.distinctId ?? `srv:${agentHash.slice(0, 16)}`;
   const body = {
     api_key: KEY,
+    uuid: crypto.randomUUID(),
     event,
     distinct_id: distinctId,
     timestamp: new Date().toISOString(),
@@ -102,19 +110,30 @@ export function captureServer(
       $referrer: referer.slice(0, 200),
     },
   };
-  after(async () => {
+  after(() => send(event, JSON.stringify(body)));
+}
+
+function retryable(status: number): boolean {
+  return status === TOO_MANY_REQUESTS || status >= SERVER_ERROR;
+}
+
+async function send(event: string, body: string): Promise<void> {
+  let failure: unknown = null;
+  for (let attempt = 1; attempt <= SEND_ATTEMPTS; attempt += 1) {
+    if (attempt > 1) await sleep(RETRY_DELAY_MS);
     try {
       const res = await fetch(`${HOST}/i/v0/e/`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify(body),
-        signal: AbortSignal.timeout(3000),
+        body,
+        signal: AbortSignal.timeout(SEND_TIMEOUT_MS),
       });
-      if (!res.ok) {
-        console.error(`[analytics] ${event} rejected: HTTP ${res.status}`);
-      }
+      if (res.ok) return;
+      failure = `HTTP ${res.status}`;
+      if (!retryable(res.status)) break;
     } catch (error) {
-      console.error(`[analytics] ${event} not sent`, error);
+      failure = error;
     }
-  });
+  }
+  console.error(`[analytics] ${event} not sent`, failure);
 }

@@ -1,5 +1,5 @@
 import { afterAll, beforeEach, expect, spyOn, test } from "bun:test";
-import "@/test/after-queue";
+import { settleAfter } from "@/test/after-queue";
 import { posthogCookie } from "@/test/posthog-cookie";
 
 const KEY = "phc_test";
@@ -66,4 +66,38 @@ test("uses the agent hash for events without a visitor", () => {
   const event = sentEvent();
   expect(event.distinct_id).toMatch(/^srv:[0-9a-f]{16}$/);
   expect(event.properties).not.toHaveProperty("visitor_source");
+});
+
+function sentBodies(): unknown[] {
+  return sent.mock.calls.map(([, init]) => init?.body);
+}
+
+test.each([
+  [
+    "a network error",
+    () => sent.mockRejectedValueOnce(new TypeError("fetch failed")),
+  ],
+  [
+    "a server error",
+    () => sent.mockResolvedValueOnce(new Response(null, { status: 503 })),
+  ],
+  [
+    "a rate limit",
+    () => sent.mockResolvedValueOnce(new Response(null, { status: 429 })),
+  ],
+])("sends the same event again after %s", async (_name, fail) => {
+  fail();
+  captureServer(request(null), "outbound_click", {});
+  await settleAfter();
+  const [first, second] = sentBodies();
+  expect(sentBodies()).toHaveLength(2);
+  expect(second).toBe(first);
+  expect(sentEvent().uuid).toEqual(expect.any(String));
+});
+
+test("does not resend an event PostHog refused", async () => {
+  sent.mockResolvedValueOnce(new Response(null, { status: 400 }));
+  captureServer(request(null), "outbound_click", {});
+  await settleAfter();
+  expect(sentBodies()).toHaveLength(1);
 });

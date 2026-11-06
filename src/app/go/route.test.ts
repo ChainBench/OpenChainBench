@@ -15,6 +15,8 @@ import { posthogCookie } from "@/test/posthog-cookie";
 
 const BROWSER =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Chrome/142.0 Safari/537.36";
+const PAGE_ACCEPT =
+  "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8";
 const ORIGIN = "https://openchainbench.com";
 const OLD_SAFARI =
   "Mozilla/5.0 (iPhone; CPU iPhone OS 15_8 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.6 Mobile/15E148 Safari/604.1";
@@ -48,6 +50,7 @@ function visit(
       method,
       headers: {
         "user-agent": BROWSER,
+        accept: PAGE_ACCEPT,
         "x-vercel-forwarded-for": `client-${clients}`,
         ...headers,
       },
@@ -320,6 +323,7 @@ describe("GET /go", () => {
       new Request(`${host}/go?to=${to}`, {
         headers: {
           "user-agent": BROWSER,
+          accept: PAGE_ACCEPT,
           referer: `${host}/rpc`,
           "sec-fetch-site": "same-origin",
         },
@@ -364,6 +368,28 @@ describe("GET /go", () => {
       expect(await capturedEvents()).toEqual([]);
     },
   );
+
+  test.each(["*/*", "application/json, text/plain, */*", ""])(
+    "does not count a script posing as a browser with accept %p",
+    async (accept) => {
+      const reload = { "sec-fetch-site": "none", accept };
+      const page = await get(DESTINATION, { ...OWN_PAGE, accept });
+      const outside = await get(DESTINATION, reload);
+      expect(page.status).toBe(200);
+      expect(continueLink(await page.text()).href).toBe(DESTINATION);
+      expect(continueLink(await outside.text()).href).toBe(DESTINATION);
+      expect(await capturedEvents()).toEqual([]);
+    },
+  );
+
+  test("does not count a Continue link followed by a script", async () => {
+    const reload = { "sec-fetch-site": "none" };
+    const page = await get(DESTINATION, reload);
+    const link = continueLink(await page.text());
+    const scripted = await visit(link, { ...reload, accept: "*/*" });
+    expect(scripted.status).toBe(200);
+    expect(await capturedEvents()).toEqual([]);
+  });
 
   test("does not count a HEAD request", async () => {
     const redirect = await get(DESTINATION, OWN_PAGE, "HEAD");
