@@ -13,15 +13,21 @@ import (
 // TrnchProvider hits trnch.fun/api/bot/v1/quote. Robinhood Chain only: the
 // request carries no chain id because the API serves that one chain.
 //
-// WITHDRAWN 2026-11-03 at Trnch's request, one day after it arrived: they
-// prefer not to be published on quote or latency for now. TRNCH_API_KEY is
-// deleted on all three probes, so buildProviders never constructs this and
-// nothing is called. Their rows are gone from both specs and from the
-// registry, so nothing renders either.
+// Withdrawn 2026-11-03 at Trnch's request, one day after it arrived, and
+// RESTORED 2026-11-06 with their agreement. TRNCH_API_KEY is set again on
+// evm-quote-latency-us, -eu and -sgp, and the rows are back on both specs.
 //
-// Kept rather than deleted because the key IS the gate: setting the variable
-// again is the whole re-enable, and the measurements written up below took a
-// night to establish and would have to be redone.
+// Keeping this file through the withdrawal was the right call: the key is
+// the gate, so setting the variable was most of the re-enable, and the
+// measurements written up below took a night to establish.
+//
+// It was not ALL of the re-enable, and that is the lesson worth leaving
+// here. Setting the variable triggers a redeploy of the last BUILD, and on
+// 2026-11-06 that build was older than the running container: the probes
+// came back up without SushiSwap, which had been quoting until that moment,
+// and stopped writing it. The boot line settles this in one read, because
+// buildProviders prints every provider it constructed. A key change wants a
+// build, not a redeploy, and this file is under the path that triggers one.
 //
 // Added 2026-11-02 after Trnch asked to be measured. Two things about them
 // are worth stating because they decide how the row reads.
