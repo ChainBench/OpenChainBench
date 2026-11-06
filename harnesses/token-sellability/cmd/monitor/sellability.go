@@ -382,6 +382,19 @@ func (c *rpcClient) Received(ctx context.Context, from, token string, buy Quote)
 // Examine buys the token, approves the sell router and sells, at two
 // timings. DelayBlocks is reached by appending empty blocks rather than by
 // moving the block number, for the reason recorded at the top of this file.
+//
+// The delay is worth (delayBlocks + 1) x 12 seconds, not delayBlocks x 12:
+// the entry block and the exit block are both in the list, so three empty
+// blocks make five blocks and four steps. That off-by-one was published as
+// "36 seconds" for a tier that ran at 48.
+//
+// Two things bound what this can see. The node caps blockStateCalls at 255,
+// measured by bisection and with work in the first and last block, so the
+// widest delay available is 253 empty blocks or 50.8 minutes. And the NUMBER
+// opcode does not advance: a contract installed by override that returns it
+// reads the same frozen L1 height in the entry block and the exit block, so
+// a cooldown keyed on block height reverts at BOTH timings and cannot be
+// told from a trap at any delay.
 func Examine(ctx context.Context, c *rpcClient, from, token string, buy, sell Quote, delayBlocks int) Probe {
 	p := Probe{Token: token, Bought: buy.AmountOut}
 	if buy.To == "" || sell.To == "" {

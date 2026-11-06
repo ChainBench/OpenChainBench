@@ -928,7 +928,16 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       it arrived with. Bench 313 published LI.FI at 0% with no series in
   //       Prometheus at all, on a board where 0 is the best score. Absent
   //       from the order and absent from the data are two absences.
-  ["bench-unfiltered-v181", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v182: bench 313's delayed tier sells 30 minutes after the buy instead
+  //       of 48 seconds, so the selector can finally move: the two timings
+  //       had never disagreed about one token across 1036 of them, which is
+  //       what 48 seconds buys you against a cooldown measured in minutes.
+  //       149 empty blocks, measured accepted on the probe's real shape with
+  //       104 blocks of headroom under the node's 255 ceiling. The rule label
+  //       moves to reverts-v2 with it, which also restarts the same-block
+  //       window: that window was 90 minutes old, so one transition beats
+  //       two. The block-height blind spot is unaffected and stays stated.
+  ["bench-unfiltered-v182", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -1283,7 +1292,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v172: lockstep with bench-unfiltered-v179 (bench 313 LI.FI caveat).
   // v173: lockstep with bench-unfiltered-v180 (bench 313 rule label).
   // v174: lockstep with bench-unfiltered-v181 (unranked is not responsive).
-  ["all-benchmarks-v174", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v175: lockstep with bench-unfiltered-v182 (bench 313 delay 30 min).
+  ["all-benchmarks-v175", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1525,7 +1535,9 @@ const loadBenchmarkFiltered = unstable_cache(
   //      delayed label reads 48 seconds and LI.FI is unranked on each.
   // v99: lockstep with bench-unfiltered-v181. Filtered views carry the
   //      same unranked rows, and bench 304 reaches this loop on every tab.
-  ["bench-filters-v99", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v100: lockstep with bench-unfiltered-v182. The delayed tab's own
+  //       label changes from "48 seconds later" to "30 minutes later".
+  ["bench-filters-v100", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 
