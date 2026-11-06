@@ -893,7 +893,12 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       published 1000% as a percentage.
   // v175: bench 001 Base methodology after Denim (sealed 200 ms blocks,
   //       log reference instead of flashblocks).
-  ["bench-unfiltered-v175", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v176: bench 313 can finally publish a clean record. count() over an
+  //       empty vector returns no series, so an aggregator asked about
+  //       every failed token that routed into none of them produced an
+  //       empty expression and no row. The best score on the board was
+  //       the one score it could not show.
+  ["bench-unfiltered-v176", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -1242,7 +1247,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v166: lockstep with bench-unfiltered-v173 (bench 313 queries land).
   // v167: lockstep with bench-unfiltered-v174 (bench 313 subset guard).
   // v168: lockstep with bench-unfiltered-v175 (bench 001 Denim copy).
-  ["all-benchmarks-v168", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v169: lockstep with bench-unfiltered-v176 (bench 313 publishes a zero).
+  ["all-benchmarks-v169", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1474,7 +1480,9 @@ const loadBenchmarkFiltered = unstable_cache(
   // v93: lockstep with bench-unfiltered-v168. Bench 314 declares regions.
   // v94: lockstep with bench-unfiltered-v170. A vendor leaves BOTH tier
   //      values, so each tab's provider set changes.
-  ["bench-filters-v94", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v95: lockstep with bench-unfiltered-v176. Both tier tabs of bench 313
+  //      gain the rows whose figure is zero.
+  ["bench-filters-v95", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 
