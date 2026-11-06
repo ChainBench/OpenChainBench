@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"os"
+	"strings"
 	"testing"
 
 	"github.com/prometheus/client_golang/prometheus/testutil"
@@ -72,6 +74,41 @@ func TestEachGradeReachesItsOwnSeries(t *testing.T) {
 	// And the denominator is every token that answered, whatever it said.
 	if n := testutil.CollectAndCount(askedTokenGauge); n != 4 {
 		t.Errorf("asked = %d, want 4: a refusal is an answer", n)
+	}
+}
+
+// Declaring a gauge is not publishing it.
+//
+// The first deploy of this change wrote all three grades correctly and
+// exposed none of them: built with NewGaugeVec, never added to
+// MustRegister, so /metrics carried the sixteen old series names and not one
+// new one. The wiring test above passed anyway, because CollectAndCount
+// reads a collector whether or not anything registered it, which is exactly
+// the half of a fix a test can miss.
+//
+// Asserted on main.go's own list, because that list is the thing that was
+// wrong and a registry built here would not notice it.
+func TestTheGradesAreActuallyRegistered(t *testing.T) {
+	src, err := os.ReadFile("main.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(src)
+	start := strings.Index(text, "prometheus.MustRegister(")
+	if start < 0 {
+		t.Fatal("no MustRegister call in main.go")
+	}
+	rest := text[start:]
+	block := rest[:strings.Index(rest, ")")]
+	for _, name := range []string{
+		"screenedTokenGauge", "noLiquidityTokenGauge", "reservedTokenGauge",
+		// The ones the grades sit beside, so a rewrite of this list cannot
+		// drop an old series while satisfying the new check.
+		"routedTokenGauge", "askedTokenGauge",
+	} {
+		if !strings.Contains(block, name) {
+			t.Errorf("%s is never registered, so it never reaches /metrics", name)
+		}
 	}
 }
 
