@@ -1019,7 +1019,10 @@ const buildProvidersCached = unstable_cache(
   //      to #1 of 3, which is the point: LI.FI's row divides by 20 tokens
   //      where the others divide by 27, so ranking it ranked who we managed
   //      to ask. Lockstep with bench-unfiltered-v180.
-  ["providers-v57"],
+  // v58: an unranked row with no reading stays unresponsive instead of
+  //      being promoted to live with zeros, so its product-page appearance
+  //      changes shape. Lockstep with bench-unfiltered-v181.
+  ["providers-v58"],
   // 900 s: the provider index feeds products / compare / answers, whose
   // numbers move slowly, and this revalidate is also the effective ISR
   // period of those ~500 pages (Next takes the min across a route's caches).

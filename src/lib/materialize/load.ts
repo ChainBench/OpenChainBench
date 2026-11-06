@@ -471,8 +471,19 @@ export async function specToBenchmark(
         const entry = unrankedBySlug.get(r.slug.toLowerCase());
         if (!entry) continue;
         r.unrankedLabel = entry.label;
-        r.unresponsive = undefined;
-        r.availability = "live";
+        // Absent from the ORDER and absent from the DATA are two different
+        // absences, and clearing both here conflated them: declaring a
+        // provider unranked also declared it responsive, so a row that had
+        // returned nothing kept the zeros it arrived with and published
+        // them. Bench 313 put LI.FI at 0% that way, with no series at all in
+        // Prometheus, on a board where lower is better and 0 is the best
+        // score a row can hold. Not being ranked is a property of the
+        // provider; having answered is a property of the window.
+        const read = typeof r.successRate === "number" ? r.successRate > 0 : true;
+        if (read) {
+          r.unresponsive = undefined;
+          r.availability = "live";
+        }
         if (entry.hide) r.ms = { p50: 0, p90: 0, p99: 0, mean: 0 };
       }
     }
