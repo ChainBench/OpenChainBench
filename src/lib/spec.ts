@@ -973,7 +973,15 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       guard hashes shrinks and every cached entry still carries their
   //       rows and appearances. Moves with all-benchmarks-v180,
   //       bench-filters-v105 and providers-v61.
-  ["bench-unfiltered-v187", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v188: bench 313 publishes what each aggregator quotes IN GENERAL,
+  //       beside what it quotes among the failed tokens. A score alone is
+  //       unreadable: KyberSwap routes into all ten failed tokens and also
+  //       quotes 98.3% of every token examined, so its row is a coverage
+  //       fact. ParaSwap and LI.FI share a baseline to the decimal, 78.7%
+  //       each, and route into the cohort at 60% and 30%. Trnch has the
+  //       lowest baseline, 78.1%, and the second highest trap rate at 90%,
+  //       the only row whose score sits above its own coverage.
+  ["bench-unfiltered-v188", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -1336,7 +1344,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v179: lockstep with bench-unfiltered-v186 (bench 313 grades refusals).
   // v180: lockstep with bench-unfiltered-v187 (thirteen chain RPC pages
   //       retired 2026-11-06; a cached catalog would keep linking them).
-  ["all-benchmarks-v180", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v181: lockstep with bench-unfiltered-v188 (bench 313 coverage column).
+  ["all-benchmarks-v181", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1590,7 +1599,9 @@ const loadBenchmarkFiltered = unstable_cache(
   //       tier tab renders them as its own selector.
   // v105: lockstep with bench-unfiltered-v187 (thirteen chain RPC pages
   //       retired, each with region and tier tabs).
-  ["bench-filters-v105", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v106: lockstep with bench-unfiltered-v188. The coverage panel is
+  //       written under both row slugs, so each tier tab carries it.
+  ["bench-filters-v106", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 

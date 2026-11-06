@@ -160,11 +160,19 @@ func TestCoverageCountsTheWholeExaminedCohort(t *testing.T) {
 		map[string]bool{"0xa": true, "0xb": false, "0xc": true}, "0xd")
 	publishCoverage(config{chain: "robinhood"}, s, []string{"0xa", "0xb", "0xc", "0xd"})
 
-	if n := testutil.ToFloat64(surveyedGauge.WithLabelValues("robinhood", "paraswap")); n != 3 {
-		t.Errorf("the unanswered token is not surveyed, got %v", n)
-	}
-	if n := testutil.ToFloat64(quotedGauge.WithLabelValues("robinhood", "paraswap")); n != 2 {
-		t.Errorf("two were quoted, got %v", n)
+	// Written under both row slugs, because a panel joins on the row and a
+	// row exists per tier, while coverage does not depend on the timing.
+	for tier, row := range map[string]string{
+		"delayed": "paraswap", "same_block": "paraswap-same-block",
+	} {
+		if n := testutil.ToFloat64(surveyedGauge.WithLabelValues(
+			"robinhood", "paraswap", tier, row)); n != 3 {
+			t.Errorf("%s: the unanswered token is not surveyed, got %v", tier, n)
+		}
+		if n := testutil.ToFloat64(quotedGauge.WithLabelValues(
+			"robinhood", "paraswap", tier, row)); n != 2 {
+			t.Errorf("%s: two were quoted, got %v", tier, n)
+		}
 	}
 }
 

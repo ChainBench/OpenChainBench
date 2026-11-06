@@ -51,6 +51,7 @@ methodology:
   - "Inconclusive is a verdict of its own, counted and published. The node answers some requests with a well-formed block and an empty call list, no error, and reading a status out of that would publish a revert that never ran. A probe that cannot tell says so instead of falling back to a real outcome."
   - "What the exit is WORTH is recorded, not counted. An earlier version called a token unsellable when its only route out was quoted under a tenth of the stake, which put the chain's own stablecoin in the cohort: USDG was quoted 4.08% and the sale delivered 4.08%, exactly as promised. Every non-reverting exit measured delivered 100.0% of its quote, because the route carries its own minimum output. A thin pool priced honestly is not a failed exit."
   - "Not every row has to rest on the same number of tokens, and the Tokens asked column is there to show it. LI.FI is the tight one: it answers a request and then asks for several minutes, so it is sent only the failed tokens rather than the whole sweep. Read any row whose column is below the others as the same calculation on less evidence, which is a weaker claim rather than a different one."
+  - "A score is read against the Quotes overall column, never alone. An aggregator that quotes 98% of every token examined will route into nearly every failed one without selecting anything, so its figure is a fact about coverage. The reading worth having is the gap between the two, and a row whose score sits ABOVE its own coverage is quoting failed tokens more often than it quotes."
   - "A refusal is graded, because two opposite claims were being written as one. Screened out means the reason names the TOKEN: a deny list, a screen, an impact guard. No market means it names the market. A router that screens is protecting you; one with no pool is simply absent, and the score alone could not tell them apart."
   - "Routed with a reservation counts answers that carry a route AND a caveat the aggregator states itself. It is a column and never the score, because only one provider publishes such a field and ranking on it would rank how talkative an API is. Measured here it is specific and not sensitive: it fired on 3 of 9 failed tokens and on 0 of 12 the same sweeps sold."
   - "A failed buy is out of scope, not a failure. If no route in opens, nothing has been learned about selling, and calling that unsellable would blame the token for a market that does not exist."
@@ -93,6 +94,7 @@ ledger_columns:
   - { label: "Screened out", panel: screened }
   - { label: "No market", panel: no_liquidity }
   - { label: "With a reservation", panel: reserved }
+  - { label: "Quotes overall", panel: coverage }
 
 metric_panels:
   - id: asked
@@ -103,6 +105,13 @@ metric_panels:
     unit: count
     higher_is_better: true
     tab: false
+  - id: coverage
+    label: Quotes overall
+    description: "What it quotes in GENERAL, across every token examined and not just the failed ones. Read the score against this: a router that quotes almost everything routes into almost every trap without selecting, and one whose score sits above this line quotes traps more than it quotes."
+    metric: 100 * sum by (provider) (avg_over_time(token_sellability_quoted[24h])) / (sum by (provider) (avg_over_time(token_sellability_surveyed[24h])) > 0)
+    label_key: provider
+    unit: pct
+    higher_is_better: false
   - id: screened
     label: Screened out
     description: "Distinct tokens from the failed-exit cohort this aggregator refused with a reason that names the TOKEN: a deny list, a screen, an impact guard. Higher is better here, unlike the score: it is the router protecting you."

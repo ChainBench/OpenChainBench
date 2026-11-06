@@ -100,13 +100,25 @@ func publishCoverage(cfg config, s *Survey, examined []string) {
 				quotedN++
 			}
 		}
+		// Written under BOTH row slugs. Coverage is a property of the
+		// aggregator and not of the timing, but a panel joins on the row,
+		// and a row exists per tier. The same figure under both is the
+		// honest shape: it is the same measurement.
+		for _, tier := range []string{"delayed", "same_block"} {
+			row := rowSlug(agg.Slug(), tier)
+			if answeredN == 0 {
+				quotedGauge.DeleteLabelValues(cfg.chain, agg.Slug(), tier, row)
+				surveyedGauge.DeleteLabelValues(cfg.chain, agg.Slug(), tier, row)
+				continue
+			}
+			surveyedGauge.WithLabelValues(cfg.chain, agg.Slug(), tier, row).
+				Set(float64(answeredN))
+			quotedGauge.WithLabelValues(cfg.chain, agg.Slug(), tier, row).
+				Set(float64(quotedN))
+		}
 		if answeredN == 0 {
-			quotedGauge.DeleteLabelValues(cfg.chain, agg.Slug())
-			surveyedGauge.DeleteLabelValues(cfg.chain, agg.Slug())
 			continue
 		}
-		surveyedGauge.WithLabelValues(cfg.chain, agg.Slug()).Set(float64(answeredN))
-		quotedGauge.WithLabelValues(cfg.chain, agg.Slug()).Set(float64(quotedN))
 		quotedTotal.WithLabelValues(cfg.chain, agg.Slug()).Add(float64(quotedN))
 		surveyedTotal.WithLabelValues(cfg.chain, agg.Slug()).Add(float64(answeredN))
 	}
