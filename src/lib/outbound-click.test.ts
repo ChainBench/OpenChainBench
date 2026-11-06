@@ -1,17 +1,37 @@
 import { describe, expect, test } from "bun:test";
-import { decideGo, outboundHref } from "@/lib/outbound-click";
-
-type GoRequest = Parameters<typeof decideGo>[0];
+import { decideGo, type GoRequest, outboundHref } from "@/lib/outbound-click";
 
 const SELF = "openchainbench.com";
 const DESTINATION =
   "https://www.quicknode.com/pricing?utm_source=openchainbench";
+const CHROME =
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36";
+const FIREFOX =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:144.0) Gecko/20100101 Firefox/144.0";
+const OLD_SAFARI =
+  "Mozilla/5.0 (iPhone; CPU iPhone OS 15_8 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.6 Mobile/15E148 Safari/604.1";
+const OLD_CHROME_IOS =
+  "Mozilla/5.0 (iPhone; CPU iPhone OS 15_8 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/119.0.6045.169 Mobile/15E148 Safari/604.1";
+const WECHAT_X5 =
+  "Mozilla/5.0 (Linux; Android 9; MI 8) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/57.0.2987.132 MQQBrowser/6.2 TBS/045132 Mobile Safari/537.36 MicroMessenger/7.0.3";
+const KAIOS =
+  "Mozilla/5.0 (Mobile; Nokia_8110_4G; rv:48.0) Gecko/48.0 Firefox/48.0 KAIOS/2.5";
+const LEGACY_EDGE =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.102 Safari/537.36 Edge/18.19582";
+const CHROME_76 =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/76.0.3809.100 Safari/537.36";
+const FIREFOX_90 =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:90.0) Gecko/20100101 Firefox/90.0";
 
 function request(overrides: Partial<GoRequest> = {}): GoRequest {
   return {
     to: DESTINATION,
     family: "browser",
+    agent: CHROME,
     referer: `https://${SELF}/products/quicknode?tab=rpc`,
+    fetchSite: "same-origin",
+    confirmed: false,
+    passed: false,
     selfHost: SELF,
     background: false,
     ...overrides,
@@ -110,16 +130,98 @@ describe("decideGo", () => {
     ["our host on another scheme", `android-app://${SELF}/rpc`],
     ["too long to parse", `https://${SELF}/${"a".repeat(3000)}`],
   ])("asks for confirmation when the referer is %s", (_name, referer) => {
-    expect(decideGo(request({ referer }))).toEqual({
+    const req = request({ referer, fetchSite: null, agent: OLD_SAFARI });
+    expect(decideGo(req)).toEqual({
       kind: "confirm",
       destination: new URL(DESTINATION),
-      click: {
-        href: DESTINATION,
-        host: "www.quicknode.com",
-        page: "",
-        via: "confirm",
-      },
+      continueTo: "go",
+      pass: "offer",
     });
+  });
+
+  test.each([
+    ["Safari", OLD_SAFARI],
+    ["Chrome on iOS", OLD_CHROME_IOS],
+    ["WeChat engine", WECHAT_X5],
+    ["KaiOS", KAIOS],
+    ["Edge", LEGACY_EDGE],
+  ])("counts an older %s from our page by its referer", (_name, agent) => {
+    const decision = decideGo(request({ fetchSite: null, agent }));
+    expect(decision).toMatchObject({
+      kind: "redirect",
+      click: { page: "/products/quicknode", via: "go" },
+    });
+  });
+
+  test.each([
+    ["Chrome", CHROME],
+    ["Firefox", FIREFOX],
+    ["the first Chrome to send it", CHROME_76],
+    ["the first Firefox to send it", FIREFOX_90],
+  ])("does not take the referer alone from %s", (_name, agent) => {
+    const decision = decideGo(request({ fetchSite: null, agent }));
+    expect(decision).toMatchObject({
+      kind: "confirm",
+      continueTo: "destination",
+    });
+  });
+
+  test.each(["cross-site", "same-site", "none"])(
+    "asks for confirmation for a %s request without our referer",
+    (fetchSite) => {
+      const decision = decideGo(request({ referer: null, fetchSite }));
+      expect(decision).toMatchObject({ kind: "confirm", continueTo: "go" });
+    },
+  );
+
+  test.each([
+    ["cross-site", "none"],
+    ["same-site", "none"],
+    ["none", "offer"],
+  ])("offers a pass to a %s request only when needed", (fetchSite, pass) => {
+    const decision = decideGo(request({ referer: null, fetchSite }));
+    expect(decision).toMatchObject({ kind: "confirm", pass });
+  });
+
+  test.each(["none", "cross-site"])(
+    "sends a confirmed %s request without our page to the destination",
+    (fetchSite) => {
+      const decision = decideGo(
+        request({ referer: null, fetchSite, confirmed: true }),
+      );
+      expect(decision).toMatchObject({
+        kind: "confirm",
+        continueTo: "destination",
+        pass: "redeem",
+      });
+    },
+  );
+
+  test("counts a confirmed request whose pass was redeemed", () => {
+    const decision = decideGo(
+      request({
+        referer: null,
+        fetchSite: "none",
+        confirmed: true,
+        passed: true,
+      }),
+    );
+    expect(decision).toMatchObject({
+      kind: "redirect",
+      click: { page: "", via: "confirm" },
+    });
+  });
+
+  test("ignores a redeemed pass on a request that was not confirmed", () => {
+    const decision = decideGo(
+      request({ referer: null, fetchSite: "none", passed: true }),
+    );
+    expect(decision).toMatchObject({ kind: "confirm", pass: "offer" });
+  });
+
+  test("offers no pass to a client that is not a browser", () => {
+    const decision = decideGo(request({ family: "declared-bot" }));
+    expect(decision).toMatchObject({ kind: "confirm", pass: "none" });
   });
 });
 

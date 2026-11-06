@@ -2,6 +2,7 @@ import { after } from "next/server";
 import { createHash } from "node:crypto";
 import { AI_CRAWLER_FAMILIES } from "@/data/ai-crawlers";
 import { SEARCH_ENGINE_FAMILIES } from "@/data/search-engine-crawlers";
+import { readVisitors, type Visitor } from "@/lib/visitor";
 
 /**
  * Server-side PostHog capture for the surfaces a browser never renders:
@@ -11,9 +12,10 @@ import { SEARCH_ENGINE_FAMILIES } from "@/data/search-engine-crawlers";
  * and agent traffic the GEO work targets was invisible (2026-09-24).
  *
  * Fire and forget through `after()`: the response is sent first, the
- * event is posted once the handler is done, and any failure is swallowed.
- * No IP is stored: the distinct id is a daily hash of the user agent, and
- * the event asks PostHog not to create a person profile.
+ * event is posted once the handler is done, and a failure is only logged.
+ * No IP is stored: the distinct id is a daily hash of the user agent unless
+ * a visitor is given, and the event asks PostHog not to create a person
+ * profile.
  *
  * What an event counts depends on the route's caching: the Markdown route
  * is uncached and emits one event per read; /api/stat (60 s edge TTL) and
@@ -47,7 +49,7 @@ const FAMILIES: [RegExp, string][] = [
   [/python-requests|httpx|aiohttp/i, "python"],
   [/node-fetch|undici|axios/i, "node"],
   [/Go-http-client/i, "go"],
-  [/Mozilla\/.*https?:\/\/|HeadlessChrome/i, "declared-bot"],
+  [/^(?=.*Mozilla\/)(?=.*https?:\/\/)|HeadlessChrome/i, "declared-bot"],
   [/Mozilla\//i, "browser"],
 ];
 
@@ -59,16 +61,27 @@ export function uaFamily(ua: string): string {
   return "other";
 }
 
+export function readSiteVisitors(req: Request): Visitor[] {
+  const posthogCookie = KEY ? `ph_${KEY}_posthog` : null;
+  return readVisitors(req.headers.get("cookie"), posthogCookie);
+}
+
 /** Queue one server event for the current request. Safe to call when the
  *  key is absent (local dev): it does nothing. */
-export function captureServer(req: Request, event: string, props: Record<string, unknown>): void {
+export function captureServer(
+  req: Request,
+  event: string,
+  props: Record<string, unknown>,
+  visitor: Visitor | null = null,
+): void {
   if (!KEY) return;
   const ua = req.headers.get("user-agent") ?? "";
   const accept = req.headers.get("accept") ?? "";
   const referer = req.headers.get("referer") ?? "";
   const url = new URL(req.url);
   const day = new Date().toISOString().slice(0, 10);
-  const distinctId = "srv:" + createHash("sha256").update(`${ua}|${day}`).digest("hex").slice(0, 16);
+  const agentHash = createHash("sha256").update(`${ua}|${day}`).digest("hex");
+  const distinctId = visitor?.distinctId ?? `srv:${agentHash.slice(0, 16)}`;
   const body = {
     api_key: KEY,
     event,
@@ -76,6 +89,8 @@ export function captureServer(req: Request, event: string, props: Record<string,
     timestamp: new Date().toISOString(),
     properties: {
       ...props,
+      ...(visitor ? { visitor_source: visitor.source } : {}),
+      ...(visitor?.sessionId ? { $session_id: visitor.sessionId } : {}),
       $lib: "ocb-server",
       $process_person_profile: false,
       $host: url.host,
@@ -89,14 +104,17 @@ export function captureServer(req: Request, event: string, props: Record<string,
   };
   after(async () => {
     try {
-      await fetch(`${HOST}/i/v0/e/`, {
+      const res = await fetch(`${HOST}/i/v0/e/`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(body),
         signal: AbortSignal.timeout(3000),
       });
-    } catch {
-      // analytics never fails a response
+      if (!res.ok) {
+        console.error(`[analytics] ${event} rejected: HTTP ${res.status}`);
+      }
+    } catch (error) {
+      console.error(`[analytics] ${event} not sent`, error);
     }
   });
 }
