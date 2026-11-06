@@ -4,6 +4,7 @@
  * sites never guard.
  *
  *   outbound_click  {href, host, text, page}   a link to another site, delegated listener
+ *                   {href, host, page, via}    the same click when it passes through /go, server side
  *   contact_click   {page}                      the email address, same listener
  *   copy            {kind, value?, bench?}     endpoint / API URL / MCP URL or config / embed / brief
  *   search          {query, kind, url}         a result picked in the search dialog
