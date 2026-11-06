@@ -945,7 +945,9 @@ const buildProvidersCached = unstable_cache(
   //      unchanged, but the provider index carries the DISPLAY name
   //      onto /products, /compare and /answers, so a cached index
   //      keeps the old spelling. Lockstep with bench-unfiltered-v113.
-  ["providers-v30"],
+  // v31: thirteen chain RPC pages retire, so every provider on them loses
+  //      that appearance. Lockstep with bench-unfiltered-v115.
+  ["providers-v31"],
   // 900 s: the provider index feeds products / compare / answers, whose
   // numbers move slowly, and this revalidate is also the effective ISR
   // period of those ~500 pages (Next takes the min across a route's caches).

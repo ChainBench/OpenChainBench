@@ -776,15 +776,6 @@ export const CHAINS: ChainEntry[] = [
       "EVM runtime on NEAR Protocol (chain 1313161554) exposing full Ethereum tooling to NEAR's sharded execution environment, ETH gas token bridged from Ethereum, operated by Aurora Labs.",
   },
   {
-    slug: "bitlayer",
-    label: "Bitlayer",
-    category: "L2",
-    nativeSymbol: "BTC",
-    website: "https://www.bitlayer.org",
-    description:
-      "Bitcoin L2 with EVM compatibility (chain 200901) secured by a BitVM-based fraud-proof scheme, BTC gas token, ~0.5 s block time, first EVM-compatible Bitcoin Layer 2 using BitVM.",
-  },
-  {
     slug: "b2",
     label: "B² Network",
     category: "L2",
@@ -1083,15 +1074,6 @@ export const CHAINS: ChainEntry[] = [
       "Cosmos SDK ecological assets blockchain (regen-1) enabling on-chain issuance, retirement and trading of verified carbon credits and ecological credits, REGEN staking token, CometBFT consensus.",
   },
   {
-    slug: "comdex",
-    label: "Comdex",
-    category: "L1",
-    nativeSymbol: "CMDX",
-    website: "https://comdex.one",
-    description:
-      "Cosmos SDK DeFi chain (comdex-1) providing decentralised synthetics and lending with on-chain commodity markets, CMDX staking token, CometBFT consensus, IBC-connected to Osmosis and Cosmos Hub.",
-  },
-  {
     slug: "fantom",
     label: "Fantom",
     category: "L1",
@@ -1316,15 +1298,6 @@ export const CHAINS: ChainEntry[] = [
     website: "https://www.wax.io",
     description:
       "Delegated proof-of-stake L1 using the Antelope (EOSIO) protocol, purpose-built for NFT trading and gaming with 0.5-second block times and no gas fees for users.",
-  },
-  {
-    slug: "merlin",
-    label: "Merlin Chain",
-    category: "L2",
-    nativeSymbol: "MERL",
-    website: "https://merlinchain.io",
-    description:
-      "Bitcoin Layer 2 using ZK-Rollup technology to inherit Bitcoin security while enabling EVM-compatible smart contracts and DeFi (chain ID 4200). Settled on the Bitcoin mainnet.",
   },
   {
     slug: "viction",

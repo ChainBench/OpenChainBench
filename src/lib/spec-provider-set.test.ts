@@ -53,7 +53,12 @@ describe("the provider set behind the cache keys", () => {
     const hash = createHash("sha256").update(sets.join("\n")).digest("hex").slice(0, 16);
     const count = sets.reduce((n, s) => n + s.split(":")[1].split(",").length, 0);
 
-    // Recorded on 2026-10-29 on main with bench-unfiltered-v106,
+    // Recorded on 2026-11-06 on main with bench-unfiltered-v115,
+    // all-benchmarks-v108, bench-filters-v54, providers-v31: thirteen chain
+    // RPC pages retire (celo, taiko, kaia, bob, bitlayer, gravity, axelar,
+    // hedera, litecoin, soneium, zircuit, merlin, comdex).
+    //
+    // Previously recorded on 2026-10-29 on main with bench-unfiltered-v106,
     // all-benchmarks-v99, bench-filters-v46, providers-v22: bench 309
     // wallet-cost released with thirteen embedded wallet vendors.
     //
@@ -106,6 +111,6 @@ describe("the provider set behind the cache keys", () => {
         "Then set EXPECTED to the hash in this failure, and add the provider",
         `to PRODUCT_NAMES if it needs a display name. Providers now: ${count}.`,
       ].join("\n"),
-    ).toBe("925a7c4eff7d7ca5");
+    ).toBe("d0db2f42f946deb8");
   });
 });

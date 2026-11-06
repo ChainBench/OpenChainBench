@@ -91,6 +91,19 @@ export function middleware(req: NextRequest) {
 // src/middleware.test.ts. Keep sorted by section, one path per line.
 export const config = {
   matcher: [
+    "/benchmarks/celo-rpc",
+    "/benchmarks/taiko-rpc",
+    "/benchmarks/kaia-rpc",
+    "/benchmarks/bob-rpc",
+    "/benchmarks/bitlayer-rpc",
+    "/benchmarks/gravity-rpc",
+    "/benchmarks/axelar-rpc",
+    "/benchmarks/hedera-rpc",
+    "/benchmarks/litecoin-rpc",
+    "/benchmarks/soneium-rpc",
+    "/benchmarks/zircuit-rpc",
+    "/benchmarks/merlin-rpc",
+    "/benchmarks/comdex-rpc",
     "/benchmarks/blast-rpc",
     "/benchmarks/swellchain-rpc",
     "/benchmarks/superseed-rpc",
