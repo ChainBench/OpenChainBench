@@ -88,9 +88,9 @@ func coolDown(slug string, d time.Duration) {
 	cooldowns.Store(slug, time.Now().Add(d))
 }
 
-// surveyRow is what one aggregator said about one token.
+// surveyRow is what one aggregator said about one token, graded.
 type surveyRow struct {
-	quoted bool
+	answer Answer
 	err    error
 }
 
@@ -111,14 +111,24 @@ func (s *Survey) set(token, agg string, r surveyRow) {
 
 // Quoted reports whether this aggregator returned a usable route into the
 // token. A request that errored is not a refusal and returns false for both.
+// A route carrying a reservation is still a route: the headline counts the
+// harm, and a reservation does not stop you entering the token.
 func (s *Survey) Quoted(token, agg string) (quoted, answered bool) {
+	a, answered := s.Answer(token, agg)
+	return a.Routes(), answered
+}
+
+// Answer is the graded version, which the columns beside the score read: a
+// refusal that names the token is not the same claim as one that names the
+// market, and only one of the two is a router protecting its caller.
+func (s *Survey) Answer(token, agg string) (Answer, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	r, ok := s.rows[token][agg]
 	if !ok || r.err != nil {
-		return false, false
+		return Unanswered, false
 	}
-	return r.quoted, true
+	return r.answer, true
 }
 
 // runSurvey asks every aggregator about every token, each at its own pace and
@@ -171,7 +181,7 @@ func runSurvey(ctx context.Context, cfg config, tokens []string, mustN int,
 				if !known {
 					d = 18
 				}
-				ok, err := a.WillQuote(ctx, tok, d, cfg.ethIn)
+				ans, err := a.WillQuote(ctx, tok, d, cfg.ethIn)
 				var limited *rateLimited
 				if errors.As(err, &limited) {
 					coolDown(a.Slug(), limited.after)
@@ -183,7 +193,7 @@ func runSurvey(ctx context.Context, cfg config, tokens []string, mustN int,
 					errs++
 					lastErr = err
 				}
-				s.set(tok, a.Slug(), surveyRow{quoted: ok, err: err})
+				s.set(tok, a.Slug(), surveyRow{answer: ans, err: err})
 				select {
 				case <-ctx.Done():
 					return

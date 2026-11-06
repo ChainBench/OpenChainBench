@@ -86,12 +86,16 @@ func TestTheRefusalsWeActuallyReceiveCountAsDeclines(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			no, why := isRefusal([]byte(c.body), c.known)
+			kind, no := isRefusal([]byte(c.body), c.known)
 			if !no {
 				t.Fatalf("must read as a decline, not an error: %s", c.body)
 			}
-			if why == "" {
-				t.Error("a decline must carry its reason")
+			// A decline has to say which of the two it is. Unanswered here
+			// would mean the table matched without classifying, which puts
+			// the row in neither column and hides the thing the split
+			// exists to show.
+			if kind != Screened && kind != NoLiquidity {
+				t.Errorf("a decline must name the token or the market, got %s", kind)
 			}
 		})
 	}
@@ -109,7 +113,7 @@ func TestAFaultIsNotADecline(t *testing.T) {
 	}
 	for _, body := range faults {
 		for _, known := range [][]refusal{kyberRefusals, lifiRefusals, paraswapRefusals} {
-			if no, _ := isRefusal([]byte(body), known); no {
+			if _, no := isRefusal([]byte(body), known); no {
 				t.Errorf("%q must stay an error", body)
 			}
 		}
@@ -120,11 +124,11 @@ func TestAFaultIsNotADecline(t *testing.T) {
 // excuse LI.FI, whose 4008 would mean something else entirely.
 func TestRefusalCodesDoNotCrossAggregators(t *testing.T) {
 	kyber := `{"code":4008,"message":"route not found"}`
-	if no, _ := isRefusal([]byte(kyber), lifiRefusals); no {
+	if _, no := isRefusal([]byte(kyber), lifiRefusals); no {
 		t.Error("kyberswap's code must not be read against lifi's table")
 	}
 	lifi := `{"code":1011,"message":"Token is invalid or in deny list."}`
-	if no, _ := isRefusal([]byte(lifi), kyberRefusals); no {
+	if _, no := isRefusal([]byte(lifi), kyberRefusals); no {
 		t.Error("lifi's code must not be read against kyberswap's table")
 	}
 }
@@ -153,20 +157,49 @@ func trnchNode(t *testing.T, status int, body string) {
 // had classified unsellable at both timings.
 func TestTrnchRefusalIsADeclineNotAFault(t *testing.T) {
 	trnchNode(t, 409, `{"error":"token not tradable through TRNCH"}`)
-	ok, err := trnchAgg{http.DefaultClient, "k"}.WillQuote(context.Background(), "0xtok", 18, "1")
+	ans, err := trnchAgg{http.DefaultClient, "k"}.WillQuote(context.Background(), "0xtok", 18, "1")
 	if err != nil {
 		t.Fatalf("a refusal must not be an error: %v", err)
 	}
-	if ok {
+	if ans.Routes() {
 		t.Error("a refusal must not count as a route")
+	}
+	// And it must land in the right column. This refusal names the TOKEN,
+	// which is the whole claim their screen makes; filing it under the
+	// market would erase it.
+	if ans != Screened {
+		t.Errorf("a screen must read as Screened, got %s", ans)
 	}
 }
 
 func TestTrnchQuoteCountsAsRouted(t *testing.T) {
 	trnchNode(t, 200, `{"best":{"router":"kyberswap","amountOut":"46123722"},"routes":[]}`)
-	ok, err := trnchAgg{http.DefaultClient, "k"}.WillQuote(context.Background(), "0xtok", 18, "1")
-	if err != nil || !ok {
-		t.Errorf("a real quote must count as routed, got ok=%v err=%v", ok, err)
+	ans, err := trnchAgg{http.DefaultClient, "k"}.WillQuote(context.Background(), "0xtok", 18, "1")
+	if err != nil || !ans.Routes() {
+		t.Errorf("a real quote must count as routed, got %s err=%v", ans, err)
+	}
+	if ans != Routed {
+		t.Errorf("an answer with no reservation must be plain Routed, got %s", ans)
+	}
+}
+
+// The third level, and the reason this grade exists. Their guard rides along
+// with a usable amount: the route is real and they say they are not sure of
+// it. Body shape verbatim from their API on 2026-11-06, where `uncertain`
+// was true on 3 of 9 failed tokens and on 0 of 12 that sold.
+func TestTrnchReservationIsARouteWithAReservation(t *testing.T) {
+	trnchNode(t, 200, `{"best":{"amountOut":"46123722","unconfirmed":true},`+
+		`"guard":{"uncertain":true,"reasons":["no-price"]}}`)
+	ans, err := trnchAgg{http.DefaultClient, "k"}.WillQuote(context.Background(), "0xtok", 18, "1")
+	if err != nil {
+		t.Fatalf("a reservation must not be an error: %v", err)
+	}
+	if ans != Reserved {
+		t.Fatalf("a guarded quote must read as Reserved, got %s", ans)
+	}
+	// It still counts against the headline, because it still puts you in.
+	if !ans.Routes() {
+		t.Error("a reservation does not stop you entering, so it is still a route")
 	}
 }
 
@@ -174,9 +207,14 @@ func TestTrnchQuoteCountsAsRouted(t *testing.T) {
 // would credit them with something they declined.
 func TestTrnchZeroAmountIsNotARoute(t *testing.T) {
 	trnchNode(t, 200, `{"best":{"amountOut":"0"}}`)
-	ok, _ := trnchAgg{http.DefaultClient, "k"}.WillQuote(context.Background(), "0xtok", 18, "1")
-	if ok {
+	ans, _ := trnchAgg{http.DefaultClient, "k"}.WillQuote(context.Background(), "0xtok", 18, "1")
+	if ans.Routes() {
 		t.Error("zero out must not count as a route")
+	}
+	// Nothing on offer is the market speaking, not a screen. Filing it as
+	// Screened would credit them with a decision they never made.
+	if ans != NoLiquidity {
+		t.Errorf("an empty amount names the market, got %s", ans)
 	}
 }
 

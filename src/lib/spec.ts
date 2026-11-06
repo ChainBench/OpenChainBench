@@ -961,7 +961,13 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       their harness emits no such label. Cached entries hold the
   //       pooled figures. Moves with all-benchmarks-v178 and
   //       bench-filters-v103; providers-v59 does NOT move.
-  ["bench-unfiltered-v185", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v186: bench 313 grades a refusal instead of reading it as one thing.
+  //       Screened out names the TOKEN (deny list, screen, impact guard),
+  //       No market names the market, and they are opposite claims about a
+  //       router that the board was adding together. A third panel records
+  //       a route returned WITH a reservation the aggregator states, which
+  //       only Trnch publishes, so it is a column and never the score.
+  ["bench-unfiltered-v186", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -1321,7 +1327,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v177: lockstep with bench-unfiltered-v184 (Trnch returns to 033/304).
   // v178: lockstep with bench-unfiltered-v185 (each keyed row counts its
   //       own connection arm).
-  ["all-benchmarks-v178", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v179: lockstep with bench-unfiltered-v186 (bench 313 grades refusals).
+  ["all-benchmarks-v179", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1571,7 +1578,9 @@ const loadBenchmarkFiltered = unstable_cache(
   //       and Trnch's row carries all three, so every region tab changes.
   // v103: lockstep with bench-unfiltered-v185 (each keyed row counts its
   //       own connection arm).
-  ["bench-filters-v103", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v104: lockstep with bench-unfiltered-v186. Three panels arrive and each
+  //       tier tab renders them as its own selector.
+  ["bench-filters-v104", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 

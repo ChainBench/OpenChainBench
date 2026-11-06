@@ -24,20 +24,36 @@ func scoreFromSurvey(cfg config, s *Survey, failed map[string][]string,
 		for tier, tokens := range failed {
 			asked, routed, unanswered := 0, 0, 0
 			for _, tok := range tokens {
-				quoted, answered := s.Quoted(tok, agg.Slug())
+				ans, answered := s.Answer(tok, agg.Slug())
 				if !answered {
 					unanswered++
 					continue
 				}
 				asked++
+				slug := rowSlug(agg.Slug(), tier)
 				askedTokenGauge.WithLabelValues(
-					cfg.chain, agg.Slug(), tier, rowSlug(agg.Slug(), tier), tok,
-					scoringRule).Set(1)
-				if quoted {
+					cfg.chain, agg.Slug(), tier, slug, tok, scoringRule).Set(1)
+				// The headline counts the harm, so a reservation is still a
+				// route: it does not stop you entering the token.
+				if ans.Routes() {
 					routed++
 					routedTokenGauge.WithLabelValues(
-						cfg.chain, agg.Slug(), tier, rowSlug(agg.Slug(), tier),
+						cfg.chain, agg.Slug(), tier, slug,
 						tok, symbols[tok], scoringRule).Set(1)
+				}
+				// And beside it, what the answer actually was. A refusal that
+				// names the token and one that names the market are opposite
+				// claims about a router, and the board read them as one.
+				switch ans {
+				case Reserved:
+					reservedTokenGauge.WithLabelValues(
+						cfg.chain, agg.Slug(), tier, slug, tok, scoringRule).Set(1)
+				case Screened:
+					screenedTokenGauge.WithLabelValues(
+						cfg.chain, agg.Slug(), tier, slug, tok, scoringRule).Set(1)
+				case NoLiquidity:
+					noLiquidityTokenGauge.WithLabelValues(
+						cfg.chain, agg.Slug(), tier, slug, tok, scoringRule).Set(1)
 				}
 			}
 			// Published every sweep, including as a zero. Without it, a
