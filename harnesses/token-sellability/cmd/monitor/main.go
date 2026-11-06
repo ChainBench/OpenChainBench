@@ -47,7 +47,12 @@ var askLabels = []string{"chain", "aggregator", "tier", "provider"}
 //
 // reverts-v1: a failed exit is a sale that REVERTS. What the exit is worth
 // is recorded in the ledger and never scored.
-const scoringRule = "reverts-v1"
+//
+// reverts-v2: same scoring, but the delayed tier sells 30 minutes after the
+// buy instead of 48 seconds. That changes which tokens land in the cohort,
+// so it cannot share a window with v1. It restarts the same-block window as
+// well, which costs nothing here: v1's window was 90 minutes old.
+const scoringRule = "reverts-v2"
 
 const transferTopic = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
 
@@ -241,7 +246,7 @@ func load() config {
 		ethIn:     envOr("ETH_IN_WEI", "20000000000000000"),
 		window:    envInt("LOG_WINDOW_BLOCKS", 3000),
 		maxTokens: envInt("MAX_TOKENS_PER_SWEEP", 25),
-		delay:     envInt("DELAY_BLOCKS", 3),
+		delay:     envInt("DELAY_BLOCKS", 149),
 		sweepGap:  time.Duration(envInt("SWEEP_SECONDS", 900)) * time.Second,
 		ledgerDir: envOr("LEDGER_DIR", "/state/aggregate/token-sellability"),
 		surveyCap: envInt("SURVEY_CAP", 40),
