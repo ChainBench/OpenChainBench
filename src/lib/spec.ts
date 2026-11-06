@@ -903,7 +903,13 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       proceeds, so USDG, the chain's own stablecoin, sat in a cohort of
   //       traps at a 4% round trip it had been quoted exactly. Four rows
   //       lose tokens from their numerator and the copy states the delay.
-  ["bench-unfiltered-v177", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v178: bench 313 carried two findings bullets its own table contradicts.
+  //       One said the screening router and the deny-list router show "a low
+  //       score" when neither is lowest; the other called anti-bot cooldowns
+  //       "most of a launch cohort" when Prometheus has 2 in 1573 over a
+  //       day. The subtitle also said the exit reverted on the route the
+  //       token was bought through, and the sale is a separate quote.
+  ["bench-unfiltered-v178", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -1254,7 +1260,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v168: lockstep with bench-unfiltered-v175 (bench 001 Denim copy).
   // v169: lockstep with bench-unfiltered-v176 (bench 313 publishes a zero).
   // v170: lockstep with bench-unfiltered-v177 (bench 313 drops the floor).
-  ["all-benchmarks-v170", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v171: lockstep with bench-unfiltered-v178 (bench 313 false claims).
+  ["all-benchmarks-v171", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1490,7 +1497,9 @@ const loadBenchmarkFiltered = unstable_cache(
   //      gain the rows whose figure is zero.
   // v96: lockstep with bench-unfiltered-v177. Both tier tabs carry the
   //      formula that now names the delay in seconds.
-  ["bench-filters-v96", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v97: lockstep with bench-unfiltered-v178. The delayed tab's own
+  //      label changes from "A few blocks later" to "36 seconds later".
+  ["bench-filters-v97", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 
