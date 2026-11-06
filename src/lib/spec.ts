@@ -950,7 +950,18 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       buildProviders does not construct the provider without it and the
   //       rows would have published nothing. Same ordering as the
   //       withdrawal, in reverse.
-  ["bench-unfiltered-v184", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v185: every keyed row now counts its own connection arm. rpc_call_total
+  //       carries conn=warm|cold since 4 November and the three
+  //       ocb:rpc_call rules group by it, but the specs still read both
+  //       arms together, so a cold-start row published the warm row's
+  //       success rate and the sum of both sample counts. Measured on
+  //       ethereum us-east the day this shipped: 358 warm readings, 361
+  //       cold, and both rows showing 719. 53 warm and 53 cold rows across
+  //       9 specs now pin their arm; public rows deliberately do not,
+  //       their harness emits no such label. Cached entries hold the
+  //       pooled figures. Moves with all-benchmarks-v178 and
+  //       bench-filters-v103; providers-v59 does NOT move.
+  ["bench-unfiltered-v185", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -1308,7 +1319,9 @@ const loadAllBenchmarksCached = unstable_cache(
   // v175: lockstep with bench-unfiltered-v182 (bench 313 delay 30 min).
   // v176: lockstep with bench-unfiltered-v183 (bench 313 ranks LI.FI).
   // v177: lockstep with bench-unfiltered-v184 (Trnch returns to 033/304).
-  ["all-benchmarks-v177", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v178: lockstep with bench-unfiltered-v185 (each keyed row counts its
+  //       own connection arm).
+  ["all-benchmarks-v178", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1556,7 +1569,9 @@ const loadBenchmarkFiltered = unstable_cache(
   //       ranked row.
   // v102: lockstep with bench-unfiltered-v184. Bench 033 declares regions
   //       and Trnch's row carries all three, so every region tab changes.
-  ["bench-filters-v102", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v103: lockstep with bench-unfiltered-v185 (each keyed row counts its
+  //       own connection arm).
+  ["bench-filters-v103", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 
