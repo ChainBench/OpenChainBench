@@ -1412,7 +1412,7 @@ export default async function ProviderPage({
                     </h3>
                     <p className="text-xs text-ink-muted truncate">
                       {a.benchmark.metric}
-                      {a.tier ? <> · {a.tier === "keyed" ? "private cohort (API key)" : `${a.tier} cohort`}, ranked separately</> : null}
+                      {a.tier ? <> · {a.tier === "keyed" ? "private cohort (API key)" : `${a.tier.replace(/_/g, " ")} cohort`}, ranked separately</> : null}
                     </p>
                     {hasChainRanks && (
                       <p className="mt-1.5 flex flex-wrap items-center gap-1.5 font-sans text-[10px] uppercase tracking-[0.14em] font-medium">
