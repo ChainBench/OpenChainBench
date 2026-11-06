@@ -71,13 +71,13 @@ var (
 	surveyedGauge = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "token_sellability_surveyed",
 		Help: "Examined tokens this aggregator answered about in the last sweep.",
-	}, []string{"chain", "aggregator"})
+	}, []string{"chain", "aggregator", "tier", "provider"})
 
 	quotedGauge = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "token_sellability_quoted",
 		Help: "Of the examined tokens it answered about, how many this " +
 			"aggregator returned a usable route into.",
-	}, []string{"chain", "aggregator"})
+	}, []string{"chain", "aggregator", "tier", "provider"})
 
 	surveyedTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "token_sellability_surveyed_total",
