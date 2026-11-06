@@ -5,7 +5,7 @@ number: "313"
 title: "Which aggregator routes you into a token you cannot sell"
 seo_title: "Which aggregator routes you into an unsellable token"
 seo_description: "Aggregators on Robinhood Chain ranked by the share of failed-exit tokens they still return a route into, simulated on-chain at two timings so a cooldown is not read as a trap."
-subtitle: Share of the tokens whose exit reverted on the route they were bought through that each aggregator still returns a route into.
+subtitle: Share of the tokens whose simulated sale reverted that each aggregator still returns a route into, asked of every aggregator about the same tokens.
 
 category: Aggregators
 status: live
@@ -52,7 +52,7 @@ methodology:
   - "What the exit is WORTH is recorded, not counted. An earlier version called a token unsellable when its only route out was quoted under a tenth of the stake, which put the chain's own stablecoin in the cohort: USDG was quoted 4.08% and the sale delivered 4.08%, exactly as promised. Every non-reverting exit measured delivered 100.0% of its quote, because the route carries its own minimum output. A thin pool priced honestly is not a failed exit."
   - "A failed buy is out of scope, not a failure. If no route in opens, nothing has been learned about selling, and calling that unsellable would blame the token for a market that does not exist."
   - "The cohort is tokens that emitted a Transfer in the window, not new launches. The event that announces a new token on this chain is not identified, and guessing it would bias the sample towards whichever launchpad was guessed. Tokens that moved is a weaker claim and a true one."
-  - "The sale is sized at 98% of what the buy returned, so it can never fail on a rounding difference and be read as a refusal."
+  - "Every probe buys with 0.02 of the chain's native coin and sells 99% of whatever the buy actually delivered, so a rounding difference can never read as a refusal. The size is part of the result: of seven tokens whose round trip returned almost nothing at this size, four returned more than a tenth at 0.002 and six at 0.0002. A reverted sale does not move with size; what the exit is worth does."
   - "The figure counts DISTINCT tokens over 24h, not questions. A token that stays in the cohort for twenty sweeps counts once, so the rate follows how common a failed exit is rather than how long one token lingers, and it survives a restart and a change in how many tokens a sweep examines. A row under a tenth of the expected tokens is withheld rather than published."
   - "An exit that returns under a tenth of what was put in is not an exit. A sale can succeed as a call and hand back dust, and scoring that as a clean exit would miss the outcome this board exists to warn about."
   - "A row with no questions at all publishes nothing rather than zero. Zero is the best score on this board and has to be earned by declining, never inherited by not being asked."
@@ -60,8 +60,8 @@ methodology:
 
 findings:
   - "Tokens that take your money and will not give it back are rare but not absent, and a quote leaderboard cannot see them: the best price on something unsellable still reads as the best price."
-  - "One router on this board screens the token before it polls anyone and refuses outright, and another keeps a deny list. Both are visible here as a low score and nowhere else: on a price board they would look like missing coverage."
-  - "The two timings are the whole method. Without the delayed sale, every token with an anti-bot cooldown looks like a trap, and that is most of a launch cohort."
+  - "Refusing to route is a behaviour this board can see and a price board cannot. One router screens the token before it polls anyone, another keeps a deny list, and on a quote leaderboard both read as missing coverage. Refusing is not the same as ranking well, though: an aggregator earns a low figure here by declining the specific tokens whose exit failed, not by declining in general, and the two do not always go together."
+  - "The delayed sale is a guard, not a filter. It is there so that a token which only blocks the sale in the buy block is never called a trap, and that shape turns out to be rare on this chain: 2 tokens in 1573 over a day. The guard stays because the cost of calling an honest anti-bot timer a trap is not symmetric with the cost of running the extra simulation."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/dev/harnesses/token-sellability
 
@@ -82,7 +82,7 @@ dimension_labels:
 aggregate_filters: { tier: delayed }
 dimensions:
   tier:
-    - { value: delayed,    label: "A few blocks later" }
+    - { value: delayed,    label: "36 seconds later" }
     - { value: same_block, label: "In the same block" }
 
 ledger_columns:
