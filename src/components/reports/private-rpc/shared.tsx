@@ -90,6 +90,16 @@ export type ReportData = {
       cellsTotal: number;
     }[];
     solana: { api: string; servedPct: number | null; verdicts: number; cohort: number }[];
+    /** Median, not mean: one two-second reading had been putting
+     *  Chainstack's archive figure seven times above its typical answer. */
+    statistic?: string;
+    /** The same three columns per probe region, plus `all` which averages
+     *  the three regional medians (the headline latency's convention).
+     *  Coverage runs in all three regions since 5 November 2026. */
+    byRegion?: Record<
+      string,
+      { provider: string; cheap: number | null; archive: number | null; getlogs: number | null }[]
+    >;
     /** Which regions each column is measured in. They are not the same:
      *  the capability probe is gated to one region by RPC_KEYED_COVERAGE
      *  for request budget, so the archive read and eth_getLogs come from

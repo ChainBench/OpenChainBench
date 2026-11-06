@@ -211,14 +211,33 @@ groups:
       #
       # Mean, not a quantile: the lane writes about four readings a day, and
       # a p50 of four samples is coarser than their mean.
-      - record: ocb:rpc_api_archive_milliseconds:mean_24h
-        expr: avg_over_time(rpc_api_latency_milliseconds{api="archive_5m"}[24h])
-      - record: ocb:rpc_api_archive_heavy_milliseconds:mean_24h
-        expr: label_replace(ocb:rpc_api_archive_milliseconds:mean_24h, "provider", "$1-heavy", "provider", "(.*)")
-      - record: ocb:rpc_api_getlogs_milliseconds:mean_24h
-        expr: avg_over_time(rpc_api_latency_milliseconds{api="eth_getlogs_address"}[24h])
-      - record: ocb:rpc_api_getlogs_heavy_milliseconds:mean_24h
-        expr: label_replace(ocb:rpc_api_getlogs_milliseconds:mean_24h, "provider", "$1-heavy", "provider", "(.*)")
+      # MEDIAN, not mean, since 2026-11-06, and under new names so no 24h
+      # window ever spans the change of method.
+      #
+      # The mean was being set by rare outliers. Measured on ethereum
+      # us-east the day this changed, archive_5m:
+      #
+      #   provider      mean    median   max       mean/median
+      #   chainstack   222.9      31.7   2016.1      x7.0
+      #   quicknode    114.1      35.1    544.2      x3.2
+      #   dwellir      402.0     409.9    418.8      x1.0
+      #
+      # One two-second reading put Chainstack's published figure seven times
+      # above its typical answer, which is a page saying a provider is slow
+      # when it is not. A lane that writes four times a day will keep
+      # producing such readings.
+      #
+      # The median is also what the rest of the site publishes: the headline
+      # latency is a p50, and there was no reason for these two columns to
+      # be the only mean on the page.
+      - record: ocb:rpc_api_archive_milliseconds:p50_24h
+        expr: quantile_over_time(0.5, rpc_api_latency_milliseconds{api="archive_5m"}[24h])
+      - record: ocb:rpc_api_archive_heavy_milliseconds:p50_24h
+        expr: label_replace(ocb:rpc_api_archive_milliseconds:p50_24h, "provider", "$1-heavy", "provider", "(.*)")
+      - record: ocb:rpc_api_getlogs_milliseconds:p50_24h
+        expr: quantile_over_time(0.5, rpc_api_latency_milliseconds{api="eth_getlogs_address"}[24h])
+      - record: ocb:rpc_api_getlogs_heavy_milliseconds:p50_24h
+        expr: label_replace(ocb:rpc_api_getlogs_milliseconds:p50_24h, "provider", "$1-heavy", "provider", "(.*)")
       - record: ocb:rpc_api_work_heavy_milliseconds:mean_24h
         expr: label_replace(ocb:rpc_api_work_milliseconds:mean_24h, "provider", "$1-heavy", "provider", "(.*)")
       - record: ocb:rpc_api_work_milliseconds:mean_24h

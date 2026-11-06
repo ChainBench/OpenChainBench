@@ -153,30 +153,33 @@ places when the method changes.
 
 | Provider | Cheap call | Archive read | eth_getLogs |
 |---|---|---|---|
-| <L s="quicknode">Quicknode</L> | 5.9 ms | 31.7 ms | 31.6 ms |
-| <L s="getblock">GetBlock</L> | 9.0 ms | not served | 10.2 ms |
-| <L s="alchemy">Alchemy</L> | 9.4 ms | 34.6 ms | 35.4 ms |
-| <L s="chainstack">Chainstack</L> | 18.7 ms | 27.9 ms | 8.8 ms |
-| <L s="dwellir">Dwellir</L> | 34.4 ms | 413.5 ms | 398.3 ms |
-| <L s="blockmachine">BlockMachine</L> | 108.8 ms | 217.0 ms | 218.9 ms |
+| <L s="quicknode">Quicknode</L> | 5.7 ms | 51.8 ms | 45.7 ms |
+| <L s="getblock">GetBlock</L> | 8.7 ms | not served | 19.8 ms |
+| <L s="alchemy">Alchemy</L> | 10.0 ms | 21.6 ms | 28.1 ms |
+| <L s="chainstack">Chainstack</L> | 17.3 ms | 73.7 ms | 26.8 ms |
+| <L s="dwellir">Dwellir</L> | 33.6 ms | 230.5 ms | 219.8 ms |
+| <L s="blockmachine">BlockMachine</L> | 110.4 ms | 129.2 ms | 175.6 ms |
 
-Ethereum, 24 hours to 4 November 2026. The scopes differ by column and it
-matters: the cheap call is a median across our three probe regions, while
-the archive read and `eth_getLogs` are measured from US East alone, because
-the capability probe runs in one region to keep its request budget down. So
-read each column against itself, not across.
+Ethereum, medians over the 24 hours to 6 November 2026, averaged across the
+three probe regions. The chart above takes a region selector because the
+ordering is not the same from every continent.
+
+Medians rather than means, and the difference is not cosmetic. On the
+archive read from US East the mean puts Chainstack at 222.9 ms against a
+median of 31.7, because one reading in the window took two seconds. A lane
+that samples four times a day will keep producing those, and the mean turns
+each one into a published claim that a provider is slow.
 
 Three things in that table are invisible on the cheap call alone.
 
-Dwellir multiplies by twelve. It answers a tip-of-chain read in 34.4 ms and a
-five million block archive read in 413.5 ms, which is the difference between
+Dwellir multiplies by seven. It answers a tip-of-chain read in 33.6 ms and a
+five million block archive read in 230.5 ms, which is the difference between
 serving from cache and reaching into history.
 
-Chainstack and Quicknode swap places. Quicknode is first on the cheap call
-and fourth on `eth_getLogs`; Chainstack is fourth on the cheap call and first
-on the logs, at 8.8 ms against Quicknode's 31.6. If you are building an
-indexer, the second column is your column and it disagrees with the
-leaderboard.
+Quicknode leads the cheap call and comes fourth on `eth_getLogs`. The logs
+belong to GetBlock at 19.8 ms and Chainstack at 26.8, against Quicknode's
+45.7. If you are building an indexer, the third column is your column and it
+disagrees with the leaderboard.
 
 GetBlock has no archive cell at all, because it does not serve the call. It
 is second on the cheap call. A provider that is fast and cannot answer the

@@ -3576,50 +3576,50 @@
   }
  ],
  "methods": {
-  "asOf": "2026-11-04",
+  "asOf": "2026-11-06",
   "window": "24h",
   "chain": "ethereum",
   "latency": [
    {
     "provider": "quicknode",
-    "cheap": 5.9,
-    "archive": 31.7,
-    "getlogs": 31.6,
+    "cheap": 5.7,
+    "archive": 51.8,
+    "getlogs": 45.7,
     "work": 3.6
    },
    {
     "provider": "getblock",
-    "cheap": 9.0,
+    "cheap": 8.7,
     "archive": null,
-    "getlogs": 10.2,
+    "getlogs": 19.8,
     "work": 3.8
    },
    {
     "provider": "alchemy",
-    "cheap": 9.4,
-    "archive": 34.6,
-    "getlogs": 35.4,
+    "cheap": 10.0,
+    "archive": 21.6,
+    "getlogs": 28.1,
     "work": 2.0
    },
    {
     "provider": "chainstack",
-    "cheap": 18.7,
-    "archive": 27.9,
-    "getlogs": 8.8,
+    "cheap": 17.3,
+    "archive": 73.7,
+    "getlogs": 26.8,
     "work": 4.8
    },
    {
     "provider": "dwellir",
-    "cheap": 34.4,
-    "archive": 413.5,
-    "getlogs": 398.3,
+    "cheap": 33.6,
+    "archive": 230.5,
+    "getlogs": 219.8,
     "work": 4.1
    },
    {
     "provider": "blockmachine",
-    "cheap": 108.8,
-    "archive": 217.0,
-    "getlogs": 218.9,
+    "cheap": 110.4,
+    "archive": 129.2,
+    "getlogs": 175.6,
     "work": 19.3
    }
   ],
@@ -3726,11 +3726,166 @@
    }
   ],
   "regionScope": {
-   "cheap": "three regions averaged",
-   "archive": "us-east only",
-   "getlogs": "us-east only",
-   "work": "three regions averaged",
-   "note": "The capability probe is gated to one region by RPC_KEYED_COVERAGE, so the archive read and eth_getLogs are measured from US East alone. The cheap call and the heavy eth_call run in all three."
+   "cheap": "three regions",
+   "archive": "three regions",
+   "getlogs": "three regions",
+   "work": "three regions",
+   "note": "Medians over 24 hours. Coverage probes run in all three regions since 5 November; All regions averages the three regional medians, the same convention as the headline latency."
+  },
+  "statistic": "median",
+  "byRegion": {
+   "all": [
+    {
+     "provider": "quicknode",
+     "cheap": 5.7,
+     "archive": 51.8,
+     "getlogs": 45.7
+    },
+    {
+     "provider": "getblock",
+     "cheap": 8.7,
+     "archive": null,
+     "getlogs": 19.8
+    },
+    {
+     "provider": "alchemy",
+     "cheap": 10.0,
+     "archive": 21.6,
+     "getlogs": 28.1
+    },
+    {
+     "provider": "chainstack",
+     "cheap": 17.3,
+     "archive": 73.7,
+     "getlogs": 26.8
+    },
+    {
+     "provider": "dwellir",
+     "cheap": 33.6,
+     "archive": 230.5,
+     "getlogs": 219.8
+    },
+    {
+     "provider": "blockmachine",
+     "cheap": 110.4,
+     "archive": 129.2,
+     "getlogs": 175.6
+    }
+   ],
+   "us-east": [
+    {
+     "provider": "quicknode",
+     "cheap": 7.3,
+     "archive": 35.1,
+     "getlogs": 27.3
+    },
+    {
+     "provider": "getblock",
+     "cheap": 6.4,
+     "archive": null,
+     "getlogs": 12.3
+    },
+    {
+     "provider": "alchemy",
+     "cheap": 8.1,
+     "archive": 14.8,
+     "getlogs": 17.8
+    },
+    {
+     "provider": "chainstack",
+     "cheap": 3.5,
+     "archive": 31.7,
+     "getlogs": 8.1
+    },
+    {
+     "provider": "dwellir",
+     "cheap": 75.1,
+     "archive": 409.9,
+     "getlogs": 395.4
+    },
+    {
+     "provider": "blockmachine",
+     "cheap": 114.3,
+     "archive": 135.9,
+     "getlogs": 287.3
+    }
+   ],
+   "eu-west": [
+    {
+     "provider": "quicknode",
+     "cheap": 7.6,
+     "archive": 27.9,
+     "getlogs": 28.3
+    },
+    {
+     "provider": "getblock",
+     "cheap": 15.5,
+     "archive": null,
+     "getlogs": 32.0
+    },
+    {
+     "provider": "alchemy",
+     "cheap": 13.7,
+     "archive": 34.5,
+     "getlogs": 54.5
+    },
+    {
+     "provider": "chainstack",
+     "cheap": 9.8,
+     "archive": 43.9,
+     "getlogs": 29.0
+    },
+    {
+     "provider": "dwellir",
+     "cheap": 21.5,
+     "archive": 83.7,
+     "getlogs": 66.4
+    },
+    {
+     "provider": "blockmachine",
+     "cheap": 37.4,
+     "archive": 55.6,
+     "getlogs": 37.3
+    }
+   ],
+   "sgp": [
+    {
+     "provider": "quicknode",
+     "cheap": 2.1,
+     "archive": 92.4,
+     "getlogs": 81.4
+    },
+    {
+     "provider": "getblock",
+     "cheap": 4.3,
+     "archive": null,
+     "getlogs": 15.3
+    },
+    {
+     "provider": "alchemy",
+     "cheap": 8.2,
+     "archive": 15.5,
+     "getlogs": 12.1
+    },
+    {
+     "provider": "chainstack",
+     "cheap": 38.6,
+     "archive": 145.6,
+     "getlogs": 43.4
+    },
+    {
+     "provider": "dwellir",
+     "cheap": 4.3,
+     "archive": 197.9,
+     "getlogs": 197.5
+    },
+    {
+     "provider": "blockmachine",
+     "cheap": 179.4,
+     "archive": 196.1,
+     "getlogs": 202.1
+    }
+   ]
   }
  }
 }
