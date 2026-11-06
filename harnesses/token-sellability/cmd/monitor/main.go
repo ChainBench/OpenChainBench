@@ -252,7 +252,8 @@ func init() {
 	prometheus.MustRegister(verdictGauge, cohortGauge, sweepSeconds, controlGauge,
 		askedGauge, routedGauge, errorGauge, askedTotal, routedTotal,
 		routedTokenGauge, askedTokenGauge, contradictedGauge,
-		surveyedGauge, quotedGauge, surveyedTotal, quotedTotal)
+		surveyedGauge, quotedGauge, surveyedTotal, quotedTotal,
+		screenedTokenGauge, noLiquidityTokenGauge, reservedTokenGauge)
 }
 
 type config struct {
