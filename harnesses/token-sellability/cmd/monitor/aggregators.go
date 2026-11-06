@@ -345,6 +345,14 @@ var (
 	}
 	lifiRefusals = []refusal{
 		{code: 1011, needle: "invalid or in deny list"},
+		// 1001 is LI.FI simulating the route it was about to return and
+		// finding the transfer reverts. On this cohort that is the whole
+		// point: it looked, it saw the token would not move, and it refused
+		// to hand over a transaction. Classified as a transport error, it
+		// did not count as having been asked, so LI.FI earned nothing for
+		// the one thing this board measures and its sample sat at 15 where
+		// every other aggregator had 26.
+		{code: 1001, needle: "could successfully generate a tx"},
 		{needle: "no quote"},
 		{needle: "not supported"},
 	}

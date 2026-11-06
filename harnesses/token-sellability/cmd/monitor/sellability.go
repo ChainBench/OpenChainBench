@@ -93,6 +93,12 @@ type Probe struct {
 	// accusation with nothing behind it.
 	SameBlockWhy string
 	DelayedWhy   string
+	// ExitQuote is the native the sell route promised for the whole holding,
+	// kept so the ledger can record what the only way out was worth. It is
+	// evidence, never a verdict: a quote of 4% of the stake that delivers 4%
+	// is a thin pool, and the floor that scored it as a failed exit put the
+	// chain's own stablecoin among the traps.
+	ExitQuote *big.Int
 }
 
 // Cooldown reports the one pattern that must never be published as a
