@@ -947,7 +947,9 @@ const buildProvidersCached = unstable_cache(
   //      keeps the old spelling. Lockstep with bench-unfiltered-v113.
   // v31: thirteen chain RPC pages retire, so every provider on them loses
   //      that appearance. Lockstep with bench-unfiltered-v115.
-  ["providers-v31"],
+  // v32: BlockVectra gains two appearances, ethereum-rpc and arbitrum-rpc.
+  //      Lockstep with bench-unfiltered-v116.
+  ["providers-v32"],
   // 900 s: the provider index feeds products / compare / answers, whose
   // numbers move slowly, and this revalidate is also the effective ISR
   // period of those ~500 pages (Next takes the min across a route's caches).
