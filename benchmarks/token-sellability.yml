@@ -111,7 +111,10 @@ metric_panels:
     metric: 100 * sum by (provider) (avg_over_time(token_sellability_quoted[24h])) / (sum by (provider) (avg_over_time(token_sellability_surveyed[24h])) > 0)
     label_key: provider
     unit: pct
-    higher_is_better: false
+    # Coverage, and more of it is better AS COVERAGE. The score is the column
+    # where lower wins; this one is the line it is read against, and marking
+    # it lower-is-better told the reader that quoting less is a virtue.
+    higher_is_better: true
   - id: screened
     label: Screened out
     description: "Distinct tokens from the failed-exit cohort this aggregator refused with a reason that names the TOKEN: a deny list, a screen, an impact guard. Higher is better here, unlike the score: it is the router protecting you."
@@ -132,7 +135,9 @@ metric_panels:
     metric: count by (provider) (count by (provider, token) (max_over_time(token_sellability_reserved_token{rule="reverts-v2"}[24h])))
     label_key: provider
     unit: count
-    higher_is_better: false
+    # Attaching a caveat is better than attaching none, so more is better.
+    # The previous direction said the opposite: that warning you less wins.
+    higher_is_better: true
 
 providers:
 
