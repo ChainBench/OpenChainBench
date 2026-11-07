@@ -985,7 +985,13 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       arbitrum-rpc (issue #3573), one more public row on each. Cached
   //       entries hold the old provider set. Moves with all-benchmarks-v182,
   //       bench-filters-v107 and providers-v62.
-  ["bench-unfiltered-v189", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v190: two of bench 313's columns told the reader the opposite of what
+  //       they measure. Quotes overall was marked lower-is-better, which
+  //       says quoting less is a virtue, and Routed with a reservation too,
+  //       which says warning you less is one. The score is the column where
+  //       lower wins; a column that counts a behaviour answers whether more
+  //       of that behaviour helps the reader choosing a router.
+  ["bench-unfiltered-v190", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -1351,7 +1357,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v181: lockstep with bench-unfiltered-v188 (bench 313 coverage column).
   // v182: lockstep with bench-unfiltered-v189 (BlockVectra on Ethereum and
   //       Arbitrum).
-  ["all-benchmarks-v182", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v183: lockstep with bench-unfiltered-v190 (bench 313 column directions).
+  ["all-benchmarks-v183", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1609,7 +1616,9 @@ const loadBenchmarkFiltered = unstable_cache(
   //       written under both row slugs, so each tier tab carries it.
   // v107: lockstep with bench-unfiltered-v189. The new public rows carry
   //       region tabs.
-  ["bench-filters-v107", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v108: lockstep with bench-unfiltered-v190. Both tier tabs sort and
+  //       colour those two panels by the corrected direction.
+  ["bench-filters-v108", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 
