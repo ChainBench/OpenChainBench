@@ -53,7 +53,11 @@ describe("the provider set behind the cache keys", () => {
     const hash = createHash("sha256").update(sets.join("\n")).digest("hex").slice(0, 16);
     const count = sets.reduce((n, s) => n + s.split(":")[1].split(",").length, 0);
 
-    // Recorded on 2026-11-06 on main with bench-unfiltered-v115,
+    // Recorded on 2026-11-07 on main with bench-unfiltered-v116,
+    // all-benchmarks-v109, bench-filters-v55, providers-v32: BlockVectra
+    // joins the public cohorts on ethereum-rpc and arbitrum-rpc (#3573).
+    //
+    // Previously recorded on 2026-11-06 on main with bench-unfiltered-v115,
     // all-benchmarks-v108, bench-filters-v54, providers-v31: thirteen chain
     // RPC pages retire (celo, taiko, kaia, bob, bitlayer, gravity, axelar,
     // hedera, litecoin, soneium, zircuit, merlin, comdex).
@@ -111,6 +115,6 @@ describe("the provider set behind the cache keys", () => {
         "Then set EXPECTED to the hash in this failure, and add the provider",
         `to PRODUCT_NAMES if it needs a display name. Providers now: ${count}.`,
       ].join("\n"),
-    ).toBe("d0db2f42f946deb8");
+    ).toBe("c96bf5534dd9dc77");
   });
 });

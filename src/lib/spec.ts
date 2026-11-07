@@ -597,7 +597,11 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       guard hashes shrinks and every cached entry still carries their
   //       rows and appearances. Moves with all-benchmarks-v108,
   //       bench-filters-v54 and providers-v31.
-  ["bench-unfiltered-v115", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v116: BlockVectra joins the public cohorts on ethereum-rpc and
+  //       arbitrum-rpc (issue #3573), one more public row on each. Cached
+  //       entries hold the old provider set. Moves with all-benchmarks-v109,
+  //       bench-filters-v55 and providers-v32.
+  ["bench-unfiltered-v116", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -873,7 +877,9 @@ const loadAllBenchmarksCached = unstable_cache(
   // v107: lockstep with bench-unfiltered-v114 (bench 001 Denim copy).
   // v108: lockstep with bench-unfiltered-v115 (thirteen chain RPC pages
   //       retired 2026-11-06; a cached catalog would keep linking them).
-  ["all-benchmarks-v108", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v109: lockstep with bench-unfiltered-v116 (BlockVectra on Ethereum and
+  //       Arbitrum).
+  ["all-benchmarks-v109", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1027,7 +1033,9 @@ const loadBenchmarkFiltered = unstable_cache(
   // v53: lockstep with bench-unfiltered-v113 (Quicknode spelling).
   // v54: lockstep with bench-unfiltered-v115 (thirteen chain RPC pages
   //      retired, each with region and tier tabs).
-  ["bench-filters-v54", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v55: lockstep with bench-unfiltered-v116. The new public rows carry
+  //      region tabs.
+  ["bench-filters-v55", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 
