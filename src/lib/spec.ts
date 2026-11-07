@@ -981,7 +981,11 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       each, and route into the cohort at 60% and 30%. Trnch has the
   //       lowest baseline, 78.1%, and the second highest trap rate at 90%,
   //       the only row whose score sits above its own coverage.
-  ["bench-unfiltered-v188", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v189: BlockVectra joins the public cohorts on ethereum-rpc and
+  //       arbitrum-rpc (issue #3573), one more public row on each. Cached
+  //       entries hold the old provider set. Moves with all-benchmarks-v182,
+  //       bench-filters-v107 and providers-v62.
+  ["bench-unfiltered-v189", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -1345,7 +1349,9 @@ const loadAllBenchmarksCached = unstable_cache(
   // v180: lockstep with bench-unfiltered-v187 (thirteen chain RPC pages
   //       retired 2026-11-06; a cached catalog would keep linking them).
   // v181: lockstep with bench-unfiltered-v188 (bench 313 coverage column).
-  ["all-benchmarks-v181", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v182: lockstep with bench-unfiltered-v189 (BlockVectra on Ethereum and
+  //       Arbitrum).
+  ["all-benchmarks-v182", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1601,7 +1607,9 @@ const loadBenchmarkFiltered = unstable_cache(
   //       retired, each with region and tier tabs).
   // v106: lockstep with bench-unfiltered-v188. The coverage panel is
   //       written under both row slugs, so each tier tab carries it.
-  ["bench-filters-v106", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v107: lockstep with bench-unfiltered-v189. The new public rows carry
+  //       region tabs.
+  ["bench-filters-v107", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 
