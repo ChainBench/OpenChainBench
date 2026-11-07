@@ -300,6 +300,7 @@ func chains() []Chain {
 				{Slug: "nodies", Name: "Nodies (POKT)", URL: envDefault("RPC_URL_ETHEREUM_NODIES", "https://eth-pokt.nodies.app")},
 				{Slug: "bloxroute", Name: "bloXroute", URL: envDefault("RPC_URL_ETHEREUM_BLOXROUTE", "https://eth.rpc.blxrbdn.com")},
 				{Slug: "nownodes", Name: "NOWNodes", URL: envDefault("RPC_URL_ETHEREUM_NOWNODES", "https://public-eth.nownodes.io")},
+				{Slug: "blockvectra", Name: "BlockVectra", URL: envDefault("RPC_URL_ETHEREUM_BLOCKVECTRA", "https://api.blockvectra.com/v1/eth_mainnet/public")},
 			},
 		},
 		// ─── Polygon PoS (3 providers) ──────────────────────────────
@@ -331,6 +332,7 @@ func chains() []Chain {
 				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_ARBITRUM_TENDERLY", "https://gateway.tenderly.co/public/arbitrum")},
 				{Slug: "nodies", Name: "Nodies (POKT)", URL: envDefault("RPC_URL_ARBITRUM_NODIES", "https://arb-pokt.nodies.app")},
 				{Slug: "arbitrum-official", Name: "Arbitrum Official", URL: envDefault("RPC_URL_ARBITRUM_OFFICIAL", "https://arb1.arbitrum.io/rpc")},
+				{Slug: "blockvectra", Name: "BlockVectra", URL: envDefault("RPC_URL_ARBITRUM_BLOCKVECTRA", "https://api.blockvectra.com/v1/arb_mainnet/public")},
 			},
 		},
 		// ─── Optimism (6 providers) ─────────────────────────────────

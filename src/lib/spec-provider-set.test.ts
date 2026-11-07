@@ -53,6 +53,10 @@ describe("the provider set behind the cache keys", () => {
     const hash = createHash("sha256").update(sets.join("\n")).digest("hex").slice(0, 16);
     const count = sets.reduce((n, s) => n + s.split(":")[1].split(",").length, 0);
 
+    // An ADDITION on 2026-11-07: BlockVectra joins the public cohorts on
+    // ethereum-rpc and arbitrum-rpc (issue #3573). A provider already on
+    // the site, two more appearances: v189/v182/v107 and providers-v62.
+    //
     // A REMOVAL on 2026-11-06: thirteen chain RPC pages retire (celo,
     // taiko, kaia, bob, bitlayer, gravity, axelar, hedera, litecoin,
     // soneium, zircuit, merlin, comdex), every row on them with them. No
@@ -181,6 +185,6 @@ describe("the provider set behind the cache keys", () => {
         "Then set EXPECTED to the hash in this failure, and add the provider",
         `to PRODUCT_NAMES if it needs a display name. Providers now: ${count}.`,
       ].join("\n"),
-    ).toBe("35fc07b8e50a5ad2");
+    ).toBe("e0e5b0e42ccb7ee7");
   });
 });

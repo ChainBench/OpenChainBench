@@ -393,6 +393,30 @@ providers:
           p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="arbitrum-official", chain="arbitrum", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="arbitrum-official", chain="arbitrum", region="sgp"}[1h])
 
+  - slug: blockvectra
+    name: BlockVectra
+    endpoint: https://api.blockvectra.com/v1/arb_mainnet/public
+    tag: BlockVectra keyless public Arbitrum One endpoint (3 req/s per IP, 1,000-block history window)
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to BlockVectra's no-key Arbitrum One endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="blockvectra", chain="arbitrum"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="blockvectra", chain="arbitrum"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="blockvectra", chain="arbitrum"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="blockvectra", chain="arbitrum"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="blockvectra", chain="arbitrum"}) / sum(ocb:rpc_call:rate_24h{provider="blockvectra", chain="arbitrum"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="blockvectra", chain="arbitrum"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="blockvectra", chain="arbitrum"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="blockvectra", chain="arbitrum", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="blockvectra", chain="arbitrum", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="blockvectra", chain="arbitrum", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="blockvectra", chain="arbitrum", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="blockvectra", chain="arbitrum", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="blockvectra", chain="arbitrum", region="sgp"}[1h])
+
   # API-key cohort (tier: keyed). Queries pin tier="keyed", the label the
   # rpc-keyed-latency harness emits; the public rows above carry no tier label.
   - slug: alchemy

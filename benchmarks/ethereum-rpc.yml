@@ -393,6 +393,30 @@ providers:
           p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="meowrpc", chain="ethereum", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="meowrpc", chain="ethereum", region="sgp"}[1h])
 
+  - slug: blockvectra
+    name: BlockVectra
+    endpoint: https://api.blockvectra.com/v1/eth_mainnet/public
+    tag: BlockVectra keyless public Ethereum endpoint (3 req/s per IP, 1,000-block history window)
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to BlockVectra's no-key Ethereum endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="blockvectra", chain="ethereum"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="blockvectra", chain="ethereum"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="blockvectra", chain="ethereum"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="blockvectra", chain="ethereum"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="blockvectra", chain="ethereum"}) / sum(ocb:rpc_call:rate_24h{provider="blockvectra", chain="ethereum"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="blockvectra", chain="ethereum"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="blockvectra", chain="ethereum"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="blockvectra", chain="ethereum", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="blockvectra", chain="ethereum", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="blockvectra", chain="ethereum", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="blockvectra", chain="ethereum", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="blockvectra", chain="ethereum", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="blockvectra", chain="ethereum", region="sgp"}[1h])
+
   # API-key cohort (tier: keyed). Queries pin tier="keyed", the label the
   # rpc-keyed-latency harness emits; the public rows above carry no tier label.
   - slug: alchemy
