@@ -12,6 +12,24 @@
  */
 
 const RAW: Record<string, string> = {
+  // Bench 318's launchpads drew initials chips for six of seven rows, and
+  // four of those already had a file in this directory that nothing pointed
+  // at. The slug on that bench is pumpfun and the entry below it is
+  // pump-fun, so one hyphen was the whole bug.
+  //
+  // LetsBonk and BONK.fun are the same mark: letsbonk.fun serves
+  // /logos/bonk_fun.png as its own icon, and the file already here is that
+  // dog with the bat, cropped. One brand, one file.
+  pumpfun: "/logos/pump-fun.jpg",
+  "pons-family": "/logos/pons.webp",
+  letsbonk: "/logos/bonk-fun.webp",
+  // Their own marks, from the icon each site declares about itself: Argus'
+  // 180 px apple-icon and Flap's 32 px icon.svg.
+  arguspad: "/logos/arguspad.png",
+  flap: "/logos/flap.svg",
+  // long-xyz has no entry on purpose. long.xyz answers 403 to every path,
+  // page and icons alike, from this machine and its subdomains, so there is
+  // no mark to take without going around their own block.
   // Trnch's own 400 px square brand mark, from trnch.fun/brand. It sat on
   // the initials chip until now: the alias for its same-block row existed
   // but nothing pointed at a file, so bench 313 drew "TR".
