@@ -991,7 +991,11 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       which says warning you less is one. The score is the column where
   //       lower wins; a column that counts a behaviour answers whether more
   //       of that behaviour helps the reader choosing a router.
-  ["bench-unfiltered-v190", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v191: Afterbell joins bench 030 as its 107th builder row (#3578).
+  //       Cached entries hold the old provider set. Moves with
+  //       all-benchmarks-v184 and providers-v63; bench 030 declares no
+  //       dimensions, so bench-filters stays.
+  ["bench-unfiltered-v191", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -1358,7 +1362,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v182: lockstep with bench-unfiltered-v189 (BlockVectra on Ethereum and
   //       Arbitrum).
   // v183: lockstep with bench-unfiltered-v190 (bench 313 column directions).
-  ["all-benchmarks-v183", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v184: lockstep with bench-unfiltered-v191 (Afterbell on bench 030).
+  ["all-benchmarks-v184", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
