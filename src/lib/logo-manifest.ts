@@ -636,6 +636,7 @@ const RAW: Record<string, string> = {
   "binance-us": "/logos/binance-us.svg",
   cryptocom: "/logos/cryptocom.svg",
   // ─── Hyperliquid frontends (bench № 030) ───
+  afterbell: "/logos/afterbell.png",
   "nova-markets": "/logos/nova-markets.jpeg",
   "phantom-perps": "/logos/phantom-perps.svg",
   // ─── Terminal fill quality (bench № 268): the wallets' in-app swap ───

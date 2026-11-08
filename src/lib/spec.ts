@@ -601,7 +601,11 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       arbitrum-rpc (issue #3573), one more public row on each. Cached
   //       entries hold the old provider set. Moves with all-benchmarks-v109,
   //       bench-filters-v55 and providers-v32.
-  ["bench-unfiltered-v116", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v117: Afterbell joins bench 030 as a builder row (#3578). Cached
+  //       entries hold the old provider set. Moves with all-benchmarks-v110
+  //       and providers-v33; bench 030 declares no dimensions, so
+  //       bench-filters stays.
+  ["bench-unfiltered-v117", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -879,7 +883,8 @@ const loadAllBenchmarksCached = unstable_cache(
   //       retired 2026-11-06; a cached catalog would keep linking them).
   // v109: lockstep with bench-unfiltered-v116 (BlockVectra on Ethereum and
   //       Arbitrum).
-  ["all-benchmarks-v109", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v110: lockstep with bench-unfiltered-v117 (Afterbell on bench 030).
+  ["all-benchmarks-v110", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);

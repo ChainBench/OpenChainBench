@@ -744,5 +744,12 @@
     "address": "0x495a2c91b4173d979150ba108e2d80ce0145a7de",
     "valid_from": "2026-03-14",
     "notes": "Perpex (perpex.co, by Celebit Ltd), a Hyperliquid trading front-end on web, iOS and Android. Builder address and fee from the operator: 0.10% of eligible filled notional, including copied orders, published at perpex.co/fees. valid_from is the first day the public fills bucket returns a file, checked day by day from 2025-01-01 on 2026-10-23: 139 days have one, the earliest 2026-03-14. Hyperliquid's referral info for the address reports about $788 of builderRewards."
+  },
+  {
+    "slug": "afterbell",
+    "name": "Afterbell",
+    "address": "0xda5584eb1dff6ee2ae383b077b4dca9c0df1d4f6",
+    "valid_from": "2026-11-04",
+    "notes": "Afterbell (afterbell.pro), a Hyperliquid trading front-end for stock, index and commodity perps (HIP-3) and crypto perps, each stock perp read against its home exchange's session. Builder address and fee from the operator; the live site bundle carries the same address and Hyperliquid's referral info gives it the code AFTERBELL. Fee published at afterbell.pro/fees: 0.03% standard; 0.015%, 0.01% and 0.008% from $10M, $50M and $250M of 30-day volume; 0.005% for a wallet's first 30 days; 0.04% on copied fills; 0.001% on every order until 2026-12-31. valid_from is the first day the public fills bucket returns a file, checked day by day from 2026-10-01 on 2026-11-08: 3 days have one, the earliest 2026-11-04, for 10 fills, $849 of notional and $0.011 of builder fees in total, all from one wallet, the builder address itself. Its first builder fill was 2026-11-03 at 20:16 UTC, after that day's export cutoff."
   }
 ]
