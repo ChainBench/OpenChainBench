@@ -2255,6 +2255,12 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     description:
       "Perpex is a third-party Hyperliquid trading front-end by Celebit Ltd on web, iOS and Android, covering perps, spot, HIP-3 and HIP-4 outcome markets and copy trading of public wallets, with a 0.10% builder fee on eligible fills.",
   },
+  afterbell: {
+    url: "https://afterbell.pro",
+    description:
+      "Afterbell is a Hyperliquid trading front-end for stock, index and commodity perps (HIP-3) and crypto perps that reads each stock perp against its home exchange's session; its orders carry a registered builder code (Hyperliquid referral code AFTERBELL) at 0.03% standard, lower by 30-day volume.",
+    twitter: "@Afterbell_pro",
+  },
 
   // ─── Perp funding venues (bench № 036) ─────────────────────────────
   bybit: {
