@@ -21,7 +21,23 @@ export type LinkPart =
   | { kind: "link"; href: string; label: string };
 
 /** Trailing characters that belong to the sentence, not to the URL. */
-const TRAILING = /[).,;:!?'"\]]+$/;
+const TRAILING_CHAR = /[).,;:!?'"\]]$/;
+const SCHEME = "https://";
+
+const count = (s: string, ch: string) => s.split(ch).length - 1;
+
+/**
+ * Strip sentence punctuation from the end of a URL. A closing paren stays
+ * when the URL has a matching opener, so Wikipedia-style links survive.
+ */
+function trimUrl(raw: string): string {
+  let url = raw;
+  while (TRAILING_CHAR.test(url)) {
+    if (url.endsWith(")") && count(url, "(") >= count(url, ")")) break;
+    url = url.slice(0, -1);
+  }
+  return url;
+}
 
 const URL_RE = /https:\/\/[^\s<>"]+/g;
 
@@ -30,13 +46,12 @@ export function linkifyParts(input: string): LinkPart[] {
   let last = 0;
   for (const m of input.matchAll(URL_RE)) {
     const at = m.index ?? 0;
-    let url = m[0];
     // A URL at the end of a clause carries the clause's punctuation. Give
     // it back to the text, or the anchor points at a 404 and the visible
     // label reads wrong.
-    const trail = url.match(TRAILING)?.[0] ?? "";
-    if (trail) url = url.slice(0, url.length - trail.length);
-    if (!url) continue;
+    const url = trimUrl(m[0]);
+    // Nothing after the scheme means there is no host to link to.
+    if (url.length <= SCHEME.length) continue;
     if (at > last) parts.push({ kind: "text", value: input.slice(last, at) });
     parts.push({ kind: "link", href: url, label: display(url) });
     last = at + url.length;
