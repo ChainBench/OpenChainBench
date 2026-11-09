@@ -38,7 +38,9 @@ export function safeJsonLd(value: unknown): string {
  * shows up in `benchmarks/*.yml` faq blocks today:
  *   - inline code: `metric_name`         -> metric_name
  *   - bold:        **text** / __text__   -> text
- *   - italic:      *text* / _text_       -> text (only when paired)
+ *   - italic:      *text*                -> text (only when paired;
+ *                  single _underscores_ are left alone so identifiers
+ *                  like bridge_cost_percent survive)
  *   - md link:     [label](url)          -> label
  *   - em-dash:     U+2014                -> " - " (matches house style)
  *   - collapse runs of whitespace
