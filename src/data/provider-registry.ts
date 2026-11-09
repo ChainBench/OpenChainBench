@@ -452,6 +452,15 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     longDescription:
       "Trnch quotes Robinhood Chain by polling several routers and returning the best, naming each one it asked and whether that route was usable. Before it polls anyone it screens the token with its own agent, TIA, and answers a refusal rather than a price when that screen fails; it publishes the honeypots and rugs that screen identifies at trnch.fun/tia. This site measures that refusal on the token sellability bench, where a low score means the router declined to route into tokens an independent simulation could not sell back out of, and measures its quote and its latency on the two aggregator boards. The 0.5% it takes is reported per route in the quote response, and measured against a direct KyberSwap quote on the same pair at the same moment on 2026-11-02 the gap was 49.3 to 51.2 basis points, so the declaration matches what it costs.",
   },
+  bubblemaps: {
+    url: "https://bubblemaps.io",
+    description:
+      "Token holder visualization and an address label graph. The maps are the product traders know; the Data API also answers a label and entity for a single address, on a custom plan.",
+    twitter: "@bubblemaps",
+    docs: "https://docs.bubblemaps.io",
+    longDescription:
+      "Bubblemaps draws the holder graph of a token, clustering wallets that move together, and the labels on those nodes come from a database it describes as 1B+ identified addresses. This site measures that database directly through the Data API's address metadata endpoint, which returns a label, an entity id and whether the address is a contract, a CEX or a DEX. One thing shapes how that reads on the wallet labeling bench: the endpoint takes an address and no chain, so an address that exists on several chains gets a single answer. Measured here on 2026-11-09, WETH on Base returns Mantle and the Venus Comptroller on BNB returns Ethereum Foundation Congress, both being addresses shared across chains. Their chain list also advertises TON while the address endpoint rejects a TON address, so six of that bench's eleven chains are in scope for them.",
+  },
   route: {
     url: "https://route.fun",
     description:

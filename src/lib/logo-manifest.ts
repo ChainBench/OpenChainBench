@@ -12,6 +12,10 @@
  */
 
 const RAW: Record<string, string> = {
+  // Bubblemaps' own 180 px apple-touch-icon, from bubblemaps.io. Nick
+  // offered an SVG and it has not arrived; swap the file and leave this key
+  // alone when it does.
+  bubblemaps: "/logos/bubblemaps.png",
   // Bench 318's launchpads drew initials chips for six of seven rows, and
   // four of those already had a file in this directory that nothing pointed
   // at. The slug on that bench is pumpfun and the entry below it is
