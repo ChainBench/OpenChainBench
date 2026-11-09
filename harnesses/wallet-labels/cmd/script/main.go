@@ -54,6 +54,10 @@ func buildProviders(cfg *Config) []Provider {
 		NewMoralisProvider(cfg.MoralisAPIKey),
 		NewHeliusProvider(cfg.HeliusAPIKey),
 		NewSerializedProvider(cfg.SerializedAPIKey),
+		// Key-gated like the others: unset BUBBLEMAPS_API_KEY and the
+		// provider answers nothing rather than erroring, which is how a
+		// vendor leaves without a deploy.
+		NewBubblemapsProvider(cfg.BubblemapsAPIKey),
 		NewBlockscoutProvider(),
 		NewOLIProvider(),
 		NewTonAPIProvider(),

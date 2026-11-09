@@ -15,6 +15,7 @@ type Config struct {
 	MoralisAPIKey    string
 	HeliusAPIKey     string
 	SerializedAPIKey string
+	BubblemapsAPIKey string
 
 	CheckDelay time.Duration
 	Workers    int
@@ -29,6 +30,7 @@ func loadConfig() *Config {
 		MoralisAPIKey:    os.Getenv("MORALIS_API_KEY"),
 		HeliusAPIKey:     os.Getenv("HELIUS_API_KEY"),
 		SerializedAPIKey: os.Getenv("SERIALIZED_API_KEY"),
+		BubblemapsAPIKey: os.Getenv("BUBBLEMAPS_API_KEY"),
 		CheckDelay:       parseDurationSec("WALLET_LABELS_CHECK_DELAY_SECONDS", 30),
 		Workers:          parseInt("WALLET_LABELS_WORKERS", 8),
 		QueueSize:        parseInt("WALLET_LABELS_QUEUE_SIZE", 2000),
