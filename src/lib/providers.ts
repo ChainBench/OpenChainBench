@@ -1034,8 +1034,10 @@ const buildProvidersCached = unstable_cache(
   // v62: BlockVectra gains two appearances, ethereum-rpc and arbitrum-rpc.
   //      Lockstep with bench-unfiltered-v189.
   // v63: Afterbell gains its first appearance, bench 030.
+  // v64: Bubblemaps is new to the SITE and not only to a bench, so it
+  //      needs a product page and the bench appearances this index carries.
   //      Lockstep with bench-unfiltered-v191.
-  ["providers-v63"],
+  ["providers-v64"],
   // 900 s: the provider index feeds products / compare / answers, whose
   // numbers move slowly, and this revalidate is also the effective ISR
   // period of those ~500 pages (Next takes the min across a route's caches).

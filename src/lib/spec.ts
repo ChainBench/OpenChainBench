@@ -995,7 +995,13 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       Cached entries hold the old provider set. Moves with
   //       all-benchmarks-v184 and providers-v63; bench 030 declares no
   //       dimensions, so bench-filters stays.
-  ["bench-unfiltered-v191", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v192: Bubblemaps joins bench 008. Their endpoint answers by ADDRESS
+  //       with no chain, so six of this bench's eleven are in scope and
+  //       TON is not: their /v0/chains lists it and their address endpoint
+  //       rejects a TON address outright. Each address is asked once every
+  //       6h, because 163 anchors at 1 credit on every 30 minute sweep
+  //       would spend 235k against a 30k monthly quota.
+  ["bench-unfiltered-v192", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -1363,7 +1369,8 @@ const loadAllBenchmarksCached = unstable_cache(
   //       Arbitrum).
   // v183: lockstep with bench-unfiltered-v190 (bench 313 column directions).
   // v184: lockstep with bench-unfiltered-v191 (Afterbell on bench 030).
-  ["all-benchmarks-v184", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v185: lockstep with bench-unfiltered-v192 (Bubblemaps joins 008).
+  ["all-benchmarks-v185", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1623,7 +1630,9 @@ const loadBenchmarkFiltered = unstable_cache(
   //       region tabs.
   // v108: lockstep with bench-unfiltered-v190. Both tier tabs sort and
   //       colour those two panels by the corrected direction.
-  ["bench-filters-v108", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v110: lockstep with bench-unfiltered-v192. Bench 008 splits by chain
+  //       and by kind, so every tab gains a row where they are in scope.
+  ["bench-filters-v110", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 

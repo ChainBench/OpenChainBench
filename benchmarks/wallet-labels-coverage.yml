@@ -79,6 +79,7 @@ methodology:
   - "A provider scores 'hit' when it returns a non-generic entity name. Filler labels like 'EOA', 'Contract', 'Wallet', 'Multisig', 'Unknown' are explicitly excluded, they carry no entity signal."
   - "Per-chain leaderboards. providers are filtered by their declared chain support, so Helius (Solana-only) doesn't get penalized on Ethereum and vice versa."
   - "Failures (timeouts, 5xx, auth errors) are counted as 'no label' and surfaced separately as `wallet_labels_fetch_errors_total`."
+  - "Bubblemaps answers by ADDRESS with no chain, so a predeploy that lives at one address on several chains gets one answer: 0x4200..0006 is WETH on Base and they name Mantle. Their /v0/chains lists TON and their address endpoint rejects a TON address, so TON is not asked of them. Six of this bench's eleven chains are in scope for them."
   - "Region: `eu-west` (single point)."
 
 per_chain_explainer:
@@ -198,6 +199,19 @@ providers:
       success: clamp_min(1 - (sum(increase(wallet_labels_fetch_errors_total{provider="mobula"}[24h])) or vector(0)) / clamp_min(sum(increase(wallet_labels_checks_total{provider="mobula"}[24h])), 1), 0)
       sample_size: sum(increase(wallet_labels_checks_total{provider="mobula"}[24h]))
       series: 100 * sum(rate(wallet_labels_success_total{provider="mobula"}[1h])) / sum(rate(wallet_labels_checks_total{provider="mobula"}[1h]))
+
+  - slug: bubblemaps
+    name: Bubblemaps
+    tag: Address graph, 6 of this bench's chains, API key required
+    formula: "Share of anchor addresses for which Bubblemaps /v0/addresses/metadata returns a non-generic entity name, success_total divided by checks_total over 24h. Each address is asked once every 6h, to stay inside their credit quota."
+    queries:
+      p50: 100 * sum(increase(wallet_labels_success_total{provider="bubblemaps"}[24h])) / sum(increase(wallet_labels_checks_total{provider="bubblemaps"}[24h]))
+      p90: 100 * sum(increase(wallet_labels_success_total{provider="bubblemaps"}[24h])) / sum(increase(wallet_labels_checks_total{provider="bubblemaps"}[24h]))
+      p99: 100 * sum(increase(wallet_labels_success_total{provider="bubblemaps"}[24h])) / sum(increase(wallet_labels_checks_total{provider="bubblemaps"}[24h]))
+      mean: 100 * sum(increase(wallet_labels_success_total{provider="bubblemaps"}[24h])) / sum(increase(wallet_labels_checks_total{provider="bubblemaps"}[24h]))
+      success: clamp_min(1 - (sum(increase(wallet_labels_fetch_errors_total{provider="bubblemaps"}[24h])) or vector(0)) / clamp_min(sum(increase(wallet_labels_checks_total{provider="bubblemaps"}[24h])), 1), 0)
+      sample_size: sum(increase(wallet_labels_checks_total{provider="bubblemaps"}[24h]))
+      series: 100 * sum(rate(wallet_labels_success_total{provider="bubblemaps"}[1h])) / sum(rate(wallet_labels_checks_total{provider="bubblemaps"}[1h]))
 
   - slug: serialized
     name: Serialized

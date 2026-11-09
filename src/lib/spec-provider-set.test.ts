@@ -85,6 +85,13 @@ describe("the provider set behind the cache keys", () => {
     // because the bench declares no dimensions and nothing is invisible on
     // a tab it does not have.
     //
+    // An ARRIVAL on 2026-11-09: Bubblemaps joins bench 008 with a key
+    // Leo issued in the shared thread. Six of that bench's eleven
+    // chains are in scope, because their endpoint answers by address
+    // with no chain and rejects a TON address outright while their
+    // /v0/chains lists TON. New to the SITE, so a product page
+    // arrives with it: v191/v184/v109 and providers-v63.
+    //
     // A RETURN on 2026-11-06: Trnch is back on 033 and 304, reversing the
     // withdrawal below with their agreement. The ordering was the
     // withdrawal's in reverse, and for the same reason: the Railway key
@@ -185,6 +192,6 @@ describe("the provider set behind the cache keys", () => {
         "Then set EXPECTED to the hash in this failure, and add the provider",
         `to PRODUCT_NAMES if it needs a display name. Providers now: ${count}.`,
       ].join("\n"),
-    ).toBe("1ff42b31f8dc47b8");
+    ).toBe("65bb1811a55555d7");
   });
 });
