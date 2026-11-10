@@ -287,7 +287,7 @@ func chains() []Chain {
 				{Slug: "arc-quicknode", Name: "Quicknode (Arc endpoint)", URL: envDefault("RPC_URL_ARC_QUICKNODE", "https://rpc.quicknode.mainnet.arc.io")},
 			},
 		},
-		// ─── Ethereum mainnet (9 providers) ────────────────────────
+		// ─── Ethereum mainnet (10 providers) ────────────────────────
 		{
 			Slug: "ethereum",
 			Name: "Ethereum",
@@ -301,9 +301,10 @@ func chains() []Chain {
 				{Slug: "bloxroute", Name: "bloXroute", URL: envDefault("RPC_URL_ETHEREUM_BLOXROUTE", "https://eth.rpc.blxrbdn.com")},
 				{Slug: "nownodes", Name: "NOWNodes", URL: envDefault("RPC_URL_ETHEREUM_NOWNODES", "https://public-eth.nownodes.io")},
 				{Slug: "blockvectra", Name: "BlockVectra", URL: envDefault("RPC_URL_ETHEREUM_BLOCKVECTRA", "https://api.blockvectra.com/v1/eth_mainnet/public")},
+				{Slug: "thyme", Name: "Thyme Gate", URL: envDefault("RPC_URL_ETHEREUM_THYME", "https://ethereum-mainnet.rpc.thyme.sh/public")},
 			},
 		},
-		// ─── Polygon PoS (3 providers) ──────────────────────────────
+		// ─── Polygon PoS (4 providers) ──────────────────────────────
 		//
 		// Nodies removed 2026-10-11: polygon-pokt.nodies.app now answers HTTP
 		// 403 "The network of this endpoint requires a paid subscription plan",
@@ -319,6 +320,7 @@ func chains() []Chain {
 				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_POLYGON_PUBLICNODE", "https://polygon-bor-rpc.publicnode.com")},
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_POLYGON_DRPC", "https://polygon.drpc.org")},
 				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_POLYGON_TENDERLY", "https://gateway.tenderly.co/public/polygon")},
+				{Slug: "thyme", Name: "Thyme Gate", URL: envDefault("RPC_URL_POLYGON_THYME", "https://polygon-mainnet.rpc.thyme.sh/public")},
 			},
 		},
 		// ─── Arbitrum One (8 providers) ─────────────────────────────
@@ -345,6 +347,7 @@ func chains() []Chain {
 				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_OPTIMISM_TENDERLY", "https://gateway.tenderly.co/public/optimism")},
 				{Slug: "nodies", Name: "Nodies (POKT)", URL: envDefault("RPC_URL_OPTIMISM_NODIES", "https://op-pokt.nodies.app")},
 				{Slug: "optimism-official", Name: "Optimism Official", URL: envDefault("RPC_URL_OPTIMISM_OFFICIAL", "https://mainnet.optimism.io")},
+				{Slug: "thyme", Name: "Thyme Gate", URL: envDefault("RPC_URL_OPTIMISM_THYME", "https://optimism-mainnet.rpc.thyme.sh/public")},
 			},
 		},
 		// ─── Base (6 providers) ─────────────────────────────────────
@@ -376,6 +379,7 @@ func chains() []Chain {
 				{Slug: "binance", Name: "Binance Official", URL: envDefault("RPC_URL_BNB_OFFICIAL", "https://bsc-dataseed1.binance.org")},
 				{Slug: "bloxroute", Name: "bloXroute", URL: envDefault("RPC_URL_BNB_BLOXROUTE", "https://bsc.rpc.blxrbdn.com")},
 				{Slug: "nownodes", Name: "NOWNodes", URL: envDefault("RPC_URL_BNB_NOWNODES", "https://public-bsc.nownodes.io")},
+				{Slug: "thyme", Name: "Thyme Gate", URL: envDefault("RPC_URL_BNB_THYME", "https://bnb-mainnet.rpc.thyme.sh/public")},
 			},
 		},
 		// ─── Avalanche C-Chain (6 providers) ────────────────────────

@@ -1278,6 +1278,12 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     description:
       "Solana and Fogo RPC from the FluxBeam team, billed by bandwidth rather than per call, with WebSocket and Yellowstone gRPC. Endpoints in New York and Amsterdam. Measured in the private cohort of the Solana RPC page.",
   },
+  thyme: {
+    url: "https://gate.thymelabs.io",
+    description:
+      "Thyme Labs operates keyless public RPC on its own nodes with a 22-unit/s per-IP limit (one unit per call; eth_getLogs and eth_getBlockReceipts cost four), batches of up to 10 calls and no paid-provider fallback.",
+    twitter: "@thymelabsio",
+  },
   blockvectra: {
     url: "https://blockvectra.com",
     description:

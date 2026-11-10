@@ -1001,7 +1001,12 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       rejects a TON address outright. Each address is asked once every
   //       6h, because 163 anchors at 1 credit on every 30 minute sweep
   //       would spend 235k against a 30k monthly quota.
-  ["bench-unfiltered-v192", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v193: Thyme Gate joins the public cohorts on ethereum, polygon,
+  //       optimism and bnb (#3586, an outside contribution). Verified
+  //       before merge rather than on the contributor's word: all four
+  //       endpoints answered the right chain id, a head block 0 to 10 s
+  //       old, and a batch of ten, from this machine on 2026-11-10.
+  ["bench-unfiltered-v193", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -1370,7 +1375,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v183: lockstep with bench-unfiltered-v190 (bench 313 column directions).
   // v184: lockstep with bench-unfiltered-v191 (Afterbell on bench 030).
   // v185: lockstep with bench-unfiltered-v192 (Bubblemaps joins 008).
-  ["all-benchmarks-v185", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v186: lockstep with bench-unfiltered-v193 (Thyme Gate, four cohorts).
+  ["all-benchmarks-v186", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1632,7 +1638,9 @@ const loadBenchmarkFiltered = unstable_cache(
   //       colour those two panels by the corrected direction.
   // v110: lockstep with bench-unfiltered-v192. Bench 008 splits by chain
   //       and by kind, so every tab gains a row where they are in scope.
-  ["bench-filters-v110", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v111: lockstep with bench-unfiltered-v193. All four benches declare
+  //       regions and Thyme carries all three, so every region tab moves.
+  ["bench-filters-v111", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 
