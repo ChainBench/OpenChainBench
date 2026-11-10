@@ -1038,7 +1038,10 @@ const buildProvidersCached = unstable_cache(
   // v64: Bubblemaps is new to the SITE and not only to a bench, so it
   //      needs a product page and the bench appearances this index carries.
   //      Lockstep with bench-unfiltered-v191.
-  ["providers-v64"],
+  // v65: Thyme Gate is new to the SITE, so it needs a product page as well
+  //      as the four bench appearances this index carries. Lockstep with
+  //      bench-unfiltered-v193.
+  ["providers-v65"],
   // 900 s: the provider index feeds products / compare / answers, whose
   // numbers move slowly, and this revalidate is also the effective ISR
   // period of those ~500 pages (Next takes the min across a route's caches).

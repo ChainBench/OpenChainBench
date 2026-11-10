@@ -85,6 +85,14 @@ describe("the provider set behind the cache keys", () => {
     // because the bench declares no dimensions and nothing is invisible on
     // a tab it does not have.
     //
+    // An ARRIVAL on 2026-11-10: Thyme Gate joins the public cohorts on
+    // ethereum, polygon, optimism and bnb (#3586), contributed from
+    // outside. The four endpoints were checked before merge rather
+    // than taken on the contributor's word: right chain id, a head
+    // block 0 to 10 s old, a batch of ten accepted. New to the SITE,
+    // so a product page arrives with it: v193/v186/v111 and
+    // providers-v65.
+    //
     // An ARRIVAL on 2026-11-09: Bubblemaps joins bench 008 with a key
     // Leo issued in the shared thread. Six of that bench's eleven
     // chains are in scope, because their endpoint answers by address
@@ -192,6 +200,6 @@ describe("the provider set behind the cache keys", () => {
         "Then set EXPECTED to the hash in this failure, and add the provider",
         `to PRODUCT_NAMES if it needs a display name. Providers now: ${count}.`,
       ].join("\n"),
-    ).toBe("65bb1811a55555d7");
+    ).toBe("84fff16ff56ce8f1");
   });
 });
