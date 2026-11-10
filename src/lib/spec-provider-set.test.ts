@@ -53,7 +53,19 @@ describe("the provider set behind the cache keys", () => {
     const hash = createHash("sha256").update(sets.join("\n")).digest("hex").slice(0, 16);
     const count = sets.reduce((n, s) => n + s.split(":")[1].split(",").length, 0);
 
-    // Recorded on 2026-11-07 on main with bench-unfiltered-v116,
+    // Recorded on 2026-11-10 on main with bench-unfiltered-v118,
+    // all-benchmarks-v111, bench-filters-v56, providers-v34: Thyme Gate
+    // joins the public cohorts on ethereum, polygon, optimism and bnb
+    // (#3586, an outside contribution). New to the site, so providers-v
+    // moves with the other three, and all four benches declare regions so
+    // every region tab moves with the unfiltered view. The four endpoints
+    // were checked before merge rather than taken on the contributor's
+    // word: right chain id, a head block 0 to 10 s old, a batch of ten
+    // accepted. The numbering here is main's own, not the numbering the
+    // same change carries on dev, because the branches diverged in
+    // October.
+    //
+    // Previously recorded on 2026-11-07 on main with bench-unfiltered-v116,
     // all-benchmarks-v109, bench-filters-v55, providers-v32: BlockVectra
     // joins the public cohorts on ethereum-rpc and arbitrum-rpc (#3573).
     //
@@ -115,6 +127,6 @@ describe("the provider set behind the cache keys", () => {
         "Then set EXPECTED to the hash in this failure, and add the provider",
         `to PRODUCT_NAMES if it needs a display name. Providers now: ${count}.`,
       ].join("\n"),
-    ).toBe("7e83b3a6fb29832f");
+    ).toBe("aa79de7b659cf4ec");
   });
 });

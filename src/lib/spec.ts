@@ -605,7 +605,11 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       entries hold the old provider set. Moves with all-benchmarks-v110
   //       and providers-v33; bench 030 declares no dimensions, so
   //       bench-filters stays.
-  ["bench-unfiltered-v117", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  ["bench-unfiltered-v118", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v118: Thyme Gate joins the public cohorts on ethereum, polygon,
+  //       optimism and bnb (#3586, an outside contribution). The four
+  //       endpoints were checked before merge: right chain id, a head
+  //       block 0 to 10 s old, a batch of ten, 141 to 166 ms.
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -884,7 +888,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v109: lockstep with bench-unfiltered-v116 (BlockVectra on Ethereum and
   //       Arbitrum).
   // v110: lockstep with bench-unfiltered-v117 (Afterbell on bench 030).
-  ["all-benchmarks-v110", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  ["all-benchmarks-v111", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v111: lockstep with bench-unfiltered-v118 (Thyme Gate, four cohorts).
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1040,7 +1045,9 @@ const loadBenchmarkFiltered = unstable_cache(
   //      retired, each with region and tier tabs).
   // v55: lockstep with bench-unfiltered-v116. The new public rows carry
   //      region tabs.
-  ["bench-filters-v55", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  ["bench-filters-v56", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v56: lockstep with bench-unfiltered-v118. All four benches declare
+  //      regions and Thyme carries all three, so every region tab moves.
   { revalidate: 300, tags: ["benchmarks"] }
 );
 

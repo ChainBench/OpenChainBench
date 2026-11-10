@@ -1198,6 +1198,12 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "MegaETH's official public RPC (mainnet.megaeth.com). Compute-unit and bandwidth limited; WebSocket endpoint exposes the 10 ms mini-block realtime API.",
     twitter: "@megaeth_labs",
   },
+  thyme: {
+    url: "https://gate.thymelabs.io",
+    description:
+      "Thyme Labs operates keyless public RPC on its own nodes with a 22-unit/s per-IP limit (one unit per call; eth_getLogs and eth_getBlockReceipts cost four), batches of up to 10 calls and no paid-provider fallback.",
+    twitter: "@thymelabsio",
+  },
   blockvectra: {
     url: "https://blockvectra.com",
     description:
