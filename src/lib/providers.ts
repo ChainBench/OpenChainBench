@@ -187,6 +187,7 @@ const CANONICAL_NAMES: Record<string, string> = {
   polygon: "Polygon",
   helius: "Helius",
   publicnode: "PublicNode",
+  thyme: "Thyme Gate",
   arbitrum: "Arbitrum",
   base: "Base",
   optimism: "Optimism",
@@ -951,7 +952,11 @@ const buildProvidersCached = unstable_cache(
   //      Lockstep with bench-unfiltered-v116.
   // v33: Afterbell gains its first appearance, bench 030.
   //      Lockstep with bench-unfiltered-v117.
-  ["providers-v33"],
+  // v34: Thyme Gate is new to the SITE, not only to a bench: it gains a
+  //      product page as well as the four public RPC appearances this index
+  //      carries (#3586, an outside contribution). Lockstep with
+  //      bench-unfiltered-v118.
+  ["providers-v34"],
   // 900 s: the provider index feeds products / compare / answers, whose
   // numbers move slowly, and this revalidate is also the effective ISR
   // period of those ~500 pages (Next takes the min across a route's caches).

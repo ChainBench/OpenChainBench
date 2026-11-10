@@ -370,6 +370,7 @@ const RAW: Record<string, string> = {
   zan: "/logos/zan.svg",
   // BlockVectra: the square vector mark they supplied (#3464), paths only.
   blockvectra: "/logos/blockvectra.svg",
+  thyme: "/logos/thyme.svg",
   // ─── Sui providers (bench 211) ───
   fullnode: "/logos/mysten.svg",
   blockvision: "/logos/blockvision.svg",

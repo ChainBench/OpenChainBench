@@ -183,3 +183,27 @@ providers:
           p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="optimism-official", chain="optimism", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="optimism-official", chain="optimism", region="sgp"}[1h])
 
+  - slug: thyme
+    name: Thyme Gate
+    endpoint: https://optimism-mainnet.rpc.thyme.sh/public
+    tag: Thyme Labs-operated, keyless, 22 units/s per IP, no paid fallback
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Thyme Gate's no-key Optimism endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="thyme", chain="optimism"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="thyme", chain="optimism"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="thyme", chain="optimism"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="thyme", chain="optimism"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="thyme", chain="optimism"}) / sum(ocb:rpc_call:rate_24h{provider="thyme", chain="optimism"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="thyme", chain="optimism"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="thyme", chain="optimism"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="thyme", chain="optimism", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="thyme", chain="optimism", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="thyme", chain="optimism", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="thyme", chain="optimism", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="thyme", chain="optimism", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="thyme", chain="optimism", region="sgp"}[1h])
+
