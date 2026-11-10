@@ -1006,7 +1006,23 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       before merge rather than on the contributor's word: all four
   //       endpoints answered the right chain id, a head block 0 to 10 s
   //       old, and a batch of ten, from this machine on 2026-11-10.
-  ["bench-unfiltered-v193", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v194: the Alchemy plan disclosure on the nine chain specs and the seven
+  //       WebSocket specs. Alchemy upgraded the account behind our
+  //       seven-chain key in place to an Enterprise trial on 10 November
+  //       2026, so "a Free plan key ... the tier any reader gets" became
+  //       false on sixteen published pages. Measured the same day, directly
+  //       against the endpoints: debug_traceTransaction answers on all eight
+  //       EVM chains where the free key served two, trace_block on five, and
+  //       every one of the nine chains reads 100% success over 24 hours with
+  //       no quota pause in 30 days of retention. The HyperEVM and Robinhood
+  //       specs were separately wrong in the other direction: both disclosed
+  //       a Free plan key when those two chains have always run on a
+  //       different, enterprise key, which is why they were the only two
+  //       serving debug_traceTransaction while the other seven were capped.
+  //       Verified by key fingerprint, 7 chains on one key and 2 on the
+  //       other. Moves with all-benchmarks-v187 and bench-filters-v112;
+  //       providers-v59 does NOT move, the provider registry is untouched.
+  ["bench-unfiltered-v194", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -1376,7 +1392,9 @@ const loadAllBenchmarksCached = unstable_cache(
   // v184: lockstep with bench-unfiltered-v191 (Afterbell on bench 030).
   // v185: lockstep with bench-unfiltered-v192 (Bubblemaps joins 008).
   // v186: lockstep with bench-unfiltered-v193 (Thyme Gate, four cohorts).
-  ["all-benchmarks-v186", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v187: lockstep with bench-unfiltered-v194 (the Alchemy plan
+  //       disclosure, now an Enterprise trial).
+  ["all-benchmarks-v187", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1640,7 +1658,9 @@ const loadBenchmarkFiltered = unstable_cache(
   //       and by kind, so every tab gains a row where they are in scope.
   // v111: lockstep with bench-unfiltered-v193. All four benches declare
   //       regions and Thyme carries all three, so every region tab moves.
-  ["bench-filters-v111", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v112: lockstep with bench-unfiltered-v194 (the Alchemy plan
+  //       disclosure, now an Enterprise trial).
+  ["bench-filters-v112", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 
