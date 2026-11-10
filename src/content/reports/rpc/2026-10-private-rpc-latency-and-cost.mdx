@@ -3,7 +3,7 @@ title: "Best private RPC provider 2026: speed and cost"
 category: "rpc"
 slug: "2026-10-private-rpc-latency-and-cost"
 publishedAt: "2026-10-28"
-updatedAt: "2026-11-04"
+updatedAt: "2026-11-10"
 period: "October 2026"
 summary: "Six API-key RPC providers measured on nine chains from three regions: who answers fastest, who bills least, and which methods reverse the order."
 heroFinding: "The fastest provider on a cheap call is not the fastest on an expensive one. Dwellir answers a tip-of-chain read in 33.6 ms and an archive read seven times slower, and the order on eth_getLogs is different again."
@@ -18,9 +18,9 @@ faq:
   - q: "What is the best RPC provider for under $50 a month?"
     a: "Chainstack. Its $49 Growth plan covers 20M dapp requests a month, or 10M archive and trace requests, and from US East it had the lowest median latency of all six providers, 2.9 ms."
   - q: "Which private RPC provider supports trace_block?"
-    a: "Measured rather than read off a documentation page, over the 24 hours to 4 November 2026: BlockMachine serves trace_block on 71.4% of the chains we ask it on, Chainstack 62.5%, Quicknode 50.0%, Dwellir 42.9%, GetBlock 25.0%. trace_block and debug_traceTransaction live in different client namespaces, so a provider can serve one and refuse the other on the same chain, and several do."
+    a: "Measured rather than read off a documentation page, over the 24 hours to 4 November 2026: BlockMachine serves trace_block on 71.4% of the chains we ask it on, Chainstack 62.5%, Quicknode 50.0%, Dwellir 42.9%, GetBlock 25.0%. trace_block and debug_traceTransaction live in different client namespaces, so a provider can serve one and refuse the other on the same chain, and several do. Alchemy is absent from that list because the key we held served trace_block on no chain; Alchemy upgraded that account to an Enterprise trial on 10 November 2026 and it now answers on five of the eight EVM chains we ask, measured directly the same day."
   - q: "Is a free RPC plan enough for production?"
-    a: "Rarely. The most generous free plan we price, dRPC, buys 10.5M dapp requests a month and Chainstack's buys 3M. Our own Alchemy Free key reached its 30M CU monthly cap on 24 October 2026 and refused every call on seven chains after that."
+    a: "Rarely. The most generous free plan we price, dRPC, buys 10.5M dapp requests a month and Chainstack's buys 3M. Our own Alchemy Free key reached its 30M CU monthly cap on 24 October 2026 and refused every call on seven chains after that. That key is no longer a free one: Alchemy upgraded it to an Enterprise trial on 10 November 2026."
 ---
 
 <Summary>
@@ -53,7 +53,7 @@ No provider is both fast and cheap. The two cheapest, BlockMachine and Dwellir, 
 
 <SpeedCostChart />
 
-Alchemy's point combines pay-as-you-go pricing with latency measured on a Free key and an enterprise key; it is the dearest of the six at 100M.
+Alchemy's point combines pay-as-you-go pricing with latency measured over this window on a Free key and an enterprise key; it is the dearest of the six at 100M.
 
 ## HTTP latency
 
@@ -75,7 +75,7 @@ What the medians hide, provider by provider:
 - **[Quicknode](/products/quicknode)** reads 163 ms on Arc and 66 ms on Robinhood from Singapore, as if those two chains were served from outside Asia. Its Ethereum p99 from Singapore is 176 ms.
 - **[Chainstack](/products/chainstack)** is the fastest provider from US East, 2.4 to 3.1 ms on six chains. From Singapore it reads 39 ms on Ethereum and Robinhood, 70 ms on HyperEVM and 83 ms on Polygon.
 - **[GetBlock](/products/getblock)** never has the fastest median but is never far off, except on HyperEVM from US East (235 ms). It returned 88 stale blocks in 7 days, the most in the cohort.
-- **[Alchemy](/products/alchemy)**'s 55% success rate is our plan, not its network. The Free key on seven chains hit its 30M CU cap on 24 October and failed every call until the quota reset at the start of November. On HyperEVM and Robinhood, where we hold an enterprise key, it answered 100% of calls.
+- **[Alchemy](/products/alchemy)**'s 55% success rate is our plan, not its network. The Free key on seven chains hit its 30M CU cap on 24 October and failed every call until the quota reset at the start of November. On HyperEVM and Robinhood, where we hold an enterprise key, it answered 100% of calls. Alchemy upgraded the seven-chain account to an Enterprise trial on 10 November 2026: every one of the nine chains reads 100% over the 24 hours to that date, with no quota pause in the 30 days of retention behind it.
 - **[Dwellir](/products/dwellir)** answers in about 75 ms from US East on five of its eight chains and 96 ms on Arbitrum; Base and Robinhood are the exceptions at 2.4 to 2.7 ms. A new connection costs it a median of 113 to 333 ms depending on region.
 - **[BlockMachine](/products/blockmachine)** is the slowest in every region, best from EU West (42 ms median), and had the most timeouts: 153 in four days. It joined the cohort on 24 October.
 
@@ -93,7 +93,7 @@ Quicknode delivers new blocks first in 13 of 18 chain and region cells, on Base,
 - **Dwellir's Ethereum pushes arrive 0.47 to 0.71 s late** at the median and up to 1.6 s at p90.
 - **HyperEVM has no reliable leader.** Even the winning provider's p90 lag runs 170 to 350 ms in each region.
 
-Alchemy left the WebSocket race on 15 October, because it bills each pushed message and the Free key could not carry it; BlockMachine has not been added yet. Solana, Arbitrum and Robinhood were taken out of the race on 17 October: they produced 73% of all pushes, and one provider's monthly message limit had been reached.
+Alchemy left the WebSocket race on 15 October, because it bills each pushed message and the key, a Free plan one then, could not carry it. The Enterprise trial of 10 November lifts the free monthly cap but not the per-message billing, so the exclusion stands until the probe has a message budget guard; BlockMachine has not been added yet. Solana, Arbitrum and Robinhood were taken out of the race on 17 October: they produced 73% of all pushes, and one provider's monthly message limit had been reached.
 
 <details className="mt-6">
 <summary>Lag behind the first push, every cell</summary>
@@ -258,11 +258,23 @@ namespaces, so a provider can serve one and refuse the other on the same
 chain, and several do. A documentation page that says tracing is supported
 does not tell you which one you get, or on which chains.
 
-Alchemy is absent from this table for a reason worth stating plainly. Our key
-is a Free plan one, and it reaches 42 of the 56 cells in this matrix where
-four of the others reach all 56. On every cell we can ask, it answers: 100%
-of the seven methods. So the gap is reach, not refusal, and it is a fact
-about the plan we hold rather than about Alchemy's API surface.
+Alchemy is absent from this table for a reason worth stating plainly. Over
+this window our key was a Free plan one, and it reached 42 of the 56 cells in
+this matrix where four of the others reach all 56. On every cell we could
+ask, it answered: 100% of the seven methods. So the gap was reach, not
+refusal, and it was a fact about the plan we held rather than about Alchemy's
+API surface.
+
+That plan changed on 10 November 2026, when Alchemy upgraded the seven-chain
+account to an Enterprise trial. Measured directly against the endpoints the
+same day, `debug_traceTransaction` answers on all eight EVM chains where the
+free key served it on two, and `trace_block` answers on five: Ethereum, Base,
+Polygon, BNB Chain and Arc. The three that still refuse `trace_block` reply
+that the method is not available on that network, which is a per-network
+absence rather than a plan gate, and Arbitrum's `arbtrace_block` exists but
+serves only pre-Nitro blocks. The matrix above is the October measurement;
+the boards carry the new count after the next capability pass, which runs
+every six hours.
 
 The plan showed itself once, clearly. Success on Ethereum held at 100% to 23
 October, fell to 80% on the 24th, sat at 22% from the 25th to the 31st, and
@@ -310,7 +322,7 @@ endpoint. Four of the six serve it:
 | <L s="quicknode">Quicknode</L> | yes | Lighthouse v8.2.3 | same host as the RPC endpoint |
 | <L s="chainstack">Chainstack</L> | yes | Lighthouse v8.3.1 | same host |
 | <L s="dwellir">Dwellir</L> | yes | Caplin v3.8.1 | an unlisted host, given on request |
-| <L s="alchemy">Alchemy</L> | yes | Lighthouse v8.2.2 | a separate host, on the free key |
+| <L s="alchemy">Alchemy</L> | yes | Lighthouse v8.2.2 | a separate host, on the seven-chain key |
 | <L s="getblock">GetBlock</L> | no | | documented as a dedicated-node add-on |
 | <L s="blockmachine">BlockMachine</L> | no | | JSON-RPC only, no consensus layer |
 
@@ -426,7 +438,7 @@ Head to head, with every bench the two share: [Alchemy vs Quicknode](/compare/al
 | <L s="quicknode">[Quicknode](/products/quicknode)</L> | Build ($49), endpoint supplied by Quicknode | 9 |
 | <L s="chainstack">[Chainstack](/products/chainstack)</L> | Growth, Global Node, endpoint supplied by Chainstack | 9 |
 | <L s="getblock">[GetBlock](/products/getblock)</L> | Enterprise, one endpoint per region, supplied by GetBlock | 9; no Singapore endpoint on Arc and Robinhood |
-| <L s="alchemy">[Alchemy](/products/alchemy)</L> | Free key (30M CU a month) on 7 chains; enterprise key on HyperEVM and Robinhood | 9 |
+| <L s="alchemy">[Alchemy](/products/alchemy)</L> | Enterprise trial on 7 chains from 10 November 2026, a Free key (30M CU a month) over this window; enterprise key on HyperEVM and Robinhood | 9 |
 | <L s="dwellir">[Dwellir](/products/dwellir)</L> | Developer ($49, 25M responses) | 8; no Solana |
 | <L s="blockmachine">[BlockMachine](/products/blockmachine)</L> | Standard (5M Request Units), since 24 October | 7; no Solana or HyperEVM |
 
