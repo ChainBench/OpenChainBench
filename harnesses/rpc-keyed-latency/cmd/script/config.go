@@ -132,10 +132,24 @@ var defaultBudgets = map[string]int64{
 	// named enterprise accounts that are no longer ours, then called both
 	// free tier on evidence that covers only one.
 	//
-	// alchemy: free tier. Measured, not recorded: the key has been capped
-	// since 24 October on everything except HyperEVM and Robinhood Chain,
-	// which is 12 served cells of 56, and the (provider, chain) granularity
-	// in coverage.go exists to publish that honestly.
+	// alchemy: two keys, and they are not the same tier. HyperEVM and
+	// Robinhood Chain sit on an enterprise key. The other seven chains were
+	// on a free key, capped from 24 October, until Alchemy upgraded that
+	// account in place to an Enterprise trial on 10 November 2026.
+	//
+	// Measured the same day, directly against the endpoints rather than read
+	// off a plan page: debug_traceTransaction now answers on all eight EVM
+	// chains and trace_block on five, where the free key served neither. The
+	// three that still refuse trace_block say the method is not available on
+	// that network (ARB_MAINNET, HYPERLIQUID_MAINNET, ROBINHOOD_MAINNET), so
+	// those cells are a per-network absence and not a plan gate; Arbitrum's
+	// arbtrace_block exists but serves only pre-Nitro blocks. The board read
+	// 42 served cells of 56 before the upgrade. An earlier version of this
+	// note said 12, which was never the measurement.
+	//
+	// The budget below is unchanged and deliberately so: at 600k per region
+	// it is a runaway guard, not a quota, and that is the right shape
+	// whatever the plan underneath turns out to be.
 	"alchemy": 600_000,
 	// quicknode: Build plan, confirmed by the account holder 2026-11-01. The
 	// record this replaces named a Mobula account that is no longer ours, and
