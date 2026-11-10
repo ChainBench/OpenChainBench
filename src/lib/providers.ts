@@ -200,6 +200,7 @@ const CANONICAL_NAMES: Record<string, string> = {
   polygon: "Polygon",
   helius: "Helius",
   publicnode: "PublicNode",
+  thyme: "Thyme Gate",
   arbitrum: "Arbitrum",
   base: "Base",
   optimism: "Optimism",
