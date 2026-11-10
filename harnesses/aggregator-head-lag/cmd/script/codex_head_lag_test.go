@@ -15,15 +15,15 @@ func codexWSConnected(t *testing.T, region string) float64 {
 	return m.GetGauge().GetValue()
 }
 
-// Codex runs four sockets (Solana, Base and Robinhood each on an edge node,
-// BNB on graph.codex.io) behind the one ws_connected{aggregator="codex"}
-// series the spec reads. A healthy socket must not mask a dead one, so the
-// series reads 1 only while all of them are up.
+// Codex runs four sockets (Solana, Base, Robinhood and BNB, each on an edge
+// node) behind the one ws_connected{aggregator="codex"} series the spec
+// reads. A healthy socket must not mask a dead one, so the series reads 1
+// only while all of them are up.
 func TestCodexSocketsReportConnectedOnlyWhenAllUp(t *testing.T) {
 	const region = "test-codex-sockets"
-	sockets := newCodexSockets(region, "solana", "base", "robinhood", "graph")
+	sockets := newCodexSockets(region, "solana", "base", "robinhood", "bnb")
 
-	sockets.set("graph", true)
+	sockets.set("bnb", true)
 	sockets.set("solana", true)
 	sockets.set("robinhood", true)
 	if v := codexWSConnected(t, region); v != 0 {
@@ -39,23 +39,27 @@ func TestCodexSocketsReportConnectedOnlyWhenAllUp(t *testing.T) {
 	}
 }
 
-// Solana, Base and Robinhood move to edge nodes; BNB Chain stays on
-// graph.codex.io.
+// Every bench chain reads its edge node, each on a socket of its own, and
+// no socket is opened for an endpoint nothing reads.
 func TestCodexSocketPlanRoutesChainsToEndpoints(t *testing.T) {
 	config := &Config{
 		CodexSolanaWSURL:    "wss://fra.edge.codex.io/graphql",
 		CodexBaseWSURL:      "wss://iad.edge.codex.io/graphql",
 		CodexRobinhoodWSURL: "wss://iad.edge.codex.io/graphql",
+		CodexBNBWSURL:       "wss://iad.edge.codex.io/graphql",
 	}
 	want := map[string]string{
 		"solana":    config.CodexSolanaWSURL,
 		"base":      config.CodexBaseWSURL,
 		"robinhood": config.CodexRobinhoodWSURL,
-		"bnb":       codexWSURL,
+		"bnb":       config.CodexBNBWSURL,
 	}
 
 	got := make(map[string]string)
 	for _, socket := range codexSocketPlan(config, headLagPools) {
+		if len(socket.pools) == 0 {
+			t.Errorf("socket %q subscribes to nothing", socket.name)
+		}
 		for _, pool := range socket.pools {
 			if _, dup := got[pool.ChainName]; dup {
 				t.Errorf("%s subscribed on more than one socket", pool.ChainName)
@@ -73,8 +77,24 @@ func TestCodexSocketPlanRoutesChainsToEndpoints(t *testing.T) {
 	}
 }
 
+// A chain rolled back to graph.codex.io still gets a socket there.
+func TestCodexSocketPlanRollbackUsesGraph(t *testing.T) {
+	config := &Config{
+		CodexSolanaWSURL:    "wss://fra.edge.codex.io/graphql",
+		CodexBaseWSURL:      "wss://iad.edge.codex.io/graphql",
+		CodexRobinhoodWSURL: "wss://iad.edge.codex.io/graphql",
+		CodexBNBWSURL:       codexWSURL,
+	}
+	for _, socket := range codexSocketPlan(config, headLagPools) {
+		if socket.name == "bnb" && socket.endpoint != codexWSURL {
+			t.Errorf("bnb reads %q, want %q", socket.endpoint, codexWSURL)
+		}
+	}
+}
+
 // Robinhood reads Processed only on an edge node: graph.codex.io delivers
 // nothing at that level there, so a rollback to graph must read the default.
+// BNB reads Processed on both.
 func TestCodexProcessedFollowsRobinhoodEndpoint(t *testing.T) {
 	const edge = "wss://iad.edge.codex.io/graphql"
 	cases := []struct {
@@ -86,7 +106,9 @@ func TestCodexProcessedFollowsRobinhoodEndpoint(t *testing.T) {
 		{"base", edge, true},
 		{"base", codexWSURL, true},
 		{"solana", codexWSURL, true},
-		{"bnb", codexWSURL, false},
+		{"bnb", edge, true},
+		{"bnb", codexWSURL, true},
+		{"unknown", codexWSURL, false},
 	}
 	for _, c := range cases {
 		if got := codexProcessed(c.chain, c.endpoint); got != c.want {
@@ -95,14 +117,15 @@ func TestCodexProcessedFollowsRobinhoodEndpoint(t *testing.T) {
 	}
 }
 
-// Solana, Base and Robinhood read their edge nodes unless overridden, and
-// the key is read from the environment.
+// Every chain reads its edge node unless overridden, and the key is read
+// from the environment.
 func TestCodexConfigDefaults(t *testing.T) {
 	t.Chdir(t.TempDir()) // no stray .env
 	t.Setenv("CODEX_API_KEY", " test-key ")
 	t.Setenv("CODEX_SOLANA_WS_URL", "") // empty reads as unset
 	t.Setenv("CODEX_BASE_WS_URL", "")
 	t.Setenv("CODEX_ROBINHOOD_WS_URL", "")
+	t.Setenv("CODEX_BNB_WS_URL", "")
 
 	config, err := loadEnv()
 	if err != nil {
@@ -120,10 +143,14 @@ func TestCodexConfigDefaults(t *testing.T) {
 	if config.CodexRobinhoodWSURL != "wss://iad.edge.codex.io/graphql" {
 		t.Errorf("CodexRobinhoodWSURL = %q, want the iad edge node", config.CodexRobinhoodWSURL)
 	}
+	if config.CodexBNBWSURL != "wss://iad.edge.codex.io/graphql" {
+		t.Errorf("CodexBNBWSURL = %q, want the iad edge node", config.CodexBNBWSURL)
+	}
 
 	t.Setenv("CODEX_SOLANA_WS_URL", codexWSURL)
 	t.Setenv("CODEX_BASE_WS_URL", codexWSURL)
 	t.Setenv("CODEX_ROBINHOOD_WS_URL", codexWSURL)
+	t.Setenv("CODEX_BNB_WS_URL", codexWSURL)
 	config, err = loadEnv()
 	if err != nil {
 		t.Fatal(err)
@@ -136,5 +163,8 @@ func TestCodexConfigDefaults(t *testing.T) {
 	}
 	if config.CodexRobinhoodWSURL != codexWSURL {
 		t.Errorf("override ignored: CodexRobinhoodWSURL = %q, want %q", config.CodexRobinhoodWSURL, codexWSURL)
+	}
+	if config.CodexBNBWSURL != codexWSURL {
+		t.Errorf("override ignored: CodexBNBWSURL = %q, want %q", config.CodexBNBWSURL, codexWSURL)
 	}
 }
