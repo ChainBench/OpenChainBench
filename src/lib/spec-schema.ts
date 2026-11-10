@@ -763,7 +763,32 @@ export const SpecSchema = z
             .regex(/^[a-z][a-z0-9_]*$/, "Panel id must be lowercase snake_case"),
           label: z.string().min(1).max(80),
           description: z.string().max(300).optional(),
-          metric: z.string().min(1).max(200),
+          /** The loader injects `<label_key>="<slug>"` into the metric's FIRST
+           *  brace, and appends `{...}` when the metric has none. So a metric
+           *  with no brace must be a bare metric or recording-rule name:
+           *  anything else gets the selector pasted after a closing paren,
+           *  which Prometheus answers 400 to.
+           *
+           *  Bench 313's `coverage` panel was the case, on the day it
+           *  shipped. `100 * sum by (provider) (...) / (... > 0)` became
+           *  `... > 0){provider="kyberswap-same-block"}`, four queries per
+           *  provider all 400, and the panel published an empty values map
+           *  while the bench's other four panels filled normally. Nothing on
+           *  the page said a column was missing; the only trace was a line in
+           *  the worker's log. The same injection is what
+           *  applyDimensionsToSpec does with the selected dimensions, so this
+           *  holds for every view, not only the default one. */
+          metric: z
+            .string()
+            .min(1)
+            .max(200)
+            .refine(
+              (m) => m.includes("{") || /^[A-Za-z_:][A-Za-z0-9_:]*$/.test(m.trim()),
+              "A panel metric without a brace must be a bare metric name: the " +
+                "loader appends the provider selector at the end, and Prometheus " +
+                "rejects a selector pasted onto an expression. Put a `{...}` on " +
+                "the selector the slug belongs to.",
+            ),
           /** The PromQL label that holds each provider's slug. Defaults to
            *  "builder"; other benches may use "provider", "venue", etc. */
           label_key: z.string().min(1).max(40).default("builder"),

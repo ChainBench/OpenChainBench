@@ -108,7 +108,15 @@ metric_panels:
   - id: coverage
     label: Quotes overall
     description: "What it quotes in GENERAL, across every token examined and not just the failed ones. Read the score against this: a router that quotes almost everything routes into almost every trap without selecting, and one whose score sits above this line quotes traps more than it quotes."
-    metric: 100 * sum by (provider) (avg_over_time(token_sellability_quoted[24h])) / (sum by (provider) (avg_over_time(token_sellability_surveyed[24h])) > 0)
+    # The selector the worker injects goes into the FIRST brace of the
+    # metric, or is appended at the end when there is none. With no brace
+    # here the appended `{provider="..."}` landed after the closing paren
+    # of a composite expression, which Prometheus answers 400 to, so this
+    # panel published nothing for anybody while the other four filled.
+    # The brace is on the numerator on purpose: the denominator stays
+    # per-provider through `sum by (provider)` and the division matches
+    # on that label, so each row still divides by its OWN surveys.
+    metric: 100 * sum by (provider) (avg_over_time(token_sellability_quoted{benchmark="token-sellability"}[24h])) / (sum by (provider) (avg_over_time(token_sellability_surveyed[24h])) > 0)
     label_key: provider
     unit: pct
     # Coverage, and more of it is better AS COVERAGE. The score is the column
