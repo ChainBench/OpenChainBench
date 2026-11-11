@@ -24,9 +24,13 @@ export type WsCell = {
   provider: string;
   first: number;
   seen: number;
-  lag50: number;
-  lag90: number;
 };
+
+/* Le retard derriere la premiere poussee a ete retire le 2026-11-11, des
+   donnees et d'ici. Le gagnant d'une course EST la reference, donc sa
+   colonne affichait 0,3 ms dans presque toutes les lignes: un artefact de
+   definition qui le faisait passer pour infiniment rapide. La part de
+   premier arrive dit la meme chose sans l'artefact. */
 
 type Stat = { p50: number; p99: number; cold50: number };
 
@@ -78,7 +82,12 @@ export type ReportData = {
     }[];
     getlogsWindow: {
       provider: string;
-      nofilter: number | null;
+      /* `bound` dit ce que le chiffre vaut: "refused" est un plafond
+         mesure, "top" veut dire que l'echelle s'est epuisee avant le
+         provider et que le chiffre est donc un plancher. Alchemy lit
+         1 000 000 en "top". La forme sans filtre n'est deliberement pas
+         monte a l'echelle (rangeladder.go), donc elle n'a pas de cle. */
+      bound: string | null;
       address: number | null;
       topics: number | null;
     }[];

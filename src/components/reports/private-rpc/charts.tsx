@@ -25,7 +25,7 @@ import {
 } from "./shared";
 
 const SOURCE_HTTP =
-  "Source: OpenChainBench rpc-keyed-latency probes, 7 days to 28 Oct 2026 13:22 UTC. BlockMachine since 24 Oct.";
+  "Source: OpenChainBench rpc-keyed-latency probes, 7 days to 11 Nov 2026 12:58 UTC. BlockMachine since 24 Oct.";
 
 /* ------------------------------------------------------------------ */
 /* Speed against price                                                 */
@@ -180,10 +180,17 @@ export function RegionSpreadChart() {
 /* WebSocket first-push share                                          */
 /* ------------------------------------------------------------------ */
 
-const WS_PROVIDERS = ["quicknode", "chainstack", "getblock", "dwellir"];
+// Derive du snapshot, pas tape: le « of 18 » du scorecard etait une
+// constante et il a vieilli le jour ou une cellule a quitte la course.
+const WS_ORDER = ["quicknode", "chainstack", "getblock", "dwellir", "fluxrpc"];
+const WS_PROVIDERS = WS_ORDER.filter((p) => REPORT.ws.some((w) => w.provider === p));
+/** Cellules (chaine, region) que la course a reellement publiees. */
+export const WS_CELLS = new Set(REPORT.ws.map((w) => `${w.chain}|${w.region}`)).size;
 
 export function WsFirstChart() {
-  const chains = ["ethereum", "base", "bnb", "polygon", "hyperliquid", "arc"];
+  // Les chaines viennent des donnees et gardent l'ordre editorial.
+  const CHAIN_ORDER = ["ethereum", "base", "bnb", "polygon", "arc", "hyperliquid", "solana"];
+  const chains = CHAIN_ORDER.filter((c) => REPORT.ws.some((w) => w.chain === c));
   const W = 700;
   const rowH = 22;
   const gap = 12;
@@ -191,9 +198,14 @@ export function WsFirstChart() {
   const rows: { chain: string; region: string; label: string; cells: { p: string; v: number }[] }[] = [];
   for (const c of chains)
     for (const r of REGIONS) {
+      const inCell = REPORT.ws.filter((w) => w.chain === c && w.region === r.slug);
+      // Une cellule retiree de la course n'est pas une cellule ou personne
+      // n'a gagne. Sans ce saut, polygon/eu-west se dessinerait en rangee
+      // vide, ce qui se lit comme un resultat.
+      if (inCell.length === 0) continue;
       const cells = WS_PROVIDERS.map((p) => ({
         p,
-        v: REPORT.ws.find((w) => w.chain === c && w.region === r.slug && w.provider === p)?.first ?? 0,
+        v: inCell.find((w) => w.provider === p)?.first ?? 0,
       }));
       rows.push({ chain: c, region: r.slug, label: r.name, cells });
     }
@@ -204,7 +216,7 @@ export function WsFirstChart() {
     <Figure
       title="Who pushes the new block first"
       subtitle="Share of blocks each provider delivered first over eth_subscribe(newHeads), per chain and probe region. Ten minutes in every hour, 7 days."
-      source="Source: OpenChainBench WebSocket race, rpc-keyed-latency harness, 7 days to 28 Oct 2026. GetBlock has no Singapore socket on HyperEVM and Arc, nor US East on HyperEVM."
+      source="Source: OpenChainBench WebSocket race, rpc-keyed-latency harness, 7 days to 11 Nov 2026 12:58 UTC. Share of the blocks the race ran, so a cell sums to 100. GetBlock has no Singapore socket on HyperEVM and Arc, nor US East on HyperEVM. Solana and Polygon EU West are not shown: the providers there were not listening to the same blocks."
     >
       <Legend slugs={WS_PROVIDERS} />
       <svg viewBox={`0 0 ${W} ${H}`} className="w-full min-w-[560px] h-auto" role="img" aria-label="Share of blocks pushed first per provider">
@@ -355,7 +367,7 @@ export function Scorecard() {
     { label: "HTTP warm p99", values: slugs.map((s) => S(s).all.p99), fmt: ms, better: "low" },
     { label: "HTTP cold p50", values: slugs.map((s) => S(s).all.cold50), fmt: ms, better: "low" },
     {
-      label: "WebSocket wins, of 18",
+      label: `WebSocket wins, of ${WS_CELLS}`,
       values: slugs.map((s) => (WS_PROVIDERS.includes(s) ? wsWins(s) : null)),
       fmt: (v) => String(v),
       better: "high",

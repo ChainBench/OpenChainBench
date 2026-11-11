@@ -135,7 +135,13 @@ func classifyError(code int, msg string) string {
 	for _, s := range []string{
 		"method not found", "method not supported", "not supported",
 		"unsupported method", "does not exist", "unknown method",
-		"method does not exist", "not available on this network",
+		"method does not exist",
+		// « not available on » et pas « ... on this network »: Alchemy
+		// repond « trace_block is not available on the ARB_MAINNET », et le
+		// motif plus long ne matchait pas, donc un refus explicite tombait
+		// en verdictUnknown et la cellule disparaissait de la matrice au
+		// lieu d'y valoir zero. Mesure du 2026-11-10, trois reseaux.
+		"not available on", "is not supported on",
 	} {
 		if strings.Contains(m, s) {
 			return verdictUnsupported
