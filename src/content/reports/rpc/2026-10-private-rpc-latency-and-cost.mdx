@@ -3,31 +3,31 @@ title: "Best private RPC provider 2026: speed and cost"
 category: "rpc"
 slug: "2026-10-private-rpc-latency-and-cost"
 publishedAt: "2026-10-28"
-updatedAt: "2026-11-10"
+updatedAt: "2026-11-11"
 period: "October 2026"
 summary: "Six API-key RPC providers measured on nine chains from three regions: who answers fastest, who bills least, and which methods reverse the order."
-heroFinding: "The fastest provider on a cheap call is not the fastest on an expensive one. Dwellir answers a tip-of-chain read in 33.6 ms and an archive read seven times slower, and the order on eth_getLogs is different again."
+heroFinding: "The fastest provider on a cheap call is not the fastest on an expensive one. Dwellir answers a tip-of-chain read on Ethereum in 21.7 ms and an archive read nine times slower, and the order on eth_getLogs is different again."
 author: "OpenChainBench Research"
 readingTime: 13
 canonical: "https://openchainbench.com/reports/rpc/2026-10-private-rpc-latency-and-cost"
 faq:
   - q: "Which private RPC provider is the fastest?"
-    a: "Quicknode. Over the seven days to 28 October 2026 it had the lowest HTTP median in 18 of 27 chain and region cells (one shared with Chainstack) and the lowest p99 in 21, with a median round trip of 7.2 ms across nine chains and three regions. It also pushed new blocks first over WebSocket in 13 of 18 cells."
+    a: "Quicknode. Over the seven days to 11 November 2026 it had the lowest HTTP median in 18 of 27 chain and region cells (one shared) and the lowest p99 in 19, with a median round trip of 6.7 ms across nine chains and three regions. It also pushed new blocks first over WebSocket in 12 of the 17 cells the race can report."
   - q: "Which private RPC provider is the cheapest?"
     a: "On a dapp workload, BlockMachine: $25 a month for 10M requests, $125 for 100M and $999 for 1B, against $130, $1,049 and $9,999 at Quicknode. For trace and debug calls Dwellir is cheaper, at $299 for 100M requests."
   - q: "What is the best RPC provider for under $50 a month?"
     a: "Chainstack. Its $49 Growth plan covers 20M dapp requests a month, or 10M archive and trace requests, and from US East it had the lowest median latency of all six providers, 2.9 ms."
   - q: "Which private RPC provider supports trace_block?"
-    a: "Measured rather than read off a documentation page, over the 24 hours to 4 November 2026: BlockMachine serves trace_block on 71.4% of the chains we ask it on, Chainstack 62.5%, Quicknode 50.0%, Dwellir 42.9%, GetBlock 25.0%. trace_block and debug_traceTransaction live in different client namespaces, so a provider can serve one and refuse the other on the same chain, and several do. Alchemy is absent from that list because the key we held served trace_block on no chain; Alchemy upgraded that account to an Enterprise trial on 10 November 2026 and it now answers on five of the eight EVM chains we ask, measured directly the same day."
+    a: "Measured rather than read off a documentation page, on 11 November 2026: BlockMachine serves trace_block on 71.4% of the chains we ask it on, Chainstack and Alchemy on 62.5% each, Quicknode and Dwellir on 50.0%, GetBlock on 25.0%. No provider serves it everywhere. trace_block and debug_traceTransaction live in different client namespaces, so a provider can serve one and refuse the other on the same chain, and several do."
   - q: "Is a free RPC plan enough for production?"
     a: "Rarely. The most generous free plan we price, dRPC, buys 10.5M dapp requests a month and Chainstack's buys 3M. Our own Alchemy Free key reached its 30M CU monthly cap on 24 October 2026 and refused every call on seven chains after that. That key is no longer a free one: Alchemy upgraded it to an Enterprise trial on 10 November 2026."
 ---
 
 <Summary>
-- **As of 28 October 2026, Quicknode is the fastest private RPC we measure:** a 7.2 ms median round trip, the lowest median in 18 of 27 chain and region cells (one shared with Chainstack) and the lowest p99 in 21. Over WebSocket it pushes new blocks first in 13 of 18 cells.
-- **BlockMachine is the cheapest and the slowest.** A dapp workload costs $25 a month for 10M requests and $999 for 1B, against $130 and $9,999 at Quicknode. Its median round trip from US East is 113 ms.
-- **Chainstack is the value pick.** $49 covers 20M dapp requests, and from US East it has the lowest median of the six (2.9 ms). From Singapore its median rises to 11.5 ms.
-- <Mark>The ranking changes with the region.</Mark> Dwellir answers in 3.8 ms from Singapore and 75 ms from US East (medians); Chainstack is four times slower from Singapore than from Virginia.
+- **As of 11 November 2026, Quicknode is the fastest private RPC we measure:** a 6.7 ms median round trip, the lowest median in 18 of 27 chain and region cells (one shared) and the lowest p99 in 19. Over WebSocket it pushes new blocks first in 12 of the 17 cells the race can report.
+- **BlockMachine is the cheapest and the slowest.** A dapp workload costs $25 a month for 10M requests and $999 for 1B, against $130 and $9,999 at Quicknode. Its median round trip from US East is 112 ms.
+- **Chainstack is the value pick, and the most regional.** $49 covers 20M dapp requests, and from US East it has the lowest median of the six (2.9 ms). From Singapore its median is 39.3 ms.
+- <Mark>The ranking changes with the region.</Mark> Dwellir answers in 3.7 ms from Singapore and 74.9 ms from US East (medians); Chainstack is thirteen times slower from Singapore than from Virginia.
 - The same 100M dapp requests cost between $125 and $1,255 a month across the six we probe: Quicknode, Chainstack, GetBlock, Alchemy, Dwellir and BlockMachine. Trace is the exception to BlockMachine's lead: Dwellir is cheapest there, $299 at 100M.
 </Summary>
 
@@ -39,12 +39,12 @@ The six are the providers we hold a key for and probe continuously: [Quicknode](
 
 | Need | Pick | Measured |
 |---|---|---|
-| Lowest latency, any region | <L s="quicknode">**[Quicknode](/products/quicknode)**</L> | Fastest median in 18 of 27 cells (one shared), fastest p99 in 21; median p99 9.2 ms. First to push new blocks in 13 of 18 WebSocket cells. |
+| Lowest latency, any region | <L s="quicknode">**[Quicknode](/products/quicknode)**</L> | Fastest median in 18 of 27 cells (one shared), fastest p99 in 19; median p99 11.6 ms. First to push new blocks in 12 of the 17 WebSocket cells the race can report. |
 | Under $50 a month, US or EU users | <L s="chainstack">**[Chainstack](/products/chainstack)**</L> | $49 Growth covers 20M dapp requests, or 10M archive and trace requests. Median 2.9 ms from US East. |
 | Lowest bill at volume, EVM reads | <L s="blockmachine">**[BlockMachine](/products/blockmachine)**</L>, then <L s="dwellir">**[Dwellir](/products/dwellir)**</L> | BlockMachine: $125 at 100M, $999 at 1B. Dwellir costs about twice as much at 10M, 100M and 1B, and is faster in every region. |
 | Trace and debug | <L s="dwellir">**[Dwellir](/products/dwellir)**</L> | One credit per response, trace included: $299 at 100M, $1,999 at 1B. Chainstack is next at $499 and $8,990. |
-| Solana | <L s="quicknode">**[Quicknode](/products/quicknode)**</L> | 1.3 to 7.3 ms median in the three regions. Chainstack costs a third as much at 100M ($449) but its p99 reaches 113 ms from US East and 224 ms from Singapore. |
-| Serverless or one-shot clients | <L s="getblock">**[GetBlock](/products/getblock)**</L> | Lowest median cold start, 23.7 ms, from one endpoint per region. |
+| Solana | <L s="quicknode">**[Quicknode](/products/quicknode)**</L> | 1.3 to 6.8 ms median in the three regions. Chainstack costs a third as much at 100M ($449) and is within 2 ms of it from Singapore, but its p99 reaches 80.6 ms from US East. |
+| Serverless or one-shot clients | <L s="getblock">**[GetBlock](/products/getblock)**</L> | Lowest median cold start, 19.6 ms, from one endpoint per region. |
 | No budget | <L s="drpc" n="dRPC">**[dRPC](/products/drpc)**</L> free, then <L s="chainstack">**[Chainstack](/products/chainstack)**</L> free | 10.5M and 3M dapp requests a month. |
 
 ## Speed against price
@@ -57,27 +57,27 @@ Alchemy's point combines pay-as-you-go pricing with latency measured over this w
 
 ## HTTP latency
 
-Quicknode's median sits between 2.1 and 7.7 ms in every region, and its median p99 at or under 10.5 ms. Every other provider has a region where it falls well behind.
+Quicknode's median sits between 1.9 and 7.3 ms in every region, and its median p99 at or under 16.3 ms. Every other provider has a region where it falls well behind.
 
 <RegionSpreadChart />
 
-| Provider | Median p50, US / EU / SG | Median p99, US / EU / SG | Cold p50, all cells | Success, 7 days (BlockMachine 4) | Fastest cells |
+| Provider | Median p50, US / EU / SG | Median p99, US / EU / SG | Cold p50, all cells | Success, 7 days | Fastest cells |
 |---|---|---|---|---|---|
-| <L s="quicknode">[Quicknode](/products/quicknode)</L> | 7.2 / 7.7 / 2.1 ms | 9.6 / 9.0 / 10.5 ms | 30.9 ms | 99.98% | 18 of 27, one shared |
-| <L s="chainstack">[Chainstack](/products/chainstack)</L> | 2.9 / 8.7 / 11.5 ms | 16.6 / 29.8 / 85.7 ms | 42.0 ms | 99.94% | 5 of 27, one shared |
-| <L s="getblock">[GetBlock](/products/getblock)</L> | 11.8 / 9.2 / 3.9 ms | 20.0 / 16.6 / 16.5 ms | 23.7 ms | 99.92% | 0 of 27 |
-| <L s="alchemy">[Alchemy](/products/alchemy)</L> | 7.6 / 13.3 / 5.8 ms | 35.3 / 51.8 / 19.0 ms | 27.3 ms | 55.22% | 2 of 27 |
-| <L s="dwellir">[Dwellir](/products/dwellir)</L> | 74.9 / 27.9 / 3.8 ms | 84.7 / 154 / 146 ms | 330 ms | 99.97% | 3 of 27 |
-| <L s="blockmachine">[BlockMachine](/products/blockmachine)</L> | 113 / 42.1 / 196 ms | 581 / 108 / 620 ms | 293 ms | 99.70% | 0 of 27 |
+| <L s="quicknode">[Quicknode](/products/quicknode)</L> | 6.7 / 7.3 / 1.9 ms | 9.1 / 11.5 / 16.3 ms | 31.8 ms | 100.00% | 18 of 27, one shared |
+| <L s="alchemy">[Alchemy](/products/alchemy)</L> | 7.5 / 13.5 / 6.0 ms | 28.4 / 40.2 / 22.5 ms | 23.9 ms | 100.00% | 2 of 27 |
+| <L s="chainstack">[Chainstack](/products/chainstack)</L> | 2.9 / 8.6 / 39.3 ms | 31.0 / 23.7 / 56.2 ms | 41.3 ms | 99.90% | 5 of 27, one shared |
+| <L s="getblock">[GetBlock](/products/getblock)</L> | 11.7 / 9.2 / 3.7 ms | 52.8 / 25.0 / 17.6 ms | 19.6 ms | 99.60% | 0 of 27 |
+| <L s="dwellir">[Dwellir](/products/dwellir)</L> | 74.9 / 21.6 / 3.7 ms | 82.3 / 36.0 / 181 ms | 191 ms | 100.00% | 3 of 27 |
+| <L s="blockmachine">[BlockMachine](/products/blockmachine)</L> | 112 / 37.9 / 186 ms | 527 / 185 / 630 ms | 281 ms | 99.80% | 0 of 27 |
 
 What the medians hide, provider by provider:
 
-- **[Quicknode](/products/quicknode)** reads 163 ms on Arc and 66 ms on Robinhood from Singapore, as if those two chains were served from outside Asia. Its Ethereum p99 from Singapore is 176 ms.
-- **[Chainstack](/products/chainstack)** is the fastest provider from US East, 2.4 to 3.1 ms on six chains. From Singapore it reads 39 ms on Ethereum and Robinhood, 70 ms on HyperEVM and 83 ms on Polygon.
-- **[GetBlock](/products/getblock)** never has the fastest median but is never far off, except on HyperEVM from US East (235 ms). It returned 88 stale blocks in 7 days, the most in the cohort.
-- **[Alchemy](/products/alchemy)**'s 55% success rate is our plan, not its network. The Free key on seven chains hit its 30M CU cap on 24 October and failed every call until the quota reset at the start of November. On HyperEVM and Robinhood, where we hold an enterprise key, it answered 100% of calls. Alchemy upgraded the seven-chain account to an Enterprise trial on 10 November 2026: every one of the nine chains reads 100% over the 24 hours to that date, with no quota pause in the 30 days of retention behind it.
-- **[Dwellir](/products/dwellir)** answers in about 75 ms from US East on five of its eight chains and 96 ms on Arbitrum; Base and Robinhood are the exceptions at 2.4 to 2.7 ms. A new connection costs it a median of 113 to 333 ms depending on region.
-- **[BlockMachine](/products/blockmachine)** is the slowest in every region, best from EU West (42 ms median), and had the most timeouts: 153 in four days. It joined the cohort on 24 October.
+- **[Quicknode](/products/quicknode)** leads 18 of the 27 chain and region cells on the median and 19 on the p99, the widest margin in the cohort, and answers 100% of calls.
+- **[Chainstack](/products/chainstack)** is still the fastest provider from US East at a 2.9 ms median, and still the most uneven: its Singapore median is 39.3 ms, thirteen times its US East figure.
+- **[GetBlock](/products/getblock)** never has the fastest median but owns the lowest cold start in the cohort at 19.6 ms, from one endpoint per region.
+- **[Alchemy](/products/alchemy)** answers 100% of calls and reads the second lowest median overall at 7.5 ms. The 55% this report carried until 10 November was our plan and never its network: the Free key on seven chains hit its 30M CU cap on 24 October and failed every call until the quota reset. Alchemy upgraded that account to an Enterprise trial on 10 November 2026, and the figures above are measured on it.
+- **[Dwellir](/products/dwellir)** answers in 74.9 ms at the median from US East against 3.7 ms from Singapore, the widest regional spread in the cohort. A new connection costs it 191 ms at the median.
+- **[BlockMachine](/products/blockmachine)** is the slowest in every region, best from EU West at a 37.9 ms median against 186 ms from Singapore, and carries the heaviest tail at a 527 ms p99 from US East.
 
 <LatencyHeatmap />
 
@@ -85,41 +85,42 @@ Sub-10 ms values mostly measure the distance between our probe and the provider'
 
 ## WebSocket push
 
-Quicknode delivers new blocks first in 13 of 18 chain and region cells, on Base, BNB Chain and Polygon by a wide margin, and on Arc from EU West and Singapore (100%). The exceptions are Ethereum, where GetBlock's regional sockets win from US East (97%) and Singapore (76%), and HyperEVM, where each region has a different leader.
+Quicknode delivers new blocks first in 12 of the 17 cells the race can report, on Base, BNB Chain, Polygon and Arc by a wide margin. The exceptions are Ethereum, where GetBlock's regional sockets win from US East (98%) and Singapore (78%), and HyperEVM, where Dwellir leads two regions and GetBlock the third.
 
 <WsFirstChart />
 
-- **Chainstack's Polygon socket trails the first push by 0.75 to 1 s** at the median in every region. It also dropped the most connections: 23 in 7 days, against 12 for Dwellir, 3 for Quicknode and 2 for GetBlock.
-- **Dwellir's Ethereum pushes arrive 0.47 to 0.71 s late** at the median and up to 1.6 s at p90.
-- **HyperEVM has no reliable leader.** Even the winning provider's p90 lag runs 170 to 350 ms in each region.
+- **Chainstack is first on nothing on Polygon**, 0% in both regions the race can report. It also dropped the most connections: 18 in 7 days, against one each for Dwellir and GetBlock and none for Quicknode.
+- **Ethereum is the one chain where the socket and the HTTP endpoint disagree by provider.** GetBlock takes 98% of US East pushes and 78% of Singapore while never holding the fastest HTTP median anywhere.
+- **HyperEVM still has no reliable leader.** Dwellir takes US East (56%) and Singapore (67%), GetBlock takes EU West (46%), and no provider passes 70% in any region.
 
-Alchemy left the WebSocket race on 15 October, because it bills each pushed message and the key, a Free plan one then, could not carry it. The Enterprise trial of 10 November lifts the free monthly cap but not the per-message billing, so the exclusion stands until the probe has a message budget guard; BlockMachine has not been added yet. Solana, Arbitrum and Robinhood were taken out of the race on 17 October: they produced 73% of all pushes, and one provider's monthly message limit had been reached.
+Alchemy left the WebSocket race on 15 October, because it bills each pushed message and the key, a Free plan one then, could not carry it. The Enterprise trial of 10 November lifts the free monthly cap but not the per-message billing, so the exclusion stands until the probe has a message budget guard; BlockMachine has not been added yet. Arbitrum and Robinhood were taken out of the race on 17 October: they produced 73% of all pushes, and one provider's monthly message limit had been reached.
+
+Solana came back to the race on 5 November and its cells are still withheld, for a reason that has nothing to do with the providers. Over these 7 days Quicknode's Solana socket held its subscription for 16.6% of the clock against 8.3% for Chainstack, GetBlock and FluxRPC, which is to say it was listening for twice as long. A race whose competitors are not on the track for the same share of it cannot be read as a race, whichever way the numbers fall, so the three Solana cells and Polygon EU West are left out: in that last one every provider was listening the same length of time, but GetBlock reported 15% more head events than there were blocks, and the choice of denominator alone moves Quicknode between 75% and 86%. FluxRPC therefore has no published cell here at all, Solana being the only chain it serves.
 
 <details className="mt-6">
 <summary>Lag behind the first push, every cell</summary>
 
-Share of blocks pushed first · lag p50 / p90 in ms. n/a: GetBlock has no socket for that chain in that region.
+Share of the blocks the race ran that each provider delivered first, so a row sums to 100. The lag behind the first push is deliberately not shown: the winner of a race is the reference it is measured against, so its own lag reads near zero by definition rather than by speed. n/a: GetBlock has no socket for that chain in that region.
 
 | Chain | Region | Quicknode | Chainstack | GetBlock | Dwellir |
 |---|---|---|---|---|---|
-| <L s="ethereum" n="Ethereum">[Ethereum](/benchmarks/ethereum-rpc-ws)</L> | US East | 2% · 109 / 159 | 1% · 133 / 247 | **97% · 0.3 / 0.5** | 0% · 714 / 1631 |
-| <L s="ethereum" n="Ethereum">[Ethereum](/benchmarks/ethereum-rpc-ws)</L> | EU West | **58% · 0.4 / 123** | 5% · 80.9 / 221 | 28% · 58.5 / 158 | 8% · 645 / 1607 |
-| <L s="ethereum" n="Ethereum">[Ethereum](/benchmarks/ethereum-rpc-ws)</L> | Singapore | 15% · 48.3 / 132 | 1% · 133 / 300 | **76% · 0.3 / 33.4** | 8% · 467 / 1563 |
-| <L s="base" n="Base">[Base](/benchmarks/base-rpc-ws)</L> | US East | **72% · 0.3 / 5.1** | 4% · 11.7 / 36.8 | 0% · 21.6 / 47.9 | 24% · 7.7 / 28.5 |
-| <L s="base" n="Base">[Base](/benchmarks/base-rpc-ws)</L> | EU West | **95% · 0.3 / 0.5** | 0% · 44.5 / 90.8 | 0% · 21.7 / 44.3 | 5% · 47.4 / 84.0 |
-| <L s="base" n="Base">[Base](/benchmarks/base-rpc-ws)</L> | Singapore | **79% · 0.3 / 4.8** | 0% · 75.7 / 301 | 20% · 16.9 / 257 | 1% · 29.6 / 125 |
-| <L s="bnb" n="BNB Chain">[BNB Chain](/benchmarks/bnb-rpc-ws)</L> | US East | **92% · 0.3 / 0.5** | 5% · 49.2 / 166 | 3% · 59.4 / 382 | 0% · 104 / 228 |
-| <L s="bnb" n="BNB Chain">[BNB Chain](/benchmarks/bnb-rpc-ws)</L> | EU West | **88% · 0.3 / 3.5** | 3% · 52.3 / 152 | 9% · 30.5 / 199 | 1% · 82.6 / 268 |
-| <L s="bnb" n="BNB Chain">[BNB Chain](/benchmarks/bnb-rpc-ws)</L> | Singapore | **71% · 0.3 / 26.0** | 5% · 60.0 / 163 | 20% · 32.7 / 401 | 4% · 55.6 / 249 |
-| <L s="polygon" n="Polygon">[Polygon](/benchmarks/polygon-rpc-ws)</L> | US East | **87% · 0.3 / 3.0** | 0% · 864 / 1077 | 13% · 20.9 / 59.8 | 0% · 109 / 348 |
-| <L s="polygon" n="Polygon">[Polygon](/benchmarks/polygon-rpc-ws)</L> | EU West | **88% · 0.3 / 1.0** | 0% · 749 / 1043 | 12% · 13.4 / 34.8 | 0% · 155 / 493 |
-| <L s="polygon" n="Polygon">[Polygon](/benchmarks/polygon-rpc-ws)</L> | Singapore | **95% · 0.3 / 0.5** | 0% · 1019 / 1663 | 5% · 22.7 / 50.9 | 0% · 144 / 655 |
-| <L s="hyperliquid" n="HyperEVM">[HyperEVM](/benchmarks/hyperliquid-rpc-ws)</L> | US East | 25% · 65.6 / 236 | **41% · 22.9 / 173** | n/a | 34% · 80.0 / 416 |
-| <L s="hyperliquid" n="HyperEVM">[HyperEVM](/benchmarks/hyperliquid-rpc-ws)</L> | EU West | 9% · 229 / 418 | 7% · 245 / 472 | **64% · 0.4 / 227** | 21% · 163 / 625 |
-| <L s="hyperliquid" n="HyperEVM">[HyperEVM](/benchmarks/hyperliquid-rpc-ws)</L> | Singapore | 21% · 160 / 360 | 4% · 232 / 385 | n/a | **75% · 0.3 / 350** |
-| <L s="arc" n="Arc">[Arc](/benchmarks/arc-rpc-ws)</L> | US East | **56% · 0.4 / 19.0** | 38% · 12.7 / 67.6 | 6% · 29.4 / 86.1 | 0% · 195 / 253 |
-| <L s="arc" n="Arc">[Arc](/benchmarks/arc-rpc-ws)</L> | EU West | **100% · 0.3 / 0.5** | 0% · 55.5 / 98.1 | 0% · 47.0 / 95.3 | 0% · 89.7 / 233 |
-| <L s="arc" n="Arc">[Arc](/benchmarks/arc-rpc-ws)</L> | Singapore | **100% · 0.3 / 0.5** | 0% · 77.9 / 135 | n/a | 0% · 79.0 / 136 |
+| <L s="ethereum" n="Ethereum">[Ethereum](/benchmarks/ethereum-rpc-ws)</L> | US East | 1% | 1% | **98%** | 0% |
+| <L s="ethereum" n="Ethereum">[Ethereum](/benchmarks/ethereum-rpc-ws)</L> | EU West | **66%** | 4% | 24% | 6% |
+| <L s="ethereum" n="Ethereum">[Ethereum](/benchmarks/ethereum-rpc-ws)</L> | Singapore | 15% | 1% | **78%** | 5% |
+| <L s="base" n="Base">[Base](/benchmarks/base-rpc-ws)</L> | US East | **81%** | 7% | 1% | 12% |
+| <L s="base" n="Base">[Base](/benchmarks/base-rpc-ws)</L> | EU West | **97%** | 2% | 1% | 0% |
+| <L s="base" n="Base">[Base](/benchmarks/base-rpc-ws)</L> | Singapore | **98%** | 0% | 1% | 1% |
+| <L s="bnb" n="BNB Chain">[BNB Chain](/benchmarks/bnb-rpc-ws)</L> | US East | **93%** | 4% | 3% | 0% |
+| <L s="bnb" n="BNB Chain">[BNB Chain](/benchmarks/bnb-rpc-ws)</L> | EU West | **91%** | 2% | 5% | 1% |
+| <L s="bnb" n="BNB Chain">[BNB Chain](/benchmarks/bnb-rpc-ws)</L> | Singapore | **63%** | 6% | 25% | 6% |
+| <L s="polygon" n="Polygon">[Polygon](/benchmarks/polygon-rpc-ws)</L> | US East | **82%** | 0% | 17% | 0% |
+| <L s="polygon" n="Polygon">[Polygon](/benchmarks/polygon-rpc-ws)</L> | Singapore | **88%** | 0% | 12% | 0% |
+| <L s="arc" n="Arc">[Arc](/benchmarks/arc-rpc-ws)</L> | US East | **56%** | 37% | 6% | 0% |
+| <L s="arc" n="Arc">[Arc](/benchmarks/arc-rpc-ws)</L> | EU West | **100%** | 0% | 0% | 0% |
+| <L s="arc" n="Arc">[Arc](/benchmarks/arc-rpc-ws)</L> | Singapore | **100%** | 0% | n/a | 0% |
+| <L s="hyperliquid" n="HyperEVM">[HyperEVM](/benchmarks/hyperliquid-rpc-ws)</L> | US East | 28% | 16% | n/a | **56%** |
+| <L s="hyperliquid" n="HyperEVM">[HyperEVM](/benchmarks/hyperliquid-rpc-ws)</L> | EU West | 19% | 2% | **46%** | 34% |
+| <L s="hyperliquid" n="HyperEVM">[HyperEVM](/benchmarks/hyperliquid-rpc-ws)</L> | Singapore | 24% | 9% | n/a | **67%** |
 
 </details>
 
@@ -223,22 +224,31 @@ on a lower-is-better view it would otherwise sort first.
 Asked as one flag, every provider passes. Split by filter shape and by width,
 they separate. The ladder climbs 100, 500, 1,000, 2,000, 10,000, 100,000 and
 1,000,000 blocks and stops at the first refusal, so the figure is the widest
-window accepted, on Ethereum:
+window accepted, on Ethereum from US East:
 
 | Provider | Address filter | Topic filter |
 |---|---|---|
+| <L s="alchemy">Alchemy</L> | over 1,000,000 blocks | over 1,000,000 |
 | <L s="chainstack">Chainstack</L> | 10,000 blocks | 10,000 |
 | <L s="blockmachine">BlockMachine</L> | 10,000 | 10,000 |
 | <L s="quicknode">Quicknode</L> | 10,000 | 10,000 |
 | <L s="getblock">GetBlock</L> | 1,000 | 1,000 |
 | <L s="dwellir">Dwellir</L> | 500 | 500 |
 
-That is a twentyfold spread between the widest and the narrowest, and it is
-the number that decides how fast an indexer can backfill. A provider that
-admits 500 blocks needs twenty times the round trips of one that admits
-10,000 for the same range. The filters are built to match nothing, so what
-this measures is the static guard that trips before any work, not how much
-data will actually come back.
+Alchemy's row says "over" because the ladder ran out before the provider
+did: every rung passed, including a million blocks, so that figure is a
+floor and not a guard we found. Among the five whose guard did trip, the
+spread is twentyfold, and it is the number that decides how fast an indexer
+can backfill. A provider that admits 500 blocks needs twenty times the round
+trips of one that admits 10,000 for the same range.
+
+Two cautions on reading this table. The filters are built to match nothing,
+so what it measures is the static guard that trips before any work, not how
+much data will actually come back: asked for a real contract's logs over
+5,000 blocks, Alchemy refuses on response size rather than on range. And the
+guard can be regional. GetBlock admits 10,000 blocks from EU West against
+the 1,000 above, which is the only case in the cohort where the same plan
+answers this question differently depending on where the caller sits.
 
 ### Trace is where the cohort separates
 
@@ -249,8 +259,9 @@ everywhere. `trace_block` is the one that disagrees:
 |---|---|---|
 | <L s="blockmachine">BlockMachine</L> | 95.9% | 71.4% of chains |
 | <L s="chainstack">Chainstack</L> | 94.6% | 62.5% |
+| <L s="alchemy">Alchemy</L> | 94.6% | 62.5% |
 | <L s="quicknode">Quicknode</L> | 91.1% | 50.0% |
-| <L s="dwellir">Dwellir</L> | 88.9% | 42.9% |
+| <L s="dwellir">Dwellir</L> | 89.3% | 50.0% |
 | <L s="getblock">GetBlock</L> | 76.8% | 25.0% |
 
 `trace_block` and `debug_traceTransaction` sit in different client
@@ -258,23 +269,29 @@ namespaces, so a provider can serve one and refuse the other on the same
 chain, and several do. A documentation page that says tracing is supported
 does not tell you which one you get, or on which chains.
 
-Alchemy is absent from this table for a reason worth stating plainly. Over
-this window our key was a Free plan one, and it reached 42 of the 56 cells in
-this matrix where four of the others reach all 56. On every cell we could
-ask, it answered: 100% of the seven methods. So the gap was reach, not
-refusal, and it was a fact about the plan we held rather than about Alchemy's
-API surface.
+Alchemy is in that table for the first time, and the reason it was missing
+until 10 November is worth stating plainly. Our key was a Free plan one and
+it reached 42 of the 56 cells, where four of the others reach all 56. On
+every cell we could ask it answered, so the gap was reach and never refusal.
+Alchemy upgraded that account to an Enterprise trial on 10 November 2026 and
+the row above is measured on it: 53 cells of 56, and `trace_block` on five
+chains of eight, which ties Chainstack.
 
-That plan changed on 10 November 2026, when Alchemy upgraded the seven-chain
-account to an Enterprise trial. Measured directly against the endpoints the
-same day, `debug_traceTransaction` answers on all eight EVM chains where the
-free key served it on two, and `trace_block` answers on five: Ethereum, Base,
-Polygon, BNB Chain and Arc. The three that still refuse `trace_block` reply
-that the method is not available on that network, which is a per-network
-absence rather than a plan gate, and Arbitrum's `arbtrace_block` exists but
-serves only pre-Nitro blocks. The matrix above is the October measurement;
-the boards carry the new count after the next capability pass, which runs
-every six hours.
+The three cells it still does not serve are not a plan gate. Asked for
+`trace_block` on Arbitrum, HyperEVM or Robinhood Chain the endpoint answers
+that the method is not available on that network, and Arbitrum's
+`arbtrace_block` exists but serves only pre-Nitro blocks. That is a
+per-network absence, the same kind that puts GetBlock at 25%.
+
+One detail of our own instrument belongs here, because it moved a number.
+Those three refusals are explicit, but the probe files them as unclassified
+rather than as refusals, so they are missing from the matrix instead of
+sitting in it as zeros. Divide by what answered rather than by what was
+asked and Alchemy reads 53 of 53, a tidy 100% that would make it the only
+provider serving `trace_block` everywhere. The figures above divide by what
+was asked. The classifier matches the phrase "not available on this network"
+and Alchemy writes "not available on the ARB_MAINNET", which is the whole
+of the bug.
 
 The plan showed itself once, clearly. Success on Ethereum held at 100% to 23
 October, fell to 80% on the 24th, sat at 22% from the 25th to the 31st, and
@@ -292,20 +309,31 @@ against the SPL Token program with a size filter, against the Memo program
 which has a small account population, and in its paginated `getProgramAccountsV2`
 form.
 
-The small-program form is served by all four providers we hold a Solana key
-for. The SPL Token form, which is the expensive one, came back with no
-classifiable answer at all from two of the four, so those two carry no
-verdict rather than a zero. The paginated v2 form is served by one of the
-four. For anyone planning around the v2 surface, that is the number that
-matters, and it is not in any documentation table we could find.
+We now hold a Solana key for six providers, and the small-program form is
+served by all six. The paginated v2 form is served by two, Alchemy and
+Helius, and refused outright by three: Chainstack, GetBlock and Quicknode.
+FluxRPC is the sixth and it carries no verdict rather than a refusal, because
+its answer to that call could not be classified either way. For anyone
+planning around the v2 surface that split is the number that matters, and it
+is not in any documentation table we could find.
 
-The reviewer named two Solana-native providers to compare against. Helius is
-in the cohort as of 30 October, on a Free plan key, and it is the only one of
-the four that serves the v2 form. Triton is not in the cohort and cannot be:
-it has no free tier, and this report only measures keys we actually hold. So
-the Solana comparison is one native provider against three generalists today,
-which is weaker than what was asked for and worth saying rather than
-glossing.
+Alchemy only joined that pair on 10 November, with the Enterprise trial. It
+is worth naming the refusals rather than counting the servers, because the
+count is what went wrong before: a sentence built on "one of four" survived
+into production reading "nobody serves it" when the cohort changed underneath
+it.
+
+The reviewer named two Solana-native providers to compare against. Helius has
+been in the cohort since 30 October on a Free plan key. FluxRPC joined on 5
+November, on an account FluxRPC provided, and it is the most regional of the
+six: 1.8 ms at the median from EU West, within a hair of Quicknode's 1.5, and
+179 ms from Singapore. It is also the only one of the six under 100% on
+success over these seven days, at 95.4%, with 28 dropped WebSocket
+connections. Triton is not in the
+cohort and cannot be: it has no free tier, and this report only measures keys
+we actually hold. So the Solana comparison is two native providers against
+four generalists, which is closer to what was asked for than the one against
+three this report carried in October.
 
 ### The Beacon API, measured off the boards
 
@@ -408,9 +436,9 @@ The allowance is rarely the binding limit. GetBlock's 50,000 CU a day lasts 125 
 | HyperEVM | <L s="quicknode">[Quicknode](/products/quicknode)</L> | Region-specific | The only provider under 10 ms in all three regions over HTTP. Over WebSocket, pick the leader of your region. |
 | Dapp backend, US or EU, under $50 | <L s="chainstack">[Chainstack](/products/chainstack)</L> | <L s="quicknode">[Quicknode](/products/quicknode)</L> | $49 for 20M requests; 2.9 ms median from US East, 8.7 ms from EU West. |
 | High-volume reads, cost first | <L s="blockmachine">[BlockMachine](/products/blockmachine)</L> | <L s="dwellir">[Dwellir](/products/dwellir)</L> | $125 at 100M. Expect 40 to 200 ms and keep a faster endpoint for user-facing paths. |
-| Indexer or archive backfill | <L s="blockmachine">[BlockMachine](/products/blockmachine)</L> | <L s="dwellir">[Dwellir](/products/dwellir)</L> | $125 and $299 at 100M, archive at no premium. Dwellir refused `eth_getLogs` over 2,000 blocks in our 23 October test; check the range limit of any plan before committing. |
+| Indexer or archive backfill | <L s="blockmachine">[BlockMachine](/products/blockmachine)</L> | <L s="dwellir">[Dwellir](/products/dwellir)</L> | $125 and $299 at 100M, archive at no premium. Dwellir's `eth_getLogs` guard trips above 500 blocks and GetBlock's above 1,000 from US East, against 10,000 for the other three and no limit we could find for Alchemy; check the range limit of any plan before committing. |
 | Trace and debug | <L s="dwellir">[Dwellir](/products/dwellir)</L> | <L s="chainstack">[Chainstack](/products/chainstack)</L> | $299 against $499 at 100M; both serve trace on shared plans. |
-| Serverless functions | <L s="getblock">[GetBlock](/products/getblock)</L> | <L s="quicknode">[Quicknode](/products/quicknode)</L> | Lowest median cold start, 23.7 ms. Dwellir and BlockMachine take about 300 ms per new connection. |
+| Serverless functions | <L s="getblock">[GetBlock](/products/getblock)</L> | <L s="quicknode">[Quicknode](/products/quicknode)</L> | Lowest median cold start, 19.6 ms. Dwellir takes 191 ms per new connection and BlockMachine 281 ms. |
 | Users in Asia | <L s="quicknode">[Quicknode](/products/quicknode)</L> | <L s="getblock">[GetBlock](/products/getblock)</L> | Both under 4 ms median from Singapore. Chainstack and Dwellir are uneven there. |
 | Prototype | <L s="chainstack">[Chainstack](/products/chainstack)</L> free | <L s="drpc" n="dRPC">[dRPC](/products/drpc)</L> free | 3M and 10.5M dapp requests a month. |
 
@@ -438,7 +466,7 @@ Head to head, with every bench the two share: [Alchemy vs Quicknode](/compare/al
 | <L s="quicknode">[Quicknode](/products/quicknode)</L> | Build ($49), endpoint supplied by Quicknode | 9 |
 | <L s="chainstack">[Chainstack](/products/chainstack)</L> | Growth, Global Node, endpoint supplied by Chainstack | 9 |
 | <L s="getblock">[GetBlock](/products/getblock)</L> | Enterprise, one endpoint per region, supplied by GetBlock | 9; no Singapore endpoint on Arc and Robinhood |
-| <L s="alchemy">[Alchemy](/products/alchemy)</L> | Enterprise trial on 7 chains from 10 November 2026, a Free key (30M CU a month) over this window; enterprise key on HyperEVM and Robinhood | 9 |
+| <L s="alchemy">[Alchemy](/products/alchemy)</L> | Enterprise trial on 7 chains since 10 November 2026, a Free key (30M CU a month) before that; separate enterprise key on HyperEVM and Robinhood | 9 |
 | <L s="dwellir">[Dwellir](/products/dwellir)</L> | Developer ($49, 25M responses) | 8; no Solana |
 | <L s="blockmachine">[BlockMachine](/products/blockmachine)</L> | Standard (5M Request Units), since 24 October | 7; no Solana or HyperEVM |
 
