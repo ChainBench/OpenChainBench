@@ -620,11 +620,16 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       Ported from dev #3589. Moves with all-benchmarks-v112 and
   //       bench-filters-v57; providers does NOT move, the provider registry
   //       is untouched.
-  ["bench-unfiltered-v119", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  ["bench-unfiltered-v120", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   // v118: Thyme Gate joins the public cohorts on ethereum, polygon,
   //       optimism and bnb (#3586, an outside contribution). The four
   //       endpoints were checked before merge: right chain id, a head
   //       block 0 to 10 s old, a batch of ten, 141 to 166 ms.
+  // v120: BlockVectra joins the public Optimism cohort (#3585, an outside
+  //       contribution). The endpoint was checked before merge rather than
+  //       taken on the contributor's word: chain id 0xa, a head 0 s old, a
+  //       batch of ten accepted, 230 ms. Regions and provider appearances
+  //       move with it.
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -905,8 +910,9 @@ const loadAllBenchmarksCached = unstable_cache(
   // v110: lockstep with bench-unfiltered-v117 (Afterbell on bench 030).
   // v112: lockstep with bench-unfiltered-v119 (the Alchemy plan
   //       disclosure, now an Enterprise trial).
-  ["all-benchmarks-v112", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  ["all-benchmarks-v113", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   // v111: lockstep with bench-unfiltered-v118 (Thyme Gate, four cohorts).
+  // v113: lockstep with bench-unfiltered-v120 (BlockVectra on Optimism).
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1064,9 +1070,11 @@ const loadBenchmarkFiltered = unstable_cache(
   //      region tabs.
   // v57: lockstep with bench-unfiltered-v119 (the Alchemy plan
   //      disclosure, now an Enterprise trial).
-  ["bench-filters-v57", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  ["bench-filters-v58", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   // v56: lockstep with bench-unfiltered-v118. All four benches declare
   //      regions and Thyme carries all three, so every region tab moves.
+  // v58: lockstep with bench-unfiltered-v120; the Optimism row carries all
+  //      three regions, so every region tab moves.
   { revalidate: 300, tags: ["benchmarks"] }
 );
 
