@@ -53,6 +53,10 @@ describe("the provider set behind the cache keys", () => {
     const hash = createHash("sha256").update(sets.join("\n")).digest("hex").slice(0, 16);
     const count = sets.reduce((n, s) => n + s.split(":")[1].split(",").length, 0);
 
+    // An ADDITION on 2026-11-11: BlockVectra joins the public Optimism
+    // cohort (#3585), with all three region tabs. An existing provider
+    // gains one appearance: v195/v188/v113 and providers-v66.
+    //
     // An ADDITION on 2026-11-07: BlockVectra joins the public cohorts on
     // ethereum-rpc and arbitrum-rpc (issue #3573). A provider already on
     // the site, two more appearances: v189/v182/v107 and providers-v62.
@@ -200,6 +204,6 @@ describe("the provider set behind the cache keys", () => {
         "Then set EXPECTED to the hash in this failure, and add the provider",
         `to PRODUCT_NAMES if it needs a display name. Providers now: ${count}.`,
       ].join("\n"),
-    ).toBe("84fff16ff56ce8f1");
+    ).toBe("5d1cff693ddd11e1");
   });
 });
