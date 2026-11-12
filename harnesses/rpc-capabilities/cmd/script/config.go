@@ -577,6 +577,7 @@ func chains() []Chain {
 				{Slug: "worldchain-official", Name: "World Chain", URL: envDefault("RPC_URL_WORLDCHAIN_OFFICIAL", "https://worldchain-mainnet.g.alchemy.com/public")},
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_WORLDCHAIN_DRPC", "https://worldchain.drpc.org")},
 				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_WORLDCHAIN_TENDERLY", "https://worldchain-mainnet.gateway.tenderly.co")},
+				{Slug: "blockvectra", Name: "BlockVectra", URL: envDefault("RPC_URL_WORLDCHAIN_BLOCKVECTRA", "https://api.blockvectra.com/v1/world_mainnet/public")},
 			},
 		},
 		// ─── Ink (bench 099) — added 2026-07-24. OP Stack rollup
@@ -1021,6 +1022,7 @@ func chains() []Chain {
 			Providers: []Provider{
 				{Slug: "boba-official", Name: "Boba Foundation", URL: envDefault("RPC_URL_BOBA_OFFICIAL", "https://mainnet.boba.network")},
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_BOBA_DRPC", "https://boba-eth.drpc.org")},
+				{Slug: "blockvectra", Name: "BlockVectra", URL: envDefault("RPC_URL_BOBA_BLOCKVECTRA", "https://api.blockvectra.com/v1/boba_mainnet/public")},
 			},
 		},
 		// XDC Network — Enterprise EVM L1 (chain 50). 4 keyless providers.

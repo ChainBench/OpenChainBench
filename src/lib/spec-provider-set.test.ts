@@ -53,7 +53,14 @@ describe("the provider set behind the cache keys", () => {
     const hash = createHash("sha256").update(sets.join("\n")).digest("hex").slice(0, 16);
     const count = sets.reduce((n, s) => n + s.split(":")[1].split(",").length, 0);
 
-    // Recorded on 2026-11-12 on main with bench-unfiltered-v120,
+    // Recorded on 2026-11-12 on main with bench-unfiltered-v122,
+    // all-benchmarks-v115, bench-filters-v60, providers-v36: BlockVectra
+    // joins the public Boba and World Chain cohorts (#3594). Two more
+    // appearances for a provider already on the site, all three region
+    // tabs on each. Probed before merge: chain id 0x120 and 0x1e0, heads
+    // 0 and 1 s old, a batch of ten accepted.
+    //
+    // Previously recorded on 2026-11-12 on main with bench-unfiltered-v120,
     // all-benchmarks-v113, bench-filters-v58, providers-v35: BlockVectra
     // joins the public Optimism cohort (#3585), an outside contribution.
     // A provider already on the site, one more appearance, and all three
@@ -135,6 +142,6 @@ describe("the provider set behind the cache keys", () => {
         "Then set EXPECTED to the hash in this failure, and add the provider",
         `to PRODUCT_NAMES if it needs a display name. Providers now: ${count}.`,
       ].join("\n"),
-    ).toBe("baf3f1349ba7ea04");
+    ).toBe("2d9b06c28a9b44a1");
   });
 });
