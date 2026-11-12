@@ -26,7 +26,7 @@ import { Pill } from "@/components/pill";
 import { ProviderLogo } from "@/components/provider-logo";
 import { SITE } from "@/data/site";
 import { buildBreadcrumbJsonLd, safeJsonLd } from "@/lib/jsonld";
-import { capDescription, capSnippet } from "@/lib/seo-text";
+import { padSnippet } from "@/lib/seo-text";
 import { matchesChainSlug } from "@/lib/chain-aliases";
 import type { Benchmark } from "@/types/benchmark";
 import { withUtm } from "@/lib/utm";
@@ -51,9 +51,17 @@ export async function generateMetadata({
   const benches = await getBenchmarksForChain(slug);
   const url = `${SITE.url}/chains/${slug}`;
   const title = `${chain.label} live benchmarks: finality, fees, RPC`;
-  const description = capSnippet(
-    `${benches.length} live OpenChainBench measurement${benches.length === 1 ? "" : "s"} covering ${chain.label}. ${chain.description}`,
-  );
+  // The registry description joined whole and capSnippet cut it at its
+  // first comma, so /chains/ethereum shipped 88 characters ending in "EVM
+  // Layer 1. EIP-1559 fee market." and Bing flagged it as too short
+  // (export 2026-11-12). Its sentences now join one at a time, each whole,
+  // then lines that hold for every chain hub fill what room is left.
+  const lead = `${benches.length} live OpenChainBench measurement${benches.length === 1 ? "" : "s"} covering ${chain.label}.`;
+  const description = padSnippet(lead, [
+    ...chain.description.split(/(?<=[.!?])\s+(?=[A-Z0-9])/),
+    "Every figure comes from a live, reproducible benchmark.",
+    "Methodology and raw data are public.",
+  ]);
   return {
     title,
     description,

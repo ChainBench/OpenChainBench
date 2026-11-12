@@ -24,7 +24,7 @@ import { ProviderLogo } from "@/components/provider-logo";
 import { CATEGORY_COLOR } from "@/lib/category-colors";
 import { fmtUnit, valueWindowLabel } from "@/lib/format";
 import { valueQualifier } from "@/lib/value-window";
-import { capDescription, capSnippet } from "@/lib/seo-text";
+import { capDescription, capSnippet, padSnippet } from "@/lib/seo-text";
 import { SITE } from "@/data/site";
 import {
   getProviderRegistry,
@@ -139,7 +139,12 @@ function firstClause(line: string): string {
     clause = `${clause} ${parts[i]}`;
     i += 1;
   }
-  return clause.replace(/[,;:\s]+$/, "");
+  // The caller closes the clause with its own period. A one-sentence
+  // registry line kept its period here, and the product snippet shipped
+  // "Multi-chain DEX aggregator.." on /products/openocean and
+  // "Onchain analytics platform.." on /products/dune (Bing export
+  // 2026-11-12).
+  return clause.replace(/[.,;:\s]+$/, "");
 }
 
 function shortBenchLabel(b: { slug: string; title: string; category: string; metric: string }): string {
@@ -398,6 +403,17 @@ export async function generateMetadata({
       );
     }
   }
+
+  // A product measured on one bench, or one whose ranks do not fit, kept a
+  // 53 to 99 character snippet; Bing flagged 38 product pages as too short
+  // (export 2026-11-12). Whole sentences that hold for every product page
+  // fill the room up to the snippet budget; padSnippet never cuts one.
+  description = padSnippet(description, [
+    registryClause && !description.includes(registryClause) ? registryClause : "",
+    `See how ${p.name} compares with the other providers on the same ${benchWord}.`,
+    "Each figure links to its methodology and raw data.",
+    "Methodology and raw data are public.",
+  ]);
 
   // When the resolved provider slug is actually a chain (e.g. /products/eth-usd
   // aliases to /products/ethereum which 308s to /chains/ethereum), point
