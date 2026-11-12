@@ -1287,7 +1287,7 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   blockvectra: {
     url: "https://blockvectra.com",
     description:
-      "RPC gateway with keyless public endpoints (3 requests per second per IP, 1,000-block history window). Listed on the Ink, Unichain, Fraxtal, Katana, Ethereum, Arbitrum and Optimism RPC pages.",
+      "RPC gateway with keyless public endpoints (3 requests per second per IP, 1,000-block history window). Listed on the Ink, Unichain, Fraxtal, Katana, Ethereum, Arbitrum, Optimism, Boba and World Chain RPC pages.",
   },
   au: {
     url: "https://au.cc",
