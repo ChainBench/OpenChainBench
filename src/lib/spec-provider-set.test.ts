@@ -53,7 +53,15 @@ describe("the provider set behind the cache keys", () => {
     const hash = createHash("sha256").update(sets.join("\n")).digest("hex").slice(0, 16);
     const count = sets.reduce((n, s) => n + s.split(":")[1].split(",").length, 0);
 
-    // Recorded on 2026-11-10 on main with bench-unfiltered-v118,
+    // Recorded on 2026-11-12 on main with bench-unfiltered-v120,
+    // all-benchmarks-v113, bench-filters-v58, providers-v35: BlockVectra
+    // joins the public Optimism cohort (#3585), an outside contribution.
+    // A provider already on the site, one more appearance, and all three
+    // region tabs. The endpoint was probed before merge: chain id 0xa, a
+    // head 0 s old, a batch of ten accepted, 230 ms. The numbering is
+    // main's own, not dev's: the branches diverged in October.
+    //
+    // Previously recorded on 2026-11-10 on main with bench-unfiltered-v118,
     // all-benchmarks-v111, bench-filters-v56, providers-v34: Thyme Gate
     // joins the public cohorts on ethereum, polygon, optimism and bnb
     // (#3586, an outside contribution). New to the site, so providers-v
@@ -127,6 +135,6 @@ describe("the provider set behind the cache keys", () => {
         "Then set EXPECTED to the hash in this failure, and add the provider",
         `to PRODUCT_NAMES if it needs a display name. Providers now: ${count}.`,
       ].join("\n"),
-    ).toBe("aa79de7b659cf4ec");
+    ).toBe("baf3f1349ba7ea04");
   });
 });
