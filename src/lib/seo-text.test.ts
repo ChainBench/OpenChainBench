@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { capDescription, capSnippet } from "./seo-text";
+import { capDescription, capSnippet, padSnippet } from "./seo-text";
 
 // The 2026-09-22 audit found 5 of 29 sampled pages shipping a meta
 // description cut mid-clause with an ellipsis, /products/mobula's
@@ -97,5 +97,34 @@ describe("capSnippet uses the budget it is given", () => {
       expect(out.length).toBeLessThanOrEqual(156);
       expect(out).not.toMatch(/[,;:\s]\.$/);
     }
+  });
+});
+
+describe("padSnippet", () => {
+  test("appends whole sentences until the floor is reached", () => {
+    const out = padSnippet("Lisk reviewed across 1 live benchmark.", [
+      "Latency and success rate are measured every minute from three regions.",
+      "Methodology and raw data are public.",
+      "This one would overflow the budget and must never be cut in half anywhere at all.",
+    ]);
+    expect(out).toBe(
+      "Lisk reviewed across 1 live benchmark. Latency and success rate are measured every minute from three regions. Methodology and raw data are public.",
+    );
+    expect(out.length).toBeLessThanOrEqual(155);
+  });
+
+  test("skips an extra that does not fit and tries the next", () => {
+    const base = "x".repeat(100) + ".";
+    const out = padSnippet(base, ["y".repeat(80) + ".", "Short and sweet."]);
+    expect(out).toBe(`${base} Short and sweet.`);
+  });
+
+  test("leaves a description that already meets the floor alone", () => {
+    const base = "z".repeat(145) + ".";
+    expect(padSnippet(base, ["More."])).toBe(base);
+  });
+
+  test("closes an unterminated input and extra with a period", () => {
+    expect(padSnippet("Short", ["Second"], 10)).toBe("Short. Second.");
   });
 });

@@ -145,5 +145,7 @@ export const config = {
     "/products/goldrush",
     "/products/zerion",
     "/products/routescan",
+    "/products/bankr",
+    "/products/soneium-official",
   ],
 };
