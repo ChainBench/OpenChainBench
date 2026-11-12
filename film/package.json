@@ -1,0 +1,30 @@
+{
+  "name": "ocb-film",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "OpenChainBench brand film, rendered from the live API",
+  "scripts": {
+    "data": "tsx scripts/fetch-data.ts",
+    "studio": "remotion studio src/index.ts",
+    "still": "remotion still src/index.ts OCBFilm",
+    "render": "remotion render src/index.ts OCBFilm out/ocb-film.mp4 --gl=swangle",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@react-three/drei": "^10.7.8",
+    "@react-three/fiber": "^9.7.0",
+    "@remotion/cli": "^4.0.290",
+    "@remotion/three": "^4.0.506",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "remotion": "^4.0.290",
+    "three": "^0.185.1"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "@types/three": "^0.185.4",
+    "tsx": "^4.19.0",
+    "typescript": "^5.0.0"
+  }
+}
