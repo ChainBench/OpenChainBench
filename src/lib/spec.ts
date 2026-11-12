@@ -1023,7 +1023,14 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       other. Moves with all-benchmarks-v187 and bench-filters-v112;
   //       providers-v59 does NOT move, the provider registry is untouched.
   // v195: BlockVectra joins the public Optimism cohort (#3585); regions and provider appearances move with it.
-  ["bench-unfiltered-v195", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v196: bench 001 methodology, BNB Chain moves to Codex's iad edge node
+  //       at Processed (#3590). Editorial only, and that is exactly why
+  //       the key has to move: overlayEditorial prefers the repo spec,
+  //       but an entry already cached holds the benchmark with its
+  //       methodology already merged, so a reworded sentence changes no
+  //       key and the old sentence keeps being served (#3342 shipped
+  //       green on 2026-10-28 with the old text still on the page).
+  ["bench-unfiltered-v196", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -1396,7 +1403,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v187: lockstep with bench-unfiltered-v194 (the Alchemy plan
   //       disclosure, now an Enterprise trial).
   // v188: lockstep with bench-unfiltered-v195 (BlockVectra on Optimism).
-  ["all-benchmarks-v188", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v189: lockstep with bench-unfiltered-v196 (bench 001 methodology).
+  ["all-benchmarks-v189", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1663,7 +1671,10 @@ const loadBenchmarkFiltered = unstable_cache(
   // v112: lockstep with bench-unfiltered-v194 (the Alchemy plan
   //       disclosure, now an Enterprise trial).
   // v113: lockstep with bench-unfiltered-v195; the Optimism row carries all three regions.
-  ["bench-filters-v113", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v114: lockstep with bench-unfiltered-v196. Bench 001 declares chain
+  //       and region, and the methodology renders on every tab, so the
+  //       filtered entries hold the old sentence too.
+  ["bench-filters-v114", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 
