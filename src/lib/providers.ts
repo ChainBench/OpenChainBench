@@ -1043,7 +1043,9 @@ const buildProvidersCached = unstable_cache(
   //      bench-unfiltered-v193.
   // v66: BlockVectra gains its Optimism appearance (#3585).
   //      Lockstep with bench-unfiltered-v195.
-  ["providers-v66"],
+  // v67: BlockVectra gains two appearances, boba-rpc and
+  //      world-chain-rpc. Lockstep with bench-unfiltered-v197.
+  ["providers-v67"],
   // 900 s: the provider index feeds products / compare / answers, whose
   // numbers move slowly, and this revalidate is also the effective ISR
   // period of those ~500 pages (Next takes the min across a route's caches).

@@ -53,6 +53,13 @@ describe("the provider set behind the cache keys", () => {
     const hash = createHash("sha256").update(sets.join("\n")).digest("hex").slice(0, 16);
     const count = sets.reduce((n, s) => n + s.split(":")[1].split(",").length, 0);
 
+    // An ADDITION on 2026-11-12: BlockVectra joins the public Boba and
+    // World Chain cohorts (#3594), with all three region tabs on each.
+    // An existing provider gains two appearances: v197/v190/v115 and
+    // providers-v67. Both endpoints were probed before merge rather than
+    // taken from the issue, which only claimed an identity check: chain
+    // id 0x120 and 0x1e0, heads 0 and 1 s old, a batch of ten accepted.
+    //
     // An ADDITION on 2026-11-11: BlockVectra joins the public Optimism
     // cohort (#3585), with all three region tabs. An existing provider
     // gains one appearance: v195/v188/v113 and providers-v66.
@@ -204,6 +211,6 @@ describe("the provider set behind the cache keys", () => {
         "Then set EXPECTED to the hash in this failure, and add the provider",
         `to PRODUCT_NAMES if it needs a display name. Providers now: ${count}.`,
       ].join("\n"),
-    ).toBe("5d1cff693ddd11e1");
+    ).toBe("f002dfbdaa2ba875");
   });
 });
