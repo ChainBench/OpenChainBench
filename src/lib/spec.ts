@@ -625,7 +625,7 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       has to move: an entry already cached holds the benchmark
   //       with its methodology already merged, so a reworded sentence
   //       invalidates nothing and the old one keeps being served.
-  ["bench-unfiltered-v121", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  ["bench-unfiltered-v122", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   // v118: Thyme Gate joins the public cohorts on ethereum, polygon,
   //       optimism and bnb (#3586, an outside contribution). The four
   //       endpoints were checked before merge: right chain id, a head
@@ -635,6 +635,11 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       taken on the contributor's word: chain id 0xa, a head 0 s old, a
   //       batch of ten accepted, 230 ms. Regions and provider appearances
   //       move with it.
+  // v122: BlockVectra joins the public Boba and World Chain cohorts
+  //       (#3594, an outside contribution). Both endpoints were probed
+  //       before merge rather than taken from the issue, which says its own
+  //       check was an identity read: chain id 0x120 and 0x1e0, heads 0 and
+  //       1 s old, a batch of ten accepted.
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -916,9 +921,10 @@ const loadAllBenchmarksCached = unstable_cache(
   // v112: lockstep with bench-unfiltered-v119 (the Alchemy plan
   //       disclosure, now an Enterprise trial).
   // v114: lockstep with bench-unfiltered-v121 (bench 001 methodology).
-  ["all-benchmarks-v114", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  ["all-benchmarks-v115", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   // v111: lockstep with bench-unfiltered-v118 (Thyme Gate, four cohorts).
   // v113: lockstep with bench-unfiltered-v120 (BlockVectra on Optimism).
+  // v115: lockstep with bench-unfiltered-v122 (BlockVectra, two cohorts).
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1078,11 +1084,13 @@ const loadBenchmarkFiltered = unstable_cache(
   //      disclosure, now an Enterprise trial).
   // v59: lockstep with bench-unfiltered-v121. Bench 001 declares chain
   //      and region and the methodology renders on every tab.
-  ["bench-filters-v59", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  ["bench-filters-v60", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   // v56: lockstep with bench-unfiltered-v118. All four benches declare
   //      regions and Thyme carries all three, so every region tab moves.
   // v58: lockstep with bench-unfiltered-v120; the Optimism row carries all
   //      three regions, so every region tab moves.
+  // v60: lockstep with bench-unfiltered-v122. Both benches declare
+  //      regions and the new row carries all three.
   { revalidate: 300, tags: ["benchmarks"] }
 );
 
