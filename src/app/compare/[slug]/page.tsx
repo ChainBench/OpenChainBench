@@ -132,7 +132,17 @@ async function resolveAdHocPair(slug: string): Promise<ComparePair | null> {
 function canonicalisationTarget(slug: string): string | null {
   const parsed = parseAdHocSlug(slug);
   if (!parsed) return null;
-  const [first, second] = [parsed.a, parsed.b].sort();
+  // Each side resolves through the product alias table first. An oracle
+  // pair row like avax-usd renders as Avalanche, so
+  // /compare/avax-usd-vs-matic-usd answered 200 as "Avalanche vs Polygon"
+  // under its own canonical while the sitemap lists neither form (Bing
+  // Webmaster Tools, 2026-11-12). It now 308s to avalanche-vs-polygon.
+  // Two aliases of one product leave nothing to compare: no redirect,
+  // and the resolver below decides.
+  const a = canonicalize(parsed.a).slug;
+  const b = canonicalize(parsed.b).slug;
+  if (a === b) return null;
+  const [first, second] = [a, b].sort();
   const canonical = `${first}-vs-${second}`;
   return canonical === slug ? null : canonical;
 }
