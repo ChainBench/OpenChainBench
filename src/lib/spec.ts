@@ -1022,7 +1022,8 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       Verified by key fingerprint, 7 chains on one key and 2 on the
   //       other. Moves with all-benchmarks-v187 and bench-filters-v112;
   //       providers-v59 does NOT move, the provider registry is untouched.
-  ["bench-unfiltered-v194", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v195: BlockVectra joins the public Optimism cohort (#3585); regions and provider appearances move with it.
+  ["bench-unfiltered-v195", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -1394,7 +1395,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v186: lockstep with bench-unfiltered-v193 (Thyme Gate, four cohorts).
   // v187: lockstep with bench-unfiltered-v194 (the Alchemy plan
   //       disclosure, now an Enterprise trial).
-  ["all-benchmarks-v187", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v188: lockstep with bench-unfiltered-v195 (BlockVectra on Optimism).
+  ["all-benchmarks-v188", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1660,7 +1662,8 @@ const loadBenchmarkFiltered = unstable_cache(
   //       regions and Thyme carries all three, so every region tab moves.
   // v112: lockstep with bench-unfiltered-v194 (the Alchemy plan
   //       disclosure, now an Enterprise trial).
-  ["bench-filters-v112", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v113: lockstep with bench-unfiltered-v195; the Optimism row carries all three regions.
+  ["bench-filters-v113", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 

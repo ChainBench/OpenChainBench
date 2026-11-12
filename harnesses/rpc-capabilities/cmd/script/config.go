@@ -337,7 +337,7 @@ func chains() []Chain {
 				{Slug: "blockvectra", Name: "BlockVectra", URL: envDefault("RPC_URL_ARBITRUM_BLOCKVECTRA", "https://api.blockvectra.com/v1/arb_mainnet/public")},
 			},
 		},
-		// ─── Optimism (6 providers) ─────────────────────────────────
+		// ─── Optimism (7 providers) ─────────────────────────────────
 		{
 			Slug: "optimism",
 			Name: "Optimism",
@@ -348,6 +348,7 @@ func chains() []Chain {
 				{Slug: "nodies", Name: "Nodies (POKT)", URL: envDefault("RPC_URL_OPTIMISM_NODIES", "https://op-pokt.nodies.app")},
 				{Slug: "optimism-official", Name: "Optimism Official", URL: envDefault("RPC_URL_OPTIMISM_OFFICIAL", "https://mainnet.optimism.io")},
 				{Slug: "thyme", Name: "Thyme Gate", URL: envDefault("RPC_URL_OPTIMISM_THYME", "https://optimism-mainnet.rpc.thyme.sh/public")},
+				{Slug: "blockvectra", Name: "BlockVectra", URL: envDefault("RPC_URL_OPTIMISM_BLOCKVECTRA", "https://api.blockvectra.com/v1/op_mainnet/public")},
 			},
 		},
 		// ─── Base (6 providers) ─────────────────────────────────────

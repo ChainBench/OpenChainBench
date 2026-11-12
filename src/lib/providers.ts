@@ -1041,7 +1041,9 @@ const buildProvidersCached = unstable_cache(
   // v65: Thyme Gate is new to the SITE, so it needs a product page as well
   //      as the four bench appearances this index carries. Lockstep with
   //      bench-unfiltered-v193.
-  ["providers-v65"],
+  // v66: BlockVectra gains its Optimism appearance (#3585).
+  //      Lockstep with bench-unfiltered-v195.
+  ["providers-v66"],
   // 900 s: the provider index feeds products / compare / answers, whose
   // numbers move slowly, and this revalidate is also the effective ISR
   // period of those ~500 pages (Next takes the min across a route's caches).
