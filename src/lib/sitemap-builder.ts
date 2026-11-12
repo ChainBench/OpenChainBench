@@ -337,7 +337,29 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
   }
 
 
-  const staticRoutes = staticHubRoutes(catalogTs);
+  // The home page and the hourly or daily hubs render live numbers, so
+  // their content does change every day even when no spec does. With the
+  // editorial stamp alone the newest lastmod in the sitemap sat 35 hours
+  // back, and Bing Webmaster Tools flagged the sitemap as not refreshed
+  // daily (2026-11-12). Those hubs take the UTC day of the newest data run
+  // when it is later; bench, product and compare URLs keep their
+  // editorial stamp, and the day floor keeps the hubs from churning on
+  // every request.
+  const lastRunDay = new Date(
+    Date.UTC(
+      catalogLastRun.getUTCFullYear(),
+      catalogLastRun.getUTCMonth(),
+      catalogLastRun.getUTCDate(),
+    ),
+  );
+  const liveHubTs =
+    catalogLastRun.getTime() > 0 && lastRunDay > catalogTs ? lastRunDay : catalogTs;
+  const staticRoutes = staticHubRoutes(catalogTs).map((e) =>
+    e.lastModified === catalogTs &&
+    (e.changeFrequency === "hourly" || e.changeFrequency === "daily")
+      ? { ...e, lastModified: liveHubTs }
+      : e,
+  );
 
   // Benchmark routes. Blob benches are already filtered to live+live by
   // the worker. We still drop REMOVED_BENCH_SLUGS (middleware 410s them).

@@ -79,3 +79,28 @@ export function stripInlineMarkdown(text: string): string {
     .replace(/\s+/g, " ")
     .trim();
 }
+
+/** Lengthen a short meta description with whole sentences. Bing Webmaster
+ *  Tools flagged 68 pages whose description ran 53 to 99 characters
+ *  (export 2026-11-12): a product measured on one bench, a chain hub, a
+ *  bench's chain tab. Each extra is appended whole, in order, only while
+ *  the result stays within `max`; it stops once `min` is reached. Nothing
+ *  is ever cut, so a page whose extras do not fit keeps what it had. */
+export function padSnippet(
+  input: string,
+  extras: string[],
+  min = 140,
+  max = 155,
+): string {
+  let s = input.replace(/\s+/g, " ").trim();
+  if (s && !/[.!?]$/.test(s)) s += ".";
+  for (const raw of extras) {
+    if (s.length >= min) break;
+    let e = raw.replace(/\s+/g, " ").trim();
+    if (!e) continue;
+    if (!/[.!?]$/.test(e)) e += ".";
+    const next = s ? `${s} ${e}` : e;
+    if (next.length <= max) s = next;
+  }
+  return s;
+}

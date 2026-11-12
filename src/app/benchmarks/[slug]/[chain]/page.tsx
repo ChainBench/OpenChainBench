@@ -7,7 +7,7 @@ import { Breadcrumb } from "@/components/breadcrumb";
 import { citableAsOf } from "@/lib/citation";
 import { liveResults, MIN_DISPLAY_SUCCESS_PCT } from "@/lib/provider-filters";
 import { fmtUnit } from "@/lib/format";
-import { capDescription, stripInlineMarkdown, capSnippet } from "@/lib/seo-text";
+import { capDescription, stripInlineMarkdown, capSnippet, padSnippet } from "@/lib/seo-text";
 import { getBenchCreatedAt } from "@/lib/seo/bench-dates";
 import { SITE } from "@/data/site";
 import { buildBreadcrumbJsonLd, safeJsonLd } from "@/lib/jsonld";
@@ -289,9 +289,22 @@ export async function generateMetadata({
   const data = await loadChainPage(slug, chain);
   if (!data) return {};
   const title = pageTitle(data);
-  const description = capSnippet(
-    stripInlineMarkdown(data.explainer.body),
-  );
+  // The explainer is editorial and often one short sentence: Bing flagged
+  // the Kalshi crypto tab at 75 characters and five others below 100
+  // (export 2026-11-12). Whole sentences about the tab itself fill the rest
+  // of the snippet budget; padSnippet never cuts one.
+  const description = padSnippet(capSnippet(stripInlineMarkdown(data.explainer.body)), [
+    ...(data.shape === "row"
+      ? [
+          data.rank > 0 ? `${data.result.name} ranks #${data.rank} of ${data.sorted.length} on ${data.benchmark.title}.` : "",
+          `${data.sorted.length} rows ranked on live data.`,
+        ]
+      : [
+          data.leader ? `${data.leader.name} leads the ${data.chainLabel} view of ${data.benchmark.title}.` : "",
+          `${data.providers.length} provider${data.providers.length === 1 ? "" : "s"} ranked on live data.`,
+        ]),
+    "Methodology and raw data are public.",
+  ]);
   const canonical = `${SITE.url}/benchmarks/${data.benchmark.slug}/${chain}`;
   const ogImage = `${SITE.url}/api/og/${data.benchmark.slug}`;
   const b = data.benchmark;

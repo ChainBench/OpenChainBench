@@ -532,5 +532,11 @@ export const REMOVED_PRODUCT_SLUGS = new Set([
   // but have no /products/<slug> page. 410 guard prevents smoke-gate failures.
   "zerion",
   "routescan",
+  // bankr left bench 201 in #2857 (2026-10-07) and soneium-official left
+  // with soneium-rpc in #3569 (2026-11-06). Neither is measured anywhere,
+  // so both pages 404; Bing still crawls them (Webmaster Tools export
+  // 2026-11-12). A 410 says they are gone for good.
+  "bankr",
+  "soneium-official",
 ]);
 
