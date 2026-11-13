@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import {
+  specHasDistribution,
   specValueKind,
   valueColumnLabel,
   valueQualifier,
@@ -118,5 +119,21 @@ describe("both loaders derive the same kind", () => {
     expect(valueQualifier({ unit: "usd", valueKind: fromEitherLoader })).toBe(
       "latest value",
     );
+  });
+});
+
+describe("specHasDistribution", () => {
+  it("one expression, or p50 alone, is not a distribution", () => {
+    const q = "100 * sum(a) / sum(b)";
+    expect(specHasDistribution({ providers: [{ queries: { p50: q, p90: q, p99: q } }] })).toBe(false);
+    expect(specHasDistribution({ providers: [{ queries: { p50: q } }] })).toBe(false);
+  });
+  it("distinct quantiles are", () => {
+    expect(
+      specHasDistribution({ providers: [{ queries: { p50: "quantile(0.5, x)", p99: "quantile(0.99, x)" } }] }),
+    ).toBe(true);
+  });
+  it("no queries at all says nothing", () => {
+    expect(specHasDistribution({ providers: [{}] })).toBeUndefined();
   });
 });

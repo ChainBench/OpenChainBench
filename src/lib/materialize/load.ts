@@ -18,7 +18,7 @@ import type {
   ProviderResult,
 } from "@/types/benchmark";
 import { Prometheus } from "@/lib/prometheus";
-import { specValueKind } from "@/lib/value-window";
+import { specHasDistribution, specValueKind } from "@/lib/value-window";
 import { pickChainLeader, pickChainTrailer } from "@/lib/materialize/per-chain-leader";
 import { SpecSchema, type Spec } from "@/lib/spec-schema";
 import { DEV_ONLY_BENCH_SLUGS, REMOVED_BENCH_SLUGS } from "@/lib/removed-benches";
@@ -180,6 +180,7 @@ export function buildEditorial(
     rowNoun: spec.row_noun,
     headlineSlice: spec.headline_slice,
     valueKind: specValueKind(spec),
+    hasDistribution: specHasDistribution(spec),
     abstract: spec.abstract,
     methodology: spec.methodology,
     findings: spec.findings,
