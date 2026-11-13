@@ -47,9 +47,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   // segment), not the site-wide generic one.
   const ogImage = report.ogImage ?? `${canonical}/opengraph-image`;
   const social = `${report.title} · OpenChainBench`;
+  // Same rule as the bench route: the layout template appends
+  // " · OpenChainBench", 17 characters, and past 43 the suffix is what a
+  // SERP cuts. A report title carries the subject, so it ships absolute
+  // rather than losing its own last words.
+  const metaTitle =
+    report.title.length > 43 ? { absolute: report.title } : report.title;
 
   return {
-    title: report.title,
+    title: metaTitle,
     description: report.summary,
     alternates: { canonical },
     openGraph: {
@@ -469,6 +475,17 @@ export default async function ReportPage({ params }: Props) {
               timeZone: "UTC",
             })}
           </time>
+          {report.updatedAt && report.updatedAt !== report.publishedAt ? (
+            <time dateTime={report.updatedAt}>
+              Updated{" "}
+              {new Date(report.updatedAt).toLocaleDateString("en-US", {
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+                timeZone: "UTC",
+              })}
+            </time>
+          ) : null}
           <span>{report.readingTime} min read</span>
         </div>
       </header>

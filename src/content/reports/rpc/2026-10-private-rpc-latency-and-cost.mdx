@@ -1,14 +1,14 @@
 ---
-title: "Best private RPC provider 2026: speed and cost"
+title: "Private RPC providers compared: latency and cost"
 category: "rpc"
 slug: "2026-10-private-rpc-latency-and-cost"
 publishedAt: "2026-10-28"
 updatedAt: "2026-11-13"
-period: "October 2026"
-summary: "Six API-key RPC providers measured on nine chains from three regions: who answers fastest, who bills least, and which methods reverse the order."
-heroFinding: "The fastest provider on a cheap call is not the fastest on an expensive one. Dwellir answers a tip-of-chain read on Ethereum in 21.7 ms and an archive read nine times slower, and the order on eth_getLogs is different again."
+period: "November 2026"
+summary: "Quicknode answers in 6.8 ms at the median, BlockMachine bills $25 for 10M requests. Six API-key RPC providers on nine chains, nine methods, three regions."
+heroFinding: "Measured over the seven days to 13 November 2026, Quicknode has the lowest median round trip of the six at 6.8 ms. The order changes with the method: the provider with the fastest cheap call cannot serve two of the five method columns it is ranked in."
 author: "OpenChainBench Research"
-readingTime: 13
+readingTime: 21
 canonical: "https://openchainbench.com/reports/rpc/2026-10-private-rpc-latency-and-cost"
 faq:
   - q: "Which private RPC provider is the fastest?"
@@ -24,6 +24,7 @@ faq:
 ---
 
 <Summary>
+- **Private here means an endpoint behind an API key**, on a provider plan, as opposed to a public no-key gateway. Private transaction submission, the MEV sense of the word, is a different measurement and is not what this page ranks.
 - **As of 13 November 2026, Quicknode is the fastest private RPC we measure:** a 6.8 ms median round trip, the lowest median in 18 of 27 chain and region cells (one shared) and the lowest p99 in 19. Over WebSocket it pushes new blocks first in 13 of the 18 cells the race can report.
 - **BlockMachine is the cheapest and the slowest.** A dapp workload costs $25 a month for 10M requests and $999 for 1B, against $130 and $9,999 at Quicknode. Its median round trip from US East is 113 ms.
 - **Chainstack is the value pick, and the most regional.** $49 covers 20M dapp requests, and from US East it has the lowest median of the six (2.9 ms). From Singapore its median is 38.6 ms.
@@ -31,11 +32,11 @@ faq:
 - The same 100M dapp requests cost between $125 and $1,255 a month across the six we probe: Quicknode, Chainstack, GetBlock, Alchemy, Dwellir and BlockMachine. Trace is the exception to BlockMachine's lead: Dwellir is cheapest there, $299 at 100M.
 </Summary>
 
-<TOC sections="Verdict|Speed against price|HTTP latency|WebSocket push|What the methods show|The support matrix|Cost by budget|Free plans|Scorecard|Recommendations|Questions|Method|Sources" />
+<TOC sections="Verdict: which provider for which job|Latency against price, per provider|HTTP latency by chain and region|WebSocket: who pushes the new block first|Latency by RPC method|Which methods each provider serves|Cost by monthly request budget|Free plans, and what they buy|Scorecard: the six side by side|Recommendations by workload|Questions about private RPC providers|How we measure|Sources" />
 
 The six are the providers we hold a key for and probe continuously: [Quicknode](/products/quicknode), [Chainstack](/products/chainstack), [GetBlock](/products/getblock), [Alchemy](/products/alchemy), [Dwellir](/products/dwellir) and [BlockMachine](/products/blockmachine). Thirteen more, among them Infura, Ankr, dRPC and Helius, are priced in the cost and free-plan sections but not latency-probed, so they appear only there.
 
-## Verdict
+## Verdict: which provider for which job
 
 | Need | Pick | Measured |
 |---|---|---|
@@ -47,7 +48,7 @@ The six are the providers we hold a key for and probe continuously: [Quicknode](
 | Serverless or one-shot clients | <L s="getblock">**[GetBlock](/products/getblock)**</L> | Lowest median cold start, 21.4 ms, from one endpoint per region. |
 | No budget | <L s="drpc" n="dRPC">**[dRPC](/products/drpc)**</L> free, then <L s="chainstack">**[Chainstack](/products/chainstack)**</L> free | 10.5M and 3M dapp requests a month. |
 
-## Speed against price
+## Latency against price, per provider
 
 No provider is both fast and cheap. The two cheapest, BlockMachine and Dwellir, are the two slowest; the fastest, Quicknode, bills $1,049 for 100M dapp requests. Chainstack and GetBlock sit between: Chainstack is cheaper and has the lower median, GetBlock the tighter p99.
 
@@ -55,7 +56,7 @@ No provider is both fast and cheap. The two cheapest, BlockMachine and Dwellir, 
 
 Alchemy's point combines pay-as-you-go pricing with latency measured over this window on a Free key and an enterprise key; it is the dearest of the six at 100M.
 
-## HTTP latency
+## HTTP latency by chain and region
 
 Quicknode's median sits between 2.4 and 7.3 ms in every region, and its median p99 at or under 17.5 ms. Every other provider has a region where it falls well behind.
 
@@ -83,7 +84,7 @@ What the medians hide, provider by provider:
 
 Sub-10 ms values mostly measure the distance between our probe and the provider's nearest node. From another city the absolute figures change; the order within a region is what carries over.
 
-## WebSocket push
+## WebSocket: who pushes the new block first
 
 Quicknode delivers new blocks first in 13 of the 18 cells the race can report, on Base, BNB Chain, Polygon and Arc by a wide margin. The exceptions are Ethereum, where GetBlock's regional sockets win from US East (94%) and Singapore (61%), and HyperEVM, where Dwellir leads two regions and GetBlock the third.
 
@@ -127,7 +128,7 @@ Share of the blocks the race ran that each provider delivered first, so a row su
 
 HTTP and WebSocket agree on Quicknode and on little else. Chainstack is the fastest over HTTP from US East and rarely first over WebSocket; GetBlock never has the fastest HTTP median and wins Ethereum pushes. Choose on the transport your application uses.
 
-## What the methods show
+## Latency by RPC method
 
 The first version of this report measured one cheap call, and said so in its
 method: a heavy method or another location can change the order. A reviewer
@@ -311,39 +312,6 @@ guard can be regional. GetBlock admits 10,000 blocks from EU West against
 the 1,000 above, which is the only case in the cohort where the same plan
 answers this question differently depending on where the caller sits.
 
-### The support matrix
-
-Not every provider serves every method, and the gaps are not where the
-latency table suggests. Each cell is the number of the eight EVM chains we
-ask that provider for on which the method answered, out of the chains it
-carries at all.
-
-| Provider | logs, none | logs, addr | logs, topic | receipts | archive | trace_block | debug_trace |
-|---|---|---|---|---|---|---|---|
-| <L s="chainstack">Chainstack</L> | **8/8** | **8/8** | **8/8** | **8/8** | **8/8** | 5/8 | **8/8** |
-| <L s="alchemy">Alchemy</L> | **8/8** | **8/8** | **8/8** | **8/8** | **8/8** | 5/8 | **8/8** |
-| <L s="quicknode">Quicknode</L> | **8/8** | **8/8** | **8/8** | **8/8** | **8/8** | 4/8 | 7/8 |
-| <L s="dwellir">Dwellir</L> | **8/8** | **8/8** | **8/8** | **8/8** | 6/8 | 4/8 | **8/8** |
-| <L s="blockmachine">BlockMachine</L> | **7/7** | **7/7** | **7/7** | **7/7** | **7/7** | 5/7 | **7/7** |
-| <L s="getblock">GetBlock</L> | **8/8** | **8/8** | **8/8** | **8/8** | 1/8 | 2/8 | **8/8** |
-
-Four of the seven columns are full for everyone: the three `eth_getLogs`
-shapes and `eth_getBlockReceipts` answer on every chain, from every provider.
-All the difference in this cohort is in the last three columns.
-
-GetBlock is the sharpest case. It holds the fastest cheap call in the report
-and serves the archive read on one chain of eight. Reading the latency table
-alone would put it at the top of a shortlist for a backfill job it cannot do.
-
-No provider serves `trace_block` everywhere. The best is BlockMachine at five
-of its seven chains, and two of the six are at half or below. If your work
-depends on that call, the chain you need it on decides your provider before
-latency does.
-
-A cell counts a chain as not served when the provider refused and also when
-we could not classify the answer, which is the conservative reading. The
-measurement date and the probe cadence are in the method section.
-
 ### Trace is where the cohort separates
 
 Of the seven methods we ask on every chain, five are served nearly
@@ -479,7 +447,40 @@ do not move: a retention policy is a product decision, not a latency, and
 probing four hosts on a schedule to watch a number stay still would spend
 request budget for nothing. We re-measure it when the report is revised.
 
-## Cost by budget
+## Which methods each provider serves
+
+Not every provider serves every method, and the gaps are not where the
+latency table suggests. Each cell is the number of the eight EVM chains we
+ask that provider for on which the method answered, out of the chains it
+carries at all.
+
+| Provider | logs, none | logs, addr | logs, topic | receipts | archive | trace_block | debug_trace |
+|---|---|---|---|---|---|---|---|
+| <L s="chainstack">Chainstack</L> | **8/8** | **8/8** | **8/8** | **8/8** | **8/8** | 5/8 | **8/8** |
+| <L s="alchemy">Alchemy</L> | **8/8** | **8/8** | **8/8** | **8/8** | **8/8** | 5/8 | **8/8** |
+| <L s="quicknode">Quicknode</L> | **8/8** | **8/8** | **8/8** | **8/8** | **8/8** | 4/8 | 7/8 |
+| <L s="dwellir">Dwellir</L> | **8/8** | **8/8** | **8/8** | **8/8** | 6/8 | 4/8 | **8/8** |
+| <L s="blockmachine">BlockMachine</L> | **7/7** | **7/7** | **7/7** | **7/7** | **7/7** | 5/7 | **7/7** |
+| <L s="getblock">GetBlock</L> | **8/8** | **8/8** | **8/8** | **8/8** | 1/8 | 2/8 | **8/8** |
+
+Four of the seven columns are full for everyone: the three `eth_getLogs`
+shapes and `eth_getBlockReceipts` answer on every chain, from every provider.
+All the difference in this cohort is in the last three columns.
+
+GetBlock is the sharpest case. It holds the fastest cheap call in the report
+and serves the archive read on one chain of eight. Reading the latency table
+alone would put it at the top of a shortlist for a backfill job it cannot do.
+
+No provider serves `trace_block` everywhere. The best is BlockMachine at five
+of its seven chains, and two of the six are at half or below. If your work
+depends on that call, the chain you need it on decides your provider before
+latency does.
+
+A cell counts a chain as not served when the provider refused and also when
+we could not classify the answer, which is the conservative reading. The
+measurement date and the probe cadence are in the method section.
+
+## Cost by monthly request budget
 
 Between the cheapest and the dearest of the six, the monthly bill differs by 5.4x at 1M requests and by 12.6x at 1B. Price and speed run in opposite directions: Quicknode is the second dearest from 100M up.
 
@@ -507,7 +508,7 @@ Four mechanics explain most of these numbers:
 
 These are list prices, not invoices. Alchemy and Quicknode return no usage header, so we cannot reconcile their billed units with our own traffic.
 
-## Free plans
+## Free plans, and what they buy
 
 Free plans cover a prototype, not a product. Among the six, only Chainstack's free plan carries more than 1.5M dapp requests a month; dRPC, outside our latency cohort, carries the most at 10.5M.
 
@@ -517,11 +518,11 @@ Quicknode offers a one-month trial that does not renew, so it has no ranked free
 
 The allowance is rarely the binding limit. GetBlock's 50,000 CU a day lasts 125 seconds at its own advertised 20 requests a second; Infura's daily credits last 1.7 hours at full rate. Our own Alchemy Free key ran out on 24 October and refused every call on seven chains until the quota reset at the start of November.
 
-## Scorecard
+## Scorecard: the six side by side
 
 <Scorecard />
 
-## Recommendations
+## Recommendations by workload
 
 | Profile | Primary | Fallback | Why |
 |---|---|---|---|
@@ -538,11 +539,11 @@ The allowance is rarely the binding limit. GetBlock's 50,000 CU a day lasts 125 
 
 Head to head, with every bench the two share: [Alchemy vs Quicknode](/compare/alchemy-vs-quicknode), [Chainstack vs Quicknode](/compare/chainstack-vs-quicknode), [GetBlock vs Quicknode](/compare/getblock-vs-quicknode), [Chainstack vs Dwellir](/compare/chainstack-vs-dwellir), [BlockMachine vs Dwellir](/compare/blockmachine-vs-dwellir).
 
-## Questions
+## Questions about private RPC providers
 
 <Faq />
 
-## Method
+## How we measure
 
 | Measurement | How | Window |
 |---|---|---|
