@@ -27,6 +27,7 @@ var (
 	// Metadata coverage metrics
 	metadataCoverageTotal   *prometheus.CounterVec
 	metadataCoverageSuccess *prometheus.CounterVec
+	metadataCoverageErrors  *prometheus.CounterVec
 	metadataAPILatency      *prometheus.HistogramVec
 
 	// Head lag metrics
@@ -152,6 +153,21 @@ func init() {
 		[]string{"provider", "chain", "field", "region"},
 	)
 	prometheus.MustRegister(metadataCoverageSuccess)
+
+	// Metadata coverage - calls that never produced a measurement.
+	//
+	// A 401, a timeout or an unsupported chain says nothing about what the
+	// provider serves, so those calls must not reach the coverage
+	// counters. They land here instead, which keeps a provider we could
+	// not ask visibly UNMEASURED rather than silently zero.
+	metadataCoverageErrors = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "metadata_coverage_errors_total",
+			Help: "Metadata calls that produced no measurement, by error. These are OUR failures to ask, never a statement about the provider's coverage.",
+		},
+		[]string{"provider", "chain", "error", "region"},
+	)
+	prometheus.MustRegister(metadataCoverageErrors)
 
 	// Metadata API latency
 	metadataAPILatency = prometheus.NewHistogramVec(
@@ -331,6 +347,16 @@ func RecordMetadataCoverage(provider string, chain string, field string, present
 	if present {
 		metadataCoverageSuccess.WithLabelValues(provider, chain, field, region).Inc()
 	}
+}
+
+// RecordMetadataError records a call that produced no measurement. The
+// error string is the provider's own classification (status_401,
+// request_error, unsupported_chain), truncated to keep cardinality sane.
+func RecordMetadataError(provider, chain, errStr, region string) {
+	if len(errStr) > 40 {
+		errStr = errStr[:40]
+	}
+	metadataCoverageErrors.WithLabelValues(provider, chain, errStr, region).Inc()
 }
 
 // RecordMetadataLatency records the latency of a metadata API call
