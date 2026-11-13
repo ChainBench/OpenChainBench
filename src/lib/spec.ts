@@ -1040,7 +1040,15 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       $142,513 of notional, $71.26 of builder fees, 113 wallets, a
   //       fee of exactly 5.0 bp on all 1,365, and zero fills whose
   //       counterparty is another wallet of that cohort.
-  ["bench-unfiltered-v198", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v199: the ten WebSocket races publish one figure, the share of the
+  //       blocks (or slots) each provider received that it pushed first,
+  //       as a percentage with higher better, in place of the lag behind
+  //       the first arrival in milliseconds. race_leader and its share
+  //       panel are gone: the share IS the headline. Alchemy joins the
+  //       seven keyed races under a monthly byte budget in the probe.
+  //       Unit, direction and every row change, so no cached entry may
+  //       survive it.
+  ["bench-unfiltered-v199", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -1416,7 +1424,9 @@ const loadAllBenchmarksCached = unstable_cache(
   // v189: lockstep with bench-unfiltered-v196 (bench 001 methodology).
   // v190: lockstep with bench-unfiltered-v197 (BlockVectra, two cohorts).
   // v191: lockstep with bench-unfiltered-v198 (MOJO on bench 030).
-  ["all-benchmarks-v191", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v192: lockstep with bench-unfiltered-v199 (WebSocket races in
+  //       first-to-push share; Alchemy on seven of them).
+  ["all-benchmarks-v192", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1689,7 +1699,10 @@ const loadBenchmarkFiltered = unstable_cache(
   // v115: lockstep with bench-unfiltered-v197. Both benches declare
   //       regions and the new row carries all three, so every region
   //       tab moves.
-  ["bench-filters-v115", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v116: lockstep with bench-unfiltered-v199. The ten WebSocket races
+  //       declare regions, and every region tab now ranks by share of
+  //       first pushes.
+  ["bench-filters-v116", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 

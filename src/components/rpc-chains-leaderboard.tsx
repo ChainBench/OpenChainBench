@@ -10,6 +10,7 @@ import { Sparkline } from "@/components/sparkline";
 import {
   RPC_REGION_KEYS,
   RPC_REGION_LABELS,
+  fmtFirstShare,
   type RpcHubChain,
   type RpcRegionKey,
 } from "@/lib/rpc-hub-shape";
@@ -88,10 +89,11 @@ export function RpcChainsLeaderboard({
    *  state belongs to the hub (both tables are scoped by it); only the
    *  placement is ours, beside the caption that names the scope. */
   geoControl?: React.ReactNode;
-  /** The block-push cohort is a race, not a latency: every leader reads 0
-   *  because it is zero behind itself. Under this flag the leading cell
-   *  shows the margin over the runner-up, which is the figure that carries
-   *  information, instead of a zero that reads as a broken measurement. */
+  /** The block-push cohort is a race, not a latency. Its chains publish the
+   *  share of the blocks each provider received that it pushed first
+   *  (`unit: "pct"`), so the leading cell shows that share. A race chain from
+   *  an older blob, still in lag, falls back to the margin over the
+   *  runner-up rather than a leader at 0 ms. */
   raceMode?: boolean;
 }) {
   const [showAll, setShowAll] = useState(false);
@@ -125,8 +127,11 @@ export function RpcChainsLeaderboard({
     [rows],
   );
   const router = useRouter();
+  /** Every figure on these rows is a share of first pushes, ranked high to
+   *  low, rather than a latency ranked low to high. */
+  const shareRows = useMemo(() => rows.some((r) => r.unit === "pct"), [rows]);
   const [sortKey, setSortKey] = useState<SortKey>("bestP50");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">(shareRows ? "desc" : "asc");
   const [q, setQ] = useState("");
 
   const filtered = useMemo(() => {
@@ -165,8 +170,10 @@ export function RpcChainsLeaderboard({
     if (k === sortKey) setSortDir((d) => (d === "desc" ? "asc" : "desc"));
     else {
       setSortKey(k);
-      // Latency columns read best ascending; counts descending.
-      setSortDir(k === "providerCount" ? "desc" : "asc");
+      // Latency columns read best ascending; counts descending, and so do the
+      // race's shares, where the best figure is the largest.
+      const shareCol = shareRows && (k === "bestP50" || RPC_REGION_KEYS.includes(k as RpcRegionKey));
+      setSortDir(k === "providerCount" || shareCol ? "desc" : "asc");
     }
   };
 
@@ -178,7 +185,8 @@ export function RpcChainsLeaderboard({
             className="text-[11px] text-ink-faint"
             style={{ fontFamily: "var(--font-mono, monospace)" }}
           >
-            {filtered.length} of {rows.length} chains measured · 24h p50, {scopeNote}
+            {filtered.length} of {rows.length} chains measured ·{" "}
+            {shareRows ? "24h share of first pushes" : "24h p50"}, {scopeNote}
           </p>
           {geoControl}
         </div>
@@ -328,7 +336,14 @@ export function RpcChainsLeaderboard({
                       <span className="truncate text-ink">
                         {r.best.providerName}
                       </span>
-                      {raceMode ? (
+                      {r.unit === "pct" ? (
+                        <span
+                          className="tabular-nums font-semibold text-sky-600 dark:text-sky-400"
+                          style={{ fontFamily: "var(--font-mono, monospace)" }}
+                        >
+                          {fmtFirstShare(r.best.p50Ms)}
+                        </span>
+                      ) : raceMode ? (
                         <RaceMargin row={r} />
                       ) : (
                         <span
@@ -409,7 +424,9 @@ export function RpcChainsLeaderboard({
                     >
                       {b ? (
                         <span className="inline-flex items-baseline gap-1.5">
-                          <span className="tabular-nums">{fmtMs(b.p50Ms)}</span>
+                          <span className="tabular-nums">
+                            {r.unit === "pct" ? fmtShare(b.p50Ms) : fmtMs(b.p50Ms)}
+                          </span>
                           <span className="text-[10.5px] text-ink-faint truncate max-w-[72px]">
                             {b.providerName}
                           </span>
@@ -569,6 +586,13 @@ function Td({
       {children}
     </td>
   );
+}
+
+/** A share of first pushes in a region cell, where the provider name beside
+ *  it leaves no room for "first". */
+function fmtShare(v: number | null | undefined): string {
+  if (v == null || !Number.isFinite(v)) return "...";
+  return `${Math.round(v)}%`;
 }
 
 function fmtMs(v: number | null | undefined): string {

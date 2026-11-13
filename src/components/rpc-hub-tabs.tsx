@@ -6,6 +6,8 @@ import { RpcProvidersPivot } from "@/components/rpc-providers-pivot";
 import {
   RPC_REGION_KEYS,
   RPC_REGION_LABELS,
+  bestAcrossChains,
+  fmtFirstShare,
   scopeCohortToRegion,
   type RpcHubCohort,
   type RpcHubSnapshot,
@@ -59,7 +61,7 @@ const COHORT_NOTE: Record<Cohort, string> = {
   "keyed-cold":
     "The same private endpoints on a connection that is never reused: DNS, TCP and the TLS handshake are paid on every call. What a serverless or one-shot client gets.",
   websocket:
-    "The same private endpoints on a persistent WebSocket, racing to push each new block. The column shows how far ahead the first provider is of the next one: a provider's own lag is measured against whichever one delivered that block first, so the winner is zero behind itself.",
+    "The same private endpoints on a persistent WebSocket, racing to push each new block. Each figure is the share of the blocks a provider received that it pushed first in its region, so higher is better.",
 };
 
 /** How each cohort's table is named inside the summary-card tooltip. */
@@ -161,7 +163,7 @@ export function RpcHubTabs({
       : `#tier=${resolved}`);
   // Keyed chain pages are indexable through their public view; the
   // sitemap gate applies to the page, not to the cohort.
-  const fastest = fastestOverall(view);
+  const fastest = bestAcrossChains(view);
 
   return (
     <>
@@ -243,12 +245,16 @@ export function RpcHubTabs({
                 ? "Lowest private median"
                 : resolved === "keyed-cold"
                   ? "Lowest cold-start median"
-                  : "Smallest push lag"
+                  : "Most first pushes"
           }
-          value={fastest ? `${fastest.provider} · ${fmtMs(fastest.p50Ms)}` : "..."}
+          value={
+            fastest
+              ? `${fastest.provider} · ${fastest.unit === "pct" ? fmtFirstShare(fastest.p50Ms) : fmtMs(fastest.p50Ms)}`
+              : "..."
+          }
           tip={
             fastest
-              ? `Best chain leader across the ${COHORT_MATRIX[resolved]} matrix: ${fastest.provider} on ${fastest.chain} (24h p50, ${geoLabel}).`
+              ? `Best chain leader across the ${COHORT_MATRIX[resolved]} matrix: ${fastest.provider} on ${fastest.chain} (${fastest.unit === "pct" ? "24h share of first pushes" : "24h p50"}, ${geoLabel}).`
               : undefined
           }
         />
@@ -296,7 +302,7 @@ export function RpcHubTabs({
                 bestLabel:
                   geo === "all" ? "First to push" : `First to push from ${RPC_REGION_LABELS[geo as RpcRegionKey]}`,
                 bestTip:
-                  "Who delivers each new block first, and by how much over the runner-up. The winner's own lag is zero by construction, so the margin is the number that carries information.",
+                  "The provider that pushed the largest share of the blocks it received first, and that share. Each provider is read over its own blocks, so one raced from a single region is not diluted by the other two.",
               }
             : {})}
         />
@@ -308,6 +314,7 @@ export function RpcHubTabs({
           regionLabel={geoLabel}
           geoControl={geoControl}
           raceMode={resolved === "websocket"}
+          {...(view.chains.some((c) => c.unit === "pct") ? { unit: "pct" as const } : {})}
           chains={view.chains.map((c) => ({
             chain: c.chain,
             name: c.name,
@@ -317,19 +324,6 @@ export function RpcHubTabs({
       )}
     </>
   );
-}
-
-/** Best chain leader across the matrix: the lowest per-chain p50. */
-function fastestOverall(
-  view: RpcHubCohort,
-): { chain: string; provider: string; p50Ms: number } | null {
-  return view.chains.reduce<{ chain: string; provider: string; p50Ms: number } | null>((acc, c) => {
-    if (!c.best) return acc;
-    if (!acc || c.best.p50Ms < acc.p50Ms) {
-      return { chain: c.name, provider: c.best.providerName, p50Ms: c.best.p50Ms };
-    }
-    return acc;
-  }, null);
 }
 
 function SummaryCard({
@@ -361,8 +355,8 @@ function SummaryCard({
 
 function fmtMs(v: number): string {
   if (!Number.isFinite(v)) return "...";
-  // Same rule as the tables: the summary card carried the same zero, since
-  // "Smallest push lag" on the race cohort is a figure under one millisecond.
+  // Same rule as the tables: one decimal below 10 ms, so a sub-millisecond
+  // median does not print as "0 ms".
   if (v < 10) return `${v.toFixed(1)} ms`;
   if (v < 1000) return `${Math.round(v)} ms`;
   return `${(v / 1000).toFixed(2)} s`;

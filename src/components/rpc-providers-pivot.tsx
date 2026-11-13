@@ -41,6 +41,7 @@ export function RpcProvidersPivot({
   regionLabel = "all regions",
   geoControl,
   raceMode = false,
+  unit,
 }: {
   rows: RpcHubPivotRow[];
   chains: ChainRef[];
@@ -52,10 +53,13 @@ export function RpcProvidersPivot({
   /** The hub's region selector, rendered in this table's header bar so the
    *  control sits with the caption it changes. */
   geoControl?: React.ReactNode;
-  /** The block-push cohort is a race: this column is a median lag behind
-   *  whichever provider pushed the block first, not a latency, and the
-   *  winner sits near zero because it is zero behind itself. */
+  /** The block-push cohort is a race, not a latency. On an older blob its
+   *  column is a median lag behind whichever provider pushed the block
+   *  first; once its chains carry `unit: "pct"` it is a share instead. */
   raceMode?: boolean;
+  /** "pct" when every cell is a share of the blocks the provider received
+   *  that it pushed first (the WebSocket race): read high to low. */
+  unit?: "pct";
 }) {
   const router = useRouter();
   const [sortKey, setSortKey] = useState<SortKey>("chainsCovered");
@@ -111,10 +115,14 @@ export function RpcProvidersPivot({
     if (k === sortKey) setSortDir((d) => (d === "desc" ? "asc" : "desc"));
     else {
       setSortKey(k);
-      // Coverage + success read best descending; rank, latency and
-      // error counts ascending.
+      // Coverage, success and a share of first pushes read best
+      // descending; rank, latency and error counts ascending.
       setSortDir(
-        k === "chainsCovered" || k === "medianSuccessPct" ? "desc" : "asc",
+        k === "chainsCovered" ||
+          k === "medianSuccessPct" ||
+          (k === "medianP50Ms" && unit === "pct")
+          ? "desc"
+          : "asc",
       );
     }
   };
@@ -128,7 +136,8 @@ export function RpcProvidersPivot({
             style={{ fontFamily: "var(--font-mono, monospace)" }}
           >
             {filtered.length} of {rows.length} providers · rank + median
-            p50 across {chains.length} chains, {regionLabel}
+            {unit === "pct" ? " share of first pushes" : " p50"} across {chains.length} chains,{" "}
+            {regionLabel}
           </p>
           {geoControl}
         </div>
@@ -168,12 +177,14 @@ export function RpcProvidersPivot({
               >
                 <span
                   title={
-                    raceMode
+                    unit === "pct"
+                      ? "Median share of first pushes across covered chains: of the blocks this provider received on a chain, the share it pushed before every other provider in the same region."
+                      : raceMode
                       ? "Median milliseconds behind whichever provider pushed the block first, across covered chains. The leader sits near zero because it is zero behind itself; read the trailers' distance from it."
                       : "Median 24h p50 across the chains this provider covers."
                   }
                 >
-                  {raceMode ? "Median lag" : "Median p50"}
+                  {unit === "pct" ? "First to push" : raceMode ? "Median lag" : "Median p50"}
                 </span>
               </ThSort>
               {hasSuccess && (
@@ -265,7 +276,7 @@ export function RpcProvidersPivot({
                   </span>
                 </Td>
                 <Td mono>#{fmtRank(r.medianRank)}</Td>
-                <Td mono>{fmtMs(r.medianP50Ms)}</Td>
+                <Td mono>{unit === "pct" ? fmtShare(r.medianP50Ms) : fmtMs(r.medianP50Ms)}</Td>
                 {hasSuccess && (
                   <Td mono>
                     {r.medianSuccessPct != null
@@ -289,7 +300,7 @@ export function RpcProvidersPivot({
                           key={c.chain}
                           title={
                             cell
-                              ? `${c.name}: ${fmtMs(cell.p50Ms)} · rank #${cell.rank}`
+                              ? `${c.name}: ${unit === "pct" ? `${fmtShare(cell.p50Ms)} first` : fmtMs(cell.p50Ms)} · rank #${cell.rank}`
                               : `${c.name}: not covered`
                           }
                           className={`inline-flex items-center justify-center w-[22px] h-[18px] rounded text-[9.5px] tabular-nums ${cellClass(
@@ -405,6 +416,11 @@ function Td({
       {children}
     </td>
   );
+}
+
+function fmtShare(v: number | null | undefined): string {
+  if (v == null || !Number.isFinite(v)) return "...";
+  return `${Math.round(v)}%`;
 }
 
 function fmtMs(v: number | null | undefined): string {
