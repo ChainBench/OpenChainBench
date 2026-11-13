@@ -659,13 +659,19 @@ func checkTokenMetadata(token TokenToCheck, config *Config) {
 	mobulaResult := checkMobulaMetadata(token, config.MobulaAPIKey)
 	updateStats("mobula", mobulaResult)
 
-	// Record Prometheus metrics for Mobula
-	RecordMetadataCoverage("mobula", chainName, "logo", mobulaResult.HasLogo, config.MonitorRegion)
-	RecordMetadataCoverage("mobula", chainName, "logo_resolved", mobulaResult.HasLogo && logoResolves(mobulaResult.LogoURL), config.MonitorRegion)
-	RecordMetadataCoverage("mobula", chainName, "description", mobulaResult.HasDescription, config.MonitorRegion)
-	RecordMetadataCoverage("mobula", chainName, "twitter", mobulaResult.HasTwitter, config.MonitorRegion)
-	RecordMetadataCoverage("mobula", chainName, "website", mobulaResult.HasWebsite, config.MonitorRegion)
-	RecordMetadataLatency("mobula", chainName, mobulaResult.ResponseTimeMs, config.MonitorRegion)
+	// A call that failed is not a measurement of what Mobula serves. See
+	// the note on RecordMetadataError: recording the empty fields of a
+	// failed call publishes our inability to ask as their absence.
+	if mobulaResult.Error != "" {
+		RecordMetadataError("mobula", chainName, mobulaResult.Error, config.MonitorRegion)
+	} else {
+		RecordMetadataCoverage("mobula", chainName, "logo", mobulaResult.HasLogo, config.MonitorRegion)
+		RecordMetadataCoverage("mobula", chainName, "logo_resolved", mobulaResult.HasLogo && logoResolves(mobulaResult.LogoURL), config.MonitorRegion)
+		RecordMetadataCoverage("mobula", chainName, "description", mobulaResult.HasDescription, config.MonitorRegion)
+		RecordMetadataCoverage("mobula", chainName, "twitter", mobulaResult.HasTwitter, config.MonitorRegion)
+		RecordMetadataCoverage("mobula", chainName, "website", mobulaResult.HasWebsite, config.MonitorRegion)
+		RecordMetadataLatency("mobula", chainName, mobulaResult.ResponseTimeMs, config.MonitorRegion)
+	}
 
 	// Check Codex
 	codexResult := checkCodexMetadata(token, config.DefinedSessionCookie)
@@ -675,13 +681,21 @@ func checkTokenMetadata(token TokenToCheck, config *Config) {
 	}
 	updateStats("codex", codexResult)
 
-	// Record Prometheus metrics for Codex
-	RecordMetadataCoverage("codex", chainName, "logo", codexResult.HasLogo, config.MonitorRegion)
-	RecordMetadataCoverage("codex", chainName, "logo_resolved", codexResult.HasLogo && logoResolves(codexResult.LogoURL), config.MonitorRegion)
-	RecordMetadataCoverage("codex", chainName, "description", codexResult.HasDescription, config.MonitorRegion)
-	RecordMetadataCoverage("codex", chainName, "twitter", codexResult.HasTwitter, config.MonitorRegion)
-	RecordMetadataCoverage("codex", chainName, "website", codexResult.HasWebsite, config.MonitorRegion)
-	RecordMetadataLatency("codex", chainName, codexResult.ResponseTimeMs, config.MonitorRegion)
+	// This is the branch that cost fifteen days. The Codex session cookie
+	// expired on 2026-10-28 at 21:15 UTC, every call answered 401, and the
+	// five fields below were recorded as five failed checks per token. The
+	// board published Codex at 0% coverage on three chains, which was a
+	// statement about our credential and not about their data.
+	if codexResult.Error != "" {
+		RecordMetadataError("codex", chainName, codexResult.Error, config.MonitorRegion)
+	} else {
+		RecordMetadataCoverage("codex", chainName, "logo", codexResult.HasLogo, config.MonitorRegion)
+		RecordMetadataCoverage("codex", chainName, "logo_resolved", codexResult.HasLogo && logoResolves(codexResult.LogoURL), config.MonitorRegion)
+		RecordMetadataCoverage("codex", chainName, "description", codexResult.HasDescription, config.MonitorRegion)
+		RecordMetadataCoverage("codex", chainName, "twitter", codexResult.HasTwitter, config.MonitorRegion)
+		RecordMetadataCoverage("codex", chainName, "website", codexResult.HasWebsite, config.MonitorRegion)
+		RecordMetadataLatency("codex", chainName, codexResult.ResponseTimeMs, config.MonitorRegion)
+	}
 
 	// Check Jupiter (Solana only - scraping frontend)
 	var jupiterResult MetadataFields
@@ -689,13 +703,17 @@ func checkTokenMetadata(token TokenToCheck, config *Config) {
 		jupiterResult = checkJupiterMetadata(token)
 		updateStats("jupiter", jupiterResult)
 
-		// Record Prometheus metrics for Jupiter
-		RecordMetadataCoverage("jupiter", chainName, "logo", jupiterResult.HasLogo, config.MonitorRegion)
-		RecordMetadataCoverage("jupiter", chainName, "logo_resolved", jupiterResult.HasLogo && logoResolves(jupiterResult.LogoURL), config.MonitorRegion)
-		RecordMetadataCoverage("jupiter", chainName, "description", jupiterResult.HasDescription, config.MonitorRegion)
-		RecordMetadataCoverage("jupiter", chainName, "twitter", jupiterResult.HasTwitter, config.MonitorRegion)
-		RecordMetadataCoverage("jupiter", chainName, "website", jupiterResult.HasWebsite, config.MonitorRegion)
-		RecordMetadataLatency("jupiter", chainName, jupiterResult.ResponseTimeMs, config.MonitorRegion)
+		// Same rule as the two above.
+		if jupiterResult.Error != "" {
+			RecordMetadataError("jupiter", chainName, jupiterResult.Error, config.MonitorRegion)
+		} else {
+			RecordMetadataCoverage("jupiter", chainName, "logo", jupiterResult.HasLogo, config.MonitorRegion)
+			RecordMetadataCoverage("jupiter", chainName, "logo_resolved", jupiterResult.HasLogo && logoResolves(jupiterResult.LogoURL), config.MonitorRegion)
+			RecordMetadataCoverage("jupiter", chainName, "description", jupiterResult.HasDescription, config.MonitorRegion)
+			RecordMetadataCoverage("jupiter", chainName, "twitter", jupiterResult.HasTwitter, config.MonitorRegion)
+			RecordMetadataCoverage("jupiter", chainName, "website", jupiterResult.HasWebsite, config.MonitorRegion)
+			RecordMetadataLatency("jupiter", chainName, jupiterResult.ResponseTimeMs, config.MonitorRegion)
+		}
 	}
 
 	// Check Serialized (18 EVM chains + Solana; skipped elsewhere)
@@ -708,12 +726,17 @@ func checkTokenMetadata(token TokenToCheck, config *Config) {
 		}
 		updateStats("serialized", serializedResult)
 
-		RecordMetadataCoverage("serialized", chainName, "logo", serializedResult.HasLogo, config.MonitorRegion)
-		RecordMetadataCoverage("serialized", chainName, "logo_resolved", serializedResult.HasLogo && logoResolves(serializedResult.LogoURL), config.MonitorRegion)
-		RecordMetadataCoverage("serialized", chainName, "description", serializedResult.HasDescription, config.MonitorRegion)
-		RecordMetadataCoverage("serialized", chainName, "twitter", serializedResult.HasTwitter, config.MonitorRegion)
-		RecordMetadataCoverage("serialized", chainName, "website", serializedResult.HasWebsite, config.MonitorRegion)
-		RecordMetadataLatency("serialized", chainName, serializedResult.ResponseTimeMs, config.MonitorRegion)
+		// Same rule as the three above.
+		if serializedResult.Error != "" {
+			RecordMetadataError("serialized", chainName, serializedResult.Error, config.MonitorRegion)
+		} else {
+			RecordMetadataCoverage("serialized", chainName, "logo", serializedResult.HasLogo, config.MonitorRegion)
+			RecordMetadataCoverage("serialized", chainName, "logo_resolved", serializedResult.HasLogo && logoResolves(serializedResult.LogoURL), config.MonitorRegion)
+			RecordMetadataCoverage("serialized", chainName, "description", serializedResult.HasDescription, config.MonitorRegion)
+			RecordMetadataCoverage("serialized", chainName, "twitter", serializedResult.HasTwitter, config.MonitorRegion)
+			RecordMetadataCoverage("serialized", chainName, "website", serializedResult.HasWebsite, config.MonitorRegion)
+			RecordMetadataLatency("serialized", chainName, serializedResult.ResponseTimeMs, config.MonitorRegion)
+		}
 	}
 
 	// Single condensed log line
