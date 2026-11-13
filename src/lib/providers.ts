@@ -1045,7 +1045,10 @@ const buildProvidersCached = unstable_cache(
   //      Lockstep with bench-unfiltered-v195.
   // v67: BlockVectra gains two appearances, boba-rpc and
   //      world-chain-rpc. Lockstep with bench-unfiltered-v197.
-  ["providers-v67"],
+  // v68: MOJO is new to the SITE, not only to a bench: it gains a
+  //      product page as well as the bench 030 appearance this index
+  //      carries. Lockstep with bench-unfiltered-v198.
+  ["providers-v68"],
   // 900 s: the provider index feeds products / compare / answers, whose
   // numbers move slowly, and this revalidate is also the effective ISR
   // period of those ~500 pages (Next takes the min across a route's caches).

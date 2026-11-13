@@ -751,5 +751,12 @@
     "address": "0xda5584eb1dff6ee2ae383b077b4dca9c0df1d4f6",
     "valid_from": "2026-11-04",
     "notes": "Afterbell (afterbell.pro), a Hyperliquid trading front-end for stock, index and commodity perps (HIP-3) and crypto perps, each stock perp read against its home exchange's session. Builder address and fee from the operator; the live site bundle carries the same address and Hyperliquid's referral info gives it the code AFTERBELL. Fee published at afterbell.pro/fees: 0.03% standard; 0.015%, 0.01% and 0.008% from $10M, $50M and $250M of 30-day volume; 0.005% for a wallet's first 30 days; 0.04% on copied fills; 0.001% on every order until 2026-12-31. valid_from is the first day the public fills bucket returns a file, checked day by day from 2026-10-01 on 2026-11-08: 3 days have one, the earliest 2026-11-04, for 10 fills, $849 of notional and $0.011 of builder fees in total, all from one wallet, the builder address itself. Its first builder fill was 2026-11-03 at 20:16 UTC, after that day's export cutoff."
+  },
+  {
+    "slug": "mojo",
+    "name": "MOJO",
+    "address": "0x7e60c68538c967b76381db4f46010ef378977997",
+    "valid_from": "2026-06-27",
+    "notes": "MOJO (mojo.trade), an AI trading app on web, iOS and Android: a trade is described in chat and confirmed on an order card, and the orders it routes to Hyperliquid (crypto perps and HIP-3 stock perps) carry this builder address. Builder address and fee from the operator: 0.05% of notional on every fill, published at docs.mojo.trade/use-cases/trade-us-stocks; every fill in the public bucket reads exactly 5.0 bp. valid_from is the first day the public fills bucket returns a file, checked day by day from 2026-04-01 on 2026-11-12: 127 days have one, the earliest 2026-06-27. The 30 files to 2026-11-11 hold 1,365 fills, about $142.5k of notional and $71.26 of builder fees from 113 wallets, and no fill has another of those wallets as its counterparty. Hyperliquid's referral info for the address reports about $408 of builderRewards."
   }
 ]
