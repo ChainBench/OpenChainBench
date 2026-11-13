@@ -53,6 +53,16 @@ describe("the provider set behind the cache keys", () => {
     const hash = createHash("sha256").update(sets.join("\n")).digest("hex").slice(0, 16);
     const count = sets.reduce((n, s) => n + s.split(":")[1].split(",").length, 0);
 
+    // An ADDITION on 2026-11-13: MOJO joins bench 030 as its 108th
+    // Hyperliquid builder (#3601), opened by the operator. New to the
+    // SITE, so providers-v moves with the other two; bench 030 declares
+    // no dimensions, so bench-filters does NOT move. v198/v191 and
+    // providers-v68. Every figure in the request was recomputed from the
+    // public builder-fills bucket before merge rather than read: 1,365
+    // fills, $142,513 of notional, $71.26 of builder fees, 113 wallets,
+    // exactly 5.0 bp on all 1,365 fills, and zero fills whose
+    // counterparty is another wallet of that cohort.
+    //
     // An ADDITION on 2026-11-12: BlockVectra joins the public Boba and
     // World Chain cohorts (#3594), with all three region tabs on each.
     // An existing provider gains two appearances: v197/v190/v115 and
@@ -211,6 +221,6 @@ describe("the provider set behind the cache keys", () => {
         "Then set EXPECTED to the hash in this failure, and add the provider",
         `to PRODUCT_NAMES if it needs a display name. Providers now: ${count}.`,
       ].join("\n"),
-    ).toBe("f002dfbdaa2ba875");
+    ).toBe("37dd89a335cf4b41");
   });
 });

@@ -1034,7 +1034,13 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       (#3594, an outside contribution). Both endpoints were probed
   //       before merge rather than taken from the issue: chain id 0x120
   //       and 0x1e0, heads 0 and 1 s old, a batch of ten accepted.
-  ["bench-unfiltered-v197", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v198: MOJO joins bench 030 as its 108th Hyperliquid builder (#3601,
+  //       from the operator). Every figure in the request was recomputed
+  //       from the public builder-fills bucket before merge: 1,365 fills,
+  //       $142,513 of notional, $71.26 of builder fees, 113 wallets, a
+  //       fee of exactly 5.0 bp on all 1,365, and zero fills whose
+  //       counterparty is another wallet of that cohort.
+  ["bench-unfiltered-v198", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -1409,7 +1415,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v188: lockstep with bench-unfiltered-v195 (BlockVectra on Optimism).
   // v189: lockstep with bench-unfiltered-v196 (bench 001 methodology).
   // v190: lockstep with bench-unfiltered-v197 (BlockVectra, two cohorts).
-  ["all-benchmarks-v190", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v191: lockstep with bench-unfiltered-v198 (MOJO on bench 030).
+  ["all-benchmarks-v191", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
