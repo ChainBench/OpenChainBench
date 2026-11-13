@@ -126,3 +126,31 @@ export function specValueKind(spec: {
   if (allMedian) return "median";
   return undefined;
 }
+
+/**
+ * True when at least one provider declares p50, p90 and p99 as expressions
+ * that are not all identical. Undefined when the spec declares no provider
+ * queries at all, so the caller can fall back to whatever the snapshot held
+ * rather than asserting "no distribution" about a spec it could not read.
+ *
+ * Shared with the materialize worker: its blobs feed providers.json, which
+ * the product pages read without the site's editorial overlay, so a bench
+ * the worker built without this field was labelled "p50 · 24h" there even
+ * when it computes one figure (a share, a coverage, a count).
+ */
+export function specHasDistribution(spec: {
+  providers?: { queries?: { p50?: string; p90?: string; p99?: string } }[];
+}): boolean | undefined {
+  const providers = spec.providers ?? [];
+  let sawQueries = false;
+  for (const p of providers) {
+    const q = p.queries;
+    if (!q?.p50) continue;
+    sawQueries = true;
+    const distinct = new Set(
+      [q.p50, q.p90, q.p99].filter((x): x is string => !!x).map((x) => x.trim()),
+    );
+    if (distinct.size > 1) return true;
+  }
+  return sawQueries ? false : undefined;
+}

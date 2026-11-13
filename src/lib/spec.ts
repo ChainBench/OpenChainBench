@@ -10,7 +10,7 @@
  */
 
 import { cache } from "react";
-import { specValueKind } from "@/lib/value-window";
+import { specHasDistribution, specValueKind } from "@/lib/value-window";
 import { unstable_cache } from "next/cache";
 import type { Benchmark } from "@/types/benchmark";
 import type { Spec } from "@/lib/spec-schema";
@@ -1764,25 +1764,3 @@ export const getSpecs = (): Promise<Spec[]> => loadSpecs();
 
 const loadSpecs = cache(loadSpecsUncached);
 
-/**
- * True when at least one provider declares p50, p90 and p99 as expressions
- * that are not all identical. Undefined when the spec declares no provider
- * queries at all, so the caller can fall back to whatever the snapshot held
- * rather than asserting "no distribution" about a spec it could not read.
- */
-function specHasDistribution(spec: {
-  providers?: { queries?: { p50?: string; p90?: string; p99?: string } }[];
-}): boolean | undefined {
-  const providers = spec.providers ?? [];
-  let sawQueries = false;
-  for (const p of providers) {
-    const q = p.queries;
-    if (!q?.p50) continue;
-    sawQueries = true;
-    const distinct = new Set(
-      [q.p50, q.p90, q.p99].filter((x): x is string => !!x).map((x) => x.trim()),
-    );
-    if (distinct.size > 1) return true;
-  }
-  return sawQueries ? false : undefined;
-}
