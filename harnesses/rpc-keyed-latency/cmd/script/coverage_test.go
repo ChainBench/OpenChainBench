@@ -31,6 +31,12 @@ func TestClassifyErrorSeparatesTheirFaultFromOurs(t *testing.T) {
 		{"worded method not found", -32000, "Method not found", verdictUnsupported},
 		{"unsupported method", -32000, "unsupported method: debug_traceTransaction", verdictUnsupported},
 		{"not available on network", -32000, "debug_traceTransaction is not available on this network", verdictUnsupported},
+		// Les trois messages exacts qu'Alchemy a renvoyes le 2026-11-10. Le
+		// code est -32600 et non -32000, et la phrase nomme le reseau, deux
+		// raisons pour lesquelles ils tombaient en verdictUnknown.
+		{"alchemy arbitrum", -32600, "trace_block is not available on the ARB_MAINNET. For more information see our docs: https://docs.alchemy.com/alchemy/documentation", verdictUnsupported},
+		{"alchemy hyperevm", -32600, "trace_block is not available on the HYPERLIQUID_MAINNET.", verdictUnsupported},
+		{"alchemy robinhood", -32600, "arbtrace_block is not available on the ROBINHOOD_MAINNET.", verdictUnsupported},
 
 		// Theirs: routed, but withheld from the plan we hold. Still a fact
 		// about the provider, so still a 0.
@@ -202,6 +208,12 @@ func TestProbesNeedingHeadRefuseWithoutIt(t *testing.T) {
 		"eth_getlogs_topics":   true,
 		"trace_block":          true,
 		"archive_5m":           true,
+		// Les deux sondes d'index lisent une fenetre de 500 blocs derriere
+		// la tete, donc elles en ont besoin comme les trois formes
+		// ci-dessus. Ce test a attrape leur absence de cette liste le jour
+		// ou elles sont arrivees, ce qui est exactement son role.
+		"eth_getlogs_index_address": true,
+		"eth_getlogs_index_topic":   true,
 	}
 	for _, pr := range coverageProbes {
 		_, ok := pr.body(0)
