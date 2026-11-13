@@ -208,6 +208,12 @@ func TestProbesNeedingHeadRefuseWithoutIt(t *testing.T) {
 		"eth_getlogs_topics":   true,
 		"trace_block":          true,
 		"archive_5m":           true,
+		// Les deux sondes d'index lisent une fenetre de 500 blocs derriere
+		// la tete, donc elles en ont besoin comme les trois formes
+		// ci-dessus. Ce test a attrape leur absence de cette liste le jour
+		// ou elles sont arrivees, ce qui est exactement son role.
+		"eth_getlogs_index_address": true,
+		"eth_getlogs_index_topic":   true,
 	}
 	for _, pr := range coverageProbes {
 		_, ok := pr.body(0)

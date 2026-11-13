@@ -54,6 +54,14 @@ const (
 	// stays bounded. The maximum accepted range is a different measurement
 	// and gets its own gauge below.
 	coverageLogSpan = 5
+	// The width of the index probes, in blocks BEHIND the head: head-499
+	// to head inclusive is 500 blocks, which is the largest window every
+	// provider in the cohort accepts. Dwellir's guard trips above 500 and
+	// answers "eth_getLogs range of 501 blocks exceeds the 500-block
+	// limit", so head-500 would have emptied its cell permanently and read
+	// as a refusal on its side. Verified against five live endpoints
+	// 2026-11-13.
+	coverageIndexSpan = 499
 	// Depth for the archive question, matching the deepest bucket the
 	// no-key harness probes so the two tiers are comparable.
 	coverageArchiveDepth = 5_000_000
@@ -72,6 +80,17 @@ const coverageAbsentTxHash = "0x" +
 // ERC-20 Transfer(address,address,uint256). Present on every EVM chain we
 // probe, so a topic-filtered query is a fair test everywhere.
 const topicTransfer = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
+
+// A topic that cannot equal any deployed event signature: a signature is a
+// keccak256 hash, and 32 bytes of 0xee is not a preimage anybody has. The
+// range ladder uses the same value for the same reason. Paired with the zero
+// address below it gives two queries that scan the same blocks and both come
+// back empty, so the only term that differs is which index the client reads.
+const topicImpossible = "0x" +
+	"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+
+// The zero address holds no logs on any chain we probe.
+const addressEmpty = "0x0000000000000000000000000000000000000000"
 
 // coverageProbe is one capability question.
 type coverageProbe struct {
@@ -426,6 +445,48 @@ var coverageProbes = []coverageProbe{
 			return fmt.Sprintf(
 				`{"jsonrpc":"2.0","id":1,"method":"eth_getLogs","params":[{"fromBlock":"%s","toBlock":"%s","topics":["%s"]}]}`,
 				hexNum(head-coverageLogSpan), hexNum(head), topicTransfer), true
+		},
+		supported: coverageProbes0EmptyOK,
+	},
+	// The two index probes. They are a PAIR and only mean anything read
+	// together: same width, same empty response, one reads the address
+	// index and the other the topic index.
+	//
+	// READ THE DIFFERENCE, NOT THE RATIO. These probes are cold, so each
+	// call pays DNS, TCP and TLS, and that cost lands in both terms
+	// equally. Subtracting cancels it; dividing does not. With a 100 ms
+	// handshake and index work of 40 against 60 ms, the gauges read 140 and
+	// 160, a ratio of 1.14 for a real effect of 1.5. The ratio understates
+	// the index, and the understatement grows with distance from the
+	// provider.
+	//
+	// The three shapes above cannot answer this. Their topic form names the
+	// Transfer signature, which on Ethereum returns about 2,800 logs and
+	// 1.8 MB in five blocks against 36 bytes for the address form, so the
+	// gap between them is mostly transfer and not index.
+	{
+		API:  "eth_getlogs_index_address",
+		Kind: "evm",
+		body: func(head uint64) (string, bool) {
+			if head <= coverageIndexSpan {
+				return "", false
+			}
+			return fmt.Sprintf(
+				`{"jsonrpc":"2.0","id":1,"method":"eth_getLogs","params":[{"fromBlock":"%s","toBlock":"%s","address":"%s"}]}`,
+				hexNum(head-coverageIndexSpan), hexNum(head), addressEmpty), true
+		},
+		supported: coverageProbes0EmptyOK,
+	},
+	{
+		API:  "eth_getlogs_index_topic",
+		Kind: "evm",
+		body: func(head uint64) (string, bool) {
+			if head <= coverageIndexSpan {
+				return "", false
+			}
+			return fmt.Sprintf(
+				`{"jsonrpc":"2.0","id":1,"method":"eth_getLogs","params":[{"fromBlock":"%s","toBlock":"%s","topics":["%s"]}]}`,
+				hexNum(head-coverageIndexSpan), hexNum(head), topicImpossible), true
 		},
 		supported: coverageProbes0EmptyOK,
 	},
