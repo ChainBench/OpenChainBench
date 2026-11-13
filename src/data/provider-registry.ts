@@ -194,7 +194,7 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     url: "https://www.codex.io",
     description:
       "Onchain market data API for EVM and Solana. GraphQL and WebSocket feeds for tokens, pairs, trades, and pricing.",
-    twitter: "@CodexData",
+    twitter: "@trycodex",
   },
   geckoterminal: {
     url: "https://www.geckoterminal.com",
