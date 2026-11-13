@@ -1,38 +1,38 @@
 {
-  "asOf": "2026-11-11T12:58:00Z",
+  "asOf": "2026-11-13T13:07:00Z",
   "window": "7d",
   "http": [
     {
       "chain": "ethereum",
       "region": "us-east",
       "provider": "quicknode",
-      "p50": 7.4,
-      "p99": 10.9,
-      "cold50": 33.0
+      "p50": 7.3,
+      "p99": 10.2,
+      "cold50": 33.4
     },
     {
       "chain": "ethereum",
       "region": "us-east",
       "provider": "chainstack",
-      "p50": 3.5,
-      "p99": 31.3,
-      "cold50": 17.3
+      "p50": 3.4,
+      "p99": 31.0,
+      "cold50": 17.4
     },
     {
       "chain": "ethereum",
       "region": "us-east",
       "provider": "getblock",
-      "p50": 6.3,
-      "p99": 12.8,
-      "cold50": 13.0
+      "p50": 6.2,
+      "p99": 10.7,
+      "cold50": 12.9
     },
     {
       "chain": "ethereum",
       "region": "us-east",
       "provider": "alchemy",
-      "p50": 8.1,
-      "p99": 27.8,
-      "cold50": 23.9
+      "p50": 8.3,
+      "p99": 29.4,
+      "cold50": 25.0
     },
     {
       "chain": "ethereum",
@@ -40,15 +40,15 @@
       "provider": "dwellir",
       "p50": 74.9,
       "p99": 82.2,
-      "cold50": 236.8
+      "cold50": 238.6
     },
     {
       "chain": "ethereum",
       "region": "us-east",
       "provider": "blockmachine",
-      "p50": 112.9,
-      "p99": 505.6,
-      "cold50": 281.3
+      "p50": 114.3,
+      "p99": 519.5,
+      "cold50": 280.4
     },
     {
       "chain": "ethereum",
@@ -62,233 +62,233 @@
       "chain": "ethereum",
       "region": "eu-west",
       "provider": "chainstack",
-      "p50": 10.2,
+      "p50": 10.3,
       "p99": 20.5,
-      "cold50": 43.6
+      "cold50": 43.8
     },
     {
       "chain": "ethereum",
       "region": "eu-west",
       "provider": "getblock",
-      "p50": 15.6,
-      "p99": 28.2,
-      "cold50": 44.7
+      "p50": 15.5,
+      "p99": 26.5,
+      "cold50": 45.0
     },
     {
       "chain": "ethereum",
       "region": "eu-west",
       "provider": "alchemy",
-      "p50": 13.5,
-      "p99": 54.9,
-      "cold50": 50.6
+      "p50": 13.6,
+      "p99": 82.8,
+      "cold50": 50.1
     },
     {
       "chain": "ethereum",
       "region": "eu-west",
       "provider": "dwellir",
       "p50": 21.6,
-      "p99": 29.8,
+      "p99": 31.1,
       "cold50": 81.9
     },
     {
       "chain": "ethereum",
       "region": "eu-west",
       "provider": "blockmachine",
-      "p50": 37.5,
-      "p99": 184.6,
-      "cold50": 57.3
+      "p50": 36.7,
+      "p99": 105.3,
+      "cold50": 56.6
     },
     {
       "chain": "ethereum",
       "region": "sgp",
       "provider": "quicknode",
-      "p50": 2.1,
-      "p99": 15.1,
-      "cold50": 16.0
+      "p50": 2.5,
+      "p99": 16.6,
+      "cold50": 18.2
     },
     {
       "chain": "ethereum",
       "region": "sgp",
       "provider": "chainstack",
-      "p50": 38.5,
-      "p99": 55.4,
-      "cold50": 134.2
+      "p50": 39.6,
+      "p99": 61.6,
+      "cold50": 135.7
     },
     {
       "chain": "ethereum",
       "region": "sgp",
       "provider": "getblock",
-      "p50": 4.3,
-      "p99": 15.7,
-      "cold50": 18.9
+      "p50": 4.8,
+      "p99": 19.4,
+      "cold50": 20.8
     },
     {
       "chain": "ethereum",
       "region": "sgp",
       "provider": "alchemy",
-      "p50": 7.1,
-      "p99": 27.2,
-      "cold50": 22.6
+      "p50": 7.4,
+      "p99": 25.6,
+      "cold50": 25.1
     },
     {
       "chain": "ethereum",
       "region": "sgp",
       "provider": "dwellir",
-      "p50": 3.7,
-      "p99": 37.2,
-      "cold50": 187.2
+      "p50": 4.2,
+      "p99": 156.5,
+      "cold50": 193.5
     },
     {
       "chain": "ethereum",
       "region": "sgp",
       "provider": "blockmachine",
-      "p50": 178.9,
-      "p99": 362.2,
-      "cold50": 194.6
+      "p50": 177.5,
+      "p99": 356.1,
+      "cold50": 195.3
     },
     {
       "chain": "base",
       "region": "us-east",
       "provider": "quicknode",
-      "p50": 6.3,
-      "p99": 9.1,
-      "cold50": 30.9
+      "p50": 6.4,
+      "p99": 8.5,
+      "cold50": 31.4
     },
     {
       "chain": "base",
       "region": "us-east",
       "provider": "chainstack",
-      "p50": 2.8,
-      "p99": 6.9,
-      "cold50": 16.5
+      "p50": 2.6,
+      "p99": 6.2,
+      "cold50": 16.2
     },
     {
       "chain": "base",
       "region": "us-east",
       "provider": "getblock",
-      "p50": 12.3,
-      "p99": 25.6,
-      "cold50": 18.8
+      "p50": 12.4,
+      "p99": 19.1,
+      "cold50": 19.1
     },
     {
       "chain": "base",
       "region": "us-east",
       "provider": "alchemy",
       "p50": 7.6,
-      "p99": 27.7,
-      "cold50": 22.5
+      "p99": 28.1,
+      "cold50": 23.7
     },
     {
       "chain": "base",
       "region": "us-east",
       "provider": "dwellir",
-      "p50": 2.5,
-      "p99": 4.4,
-      "cold50": 15.5
+      "p50": 2.4,
+      "p99": 4.3,
+      "cold50": 15.6
     },
     {
       "chain": "base",
       "region": "us-east",
       "provider": "blockmachine",
-      "p50": 114.3,
-      "p99": 527.2,
-      "cold50": 286.2
+      "p50": 115.1,
+      "p99": 533.3,
+      "cold50": 291.2
     },
     {
       "chain": "base",
       "region": "eu-west",
       "provider": "quicknode",
-      "p50": 6.9,
-      "p99": 9.9,
-      "cold50": 37.8
+      "p50": 7.0,
+      "p99": 9.7,
+      "cold50": 37.7
     },
     {
       "chain": "base",
       "region": "eu-west",
       "provider": "chainstack",
-      "p50": 9.4,
-      "p99": 23.7,
-      "cold50": 41.1
+      "p50": 9.2,
+      "p99": 391.1,
+      "cold50": 41.0
     },
     {
       "chain": "base",
       "region": "eu-west",
       "provider": "getblock",
       "p50": 8.8,
-      "p99": 17.9,
-      "cold50": 26.2
+      "p99": 18.2,
+      "cold50": 26.1
     },
     {
       "chain": "base",
       "region": "eu-west",
       "provider": "alchemy",
-      "p50": 19.6,
-      "p99": 39.1,
-      "cold50": 47.6
+      "p50": 19.4,
+      "p99": 39.0,
+      "cold50": 46.8
     },
     {
       "chain": "base",
       "region": "eu-west",
       "provider": "dwellir",
-      "p50": 21.5,
-      "p99": 66.7,
-      "cold50": 82.9
+      "p50": 21.4,
+      "p99": 66.8,
+      "cold50": 82.6
     },
     {
       "chain": "base",
       "region": "eu-west",
       "provider": "blockmachine",
-      "p50": 37.9,
-      "p99": 352.4,
-      "cold50": 79.6
+      "p50": 36.3,
+      "p99": 96.3,
+      "cold50": 76.5
     },
     {
       "chain": "base",
       "region": "sgp",
       "provider": "quicknode",
-      "p50": 2.0,
-      "p99": 17.9,
-      "cold50": 15.8
-    },
-    {
-      "chain": "base",
-      "region": "sgp",
-      "provider": "chainstack",
-      "p50": 4.2,
-      "p99": 101.3,
-      "cold50": 21.8
-    },
-    {
-      "chain": "base",
-      "region": "sgp",
-      "provider": "getblock",
-      "p50": 3.8,
-      "p99": 17.7,
+      "p50": 2.4,
+      "p99": 19.7,
       "cold50": 18.2
     },
     {
       "chain": "base",
       "region": "sgp",
+      "provider": "chainstack",
+      "p50": 4.7,
+      "p99": 79.2,
+      "cold50": 24.2
+    },
+    {
+      "chain": "base",
+      "region": "sgp",
+      "provider": "getblock",
+      "p50": 4.1,
+      "p99": 16.3,
+      "cold50": 19.8
+    },
+    {
+      "chain": "base",
+      "region": "sgp",
       "provider": "alchemy",
-      "p50": 6.0,
-      "p99": 23.2,
-      "cold50": 22.1
+      "p50": 6.5,
+      "p99": 23.7,
+      "cold50": 24.2
     },
     {
       "chain": "base",
       "region": "sgp",
       "provider": "dwellir",
-      "p50": 3.1,
-      "p99": 58.7,
-      "cold50": 191.2
+      "p50": 3.5,
+      "p99": 35.8,
+      "cold50": 195.4
     },
     {
       "chain": "base",
       "region": "sgp",
       "provider": "blockmachine",
-      "p50": 196.4,
-      "p99": 512.3,
-      "cold50": 504.4
+      "p50": 186.0,
+      "p99": 464.9,
+      "cold50": 503.4
     },
     {
       "chain": "arbitrum",
@@ -296,470 +296,470 @@
       "provider": "quicknode",
       "p50": 6.5,
       "p99": 7.9,
-      "cold50": 31.8
+      "cold50": 31.3
     },
     {
       "chain": "arbitrum",
       "region": "us-east",
       "provider": "chainstack",
       "p50": 7.4,
-      "p99": 11.7,
-      "cold50": 31.9
+      "p99": 11.4,
+      "cold50": 32.1
     },
     {
       "chain": "arbitrum",
       "region": "us-east",
       "provider": "getblock",
       "p50": 11.5,
-      "p99": 52.9,
-      "cold50": 22.5
+      "p99": 59.4,
+      "cold50": 23.2
     },
     {
       "chain": "arbitrum",
       "region": "us-east",
       "provider": "alchemy",
-      "p50": 7.5,
-      "p99": 28.5,
-      "cold50": 24.2
+      "p50": 7.3,
+      "p99": 28.1,
+      "cold50": 25.2
     },
     {
       "chain": "arbitrum",
       "region": "us-east",
       "provider": "dwellir",
-      "p50": 93.1,
-      "p99": 110.4,
-      "cold50": 286.5
+      "p50": 93.0,
+      "p99": 110.7,
+      "cold50": 287.2
     },
     {
       "chain": "arbitrum",
       "region": "us-east",
       "provider": "blockmachine",
-      "p50": 110.3,
-      "p99": 529.7,
-      "cold50": 290.8
+      "p50": 111.6,
+      "p99": 536.9,
+      "cold50": 294.9
     },
     {
       "chain": "arbitrum",
       "region": "eu-west",
       "provider": "quicknode",
-      "p50": 7.7,
-      "p99": 10.9,
-      "cold50": 39.6
+      "p50": 7.8,
+      "p99": 10.8,
+      "cold50": 39.7
     },
     {
       "chain": "arbitrum",
       "region": "eu-west",
       "provider": "chainstack",
-      "p50": 8.5,
+      "p50": 8.7,
       "p99": 12.8,
-      "cold50": 41.1
+      "cold50": 41.2
     },
     {
       "chain": "arbitrum",
       "region": "eu-west",
       "provider": "getblock",
       "p50": 8.6,
-      "p99": 16.9,
-      "cold50": 39.1
+      "p99": 17.7,
+      "cold50": 39.2
     },
     {
       "chain": "arbitrum",
       "region": "eu-west",
       "provider": "alchemy",
       "p50": 12.8,
-      "p99": 40.2,
-      "cold50": 49.8
+      "p99": 35.3,
+      "cold50": 48.6
     },
     {
       "chain": "arbitrum",
       "region": "eu-west",
       "provider": "dwellir",
       "p50": 21.4,
-      "p99": 32.8,
-      "cold50": 78.3
+      "p99": 32.5,
+      "cold50": 78.2
     },
     {
       "chain": "arbitrum",
       "region": "eu-west",
       "provider": "blockmachine",
-      "p50": 37.2,
-      "p99": 150.8,
-      "cold50": 80.9
+      "p50": 36.9,
+      "p99": 97.6,
+      "cold50": 80.1
     },
     {
       "chain": "arbitrum",
       "region": "sgp",
       "provider": "quicknode",
-      "p50": 1.4,
-      "p99": 15.8,
-      "cold50": 14.6
+      "p50": 1.9,
+      "p99": 17.2,
+      "cold50": 17.5
     },
     {
       "chain": "arbitrum",
       "region": "sgp",
       "provider": "chainstack",
-      "p50": 4.3,
-      "p99": 46.6,
-      "cold50": 125.3
+      "p50": 4.6,
+      "p99": 47.6,
+      "cold50": 126.2
     },
     {
       "chain": "arbitrum",
       "region": "sgp",
       "provider": "getblock",
-      "p50": 3.7,
-      "p99": 17.6,
-      "cold50": 11.0
+      "p50": 4.1,
+      "p99": 17.0,
+      "cold50": 12.3
     },
     {
       "chain": "arbitrum",
       "region": "sgp",
       "provider": "alchemy",
-      "p50": 5.5,
-      "p99": 23.4,
-      "cold50": 22.6
+      "p50": 6.2,
+      "p99": 23.8,
+      "cold50": 24.9
     },
     {
       "chain": "arbitrum",
       "region": "sgp",
       "provider": "dwellir",
-      "p50": 175.3,
-      "p99": 198.1,
-      "cold50": 702.9
+      "p50": 176.0,
+      "p99": 209.6,
+      "cold50": 706.7
     },
     {
       "chain": "arbitrum",
       "region": "sgp",
       "provider": "blockmachine",
-      "p50": 183.4,
-      "p99": 629.5,
-      "cold50": 506.3
+      "p50": 184.4,
+      "p99": 501.7,
+      "cold50": 503.8
     },
     {
       "chain": "bnb",
       "region": "us-east",
       "provider": "quicknode",
       "p50": 6.6,
-      "p99": 8.4,
-      "cold50": 32.3
+      "p99": 8.7,
+      "cold50": 32.7
     },
     {
       "chain": "bnb",
       "region": "us-east",
       "provider": "chainstack",
       "p50": 2.9,
-      "p99": 6.0,
-      "cold50": 16.1
+      "p99": 6.5,
+      "cold50": 16.3
     },
     {
       "chain": "bnb",
       "region": "us-east",
       "provider": "getblock",
-      "p50": 11.7,
-      "p99": 54.2,
+      "p50": 11.6,
+      "p99": 60.2,
       "cold50": 18.0
     },
     {
       "chain": "bnb",
       "region": "us-east",
       "provider": "alchemy",
-      "p50": 8.3,
-      "p99": 29.2,
-      "cold50": 25.8
+      "p50": 8.4,
+      "p99": 28.3,
+      "cold50": 27.3
     },
     {
       "chain": "bnb",
       "region": "us-east",
       "provider": "dwellir",
-      "p50": 75.0,
-      "p99": 82.3,
-      "cold50": 238.8
+      "p50": 74.9,
+      "p99": 82.1,
+      "cold50": 240.0
     },
     {
       "chain": "bnb",
       "region": "us-east",
       "provider": "blockmachine",
-      "p50": 113.1,
-      "p99": 519.8,
-      "cold50": 292.3
+      "p50": 114.9,
+      "p99": 522.9,
+      "cold50": 297.6
     },
     {
       "chain": "bnb",
       "region": "eu-west",
       "provider": "quicknode",
-      "p50": 6.7,
-      "p99": 8.5,
-      "cold50": 37.8
+      "p50": 6.8,
+      "p99": 9.1,
+      "cold50": 38.0
     },
     {
       "chain": "bnb",
       "region": "eu-west",
       "provider": "chainstack",
-      "p50": 10.3,
-      "p99": 28.9,
-      "cold50": 41.0
+      "p50": 10.2,
+      "p99": 27.1,
+      "cold50": 41.4
     },
     {
       "chain": "bnb",
       "region": "eu-west",
       "provider": "getblock",
       "p50": 14.7,
-      "p99": 26.5,
-      "cold50": 43.8
+      "p99": 25.9,
+      "cold50": 44.0
     },
     {
       "chain": "bnb",
       "region": "eu-west",
       "provider": "alchemy",
-      "p50": 19.9,
-      "p99": 40.4,
-      "cold50": 50.1
+      "p50": 20.1,
+      "p99": 48.0,
+      "cold50": 49.4
     },
     {
       "chain": "bnb",
       "region": "eu-west",
       "provider": "dwellir",
       "p50": 21.6,
-      "p99": 31.1,
-      "cold50": 83.3
+      "p99": 30.0,
+      "cold50": 83.2
     },
     {
       "chain": "bnb",
       "region": "eu-west",
       "provider": "blockmachine",
-      "p50": 40.2,
-      "p99": 151.0,
-      "cold50": 86.3
+      "p50": 40.0,
+      "p99": 110.5,
+      "cold50": 85.1
     },
     {
       "chain": "bnb",
       "region": "sgp",
       "provider": "quicknode",
-      "p50": 1.1,
-      "p99": 13.9,
-      "cold50": 13.0
+      "p50": 1.4,
+      "p99": 16.6,
+      "cold50": 15.4
     },
     {
       "chain": "bnb",
       "region": "sgp",
       "provider": "chainstack",
-      "p50": 41.3,
-      "p99": 56.2,
-      "cold50": 126.2
+      "p50": 40.0,
+      "p99": 57.2,
+      "cold50": 126.8
     },
     {
       "chain": "bnb",
       "region": "sgp",
       "provider": "getblock",
-      "p50": 3.7,
+      "p50": 4.0,
       "p99": 16.9,
-      "cold50": 17.7
+      "cold50": 19.0
     },
     {
       "chain": "bnb",
       "region": "sgp",
       "provider": "alchemy",
-      "p50": 6.2,
-      "p99": 22.8,
-      "cold50": 23.9
+      "p50": 6.8,
+      "p99": 23.4,
+      "cold50": 22.4
     },
     {
       "chain": "bnb",
       "region": "sgp",
       "provider": "dwellir",
-      "p50": 3.2,
-      "p99": 25.0,
-      "cold50": 191.5
+      "p50": 3.5,
+      "p99": 17.6,
+      "cold50": 198.2
     },
     {
       "chain": "bnb",
       "region": "sgp",
       "provider": "blockmachine",
-      "p50": 302.3,
-      "p99": 637.5,
-      "cold50": 493.4
+      "p50": 222.0,
+      "p99": 382.2,
+      "cold50": 488.3
     },
     {
       "chain": "polygon",
       "region": "us-east",
       "provider": "quicknode",
-      "p50": 6.7,
-      "p99": 8.8,
-      "cold50": 32.1
+      "p50": 6.6,
+      "p99": 8.3,
+      "cold50": 31.1
     },
     {
       "chain": "polygon",
       "region": "us-east",
       "provider": "chainstack",
       "p50": 2.8,
-      "p99": 31.0,
-      "cold50": 16.3
+      "p99": 16.0,
+      "cold50": 16.4
     },
     {
       "chain": "polygon",
       "region": "us-east",
       "provider": "getblock",
-      "p50": 12.6,
-      "p99": 361.6,
-      "cold50": 19.6
+      "p50": 12.4,
+      "p99": 835.1,
+      "cold50": 19.4
     },
     {
       "chain": "polygon",
       "region": "us-east",
       "provider": "alchemy",
-      "p50": 7.0,
-      "p99": 28.4,
-      "cold50": 24.8
+      "p50": 7.1,
+      "p99": 27.6,
+      "cold50": 25.5
     },
     {
       "chain": "polygon",
       "region": "us-east",
       "provider": "dwellir",
-      "p50": 75.1,
-      "p99": 82.5,
-      "cold50": 237.4
+      "p50": 75.0,
+      "p99": 82.3,
+      "cold50": 240.1
     },
     {
       "chain": "polygon",
       "region": "us-east",
       "provider": "blockmachine",
-      "p50": 111.3,
-      "p99": 529.6,
-      "cold50": 288.5
+      "p50": 113.4,
+      "p99": 479.8,
+      "cold50": 290.1
     },
     {
       "chain": "polygon",
       "region": "eu-west",
       "provider": "quicknode",
       "p50": 7.5,
-      "p99": 15.4,
-      "cold50": 37.6
+      "p99": 12.1,
+      "cold50": 37.8
     },
     {
       "chain": "polygon",
       "region": "eu-west",
       "provider": "chainstack",
-      "p50": 8.6,
+      "p50": 8.7,
       "p99": 26.6,
-      "cold50": 41.5
+      "cold50": 41.7
     },
     {
       "chain": "polygon",
       "region": "eu-west",
       "provider": "getblock",
-      "p50": 9.2,
-      "p99": 107.6,
-      "cold50": 39.2
+      "p50": 9.0,
+      "p99": 23.9,
+      "cold50": 38.8
     },
     {
       "chain": "polygon",
       "region": "eu-west",
       "provider": "alchemy",
-      "p50": 19.5,
-      "p99": 43.4,
-      "cold50": 49.0
+      "p50": 19.7,
+      "p99": 44.5,
+      "cold50": 48.0
     },
     {
       "chain": "polygon",
       "region": "eu-west",
       "provider": "dwellir",
       "p50": 22.3,
-      "p99": 171.6,
-      "cold50": 87.6
+      "p99": 174.6,
+      "cold50": 87.3
     },
     {
       "chain": "polygon",
       "region": "eu-west",
       "provider": "blockmachine",
       "p50": 38.8,
-      "p99": 198.1,
-      "cold50": 82.9
+      "p99": 146.4,
+      "cold50": 81.6
     },
     {
       "chain": "polygon",
       "region": "sgp",
       "provider": "quicknode",
-      "p50": 1.2,
-      "p99": 16.3,
-      "cold50": 13.5
+      "p50": 1.6,
+      "p99": 17.2,
+      "cold50": 15.9
     },
     {
       "chain": "polygon",
       "region": "sgp",
       "provider": "chainstack",
-      "p50": 70.5,
+      "p50": 70.7,
       "p99": 604.0,
-      "cold50": 228.2
+      "cold50": 228.0
     },
     {
       "chain": "polygon",
       "region": "sgp",
       "provider": "getblock",
-      "p50": 3.7,
-      "p99": 13.9,
-      "cold50": 19.1
+      "p50": 4.1,
+      "p99": 19.8,
+      "cold50": 20.9
     },
     {
       "chain": "polygon",
       "region": "sgp",
       "provider": "alchemy",
-      "p50": 5.5,
-      "p99": 21.9,
-      "cold50": 23.1
+      "p50": 6.3,
+      "p99": 23.1,
+      "cold50": 26.1
     },
     {
       "chain": "polygon",
       "region": "sgp",
       "provider": "dwellir",
-      "p50": 177.6,
+      "p50": 178.5,
       "p99": 329.9,
-      "cold50": 723.1
+      "cold50": 736.7
     },
     {
       "chain": "polygon",
       "region": "sgp",
       "provider": "blockmachine",
-      "p50": 187.4,
-      "p99": 706.4,
-      "cold50": 503.3
+      "p50": 186.1,
+      "p99": 650.2,
+      "cold50": 500.6
     },
     {
       "chain": "solana",
       "region": "us-east",
       "provider": "quicknode",
       "p50": 6.8,
-      "p99": 9.6,
-      "cold50": 32.4
+      "p99": 10.8,
+      "cold50": 32.7
     },
     {
       "chain": "solana",
       "region": "us-east",
       "provider": "chainstack",
-      "p50": 7.1,
-      "p99": 80.6,
-      "cold50": 32.0
+      "p50": 7.3,
+      "p99": 88.8,
+      "cold50": 31.9
     },
     {
       "chain": "solana",
       "region": "us-east",
       "provider": "getblock",
       "p50": 11.4,
-      "p99": 40.6,
+      "p99": 26.3,
       "cold50": 18.2
     },
     {
       "chain": "solana",
       "region": "us-east",
       "provider": "alchemy",
-      "p50": 7.9,
-      "p99": 29.0,
-      "cold50": 22.6
+      "p50": 7.8,
+      "p99": 30.7,
+      "cold50": 24.1
     },
     {
       "chain": "solana",
       "region": "eu-west",
       "provider": "quicknode",
-      "p50": 1.5,
-      "p99": 2.8,
+      "p50": 1.6,
+      "p99": 2.6,
       "cold50": 20.3
     },
     {
@@ -768,359 +768,359 @@
       "provider": "chainstack",
       "p50": 8.4,
       "p99": 70.4,
-      "cold50": 41.3
+      "cold50": 41.4
     },
     {
       "chain": "solana",
       "region": "eu-west",
       "provider": "getblock",
       "p50": 8.9,
-      "p99": 21.0,
-      "cold50": 26.3
+      "p99": 19.8,
+      "cold50": 26.4
     },
     {
       "chain": "solana",
       "region": "eu-west",
       "provider": "alchemy",
-      "p50": 13.7,
-      "p99": 43.7,
-      "cold50": 48.4
+      "p50": 14.2,
+      "p99": 48.2,
+      "cold50": 47.0
     },
     {
       "chain": "solana",
       "region": "sgp",
       "provider": "quicknode",
-      "p50": 1.3,
-      "p99": 16.4,
-      "cold50": 13.5
+      "p50": 1.8,
+      "p99": 19.2,
+      "cold50": 16.0
     },
     {
       "chain": "solana",
       "region": "sgp",
       "provider": "chainstack",
-      "p50": 3.2,
-      "p99": 24.8,
-      "cold50": 20.3
+      "p50": 4.1,
+      "p99": 29.4,
+      "cold50": 22.6
     },
     {
       "chain": "solana",
       "region": "sgp",
       "provider": "getblock",
-      "p50": 3.5,
-      "p99": 31.4,
-      "cold50": 10.9
+      "p50": 4.0,
+      "p99": 46.8,
+      "cold50": 12.7
     },
     {
       "chain": "solana",
       "region": "sgp",
       "provider": "alchemy",
-      "p50": 6.1,
-      "p99": 22.5,
-      "cold50": 23.7
+      "p50": 6.8,
+      "p99": 23.5,
+      "cold50": 25.6
     },
     {
       "chain": "hyperliquid",
       "region": "us-east",
       "provider": "quicknode",
       "p50": 7.0,
-      "p99": 9.7,
-      "cold50": 31.3
+      "p99": 9.2,
+      "cold50": 31.4
     },
     {
       "chain": "hyperliquid",
       "region": "us-east",
       "provider": "chainstack",
-      "p50": 67.0,
+      "p50": 60.4,
       "p99": 165.5,
-      "cold50": 201.3
+      "cold50": 203.1
     },
     {
       "chain": "hyperliquid",
       "region": "us-east",
       "provider": "getblock",
-      "p50": 233.5,
-      "p99": 266.9,
-      "cold50": 240.7
+      "p50": 233.2,
+      "p99": 248.6,
+      "cold50": 240.2
     },
     {
       "chain": "hyperliquid",
       "region": "us-east",
       "provider": "alchemy",
-      "p50": 5.6,
-      "p99": 16.1,
-      "cold50": 19.8
+      "p50": 5.5,
+      "p99": 13.8,
+      "cold50": 19.9
     },
     {
       "chain": "hyperliquid",
       "region": "us-east",
       "provider": "dwellir",
-      "p50": 74.8,
-      "p99": 82.3,
-      "cold50": 235.3
+      "p50": 74.7,
+      "p99": 82.1,
+      "cold50": 237.7
     },
     {
       "chain": "hyperliquid",
       "region": "eu-west",
       "provider": "quicknode",
       "p50": 7.3,
-      "p99": 11.5,
-      "cold50": 37.5
+      "p99": 11.4,
+      "cold50": 37.7
     },
     {
       "chain": "hyperliquid",
       "region": "eu-west",
       "provider": "chainstack",
       "p50": 8.2,
-      "p99": 201.9,
-      "cold50": 43.4
+      "p99": 299.6,
+      "cold50": 43.6
     },
     {
       "chain": "hyperliquid",
       "region": "eu-west",
       "provider": "getblock",
-      "p50": 8.6,
-      "p99": 170.7,
-      "cold50": 38.4
+      "p50": 8.7,
+      "p99": 177.0,
+      "cold50": 38.6
     },
     {
       "chain": "hyperliquid",
       "region": "eu-west",
       "provider": "alchemy",
       "p50": 12.0,
-      "p99": 31.8,
-      "cold50": 51.6
+      "p99": 28.1,
+      "cold50": 51.3
     },
     {
       "chain": "hyperliquid",
       "region": "eu-west",
       "provider": "dwellir",
       "p50": 21.3,
-      "p99": 36.0,
-      "cold50": 82.8
+      "p99": 38.7,
+      "cold50": 82.7
     },
     {
       "chain": "hyperliquid",
       "region": "sgp",
       "provider": "quicknode",
-      "p50": 1.9,
-      "p99": 15.9,
-      "cold50": 15.9
+      "p50": 2.4,
+      "p99": 17.5,
+      "cold50": 17.6
     },
     {
       "chain": "hyperliquid",
       "region": "sgp",
       "provider": "chainstack",
-      "p50": 70.5,
-      "p99": 158.0,
-      "cold50": 224.4
+      "p50": 70.6,
+      "p99": 88.6,
+      "cold50": 225.2
     },
     {
       "chain": "hyperliquid",
       "region": "sgp",
       "provider": "getblock",
-      "p50": 3.5,
-      "p99": 95.5,
-      "cold50": 19.5
+      "p50": 4.0,
+      "p99": 89.5,
+      "cold50": 21.4
     },
     {
       "chain": "hyperliquid",
       "region": "sgp",
       "provider": "alchemy",
-      "p50": 4.9,
-      "p99": 17.4,
-      "cold50": 21.7
+      "p50": 5.5,
+      "p99": 19.4,
+      "cold50": 23.8
     },
     {
       "chain": "hyperliquid",
       "region": "sgp",
       "provider": "dwellir",
-      "p50": 3.0,
-      "p99": 179.7,
-      "cold50": 190.2
+      "p50": 3.3,
+      "p99": 176.3,
+      "cold50": 194.2
     },
     {
       "chain": "robinhood",
       "region": "us-east",
       "provider": "quicknode",
-      "p50": 7.5,
-      "p99": 20.0,
-      "cold50": 31.6
+      "p50": 7.4,
+      "p99": 25.1,
+      "cold50": 32.1
     },
     {
       "chain": "robinhood",
       "region": "us-east",
       "provider": "chainstack",
-      "p50": 2.8,
-      "p99": 43.2,
-      "cold50": 16.8
+      "p50": 2.7,
+      "p99": 28.9,
+      "cold50": 17.0
     },
     {
       "chain": "robinhood",
       "region": "us-east",
       "provider": "getblock",
-      "p50": 11.2,
-      "p99": 52.8,
-      "cold50": 18.0
+      "p50": 11.1,
+      "p99": 58.6,
+      "cold50": 17.9
     },
     {
       "chain": "robinhood",
       "region": "us-east",
       "provider": "alchemy",
-      "p50": 5.5,
-      "p99": 12.0,
-      "cold50": 16.0
+      "p50": 5.3,
+      "p99": 11.0,
+      "cold50": 16.2
     },
     {
       "chain": "robinhood",
       "region": "us-east",
       "provider": "dwellir",
       "p50": 2.4,
-      "p99": 4.1,
-      "cold50": 15.1
+      "p99": 4.0,
+      "cold50": 15.0
     },
     {
       "chain": "robinhood",
       "region": "us-east",
       "provider": "blockmachine",
-      "p50": 109.0,
-      "p99": 518.2,
-      "cold50": 266.4
+      "p50": 110.5,
+      "p99": 533.8,
+      "cold50": 203.1
     },
     {
       "chain": "robinhood",
       "region": "eu-west",
       "provider": "quicknode",
       "p50": 7.8,
-      "p99": 14.1,
-      "cold50": 37.4
+      "p99": 14.0,
+      "cold50": 37.5
     },
     {
       "chain": "robinhood",
       "region": "eu-west",
       "provider": "chainstack",
       "p50": 7.8,
-      "p99": 23.5,
-      "cold50": 41.5
+      "p99": 22.4,
+      "cold50": 41.6
     },
     {
       "chain": "robinhood",
       "region": "eu-west",
       "provider": "getblock",
-      "p50": 9.3,
-      "p99": 18.6,
-      "cold50": 39.9
+      "p50": 9.4,
+      "p99": 18.4,
+      "cold50": 40.0
     },
     {
       "chain": "robinhood",
       "region": "eu-west",
       "provider": "alchemy",
-      "p50": 12.1,
-      "p99": 28.3,
-      "cold50": 46.5
+      "p50": 12.0,
+      "p99": 26.4,
+      "cold50": 46.2
     },
     {
       "chain": "robinhood",
       "region": "eu-west",
       "provider": "dwellir",
       "p50": 21.7,
-      "p99": 36.3,
+      "p99": 35.1,
       "cold50": 82.0
     },
     {
       "chain": "robinhood",
       "region": "eu-west",
       "provider": "blockmachine",
-      "p50": 34.0,
-      "p99": 328.2,
-      "cold50": 76.0
+      "p50": 33.5,
+      "p99": 77.1,
+      "cold50": 72.9
     },
     {
       "chain": "robinhood",
       "region": "sgp",
       "provider": "quicknode",
-      "p50": 66.9,
-      "p99": 87.3,
-      "cold50": 20.3
+      "p50": 66.0,
+      "p99": 84.2,
+      "cold50": 19.7
     },
     {
       "chain": "robinhood",
       "region": "sgp",
       "provider": "chainstack",
-      "p50": 39.3,
-      "p99": 62.4,
-      "cold50": 126.7
+      "p50": 36.7,
+      "p99": 60.1,
+      "cold50": 127.5
     },
     {
       "chain": "robinhood",
       "region": "sgp",
       "provider": "alchemy",
-      "p50": 5.2,
-      "p99": 19.0,
-      "cold50": 21.2
+      "p50": 5.7,
+      "p99": 19.2,
+      "cold50": 23.1
     },
     {
       "chain": "robinhood",
       "region": "sgp",
       "provider": "dwellir",
-      "p50": 176.0,
-      "p99": 202.2,
-      "cold50": 709.0
+      "p50": 176.7,
+      "p99": 225.2,
+      "cold50": 718.1
     },
     {
       "chain": "robinhood",
       "region": "sgp",
       "provider": "blockmachine",
-      "p50": 178.3,
-      "p99": 531.7,
-      "cold50": 198.5
+      "p50": 177.7,
+      "p99": 337.1,
+      "cold50": 197.9
     },
     {
       "chain": "arc",
       "region": "us-east",
       "provider": "quicknode",
       "p50": 6.2,
-      "p99": 8.7,
-      "cold50": 31.6
+      "p99": 9.8,
+      "cold50": 31.9
     },
     {
       "chain": "arc",
       "region": "us-east",
       "provider": "chainstack",
-      "p50": 2.5,
+      "p50": 2.4,
       "p99": 5.1,
-      "cold50": 22.3
+      "cold50": 22.5
     },
     {
       "chain": "arc",
       "region": "us-east",
       "provider": "getblock",
-      "p50": 11.9,
-      "p99": 18.6,
-      "cold50": 27.7
+      "p50": 11.8,
+      "p99": 17.6,
+      "cold50": 28.1
     },
     {
       "chain": "arc",
       "region": "us-east",
       "provider": "alchemy",
-      "p50": 7.2,
-      "p99": 28.9,
-      "cold50": 24.6
+      "p50": 7.0,
+      "p99": 27.3,
+      "cold50": 26.1
     },
     {
       "chain": "arc",
       "region": "us-east",
       "provider": "dwellir",
-      "p50": 74.7,
-      "p99": 82.3,
-      "cold50": 236.8
+      "p50": 74.6,
+      "p99": 82.1,
+      "cold50": 240.4
     },
     {
       "chain": "arc",
       "region": "us-east",
       "provider": "blockmachine",
-      "p50": 111.6,
-      "p99": 615.4,
-      "cold50": 296.8
+      "p50": 112.4,
+      "p99": 612.6,
+      "cold50": 300.4
     },
     {
       "chain": "arc",
@@ -1128,201 +1128,203 @@
       "provider": "quicknode",
       "p50": 7.2,
       "p99": 11.6,
-      "cold50": 37.4
+      "cold50": 37.6
     },
     {
       "chain": "arc",
       "region": "eu-west",
       "provider": "chainstack",
-      "p50": 8.7,
-      "p99": 13.2,
-      "cold50": 60.8
+      "p50": 9.1,
+      "p99": 16.8,
+      "cold50": 59.5
     },
     {
       "chain": "arc",
       "region": "eu-west",
       "provider": "getblock",
       "p50": 14.8,
-      "p99": 25.0,
-      "cold50": 44.3
+      "p99": 25.2,
+      "cold50": 44.5
     },
     {
       "chain": "arc",
       "region": "eu-west",
       "provider": "alchemy",
-      "p50": 12.7,
-      "p99": 32.3,
-      "cold50": 52.4
+      "p50": 12.6,
+      "p99": 30.3,
+      "cold50": 52.9
     },
     {
       "chain": "arc",
       "region": "eu-west",
       "provider": "dwellir",
-      "p50": 21.3,
-      "p99": 30.2,
+      "p50": 21.2,
+      "p99": 29.5,
       "cold50": 81.4
     },
     {
       "chain": "arc",
       "region": "eu-west",
       "provider": "blockmachine",
-      "p50": 38.5,
-      "p99": 133.7,
-      "cold50": 83.4
+      "p50": 38.9,
+      "p99": 122.6,
+      "cold50": 82.6
     },
     {
       "chain": "arc",
       "region": "sgp",
       "provider": "quicknode",
-      "p50": 160.7,
+      "p50": 158.1,
       "p99": 181.7,
-      "cold50": 496.9
+      "cold50": 492.3
     },
     {
       "chain": "arc",
       "region": "sgp",
       "provider": "chainstack",
-      "p50": 39.4,
-      "p99": 53.5,
-      "cold50": 146.4
+      "p50": 38.6,
+      "p99": 57.4,
+      "cold50": 148.0
     },
     {
       "chain": "arc",
       "region": "sgp",
       "provider": "alchemy",
-      "p50": 6.1,
-      "p99": 22.5,
-      "cold50": 23.8
+      "p50": 6.5,
+      "p99": 23.0,
+      "cold50": 25.8
     },
     {
       "chain": "arc",
       "region": "sgp",
       "provider": "dwellir",
-      "p50": 3.1,
-      "p99": 181.4,
-      "cold50": 211.4
+      "p50": 3.3,
+      "p99": 16.9,
+      "cold50": 196.3
     },
     {
       "chain": "arc",
       "region": "sgp",
       "provider": "blockmachine",
-      "p50": 185.8,
-      "p99": 1089.6,
-      "cold50": 511.1
+      "p50": 185.5,
+      "p99": 345.6,
+      "cold50": 509.2
     }
   ],
   "httpSummary": [
     {
       "provider": "quicknode",
       "us-east": {
-        "p50": 6.7,
-        "p99": 9.1,
-        "cold50": 31.8
+        "p50": 6.6,
+        "p99": 9.2,
+        "cold50": 31.9
       },
       "eu-west": {
         "p50": 7.3,
-        "p99": 11.5,
-        "cold50": 37.6
+        "p99": 11.4,
+        "cold50": 37.7
       },
       "sgp": {
-        "p50": 1.9,
-        "p99": 16.3,
-        "cold50": 15.8
+        "p50": 2.4,
+        "p99": 17.5,
+        "cold50": 17.6
       },
       "all": {
-        "p50": 6.7,
+        "p50": 6.8,
         "p99": 11.6,
-        "cold50": 31.8
+        "cold50": 31.9
       },
       "success": 100.0,
-      "calls": 136012,
+      "calls": 136064,
       "errors": {
-        "http_err": 12
+        "http_err": 7,
+        "timeout": 3
       }
     },
     {
       "provider": "chainstack",
       "us-east": {
         "p50": 2.9,
-        "p99": 31.0,
-        "cold50": 17.3
+        "p99": 16.0,
+        "cold50": 17.4
       },
       "eu-west": {
-        "p50": 8.6,
-        "p99": 23.7,
-        "cold50": 41.5
+        "p50": 8.7,
+        "p99": 26.6,
+        "cold50": 41.6
       },
       "sgp": {
-        "p50": 39.3,
-        "p99": 56.2,
-        "cold50": 126.7
+        "p50": 38.6,
+        "p99": 60.1,
+        "cold50": 127.5
       },
       "all": {
         "p50": 8.4,
-        "p99": 31.3,
-        "cold50": 41.3
+        "p99": 31.0,
+        "cold50": 41.4
       },
-      "success": 99.9,
-      "calls": 136012,
+      "success": 100.0,
+      "calls": 136068,
       "errors": {
-        "stale": 65,
-        "http_err": 11
+        "http_err": 11,
+        "stale": 1
       }
     },
     {
       "provider": "getblock",
       "us-east": {
-        "p50": 11.7,
-        "p99": 52.8,
-        "cold50": 18.8
+        "p50": 11.6,
+        "p99": 58.6,
+        "cold50": 19.1
       },
       "eu-west": {
-        "p50": 9.2,
-        "p99": 25.0,
+        "p50": 9.0,
+        "p99": 23.9,
         "cold50": 39.2
       },
       "sgp": {
-        "p50": 3.7,
-        "p99": 17.6,
-        "cold50": 18.2
+        "p50": 4.1,
+        "p99": 19.4,
+        "cold50": 19.8
       },
       "all": {
-        "p50": 9.2,
-        "p99": 25.6,
-        "cold50": 19.6
+        "p50": 9.0,
+        "p99": 23.9,
+        "cold50": 21.4
       },
       "success": 99.6,
-      "calls": 125910,
+      "calls": 125946,
       "errors": {
-        "stale": 270,
-        "jsonrpc_err": 173,
+        "timeout": 26,
+        "stale": 316,
+        "jsonrpc_err": 157,
         "http_err": 1
       }
     },
     {
       "provider": "alchemy",
       "us-east": {
-        "p50": 7.5,
-        "p99": 28.4,
-        "cold50": 23.9
+        "p50": 7.3,
+        "p99": 28.1,
+        "cold50": 25.0
       },
       "eu-west": {
-        "p50": 13.5,
-        "p99": 40.2,
-        "cold50": 49.8
+        "p50": 13.6,
+        "p99": 39.0,
+        "cold50": 48.6
       },
       "sgp": {
-        "p50": 6.0,
-        "p99": 22.5,
-        "cold50": 22.6
+        "p50": 6.5,
+        "p99": 23.4,
+        "cold50": 24.9
       },
       "all": {
-        "p50": 7.5,
-        "p99": 28.3,
-        "cold50": 23.9
+        "p50": 7.4,
+        "p99": 27.6,
+        "cold50": 25.6
       },
       "success": 100.0,
-      "calls": 136021,
+      "calls": 136065,
       "errors": {
         "timeout": 1,
         "stale": 2
@@ -1332,59 +1334,57 @@
       "provider": "dwellir",
       "us-east": {
         "p50": 74.9,
-        "p99": 82.3,
-        "cold50": 236.8
+        "p99": 82.1,
+        "cold50": 240.0
       },
       "eu-west": {
         "p50": 21.6,
-        "p99": 36.0,
-        "cold50": 82.8
+        "p99": 35.1,
+        "cold50": 82.6
       },
       "sgp": {
-        "p50": 3.7,
-        "p99": 181.4,
-        "cold50": 211.4
+        "p50": 4.2,
+        "p99": 176.3,
+        "cold50": 198.2
       },
       "all": {
         "p50": 21.6,
-        "p99": 82.2,
-        "cold50": 191.2
+        "p99": 82.1,
+        "cold50": 195.4
       },
       "success": 100.0,
-      "calls": 120874,
+      "calls": 120930,
       "errors": {
-        "timeout": 25,
-        "stale": 2
+        "timeout": 25
       }
     },
     {
       "provider": "blockmachine",
       "us-east": {
-        "p50": 111.6,
-        "p99": 527.2,
-        "cold50": 288.5
+        "p50": 113.4,
+        "p99": 533.3,
+        "cold50": 291.2
       },
       "eu-west": {
-        "p50": 37.9,
-        "p99": 184.6,
-        "cold50": 80.9
+        "p50": 36.9,
+        "p99": 105.3,
+        "cold50": 80.1
       },
       "sgp": {
-        "p50": 185.8,
-        "p99": 629.5,
-        "cold50": 503.3
+        "p50": 185.5,
+        "p99": 382.2,
+        "cold50": 500.6
       },
       "all": {
-        "p50": 111.6,
-        "p99": 518.2,
-        "cold50": 281.3
+        "p50": 113.4,
+        "p99": 382.2,
+        "cold50": 280.4
       },
-      "success": 99.8,
-      "calls": 105695,
+      "success": 100.0,
+      "calls": 105802,
       "errors": {
-        "http_err": 17,
-        "timeout": 142,
-        "stale": 17
+        "timeout": 12,
+        "http_err": 2
       }
     }
   ],
@@ -1393,463 +1393,491 @@
       "chain": "ethereum",
       "region": "us-east",
       "provider": "chainstack",
-      "first": 0.6,
-      "seen": 8365
+      "first": 0.4,
+      "seen": 8372
     },
     {
       "chain": "ethereum",
       "region": "us-east",
       "provider": "dwellir",
       "first": 0.0,
-      "seen": 8353
+      "seen": 8363
     },
     {
       "chain": "ethereum",
       "region": "us-east",
       "provider": "getblock",
-      "first": 98.2,
-      "seen": 8367
+      "first": 94.4,
+      "seen": 8375
     },
     {
       "chain": "ethereum",
       "region": "us-east",
       "provider": "quicknode",
-      "first": 1.1,
-      "seen": 8365
+      "first": 4.2,
+      "seen": 8372
     },
     {
       "chain": "ethereum",
       "region": "eu-west",
       "provider": "chainstack",
-      "first": 4.4,
-      "seen": 8365
+      "first": 3.6,
+      "seen": 8371
     },
     {
       "chain": "ethereum",
       "region": "eu-west",
       "provider": "dwellir",
-      "first": 5.5,
-      "seen": 8368
+      "first": 2.7,
+      "seen": 8369
     },
     {
       "chain": "ethereum",
       "region": "eu-west",
       "provider": "getblock",
-      "first": 24.5,
-      "seen": 8364
+      "first": 20.8,
+      "seen": 8370
     },
     {
       "chain": "ethereum",
       "region": "eu-west",
       "provider": "quicknode",
-      "first": 65.6,
-      "seen": 8365
+      "first": 68.2,
+      "seen": 8372
     },
     {
       "chain": "ethereum",
       "region": "sgp",
       "provider": "chainstack",
-      "first": 1.1,
-      "seen": 8362
-    },
-    {
-      "chain": "ethereum",
-      "region": "sgp",
-      "provider": "dwellir",
-      "first": 5.2,
-      "seen": 8351
-    },
-    {
-      "chain": "ethereum",
-      "region": "sgp",
-      "provider": "getblock",
-      "first": 78.3,
-      "seen": 8364
-    },
-    {
-      "chain": "ethereum",
-      "region": "sgp",
-      "provider": "quicknode",
-      "first": 15.3,
-      "seen": 8364
-    },
-    {
-      "chain": "base",
-      "region": "us-east",
-      "provider": "chainstack",
-      "first": 7.2,
-      "seen": 425667
-    },
-    {
-      "chain": "base",
-      "region": "us-east",
-      "provider": "dwellir",
-      "first": 11.6,
-      "seen": 425621
-    },
-    {
-      "chain": "base",
-      "region": "us-east",
-      "provider": "getblock",
-      "first": 1.0,
-      "seen": 424136
-    },
-    {
-      "chain": "base",
-      "region": "us-east",
-      "provider": "quicknode",
-      "first": 80.7,
-      "seen": 425699
-    },
-    {
-      "chain": "base",
-      "region": "eu-west",
-      "provider": "chainstack",
-      "first": 2.4,
-      "seen": 425541
-    },
-    {
-      "chain": "base",
-      "region": "eu-west",
-      "provider": "dwellir",
-      "first": 0.0,
-      "seen": 425561
-    },
-    {
-      "chain": "base",
-      "region": "eu-west",
-      "provider": "getblock",
       "first": 0.8,
-      "seen": 424066
+      "seen": 8370
+    },
+    {
+      "chain": "ethereum",
+      "region": "sgp",
+      "provider": "dwellir",
+      "first": 3.6,
+      "seen": 8356
+    },
+    {
+      "chain": "ethereum",
+      "region": "sgp",
+      "provider": "getblock",
+      "first": 61.2,
+      "seen": 8370
+    },
+    {
+      "chain": "ethereum",
+      "region": "sgp",
+      "provider": "quicknode",
+      "first": 31.0,
+      "seen": 8369
+    },
+    {
+      "chain": "base",
+      "region": "us-east",
+      "provider": "chainstack",
+      "first": 4.8,
+      "seen": 503835
+    },
+    {
+      "chain": "base",
+      "region": "us-east",
+      "provider": "dwellir",
+      "first": 22.7,
+      "seen": 503790
+    },
+    {
+      "chain": "base",
+      "region": "us-east",
+      "provider": "getblock",
+      "first": 0.0,
+      "seen": 503839
+    },
+    {
+      "chain": "base",
+      "region": "us-east",
+      "provider": "quicknode",
+      "first": 72.5,
+      "seen": 503869
+    },
+    {
+      "chain": "base",
+      "region": "eu-west",
+      "provider": "chainstack",
+      "first": 0.4,
+      "seen": 503688
+    },
+    {
+      "chain": "base",
+      "region": "eu-west",
+      "provider": "dwellir",
+      "first": 0.0,
+      "seen": 503700
+    },
+    {
+      "chain": "base",
+      "region": "eu-west",
+      "provider": "getblock",
+      "first": 0.2,
+      "seen": 503688
     },
     {
       "chain": "base",
       "region": "eu-west",
       "provider": "quicknode",
-      "first": 97.2,
-      "seen": 425565
+      "first": 99.4,
+      "seen": 503706
     },
     {
       "chain": "base",
       "region": "sgp",
       "provider": "chainstack",
       "first": 0.0,
-      "seen": 425676
+      "seen": 503847
     },
     {
       "chain": "base",
       "region": "sgp",
-      "provider": "dwellir",
-      "first": 0.7,
-      "seen": 425663
-    },
-    {
-      "chain": "base",
-      "region": "sgp",
-      "provider": "getblock",
-      "first": 1.0,
-      "seen": 425490
-    },
-    {
-      "chain": "base",
-      "region": "sgp",
-      "provider": "quicknode",
-      "first": 98.3,
-      "seen": 425653
-    },
-    {
-      "chain": "bnb",
-      "region": "us-east",
-      "provider": "chainstack",
-      "first": 3.9,
-      "seen": 223883
-    },
-    {
-      "chain": "bnb",
-      "region": "us-east",
       "provider": "dwellir",
       "first": 0.1,
-      "seen": 223741
+      "seen": 503779
+    },
+    {
+      "chain": "base",
+      "region": "sgp",
+      "provider": "getblock",
+      "first": 0.3,
+      "seen": 503814
+    },
+    {
+      "chain": "base",
+      "region": "sgp",
+      "provider": "quicknode",
+      "first": 99.6,
+      "seen": 503829
+    },
+    {
+      "chain": "bnb",
+      "region": "us-east",
+      "provider": "chainstack",
+      "first": 3.5,
+      "seen": 223698
+    },
+    {
+      "chain": "bnb",
+      "region": "us-east",
+      "provider": "dwellir",
+      "first": 0.2,
+      "seen": 223565
     },
     {
       "chain": "bnb",
       "region": "us-east",
       "provider": "getblock",
-      "first": 2.7,
-      "seen": 223897
+      "first": 2.9,
+      "seen": 223720
     },
     {
       "chain": "bnb",
       "region": "us-east",
       "provider": "quicknode",
       "first": 93.4,
-      "seen": 223854
+      "seen": 223665
     },
     {
       "chain": "bnb",
       "region": "eu-west",
       "provider": "chainstack",
       "first": 2.4,
-      "seen": 223838
+      "seen": 223644
     },
     {
       "chain": "bnb",
       "region": "eu-west",
       "provider": "dwellir",
-      "first": 1.2,
-      "seen": 223805
+      "first": 1.0,
+      "seen": 223648
     },
     {
       "chain": "bnb",
       "region": "eu-west",
       "provider": "getblock",
-      "first": 5.3,
-      "seen": 223850
+      "first": 4.7,
+      "seen": 223686
     },
     {
       "chain": "bnb",
       "region": "eu-west",
       "provider": "quicknode",
-      "first": 91.2,
-      "seen": 223833
+      "first": 90.5,
+      "seen": 223666
     },
     {
       "chain": "bnb",
       "region": "sgp",
       "provider": "chainstack",
-      "first": 5.7,
-      "seen": 223753
+      "first": 7.0,
+      "seen": 223580
     },
     {
       "chain": "bnb",
       "region": "sgp",
       "provider": "dwellir",
-      "first": 6.5,
-      "seen": 223834
+      "first": 6.2,
+      "seen": 223674
     },
     {
       "chain": "bnb",
       "region": "sgp",
       "provider": "getblock",
-      "first": 24.8,
-      "seen": 223815
+      "first": 21.8,
+      "seen": 223670
     },
     {
       "chain": "bnb",
       "region": "sgp",
       "provider": "quicknode",
-      "first": 63.1,
-      "seen": 223847
+      "first": 62.3,
+      "seen": 223674
     },
     {
       "chain": "polygon",
       "region": "us-east",
       "provider": "chainstack",
-      "first": 0.3,
-      "seen": 66844
+      "first": 0.4,
+      "seen": 67179
     },
     {
       "chain": "polygon",
       "region": "us-east",
       "provider": "dwellir",
+      "first": 0.0,
+      "seen": 67093
+    },
+    {
+      "chain": "polygon",
+      "region": "us-east",
+      "provider": "getblock",
+      "first": 19.1,
+      "seen": 67161
+    },
+    {
+      "chain": "polygon",
+      "region": "us-east",
+      "provider": "quicknode",
+      "first": 80.5,
+      "seen": 67183
+    },
+    {
+      "chain": "polygon",
+      "region": "eu-west",
+      "provider": "chainstack",
+      "first": 0.1,
+      "seen": 67183
+    },
+    {
+      "chain": "polygon",
+      "region": "eu-west",
+      "provider": "dwellir",
+      "first": 0.0,
+      "seen": 67178
+    },
+    {
+      "chain": "polygon",
+      "region": "eu-west",
+      "provider": "getblock",
+      "first": 14.4,
+      "seen": 67184
+    },
+    {
+      "chain": "polygon",
+      "region": "eu-west",
+      "provider": "quicknode",
+      "first": 85.5,
+      "seen": 67179
+    },
+    {
+      "chain": "polygon",
+      "region": "sgp",
+      "provider": "chainstack",
       "first": 0.0,
       "seen": 67084
     },
     {
       "chain": "polygon",
-      "region": "us-east",
-      "provider": "getblock",
-      "first": 17.4,
-      "seen": 67165
-    },
-    {
-      "chain": "polygon",
-      "region": "us-east",
-      "provider": "quicknode",
-      "first": 82.4,
-      "seen": 67183
-    },
-    {
-      "chain": "polygon",
-      "region": "sgp",
-      "provider": "chainstack",
-      "first": 0.0,
-      "seen": 66729
-    },
-    {
-      "chain": "polygon",
       "region": "sgp",
       "provider": "dwellir",
       "first": 0.0,
-      "seen": 67039
+      "seen": 67032
     },
     {
       "chain": "polygon",
       "region": "sgp",
       "provider": "getblock",
-      "first": 12.0,
-      "seen": 67176
+      "first": 11.6,
+      "seen": 67180
     },
     {
       "chain": "polygon",
       "region": "sgp",
       "provider": "quicknode",
-      "first": 88.0,
-      "seen": 67176
+      "first": 88.3,
+      "seen": 67182
     },
     {
       "chain": "arc",
       "region": "us-east",
       "provider": "chainstack",
-      "first": 37.2,
-      "seen": 198404
+      "first": 38.1,
+      "seen": 198602
     },
     {
       "chain": "arc",
       "region": "us-east",
       "provider": "dwellir",
       "first": 0.0,
-      "seen": 198079
+      "seen": 198269
     },
     {
       "chain": "arc",
       "region": "us-east",
       "provider": "getblock",
-      "first": 6.5,
-      "seen": 198385
+      "first": 11.0,
+      "seen": 198594
     },
     {
       "chain": "arc",
       "region": "us-east",
       "provider": "quicknode",
-      "first": 56.3,
-      "seen": 198396
+      "first": 50.9,
+      "seen": 198597
     },
     {
       "chain": "arc",
       "region": "eu-west",
-      "provider": "chainstack",
-      "first": 0.0,
-      "seen": 198359
-    },
-    {
-      "chain": "arc",
-      "region": "eu-west",
-      "provider": "dwellir",
-      "first": 0.0,
-      "seen": 198203
-    },
-    {
-      "chain": "arc",
-      "region": "eu-west",
-      "provider": "getblock",
-      "first": 0.0,
-      "seen": 198370
-    },
-    {
-      "chain": "arc",
-      "region": "eu-west",
-      "provider": "quicknode",
-      "first": 100.0,
-      "seen": 198382
-    },
-    {
-      "chain": "arc",
-      "region": "sgp",
       "provider": "chainstack",
       "first": 0.1,
-      "seen": 198305
+      "seen": 198554
+    },
+    {
+      "chain": "arc",
+      "region": "eu-west",
+      "provider": "dwellir",
+      "first": 0.0,
+      "seen": 198421
+    },
+    {
+      "chain": "arc",
+      "region": "eu-west",
+      "provider": "getblock",
+      "first": 0.0,
+      "seen": 198588
+    },
+    {
+      "chain": "arc",
+      "region": "eu-west",
+      "provider": "quicknode",
+      "first": 99.9,
+      "seen": 198602
+    },
+    {
+      "chain": "arc",
+      "region": "sgp",
+      "provider": "chainstack",
+      "first": 0.2,
+      "seen": 198512
     },
     {
       "chain": "arc",
       "region": "sgp",
       "provider": "dwellir",
       "first": 0.0,
-      "seen": 197716
+      "seen": 197953
     },
     {
       "chain": "arc",
       "region": "sgp",
       "provider": "quicknode",
-      "first": 99.9,
-      "seen": 198139
+      "first": 99.8,
+      "seen": 198350
     },
     {
       "chain": "hyperliquid",
       "region": "us-east",
       "provider": "chainstack",
-      "first": 15.9,
-      "seen": 102452
+      "first": 16.8,
+      "seen": 102449
     },
     {
       "chain": "hyperliquid",
       "region": "us-east",
       "provider": "dwellir",
-      "first": 56.5,
-      "seen": 102233
+      "first": 66.7,
+      "seen": 102353
     },
     {
       "chain": "hyperliquid",
       "region": "us-east",
       "provider": "quicknode",
-      "first": 27.7,
+      "first": 16.5,
       "seen": 102455
     },
     {
       "chain": "hyperliquid",
       "region": "eu-west",
       "provider": "chainstack",
-      "first": 2.5,
-      "seen": 102383
+      "first": 1.9,
+      "seen": 102411
     },
     {
       "chain": "hyperliquid",
       "region": "eu-west",
       "provider": "dwellir",
-      "first": 34.2,
-      "seen": 101999
+      "first": 33.5,
+      "seen": 102050
     },
     {
       "chain": "hyperliquid",
       "region": "eu-west",
       "provider": "getblock",
-      "first": 46.5,
-      "seen": 102420
+      "first": 61.1,
+      "seen": 102451
     },
     {
       "chain": "hyperliquid",
       "region": "eu-west",
       "provider": "quicknode",
-      "first": 19.3,
-      "seen": 102444
+      "first": 4.8,
+      "seen": 102457
     },
     {
       "chain": "hyperliquid",
       "region": "sgp",
       "provider": "chainstack",
-      "first": 9.3,
-      "seen": 102432
+      "first": 3.0,
+      "seen": 102446
     },
     {
       "chain": "hyperliquid",
       "region": "sgp",
       "provider": "dwellir",
-      "first": 66.7,
-      "seen": 102395
+      "first": 90.7,
+      "seen": 102432
     },
     {
       "chain": "hyperliquid",
       "region": "sgp",
       "provider": "quicknode",
-      "first": 24.0,
-      "seen": 102417
+      "first": 6.3,
+      "seen": 102444
     }
   ],
   "wsDisconnects": {
-    "chainstack": 18,
+    "chainstack": 9,
     "dwellir": 1,
-    "fluxrpc": 28,
-    "getblock": 1
+    "fluxrpc": 59,
+    "getblock": 5
   },
   "cost": {
     "dapp": {
@@ -3412,51 +3440,51 @@
     }
   ],
   "methods": {
-    "asOf": "2026-11-11",
+    "asOf": "2026-11-13",
     "window": "24h",
     "chain": "ethereum",
     "latency": [
       {
         "provider": "quicknode",
-        "cheap": 7.1,
-        "archive": 33.5,
-        "getlogs": 28.1,
-        "work": 1.3
+        "cheap": 6.6,
+        "archive": 32.9,
+        "getlogs": 27.1,
+        "work": 1.8
       },
       {
         "provider": "chainstack",
-        "cheap": 10.3,
-        "archive": 46.1,
-        "getlogs": 30.1,
+        "cheap": 10.1,
+        "archive": 44.0,
+        "getlogs": 23.3,
         "work": 2.0
       },
       {
         "provider": "getblock",
-        "cheap": 6.3,
+        "cheap": 6.2,
         "archive": null,
-        "getlogs": 14.3,
-        "work": 2.2
+        "getlogs": 18.2,
+        "work": 1.9
       },
       {
         "provider": "alchemy",
-        "cheap": 8.2,
-        "archive": 13.5,
-        "getlogs": 14.3,
-        "work": 1.5
+        "cheap": 8.9,
+        "archive": 18.0,
+        "getlogs": 16.2,
+        "work": 2.6
       },
       {
         "provider": "dwellir",
-        "cheap": 21.7,
-        "archive": 190.3,
-        "getlogs": 180.5,
-        "work": 1.8
+        "cheap": 21.5,
+        "archive": 236.4,
+        "getlogs": 188.9,
+        "work": 4.1
       },
       {
         "provider": "blockmachine",
-        "cheap": 119.0,
-        "archive": 122.1,
-        "getlogs": 170.9,
-        "work": 9.8
+        "cheap": 139.3,
+        "archive": 193.4,
+        "getlogs": 192.8,
+        "work": 39.1
       }
     ],
     "getlogsWindow": [
@@ -3573,177 +3601,177 @@
       "all": [
         {
           "provider": "quicknode",
-          "cheap": 7.1,
-          "archive": 33.5,
-          "getlogs": 28.1,
-          "work": 1.3
+          "cheap": 6.6,
+          "archive": 32.9,
+          "getlogs": 27.1,
+          "work": 1.8
         },
         {
           "provider": "chainstack",
-          "cheap": 10.3,
-          "archive": 46.1,
-          "getlogs": 30.1,
+          "cheap": 10.1,
+          "archive": 44.0,
+          "getlogs": 23.3,
           "work": 2.0
         },
         {
           "provider": "getblock",
-          "cheap": 6.3,
+          "cheap": 6.2,
           "archive": null,
-          "getlogs": 14.3,
-          "work": 2.2
+          "getlogs": 18.2,
+          "work": 1.9
         },
         {
           "provider": "alchemy",
-          "cheap": 8.2,
-          "archive": 13.5,
-          "getlogs": 14.3,
-          "work": 1.5
+          "cheap": 8.9,
+          "archive": 18.0,
+          "getlogs": 16.2,
+          "work": 2.6
         },
         {
           "provider": "dwellir",
-          "cheap": 21.7,
-          "archive": 190.3,
-          "getlogs": 180.5,
-          "work": 1.8
+          "cheap": 21.5,
+          "archive": 236.4,
+          "getlogs": 188.9,
+          "work": 4.1
         },
         {
           "provider": "blockmachine",
-          "cheap": 119.0,
-          "archive": 122.1,
-          "getlogs": 170.9,
-          "work": 9.8
+          "cheap": 139.3,
+          "archive": 193.4,
+          "getlogs": 192.8,
+          "work": 39.1
         }
       ],
       "us-east": [
         {
           "provider": "quicknode",
-          "cheap": 7.1,
-          "archive": 33.5,
-          "getlogs": 27.5,
-          "work": 6.2
+          "cheap": 6.6,
+          "archive": 32.9,
+          "getlogs": 26.9,
+          "work": 4.6
         },
         {
           "provider": "chainstack",
-          "cheap": 3.5,
-          "archive": 16.0,
-          "getlogs": 8.1,
-          "work": 2.0
+          "cheap": 3.3,
+          "archive": 18.7,
+          "getlogs": 8.0,
+          "work": 1.5
         },
         {
           "provider": "getblock",
-          "cheap": 6.3,
+          "cheap": 5.9,
           "archive": null,
-          "getlogs": 11.0,
-          "work": 2.2
+          "getlogs": 10.0,
+          "work": 1.9
         },
         {
           "provider": "alchemy",
-          "cheap": 8.2,
-          "archive": 13.5,
-          "getlogs": 14.3,
-          "work": 3.5
+          "cheap": 8.9,
+          "archive": 15.5,
+          "getlogs": 14.1,
+          "work": 5.8
         },
         {
           "provider": "dwellir",
-          "cheap": 74.7,
-          "archive": 386.0,
-          "getlogs": 385.0,
-          "work": 1.8
+          "cheap": 74.8,
+          "archive": 406.5,
+          "getlogs": 395.0,
+          "work": 4.1
         },
         {
           "provider": "blockmachine",
-          "cheap": 119.0,
-          "archive": 122.1,
-          "getlogs": 170.9,
-          "work": 7.3
+          "cheap": 139.3,
+          "archive": 208.3,
+          "getlogs": 309.7,
+          "work": 39.1
         }
       ],
       "eu-west": [
         {
           "provider": "quicknode",
-          "cheap": 7.1,
-          "archive": 31.1,
-          "getlogs": 28.1,
-          "work": 1.3
+          "cheap": 7.8,
+          "archive": 29.7,
+          "getlogs": 27.1,
+          "work": 1.2
         },
         {
           "provider": "chainstack",
-          "cheap": 10.3,
-          "archive": 46.1,
-          "getlogs": 30.1,
-          "work": 1.7
+          "cheap": 10.1,
+          "archive": 44.0,
+          "getlogs": 23.3,
+          "work": 2.0
         },
         {
           "provider": "getblock",
-          "cheap": 16.1,
+          "cheap": 15.7,
           "archive": null,
-          "getlogs": 31.5,
-          "work": 5.2
+          "getlogs": 33.0,
+          "work": 4.0
         },
         {
           "provider": "alchemy",
-          "cheap": 13.5,
-          "archive": 34.0,
-          "getlogs": 32.5,
-          "work": -0.2
+          "cheap": 19.3,
+          "archive": 34.9,
+          "getlogs": 32.1,
+          "work": 2.6
         },
         {
           "provider": "dwellir",
-          "cheap": 21.7,
-          "archive": 109.3,
-          "getlogs": 66.0,
-          "work": 5.4
+          "cheap": 21.5,
+          "archive": 75.5,
+          "getlogs": 70.1,
+          "work": 7.8
         },
         {
           "provider": "blockmachine",
-          "cheap": 33.6,
-          "archive": 50.3,
-          "getlogs": 42.3,
+          "cheap": 34.9,
+          "archive": 52.5,
+          "getlogs": 47.9,
           "work": 9.8
         }
       ],
       "sgp": [
         {
           "provider": "quicknode",
-          "cheap": 2.0,
-          "archive": 86.9,
-          "getlogs": 79.2,
-          "work": -4.6
+          "cheap": 3.9,
+          "archive": 87.5,
+          "getlogs": 86.9,
+          "work": 1.8
         },
         {
           "provider": "chainstack",
-          "cheap": 38.4,
-          "archive": 123.9,
-          "getlogs": 110.8,
-          "work": 21.8
+          "cheap": 41.6,
+          "archive": 118.0,
+          "getlogs": 114.8,
+          "work": 31.4
         },
         {
           "provider": "getblock",
-          "cheap": 4.3,
+          "cheap": 6.2,
           "archive": null,
-          "getlogs": 14.3,
-          "work": 1.0
+          "getlogs": 18.2,
+          "work": 1.6
         },
         {
           "provider": "alchemy",
-          "cheap": 6.0,
-          "archive": 11.6,
-          "getlogs": 11.2,
-          "work": 1.5
+          "cheap": 7.4,
+          "archive": 18.0,
+          "getlogs": 16.2,
+          "work": 2.6
         },
         {
           "provider": "dwellir",
-          "cheap": 3.3,
-          "archive": 190.3,
-          "getlogs": 180.5,
-          "work": -1.8
+          "cheap": 5.4,
+          "archive": 236.4,
+          "getlogs": 188.9,
+          "work": 2.6
         },
         {
           "provider": "blockmachine",
-          "cheap": 179.3,
-          "archive": 178.4,
-          "getlogs": 192.6,
-          "work": 36.9
+          "cheap": 174.2,
+          "archive": 193.4,
+          "getlogs": 192.8,
+          "work": 105.1
         }
       ]
     },
@@ -3754,18 +3782,18 @@
     {
       "provider": "quicknode",
       "us-east": 6.8,
-      "eu-west": 1.5,
-      "sgp": 1.3,
-      "p99max": 16.4,
+      "eu-west": 1.6,
+      "sgp": 1.8,
+      "p99max": 19.2,
       "success": 100.0,
       "v2": "refused"
     },
     {
       "provider": "chainstack",
-      "us-east": 7.1,
+      "us-east": 7.3,
       "eu-west": 8.4,
-      "sgp": 3.2,
-      "p99max": 80.6,
+      "sgp": 4.1,
+      "p99max": 88.8,
       "success": 100.0,
       "v2": "refused"
     },
@@ -3773,37 +3801,462 @@
       "provider": "getblock",
       "us-east": 11.4,
       "eu-west": 8.9,
-      "sgp": 3.5,
-      "p99max": 40.6,
+      "sgp": 4.0,
+      "p99max": 46.8,
       "success": 99.7,
       "v2": "refused"
     },
     {
       "provider": "alchemy",
-      "us-east": 7.9,
-      "eu-west": 13.7,
-      "sgp": 6.1,
-      "p99max": 43.7,
+      "us-east": 7.8,
+      "eu-west": 14.2,
+      "sgp": 6.8,
+      "p99max": 48.2,
       "success": 100.0,
       "v2": "served"
     },
     {
       "provider": "helius",
-      "us-east": 11.5,
-      "eu-west": 14.9,
-      "sgp": 12.9,
-      "p99max": 49.6,
+      "us-east": 11.7,
+      "eu-west": 14.5,
+      "sgp": 12.3,
+      "p99max": 53.5,
       "success": 100.0,
       "v2": "served"
     },
     {
       "provider": "fluxrpc",
-      "us-east": 7.0,
+      "us-east": 6.9,
       "eu-west": 1.8,
-      "sgp": 179.2,
-      "p99max": 179.2,
-      "success": 95.4,
+      "sgp": null,
+      "p99max": 8.2,
+      "success": 93.3,
       "v2": null
     }
-  ]
+  ],
+  "wsNewcomers": [
+    "alchemy"
+  ],
+  "methodMatrix": {
+    "chain": "ethereum",
+    "window": "24h",
+    "statistic": "median",
+    "apis": [
+      {
+        "key": "eth_call_light_warm",
+        "label": "eth_call, one read"
+      },
+      {
+        "key": "eth_getblockreceipts",
+        "label": "eth_getBlockReceipts"
+      },
+      {
+        "key": "eth_getlogs_address",
+        "label": "eth_getLogs, address"
+      },
+      {
+        "key": "eth_getlogs_topics",
+        "label": "eth_getLogs, topics"
+      },
+      {
+        "key": "eth_getlogs_nofilter",
+        "label": "eth_getLogs, no filter"
+      },
+      {
+        "key": "trace_block",
+        "label": "trace_block"
+      },
+      {
+        "key": "archive_5m",
+        "label": "archive read, 5M back"
+      },
+      {
+        "key": "eth_call_heavy_warm",
+        "label": "eth_call, fifty reads"
+      },
+      {
+        "key": "debug_tracetransaction",
+        "label": "debug_traceTransaction"
+      }
+    ],
+    "minSamplesPerCell": 2839,
+    "byRegion": {
+      "all": [
+        {
+          "provider": "quicknode",
+          "eth_call_light_warm": 7.0,
+          "eth_getblockreceipts": 31.2,
+          "eth_getlogs_address": 27.1,
+          "eth_getlogs_topics": 28.9,
+          "eth_getlogs_nofilter": 47.3,
+          "trace_block": 27.3,
+          "archive_5m": 32.9,
+          "eth_call_heavy_warm": 9.0,
+          "debug_tracetransaction": 84.0
+        },
+        {
+          "provider": "chainstack",
+          "eth_call_light_warm": 9.5,
+          "eth_getblockreceipts": 35.4,
+          "eth_getlogs_address": 23.3,
+          "eth_getlogs_topics": 45.9,
+          "eth_getlogs_nofilter": 74.4,
+          "trace_block": 116.4,
+          "archive_5m": 44.0,
+          "eth_call_heavy_warm": 11.5,
+          "debug_tracetransaction": 45.4
+        },
+        {
+          "provider": "getblock",
+          "eth_call_light_warm": 4.9,
+          "eth_getblockreceipts": 25.9,
+          "eth_getlogs_address": 18.2,
+          "eth_getlogs_topics": 56.5,
+          "eth_getlogs_nofilter": 61.1,
+          "trace_block": null,
+          "archive_5m": null,
+          "eth_call_heavy_warm": 6.4,
+          "debug_tracetransaction": 23.6
+        },
+        {
+          "provider": "alchemy",
+          "eth_call_light_warm": 8.5,
+          "eth_getblockreceipts": 35.2,
+          "eth_getlogs_address": 16.2,
+          "eth_getlogs_topics": 21.0,
+          "eth_getlogs_nofilter": 32.8,
+          "trace_block": 46.5,
+          "archive_5m": 18.0,
+          "eth_call_heavy_warm": 11.7,
+          "debug_tracetransaction": 20.2
+        },
+        {
+          "provider": "dwellir",
+          "eth_call_light_warm": 21.3,
+          "eth_getblockreceipts": 66.7,
+          "eth_getlogs_address": 188.9,
+          "eth_getlogs_topics": 918.0,
+          "eth_getlogs_nofilter": 1076.2,
+          "trace_block": 947.2,
+          "archive_5m": 236.4,
+          "eth_call_heavy_warm": 29.6,
+          "debug_tracetransaction": 186.2
+        },
+        {
+          "provider": "blockmachine",
+          "eth_call_light_warm": 162.7,
+          "eth_getblockreceipts": 200.4,
+          "eth_getlogs_address": 192.8,
+          "eth_getlogs_topics": 241.4,
+          "eth_getlogs_nofilter": 239.0,
+          "trace_block": 279.9,
+          "archive_5m": 193.4,
+          "eth_call_heavy_warm": 166.8,
+          "debug_tracetransaction": 197.1
+        }
+      ],
+      "us-east": [
+        {
+          "provider": "quicknode",
+          "eth_call_light_warm": 7.0,
+          "eth_getblockreceipts": 31.2,
+          "eth_getlogs_address": 26.9,
+          "eth_getlogs_topics": 28.9,
+          "eth_getlogs_nofilter": 47.3,
+          "trace_block": 27.3,
+          "archive_5m": 32.9,
+          "eth_call_heavy_warm": 9.7,
+          "debug_tracetransaction": 84.0
+        },
+        {
+          "provider": "chainstack",
+          "eth_call_light_warm": 2.7,
+          "eth_getblockreceipts": 13.9,
+          "eth_getlogs_address": 8.0,
+          "eth_getlogs_topics": 20.2,
+          "eth_getlogs_nofilter": 46.5,
+          "trace_block": 63.5,
+          "archive_5m": 18.7,
+          "eth_call_heavy_warm": 4.7,
+          "debug_tracetransaction": 19.5
+        },
+        {
+          "provider": "getblock",
+          "eth_call_light_warm": 4.8,
+          "eth_getblockreceipts": 25.4,
+          "eth_getlogs_address": 10.0,
+          "eth_getlogs_topics": 44.4,
+          "eth_getlogs_nofilter": 61.1,
+          "trace_block": null,
+          "archive_5m": null,
+          "eth_call_heavy_warm": 6.4,
+          "debug_tracetransaction": 11.9
+        },
+        {
+          "provider": "alchemy",
+          "eth_call_light_warm": 7.7,
+          "eth_getblockreceipts": 35.2,
+          "eth_getlogs_address": 14.1,
+          "eth_getlogs_topics": 18.6,
+          "eth_getlogs_nofilter": 32.8,
+          "trace_block": 37.1,
+          "archive_5m": 15.5,
+          "eth_call_heavy_warm": 11.7,
+          "debug_tracetransaction": 15.2
+        },
+        {
+          "provider": "dwellir",
+          "eth_call_light_warm": 74.3,
+          "eth_getblockreceipts": 230.0,
+          "eth_getlogs_address": 395.0,
+          "eth_getlogs_topics": 918.0,
+          "eth_getlogs_nofilter": 1076.2,
+          "trace_block": 947.2,
+          "archive_5m": 406.5,
+          "eth_call_heavy_warm": 78.3,
+          "debug_tracetransaction": 394.5
+        },
+        {
+          "provider": "blockmachine",
+          "eth_call_light_warm": 162.7,
+          "eth_getblockreceipts": 436.3,
+          "eth_getlogs_address": 309.7,
+          "eth_getlogs_topics": 361.4,
+          "eth_getlogs_nofilter": 317.5,
+          "trace_block": 500.6,
+          "archive_5m": 208.3,
+          "eth_call_heavy_warm": 166.8,
+          "debug_tracetransaction": 260.1
+        }
+      ],
+      "eu-west": [
+        {
+          "provider": "quicknode",
+          "eth_call_light_warm": 8.2,
+          "eth_getblockreceipts": 36.3,
+          "eth_getlogs_address": 27.1,
+          "eth_getlogs_topics": 27.7,
+          "eth_getlogs_nofilter": 42.2,
+          "trace_block": 30.1,
+          "archive_5m": 29.7,
+          "eth_call_heavy_warm": 9.0,
+          "debug_tracetransaction": 62.8
+        },
+        {
+          "provider": "chainstack",
+          "eth_call_light_warm": 9.5,
+          "eth_getblockreceipts": 35.4,
+          "eth_getlogs_address": 23.3,
+          "eth_getlogs_topics": 45.9,
+          "eth_getlogs_nofilter": 74.4,
+          "trace_block": 116.4,
+          "archive_5m": 44.0,
+          "eth_call_heavy_warm": 11.5,
+          "debug_tracetransaction": 45.4
+        },
+        {
+          "provider": "getblock",
+          "eth_call_light_warm": 14.7,
+          "eth_getblockreceipts": 41.0,
+          "eth_getlogs_address": 33.0,
+          "eth_getlogs_topics": 70.5,
+          "eth_getlogs_nofilter": 73.1,
+          "trace_block": null,
+          "archive_5m": null,
+          "eth_call_heavy_warm": 19.3,
+          "debug_tracetransaction": 44.0
+        },
+        {
+          "provider": "alchemy",
+          "eth_call_light_warm": 19.3,
+          "eth_getblockreceipts": 73.4,
+          "eth_getlogs_address": 32.1,
+          "eth_getlogs_topics": 53.8,
+          "eth_getlogs_nofilter": 52.6,
+          "trace_block": 77.2,
+          "archive_5m": 34.9,
+          "eth_call_heavy_warm": 20.6,
+          "debug_tracetransaction": 35.1
+        },
+        {
+          "provider": "dwellir",
+          "eth_call_light_warm": 21.3,
+          "eth_getblockreceipts": 66.7,
+          "eth_getlogs_address": 70.1,
+          "eth_getlogs_topics": 84.1,
+          "eth_getlogs_nofilter": 79.0,
+          "trace_block": 107.5,
+          "archive_5m": 75.5,
+          "eth_call_heavy_warm": 29.6,
+          "debug_tracetransaction": 67.5
+        },
+        {
+          "provider": "blockmachine",
+          "eth_call_light_warm": 37.7,
+          "eth_getblockreceipts": 66.8,
+          "eth_getlogs_address": 47.9,
+          "eth_getlogs_topics": 108.6,
+          "eth_getlogs_nofilter": 123.5,
+          "trace_block": 200.4,
+          "archive_5m": 52.5,
+          "eth_call_heavy_warm": 49.7,
+          "debug_tracetransaction": 61.6
+        }
+      ],
+      "sgp": [
+        {
+          "provider": "quicknode",
+          "eth_call_light_warm": 4.8,
+          "eth_getblockreceipts": 23.5,
+          "eth_getlogs_address": 86.9,
+          "eth_getlogs_topics": 94.1,
+          "eth_getlogs_nofilter": 91.1,
+          "trace_block": 20.1,
+          "archive_5m": 87.5,
+          "eth_call_heavy_warm": 5.4,
+          "debug_tracetransaction": 218.6
+        },
+        {
+          "provider": "chainstack",
+          "eth_call_light_warm": 39.7,
+          "eth_getblockreceipts": 135.4,
+          "eth_getlogs_address": 114.8,
+          "eth_getlogs_topics": 187.9,
+          "eth_getlogs_nofilter": 185.5,
+          "trace_block": 173.3,
+          "archive_5m": 118.0,
+          "eth_call_heavy_warm": 80.7,
+          "debug_tracetransaction": 137.5
+        },
+        {
+          "provider": "getblock",
+          "eth_call_light_warm": 4.9,
+          "eth_getblockreceipts": 25.9,
+          "eth_getlogs_address": 18.2,
+          "eth_getlogs_topics": 56.5,
+          "eth_getlogs_nofilter": 53.7,
+          "trace_block": null,
+          "archive_5m": null,
+          "eth_call_heavy_warm": 5.8,
+          "debug_tracetransaction": 23.6
+        },
+        {
+          "provider": "alchemy",
+          "eth_call_light_warm": 8.5,
+          "eth_getblockreceipts": 21.1,
+          "eth_getlogs_address": 16.2,
+          "eth_getlogs_topics": 21.0,
+          "eth_getlogs_nofilter": 21.9,
+          "trace_block": 46.5,
+          "archive_5m": 18.0,
+          "eth_call_heavy_warm": 10.7,
+          "debug_tracetransaction": 20.2
+        },
+        {
+          "provider": "dwellir",
+          "eth_call_light_warm": 4.3,
+          "eth_getblockreceipts": 31.4,
+          "eth_getlogs_address": 188.9,
+          "eth_getlogs_topics": 1043.7,
+          "eth_getlogs_nofilter": 1230.9,
+          "trace_block": 1068.1,
+          "archive_5m": 236.4,
+          "eth_call_heavy_warm": 6.7,
+          "debug_tracetransaction": 186.2
+        },
+        {
+          "provider": "blockmachine",
+          "eth_call_light_warm": 180.5,
+          "eth_getblockreceipts": 200.4,
+          "eth_getlogs_address": 192.8,
+          "eth_getlogs_topics": 241.4,
+          "eth_getlogs_nofilter": 239.0,
+          "trace_block": 279.9,
+          "archive_5m": 193.4,
+          "eth_call_heavy_warm": 205.8,
+          "debug_tracetransaction": 197.1
+        }
+      ]
+    }
+  },
+  "supportMatrix": {
+    "region": "us-east",
+    "apis": [
+      "eth_getlogs_nofilter",
+      "eth_getlogs_address",
+      "eth_getlogs_topics",
+      "eth_getblockreceipts",
+      "archive_5m",
+      "trace_block",
+      "debug_tracetransaction"
+    ],
+    "rows": [
+      {
+        "provider": "quicknode",
+        "chains": 8,
+        "eth_getlogs_nofilter": 8,
+        "eth_getlogs_address": 8,
+        "eth_getlogs_topics": 8,
+        "eth_getblockreceipts": 8,
+        "archive_5m": 8,
+        "trace_block": 4,
+        "debug_tracetransaction": 7
+      },
+      {
+        "provider": "chainstack",
+        "chains": 8,
+        "eth_getlogs_nofilter": 8,
+        "eth_getlogs_address": 8,
+        "eth_getlogs_topics": 8,
+        "eth_getblockreceipts": 8,
+        "archive_5m": 8,
+        "trace_block": 5,
+        "debug_tracetransaction": 8
+      },
+      {
+        "provider": "getblock",
+        "chains": 8,
+        "eth_getlogs_nofilter": 8,
+        "eth_getlogs_address": 8,
+        "eth_getlogs_topics": 8,
+        "eth_getblockreceipts": 8,
+        "archive_5m": 1,
+        "trace_block": 2,
+        "debug_tracetransaction": 8
+      },
+      {
+        "provider": "alchemy",
+        "chains": 8,
+        "eth_getlogs_nofilter": 8,
+        "eth_getlogs_address": 8,
+        "eth_getlogs_topics": 8,
+        "eth_getblockreceipts": 8,
+        "archive_5m": 8,
+        "trace_block": 5,
+        "debug_tracetransaction": 8
+      },
+      {
+        "provider": "dwellir",
+        "chains": 8,
+        "eth_getlogs_nofilter": 8,
+        "eth_getlogs_address": 8,
+        "eth_getlogs_topics": 8,
+        "eth_getblockreceipts": 8,
+        "archive_5m": 6,
+        "trace_block": 4,
+        "debug_tracetransaction": 8
+      },
+      {
+        "provider": "blockmachine",
+        "chains": 7,
+        "eth_getlogs_nofilter": 7,
+        "eth_getlogs_address": 7,
+        "eth_getlogs_topics": 7,
+        "eth_getblockreceipts": 7,
+        "archive_5m": 7,
+        "trace_block": 5,
+        "debug_tracetransaction": 7
+      }
+    ]
+  }
 }

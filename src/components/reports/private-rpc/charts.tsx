@@ -25,7 +25,7 @@ import {
 } from "./shared";
 
 const SOURCE_HTTP =
-  "Source: OpenChainBench rpc-keyed-latency probes, 7 days to 11 Nov 2026 12:58 UTC. BlockMachine since 24 Oct.";
+  "Source: OpenChainBench rpc-keyed-latency probes, 7 days to 13 Nov 2026 13:07 UTC. BlockMachine since 24 Oct.";
 
 /* ------------------------------------------------------------------ */
 /* Speed against price                                                 */
@@ -216,7 +216,7 @@ export function WsFirstChart() {
     <Figure
       title="Who pushes the new block first"
       subtitle="Share of blocks each provider delivered first over eth_subscribe(newHeads), per chain and probe region. Ten minutes in every hour, 7 days."
-      source="Source: OpenChainBench WebSocket race, rpc-keyed-latency harness, 7 days to 11 Nov 2026 12:58 UTC. Share of the blocks the race ran, so a cell sums to 100. GetBlock has no Singapore socket on HyperEVM and Arc, nor US East on HyperEVM. Solana and Polygon EU West are not shown: the providers there were not listening to the same blocks."
+      source="Source: OpenChainBench WebSocket race, rpc-keyed-latency harness, 7 days to 13 Nov 2026 13:07 UTC. Share of the blocks the race ran, so a cell sums to 100. GetBlock has no Singapore socket on HyperEVM and Arc, nor US East on HyperEVM. Solana is not shown: the providers there were not listening to the same blocks. Alchemy's sockets reopened on 12 November and it is too new to be ranked."
     >
       <Legend slugs={WS_PROVIDERS} />
       <svg viewBox={`0 0 ${W} ${H}`} className="w-full min-w-[560px] h-auto" role="img" aria-label="Share of blocks pushed first per provider">
