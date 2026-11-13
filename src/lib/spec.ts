@@ -625,7 +625,13 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       has to move: an entry already cached holds the benchmark
   //       with its methodology already merged, so a reworded sentence
   //       invalidates nothing and the old one keeps being served.
-  ["bench-unfiltered-v122", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v123: MOJO joins bench 030 as its 108th Hyperliquid builder (#3601,
+  //       from the operator). Every figure in the request was recomputed
+  //       from the public builder-fills bucket before merge: 1,365 fills,
+  //       $142,513 of notional, $71.26 of builder fees, 113 wallets, a fee
+  //       of exactly 5.0 bp on all 1,365, and zero fills whose
+  //       counterparty is another wallet of that cohort.
+  ["bench-unfiltered-v123", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   // v118: Thyme Gate joins the public cohorts on ethereum, polygon,
   //       optimism and bnb (#3586, an outside contribution). The four
   //       endpoints were checked before merge: right chain id, a head
@@ -921,7 +927,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v112: lockstep with bench-unfiltered-v119 (the Alchemy plan
   //       disclosure, now an Enterprise trial).
   // v114: lockstep with bench-unfiltered-v121 (bench 001 methodology).
-  ["all-benchmarks-v115", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v116: lockstep with bench-unfiltered-v123 (MOJO on bench 030).
+  ["all-benchmarks-v116", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   // v111: lockstep with bench-unfiltered-v118 (Thyme Gate, four cohorts).
   // v113: lockstep with bench-unfiltered-v120 (BlockVectra on Optimism).
   // v115: lockstep with bench-unfiltered-v122 (BlockVectra, two cohorts).

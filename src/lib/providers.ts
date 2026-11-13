@@ -956,7 +956,10 @@ const buildProvidersCached = unstable_cache(
   //      product page as well as the four public RPC appearances this index
   //      carries (#3586, an outside contribution). Lockstep with
   //      bench-unfiltered-v118.
-  ["providers-v36"],
+  // v37: MOJO is new to the SITE, so it gains a product page as well as
+  //      the bench 030 appearance this index carries. Lockstep with
+  //      bench-unfiltered-v123.
+  ["providers-v37"],
   // v35: BlockVectra gains its Optimism appearance (#3585). An existing
   //      provider, one more bench on its product page. Lockstep with
   //      bench-unfiltered-v120.

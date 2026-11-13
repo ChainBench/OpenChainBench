@@ -2267,6 +2267,12 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "Afterbell is a Hyperliquid trading front-end for stock, index and commodity perps (HIP-3) and crypto perps that reads each stock perp against its home exchange's session; its orders carry a registered builder code (Hyperliquid referral code AFTERBELL) at 0.03% standard, lower by 30-day volume.",
     twitter: "@Afterbell_pro",
   },
+  mojo: {
+    url: "https://mojo.trade",
+    description:
+      "MOJO is an AI trading app on web, iOS and Android where a trade is described in chat and confirmed on an order card; the orders it routes to Hyperliquid, crypto perps and HIP-3 stock perps, carry its builder code at 0.05% of notional.",
+    twitter: "@MojoAI_HQ",
+  },
 
   // ─── Perp funding venues (bench № 036) ─────────────────────────────
   bybit: {

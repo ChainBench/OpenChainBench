@@ -1517,6 +1517,19 @@ providers:
       success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 7200))
       sample_size: hl_frontend_fills_total_24h_v2{builder="afterbell"}
       series: hl_frontend_fees_usd_24h_v2{builder="afterbell"}
+
+  - slug: mojo
+    name: MOJO
+    tag: Hyperliquid builder code, USD revenue on the last complete UTC day
+    formula: "USD builder fees collected on the last complete UTC day, summed across every attributed fill in the daily feed file for MOJO's builder address."
+    queries:
+      p50: hl_frontend_fees_usd_24h_v2{builder="mojo"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="mojo"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="mojo"}
+      mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="mojo"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 7200))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="mojo"}
+      series: hl_frontend_fees_usd_24h_v2{builder="mojo"}
 metric_panels:
   - id: volume
     label: Volume routed
