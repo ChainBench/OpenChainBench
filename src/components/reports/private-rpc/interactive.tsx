@@ -211,7 +211,7 @@ export function LatencyHeatmap() {
     <Figure
       title="Every chain, every provider"
       subtitle="Round-trip latency in ms for eth_getBlockByNumber (getSlot on Solana), 7-day percentile per cell. The outlined cell is the fastest on that chain. Blank: the provider does not serve that chain from that region."
-      source="Source: OpenChainBench rpc-keyed-latency probes every 120 s, 7 days to 11 Nov 2026 12:58 UTC. BlockMachine since 24 Oct; Alchemy on 7 chains until its Free key capped on 24 Oct."
+      source="Source: OpenChainBench rpc-keyed-latency probes every 120 s, 7 days to 13 Nov 2026 13:07 UTC. BlockMachine since 24 Oct; Alchemy on 7 chains until its Free key capped on 24 Oct."
     >
       <div className="flex flex-wrap items-center gap-2 px-2 pb-3">
         <Tabs options={REGIONS.map((r) => ({ value: r.slug, label: r.name }))} value={region} onChange={setRegion} />
