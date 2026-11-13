@@ -36,7 +36,10 @@ import { matchesChainSlug } from "@/lib/chain-aliases";
 import type { Benchmark, ProviderResult } from "@/types/benchmark";
 import {
   RPC_REGION_KEYS,
+  beatsHeadline,
   buildPivot,
+  byHeadline,
+  isHeadlineReading,
   round1,
   round2,
   type RpcHubChain,
@@ -110,7 +113,12 @@ export const NON_CHAIN_RPC_SLUGS: ReadonlySet<string> = new Set([
 //     geo view's per-region tails would stay empty behind a blob that
 //     cannot grow them, for a full TTL and then for as long as the worker
 //     kept rewriting v5.
-export const RPC_HUB_KEY = "rpc-hub-v6";
+// v7: the WebSocket races publish a share of first pushes (%, higher is
+//     better) instead of the lag behind the first push, and their chains
+//     carry `unit` and `higherIsBetter`. A v6 blob ranks them ascending on
+//     the new figure, which would crown the provider that wins the fewest
+//     races, so it must not be served once the specs change.
+export const RPC_HUB_KEY = "rpc-hub-v7";
 
 /** Cap a series at `max` points so 10 chains of sparklines cannot bloat
  *  the cohort blob (Upstash + unstable_cache 2 MB ceilings). */
@@ -134,15 +142,21 @@ function toRegionKey(raw: string): RpcRegionKey | null {
 
 /** Live rows only: augmentation marks dead providers `unavailable` with
  *  zeroed aggregates; those must never rank on the hub. */
-function liveRows(bench: Benchmark): ProviderResult[] {
+/** The ranked live field, best first in the bench's own direction. A 0 p50
+ *  is dropped unless the bench says 0 is a reading: on a race a provider that
+ *  received blocks and never pushed one first reads 0%, and dropping it
+ *  would hide the loser of the race. */
+export function liveRows(
+  bench: Pick<Benchmark, "results" | "higherIsBetter" | "zeroIsAValue">,
+): ProviderResult[] {
+  const order = byHeadline(bench.higherIsBetter);
   return bench.results
     .filter(
       (r) =>
         r.availability !== "unavailable" &&
-        Number.isFinite(r.ms.p50) &&
-        r.ms.p50 > 0,
+        isHeadlineReading(r.ms.p50, bench.zeroIsAValue),
     )
-    .sort((a, b) => a.ms.p50 - b.ms.p50);
+    .sort((a, b) => order(a.ms.p50, b.ms.p50));
 }
 
 async function buildChain(spec: Spec, tier?: string): Promise<RpcHubChain | null> {
@@ -176,7 +190,7 @@ async function buildChain(spec: Spec, tier?: string): Promise<RpcHubChain | null
     const points = bench.extras.regions?.[r.slug] ?? [];
     for (const pt of points) {
       const key = toRegionKey(pt.region);
-      if (!key || !Number.isFinite(pt.p50) || pt.p50 <= 0) continue;
+      if (!key || !isHeadlineReading(pt.p50, bench.zeroIsAValue)) continue;
       (regionP50[r.slug] ??= {})[key] = round1(pt.p50);
     }
   }
@@ -215,7 +229,7 @@ async function buildChain(spec: Spec, tier?: string): Promise<RpcHubChain | null
     for (const r of rows) {
       const v = regionP50[r.slug]?.[region];
       if (v == null) continue;
-      if (!best || v < best.p50Ms) {
+      if (!best || beatsHeadline(v, best.p50Ms, bench.higherIsBetter)) {
         best = { provider: r.slug, providerName: r.name, p50Ms: v };
       }
     }
@@ -244,6 +258,8 @@ async function buildChain(spec: Spec, tier?: string): Promise<RpcHubChain | null
     name: chainLabelForSlug(chain) ?? chain,
     benchTitle: spec.title,
     providerCount: rows.length,
+    ...(bench.unit === "pct" ? { unit: "pct" as const } : {}),
+    ...(bench.higherIsBetter ? { higherIsBetter: true } : {}),
     // Declared cohort size: the page's thin gate (noindex under 3) counts
     // declared results, not live ones, so hub links must gate on this.
     declaredCount: bench.results.length,
@@ -474,7 +490,9 @@ const fetchRpcHubCached = unstable_cache(
   // v10: the snapshot carries the WebSocket cohort.
   // v11: the snapshot carries p95 and the per-region tails; a v10 entry would
   // serve a shape without them for its whole TTL.
-  ["rpc-hub-cohort-v11", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v12: lockstep with RPC_HUB_KEY v7. The WebSocket cohort is a share of
+  // first pushes ranked high to low; a v11 entry ranks the old lag.
+  ["rpc-hub-cohort-v12", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["rpc-cohort"] },
 );
 

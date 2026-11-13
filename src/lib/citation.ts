@@ -254,6 +254,17 @@ export function headlineParts(b: Benchmark): { claim: string; rest: string } {
     const wsChain = m ? m[1] : "chain";
     const field = rankedCandidates(b);
     const second = field[1];
+    // Since bench-unfiltered-v198 the races publish the share of first
+    // pushes, so the leader's figure is the answer itself and the sentence
+    // quotes it. The lag wording below stays for a blob still in ms.
+    if (b.unit === "pct") {
+      const noun = /solana/i.test(wsChain) ? "slots" : "blocks";
+      const lead = `${top.name} pushes the most ${wsChain} ${noun} first over WebSocket, ${value} of those it received`;
+      return {
+        claim: second ? `${lead}; ${second.name} follows at ${fmtUnit(second.ms.p50, b.unit)}` : lead,
+        rest: `(24h) across ${field.length} ranked providers.`,
+      };
+    }
     const inBucket = top.value < 0.5;
     const lead = inBucket
       ? `${top.name} has the lowest median lag behind the first ${wsChain} block push, inside the first histogram bucket`

@@ -134,6 +134,8 @@ describe("the provider set behind the cache keys", () => {
     // in providers.ts spells out: a tier slug without an alias builds its own
     // /products page carrying the vendor's title. All four keys moved,
     // v110/v103/v50/v27 to v111/v104/v51/v28.
+    // 2026-11-13: Alchemy joins the six keyed WebSocket races on this
+    // deployment, a provider already on the site: v124/v117/v61, providers-v38.
     expect(
       hash,
       [
@@ -152,6 +154,6 @@ describe("the provider set behind the cache keys", () => {
         "Then set EXPECTED to the hash in this failure, and add the provider",
         `to PRODUCT_NAMES if it needs a display name. Providers now: ${count}.`,
       ].join("\n"),
-    ).toBe("35271608c8174d1e");
+    ).toBe("ed1deea23b5521f1");
   });
 });

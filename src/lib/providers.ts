@@ -958,8 +958,10 @@ const buildProvidersCached = unstable_cache(
   //      bench-unfiltered-v118.
   // v37: MOJO is new to the SITE, so it gains a product page as well as
   //      the bench 030 appearance this index carries. Lockstep with
-  //      bench-unfiltered-v123.
-  ["providers-v37"],
+  // v38: WebSocket race appearances carry the first-to-push share as their
+  //      value, and Alchemy gains six of them. Lockstep with
+  //      bench-unfiltered-v124.
+  ["providers-v38"],
   // v35: BlockVectra gains its Optimism appearance (#3585). An existing
   //      provider, one more bench on its product page. Lockstep with
   //      bench-unfiltered-v120.
