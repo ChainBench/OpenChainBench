@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { leader, fieldValue, rankedCandidates, leaderNames } from "./citation";
+import { leader, fieldValue, rankedCandidates, leaderNames, headlineParts } from "./citation";
 import type { Benchmark, ProviderResult } from "@/types/benchmark";
 
 function r(
@@ -286,5 +286,23 @@ describe("citation, a headline measured on a slice", () => {
       chain: [{ value: "all", label: "All chains" }, { value: "solana", label: "Solana" }],
     });
     expect(headlineSentence(b)).not.toContain("measured on");
+  });
+});
+
+describe("WebSocket race headline", () => {
+  test("a share-of-first-pushes race quotes the leader's share, not a lag", () => {
+    const b: Benchmark = {
+      ...bench([r("quicknode", "Quicknode", 62), r("getblock", "GetBlock", 31), r("dwellir", "Dwellir", 0)]),
+      slug: "ethereum-rpc-ws",
+      title: "Fastest private Ethereum WebSocket push, per-block race across keyed RPC providers",
+      unit: "pct",
+      higherIsBetter: true,
+      zeroIsAValue: true,
+    };
+    const { claim, rest } = headlineParts(b);
+    expect(claim).toContain("Quicknode pushes the most Ethereum blocks first over WebSocket, 62");
+    expect(claim).toContain("GetBlock follows at 31");
+    expect(claim).not.toContain("ms");
+    expect(rest).toBe("(24h) across 3 ranked providers.");
   });
 });

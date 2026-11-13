@@ -631,7 +631,6 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       $142,513 of notional, $71.26 of builder fees, 113 wallets, a fee
   //       of exactly 5.0 bp on all 1,365, and zero fills whose
   //       counterparty is another wallet of that cohort.
-  ["bench-unfiltered-v123", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   // v118: Thyme Gate joins the public cohorts on ethereum, polygon,
   //       optimism and bnb (#3586, an outside contribution). The four
   //       endpoints were checked before merge: right chain id, a head
@@ -646,6 +645,15 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       before merge rather than taken from the issue, which says its own
   //       check was an identity read: chain id 0x120 and 0x1e0, heads 0 and
   //       1 s old, a batch of ten accepted.
+  // v124: the WebSocket races publish one figure, the share of the blocks
+  //       (or slots) each provider received that it pushed first, as a
+  //       percentage with higher better, in place of the lag behind the
+  //       first arrival in milliseconds. race_leader and its share panel
+  //       are gone: the share IS the headline. Alchemy joins the six keyed
+  //       races on this deployment under a monthly byte budget in the
+  //       probe. Unit, direction and every row change, so no cached entry
+  //       may survive it.
+  ["bench-unfiltered-v124", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -928,7 +936,9 @@ const loadAllBenchmarksCached = unstable_cache(
   //       disclosure, now an Enterprise trial).
   // v114: lockstep with bench-unfiltered-v121 (bench 001 methodology).
   // v116: lockstep with bench-unfiltered-v123 (MOJO on bench 030).
-  ["all-benchmarks-v116", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v117: lockstep with bench-unfiltered-v124 (WebSocket races in
+  //       first-to-push share; Alchemy on six of them).
+  ["all-benchmarks-v117", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   // v111: lockstep with bench-unfiltered-v118 (Thyme Gate, four cohorts).
   // v113: lockstep with bench-unfiltered-v120 (BlockVectra on Optimism).
   // v115: lockstep with bench-unfiltered-v122 (BlockVectra, two cohorts).
@@ -1091,7 +1101,9 @@ const loadBenchmarkFiltered = unstable_cache(
   //      disclosure, now an Enterprise trial).
   // v59: lockstep with bench-unfiltered-v121. Bench 001 declares chain
   //      and region and the methodology renders on every tab.
-  ["bench-filters-v60", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v61: lockstep with bench-unfiltered-v124. The WebSocket races declare
+  //      regions, and every region tab now ranks by share of first pushes.
+  ["bench-filters-v61", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   // v56: lockstep with bench-unfiltered-v118. All four benches declare
   //      regions and Thyme carries all three, so every region tab moves.
   // v58: lockstep with bench-unfiltered-v120; the Optimism row carries all

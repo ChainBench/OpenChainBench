@@ -21,6 +21,10 @@ export const RPC_REGION_KEYS: readonly RpcRegionKey[] = [
 export type RpcRegionBest = {
   provider: string;
   providerName: string;
+  /** The headline figure. Milliseconds on a latency chain; on a chain whose
+   *  `unit` is "pct" (the WebSocket races) it is the share of the blocks the
+   *  provider received that it pushed first, 0 to 100. The name predates the
+   *  races and is kept so older blobs still parse. */
   p50Ms: number;
 };
 
@@ -96,8 +100,16 @@ export type RpcHubChain = {
   bestArchiveProviders?: string[];
   /** Best provider per probe region. */
   regions: Partial<Record<RpcRegionKey, RpcRegionBest>>;
-  /** Full live provider field, sorted fastest first. */
+  /** Full live provider field, sorted best first (fastest on a latency
+   *  chain, highest share on a pct chain). */
   providers: RpcHubProvider[];
+  /** "pct" on the WebSocket races, where every p50 on this chain is a share
+   *  of first pushes rather than a latency. Absent means milliseconds, which
+   *  is every blob written before the races were converted. */
+  unit?: "pct";
+  /** True when a larger p50 ranks higher (the races). Absent means lower is
+   *  better, the latency default. */
+  higherIsBetter?: boolean;
   /** Leader's 24h latency series, downsampled to <=48 points. */
   series?: number[];
   dataConfidence?: string;
@@ -109,6 +121,8 @@ export type RpcHubPivotRow = {
   name: string;
   chainsCovered: number;
   medianRank: number;
+  /** Median headline figure across covered chains: ms on a latency cohort,
+   *  share of first pushes (%) on the WebSocket race. */
   medianP50Ms: number;
   /** Median 24h success rate across covered chains (%, 2 decimals).
    *  Optional: absent from older blobs and success-less rows. */
@@ -148,15 +162,33 @@ export type RpcHubSnapshot = RpcHubCohort & {
    *
    *  A separate bench family rather than a tier, so it is read from its own
    *  slugs and not from a variant sig. Its figure is also a different quantity:
-   *  milliseconds behind whichever provider pushed that block first, where the
-   *  leader reads near zero by construction. The page must label it as a lag
-   *  rather than as a latency, or a reader sees "0 ms" and concludes the
-   *  provider answers instantly. */
+   *  the share of the blocks each provider received that it pushed first, in
+   *  percent, higher is better (its chains carry `unit: "pct"`). It used to be
+   *  the lag behind the first push, where the leader read near zero by
+   *  construction and a reader saw "0 ms" as an instant answer. */
   websocket?: RpcHubCohort;
   generatedAt: string;
 };
 
 export const round1 = (v: number) => Math.round(v * 10) / 10;
+
+/** Comparator over two headline figures in the bench's own direction: best
+ *  first. Ascending on latency, descending on a share of first pushes. */
+export function byHeadline(higherIsBetter?: boolean): (a: number, b: number) => number {
+  return higherIsBetter ? (a, b) => b - a : (a, b) => a - b;
+}
+
+/** Whether `v` ranks ahead of `best` in the bench's direction. */
+export function beatsHeadline(v: number, best: number, higherIsBetter?: boolean): boolean {
+  return higherIsBetter ? v > best : v < best;
+}
+
+/** Whether a headline figure is a reading at all. On a latency chain 0 is
+ *  Prometheus saying nothing, not a 0 ms answer; on a race a provider that
+ *  received blocks and never pushed one first genuinely reads 0%. */
+export function isHeadlineReading(v: number, zeroIsAValue?: boolean): boolean {
+  return Number.isFinite(v) && (v > 0 || (zeroIsAValue === true && v === 0));
+}
 export const round2 = (v: number) => Math.round(v * 100) / 100;
 
 export function median(values: number[]): number {
@@ -168,6 +200,9 @@ export function median(values: number[]): number {
 }
 
 export function buildPivot(chains: RpcHubChain[]): RpcHubPivotRow[] {
+  // A cohort is one bench family, so its chains share a direction; the
+  // first chain's says which way the median figure breaks a rank tie.
+  const higherIsBetter = chains[0]?.higherIsBetter === true;
   const acc = new Map<
     string,
     { name: string; chains: RpcHubPivotRow["chains"] }
@@ -221,8 +256,35 @@ export function buildPivot(chains: RpcHubChain[]): RpcHubPivotRow[] {
     (a, b) =>
       b.chainsCovered - a.chainsCovered ||
       a.medianRank - b.medianRank ||
-      a.medianP50Ms - b.medianP50Ms,
+      byHeadline(higherIsBetter)(a.medianP50Ms, b.medianP50Ms),
   );
+}
+
+/** The best chain leader across a cohort, in each chain's own direction:
+ *  the lowest p50 on a latency cohort, the highest share of first pushes on
+ *  the WebSocket race. Null when no chain has a leader. */
+export function bestAcrossChains(
+  view: Pick<RpcHubCohort, "chains">,
+): { chain: string; provider: string; p50Ms: number; unit?: "pct" } | null {
+  let acc: { chain: string; provider: string; p50Ms: number; unit?: "pct" } | null = null;
+  for (const c of view.chains) {
+    if (!c.best) continue;
+    if (!acc || beatsHeadline(c.best.p50Ms, acc.p50Ms, c.higherIsBetter)) {
+      acc = {
+        chain: c.name,
+        provider: c.best.providerName,
+        p50Ms: c.best.p50Ms,
+        ...(c.unit ? { unit: c.unit } : {}),
+      };
+    }
+  }
+  return acc;
+}
+
+/** A share of first pushes, as the race tables print it: "62% first". */
+export function fmtFirstShare(v: number | null | undefined): string {
+  if (v == null || !Number.isFinite(v)) return "...";
+  return `${Math.round(v)}% first`;
 }
 
 /** Probe-region display names, so the hub, the selector and the column
@@ -288,7 +350,8 @@ export function scopeCohortToRegion(
       });
     }
     if (providers.length === 0) continue;
-    providers.sort((a, b) => a.p50Ms - b.p50Ms);
+    const order = byHeadline(c.higherIsBetter);
+    providers.sort((a, b) => order(a.p50Ms, b.p50Ms));
     const leader = providers[0];
     const best: RpcRegionBest = {
       provider: leader.provider,
