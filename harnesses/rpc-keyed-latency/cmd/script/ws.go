@@ -379,6 +379,20 @@ func runWS(ctx context.Context, e wsEndpoint) {
 	backoff := 2 * time.Second
 	for ctx.Err() == nil {
 		wait, remaining := wsWindowAt(time.Now())
+		// A spent byte budget sits the provider out until the month turns,
+		// checked once per window so the rollover reopens it on its own.
+		if wsBytes.exhausted(e.Provider, time.Now()) {
+			wsConnected.WithLabelValues(e.labels()...).Set(0)
+			if wait == 0 {
+				wait = remaining
+			}
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(wait):
+			}
+			continue
+		}
 		if wait > 0 {
 			wsConnected.WithLabelValues(e.labels()...).Set(0)
 			select {
@@ -396,6 +410,12 @@ func runWS(ctx context.Context, e wsEndpoint) {
 		err := wsSession(sessCtx, e)
 		cancel()
 		scheduled := errors.Is(err, context.DeadlineExceeded) && ctx.Err() == nil
+		if errors.Is(err, errWSByteBudget) {
+			// Our stop, not the provider's: no disconnect, no failure line.
+			fmt.Printf("[ws][%s/%s] byte budget for %s spent this month, socket closed\n",
+				e.Chain, e.Provider, currentRegion)
+			scheduled = true
+		}
 		if err != nil && !scheduled && ctx.Err() == nil {
 			// Redact: a dial error embeds the full URL, which carries the key.
 			fmt.Printf("[ws][%s/%s] session ended: %s\n", e.Chain, e.Provider,
@@ -495,6 +515,10 @@ func wsSession(ctx context.Context, e wsEndpoint) error {
 				return f.err
 			}
 			wsMessagesTotal.WithLabelValues(e.labels()...).Inc()
+			wsBytesTotal.WithLabelValues(e.labels()...).Add(float64(len(f.raw)))
+			if wsBytes.add(e.Provider, len(f.raw), f.at) {
+				return errWSByteBudget
+			}
 
 			// The subscribe acknowledgement, and the only moment the dial
 			// timing means anything.

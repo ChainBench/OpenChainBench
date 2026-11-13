@@ -203,6 +203,8 @@ describe("the provider set behind the cache keys", () => {
     // /products page with the vendor's title. All four keys moved.
     // 2026-11-03: BlockVectra joins the Katana RPC page (issue #3462), one
     // more appearance for a provider already on the site: v52, v157/v150/v87.
+    // 2026-11-13: Alchemy joins the seven keyed WebSocket races, a provider
+    // already on the site: v199/v192/v116, providers-v69.
     expect(
       hash,
       [
@@ -221,6 +223,6 @@ describe("the provider set behind the cache keys", () => {
         "Then set EXPECTED to the hash in this failure, and add the provider",
         `to PRODUCT_NAMES if it needs a display name. Providers now: ${count}.`,
       ].join("\n"),
-    ).toBe("37dd89a335cf4b41");
+    ).toBe("0e890bd1289ae82b");
   });
 });

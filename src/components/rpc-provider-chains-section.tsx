@@ -34,6 +34,9 @@ type Row = {
   /** "keyed" when the row comes from the API-key cohort (ranked among
    *  the keyed providers of that chain, linked to the keyed tab). */
   tier?: "keyed";
+  /** "pct" on a WebSocket race row whose figure is the share of the blocks
+   *  the provider received that it pushed first. */
+  unit?: "pct";
 };
 
 function errorCount(row: Row): number | null {
@@ -108,10 +111,9 @@ export async function RpcProviderChainsSection({
   }
   // The WebSocket race is collected into its own list, never merged into
   // `rows`. It is the same providers on the same chains, but the number is
-  // a different quantity: milliseconds behind whichever provider pushed
-  // that block first. Putting it in the p50 column would publish "0.4 ms"
-  // for GetBlock on Ethereum next to its 9 ms HTTP figure, which reads as
-  // an endpoint answering in under a millisecond.
+  // a different quantity: the share of the blocks the provider received
+  // that it pushed first (on blobs older than that, the lag behind the
+  // first push). Neither belongs in a p50 column beside an HTTP latency.
   const wsRows: Row[] = [];
   for (const c of snapshot.websocket?.chains ?? []) {
     const idx = c.providers.findIndex((p) => p.provider === providerSlug);
@@ -126,6 +128,7 @@ export async function RpcProviderChainsSection({
         p50Ms: p.p50Ms,
         successPct: p.successPct,
         sampleSize: p.sampleSize,
+        ...(c.unit === "pct" ? { unit: "pct" as const } : {}),
       });
       continue;
     }
@@ -145,6 +148,7 @@ export async function RpcProviderChainsSection({
   }
 
   if (rows.length === 0 && wsRows.length === 0) return null;
+  const wsShare = wsRows.some((r) => r.unit === "pct");
   const keyedOnly = rows.length > 0 && rows.every((r) => r.tier === "keyed");
   const mixed = !keyedOnly && rows.some((r) => r.tier === "keyed");
 
@@ -262,21 +266,33 @@ export async function RpcProviderChainsSection({
           <h3 className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-muted">
             Block delivery over WebSocket
           </h3>
-          <p className="mt-2 text-sm text-ink-soft leading-snug max-w-2xl">
-            The same private providers, measured on a different question: how
-            long after the <em>first</em> of them pushes a new block does{" "}
-            {providerName} push the same one. This is a lag between providers,
-            not a round-trip latency, so whichever provider delivers first on a
-            chain reads near zero there by construction and a small number here
-            says nothing about how fast an HTTP call answers.
-          </p>
+          {wsShare ? (
+            <p className="mt-2 text-sm text-ink-soft leading-snug max-w-2xl">
+              The same private providers, measured on a different question: of
+              the new blocks {providerName} pushed over its WebSocket, the share
+              it delivered <em>first</em>, before every other provider in the
+              same region. A race between providers, not a round-trip latency,
+              so it says nothing about how fast an HTTP call answers.
+            </p>
+          ) : (
+            <p className="mt-2 text-sm text-ink-soft leading-snug max-w-2xl">
+              The same private providers, measured on a different question: how
+              long after the <em>first</em> of them pushes a new block does{" "}
+              {providerName} push the same one. This is a lag between providers,
+              not a round-trip latency, so whichever provider delivers first on a
+              chain reads near zero there by construction and a small number here
+              says nothing about how fast an HTTP call answers.
+            </p>
+          )}
           <div className="mt-4 overflow-x-auto border-y border-rule">
             <table className="w-full text-[12.5px]">
               <thead>
                 <tr className="border-b border-rule text-left">
                   <Th className="pr-3">Chain</Th>
                   <Th className="px-3 text-right">Rank</Th>
-                  <Th className="px-3 text-right">Push lag (24h)</Th>
+                  <Th className="px-3 text-right">
+                    {wsShare ? "First to push (24h)" : "Push lag (24h)"}
+                  </Th>
                   <Th className="px-3 text-right">Success</Th>
                   <Th className="pl-3 text-right">Errors (24h)</Th>
                 </tr>
@@ -322,7 +338,9 @@ export async function RpcProviderChainsSection({
                     </td>
                     <td className="py-2.5 px-3 text-right tabular-nums whitespace-nowrap">
                       {r.p50Ms != null ? (
-                        r.rank === 1 ? (
+                        r.unit === "pct" ? (
+                          `${Math.round(r.p50Ms)}%`
+                        ) : r.rank === 1 ? (
                           <span title="This provider delivered the block first, so its lag is zero by definition">
                             first
                           </span>
