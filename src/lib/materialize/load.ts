@@ -18,7 +18,7 @@ import type {
   ProviderResult,
 } from "@/types/benchmark";
 import { Prometheus } from "@/lib/prometheus";
-import { specValueKind } from "@/lib/value-window";
+import { specHasDistribution, specValueKind } from "@/lib/value-window";
 import { SpecSchema, type Spec } from "@/lib/spec-schema";
 import { DEV_ONLY_BENCH_SLUGS, REMOVED_BENCH_SLUGS } from "@/lib/removed-benches";
 import { renderBenchmarkText } from "@/lib/bench-template";
@@ -178,6 +178,7 @@ export function buildEditorial(
     higherIsBetter: spec.higher_is_better,
     rowNoun: spec.row_noun,
     valueKind: specValueKind(spec),
+    hasDistribution: specHasDistribution(spec),
     abstract: spec.abstract,
     methodology: spec.methodology,
     findings: spec.findings,
