@@ -136,6 +136,10 @@ describe("the provider set behind the cache keys", () => {
     // v110/v103/v50/v27 to v111/v104/v51/v28.
     // 2026-11-13: Alchemy joins the six keyed WebSocket races on this
     // deployment, a provider already on the site: v124/v117/v61, providers-v38.
+    // An ADDITION on production, 2026-11-16: True Markets joins bench 030
+    // as its 109th Hyperliquid builder (#3615). New to the site, so
+    // providers-v moves; bench 030 declares no dimensions, so
+    // bench-filters does not: v125/v118, providers-v39.
     expect(
       hash,
       [
@@ -154,6 +158,6 @@ describe("the provider set behind the cache keys", () => {
         "Then set EXPECTED to the hash in this failure, and add the provider",
         `to PRODUCT_NAMES if it needs a display name. Providers now: ${count}.`,
       ].join("\n"),
-    ).toBe("ed1deea23b5521f1");
+    ).toBe("35a6a71b09e720a3");
   });
 });
