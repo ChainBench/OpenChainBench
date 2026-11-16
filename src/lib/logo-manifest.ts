@@ -640,6 +640,7 @@ const RAW: Record<string, string> = {
   afterbell: "/logos/afterbell.png",
   // MOJO's iOS App Store icon (512 px), scaled to 256 px.
   mojo: "/logos/mojo.png",
+  "true-markets": "/logos/true-markets.png",
   "nova-markets": "/logos/nova-markets.jpeg",
   "phantom-perps": "/logos/phantom-perps.svg",
   // ─── Terminal fill quality (bench № 268): the wallets' in-app swap ───

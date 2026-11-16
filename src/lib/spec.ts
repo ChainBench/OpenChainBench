@@ -653,7 +653,12 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       races on this deployment under a monthly byte budget in the
   //       probe. Unit, direction and every row change, so no cached entry
   //       may survive it.
-  ["bench-unfiltered-v124", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v125: True Markets joins bench 030 as its 109th Hyperliquid builder
+  //       (#3615, from the operator). Recomputed from the public
+  //       builder-fills bucket before merge: 2,904 fills, $51,610 of
+  //       notional, $11.32 of builder fees and 24 wallets over the 30
+  //       files to 2026-11-15, zero fills between them, 2.0 bp on 2,589.
+  ["bench-unfiltered-v125", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -938,7 +943,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v116: lockstep with bench-unfiltered-v123 (MOJO on bench 030).
   // v117: lockstep with bench-unfiltered-v124 (WebSocket races in
   //       first-to-push share; Alchemy on six of them).
-  ["all-benchmarks-v117", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v118: lockstep with bench-unfiltered-v125 (True Markets on bench 030).
+  ["all-benchmarks-v118", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   // v111: lockstep with bench-unfiltered-v118 (Thyme Gate, four cohorts).
   // v113: lockstep with bench-unfiltered-v120 (BlockVectra on Optimism).
   // v115: lockstep with bench-unfiltered-v122 (BlockVectra, two cohorts).

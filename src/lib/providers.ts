@@ -961,7 +961,10 @@ const buildProvidersCached = unstable_cache(
   // v38: WebSocket race appearances carry the first-to-push share as their
   //      value, and Alchemy gains six of them. Lockstep with
   //      bench-unfiltered-v124.
-  ["providers-v38"],
+  // v39: True Markets is new to the SITE, so it gains a product page as
+  //      well as the bench 030 appearance this index carries (#3615).
+  //      Lockstep with bench-unfiltered-v125.
+  ["providers-v39"],
   // v35: BlockVectra gains its Optimism appearance (#3585). An existing
   //      provider, one more bench on its product page. Lockstep with
   //      bench-unfiltered-v120.
