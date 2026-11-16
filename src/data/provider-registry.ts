@@ -2348,6 +2348,12 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "MOJO is an AI trading app on web, iOS and Android where a trade is described in chat and confirmed on an order card; the orders it routes to Hyperliquid, crypto perps and HIP-3 stock perps, carry its builder code at 0.05% of notional.",
     twitter: "@MojoAI_HQ",
   },
+  "true-markets": {
+    url: "https://truemarkets.co",
+    description:
+      "True Markets is a self-custodial trading app and API for tokenized stocks, crypto and perpetuals; the perp orders it routes to Hyperliquid carry its builder code.",
+    twitter: "@truemarketsco",
+  },
 
   // ─── Perp funding venues (bench № 036) ─────────────────────────────
   bybit: {
