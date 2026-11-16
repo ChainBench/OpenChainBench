@@ -53,6 +53,15 @@ describe("the provider set behind the cache keys", () => {
     const hash = createHash("sha256").update(sets.join("\n")).digest("hex").slice(0, 16);
     const count = sets.reduce((n, s) => n + s.split(":")[1].split(",").length, 0);
 
+    // An ADDITION on 2026-11-16: True Markets joins bench 030 as its
+    // 109th Hyperliquid builder (#3615), opened by the operator. New to
+    // the SITE, so providers-v moves with the other two; bench 030
+    // declares no dimensions, so bench-filters does NOT move. v200/v193
+    // and providers-v70. Recomputed from the public builder-fills bucket
+    // before merge: 2,904 fills, $51,610 of notional, $11.32 of builder
+    // fees, 24 wallets over the 30 files to 2026-11-15, zero fills
+    // between those wallets, 2.0 bp on 2,589 of them.
+    //
     // An ADDITION on 2026-11-13: MOJO joins bench 030 as its 108th
     // Hyperliquid builder (#3601), opened by the operator. New to the
     // SITE, so providers-v moves with the other two; bench 030 declares
@@ -223,6 +232,6 @@ describe("the provider set behind the cache keys", () => {
         "Then set EXPECTED to the hash in this failure, and add the provider",
         `to PRODUCT_NAMES if it needs a display name. Providers now: ${count}.`,
       ].join("\n"),
-    ).toBe("0e890bd1289ae82b");
+    ).toBe("c302bd06b6ae1a87");
   });
 });

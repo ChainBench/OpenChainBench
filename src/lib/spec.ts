@@ -1048,7 +1048,14 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       seven keyed races under a monthly byte budget in the probe.
   //       Unit, direction and every row change, so no cached entry may
   //       survive it.
-  ["bench-unfiltered-v199", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v200: True Markets joins bench 030 as its 109th Hyperliquid builder
+  //       (#3615, from the operator). Recomputed from the public
+  //       builder-fills bucket before merge: the 30 files to 2026-11-15
+  //       hold 2,904 fills, $51,610 of notional, $11.32 of builder fees
+  //       and 24 wallets, zero fills between them; the fee is 2.0 bp on
+  //       2,589 fills, not the 0 the request stated, and valid_from is
+  //       2026-07-13, the first file, not the funding day.
+  ["bench-unfiltered-v200", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -1426,7 +1433,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v191: lockstep with bench-unfiltered-v198 (MOJO on bench 030).
   // v192: lockstep with bench-unfiltered-v199 (WebSocket races in
   //       first-to-push share; Alchemy on seven of them).
-  ["all-benchmarks-v192", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v193: lockstep with bench-unfiltered-v200 (True Markets on bench 030).
+  ["all-benchmarks-v193", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);

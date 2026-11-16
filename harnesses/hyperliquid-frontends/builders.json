@@ -758,5 +758,12 @@
     "address": "0x7e60c68538c967b76381db4f46010ef378977997",
     "valid_from": "2026-06-27",
     "notes": "MOJO (mojo.trade), an AI trading app on web, iOS and Android: a trade is described in chat and confirmed on an order card, and the orders it routes to Hyperliquid (crypto perps and HIP-3 stock perps) carry this builder address. Builder address and fee from the operator: 0.05% of notional on every fill, published at docs.mojo.trade/use-cases/trade-us-stocks; every fill in the public bucket reads exactly 5.0 bp. valid_from is the first day the public fills bucket returns a file, checked day by day from 2026-04-01 on 2026-11-12: 127 days have one, the earliest 2026-06-27. The 30 files to 2026-11-11 hold 1,365 fills, about $142.5k of notional and $71.26 of builder fees from 113 wallets, and no fill has another of those wallets as its counterparty. Hyperliquid's referral info for the address reports about $408 of builderRewards."
+  },
+  {
+    "slug": "true-markets",
+    "name": "True Markets",
+    "address": "0x7bc2baaf2c79d9be1f5c327b5fb5325583604734",
+    "valid_from": "2026-07-13",
+    "notes": "True Markets (truemarkets.co), a self-custodial trading app and API for tokenized stocks, crypto and perpetuals; the perp orders it routes to Hyperliquid carry this builder address. Builder address from the operator; HypurrScan labels it True Markets. Product fees published at truemarkets.co/fees: 0.25% per trade on the web and mobile app, 0.20% through the CLI, MCP server and Gateway API. The operator described the Hyperliquid builder fee as 0, but the public bucket shows one on almost every fill: of the 2,904 fills in the 30 files to 2026-11-15, 2,589 read 2.0 bp, 271 read 1.0 bp, 30 read 5.0 bp and 13 read 0. valid_from is the first day the public fills bucket returns a file, checked day by day from 2026-06-01 on 2026-11-16: 106 days have one, the earliest 2026-07-13 (2026-07-12 answers 403); the address was funded on HyperCore earlier, on 2026-06-10. The 30 files to 2026-11-15 hold 2,904 fills, about $51.6k of notional and $11.32 of builder fees from 24 wallets, the largest about 46% of notional, and no fill has another of those wallets as its counterparty. Hyperliquid's referral info for the address reports about $172 of builderRewards."
   }
 ]
