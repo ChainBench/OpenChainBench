@@ -1051,7 +1051,10 @@ const buildProvidersCached = unstable_cache(
   // v69: WebSocket race appearances carry the first-to-push share as
   //      their value, and Alchemy gains seven of them. Lockstep with
   //      bench-unfiltered-v199.
-  ["providers-v69"],
+  // v70: True Markets is new to the SITE, not only to a bench: it gains
+  //      a product page as well as the bench 030 appearance this index
+  //      carries. Lockstep with bench-unfiltered-v200.
+  ["providers-v70"],
   // 900 s: the provider index feeds products / compare / answers, whose
   // numbers move slowly, and this revalidate is also the effective ISR
   // period of those ~500 pages (Next takes the min across a route's caches).
