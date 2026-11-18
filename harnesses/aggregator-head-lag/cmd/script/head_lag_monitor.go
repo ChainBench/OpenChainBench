@@ -933,6 +933,11 @@ func runHeadLagMonitor(config *Config, stopChan <-chan struct{}) {
 	wg.Add(1)
 	go runBirdeyeHeadLagMonitor(config, stopChan, &wg)
 
+	// Start Metastreams monitor. Solana, BNB and Robinhood, pool-scoped.
+	// Disabled cleanly when METASTREAMS_API_KEY is unset.
+	wg.Add(1)
+	go runMetastreamsHeadLagMonitor(config, stopChan, &wg)
+
 	// Wait for all to finish
 	wg.Wait()
 	fmt.Println("[HEAD-LAG] All monitors stopped")

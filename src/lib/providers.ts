@@ -1054,7 +1054,9 @@ const buildProvidersCached = unstable_cache(
   // v70: True Markets is new to the SITE, not only to a bench: it gains
   //      a product page as well as the bench 030 appearance this index
   //      carries. Lockstep with bench-unfiltered-v200.
-  ["providers-v70"],
+  // v71: Metastreams is new to the SITE: a product page plus its bench
+  //      001 and 004 appearances. Lockstep with bench-unfiltered-v201.
+  ["providers-v71"],
   // 900 s: the provider index feeds products / compare / answers, whose
   // numbers move slowly, and this revalidate is also the effective ISR
   // period of those ~500 pages (Next takes the min across a route's caches).

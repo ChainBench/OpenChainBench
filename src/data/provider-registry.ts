@@ -361,6 +361,20 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     pricing:
       "Credit-metered. Free 15k credits/month, Starter 150k, Growth 2M, Enterprise unlimited. Most endpoints cost 1 credit; token/security costs 10 and a fresh contract audit 750.",
   },
+  metastreams: {
+    url: "https://metastreams.io",
+    description:
+      "Real-time on-chain market data API for spot, perps and prediction markets. REST token endpoints plus a WebSocket stream of trades filtered by chain and pool.",
+    longDescription:
+      "Metastreams streams enriched on-chain market data over one WebSocket (wss://api.metastreams.io/v1/stream): a spot.trades channel takes chain and pool filters, so a subscriber receives only the pools it asked for. The REST side (api.metastreams.io/v1/tokens) returns token price, market cap, liquidity, holders, security flags and metadata (logo, description, socials) in one call. Spot coverage is Solana, BNB Chain, Robinhood Chain and Elysium; Base is not indexed. Auth is a Bearer API key.",
+    docs: "https://docs.metastreams.io",
+    chains: ["solana", "bnb", "robinhood"],
+    features: [
+      "WebSocket spot.trades stream filtered by chain and pool",
+      "Token endpoint with price, liquidity, holders, security and metadata",
+      "Token metadata: logo, description, twitter and website",
+    ],
+  },
   dexpaprika: {
     url: "https://dexpaprika.com",
     description:

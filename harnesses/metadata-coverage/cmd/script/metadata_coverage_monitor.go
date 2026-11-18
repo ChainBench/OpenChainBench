@@ -65,20 +65,22 @@ type ProviderCoverage struct {
 
 // MetadataCoverageStats holds overall stats
 type MetadataCoverageStats struct {
-	mu         sync.Mutex
-	Mobula     ProviderCoverage
-	Codex      ProviderCoverage
-	Jupiter    ProviderCoverage
-	Serialized ProviderCoverage
-	LastPrint  time.Time
+	mu          sync.Mutex
+	Mobula      ProviderCoverage
+	Codex       ProviderCoverage
+	Jupiter     ProviderCoverage
+	Serialized  ProviderCoverage
+	Metastreams ProviderCoverage
+	LastPrint   time.Time
 }
 
 var (
 	coverageStats = &MetadataCoverageStats{
-		Mobula:     ProviderCoverage{Provider: "mobula"},
-		Codex:      ProviderCoverage{Provider: "codex"},
-		Jupiter:    ProviderCoverage{Provider: "jupiter"},
-		Serialized: ProviderCoverage{Provider: "serialized"},
+		Mobula:      ProviderCoverage{Provider: "mobula"},
+		Codex:       ProviderCoverage{Provider: "codex"},
+		Jupiter:     ProviderCoverage{Provider: "jupiter"},
+		Serialized:  ProviderCoverage{Provider: "serialized"},
+		Metastreams: ProviderCoverage{Provider: "metastreams"},
 	}
 	tokenQueue     = make(chan TokenToCheck, 500)
 	metadataClient = &http.Client{Timeout: 10 * time.Second}
@@ -557,6 +559,8 @@ func updateStats(provider string, fields MetadataFields) {
 		stats = &coverageStats.Jupiter
 	case "serialized":
 		stats = &coverageStats.Serialized
+	case "metastreams":
+		stats = &coverageStats.Metastreams
 	default:
 		return
 	}
@@ -605,7 +609,7 @@ func printCoverageStats() {
 	fmt.Printf("║ Provider │ Checks │ Logo  │ Name  │ Symbol│ Desc  │Twitter│Website│Telegram│ Errors │\n")
 	fmt.Printf("╠══════════════════════════════════════════════════════════════════════════════╣\n")
 
-	for _, stats := range []*ProviderCoverage{&coverageStats.Mobula, &coverageStats.Codex, &coverageStats.Jupiter, &coverageStats.Serialized} {
+	for _, stats := range []*ProviderCoverage{&coverageStats.Mobula, &coverageStats.Codex, &coverageStats.Jupiter, &coverageStats.Serialized, &coverageStats.Metastreams} {
 		if stats.TotalChecks == 0 {
 			fmt.Printf("║ %-8s │ %6d │   -   │   -   │   -   │   -   │   -   │   -   │   -    │ %6d ║\n",
 				stats.Provider, stats.TotalChecks, stats.ErrorCount)
@@ -736,6 +740,27 @@ func checkTokenMetadata(token TokenToCheck, config *Config) {
 			RecordMetadataCoverage("serialized", chainName, "twitter", serializedResult.HasTwitter, config.MonitorRegion)
 			RecordMetadataCoverage("serialized", chainName, "website", serializedResult.HasWebsite, config.MonitorRegion)
 			RecordMetadataLatency("serialized", chainName, serializedResult.ResponseTimeMs, config.MonitorRegion)
+		}
+	}
+
+	// Check Metastreams (Solana and BNB; skipped elsewhere). Same rule as
+	// the four above: a failed call is an error, not five misses.
+	if _, supported := metastreamsChainSlug(token.ChainID); supported {
+		msResult := checkMetastreamsMetadata(token, config.MetastreamsAPIKey)
+		if msResult.Error != "" {
+			fmt.Printf("[META][METASTREAMS][%s] %s | %s | err=%s\n",
+				chainName, token.Symbol, token.Address, msResult.Error)
+		}
+		updateStats("metastreams", msResult)
+		if msResult.Error != "" {
+			RecordMetadataError("metastreams", chainName, msResult.Error, config.MonitorRegion)
+		} else {
+			RecordMetadataCoverage("metastreams", chainName, "logo", msResult.HasLogo, config.MonitorRegion)
+			RecordMetadataCoverage("metastreams", chainName, "logo_resolved", msResult.HasLogo && logoResolves(msResult.LogoURL), config.MonitorRegion)
+			RecordMetadataCoverage("metastreams", chainName, "description", msResult.HasDescription, config.MonitorRegion)
+			RecordMetadataCoverage("metastreams", chainName, "twitter", msResult.HasTwitter, config.MonitorRegion)
+			RecordMetadataCoverage("metastreams", chainName, "website", msResult.HasWebsite, config.MonitorRegion)
+			RecordMetadataLatency("metastreams", chainName, msResult.ResponseTimeMs, config.MonitorRegion)
 		}
 	}
 
