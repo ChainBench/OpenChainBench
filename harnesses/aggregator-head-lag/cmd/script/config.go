@@ -20,6 +20,7 @@ type Config struct {
 	CodexBaseWSURL       string // Codex endpoint for the Base subscription (edge node by default)
 	CodexRobinhoodWSURL  string // Codex endpoint for the Robinhood subscription (edge node by default)
 	CodexBNBWSURL        string // Codex endpoint for the BNB subscription (edge node by default)
+	MetastreamsAPIKey    string // Bearer key for wss://api.metastreams.io/v1/stream
 }
 
 func loadEnv() (*Config, error) {
@@ -38,6 +39,7 @@ func loadEnv() (*Config, error) {
 	config.CodexBaseWSURL = strings.TrimSpace(os.Getenv("CODEX_BASE_WS_URL"))
 	config.CodexRobinhoodWSURL = strings.TrimSpace(os.Getenv("CODEX_ROBINHOOD_WS_URL"))
 	config.CodexBNBWSURL = strings.TrimSpace(os.Getenv("CODEX_BNB_WS_URL"))
+	config.MetastreamsAPIKey = strings.TrimSpace(os.Getenv("METASTREAMS_API_KEY"))
 
 	// Default to "unknown" if not set
 	if config.MonitorRegion == "" {

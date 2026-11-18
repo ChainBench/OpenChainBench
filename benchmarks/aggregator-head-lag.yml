@@ -2,16 +2,16 @@
 
 slug: aggregator-head-lag
 number: "001"
-title: Fastest crypto price API, live head lag across 6 data providers
+title: Fastest crypto price API, live head lag across 7 data providers
 seo_title: "Fastest crypto price API 2026: live head lag by chain"
-seo_description: "{{best_name}} leads cross-chain head lag at {{best_p50}} (p50, 24h); per-chain leaders differ. Mobula, Codex, GeckoTerminal, Serialized, OKX and Birdeye measured live."
-subtitle: Wall-clock head lag in seconds from on-chain swap event to API emission, measured live for Mobula, Codex, GeckoTerminal, Serialized, OKX and Birdeye on Base, BNB Chain, Solana and Robinhood Chain. OKX and Birdeye are measured on Base, BNB Chain and Solana, the three chains where the headline does not read their own timestamps; neither indexes Robinhood Chain.
+seo_description: "{{best_name}} leads cross-chain head lag at {{best_p50}} (p50, 24h); per-chain leaders differ. Mobula, Codex, GeckoTerminal, Serialized, OKX, Birdeye and Metastreams measured live."
+subtitle: Wall-clock head lag in seconds from on-chain swap event to API emission, measured live for Mobula, Codex, GeckoTerminal, Serialized, OKX, Birdeye and Metastreams on Base, BNB Chain, Solana and Robinhood Chain. OKX and Birdeye do not index Robinhood Chain; Metastreams does not index Base.
 
 per_chain_explainer:
   - slug: base
     h2: "Lowest Base price feed head lag"
     body: |
-      {{best_name:chain:base}} currently leads Base head lag at {{best_p50:chain:base}} (p50, 24h) across the 6 measured providers. Since the Denim upgrade (2026-11-05) Base seals a canonical block every 200 ms, so the chain sets a floor of about 0.2 s and anything above it is pipeline work (indexer, fan-out, edge). Measured by holding a log subscription on Base's sequencer node and timestamping each provider's emission of the same swap from us-east, eu-west and Singapore, so the zero point is the moment the trade becomes public.
+      {{best_name:chain:base}} currently leads Base head lag at {{best_p50:chain:base}} (p50, 24h) across the measured providers. Since the Denim upgrade (2026-11-05) Base seals a canonical block every 200 ms, so the chain sets a floor of about 0.2 s and anything above it is pipeline work (indexer, fan-out, edge). Measured by holding a log subscription on Base's sequencer node and timestamping each provider's emission of the same swap from us-east, eu-west and Singapore, so the zero point is the moment the trade becomes public.
   - slug: bnb
     h2: "Lowest BNB Chain price feed head lag"
     body: |
@@ -298,6 +298,35 @@ providers:
         - region: ap-southeast
           p50: avg by (aggregator) (quantile_over_time(0.50, head_lag_seconds{aggregator="serialized", region="sgp"}[24h])) * 1000
           series: avg_over_time(head_lag_seconds{aggregator="serialized", region="sgp"}[1h]) * 1000 unless (changes(head_lag_seconds{aggregator="serialized", region="sgp"}[15m]) == 0 and count_over_time(head_lag_seconds{aggregator="serialized", region="sgp"}[15m]) > 5 and on(chain, region) sum by (chain, region) (changes(head_lag_seconds{region="sgp"}[15m])) > 5 and on(aggregator, region) avg_over_time(ws_connected{aggregator="serialized", region="sgp", chain=""}[15m]) > 0.8)
+
+  # Three of the four bench chains: Metastreams indexes solana, bsc, robinhood
+  # and elysium, not Base. Subscribed per pool (spot.trades takes a pools
+  # filter), so every arrival is a bench trade. Its trade timestamp is block
+  # time rounded to the second; all three chains race, so it is never read.
+  # Tested 3h40 in eu-west on 2026-11-17 next to the other feeds before adding.
+  - slug: metastreams
+    name: Metastreams
+    tag: WebSocket `spot.trades` stream
+    formula: "Median seconds between an on-chain swap on the bench pools and the same trade arriving on Metastreams' WebSocket spot.trades stream (subscribed per pool), over 24h. BNB, Solana and Robinhood Chain."
+    queries:
+      p50: avg by (aggregator) (quantile_over_time(0.50, head_lag_seconds{aggregator="metastreams"}[24h])) * 1000
+      p90: avg by (aggregator) (quantile_over_time(0.90, head_lag_seconds{aggregator="metastreams"}[24h])) * 1000
+      p99: avg by (aggregator) (quantile_over_time(0.99, head_lag_seconds{aggregator="metastreams"}[24h])) * 1000
+      mean: avg by (aggregator) (avg_over_time(head_lag_seconds{aggregator="metastreams"}[24h])) * 1000
+      success: clamp_max(avg by (aggregator) (count_over_time(head_lag_seconds{aggregator="metastreams"}[24h]) / 2880), 1)
+      sample_size: sum(count_over_time(head_lag_seconds{aggregator="metastreams"}[24h]))
+      series: avg_over_time(head_lag_seconds{aggregator="metastreams"}[1h]) * 1000 unless (changes(head_lag_seconds{aggregator="metastreams"}[15m]) == 0 and count_over_time(head_lag_seconds{aggregator="metastreams"}[15m]) > 5 and on(chain, region) sum by (chain, region) (changes(head_lag_seconds{}[15m])) > 5 and on(aggregator, region) avg_over_time(ws_connected{aggregator="metastreams", chain=""}[15m]) > 0.8)
+      live_activity: sum(changes(head_lag_seconds{aggregator="metastreams"}[15m]))
+      regions:
+        - region: us-east
+          p50: avg by (aggregator) (quantile_over_time(0.50, head_lag_seconds{aggregator="metastreams", region="us-east"}[24h])) * 1000
+          series: avg_over_time(head_lag_seconds{aggregator="metastreams", region="us-east"}[1h]) * 1000 unless (changes(head_lag_seconds{aggregator="metastreams", region="us-east"}[15m]) == 0 and count_over_time(head_lag_seconds{aggregator="metastreams", region="us-east"}[15m]) > 5 and on(chain, region) sum by (chain, region) (changes(head_lag_seconds{region="us-east"}[15m])) > 5 and on(aggregator, region) avg_over_time(ws_connected{aggregator="metastreams", region="us-east", chain=""}[15m]) > 0.8)
+        - region: eu-west
+          p50: avg by (aggregator) (quantile_over_time(0.50, head_lag_seconds{aggregator="metastreams", region="eu-west"}[24h])) * 1000
+          series: avg_over_time(head_lag_seconds{aggregator="metastreams", region="eu-west"}[1h]) * 1000 unless (changes(head_lag_seconds{aggregator="metastreams", region="eu-west"}[15m]) == 0 and count_over_time(head_lag_seconds{aggregator="metastreams", region="eu-west"}[15m]) > 5 and on(chain, region) sum by (chain, region) (changes(head_lag_seconds{region="eu-west"}[15m])) > 5 and on(aggregator, region) avg_over_time(ws_connected{aggregator="metastreams", region="eu-west", chain=""}[15m]) > 0.8)
+        - region: ap-southeast
+          p50: avg by (aggregator) (quantile_over_time(0.50, head_lag_seconds{aggregator="metastreams", region="sgp"}[24h])) * 1000
+          series: avg_over_time(head_lag_seconds{aggregator="metastreams", region="sgp"}[1h]) * 1000 unless (changes(head_lag_seconds{aggregator="metastreams", region="sgp"}[15m]) == 0 and count_over_time(head_lag_seconds{aggregator="metastreams", region="sgp"}[15m]) > 5 and on(chain, region) sum by (chain, region) (changes(head_lag_seconds{region="sgp"}[15m])) > 5 and on(aggregator, region) avg_over_time(ws_connected{aggregator="metastreams", region="sgp", chain=""}[15m]) > 0.8)
 
   - slug: geckoterminal
     name: GeckoTerminal

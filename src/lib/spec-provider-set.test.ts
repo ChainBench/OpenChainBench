@@ -214,6 +214,8 @@ describe("the provider set behind the cache keys", () => {
     // more appearance for a provider already on the site: v52, v157/v150/v87.
     // 2026-11-13: Alchemy joins the seven keyed WebSocket races, a provider
     // already on the site: v199/v192/v116, providers-v69.
+    // An ARRIVAL on 2026-11-17: Metastreams joins bench 001 and bench 004,
+    // new to the site: v201/v194/v117, providers-v71.
     expect(
       hash,
       [
@@ -232,6 +234,6 @@ describe("the provider set behind the cache keys", () => {
         "Then set EXPECTED to the hash in this failure, and add the provider",
         `to PRODUCT_NAMES if it needs a display name. Providers now: ${count}.`,
       ].join("\n"),
-    ).toBe("c302bd06b6ae1a87");
+    ).toBe("441b0ad5c40de928");
   });
 });

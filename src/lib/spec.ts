@@ -1055,7 +1055,10 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       and 24 wallets, zero fills between them; the fee is 2.0 bp on
   //       2,589 fills, not the 0 the request stated, and valid_from is
   //       2026-07-13, the first file, not the funding day.
-  ["bench-unfiltered-v200", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v201: Metastreams joins bench 001 (Solana, BNB Chain, Robinhood
+  //       Chain) and bench 004 (Solana, BNB Chain). Tested 3h40 in
+  //       eu-west next to the other feeds before adding.
+  ["bench-unfiltered-v201", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -1434,7 +1437,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v192: lockstep with bench-unfiltered-v199 (WebSocket races in
   //       first-to-push share; Alchemy on seven of them).
   // v193: lockstep with bench-unfiltered-v200 (True Markets on bench 030).
-  ["all-benchmarks-v193", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v194: lockstep with bench-unfiltered-v201 (Metastreams on 001/004).
+  ["all-benchmarks-v194", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1710,7 +1714,9 @@ const loadBenchmarkFiltered = unstable_cache(
   // v116: lockstep with bench-unfiltered-v199. The ten WebSocket races
   //       declare regions, and every region tab now ranks by share of
   //       first pushes.
-  ["bench-filters-v116", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v117: lockstep with bench-unfiltered-v201. Both benches declare chain
+  //       dimensions and the new row lives on per-chain tabs.
+  ["bench-filters-v117", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 
