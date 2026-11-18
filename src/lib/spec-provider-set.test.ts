@@ -216,6 +216,9 @@ describe("the provider set behind the cache keys", () => {
     // already on the site: v199/v192/v116, providers-v69.
     // An ARRIVAL on 2026-11-17: Metastreams joins bench 001 and bench 004,
     // new to the site: v201/v194/v117, providers-v71.
+    // An ADDITION on 2026-11-18: Codex joins bench 008 on seven of its
+    // eleven chains, a provider already on the site: v202/v195/v118,
+    // providers-v72.
     expect(
       hash,
       [
@@ -234,6 +237,6 @@ describe("the provider set behind the cache keys", () => {
         "Then set EXPECTED to the hash in this failure, and add the provider",
         `to PRODUCT_NAMES if it needs a display name. Providers now: ${count}.`,
       ].join("\n"),
-    ).toBe("441b0ad5c40de928");
+    ).toBe("d5e9bd1dd6d8cbf4");
   });
 });

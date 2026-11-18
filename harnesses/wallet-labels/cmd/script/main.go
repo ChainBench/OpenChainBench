@@ -58,6 +58,7 @@ func buildProviders(cfg *Config) []Provider {
 		// provider answers nothing rather than erroring, which is how a
 		// vendor leaves without a deploy.
 		NewBubblemapsProvider(cfg.BubblemapsAPIKey),
+		NewCodexProvider(cfg.CodexAPIKey),
 		NewBlockscoutProvider(),
 		NewOLIProvider(),
 		NewTonAPIProvider(),

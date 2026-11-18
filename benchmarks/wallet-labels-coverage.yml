@@ -226,6 +226,19 @@ providers:
       sample_size: sum(increase(wallet_labels_checks_total{provider="serialized"}[24h]))
       series: 100 * sum(rate(wallet_labels_success_total{provider="serialized"}[1h])) / sum(rate(wallet_labels_checks_total{provider="serialized"}[1h]))
 
+  - slug: codex
+    name: Codex
+    tag: Entity registry and verified names, 7 of this bench's chains, API key required
+    formula: "Share of anchor addresses for which the Codex `wallets` GraphQL query returns a non-generic `displayName` on the anchor's chain, success_total ÷ checks_total over 24h."
+    queries:
+      p50: 100 * sum(increase(wallet_labels_success_total{provider="codex"}[24h])) / sum(increase(wallet_labels_checks_total{provider="codex"}[24h]))
+      p90: 100 * sum(increase(wallet_labels_success_total{provider="codex"}[24h])) / sum(increase(wallet_labels_checks_total{provider="codex"}[24h]))
+      p99: 100 * sum(increase(wallet_labels_success_total{provider="codex"}[24h])) / sum(increase(wallet_labels_checks_total{provider="codex"}[24h]))
+      mean: 100 * sum(increase(wallet_labels_success_total{provider="codex"}[24h])) / sum(increase(wallet_labels_checks_total{provider="codex"}[24h]))
+      success: clamp_min(1 - (sum(increase(wallet_labels_fetch_errors_total{provider="codex"}[24h])) or vector(0)) / clamp_min(sum(increase(wallet_labels_checks_total{provider="codex"}[24h])), 1), 0)
+      sample_size: sum(increase(wallet_labels_checks_total{provider="codex"}[24h]))
+      series: 100 * sum(rate(wallet_labels_success_total{provider="codex"}[1h])) / sum(rate(wallet_labels_checks_total{provider="codex"}[1h]))
+
   - slug: helius
     name: Helius
     tag: Solana specialist, native program graph, API key required

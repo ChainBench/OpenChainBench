@@ -16,6 +16,7 @@ type Config struct {
 	HeliusAPIKey     string
 	SerializedAPIKey string
 	BubblemapsAPIKey string
+	CodexAPIKey      string
 
 	CheckDelay time.Duration
 	Workers    int
@@ -31,6 +32,7 @@ func loadConfig() *Config {
 		HeliusAPIKey:     os.Getenv("HELIUS_API_KEY"),
 		SerializedAPIKey: os.Getenv("SERIALIZED_API_KEY"),
 		BubblemapsAPIKey: os.Getenv("BUBBLEMAPS_API_KEY"),
+		CodexAPIKey:      os.Getenv("CODEX_API_KEY"),
 		CheckDelay:       parseDurationSec("WALLET_LABELS_CHECK_DELAY_SECONDS", 30),
 		Workers:          parseInt("WALLET_LABELS_WORKERS", 8),
 		QueueSize:        parseInt("WALLET_LABELS_QUEUE_SIZE", 2000),
@@ -47,6 +49,7 @@ func loadConfig() *Config {
 	fmt.Printf("   Moralis key set: %v (len=%d)\n", c.MoralisAPIKey != "", len(c.MoralisAPIKey))
 	fmt.Printf("   Helius key set: %v (len=%d)\n", c.HeliusAPIKey != "", len(c.HeliusAPIKey))
 	fmt.Printf("   Serialized key set: %v (len=%d)\n", c.SerializedAPIKey != "", len(c.SerializedAPIKey))
+	fmt.Printf("   Codex key set: %v (len=%d)\n", c.CodexAPIKey != "", len(c.CodexAPIKey))
 	fmt.Println()
 
 	return c
