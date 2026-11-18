@@ -1056,7 +1056,9 @@ const buildProvidersCached = unstable_cache(
   //      carries. Lockstep with bench-unfiltered-v200.
   // v71: Metastreams is new to the SITE: a product page plus its bench
   //      001 and 004 appearances. Lockstep with bench-unfiltered-v201.
-  ["providers-v71"],
+  // v72: Codex gains its bench 008 appearance. Already on the site, so
+  //      no new product page. Lockstep with bench-unfiltered-v202.
+  ["providers-v72"],
   // 900 s: the provider index feeds products / compare / answers, whose
   // numbers move slowly, and this revalidate is also the effective ISR
   // period of those ~500 pages (Next takes the min across a route's caches).

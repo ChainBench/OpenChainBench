@@ -1058,7 +1058,12 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // v201: Metastreams joins bench 001 (Solana, BNB Chain, Robinhood
   //       Chain) and bench 004 (Solana, BNB Chain). Tested 3h40 in
   //       eu-west next to the other feeds before adding.
-  ["bench-unfiltered-v201", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v202: Codex joins bench 008. Its `wallets` query is asked on the
+  //       anchor's own chain, so seven of this bench's eleven are in
+  //       scope: the six EVM chains and Solana. Run through the
+  //       harness's own provider before the request, 119 of the 134
+  //       anchors on those chains came back named, with 0 errors.
+  ["bench-unfiltered-v202", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -1438,7 +1443,8 @@ const loadAllBenchmarksCached = unstable_cache(
   //       first-to-push share; Alchemy on seven of them).
   // v193: lockstep with bench-unfiltered-v200 (True Markets on bench 030).
   // v194: lockstep with bench-unfiltered-v201 (Metastreams on 001/004).
-  ["all-benchmarks-v194", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v195: lockstep with bench-unfiltered-v202 (Codex joins 008).
+  ["all-benchmarks-v195", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1716,7 +1722,9 @@ const loadBenchmarkFiltered = unstable_cache(
   //       first pushes.
   // v117: lockstep with bench-unfiltered-v201. Both benches declare chain
   //       dimensions and the new row lives on per-chain tabs.
-  ["bench-filters-v117", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v118: lockstep with bench-unfiltered-v202. Bench 008 splits by chain
+  //       and by kind, so every tab gains a row where Codex is in scope.
+  ["bench-filters-v118", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 
