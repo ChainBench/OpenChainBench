@@ -424,6 +424,7 @@ const RAW: Record<string, string> = {
   // ─── Gram/TON providers (bench 215) ───
   toncenter: "/logos/ton.svg",
   nownodes: "/logos/nownodes.svg",
+  rpcnode: "/logos/rpcnode.svg",
   lukso: "/logos/lukso.svg",
   "lukso-official": "/logos/lukso.svg",
   tatum: "/logos/tatum.svg",

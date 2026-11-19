@@ -209,6 +209,29 @@ providers:
           p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="nownodes", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="nownodes", region="sgp"}[1h])
 
+  - slug: rpcnode
+    name: RpcNode
+    tag: Public node, 20 mainnets, 5 RPS per IP
+    formula: "Mean over its 10 measured chains (Ethereum, Polygon, Arbitrum, Optimism, Base, BNB, Avalanche, Monad, Arc, Solana) and 3 regions of per-cell 24h p50 round-trip latency (ms) to RpcNode public no-key endpoints. Successful calls only."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="rpcnode"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="rpcnode"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="rpcnode"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="rpcnode"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="rpcnode"}) / sum(ocb:rpc_call:rate_24h{provider="rpcnode"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="rpcnode"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="rpcnode"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="rpcnode", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="rpcnode", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="rpcnode", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="rpcnode", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="rpcnode", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="rpcnode", region="sgp"}[1h])
+
   - slug: drpc
     name: dRPC
     tag: Decentralized RPC mesh, consensus-checked

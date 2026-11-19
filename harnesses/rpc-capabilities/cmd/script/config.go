@@ -212,6 +212,7 @@ func chains() []Chain {
 			Providers: []Provider{
 				{Slug: "solana", Name: "Solana", URL: envDefault("RPC_URL_SOLANA_OFFICIAL", "https://api.mainnet-beta.solana.com")},
 				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_SOLANA_PUBLICNODE", "https://solana-rpc.publicnode.com")},
+				{Slug: "rpcnode", Name: "RpcNode", URL: envDefault("RPC_URL_SOLANA_RPCNODE", "https://public-solana-mainnet.rpcnode.dev")},
 				{Slug: "leorpc", Name: "LeoRPC", URL: envDefault("RPC_URL_SOLANA_LEORPC", "https://solana.leorpc.com/?api_key=FREE")},
 				{Slug: "solanavibestation", Name: "Solana Vibe Station", URL: envDefault("RPC_URL_SOLANA_SVS", "https://public.rpc.solanavibestation.com")},
 			},
@@ -226,6 +227,7 @@ func chains() []Chain {
 			Providers: []Provider{
 				{Slug: "monad-official", Name: "Monad Official", URL: envDefault("RPC_URL_MONAD_OFFICIAL", "https://rpc.monad.xyz")},
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_MONAD_DRPC", "https://monad-mainnet.drpc.org")},
+				{Slug: "rpcnode", Name: "RpcNode", URL: envDefault("RPC_URL_MONAD_RPCNODE", "https://public-monad-mainnet.rpcnode.dev")},
 				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_MONAD_TENDERLY", "https://monad.gateway.tenderly.co")},
 				{Slug: "onfinality", Name: "OnFinality", URL: envDefault("RPC_URL_MONAD_ONFINALITY", "https://monad-mainnet.api.onfinality.io/public")},
 			},
@@ -282,6 +284,7 @@ func chains() []Chain {
 				{Slug: "arc-official", Name: "Arc", URL: envDefault("RPC_URL_ARC_OFFICIAL", "https://rpc.mainnet.arc.io")},
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_ARC_DRPC", "https://arc.drpc.org")},
 				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_ARC_PUBLICNODE", "https://arc-rpc.publicnode.com")},
+				{Slug: "rpcnode", Name: "RpcNode", URL: envDefault("RPC_URL_ARC_RPCNODE", "https://public-arc-mainnet.rpcnode.dev")},
 				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_ARC_TENDERLY", "https://arc.gateway.tenderly.co")},
 				{Slug: "blockdaemon", Name: "Blockdaemon", URL: envDefault("RPC_URL_ARC_BLOCKDAEMON", "https://rpc.blockdaemon.mainnet.arc.io")},
 				{Slug: "arc-quicknode", Name: "Quicknode (Arc endpoint)", URL: envDefault("RPC_URL_ARC_QUICKNODE", "https://rpc.quicknode.mainnet.arc.io")},
@@ -293,6 +296,7 @@ func chains() []Chain {
 			Name: "Ethereum",
 			Providers: []Provider{
 				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_ETHEREUM_PUBLICNODE", "https://ethereum-rpc.publicnode.com")},
+				{Slug: "rpcnode", Name: "RpcNode", URL: envDefault("RPC_URL_ETHEREUM_RPCNODE", "https://public-ethereum-mainnet.rpcnode.dev")},
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_ETHEREUM_DRPC", "https://eth.drpc.org")},
 				{Slug: "meowrpc", Name: "MeowRPC", URL: envDefault("RPC_URL_ETHEREUM_MEOWRPC", "https://eth.meowrpc.com")},
 				{Slug: "flashbots", Name: "Flashbots Protect", URL: envDefault("RPC_URL_ETHEREUM_FLASHBOTS", "https://rpc.flashbots.net")},
@@ -318,6 +322,7 @@ func chains() []Chain {
 			Name: "Polygon",
 			Providers: []Provider{
 				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_POLYGON_PUBLICNODE", "https://polygon-bor-rpc.publicnode.com")},
+				{Slug: "rpcnode", Name: "RpcNode", URL: envDefault("RPC_URL_POLYGON_RPCNODE", "https://public-matic-mainnet.rpcnode.dev")},
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_POLYGON_DRPC", "https://polygon.drpc.org")},
 				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_POLYGON_TENDERLY", "https://gateway.tenderly.co/public/polygon")},
 				{Slug: "thyme", Name: "Thyme Gate", URL: envDefault("RPC_URL_POLYGON_THYME", "https://polygon-mainnet.rpc.thyme.sh/public")},
@@ -329,6 +334,7 @@ func chains() []Chain {
 			Name: "Arbitrum One",
 			Providers: []Provider{
 				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_ARBITRUM_PUBLICNODE", "https://arbitrum-one-rpc.publicnode.com")},
+				{Slug: "rpcnode", Name: "RpcNode", URL: envDefault("RPC_URL_ARBITRUM_RPCNODE", "https://public-arb-mainnet.rpcnode.dev")},
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_ARBITRUM_DRPC", "https://arbitrum.drpc.org")},
 				{Slug: "meowrpc", Name: "MeowRPC", URL: envDefault("RPC_URL_ARBITRUM_MEOWRPC", "https://arbitrum.meowrpc.com")},
 				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_ARBITRUM_TENDERLY", "https://gateway.tenderly.co/public/arbitrum")},
@@ -343,6 +349,7 @@ func chains() []Chain {
 			Name: "Optimism",
 			Providers: []Provider{
 				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_OPTIMISM_PUBLICNODE", "https://optimism-rpc.publicnode.com")},
+				{Slug: "rpcnode", Name: "RpcNode", URL: envDefault("RPC_URL_OPTIMISM_RPCNODE", "https://public-optimism-mainnet.rpcnode.dev")},
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_OPTIMISM_DRPC", "https://optimism.drpc.org")},
 				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_OPTIMISM_TENDERLY", "https://gateway.tenderly.co/public/optimism")},
 				{Slug: "nodies", Name: "Nodies (POKT)", URL: envDefault("RPC_URL_OPTIMISM_NODIES", "https://op-pokt.nodies.app")},
@@ -357,6 +364,7 @@ func chains() []Chain {
 			Name: "Base",
 			Providers: []Provider{
 				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_BASE_PUBLICNODE", "https://base-rpc.publicnode.com")},
+				{Slug: "rpcnode", Name: "RpcNode", URL: envDefault("RPC_URL_BASE_RPCNODE", "https://public-base-mainnet.rpcnode.dev")},
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_BASE_DRPC", "https://base.drpc.org")},
 				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_BASE_TENDERLY", "https://gateway.tenderly.co/public/base")},
 				{Slug: "nodies", Name: "Nodies (POKT)", URL: envDefault("RPC_URL_BASE_NODIES", "https://base-pokt.nodies.app")},
@@ -377,6 +385,7 @@ func chains() []Chain {
 			Name: "BNB Chain",
 			Providers: []Provider{
 				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_BNB_PUBLICNODE", "https://bsc-rpc.publicnode.com")},
+				{Slug: "rpcnode", Name: "RpcNode", URL: envDefault("RPC_URL_BNB_RPCNODE", "https://public-bsc-mainnet.rpcnode.dev")},
 				{Slug: "binance", Name: "Binance Official", URL: envDefault("RPC_URL_BNB_OFFICIAL", "https://bsc-dataseed1.binance.org")},
 				{Slug: "bloxroute", Name: "bloXroute", URL: envDefault("RPC_URL_BNB_BLOXROUTE", "https://bsc.rpc.blxrbdn.com")},
 				{Slug: "nownodes", Name: "NOWNodes", URL: envDefault("RPC_URL_BNB_NOWNODES", "https://public-bsc.nownodes.io")},
@@ -391,6 +400,7 @@ func chains() []Chain {
 			Name: "Avalanche C-Chain",
 			Providers: []Provider{
 				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_AVALANCHE_PUBLICNODE", "https://avalanche-c-chain-rpc.publicnode.com")},
+				{Slug: "rpcnode", Name: "RpcNode", URL: envDefault("RPC_URL_AVALANCHE_RPCNODE", "https://public-avax-mainnet.rpcnode.dev")},
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_AVALANCHE_DRPC", "https://avalanche.drpc.org")},
 				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_AVALANCHE_TENDERLY", "https://gateway.tenderly.co/public/avalanche")},
 				{Slug: "avalanche-official", Name: "Avalanche Official", URL: envDefault("RPC_URL_AVALANCHE_OFFICIAL", "https://api.avax.network/ext/bc/C/rpc")},

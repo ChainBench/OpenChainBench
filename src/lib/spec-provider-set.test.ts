@@ -219,6 +219,9 @@ describe("the provider set behind the cache keys", () => {
     // An ADDITION on 2026-11-18: Codex joins bench 008 on seven of its
     // eleven chains, a provider already on the site: v202/v195/v118,
     // providers-v72.
+    // An ARRIVAL on 2026-11-19: RpcNode joins ten public RPC benches and
+    // the rpc-capabilities aggregate, new to the site: v203/v196/v119,
+    // providers-v73.
     expect(
       hash,
       [
@@ -237,6 +240,6 @@ describe("the provider set behind the cache keys", () => {
         "Then set EXPECTED to the hash in this failure, and add the provider",
         `to PRODUCT_NAMES if it needs a display name. Providers now: ${count}.`,
       ].join("\n"),
-    ).toBe("d5e9bd1dd6d8cbf4");
+    ).toBe("eca185737a6610a6");
   });
 });
