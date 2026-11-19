@@ -82,7 +82,9 @@ var (
 		Serialized:  ProviderCoverage{Provider: "serialized"},
 		Metastreams: ProviderCoverage{Provider: "metastreams"},
 	}
-	tokenQueue     = make(chan TokenToCheck, 500)
+	// 30 per chain: at Solana's share of the workers that is a few
+	// minutes of backlog, so a check stays close to the token's launch.
+	tokenQueue     = newFairQueue(30)
 	metadataClient = &http.Client{Timeout: 10 * time.Second}
 )
 
@@ -819,13 +821,7 @@ func checkTokenMetadata(token TokenToCheck, config *Config) {
 
 // QueueTokenForMetadataCheck adds a token to the check queue
 func QueueTokenForMetadataCheck(token TokenToCheck) {
-	select {
-	case tokenQueue <- token:
-		// Token queued successfully
-	default:
-		// Queue full, skip this token
-		fmt.Printf("[METADATA] Queue full, skipping token: %s\n", token.Address)
-	}
+	tokenQueue.push(token)
 }
 
 // metadataCheckDelay is how long we wait after a Pulse detection before
@@ -874,13 +870,12 @@ func runMetadataCoverageMonitor(config *Config, stopChan <-chan struct{}) {
 	for i := 0; i < workers; i++ {
 		go func() {
 			for {
-				select {
-				case <-stopChan:
+				token, ok := tokenQueue.pop(stopChan)
+				if !ok {
 					return
-				case token := <-tokenQueue:
-					time.Sleep(delay)
-					checkTokenMetadata(token, config)
 				}
+				time.Sleep(delay)
+				checkTokenMetadata(token, config)
 			}
 		}()
 	}
@@ -897,6 +892,8 @@ func runMetadataCoverageMonitor(config *Config, stopChan <-chan struct{}) {
 			return
 		case <-statsTicker.C:
 			printCoverageStats()
+			depth, drops := tokenQueue.lengths()
+			fmt.Printf("[METADATA] queue depth per chain %v, oldest-dropped since start %v\n", depth, drops)
 		}
 	}
 }
