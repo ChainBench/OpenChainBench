@@ -1070,7 +1070,10 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       the change.
   // v204: RpcNode leaves Polygon, Arbitrum, Optimism and Base, where its
   //       public tier refuses eth_getBlockByNumber (403) from every region.
-  ["bench-unfiltered-v204", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v205: bench 004 quantiles skip hours with no checks (one NaN hour
+  //       blanked Metastreams after its credit outage), and Metastreams'
+  //       BNB presence divides by Mobula on BNB, not Solana + BNB.
+  ["bench-unfiltered-v205", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -1453,7 +1456,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v195: lockstep with bench-unfiltered-v202 (Codex joins 008).
   // v196: lockstep with bench-unfiltered-v203 (RpcNode on ten RPC benches).
   // v197: lockstep with bench-unfiltered-v204 (RpcNode off four chains).
-  ["all-benchmarks-v197", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v198: lockstep with bench-unfiltered-v205 (bench 004 NaN hours).
+  ["all-benchmarks-v198", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1736,7 +1740,9 @@ const loadBenchmarkFiltered = unstable_cache(
   // v119: lockstep with bench-unfiltered-v203. The RPC benches declare
   //       region (and Solana tier) dimensions, so every tab gains RpcNode.
   // v120: lockstep with bench-unfiltered-v204 (RpcNode off four chains).
-  ["bench-filters-v120", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v121: lockstep with bench-unfiltered-v205. Both fixes show on the
+  //       chain tabs.
+  ["bench-filters-v121", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 
