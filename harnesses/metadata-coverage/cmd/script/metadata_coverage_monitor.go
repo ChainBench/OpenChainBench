@@ -238,6 +238,8 @@ func getCodexNetworkID(chainID string) int {
 		return 56
 	case "evm:42161":
 		return 42161
+	case "evm:4663":
+		return 4663
 	default:
 		return 0
 	}
@@ -660,6 +662,8 @@ func chainNameFromPulseChainID(chainID string) string {
 		return "base"
 	case "evm:143":
 		return "monad"
+	case "evm:4663":
+		return "robinhood"
 	default:
 		return chainID
 	}

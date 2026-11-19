@@ -226,6 +226,9 @@ describe("the provider set behind the cache keys", () => {
     // public tier refuses the probe: v204/v197/v120, providers-v74.
     // An ADDITION on 2026-11-19: RpcNode joins the Bitcoin, Bitcoin Cash,
     // Dogecoin and Aptos RPC benches: v206/v199/v122, providers-v75.
+    // A CHAIN change on 2026-11-19: bench 004 adds Base and Robinhood
+    // tabs, so its per-chain provider set moves: v207/v200/v123,
+    // providers-v76.
     expect(
       hash,
       [
@@ -244,6 +247,6 @@ describe("the provider set behind the cache keys", () => {
         "Then set EXPECTED to the hash in this failure, and add the provider",
         `to PRODUCT_NAMES if it needs a display name. Providers now: ${count}.`,
       ].join("\n"),
-    ).toBe("f5ee930bf4956605");
+    ).toBe("21b1ea6a93528226");
   });
 });
