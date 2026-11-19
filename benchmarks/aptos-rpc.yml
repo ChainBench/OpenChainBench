@@ -93,3 +93,27 @@ providers:
         - region: ap-southeast
           p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="aptos-fullnode", chain="aptos", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="aptos-fullnode", chain="aptos", region="sgp"}[1h])
+
+  - slug: rpcnode
+    name: RpcNode
+    endpoint: https://public-apt-mainnet.rpcnode.dev/v1/
+    tag: Public node, 20 mainnets, 5 RPS per IP
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a REST GET to /v1/ sent every 60s from 3 regions to public-apt-mainnet.rpcnode.dev."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="rpcnode", chain="aptos"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="rpcnode", chain="aptos"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="rpcnode", chain="aptos"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="rpcnode", chain="aptos"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="rpcnode", chain="aptos"}) / sum(ocb:rpc_call:rate_24h{provider="rpcnode", chain="aptos"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="rpcnode", chain="aptos"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="rpcnode", chain="aptos"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="rpcnode", chain="aptos", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="rpcnode", chain="aptos", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="rpcnode", chain="aptos", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="rpcnode", chain="aptos", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="rpcnode", chain="aptos", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="rpcnode", chain="aptos", region="sgp"}[1h])

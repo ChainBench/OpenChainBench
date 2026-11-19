@@ -334,6 +334,8 @@ func probeOne(ctx context.Context, c Chain, p Provider) {
 				block, result, latency, err = callBlockchairBCH(probeCtx, p.URL)
 			} else if strings.Contains(p.URL, "bitcore.io") {
 				block, result, latency, err = callBitcoreTip(probeCtx, p.URL)
+			} else if strings.Contains(p.URL, "rpcnode.dev") {
+				block, result, latency, err = callNeoBlockCount(probeCtx, p.URL)
 			} else {
 				block, result, latency, err = callBCHNodeInfo(probeCtx, p.URL)
 			}
