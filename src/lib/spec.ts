@@ -1068,7 +1068,9 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       and the rpc-capabilities aggregate. Keyless endpoints at 5 RPS
   //       per IP; every one answered a head block from the Mac before
   //       the change.
-  ["bench-unfiltered-v203", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v204: RpcNode leaves Polygon, Arbitrum, Optimism and Base, where its
+  //       public tier refuses eth_getBlockByNumber (403) from every region.
+  ["bench-unfiltered-v204", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -1450,7 +1452,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v194: lockstep with bench-unfiltered-v201 (Metastreams on 001/004).
   // v195: lockstep with bench-unfiltered-v202 (Codex joins 008).
   // v196: lockstep with bench-unfiltered-v203 (RpcNode on ten RPC benches).
-  ["all-benchmarks-v196", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v197: lockstep with bench-unfiltered-v204 (RpcNode off four chains).
+  ["all-benchmarks-v197", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1732,7 +1735,8 @@ const loadBenchmarkFiltered = unstable_cache(
   //       and by kind, so every tab gains a row where Codex is in scope.
   // v119: lockstep with bench-unfiltered-v203. The RPC benches declare
   //       region (and Solana tier) dimensions, so every tab gains RpcNode.
-  ["bench-filters-v119", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v120: lockstep with bench-unfiltered-v204 (RpcNode off four chains).
+  ["bench-filters-v120", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 

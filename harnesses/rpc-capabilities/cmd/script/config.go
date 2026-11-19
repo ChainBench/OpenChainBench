@@ -296,6 +296,11 @@ func chains() []Chain {
 			Name: "Ethereum",
 			Providers: []Provider{
 				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_ETHEREUM_PUBLICNODE", "https://ethereum-rpc.publicnode.com")},
+				// RpcNode (2026-11-19): public-<net>-mainnet.rpcnode.dev. Only on
+				// Ethereum, BNB, Avalanche, Monad, Arc and Solana: on Polygon,
+				// Arbitrum, Optimism and Base the public tier answers 403 "method
+				// eth_getBlockByNumber is not available on the public endpoint",
+				// from all three regions, so it cannot produce a sample there.
 				{Slug: "rpcnode", Name: "RpcNode", URL: envDefault("RPC_URL_ETHEREUM_RPCNODE", "https://public-ethereum-mainnet.rpcnode.dev")},
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_ETHEREUM_DRPC", "https://eth.drpc.org")},
 				{Slug: "meowrpc", Name: "MeowRPC", URL: envDefault("RPC_URL_ETHEREUM_MEOWRPC", "https://eth.meowrpc.com")},
@@ -322,7 +327,6 @@ func chains() []Chain {
 			Name: "Polygon",
 			Providers: []Provider{
 				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_POLYGON_PUBLICNODE", "https://polygon-bor-rpc.publicnode.com")},
-				{Slug: "rpcnode", Name: "RpcNode", URL: envDefault("RPC_URL_POLYGON_RPCNODE", "https://public-matic-mainnet.rpcnode.dev")},
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_POLYGON_DRPC", "https://polygon.drpc.org")},
 				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_POLYGON_TENDERLY", "https://gateway.tenderly.co/public/polygon")},
 				{Slug: "thyme", Name: "Thyme Gate", URL: envDefault("RPC_URL_POLYGON_THYME", "https://polygon-mainnet.rpc.thyme.sh/public")},
@@ -334,7 +338,6 @@ func chains() []Chain {
 			Name: "Arbitrum One",
 			Providers: []Provider{
 				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_ARBITRUM_PUBLICNODE", "https://arbitrum-one-rpc.publicnode.com")},
-				{Slug: "rpcnode", Name: "RpcNode", URL: envDefault("RPC_URL_ARBITRUM_RPCNODE", "https://public-arb-mainnet.rpcnode.dev")},
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_ARBITRUM_DRPC", "https://arbitrum.drpc.org")},
 				{Slug: "meowrpc", Name: "MeowRPC", URL: envDefault("RPC_URL_ARBITRUM_MEOWRPC", "https://arbitrum.meowrpc.com")},
 				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_ARBITRUM_TENDERLY", "https://gateway.tenderly.co/public/arbitrum")},
@@ -349,7 +352,6 @@ func chains() []Chain {
 			Name: "Optimism",
 			Providers: []Provider{
 				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_OPTIMISM_PUBLICNODE", "https://optimism-rpc.publicnode.com")},
-				{Slug: "rpcnode", Name: "RpcNode", URL: envDefault("RPC_URL_OPTIMISM_RPCNODE", "https://public-optimism-mainnet.rpcnode.dev")},
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_OPTIMISM_DRPC", "https://optimism.drpc.org")},
 				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_OPTIMISM_TENDERLY", "https://gateway.tenderly.co/public/optimism")},
 				{Slug: "nodies", Name: "Nodies (POKT)", URL: envDefault("RPC_URL_OPTIMISM_NODIES", "https://op-pokt.nodies.app")},
@@ -364,7 +366,6 @@ func chains() []Chain {
 			Name: "Base",
 			Providers: []Provider{
 				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_BASE_PUBLICNODE", "https://base-rpc.publicnode.com")},
-				{Slug: "rpcnode", Name: "RpcNode", URL: envDefault("RPC_URL_BASE_RPCNODE", "https://public-base-mainnet.rpcnode.dev")},
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_BASE_DRPC", "https://base.drpc.org")},
 				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_BASE_TENDERLY", "https://gateway.tenderly.co/public/base")},
 				{Slug: "nodies", Name: "Nodies (POKT)", URL: envDefault("RPC_URL_BASE_NODIES", "https://base-pokt.nodies.app")},

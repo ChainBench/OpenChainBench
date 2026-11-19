@@ -1060,7 +1060,9 @@ const buildProvidersCached = unstable_cache(
   //      no new product page. Lockstep with bench-unfiltered-v202.
   // v73: RpcNode is new to the SITE: a product page plus eleven RPC
   //      appearances. Lockstep with bench-unfiltered-v203.
-  ["providers-v73"],
+  // v74: RpcNode loses four appearances (Polygon, Arbitrum, Optimism,
+  //      Base). Lockstep with bench-unfiltered-v204.
+  ["providers-v74"],
   // 900 s: the provider index feeds products / compare / answers, whose
   // numbers move slowly, and this revalidate is also the effective ISR
   // period of those ~500 pages (Next takes the min across a route's caches).
