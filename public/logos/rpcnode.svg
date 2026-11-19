@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" role="img" aria-label="RpcNode">
+  <!-- RpcNode mark, from rpcnode.dev/rpcnode-mark-light.svg -->
+  <path d="M16 9.2V12.4M9.6 21.2L12.4 18.6M22.4 21.2L19.6 18.6" stroke="#000" stroke-width="1.7" stroke-linecap="round"/>
+  <circle cx="16" cy="16" r="7.25" stroke="#000" stroke-opacity="0.28" stroke-width="1.35"/>
+  <circle cx="16" cy="8" r="2.2" fill="#000"/>
+  <circle cx="8.2" cy="22.2" r="2.2" fill="#000"/>
+  <circle cx="23.8" cy="22.2" r="2.2" fill="#000"/>
+  <circle cx="16" cy="16" r="3.5" fill="#000"/>
+  <circle cx="16" cy="16" r="1.4" fill="#fff"/>
+</svg>

@@ -108,6 +108,30 @@ providers:
           p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="monad", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="monad", region="sgp"}[1h])
 
+  - slug: rpcnode
+    name: RpcNode
+    endpoint: https://public-monad-mainnet.rpcnode.dev
+    tag: Public node, 20 mainnets, 5 RPS per IP
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to RpcNode's no-key Monad endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="rpcnode", chain="monad"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="rpcnode", chain="monad"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="rpcnode", chain="monad"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="rpcnode", chain="monad"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="rpcnode", chain="monad"}) / sum(ocb:rpc_call:rate_24h{provider="rpcnode", chain="monad"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="rpcnode", chain="monad"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="rpcnode", chain="monad"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="rpcnode", chain="monad", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="rpcnode", chain="monad", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="rpcnode", chain="monad", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="rpcnode", chain="monad", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="rpcnode", chain="monad", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="rpcnode", chain="monad", region="sgp"}[1h])
+
   - slug: tenderly
     name: Tenderly Gateway
     endpoint: https://monad.gateway.tenderly.co

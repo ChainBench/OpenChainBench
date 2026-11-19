@@ -93,6 +93,8 @@ const NEEDS_LIGHT_CHIP = new Set([
   // which is invisible on a dark page without a chip behind it.
   "neox",
   "superseed",
+  // RpcNode's mark is pure black on transparent (RPC benches, 2026-11-19).
+  "rpcnode",
   // On-ramp marks (bench 262): dark monochrome brand assets.
   "moonpay",
   "meld",

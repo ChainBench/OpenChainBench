@@ -190,6 +190,30 @@ providers:
           p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="solana", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="solana", region="sgp"}[1h])
 
+  - slug: rpcnode
+    name: RpcNode
+    endpoint: https://public-solana-mainnet.rpcnode.dev
+    tag: Public node, 20 mainnets, 5 RPS per IP
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `getSlot` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to RpcNode's no-key Solana endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="rpcnode", chain="solana"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="rpcnode", chain="solana"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="rpcnode", chain="solana"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="rpcnode", chain="solana"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="rpcnode", chain="solana"}) / sum(ocb:rpc_call:rate_24h{provider="rpcnode", chain="solana"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="rpcnode", chain="solana"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="rpcnode", chain="solana"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="rpcnode", chain="solana", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="rpcnode", chain="solana", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="rpcnode", chain="solana", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="rpcnode", chain="solana", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="rpcnode", chain="solana", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="rpcnode", chain="solana", region="sgp"}[1h])
+
   - slug: leorpc
     name: LeoRPC
     endpoint: https://solana.leorpc.com/?api_key=FREE

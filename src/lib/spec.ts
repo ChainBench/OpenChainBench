@@ -1063,7 +1063,12 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       scope: the six EVM chains and Solana. Run through the
   //       harness's own provider before the request, 119 of the 134
   //       anchors on those chains came back named, with 0 errors.
-  ["bench-unfiltered-v202", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v203: RpcNode joins ten public RPC benches (Ethereum, Polygon,
+  //       Arbitrum, Optimism, Base, BNB, Avalanche, Monad, Arc, Solana)
+  //       and the rpc-capabilities aggregate. Keyless endpoints at 5 RPS
+  //       per IP; every one answered a head block from the Mac before
+  //       the change.
+  ["bench-unfiltered-v203", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -1444,7 +1449,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v193: lockstep with bench-unfiltered-v200 (True Markets on bench 030).
   // v194: lockstep with bench-unfiltered-v201 (Metastreams on 001/004).
   // v195: lockstep with bench-unfiltered-v202 (Codex joins 008).
-  ["all-benchmarks-v195", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v196: lockstep with bench-unfiltered-v203 (RpcNode on ten RPC benches).
+  ["all-benchmarks-v196", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1724,7 +1730,9 @@ const loadBenchmarkFiltered = unstable_cache(
   //       dimensions and the new row lives on per-chain tabs.
   // v118: lockstep with bench-unfiltered-v202. Bench 008 splits by chain
   //       and by kind, so every tab gains a row where Codex is in scope.
-  ["bench-filters-v118", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v119: lockstep with bench-unfiltered-v203. The RPC benches declare
+  //       region (and Solana tier) dimensions, so every tab gains RpcNode.
+  ["bench-filters-v119", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 

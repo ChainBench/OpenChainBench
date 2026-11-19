@@ -3018,6 +3018,19 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "The LUKSO Foundation's official mainnet RPC endpoint for the LUKSO EVM chain (chain ID 42), served with no API key.",
     twitter: "@lukso_io",
   },
+  rpcnode: {
+    url: "https://rpcnode.dev",
+    description:
+      "Multi-chain RPC provider with keyless public endpoints on 20 mainnets (EVM chains, Solana, Bitcoin, Tron, TON, Sui, Aptos and more), rate-limited to 5 requests per second per IP, plus key-based paid plans.",
+    docs: "https://docs.rpcnode.dev/getting-started",
+    chains: ["ethereum", "polygon", "arbitrum", "optimism", "base", "bnb", "avalanche", "monad", "arc", "solana"],
+    features: [
+      "Keyless public endpoints, no sign-up",
+      "20 mainnets, EVM and non-EVM",
+      "5 requests per second per IP on the public tier",
+      "Key-based paid plans for higher limits",
+    ],
+  },
   nownodes: {
     url: "https://nownodes.io",
     description:
