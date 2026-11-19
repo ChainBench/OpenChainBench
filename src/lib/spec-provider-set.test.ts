@@ -222,6 +222,8 @@ describe("the provider set behind the cache keys", () => {
     // An ARRIVAL on 2026-11-19: RpcNode joins ten public RPC benches and
     // the rpc-capabilities aggregate, new to the site: v203/v196/v119,
     // providers-v73.
+    // A REMOVAL on 2026-11-19: RpcNode leaves four of those chains, whose
+    // public tier refuses the probe: v204/v197/v120, providers-v74.
     expect(
       hash,
       [
@@ -240,6 +242,6 @@ describe("the provider set behind the cache keys", () => {
         "Then set EXPECTED to the hash in this failure, and add the provider",
         `to PRODUCT_NAMES if it needs a display name. Providers now: ${count}.`,
       ].join("\n"),
-    ).toBe("eca185737a6610a6");
+    ).toBe("0d1730eca39d8a86");
   });
 });

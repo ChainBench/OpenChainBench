@@ -212,7 +212,7 @@ providers:
   - slug: rpcnode
     name: RpcNode
     tag: Public node, 20 mainnets, 5 RPS per IP
-    formula: "Mean over its 10 measured chains (Ethereum, Polygon, Arbitrum, Optimism, Base, BNB, Avalanche, Monad, Arc, Solana) and 3 regions of per-cell 24h p50 round-trip latency (ms) to RpcNode public no-key endpoints. Successful calls only."
+    formula: "Mean over its 6 measured chains (Ethereum, BNB, Avalanche, Monad, Arc, Solana) and 3 regions of per-cell 24h p50 round-trip latency (ms) to RpcNode public no-key endpoints. Successful calls only."
     queries:
       p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="rpcnode"})
       p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="rpcnode"})
