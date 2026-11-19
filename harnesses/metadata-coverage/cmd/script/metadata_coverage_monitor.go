@@ -243,16 +243,17 @@ func getCodexNetworkID(chainID string) int {
 	}
 }
 
-func checkCodexMetadata(token TokenToCheck, sessionCookie string) MetadataFields {
+func checkCodexMetadata(token TokenToCheck, codexAPIKey, sessionCookie string) MetadataFields {
 	// Try once. If Codex returns 401 / UNAUTHENTICATED, invalidate the JWT
 	// cache and retry once. This recovers automatically when the cached JWT
 	// expired between mint and use, without waiting for a manual cookie reset.
-	result := codexMetadataAttempt(token, sessionCookie)
-	if codexAuthFailed(result) {
+	result := codexMetadataAttempt(token, codexAPIKey, sessionCookie)
+	// With an API key there is no JWT to refresh, so a 401 is final.
+	if codexAPIKey == "" && codexAuthFailed(result) {
 		fmt.Printf("[META][CODEX][retry] %s | %s | invalidating JWT cache after %s\n",
 			token.ChainID, token.Symbol, result.Error)
 		InvalidateTokenCache()
-		result = codexMetadataAttempt(token, sessionCookie)
+		result = codexMetadataAttempt(token, codexAPIKey, sessionCookie)
 	}
 	return result
 }
@@ -263,7 +264,7 @@ func codexAuthFailed(r MetadataFields) bool {
 		strings.Contains(r.Error, "Not authorized")
 }
 
-func codexMetadataAttempt(token TokenToCheck, sessionCookie string) MetadataFields {
+func codexMetadataAttempt(token TokenToCheck, codexAPIKey, sessionCookie string) MetadataFields {
 	result := MetadataFields{}
 
 	networkID := getCodexNetworkID(token.ChainID)
@@ -275,13 +276,23 @@ func codexMetadataAttempt(token TokenToCheck, sessionCookie string) MetadataFiel
 	// Codex GraphQL no longer accepts the raw Defined session cookie as Bearer
 	// (returns 401 UNAUTHENTICATED). Mint a JWT from the cookie via defined.fi/api
 	// and use that as Bearer — same path as the head_lag WS monitor.
-	apiKey, err := GetDefinedJWTToken(sessionCookie)
-	if err != nil {
-		recordCodexJWT(0, err.Error())
-		result.Error = fmt.Sprintf("jwt_mint_error: %v", err)
-		return result
+	//
+	// A Codex API key, when set, is used instead. It goes in Authorization
+	// as-is, without "Bearer". The session path died on 2026-11-13 (every
+	// call 401) and Codex reported nothing on this bench for six days.
+	authHeader := ""
+	if codexAPIKey != "" {
+		authHeader = codexAPIKey
+	} else {
+		jwt, err := GetDefinedJWTToken(sessionCookie)
+		if err != nil {
+			recordCodexJWT(0, err.Error())
+			result.Error = fmt.Sprintf("jwt_mint_error: %v", err)
+			return result
+		}
+		recordCodexJWT(len(jwt), "")
+		authHeader = "Bearer " + jwt
 	}
-	recordCodexJWT(len(apiKey), "")
 
 	// Use token query which returns EnhancedToken with socialLinks and info
 	// https://docs.codex.io/api-reference/queries/token
@@ -332,9 +343,7 @@ func codexMetadataAttempt(token TokenToCheck, sessionCookie string) MetadataFiel
 
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
-	if apiKey != "" {
-		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", apiKey))
-	}
+	req.Header.Set("Authorization", authHeader)
 
 	startTime := time.Now()
 	resp, err := metadataClient.Do(req)
@@ -678,7 +687,7 @@ func checkTokenMetadata(token TokenToCheck, config *Config) {
 	}
 
 	// Check Codex
-	codexResult := checkCodexMetadata(token, config.DefinedSessionCookie)
+	codexResult := checkCodexMetadata(token, config.CodexAPIKey, config.DefinedSessionCookie)
 	if codexResult.Error != "" {
 		fmt.Printf("[META][CODEX][%s] %s | %s | err=%s\n",
 			chainName, token.Symbol, token.Address, codexResult.Error)
