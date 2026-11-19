@@ -1076,7 +1076,10 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // v206: RpcNode joins the Bitcoin, Bitcoin Cash, Dogecoin and Aptos RPC
   //       benches. Each answered the bench's own probe method before the
   //       change; Tron, Stellar (Horizon, not Soroban) and Sui (502) did not.
-  ["bench-unfiltered-v206", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v207: bench 004 gains Base and Robinhood Chain tabs. Base had no
+  //       checks since 2026-11-18 20:00 UTC (Pulse renamed its sources);
+  //       Robinhood is new, with Mobula, Codex, Serialized and Metastreams.
+  ["bench-unfiltered-v207", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -1461,7 +1464,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v197: lockstep with bench-unfiltered-v204 (RpcNode off four chains).
   // v198: lockstep with bench-unfiltered-v205 (bench 004 NaN hours).
   // v199: lockstep with bench-unfiltered-v206 (RpcNode on four more RPC benches).
-  ["all-benchmarks-v199", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v200: lockstep with bench-unfiltered-v207 (bench 004 Base and Robinhood).
+  ["all-benchmarks-v200", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1747,7 +1751,8 @@ const loadBenchmarkFiltered = unstable_cache(
   // v121: lockstep with bench-unfiltered-v205. Both fixes show on the
   //       chain tabs.
   // v122: lockstep with bench-unfiltered-v206. Region tabs gain RpcNode.
-  ["bench-filters-v122", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v123: lockstep with bench-unfiltered-v207. Bench 004 declares two new chain tabs.
+  ["bench-filters-v123", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 

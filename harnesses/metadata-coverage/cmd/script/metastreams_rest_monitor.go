@@ -57,6 +57,8 @@ func metastreamsChainSlug(chainID string) (string, bool) {
 		return "solana", true
 	case "evm:56":
 		return "bsc", true
+	case "evm:4663":
+		return "robinhood", true
 	}
 	return "", false
 }
