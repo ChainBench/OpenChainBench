@@ -1428,6 +1428,7 @@ func chains() []Chain {
 			Providers: []Provider{
 				{Slug: "aptoslabs", Name: "Aptos Labs", URL: envDefault("RPC_URL_APTOS_APTOSLABS", "https://api.mainnet.aptoslabs.com/v1/")},
 				{Slug: "aptos-fullnode", Name: "Aptos Labs (Fullnode)", URL: envDefault("RPC_URL_APTOS_FULLNODE", "https://fullnode.mainnet.aptoslabs.com/v1/")},
+				{Slug: "rpcnode", Name: "RpcNode", URL: envDefault("RPC_URL_APTOS_RPCNODE", "https://public-apt-mainnet.rpcnode.dev/v1/")},
 			},
 		},
 		// XRP Ledger — ledger_current JSON-RPC probe, ~3-4 s ledger close. 3 keyless providers.
@@ -1525,6 +1526,7 @@ func chains() []Chain {
 			Providers: []Provider{
 				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_BTC_PUBLICNODE", "https://bitcoin-rpc.publicnode.com")},
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_BTC_DRPC", "https://bitcoin.drpc.org")},
+				{Slug: "rpcnode", Name: "RpcNode", URL: envDefault("RPC_URL_BTC_RPCNODE", "https://public-bitcoin-mainnet.rpcnode.dev")},
 				{Slug: "nownodes", Name: "NOWNodes", URL: envDefault("RPC_URL_BTC_NOWNODES", "https://public-btc.nownodes.io")},
 			},
 		},
@@ -1675,6 +1677,8 @@ func chains() []Chain {
 				{Slug: "blockchair", Name: "Blockchair", URL: envDefault("RPC_URL_BCH_BLOCKCHAIR", "https://api.blockchair.com/bitcoin-cash/stats")},
 				{Slug: "bitcore", Name: "Bitcore (Bitpay)", URL: envDefault("RPC_URL_BCH_BITCORE", "https://api.bitcore.io/api/BCH/mainnet/block/tip")},
 				{Slug: "biggestfan", Name: "BiggestFan Node", URL: envDefault("RPC_URL_BCH_BIGGESTFAN", "https://rest1.biggestfan.net/v2/blockchain/getBlockchainInfo")},
+				// JSON-RPC getblockcount, not a REST GET: probe.go routes it by host.
+				{Slug: "rpcnode", Name: "RpcNode", URL: envDefault("RPC_URL_BCH_RPCNODE", "https://public-bch-mainnet.rpcnode.dev")},
 			},
 		},
 		// 2026-08-23 wave-9. Dogecoin — getblockcount JSON-RPC (Tatum, dRPC) + BlockCypher REST GET. ~60 s/block.
@@ -1685,6 +1689,7 @@ func chains() []Chain {
 			Providers: []Provider{
 				{Slug: "tatum", Name: "Tatum", URL: envDefault("RPC_URL_DOGECOIN_TATUM", "https://dogecoin-mainnet.gateway.tatum.io")},
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_DOGECOIN_DRPC", "https://dogecoin.drpc.org")},
+				{Slug: "rpcnode", Name: "RpcNode", URL: envDefault("RPC_URL_DOGECOIN_RPCNODE", "https://public-doge-mainnet.rpcnode.dev")},
 				{Slug: "blockcypher", Name: "BlockCypher", URL: envDefault("RPC_URL_DOGECOIN_BLOCKCYPHER", "https://api.blockcypher.com/v1/doge/main")},
 			},
 		},

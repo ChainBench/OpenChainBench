@@ -1073,7 +1073,10 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // v205: bench 004 quantiles skip hours with no checks (one NaN hour
   //       blanked Metastreams after its credit outage), and Metastreams'
   //       BNB presence divides by Mobula on BNB, not Solana + BNB.
-  ["bench-unfiltered-v205", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v206: RpcNode joins the Bitcoin, Bitcoin Cash, Dogecoin and Aptos RPC
+  //       benches. Each answered the bench's own probe method before the
+  //       change; Tron, Stellar (Horizon, not Soroban) and Sui (502) did not.
+  ["bench-unfiltered-v206", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -1457,7 +1460,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v196: lockstep with bench-unfiltered-v203 (RpcNode on ten RPC benches).
   // v197: lockstep with bench-unfiltered-v204 (RpcNode off four chains).
   // v198: lockstep with bench-unfiltered-v205 (bench 004 NaN hours).
-  ["all-benchmarks-v198", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v199: lockstep with bench-unfiltered-v206 (RpcNode on four more RPC benches).
+  ["all-benchmarks-v199", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1742,7 +1746,8 @@ const loadBenchmarkFiltered = unstable_cache(
   // v120: lockstep with bench-unfiltered-v204 (RpcNode off four chains).
   // v121: lockstep with bench-unfiltered-v205. Both fixes show on the
   //       chain tabs.
-  ["bench-filters-v121", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v122: lockstep with bench-unfiltered-v206. Region tabs gain RpcNode.
+  ["bench-filters-v122", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 

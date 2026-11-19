@@ -3023,7 +3023,7 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     description:
       "Multi-chain RPC provider with keyless public endpoints on 20 mainnets (EVM chains, Solana, Bitcoin, Tron, TON, Sui, Aptos and more), rate-limited to 5 requests per second per IP, plus key-based paid plans.",
     docs: "https://docs.rpcnode.dev/getting-started",
-    chains: ["ethereum", "bnb", "avalanche", "monad", "arc", "solana"],
+    chains: ["ethereum", "bnb", "avalanche", "monad", "arc", "solana", "bitcoin", "bitcoin-cash", "dogecoin", "aptos"],
     features: [
       "Keyless public endpoints, no sign-up",
       "20 mainnets, EVM and non-EVM",
