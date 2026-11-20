@@ -1079,7 +1079,7 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // v207: bench 004 gains Base and Robinhood Chain tabs. Base had no
   //       checks since 2026-11-18 20:00 UTC (Pulse renamed its sources);
   //       Robinhood is new, with Mobula, Codex, Serialized and Metastreams.
-  ["bench-unfiltered-v207", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  ["bench-unfiltered-v208", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -1465,7 +1465,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v198: lockstep with bench-unfiltered-v205 (bench 004 NaN hours).
   // v199: lockstep with bench-unfiltered-v206 (RpcNode on four more RPC benches).
   // v200: lockstep with bench-unfiltered-v207 (bench 004 Base and Robinhood).
-  ["all-benchmarks-v200", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v201: lockstep with bench-unfiltered-v208 (bench 030 adds FiatBear).
+  ["all-benchmarks-v201", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);

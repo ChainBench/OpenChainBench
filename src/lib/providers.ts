@@ -1066,7 +1066,9 @@ const buildProvidersCached = unstable_cache(
   //      Lockstep with bench-unfiltered-v206.
   // v76: bench 004 per-chain appearances on Base and Robinhood.
   //      Lockstep with bench-unfiltered-v207.
-  ["providers-v76"],
+  // v77: FiatBear is new to the site (bench 030 builder).
+  //      Lockstep with bench-unfiltered-v208.
+  ["providers-v77"],
   // 900 s: the provider index feeds products / compare / answers, whose
   // numbers move slowly, and this revalidate is also the effective ISR
   // period of those ~500 pages (Next takes the min across a route's caches).
