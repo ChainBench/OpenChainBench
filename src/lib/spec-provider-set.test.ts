@@ -140,6 +140,8 @@ describe("the provider set behind the cache keys", () => {
     // as its 109th Hyperliquid builder (#3615). New to the site, so
     // providers-v moves; bench 030 declares no dimensions, so
     // bench-filters does not: v125/v118, providers-v39.
+    // An ADDITION on 2026-11-20: FiatBear joins bench 030 (#3627):
+    // v126/v119, providers-v40.
     expect(
       hash,
       [
@@ -158,6 +160,6 @@ describe("the provider set behind the cache keys", () => {
         "Then set EXPECTED to the hash in this failure, and add the provider",
         `to PRODUCT_NAMES if it needs a display name. Providers now: ${count}.`,
       ].join("\n"),
-    ).toBe("35a6a71b09e720a3");
+    ).toBe("41a4dfe27b00f9df");
   });
 });

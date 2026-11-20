@@ -765,5 +765,12 @@
     "address": "0x7bc2baaf2c79d9be1f5c327b5fb5325583604734",
     "valid_from": "2026-07-13",
     "notes": "True Markets (truemarkets.co), a self-custodial trading app and API for tokenized stocks, crypto and perpetuals; the perp orders it routes to Hyperliquid carry this builder address. Builder address from the operator; HypurrScan labels it True Markets. Product fees published at truemarkets.co/fees: 0.25% per trade on the web and mobile app, 0.20% through the CLI, MCP server and Gateway API. The operator described the Hyperliquid builder fee as 0, but the public bucket shows one on almost every fill: of the 2,904 fills in the 30 files to 2026-11-15, 2,589 read 2.0 bp, 271 read 1.0 bp, 30 read 5.0 bp and 13 read 0. valid_from is the first day the public fills bucket returns a file, checked day by day from 2026-06-01 on 2026-11-16: 106 days have one, the earliest 2026-07-13 (2026-07-12 answers 403); the address was funded on HyperCore earlier, on 2026-06-10. The 30 files to 2026-11-15 hold 2,904 fills, about $51.6k of notional and $11.32 of builder fees from 24 wallets, the largest about 46% of notional, and no fill has another of those wallets as its counterparty. Hyperliquid's referral info for the address reports about $172 of builderRewards."
+  },
+  {
+    "slug": "fiatbear",
+    "name": "FiatBear",
+    "address": "0x9f719aed9e651e8c6060e06f67cf9f5f2c0f0232",
+    "valid_from": "2026-07-16",
+    "notes": "FiatBear (fiatbear.com), non-custodial copy trading for Hyperliquid perps: customers approve an agent wallet and FiatBear mirrors public Hyperliquid wallets into their own account. Copied orders carry this builder address with a 0.05% (5 bp) builder fee. Builder address from the operator; DefiLlama lists it as protocol fiatbear. valid_from is the first day the public fills bucket returns a file (2026-07-15 answers 403), checked on 2026-11-20."
   }
 ]
