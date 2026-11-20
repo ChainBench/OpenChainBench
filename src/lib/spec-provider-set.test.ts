@@ -229,6 +229,8 @@ describe("the provider set behind the cache keys", () => {
     // A CHAIN change on 2026-11-19: bench 004 adds Base and Robinhood
     // tabs, so its per-chain provider set moves: v207/v200/v123,
     // providers-v76.
+    // An ADDITION on 2026-11-20: FiatBear joins bench 030 (no
+    // dimensions): v208/v201, providers-v77.
     expect(
       hash,
       [
@@ -247,6 +249,6 @@ describe("the provider set behind the cache keys", () => {
         "Then set EXPECTED to the hash in this failure, and add the provider",
         `to PRODUCT_NAMES if it needs a display name. Providers now: ${count}.`,
       ].join("\n"),
-    ).toBe("21b1ea6a93528226");
+    ).toBe("36aa2281181d1d64");
   });
 });
