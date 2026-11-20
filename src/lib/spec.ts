@@ -658,7 +658,7 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       builder-fills bucket before merge: 2,904 fills, $51,610 of
   //       notional, $11.32 of builder fees and 24 wallets over the 30
   //       files to 2026-11-15, zero fills between them, 2.0 bp on 2,589.
-  ["bench-unfiltered-v125", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  ["bench-unfiltered-v126", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -944,7 +944,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v117: lockstep with bench-unfiltered-v124 (WebSocket races in
   //       first-to-push share; Alchemy on six of them).
   // v118: lockstep with bench-unfiltered-v125 (True Markets on bench 030).
-  ["all-benchmarks-v118", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v119: lockstep with bench-unfiltered-v126 (FiatBear on bench 030).
+  ["all-benchmarks-v119", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   // v111: lockstep with bench-unfiltered-v118 (Thyme Gate, four cohorts).
   // v113: lockstep with bench-unfiltered-v120 (BlockVectra on Optimism).
   // v115: lockstep with bench-unfiltered-v122 (BlockVectra, two cohorts).
