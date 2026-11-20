@@ -2368,6 +2368,12 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "True Markets is a self-custodial trading app and API for tokenized stocks, crypto and perpetuals; the perp orders it routes to Hyperliquid carry its builder code.",
     twitter: "@truemarketsco",
   },
+  fiatbear: {
+    url: "https://fiatbear.com",
+    description:
+      "FiatBear is non-custodial copy trading for Hyperliquid perps: customers approve an agent wallet and FiatBear mirrors public Hyperliquid wallets into their own account; the copied orders carry its builder code at 0.05% of notional.",
+    twitter: "@FiatBearDotCom",
+  },
 
   // ─── Perp funding venues (bench № 036) ─────────────────────────────
   bybit: {
