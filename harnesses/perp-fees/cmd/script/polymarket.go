@@ -86,12 +86,19 @@ func fetchPolymarket(v VenueConfig) PerpSample {
 		s.FetchLatencyMs = time.Since(start).Milliseconds()
 		return s
 	}
+	tickerFound := false
 	for _, t := range tickers {
 		if t.Symbol == v.Asset+"-USD" {
 			rate, _ := strconv.ParseFloat(t.FundingRate, 64)
 			s.FundingRatePerHrBps = rate * 10000
+			tickerFound = true
 			break
 		}
+	}
+	if !tickerFound {
+		s.Err = "asset_not_in_tickers"
+		s.FetchLatencyMs = time.Since(start).Milliseconds()
+		return s
 	}
 
 	// 3) Fee schedule — base (tier 0) taker rate.
