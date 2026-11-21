@@ -27,6 +27,11 @@ func TestPolymarketBookMid(t *testing.T) {
 			wantErr: errPolymarketBadTop,
 		},
 		{
+			name:    "no asks",
+			book:    polymarketBook{Bids: [][2]string{{"1685.1", "22"}}},
+			wantErr: errPolymarketBadTop,
+		},
+		{
 			name: "crossed",
 			book: polymarketBook{
 				Bids: [][2]string{{"1685.3", "1"}},
