@@ -8,12 +8,16 @@ set -e
 #
 # ALERT_WEBHOOK_URL: set on the Railway alertmanager service. Points at the
 # internal Slack relay that forwards alert payloads to the ops channel.
+UNSET_WEBHOOK_URL="https://example.invalid/no-webhook-set"
+
 if [ -z "$ALERT_WEBHOOK_URL" ]; then
   echo "WARNING: ALERT_WEBHOOK_URL not set — alerts will be dropped by the webhook receiver."
+  ALERT_WEBHOOK_URL="$UNSET_WEBHOOK_URL"
 fi
 
 if [ -z "$SLACK_WEBHOOK_URL" ]; then
   echo "WARNING: SLACK_WEBHOOK_URL not set — default receiver will drop alerts."
+  SLACK_WEBHOOK_URL="$UNSET_WEBHOOK_URL"
 fi
 
 sed -e "s|\${ALERT_WEBHOOK_URL}|${ALERT_WEBHOOK_URL}|g" \
