@@ -6,6 +6,7 @@ import { buildProviderColors } from "@/lib/series-colors";
 import { fmtUnit, fmtValue, unitSuffix } from "@/lib/format";
 import { logoPath } from "@/lib/logo-manifest";
 import { matchesChainSlug } from "@/lib/chain-aliases";
+import { feesFilter } from "@/lib/fees-filter";
 import { chipBackground, chipTextColor, initials } from "@/lib/brand";
 import type { Benchmark, ProviderResult } from "@/types/benchmark";
 import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
@@ -607,10 +608,15 @@ export async function GET(
   if (venueOption) filters.venue = venueOption.value;
   if (kindOption) filters.kind = kindOption.value;
   if (tierOption) filters.tier = tierOption.value;
+  const fees = feesFilter(url.searchParams.get("fees"), aggregate) ?? {};
+  const feesRemovedBenchmark = fees.fees
+    ? await getBenchmark(slug, { ...filters, ...fees })
+    : undefined;
   const rawBenchmark =
-    Object.keys(filters).length > 0
+    feesRemovedBenchmark ??
+    (Object.keys(filters).length > 0
       ? (await getBenchmark(slug, filters)) ?? aggregate
-      : aggregate;
+      : aggregate);
   // Metric-panel override. Perp-fees and any bench declaring
   // `metric_panels` in its YAML expose per-provider companion scalars
   // (e.g. ALL-IN AT $1K / $100K / $1M for perp-fees). The reader picks
@@ -661,6 +667,7 @@ export async function GET(
   if (venueOption) labelParts.push(venueOption.label);
   if (kindOption) labelParts.push(kindOption.label);
   if (tierOption) labelParts.push(tierOption.label);
+  if (feesRemovedBenchmark) labelParts.push("Fees removed");
   const chainLabel = labelParts.length > 0 ? labelParts.join(" · ") : null;
 
   const rawTemplate = url.searchParams.get("template");

@@ -23,10 +23,11 @@ import { MetricViewTabs } from "@/components/metric-view-tabs";
 import type { ProviderLayer } from "@/types/benchmark";
 import type { FeesView } from "@/lib/spec-schema";
 import { CountLeaderboard } from "@/components/count-leaderboard";
+import { shownVariant } from "@/lib/shown-variant";
 import { SummaryStat } from "@/components/summary-stat";
 import { ViewSwitcher } from "@/components/view-switcher";
 import { fmtAsOfUtc, fmtHeadline, fmtUnit } from "@/lib/format";
-import { computeFieldStats } from "@/lib/stats";
+import { computeFieldStats, rankedRows } from "@/lib/stats";
 import { defaultViewFor, viewsForBenchmark } from "@/lib/views";
 import { isSelectablePanelView, resolvePanelView } from "@/lib/panel-view";
 import { useViewPreference } from "@/hooks/use-view-preference";
@@ -88,7 +89,7 @@ function summarize(b: Benchmark | undefined): ChainMeta | null {
   if (!b) return null;
   const live = liveResults(b.results);
   if (live.length === 0) return { providers: 0, metric: b.metric };
-  const sorted = [...live].sort((a, c) =>
+  const sorted = [...rankedRows(live)].sort((a, c) =>
     b.higherIsBetter ? c.ms.p50 - a.ms.p50 : a.ms.p50 - c.ms.p50
   );
   return {
@@ -141,6 +142,8 @@ function variantKey(
 ): string {
   return `${chain ?? "__none"}|${region ?? "__none"}|${kind ?? "__none"}|${venue ?? "__none"}|${tier ?? "__none"}|${bucket ?? "__none"}|${fees ?? "__none"}`;
 }
+
+const UNPUBLISHED_RETRY_MS = 60_000;
 
 const FEES_OPTIONS: ChainOption[] = [
   { value: "included", label: "Included" },
@@ -507,7 +510,12 @@ export function BenchmarkBody({
   // tab still works, numbers stay cross-dimension) and may retry on the
   // next flip.
   const [variantMap, setVariantMap] = useState<Record<string, Benchmark>>(variants);
+  const [unpublishedKeys, setUnpublishedKeys] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
+  const [unpublishedRetry, setUnpublishedRetry] = useState(0);
   const activeKey = variantKey(effectiveChain, effectiveRegion, effectiveKind, effectiveVenue, effectiveTier, effectiveBucket, effectiveFees);
+  const includedKey = variantKey(effectiveChain, effectiveRegion, effectiveKind, effectiveVenue, effectiveTier, effectiveBucket);
   const aggregateBench =
     variants[variantKey(null, null, null, null, null)] ?? Object.values(variants)[0];
   const isAllSelection =
@@ -537,19 +545,40 @@ export function BenchmarkBody({
     // bucket dimension, bench 268's trade sizes included.
     if (!isAll(effectiveBucket)) qs.set("bucket", effectiveBucket!);
     if (effectiveTier) qs.set("tier", effectiveTier);
-    if (effectiveFees) qs.set("fees", effectiveFees);
     let cancelled = false;
+    if (effectiveFees && !variantMap[includedKey]) {
+      fetch(`/api/bench/${aggregateBench.slug}/variant?${qs.toString()}`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((v: Benchmark | null) => {
+          if (!cancelled && v) {
+            setVariantMap((m) => (m[includedKey] ? m : { ...m, [includedKey]: v }));
+          }
+        })
+        .catch(() => {});
+    }
+    if (effectiveFees) qs.set("fees", effectiveFees);
+    let retryTimer: ReturnType<typeof setTimeout> | undefined;
     fetch(`/api/bench/${aggregateBench.slug}/variant?${qs.toString()}`)
-      .then((r) => (r.ok ? r.json() : null))
+      .then((r) => {
+        if (!cancelled && r.status === 404 && effectiveFees) {
+          setUnpublishedKeys((s) => new Set(s).add(activeKey));
+          retryTimer = setTimeout(
+            () => setUnpublishedRetry((n) => n + 1),
+            UNPUBLISHED_RETRY_MS,
+          );
+        }
+        return r.ok ? r.json() : null;
+      })
       .then((v: Benchmark | null) => {
         if (!cancelled && v) setVariantMap((m) => ({ ...m, [activeKey]: v }));
       })
       .catch(() => {});
     return () => {
       cancelled = true;
+      clearTimeout(retryTimer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeKey]);
+  }, [activeKey, unpublishedRetry]);
 
   // Background prefetch of the adjacent variants: every chain at the
   // current region/kind plus every region at the current chain. The
@@ -613,16 +642,29 @@ export function BenchmarkBody({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [effectiveChain, effectiveRegion, effectiveKind, effectiveVenue, effectiveTier, effectiveFees, aggregateBench]);
 
-  const benchmark = variantMap[activeKey] ?? aggregateBench;
+  const {
+    benchmark,
+    shownFees,
+    pending: variantPending,
+    unpublished: feesUnpublished,
+    placeholderNote,
+  } = shownVariant({
+    active: variantMap[activeKey],
+    included: variantMap[includedKey],
+    aggregate: aggregateBench,
+    fees: effectiveFees,
+    unpublished: unpublishedKeys.has(activeKey),
+    isAllSelection,
+  });
+  if (
+    activePanelId &&
+    shownFees &&
+    !resolvePanelView(activePanelId, benchmark.metricPanels ?? [])
+  ) {
+    setActivePanelId(null);
+  }
   // Chain RPC pages put their endpoint list above the ledger, see below.
   const endpointsFirst = benchmark.category === "RPCs";
-  // True while the selected chain/region/kind variant is still loading:
-  // the page shows the aggregate as a placeholder, which without a
-  // visible signal reads as "the filter does nothing" (cold variant
-  // fetches take 5-15s+). Dim the data sections and say so. The
-  // all/all/all selection renders the aggregate by definition, so it is
-  // never pending.
-  const variantPending = !variantMap[activeKey] && !isAllSelection;
 
   // L1/L2 layer counts. When both > 0 the bench mixes L1 and L2 chains
   // and we render a top-level Layer toggle that filters the entire page
@@ -1123,12 +1165,17 @@ export function BenchmarkBody({
               onSelect={setChartRegion}
             />
           )}
-          {variantPending && (
+          {variantPending && !feesUnpublished && (
             <div className="flex items-center gap-2 text-[12px] text-ink-muted" role="status">
               <span className="inline-block h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
               Loading {pendingLabel || "filtered"} data, showing{" "}
-              {effectiveFees ? "figures with fees included" : "the all-chains aggregate"}{" "}
-              meanwhile
+              {placeholderNote} meanwhile
+            </div>
+          )}
+          {feesUnpublished && (
+            <div className="text-[12px] text-ink-muted" role="status">
+              Figures with trading fees removed are not published yet.
+              Showing {placeholderNote}; the page checks again every minute.
             </div>
           )}
         </div>
@@ -1270,8 +1317,8 @@ export function BenchmarkBody({
                     }
                     chain={effectiveChain ?? undefined}
                     tier={effectiveTier ?? undefined}
-                    fees={effectiveFees ?? undefined}
-                    key={effectiveFees ?? "included"}
+                    fees={shownFees ?? undefined}
+                    key={shownFees ?? "included"}
                     excluded={excluded}
                     onToggleExclude={toggleExclude}
                     onResetExcluded={resetExcluded}

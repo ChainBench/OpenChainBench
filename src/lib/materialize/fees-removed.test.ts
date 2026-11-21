@@ -5,10 +5,14 @@ import type { Spec } from "@/lib/spec-schema";
 const ALL_IN = 7;
 const SPREAD = 3;
 const TIER = 11;
+const TIER_WITHOUT_FEE = 5;
 
 function sampleFor(query: string): number | null {
   if (query.includes("perp_fees_health")) return 1;
   if (query.includes("count_over_time")) return 288;
+  if (query.includes("- on(venue, chain) perp_fees_taker_fee_bps")) {
+    return TIER_WITHOUT_FEE;
+  }
   if (query.includes("perp_fees_all_in_bps_tier")) return TIER;
   if (query.includes("perp_fees_spread_bps")) return SPREAD;
   if (query.includes("perp_fees_all_in_bps")) return ALL_IN;
@@ -65,11 +69,6 @@ beforeEach(() => {
   queries = [];
 });
 
-const panelIds = (fees: "included" | "removed") =>
-  (perpFees.metric_panels ?? [])
-    .filter((p) => (p.fees ?? fees) === fees)
-    .map((p) => p.id);
-
 describe("perp-fees with trading fees removed", () => {
   test("ranks spread plus impact and swaps the all-in panels", async () => {
     const b = await specToBenchmark(perpFees, { fees: "removed", chain: "BTC" });
@@ -78,11 +77,18 @@ describe("perp-fees with trading fees removed", () => {
     expect(lighter?.ms.p50).toBe(SPREAD);
     expect(lighter?.formula).toBe(view.formula);
     expect(b.metric).toBe(view.metric);
+    expect(b.metric).not.toBe(perpFees.metric);
     expect(b.panelMainLabel).toBe(view.panel_main_label);
-    expect(b.metricPanels?.map((p) => p.id)).toEqual(panelIds("removed"));
-    expect(queries).toContain(
-      'avg_over_time(perp_fees_spread_bps{venue="lighter",chain="BTC"}[24h])',
-    );
+    expect(b.metricPanels?.map((p) => p.id)).toEqual([
+      "spread_impact_100k",
+      "spread_impact_1m",
+    ]);
+    expect(b.metricPanels?.[0]?.values.lighter).toBe(TIER_WITHOUT_FEE);
+    expect(
+      queries.some((q) =>
+        q.includes('perp_fees_spread_bps{venue="lighter",chain="BTC"}'),
+      ),
+    ).toBe(true);
     expect(queries.filter((q) => /perp_fees_all_in_bps\{|fees=/.test(q))).toEqual([]);
   });
 
@@ -91,8 +97,8 @@ describe("perp-fees with trading fees removed", () => {
 
     const label = (slug: string) =>
       b.results.find((r) => r.slug === slug)?.unrankedLabel;
-    expect(label("gmx")).toBe(view.unranked?.gmx);
-    expect(label("gains")).toBe(view.unranked?.gains);
+    expect(label("gmx")).toBe("Oracle priced");
+    expect(label("gains")).toBe("Oracle priced");
     expect(label("lighter")).toBeUndefined();
   });
 
@@ -102,7 +108,10 @@ describe("perp-fees with trading fees removed", () => {
     expect(b.results.find((r) => r.slug === "lighter")?.ms.p50).toBe(ALL_IN);
     expect(b.results.find((r) => r.slug === "gmx")?.unrankedLabel).toBeUndefined();
     expect(b.metric).toBe(perpFees.metric);
-    expect(b.metricPanels?.map((p) => p.id)).toEqual(panelIds("included"));
+    expect(b.metricPanels?.map((p) => p.id)).toEqual([
+      "all_in_100k",
+      "all_in_1m",
+    ]);
     expect(b.metricPanels?.[0]?.values.lighter).toBe(TIER);
     expect(b.feesRemovable).toBe(true);
   });

@@ -17,7 +17,7 @@ import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
 import { SLUG_RE } from "@/lib/slug";
 import { matchesChainSlug } from "@/lib/chain-aliases";
 import { feesFilter } from "@/lib/fees-filter";
-import type { FeesView } from "@/lib/spec-schema";
+import type { BenchmarkFilters } from "@/lib/materialize/load";
 
 export const dynamic = "force-dynamic";
 
@@ -48,7 +48,7 @@ export async function GET(
   // Validate every filter against the declared dimensions and use the
   // canonical value: these end up in PromQL label selectors downstream.
   const url = new URL(req.url);
-  const filters: { chain?: string; region?: string; kind?: string; venue?: string; bucket?: string; tier?: string; fees?: FeesView } = {};
+  const filters: BenchmarkFilters = {};
   for (const dim of ["chain", "region", "kind", "venue", "bucket", "tier"] as const) {
     const raw = url.searchParams.get(dim)?.toLowerCase().trim();
     if (!raw || raw === "all") continue;

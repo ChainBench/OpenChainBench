@@ -13,6 +13,7 @@ import {
 } from "@/lib/materialize/load";
 import { feesFilter } from "@/lib/fees-filter";
 import type { FeesView } from "@/lib/spec-schema";
+import type { BenchmarkFilters } from "@/lib/materialize/load";
 import { readMaterialized } from "@/lib/materialize/store";
 import { loadSnapshotFromBlob } from "@/lib/bench-blob";
 import { buildProviderColors } from "@/lib/series-colors";
@@ -264,7 +265,7 @@ export async function GET(
     );
   }
 
-  const filters: { chain?: string; region?: string; kind?: string; venue?: string; tier?: string; fees?: FeesView } = {};
+  const filters: Omit<BenchmarkFilters, "bucket" | "amount_usd"> = {};
   for (const dim of ["chain", "region", "kind", "venue", "tier"] as const) {
     const raw = url.searchParams.get(dim)?.toLowerCase().trim();
     if (!raw || raw === "all") continue;
@@ -293,6 +294,15 @@ export async function GET(
   }
   Object.assign(filters, fees);
   const hasFilters = Object.keys(filters).length > 0;
+  const benchForView = hasFilters
+    ? getBenchmark(slug, filters)
+    : Promise.resolve(aggregate);
+  if (filters.fees && !(await benchForView)) {
+    return NextResponse.json(
+      { error: "variant_not_ready", slug },
+      { status: 404, headers: { "cache-control": "no-store" } },
+    );
+  }
 
   // 24h is served from the slim cached Benchmark (cheap). 7d / 30d / 90d / 1y
   // come from the dedicated getSeriesMapCached above (Prom fan-out the
@@ -315,10 +325,10 @@ export async function GET(
         filters.tier,
         filters.fees,
       ),
-      hasFilters ? getBenchmark(slug, filters) : Promise.resolve(aggregate),
+      benchForView,
     ]);
   } else {
-    bench = hasFilters ? await getBenchmark(slug, filters) : aggregate;
+    bench = await benchForView;
     if (panelId) {
       const panel = bench?.metricPanels?.find((p) => p.id === panelId);
       seriesMap = panel?.seriesByProvider;

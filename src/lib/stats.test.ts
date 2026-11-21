@@ -37,6 +37,14 @@ describe("computeFieldStats", () => {
     expect(t.fieldMax).toBe(29.5);
   });
 
+  test("leaves unranked rows out of the field, like the ledger", () => {
+    const gains = { ...row("gains", 40), unrankedLabel: "Oracle priced" };
+    const s = computeFieldStats([row("lighter", 2), row("dydx", 6), gains]);
+    expect(s.fieldMax).toBe(6);
+    const allUnranked = computeFieldStats([gains]);
+    expect(allUnranked.fieldMax).toBe(40);
+  });
+
   test("ignores live rows with no headline value (all-zero), like the ledger", () => {
     // A token-less venue on a valuation bench: promoted to live by its
     // panel data, but no P/F to rank. Best must not read 0.

@@ -1810,6 +1810,7 @@ export const loadBenchmark = cache(async function loadBenchmark(
     // page that calls getBenchmark during a Prom blackout. The safe
     // wrapper catches that throw and substitutes draft placeholders so
     // the page still renders.
+    if (options.fees) return undefined;
     const all = await loadAllBenchmarksSafe();
     return all.find((b) => b.slug === slug);
   }

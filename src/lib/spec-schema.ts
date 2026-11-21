@@ -69,6 +69,8 @@ const slug = z
 /** PromQL. a non-empty string. We don't parse PromQL; that's Prometheus's job. */
 const promql = z.string().min(1);
 const promMetricName = z.string().regex(/^[A-Za-z_][A-Za-z0-9_]*$/);
+export const metricNameRe = (name: string, flags = ""): RegExp =>
+  new RegExp(`(?<![\\w:])${name}(?![\\w:])`, flags);
 const FEES_VIEWS = ["included", "removed"] as const;
 const unrankedLabel = z
   .string()
@@ -1054,7 +1056,7 @@ export const SpecSchema = z
     }
     for (const from of Object.keys(spec.fees_removed?.metric_rename ?? {})) {
       const read = spec.providers.some((p) =>
-        new RegExp(`(?<![\\w:])${from}(?![\\w:])`).test(p.queries?.p50 ?? ""),
+        metricNameRe(from).test(p.queries?.p50 ?? ""),
       );
       if (!read) {
         ctx.addIssue({

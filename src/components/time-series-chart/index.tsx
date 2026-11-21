@@ -588,6 +588,7 @@ export function TimeSeriesChart({
           ? sliceOverride(panel[r.slug] ?? [])
           : pickBenchValues(r.slug),
         excluded: excluded.has(r.slug),
+        unranked: Boolean(r.unrankedLabel),
       }))
       .filter((l) => l.values.length > 0);
 
@@ -598,6 +599,7 @@ export function TimeSeriesChart({
     // ledger would disagree on what Top 5 means.
     const higherIsBetter = higherIsBetterOverride ?? benchmark.higherIsBetter;
     built.sort((a, b) => {
+      if (a.unranked !== b.unranked) return a.unranked ? 1 : -1;
       const av = mean(a.values.slice(-6));
       const bv = mean(b.values.slice(-6));
       return higherIsBetter ? bv - av : av - bv;

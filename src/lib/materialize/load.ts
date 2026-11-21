@@ -20,7 +20,12 @@ import type {
 import { Prometheus } from "@/lib/prometheus";
 import { specHasDistribution, specValueKind } from "@/lib/value-window";
 import { pickChainLeader, pickChainTrailer } from "@/lib/materialize/per-chain-leader";
-import { SpecSchema, type FeesView, type Spec } from "@/lib/spec-schema";
+import {
+  metricNameRe,
+  SpecSchema,
+  type FeesView,
+  type Spec,
+} from "@/lib/spec-schema";
 import { DEV_ONLY_BENCH_SLUGS, REMOVED_BENCH_SLUGS } from "@/lib/removed-benches";
 import { renderBenchmarkText } from "@/lib/bench-template";
 import { liveResults as liveProviderResults } from "@/lib/provider-filters";
@@ -255,7 +260,7 @@ export function withFeesRemoved(spec: Spec): Spec {
   const view = spec.fees_removed;
   if (!view) return spec;
   const renames = Object.entries(view.metric_rename).map(
-    ([from, to]) => [new RegExp(`(?<![\\w:])${from}(?![\\w:])`, "g"), to] as const,
+    ([from, to]) => [metricNameRe(from, "g"), to] as const,
   );
   const rename = (q: string | undefined) =>
     q === undefined
