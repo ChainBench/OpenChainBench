@@ -882,7 +882,6 @@ export const SpecSchema = z
         metric_rename: z
           .record(promMetricName, promMetricName)
           .refine((r) => Object.keys(r).length > 0, "metric_rename is empty"),
-        unranked: z.record(z.string(), unrankedLabel).optional(),
       })
       .strict()
       .optional(),
@@ -1044,16 +1043,6 @@ export const SpecSchema = z
         });
       }
     });
-    const providerSlugs = new Set(spec.providers.map((p) => p.slug));
-    for (const slug of Object.keys(spec.fees_removed?.unranked ?? {})) {
-      if (!providerSlugs.has(slug)) {
-        ctx.addIssue({
-          code: "custom",
-          path: ["fees_removed", "unranked", slug],
-          message: `Unknown provider "${slug}"`,
-        });
-      }
-    }
     for (const from of Object.keys(spec.fees_removed?.metric_rename ?? {})) {
       const read = spec.providers.some((p) =>
         metricNameRe(from).test(p.queries?.p50 ?? ""),

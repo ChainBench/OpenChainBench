@@ -273,7 +273,6 @@ export function withFeesRemoved(spec: Spec): Spec {
     providers: spec.providers.map((p) => ({
       ...p,
       formula: view.formula,
-      unranked: view.unranked?.[p.slug] ?? p.unranked,
       queries: p.queries && mapQueries(p.queries, rename),
     })),
   };

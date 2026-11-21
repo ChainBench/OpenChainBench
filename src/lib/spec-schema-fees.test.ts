@@ -37,16 +37,6 @@ describe("fees_removed validation", () => {
     ]);
   });
 
-  test("an unranked entry for an unknown venue is refused", () => {
-    const raw = perpFees();
-    raw.fees_removed = {
-      ...raw.fees_removed,
-      unranked: { gmx: "Oracle priced", nowhere: "Oracle priced" },
-    };
-
-    expect(issuePaths(raw)).toEqual(["fees_removed.unranked.nowhere"]);
-  });
-
   test("a panel scoped to a fees view needs the view", () => {
     const raw = perpFees();
     delete raw.fees_removed;

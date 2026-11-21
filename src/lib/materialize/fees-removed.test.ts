@@ -5,14 +5,12 @@ import type { Spec } from "@/lib/spec-schema";
 const ALL_IN = 7;
 const SPREAD = 3;
 const TIER = 11;
-const TIER_WITHOUT_FEE = 5;
+const TIER_SPREAD = 5;
 
 function sampleFor(query: string): number | null {
   if (query.includes("perp_fees_health")) return 1;
   if (query.includes("count_over_time")) return 288;
-  if (query.includes("- on(venue, chain) perp_fees_taker_fee_bps")) {
-    return TIER_WITHOUT_FEE;
-  }
+  if (query.includes("perp_fees_spread_bps_tier")) return TIER_SPREAD;
   if (query.includes("perp_fees_all_in_bps_tier")) return TIER;
   if (query.includes("perp_fees_spread_bps")) return SPREAD;
   if (query.includes("perp_fees_all_in_bps")) return ALL_IN;
@@ -76,6 +74,11 @@ describe("perp-fees with trading fees removed", () => {
     const lighter = b.results.find((r) => r.slug === "lighter");
     expect(lighter?.ms.p50).toBe(SPREAD);
     expect(lighter?.formula).toBe(view.formula);
+    for (const slug of ["gmx", "gains"]) {
+      const oracle = b.results.find((r) => r.slug === slug);
+      expect(oracle?.ms.p50).toBe(SPREAD);
+      expect(oracle?.unrankedLabel).toBeUndefined();
+    }
     expect(b.metric).toBe(view.metric);
     expect(b.metric).not.toBe(perpFees.metric);
     expect(b.panelMainLabel).toBe(view.panel_main_label);
@@ -83,23 +86,13 @@ describe("perp-fees with trading fees removed", () => {
       "spread_impact_100k",
       "spread_impact_1m",
     ]);
-    expect(b.metricPanels?.[0]?.values.lighter).toBe(TIER_WITHOUT_FEE);
+    expect(b.metricPanels?.[0]?.values.lighter).toBe(TIER_SPREAD);
     expect(
       queries.some((q) =>
         q.includes('perp_fees_spread_bps{venue="lighter",chain="BTC"}'),
       ),
     ).toBe(true);
     expect(queries.filter((q) => /perp_fees_all_in_bps\{|fees=/.test(q))).toEqual([]);
-  });
-
-  test("lists the oracle-priced venues unranked", async () => {
-    const b = await specToBenchmark(perpFees, { fees: "removed", chain: "BTC" });
-
-    const label = (slug: string) =>
-      b.results.find((r) => r.slug === slug)?.unrankedLabel;
-    expect(label("gmx")).toBe("Oracle priced");
-    expect(label("gains")).toBe("Oracle priced");
-    expect(label("lighter")).toBeUndefined();
   });
 
   test("leaves the default view on the all-in figures", async () => {
