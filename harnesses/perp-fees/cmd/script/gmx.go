@@ -1,21 +1,15 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"math/big"
 	"net/http"
-	"strconv"
+	"strings"
 	"time"
 )
-
-// GMX v2 on Arbitrum: position fee from Subsquid GraphQL, funding/borrowing
-// from gmxinfra REST. No orderbook (oracle-priced) — slippage component is
-// the on-chain priceImpact, computed from impactFactor × imbalance. For
-// $1k notional the imbalance term is negligible, so we report just the
-// negative-impact branch fee (worst-case opening cost).
 
 const gmxSubsquid = "https://gmx.squids.live/gmx-synthetics-arbitrum/graphql"
 const gmxinfraBase = "https://arbitrum-api.gmxinfra.io"
@@ -69,6 +63,9 @@ type gmxMarketInfo struct {
 type gmxMarketsRESTItem struct {
 	MarketToken                       string `json:"marketToken"`
 	IndexToken                        string `json:"indexToken"`
+	IsListed                          bool   `json:"isListed"`
+	LongToken                         string `json:"longToken"`
+	ShortToken                        string `json:"shortToken"`
 	FundingFactorPerSecondLong        string `json:"fundingFactorPerSecondLong"`
 	FundingFactorPerSecondShort       string `json:"fundingFactorPerSecondShort"`
 	BorrowingFactorPerSecondForLongs  string `json:"borrowingFactorPerSecondForLongs"`
@@ -79,110 +76,220 @@ type gmxMarketsREST struct {
 	Markets []gmxMarketsRESTItem `json:"markets"`
 }
 
-func fetchGMX(v VenueConfig) PerpSample {
-	s := PerpSample{Venue: v.Slug, Asset: v.Asset, At: time.Now().UTC().Format(time.RFC3339)}
-	start := time.Now()
-	client := &http.Client{Timeout: 10 * time.Second}
+const (
+	gmxReader            = "0x470fbC46bcC0f16532691Df360A07d8Bf5ee0789"
+	gmxDataStore         = "0xFD70de6b91282D8017aA4E741e9Ae325CAb992d8"
+	selGetExecutionPrice = "0x689031a2"
+	gmxUSDDecimals       = 30
+	gmxExecReplyWords    = 3
+)
 
-	market, ok := gmxMarkets[v.Asset]
-	if !ok {
-		s.Err = "unsupported_asset"
-		s.FetchLatencyMs = time.Since(start).Milliseconds()
-		return s
+type gmxPriceRange struct {
+	Min *big.Int
+	Max *big.Int
+}
+
+type gmxMarketPrices struct {
+	Index gmxPriceRange
+	Long  gmxPriceRange
+	Short gmxPriceRange
+}
+
+type gmxTicker struct {
+	TokenAddress string `json:"tokenAddress"`
+	MinPrice     string `json:"minPrice"`
+	MaxPrice     string `json:"maxPrice"`
+}
+
+func gmxGetJSON(client *http.Client, path string, out any) error {
+	resp, err := client.Get(gmxinfraBase + path)
+	if err != nil {
+		return err
 	}
+	defer func() { _ = resp.Body.Close() }()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("status_%d: %s", resp.StatusCode, truncate(string(body), 200))
+	}
+	return json.Unmarshal(body, out)
+}
 
-	// 1) Position fee from Subsquid (live on-chain factor)
+type gmxFeeFactors struct {
+	PositiveBps float64
+	NegativeBps float64
+}
+
+func (f gmxFeeFactors) forTrade(balanceWasImproved bool) float64 {
+	if balanceWasImproved {
+		return f.PositiveBps
+	}
+	return f.NegativeBps
+}
+
+func gmxReadFeeFactors(client *http.Client, market string) (gmxFeeFactors, error) {
 	q := gmxGqlReq{
 		Query: `query { marketInfos(where: {id_eq: "` + market + `"}) {
 			id positionFeeFactorForPositiveImpact positionFeeFactorForNegativeImpact
 		}}`,
 	}
-	bodyBytes, _ := json.Marshal(q)
-	req, _ := http.NewRequest("POST", gmxSubsquid, bytes.NewBuffer(bodyBytes))
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := client.Do(req)
+	respBody, err := postJSON(client, gmxSubsquid, q)
 	if err != nil {
-		s.Err = fmt.Sprintf("subsquid_failed: %v", err)
-		s.FetchLatencyMs = time.Since(start).Milliseconds()
-		return s
+		return gmxFeeFactors{}, err
 	}
-	defer resp.Body.Close()
-	respBody, _ := io.ReadAll(resp.Body)
-	if resp.StatusCode != 200 {
-		s.Err = fmt.Sprintf("subsquid_failed: status_%d: %s", resp.StatusCode, truncate(string(respBody), 200))
-		s.FetchLatencyMs = time.Since(start).Milliseconds()
-		return s
-	}
+	return gmxFeeFactorsFrom(respBody)
+}
+
+func gmxFeeFactorsFrom(respBody []byte) (gmxFeeFactors, error) {
 	var info gmxMarketInfo
 	if err := json.Unmarshal(respBody, &info); err != nil {
-		s.Err = fmt.Sprintf("subsquid_failed: parse: %v", err)
-		s.FetchLatencyMs = time.Since(start).Milliseconds()
-		return s
+		return gmxFeeFactors{}, fmt.Errorf("parse: %w", err)
 	}
 	if len(info.Errors) > 0 {
-		s.Err = fmt.Sprintf("subsquid_failed: gql_error: %s", info.Errors[0].Message)
-		s.FetchLatencyMs = time.Since(start).Milliseconds()
-		return s
+		return gmxFeeFactors{}, fmt.Errorf("gql_error: %s", info.Errors[0].Message)
 	}
 	if len(info.Data.MarketInfos) == 0 {
-		s.Err = "subsquid_failed: market_not_found"
-		s.FetchLatencyMs = time.Since(start).Milliseconds()
-		return s
+		return gmxFeeFactors{}, errors.New("market_not_found")
 	}
 	m := info.Data.MarketInfos[0]
-	// FLOAT_PRECISION = 1e30. positionFeeFactor = factor * 1e30.
-	// e.g. "600000000000000000000000000" = 0.0006 = 6 bps.
-	//
-	// Branch choice: report the NEGATIVE-impact factor. Opening a long
-	// against a bid-heavy book (or a short against an ask-heavy book) pays
-	// the negative-impact branch, which is the worst-case opening cost and
-	// matches the "all-in fee at open" methodology used for the CEXes here.
-	// If the schema is on an older/unsuffixed version we fall back to
-	// positionFeeFactor so a rename does not silently zero the reported fee.
-	rawFactor := m.PositionFeeFactorForNegativeImpact
-	if rawFactor == "" {
-		s.Err = "subsquid_failed: missing positionFeeFactor fields"
-		s.FetchLatencyMs = time.Since(start).Milliseconds()
-		return s
+	fees := gmxFeeFactors{
+		PositiveBps: factor1e30ToBps(m.PositionFeeFactorForPositiveImpact),
+		NegativeBps: factor1e30ToBps(m.PositionFeeFactorForNegativeImpact),
 	}
-	negativeFee := factor1e30ToBps(rawFactor)
-	if negativeFee == 0 {
-		s.Err = fmt.Sprintf("subsquid_failed: zero fee factor for market %s", market)
-		s.FetchLatencyMs = time.Since(start).Milliseconds()
-		return s
+	if fees.PositiveBps <= 0 || fees.NegativeBps <= 0 {
+		return gmxFeeFactors{}, errors.New("zero fee factor")
 	}
-	s.TakerFeeBps = negativeFee
-	// On GMX there's no orderbook spread — slippage = priceImpact, which
-	// is ~0 for $1k notional vs. multi-million pool TVL.
-	s.SpreadBps = 0
+	return fees, nil
+}
 
-	// 2) Funding rate from gmxinfra REST
+func gmxReadMarket(client *http.Client, market string) (gmxMarketsRESTItem, error) {
 	var markets gmxMarketsREST
-	resp2, err := client.Get(gmxinfraBase + "/markets/info")
-	if err == nil {
-		defer resp2.Body.Close()
-		body2, _ := io.ReadAll(resp2.Body)
-		_ = json.Unmarshal(body2, &markets)
-		for _, mk := range markets.Markets {
-			if mk.MarketToken == market {
-				// fundingFactorPerSecondLong scaled by 1e30. Convert to per-hour bps.
-				perSec := factor1e30ToBps(mk.FundingFactorPerSecondLong)
-				s.FundingRatePerHrBps = perSec * 3600
-				break
-			}
+	if err := gmxGetJSON(client, "/markets/info", &markets); err != nil {
+		return gmxMarketsRESTItem{}, err
+	}
+	for _, mk := range markets.Markets {
+		if !strings.EqualFold(mk.MarketToken, market) {
+			continue
 		}
+		if !mk.IsListed {
+			return gmxMarketsRESTItem{}, errors.New("market delisted")
+		}
+		return mk, nil
+	}
+	return gmxMarketsRESTItem{}, errors.New("market not listed")
+}
+
+func gmxReadMarketPrices(client *http.Client, m gmxMarketsRESTItem) (gmxMarketPrices, error) {
+	var tickers []gmxTicker
+	if err := gmxGetJSON(client, "/prices/tickers", &tickers); err != nil {
+		return gmxMarketPrices{}, err
+	}
+	byToken := make(map[string]gmxTicker, len(tickers))
+	for _, t := range tickers {
+		byToken[strings.ToLower(t.TokenAddress)] = t
+	}
+	priceOf := func(role, token string) (gmxPriceRange, error) {
+		t, ok := byToken[strings.ToLower(token)]
+		if !ok {
+			return gmxPriceRange{}, fmt.Errorf("no ticker for %s token", role)
+		}
+		lo, okLo := new(big.Int).SetString(t.MinPrice, 10)
+		hi, okHi := new(big.Int).SetString(t.MaxPrice, 10)
+		if !okLo || !okHi || lo.Sign() <= 0 || hi.Cmp(lo) < 0 {
+			return gmxPriceRange{}, fmt.Errorf("bad ticker for %s token", role)
+		}
+		return gmxPriceRange{Min: lo, Max: hi}, nil
+	}
+	var p gmxMarketPrices
+	var err error
+	if p.Index, err = priceOf("index", m.IndexToken); err != nil {
+		return p, err
+	}
+	if p.Long, err = priceOf("long", m.LongToken); err != nil {
+		return p, err
+	}
+	p.Short, err = priceOf("short", m.ShortToken)
+	return p, err
+}
+
+func gmxImpactProbe(market string, p gmxMarketPrices, fees gmxFeeFactors) oracleProbe {
+	prices := abiUint(p.Index.Min) + abiUint(p.Index.Max) +
+		abiUint(p.Long.Min) + abiUint(p.Long.Max) +
+		abiUint(p.Short.Min) + abiUint(p.Short.Max)
+	head := selGetExecutionPrice + abiAddress(gmxDataStore) + abiAddress(market) + prices +
+		abiUint64(0) + abiUint64(0)
+	twiceMid := new(big.Int).Add(p.Index.Min, p.Index.Max)
+	costBps := func(exec *big.Int) float64 {
+		diff := new(big.Int).Sub(new(big.Int).Lsh(exec, 1), twiceMid)
+		return ratioFloat(diff, twiceMid) * 1e4
+	}
+	return oracleProbe{
+		CallsFor: func(notional float64) []ethCallMsg {
+			size := abiUint(usdScaled(notional, gmxUSDDecimals))
+			call := func(long bool) ethCallMsg {
+				return ethCallMsg{To: gmxReader, Data: head + size + abiUint64(0) + abiBool(long)}
+			}
+			return []ethCallMsg{call(true), call(false)}
+		},
+		CostFrom: func(r []string) (sideCosts, error) {
+			for _, res := range r {
+				if len(strings.TrimPrefix(res, "0x")) < gmxExecReplyWords*abiWordHexLen {
+					return sideCosts{}, fmt.Errorf("execution price reply of %d hex chars", len(res))
+				}
+			}
+			long, short := uint256ArgAt(r[0], 1), uint256ArgAt(r[1], 1)
+			if long.Sign() <= 0 || short.Sign() <= 0 {
+				return sideCosts{}, errors.New("zero execution price")
+			}
+			improved := func(i int) bool { return uint256ArgAt(r[i], 2).Sign() != 0 }
+			return sideCosts{
+				Long:     costBps(long),
+				Short:    -costBps(short),
+				LongFee:  fees.forTrade(improved(0)),
+				ShortFee: fees.forTrade(improved(1)),
+			}, nil
+		},
+	}
+}
+
+func fetchGMX(v VenueConfig, rpcURL string) (s PerpSample) {
+	s = PerpSample{Venue: v.Slug, Asset: v.Asset, At: time.Now().UTC().Format(time.RFC3339)}
+	start := time.Now()
+	client := &http.Client{Timeout: 10 * time.Second}
+	defer func() { s.FetchLatencyMs = time.Since(start).Milliseconds() }()
+
+	market, ok := gmxMarkets[v.Asset]
+	if !ok {
+		s.Err = "unsupported_asset"
+		return s
+	}
+	fees, err := gmxReadFeeFactors(client, market)
+	if err != nil {
+		s.Err = fmt.Sprintf("subsquid_failed: %v", err)
+		return s
 	}
 
-	s.AllInBps = s.TakerFeeBps + s.SpreadBps
-	// Notional tiers: GMX v2's positionFeeFactor is a per-notional factor
-	// (fee = factor x sizeDelta), so the bps figure is identical at $1k,
-	// $10k and $100k. The only size-dependent term is priceImpact, which
-	// scales with OI imbalance; against the main markets' nine-figure open
-	// interest even $100k moves it by well under a tenth of a bp, and the
-	// harness already reports the conservative negative-impact fee branch.
-	// Publishing the same value across tiers is therefore correct.
-	applyFlatTiers(&s)
-	s.FetchLatencyMs = time.Since(start).Milliseconds()
+	info, err := gmxReadMarket(client, market)
+	if err != nil {
+		s.Err = fmt.Sprintf("markets_info: %v", err)
+		return s
+	}
+	s.FundingRatePerHrBps = factor1e30ToBps(info.FundingFactorPerSecondLong) * 3600
+
+	prices, err := gmxReadMarketPrices(client, info)
+	if err != nil {
+		s.Err = fmt.Sprintf("tickers: %v", err)
+		return s
+	}
+	probe := gmxImpactProbe(market, prices, fees)
+	quotes, err := quoteOracle(client, rpcURL, oracleNotionals(v.NotionalUSD), probe)
+	if err != nil {
+		s.Err = fmt.Sprintf("price_impact: %v", err)
+		return s
+	}
+	applyOracleQuotes(&s, v.NotionalUSD, quotes)
 	return s
 }
 
@@ -207,6 +314,3 @@ func factor1e30ToBps(raw string) float64 {
 	out, _ := f.Float64()
 	return out
 }
-
-// silence unused import warning if needed
-var _ = strconv.Itoa

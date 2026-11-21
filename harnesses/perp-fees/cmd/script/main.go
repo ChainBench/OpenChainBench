@@ -94,11 +94,11 @@ func fetchOne(v VenueConfig, cfg *Config) PerpSample {
 	case "dydx":
 		return fetchDYdX(v)
 	case "gmx":
-		return fetchGMX(v)
+		return fetchGMX(v, cfg.ArbitrumRPC)
 	case "lighter":
 		return fetchLighter(v)
 	case "gains":
-		return fetchGains(v, cfg.MobulaAPIKey)
+		return fetchGains(v, cfg.BaseRPC)
 	case "polymarket":
 		return fetchPolymarket(v)
 	case "paradex":

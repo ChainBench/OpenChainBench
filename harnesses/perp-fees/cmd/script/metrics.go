@@ -20,6 +20,7 @@ var (
 	healthGauge       *prometheus.GaugeVec
 	lastRefreshGauge  *prometheus.GaugeVec
 	allInTierGauge    *prometheus.GaugeVec
+	spreadTierGauge   *prometheus.GaugeVec
 	tierSkippedCtr    *prometheus.CounterVec
 )
 
@@ -128,6 +129,15 @@ func init() {
 	)
 	prometheus.MustRegister(allInTierGauge)
 
+	spreadTierGauge = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "perp_fees_spread_bps_tier",
+			Help: "Spread plus impact at a given notional tier, taker fee excluded, in bps. notional label is the USD trade size.",
+		},
+		[]string{"venue", "chain", "notional"},
+	)
+	prometheus.MustRegister(spreadTierGauge)
+
 	tierSkippedCtr = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "perp_fees_tier_skipped_total",
@@ -157,6 +167,7 @@ func recordSample(s PerpSample) {
 			lastRefreshGauge.DeleteLabelValues(s.Venue, s.Asset)
 			for _, n := range tierNotionals {
 				allInTierGauge.DeleteLabelValues(s.Venue, s.Asset, notionalLabel(n))
+				spreadTierGauge.DeleteLabelValues(s.Venue, s.Asset, notionalLabel(n))
 			}
 		}
 		return
@@ -178,6 +189,7 @@ func recordSample(s PerpSample) {
 
 	for _, t := range s.Tiers {
 		allInTierGauge.WithLabelValues(s.Venue, s.Asset, t.Notional).Set(t.AllInBps)
+		spreadTierGauge.WithLabelValues(s.Venue, s.Asset, t.Notional).Set(t.SpreadBps)
 	}
 	// A skipped tier means the fetched book could not fill that notional.
 	// Unlike whole-venue failures (where we keep the previous gauge and rely
@@ -187,6 +199,7 @@ func recordSample(s PerpSample) {
 	for _, n := range s.SkippedTiers {
 		tierSkippedCtr.WithLabelValues(s.Venue, s.Asset, n).Inc()
 		allInTierGauge.DeleteLabelValues(s.Venue, s.Asset, n)
+		spreadTierGauge.DeleteLabelValues(s.Venue, s.Asset, n)
 	}
 }
 

@@ -8,10 +8,11 @@ import (
 )
 
 type Config struct {
-	Venues       []VenueConfig
-	Interval     time.Duration
-	NotionalUSD  float64
-	MobulaAPIKey string // for /api/2/perp/quote
+	Venues      []VenueConfig
+	Interval    time.Duration
+	NotionalUSD float64
+	ArbitrumRPC string
+	BaseRPC     string
 }
 
 // venueDef pairs a venue with the assets it supports natively.
@@ -90,10 +91,17 @@ func loadConfig() *Config {
 	}
 
 	c := &Config{
-		Interval:     5 * time.Minute,
-		NotionalUSD:  notional,
-		MobulaAPIKey: os.Getenv("MOBULA_API_KEY"),
-		Venues:       venues,
+		Interval:    5 * time.Minute,
+		NotionalUSD: notional,
+		ArbitrumRPC: "https://arb1.arbitrum.io/rpc",
+		BaseRPC:     "https://mainnet.base.org",
+		Venues:      venues,
+	}
+	if v := os.Getenv("RPC_ARBITRUM"); v != "" {
+		c.ArbitrumRPC = v
+	}
+	if v := os.Getenv("RPC_BASE"); v != "" {
+		c.BaseRPC = v
 	}
 
 	if v := os.Getenv("REFRESH_INTERVAL_SECONDS"); v != "" {
