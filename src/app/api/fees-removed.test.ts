@@ -33,11 +33,6 @@ beforeEach(() => {
     getBenchmark: async (_slug: string, f: BenchmarkFilters = {}) =>
       f.fees ? feesVariant : bench("All-in cost"),
   }));
-  mock.module("@/lib/rate-limit", () => ({
-    rateLimit: () => ({ ok: true, retryAfterSec: 0 }),
-    clientKey: () => "test",
-    tooManyRequests: () => new Response("rate", { status: 429 }),
-  }));
   mock.module("next/cache", () => ({
     unstable_cache: <T,>(fn: T) => fn,
   }));
