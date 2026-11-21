@@ -61,3 +61,27 @@ describe("variantCombos covers every declared dimension", () => {
     expect(combos).toEqual([{ chain: "base" }]);
   });
 });
+
+describe("variantCombos on a bench with a fees-removed view", () => {
+  const chains: Spec["dimensions"] = {
+    chain: [
+      { value: "ETH", label: "ETH" },
+      { value: "BTC", label: "BTC" },
+    ],
+  };
+
+  test("every chain tab also exists with fees removed", () => {
+    const combos = variantCombos({
+      ...spec(chains),
+      fees_removed: {},
+    } as unknown as Spec);
+    const sigs = combos.map((c) => sig(c as Record<string, string>)).sort();
+    expect(sigs).toEqual([
+      "chain=BTC",
+      "chain=BTC&fees=removed",
+      "chain=ETH",
+      "chain=ETH&fees=removed",
+      "fees=removed",
+    ]);
+  });
+});

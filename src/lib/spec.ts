@@ -167,6 +167,7 @@ export function overlayEditorial(stored: Benchmark, spec: Spec): Benchmark {
     // Overlay so newly added notes surface immediately without waiting
     // on the materialize worker to rewrite the snapshot.
     providerNotes: spec.provider_notes ?? stored.providerNotes,
+    feesRemovable: spec.fees_removed ? true : undefined,
     // expected_n is a YAML editorial declaration too: drives the
     // sample-health badge logic on the page + the citable APIs. A
     // freshly added/edited value must take effect immediately, before
@@ -1079,7 +1080,8 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // v207: bench 004 gains Base and Robinhood Chain tabs. Base had no
   //       checks since 2026-11-18 20:00 UTC (Pulse renamed its sources);
   //       Robinhood is new, with Mobula, Codex, Serialized and Metastreams.
-  ["bench-unfiltered-v208", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v209: bench 007 declares a fees-removed view and two panels.
+  ["bench-unfiltered-v209", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -1466,7 +1468,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v199: lockstep with bench-unfiltered-v206 (RpcNode on four more RPC benches).
   // v200: lockstep with bench-unfiltered-v207 (bench 004 Base and Robinhood).
   // v201: lockstep with bench-unfiltered-v208 (bench 030 adds FiatBear).
-  ["all-benchmarks-v201", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v202: lockstep with bench-unfiltered-v209 (bench 007 fees-removed view).
+  ["all-benchmarks-v202", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1753,7 +1756,8 @@ const loadBenchmarkFiltered = unstable_cache(
   //       chain tabs.
   // v122: lockstep with bench-unfiltered-v206. Region tabs gain RpcNode.
   // v123: lockstep with bench-unfiltered-v207. Bench 004 declares two new chain tabs.
-  ["bench-filters-v123", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v124: lockstep with bench-unfiltered-v209. Bench 007 gains fees=removed tabs.
+  ["bench-filters-v124", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 

@@ -68,6 +68,14 @@ const slug = z
 
 /** PromQL. a non-empty string. We don't parse PromQL; that's Prometheus's job. */
 const promql = z.string().min(1);
+const promMetricName = z.string().regex(/^[A-Za-z_][A-Za-z0-9_]*$/);
+const FEES_VIEWS = ["included", "removed"] as const;
+const unrankedLabel = z
+  .string()
+  .min(1)
+  .max(20)
+  .regex(/^[A-Za-z0-9 -]+$/, "unranked label: letters, digits, spaces, hyphens");
+export type FeesView = (typeof FEES_VIEWS)[number];
 
 const region = z.enum(["us-east", "us-west", "eu-west", "ap-southeast", "sgp", "global"]);
 
@@ -234,12 +242,7 @@ const provider = z.object({
    *  "0.00 bps" for a venue giving up a hundred. Set
    *  `unranked_hides_value` for the other situation, where no publishable
    *  value exists even though the series does. */
-  unranked: z
-    .string()
-    .min(1)
-    .max(20)
-    .regex(/^[A-Za-z0-9 -]+$/, "unranked label: letters, digits, spaces, hyphens")
-    .optional(),
+  unranked: unrankedLabel.optional(),
   /** Blanks this row's percentiles instead of publishing them. For an
    *  unranked row whose series exists but whose number must not be read:
    *  perp-pf-ratio's Paradex reads 29.85 off an adapter the spec itself
@@ -854,6 +857,7 @@ export const SpecSchema = z
            *  than drawing a column of dashes under a header that promises
            *  a reading. */
           tiers: z.array(z.string().min(1).max(40)).max(6).optional(),
+          fees: z.enum(FEES_VIEWS).optional(),
         })
       )
       // Cap covers visible tabs plus data-only window panels (revenue,
@@ -866,6 +870,19 @@ export const SpecSchema = z
       // and the leverage-neutral rate that answers the same question in money
       // instead of notional. Six panels that are one measurement.
       .max(17)
+      .optional(),
+
+    fees_removed: z
+      .object({
+        metric: z.string().min(1).max(80),
+        panel_main_label: z.string().min(1).max(80),
+        formula: z.string().min(1).max(400),
+        metric_rename: z
+          .record(promMetricName, promMetricName)
+          .refine((r) => Object.keys(r).length > 0, "metric_rename is empty"),
+        unranked: z.record(z.string(), unrankedLabel).optional(),
+      })
+      .strict()
       .optional(),
 
     /**
@@ -1012,6 +1029,38 @@ export const SpecSchema = z
           code: "custom",
           path: ["aggregate_filters", "tier"],
           message: `aggregate_filters.tier "${pinned}" is not a declared tier`,
+        });
+      }
+    }
+
+    (spec.metric_panels ?? []).forEach((panel, i) => {
+      if (panel.fees && !spec.fees_removed) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["metric_panels", i, "fees"],
+          message: "metric_panels[].fees requires fees_removed on the bench",
+        });
+      }
+    });
+    const providerSlugs = new Set(spec.providers.map((p) => p.slug));
+    for (const slug of Object.keys(spec.fees_removed?.unranked ?? {})) {
+      if (!providerSlugs.has(slug)) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["fees_removed", "unranked", slug],
+          message: `Unknown provider "${slug}"`,
+        });
+      }
+    }
+    for (const from of Object.keys(spec.fees_removed?.metric_rename ?? {})) {
+      const read = spec.providers.some((p) =>
+        new RegExp(`(?<![\\w:])${from}(?![\\w:])`).test(p.queries?.p50 ?? ""),
+      );
+      if (!read) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["fees_removed", "metric_rename", from],
+          message: `No provider p50 query reads "${from}"`,
         });
       }
     }

@@ -20,7 +20,7 @@ import type {
 import { Prometheus } from "@/lib/prometheus";
 import { specHasDistribution, specValueKind } from "@/lib/value-window";
 import { pickChainLeader, pickChainTrailer } from "@/lib/materialize/per-chain-leader";
-import { SpecSchema, type Spec } from "@/lib/spec-schema";
+import { SpecSchema, type FeesView, type Spec } from "@/lib/spec-schema";
 import { DEV_ONLY_BENCH_SLUGS, REMOVED_BENCH_SLUGS } from "@/lib/removed-benches";
 import { renderBenchmarkText } from "@/lib/bench-template";
 import { liveResults as liveProviderResults } from "@/lib/provider-filters";
@@ -74,9 +74,10 @@ export type BenchmarkFilters = {
   bucket?: string;
   /** Access cohort (public / keyed). Selects providers, injects no label. */
   tier?: string;
+  fees?: FeesView;
 };
 
-const FILTER_KEYS = ["chain", "region", "kind", "venue", "amount_usd", "bucket", "tier"] as const;
+const FILTER_KEYS = ["chain", "region", "kind", "venue", "amount_usd", "bucket", "tier", "fees"] as const;
 type FilterKey = (typeof FILTER_KEYS)[number];
 
 export function filterSig(f: BenchmarkFilters): string {
@@ -93,8 +94,12 @@ export function parseFilterSig(sig: string): BenchmarkFilters {
   if (!sig) return out;
   for (const kv of sig.split("&")) {
     const [k, v] = kv.split("=");
+    if (k === "fees") {
+      if (v === "removed") out.fees = v;
+      continue;
+    }
     if (k && v && (FILTER_KEYS as readonly string[]).includes(k)) {
-      out[k as FilterKey] = v;
+      out[k as Exclude<FilterKey, "fees">] = v;
     }
   }
   return out;
@@ -195,6 +200,7 @@ export function buildEditorial(
     ledgerColumns: spec.ledger_columns,
     ledgerReliability: spec.ledger_reliability,
     providerNotes: spec.provider_notes,
+    feesRemovable: spec.fees_removed ? true : undefined,
   };
 }
 
@@ -241,7 +247,57 @@ export function restrictToTier(spec: Spec, tier: string | undefined): Spec {
 function labelFilters(f: BenchmarkFilters): BenchmarkFilters {
   const rest: BenchmarkFilters = { ...f };
   delete rest.tier;
+  delete rest.fees;
   return rest;
+}
+
+export function withFeesRemoved(spec: Spec): Spec {
+  const view = spec.fees_removed;
+  if (!view) return spec;
+  const renames = Object.entries(view.metric_rename).map(
+    ([from, to]) => [new RegExp(`(?<![\\w:])${from}(?![\\w:])`, "g"), to] as const,
+  );
+  const rename = (q: string | undefined) =>
+    q === undefined
+      ? q
+      : renames.reduce((acc, [re, to]) => acc.replace(re, to), q);
+  return {
+    ...spec,
+    metric: view.metric,
+    panel_main_label: view.panel_main_label,
+    providers: spec.providers.map((p) => ({
+      ...p,
+      formula: view.formula,
+      unranked: view.unranked?.[p.slug] ?? p.unranked,
+      queries: p.queries && mapQueries(p.queries, rename),
+    })),
+  };
+}
+
+type ProviderQueries = NonNullable<Spec["providers"][number]["queries"]>;
+
+function mapQueries(
+  q: ProviderQueries,
+  fn: (query: string | undefined) => string | undefined,
+): ProviderQueries {
+  return {
+    ...q,
+    p50: fn(q.p50),
+    p90: fn(q.p90),
+    p95: fn(q.p95),
+    p99: fn(q.p99),
+    mean: fn(q.mean),
+    success: fn(q.success),
+    sample_size: fn(q.sample_size),
+    series: fn(q.series),
+    ranked: fn(q.ranked),
+    live_activity: fn(q.live_activity),
+    regions: q.regions?.map((r) => ({
+      ...r,
+      p50: fn(r.p50),
+      series: fn(r.series),
+    })),
+  };
 }
 
 export async function specToBenchmark(
@@ -265,7 +321,8 @@ export async function specToBenchmark(
   const activeTier = fullSpec.dimensions?.tier
     ? merged.tier ?? defaultTier(fullSpec)
     : undefined;
-  const spec = restrictToTier(fullSpec, activeTier);
+  const cohort = restrictToTier(fullSpec, activeTier);
+  const spec = merged.fees === "removed" ? withFeesRemoved(cohort) : cohort;
   const editorial = buildEditorial(spec);
 
   const activeLabels = activeFilterLabels(labelFilters(merged));
@@ -281,6 +338,7 @@ export async function specToBenchmark(
   const live = await tryLoadLive(filteredSpec, isFiltered, {
     ...activeLabels,
     ...(activeTier ? { tier: activeTier } : {}),
+    ...(merged.fees ? { fees: merged.fees } : {}),
   });
   if (live) {
     // Mark live entries explicitly so a missing `availability` reads as
@@ -700,7 +758,7 @@ export async function specToBenchmark(
     // Persistence is the caller's concern (site: KV snapshot write,
     // worker: store publish). Only the unfiltered "All" view of a live
     // spec triggers the hook; filtered variants are derived views.
-    if (!isFiltered && spec.status === "live") {
+    if (!isFiltered && !merged.fees && spec.status === "live") {
       hooks?.onRendered?.(rendered);
     }
     return rendered;
@@ -1100,26 +1158,7 @@ function applyDimensionsToSpec(spec: Spec, labels: Record<string, string>): Spec
     })),
     providers: spec.providers.map((p) => ({
       ...p,
-      queries: p.queries
-        ? {
-            ...p.queries,
-            p50: inject(p.queries.p50),
-            p90: inject(p.queries.p90),
-            p95: inject(p.queries.p95),
-            p99: inject(p.queries.p99),
-            mean: inject(p.queries.mean),
-            success: inject(p.queries.success),
-            sample_size: inject(p.queries.sample_size),
-            series: inject(p.queries.series),
-            ranked: inject(p.queries.ranked),
-            live_activity: inject(p.queries.live_activity),
-            regions: p.queries.regions?.map((r) => ({
-              ...r,
-              p50: inject(r.p50),
-              series: inject(r.series),
-            })),
-          }
-        : p.queries,
+      queries: p.queries ? mapQueries(p.queries, inject) : p.queries,
     })),
     prometheus: spec.prometheus
       ? { ...spec.prometheus, probe_ok: inject(spec.prometheus.probe_ok) }
@@ -1153,10 +1192,11 @@ export function dimensionLabels(f: BenchmarkFilters): Record<string, string> {
  * served a pooled chart.
  */
 export function publishesPanelOnView(
-  panel: { per_chain_only?: boolean; tiers?: string[] },
-  dims: { chain?: string; tier?: string },
+  panel: { per_chain_only?: boolean; tiers?: string[]; fees?: FeesView },
+  dims: { chain?: string; tier?: string; fees?: FeesView },
 ): boolean {
   if (panel.per_chain_only && !dims.chain) return false;
+  if (panel.fees && panel.fees !== (dims.fees ?? "included")) return false;
   // A panel scoped to a cohort says nothing about the others. Capability
   // is probed on the keyed endpoints only, so under a chain page's public
   // tab these panels are absent rather than empty.
