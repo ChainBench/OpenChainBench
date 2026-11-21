@@ -43,6 +43,8 @@ describe("computeFieldStats", () => {
     expect(s.fieldMax).toBe(6);
     const allUnranked = computeFieldStats([gains]);
     expect(allUnranked.fieldMax).toBe(40);
+    const rankedDown = row("dydx", 6, "unavailable");
+    expect(computeFieldStats([rankedDown, gains]).fieldMax).toBe(40);
   });
 
   test("ignores live rows with no headline value (all-zero), like the ledger", () => {

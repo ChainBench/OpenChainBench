@@ -357,7 +357,7 @@ export function ShareSection({ slug, title, benchmark, chain }: Props) {
                 venue: ALL_VALUE,
                 kind: ALL_VALUE,
               });
-              setPanelView(ALL_VALUE);
+              if (!feesRemoved) setPanelView(ALL_VALUE);
             }}
             slug={slug}
             panelOptions={pickerPanels}

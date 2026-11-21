@@ -7,6 +7,7 @@ import { fmtUnit, fmtValue, unitSuffix } from "@/lib/format";
 import { logoPath } from "@/lib/logo-manifest";
 import { matchesChainSlug } from "@/lib/chain-aliases";
 import { feesFilter } from "@/lib/fees-filter";
+import { rankedRows } from "@/lib/stats";
 import { chipBackground, chipTextColor, initials } from "@/lib/brand";
 import type { Benchmark, ProviderResult } from "@/types/benchmark";
 import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
@@ -18,14 +19,14 @@ import { SLUG_RE } from "@/lib/slug";
  *  divide-by-zero maxP50, ratios > 1) which makes Satori reject the JSX
  *  with an opaque "Spread syntax" error mid-stream. */
 function sortByP50(b: Benchmark): ProviderResult[] {
-  return [...b.results]
-    .filter(
-      (r): r is ProviderResult =>
-        !!r &&
-        !!r.ms &&
-        Number.isFinite(r.ms.p50) &&
-        r.ms.p50 !== 0,
-    )
+  const measured = b.results.filter(
+    (r): r is ProviderResult =>
+      !!r &&
+      !!r.ms &&
+      Number.isFinite(r.ms.p50) &&
+      r.ms.p50 !== 0,
+  );
+  return [...rankedRows(measured)]
     .sort(
       b.higherIsBetter
         ? (a, c) => c.ms.p50 - a.ms.p50

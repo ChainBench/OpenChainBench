@@ -61,17 +61,6 @@ describe("shownVariant with fees removed", () => {
     expect(shownVariant({ ...removedOnSol, ...view })).toMatchObject(expected);
   });
 
-  test("names the default view when the same chain is not loaded yet", () => {
-    const shown = shownVariant({
-      ...removedOnSol,
-      active: undefined,
-      included: undefined,
-      unpublished: false,
-    });
-
-    expect(shown.benchmark).toBe(ethAllIn);
-    expect(shown.placeholderNote).toBe("ETH with fees included");
-  });
 });
 
 describe("shownVariant with fees included", () => {
@@ -87,5 +76,23 @@ describe("shownVariant with fees included", () => {
 
     expect(shown.benchmark).toBe(ethAllIn);
     expect(shown.pending).toBe(false);
+  });
+
+  test("a chain tab still loading dims over the aggregate", () => {
+    const shown = shownVariant({
+      active: undefined,
+      included: undefined,
+      aggregate: ethAllIn,
+      fees: null,
+      unpublished: false,
+      isAllSelection: false,
+    });
+
+    expect(shown).toMatchObject({
+      benchmark: ethAllIn,
+      pending: true,
+      unpublished: false,
+      placeholderNote: "the all-chains aggregate",
+    });
   });
 });

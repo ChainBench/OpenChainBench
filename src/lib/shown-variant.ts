@@ -33,7 +33,7 @@ export function shownVariant(view: {
     pending: !view.isAllSelection && !view.unpublished,
     unpublished: view.unpublished,
     placeholderNote: included
-      ? "the same view with fees included"
+      ? "the same filters with fees included"
       : aggregateNote(view.aggregate, view.fees),
   };
 }
