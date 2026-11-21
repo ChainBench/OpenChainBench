@@ -402,6 +402,7 @@ export type Benchmark = {
    *  "MEV excl.", Hyperliquid "no MEV"). Absent on benches whose spec
    *  does not declare `provider_notes` — UI renders unchanged. */
   providerNotes?: Record<string, string>;
+  feesRemovable?: boolean;
   findings: string[];
   methodology: string[];
   source: string;

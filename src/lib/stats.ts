@@ -1,5 +1,10 @@
 import type { ProviderResult } from "@/types/benchmark";
 
+export function rankedRows<T extends ProviderResult>(results: T[]): T[] {
+  const ranked = results.filter((r) => !r.unrankedLabel);
+  return ranked.length > 0 ? ranked : results;
+}
+
 /**
  * Field-level summary stats for a benchmark's provider list.
  * Pure function - used by the bench detail page and the alternative
@@ -42,12 +47,14 @@ export function computeFieldStats(
   // none and goes, exactly as the ranked surfaces already treat it.
   const hasReading = (r: ProviderResult) =>
     typeof r.successRate === "number" ? r.successRate > 0 : true;
-  const live = results.filter(
-    (r) =>
-      r.availability !== "unavailable" &&
-      (r.ms.p50 !== 0 || r.ms.p90 !== 0 || r.ms.p99 !== 0
-        ? true
-        : zeroIsAValue && hasReading(r)),
+  const live = rankedRows(
+    results.filter(
+      (r) =>
+        r.availability !== "unavailable" &&
+        (r.ms.p50 !== 0 || r.ms.p90 !== 0 || r.ms.p99 !== 0
+          ? true
+          : zeroIsAValue && hasReading(r)),
+    ),
   );
   const p50s = live.map((r) => r.ms.p50);
   const p99s = live.map((r) => r.ms.p99);

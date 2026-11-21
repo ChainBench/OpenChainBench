@@ -16,6 +16,8 @@ import { getBenchmark } from "@/data/benchmarks";
 import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
 import { SLUG_RE } from "@/lib/slug";
 import { matchesChainSlug } from "@/lib/chain-aliases";
+import { feesFilter } from "@/lib/fees-filter";
+import type { BenchmarkFilters } from "@/lib/materialize/load";
 
 export const dynamic = "force-dynamic";
 
@@ -46,7 +48,7 @@ export async function GET(
   // Validate every filter against the declared dimensions and use the
   // canonical value: these end up in PromQL label selectors downstream.
   const url = new URL(req.url);
-  const filters: { chain?: string; region?: string; kind?: string; venue?: string; bucket?: string; tier?: string } = {};
+  const filters: BenchmarkFilters = {};
   for (const dim of ["chain", "region", "kind", "venue", "bucket", "tier"] as const) {
     const raw = url.searchParams.get(dim)?.toLowerCase().trim();
     if (!raw || raw === "all") continue;
@@ -66,11 +68,24 @@ export async function GET(
     }
     filters[dim] = known.value;
   }
+  const fees = feesFilter(url.searchParams.get("fees"), aggregate);
+  if (!fees) {
+    return new NextResponse("unknown fees", {
+      status: 400,
+      headers: { "cache-control": "public, s-maxage=60" },
+    });
+  }
+  Object.assign(filters, fees);
 
-  const variant =
-    Object.keys(filters).length > 0
-      ? ((await getBenchmark(slug, filters)) ?? aggregate)
-      : aggregate;
+  const filtered =
+    Object.keys(filters).length > 0 ? await getBenchmark(slug, filters) : undefined;
+  if (!filtered && filters.fees) {
+    return new NextResponse("variant not ready", {
+      status: 404,
+      headers: { "cache-control": "no-store" },
+    });
+  }
+  const variant = filtered ?? aggregate;
 
   // Editorial copy resolves chain placeholders against the aggregate's
   // stashes (computed unfiltered only); without this override a chain

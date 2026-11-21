@@ -61,6 +61,7 @@ methodology:
   - "Paradex, continued: the two books diverge on thin pairs (SOL on 2026-09-22: 0.03 % spread on the interactive book against 1.4 % on the API book), so the bench reads the interactive book as the cost of opening a position; an algorithmic taker should add 2 bps and expect the wider API book. The endpoint caps at 100 levels, so the $1M tier can be skipped when the visible book thins."
   - "Extended: full public book from `/info/markets/<m>/orderbook` + `/stats` funding (1h native). Its taker fee is not exposed by any public endpoint; the documented base rate of 2.5 bps is used and this is the one venue where the fee is not read live."
   - "All-in formula: `all_in_bps = taker_fee_bps + spread_bps`. Both components emitted as separate metrics for transparency."
+  - "Trading fees, Removed: the board reads `spread_bps` alone (half-spread plus impact at $1,000) and the $100k and $1M panels subtract each venue's taker fee from the tier. GMX v2 and Gains are listed unranked there: an oracle-priced venue has no book to walk, so without its fee GMX reads zero and Gains its fixed spread parameter at every size."
   - "Notional tiers: the same measurement runs at $1,000, $10,000, $100,000 and $1,000,000 by rewalking the already fetched book, published to `perp_fees_all_in_bps_tier{venue, chain, notional}`. The headline `perp_fees_all_in_bps` stays defined at $1,000. A tier the book cannot fill is skipped and counted in `perp_fees_tier_skipped_total`, never extrapolated. Oracle priced venues (GMX v2, Gains) charge a flat percentage of size, so their figure repeats across tiers."
   - "Book depth for the $1M tier: Lighter is walked on its top 100 levels, dYdX on the full indexer book, Polymarket on up to 500 levels. Hyperliquid returns its 20 best raw levels; when those cannot absorb the tier the harness refetches with nSigFigs=5, the finest price aggregation the API offers, which extends coverage with negligible price rounding."
   - "Failures (5xx, timeouts, rate limits) leave the previous gauge in place and increment a per-venue `fetch_errors_total` counter. The page falls back to the last successful sample."
@@ -300,10 +301,36 @@ metric_panels:
     metric: avg(perp_fees_all_in_bps_tier{notional="100000"})
     label_key: venue
     unit: bps
+    fees: included
     description: "All-in opening cost at $100,000 notional. Same formula as the headline (taker fee plus spread plus impact); price impact starts separating the books here and the zero fee lead narrows."
   - id: all_in_1m
     label: All-in at $1M
     metric: avg(perp_fees_all_in_bps_tier{notional="1000000"})
     label_key: venue
     unit: bps
+    fees: included
     description: "All-in opening cost at $1,000,000 notional. At this size book depth decides the ranking and fee schedules become secondary. A venue whose visible book cannot absorb $1M shows no data instead of an extrapolated figure, which is itself a depth signal."
+  - id: spread_impact_100k
+    label: Spread + impact at $100k
+    metric: avg(perp_fees_all_in_bps_tier{notional="100000"} - on(venue, chain) perp_fees_taker_fee_bps{})
+    label_key: venue
+    unit: bps
+    fees: removed
+    description: "Half-spread plus price impact of a $100,000 market buy, taker fee removed."
+  - id: spread_impact_1m
+    label: Spread + impact at $1M
+    metric: avg(perp_fees_all_in_bps_tier{notional="1000000"} - on(venue, chain) perp_fees_taker_fee_bps{})
+    label_key: venue
+    unit: bps
+    fees: removed
+    description: "Half-spread plus price impact of a $1,000,000 market buy, taker fee removed. A venue whose visible book cannot absorb $1M shows no data."
+
+fees_removed:
+  metric: Spread + impact
+  panel_main_label: Spread + impact at $1k
+  formula: "Average over 24h of the half-spread plus price impact of a $1,000 market buy in the selected asset, taker fee removed, in bps. Orderbook venues: the public book walked from mid. GMX v2: zero, it prices off an oracle. Gains: half of the on-chain spreadP."
+  metric_rename:
+    perp_fees_all_in_bps: perp_fees_spread_bps
+  unranked:
+    gmx: Oracle priced
+    gains: Oracle priced

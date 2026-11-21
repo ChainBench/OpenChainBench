@@ -21,11 +21,13 @@ import { DonutChart } from "@/components/donut-chart";
 import { RegionGrid } from "@/components/region-grid";
 import { MetricViewTabs } from "@/components/metric-view-tabs";
 import type { ProviderLayer } from "@/types/benchmark";
+import type { FeesView } from "@/lib/spec-schema";
 import { CountLeaderboard } from "@/components/count-leaderboard";
+import { shownVariant } from "@/lib/shown-variant";
 import { SummaryStat } from "@/components/summary-stat";
 import { ViewSwitcher } from "@/components/view-switcher";
 import { fmtAsOfUtc, fmtHeadline, fmtUnit } from "@/lib/format";
-import { computeFieldStats } from "@/lib/stats";
+import { computeFieldStats, rankedRows } from "@/lib/stats";
 import { defaultViewFor, viewsForBenchmark } from "@/lib/views";
 import { isSelectablePanelView, resolvePanelView } from "@/lib/panel-view";
 import { useViewPreference } from "@/hooks/use-view-preference";
@@ -87,7 +89,7 @@ function summarize(b: Benchmark | undefined): ChainMeta | null {
   if (!b) return null;
   const live = liveResults(b.results);
   if (live.length === 0) return { providers: 0, metric: b.metric };
-  const sorted = [...live].sort((a, c) =>
+  const sorted = [...rankedRows(live)].sort((a, c) =>
     b.higherIsBetter ? c.ms.p50 - a.ms.p50 : a.ms.p50 - c.ms.p50
   );
   return {
@@ -136,9 +138,17 @@ function variantKey(
   venue: string | null = null,
   tier: string | null = null,
   bucket: string | null = null,
+  fees: FeesView | null = null,
 ): string {
-  return `${chain ?? "__none"}|${region ?? "__none"}|${kind ?? "__none"}|${venue ?? "__none"}|${tier ?? "__none"}|${bucket ?? "__none"}`;
+  return `${chain ?? "__none"}|${region ?? "__none"}|${kind ?? "__none"}|${venue ?? "__none"}|${tier ?? "__none"}|${bucket ?? "__none"}|${fees ?? "__none"}`;
 }
+
+const UNPUBLISHED_RETRY_MS = 60_000;
+
+const FEES_OPTIONS: ChainOption[] = [
+  { value: "included", label: "Included" },
+  { value: "removed", label: "Removed" },
+];
 
 /** Region values that appear in extras.seriesByRegion24h. Used when the
  *  spec doesn't declare `dimensions.region` but the chart still has
@@ -308,6 +318,8 @@ export function BenchmarkBody({
   const urlVenue = searchParams.get("venue");
   const urlBucket = searchParams.get("bucket");
   const urlTier = searchParams.get("tier");
+  const urlFees = searchParams.get("fees");
+  const feesRemovable = Object.values(variants).some((v) => v.feesRemovable);
   const urlLayer = searchParams.get("layer");
   // Canonical-aware lookup: a URL with the new slug ("?chain=gram")
   // still selects the dimension whose YAML value is the legacy "ton".
@@ -334,6 +346,9 @@ export function BenchmarkBody({
   const [venue, setVenue] = useState<string | null>(resolvedInitialVenue);
   const [bucket, setBucket] = useState<string | null>(resolvedInitialBucket);
   const [tier, setTier] = useState<string | null>(resolvedInitialTier);
+  const [fees, setFees] = useState<FeesView>(
+    feesRemovable && urlFees === "removed" ? "removed" : "included",
+  );
   const [layer, setLayer] = useState<ProviderLayer>(resolvedInitialLayer);
   // `#tier=<t>` is invisible to the server and to useSearchParams: read
   // it once after mount.
@@ -376,8 +391,16 @@ export function BenchmarkBody({
   // makes that true for every route into the view.
   const urlView = searchParams.get("view");
   const [activePanelId, setActivePanelId] = useState<string | null>(() =>
-    resolvePanelView(urlView, Object.values(variants)[0]?.metricPanels ?? []),
+    fees === "removed"
+      ? urlView
+      : resolvePanelView(urlView, Object.values(variants)[0]?.metricPanels ?? []),
   );
+  const handleFeesSelect = (value: string) => {
+    const next: FeesView = value === "removed" ? "removed" : "included";
+    if (next === fees) return;
+    setFees(next);
+    setActivePanelId(null);
+  };
 
   useEffect(() => {
     const url = new URL(window.location.href);
@@ -393,6 +416,8 @@ export function BenchmarkBody({
       tierOptions.length > 0 && tier && tier !== tierOptions[0].value ? `tier=${tier}` : "";
     // Leave a plain anchor (#public-endpoints, #methodology) alone.
     if (tierFragment || /tier=/.test(url.hash)) url.hash = tierFragment;
+    if (fees === "removed") url.searchParams.set("fees", fees);
+    else url.searchParams.delete("fees");
     // Layer param: drop when default ("l1"), keep when user picked l2.
     if (layer === "l1") url.searchParams.delete("layer");
     else url.searchParams.set("layer", layer);
@@ -404,7 +429,7 @@ export function BenchmarkBody({
     if (next !== window.location.pathname + window.location.search + window.location.hash) {
       window.history.replaceState(null, "", next);
     }
-  }, [chain, region, kind, venue, bucket, tier, layer, activePanelId, chainOptions, regionOptions, kindOptions, venueOptions, bucketOptions, tierOptions]);
+  }, [chain, region, kind, venue, bucket, tier, fees, layer, activePanelId, chainOptions, regionOptions, kindOptions, venueOptions, bucketOptions, tierOptions]);
 
   const fallbackChain = chainOptions[0]?.value ?? null;
   const fallbackRegion = regionOptions[0]?.value ?? null;
@@ -449,6 +474,8 @@ export function BenchmarkBody({
   const effectiveVenue = venueOptions.length > 0 ? (venue ?? fallbackVenue) : null;
   const effectiveBucket = bucketOptions.length > 0 ? (bucket ?? fallbackBucket) : null;
   const effectiveTier = tierOptions.length > 0 ? tierParam(tier ?? headlineTier) : null;
+  const effectiveFees: FeesView | null =
+    feesRemovable && fees === "removed" ? "removed" : null;
 
   // Cross-dimension filtering: hide venue tabs with no data for the active
   // chain, and hide chain tabs with no data for the active venue.
@@ -483,7 +510,12 @@ export function BenchmarkBody({
   // tab still works, numbers stay cross-dimension) and may retry on the
   // next flip.
   const [variantMap, setVariantMap] = useState<Record<string, Benchmark>>(variants);
-  const activeKey = variantKey(effectiveChain, effectiveRegion, effectiveKind, effectiveVenue, effectiveTier, effectiveBucket);
+  const [unpublishedKeys, setUnpublishedKeys] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
+  const [unpublishedRetry, setUnpublishedRetry] = useState(0);
+  const activeKey = variantKey(effectiveChain, effectiveRegion, effectiveKind, effectiveVenue, effectiveTier, effectiveBucket, effectiveFees);
+  const includedKey = variantKey(effectiveChain, effectiveRegion, effectiveKind, effectiveVenue, effectiveTier, effectiveBucket);
   const aggregateBench =
     variants[variantKey(null, null, null, null, null)] ?? Object.values(variants)[0];
   const isAllSelection =
@@ -492,7 +524,8 @@ export function BenchmarkBody({
     (!effectiveKind || effectiveKind === "all") &&
     (!effectiveVenue || effectiveVenue === "all") &&
     (!effectiveBucket || effectiveBucket === "all") &&
-    !effectiveTier;
+    !effectiveTier &&
+    !effectiveFees;
   useEffect(() => {
     if (variantMap[activeKey] || !aggregateBench) return;
     // The all/all/all selection IS the aggregate: derived at render time,
@@ -513,17 +546,39 @@ export function BenchmarkBody({
     if (!isAll(effectiveBucket)) qs.set("bucket", effectiveBucket!);
     if (effectiveTier) qs.set("tier", effectiveTier);
     let cancelled = false;
+    if (effectiveFees && !variantMap[includedKey]) {
+      fetch(`/api/bench/${aggregateBench.slug}/variant?${qs.toString()}`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((v: Benchmark | null) => {
+          if (!cancelled && v) {
+            setVariantMap((m) => (m[includedKey] ? m : { ...m, [includedKey]: v }));
+          }
+        })
+        .catch(() => {});
+    }
+    if (effectiveFees) qs.set("fees", effectiveFees);
+    let retryTimer: ReturnType<typeof setTimeout> | undefined;
     fetch(`/api/bench/${aggregateBench.slug}/variant?${qs.toString()}`)
-      .then((r) => (r.ok ? r.json() : null))
+      .then((r) => {
+        if (!cancelled && r.status === 404 && effectiveFees) {
+          setUnpublishedKeys((s) => new Set(s).add(activeKey));
+          retryTimer = setTimeout(
+            () => setUnpublishedRetry((n) => n + 1),
+            UNPUBLISHED_RETRY_MS,
+          );
+        }
+        return r.ok ? r.json() : null;
+      })
       .then((v: Benchmark | null) => {
         if (!cancelled && v) setVariantMap((m) => ({ ...m, [activeKey]: v }));
       })
       .catch(() => {});
     return () => {
       cancelled = true;
+      clearTimeout(retryTimer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeKey]);
+  }, [activeKey, unpublishedRetry]);
 
   // Background prefetch of the adjacent variants: every chain at the
   // current region/kind plus every region at the current chain. The
@@ -537,20 +592,24 @@ export function BenchmarkBody({
   useEffect(() => {
     if (!aggregateBench) return;
     const isAll = (v: string | null) => !v || v === "all";
-    type Combo = [string | null, string | null, string | null, string | null, string | null, string | null];
+    type Combo = [string | null, string | null, string | null, string | null, string | null, string | null, FeesView | null];
+    const otherFees: FeesView | null = effectiveFees ? null : "removed";
     const combos: Combo[] = [
-      ...chainOptions.map((c) => [c.value, effectiveRegion, effectiveKind, effectiveVenue, effectiveTier, effectiveBucket] as Combo),
-      ...regionOptions.map((r) => [effectiveChain, r.value, effectiveKind, effectiveVenue, effectiveTier, effectiveBucket] as Combo),
-      ...venueOptions.map((v) => [effectiveChain, effectiveRegion, effectiveKind, v.value, effectiveTier, effectiveBucket] as Combo),
-      ...tierOptions.map((t) => [effectiveChain, effectiveRegion, effectiveKind, effectiveVenue, tierParam(t.value), effectiveBucket] as Combo),
-      ...bucketOptions.map((b) => [effectiveChain, effectiveRegion, effectiveKind, effectiveVenue, effectiveTier, b.value] as Combo),
+      ...chainOptions.map((c) => [c.value, effectiveRegion, effectiveKind, effectiveVenue, effectiveTier, effectiveBucket, effectiveFees] as Combo),
+      ...regionOptions.map((r) => [effectiveChain, r.value, effectiveKind, effectiveVenue, effectiveTier, effectiveBucket, effectiveFees] as Combo),
+      ...venueOptions.map((v) => [effectiveChain, effectiveRegion, effectiveKind, v.value, effectiveTier, effectiveBucket, effectiveFees] as Combo),
+      ...tierOptions.map((t) => [effectiveChain, effectiveRegion, effectiveKind, effectiveVenue, tierParam(t.value), effectiveBucket, effectiveFees] as Combo),
+      ...bucketOptions.map((b) => [effectiveChain, effectiveRegion, effectiveKind, effectiveVenue, effectiveTier, b.value, effectiveFees] as Combo),
+      ...(feesRemovable
+        ? [[effectiveChain, effectiveRegion, effectiveKind, effectiveVenue, effectiveTier, effectiveBucket, otherFees] as Combo]
+        : []),
     ];
     let cancelled = false;
     const timers: ReturnType<typeof setTimeout>[] = [];
     let i = 0;
-    for (const [c, r, k, vn, t, bk] of combos) {
-      if (isAll(c) && isAll(r) && isAll(k) && isAll(vn) && isAll(bk) && !t) continue;
-      const key = variantKey(c, r, k, vn, t, bk);
+    for (const [c, r, k, vn, t, bk, fv] of combos) {
+      if (isAll(c) && isAll(r) && isAll(k) && isAll(vn) && isAll(bk) && !t && !fv) continue;
+      const key = variantKey(c, r, k, vn, t, bk, fv);
       if (variantMap[key]) continue;
       const qs = new URLSearchParams();
       if (!isAll(c)) qs.set("chain", c!);
@@ -559,6 +618,7 @@ export function BenchmarkBody({
       if (!isAll(vn)) qs.set("venue", vn!);
       if (!isAll(bk)) qs.set("bucket", bk!);
       if (t) qs.set("tier", t);
+      if (fv) qs.set("fees", fv);
       timers.push(
         setTimeout(() => {
           if (cancelled) return;
@@ -580,18 +640,31 @@ export function BenchmarkBody({
     // variantMap intentionally omitted: presence is re-checked inside the
     // functional setState, a duplicate in-flight fetch is harmless.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [effectiveChain, effectiveRegion, effectiveKind, effectiveVenue, effectiveTier, aggregateBench]);
+  }, [effectiveChain, effectiveRegion, effectiveKind, effectiveVenue, effectiveTier, effectiveFees, aggregateBench]);
 
-  const benchmark = variantMap[activeKey] ?? aggregateBench;
+  const {
+    benchmark,
+    shownFees,
+    pending: variantPending,
+    unpublished: feesUnpublished,
+    placeholderNote,
+  } = shownVariant({
+    active: variantMap[activeKey],
+    included: variantMap[includedKey],
+    aggregate: aggregateBench,
+    fees: effectiveFees,
+    unpublished: unpublishedKeys.has(activeKey),
+    isAllSelection,
+  });
+  if (
+    activePanelId &&
+    shownFees &&
+    !resolvePanelView(activePanelId, benchmark.metricPanels ?? [])
+  ) {
+    setActivePanelId(null);
+  }
   // Chain RPC pages put their endpoint list above the ledger, see below.
   const endpointsFirst = benchmark.category === "RPCs";
-  // True while the selected chain/region/kind variant is still loading:
-  // the page shows the aggregate as a placeholder, which without a
-  // visible signal reads as "the filter does nothing" (cold variant
-  // fetches take 5-15s+). Dim the data sections and say so. The
-  // all/all/all selection renders the aggregate by definition, so it is
-  // never pending.
-  const variantPending = !variantMap[activeKey] && !isAllSelection;
 
   // L1/L2 layer counts. When both > 0 the bench mixes L1 and L2 chains
   // and we render a top-level Layer toggle that filters the entire page
@@ -872,6 +945,7 @@ export function BenchmarkBody({
     effectiveRegion,
     effectiveKind,
     effectiveTier ? tierOptions.find((t) => t.value === effectiveTier)?.label ?? effectiveTier : null,
+    effectiveFees ? "Fees removed" : null,
   ]
     .filter((v): v is string => !!v && v !== "all")
     .join(" · ");
@@ -955,8 +1029,17 @@ export function BenchmarkBody({
         regionOptions.length > 0 ||
         kindOptions.length > 0 ||
         tierOptions.length > 0 ||
+        feesRemovable ||
         filteredVenueOptions.length > 0) && (
         <div className="mt-8 space-y-3">
+          {feesRemovable && (
+            <DimensionRow
+              label="Trading fees"
+              options={FEES_OPTIONS}
+              selected={fees}
+              onSelect={handleFeesSelect}
+            />
+          )}
           {tierOptions.length > 0 && (
             <DimensionRow
               label={dimensionLabels?.tier ?? "Access"}
@@ -969,7 +1052,7 @@ export function BenchmarkBody({
                     o.value,
                     summarize(
                       variantMap[
-                        variantKey(effectiveChain, effectiveRegion, effectiveKind, effectiveVenue, tierParam(o.value), effectiveBucket)
+                        variantKey(effectiveChain, effectiveRegion, effectiveKind, effectiveVenue, tierParam(o.value), effectiveBucket, effectiveFees)
                       ],
                     ),
                   ])
@@ -999,7 +1082,7 @@ export function BenchmarkBody({
                   .map((o) => [
                     o.value,
                     summarize(
-                      variantMap[variantKey(effectiveChain, effectiveRegion, effectiveKind, o.value, effectiveTier, effectiveBucket)],
+                      variantMap[variantKey(effectiveChain, effectiveRegion, effectiveKind, o.value, effectiveTier, effectiveBucket, effectiveFees)],
                     ),
                   ])
                   .filter(([, v]) => v !== null) as [string, ChainMeta][]
@@ -1017,7 +1100,7 @@ export function BenchmarkBody({
                   .map((o) => [
                     o.value,
                     summarize(
-                      variantMap[variantKey(effectiveChain, effectiveRegion, effectiveKind, effectiveVenue, effectiveTier, o.value)],
+                      variantMap[variantKey(effectiveChain, effectiveRegion, effectiveKind, effectiveVenue, effectiveTier, o.value, effectiveFees)],
                     ),
                   ])
                   .filter(([, v]) => v !== null) as [string, ChainMeta][]
@@ -1035,7 +1118,7 @@ export function BenchmarkBody({
                   .map((o) => [
                     o.value,
                     summarize(
-                      variantMap[variantKey(effectiveChain, effectiveRegion, o.value, effectiveVenue, effectiveTier, effectiveBucket)],
+                      variantMap[variantKey(effectiveChain, effectiveRegion, o.value, effectiveVenue, effectiveTier, effectiveBucket, effectiveFees)],
                     ),
                   ])
                   .filter(([, v]) => v !== null) as [string, ChainMeta][]
@@ -1052,7 +1135,7 @@ export function BenchmarkBody({
                 filteredChainOptions
                   .map((o) => [
                     o.value,
-                    summarize(variantMap[variantKey(o.value, effectiveRegion, effectiveKind, effectiveVenue, effectiveTier, effectiveBucket)]),
+                    summarize(variantMap[variantKey(o.value, effectiveRegion, effectiveKind, effectiveVenue, effectiveTier, effectiveBucket, effectiveFees)]),
                   ])
                   .filter(([, v]) => v !== null) as [string, ChainMeta][]
               )}
@@ -1068,7 +1151,7 @@ export function BenchmarkBody({
                 regionOptions
                   .map((o) => [
                     o.value,
-                    summarize(variantMap[variantKey(effectiveChain, o.value, effectiveKind, effectiveVenue, effectiveTier, effectiveBucket)]),
+                    summarize(variantMap[variantKey(effectiveChain, o.value, effectiveKind, effectiveVenue, effectiveTier, effectiveBucket, effectiveFees)]),
                   ])
                   .filter(([, v]) => v !== null) as [string, ChainMeta][]
               )}
@@ -1082,11 +1165,17 @@ export function BenchmarkBody({
               onSelect={setChartRegion}
             />
           )}
-          {variantPending && (
+          {variantPending && !feesUnpublished && (
             <div className="flex items-center gap-2 text-[12px] text-ink-muted" role="status">
               <span className="inline-block h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-              Loading {pendingLabel || "filtered"} data, showing the
-              all-chains aggregate meanwhile
+              Loading {pendingLabel || "filtered"} data, showing{" "}
+              {placeholderNote} meanwhile
+            </div>
+          )}
+          {feesUnpublished && (
+            <div className="text-[12px] text-ink-muted" role="status">
+              Figures with trading fees removed are not published yet.
+              Showing {placeholderNote}; the page checks again every minute.
             </div>
           )}
         </div>
@@ -1228,6 +1317,8 @@ export function BenchmarkBody({
                     }
                     chain={effectiveChain ?? undefined}
                     tier={effectiveTier ?? undefined}
+                    fees={shownFees ?? undefined}
+                    key={shownFees ?? "included"}
                     excluded={excluded}
                     onToggleExclude={toggleExclude}
                     onResetExcluded={resetExcluded}

@@ -23,6 +23,12 @@ const DIM_LABEL: Record<ScopeDim, string> = {
  *  Same as the bench detail page and the share-card server handler. */
 const ALL_VALUE = "all";
 
+function pickOrder(r: Benchmark["results"][number]): number {
+  const measured = Number.isFinite(r.ms.p50) && r.ms.p50 !== 0;
+  if (!measured) return 2;
+  return r.unrankedLabel ? 1 : 0;
+}
+
 type Template = {
   id: string;
   label: string;
@@ -113,7 +119,6 @@ export function ShareSection({ slug, title, benchmark, chain }: Props) {
         .map((p) => ({ value: p.id, label: p.label })),
     [benchmark],
   );
-  const hasPanels = panelOptions.length > 0;
 
   // Scope state: one entry per SCOPE_DIMS. Default is "all" per dim.
   // Re-seeded from window.location every time the modal opens, so the
@@ -130,6 +135,8 @@ export function ShareSection({ slug, title, benchmark, chain }: Props) {
   // means "main spec metric" (no ?view= param). Re-seeded on open like
   // the scope dropdowns.
   const [panelView, setPanelView] = useState<string>(ALL_VALUE);
+  const [feesRemoved, setFeesRemoved] = useState(false);
+  const pickerPanels = feesRemoved ? [] : panelOptions;
   // Re-seed scope from URL on each open transition. Uses the "adjust
   // state during render on transition" pattern instead of a useEffect
   // (react-hooks/set-state-in-effect flags synchronous setState calls
@@ -161,8 +168,12 @@ export function ShareSection({ slug, title, benchmark, chain }: Props) {
         }
       }
       setScope(next);
+      const removed = url.searchParams.get("fees") === "removed";
+      setFeesRemoved(removed);
       const urlView = url.searchParams.get("view");
-      if (urlView && panelOptions.some((o) => o.value === urlView)) {
+      const knownView =
+        removed || panelOptions.some((o) => o.value === urlView);
+      if (urlView && knownView) {
         setPanelView(urlView);
       } else {
         setPanelView(ALL_VALUE);
@@ -189,9 +200,11 @@ export function ShareSection({ slug, title, benchmark, chain }: Props) {
     () =>
       [...benchmark.results]
         .sort(
-          benchmark.higherIsBetter
-            ? (a, b) => b.ms.p50 - a.ms.p50
-            : (a, b) => a.ms.p50 - b.ms.p50,
+          (a, b) =>
+            pickOrder(a) - pickOrder(b) ||
+            (benchmark.higherIsBetter
+              ? b.ms.p50 - a.ms.p50
+              : a.ms.p50 - b.ms.p50),
         )
         .map((r) => ({ slug: r.slug, name: r.name })),
     [benchmark]
@@ -250,6 +263,7 @@ export function ShareSection({ slug, title, benchmark, chain }: Props) {
     if (panelView && panelView !== ALL_VALUE) {
       dimParams.push(`&view=${encodeURIComponent(panelView)}`);
     }
+    if (feesRemoved) dimParams.push("&fees=removed");
     // Mirror the active site theme so the exported PNG matches what the
     // user is looking at. SSR can't read the dark state - default to light
     // server-side, the client re-renders with `dark` once mounted.
@@ -337,7 +351,7 @@ export function ShareSection({ slug, title, benchmark, chain }: Props) {
           Pick a layout and download a 1200×630 PNG ready for Twitter, Reddit, LinkedIn or any OG-card embed. Same data, same colors as this dashboard.
         </p>
 
-        {(hasAnyDim || hasPanels) && (
+        {(hasAnyDim || pickerPanels.length > 0) && (
           <ScopePicker
             dimOptions={dimOptions}
             scope={scope}
@@ -351,10 +365,10 @@ export function ShareSection({ slug, title, benchmark, chain }: Props) {
                 venue: ALL_VALUE,
                 kind: ALL_VALUE,
               });
-              setPanelView(ALL_VALUE);
+              if (!feesRemoved) setPanelView(ALL_VALUE);
             }}
             slug={slug}
-            panelOptions={panelOptions}
+            panelOptions={pickerPanels}
             panelView={panelView}
             onPanelChange={setPanelView}
             mainLabel={benchmark.panelMainLabel ?? benchmark.metric}
