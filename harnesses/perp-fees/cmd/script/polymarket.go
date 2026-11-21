@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -35,8 +36,21 @@ type polymarketBook struct {
 
 type polymarketTickers []struct {
 	Symbol      string `json:"symbol"`
-	MidPrice    string `json:"mid_price"`    // exchange-published mid (robust vs outlier top-of-book orders)
 	FundingRate string `json:"funding_rate"` // per 1h interval, decimal
+}
+
+var errPolymarketBadTop = errors.New("bad_top_of_book")
+
+func polymarketBookMid(book polymarketBook) (float64, error) {
+	if len(book.Bids) == 0 || len(book.Asks) == 0 {
+		return 0, errPolymarketBadTop
+	}
+	bestBid, errBid := strconv.ParseFloat(book.Bids[0][0], 64)
+	bestAsk, errAsk := strconv.ParseFloat(book.Asks[0][0], 64)
+	if errBid != nil || errAsk != nil || bestBid <= 0 || bestAsk < bestBid {
+		return 0, errPolymarketBadTop
+	}
+	return (bestBid + bestAsk) / 2, nil
 }
 
 func fetchPolymarket(v VenueConfig) PerpSample {
@@ -64,29 +78,21 @@ func fetchPolymarket(v VenueConfig) PerpSample {
 		return s
 	}
 
-	// 2) Tickers — mid_price used as spread reference (robust vs outlier
-	// top-of-book orders that inflate (bestBid+bestAsk)/2), plus funding.
+	// 2) Tickers — funding only. The ticker mid_price is a separate
+	// snapshot that lags the book and can sit above the best ask.
 	var tickers polymarketTickers
 	if err := polymarketGet(client, polymarketBase+"/tickers", &tickers); err != nil {
 		s.Err = fmt.Sprintf("tickers: %v", err)
 		s.FetchLatencyMs = time.Since(start).Milliseconds()
 		return s
 	}
-	var mid float64
 	for _, t := range tickers {
 		if t.Symbol == v.Asset+"-USD" {
-			mid, _ = strconv.ParseFloat(t.MidPrice, 64)
 			rate, _ := strconv.ParseFloat(t.FundingRate, 64)
 			s.FundingRatePerHrBps = rate * 10000
 			break
 		}
 	}
-	if mid <= 0 {
-		s.Err = "no_mid_price"
-		s.FetchLatencyMs = time.Since(start).Milliseconds()
-		return s
-	}
-	s.MidPrice = mid
 
 	// 3) Fee schedule — base (tier 0) taker rate.
 	var fees polymarketFees
@@ -103,18 +109,20 @@ func fetchPolymarket(v VenueConfig) PerpSample {
 		}
 	}
 
-	// 4) Orderbook walk using the ticker mid_price as reference.
+	// 4) Orderbook walk, mid taken from the same book.
 	var book polymarketBook
 	if err := polymarketGet(client, fmt.Sprintf("%s/book?instrument_id=%d&depth=500", polymarketBase, instrumentID), &book); err != nil {
 		s.Err = fmt.Sprintf("orderbook: %v", err)
 		s.FetchLatencyMs = time.Since(start).Milliseconds()
 		return s
 	}
-	if len(book.Asks) == 0 {
-		s.Err = "empty_orderbook"
+	mid, err := polymarketBookMid(book)
+	if err != nil {
+		s.Err = err.Error()
 		s.FetchLatencyMs = time.Since(start).Milliseconds()
 		return s
 	}
+	s.MidPrice = mid
 
 	levels := make([]bookLevel, 0, len(book.Asks))
 	for _, a := range book.Asks {
