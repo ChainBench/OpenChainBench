@@ -23,6 +23,12 @@ const DIM_LABEL: Record<ScopeDim, string> = {
  *  Same as the bench detail page and the share-card server handler. */
 const ALL_VALUE = "all";
 
+function pickOrder(r: Benchmark["results"][number]): number {
+  const measured = Number.isFinite(r.ms.p50) && r.ms.p50 !== 0;
+  if (!measured) return 2;
+  return r.unrankedLabel ? 1 : 0;
+}
+
 type Template = {
   id: string;
   label: string;
@@ -194,9 +200,11 @@ export function ShareSection({ slug, title, benchmark, chain }: Props) {
     () =>
       [...benchmark.results]
         .sort(
-          benchmark.higherIsBetter
-            ? (a, b) => b.ms.p50 - a.ms.p50
-            : (a, b) => a.ms.p50 - b.ms.p50,
+          (a, b) =>
+            pickOrder(a) - pickOrder(b) ||
+            (benchmark.higherIsBetter
+              ? b.ms.p50 - a.ms.p50
+              : a.ms.p50 - b.ms.p50),
         )
         .map((r) => ({ slug: r.slug, name: r.name })),
     [benchmark]

@@ -18,20 +18,40 @@ import { SLUG_RE } from "@/lib/slug";
  *  zero-value placeholders blow up the bar layout (NaN heights from a
  *  divide-by-zero maxP50, ratios > 1) which makes Satori reject the JSX
  *  with an opaque "Spread syntax" error mid-stream. */
-function sortByP50(b: Benchmark): ProviderResult[] {
-  const measured = b.results.filter(
+function measuredRows(b: Benchmark): ProviderResult[] {
+  return b.results.filter(
     (r): r is ProviderResult =>
       !!r &&
       !!r.ms &&
       Number.isFinite(r.ms.p50) &&
       r.ms.p50 !== 0,
   );
-  return [...rankedRows(measured)]
-    .sort(
-      b.higherIsBetter
-        ? (a, c) => c.ms.p50 - a.ms.p50
-        : (a, c) => a.ms.p50 - c.ms.p50,
-    );
+}
+
+function byP50(b: Benchmark) {
+  return b.higherIsBetter
+    ? (a: ProviderResult, c: ProviderResult) => c.ms.p50 - a.ms.p50
+    : (a: ProviderResult, c: ProviderResult) => a.ms.p50 - c.ms.p50;
+}
+
+function sortByP50(b: Benchmark): ProviderResult[] {
+  return [...rankedRows(measuredRows(b))].sort(byP50(b));
+}
+
+function sortRankedFirst(b: Benchmark): ProviderResult[] {
+  const sort = byP50(b);
+  return [...measuredRows(b)].sort(
+    (a, c) =>
+      Number(Boolean(a.unrankedLabel)) - Number(Boolean(c.unrankedLabel)) ||
+      sort(a, c),
+  );
+}
+
+function rankLabel(sorted: ProviderResult[], row: ProviderResult): string {
+  const rank = sorted.findIndex((r) => r.slug === row.slug) + 1;
+  return rank > 0
+    ? `Rank ${String(rank).padStart(2, "0")}`
+    : (row.unrankedLabel ?? "Not ranked");
 }
 
 /** True when every ranked row reads one instant gauge (p50 = p90 = p99):
@@ -1117,7 +1137,7 @@ async function renderSnapshot(
   // Cap series to avoid unreadable charts and Satori element-count limits
   // on large benches (e.g. hyperliquid-frontends has 104 providers).
   const MAX_SNAPSHOT_SERIES = 16;
-  const sorted = sortByP50(benchmark);
+  const sorted = sortRankedFirst(benchmark);
   const seriesList = sorted
     .map((r) => ({
       slug: r.slug,
@@ -1451,7 +1471,7 @@ async function renderHeadline(
           >
             {isFastest
               ? `ahead of ${Math.max(0, sorted.length - 1)} other product${sorted.length === 2 ? "" : "s"}`
-              : `${rank} of ${sorted.length} providers · field min ${winner ? fmtUnit(sorted[0].ms.p50, benchmark.unit) : "-"}`}
+              : `${rank > 0 ? `${rank} of ${sorted.length} providers` : (winner?.unrankedLabel ?? "Not ranked")} · field min ${winner && sorted[0] ? fmtUnit(sorted[0].ms.p50, benchmark.unit) : "-"}`}
             {winner && !isGaugeBench(benchmark) && ` · p99 ${fmtUnit(winner.ms.p99, benchmark.unit)}`}
           </div>
         </div>
@@ -1480,8 +1500,6 @@ async function renderCompare(
   const aColor = colors.get(a.slug) ?? INK_SOFT;
   const bColor = colors.get(b.slug) ?? INK_SOFT;
 
-  const aRank = sorted.findIndex((r) => r.slug === a.slug) + 1;
-  const bRank = sorted.findIndex((r) => r.slug === b.slug) + 1;
 
   const delta = b.ms.p50 - a.ms.p50;
   const deltaPct = a.ms.p50 !== 0 ? (delta / a.ms.p50) * 100 : 0;
@@ -1522,7 +1540,7 @@ async function renderCompare(
           >
             {/* Left */}
             <ComparePane
-              rank={aRank}
+              rankLabel={rankLabel(sorted, a)}
               slug={a.slug}
               name={a.name}
               color={aColor}
@@ -1597,7 +1615,7 @@ async function renderCompare(
             </div>
             {/* Right */}
             <ComparePane
-              rank={bRank}
+              rankLabel={rankLabel(sorted, b)}
               slug={b.slug}
               name={b.name}
               color={bColor}
@@ -1616,7 +1634,7 @@ async function renderCompare(
 }
 
 function ComparePane({
-  rank,
+  rankLabel,
   slug,
   name,
   color,
@@ -1626,7 +1644,7 @@ function ComparePane({
   n,
   valueLabel = "p50",
 }: {
-  rank: number;
+  rankLabel: string;
   slug: string;
   name: string;
   color: string;
@@ -1659,7 +1677,7 @@ function ComparePane({
           fontWeight: 600,
         }}
       >
-        Rank {String(rank).padStart(2, "0")}
+        {rankLabel}
       </div>
       <div
         style={{
