@@ -61,15 +61,21 @@ type gmxMarketInfo struct {
 }
 
 type gmxMarketsRESTItem struct {
-	MarketToken                       string `json:"marketToken"`
-	IndexToken                        string `json:"indexToken"`
-	IsListed                          bool   `json:"isListed"`
-	LongToken                         string `json:"longToken"`
-	ShortToken                        string `json:"shortToken"`
-	FundingFactorPerSecondLong        string `json:"fundingFactorPerSecondLong"`
-	FundingFactorPerSecondShort       string `json:"fundingFactorPerSecondShort"`
-	BorrowingFactorPerSecondForLongs  string `json:"borrowingFactorPerSecondForLongs"`
-	BorrowingFactorPerSecondForShorts string `json:"borrowingFactorPerSecondForShorts"`
+	MarketToken     string `json:"marketToken"`
+	IndexToken      string `json:"indexToken"`
+	IsListed        bool   `json:"isListed"`
+	LongToken       string `json:"longToken"`
+	ShortToken      string `json:"shortToken"`
+	FundingRateLong string `json:"fundingRateLong"`
+}
+
+const hoursPerYear = 365 * 24
+
+func gmxFundingPerHourBps(annualRate string) (float64, error) {
+	if _, ok := new(big.Int).SetString(annualRate, 10); !ok {
+		return 0, fmt.Errorf("bad fundingRateLong %q", truncate(annualRate, 80))
+	}
+	return factor1e30ToBps(annualRate) / hoursPerYear, nil
 }
 
 type gmxMarketsREST struct {
@@ -276,7 +282,11 @@ func fetchGMX(v VenueConfig, rpcURL string) (s PerpSample) {
 		s.Err = fmt.Sprintf("markets_info: %v", err)
 		return s
 	}
-	s.FundingRatePerHrBps = factor1e30ToBps(info.FundingFactorPerSecondLong) * 3600
+	s.FundingRatePerHrBps, err = gmxFundingPerHourBps(info.FundingRateLong)
+	if err != nil {
+		s.Err = fmt.Sprintf("markets_info: %v", err)
+		return s
+	}
 
 	prices, err := gmxReadMarketPrices(client, info)
 	if err != nil {

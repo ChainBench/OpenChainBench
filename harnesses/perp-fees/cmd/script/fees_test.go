@@ -209,6 +209,26 @@ func TestFactor1e30ToBps(t *testing.T) {
 	}
 }
 
+func TestGMXFundingPerHourBps(t *testing.T) {
+	cases := []struct {
+		raw     string
+		want    float64
+		wantErr bool
+	}{
+		{"-154805582986790877669024357207", -0.17671870203, false},
+		{"137303400000000000000000000000", 0.15673904110, false},
+		{"", 0, true},
+		{"1.5e29", 0, true},
+	}
+	for _, c := range cases {
+		got, err := gmxFundingPerHourBps(c.raw)
+		if (err != nil) != c.wantErr || abs(got-c.want) > 1e-9 {
+			t.Errorf("gmxFundingPerHourBps(%q) = %v, %v; want %v, err %v",
+				c.raw, got, err, c.want, c.wantErr)
+		}
+	}
+}
+
 // ── Gains fee math ─────────────────────────────────────────────────────────
 
 func TestGainsPToBps(t *testing.T) {
