@@ -16,6 +16,7 @@ import {
   VENUE_TYPE_PARAM,
   parseVenueTypeView,
   scopeToVenueType,
+  venueScopeLabel,
 } from "@/lib/venue-type-filter";
 
 /** Best → worst, depending on whether higher numbers are better. Drops
@@ -696,6 +697,7 @@ export async function GET(
   if (kindOption) labelParts.push(kindOption.label);
   if (tierOption) labelParts.push(tierOption.label);
   if (feesRemovedBenchmark) labelParts.push("Fees removed");
+  if (venueView !== "all") labelParts.push(venueScopeLabel(venueView));
   const chainLabel = labelParts.length > 0 ? labelParts.join(" · ") : null;
 
   const rawTemplate = url.searchParams.get("template");

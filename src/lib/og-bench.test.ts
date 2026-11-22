@@ -20,7 +20,7 @@ const { loadOgBench } = await import("./og-bench");
 test.each([
   ["dex", "hyperliquid"],
   [null, "binance"],
-])("the share card scoped to %p names %p", async (raw, want) => {
+])("the OG image scoped to %p leads with %p", async (raw, want) => {
   const { bench } = await loadOgBench("perp-fees", raw);
   expect(bench ? leader(bench)?.slug : undefined).toBe(want);
 });

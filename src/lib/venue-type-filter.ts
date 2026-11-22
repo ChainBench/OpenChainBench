@@ -4,21 +4,22 @@ export type VenueTypeView = "all" | ProviderVenueType;
 
 export const VENUE_TYPE_PARAM = "venue_type";
 
-type Typed = { venueType?: ProviderVenueType };
+type VenueTyped = { venueType?: ProviderVenueType };
 
-type VenueTypeCounts = { all: number; dex: number; cex: number };
+type VenueTypeCounts = Record<VenueTypeView, number>;
 
 export function venueTypeQuery(venueType?: ProviderVenueType): string {
   return venueType ? `?${VENUE_TYPE_PARAM}=${venueType}` : "";
 }
 
-export function scopeNote(
-  chain?: string,
-  venueType?: ProviderVenueType,
-): string {
+export function venueScopeLabel(view: VenueTypeView = "all"): string {
+  return view === "all" ? "" : `${view.toUpperCase()} venues only`;
+}
+
+export function scopeNote(chain?: string, view?: VenueTypeView): string {
   const parts = [
     chain ? `filtered to ${chain}` : "",
-    venueType ? `${venueType.toUpperCase()} venues only` : "",
+    venueScopeLabel(view),
   ].filter(Boolean);
   return parts.length ? ` (${parts.join(", ")})` : "";
 }
@@ -27,7 +28,7 @@ export function parseVenueTypeView(raw: string | null): VenueTypeView {
   return raw === "dex" || raw === "cex" ? raw : "all";
 }
 
-export function venueTypeCounts(results: readonly Typed[]): VenueTypeCounts {
+export function venueTypeCounts(results: readonly VenueTyped[]): VenueTypeCounts {
   let dex = 0;
   let cex = 0;
   for (const r of results) {
@@ -44,7 +45,7 @@ export function shownVenueTypeView(
   return counts.dex + counts.cex > 0 ? picked : "all";
 }
 
-export function filterByVenueType<T extends Typed>(
+export function filterByVenueType<T extends VenueTyped>(
   results: readonly T[],
   view: VenueTypeView,
 ): T[] {

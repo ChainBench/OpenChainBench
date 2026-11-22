@@ -6,7 +6,10 @@ import type { Benchmark } from "@/types/benchmark";
 import { Hint } from "@/components/hint";
 import {
   VENUE_TYPE_PARAM,
+  filterByVenueType,
   parseVenueTypeView,
+  shownVenueTypeView,
+  venueTypeCounts,
   type VenueTypeView,
 } from "@/lib/venue-type-filter";
 
@@ -176,7 +179,12 @@ export function ShareSection({ slug, title, benchmark, chain }: Props) {
       setScope(next);
       const removed = url.searchParams.get("fees") === "removed";
       setFeesRemoved(removed);
-      setVenueView(parseVenueTypeView(url.searchParams.get(VENUE_TYPE_PARAM)));
+      setVenueView(
+        shownVenueTypeView(
+          parseVenueTypeView(url.searchParams.get(VENUE_TYPE_PARAM)),
+          venueTypeCounts(benchmark.results),
+        ),
+      );
       const urlView = url.searchParams.get("view");
       const knownView =
         removed || panelOptions.some((o) => o.value === urlView);
@@ -205,7 +213,7 @@ export function ShareSection({ slug, title, benchmark, chain }: Props) {
 
   const orderedProviders = useMemo(
     () =>
-      [...benchmark.results]
+      filterByVenueType(benchmark.results, venueView)
         .sort(
           (a, b) =>
             pickOrder(a) - pickOrder(b) ||
@@ -214,7 +222,7 @@ export function ShareSection({ slug, title, benchmark, chain }: Props) {
               : a.ms.p50 - b.ms.p50),
         )
         .map((r) => ({ slug: r.slug, name: r.name })),
-    [benchmark]
+    [benchmark, venueView]
   );
 
   // Snapshot: multi-select, default = all
@@ -234,6 +242,15 @@ export function ShareSection({ slug, title, benchmark, chain }: Props) {
   const [pairB, setPairB] = useState<string | null>(
     () => orderedProviders[1]?.slug ?? null
   );
+
+  const [pickedView, setPickedView] = useState(venueView);
+  if (pickedView !== venueView) {
+    setPickedView(venueView);
+    setMultiSelected(new Set(orderedProviders.map((p) => p.slug)));
+    setSingleSelected(orderedProviders[0]?.slug ?? null);
+    setPairA(orderedProviders[0]?.slug ?? null);
+    setPairB(orderedProviders[1]?.slug ?? null);
+  }
 
   function toggleMulti(slug: string) {
     setMultiSelected((prev) => {

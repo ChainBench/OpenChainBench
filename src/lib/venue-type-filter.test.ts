@@ -3,6 +3,7 @@ import { overlayEditorial } from "./spec";
 import { SpecSchema } from "./spec-schema";
 import {
   parseVenueTypeView,
+  scopeNote,
   scopeToVenueType,
   shownVenueTypeView,
   venueTypeCounts,
@@ -50,7 +51,19 @@ test.each<[string | null, VenueTypeView]>([
 test.each<[VenueTypeView, number, VenueTypeView]>([
   ["dex", 2, "dex"],
   ["dex", 0, "all"],
-])("a %p pick on a board with %p typed rows shows %p", (picked, typed, want) => {
-  const counts = { all: 3, dex: typed, cex: 0 };
-  expect(shownVenueTypeView(picked, counts)).toBe(want);
+])(
+  "a %p pick on a board with %p typed rows shows %p",
+  (picked, typed, want) => {
+    const counts = { all: 3, dex: typed, cex: 0 };
+    expect(shownVenueTypeView(picked, counts)).toBe(want);
+  },
+);
+
+test.each<[string | undefined, VenueTypeView | undefined, string]>([
+  [undefined, "all", ""],
+  [undefined, undefined, ""],
+  [undefined, "cex", " (CEX venues only)"],
+  ["Solana", "dex", " (filtered to Solana, DEX venues only)"],
+])("scopeNote(%p, %p) is %p", (chain, view, note) => {
+  expect(scopeNote(chain, view)).toBe(note);
 });

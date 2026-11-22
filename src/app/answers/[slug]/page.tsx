@@ -26,7 +26,11 @@ import {
 import { PERSON_ID } from "@/lib/hub-jsonld";
 import { capDescription, capSnippet } from "@/lib/seo-text";
 import { getBenchCreatedAt } from "@/lib/seo/bench-dates";
-import { benchOgImage, benchPagePath } from "@/lib/bench-links";
+import {
+  benchOgImage,
+  benchPagePath,
+  benchPageUrl,
+} from "@/lib/bench-links";
 import { scopeNote } from "@/lib/venue-type-filter";
 
 export const revalidate = 3600;
@@ -139,7 +143,7 @@ export default async function AnswerPage({
 
   const { bench } = ans;
   const url = `${SITE.url}/answers/${ans.slug}`;
-  const benchUrl = `${SITE.url}/benchmarks/${bench.slug}`;
+  const benchUrl = benchPageUrl(bench.slug);
   const benchHref = benchPagePath(bench.slug, ans.venue_type);
 
   // Render template placeholders against the live bench so the answer

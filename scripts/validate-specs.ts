@@ -115,9 +115,17 @@ function pushVenueScopeIssues(
   }
 }
 
+type SpecRefs = {
+  providers: Set<string>;
+  chains: Set<string>;
+  tiers: Set<string>;
+  rpc: boolean;
+  venueTyped: boolean;
+};
+
 async function lintAlternatives(
   issues: Issue[],
-  specRefs: ReadonlyMap<string, { venueTyped: boolean }>,
+  specRefs: ReadonlyMap<string, Pick<SpecRefs, "venueTyped">>,
 ): Promise<void> {
   const alternatives = await readYamlPages(ALTERNATIVES_DIR, issues);
   for (const { file, doc: alt } of alternatives) {
@@ -148,15 +156,6 @@ async function main() {
 
   const seenSlugs = new Map<string, string>();
   const seenNumbers = new Map<string, string>();
-  // Per spec, what its templates may reference; the answers pass below
-  // resolves an answer's placeholders against its bench.
-  type SpecRefs = {
-    providers: Set<string>;
-    chains: Set<string>;
-    tiers: Set<string>;
-    rpc: boolean;
-    venueTyped: boolean;
-  };
   const specRefs = new Map<string, SpecRefs>();
 
   for (const f of files) {

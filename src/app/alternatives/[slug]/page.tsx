@@ -13,7 +13,11 @@ import { SectionLabel, SummaryStat } from "@/components/summary-stat";
 import { SITE } from "@/data/site";
 import { CREATOR_PUBLISHER, CITABLE_JSON_URL, DATASET_LICENSE, HF_DATASET_URL } from "@/lib/dataset-jsonld";
 import { loadAlternative } from "@/lib/alternatives";
-import { benchOgImage, benchPageUrl } from "@/lib/bench-links";
+import {
+  benchOgImage,
+  benchPagePath,
+  benchPageUrl,
+} from "@/lib/bench-links";
 import { scopeNote } from "@/lib/venue-type-filter";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { buildBreadcrumbJsonLd, safeJsonLd } from "@/lib/jsonld";
@@ -136,8 +140,8 @@ export default async function AlternativePage({
   );
 
   const url = `${SITE.url}/alternatives/${alt.slug}`;
-  const benchUrl = `${SITE.url}/benchmarks/${bench.slug}`;
-  const benchHref = benchPageUrl(bench.slug, alt.venue_type);
+  const benchUrl = benchPageUrl(bench.slug);
+  const benchHref = benchPagePath(bench.slug, alt.venue_type);
 
   // Schema.org / Google Rich Results requires Dataset.description to be
   // between 50 and 5000 chars (Search Console flags "Invalid string

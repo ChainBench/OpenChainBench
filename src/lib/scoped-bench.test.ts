@@ -3,7 +3,10 @@ import { perpFeesBoard, perpFeesRow } from "@/test/benchmark";
 import type { ProviderResult } from "@/types/benchmark";
 
 const board = perpFeesBoard({
-  results: [perpFeesRow("hyperliquid", "dex"), perpFeesRow("binance", "cex")],
+  results: [
+    { ...perpFeesRow("hyperliquid", "dex"), sampleSize: 7 },
+    perpFeesRow("binance", "cex"),
+  ],
   sampleSize: 99,
 });
 
@@ -59,7 +62,7 @@ describe("DEX-only pages on perp-fees", () => {
       benchmark: "perp-fees",
       venue_type: "dex",
     });
-    expect(bench?.sampleSize).toBe(10);
+    expect(bench?.sampleSize).toBe(7);
   });
 
   test("a page without a venue type keeps every row", async () => {
