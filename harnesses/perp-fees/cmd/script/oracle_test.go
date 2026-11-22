@@ -49,7 +49,7 @@ func TestGainsImpactProbe(t *testing.T) {
 	if calls[0].Data != wantCumulLong {
 		t.Errorf("cumul long calldata\n got %s\nwant %s", calls[0].Data, wantCumulLong)
 	}
-	wantSkewShort := "0xb8482805" + abiUint64(1) + abiUint64(1) + abiUint64(0) +
+	wantSkewShort := "0xb8482805" + abiUint64(3) + abiUint64(1) + abiUint64(0) +
 		"0000000000000000000000000000000000000000000000004563918244f40000" + abiUint64(1)
 	if calls[3].Data != wantSkewShort {
 		t.Errorf("skew short calldata\n got %s\nwant %s", calls[3].Data, wantSkewShort)

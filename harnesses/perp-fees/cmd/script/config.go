@@ -12,7 +12,6 @@ type Config struct {
 	Interval    time.Duration
 	NotionalUSD float64
 	ArbitrumRPC string
-	BaseRPC     string
 }
 
 // venueDef pairs a venue with the assets it supports natively.
@@ -50,7 +49,7 @@ func loadConfig() *Config {
 		// maps asset → market address (gmxMarkets in gmx.go), verified
 		// against gmxinfra /markets/info.
 		{slug: "gmx", display: "GMX v2", assets: []string{"ETH", "BTC", "SOL", "HYPE"}},
-		// Gains v8 on Base — reads fees on-chain via Base RPC. Pair index
+		// Gains v8 on Arbitrum — reads fees on-chain via Arbitrum RPC. Pair index
 		// for each asset is discovered by scanning the diamond's
 		// `pairs(N)` slot for the asset/USD name match (findGainsPair in
 		// gains.go).
@@ -94,14 +93,10 @@ func loadConfig() *Config {
 		Interval:    5 * time.Minute,
 		NotionalUSD: notional,
 		ArbitrumRPC: "https://arb1.arbitrum.io/rpc",
-		BaseRPC:     "https://mainnet.base.org",
 		Venues:      venues,
 	}
 	if v := os.Getenv("RPC_ARBITRUM"); v != "" {
 		c.ArbitrumRPC = v
-	}
-	if v := os.Getenv("RPC_BASE"); v != "" {
-		c.BaseRPC = v
 	}
 
 	if v := os.Getenv("REFRESH_INTERVAL_SECONDS"); v != "" {

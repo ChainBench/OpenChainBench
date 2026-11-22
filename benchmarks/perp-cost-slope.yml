@@ -134,7 +134,7 @@ metric_panels:
 providers:
   - slug: gains
     name: Gains
-    tag: "Synthetic perps on Base, oracle-priced, impact read on-chain"
+    tag: "Synthetic perps on Arbitrum, oracle-priced, impact read on-chain"
     formula: "all_in_bps_tier{notional=1000000}[24h] / all_in_bps_tier{notional=1000}[24h]. Oracle-priced: open fee plus on-chain volume and skew impact at each size, mean of long and short."
     queries:
       p50: avg_over_time(perp_fees_all_in_bps_tier{venue="gains",notional="1000000"}[24h]) / ignoring(notional) avg_over_time(perp_fees_all_in_bps_tier{venue="gains",notional="1000"}[24h])

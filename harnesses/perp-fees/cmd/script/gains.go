@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-const gainsDiamond = "0x6cd5ac19a07518a8092eeffda4f1174c72704eeb"
+const gainsDiamond = "0xFF162c694eAA571f685030649814282eA457f169"
 
 const selPairs = "0xb91ac788"      // pairs(uint256)
 const selFees = "0x4acc79ed"       // fees(uint256)
@@ -264,7 +264,7 @@ const (
 	selLatestRoundData  = "0xfeaf968c"
 	selCumulVolImpactP  = "0x6901d442"
 	selSkewImpactP      = "0xb8482805"
-	gainsUSDCCollateral = 1
+	gainsUSDCCollateral = 3
 	gainsPPerBps        = 1e8
 	gainsTokenDecimals  = 18
 )
@@ -272,9 +272,9 @@ const (
 var chainlinkPriceScale = big.NewInt(1e8)
 
 var gainsChainlinkFeeds = map[string]string{
-	"ETH": "0x71041dddad3595F9CEd3DcCFBe3D1F4b0a16Bb70",
-	"BTC": "0x64c911996D3c6aC71f9b455B1E8E7266BcbD848F",
-	"SOL": "0x975043adBb80fc32276CbF9Bbcfd4A601a12462D",
+	"ETH": "0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612",
+	"BTC": "0x6ce185860a4963106506C203335A2910413708e9",
+	"SOL": "0x24ceA4b8ce57cda5058b924B9B9987992450590c",
 }
 
 const gainsBatchGap = time.Second
