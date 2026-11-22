@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -39,42 +40,50 @@ type hlUserFees struct {
 	} `json:"feeSchedule"`
 }
 
-func fetchHyperliquid(v VenueConfig) PerpSample {
+var (
+	errEmptyOrderbook = errors.New("empty_orderbook")
+	errBadMid         = errors.New("bad_mid")
+)
+
+func hlMidAndAsks(book hlL2Book) (float64, []bookLevel, error) {
+	if len(book.Levels) < 2 || len(book.Levels[0]) == 0 || len(book.Levels[1]) == 0 {
+		return 0, nil, errEmptyOrderbook
+	}
+	bestBid, _ := strconv.ParseFloat(book.Levels[0][0].Px, 64)
+	bestAsk, _ := strconv.ParseFloat(book.Levels[1][0].Px, 64)
+	mid := (bestBid + bestAsk) / 2
+	if mid <= 0 {
+		return 0, nil, errBadMid
+	}
+	asks := make([]bookLevel, 0, len(book.Levels[1]))
+	for _, a := range book.Levels[1] {
+		px, _ := strconv.ParseFloat(a.Px, 64)
+		sz, _ := strconv.ParseFloat(a.Sz, 64)
+		asks = append(asks, bookLevel{Px: px, Sz: sz})
+	}
+	return mid, asks, nil
+}
+
+func fetchHyperliquid(v VenueConfig, endpoint string) PerpSample {
 	s := PerpSample{Venue: v.Slug, Asset: v.Asset, At: time.Now().UTC().Format(time.RFC3339)}
 	start := time.Now()
 	client := &http.Client{Timeout: 8 * time.Second}
 
 	// 1) Orderbook
 	var book hlL2Book
-	if err := hlPost(client, map[string]any{"type": "l2Book", "coin": v.Asset}, &book); err != nil {
+	if err := hlPost(client, endpoint, map[string]any{"type": "l2Book", "coin": v.Asset}, &book); err != nil {
 		s.Err = fmt.Sprintf("l2book: %v", err)
 		s.FetchLatencyMs = time.Since(start).Milliseconds()
 		return s
 	}
-	if len(book.Levels) < 2 || len(book.Levels[0]) == 0 || len(book.Levels[1]) == 0 {
-		s.Err = "empty_orderbook"
-		s.FetchLatencyMs = time.Since(start).Milliseconds()
-		return s
-	}
-	bids := book.Levels[0]
-	asks := book.Levels[1]
-	bestBid, _ := strconv.ParseFloat(bids[0].Px, 64)
-	bestAsk, _ := strconv.ParseFloat(asks[0].Px, 64)
-	mid := (bestBid + bestAsk) / 2
-	if mid <= 0 {
-		s.Err = "bad_mid"
+	mid, levels, err := hlMidAndAsks(book)
+	if err != nil {
+		s.Err = err.Error()
 		s.FetchLatencyMs = time.Since(start).Milliseconds()
 		return s
 	}
 	s.MidPrice = mid
 
-	// Walk asks for v.NotionalUSD of buy
-	levels := make([]bookLevel, 0, len(asks))
-	for _, a := range asks {
-		px, _ := strconv.ParseFloat(a.Px, 64)
-		sz, _ := strconv.ParseFloat(a.Sz, 64)
-		levels = append(levels, bookLevel{Px: px, Sz: sz})
-	}
 	effective, err := walkBookForNotional(levels, v.NotionalUSD)
 	if err != nil {
 		s.Err = fmt.Sprintf("walk: %v", err)
@@ -85,7 +94,8 @@ func fetchHyperliquid(v VenueConfig) PerpSample {
 
 	// 2) Funding rate via metaAndAssetCtxs
 	var metaResp []json.RawMessage
-	if err := hlPost(client, map[string]any{"type": "metaAndAssetCtxs"}, &metaResp); err == nil && len(metaResp) >= 2 {
+	metaReq := map[string]any{"type": "metaAndAssetCtxs"}
+	if err := hlPost(client, endpoint, metaReq, &metaResp); err == nil && len(metaResp) >= 2 {
 		var ctxs []hlAssetCtx
 		if err := json.Unmarshal(metaResp[1], &ctxs); err == nil {
 			// Find ETH ctx by index — meta[0].universe[i].name == v.Asset
@@ -110,7 +120,7 @@ func fetchHyperliquid(v VenueConfig) PerpSample {
 	// all-in number would silently miss the fee component, so we error out
 	// and skip publishing this cycle instead.
 	var fees hlUserFees
-	if err := hlPost(client, map[string]any{
+	if err := hlPost(client, endpoint, map[string]any{
 		"type": "userFees",
 		"user": "0x0000000000000000000000000000000000000000",
 	}, &fees); err != nil {
@@ -136,27 +146,24 @@ func fetchHyperliquid(v VenueConfig) PerpSample {
 	// (SOL ~$450k) it cannot. Refetch with nSigFigs=5, the finest price
 	// aggregation HL offers: same 20 levels but each bucket groups nearby
 	// prices, extending USD coverage with negligible price rounding.
-	tierLevels := levels
+	tierMid, tierLevels := mid, levels
 	if _, err := walkBookForNotional(levels, tierNotionals[len(tierNotionals)-1]); err != nil {
 		var deep hlL2Book
-		if err := hlPost(client, map[string]any{"type": "l2Book", "coin": v.Asset, "nSigFigs": 5}, &deep); err == nil && len(deep.Levels) >= 2 && len(deep.Levels[1]) > 0 {
-			agg := make([]bookLevel, 0, len(deep.Levels[1]))
-			for _, a := range deep.Levels[1] {
-				px, _ := strconv.ParseFloat(a.Px, 64)
-				sz, _ := strconv.ParseFloat(a.Sz, 64)
-				agg = append(agg, bookLevel{Px: px, Sz: sz})
+		deepReq := map[string]any{"type": "l2Book", "coin": v.Asset, "nSigFigs": 5}
+		if err := hlPost(client, endpoint, deepReq, &deep); err == nil {
+			if deepMid, deepAsks, err := hlMidAndAsks(deep); err == nil {
+				tierMid, tierLevels = deepMid, deepAsks
 			}
-			tierLevels = agg
 		}
 	}
-	applyBookTiers(&s, tierLevels, mid)
+	applyBookTiers(&s, tierLevels, tierMid)
 	s.FetchLatencyMs = time.Since(start).Milliseconds()
 	return s
 }
 
-func hlPost(client *http.Client, body any, out any) error {
+func hlPost(client *http.Client, endpoint string, body any, out any) error {
 	bodyBytes, _ := json.Marshal(body)
-	req, _ := http.NewRequest("POST", hyperliquidURL, bytes.NewBuffer(bodyBytes))
+	req, _ := http.NewRequest("POST", endpoint, bytes.NewBuffer(bodyBytes))
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := client.Do(req)
 	if err != nil {

@@ -323,65 +323,42 @@ func TestLighterTakerFeeConversion(t *testing.T) {
 
 // ── Mock HTTP: fetchHyperliquid ────────────────────────────────────────────
 
-func TestFetchHyperliquid_MockServer(t *testing.T) {
+func hlBook(bid, ask, size string) map[string]any {
+	level := func(px string) []any { return []any{map[string]any{"px": px, "sz": size}} }
+	return map[string]any{"coin": "SOL", "levels": []any{level(bid), level(ask)}}
+}
+
+func TestFetchHyperliquid_DeepBookMid(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req map[string]any
 		_ = json.NewDecoder(r.Body).Decode(&req)
-		w.Header().Set("Content-Type", "application/json")
-		switch req["type"] {
-		case "l2Book":
-			// bid 1999, ask 2001 → mid 2000
-			// 10 ETH @ 2001 → $20k depth, easily fills $1000
+		switch {
+		case req["type"] == "l2Book" && req["nSigFigs"] == nil:
+			_ = json.NewEncoder(w).Encode(hlBook("99.99", "100.01", "100"))
+		case req["type"] == "l2Book":
+			_ = json.NewEncoder(w).Encode(hlBook("100.19", "100.21", "100000"))
+		case req["type"] == "userFees":
 			_ = json.NewEncoder(w).Encode(map[string]any{
-				"coin": "ETH",
-				"levels": []any{
-					// bids
-					[]any{map[string]any{"px": "1999", "sz": "10"}},
-					// asks
-					[]any{map[string]any{"px": "2001", "sz": "10"}},
-				},
+				"feeSchedule": map[string]any{"cross": "0.00045", "add": "0.00015"},
 			})
-		case "metaAndAssetCtxs":
-			meta := map[string]any{"universe": []any{map[string]any{"name": "ETH"}}}
-			ctx := []any{map[string]any{"funding": "0.0001", "midPx": "2000"}}
-			_ = json.NewEncoder(w).Encode([]any{meta, ctx})
-		case "userFees":
-			_ = json.NewEncoder(w).Encode(map[string]any{
-				"feeSchedule": map[string]any{"cross": "0.00045", "add": "0.0001"},
-			})
+		default:
+			_ = json.NewEncoder(w).Encode([]any{map[string]any{"universe": []any{}}, []any{}})
 		}
 	}))
-	defer srv.Close()
+	t.Cleanup(srv.Close)
 
-	origURL := hyperliquidURL
-	defer func() { _ = origURL }()
+	s := fetchHyperliquid(VenueConfig{Slug: "hyperliquid", Asset: "SOL", NotionalUSD: 1000}, srv.URL)
 
-	// Patch the global URL via a local test helper since the const is unexported.
-	// We rebuild the request manually to avoid modifying the source.
-	// Instead, test the math directly from the parsed values.
-
-	// Simulate what fetchHyperliquid computes:
-	mid := (1999.0 + 2001.0) / 2 // 2000
-	levels := []bookLevel{{Px: 2001, Sz: 10}}
-	eff, err := walkBookForNotional(levels, 1000)
-	if err != nil {
-		t.Fatalf("walk: %v", err)
+	headline, tier := 0.01/100*1e4, 0.01/100.20*1e4
+	if s.Err != "" || abs(s.SpreadBps-headline) > 1e-9 || abs(s.AllInBps-4.5-headline) > 1e-9 ||
+		len(s.Tiers) != len(tierNotionals) {
+		t.Fatalf("sample = %+v, want headline spread %v and every tier", s, headline)
 	}
-	spreadBps := (eff - mid) / mid * 10000
-	takerBps := 0.00045 * 10000 // 4.5 bps
-	allIn := takerBps + spreadBps
-
-	// spread ≈ 5 bps (2001 vs 2000 mid)
-	if abs(spreadBps-5) > 0.1 {
-		t.Errorf("spread = %v bps, want ~5", spreadBps)
+	for _, got := range s.Tiers {
+		if abs(got.SpreadBps-tier) > 1e-9 || abs(got.AllInBps-4.5-tier) > 1e-9 {
+			t.Errorf("tier $%s = %+v, want spread %v from the deep book's mid", got.Notional, got, tier)
+		}
 	}
-	if abs(takerBps-4.5) > 0.001 {
-		t.Errorf("taker = %v bps, want 4.5", takerBps)
-	}
-	if abs(allIn-9.5) > 0.1 {
-		t.Errorf("allIn = %v bps, want ~9.5", allIn)
-	}
-	_ = srv
 }
 
 // ── Mock HTTP: fetchDYdX spread + fee ─────────────────────────────────────
