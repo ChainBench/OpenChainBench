@@ -108,7 +108,7 @@ func fetchHyperliquid(v VenueConfig, endpoint string) PerpSample {
 				for i, u := range meta.Universe {
 					if u.Name == v.Asset && i < len(ctxs) {
 						f, _ := strconv.ParseFloat(ctxs[i].Funding, 64)
-						s.FundingRatePerHrBps = f * 10000
+						s.FundingRatePerHrBps, s.HasFunding = f*10000, true
 						break
 					}
 				}

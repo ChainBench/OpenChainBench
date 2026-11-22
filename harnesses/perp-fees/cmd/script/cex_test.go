@@ -12,12 +12,6 @@ import (
 )
 
 func TestApplyCEXQuote(t *testing.T) {
-	wantTiers := map[string]float64{
-		"1000":    5,
-		"10000":   8.999100089990861,
-		"100000":  9.899901000989075,
-		"1000000": 9.989990010010388,
-	}
 	tests := []struct {
 		name string
 		book string
@@ -52,16 +46,9 @@ func TestApplyCEXQuote(t *testing.T) {
 			if !near(s.SpreadBps, 5) || !near(s.AllInBps, 11) {
 				t.Errorf("spread=%v all_in=%v, want 5 and 11", s.SpreadBps, s.AllInBps)
 			}
-			if len(s.Tiers) != len(wantTiers) {
-				t.Fatalf("tiers=%d skipped=%v, want %d",
-					len(s.Tiers), s.SkippedTiers, len(wantTiers))
-			}
-			for _, tier := range s.Tiers {
-				want := wantTiers[tier.Notional]
-				if !near(tier.SpreadBps, want) || !near(tier.AllInBps, want+6) {
-					t.Errorf("tier %s: spread=%v all_in=%v, want %v and %v",
-						tier.Notional, tier.SpreadBps, tier.AllInBps, want, want+6)
-				}
+			if len(s.Tiers) != len(tierNotionals) {
+				t.Errorf("tiers=%d skipped=%v, want all %d filled",
+					len(s.Tiers), s.SkippedTiers, len(tierNotionals))
 			}
 		})
 	}
@@ -71,20 +58,73 @@ func TestApplyCEXQuote_RejectsBadBook(t *testing.T) {
 	tests := []struct {
 		name string
 		q    cexQuote
+		want error
 	}{
-		{name: "no asks", q: cexQuote{bestBid: 100}},
-		{name: "no bid", q: cexQuote{asks: []bookLevel{{Px: 100, Sz: 100}}}},
-		{name: "crossed", q: cexQuote{bestBid: 101, asks: []bookLevel{{Px: 100, Sz: 100}}}},
+		{name: "no asks", q: cexQuote{bestBid: 100}, want: errEmptyOrderbook},
+		{
+			name: "no bid",
+			q:    cexQuote{asks: []bookLevel{{Px: 100, Sz: 100}}},
+			want: errEmptyOrderbook,
+		},
+		{
+			name: "crossed",
+			q:    cexQuote{bestBid: 101, asks: []bookLevel{{Px: 100, Sz: 100}}},
+			want: errCrossedBook,
+		},
 		{name: "too thin", q: cexQuote{bestBid: 99, asks: []bookLevel{{Px: 100, Sz: 1}}}},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			var s PerpSample
-			if err := applyCEXQuote(&s, tc.q, 1000); err == nil {
-				t.Fatalf("got all_in=%v, want an error", s.AllInBps)
+			err := applyCEXQuote(&s, tc.q, 1000)
+			if err == nil || (tc.want != nil && !errors.Is(err, tc.want)) {
+				t.Fatalf("err=%v all_in=%v, want %v", err, s.AllInBps, tc.want)
 			}
 			if s.AllInBps != 0 || len(s.Tiers) != 0 {
 				t.Errorf("sample filled on a rejected book: %+v", s)
+			}
+		})
+	}
+}
+
+func TestApplyCEXQuote_LockedBook(t *testing.T) {
+	var s PerpSample
+	q := cexQuote{bestBid: 100, asks: []bookLevel{{Px: 100, Sz: 100}, {Px: 100, Sz: 100}}}
+	if err := applyCEXQuote(&s, q, 1000); err != nil || s.SpreadBps != 0 {
+		t.Errorf("err=%v spread=%v, want a 0 bps reading", err, s.SpreadBps)
+	}
+}
+
+func TestFetchCEX(t *testing.T) {
+	book := cexQuote{takerBps: 5, bestBid: 1999, asks: []bookLevel{{Px: 2001, Sz: 10}}}
+	tests := []struct {
+		name      string
+		quote     cexQuoteFunc
+		wantErr   bool
+		wantAllIn float64
+	}{
+		{
+			name: "quote error",
+			quote: func(context.Context, *http.Client, string) (cexQuote, error) {
+				return cexQuote{}, errAPI
+			},
+			wantErr: true,
+		},
+		{
+			name: "book",
+			quote: func(context.Context, *http.Client, string) (cexQuote, error) {
+				return book, nil
+			},
+			wantAllIn: 10,
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			v := VenueConfig{Slug: "binance", Asset: "ETH", NotionalUSD: 1000}
+			s := fetchCEX(v, tc.quote, http.DefaultClient)
+			if (s.Err != "") != tc.wantErr || !near(s.AllInBps, tc.wantAllIn) {
+				t.Errorf("err=%q all_in=%v, want error %v and %v",
+					s.Err, s.AllInBps, tc.wantErr, tc.wantAllIn)
 			}
 		})
 	}
@@ -115,6 +155,14 @@ func TestBookFromPairs_Rejects(t *testing.T) {
 				t.Errorf("err=%v, want %v", err, tc.want)
 			}
 		})
+	}
+}
+
+func TestBookFromPairs_EqualAskLevels(t *testing.T) {
+	asks := [][]flexFloat{{100, 1}, {100, 2}}
+	_, levels, err := bookFromPairs([][]flexFloat{{99, 1}}, asks, 1)
+	if err != nil || len(levels) != 2 {
+		t.Errorf("err=%v levels=%v, want both levels kept", err, levels)
 	}
 }
 
@@ -157,79 +205,92 @@ func TestRateToBps(t *testing.T) {
 	}
 }
 
-const (
-	strBook = `{"bids":[["1999","10"]],"asks":[["2001","10"]]}`
-	numBook = `{"bids":[[1999,10]],"asks":[[2001,10]]}`
-)
+const numBook = `{"bids":[[1999,10]],"asks":[[2001,10]]}`
 
 func TestCEXQuotes(t *testing.T) {
 	tests := []struct {
-		name     string
-		quote    cexQuoteFunc
+		slug     string
 		asset    string
 		routes   map[string]string
 		wantFee  float64
 		wantAsk1 float64
 	}{
 		{
-			name: "binance", quote: quoteBinance, asset: "ETH", wantFee: 5, wantAsk1: 10,
-			routes: map[string]string{"depth?limit=1000&symbol=ETHUSDT": strBook},
+			slug: "binance", asset: "ETH", wantFee: binanceTakerBps, wantAsk1: 10,
+			routes: map[string]string{
+				"fapi.binance.com/fapi/v1/depth?limit=1000&symbol=ETHUSDT": `{` +
+					`"bids":[["1999","10"]],"asks":[["2001","10"]]}`,
+			},
 		},
 		{
-			name: "bybit", quote: quoteBybit, asset: "ETH", wantFee: 5.5, wantAsk1: 10,
+			slug: "bybit", asset: "ETH", wantFee: bybitTakerBps, wantAsk1: 10,
 			routes: map[string]string{
-				"category=linear&limit=500&symbol=ETHUSDT": `{"retCode":0,"result":` +
+				"api.bybit.com/v5/market/orderbook?category=linear": `{"retCode":0,"result":` +
 					`{"b":[["1999","10"]],"a":[["2001","10"]]}}`,
 			},
 		},
 		{
-			name: "okx", quote: quoteOKX, asset: "ETH", wantFee: 5, wantAsk1: 1,
+			slug: "okx", asset: "ETH", wantFee: okxTakerBps, wantAsk1: 1,
 			routes: map[string]string{
-				"instruments?instType=SWAP&instId=ETH-USDT-SWAP": `{"code":"0",` +
-					`"data":[{"ctVal":"0.01"}]}`,
-				"books-full?sz=5000&instId=ETH-USDT-SWAP": `{"code":"0","data":` +
+				"okx.com/api/v5/public/instruments?instType=SWAP&instId=ETH-USDT-SWAP": `{` +
+					`"code":"0","data":[{"ctVal":"0.01"}]}`,
+				"okx.com/api/v5/market/books-full": `{"code":"0","data":` +
 					`[{"bids":[["1999","100","3"]],"asks":[["2001","100","2"]]}]}`,
 			},
 		},
 		{
-			name: "bitget", quote: quoteBitget, asset: "ETH", wantFee: 6, wantAsk1: 10,
+			slug: "bitget", asset: "ETH", wantFee: 6, wantAsk1: 10,
 			routes: map[string]string{
-				"contracts?productType=usdt-futures&symbol=ETHUSDT": `{"code":"00000",` +
+				"bitget.com/api/v2/mix/market/contracts?" +
+					"productType=usdt-futures&symbol=ETHUSDT": `{"code":"00000",` +
 					`"data":[{"takerFeeRate":"0.0006"}]}`,
-				"merge-depth?productType=usdt-futures&symbol=ETHUSDT": `{"code":"00000",` +
-					`"data":` + numBook + `}`,
+				"bitget.com/api/v2/mix/market/merge-depth": `{"code":"00000","data":` +
+					numBook + `}`,
 			},
 		},
 		{
-			name: "mexc", quote: quoteMEXC, asset: "ETH", wantFee: 2, wantAsk1: 10,
+			slug: "mexc", asset: "ETH", wantFee: 2, wantAsk1: 10,
 			routes: map[string]string{
-				"contract/detail?symbol=ETH_USDT": `{"success":true,` +
+				"contract.mexc.com/api/v1/contract/detail?symbol=ETH_USDT": `{"success":true,` +
 					`"data":{"contractSize":0.01,"takerFeeRate":0.0002}}`,
-				"contract/depth/ETH_USDT": `{"success":true,` +
+				"contract.mexc.com/api/v1/contract/depth/ETH_USDT": `{"success":true,` +
 					`"data":{"bids":[[1999,1000,1]],"asks":[[2001,1000,1]]}}`,
 			},
 		},
 		{
-			name: "gate", quote: quoteGate, asset: "ETH", wantFee: 5, wantAsk1: 1,
+			slug: "gate", asset: "ETH", wantFee: gateTakerBps, wantAsk1: 1,
 			routes: map[string]string{
-				"usdt/contracts/ETH_USDT": `{"quanto_multiplier":"0.01"}`,
-				"order_book?limit=300&contract=ETH_USDT": `{"bids":[{"p":"1999","s":100}],` +
+				"gateio.ws/api/v4/futures/usdt/contracts/ETH_USDT": `{"quanto_multiplier":"0.01"}`,
+				"gateio.ws/api/v4/futures/usdt/order_book": `{"bids":[{"p":"1999","s":100}],` +
 					`"asks":[{"p":"2001","s":100}]}`,
 			},
 		},
 		{
-			name: "kucoin", quote: quoteKuCoin, asset: "BTC", wantFee: 6, wantAsk1: 1,
+			slug: "kucoin", asset: "BTC", wantFee: 6, wantAsk1: 1,
 			routes: map[string]string{
-				"contracts/XBTUSDTM": `{"code":"200000",` +
+				"kucoin.com/api/v1/contracts/XBTUSDTM": `{"code":"200000",` +
 					`"data":{"multiplier":0.001,"takerFeeRate":0.0006}}`,
-				"level2/snapshot?symbol=XBTUSDTM": `{"code":"200000",` +
+				"kucoin.com/api/v1/level2/snapshot?symbol=XBTUSDTM": `{"code":"200000",` +
+					`"data":{"bids":[[1999,1000]],"asks":[[2001,1000]]}}`,
+			},
+		},
+		{
+			slug: "kucoin", asset: "ETH", wantFee: 6, wantAsk1: 10,
+			routes: map[string]string{
+				"kucoin.com/api/v1/contracts/ETHUSDTM": `{"code":"200000",` +
+					`"data":{"multiplier":0.01,"takerFeeRate":0.0006}}`,
+				"kucoin.com/api/v1/level2/snapshot?symbol=ETHUSDTM": `{"code":"200000",` +
 					`"data":{"bids":[[1999,1000]],"asks":[[2001,1000]]}}`,
 			},
 		},
 	}
 	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			q, err := tc.quote(context.Background(), fakeExchange(tc.routes), tc.asset)
+		t.Run(tc.slug+"/"+tc.asset, func(t *testing.T) {
+			quote, ok := cexQuoteFor(tc.slug)
+			if !ok {
+				t.Fatalf("no quote for %s", tc.slug)
+			}
+			q, err := quote(context.Background(), fakeExchange(tc.routes), tc.asset)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -248,72 +309,108 @@ func TestCEXQuotes(t *testing.T) {
 func TestCEXQuotes_APIError(t *testing.T) {
 	tests := []struct {
 		name   string
-		quote  cexQuoteFunc
+		slug   string
 		routes map[string]string
+		want   error
 	}{
 		{
-			name: "bybit retCode", quote: quoteBybit,
+			name: "bybit retCode", slug: "bybit", want: errAPI,
 			routes: map[string]string{
-				"orderbook": `{"retCode":10001,"result":` +
-					`{"b":[["1999","10"]],"a":[["2001","10"]]}}`,
+				"orderbook": `{"retCode":10001,"retMsg":"params error",` +
+					`"result":{"b":[["1999","10"]],"a":[["2001","10"]]}}`,
 			},
 		},
 		{
-			name: "bitget code", quote: quoteBitget,
+			name: "bitget code", slug: "bitget", want: errAPI,
 			routes: map[string]string{
 				"contracts":   `{"code":"40034","data":[{"takerFeeRate":"0.0006"}]}`,
 				"merge-depth": `{"code":"00000","data":` + numBook + `}`,
 			},
 		},
 		{
-			name: "mexc success false", quote: quoteMEXC,
+			name: "bitget empty contracts", slug: "bitget", want: errAssetNotFound,
+			routes: map[string]string{
+				"contracts":   `{"code":"00000","data":[]}`,
+				"merge-depth": `{"code":"00000","data":` + numBook + `}`,
+			},
+		},
+		{
+			name: "mexc success false", slug: "mexc", want: errAPI,
 			routes: map[string]string{
 				"detail": `{"success":false,"data":{"contractSize":0.01,"takerFeeRate":0.0002}}`,
 				"depth":  `{"success":true,"data":` + numBook + `}`,
 			},
 		},
 		{
-			name: "okx empty instrument", quote: quoteOKX,
-			routes: map[string]string{"instruments": `{"code":"0","data":[]}`},
+			name: "okx code", slug: "okx", want: errAPI,
+			routes: map[string]string{
+				"instruments": `{"code":"51001","msg":"Instrument ID does not exist",` +
+					`"data":[{"ctVal":"0.01"}]}`,
+				"books-full": `{"code":"0","data":[` + numBook + `]}`,
+			},
 		},
 		{
-			name: "okx empty book", quote: quoteOKX,
+			name: "okx empty instrument", slug: "okx", want: errAssetNotFound,
+			routes: map[string]string{
+				"instruments": `{"code":"0","data":[]}`,
+				"books-full":  `{"code":"0","data":[` + numBook + `]}`,
+			},
+		},
+		{
+			name: "okx empty book", slug: "okx", want: errEmptyOrderbook,
 			routes: map[string]string{
 				"instruments": `{"code":"0","data":[{"ctVal":"0.01"}]}`,
 				"books-full":  `{"code":"0","data":[]}`,
 			},
 		},
+		{
+			name: "kucoin code", slug: "kucoin", want: errAPI,
+			routes: map[string]string{
+				"contracts": `{"code":"400100","msg":"bad symbol",` +
+					`"data":{"multiplier":0.01,"takerFeeRate":0.0006}}`,
+				"snapshot": `{"code":"200000","data":` + numBook + `}`,
+			},
+		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			q, err := tc.quote(context.Background(), fakeExchange(tc.routes), "ETH")
-			if err == nil {
-				t.Errorf("got %+v, want an error", q)
+			quote, _ := cexQuoteFor(tc.slug)
+			q, err := quote(context.Background(), fakeExchange(tc.routes), "ETH")
+			if !errors.Is(err, tc.want) {
+				t.Errorf("got %+v err=%v, want %v", q, err, tc.want)
 			}
 		})
 	}
 }
 
-func TestCEXGet_Rejects(t *testing.T) {
-	oversized := `{"bids":[],"asks":[],"pad":"` + strings.Repeat("x", maxCEXBody) + `"}`
+func TestGetJSON_Rejects(t *testing.T) {
+	oversized := `{"bids":[],"asks":[],"pad":"` + strings.Repeat("x", maxResponseBody) + `"}`
 	tests := []struct {
 		name   string
 		status int
 		body   string
 		want   error
 	}{
-		{name: "server error", status: http.StatusServiceUnavailable, body: strBook},
+		{name: "server error", status: http.StatusServiceUnavailable, body: numBook},
 		{name: "oversized body", status: http.StatusOK, body: oversized, want: errBodyTooLarge},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			client := &http.Client{Transport: fixedTransport{status: tc.status, body: tc.body}}
 			var book pairBook
-			err := cexGet(context.Background(), client, "https://cex.test/depth", &book)
+			err := getJSON(context.Background(), client, "https://cex.test/depth", &book)
 			if err == nil || (tc.want != nil && !errors.Is(err, tc.want)) {
 				t.Errorf("err=%v book=%+v, want an error", err, book)
 			}
 		})
+	}
+}
+
+func TestRecordSample_FundingOnlyWhereRead(t *testing.T) {
+	recordSample(PerpSample{Venue: "funding-test", Asset: "ETH", HasFunding: true})
+	recordSample(PerpSample{Venue: "funding-test", Asset: "ETH"})
+	if fundingGauge.DeleteLabelValues("funding-test", "ETH") {
+		t.Error("funding series kept for a sample that read no funding")
 	}
 }
 

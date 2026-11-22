@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 	"os/signal"
 	"sync"
@@ -111,20 +112,9 @@ func fetchOne(v VenueConfig, cfg *Config) PerpSample {
 		return fetchEdgex(v)
 	case "ondo":
 		return fetchOndo(v)
-	case "binance":
-		return fetchCEX(v, quoteBinance)
-	case "bybit":
-		return fetchCEX(v, quoteBybit)
-	case "okx":
-		return fetchCEX(v, quoteOKX)
-	case "bitget":
-		return fetchCEX(v, quoteBitget)
-	case "mexc":
-		return fetchCEX(v, quoteMEXC)
-	case "gate":
-		return fetchCEX(v, quoteGate)
-	case "kucoin":
-		return fetchCEX(v, quoteKuCoin)
+	}
+	if quote, ok := cexQuoteFor(v.Slug); ok {
+		return fetchCEX(v, quote, &http.Client{Timeout: cexTimeout})
 	}
 	return PerpSample{Venue: v.Slug, Asset: v.Asset, Err: "unsupported_venue"}
 }

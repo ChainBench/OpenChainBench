@@ -2,10 +2,8 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"math"
 	"net/http"
 	"strconv"
@@ -24,19 +22,20 @@ const (
 	kucoinOK = "200000"
 
 	maxTakerBps = 100.0
-	maxCEXBody  = 16 << 20
+	maxAPIMsg   = 200
 	cexTimeout  = 8 * time.Second
 )
 
 var (
 	errAssetNotFound   = errors.New("asset_not_found")
+	errAPI             = errors.New("api_error")
+	errCrossedBook     = errors.New("crossed_book")
 	errNoContractSize  = errors.New("contract_size_missing")
 	errNoTakerFee      = errors.New("taker_fee_missing")
 	errTakerOutOfRange = errors.New("taker_fee_out_of_range")
 	errMalformedLevels = errors.New("malformed_orderbook")
 	errUnsortedBook    = errors.New("unsorted_orderbook")
 	errNotFinite       = errors.New("not_finite")
-	errBodyTooLarge    = errors.New("body_too_large")
 )
 
 type cexQuote struct {
@@ -46,6 +45,26 @@ type cexQuote struct {
 }
 
 type cexQuoteFunc func(ctx context.Context, client *http.Client, asset string) (cexQuote, error)
+
+func cexQuoteFor(slug string) (cexQuoteFunc, bool) {
+	switch slug {
+	case "binance":
+		return quoteBinance, true
+	case "bybit":
+		return quoteBybit, true
+	case "okx":
+		return quoteOKX, true
+	case "bitget":
+		return quoteBitget, true
+	case "mexc":
+		return quoteMEXC, true
+	case "gate":
+		return quoteGate, true
+	case "kucoin":
+		return quoteKuCoin, true
+	}
+	return nil, false
+}
 
 type flexFloat float64
 
@@ -72,12 +91,16 @@ func rateToBps(rate *flexFloat) (float64, error) {
 	return bps, nil
 }
 
-func fetchCEX(v VenueConfig, quote cexQuoteFunc) PerpSample {
+func apiError(code any, msg string) error {
+	return fmt.Errorf("%w %v %q", errAPI, code, truncate(msg, maxAPIMsg))
+}
+
+func fetchCEX(v VenueConfig, quote cexQuoteFunc, client *http.Client) PerpSample {
 	s := PerpSample{Venue: v.Slug, Asset: v.Asset, At: time.Now().UTC().Format(time.RFC3339)}
 	start := time.Now()
 	ctx, cancel := context.WithTimeout(context.Background(), cexTimeout)
 	defer cancel()
-	q, err := quote(ctx, &http.Client{Timeout: cexTimeout}, v.Asset)
+	q, err := quote(ctx, client, v.Asset)
 	if err == nil {
 		err = applyCEXQuote(&s, q, v.NotionalUSD)
 	}
@@ -93,7 +116,7 @@ func applyCEXQuote(s *PerpSample, q cexQuote, notional float64) error {
 		return errEmptyOrderbook
 	}
 	if q.asks[0].Px < q.bestBid {
-		return fmt.Errorf("crossed_book: bid %.4f above ask %.4f", q.bestBid, q.asks[0].Px)
+		return fmt.Errorf("%w: bid %.4f above ask %.4f", errCrossedBook, q.bestBid, q.asks[0].Px)
 	}
 	mid := (q.bestBid + q.asks[0].Px) / 2
 	effective, err := walkBookForNotional(q.asks, notional)
@@ -139,7 +162,7 @@ type pairBook struct {
 func quoteBinance(ctx context.Context, client *http.Client, asset string) (cexQuote, error) {
 	var book pairBook
 	url := "https://fapi.binance.com/fapi/v1/depth?limit=1000&symbol=" + asset + "USDT"
-	if err := cexGet(ctx, client, url, &book); err != nil {
+	if err := getJSON(ctx, client, url, &book); err != nil {
 		return cexQuote{}, fmt.Errorf("orderbook: %w", err)
 	}
 	bid, asks, err := bookFromPairs(book.Bids, book.Asks, 1)
@@ -157,11 +180,11 @@ func quoteBybit(ctx context.Context, client *http.Client, asset string) (cexQuot
 	}
 	url := "https://api.bybit.com/v5/market/orderbook?category=linear&limit=500&symbol=" +
 		asset + "USDT"
-	if err := cexGet(ctx, client, url, &resp); err != nil {
+	if err := getJSON(ctx, client, url, &resp); err != nil {
 		return cexQuote{}, fmt.Errorf("orderbook: %w", err)
 	}
 	if resp.RetCode != 0 {
-		return cexQuote{}, fmt.Errorf("orderbook: api_error %d %s", resp.RetCode, resp.RetMsg)
+		return cexQuote{}, fmt.Errorf("orderbook: %w", apiError(resp.RetCode, resp.RetMsg))
 	}
 	bid, asks, err := bookFromPairs(resp.Result.Bids, resp.Result.Asks, 1)
 	return cexQuote{takerBps: bybitTakerBps, bestBid: bid, asks: asks}, err
@@ -199,11 +222,11 @@ type codedResponse[T any] struct {
 
 func codedGet[T any](ctx context.Context, client *http.Client, url, okCode string) (T, error) {
 	var resp codedResponse[T]
-	if err := cexGet(ctx, client, url, &resp); err != nil {
+	if err := getJSON(ctx, client, url, &resp); err != nil {
 		return resp.Data, err
 	}
 	if resp.Code != okCode {
-		return resp.Data, fmt.Errorf("api_error %s %s", resp.Code, resp.Msg)
+		return resp.Data, apiError(resp.Code, resp.Msg)
 	}
 	return resp.Data, nil
 }
@@ -240,11 +263,11 @@ type mexcResponse[T any] struct {
 
 func mexcGet[T any](ctx context.Context, client *http.Client, url string) (T, error) {
 	var resp mexcResponse[T]
-	if err := cexGet(ctx, client, url, &resp); err != nil {
+	if err := getJSON(ctx, client, url, &resp); err != nil {
 		return resp.Data, err
 	}
 	if !resp.Success {
-		return resp.Data, fmt.Errorf("api_error %d", resp.Code)
+		return resp.Data, apiError(resp.Code, "")
 	}
 	return resp.Data, nil
 }
@@ -290,7 +313,7 @@ func quoteGate(ctx context.Context, client *http.Client, asset string) (cexQuote
 	var spec struct {
 		QuantoMultiplier flexFloat `json:"quanto_multiplier"`
 	}
-	if err := cexGet(ctx, client, base+"contracts/"+contract, &spec); err != nil {
+	if err := getJSON(ctx, client, base+"contracts/"+contract, &spec); err != nil {
 		return cexQuote{}, fmt.Errorf("contract: %w", err)
 	}
 	var book struct {
@@ -298,7 +321,7 @@ func quoteGate(ctx context.Context, client *http.Client, asset string) (cexQuote
 		Asks []gateLevel `json:"asks"`
 	}
 	url := base + "order_book?limit=300&contract=" + contract
-	if err := cexGet(ctx, client, url, &book); err != nil {
+	if err := getJSON(ctx, client, url, &book); err != nil {
 		return cexQuote{}, fmt.Errorf("orderbook: %w", err)
 	}
 	unit := float64(spec.QuantoMultiplier)
@@ -333,31 +356,4 @@ func quoteKuCoin(ctx context.Context, client *http.Client, asset string) (cexQuo
 	}
 	bid, asks, err := bookFromPairs(book.Bids, book.Asks, float64(spec.Multiplier))
 	return cexQuote{takerBps: taker, bestBid: bid, asks: asks}, err
-}
-
-func cexGet(ctx context.Context, client *http.Client, url string, out any) error {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err != nil {
-		return err
-	}
-	req.Header.Set("User-Agent", "OpenChainBench-PerpFees/1.0 contact@openchainbench.com")
-	req.Header.Set("Accept", "application/json")
-	resp, err := client.Do(req)
-	if err != nil {
-		return err
-	}
-	body, err := io.ReadAll(io.LimitReader(resp.Body, maxCEXBody+1))
-	if err == nil && len(body) > maxCEXBody {
-		err = errBodyTooLarge
-	}
-	if closeErr := resp.Body.Close(); err == nil {
-		err = closeErr
-	}
-	if err != nil {
-		return err
-	}
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("status_%d: %s", resp.StatusCode, truncate(string(body), 200))
-	}
-	return json.Unmarshal(body, out)
 }

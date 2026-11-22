@@ -182,7 +182,11 @@ func recordSample(s PerpSample) {
 	}
 	spreadGauge.WithLabelValues(s.Venue, s.Asset).Set(s.SpreadBps)
 	allInGauge.WithLabelValues(s.Venue, s.Asset).Set(s.AllInBps)
-	fundingGauge.WithLabelValues(s.Venue, s.Asset).Set(s.FundingRatePerHrBps)
+	if s.HasFunding {
+		fundingGauge.WithLabelValues(s.Venue, s.Asset).Set(s.FundingRatePerHrBps)
+	} else {
+		fundingGauge.DeleteLabelValues(s.Venue, s.Asset)
+	}
 	fetchLatencyGauge.WithLabelValues(s.Venue, s.Asset).Set(float64(s.FetchLatencyMs))
 	lastRefreshGauge.WithLabelValues(s.Venue, s.Asset).Set(float64(time.Now().Unix()))
 	healthGauge.WithLabelValues(s.Venue, s.Asset).Set(1)

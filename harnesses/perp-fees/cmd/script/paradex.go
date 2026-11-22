@@ -123,7 +123,7 @@ func fetchParadex(v VenueConfig) PerpSample {
 	var fund paradexFunding
 	if err := paradexGet(client, fmt.Sprintf("%s/funding/data?market=%s&page_size=1", paradexBase, market), &fund); err == nil && len(fund.Results) > 0 {
 		r, _ := strconv.ParseFloat(fund.Results[0].FundingRate, 64)
-		s.FundingRatePerHrBps = r / 8 * 10000
+		s.FundingRatePerHrBps, s.HasFunding = r/8*10000, true
 	}
 
 	s.FetchLatencyMs = time.Since(start).Milliseconds()
