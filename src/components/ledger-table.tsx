@@ -18,7 +18,7 @@ import { EmbedBadgeButton } from "@/components/embed-badge-button";
 import { Hint } from "@/components/hint";
 import { Sparkline } from "@/components/sparkline";
 import { ProviderLogo } from "@/components/provider-logo";
-import { FootnoteMark, ProviderFootnotes } from "@/components/provider-footnotes";
+import { FootnoteMark } from "@/components/provider-footnotes";
 import { ProviderTypeBadge } from "@/components/provider-type-badge";
 import { fmtHeadline, fmtUnit } from "@/lib/format";
 import { buildProviderColors } from "@/lib/series-colors";
@@ -440,10 +440,6 @@ export function LedgerTable({
     <div
       className="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0"
     >
-      <ProviderFootnotes
-        benchmark={benchmark}
-        rows={[...sorted, ...unrankedRows, ...unresponsiveRows]}
-      />
       {hasWindows && (
         <div className="mb-3 flex flex-wrap items-center gap-1">
           <span className="mr-2 label-mono-xs">
