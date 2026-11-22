@@ -139,7 +139,8 @@ func TestFetchCEX(t *testing.T) {
 		{
 			name: "unknown symbol",
 			quote: func(ctx context.Context, _ *http.Client, _ string) (cexQuote, error) {
-				return quoteBinance(ctx, statusClient(http.StatusBadRequest, `{"code":-1121}`), "ETH")
+				client := statusClient(http.StatusBadRequest, `{"code":-1121}`)
+				return quoteBinance(ctx, client, "ETH")
 			},
 			wantType: errTypeNotFound,
 		},
