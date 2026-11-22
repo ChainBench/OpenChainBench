@@ -4,6 +4,8 @@ import { rankedCandidates } from "@/lib/citation";
 import { fmtUnit } from "@/lib/format";
 import { ProviderLogo } from "@/components/provider-logo";
 import { rowHref } from "@/lib/row-link";
+import { scopeToVenueType } from "@/lib/venue-type-filter";
+import type { ProviderVenueType } from "@/types/benchmark";
 
 type Props = {
   bench: string;
@@ -12,6 +14,7 @@ type Props = {
   /** Access cohort of a tier-dimensioned bench ("keyed" for the
    *  API-key providers of a chain RPC page). */
   tier?: string;
+  venueType?: ProviderVenueType;
   caption?: string;
   showSuccessRate?: boolean;
 };
@@ -21,10 +24,14 @@ export async function StatTable({
   chain,
   region,
   tier,
+  venueType,
   caption,
   showSuccessRate = true,
 }: Props) {
-  const b = await getBenchmark(bench, { chain, region, tier }).catch(() => undefined);
+  const b = scopeToVenueType(
+    await getBenchmark(bench, { chain, region, tier }).catch(() => undefined),
+    venueType ?? "all",
+  );
   if (!b || b.editorialStatus !== "live") {
     return (
       <p className="my-6 text-sm text-ink-muted italic">

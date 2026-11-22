@@ -5,6 +5,11 @@ import { fmtUnit } from "@/lib/format";
 import { fieldValue, leader, sparklineFor } from "@/lib/citation";
 import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
 import { SLUG_RE } from "@/lib/slug";
+import {
+  VENUE_TYPE_PARAM,
+  parseVenueTypeView,
+  scopeToVenueType,
+} from "@/lib/venue-type-filter";
 
 export const runtime = "nodejs";
 export const contentType = "image/png";
@@ -31,7 +36,10 @@ export async function GET(
       headers: { "cache-control": "public, s-maxage=60" },
     });
   }
-  const b = await getBenchmark(slug);
+  const view = parseVenueTypeView(
+    new URL(req.url).searchParams.get(VENUE_TYPE_PARAM),
+  );
+  const b = scopeToVenueType(await getBenchmark(slug), view);
   if (!b || b.editorialStatus !== "live") {
     return new Response("not_found", {
       status: 404,

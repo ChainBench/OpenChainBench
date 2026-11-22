@@ -23,6 +23,7 @@ import { MetricViewTabs } from "@/components/metric-view-tabs";
 import type { ProviderLayer } from "@/types/benchmark";
 import {
   filterByVenueType,
+  VENUE_TYPE_PARAM,
   parseVenueTypeView,
   scopeToVenueType,
   venueTypeCounts,
@@ -328,7 +329,7 @@ export function BenchmarkBody({
   const urlFees = searchParams.get("fees");
   const feesRemovable = Object.values(variants).some((v) => v.feesRemovable);
   const urlLayer = searchParams.get("layer");
-  const urlVenueType = searchParams.get("venues");
+  const urlVenueType = searchParams.get(VENUE_TYPE_PARAM);
   // Canonical-aware lookup: a URL with the new slug ("?chain=gram")
   // still selects the dimension whose YAML value is the legacy "ton".
   const resolvedInitialChain =
@@ -697,7 +698,7 @@ export function BenchmarkBody({
   const hasLayerSplit = layerCounts.l1 > 0 && layerCounts.l2 > 0;
 
   const venueTypeCount = useMemo(
-    () => venueTypeCounts(benchmark?.results ?? []),
+    () => venueTypeCounts(liveResults(benchmark?.results ?? [])),
     [benchmark],
   );
   const hasVenueTypes = venueTypeCount.dex + venueTypeCount.cex > 0;
@@ -707,10 +708,10 @@ export function BenchmarkBody({
   const summarizeScoped = (b: Benchmark | undefined) =>
     summarize(scopeToVenueType(b, venueView));
 
-  // Filter the benchmark to the active layer for the entire page. When
-  // hasLayerSplit is false the original benchmark is returned untouched
-  // so non-layer benches keep their existing behavior. The chart, the
-  // summary stats and the ledger all read from `viewBenchmark`.
+  // Filter the benchmark to the active layer and venue type for the entire
+  // page. With neither split active the original benchmark is returned
+  // untouched. The chart, the summary stats and the ledger all read from
+  // `viewBenchmark`.
   const viewBenchmark = useMemo(() => {
     if (!benchmark || (!hasLayerSplit && venueView === "all")) {
       return benchmark;
@@ -725,8 +726,8 @@ export function BenchmarkBody({
   }, [benchmark, hasLayerSplit, layer, venueView]);
   useEffect(() => {
     const url = new URL(window.location.href);
-    if (venueView === "all") url.searchParams.delete("venues");
-    else url.searchParams.set("venues", venueView);
+    if (venueView === "all") url.searchParams.delete(VENUE_TYPE_PARAM);
+    else url.searchParams.set(VENUE_TYPE_PARAM, venueView);
     if (url.href !== window.location.href) {
       const next = url.pathname + url.search + url.hash;
       window.history.replaceState(null, "", next);

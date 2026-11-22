@@ -3,6 +3,7 @@ target_product: Gains
 target_url: https://gains.trade
 description: Oracle-priced perpetuals on Arbitrum, Base, Polygon and ApeChain
 benchmark: perp-fees
+venue_type: dex
 
 intro: |
   Gains v8 is an oracle-priced perpetuals venue running on Arbitrum, Base, Polygon and ApeChain. It settles against a GNS staking vault rather than a central orderbook, with the position open fee read directly on-chain from the fees contract and the spread term built from half of the on-chain spreadP parameter plus the protocol's cumulative volume price impact, which grows with trade size. This benchmark measures the live all-in cost of opening a $1000 ETH long 10x position across major perpetual venues, every five minutes, by reading taker fees from each venue's own API and walking each orderbook for $1000 of buy-side notional. Gains is queried via eth_call on Arbitrum: pairs(N) gives the spreadP and feeIndex for each market, fees(feeIndex) gives the open fee (totalPositionSizeFeeP), and getTradeCumulVolPriceImpactP gives the impact of a long and a short at each size, averaged. Values are in 1e10 precision per Gains v8 convention. The same harness queries Hyperliquid, Lighter, dYdX v4 and GMX v2. Funding rate is published separately because it accrues per hour held, not at open.

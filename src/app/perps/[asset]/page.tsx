@@ -14,6 +14,7 @@ import {
   fetchPerpAssetPage,
   perpAssetBySlug,
   sortPerpAssetRows,
+  sortPerpRowsByFunding,
   type PerpAssetVenueRow,
 } from "@/lib/perp-asset-pages";
 
@@ -257,7 +258,7 @@ export default async function PerpAssetPage({ params }: { params: Promise<{ asse
     perpHeadToHead().catch(() => []),
   ]);
   const rows = page ? sortPerpAssetRows(page.data.venues) : [];
-  const cex = page ? sortPerpAssetRows(page.data.cex) : [];
+  const cex = page ? sortPerpRowsByFunding(page.data.cex) : [];
   const fee = cheapest(rows, "allInBps");
   const slip = cheapest(rows, "slippage100kBps");
   const fullMonth = rows.filter((r) => (r.funding30dSamples ?? 0) >= FULL_MONTH_MIN);
@@ -297,7 +298,7 @@ export default async function PerpAssetPage({ params }: { params: Promise<{ asse
     },
     {
       q: "Why is a cell marked not measured?",
-      a: "Opening cost, slippage and taker fee come from the perp-fees harness, which walks the public order book of eighteen venues, eleven DEXs and seven CEXs; a venue outside that walk, or an oracle-priced one, has no such figure. Funding comes from each venue's own endpoint or from the Mobula aggregator; a venue on neither has none. Nothing is estimated to fill a blank.",
+      a: "Opening cost, slippage and taker fee come from the perp-fees harness, which measures eighteen venues, eleven DEXs and seven CEXs, and walks the public order book of the sixteen that have one; a venue outside that harness has no such figure, and an oracle-priced one (GMX v2, Gains) has no slippage. Funding comes from each venue's own endpoint or from the Mobula aggregator; a venue on neither has none. Nothing is estimated to fill a blank.",
     },
     {
       q: "Why are Binance, Bybit and OKX listed under the DEXs?",

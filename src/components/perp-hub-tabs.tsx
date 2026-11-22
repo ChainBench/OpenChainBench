@@ -95,7 +95,7 @@ export function PerpHubTabs({
           ))}
           {kind !== "measured" && (
             <span className="text-ink-faint">
-              CEX volume, open interest and market counts are what each venue reports to CoinGecko, not an OpenChainBench measurement; funding is measured.
+              CEX volume, open interest and market counts are what each venue reports to CoinGecko, not an OpenChainBench measurement; all-in cost and funding are measured.
             </span>
           )}
         </div>

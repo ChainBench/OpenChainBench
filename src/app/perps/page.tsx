@@ -400,7 +400,7 @@ export default async function PerpsHubPage() {
           <PerpHubTabs cohort={cohort} byAsset={byAsset} />
 
           <p className="mt-4 text-[11px] text-ink-faint italic">
-            A blank cell (…) is a figure the venue publishes through no public endpoint, or a bench that does not cover the venue yet: the 30-day fee column needs a DefiLlama fee adapter (12 venues), the all-in and slippage columns the perp-fees order-book walk (18 venues), funding a native or aggregator feed (23 venues). Volume-only rows (Backpack, Orderly, SynFutures, KiloEx) come from CoinGecko listings and have no OI or market count to show.
+            A blank cell (…) is a figure the venue publishes through no public endpoint, or a bench that does not cover the venue yet: the 30-day fee column needs a DefiLlama fee adapter (12 venues), the all-in column the perp-fees bench (18 venues) and the slippage column its order-book walk (the 16 with a book), funding a native or aggregator feed (23 venues). Volume-only rows (Backpack, Orderly, SynFutures, KiloEx) come from CoinGecko listings and have no OI or market count to show.
           </p>
           <p className="mt-4 text-[11px] text-ink-faint italic">
             Sources: live cohort harness perp-cohort-stats (volume, OI,

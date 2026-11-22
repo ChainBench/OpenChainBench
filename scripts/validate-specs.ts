@@ -10,7 +10,8 @@ import { promises as fs } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import yaml from "js-yaml";
-import { SpecSchema } from "../src/lib/spec-schema";
+import { ProviderVenueType, SpecSchema } from "../src/lib/spec-schema";
+import { venueScopeErrors } from "../src/lib/answer-venue-scope";
 import { COST_CELL_RE, costCell } from "../src/lib/cost-cell";
 
 const ROOT = path.resolve(__dirname, "..");
@@ -92,7 +93,14 @@ async function main() {
   const seenNumbers = new Map<string, string>();
   // Per spec, what its templates may reference; the answers pass below
   // resolves an answer's placeholders against its bench.
-  const specRefs = new Map<string, { providers: Set<string>; chains: Set<string>; tiers: Set<string>; rpc: boolean; venueTyped: boolean }>();
+  type SpecRefs = {
+    providers: Set<string>;
+    chains: Set<string>;
+    tiers: Set<string>;
+    rpc: boolean;
+    venueTyped: boolean;
+  };
+  const specRefs = new Map<string, SpecRefs>();
 
   for (const f of files) {
     const filePath = path.join(SPECS_DIR, f);
@@ -319,7 +327,13 @@ async function main() {
       }
     }
 
-    specRefs.set(spec.slug, { providers: providerSlugs, chains: chainValues, tiers: tierValues, rpc: spec.slug.endsWith("-rpc"), venueTyped: spec.providers.some((p) => p.venue_type) });
+    specRefs.set(spec.slug, {
+      providers: providerSlugs,
+      chains: chainValues,
+      tiers: tierValues,
+      rpc: spec.slug.endsWith("-rpc"),
+      venueTyped: spec.providers.some((p) => p.venue_type),
+    });
     if (spec.status === "live") liveSlugs.push({ file: f, slug: spec.slug });
   }
 
@@ -359,21 +373,19 @@ async function main() {
     ];
     lintPlaceholders(issues, file, templated, refs.providers, refs.chains, refs.tiers);
     if (ans.venue_type !== undefined) {
-      if (!refs.venueTyped) {
-        issues.push({
-          file,
-          level: "error",
-          message: `venue_type is set but bench "${benchSlug}" types none of its providers, so the answer would rank no row`,
-        });
-      }
-      for (const [name, text] of templated) {
-        if (text && /\{\{[^}]*:(chain|tier):/.test(text)) {
-          issues.push({
-            file,
-            level: "error",
-            message: `${name}: chain and tier placeholders read the whole bench, not the ${String(ans.venue_type)} rows this answer ranks`,
-          });
-        }
+      const venueType = ProviderVenueType.safeParse(ans.venue_type);
+      const errors = venueType.success
+        ? venueScopeErrors(
+            {
+              venueType: venueType.data,
+              bench: benchSlug,
+              benchTypesProviders: refs.venueTyped,
+            },
+            templated,
+          )
+        : [`venue_type must be dex or cex, got "${String(ans.venue_type)}"`];
+      for (const message of errors) {
+        issues.push({ file, level: "error", message });
       }
     }
     // "{{count}} bridges (Mobula, Relay, LI.FI, deBridge, ...)": a live

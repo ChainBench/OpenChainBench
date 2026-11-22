@@ -26,6 +26,29 @@ import {
 import { PERSON_ID } from "@/lib/hub-jsonld";
 import { capDescription, capSnippet } from "@/lib/seo-text";
 import { getBenchCreatedAt } from "@/lib/seo/bench-dates";
+import { VENUE_TYPE_PARAM } from "@/lib/venue-type-filter";
+import type { ProviderVenueType } from "@/types/benchmark";
+
+type VenueTypeOpt = ProviderVenueType | undefined;
+
+function venueTypeQuery(venueType: VenueTypeOpt): string {
+  return venueType ? `?${VENUE_TYPE_PARAM}=${venueType}` : "";
+}
+
+function benchOgImage(slug: string, venueType: VenueTypeOpt): string {
+  return `${SITE.url}/api/og/${slug}${venueTypeQuery(venueType)}`;
+}
+
+function scopeNote(
+  chain: string | undefined,
+  venueType: VenueTypeOpt,
+): string {
+  const parts = [
+    chain ? `filtered to ${chain}` : "",
+    venueType ? `${venueType.toUpperCase()} venues only` : "",
+  ].filter(Boolean);
+  return parts.length ? ` (${parts.join(", ")})` : "";
+}
 
 export const revalidate = 3600;
 export const maxDuration = 120;
@@ -110,7 +133,7 @@ export async function generateMetadata({
       // rather than the generic homepage tile.
       images: [
         {
-          url: `${SITE.url}/api/og/${ans.bench.slug}`,
+          url: benchOgImage(ans.bench.slug, ans.venue_type),
           width: 1200,
           height: 630,
         },
@@ -121,7 +144,7 @@ export async function generateMetadata({
       site: SITE.twitter,
       title,
       description,
-      images: [`${SITE.url}/api/og/${ans.bench.slug}`],
+      images: [benchOgImage(ans.bench.slug, ans.venue_type)],
     },
   };
 }
@@ -138,9 +161,8 @@ export default async function AnswerPage({
   const { bench } = ans;
   const url = `${SITE.url}/answers/${ans.slug}`;
   const benchUrl = `${SITE.url}/benchmarks/${bench.slug}`;
-  const benchHref = ans.venue_type
-    ? `/benchmarks/${bench.slug}?venues=${ans.venue_type}`
-    : `/benchmarks/${bench.slug}`;
+  const benchHref =
+    `/benchmarks/${bench.slug}${venueTypeQuery(ans.venue_type)}`;
 
   // Render template placeholders against the live bench so the answer
   // surfaces real numbers, not raw `{{best_name}}` tokens. Tokens that
@@ -290,7 +312,7 @@ export default async function AnswerPage({
         // the Question node above so attribution stays per-answer.
         author: { "@id": `${SITE.url}/#org` },
         publisher: { "@id": `${SITE.url}/#org` },
-        image: `${SITE.url}/api/og/${bench.slug}`,
+        image: benchOgImage(bench.slug, ans.venue_type),
         // Inline the referenced bench Dataset (bare URL ref gets
         // validated as a standalone incomplete Dataset by Google, same
         // failure mode as PR #1442's isBasedOn fix).
@@ -516,8 +538,7 @@ export default async function AnswerPage({
         <Link href={benchHref} className="lnk text-ink-soft">
           /benchmarks/{bench.slug}
         </Link>
-        {ans.chain ? ` (filtered to ${ans.chain})` : ""}
-        {ans.venue_type ? ` (${ans.venue_type.toUpperCase()} rows only)` : ""},
+        {scopeNote(ans.chain, ans.venue_type)},
         refreshed every
         minute. Open methodology, open source.
       </p>

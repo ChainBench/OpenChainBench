@@ -2,6 +2,8 @@ import type { Benchmark, ProviderVenueType } from "@/types/benchmark";
 
 export type VenueTypeView = "all" | ProviderVenueType;
 
+export const VENUE_TYPE_PARAM = "venue_type";
+
 type Typed = { venueType?: ProviderVenueType };
 
 type VenueTypeCounts = { all: number; dex: number; cex: number };

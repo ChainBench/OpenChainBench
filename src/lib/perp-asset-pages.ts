@@ -303,8 +303,18 @@ export function sortPerpAssetRows(rows: PerpAssetVenueRow[]): PerpAssetVenueRow[
     if (a.allInBps != null && b.allInBps != null) return a.allInBps - b.allInBps;
     if (a.allInBps != null) return -1;
     if (b.allInBps != null) return 1;
-    const fa = a.funding24hBps ?? Number.POSITIVE_INFINITY;
-    const fb = b.funding24hBps ?? Number.POSITIVE_INFINITY;
-    return fa - fb || a.name.localeCompare(b.name);
+    return byFunding(a, b);
   });
+}
+
+export function sortPerpRowsByFunding(
+  rows: PerpAssetVenueRow[],
+): PerpAssetVenueRow[] {
+  return [...rows].sort(byFunding);
+}
+
+function byFunding(a: PerpAssetVenueRow, b: PerpAssetVenueRow): number {
+  const fa = a.funding24hBps ?? Number.POSITIVE_INFINITY;
+  const fb = b.funding24hBps ?? Number.POSITIVE_INFINITY;
+  return fa - fb || a.name.localeCompare(b.name);
 }
