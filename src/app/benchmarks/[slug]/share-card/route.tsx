@@ -12,6 +12,7 @@ import { chipBackground, chipTextColor, initials } from "@/lib/brand";
 import type { Benchmark, ProviderResult } from "@/types/benchmark";
 import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
 import { SLUG_RE } from "@/lib/slug";
+import { scopeFromParams, venueScopeLabel } from "@/lib/venue-type-filter";
 
 /** Best → worst, depending on whether higher numbers are better. Drops
  *  rows with missing `ms` or non-positive p50, mirroring /api/stat. Those
@@ -633,11 +634,15 @@ export async function GET(
   const feesRemovedBenchmark = fees.fees
     ? await getBenchmark(slug, { ...filters, ...fees })
     : undefined;
-  const rawBenchmark =
+  const unscoped =
     feesRemovedBenchmark ??
     (Object.keys(filters).length > 0
       ? (await getBenchmark(slug, filters)) ?? aggregate
       : aggregate);
+  const { view: venueView, bench: rawBenchmark } = scopeFromParams(
+    unscoped,
+    url.searchParams,
+  );
   // Metric-panel override. Perp-fees and any bench declaring
   // `metric_panels` in its YAML expose per-provider companion scalars
   // (e.g. ALL-IN AT $1K / $100K / $1M for perp-fees). The reader picks
@@ -689,6 +694,7 @@ export async function GET(
   if (kindOption) labelParts.push(kindOption.label);
   if (tierOption) labelParts.push(tierOption.label);
   if (feesRemovedBenchmark) labelParts.push("Fees removed");
+  if (venueView !== "all") labelParts.push(venueScopeLabel(venueView));
   const chainLabel = labelParts.length > 0 ? labelParts.join(" · ") : null;
 
   const rawTemplate = url.searchParams.get("template");
