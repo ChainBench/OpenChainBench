@@ -25,6 +25,7 @@ import { PERP_VENUE_META, benchRowsForVenue } from "@/lib/perp-venue-context";
 import { fetchPerpCohort } from "@/lib/perp-stats";
 import { PerpVenueBenchCards } from "@/components/perp-venue-bench-cards";
 import { LedgerTable } from "@/components/ledger-table";
+import { ProviderFootnotes } from "@/components/provider-footnotes";
 import { OutboundLink } from "@/components/outbound-link";
 
 export const revalidate = 3600;
@@ -371,7 +372,8 @@ export default async function AlternativePage({
           distribution view, and per-chain drilldowns. */}
       {!isDraft && bench.unit !== "count" && (
         <>
-          <div className="mt-10">
+          <div className="mt-10 space-y-4">
+            <ProviderFootnotes benchmark={bench} />
             <LedgerTable benchmark={bench} />
           </div>
 
