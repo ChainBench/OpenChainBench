@@ -297,11 +297,11 @@ export default async function PerpAssetPage({ params }: { params: Promise<{ asse
     },
     {
       q: "Why is a cell marked not measured?",
-      a: "Opening cost, slippage and taker fee come from the perp-fees harness, which walks the public order book of eleven venues; a venue outside that walk, or an oracle-priced one, has no such figure. Funding comes from each venue's own endpoint or from the Mobula aggregator; a venue on neither has none. Nothing is estimated to fill a blank.",
+      a: "Opening cost, slippage and taker fee come from the perp-fees harness, which walks the public order book of eighteen venues, eleven DEXs and seven CEXs; a venue outside that walk, or an oracle-priced one, has no such figure. Funding comes from each venue's own endpoint or from the Mobula aggregator; a venue on neither has none. Nothing is estimated to fill a blank.",
     },
     {
       q: "Why are Binance, Bybit and OKX listed under the DEXs?",
-      a: "As the funding reference. A carry trader compares a DEX against the large CEX books; their funding rows come from the same Mobula feed the perp-funding benchmark uses. Fees and slippage are not measured on CEXs here.",
+      a: "As the funding reference. A carry trader compares a DEX against the large CEX books; their funding rows come from the same Mobula feed the perp-funding benchmark uses. This table shows their funding only; their fees and slippage are on the perp-fees board.",
     },
   ];
 
@@ -426,7 +426,7 @@ export default async function PerpAssetPage({ params }: { params: Promise<{ asse
             <section className="mt-10" aria-labelledby="cex-ref">
               <h2 id="cex-ref" className="display text-lg sm:text-xl text-ink mb-2">Centralised reference: {a.asset} funding on the big books</h2>
               <p className="text-sm text-ink-soft mb-3 max-w-3xl">
-                The same {a.asset} funding cost on the large centralised books, from the Mobula funding feed, for the carry comparison. Fees and slippage are not measured on CEXs.
+                The same {a.asset} funding cost on the large centralised books, from the Mobula funding feed, for the carry comparison. Their fees and slippage are on the perp-fees board, not in this table.
               </p>
               <VenueTable list={cex} showFees={false} benchHref={benchHref} />
             </section>

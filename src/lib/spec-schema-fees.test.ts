@@ -5,6 +5,7 @@ import yaml from "js-yaml";
 import { SpecSchema } from "./spec-schema";
 
 type RawSpec = {
+  providers: { slug: string; venue_type?: string }[];
   fees_removed?: Record<string, unknown>;
   metric_panels?: Record<string, unknown>[];
   [key: string]: unknown;
@@ -47,5 +48,15 @@ describe("fees_removed validation", () => {
       "metric_panels.2.fees",
       "metric_panels.3.fees",
     ]);
+  });
+});
+
+describe("venue_type validation", () => {
+  test("a row left untyped next to typed rows is refused", () => {
+    const raw = perpFees();
+    const [first, ...rest] = raw.providers;
+    raw.providers = [{ ...first, venue_type: undefined }, ...rest];
+
+    expect(issuePaths(raw)).toEqual(["providers.0.venue_type"]);
   });
 });

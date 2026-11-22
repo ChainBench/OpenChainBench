@@ -11,6 +11,8 @@ export type ProviderType = "protocol" | "aggregator" | "intent" | "relay";
  *  pill rendered above the ledger table. */
 export type ProviderLayer = "l1" | "l2";
 
+export type ProviderVenueType = "dex" | "cex";
+
 /**
  * Per-provider data availability. Drives whether the leaderboard renders
  * the numbers or a "currently unavailable" stub.
@@ -34,6 +36,7 @@ export type ProviderResult = {
    *  a bench, the bench page renders an L1/L2/All toggle pill above the
    *  ledger that filters rows by this field. */
   layer?: ProviderLayer;
+  venueType?: ProviderVenueType;
   /** p95 is optional where the other four are not: it was added after
    *  hundreds of specs were written, and a bench that does not declare it
    *  must keep rendering exactly as before. */

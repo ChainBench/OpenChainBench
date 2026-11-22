@@ -13,8 +13,7 @@
  */
 
 import { cache } from "react";
-import { loadAllAnswers, type Answer } from "@/lib/answers";
-import { loadBenchmark } from "@/lib/spec";
+import { loadAllAnswers, loadAnswerBench, type Answer } from "@/lib/answers";
 import { renderTemplate } from "@/lib/bench-template";
 import {
   benchDataPendingFallback,
@@ -46,7 +45,7 @@ export const loadRenderedAnswers = cache(async (): Promise<RenderedAnswer[]> => 
 });
 
 async function renderAnswer(a: Answer): Promise<RenderedAnswer> {
-  const bench = await loadBenchmark(a.benchmark, { chain: a.chain });
+  const bench = await loadAnswerBench(a);
   const url = `${SITE.url}/answers/${a.slug}`;
   // Same guard as the answer detail page: a bench with no leader plus a sentence that depends
   // on live tokens gets the canned bench-scoped fallback, never a half-filled sentence.

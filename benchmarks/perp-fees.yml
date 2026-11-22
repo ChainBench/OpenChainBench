@@ -2,10 +2,10 @@
 
 slug: perp-fees
 number: "007"
-title: Cheapest perp DEX, live all-in cost from $1k to $1M on ETH, BTC and SOL
-seo_title: "Cheapest perp DEX: {{best_name}} at {{best_p50}} all in"
-seo_description: "{{best_name}} leads at {{best_p50}} all-in (24h avg): taker fee plus spread plus impact on ETH, BTC and SOL at $1k, $100k and $1M, {{ranked_count}} of {{count}} venues ranked live."
-subtitle: "All-in cost in basis points to open a long, measured on ETH, BTC and SOL at three order sizes: $1k where fees decide, $100k where impact appears, $1M where book depth takes over. Taker fee plus half-spread plus impact, read live from public APIs across {{count}} venues including Lighter, Hyperliquid, Polymarket, Paradex, Extended, Aster and edgex."
+title: "Cheapest perp exchange, DEX or CEX: live all-in cost from $1k to $1M on ETH, BTC and SOL"
+seo_title: "Cheapest perp DEX or CEX: {{best_name}} at {{best_p50}} all in"
+seo_description: "{{best_name}} leads at {{best_p50}} all-in (24h avg): taker fee plus spread plus impact on ETH, BTC and SOL at $1k, $100k and $1M, {{ranked_count}} of {{count}} perp DEX and CEX venues ranked live."
+subtitle: "All-in cost in basis points to open a long, measured on ETH, BTC and SOL at three order sizes: $1k where fees decide, $100k where impact appears, $1M where book depth takes over. Taker fee plus half-spread plus impact, read live from public APIs across {{count}} venues: perp DEXes such as Lighter and Hyperliquid, and the Binance, Bybit, OKX, Bitget, MEXC, Gate and KuCoin perp books."
 category: Trading
 status: live
 metric: All-in cost
@@ -17,19 +17,20 @@ seo_intro: |
   This benchmark answers the question every perp DEX comparison article
   refuses to answer with real numbers. what does it actually cost to
   open a $1000 ETH long 10x position right now, all-in, on each major
-  decentralized venue. Published fee schedules quote taker rates from
+  perp DEX and on seven centralized perp books. Published fee schedules quote taker rates from
   zero to single-digit basis points (the table carries each venue's),
   but the rack rate is half the story. The other half is the spread you
   cross at market and the price impact you eat at $1000 notional, both
   of which are missing from every comparison roundup currently ranking
   for "best perp DEX". We read taker fees from each venue's own API
-  (no hardcoded schedules), walk the orderbook for $1000 of buy-side
+  where one is public and use the documented base tier where it is
+  not, walk the orderbook for $1000 of buy-side
   notional to compute spread plus impact where a book exists (GMX and
   Gains are oracle priced, so their spread and impact come from each
   protocol's on-chain pricing), and sum the two into a single basis-point
   figure refreshed every five minutes. Hyperliquid vs
-  Lighter vs Polymarket vs dYdX vs GMX vs Gains is then a
-  one-number comparison, not a six-tab spreadsheet. Size changes the
+  Lighter vs Binance vs Bybit is then a one-number comparison, not a
+  spreadsheet of fee schedules. Size changes the
   answer, so the board is complemented by two panels that rerun the
   exact same measurement at $100,000 and $1,000,000 of notional. Small
   orders reward the lowest fee schedule; a $1M market order rewards the
@@ -39,16 +40,22 @@ abstract: |
   We measure the live all-in cost of opening a $1000 ETH long 10x perp
   position across major perpetual venues. Cost = taker fee + half-spread
   + price impact at notional, all in basis points. No transactions are
-  sent, only freely-available public APIs are queried. Every value is
-  read live, no hardcoded fee schedules. Taker fees come from each
-  venue's own API (Hyperliquid `userFees`, dYdX Cosmos REST
+  sent, only freely-available public APIs are queried. Books are read
+  live every cycle. Taker fees come from each venue's own API where one
+  is public (Hyperliquid `userFees`, dYdX Cosmos REST
   `/feetiers/perpetual_fee_params`, GMX Subsquid `positionFeeFactor`,
-  Lighter `/orderBookDetails`, Gains v8 on-chain `fees()`). On the
+  Lighter `/orderBookDetails`, Gains v8 on-chain `fees()`, the Bitget,
+  MEXC and KuCoin contract rows), and from the documented base tier on
+  Extended, Aster, edgeX, Binance, Bybit, OKX and Gate. On the
   orderbook venues (Hyperliquid, dYdX, Lighter) the spread comes from
   walking the book for $1000 of buy-side notional. GMX v2 and Gains
   are oracle priced with no book: their spread and impact are read
   from each protocol's on-chain pricing, averaged over a long and a
-  short. The bench refreshes every 5 minutes.
+  short. Seven centralized perp books (Binance, Bybit, OKX, Bitget,
+  MEXC, Gate, KuCoin) go through the same order book walk on their
+  USDT-margined perpetual, so a DEX row and a CEX row read on the same
+  scale. The Venue type selector shows All, DEX or CEX. The bench
+  refreshes every 5 minutes.
 
 methodology:
   - "Cadence: every 5 minutes, in parallel across all venues."
@@ -62,7 +69,11 @@ methodology:
   - "Gains, impact: `getTradeCumulVolPriceImpactP` (cumulative volume) is added at each size. The open interest skew impact (`getTradeSkewPriceImpactP`) is not counted: Gains applies it again with the same sign when the position closes, so a trade opened and closed on an unchanged skew gets it back. SOL has `spreadP` 0, so its cost beyond the fee is the volume impact alone."
   - "Paradex: `/markets` fee config for the interactive (Retail) taker rate, 0 bps as of 2026-09, + `/orderbook/{market}/interactive?depth=100` walk. Paradex runs two books: the interactive one includes RPI (Retail Price Improvement) maker liquidity and is what UI and interactive-token orders cross; the plain `/orderbook` is the API book, RPI excluded, crossed by Pro (plain API) orders at the 2 bps api-tier fee."
   - "Paradex, continued: the two books diverge on thin pairs (SOL on 2026-09-22: 0.03 % spread on the interactive book against 1.4 % on the API book), so the bench reads the interactive book as the cost of opening a position; an algorithmic taker should add 2 bps and expect the wider API book. The endpoint caps at 100 levels, so the $1M tier can be skipped when the visible book thins."
-  - "Extended: full public book from `/info/markets/<m>/orderbook` + `/stats` funding (1h native). Its taker fee is not exposed by any public endpoint; the documented base rate of 2.5 bps is used and this is the one venue where the fee is not read live."
+  - "Extended: full public book from `/info/markets/<m>/orderbook` + `/stats` funding (1h native). Its taker fee is not exposed by any public endpoint, so the documented base rate of 2.5 bps is used, as on Aster, edgeX, Binance, Bybit, OKX and Gate."
+  - "CEX rows: the USDT-margined perpetual of each exchange (Binance USDⓈ-M, Bybit linear, OKX swap, Bitget USDT-M, MEXC, Gate USDT, KuCoin), asks walked from the mid of the same snapshot. Sizes quoted in contracts are converted with the contract size read from the exchange's own instrument endpoint (OKX `ctVal`, MEXC `contractSize`, Gate `quanto_multiplier`, KuCoin `multiplier`)."
+  - "CEX taker fee: read live from the public contract row on Bitget, MEXC and KuCoin (MEXC sets it per market). Binance (5 bps), Bybit (5.5 bps), OKX (5 bps) and Gate (5 bps) publish no fee to an anonymous caller, so their documented base tier is used. Gate's contract endpoint returns 7.5 bps, which is not its 5 bps base taker tier, so the documented 5 bps is used."
+  - "CEX depth read: Binance 1000 levels, Bybit 500, OKX 5000, Bitget 100, Gate 300, KuCoin 1000 and MEXC 1500, the deepest snapshot each endpoint returns."
+  - "Venue type: each venue is classed DEX or CEX. The Venue type selector above the board shows All (default), DEX or CEX, and also filters the $100k and $1M panels, with trading fees included or removed."
   - "Oracle priced venues, long and short: the price impact differs between a long and a short, so GMX v2 and Gains publish the average of a long and a short of the same size. Orderbook venues are walked on the ask side."
   - "All-in formula: `all_in_bps = taker_fee_bps + spread_bps`. Both components emitted as separate metrics for transparency."
   - "Trading fees, Removed: the board reads `spread_bps` alone (half-spread plus impact at $1,000) and the $100k and $1M panels subtract each venue's taker fee from the tier."
@@ -72,23 +83,23 @@ methodology:
 
 per_chain_explainer:
   - slug: ETH
-    h2: "Cheapest perp DEX for ETH"
+    h2: "Cheapest perp exchange for ETH"
     body: |
-      The cheapest perp DEX for ETH on this benchmark sits at {{best_p50:chain:ETH}} all-in (p50, 24h) for a $1000 ETH long 10x. ETH-PERP is the deepest pair on every venue measured (Hyperliquid, Lighter, Polymarket, Paradex, Extended, dYdX v4, GMX v2, Gains), which means the rack-rate taker fee dominates the all-in number rather than the spread. Lighter quotes 0 bps taker, Hyperliquid 4.5 bps, dYdX 5 bps tier-0, GMX 5 or 6 bps (the average of the long's and the short's impact branch), Gains reads the openFeeP slot live from the on-chain Gains v8 fees contract. Spread plus impact at $1000 notional is added on top via an orderbook walk, or the on-chain execution price on GMX v2 and Gains.
+      The cheapest perp venue for ETH on this benchmark, DEX or CEX, sits at {{best_p50:chain:ETH}} all-in (p50, 24h) for a $1000 ETH long 10x. ETH-PERP is the deepest pair on every venue measured, so at $1000 the taker fee decides most of the ranking: Lighter and Paradex quote 0 bps, Hyperliquid 4.5, dYdX 5 at tier 0, Binance, OKX and Gate 5, Bybit 5.5, GMX 5 or 6 (the average of the long's and the short's impact branch), and Gains reads its open fee on-chain. Spread plus impact at $1000 notional is added on top via an orderbook walk, or the on-chain execution price on GMX v2 and Gains.
   - slug: BTC
-    h2: "Cheapest perp DEX for BTC"
+    h2: "Cheapest perp exchange for BTC"
     body: |
-      The cheapest perp DEX for BTC on this benchmark sits at {{best_p50:chain:BTC}} all-in (p50, 24h) for a $1000 BTC long 10x. BTC-PERP carries the highest open interest across every venue in the cohort, so books are typically tighter than ETH on the same notional and the spread component compresses toward the rack rate. GMX v2 BTC uses the same positionFeeFactor schedule as ETH (4 bps positive impact, 6 bps negative); the bench charges each side the branch its trade triggers. The leaderboard reorders intra-day with funding skew and orderbook depth.
+      The cheapest perp venue for BTC on this benchmark, DEX or CEX, sits at {{best_p50:chain:BTC}} all-in (p50, 24h) for a $1000 BTC long 10x. BTC-PERP carries the highest open interest across every venue in the cohort, so books are typically tighter than ETH on the same notional and the spread component compresses toward the rack rate. GMX v2 BTC uses the same positionFeeFactor schedule as ETH (4 bps positive impact, 6 bps negative); the bench charges each side the branch its trade triggers. The leaderboard reorders intra-day with funding skew and orderbook depth.
   - slug: SOL
-    h2: "Cheapest perp DEX for SOL"
+    h2: "Cheapest perp exchange for SOL"
     body: |
-      The cheapest perp DEX for SOL on this benchmark sits at {{best_p50:chain:SOL}} all-in (p50, 24h) for a $1000 SOL long 10x. SOL-PERP books are thinner than ETH or BTC on every venue, so the spread plus impact component carries more weight in the all-in figure and a 5 bps taker venue can land above a 0 bps taker venue once the orderbook is walked. Lighter, Hyperliquid and dYdX v4 quote SOL-PERP natively; GMX v2 trades SOL as a synthetic on its Arbitrum deployment.
+      The cheapest perp venue for SOL on this benchmark, DEX or CEX, sits at {{best_p50:chain:SOL}} all-in (p50, 24h) for a $1000 SOL long 10x. SOL-PERP books are thinner than ETH or BTC on every venue, so the spread plus impact component carries more weight in the all-in figure and a 5 bps taker venue can land above a 0 bps taker venue once the orderbook is walked. Lighter, Hyperliquid, dYdX v4 and the seven CEX books quote SOL-PERP natively; GMX v2 trades SOL as a synthetic on its Arbitrum deployment.
 
 findings:
   - "{{best_name}} currently leads the leaderboard at {{best_p50}} all-in (24 h average) across {{count}} measured perp venues. The number includes taker fee plus the spread crossed at $1000 notional, not the rack-rate taker fee alone."
   - "Lighter charges zero taker fees on ETH-PERP, confirmed live via their public API. {{name:lighter}} clocks {{p50:lighter}} all-in (24 h average), so the headline figure is essentially the half-spread plus orderbook impact crossed at $1000."
-  - "{{name:hyperliquid}} sits at {{p50:hyperliquid}} all-in (24 h average) on a 4.5 bps base taker. The deep HyperBFT orderbook keeps the spread component compressed, so the all-in number tracks the rack rate closer than any other venue in the cohort."
-  - "{{name:dydx}} sits at {{p50:dydx}} all-in (24 h average). The published tier-0 taker fee is 5 bps; the rest is the orderbook crossed at $1000, which on dYdX v4 is consistently the tightest non-zero-fee book outside Hyperliquid."
+  - "{{name:hyperliquid}} sits at {{p50:hyperliquid}} all-in (24 h average) on a 4.5 bps base taker. The deep HyperBFT orderbook keeps the spread component compressed, so the all-in number tracks the rack rate closer than any other DEX in the cohort."
+  - "{{name:dydx}} sits at {{p50:dydx}} all-in (24 h average). The published tier-0 taker fee is 5 bps; the rest is the orderbook crossed at $1000, which on dYdX v4 is consistently the tightest non-zero-fee DEX book outside Hyperliquid."
   - "GMX position fee is variable: 4 bps on positive impact opens, 6 bps on negative impact. Each side is charged the branch its trade triggers, then long and short are averaged. {{name:gmx}} clocks {{p50:gmx}} all-in (24 h average)."
   - "{{worst_name}} trails at {{worst_p50}} all-in (24 h average). The leaderboard reorders intra-day with spread volatility, so a venue cheap on the rack rate can still trail when its book thins out at a $1000 buy."
 
@@ -99,12 +110,14 @@ prometheus:
   expected_freshness_seconds: 1800
 
 faq:
-  - q: "Which perp DEX is cheapest for a $1M market order?"
+  - q: "Which perp venue is cheapest for a $1M market order?"
     a: "The venue with the deepest book, not the one with the lowest fee schedule. At $1,000,000 of notional the price impact from walking the book dwarfs the taker fee, so zero fee venues can lose to a 4 bps venue whose book absorbs the size better. The $1M panel on this page reruns the exact same measurement at that size, and the ranking regularly differs from the $1000 headline board. A venue that shows no data there means its visible book could not fill $1M at measurement time, which is a depth signal in itself."
   - q: "Why does the ranking change with order size?"
     a: "Two cost components move in opposite directions. The taker fee is a flat percentage, identical at any size. Price impact grows with size because a bigger order eats deeper into the book. Small orders are fee dominated, so zero fee venues win. Large orders are depth dominated, so the deepest book wins. The board at $1000 and the panels at $100k and $1M show all three regimes live."
-  - q: "What is the cheapest perpetual futures DEX right now?"
+  - q: "What is the cheapest perpetual futures exchange right now?"
     a: "{{best_name}} currently leads the leaderboard at {{best_p50}} all-in (24 h average) for opening a $1000 ETH long 10x position. The leaderboard re-sorts every five minutes against fresh Prometheus samples, so the answer reflects the last 24 hours of live data from each venue's public API, not a frozen rack-rate table."
+  - q: "Are perp DEXes cheaper than Binance, Bybit or OKX?"
+    a: "On the fee, often: Lighter and Paradex charge 0 bps taker where Binance, OKX and Gate charge 5 bps at the base tier and Bybit 5.5. On the book, the large CEXes stay deep at size, so the gap narrows or flips at $100k and $1M. Live 24h averages on ETH at $1k: {{name:binance}} {{p50:binance}}, {{name:bybit}} {{p50:bybit}}, {{name:okx}} {{p50:okx}} against {{name:hyperliquid}} {{p50:hyperliquid}} and {{name:lighter}} {{p50:lighter}}. Set Venue type to DEX or CEX to compare one family at a time, and Trading fees to Removed to compare books alone."
   - q: "Is Lighter really zero fees on perpetual futures?"
     a: "The taker fee on Lighter is 0 bps, confirmed live via `/orderBookDetails` rather than a marketing page. The all-in cost is not zero, however, because every market order still crosses the half-spread and eats price impact at notional. The Lighter line on this benchmark shows what that residual cost actually is at $1000, which is the right number to compare against a paid venue's all-in figure."
   - q: "How do Hyperliquid fees compare to Lighter or dYdX in practice?"
@@ -150,6 +163,7 @@ dimensions:
 providers:
   - slug: polymarket
     name: Polymarket
+    venue_type: dex
     tag: Polygon perps by Polymarket, 4 bps base taker tier
     formula: "Average over 24h of (base-tier taker rate from the Polymarket perps fees endpoint + half-spread plus impact from the book endpoint asks walked for $1000 of buy notional in the selected asset), in bps."
     queries:
@@ -163,6 +177,7 @@ providers:
 
   - slug: lighter
     name: Lighter
+    venue_type: dex
     tag: zk-rollup, zero taker fee
     formula: "Average over 24h of (taker fee from Lighter `/orderBookDetails` + half-spread plus impact from walking `/orderBookOrders` for $1000 of buy notional in the selected asset), in bps."
     queries:
@@ -176,6 +191,7 @@ providers:
 
   - slug: hyperliquid
     name: Hyperliquid
+    venue_type: dex
     tag: HyperBFT L1 perp DEX
     formula: "Average over 24h of (Hyperliquid `userFees` taker rate + half-spread plus impact from the `l2Book` asks side walked for $1000 of buy notional in the selected asset), in bps."
     queries:
@@ -189,6 +205,7 @@ providers:
 
   - slug: dydx
     name: dYdX v4
+    venue_type: dex
     tag: Cosmos-based decentralized perp
     formula: "Average over 24h of (dYdX Cosmos REST tier-0 taker fee + half-spread plus impact from the indexer `/orderbooks/perpetualMarket/{ASSET}-USD` walked at $1000 notional), in bps."
     queries:
@@ -202,6 +219,7 @@ providers:
 
   - slug: gmx
     name: GMX
+    venue_type: dex
     tag: Synthetics on Arbitrum, oracle-priced
     formula: "Average over 24h of GMX v2 position fee (branch per side from `balanceWasImproved`) + spread and impact of a $1,000 position from the Reader `getExecutionPrice`, mean of long and short, in bps."
     queries:
@@ -215,6 +233,7 @@ providers:
 
   - slug: gains
     name: Gains
+    venue_type: dex
     tag: Synthetic perps on Arbitrum, fees read on-chain
     formula: "Average over 24h of Gains `fees(feeIndex)` open fee + half of `pairs(N).spreadP` + on-chain cumulative volume impact of a $1,000 position (mean of long and short), read via Arbitrum RPC, in bps."
     queries:
@@ -228,6 +247,7 @@ providers:
 
   - slug: paradex
     name: Paradex
+    venue_type: dex
     tag: Starknet appchain perps, Retail (interactive) book, 0 bps interactive taker tier
     formula: "Average over 24h of (interactive-tier taker rate from the Paradex /markets fee config + half-spread plus impact from the /orderbook/{market}/interactive asks, depth 100, walked for $1000 of buy notional in the selected asset), in bps."
     queries:
@@ -241,6 +261,7 @@ providers:
 
   - slug: extended
     name: Extended
+    venue_type: dex
     tag: Starknet perps, full public book, documented 2.5 bps taker
     formula: "Average over 24h of (documented base taker rate of 2.5 bps, not exposed by Extended's public API, plus half-spread and impact from the full public orderbook walked for $1000 of buy notional in the selected asset), in bps."
     queries:
@@ -254,6 +275,7 @@ providers:
 
   - slug: aster
     name: Aster
+    venue_type: dex
     tag: BSC perp DEX, 5 bps taker, Binance-style REST book
     formula: "Average over 24h of (5 bps documented base taker fee plus half-spread and impact from the Aster fapi depth endpoint asks walked for $1000 of buy notional in the selected asset), in bps."
     queries:
@@ -267,6 +289,7 @@ providers:
 
   - slug: ondo
     name: Ondo Perps
+    venue_type: dex
     tag: SGX off-chain matching, custody on Ethereum and Arbitrum, 2.5 bps taker (launch promotion)
     formula: "Average over 24h of (takerFee from the Ondo Perps contract row, 2.5 bps during the launch promotion, 5 bps base, plus half-spread and impact from the /v1/perps/depth book, 100 levels, walked for $1000 of buy notional), in bps."
     queries:
@@ -279,6 +302,7 @@ providers:
       series: perp_fees_all_in_bps{venue="ondo"}
   - slug: edgex
     name: edgeX
+    venue_type: dex
     tag: Offchain CLOB perp DEX, 3.8 bps taker
     formula: "Average over 24h of (3.8 bps documented base taker fee plus half-spread and impact from the edgeX public getDepth endpoint asks walked for $1000 of buy notional in the selected asset), in bps."
     queries:
@@ -289,6 +313,97 @@ providers:
       success: avg_over_time(perp_fees_health{venue="edgex"}[24h])
       sample_size: count_over_time(perp_fees_all_in_bps{venue="edgex"}[24h])
       series: perp_fees_all_in_bps{venue="edgex"}
+  - slug: binance
+    name: Binance
+    venue_type: cex
+    tag: CEX, 5 bps taker, USDⓈ-M perp
+    formula: "Average over 24h of (documented 5 bps base taker plus half-spread and impact from the fapi depth asks, 1000 levels, walked for $1000 of buy notional in the selected asset), in bps."
+    queries:
+      p50: avg_over_time(perp_fees_all_in_bps{venue="binance"}[24h])
+      p90: quantile_over_time(0.90, perp_fees_all_in_bps{venue="binance"}[24h])
+      p99: quantile_over_time(0.99, perp_fees_all_in_bps{venue="binance"}[24h])
+      mean: avg_over_time(perp_fees_all_in_bps{venue="binance"}[24h])
+      success: avg_over_time(perp_fees_health{venue="binance"}[24h])
+      sample_size: count_over_time(perp_fees_all_in_bps{venue="binance"}[24h])
+      series: perp_fees_all_in_bps{venue="binance"}
+  - slug: bybit
+    name: Bybit
+    venue_type: cex
+    tag: CEX, 5.5 bps taker, linear perp
+    formula: "Average over 24h of (documented 5.5 bps base taker plus half-spread and impact from the v5 linear order book asks, 500 levels, walked for $1000 of buy notional in the selected asset), in bps."
+    queries:
+      p50: avg_over_time(perp_fees_all_in_bps{venue="bybit"}[24h])
+      p90: quantile_over_time(0.90, perp_fees_all_in_bps{venue="bybit"}[24h])
+      p99: quantile_over_time(0.99, perp_fees_all_in_bps{venue="bybit"}[24h])
+      mean: avg_over_time(perp_fees_all_in_bps{venue="bybit"}[24h])
+      success: avg_over_time(perp_fees_health{venue="bybit"}[24h])
+      sample_size: count_over_time(perp_fees_all_in_bps{venue="bybit"}[24h])
+      series: perp_fees_all_in_bps{venue="bybit"}
+  - slug: okx
+    name: OKX
+    venue_type: cex
+    tag: CEX, 5 bps taker, USDT perp
+    formula: "Average over 24h of (documented 5 bps base taker plus half-spread and impact from books-full asks, 5000 levels, contracts times ctVal, walked for $1000 of buy notional in the selected asset), in bps."
+    queries:
+      p50: avg_over_time(perp_fees_all_in_bps{venue="okx"}[24h])
+      p90: quantile_over_time(0.90, perp_fees_all_in_bps{venue="okx"}[24h])
+      p99: quantile_over_time(0.99, perp_fees_all_in_bps{venue="okx"}[24h])
+      mean: avg_over_time(perp_fees_all_in_bps{venue="okx"}[24h])
+      success: avg_over_time(perp_fees_health{venue="okx"}[24h])
+      sample_size: count_over_time(perp_fees_all_in_bps{venue="okx"}[24h])
+      series: perp_fees_all_in_bps{venue="okx"}
+  - slug: bitget
+    name: Bitget
+    venue_type: cex
+    tag: CEX, live taker fee, USDT-M perp
+    formula: "Average over 24h of (takerFeeRate from the public contracts endpoint plus half-spread and impact from merge-depth asks, 100 levels, walked for $1000 of buy notional in the selected asset), in bps."
+    queries:
+      p50: avg_over_time(perp_fees_all_in_bps{venue="bitget"}[24h])
+      p90: quantile_over_time(0.90, perp_fees_all_in_bps{venue="bitget"}[24h])
+      p99: quantile_over_time(0.99, perp_fees_all_in_bps{venue="bitget"}[24h])
+      mean: avg_over_time(perp_fees_all_in_bps{venue="bitget"}[24h])
+      success: avg_over_time(perp_fees_health{venue="bitget"}[24h])
+      sample_size: count_over_time(perp_fees_all_in_bps{venue="bitget"}[24h])
+      series: perp_fees_all_in_bps{venue="bitget"}
+  - slug: mexc
+    name: MEXC
+    venue_type: cex
+    tag: CEX, live taker fee per market
+    formula: "Average over 24h of (takerFeeRate from the contract detail endpoint plus half-spread and impact from the full depth asks, contracts times contractSize, walked for $1000 of buy notional in the selected asset), in bps."
+    queries:
+      p50: avg_over_time(perp_fees_all_in_bps{venue="mexc"}[24h])
+      p90: quantile_over_time(0.90, perp_fees_all_in_bps{venue="mexc"}[24h])
+      p99: quantile_over_time(0.99, perp_fees_all_in_bps{venue="mexc"}[24h])
+      mean: avg_over_time(perp_fees_all_in_bps{venue="mexc"}[24h])
+      success: avg_over_time(perp_fees_health{venue="mexc"}[24h])
+      sample_size: count_over_time(perp_fees_all_in_bps{venue="mexc"}[24h])
+      series: perp_fees_all_in_bps{venue="mexc"}
+  - slug: gate
+    name: Gate
+    venue_type: cex
+    tag: CEX, 5 bps taker, USDT perp
+    formula: "Average over 24h of (documented 5 bps base taker plus half-spread and impact from order_book asks, 300 levels, contracts times quanto_multiplier, walked for $1000 of buy notional in the selected asset), in bps."
+    queries:
+      p50: avg_over_time(perp_fees_all_in_bps{venue="gate"}[24h])
+      p90: quantile_over_time(0.90, perp_fees_all_in_bps{venue="gate"}[24h])
+      p99: quantile_over_time(0.99, perp_fees_all_in_bps{venue="gate"}[24h])
+      mean: avg_over_time(perp_fees_all_in_bps{venue="gate"}[24h])
+      success: avg_over_time(perp_fees_health{venue="gate"}[24h])
+      sample_size: count_over_time(perp_fees_all_in_bps{venue="gate"}[24h])
+      series: perp_fees_all_in_bps{venue="gate"}
+  - slug: kucoin
+    name: KuCoin
+    venue_type: cex
+    tag: CEX, live taker fee, USDT-M perp
+    formula: "Average over 24h of (takerFeeRate from the contract endpoint plus half-spread and impact from the level2 snapshot asks, contracts times multiplier, walked for $1000 of buy notional in the selected asset), in bps."
+    queries:
+      p50: avg_over_time(perp_fees_all_in_bps{venue="kucoin"}[24h])
+      p90: quantile_over_time(0.90, perp_fees_all_in_bps{venue="kucoin"}[24h])
+      p99: quantile_over_time(0.99, perp_fees_all_in_bps{venue="kucoin"}[24h])
+      mean: avg_over_time(perp_fees_all_in_bps{venue="kucoin"}[24h])
+      success: avg_over_time(perp_fees_health{venue="kucoin"}[24h])
+      sample_size: count_over_time(perp_fees_all_in_bps{venue="kucoin"}[24h])
+      series: perp_fees_all_in_bps{venue="kucoin"}
 
 # Notional-tier companion panels. The panel metric leaves the chain label
 # unpinned and wraps the selector in avg(), so the ETH / BTC / SOL tab

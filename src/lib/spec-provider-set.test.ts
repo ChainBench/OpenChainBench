@@ -53,6 +53,12 @@ describe("the provider set behind the cache keys", () => {
     const hash = createHash("sha256").update(sets.join("\n")).digest("hex").slice(0, 16);
     const count = sets.reduce((n, s) => n + s.split(":")[1].split(",").length, 0);
 
+    // An ADDITION on 2026-11-22: Binance, Bybit, OKX, Bitget, MEXC, Gate
+    // and KuCoin join bench 007 as CEX rows. Not new to the site (bench
+    // perp-funding-cost-30d lists all seven) but each gains an appearance,
+    // so providers-v moves; bench 007 declares chain tabs, so bench-filters
+    // moves too. v210/v203/v125 and providers-v78.
+    //
     // An ADDITION on 2026-11-16: True Markets joins bench 030 as its
     // 109th Hyperliquid builder (#3615), opened by the operator. New to
     // the SITE, so providers-v moves with the other two; bench 030
@@ -249,6 +255,6 @@ describe("the provider set behind the cache keys", () => {
         "Then set EXPECTED to the hash in this failure, and add the provider",
         `to PRODUCT_NAMES if it needs a display name. Providers now: ${count}.`,
       ].join("\n"),
-    ).toBe("36aa2281181d1d64");
+    ).toBe("d1edef5087c087b4");
   });
 });

@@ -149,6 +149,8 @@ export const ProviderType = z.enum([
  *  by execution layer without leaving the page. */
 export const ProviderLayer = z.enum(["l1", "l2"]);
 
+export const ProviderVenueType = z.enum(["dex", "cex"]);
+
 // Em-dash (—) and en-dash (–) are the classic "AI tells" that hurt our brand
 // voice. The site is hand-authored, the YAMLs must read that way too. Plain
 // hyphens stay legal because compound words ("head-lag", "L1-finality") need
@@ -225,6 +227,7 @@ const provider = z.object({
    *  L1 and L2 providers (network-fees) renders an L1/L2/All toggle pill
    *  that filters the ledger by this field. */
   layer: ProviderLayer.optional(),
+  venue_type: ProviderVenueType.optional(),
   /** Access cohort this provider belongs to on a bench that declares
    *  `dimensions.tier` (RPC pages: `public` no-key endpoints next to
    *  `keyed` API-key providers). The tier selector partitions the
@@ -1032,6 +1035,15 @@ export const SpecSchema = z
           message: `aggregate_filters.tier "${pinned}" is not a declared tier`,
         });
       }
+    }
+
+    const untyped = spec.providers.findIndex((p) => !p.venue_type);
+    if (untyped >= 0 && spec.providers.some((p) => p.venue_type)) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["providers", untyped, "venue_type"],
+        message: "venue_type is set on every provider of the bench or none",
+      });
     }
 
     (spec.metric_panels ?? []).forEach((panel, i) => {

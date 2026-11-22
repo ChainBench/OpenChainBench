@@ -13,6 +13,7 @@ Exposes Prometheus metrics on `:2112/metrics`.
 | GMX v2 (Arbitrum) | Subsquid GraphQL position fee factors (positive and negative impact) + gmxinfra REST oracle prices + Reader `getExecutionPrice` for spread and impact |
 | Lighter | `/orderBookDetails` taker fee + `/orderBookOrders` orderbook walk |
 | Gains (v8 on Arbitrum) | `eth_call` on the on-chain fee oracle + cumulative-volume price impact |
+| Binance, Bybit, OKX, Bitget, MEXC, Gate, KuCoin (CEX) | Public order book of the USDT-margined perpetual, contracts converted with each instrument's contract size; taker fee from the public contract row (Bitget, MEXC, KuCoin) or the documented base tier (Binance, Bybit, OKX, Gate) |
 
 Cadence: every 5 minutes, in parallel across all venues. Failed scrapes leave the previous gauge in place and increment `perp_fees_fetch_errors_total`.
 

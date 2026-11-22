@@ -75,6 +75,13 @@ func loadConfig() *Config {
 		// taker fee (3.8 bps, edgex-1.gitbook.io) hardcoded because no
 		// public fee schedule API — disclosed in the spec formula.
 		{slug: "edgex", display: "edgeX", assets: []string{"ETH", "BTC", "SOL", "HYPE"}},
+		{slug: "binance", display: "Binance", assets: []string{"ETH", "BTC", "SOL"}},
+		{slug: "bybit", display: "Bybit", assets: []string{"ETH", "BTC", "SOL"}},
+		{slug: "okx", display: "OKX", assets: []string{"ETH", "BTC", "SOL"}},
+		{slug: "bitget", display: "Bitget", assets: []string{"ETH", "BTC", "SOL"}},
+		{slug: "mexc", display: "MEXC", assets: []string{"ETH", "BTC", "SOL"}},
+		{slug: "gate", display: "Gate", assets: []string{"ETH", "BTC", "SOL"}},
+		{slug: "kucoin", display: "KuCoin", assets: []string{"ETH", "BTC", "SOL"}},
 	}
 
 	venues := make([]VenueConfig, 0, len(defs)*3)

@@ -111,7 +111,20 @@ func fetchOne(v VenueConfig, cfg *Config) PerpSample {
 		return fetchEdgex(v)
 	case "ondo":
 		return fetchOndo(v)
-	default:
-		return PerpSample{Venue: v.Slug, Asset: v.Asset, Err: "unsupported_venue"}
+	case "binance":
+		return fetchCEX(v, quoteBinance)
+	case "bybit":
+		return fetchCEX(v, quoteBybit)
+	case "okx":
+		return fetchCEX(v, quoteOKX)
+	case "bitget":
+		return fetchCEX(v, quoteBitget)
+	case "mexc":
+		return fetchCEX(v, quoteMEXC)
+	case "gate":
+		return fetchCEX(v, quoteGate)
+	case "kucoin":
+		return fetchCEX(v, quoteKuCoin)
 	}
+	return PerpSample{Venue: v.Slug, Asset: v.Asset, Err: "unsupported_venue"}
 }

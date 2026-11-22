@@ -138,6 +138,9 @@ export default async function AnswerPage({
   const { bench } = ans;
   const url = `${SITE.url}/answers/${ans.slug}`;
   const benchUrl = `${SITE.url}/benchmarks/${bench.slug}`;
+  const benchHref = ans.venue_type
+    ? `/benchmarks/${bench.slug}?venues=${ans.venue_type}`
+    : `/benchmarks/${bench.slug}`;
 
   // Render template placeholders against the live bench so the answer
   // surfaces real numbers, not raw `{{best_name}}` tokens. Tokens that
@@ -420,7 +423,7 @@ export default async function AnswerPage({
           </ol>
           <p className="mt-4 text-xs text-ink-muted">
             Full live data:{" "}
-            <Link className="lnk" href={`/benchmarks/${bench.slug}`}>
+            <Link className="lnk" href={benchHref}>
               /benchmarks/{bench.slug}
             </Link>
             .
@@ -510,10 +513,12 @@ export default async function AnswerPage({
 
       <p className="mt-12 max-w-2xl text-xs text-ink-muted">
         Same data as{" "}
-        <Link href={`/benchmarks/${bench.slug}`} className="lnk text-ink-soft">
+        <Link href={benchHref} className="lnk text-ink-soft">
           /benchmarks/{bench.slug}
         </Link>
-        {ans.chain ? ` (filtered to ${ans.chain})` : ""}, refreshed every
+        {ans.chain ? ` (filtered to ${ans.chain})` : ""}
+        {ans.venue_type ? ` (${ans.venue_type.toUpperCase()} rows only)` : ""},
+        refreshed every
         minute. Open methodology, open source.
       </p>
     </article>
