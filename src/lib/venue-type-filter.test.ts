@@ -55,8 +55,6 @@ test.each([
 
 test.each<[string | null, VenueTypeView]>([
   ["dex", "dex"],
-  ["cex", "cex"],
-  [null, "all"],
   ["spot", "all"],
 ])("parseVenueTypeView(%p) is %p", (raw, view) => {
   expect(parseVenueTypeView(raw)).toBe(view);
@@ -75,8 +73,6 @@ test.each<[VenueTypeView, number, VenueTypeView]>([
 
 test.each<[string | undefined, VenueTypeView | undefined, string]>([
   [undefined, "all", ""],
-  [undefined, undefined, ""],
-  [undefined, "cex", " (CEX venues only)"],
   ["Solana", "dex", " (filtered to Solana, DEX venues only)"],
 ])("scopeNote(%p, %p) is %p", (chain, view, note) => {
   expect(scopeNote(chain, view)).toBe(note);

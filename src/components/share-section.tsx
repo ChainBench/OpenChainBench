@@ -37,6 +37,14 @@ function pickOrder(r: Benchmark["results"][number]): number {
   return r.unrankedLabel ? 1 : 0;
 }
 
+function defaultPicks(ordered: readonly { slug: string }[]) {
+  return {
+    multi: new Set(ordered.map((p) => p.slug)),
+    single: ordered[0]?.slug ?? null,
+    second: ordered[1]?.slug ?? null,
+  };
+}
+
 type Template = {
   id: string;
   label: string;
@@ -227,29 +235,30 @@ export function ShareSection({ slug, title, benchmark, chain }: Props) {
 
   // Snapshot: multi-select, default = all
   const [multiSelected, setMultiSelected] = useState<Set<string>>(
-    () => new Set(orderedProviders.map((p) => p.slug))
+    () => defaultPicks(orderedProviders).multi
   );
 
   // Headline: single-select, default = winner (first by p50)
   const [singleSelected, setSingleSelected] = useState<string | null>(
-    () => orderedProviders[0]?.slug ?? null
+    () => defaultPicks(orderedProviders).single
   );
 
   // Compare: pair, default = top 2
   const [pairA, setPairA] = useState<string | null>(
-    () => orderedProviders[0]?.slug ?? null
+    () => defaultPicks(orderedProviders).single
   );
   const [pairB, setPairB] = useState<string | null>(
-    () => orderedProviders[1]?.slug ?? null
+    () => defaultPicks(orderedProviders).second
   );
 
   const [pickedView, setPickedView] = useState(venueView);
   if (pickedView !== venueView) {
+    const picks = defaultPicks(orderedProviders);
     setPickedView(venueView);
-    setMultiSelected(new Set(orderedProviders.map((p) => p.slug)));
-    setSingleSelected(orderedProviders[0]?.slug ?? null);
-    setPairA(orderedProviders[0]?.slug ?? null);
-    setPairB(orderedProviders[1]?.slug ?? null);
+    setMultiSelected(picks.multi);
+    setSingleSelected(picks.single);
+    setPairA(picks.single);
+    setPairB(picks.second);
   }
 
   function toggleMulti(slug: string) {

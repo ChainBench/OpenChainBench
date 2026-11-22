@@ -28,7 +28,9 @@ export function parseVenueTypeView(raw: string | null): VenueTypeView {
   return raw === "dex" || raw === "cex" ? raw : "all";
 }
 
-export function venueTypeCounts(results: readonly VenueTyped[]): VenueTypeCounts {
+export function venueTypeCounts(
+  results: readonly VenueTyped[],
+): VenueTypeCounts {
   let dex = 0;
   let cex = 0;
   for (const r of results) {
