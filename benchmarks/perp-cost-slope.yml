@@ -5,7 +5,7 @@ number: "117"
 title: "Perp DEX cost invariance: all-in bps at $1M vs $1k, live slope ranked"
 seo_title: "Perp cost at $1M vs $1k: {{best_p50}} at the flattest, live"
 seo_description: "Flattest perp cost slope: {{best_names}} at {{best_p50}} all-in at $1M over $1k (24h avg). {{ranked_count}} of {{count}} ranked live."
-subtitle: "Ratio of all-in opening cost at $1,000,000 vs $1,000 notional, per venue per asset. A venue with flat cost at every size scores 1.00. A deeper book scores closer to 1.00 than a thin one. Oracle-priced venues have no book, but their on-chain price impact grows with size too."
+subtitle: "Ratio of all-in opening cost at $1,000,000 vs $1,000 notional, per venue per asset. A venue with flat cost at every size scores 1.00. A deeper book scores closer to 1.00 than a thin one. Oracle-priced venues have no book: GMX and Gains on SOL charge an on-chain price impact that grows with size, while Gains on ETH and BTC stays flat."
 category: Trading
 status: live
 metric: "Cost slope ($1M / $1k)"
@@ -22,9 +22,10 @@ seo_intro: |
   component grows. Venues with no orderbook (oracle-priced: Gains,
   GMX v2) have no book to walk, but the protocol charges its own price
   impact, read on-chain at each size, and it grows with notional too: on
-  2026-11-21 Gains quoted SOL at under 0.1 bp of impact at $1k and about
-  38 bps at $1M. On every venue the slope exceeds 1.00 by however much
-  impact the extra notional adds. The wider
+  2026-11-22 Gains on Arbitrum quoted SOL at 0.01 bp of impact at $1k and
+  about 11 bps at $1M. The slope exceeds 1.00 by however much impact the
+  extra notional adds, and stays at 1.00 where it adds none, as on Gains
+  for ETH and BTC. The wider
   the gap above 1.00, the more the venue penalises large orders relative
   to small ones. A venue whose visible book cannot absorb $1M at all shows
   no slope because the $1M tier is skipped: that absence is a depth signal
@@ -67,15 +68,15 @@ per_chain_explainer:
       ETH-PERP is the deepest pair on every venue in the cohort. On orderbook venues the $1M
       tier is usually filled because ETH books carry several million USD of visible depth on the
       ask side. The slope is therefore computable for most venues on ETH. Gains and GMX have no
-      book to walk; their slope comes from the price impact each protocol charges on-chain as the
-      position grows.
+      book to walk. GMX's slope comes from the price impact it charges on-chain as the position
+      grows; Gains charges no cumulative-volume impact on ETH, so its slope is 1.00.
   - slug: BTC
     h2: "BTC perp cost slope: tightest books, flattest slopes"
     body: |
       BTC carries the highest open interest on most venues and typically has the tightest spread
       at any given notional. Orderbook venues therefore show their flattest slopes on BTC: the
-      $1M impact is minimised by depth. Oracle-priced venues (gains, gmx) follow their protocol's
-      impact curve instead.
+      $1M impact is minimised by depth. GMX follows its protocol's impact curve instead;
+      Gains charges no cumulative-volume impact on BTC and stays at 1.00.
   - slug: SOL
     h2: "SOL perp cost slope: where thin books expose the gap"
     body: |
@@ -101,7 +102,7 @@ faq:
   - q: "What does cost slope of 1.00 mean?"
     a: "A cost slope of 1.00 means the all-in basis points for a $1M trade are identical to a $1k trade on that venue: the extra size adds no price impact."
   - q: "How do Gains and GMX get a slope without an orderbook?"
-    a: "Both price against an oracle, and their open fee (totalPositionSizeFeeP on Gains, positionFeeFactor on GMX) is a flat percentage of position size. On top of it each protocol charges a price impact that grows with size: cumulative-volume and open-interest-skew impact on Gains, position price impact on GMX. The perp-fees harness reads it on-chain at each size, as the mean of a long and a short, and that is what moves their slope."
+    a: "Both price against an oracle, and their open fee (totalPositionSizeFeeP on Gains, positionFeeFactor on GMX) is a flat percentage of position size. On top of it each protocol charges a price impact that grows with size: cumulative-volume impact on Gains, position price impact on GMX. The perp-fees harness reads it on-chain at each size, as the mean of a long and a short, and that is what moves their slope. On Arbitrum, Gains charges no cumulative-volume impact on ETH and BTC, so its slope on those two assets stays at 1.00."
   - q: "What does N/A in the slope column mean?"
     a: "The venue's visible book could not absorb $1M of notional during the measurement period. The perp-fees harness skips a tier rather than extrapolate when the book depth is insufficient, so the $1M all-in gauge is absent. No slope can be computed. The fill-rate panel shows what fraction of cycles the $1M tier was successfully filled."
   - q: "Is a 1.00 slope always better?"
@@ -134,8 +135,8 @@ metric_panels:
 providers:
   - slug: gains
     name: Gains
-    tag: "Synthetic perps on Base, oracle-priced, impact read on-chain"
-    formula: "all_in_bps_tier{notional=1000000}[24h] / all_in_bps_tier{notional=1000}[24h]. Oracle-priced: open fee plus on-chain volume and skew impact at each size, mean of long and short."
+    tag: "Synthetic perps on Arbitrum, oracle-priced, impact read on-chain"
+    formula: "all_in_bps_tier{notional=1000000}[24h] / all_in_bps_tier{notional=1000}[24h]. Oracle-priced: open fee plus on-chain price impact at each size, mean of long and short."
     queries:
       p50: avg_over_time(perp_fees_all_in_bps_tier{venue="gains",notional="1000000"}[24h]) / ignoring(notional) avg_over_time(perp_fees_all_in_bps_tier{venue="gains",notional="1000"}[24h])
       p90: avg_over_time(perp_fees_all_in_bps_tier{venue="gains",notional="100000"}[24h]) / ignoring(notional) avg_over_time(perp_fees_all_in_bps_tier{venue="gains",notional="1000"}[24h])

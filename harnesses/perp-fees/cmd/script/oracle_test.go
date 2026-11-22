@@ -36,11 +36,11 @@ func gmxTestPrices() gmxMarketPrices {
 }
 
 func TestGainsImpactProbe(t *testing.T) {
-	probe := gainsImpactProbe(1, big.NewInt(2000e8), 0.5, gainsTakerBps)
+	probe := gainsImpactProbe(1, 0.5, gainsTakerBps)
 
 	calls := probe.CallsFor(10000)
-	if len(calls) != 4 {
-		t.Fatalf("calls = %d, want 4", len(calls))
+	if len(calls) != 2 {
+		t.Fatalf("calls = %d, want 2", len(calls))
 	}
 	wantCumulLong := "0x6901d442" + strings.Repeat("0", 64) +
 		abiUint64(1) + abiUint64(1) +
@@ -49,13 +49,8 @@ func TestGainsImpactProbe(t *testing.T) {
 	if calls[0].Data != wantCumulLong {
 		t.Errorf("cumul long calldata\n got %s\nwant %s", calls[0].Data, wantCumulLong)
 	}
-	wantSkewShort := "0xb8482805" + abiUint64(1) + abiUint64(1) + abiUint64(0) +
-		"0000000000000000000000000000000000000000000000004563918244f40000" + abiUint64(1)
-	if calls[3].Data != wantSkewShort {
-		t.Errorf("skew short calldata\n got %s\nwant %s", calls[3].Data, wantSkewShort)
-	}
 
-	if _, err := probe.CostFrom([]string{"0x01", abiWord(0), abiWord(0), abiWord(0)}); err == nil {
+	if _, err := probe.CostFrom([]string{"0x01", abiWord(0)}); err == nil {
 		t.Error("short impact reply accepted")
 	}
 }
@@ -190,16 +185,13 @@ func TestOracleTiers_AnyFailedCallIsAnError(t *testing.T) {
 }
 
 func TestOracleTiers_GainsPairsEachImpactWithItsSide(t *testing.T) {
-	bps := map[string]map[bool]int64{
-		selCumulVolImpactP: {true: 2e8, false: -3e8},
-		selSkewImpactP:     {true: 1e8, false: -4e8},
-	}
+	bps := map[bool]int64{true: 2e8, false: -3e8}
 	srv := fakeRPC(t, func(_ int, data string) map[string]any {
 		long := argWord(data, 2) == abiBool(true)
-		return map[string]any{"result": abiWord(bps[data[:10]][long])}
+		return map[string]any{"result": abiWord(bps[long])}
 	})
 	defer srv.Close()
-	probe := gainsImpactProbe(1, big.NewInt(2000e8), 0.5, gainsTakerBps)
+	probe := gainsImpactProbe(1, 0.5, gainsTakerBps)
 
 	quotes, err := quoteOracle(srv.Client(), srv.URL, oracleNotionals(1000), probe)
 	if err != nil {
@@ -208,8 +200,8 @@ func TestOracleTiers_GainsPairsEachImpactWithItsSide(t *testing.T) {
 	s := &PerpSample{Venue: "gains", Asset: "ETH"}
 	applyOracleQuotes(s, 1000, quotes)
 
-	if s.Err != "" || abs(s.SpreadBps-5.5) > 1e-9 || abs(s.AllInBps-9) > 1e-9 {
-		t.Errorf("headline = %+v, want long 3.5 and short 7.5 averaged to 5.5", s)
+	if s.Err != "" || abs(s.SpreadBps-3) > 1e-9 || abs(s.AllInBps-6.5) > 1e-9 {
+		t.Errorf("headline = %+v, want long 2.5 and short 3.5 averaged to 3", s)
 	}
 }
 
@@ -306,10 +298,8 @@ func TestGainsReadPrice_ReadsTheAnswerWord(t *testing.T) {
 
 func gainsChain(t *testing.T) *httptest.Server {
 	t.Helper()
-	impact := map[string]map[bool]int64{
-		selCumulVolImpactP: {true: 1e8, false: -1e8},
-		selSkewImpactP:     {true: 2e8, false: -2e8},
-	}
+	cumul := map[bool]int64{true: 1e8, false: -1e8}
+	reverted := map[string]string{"message": "execution reverted"}
 	single := map[string]string{
 		selPairs:           gainsPairReply("SOL", 2e8, 77),
 		selFees:            "0x" + abiUint64(5e8),
@@ -329,8 +319,12 @@ func gainsChain(t *testing.T) *httptest.Server {
 		out := make([]map[string]any, len(calls))
 		for i, c := range calls {
 			data := c.Params[0].(map[string]any)["data"].(string)
+			if data[:10] != selCumulVolImpactP {
+				out[i] = map[string]any{"id": c.ID, "error": reverted}
+				continue
+			}
 			long := argWord(data, 2) == abiBool(true)
-			out[i] = map[string]any{"id": c.ID, "result": abiWord(impact[data[:10]][long])}
+			out[i] = map[string]any{"id": c.ID, "result": abiWord(cumul[long])}
 		}
 		_ = json.NewEncoder(w).Encode(out)
 	}))
@@ -343,9 +337,9 @@ func TestFetchGains_FeeHalfSpreadAndImpact(t *testing.T) {
 
 	s := fetchGains(VenueConfig{Slug: "gains", Asset: "SOL", NotionalUSD: 1000}, srv.URL)
 
-	if s.Err != "" || s.TakerFeeBps != 5 || abs(s.SpreadBps-4) > 1e-9 ||
-		abs(s.AllInBps-9) > 1e-9 || s.MidPrice != 150 || len(s.Tiers) != len(tierNotionals) {
-		t.Errorf("sample = %+v, want fee 5, spread 1 + 1 + 2 = 4, all-in 9", s)
+	if s.Err != "" || s.TakerFeeBps != 5 || abs(s.SpreadBps-2) > 1e-9 ||
+		abs(s.AllInBps-7) > 1e-9 || s.MidPrice != 150 || len(s.Tiers) != len(tierNotionals) {
+		t.Errorf("sample = %+v, want fee 5, spread 1 + 1 = 2, all-in 7", s)
 	}
 }
 
