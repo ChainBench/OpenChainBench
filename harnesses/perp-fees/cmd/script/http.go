@@ -57,12 +57,12 @@ func (e *statusError) errType() string {
 	case http.StatusBadRequest, http.StatusNotFound:
 		return errTypeNotFound
 	case http.StatusUnauthorized, http.StatusForbidden, http.StatusUnavailableForLegalReasons:
-		return "auth"
+		return errTypeAuth
 	case http.StatusTooManyRequests, http.StatusTeapot:
-		return "rate_limit"
+		return errTypeRateLimit
 	}
 	if e.code >= http.StatusInternalServerError {
-		return "server_error"
+		return errTypeServerError
 	}
-	return "other"
+	return errTypeOther
 }

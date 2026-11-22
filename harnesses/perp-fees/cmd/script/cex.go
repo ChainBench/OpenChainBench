@@ -72,7 +72,7 @@ func cexErrType(err error) string {
 	var status *statusError
 	switch {
 	case errors.Is(err, context.DeadlineExceeded):
-		return "timeout"
+		return errTypeTimeout
 	case errors.Is(err, errAssetNotFound):
 		return errTypeNotFound
 	case errors.As(err, &status):
@@ -80,7 +80,7 @@ func cexErrType(err error) string {
 	case isUnreadable(err):
 		return errTypeBadData
 	}
-	return "other"
+	return errTypeOther
 }
 
 func isUnreadable(err error) bool {

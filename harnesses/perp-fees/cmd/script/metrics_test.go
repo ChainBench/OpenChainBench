@@ -18,8 +18,8 @@ func TestRecordSample_ErrorKeepsOrDropsLastReading(t *testing.T) {
 		errType  string
 		wantKept bool
 	}{
-		{errType: "server_error", wantKept: true},
-		{errType: "timeout", wantKept: true},
+		{errType: errTypeServerError, wantKept: true},
+		{errType: errTypeTimeout, wantKept: true},
 		{errType: errTypeBadData, wantKept: false},
 		{errType: errTypeNotFound, wantKept: false},
 	}

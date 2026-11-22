@@ -212,8 +212,13 @@ func recordSample(s PerpSample) {
 }
 
 const (
-	errTypeNotFound = "not_found"
-	errTypeBadData  = "bad_data"
+	errTypeNotFound    = "not_found"
+	errTypeBadData     = "bad_data"
+	errTypeTimeout     = "timeout"
+	errTypeAuth        = "auth"
+	errTypeRateLimit   = "rate_limit"
+	errTypeServerError = "server_error"
+	errTypeOther       = "other"
 )
 
 func classifyErr(msg string) string {
@@ -221,15 +226,15 @@ func classifyErr(msg string) string {
 	case contains(msg, "asset_not_found") || contains(msg, "unsupported_venue"):
 		return errTypeNotFound
 	case contains(msg, "timeout"):
-		return "timeout"
+		return errTypeTimeout
 	case contains(msg, "401") || contains(msg, "403"):
-		return "auth"
+		return errTypeAuth
 	case contains(msg, "429"):
-		return "rate_limit"
+		return errTypeRateLimit
 	case contains(msg, "5"):
-		return "server_error"
+		return errTypeServerError
 	default:
-		return "other"
+		return errTypeOther
 	}
 }
 
