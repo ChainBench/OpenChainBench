@@ -1,4 +1,5 @@
-import { describe, expect, spyOn, test } from "bun:test";
+import { describe, expect, test } from "bun:test";
+import { quietConsole } from "@/test/quiet-console";
 import { TELEGRAM_LIMIT, stubTeamChannel } from "@/test/team-channel";
 import {
   escapeForTeam,
@@ -8,6 +9,7 @@ import {
 } from "./team-notify";
 
 const channel = stubTeamChannel();
+const logs = quietConsole();
 
 const SLACK_ENV = { SLACK_REPORT_WEBHOOK_URL: "https://hooks.example/slack" };
 
@@ -62,12 +64,7 @@ describe("notifyTeam", () => {
   test.each(failures)("%s: reports failed", async (_, env, fault) => {
     Object.assign(process.env, env);
     Object.assign(channel, fault);
-    const log = spyOn(console, "error").mockImplementation(() => {});
-    try {
-      expect(await notifyTeam(message)).toBe("failed");
-    } finally {
-      log.mockRestore();
-    }
+    expect(await notifyTeam(message)).toBe("failed");
   });
 
   test("logs Telegram's refusal without the bot token", async () => {
@@ -78,28 +75,20 @@ describe("notifyTeam", () => {
       ok: false,
       description: "Unauthorized: bot123:secret is not valid",
     });
-    const log = spyOn(console, "error").mockImplementation(() => {});
-    try {
-      expect(await notifyTeam(message)).toBe("failed");
-      expect(JSON.stringify(log.mock.calls)).not.toContain("123:secret");
-    } finally {
-      log.mockRestore();
-    }
+    expect(await notifyTeam(message)).toBe("failed");
+    expect(logs.errors()).toHaveBeenCalled();
+    expect(JSON.stringify(logs.errors().mock.calls))
+      .not.toContain("123:secret");
   });
 });
 
 test("logs Slack's failure without the webhook address", async () => {
   Object.assign(process.env, SLACK_ENV);
   channel.offline = true;
-  const log = spyOn(console, "error").mockImplementation(() => {});
-  try {
-    expect(await notifyTeam(message)).toBe("failed");
-    const logged = JSON.stringify(log.mock.calls);
-    expect(logged).toContain("fetch failed: [webhook]");
-    expect(logged).not.toContain("hooks.example");
-  } finally {
-    log.mockRestore();
-  }
+  expect(await notifyTeam(message)).toBe("failed");
+  const logged = JSON.stringify(logs.errors().mock.calls);
+  expect(logged).toContain("fetch failed: [webhook]");
+  expect(logged).not.toContain("hooks.example");
 });
 
 describe("escapeForTeam", () => {
