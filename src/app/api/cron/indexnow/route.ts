@@ -1,5 +1,5 @@
-import { timingSafeEqual } from "node:crypto";
 import { NextResponse, type NextRequest } from "next/server";
+import { cronAuthorized } from "@/lib/internal-bearer";
 import { getBenchmarks } from "@/data/benchmarks";
 import { getProvider, getProviders, getProviderSlugs } from "@/lib/providers";
 import { loadAllAlternatives } from "@/lib/alternatives";
@@ -100,18 +100,6 @@ function shortHash(input: string): string {
     h = Math.imul(h, 0x01000193);
   }
   return (h >>> 0).toString(16);
-}
-
-function isAuthorized(req: NextRequest): boolean {
-  const secret = (process.env.CRON_SECRET ?? "").trim();
-  const header = (req.headers.get("authorization") ?? "").trim();
-  if (!secret) {
-    // Fail closed in production; permissive in dev for local testing.
-    return process.env.NODE_ENV !== "production";
-  }
-  const expected = `Bearer ${secret}`;
-  if (header.length !== expected.length) return false;
-  return timingSafeEqual(Buffer.from(header), Buffer.from(expected));
 }
 
 /** Family membership hash: same value stamped on every member URL of a
@@ -306,7 +294,7 @@ async function buildFingerprintMap(
 }
 
 export async function GET(req: NextRequest) {
-  if (!isAuthorized(req)) {
+  if (!cronAuthorized(req)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
