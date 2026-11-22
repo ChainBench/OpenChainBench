@@ -83,7 +83,7 @@ func rateToBps(rate *flexFloat) (float64, error) {
 	if rate == nil {
 		return 0, errNoTakerFee
 	}
-	bps := float64(*rate) * 10000
+	bps := float64(*rate) * bpsPerUnit
 	if bps < 0 || bps > maxTakerBps {
 		return 0, fmt.Errorf("%w: %.4f bps", errTakerOutOfRange, bps)
 	}
@@ -124,7 +124,7 @@ func applyCEXQuote(s *PerpSample, q cexQuote, notional float64) error {
 	}
 	s.MidPrice = mid
 	s.TakerFeeBps = q.takerBps
-	s.SpreadBps = (effective - mid) / mid * 10000
+	s.SpreadBps = (effective - mid) / mid * bpsPerUnit
 	s.AllInBps = s.TakerFeeBps + s.SpreadBps
 	applyBookTiers(s, q.asks, mid)
 	return nil

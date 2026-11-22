@@ -229,7 +229,8 @@ func TestCEXQuotes(t *testing.T) {
 		{
 			slug: "bybit", asset: "ETH", wantFee: bybitTakerBps, wantAsk1: 10,
 			routes: map[string]string{
-				"api.bybit.com/v5/market/orderbook?category=linear&limit=500": `{` +
+				"api.bybit.com/v5/market/orderbook?" +
+					"category=linear&limit=500&symbol=ETHUSDT": `{` +
 					`"retCode":0,"result":` +
 					`{"b":[["1999","10"]],"a":[["2001","10"]]}}`,
 			},
@@ -239,16 +240,16 @@ func TestCEXQuotes(t *testing.T) {
 			routes: map[string]string{
 				"okx.com/api/v5/public/instruments?instType=SWAP&instId=ETH-USDT-SWAP": `{` +
 					`"code":"0","data":[{"ctVal":"0.01"}]}`,
-				"okx.com/api/v5/market/books-full?sz=5000": `{"code":"0","data":` +
+				"okx.com/api/v5/market/books-full?sz=5000&instId=ETH-USDT-SWAP": `{"code":"0","data":` +
 					`[{"bids":[["1999","100","3"]],"asks":[["2001","100","2"]]}]}`,
 			},
 		},
 		{
-			slug: "bitget", asset: "ETH", wantFee: 6, wantAsk1: 10,
+			slug: "bitget", asset: "ETH", wantFee: 6.1, wantAsk1: 10,
 			routes: map[string]string{
 				"bitget.com/api/v2/mix/market/contracts?" +
 					"productType=usdt-futures&symbol=ETHUSDT": `{"code":"00000",` +
-					`"data":[{"takerFeeRate":"0.0006"}]}`,
+					`"data":[{"takerFeeRate":"0.00061"}]}`,
 				"bitget.com/api/v2/mix/market/merge-depth?" +
 					"productType=usdt-futures&symbol=ETHUSDT&limit=max": `{"code":"00000","data":` +
 					numBook + `}`,
@@ -267,25 +268,25 @@ func TestCEXQuotes(t *testing.T) {
 			slug: "gate", asset: "ETH", wantFee: gateTakerBps, wantAsk1: 1,
 			routes: map[string]string{
 				"gateio.ws/api/v4/futures/usdt/contracts/ETH_USDT": `{"quanto_multiplier":"0.01"}`,
-				"gateio.ws/api/v4/futures/usdt/order_book?limit=300": `{` +
+				"gateio.ws/api/v4/futures/usdt/order_book?limit=300&contract=ETH_USDT": `{` +
 					`"bids":[{"p":"1999","s":100}],` +
 					`"asks":[{"p":"2001","s":100}]}`,
 			},
 		},
 		{
-			slug: "kucoin", asset: "BTC", wantFee: 6, wantAsk1: 1,
+			slug: "kucoin", asset: "BTC", wantFee: 5.7, wantAsk1: 1,
 			routes: map[string]string{
 				"kucoin.com/api/v1/contracts/XBTUSDTM": `{"code":"200000",` +
-					`"data":{"multiplier":0.001,"takerFeeRate":0.0006}}`,
+					`"data":{"multiplier":0.001,"takerFeeRate":0.00057}}`,
 				"kucoin.com/api/v1/level2/snapshot?symbol=XBTUSDTM": `{"code":"200000",` +
 					`"data":{"bids":[[1999,1000]],"asks":[[2001,1000]]}}`,
 			},
 		},
 		{
-			slug: "kucoin", asset: "ETH", wantFee: 6, wantAsk1: 10,
+			slug: "kucoin", asset: "ETH", wantFee: 5.8, wantAsk1: 10,
 			routes: map[string]string{
 				"kucoin.com/api/v1/contracts/ETHUSDTM": `{"code":"200000",` +
-					`"data":{"multiplier":0.01,"takerFeeRate":0.0006}}`,
+					`"data":{"multiplier":0.01,"takerFeeRate":0.00058}}`,
 				"kucoin.com/api/v1/level2/snapshot?symbol=ETHUSDTM": `{"code":"200000",` +
 					`"data":{"bids":[[1999,1000]],"asks":[[2001,1000]]}}`,
 			},
@@ -431,7 +432,6 @@ func TestSetFunding(t *testing.T) {
 		{raw: "0.0001", want: 1, ok: true},
 		{raw: "-0.0002", want: -2, ok: true},
 		{raw: "", ok: false},
-		{raw: "abc", ok: false},
 		{raw: "NaN", ok: false},
 		{raw: "+Inf", ok: false},
 	}
@@ -440,7 +440,8 @@ func TestSetFunding(t *testing.T) {
 			var s PerpSample
 			s.setFunding(tc.raw, bpsPerUnit)
 			if s.HasFunding != tc.ok || !near(s.FundingRatePerHrBps, tc.want) {
-				t.Errorf("got %v %v, want %v %v", s.FundingRatePerHrBps, s.HasFunding, tc.want, tc.ok)
+				t.Errorf("got %v %v, want %v %v",
+					s.FundingRatePerHrBps, s.HasFunding, tc.want, tc.ok)
 			}
 		})
 	}

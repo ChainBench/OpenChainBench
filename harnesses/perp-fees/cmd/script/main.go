@@ -78,8 +78,12 @@ func fetchAll(cfg *Config) {
 				if s.HasFunding {
 					funding = fmt.Sprintf("%.4fbps/h", s.FundingRatePerHrBps)
 				}
-				fmt.Printf("[PERP][%s/%s] all_in=%.2fbps (taker=%.2f, spread=%.2f, funding=%s, mid=$%.2f) in %dms\n",
-					v.Slug, v.Asset, s.AllInBps, s.TakerFeeBps, s.SpreadBps, funding, s.MidPrice, s.FetchLatencyMs)
+				fmt.Printf(
+					"[PERP][%s/%s] all_in=%.2fbps (taker=%.2f, spread=%.2f, "+
+						"funding=%s, mid=$%.2f) in %dms\n",
+					v.Slug, v.Asset, s.AllInBps, s.TakerFeeBps, s.SpreadBps,
+					funding, s.MidPrice, s.FetchLatencyMs,
+				)
 				for _, t := range s.Tiers {
 					fmt.Printf("[PERP][%s/%s]   tier $%s: all_in=%.2fbps (spread=%.2f)\n", v.Slug, v.Asset, t.Notional, t.AllInBps, t.SpreadBps)
 				}

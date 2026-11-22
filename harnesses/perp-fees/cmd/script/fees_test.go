@@ -222,7 +222,7 @@ func TestSetGMXFunding(t *testing.T) {
 		var s PerpSample
 		err := s.setGMXFunding(c.raw)
 		if (err != nil) != c.wantErr || s.HasFunding == c.wantErr ||
-			abs(s.FundingRatePerHrBps-c.want) > 1e-9 {
+			!near(s.FundingRatePerHrBps, c.want) {
 			t.Errorf("setGMXFunding(%q) = %v %v, %v; want %v, err %v",
 				c.raw, s.FundingRatePerHrBps, s.HasFunding, err, c.want, c.wantErr)
 		}
@@ -337,6 +337,9 @@ func TestFetchHyperliquid_DeepBookMid(t *testing.T) {
 		if abs(got.SpreadBps-tier) > 1e-9 || abs(got.AllInBps-4.5-tier) > 1e-9 {
 			t.Errorf("tier $%s = %+v, want spread %v from the deep book's mid", got.Notional, got, tier)
 		}
+	}
+	if s.HasFunding {
+		t.Error("funding published for an asset missing from the universe")
 	}
 }
 
