@@ -245,7 +245,7 @@ func fetchGains(v VenueConfig, rpcURL string) (s PerpSample) {
 			return fmt.Errorf("read_price: %w", err)
 		}
 		s.MidPrice = ratioFloat(price, chainlinkPriceScale)
-		probe := gainsImpactProbe(pair.Index, price, halfSpreadBps, feeBps)
+		probe := gainsImpactProbe(pair.Index, halfSpreadBps, feeBps)
 		quotes, err = quoteOracle(client, rpcURL, oracleNotionals(v.NotionalUSD), probe)
 		if err != nil {
 			return fmt.Errorf("price_impact: %w", err)
@@ -261,12 +261,10 @@ func fetchGains(v VenueConfig, rpcURL string) (s PerpSample) {
 }
 
 const (
-	selLatestRoundData  = "0xfeaf968c"
-	selCumulVolImpactP  = "0x6901d442"
-	selSkewImpactP      = "0xb8482805"
-	gainsUSDCCollateral = 3
-	gainsPPerBps        = 1e8
-	gainsTokenDecimals  = 18
+	selLatestRoundData = "0xfeaf968c"
+	selCumulVolImpactP = "0x6901d442"
+	gainsPPerBps       = 1e8
+	gainsTokenDecimals = 18
 )
 
 var chainlinkPriceScale = big.NewInt(1e8)
@@ -314,24 +312,17 @@ func gainsReadPrice(client *http.Client, rpcURL, asset string) (*big.Int, error)
 	return answer, nil
 }
 
-func gainsImpactProbe(pairIndex int, price *big.Int, halfSpreadBps, feeBps float64) oracleProbe {
+func gainsImpactProbe(pairIndex int, halfSpreadBps, feeBps float64) oracleProbe {
 	idx := abiUint(big.NewInt(int64(pairIndex)))
 	return oracleProbe{
 		CallsFor: func(notional float64) []ethCallMsg {
 			usd := usdScaled(notional, gainsTokenDecimals)
-			tokens := new(big.Int).Mul(usd, chainlinkPriceScale)
-			tokens.Quo(tokens, price)
 			cumul := func(long bool) ethCallMsg {
 				return ethCallMsg{To: gainsDiamond, Data: selCumulVolImpactP +
 					abiAddress("0x0") + idx + abiBool(long) + abiUint(usd) +
 					abiBool(false) + abiBool(true) + abiUint64(0)}
 			}
-			skew := func(long bool) ethCallMsg {
-				return ethCallMsg{To: gainsDiamond, Data: selSkewImpactP +
-					abiUint64(gainsUSDCCollateral) + idx + abiBool(long) + abiUint(tokens) +
-					abiBool(true)}
-			}
-			return []ethCallMsg{cumul(true), cumul(false), skew(true), skew(false)}
+			return []ethCallMsg{cumul(true), cumul(false)}
 		},
 		CostFrom: func(r []string) (sideCosts, error) {
 			for _, res := range r {
@@ -341,8 +332,8 @@ func gainsImpactProbe(pairIndex int, price *big.Int, halfSpreadBps, feeBps float
 			}
 			impact := func(i int) float64 { return gainsPToBps(int256ArgAt(r[i], 0)) }
 			return sideCosts{
-				Long:     halfSpreadBps + impact(0) + impact(2),
-				Short:    halfSpreadBps - impact(1) - impact(3),
+				Long:     halfSpreadBps + impact(0),
+				Short:    halfSpreadBps - impact(1),
 				LongFee:  feeBps,
 				ShortFee: feeBps,
 			}, nil

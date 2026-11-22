@@ -59,11 +59,11 @@ methodology:
   - "GMX v2.2, settlement: the impact quoted at open is recorded on the position and settled when it closes; the bench counts it in the opening cost."
   - "Lighter: `/orderBookDetails` (taker fee per market) + `/orderBookOrders` (orderbook walk)."
   - "Gains (Gains v8 on Arbitrum): fees read directly on-chain. `eth_call pairs(N)` gives `spreadP` and `feeIndex`, then `eth_call fees(feeIndex)` gives the open fee (`totalPositionSizeFeeP`). The taker crosses one side of the book, so we charge half of `spreadP`. Values in 1e10 precision, fee tier cached 1h, pair config 6h."
-  - "Gains, impact: `getTradeCumulVolPriceImpactP` (cumulative volume) and `getTradeSkewPriceImpactP` (open interest skew) are added at each size, the size in tokens taken at the Chainlink price on Arbitrum, skew read for USDC collateral. SOL has `spreadP` 0, so its cost beyond the fee is that impact alone."
+  - "Gains, impact: `getTradeCumulVolPriceImpactP` (cumulative volume) is added at each size. The open interest skew impact (`getTradeSkewPriceImpactP`) is not counted: Gains applies it again with the same sign when the position closes, so a trade opened and closed on an unchanged skew gets it back. SOL has `spreadP` 0, so its cost beyond the fee is the volume impact alone."
   - "Paradex: `/markets` fee config for the interactive (Retail) taker rate, 0 bps as of 2026-09, + `/orderbook/{market}/interactive?depth=100` walk. Paradex runs two books: the interactive one includes RPI (Retail Price Improvement) maker liquidity and is what UI and interactive-token orders cross; the plain `/orderbook` is the API book, RPI excluded, crossed by Pro (plain API) orders at the 2 bps api-tier fee."
   - "Paradex, continued: the two books diverge on thin pairs (SOL on 2026-09-22: 0.03 % spread on the interactive book against 1.4 % on the API book), so the bench reads the interactive book as the cost of opening a position; an algorithmic taker should add 2 bps and expect the wider API book. The endpoint caps at 100 levels, so the $1M tier can be skipped when the visible book thins."
   - "Extended: full public book from `/info/markets/<m>/orderbook` + `/stats` funding (1h native). Its taker fee is not exposed by any public endpoint; the documented base rate of 2.5 bps is used and this is the one venue where the fee is not read live."
-  - "Oracle priced venues, long and short: the skew impact helps one side and charges the other (on 2026-11-22 a $1,000 SOL long on Gains paid 0.28 bps over the oracle price while a short opened 0.25 bps under it), so GMX v2 and Gains publish the average of a long and a short of the same size. Orderbook venues are walked on the ask side."
+  - "Oracle priced venues, long and short: the price impact differs between a long and a short, so GMX v2 and Gains publish the average of a long and a short of the same size. Orderbook venues are walked on the ask side."
   - "All-in formula: `all_in_bps = taker_fee_bps + spread_bps`. Both components emitted as separate metrics for transparency."
   - "Trading fees, Removed: the board reads `spread_bps` alone (half-spread plus impact at $1,000) and the $100k and $1M panels subtract each venue's taker fee from the tier."
   - "Notional tiers: the same measurement runs at $1,000, $10,000, $100,000 and $1,000,000 by rewalking the already fetched book, published to `perp_fees_all_in_bps_tier{venue, chain, notional}` and, fee excluded, `perp_fees_spread_bps_tier`. The headline `perp_fees_all_in_bps` stays defined at $1,000. A tier the book cannot fill is skipped and counted in `perp_fees_tier_skipped_total`, never extrapolated. Oracle priced venues (GMX v2, Gains) are quoted on-chain at each size."
@@ -216,7 +216,7 @@ providers:
   - slug: gains
     name: Gains
     tag: Synthetic perps on Arbitrum, fees read on-chain
-    formula: "Average over 24h of Gains `fees(feeIndex)` open fee + half of `pairs(N).spreadP` + on-chain volume and skew impact of a $1,000 position (mean of long and short), read via Arbitrum RPC, in bps."
+    formula: "Average over 24h of Gains `fees(feeIndex)` open fee + half of `pairs(N).spreadP` + on-chain cumulative volume impact of a $1,000 position (mean of long and short), read via Arbitrum RPC, in bps."
     queries:
       p50: avg_over_time(perp_fees_all_in_bps{venue="gains"}[24h])
       p90: quantile_over_time(0.90, perp_fees_all_in_bps{venue="gains"}[24h])

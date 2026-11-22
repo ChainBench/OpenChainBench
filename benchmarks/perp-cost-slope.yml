@@ -101,7 +101,7 @@ faq:
   - q: "What does cost slope of 1.00 mean?"
     a: "A cost slope of 1.00 means the all-in basis points for a $1M trade are identical to a $1k trade on that venue: the extra size adds no price impact."
   - q: "How do Gains and GMX get a slope without an orderbook?"
-    a: "Both price against an oracle, and their open fee (totalPositionSizeFeeP on Gains, positionFeeFactor on GMX) is a flat percentage of position size. On top of it each protocol charges a price impact that grows with size: cumulative-volume and open-interest-skew impact on Gains, position price impact on GMX. The perp-fees harness reads it on-chain at each size, as the mean of a long and a short, and that is what moves their slope."
+    a: "Both price against an oracle, and their open fee (totalPositionSizeFeeP on Gains, positionFeeFactor on GMX) is a flat percentage of position size. On top of it each protocol charges a price impact that grows with size: cumulative-volume impact on Gains, position price impact on GMX. The perp-fees harness reads it on-chain at each size, as the mean of a long and a short, and that is what moves their slope."
   - q: "What does N/A in the slope column mean?"
     a: "The venue's visible book could not absorb $1M of notional during the measurement period. The perp-fees harness skips a tier rather than extrapolate when the book depth is insufficient, so the $1M all-in gauge is absent. No slope can be computed. The fill-rate panel shows what fraction of cycles the $1M tier was successfully filled."
   - q: "Is a 1.00 slope always better?"
@@ -135,7 +135,7 @@ providers:
   - slug: gains
     name: Gains
     tag: "Synthetic perps on Arbitrum, oracle-priced, impact read on-chain"
-    formula: "all_in_bps_tier{notional=1000000}[24h] / all_in_bps_tier{notional=1000}[24h]. Oracle-priced: open fee plus on-chain volume and skew impact at each size, mean of long and short."
+    formula: "all_in_bps_tier{notional=1000000}[24h] / all_in_bps_tier{notional=1000}[24h]. Oracle-priced: open fee plus on-chain price impact at each size, mean of long and short."
     queries:
       p50: avg_over_time(perp_fees_all_in_bps_tier{venue="gains",notional="1000000"}[24h]) / ignoring(notional) avg_over_time(perp_fees_all_in_bps_tier{venue="gains",notional="1000"}[24h])
       p90: avg_over_time(perp_fees_all_in_bps_tier{venue="gains",notional="100000"}[24h]) / ignoring(notional) avg_over_time(perp_fees_all_in_bps_tier{venue="gains",notional="1000"}[24h])
