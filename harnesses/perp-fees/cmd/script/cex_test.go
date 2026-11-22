@@ -6,6 +6,7 @@ import (
 	"errors"
 	"math"
 	"net/http"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -157,7 +158,10 @@ func TestBookFromPairs_Rejects(t *testing.T) {
 		want error
 	}{
 		{name: "no bids", asks: asks, unit: 1, want: errEmptyOrderbook},
-		{name: "empty bid row", bids: [][]flexFloat{{}}, asks: asks, unit: 1, want: errEmptyOrderbook},
+		{
+			name: "empty bid row", bids: [][]flexFloat{{}},
+			asks: asks, unit: 1, want: errEmptyOrderbook,
+		},
 		{name: "no contract size", bids: bids, asks: asks, want: errNoContractSize},
 		{name: "short ask row", bids: bids, asks: shortRow, unit: 1, want: errMalformedBook},
 		{name: "asks descending", bids: bids, asks: asksDown, unit: 1, want: errUnsortedBook},
@@ -182,15 +186,25 @@ func TestBookFromPairs_EmptySecondBid(t *testing.T) {
 
 func TestFetchOne_RoutesEveryCEX(t *testing.T) {
 	cfg := loadConfig()
-	down := &http.Client{Transport: fixedTransport{status: http.StatusBadGateway}}
 	for _, v := range cfg.Venues {
 		if _, ok := cexQuoteFor(v.Slug); !ok {
 			continue
 		}
-		if s := fetchOne(v, cfg, down); s.Err == "" || s.Err == "unsupported_venue" {
-			t.Errorf("%s/%s: err=%q, want the exchange's own failure", v.Slug, v.Asset, s.Err)
+		calls := new(atomic.Int32)
+		down := &http.Client{Transport: countingTransport{calls: calls}}
+		s := fetchOne(v, cfg, down)
+		if s.Err == "" || calls.Load() == 0 {
+			t.Errorf("%s/%s: err=%q calls=%d, want a failed exchange call",
+				v.Slug, v.Asset, s.Err, calls.Load())
 		}
 	}
+}
+
+type countingTransport struct{ calls *atomic.Int32 }
+
+func (c countingTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	c.calls.Add(1)
+	return respond(req, http.StatusBadGateway, ""), nil
 }
 
 func TestBookFromPairs_EqualAskLevels(t *testing.T) {

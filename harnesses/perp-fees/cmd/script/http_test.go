@@ -35,7 +35,7 @@ func (f fixedTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	return respond(req, f.status, f.body), nil
 }
 
-var errReadPastCap = errors.New("read past the body cap")
+var errReadPastCap = errors.New("read_past_cap")
 
 type endlessBody struct{ read int }
 
