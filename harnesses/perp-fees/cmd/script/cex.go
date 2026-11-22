@@ -21,8 +21,9 @@ const (
 	bitgetOK = "00000"
 	kucoinOK = "200000"
 
-	maxTakerBps = 100.0
-	cexTimeout  = 8 * time.Second
+	maxTakerBps   = 100.0
+	maxNumberEcho = 40
+	cexTimeout    = 8 * time.Second
 )
 
 var (
@@ -70,10 +71,10 @@ type flexFloat float64
 func (f *flexFloat) UnmarshalJSON(b []byte) error {
 	n, err := strconv.ParseFloat(strings.Trim(string(b), `"`), 64)
 	if err != nil {
-		return fmt.Errorf("parse number %s: %w", truncate(string(b), 40), err)
+		return fmt.Errorf("parse number %s: %w", truncate(string(b), maxNumberEcho), err)
 	}
 	if math.IsNaN(n) || math.IsInf(n, 0) {
-		return fmt.Errorf("parse number %s: %w", truncate(string(b), 40), errNotFinite)
+		return fmt.Errorf("parse number %s: %w", truncate(string(b), maxNumberEcho), errNotFinite)
 	}
 	*f = flexFloat(n)
 	return nil

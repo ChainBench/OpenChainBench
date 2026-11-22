@@ -219,24 +219,6 @@ func TestFetchOne_RoutesEveryCEX(t *testing.T) {
 	}
 }
 
-type countingTransport struct{ calls *atomic.Int32 }
-
-func (c countingTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	c.calls.Add(1)
-	return respond(req, http.StatusBadGateway, ""), nil
-}
-
-var errUnbounded = errors.New("request_without_deadline")
-
-type boundedTransport struct{ next http.RoundTripper }
-
-func (b boundedTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	if _, ok := req.Context().Deadline(); !ok {
-		return nil, errUnbounded
-	}
-	return b.next.RoundTrip(req)
-}
-
 func TestBookFromPairs_EqualAskLevels(t *testing.T) {
 	asks := [][]flexFloat{{100, 1}, {100, 2}}
 	_, levels, err := bookFromPairs([][]flexFloat{{99, 1}}, asks, 1)
