@@ -5,6 +5,7 @@ import { BenchInfobox } from "./bench-infobox";
 import { LedgerTable } from "./ledger-table";
 import { ProviderFootnotes } from "./provider-footnotes";
 import { RankedBarChart } from "./ranked-bar-chart";
+import { StaticLedger } from "./static-ledger";
 import type { Benchmark } from "@/types/benchmark";
 
 async function perpFees(leaderSlug?: string): Promise<Benchmark> {
@@ -39,6 +40,15 @@ describe("perp-fees ledger", () => {
     const marked = html.split("<tr").filter((row) => row.includes("see the footnote"));
     expect(marked).toHaveLength(1);
     expect(marked[0]).toContain(">Lighter<");
+  });
+
+  test("the static ledger explains Lighter above the table", async () => {
+    const html = renderToStaticMarkup(
+      <StaticLedger benchmark={await perpFees()} regionCount={1} />,
+    );
+    const note = html.indexOf("300 ms late");
+    expect(note).toBeGreaterThan(-1);
+    expect(note).toBeLessThan(html.indexOf("<table"));
   });
 
   test.each([

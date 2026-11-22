@@ -7,6 +7,7 @@ import { liveResults } from "@/lib/provider-filters";
 import { matchesChainSlug } from "@/lib/chain-aliases";
 import { ChainTabs } from "@/components/chain-tabs";
 import { LedgerTable } from "@/components/ledger-table";
+import { ProviderFootnotes } from "@/components/provider-footnotes";
 import { HlArchiveLeaderboard } from "@/components/hl-archive-leaderboard";
 import { TimeSeriesChart } from "@/components/time-series-chart";
 import type { Range as ChartRange } from "@/components/time-series-chart/scales";
@@ -1404,6 +1405,8 @@ export function BenchmarkBody({
               Measured 2026-09-22: the first endpoint URL sat at word 423
               and the 115 chain pages shared 0.53 of their first 300 words. */}
           {!effectiveTier && endpointsFirst && headlineCohortBlock}
+
+          <ProviderFootnotes benchmark={viewBenchmark} className="mt-8" />
 
           <div className={"mt-8 card-soft rounded-xl p-4 sm:p-6 lg:p-8" + pendingCls}>
             {hasLongHistory && longRangeKey ? (

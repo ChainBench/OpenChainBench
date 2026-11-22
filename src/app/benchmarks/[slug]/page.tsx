@@ -7,7 +7,6 @@ import { getBenchmark, getBenchIndexSafe } from "@/data/benchmarks";
 import { Pill } from "@/components/pill";
 import { BenchmarkBody } from "@/components/benchmark-body";
 import { BenchInfobox } from "@/components/bench-infobox";
-import { ProviderFootnotes } from "@/components/provider-footnotes";
 import { StaticLedger } from "@/components/static-ledger";
 import { OraclePairMatrix } from "@/components/oracle-pair-matrix";
 import { TerminalFillAudit } from "@/components/terminal-fill-audit";
@@ -827,10 +826,6 @@ export default async function BenchmarkPage({
             )}
           </p>
         </section>
-      )}
-
-      {!isDraft && (
-        <ProviderFootnotes benchmark={benchmark} className="mt-6 max-w-3xl" />
       )}
 
       {/* Companion hub callout. A handful of benches have a curated
