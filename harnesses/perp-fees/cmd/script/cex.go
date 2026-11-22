@@ -20,10 +20,6 @@ const (
 
 	bpsPerUnit = 10000
 
-	okxOK    = "0"
-	bitgetOK = "00000"
-	kucoinOK = "200000"
-
 	maxTakerBps   = 100.0
 	maxNumberEcho = 40
 	cexTimeout    = 8 * time.Second
@@ -57,6 +53,27 @@ var cexQuotes = map[string]cexQuoteFunc{
 	"mexc":    quoteMEXC,
 	"gate":    quoteGate,
 	"kucoin":  quoteKuCoin,
+}
+
+type apiCodes struct {
+	ok            string
+	unknownSymbol string
+}
+
+var (
+	bybitCodes  = apiCodes{unknownSymbol: "10001"}
+	okxCodes    = apiCodes{ok: "0", unknownSymbol: "51001"}
+	bitgetCodes = apiCodes{ok: "00000", unknownSymbol: "40034"}
+	mexcCodes   = apiCodes{unknownSymbol: "1001"}
+	kucoinCodes = apiCodes{ok: "200000", unknownSymbol: "404000"}
+)
+
+func (c apiCodes) failure(code any, msg string) error {
+	err := fmt.Errorf("%w %v %q", errAPI, code, truncate(msg, maxAPIMsg))
+	if fmt.Sprint(code) == c.unknownSymbol {
+		return fmt.Errorf("%w: %w", errAssetNotFound, err)
+	}
+	return err
 }
 
 var unreadableData = []error{
@@ -118,10 +135,6 @@ func rateToBps(rate *flexFloat) (float64, error) {
 		return 0, fmt.Errorf("%w: %.4f bps", errTakerOutOfRange, bps)
 	}
 	return bps, nil
-}
-
-func apiError(code any, msg string) error {
-	return fmt.Errorf("%w %v %q", errAPI, code, truncate(msg, maxAPIMsg))
 }
 
 func fetchCEX(v VenueConfig, quote cexQuoteFunc, client *http.Client) PerpSample {
@@ -218,7 +231,7 @@ func quoteBybit(ctx context.Context, client *http.Client, asset string) (cexQuot
 		return cexQuote{}, fmt.Errorf("orderbook: %w", err)
 	}
 	if resp.RetCode != 0 {
-		return cexQuote{}, fmt.Errorf("orderbook: %w", apiError(resp.RetCode, resp.RetMsg))
+		return cexQuote{}, fmt.Errorf("orderbook: %w", bybitCodes.failure(resp.RetCode, resp.RetMsg))
 	}
 	bid, asks, err := bookFromPairs(resp.Result.Bids, resp.Result.Asks, 1)
 	return cexQuote{takerBps: bybitTakerBps, bestBid: bid, asks: asks}, err
@@ -229,7 +242,7 @@ func quoteOKX(ctx context.Context, client *http.Client, asset string) (cexQuote,
 	inst := asset + "-USDT-SWAP"
 	specs, err := codedGet[[]struct {
 		CtVal flexFloat `json:"ctVal"`
-	}](ctx, client, base+"public/instruments?instType=SWAP&instId="+inst, okxOK)
+	}](ctx, client, base+"public/instruments?instType=SWAP&instId="+inst, okxCodes)
 	if err != nil {
 		return cexQuote{}, fmt.Errorf("instrument: %w", err)
 	}
@@ -237,7 +250,7 @@ func quoteOKX(ctx context.Context, client *http.Client, asset string) (cexQuote,
 		return cexQuote{}, fmt.Errorf("instrument: %w", errAssetNotFound)
 	}
 	bookURL := base + "market/books-full?sz=5000&instId=" + inst
-	books, err := codedGet[[]pairBook](ctx, client, bookURL, okxOK)
+	books, err := codedGet[[]pairBook](ctx, client, bookURL, okxCodes)
 	if err != nil {
 		return cexQuote{}, fmt.Errorf("orderbook: %w", err)
 	}
@@ -254,13 +267,18 @@ type codedResponse[T any] struct {
 	Data T      `json:"data"`
 }
 
-func codedGet[T any](ctx context.Context, client *http.Client, url, okCode string) (T, error) {
+func codedGet[T any](
+	ctx context.Context,
+	client *http.Client,
+	url string,
+	codes apiCodes,
+) (T, error) {
 	var resp codedResponse[T]
 	if err := getJSON(ctx, client, url, &resp); err != nil {
 		return resp.Data, err
 	}
-	if resp.Code != okCode {
-		return resp.Data, apiError(resp.Code, resp.Msg)
+	if resp.Code != codes.ok {
+		return resp.Data, codes.failure(resp.Code, resp.Msg)
 	}
 	return resp.Data, nil
 }
@@ -270,7 +288,7 @@ func quoteBitget(ctx context.Context, client *http.Client, asset string) (cexQuo
 	query := "?productType=usdt-futures&symbol=" + asset + "USDT"
 	contracts, err := codedGet[[]struct {
 		TakerFeeRate *flexFloat `json:"takerFeeRate"`
-	}](ctx, client, base+"contracts"+query, bitgetOK)
+	}](ctx, client, base+"contracts"+query, bitgetCodes)
 	if err != nil {
 		return cexQuote{}, fmt.Errorf("contract: %w", err)
 	}
@@ -281,7 +299,8 @@ func quoteBitget(ctx context.Context, client *http.Client, asset string) (cexQuo
 	if err != nil {
 		return cexQuote{}, fmt.Errorf("contract: %w", err)
 	}
-	book, err := codedGet[pairBook](ctx, client, base+"merge-depth"+query+"&limit=max", bitgetOK)
+	bookURL := base + "merge-depth" + query + "&limit=max"
+	book, err := codedGet[pairBook](ctx, client, bookURL, bitgetCodes)
 	if err != nil {
 		return cexQuote{}, fmt.Errorf("orderbook: %w", err)
 	}
@@ -302,7 +321,7 @@ func mexcGet[T any](ctx context.Context, client *http.Client, url string) (T, er
 		return resp.Data, err
 	}
 	if !resp.Success {
-		return resp.Data, apiError(resp.Code, resp.Message)
+		return resp.Data, mexcCodes.failure(resp.Code, resp.Message)
 	}
 	return resp.Data, nil
 }
@@ -377,7 +396,7 @@ func quoteKuCoin(ctx context.Context, client *http.Client, asset string) (cexQuo
 	spec, err := codedGet[struct {
 		Multiplier   flexFloat  `json:"multiplier"`
 		TakerFeeRate *flexFloat `json:"takerFeeRate"`
-	}](ctx, client, base+"contracts/"+symbol, kucoinOK)
+	}](ctx, client, base+"contracts/"+symbol, kucoinCodes)
 	if err != nil {
 		return cexQuote{}, fmt.Errorf("contract: %w", err)
 	}
@@ -385,7 +404,8 @@ func quoteKuCoin(ctx context.Context, client *http.Client, asset string) (cexQuo
 	if err != nil {
 		return cexQuote{}, fmt.Errorf("contract: %w", err)
 	}
-	book, err := codedGet[pairBook](ctx, client, base+"level2/snapshot?symbol="+symbol, kucoinOK)
+	bookURL := base + "level2/snapshot?symbol=" + symbol
+	book, err := codedGet[pairBook](ctx, client, bookURL, kucoinCodes)
 	if err != nil {
 		return cexQuote{}, fmt.Errorf("orderbook: %w", err)
 	}

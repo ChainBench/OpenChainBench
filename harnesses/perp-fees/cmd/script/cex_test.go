@@ -118,16 +118,16 @@ func TestFetchCEX(t *testing.T) {
 		{
 			name: "api error",
 			quote: func(context.Context, *http.Client, string) (cexQuote, error) {
-				return cexQuote{}, apiError(10001, "params error")
+				return cexQuote{}, bybitCodes.failure(10006, "too many visits")
 			},
-			wantType: "other",
+			wantType: errTypeOther,
 		},
 		{
 			name: "deadline",
 			quote: func(ctx context.Context, _ *http.Client, _ string) (cexQuote, error) {
 				return cexQuote{}, fmt.Errorf("orderbook: %w", context.DeadlineExceeded)
 			},
-			wantType: "timeout",
+			wantType: errTypeTimeout,
 		},
 		{
 			name: "fee field gone",
@@ -166,7 +166,7 @@ func TestFetchCEX(t *testing.T) {
 			quote: func(context.Context, *http.Client, string) (cexQuote, error) {
 				return cexQuote{takerBps: 5, bestBid: 1999, asks: book.asks[:1]}, nil
 			},
-			wantType: "other",
+			wantType: errTypeOther,
 		},
 	}
 	for _, tc := range tests {
@@ -393,14 +393,14 @@ func TestCEXQuotes_APIError(t *testing.T) {
 		want   error
 	}{
 		{
-			name: "bybit retCode", slug: "bybit", want: errAPI,
+			name: "bybit unknown symbol", slug: "bybit", want: errAssetNotFound,
 			routes: map[string]string{
 				"orderbook": `{"retCode":10001,"retMsg":"params error",` +
 					`"result":{"b":[["1999","10"]],"a":[["2001","10"]]}}`,
 			},
 		},
 		{
-			name: "bitget code", slug: "bitget", want: errAPI,
+			name: "bitget unknown symbol", slug: "bitget", want: errAssetNotFound,
 			routes: map[string]string{
 				"contracts":   `{"code":"40034","data":[{"takerFeeRate":"0.0006"}]}`,
 				"merge-depth": `{"code":"00000","data":` + numBook + `}`,
@@ -421,7 +421,7 @@ func TestCEXQuotes_APIError(t *testing.T) {
 			},
 		},
 		{
-			name: "okx code", slug: "okx", want: errAPI,
+			name: "okx unknown symbol", slug: "okx", want: errAssetNotFound,
 			routes: map[string]string{
 				"instruments": `{"code":"51001","msg":"Instrument ID does not exist",` +
 					`"data":[{"ctVal":"0.01"}]}`,
@@ -440,6 +440,20 @@ func TestCEXQuotes_APIError(t *testing.T) {
 			routes: map[string]string{
 				"instruments": `{"code":"0","data":[{"ctVal":"0.01"}]}`,
 				"books-full":  `{"code":"0","data":[]}`,
+			},
+		},
+		{
+			name: "kucoin unknown symbol", slug: "kucoin", want: errAssetNotFound,
+			routes: map[string]string{
+				"contracts": `{"code":"404000","msg":"contract does not exist","data":null}`,
+				"snapshot":  `{"code":"200000","data":` + numBook + `}`,
+			},
+		},
+		{
+			name: "mexc unknown symbol", slug: "mexc", want: errAssetNotFound,
+			routes: map[string]string{
+				"detail": `{"success":false,"code":1001,"message":"Contract does not exist"}`,
+				"depth":  `{"success":true,"data":` + numBook + `}`,
 			},
 		},
 		{
