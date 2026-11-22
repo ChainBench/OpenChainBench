@@ -445,8 +445,9 @@ func TestCEXQuotes_APIError(t *testing.T) {
 		{
 			name: "kucoin unknown symbol", slug: "kucoin", want: errAssetNotFound,
 			routes: map[string]string{
-				"contracts": `{"code":"404000","msg":"contract does not exist","data":null}`,
-				"snapshot":  `{"code":"200000","data":` + numBook + `}`,
+				"contracts": `{"code":"404000",` +
+					`"msg":"The contract information you requested does not exist.","data":null}`,
+				"snapshot": `{"code":"200000","data":` + numBook + `}`,
 			},
 		},
 		{
