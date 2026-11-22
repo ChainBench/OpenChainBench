@@ -13,6 +13,7 @@ import { SectionLabel, SummaryStat } from "@/components/summary-stat";
 import { SITE } from "@/data/site";
 import { CREATOR_PUBLISHER, CITABLE_JSON_URL, DATASET_LICENSE, HF_DATASET_URL } from "@/lib/dataset-jsonld";
 import { loadAlternative } from "@/lib/alternatives";
+import { benchOgImage, venueTypeQuery } from "@/lib/bench-og-image";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { buildBreadcrumbJsonLd, safeJsonLd } from "@/lib/jsonld";
 import { citableAsOf } from "@/lib/citation";
@@ -55,7 +56,7 @@ export async function generateMetadata({
     alt.seo_description ?? alt.intro,
   );
   const url = `${SITE.url}/alternatives/${alt.slug}`;
-  const ogImage = `${SITE.url}/api/og/${alt.benchmark}`;
+  const ogImage = benchOgImage(alt.benchmark, alt.venue_type);
   // Noindex when the underlying bench has no live data yet — same rule as
   // /benchmarks/[slug]. Avoids indexing a "Not measured yet" page that
   // undercuts the bench canonical once data arrives.
@@ -135,6 +136,7 @@ export default async function AlternativePage({
 
   const url = `${SITE.url}/alternatives/${alt.slug}`;
   const benchUrl = `${SITE.url}/benchmarks/${bench.slug}`;
+  const benchHref = `${benchUrl}${venueTypeQuery(alt.venue_type)}`;
 
   // Schema.org / Google Rich Results requires Dataset.description to be
   // between 50 and 5000 chars (Search Console flags "Invalid string
@@ -214,7 +216,7 @@ export default async function AlternativePage({
         // Google Article rich results require image (1200px on the longer
         // side). Reuse the referenced bench's OG card so the schema image
         // matches what X + LinkedIn + Search Console already render.
-        image: `${SITE.url}/api/og/${bench.slug}`,
+        image: benchOgImage(bench.slug, alt.venue_type),
         datePublished: getBenchCreatedAt(bench.slug).toISOString(),
         ...(citableAsOf(bench) ? { dateModified: bench.lastRunAt } : {}),
         author: { "@id": `${SITE.url}/#org` },
@@ -417,7 +419,7 @@ export default async function AlternativePage({
             chart export on the benchmark page.
           </p>
           <Link
-            href={benchUrl}
+            href={benchHref}
             className="shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-ink text-paper text-sm font-medium px-4 py-2 hover:opacity-80 transition-opacity"
           >
             Open benchmark
@@ -428,7 +430,7 @@ export default async function AlternativePage({
 
       <p className="mt-8 max-w-2xl text-xs text-ink-muted">
         Measurements sourced from{" "}
-        <Link href={benchUrl} className="lnk text-ink-soft">
+        <Link href={benchHref} className="lnk text-ink-soft">
           {bench.title}
         </Link>
         {alt.chain ? ` (filtered to ${alt.chain})` : ""}. Methodology and

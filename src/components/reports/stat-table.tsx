@@ -30,7 +30,7 @@ export async function StatTable({
 }: Props) {
   const b = scopeToVenueType(
     await getBenchmark(bench, { chain, region, tier }).catch(() => undefined),
-    venueType ?? "all",
+    venueType,
   );
   if (!b || b.editorialStatus !== "live") {
     return (

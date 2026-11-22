@@ -22,13 +22,11 @@ import { RegionGrid } from "@/components/region-grid";
 import { MetricViewTabs } from "@/components/metric-view-tabs";
 import type { ProviderLayer } from "@/types/benchmark";
 import {
-  filterByVenueType,
   VENUE_TYPE_PARAM,
-  parseVenueTypeView,
+  filterByVenueType,
   scopeToVenueType,
-  venueTypeCounts,
-  type VenueTypeView,
 } from "@/lib/venue-type-filter";
+import { useVenueTypeView } from "@/hooks/use-venue-type-view";
 import type { FeesView } from "@/lib/spec-schema";
 import { CountLeaderboard } from "@/components/count-leaderboard";
 import { shownVariant } from "@/lib/shown-variant";
@@ -359,9 +357,6 @@ export function BenchmarkBody({
     feesRemovable && urlFees === "removed" ? "removed" : "included",
   );
   const [layer, setLayer] = useState<ProviderLayer>(resolvedInitialLayer);
-  const [venueType, setVenueType] = useState<VenueTypeView>(
-    parseVenueTypeView(urlVenueType),
-  );
   // `#tier=<t>` is invisible to the server and to useSearchParams: read
   // it once after mount.
   useEffect(() => {
@@ -441,11 +436,7 @@ export function BenchmarkBody({
     if (next !== window.location.pathname + window.location.search + window.location.hash) {
       window.history.replaceState(null, "", next);
     }
-  }, [
-    chain, region, kind, venue, bucket, tier, fees, layer,
-    activePanelId, chainOptions, regionOptions, kindOptions, venueOptions,
-    bucketOptions, tierOptions,
-  ]);
+  }, [chain, region, kind, venue, bucket, tier, fees, layer, activePanelId, chainOptions, regionOptions, kindOptions, venueOptions, bucketOptions, tierOptions]);
 
   const fallbackChain = chainOptions[0]?.value ?? null;
   const fallbackRegion = regionOptions[0]?.value ?? null;
@@ -697,14 +688,8 @@ export function BenchmarkBody({
   }, [benchmark]);
   const hasLayerSplit = layerCounts.l1 > 0 && layerCounts.l2 > 0;
 
-  const venueTypeCount = useMemo(
-    () => venueTypeCounts(liveResults(benchmark?.results ?? [])),
-    [benchmark],
-  );
-  const hasVenueTypes = venueTypeCount.dex + venueTypeCount.cex > 0;
-  const venueView: VenueTypeView = hasVenueTypes ? venueType : "all";
-  const showVenueTypeRow =
-    (venueTypeCount.dex > 0 && venueTypeCount.cex > 0) || venueView !== "all";
+  const venueType = useVenueTypeView(benchmark, urlVenueType);
+  const venueView = venueType.view;
   const summarizeScoped = (b: Benchmark | undefined) =>
     summarize(scopeToVenueType(b, venueView));
 
@@ -724,15 +709,6 @@ export function BenchmarkBody({
       results: filterByVenueType(byLayer, venueView),
     };
   }, [benchmark, hasLayerSplit, layer, venueView]);
-  useEffect(() => {
-    const url = new URL(window.location.href);
-    if (venueView === "all") url.searchParams.delete(VENUE_TYPE_PARAM);
-    else url.searchParams.set(VENUE_TYPE_PARAM, venueView);
-    if (url.href !== window.location.href) {
-      const next = url.pathname + url.search + url.hash;
-      window.history.replaceState(null, "", next);
-    }
-  }, [venueView]);
   const venueViewEmpty =
     venueView !== "all" &&
     !!viewBenchmark &&
@@ -1075,7 +1051,7 @@ export function BenchmarkBody({
   return (
     <>
       {(hasLayerSplit ||
-        showVenueTypeRow ||
+        venueType.showRow ||
         filteredChainOptions.length > 0 ||
         regionOptions.length > 0 ||
         kindOptions.length > 0 ||
@@ -1091,16 +1067,16 @@ export function BenchmarkBody({
               onSelect={handleFeesSelect}
             />
           )}
-          {showVenueTypeRow && (
+          {venueType.showRow && (
             <DimensionRow
               label="Venue type"
               options={[
-                { value: "all", label: `All · ${venueTypeCount.all}` },
-                { value: "dex", label: `DEX · ${venueTypeCount.dex}` },
-                { value: "cex", label: `CEX · ${venueTypeCount.cex}` },
+                { value: "all", label: `All · ${venueType.counts.all}` },
+                { value: "dex", label: `DEX · ${venueType.counts.dex}` },
+                { value: "cex", label: `CEX · ${venueType.counts.cex}` },
               ]}
               selected={venueView}
-              onSelect={(v) => setVenueType(parseVenueTypeView(v))}
+              onSelect={venueType.select}
             />
           )}
           {venueViewEmpty && (

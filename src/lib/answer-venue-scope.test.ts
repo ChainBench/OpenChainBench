@@ -5,7 +5,9 @@ const dex = {
   venueType: "dex",
   bench: "perp-fees",
   benchTypesProviders: true,
-} as const;
+};
+
+const fieldsOf = (errors: { field: string }[]) => errors.map((e) => e.field);
 
 describe("venueScopeErrors", () => {
   test.each([
@@ -23,11 +25,19 @@ describe("venueScopeErrors", () => {
       ["faq[0].a", undefined],
       ["seo_title", "{{worst_name:chain:BTC}}"],
     ]);
-    expect(errors.map((e) => e.split(":")[0])).toEqual(["intro", "seo_title"]);
+    expect(fieldsOf(errors)).toEqual(["intro", "seo_title"]);
   });
 
-  test("a bench with no typed provider is refused", () => {
-    const errors = venueScopeErrors({ ...dex, benchTypesProviders: false }, []);
-    expect(errors).toHaveLength(1);
+  test.each([
+    ["an unscoped answer", { ...dex, venueType: undefined }, []],
+    ["an unknown venue type", { ...dex, venueType: "spot" }, ["venue_type"]],
+    [
+      "a bench with no typed provider",
+      { ...dex, benchTypesProviders: false },
+      ["venue_type", "intro"],
+    ],
+  ])("%s", (_, scope, expected) => {
+    const errors = venueScopeErrors(scope, [["intro", "{{count:tier:x}}"]]);
+    expect(fieldsOf(errors)).toEqual(expected);
   });
 });

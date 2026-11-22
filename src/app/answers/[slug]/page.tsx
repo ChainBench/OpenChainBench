@@ -26,23 +26,10 @@ import {
 import { PERSON_ID } from "@/lib/hub-jsonld";
 import { capDescription, capSnippet } from "@/lib/seo-text";
 import { getBenchCreatedAt } from "@/lib/seo/bench-dates";
-import { VENUE_TYPE_PARAM } from "@/lib/venue-type-filter";
+import { benchOgImage, venueTypeQuery } from "@/lib/bench-og-image";
 import type { ProviderVenueType } from "@/types/benchmark";
 
-type VenueTypeOpt = ProviderVenueType | undefined;
-
-function venueTypeQuery(venueType: VenueTypeOpt): string {
-  return venueType ? `?${VENUE_TYPE_PARAM}=${venueType}` : "";
-}
-
-function benchOgImage(slug: string, venueType: VenueTypeOpt): string {
-  return `${SITE.url}/api/og/${slug}${venueTypeQuery(venueType)}`;
-}
-
-function scopeNote(
-  chain: string | undefined,
-  venueType: VenueTypeOpt,
-): string {
+function scopeNote(chain?: string, venueType?: ProviderVenueType): string {
   const parts = [
     chain ? `filtered to ${chain}` : "",
     venueType ? `${venueType.toUpperCase()} venues only` : "",

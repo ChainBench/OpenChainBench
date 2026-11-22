@@ -1,8 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
-import yaml from "js-yaml";
 import { SpecSchema } from "./spec-schema";
+import { perpFeesSpecRaw } from "@/test/benchmark";
 
 type RawSpec = {
   providers: { slug: string; venue_type?: string }[];
@@ -11,10 +9,7 @@ type RawSpec = {
   [key: string]: unknown;
 };
 
-const perpFees = (): RawSpec =>
-  yaml.load(
-    readFileSync(join(process.cwd(), "benchmarks/perp-fees.yml"), "utf8"),
-  ) as RawSpec;
+const perpFees = (): RawSpec => perpFeesSpecRaw() as RawSpec;
 
 const issuePaths = (raw: RawSpec): string[] => {
   const parsed = SpecSchema.safeParse(raw);
@@ -54,9 +49,10 @@ describe("fees_removed validation", () => {
 describe("venue_type validation", () => {
   test("a row left untyped next to typed rows is refused", () => {
     const raw = perpFees();
-    const [first, ...rest] = raw.providers;
-    raw.providers = [{ ...first, venue_type: undefined }, ...rest];
+    raw.providers = raw.providers.map((p, i) =>
+      i === 3 ? { ...p, venue_type: undefined } : p,
+    );
 
-    expect(issuePaths(raw)).toEqual(["providers.0.venue_type"]);
+    expect(issuePaths(raw)).toEqual(["providers.3.venue_type"]);
   });
 });

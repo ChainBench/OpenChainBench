@@ -32,7 +32,7 @@ export function filterByVenueType<T extends Typed>(
 
 export function scopeToVenueType(
   bench: Benchmark | undefined,
-  view: VenueTypeView,
+  view: VenueTypeView = "all",
 ): Benchmark | undefined {
   if (!bench || view === "all") return bench;
   return { ...bench, results: filterByVenueType(bench.results, view) };

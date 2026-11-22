@@ -50,7 +50,7 @@ export async function GET(
   const top = leader(b);
   const value = fieldValue(b);
   const valueStr = value != null ? fmtUnit(value, b.unit) : "-";
-  const spark = sparklineFor(b, top?.slug);
+  const spark = top ? sparklineFor(b, top.slug) : [];
 
   return ogResponse(
     (

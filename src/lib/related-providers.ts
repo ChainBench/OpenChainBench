@@ -93,7 +93,8 @@ export function isPairLinkable(
   if (shared.length > 0 && shared.every((x) => x.benchmark.category === "RWA")) return false;
   return liveSharedBenchCount(a, b) >= MIN_LIVE_SHARED_FOR_LINK;
 }
-import { loadAllAlternatives, loadAlternativeBench } from "@/lib/alternatives";
+import { loadAllAlternatives } from "@/lib/alternatives";
+import { loadScopedBench } from "@/lib/scoped-bench";
 
 export type CompareCandidate = {
   /** Canonical product slug (matches /products/<slug>). */
@@ -187,7 +188,7 @@ async function buildAlternativesReverseMap(): Promise<
   const liveSlugs = new Set(alternatives.map((a) => a.slug));
   const benches = await Promise.all(
     alternatives.map((alt) =>
-      loadAlternativeBench(alt).then((bench) => ({
+      loadScopedBench(alt).then((bench) => ({
         alt,
         bench,
       })),

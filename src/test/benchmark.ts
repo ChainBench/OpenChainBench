@@ -1,4 +1,13 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import yaml from "js-yaml";
 import type { Benchmark } from "@/types/benchmark";
+
+export function perpFeesSpecRaw(): unknown {
+  return yaml.load(
+    readFileSync(join(process.cwd(), "benchmarks/perp-fees.yml"), "utf8"),
+  );
+}
 
 export function perpFeesBoard(over: Partial<Benchmark> = {}): Benchmark {
   return {

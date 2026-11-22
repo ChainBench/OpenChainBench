@@ -1,18 +1,13 @@
 import { describe, expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
-import yaml from "js-yaml";
 import { overlayEditorial } from "./spec";
 import { SpecSchema } from "./spec-schema";
-import { loadAllAlternatives } from "./alternatives";
-import { loadAllAnswers } from "./answers";
 import {
   parseVenueTypeView,
   scopeToVenueType,
   venueTypeCounts,
   type VenueTypeView,
 } from "./venue-type-filter";
-import { perpFeesBoard } from "@/test/benchmark";
+import { perpFeesBoard, perpFeesSpecRaw } from "@/test/benchmark";
 import type { ProviderResult } from "@/types/benchmark";
 
 const row = (slug: string): ProviderResult => ({
@@ -22,12 +17,7 @@ const row = (slug: string): ProviderResult => ({
   successRate: 1,
 });
 
-const perpFeesSpec = () =>
-  SpecSchema.parse(
-    yaml.load(
-      readFileSync(join(process.cwd(), "benchmarks/perp-fees.yml"), "utf8"),
-    ),
-  );
+const perpFeesSpec = () => SpecSchema.parse(perpFeesSpecRaw());
 
 describe("venue type on a stored board", () => {
   const stored = perpFeesBoard({
@@ -45,34 +35,9 @@ describe("venue type on a stored board", () => {
   });
 });
 
-describe("pages built on perp-fees", () => {
-  const board = overlayEditorial(
-    perpFeesBoard({
-      results: [row("hyperliquid"), row("binance")],
-    }),
-    perpFeesSpec(),
-  );
-
-  test("answers and alternatives rank no CEX row", async () => {
-    const all = [
-      ...(await loadAllAnswers()),
-      ...(await loadAllAlternatives()),
-    ];
-    const pages = all.filter((p) => p.benchmark === "perp-fees");
-    expect(pages.length).toBeGreaterThan(0);
-    for (const page of pages) {
-      const slugs = scopeToVenueType(board, page.venue_type ?? "all")
-        ?.results.map((r) => r.slug);
-      expect({ page: page.slug, slugs }).toEqual({
-        page: page.slug,
-        slugs: ["hyperliquid"],
-      });
-    }
-  });
-});
-
 test("a row without a type stays out of a typed scope", () => {
   const board = perpFeesBoard({ results: [row("unlisted")] });
+  expect(venueTypeCounts(board.results)).toEqual({ all: 1, dex: 0, cex: 0 });
   expect(scopeToVenueType(board, "dex")?.results).toEqual([]);
   expect(scopeToVenueType(board, "all")?.results).toHaveLength(1);
 });

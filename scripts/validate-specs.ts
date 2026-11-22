@@ -10,13 +10,14 @@ import { promises as fs } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import yaml from "js-yaml";
-import { ProviderVenueType, SpecSchema } from "../src/lib/spec-schema";
+import { SpecSchema } from "../src/lib/spec-schema";
 import { venueScopeErrors } from "../src/lib/answer-venue-scope";
 import { COST_CELL_RE, costCell } from "../src/lib/cost-cell";
 
 const ROOT = path.resolve(__dirname, "..");
 const SPECS_DIR = path.join(ROOT, "benchmarks");
 const ANSWERS_DIR = path.join(ROOT, "answers");
+const ALTERNATIVES_DIR = path.join(ROOT, "alternatives");
 
 type Issue = { file: string; level: "error" | "warning"; message: string };
 
@@ -372,21 +373,13 @@ async function main() {
       ...faq.flatMap((q, i) => [[`faq[${i}].q`, q.q], [`faq[${i}].a`, q.a]] as [string, string | undefined][]),
     ];
     lintPlaceholders(issues, file, templated, refs.providers, refs.chains, refs.tiers);
-    if (ans.venue_type !== undefined) {
-      const venueType = ProviderVenueType.safeParse(ans.venue_type);
-      const errors = venueType.success
-        ? venueScopeErrors(
-            {
-              venueType: venueType.data,
-              bench: benchSlug,
-              benchTypesProviders: refs.venueTyped,
-            },
-            templated,
-          )
-        : [`venue_type must be dex or cex, got "${String(ans.venue_type)}"`];
-      for (const message of errors) {
-        issues.push({ file, level: "error", message });
-      }
+    const venueScope = {
+      venueType: ans.venue_type,
+      bench: benchSlug,
+      benchTypesProviders: refs.venueTyped,
+    };
+    for (const e of venueScopeErrors(venueScope, templated)) {
+      issues.push({ file, level: "error", message: `${e.field}: ${e.message}` });
     }
     // "{{count}} bridges (Mobula, Relay, LI.FI, deBridge, ...)": a live
     // count followed by a typed enumeration of four or more names.
@@ -396,6 +389,28 @@ async function main() {
       if (m) {
         issues.push({ file, level: "error", message: `${name}: {{count}} followed by a typed cohort list "${m[0].slice(0, 60)}"; drop the list, the count is live` });
       }
+    }
+  }
+
+  const altFiles = (await fs.readdir(ALTERNATIVES_DIR).catch(() => [] as string[])).filter(
+    (f) => f.endsWith(".yml") || f.endsWith(".yaml")
+  );
+  for (const f of altFiles) {
+    const file = `../alternatives/${f}`;
+    let alt: unknown;
+    try {
+      alt = yaml.load(await fs.readFile(path.join(ALTERNATIVES_DIR, f), "utf8"));
+    } catch (e) {
+      issues.push({ file, level: "error", message: `YAML parse error: ${(e as Error).message}` });
+      continue;
+    }
+    if (!alt || typeof alt !== "object") continue;
+    const { benchmark, venue_type } = alt as Record<string, unknown>;
+    const refs = typeof benchmark === "string" ? specRefs.get(benchmark) : undefined;
+    if (!refs || typeof benchmark !== "string") continue;
+    const venueScope = { venueType: venue_type, bench: benchmark, benchTypesProviders: refs.venueTyped };
+    for (const e of venueScopeErrors(venueScope, [])) {
+      issues.push({ file, level: "error", message: `${e.field}: ${e.message}` });
     }
   }
 

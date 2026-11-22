@@ -13,9 +13,8 @@ import path from "node:path";
 import { cache } from "react";
 import yaml from "js-yaml";
 import { z } from "zod";
-import { loadBenchmark } from "@/lib/spec";
+import { loadScopedBench } from "@/lib/scoped-bench";
 import { ProviderVenueType } from "@/lib/spec-schema";
-import { scopeToVenueType } from "@/lib/venue-type-filter";
 import { REMOVED_BENCH_SLUGS } from "@/lib/removed-benches";
 import type { Benchmark } from "@/types/benchmark";
 
@@ -118,14 +117,7 @@ export async function loadAlternative(
   const all = await loadAllAlternatives();
   const alt = all.find((a) => a.slug === slug);
   if (!alt) return undefined;
-  const bench = await loadAlternativeBench(alt);
+  const bench = await loadScopedBench(alt);
   if (!bench) return undefined;
   return { ...alt, bench };
-}
-
-export async function loadAlternativeBench(
-  alt: Alternative,
-): Promise<Benchmark | undefined> {
-  const bench = await loadBenchmark(alt.benchmark, { chain: alt.chain });
-  return scopeToVenueType(bench, alt.venue_type ?? "all");
 }
