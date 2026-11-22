@@ -1,6 +1,13 @@
 import Link from "next/link";
 import { pageMetadata } from "@/lib/page-metadata";
 import { SITE } from "@/data/site";
+import { REQUEST_PAGE_PATH } from "@/lib/api-access/contract";
+import {
+  KEYED_CACHE_NOTE,
+  KEYED_LIMIT,
+  PER_SERVER_NOTE,
+  PUBLIC_RANGE,
+} from "@/lib/api-access/public-limits";
 import { OutboundLink } from "@/components/outbound-link";
 import { CodeSnippet } from "@/components/code-snippet";
 
@@ -9,7 +16,9 @@ export const metadata: import("next").Metadata = pageMetadata({
   // 254 characters was the first draft, which Google truncates at about
   // 160. This says the same thing in one line a search result can show.
   description:
-    "The MCP server and its four tools, eleven REST endpoints, every benchmark page as Markdown, and four citation formats. No key, no signup, CC BY 4.0.",
+    "The MCP server and its four tools, eleven REST endpoints, every " +
+    "benchmark page as Markdown, and four citation formats. No key " +
+    "needed, no signup, CC BY 4.0.",
   title: "Docs",
 });
 
@@ -54,7 +63,9 @@ const START = [
   {
     n: "Writing code",
     color: "var(--color-accent, #c97c5d)",
-    body: "Eleven REST endpoints, no key and no signup, described by an OpenAPI 3.1 document.",
+    body:
+      "Eleven REST endpoints, no key needed and no signup, described by " +
+      "an OpenAPI 3.1 document.",
     href: "/api/openapi.json",
     cta: "OpenAPI document",
   },
@@ -238,8 +249,15 @@ export default function DocsPage() {
       <section className="mt-16">
         <SectionHeader number="III" label="REST API" id="rest" />
         <p className="mt-6 max-w-3xl text-[15px] text-ink-soft leading-relaxed">
-          No key, no signup. Responses are cached at the edge, so a client that polls faster than
-          the data moves is served from cache rather than rate-limited.
+          No key needed. Responses are cached at the edge, and calls served
+          from the cache do not count toward a limit. Past the cache, each
+          route except /api/search/featured allows {PUBLIC_RANGE} requests
+          per minute per IP. If your site needs more,{" "}
+          <Link className="lnk" href={REQUEST_PAGE_PATH}>
+            request a free API key
+          </Link>
+          : calls with a key get {KEYED_LIMIT}. {PER_SERVER_NOTE}{" "}
+          {KEYED_CACHE_NOTE}
         </p>
         <div className="mt-6 card-soft rounded-xl divide-y divide-rule overflow-hidden">
           {ENDPOINTS.map((e) => (

@@ -1,5 +1,72 @@
 import { NextResponse } from "next/server";
 import { SITE } from "@/data/site";
+import { REQUEST_PAGE_PATH } from "@/lib/api-access/contract";
+import {
+  KEYED_CACHE_NOTE,
+  KEYED_LIMIT,
+  PER_SERVER_NOTE,
+  PUBLIC_RANGE,
+} from "@/lib/api-access/public-limits";
+
+const API_KEY_SCHEME = {
+  type: "http",
+  scheme: "bearer",
+  description:
+    `Optional. Without a key, each route allows ${PUBLIC_RANGE} requests ` +
+    `per minute per IP. With a key: ${KEYED_LIMIT}, per key. ` +
+    `${PER_SERVER_NOTE} ${KEYED_CACHE_NOTE} ` +
+    `Request a key at ${SITE.url}${REQUEST_PAGE_PATH}. A replaced, ` +
+    "revoked or mistyped ocb_ key gets 401; other Authorization headers are " +
+    "ignored. If the key cannot be checked, the call counts against the " +
+    "public limit and a 429 carries the header X-OCB-Key: unverified.",
+};
+
+const ERROR_BODY = {
+  content: {
+    "application/json": { schema: { $ref: "#/components/schemas/ApiError" } },
+  },
+};
+
+const LIMIT_RESPONSES = {
+  "401": { $ref: "#/components/responses/InvalidKey" },
+  "429": { $ref: "#/components/responses/RateLimited" },
+};
+
+const ERROR_RESPONSES = {
+  InvalidKey: {
+    description:
+      "The Authorization header carries an ocb_ key that does not work, " +
+      'or is not in the form "Bearer ocb_…". The call was not served.',
+    headers: { "WWW-Authenticate": { schema: { type: "string" } } },
+    ...ERROR_BODY,
+  },
+  RateLimited: {
+    description:
+      "The limit for this route is used up. The call was not served; " +
+      "retry after the Retry-After delay. X-OCB-Key: unverified means the " +
+      "key could not be checked, so the call counted against the public " +
+      "limit. The errors invalid_api_key_limited and " +
+      "malformed_authorization_limited mean too many calls from the same " +
+      "network sent a key that does not work or a malformed Authorization " +
+      "header.",
+    headers: {
+      "Retry-After": { schema: { type: "integer" } },
+      "X-OCB-Key": { schema: { type: "string", enum: ["unverified"] } },
+    },
+    ...ERROR_BODY,
+  },
+};
+
+const API_ERROR_SCHEMA = {
+  type: "object",
+  required: ["error", "message"],
+  properties: {
+    error: { type: "string" },
+    message: { type: "string" },
+    retryAfterSec: { type: "integer" },
+    keyUnverified: { type: "boolean" },
+  },
+};
 
 export const runtime = "nodejs";
 export const revalidate = 3600;
@@ -17,7 +84,7 @@ export async function GET() {
     openapi: "3.1.0",
     info: {
       title: "OpenChainBench API",
-      version: "1.1.0",
+      version: "1.2.0",
       description: `${SITE.description} An MCP server (Streamable HTTP, POST only) is also available at ${SITE.url}/api/mcp/mcp exposing list_benchmarks, get_benchmark, list_answers and query_prom tools; see ${SITE.url}/mcp for install instructions.`,
       license: { name: "CC-BY-4.0", url: "https://creativecommons.org/licenses/by/4.0/" },
     },
@@ -28,6 +95,7 @@ export async function GET() {
           summary: "Flat index of every citable benchmark with current values.",
           operationId: "list_benchmarks",
           responses: {
+            ...LIMIT_RESPONSES,
             "200": {
               description: "OK",
               content: { "application/json": { schema: { $ref: "#/components/schemas/CitableIndex" } } },
@@ -41,6 +109,7 @@ export async function GET() {
             "The /capital hub in one payload: chains (TVL, bridged value, 7d vs the L2 median, stablecoin float and 30-day net flow, DEX volume), DeFi tokens by price to fees with the fees-up-token-down divergences, perp DEX tokens, and open interest per perp DEX and prediction market. Same rows as the page and its Markdown view; fields of a bench this deployment does not serve are absent. Cached 300 s.",
           operationId: "get_capital_hub",
           responses: {
+            ...LIMIT_RESPONSES,
             "200": {
               description: "OK",
               content: { "application/json": { schema: { type: "object" } } },
@@ -63,6 +132,7 @@ export async function GET() {
             },
           ],
           responses: {
+            ...LIMIT_RESPONSES,
             "200": {
               description: "OK",
               content: { "application/json": { schema: { $ref: "#/components/schemas/CitableIndex" } } },
@@ -126,6 +196,7 @@ export async function GET() {
             },
           ],
           responses: {
+            ...LIMIT_RESPONSES,
             "200": {
               description: "OK",
               content: { "application/json": { schema: { $ref: "#/components/schemas/Stat" } } },
@@ -156,6 +227,7 @@ export async function GET() {
             },
           ],
           responses: {
+            ...LIMIT_RESPONSES,
             "200": {
               description: "OK",
               content: {
@@ -177,6 +249,7 @@ export async function GET() {
             { name: "slug", in: "path", required: true, schema: { type: "string" } },
           ],
           responses: {
+            ...LIMIT_RESPONSES,
             "200": { description: "PNG", content: { "image/png": {} } },
             "404": { description: "Unknown slug" },
           },
@@ -212,6 +285,7 @@ export async function GET() {
             },
           ],
           responses: {
+            ...LIMIT_RESPONSES,
             "200": {
               description: "SVG",
               content: { "image/svg+xml": {} },
@@ -246,6 +320,7 @@ export async function GET() {
             },
           ],
           responses: {
+            ...LIMIT_RESPONSES,
             "200": {
               description: "Citation record",
               content: {
@@ -265,6 +340,7 @@ export async function GET() {
             "All benchmarks, rankings and methodology as one Markdown document, ready to paste into a system prompt.",
           operationId: "get_llm_context",
           responses: {
+            ...LIMIT_RESPONSES,
             "200": {
               description: "OK",
               content: { "text/markdown": { schema: { type: "string" } } },
@@ -279,6 +355,7 @@ export async function GET() {
             "Lightweight freshness probe: last resolved data timestamp (epoch ms) per benchmark slug.",
           operationId: "get_freshness",
           responses: {
+            ...LIMIT_RESPONSES,
             "200": {
               description: "OK",
               content: {
@@ -295,6 +372,7 @@ export async function GET() {
           summary:
             "Slim featured-leaders payload (live leaders + trending benches) that feeds the site search dialog.",
           operationId: "get_featured_leaders",
+          security: [{}],
           responses: {
             "200": {
               description: "OK",
@@ -304,8 +382,14 @@ export async function GET() {
         },
       },
     },
+    security: [{}, { apiKey: [] }],
     components: {
+      securitySchemes: {
+        apiKey: API_KEY_SCHEME,
+      },
+      responses: ERROR_RESPONSES,
       schemas: {
+        ApiError: API_ERROR_SCHEMA,
         CitableIndex: {
           type: "object",
           properties: {

@@ -3,7 +3,7 @@ import { canonicalize, getProvider } from "@/lib/providers";
 import { valueInDeclaredUnit } from "@/lib/format";
 import { canonicalPairSlug } from "@/lib/compare-pairing-shared";
 import { citableAsOf } from "@/lib/citation";
-import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
+import { limitApiCall } from "@/lib/api-access/caller";
 import { SLUG_RE } from "@/lib/slug";
 import { SITE } from "@/data/site";
 
@@ -28,8 +28,8 @@ export async function GET(
   req: Request,
   { params }: { params: Promise<{ a: string; b: string }> },
 ) {
-  const r = rateLimit(clientKey(req, "compare"), 60, 60, req);
-  if (!r.ok) return tooManyRequests(r.retryAfterSec);
+  const refused = await limitApiCall(req, "compare");
+  if (refused) return refused;
 
   const { a: aRaw, b: bRaw } = await params;
   if (!SLUG_RE.test(aRaw) || !SLUG_RE.test(bRaw)) {

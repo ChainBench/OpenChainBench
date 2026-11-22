@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { SITE } from "@/data/site";
+import { REQUEST_PAGE_PATH } from "@/lib/api-access/contract";
 import { OutboundLink } from "@/components/outbound-link";
 
 /**
@@ -32,6 +33,7 @@ const DEVELOPER_LINKS = [
   { label: "Partners + embeds", href: "/partners" },
   { label: "Badges catalog", href: "/badges" },
   { label: "OpenAPI spec", href: "/api/openapi.json" },
+  { label: "API access", href: REQUEST_PAGE_PATH },
   { label: "JSON citation", href: "/api/citable" },
   { label: "LLM context", href: "/api/llm-context" },
   { label: "llms.txt", href: "/llms.txt" },
