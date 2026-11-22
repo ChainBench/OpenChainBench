@@ -1,10 +1,10 @@
 import { describe, expect, test } from "bun:test";
-import { venueScopeErrors } from "./answer-venue-scope";
+import { venueScopeErrors } from "./venue-scope";
 
 const dex = {
   venueType: "dex",
   bench: "perp-fees",
-  benchTypesProviders: true,
+  venueTyped: true,
 };
 
 const fieldsOf = (errors: { field: string }[]) => errors.map((e) => e.field);
@@ -33,7 +33,7 @@ describe("venueScopeErrors", () => {
     ["an unknown venue type", { ...dex, venueType: "spot" }, ["venue_type"]],
     [
       "a bench with no typed provider",
-      { ...dex, benchTypesProviders: false },
+      { ...dex, venueTyped: false },
       ["venue_type", "intro"],
     ],
   ])("%s", (_, scope, expected) => {

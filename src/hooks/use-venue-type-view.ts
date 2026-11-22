@@ -24,14 +24,16 @@ export function useVenueTypeView(
   const view: VenueTypeView = counts.dex + counts.cex > 0 ? picked : "all";
   const showRow = (counts.dex > 0 && counts.cex > 0) || view !== "all";
 
+  const loaded = benchmark !== undefined;
   useEffect(() => {
+    if (!loaded) return;
     const url = new URL(window.location.href);
     if (view === "all") url.searchParams.delete(VENUE_TYPE_PARAM);
     else url.searchParams.set(VENUE_TYPE_PARAM, view);
-    if (url.href !== window.location.href) {
-      window.history.replaceState(null, "", url.pathname + url.search + url.hash);
-    }
-  }, [view]);
+    if (url.href === window.location.href) return;
+    const next = url.pathname + url.search + url.hash;
+    window.history.replaceState(null, "", next);
+  }, [loaded, view]);
 
   const select = (raw: string) => setPicked(parseVenueTypeView(raw));
   return { view, counts, showRow, select };

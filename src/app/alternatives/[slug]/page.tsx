@@ -13,7 +13,8 @@ import { SectionLabel, SummaryStat } from "@/components/summary-stat";
 import { SITE } from "@/data/site";
 import { CREATOR_PUBLISHER, CITABLE_JSON_URL, DATASET_LICENSE, HF_DATASET_URL } from "@/lib/dataset-jsonld";
 import { loadAlternative } from "@/lib/alternatives";
-import { benchOgImage, venueTypeQuery } from "@/lib/bench-og-image";
+import { benchOgImage } from "@/lib/bench-og-image";
+import { scopeNote, venueTypeQuery } from "@/lib/venue-type-filter";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { buildBreadcrumbJsonLd, safeJsonLd } from "@/lib/jsonld";
 import { citableAsOf } from "@/lib/citation";
@@ -433,7 +434,7 @@ export default async function AlternativePage({
         <Link href={benchHref} className="lnk text-ink-soft">
           {bench.title}
         </Link>
-        {alt.chain ? ` (filtered to ${alt.chain})` : ""}. Methodology and
+        {scopeNote(alt.chain, alt.venue_type)}. Methodology and
         raw data on the benchmark page.
       </p>
 

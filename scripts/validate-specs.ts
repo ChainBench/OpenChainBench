@@ -11,7 +11,7 @@ import os from "node:os";
 import path from "node:path";
 import yaml from "js-yaml";
 import { SpecSchema } from "../src/lib/spec-schema";
-import { venueScopeErrors } from "../src/lib/answer-venue-scope";
+import { venueScopeErrors } from "../src/lib/venue-scope";
 import { COST_CELL_RE, costCell } from "../src/lib/cost-cell";
 
 const ROOT = path.resolve(__dirname, "..");
@@ -74,6 +74,40 @@ function lintPlaceholders(
         issues.push({ file, level: "error", message: `${name}: ${whole} takes no argument` });
       }
     }
+  }
+}
+
+type YamlPage = { file: string; doc: Record<string, unknown> };
+
+async function readYamlPages(
+  dir: string,
+  issues: Issue[],
+): Promise<YamlPage[]> {
+  const names = await fs.readdir(dir).catch(() => [] as string[]);
+  const pages: YamlPage[] = [];
+  for (const f of names.filter((n) => /\.ya?ml$/.test(n))) {
+    const file = `../${path.basename(dir)}/${f}`;
+    try {
+      const doc = yaml.load(await fs.readFile(path.join(dir, f), "utf8"));
+      if (doc && typeof doc === "object") {
+        pages.push({ file, doc: doc as Record<string, unknown> });
+      }
+    } catch (e) {
+      const message = `YAML parse error: ${(e as Error).message}`;
+      issues.push({ file, level: "error", message });
+    }
+  }
+  return pages;
+}
+
+function pushVenueScopeIssues(
+  issues: Issue[],
+  file: string,
+  scope: Parameters<typeof venueScopeErrors>[0],
+  fields: Parameters<typeof venueScopeErrors>[1],
+): void {
+  for (const e of venueScopeErrors(scope, fields)) {
+    issues.push({ file, level: "error", message: `${e.field}: ${e.message}` });
   }
 }
 
@@ -345,19 +379,8 @@ async function main() {
   // The typed-cohort rule covers the fields that carry {{count}} on the
   // same page: a hand-typed list of names next to a live count drifts on
   // the first cohort change (audit 2026-09-19, blocker 2).
-  const answerFiles = (await fs.readdir(ANSWERS_DIR).catch(() => [] as string[])).filter(
-    (f) => f.endsWith(".yml") || f.endsWith(".yaml")
-  );
-  for (const f of answerFiles) {
-    const file = `../answers/${f}`;
-    let ans: Record<string, unknown>;
-    try {
-      ans = yaml.load(await fs.readFile(path.join(ANSWERS_DIR, f), "utf8")) as Record<string, unknown>;
-    } catch (e) {
-      issues.push({ file, level: "error", message: `YAML parse error: ${(e as Error).message}` });
-      continue;
-    }
-    if (!ans || typeof ans !== "object") continue;
+  const answers = await readYamlPages(ANSWERS_DIR, issues);
+  for (const { file, doc: ans } of answers) {
     const benchSlug = typeof ans.benchmark === "string" ? ans.benchmark : "";
     const refs = specRefs.get(benchSlug);
     if (!refs) continue; // a bench outside this checkout: the answer is filtered out at load time
@@ -376,11 +399,9 @@ async function main() {
     const venueScope = {
       venueType: ans.venue_type,
       bench: benchSlug,
-      benchTypesProviders: refs.venueTyped,
+      venueTyped: refs.venueTyped,
     };
-    for (const e of venueScopeErrors(venueScope, templated)) {
-      issues.push({ file, level: "error", message: `${e.field}: ${e.message}` });
-    }
+    pushVenueScopeIssues(issues, file, venueScope, templated);
     // "{{count}} bridges (Mobula, Relay, LI.FI, deBridge, ...)": a live
     // count followed by a typed enumeration of four or more names.
     const typedCohort = /\{\{\s*count\s*\}\}\s+\w+\s*\((?:[^()]*,){3,}[^()]*\)/;
@@ -392,26 +413,17 @@ async function main() {
     }
   }
 
-  const altFiles = (await fs.readdir(ALTERNATIVES_DIR).catch(() => [] as string[])).filter(
-    (f) => f.endsWith(".yml") || f.endsWith(".yaml")
-  );
-  for (const f of altFiles) {
-    const file = `../alternatives/${f}`;
-    let alt: unknown;
-    try {
-      alt = yaml.load(await fs.readFile(path.join(ALTERNATIVES_DIR, f), "utf8"));
-    } catch (e) {
-      issues.push({ file, level: "error", message: `YAML parse error: ${(e as Error).message}` });
-      continue;
-    }
-    if (!alt || typeof alt !== "object") continue;
-    const { benchmark, venue_type } = alt as Record<string, unknown>;
-    const refs = typeof benchmark === "string" ? specRefs.get(benchmark) : undefined;
-    if (!refs || typeof benchmark !== "string") continue;
-    const venueScope = { venueType: venue_type, bench: benchmark, benchTypesProviders: refs.venueTyped };
-    for (const e of venueScopeErrors(venueScope, [])) {
-      issues.push({ file, level: "error", message: `${e.field}: ${e.message}` });
-    }
+  const alternatives = await readYamlPages(ALTERNATIVES_DIR, issues);
+  for (const { file, doc: alt } of alternatives) {
+    if (typeof alt.benchmark !== "string") continue;
+    const refs = specRefs.get(alt.benchmark);
+    if (!refs) continue;
+    const venueScope = {
+      venueType: alt.venue_type,
+      bench: alt.benchmark,
+      venueTyped: refs.venueTyped,
+    };
+    pushVenueScopeIssues(issues, file, venueScope, []);
   }
 
   // A live spec with no entry in the published map falls back to the

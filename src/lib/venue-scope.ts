@@ -4,7 +4,7 @@ import { ProviderVenueType } from "@/lib/spec-schema";
 type VenueScope = {
   venueType: unknown;
   bench: string;
-  benchTypesProviders: boolean;
+  venueTyped: boolean;
 };
 
 type TemplatedField = readonly [name: string, text: string | undefined];
@@ -29,7 +29,7 @@ export function venueScopeErrors(
       message: `a chain or tier placeholder ranks every row of ${bench}, ` +
         `not only its ${rows}`,
     }));
-  if (scope.benchTypesProviders) return unscoped;
+  if (scope.venueTyped) return unscoped;
   return [
     {
       field: "venue_type",

@@ -8,6 +8,21 @@ type Typed = { venueType?: ProviderVenueType };
 
 type VenueTypeCounts = { all: number; dex: number; cex: number };
 
+export function venueTypeQuery(venueType?: ProviderVenueType): string {
+  return venueType ? `?${VENUE_TYPE_PARAM}=${venueType}` : "";
+}
+
+export function scopeNote(
+  chain?: string,
+  venueType?: ProviderVenueType,
+): string {
+  const parts = [
+    chain ? `filtered to ${chain}` : "",
+    venueType ? `${venueType.toUpperCase()} venues only` : "",
+  ].filter(Boolean);
+  return parts.length ? ` (${parts.join(", ")})` : "";
+}
+
 export function parseVenueTypeView(raw: string | null): VenueTypeView {
   return raw === "dex" || raw === "cex" ? raw : "all";
 }
@@ -35,5 +50,7 @@ export function scopeToVenueType(
   view: VenueTypeView = "all",
 ): Benchmark | undefined {
   if (!bench || view === "all") return bench;
-  return { ...bench, results: filterByVenueType(bench.results, view) };
+  const results = filterByVenueType(bench.results, view);
+  const sampleSize = results.reduce((n, r) => n + (r.sampleSize ?? 0), 0);
+  return { ...bench, results, sampleSize };
 }

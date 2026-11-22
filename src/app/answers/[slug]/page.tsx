@@ -26,16 +26,8 @@ import {
 import { PERSON_ID } from "@/lib/hub-jsonld";
 import { capDescription, capSnippet } from "@/lib/seo-text";
 import { getBenchCreatedAt } from "@/lib/seo/bench-dates";
-import { benchOgImage, venueTypeQuery } from "@/lib/bench-og-image";
-import type { ProviderVenueType } from "@/types/benchmark";
-
-function scopeNote(chain?: string, venueType?: ProviderVenueType): string {
-  const parts = [
-    chain ? `filtered to ${chain}` : "",
-    venueType ? `${venueType.toUpperCase()} venues only` : "",
-  ].filter(Boolean);
-  return parts.length ? ` (${parts.join(", ")})` : "";
-}
+import { benchOgImage } from "@/lib/bench-og-image";
+import { scopeNote, venueTypeQuery } from "@/lib/venue-type-filter";
 
 export const revalidate = 3600;
 export const maxDuration = 120;

@@ -34,6 +34,7 @@
 
 import { after } from "next/server";
 import { z } from "zod";
+import { ProviderVenueType } from "@/lib/spec-schema";
 import type {
   Benchmark,
   CellRankEntry,
@@ -72,7 +73,7 @@ const ProviderResultSchema = z.object({
   tag: z.string().optional(),
   type: z.enum(["protocol", "aggregator", "intent", "relay"]).optional(),
   layer: z.enum(["l1", "l2"]).optional(),
-  venueType: z.enum(["dex", "cex"]).optional(),
+  venueType: ProviderVenueType.optional(),
   ms: z.object({
     p50: z.number(),
     p90: z.number(),

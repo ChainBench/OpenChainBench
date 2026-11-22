@@ -52,4 +52,3 @@ test.each<[string | null, VenueTypeView]>([
 ])("parseVenueTypeView(%p) is %p", (raw, view) => {
   expect(parseVenueTypeView(raw)).toBe(view);
 });
-
