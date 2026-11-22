@@ -1,4 +1,4 @@
-import { expect, mock, test } from "bun:test";
+import { afterAll, expect, mock, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import { perpFeesBoard, perpFeesRow } from "@/test/benchmark";
 
@@ -14,6 +14,7 @@ mock.module("@/data/benchmarks", () => ({
   ...actualData,
   getBenchmark: async () => board,
 }));
+afterAll(() => mock.restore());
 
 const { StatTable } = await import("./stat-table");
 

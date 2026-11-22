@@ -53,6 +53,14 @@ export function filterByVenueType<T extends VenueTyped>(
   return results.filter((r) => r.venueType === view);
 }
 
+export function scopeFromParams(
+  bench: Benchmark,
+  params: URLSearchParams,
+): { view: VenueTypeView; bench: Benchmark } {
+  const view = parseVenueTypeView(params.get(VENUE_TYPE_PARAM));
+  return { view, bench: scopeToVenueType(bench, view) ?? bench };
+}
+
 export function scopeToVenueType(
   bench: Benchmark | undefined,
   view: VenueTypeView = "all",

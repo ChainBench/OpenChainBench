@@ -1,8 +1,10 @@
 import { describe, expect, test } from "bun:test";
+import { leader } from "./citation";
 import { overlayEditorial } from "./spec";
 import { SpecSchema } from "./spec-schema";
 import {
   parseVenueTypeView,
+  scopeFromParams,
   scopeNote,
   scopeToVenueType,
   shownVenueTypeView,
@@ -37,6 +39,18 @@ test("a row without a type stays out of a typed scope", () => {
   const board = perpFeesBoard({ results: [row("unlisted")] });
   expect(venueTypeCounts(board.results)).toEqual({ all: 1, dex: 0, cex: 0 });
   expect(scopeToVenueType(board, "dex")?.results).toEqual([]);
+});
+
+test.each([
+  ["venue_type=dex", "hyperliquid", " (DEX venues only)"],
+  ["", "binance", ""],
+])("a card for %p leads with %p", (query, want, note) => {
+  const board = perpFeesBoard({
+    results: [row("hyperliquid", "dex", 5), row("binance", "cex", 1)],
+  });
+  const { view, bench } = scopeFromParams(board, new URLSearchParams(query));
+  expect(leader(bench)?.slug).toBe(want);
+  expect(scopeNote(undefined, view)).toBe(note);
 });
 
 test.each<[string | null, VenueTypeView]>([
