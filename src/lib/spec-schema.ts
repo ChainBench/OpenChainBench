@@ -972,17 +972,6 @@ export const SpecSchema = z
   })
   .strict()
   .superRefine((spec, ctx) => {
-    const providerSlugs = new Set(spec.providers.map((p) => p.slug));
-    for (const key of Object.keys(spec.provider_footnotes ?? {})) {
-      if (!providerSlugs.has(key)) {
-        ctx.addIssue({
-          code: "custom",
-          path: ["provider_footnotes", key],
-          message: `provider_footnotes key "${key}" is not a provider slug`,
-        });
-      }
-    }
-
     // A region-dimensioned bench without exact cell rankings would fall
     // back to cross-region-average badge logic, which is precisely the
     // bias the matrix exists to fix (a provider winning from one region
