@@ -686,6 +686,10 @@ export const SpecSchema = z
       .record(slug, z.string().min(1).max(30).refine(noAiDashes, noAiDashesMsg))
       .optional(),
 
+    provider_footnotes: z
+      .record(slug, z.string().min(1).max(400).refine(noAiDashes, noAiDashesMsg))
+      .optional(),
+
     /* Optional single PromQL returning one instant sample per
      * (provider[, chain][, region]) — e.g.
      *   avg by (provider, chain, region) (quantile_over_time(0.50, m[24h]))
@@ -968,6 +972,17 @@ export const SpecSchema = z
   })
   .strict()
   .superRefine((spec, ctx) => {
+    const providerSlugs = new Set(spec.providers.map((p) => p.slug));
+    for (const key of Object.keys(spec.provider_footnotes ?? {})) {
+      if (!providerSlugs.has(key)) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["provider_footnotes", key],
+          message: `provider_footnotes key "${key}" is not a provider slug`,
+        });
+      }
+    }
+
     // A region-dimensioned bench without exact cell rankings would fall
     // back to cross-region-average badge logic, which is precisely the
     // bias the matrix exists to fix (a provider winning from one region

@@ -167,6 +167,7 @@ export function overlayEditorial(stored: Benchmark, spec: Spec): Benchmark {
     // Overlay so newly added notes surface immediately without waiting
     // on the materialize worker to rewrite the snapshot.
     providerNotes: spec.provider_notes ?? stored.providerNotes,
+    providerFootnotes: spec.provider_footnotes,
     feesRemovable: spec.fees_removed ? true : undefined,
     // expected_n is a YAML editorial declaration too: drives the
     // sample-health badge logic on the page + the citable APIs. A
