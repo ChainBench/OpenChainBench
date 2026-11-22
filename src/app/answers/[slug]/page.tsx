@@ -26,6 +26,8 @@ import {
 import { PERSON_ID } from "@/lib/hub-jsonld";
 import { capDescription, capSnippet } from "@/lib/seo-text";
 import { getBenchCreatedAt } from "@/lib/seo/bench-dates";
+import { benchOgImage } from "@/lib/bench-links";
+import { scopeNote } from "@/lib/venue-type-filter";
 
 export const revalidate = 3600;
 export const maxDuration = 120;
@@ -121,7 +123,7 @@ export async function generateMetadata({
       site: SITE.twitter,
       title,
       description,
-      images: [`${SITE.url}/api/og/${ans.bench.slug}`],
+      images: [benchOgImage(ans.bench.slug, ans.venue_type)],
     },
   };
 }
@@ -287,7 +289,7 @@ export default async function AnswerPage({
         // the Question node above so attribution stays per-answer.
         author: { "@id": `${SITE.url}/#org` },
         publisher: { "@id": `${SITE.url}/#org` },
-        image: `${SITE.url}/api/og/${bench.slug}`,
+        image: benchOgImage(bench.slug, ans.venue_type),
         // Inline the referenced bench Dataset (bare URL ref gets
         // validated as a standalone incomplete Dataset by Google, same
         // failure mode as PR #1442's isBasedOn fix).
@@ -343,6 +345,7 @@ export default async function AnswerPage({
         <Pill variant="category">Answer</Pill>
         <span className="sm:ml-auto font-sans tabular text-[11px] text-ink-muted">
           Backed by {bench.title}
+          {scopeNote(ans.venue_type)}
         </span>
       </div>
 
@@ -513,7 +516,7 @@ export default async function AnswerPage({
         <Link href={`/benchmarks/${bench.slug}`} className="lnk text-ink-soft">
           /benchmarks/{bench.slug}
         </Link>
-        {ans.chain ? ` (filtered to ${ans.chain})` : ""}, refreshed every
+        {scopeNote(ans.venue_type, ans.chain)}, refreshed every
         minute. Open methodology, open source.
       </p>
     </article>

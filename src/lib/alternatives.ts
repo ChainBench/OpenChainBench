@@ -13,7 +13,8 @@ import path from "node:path";
 import { cache } from "react";
 import yaml from "js-yaml";
 import { z } from "zod";
-import { loadBenchmark } from "@/lib/spec";
+import { loadScopedBench } from "@/lib/scoped-bench";
+import { ProviderVenueType } from "@/lib/spec-schema";
 import { REMOVED_BENCH_SLUGS } from "@/lib/removed-benches";
 import type { Benchmark } from "@/types/benchmark";
 
@@ -48,6 +49,7 @@ const AlternativeSchema = z.object({
   benchmark: slug,
   /** Optional chain filter applied to the benchmark when rendering. */
   chain: z.string().optional(),
+  venue_type: ProviderVenueType.optional(),
   /** Lead paragraph rendered above the data. */
   intro: z.string().min(40),
   /** Optional editorial positioning paragraph. Substantive prose (400+
@@ -115,7 +117,7 @@ export async function loadAlternative(
   const all = await loadAllAlternatives();
   const alt = all.find((a) => a.slug === slug);
   if (!alt) return undefined;
-  const bench = await loadBenchmark(alt.benchmark, { chain: alt.chain });
+  const bench = await loadScopedBench(alt);
   if (!bench) return undefined;
   return { ...alt, bench };
 }

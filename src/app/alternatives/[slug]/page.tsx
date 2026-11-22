@@ -13,6 +13,8 @@ import { SectionLabel, SummaryStat } from "@/components/summary-stat";
 import { SITE } from "@/data/site";
 import { CREATOR_PUBLISHER, CITABLE_JSON_URL, DATASET_LICENSE, HF_DATASET_URL } from "@/lib/dataset-jsonld";
 import { loadAlternative } from "@/lib/alternatives";
+import { benchOgImage } from "@/lib/bench-links";
+import { scopeNote } from "@/lib/venue-type-filter";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { buildBreadcrumbJsonLd, safeJsonLd } from "@/lib/jsonld";
 import { citableAsOf } from "@/lib/citation";
@@ -55,7 +57,7 @@ export async function generateMetadata({
     alt.seo_description ?? alt.intro,
   );
   const url = `${SITE.url}/alternatives/${alt.slug}`;
-  const ogImage = `${SITE.url}/api/og/${alt.benchmark}`;
+  const ogImage = benchOgImage(alt.benchmark, alt.venue_type);
   // Noindex when the underlying bench has no live data yet — same rule as
   // /benchmarks/[slug]. Avoids indexing a "Not measured yet" page that
   // undercuts the bench canonical once data arrives.
@@ -214,7 +216,7 @@ export default async function AlternativePage({
         // Google Article rich results require image (1200px on the longer
         // side). Reuse the referenced bench's OG card so the schema image
         // matches what X + LinkedIn + Search Console already render.
-        image: `${SITE.url}/api/og/${bench.slug}`,
+        image: benchOgImage(bench.slug, alt.venue_type),
         datePublished: getBenchCreatedAt(bench.slug).toISOString(),
         ...(citableAsOf(bench) ? { dateModified: bench.lastRunAt } : {}),
         author: { "@id": `${SITE.url}/#org` },
@@ -259,6 +261,7 @@ export default async function AlternativePage({
         <Pill variant="category">Alternatives</Pill>
         <span className="sm:ml-auto font-sans tabular text-[11px] text-ink-muted">
           Sourced from {bench.title}
+          {scopeNote(alt.venue_type)}
         </span>
       </div>
 
@@ -431,7 +434,7 @@ export default async function AlternativePage({
         <Link href={benchUrl} className="lnk text-ink-soft">
           {bench.title}
         </Link>
-        {alt.chain ? ` (filtered to ${alt.chain})` : ""}. Methodology and
+        {scopeNote(alt.venue_type, alt.chain)}. Methodology and
         raw data on the benchmark page.
       </p>
 

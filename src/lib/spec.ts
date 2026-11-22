@@ -119,7 +119,11 @@ export function overlayEditorial(stored: Benchmark, spec: Spec): Benchmark {
     // copy above, so a new `endpoint` shows without a worker sweep.
     .map((r) => {
       const sp = providerByCanonSlug.get(r.slug);
-      return sp?.endpoint ? { ...r, endpoint: sp.endpoint } : r;
+      return {
+        ...r,
+        endpoint: sp?.endpoint || r.endpoint,
+        venueType: sp?.venue_type,
+      };
     });
 
   const overlaid: Benchmark = {
@@ -1082,7 +1086,8 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   //       checks since 2026-11-18 20:00 UTC (Pulse renamed its sources);
   //       Robinhood is new, with Mobula, Codex, Serialized and Metastreams.
   // v209: bench 007 declares a fees-removed view and two panels.
-  ["bench-unfiltered-v209", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v210: bench 007 gains seven CEX rows and every row a venue type.
+  ["bench-unfiltered-v210", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -1470,7 +1475,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v200: lockstep with bench-unfiltered-v207 (bench 004 Base and Robinhood).
   // v201: lockstep with bench-unfiltered-v208 (bench 030 adds FiatBear).
   // v202: lockstep with bench-unfiltered-v209 (bench 007 fees-removed view).
-  ["all-benchmarks-v202", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v203: lockstep with bench-unfiltered-v210 (bench 007 CEX rows).
+  ["all-benchmarks-v203", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -1758,7 +1764,8 @@ const loadBenchmarkFiltered = unstable_cache(
   // v122: lockstep with bench-unfiltered-v206. Region tabs gain RpcNode.
   // v123: lockstep with bench-unfiltered-v207. Bench 004 declares two new chain tabs.
   // v124: lockstep with bench-unfiltered-v209. Bench 007 gains fees=removed tabs.
-  ["bench-filters-v124", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v125: lockstep with bench-unfiltered-v210. Bench 007 CEX rows, all tabs.
+  ["bench-filters-v125", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 

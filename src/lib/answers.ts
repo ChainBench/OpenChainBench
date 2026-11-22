@@ -17,7 +17,8 @@ import path from "node:path";
 import { cache } from "react";
 import yaml from "js-yaml";
 import { z } from "zod";
-import { loadBenchmark } from "@/lib/spec";
+import { loadScopedBench } from "@/lib/scoped-bench";
+import { ProviderVenueType } from "@/lib/spec-schema";
 import {
   REMOVED_ANSWER_SLUGS,
   REMOVED_BENCH_SLUGS,
@@ -54,6 +55,7 @@ const AnswerSchema = z.object({
   benchmark: slugSchema,
   /** Optional chain filter applied to the benchmark when rendering. */
   chain: z.string().optional(),
+  venue_type: ProviderVenueType.optional(),
   /** Hook paragraph rendered between the answer and the leaderboard. */
   intro: z.string().min(80).max(3000),
   /** Methodology paragraph rendered below the leaderboard. */
@@ -151,7 +153,7 @@ export async function loadAnswer(
   const all = await loadAllAnswers();
   const ans = all.find((a) => a.slug === slug);
   if (!ans) return undefined;
-  const bench = await loadBenchmark(ans.benchmark, { chain: ans.chain });
+  const bench = await loadScopedBench(ans);
   if (!bench) return undefined;
   return { ...ans, bench };
 }

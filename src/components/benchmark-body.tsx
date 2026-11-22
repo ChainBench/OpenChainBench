@@ -21,6 +21,12 @@ import { DonutChart } from "@/components/donut-chart";
 import { RegionGrid } from "@/components/region-grid";
 import { MetricViewTabs } from "@/components/metric-view-tabs";
 import type { ProviderLayer } from "@/types/benchmark";
+import {
+  VENUE_TYPE_PARAM,
+  filterByVenueType,
+  scopeToVenueType,
+} from "@/lib/venue-type-filter";
+import { useVenueTypeView } from "@/hooks/use-venue-type-view";
 import type { FeesView } from "@/lib/spec-schema";
 import { CountLeaderboard } from "@/components/count-leaderboard";
 import { shownVariant } from "@/lib/shown-variant";
@@ -321,6 +327,7 @@ export function BenchmarkBody({
   const urlFees = searchParams.get("fees");
   const feesRemovable = Object.values(variants).some((v) => v.feesRemovable);
   const urlLayer = searchParams.get("layer");
+  const urlVenueType = searchParams.get(VENUE_TYPE_PARAM);
   // Canonical-aware lookup: a URL with the new slug ("?chain=gram")
   // still selects the dimension whose YAML value is the legacy "ton".
   const resolvedInitialChain =
@@ -681,17 +688,27 @@ export function BenchmarkBody({
   }, [benchmark]);
   const hasLayerSplit = layerCounts.l1 > 0 && layerCounts.l2 > 0;
 
-  // Filter the benchmark to the active layer for the entire page. When
-  // hasLayerSplit is false the original benchmark is returned untouched
-  // so non-layer benches keep their existing behavior. The chart, the
-  // summary stats and the ledger all read from `viewBenchmark`.
+  const venueTypeFilter = useVenueTypeView(benchmark, urlVenueType);
+  const venueView = venueTypeFilter.view;
+  const summarizeScoped = (b: Benchmark | undefined) =>
+    summarize(scopeToVenueType(b, venueView));
+
   const viewBenchmark = useMemo(() => {
-    if (!benchmark || !hasLayerSplit) return benchmark;
+    if (!benchmark || (!hasLayerSplit && venueView === "all")) {
+      return benchmark;
+    }
+    const byLayer = hasLayerSplit
+      ? benchmark.results.filter((r) => r.layer === layer)
+      : benchmark.results;
     return {
       ...benchmark,
-      results: benchmark.results.filter((r) => r.layer === layer),
+      results: filterByVenueType(byLayer, venueView),
     };
-  }, [benchmark, hasLayerSplit, layer]);
+  }, [benchmark, hasLayerSplit, layer, venueView]);
+  const venueViewEmpty =
+    venueView !== "all" &&
+    !!viewBenchmark &&
+    liveResults(viewBenchmark.results).length === 0;
 
   const asOfUtc = benchmark ? fmtAsOfUtc(benchmark.lastRunAt) : null;
 
@@ -901,7 +918,12 @@ export function BenchmarkBody({
     const anywhere = Object.values(vals).some(
       (v) => v != null && Number.isFinite(v),
     );
-    const where = [effectiveChain, effectiveRegion, effectiveKind]
+    const where = [
+      effectiveChain,
+      effectiveRegion,
+      effectiveKind,
+      venueView === "all" ? null : venueView.toUpperCase(),
+    ]
       .filter((v): v is string => !!v && v !== "all")
       .join(" · ");
     if (!anywhere) {
@@ -1025,6 +1047,7 @@ export function BenchmarkBody({
   return (
     <>
       {(hasLayerSplit ||
+        venueTypeFilter.showRow ||
         filteredChainOptions.length > 0 ||
         regionOptions.length > 0 ||
         kindOptions.length > 0 ||
@@ -1040,6 +1063,24 @@ export function BenchmarkBody({
               onSelect={handleFeesSelect}
             />
           )}
+          {venueTypeFilter.showRow && (
+            <DimensionRow
+              label="Venue type"
+              options={[
+                { value: "all", label: `All · ${venueTypeFilter.counts.all}` },
+                { value: "dex", label: `DEX · ${venueTypeFilter.counts.dex}` },
+                { value: "cex", label: `CEX · ${venueTypeFilter.counts.cex}` },
+              ]}
+              selected={venueView}
+              onSelect={venueTypeFilter.select}
+            />
+          )}
+          {venueViewEmpty && (
+            <div className="text-[12px] text-ink-muted" role="status">
+              No {venueView.toUpperCase()} venue has a reading on this view.
+              Set Venue type to All to see every venue.
+            </div>
+          )}
           {tierOptions.length > 0 && (
             <DimensionRow
               label={dimensionLabels?.tier ?? "Access"}
@@ -1050,7 +1091,7 @@ export function BenchmarkBody({
                 tierOptions
                   .map((o) => [
                     o.value,
-                    summarize(
+                    summarizeScoped(
                       variantMap[
                         variantKey(effectiveChain, effectiveRegion, effectiveKind, effectiveVenue, tierParam(o.value), effectiveBucket, effectiveFees)
                       ],
@@ -1081,7 +1122,7 @@ export function BenchmarkBody({
                 filteredVenueOptions
                   .map((o) => [
                     o.value,
-                    summarize(
+                    summarizeScoped(
                       variantMap[variantKey(effectiveChain, effectiveRegion, effectiveKind, o.value, effectiveTier, effectiveBucket, effectiveFees)],
                     ),
                   ])
@@ -1099,7 +1140,7 @@ export function BenchmarkBody({
                 bucketOptions
                   .map((o) => [
                     o.value,
-                    summarize(
+                    summarizeScoped(
                       variantMap[variantKey(effectiveChain, effectiveRegion, effectiveKind, effectiveVenue, effectiveTier, o.value, effectiveFees)],
                     ),
                   ])
@@ -1117,7 +1158,7 @@ export function BenchmarkBody({
                 kindOptions
                   .map((o) => [
                     o.value,
-                    summarize(
+                    summarizeScoped(
                       variantMap[variantKey(effectiveChain, effectiveRegion, o.value, effectiveVenue, effectiveTier, effectiveBucket, effectiveFees)],
                     ),
                   ])
@@ -1135,7 +1176,7 @@ export function BenchmarkBody({
                 filteredChainOptions
                   .map((o) => [
                     o.value,
-                    summarize(variantMap[variantKey(o.value, effectiveRegion, effectiveKind, effectiveVenue, effectiveTier, effectiveBucket, effectiveFees)]),
+                    summarizeScoped(variantMap[variantKey(o.value, effectiveRegion, effectiveKind, effectiveVenue, effectiveTier, effectiveBucket, effectiveFees)]),
                   ])
                   .filter(([, v]) => v !== null) as [string, ChainMeta][]
               )}
@@ -1151,7 +1192,7 @@ export function BenchmarkBody({
                 regionOptions
                   .map((o) => [
                     o.value,
-                    summarize(variantMap[variantKey(effectiveChain, o.value, effectiveKind, effectiveVenue, effectiveTier, effectiveBucket, effectiveFees)]),
+                    summarizeScoped(variantMap[variantKey(effectiveChain, o.value, effectiveKind, effectiveVenue, effectiveTier, effectiveBucket, effectiveFees)]),
                   ])
                   .filter(([, v]) => v !== null) as [string, ChainMeta][]
               )}
@@ -1181,7 +1222,7 @@ export function BenchmarkBody({
         </div>
       )}
 
-      {!isDraft && benchmark.unit !== "count" && (() => {
+      {!isDraft && !venueViewEmpty && benchmark.unit !== "count" && (() => {
         // For higher-is-better benches (e.g. HL frontends USD revenue), the
         // "best" headline is the max value, not the min. Latency benches keep
         // the original min=best mapping.

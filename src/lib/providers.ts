@@ -1068,7 +1068,9 @@ const buildProvidersCached = unstable_cache(
   //      Lockstep with bench-unfiltered-v207.
   // v77: FiatBear is new to the site (bench 030 builder).
   //      Lockstep with bench-unfiltered-v208.
-  ["providers-v77"],
+  // v78: Binance, Bybit, OKX, Bitget, MEXC, Gate and KuCoin gain a
+  //      bench 007 appearance. Lockstep with bench-unfiltered-v210.
+  ["providers-v78"],
   // 900 s: the provider index feeds products / compare / answers, whose
   // numbers move slowly, and this revalidate is also the effective ISR
   // period of those ~500 pages (Next takes the min across a route's caches).

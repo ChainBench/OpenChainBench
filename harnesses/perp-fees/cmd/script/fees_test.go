@@ -88,12 +88,10 @@ func TestWalkBook_SpreadBpsCalculation(t *testing.T) {
 	}
 }
 
-func TestWalkBook_99PctThreshold(t *testing.T) {
-	// 98% fill should fail (threshold is 99%).
-	levels := []bookLevel{{Px: 2000, Sz: 0.49}} // $980 of $1000
-	_, err := walkBookForNotional(levels, 1000)
-	if err == nil {
-		t.Fatal("expected error for <99% fill")
+func TestWalkBook_BookShortOfNotional(t *testing.T) {
+	levels := []bookLevel{{Px: 2000, Sz: 499.999995}}
+	if eff, err := walkBookForNotional(levels, 1_000_000); err == nil {
+		t.Fatalf("effective = %v on a book one cent short, want insufficient_depth", eff)
 	}
 }
 

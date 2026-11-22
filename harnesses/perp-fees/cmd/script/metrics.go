@@ -150,14 +150,18 @@ func init() {
 
 func recordSample(s PerpSample) {
 	if s.Err != "" {
-		errType := classifyErr(s.Err)
+		errType := s.ErrType
+		if errType == "" {
+			errType = classifyErr(s.Err)
+		}
 		fetchErrorsCtr.WithLabelValues(s.Venue, s.Asset, errType).Inc()
 		healthGauge.WithLabelValues(s.Venue, s.Asset).Set(0)
-		// Permanent failures (asset delisted, unsupported venue) must delete
-		// the gauge series so stale values don't persist as ghost metrics.
+		// Permanent failures (asset delisted, unsupported venue, a response
+		// the parser can no longer read) must delete the gauge series so
+		// stale values don't persist as ghost metrics.
 		// Transient failures (timeout, rate limit, server error) intentionally
 		// keep the last good value so a brief outage doesn't blank the board.
-		if errType == "not_found" {
+		if errType == errTypeNotFound || errType == errTypeBadData {
 			allInGauge.DeleteLabelValues(s.Venue, s.Asset)
 			spreadGauge.DeleteLabelValues(s.Venue, s.Asset)
 			takerFeeGauge.DeleteLabelValues(s.Venue, s.Asset)
@@ -182,7 +186,11 @@ func recordSample(s PerpSample) {
 	}
 	spreadGauge.WithLabelValues(s.Venue, s.Asset).Set(s.SpreadBps)
 	allInGauge.WithLabelValues(s.Venue, s.Asset).Set(s.AllInBps)
-	fundingGauge.WithLabelValues(s.Venue, s.Asset).Set(s.FundingRatePerHrBps)
+	if s.FundingUnmeasured {
+		fundingGauge.DeleteLabelValues(s.Venue, s.Asset)
+	} else {
+		fundingGauge.WithLabelValues(s.Venue, s.Asset).Set(s.FundingRatePerHrBps)
+	}
 	fetchLatencyGauge.WithLabelValues(s.Venue, s.Asset).Set(float64(s.FetchLatencyMs))
 	lastRefreshGauge.WithLabelValues(s.Venue, s.Asset).Set(float64(time.Now().Unix()))
 	healthGauge.WithLabelValues(s.Venue, s.Asset).Set(1)
@@ -203,20 +211,30 @@ func recordSample(s PerpSample) {
 	}
 }
 
+const (
+	errTypeNotFound    = "not_found"
+	errTypeBadData     = "bad_data"
+	errTypeTimeout     = "timeout"
+	errTypeAuth        = "auth"
+	errTypeRateLimit   = "rate_limit"
+	errTypeServerError = "server_error"
+	errTypeOther       = "other"
+)
+
 func classifyErr(msg string) string {
 	switch {
 	case contains(msg, "asset_not_found") || contains(msg, "unsupported_venue"):
-		return "not_found"
+		return errTypeNotFound
 	case contains(msg, "timeout"):
-		return "timeout"
+		return errTypeTimeout
 	case contains(msg, "401") || contains(msg, "403"):
-		return "auth"
+		return errTypeAuth
 	case contains(msg, "429"):
-		return "rate_limit"
+		return errTypeRateLimit
 	case contains(msg, "5"):
-		return "server_error"
+		return errTypeServerError
 	default:
-		return "other"
+		return errTypeOther
 	}
 }
 
