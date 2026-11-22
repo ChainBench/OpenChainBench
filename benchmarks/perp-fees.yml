@@ -135,6 +135,9 @@ dimensions:
     - { value: BTC, label: BTC }
     - { value: SOL, label: SOL }
 
+provider_footnotes:
+  lighter: "the 0 bps fee is for Standard accounts, whose taker orders reach the book 300 ms late. Market makers use fee-paying Premium accounts that cancel and post quotes with no added delay, so they can pull a quote before your order lands and you can fill worse than the book showed. This table does not count that cost."
+
 # Real metrics emitted by the perp-fees harness:
 #   perp_fees_taker_fee_bps{venue, asset}                 gauge
 #   perp_fees_spread_bps{venue, asset}                    gauge (half-spread + impact at $1k)

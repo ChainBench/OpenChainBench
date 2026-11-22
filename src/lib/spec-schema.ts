@@ -686,6 +686,10 @@ export const SpecSchema = z
       .record(slug, z.string().min(1).max(30).refine(noAiDashes, noAiDashesMsg))
       .optional(),
 
+    provider_footnotes: z
+      .record(slug, z.string().min(1).max(400).refine(noAiDashes, noAiDashesMsg))
+      .optional(),
+
     /* Optional single PromQL returning one instant sample per
      * (provider[, chain][, region]) — e.g.
      *   avg by (provider, chain, region) (quantile_over_time(0.50, m[24h]))

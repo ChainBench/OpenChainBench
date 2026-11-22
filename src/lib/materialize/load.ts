@@ -205,6 +205,7 @@ export function buildEditorial(
     ledgerColumns: spec.ledger_columns,
     ledgerReliability: spec.ledger_reliability,
     providerNotes: spec.provider_notes,
+    providerFootnotes: spec.provider_footnotes,
     feesRemovable: spec.fees_removed ? true : undefined,
   };
 }

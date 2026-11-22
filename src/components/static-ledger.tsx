@@ -19,6 +19,7 @@ import { valueColumnLabel, valueQualifier } from "@/lib/value-window";
 import type { Benchmark } from "@/types/benchmark";
 import { rateDecimals } from "@/lib/sample-precision";
 import { panelsForStaticLedger } from "@/lib/static-panels";
+import { FootnoteMark, ProviderFootnotes } from "@/components/provider-footnotes";
 
 export function StaticLedger({
   benchmark,
@@ -100,6 +101,7 @@ export function StaticLedger({
       <h2 id="results" className="label-mono text-ink-faint mb-4">
         {heading}
       </h2>
+      <ProviderFootnotes benchmark={benchmark} rows={ordered} />
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-sm">
           <caption className="sr-only">
@@ -152,6 +154,7 @@ export function StaticLedger({
                       </a>
                     );
                   })()}
+                  <FootnoteMark benchmark={benchmark} slug={r.slug} />
                   {r.priceReading && (
                     <span className="ml-2 text-[11px] uppercase tracking-[0.14em] text-ink-faint">
                       {r.priceReading}
