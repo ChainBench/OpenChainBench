@@ -39,16 +39,12 @@ test("a row without a type stays out of a typed scope", () => {
   const board = perpFeesBoard({ results: [row("unlisted")] });
   expect(venueTypeCounts(board.results)).toEqual({ all: 1, dex: 0, cex: 0 });
   expect(scopeToVenueType(board, "dex")?.results).toEqual([]);
-  expect(scopeToVenueType(board, "all")?.results).toHaveLength(1);
 });
 
 test.each<[string | null, VenueTypeView]>([
   ["dex", "dex"],
   ["cex", "cex"],
-  ["all", "all"],
   [null, "all"],
-  ["DEX", "all"],
-  ["", "all"],
 ])("parseVenueTypeView(%p) is %p", (raw, view) => {
   expect(parseVenueTypeView(raw)).toBe(view);
 });

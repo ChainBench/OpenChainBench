@@ -47,12 +47,12 @@ describe("fees_removed validation", () => {
 });
 
 describe("venue_type validation", () => {
-  test("a row left untyped next to typed rows is refused", () => {
+  test.each([0, 3])("an untyped row %i next to typed rows is refused", (at) => {
     const raw = perpFees();
     raw.providers = raw.providers.map((p, i) =>
-      i === 3 ? { ...p, venue_type: undefined } : p,
+      i === at ? { ...p, venue_type: undefined } : p,
     );
 
-    expect(issuePaths(raw)).toEqual(["providers.3.venue_type"]);
+    expect(issuePaths(raw)).toEqual([`providers.${at}.venue_type`]);
   });
 });

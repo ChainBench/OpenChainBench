@@ -224,7 +224,7 @@ const buildAlternativesReverseMapCached = unstable_cache(
     const map = await buildAlternativesReverseMap();
     return Array.from(map.entries());
   },
-  ["alternatives-reverse-map-v1"],
+  ["alternatives-reverse-map-v2"],
   { revalidate: 900, tags: ["benchmarks"] },
 );
 

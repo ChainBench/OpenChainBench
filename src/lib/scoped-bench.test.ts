@@ -13,7 +13,7 @@ const row = (slug: string, venueType: ProviderVenueType): ProviderResult => ({
 
 const board = perpFeesBoard({
   results: [row("hyperliquid", "dex"), row("binance", "cex")],
-  sampleSize: 20,
+  sampleSize: 99,
 });
 
 const actualSpec = { ...(await import("@/lib/spec")) };
@@ -36,15 +36,23 @@ const answerSlugs = (await loadAllAnswers()).flatMap(onPerpFees);
 const alternativeSlugs = (await loadAllAlternatives()).flatMap(onPerpFees);
 
 describe("DEX-only pages on perp-fees", () => {
+  test("every perp-fees page is checked", () => {
+    expect(answerSlugs.length).toBeGreaterThan(0);
+    expect(alternativeSlugs.length).toBeGreaterThan(0);
+  });
+
   test.each(answerSlugs)("answer %s ranks no CEX row", async (slug) => {
     const ans = await loadAnswer(slug);
     expect(slugs(ans?.bench)).toEqual(["hyperliquid"]);
   });
 
-  test.each(alternativeSlugs)("alternative %s ranks no CEX row", async (slug) => {
-    const alt = await loadAlternative(slug);
-    expect(slugs(alt?.bench)).toEqual(["hyperliquid"]);
-  });
+  test.each(alternativeSlugs)(
+    "alternative %s ranks no CEX row",
+    async (slug) => {
+      const alt = await loadAlternative(slug);
+      expect(slugs(alt?.bench)).toEqual(["hyperliquid"]);
+    },
+  );
 
   test("the rendered answers rank no CEX row", async () => {
     const rendered = (await loadRenderedAnswers()).filter(
@@ -66,5 +74,6 @@ describe("DEX-only pages on perp-fees", () => {
   test("a page without a venue type keeps every row", async () => {
     const bench = await loadScopedBench({ benchmark: "perp-fees" });
     expect(slugs(bench)).toEqual(["hyperliquid", "binance"]);
+    expect(bench?.sampleSize).toBe(99);
   });
 });

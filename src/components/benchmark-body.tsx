@@ -688,15 +688,11 @@ export function BenchmarkBody({
   }, [benchmark]);
   const hasLayerSplit = layerCounts.l1 > 0 && layerCounts.l2 > 0;
 
-  const venueType = useVenueTypeView(benchmark, urlVenueType);
-  const venueView = venueType.view;
+  const venueTypeFilter = useVenueTypeView(benchmark, urlVenueType);
+  const venueView = venueTypeFilter.view;
   const summarizeScoped = (b: Benchmark | undefined) =>
     summarize(scopeToVenueType(b, venueView));
 
-  // Filter the benchmark to the active layer and venue type for the entire
-  // page. With neither split active the original benchmark is returned
-  // untouched. The chart, the summary stats and the ledger all read from
-  // `viewBenchmark`.
   const viewBenchmark = useMemo(() => {
     if (!benchmark || (!hasLayerSplit && venueView === "all")) {
       return benchmark;
@@ -1051,7 +1047,7 @@ export function BenchmarkBody({
   return (
     <>
       {(hasLayerSplit ||
-        venueType.showRow ||
+        venueTypeFilter.showRow ||
         filteredChainOptions.length > 0 ||
         regionOptions.length > 0 ||
         kindOptions.length > 0 ||
@@ -1067,16 +1063,16 @@ export function BenchmarkBody({
               onSelect={handleFeesSelect}
             />
           )}
-          {venueType.showRow && (
+          {venueTypeFilter.showRow && (
             <DimensionRow
               label="Venue type"
               options={[
-                { value: "all", label: `All · ${venueType.counts.all}` },
-                { value: "dex", label: `DEX · ${venueType.counts.dex}` },
-                { value: "cex", label: `CEX · ${venueType.counts.cex}` },
+                { value: "all", label: `All · ${venueTypeFilter.counts.all}` },
+                { value: "dex", label: `DEX · ${venueTypeFilter.counts.dex}` },
+                { value: "cex", label: `CEX · ${venueTypeFilter.counts.cex}` },
               ]}
               selected={venueView}
-              onSelect={venueType.select}
+              onSelect={venueTypeFilter.select}
             />
           )}
           {venueViewEmpty && (
@@ -1180,7 +1176,19 @@ export function BenchmarkBody({
                 filteredChainOptions
                   .map((o) => [
                     o.value,
-                    summarizeScoped(variantMap[variantKey(o.value, effectiveRegion, effectiveKind, effectiveVenue, effectiveTier, effectiveBucket, effectiveFees)]),
+                    summarizeScoped(
+                      variantMap[
+                        variantKey(
+                          o.value,
+                          effectiveRegion,
+                          effectiveKind,
+                          effectiveVenue,
+                          effectiveTier,
+                          effectiveBucket,
+                          effectiveFees,
+                        )
+                      ],
+                    ),
                   ])
                   .filter(([, v]) => v !== null) as [string, ChainMeta][]
               )}
@@ -1196,7 +1204,19 @@ export function BenchmarkBody({
                 regionOptions
                   .map((o) => [
                     o.value,
-                    summarizeScoped(variantMap[variantKey(effectiveChain, o.value, effectiveKind, effectiveVenue, effectiveTier, effectiveBucket, effectiveFees)]),
+                    summarizeScoped(
+                      variantMap[
+                        variantKey(
+                          effectiveChain,
+                          o.value,
+                          effectiveKind,
+                          effectiveVenue,
+                          effectiveTier,
+                          effectiveBucket,
+                          effectiveFees,
+                        )
+                      ],
+                    ),
                   ])
                   .filter(([, v]) => v !== null) as [string, ChainMeta][]
               )}

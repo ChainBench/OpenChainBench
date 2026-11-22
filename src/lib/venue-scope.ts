@@ -1,13 +1,13 @@
 import { readsCohortLeaders } from "@/lib/bench-template";
 import { ProviderVenueType } from "@/lib/spec-schema";
 
-type VenueScope = {
+export type VenueScope = {
   venueType: unknown;
   bench: string;
   venueTyped: boolean;
 };
 
-type TemplatedField = readonly [name: string, text: string | undefined];
+export type TemplatedField = readonly [name: string, text: string | undefined];
 
 type VenueScopeError = { field: string; message: string };
 

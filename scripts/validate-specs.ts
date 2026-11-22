@@ -11,7 +11,11 @@ import os from "node:os";
 import path from "node:path";
 import yaml from "js-yaml";
 import { SpecSchema } from "../src/lib/spec-schema";
-import { venueScopeErrors } from "../src/lib/venue-scope";
+import {
+  venueScopeErrors,
+  type TemplatedField,
+  type VenueScope,
+} from "../src/lib/venue-scope";
 import { COST_CELL_RE, costCell } from "../src/lib/cost-cell";
 
 const ROOT = path.resolve(__dirname, "..");
@@ -103,11 +107,29 @@ async function readYamlPages(
 function pushVenueScopeIssues(
   issues: Issue[],
   file: string,
-  scope: Parameters<typeof venueScopeErrors>[0],
-  fields: Parameters<typeof venueScopeErrors>[1],
+  scope: VenueScope,
+  fields: readonly TemplatedField[],
 ): void {
   for (const e of venueScopeErrors(scope, fields)) {
     issues.push({ file, level: "error", message: `${e.field}: ${e.message}` });
+  }
+}
+
+async function lintAlternatives(
+  issues: Issue[],
+  specRefs: ReadonlyMap<string, { venueTyped: boolean }>,
+): Promise<void> {
+  const alternatives = await readYamlPages(ALTERNATIVES_DIR, issues);
+  for (const { file, doc: alt } of alternatives) {
+    if (typeof alt.benchmark !== "string") continue;
+    const refs = specRefs.get(alt.benchmark);
+    if (!refs) continue;
+    const venueScope = {
+      venueType: alt.venue_type,
+      bench: alt.benchmark,
+      venueTyped: refs.venueTyped,
+    };
+    pushVenueScopeIssues(issues, file, venueScope, []);
   }
 }
 
@@ -413,18 +435,7 @@ async function main() {
     }
   }
 
-  const alternatives = await readYamlPages(ALTERNATIVES_DIR, issues);
-  for (const { file, doc: alt } of alternatives) {
-    if (typeof alt.benchmark !== "string") continue;
-    const refs = specRefs.get(alt.benchmark);
-    if (!refs) continue;
-    const venueScope = {
-      venueType: alt.venue_type,
-      bench: alt.benchmark,
-      venueTyped: refs.venueTyped,
-    };
-    pushVenueScopeIssues(issues, file, venueScope, []);
-  }
+  await lintAlternatives(issues, specRefs);
 
   // A live spec with no entry in the published map falls back to the
   // 2025-01-01 floor, and every JSON-LD datePublished, the citation date

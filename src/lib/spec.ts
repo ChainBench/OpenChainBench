@@ -121,7 +121,7 @@ export function overlayEditorial(stored: Benchmark, spec: Spec): Benchmark {
       const sp = providerByCanonSlug.get(r.slug);
       return {
         ...r,
-        endpoint: sp?.endpoint ?? r.endpoint,
+        endpoint: sp?.endpoint || r.endpoint,
         venueType: sp?.venue_type,
       };
     });

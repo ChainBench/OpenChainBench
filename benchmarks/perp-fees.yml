@@ -74,7 +74,7 @@ methodology:
   - "Extended: full public book from `/info/markets/<m>/orderbook` + `/stats` funding (1h native). Its taker fee is not exposed by any public endpoint, so its documented base rate of 2.5 bps is used. The same holds on Aster (5 bps), Binance (5 bps), Bybit (5.5 bps), OKX (5 bps) and Gate (5 bps)."
   - "CEX rows: the USDT-margined perpetual of each exchange (Binance USDS-M, Bybit linear, OKX swap, Bitget USDT-M, MEXC, Gate USDT, KuCoin), asks walked from the mid of the same snapshot. Sizes quoted in contracts are converted with the contract size read from the exchange's own instrument endpoint (OKX `ctVal`, MEXC `contractSize`, Gate `quanto_multiplier`, KuCoin `multiplier`)."
   - "CEX taker fee: read live from the public contract row on Bitget, MEXC and KuCoin (MEXC sets it per market). Binance (5 bps), Bybit (5.5 bps), OKX (5 bps) and Gate (5 bps) publish no fee to an anonymous caller, so their documented base tier is used. Gate's contract endpoint returns 7.5 bps, which is not its 5 bps base taker tier, so the documented 5 bps is used."
-  - "CEX depth read: Binance 1000 levels, Bybit 500, OKX 5000, Bitget its `limit=max` merge depth, Gate 300, KuCoin 1000 and MEXC 1500, the deepest snapshot each endpoint returns."
+  - "CEX depth read: Binance 1000 levels, Bybit 500, OKX 5000, Bitget 100, Gate 300, KuCoin 1000 and MEXC 1500, the deepest snapshot each endpoint returns."
   - "Venue type: each venue is classed DEX or CEX. The Venue type selector above the board shows All (default), DEX or CEX, and also filters the $100k and $1M panels, with trading fees included or removed."
   - "Oracle priced venues, long and short: the price impact differs between a long and a short, so GMX v2 and Gains publish the average of a long and a short of the same size. Orderbook venues are walked on the ask side."
   - "All-in formula: `all_in_bps = taker_fee_bps + spread_bps`. Both components emitted as separate metrics for transparency."
@@ -358,7 +358,7 @@ providers:
     name: Bitget
     venue_type: cex
     tag: CEX, live taker fee, USDT-M perp
-    formula: "Average over 24h of (takerFeeRate from the public contracts endpoint plus half-spread and impact from merge-depth asks at limit=max, walked for $1000 of buy notional in the selected asset), in bps."
+    formula: "Average over 24h of (takerFeeRate from the public contracts endpoint plus half-spread and impact from merge-depth asks, 100 levels, walked for $1000 of buy notional in the selected asset), in bps."
     queries:
       p50: avg_over_time(perp_fees_all_in_bps{venue="bitget"}[24h])
       p90: quantile_over_time(0.90, perp_fees_all_in_bps{venue="bitget"}[24h])
