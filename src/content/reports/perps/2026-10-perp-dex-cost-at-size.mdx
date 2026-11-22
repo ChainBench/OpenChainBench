@@ -17,7 +17,7 @@ faq:
   - q: "Which perp DEX has the longest clean security record?"
     a: "Gains, at 1,793 days without a recorded exploit as of 28 October 2026, counted from its December 2021 launch. Lighter follows at 1,216 days, then dYdX and Paradex at 1,124, Hyperliquid at 1,093 and GMX at 477, GMX's counter having restarted after the July 2025 reentrancy that cost about $42 million."
   - q: "What is cost slope on a perp DEX?"
-    a: "The ratio of all-in cost at $1,000,000 notional to all-in cost at $1,000, per venue per asset. A venue whose cost in basis points does not change with size scores 1.00. Order book venues score above 1.00 because a larger order walks deeper into the book. Oracle-priced venues have no book, but since 22 November 2026 the benchmark also measures their on-chain price impact, so they score above 1.00 too."
+    a: "The ratio of all-in cost at $1,000,000 notional to all-in cost at $1,000, per venue per asset. A venue whose cost in basis points does not change with size scores 1.00. Order book venues score above 1.00 because a larger order walks deeper into the book. Oracle-priced venues have no book, but since 22 November 2026 the benchmark also measures their on-chain price impact, so GMX and Gains on SOL score above 1.00 too. On ETH and BTC, Gains charges no price impact based on trading volume, so it stays at 1.00."
   - q: "Which perp DEX cannot fill a $1M order?"
     a: "On ETH over 24 hours, Paradex: its $1,000,000 tier never filled, so the board shows no slope for it and this report shows no second point. Ondo missed about one cycle in sixty. Every other venue filled every probe. The picture changes by asset: on the cross-asset average Hyperliquid's $1M tier misses roughly a quarter of its cycles, which is why the boards carry chain tabs."
   - q: "How many markets does Gains run per dollar of collateral?"
@@ -61,7 +61,7 @@ We publish that ratio directly as **cost slope**, the all-in cost at $1,000,000 
 
 <StatTable bench="perp-cost-slope" caption="Cost slope by venue, 24h averages. A venue whose cost does not change with size scores 1.00." />
 
-**Correction, 22 November 2026:** the figures in this report were measured before the benchmark read the on-chain price impact of oracle-priced venues. Gains and GMX scored 1.00 by construction on 28 October. Since 22 November their spread and impact are quoted on-chain at each size, averaged over a long and a short, so the live table above shows them above 1.00.
+**Correction, 22 November 2026:** the figures in this report were measured before the benchmark read the on-chain price impact of oracle-priced venues. Gains and GMX scored 1.00 by construction on 28 October. Since 22 November their spread and impact are quoted on-chain at each size, averaged over a long and a short. In the ETH table above, GMX now scores above 1.00 and Gains stays at 1.00: on ETH and BTC its Arbitrum deployment charges no impact based on trading volume, and the impact it charges when longs and shorts are out of balance is paid back at close as long as that balance has not moved, so the benchmark leaves it out. The SOL tab of the [cost slope board](/benchmarks/perp-cost-slope) shows Gains above 1.00.
 
 On 28 October Gains and GMX scored 1.00 by construction, and the board's own methodology said so rather than letting the ranking imply a performance win. Among venues that do have a book the order is worth reading slowly: Aster at 1.12 and edgeX at 1.13 sit below Hyperliquid at 1.22, which carries a far deeper book than either. <Mark>Slope is not depth</Mark>. It is what a $1M order pays over a $1k one, and a smaller book whose $1M tier still fills can hold its price better than a large one being asked for a hundred times more.
 
@@ -197,7 +197,7 @@ Gains, at 1,793 days without a recorded exploit as of 28 October 2026, counted f
 
 **What is cost slope on a perp DEX?**
 
-The ratio of all-in cost at $1,000,000 notional to all-in cost at $1,000, per venue per asset. A venue whose cost in basis points does not change with size scores 1.00. Order book venues score above 1.00 because a larger order walks deeper into the book. Oracle-priced venues have no book, but since 22 November 2026 the benchmark also measures their on-chain price impact, so they score above 1.00 too.
+The ratio of all-in cost at $1,000,000 notional to all-in cost at $1,000, per venue per asset. A venue whose cost in basis points does not change with size scores 1.00. Order book venues score above 1.00 because a larger order walks deeper into the book. Oracle-priced venues have no book, but since 22 November 2026 the benchmark also measures their on-chain price impact, so GMX and Gains on SOL score above 1.00 too. On ETH and BTC, Gains charges no price impact based on trading volume, so it stays at 1.00.
 
 **Which perp DEX cannot fill a $1M order?**
 
