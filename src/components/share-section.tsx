@@ -4,14 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import { Download, Image as ImageIcon, Loader2, X } from "lucide-react";
 import type { Benchmark } from "@/types/benchmark";
 import { Hint } from "@/components/hint";
-import {
-  VENUE_TYPE_PARAM,
-  filterByVenueType,
-  parseVenueTypeView,
-  shownVenueTypeView,
-  venueTypeCounts,
-  type VenueTypeView,
-} from "@/lib/venue-type-filter";
 
 /** Dimensions the share-card handler on the server understands. Kept in
  *  sync with the pickOption() dims in
@@ -35,14 +27,6 @@ function pickOrder(r: Benchmark["results"][number]): number {
   const measured = Number.isFinite(r.ms.p50) && r.ms.p50 !== 0;
   if (!measured) return 2;
   return r.unrankedLabel ? 1 : 0;
-}
-
-function defaultPicks(ordered: readonly { slug: string }[]) {
-  return {
-    multi: new Set(ordered.map((p) => p.slug)),
-    single: ordered[0]?.slug ?? null,
-    second: ordered[1]?.slug ?? null,
-  };
 }
 
 type Template = {
@@ -152,7 +136,6 @@ export function ShareSection({ slug, title, benchmark, chain }: Props) {
   // the scope dropdowns.
   const [panelView, setPanelView] = useState<string>(ALL_VALUE);
   const [feesRemoved, setFeesRemoved] = useState(false);
-  const [venueView, setVenueView] = useState<VenueTypeView>("all");
   const pickerPanels = feesRemoved ? [] : panelOptions;
   // Re-seed scope from URL on each open transition. Uses the "adjust
   // state during render on transition" pattern instead of a useEffect
@@ -187,12 +170,6 @@ export function ShareSection({ slug, title, benchmark, chain }: Props) {
       setScope(next);
       const removed = url.searchParams.get("fees") === "removed";
       setFeesRemoved(removed);
-      setVenueView(
-        shownVenueTypeView(
-          parseVenueTypeView(url.searchParams.get(VENUE_TYPE_PARAM)),
-          venueTypeCounts(benchmark.results),
-        ),
-      );
       const urlView = url.searchParams.get("view");
       const knownView =
         removed || panelOptions.some((o) => o.value === urlView);
@@ -221,7 +198,7 @@ export function ShareSection({ slug, title, benchmark, chain }: Props) {
 
   const orderedProviders = useMemo(
     () =>
-      filterByVenueType(benchmark.results, venueView)
+      [...benchmark.results]
         .sort(
           (a, b) =>
             pickOrder(a) - pickOrder(b) ||
@@ -230,36 +207,26 @@ export function ShareSection({ slug, title, benchmark, chain }: Props) {
               : a.ms.p50 - b.ms.p50),
         )
         .map((r) => ({ slug: r.slug, name: r.name })),
-    [benchmark, venueView]
+    [benchmark]
   );
 
   // Snapshot: multi-select, default = all
   const [multiSelected, setMultiSelected] = useState<Set<string>>(
-    () => defaultPicks(orderedProviders).multi
+    () => new Set(orderedProviders.map((p) => p.slug))
   );
 
   // Headline: single-select, default = winner (first by p50)
   const [singleSelected, setSingleSelected] = useState<string | null>(
-    () => defaultPicks(orderedProviders).single
+    () => orderedProviders[0]?.slug ?? null
   );
 
   // Compare: pair, default = top 2
   const [pairA, setPairA] = useState<string | null>(
-    () => defaultPicks(orderedProviders).single
+    () => orderedProviders[0]?.slug ?? null
   );
   const [pairB, setPairB] = useState<string | null>(
-    () => defaultPicks(orderedProviders).second
+    () => orderedProviders[1]?.slug ?? null
   );
-
-  const [pickedView, setPickedView] = useState(venueView);
-  if (pickedView !== venueView) {
-    const picks = defaultPicks(orderedProviders);
-    setPickedView(venueView);
-    setMultiSelected(picks.multi);
-    setSingleSelected(picks.single);
-    setPairA(picks.single);
-    setPairB(picks.second);
-  }
 
   function toggleMulti(slug: string) {
     setMultiSelected((prev) => {
@@ -297,9 +264,6 @@ export function ShareSection({ slug, title, benchmark, chain }: Props) {
       dimParams.push(`&view=${encodeURIComponent(panelView)}`);
     }
     if (feesRemoved) dimParams.push("&fees=removed");
-    if (venueView !== "all") {
-      dimParams.push(`&${VENUE_TYPE_PARAM}=${venueView}`);
-    }
     // Mirror the active site theme so the exported PNG matches what the
     // user is looking at. SSR can't read the dark state - default to light
     // server-side, the client re-renders with `dark` once mounted.

@@ -114,7 +114,8 @@ func fetchDYdX(v VenueConfig) PerpSample {
 	var market dydxMarket
 	if err := dydxGet(client, dydxIndexerBase+"/perpetualMarkets?ticker="+ticker, &market); err == nil {
 		if m, ok := market.Markets[ticker]; ok {
-			s.setFunding(m.NextFundingRate, bpsPerUnit)
+			f, _ := strconv.ParseFloat(m.NextFundingRate, 64)
+			s.FundingRatePerHrBps = f * 10000
 		}
 	}
 

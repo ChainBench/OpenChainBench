@@ -1,16 +1,14 @@
 package main
 
 import (
-	"errors"
 	"io"
-	"math"
 	"net/http"
 	"strings"
 	"sync/atomic"
 )
 
 func near(got, want float64) bool {
-	return math.Abs(got-want) < 1e-9
+	return abs(got-want) < 1e-9
 }
 
 func respond(req *http.Request, status int, body string) *http.Response {
@@ -36,20 +34,19 @@ func fakeExchange(routes map[string]string) *http.Client {
 	return &http.Client{Transport: routeTransport(routes)}
 }
 
-type countingTransport struct{ calls *atomic.Int32 }
-
-func (c countingTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	c.calls.Add(1)
-	return respond(req, http.StatusBadGateway, ""), nil
+type statusTransport struct {
+	status int
+	body   string
+	calls  *atomic.Int32
 }
 
-var errUnbounded = errors.New("request_without_deadline")
-
-type boundedTransport struct{ next http.RoundTripper }
-
-func (b boundedTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	if _, ok := req.Context().Deadline(); !ok {
-		return nil, errUnbounded
+func (f statusTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	if f.calls != nil {
+		f.calls.Add(1)
 	}
-	return b.next.RoundTrip(req)
+	return respond(req, f.status, f.body), nil
+}
+
+func statusClient(status int, body string) *http.Client {
+	return &http.Client{Transport: statusTransport{status: status, body: body}}
 }

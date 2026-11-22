@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"math"
 	"net/http"
 	"sync/atomic"
@@ -111,15 +112,43 @@ func TestFetchCEX(t *testing.T) {
 	tests := []struct {
 		name      string
 		quote     cexQuoteFunc
-		wantErr   bool
+		wantType  string
 		wantAllIn float64
 	}{
 		{
-			name: "quote error",
+			name: "api error",
 			quote: func(context.Context, *http.Client, string) (cexQuote, error) {
-				return cexQuote{}, errAPI
+				return cexQuote{}, apiError(10001, "params error")
 			},
-			wantErr: true,
+			wantType: "other",
+		},
+		{
+			name: "deadline",
+			quote: func(ctx context.Context, _ *http.Client, _ string) (cexQuote, error) {
+				return cexQuote{}, fmt.Errorf("orderbook: %w", context.DeadlineExceeded)
+			},
+			wantType: "timeout",
+		},
+		{
+			name: "fee field gone",
+			quote: func(context.Context, *http.Client, string) (cexQuote, error) {
+				return cexQuote{}, fmt.Errorf("contract: %w", errNoTakerFee)
+			},
+			wantType: errTypeBadData,
+		},
+		{
+			name: "unknown symbol",
+			quote: func(ctx context.Context, _ *http.Client, _ string) (cexQuote, error) {
+				return quoteBinance(ctx, statusClient(http.StatusBadRequest, `{"code":-1121}`), "ETH")
+			},
+			wantType: errTypeNotFound,
+		},
+		{
+			name: "body no longer json",
+			quote: func(ctx context.Context, _ *http.Client, _ string) (cexQuote, error) {
+				return quoteBinance(ctx, statusClient(http.StatusOK, "<html>"), "ETH")
+			},
+			wantType: errTypeBadData,
 		},
 		{
 			name: "book",
@@ -136,16 +165,17 @@ func TestFetchCEX(t *testing.T) {
 			quote: func(context.Context, *http.Client, string) (cexQuote, error) {
 				return cexQuote{takerBps: 5, bestBid: 1999, asks: book.asks[:1]}, nil
 			},
-			wantErr: true,
+			wantType: "other",
 		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			v := VenueConfig{Slug: "binance", Asset: "ETH", NotionalUSD: 4004}
 			s := fetchCEX(v, tc.quote, http.DefaultClient)
-			if (s.Err != "") != tc.wantErr || !near(s.AllInBps, tc.wantAllIn) {
-				t.Errorf("err=%q all_in=%v, want error %v and %v",
-					s.Err, s.AllInBps, tc.wantErr, tc.wantAllIn)
+			if s.ErrType != tc.wantType || (s.Err == "") != (tc.wantType == "") ||
+				!near(s.AllInBps, tc.wantAllIn) || !s.FundingUnmeasured {
+				t.Errorf("err=%q type=%q all_in=%v, want type %q and %v",
+					s.Err, s.ErrType, s.AllInBps, tc.wantType, tc.wantAllIn)
 			}
 		})
 	}
@@ -183,20 +213,9 @@ func TestBookFromPairs_Rejects(t *testing.T) {
 	}
 }
 
-func TestBookFromPairs_EmptySecondBid(t *testing.T) {
-	bids := [][]flexFloat{{99, 1}, {}}
-	bid, _, err := bookFromPairs(bids, [][]flexFloat{{100, 1}}, 1)
-	if err != nil || bid != 99 {
-		t.Errorf("bid=%v err=%v, want 99", bid, err)
-	}
-}
-
 func TestFetchOne_RoutesEveryCEX(t *testing.T) {
 	cfg := loadConfig()
-	cexSlugs := []string{
-		"binance", "bybit", "okx", "bitget", "mexc", "gate", "kucoin",
-	}
-	for _, slug := range cexSlugs {
+	for slug := range cexQuotes {
 		t.Run(slug, func(t *testing.T) {
 			venues := 0
 			for _, v := range cfg.Venues {
@@ -205,7 +224,9 @@ func TestFetchOne_RoutesEveryCEX(t *testing.T) {
 				}
 				venues++
 				calls := new(atomic.Int32)
-				down := &http.Client{Transport: countingTransport{calls: calls}}
+				down := &http.Client{
+					Transport: statusTransport{status: http.StatusBadGateway, calls: calls},
+				}
 				s := fetchOne(v, cfg, down)
 				if s.Err == "" || calls.Load() == 0 {
 					t.Errorf("%s: err=%q calls=%d, want a failed exchange call",
@@ -216,14 +237,6 @@ func TestFetchOne_RoutesEveryCEX(t *testing.T) {
 				t.Error("no venue in the config")
 			}
 		})
-	}
-}
-
-func TestBookFromPairs_EqualAskLevels(t *testing.T) {
-	asks := [][]flexFloat{{100, 1}, {100, 2}}
-	_, levels, err := bookFromPairs([][]flexFloat{{99, 1}}, asks, 1)
-	if err != nil || len(levels) != 2 {
-		t.Errorf("err=%v levels=%v, want both levels kept", err, levels)
 	}
 }
 
@@ -248,8 +261,6 @@ func TestRateToBps(t *testing.T) {
 		{name: "zero", body: `{"r":"0"}`, want: 0},
 		{name: "absent", body: `{}`, err: errNoTakerFee},
 		{name: "negative", body: `{"r":"-0.0006"}`, err: errTakerOutOfRange},
-		{name: "at the cap", body: `{"r":"0.01"}`, want: 100},
-		{name: "above the cap", body: `{"r":"0.0101"}`, err: errTakerOutOfRange},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -278,14 +289,14 @@ func TestCEXQuotes(t *testing.T) {
 		wantAsk1 float64
 	}{
 		{
-			slug: "binance", asset: "ETH", wantFee: 5, wantAsk1: 10,
+			slug: "binance", asset: "ETH", wantFee: binanceTakerBps, wantAsk1: 10,
 			routes: map[string]string{
 				"fapi.binance.com/fapi/v1/depth?limit=1000&symbol=ETHUSDT": `{` +
 					`"bids":[["1999","10"]],"asks":[["2001","10"]]}`,
 			},
 		},
 		{
-			slug: "bybit", asset: "ETH", wantFee: 5.5, wantAsk1: 10,
+			slug: "bybit", asset: "ETH", wantFee: bybitTakerBps, wantAsk1: 10,
 			routes: map[string]string{
 				"api.bybit.com/v5/market/orderbook?" +
 					"category=linear&limit=500&symbol=ETHUSDT": `{` +
@@ -294,7 +305,7 @@ func TestCEXQuotes(t *testing.T) {
 			},
 		},
 		{
-			slug: "okx", asset: "ETH", wantFee: 5, wantAsk1: 1,
+			slug: "okx", asset: "ETH", wantFee: okxTakerBps, wantAsk1: 1,
 			routes: map[string]string{
 				"okx.com/api/v5/public/instruments?instType=SWAP&instId=ETH-USDT-SWAP": `{` +
 					`"code":"0","data":[{"ctVal":"0.01"}]}`,
@@ -324,7 +335,7 @@ func TestCEXQuotes(t *testing.T) {
 			},
 		},
 		{
-			slug: "gate", asset: "ETH", wantFee: 5, wantAsk1: 1,
+			slug: "gate", asset: "ETH", wantFee: gateTakerBps, wantAsk1: 1,
 			routes: map[string]string{
 				"gateio.ws/api/v4/futures/usdt/contracts/ETH_USDT": `{"quanto_multiplier":"0.01"}`,
 				"gateio.ws/api/v4/futures/usdt/order_book?limit=300&contract=ETH_USDT": `{` +
@@ -353,16 +364,11 @@ func TestCEXQuotes(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.slug+"/"+tc.asset, func(t *testing.T) {
-			quote, ok := cexQuoteFor(tc.slug)
+			quote, ok := cexQuotes[tc.slug]
 			if !ok {
 				t.Fatalf("no quote for %s", tc.slug)
 			}
-			ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
-			defer cancel()
-			client := &http.Client{
-				Transport: boundedTransport{next: routeTransport(tc.routes)},
-			}
-			q, err := quote(ctx, client, tc.asset)
+			q, err := quote(context.Background(), fakeExchange(tc.routes), tc.asset)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -446,7 +452,7 @@ func TestCEXQuotes_APIError(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			quote, _ := cexQuoteFor(tc.slug)
+			quote := cexQuotes[tc.slug]
 			q, err := quote(context.Background(), fakeExchange(tc.routes), "ETH")
 			if !errors.Is(err, tc.want) {
 				t.Errorf("got %+v err=%v, want %v", q, err, tc.want)

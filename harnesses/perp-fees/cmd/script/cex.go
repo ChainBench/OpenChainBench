@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
@@ -16,6 +17,8 @@ const (
 	bybitTakerBps   = 5.5
 	okxTakerBps     = 5.0
 	gateTakerBps    = 5.0
+
+	bpsPerUnit = 10000
 
 	okxOK    = "0"
 	bitgetOK = "00000"
@@ -46,24 +49,50 @@ type cexQuote struct {
 
 type cexQuoteFunc func(ctx context.Context, client *http.Client, asset string) (cexQuote, error)
 
-func cexQuoteFor(slug string) (cexQuoteFunc, bool) {
-	switch slug {
-	case "binance":
-		return quoteBinance, true
-	case "bybit":
-		return quoteBybit, true
-	case "okx":
-		return quoteOKX, true
-	case "bitget":
-		return quoteBitget, true
-	case "mexc":
-		return quoteMEXC, true
-	case "gate":
-		return quoteGate, true
-	case "kucoin":
-		return quoteKuCoin, true
+var cexQuotes = map[string]cexQuoteFunc{
+	"binance": quoteBinance,
+	"bybit":   quoteBybit,
+	"okx":     quoteOKX,
+	"bitget":  quoteBitget,
+	"mexc":    quoteMEXC,
+	"gate":    quoteGate,
+	"kucoin":  quoteKuCoin,
+}
+
+var unreadableData = []error{
+	errNoTakerFee,
+	errTakerOutOfRange,
+	errNoContractSize,
+	errMalformedBook,
+	errUnsortedBook,
+	errNotFinite,
+}
+
+func cexErrType(err error) string {
+	var status *statusError
+	switch {
+	case errors.Is(err, context.DeadlineExceeded):
+		return "timeout"
+	case errors.Is(err, errAssetNotFound):
+		return errTypeNotFound
+	case errors.As(err, &status):
+		return status.errType()
+	case isUnreadable(err):
+		return errTypeBadData
 	}
-	return nil, false
+	return "other"
+}
+
+func isUnreadable(err error) bool {
+	for _, target := range unreadableData {
+		if errors.Is(err, target) {
+			return true
+		}
+	}
+	var numErr *strconv.NumError
+	var syntaxErr *json.SyntaxError
+	var typeErr *json.UnmarshalTypeError
+	return errors.As(err, &numErr) || errors.As(err, &syntaxErr) || errors.As(err, &typeErr)
 }
 
 type flexFloat float64
@@ -96,7 +125,12 @@ func apiError(code any, msg string) error {
 }
 
 func fetchCEX(v VenueConfig, quote cexQuoteFunc, client *http.Client) PerpSample {
-	s := PerpSample{Venue: v.Slug, Asset: v.Asset, At: time.Now().UTC().Format(time.RFC3339)}
+	s := PerpSample{
+		Venue:             v.Slug,
+		Asset:             v.Asset,
+		At:                time.Now().UTC().Format(time.RFC3339),
+		FundingUnmeasured: true,
+	}
 	start := time.Now()
 	ctx, cancel := context.WithTimeout(context.Background(), cexTimeout)
 	defer cancel()
@@ -105,7 +139,7 @@ func fetchCEX(v VenueConfig, quote cexQuoteFunc, client *http.Client) PerpSample
 		err = applyCEXQuote(&s, q, v.NotionalUSD)
 	}
 	if err != nil {
-		s.Err = err.Error()
+		s.Err, s.ErrType = err.Error(), cexErrType(err)
 	}
 	s.FetchLatencyMs = time.Since(start).Milliseconds()
 	return s

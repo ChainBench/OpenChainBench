@@ -116,12 +116,6 @@ const CHAIN_TEMPLATE_RE =
 const TIER_TEMPLATE_RE =
   /\{\{\s*(best_name|best_p50|worst_name|worst_p50|count):tier:([a-z0-9_-]+)\s*\}\}/gi;
 
-export function readsCohortLeaders(text: string): boolean {
-  return [CHAIN_TEMPLATE_RE, TIER_TEMPLATE_RE].some((re) =>
-    new RegExp(re.source, "i").test(text),
-  );
-}
-
 /** Ranked live rows of another tier cohort (see Benchmark.tierResults),
  *  or the active cohort itself (`own`, already ranked with the citation
  *  floor) when `tier` names it: a spec author can then write

@@ -12,11 +12,11 @@ export function venueTypeQuery(venueType?: ProviderVenueType): string {
   return venueType ? `?${VENUE_TYPE_PARAM}=${venueType}` : "";
 }
 
-export function venueScopeLabel(view: VenueTypeView = "all"): string {
+function venueScopeLabel(view: VenueTypeView = "all"): string {
   return view === "all" ? "" : `${view.toUpperCase()} venues only`;
 }
 
-export function scopeNote(chain?: string, view?: VenueTypeView): string {
+export function scopeNote(view?: VenueTypeView, chain?: string): string {
   const parts = [
     chain ? `filtered to ${chain}` : "",
     venueScopeLabel(view),
@@ -59,7 +59,10 @@ export function scopeFromParams(
   bench: Benchmark,
   params: URLSearchParams,
 ): { view: VenueTypeView; bench: Benchmark } {
-  const view = parseVenueTypeView(params.get(VENUE_TYPE_PARAM));
+  const view = shownVenueTypeView(
+    parseVenueTypeView(params.get(VENUE_TYPE_PARAM)),
+    venueTypeCounts(bench.results),
+  );
   return { view, bench: scopeToVenueType(bench, view) ?? bench };
 }
 

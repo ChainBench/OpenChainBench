@@ -1,10 +1,5 @@
 package main
 
-import (
-	"math"
-	"strconv"
-)
-
 // PerpSample is one observation of opening cost on a venue × asset pair.
 type PerpSample struct {
 	Venue       string  `json:"venue"`
@@ -21,26 +16,17 @@ type PerpSample struct {
 	SpreadBps           float64 `json:"spread_bps"`                // half-spread + impact at $1000 notional
 	AllInBps            float64 `json:"all_in_bps"`                // taker + spread
 	FundingRatePerHrBps float64 `json:"funding_rate_per_hour_bps"` // signed; >0 means longs pay
-	HasFunding          bool    `json:"has_funding,omitempty"`
+	FundingUnmeasured   bool    `json:"funding_unmeasured,omitempty"`
 	FetchLatencyMs      int64   `json:"fetch_latency_ms"`
 	At                  string  `json:"at"`
 	Err                 string  `json:"error,omitempty"`
+	ErrType             string  `json:"error_type,omitempty"`
 
 	// Notional tiers measured alongside the headline notional. Published to
 	// perp_fees_all_in_bps_tier{venue, chain, notional}; the headline series
 	// perp_fees_all_in_bps keeps its $1000 meaning untouched.
 	Tiers        []TierSample `json:"tiers,omitempty"`
 	SkippedTiers []string     `json:"skipped_tiers,omitempty"` // notional labels the book could not fill
-}
-
-const bpsPerUnit = 10000
-
-func (s *PerpSample) setFunding(raw string, toHourlyBps float64) {
-	r, err := strconv.ParseFloat(raw, 64)
-	if err != nil || math.IsNaN(r) || math.IsInf(r, 0) {
-		return
-	}
-	s.FundingRatePerHrBps, s.HasFunding = r*toHourlyBps, true
 }
 
 // TierSample is the opening cost measured at one notional tier.

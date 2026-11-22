@@ -62,7 +62,9 @@ func fetchOndo(v VenueConfig) PerpSample {
 		}
 		fee, _ := strconv.ParseFloat(c.TakerFee, 64)
 		s.TakerFeeBps = fee * 10000
-		s.setFunding(c.FundingRate, bpsPerUnit)
+		if r, err := strconv.ParseFloat(c.FundingRate, 64); err == nil {
+			s.FundingRatePerHrBps = r * 10000 // already per hour
+		}
 		found = true
 		break
 	}

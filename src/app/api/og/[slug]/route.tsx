@@ -110,7 +110,7 @@ export async function GET(
           </span>
           <span style={{ fontSize: 28, color: "#4a443c", maxWidth: 980 }}>
             {`${top ? `${top.name} leads · ` : ""}${b.title}` +
-              scopeNote(undefined, view)}
+              scopeNote(view)}
           </span>
         </div>
 

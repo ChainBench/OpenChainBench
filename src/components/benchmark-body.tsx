@@ -1176,19 +1176,7 @@ export function BenchmarkBody({
                 filteredChainOptions
                   .map((o) => [
                     o.value,
-                    summarizeScoped(
-                      variantMap[
-                        variantKey(
-                          o.value,
-                          effectiveRegion,
-                          effectiveKind,
-                          effectiveVenue,
-                          effectiveTier,
-                          effectiveBucket,
-                          effectiveFees,
-                        )
-                      ],
-                    ),
+                    summarizeScoped(variantMap[variantKey(o.value, effectiveRegion, effectiveKind, effectiveVenue, effectiveTier, effectiveBucket, effectiveFees)]),
                   ])
                   .filter(([, v]) => v !== null) as [string, ChainMeta][]
               )}
@@ -1204,19 +1192,7 @@ export function BenchmarkBody({
                 regionOptions
                   .map((o) => [
                     o.value,
-                    summarizeScoped(
-                      variantMap[
-                        variantKey(
-                          effectiveChain,
-                          o.value,
-                          effectiveKind,
-                          effectiveVenue,
-                          effectiveTier,
-                          effectiveBucket,
-                          effectiveFees,
-                        )
-                      ],
-                    ),
+                    summarizeScoped(variantMap[variantKey(effectiveChain, o.value, effectiveKind, effectiveVenue, effectiveTier, effectiveBucket, effectiveFees)]),
                   ])
                   .filter(([, v]) => v !== null) as [string, ChainMeta][]
               )}

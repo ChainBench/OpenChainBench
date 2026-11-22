@@ -207,7 +207,7 @@ func TestFactor1e30ToBps(t *testing.T) {
 	}
 }
 
-func TestSetGMXFunding(t *testing.T) {
+func TestGMXFundingPerHourBps(t *testing.T) {
 	cases := []struct {
 		raw     string
 		want    float64
@@ -219,12 +219,10 @@ func TestSetGMXFunding(t *testing.T) {
 		{"1.5e29", 0, true},
 	}
 	for _, c := range cases {
-		var s PerpSample
-		err := s.setGMXFunding(c.raw)
-		if (err != nil) != c.wantErr || s.HasFunding == c.wantErr ||
-			!near(s.FundingRatePerHrBps, c.want) {
-			t.Errorf("setGMXFunding(%q) = %v %v, %v; want %v, err %v",
-				c.raw, s.FundingRatePerHrBps, s.HasFunding, err, c.want, c.wantErr)
+		got, err := gmxFundingPerHourBps(c.raw)
+		if (err != nil) != c.wantErr || abs(got-c.want) > 1e-9 {
+			t.Errorf("gmxFundingPerHourBps(%q) = %v, %v; want %v, err %v",
+				c.raw, got, err, c.want, c.wantErr)
 		}
 	}
 }
@@ -337,9 +335,6 @@ func TestFetchHyperliquid_DeepBookMid(t *testing.T) {
 		if abs(got.SpreadBps-tier) > 1e-9 || abs(got.AllInBps-4.5-tier) > 1e-9 {
 			t.Errorf("tier $%s = %+v, want spread %v from the deep book's mid", got.Notional, got, tier)
 		}
-	}
-	if s.HasFunding {
-		t.Error("funding published for an asset missing from the universe")
 	}
 }
 

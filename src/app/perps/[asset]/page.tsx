@@ -298,7 +298,7 @@ export default async function PerpAssetPage({ params }: { params: Promise<{ asse
     },
     {
       q: "Why is a cell marked not measured?",
-      a: "Opening cost, slippage and taker fee come from the perp-fees harness, which measures eighteen venues, eleven DEXs and seven CEXs, and walks the public order book of the sixteen that have one; a venue outside that harness has no such figure, and an oracle-priced one (GMX v2, Gains) has no slippage. Funding comes from each venue's own endpoint or from the Mobula aggregator; a venue on neither has none. Nothing is estimated to fill a blank.",
+      a: "Opening cost, slippage and taker fee come from the perp-fees harness, which measures DEX and CEX venues and walks the public order book of each one that has a book; a venue outside that harness has no such figure, and an oracle-priced one (GMX v2, Gains) has no slippage. Funding comes from each venue's own endpoint or from the Mobula aggregator; a venue on neither has none. Nothing is estimated to fill a blank.",
     },
     {
       q: "Why are Binance, Bybit and OKX listed under the DEXs?",

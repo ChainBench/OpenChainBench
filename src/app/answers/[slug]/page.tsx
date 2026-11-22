@@ -26,11 +26,7 @@ import {
 import { PERSON_ID } from "@/lib/hub-jsonld";
 import { capDescription, capSnippet } from "@/lib/seo-text";
 import { getBenchCreatedAt } from "@/lib/seo/bench-dates";
-import {
-  benchOgImage,
-  benchPagePath,
-  benchPageUrl,
-} from "@/lib/bench-links";
+import { benchOgImage } from "@/lib/bench-links";
 import { scopeNote } from "@/lib/venue-type-filter";
 
 export const revalidate = 3600;
@@ -116,7 +112,7 @@ export async function generateMetadata({
       // rather than the generic homepage tile.
       images: [
         {
-          url: benchOgImage(ans.bench.slug, ans.venue_type),
+          url: `${SITE.url}/api/og/${ans.bench.slug}`,
           width: 1200,
           height: 630,
         },
@@ -143,8 +139,7 @@ export default async function AnswerPage({
 
   const { bench } = ans;
   const url = `${SITE.url}/answers/${ans.slug}`;
-  const benchUrl = benchPageUrl(bench.slug);
-  const benchHref = benchPagePath(bench.slug, ans.venue_type);
+  const benchUrl = `${SITE.url}/benchmarks/${bench.slug}`;
 
   // Render template placeholders against the live bench so the answer
   // surfaces real numbers, not raw `{{best_name}}` tokens. Tokens that
@@ -350,7 +345,7 @@ export default async function AnswerPage({
         <Pill variant="category">Answer</Pill>
         <span className="sm:ml-auto font-sans tabular text-[11px] text-ink-muted">
           Backed by {bench.title}
-          {scopeNote(undefined, ans.venue_type)}
+          {scopeNote(ans.venue_type)}
         </span>
       </div>
 
@@ -428,7 +423,7 @@ export default async function AnswerPage({
           </ol>
           <p className="mt-4 text-xs text-ink-muted">
             Full live data:{" "}
-            <Link className="lnk" href={benchHref}>
+            <Link className="lnk" href={`/benchmarks/${bench.slug}`}>
               /benchmarks/{bench.slug}
             </Link>
             .
@@ -518,11 +513,10 @@ export default async function AnswerPage({
 
       <p className="mt-12 max-w-2xl text-xs text-ink-muted">
         Same data as{" "}
-        <Link href={benchHref} className="lnk text-ink-soft">
+        <Link href={`/benchmarks/${bench.slug}`} className="lnk text-ink-soft">
           /benchmarks/{bench.slug}
         </Link>
-        {scopeNote(ans.chain, ans.venue_type)},
-        refreshed every
+        {scopeNote(ans.venue_type, ans.chain)}, refreshed every
         minute. Open methodology, open source.
       </p>
     </article>

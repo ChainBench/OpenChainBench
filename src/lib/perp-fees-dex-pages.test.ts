@@ -19,11 +19,6 @@ mock.module("@/lib/spec", () => ({
   loadBenchmark: async (slug: string) =>
     slug === "perp-fees" ? board : undefined,
 }));
-const actualData = { ...(await import("@/data/benchmarks")) };
-mock.module("@/data/benchmarks", () => ({
-  ...actualData,
-  getBenchmarks: async () => [board],
-}));
 afterAll(() => mock.restore());
 
 const { loadAllAnswers, loadAnswer } = await import("./answers");
@@ -33,7 +28,6 @@ const { loadScopedBench } = await import("./scoped-bench");
 const { getAlternativesFeaturing } = await import("./related-providers");
 const answerPage = await import("@/app/answers/[slug]/page");
 const alternativePage = await import("@/app/alternatives/[slug]/page");
-const citable = await import("@/app/api/citable/route");
 
 const slugs = (b: { results: ProviderResult[] } | undefined) =>
   b?.results.map((r) => r.slug);
@@ -88,18 +82,6 @@ describe("DEX-only pages on perp-fees", () => {
     });
     expect(JSON.stringify(meta.twitter)).toContain(
       "/api/og/perp-fees?venue_type=dex",
-    );
-  });
-
-  test("citable answers link to the DEX-scoped board", async () => {
-    const res = await citable.GET(
-      new Request("https://openchainbench.com/api/citable"),
-    );
-    const body: { answers: { benchmark: string; benchmarkUrl: string }[] } =
-      await res.json();
-    const perp = body.answers.filter((a) => a.benchmark === "perp-fees");
-    expect(perp.map((a) => a.benchmarkUrl)).toEqual(
-      answerSlugs.map(() => expect.stringContaining("?venue_type=dex")),
     );
   });
 

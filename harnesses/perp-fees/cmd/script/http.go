@@ -38,7 +38,31 @@ func getJSON(ctx context.Context, client *http.Client, url string, out any) erro
 		return err
 	}
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("status_%d: %s", resp.StatusCode, truncate(string(body), maxAPIMsg))
+		return &statusError{code: resp.StatusCode, body: truncate(string(body), maxAPIMsg)}
 	}
 	return json.Unmarshal(body, out)
+}
+
+type statusError struct {
+	code int
+	body string
+}
+
+func (e *statusError) Error() string {
+	return fmt.Sprintf("status_%d: %q", e.code, e.body)
+}
+
+func (e *statusError) errType() string {
+	switch e.code {
+	case http.StatusBadRequest, http.StatusNotFound:
+		return errTypeNotFound
+	case http.StatusUnauthorized, http.StatusForbidden, http.StatusUnavailableForLegalReasons:
+		return "auth"
+	case http.StatusTooManyRequests, http.StatusTeapot:
+		return "rate_limit"
+	}
+	if e.code >= http.StatusInternalServerError {
+		return "server_error"
+	}
+	return "other"
 }

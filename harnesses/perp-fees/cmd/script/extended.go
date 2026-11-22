@@ -83,7 +83,8 @@ func fetchExtended(v VenueConfig) PerpSample {
 
 	var stats extendedStats
 	if err := extendedGet(client, fmt.Sprintf("%s/info/markets/%s/stats", extendedBase, market), &stats); err == nil {
-		s.setFunding(stats.Data.FundingRate, bpsPerUnit)
+		r, _ := strconv.ParseFloat(stats.Data.FundingRate, 64)
+		s.FundingRatePerHrBps = r * 10000
 	}
 
 	s.FetchLatencyMs = time.Since(start).Milliseconds()

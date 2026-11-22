@@ -11,30 +11,34 @@ import {
 } from "@/lib/venue-type-filter";
 import type { Benchmark } from "@/types/benchmark";
 
+type VenueTypeViewState = {
+  view: VenueTypeView;
+  counts: ReturnType<typeof venueTypeCounts>;
+  showRow: boolean;
+  select: (raw: string) => void;
+};
+
 export function useVenueTypeView(
-  benchmark: Benchmark | undefined,
+  benchmark: Benchmark,
   urlValue: string | null,
-) {
+): VenueTypeViewState {
   const [picked, setPicked] = useState<VenueTypeView>(
     parseVenueTypeView(urlValue),
   );
   const counts = useMemo(
-    () => venueTypeCounts(liveResults(benchmark?.results ?? [])),
+    () => venueTypeCounts(liveResults(benchmark.results)),
     [benchmark],
   );
   const view = shownVenueTypeView(picked, counts);
   const showRow = (counts.dex > 0 && counts.cex > 0) || view !== "all";
 
-  const loaded = benchmark !== undefined;
   useEffect(() => {
-    if (!loaded) return;
     const url = new URL(window.location.href);
     if (view === "all") url.searchParams.delete(VENUE_TYPE_PARAM);
     else url.searchParams.set(VENUE_TYPE_PARAM, view);
     if (url.href === window.location.href) return;
-    const next = url.pathname + url.search + url.hash;
-    window.history.replaceState(null, "", next);
-  }, [loaded, view]);
+    window.history.replaceState(null, "", url.pathname + url.search + url.hash);
+  }, [view]);
 
   const select = (raw: string) => setPicked(parseVenueTypeView(raw));
   return { view, counts, showRow, select };

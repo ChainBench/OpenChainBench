@@ -42,15 +42,19 @@ test("a row without a type stays out of a typed scope", () => {
 });
 
 test.each([
-  ["venue_type=dex", "hyperliquid", " (DEX venues only)"],
-  ["", "binance", ""],
-])("a card for %p leads with %p", (query, want, note) => {
+  ["venue_type=dex", "dex", "hyperliquid", " (DEX venues only)"],
+  ["", "dex", "binance", ""],
+  ["venue_type=cex", undefined, "binance", ""],
+])("a card for %p on a %p board leads with %p", (query, type, want, note) => {
   const board = perpFeesBoard({
-    results: [row("hyperliquid", "dex", 5), row("binance", "cex", 1)],
+    results: [
+      row("hyperliquid", type === "dex" ? "dex" : undefined, 5),
+      row("binance", type === "dex" ? "cex" : undefined, 1),
+    ],
   });
   const { view, bench } = scopeFromParams(board, new URLSearchParams(query));
   expect(leader(bench)?.slug).toBe(want);
-  expect(scopeNote(undefined, view)).toBe(note);
+  expect(scopeNote(view)).toBe(note);
 });
 
 test.each<[string | null, VenueTypeView]>([
@@ -71,9 +75,9 @@ test.each<[VenueTypeView, number, VenueTypeView]>([
   },
 );
 
-test.each<[string | undefined, VenueTypeView | undefined, string]>([
-  [undefined, "all", ""],
-  ["Solana", "dex", " (filtered to Solana, DEX venues only)"],
-])("scopeNote(%p, %p) is %p", (chain, view, note) => {
-  expect(scopeNote(chain, view)).toBe(note);
+test.each<[VenueTypeView | undefined, string | undefined, string]>([
+  ["all", undefined, ""],
+  ["dex", "Solana", " (filtered to Solana, DEX venues only)"],
+])("scopeNote(%p, %p) is %p", (view, chain, note) => {
+  expect(scopeNote(view, chain)).toBe(note);
 });

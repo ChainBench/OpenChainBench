@@ -13,11 +13,7 @@ import { SectionLabel, SummaryStat } from "@/components/summary-stat";
 import { SITE } from "@/data/site";
 import { CREATOR_PUBLISHER, CITABLE_JSON_URL, DATASET_LICENSE, HF_DATASET_URL } from "@/lib/dataset-jsonld";
 import { loadAlternative } from "@/lib/alternatives";
-import {
-  benchOgImage,
-  benchPagePath,
-  benchPageUrl,
-} from "@/lib/bench-links";
+import { benchOgImage } from "@/lib/bench-links";
 import { scopeNote } from "@/lib/venue-type-filter";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { buildBreadcrumbJsonLd, safeJsonLd } from "@/lib/jsonld";
@@ -140,8 +136,7 @@ export default async function AlternativePage({
   );
 
   const url = `${SITE.url}/alternatives/${alt.slug}`;
-  const benchUrl = benchPageUrl(bench.slug);
-  const benchHref = benchPagePath(bench.slug, alt.venue_type);
+  const benchUrl = `${SITE.url}/benchmarks/${bench.slug}`;
 
   // Schema.org / Google Rich Results requires Dataset.description to be
   // between 50 and 5000 chars (Search Console flags "Invalid string
@@ -266,7 +261,7 @@ export default async function AlternativePage({
         <Pill variant="category">Alternatives</Pill>
         <span className="sm:ml-auto font-sans tabular text-[11px] text-ink-muted">
           Sourced from {bench.title}
-          {scopeNote(undefined, alt.venue_type)}
+          {scopeNote(alt.venue_type)}
         </span>
       </div>
 
@@ -425,7 +420,7 @@ export default async function AlternativePage({
             chart export on the benchmark page.
           </p>
           <Link
-            href={benchHref}
+            href={benchUrl}
             className="shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-ink text-paper text-sm font-medium px-4 py-2 hover:opacity-80 transition-opacity"
           >
             Open benchmark
@@ -436,10 +431,10 @@ export default async function AlternativePage({
 
       <p className="mt-8 max-w-2xl text-xs text-ink-muted">
         Measurements sourced from{" "}
-        <Link href={benchHref} className="lnk text-ink-soft">
+        <Link href={benchUrl} className="lnk text-ink-soft">
           {bench.title}
         </Link>
-        {scopeNote(alt.chain, alt.venue_type)}. Methodology and
+        {scopeNote(alt.venue_type, alt.chain)}. Methodology and
         raw data on the benchmark page.
       </p>
 

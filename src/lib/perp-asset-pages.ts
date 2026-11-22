@@ -244,7 +244,9 @@ export async function fetchPerpAssetPagesFresh(): Promise<PerpAssetPagesSnapshot
     out[asset] = {
       asset,
       venues: all.filter((r) => r.venueType !== "cex"),
-      cex: all.filter((r) => r.venueType === "cex"),
+      cex: all.filter(
+        (r) => r.venueType === "cex" && r.funding24hBps != null,
+      ),
     };
   }
   return { assets: out, asOf: Math.floor(Date.now() / 1000) };
