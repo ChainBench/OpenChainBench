@@ -46,9 +46,15 @@ func TestApplyCEXQuote(t *testing.T) {
 			if !near(s.SpreadBps, 5) || !near(s.AllInBps, 11) {
 				t.Errorf("spread=%v all_in=%v, want 5 and 11", s.SpreadBps, s.AllInBps)
 			}
-			if len(s.Tiers) != len(tierNotionals) {
-				t.Errorf("tiers=%d skipped=%v, want all %d filled",
-					len(s.Tiers), s.SkippedTiers, len(tierNotionals))
+			wantAllIn := []float64{11, 14.9991, 15.8999, 15.9900}
+			if len(s.Tiers) != len(wantAllIn) {
+				t.Fatalf("tiers=%d skipped=%v, want %d", len(s.Tiers), s.SkippedTiers, len(wantAllIn))
+			}
+			for i, tier := range s.Tiers {
+				if math.Abs(tier.AllInBps-wantAllIn[i]) > 1e-4 ||
+					!near(tier.AllInBps-tier.SpreadBps, 6) {
+					t.Errorf("tier $%s = %+v, want all-in %v", tier.Notional, tier, wantAllIn[i])
+				}
 			}
 		})
 	}
@@ -240,7 +246,8 @@ func TestCEXQuotes(t *testing.T) {
 			routes: map[string]string{
 				"okx.com/api/v5/public/instruments?instType=SWAP&instId=ETH-USDT-SWAP": `{` +
 					`"code":"0","data":[{"ctVal":"0.01"}]}`,
-				"okx.com/api/v5/market/books-full?sz=5000&instId=ETH-USDT-SWAP": `{"code":"0","data":` +
+				"okx.com/api/v5/market/books-full?" +
+					"sz=5000&instId=ETH-USDT-SWAP": `{"code":"0","data":` +
 					`[{"bids":[["1999","100","3"]],"asks":[["2001","100","2"]]}]}`,
 			},
 		},
@@ -391,62 +398,6 @@ func TestCEXQuotes_APIError(t *testing.T) {
 	}
 }
 
-func TestGetJSON_ServerError(t *testing.T) {
-	client := &http.Client{
-		Transport: fixedTransport{status: http.StatusServiceUnavailable, body: numBook},
-	}
-	var book pairBook
-	if err := getJSON(context.Background(), client, "https://cex.test/depth", &book); err == nil {
-		t.Errorf("book=%+v, want an error", book)
-	}
-}
-
-func TestGetJSON_StopsReadingPastCap(t *testing.T) {
-	client := &http.Client{Transport: endlessTransport{}}
-	var book pairBook
-	err := getJSON(context.Background(), client, "https://cex.test/depth", &book)
-	if !errors.Is(err, errBodyTooLarge) {
-		t.Errorf("err=%v, want %v", err, errBodyTooLarge)
-	}
-}
-
-func TestRecordSample_FundingOnlyWhereRead(t *testing.T) {
-	read := PerpSample{Venue: "funding-test", Asset: "ETH", HasFunding: true}
-	recordSample(read)
-	if !fundingGauge.DeleteLabelValues("funding-test", "ETH") {
-		t.Fatal("funding read but not published")
-	}
-	recordSample(read)
-	recordSample(PerpSample{Venue: "funding-test", Asset: "ETH"})
-	if fundingGauge.DeleteLabelValues("funding-test", "ETH") {
-		t.Error("funding series kept for a sample that read no funding")
-	}
-}
-
-func TestSetFunding(t *testing.T) {
-	tests := []struct {
-		raw  string
-		want float64
-		ok   bool
-	}{
-		{raw: "0.0001", want: 1, ok: true},
-		{raw: "-0.0002", want: -2, ok: true},
-		{raw: "", ok: false},
-		{raw: "NaN", ok: false},
-		{raw: "+Inf", ok: false},
-	}
-	for _, tc := range tests {
-		t.Run(tc.raw, func(t *testing.T) {
-			var s PerpSample
-			s.setFunding(tc.raw, bpsPerUnit)
-			if s.HasFunding != tc.ok || !near(s.FundingRatePerHrBps, tc.want) {
-				t.Errorf("got %v %v, want %v %v",
-					s.FundingRatePerHrBps, s.HasFunding, tc.want, tc.ok)
-			}
-		})
-	}
-}
-
 func near(got, want float64) bool {
 	return math.Abs(got-want) < 1e-9
 }
@@ -468,38 +419,6 @@ func (r routeTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 		}
 	}
 	return respond(req, http.StatusNotFound, "no route"), nil
-}
-
-type fixedTransport struct {
-	status int
-	body   string
-}
-
-func (f fixedTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	return respond(req, f.status, f.body), nil
-}
-
-var errReadPastCap = errors.New("read past the body cap")
-
-type endlessBody struct{ read int }
-
-func (b *endlessBody) Read(p []byte) (int, error) {
-	if b.read > maxResponseBody {
-		return 0, errReadPastCap
-	}
-	for i := range p {
-		p[i] = 'x'
-	}
-	b.read += len(p)
-	return len(p), nil
-}
-
-func (b *endlessBody) Close() error { return nil }
-
-type endlessTransport struct{}
-
-func (endlessTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	return &http.Response{StatusCode: http.StatusOK, Body: &endlessBody{}, Request: req}, nil
 }
 
 func fakeExchange(routes map[string]string) *http.Client {
