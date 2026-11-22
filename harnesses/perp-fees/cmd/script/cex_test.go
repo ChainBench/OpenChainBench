@@ -4,11 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"io"
 	"math"
 	"net/http"
-	"strings"
 	"testing"
+	"time"
 )
 
 func TestApplyCEXQuote(t *testing.T) {
@@ -48,7 +47,8 @@ func TestApplyCEXQuote(t *testing.T) {
 			}
 			wantAllIn := []float64{11, 14.9991, 15.8999, 15.9900}
 			if len(s.Tiers) != len(wantAllIn) {
-				t.Fatalf("tiers=%d skipped=%v, want %d", len(s.Tiers), s.SkippedTiers, len(wantAllIn))
+				t.Fatalf("tiers=%d skipped=%v, want %d",
+					len(s.Tiers), s.SkippedTiers, len(wantAllIn))
 			}
 			for i, tier := range s.Tiers {
 				if math.Abs(tier.AllInBps-wantAllIn[i]) > 1e-4 ||
@@ -122,7 +122,10 @@ func TestFetchCEX(t *testing.T) {
 		},
 		{
 			name: "book",
-			quote: func(context.Context, *http.Client, string) (cexQuote, error) {
+			quote: func(ctx context.Context, _ *http.Client, _ string) (cexQuote, error) {
+				if dl, ok := ctx.Deadline(); !ok || time.Until(dl) > cexTimeout {
+					return cexQuote{}, errAPI
+				}
 				return book, nil
 			},
 			wantAllIn: 15,
@@ -154,6 +157,7 @@ func TestBookFromPairs_Rejects(t *testing.T) {
 		want error
 	}{
 		{name: "no bids", asks: asks, unit: 1, want: errEmptyOrderbook},
+		{name: "empty bid row", bids: [][]flexFloat{{}}, asks: asks, unit: 1, want: errEmptyOrderbook},
 		{name: "no contract size", bids: bids, asks: asks, want: errNoContractSize},
 		{name: "short ask row", bids: bids, asks: shortRow, unit: 1, want: errMalformedBook},
 		{name: "asks descending", bids: bids, asks: asksDown, unit: 1, want: errUnsortedBook},
@@ -165,6 +169,27 @@ func TestBookFromPairs_Rejects(t *testing.T) {
 				t.Errorf("err=%v, want %v", err, tc.want)
 			}
 		})
+	}
+}
+
+func TestBookFromPairs_EmptySecondBid(t *testing.T) {
+	bids := [][]flexFloat{{99, 1}, {}}
+	bid, _, err := bookFromPairs(bids, [][]flexFloat{{100, 1}}, 1)
+	if err != nil || bid != 99 {
+		t.Errorf("bid=%v err=%v, want 99", bid, err)
+	}
+}
+
+func TestFetchOne_RoutesEveryCEX(t *testing.T) {
+	cfg := loadConfig()
+	down := &http.Client{Transport: fixedTransport{status: http.StatusBadGateway}}
+	for _, v := range cfg.Venues {
+		if _, ok := cexQuoteFor(v.Slug); !ok {
+			continue
+		}
+		if s := fetchOne(v, cfg, down); s.Err == "" || s.Err == "unsupported_venue" {
+			t.Errorf("%s/%s: err=%q, want the exchange's own failure", v.Slug, v.Asset, s.Err)
+		}
 	}
 }
 
@@ -396,31 +421,4 @@ func TestCEXQuotes_APIError(t *testing.T) {
 			}
 		})
 	}
-}
-
-func near(got, want float64) bool {
-	return math.Abs(got-want) < 1e-9
-}
-
-func respond(req *http.Request, status int, body string) *http.Response {
-	return &http.Response{
-		StatusCode: status,
-		Body:       io.NopCloser(strings.NewReader(body)),
-		Request:    req,
-	}
-}
-
-type routeTransport map[string]string
-
-func (r routeTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	for key, body := range r {
-		if strings.Contains(req.URL.String(), key) {
-			return respond(req, http.StatusOK, body), nil
-		}
-	}
-	return respond(req, http.StatusNotFound, "no route"), nil
-}
-
-func fakeExchange(routes map[string]string) *http.Client {
-	return &http.Client{Transport: routeTransport(routes)}
 }

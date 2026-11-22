@@ -68,7 +68,7 @@ func fetchAll(cfg *Config) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			s := fetchOne(v, cfg)
+			s := fetchOne(v, cfg, http.DefaultClient)
 			recordSample(s)
 			recordDebugSnapshot(s)
 			if s.Err != "" {
@@ -96,7 +96,7 @@ func fetchAll(cfg *Config) {
 	wg.Wait()
 }
 
-func fetchOne(v VenueConfig, cfg *Config) PerpSample {
+func fetchOne(v VenueConfig, cfg *Config, cexClient *http.Client) PerpSample {
 	switch v.Slug {
 	case "hyperliquid":
 		return fetchHyperliquid(v, hyperliquidURL)
@@ -122,7 +122,7 @@ func fetchOne(v VenueConfig, cfg *Config) PerpSample {
 		return fetchOndo(v)
 	}
 	if quote, ok := cexQuoteFor(v.Slug); ok {
-		return fetchCEX(v, quote, http.DefaultClient)
+		return fetchCEX(v, quote, cexClient)
 	}
 	return PerpSample{Venue: v.Slug, Asset: v.Asset, Err: "unsupported_venue"}
 }
