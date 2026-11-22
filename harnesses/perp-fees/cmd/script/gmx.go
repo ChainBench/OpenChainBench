@@ -71,11 +71,13 @@ type gmxMarketsRESTItem struct {
 
 const hoursPerYear = 365 * 24
 
-func gmxFundingPerHourBps(annualRate string) (float64, error) {
+func (s *PerpSample) setGMXFunding(annualRate string) error {
 	if _, ok := new(big.Int).SetString(annualRate, 10); !ok {
-		return 0, fmt.Errorf("bad fundingRateLong %q", truncate(annualRate, 80))
+		return fmt.Errorf("bad fundingRateLong %q", truncate(annualRate, 80))
 	}
-	return factor1e30ToBps(annualRate) / hoursPerYear, nil
+	s.FundingRatePerHrBps = factor1e30ToBps(annualRate) / hoursPerYear
+	s.HasFunding = true
+	return nil
 }
 
 type gmxMarketsREST struct {
@@ -282,8 +284,7 @@ func fetchGMX(v VenueConfig, rpcURL string) (s PerpSample) {
 		s.Err = fmt.Sprintf("markets_info: %v", err)
 		return s
 	}
-	s.FundingRatePerHrBps, err = gmxFundingPerHourBps(info.FundingRateLong)
-	if err != nil {
+	if err := s.setGMXFunding(info.FundingRateLong); err != nil {
 		s.Err = fmt.Sprintf("markets_info: %v", err)
 		return s
 	}

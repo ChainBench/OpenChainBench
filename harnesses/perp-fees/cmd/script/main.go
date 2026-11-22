@@ -74,8 +74,12 @@ func fetchAll(cfg *Config) {
 			if s.Err != "" {
 				fmt.Printf("[PERP][%s/%s] ERROR after %dms: %s\n", v.Slug, v.Asset, s.FetchLatencyMs, s.Err)
 			} else {
-				fmt.Printf("[PERP][%s/%s] all_in=%.2fbps (taker=%.2f, spread=%.2f, funding=%.4fbps/h, mid=$%.2f) in %dms\n",
-					v.Slug, v.Asset, s.AllInBps, s.TakerFeeBps, s.SpreadBps, s.FundingRatePerHrBps, s.MidPrice, s.FetchLatencyMs)
+				funding := "n/a"
+				if s.HasFunding {
+					funding = fmt.Sprintf("%.4fbps/h", s.FundingRatePerHrBps)
+				}
+				fmt.Printf("[PERP][%s/%s] all_in=%.2fbps (taker=%.2f, spread=%.2f, funding=%s, mid=$%.2f) in %dms\n",
+					v.Slug, v.Asset, s.AllInBps, s.TakerFeeBps, s.SpreadBps, funding, s.MidPrice, s.FetchLatencyMs)
 				for _, t := range s.Tiers {
 					fmt.Printf("[PERP][%s/%s]   tier $%s: all_in=%.2fbps (spread=%.2f)\n", v.Slug, v.Asset, t.Notional, t.AllInBps, t.SpreadBps)
 				}
@@ -114,7 +118,7 @@ func fetchOne(v VenueConfig, cfg *Config) PerpSample {
 		return fetchOndo(v)
 	}
 	if quote, ok := cexQuoteFor(v.Slug); ok {
-		return fetchCEX(v, quote, &http.Client{Timeout: cexTimeout})
+		return fetchCEX(v, quote, http.DefaultClient)
 	}
 	return PerpSample{Venue: v.Slug, Asset: v.Asset, Err: "unsupported_venue"}
 }

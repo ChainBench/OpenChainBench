@@ -96,7 +96,11 @@ func TestApplyCEXQuote_LockedBook(t *testing.T) {
 }
 
 func TestFetchCEX(t *testing.T) {
-	book := cexQuote{takerBps: 5, bestBid: 1999, asks: []bookLevel{{Px: 2001, Sz: 10}}}
+	book := cexQuote{
+		takerBps: 5,
+		bestBid:  1999,
+		asks:     []bookLevel{{Px: 2001, Sz: 1}, {Px: 2003, Sz: 10}},
+	}
 	tests := []struct {
 		name      string
 		quote     cexQuoteFunc
@@ -115,12 +119,12 @@ func TestFetchCEX(t *testing.T) {
 			quote: func(context.Context, *http.Client, string) (cexQuote, error) {
 				return book, nil
 			},
-			wantAllIn: 10,
+			wantAllIn: 15,
 		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			v := VenueConfig{Slug: "binance", Asset: "ETH", NotionalUSD: 1000}
+			v := VenueConfig{Slug: "binance", Asset: "ETH", NotionalUSD: 4004}
 			s := fetchCEX(v, tc.quote, http.DefaultClient)
 			if (s.Err != "") != tc.wantErr || !near(s.AllInBps, tc.wantAllIn) {
 				t.Errorf("err=%q all_in=%v, want error %v and %v",
@@ -145,7 +149,7 @@ func TestBookFromPairs_Rejects(t *testing.T) {
 	}{
 		{name: "no bids", asks: asks, unit: 1, want: errEmptyOrderbook},
 		{name: "no contract size", bids: bids, asks: asks, want: errNoContractSize},
-		{name: "short ask row", bids: bids, asks: shortRow, unit: 1, want: errMalformedLevels},
+		{name: "short ask row", bids: bids, asks: shortRow, unit: 1, want: errMalformedBook},
 		{name: "asks descending", bids: bids, asks: asksDown, unit: 1, want: errUnsortedBook},
 		{name: "bids ascending", bids: bidsUp, asks: asks, unit: 1, want: errUnsortedBook},
 	}
@@ -225,7 +229,8 @@ func TestCEXQuotes(t *testing.T) {
 		{
 			slug: "bybit", asset: "ETH", wantFee: bybitTakerBps, wantAsk1: 10,
 			routes: map[string]string{
-				"api.bybit.com/v5/market/orderbook?category=linear": `{"retCode":0,"result":` +
+				"api.bybit.com/v5/market/orderbook?category=linear&limit=500": `{` +
+					`"retCode":0,"result":` +
 					`{"b":[["1999","10"]],"a":[["2001","10"]]}}`,
 			},
 		},
@@ -234,7 +239,7 @@ func TestCEXQuotes(t *testing.T) {
 			routes: map[string]string{
 				"okx.com/api/v5/public/instruments?instType=SWAP&instId=ETH-USDT-SWAP": `{` +
 					`"code":"0","data":[{"ctVal":"0.01"}]}`,
-				"okx.com/api/v5/market/books-full": `{"code":"0","data":` +
+				"okx.com/api/v5/market/books-full?sz=5000": `{"code":"0","data":` +
 					`[{"bids":[["1999","100","3"]],"asks":[["2001","100","2"]]}]}`,
 			},
 		},
@@ -244,7 +249,8 @@ func TestCEXQuotes(t *testing.T) {
 				"bitget.com/api/v2/mix/market/contracts?" +
 					"productType=usdt-futures&symbol=ETHUSDT": `{"code":"00000",` +
 					`"data":[{"takerFeeRate":"0.0006"}]}`,
-				"bitget.com/api/v2/mix/market/merge-depth": `{"code":"00000","data":` +
+				"bitget.com/api/v2/mix/market/merge-depth?" +
+					"productType=usdt-futures&symbol=ETHUSDT&limit=max": `{"code":"00000","data":` +
 					numBook + `}`,
 			},
 		},
@@ -261,7 +267,8 @@ func TestCEXQuotes(t *testing.T) {
 			slug: "gate", asset: "ETH", wantFee: gateTakerBps, wantAsk1: 1,
 			routes: map[string]string{
 				"gateio.ws/api/v4/futures/usdt/contracts/ETH_USDT": `{"quanto_multiplier":"0.01"}`,
-				"gateio.ws/api/v4/futures/usdt/order_book": `{"bids":[{"p":"1999","s":100}],` +
+				"gateio.ws/api/v4/futures/usdt/order_book?limit=300": `{` +
+					`"bids":[{"p":"1999","s":100}],` +
 					`"asks":[{"p":"2001","s":100}]}`,
 			},
 		},
@@ -383,34 +390,59 @@ func TestCEXQuotes_APIError(t *testing.T) {
 	}
 }
 
-func TestGetJSON_Rejects(t *testing.T) {
-	oversized := `{"bids":[],"asks":[],"pad":"` + strings.Repeat("x", maxResponseBody) + `"}`
-	tests := []struct {
-		name   string
-		status int
-		body   string
-		want   error
-	}{
-		{name: "server error", status: http.StatusServiceUnavailable, body: numBook},
-		{name: "oversized body", status: http.StatusOK, body: oversized, want: errBodyTooLarge},
+func TestGetJSON_ServerError(t *testing.T) {
+	client := &http.Client{
+		Transport: fixedTransport{status: http.StatusServiceUnavailable, body: numBook},
 	}
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			client := &http.Client{Transport: fixedTransport{status: tc.status, body: tc.body}}
-			var book pairBook
-			err := getJSON(context.Background(), client, "https://cex.test/depth", &book)
-			if err == nil || (tc.want != nil && !errors.Is(err, tc.want)) {
-				t.Errorf("err=%v book=%+v, want an error", err, book)
-			}
-		})
+	var book pairBook
+	if err := getJSON(context.Background(), client, "https://cex.test/depth", &book); err == nil {
+		t.Errorf("book=%+v, want an error", book)
+	}
+}
+
+func TestGetJSON_StopsReadingPastCap(t *testing.T) {
+	client := &http.Client{Transport: endlessTransport{}}
+	var book pairBook
+	err := getJSON(context.Background(), client, "https://cex.test/depth", &book)
+	if !errors.Is(err, errBodyTooLarge) {
+		t.Errorf("err=%v, want %v", err, errBodyTooLarge)
 	}
 }
 
 func TestRecordSample_FundingOnlyWhereRead(t *testing.T) {
-	recordSample(PerpSample{Venue: "funding-test", Asset: "ETH", HasFunding: true})
+	read := PerpSample{Venue: "funding-test", Asset: "ETH", HasFunding: true}
+	recordSample(read)
+	if !fundingGauge.DeleteLabelValues("funding-test", "ETH") {
+		t.Fatal("funding read but not published")
+	}
+	recordSample(read)
 	recordSample(PerpSample{Venue: "funding-test", Asset: "ETH"})
 	if fundingGauge.DeleteLabelValues("funding-test", "ETH") {
 		t.Error("funding series kept for a sample that read no funding")
+	}
+}
+
+func TestSetFunding(t *testing.T) {
+	tests := []struct {
+		raw  string
+		want float64
+		ok   bool
+	}{
+		{raw: "0.0001", want: 1, ok: true},
+		{raw: "-0.0002", want: -2, ok: true},
+		{raw: "", ok: false},
+		{raw: "abc", ok: false},
+		{raw: "NaN", ok: false},
+		{raw: "+Inf", ok: false},
+	}
+	for _, tc := range tests {
+		t.Run(tc.raw, func(t *testing.T) {
+			var s PerpSample
+			s.setFunding(tc.raw, bpsPerUnit)
+			if s.HasFunding != tc.ok || !near(s.FundingRatePerHrBps, tc.want) {
+				t.Errorf("got %v %v, want %v %v", s.FundingRatePerHrBps, s.HasFunding, tc.want, tc.ok)
+			}
+		})
 	}
 }
 
@@ -444,6 +476,29 @@ type fixedTransport struct {
 
 func (f fixedTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	return respond(req, f.status, f.body), nil
+}
+
+var errReadPastCap = errors.New("read past the body cap")
+
+type endlessBody struct{ read int }
+
+func (b *endlessBody) Read(p []byte) (int, error) {
+	if b.read > maxResponseBody {
+		return 0, errReadPastCap
+	}
+	for i := range p {
+		p[i] = 'x'
+	}
+	b.read += len(p)
+	return len(p), nil
+}
+
+func (b *endlessBody) Close() error { return nil }
+
+type endlessTransport struct{}
+
+func (endlessTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	return &http.Response{StatusCode: http.StatusOK, Body: &endlessBody{}, Request: req}, nil
 }
 
 func fakeExchange(routes map[string]string) *http.Client {

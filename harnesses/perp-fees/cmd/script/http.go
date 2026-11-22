@@ -9,7 +9,10 @@ import (
 	"net/http"
 )
 
-const maxResponseBody = 4 << 20
+const (
+	maxResponseBody = 4 << 20
+	maxAPIMsg       = 200
+)
 
 var errBodyTooLarge = errors.New("body_too_large")
 
@@ -35,7 +38,7 @@ func getJSON(ctx context.Context, client *http.Client, url string, out any) erro
 		return err
 	}
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("status_%d: %s", resp.StatusCode, truncate(string(body), 200))
+		return fmt.Errorf("status_%d: %s", resp.StatusCode, truncate(string(body), maxAPIMsg))
 	}
 	return json.Unmarshal(body, out)
 }

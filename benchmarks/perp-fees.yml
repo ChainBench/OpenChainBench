@@ -46,8 +46,9 @@ abstract: |
   `/feetiers/perpetual_fee_params`, GMX Subsquid `positionFeeFactor`,
   Lighter `/orderBookDetails`, Gains v8 on-chain `fees()`, the Polymarket
   fees endpoint, the Paradex `/markets` fee config, the Ondo contract row,
-  the Bitget, MEXC and KuCoin contract rows), and from the documented
-  base tier on Extended, Aster, edgeX, Binance, Bybit, OKX and Gate. On
+  the edgeX `getMetaData` row, the Bitget, MEXC and KuCoin contract
+  rows), and from the documented base tier on Extended, Aster, Binance,
+  Bybit, OKX and Gate. On
   every venue except GMX v2 and Gains the spread comes from walking the
   book for $1000 of buy-side notional. GMX v2 and Gains
   are oracle priced with no book: their spread and impact are read
@@ -70,7 +71,7 @@ methodology:
   - "Gains, impact: `getTradeCumulVolPriceImpactP` (cumulative volume) is added at each size. The open interest skew impact (`getTradeSkewPriceImpactP`) is not counted: Gains applies it again with the same sign when the position closes, so a trade opened and closed on an unchanged skew gets it back. SOL has `spreadP` 0, so its cost beyond the fee is the volume impact alone."
   - "Paradex: `/markets` fee config for the interactive (Retail) taker rate, 0 bps as of 2026-09, + `/orderbook/{market}/interactive?depth=100` walk. Paradex runs two books: the interactive one includes RPI (Retail Price Improvement) maker liquidity and is what UI and interactive-token orders cross; the plain `/orderbook` is the API book, RPI excluded, crossed by Pro (plain API) orders at the 2 bps api-tier fee."
   - "Paradex, continued: the two books diverge on thin pairs (SOL on 2026-09-22: 0.03 % spread on the interactive book against 1.4 % on the API book), so the bench reads the interactive book as the cost of opening a position; an algorithmic taker should add 2 bps and expect the wider API book. The endpoint caps at 100 levels, so the $1M tier can be skipped when the visible book thins."
-  - "Extended: full public book from `/info/markets/<m>/orderbook` + `/stats` funding (1h native). Its taker fee is not exposed by any public endpoint, so its documented base rate of 2.5 bps is used. The same holds on Aster (5 bps), edgeX (3.8 bps), Binance (5 bps), Bybit (5.5 bps), OKX (5 bps) and Gate (5 bps)."
+  - "Extended: full public book from `/info/markets/<m>/orderbook` + `/stats` funding (1h native). Its taker fee is not exposed by any public endpoint, so its documented base rate of 2.5 bps is used. The same holds on Aster (5 bps), Binance (5 bps), Bybit (5.5 bps), OKX (5 bps) and Gate (5 bps)."
   - "CEX rows: the USDT-margined perpetual of each exchange (Binance USDS-M, Bybit linear, OKX swap, Bitget USDT-M, MEXC, Gate USDT, KuCoin), asks walked from the mid of the same snapshot. Sizes quoted in contracts are converted with the contract size read from the exchange's own instrument endpoint (OKX `ctVal`, MEXC `contractSize`, Gate `quanto_multiplier`, KuCoin `multiplier`)."
   - "CEX taker fee: read live from the public contract row on Bitget, MEXC and KuCoin (MEXC sets it per market). Binance (5 bps), Bybit (5.5 bps), OKX (5 bps) and Gate (5 bps) publish no fee to an anonymous caller, so their documented base tier is used. Gate's contract endpoint returns 7.5 bps, which is not its 5 bps base taker tier, so the documented 5 bps is used."
   - "CEX depth read: Binance 1000 levels, Bybit 500, OKX 5000, Bitget 100, Gate 300, KuCoin 1000 and MEXC 1500, the deepest snapshot each endpoint returns."
@@ -132,7 +133,7 @@ faq:
   - q: "How do perp fees change with position size?"
     a: "The taker fee barely changes: the orderbook venues charge a flat percentage of notional and GMX v2 charges 4 or 6 bps depending on whether the trade rebalances its pool, so 4.5 bps on Hyperliquid is the same rate at $1,000 and $100,000. What scales is the impact term: a bigger market order walks deeper into the book, and the price moves further from mid. On deep books like BTC on Hyperliquid the $100k figure sits within a fraction of a bp of the $1k figure; on thinner books like SOL the extra impact can exceed the entire taker fee. Oracle priced venues have no book: GMX v2 and Gains on SOL charge an on-chain price impact that grows with size, while Gains on ETH and BTC stays flat. Four tiers ($1k to $1M) are published every cycle to `perp_fees_all_in_bps_tier` and, fee excluded, `perp_fees_spread_bps_tier`; the $100k and $1M panels chart them live. When a book cannot fill a tier we skip the sample rather than extrapolate, so a missing tier is itself a depth signal."
   - q: "Does this benchmark include funding rates or only the open cost?"
-    a: "Open cost only. Funding is paid every hour you hold, not at open, so bundling it into a one-number leaderboard would conflate two different fee mechanics. The harness still records funding rate per venue (`perp_fees_funding_rate_per_hour_bps`, signed) so a trader can read both numbers and compute their own time-adjusted cost for a longer hold."
+    a: "Open cost only. Funding is paid every hour you hold, not at open, so bundling it into a one-number leaderboard would conflate two different fee mechanics. The harness still records the funding rate of every venue whose API publishes it (`perp_fees_funding_rate_per_hour_bps`, signed) so a trader can read both numbers and compute their own time-adjusted cost for a longer hold."
 
 # Asset selector. Tabs at the top of the page let the reader switch
 # between ETH, BTC, SOL, every PromQL query gets `chain="X"` injected
@@ -305,7 +306,7 @@ providers:
     name: edgeX
     venue_type: dex
     tag: Offchain CLOB perp DEX, 3.8 bps taker
-    formula: "Average over 24h of (3.8 bps documented base taker fee plus half-spread and impact from the edgeX public getDepth endpoint asks walked for $1000 of buy notional in the selected asset), in bps."
+    formula: "Average over 24h of (edgeX getMetaData taker fee, 3.8 bps base rate when that call fails, plus half-spread and impact from the getDepth asks walked for $1000 of buy notional in the selected asset), in bps."
     queries:
       p50: avg_over_time(perp_fees_all_in_bps{venue="edgex"}[24h])
       p90: quantile_over_time(0.90, perp_fees_all_in_bps{venue="edgex"}[24h])

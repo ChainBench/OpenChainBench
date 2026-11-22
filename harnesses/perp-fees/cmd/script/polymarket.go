@@ -89,8 +89,7 @@ func fetchPolymarket(v VenueConfig) PerpSample {
 	tickerFound := false
 	for _, t := range tickers {
 		if t.Symbol == v.Asset+"-USD" {
-			rate, _ := strconv.ParseFloat(t.FundingRate, 64)
-			s.FundingRatePerHrBps, s.HasFunding = rate*10000, true
+			s.setFunding(t.FundingRate, bpsPerUnit)
 			tickerFound = true
 			break
 		}

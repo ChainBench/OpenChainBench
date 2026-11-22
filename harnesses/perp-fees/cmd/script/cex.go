@@ -22,7 +22,6 @@ const (
 	kucoinOK = "200000"
 
 	maxTakerBps = 100.0
-	maxAPIMsg   = 200
 	cexTimeout  = 8 * time.Second
 )
 
@@ -33,7 +32,7 @@ var (
 	errNoContractSize  = errors.New("contract_size_missing")
 	errNoTakerFee      = errors.New("taker_fee_missing")
 	errTakerOutOfRange = errors.New("taker_fee_out_of_range")
-	errMalformedLevels = errors.New("malformed_orderbook")
+	errMalformedBook   = errors.New("malformed_orderbook")
 	errUnsortedBook    = errors.New("unsorted_orderbook")
 	errNotFinite       = errors.New("not_finite")
 )
@@ -144,7 +143,7 @@ func bookFromPairs(bids, asks [][]flexFloat, unit float64) (float64, []bookLevel
 	levels := make([]bookLevel, 0, len(asks))
 	for i, r := range asks {
 		if len(r) < 2 {
-			return 0, nil, errMalformedLevels
+			return 0, nil, errMalformedBook
 		}
 		if i > 0 && r[0] < asks[i-1][0] {
 			return 0, nil, errUnsortedBook
@@ -256,9 +255,10 @@ func quoteBitget(ctx context.Context, client *http.Client, asset string) (cexQuo
 }
 
 type mexcResponse[T any] struct {
-	Success bool `json:"success"`
-	Code    int  `json:"code"`
-	Data    T    `json:"data"`
+	Success bool   `json:"success"`
+	Code    int    `json:"code"`
+	Message string `json:"message"`
+	Data    T      `json:"data"`
 }
 
 func mexcGet[T any](ctx context.Context, client *http.Client, url string) (T, error) {
@@ -267,7 +267,7 @@ func mexcGet[T any](ctx context.Context, client *http.Client, url string) (T, er
 		return resp.Data, err
 	}
 	if !resp.Success {
-		return resp.Data, apiError(resp.Code, "")
+		return resp.Data, apiError(resp.Code, resp.Message)
 	}
 	return resp.Data, nil
 }

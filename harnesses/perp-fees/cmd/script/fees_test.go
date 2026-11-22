@@ -89,9 +89,9 @@ func TestWalkBook_SpreadBpsCalculation(t *testing.T) {
 }
 
 func TestWalkBook_BookShortOfNotional(t *testing.T) {
-	levels := []bookLevel{{Px: 2000, Sz: 497.5}}
+	levels := []bookLevel{{Px: 2000, Sz: 499.999995}}
 	if eff, err := walkBookForNotional(levels, 1_000_000); err == nil {
-		t.Fatalf("effective = %v on a $995k book, want insufficient_depth", eff)
+		t.Fatalf("effective = %v on a book one cent short, want insufficient_depth", eff)
 	}
 }
 
@@ -207,7 +207,7 @@ func TestFactor1e30ToBps(t *testing.T) {
 	}
 }
 
-func TestGMXFundingPerHourBps(t *testing.T) {
+func TestSetGMXFunding(t *testing.T) {
 	cases := []struct {
 		raw     string
 		want    float64
@@ -219,10 +219,12 @@ func TestGMXFundingPerHourBps(t *testing.T) {
 		{"1.5e29", 0, true},
 	}
 	for _, c := range cases {
-		got, err := gmxFundingPerHourBps(c.raw)
-		if (err != nil) != c.wantErr || abs(got-c.want) > 1e-9 {
-			t.Errorf("gmxFundingPerHourBps(%q) = %v, %v; want %v, err %v",
-				c.raw, got, err, c.want, c.wantErr)
+		var s PerpSample
+		err := s.setGMXFunding(c.raw)
+		if (err != nil) != c.wantErr || s.HasFunding == c.wantErr ||
+			abs(s.FundingRatePerHrBps-c.want) > 1e-9 {
+			t.Errorf("setGMXFunding(%q) = %v %v, %v; want %v, err %v",
+				c.raw, s.FundingRatePerHrBps, s.HasFunding, err, c.want, c.wantErr)
 		}
 	}
 }
