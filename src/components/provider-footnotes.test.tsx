@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { draftPlaceholderForSpec, loadSpecsUncached } from "@/lib/materialize/load";
 import { BenchInfobox } from "./bench-infobox";
 import { LedgerTable } from "./ledger-table";
+import { ProviderFootnotes } from "./provider-footnotes";
 import { RankedBarChart } from "./ranked-bar-chart";
 import type { Benchmark } from "@/types/benchmark";
 
@@ -25,12 +26,17 @@ async function perpFees(leaderSlug?: string): Promise<Benchmark> {
 }
 
 describe("perp-fees ledger", () => {
-  test("marks Lighter and explains it above the table", async () => {
+  test("the footnote names Lighter and its delay", async () => {
+    const html = renderToStaticMarkup(
+      <ProviderFootnotes benchmark={await perpFees()} />,
+    );
+    expect(html).toContain(">Lighter:<");
+    expect(html).toContain("300 ms late");
+  });
+
+  test("the ledger marks the Lighter row", async () => {
     const html = renderToStaticMarkup(<LedgerTable benchmark={await perpFees()} />);
-    const note = html.indexOf("300 ms late");
-    expect(note).toBeGreaterThan(-1);
-    expect(note).toBeLessThan(html.indexOf("<table"));
-    const marked = html.split("<tr").filter((row) => row.includes("see the note above"));
+    const marked = html.split("<tr").filter((row) => row.includes("see the footnote"));
     expect(marked).toHaveLength(1);
     expect(marked[0]).toContain(">Lighter<");
   });
@@ -42,7 +48,7 @@ describe("perp-fees ledger", () => {
     const html = renderToStaticMarkup(
       <BenchInfobox benchmark={await perpFees(slug)} />,
     );
-    expect(html.split("see the note above").length - 1).toBe(marks);
+    expect(html.split("see the footnote").length - 1).toBe(marks);
   });
 
   test("the ranked chart marks the Lighter bar", async () => {
@@ -51,7 +57,7 @@ describe("perp-fees ledger", () => {
     );
     const marked = html
       .split('role="button"')
-      .filter((row) => row.includes("see the note above"));
+      .filter((row) => row.includes("see the footnote"));
     expect(marked).toHaveLength(1);
     expect(marked[0]).toContain(">Lighter<");
   });
