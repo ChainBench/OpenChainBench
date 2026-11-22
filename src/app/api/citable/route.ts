@@ -2,7 +2,7 @@ import { captureServer } from "@/lib/analytics-server";
 import { NextResponse } from "next/server";
 import { getBenchmarks } from "@/data/benchmarks";
 import { SITE } from "@/data/site";
-import { venueTypeQuery } from "@/lib/venue-type-filter";
+import { benchPageUrl } from "@/lib/bench-links";
 import { AllBenchmarksDraftError } from "@/lib/spec";
 import { citableAsOf, citeBundle, cohortSummaries, fieldValue, leader, leaders, headlineSentence } from "@/lib/citation";
 import { valueInDeclaredUnit } from "@/lib/format";
@@ -140,7 +140,7 @@ export async function GET(req: Request) {
     benchmark: a.benchmark,
     ...(a.chain ? { chain: a.chain } : {}),
     url: a.url,
-    benchmarkUrl: `${SITE.url}/benchmarks/${a.benchmark}${venueTypeQuery(a.venue_type)}`,
+    benchmarkUrl: benchPageUrl(a.benchmark, a.venue_type),
     license: "CC-BY-4.0",
   }));
 

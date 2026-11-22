@@ -4,18 +4,15 @@ import { SpecSchema } from "./spec-schema";
 import {
   parseVenueTypeView,
   scopeToVenueType,
+  shownVenueTypeView,
   venueTypeCounts,
   type VenueTypeView,
 } from "./venue-type-filter";
-import { perpFeesBoard, perpFeesSpecRaw } from "@/test/benchmark";
-import type { ProviderResult } from "@/types/benchmark";
-
-const row = (slug: string): ProviderResult => ({
-  name: slug,
-  slug,
-  ms: { p50: 5, p90: 5, p99: 5, mean: 5 },
-  successRate: 1,
-});
+import {
+  perpFeesBoard,
+  perpFeesRow as row,
+  perpFeesSpecRaw,
+} from "@/test/benchmark";
 
 const perpFeesSpec = () => SpecSchema.parse(perpFeesSpecRaw());
 
@@ -45,6 +42,15 @@ test.each<[string | null, VenueTypeView]>([
   ["dex", "dex"],
   ["cex", "cex"],
   [null, "all"],
+  ["spot", "all"],
 ])("parseVenueTypeView(%p) is %p", (raw, view) => {
   expect(parseVenueTypeView(raw)).toBe(view);
+});
+
+test.each<[VenueTypeView, number, VenueTypeView]>([
+  ["dex", 2, "dex"],
+  ["dex", 0, "all"],
+])("a %p pick on a board with %p typed rows shows %p", (picked, typed, want) => {
+  const counts = { all: 3, dex: typed, cex: 0 };
+  expect(shownVenueTypeView(picked, counts)).toBe(want);
 });

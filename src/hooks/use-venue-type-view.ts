@@ -5,6 +5,7 @@ import { liveResults } from "@/lib/provider-filters";
 import {
   VENUE_TYPE_PARAM,
   parseVenueTypeView,
+  shownVenueTypeView,
   venueTypeCounts,
   type VenueTypeView,
 } from "@/lib/venue-type-filter";
@@ -21,7 +22,7 @@ export function useVenueTypeView(
     () => venueTypeCounts(liveResults(benchmark?.results ?? [])),
     [benchmark],
   );
-  const view: VenueTypeView = counts.dex + counts.cex > 0 ? picked : "all";
+  const view = shownVenueTypeView(picked, counts);
   const showRow = (counts.dex > 0 && counts.cex > 0) || view !== "all";
 
   const loaded = benchmark !== undefined;

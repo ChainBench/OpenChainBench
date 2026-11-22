@@ -1,16 +1,11 @@
 import { ogResponse } from "@/lib/og-response";
-import { getBenchmark } from "@/data/benchmarks";
 import { SITE } from "@/data/site";
 import { fmtUnit } from "@/lib/format";
 import { fieldValue, leader, sparklineFor } from "@/lib/citation";
 import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
 import { SLUG_RE } from "@/lib/slug";
-import {
-  VENUE_TYPE_PARAM,
-  parseVenueTypeView,
-  scopeNote,
-  scopeToVenueType,
-} from "@/lib/venue-type-filter";
+import { loadOgBench } from "@/lib/og-bench";
+import { VENUE_TYPE_PARAM, scopeNote } from "@/lib/venue-type-filter";
 
 export const runtime = "nodejs";
 export const contentType = "image/png";
@@ -37,10 +32,10 @@ export async function GET(
       headers: { "cache-control": "public, s-maxage=60" },
     });
   }
-  const view = parseVenueTypeView(
+  const { view, bench: b } = await loadOgBench(
+    slug,
     new URL(req.url).searchParams.get(VENUE_TYPE_PARAM),
   );
-  const b = scopeToVenueType(await getBenchmark(slug), view);
   if (!b || b.editorialStatus !== "live") {
     return new Response("not_found", {
       status: 404,

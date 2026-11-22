@@ -3,7 +3,7 @@ import { ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { getBenchmark, getBenchmarks } from "@/data/benchmarks";
 import { SITE } from "@/data/site";
-import { venueTypeQuery } from "@/lib/venue-type-filter";
+import { benchPageUrl } from "@/lib/bench-links";
 import {
   benchPath,
   citableAsOf,
@@ -621,7 +621,7 @@ const mcpHandler = createMcpHandler(
           benchmark: a.benchmark,
           ...(a.chain ? { chain: a.chain } : {}),
           url: a.url,
-          benchmarkUrl: `${SITE.url}/benchmarks/${a.benchmark}${venueTypeQuery(a.venue_type)}`,
+          benchmarkUrl: benchPageUrl(a.benchmark, a.venue_type),
         }));
         const payload = { count: rows.length, answers: rows };
         return {

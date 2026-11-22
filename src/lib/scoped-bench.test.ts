@@ -1,18 +1,9 @@
 import { describe, expect, mock, test } from "bun:test";
-import { perpFeesBoard } from "@/test/benchmark";
-import type { ProviderResult, ProviderVenueType } from "@/types/benchmark";
-
-const row = (slug: string, venueType: ProviderVenueType): ProviderResult => ({
-  name: slug,
-  slug,
-  venueType,
-  ms: { p50: 5, p90: 5, p99: 5, mean: 5 },
-  successRate: 1,
-  sampleSize: 10,
-});
+import { perpFeesBoard, perpFeesRow } from "@/test/benchmark";
+import type { ProviderResult } from "@/types/benchmark";
 
 const board = perpFeesBoard({
-  results: [row("hyperliquid", "dex"), row("binance", "cex")],
+  results: [perpFeesRow("hyperliquid", "dex"), perpFeesRow("binance", "cex")],
   sampleSize: 99,
 });
 

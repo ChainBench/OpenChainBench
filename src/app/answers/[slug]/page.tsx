@@ -26,8 +26,8 @@ import {
 import { PERSON_ID } from "@/lib/hub-jsonld";
 import { capDescription, capSnippet } from "@/lib/seo-text";
 import { getBenchCreatedAt } from "@/lib/seo/bench-dates";
-import { benchOgImage } from "@/lib/bench-og-image";
-import { scopeNote, venueTypeQuery } from "@/lib/venue-type-filter";
+import { benchOgImage, benchPagePath } from "@/lib/bench-links";
+import { scopeNote } from "@/lib/venue-type-filter";
 
 export const revalidate = 3600;
 export const maxDuration = 120;
@@ -140,8 +140,7 @@ export default async function AnswerPage({
   const { bench } = ans;
   const url = `${SITE.url}/answers/${ans.slug}`;
   const benchUrl = `${SITE.url}/benchmarks/${bench.slug}`;
-  const benchHref =
-    `/benchmarks/${bench.slug}${venueTypeQuery(ans.venue_type)}`;
+  const benchHref = benchPagePath(bench.slug, ans.venue_type);
 
   // Render template placeholders against the live bench so the answer
   // surfaces real numbers, not raw `{{best_name}}` tokens. Tokens that
@@ -347,6 +346,7 @@ export default async function AnswerPage({
         <Pill variant="category">Answer</Pill>
         <span className="sm:ml-auto font-sans tabular text-[11px] text-ink-muted">
           Backed by {bench.title}
+          {scopeNote(undefined, ans.venue_type)}
         </span>
       </div>
 

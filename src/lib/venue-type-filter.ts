@@ -37,6 +37,13 @@ export function venueTypeCounts(results: readonly Typed[]): VenueTypeCounts {
   return { all: results.length, dex, cex };
 }
 
+export function shownVenueTypeView(
+  picked: VenueTypeView,
+  counts: VenueTypeCounts,
+): VenueTypeView {
+  return counts.dex + counts.cex > 0 ? picked : "all";
+}
+
 export function filterByVenueType<T extends Typed>(
   results: readonly T[],
   view: VenueTypeView,

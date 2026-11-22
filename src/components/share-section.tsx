@@ -4,6 +4,11 @@ import { useEffect, useMemo, useState } from "react";
 import { Download, Image as ImageIcon, Loader2, X } from "lucide-react";
 import type { Benchmark } from "@/types/benchmark";
 import { Hint } from "@/components/hint";
+import {
+  VENUE_TYPE_PARAM,
+  parseVenueTypeView,
+  type VenueTypeView,
+} from "@/lib/venue-type-filter";
 
 /** Dimensions the share-card handler on the server understands. Kept in
  *  sync with the pickOption() dims in
@@ -136,6 +141,7 @@ export function ShareSection({ slug, title, benchmark, chain }: Props) {
   // the scope dropdowns.
   const [panelView, setPanelView] = useState<string>(ALL_VALUE);
   const [feesRemoved, setFeesRemoved] = useState(false);
+  const [venueView, setVenueView] = useState<VenueTypeView>("all");
   const pickerPanels = feesRemoved ? [] : panelOptions;
   // Re-seed scope from URL on each open transition. Uses the "adjust
   // state during render on transition" pattern instead of a useEffect
@@ -170,6 +176,7 @@ export function ShareSection({ slug, title, benchmark, chain }: Props) {
       setScope(next);
       const removed = url.searchParams.get("fees") === "removed";
       setFeesRemoved(removed);
+      setVenueView(parseVenueTypeView(url.searchParams.get(VENUE_TYPE_PARAM)));
       const urlView = url.searchParams.get("view");
       const knownView =
         removed || panelOptions.some((o) => o.value === urlView);
@@ -264,6 +271,9 @@ export function ShareSection({ slug, title, benchmark, chain }: Props) {
       dimParams.push(`&view=${encodeURIComponent(panelView)}`);
     }
     if (feesRemoved) dimParams.push("&fees=removed");
+    if (venueView !== "all") {
+      dimParams.push(`&${VENUE_TYPE_PARAM}=${venueView}`);
+    }
     // Mirror the active site theme so the exported PNG matches what the
     // user is looking at. SSR can't read the dark state - default to light
     // server-side, the client re-renders with `dark` once mounted.

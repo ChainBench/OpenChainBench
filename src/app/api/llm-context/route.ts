@@ -1,6 +1,6 @@
 import { getBenchmarks } from "@/data/benchmarks";
 import { SITE } from "@/data/site";
-import { venueTypeQuery } from "@/lib/venue-type-filter";
+import { benchPageUrl } from "@/lib/bench-links";
 import { AllBenchmarksDraftError } from "@/lib/spec";
 import { fmtUnit } from "@/lib/format";
 import { rankingLines } from "@/lib/markdown-views";
@@ -153,10 +153,7 @@ export async function GET(req: Request) {
       lines.push(`### ${a.question}`);
       lines.push("");
       lines.push(`- Page: ${a.url}`);
-      lines.push(
-        `- Benchmark: ${SITE.url}/benchmarks/${a.benchmark}` +
-          venueTypeQuery(a.venue_type),
-      );
+      lines.push(`- Benchmark: ${benchPageUrl(a.benchmark, a.venue_type)}`);
       if (a.chain) lines.push(`- Chain: ${a.chain}`);
       lines.push(`- Answer: ${answerOneLine(a)}`);
       lines.push("");
