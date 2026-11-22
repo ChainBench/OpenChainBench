@@ -2,6 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import type { Benchmark } from "@/types/benchmark";
+import { FootnoteMark } from "@/components/provider-footnotes";
 import { fmtHeadline, fmtUnit } from "@/lib/format";
 import { buildProviderColors } from "@/lib/series-colors";
 import { MIN_DISPLAY_SUCCESS_PCT } from "@/lib/provider-filters";
@@ -231,12 +232,17 @@ export function RankedBarChart({
                 {rank !== null ? `#${rank}` : "-"}
               </span>
               <span
-                className={`inline-flex items-center gap-2 text-[13px] truncate ${
+                className={`inline-flex items-center gap-2 text-[13px] min-w-0 ${
                   isOff ? "text-ink-faint line-through decoration-1" : "text-ink"
                 }`}
               >
                 <ProviderLogo slug={r.slug} name={r.name} size={18} />
                 <span className="truncate">{r.name}</span>
+                <FootnoteMark
+                  benchmark={benchmark}
+                  slug={r.slug}
+                  className="-ml-1.5"
+                />
               </span>
               <div className="relative h-7 bg-paper-soft/60 rounded-sm overflow-hidden">
                 <div
