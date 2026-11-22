@@ -90,7 +90,7 @@ func fetchAll(cfg *Config) {
 func fetchOne(v VenueConfig, cfg *Config) PerpSample {
 	switch v.Slug {
 	case "hyperliquid":
-		return fetchHyperliquid(v)
+		return fetchHyperliquid(v, hyperliquidURL)
 	case "dydx":
 		return fetchDYdX(v)
 	case "gmx":
