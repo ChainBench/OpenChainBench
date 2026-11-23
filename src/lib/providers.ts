@@ -360,6 +360,10 @@ export type ProviderAppearance = {
      *  band ("Consumer app, 5 transactions a user · 10,000 users"), from
      *  defaultViewLabel. Empty or absent on every other bench. */
     defaultView?: string;
+    /** The chain the bench pins its headline to (`aggregate_filters.chain`),
+     *  so a provider with no figure there can say where it IS measured
+     *  instead of "data warming up" (see off-pin-coverage.ts). */
+    pinnedChain?: string;
     /** Exact per-cell rankings from the bench's `rank_matrix_query`
      *  (key = `<chain>|<region>`, "all" for an undeclared dimension or a
      *  derived marginal). When present this is the authoritative source
@@ -420,7 +424,7 @@ function raceShareField(b: Benchmark, slug: string): { raceShare?: { share: numb
   return rs ? { raceShare: rs } : {};
 }
 
-function rankProviders(b: Benchmark): ProviderResult[] {
+export function rankProviders(b: Benchmark): ProviderResult[] {
   // Drives the /products hub `wins` count and per-chain leadership
   // chips. Shares the reliability + insufficient-sample filters with
   // `leader()` (citation.ts) so a provider that is filtered from the
@@ -487,6 +491,11 @@ function rankPerChainForBench(
     out[chain.value] = perProvider;
   }
   return out;
+}
+
+function pinnedChainOf(b: Benchmark): string | undefined {
+  const pinned = (b.aggregateFilters as { chain?: unknown } | undefined)?.chain;
+  return typeof pinned === "string" && pinned !== "all" ? pinned : undefined;
 }
 
 async function buildProviders(): Promise<ProviderProfile[]> {
@@ -578,6 +587,7 @@ export function buildProvidersFromBenches(benches: Benchmark[]): ProviderProfile
           bestPerChain: benchBestPerChain,
           regionDimensions: b.dimensions?.region,
           defaultView: defaultViewLabel(b),
+          pinnedChain: pinnedChainOf(b),
           cellRanks: b.cellRanks,
         },
         result: r,
@@ -677,6 +687,7 @@ export function buildProvidersFromBenches(benches: Benchmark[]): ProviderProfile
             bestPerChain: benchBestPerChain,
             regionDimensions: b.dimensions?.region,
             defaultView: defaultViewLabel(b),
+            pinnedChain: pinnedChainOf(b),
             cellRanks: b.cellRanks,
           },
           result: r,
