@@ -36,6 +36,8 @@ export const TEAM_ROUTE = "/api/internal/api-access";
 export const STATUS_PAGE_PATH = "/api-access/status";
 export const REQUEST_PAGE_PATH = "/api-access";
 export const REQUEST_ROUTE = "/api/api-access/requests";
+export const STATUS_ROUTE = "/api/api-access/status";
+export const KEY_ROUTE = "/api/api-access/key";
 export const statusLink = (token: string) => `${STATUS_PAGE_PATH}#${token}`;
 export const REQUEST_ID = /^[0-9a-f-]{36}$/;
 export const STATUS_TOKEN = new RegExp(`^[0-9A-Za-z]{${SECRET_CHARS}}$`);

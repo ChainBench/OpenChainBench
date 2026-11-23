@@ -1,4 +1,5 @@
 import {
+  clientNetworkKey,
   clientSubnetKey,
   globalLimit,
   holdLimit,
@@ -43,6 +44,8 @@ const ATTEMPTS_PER_SERVED = 4;
 
 export const ADMISSIONS = {
   request: { route: "api-access-request", perNetwork: 3, perInstance: 60 },
+  status: { route: "api-access-status", perNetwork: 10, perInstance: 120 },
+  key: { route: "api-access-key", perNetwork: 5, perInstance: 40 },
 } as const satisfies Record<string, Admission>;
 
 export type Gate = {
@@ -50,6 +53,30 @@ export type Gate = {
   served: () => void;
   capped: (retryAfterSec: number) => void;
 };
+
+const UNKNOWN_LINKS_PER_NETWORK = 3;
+const UNKNOWN_LINK_SCOPE = "api-access-unknown-link";
+
+export type LinkGate = Gate & { missed: () => void };
+
+export function linkGate(req: Request, admission: Admission): LinkGate {
+  const misses = clientNetworkKey(req, UNKNOWN_LINK_SCOPE);
+  const gate = requesterGate(req, admission);
+  return {
+    ...gate,
+    admit: () => {
+      const tries = peekLimit(
+        misses,
+        UNKNOWN_LINKS_PER_NETWORK,
+        ADMISSION_WINDOW_SEC,
+      );
+      if (!tries.ok) return tooManyRequests(tries.retryAfterSec);
+      return gate.admit();
+    },
+    missed: () =>
+      void rateLimit(misses, UNKNOWN_LINKS_PER_NETWORK, ADMISSION_WINDOW_SEC),
+  };
+}
 
 export function requesterGate(
   req: Request,

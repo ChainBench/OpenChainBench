@@ -16,7 +16,8 @@
     "check:scalars": "tsx scripts/check-scalar-cardinality.ts",
     "spec:dry-run": "tsx scripts/dry-run-spec.ts",
     "rpc-hub:dry-run": "tsx scripts/dry-run-rpc-hub.ts",
-    "check": "pnpm validate && pnpm typecheck && pnpm lint && pnpm test",
+    "status-page": "tsx scripts/build-status-page.ts",
+    "check": "pnpm validate && pnpm typecheck && pnpm lint && pnpm status-page --check && pnpm test",
     "worker": "tsx worker/index.ts"
   },
   "pnpm": {
